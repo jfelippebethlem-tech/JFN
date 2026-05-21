@@ -1,0 +1,21 @@
+{
+  "indicator_weights": {
+    "macd_cross": 0.35,
+    "rsi_oversold": 0.2,
+    "bb_touch": 0.2,
+    "ema_uptrend_long": 0.2,
+    "vol_ratio": 0.05
+  },
+  "top_level_weights": {
+    "technical": 0.5,
+    "fundamental": 0.35,
+    "sentiment": 0.15
+  },
+  "meta": {
+    "n_signals": 6138,
+    "baseline_win_rate": 0.237,
+    "generated_at": "2026-05-21T18:57:38.617206",
+    "source": "backtest_2000_sessions",
+    "notes": "Calibrated from 2000-session Monte Carlo backtest on 62 IBOVESPA tickers. Key findings: MACD cross is dominant predictor (+6.7pp lift). EMA short-only is anti-predictive (-3.1pp). Optimal tech threshold: 50-55. Best pattern: MACD cross + EMA long + no short EMA (WR=36.8%)."
+  }
+}

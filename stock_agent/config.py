@@ -24,8 +24,8 @@ SMLL_TICKERS = [
 ]
 
 # Analysis thresholds
-SIGNAL_THRESHOLD = 65           # Minimum score (0–100) to send alert
-STRONG_SIGNAL_THRESHOLD = 80    # High conviction threshold
+SIGNAL_THRESHOLD = 58           # Calibrated from 2000-session backtest
+STRONG_SIGNAL_THRESHOLD = 72    # High conviction threshold
 COOLDOWN_HOURS = 24             # Hours before re-alerting same ticker
 MAX_SIGNALS_PER_SCAN = 5        # Cap alerts per scan run
 
