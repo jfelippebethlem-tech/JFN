@@ -1,14 +1,14 @@
 """
-JFN Stock Agent — B3 market scanner with WhatsApp alerts.
+JFN Stock Agent — B3 market scanner with WhatsApp alerts and self-learning.
 
-Scans IBOVESPA + SMLL stocks for high-conviction buy signals using
-technical, fundamental, and sentiment analysis. Sends alerts via
-WhatsApp Web when a stock's combined score exceeds the threshold.
-
-Usage:
-    python agent.py              # Live mode (runs during market hours)
-    python agent.py --test       # Scan now, ignore market hours
-    python agent.py --ticker WEGE3   # Analyse a single ticker and print result
+Modes:
+    python agent.py                     # live mode (market hours, seg–sex 10h–17h BRT)
+    python agent.py --test              # force immediate scan (ignores market hours)
+    python agent.py --ticker WEGE3      # analyse a single ticker and print result
+    python agent.py --backtest          # run 2-year historical backtest
+    python agent.py --backtest --quick  # quick backtest (first 20 tickers)
+    python agent.py --learn             # relearn weights from existing results
+    python agent.py --stats             # show live signal outcome statistics
 """
 
 import argparse
@@ -37,10 +37,12 @@ from config import (
     SMLL_TICKERS,
 )
 from fetcher import get_fundamentals, get_news, get_price_history
+import learner
 from notifier import send_whatsapp
 from scorer import compute_score, format_signal_message
+import tracker
 
-ALL_TICKERS = list(dict.fromkeys(IBOVESPA_TICKERS + SMLL_TICKERS))  # dedup, preserve order
+ALL_TICKERS = list(dict.fromkeys(IBOVESPA_TICKERS + SMLL_TICKERS))
 
 PHONE = os.getenv("WHATSAPP_PHONE", "")
 BRT = pytz.timezone("America/Sao_Paulo")
@@ -48,7 +50,7 @@ SENT_SIGNALS_FILE = Path(__file__).parent / "sent_signals.json"
 
 
 # ---------------------------------------------------------------------------
-# Signal persistence
+# Signal cooldown persistence
 # ---------------------------------------------------------------------------
 
 def _load_sent() -> dict:
@@ -71,7 +73,7 @@ def _can_send(ticker: str, sent: dict) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Market hours guard
+# Market hours
 # ---------------------------------------------------------------------------
 
 def _is_market_open() -> bool:
@@ -92,20 +94,30 @@ def scan(force: bool = False) -> None:
         return
 
     ts = datetime.now(BRT).strftime("%H:%M:%S %d/%m/%Y")
-    print(f"\n{'='*55}")
+    w = learner.load_weights()
+    n_sig = w.get("meta", {}).get("n_signals", 0)
+    wr = w.get("meta", {}).get("baseline_win_rate")
+    learn_info = f"modelo:{n_sig}sig win:{wr*100:.0f}%" if wr else "pesos padrão"
+
+    print(f"\n{'='*58}")
     print(f"  JFN Scan — {ts}")
-    print(f"  {len(ALL_TICKERS)} ações | limiar {SIGNAL_THRESHOLD}/100")
-    print(f"{'='*55}")
+    print(f"  {len(ALL_TICKERS)} ações | limiar {SIGNAL_THRESHOLD}/100 | {learn_info}")
+    print(f"{'='*58}")
+
+    # Check outcomes of previously sent live signals (and trigger re-learning if any resolved)
+    resolved = tracker.check_outcomes()
+    if resolved:
+        print(f"[agent] {resolved} sinal(is) live resolvido(s) — pesos atualizados.")
 
     sent = _load_sent()
     signals_sent = 0
 
-    print("[agent] Buscando dados fundamentalistas (brapi.dev)...")
+    print("[agent] Buscando fundamentais (brapi.dev)...")
     fundamentals = get_fundamentals(ALL_TICKERS)
 
     for ticker in ALL_TICKERS:
         if signals_sent >= MAX_SIGNALS_PER_SCAN:
-            print(f"[agent] Limite de {MAX_SIGNALS_PER_SCAN} sinais atingido.")
+            print(f"[agent] Limite de {MAX_SIGNALS_PER_SCAN} sinais por scan atingido.")
             break
 
         if not _can_send(ticker, sent):
@@ -126,6 +138,7 @@ def scan(force: bool = False) -> None:
             sentiment = analyze_sentiment(news)
 
             score, conviction = compute_score(tech, fund, sentiment)
+
             bar = "█" * int(score / 5)
             print(f"  {ticker:8s} {score:5.1f}/100  {bar}")
 
@@ -134,17 +147,31 @@ def scan(force: bool = False) -> None:
                 print(f"\n  ★ SINAL: {ticker} ({score:.1f}) — {conviction}")
 
                 if send_whatsapp(PHONE, msg):
-                    sent[ticker] = datetime.now(BRT).isoformat()
+                    now_str = datetime.now(BRT).isoformat()
+                    sent[ticker] = now_str
                     _save_sent(sent)
                     signals_sent += 1
-                    time.sleep(3)  # brief pause between messages
+
+                    # Register for outcome tracking (feeds back into learning)
+                    price = tech.get("current_price") or fund_raw.get("current_price") or 0.0
+                    tracker.register_signal(
+                        ticker=ticker,
+                        entry_price=price,
+                        score=score,
+                        tech=tech,
+                        fund_raw=fund_raw,
+                        fund_score=fund.get("fundamental_score", 50),
+                        sent_score=sentiment.get("sentiment_score", 60),
+                    )
+
+                    time.sleep(3)
 
         except Exception as exc:
             print(f"  [!] {ticker}: {exc}")
 
-        time.sleep(0.4)  # yfinance / brapi rate limit
+        time.sleep(0.4)
 
-    print(f"\n[agent] Fim do scan — {signals_sent} sinal(is) enviado(s).\n")
+    print(f"\n[agent] Scan concluído — {signals_sent} sinal(is) enviado(s).\n")
 
 
 # ---------------------------------------------------------------------------
@@ -171,37 +198,100 @@ def analyse_one(ticker: str) -> None:
 
 
 # ---------------------------------------------------------------------------
+# Stats display
+# ---------------------------------------------------------------------------
+
+def show_stats() -> None:
+    stats = tracker.get_stats()
+    w = learner.load_weights()
+    meta = w.get("meta", {})
+
+    print("\n" + "=" * 45)
+    print("  JFN — Desempenho dos sinais live")
+    print("=" * 45)
+    print(f"  Total registrados: {stats['total']}")
+    print(f"  Pendentes        : {stats['pending']}")
+    print(f"  Resolvidos       : {stats['resolved']}")
+    if stats["resolved"] > 0:
+        print(f"  Wins (T1/T2)     : {stats['wins']}")
+        print(f"  Stops            : {stats['stops']}")
+        print(f"  Win rate         : {stats['win_rate']*100:.1f}%")
+        print(f"  Retorno médio    : {stats['avg_return']*100:+.2f}%")
+
+    print("\n" + "-" * 45)
+    print("  Pesos do modelo atual")
+    print("-" * 45)
+    source = meta.get("source", "defaults")
+    if source == "learned":
+        print(f"  Baseado em {meta.get('n_signals', 0)} sinais históricos")
+        print(f"  Win rate base: {meta.get('baseline_win_rate', 0)*100:.1f}%")
+        iw = w.get("indicator_weights", {})
+        for name, val in sorted(iw.items(), key=lambda x: -x[1]):
+            print(f"    {name:<22}: {val:.0%}")
+    else:
+        print("  Usando pesos padrão (execute --backtest + --learn para calibrar)")
+
+    tl = w.get("top_level_weights", {})
+    print(f"\n  Técnico:{tl.get('technical', 0.5):.0%}  "
+          f"Fundamental:{tl.get('fundamental', 0.35):.0%}  "
+          f"Sentimento:{tl.get('sentiment', 0.15):.0%}")
+    print("=" * 45 + "\n")
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="JFN Stock Agent")
-    parser.add_argument("--test", action="store_true", help="Run scan now, ignore market hours")
-    parser.add_argument("--ticker", metavar="TICKER", help="Analyse a single ticker and exit")
+    parser.add_argument("--test", action="store_true", help="Força scan imediato")
+    parser.add_argument("--ticker", metavar="T", help="Analisa um ticker e sai")
+    parser.add_argument("--backtest", action="store_true", help="Roda backtest 2 anos")
+    parser.add_argument("--quick", action="store_true", help="(com --backtest) só 20 tickers")
+    parser.add_argument("--learn", action="store_true", help="Reatualiza pesos de aprendizado")
+    parser.add_argument("--stats", action="store_true", help="Mostra estatísticas de sinais live")
     args = parser.parse_args()
 
-    if not PHONE and not args.ticker:
-        print("ERRO: defina WHATSAPP_PHONE no arquivo .env")
-        sys.exit(1)
+    # --- One-shot commands ---
+    if args.backtest:
+        from backtester import ALL_TICKERS as BT_TICKERS, run_backtest
+        tickers = BT_TICKERS[:20] if args.quick else None
+        run_backtest(tickers)
+        print("[agent] Rodando learner com os resultados do backtest...")
+        learner.learn(verbose=True)
+        return
+
+    if args.learn:
+        learner.learn(verbose=True)
+        return
+
+    if args.stats:
+        show_stats()
+        return
 
     if args.ticker:
         analyse_one(args.ticker.upper())
         return
 
+    # --- Live / test mode ---
+    if not PHONE:
+        print("ERRO: defina WHATSAPP_PHONE no arquivo .env")
+        sys.exit(1)
+
     if args.test:
         scan(force=True)
         return
 
-    print("=" * 55)
-    print("  JFN Stock Agent — iniciando modo live")
+    print("=" * 58)
+    print("  JFN Stock Agent — modo live")
     print(f"  Universo: {len(ALL_TICKERS)} ações (IBOV + SMLL)")
-    print(f"  Horário: {MARKET_OPEN_HOUR}h–{MARKET_CLOSE_HOUR}h BRT | seg–sex")
+    print(f"  Horário : {MARKET_OPEN_HOUR}h–{MARKET_CLOSE_HOUR}h BRT | seg–sex")
     print(f"  Intervalo: a cada {CHECK_INTERVAL_MINUTES} min")
-    print(f"  Limiar de sinal: {SIGNAL_THRESHOLD}/100")
+    print(f"  Limiar  : {SIGNAL_THRESHOLD}/100")
     print(f"  WhatsApp: {PHONE}")
-    print("=" * 55)
+    print("=" * 58)
 
-    scan()  # immediate first run
+    scan()
     schedule.every(CHECK_INTERVAL_MINUTES).minutes.do(scan)
 
     while True:
