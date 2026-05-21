@@ -1,0 +1,13 @@
+{
+  "name": "jfn-whatsapp-sender",
+  "version": "1.0.0",
+  "description": "WhatsApp Web sender for JFN Stock Agent",
+  "main": "sender.js",
+  "scripts": {
+    "test-send": "node sender.js $WHATSAPP_PHONE 'JFN Agent iniciado com sucesso! 🎯'"
+  },
+  "dependencies": {
+    "whatsapp-web.js": "^1.26.0",
+    "qrcode-terminal": "^0.12.0"
+  }
+}
