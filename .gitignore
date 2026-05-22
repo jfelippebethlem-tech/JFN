@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+env/
+
+# Environment
+.env
+
+# Node
+node_modules/
+
+# WhatsApp session
+whatsapp/.wwebjs_auth/
+whatsapp/.wwebjs_cache/
+
+# Logs
+*.log
+nohup.out
+
+# OS
+.DS_Store
+Thumbs.db
