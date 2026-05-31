@@ -238,6 +238,46 @@ class Alerta(Base):
     )
 
 
+# ── Doações eleitorais (TSE) ──────────────────────────────────────────────────
+
+class DoacaoEleitoral(Base):
+    __tablename__ = "doacoes_eleitorais"
+
+    id               = Column(Integer, primary_key=True)
+    cpf_cnpj_doador  = Column(String(14), index=True)
+    nome_doador      = Column(String(300))
+    nome_candidato   = Column(String(300))
+    cargo_candidato  = Column(String(100))
+    partido          = Column(String(20))
+    uf               = Column(String(2))
+    valor            = Column(Float)
+    data_doacao      = Column(Date)
+    ano_eleicao      = Column(Integer, index=True)
+    created_at       = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_doacao_cpfcnpj_ano", "cpf_cnpj_doador", "ano_eleicao"),
+    )
+
+
+# ── Decisões do TCE-RJ ────────────────────────────────────────────────────────
+
+class DecisaoTCE(Base):
+    __tablename__ = "decisoes_tce"
+
+    id               = Column(Integer, primary_key=True)
+    numero_acordao   = Column(String(50), unique=True, index=True)
+    data_julgamento  = Column(Date)
+    relator          = Column(String(200))
+    ementa           = Column(Text)
+    tipo_decisao     = Column(String(50))   # condenação | arquivamento | acórdão
+    valor_debito     = Column(Float)
+    cpfs_envolvidos  = Column(Text)         # JSON list
+    cnpjs_envolvidos = Column(Text)         # JSON list
+    url_fonte        = Column(Text)
+    created_at       = Column(DateTime, default=datetime.utcnow)
+
+
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 
 def get_engine(db_path: Path = DB_PATH):
