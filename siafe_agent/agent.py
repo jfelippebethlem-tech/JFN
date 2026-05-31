@@ -27,15 +27,20 @@ SYSTEM_PROMPT = """Você é um agente especialista no SIAFE2 (Sistema Integrado 
 do Estado do Rio de Janeiro) e no SEI Rio.
 
 CREDENCIAIS: As credenciais de acesso já estão configuradas. Ao fazer login, use
-username={username} e password={password} (valores reais injetados em runtime pelo agente).
-Não peça credenciais ao usuário — use as pré-configuradas diretamente.
+username={username}. Não peça credenciais ao usuário — use as pré-configuradas.
+
+EXERCÍCIO ATIVO: {exercicio}
+O exercício pode ser trocado a qualquer momento com switch_exercicio.
+Quando o usuário mencionar um ano diferente do ativo, chame switch_exercicio automaticamente.
+Exemplos: "gastos de 2024" → switch_exercicio(exercicio="2024") antes de navegar.
 
 Você tem acesso a ferramentas para:
 1. Fazer login no SIAFE2 (use as credenciais pré-configuradas)
-2. Navegar até FlexVision > Consultas > Execução por OB
-3. Pesquisar gastos por órgão, data e número de OB
-4. Extrair e exportar dados financeiros (CSV/JSON)
-5. Cruzar com o SEI Rio para encontrar números de processo (SEI)
+2. Trocar o exercício/ano fiscal com switch_exercicio (re-faz login com o novo ano)
+3. Navegar até FlexVision > Consultas > Execução por OB
+4. Pesquisar gastos por órgão, data e número de OB
+5. Extrair e exportar dados financeiros (CSV/JSON)
+6. Cruzar com o SEI Rio para encontrar números de processo (SEI)
 
 Estrutura do SIAFE2:
 - Login: Usuário, Senha, Cliente, Exercício (4 campos)
@@ -45,6 +50,7 @@ Estrutura do SIAFE2:
 
 Diretrizes:
 - Se o usuário pedir dados, faça login automaticamente (sem perguntar credenciais)
+- Se o usuário mencionar um ano específico, troque o exercício com switch_exercicio
 - Se aparecer campo de código por e-mail (2FA), peça ao usuário
 - Se um passo falhar, tire screenshot e explique o problema
 - Ao extrair dados com muitas páginas, avise o usuário antes
@@ -152,7 +158,7 @@ class SIAFEAgent:
                 max_tokens=4096,
                 system=SYSTEM_PROMPT.format(
                     username=self._siafe_username,
-                    password="***",  # don't leak password in system prompt context
+                    exercicio=self._siafe_exercicio or "padrão do SIAFE",
                 ),
                 tools=TOOLS,
                 messages=self._conversation,
@@ -208,6 +214,8 @@ class SIAFEAgent:
                     return {"success": True, "records": len(data), "preview": data[:3]}
                 case "export_data":
                     return await self._tool_export_data(**inputs)
+                case "switch_exercicio":
+                    return await self._tool_switch_exercicio(**inputs)
                 case "enrich_with_sei":
                     return await self._tool_enrich_with_sei(**inputs)
                 case "list_menu_items":
@@ -245,7 +253,41 @@ class SIAFEAgent:
             exercicio=exercicio,
             otp_callback=otp_callback,
         )
+        if result.get("success") and exercicio:
+            self._siafe_exercicio = exercicio
         return result
+
+    async def _tool_switch_exercicio(self, exercicio: str) -> dict:
+        """Re-login with a different exercise year."""
+        if not exercicio.strip():
+            return {"error": "Exercício não informado."}
+
+        prev = self._siafe_exercicio or "padrão"
+        self._siafe_exercicio = exercicio.strip()
+
+        async def otp_callback():
+            return input(f"\n[SIAFE2] Código OTP para exercício {exercicio}: ").strip()
+
+        result = await self._siafe.login(
+            self._siafe_username,
+            self._siafe_password,
+            cliente=self._siafe_cliente,
+            exercicio=exercicio.strip(),
+            otp_callback=otp_callback,
+        )
+
+        if result.get("success"):
+            return {
+                "success": True,
+                "message": f"Exercício trocado: {prev} → {exercicio}.",
+                "url": result.get("url"),
+            }
+        else:
+            self._siafe_exercicio = prev  # rollback
+            return {
+                "success": False,
+                "message": f"Falha ao trocar para exercício {exercicio}: {result.get('message')}",
+            }
 
     async def _tool_export_data(self, format: str = "both", filename: Optional[str] = None) -> dict:
         """Export extracted data to file(s)."""
