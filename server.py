@@ -1,0 +1,331 @@
+"""
+SIAFE2 Finance Agent — Web Server
+
+FastAPI server que expõe o agente via chat web.
+Acesse do celular usando o IP do seu PC na rede local.
+
+Uso:
+    python server.py
+    python server.py --port 8080 --visible   # browser visível no PC
+    python server.py --host 0.0.0.0          # acessível na rede local (padrão)
+
+No celular: http://<IP-DO-SEU-PC>:8000
+"""
+
+import asyncio
+import json
+import os
+import sys
+import argparse
+from contextlib import asynccontextmanager
+from pathlib import Path
+from typing import Optional
+
+import uvicorn
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+
+# ── Load .env ─────────────────────────────────────────────────────────────────
+
+def _load_env():
+    env_path = Path(__file__).parent / ".env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            if key.strip() and key.strip() not in os.environ:
+                os.environ[key.strip()] = value.strip()
+
+_load_env()
+
+
+# ── Global agent instance ─────────────────────────────────────────────────────
+
+_agent = None
+_agent_lock = asyncio.Lock()
+_otp_queue: Optional[asyncio.Queue] = None  # for passing OTP from web UI to agent
+
+
+async def get_agent():
+    global _agent
+    if _agent is None:
+        from siafe_agent.agent import SIAFEAgent
+        _agent = SIAFEAgent(
+            api_key=os.environ.get("ANTHROPIC_API_KEY"),
+            headless=not _args.visible,
+            output_dir="output",
+            default_username=os.environ.get("SIAFE_USER", ""),
+            default_password=os.environ.get("SIAFE_PASS", ""),
+            default_cliente=os.environ.get("SIAFE_CLIENTE") or None,
+            default_exercicio=os.environ.get("SIAFE_EXERCICIO") or None,
+        )
+        await _agent.start()
+    return _agent
+
+
+# ── Lifespan ──────────────────────────────────────────────────────────────────
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Warm up agent on startup
+    print("\n[SIAFE Agent] Iniciando browser e fazendo login...")
+    try:
+        agent = await get_agent()
+        result = await agent._tool_login_siafe(
+            username=agent._siafe_username,
+            password=agent._siafe_password,
+            cliente=agent._siafe_cliente,
+            exercicio=agent._siafe_exercicio,
+        )
+        if result.get("success"):
+            print(f"[SIAFE Agent] Login OK — {result.get('url', '')}")
+        else:
+            print(f"[SIAFE Agent] Login falhou: {result.get('message')}")
+    except Exception as e:
+        print(f"[SIAFE Agent] Erro no startup: {e}")
+
+    yield
+
+    # Shutdown
+    if _agent:
+        await _agent.stop()
+
+
+# ── App ───────────────────────────────────────────────────────────────────────
+
+app = FastAPI(title="SIAFE2 Finance Agent", lifespan=lifespan)
+
+# Serve static files (screenshots, exports)
+screenshots_dir = Path("screenshots")
+output_dir = Path("output")
+screenshots_dir.mkdir(exist_ok=True)
+output_dir.mkdir(exist_ok=True)
+
+app.mount("/screenshots", StaticFiles(directory="screenshots"), name="screenshots")
+app.mount("/output", StaticFiles(directory="output"), name="output")
+
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    """Serve the chat UI."""
+    return FileResponse("static/index.html")
+
+
+@app.get("/status")
+async def status():
+    """Check agent status."""
+    agent = await get_agent()
+    return {
+        "logged_in": agent._siafe._logged_in,
+        "username": agent._siafe_username,
+        "extracted_records": len(agent._extracted_data),
+    }
+
+
+@app.get("/screenshots")
+async def list_screenshots():
+    """List available screenshots."""
+    files = sorted(Path("screenshots").glob("*.png"), key=lambda f: f.stat().st_mtime, reverse=True)
+    return [f.name for f in files[:20]]
+
+
+@app.get("/exports")
+async def list_exports():
+    """List exported files."""
+    files = sorted(Path("output").glob("*"), key=lambda f: f.stat().st_mtime, reverse=True)
+    return [{"name": f.name, "size": f.stat().st_size} for f in files[:20]]
+
+
+# ── OTP endpoint (called by the web UI when user submits the email code) ──────
+
+_otp_futures: dict[str, asyncio.Future] = {}
+
+
+@app.post("/otp")
+async def submit_otp(payload: dict):
+    """Receive OTP code from user and deliver it to the waiting login flow."""
+    code = payload.get("code", "").strip()
+    # Signal all waiting OTP futures
+    for fut in list(_otp_futures.values()):
+        if not fut.done():
+            fut.set_result(code)
+    return {"ok": True}
+
+
+# ── WebSocket chat ────────────────────────────────────────────────────────────
+
+class StreamingCallbacks:
+    """Bridges agent tool execution events to WebSocket messages."""
+
+    def __init__(self, ws: WebSocket):
+        self.ws = ws
+
+    async def send(self, msg_type: str, content: str):
+        try:
+            await self.ws.send_text(json.dumps({"type": msg_type, "content": content}))
+        except Exception:
+            pass
+
+
+@app.websocket("/ws")
+async def websocket_chat(ws: WebSocket):
+    await ws.accept()
+
+    async def otp_callback():
+        """Called by the agent when it needs the email OTP code."""
+        await ws.send_text(json.dumps({
+            "type": "otp_request",
+            "content": "Digite o código recebido por e-mail:",
+        }))
+        loop = asyncio.get_event_loop()
+        fut = loop.create_future()
+        _otp_futures["pending"] = fut
+        try:
+            code = await asyncio.wait_for(fut, timeout=120)
+        except asyncio.TimeoutError:
+            code = ""
+        _otp_futures.pop("pending", None)
+        return code
+
+    try:
+        agent = await get_agent()
+        # Inject web OTP callback
+        agent._siafe._web_otp_callback = otp_callback
+
+        async with _agent_lock:
+            # Signal thinking
+            await ws.send_text(json.dumps({"type": "start"}))
+
+            # Override the agent's internal OTP handling for this session
+            original_tool = agent._tool_login_siafe
+
+            async def patched_login(username, password, cliente=None, exercicio=None):
+                agent._siafe_username = username
+                agent._siafe_password = password
+
+                async def _otp():
+                    return await otp_callback()
+
+                return await agent._siafe.login(
+                    username, password,
+                    cliente=cliente,
+                    exercicio=exercicio,
+                    otp_callback=_otp,
+                )
+
+            agent._tool_login_siafe = patched_login
+
+            while True:
+                try:
+                    data = await ws.receive_text()
+                except WebSocketDisconnect:
+                    break
+
+                msg = json.loads(data)
+
+                if msg.get("type") == "otp":
+                    # OTP submitted via WebSocket (alternative to POST /otp)
+                    code = msg.get("code", "")
+                    for fut in list(_otp_futures.values()):
+                        if not fut.done():
+                            fut.set_result(code)
+                    continue
+
+                if msg.get("type") != "message":
+                    continue
+
+                user_text = msg.get("content", "").strip()
+                if not user_text:
+                    continue
+
+                await ws.send_text(json.dumps({"type": "thinking"}))
+
+                try:
+                    # Monkey-patch tool execution to stream progress
+                    original_execute = agent._execute_tool
+
+                    async def streaming_execute(name, inputs):
+                        await ws.send_text(json.dumps({
+                            "type": "tool_call",
+                            "content": f"→ {name}({', '.join(f'{k}={v!r}' for k, v in inputs.items())})",
+                        }))
+                        result = await original_execute(name, inputs)
+                        # If a screenshot was taken, send its path
+                        if isinstance(result, dict) and "path" in result:
+                            await ws.send_text(json.dumps({
+                                "type": "screenshot",
+                                "content": result["path"],
+                            }))
+                        return result
+
+                    agent._execute_tool = streaming_execute
+
+                    response = await agent.chat(user_text)
+
+                    agent._execute_tool = original_execute
+                except Exception as e:
+                    response = f"Erro interno: {e}"
+
+                await ws.send_text(json.dumps({"type": "response", "content": response}))
+
+    except WebSocketDisconnect:
+        pass
+    except Exception as e:
+        try:
+            await ws.send_text(json.dumps({"type": "error", "content": str(e)}))
+        except Exception:
+            pass
+
+
+# ── CLI ───────────────────────────────────────────────────────────────────────
+
+_args = None
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="SIAFE2 Finance Agent — Servidor Web")
+    parser.add_argument("--host", default="0.0.0.0", help="Host (padrão: 0.0.0.0 = acessível na rede)")
+    parser.add_argument("--port", type=int, default=8000, help="Porta (padrão: 8000)")
+    parser.add_argument("--visible", action="store_true", help="Browser visível no PC")
+    return parser.parse_args()
+
+
+def main():
+    global _args
+    _args = parse_args()
+
+    # Print access info
+    import socket
+    hostname = socket.gethostname()
+    try:
+        local_ip = socket.gethostbyname(hostname)
+    except Exception:
+        local_ip = "SEU-IP"
+
+    print(f"""
+╔══════════════════════════════════════════════════════╗
+║         SIAFE2 Finance Agent — Servidor Web          ║
+╠══════════════════════════════════════════════════════╣
+║  PC (local):   http://localhost:{_args.port}               ║
+║  Celular:      http://{local_ip}:{_args.port}         ║
+║                                                      ║
+║  Abra o link acima no browser do seu celular.        ║
+║  Certifique-se que o celular está no mesmo WiFi.     ║
+╚══════════════════════════════════════════════════════╝
+""")
+
+    uvicorn.run(
+        "server:app",
+        host=_args.host,
+        port=_args.port,
+        reload=False,
+        log_level="warning",
+    )
+
+
+if __name__ == "__main__":
+    main()

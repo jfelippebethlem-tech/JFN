@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1" />
+  <title>SIAFE2 Agent</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --accent: #4f8ef7;
+      --accent2: #6c63ff;
+      --user-bubble: #1e4db7;
+      --agent-bubble: #1e2235;
+      --tool-bg: #0d1526;
+      --text: #e8eaf6;
+      --text-dim: #8892b0;
+      --border: #2a2f4a;
+      --green: #4ade80;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --radius: 18px;
+      --radius-sm: 10px;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    /* ── Layout ── */
+    #app {
+      display: flex;
+      flex-direction: column;
+      height: 100dvh;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    header .logo {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+
+    header .info h1 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    header .info p {
+      font-size: 12px;
+      color: var(--text-dim);
+    }
+
+    #status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    #status-dot.online  { background: var(--green); box-shadow: 0 0 6px var(--green); }
+    #status-dot.error   { background: var(--red); }
+
+    /* ── Messages ── */
+    #messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      scroll-behavior: smooth;
+    }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      max-width: 88%;
+      animation: fadeIn .2s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; } }
+
+    .msg.user  { align-self: flex-end; align-items: flex-end; }
+    .msg.agent { align-self: flex-start; align-items: flex-start; }
+
+    .bubble {
+      padding: 10px 14px;
+      border-radius: var(--radius);
+      word-break: break-word;
+      line-height: 1.6;
+    }
+
+    .msg.user .bubble {
+      background: var(--user-bubble);
+      border-bottom-right-radius: 4px;
+      color: #fff;
+    }
+
+    .msg.agent .bubble {
+      background: var(--agent-bubble);
+      border-bottom-left-radius: 4px;
+      border: 1px solid var(--border);
+    }
+
+    .bubble table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+      margin: 8px 0;
+      overflow-x: auto;
+      display: block;
+    }
+    .bubble th { background: var(--surface2); padding: 6px 10px; text-align: left; font-weight: 600; }
+    .bubble td { padding: 5px 10px; border-bottom: 1px solid var(--border); }
+    .bubble tr:last-child td { border-bottom: none; }
+
+    .bubble pre {
+      background: var(--tool-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      overflow-x: auto;
+      font-size: 12px;
+      margin: 6px 0;
+    }
+    .bubble code { font-family: 'SF Mono', Consolas, monospace; font-size: 13px; }
+    .bubble p    { margin: 4px 0; }
+    .bubble h1, .bubble h2, .bubble h3 { margin: 8px 0 4px; font-size: 15px; }
+    .bubble ul, .bubble ol { padding-left: 18px; }
+    .bubble li   { margin: 2px 0; }
+    .bubble a    { color: var(--accent); }
+    .bubble strong { color: #fff; }
+
+    /* Tool call pill */
+    .tool-pill {
+      font-size: 11px;
+      color: var(--text-dim);
+      background: var(--tool-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 3px 8px;
+      margin-bottom: 4px;
+      font-family: monospace;
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Screenshot thumbnail */
+    .screenshot-thumb {
+      margin-top: 6px;
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      max-width: 280px;
+    }
+    .screenshot-thumb img { width: 100%; display: block; cursor: pointer; }
+
+    /* OTP prompt */
+    .otp-card {
+      background: var(--surface2);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      max-width: 320px;
+    }
+    .otp-card p { font-size: 13px; color: var(--text-dim); margin-bottom: 10px; }
+    .otp-card input {
+      width: 100%;
+      padding: 9px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 16px;
+      letter-spacing: 4px;
+      text-align: center;
+      margin-bottom: 8px;
+      outline: none;
+    }
+    .otp-card input:focus { border-color: var(--accent); }
+    .otp-card button {
+      width: 100%;
+      padding: 9px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Thinking indicator */
+    .thinking {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-dim);
+      font-size: 13px;
+      padding: 8px 0;
+    }
+    .dots span {
+      display: inline-block;
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      animation: bounce .9s infinite ease-in-out;
+    }
+    .dots span:nth-child(2) { animation-delay: .15s; }
+    .dots span:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce { 0%,80%,100% { transform: scale(0.7); } 40% { transform: scale(1); } }
+
+    /* ── Suggestions ── */
+    #suggestions {
+      display: flex;
+      gap: 8px;
+      padding: 8px 16px 0;
+      overflow-x: auto;
+      scrollbar-width: none;
+      flex-shrink: 0;
+    }
+    #suggestions::-webkit-scrollbar { display: none; }
+
+    .suggestion {
+      white-space: nowrap;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      color: var(--text-dim);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all .15s;
+    }
+    .suggestion:hover, .suggestion:active {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    /* ── Input area ── */
+    #input-area {
+      padding: 10px 12px 16px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    #input-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    #input {
+      flex: 1;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 10px 16px;
+      color: var(--text);
+      font-size: 15px;
+      resize: none;
+      max-height: 120px;
+      min-height: 44px;
+      outline: none;
+      line-height: 1.4;
+      font-family: inherit;
+      transition: border-color .15s;
+    }
+    #input:focus { border-color: var(--accent); }
+    #input::placeholder { color: var(--text-dim); }
+
+    #send-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: none;
+      color: #fff;
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: opacity .15s, transform .1s;
+    }
+    #send-btn:active { transform: scale(.93); }
+    #send-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Screenshot modal ── */
+    #img-modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,.85);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    #img-modal.open { display: flex; }
+    #img-modal img  { max-width: 100%; max-height: 90vh; border-radius: 8px; }
+
+    /* Scrollbar */
+    #messages::-webkit-scrollbar { width: 4px; }
+    #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    @media (min-width: 600px) {
+      .msg { max-width: 72%; }
+      header { padding: 14px 24px; }
+      #messages { padding: 20px 24px; }
+      #input-area { padding: 12px 24px 20px; }
+      #suggestions { padding: 8px 24px 0; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo">💰</div>
+    <div class="info">
+      <h1>SIAFE2 Agent</h1>
+      <p id="status-text">Conectando...</p>
+    </div>
+    <div id="status-dot"></div>
+  </header>
+
+  <!-- Messages -->
+  <div id="messages">
+    <div class="msg agent">
+      <div class="bubble">
+        Olá! Sou o agente do <strong>SIAFE2</strong>.<br>
+        Posso buscar dados de Execução por OB, cruzar com números SEI e exportar relatórios.<br><br>
+        <em>O login está sendo feito automaticamente...</em>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick suggestions -->
+  <div id="suggestions">
+    <div class="suggestion" onclick="send(this.textContent)">Gastos desta semana</div>
+    <div class="suggestion" onclick="send(this.textContent)">Execução por OB de maio/2025</div>
+    <div class="suggestion" onclick="send(this.textContent)">Qual o menu disponível?</div>
+    <div class="suggestion" onclick="send(this.textContent)">Exportar dados em CSV</div>
+    <div class="suggestion" onclick="send(this.textContent)">Número SEI da última OB</div>
+    <div class="suggestion" onclick="send(this.textContent)">Tirar screenshot da tela</div>
+  </div>
+
+  <!-- Input -->
+  <div id="input-area">
+    <div id="input-row">
+      <textarea
+        id="input"
+        placeholder="Pergunte sobre gastos, OBs, SEI..."
+        rows="1"
+        onkeydown="handleKey(event)"
+        oninput="autoResize(this)"
+      ></textarea>
+      <button id="send-btn" onclick="sendInput()" title="Enviar">&#9658;</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Screenshot modal -->
+<div id="img-modal" onclick="this.classList.remove('open')">
+  <img id="modal-img" src="" alt="Screenshot" />
+</div>
+
+<script>
+const messagesEl = document.getElementById('messages');
+const inputEl    = document.getElementById('input');
+const sendBtn    = document.getElementById('send-btn');
+const statusDot  = document.getElementById('status-dot');
+const statusText = document.getElementById('status-text');
+
+let ws = null;
+let thinkingEl = null;
+let currentAgentMsg = null;
+let currentToolsEl = null;
+let busy = false;
+
+// ── WebSocket ────────────────────────────────────────────────────────────────
+
+function connect() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(`${proto}://${location.host}/ws`);
+
+  ws.onopen = () => {
+    statusDot.className = 'online';
+    statusText.textContent = 'Conectado';
+    checkStatus();
+  };
+
+  ws.onclose = () => {
+    statusDot.className = 'error';
+    statusText.textContent = 'Desconectado — reconectando...';
+    setTimeout(connect, 2000);
+  };
+
+  ws.onerror = () => {
+    statusDot.className = 'error';
+    statusText.textContent = 'Erro de conexão';
+  };
+
+  ws.onmessage = (e) => {
+    const msg = JSON.parse(e.data);
+    handleServerMsg(msg);
+  };
+}
+
+// ── Message handling ─────────────────────────────────────────────────────────
+
+function handleServerMsg(msg) {
+  switch (msg.type) {
+
+    case 'start':
+    case 'thinking':
+      showThinking();
+      break;
+
+    case 'tool_call':
+      appendToolPill(msg.content);
+      break;
+
+    case 'screenshot':
+      appendScreenshot(msg.content);
+      break;
+
+    case 'otp_request':
+      hideThinking();
+      appendOTPCard(msg.content);
+      busy = false;
+      sendBtn.disabled = false;
+      break;
+
+    case 'response':
+      hideThinking();
+      finalizeAgentMsg(msg.content);
+      busy = false;
+      sendBtn.disabled = false;
+      inputEl.focus();
+      break;
+
+    case 'error':
+      hideThinking();
+      appendMsg('agent', `⚠️ ${msg.content}`);
+      busy = false;
+      sendBtn.disabled = false;
+      break;
+  }
+}
+
+// ── UI helpers ───────────────────────────────────────────────────────────────
+
+function appendMsg(role, htmlContent) {
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  bubble.innerHTML = htmlContent;
+  div.appendChild(bubble);
+  messagesEl.appendChild(div);
+  scrollBottom();
+  return div;
+}
+
+function showThinking() {
+  if (thinkingEl) return;
+  const wrapper = document.createElement('div');
+  wrapper.className = 'msg agent';
+
+  currentToolsEl = document.createElement('div');
+  currentToolsEl.style.cssText = 'display:flex;flex-direction:column;gap:3px;margin-bottom:4px;';
+  wrapper.appendChild(currentToolsEl);
+
+  const think = document.createElement('div');
+  think.className = 'thinking';
+  think.innerHTML = '<div class="dots"><span></span><span></span><span></span></div> Pensando...';
+  wrapper.appendChild(think);
+
+  thinkingEl = wrapper;
+  currentAgentMsg = null;
+  messagesEl.appendChild(wrapper);
+  scrollBottom();
+}
+
+function hideThinking() {
+  if (thinkingEl) {
+    // Remove the "thinking" dots sub-element
+    const think = thinkingEl.querySelector('.thinking');
+    if (think) think.remove();
+  }
+}
+
+function appendToolPill(text) {
+  if (!currentToolsEl) showThinking();
+  const pill = document.createElement('div');
+  pill.className = 'tool-pill';
+  pill.textContent = text;
+  currentToolsEl.appendChild(pill);
+  scrollBottom();
+}
+
+function appendScreenshot(path) {
+  if (!thinkingEl) return;
+  const filename = path.split('/').pop().split('\\').pop();
+  const url = `/screenshots/${filename}`;
+  const wrap = document.createElement('div');
+  wrap.className = 'screenshot-thumb';
+  wrap.innerHTML = `<img src="${url}" alt="screenshot" onclick="openModal('${url}')" />`;
+  thinkingEl.appendChild(wrap);
+  scrollBottom();
+}
+
+function finalizeAgentMsg(markdown) {
+  const html = marked.parse(markdown || '');
+  if (thinkingEl) {
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble';
+    bubble.innerHTML = html;
+    thinkingEl.appendChild(bubble);
+    thinkingEl = null;
+    currentToolsEl = null;
+  } else {
+    appendMsg('agent', html);
+  }
+  scrollBottom();
+}
+
+function appendOTPCard(prompt) {
+  const div = document.createElement('div');
+  div.className = 'msg agent';
+  div.innerHTML = `
+    <div class="otp-card">
+      <p>📧 ${prompt || 'Código recebido por e-mail:'}</p>
+      <input type="text" id="otp-input" placeholder="000000" maxlength="10"
+             inputmode="numeric" autocomplete="one-time-code" />
+      <button onclick="submitOTP()">Confirmar</button>
+    </div>`;
+  messagesEl.appendChild(div);
+  scrollBottom();
+  setTimeout(() => document.getElementById('otp-input')?.focus(), 100);
+}
+
+function submitOTP() {
+  const code = document.getElementById('otp-input')?.value?.trim();
+  if (!code) return;
+  ws.send(JSON.stringify({ type: 'otp', code }));
+  appendMsg('user', `🔐 Código enviado`);
+  showThinking();
+  busy = true;
+  sendBtn.disabled = true;
+}
+
+function scrollBottom() {
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+// ── Send message ─────────────────────────────────────────────────────────────
+
+function send(text) {
+  if (!text.trim() || busy || !ws || ws.readyState !== WebSocket.OPEN) return;
+  appendMsg('user', escapeHtml(text));
+  ws.send(JSON.stringify({ type: 'message', content: text }));
+  busy = true;
+  sendBtn.disabled = true;
+}
+
+function sendInput() {
+  const text = inputEl.value.trim();
+  if (!text) return;
+  inputEl.value = '';
+  autoResize(inputEl);
+  send(text);
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendInput();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Screenshot modal ──────────────────────────────────────────────────────────
+
+function openModal(url) {
+  document.getElementById('modal-img').src = url;
+  document.getElementById('img-modal').classList.add('open');
+}
+
+// ── Status check ─────────────────────────────────────────────────────────────
+
+async function checkStatus() {
+  try {
+    const r = await fetch('/status');
+    const data = await r.json();
+    if (data.logged_in) {
+      statusText.textContent = `Logado · ${data.username}`;
+      statusDot.className = 'online';
+    } else {
+      statusText.textContent = 'Não logado';
+    }
+  } catch { }
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+connect();
+</script>
+</body>
+</html>
