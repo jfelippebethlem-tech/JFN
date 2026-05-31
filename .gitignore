@@ -1,0 +1,19 @@
+# Environment & secrets
+.env
+*.env.local
+
+# Browser artifacts
+screenshots/
+output/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Playwright
+playwright/.cache/
