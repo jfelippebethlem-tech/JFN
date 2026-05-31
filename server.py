@@ -115,6 +115,208 @@ async def index():
     return FileResponse("static/index.html")
 
 
+# ── Compliance graph visualization ────────────────────────────────────────────
+
+@app.get("/graph", response_class=HTMLResponse)
+async def graph_page():
+    """Serve the D3.js graph visualization page."""
+    return FileResponse("static/graph.html")
+
+
+@app.get("/api/compliance/graph")
+async def api_compliance_graph():
+    """
+    Return graph data from GrafoRelacionamentos.exportar_json().
+    Initializes compliance DB and builds the relationship graph.
+    """
+    try:
+        from compliance_agent.database.models import get_session, init_db
+        from compliance_agent.graph import GrafoRelacionamentos
+
+        init_db()
+        session = get_session()
+        grafo = GrafoRelacionamentos(session)
+        grafo.construir()
+        data = grafo.exportar_json()
+        session.close()
+        return JSONResponse(content=data)
+    except Exception as e:
+        return JSONResponse(content={"nodes": [], "links": [], "error": str(e)})
+
+
+@app.get("/api/compliance/alerts")
+async def api_compliance_alerts(
+    tipo: Optional[str] = None,
+    severidade: Optional[str] = None,
+    limite: int = 50,
+):
+    """
+    Return list of compliance alerts.
+
+    Query params:
+        tipo:       Filter by alert type.
+        severidade: Filter by severity (alta | média | baixa).
+        limite:     Max results (default 50).
+    """
+    import json as _json
+    try:
+        from compliance_agent.database.models import Alerta, get_session, init_db
+
+        init_db()
+        session = get_session()
+        q = session.query(Alerta)
+        if tipo:
+            q = q.filter(Alerta.tipo == tipo)
+        if severidade:
+            q = q.filter(Alerta.severidade == severidade)
+        alertas = q.order_by(Alerta.created_at.desc()).limit(limite).all()
+        result = [
+            {
+                "id": a.id,
+                "tipo": a.tipo,
+                "severidade": a.severidade,
+                "titulo": a.titulo,
+                "descricao": a.descricao,
+                "criado_em": str(a.created_at),
+            }
+            for a in alertas
+        ]
+        session.close()
+        return JSONResponse(content=result)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/compliance/stats")
+async def api_compliance_stats():
+    """
+    Return summary statistics: alerts by tipo/severidade, totals, budget status.
+    """
+    try:
+        from sqlalchemy import func
+        from compliance_agent.database.models import (
+            Alerta, Contrato, Empresa, Pessoa, get_session, init_db,
+        )
+        from compliance_agent.llm.router import LLMRouter
+
+        init_db()
+        session = get_session()
+
+        # Alert counts by severity
+        sev_counts = {}
+        for row in session.query(Alerta.severidade, func.count(Alerta.id)).group_by(Alerta.severidade).all():
+            sev_counts[row[0] or "desconhecida"] = row[1]
+
+        # Alert counts by tipo
+        tipo_counts = {}
+        for row in session.query(Alerta.tipo, func.count(Alerta.id)).group_by(Alerta.tipo).all():
+            tipo_counts[row[0] or "outros"] = row[1]
+
+        total_alertas   = session.query(Alerta).count()
+        total_contratos = session.query(Contrato).count()
+        total_empresas  = session.query(Empresa).count()
+        total_pessoas   = session.query(Pessoa).count()
+        session.close()
+
+        # Budget status
+        try:
+            router = LLMRouter()
+            budget = router.status()
+        except Exception:
+            budget = {}
+
+        return JSONResponse(content={
+            "alertas": {
+                "total": total_alertas,
+                "por_severidade": sev_counts,
+                "por_tipo": tipo_counts,
+            },
+            "contratos": total_contratos,
+            "empresas": total_empresas,
+            "pessoas": total_pessoas,
+            "orcamento": budget,
+        })
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/compliance/reports")
+async def api_compliance_reports():
+    """List PDF and JSON report files in the reports/ directory."""
+    try:
+        reports_dir = Path("reports")
+        if not reports_dir.exists():
+            return JSONResponse(content=[])
+        files = []
+        for f in sorted(reports_dir.glob("*.pdf"), key=lambda x: x.stat().st_mtime, reverse=True):
+            files.append({"name": f.name, "type": "pdf", "size": f.stat().st_size, "url": f"/reports/{f.name}"})
+        for f in sorted(reports_dir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True):
+            files.append({"name": f.name, "type": "json", "size": f.stat().st_size, "url": f"/reports/{f.name}"})
+        return JSONResponse(content=files)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/reports/{filename}")
+async def serve_report(filename: str):
+    """Serve a report file (PDF or JSON) from the reports/ directory."""
+    reports_dir = Path("reports")
+    file_path = reports_dir / filename
+    # Security: prevent path traversal
+    if not file_path.resolve().is_relative_to(reports_dir.resolve()):
+        return JSONResponse(content={"error": "Access denied"}, status_code=403)
+    if not file_path.exists():
+        return JSONResponse(content={"error": "File not found"}, status_code=404)
+    return FileResponse(str(file_path))
+
+
+@app.post("/api/compliance/tse/{ano}")
+async def api_tse_download(ano: int):
+    """
+    Trigger TSE electoral donation download for a given year.
+    Returns count of records imported.
+    """
+    try:
+        from compliance_agent.database.models import get_session, init_db
+        from compliance_agent.collectors.tse import baixar_doacoes_ano
+
+        init_db()
+        session = get_session()
+        count = await baixar_doacoes_ano(ano, session)
+        session.close()
+        return JSONResponse(content={"ano": ano, "registros_importados": count})
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/compliance/buscar")
+async def api_compliance_buscar(q: str = "", tabela: str = "todos"):
+    """
+    FTS5 full-text search across contracts, DOERJ, and alerts.
+
+    Query params:
+        q:      Search term.
+        tabela: contratos | doerj | alertas | todos (default: todos).
+    """
+    if not q:
+        return JSONResponse(content={"error": "Parâmetro 'q' é obrigatório"}, status_code=400)
+    try:
+        from compliance_agent.database.fts import buscar_contratos_fts, buscar_doerj_fts, buscar_alertas_fts
+        from compliance_agent.database.models import init_db
+
+        init_db()
+        result = {}
+        if tabela in ("contratos", "todos"):
+            result["contratos"] = buscar_contratos_fts(q)
+        if tabela in ("doerj", "todos"):
+            result["doerj"] = buscar_doerj_fts(q)
+        if tabela in ("alertas", "todos"):
+            result["alertas"] = buscar_alertas_fts(q)
+        return JSONResponse(content=result)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
 @app.get("/status")
 async def status():
     """Check agent status."""
