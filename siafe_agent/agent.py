@@ -26,23 +26,33 @@ console = Console()
 SYSTEM_PROMPT = """Você é um agente especialista no SIAFE2 (Sistema Integrado de Administração Financeira
 do Estado do Rio de Janeiro) e no SEI Rio.
 
+CREDENCIAIS: As credenciais de acesso já estão configuradas. Ao fazer login, use
+username={username} e password={password} (valores reais injetados em runtime pelo agente).
+Não peça credenciais ao usuário — use as pré-configuradas diretamente.
+
 Você tem acesso a ferramentas para:
-1. Fazer login no SIAFE2
-2. Navegar até FlexVision > Execução por OB
+1. Fazer login no SIAFE2 (use as credenciais pré-configuradas)
+2. Navegar até FlexVision > Consultas > Execução por OB
 3. Pesquisar gastos por órgão, data e número de OB
-4. Extrair e exportar dados financeiros
+4. Extrair e exportar dados financeiros (CSV/JSON)
 5. Cruzar com o SEI Rio para encontrar números de processo (SEI)
 
+Estrutura do SIAFE2:
+- Login: Usuário, Senha, Cliente, Exercício (4 campos)
+- Framework: Oracle ADF (Application Development Framework)
+- FlexVision: subdomain separado (siafe2-flexvision.fazenda.rj.gov.br)
+- Caminho: FlexVision > Consultas > Execução por OB
+
 Diretrizes:
-- Sempre comece fazendo login quando o usuário pedir para acessar dados
-- Se um passo falhar, tire screenshot para diagnóstico e explique o problema
-- Ao extrair dados, confirme com o usuário antes de navegar muitas páginas
+- Se o usuário pedir dados, faça login automaticamente (sem perguntar credenciais)
+- Se aparecer campo de código por e-mail (2FA), peça ao usuário
+- Se um passo falhar, tire screenshot e explique o problema
+- Ao extrair dados com muitas páginas, avise o usuário antes
 - Apresente dados financeiros formatados (valores em R$, datas em DD/MM/AAAA)
-- Se o usuário pedir número SEI de uma OB específica, use enrich_with_sei
-- Seja proativo: se encontrar erros, sugira alternativas
+- Se o usuário pedir número SEI de uma OB, use enrich_with_sei
 
 Formato de resposta:
-- Use markdown para tabelas e listas
+- Markdown com tabelas e listas
 - Valores monetários: R$ 1.234.567,89
 - Datas: DD/MM/AAAA
 """
@@ -56,6 +66,10 @@ class SIAFEAgent:
         api_key: Optional[str] = None,
         headless: bool = True,
         output_dir: str = "output",
+        default_username: str = "",
+        default_password: str = "",
+        default_cliente: Optional[str] = None,
+        default_exercicio: Optional[str] = None,
     ):
         self._client = anthropic.Anthropic(
             api_key=api_key or os.environ.get("ANTHROPIC_API_KEY"),
@@ -65,8 +79,10 @@ class SIAFEAgent:
         self._output_dir = Path(output_dir)
         self._output_dir.mkdir(exist_ok=True)
         self._extracted_data: list[dict] = []
-        self._siafe_username: str = ""
-        self._siafe_password: str = ""
+        self._siafe_username: str = default_username
+        self._siafe_password: str = default_password
+        self._siafe_cliente: Optional[str] = default_cliente
+        self._siafe_exercicio: Optional[str] = default_exercicio
         self._conversation: list[anthropic.types.MessageParam] = []
 
     async def start(self):
@@ -85,9 +101,24 @@ class SIAFEAgent:
 
         console.print(Panel(
             "[bold cyan]SIAFE2 / SEI Finance Agent[/bold cyan]\n"
+            f"Usuário: [yellow]{self._siafe_username}[/yellow]\n"
             "Digite sua pergunta ou comando. Use 'sair' para encerrar.",
             title="Bem-vindo",
         ))
+
+        # Auto-login on startup
+        console.print("[dim]Fazendo login no SIAFE2...[/dim]")
+        login_result = await self._tool_login_siafe(
+            username=self._siafe_username,
+            password=self._siafe_password,
+            cliente=self._siafe_cliente,
+            exercicio=self._siafe_exercicio,
+        )
+        if login_result.get("success"):
+            console.print(f"[green]Login realizado.[/green] URL: {login_result.get('url', '')}")
+        else:
+            console.print(f"[red]Login falhou:[/red] {login_result.get('message')}")
+            console.print("[yellow]Você ainda pode usar o agente — ele tentará logar quando necessário.[/yellow]")
 
         try:
             while True:
@@ -119,7 +150,10 @@ class SIAFEAgent:
             response = self._client.messages.create(
                 model="claude-opus-4-8",
                 max_tokens=4096,
-                system=SYSTEM_PROMPT,
+                system=SYSTEM_PROMPT.format(
+                    username=self._siafe_username,
+                    password="***",  # don't leak password in system prompt context
+                ),
                 tools=TOOLS,
                 messages=self._conversation,
             )

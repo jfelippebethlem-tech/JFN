@@ -1,23 +1,42 @@
 """
 SIAFE2 / SEI Finance Agent — Entry point.
 
-Usage:
-    python main.py
-    python main.py --visible          # Run with visible browser (non-headless)
-    python main.py --query "..."      # Single query, non-interactive
-    python main.py --export csv       # After extraction, auto-export as CSV
+Credenciais padrão carregadas do arquivo .env (SIAFE_USER, SIAFE_PASS).
+Podem ser sobrescritas via flags na linha de comando.
+
+Uso:
+    python main.py                         # Interativo com credenciais do .env
+    python main.py --visible               # Browser visível (para acompanhar)
+    python main.py --user CPF --pass SENHA # Sobrescreve credenciais
+    python main.py --query "..."           # Consulta única, não-interativo
+    python main.py --cliente NOME          # Define campo Cliente do login
+    python main.py --exercicio 2025        # Define campo Exercício do login
 """
 
 import argparse
 import asyncio
-import getpass
 import os
 import sys
+from pathlib import Path
 
 from rich.console import Console
-from rich.prompt import Prompt
 
 console = Console()
+
+
+def _load_env():
+    """Load .env file from project root if it exists."""
+    env_path = Path(__file__).parent / ".env"
+    if env_path.exists():
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip()
+            if key and key not in os.environ:
+                os.environ[key] = value
 
 
 def parse_args():
@@ -29,18 +48,37 @@ def parse_args():
     parser.add_argument(
         "--visible",
         action="store_true",
-        help="Abre browser visível (não headless). Útil para depuração.",
+        help="Abre browser visível (não headless). Recomendado para uso normal.",
+    )
+    parser.add_argument(
+        "--user",
+        type=str,
+        default=None,
+        help="CPF/login SIAFE2. Sobrescreve SIAFE_USER do .env.",
+    )
+    parser.add_argument(
+        "--pass",
+        dest="password",
+        type=str,
+        default=None,
+        help="Senha SIAFE2. Sobrescreve SIAFE_PASS do .env.",
+    )
+    parser.add_argument(
+        "--cliente",
+        type=str,
+        default=None,
+        help="Campo 'Cliente' no login (organização). Sobrescreve SIAFE_CLIENTE do .env.",
+    )
+    parser.add_argument(
+        "--exercicio",
+        type=str,
+        default=None,
+        help="Campo 'Exercício' no login (ano fiscal, ex: 2025). Sobrescreve SIAFE_EXERCICIO.",
     )
     parser.add_argument(
         "--query",
         type=str,
-        help="Executa uma consulta única e sai.",
-    )
-    parser.add_argument(
-        "--export",
-        type=str,
-        choices=["csv", "json", "both"],
-        help="Exporta dados automaticamente após extração.",
+        help="Executa uma consulta única e sai (modo não-interativo).",
     )
     parser.add_argument(
         "--output-dir",
@@ -52,7 +90,7 @@ def parse_args():
         "--api-key",
         type=str,
         default=None,
-        help="Chave da API Anthropic (ou use ANTHROPIC_API_KEY env var).",
+        help="Chave da API Anthropic. Sobrescreve ANTHROPIC_API_KEY.",
     )
     return parser.parse_args()
 
@@ -63,17 +101,32 @@ async def run(args):
     api_key = args.api_key or os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         console.print("[bold red]Erro:[/bold red] ANTHROPIC_API_KEY não definida.")
-        console.print("  Defina com: export ANTHROPIC_API_KEY=sk-ant-...")
+        console.print("  Adicione ao .env:  ANTHROPIC_API_KEY=sk-ant-...")
         sys.exit(1)
+
+    # Resolve credentials: CLI flag > .env > prompt
+    username = args.user or os.environ.get("SIAFE_USER") or ""
+    password = args.password or os.environ.get("SIAFE_PASS") or ""
+    cliente = args.cliente or os.environ.get("SIAFE_CLIENTE") or None
+    exercicio = args.exercicio or os.environ.get("SIAFE_EXERCICIO") or None
+
+    if not username:
+        username = input("SIAFE2 Usuário (CPF): ").strip()
+    if not password:
+        import getpass
+        password = getpass.getpass("SIAFE2 Senha: ")
 
     agent = SIAFEAgent(
         api_key=api_key,
         headless=not args.visible,
         output_dir=args.output_dir,
+        default_username=username,
+        default_password=password,
+        default_cliente=cliente,
+        default_exercicio=exercicio,
     )
 
     if args.query:
-        # Single-shot mode
         await agent.start()
         try:
             response = await agent.chat(args.query)
@@ -81,11 +134,11 @@ async def run(args):
         finally:
             await agent.stop()
     else:
-        # Interactive mode
         await agent.run_interactive()
 
 
 def main():
+    _load_env()
     args = parse_args()
     asyncio.run(run(args))
 
