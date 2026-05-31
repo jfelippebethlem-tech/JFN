@@ -73,6 +73,7 @@ class MotorCompliance:
         self._regra_empresa_parente()
         self._regra_empresa_mesmo_cep_servidor()
         self._regra_cnpj_abertura_recente_contrato()
+        self._regra_cpf_duplicado_fontes(competencia)
 
         self.session.add_all(self._alertas_novos)
         self.session.commit()
@@ -362,6 +363,100 @@ class MotorCompliance:
                     )
             except Exception:
                 pass
+
+    # ── Regra 8: CPF duplicado entre múltiplas fontes de remuneração ─────────
+    def _regra_cpf_duplicado_fontes(self, competencia: Optional[str]):
+        """
+        Detecta CPFs duplicados entre diferentes fontes de remuneração pública:
+        servidores × terceirizados × bolsistas × estagiários × aposentados ativos.
+
+        Cruza todos os registros em RegistroFolha agrupando por CPF e identificando
+        quais aparecem em múltiplos valores distintos de `fonte`. Delega à função
+        detectar_cpf_duplicado_entre_fontes do módulo terceirizados para a lógica
+        detalhada; aqui apenas integra os resultados ao sistema de alertas do motor.
+
+        Base legal:
+          - CF/88 art. 37, XVI e §10 (acúmulo de cargos e aposentadoria)
+          - Lei 11.788/08 art. 3º, §1º (vedação estágio para quem tem vínculo efetivo)
+          - Lei 9.717/98 (regime previdenciário — limitações de acúmulo)
+          - Resolução FAPERJ 007/2023 (incompatibilidade bolsa × cargo público)
+        """
+        from compliance_agent.collectors.terceirizados import detectar_cpf_duplicado_entre_fontes
+
+        try:
+            resultados = detectar_cpf_duplicado_entre_fontes(self.session, competencia or "")
+            for item in resultados:
+                if not item.get("suspeito"):
+                    continue  # only auto-flag clearly illegal combos from this rule
+
+                pessoa = (
+                    self.session.query(Pessoa).filter_by(cpf=item["cpf"]).first()
+                    if item.get("cpf") else None
+                )
+                self._criar_alerta(
+                    tipo="acumulacao",
+                    severidade="alta",
+                    titulo=f"CPF em múltiplas fontes de remuneração — {item['cpf']}",
+                    descricao=(
+                        f"'{item['nome']}' (CPF {item['cpf']}) recebe remuneração de "
+                        f"{item['n_fontes']} fontes públicas distintas: "
+                        f"{', '.join(item['fontes'])}. "
+                        f"Remuneração total: R$ {item['remuneracao_total']:,.2f}. "
+                        f"{item['motivo']}"
+                    ),
+                    evidencias=item,
+                    pessoa=pessoa,
+                )
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).error(f"Erro em _regra_cpf_duplicado_fontes: {exc}")
+
+    # ── Regra 9: Emprego múltiplo em órgãos distintos ────────────────────────
+    def _regra_emprego_multiplo_orgaos(self, competencia: Optional[str]):
+        """
+        Detecta CPFs ativos em múltiplos órgãos do estado simultaneamente
+        além do acúmulo permitido (técnico + magistério).
+        Cruza TODOS os órgãos: secretarias, ALERJ, TJRJ, MPRJ, Defensoria, etc.
+        """
+        if not competencia:
+            return
+        from sqlalchemy import func
+        q = (
+            self.session.query(
+                RegistroFolha.cpf,
+                RegistroFolha.nome,
+                func.count(func.distinct(RegistroFolha.orgao_nome)).label("n_orgaos"),
+                func.group_concat(func.distinct(RegistroFolha.orgao_nome)).label("lista_orgaos"),
+                func.sum(RegistroFolha.remuneracao_bruta).label("total_bruto"),
+            )
+            .filter(
+                RegistroFolha.competencia == competencia,
+                RegistroFolha.cpf.isnot(None),
+                RegistroFolha.cpf != "",
+                RegistroFolha.remuneracao_bruta > 0,
+            )
+            .group_by(RegistroFolha.cpf)
+            .having(func.count(func.distinct(RegistroFolha.orgao_nome)) > 1)
+        )
+        for row in q.all():
+            pessoa = self.session.query(Pessoa).filter_by(cpf=row.cpf).first()
+            self._criar_alerta(
+                tipo="acumulacao",
+                severidade="alta",
+                titulo=f"Emprego múltiplo suspeito — CPF {row.cpf}",
+                descricao=(
+                    f"'{row.nome}' (CPF {row.cpf}) aparece com remuneração ativa em "
+                    f"{row.n_orgaos} órgãos distintos na competência {competencia}, "
+                    f"totalizando R$ {row.total_bruto:,.2f}. Órgãos: {row.lista_orgaos}."
+                ),
+                evidencias={
+                    "cpf": row.cpf, "nome": row.nome,
+                    "n_orgaos": row.n_orgaos,
+                    "orgaos": row.lista_orgaos,
+                    "total_bruto": row.total_bruto,
+                },
+                pessoa=pessoa,
+            )
 
     # ── Helper: criar alerta sem duplicar ────────────────────────────────────
     def _criar_alerta(

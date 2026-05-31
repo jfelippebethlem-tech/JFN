@@ -218,6 +218,104 @@ TOOLS: list[anthropic.types.ToolParam] = [
             "required": [],
         },
     },
+    {
+        "name": "detectar_cpf_duplicado",
+        "description": (
+            "Detecta CPFs que aparecem simultaneamente em múltiplas fontes de remuneração "
+            "pública: servidores efetivos, terceirizados, bolsistas (FAPERJ/CNPq/residências), "
+            "estagiários remunerados, aposentados/pensionistas com cargo ativo. "
+            "Cruza a tabela RegistroFolha por CPF, agrupa por fonte e sinaliza combinações "
+            "ilegais (CF/88 art. 37, XVI e §10; Lei 11.788/08 art. 3º, §1º; Lei 9.717/98)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "competencia": {
+                    "type": "string",
+                    "description": (
+                        "Mês de referência no formato AAAA-MM. "
+                        "Se omitido, verifica toda a base de dados."
+                    ),
+                },
+                "cpf": {
+                    "type": "string",
+                    "description": (
+                        "CPF específico para verificar (11 dígitos, com ou sem formatação). "
+                        "Se informado, filtra apenas esse CPF nos resultados."
+                    ),
+                },
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "buscar_local",
+        "description": "Busca rápida local (sem custo de API) em contratos, publicações do DOERJ e alertas usando índice FTS5. Use este antes de chamadas mais pesadas.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Termo de busca (nome, CNPJ, palavra-chave)"},
+                "tabela": {"type": "string", "description": "contratos | doerj | alertas | todos (padrão: todos)"},
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "buscar_doacoes_eleitorais",
+        "description": "Busca doações eleitorais (TSE) feitas por uma pessoa ou empresa. Cruza com contratos para detectar 'doação × contrato'.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "cpf_cnpj": {"type": "string"},
+                "nome": {"type": "string"},
+                "ano_eleicao": {"type": "integer", "description": "Ano da eleição: 2018, 2020, 2022, 2024"},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "buscar_decisoes_tce",
+        "description": "Busca decisões e condenações do TCE-RJ para uma empresa ou pessoa.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "termo": {"type": "string", "description": "Nome da empresa, pessoa ou CNPJ"},
+            },
+            "required": ["termo"],
+        },
+    },
+    {
+        "name": "verificar_emprego_multiplo",
+        "description": "Verifica se um CPF aparece com emprego simultâneo em múltiplos órgãos (estado, ALERJ, TJRJ, MPRJ, Defensoria, etc.).",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "cpf": {"type": "string"},
+                "competencia": {"type": "string", "description": "AAAA-MM"},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "status_orcamento",
+        "description": "Mostra quantos tokens Claude foram usados este mês e quanto resta do orçamento configurado.",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+    },
+    {
+        "name": "baixar_folha_orgao",
+        "description": "Baixa e indexa a folha de pagamento de órgãos externos: ALERJ, TJRJ, MPRJ, Defensoria Pública.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "orgao": {"type": "string", "description": "alerj | tjrj | mprj | defensoria"},
+            },
+            "required": ["orgao"],
+        },
+    },
 ]
 
 
@@ -405,6 +503,71 @@ class ComplianceAgent:
                         }
                         for p in pubs
                     ]
+
+                case "detectar_cpf_duplicado":
+                    from compliance_agent.collectors.terceirizados import (
+                        detectar_cpf_duplicado_entre_fontes,
+                    )
+                    competencia = inputs.get("competencia", "")
+                    cpf_filtro  = inputs.get("cpf", "")
+                    resultados  = detectar_cpf_duplicado_entre_fontes(self._session, competencia)
+                    if cpf_filtro:
+                        cpf_clean  = "".join(c for c in cpf_filtro if c.isdigit())
+                        resultados = [r for r in resultados if r.get("cpf") == cpf_clean]
+                    return {
+                        "total":      len(resultados),
+                        "competencia": competencia or "todas",
+                        "resultados": resultados[:100],
+                    }
+
+                case "buscar_local":
+                    from compliance_agent.database.fts import buscar_contratos_fts, buscar_doerj_fts, buscar_alertas_fts
+                    query = inputs["query"]
+                    tabela = inputs.get("tabela", "todos")
+                    result = {}
+                    if tabela in ("contratos", "todos"):
+                        result["contratos"] = buscar_contratos_fts(query)
+                    if tabela in ("doerj", "todos"):
+                        result["doerj"] = buscar_doerj_fts(query)
+                    if tabela in ("alertas", "todos"):
+                        result["alertas"] = buscar_alertas_fts(query)
+                    return result
+
+                case "buscar_doacoes_eleitorais":
+                    from compliance_agent.database.models import DoacaoEleitoral
+                    q = self._session.query(DoacaoEleitoral)
+                    if inputs.get("cpf_cnpj"):
+                        q = q.filter(DoacaoEleitoral.cpf_cnpj_doador == inputs["cpf_cnpj"].replace(".","").replace("/","").replace("-",""))
+                    if inputs.get("nome"):
+                        q = q.filter(DoacaoEleitoral.nome_doador.ilike(f"%{inputs['nome']}%"))
+                    if inputs.get("ano_eleicao"):
+                        q = q.filter(DoacaoEleitoral.ano_eleicao == inputs["ano_eleicao"])
+                    doacoes = q.order_by(DoacaoEleitoral.valor.desc()).limit(30).all()
+                    return [{"doador": d.nome_doador, "cpf_cnpj": d.cpf_cnpj_doador, "candidato": d.nome_candidato, "cargo": d.cargo_candidato, "partido": d.partido, "valor": d.valor, "ano": d.ano_eleicao} for d in doacoes]
+
+                case "buscar_decisoes_tce":
+                    from compliance_agent.collectors.tce import buscar_decisoes_tce
+                    return await buscar_decisoes_tce(inputs["termo"], self._session)
+
+                case "verificar_emprego_multiplo":
+                    q = self._session.query(RegistroFolha)
+                    if inputs.get("cpf"):
+                        q = q.filter(RegistroFolha.cpf == inputs["cpf"])
+                    if inputs.get("competencia"):
+                        q = q.filter(RegistroFolha.competencia == inputs["competencia"])
+                    registros = q.all()
+                    orgaos = list({r.orgao_nome for r in registros if r.orgao_nome})
+                    return {"cpf": inputs.get("cpf"), "orgaos_encontrados": orgaos, "total_registros": len(registros), "remuneracao_total": sum(r.remuneracao_bruta or 0 for r in registros)}
+
+                case "status_orcamento":
+                    from compliance_agent.llm.router import LLMRouter
+                    router = LLMRouter()
+                    return router.status()
+
+                case "baixar_folha_orgao":
+                    from compliance_agent.collectors.caged import baixar_folha_orgao_externo
+                    count = await baixar_folha_orgao_externo(inputs["orgao"], self._session)
+                    return {"orgao": inputs["orgao"], "registros_importados": count}
 
                 case _:
                     return {"error": f"Ferramenta '{name}' não reconhecida."}
