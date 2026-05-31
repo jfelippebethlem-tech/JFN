@@ -155,6 +155,25 @@ TOOLS: list[anthropic.types.ToolParam] = [
         },
     },
     {
+        "name": "switch_exercicio",
+        "description": (
+            "Troca o exercício (ano fiscal) ativo sem reiniciar o agente. "
+            "Faz logout e re-login no SIAFE2 com o novo exercício selecionado. "
+            "Use quando o usuário pedir dados de um ano diferente do atual. "
+            "Exemplos de uso: 'veja os gastos de 2024', 'mude para o exercício 2023'."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "exercicio": {
+                    "type": "string",
+                    "description": "Ano fiscal a ativar, ex: '2026', '2025', '2024', '2023'.",
+                },
+            },
+            "required": ["exercicio"],
+        },
+    },
+    {
         "name": "list_menu_items",
         "description": (
             "Lista todos os itens de menu e links visíveis na página atual do SIAFE2. "

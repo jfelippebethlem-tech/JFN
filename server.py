@@ -122,6 +122,7 @@ async def status():
     return {
         "logged_in": agent._siafe._logged_in,
         "username": agent._siafe_username,
+        "exercicio": agent._siafe_exercicio or str(__import__('datetime').date.today().year),
         "extracted_records": len(agent._extracted_data),
     }
 

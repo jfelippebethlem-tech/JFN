@@ -341,6 +341,21 @@
     #messages::-webkit-scrollbar { width: 4px; }
     #messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
+    /* Exercício selector */
+    #exercicio-sel {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 12px;
+      padding: 4px 8px;
+      outline: none;
+      cursor: pointer;
+      max-width: 90px;
+    }
+    #exercicio-sel:focus { border-color: var(--accent); }
+    #exercicio-sel option { background: var(--surface2); }
+
     @media (min-width: 600px) {
       .msg { max-width: 72%; }
       header { padding: 14px 24px; }
@@ -360,7 +375,12 @@
       <h1>SIAFE2 Agent</h1>
       <p id="status-text">Conectando...</p>
     </div>
-    <div id="status-dot"></div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+      <select id="exercicio-sel" title="Exercício (ano fiscal)" onchange="switchExercicio(this.value)">
+        <option value="">Exercício</option>
+      </select>
+      <div id="status-dot"></div>
+    </div>
   </header>
 
   <!-- Messages -->
@@ -376,8 +396,8 @@
 
   <!-- Quick suggestions -->
   <div id="suggestions">
+    <div class="suggestion" onclick="send(this.textContent)">Execução por OB deste mês</div>
     <div class="suggestion" onclick="send(this.textContent)">Gastos desta semana</div>
-    <div class="suggestion" onclick="send(this.textContent)">Execução por OB de maio/2025</div>
     <div class="suggestion" onclick="send(this.textContent)">Qual o menu disponível?</div>
     <div class="suggestion" onclick="send(this.textContent)">Exportar dados em CSV</div>
     <div class="suggestion" onclick="send(this.textContent)">Número SEI da última OB</div>
@@ -636,6 +656,27 @@ function openModal(url) {
   document.getElementById('img-modal').classList.add('open');
 }
 
+// ── Exercício selector ────────────────────────────────────────────────────────
+
+function populateExercicioSelector(currentYear) {
+  const sel = document.getElementById('exercicio-sel');
+  sel.innerHTML = '';
+  const thisYear = new Date().getFullYear();
+  // Show last 5 years up to current year + 1
+  for (let y = thisYear + 1; y >= thisYear - 4; y--) {
+    const opt = document.createElement('option');
+    opt.value = String(y);
+    opt.textContent = String(y);
+    if (String(y) === String(currentYear)) opt.selected = true;
+    sel.appendChild(opt);
+  }
+}
+
+function switchExercicio(year) {
+  if (!year || busy) return;
+  send(`Troque para o exercício ${year}`);
+}
+
 // ── Status check ─────────────────────────────────────────────────────────────
 
 async function checkStatus() {
@@ -648,7 +689,14 @@ async function checkStatus() {
     } else {
       statusText.textContent = 'Não logado';
     }
-  } catch { }
+    if (data.exercicio) {
+      populateExercicioSelector(data.exercicio);
+    } else {
+      populateExercicioSelector(new Date().getFullYear());
+    }
+  } catch {
+    populateExercicioSelector(new Date().getFullYear());
+  }
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
