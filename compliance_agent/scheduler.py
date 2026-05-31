@@ -16,6 +16,11 @@ from pathlib import Path
 
 from rich.console import Console
 
+from compliance_agent.notifications.telegram import enviar_resumo_diario, enviar_arquivo, BOT_TOKEN
+from compliance_agent.reports.pdf import gerar_relatorio_diario
+from compliance_agent.collectors.caged import cruzar_folhas_multiplas
+from compliance_agent.collectors.tse import cruzar_doacoes_contratos
+
 console = Console()
 
 REPORT_DIR = Path("reports")
@@ -44,8 +49,24 @@ async def rodar_ciclo_diario():
         console.print(f"    [red]Erro DOERJ: {e}[/red]")
         publicacoes = []
 
-    # 2. Executa motor de regras
-    console.print("[cyan]2/3 Executando regras de compliance...[/cyan]")
+    # 2. Cruza folhas múltiplas e doações eleitorais
+    console.print("[cyan]2/5 Cruzando folhas múltiplas e doações eleitorais...[/cyan]")
+    try:
+        suspeitos_folha = await cruzar_folhas_multiplas(session)
+        console.print(f"    {len(suspeitos_folha)} suspeitos de múltiplos empregos.")
+    except Exception as e:
+        console.print(f"    [red]Erro cruzar_folhas_multiplas: {e}[/red]")
+        suspeitos_folha = []
+
+    try:
+        alertas_doacoes = cruzar_doacoes_contratos(session)
+        console.print(f"    {len(alertas_doacoes)} alertas de doação × contrato.")
+    except Exception as e:
+        console.print(f"    [red]Erro cruzar_doacoes_contratos: {e}[/red]")
+        alertas_doacoes = []
+
+    # 3. Executa motor de regras
+    console.print("[cyan]3/5 Executando regras de compliance...[/cyan]")
     competencia = hoje.strftime("%Y-%m")
     try:
         motor = MotorCompliance(session)
@@ -55,8 +76,8 @@ async def rodar_ciclo_diario():
         console.print(f"    [red]Erro compliance: {e}[/red]")
         alertas = []
 
-    # 3. Salva relatório diário
-    console.print("[cyan]3/3 Salvando relatório...[/cyan]")
+    # 4. Salva relatório diário JSON e gera PDF
+    console.print("[cyan]4/5 Salvando relatório e gerando PDF...[/cyan]")
     report = {
         "data": hoje.isoformat(),
         "hora": datetime.now().isoformat(),
@@ -81,7 +102,39 @@ async def rodar_ciclo_diario():
 
     report_path = REPORT_DIR / f"compliance_{hoje.isoformat()}.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str))
-    console.print(f"    Relatório salvo: {report_path}")
+    console.print(f"    Relatório JSON salvo: {report_path}")
+
+    pdf_path = None
+    try:
+        pdf_path = gerar_relatorio_diario(report, alertas, REPORT_DIR)
+        console.print(f"    Relatório PDF salvo: {pdf_path}")
+    except Exception as e:
+        console.print(f"    [red]Erro ao gerar PDF: {e}[/red]")
+
+    # 5. Envia notificação Telegram
+    console.print("[cyan]5/5 Enviando notificações Telegram...[/cyan]")
+    telegram_token = os.environ.get("TELEGRAM_BOT_TOKEN", BOT_TOKEN)
+    if telegram_token:
+        try:
+            result = await enviar_resumo_diario(report)
+            if result.get("ok"):
+                console.print("    Resumo diário enviado ao Telegram.")
+            else:
+                console.print(f"    [yellow]Telegram: {result.get('error', result)}[/yellow]")
+        except Exception as e:
+            console.print(f"    [red]Erro Telegram resumo: {e}[/red]")
+
+        if pdf_path and Path(pdf_path).exists() and str(pdf_path).endswith(".pdf"):
+            try:
+                result_pdf = await enviar_arquivo(pdf_path, caption=f"Relatório Compliance {hoje.isoformat()}")
+                if result_pdf.get("ok"):
+                    console.print("    PDF enviado ao Telegram.")
+                else:
+                    console.print(f"    [yellow]Telegram PDF: {result_pdf.get('error', result_pdf)}[/yellow]")
+            except Exception as e:
+                console.print(f"    [red]Erro Telegram PDF: {e}[/red]")
+    else:
+        console.print("    [dim]TELEGRAM_BOT_TOKEN não configurado — notificações desabilitadas.[/dim]")
 
     session.close()
     return report
