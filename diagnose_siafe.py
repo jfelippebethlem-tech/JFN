@@ -535,37 +535,138 @@ async def main_cdp():
             except Exception as ex:
                 log(f"  Erro ao explorar '{menu_name}': {ex}")
 
-        # ── Tentar FlexVision diretamente ──────────────────────────────────────
-        sep("Tentando URL direta do FlexVision")
-        FLEXVISION_URL = "https://siafe2-flexvision.fazenda.rj.gov.br/Flexvision/"
-        log(f"  Navegando para: {FLEXVISION_URL}")
+        # ── Login no FlexVision (sistema separado) ────────────────────────────
+        sep("LOGIN NO FLEXVISION")
+        FV_URL = "https://siafe2-flexvision.fazenda.rj.gov.br/Flexvision/"
+        log(f"  Navegando para: {FV_URL}")
         try:
-            await target_page.goto(FLEXVISION_URL, timeout=20000, wait_until="networkidle")
+            await target_page.goto(FV_URL, timeout=25000, wait_until="networkidle")
             await asyncio.sleep(2)
-            log(f"  URL resultante: {target_page.url}")
+            log(f"  URL: {target_page.url}")
             log(f"  Título: {await target_page.title()}")
-            body_text = await target_page.inner_text("body")
-            log(f"  Texto ({len(body_text)} chars): {body_text[:2000]}")
-            await dump_page(target_page, "cdp_flexvision_direct")
+            await dump_page(target_page, "fv_01_login_page")
 
-            # Se chegou no FlexVision, explorar menus lá
-            if "flexvision" in target_page.url.lower() or "Flex" in await target_page.title():
-                sep("Menus dentro do FlexVision")
-                all_links = await target_page.query_selector_all("a, li, button, td, span[onclick]")
-                log(f"  {len(all_links)} elementos clicáveis:")
+            # Preencher credenciais (IDs GWT são dinâmicos, usar type)
+            user_input = await target_page.query_selector("input[type='text']")
+            pass_input = await target_page.query_selector("input[type='password']")
+
+            if user_input and pass_input:
+                log(f"  ✅ Campos encontrados — preenchendo credenciais")
+                await user_input.fill(USERNAME)
+                await asyncio.sleep(0.5)
+                await pass_input.fill(PASSWORD)
+                await asyncio.sleep(0.5)
+
+                # Botão Login
+                login_btn = await target_page.query_selector("button, .gwt-Button")
+                buttons = await target_page.query_selector_all("button, .gwt-Button, .gwt-SubmitButton")
+                log(f"  Botões encontrados: {len(buttons)}")
+                for btn in buttons:
+                    txt = (await btn.inner_text()).strip()
+                    cls = await btn.get_attribute("class") or ""
+                    log(f"    - {txt!r:30} class={cls!r}")
+
+                # Clicar no botão de login
+                clicked = False
+                for btn in buttons:
+                    txt = (await btn.inner_text()).strip().lower()
+                    if "login" in txt or "entrar" in txt or "ok" in txt:
+                        log(f"  → Clicando: {txt!r}")
+                        await btn.click()
+                        clicked = True
+                        break
+                if not clicked and buttons:
+                    log(f"  → Clicando no primeiro botão disponível")
+                    await buttons[0].click()
+
+                await asyncio.sleep(3)
+                try:
+                    await target_page.wait_for_load_state("networkidle", timeout=15000)
+                except Exception:
+                    pass
+                await asyncio.sleep(2)
+
+                log(f"  URL pós-login: {target_page.url}")
+                log(f"  Título pós-login: {await target_page.title()}")
+                await dump_page(target_page, "fv_02_after_login")
+
+                # ── Explorar menus do FlexVision ──────────────────────────────
+                sep("MENUS DO FLEXVISION (pós-login)")
+                body_text = await target_page.inner_text("body")
+                log(f"  Texto da página ({len(body_text)} chars):\n{body_text[:3000]}")
+
+                # Listar todos os elementos clicáveis
+                sep("Todos os links/botões do FlexVision")
+                all_els = await target_page.query_selector_all("a, button, li, [role='menuitem'], .gwt-TreeItem, .menuItem, td[onclick], span[onclick]")
+                log(f"  {len(all_els)} elementos clicáveis:")
                 seen = set()
-                for el in all_links:
+                for el in all_els[:150]:
                     try:
                         t = (await el.inner_text()).strip()
+                        cls = await el.get_attribute("class") or ""
+                        href = await el.get_attribute("href") or ""
                         if t and t not in seen and len(t) < 100:
-                            cls = await el.get_attribute("class") or ""
-                            log(f"    {t!r:50} class={cls[:40]!r}")
+                            log(f"    {t!r:50} class={cls[:40]!r} href={href[:40]!r}")
                             seen.add(t)
                     except Exception:
                         pass
 
+                # Frames dentro do FlexVision
+                sep("Frames do FlexVision")
+                for f in target_page.frames:
+                    log(f"  Frame: {f.url}")
+                    if f.url and f.url != "about:blank":
+                        try:
+                            ftxt = await f.inner_text("body")
+                            log(f"  → Texto: {ftxt[:500]}")
+                        except Exception:
+                            pass
+
+                # Tentar navegar para Execução por OB
+                sep("Tentando encontrar 'Execução por OB'")
+                fv_url = target_page.url
+                ob_keywords = ["Execução por OB", "Execucao por OB", "OB", "Ordens Bancárias", "execucao-ob", "Consultas"]
+                for kw in ob_keywords:
+                    try:
+                        el = await target_page.wait_for_selector(
+                            f"*:has-text('{kw}')", timeout=2000
+                        )
+                        if el:
+                            txt = (await el.inner_text()).strip()
+                            log(f"  ✅ Encontrado '{kw}': texto={txt!r}")
+                            break
+                    except Exception:
+                        pass
+
+                # Tentar URL hash direta para paineis
+                sep("Tentando URL #!paineis")
+                await target_page.goto(f"{FV_URL}#!paineis", timeout=15000)
+                await asyncio.sleep(3)
+                await dump_page(target_page, "fv_03_paineis")
+                body_text2 = await target_page.inner_text("body")
+                log(f"  Texto do painel: {body_text2[:2000]}")
+
+                # Listar menus do painel
+                all_menu = await target_page.query_selector_all("a, li, [class*='menu'], [class*='tree'], [class*='nav']")
+                log(f"\n  Elementos de menu: {len(all_menu)}")
+                seen2 = set()
+                for el in all_menu[:100]:
+                    try:
+                        t = (await el.inner_text()).strip()
+                        cls = await el.get_attribute("class") or ""
+                        if t and t not in seen2 and len(t) < 100:
+                            log(f"    {t!r:50} class={cls[:40]!r}")
+                            seen2.add(t)
+                    except Exception:
+                        pass
+
+            else:
+                log("  ❌ Campos de login não encontrados no FlexVision")
+                body = await target_page.inner_text("body")
+                log(f"  Texto: {body[:500]}")
+
         except Exception as ex:
-            log(f"  Erro ao acessar FlexVision diretamente: {ex}")
+            log(f"  Erro ao navegar FlexVision: {ex}")
 
         # Screenshot final
         sep("Screenshot final")
