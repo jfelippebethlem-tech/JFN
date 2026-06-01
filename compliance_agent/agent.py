@@ -316,6 +316,64 @@ TOOLS: list[anthropic.types.ToolParam] = [
             "required": ["orgao"],
         },
     },
+    {
+        "name": "consultar_sei",
+        "description": (
+            "Consulta um processo SEI no Portal SEI-RJ (portalsei.rj.gov.br). "
+            "Busca metadados, lista documentos, lê conteúdo, cruza com despesas SIAFE "
+            "e detecta padrões de irregularidade. Use para investigar contratos, "
+            "licitações e reformas."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "numero_sei": {
+                    "type": "string",
+                    "description": "Número do processo SEI (ex: E-18/001234/2024 ou SEI-18-001234/2024)",
+                },
+                "ler_documentos": {
+                    "type": "boolean",
+                    "description": "Se true, lê o conteúdo dos documentos do processo (padrão: true)",
+                },
+            },
+            "required": ["numero_sei"],
+        },
+    },
+    {
+        "name": "buscar_sei_por_termo",
+        "description": "Busca processos SEI indexados no banco por termo no assunto ou tipo.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "termo": {"type": "string", "description": "Palavra-chave (ex: reforma escola, SEEDUC, licitação)"},
+            },
+            "required": ["termo"],
+        },
+    },
+    {
+        "name": "reconhecer_padrao_fraude",
+        "description": (
+            "Compara qualquer texto ou contexto contra a base de padrões de fraude "
+            "e casos históricos do RJ. Retorna score de similaridade e casos similares "
+            "sem custo de API Claude. Use para contextualizar alertas."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "texto":    {"type": "string", "description": "Texto para analisar (objeto, edital, despacho...)"},
+                "objeto":   {"type": "string", "description": "Objeto do contrato ou processo"},
+                "orgao":    {"type": "string", "description": "Órgão contratante"},
+                "modalidade": {"type": "string"},
+                "valor":    {"type": "number"},
+            },
+            "required": [],
+        },
+    },
+    {
+        "name": "status_llm_gratuito",
+        "description": "Mostra quais LLMs gratuitos estão disponíveis (Ollama, Groq, OpenRouter/Hermes) e como configurar.",
+        "input_schema": {"type": "object", "properties": {}, "required": []},
+    },
 ]
 
 
@@ -568,6 +626,27 @@ class ComplianceAgent:
                     from compliance_agent.collectors.caged import baixar_folha_orgao_externo
                     count = await baixar_folha_orgao_externo(inputs["orgao"], self._session)
                     return {"orgao": inputs["orgao"], "registros_importados": count}
+
+                case "consultar_sei":
+                    from compliance_agent.collectors.sei_portal import analisar_processo_sei
+                    return await analisar_processo_sei(
+                        inputs["numero_sei"],
+                        self._session,
+                        usar_llm_gratis=inputs.get("ler_documentos", True),
+                    )
+
+                case "buscar_sei_por_termo":
+                    from compliance_agent.collectors.sei_portal import buscar_sei_por_objeto
+                    return buscar_sei_por_objeto(self._session, inputs["termo"])
+
+                case "reconhecer_padrao_fraude":
+                    from compliance_agent.knowledge.pattern_engine import analisar_contexto_completo
+                    contexto = {k: v for k, v in inputs.items() if v}
+                    return analisar_contexto_completo(contexto)
+
+                case "status_llm_gratuito":
+                    from compliance_agent.llm.free_llm import status_provedores
+                    return status_provedores()
 
                 case _:
                     return {"error": f"Ferramenta '{name}' não reconhecida."}

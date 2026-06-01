@@ -137,10 +137,40 @@ class LLMRouter:
 
     def status(self) -> dict:
         """Return router status and budget information."""
+        from compliance_agent.llm.free_llm import status_provedores
         return {
             "ollama_disponivel": self._ollama_available(),
             "model": DEFAULT_MODEL,
             "tokens_usados_mes": self.tokens_used_this_month(),
             "limite_mensal": MONTHLY_TOKEN_LIMIT,
             "orcamento_restante_pct": self.budget_remaining_pct(),
+            "provedores_gratuitos": status_provedores(),
         }
+
+    def classify(self, text: str, categories: list[str]) -> str:
+        """Classify via free LLM first, fallback to first category."""
+        from compliance_agent.llm.free_llm import best_free_chat
+        prompt = (
+            f"Classifique em UMA categoria: {' | '.join(categories)}\n"
+            "Responda APENAS o nome da categoria.\n\n"
+            f"Texto: {text[:400]}"
+        )
+        try:
+            r = best_free_chat(prompt, fallback=categories[0]).strip().lower()
+            for cat in categories:
+                if cat.lower() in r:
+                    return cat
+        except Exception:
+            pass
+        return categories[0]
+
+    def summarize(self, text: str, max_words: int = 100) -> str:
+        """Summarize via free LLM, fallback to truncation."""
+        from compliance_agent.llm.free_llm import best_free_chat
+        try:
+            return best_free_chat(
+                f"Resuma em até {max_words} palavras em português:\n\n{text[:1500]}",
+                fallback=text[:300] + "...",
+            )
+        except Exception:
+            return text[:300] + "..."
