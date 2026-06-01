@@ -12,9 +12,14 @@ O banco persiste entre sessões em data/compliance.db.
 """
 
 import json
+import os
 import sys
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
+
+# Habilita VT100/ANSI no Windows 10+ (CMD e PowerShell)
+if sys.platform == "win32":
+    os.system("")
 
 
 def _engine():
@@ -103,7 +108,7 @@ def mostrar_resumo():
         session.query(Alerta)
         .filter(
             Alerta.severidade == "alta",
-            Alerta.created_at >= datetime.utcnow() - timedelta(days=7),
+            Alerta.created_at >= datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(days=7),
         )
         .order_by(Alerta.created_at.desc())
         .limit(5)

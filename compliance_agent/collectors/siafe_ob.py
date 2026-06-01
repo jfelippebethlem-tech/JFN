@@ -25,6 +25,7 @@ _SIAFE_OB_URL = (
     "https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/financeira"
     "/ordemBancariaOrcamentariaEdit.jsp"
 )
+_SIAFE_HOME = "https://siafe2.fazenda.rj.gov.br/Siafe/"
 
 _JS_ADF_INPUTS = """
     () => {
@@ -112,33 +113,77 @@ async def _dismiss_dialogs(page, max_iter: int = 5) -> list[str]:
 
 
 async def _navigate_to_ob(page) -> bool:
-    """Navigate to OB Orçamentária. Returns True if screen reached."""
-    try:
-        await page.goto(_SIAFE_OB_URL, wait_until="networkidle", timeout=20000)
-    except Exception:
-        pass
-    await asyncio.sleep(2)
-    await _dismiss_dialogs(page)
+    """
+    Navigate to OB Orçamentária via the SIAFE2 menu.
 
+    IMPORTANT: Direct page.goto() to the OB JSP URL causes ADF/JSF to crash
+    (BeanELResolver error) because it bypasses navigation context initialization.
+    We must navigate through the menus to reach the OB screen.
+    """
+    # Check if already on OB screen
     if "ordemBancariaOrcamentaria" in page.url.lower():
+        await _dismiss_dialogs(page)
         return True
 
-    # Fallback: via a.xgg menu item
-    clicked = await page.evaluate("""
-        () => {
-            for (const el of document.querySelectorAll('a.xgg')) {
-                const t = el.textContent.trim();
-                if ((t === 'OB Orçamentária' || t.includes('OB Or'))
-                    && !el.className.includes('p_AFDisabled')) {
-                    el.click(); return t;
+    # If on error page or login page, go back to SIAFE home first
+    current_url = page.url.lower()
+    needs_home = (
+        "erro" in current_url
+        or "error" in current_url
+        or "login" in current_url
+        or "siafe2.fazenda" not in current_url
+    )
+    if needs_home:
+        try:
+            await page.goto(_SIAFE_HOME, wait_until="networkidle", timeout=20000)
+            await asyncio.sleep(3)
+        except Exception:
+            pass
+        await _dismiss_dialogs(page)
+
+    # Try to click the OB menu item (a.xgg) — correct ADF navigation
+    for attempt in range(2):
+        clicked = await page.evaluate("""
+            () => {
+                for (const el of document.querySelectorAll('a.xgg')) {
+                    const t = el.textContent.trim();
+                    if ((t === 'OB Orcamentaria' || t === 'OB Orçamentária'
+                            || t.startsWith('OB Or'))
+                        && !el.className.includes('p_AFDisabled')) {
+                        el.click(); return t;
+                    }
                 }
+                return null;
             }
-            return null;
-        }
-    """)
-    if clicked:
-        await _adf_wait(page, 12000)
-        return "ordemBancariaOrcamentaria" in page.url.lower()
+        """)
+        if clicked:
+            await _adf_wait(page, 15000)
+            await _dismiss_dialogs(page)
+            if "ordemBancariaOrcamentaria" in page.url.lower():
+                return True
+            # May need to wait a bit more after ADF PPR
+            await asyncio.sleep(2)
+            if "ordemBancariaOrcamentaria" in page.url.lower():
+                return True
+
+        if attempt == 0:
+            # First attempt failed — try expanding the menu by clicking parent nav items
+            await page.evaluate("""
+                () => {
+                    // Try clicking left-panel items that might reveal the OB menu
+                    for (const el of document.querySelectorAll('a.xg8, a.xgh')) {
+                        const t = el.textContent.trim().toLowerCase();
+                        if (t.includes('financeira') || t.includes('execu')) {
+                            if (!el.className.includes('p_AFDisabled')
+                                    && el.getBoundingClientRect().width > 0) {
+                                el.click(); return t;
+                            }
+                        }
+                    }
+                    return null;
+                }
+            """)
+            await asyncio.sleep(3)
 
     return False
 
