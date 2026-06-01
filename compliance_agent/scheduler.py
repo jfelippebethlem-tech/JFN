@@ -471,19 +471,67 @@ async def rodar_ciclo_diario():
     return await rodar_ciclo_relatorio_diario()
 
 
+# ─── Resiliência: cada loop se auto-recupera ──────────────────────────────────
+
+async def _loop_resiliente(nome: str, coro_factory):
+    """
+    Executa um loop e o reinicia se ele cair, avisando no Telegram.
+    Garante que um erro num loop não derrube os outros.
+    """
+    while True:
+        try:
+            await coro_factory()
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            console.print(f"[red]Loop '{nome}' caiu: {e}. Reiniciando em 30s...[/red]")
+            try:
+                await enviar_mensagem(
+                    f"⚠️ Loop *{nome}* teve um erro e vai reiniciar:\n`{str(e)[:200]}`"
+                )
+            except Exception:
+                pass
+            await asyncio.sleep(30)
+
+
+async def _ping_inicio():
+    """Avisa no Telegram que o agente subiu e está vivo."""
+    if not BOT_TOKEN:
+        return
+    try:
+        await enviar_mensagem(
+            f"🟢 *JFN Agente online* ({datetime.now():%d/%m %H:%M})\n"
+            "Monitorando SIAFE2 a cada 15 min. Relatório às 08:00.\n"
+            "Fale comigo: mande /ajuda ou pergunte algo."
+        )
+    except Exception:
+        pass
+
+
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
     if "--loop" in sys.argv:
         from compliance_agent.notifications.telegram import loop_comandos
+        from compliance_agent.database.models import init_db
+        from compliance_agent.llm.memoria import garantir_contexto_inicial
 
         async def _loop_completo():
+            init_db()
+            try:
+                garantir_contexto_inicial()
+            except Exception:
+                pass
+            await _ping_inicio()
             await asyncio.gather(
-                loop_monitoramento(),
-                loop_relatorio(),
-                loop_comandos(),
+                _loop_resiliente("monitor", loop_monitoramento),
+                _loop_resiliente("relatorio", loop_relatorio),
+                _loop_resiliente("telegram", loop_comandos),
             )
 
-        asyncio.run(_loop_completo())
+        try:
+            asyncio.run(_loop_completo())
+        except KeyboardInterrupt:
+            console.print("\n[yellow]Agente parado pelo usuário.[/yellow]")
     else:
         asyncio.run(rodar_ciclo_diario())

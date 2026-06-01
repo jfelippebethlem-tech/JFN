@@ -118,17 +118,20 @@ echo       - Monitoramento SIAFE2 a cada 15 min (7h-20h)
 echo       - Relatorio completo todo dia as 08:00
 echo       - Telegram ativo: fale comigo pelo celular!
 echo         (mande /ajuda ou pergunte: "tem alerta grave hoje?")
+echo       - Auto-restart: se cair, reinicia sozinho em 10s
 echo.
-echo     NAO FECHE esta janela. Parar: Ctrl+C.
+echo     NAO FECHE esta janela. Parar: feche a janela.
 echo   ============================================================
 echo.
 
+REM Loop de auto-restart: se o agente cair, reinicia automaticamente.
+:rodar_agente
 python -m compliance_agent.scheduler --loop
-
 echo.
-echo   Agente parado. Pressione qualquer tecla para sair.
-pause >nul
-exit /b 0
+echo   [%date% %time%] Agente encerrou. Reiniciando em 10s...
+echo   (para parar de vez, feche esta janela agora)
+ping 127.0.0.1 -n 11 >nul
+goto rodar_agente
 
 REM ============================================================
 REM   Sub-rotina: abrir Chrome com porta de debug no SIAFE2
