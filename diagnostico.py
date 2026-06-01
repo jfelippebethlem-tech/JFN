@@ -276,6 +276,107 @@ async def _capturar(pg, nome_arquivo: str, dump: dict):
     print(f"  {G}✓ Salvo: {base}.html / .png / .json{RST}")
 
 
+_JS_SELECT_FIRST_OB = r"""
+() => {
+    const host = document.querySelector('[id*="tblOBOrcamentaria"]');
+    if (!host) return null;
+    const table = host.closest('table') || host;
+    for (const tr of table.querySelectorAll('tr')) {
+        for (const td of tr.querySelectorAll('td')) {
+            if (/^\d{4}OB\d+/.test(td.textContent.trim())) {
+                td.click();
+                return td.textContent.trim();
+            }
+        }
+    }
+    return null;
+}
+"""
+
+_JS_CLICK_VISUALIZAR = r"""
+() => {
+    for (const el of document.querySelectorAll('a.x12k, a')) {
+        if (el.textContent.trim() === 'Visualizar'
+                && !el.className.includes('p_AFDisabled')
+                && el.getBoundingClientRect().width > 0) {
+            el.click(); return true;
+        }
+    }
+    return null;
+}
+"""
+
+_JS_DETAIL = r"""
+() => {
+    const tabs = [...document.querySelectorAll('a.xyp, [role="tab"]')]
+        .map(t => t.textContent.trim()).filter(Boolean);
+    return {
+        url: location.href,
+        title: document.title,
+        tabs: tabs,
+        text: (document.body ? document.body.innerText : '').substring(0, 8000),
+    };
+}
+"""
+
+
+async def _siafe_detalhe_ob(page):
+    """Seleciona a 1ª OB, clica Visualizar e lê o detalhe + todas as abas."""
+    print(f"\n  {DIM}Abrindo DETALHE da 1ª OB (selecionar linha -> Visualizar)...{RST}")
+    sel = await page.evaluate(_JS_SELECT_FIRST_OB)
+    if not sel:
+        print(f"  {Y}(não consegui selecionar uma OB na tabela){RST}")
+        return
+    print(f"  {DIM}OB selecionada: {sel}{RST}")
+    await asyncio.sleep(1.5)
+
+    ok = await page.evaluate(_JS_CLICK_VISUALIZAR)
+    if not ok:
+        print(f"  {Y}(não achei/cliquei o botão 'Visualizar'){RST}")
+        return
+    await _wait(page, 12000)
+    await _dismiss_dialogs(page)
+
+    det = await page.evaluate(_JS_DETAIL)
+    print(f"\n{BOLD}{B}{'═'*72}{RST}")
+    print(f"{BOLD}{B}  SIAFE2 — DETALHE DA OB {sel}{RST}")
+    print(f"{BOLD}{B}{'═'*72}{RST}")
+    print(f"  {BOLD}URL:{RST} {det['url']}")
+    abas = det.get("tabs", [])
+    if abas:
+        print(f"  {BOLD}{Y}ABAS:{RST} {' | '.join(abas)}")
+    print(f"\n  {BOLD}{Y}CONTEÚDO DA ABA ATUAL:{RST}")
+    for line in det.get("text", "").splitlines()[:60]:
+        if line.strip():
+            print(f"    {DIM}{line.strip()[:95]}{RST}")
+    await _capturar(page, "siafe_detalhe", det)
+
+    # Percorre cada aba (a.xyp) e captura o texto
+    n_abas = await page.evaluate("() => document.querySelectorAll('a.xyp').length")
+    for i in range(min(n_abas, 8)):
+        nome = await page.evaluate(
+            """(i) => {
+                const tabs = document.querySelectorAll('a.xyp');
+                if (i >= tabs.length) return null;
+                const t = tabs[i];
+                const nome = t.textContent.trim();
+                t.click();
+                return nome;
+            }""", i,
+        )
+        if not nome:
+            continue
+        await _wait(page, 8000)
+        await _dismiss_dialogs(page)
+        txt = await page.evaluate(
+            "() => (document.body ? document.body.innerText : '').substring(0, 6000)"
+        )
+        print(f"\n  {BOLD}{Y}>>> ABA '{nome}':{RST}")
+        for line in txt.splitlines()[:45]:
+            if line.strip():
+                print(f"    {DIM}{line.strip()[:95]}{RST}")
+
+
 async def main():
     from playwright.async_api import async_playwright
 
@@ -344,6 +445,9 @@ async def main():
             await _capturar(siafe_page, "siafe_filtro", dump2)
         else:
             print(f"  {Y}(não achei o disclosure sdtFilter para abrir){RST}")
+
+        # Abre o DETALHE da 1ª OB (seleciona linha -> Visualizar) e lê as abas
+        await _siafe_detalhe_ob(siafe_page)
     except Exception as e:
         print(f"  {R}Erro ao ler SIAFE2: {type(e).__name__}: {e}{RST}")
 
