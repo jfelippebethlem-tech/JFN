@@ -64,7 +64,22 @@ OU simplesmente dê duplo clique em:
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-4. CONTROLAR O AGENTE PELO CELULAR (via Telegram)
+4. ATIVAR O BOT TELEGRAM (FAZER 1 VEZ SÓ)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+IMPORTANTE — sem este passo o bot não consegue te mandar mensagem!
+
+a) Abra o Telegram no celular
+b) Na busca, procure pelo token do bot ou pelo nome do bot
+   (o token começa com 8840263255)
+c) Clique em "Iniciar" ou mande /start
+d) Pronto — agora o bot pode te mandar mensagens
+
+Se o agente disser "Chat não encontrado": repita este passo.
+
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. CONTROLAR O AGENTE PELO CELULAR (via Telegram)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Com o iniciar.bat rodando no PC, abra o Telegram
@@ -80,14 +95,15 @@ O agente manda automaticamente um resumo todo dia às 08:00.
 
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-5. REQUISITOS — O QUE PRECISA ESTAR LIGADO/ABERTO
+6. REQUISITOS — O QUE PRECISA ESTAR LIGADO/ABERTO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Para coleta completa (SIAFE2 + DOERJ):
   ✅ Computador ligado
   ✅ Chrome aberto na porta 9222:
      chrome.exe --remote-debugging-port=9222
-  ✅ SIAFE2 logado no Chrome (siafe2.fazenda.rj.gov.br)
+  ✅ SIAFE2 aberto no Chrome (não precisa estar logado —
+     o agente faz o login automático se precisar!)
   ✅ iniciar.bat rodando (ou atualizar_e_iniciar.bat)
 
 Para só o bot Telegram responder:
@@ -95,9 +111,15 @@ Para só o bot Telegram responder:
   ✅ iniciar.bat rodando
   (Chrome pode estar fechado — coleta será pulada)
 
+SOBRE A SESSÃO DO SIAFE2:
+  A sessão expira após ~1 hora. O agente detecta isso
+  automaticamente e faz re-login usando as credenciais
+  do arquivo .env (SIAFE_USER e SIAFE_PASS).
+  Você não precisa fazer nada — é automático.
+
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-6. SE ALGO DER ERRADO
+7. SE ALGO DER ERRADO
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Mande /status pelo Telegram para ver o que está acontecendo.

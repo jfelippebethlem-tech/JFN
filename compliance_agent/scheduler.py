@@ -234,7 +234,13 @@ async def rodar_ciclo_diario():
             if result.get("ok"):
                 console.print("    Resumo diário enviado ao Telegram.")
             else:
-                console.print(f"    [yellow]Telegram: {result.get('error', result)}[/yellow]")
+                desc = result.get("description", result.get("error", str(result)))
+                if "chat not found" in str(desc).lower():
+                    console.print("    [bold red]Telegram: Chat não encontrado.[/bold red]")
+                    console.print("    [yellow]AÇÃO NECESSÁRIA: Abra o Telegram, busque o bot "
+                                  "pelo nome e envie /start para ativá-lo.[/yellow]")
+                else:
+                    console.print(f"    [yellow]Telegram: {desc}[/yellow]")
         except Exception as e:
             console.print(f"    [red]Erro Telegram resumo: {e}[/red]")
 

@@ -106,65 +106,184 @@ async def _dismiss_dialogs(page, max_iter: int = 6) -> list[str]:
     return dismissed
 
 
+_SIAFE_LOGIN = "https://siafe2.fazenda.rj.gov.br/Siafe/faces/autenticacao/autenticacao.xhtml"
+
+# JS que lê campos de login presentes na página
+_JS_CHECK_LOGIN = r"""
+() => {
+    const u = document.querySelector('input[id*="usuario"], input[id*="user"], input[name*="user"], input[type="text"]');
+    const p = document.querySelector('input[type="password"]');
+    return !!(u && p && u.getBoundingClientRect().width > 0);
+}
+"""
+
+_JS_DO_LOGIN = r"""
+(usuario, senha) => {
+    const u = document.querySelector('input[id*="usuario"], input[id*="user"], input[name*="user"], input[type="text"]');
+    const p = document.querySelector('input[type="password"]');
+    const btn = document.querySelector('button[id*="login"], input[type="submit"], button[type="submit"], a.x7j, a.xg2');
+    if (!u || !p) return 'inputs não encontrados';
+    u.value = usuario;
+    p.value = senha;
+    u.dispatchEvent(new Event('change', {bubbles: true}));
+    p.dispatchEvent(new Event('change', {bubbles: true}));
+    if (btn) { btn.click(); return 'login clicado'; }
+    return 'botão não encontrado';
+}
+"""
+
+
+async def _esta_na_tela_login(page) -> bool:
+    try:
+        return bool(await page.evaluate(_JS_CHECK_LOGIN))
+    except Exception:
+        return False
+
+
+async def _fazer_login(page) -> bool:
+    """Tenta fazer login com as credenciais do .env / variáveis de ambiente."""
+    import os
+    usuario = os.environ.get("SIAFE_USER", "")
+    senha = os.environ.get("SIAFE_PASS", "")
+    if not usuario or not senha:
+        return False
+
+    try:
+        await page.goto(_SIAFE_LOGIN, wait_until="networkidle", timeout=20000)
+        await asyncio.sleep(2)
+        await _dismiss_dialogs(page)
+
+        if not await _esta_na_tela_login(page):
+            return False
+
+        result = await page.evaluate(_JS_DO_LOGIN, usuario, senha)
+        await _adf_wait(page, 20000)
+        await _dismiss_dialogs(page)
+
+        cur = page.url.lower()
+        logged_in = "login" not in cur and "autenticacao" not in cur and "siafe2.fazenda" in cur
+        print(f"[SIAFE2] Login {'OK' if logged_in else 'FALHOU'}: {result} → {page.url[:80]}")
+        return logged_in
+    except Exception as exc:
+        print(f"[SIAFE2] Erro no login: {exc}")
+        return False
+
+
 async def _navigate_to_ob(page) -> bool:
     """
     Garante que estamos na tela de OB Orçamentária.
 
     Navega via execucaoFinanceiraMain.jsp (inicializa o contexto ADF) e
-    depois clica no menu 'OB Orçamentária' (a.xgg). NUNCA usa goto direto
-    na URL da OB — isso quebra o ADF/JSF (erro BeanELResolver).
+    depois clica no menu 'OB Orçamentária'. Detecta sessão expirada e
+    re-loga automaticamente. NUNCA usa goto direto na URL da OB (BeanELResolver crash).
     """
     if "ordembancariaorcamentaria" in page.url.lower():
         await _dismiss_dialogs(page)
         return True
 
     cur = page.url.lower()
-    if "execucaofinanceira" not in cur and "siafe2.fazenda" in cur:
-        # já está no SIAFE, só não na financeira — tenta o menu direto
-        pass
 
-    if "siafe2.fazenda" not in cur or "erro" in cur or "error" in cur or "login" in cur:
-        for target in (_SIAFE_FINANCEIRA, _SIAFE_HOME):
-            try:
-                await page.goto(target, wait_until="networkidle", timeout=20000)
-                await asyncio.sleep(3)
-                await _dismiss_dialogs(page)
-                c = page.url.lower()
-                if "erro" not in c and "error" not in c and "login" not in c:
-                    break
-            except Exception:
-                pass
-    elif "execucaofinanceira" not in cur and "ordembancaria" not in cur:
+    # Detecta sessão expirada (tela de login ou página de erro/redirecionamento)
+    sessao_expirada = (
+        "login" in cur
+        or "autenticacao" in cur
+        or "erro" in cur
+        or "error" in cur
+        or await _esta_na_tela_login(page)
+    )
+
+    if sessao_expirada:
+        print("[SIAFE2] Sessão expirada — tentando re-login automático...")
+        if not await _fazer_login(page):
+            return False
+        cur = page.url.lower()
+
+    # Se não está no SIAFE2 ainda, navega para lá
+    if "siafe2.fazenda" not in cur:
+        try:
+            await page.goto(_SIAFE_HOME, wait_until="networkidle", timeout=20000)
+            await asyncio.sleep(3)
+            await _dismiss_dialogs(page)
+            cur = page.url.lower()
+            if "login" in cur or "autenticacao" in cur or await _esta_na_tela_login(page):
+                if not await _fazer_login(page):
+                    return False
+        except Exception:
+            pass
+
+    # Navega para a seção de Execução Financeira se ainda não está lá
+    if "execucaofinanceira" not in page.url.lower() and "ordembancaria" not in page.url.lower():
         try:
             await page.goto(_SIAFE_FINANCEIRA, wait_until="networkidle", timeout=20000)
             await asyncio.sleep(3)
             await _dismiss_dialogs(page)
+            # Re-check login after navigation
+            if "login" in page.url.lower() or "autenticacao" in page.url.lower():
+                if not await _fazer_login(page):
+                    return False
+                await page.goto(_SIAFE_FINANCEIRA, wait_until="networkidle", timeout=20000)
+                await asyncio.sleep(3)
+                await _dismiss_dialogs(page)
         except Exception:
             pass
 
     if "ordembancariaorcamentaria" in page.url.lower():
         return True
 
-    # Clica no item de menu 'OB Orçamentária' (a.xgg)
-    for _ in range(2):
+    # Aguarda o menu ADF carregar (a.xgg pode demorar)
+    try:
+        await page.wait_for_selector("a.xgg", timeout=10000)
+    except Exception:
+        pass
+    await asyncio.sleep(2)
+
+    # Tenta clicar em 'OB Orçamentária' — busca progressivamente mais ampla
+    for attempt in range(3):
         clicked = await page.evaluate(r"""
             () => {
-                for (const el of document.querySelectorAll('a.xgg')) {
-                    const t = el.textContent.trim();
-                    if ((t === 'OB Orçamentária' || t.startsWith('OB Or'))
-                        && !el.className.includes('p_AFDisabled')) {
-                        el.click(); return t;
+                // Busca em seletores do mais específico ao mais amplo
+                const selectorGroups = [
+                    'a.xgg',
+                    'a.xg2',
+                    'a[class*="xg"]',
+                    'a, span, li a, td a',
+                ];
+                for (const sel of selectorGroups) {
+                    for (const el of document.querySelectorAll(sel)) {
+                        const t = el.textContent.trim();
+                        const r = el.getBoundingClientRect();
+                        if (r.width <= 0) continue;
+                        if (el.className && el.className.includes('p_AFDisabled')) continue;
+                        if (t === 'OB Orçamentária'
+                            || t.startsWith('OB Or')
+                            || (t.includes('Orçament') && t.includes('OB'))
+                            || t === 'OB Orcamentaria') {
+                            el.click();
+                            return 'clicked:' + t;
+                        }
                     }
                 }
-                return null;
+                // Não encontrou — devolve lista dos a.xgg visíveis para debug
+                const found = [];
+                for (const el of document.querySelectorAll('a.xgg, a.xg2, a[class*="xg"]')) {
+                    const t = el.textContent.trim();
+                    const r = el.getBoundingClientRect();
+                    if (t && r.width > 0) found.push(t.slice(0, 50));
+                }
+                return 'NOT_FOUND|' + found.slice(0, 25).join('||');
             }
         """)
-        if clicked:
+
+        if clicked and not clicked.startswith("NOT_FOUND"):
             await _adf_wait(page, 15000)
             await _dismiss_dialogs(page)
             if "ordembancariaorcamentaria" in page.url.lower():
                 return True
-        await asyncio.sleep(2)
+        else:
+            if attempt == 0 and clicked:
+                # Log visible menu items on first failure for diagnostics
+                print(f"[SIAFE2] Menu items visíveis: {clicked}")
+            await asyncio.sleep(3)
 
     return "ordembancariaorcamentaria" in page.url.lower()
 
@@ -462,15 +581,51 @@ def _extract_ob_fields(detail: dict) -> dict:
     }
 
 
+async def _check_session_and_recover(page) -> bool:
+    """
+    Verifica se a sessão SIAFE2 ainda está ativa.
+    Se não, faz re-login e volta para a tela de OBs.
+    Retorna True se estamos na tela de OBs, False se falhou.
+    """
+    cur = page.url.lower()
+    session_ok = (
+        "siafe2.fazenda" in cur
+        and "login" not in cur
+        and "autenticacao" not in cur
+        and not await _esta_na_tela_login(page)
+    )
+    if session_ok:
+        return True
+
+    print("[SIAFE2] Sessão expirou durante coleta de detalhes — re-logando...")
+    if not await _fazer_login(page):
+        print("[SIAFE2] Re-login falhou.")
+        return False
+
+    # Volta para a tela de OBs
+    return await _navigate_to_ob(page)
+
+
 async def collect_ob_details(page, ob_numbers: list[str]) -> dict[str, dict]:
     """
     For each OB number in the list, click it, read detail tabs,
     extract favorecido/valor/processo, click Retornar.
+    Detecta sessão expirada a cada 10 OBs e re-loga automaticamente.
     Returns dict {numero_ob: {favorecido_nome, favorecido_cpf, valor, numero_processo}}.
     """
     results = {}
+    consecutive_failures = 0
 
-    for numero in ob_numbers:
+    for i, numero in enumerate(ob_numbers):
+        # Verifica sessão a cada 10 OBs ou após 3 falhas consecutivas
+        if i % 10 == 0 or consecutive_failures >= 3:
+            if not await _check_session_and_recover(page):
+                # Marca o restante como erro e sai
+                for n in ob_numbers[i:]:
+                    results[n] = {"error": "sessão expirada, re-login falhou"}
+                break
+            consecutive_failures = 0
+
         try:
             # Click on the OB row to select it
             sel_result = await page.evaluate(f"""
@@ -478,7 +633,6 @@ async def collect_ob_details(page, ob_numbers: list[str]) -> dict[str, dict]:
                     for (const el of document.querySelectorAll('td, span')) {{
                         const t = el.textContent.trim();
                         if (t === '{numero}') {{
-                            // click the row
                             const row = el.closest('tr');
                             if (row) row.click();
                             el.click();
@@ -495,8 +649,10 @@ async def collect_ob_details(page, ob_numbers: list[str]) -> dict[str, dict]:
             viz = await page.evaluate(_JS_CLICK_VISUALIZAR)
             if not viz:
                 results[numero] = {"error": "Visualizar not found"}
+                consecutive_failures += 1
                 continue
 
+            consecutive_failures = 0
             await _adf_wait(page, 12000)
             await _dismiss_dialogs(page)
 
@@ -521,14 +677,13 @@ async def collect_ob_details(page, ob_numbers: list[str]) -> dict[str, dict]:
             await _adf_wait(page, 10000)
             await _dismiss_dialogs(page)
             if not ret:
-                # If no Retornar, navigate back
                 await page.go_back()
                 await _adf_wait(page, 10000)
                 await _dismiss_dialogs(page)
 
         except Exception as exc:
             results[numero] = {"error": str(exc)}
-            # Try to get back to list
+            consecutive_failures += 1
             try:
                 await page.evaluate(_JS_CLICK_RETORNAR)
                 await _adf_wait(page, 8000)
