@@ -407,6 +407,236 @@ async def main():
     print(f"\n✅ Relatório salvo em: {REPORT}")
 
 
+_JS_LEAF_ELEMENTS = """
+    () => {
+        const results = [];
+        document.querySelectorAll('*').forEach(el => {
+            const directText = [...el.childNodes]
+                .filter(n => n.nodeType === 3)
+                .map(n => n.textContent.trim())
+                .join('');
+            if (directText && directText.length < 120 && directText.length > 1) {
+                const r = el.getBoundingClientRect();
+                results.push({
+                    tag: el.tagName,
+                    cls: el.className,
+                    id: el.id,
+                    text: directText,
+                    onclick: el.onclick ? 'yes' : 'no',
+                    visible: r.width > 0 && r.height > 0
+                });
+            }
+        });
+        return results;
+    }
+"""
+
+def _js_click_exact(text: str) -> str:
+    """Returns JS that clicks element whose direct text equals `text`."""
+    safe = text.replace("'", "\\'")
+    return f"""
+        () => {{
+            for (const el of document.querySelectorAll('*')) {{
+                const direct = [...el.childNodes]
+                    .filter(n => n.nodeType === 3)
+                    .map(n => n.textContent.trim())
+                    .join('');
+                if (direct === '{safe}') {{
+                    el.click();
+                    return el.tagName + ' | cls=' + el.className + ' | id=' + el.id;
+                }}
+            }}
+            return null;
+        }}
+    """
+
+def _js_click_contains(text: str) -> str:
+    """Returns JS that clicks smallest visible element containing `text`."""
+    safe = text.replace("'", "\\'")
+    return f"""
+        () => {{
+            let best = null, bestSize = Infinity;
+            for (const el of document.querySelectorAll('*')) {{
+                if (!el.textContent.includes('{safe}')) continue;
+                const r = el.getBoundingClientRect();
+                if (r.width <= 0 || r.height <= 0) continue;
+                const size = r.width * r.height;
+                if (size < bestSize) {{ best = el; bestSize = size; }}
+            }}
+            if (best) {{
+                best.click();
+                return best.tagName + ' | cls=' + best.className + ' | text=' + best.textContent.trim().substring(0,80);
+            }}
+            return null;
+        }}
+    """
+
+
+async def _dump_inputs(page, label: str):
+    """Log all input/select/button elements on the page."""
+    sep(f"Formulário: {label}")
+    form_inputs = await page.query_selector_all("input, select, textarea, button")
+    log(f"  {len(form_inputs)} inputs/botões:")
+    for inp in form_inputs:
+        try:
+            tag = await inp.evaluate("el => el.tagName.toLowerCase()")
+            id_ = await inp.get_attribute("id") or ""
+            nm  = await inp.get_attribute("name") or ""
+            tp  = await inp.get_attribute("type") or ""
+            cls = await inp.get_attribute("class") or ""
+            ph  = await inp.get_attribute("placeholder") or ""
+            txt = (await inp.inner_text()).strip()[:50]
+            log(f"    <{tag}> id={id_!r:35} name={nm!r:25} type={tp!r:12} "
+                f"class={cls[:35]!r} ph={ph!r} txt={txt!r}")
+        except Exception:
+            pass
+
+
+async def _explore_flexvision(page):
+    """Explora o FlexVision via JavaScript (Vaadin/GWT não usa <a>/<button> padrão)."""
+    FV_BASE = "https://siafe2-flexvision.fazenda.rj.gov.br/Flexvision/"
+
+    sep("EXPLORANDO FLEXVISION — snapshot inicial")
+    await dump_page(page, "fv_00_initial")
+
+    # ── 1. Classes CSS ──────────────────────────────────────────────────────────
+    sep("Classes CSS usadas no FlexVision")
+    all_classes = await page.evaluate("""
+        () => {
+            const classes = new Set();
+            document.querySelectorAll('*').forEach(el => {
+                el.classList.forEach(c => classes.add(c));
+            });
+            return [...classes].sort().filter(c => c.length > 2);
+        }
+    """)
+    log(f"  Total: {len(all_classes)} classes")
+    log(f"  {', '.join(all_classes)}")
+
+    # ── 2. Todos os elementos com texto direto ──────────────────────────────────
+    sep("Elementos com texto direto (folhas da árvore DOM)")
+    elements = await page.evaluate(_JS_LEAF_ELEMENTS)
+    log(f"  Total: {len(elements)} elementos")
+    for e in elements:
+        vis = "✓" if e.get("visible") else "·"
+        log(f"  {vis} <{e['tag'].lower():6}> text={e['text']!r:45} cls={e['cls']!r:45} id={e['id']!r}")
+
+    # ── 3. Clicar em cada item do menu lateral ──────────────────────────────────
+    # Menus visíveis na barra lateral conforme diagnóstico anterior
+    sidebar_menus = [
+        "Paineis", "Gerenciamento", "Administração", "Dimensões", "Cubos",
+        "Parâmetros", "Agregações", "Exportação/Importação", "Monitoramento",
+        "Consultas", "Segurança", "Visibilidades", "Alteração de Senha", "Sobre",
+    ]
+
+    sep("Navegando por cada item do menu lateral")
+    for menu_name in sidebar_menus:
+        url_before = page.url
+        clicked = await page.evaluate(_js_click_exact(menu_name))
+        if not clicked:
+            # Fallback: try contains
+            clicked = await page.evaluate(_js_click_contains(menu_name))
+
+        if clicked:
+            await asyncio.sleep(2)
+            url_after = page.url
+            hash_part = ("#" + url_after.split("#", 1)[1]) if "#" in url_after else "(sem hash)"
+            log(f"\n  ── {menu_name} ──")
+            log(f"     Elemento: {clicked}")
+            log(f"     Hash URL: {hash_part}")
+
+            body = await page.inner_text("body")
+            log(f"     Texto ({len(body)} chars): {body[:600]}")
+
+            # Salvar screenshot + HTML deste menu
+            safe_name = menu_name[:15].replace("/", "_").replace(" ", "_").lower()
+            await dump_page(page, f"fv_menu_{safe_name}")
+
+            # Capturar sub-itens que apareceram
+            sub_els = await page.evaluate(_JS_LEAF_ELEMENTS)
+            new_texts = {e["text"] for e in sub_els} - {e["text"] for e in elements}
+            if new_texts:
+                log(f"     Novos itens após clicar: {sorted(new_texts)}")
+
+            # Formulário de inputs nesta view
+            await _dump_inputs(page, menu_name)
+
+            # ── Caso especial: Consultas — explorar sub-itens ───────────────
+            if menu_name == "Consultas":
+                sep("  Sub-itens de Consultas")
+                all_sub = await page.evaluate(_JS_LEAF_ELEMENTS)
+                log(f"  {len(all_sub)} elementos após abrir Consultas:")
+                for e in all_sub:
+                    vis = "✓" if e.get("visible") else "·"
+                    log(f"    {vis} {e['text']!r:50} cls={e['cls']!r:40} id={e['id']!r}")
+
+                # Tentar clicar em "Execução por OB" ou variações
+                sep("  Clicando em 'Execução por OB'")
+                ob_variants = [
+                    "Execução por OB", "Execucao por OB", "Execução por Ob",
+                    "ExecuçãoOB", "OB", "Ordens Bancárias", "Exec. por OB",
+                ]
+                ob_found = False
+                for variant in ob_variants:
+                    clicked2 = await page.evaluate(_js_click_exact(variant))
+                    if not clicked2:
+                        clicked2 = await page.evaluate(_js_click_contains(variant))
+                    if clicked2:
+                        log(f"  ✅ Clicado '{variant}': {clicked2}")
+                        await asyncio.sleep(2)
+                        hash_ob = ("#" + page.url.split("#", 1)[1]) if "#" in page.url else ""
+                        log(f"  URL hash: {hash_ob}")
+                        await dump_page(page, "fv_execucao_ob")
+                        await _dump_inputs(page, "Execução por OB")
+
+                        # Capturar texto completo da tela de OB
+                        ob_body = await page.inner_text("body")
+                        log(f"  Texto da tela OB:\n{ob_body[:2000]}")
+
+                        # Enumerar todos elementos para mapear form fields
+                        ob_els = await page.evaluate(_JS_LEAF_ELEMENTS)
+                        log(f"\n  Elementos na tela OB ({len(ob_els)}):")
+                        for e in ob_els:
+                            log(f"    {e['text']!r:55} cls={e['cls']!r:40}")
+                        ob_found = True
+                        break
+                    else:
+                        log(f"  ❌ Não encontrou '{variant}'")
+
+                if not ob_found:
+                    log("  ⚠️  'Execução por OB' não encontrado. "
+                        "Listando todos os itens visíveis após clicar Consultas:")
+                    consult_els = await page.evaluate(_JS_LEAF_ELEMENTS)
+                    for e in consult_els:
+                        if e.get("visible"):
+                            log(f"    ✓ {e['text']!r:55} cls={e['cls']!r}")
+        else:
+            log(f"\n  ── {menu_name}: ❌ não encontrado no DOM")
+
+    # ── 4. Tentar hashes conhecidos diretamente ─────────────────────────────────
+    sep("Testando hashes de URL diretamente")
+    hash_candidates = [
+        "#!consultas", "#!execucao-ob", "#!execucaoob", "#!execucao_ob",
+        "#!relatorios", "#!exec-ob", "#!execob", "#!paineis",
+    ]
+    for h in hash_candidates:
+        try:
+            await page.goto(FV_BASE + h, timeout=10000)
+            await asyncio.sleep(2)
+            body = await page.inner_text("body")
+            has_error = "could not be found" in body.lower() or "não encontrad" in body.lower()
+            status = "❌ erro" if has_error else "✅ ok"
+            log(f"  {status}  {FV_BASE + h}  →  {body[:120]!r}")
+        except Exception as ex:
+            log(f"  💥  {h}: {ex}")
+
+    # ── 5. HTML completo ────────────────────────────────────────────────────────
+    html = await page.content()
+    html_path = SCREENSHOTS / "fv_full_dom.html"
+    html_path.write_text(html, encoding="utf-8")
+    log(f"\n  HTML completo salvo: {html_path.name} ({len(html)} chars)")
+
+
 async def main_cdp():
     """Conecta ao Chrome já aberto com --remote-debugging-port=9222."""
     from playwright.async_api import async_playwright
@@ -535,6 +765,16 @@ async def main_cdp():
             except Exception as ex:
                 log(f"  Erro ao explorar '{menu_name}': {ex}")
 
+        # ── Se já estamos no FlexVision, explorar diretamente e encerrar ───────
+        if "flexvision" in target_page.url.lower():
+            await _explore_flexvision(target_page)
+            sep("DIAGNÓSTICO CDP CONCLUÍDO (FlexVision já estava aberto)")
+            log(f"  Screenshots em: {SCREENSHOTS}/")
+            log(f"  Relatório em:   {REPORT}")
+            REPORT.write_text("\n".join(report_lines), encoding="utf-8")
+            print(f"\n✅ Relatório salvo em: {REPORT}")
+            return
+
         # ── Login no FlexVision (sistema separado) ────────────────────────────
         sep("LOGIN NO FLEXVISION")
         FV_URL = "https://siafe2-flexvision.fazenda.rj.gov.br/Flexvision/"
@@ -622,43 +862,11 @@ async def main_cdp():
                         except Exception:
                             pass
 
-                # Tentar navegar para Execução por OB
-                sep("Tentando encontrar 'Execução por OB'")
-                fv_url = target_page.url
-                ob_keywords = ["Execução por OB", "Execucao por OB", "OB", "Ordens Bancárias", "execucao-ob", "Consultas"]
-                for kw in ob_keywords:
-                    try:
-                        el = await target_page.wait_for_selector(
-                            f"*:has-text('{kw}')", timeout=2000
-                        )
-                        if el:
-                            txt = (await el.inner_text()).strip()
-                            log(f"  ✅ Encontrado '{kw}': texto={txt!r}")
-                            break
-                    except Exception:
-                        pass
-
-                # Tentar URL hash direta para paineis
-                sep("Tentando URL #!paineis")
+                # Navegar para #!paineis e depois explorar completamente
+                sep("Navegando para #!paineis")
                 await target_page.goto(f"{FV_URL}#!paineis", timeout=15000)
                 await asyncio.sleep(3)
-                await dump_page(target_page, "fv_03_paineis")
-                body_text2 = await target_page.inner_text("body")
-                log(f"  Texto do painel: {body_text2[:2000]}")
-
-                # Listar menus do painel
-                all_menu = await target_page.query_selector_all("a, li, [class*='menu'], [class*='tree'], [class*='nav']")
-                log(f"\n  Elementos de menu: {len(all_menu)}")
-                seen2 = set()
-                for el in all_menu[:100]:
-                    try:
-                        t = (await el.inner_text()).strip()
-                        cls = await el.get_attribute("class") or ""
-                        if t and t not in seen2 and len(t) < 100:
-                            log(f"    {t!r:50} class={cls[:40]!r}")
-                            seen2.add(t)
-                    except Exception:
-                        pass
+                await _explore_flexvision(target_page)
 
             else:
                 log("  ❌ Campos de login não encontrados no FlexVision")
