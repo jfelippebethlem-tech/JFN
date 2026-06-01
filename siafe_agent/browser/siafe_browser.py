@@ -37,11 +37,12 @@ OB detail URL:
   /Siafe/faces/execucao/financeira/ordemBancariaOrcamentariaEdit.jsp
 
 Navigation to OB Orçamentária:
-  1. JS click a.xyo "Execução"
-  2. JS click a.xgh "Execução Financeira"
-  3. JS click a.xgg "OB Orçamentária"  (or "Ordens Bancárias" for list)
-  4. Left panel: a.xg8 "Visualizar OB Orçamentária"
-  5. Select a row → click a.xyp "Processo" → SEI process number
+  ⚠️  DO NOT click a.xyo "Execução" — it navigates to FlexVision, not SIAFE2.
+  1. JS click a.xgg "OB Orçamentária"  (ALWAYS in DOM — direct, no menu traversal)
+  2. Fallback: JS click a.xgh "Execução Financeira" → a.xgg "OB Orçamentária"
+  3. Left panel: a.xg8 "Visualizar OB Orçamentária"
+  4. Select a row → Enter / a.xg8 Visualizar / dblclick → detail screen
+  5. Click a.xyp "Processo" tab → SEI process number
 
 ══════════════════════════════════════════════════════════════════════════════
 FlexVision  (Vaadin 7/8 — https://siafe2-flexvision.fazenda.rj.gov.br/Flexvision/)
@@ -390,45 +391,66 @@ class SIAFEBrowser:
 
     async def navigate_to_ob_orcamentaria(self) -> dict:
         """
-        Navigate to Execução → Execução Financeira → OB Orçamentária.
+        Navigate to OB Orçamentária.
 
-        Confirmed menu path (01/06/2026):
-          a.xyo  "Execução"
-          a.xgh  "Execução Financeira"
-          a.xgg  "OB Orçamentária"
+        IMPORTANT: clicking a.xyo "Execução" navigates to FlexVision, not SIAFE2.
+        The a.xgg items are ALWAYS present in the SIAFE2 DOM regardless of which
+        top-level menu is active — click directly without going through the menu bar.
 
-        Uses page.evaluate() for every click — ADF's PPR (Partial Page Refresh)
-        invalidates ElementHandle objects on every navigation.
+        Confirmed selectors (01/06/2026):
+          a.xgg  "OB Orçamentária"  (always in DOM, href='#')
+          Fallback: a.xgh "Execução Financeira" → a.xgg "OB Orçamentária"
         """
-        # Step 1: top-level Execução tab
-        r1 = await self._adf_js_click("a.xyo", "Execução")
+        # Direct path: a.xgg "OB Orçamentária" is always rendered in DOM
+        r1 = await self._page.evaluate("""
+            () => {
+                for (const el of document.querySelectorAll('a.xgg')) {
+                    const t = el.textContent.trim();
+                    if ((t === 'OB Orçamentária' || t.includes('OB Or'))
+                        && !el.className.includes('p_AFDisabled')) {
+                        el.click();
+                        return 'a.xgg: ' + t;
+                    }
+                }
+                return null;
+            }
+        """)
         if not r1:
-            return {"success": False, "step": "xyo Execução", "message": "Menu 'Execução' não encontrado."}
-        await self._adf_wait(8000)
+            # Fallback: navigate via Execução Financeira submenu (a.xgh)
+            r_fin = await self._adf_js_click("a.xgh", "Execução Financeira")
+            if not r_fin:
+                r_fin = await self._page.evaluate("""
+                    () => {
+                        for (const el of document.querySelectorAll('a.xgh')) {
+                            if (el.textContent.trim().includes('Financeira')
+                                && !el.className.includes('Disabled')) {
+                                el.click(); return el.textContent.trim();
+                            }
+                        }
+                        return null;
+                    }
+                """)
+            if not r_fin:
+                available = await self._page.evaluate(
+                    "() => [...document.querySelectorAll('a.xgh, a.xgg')].map(e => e.textContent.trim()).filter(Boolean)"
+                )
+                return {"success": False, "step": "xgh Execução Financeira",
+                        "message": "Submenu não encontrado.", "available": available}
+            await self._adf_wait(8000)
 
-        # Step 2: second-level Execução Financeira
-        r2 = await self._adf_js_click("a.xgh", "Execução Financeira")
-        if not r2:
-            subs = await self._page.evaluate(
-                "() => [...document.querySelectorAll('a.xgh')].map(e => e.textContent.trim()).filter(Boolean)"
-            )
-            return {"success": False, "step": "xgh Execução Financeira",
-                    "message": "Submenu não encontrado.", "available_xgh": subs}
-        await self._adf_wait(8000)
+            r1 = await self._adf_js_click("a.xgg", "OB Orçamentária")
+            if not r1:
+                subs = await self._page.evaluate(
+                    "() => [...document.querySelectorAll('a.xgg')].map(e => e.textContent.trim()).filter(Boolean)"
+                )
+                return {"success": False, "step": "xgg OB Orçamentária",
+                        "message": "Item não encontrado.", "available_xgg": subs}
 
-        # Step 3: third-level OB Orçamentária
-        r3 = await self._adf_js_click("a.xgg", "OB Orçamentária")
-        if not r3:
-            subs3 = await self._page.evaluate(
-                "() => [...document.querySelectorAll('a.xgg')].map(e => e.textContent.trim()).filter(Boolean)"
-            )
-            return {"success": False, "step": "xgg OB Orçamentária",
-                    "message": "Item não encontrado.", "available_xgg": subs3}
         await self._adf_wait(8000)
         await self.screenshot("ob_orcamentaria")
 
         return {"success": True, "url": self._page.url,
-                "message": "Navegou para OB Orçamentária."}
+                "message": "Navegou para OB Orçamentária.", "clicked": r1}
 
     async def search_ob(
         self,
