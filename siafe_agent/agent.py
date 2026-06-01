@@ -105,33 +105,32 @@ def _detect_provider() -> tuple[str, str, str]:
     )
 
 
-async def _llm_request(
-    provider: str,
-    api_key: str,
-    model: str,
-    messages: list[dict],
-    tools: list[dict],
-    max_tokens: int = 4096,
+def _detect_fallback() -> tuple:
+    """Retorna o segundo provedor disponível para usar quando o principal retornar 429."""
+    groq_key       = os.environ.get("GROQ_API_KEY", "").strip()
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    prefer         = os.environ.get("FREE_LLM_PREFER", "groq").lower()
+    if prefer == "openrouter":
+        return ("groq", groq_key, _GROQ_MODEL) if groq_key else (None, None, None)
+    else:
+        return ("openrouter", openrouter_key, _openrouter_model()) if openrouter_key else (None, None, None)
+
+
+async def _call_one(
+    provider: str, api_key: str, model: str,
+    messages: list[dict], tools: list[dict], max_tokens: int,
 ) -> dict:
     if provider == "anthropic":
         return await _anthropic_request(api_key, model, messages, tools, max_tokens)
 
     base = _GROQ_BASE if provider == "groq" else _OPENROUTER_BASE
-    url = f"{base}/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+    url  = f"{base}/chat/completions"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     if provider == "openrouter":
         headers["HTTP-Referer"] = "https://github.com/jfn/compliance-agent"
         headers["X-Title"] = "JFN SIAFE Agent"
 
-    payload: dict = {
-        "model": model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": 0.1,
-    }
+    payload: dict = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": 0.1}
     if tools:
         payload["tools"] = tools
         payload["tool_choice"] = "auto"
@@ -140,6 +139,34 @@ async def _llm_request(
         resp = await client.post(url, json=payload, headers=headers)
         resp.raise_for_status()
         return resp.json()
+
+
+async def _llm_request(
+    provider: str,
+    api_key: str,
+    model: str,
+    messages: list[dict],
+    tools: list[dict],
+    max_tokens: int = 4096,
+    fallback: tuple | None = None,
+) -> dict:
+    for attempt in range(2):
+        try:
+            return await _call_one(provider, api_key, model, messages, tools, max_tokens)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                if attempt == 0:
+                    console.print(f"[yellow]⏳ {provider} no limite de taxa — aguardando 3s...[/yellow]")
+                    await asyncio.sleep(3)
+                    continue
+                if fallback and fallback[0]:
+                    fb_provider, fb_key, fb_model = fallback
+                    console.print(f"[yellow]↩ Fallback: {fb_provider}[/yellow]")
+                    return await _call_one(fb_provider, fb_key, fb_model, messages, tools, max_tokens)
+                raise RuntimeError(
+                    f"❌ {provider} com limite esgotado. Aguarde 1 minuto ou configure um segundo LLM no .env"
+                ) from e
+            raise
 
 
 async def _anthropic_request(
@@ -225,6 +252,7 @@ class SIAFEAgent:
         default_exercicio: Optional[str] = None,
     ):
         self._provider, self._api_key, self._model = _detect_provider()
+        self._fallback = _detect_fallback()
         self._siafe = SIAFEBrowser(headless=headless, screenshots_dir="screenshots")
         self._sei: Optional[SEIBrowser] = None
         self._output_dir = Path(output_dir)
@@ -304,6 +332,7 @@ class SIAFEAgent:
             data = await _llm_request(
                 self._provider, self._api_key, self._model,
                 messages, TOOLS,
+                fallback=self._fallback,
             )
 
             choice     = data["choices"][0]
