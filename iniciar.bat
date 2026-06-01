@@ -9,6 +9,9 @@ REM   iniciar.bat --groq      - Groq explorer (IA autonoma no SIAFE2)
 REM   iniciar.bat --analisar  - relatorio completo do banco
 REM   iniciar.bat --obs       - lista OBs coletadas
 REM   iniciar.bat --telegram  - testa conexao Telegram e aguarda comandos
+REM   iniciar.bat --servidor  - sobe dashboard web (http://localhost:8000)
+REM   iniciar.bat --sancoes   - verifica CEIS/CNEP agora
+REM   iniciar.bat --top       - ranking dos maiores favorecidos
 REM
 REM Controle pelo celular (via Telegram):
 REM   /status    - situacao atual do sistema
@@ -69,6 +72,9 @@ if "%1"=="--groq"     goto groq
 if "%1"=="--analisar" goto analisar
 if "%1"=="--obs"      goto obs
 if "%1"=="--telegram" goto telegram
+if "%1"=="--servidor"  goto servidor
+if "%1"=="--sancoes"   goto sancoes
+if "%1"=="--top"       goto top
 goto scheduler
 
 :diag
@@ -119,6 +125,25 @@ goto fim
 :obs
 echo.
 python analisar.py --obs
+goto fim
+
+:servidor
+echo.
+echo   Subindo dashboard web em http://localhost:8000 ...
+echo   Acesse pelo celular em http://<IP-DO-SEU-PC>:8000
+python server.py --host 0.0.0.0
+goto fim
+
+:sancoes
+echo.
+echo   Verificando CEIS e CNEP (baixa CSVs e cruza com OBs)...
+python -c "import asyncio; from compliance_agent.collectors.ceis import atualizar_cache_sancoes; asyncio.run(atualizar_cache_sancoes())"
+python analisar.py --sancoes
+goto fim
+
+:top
+echo.
+python analisar.py --top
 goto fim
 
 :telegram

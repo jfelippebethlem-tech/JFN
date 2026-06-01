@@ -273,6 +273,107 @@ def rodar_regras():
     print(f"\n  Execute {B}python analisar.py --tudo{RST} para ver todos os alertas acumulados.")
 
 
+def mostrar_sancoes():
+    """Lista todos os alertas de sanção CEIS/CNEP encontrados."""
+    session = _session()
+    from compliance_agent.database.models import Alerta
+
+    cabecalho("Alertas de Sanção (CEIS / CNEP / Histórico DOERJ)")
+
+    tipos_sancao = ["empresa_sancionada", "empresa_irregular", "historico_sancao_doerj"]
+    alertas = (
+        session.query(Alerta)
+        .filter(Alerta.tipo.in_(tipos_sancao))
+        .order_by(Alerta.created_at.desc())
+        .all()
+    )
+
+    if not alertas:
+        print(f"  {DIM}Nenhuma sanção detectada até o momento.{RST}")
+        print(f"  {DIM}Os CSVs do CEIS/CNEP são baixados automaticamente na primeira coleta.{RST}")
+        session.close()
+        return
+
+    print(f"  {R}{BOLD}{len(alertas)} empresa(s) sancionada(s) detectada(s){RST}\n")
+    for a in alertas:
+        print(f"  {R}[SANÇÃO]{RST} {a.titulo}")
+        print(f"  {DIM}{a.descricao[:200]}{RST}")
+        print()
+
+    session.close()
+
+
+def mostrar_grafo():
+    """Mostra os alertas gerados pela análise de grafo de relacionamentos."""
+    session = _session()
+    from compliance_agent.database.models import Alerta
+
+    cabecalho("Análise de Rede (Grafo de Relacionamentos)")
+
+    tipos_grafo = ["triangulo_nepotismo", "hub_suspeito", "hub_rede", "concentracao_pagamentos"]
+    alertas = (
+        session.query(Alerta)
+        .filter(Alerta.tipo.in_(tipos_grafo))
+        .order_by(Alerta.severidade, Alerta.created_at.desc())
+        .all()
+    )
+
+    if not alertas:
+        print(f"  {DIM}Nenhum padrão de rede detectado ainda.{RST}")
+        print(f"  {DIM}O grafo cresce conforme mais dados são coletados.{RST}")
+        session.close()
+        return
+
+    for a in alertas:
+        cor = SEV_COLOR.get(a.severidade, W)
+        print(f"  {cor}[{a.severidade.upper()}]{RST} {a.titulo}")
+        print(f"  {DIM}{a.descricao[:200]}{RST}\n")
+
+    session.close()
+
+
+def mostrar_top_favorecidos(limite: int = 15):
+    """Ranking dos favorecidos que mais receberam em OBs."""
+    session = _session()
+    from compliance_agent.database.models import OrdemBancaria
+    from sqlalchemy import func
+
+    cabecalho(f"Top {limite} Favorecidos por Valor Total de OBs")
+
+    q = (
+        session.query(
+            OrdemBancaria.favorecido_nome,
+            OrdemBancaria.favorecido_cpf,
+            func.count(OrdemBancaria.id).label("n_obs"),
+            func.sum(OrdemBancaria.valor).label("total"),
+            func.count(func.distinct(OrdemBancaria.ug_codigo)).label("n_ugs"),
+        )
+        .filter(OrdemBancaria.favorecido_nome.isnot(None), OrdemBancaria.valor > 0)
+        .group_by(OrdemBancaria.favorecido_cpf)
+        .order_by(func.sum(OrdemBancaria.valor).desc())
+        .limit(limite)
+        .all()
+    )
+
+    if not q:
+        print(f"  {DIM}Nenhuma OB com favorecido e valor no banco.{RST}")
+        session.close()
+        return
+
+    total_geral = sum(r.total or 0 for r in q)
+    print(f"  {DIM}Total (top {limite}): R$ {total_geral:,.2f}{RST}\n")
+    print(f"  {'#':>3}  {'Favorecido':<40} {'OBs':>5}  {'UGs':>4}  {'Total':>15}")
+    print(f"  {'─'*3}  {'─'*40} {'─'*5}  {'─'*4}  {'─'*15}")
+    for i, r in enumerate(q, 1):
+        nome = (r.favorecido_nome or "?")[:40]
+        total = r.total or 0
+        # Flag se recebe de muitas UGs (hub suspeito)
+        flag = f"  {Y}◆ {r.n_ugs} UGs{RST}" if r.n_ugs >= 3 else ""
+        print(f"  {i:>3}. {nome:<40} {r.n_obs:>5}  {r.n_ugs:>4}  R$ {total:>12,.2f}{flag}")
+
+    session.close()
+
+
 if __name__ == "__main__":
     args = sys.argv[1:]
 
@@ -284,5 +385,11 @@ if __name__ == "__main__":
         mostrar_todos_alertas()
     elif "--rodar" in args:
         rodar_regras()
+    elif "--sancoes" in args:
+        mostrar_sancoes()
+    elif "--grafo" in args:
+        mostrar_grafo()
+    elif "--top" in args:
+        mostrar_top_favorecidos()
     else:
         mostrar_resumo()
