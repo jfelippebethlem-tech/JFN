@@ -116,7 +116,8 @@ async def _llm_request(
     if provider == "anthropic":
         return await _anthropic_request(api_key, model, messages, tools, max_tokens)
 
-    url = _GROQ_BASE if provider == "groq" else _OPENROUTER_BASE
+    base = _GROQ_BASE if provider == "groq" else _OPENROUTER_BASE
+    url = f"{base}/chat/completions"
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
