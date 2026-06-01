@@ -30,6 +30,28 @@ def _make_pdf_class():
         class _RelatorioCompliance(FPDF):
             """PDF report with JFN Compliance branding."""
 
+            # Auto-sanitize all text written to PDF — Helvetica is Latin-1 only
+            def cell(self, *args, **kwargs):
+                if args and isinstance(args[0], (int, float)):
+                    # cell(w, h, txt, ...) — txt is 3rd positional arg
+                    lst = list(args)
+                    if len(lst) > 2:
+                        lst[2] = _t(lst[2])
+                    args = tuple(lst)
+                if "text" in kwargs:
+                    kwargs["text"] = _t(kwargs["text"])
+                return super().cell(*args, **kwargs)
+
+            def multi_cell(self, *args, **kwargs):
+                if args and isinstance(args[0], (int, float)):
+                    lst = list(args)
+                    if len(lst) > 2:
+                        lst[2] = _t(lst[2])
+                    args = tuple(lst)
+                if "text" in kwargs:
+                    kwargs["text"] = _t(kwargs["text"])
+                return super().multi_cell(*args, **kwargs)
+
             def header(self):
                 self.set_font("Helvetica", "B", 12)
                 self.set_text_color(30, 64, 175)  # blue-700
@@ -61,6 +83,23 @@ def _severidade_color(sev: str) -> tuple[int, int, int]:
     elif sev in ("média", "media"):
         return (245, 158, 11)   # amber
     return (34, 197, 94)        # green
+
+
+def _t(s: str) -> str:
+    """Sanitize text for Helvetica (Latin-1): replace chars outside 0x00-0xFF."""
+    return (
+        str(s)
+        .replace("—", "-")   # em dash
+        .replace("–", "-")   # en dash
+        .replace("‘", "'")   # left single quote
+        .replace("’", "'")   # right single quote
+        .replace("“", '"')   # left double quote
+        .replace("”", '"')   # right double quote
+        .replace("…", "...")  # ellipsis
+        .replace("°", "o")   # degree sign (safe in latin-1 but some fonts miss)
+        .encode("latin-1", errors="replace")
+        .decode("latin-1")
+    )
 
 
 def gerar_relatorio_diario(
