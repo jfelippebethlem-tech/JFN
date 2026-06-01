@@ -1,8 +1,8 @@
 """
-SIAFE2/SEI Finance Agent — Claude-powered agentic loop.
+SIAFE2/SEI Finance Agent — agentic loop sem dependência do Claude API.
 
-Uses Anthropic tool_use to drive Playwright browser automation
-against SIAFE2 and SEI Rio systems.
+Usa Groq (llama-3.3-70b, gratuito) como LLM principal.
+Fallback: OpenRouter ou Anthropic se configurados no .env.
 """
 
 import asyncio
@@ -10,9 +10,9 @@ import json
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any
 
-import anthropic
+import httpx
 from rich.console import Console
 from rich.panel import Panel
 from rich.markdown import Markdown
@@ -63,13 +63,148 @@ Formato de resposta:
 - Datas: DD/MM/AAAA
 """
 
+# ── Configuração de provedor LLM ──────────────────────────────────────────────
+
+_GROQ_BASE       = "https://api.groq.com/openai/v1"
+_OPENROUTER_BASE = "https://openrouter.ai/api/v1"
+_ANTHROPIC_BASE  = "https://api.anthropic.com"
+
+_GROQ_MODEL       = "llama-3.3-70b-versatile"
+_OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
+_ANTHROPIC_MODEL  = "claude-opus-4-8"
+
+
+def _detect_provider() -> tuple[str, str, str]:
+    groq_key       = os.environ.get("GROQ_API_KEY", "").strip()
+    anthropic_key  = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+
+    if groq_key:
+        return "groq", groq_key, _GROQ_MODEL
+    if anthropic_key:
+        return "anthropic", anthropic_key, _ANTHROPIC_MODEL
+    if openrouter_key:
+        return "openrouter", openrouter_key, _OPENROUTER_MODEL
+
+    raise RuntimeError(
+        "\n\n❌  Nenhuma chave de LLM configurada!\n\n"
+        "Abra o arquivo .env e preencha:\n\n"
+        "  GROQ_API_KEY=sua_chave_aqui      ← grátis em console.groq.com\n"
+        "  OPENROUTER_API_KEY=sua_chave     ← grátis em openrouter.ai\n"
+    )
+
+
+async def _llm_request(
+    provider: str,
+    api_key: str,
+    model: str,
+    messages: list[dict],
+    tools: list[dict],
+    max_tokens: int = 4096,
+) -> dict:
+    if provider == "anthropic":
+        return await _anthropic_request(api_key, model, messages, tools, max_tokens)
+
+    url = _GROQ_BASE if provider == "groq" else _OPENROUTER_BASE
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    if provider == "openrouter":
+        headers["HTTP-Referer"] = "https://github.com/jfn/compliance-agent"
+        headers["X-Title"] = "JFN SIAFE Agent"
+
+    payload: dict = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": 0.1,
+    }
+    if tools:
+        payload["tools"] = tools
+        payload["tool_choice"] = "auto"
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        resp = await client.post(url, json=payload, headers=headers)
+        resp.raise_for_status()
+        return resp.json()
+
+
+async def _anthropic_request(
+    api_key: str, model: str, messages: list[dict], tools: list[dict], max_tokens: int
+) -> dict:
+    """Chama API Anthropic e converte resposta para formato OpenAI."""
+    anthropic_tools = [
+        {
+            "name": t["function"]["name"],
+            "description": t["function"].get("description", ""),
+            "input_schema": t["function"].get("parameters", {"type": "object", "properties": {}}),
+        }
+        for t in tools
+    ]
+    system_msg = ""
+    history = []
+    for m in messages:
+        if m["role"] == "system":
+            system_msg = m["content"]
+        else:
+            history.append(m)
+
+    payload: dict = {
+        "model": model,
+        "max_tokens": max_tokens,
+        "system": system_msg,
+        "messages": history,
+    }
+    if anthropic_tools:
+        payload["tools"] = anthropic_tools
+
+    async with httpx.AsyncClient(timeout=120) as client:
+        resp = await client.post(
+            f"{_ANTHROPIC_BASE}/v1/messages",
+            json=payload,
+            headers={
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+                "content-type": "application/json",
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+
+    blocks = data.get("content", [])
+    text_parts = [b["text"] for b in blocks if b.get("type") == "text"]
+    tool_calls_raw = [b for b in blocks if b.get("type") == "tool_use"]
+
+    message: dict = {"role": "assistant", "content": " ".join(text_parts) or None}
+    if tool_calls_raw:
+        message["tool_calls"] = [
+            {
+                "id": b["id"],
+                "type": "function",
+                "function": {
+                    "name": b["name"],
+                    "arguments": json.dumps(b.get("input", {}), ensure_ascii=False),
+                },
+            }
+            for b in tool_calls_raw
+        ]
+
+    return {
+        "choices": [{
+            "message": message,
+            "finish_reason": "tool_calls" if tool_calls_raw else "stop",
+        }]
+    }
+
+
+# ── Agente SIAFE ──────────────────────────────────────────────────────────────
 
 class SIAFEAgent:
-    """Claude-powered agent for SIAFE2 and SEI Rio interactions."""
+    """Agente de automação do SIAFE2/SEI — usa Groq (gratuito) como LLM padrão."""
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
         headless: bool = True,
         output_dir: str = "output",
         default_username: str = "",
@@ -77,9 +212,7 @@ class SIAFEAgent:
         default_cliente: Optional[str] = None,
         default_exercicio: Optional[str] = None,
     ):
-        self._client = anthropic.Anthropic(
-            api_key=api_key or os.environ.get("ANTHROPIC_API_KEY"),
-        )
+        self._provider, self._api_key, self._model = _detect_provider()
         self._siafe = SIAFEBrowser(headless=headless, screenshots_dir="screenshots")
         self._sei: Optional[SEIBrowser] = None
         self._output_dir = Path(output_dir)
@@ -89,30 +222,33 @@ class SIAFEAgent:
         self._siafe_password: str = default_password
         self._siafe_cliente: Optional[str] = default_cliente
         self._siafe_exercicio: Optional[str] = default_exercicio
-        self._conversation: list[anthropic.types.MessageParam] = []
+        self._conversation: list[dict] = []
 
     async def start(self):
-        """Initialize browser."""
         await self._siafe.start()
         console.print("[green]Browser iniciado.[/green]")
 
     async def stop(self):
-        """Clean up browser."""
         await self._siafe.close()
         console.print("[yellow]Browser encerrado.[/yellow]")
 
     async def run_interactive(self):
-        """Run the interactive conversational loop."""
         await self.start()
 
+        provider_label = {
+            "groq": "Groq (llama-3.3-70b) — grátis",
+            "openrouter": "OpenRouter — grátis",
+            "anthropic": "Anthropic Claude — pago",
+        }.get(self._provider, self._provider)
+
         console.print(Panel(
-            "[bold cyan]SIAFE2 / SEI Finance Agent[/bold cyan]\n"
+            f"[bold cyan]SIAFE2 / SEI Finance Agent[/bold cyan]\n"
             f"Usuário: [yellow]{self._siafe_username}[/yellow]\n"
+            f"LLM: [green]{provider_label}[/green]\n"
             "Digite sua pergunta ou comando. Use 'sair' para encerrar.",
             title="Bem-vindo",
         ))
 
-        # Auto-login on startup
         console.print("[dim]Fazendo login no SIAFE2...[/dim]")
         login_result = await self._tool_login_siafe(
             username=self._siafe_username,
@@ -132,7 +268,6 @@ class SIAFEAgent:
                     user_input = input("\n[Você] ").strip()
                 except (EOFError, KeyboardInterrupt):
                     break
-
                 if user_input.lower() in {"sair", "exit", "quit", "q"}:
                     break
                 if not user_input:
@@ -145,58 +280,53 @@ class SIAFEAgent:
             await self.stop()
 
     async def chat(self, user_message: str) -> str:
-        """
-        Send a message and get a response, executing any tool calls.
-
-        Returns the final text response.
-        """
         self._conversation.append({"role": "user", "content": user_message})
 
+        system = SYSTEM_PROMPT.format(
+            username=self._siafe_username,
+            exercicio=self._siafe_exercicio or "padrão do SIAFE",
+        )
+        messages = [{"role": "system", "content": system}] + self._conversation
+
         while True:
-            response = self._client.messages.create(
-                model="claude-opus-4-8",
-                max_tokens=4096,
-                system=SYSTEM_PROMPT.format(
-                    username=self._siafe_username,
-                    exercicio=self._siafe_exercicio or "padrão do SIAFE",
-                ),
-                tools=TOOLS,
-                messages=self._conversation,
+            data = await _llm_request(
+                self._provider, self._api_key, self._model,
+                messages, TOOLS,
             )
 
-            # Collect assistant message content
-            assistant_content = []
-            tool_calls = []
+            choice     = data["choices"][0]
+            msg        = choice["message"]
+            finish     = choice.get("finish_reason", "stop")
+            tool_calls = msg.get("tool_calls") or []
 
-            for block in response.content:
-                assistant_content.append(block)
-                if block.type == "tool_use":
-                    tool_calls.append(block)
+            self._conversation.append(msg)
+            messages.append(msg)
 
-            self._conversation.append({"role": "assistant", "content": assistant_content})
+            if finish == "stop" or not tool_calls:
+                return msg.get("content") or ""
 
-            if response.stop_reason == "end_turn" or not tool_calls:
-                # Extract final text
-                texts = [b.text for b in response.content if hasattr(b, "text")]
-                return "\n".join(texts)
+            for tc in tool_calls:
+                fn   = tc["function"]
+                name = fn["name"]
+                try:
+                    inputs = json.loads(fn.get("arguments", "{}"))
+                except json.JSONDecodeError:
+                    inputs = {}
 
-            # Execute tool calls
-            tool_results = []
-            for tool_call in tool_calls:
-                console.print(f"[dim]→ Executando: {tool_call.name}({json.dumps(tool_call.input, ensure_ascii=False)})[/dim]")
-                result = await self._execute_tool(tool_call.name, tool_call.input)
-                tool_results.append({
-                    "type": "tool_result",
-                    "tool_use_id": tool_call.id,
+                console.print(f"[dim]→ Executando: {name}({json.dumps(inputs, ensure_ascii=False)})[/dim]")
+                result = await self._execute_tool(name, inputs)
+
+                tool_result_msg = {
+                    "role": "tool",
+                    "tool_call_id": tc["id"],
                     "content": json.dumps(result, ensure_ascii=False, default=str),
-                })
+                }
+                self._conversation.append(tool_result_msg)
+                messages.append(tool_result_msg)
 
-            self._conversation.append({"role": "user", "content": tool_results})
-
-    # ── Tool execution dispatcher ─────────────────────────────────────────────
+    # ── Dispatcher ────────────────────────────────────────────────────────────
 
     async def _execute_tool(self, name: str, inputs: dict) -> Any:
-        """Dispatch tool call to the appropriate handler."""
         try:
             match name:
                 case "login_siafe":
@@ -226,7 +356,7 @@ class SIAFEAgent:
                     return {"path": path}
                 case "get_page_text":
                     text = await self._siafe.get_page_text()
-                    return {"text": text[:5000]}  # limit for context
+                    return {"text": text[:5000]}
                 case _:
                     return {"error": f"Ferramenta '{name}' não reconhecida."}
         except Exception as e:
@@ -239,7 +369,6 @@ class SIAFEAgent:
         cliente: Optional[str] = None,
         exercicio: Optional[str] = None,
     ) -> dict:
-        """Handle SIAFE login with 4-field form and optional OTP prompt."""
         self._siafe_username = username
         self._siafe_password = password
 
@@ -247,8 +376,7 @@ class SIAFEAgent:
             return input("\n[SIAFE2] Código recebido por e-mail: ").strip()
 
         result = await self._siafe.login(
-            username,
-            password,
+            username, password,
             cliente=cliente,
             exercicio=exercicio,
             otp_callback=otp_callback,
@@ -258,7 +386,6 @@ class SIAFEAgent:
         return result
 
     async def _tool_switch_exercicio(self, exercicio: str) -> dict:
-        """Re-login with a different exercise year."""
         if not exercicio.strip():
             return {"error": "Exercício não informado."}
 
@@ -277,20 +404,12 @@ class SIAFEAgent:
         )
 
         if result.get("success"):
-            return {
-                "success": True,
-                "message": f"Exercício trocado: {prev} → {exercicio}.",
-                "url": result.get("url"),
-            }
+            return {"success": True, "message": f"Exercício trocado: {prev} → {exercicio}.", "url": result.get("url")}
         else:
-            self._siafe_exercicio = prev  # rollback
-            return {
-                "success": False,
-                "message": f"Falha ao trocar para exercício {exercicio}: {result.get('message')}",
-            }
+            self._siafe_exercicio = prev
+            return {"success": False, "message": f"Falha ao trocar para exercício {exercicio}: {result.get('message')}"}
 
     async def _tool_export_data(self, format: str = "both", filename: Optional[str] = None) -> dict:
-        """Export extracted data to file(s)."""
         if not self._extracted_data:
             return {"error": "Nenhum dado extraído ainda. Use extract_ob_data primeiro."}
 
@@ -312,11 +431,7 @@ class SIAFEAgent:
             df.to_csv(csv_path, index=False, encoding="utf-8-sig")
             paths.append(str(csv_path))
 
-        return {
-            "success": True,
-            "files": paths,
-            "records": len(self._extracted_data),
-        }
+        return {"success": True, "files": paths, "records": len(self._extracted_data)}
 
     async def _tool_enrich_with_sei(
         self,
@@ -324,19 +439,16 @@ class SIAFEAgent:
         sei_password: Optional[str] = None,
         use_same_credentials: bool = False,
     ) -> dict:
-        """Enrich extracted OB data with SEI process numbers."""
         if not self._extracted_data:
             return {"error": "Nenhum dado OB disponível. Extraia dados primeiro."}
 
-        # Credentials
         user = self._siafe_username if use_same_credentials else (sei_username or self._siafe_username)
-        pwd = self._siafe_password if use_same_credentials else (sei_password or self._siafe_password)
+        pwd  = self._siafe_password if use_same_credentials else (sei_password or self._siafe_password)
 
         if not user:
             user = input("[SEI] Usuário: ").strip()
-            pwd = input("[SEI] Senha: ").strip()
+            pwd  = input("[SEI] Senha: ").strip()
 
-        # Create SEI browser using same page (new tab)
         new_page = await self._siafe._context.new_page()
         self._sei = SEIBrowser(new_page, screenshots_dir="screenshots")
 
@@ -345,7 +457,7 @@ class SIAFEAgent:
             await new_page.close()
             return {"error": f"Login SEI falhou: {login_result['message']}"}
 
-        enriched = []
+        enriched    = []
         found_count = 0
         for i, record in enumerate(self._extracted_data):
             result = await self._sei.extract_ob_sei_numbers_from_siafe_row(record)
@@ -358,9 +470,4 @@ class SIAFEAgent:
         self._extracted_data = enriched
         await new_page.close()
 
-        return {
-            "success": True,
-            "total_records": len(enriched),
-            "sei_found": found_count,
-            "preview": enriched[:3],
-        }
+        return {"success": True, "total_records": len(enriched), "sei_found": found_count, "preview": enriched[:3]}

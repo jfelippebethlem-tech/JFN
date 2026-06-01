@@ -32,7 +32,7 @@ async def run(args):
     from compliance_agent.agent import ComplianceAgent
 
     init_db()
-    agent = ComplianceAgent(api_key=os.environ.get("ANTHROPIC_API_KEY"))
+    agent = ComplianceAgent()
 
     if args.query:
         response = await agent.chat(args.query)
@@ -51,11 +51,6 @@ async def run_scheduler(loop: bool):
 
 def main():
     _load_env()
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        print("Erro: ANTHROPIC_API_KEY não definida. Adicione ao arquivo .env")
-        sys.exit(1)
 
     parser = argparse.ArgumentParser(description="Agente de Compliance & Auditoria RJ")
     parser.add_argument("--query",     type=str,  help="Consulta única")
