@@ -119,6 +119,36 @@ def _detect_fallback() -> tuple:
         return ("openrouter", openrouter_key, _openrouter_model()) if openrouter_key else (None, None, None)
 
 
+_MAX_TOOL_CONTENT = 3000  # chars — Groq rejects huge tool results
+
+
+def _sanitize_messages(messages: list[dict]) -> list[dict]:
+    """
+    Clean up message list before sending to any LLM:
+    - Replace None content with "" (Groq/OpenRouter rejects null)
+    - Truncate oversized tool result strings
+    - Keep only last 12 messages + system prompt to avoid 400/context errors
+    """
+    out = []
+    for m in messages:
+        m = dict(m)
+        if m.get("content") is None:
+            m["content"] = ""
+        # Truncate large tool results
+        if m.get("role") == "tool" and isinstance(m.get("content"), str):
+            if len(m["content"]) > _MAX_TOOL_CONTENT:
+                m = dict(m)
+                m["content"] = m["content"][:_MAX_TOOL_CONTENT] + "\n... [truncado]"
+        out.append(m)
+
+    # Keep system prompt + last 12 messages
+    system_msgs = [m for m in out if m.get("role") == "system"]
+    other_msgs  = [m for m in out if m.get("role") != "system"]
+    if len(other_msgs) > 12:
+        other_msgs = other_msgs[-12:]
+    return system_msgs + other_msgs
+
+
 async def _call_one(
     provider: str, api_key: str, model: str,
     messages: list[dict], tools: list[dict], max_tokens: int,
@@ -133,13 +163,21 @@ async def _call_one(
         headers["HTTP-Referer"] = "https://github.com/jfn/compliance-agent"
         headers["X-Title"] = "JFN SIAFE Agent"
 
-    payload: dict = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": 0.1}
+    clean = _sanitize_messages(messages)
+    payload: dict = {"model": model, "messages": clean, "max_tokens": max_tokens, "temperature": 0.1}
     if tools:
         payload["tools"] = tools
         payload["tool_choice"] = "auto"
 
     async with httpx.AsyncClient(timeout=120) as client:
         resp = await client.post(url, json=payload, headers=headers)
+        if not resp.is_success:
+            # Log the error body to help diagnose
+            try:
+                err_body = resp.json()
+                console.print(f"[red]Erro {resp.status_code} de {provider}: {err_body}[/red]")
+            except Exception:
+                console.print(f"[red]Erro {resp.status_code} de {provider}: {resp.text[:300]}[/red]")
         resp.raise_for_status()
         return resp.json()
 
