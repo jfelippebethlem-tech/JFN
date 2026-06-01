@@ -81,6 +81,7 @@ _JS_DUMP = r"""
             text: txt || ('[title=' + el.title + ']'),
             cls: (el.className || '').toString().substring(0, 50),
             id: el.id || '',
+            href: (el.tagName === 'A' ? (el.getAttribute('href') || '') : '').substring(0, 120),
         });
     }
 
@@ -122,12 +123,74 @@ _JS_DUMP = r"""
 """
 
 
+# JS que lê as linhas de uma tabela ADF pelo fragmento do id ──────────────────
+_JS_TABLE = r"""
+(frag) => {
+    let host = document.querySelector('[id*="' + frag + '"]');
+    if (!host) return {found: false};
+    // sobe até achar o container da tabela
+    let table = host.closest('table') || host;
+    const rows = [];
+    for (const tr of table.querySelectorAll('tr')) {
+        const cells = [...tr.querySelectorAll('td, th')]
+            .map(c => c.textContent.trim()).filter(Boolean);
+        if (cells.length) rows.push(cells);
+    }
+    return {found: true, n: rows.length, rows: rows.slice(0, 12)};
+}
+"""
+
+
 async def _wait(pg, ms=8000):
     try:
         await pg.wait_for_load_state("networkidle", timeout=ms)
     except Exception:
         pass
     await asyncio.sleep(2)
+
+
+async def _click_id_frag(pg, frag: str):
+    """Clica no primeiro elemento cujo id contém `frag`."""
+    return await pg.evaluate(
+        """(frag) => {
+            const el = document.querySelector('[id*="' + frag + '"]');
+            if (el) { el.click(); return el.id || true; }
+            return null;
+        }""",
+        frag,
+    )
+
+
+async def _click_text(pg, texto: str):
+    """Clica no primeiro link/botão cujo texto bate exatamente. Retorna href/id."""
+    return await pg.evaluate(
+        """(t) => {
+            for (const el of document.querySelectorAll('a, button, input[type=submit], input[type=button]')) {
+                const s = (el.textContent || el.value || '').trim();
+                if (s.toUpperCase() === t.toUpperCase()) {
+                    const ret = el.getAttribute('href') || el.id || s;
+                    el.click();
+                    return ret;
+                }
+            }
+            return null;
+        }""",
+        texto,
+    )
+
+
+async def _dump_tabela(pg, frag: str, nome: str):
+    try:
+        res = await pg.evaluate(_JS_TABLE, frag)
+    except Exception as e:
+        print(f"  {R}(erro lendo tabela {frag}: {e}){RST}")
+        return
+    if not res or not res.get("found"):
+        print(f"\n  {Y}TABELA '{nome}' ({frag}): não encontrada na página{RST}")
+        return
+    print(f"\n  {BOLD}{Y}TABELA '{nome}' — {res['n']} linhas (primeiras 12):{RST}")
+    for row in res.get("rows", []):
+        print(f"    {DIM}| {' | '.join(str(c)[:22] for c in row[:9])}{RST}")
 
 
 async def _dismiss_dialogs(pg):
@@ -180,7 +243,8 @@ def _print_dump(nome: str, dump: dict):
     if clk:
         print(f"\n  {BOLD}{Y}CLICÁVEIS ({len(clk)}):{RST}")
         for c in clk:
-            print(f"    • [{c['tag']}] \"{c['text']}\"  cls='{c['cls']}'  id='{c['id']}'")
+            href = f"  href='{c['href']}'" if c.get("href") else ""
+            print(f"    • [{c['tag']}] \"{c['text']}\"  cls='{c['cls']}'  id='{c['id']}'{href}")
 
     bt = dump.get("bodyText", "").strip()
     if bt:
@@ -264,6 +328,22 @@ async def main():
         dump = await siafe_page.evaluate(_JS_DUMP)
         _print_dump("SIAFE2 — Execução Financeira / OB", dump)
         await _capturar(siafe_page, "siafe", dump)
+
+        # Lê a tabela de OBs que já está na tela
+        await _dump_tabela(siafe_page, "tblOBOrcamentaria", "OB Orçamentária")
+
+        # Abre o painel de filtro (disclosure "Mostrar este painel") e re-dump
+        print(f"\n  {DIM}Abrindo painel de filtro (sdtFilter)...{RST}")
+        clicked = await _click_id_frag(siafe_page, "sdtFilter")
+        if clicked:
+            await _wait(siafe_page, 6000)
+            await _dismiss_dialogs(siafe_page)
+            dump2 = await siafe_page.evaluate(_JS_DUMP)
+            print(f"\n  {BOLD}{B}>>> APÓS ABRIR O PAINEL DE FILTRO:{RST}")
+            _print_dump("SIAFE2 — Filtro de OB (painel aberto)", dump2)
+            await _capturar(siafe_page, "siafe_filtro", dump2)
+        else:
+            print(f"  {Y}(não achei o disclosure sdtFilter para abrir){RST}")
     except Exception as e:
         print(f"  {R}Erro ao ler SIAFE2: {type(e).__name__}: {e}{RST}")
 
@@ -280,6 +360,19 @@ async def main():
         dump = await ioerj_page.evaluate(_JS_DUMP)
         _print_dump("IOERJ — Busca DOERJ (id=61)", dump)
         await _capturar(ioerj_page, "ioerj", dump)
+
+        # Clica "BUSCA POR DATA" para revelar o formulário de busca por data
+        print(f"\n  {DIM}Clicando 'BUSCA POR DATA'...{RST}")
+        ret = await _click_text(ioerj_page, "BUSCA POR DATA")
+        if ret:
+            print(f"  {DIM}-> {ret}{RST}")
+            await _wait(ioerj_page, 8000)
+            dump2 = await ioerj_page.evaluate(_JS_DUMP)
+            print(f"\n  {BOLD}{B}>>> PÁGINA DE BUSCA POR DATA:{RST}")
+            _print_dump("IOERJ — Busca por Data", dump2)
+            await _capturar(ioerj_page, "ioerj_data", dump2)
+        else:
+            print(f"  {Y}(não achei o botão 'BUSCA POR DATA'){RST}")
     except Exception as e:
         print(f"  {R}Erro ao ler IOERJ: {type(e).__name__}: {e}{RST}")
     finally:
