@@ -116,16 +116,24 @@ async def rodar_ciclo_diario():
         console.print(f"    [red]Erro cruzar_doacoes_contratos: {e}[/red]")
         alertas_doacoes = []
 
-    # 4. Executa motor de regras
-    console.print("[cyan]4/5 Executando regras de compliance...[/cyan]")
+    # 4. Regras de compliance + análise Groq
+    console.print("[cyan]4/5 Executando regras de compliance + análise Groq...[/cyan]")
     competencia = hoje.strftime("%Y-%m")
+    alertas = []
     try:
         motor = MotorCompliance(session)
         alertas = motor.executar_todas_as_regras(competencia=competencia)
-        console.print(f"    {len(alertas)} alertas gerados.")
+        console.print(f"    {len(alertas)} alertas (regras fixas).")
     except Exception as e:
         console.print(f"    [red]Erro compliance: {e}[/red]")
-        alertas = []
+
+    try:
+        from compliance_agent.llm.groq_agent import rodar_analise_groq
+        groq_alertas = await rodar_analise_groq(session)
+        console.print(f"    {len(groq_alertas)} alertas Groq gerados.")
+        alertas = alertas + groq_alertas
+    except Exception as e:
+        console.print(f"    [yellow]Groq análise indisponível: {e}[/yellow]")
 
     # 5. Salva relatório diário JSON e gera PDF
     console.print("[cyan]5/5 Salvando relatório, PDF e notificações Telegram...[/cyan]")
