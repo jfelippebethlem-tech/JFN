@@ -82,13 +82,15 @@ echo.
 echo   Lendo as paginas reais (SIAFE2 + IOERJ) pelo Chrome aberto...
 curl -s "http://127.0.0.1:9222/json/version" >nul 2>&1
 if errorlevel 1 (
-    echo   ERRO: Chrome nao esta aberto. Abra com --remote-debugging-port=9222
+    echo   ERRO: Chrome nao esta aberto. Use iniciar.bat --chrome primeiro.
     pause
     exit /b 1
 )
 python diagnostico.py
 echo.
 echo   Enviando diagnosticos para o repositorio (Claude le de la)...
+git config user.email "jfn@compliance.local"
+git config user.name "JFN Compliance Bot"
 git add data/diagnostics
 git commit -m "diagnostico automatico %DATE% %TIME%"
 git pull --rebase origin claude/rj-finance-agent-BYlhJ

@@ -323,10 +323,17 @@ async def collect_ob_day(target_date: date | None = None, max_rows: int = 1000) 
 
     p = await async_playwright().start()
     browser = None
-    try:
-        browser = await p.chromium.connect_over_cdp(CDP_URL)
-    except Exception as e:
-        summary["errors"].append(f"CDP connect falhou: {e}")
+    last_err = None
+    for attempt in range(3):
+        try:
+            browser = await p.chromium.connect_over_cdp(CDP_URL, timeout=60000)
+            break
+        except Exception as e:
+            last_err = e
+            if attempt < 2:
+                await asyncio.sleep(5)
+    if browser is None:
+        summary["errors"].append(f"CDP connect falhou: {last_err}")
         await p.stop()
         return summary
 
@@ -721,88 +728,99 @@ async def run_daily_collection(
     p = await async_playwright().start()
     browser = None
     try:
-        browser = await p.chromium.connect_over_cdp(CDP_URL)
-
-        # Find SIAFE2 page
-        page = None
-        for ctx in browser.contexts:
-            for pg in ctx.pages:
-                u = pg.url.lower()
-                if "siafe2.fazenda" in u and "flexvision" not in u:
-                    page = pg
-                    break
-            if page:
+        # Tenta conectar ao Chrome com retry (3×, timeout 60s cada)
+        last_err = None
+        for attempt in range(3):
+            try:
+                browser = await p.chromium.connect_over_cdp(CDP_URL, timeout=60000)
                 break
-        if not page and browser.contexts and browser.contexts[0].pages:
-            page = browser.contexts[0].pages[0]
-
-        if not page:
-            result["errors"].append("Nenhuma aba encontrada no Chrome")
+            except Exception as e:
+                last_err = e
+                if attempt < 2:
+                    await asyncio.sleep(5)
+        if browser is None:
+            result["errors"].append(f"CDP connect falhou após 3 tentativas: {last_err}")
         else:
-            await _dismiss_dialogs(page)
+            # Localiza aba do SIAFE2
+            page = None
+            for ctx in browser.contexts:
+                for pg in ctx.pages:
+                    u = pg.url.lower()
+                    if "siafe2.fazenda" in u and "flexvision" not in u:
+                        page = pg
+                        break
+                if page:
+                    break
+            if not page and browser.contexts and browser.contexts[0].pages:
+                page = browser.contexts[0].pages[0]
 
-            if not await _navigate_to_ob(page):
-                result["errors"].append(f"Não chegou na tela de OB — URL: {page.url}")
+            if not page:
+                result["errors"].append("Nenhuma aba encontrada no Chrome")
             else:
-                # 1. Read the OB list
-                raw = await page.evaluate(_JS_READ_OB_TABLE)
-                if not raw.get("found"):
-                    result["errors"].append("Tabela tblOBOrcamentaria não encontrada")
+                await _dismiss_dialogs(page)
+
+                if not await _navigate_to_ob(page):
+                    result["errors"].append(f"Não chegou na tela de OB — URL: {page.url}")
                 else:
-                    header = raw.get("header", [])
-                    rows = raw.get("rows", [])[:1000]
-                    result["records_fetched"] = len(rows)
+                    # 1. Lê a tabela de OBs
+                    raw = await page.evaluate(_JS_READ_OB_TABLE)
+                    if not raw.get("found"):
+                        result["errors"].append("Tabela tblOBOrcamentaria não encontrada")
+                    else:
+                        header = raw.get("header", [])
+                        rows = raw.get("rows", [])[:1000]
+                        result["records_fetched"] = len(rows)
 
-                    # 2. Save list to DB (creates rows with basic fields)
-                    summary = {
-                        "date": target_date.isoformat(),
-                        "records": len(rows),
-                        "rows": rows,
-                        "header": header,
-                        "errors": [],
-                    }
-                    try:
-                        result["records_saved"] = save_ob_records(session, summary)
-                    except Exception as e:
-                        result["errors"].append(f"Erro ao salvar lista: {e}")
-
-                    # 3. Collect per-OB details (favorecido, valor, processo)
-                    if collect_details and rows:
-                        idx = _col_index(header)
-                        num_col = idx.get("número", idx.get("numero", 0))
-                        ob_numbers = [
-                            row[num_col] for row in rows
-                            if row and len(row) > num_col and row[num_col]
-                        ][:max_details]
-
+                        # 2. Salva lista no banco
+                        summary = {
+                            "date": target_date.isoformat(),
+                            "records": len(rows),
+                            "rows": rows,
+                            "header": header,
+                            "errors": [],
+                        }
                         try:
-                            details = await collect_ob_details(page, ob_numbers)
-                            n_det = 0
-                            for numero, det in details.items():
-                                if "error" in det:
-                                    continue
-                                ob = session.query(OrdemBancaria).filter_by(
-                                    numero_ob=numero, data_emissao=target_date
-                                ).first()
-                                if ob:
-                                    if det.get("favorecido_nome"):
-                                        ob.favorecido_nome = det["favorecido_nome"]
-                                    if det.get("favorecido_cpf"):
-                                        ob.favorecido_cpf = det["favorecido_cpf"]
-                                    if det.get("valor"):
-                                        ob.valor = det["valor"]
-                                    if det.get("numero_processo"):
-                                        ob.numero_processo = det["numero_processo"]
-                                        ob.numero_sei = det["numero_processo"]
-                                    ob.updated_at = datetime.utcnow()
-                                    n_det += 1
-                            session.commit()
-                            result["details_collected"] = n_det
+                            result["records_saved"] = save_ob_records(session, summary)
                         except Exception as e:
-                            result["errors"].append(f"Erro ao coletar detalhes: {e}")
+                            result["errors"].append(f"Erro ao salvar lista: {e}")
+
+                        # 3. Coleta detalhes de cada OB
+                        if collect_details and rows:
+                            idx = _col_index(header)
+                            num_col = idx.get("número", idx.get("numero", 0))
+                            ob_numbers = [
+                                row[num_col] for row in rows
+                                if row and len(row) > num_col and row[num_col]
+                            ][:max_details]
+
+                            try:
+                                details = await collect_ob_details(page, ob_numbers)
+                                n_det = 0
+                                for numero, det in details.items():
+                                    if "error" in det:
+                                        continue
+                                    ob = session.query(OrdemBancaria).filter_by(
+                                        numero_ob=numero, data_emissao=target_date
+                                    ).first()
+                                    if ob:
+                                        if det.get("favorecido_nome"):
+                                            ob.favorecido_nome = det["favorecido_nome"]
+                                        if det.get("favorecido_cpf"):
+                                            ob.favorecido_cpf = det["favorecido_cpf"]
+                                        if det.get("valor"):
+                                            ob.valor = det["valor"]
+                                        if det.get("numero_processo"):
+                                            ob.numero_processo = det["numero_processo"]
+                                            ob.numero_sei = det["numero_processo"]
+                                        ob.updated_at = datetime.utcnow()
+                                        n_det += 1
+                                session.commit()
+                                result["details_collected"] = n_det
+                            except Exception as e:
+                                result["errors"].append(f"Erro ao coletar detalhes: {e}")
 
     except Exception as e:
-        result["errors"].append(f"CDP connect falhou: {e}")
+        result["errors"].append(f"Erro inesperado: {e}")
     finally:
         try:
             await p.stop()

@@ -431,11 +431,20 @@ async def main():
     print(RST)
 
     p = await async_playwright().start()
-    try:
-        browser = await p.chromium.connect_over_cdp(CDP_URL)
-    except Exception as e:
+    browser = None
+    last_err = None
+    for attempt in range(3):
+        try:
+            browser = await p.chromium.connect_over_cdp(CDP_URL, timeout=60000)
+            break
+        except Exception as e:
+            last_err = e
+            if attempt < 2:
+                print(f"  {Y}Tentativa {attempt+1}/3 falhou, aguardando...{RST}")
+                await asyncio.sleep(5)
+    if browser is None:
         print(f"{R}  ERRO: não conectou ao Chrome em {CDP_URL}{RST}")
-        print(f"  {DIM}{e}{RST}")
+        print(f"  {DIM}{last_err}{RST}")
         print(f"\n  Abra o Chrome assim e tente de novo:")
         print(f"  {B}chrome.exe --remote-debugging-port=9222{RST}")
         await p.stop()
