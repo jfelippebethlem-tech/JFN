@@ -540,8 +540,10 @@ async def _ping_inicio():
     try:
         await enviar_mensagem(
             f"🟢 *JFN Agente online* ({datetime.now():%d/%m %H:%M})\n"
-            "Monitorando SIAFE2 a cada 15 min. Relatório às 08:00.\n"
-            "Fale comigo: mande /ajuda ou pergunte algo."
+            "• Monitoro o SIAFE2 a cada 15 min\n"
+            "• Investigo alvos suspeitos sozinho 24/7\n"
+            "• Relatório completo às 08:00\n"
+            "Fale comigo: /ajuda ou pergunte algo."
         )
     except Exception:
         pass
@@ -554,6 +556,7 @@ if __name__ == "__main__":
         from compliance_agent.notifications.telegram import loop_comandos
         from compliance_agent.database.models import init_db
         from compliance_agent.llm.memoria import garantir_contexto_inicial
+        from compliance_agent.llm.orquestrador import loop_investigador_autonomo
 
         async def _loop_completo():
             init_db()
@@ -566,6 +569,7 @@ if __name__ == "__main__":
                 _loop_resiliente("monitor", loop_monitoramento),
                 _loop_resiliente("relatorio", loop_relatorio),
                 _loop_resiliente("telegram", loop_comandos),
+                _loop_resiliente("investigador", loop_investigador_autonomo),
             )
 
         try:

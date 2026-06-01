@@ -73,6 +73,12 @@ controlada pelo celular. Última revisão: 01/06/2026.
 
 | Função | Onde | Status |
 |---|---|---|
+| **Cérebro orquestrador (IA grátis decide o que investigar)** | `llm/orquestrador.py` → `loop_investigador_autonomo` | ✅ |
+| Escolhe alvos suspeitos sozinho (24/7) | `orquestrador.py` → `escolher_proximo_alvo` | ✅ |
+| Investiga a fundo com 22 ferramentas + web | `orquestrador.py` → `investigar_alvo` | ✅ |
+| Aprende cada investigação na memória | `orquestrador.py` | ✅ |
+| Alerta no Telegram quando acha risco | `orquestrador.py` → `_alertar_investigacao` | ✅ |
+| Respeita rate limit do LLM grátis | `orquestrador.py` (pausa 10min entre alvos) | ✅ |
 | **Monitoramento contínuo (a cada 15 min, 7h-20h)** | `scheduler.py` → `loop_monitoramento` | ✅ |
 | **Relatório completo só às 08:00** | `scheduler.py` → `loop_relatorio` | ✅ |
 | Análise rápida de OB nova (alerta na hora) | `scheduler.py` → `_analisar_ob_rapida` | ✅ |
