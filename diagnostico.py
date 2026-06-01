@@ -43,6 +43,11 @@ SIAFE_FINANCEIRA = (
     "/execucaoFinanceiraMain.jsp"
 )
 IOERJ_BUSCA = "https://www.ioerj.com.br/portal/modules/content/index.php?id=61"
+SEI_BUSCA = (
+    "https://sei.rj.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php"
+    "?acao_externa=protocolo_pesquisar&acao_origem_externa=protocolo_pesquisar"
+    "&id_orgao_acesso_externo=6"
+)
 
 # Cores
 G = "\033[92m"; Y = "\033[93m"; R = "\033[91m"; B = "\033[96m"
@@ -404,7 +409,7 @@ async def main():
     ctx = browser.contexts[0]
 
     # ── 1. SIAFE2 ────────────────────────────────────────────────────────────
-    print(f"\n{BOLD}{Y}[1/2] Lendo o SIAFE2 (tela de Execução Financeira / OB)...{RST}")
+    print(f"\n{BOLD}{Y}[1/3] Lendo o SIAFE2 (tela de Execução Financeira / OB)...{RST}")
     siafe_page = None
     for pg in ctx.pages:
         if "siafe2.fazenda" in pg.url.lower() and "flexvision" not in pg.url.lower():
@@ -452,7 +457,7 @@ async def main():
         print(f"  {R}Erro ao ler SIAFE2: {type(e).__name__}: {e}{RST}")
 
     # ── 2. IOERJ (DOERJ) ─────────────────────────────────────────────────────
-    print(f"\n{BOLD}{Y}[2/2] Lendo o IOERJ no MESMO Chrome (sem 403)...{RST}")
+    print(f"\n{BOLD}{Y}[2/3] Lendo o IOERJ no MESMO Chrome (sem 403)...{RST}")
     ioerj_page = await ctx.new_page()
     try:
         try:
@@ -482,6 +487,41 @@ async def main():
     finally:
         try:
             await ioerj_page.close()
+        except Exception:
+            pass
+
+    # ── 3. SEI-RJ (pesquisa pública de processos) ────────────────────────────
+    print(f"\n{BOLD}{Y}[3/3] Lendo a pesquisa pública do SEI-RJ (sem 403 no Chrome)...{RST}")
+    sei_page = await ctx.new_page()
+    try:
+        try:
+            await sei_page.goto(SEI_BUSCA, wait_until="networkidle", timeout=30000)
+        except Exception as e:
+            print(f"  {R}goto SEI falhou: {e}{RST}")
+        await _wait(sei_page, 6000)
+
+        dump = await sei_page.evaluate(_JS_DUMP)
+        _print_dump("SEI-RJ — Pesquisa Pública de Processos", dump)
+        await _capturar(sei_page, "sei", dump)
+
+        # Detecta CAPTCHA (comum na pesquisa pública do SEI)
+        captcha = await sei_page.evaluate(
+            r"""() => {
+                const txt = (document.body ? document.body.innerText : '').toLowerCase();
+                const hasImg = !!document.querySelector('img[src*="captcha"], img[id*="Captcha"], img[id*="aptcha"]');
+                const hasRecaptcha = !!document.querySelector('.g-recaptcha, iframe[src*="recaptcha"]');
+                const mentions = txt.includes('captcha') || txt.includes('código da imagem')
+                    || txt.includes('digite o código');
+                return {hasImg, hasRecaptcha, mentions};
+            }"""
+        )
+        print(f"\n  {BOLD}{Y}CAPTCHA?{RST} imagem={captcha['hasImg']} "
+              f"recaptcha={captcha['hasRecaptcha']} menção={captcha['mentions']}")
+    except Exception as e:
+        print(f"  {R}Erro ao ler SEI: {type(e).__name__}: {e}{RST}")
+    finally:
+        try:
+            await sei_page.close()
         except Exception:
             pass
 
