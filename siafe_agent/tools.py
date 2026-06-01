@@ -7,33 +7,20 @@ TOOLS: list[dict] = [
         "function": {
             "name": "login_siafe",
             "description": (
-                "Faz login no sistema SIAFE2 do governo do estado do Rio de Janeiro. "
-                "O formulário tem 4 campos: Usuário (CPF), Senha, Cliente (organização) e Exercício (ano fiscal). "
-                "Cliente e Exercício são opcionais — se não informados, usa o valor padrão/primeiro da lista. "
-                "Se houver código OTP enviado por e-mail (2FA), o agente pausa e pede ao usuário. "
-                "Deve ser chamado antes de qualquer outra ferramenta do SIAFE."
+                "Faz login no SIAFE2 usando as credenciais já configuradas no sistema. "
+                "NÃO peça usuário ou senha — eles já estão configurados automaticamente. "
+                "Use apenas 'exercicio' se o usuário pedir um ano específico (ex: 2024, 2025). "
+                "Se houver código OTP enviado por e-mail (2FA), o agente pausa e pede ao usuário."
             ),
             "parameters": {
                 "type": "object",
                 "properties": {
-                    "username": {
-                        "type": "string",
-                        "description": "CPF ou login do usuário no SIAFE2 (ex: '14398839712')",
-                    },
-                    "password": {
-                        "type": "string",
-                        "description": "Senha do usuário",
-                    },
-                    "cliente": {
-                        "type": "string",
-                        "description": "Valor do campo 'Cliente' (organização). Opcional.",
-                    },
                     "exercicio": {
                         "type": "string",
-                        "description": "Ano fiscal para o campo 'Exercício'. Ex: '2025'. Opcional.",
+                        "description": "Ano fiscal. Ex: '2026', '2025'. Opcional — deixe em branco para usar o padrão.",
                     },
                 },
-                "required": ["username", "password"],
+                "required": [],
             },
         },
     },

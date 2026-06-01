@@ -321,8 +321,9 @@ class SIAFEAgent:
                 fn   = tc["function"]
                 name = fn["name"]
                 try:
-                    inputs = json.loads(fn.get("arguments", "{}"))
-                except json.JSONDecodeError:
+                    args = fn.get("arguments") or "{}"
+                    inputs = json.loads(args) if isinstance(args, str) else {}
+                except (json.JSONDecodeError, TypeError):
                     inputs = {}
 
                 console.print(f"[dim]→ Executando: {name}({json.dumps(inputs, ensure_ascii=False)})[/dim]")
@@ -376,21 +377,26 @@ class SIAFEAgent:
 
     async def _tool_login_siafe(
         self,
-        username: str,
-        password: str,
-        cliente: Optional[str] = None,
         exercicio: Optional[str] = None,
+        # Os campos abaixo são ignorados — credenciais vêm sempre do .env
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+        cliente: Optional[str] = None,
     ) -> dict:
-        self._siafe_username = username
-        self._siafe_password = password
+        # Sempre usa credenciais do .env, nunca do que o modelo enviou
+        user = self._siafe_username
+        pwd  = self._siafe_password
+
+        if not user or not pwd:
+            return {"success": False, "message": "Credenciais não configuradas. Preencha SIAFE_USER e SIAFE_PASS no arquivo .env"}
 
         async def otp_callback():
             return input("\n[SIAFE2] Código recebido por e-mail: ").strip()
 
         result = await self._siafe.login(
-            username, password,
-            cliente=cliente,
-            exercicio=exercicio,
+            user, pwd,
+            cliente=self._siafe_cliente,
+            exercicio=exercicio or self._siafe_exercicio,
             otp_callback=otp_callback,
         )
         if result.get("success") and exercicio:
