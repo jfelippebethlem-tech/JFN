@@ -9,15 +9,14 @@ async function main() {
     create: { chave: 'deputado_nome', valor: 'Deputado(a)' },
   })
 
-  await prisma.palavraChave.createMany({
-    data: [
-      { palavra: 'deputado' },
-      { palavra: 'gabinete' },
-      { palavra: 'vereador' },
-      { palavra: 'assembleia' },
-    ],
-    skipDuplicates: true,
-  })
+  const palavras = ['deputado', 'gabinete', 'vereador', 'assembleia']
+  for (const palavra of palavras) {
+    await prisma.palavraChave.upsert({
+      where: { palavra },
+      update: {},
+      create: { palavra },
+    })
+  }
 
   console.log('Seed concluído!')
 }
