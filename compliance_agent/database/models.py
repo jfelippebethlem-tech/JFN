@@ -221,17 +221,20 @@ class Alerta(Base):
     descricao       = Column(Text)
     evidencias      = Column(Text)   # JSON com lista de evidências
     status          = Column(String(20), default="novo")   # novo | investigando | descartado
-    pessoa_id       = Column(Integer, ForeignKey("pessoas.id"))
-    empresa_id      = Column(Integer, ForeignKey("empresas.id"))
-    contrato_id     = Column(Integer, ForeignKey("contratos.id"))
-    processo_sei_id = Column(Integer, ForeignKey("processos_sei.id"))
-    data_referencia = Column(Date)
-    created_at      = Column(DateTime, default=datetime.utcnow)
+    pessoa_id          = Column(Integer, ForeignKey("pessoas.id"))
+    empresa_id         = Column(Integer, ForeignKey("empresas.id"))
+    contrato_id        = Column(Integer, ForeignKey("contratos.id"))
+    processo_sei_id    = Column(Integer, ForeignKey("processos_sei.id"))
+    ordem_bancaria_id  = Column(Integer, ForeignKey("ordens_bancarias.id"))
+    data_referencia    = Column(Date)
+    created_at         = Column(DateTime, default=datetime.utcnow)
 
-    pessoa       = relationship("Pessoa",      back_populates="alertas")
-    empresa      = relationship("Empresa",     back_populates="alertas")
-    contrato     = relationship("Contrato",    back_populates="alertas")
-    processo_sei = relationship("ProcessoSEI", back_populates="alertas")
+    pessoa         = relationship("Pessoa",        back_populates="alertas")
+    empresa        = relationship("Empresa",        back_populates="alertas")
+    contrato       = relationship("Contrato",       back_populates="alertas")
+    processo_sei   = relationship("ProcessoSEI",    back_populates="alertas")
+    ordem_bancaria = relationship("OrdemBancaria",  back_populates="alertas",
+                                  foreign_keys=[ordem_bancaria_id])
 
     __table_args__ = (
         Index("ix_alertas_tipo_sev", "tipo", "severidade"),
@@ -276,6 +279,61 @@ class DecisaoTCE(Base):
     cnpjs_envolvidos = Column(Text)         # JSON list
     url_fonte        = Column(Text)
     created_at       = Column(DateTime, default=datetime.utcnow)
+
+
+# ── SIAFE2 — Ordens Bancárias ────────────────────────────────────────────────
+
+class OrdemBancaria(Base):
+    __tablename__ = "ordens_bancarias"
+
+    id                = Column(Integer, primary_key=True)
+    numero_ob         = Column(String(50), index=True)
+    data_emissao      = Column(Date, nullable=False, index=True)
+    data_pagamento    = Column(Date, index=True)
+    ug_codigo         = Column(String(10), index=True)
+    ug_nome           = Column(String(200))
+    favorecido_cpf    = Column(String(14), index=True)
+    favorecido_nome   = Column(String(300))
+    favorecido_banco  = Column(String(100))
+    valor             = Column(Float)
+    tipo_ob           = Column(String(50))      # orcamentaria | retencao | transferencia | etc.
+    status            = Column(String(50))       # emitida | paga | cancelada | anulada
+    numero_processo   = Column(String(50), index=True)  # SEI process number
+    numero_sei        = Column(String(50), index=True)
+    observacao        = Column(Text)
+    raw_json          = Column(Text)             # full data captured from SIAFE2
+    exercicio         = Column(Integer, index=True)
+    coletado_em       = Column(DateTime, default=datetime.utcnow, index=True)
+    created_at        = Column(DateTime, default=datetime.utcnow)
+    updated_at        = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    alertas = relationship("Alerta", foreign_keys="Alerta.ordem_bancaria_id",
+                           back_populates="ordem_bancaria")
+
+    __table_args__ = (
+        Index("ix_ob_ug_data", "ug_codigo", "data_emissao"),
+        Index("ix_ob_favorecido_data", "favorecido_cpf", "data_emissao"),
+    )
+
+
+# ── Sessões de auditoria (memória persistente entre runs) ─────────────────────
+
+class SessaoAuditoria(Base):
+    """Persists cross-session analysis state so nothing is lost between runs."""
+    __tablename__ = "sessoes_auditoria"
+
+    id            = Column(Integer, primary_key=True)
+    data_sessao   = Column(Date, nullable=False, index=True)
+    tipo          = Column(String(50), index=True)  # siafe_ob | doerj | doerj_extra | analise
+    status        = Column(String(20), default="ok")   # ok | erro | parcial
+    registros     = Column(Integer, default=0)
+    resumo        = Column(Text)    # short summary (JSON or plain)
+    detalhes      = Column(Text)    # full log / raw output
+    created_at    = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_sessao_data_tipo", "data_sessao", "tipo"),
+    )
 
 
 # ── DB helpers ─────────────────────────────────────────────────────────────────

@@ -147,12 +147,150 @@ async def dump_page(page, name: str):
     return shot_path
 
 
+_SIAFE_OB_URL = (
+    "https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/financeira"
+    "/ordemBancariaOrcamentariaEdit.jsp"
+)
+
+
+async def _dismiss_all_dialogs(page, max_iter: int = 6) -> list[str]:
+    """
+    Dismiss all visible SIAFE2 modal dialogs: admin messages, session conflicts,
+    and generic OK/Cancelar modals.  Returns list of what was dismissed.
+
+    Called immediately after login submit and after any navigation that might
+    trigger a popup.
+    """
+    dismissed = []
+    for _ in range(max_iter):
+        result = await page.evaluate("""
+            () => {
+                // 1. Admin message or session-conflict dialog with Sim/Não
+                const sim = document.getElementById('myBtnOk');
+                if (sim && sim.getBoundingClientRect().width > 0) {
+                    sim.click(); return 'sim_nao_dialog';
+                }
+                // 2. Generic visible OK button (class x7j or xg2), NOT the Não/Cancelar
+                const skip = new Set(['myBtnCancel']);
+                for (const sel of ['a.x7j', 'a.xg2']) {
+                    for (const el of document.querySelectorAll(sel)) {
+                        if (skip.has(el.id)) continue;
+                        const t = el.textContent.trim().toLowerCase();
+                        const r = el.getBoundingClientRect();
+                        if ((t === 'ok' || t === 'sim') && r.width > 0 && r.height > 0
+                                && !el.className.includes('p_AFDisabled')) {
+                            el.click();
+                            return 'ok_btn: ' + el.id + '/' + t;
+                        }
+                    }
+                }
+                return null;
+            }
+        """)
+        if result:
+            dismissed.append(result)
+            await asyncio.sleep(2)
+            try:
+                await page.wait_for_load_state("networkidle", timeout=5000)
+            except Exception:
+                pass
+        else:
+            break
+    return dismissed
+
+
+async def _navigate_to_ob_url(page, log_prefix: str = "") -> bool:
+    """
+    Navigate directly to the OB Orçamentária URL (ADF direct URL approach).
+    Works from any section as long as the user session is valid.
+    Returns True if landed on OB screen.
+    """
+    pfx = f"  {log_prefix}" if log_prefix else "  "
+    log(f"{pfx}Navegando direto para URL OB: {_SIAFE_OB_URL}")
+    try:
+        await page.goto(_SIAFE_OB_URL, wait_until="networkidle", timeout=20000)
+    except Exception as e:
+        log(f"{pfx}[timeout/error ao navegar: {e} — continuando]")
+    await asyncio.sleep(2)
+    url = page.url
+    log(f"{pfx}URL resultante: {url}")
+    return "ordemBancariaOrcamentaria" in url.lower()
+
+
+async def _navigate_ob_via_menu(page) -> bool:
+    """
+    Navigate to OB Orçamentária via the menu hierarchy.
+    Handles both contexts:
+      - Administração page: click a.xgh "Execução" → a.xgg "OB Orçamentária"
+      - Any other page:     click a.xgg "OB Orçamentária" directly (always in DOM)
+    Returns True if OB screen reached.
+    """
+    # From Administração or unknown context: click "Execução" at whichever level it is
+    r_exec = await page.evaluate("""
+        () => {
+            // Try every navigation class — the CSS class changes by section
+            for (const sel of ['a.xgh', 'a.xyo', 'a.xg8']) {
+                for (const el of document.querySelectorAll(sel)) {
+                    const t = el.textContent.trim();
+                    if (t === 'Execução' && !el.className.includes('Disabled')
+                            && el.getBoundingClientRect().width > 0) {
+                        el.click();
+                        return sel + ': ' + t;
+                    }
+                }
+            }
+            return null;
+        }
+    """)
+    if r_exec:
+        log(f"  Clicou Execução: {r_exec}")
+        await asyncio.sleep(3)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=10000)
+        except Exception:
+            pass
+
+    # Now click a.xgg "OB Orçamentária" (should be in DOM if we're in Execução)
+    r_ob = await page.evaluate("""
+        () => {
+            for (const el of document.querySelectorAll('a.xgg')) {
+                const t = el.textContent.trim();
+                if ((t === 'OB Orçamentária' || t.includes('OB Or'))
+                        && !el.className.includes('p_AFDisabled')) {
+                    el.click();
+                    return t;
+                }
+            }
+            return null;
+        }
+    """)
+    log(f"  Clicou OB Orçamentária: {r_ob}")
+    if r_ob:
+        await asyncio.sleep(3)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=12000)
+        except Exception:
+            pass
+        return "ordemBancariaOrcamentaria" in page.url.lower() or r_ob is not None
+
+    return False
+
+
 async def main():
+    """
+    Modo padrão (sem flags): abre browser novo, faz login, navega para
+    OB Orçamentária e executa o deep-dive completo.
+
+    Trata automaticamente:
+      - Diálogos de mensagem do administrador (OK para fechar)
+      - Conflito de sessão (Sim para continuar)
+      - Seleção automática do exercício correto
+    """
     from playwright.async_api import async_playwright
 
     log(f"SIAFE2 Diagnóstico — {datetime.now():%d/%m/%Y %H:%M}")
     log(f"Usuário: {USERNAME}")
-    log(f"Exercício configurado: {EXERCICIO or '(padrão)'}")
+    log(f"Exercício configurado: {EXERCICIO or str(datetime.now().year)}")
 
     if not USERNAME or not PASSWORD:
         log("\n❌ SIAFE_USER e SIAFE_PASS não encontrados no .env!")
@@ -161,248 +299,168 @@ async def main():
 
     async with async_playwright() as p:
         browser = await p.chromium.launch(
-            headless=False,  # browser VISÍVEL
-            slow_mo=300,     # mais devagar para acompanhar
+            headless=False,
+            slow_mo=200,
             args=["--no-sandbox", "--disable-setuid-sandbox", "--ignore-certificate-errors"],
         )
         ctx = await browser.new_context(
-            viewport={"width": 1366, "height": 768},
+            viewport={"width": 1440, "height": 900},
             locale="pt-BR",
             timezone_id="America/Sao_Paulo",
             ignore_https_errors=True,
         )
         page = await ctx.new_page()
 
-        # ── Etapa 1: Página de Login ───────────────────────────────────────────
+        # ── Etapa 1: Login page ────────────────────────────────────────────────
         sep("ETAPA 1: Página de Login")
         log(f"  Abrindo: {SIAFE_LOGIN}")
         try:
             await page.goto(SIAFE_LOGIN, wait_until="networkidle", timeout=30000)
         except Exception as e:
-            log(f"  Erro ao carregar: {e}")
-            log("  Tentando sem wait_until...")
+            log(f"  Erro: {e}")
             await page.goto(SIAFE_LOGIN, timeout=30000)
-
         await asyncio.sleep(2)
         await dump_page(page, "01_login_page")
 
-        # ── Etapa 2: Preencher login ───────────────────────────────────────────
+        # ── Etapa 2: Fill credentials ──────────────────────────────────────────
         sep("ETAPA 2: Preenchendo credenciais")
+        # Username
+        try:
+            u = await page.query_selector("#loginBox\\:itxUsuario\\:\\:content, input[type='text']:not([readonly])")
+            if u:
+                log(f"  → Usuário: {await u.get_attribute('id')!r}")
+                await u.click()
+                await u.fill(USERNAME)
+        except Exception as e:
+            log(f"  [erro usuário: {e}]")
 
-        # Dump todos os inputs primeiro
-        all_inputs = await page.query_selector_all("input")
-        log(f"  Encontrados {len(all_inputs)} inputs")
+        # Password
+        try:
+            pw = await page.query_selector("input[type='password']")
+            if pw:
+                log(f"  → Senha: {await pw.get_attribute('id')!r}")
+                await pw.fill(PASSWORD)
+        except Exception as e:
+            log(f"  [erro senha: {e}]")
 
-        filled_user = False
-        filled_pass = False
-
-        for inp in all_inputs:
-            try:
-                t = await inp.get_attribute("type") or "text"
-                n = await inp.get_attribute("name") or ""
-                i = await inp.get_attribute("id") or ""
-                if t == "password":
-                    log(f"  → Preenchendo senha em: id={i!r} name={n!r}")
-                    await inp.fill(PASSWORD)
-                    filled_pass = True
-                elif t in ("text", "number", "") and not filled_user:
-                    v = await inp.get_attribute("value") or ""
-                    if not v:  # campo vazio
-                        log(f"  → Preenchendo usuário em: id={i!r} name={n!r}")
-                        await inp.fill(USERNAME)
-                        filled_user = True
-            except Exception as ex:
-                log(f"  [erro: {ex}]")
-
-        # Selects (Cliente, Exercício)
-        all_selects = await page.query_selector_all("select")
-        log(f"\n  Encontrados {len(all_selects)} selects")
-        for sel in all_selects:
-            try:
-                i = await sel.get_attribute("id") or ""
-                n = await sel.get_attribute("name") or ""
-                opts = await sel.query_selector_all("option")
-                opt_texts = []
-                for o in opts[:10]:
-                    opt_texts.append(await o.inner_text())
-                log(f"  Select id={i!r} name={n!r} opções: {opt_texts}")
-
-                # Se parece exercício, seleciona o ano correto
-                if EXERCICIO and any(EXERCICIO in t for t in opt_texts):
-                    log(f"    → Selecionando exercício {EXERCICIO}")
-                    await sel.select_option(label=EXERCICIO)
-            except Exception as ex:
-                log(f"  [erro no select: {ex}]")
+        # Exercício select — always pick current year (or configured)
+        ano_alvo = EXERCICIO or str(datetime.now().year)
+        try:
+            sel_exercicio = await page.query_selector(
+                "#loginBox\\:cbxExercicio\\:\\:content, select[id*='Exercicio'], select[id*='exercicio']"
+            )
+            if sel_exercicio:
+                try:
+                    await sel_exercicio.select_option(label=ano_alvo)
+                    log(f"  → Exercício selecionado: {ano_alvo}")
+                except Exception:
+                    # Try value
+                    opts = await sel_exercicio.query_selector_all("option")
+                    for o in opts:
+                        v = await o.get_attribute("value") or ""
+                        t = await o.inner_text()
+                        if ano_alvo in (v, t.strip()):
+                            await sel_exercicio.select_option(value=v)
+                            log(f"  → Exercício (value): {v}")
+                            break
+        except Exception as e:
+            log(f"  [erro exercício: {e}]")
 
         await dump_page(page, "02_credentials_filled")
 
-        # ── Etapa 3: Submeter login ────────────────────────────────────────────
+        # ── Etapa 3: Submit ────────────────────────────────────────────────────
         sep("ETAPA 3: Submetendo login")
-        buttons = await page.query_selector_all("button, input[type='submit'], input[type='button']")
-        log(f"  Encontrados {len(buttons)} botões:")
-        for btn in buttons:
-            try:
-                txt = (await btn.inner_text()).strip() or await btn.get_attribute("value") or ""
-                i   = await btn.get_attribute("id") or ""
-                cls = await btn.get_attribute("class") or ""
-                log(f"  Botão: {txt!r:20} id={i!r:30} class={cls[:40]!r}")
-            except Exception:
-                pass
-
-        # Clicar no primeiro botão de submit ou "Ok"/"Entrar"
-        submitted = False
-        for btn in buttons:
-            try:
-                txt = (await btn.inner_text()).strip().lower()
-                val = (await btn.get_attribute("value") or "").lower()
-                if any(kw in txt or kw in val for kw in ["ok", "entrar", "acessar", "login", "submit", "confirmar"]):
-                    log(f"  → Clicando botão: {txt!r}")
-                    await btn.click()
-                    submitted = True
-                    break
-            except Exception:
-                pass
-
-        if not submitted:
-            log("  → Nenhum botão encontrado, tentando Enter...")
-            await page.keyboard.press("Enter")
+        # Target the specific login confirm button (not the Sim/Não popup buttons)
+        login_btn = await page.query_selector(
+            "#loginBox\\:btnConfirmar, "
+            "a.x7j[id*='Confirmar'], a.x7j[id*='btnOk'], "
+            "input[value='Ok'], button[type='submit']"
+        )
+        if login_btn:
+            log(f"  → Clicando botão login: {await login_btn.get_attribute('id')!r}")
+            await login_btn.click()
+        else:
+            # Fallback: click first visible 'Ok' link that's NOT the Sim/Não popup
+            clicked = await page.evaluate("""
+                () => {
+                    for (const el of document.querySelectorAll('a.x7j')) {
+                        const t = el.textContent.trim().toLowerCase();
+                        const r = el.getBoundingClientRect();
+                        if (t === 'ok' && r.width > 0 && el.id !== 'myBtnOk') {
+                            el.click(); return el.id;
+                        }
+                    }
+                    return null;
+                }
+            """)
+            log(f"  → Fallback: {clicked!r}")
 
         log("  Aguardando carregamento pós-login...")
-        await asyncio.sleep(3)
+        await asyncio.sleep(4)
         try:
-            await page.wait_for_load_state("networkidle", timeout=20000)
+            await page.wait_for_load_state("networkidle", timeout=25000)
         except Exception:
             pass
         await asyncio.sleep(2)
-
         await dump_page(page, "03_after_login")
 
-        # ── Etapa 4: Menu principal ────────────────────────────────────────────
-        sep("ETAPA 4: Mapeando menu principal")
+        # ── Etapa 4: Fechar diálogos pós-login ────────────────────────────────
+        sep("ETAPA 4: Fechando diálogos pós-login (admin messages, sessão, etc.)")
+        dismissed = await _dismiss_all_dialogs(page)
+        if dismissed:
+            log(f"  Diálogos fechados: {dismissed}")
+            await dump_page(page, "04_after_dialogs")
+        else:
+            log("  Nenhum diálogo ativo detectado")
+
         current_url = page.url
-        log(f"  URL após login: {current_url}")
-
+        log(f"  URL pós-login: {current_url}")
         if "login" in current_url.lower():
-            log("  ⚠️  Ainda na página de login — verificar credenciais ou OTP")
-            body = await page.inner_text("body")
-            log(f"  Texto: {body[:800]}")
-
-            # Verificar OTP
-            if any(kw in body.lower() for kw in ["código", "token", "e-mail", "autenticação"]):
-                log("\n  🔐 Parece que há pedido de código OTP/2FA!")
-                log("  Digite o código e pressione Enter para continuar...")
-                otp = input("  Código OTP: ").strip()
-                otp_inputs = await page.query_selector_all("input[type='text']:visible, input[type='number']:visible")
-                for oi in otp_inputs:
-                    await oi.fill(otp)
+            log("  ⚠️  Ainda na página de login — credenciais incorretas ou OTP necessário")
+            body_txt = await page.inner_text("body")
+            log(body_txt[:600])
+            # OTP check
+            if any(kw in body_txt.lower() for kw in ["código", "token", "e-mail", "autenticação", "verificação"]):
+                log("  🔐 OTP solicitado!")
+                otp = input("  Digite o código OTP: ").strip()
+                otp_inp = await page.query_selector("input[type='text']:visible")
+                if otp_inp:
+                    await otp_inp.fill(otp)
                 await page.keyboard.press("Enter")
-                await asyncio.sleep(3)
-                await page.wait_for_load_state("networkidle", timeout=15000)
-                await dump_page(page, "04_after_otp")
-        else:
-            log("  ✅ Login realizado!")
-
-        # ── Etapa 5: Localizar FlexVision no menu ──────────────────────────────
-        sep("ETAPA 5: Procurando FlexVision no menu")
-
-        # Listar todos os elementos clicáveis do topo
-        nav_elements = await page.query_selector_all(
-            "a, button, li, td.af_menuBar_item, [role='menuitem'], [role='menubar'] *"
-        )
-        log(f"  {len(nav_elements)} elementos de navegação encontrados:")
-        for el in nav_elements[:100]:
-            try:
-                txt = (await el.inner_text()).strip()
-                cls = await el.get_attribute("class") or ""
-                if txt and len(txt) < 80:
-                    log(f"  - {txt!r:40} class={cls[:40]!r}")
-            except Exception:
-                pass
-
-        # Tentar clicar em FlexVision
-        fv = None
-        for selector in [
-            'a:has-text("FlexVision")',
-            'span:has-text("FlexVision")',
-            'td:has-text("FlexVision")',
-            'li:has-text("FlexVision")',
-            '*:has-text("FlexVision"):visible',
-        ]:
-            try:
-                fv = await page.wait_for_selector(selector, timeout=3000)
-                if fv:
-                    log(f"  ✅ FlexVision encontrado com: {selector!r}")
-                    break
-            except Exception:
-                pass
-
-        if fv:
-            log("  → Clicando em FlexVision...")
-            await fv.click()
-            await asyncio.sleep(3)
-            try:
-                await page.wait_for_load_state("networkidle", timeout=15000)
-            except Exception:
-                pass
-            await dump_page(page, "05_flexvision")
-        else:
-            log("  ❌ FlexVision não encontrado no menu. Listando TODOS os links:")
-            all_links = await page.query_selector_all("a")
-            for lnk in all_links:
+                await asyncio.sleep(4)
                 try:
-                    txt  = (await lnk.inner_text()).strip()
-                    href = await lnk.get_attribute("href") or ""
-                    if txt:
-                        log(f"    link: {txt!r:50} href={href[:80]!r}")
+                    await page.wait_for_load_state("networkidle", timeout=15000)
                 except Exception:
                     pass
+                dismissed2 = await _dismiss_all_dialogs(page)
+                log(f"  Diálogos pós-OTP: {dismissed2}")
+                await dump_page(page, "04b_after_otp")
+        else:
+            log("  ✅ Login realizado com sucesso!")
 
-        # ── Etapa 6: Navegar para Execução por OB ─────────────────────────────
-        sep("ETAPA 6: Procurando 'Execução por OB' / 'Consultas'")
+        # ── Etapa 5: Navegar para OB Orçamentária ────────────────────────────
+        sep("ETAPA 5: Navegando para OB Orçamentária")
+        # Strategy 1: direct URL (fastest, works from any section)
+        on_ob = await _navigate_to_ob_url(page)
+        if not on_ob:
+            # Strategy 2: via menu hierarchy
+            log("  Fallback: via menu")
+            on_ob = await _navigate_ob_via_menu(page)
+        # Dismiss any dialog that appeared after navigation
+        await _dismiss_all_dialogs(page)
+        await dump_page(page, "05_ob_screen")
+        log(f"  Na tela OB: {on_ob}")
 
-        # Verificar frames
-        frames = page.frames
-        log(f"  {len(frames)} frames na página:")
-        for f in frames:
-            log(f"  Frame: {f.url}")
+        # ── Etapa 6: OB deep-dive (reutiliza main_ob logic) ───────────────────
+        sep("ETAPA 6: Deep-dive OB (delegando para lógica main_ob)")
+        log("  Continuando diagnóstico OB com browser aberto...")
+        # Run the same exploration loop used in --ob mode
+        await _ob_deep_dive(page)
 
-        # Buscar em todos os frames
-        for frame in frames:
-            try:
-                frame_text = await frame.inner_text("body")
-                if any(kw in frame_text for kw in ["Consultas", "Execução", "FlexVision"]):
-                    log(f"\n  🎯 Conteúdo relevante no frame: {frame.url}")
-                    log(f"  Texto: {frame_text[:1000]}")
-
-                    # Listar links deste frame
-                    frame_links = await frame.query_selector_all("a, button, li, td")
-                    log(f"\n  Links no frame ({len(frame_links)} elementos):")
-                    for el in frame_links[:60]:
-                        try:
-                            txt = (await el.inner_text()).strip()
-                            if txt and len(txt) < 80:
-                                log(f"    - {txt!r}")
-                        except Exception:
-                            pass
-            except Exception:
-                pass
-
-        # Dump final
-        sep("ETAPA 7: Screenshot final")
-        await dump_page(page, "07_final_state")
-
-        log("\n\n" + "="*60)
-        log("  DIAGNÓSTICO CONCLUÍDO")
-        log(f"  Screenshots em: {SCREENSHOTS}/")
-        log(f"  Relatório em:   {REPORT}")
-        log("="*60)
-
-        log("\n  Aguardando 15s para você visualizar... (feche o browser para encerrar)")
+        log("\n  Aguardando 15s para você visualizar...")
         await asyncio.sleep(15)
-
         await browser.close()
 
-    # Salvar relatório
     REPORT.write_text("\n".join(report_lines), encoding="utf-8")
     print(f"\n✅ Relatório salvo em: {REPORT}")
 
@@ -1882,6 +1940,428 @@ async def main_siafe2():
     await p.stop()
     REPORT.write_text("\n".join(report_lines), encoding="utf-8")
     print(f"\n✅ Relatório salvo em: {REPORT}")
+
+
+async def _ob_deep_dive(page) -> None:
+    """
+    Core OB Orçamentária exploration: snapshot → filters → search → results →
+    detail → all tabs.  Page must already be on the OB screen.
+    Called from both main() (fresh browser) and main_ob() (CDP).
+    """
+    pg = page
+
+    sep("OB: Estado inicial da tela")
+    await dump_page(pg, "ob_01_inicial")
+    body_ini = await pg.inner_text("body")
+    log(f"  Texto ({len(body_ini)} chars):\n{body_ini[:3000]}")
+
+    tabs_check = await pg.evaluate("""
+        () => {
+            const all = [...document.querySelectorAll('a.xyp')];
+            const vis = all.filter(el => el.getBoundingClientRect().width > 0);
+            return {
+                total: all.length,
+                visible: vis.length,
+                names: vis.map(el => el.textContent.trim()).filter(Boolean),
+            };
+        }
+    """)
+    log(f"  Abas a.xyp: {tabs_check}")
+    on_detail = tabs_check.get("visible", 0) > 0
+
+    sep("OB: Inputs/filtros (IDs para automação)")
+    ob_inputs = await pg.evaluate(_JS_ADF_INPUTS)
+    log(f"  {len(ob_inputs)} inputs/selects:")
+    for inp in ob_inputs:
+        log(f"    [{inp['tag']}] id={inp['id']!r:50} name={inp['name']!r:35} "
+            f"type={inp['type']!r:10} label={inp['label']!r:50}")
+
+    sep("OB: Links e botões visíveis")
+    lnk_btns = await pg.evaluate("""
+        () => [...document.querySelectorAll('a, button, input[type="button"], input[type="submit"]')]
+            .filter(el => { const r = el.getBoundingClientRect(); return r.width > 0 && r.height > 0; })
+            .map(el => ({tag: el.tagName, text: (el.textContent || el.value || '').trim().substring(0,70), cls: el.className || ''}))
+            .filter(el => el.text)
+    """)
+    for lb in lnk_btns:
+        log(f"  [{lb['tag']:6}] {lb['text']!r:50} cls={lb['cls'][:45]!r}")
+
+    sep("OB: Elementos visíveis (leaf nodes)")
+    vis_ini = await pg.evaluate(_JS_LEAF_ELEMENTS)
+    for e in vis_ini:
+        if e.get("visible"):
+            log(f"  ✓ <{e['tag'].lower():6}> {e['text']!r:65} cls={e['cls'][:45]!r}")
+
+    html_ini = await pg.content()
+    hip = SCREENSHOTS / "ob_01_ini_dom.html"
+    hip.write_text(html_ini, encoding="utf-8")
+    log(f"  HTML inicial: {hip.name} ({len(html_ini)} chars)")
+
+    if not on_detail:
+        sep("OB: Executando busca para obter registros")
+        hoje = datetime.now()
+        mes_ini = f"01/{hoje.month:02d}/{hoje.year}"
+        mes_fim = f"{hoje.day:02d}/{hoje.month:02d}/{hoje.year}"
+        log(f"  Período: {mes_ini} → {mes_fim}")
+
+        date_filled = await pg.evaluate(f"""
+            () => {{
+                const filled = [];
+                for (const inp of document.querySelectorAll('input[type="text"], input:not([type])')) {{
+                    if (inp.getBoundingClientRect().width <= 0) continue;
+                    let lbl = ''; let par = inp.parentElement;
+                    for (let i = 0; i < 6 && par; i++, par = par.parentElement) {{
+                        const l = par.querySelector('label, span.x18m, span.af_outputLabel');
+                        if (l && l !== inp) {{ lbl = l.textContent.trim().toLowerCase(); break; }}
+                    }}
+                    const ini = lbl.includes('iní') || lbl.includes(' de') || lbl.match(/^de$/);
+                    const fim = lbl.includes('fim') || lbl.includes('até') || lbl.includes('final');
+                    if (ini) {{
+                        inp.value = '{mes_ini}';
+                        inp.dispatchEvent(new Event('change', {{bubbles: true}}));
+                        inp.dispatchEvent(new Event('blur', {{bubbles: true}}));
+                        filled.push('ini:' + lbl);
+                    }} else if (fim) {{
+                        inp.value = '{mes_fim}';
+                        inp.dispatchEvent(new Event('change', {{bubbles: true}}));
+                        inp.dispatchEvent(new Event('blur', {{bubbles: true}}));
+                        filled.push('fim:' + lbl);
+                    }}
+                }}
+                return filled;
+            }}
+        """)
+        log(f"  Campos de data: {date_filled}")
+        await asyncio.sleep(0.8)
+
+        consultar = await pg.evaluate("""
+            () => {
+                const kws = ['consultar', 'pesquisar', 'buscar', 'filtrar', 'listar', 'executar'];
+                for (const el of document.querySelectorAll(
+                        'a, button, input[type="button"], input[type="submit"]')) {
+                    const t = (el.textContent || el.value || '').trim().toLowerCase();
+                    if (kws.some(k => t === k || t.startsWith(k))
+                        && el.getBoundingClientRect().width > 0
+                        && !el.className.includes('p_AFDisabled')) {
+                        el.click(); return t;
+                    }
+                }
+                return null;
+            }
+        """)
+        log(f"  Botão Consultar: {consultar!r}")
+        if consultar:
+            await _adf_wait(pg, 18000)
+            await dump_page(pg, "ob_02_resultados")
+
+        sep("OB: Grid de resultados — colunas e primeiras linhas")
+        ob_headers = await pg.evaluate(_JS_ADF_GRID_HEADERS)
+        if ob_headers:
+            log(f"  Colunas ({ob_headers['sel']}): {ob_headers['texts']}")
+        else:
+            log("  (colunas não detectadas — grid pode estar vazia)")
+
+        rows_data = await pg.evaluate(_JS_ADF_GRID_ROWS, 5)
+        if rows_data:
+            log(f"  Primeiras {len(rows_data['rows'])} linhas ({rows_data['sel']}):")
+            for r in rows_data["rows"]:
+                log(f"    {r}")
+        else:
+            log("  Sem linhas — verificando texto da página:")
+            page_text = await pg.inner_text("body")
+            log(f"  Texto ({len(page_text)} chars): {page_text[:1500]}")
+
+        sep("OB: Abrindo detalhe da primeira OB")
+        row_info = await pg.evaluate("""
+            () => {
+                const sels = [
+                    'tr.af_table_row',
+                    'tr[class*="Row"]:not([class*="Header"]):not([class*="header"])',
+                    'tbody tr'
+                ];
+                for (const sel of sels) {
+                    for (const row of document.querySelectorAll(sel)) {
+                        const r = row.getBoundingClientRect();
+                        if (r.height > 5 && row.textContent.trim().length > 2) {
+                            row.click();
+                            return {text: row.textContent.trim().substring(0, 150), sel};
+                        }
+                    }
+                }
+                return null;
+            }
+        """)
+        log(f"  Linha clicada: {row_info}")
+
+        if row_info:
+            await asyncio.sleep(1.5)
+            await pg.keyboard.press("Enter")
+            await _adf_wait(pg, 10000)
+            tabs_after = await pg.evaluate("""
+                () => [...document.querySelectorAll('a.xyp')]
+                    .filter(el => el.getBoundingClientRect().width > 0)
+                    .map(el => el.textContent.trim()).filter(Boolean)
+            """)
+            if tabs_after:
+                log(f"  ✅ Detalhe via Enter — abas: {tabs_after}")
+                on_detail = True
+
+            if not on_detail:
+                viz = await pg.evaluate("""
+                    () => {
+                        for (const el of document.querySelectorAll('a.xg8, a[class*="xg"]')) {
+                            if (el.textContent.trim().includes('Visualizar')
+                                && !el.className.includes('p_AFDisabled')) {
+                                el.click(); return el.textContent.trim();
+                            }
+                        }
+                        return null;
+                    }
+                """)
+                log(f"  Visualizar: {viz!r}")
+                if viz:
+                    await _adf_wait(pg, 10000)
+                    tabs2 = await pg.evaluate("""
+                        () => [...document.querySelectorAll('a.xyp')]
+                            .filter(el => el.getBoundingClientRect().width > 0)
+                            .map(el => el.textContent.trim()).filter(Boolean)
+                    """)
+                    if tabs2:
+                        log(f"  ✅ Detalhe via Visualizar — abas: {tabs2}")
+                        on_detail = True
+
+            if not on_detail:
+                dbl = await pg.evaluate("""
+                    () => {
+                        const sels = ['tr.af_table_row',
+                                      'tr[class*="Row"]:not([class*="Header"])', 'tbody tr'];
+                        for (const sel of sels) {
+                            const row = document.querySelector(sel);
+                            if (row && row.getBoundingClientRect().height > 0) {
+                                row.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
+                                return sel;
+                            }
+                        }
+                        return null;
+                    }
+                """)
+                log(f"  Dblclick: {dbl!r}")
+                await _adf_wait(pg, 10000)
+                tabs3 = await pg.evaluate("""
+                    () => [...document.querySelectorAll('a.xyp')]
+                        .filter(el => el.getBoundingClientRect().width > 0)
+                        .map(el => el.textContent.trim()).filter(Boolean)
+                """)
+                if tabs3:
+                    log(f"  ✅ Detalhe via dblclick — abas: {tabs3}")
+                    on_detail = True
+
+        if not on_detail:
+            log("  ⚠️  Não conseguiu abrir detalhe — dump do estado atual:")
+            vis_fail = await pg.evaluate(_JS_LEAF_ELEMENTS)
+            for e in vis_fail:
+                if e.get("visible"):
+                    log(f"    ✓ <{e['tag'].lower():6}> {e['text']!r:65} cls={e['cls']!r}")
+
+    if on_detail:
+        sep("OB: Tela de detalhe — aba Detalhamento")
+        await dump_page(pg, "ob_03_detalhe")
+        body_det = await pg.inner_text("body")
+        log(f"  Texto ({len(body_det)} chars):\n{body_det[:4000]}")
+
+        sep("OB: Inputs do detalhe")
+        det_inputs = await pg.evaluate(_JS_ADF_INPUTS)
+        log(f"  {len(det_inputs)} inputs/selects:")
+        for inp in det_inputs:
+            log(f"    [{inp['tag']}] id={inp['id']!r:50} name={inp['name']!r:35} "
+                f"label={inp['label']!r:50}")
+
+        sep("OB: Elementos visíveis no detalhe")
+        det_vis = await pg.evaluate(_JS_LEAF_ELEMENTS)
+        for e in det_vis:
+            if e.get("visible"):
+                log(f"  ✓ <{e['tag'].lower():6}> {e['text']!r:65} cls={e['cls'][:45]!r}")
+
+        det_html = await pg.content()
+        dhp = SCREENSHOTS / "ob_03_detalhe_dom.html"
+        dhp.write_text(det_html, encoding="utf-8")
+        log(f"  HTML detalhe: {dhp.name} ({len(det_html)} chars)")
+
+        sep("OB: Abas disponíveis (a.xyp)")
+        all_tabs = await pg.evaluate("""
+            () => [...document.querySelectorAll('a.xyp')].map(el => ({
+                text:     el.textContent.trim(),
+                cls:      el.className,
+                disabled: el.className.includes('p_AFDisabled'),
+                selected: el.className.includes('p_AFSelected'),
+                visible:  el.getBoundingClientRect().width > 0
+            })).filter(t => t.text)
+        """)
+        log(f"  {len(all_tabs)} abas:")
+        for t in all_tabs:
+            marks = []
+            if t["disabled"]: marks.append("DESABILITADA")
+            if t["selected"]: marks.append("SELECIONADA")
+            if not t["visible"]: marks.append("oculta")
+            log(f"    {'[D]' if t['disabled'] else '   '} {t['text']!r:35} {marks}")
+
+        sep("OB: Explorando cada aba")
+        for tab_info in all_tabs:
+            tab_name = tab_info["text"]
+            tab_safe = tab_name[:20].replace(" ", "_").replace("/", "_").lower()
+            is_dis   = tab_info["disabled"]
+            is_sel   = tab_info["selected"]
+
+            sep(f"  ABA: {tab_name!r}{'  [DESABILITADA]' if is_dis else ''}")
+            if is_dis:
+                log("  ⏭️  Aba desabilitada — pulando")
+                continue
+
+            if not is_sel:
+                tab_js = tab_name.replace("'", "\\'")
+                r_tab = await pg.evaluate(f"""
+                    () => {{
+                        for (const el of document.querySelectorAll('a.xyp')) {{
+                            const t = el.textContent.trim();
+                            if ((t === '{tab_js}' || t.includes('{tab_js[:10]}'))
+                                && !el.className.includes('p_AFDisabled')) {{
+                                el.click(); return t;
+                            }}
+                        }}
+                        return null;
+                    }}
+                """)
+                log(f"  Clicou aba: {r_tab!r}")
+                await _adf_wait(pg, 10000)
+            else:
+                log("  (aba já selecionada — capturando)")
+
+            await pg.screenshot(path=str(SCREENSHOTS / f"ob_aba_{tab_safe}.png"), full_page=True)
+            log(f"  📸 ob_aba_{tab_safe}.png")
+
+            tab_body = await pg.inner_text("body")
+            log(f"\n  Texto completo da aba ({len(tab_body)} chars):")
+            log(tab_body[:5000])
+
+            sep(f"  Elementos visíveis — {tab_name}")
+            tab_vis = await pg.evaluate(_JS_LEAF_ELEMENTS)
+            cnt_vis = 0
+            for e in tab_vis:
+                if e.get("visible"):
+                    log(f"    ✓ <{e['tag'].lower():6}> {e['text']!r:65} cls={e['cls'][:45]!r}")
+                    cnt_vis += 1
+            log(f"  Total visíveis: {cnt_vis}")
+
+            sep(f"  Inputs — {tab_name}")
+            tab_inp = await pg.evaluate(_JS_ADF_INPUTS)
+            log(f"  {len(tab_inp)} inputs:")
+            for inp in tab_inp:
+                log(f"    [{inp['tag']}] id={inp['id']!r:50} name={inp['name']!r:35} "
+                    f"label={inp['label']!r:50}")
+
+            tab_headers = await pg.evaluate(_JS_ADF_GRID_HEADERS)
+            if tab_headers:
+                log(f"  Colunas ({tab_headers['sel']}): {tab_headers['texts']}")
+                tab_rows = await pg.evaluate(_JS_ADF_GRID_ROWS, 10)
+                if tab_rows:
+                    log(f"  Primeiras {len(tab_rows['rows'])} linhas ({tab_rows['sel']}):")
+                    for r in tab_rows["rows"]:
+                        log(f"    {r}")
+            else:
+                log("  (sem grid nesta aba)")
+
+            tab_links = await pg.evaluate("""
+                () => [...document.querySelectorAll('a[href], a[onclick], button')]
+                    .filter(el => el.getBoundingClientRect().width > 0)
+                    .map(el => ({
+                        text: (el.textContent || '').trim().substring(0, 80),
+                        cls: el.className || '',
+                        href: el.href || el.getAttribute('onclick') || '',
+                    }))
+                    .filter(el => el.text)
+            """)
+            if tab_links:
+                log("  Links/botões na aba:")
+                for lnk in tab_links:
+                    log(f"    {lnk['text']!r:60} cls={lnk['cls'][:40]!r}")
+
+            if "processo" in tab_name.lower():
+                sep("  ⭐ SEI/Processo — extração especial")
+                sei_label = await pg.evaluate(_JS_FIND_SEI)
+                if sei_label.get("processo"):
+                    log(f"  ⭐ Processo por label: {sei_label['processo']}")
+                if sei_label.get("links"):
+                    log(f"  ⭐ Links SEI: {sei_label['links']}")
+
+                sei_patterns = await pg.evaluate("""
+                    () => {
+                        const text = document.body.innerText;
+                        const found = new Set();
+                        const regexes = [
+                            /\\d{7,}-\\d\\.\\d{4}\\.\\d{7}\\/\\d{4}-\\d{2}/g,
+                            /E-\\d{2}\\/\\d+\\/\\d{4}/g,
+                            /SEI[\\s#:\\-]*[\\d.\\-\\/]{6,}/gi,
+                            /\\d{5,}\\.\\d{6,}\\/\\d{4}-\\d{2}/g,
+                            /\\b[Pp]rocesso[:\\s]+([\\d.\\-\\/]{8,})/g,
+                            /\\b\\d{4,}\\.\\d{4,}\\.\\d{4,}/g,
+                        ];
+                        for (const re of regexes) {
+                            let m;
+                            while ((m = re.exec(text)) !== null) {
+                                found.add(m[0].trim());
+                                if (found.size > 10) break;
+                            }
+                        }
+                        return [...found];
+                    }
+                """)
+                if sei_patterns:
+                    log(f"  ⭐ Padrões SEI no texto: {sei_patterns}")
+
+                all_href = await pg.evaluate("""
+                    () => [...document.querySelectorAll('a[href]')]
+                        .map(a => ({
+                            text: a.textContent.trim().substring(0, 80),
+                            href: a.href,
+                            vis:  a.getBoundingClientRect().width > 0,
+                        }))
+                        .filter(a => a.text || a.href.length > 5)
+                """)
+                log("  Todos os links (incluindo ocultos):")
+                for lnk in all_href:
+                    vis_m = "✓" if lnk["vis"] else "·"
+                    log(f"    {vis_m} {lnk['text']!r:65} href={lnk['href']!r}")
+
+                proc_body = await pg.inner_text("body")
+                log(f"\n  Texto completo da aba Processo ({len(proc_body)} chars):")
+                log(proc_body[:8000])
+
+            tab_html = await pg.content()
+            thp = SCREENSHOTS / f"ob_aba_{tab_safe}_dom.html"
+            thp.write_text(tab_html, encoding="utf-8")
+            log(f"  HTML aba: {thp.name} ({len(tab_html)} chars)")
+
+    else:
+        sep("⚠️  Detalhe de OB não foi aberto")
+        log("  Possíveis razões:")
+        log("  1. Nenhum resultado retornou da busca (filtros muito restritivos)")
+        log("  2. Os métodos Enter/Visualizar/dblclick não abriram o detalhe")
+        log("  3. A tela de OB ainda não foi alcançada")
+        log("\n  Estado atual do DOM:")
+        vis_err = await pg.evaluate(_JS_LEAF_ELEMENTS)
+        for e in vis_err:
+            if e.get("visible"):
+                log(f"    ✓ <{e['tag'].lower():6}> {e['text']!r:65} cls={e['cls']!r}")
+
+    try:
+        html_fin = await pg.content()
+        fp = SCREENSHOTS / "ob_final_dom.html"
+        fp.write_text(html_fin, encoding="utf-8")
+        log(f"\n  HTML estado final: {fp.name} ({len(html_fin)} chars)")
+    except Exception:
+        pass
+
+    sep("OB: DEEP-DIVE CONCLUÍDO")
 
 
 async def main_ob():
