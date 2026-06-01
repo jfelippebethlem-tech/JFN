@@ -72,6 +72,13 @@ if errorlevel 1 (
     exit /b 1
 )
 python diagnostico.py
+echo.
+echo   Enviando diagnosticos para o repositorio (Claude le de la)...
+git add data/diagnostics
+git commit -m "diagnostico automatico %DATE% %TIME%"
+git pull --rebase origin claude/rj-finance-agent-BYlhJ
+git push origin claude/rj-finance-agent-BYlhJ
+echo   Diagnosticos enviados.
 goto fim
 
 :agora

@@ -22,3 +22,6 @@ playwright/.cache/
 data/*.db
 data/*.db-wal
 data/*.db-shm
+
+# Diagnósticos: enviar só .json e .html (estrutura), ignorar screenshots pesados
+data/diagnostics/*.png
