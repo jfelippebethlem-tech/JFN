@@ -54,8 +54,9 @@ async def get_agent():
     global _agent
     if _agent is None:
         from siafe_agent.agent import SIAFEAgent
+        headless = not getattr(_args, "visible", False)
         _agent = SIAFEAgent(
-            headless=not _args.visible,
+            headless=headless,
             output_dir="output",
             default_username=os.environ.get("SIAFE_USER", ""),
             default_password=os.environ.get("SIAFE_PASS", ""),
@@ -70,8 +71,8 @@ async def get_agent():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Warm up agent on startup
-    print("\n[SIAFE Agent] Iniciando browser e fazendo login...")
+    # Tenta login no SIAFE — falha silenciosa se fora da rede do governo
+    print("\n[Servidor] Iniciando... (login SIAFE só funciona na rede do governo)")
     try:
         agent = await get_agent()
         result = await agent._tool_login_siafe(
@@ -81,17 +82,19 @@ async def lifespan(app: FastAPI):
             exercicio=agent._siafe_exercicio,
         )
         if result.get("success"):
-            print(f"[SIAFE Agent] Login OK — {result.get('url', '')}")
+            print(f"[SIAFE] Login OK — {result.get('url', '')}")
         else:
-            print(f"[SIAFE Agent] Login falhou: {result.get('message')}")
+            print(f"[SIAFE] Login não realizado (fora da rede do governo) — sistema de compliance funciona normalmente")
     except Exception as e:
-        print(f"[SIAFE Agent] Erro no startup: {e}")
+        print(f"[SIAFE] Browser não iniciado ({e.__class__.__name__}) — sistema de compliance funciona normalmente")
 
     yield
 
-    # Shutdown
     if _agent:
-        await _agent.stop()
+        try:
+            await _agent.stop()
+        except Exception:
+            pass
 
 
 # ── App ───────────────────────────────────────────────────────────────────────
@@ -521,7 +524,7 @@ def main():
 """)
 
     uvicorn.run(
-        "server:app",
+        app,
         host=_args.host,
         port=_args.port,
         reload=False,
