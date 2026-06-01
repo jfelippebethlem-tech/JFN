@@ -61,11 +61,18 @@ def _reset_obs_se_novo_dia():
         _ultima_data_obs = hoje
 
 
-# ─── Análise rápida de OBs novas ─────────────────────────────────────────────
+# ─── Análise completa de cada OB nova ────────────────────────────────────────
 
 async def _analisar_ob_rapida(ob, session) -> list[dict]:
     """
-    Análise imediata de uma OB nova: CEIS, CNPJ, fracionamento, valor.
+    Análise automática e completa de uma OB nova:
+      1. CEIS/CNEP — empresa sancionada?
+      2. CNPJ — situação cadastral irregular?
+      3. PNCP — contrato publicado?
+      4. Fracionamento — múltiplas OBs mesmo favorecido no dia?
+      5. OB sem processo SEI e valor alto
+      6. Valor redondo suspeito
+      7. Fundamentação jurídica automática em todos os alertas
     Retorna lista de alertas (pode estar vazia).
     """
     from compliance_agent.database.models import OrdemBancaria, Alerta
@@ -73,12 +80,12 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
 
     alertas = []
     hoje = ob.data_emissao or date.today()
+    cpf_cnpj = re.sub(r"\D", "", str(ob.favorecido_cpf or ""))
 
     # 1. CEIS/CNEP — usa cache local, não faz download
-    if ob.favorecido_cpf:
+    if cpf_cnpj:
         try:
             from compliance_agent.collectors.ceis import verificar_sancao
-            cpf_cnpj = re.sub(r"\D", "", str(ob.favorecido_cpf))
             resultado = await verificar_sancao(cpf_cnpj, forcar_update=False)
             if resultado.get("sancionado"):
                 titulo = f"[URGENTE] OB {ob.numero_ob} para empresa SANCIONADA: {ob.favorecido_nome}"
@@ -86,12 +93,54 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                     "tipo": "empresa_sancionada",
                     "severidade": "alta",
                     "titulo": titulo[:300],
-                    "descricao": f"R$ {ob.valor:,.2f} para {ob.favorecido_nome} — consta no CEIS/CNEP.",
+                    "descricao": (
+                        f"R$ {ob.valor:,.2f} para {ob.favorecido_nome} — consta no CEIS/CNEP. "
+                        f"Lei 14.133/2021 art. 14, I veda contratação de empresa punida."
+                    ),
                 })
         except Exception:
             pass
 
-    # 2. Fracionamento rápido — múltiplas OBs para o mesmo favorecido no mesmo dia
+    # 2. CNPJ — situação cadastral
+    if len(cpf_cnpj) == 14:
+        try:
+            from compliance_agent.collectors.web_research import consultar_cnpj
+            dados_cnpj = await consultar_cnpj(cpf_cnpj)
+            situacao = (dados_cnpj.get("situacao_cadastral") or "").upper()
+            if situacao and situacao not in ("ATIVA", ""):
+                alertas.append({
+                    "tipo": "empresa_irregular",
+                    "severidade": "alta",
+                    "titulo": f"OB {ob.numero_ob} — CNPJ {situacao}: {ob.favorecido_nome}",
+                    "descricao": (
+                        f"CNPJ {cpf_cnpj} com situação '{situacao}'. "
+                        f"Lei 14.133/2021 art. 68 exige regularidade cadastral. "
+                        f"Valor: R$ {ob.valor:,.2f}."
+                    ),
+                })
+            # Empresa muito nova (< 6 meses)?
+            data_abertura = dados_cnpj.get("data_inicio_atividade", "")
+            if data_abertura:
+                try:
+                    from datetime import date as _date
+                    dt_ab = _date.fromisoformat(data_abertura[:10])
+                    if (hoje - dt_ab).days < 180:
+                        alertas.append({
+                            "tipo": "direcionamento",
+                            "severidade": "media",
+                            "titulo": f"OB {ob.numero_ob} — empresa com {(hoje-dt_ab).days} dias: {ob.favorecido_nome}",
+                            "descricao": (
+                                f"Empresa aberta há apenas {(hoje-dt_ab).days} dias "
+                                f"recebeu R$ {ob.valor:,.2f}. "
+                                f"TCU Acórdão 6.100/2022 elenca empresa nova como indício de fachada."
+                            ),
+                        })
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+    # 3. Fracionamento — múltiplas OBs para o mesmo favorecido no mesmo dia
     if ob.favorecido_nome:
         try:
             outras = session.query(OrdemBancaria).filter(
@@ -105,34 +154,87 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                 OrdemBancaria.data_emissao == hoje,
                 OrdemBancaria.favorecido_nome == ob.favorecido_nome,
             ).scalar() or 0
-            if outras >= 2 and total and total > 90_000:
+            # Limite Lei 14.133/2021 art. 75: R$ 57.208 compras / R$ 114.416 obras
+            if outras >= 2 and total and total > 57_208:
                 alertas.append({
                     "tipo": "fracionamento",
                     "severidade": "alta",
-                    "titulo": f"Possível fracionamento — {ob.favorecido_nome} ({outras+1} OBs = R$ {total:,.2f})",
-                    "descricao": f"{ob.favorecido_nome} recebeu {outras+1} OBs hoje somando R$ {total:,.2f}.",
+                    "titulo": f"Fracionamento — {ob.favorecido_nome} ({outras+1} OBs = R$ {total:,.2f})",
+                    "descricao": (
+                        f"{ob.favorecido_nome} recebeu {outras+1} OBs hoje "
+                        f"somando R$ {total:,.2f}, acima do limite de dispensa (R$ 57.208). "
+                        f"Lei 14.133/2021 art. 75; TCU Acórdão 1.793/2011-Plenário."
+                    ),
                 })
         except Exception:
             pass
 
-    # 3. OB sem processo SEI e valor alto
+    # 4. OB sem processo SEI e valor alto
     if not ob.numero_processo and ob.valor and ob.valor > 50_000:
         alertas.append({
             "tipo": "sem_processo",
             "severidade": "media",
             "titulo": f"OB {ob.numero_ob} — R$ {ob.valor:,.2f} sem processo SEI",
-            "descricao": f"OB de R$ {ob.valor:,.2f} para {ob.favorecido_nome or 'sem nome'} sem processo associado.",
+            "descricao": (
+                f"OB de R$ {ob.valor:,.2f} para {ob.favorecido_nome or 'sem nome'} "
+                f"sem processo SEI associado. Lei 4.320/64 art. 58-64 exige empenho "
+                f"e liquidação com documentação. TCE-RJ Acórdão 7.801/2023."
+            ),
         })
 
-    # Salva alertas novos no banco
+    # 5. PNCP — contrato publicado?
+    if ob.numero_processo and len(cpf_cnpj) == 14 and ob.valor and ob.valor > 100_000:
+        try:
+            from compliance_agent.collectors.pncp import verificar_contrato_pncp
+            publicado = await verificar_contrato_pncp(cpf_cnpj, ob.numero_processo)
+            if publicado is False:
+                alertas.append({
+                    "tipo": "sem_publicacao_pncp",
+                    "severidade": "media",
+                    "titulo": f"OB {ob.numero_ob} — contrato não publicado no PNCP",
+                    "descricao": (
+                        f"OB de R$ {ob.valor:,.2f} para {ob.favorecido_nome}: "
+                        f"contrato não encontrado no PNCP. "
+                        f"Lei 14.133/2021 art. 94 §1º; TCU Acórdão 5.782/2023."
+                    ),
+                })
+        except Exception:
+            pass
+
+    # 6. Valor redondo suspeito (> R$50k e múltiplo exato de R$10k)
+    if ob.valor and ob.valor >= 50_000 and ob.valor % 10_000 == 0:
+        alertas.append({
+            "tipo": "valor_suspeito",
+            "severidade": "baixa",
+            "titulo": f"OB {ob.numero_ob} — valor redondo suspeito: R$ {ob.valor:,.2f}",
+            "descricao": (
+                f"OB com valor exato R$ {ob.valor:,.2f} (múltiplo de R$10k) para "
+                f"{ob.favorecido_nome or 'sem nome'}. Valores redondos elevados são "
+                f"incomuns na prática e merecem atenção."
+            ),
+        })
+
+    # Salva alertas novos no banco (com fundamentação jurídica automática)
     for a in alertas:
         existe = session.query(Alerta).filter_by(titulo=a["titulo"]).first()
         if not existe:
+            desc = a["descricao"]
+            try:
+                from compliance_agent.knowledge.base_legal import fundamentacao_texto
+                from compliance_agent.knowledge.jurisprudencia import fundamentacao_jurisprudencial
+                fund = fundamentacao_texto(a["tipo"], a["titulo"])
+                jurisp = fundamentacao_jurisprudencial(a["tipo"], a["titulo"])
+                if fund:
+                    desc += "\n" + fund
+                if jurisp:
+                    desc += "\n" + jurisp
+            except Exception:
+                pass
             session.add(Alerta(
                 tipo=a["tipo"],
                 severidade=a["severidade"],
                 titulo=a["titulo"],
-                descricao=a["descricao"],
+                descricao=desc,
                 data_referencia=hoje,
                 ordem_bancaria_id=ob.id,
             ))
@@ -159,17 +261,57 @@ async def _ciclo_rapido(session, hoje: date) -> int:
     console.print(f"  [cyan]{len(novas)} OB(s) nova(s) detectada(s)[/cyan]")
 
     alertas_urgentes = []
+
+    # Análise individual de cada OB nova (regras + CEIS + CNPJ + PNCP)
     for ob in novas:
         _obs_processadas.add(ob.numero_ob)
         alertas = await _analisar_ob_rapida(ob, session)
         alertas_urgentes.extend(alertas)
 
-    # Envia alertas de alta severidade imediatamente
+    # Análise de IA em lote quando há 5+ OBs novas (evita chamadas excessivas)
+    if len(novas) >= 5:
+        try:
+            from compliance_agent.llm.groq_agent import analisar_obs_com_groq
+            from compliance_agent.database.models import Alerta
+            obs_dict = [
+                {
+                    "numero_ob": o.numero_ob,
+                    "data_emissao": str(o.data_emissao),
+                    "favorecido_nome": o.favorecido_nome,
+                    "favorecido_cpf": o.favorecido_cpf,
+                    "valor": o.valor,
+                    "numero_processo": o.numero_processo,
+                    "ug_codigo": o.ug_codigo,
+                }
+                for o in novas[:40]
+            ]
+            resultado_ia = await analisar_obs_com_groq(obs_dict)
+            for alerta in resultado_ia.get("alertas", []):
+                if alerta.get("severidade") == "alta":
+                    existe = session.query(Alerta).filter_by(titulo=alerta["titulo"][:300]).first()
+                    if not existe:
+                        from compliance_agent.database.models import Alerta as AlertaModel
+                        import json
+                        session.add(AlertaModel(
+                            tipo=alerta.get("tipo", "groq_ob"),
+                            severidade="alta",
+                            titulo=alerta["titulo"][:300],
+                            descricao=alerta.get("descricao", ""),
+                            evidencias=json.dumps(alerta.get("evidencias", []), ensure_ascii=False),
+                            data_referencia=hoje,
+                        ))
+                        alertas_urgentes.append(alerta)
+            session.commit()
+        except Exception as e:
+            console.print(f"  [yellow]IA lote: {e}[/yellow]")
+
+    # Envia alertas de alta severidade imediatamente via Telegram
     altas = [a for a in alertas_urgentes if a["severidade"] == "alta"]
     if altas:
-        linhas = [f"🚨 *{len(altas)} ALERTA(S) URGENTE(S) — {datetime.now():%H:%M}*\n"]
+        linhas = [f"🚨 *{len(altas)} ALERTA(S) — {datetime.now():%H:%M}*\n"]
         for a in altas[:5]:
-            linhas.append(f"🔴 *{a['titulo'][:100]}*\n  {a['descricao'][:200]}\n")
+            desc = (a.get("descricao") or "")[:200]
+            linhas.append(f"🔴 *{a['titulo'][:100]}*\n  {desc}\n")
         await enviar_mensagem("\n".join(linhas))
 
     return len(novas)
@@ -195,7 +337,7 @@ async def _enriquecer_obs_novas(session, hoje: date):
 async def loop_monitoramento():
     """
     Loop CONTÍNUO — roda a cada 15 minutos durante o horário comercial.
-    Detecta OBs novas, analisa e alerta imediatamente. Não gera relatório.
+    Detecta OBs novas (SIAFE2) e publicações DOERJ novas, analisa e alerta.
     """
     from compliance_agent.database.models import get_session, init_db
     from compliance_agent.collectors.siafe_ob import run_daily_collection
@@ -203,15 +345,21 @@ async def loop_monitoramento():
     console.print("[green]Monitor iniciado — verificação a cada 15 min (7h-20h).[/green]")
     init_db()
 
+    _doerj_coletado_hoje: set[str] = set()
+
     while True:
         agora = datetime.now()
         hoje = date.today()
         _reset_obs_se_novo_dia()
+        chave_dia = hoje.isoformat()
+        if chave_dia not in _doerj_coletado_hoje:
+            _doerj_coletado_hoje.clear()
 
         if 7 <= agora.hour < 20:
             console.print(f"\n[dim]── Monitor {agora:%H:%M} ──[/dim]")
             chrome_ok = await _chrome_disponivel()
 
+            # ── SIAFE2 ────────────────────────────────────────────────────────
             if chrome_ok:
                 try:
                     result = await run_daily_collection(hoje, collect_details=True)
@@ -221,9 +369,8 @@ async def loop_monitoramento():
                         try:
                             novas = await _ciclo_rapido(session, hoje)
                             if novas:
-                                # Enriquece as novas em background (não bloqueia o loop)
                                 asyncio.create_task(_enriquecer_obs_novas(session, hoje))
-                            console.print(f"  OBs total: {n} | Novas: {novas}")
+                            console.print(f"  OBs: {n} no banco | Novas: {novas}")
                         finally:
                             session.close()
                     else:
@@ -233,7 +380,37 @@ async def loop_monitoramento():
                 except Exception as e:
                     console.print(f"  [yellow]Erro SIAFE2: {e}[/yellow]")
             else:
-                console.print("  [dim]Chrome não disponível — coleta SIAFE2 pulada[/dim]")
+                console.print("  [dim]Chrome indisponível — SIAFE2 pulado[/dim]")
+
+            # ── DOERJ — coleta periódica (a cada hora) ────────────────────────
+            chave_hora = f"{chave_dia}-{agora.hour}"
+            if chave_hora not in _doerj_coletado_hoje:
+                try:
+                    from compliance_agent.collectors.doerj import DOERJCollector
+                    from compliance_agent.database.models import get_session
+                    session = get_session()
+                    try:
+                        pubs = await DOERJCollector(session).coletar_hoje()
+                        if pubs:
+                            console.print(f"  DOERJ: {len(pubs)} publicações")
+                            # Analisa com Groq se tiver publicações novas não analisadas
+                            from compliance_agent.llm.groq_agent import analisar_doerj_com_groq
+                            pubs_dict = [
+                                {"tipo_ato": getattr(p, "tipo_ato", ""),
+                                 "orgao": getattr(p, "orgao", ""),
+                                 "titulo": getattr(p, "titulo", ""),
+                                 "texto": getattr(p, "texto", "")}
+                                for p in pubs
+                            ] if not isinstance(pubs[0], dict) else pubs
+                            result_doerj = await analisar_doerj_com_groq(pubs_dict)
+                            n_alts_doerj = len(result_doerj.get("alertas", []))
+                            if n_alts_doerj:
+                                console.print(f"  [yellow]DOERJ: {n_alts_doerj} alerta(s)[/yellow]")
+                    finally:
+                        session.close()
+                    _doerj_coletado_hoje.add(chave_hora)
+                except Exception as e:
+                    console.print(f"  [yellow]DOERJ monitor: {e}[/yellow]")
 
         await asyncio.sleep(INTERVALO_MONITORAMENTO)
 
@@ -512,6 +689,76 @@ async def rodar_ciclo_diario():
 
 # ─── Resiliência: cada loop se auto-recupera ──────────────────────────────────
 
+async def loop_atualizacao_juridica():
+    """
+    Loop semanal — toda segunda-feira às 03:00 busca novos acórdãos no TCU e
+    TCE-RJ e salva na memória persistente para enriquecer futuras análises.
+    """
+    console.print("[green]Loop jurídico ativo — atualiza base de acórdãos toda segunda.[/green]")
+
+    _TEMAS = [
+        "fracionamento despesa", "superfaturamento contrato", "dispensa indevida licitação",
+        "nepotismo cargo comissionado", "empresa irregular habilitação",
+        "pagamento sem processo", "concentração fornecedor", "sobrepreço",
+    ]
+
+    while True:
+        agora = datetime.now()
+        # Roda toda segunda-feira às 03h
+        if agora.weekday() == 0 and agora.hour == 3:
+            console.print("[cyan]Atualizando jurisprudência online (TCU + TCE-RJ)...[/cyan]")
+            try:
+                from compliance_agent.collectors.lexml_fetcher import buscar_juridico
+                from compliance_agent.llm.memoria import aprender
+                from compliance_agent.database.models import get_session
+
+                novos = 0
+                session = get_session()
+                try:
+                    for tema in _TEMAS:
+                        try:
+                            resultado = await buscar_juridico(tema)
+                            for ac in resultado.get("tcu", []) + resultado.get("tce_rj", []):
+                                numero = ac.get("numero", "")
+                                ementa = ac.get("ementa", "")
+                                if numero and ementa:
+                                    aprender(
+                                        "jurisprudencia", numero,
+                                        ementa[:400], fonte="lexml_fetcher",
+                                        session=session,
+                                    )
+                                    novos += 1
+                        except Exception:
+                            pass
+                finally:
+                    session.close()
+
+                console.print(f"  Jurisprudência: {novos} entradas salvas na memória.")
+                if novos:
+                    await enviar_mensagem(
+                        f"⚖️ *Base jurídica atualizada*\n"
+                        f"{novos} acórdãos novos (TCU + TCE-RJ) salvos na memória.\n"
+                        f"Use /lei TERMO para consultar."
+                    )
+            except Exception as e:
+                console.print(f"  [yellow]Atualização jurídica: {e}[/yellow]")
+
+            await asyncio.sleep(3700)  # Pula a hora toda para não re-rodar
+        else:
+            # Calcula próxima segunda às 03h
+            prox = agora.replace(hour=3, minute=0, second=0, microsecond=0)
+            dias_ate_segunda = (0 - agora.weekday()) % 7
+            if dias_ate_segunda == 0 and agora.hour >= 3:
+                dias_ate_segunda = 7
+            prox += timedelta(days=dias_ate_segunda)
+            espera = int((prox - agora).total_seconds())
+            console.print(
+                f"[dim]Próxima atualização jurídica: {prox:%d/%m %H:%M} "
+                f"(em {espera // 3600}h)[/dim]"
+            )
+            await asyncio.sleep(min(espera, 3600))
+
+
 async def _loop_resiliente(nome: str, coro_factory):
     """
     Executa um loop e o reinicia se ele cair, avisando no Telegram.
@@ -540,10 +787,11 @@ async def _ping_inicio():
     try:
         await enviar_mensagem(
             f"🟢 *JFN Agente online* ({datetime.now():%d/%m %H:%M})\n"
-            "• Monitoro o SIAFE2 a cada 15 min\n"
+            "• SIAFE2 + DOERJ monitorados a cada 15 min\n"
             "• Investigo alvos suspeitos sozinho 24/7\n"
             "• Relatório completo às 08:00\n"
-            "Fale comigo: /ajuda ou pergunte algo."
+            "• Base legal: Lei 14.133, 8.666, 8.429 + TCU/TCE-RJ\n"
+            "Comandos: /ajuda — /lei TERMO — ou pergunte algo."
         )
     except Exception:
         pass
@@ -566,10 +814,11 @@ if __name__ == "__main__":
                 pass
             await _ping_inicio()
             await asyncio.gather(
-                _loop_resiliente("monitor", loop_monitoramento),
-                _loop_resiliente("relatorio", loop_relatorio),
-                _loop_resiliente("telegram", loop_comandos),
+                _loop_resiliente("monitor",      loop_monitoramento),
+                _loop_resiliente("relatorio",    loop_relatorio),
+                _loop_resiliente("telegram",     loop_comandos),
                 _loop_resiliente("investigador", loop_investigador_autonomo),
+                _loop_resiliente("juridico",     loop_atualizacao_juridica),
             )
 
         try:
