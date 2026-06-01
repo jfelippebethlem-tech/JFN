@@ -375,6 +375,25 @@ async def rodar_ciclo_relatorio_diario():
     except Exception as e:
         console.print(f"    [yellow]Grafo: {e}[/yellow]")
 
+    # 5b. Reflexão com Hermes-3 — o agente APRENDE com o dia
+    console.print("[cyan]5b/6 Reflexão e aprendizado (Hermes-3)...[/cyan]")
+    try:
+        from compliance_agent.llm.memoria import refletir_com_hermes, garantir_contexto_inicial
+        garantir_contexto_inicial(session)
+        resumo_dia = (
+            f"OBs coletadas: {siafe_result.get('records_saved', 0)}. "
+            f"Publicações DOERJ: {len(publicacoes)}. "
+            f"Alertas gerados: {len(alertas)}. "
+            f"Principais: " + "; ".join(
+                a.get("titulo", "")[:80] for a in alertas[:10]
+            )
+        )
+        msg = await refletir_com_hermes(resumo_dia, session)
+        if msg:
+            console.print(f"    {msg}")
+    except Exception as e:
+        console.print(f"    [yellow]Reflexão Hermes: {e}[/yellow]")
+
     # 6. Relatório + Telegram
     console.print("[cyan]6/6 Relatório PDF + Telegram...[/cyan]")
     report = _montar_report(hoje, publicacoes, siafe_result, alertas)

@@ -382,7 +382,16 @@ async def analisar_obs_com_groq(obs: list[dict]) -> dict:
     sem_processo = sum(1 for o in obs if not o.get("numero_processo"))
     sem_valor = sum(1 for o in obs if not o.get("valor"))
 
+    # Injeta o conhecimento acumulado pelo agente (memória persistente)
+    try:
+        from compliance_agent.llm.memoria import contexto_para_prompt
+        contexto_aprendido = contexto_para_prompt()
+    except Exception:
+        contexto_aprendido = ""
+
     prompt = (
+        f"{contexto_aprendido}\n\n" if contexto_aprendido else ""
+    ) + (
         f"Analise {len(obs)} Ordens Bancárias do Estado do RJ.\n"
         f"Total em valores: R$ {total_valor:,.2f}\n"
         f"OBs sem processo SEI: {sem_processo}\n"
@@ -526,6 +535,15 @@ async def rodar_analise_groq(session) -> list[dict]:
 
     alertas_gerados = []
 
+    # Garante que o conhecimento-base está carregado
+    try:
+        from compliance_agent.llm.memoria import (
+            garantir_contexto_inicial, aprender, registrar_entidade
+        )
+        garantir_contexto_inicial(session)
+    except Exception:
+        aprender = registrar_entidade = None
+
     # Analisa OBs
     if obs:
         resultado_obs = await analisar_obs_com_groq(obs)
@@ -545,6 +563,18 @@ async def rodar_analise_groq(session) -> list[dict]:
                 "titulo": a.titulo,
                 "descricao": a.descricao,
             })
+            # APRENDE: registra o padrão de fraude e as entidades envolvidas
+            if aprender:
+                try:
+                    aprender("padrao_fraude", alerta.get("tipo", "groq_ob"),
+                             alerta.get("titulo", ""), fonte="groq", session=session)
+                    for ent in alerta.get("favorecidos_envolvidos", []):
+                        registrar_entidade(ent, {
+                            "flags": [alerta.get("tipo", "")],
+                            "n_alertas": 1,
+                        }, session=session)
+                except Exception:
+                    pass
     else:
         resultado_obs = {"resumo_geral": "Sem OBs coletadas hoje."}
 

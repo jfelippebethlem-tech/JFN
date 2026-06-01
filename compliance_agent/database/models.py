@@ -336,6 +336,34 @@ class SessaoAuditoria(Base):
     )
 
 
+class MemoriaAprendizado(Base):
+    """
+    Memória persistente do agente — aprende com cada ciclo e nunca esquece.
+
+    Categorias:
+      contexto_admin  — fatos sobre a administração pública do RJ (órgãos, limites legais)
+      padrao_fraude   — padrões de irregularidade aprendidos (com confiança crescente)
+      entidade        — perfil de uma empresa/pessoa observada ao longo do tempo
+      selector        — seletores de navegação que funcionaram no SIAFE2/IOERJ
+      licao           — lições aprendidas de erros e acertos (para o Hermes)
+    """
+    __tablename__ = "memoria_aprendizado"
+
+    id            = Column(Integer, primary_key=True)
+    categoria     = Column(String(40), index=True)
+    chave         = Column(String(300), index=True)   # ex: nome da empresa, id do padrão
+    valor         = Column(Text)                       # conteúdo aprendido (texto ou JSON)
+    confianca     = Column(Float, default=0.5)         # 0-1, cresce com confirmações
+    n_observacoes = Column(Integer, default=1)         # quantas vezes foi observado
+    fonte         = Column(String(60))                 # groq | hermes | regra | humano
+    primeira_vez  = Column(DateTime, default=datetime.utcnow)
+    ultima_vez    = Column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_memoria_cat_chave", "categoria", "chave"),
+    )
+
+
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 
 def get_engine(db_path: Path = DB_PATH):
