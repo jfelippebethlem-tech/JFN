@@ -417,7 +417,8 @@ async def main_cdp():
 
     async with async_playwright() as p:
         try:
-            browser = await p.chromium.connect_over_cdp("http://localhost:9222")
+            # Usa 127.0.0.1 — no Windows, "localhost" resolve como ::1 (IPv6) e falha
+            browser = await p.chromium.connect_over_cdp("http://127.0.0.1:9222")
         except Exception as e:
             log(f"\n❌ Não conseguiu conectar: {e}")
             log("\nVerifique:")
