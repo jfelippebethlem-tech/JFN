@@ -172,7 +172,7 @@ class DOERJCollector:
                         publicacoes.extend(pubs)
                         print(f"[DOERJ] {len(pubs)} publicações via listagem anual")
                 except Exception as e:
-                    erros.append(f"listagem: {e}")
+                    erros.append(f"listagem: {type(e).__name__}: {e}")
 
             # 3. Fallback: busca direta por texto no site da IOERJ
             if not publicacoes:
@@ -182,7 +182,7 @@ class DOERJCollector:
                         publicacoes.extend(pubs)
                         print(f"[DOERJ] {len(pubs)} publicações via busca IOERJ")
                 except Exception as e:
-                    erros.append(f"busca IOERJ: {e}")
+                    erros.append(f"busca IOERJ: {type(e).__name__}: {e}")
 
             # 4. Fallback: página raiz para mapear estrutura atual
             if not publicacoes:
@@ -192,7 +192,7 @@ class DOERJCollector:
                         publicacoes.extend(pubs)
                         print(f"[DOERJ] {len(pubs)} publicações via aprendizado de estrutura")
                 except Exception as e:
-                    erros.append(f"aprendizado: {e}")
+                    erros.append(f"aprendizado: {type(e).__name__}: {e}")
 
         if erros:
             print(f"[DOERJ] Erros na coleta de {data}: {erros}")
