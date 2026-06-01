@@ -326,35 +326,51 @@ async def _execute_nav_action(page, action: dict) -> dict:
 
 # ─── 2. Análise de compliance com Groq ───────────────────────────────────────
 
-_ANALYSIS_SYSTEM = """
-Você é um auditor de compliance experiente do governo do Estado do Rio de Janeiro.
-Analisa Ordens Bancárias (OBs) do SIAFE2 e publicações do DOERJ em busca de
-irregularidades, corrupção e fraudes.
+def _build_analysis_system() -> str:
+    """Monta o system prompt de análise injetando base legal e jurisprudência."""
+    base = (
+        "Você é um auditor de compliance experiente do governo do Estado do Rio de Janeiro.\n"
+        "Analisa Ordens Bancárias (OBs) do SIAFE2 e publicações do DOERJ em busca de\n"
+        "irregularidades, corrupção e fraudes.\n\n"
+        "PADRÕES A IDENTIFICAR:\n"
+        "- Fracionamento: múltiplas OBs para o mesmo favorecido abaixo do limite de licitação "
+        "(R$ 57.208 compras / R$ 114.416 obras — Lei 14.133/2021 art. 75)\n"
+        "- Superfaturamento: valores muito acima do mercado para o serviço descrito\n"
+        "- Nepotismo: favorecidos com sobrenomes iguais a servidores nomeados no DOERJ (SV13)\n"
+        "- Direcionamento: contratos sem licitação para empresas recém-abertas\n"
+        "- OBs sem processo SEI: pagamentos sem respaldo documental (Lei 4.320/64 art. 58-64)\n"
+        "- Valores redondos suspeitos: OBs de R$100.000 exatos são raras na prática\n"
+        "- Concentração: 80% do valor pago para 1-2 fornecedores\n\n"
+    )
+    try:
+        from compliance_agent.knowledge.base_legal import contexto_legal_para_prompt
+        from compliance_agent.knowledge.jurisprudencia import contexto_jurisprudencial_para_prompt
+        base += contexto_legal_para_prompt() + "\n\n"
+        base += contexto_jurisprudencial_para_prompt() + "\n\n"
+    except Exception:
+        pass
+    base += (
+        "Ao descrever cada alerta, CITE o dispositivo legal e/ou acórdão aplicável.\n\n"
+        "Responda com JSON:\n"
+        "{\n"
+        '  "alertas": [\n'
+        "    {\n"
+        '      "tipo": "fracionamento|nepotismo|superfaturamento|sem_processo|valor_suspeito|concentracao|empresa_sancionada|direcionamento",\n'
+        '      "severidade": "alta|media|baixa",\n'
+        '      "titulo": "Resumo de 1 linha",\n'
+        '      "descricao": "Explicação detalhada com valores, nomes e fundamentação legal",\n'
+        '      "evidencias": ["lista", "de", "fatos"],\n'
+        '      "fundamentacao_legal": "ex.: Lei 14.133/2021 art. 75; TCU Acórdão 1.793/2011",\n'
+        '      "favorecidos_envolvidos": ["Nome1", "Nome2"]\n'
+        "    }\n"
+        "  ],\n"
+        '  "resumo_geral": "Avaliação geral do conjunto de OBs analisadas"\n'
+        "}"
+    )
+    return base
 
-Padrões a identificar:
-- Fracionamento: múltiplas OBs para o mesmo favorecido abaixo do limite de licitação (R$50.000)
-- Superfaturamento: valores muito acima do mercado para o serviço descrito
-- Nepotismo: favorecidos com sobrenomes iguais a servidores nomeados no DOERJ
-- Direcionamento: contratos sem licitação para empresas recém-abertas
-- OBs sem processo SEI: pagamentos sem respaldo documental
-- Valores redondos suspeitos: OBs de R$100.000 exatos são raras na prática
-- Concentração: 80% do valor pago para 1-2 fornecedores
 
-Responda com JSON:
-{
-  "alertas": [
-    {
-      "tipo": "fracionamento|nepotismo|superfaturamento|sem_processo|valor_suspeito|concentracao",
-      "severidade": "alta|media|baixa",
-      "titulo": "Resumo de 1 linha",
-      "descricao": "Explicação detalhada com os valores e nomes envolvidos",
-      "evidencias": ["lista", "de", "fatos"],
-      "favorecidos_envolvidos": ["Nome1", "Nome2"]
-    }
-  ],
-  "resumo_geral": "Avaliação geral do conjunto de OBs analisadas"
-}
-"""
+_ANALYSIS_SYSTEM = _build_analysis_system()
 
 
 async def analisar_obs_com_groq(obs: list[dict]) -> dict:
@@ -420,32 +436,46 @@ async def analisar_obs_com_groq(obs: list[dict]) -> dict:
 
 # ─── 3. Análise do DOERJ com Groq ────────────────────────────────────────────
 
-_DOERJ_SYSTEM = """
-Você é um auditor especializado em publicações do Diário Oficial do Estado do RJ (DOERJ).
-Identifica irregularidades em nomeações, contratos e licitações publicados.
+def _build_doerj_system() -> str:
+    base = (
+        "Você é um auditor especializado em publicações do Diário Oficial do Estado do RJ (DOERJ).\n"
+        "Identifica irregularidades em nomeações, contratos e licitações publicados.\n\n"
+        "ALERTAS A IDENTIFICAR:\n"
+        "- Nomeação suspeita: cargo comissionado para parente de político (Súmula Vinculante 13)\n"
+        "- Contrato emergencial: dispensa de licitação repetida para mesma empresa "
+        "(TCU Acórdão 4.021/2022)\n"
+        "- Alteração contratual: aditivo que dobra o valor original "
+        "(Lei 8.666/93 art. 65 §1º — limite 25%)\n"
+        "- Exoneração em massa: muitas exonerações/nomeações no mesmo órgão num dia\n"
+        "- Licitação direcionada: edital com especificações muito específicas (marca única)\n\n"
+    )
+    try:
+        from compliance_agent.knowledge.base_legal import contexto_legal_para_prompt
+        base += contexto_legal_para_prompt() + "\n\n"
+    except Exception:
+        pass
+    base += (
+        "Ao descrever cada alerta, CITE o dispositivo legal ou acórdão aplicável.\n\n"
+        "Responda com JSON:\n"
+        "{\n"
+        '  "alertas": [\n'
+        "    {\n"
+        '      "tipo": "nomeacao_suspeita|contrato_emergencial|aditivo_suspeito|licitacao_direcionada|nepotismo",\n'
+        '      "severidade": "alta|media|baixa",\n'
+        '      "titulo": "Resumo de 1 linha",\n'
+        '      "descricao": "Explicação com nomes, valores, órgãos e fundamentação legal",\n'
+        '      "evidencias": ["fato 1", "fato 2"],\n'
+        '      "fundamentacao_legal": "ex.: SV13; Lei 8.666/93 art. 65 §1º",\n'
+        '      "ato_referencia": "Portaria 123/2026 ou similar"\n'
+        "    }\n"
+        "  ],\n"
+        '  "resumo_geral": "Avaliação geral das publicações do dia"\n'
+        "}"
+    )
+    return base
 
-Alertas a identificar:
-- Nomeação suspeita: cargo comissionado para pessoa com mesmo sobrenome de político
-- Contrato emergencial: dispensa de licitação repetida para mesma empresa
-- Alteração contratual: aditivo que dobra o valor original
-- Exoneração em massa: muitas exonerações/nomeações no mesmo órgão num dia
-- Licitação direcionada: edital com especificações muito específicas (marca única)
 
-Responda com JSON:
-{
-  "alertas": [
-    {
-      "tipo": "nomeacao_suspeita|contrato_emergencial|aditivo_suspeito|licitacao_direcionada",
-      "severidade": "alta|media|baixa",
-      "titulo": "Resumo de 1 linha",
-      "descricao": "Explicação com nomes, valores e órgãos",
-      "evidencias": ["fato 1", "fato 2"],
-      "ato_referencia": "Portaria 123/2026 ou similar"
-    }
-  ],
-  "resumo_geral": "Avaliação geral das publicações do dia"
-}
-"""
+_DOERJ_SYSTEM = _build_doerj_system()
 
 
 async def analisar_doerj_com_groq(publicacoes: list[dict]) -> dict:
@@ -544,15 +574,44 @@ async def rodar_analise_groq(session) -> list[dict]:
     except Exception:
         aprender = registrar_entidade = None
 
+    # Utilitário para enriquecer descrição com fundamentação legal verificada
+    def _enriquecer_desc(alerta_dict: dict) -> str:
+        desc = alerta_dict.get("descricao", "")
+        tipo = alerta_dict.get("tipo", "")
+        titulo = alerta_dict.get("titulo", "")
+        # Fundamentação que o LLM retornou
+        fund_llm = alerta_dict.get("fundamentacao_legal", "")
+        # Fundamentação da nossa base curada
+        try:
+            from compliance_agent.knowledge.base_legal import fundamentacao_texto
+            fund_curada = fundamentacao_texto(tipo, titulo)
+        except Exception:
+            fund_curada = ""
+        # Jurisprudência aplicável
+        try:
+            from compliance_agent.knowledge.jurisprudencia import fundamentacao_jurisprudencial
+            jurisp = fundamentacao_jurisprudencial(tipo, titulo)
+        except Exception:
+            jurisp = ""
+        partes = [desc]
+        if fund_llm and fund_llm not in desc:
+            partes.append(f"\nFundamentação: {fund_llm}")
+        if fund_curada:
+            partes.append(fund_curada)
+        if jurisp:
+            partes.append(jurisp)
+        return "\n".join(p for p in partes if p)
+
     # Analisa OBs
     if obs:
         resultado_obs = await analisar_obs_com_groq(obs)
         for alerta in resultado_obs.get("alertas", []):
+            desc_enriquecida = _enriquecer_desc(alerta)
             a = Alerta(
                 tipo=alerta.get("tipo", "groq_ob"),
                 severidade=alerta.get("severidade", "media"),
                 titulo=alerta.get("titulo", "")[:300],
-                descricao=alerta.get("descricao", ""),
+                descricao=desc_enriquecida,
                 evidencias=json.dumps(alerta.get("evidencias", []), ensure_ascii=False),
                 data_referencia=hoje,
             )
@@ -582,11 +641,12 @@ async def rodar_analise_groq(session) -> list[dict]:
     if pubs:
         resultado_doerj = await analisar_doerj_com_groq(pubs)
         for alerta in resultado_doerj.get("alertas", []):
+            desc_enriquecida = _enriquecer_desc(alerta)
             a = Alerta(
                 tipo=alerta.get("tipo", "groq_doerj"),
                 severidade=alerta.get("severidade", "media"),
                 titulo=alerta.get("titulo", "")[:300],
-                descricao=alerta.get("descricao", ""),
+                descricao=desc_enriquecida,
                 evidencias=json.dumps(alerta.get("evidencias", []), ensure_ascii=False),
                 data_referencia=hoje,
             )

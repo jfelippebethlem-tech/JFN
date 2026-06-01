@@ -29,6 +29,10 @@ controlada pelo celular. Última revisão: 01/06/2026.
 | Detecção estatística de anomalias | `analysis/anomaly_detector.py` | ✅ |
 | Fracionamento, concentração, rajada fim de mês | `anomaly_detector.py` | ✅ |
 | Grafo de corrupção (servidor→empresa←UG) | `analysis/graph_analyzer.py` | ✅ |
+| **Base legal curada** (LIMPE + 24 dispositivos) | `knowledge/base_legal.py` | ✅ |
+| **Jurisprudência curada** (10 TCE-RJ + 12 TCU) | `knowledge/jurisprudencia.py` | ✅ |
+| **Fundamentação automática de alertas** | `groq_agent.py` → `_enriquecer_desc` | ✅ |
+| **Contexto jurídico injetado no prompt da IA** | `groq_agent.py` + `orquestrador.py` | ✅ |
 
 ## ✅ 3. Fontes externas gratuitas (super auditor)
 
@@ -44,6 +48,10 @@ controlada pelo celular. Última revisão: 01/06/2026.
 | DuckDuckGo + notícias + detecção de risco | `web_research.py` | ✅ |
 | Investigação automática de OBs alto valor | `web_research.py` → `investigar_obs_alto_valor` | ✅ |
 | **SEI-RJ — consulta de processos** | `collectors/sei_portal.py` (ligado ao Telegram + pipeline) | ✅ |
+| **LexML / Planalto — texto integral de leis** | `collectors/lexml_fetcher.py` → `buscar_lexml` | ✅ |
+| **TCU — Jurisprudência Selecionada (online)** | `lexml_fetcher.py` → `buscar_tcu` | ✅ |
+| **TCE-RJ — Acórdãos (online + base local)** | `lexml_fetcher.py` → `buscar_tce_rj` | ✅ |
+| **Busca jurídica unificada (todas as fontes)** | `lexml_fetcher.py` → `buscar_juridico` | ✅ |
 
 ## ✅ 3b. Dashboard profissional (web)
 
@@ -104,6 +112,7 @@ controlada pelo celular. Última revisão: 01/06/2026.
 | `/memoria NOME` | perfil acumulado de uma entidade | ✅ |
 | `/investigar NOME` | pesquisa na INTERNET (notícias, riscos) | ✅ |
 | `/sei NUMERO` | consulta processo no SEI-RJ | ✅ |
+| **`/lei TERMO`** | busca lei/acórdão (TCE-RJ, TCU, LexML, base local) | ✅ |
 | `/painel` | link do dashboard web (PC e celular) | ✅ |
 | `/chrome` | como abrir o Chrome no modo correto | ✅ |
 | Alertas urgentes empurrados na hora | `notifications/telegram.py` | ✅ |
