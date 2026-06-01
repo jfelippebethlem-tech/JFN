@@ -25,7 +25,7 @@ from typing import Optional
 from sqlalchemy.orm import Session
 
 from compliance_agent.database.models import (
-    Alerta, Contrato, Empresa, EmpresaSocio, Pessoa,
+    Alerta, Contrato, Empresa, EmpresaSocio, OrdemBancaria, Pessoa,
     PublicacaoDOERJ, RegistroFolha, Relacionamento,
 )
 
@@ -75,6 +75,13 @@ class MotorCompliance:
         self._regra_cnpj_abertura_recente_contrato()
         self._regra_cpf_duplicado_fontes(competencia)
         self._regra_emprego_multiplo_orgaos(competencia)
+        # OB-based rules (run only when SIAFE2 data is available)
+        self._regra_ob_fracionamento()
+        self._regra_ob_sem_processo_sei()
+        self._regra_ob_favorecido_multiplas_ugs()
+        self._regra_ob_empresa_nova()
+        self._regra_ob_valor_redondo()
+        self._regra_ob_favorecido_doerj_cruzado()
 
         self.session.add_all(self._alertas_novos)
         self.session.commit()
@@ -470,6 +477,7 @@ class MotorCompliance:
         pessoa: Optional[Pessoa] = None,
         empresa: Optional[Empresa] = None,
         contrato: Optional[Contrato] = None,
+        ordem_bancaria: Optional[OrdemBancaria] = None,
     ):
         # Evita duplicatas pelo título
         existe = self.session.query(Alerta).filter_by(titulo=titulo[:300]).first()
@@ -477,16 +485,372 @@ class MotorCompliance:
             return
 
         alerta = Alerta(
-            tipo        = tipo,
-            severidade  = severidade,
-            titulo      = titulo[:300],
-            descricao   = descricao,
-            evidencias  = json.dumps(evidencias, ensure_ascii=False, default=str),
-            pessoa_id   = pessoa.id if pessoa else None,
-            empresa_id  = empresa.id if empresa else None,
-            contrato_id = contrato.id if contrato else None,
+            tipo               = tipo,
+            severidade         = severidade,
+            titulo             = titulo[:300],
+            descricao          = descricao,
+            evidencias         = json.dumps(evidencias, ensure_ascii=False, default=str),
+            pessoa_id          = pessoa.id if pessoa else None,
+            empresa_id         = empresa.id if empresa else None,
+            contrato_id        = contrato.id if contrato else None,
+            ordem_bancaria_id  = ordem_bancaria.id if ordem_bancaria else None,
         )
         self._alertas_novos.append(alerta)
+
+    # ══════════════════════════════════════════════════════════════════════════
+    # Regras baseadas em Ordens Bancárias (dados do SIAFE2)
+    # ══════════════════════════════════════════════════════════════════════════
+
+    def _regra_ob_fracionamento(self):
+        """
+        Fracionamento de pagamentos via OB: mesmo favorecido recebe múltiplos
+        pagamentos em 30 dias cujo total ultrapassa o limite de dispensa de
+        licitação (R$ 50.000 para serviços, Lei 14.133/21 art. 75).
+
+        Padrão clássico para burlar obrigação de licitar.
+        """
+        from sqlalchemy import func
+
+        LIMITE_DISPENSA = 50_000.0
+        JANELA_DIAS = 30
+
+        # Agrupa OBs por favorecido + UG + janela de 30 dias
+        subq = (
+            self.session.query(
+                OrdemBancaria.favorecido_cpf,
+                OrdemBancaria.favorecido_nome,
+                OrdemBancaria.ug_codigo,
+                func.count(OrdemBancaria.id).label("n_obs"),
+                func.sum(OrdemBancaria.valor).label("total"),
+                func.min(OrdemBancaria.data_emissao).label("data_ini"),
+                func.max(OrdemBancaria.data_emissao).label("data_fim"),
+            )
+            .filter(
+                OrdemBancaria.favorecido_cpf.isnot(None),
+                OrdemBancaria.valor.isnot(None),
+                OrdemBancaria.valor > 0,
+            )
+            .group_by(
+                OrdemBancaria.favorecido_cpf,
+                OrdemBancaria.ug_codigo,
+                # sqlite: group by month (approximate 30-day windows)
+                func.strftime("%Y-%m", OrdemBancaria.data_emissao),
+            )
+            .having(
+                func.count(OrdemBancaria.id) >= 2,
+                func.sum(OrdemBancaria.valor) > LIMITE_DISPENSA,
+            )
+            .all()
+        )
+
+        for row in subq:
+            if not row.total or row.total <= LIMITE_DISPENSA:
+                continue
+            empresa = (
+                self.session.query(Empresa).filter_by(cnpj=row.favorecido_cpf).first()
+                if row.favorecido_cpf else None
+            )
+            self._criar_alerta(
+                tipo       = "fracionamento",
+                severidade = "alta",
+                titulo     = f"Fracionamento OB — {row.favorecido_nome or row.favorecido_cpf} / UG {row.ug_codigo}",
+                descricao  = (
+                    f"{row.n_obs} OBs para '{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) "
+                    f"na UG {row.ug_codigo} totalizaram R$ {row.total:,.2f} "
+                    f"entre {row.data_ini} e {row.data_fim}. "
+                    f"Valor ultrapassa o limite de dispensa (R$ {LIMITE_DISPENSA:,.0f}) "
+                    f"sugerindo fracionamento para evitar licitação."
+                ),
+                evidencias = {
+                    "favorecido_cpf": row.favorecido_cpf,
+                    "favorecido_nome": row.favorecido_nome,
+                    "ug_codigo": row.ug_codigo,
+                    "n_obs": row.n_obs,
+                    "total": row.total,
+                    "data_ini": str(row.data_ini),
+                    "data_fim": str(row.data_fim),
+                    "limite_dispensa": LIMITE_DISPENSA,
+                },
+                empresa = empresa,
+            )
+
+    def _regra_ob_sem_processo_sei(self):
+        """
+        OBs acima de R$ 10.000 sem número de processo SEI associado.
+        Todo pagamento relevante deve ter processo administrativo vinculado.
+        Ausência sugere pagamento informal ou irregular.
+        """
+        VALOR_MINIMO = 10_000.0
+
+        obs_sem_sei = (
+            self.session.query(OrdemBancaria)
+            .filter(
+                OrdemBancaria.valor >= VALOR_MINIMO,
+                OrdemBancaria.numero_processo.is_(None),
+                OrdemBancaria.numero_sei.is_(None),
+                OrdemBancaria.status != "cancelada",
+            )
+            .all()
+        )
+
+        for ob in obs_sem_sei:
+            self._criar_alerta(
+                tipo            = "ob_sem_processo",
+                severidade      = "média",
+                titulo          = f"OB sem processo SEI — R$ {ob.valor:,.2f} para {ob.favorecido_nome or ob.favorecido_cpf}",
+                descricao       = (
+                    f"OB nº {ob.numero_ob} (UG {ob.ug_codigo}, {ob.data_emissao}) "
+                    f"no valor de R$ {ob.valor:,.2f} para '{ob.favorecido_nome}' "
+                    f"não possui número de processo SEI ou processo administrativo associado. "
+                    f"Todo pagamento acima de R$ {VALOR_MINIMO:,.0f} exige processo formal."
+                ),
+                evidencias      = {
+                    "numero_ob": ob.numero_ob,
+                    "ug": ob.ug_codigo,
+                    "data": str(ob.data_emissao),
+                    "valor": ob.valor,
+                    "favorecido": ob.favorecido_nome,
+                    "cpf_cnpj": ob.favorecido_cpf,
+                },
+                ordem_bancaria  = ob,
+            )
+
+    def _regra_ob_favorecido_multiplas_ugs(self):
+        """
+        Favorecido recebendo OBs de 3 ou mais UGs distintas no mesmo mês.
+        Pode indicar empresa 'carimbada' (favorecida em todo o estado)
+        ou CPF/CNPJ laranja usado em múltiplos órgãos.
+        """
+        from sqlalchemy import func
+
+        resultados = (
+            self.session.query(
+                OrdemBancaria.favorecido_cpf,
+                OrdemBancaria.favorecido_nome,
+                func.count(func.distinct(OrdemBancaria.ug_codigo)).label("n_ugs"),
+                func.sum(OrdemBancaria.valor).label("total"),
+                func.group_concat(func.distinct(OrdemBancaria.ug_codigo)).label("ugs"),
+                func.strftime("%Y-%m", OrdemBancaria.data_emissao).label("mes"),
+            )
+            .filter(
+                OrdemBancaria.favorecido_cpf.isnot(None),
+                OrdemBancaria.valor > 0,
+            )
+            .group_by(
+                OrdemBancaria.favorecido_cpf,
+                func.strftime("%Y-%m", OrdemBancaria.data_emissao),
+            )
+            .having(func.count(func.distinct(OrdemBancaria.ug_codigo)) >= 3)
+            .all()
+        )
+
+        for row in resultados:
+            empresa = (
+                self.session.query(Empresa).filter_by(cnpj=row.favorecido_cpf).first()
+                if row.favorecido_cpf else None
+            )
+            self._criar_alerta(
+                tipo       = "direcionamento",
+                severidade = "média",
+                titulo     = f"Favorecido em {row.n_ugs} UGs distintas — {row.favorecido_nome or row.favorecido_cpf} ({row.mes})",
+                descricao  = (
+                    f"'{row.favorecido_nome}' (CPF/CNPJ {row.favorecido_cpf}) recebeu OBs de "
+                    f"{row.n_ugs} UGs diferentes em {row.mes}, totalizando R$ {row.total:,.2f}. "
+                    f"UGs: {row.ugs}. "
+                    f"Padrão atípico — favorecido possivelmente 'carimbado' em todo o estado."
+                ),
+                evidencias = {
+                    "favorecido_cpf": row.favorecido_cpf,
+                    "favorecido_nome": row.favorecido_nome,
+                    "mes": row.mes,
+                    "n_ugs": row.n_ugs,
+                    "ugs": row.ugs,
+                    "total": row.total,
+                },
+                empresa = empresa,
+            )
+
+    def _regra_ob_empresa_nova(self):
+        """
+        OB paga a empresa aberta há menos de 6 meses.
+        Cruza OrdemBancaria.favorecido_cpf com Empresa.cnpj e Empresa.data_abertura.
+        """
+        obs = (
+            self.session.query(OrdemBancaria)
+            .filter(
+                OrdemBancaria.favorecido_cpf.isnot(None),
+                OrdemBancaria.valor > 0,
+            )
+            .all()
+        )
+
+        for ob in obs:
+            empresa = (
+                self.session.query(Empresa)
+                .filter_by(cnpj=ob.favorecido_cpf)
+                .first()
+            )
+            if not empresa or not empresa.data_abertura or not ob.data_emissao:
+                continue
+            try:
+                delta = (ob.data_emissao - empresa.data_abertura).days
+            except Exception:
+                continue
+            if 0 <= delta < 180:
+                self._criar_alerta(
+                    tipo            = "direcionamento",
+                    severidade      = "alta",
+                    titulo          = f"OB para empresa nova ({delta}d) — {empresa.razao_social}",
+                    descricao       = (
+                        f"OB nº {ob.numero_ob} no valor de R$ {ob.valor:,.2f} foi paga a "
+                        f"'{empresa.razao_social}' (CNPJ {empresa.cnpj}), empresa aberta "
+                        f"apenas {delta} dias antes do pagamento ({empresa.data_abertura}). "
+                        f"Padrão de empresa criada para receber contrato específico."
+                    ),
+                    evidencias      = {
+                        "numero_ob": ob.numero_ob,
+                        "cnpj": empresa.cnpj,
+                        "razao_social": empresa.razao_social,
+                        "data_abertura": str(empresa.data_abertura),
+                        "data_ob": str(ob.data_emissao),
+                        "dias_empresa": delta,
+                        "valor": ob.valor,
+                    },
+                    empresa         = empresa,
+                    ordem_bancaria  = ob,
+                )
+
+    def _regra_ob_valor_redondo(self):
+        """
+        OBs com valores exatamente redondos acima de R$ 50.000 são atípicas.
+        Valores como R$ 100.000,00 / R$ 250.000,00 / R$ 500.000,00 ocorrem
+        naturalmente em contratos, mas pagamentos avulsos com valores redondos
+        grandes são sinal de estimativas sem base técnica real (ajuste de contas,
+        desvio, propina disfarçada).
+        """
+        MINIMO = 50_000.0
+
+        obs = (
+            self.session.query(OrdemBancaria)
+            .filter(
+                OrdemBancaria.valor >= MINIMO,
+                OrdemBancaria.status != "cancelada",
+            )
+            .all()
+        )
+
+        for ob in obs:
+            if ob.valor is None:
+                continue
+            # "Redondo" = divisível por 1000 sem centavos
+            cents = round(ob.valor % 1000, 2)
+            if cents == 0.0:
+                self._criar_alerta(
+                    tipo            = "ob_valor_atipico",
+                    severidade      = "baixa",
+                    titulo          = f"OB com valor exatamente redondo — R$ {ob.valor:,.0f} / {ob.favorecido_nome or ob.favorecido_cpf}",
+                    descricao       = (
+                        f"OB nº {ob.numero_ob} (UG {ob.ug_codigo}, {ob.data_emissao}) tem "
+                        f"valor exatamente redondo de R$ {ob.valor:,.2f} para "
+                        f"'{ob.favorecido_nome}'. Valores redondos grandes em OBs avulsas "
+                        f"frequentemente indicam estimativas sem respaldo técnico. "
+                        f"Verificar se há medição/fatura correspondente no processo SEI."
+                    ),
+                    evidencias      = {
+                        "numero_ob": ob.numero_ob,
+                        "ug": ob.ug_codigo,
+                        "valor": ob.valor,
+                        "favorecido": ob.favorecido_nome,
+                        "cpf_cnpj": ob.favorecido_cpf,
+                        "data": str(ob.data_emissao),
+                    },
+                    ordem_bancaria  = ob,
+                )
+
+    def _regra_ob_favorecido_doerj_cruzado(self):
+        """
+        Cruzamento entre favorecido de OBs e publicações do DOERJ.
+
+        Detecta casos em que o nome do favorecido (ou fragmento de CNPJ/CPF)
+        aparece no texto de publicações do DOERJ de contratos, licitações ou
+        dispensas — revelando se há contrato publicado correspondente ao pagamento
+        (normal) ou ausência total de publicação (irregular) ou se o favorecido
+        aparece em publicações suspeitas (rescisões, TCE, improbidade).
+        """
+        import re
+
+        TIPOS_SUSPEITOS = {"rescisão", "improbidade", "irregularidade", "condenação",
+                           "cassação", "multa", "embargos", "inabilitação"}
+
+        obs = (
+            self.session.query(OrdemBancaria)
+            .filter(
+                OrdemBancaria.favorecido_nome.isnot(None),
+                OrdemBancaria.valor > 1000,
+            )
+            .all()
+        )
+
+        for ob in obs:
+            nome = (ob.favorecido_nome or "").strip()
+            cpf_cnpj = (ob.favorecido_cpf or "").strip()
+            if len(nome) < 5:
+                continue
+
+            # Search DOERJ for this name or CNPJ
+            doerj_hits = (
+                self.session.query(PublicacaoDOERJ)
+                .filter(
+                    PublicacaoDOERJ.texto.isnot(None),
+                )
+                .filter(
+                    (PublicacaoDOERJ.texto.ilike(f"%{nome[:30]}%"))
+                    | (PublicacaoDOERJ.texto.ilike(f"%{cpf_cnpj}%") if cpf_cnpj else False)
+                )
+                .order_by(PublicacaoDOERJ.data_publicacao.desc())
+                .limit(5)
+                .all()
+            )
+
+            if not doerj_hits:
+                continue
+
+            # Check if any hit involves suspicious terms
+            suspeitos = []
+            for hit in doerj_hits:
+                texto_low = (hit.texto or "").lower()
+                for termo in TIPOS_SUSPEITOS:
+                    if termo in texto_low:
+                        suspeitos.append({
+                            "data": str(hit.data_publicacao),
+                            "tipo_ato": hit.tipo_ato,
+                            "titulo": hit.titulo,
+                            "termo_suspeito": termo,
+                        })
+                        break
+
+            if suspeitos:
+                self._criar_alerta(
+                    tipo            = "doerj_anomalia",
+                    severidade      = "alta",
+                    titulo          = f"OB para favorecido com publicação suspeita no DOERJ — {nome}",
+                    descricao       = (
+                        f"OB nº {ob.numero_ob} (R$ {ob.valor:,.2f}, UG {ob.ug_codigo}) "
+                        f"tem como favorecido '{nome}', que aparece em {len(suspeitos)} "
+                        f"publicação(ões) do DOERJ com termos suspeitos: "
+                        f"{[s['termo_suspeito'] for s in suspeitos]}. "
+                        f"Verificar se os pagamentos são compatíveis com o status do favorecido."
+                    ),
+                    evidencias      = {
+                        "numero_ob": ob.numero_ob,
+                        "valor": ob.valor,
+                        "favorecido": nome,
+                        "cpf_cnpj": cpf_cnpj,
+                        "doerj_suspeitos": suspeitos,
+                        "doerj_total_hits": len(doerj_hits),
+                    },
+                    ordem_bancaria  = ob,
+                )
 
     @staticmethod
     def _alerta_to_dict(alerta: Alerta) -> dict:
