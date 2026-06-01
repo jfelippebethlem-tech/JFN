@@ -135,6 +135,38 @@ async def rodar_ciclo_diario():
     except Exception as e:
         console.print(f"    [yellow]Groq análise indisponível: {e}[/yellow]")
 
+    # Enriquecimento CNPJ + verificação PNCP + anomalias estatísticas + grafo
+    console.print("[cyan]  Enriquecendo CNPJs e verificando PNCP...[/cyan]")
+    try:
+        from compliance_agent.enrichers.cnpj_enricher import enriquecer_obs_do_dia
+        flags_cnpj = await enriquecer_obs_do_dia(session, hoje)
+        console.print(f"    {len(flags_cnpj)} flags CNPJ detectadas.")
+    except Exception as e:
+        console.print(f"    [yellow]CNPJ enricher: {e}[/yellow]")
+
+    try:
+        from compliance_agent.collectors.pncp import verificar_obs_sem_pncp
+        flags_pncp = await verificar_obs_sem_pncp(session, hoje)
+        console.print(f"    {len(flags_pncp)} OBs sem contrato no PNCP.")
+    except Exception as e:
+        console.print(f"    [yellow]PNCP: {e}[/yellow]")
+
+    try:
+        from compliance_agent.analysis.anomaly_detector import rodar_deteccao_anomalias
+        anomalias = await rodar_deteccao_anomalias(session, hoje)
+        console.print(f"    {len(anomalias)} anomalias estatísticas.")
+        alertas = alertas + anomalias
+    except Exception as e:
+        console.print(f"    [yellow]Anomaly detector: {e}[/yellow]")
+
+    try:
+        from compliance_agent.analysis.graph_analyzer import rodar_analise_grafo
+        grafo_alertas = await rodar_analise_grafo(session)
+        console.print(f"    {len(grafo_alertas)} alertas de grafo.")
+        alertas = alertas + grafo_alertas
+    except Exception as e:
+        console.print(f"    [yellow]Graph analyzer: {e}[/yellow]")
+
     # 5. Salva relatório diário JSON e gera PDF
     console.print("[cyan]5/5 Salvando relatório, PDF e notificações Telegram...[/cyan]")
     report = {
