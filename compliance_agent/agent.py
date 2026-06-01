@@ -629,8 +629,9 @@ class ComplianceAgent:
                 fn   = tc["function"]
                 name = fn["name"]
                 try:
-                    inputs = json.loads(fn.get("arguments", "{}"))
-                except json.JSONDecodeError:
+                    args = fn.get("arguments") or "{}"
+                    inputs = json.loads(args) if isinstance(args, str) else {}
+                except (json.JSONDecodeError, TypeError):
                     inputs = {}
 
                 console.print(f"[dim]⚙ {name}({json.dumps(inputs, ensure_ascii=False)[:120]})[/dim]")

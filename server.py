@@ -460,9 +460,10 @@ async def websocket_chat(ws: WebSocket):
                     original_execute = agent._execute_tool
 
                     async def streaming_execute(name, inputs):
+                        safe_inputs = inputs if isinstance(inputs, dict) else {}
                         await ws.send_text(json.dumps({
                             "type": "tool_call",
-                            "content": f"→ {name}({', '.join(f'{k}={v!r}' for k, v in inputs.items())})",
+                            "content": f"→ {name}({', '.join(f'{k}={v!r}' for k, v in safe_inputs.items())})",
                         }))
                         result = await original_execute(name, inputs)
                         # If a screenshot was taken, send its path
