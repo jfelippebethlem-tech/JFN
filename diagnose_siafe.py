@@ -890,154 +890,205 @@ async def main_cdp():
     print(f"\n✅ Relatório salvo em: {REPORT}")
 
 
+async def _cdp_connect():
+    """Connect to Chrome via CDP and return (browser, target_page)."""
+    from playwright.async_api import async_playwright
+    p = await async_playwright().start()
+    try:
+        browser = await p.chromium.connect_over_cdp("http://127.0.0.1:9222")
+    except Exception as e:
+        log(f"❌ Não conectou: {e}")
+        return p, None, None
+    target_page = None
+    for ctx in browser.contexts:
+        for pg in ctx.pages:
+            if "flexvision" in pg.url.lower() or "fazenda.rj" in pg.url.lower():
+                target_page = pg
+                break
+        if target_page:
+            break
+    if not target_page and browser.contexts and browser.contexts[0].pages:
+        target_page = browser.contexts[0].pages[0]
+    return p, browser, target_page
+
+
+async def _dump_grid_rows(page, label: str):
+    """Dump all rows visible in a Vaadin v-grid."""
+    sep(f"Linhas da grid: {label}")
+    rows = await page.evaluate("""
+        () => {
+            const rowSels = ['.v-grid-row', '.v-table-row', 'tbody tr'];
+            const cellSels = ['.v-grid-cell', '.v-table-cell', 'td'];
+            for (const rSel of rowSels) {
+                const rows = [...document.querySelectorAll(rSel)];
+                if (!rows.length) continue;
+                return rows.map(row => {
+                    for (const cSel of cellSels) {
+                        const cells = [...row.querySelectorAll(cSel)];
+                        if (cells.length) return cells.map(c => c.textContent.trim());
+                    }
+                    return [row.textContent.trim()];
+                }).filter(r => r.some(Boolean));
+            }
+            return [];
+        }
+    """)
+    log(f"  {len(rows)} linhas na grid:")
+    for r in rows:
+        log(f"  {r}")
+    return rows
+
+
 async def main_consultas():
     """
-    Modo focado: navega para #!consultas e explora em detalhe.
+    Modo focado: explora #!consultas a fundo.
+    Inclui: Consultas de outros usuários, Categorias, e fallback via #!cubos.
 
     Uso: python diagnose_siafe.py --consultas
-
-    Chrome deve estar aberto com:
-      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9222
-    E logado no FlexVision.
+    Chrome deve estar aberto com --remote-debugging-port=9222 e logado no FlexVision.
     """
-    from playwright.async_api import async_playwright
     FV_BASE = "https://siafe2-flexvision.fazenda.rj.gov.br/Flexvision/"
+    log(f"SIAFE2 Diagnóstico (modo CONSULTAS v2) — {datetime.now():%d/%m/%Y %H:%M}")
 
-    log(f"SIAFE2 Diagnóstico (modo CONSULTAS) — {datetime.now():%d/%m/%Y %H:%M}")
+    p, browser, page = await _cdp_connect()
+    if not page:
+        REPORT.write_text("\n".join(report_lines), encoding="utf-8")
+        return
 
-    async with async_playwright() as p:
-        try:
-            browser = await p.chromium.connect_over_cdp("http://127.0.0.1:9222")
-        except Exception as e:
-            log(f"❌ Não conectou: {e}")
-            return
+    log(f"✅ Aba: {page.url}")
 
-        # Encontrar aba FlexVision
-        target_page = None
-        for ctx in browser.contexts:
-            for pg in ctx.pages:
-                if "flexvision" in pg.url.lower() or "fazenda.rj" in pg.url.lower():
-                    target_page = pg
-                    break
-            if target_page:
-                break
-        if not target_page and browser.contexts and browser.contexts[0].pages:
-            target_page = browser.contexts[0].pages[0]
+    # ── 1. Navegar para #!consultas ───────────────────────────────────────────
+    sep("1. Navegando para #!consultas")
+    await page.goto(FV_BASE + "#!consultas", wait_until="networkidle", timeout=20000)
+    await asyncio.sleep(4)
+    await dump_page(page, "c01_consultas_inicial")
+    full_text = await page.inner_text("body")
+    log(f"  Texto completo ({len(full_text)} chars):\n{full_text[:3000]}")
 
-        if not target_page:
-            log("❌ Nenhuma aba encontrada.")
-            return
+    # ── 2. Listar todos os elementos visíveis ────────────────────────────────
+    sep("2. Elementos visíveis iniciais")
+    elements = await page.evaluate(_JS_LEAF_ELEMENTS)
+    visible = [e for e in elements if e.get("visible")]
+    for e in visible:
+        log(f"  ✓ <{e['tag'].lower():6}> text={e['text']!r:60} cls={e['cls']!r}")
 
-        log(f"✅ Aba: {target_page.url}")
+    await _dump_grid_rows(page, "grid inicial (provavelmente vazia)")
 
-        # ── 1. Navegar para #!consultas ───────────────────────────────────────
-        sep("Navegando para #!consultas")
-        await target_page.goto(FV_BASE + "#!consultas", wait_until="networkidle", timeout=20000)
+    # ── 3. Clicar em "Consultas de outros usuários" ───────────────────────────
+    sep("3. Clicando em 'Consultas de outros usuários'")
+    clicked_outros = await page.evaluate(_js_click_contains("Consultas de outros usuários"))
+    if clicked_outros:
+        log(f"  ✅ Clicado: {clicked_outros}")
         await asyncio.sleep(4)
-        log(f"  URL atual: {target_page.url}")
+        await dump_page(page, "c02_outros_usuarios")
+        text_outros = await page.inner_text("body")
+        log(f"  Texto ({len(text_outros)} chars):\n{text_outros[:4000]}")
+        rows = await _dump_grid_rows(page, "Consultas de outros usuários")
+        # Buscar OB nas linhas
+        ob_rows = [r for r in rows if any("OB" in str(c) or "Execu" in str(c) for c in r)]
+        if ob_rows:
+            log(f"\n  ✅ Linhas com 'OB'/'Execu':")
+            for r in ob_rows:
+                log(f"    {r}")
+        else:
+            log("  (nenhuma linha com 'OB'/'Execu' encontrada)")
+    else:
+        log("  ❌ 'Consultas de outros usuários' não encontrado")
 
-        await dump_page(target_page, "consultas_01_list")
+    # ── 4. Explorar categorias no painel esquerdo ────────────────────────────
+    sep("4. Explorando painel 'Categorias'")
+    cat_elements = await page.evaluate(_JS_LEAF_ELEMENTS)
+    # Após clicar 'outros usuários', verificar novos itens visíveis
+    for e in cat_elements:
+        if e.get("visible") and "Categor" not in e["text"] and "Consultas" not in e["text"]:
+            log(f"  ✓ {e['text']!r:60} cls={e['cls']!r}")
 
-        # ── 2. Texto completo da página ───────────────────────────────────────
-        sep("Texto completo da página Consultas")
-        full_text = await target_page.inner_text("body")
-        log(f"  {len(full_text)} chars total:")
-        log(full_text[:5000])
+    # Tentar clicar em categoria "Execução" ou similares
+    cat_keywords = ["Execução", "Financeiro", "Orçamentário", "Contábil", "OB", "Bancária"]
+    for kw in cat_keywords:
+        clicked_cat = await page.evaluate(_js_click_contains(kw))
+        if clicked_cat:
+            log(f"  ✅ Clicou categoria '{kw}': {clicked_cat}")
+            await asyncio.sleep(3)
+            await dump_page(page, f"c03_cat_{kw[:10].replace(' ','_')}")
+            text_cat = await page.inner_text("body")
+            log(f"  Texto:\n{text_cat[:3000]}")
+            await _dump_grid_rows(page, f"Após clicar '{kw}'")
+            break
 
-        # ── 3. Todos os elementos visíveis ────────────────────────────────────
-        sep("Elementos visíveis em #!consultas")
-        elements = await target_page.evaluate(_JS_LEAF_ELEMENTS)
-        visible = [e for e in elements if e.get("visible")]
-        log(f"  {len(visible)} elementos visíveis:")
-        for e in visible:
-            log(f"  ✓ <{e['tag'].lower():6}> text={e['text']!r:60} cls={e['cls']!r:45} id={e['id']!r}")
-
-        # ── 4. Busca de OB nos elementos ──────────────────────────────────────
-        sep("Buscando 'OB' / 'Execução' no DOM")
-        ob_candidates = await target_page.evaluate("""
-            () => {
-                const results = [];
-                for (const el of document.querySelectorAll('*')) {
-                    const t = el.textContent.trim();
-                    if ((t.includes('OB') || t.includes('Execução') || t.includes('Execucao'))
-                        && t.length < 200) {
-                        const r = el.getBoundingClientRect();
-                        results.push({
-                            tag: el.tagName,
-                            cls: el.className,
-                            id: el.id,
-                            text: t.slice(0, 100),
-                            visible: r.width > 0 && r.height > 0,
-                            children: el.children.length,
-                        });
-                    }
-                }
-                return results;
-            }
-        """)
-        log(f"  {len(ob_candidates)} candidatos com 'OB'/'Execução':")
-        for c in ob_candidates:
-            vis = "✓" if c.get("visible") else "·"
-            log(f"  {vis} <{c['tag'].lower()}> children={c['children']} text={c['text']!r}")
-
-        # ── 5. Tentar clicar em OB / Execução ────────────────────────────────
-        sep("Tentando clicar em 'Execução por OB'")
-        for variant in ["Execução por OB", "Execucao por OB", "Documento - OB", "OB"]:
-            clicked = await target_page.evaluate(_js_click_contains(variant))
-            if clicked:
-                log(f"  ✅ Clicado '{variant}': {clicked}")
-                await asyncio.sleep(2)
-                log(f"  URL: {target_page.url}")
-                await dump_page(target_page, f"consultas_02_ob_click")
-                # Texto pós-click
-                text2 = await target_page.inner_text("body")
-                log(f"  Texto após click:\n{text2[:3000]}")
-                # Inputs pós-click
-                await _dump_inputs_consultas(target_page, "Após clicar OB")
-                break
-            log(f"  ❌ '{variant}' não encontrado")
-
-        # ── 6. Tentar double-click ────────────────────────────────────────────
-        sep("Tentando double-click em 'Execução por OB'")
-        for variant in ["Execução por OB", "Execucao por OB", "Documento - OB", "OB"]:
-            clicked = await target_page.evaluate(f"""
-                () => {{
-                    let best = null, bestSize = Infinity;
-                    for (const el of document.querySelectorAll('*')) {{
-                        if (!el.textContent.includes('{variant}')) continue;
-                        const r = el.getBoundingClientRect();
-                        if (r.width <= 0 || r.height <= 0) continue;
-                        const sz = r.width * r.height;
-                        if (sz < bestSize) {{ best = el; bestSize = sz; }}
-                    }}
-                    if (best) {{
-                        best.dispatchEvent(new MouseEvent('dblclick', {{bubbles:true}}));
-                        return best.tagName + '|' + best.textContent.trim().slice(0,60);
-                    }}
-                    return null;
-                }}
-            """)
-            if clicked:
-                log(f"  ✅ Duplo-clicado '{variant}': {clicked}")
+    # ── 5. Tentar abrir "Execução por OB" na grid ────────────────────────────
+    sep("5. Tentando abrir 'Execução por OB'")
+    ob_variants = ["Execução por OB", "Execucao por OB", "Execução OB", "Documento - OB"]
+    opened_ob = False
+    for variant in ob_variants:
+        # Single-click (seleção de linha)
+        c1 = await page.evaluate(_js_click_contains(variant))
+        if c1:
+            log(f"  ✅ Single-click '{variant}': {c1}")
+            await asyncio.sleep(2)
+            # Double-click (abrir)
+            c2 = await page.evaluate(_js_dblclick_contains(variant))
+            if c2:
+                log(f"  ✅ Double-click '{variant}': {c2}")
                 await asyncio.sleep(3)
-                log(f"  URL: {target_page.url}")
-                await dump_page(target_page, "consultas_03_ob_dblclick")
-                text3 = await target_page.inner_text("body")
-                log(f"  Texto:\n{text3[:3000]}")
-                await _dump_inputs_consultas(target_page, "Após double-click OB")
+                await dump_page(page, "c04_ob_aberto")
+                text_ob = await page.inner_text("body")
+                log(f"  Texto após abrir OB:\n{text_ob[:4000]}")
+                await _dump_inputs_consultas(page, "Formulário OB")
+                # Capturar elementos visíveis
+                els_ob = await page.evaluate(_JS_LEAF_ELEMENTS)
+                log(f"\n  Elementos visíveis após abrir OB ({len(els_ob)}):")
+                for e in els_ob:
+                    if e.get("visible"):
+                        log(f"    ✓ {e['text']!r:60} cls={e['cls']!r}")
+                opened_ob = True
                 break
-            log(f"  ❌ Double-click '{variant}' — não encontrado")
 
-        # ── 7. HTML completo ──────────────────────────────────────────────────
-        html = await target_page.content()
-        html_path = SCREENSHOTS / "consultas_full_dom.html"
-        html_path.write_text(html, encoding="utf-8")
-        log(f"\n  HTML completo: {html_path.name} ({len(html)} chars)")
+    # ── 6. Fallback: navegar via #!cubos → Documento - OB ────────────────────
+    sep("6. Fallback — Cubos → Documento - OB")
+    await page.goto(FV_BASE + "#!cubos", wait_until="networkidle", timeout=20000)
+    await asyncio.sleep(4)
+    await dump_page(page, "c05_cubos")
 
-        sep("DIAGNÓSTICO CONSULTAS CONCLUÍDO")
-        log(f"  Screenshots em: {SCREENSHOTS}/")
-        log(f"  Relatório em:   {REPORT}")
+    # Listar primeiros cubos visíveis
+    cubos_text = await page.inner_text("body")
+    log(f"  Texto Cubos ({len(cubos_text)} chars):\n{cubos_text[:3000]}")
+    await _dump_grid_rows(page, "Lista de Cubos")
 
+    # Buscar Documento OB
+    ob_cubo_found = False
+    for cubo_name in ["Documento - OB", "Execução de PD", "OB"]:
+        c_click = await page.evaluate(_js_click_contains(cubo_name))
+        if c_click:
+            log(f"  ✅ Single-click '{cubo_name}': {c_click}")
+            await asyncio.sleep(2)
+            c_dbl = await page.evaluate(_js_dblclick_contains(cubo_name))
+            if c_dbl:
+                log(f"  ✅ Double-click '{cubo_name}': {c_dbl}")
+                await asyncio.sleep(4)
+                await dump_page(page, "c06_cubo_ob_aberto")
+                text_cubo = await page.inner_text("body")
+                log(f"  Texto após abrir cubo:\n{text_cubo[:4000]}")
+                await _dump_inputs_consultas(page, "Formulário Cubo OB")
+                els_cubo = await page.evaluate(_JS_LEAF_ELEMENTS)
+                log(f"\n  Elementos visíveis ({len(els_cubo)}):")
+                for e in els_cubo:
+                    if e.get("visible"):
+                        log(f"    ✓ {e['text']!r:60} cls={e['cls']!r}")
+                ob_cubo_found = True
+                break
+
+    # ── 7. HTML completo ──────────────────────────────────────────────────────
+    html = await page.content()
+    html_path = SCREENSHOTS / "consultas_v2_dom.html"
+    html_path.write_text(html, encoding="utf-8")
+    log(f"\n  HTML completo: {html_path.name} ({len(html)} chars)")
+
+    sep("DIAGNÓSTICO CONSULTAS v2 CONCLUÍDO")
+    log(f"  Screenshots em: {SCREENSHOTS}/")
+    log(f"  Relatório em:   {REPORT}")
+
+    await p.stop()
     REPORT.write_text("\n".join(report_lines), encoding="utf-8")
     print(f"\n✅ Relatório salvo em: {REPORT}")
 

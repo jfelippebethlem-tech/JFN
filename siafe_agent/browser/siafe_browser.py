@@ -440,11 +440,14 @@ class SIAFEBrowser:
 
     async def navigate_to_execucao_ob(self) -> dict:
         """
-        Navigate to the 'Execução por OB' consultation inside FlexVision Consultas.
+        Navigate to the 'Execução por OB' consultation inside FlexVision.
 
-        The Consultas section shows a list/table of saved consultation reports.
-        'Execução por OB' is one of those items — we find it by text and click it
-        (Vaadin requires a double-click to open a row in most grid views).
+        Strategy (in order):
+          1. #!consultas → own queries list → look for 'Execução por OB'
+          2. #!consultas → click 'Consultas de outros usuários' → expanded list
+          3. #!cubos → double-click 'Documento - OB' cube directly
+
+        Vaadin grid rows need a double-click to open.
         """
         nav = await self.navigate_to_consultas()
         if not nav["success"]:
@@ -452,48 +455,78 @@ class SIAFEBrowser:
 
         await self.screenshot("08_fv_consultas_list")
 
-        # Look for the row — try several text variants
-        variants = [
+        ob_variants = [
             "Execução por OB",
             "Execucao por OB",
             "Execução OB",
             "Documento - OB",
-            "OB",
         ]
 
-        for variant in variants:
-            # Try single-click first
-            clicked = await self._page.evaluate(_js_click_contains(variant))
-            if clicked:
-                await self._vaadin_settle(2)
-                # Then double-click to open (Vaadin grid rows require dblclick)
-                clicked2 = await self._page.evaluate(_js_dblclick_contains(variant))
-                if clicked2:
-                    await self._vaadin_settle(3)
-                    await self.screenshot("09_fv_ob_opened")
-                    return {
-                        "success": True,
-                        "message": f"Consulta '{variant}' aberta.",
-                        "url": self._page.url,
-                    }
-                # Single click might have been enough
-                body = await self._page.inner_text("body")
-                return {
-                    "success": True,
-                    "message": f"Consulta '{variant}' clicada.",
-                    "url": self._page.url,
-                    "page_text": body[:800],
-                }
+        # ── Pass 1: user's own query list ─────────────────────────────────────
+        result = await self._try_open_ob_row(ob_variants, "09_fv_ob_pass1")
+        if result:
+            return result
 
-        # Not found — enumerate visible items to help diagnose
+        # ── Pass 2: click "Consultas de outros usuários" then retry ───────────
+        clicked_outros = await self._page.evaluate(
+            _js_click_contains("Consultas de outros usuários")
+        )
+        if clicked_outros:
+            await self._vaadin_settle(4)
+            await self.screenshot("08b_fv_outros_usuarios")
+            result = await self._try_open_ob_row(ob_variants, "09_fv_ob_pass2")
+            if result:
+                return result
+
+        # ── Pass 3: fallback via Cubos → Documento - OB ───────────────────────
+        await self._page.goto(FV_BASE + "#!cubos", wait_until="networkidle", timeout=20000)
+        await self._vaadin_settle(4)
+        await self.screenshot("08c_fv_cubos")
+
+        result = await self._try_open_ob_row(
+            ["Documento - OB", "Execução de PD", "OB"], "09_fv_ob_cubo"
+        )
+        if result:
+            return result
+
+        # Nothing worked — return diagnostics
         all_els = await self._page.evaluate(_JS_LEAF_ELEMENTS)
         visible = [e["text"] for e in all_els if e.get("visible")]
         await self.screenshot("ERROR_ob_not_found")
         return {
             "success": False,
-            "message": "Consulta 'Execução por OB' não encontrada na lista.",
+            "message": "Consulta 'Execução por OB' não encontrada (tentou lista própria, outros usuários, e cubos).",
             "visible_items": visible[:40],
         }
+
+    async def _try_open_ob_row(self, variants: list[str], screenshot_name: str) -> Optional[dict]:
+        """
+        Try to single-click then double-click each text variant in the current grid.
+        Returns a success dict if opened, or None if not found.
+        """
+        for variant in variants:
+            clicked = await self._page.evaluate(_js_click_contains(variant))
+            if clicked:
+                await self._vaadin_settle(2)
+                clicked2 = await self._page.evaluate(_js_dblclick_contains(variant))
+                if clicked2:
+                    await self._vaadin_settle(4)
+                    await self.screenshot(screenshot_name)
+                    return {
+                        "success": True,
+                        "message": f"Aberto: '{variant}'",
+                        "url": self._page.url,
+                    }
+                # Single click might have navigated
+                body = await self._page.inner_text("body")
+                await self.screenshot(screenshot_name)
+                return {
+                    "success": True,
+                    "message": f"Clicado: '{variant}'",
+                    "url": self._page.url,
+                    "page_text": body[:600],
+                }
+        return None
 
     # ── FlexVision Sidebar Navigation ─────────────────────────────────────────
 
