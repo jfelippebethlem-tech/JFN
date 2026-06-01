@@ -86,23 +86,11 @@ def parse_args():
         default="output",
         help="Diretório de saída para arquivos exportados (padrão: output/).",
     )
-    parser.add_argument(
-        "--api-key",
-        type=str,
-        default=None,
-        help="Chave da API Anthropic. Sobrescreve ANTHROPIC_API_KEY.",
-    )
     return parser.parse_args()
 
 
 async def run(args):
     from siafe_agent.agent import SIAFEAgent
-
-    api_key = args.api_key or os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        console.print("[bold red]Erro:[/bold red] ANTHROPIC_API_KEY não definida.")
-        console.print("  Adicione ao .env:  ANTHROPIC_API_KEY=sk-ant-...")
-        sys.exit(1)
 
     # Resolve credentials: CLI flag > .env > prompt
     username = args.user or os.environ.get("SIAFE_USER") or ""
@@ -117,7 +105,6 @@ async def run(args):
         password = getpass.getpass("SIAFE2 Senha: ")
 
     agent = SIAFEAgent(
-        api_key=api_key,
         headless=not args.visible,
         output_dir=args.output_dir,
         default_username=username,

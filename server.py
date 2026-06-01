@@ -55,7 +55,6 @@ async def get_agent():
     if _agent is None:
         from siafe_agent.agent import SIAFEAgent
         _agent = SIAFEAgent(
-            api_key=os.environ.get("ANTHROPIC_API_KEY"),
             headless=not _args.visible,
             output_dir="output",
             default_username=os.environ.get("SIAFE_USER", ""),
