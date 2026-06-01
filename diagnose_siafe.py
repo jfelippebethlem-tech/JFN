@@ -459,51 +459,117 @@ async def main_cdp():
         sep("Página atual do SIAFE2")
         await dump_page(target_page, "cdp_01_current_page")
 
-        # Mapear todo o menu e estrutura
-        sep("Mapeamento completo do DOM")
-        try:
-            # Todos os inputs
-            inputs = await target_page.query_selector_all("input, select, textarea")
-            log(f"\n  {len(inputs)} inputs na página:")
-            for inp in inputs:
-                try:
-                    id_ = await inp.get_attribute("id") or ""
-                    nm  = await inp.get_attribute("name") or ""
-                    tp  = await inp.get_attribute("type") or ""
-                    ph  = await inp.get_attribute("placeholder") or ""
-                    tag = await inp.evaluate("el => el.tagName.toLowerCase()")
-                    log(f"    <{tag}> id={id_!r:35} name={nm!r:30} type={tp!r:10} placeholder={ph!r}")
-                except Exception:
-                    pass
+        # ── Explorar menus principais ──────────────────────────────────────────
+        sep("Explorando menus principais (Execução, Relatórios, etc.)")
 
-            # Frames
-            frames = target_page.frames
-            log(f"\n  {len(frames)} frame(s):")
-            for f in frames:
-                log(f"    {f.url}")
-                if "siafe" in f.url.lower() or "flexvision" in f.url.lower() or f.url != "about:blank":
+        # Menus principais conhecidos (classe ADF xyo)
+        main_menus = ["Execução", "Relatórios", "Apoio", "Projetos", "Planejamento"]
+        for menu_name in main_menus:
+            sep(f"Menu: {menu_name}")
+            try:
+                # Clicar no menu
+                menu_el = await target_page.query_selector(f"a.xyo:has-text('{menu_name}'), span.xyo:has-text('{menu_name}')")
+                if not menu_el:
+                    # Tentar seletores mais amplos
+                    all_els = await target_page.query_selector_all(".xyo")
+                    for el in all_els:
+                        t = (await el.inner_text()).strip()
+                        if t == menu_name:
+                            menu_el = el
+                            break
+                if not menu_el:
+                    log(f"  ❌ Menu '{menu_name}' não encontrado na página")
+                    continue
+
+                log(f"  → Clicando em '{menu_name}'...")
+                await menu_el.click()
+                await asyncio.sleep(1.5)
+
+                # Capturar submenus que apareceram
+                submenu_items = await target_page.query_selector_all(".xgh")
+                log(f"  Submenus (.xgh) encontrados: {len(submenu_items)}")
+                for item in submenu_items:
                     try:
-                        ftxt = await f.inner_text("body")
-                        log(f"    → Texto ({len(ftxt)} chars): {ftxt[:500]}")
-                        finputs = await f.query_selector_all("input, select, button")
-                        log(f"    → {len(finputs)} elementos interativos")
-                        for fi in finputs[:30]:
-                            try:
-                                fid = await fi.get_attribute("id") or ""
-                                fnm = await fi.get_attribute("name") or ""
-                                ftg = await fi.evaluate("el => el.tagName.toLowerCase()")
-                                ftxt2 = (await fi.inner_text()).strip()[:40]
-                                log(f"      <{ftg}> id={fid!r:35} name={fnm!r:30} text={ftxt2!r}")
-                            except Exception:
-                                pass
-                    except Exception as e:
-                        log(f"    [erro: {e}]")
-        except Exception as e:
-            log(f"  Erro no mapeamento: {e}")
+                        t = (await item.inner_text()).strip()
+                        cls = await item.get_attribute("class") or ""
+                        if t:
+                            log(f"    - {t!r:40} class={cls!r}")
+                    except Exception:
+                        pass
+
+                await dump_page(target_page, f"cdp_menu_{menu_name.lower()}")
+
+                # Se é Execução, explorar submenus
+                if menu_name == "Execução":
+                    sep("  Submenus de Execução (clicando em cada um)")
+                    for item in submenu_items[:10]:
+                        try:
+                            t = (await item.inner_text()).strip()
+                            if not t or "Disabled" in (await item.get_attribute("class") or ""):
+                                continue
+                            log(f"    → Clicando em '{t}'...")
+                            await item.click()
+                            await asyncio.sleep(1.5)
+                            # Capturar sub-submenus
+                            subsubitems = await target_page.query_selector_all(".xgg")
+                            if subsubitems:
+                                log(f"      Sub-submenus (.xgg): {len(subsubitems)}")
+                                for ssi in subsubitems:
+                                    sst = (await ssi.inner_text()).strip()
+                                    if sst:
+                                        log(f"        - {sst!r}")
+                            await dump_page(target_page, f"cdp_execucao_sub_{t[:20].replace(' ', '_').lower()}")
+                            # Voltar para Execução
+                            menu_el2 = None
+                            all_els2 = await target_page.query_selector_all(".xyo")
+                            for e2 in all_els2:
+                                if (await e2.inner_text()).strip() == "Execução":
+                                    menu_el2 = e2
+                                    break
+                            if menu_el2:
+                                await menu_el2.click()
+                                await asyncio.sleep(1)
+                        except Exception as ex:
+                            log(f"      [erro: {ex}]")
+
+            except Exception as ex:
+                log(f"  Erro ao explorar '{menu_name}': {ex}")
+
+        # ── Tentar FlexVision diretamente ──────────────────────────────────────
+        sep("Tentando URL direta do FlexVision")
+        FLEXVISION_URL = "https://siafe2-flexvision.fazenda.rj.gov.br/Flexvision/"
+        log(f"  Navegando para: {FLEXVISION_URL}")
+        try:
+            await target_page.goto(FLEXVISION_URL, timeout=20000, wait_until="networkidle")
+            await asyncio.sleep(2)
+            log(f"  URL resultante: {target_page.url}")
+            log(f"  Título: {await target_page.title()}")
+            body_text = await target_page.inner_text("body")
+            log(f"  Texto ({len(body_text)} chars): {body_text[:2000]}")
+            await dump_page(target_page, "cdp_flexvision_direct")
+
+            # Se chegou no FlexVision, explorar menus lá
+            if "flexvision" in target_page.url.lower() or "Flex" in await target_page.title():
+                sep("Menus dentro do FlexVision")
+                all_links = await target_page.query_selector_all("a, li, button, td, span[onclick]")
+                log(f"  {len(all_links)} elementos clicáveis:")
+                seen = set()
+                for el in all_links:
+                    try:
+                        t = (await el.inner_text()).strip()
+                        if t and t not in seen and len(t) < 100:
+                            cls = await el.get_attribute("class") or ""
+                            log(f"    {t!r:50} class={cls[:40]!r}")
+                            seen.add(t)
+                    except Exception:
+                        pass
+
+        except Exception as ex:
+            log(f"  Erro ao acessar FlexVision diretamente: {ex}")
 
         # Screenshot final
         sep("Screenshot final")
-        await dump_page(target_page, "cdp_02_full_map")
+        await dump_page(target_page, "cdp_03_final")
 
         log("\n" + "="*60)
         log("  DIAGNÓSTICO CDP CONCLUÍDO")
