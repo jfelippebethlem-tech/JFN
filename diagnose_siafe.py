@@ -472,6 +472,44 @@ def _js_click_contains(text: str) -> str:
     """
 
 
+def _js_click_valo_span(text: str) -> str:
+    """Returns JS that clicks <span class='valo-menu-item-caption'> with exact text."""
+    safe = text.replace("'", "\\'")
+    return f"""
+        () => {{
+            for (const el of document.querySelectorAll('span.valo-menu-item-caption')) {{
+                if (el.textContent.trim() === '{safe}') {{
+                    el.click();
+                    return 'SPAN|' + el.className + '|' + el.textContent.trim();
+                }}
+            }}
+            return null;
+        }}
+    """
+
+
+def _js_dblclick_contains(text: str) -> str:
+    """Returns JS that double-clicks smallest visible element containing `text`."""
+    safe = text.replace("'", "\\'")
+    return f"""
+        () => {{
+            let best = null, bestSize = Infinity;
+            for (const el of document.querySelectorAll('*')) {{
+                if (!el.textContent.includes('{safe}')) continue;
+                const r = el.getBoundingClientRect();
+                if (r.width <= 0 || r.height <= 0) continue;
+                const size = r.width * r.height;
+                if (size < bestSize) {{ best = el; bestSize = size; }}
+            }}
+            if (best) {{
+                best.dispatchEvent(new MouseEvent('dblclick', {{bubbles: true}}));
+                return best.tagName + ' | cls=' + best.className + ' | text=' + best.textContent.trim().substring(0,80);
+            }}
+            return null;
+        }}
+    """
+
+
 async def _dump_inputs(page, label: str):
     """Log all input/select/button elements on the page."""
     sep(f"Formulário: {label}")
@@ -1093,6 +1131,253 @@ async def main_consultas():
     print(f"\n✅ Relatório salvo em: {REPORT}")
 
 
+async def main_siafe2():
+    """
+    Modo SIAFE2: mapeia o menu Oracle ADF do SIAFE2 via CDP.
+    Explora todos os menus principais e submenus procurando OB / Ordens Bancárias.
+
+    Uso: python diagnose_siafe.py --siafe2
+    Chrome deve estar aberto com --remote-debugging-port=9222 e logado no SIAFE2.
+    """
+    log(f"SIAFE2 Diagnóstico (modo SIAFE2) — {datetime.now():%d/%m/%Y %H:%M}")
+
+    p, browser, page = await _cdp_connect()
+    if not page:
+        REPORT.write_text("\n".join(report_lines), encoding="utf-8")
+        return
+
+    # Prefer SIAFE2 tab (not FlexVision)
+    siafe2_page = None
+    for ctx in browser.contexts:
+        for pg in ctx.pages:
+            url = pg.url.lower()
+            if "siafe2.fazenda" in url and "flexvision" not in url:
+                siafe2_page = pg
+                break
+        if siafe2_page:
+            break
+    if not siafe2_page:
+        siafe2_page = page
+        log(f"⚠️  Usando aba disponível: {page.url}")
+    else:
+        log(f"✅ Aba SIAFE2 encontrada: {siafe2_page.url}")
+
+    # ── 1. Snapshot inicial ───────────────────────────────────────────────────
+    sep("1. Página atual do SIAFE2")
+    await dump_page(siafe2_page, "s01_siafe2_inicial")
+    body_init = await siafe2_page.inner_text("body")
+    if "login" in siafe2_page.url.lower():
+        log("⚠️  Ainda na página de login. Faça login e execute de novo.")
+        REPORT.write_text("\n".join(report_lines), encoding="utf-8")
+        await p.stop()
+        return
+
+    # ── 2. Mapear menu principal (classe .xyo) ────────────────────────────────
+    sep("2. Menu principal (.xyo)")
+    main_menu_els = await siafe2_page.query_selector_all(".xyo")
+    log(f"  {len(main_menu_els)} itens .xyo:")
+    menu_texts: list[str] = []
+    for item in main_menu_els:
+        try:
+            t = (await item.inner_text()).strip()
+            cls = await item.get_attribute("class") or ""
+            if t:
+                menu_texts.append(t)
+                log(f"    - {t!r:40} cls={cls!r}")
+        except Exception:
+            pass
+
+    # Fallback seletores se .xyo vazio
+    if not menu_texts:
+        sep("2b. Fallback — outros seletores de menu")
+        for sel in [
+            ".af_menuBar_item", "[role='menuitem']", ".xfl", ".xfk",
+            "a[class*='menu']", "td[class*='menu']",
+        ]:
+            items = await siafe2_page.query_selector_all(sel)
+            if items:
+                log(f"  {sel!r}: {len(items)} itens")
+                for it in items[:20]:
+                    try:
+                        t = (await it.inner_text()).strip()
+                        cls = await it.get_attribute("class") or ""
+                        if t and len(t) < 100:
+                            log(f"    - {t!r:50} cls={cls!r}")
+                    except Exception:
+                        pass
+
+    # ── 3. Clicar em cada menu e registrar submenus ───────────────────────────
+    sep("3. Mapa completo de menus")
+    menu_map: dict[str, list] = {}
+    all_top_els = await siafe2_page.query_selector_all(".xyo")
+    for menu_el in all_top_els:
+        try:
+            menu_text = (await menu_el.inner_text()).strip()
+            if not menu_text:
+                continue
+            await menu_el.click()
+            await asyncio.sleep(1.2)
+
+            sub_items = await siafe2_page.query_selector_all(".xgh")
+            sub_data: list[dict] = []
+            for si in sub_items:
+                try:
+                    t = (await si.inner_text()).strip()
+                    cls = await si.get_attribute("class") or ""
+                    if not t:
+                        continue
+                    disabled = "p_AFDisabled" in cls
+                    sub_data.append({"text": t, "disabled": disabled, "cls": cls})
+                except Exception:
+                    pass
+
+            menu_map[menu_text] = sub_data
+            log(f"\n  ── {menu_text!r} ({len(sub_data)} submenus) ──")
+            for sd in sub_data:
+                mark = "[D]" if sd["disabled"] else "   "
+                ob_flag = " ⭐OB" if any(
+                    kw in sd["text"].upper() for kw in ("OB", "ORDEM BANC", "ORDENS BANC")
+                ) else ""
+                log(f"    {mark} {sd['text']!r}{ob_flag}")
+
+            # Press Escape to close menu before next iteration
+            await siafe2_page.keyboard.press("Escape")
+            await asyncio.sleep(0.5)
+        except Exception as ex:
+            log(f"  [erro: {ex}]")
+
+    # ── 4. Explorar submenus de Execução em profundidade ─────────────────────
+    sep("4. Submenus de Execução (com sub-submenus)")
+    exec_el = None
+    for menu_el in await siafe2_page.query_selector_all(".xyo"):
+        try:
+            if (await menu_el.inner_text()).strip() == "Execução":
+                exec_el = menu_el
+                break
+        except Exception:
+            pass
+
+    if exec_el:
+        for sd in menu_map.get("Execução", []):
+            if sd["disabled"]:
+                log(f"  ⏭️  '{sd['text']}' — desativado")
+                continue
+
+            # Reopen Execução menu
+            try:
+                exec_el2 = None
+                for el in await siafe2_page.query_selector_all(".xyo"):
+                    if (await el.inner_text()).strip() == "Execução":
+                        exec_el2 = el
+                        break
+                if not exec_el2:
+                    break
+                await exec_el2.click()
+                await asyncio.sleep(1)
+
+                # Find and click this submenu item
+                sub_items2 = await siafe2_page.query_selector_all(".xgh")
+                target = None
+                for si in sub_items2:
+                    try:
+                        t = (await si.inner_text()).strip()
+                        cls = await si.get_attribute("class") or ""
+                        if t == sd["text"] and "p_AFDisabled" not in cls:
+                            target = si
+                            break
+                    except Exception:
+                        pass
+
+                if not target:
+                    log(f"  ❌ '{sd['text']}' não clicável")
+                    await siafe2_page.keyboard.press("Escape")
+                    continue
+
+                await target.click()
+                await asyncio.sleep(1)
+
+                sub2 = await siafe2_page.query_selector_all(".xgg")
+                if sub2:
+                    log(f"\n  ▶ '{sd['text']}' → {len(sub2)} sub-submenus:")
+                    for ssi in sub2:
+                        try:
+                            t = (await ssi.inner_text()).strip()
+                            cls2 = await ssi.get_attribute("class") or ""
+                            disabled2 = "p_AFDisabled" in cls2
+                            ob_flag = " ⭐OB" if any(
+                                kw in t.upper() for kw in ("OB", "ORDEM BANC", "ORDENS BANC")
+                            ) else ""
+                            mark2 = "[D]" if disabled2 else "   "
+                            if t:
+                                log(f"      {mark2} {t!r}{ob_flag}")
+                        except Exception:
+                            pass
+                else:
+                    log(f"  ▶ '{sd['text']}' — sem sub-submenus (abriu página?)")
+                    body_after = await siafe2_page.inner_text("body")
+                    if len(body_after) != len(body_init):
+                        log(f"    Texto página ({len(body_after)} chars): {body_after[:300]}")
+                    await dump_page(siafe2_page, f"s04_exec_{sd['text'][:20].replace(' ','_').lower()}")
+
+                await siafe2_page.keyboard.press("Escape")
+                await asyncio.sleep(0.5)
+            except Exception as ex:
+                log(f"  [erro: {ex}]")
+    else:
+        log("  ❌ Menu 'Execução' não encontrado no DOM")
+
+    # ── 5. Busca por 'OB' em todo o DOM ──────────────────────────────────────
+    sep("5. Elementos com 'OB' / 'Ordem Bancária' no DOM")
+    ob_elements = await siafe2_page.evaluate("""
+        () => {
+            const kws = ['OB', 'Ordem Banc', 'Ordens Banc', 'ordem banc'];
+            const results = [];
+            for (const el of document.querySelectorAll('*')) {
+                const direct = [...el.childNodes]
+                    .filter(n => n.nodeType === 3)
+                    .map(n => n.textContent.trim())
+                    .filter(Boolean)
+                    .join(' ');
+                if (!direct || direct.length > 200) continue;
+                if (kws.some(k => direct.includes(k))) {
+                    const r = el.getBoundingClientRect();
+                    results.push({
+                        tag: el.tagName, cls: el.className,
+                        text: direct, visible: r.width > 0 && r.height > 0
+                    });
+                }
+            }
+            return results;
+        }
+    """)
+    log(f"  {len(ob_elements)} elementos encontrados:")
+    for e in ob_elements:
+        vis = "✓" if e.get("visible") else "·"
+        log(f"  {vis} <{e['tag'].lower():8}> text={e['text']!r:60} cls={e['cls']!r}")
+
+    # ── 6. Dump todos os itens visíveis ──────────────────────────────────────
+    sep("6. Todos os elementos visíveis (leaf nodes)")
+    leaf_els = await siafe2_page.evaluate(_JS_LEAF_ELEMENTS)
+    visible_els = [e for e in leaf_els if e.get("visible")]
+    log(f"  {len(visible_els)} visíveis:")
+    for e in visible_els:
+        log(f"  ✓ <{e['tag'].lower():6}> {e['text']!r:60} cls={e['cls'][:50]!r}")
+
+    # ── 7. HTML completo ──────────────────────────────────────────────────────
+    html = await siafe2_page.content()
+    html_path = SCREENSHOTS / "siafe2_dom.html"
+    html_path.write_text(html, encoding="utf-8")
+    log(f"\n  HTML completo: {html_path.name} ({len(html)} chars)")
+
+    sep("DIAGNÓSTICO SIAFE2 CONCLUÍDO")
+    log(f"  Screenshots em: {SCREENSHOTS}/")
+    log(f"  Relatório em:   {REPORT}")
+
+    await p.stop()
+    REPORT.write_text("\n".join(report_lines), encoding="utf-8")
+    print(f"\n✅ Relatório salvo em: {REPORT}")
+
+
 async def _dump_inputs_consultas(page, label: str):
     """Dump all inputs visible after navigating to a consultation."""
     sep(f"Inputs: {label}")
@@ -1121,5 +1406,7 @@ if __name__ == "__main__":
         asyncio.run(main_cdp())
     elif "--consultas" in sys.argv:
         asyncio.run(main_consultas())
+    elif "--siafe2" in sys.argv:
+        asyncio.run(main_siafe2())
     else:
         asyncio.run(main())

@@ -416,25 +416,19 @@ class SIAFEBrowser:
         """
         Navigate to the Consultas section in FlexVision.
 
-        Uses direct hash navigation (#!consultas) which is more reliable than
-        clicking the sidebar item (the sidebar has a <b> category label and a
-        <span> nav item both with text "Consultas"; direct navigation is cleaner).
+        Uses JS sidebar click (valo-menu-item-caption span) rather than page.goto()
+        because page.goto() triggers a full reload that breaks Vaadin's SPA router.
         """
-        await self._page.goto(FV_BASE + "#!consultas", wait_until="networkidle", timeout=20000)
+        clicked = await self._page.evaluate(_js_click_valo_span("Consultas"))
+        if not clicked:
+            clicked = await self._page.evaluate(_js_click_exact("Consultas"))
         await self._vaadin_settle(3)
         await self.screenshot("07_fv_consultas")
 
-        url = self._page.url
-        if "consultas" not in url.lower():
-            # The hash didn't stick — try clicking the <span> sidebar item
-            result = await self._page.evaluate(_js_click_valo_span("Consultas"))
-            await self._vaadin_settle(2)
-            url = self._page.url
-
         body = await self._page.inner_text("body")
         return {
-            "success": True,
-            "url": url,
+            "success": bool(clicked),
+            "url": self._page.url,
             "page_text_preview": body[:600],
         }
 
@@ -479,7 +473,9 @@ class SIAFEBrowser:
                 return result
 
         # ── Pass 3: fallback via Cubos → Documento - OB ───────────────────────
-        await self._page.goto(FV_BASE + "#!cubos", wait_until="networkidle", timeout=20000)
+        clicked_cubos = await self._page.evaluate(_js_click_valo_span("Cubos"))
+        if not clicked_cubos:
+            clicked_cubos = await self._page.evaluate(_js_click_exact("Cubos"))
         await self._vaadin_settle(4)
         await self.screenshot("08c_fv_cubos")
 
@@ -533,34 +529,16 @@ class SIAFEBrowser:
     async def navigate_sidebar(self, item_name: str) -> dict:
         """
         Click a sidebar item in FlexVision by name.
-        Uses hash routing when available, falls back to JS click.
 
-        Known hashes:
-          paineis, gerenciamento, dimensoes, cubos, parametros,
-          agregacoes, monitoramento, consultas
+        Always uses JS sidebar click (valo-menu-item-caption span) — page.goto()
+        triggers a full reload that breaks Vaadin's SPA router.
         """
-        hash_map = {
-            "Paineis":                "#!paineis",
-            "Gerenciamento":          "#!gerenciamento",
-            "Dimensões":              "#!dimens%C3%B5es",
-            "Cubos":                  "#!cubos",
-            "Parâmetros":             "#!par%C3%A2metros",
-            "Agregações":             "#!agrega%C3%A7%C3%B5es",
-            "Monitoramento":          "#!monitoramento",
-            "Consultas":              "#!consultas",
-        }
-        hash_frag = hash_map.get(item_name)
-        if hash_frag:
-            await self._page.goto(FV_BASE + hash_frag, wait_until="networkidle", timeout=15000)
-            await self._vaadin_settle(2)
-        else:
-            clicked = await self._page.evaluate(_js_click_valo_span(item_name))
-            if not clicked:
-                clicked = await self._page.evaluate(_js_click_exact(item_name))
-            if not clicked:
-                return {"success": False, "message": f"Item '{item_name}' não encontrado na barra lateral."}
-            await self._vaadin_settle(2)
-
+        clicked = await self._page.evaluate(_js_click_valo_span(item_name))
+        if not clicked:
+            clicked = await self._page.evaluate(_js_click_exact(item_name))
+        if not clicked:
+            return {"success": False, "message": f"Item '{item_name}' não encontrado na barra lateral."}
+        await self._vaadin_settle(2)
         return {"success": True, "url": self._page.url}
 
     # ── Search & Data Extraction ──────────────────────────────────────────────
