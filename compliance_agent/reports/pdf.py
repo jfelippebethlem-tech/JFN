@@ -204,7 +204,7 @@ def gerar_relatorio_diario(
     pdf.set_font("Helvetica", "", 10)
     for i, (label, valor) in enumerate(doerj_rows):
         fill = i % 2 == 0
-        pdf.set_fill_color(248, 250, 252 if fill else 241, 245, 249)
+        pdf.set_fill_color(248, 250, 252) if fill else pdf.set_fill_color(241, 245, 249)
         pdf.cell(col_w[0], 7, label, border=1, fill=fill)
         pdf.cell(col_w[1], 7, valor, border=1, fill=fill, new_x="LMARGIN", new_y="NEXT")
 

@@ -8,7 +8,7 @@ payroll, and relationship data is stored here before graph analysis.
 from datetime import datetime
 from sqlalchemy import (
     Column, String, Integer, Float, Date, DateTime, Boolean,
-    Text, ForeignKey, Index, create_engine, event
+    Text, ForeignKey, Index, create_engine, event, text
 )
 from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
 from pathlib import Path
@@ -358,7 +358,23 @@ def get_session(engine=None):
 
 
 def init_db(db_path: Path = DB_PATH):
-    """Create all tables. Safe to call multiple times."""
+    """Create all tables and apply incremental migrations. Safe to call multiple times."""
     engine = get_engine(db_path)
     Base.metadata.create_all(engine)
+    _migrate(engine)
     return engine
+
+
+def _migrate(engine):
+    """Apply ALTER TABLE migrations for columns added after initial deploy."""
+    migrations = [
+        # Added when OrdemBancaria model was introduced
+        "ALTER TABLE alertas ADD COLUMN ordem_bancaria_id INTEGER REFERENCES ordens_bancarias(id)",
+    ]
+    with engine.connect() as conn:
+        for stmt in migrations:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                pass  # Column already exists — safe to ignore
