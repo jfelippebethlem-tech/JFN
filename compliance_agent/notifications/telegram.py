@@ -330,12 +330,15 @@ _AJUDA = (
     "  /relatorio — envia PDF do dia\n"
     "  /top — ranking dos maiores favorecidos\n"
     "  /sancoes — verifica CEIS/CNEP agora\n\n"
-    "*Busca:*\n"
-    "  /buscar NOME — busca empresa/pessoa no banco\n\n"
+    "*Busca e investigação:*\n"
+    "  /buscar NOME — busca empresa/pessoa no banco\n"
+    "  /investigar NOME — pesquisa na INTERNET (notícias, riscos)\n"
+    "  /sei NUMERO — consulta processo no SEI-RJ\n\n"
     "*Aprendizado:*\n"
     "  /aprendi — o que o agente aprendeu (lições do Hermes)\n"
     "  /memoria NOME — perfil acumulado de uma entidade\n\n"
-    "*Ajuda:*\n"
+    "*Painel e ajuda:*\n"
+    "  /painel — link do dashboard web (PC e celular)\n"
     "  /chrome — como abrir o Chrome no modo correto\n"
     "  /ajuda — esta mensagem"
 )
@@ -485,6 +488,64 @@ async def _memoria_reply(termo: str) -> str:
         return f"Erro: {exc}"
 
 
+def _ip_local() -> str:
+    """Descobre o IP do PC na rede local (para acessar o painel pelo celular)."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip = s.getsockname()[0]
+        s.close()
+        return ip
+    except Exception:
+        return "localhost"
+
+
+def _painel_reply() -> str:
+    ip = _ip_local()
+    return (
+        "*🖥️ Painel de Auditoria (dashboard web)*\n\n"
+        f"No PC: http://localhost:8000\n"
+        f"No celular (mesma rede): http://{ip}:8000\n\n"
+        "O painel mostra OBs do dia, alertas, maiores favorecidos, lições "
+        "aprendidas e permite investigar pessoas/CNPJs na internet."
+    )
+
+
+async def _sei_reply(numero: str) -> str:
+    """Consulta um processo no SEI-RJ e resume."""
+    try:
+        from compliance_agent.collectors.sei_portal import analisar_processo_sei
+        from compliance_agent.database.models import get_session
+        session = get_session()
+        try:
+            resultado = await analisar_processo_sei(numero, session=session)
+        except TypeError:
+            resultado = await analisar_processo_sei(numero)
+        finally:
+            session.close()
+        if not resultado or resultado.get("erro"):
+            return (f"Processo SEI {numero} não encontrado ou inacessível.\n"
+                    f"{resultado.get('erro','') if resultado else ''}")
+        linhas = [f"📂 *Processo SEI {numero}*\n"]
+        if resultado.get("assunto"):
+            linhas.append(f"Assunto: {resultado['assunto'][:200]}")
+        if resultado.get("tipo"):
+            linhas.append(f"Tipo: {resultado['tipo']}")
+        if resultado.get("interessados"):
+            linhas.append(f"Interessados: {', '.join(resultado['interessados'][:3])}")
+        flags = resultado.get("red_flags") or resultado.get("irregularidades") or []
+        if flags:
+            linhas.append(f"\n🚨 *Sinais de alerta:*")
+            for f in flags[:5]:
+                linhas.append(f"• {f}")
+        if resultado.get("resumo"):
+            linhas.append(f"\n{resultado['resumo'][:500]}")
+        return "\n".join(linhas)
+    except Exception as exc:
+        return f"Erro ao consultar SEI: {exc}"
+
+
 _CHROME_INSTRUCOES = (
     "*🖥️ Como abrir o Chrome no modo correto:*\n\n"
     "1\\. Feche o Chrome completamente \\(todos os ícones na bandeja\\)\n\n"
@@ -631,11 +692,36 @@ async def processar_comando(texto: str, chat_id: str) -> None:
     elif cmd == "/buscar":
         await enviar_mensagem(await _buscar_reply(args), chat_id=chat_id)
 
+    elif cmd == "/investigar":
+        if not args.strip():
+            await enviar_mensagem("Use: /investigar NOME DA PESSOA OU EMPRESA", chat_id=chat_id)
+        else:
+            await enviar_mensagem(f"🔎 Investigando *{args}* na internet...", chat_id=chat_id)
+            try:
+                from compliance_agent.collectors.web_research import (
+                    investigar, formatar_dossie_telegram
+                )
+                cnpj = "".join(c for c in args if c.isdigit())
+                dossie = await investigar(args.strip(), cnpj if len(cnpj) == 14 else "")
+                await enviar_mensagem(formatar_dossie_telegram(dossie), chat_id=chat_id)
+            except Exception as exc:
+                await enviar_mensagem(f"❌ Erro na investigação: {exc}", chat_id=chat_id)
+
+    elif cmd == "/sei":
+        if not args.strip():
+            await enviar_mensagem("Use: /sei E-18/001234/2024", chat_id=chat_id)
+        else:
+            await enviar_mensagem(f"📂 Consultando SEI {args}...", chat_id=chat_id)
+            await enviar_mensagem(await _sei_reply(args.strip()), chat_id=chat_id)
+
     elif cmd == "/aprendi":
         await enviar_mensagem(await _aprendi_reply(), chat_id=chat_id)
 
     elif cmd == "/memoria":
         await enviar_mensagem(await _memoria_reply(args), chat_id=chat_id)
+
+    elif cmd == "/painel":
+        await enviar_mensagem(_painel_reply(), chat_id=chat_id)
 
     elif cmd == "/chrome":
         await enviar_mensagem(_CHROME_INSTRUCOES, chat_id=chat_id, parse_mode="MarkdownV2")

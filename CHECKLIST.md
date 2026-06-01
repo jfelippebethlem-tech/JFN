@@ -40,6 +40,23 @@ controlada pelo celular. Última revisão: 01/06/2026.
 | Querido Diário — histórico no DOERJ | `collectors/querido_diario.py` | ✅ |
 | CAGED — múltiplos empregos | `collectors/caged.py` | ✅ |
 | TSE — doações × contratos | `collectors/tse.py` | ✅ |
+| **Pesquisa na INTERNET (pessoas/CNPJs)** | `collectors/web_research.py` → `investigar` | ✅ |
+| DuckDuckGo + notícias + detecção de risco | `web_research.py` | ✅ |
+| Investigação automática de OBs alto valor | `web_research.py` → `investigar_obs_alto_valor` | ✅ |
+| **SEI-RJ — consulta de processos** | `collectors/sei_portal.py` (ligado ao Telegram + pipeline) | ✅ |
+
+## ✅ 3b. Dashboard profissional (web)
+
+| Função | Onde | Status |
+|---|---|---|
+| Painel institucional (PC e celular) | `static/dashboard.html` | ✅ |
+| KPIs: OBs hoje, valor, alertas | `server.py` → `/api/compliance/painel` | ✅ |
+| Lista de alertas com severidade | dashboard | ✅ |
+| OBs recentes + maiores favorecidos | dashboard | ✅ |
+| Investigar pessoa/CNPJ pela web | `server.py` → `/api/compliance/investigar` | ✅ |
+| Lições aprendidas exibidas | dashboard | ✅ |
+| Atualiza sozinho a cada 30s | dashboard | ✅ |
+| Sobe junto com o agente | `JFN.bat` passo 7 | ✅ |
 
 ## ✅ 4. Memória e aprendizado (Hermes + contextual)
 
@@ -79,6 +96,9 @@ controlada pelo celular. Última revisão: 01/06/2026.
 | `/relatorio` | envia PDF do dia | ✅ |
 | `/aprendi` | lições que o Hermes extraiu | ✅ |
 | `/memoria NOME` | perfil acumulado de uma entidade | ✅ |
+| `/investigar NOME` | pesquisa na INTERNET (notícias, riscos) | ✅ |
+| `/sei NUMERO` | consulta processo no SEI-RJ | ✅ |
+| `/painel` | link do dashboard web (PC e celular) | ✅ |
 | `/chrome` | como abrir o Chrome no modo correto | ✅ |
 | Alertas urgentes empurrados na hora | `notifications/telegram.py` | ✅ |
 | Relatório diário automático às 08:00 | `scheduler.py` | ✅ |

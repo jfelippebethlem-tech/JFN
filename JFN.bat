@@ -109,8 +109,12 @@ echo   [6/7] Login automatico no SIAFE2...
 echo         O agente faz login sozinho com as credenciais do .env
 echo         e re-loga quando a sessao expira (~1h). Nada manual.
 
-REM ====== PASSO 7: agente continuo + Telegram ================
-echo   [7/7] Subindo o agente...
+REM ====== PASSO 7: dashboard web + agente continuo ===========
+echo   [7/7] Subindo dashboard web e o agente...
+
+REM Sobe o painel profissional numa janela separada (acessivel no PC e celular)
+start "JFN Painel Web" cmd /c "python server.py --host 0.0.0.0 --port 8000"
+echo         Painel: http://localhost:8000  (no celular: http://IP-DO-PC:8000)
 echo.
 echo   ============================================================
 echo     AGENTE NO AR.

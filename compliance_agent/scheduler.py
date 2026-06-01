@@ -375,6 +375,45 @@ async def rodar_ciclo_relatorio_diario():
     except Exception as e:
         console.print(f"    [yellow]Grafo: {e}[/yellow]")
 
+    # 5c. Investigação na internet dos maiores favorecidos do dia
+    console.print("[cyan]5c/6 Investigação web (pessoas/CNPJs)...[/cyan]")
+    try:
+        from compliance_agent.collectors.web_research import investigar_obs_alto_valor
+        web_alertas = await investigar_obs_alto_valor(session, hoje)
+        if web_alertas:
+            console.print(f"    [red]{len(web_alertas)} alvo(s) com risco na web![/red]")
+            alertas += [{"tipo": "investigacao_web", "severidade": "alta",
+                         "titulo": f"Risco web: {a['favorecido']}",
+                         "descricao": f"Termos: {', '.join(a['riscos'])}"}
+                        for a in web_alertas]
+        else:
+            console.print("    Investigação web: nada relevante.")
+    except Exception as e:
+        console.print(f"    [yellow]Investigação web: {e}[/yellow]")
+
+    # 5d. Análise de processos SEI vinculados às OBs do dia
+    console.print("[cyan]5d/6 Processos SEI vinculados...[/cyan]")
+    try:
+        from compliance_agent.database.models import OrdemBancaria
+        from compliance_agent.collectors.sei_portal import analisar_processo_sei
+        obs_com_sei = (
+            session.query(OrdemBancaria)
+            .filter(OrdemBancaria.data_emissao == hoje,
+                    OrdemBancaria.numero_processo.isnot(None))
+            .limit(5).all()
+        )
+        n_sei = 0
+        for ob in obs_com_sei:
+            try:
+                res = await analisar_processo_sei(ob.numero_processo, session)
+                if res and not res.get("erro"):
+                    n_sei += 1
+            except Exception:
+                pass
+        console.print(f"    {n_sei} processo(s) SEI analisado(s).")
+    except Exception as e:
+        console.print(f"    [yellow]SEI: {e}[/yellow]")
+
     # 5b. Reflexão com Hermes-3 — o agente APRENDE com o dia
     console.print("[cyan]5b/6 Reflexão e aprendizado (Hermes-3)...[/cyan]")
     try:
