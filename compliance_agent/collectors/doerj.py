@@ -150,6 +150,7 @@ class DOERJCollector:
             timeout=25,
             headers=_HEADERS,
             follow_redirects=True,
+            verify=False,   # sites governamentais frequentemente têm SSL problemático
         ) as client:
 
             # 1. Tentar padrão aprendido anteriormente (mais rápido)
