@@ -1,25 +1,66 @@
 """
 Playwright automation for SIAFE2 + FlexVision.
 
-Facts confirmed from live system inspection via CDP (01/06/2026):
+Selectors confirmed from live CDP inspection of production system (01/06/2026):
 
-SIAFE2 (Oracle ADF):
-- Login URL: https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp
-- Framework: Oracle ADF with Fusion skin, minified CSS classes
-- Menu bar: class="xyo"  Submenu: class="xgh"  Sub-submenu: class="xgg"
-- Disabled items: class contains "p_AFDisabled"
-- Input IDs follow pattern: pt1:fieldName::content
+══════════════════════════════════════════════════════════════════════════════
+SIAFE2  (Oracle ADF — https://siafe2.fazenda.rj.gov.br/Siafe)
+══════════════════════════════════════════════════════════════════════════════
 
-FlexVision (Vaadin 7/8):
-- Base URL: https://siafe2-flexvision.fazenda.rj.gov.br/Flexvision/
-- Hash routing: #!paineis, #!gerenciamento, #!consultas, etc.
-- Login: input[type=text] (username), input[type=password] (password)
-- Sidebar nav items: <span class="valo-menu-item-caption">
-  - "Consultas", "Administração", "Segurança" headings are <b> (non-navigable labels)
-  - Actual nav items are <span> — click via page.evaluate()
-- Form inputs: class="v-textfield v-widget"  (no stable IDs)
-- Tables: class="v-grid" or "v-table"  rows: ".v-grid-row"  cells: ".v-grid-cell"
-- All interactions must use page.evaluate() JavaScript — no standard <a>/<button>
+Menu hierarchy (all <a> tags, ALL interactions via page.evaluate — ADF PPR
+invalidates ElementHandle objects):
+
+  a.xyo   — top bar tabs:  Planejamento | Execução | Projetos | Apoio | …
+  a.xgh   — 2nd-level bar: Execução Orçamentária | Execução Financeira | …
+  a.xgg   — 3rd-level menu (left-panel dropdown):
+              Ordens Bancárias | OB Orçamentária | OB de Dedução |
+              OB de Retenção | OB de Transferência | OB Extra-orçamentária |
+              Programações de Desembolso | PD Orçamentária | … |
+              Lista de Favorecido para OB | Bloqueio Judicial | …
+  a.xg8   — left panel nav item (e.g. "Visualizar OB Orçamentária")
+  a.xyp   — detail tabs inside a record:
+              Detalhamento | Itens | Pagamentos | OB Complementares [D] |
+              ⭐ Processo  ← tab that shows the SEI process number |
+              Observação | Espelho Contábil | Registro de Envio | Histórico
+
+Disabled items have class "p_AFDisabled".
+
+Input IDs follow pattern:  tplSip:fieldName::content   (tplSip prefix for
+Execução Financeira screens; pt1 prefix on some others).
+
+Key form inputs on OB Orçamentária screen:
+  id="tplSip:iTxtCad::content"       — text filter (caderno/nº)
+  id="tplSip:selUg::content"         — UG (órgão) select
+  id="tplSip:slcTipoAnulacao::content" — tipo de anulação select
+
+OB detail URL:
+  /Siafe/faces/execucao/financeira/ordemBancariaOrcamentariaEdit.jsp
+
+Navigation to OB Orçamentária:
+  1. JS click a.xyo "Execução"
+  2. JS click a.xgh "Execução Financeira"
+  3. JS click a.xgg "OB Orçamentária"  (or "Ordens Bancárias" for list)
+  4. Left panel: a.xg8 "Visualizar OB Orçamentária"
+  5. Select a row → click a.xyp "Processo" → SEI process number
+
+══════════════════════════════════════════════════════════════════════════════
+FlexVision  (Vaadin 7/8 — https://siafe2-flexvision.fazenda.rj.gov.br/Flexvision/)
+══════════════════════════════════════════════════════════════════════════════
+
+Hash routing: #!paineis, #!gerenciamento, #!consultas, #!cubos, etc.
+⚠️  page.goto(hash) breaks Vaadin SPA router — always use JS sidebar clicks.
+
+Login:  input[type=text] (username)  +  input[type=password] (password)
+Sidebar nav items: <span class="valo-menu-item-caption">
+  - "Consultas", "Administração", "Segurança" as <b> = category labels (non-nav)
+  - Actual nav items are <span> — click via _js_click_valo_span()
+
+Form inputs:   class="v-textfield v-widget"   (no stable IDs)
+Grid headers:  class="v-grid-column-header-content"
+Grid rows:     class="v-grid-row"  cells: "v-grid-cell"  (virtual scroll)
+All interactions must use page.evaluate() — no standard <a>/<button>
+
+Cube "Documento - OB" (code 000079): OB cadastro data available in FlexVision
 """
 
 import asyncio
@@ -344,6 +385,269 @@ class SIAFEBrowser:
 
         self._logged_in = True
         return {"success": True, "message": "Login realizado com sucesso.", "url": url}
+
+    # ── SIAFE2 Execução Navigation ────────────────────────────────────────────
+
+    async def navigate_to_ob_orcamentaria(self) -> dict:
+        """
+        Navigate to Execução → Execução Financeira → OB Orçamentária.
+
+        Confirmed menu path (01/06/2026):
+          a.xyo  "Execução"
+          a.xgh  "Execução Financeira"
+          a.xgg  "OB Orçamentária"
+
+        Uses page.evaluate() for every click — ADF's PPR (Partial Page Refresh)
+        invalidates ElementHandle objects on every navigation.
+        """
+        # Step 1: top-level Execução tab
+        r1 = await self._adf_js_click("a.xyo", "Execução")
+        if not r1:
+            return {"success": False, "step": "xyo Execução", "message": "Menu 'Execução' não encontrado."}
+        await self._adf_wait(8000)
+
+        # Step 2: second-level Execução Financeira
+        r2 = await self._adf_js_click("a.xgh", "Execução Financeira")
+        if not r2:
+            subs = await self._page.evaluate(
+                "() => [...document.querySelectorAll('a.xgh')].map(e => e.textContent.trim()).filter(Boolean)"
+            )
+            return {"success": False, "step": "xgh Execução Financeira",
+                    "message": "Submenu não encontrado.", "available_xgh": subs}
+        await self._adf_wait(8000)
+
+        # Step 3: third-level OB Orçamentária
+        r3 = await self._adf_js_click("a.xgg", "OB Orçamentária")
+        if not r3:
+            subs3 = await self._page.evaluate(
+                "() => [...document.querySelectorAll('a.xgg')].map(e => e.textContent.trim()).filter(Boolean)"
+            )
+            return {"success": False, "step": "xgg OB Orçamentária",
+                    "message": "Item não encontrado.", "available_xgg": subs3}
+        await self._adf_wait(8000)
+        await self.screenshot("ob_orcamentaria")
+
+        return {"success": True, "url": self._page.url,
+                "message": "Navegou para OB Orçamentária."}
+
+    async def search_ob(
+        self,
+        ug: Optional[str] = None,
+        data_ini: Optional[str] = None,
+        data_fim: Optional[str] = None,
+        numero: Optional[str] = None,
+    ) -> dict:
+        """
+        Fill OB Orçamentária search filters and click Consultar.
+
+        Known input IDs (tplSip prefix, confirmed 01/06/2026):
+          tplSip:selUg::content          — UG (select by option text or value)
+          tplSip:iTxtCad::content        — número/caderno (text)
+
+        Date fields don't have stable IDs yet — filled by label proximity.
+
+        Args:
+            ug:        UG code (e.g. "010100") or partial name ("ALERJ")
+            data_ini:  DD/MM/AAAA
+            data_fim:  DD/MM/AAAA
+            numero:    OB number
+        """
+        if ug:
+            try:
+                sel = await self._page.query_selector("#tplSip\\:selUg\\:\\:content")
+                if sel:
+                    try:
+                        await sel.select_option(label=ug)
+                    except Exception:
+                        await sel.select_option(value=ug)
+            except Exception:
+                pass
+
+        if numero:
+            try:
+                inp = await self._page.query_selector("#tplSip\\:iTxtCad\\:\\:content")
+                if inp:
+                    await inp.fill(numero)
+            except Exception:
+                pass
+
+        # Fill date fields by label proximity (IDs not yet confirmed)
+        if data_ini or data_fim:
+            await self._page.evaluate(f"""
+                () => {{
+                    const inputs = [...document.querySelectorAll('input[type="text"], input:not([type])')];
+                    for (const inp of inputs) {{
+                        if (inp.getBoundingClientRect().width <= 0) continue;
+                        let lbl = '';
+                        let p = inp.parentElement;
+                        for (let i = 0; i < 6 && p; i++, p = p.parentElement) {{
+                            const l = p.querySelector('label, span.x18m, span.af_outputLabel');
+                            if (l && l !== inp) {{ lbl = l.textContent.trim().toLowerCase(); break; }}
+                        }}
+                        if ('{data_ini or ""}' && (lbl.includes('in') || lbl.includes('de') || lbl.includes('início')))
+                            {{ inp.value = '{data_ini or ""}'; inp.dispatchEvent(new Event('change', {{bubbles:true}})); }}
+                        if ('{data_fim or ""}' && (lbl.includes('fim') || lbl.includes('até') || lbl.includes('final')))
+                            {{ inp.value = '{data_fim or ""}'; inp.dispatchEvent(new Event('change', {{bubbles:true}})); }}
+                    }}
+                }}
+            """)
+            await asyncio.sleep(0.5)
+
+        # Click Consultar
+        clicked = await self._page.evaluate("""
+            () => {
+                const kws = ['consultar', 'pesquisar', 'buscar', 'filtrar', 'listar'];
+                for (const btn of document.querySelectorAll('button, a.x7j, a.xg2, input[type="button"], input[type="submit"]')) {
+                    const t = (btn.textContent || btn.value || '').trim().toLowerCase();
+                    if (kws.some(k => t.includes(k)) && btn.getBoundingClientRect().width > 0) {
+                        btn.click(); return t;
+                    }
+                }
+                return null;
+            }
+        """)
+        if not clicked:
+            return {"success": False, "message": "Botão Consultar não encontrado."}
+
+        await self._adf_wait(15000)
+        await self.screenshot("ob_resultados")
+
+        rows = await self._count_grid_rows()
+        return {"success": True, "rows_visible": rows,
+                "message": f"Busca executada. {rows} linha(s) visíveis."}
+
+    async def open_ob_detail(self, row_index: int = 0) -> dict:
+        """
+        Select a row in the OB grid and open its detail screen.
+
+        Tries: click row → Enter → dblclick.
+        Returns success + page URL if navigated.
+        """
+        # Click row by index
+        clicked = await self._page.evaluate(f"""
+            () => {{
+                const sels = ['tr.af_table_row', 'tr[class*="Row"]:not([class*="Header"])', 'tbody tr'];
+                for (const sel of sels) {{
+                    const rows = [...document.querySelectorAll(sel)];
+                    const row = rows[{row_index}];
+                    if (row && row.getBoundingClientRect().height > 0) {{
+                        row.click();
+                        return row.textContent.trim().substring(0, 100);
+                    }}
+                }}
+                return null;
+            }}
+        """)
+        if not clicked:
+            return {"success": False, "message": "Nenhuma linha encontrada na grid."}
+
+        body_before = len(await self._page.inner_text("body"))
+        await asyncio.sleep(1)
+        await self._page.keyboard.press("Enter")
+        await self._adf_wait(8000)
+
+        body_after = len(await self._page.inner_text("body"))
+        if body_after == body_before:
+            # Try double-click
+            await self._page.evaluate(f"""
+                () => {{
+                    const sels = ['tr.af_table_row', 'tr[class*="Row"]:not([class*="Header"])', 'tbody tr'];
+                    for (const sel of sels) {{
+                        const row = document.querySelectorAll(sel)[{row_index}];
+                        if (row) {{ row.dispatchEvent(new MouseEvent('dblclick', {{bubbles:true}})); return; }}
+                    }}
+                }}
+            """)
+            await self._adf_wait(8000)
+
+        await self.screenshot("ob_detalhe")
+        return {"success": True, "url": self._page.url,
+                "row_text": clicked, "message": "Detalhe aberto."}
+
+    async def get_ob_processo_sei(self) -> dict:
+        """
+        Click the 'Processo' tab in the OB detail screen and extract the SEI
+        process number.
+
+        Tab selector: a.xyp  text="Processo"
+        Returns the SEI process number (string) and any SEI links found.
+        """
+        r = await self._adf_js_click("a.xyp", "Processo")
+        if not r:
+            tabs = await self._page.evaluate(
+                "() => [...document.querySelectorAll('a.xyp')].map(e => e.textContent.trim())"
+            )
+            return {"success": False, "message": "Aba 'Processo' não encontrada.",
+                    "available_tabs": tabs}
+        await self._adf_wait(6000)
+        await self.screenshot("ob_processo_sei")
+
+        # Extract process number and SEI links
+        sei_data = await self._page.evaluate("""
+            () => {
+                const result = {numero: null, links: [], raw_text: ''};
+
+                // Scan all visible text for SEI-like process numbers
+                const body = document.body.innerText;
+                result.raw_text = body.substring(0, 3000);
+
+                // Regex patterns for SEI-RJ process numbers
+                const patterns = [
+                    /\\d{7,}-\\d\\.\\d{4}\\.\\d{7}\\/\\d{4}-\\d{2}/g,  // standard SEI
+                    /E-\\d{2}\\/\\d+\\/\\d{4}/g,                          // E-xx/NNNNN/AAAA
+                    /\\d{4,}\\/\\d{4,}-\\d{2,}/g,                         // generic numeric
+                ];
+                for (const re of patterns) {
+                    const m = body.match(re);
+                    if (m && m.length > 0) { result.numero = m[0]; break; }
+                }
+
+                // Collect SEI hyperlinks
+                for (const a of document.querySelectorAll('a[href]')) {
+                    if (/sei/i.test(a.href) || a.textContent.includes('SEI')) {
+                        result.links.push({text: a.textContent.trim().substring(0,80), href: a.href});
+                    }
+                }
+
+                // Look for input/span values near "Processo" label
+                for (const el of document.querySelectorAll('*')) {
+                    const direct = [...el.childNodes]
+                        .filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join('');
+                    if (/[Pp]rocesso/.test(direct) && direct.length < 50) {
+                        const sibling = el.nextElementSibling || el.parentElement?.querySelector('input, span.af_outputText');
+                        if (sibling) {
+                            const val = sibling.value || sibling.textContent.trim();
+                            if (val && !result.numero) result.numero = val;
+                        }
+                    }
+                }
+
+                return result;
+            }
+        """)
+
+        return {
+            "success": True,
+            "processo_sei": sei_data.get("numero"),
+            "sei_links": sei_data.get("links", []),
+            "page_text_preview": sei_data.get("raw_text", "")[:800],
+        }
+
+    async def _adf_js_click(self, css: str, text: str) -> Optional[str]:
+        """Click ADF element by CSS selector + exact text via JS (no ElementHandle)."""
+        safe = text.replace("'", "\\'")
+        return await self._page.evaluate(f"""
+            () => {{
+                for (const el of document.querySelectorAll('{css}')) {{
+                    if (el.textContent.trim() === '{safe}' && !el.className.includes('p_AFDisabled')) {{
+                        el.dispatchEvent(new MouseEvent('mouseover', {{bubbles: true}}));
+                        el.click();
+                        return el.tagName + '|' + el.className.trim().substring(0, 60);
+                    }}
+                }}
+                return null;
+            }}
+        """)
 
     # ── FlexVision Login ──────────────────────────────────────────────────────
 

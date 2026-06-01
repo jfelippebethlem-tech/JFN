@@ -1540,6 +1540,11 @@ async def main_siafe2():
 
         subs = await _js_read_items(pg, "a.xgh")
         subs = [s for s in subs if s["text"] not in top_names_set and s["text"]]
+
+        # Also capture 3rd-level .xgg items (may already be rendered in DOM)
+        sub3 = await _js_read_items(pg, "a.xgg")
+        sub3 = [s for s in sub3 if s["text"] and s["text"] not in top_names_set]
+
         menu_map[name] = subs
 
         log(f"\n  ── {name!r} ──")
@@ -1547,7 +1552,14 @@ async def main_siafe2():
             mark = "[D]" if s["disabled"] else "   "
             ob_flag = " ⭐" if any(k in s["text"].upper()
                                    for k in ("OB", "ORDEM BANC")) else ""
-            log(f"    {mark} {s['text']!r}{ob_flag}")
+            log(f"    {mark} {s['text']!r:40} (xgh){ob_flag}")
+        if sub3:
+            log(f"    3rd level (.xgg): {len(sub3)} itens")
+            for s in sub3:
+                mark = "[D]" if s["disabled"] else "   "
+                ob_flag = " ⭐" if any(k in s["text"].upper()
+                                       for k in ("OB", "ORDEM BANC", "PROG", "PD")) else ""
+                log(f"      {mark} {s['text']!r}{ob_flag}")
 
         await pg.keyboard.press("Escape")
         await asyncio.sleep(0.6)
