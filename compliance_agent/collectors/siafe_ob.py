@@ -25,6 +25,11 @@ _SIAFE_OB_URL = (
     "https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/financeira"
     "/ordemBancariaOrcamentariaEdit.jsp"
 )
+# Página mãe da OB — navegar aqui primeiro inicializa o contexto ADF corretamente
+_SIAFE_FINANCEIRA = (
+    "https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/financeira"
+    "/execucaoFinanceiraMain.jsp"
+)
 _SIAFE_HOME = "https://siafe2.fazenda.rj.gov.br/Siafe/"
 
 _JS_ADF_INPUTS = """
@@ -121,25 +126,31 @@ async def _navigate_to_ob(page) -> bool:
     We must navigate through the menus to reach the OB screen.
     """
     # Check if already on OB screen
-    if "ordemBancariaOrcamentaria" in page.url.lower():
+    if "ordembancariaorcamentaria" in page.url.lower():
         await _dismiss_dialogs(page)
         return True
 
-    # If on error page or login page, go back to SIAFE home first
+    # If on error/login page or outside SIAFE, navigate to execucaoFinanceira first
+    # (initializes ADF context properly — direct OB URL causes BeanELResolver crash)
     current_url = page.url.lower()
-    needs_home = (
+    needs_nav = (
         "erro" in current_url
         or "error" in current_url
         or "login" in current_url
         or "siafe2.fazenda" not in current_url
+        or "execucaofinanceira" not in current_url
     )
-    if needs_home:
-        try:
-            await page.goto(_SIAFE_HOME, wait_until="networkidle", timeout=20000)
-            await asyncio.sleep(3)
-        except Exception:
-            pass
-        await _dismiss_dialogs(page)
+    if needs_nav:
+        for target in [_SIAFE_FINANCEIRA, _SIAFE_HOME]:
+            try:
+                await page.goto(target, wait_until="networkidle", timeout=20000)
+                await asyncio.sleep(3)
+                await _dismiss_dialogs(page)
+                cur = page.url.lower()
+                if "erro" not in cur and "error" not in cur and "login" not in cur:
+                    break
+            except Exception:
+                pass
 
     # Try to click the OB menu item (a.xgg) — correct ADF navigation
     for attempt in range(2):
@@ -159,11 +170,11 @@ async def _navigate_to_ob(page) -> bool:
         if clicked:
             await _adf_wait(page, 15000)
             await _dismiss_dialogs(page)
-            if "ordemBancariaOrcamentaria" in page.url.lower():
+            if "ordembancariaorcamentaria" in page.url.lower():
                 return True
             # May need to wait a bit more after ADF PPR
             await asyncio.sleep(2)
-            if "ordemBancariaOrcamentaria" in page.url.lower():
+            if "ordembancariaorcamentaria" in page.url.lower():
                 return True
 
         if attempt == 0:

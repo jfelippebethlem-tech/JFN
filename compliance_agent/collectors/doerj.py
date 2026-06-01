@@ -2,17 +2,15 @@
 Coletor do Diário Oficial do Estado do Rio de Janeiro (DOERJ).
 
 Fonte primária: IOERJ — Imprensa Oficial do Estado do RJ
-  https://www.ioerj.com.br
+  https://www.ioerj.com.br/portal/modules/content/index.php?id=61
 
-Estratégia de coleta:
-  1. Acessa a listagem de edições do ano corrente para descobrir o número
-     da edição correspondente à data desejada.
-  2. Baixa o HTML completo da edição encontrada.
-  3. Fallback: busca textual no próprio site da IOERJ.
+Estratégia de coleta (em ordem):
+  1. Página oficial de busca do DOERJ (?id=61): envia o formulário com a data.
+  2. Listagem anual de edições para descobrir URL da edição da data.
+  3. Busca textual no site da IOERJ.
+  4. Mapeamento autônomo da estrutura do site (aprendizado).
 
-O bot aprende: sempre que uma coleta falha, registra os erros e tenta
-variações de URL/estrutura na próxima execução (estado persistido em
-data/doerj_learning.json).
+O bot aprende: padrões que funcionam são salvos em data/doerj_learning.json.
 """
 
 import asyncio
@@ -59,23 +57,13 @@ _HEADERS = {
 }
 
 IOERJ_BASE = "https://www.ioerj.com.br"
+IOERJ_HTTP = "http://www.ioerj.com.br"   # fallback sem SSL
 
-# Padrões de URL da IOERJ a tentar (em ordem de preferência)
-# Serão testados e o resultado bem-sucedido é guardado em doerj_learning.json
-_IOERJ_URL_PATTERNS = [
-    # 1. Listagem do ano — para descobrir número da edição
-    "{base}/portal/modules/conteudoonline/listaConteudo.php?e=01&a={year}",
-    # 2. Busca por data diretamente
-    "{base}/portal/modules/conteudoonline/listaConteudo.php?e=01&a={year}&data={dd}/{mm}/{yyyy}",
-    # 3. Página principal de DO
-    "{base}/portal/modules/conteudoonline/mostraConteudo.php?e=01&a={year}&d={dd}{mm}{yyyy}",
-    # 4. Raiz do site (para inferir estrutura atual)
-    "{base}/",
-]
+# Página oficial de busca do DOERJ (fornecida pelo usuário)
+IOERJ_BUSCA_URL = "{base}/portal/modules/content/index.php?id=61"
 
 
 def _load_learning() -> dict:
-    """Load the learning state (successful URL patterns, edition map)."""
     try:
         if _LEARN_FILE.exists():
             return json.loads(_LEARN_FILE.read_text(encoding="utf-8"))
@@ -85,7 +73,6 @@ def _load_learning() -> dict:
 
 
 def _save_learning(state: dict):
-    """Persist learning state."""
     try:
         _LEARN_FILE.parent.mkdir(exist_ok=True)
         _LEARN_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -124,74 +111,96 @@ def _pub_dict(texto: str, data: date, url: str, secao: str = "1") -> dict:
     }
 
 
+async def _detect_base(timeout: float = 6.0) -> str:
+    """Descobre se HTTPS funciona; retorna IOERJ_BASE ou IOERJ_HTTP."""
+    try:
+        async with httpx.AsyncClient(timeout=timeout, verify=False) as c:
+            r = await c.get(IOERJ_BASE + "/")
+            if r.status_code < 500:
+                return IOERJ_BASE
+    except Exception as e:
+        cause = getattr(e, "__cause__", None) or e
+        print(f"[DOERJ] HTTPS falhou ({type(cause).__name__}), tentando HTTP...")
+    return IOERJ_HTTP
+
+
 class DOERJCollector:
     """
-    Coleta publicações do DOERJ direto da Imprensa Oficial do Estado do RJ (IOERJ).
-    Aprende automaticamente os padrões de URL que funcionam e persiste esse
-    conhecimento em data/doerj_learning.json para execuções futuras.
+    Coleta publicações do DOERJ direto da Imprensa Oficial (IOERJ).
+    Estratégias em ordem: página de busca oficial → listagem anual →
+    busca textual → mapeamento autônomo do site.
     """
 
     def __init__(self, session=None):
         self._session = session
         self._state = _load_learning()
+        self._base: Optional[str] = None   # definido em coletar_data após probe
 
     async def coletar_hoje(self) -> list:
         return await self.coletar_data(date.today())
 
     async def coletar_data(self, data: date) -> list:
-        """
-        Coleta todas as publicações de uma data específica.
-        Tenta múltiplas estratégias na IOERJ; persiste o que funcionou.
-        """
         publicacoes = []
         erros = []
 
+        self._base = await _detect_base()
+
         async with httpx.AsyncClient(
-            timeout=25,
+            timeout=30,
             headers=_HEADERS,
             follow_redirects=True,
-            verify=False,   # sites governamentais frequentemente têm SSL problemático
+            verify=False,
         ) as client:
 
-            # 1. Tentar padrão aprendido anteriormente (mais rápido)
+            # 0. Padrão aprendido em sessão anterior (mais rápido)
             for pattern_info in self._state.get("working_patterns", []):
                 try:
                     url = self._fmt_url(pattern_info["url"], data)
-                    pubs = await self._fetch_and_parse(client, url, data)
+                    pubs = await self._get_and_parse(client, url, data)
                     if pubs:
-                        print(f"[DOERJ] {len(pubs)} publicações via padrão salvo ({url[:60]}...)")
+                        print(f"[DOERJ] {len(pubs)} pub via padrão salvo")
                         publicacoes.extend(pubs)
                         break
                 except Exception as e:
-                    erros.append(f"padrão salvo: {e}")
+                    erros.append(f"padrão salvo: {type(e).__name__}: {e}")
 
-            # 2. Se não achou nada, tentar listagem do ano para descobrir edição
+            # 1. Página oficial de busca (id=61)
+            if not publicacoes:
+                try:
+                    pubs = await self._coletar_via_busca_oficial(client, data)
+                    if pubs:
+                        publicacoes.extend(pubs)
+                        print(f"[DOERJ] {len(pubs)} pub via busca oficial (id=61)")
+                except Exception as e:
+                    erros.append(f"busca_oficial: {type(e).__name__}: {e}")
+
+            # 2. Listagem anual → número de edição → conteúdo
             if not publicacoes:
                 try:
                     pubs = await self._coletar_via_listagem(client, data)
                     if pubs:
                         publicacoes.extend(pubs)
-                        print(f"[DOERJ] {len(pubs)} publicações via listagem anual")
+                        print(f"[DOERJ] {len(pubs)} pub via listagem anual")
                 except Exception as e:
                     erros.append(f"listagem: {type(e).__name__}: {e}")
 
-            # 3. Fallback: busca direta por texto no site da IOERJ
+            # 3. Busca textual
             if not publicacoes:
                 try:
-                    pubs = await self._coletar_via_busca(client, data)
+                    pubs = await self._coletar_via_busca_texto(client, data)
                     if pubs:
                         publicacoes.extend(pubs)
-                        print(f"[DOERJ] {len(pubs)} publicações via busca IOERJ")
+                        print(f"[DOERJ] {len(pubs)} pub via busca textual")
                 except Exception as e:
-                    erros.append(f"busca IOERJ: {type(e).__name__}: {e}")
+                    erros.append(f"busca_texto: {type(e).__name__}: {e}")
 
-            # 4. Fallback: página raiz para mapear estrutura atual
+            # 4. Mapeamento autônomo (aprende estrutura do site)
             if not publicacoes:
                 try:
                     pubs = await self._aprender_estrutura(client, data)
                     if pubs:
                         publicacoes.extend(pubs)
-                        print(f"[DOERJ] {len(pubs)} publicações via aprendizado de estrutura")
+                        print(f"[DOERJ] {len(pubs)} pub via aprendizado")
                 except Exception as e:
                     erros.append(f"aprendizado: {type(e).__name__}: {e}")
 
@@ -202,7 +211,6 @@ class DOERJCollector:
                 "erros": erros,
                 "ts": datetime.now().isoformat(),
             })
-            # Keep only last 20 errors
             self._state["errors"] = self._state["errors"][-20:]
             _save_learning(self._state)
 
@@ -228,92 +236,148 @@ class DOERJCollector:
             await asyncio.sleep(delay)
         return todas
 
-    # ── Estratégia 1: listagem anual para descobrir número de edição ──────────
+    # ── Estratégia 1: página oficial de busca (id=61) ─────────────────────────
 
-    async def _coletar_via_listagem(self, client: httpx.AsyncClient, data: date) -> list:
+    async def _coletar_via_busca_oficial(
+        self, client: httpx.AsyncClient, data: date
+    ) -> list:
         """
-        Acessa a lista de edições do ano corrente, encontra a edição da data
-        alvo e baixa seu conteúdo completo.
+        Usa a página oficial de busca do DOERJ:
+        https://www.ioerj.com.br/portal/modules/content/index.php?id=61
+        Carrega o formulário, descobre os campos de data e envia.
         """
-        year = data.year
-        list_url = f"{IOERJ_BASE}/portal/modules/conteudoonline/listaConteudo.php?e=01&a={year}"
+        busca_url = IOERJ_BUSCA_URL.format(base=self._base)
 
-        resp = await client.get(list_url)
+        # Carrega a página de busca para inspecionar o formulário
+        resp = await client.get(busca_url)
         if resp.status_code != 200:
-            raise Exception(f"listagem retornou HTTP {resp.status_code}")
+            raise Exception(f"busca_oficial retornou HTTP {resp.status_code}")
 
         soup = BeautifulSoup(resp.text, "html.parser")
+        form = soup.find("form")
 
-        # Procura links de edições com a data alvo
-        data_str_br = data.strftime("%d/%m/%Y")
-        data_str_iso = data.isoformat()
+        pubs = []
 
-        edition_url = None
-        edition_n = None
+        if form:
+            # Monta os dados do formulário com a data alvo
+            form_data: dict = {}
+            action = form.get("action", busca_url)
+            if action and not action.startswith("http"):
+                action = f"{self._base}/{action.lstrip('/')}"
+
+            for inp in form.find_all(["input", "select", "textarea"]):
+                name = inp.get("name")
+                if not name:
+                    continue
+                val = inp.get("value", "")
+                # Detectar campos de data pelo nome ou label próximo
+                name_lower = name.lower()
+                if any(k in name_lower for k in ["dat", "inicio", "fim", "de", "ate", "data"]):
+                    # Tentar inferir se é data início ou fim
+                    if any(k in name_lower for k in ["fim", "ate", "final", "f_"]):
+                        val = data.strftime("%d/%m/%Y")
+                    else:
+                        val = data.strftime("%d/%m/%Y")
+                form_data[name] = val
+
+            method = (form.get("method") or "get").lower()
+            try:
+                if method == "post":
+                    resp2 = await client.post(action, data=form_data)
+                else:
+                    resp2 = await client.get(action, params=form_data)
+
+                if resp2.status_code == 200 and len(resp2.text) > 300:
+                    pubs = self._parse_html_ioerj(resp2.text, data, resp2.url.__str__())
+                    if pubs:
+                        self._salvar_padrao(IOERJ_BUSCA_URL, "busca_oficial")
+            except Exception as e:
+                raise Exception(f"submit form: {e}") from e
+
+        # Mesmo sem form, pode haver conteúdo direto na página
+        if not pubs:
+            pubs = self._parse_html_ioerj(resp.text, data, busca_url)
+
+        # Procurar links de edição na resposta que correspondam à data
+        if not pubs:
+            pubs = await self._seguir_links_data(client, resp.text, data, busca_url)
+
+        return pubs
+
+    async def _seguir_links_data(
+        self,
+        client: httpx.AsyncClient,
+        html: str,
+        data: date,
+        base_url: str,
+    ) -> list:
+        """Procura na página links que correspondam à data e tenta acessá-los."""
+        soup = BeautifulSoup(html, "html.parser")
+        data_br = data.strftime("%d/%m/%Y")
+        data_iso = data.isoformat()
+        pubs = []
 
         for a in soup.find_all("a", href=True):
             href = a["href"]
-            link_text = a.get_text(strip=True)
-            # A data pode aparecer no texto do link ou em elemento próximo
-            parent_text = a.parent.get_text(" ", strip=True) if a.parent else ""
-            if data_str_br in parent_text or data_str_iso in parent_text:
-                edition_url = href if href.startswith("http") else f"{IOERJ_BASE}{href}"
-                # Extract edition number from URL if possible
-                m = re.search(r"[?&]n=(\d+)", href)
-                if m:
-                    edition_n = m.group(1)
-                break
+            ctx = (a.get_text(" ", strip=True) + " " +
+                   (a.parent.get_text(" ", strip=True) if a.parent else ""))
+            if data_br in ctx or data_iso in ctx or data_br.replace("/", "") in href:
+                full = href if href.startswith("http") else f"{self._base}/{href.lstrip('/')}"
+                try:
+                    r = await client.get(full)
+                    if r.status_code == 200:
+                        p = self._parse_html_ioerj(r.text, data, full)
+                        if p:
+                            pubs.extend(p)
+                            self._salvar_padrao(full, "link_data")
+                except Exception:
+                    pass
+        return pubs
 
-        if not edition_url and edition_n is None:
-            # Parse the table/list looking for the date in a TD or LI
-            for row in soup.find_all(["tr", "li", "div"]):
-                row_text = row.get_text(" ", strip=True)
-                if data_str_br in row_text:
-                    a_tag = row.find("a", href=True)
-                    if a_tag:
-                        href = a_tag["href"]
-                        edition_url = href if href.startswith("http") else f"{IOERJ_BASE}{href}"
-                        m = re.search(r"[?&]n=(\d+)", href)
-                        if m:
-                            edition_n = m.group(1)
-                        break
+    # ── Estratégia 2: listagem anual → número de edição ──────────────────────
 
-        if not edition_url and not edition_n:
-            raise Exception(f"edição de {data_str_br} não encontrada na listagem anual")
+    async def _coletar_via_listagem(self, client: httpx.AsyncClient, data: date) -> list:
+        year = data.year
+        list_url = f"{self._base}/portal/modules/conteudoonline/listaConteudo.php?e=01&a={year}"
 
-        # If we found an edition number, build the content URL
-        if edition_n and not edition_url:
-            edition_url = (
-                f"{IOERJ_BASE}/portal/modules/conteudoonline/"
-                f"mostraConteudo.php?n={edition_n}&e=01&a={year}"
-            )
+        resp = await client.get(list_url)
+        if resp.status_code != 200:
+            raise Exception(f"listagem HTTP {resp.status_code}")
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        data_str_br = data.strftime("%d/%m/%Y")
+
+        edition_url = None
+        for row in soup.find_all(["tr", "li", "div", "a"]):
+            row_text = row.get_text(" ", strip=True)
+            if data_str_br in row_text:
+                a_tag = row.find("a", href=True) if row.name != "a" else row
+                if a_tag and a_tag.get("href"):
+                    href = a_tag["href"]
+                    edition_url = href if href.startswith("http") else f"{self._base}{href}"
+                    break
+
+        if not edition_url:
+            raise Exception(f"edição de {data_str_br} não encontrada na listagem")
 
         resp2 = await client.get(edition_url)
         if resp2.status_code != 200:
-            raise Exception(f"edição URL {edition_url} retornou {resp2.status_code}")
+            raise Exception(f"edição URL retornou {resp2.status_code}")
 
         pubs = self._parse_html_ioerj(resp2.text, data, edition_url)
         if pubs:
-            # Salvar padrão que funcionou
-            self._state.setdefault("working_patterns", []).insert(0, {
-                "strategy": "listagem_anual",
-                "url": list_url,
-                "ts": datetime.now().isoformat(),
-            })
-            self._state["working_patterns"] = self._state["working_patterns"][:5]
-            _save_learning(self._state)
+            self._salvar_padrao(edition_url, "listagem_anual")
         return pubs
 
-    # ── Estratégia 2: busca direta no site da IOERJ ───────────────────────────
+    # ── Estratégia 3: busca textual ────────────────────────────────────────────
 
-    async def _coletar_via_busca(self, client: httpx.AsyncClient, data: date) -> list:
-        """Usa a busca do portal da IOERJ por data."""
+    async def _coletar_via_busca_texto(self, client: httpx.AsyncClient, data: date) -> list:
         termos = ["nomeação", "contrato", "licitação"]
         pubs = []
         for termo in termos:
             try:
                 url = (
-                    f"{IOERJ_BASE}/portal/modules/conteudoonline/busca.php"
+                    f"{self._base}/portal/modules/conteudoonline/busca.php"
                     f"?q={termo}&e=01&a={data.year}"
                     f"&di={data.strftime('%d/%m/%Y')}"
                     f"&df={data.strftime('%d/%m/%Y')}"
@@ -321,65 +385,44 @@ class DOERJCollector:
                 resp = await client.get(url)
                 if resp.status_code == 200 and len(resp.text) > 500:
                     p = self._parse_html_ioerj(resp.text, data, url)
-                    pubs.extend(p)
                     if p:
-                        self._state.setdefault("working_patterns", []).insert(0, {
-                            "strategy": "busca_ioerj",
-                            "url": url,
-                            "ts": datetime.now().isoformat(),
-                        })
-                        self._state["working_patterns"] = self._state["working_patterns"][:5]
-                        _save_learning(self._state)
+                        pubs.extend(p)
+                        self._salvar_padrao(url, "busca_texto")
                         break
             except Exception:
                 continue
         return pubs
 
-    # ── Estratégia 3: aprender estrutura atual do site ────────────────────────
+    # ── Estratégia 4: mapeamento autônomo ─────────────────────────────────────
 
     async def _aprender_estrutura(self, client: httpx.AsyncClient, data: date) -> list:
-        """
-        Acessa a página raiz da IOERJ e mapeia todos os links de conteúdo
-        disponíveis, procurando um que corresponda à data alvo.
-        Persiste os resultados no arquivo de aprendizado para uso futuro.
-        """
-        resp = await client.get(IOERJ_BASE + "/")
+        resp = await client.get(self._base + "/")
         if resp.status_code != 200:
-            raise Exception(f"raiz IOERJ retornou {resp.status_code}")
+            raise Exception(f"raiz IOERJ HTTP {resp.status_code}")
 
         soup = BeautifulSoup(resp.text, "html.parser")
-
-        # Extrair todos os links relevantes
-        links_encontrados = []
         data_str_br = data.strftime("%d/%m/%Y")
-        data_str_iso = data.isoformat()
+        links_encontrados = []
 
         for a in soup.find_all("a", href=True):
             href = a["href"]
             txt = a.get_text(strip=True)
             if not href or href.startswith("#"):
                 continue
-            full = href if href.startswith("http") else f"{IOERJ_BASE}{href}"
+            full = href if href.startswith("http") else f"{self._base}{href}"
             links_encontrados.append({"text": txt, "url": full})
 
-            # Se o link ou texto referencia a data alvo, tentar acessar
-            if data_str_br in txt or data_str_iso in txt or data_str_br in href:
+            if data_str_br in txt or data_str_br in href:
                 try:
                     r2 = await client.get(full)
                     if r2.status_code == 200:
                         pubs = self._parse_html_ioerj(r2.text, data, full)
                         if pubs:
-                            self._state.setdefault("working_patterns", []).insert(0, {
-                                "strategy": "aprendido_raiz",
-                                "url": full,
-                                "ts": datetime.now().isoformat(),
-                            })
-                            _save_learning(self._state)
+                            self._salvar_padrao(full, "aprendido_raiz")
                             return pubs
                 except Exception:
                     pass
 
-        # Persistir mapa de links para análise manual futura
         self._state["site_links_aprendidos"] = {
             "ts": datetime.now().isoformat(),
             "links": links_encontrados[:50],
@@ -387,74 +430,82 @@ class DOERJCollector:
         _save_learning(self._state)
 
         raise Exception(
-            f"Estrutura do site IOERJ mapeada ({len(links_encontrados)} links), "
-            f"mas data {data_str_br} não encontrada. "
-            f"Verifique data/doerj_learning.json para ver os links disponíveis."
+            f"Estrutura mapeada ({len(links_encontrados)} links), "
+            f"{data_str_br} não encontrada. Veja data/doerj_learning.json."
         )
 
-    # ── Parser de HTML da IOERJ ───────────────────────────────────────────────
+    # ── Parser HTML ───────────────────────────────────────────────────────────
 
     def _parse_html_ioerj(self, html: str, data: date, fonte_url: str) -> list[dict]:
-        """
-        Extrai publicações do HTML retornado pela IOERJ.
-        Tenta múltiplos seletores CSS pois a estrutura varia entre seções.
-        """
         soup = BeautifulSoup(html, "html.parser")
         publicacoes = []
-        seen_texts: set[str] = set()
+        seen: set[str] = set()
 
-        # Seletores em ordem de especificidade — da mais específica pra mais genérica
         seletores = [
-            "article",
-            ".publicacao", ".ato", ".materia", ".conteudo",
-            "div.conteudo", "div.texto", "div.ato",
-            "p.ato", "div > p",
+            "article", ".publicacao", ".ato", ".materia", ".conteudo",
+            "div.conteudo", "div.texto", "div.ato", "p.ato", "div > p",
         ]
-
         for sel in seletores:
-            elementos = soup.select(sel)
-            if not elementos:
-                continue
-            for el in elementos[:200]:
+            for el in soup.select(sel)[:200]:
                 texto = el.get_text(separator=" ", strip=True)
                 if len(texto) < 80:
                     continue
                 chave = texto[:60]
-                if chave in seen_texts:
+                if chave in seen:
                     continue
-                seen_texts.add(chave)
+                seen.add(chave)
                 tipo = classificar_tipo_ato(texto)
-                # Skip generic blocks if classification is "outros" and text is short
                 if tipo == "outros" and len(texto) < 200:
                     continue
                 publicacoes.append(_pub_dict(texto, data, fonte_url))
             if publicacoes:
                 break
 
-        # Generic fallback: all <p> tags with enough text
         if not publicacoes:
             for p in soup.find_all("p"):
                 texto = p.get_text(separator=" ", strip=True)
                 if len(texto) < 100:
                     continue
                 chave = texto[:60]
-                if chave in seen_texts:
+                if chave in seen:
                     continue
-                seen_texts.add(chave)
+                seen.add(chave)
                 publicacoes.append(_pub_dict(texto, data, fonte_url))
 
         return publicacoes
 
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
     def _fmt_url(self, url_template: str, data: date) -> str:
         return (
             url_template
+            .replace("{base}", self._base or IOERJ_BASE)
             .replace("{year}", str(data.year))
             .replace("{dd}", data.strftime("%d"))
             .replace("{mm}", data.strftime("%m"))
             .replace("{yyyy}", str(data.year))
         )
 
-    # ── Salvar no banco ───────────────────────────────────────────────────────
+    def _salvar_padrao(self, url: str, strategy: str):
+        patterns = self._state.setdefault("working_patterns", [])
+        patterns.insert(0, {
+            "strategy": strategy,
+            "url": url,
+            "ts": datetime.now().isoformat(),
+        })
+        self._state["working_patterns"] = patterns[:5]
+        _save_learning(self._state)
+
+    def _get_and_parse(self, client, url, data):
+        return self._fetch_and_parse(client, url, data)
+
+    async def _fetch_and_parse(
+        self, client: httpx.AsyncClient, url: str, data: date
+    ) -> list[dict]:
+        resp = await client.get(url)
+        if resp.status_code != 200:
+            raise Exception(f"HTTP {resp.status_code}")
+        return self._parse_html_ioerj(resp.text, data, url)
 
     def _salvar_publicacoes(self, publicacoes: list[dict]):
         from compliance_agent.database.models import PublicacaoDOERJ
