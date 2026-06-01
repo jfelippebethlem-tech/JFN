@@ -890,9 +890,185 @@ async def main_cdp():
     print(f"\n✅ Relatório salvo em: {REPORT}")
 
 
+async def main_consultas():
+    """
+    Modo focado: navega para #!consultas e explora em detalhe.
+
+    Uso: python diagnose_siafe.py --consultas
+
+    Chrome deve estar aberto com:
+      "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --remote-debugging-port=9222
+    E logado no FlexVision.
+    """
+    from playwright.async_api import async_playwright
+    FV_BASE = "https://siafe2-flexvision.fazenda.rj.gov.br/Flexvision/"
+
+    log(f"SIAFE2 Diagnóstico (modo CONSULTAS) — {datetime.now():%d/%m/%Y %H:%M}")
+
+    async with async_playwright() as p:
+        try:
+            browser = await p.chromium.connect_over_cdp("http://127.0.0.1:9222")
+        except Exception as e:
+            log(f"❌ Não conectou: {e}")
+            return
+
+        # Encontrar aba FlexVision
+        target_page = None
+        for ctx in browser.contexts:
+            for pg in ctx.pages:
+                if "flexvision" in pg.url.lower() or "fazenda.rj" in pg.url.lower():
+                    target_page = pg
+                    break
+            if target_page:
+                break
+        if not target_page and browser.contexts and browser.contexts[0].pages:
+            target_page = browser.contexts[0].pages[0]
+
+        if not target_page:
+            log("❌ Nenhuma aba encontrada.")
+            return
+
+        log(f"✅ Aba: {target_page.url}")
+
+        # ── 1. Navegar para #!consultas ───────────────────────────────────────
+        sep("Navegando para #!consultas")
+        await target_page.goto(FV_BASE + "#!consultas", wait_until="networkidle", timeout=20000)
+        await asyncio.sleep(4)
+        log(f"  URL atual: {target_page.url}")
+
+        await dump_page(target_page, "consultas_01_list")
+
+        # ── 2. Texto completo da página ───────────────────────────────────────
+        sep("Texto completo da página Consultas")
+        full_text = await target_page.inner_text("body")
+        log(f"  {len(full_text)} chars total:")
+        log(full_text[:5000])
+
+        # ── 3. Todos os elementos visíveis ────────────────────────────────────
+        sep("Elementos visíveis em #!consultas")
+        elements = await target_page.evaluate(_JS_LEAF_ELEMENTS)
+        visible = [e for e in elements if e.get("visible")]
+        log(f"  {len(visible)} elementos visíveis:")
+        for e in visible:
+            log(f"  ✓ <{e['tag'].lower():6}> text={e['text']!r:60} cls={e['cls']!r:45} id={e['id']!r}")
+
+        # ── 4. Busca de OB nos elementos ──────────────────────────────────────
+        sep("Buscando 'OB' / 'Execução' no DOM")
+        ob_candidates = await target_page.evaluate("""
+            () => {
+                const results = [];
+                for (const el of document.querySelectorAll('*')) {
+                    const t = el.textContent.trim();
+                    if ((t.includes('OB') || t.includes('Execução') || t.includes('Execucao'))
+                        && t.length < 200) {
+                        const r = el.getBoundingClientRect();
+                        results.push({
+                            tag: el.tagName,
+                            cls: el.className,
+                            id: el.id,
+                            text: t.slice(0, 100),
+                            visible: r.width > 0 && r.height > 0,
+                            children: el.children.length,
+                        });
+                    }
+                }
+                return results;
+            }
+        """)
+        log(f"  {len(ob_candidates)} candidatos com 'OB'/'Execução':")
+        for c in ob_candidates:
+            vis = "✓" if c.get("visible") else "·"
+            log(f"  {vis} <{c['tag'].lower()}> children={c['children']} text={c['text']!r}")
+
+        # ── 5. Tentar clicar em OB / Execução ────────────────────────────────
+        sep("Tentando clicar em 'Execução por OB'")
+        for variant in ["Execução por OB", "Execucao por OB", "Documento - OB", "OB"]:
+            clicked = await target_page.evaluate(_js_click_contains(variant))
+            if clicked:
+                log(f"  ✅ Clicado '{variant}': {clicked}")
+                await asyncio.sleep(2)
+                log(f"  URL: {target_page.url}")
+                await dump_page(target_page, f"consultas_02_ob_click")
+                # Texto pós-click
+                text2 = await target_page.inner_text("body")
+                log(f"  Texto após click:\n{text2[:3000]}")
+                # Inputs pós-click
+                await _dump_inputs_consultas(target_page, "Após clicar OB")
+                break
+            log(f"  ❌ '{variant}' não encontrado")
+
+        # ── 6. Tentar double-click ────────────────────────────────────────────
+        sep("Tentando double-click em 'Execução por OB'")
+        for variant in ["Execução por OB", "Execucao por OB", "Documento - OB", "OB"]:
+            clicked = await target_page.evaluate(f"""
+                () => {{
+                    let best = null, bestSize = Infinity;
+                    for (const el of document.querySelectorAll('*')) {{
+                        if (!el.textContent.includes('{variant}')) continue;
+                        const r = el.getBoundingClientRect();
+                        if (r.width <= 0 || r.height <= 0) continue;
+                        const sz = r.width * r.height;
+                        if (sz < bestSize) {{ best = el; bestSize = sz; }}
+                    }}
+                    if (best) {{
+                        best.dispatchEvent(new MouseEvent('dblclick', {{bubbles:true}}));
+                        return best.tagName + '|' + best.textContent.trim().slice(0,60);
+                    }}
+                    return null;
+                }}
+            """)
+            if clicked:
+                log(f"  ✅ Duplo-clicado '{variant}': {clicked}")
+                await asyncio.sleep(3)
+                log(f"  URL: {target_page.url}")
+                await dump_page(target_page, "consultas_03_ob_dblclick")
+                text3 = await target_page.inner_text("body")
+                log(f"  Texto:\n{text3[:3000]}")
+                await _dump_inputs_consultas(target_page, "Após double-click OB")
+                break
+            log(f"  ❌ Double-click '{variant}' — não encontrado")
+
+        # ── 7. HTML completo ──────────────────────────────────────────────────
+        html = await target_page.content()
+        html_path = SCREENSHOTS / "consultas_full_dom.html"
+        html_path.write_text(html, encoding="utf-8")
+        log(f"\n  HTML completo: {html_path.name} ({len(html)} chars)")
+
+        sep("DIAGNÓSTICO CONSULTAS CONCLUÍDO")
+        log(f"  Screenshots em: {SCREENSHOTS}/")
+        log(f"  Relatório em:   {REPORT}")
+
+    REPORT.write_text("\n".join(report_lines), encoding="utf-8")
+    print(f"\n✅ Relatório salvo em: {REPORT}")
+
+
+async def _dump_inputs_consultas(page, label: str):
+    """Dump all inputs visible after navigating to a consultation."""
+    sep(f"Inputs: {label}")
+    form_inputs = await page.query_selector_all("input, select, textarea, button")
+    log(f"  {len(form_inputs)} elementos:")
+    for inp in form_inputs:
+        try:
+            tag = await inp.evaluate("el => el.tagName.toLowerCase()")
+            id_ = await inp.get_attribute("id") or ""
+            nm  = await inp.get_attribute("name") or ""
+            tp  = await inp.get_attribute("type") or ""
+            cls = await inp.get_attribute("class") or ""
+            ph  = await inp.get_attribute("placeholder") or ""
+            txt = (await inp.inner_text()).strip()[:40]
+            r = await inp.bounding_box()
+            vis = "✓" if (r and r["width"] > 0) else "·"
+            log(f"  {vis} <{tag}> id={id_!r:30} name={nm!r:20} type={tp!r:12} "
+                f"class={cls[:35]!r} ph={ph!r} txt={txt!r}")
+        except Exception:
+            pass
+
+
 if __name__ == "__main__":
     import sys
     if "--cdp" in sys.argv:
         asyncio.run(main_cdp())
+    elif "--consultas" in sys.argv:
+        asyncio.run(main_consultas())
     else:
         asyncio.run(main())
