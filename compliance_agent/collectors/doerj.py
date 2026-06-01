@@ -290,13 +290,20 @@ class DOERJCollector:
             texto,
         )
         pubs = []
-        for parte in partes:
+        ed_nome = (titulo or "")[:40]
+        for i, parte in enumerate(partes):
             t = parte.strip()
             if len(t) < 120:
                 continue
-            pubs.append(_pub_dict(t, data, url, edicao=edicao, titulo=titulo))
+            # Título único por ato (senão a deduplicação data+titulo colapsa
+            # todos os atos da mesma edição em um só registro).
+            primeira = " ".join(t[:90].split())
+            titulo_ato = f"{ed_nome} | {primeira}" if ed_nome else primeira
+            pubs.append(_pub_dict(t, data, url, edicao=edicao, titulo=titulo_ato))
         if not pubs:
-            pubs.append(_pub_dict(texto, data, url, edicao=edicao, titulo=titulo))
+            primeira = " ".join(texto[:90].split())
+            titulo_ato = f"{ed_nome} | {primeira}" if ed_nome else primeira
+            pubs.append(_pub_dict(texto, data, url, edicao=edicao, titulo=titulo_ato))
         return pubs[:500]
 
     def _salvar_diagnostico(self, data: date, dump: dict):
