@@ -17,3 +17,8 @@ build/
 
 # Playwright
 playwright/.cache/
+
+# Database (auto-generated at runtime, do not commit binary data)
+data/*.db
+data/*.db-wal
+data/*.db-shm
