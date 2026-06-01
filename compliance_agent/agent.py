@@ -452,35 +452,36 @@ def _detect_provider() -> tuple[str, str, str]:
 
 # ── Chamada HTTP ao LLM (formato OpenAI / Groq) ───────────────────────────────
 
-async def _llm_request(
-    provider: str,
-    api_key: str,
-    model: str,
-    messages: list[dict],
-    tools: list[dict],
-    max_tokens: int = 8192,
-) -> dict:
-    """Envia requisição OpenAI-compatible para Groq, OpenRouter ou Anthropic."""
+def _detect_fallback() -> tuple[str, str, str] | tuple[None, None, None]:
+    """Retorna o segundo provedor disponível para usar quando o principal retornar 429."""
+    groq_key       = os.environ.get("GROQ_API_KEY", "").strip()
+    openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    prefer         = os.environ.get("FREE_LLM_PREFER", "groq").lower()
 
+    if prefer == "openrouter":
+        # principal é openrouter → fallback é groq
+        return ("groq", groq_key, _GROQ_MODEL) if groq_key else (None, None, None)
+    else:
+        # principal é groq → fallback é openrouter
+        return ("openrouter", openrouter_key, _openrouter_model()) if openrouter_key else (None, None, None)
+
+
+async def _call_one(
+    provider: str, api_key: str, model: str,
+    messages: list[dict], tools: list[dict], max_tokens: int,
+) -> dict:
+    """Faz uma única chamada HTTP ao LLM. Levanta httpx.HTTPStatusError em caso de erro."""
     if provider == "anthropic":
         return await _anthropic_request(api_key, model, messages, tools, max_tokens)
 
     base = _GROQ_BASE if provider == "groq" else _OPENROUTER_BASE
-    url = f"{base}/chat/completions"
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+    url  = f"{base}/chat/completions"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     if provider == "openrouter":
         headers["HTTP-Referer"] = "https://github.com/jfn/compliance-agent"
         headers["X-Title"] = "JFN Compliance Agent"
 
-    payload: dict = {
-        "model": model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": 0.1,
-    }
+    payload: dict = {"model": model, "messages": messages, "max_tokens": max_tokens, "temperature": 0.1}
     if tools:
         payload["tools"] = tools
         payload["tool_choice"] = "auto"
@@ -489,6 +490,43 @@ async def _llm_request(
         resp = await client.post(url, json=payload, headers=headers)
         resp.raise_for_status()
         return resp.json()
+
+
+async def _llm_request(
+    provider: str,
+    api_key: str,
+    model: str,
+    messages: list[dict],
+    tools: list[dict],
+    max_tokens: int = 8192,
+    fallback: tuple | None = None,
+) -> dict:
+    """
+    Envia requisição com retry automático e fallback.
+    Se receber 429 (rate limit), espera 3s e tenta de novo.
+    Se ainda 429, usa o provedor fallback (ex: OpenRouter quando Groq está lotado).
+    """
+    for attempt in range(2):
+        try:
+            return await _call_one(provider, api_key, model, messages, tools, max_tokens)
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429:
+                if attempt == 0:
+                    console.print(f"[yellow]⏳ {provider} está no limite de taxa — aguardando 3s...[/yellow]")
+                    await asyncio.sleep(3)
+                    continue
+                # Depois de 2 tentativas, tenta fallback
+                if fallback and fallback[0]:
+                    fb_provider, fb_key, fb_model = fallback
+                    console.print(f"[yellow]↩ Usando fallback: {fb_provider} ({fb_model})[/yellow]")
+                    return await _call_one(fb_provider, fb_key, fb_model, messages, tools, max_tokens)
+                raise RuntimeError(
+                    f"❌ {provider} está com limite de taxa esgotado (429).\n"
+                    "Aguarde 1 minuto e tente novamente, ou configure um segundo LLM gratuito:\n"
+                    "  Se usa Groq → adicione OPENROUTER_API_KEY no .env\n"
+                    "  Se usa OpenRouter → adicione GROQ_API_KEY no .env"
+                ) from e
+            raise
 
 
 async def _anthropic_request(
@@ -579,6 +617,7 @@ class ComplianceAgent:
 
     def __init__(self):
         self._provider, self._api_key, self._model = _detect_provider()
+        self._fallback = _detect_fallback()
         self._session = get_session()
         init_db()
         self._grafo = GrafoRelacionamentos(self._session)
@@ -590,7 +629,8 @@ class ComplianceAgent:
             "openrouter": f"OpenRouter ({self._model}) — grátis",
             "anthropic": f"Anthropic ({self._model}) — pago",
         }.get(self._provider, self._provider)
-        console.print(f"[dim]LLM: {provider_label}[/dim]")
+        fb_label = f" | fallback: {self._fallback[0]}" if self._fallback[0] else ""
+        console.print(f"[dim]LLM: {provider_label}{fb_label}[/dim]")
 
     def _ensure_grafo(self):
         if not self._grafo_built:
@@ -609,6 +649,7 @@ class ComplianceAgent:
             data = await _llm_request(
                 self._provider, self._api_key, self._model,
                 messages, TOOLS,
+                fallback=self._fallback,
             )
 
             choice  = data["choices"][0]
