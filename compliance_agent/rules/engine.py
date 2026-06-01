@@ -74,6 +74,7 @@ class MotorCompliance:
         self._regra_empresa_mesmo_cep_servidor()
         self._regra_cnpj_abertura_recente_contrato()
         self._regra_cpf_duplicado_fontes(competencia)
+        self._regra_emprego_multiplo_orgaos(competencia)
 
         self.session.add_all(self._alertas_novos)
         self.session.commit()
