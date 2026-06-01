@@ -318,6 +318,9 @@ async def _obs_reply() -> str:
 
 _AJUDA = (
     "*🤖 JFN Compliance Bot — Auditoria RJ*\n\n"
+    "💬 *Pode falar comigo normalmente!* Ex:\n"
+    "_\"tem alerta grave hoje?\"_, _\"quem mais recebeu esse mês?\"_, "
+    "_\"resume o que achou\"_\n\n"
     "*Monitoramento:*\n"
     "  /status — situação atual do sistema\n"
     "  /obs — últimas OBs coletadas\n"
@@ -494,6 +497,116 @@ _CHROME_INSTRUCOES = (
 )
 
 
+async def _coletar_contexto_db() -> str:
+    """Reúne um snapshot do banco para o LLM responder perguntas com dados reais."""
+    try:
+        from compliance_agent.database.models import (
+            get_session, OrdemBancaria, Alerta, SessaoAuditoria
+        )
+        import sqlalchemy as sa
+        from sqlalchemy import desc
+        from datetime import date
+        session = get_session()
+        try:
+            hoje = date.today()
+            total_obs = session.query(sa.func.count(OrdemBancaria.id)).scalar() or 0
+            obs_hoje = session.query(sa.func.count(OrdemBancaria.id)).filter(
+                OrdemBancaria.data_emissao == hoje).scalar() or 0
+            total_valor = session.query(sa.func.sum(OrdemBancaria.valor)).filter(
+                OrdemBancaria.data_emissao == hoje).scalar() or 0
+            alertas_alta = (
+                session.query(Alerta)
+                .filter(Alerta.severidade == "alta")
+                .order_by(desc(Alerta.created_at)).limit(10).all()
+            )
+            top = (
+                session.query(
+                    OrdemBancaria.favorecido_nome,
+                    sa.func.sum(OrdemBancaria.valor).label("t"),
+                )
+                .filter(OrdemBancaria.favorecido_nome.isnot(None))
+                .group_by(OrdemBancaria.favorecido_nome)
+                .order_by(sa.desc("t")).limit(8).all()
+            )
+            ult_sessao = (
+                session.query(SessaoAuditoria)
+                .order_by(desc(SessaoAuditoria.created_at)).first()
+            )
+
+            linhas = [
+                f"DADOS ATUAIS DO BANCO (hoje={hoje}):",
+                f"- OBs no banco: {total_obs} (hoje: {obs_hoje})",
+                f"- Valor total das OBs de hoje: R$ {total_valor:,.2f}",
+            ]
+            if ult_sessao:
+                linhas.append(f"- Última coleta: {ult_sessao.data_sessao} "
+                              f"[{ult_sessao.tipo}] status={ult_sessao.status} "
+                              f"({ult_sessao.registros} reg.)")
+            if alertas_alta:
+                linhas.append(f"\nALERTAS DE ALTA SEVERIDADE ({len(alertas_alta)}):")
+                for a in alertas_alta:
+                    linhas.append(f"- [{a.data_referencia}] {a.titulo}: {(a.descricao or '')[:150]}")
+            if top:
+                linhas.append("\nMAIORES FAVORECIDOS (histórico):")
+                for nome, t in top:
+                    linhas.append(f"- {nome}: R$ {t:,.2f}")
+            return "\n".join(linhas)
+        finally:
+            session.close()
+    except Exception as exc:
+        return f"(erro ao ler banco: {exc})"
+
+
+_AGENTE_SYSTEM = (
+    "Você é o JFN, um agente auditor da administração pública do Estado do Rio "
+    "de Janeiro. Você conversa com o Jorge (auditor) pelo Telegram. "
+    "Responda em português, de forma direta e objetiva, como um colega auditor. "
+    "Use SEMPRE os dados reais fornecidos abaixo — nunca invente números. "
+    "Se a pergunta for sobre algo que você não tem nos dados, diga o que falta e "
+    "sugira o comando (/agora para coletar, /buscar NOME, /sancoes). "
+    "Seja conciso: respostas curtas cabem melhor no celular. Use no máximo 1500 caracteres."
+)
+
+
+async def _conversar_com_agente(pergunta: str) -> str:
+    """
+    Conversa em linguagem natural: junta dados do banco + memória aprendida
+    e responde via Groq (rápido) com fallback Hermes/OpenRouter.
+    """
+    contexto_db = await _coletar_contexto_db()
+    try:
+        from compliance_agent.llm.memoria import contexto_para_prompt
+        contexto_mem = contexto_para_prompt(max_itens=12)
+    except Exception:
+        contexto_mem = ""
+
+    prompt = (
+        f"{contexto_db}\n\n"
+        f"{contexto_mem}\n\n"
+        f"PERGUNTA DO JORGE: {pergunta}\n\n"
+        "Responda usando os dados acima."
+    )
+
+    # Tenta Groq primeiro (rápido), cai para OpenRouter/Hermes
+    try:
+        from compliance_agent.llm.free_llm import (
+            groq_chat_async, groq_available,
+            openrouter_chat_async, openrouter_available,
+        )
+        if groq_available():
+            try:
+                return await groq_chat_async(prompt, system=_AGENTE_SYSTEM, smart=True)
+            except Exception:
+                pass
+        if openrouter_available():
+            return await openrouter_chat_async(prompt, system=_AGENTE_SYSTEM, smart=True)
+    except Exception as exc:
+        return f"Não consegui pensar agora ({exc}). Tente um comando: /status, /alertas, /obs."
+
+    return ("LLM indisponível. Use comandos diretos: /status, /obs, /alertas, "
+            "/buscar NOME, /agora.")
+
+
 async def processar_comando(texto: str, chat_id: str) -> None:
     """Handle a single command sent by the user via Telegram."""
     partes = texto.strip().split(None, 1)
@@ -576,6 +689,11 @@ async def processar_comando(texto: str, chat_id: str) -> None:
             f"Comando desconhecido: `{cmd}`\nDigite /ajuda para ver os comandos.",
             chat_id=chat_id,
         )
+
+    else:
+        # Texto livre = conversa com o agente em linguagem natural
+        resposta = await _conversar_com_agente(texto)
+        await enviar_mensagem(resposta, chat_id=chat_id)
 
 
 async def loop_comandos():
