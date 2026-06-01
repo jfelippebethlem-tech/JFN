@@ -407,8 +407,9 @@ _ANTHROPIC_MODEL = "claude-opus-4-8"
 
 
 def _openrouter_model() -> str:
-    """Usa OPENROUTER_SMART_MODEL do .env (padrão: llama-3.3-70b via OpenRouter)."""
-    return os.environ.get("OPENROUTER_SMART_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+    # "openrouter/free" é o roteador inteligente do OpenRouter: escolhe automaticamente
+    # um modelo gratuito que suporte tool calling — nunca retorna 404.
+    return os.environ.get("OPENROUTER_SMART_MODEL", "openrouter/free")
 
 
 def _detect_provider() -> tuple[str, str, str]:
@@ -512,8 +513,8 @@ async def _llm_request(
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429:
                 if attempt == 0:
-                    console.print(f"[yellow]⏳ {provider} está no limite de taxa — aguardando 3s...[/yellow]")
-                    await asyncio.sleep(3)
+                    console.print(f"[yellow]⏳ {provider} está no limite de taxa — aguardando 10s...[/yellow]")
+                    await asyncio.sleep(10)
                     continue
                 # Depois de 2 tentativas, tenta fallback
                 if fallback and fallback[0]:

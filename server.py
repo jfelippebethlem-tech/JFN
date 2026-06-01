@@ -408,27 +408,10 @@ async def websocket_chat(ws: WebSocket):
         agent._siafe._web_otp_callback = otp_callback
 
         async with _agent_lock:
-            # Signal thinking
-            await ws.send_text(json.dumps({"type": "start"}))
-
-            # Override the agent's internal OTP handling for this session
-            original_tool = agent._tool_login_siafe
-
-            async def patched_login(username, password, cliente=None, exercicio=None):
-                agent._siafe_username = username
-                agent._siafe_password = password
-
-                async def _otp():
-                    return await otp_callback()
-
-                return await agent._siafe.login(
-                    username, password,
-                    cliente=cliente,
-                    exercicio=exercicio,
-                    otp_callback=_otp,
-                )
-
-            agent._tool_login_siafe = patched_login
+            # Inject web OTP callback into the browser so that if 2FA is triggered
+            # during login the code goes through the WebSocket instead of stdin.
+            # The stored credentials (_siafe_username / _siafe_password) are used as-is.
+            agent._siafe._web_otp_callback = otp_callback
 
             while True:
                 try:
