@@ -21,16 +21,30 @@ from typing import Union
 
 import httpx
 
-BOT_TOKEN: str = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+_DEFAULT_TOKEN = "8840263255:AAFsNh8nHEZk5xga-TRmLOTduIe_EpUEESQ"
+
+BOT_TOKEN: str = os.environ.get("TELEGRAM_BOT_TOKEN", _DEFAULT_TOKEN)
 CHAT_ID: str = os.environ.get("TELEGRAM_CHAT_ID", "")
 
-# Telegram Bot API base URL, built from token at import time.
-# Will be updated dynamically when BOT_TOKEN is set.
+# Chat ID auto-descoberto na primeira mensagem recebida (salvo em memória)
+_auto_chat_id: str = ""
+
+
 def _base_url() -> str:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", BOT_TOKEN)
     if not token:
         return ""
     return f"https://api.telegram.org/bot{token}"
+
+
+def _get_chat_id(override: str = "") -> str:
+    """Retorna o chat_id a usar: override > env > auto-descoberto."""
+    global _auto_chat_id
+    return (
+        override
+        or os.environ.get("TELEGRAM_CHAT_ID", CHAT_ID)
+        or _auto_chat_id
+    )
 
 
 async def enviar_mensagem(
@@ -49,7 +63,7 @@ async def enviar_mensagem(
     Returns:
         Telegram API response dict.
     """
-    target = chat_id or os.environ.get("TELEGRAM_CHAT_ID", CHAT_ID)
+    target = _get_chat_id(chat_id)
     base = _base_url()
     if not base or not target:
         return {"ok": False, "error": "BOT_TOKEN ou CHAT_ID não configurado"}
@@ -92,7 +106,7 @@ async def enviar_arquivo(
     Returns:
         Telegram API response dict.
     """
-    target = chat_id or os.environ.get("TELEGRAM_CHAT_ID", CHAT_ID)
+    target = _get_chat_id(chat_id)
     base = _base_url()
     if not base or not target:
         return {"ok": False, "error": "BOT_TOKEN ou CHAT_ID não configurado"}
@@ -383,6 +397,10 @@ async def loop_comandos():
                 msg = upd.get("message", {})
                 text = msg.get("text", "")
                 chat_id = str(msg.get("chat", {}).get("id", ""))
+                if chat_id and not _auto_chat_id:
+                    global _auto_chat_id
+                    _auto_chat_id = chat_id
+                    print(f"[Telegram] Chat ID detectado: {chat_id}")
                 if text and chat_id:
                     asyncio.create_task(processar_comando(text, chat_id))
         except asyncio.CancelledError:
