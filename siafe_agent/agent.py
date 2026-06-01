@@ -69,28 +69,39 @@ _GROQ_BASE       = "https://api.groq.com/openai/v1"
 _OPENROUTER_BASE = "https://openrouter.ai/api/v1"
 _ANTHROPIC_BASE  = "https://api.anthropic.com"
 
-_GROQ_MODEL       = "llama-3.3-70b-versatile"
-_OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free"
-_ANTHROPIC_MODEL  = "claude-opus-4-8"
+_GROQ_MODEL      = "llama-3.3-70b-versatile"
+_ANTHROPIC_MODEL = "claude-opus-4-8"
+
+
+def _openrouter_model() -> str:
+    return os.environ.get("OPENROUTER_SMART_MODEL", "nousresearch/hermes-3-llama-3.1-405b:free")
 
 
 def _detect_provider() -> tuple[str, str, str]:
     groq_key       = os.environ.get("GROQ_API_KEY", "").strip()
     anthropic_key  = os.environ.get("ANTHROPIC_API_KEY", "").strip()
     openrouter_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    prefer         = os.environ.get("FREE_LLM_PREFER", "groq").lower()
 
-    if groq_key:
-        return "groq", groq_key, _GROQ_MODEL
+    free_options = [
+        ("groq",       groq_key,       _GROQ_MODEL),
+        ("openrouter", openrouter_key, _openrouter_model()),
+    ]
+    if prefer == "openrouter":
+        free_options = list(reversed(free_options))
+
+    for name, key, model in free_options:
+        if key:
+            return name, key, model
+
     if anthropic_key:
         return "anthropic", anthropic_key, _ANTHROPIC_MODEL
-    if openrouter_key:
-        return "openrouter", openrouter_key, _OPENROUTER_MODEL
 
     raise RuntimeError(
         "\n\n❌  Nenhuma chave de LLM configurada!\n\n"
         "Abra o arquivo .env e preencha:\n\n"
         "  GROQ_API_KEY=sua_chave_aqui      ← grátis em console.groq.com\n"
-        "  OPENROUTER_API_KEY=sua_chave     ← grátis em openrouter.ai\n"
+        "  OPENROUTER_API_KEY=sua_chave     ← grátis em openrouter.ai (Hermes-3)\n"
     )
 
 
