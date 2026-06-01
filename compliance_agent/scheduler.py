@@ -49,7 +49,8 @@ async def _coletar_doerj_com_extras(session, hoje: date) -> list:
     ontem = hoje - timedelta(days=1)
     try:
         pub_ontem = await collector.coletar_data(ontem)
-        extras = [p for p in pub_ontem if getattr(p, "edicao", "") and "extra" in str(getattr(p, "edicao", "")).lower()]
+        extras = [p for p in pub_ontem
+                  if isinstance(p, dict) and "extra" in str(p.get("edicao", "")).lower()]
         if extras:
             publicacoes.extend(extras)
             console.print(f"    DOERJ extras ontem ({ontem}): {len(extras)} publicações")

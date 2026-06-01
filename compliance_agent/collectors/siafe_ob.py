@@ -1,19 +1,26 @@
 """
-SIAFE2 OB Orçamentária — daily data collector.
+SIAFE2 OB Orçamentária — coletor diário.
 
-Connects to the user's running Chrome (CDP on port 9222), navigates to the
-OB Orçamentária screen, searches the current day's records, and saves them
-to the compliance database.
+Conecta no Chrome já aberto (CDP porta 9222), navega até a tela de
+OB Orçamentária (Execução > Execução Financeira > OB Orçamentária) e lê
+DIRETO a tabela de OBs que já vem carregada na tela.
 
-Usage (standalone):
+Estrutura real da tabela (confirmada por diagnóstico em 01/06/2026):
+    Número | UG Emitente | UG Pagadora | Data Emissão | Status |
+    Tipo | Finalidade | Tipo de OB | NL
+Ex.: 2026OB00571 | 300100 | 300100 | 01/06/2026 | Contabilizado |
+     12 | 6 | Orçamentária | 2026NL00338
+
+A tela é uma LISTA (não há botão "Consultar"); os registros do dia já
+aparecem. Lemos a grade `pt1:tblOBOrcamentaria` diretamente.
+
+Uso (standalone):
     python -m compliance_agent.collectors.siafe_ob
-
-Called automatically by the daily scheduler at 08:00.
 """
 
 import asyncio
 import json
-import os
+import re
 from datetime import date, datetime
 from pathlib import Path
 
@@ -21,62 +28,48 @@ from compliance_agent.database.models import (
     OrdemBancaria, SessaoAuditoria, get_session, init_db
 )
 
-_SIAFE_OB_URL = (
-    "https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/financeira"
-    "/ordemBancariaOrcamentariaEdit.jsp"
-)
-# Página mãe da OB — navegar aqui primeiro inicializa o contexto ADF corretamente
+CDP_URL = "http://127.0.0.1:9222"
+
+# Navegar para a página-mãe inicializa o contexto ADF corretamente.
+# NUNCA fazer goto direto na URL da OB (causa BeanELResolver crash).
 _SIAFE_FINANCEIRA = (
     "https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/financeira"
     "/execucaoFinanceiraMain.jsp"
 )
 _SIAFE_HOME = "https://siafe2.fazenda.rj.gov.br/Siafe/"
 
-_JS_ADF_INPUTS = """
-    () => {
-        const results = [];
-        for (const el of document.querySelectorAll('input, select, textarea')) {
-            const r = el.getBoundingClientRect();
-            if (r.width <= 0) continue;
-            let label = '';
-            const id = el.id || '';
-            if (id) {
-                const lbl = document.querySelector(`label[for="${id}"]`);
-                if (lbl) label = lbl.textContent.trim();
-            }
-            if (!label) {
-                let p = el.parentElement;
-                for (let i = 0; i < 5 && p; i++, p = p.parentElement) {
-                    const lbl = p.querySelector('label, span.af_outputLabel, span.x18m');
-                    if (lbl && lbl !== el) { label = lbl.textContent.trim(); break; }
-                }
-            }
-            results.push({
-                tag: el.tagName, id: el.id || '', name: el.name || '',
-                type: el.type || '', label: label.substring(0, 60),
-            });
-        }
-        return results;
-    }
-"""
+_RE_OB = re.compile(r"^\d{4}OB\d+")
 
-_JS_ADF_GRID_ROWS = """
-    (maxRows) => {
-        const rowSels = ['tr.af_table_row', 'tr[class*="Row"]:not([class*="Header"])', 'tbody tr'];
-        for (const sel of rowSels) {
-            const rows = [...document.querySelectorAll(sel)].slice(0, maxRows);
-            if (!rows.length) continue;
-            const data = rows.map(row =>
-                [...row.querySelectorAll('td')].map(td => td.textContent.trim()).filter(Boolean)
-            ).filter(r => r.length > 0);
-            if (data.length > 0) return {sel, rows: data};
+# JS que lê a grade de OBs já carregada na tela ───────────────────────────────
+_JS_READ_OB_TABLE = r"""
+() => {
+    const host = document.querySelector('[id*="tblOBOrcamentaria"]');
+    if (!host) return {found: false, header: [], rows: []};
+    const table = host.closest('table') || host;
+
+    let header = [];
+    const rows = [];
+    for (const tr of table.querySelectorAll('tr')) {
+        const cells = [...tr.querySelectorAll('td, th')]
+            .map(c => c.textContent.trim())
+            .filter(t => t.length > 0);
+        if (!cells.length) continue;
+        // linha de cabeçalho
+        if (cells.includes('Número') && cells.some(c => c.indexOf('Data') >= 0)) {
+            header = cells;
+            continue;
         }
-        return null;
+        // linha de dados: começa com número de OB (ex.: 2026OB00571)
+        if (/^\d{4}OB\d+/.test(cells[0])) {
+            rows.push(cells);
+        }
     }
+    return {found: true, header: header, rows: rows};
+}
 """
 
 
-async def _adf_wait(pg, timeout: int = 10000):
+async def _adf_wait(pg, timeout: int = 12000):
     try:
         await pg.wait_for_load_state("networkidle", timeout=timeout)
     except Exception:
@@ -84,26 +77,22 @@ async def _adf_wait(pg, timeout: int = 10000):
     await asyncio.sleep(1.5)
 
 
-async def _dismiss_dialogs(page, max_iter: int = 5) -> list[str]:
+async def _dismiss_dialogs(page, max_iter: int = 6) -> list[str]:
+    """Fecha pop-ups (mensagem do administrador, etc.) clicando OK."""
     dismissed = []
     for _ in range(max_iter):
-        result = await page.evaluate("""
+        result = await page.evaluate(r"""
             () => {
-                const sim = document.getElementById('myBtnOk');
-                if (sim && sim.getBoundingClientRect().width > 0) {
-                    sim.click(); return 'sim_dialog';
+                const ok = document.getElementById('myBtnOk');
+                if (ok && ok.getBoundingClientRect().width > 0) {
+                    ok.click(); return 'myBtnOk';
                 }
-                const skip = new Set(['myBtnCancel']);
-                for (const sel of ['a.x7j', 'a.xg2']) {
-                    for (const el of document.querySelectorAll(sel)) {
-                        if (skip.has(el.id)) continue;
-                        const t = el.textContent.trim().toLowerCase();
-                        const r = el.getBoundingClientRect();
-                        if ((t === 'ok' || t === 'sim') && r.width > 0 && r.height > 0
-                                && !el.className.includes('p_AFDisabled')) {
-                            el.click();
-                            return 'ok_btn:' + el.id;
-                        }
+                for (const el of document.querySelectorAll('a.x7j, a.xg2, button')) {
+                    const t = el.textContent.trim().toLowerCase();
+                    const r = el.getBoundingClientRect();
+                    if ((t === 'ok' || t === 'sim' || t === 'fechar') && r.width > 0
+                            && r.height > 0 && !el.className.includes('p_AFDisabled')) {
+                        el.click(); return el.id || t;
                     }
                 }
                 return null;
@@ -111,7 +100,7 @@ async def _dismiss_dialogs(page, max_iter: int = 5) -> list[str]:
         """)
         if result:
             dismissed.append(result)
-            await asyncio.sleep(2)
+            await asyncio.sleep(1.5)
         else:
             break
     return dismissed
@@ -119,47 +108,50 @@ async def _dismiss_dialogs(page, max_iter: int = 5) -> list[str]:
 
 async def _navigate_to_ob(page) -> bool:
     """
-    Navigate to OB Orçamentária via the SIAFE2 menu.
+    Garante que estamos na tela de OB Orçamentária.
 
-    IMPORTANT: Direct page.goto() to the OB JSP URL causes ADF/JSF to crash
-    (BeanELResolver error) because it bypasses navigation context initialization.
-    We must navigate through the menus to reach the OB screen.
+    Navega via execucaoFinanceiraMain.jsp (inicializa o contexto ADF) e
+    depois clica no menu 'OB Orçamentária' (a.xgg). NUNCA usa goto direto
+    na URL da OB — isso quebra o ADF/JSF (erro BeanELResolver).
     """
-    # Check if already on OB screen
     if "ordembancariaorcamentaria" in page.url.lower():
         await _dismiss_dialogs(page)
         return True
 
-    # If on error/login page or outside SIAFE, navigate to execucaoFinanceira first
-    # (initializes ADF context properly — direct OB URL causes BeanELResolver crash)
-    current_url = page.url.lower()
-    needs_nav = (
-        "erro" in current_url
-        or "error" in current_url
-        or "login" in current_url
-        or "siafe2.fazenda" not in current_url
-        or "execucaofinanceira" not in current_url
-    )
-    if needs_nav:
-        for target in [_SIAFE_FINANCEIRA, _SIAFE_HOME]:
+    cur = page.url.lower()
+    if "execucaofinanceira" not in cur and "siafe2.fazenda" in cur:
+        # já está no SIAFE, só não na financeira — tenta o menu direto
+        pass
+
+    if "siafe2.fazenda" not in cur or "erro" in cur or "error" in cur or "login" in cur:
+        for target in (_SIAFE_FINANCEIRA, _SIAFE_HOME):
             try:
                 await page.goto(target, wait_until="networkidle", timeout=20000)
                 await asyncio.sleep(3)
                 await _dismiss_dialogs(page)
-                cur = page.url.lower()
-                if "erro" not in cur and "error" not in cur and "login" not in cur:
+                c = page.url.lower()
+                if "erro" not in c and "error" not in c and "login" not in c:
                     break
             except Exception:
                 pass
+    elif "execucaofinanceira" not in cur and "ordembancaria" not in cur:
+        try:
+            await page.goto(_SIAFE_FINANCEIRA, wait_until="networkidle", timeout=20000)
+            await asyncio.sleep(3)
+            await _dismiss_dialogs(page)
+        except Exception:
+            pass
 
-    # Try to click the OB menu item (a.xgg) — correct ADF navigation
-    for attempt in range(2):
-        clicked = await page.evaluate("""
+    if "ordembancariaorcamentaria" in page.url.lower():
+        return True
+
+    # Clica no item de menu 'OB Orçamentária' (a.xgg)
+    for _ in range(2):
+        clicked = await page.evaluate(r"""
             () => {
                 for (const el of document.querySelectorAll('a.xgg')) {
                     const t = el.textContent.trim();
-                    if ((t === 'OB Orcamentaria' || t === 'OB Orçamentária'
-                            || t.startsWith('OB Or'))
+                    if ((t === 'OB Orçamentária' || t.startsWith('OB Or'))
                         && !el.className.includes('p_AFDisabled')) {
                         el.click(); return t;
                     }
@@ -172,174 +164,93 @@ async def _navigate_to_ob(page) -> bool:
             await _dismiss_dialogs(page)
             if "ordembancariaorcamentaria" in page.url.lower():
                 return True
-            # May need to wait a bit more after ADF PPR
-            await asyncio.sleep(2)
-            if "ordembancariaorcamentaria" in page.url.lower():
-                return True
+        await asyncio.sleep(2)
 
-        if attempt == 0:
-            # First attempt failed — try expanding the menu by clicking parent nav items
-            await page.evaluate("""
-                () => {
-                    // Try clicking left-panel items that might reveal the OB menu
-                    for (const el of document.querySelectorAll('a.xg8, a.xgh')) {
-                        const t = el.textContent.trim().toLowerCase();
-                        if (t.includes('financeira') || t.includes('execu')) {
-                            if (!el.className.includes('p_AFDisabled')
-                                    && el.getBoundingClientRect().width > 0) {
-                                el.click(); return t;
-                            }
-                        }
-                    }
-                    return null;
-                }
-            """)
-            await asyncio.sleep(3)
-
-    return False
+    return "ordembancariaorcamentaria" in page.url.lower()
 
 
-def _parse_ob_rows(raw_rows: list[list[str]], colnames: list[str]) -> list[dict]:
-    """Map grid row arrays to dict using detected column names."""
-    result = []
-    for row in raw_rows:
-        d = {}
-        for i, val in enumerate(row):
-            key = colnames[i].lower().replace(" ", "_") if i < len(colnames) else f"col{i}"
-            d[key] = val
-        result.append(d)
-    return result
+def _parse_money(s: str):
+    """Converte '1.234,56' -> 1234.56. Retorna None se não numérico."""
+    try:
+        clean = re.sub(r"[^\d,.-]", "", str(s)).replace(".", "").replace(",", ".")
+        return float(clean) if clean else None
+    except (ValueError, TypeError):
+        return None
 
 
-async def collect_ob_day(target_date: date | None = None, max_rows: int = 200) -> dict:
+def _parse_date_br(s: str):
+    """Converte 'dd/mm/yyyy' -> date. Retorna None se inválido."""
+    try:
+        return datetime.strptime(s.strip(), "%d/%m/%Y").date()
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+
+async def collect_ob_day(target_date: date | None = None, max_rows: int = 1000) -> dict:
     """
-    Connect to Chrome via CDP, collect OB records for target_date (default: today).
-    Returns summary dict with keys: date, records, errors, session_id.
+    Conecta no Chrome via CDP e lê a tabela de OBs já carregada na tela.
+    Retorna dict com: date, records, rows, header, errors.
     """
     from playwright.async_api import async_playwright
 
     target_date = target_date or date.today()
-    mes_ini = f"01/{target_date.month:02d}/{target_date.year}"
-    mes_fim = f"{target_date.day:02d}/{target_date.month:02d}/{target_date.year}"
-
     summary = {
         "date": target_date.isoformat(),
         "records": 0,
         "rows": [],
+        "header": [],
         "errors": [],
-        "col_headers": [],
     }
 
     p = await async_playwright().start()
     browser = None
     try:
-        browser = await p.chromium.connect_over_cdp("http://127.0.0.1:9222")
+        browser = await p.chromium.connect_over_cdp(CDP_URL)
     except Exception as e:
-        summary["errors"].append(f"CDP connect failed: {e}")
+        summary["errors"].append(f"CDP connect falhou: {e}")
         await p.stop()
         return summary
 
     try:
+        # Localiza a aba do SIAFE2
         page = None
         for ctx in browser.contexts:
             for pg in ctx.pages:
-                url = pg.url.lower()
-                if "siafe2.fazenda" in url and "flexvision" not in url:
+                u = pg.url.lower()
+                if "siafe2.fazenda" in u and "flexvision" not in u:
                     page = pg
                     break
             if page:
                 break
         if not page and browser.contexts and browser.contexts[0].pages:
             page = browser.contexts[0].pages[0]
-
         if not page:
-            summary["errors"].append("No page found in CDP browser")
+            summary["errors"].append("Nenhuma aba encontrada no Chrome")
             return summary
 
         await _dismiss_dialogs(page)
 
-        on_ob = await _navigate_to_ob(page)
-        if not on_ob:
-            summary["errors"].append(f"Could not navigate to OB screen — URL: {page.url}")
+        if not await _navigate_to_ob(page):
+            summary["errors"].append(f"Não chegou na tela de OB — URL: {page.url}")
             return summary
 
-        # Fill date range
-        await page.evaluate(f"""
-            () => {{
-                for (const inp of document.querySelectorAll('input[type="text"], input:not([type])')) {{
-                    if (inp.getBoundingClientRect().width <= 0) continue;
-                    let lbl = ''; let par = inp.parentElement;
-                    for (let i = 0; i < 6 && par; i++, par = par.parentElement) {{
-                        const l = par.querySelector('label, span.x18m, span.af_outputLabel');
-                        if (l && l !== inp) {{ lbl = l.textContent.trim().toLowerCase(); break; }}
-                    }}
-                    const ini = lbl.includes('iní') || lbl.includes(' de') || lbl.match(/^de$/);
-                    const fim = lbl.includes('fim') || lbl.includes('até') || lbl.includes('final');
-                    if (ini) {{
-                        inp.value = '{mes_ini}';
-                        inp.dispatchEvent(new Event('change', {{bubbles: true}}));
-                        inp.dispatchEvent(new Event('blur', {{bubbles: true}}));
-                    }} else if (fim) {{
-                        inp.value = '{mes_fim}';
-                        inp.dispatchEvent(new Event('change', {{bubbles: true}}));
-                        inp.dispatchEvent(new Event('blur', {{bubbles: true}}));
-                    }}
-                }}
-            }}
-        """)
-        await asyncio.sleep(0.5)
-
-        # Click Consultar
-        consultar = await page.evaluate("""
-            () => {
-                const kws = ['consultar', 'pesquisar', 'buscar', 'filtrar', 'listar', 'executar'];
-                for (const el of document.querySelectorAll(
-                        'a, button, input[type="button"], input[type="submit"]')) {
-                    const t = (el.textContent || el.value || '').trim().toLowerCase();
-                    if (kws.some(k => t === k || t.startsWith(k))
-                        && el.getBoundingClientRect().width > 0
-                        && !el.className.includes('p_AFDisabled')) {
-                        el.click(); return t;
-                    }
-                }
-                return null;
-            }
-        """)
-        if not consultar:
-            summary["errors"].append("Consultar button not found")
+        # Lê a grade direto
+        result = await page.evaluate(_JS_READ_OB_TABLE)
+        if not result.get("found"):
+            summary["errors"].append("Tabela tblOBOrcamentaria não encontrada na tela")
             return summary
 
-        await _adf_wait(page, 20000)
+        summary["header"] = result.get("header", [])
+        summary["rows"] = result.get("rows", [])[:max_rows]
+        summary["records"] = len(summary["rows"])
 
-        # Read column headers
-        headers_data = await page.evaluate("""
-            () => {
-                const sels = ['th', 'thead td', '.af_column_cell-text', '.af_column_sortable-text',
-                              '[class*="columnHeader"]'];
-                for (const sel of sels) {
-                    const els = [...document.querySelectorAll(sel)];
-                    const texts = els.map(e => e.textContent.trim()).filter(t => t && t.length < 80);
-                    if (texts.length > 0) return texts;
-                }
-                return [];
-            }
-        """)
-        summary["col_headers"] = headers_data
-
-        # Read up to max_rows
-        rows_data = await page.evaluate(_JS_ADF_GRID_ROWS, max_rows)
-        if rows_data:
-            summary["rows"] = rows_data["rows"]
-            summary["records"] = len(rows_data["rows"])
-        else:
-            body_text = await page.inner_text("body")
-            if "sem resultado" in body_text.lower() or "não encontrad" in body_text.lower():
-                summary["records"] = 0
-            else:
-                summary["errors"].append(f"No grid rows detected. Page text: {body_text[:300]}")
+        if summary["records"] == 0:
+            body = await page.inner_text("body")
+            if "limite de 1000" in body.lower() or "nenhum registro" in body.lower():
+                pass  # tabela vazia é resultado válido
 
     except Exception as e:
-        summary["errors"].append(f"Collection error: {e}")
+        summary["errors"].append(f"Erro de coleta: {type(e).__name__}: {e}")
     finally:
         try:
             await p.stop()
@@ -349,56 +260,61 @@ async def collect_ob_day(target_date: date | None = None, max_rows: int = 200) -
     return summary
 
 
+# Mapa de nomes de coluna -> índice, a partir do header lido
+def _col_index(header: list[str]) -> dict:
+    idx = {}
+    for i, h in enumerate(header):
+        idx[h.strip().lower()] = i
+    return idx
+
+
 def save_ob_records(session, summary: dict) -> int:
-    """Upsert OB records from summary into the database. Returns count saved."""
-    col_headers = summary.get("col_headers", [])
+    """Insere/atualiza OBs do summary no banco. Retorna quantas salvou."""
+    header = summary.get("header", [])
+    idx = _col_index(header)
     saved = 0
-    target_date = date.fromisoformat(summary["date"])
+
+    def cell(row, *names):
+        for n in names:
+            j = idx.get(n)
+            if j is not None and j < len(row):
+                return row[j]
+        return None
 
     for row in summary.get("rows", []):
-        d = {}
-        for i, val in enumerate(row):
-            key = col_headers[i].lower().replace(" ", "_") if i < len(col_headers) else f"col{i}"
-            d[key] = val
+        numero = cell(row, "número", "numero") or (row[0] if row else "")
+        if not numero:
+            continue
 
-        # Try to extract number from first column
-        numero = (
-            d.get("número", "") or d.get("numero", "") or
-            d.get("n°", "") or d.get("ob", "") or
-            (row[0] if row else "")
-        )
+        data_str = cell(row, "data emissão", "data emissao", "data")
+        data_emissao = _parse_date_br(data_str) or date.fromisoformat(summary["date"])
+        ug_emit = cell(row, "ug emitente", "ug")
+        status = cell(row, "status")
+        tipo_ob = cell(row, "tipo de ob")
+        nl = cell(row, "nl")
 
-        # Check for existing
+        raw = {header[i] if i < len(header) else f"col{i}": v
+               for i, v in enumerate(row)}
+
         existing = session.query(OrdemBancaria).filter_by(
-            numero_ob=str(numero),
-            data_emissao=target_date,
+            numero_ob=str(numero), data_emissao=data_emissao
         ).first()
 
         if existing:
-            existing.raw_json = json.dumps(d, ensure_ascii=False)
+            existing.status = status or existing.status
+            existing.raw_json = json.dumps(raw, ensure_ascii=False)
             existing.updated_at = datetime.utcnow()
         else:
             ob = OrdemBancaria(
                 numero_ob=str(numero),
-                data_emissao=target_date,
-                exercicio=target_date.year,
-                raw_json=json.dumps(d, ensure_ascii=False),
+                data_emissao=data_emissao,
+                exercicio=data_emissao.year,
+                ug_codigo=str(ug_emit) if ug_emit else None,
+                status=str(status) if status else None,
+                tipo_ob=str(tipo_ob) if tipo_ob else None,
+                observacao=f"NL={nl}" if nl else None,
+                raw_json=json.dumps(raw, ensure_ascii=False),
             )
-            # Map common column names
-            for key, val in d.items():
-                if "favorecido" in key or "beneficiário" in key:
-                    if not ob.favorecido_nome:
-                        ob.favorecido_nome = str(val)
-                elif "valor" in key:
-                    try:
-                        ob.valor = float(str(val).replace(".", "").replace(",", "."))
-                    except (ValueError, TypeError):
-                        pass
-                elif "situação" in key or "status" in key:
-                    ob.status = str(val)
-                elif "ug" in key or "unidade" in key:
-                    if not ob.ug_nome:
-                        ob.ug_nome = str(val)
             session.add(ob)
         saved += 1
 
@@ -407,10 +323,7 @@ def save_ob_records(session, summary: dict) -> int:
 
 
 async def run_daily_collection(target_date: date | None = None) -> dict:
-    """
-    Full collection pipeline: collect from SIAFE2 and persist to DB.
-    Also logs a SessaoAuditoria record.
-    """
+    """Pipeline completo: coleta + persiste + registra SessaoAuditoria."""
     init_db()
     session = get_session()
     target_date = target_date or date.today()
@@ -418,22 +331,22 @@ async def run_daily_collection(target_date: date | None = None) -> dict:
     summary = await collect_ob_day(target_date)
 
     saved = 0
-    if not summary["errors"] or summary["records"] > 0:
+    if summary["records"] > 0:
         try:
             saved = save_ob_records(session, summary)
         except Exception as e:
-            summary["errors"].append(f"DB save error: {e}")
+            summary["errors"].append(f"Erro ao salvar no banco: {e}")
 
     sessao = SessaoAuditoria(
         data_sessao=target_date,
         tipo="siafe_ob",
-        status="ok" if not summary["errors"] else "erro",
+        status="ok" if not summary["errors"] else ("parcial" if saved else "erro"),
         registros=saved,
         resumo=json.dumps({
             "date": summary["date"],
             "records_fetched": summary["records"],
             "records_saved": saved,
-            "col_headers": summary["col_headers"],
+            "header": summary["header"],
         }, ensure_ascii=False),
         detalhes=json.dumps(summary.get("errors", []), ensure_ascii=False)
         if summary["errors"] else None,
@@ -452,4 +365,4 @@ async def run_daily_collection(target_date: date | None = None) -> dict:
 
 if __name__ == "__main__":
     result = asyncio.run(run_daily_collection())
-    print(f"SIAFE2 OB collection: {result}")
+    print(f"SIAFE2 OB: {result}")
