@@ -4,6 +4,7 @@ REM
 REM Uso:
 REM   iniciar.bat             - scheduler diario (08:00 todo dia)
 REM   iniciar.bat --agora     - roda coleta imediatamente
+REM   iniciar.bat --diag      - LE as paginas reais e relata a estrutura
 REM   iniciar.bat --groq      - Groq explorer (IA no SIAFE2)
 REM   iniciar.bat --analisar  - relatorio completo do banco
 REM   iniciar.bat --obs       - lista OBs coletadas
@@ -55,10 +56,23 @@ if errorlevel 1 (
 
 REM Dispatch por argumento
 if "%1"=="--agora"    goto agora
+if "%1"=="--diag"     goto diag
 if "%1"=="--groq"     goto groq
 if "%1"=="--analisar" goto analisar
 if "%1"=="--obs"      goto obs
 goto scheduler
+
+:diag
+echo.
+echo   Lendo as paginas reais (SIAFE2 + IOERJ) pelo Chrome aberto...
+curl -s "http://127.0.0.1:9222/json/version" >nul 2>&1
+if errorlevel 1 (
+    echo   ERRO: Chrome nao esta aberto. Abra com --remote-debugging-port=9222
+    pause
+    exit /b 1
+)
+python diagnostico.py
+goto fim
 
 :agora
 echo.
