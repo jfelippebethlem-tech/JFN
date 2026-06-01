@@ -390,6 +390,7 @@ async def loop_comandos():
     offset = 0
     print("[Telegram] Bot de comandos ativo. Aguardando mensagens do celular...")
 
+    global _auto_chat_id
     while True:
         try:
             updates = await obter_atualizacoes(offset=offset, timeout=25)
@@ -399,7 +400,6 @@ async def loop_comandos():
                 text = msg.get("text", "")
                 chat_id = str(msg.get("chat", {}).get("id", ""))
                 if chat_id and not _auto_chat_id:
-                    global _auto_chat_id
                     _auto_chat_id = chat_id
                     print(f"[Telegram] Chat ID detectado: {chat_id}")
                 if text and chat_id:
