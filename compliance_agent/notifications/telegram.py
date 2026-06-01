@@ -1,10 +1,19 @@
 """
-Telegram notification module for the compliance system.
+Telegram notification + remote command bot for the compliance system.
 
-Sends daily summaries, urgent alerts, and report files via Telegram Bot API
-using httpx directly (no python-telegram-bot dependency required).
+Sends daily summaries, urgent alerts, and report files via Telegram Bot API.
+Also listens for commands from the phone:
+    /status   — situação atual do sistema
+    /obs      — últimas OBs coletadas
+    /agora    — dispara ciclo de coleta imediatamente
+    /relatorio — envia PDF do dia
+    /ajuda    — ajuda
+
+Usage (standalone, for testing):
+    python -m compliance_agent.notifications.telegram
 """
 
+import asyncio
 import os
 from datetime import date
 from pathlib import Path
@@ -210,3 +219,182 @@ async def testar_conexao(chat_id: str = "") -> bool:
         chat_id=chat_id,
     )
     return resp.get("ok", False) is True
+
+
+# ─── Remote command bot ───────────────────────────────────────────────────────
+
+async def obter_atualizacoes(offset: int = 0, timeout: int = 25) -> list:
+    """Long-poll Telegram for new updates. Returns list of update dicts."""
+    base = _base_url()
+    if not base:
+        return []
+    try:
+        async with httpx.AsyncClient(timeout=timeout + 5) as client:
+            resp = await client.get(
+                f"{base}/getUpdates",
+                params={
+                    "offset": offset,
+                    "timeout": timeout,
+                    "allowed_updates": ["message"],
+                },
+            )
+            data = resp.json()
+            return data.get("result", []) if data.get("ok") else []
+    except Exception:
+        return []
+
+
+async def _status_reply() -> str:
+    try:
+        from compliance_agent.database.models import (
+            get_session, SessaoAuditoria, OrdemBancaria, Alerta
+        )
+        from sqlalchemy import desc, func
+        session = get_session()
+        try:
+            total_obs = session.query(func.count(OrdemBancaria.id)).scalar() or 0
+            total_alertas = session.query(func.count(Alerta.id)).scalar() or 0
+            sessoes = (
+                session.query(SessaoAuditoria)
+                .order_by(desc(SessaoAuditoria.created_at))
+                .limit(4)
+                .all()
+            )
+            linhas = [f"*📊 JFN Compliance — Status*\n",
+                      f"OBs no banco: *{total_obs}*",
+                      f"Alertas totais: *{total_alertas}*"]
+            if sessoes:
+                linhas.append("\n*Últimas sessões:*")
+                for s in sessoes:
+                    e = "✅" if s.status == "ok" else ("⚠️" if s.status == "parcial" else "❌")
+                    linhas.append(f"  {e} `{s.data_sessao}` [{s.tipo}] {s.registros} reg.")
+            return "\n".join(linhas)
+        finally:
+            session.close()
+    except Exception as exc:
+        return f"Erro ao ler status: {exc}"
+
+
+async def _obs_reply() -> str:
+    try:
+        from compliance_agent.database.models import get_session, OrdemBancaria
+        from sqlalchemy import desc
+        session = get_session()
+        try:
+            obs = (
+                session.query(OrdemBancaria)
+                .order_by(desc(OrdemBancaria.data_emissao), desc(OrdemBancaria.id))
+                .limit(10)
+                .all()
+            )
+            if not obs:
+                return "Nenhuma OB coletada ainda."
+            linhas = [f"*📋 Últimas {len(obs)} OBs:*\n"]
+            for ob in obs:
+                fav = (ob.favorecido_nome or "sem detalhe")[:35]
+                val = f"R$ {ob.valor:,.2f}" if ob.valor else "—"
+                linhas.append(f"• `{ob.numero_ob}` {ob.data_emissao} {val}\n  ↳ {fav}")
+            return "\n".join(linhas)
+        finally:
+            session.close()
+    except Exception as exc:
+        return f"Erro ao ler OBs: {exc}"
+
+
+_AJUDA = (
+    "*🤖 JFN Compliance Bot*\n\n"
+    "Comandos disponíveis:\n"
+    "  /status — situação atual do sistema\n"
+    "  /obs — últimas OBs coletadas\n"
+    "  /agora — roda ciclo de coleta agora\n"
+    "  /relatorio — envia PDF do dia\n"
+    "  /ajuda — esta mensagem"
+)
+
+
+async def processar_comando(texto: str, chat_id: str) -> None:
+    """Handle a single command sent by the user via Telegram."""
+    cmd = texto.strip().lower().split()[0] if texto.strip() else ""
+
+    if cmd in ("/start", "/ajuda", "/help"):
+        await enviar_mensagem(_AJUDA, chat_id=chat_id)
+
+    elif cmd == "/status":
+        await enviar_mensagem(await _status_reply(), chat_id=chat_id)
+
+    elif cmd == "/obs":
+        await enviar_mensagem(await _obs_reply(), chat_id=chat_id)
+
+    elif cmd == "/agora":
+        await enviar_mensagem("⏳ Iniciando ciclo de coleta...", chat_id=chat_id)
+        try:
+            from compliance_agent.scheduler import rodar_ciclo_diario
+            report = await rodar_ciclo_diario()
+            total = report.get("doerj", {}).get("total_publicacoes", 0)
+            obs_salvas = report.get("siafe_ob", {}).get("records_saved", 0)
+            n_alertas = report.get("alertas", {}).get("total", 0)
+            reply = (
+                f"✅ *Ciclo concluído!*\n"
+                f"  DOERJ: {total} publicações\n"
+                f"  OBs salvas: {obs_salvas}\n"
+                f"  Alertas: {n_alertas}"
+            )
+        except Exception as exc:
+            reply = f"❌ Erro no ciclo: {exc}"
+        await enviar_mensagem(reply, chat_id=chat_id)
+
+    elif cmd == "/relatorio":
+        hoje = date.today().isoformat()
+        pdf = Path("reports") / f"compliance_{hoje}.pdf"
+        if pdf.exists():
+            await enviar_mensagem("📄 Enviando relatório...", chat_id=chat_id)
+            await enviar_arquivo(pdf, caption=f"Compliance {hoje}", chat_id=chat_id)
+        else:
+            await enviar_mensagem(
+                f"Relatório de hoje ({hoje}) ainda não gerado.\nUse /agora para gerar.",
+                chat_id=chat_id,
+            )
+
+    elif texto.startswith("/"):
+        await enviar_mensagem(
+            f"Comando desconhecido: `{cmd}`\nDigite /ajuda para ver os comandos.",
+            chat_id=chat_id,
+        )
+
+
+async def loop_comandos():
+    """
+    Long-poll Telegram for commands in a continuous loop.
+    Run this concurrently with loop_diario() via asyncio.gather().
+
+    If TELEGRAM_BOT_TOKEN is not set, returns immediately (no-op).
+    """
+    if not _base_url():
+        return
+
+    offset = 0
+    print("[Telegram] Bot de comandos ativo. Aguardando mensagens do celular...")
+
+    while True:
+        try:
+            updates = await obter_atualizacoes(offset=offset, timeout=25)
+            for upd in updates:
+                offset = upd["update_id"] + 1
+                msg = upd.get("message", {})
+                text = msg.get("text", "")
+                chat_id = str(msg.get("chat", {}).get("id", ""))
+                if text and chat_id:
+                    asyncio.create_task(processar_comando(text, chat_id))
+        except asyncio.CancelledError:
+            break
+        except Exception:
+            await asyncio.sleep(5)
+
+
+if __name__ == "__main__":
+    async def _test():
+        ok = await testar_conexao()
+        print(f"Telegram OK: {ok}")
+        print("Aguardando comandos (Ctrl+C para parar)...")
+        await loop_comandos()
+    asyncio.run(_test())
