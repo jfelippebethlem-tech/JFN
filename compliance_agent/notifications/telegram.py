@@ -317,19 +317,143 @@ async def _obs_reply() -> str:
 
 
 _AJUDA = (
-    "*🤖 JFN Compliance Bot*\n\n"
-    "Comandos disponíveis:\n"
+    "*🤖 JFN Compliance Bot — Auditoria RJ*\n\n"
+    "*Monitoramento:*\n"
     "  /status — situação atual do sistema\n"
     "  /obs — últimas OBs coletadas\n"
-    "  /agora — roda ciclo de coleta agora\n"
+    "  /alertas — alertas de alta severidade recentes\n"
+    "  /agora — dispara coleta e análise completa agora\n\n"
+    "*Relatórios:*\n"
     "  /relatorio — envia PDF do dia\n"
+    "  /top — ranking dos maiores favorecidos\n"
+    "  /sancoes — verifica CEIS/CNEP agora\n\n"
+    "*Busca:*\n"
+    "  /buscar NOME — busca empresa/pessoa no banco\n\n"
+    "*Ajuda:*\n"
+    "  /chrome — como abrir o Chrome no modo correto\n"
     "  /ajuda — esta mensagem"
+)
+
+
+async def _alertas_reply() -> str:
+    try:
+        from compliance_agent.database.models import get_session, Alerta
+        from sqlalchemy import desc
+        session = get_session()
+        try:
+            alertas = (
+                session.query(Alerta)
+                .filter(Alerta.severidade == "alta")
+                .order_by(desc(Alerta.created_at))
+                .limit(8)
+                .all()
+            )
+            if not alertas:
+                return "Nenhum alerta de alta severidade recente. ✅"
+            linhas = [f"*🚨 Alertas de Alta Severidade ({len(alertas)}):*\n"]
+            for a in alertas:
+                dt = str(a.data_referencia or "")[:10]
+                linhas.append(f"🔴 [{dt}] *{a.titulo[:80]}*\n  {(a.descricao or '')[:120]}")
+            return "\n\n".join(linhas)
+        finally:
+            session.close()
+    except Exception as exc:
+        return f"Erro ao ler alertas: {exc}"
+
+
+async def _top_reply() -> str:
+    try:
+        from compliance_agent.database.models import get_session, OrdemBancaria
+        import sqlalchemy as sa
+        session = get_session()
+        try:
+            rows = (
+                session.query(
+                    OrdemBancaria.favorecido_nome,
+                    sa.func.sum(OrdemBancaria.valor).label("total"),
+                    sa.func.count(OrdemBancaria.id).label("n"),
+                )
+                .filter(OrdemBancaria.favorecido_nome.isnot(None))
+                .group_by(OrdemBancaria.favorecido_nome)
+                .order_by(sa.desc("total"))
+                .limit(10)
+                .all()
+            )
+            if not rows:
+                return "Sem dados de favorecidos no banco ainda."
+            linhas = ["*🏆 Top 10 Favorecidos (total histórico):*\n"]
+            for i, r in enumerate(rows, 1):
+                linhas.append(f"{i}. *{r.favorecido_nome[:40]}*\n   R$ {r.total:,.2f} ({r.n} OBs)")
+            return "\n".join(linhas)
+        finally:
+            session.close()
+    except Exception as exc:
+        return f"Erro: {exc}"
+
+
+async def _buscar_reply(termo: str) -> str:
+    if not termo.strip():
+        return "Use: /buscar NOME DA EMPRESA"
+    try:
+        from compliance_agent.database.models import get_session, OrdemBancaria, Alerta
+        from sqlalchemy import or_
+        session = get_session()
+        try:
+            t = f"%{termo.strip()}%"
+            obs = (
+                session.query(OrdemBancaria)
+                .filter(or_(
+                    OrdemBancaria.favorecido_nome.ilike(t),
+                    OrdemBancaria.favorecido_cpf.ilike(t),
+                ))
+                .order_by(OrdemBancaria.data_emissao.desc())
+                .limit(5)
+                .all()
+            )
+            alertas = (
+                session.query(Alerta)
+                .filter(Alerta.titulo.ilike(t))
+                .order_by(Alerta.created_at.desc())
+                .limit(3)
+                .all()
+            )
+            linhas = [f"*🔍 Busca por: {termo}*\n"]
+            if obs:
+                linhas.append(f"*OBs encontradas ({len(obs)}):*")
+                for ob in obs:
+                    v = f"R$ {ob.valor:,.2f}" if ob.valor else "—"
+                    linhas.append(f"• `{ob.numero_ob}` {ob.data_emissao} {v}")
+            else:
+                linhas.append("Nenhuma OB encontrada.")
+            if alertas:
+                linhas.append(f"\n*Alertas relacionados ({len(alertas)}):*")
+                for a in alertas:
+                    e = "🔴" if a.severidade == "alta" else "🟡"
+                    linhas.append(f"{e} {a.titulo[:80]}")
+            return "\n".join(linhas)
+        finally:
+            session.close()
+    except Exception as exc:
+        return f"Erro na busca: {exc}"
+
+
+_CHROME_INSTRUCOES = (
+    "*🖥️ Como abrir o Chrome no modo correto:*\n\n"
+    "1\\. Feche o Chrome completamente \\(todos os ícones na bandeja\\)\n\n"
+    "2\\. Abra o CMD \\(Win\\+R → cmd\\) e cole:\n"
+    "`\"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe\" "
+    "--remote-debugging-port=9222`\n\n"
+    "3\\. OU use o atalho `chrome_debug.bat` na pasta do JFN\\.\n\n"
+    "4\\. O Chrome vai abrir normalmente — entre no SIAFE2 e faça login\\.\n\n"
+    "5\\. Pronto\\! O agente detecta automaticamente\\."
 )
 
 
 async def processar_comando(texto: str, chat_id: str) -> None:
     """Handle a single command sent by the user via Telegram."""
-    cmd = texto.strip().lower().split()[0] if texto.strip() else ""
+    partes = texto.strip().split(None, 1)
+    cmd = partes[0].lower() if partes else ""
+    args = partes[1] if len(partes) > 1 else ""
 
     if cmd in ("/start", "/ajuda", "/help"):
         await enviar_mensagem(_AJUDA, chat_id=chat_id)
@@ -340,22 +464,48 @@ async def processar_comando(texto: str, chat_id: str) -> None:
     elif cmd == "/obs":
         await enviar_mensagem(await _obs_reply(), chat_id=chat_id)
 
-    elif cmd == "/agora":
-        await enviar_mensagem("⏳ Iniciando ciclo de coleta...", chat_id=chat_id)
+    elif cmd == "/alertas":
+        await enviar_mensagem(await _alertas_reply(), chat_id=chat_id)
+
+    elif cmd == "/top":
+        await enviar_mensagem(await _top_reply(), chat_id=chat_id)
+
+    elif cmd == "/buscar":
+        await enviar_mensagem(await _buscar_reply(args), chat_id=chat_id)
+
+    elif cmd == "/chrome":
+        await enviar_mensagem(_CHROME_INSTRUCOES, chat_id=chat_id, parse_mode="MarkdownV2")
+
+    elif cmd == "/sancoes":
+        await enviar_mensagem("⏳ Verificando CEIS/CNEP...", chat_id=chat_id)
         try:
-            from compliance_agent.scheduler import rodar_ciclo_diario
-            report = await rodar_ciclo_diario()
+            from compliance_agent.collectors.ceis import atualizar_cache_sancoes
+            ok_c, ok_n = await atualizar_cache_sancoes()
+            await enviar_mensagem(
+                f"CEIS: {'✅' if ok_c else '❌'} | CNEP: {'✅' if ok_n else '❌'}\n"
+                "Cache atualizado. Use /agora para cruzar com OBs.",
+                chat_id=chat_id,
+            )
+        except Exception as exc:
+            await enviar_mensagem(f"❌ Erro: {exc}", chat_id=chat_id)
+
+    elif cmd == "/agora":
+        await enviar_mensagem("⏳ Iniciando ciclo completo...", chat_id=chat_id)
+        try:
+            from compliance_agent.scheduler import rodar_ciclo_relatorio_diario
+            report = await rodar_ciclo_relatorio_diario()
             total = report.get("doerj", {}).get("total_publicacoes", 0)
             obs_salvas = report.get("siafe_ob", {}).get("records_saved", 0)
             n_alertas = report.get("alertas", {}).get("total", 0)
+            alta = report.get("alertas", {}).get("alta", 0)
             reply = (
                 f"✅ *Ciclo concluído!*\n"
                 f"  DOERJ: {total} publicações\n"
-                f"  OBs salvas: {obs_salvas}\n"
-                f"  Alertas: {n_alertas}"
+                f"  OBs: {obs_salvas}\n"
+                f"  Alertas: {n_alertas} ({alta} alta)"
             )
         except Exception as exc:
-            reply = f"❌ Erro no ciclo: {exc}"
+            reply = f"❌ Erro: {exc}"
         await enviar_mensagem(reply, chat_id=chat_id)
 
     elif cmd == "/relatorio":
@@ -366,11 +516,11 @@ async def processar_comando(texto: str, chat_id: str) -> None:
             await enviar_arquivo(pdf, caption=f"Compliance {hoje}", chat_id=chat_id)
         else:
             await enviar_mensagem(
-                f"Relatório de hoje ({hoje}) ainda não gerado.\nUse /agora para gerar.",
+                f"Relatório de hoje ({hoje}) ainda não gerado. Use /agora para gerar.",
                 chat_id=chat_id,
             )
 
-    elif texto.startswith("/"):
+    elif cmd.startswith("/"):
         await enviar_mensagem(
             f"Comando desconhecido: `{cmd}`\nDigite /ajuda para ver os comandos.",
             chat_id=chat_id,
