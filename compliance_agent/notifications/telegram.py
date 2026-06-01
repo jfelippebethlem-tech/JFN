@@ -329,6 +329,9 @@ _AJUDA = (
     "  /sancoes — verifica CEIS/CNEP agora\n\n"
     "*Busca:*\n"
     "  /buscar NOME — busca empresa/pessoa no banco\n\n"
+    "*Aprendizado:*\n"
+    "  /aprendi — o que o agente aprendeu (lições do Hermes)\n"
+    "  /memoria NOME — perfil acumulado de uma entidade\n\n"
     "*Ajuda:*\n"
     "  /chrome — como abrir o Chrome no modo correto\n"
     "  /ajuda — esta mensagem"
@@ -437,6 +440,48 @@ async def _buscar_reply(termo: str) -> str:
         return f"Erro na busca: {exc}"
 
 
+async def _aprendi_reply() -> str:
+    try:
+        from compliance_agent.llm.memoria import lembrar
+        licoes = lembrar("licao", min_confianca=0.0)
+        padroes = lembrar("padrao_fraude", min_confianca=0.0)
+        linhas = ["*🧠 O que o agente aprendeu:*\n"]
+        if licoes:
+            linhas.append(f"*Lições do Hermes ({len(licoes)}):*")
+            for m in licoes[:8]:
+                linhas.append(f"• {m['valor'][:120]} _(conf {m['confianca']})_")
+        if padroes:
+            linhas.append(f"\n*Padrões observados ({len(padroes)}):*")
+            for m in padroes[:6]:
+                linhas.append(f"• {m['valor'][:90]} _(visto {m['n_observacoes']}×)_")
+        if not licoes and not padroes:
+            return "O agente ainda não acumulou aprendizado. Roda mais ciclos e o Hermes reflete às 8:00."
+        return "\n".join(linhas)
+    except Exception as exc:
+        return f"Erro: {exc}"
+
+
+async def _memoria_reply(termo: str) -> str:
+    if not termo.strip():
+        return "Use: /memoria NOME DA EMPRESA"
+    try:
+        from compliance_agent.llm.memoria import perfil_entidade, lembrar
+        perfil = perfil_entidade(termo.strip())
+        if perfil:
+            linhas = [f"*🧠 Perfil acumulado: {termo}*\n"]
+            for k, v in perfil.items():
+                if k == "ultima_atualizacao":
+                    continue
+                linhas.append(f"• {k}: {v}")
+            return "\n".join(linhas)
+        mems = lembrar("entidade", chave=termo.strip())
+        if mems:
+            return f"*{termo}*\n{mems[0]['valor'][:300]}"
+        return f"Nada na memória sobre '{termo}' ainda."
+    except Exception as exc:
+        return f"Erro: {exc}"
+
+
 _CHROME_INSTRUCOES = (
     "*🖥️ Como abrir o Chrome no modo correto:*\n\n"
     "1\\. Feche o Chrome completamente \\(todos os ícones na bandeja\\)\n\n"
@@ -472,6 +517,12 @@ async def processar_comando(texto: str, chat_id: str) -> None:
 
     elif cmd == "/buscar":
         await enviar_mensagem(await _buscar_reply(args), chat_id=chat_id)
+
+    elif cmd == "/aprendi":
+        await enviar_mensagem(await _aprendi_reply(), chat_id=chat_id)
+
+    elif cmd == "/memoria":
+        await enviar_mensagem(await _memoria_reply(args), chat_id=chat_id)
 
     elif cmd == "/chrome":
         await enviar_mensagem(_CHROME_INSTRUCOES, chat_id=chat_id, parse_mode="MarkdownV2")
