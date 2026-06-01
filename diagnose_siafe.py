@@ -1162,6 +1162,296 @@ async def _js_click_adf(pg, css: str, text: str) -> str | None:
     """)
 
 
+# ── ADF grid / detail helpers ──────────────────────────────────────────────────
+
+_JS_ADF_GRID_HEADERS = """
+    () => {
+        // ADF renders column headers in <th> or cells with header-like classes
+        const sels = [
+            'th', 'thead td',
+            '.af_column_cell-text', '.af_column_sortable-text',
+            '[class*="columnHeader"]', '[class*="Header"][class*="cell"]'
+        ];
+        for (const sel of sels) {
+            const els = [...document.querySelectorAll(sel)];
+            const texts = els.map(e => e.textContent.trim()).filter(t => t && t.length < 80);
+            if (texts.length > 0) return {sel, texts};
+        }
+        return null;
+    }
+"""
+
+_JS_ADF_GRID_ROWS = """
+    (maxRows) => {
+        // ADF table body rows — exclude header rows
+        const rowSels = [
+            'tr.af_table_row',
+            'tr[class*="Row"]:not([class*="Header"])',
+            'tbody tr',
+        ];
+        for (const sel of rowSels) {
+            const rows = [...document.querySelectorAll(sel)].slice(0, maxRows);
+            if (!rows.length) continue;
+            const data = rows.map(row =>
+                [...row.querySelectorAll('td')].map(td => td.textContent.trim()).filter(Boolean)
+            ).filter(r => r.length > 0);
+            if (data.length > 0) return {sel, rows: data};
+        }
+        return null;
+    }
+"""
+
+_JS_ADF_INPUTS = """
+    () => {
+        const results = [];
+        for (const el of document.querySelectorAll('input, select, textarea')) {
+            const r = el.getBoundingClientRect();
+            if (r.width <= 0) continue;
+            // Find nearest label text
+            let label = '';
+            const id = el.id || '';
+            if (id) {
+                const lbl = document.querySelector(`label[for="${id}"]`);
+                if (lbl) label = lbl.textContent.trim();
+            }
+            if (!label) {
+                // Walk up DOM to find nearby label/span
+                let p = el.parentElement;
+                for (let i = 0; i < 5 && p; i++, p = p.parentElement) {
+                    const lblEl = p.querySelector('label, span.af_outputLabel, span.x18m');
+                    if (lblEl && lblEl !== el) { label = lblEl.textContent.trim(); break; }
+                }
+            }
+            results.push({
+                tag:   el.tagName,
+                id:    el.id || '',
+                name:  el.name || '',
+                type:  el.type || '',
+                cls:   el.className || '',
+                ph:    el.placeholder || '',
+                label: label.substring(0, 60),
+            });
+        }
+        return results;
+    }
+"""
+
+_JS_FIND_SEI = """
+    () => {
+        const result = {processo: null, links: []};
+
+        // Strategy 1: look for input/span containing "Processo" label
+        for (const el of document.querySelectorAll('*')) {
+            const direct = [...el.childNodes]
+                .filter(n => n.nodeType === 3).map(n => n.textContent.trim()).join('');
+            if (!direct || direct.length > 60) continue;
+            if (/[Pp]rocesso/.test(direct) || /SEI/i.test(direct)) {
+                // Get sibling input or next value element
+                const parent = el.parentElement;
+                const val = parent
+                    ? (parent.querySelector('input')?.value ||
+                       parent.querySelector('span:not(:has(*))')?.textContent?.trim() || '')
+                    : '';
+                result.processo = {label: direct, value: val, cls: el.className};
+            }
+        }
+
+        // Strategy 2: find SEI hyperlinks
+        for (const a of document.querySelectorAll('a[href]')) {
+            const href = a.href;
+            if (/sei/i.test(href) || a.textContent.includes('Processo')) {
+                result.links.push({text: a.textContent.trim().substring(0,80), href});
+            }
+        }
+
+        return result;
+    }
+"""
+
+
+async def _adf_try_open_detail(pg) -> dict:
+    """
+    Select first visible grid row and try to open its detail screen.
+    Handles both same-page navigation and popup windows.
+    Returns {opened, method, popup_page}.
+    """
+    # Click first body row
+    clicked_row = await pg.evaluate("""
+        () => {
+            const sels = [
+                'tr.af_table_row', 'tr[class*="Row"]:not([class*="Header"])', 'tbody tr'
+            ];
+            for (const sel of sels) {
+                const row = document.querySelector(sel);
+                if (row && row.getBoundingClientRect().height > 0) {
+                    row.click();
+                    return row.textContent.trim().substring(0, 100);
+                }
+            }
+            return null;
+        }
+    """)
+    if not clicked_row:
+        return {"opened": False, "reason": "no rows found"}
+
+    await asyncio.sleep(1)
+
+    # Try pressing Enter
+    url_before = pg.url
+    body_before_len = len(await pg.inner_text("body"))
+    await pg.keyboard.press("Enter")
+    await asyncio.sleep(3)
+    try:
+        await pg.wait_for_load_state("networkidle", timeout=6000)
+    except Exception:
+        pass
+
+    body_after = await pg.inner_text("body")
+    if len(body_after) != body_before_len or pg.url != url_before:
+        return {"opened": True, "method": "Enter", "popup_page": None,
+                "row_info": clicked_row}
+
+    # Try double-click on first row
+    double_clicked = await pg.evaluate("""
+        () => {
+            const sels = ['tr.af_table_row', 'tr[class*="Row"]:not([class*="Header"])', 'tbody tr'];
+            for (const sel of sels) {
+                const row = document.querySelector(sel);
+                if (row && row.getBoundingClientRect().height > 0) {
+                    row.dispatchEvent(new MouseEvent('dblclick', {bubbles: true}));
+                    return sel;
+                }
+            }
+            return null;
+        }
+    """)
+    await asyncio.sleep(3)
+    try:
+        await pg.wait_for_load_state("networkidle", timeout=6000)
+    except Exception:
+        pass
+
+    body_after2 = await pg.inner_text("body")
+    if len(body_after2) != body_before_len:
+        return {"opened": True, "method": "dblclick", "popup_page": None,
+                "row_info": clicked_row}
+
+    return {"opened": False, "reason": "neither Enter nor dblclick changed page",
+            "row_info": clicked_row}
+
+
+async def _explore_adf_screen(pg, label: str, screenshot_prefix: str):
+    """
+    Full exploration of an ADF screen: inputs, grid headers, sample rows,
+    detail window, and SEI process capture.
+    """
+    safe_prefix = screenshot_prefix.replace(" ", "_")[:30]
+
+    sep(f"  Tela: {label}")
+    await dump_page(pg, safe_prefix)
+
+    body_txt = await pg.inner_text("body")
+    log(f"  Texto ({len(body_txt)} chars): {body_txt[:600]}")
+
+    # ── Inputs / filtros ──────────────────────────────────────────────────────
+    sep(f"  Inputs: {label}")
+    inputs = await pg.evaluate(_JS_ADF_INPUTS)
+    log(f"  {len(inputs)} inputs:")
+    for inp in inputs:
+        log(f"    [{inp['tag']}] id={inp['id']!r:35} name={inp['name']!r:25} "
+            f"type={inp['type']!r:10} label={inp['label']!r:40} ph={inp['ph']!r}")
+
+    # ── Grid column headers ───────────────────────────────────────────────────
+    headers = await pg.evaluate(_JS_ADF_GRID_HEADERS)
+    if headers:
+        log(f"  Colunas (via {headers['sel']}): {headers['texts']}")
+    else:
+        log("  Colunas: (nenhuma grid encontrada)")
+
+    # ── Tentar executar busca para obter linhas ───────────────────────────────
+    sep(f"  Executando busca padrão: {label}")
+    search_clicked = await pg.evaluate("""
+        () => {
+            const kws = ['consultar', 'pesquisar', 'buscar', 'executar', 'filtrar', 'listar'];
+            const btns = [...document.querySelectorAll('button, a.x7j, a.xg2, input[type="button"], input[type="submit"]')];
+            for (const btn of btns) {
+                const t = (btn.textContent || btn.value || '').trim().toLowerCase();
+                if (kws.some(k => t.includes(k)) && btn.getBoundingClientRect().width > 0) {
+                    btn.click();
+                    return t;
+                }
+            }
+            return null;
+        }
+    """)
+    if search_clicked:
+        log(f"  ✅ Busca executada: {search_clicked!r}")
+        await _adf_wait(pg, 12000)
+        await dump_page(pg, f"{safe_prefix}_resultados")
+    else:
+        log("  (nenhum botão de busca encontrado — tela pode não ter filtros)")
+
+    # ── Sample rows ───────────────────────────────────────────────────────────
+    rows_data = await pg.evaluate(_JS_ADF_GRID_ROWS, 3)
+    if rows_data:
+        log(f"  Primeiras linhas ({rows_data['sel']}):")
+        for r in rows_data["rows"]:
+            log(f"    {r}")
+
+        # ── Tentar abrir detalhe da primeira linha ────────────────────────────
+        sep(f"  Detalhe linha 1: {label}")
+        detail = await _adf_try_open_detail(pg)
+        log(f"  Resultado: {detail}")
+
+        if detail.get("opened"):
+            await _adf_wait(pg, 10000)
+            await dump_page(pg, f"{safe_prefix}_detalhe")
+
+            # Procurar Processo/SEI
+            sei = await pg.evaluate(_JS_FIND_SEI)
+            log(f"  SEI/Processo: {sei}")
+            if sei.get("processo"):
+                log(f"  ⭐ PROCESSO SEI: {sei['processo']}")
+            if sei.get("links"):
+                log(f"  ⭐ LINKS SEI: {sei['links']}")
+
+            # Todos os elementos visíveis no detalhe
+            sep(f"  Elementos do detalhe: {label}")
+            det_els = await pg.evaluate(_JS_LEAF_ELEMENTS)
+            for e in det_els:
+                if e.get("visible"):
+                    log(f"    ✓ <{e['tag'].lower():6}> {e['text']!r:60} cls={e['cls'][:50]!r}")
+
+            # HTML do detalhe
+            det_html = await pg.content()
+            p = SCREENSHOTS / f"{safe_prefix}_detalhe_dom.html"
+            p.write_text(det_html, encoding="utf-8")
+            log(f"  HTML detalhe: {p.name} ({len(det_html)} chars)")
+
+            # Tentar voltar (botão Cancelar, Fechar, ou browser back)
+            closed = await pg.evaluate("""
+                () => {
+                    const kws = ['cancelar', 'fechar', 'voltar', 'close', 'back'];
+                    for (const btn of document.querySelectorAll('button, a.x7j, a.xg2')) {
+                        const t = (btn.textContent || '').trim().toLowerCase();
+                        if (kws.some(k => t.includes(k))) { btn.click(); return t; }
+                    }
+                    return null;
+                }
+            """)
+            if not closed:
+                await pg.go_back()
+            await _adf_wait(pg, 6000)
+    else:
+        log("  (nenhuma linha de dados encontrada após busca)")
+
+    # HTML completo da tela
+    html = await pg.content()
+    hp = SCREENSHOTS / f"{safe_prefix}_dom.html"
+    hp.write_text(html, encoding="utf-8")
+    log(f"  HTML tela: {hp.name} ({len(html)} chars)")
+
+
 async def _js_read_items(pg, css: str) -> list[dict]:
     """Read all items matching a CSS selector via JS evaluate (fresh DOM context)."""
     return await pg.evaluate(f"""
@@ -1175,246 +1465,480 @@ async def _js_read_items(pg, css: str) -> list[dict]:
     """)
 
 
+async def _get_siafe2_page(browser, fallback_page):
+    """Return the SIAFE2 (non-FlexVision) page from an open browser."""
+    for ctx in browser.contexts:
+        for pg in ctx.pages:
+            url = pg.url.lower()
+            if "siafe2.fazenda" in url and "flexvision" not in url:
+                return pg
+    return fallback_page
+
+
 async def main_siafe2():
     """
-    Modo SIAFE2: navega Oracle ADF até Execução → Execução Financeira → OB.
+    Diagnóstico completo da seção Execução do SIAFE2.
 
     Uso: python diagnose_siafe.py --siafe2
     Chrome deve estar aberto com --remote-debugging-port=9222 e logado no SIAFE2.
 
-    Correção vs versão anterior: não usa ElementHandle em loops — o ADF faz PPR
-    (Partial Page Refresh) após cada clique, o que invalida handles guardados.
-    Todo acesso ao DOM usa page.evaluate() para evitar 'Execution context destroyed'.
+    O que faz:
+      1. Mapeia todos os menus principais via JS (sem ElementHandle stale)
+      2. Para cada submenu de Execução:
+         - Clica, mapeia painel esquerdo, screenshot, HTML
+      3. Para cada item do painel esquerdo de Execução Financeira:
+         - Mapeia inputs/filtros com IDs/nomes
+         - Executa busca padrão
+         - Captura colunas da grid
+         - Abre detalhe da primeira linha (Enter + dblclick)
+         - Procura campo Processo/SEI e links SEI
+      4. Deep-dive especial na tela OB:
+         - Busca com filtro de data (mês corrente) para obter resultados reais
+         - Abre detalhe da primeira OB
+         - Captura número do Processo SEI e URL do sistema SEI
+         - Mapeia todos os campos do formulário de detalhe
     """
-    log(f"SIAFE2 Diagnóstico (modo SIAFE2) — {datetime.now():%d/%m/%Y %H:%M}")
+    log(f"SIAFE2 Diagnóstico completo — {datetime.now():%d/%m/%Y %H:%M}")
+    log("(isso pode levar vários minutos — explorando toda a seção Execução)")
 
     p, browser, page = await _cdp_connect()
     if not page:
         REPORT.write_text("\n".join(report_lines), encoding="utf-8")
         return
 
-    # Prefer SIAFE2 tab (not FlexVision)
-    siafe2_page = None
-    for ctx in browser.contexts:
-        for pg in ctx.pages:
-            url = pg.url.lower()
-            if "siafe2.fazenda" in url and "flexvision" not in url:
-                siafe2_page = pg
-                break
-        if siafe2_page:
-            break
-    if not siafe2_page:
-        siafe2_page = page
-        log(f"⚠️  Usando aba disponível: {page.url}")
-    else:
-        log(f"✅ Aba SIAFE2 encontrada: {siafe2_page.url}")
+    pg = await _get_siafe2_page(browser, page)
+    log(f"✅ Aba: {pg.url}")
 
-    # ── 1. Snapshot inicial ───────────────────────────────────────────────────
-    sep("1. Página atual do SIAFE2")
-    await dump_page(siafe2_page, "s01_siafe2_inicial")
-    if "login" in siafe2_page.url.lower():
+    # ── 1. Snapshot + verificação de login ───────────────────────────────────
+    sep("1. Snapshot inicial")
+    await dump_page(pg, "s01_inicial")
+    if "login" in pg.url.lower():
         log("⚠️  Ainda na página de login. Faça login e execute de novo.")
         await p.stop()
         REPORT.write_text("\n".join(report_lines), encoding="utf-8")
         return
 
-    # ── 2. Mapa top-level via JS (sem guardar ElementHandle) ─────────────────
-    sep("2. Menu principal (.xyo) — leitura via JS")
-    top_items = await _js_read_items(siafe2_page, "a.xyo")
-    log(f"  {len(top_items)} itens:")
+    # ── 2. Mapa completo dos menus via JS ─────────────────────────────────────
+    sep("2. Mapa completo: todos os menus e submenus")
+    top_items = await _js_read_items(pg, "a.xyo")
+    top_names_set = {it["text"] for it in top_items}
+    log(f"  {len(top_items)} menus principais:")
     for it in top_items:
         mark = "[D]" if it["disabled"] else "   "
-        log(f"  {mark} {it['text']!r:40} cls={it['cls']!r}")
-
-    # ── 3. Mapear submenus de cada menu via JS (sem stale handles) ────────────
-    sep("3. Mapa completo de menus (JS evaluate — sem ElementHandle)")
-
-    # Get unique top-level menu names (exclude already-disabled)
-    top_names = [it["text"] for it in top_items if not it["disabled"] and it["text"]]
-    seen_top: set[str] = set()
-    unique_tops = [n for n in top_names if not (n in seen_top or seen_top.add(n))]
+        log(f"  {mark} {it['text']!r}")
 
     menu_map: dict[str, list[dict]] = {}
-    for menu_name in unique_tops:
-        clicked = await _js_click_adf(siafe2_page, "a.xyo", menu_name)
-        if not clicked:
-            log(f"\n  ── {menu_name!r}: ❌ não clicável")
+    for it in top_items:
+        if it["disabled"]:
             continue
-        await _adf_wait(siafe2_page, 6000)
+        name = it["text"]
+        clicked = await _js_click_adf(pg, "a.xyo", name)
+        if not clicked:
+            log(f"  ⚠️  '{name}' não clicável")
+            continue
+        await _adf_wait(pg, 6000)
 
-        subs = await _js_read_items(siafe2_page, "a.xgh")
-        # xgh shows both the tab bar AND current submenu — filter to just new subs
-        # (they don't include the top-level menu names)
-        subs = [s for s in subs if s["text"] not in unique_tops]
-        menu_map[menu_name] = subs
+        subs = await _js_read_items(pg, "a.xgh")
+        subs = [s for s in subs if s["text"] not in top_names_set and s["text"]]
+        menu_map[name] = subs
 
-        log(f"\n  ── {menu_name!r} ({len(subs)} submenus) ──")
+        log(f"\n  ── {name!r} ──")
         for s in subs:
             mark = "[D]" if s["disabled"] else "   "
-            ob_flag = " ⭐OB" if any(
-                kw in s["text"].upper() for kw in ("OB", "ORDEM BANC", "ORDENS BANC")
-            ) else ""
+            ob_flag = " ⭐" if any(k in s["text"].upper()
+                                   for k in ("OB", "ORDEM BANC")) else ""
             log(f"    {mark} {s['text']!r}{ob_flag}")
 
-        await siafe2_page.keyboard.press("Escape")
-        await asyncio.sleep(0.8)
+        await pg.keyboard.press("Escape")
+        await asyncio.sleep(0.6)
 
-    # ── 4. Navegar: Execução → Execução Financeira ────────────────────────────
-    sep("4. Navegando: Execução → Execução Financeira")
-
-    r1 = await _js_click_adf(siafe2_page, "a.xyo", "Execução")
-    if not r1:
-        log("  ❌ 'Execução' não encontrado em a.xyo — tentando texto parcial")
-        r1 = await siafe2_page.evaluate("""
+    # ── 3. Click Execução tab + mapear submenus ───────────────────────────────
+    sep("3. Entrando em Execução")
+    r_exec = await _js_click_adf(pg, "a.xyo", "Execução")
+    if not r_exec:
+        r_exec = await pg.evaluate("""
             () => {
-                for (const el of document.querySelectorAll('a.xyo, td.xyo')) {
-                    if (el.textContent.includes('Execu') && !el.className.includes('Disabled')) {
+                for (const el of document.querySelectorAll('a.xyo')) {
+                    if (el.textContent.trim().startsWith('Execu')
+                        && !el.className.includes('Disabled')) {
                         el.click();
-                        return el.tagName + '|' + el.textContent.trim();
+                        return el.textContent.trim();
                     }
                 }
                 return null;
             }
         """)
-    log(f"  Clicou 'Execução': {r1}")
-    await _adf_wait(siafe2_page, 8000)
-    await dump_page(siafe2_page, "s02_execucao_tab")
+    log(f"  Clicou Execução: {r_exec}")
+    await _adf_wait(pg, 8000)
+    await dump_page(pg, "s02_execucao")
 
-    # Read Execução submenus
-    exec_subs = await _js_read_items(siafe2_page, "a.xgh")
-    exec_subs = [s for s in exec_subs if s["text"] not in unique_tops]
-    log(f"\n  Submenus de Execução ({len(exec_subs)}):")
+    exec_subs = await _js_read_items(pg, "a.xgh")
+    exec_subs = [s for s in exec_subs if s["text"] not in top_names_set and s["text"]]
+    log(f"  {len(exec_subs)} submenus de Execução:")
     for s in exec_subs:
         mark = "[D]" if s["disabled"] else "   "
         log(f"    {mark} {s['text']!r}")
 
-    # Click "Execução Financeira"
-    r2 = await _js_click_adf(siafe2_page, "a.xgh", "Execução Financeira")
-    if not r2:
-        # Try partial match
-        r2 = await siafe2_page.evaluate("""
-            () => {
-                for (const el of document.querySelectorAll('a.xgh')) {
-                    const t = el.textContent.trim();
-                    if (t.includes('Financeira') && !el.className.includes('Disabled')) {
+    # ── 4. Explorar cada submenu de Execução ──────────────────────────────────
+    sep("4. Explorando cada submenu de Execução")
+
+    for sub in exec_subs:
+        if sub["disabled"]:
+            log(f"\n  ⏭️  '{sub['text']}' — desativado")
+            continue
+
+        sub_name = sub["text"]
+        safe_name = sub_name[:18].replace(" ", "_").replace("/", "_").lower()
+        log(f"\n{'─'*60}")
+        log(f"  SUBMENU: {sub_name!r}")
+
+        # Navigate back to Execução, then click this submenu
+        r_back = await _js_click_adf(pg, "a.xyo", "Execução")
+        if not r_back:
+            await pg.evaluate("""
+                () => {
+                    for (const el of document.querySelectorAll('a.xyo')) {
+                        if (el.textContent.trim().startsWith('Execu')
+                            && !el.className.includes('Disabled')) { el.click(); return; }
+                    }
+                }
+            """)
+        await _adf_wait(pg, 6000)
+
+        r_sub = await _js_click_adf(pg, "a.xgh", sub_name)
+        if not r_sub:
+            # Partial match fallback
+            sub_words = sub_name.split()
+            r_sub = await pg.evaluate(f"""
+                () => {{
+                    for (const el of document.querySelectorAll('a.xgh')) {{
+                        const t = el.textContent.trim();
+                        if (t.includes('{sub_words[0]}') && !el.className.includes('Disabled')) {{
+                            el.click();
+                            return t;
+                        }}
+                    }}
+                    return null;
+                }}
+            """)
+        if not r_sub:
+            log(f"  ❌ '{sub_name}' não encontrado após reabrir Execução")
+            continue
+
+        await _adf_wait(pg, 8000)
+        await dump_page(pg, f"s03_{safe_name}")
+
+        body_sub = await pg.inner_text("body")
+        log(f"  Texto ({len(body_sub)} chars): {body_sub[:400]}")
+
+        # ── Painel esquerdo ───────────────────────────────────────────────────
+        left = await _js_read_items(pg, "a.xg8")
+        if not left:
+            for sel in ["a[class*='xg']", ".af_navigationPane a"]:
+                left = await _js_read_items(pg, sel)
+                if left:
+                    break
+
+        if left:
+            log(f"  Painel esquerdo ({len(left)} itens):")
+            for li in left:
+                ob = " ⭐OB" if "OB" in li["text"].upper() else ""
+                log(f"    {'✓' if li['visible'] else '·'} {li['text']!r:45} cls={li['cls']!r}{ob}")
+        else:
+            log("  (sem painel esquerdo visível)")
+
+        # ── HTML do submenu ───────────────────────────────────────────────────
+        html_sub = await pg.content()
+        hp = SCREENSHOTS / f"s03_{safe_name}_dom.html"
+        hp.write_text(html_sub, encoding="utf-8")
+        log(f"  HTML: {hp.name} ({len(html_sub)} chars)")
+
+        # ── Se é Execução Financeira: explorar cada item do painel ───────────
+        if "Financeira" in sub_name and left:
+            sep(f"4a. Explorando painel de '{sub_name}'")
+            panel_item_names = [li["text"] for li in left
+                                if li["visible"] and not li["disabled"]]
+            log(f"  {len(panel_item_names)} itens ativos no painel")
+
+            for panel_item in panel_item_names:
+                pi_safe = panel_item[:18].replace(" ", "_").lower()
+                log(f"\n  ── Painel item: {panel_item!r} ──")
+
+                # Click panel item (pre-escape apostrophes outside the f-string)
+                pi_safe_js = panel_item.replace("'", "\\'")
+                clicked_pi = await pg.evaluate(f"""
+                    () => {{
+                        const sels = ['a.xg8', 'a[class*="xg"]', 'a'];
+                        for (const sel of sels) {{
+                            for (const el of document.querySelectorAll(sel)) {{
+                                const direct = [...el.childNodes]
+                                    .filter(n => n.nodeType === 3)
+                                    .map(n => n.textContent.trim()).filter(Boolean).join('');
+                                if (direct === '{pi_safe_js}' && el.getBoundingClientRect().width > 0) {{
+                                    el.click();
+                                    return el.tagName + '|' + el.className;
+                                }}
+                            }}
+                        }}
+                        return null;
+                    }}
+                """)
+                if not clicked_pi:
+                    log(f"  ❌ '{panel_item}' não clicável")
+                    continue
+
+                await _adf_wait(pg, 10000)
+                await _explore_adf_screen(pg, panel_item,
+                                          f"s04_{safe_name}_{pi_safe}")
+
+    # ── 5. Deep-dive especial: OB ─────────────────────────────────────────────
+    sep("5. Deep-dive: Execução Financeira → OB")
+
+    # Navigate fresh to Execução Financeira
+    r_exec2 = await _js_click_adf(pg, "a.xyo", "Execução")
+    if not r_exec2:
+        await pg.evaluate("""
+            () => { for (const el of document.querySelectorAll('a.xyo'))
+                if (el.textContent.trim().startsWith('Execu') && !el.className.includes('Disabled'))
+                    { el.click(); return; } }
+        """)
+    await _adf_wait(pg, 6000)
+
+    r_fin2 = await _js_click_adf(pg, "a.xgh", "Execução Financeira")
+    if not r_fin2:
+        await pg.evaluate("""
+            () => { for (const el of document.querySelectorAll('a.xgh'))
+                if (el.textContent.includes('Financeira') && !el.className.includes('Disabled'))
+                    { el.click(); return; } }
+        """)
+    await _adf_wait(pg, 8000)
+
+    # Click OB in left panel
+    r_ob = await pg.evaluate("""
+        () => {
+            for (const sel of ['a.xg8', 'a[class*="xg"]', 'a', 'span', 'td', 'li']) {
+                for (const el of document.querySelectorAll(sel)) {
+                    const direct = [...el.childNodes]
+                        .filter(n => n.nodeType === 3)
+                        .map(n => n.textContent.trim()).filter(Boolean).join('');
+                    if (direct.trim() === 'OB' && el.getBoundingClientRect().width > 0) {
                         el.click();
+                        return el.tagName + '|' + el.className + '|text=' + direct;
+                    }
+                }
+            }
+            return null;
+        }
+    """)
+    log(f"  Clicou OB: {r_ob}")
+    if not r_ob:
+        log("  ❌ 'OB' não encontrado — dump diagnóstico:")
+        vis = await pg.evaluate(_JS_LEAF_ELEMENTS)
+        for e in vis:
+            if e.get("visible"):
+                log(f"    ✓ <{e['tag'].lower():6}> {e['text']!r:60} cls={e['cls']!r}")
+    else:
+        await _adf_wait(pg, 10000)
+        await dump_page(pg, "s05_ob_tela")
+
+        # ── 5a. Mapear todos os inputs da tela OB ────────────────────────────
+        sep("5a. OB — inputs/filtros (IDs e nomes para automação)")
+        ob_inputs = await pg.evaluate(_JS_ADF_INPUTS)
+        log(f"  {len(ob_inputs)} inputs:")
+        for inp in ob_inputs:
+            log(f"    [{inp['tag']}] id={inp['id']!r:40} name={inp['name']!r:30} "
+                f"type={inp['type']!r:10} label={inp['label']!r:40} ph={inp['ph']!r}")
+
+        # ── 5b. Colunas da grid ───────────────────────────────────────────────
+        sep("5b. OB — colunas da grid")
+        ob_headers = await pg.evaluate(_JS_ADF_GRID_HEADERS)
+        if ob_headers:
+            log(f"  Colunas ({ob_headers['sel']}): {ob_headers['texts']}")
+        else:
+            log("  (colunas não encontradas — grid pode estar vazia)")
+
+        # ── 5c. Executar busca com data do mês corrente ───────────────────────
+        sep("5c. OB — executando busca (data atual como filtro mínimo)")
+        hoje = datetime.now()
+        mes_ini = f"01/{hoje.month:02d}/{hoje.year}"
+        mes_fim = f"{hoje.day:02d}/{hoje.month:02d}/{hoje.year}"
+        log(f"  Tentando preencher período: {mes_ini} a {mes_fim}")
+
+        # Try to fill date fields by label proximity
+        date_filled = await pg.evaluate(f"""
+            () => {{
+                const filled = [];
+                const inputs = [...document.querySelectorAll('input[type="text"], input:not([type])')];
+                for (const inp of inputs) {{
+                    if (inp.getBoundingClientRect().width <= 0) continue;
+                    // Look for date-like context
+                    let parent = inp.parentElement;
+                    let label = '';
+                    for (let i = 0; i < 6 && parent; i++, parent = parent.parentElement) {{
+                        const lbl = parent.querySelector('label, span.af_outputLabel, span.x18m');
+                        if (lbl && lbl !== inp) {{ label = lbl.textContent.trim().toLowerCase(); break; }}
+                    }}
+                    if (label.includes('in') || label.includes('de') || label.includes('início')) {{
+                        inp.value = '{mes_ini}';
+                        inp.dispatchEvent(new Event('change', {{bubbles: true}}));
+                        inp.dispatchEvent(new Event('input', {{bubbles: true}}));
+                        filled.push('inicio:' + label);
+                    }} else if (label.includes('fim') || label.includes('até') || label.includes('final')) {{
+                        inp.value = '{mes_fim}';
+                        inp.dispatchEvent(new Event('change', {{bubbles: true}}));
+                        inp.dispatchEvent(new Event('input', {{bubbles: true}}));
+                        filled.push('fim:' + label);
+                    }}
+                }}
+                return filled;
+            }}
+        """)
+        log(f"  Campos preenchidos: {date_filled}")
+        await asyncio.sleep(1)
+
+        # Click Consultar
+        search_btn = await pg.evaluate("""
+            () => {
+                const kws = ['consultar', 'pesquisar', 'buscar', 'filtrar', 'executar', 'listar'];
+                for (const btn of document.querySelectorAll('button, a.x7j, a.xg2, input[type="button"], input[type="submit"]')) {
+                    const t = (btn.textContent || btn.value || '').trim().toLowerCase();
+                    if (kws.some(k => t.includes(k)) && btn.getBoundingClientRect().width > 0) {
+                        btn.click();
                         return t;
                     }
                 }
                 return null;
             }
         """)
-    log(f"  Clicou 'Execução Financeira': {r2}")
-    await _adf_wait(siafe2_page, 8000)
-    await dump_page(siafe2_page, "s03_exec_financeira")
+        log(f"  Botão busca: {search_btn!r}")
+        if search_btn:
+            await _adf_wait(pg, 15000)
+            await dump_page(pg, "s05_ob_resultados")
 
-    # ── 5. Painel esquerdo após Execução Financeira ───────────────────────────
-    sep("5. Painel esquerdo (Execução Financeira)")
+            # Re-read headers after results load
+            ob_headers2 = await pg.evaluate(_JS_ADF_GRID_HEADERS)
+            if ob_headers2:
+                log(f"  Colunas após busca: {ob_headers2['texts']}")
 
-    # ADF left panel items are typically a.xg8 or similar
-    left_items = await _js_read_items(siafe2_page, "a.xg8")
-    if not left_items:
-        # Try broader selectors for left nav
-        for sel in ["a[class*='xg']", ".af_navigationPane a", ".af_tree a", "a.x1ub", "a.x1uc"]:
-            left_items = await _js_read_items(siafe2_page, sel)
-            if left_items:
-                log(f"  (encontrado com seletor: {sel!r})")
-                break
+            rows_data = await pg.evaluate(_JS_ADF_GRID_ROWS, 5)
+            if rows_data:
+                log(f"  Primeiras {len(rows_data['rows'])} linhas ({rows_data['sel']}):")
+                for r in rows_data["rows"]:
+                    log(f"    {r}")
 
-    log(f"  {len(left_items)} itens no painel esquerdo:")
-    for it in left_items:
-        ob_flag = " ⭐OB" if "OB" in it["text"].upper() else ""
-        vis = "✓" if it["visible"] else "·"
-        log(f"  {vis} {it['text']!r:50} cls={it['cls']!r}{ob_flag}")
+                # ── 5d. Abrir detalhe da primeira OB ─────────────────────────
+                sep("5d. OB — abrindo detalhe (Enter / dblclick)")
 
-    if not left_items:
-        log("  (painel vazio — listando TODOS elementos visíveis para diagnóstico)")
-        all_vis = await siafe2_page.evaluate(_JS_LEAF_ELEMENTS)
-        for e in all_vis:
-            if e.get("visible"):
-                log(f"  ✓ <{e['tag'].lower():6}> {e['text']!r:60} cls={e['cls']!r}")
+                # Watch for popup window
+                async def _try_open_with_popup():
+                    try:
+                        popup_task = asyncio.ensure_future(
+                            pg.context.wait_for_event("page", timeout=8000)
+                        )
+                        detail_result = await _adf_try_open_detail(pg)
+                        try:
+                            popup_pg = await asyncio.wait_for(popup_task, timeout=8000)
+                            await _adf_wait(popup_pg, 10000)
+                            return detail_result, popup_pg
+                        except asyncio.TimeoutError:
+                            popup_task.cancel()
+                            return detail_result, None
+                    except Exception as ex:
+                        log(f"  [popup watch error: {ex}]")
+                        return {"opened": False}, None
 
-    # ── 6. Clicar em 'OB' no painel esquerdo ─────────────────────────────────
-    sep("6. Clicando em 'OB' no painel esquerdo")
+                detail, popup_pg = await _try_open_with_popup()
+                log(f"  Detalhe: {detail}")
 
-    # Try known left-panel selectors for exact text "OB"
-    r3 = await siafe2_page.evaluate("""
-        () => {
-            const candidates = ['a.xg8', 'a[class*="xg"]', 'a', 'span', 'td'];
-            for (const sel of candidates) {
-                for (const el of document.querySelectorAll(sel)) {
-                    const direct = [...el.childNodes]
-                        .filter(n => n.nodeType === 3)
-                        .map(n => n.textContent.trim())
-                        .filter(Boolean)
-                        .join('');
-                    if ((direct === 'OB' || direct === 'OB ' || direct === ' OB')
-                        && el.getBoundingClientRect().width > 0) {
-                        el.click();
-                        return el.tagName + '|cls=' + el.className + '|text=' + direct;
-                    }
-                }
-            }
-            // Broader: any visible element containing standalone 'OB'
-            for (const el of document.querySelectorAll('a, span, td, li')) {
-                const t = el.textContent.trim();
-                if (t === 'OB' && el.getBoundingClientRect().width > 0) {
-                    el.click();
-                    return 'BROAD|' + el.tagName + '|' + el.className;
-                }
-            }
-            return null;
-        }
-    """)
+                target_pg = popup_pg if popup_pg else pg
 
-    if r3:
-        log(f"  ✅ Clicou OB: {r3}")
-        await _adf_wait(siafe2_page, 10000)
-        await dump_page(siafe2_page, "s04_ob_screen")
+                if detail.get("opened") or popup_pg:
+                    if popup_pg:
+                        log(f"  ✅ Popup aberto: {popup_pg.url}")
+                    await dump_page(target_pg, "s05_ob_detalhe")
 
-        # ── 6a. Mapear a tela de OB completamente ────────────────────────────
-        sep("6a. Tela OB — inputs e filtros")
-        await _dump_inputs(siafe2_page, "Formulário OB")
+                    # ── 5e. Campos do detalhe ─────────────────────────────────
+                    sep("5e. OB detalhe — todos os campos/inputs")
+                    det_inputs = await target_pg.evaluate(_JS_ADF_INPUTS)
+                    log(f"  {len(det_inputs)} inputs:")
+                    for inp in det_inputs:
+                        log(f"    [{inp['tag']}] id={inp['id']!r:40} name={inp['name']!r:30} "
+                            f"label={inp['label']!r:45} ph={inp['ph']!r}")
 
-        sep("6b. Tela OB — colunas da grid")
-        headers = await siafe2_page.evaluate("""
-            () => {
-                for (const sel of ['th', 'thead td', '.af_column_cell-text',
-                                   '[class*="Header"]', '[class*="header"]']) {
-                    const els = [...document.querySelectorAll(sel)];
-                    const texts = els.map(e => e.textContent.trim()).filter(Boolean);
-                    if (texts.length > 0) return {sel, texts};
-                }
-                return null;
-            }
-        """)
-        if headers:
-            log(f"  Colunas ({headers['sel']}): {headers['texts']}")
-        else:
-            log("  (grid headers não encontrados)")
+                    sep("5f. OB detalhe — elementos visíveis")
+                    det_vis = await target_pg.evaluate(_JS_LEAF_ELEMENTS)
+                    for e in det_vis:
+                        if e.get("visible"):
+                            log(f"    ✓ <{e['tag'].lower():6}> {e['text']!r:60} cls={e['cls'][:50]!r}")
 
-        sep("6c. Tela OB — todos os elementos visíveis")
-        ob_els = await siafe2_page.evaluate(_JS_LEAF_ELEMENTS)
-        for e in ob_els:
-            if e.get("visible"):
-                log(f"  ✓ <{e['tag'].lower():6}> {e['text']!r:60} cls={e['cls'][:50]!r}")
+                    sep("5g. OB detalhe — texto completo")
+                    det_body = await target_pg.inner_text("body")
+                    log(f"  Texto ({len(det_body)} chars):\n{det_body[:6000]}")
 
-        sep("6d. Tela OB — texto completo da página")
-        ob_body = await siafe2_page.inner_text("body")
-        log(f"  Texto completo ({len(ob_body)} chars):\n{ob_body[:5000]}")
+                    # ── 5h. Procurar Processo / SEI ───────────────────────────
+                    sep("5h. OB detalhe — campo Processo (SEI)")
+                    sei_info = await target_pg.evaluate(_JS_FIND_SEI)
+                    if sei_info.get("processo"):
+                        log(f"  ⭐ PROCESSO SEI: {sei_info['processo']}")
+                    else:
+                        log("  (campo Processo não encontrado por label)")
+                    if sei_info.get("links"):
+                        log(f"  ⭐ LINKS SEI: {sei_info['links']}")
+                    else:
+                        # Search body text for SEI-like patterns
+                        patterns = await target_pg.evaluate("""
+                            () => {
+                                const text = document.body.innerText;
+                                const matches = [];
+                                // SEI process numbers: NNNNNNNN-N.NNNN.NNNNNNN/NNNN-NN or similar
+                                const re1 = /\\d{7,}-\\d\\.\\d{4}\\.\\d{7}\\/\\d{4}-\\d{2}/g;
+                                const re2 = /E-\\d{2}\\/\\d+\\/\\d{4}/g;      // E-xx/NNNNN/AAAA style
+                                const re3 = /SEI[\\s-]*\\d[\\d./\\-]+/gi;
+                                for (const re of [re1, re2, re3]) {
+                                    const m = text.match(re);
+                                    if (m) matches.push(...m.slice(0,5));
+                                }
+                                return [...new Set(matches)];
+                            }
+                        """)
+                        if patterns:
+                            log(f"  ⭐ Padrões SEI no texto: {patterns}")
+                        else:
+                            log("  (nenhum padrão SEI encontrado no corpo da página)")
 
-    else:
-        log("  ❌ 'OB' não encontrado — listando itens visíveis para diagnóstico")
-        all_vis2 = await siafe2_page.evaluate(_JS_LEAF_ELEMENTS)
-        for e in all_vis2:
-            if e.get("visible"):
-                log(f"  ✓ <{e['tag'].lower():6}> {e['text']!r:60} cls={e['cls']!r}")
+                    # HTML do detalhe
+                    det_html = await target_pg.content()
+                    dhp = SCREENSHOTS / "s05_ob_detalhe_dom.html"
+                    dhp.write_text(det_html, encoding="utf-8")
+                    log(f"  HTML: {dhp.name} ({len(det_html)} chars)")
 
-    # ── 7. HTML completo ──────────────────────────────────────────────────────
-    html = await siafe2_page.content()
-    html_path = SCREENSHOTS / "siafe2_ob_dom.html"
-    html_path.write_text(html, encoding="utf-8")
-    log(f"\n  HTML completo: {html_path.name} ({len(html)} chars)")
+                    # Close popup if opened
+                    if popup_pg:
+                        try:
+                            await popup_pg.close()
+                        except Exception:
+                            pass
+                else:
+                    log("  ❌ Detalhe não abriu — listando visíveis:")
+                    vis3 = await pg.evaluate(_JS_LEAF_ELEMENTS)
+                    for e in vis3:
+                        if e.get("visible"):
+                            log(f"    ✓ {e['text']!r:60} cls={e['cls']!r}")
+            else:
+                log("  (sem linhas de resultado após busca)")
+                vis4 = await pg.evaluate(_JS_LEAF_ELEMENTS)
+                for e in vis4:
+                    if e.get("visible"):
+                        log(f"    ✓ {e['text']!r:60} cls={e['cls']!r}")
+
+    # ── 6. HTML + relatório final ─────────────────────────────────────────────
+    try:
+        html_final = await pg.content()
+        fp = SCREENSHOTS / "siafe2_final_dom.html"
+        fp.write_text(html_final, encoding="utf-8")
+        log(f"\n  HTML estado final: {fp.name} ({len(html_final)} chars)")
+    except Exception:
+        pass
 
     sep("DIAGNÓSTICO SIAFE2 CONCLUÍDO")
     log(f"  Screenshots em: {SCREENSHOTS}/")
