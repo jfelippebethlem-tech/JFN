@@ -68,16 +68,17 @@ async def _coletar_siafe_ob(hoje: date) -> dict:
 
     try:
         result = await run_daily_collection(hoje)
+        det = result.get("details_collected", 0)
         console.print(
             f"    SIAFE2 OB: {result['records_saved']} OBs salvas "
-            f"({result['records_fetched']} coletadas)"
+            f"({result['records_fetched']} coletadas, {det} com detalhe)"
         )
         if result["errors"]:
             console.print(f"    [yellow]SIAFE2 avisos: {result['errors'][:2]}[/yellow]")
         return result
     except Exception as e:
         console.print(f"    [yellow]SIAFE2 OB indisponível (Chrome não aberto?): {e}[/yellow]")
-        return {"records_saved": 0, "records_fetched": 0, "errors": [str(e)]}
+        return {"records_saved": 0, "records_fetched": 0, "details_collected": 0, "errors": [str(e)]}
 
 
 async def rodar_ciclo_diario():
@@ -215,6 +216,11 @@ async def loop_diario(hora_execucao: int = HORA_EXECUCAO):
 
 if __name__ == "__main__":
     if "--loop" in sys.argv:
-        asyncio.run(loop_diario())
+        from compliance_agent.notifications.telegram import loop_comandos
+
+        async def _loop_completo():
+            await asyncio.gather(loop_diario(), loop_comandos())
+
+        asyncio.run(_loop_completo())
     else:
         asyncio.run(rodar_ciclo_diario())

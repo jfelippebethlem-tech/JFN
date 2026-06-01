@@ -322,45 +322,362 @@ def save_ob_records(session, summary: dict) -> int:
     return saved
 
 
-async def run_daily_collection(target_date: date | None = None) -> dict:
-    """Pipeline completo: coleta + persiste + registra SessaoAuditoria."""
+_JS_OPEN_FIRST_OB = r"""
+(numero) => {
+    // Find the row by OB number and click Visualizar on it
+    for (const el of document.querySelectorAll('a.x12k, a.xg2, a.x7j, td')) {
+        const t = el.textContent.trim();
+        if (t === numero) {
+            // select the row first
+            el.click();
+            return 'selected row: ' + numero;
+        }
+    }
+    return null;
+}
+"""
+
+_JS_CLICK_VISUALIZAR = r"""
+() => {
+    for (const el of document.querySelectorAll('a, button, input[type="button"]')) {
+        const t = el.textContent.trim().toLowerCase();
+        if ((t === 'visualizar' || t === 'detalhar' || t === 'ver' || t === 'editar')
+                && el.getBoundingClientRect().width > 0
+                && !el.className.includes('p_AFDisabled')) {
+            el.click();
+            return 'clicked: ' + el.textContent.trim();
+        }
+    }
+    return null;
+}
+"""
+
+_JS_CLICK_RETORNAR = r"""
+() => {
+    for (const el of document.querySelectorAll('a.x12k, a.xg2, a, button')) {
+        const t = el.textContent.trim().toLowerCase();
+        if ((t === 'retornar' || t === 'voltar' || t === 'cancelar')
+                && el.getBoundingClientRect().width > 0) {
+            el.click();
+            return 'clicked: ' + el.textContent.trim();
+        }
+    }
+    return null;
+}
+"""
+
+_JS_READ_DETAIL_FIELDS = r"""
+() => {
+    const clone = document.body.cloneNode(true);
+    // Remove noisy dropdowns and menus
+    for (const sel of ['select', 'script', 'style', '[id*="selUg"]', '[id*="iTxtCad"]',
+                        '[id*="pt_np"]', '[id*="pt_rhcl"]', '[id*="pt_bc"]']) {
+        clone.querySelectorAll(sel).forEach(n => n.remove());
+    }
+    // Collect label->value pairs from visible inputs
+    function labelOf(el) {
+        if (el.labels && el.labels.length > 0) return el.labels[0].textContent.trim();
+        const lbl = document.querySelector('label[for="' + el.id + '"]');
+        if (lbl) return lbl.textContent.trim();
+        const prev = el.previousElementSibling;
+        if (prev && prev.tagName === 'LABEL') return prev.textContent.trim();
+        return '';
+    }
+    const fields = {};
+    for (const el of document.querySelectorAll('input, textarea')) {
+        const val = (el.value || '').trim();
+        if (!val) continue;
+        const lbl = labelOf(el).replace(/:$/, '').trim();
+        if (lbl) fields[lbl] = val;
+        else if (el.id) fields[el.id] = val;
+    }
+    // Also read visible spans/labels that look like values
+    const bodyText = clone.body ? clone.body.innerText : '';
+    return {fields, bodyText: bodyText.substring(0, 4000)};
+}
+"""
+
+_JS_CLICK_TAB = r"""
+(tabText) => {
+    for (const el of document.querySelectorAll('a.xyp, a[role="tab"], li[role="tab"], .x1b4')) {
+        const t = el.textContent.trim();
+        if (t === tabText || t.startsWith(tabText)) {
+            el.click();
+            return 'clicked tab: ' + t;
+        }
+    }
+    return null;
+}
+"""
+
+
+def _extract_ob_fields(detail: dict) -> dict:
+    """Extract favorecido, valor, processo from raw detail fields."""
+    fields = detail.get("fields", {})
+    body = detail.get("bodyText", "")
+
+    favorecido_nome = None
+    favorecido_cpf = None
+    valor = None
+    numero_processo = None
+
+    for k, v in fields.items():
+        kl = k.lower()
+        if "favorecido" in kl or "beneficiário" in kl or "credor" in kl:
+            if not favorecido_nome:
+                favorecido_nome = v
+        elif "cpf" in kl or "cnpj" in kl:
+            if not favorecido_cpf:
+                favorecido_cpf = re.sub(r"\D", "", v)[:14]
+        elif "valor" in kl and ("total" in kl or "pag" in kl or "ob" in kl or favorecido_nome):
+            if not valor:
+                valor = _parse_money(v)
+        elif "processo" in kl or "sei" in kl:
+            if not numero_processo:
+                numero_processo = v.strip()
+
+    # Fallback: regex on bodyText
+    if not favorecido_nome:
+        m = re.search(r"Favorecido[:\s]+([A-ZÁÀÉÍÓÚÃÕÂÊÎÔÛÇ][^\n]{4,80})", body)
+        if m:
+            favorecido_nome = m.group(1).strip()
+    if not numero_processo:
+        m = re.search(r"SEI[:\s\-]+(\d[\d.\-/]+\d)", body)
+        if not m:
+            m = re.search(r"Processo[:\s]+([A-Z\d][\d.\-/]+\d)", body)
+        if m:
+            numero_processo = m.group(1).strip()
+    if not valor:
+        for match in re.finditer(r"R\$\s*([\d.]+,\d{2})", body):
+            v = _parse_money(match.group(1))
+            if v and v > 0:
+                valor = v
+                break
+
+    return {
+        "favorecido_nome": favorecido_nome,
+        "favorecido_cpf": favorecido_cpf,
+        "valor": valor,
+        "numero_processo": numero_processo,
+    }
+
+
+async def collect_ob_details(page, ob_numbers: list[str]) -> dict[str, dict]:
+    """
+    For each OB number in the list, click it, read detail tabs,
+    extract favorecido/valor/processo, click Retornar.
+    Returns dict {numero_ob: {favorecido_nome, favorecido_cpf, valor, numero_processo}}.
+    """
+    results = {}
+
+    for numero in ob_numbers:
+        try:
+            # Click on the OB row to select it
+            sel_result = await page.evaluate(f"""
+                () => {{
+                    for (const el of document.querySelectorAll('td, span')) {{
+                        const t = el.textContent.trim();
+                        if (t === '{numero}') {{
+                            // click the row
+                            const row = el.closest('tr');
+                            if (row) row.click();
+                            el.click();
+                            return 'selected: ' + t;
+                        }}
+                    }}
+                    return null;
+                }}
+            """)
+            if sel_result:
+                await asyncio.sleep(0.5)
+
+            # Click Visualizar button
+            viz = await page.evaluate(_JS_CLICK_VISUALIZAR)
+            if not viz:
+                results[numero] = {"error": "Visualizar not found"}
+                continue
+
+            await _adf_wait(page, 12000)
+            await _dismiss_dialogs(page)
+
+            # Read Detalhamento tab (default)
+            detail = await page.evaluate(_JS_READ_DETAIL_FIELDS)
+            extracted = _extract_ob_fields(detail)
+
+            # Click Processo tab for SEI number
+            if not extracted.get("numero_processo"):
+                tab_clicked = await page.evaluate(_JS_CLICK_TAB, "Processo")
+                if tab_clicked:
+                    await asyncio.sleep(1.5)
+                    proc_detail = await page.evaluate(_JS_READ_DETAIL_FIELDS)
+                    proc_extra = _extract_ob_fields(proc_detail)
+                    if proc_extra.get("numero_processo"):
+                        extracted["numero_processo"] = proc_extra["numero_processo"]
+
+            results[numero] = extracted
+
+            # Return to list
+            ret = await page.evaluate(_JS_CLICK_RETORNAR)
+            await _adf_wait(page, 10000)
+            await _dismiss_dialogs(page)
+            if not ret:
+                # If no Retornar, navigate back
+                await page.go_back()
+                await _adf_wait(page, 10000)
+                await _dismiss_dialogs(page)
+
+        except Exception as exc:
+            results[numero] = {"error": str(exc)}
+            # Try to get back to list
+            try:
+                await page.evaluate(_JS_CLICK_RETORNAR)
+                await _adf_wait(page, 8000)
+            except Exception:
+                pass
+
+    return results
+
+
+async def run_daily_collection(
+    target_date: date | None = None,
+    collect_details: bool = True,
+    max_details: int = 200,
+) -> dict:
+    """
+    Pipeline completo: coleta lista de OBs + detalhes + persiste no banco.
+
+    collect_details=True abre cada OB para extrair favorecido/valor/processo.
+    max_details limita quantas OBs terão detalhes coletados (segurança de tempo).
+    """
+    from playwright.async_api import async_playwright
+
     init_db()
     session = get_session()
     target_date = target_date or date.today()
 
-    summary = await collect_ob_day(target_date)
+    result = {
+        "date": target_date.isoformat(),
+        "records_fetched": 0,
+        "records_saved": 0,
+        "details_collected": 0,
+        "errors": [],
+    }
 
-    saved = 0
-    if summary["records"] > 0:
+    p = await async_playwright().start()
+    browser = None
+    try:
+        browser = await p.chromium.connect_over_cdp(CDP_URL)
+
+        # Find SIAFE2 page
+        page = None
+        for ctx in browser.contexts:
+            for pg in ctx.pages:
+                u = pg.url.lower()
+                if "siafe2.fazenda" in u and "flexvision" not in u:
+                    page = pg
+                    break
+            if page:
+                break
+        if not page and browser.contexts and browser.contexts[0].pages:
+            page = browser.contexts[0].pages[0]
+
+        if not page:
+            result["errors"].append("Nenhuma aba encontrada no Chrome")
+        else:
+            await _dismiss_dialogs(page)
+
+            if not await _navigate_to_ob(page):
+                result["errors"].append(f"Não chegou na tela de OB — URL: {page.url}")
+            else:
+                # 1. Read the OB list
+                raw = await page.evaluate(_JS_READ_OB_TABLE)
+                if not raw.get("found"):
+                    result["errors"].append("Tabela tblOBOrcamentaria não encontrada")
+                else:
+                    header = raw.get("header", [])
+                    rows = raw.get("rows", [])[:1000]
+                    result["records_fetched"] = len(rows)
+
+                    # 2. Save list to DB (creates rows with basic fields)
+                    summary = {
+                        "date": target_date.isoformat(),
+                        "records": len(rows),
+                        "rows": rows,
+                        "header": header,
+                        "errors": [],
+                    }
+                    try:
+                        result["records_saved"] = save_ob_records(session, summary)
+                    except Exception as e:
+                        result["errors"].append(f"Erro ao salvar lista: {e}")
+
+                    # 3. Collect per-OB details (favorecido, valor, processo)
+                    if collect_details and rows:
+                        idx = _col_index(header)
+                        num_col = idx.get("número", idx.get("numero", 0))
+                        ob_numbers = [
+                            row[num_col] for row in rows
+                            if row and len(row) > num_col and row[num_col]
+                        ][:max_details]
+
+                        try:
+                            details = await collect_ob_details(page, ob_numbers)
+                            n_det = 0
+                            for numero, det in details.items():
+                                if "error" in det:
+                                    continue
+                                ob = session.query(OrdemBancaria).filter_by(
+                                    numero_ob=numero, data_emissao=target_date
+                                ).first()
+                                if ob:
+                                    if det.get("favorecido_nome"):
+                                        ob.favorecido_nome = det["favorecido_nome"]
+                                    if det.get("favorecido_cpf"):
+                                        ob.favorecido_cpf = det["favorecido_cpf"]
+                                    if det.get("valor"):
+                                        ob.valor = det["valor"]
+                                    if det.get("numero_processo"):
+                                        ob.numero_processo = det["numero_processo"]
+                                        ob.numero_sei = det["numero_processo"]
+                                    ob.updated_at = datetime.utcnow()
+                                    n_det += 1
+                            session.commit()
+                            result["details_collected"] = n_det
+                        except Exception as e:
+                            result["errors"].append(f"Erro ao coletar detalhes: {e}")
+
+    except Exception as e:
+        result["errors"].append(f"CDP connect falhou: {e}")
+    finally:
         try:
-            saved = save_ob_records(session, summary)
-        except Exception as e:
-            summary["errors"].append(f"Erro ao salvar no banco: {e}")
+            await p.stop()
+        except Exception:
+            pass
+        try:
+            session.close()
+        except Exception:
+            pass
 
     sessao = SessaoAuditoria(
         data_sessao=target_date,
         tipo="siafe_ob",
-        status="ok" if not summary["errors"] else ("parcial" if saved else "erro"),
-        registros=saved,
+        status="ok" if not result["errors"] else ("parcial" if result["records_saved"] else "erro"),
+        registros=result["records_saved"],
         resumo=json.dumps({
-            "date": summary["date"],
-            "records_fetched": summary["records"],
-            "records_saved": saved,
-            "header": summary["header"],
+            "date": result["date"],
+            "records_fetched": result["records_fetched"],
+            "records_saved": result["records_saved"],
+            "details_collected": result["details_collected"],
         }, ensure_ascii=False),
-        detalhes=json.dumps(summary.get("errors", []), ensure_ascii=False)
-        if summary["errors"] else None,
+        detalhes=json.dumps(result.get("errors", []), ensure_ascii=False)
+        if result["errors"] else None,
     )
-    session.add(sessao)
-    session.commit()
-    session.close()
+    db_sess = get_session()
+    db_sess.add(sessao)
+    db_sess.commit()
+    db_sess.close()
 
-    return {
-        "date": target_date.isoformat(),
-        "records_fetched": summary["records"],
-        "records_saved": saved,
-        "errors": summary["errors"],
-    }
+    return result
 
 
 if __name__ == "__main__":

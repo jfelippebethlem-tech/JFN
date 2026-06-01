@@ -2,12 +2,20 @@
 REM JFN Compliance Agent - iniciar.bat
 REM
 REM Uso:
-REM   iniciar.bat             - scheduler diario (08:00 todo dia)
+REM   iniciar.bat             - scheduler diario (08:00) + bot Telegram
 REM   iniciar.bat --agora     - roda coleta imediatamente
 REM   iniciar.bat --diag      - LE as paginas reais e relata a estrutura
-REM   iniciar.bat --groq      - Groq explorer (IA no SIAFE2)
+REM   iniciar.bat --groq      - Groq explorer (IA autonoma no SIAFE2)
 REM   iniciar.bat --analisar  - relatorio completo do banco
 REM   iniciar.bat --obs       - lista OBs coletadas
+REM   iniciar.bat --telegram  - testa conexao Telegram e aguarda comandos
+REM
+REM Controle pelo celular (via Telegram):
+REM   /status    - situacao atual do sistema
+REM   /obs       - ultimas OBs coletadas
+REM   /agora     - dispara coleta agora
+REM   /relatorio - envia PDF do dia
+REM   /ajuda     - ajuda
 cd /d "%~dp0"
 
 echo.
@@ -60,6 +68,7 @@ if "%1"=="--diag"     goto diag
 if "%1"=="--groq"     goto groq
 if "%1"=="--analisar" goto analisar
 if "%1"=="--obs"      goto obs
+if "%1"=="--telegram" goto telegram
 goto scheduler
 
 :diag
@@ -112,9 +121,16 @@ echo.
 python analisar.py --obs
 goto fim
 
+:telegram
+echo.
+echo   Testando conexao Telegram e aguardando comandos do celular...
+python -m compliance_agent.notifications.telegram
+goto fim
+
 :scheduler
 echo.
 echo   Iniciando scheduler diario (executa todo dia as 08:00)...
+echo   Bot Telegram ativo - envie /ajuda para ver os comandos.
 echo   Pressione Ctrl+C para parar.
 echo.
 python -m compliance_agent.scheduler --loop
