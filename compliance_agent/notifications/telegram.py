@@ -334,6 +334,8 @@ _AJUDA = (
     "  /buscar NOME — busca empresa/pessoa no banco\n"
     "  /investigar NOME — pesquisa na INTERNET (notícias, riscos)\n"
     "  /sei NUMERO — consulta processo no SEI-RJ\n\n"
+    "*Base jurídica:*\n"
+    "  /lei TERMO — busca lei, acórdão ou princípio (TCE-RJ, TCU, Planalto)\n\n"
     "*Aprendizado:*\n"
     "  /aprendi — o que o agente aprendeu (lições do Hermes)\n"
     "  /memoria NOME — perfil acumulado de uma entidade\n\n"
@@ -668,6 +670,47 @@ async def _conversar_com_agente(pergunta: str) -> str:
             "/buscar NOME, /agora.")
 
 
+async def _lei_reply(termo: str) -> str:
+    """Busca jurídica unificada: base local + Planalto + TCU + TCE-RJ."""
+    if not termo.strip():
+        return (
+            "Use: /lei TERMO\n\n"
+            "Exemplos:\n"
+            "  /lei fracionamento\n"
+            "  /lei superfaturamento\n"
+            "  /lei 14133\n"
+            "  /lei nepotismo\n"
+            "  /lei dispensa emergência"
+        )
+    try:
+        from compliance_agent.collectors.lexml_fetcher import (
+            buscar_juridico, formatar_resultado_juridico
+        )
+        resultado = await buscar_juridico(termo.strip())
+        return formatar_resultado_juridico(resultado)
+    except Exception as exc:
+        # Fallback: só base local
+        try:
+            from compliance_agent.knowledge.base_legal import buscar_lei
+            from compliance_agent.knowledge.jurisprudencia import buscar_acordaos
+            leis = buscar_lei(termo.strip())
+            acordaos = buscar_acordaos(texto=termo.strip())[:4]
+            linhas = [f"*⚖️ Consulta jurídica: {termo}*\n"]
+            if leis:
+                linhas.append("*Legislação:*")
+                for lei in leis[:3]:
+                    linhas.append(f"• *{lei['lei']} art. {lei['artigo']}*\n  {lei['resumo'][:120]}")
+            if acordaos:
+                linhas.append("\n*Jurisprudência:*")
+                for ac in acordaos:
+                    linhas.append(f"• [{ac.orgao}] {ac.numero}\n  _{ac.ementa[:150]}_")
+            if len(linhas) == 1:
+                return f"Nenhum resultado para '{termo}'."
+            return "\n".join(linhas)
+        except Exception:
+            return f"Erro na busca jurídica: {exc}"
+
+
 async def processar_comando(texto: str, chat_id: str) -> None:
     """Handle a single command sent by the user via Telegram."""
     partes = texto.strip().split(None, 1)
@@ -725,6 +768,10 @@ async def processar_comando(texto: str, chat_id: str) -> None:
 
     elif cmd == "/chrome":
         await enviar_mensagem(_CHROME_INSTRUCOES, chat_id=chat_id, parse_mode="MarkdownV2")
+
+    elif cmd == "/lei":
+        await enviar_mensagem(f"⚖️ Pesquisando: _{args or '(vazio)'}_...", chat_id=chat_id)
+        await enviar_mensagem(await _lei_reply(args), chat_id=chat_id)
 
     elif cmd == "/sancoes":
         await enviar_mensagem("⏳ Verificando CEIS/CNEP...", chat_id=chat_id)

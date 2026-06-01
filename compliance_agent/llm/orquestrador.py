@@ -115,17 +115,29 @@ async def escolher_proximo_alvo(session) -> dict | None:
 
 # ─── Investigação profunda de um alvo ─────────────────────────────────────────
 
-_TAREFA_TEMPLATE = (
-    "Investigue de forma autônoma o favorecido de recurso público abaixo e "
-    "conclua se há risco de irregularidade. Use suas ferramentas: consulte o "
-    "CNPJ, busque contratos, doações eleitorais, decisões do TCE, processos SEI, "
-    "conexões na rede e múltiplos empregos. Seja objetivo.\n\n"
-    "ALVO: {nome}\n"
-    "CNPJ/CPF: {cnpj}\n"
-    "MOTIVO DA INVESTIGAÇÃO: {motivo}\n\n"
-    "Ao final, responda em 1 parágrafo: há indícios de irregularidade? Quais? "
-    "Que nível de risco (baixo/médio/alto)?"
-)
+def _tarefa_template(nome: str, cnpj: str, motivo: str) -> str:
+    """Monta o prompt de investigação com contexto jurídico injetado."""
+    base = (
+        "Investigue de forma autônoma o favorecido de recurso público abaixo e "
+        "conclua se há risco de irregularidade. Use suas ferramentas: consulte o "
+        "CNPJ, busque contratos, doações eleitorais, decisões do TCE, processos SEI, "
+        "conexões na rede e múltiplos empregos. Seja objetivo.\n\n"
+        f"ALVO: {nome}\n"
+        f"CNPJ/CPF: {cnpj}\n"
+        f"MOTIVO DA INVESTIGAÇÃO: {motivo}\n\n"
+    )
+    try:
+        from compliance_agent.knowledge.base_legal import contexto_legal_para_prompt
+        from compliance_agent.knowledge.jurisprudencia import contexto_jurisprudencial_para_prompt
+        base += contexto_legal_para_prompt() + "\n\n"
+        base += contexto_jurisprudencial_para_prompt() + "\n\n"
+    except Exception:
+        pass
+    base += (
+        "Ao final, responda em 1 parágrafo: há indícios de irregularidade? Quais? "
+        "Que nível de risco (baixo/médio/alto)? Cite os dispositivos legais e acórdãos aplicáveis."
+    )
+    return base
 
 
 async def investigar_alvo(alvo: dict, session) -> dict:
@@ -143,8 +155,9 @@ async def investigar_alvo(alvo: dict, session) -> dict:
     try:
         from compliance_agent.agent import ComplianceAgent
         agente = ComplianceAgent()
-        tarefa = _TAREFA_TEMPLATE.format(
-            nome=nome, cnpj=alvo.get("cnpj") or "não informado",
+        tarefa = _tarefa_template(
+            nome=nome,
+            cnpj=alvo.get("cnpj") or "não informado",
             motivo=alvo.get("motivo", ""),
         )
         agente._conversation = []  # zera contexto para não acumular
