@@ -311,22 +311,65 @@ _JS_CLICK_VISUALIZAR = r"""
 }
 """
 
-_JS_DETAIL = r"""
+# Texto LIMPO do detalhe: remove o combo de UGs, menus e scripts, deixando
+# só os campos reais (Favorecido, Valor, Processo, etc.)
+_JS_CLEAN_TEXT = r"""
 () => {
+    const clone = document.body.cloneNode(true);
+    const lixo = ['select', 'script', 'style',
+                  '[id*="selUg"]', '[id*="iTxtCad"]',
+                  '[id*="pt_np"]', '[id*="pt_rhcl"]', '[id*="pt_bc"]'];
+    for (const sel of lixo) clone.querySelectorAll(sel).forEach(n => n.remove());
     const tabs = [...document.querySelectorAll('a.xyp, [role="tab"]')]
         .map(t => t.textContent.trim()).filter(Boolean);
-    return {
-        url: location.href,
-        title: document.title,
-        tabs: tabs,
-        text: (document.body ? document.body.innerText : '').substring(0, 8000),
+    // campos input (read-only no modo Visualizar) com label
+    const labelOf = (el) => {
+        if (el.id) {
+            const l = document.querySelector('label[for="' + CSS.escape(el.id) + '"]');
+            if (l && l.textContent.trim()) return l.textContent.trim();
+        }
+        let p = el.parentElement;
+        for (let i = 0; i < 6 && p; i++, p = p.parentElement) {
+            const l = p.querySelector('label, span.af_outputLabel, span.x18m');
+            if (l && l !== el && l.textContent.trim()) return l.textContent.trim();
+        }
+        return '';
     };
+    const fields = [];
+    for (const el of document.querySelectorAll('input, textarea')) {
+        if (el.type === 'hidden') continue;
+        const r = el.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) continue;
+        const id = el.id || '';
+        if (id.includes('selUg') || id.includes('iTxtCad')) continue;
+        const val = (el.value || '').trim();
+        const lbl = labelOf(el);
+        if (lbl || val) fields.push({label: lbl.substring(0, 45), value: val.substring(0, 90),
+                                     id: id.substring(0, 60)});
+    }
+    return {tabs: tabs, text: clone.innerText.substring(0, 6000), fields: fields.slice(0, 120)};
 }
 """
 
 
+async def _dump_detalhe_aba(page, nome_aba: str):
+    data = await page.evaluate(_JS_CLEAN_TEXT)
+    fields = data.get("fields", [])
+    if fields:
+        print(f"\n  {BOLD}{Y}>>> ABA '{nome_aba}' — CAMPOS ({len(fields)}):{RST}")
+        for f in fields:
+            print(f"    • {f['label'] or '(sem label)':30} = '{f['value']}'  "
+                  f"{DIM}[{f['id']}]{RST}")
+    txt = data.get("text", "").strip()
+    if txt:
+        print(f"  {BOLD}{Y}    texto limpo:{RST}")
+        for line in txt.splitlines()[:30]:
+            if line.strip():
+                print(f"      {DIM}{line.strip()[:95]}{RST}")
+
+
 async def _siafe_detalhe_ob(page):
-    """Seleciona a 1ª OB, clica Visualizar e lê o detalhe + todas as abas."""
+    """Seleciona a 1ª OB, clica Visualizar e lê os CAMPOS reais + abas + botões."""
     print(f"\n  {DIM}Abrindo DETALHE da 1ª OB (selecionar linha -> Visualizar)...{RST}")
     sel = await page.evaluate(_JS_SELECT_FIRST_OB)
     if not sel:
@@ -342,44 +385,40 @@ async def _siafe_detalhe_ob(page):
     await _wait(page, 12000)
     await _dismiss_dialogs(page)
 
-    det = await page.evaluate(_JS_DETAIL)
+    # _JS_DUMP captura os CLICÁVEIS (botões de ação: Retornar/Fechar/etc.)
+    dump = await page.evaluate(_JS_DUMP)
     print(f"\n{BOLD}{B}{'═'*72}{RST}")
     print(f"{BOLD}{B}  SIAFE2 — DETALHE DA OB {sel}{RST}")
     print(f"{BOLD}{B}{'═'*72}{RST}")
-    print(f"  {BOLD}URL:{RST} {det['url']}")
-    abas = det.get("tabs", [])
-    if abas:
-        print(f"  {BOLD}{Y}ABAS:{RST} {' | '.join(abas)}")
-    print(f"\n  {BOLD}{Y}CONTEÚDO DA ABA ATUAL:{RST}")
-    for line in det.get("text", "").splitlines()[:60]:
-        if line.strip():
-            print(f"    {DIM}{line.strip()[:95]}{RST}")
-    await _capturar(page, "siafe_detalhe", det)
+    print(f"  {BOLD}URL:{RST} {dump.get('url')}")
+    # Botões de ação (procuramos como voltar à lista)
+    botoes = [c for c in dump.get("clickables", [])
+              if c.get("cls", "").startswith("x12k") or "btn" in c.get("cls", "").lower()]
+    if botoes:
+        print(f"\n  {BOLD}{Y}BOTÕES DE AÇÃO DO DETALHE:{RST}")
+        for c in botoes:
+            print(f"    • \"{c['text']}\"  cls='{c['cls']}'  id='{c['id']}'")
+    await _capturar(page, "siafe_detalhe", dump)
 
-    # Percorre cada aba (a.xyp) e captura o texto
-    n_abas = await page.evaluate("() => document.querySelectorAll('a.xyp').length")
-    for i in range(min(n_abas, 8)):
-        nome = await page.evaluate(
-            """(i) => {
-                const tabs = document.querySelectorAll('a.xyp');
-                if (i >= tabs.length) return null;
-                const t = tabs[i];
-                const nome = t.textContent.trim();
-                t.click();
-                return nome;
-            }""", i,
+    abas_alvo = ["Detalhamento", "Itens", "Pagamentos", "Processo"]
+    # aba atual (Detalhamento) primeiro
+    await _dump_detalhe_aba(page, "Detalhamento (atual)")
+
+    # clica nas demais abas por nome
+    for nome in abas_alvo:
+        clicked = await page.evaluate(
+            """(nome) => {
+                for (const t of document.querySelectorAll('a.xyp')) {
+                    if (t.textContent.trim() === nome) { t.click(); return true; }
+                }
+                return false;
+            }""", nome,
         )
-        if not nome:
+        if not clicked:
             continue
         await _wait(page, 8000)
         await _dismiss_dialogs(page)
-        txt = await page.evaluate(
-            "() => (document.body ? document.body.innerText : '').substring(0, 6000)"
-        )
-        print(f"\n  {BOLD}{Y}>>> ABA '{nome}':{RST}")
-        for line in txt.splitlines()[:45]:
-            if line.strip():
-                print(f"    {DIM}{line.strip()[:95]}{RST}")
+        await _dump_detalhe_aba(page, nome)
 
 
 async def main():
