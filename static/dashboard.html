@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>JFN · Painel de Auditoria — Governo do RJ</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#121c2e; --panel2:#18243a; --line:#243149;
+    --txt:#e6edf7; --dim:#8aa0bd; --brand:#2f6fed; --brand2:#1e4fc0;
+    --red:#ef4444; --amber:#f59e0b; --green:#22c55e; --radius:14px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    font-size:14px;line-height:1.5}
+  a{color:inherit;text-decoration:none}
+
+  header{background:linear-gradient(135deg,var(--brand2),var(--brand));
+    padding:18px 22px;display:flex;align-items:center;justify-content:space-between;
+    box-shadow:0 2px 12px rgba(0,0,0,.4);position:sticky;top:0;z-index:10}
+  header .brand{display:flex;align-items:center;gap:12px}
+  header .logo{width:40px;height:40px;border-radius:10px;background:#fff2;
+    display:grid;place-items:center;font-weight:800;font-size:18px;letter-spacing:-1px}
+  header h1{font-size:17px;font-weight:700}
+  header .sub{font-size:11px;opacity:.8;font-weight:500}
+  header .live{display:flex;align-items:center;gap:7px;font-size:12px;
+    background:#0003;padding:6px 12px;border-radius:20px}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--green);
+    box-shadow:0 0 0 0 var(--green);animation:pulse 2s infinite}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 #22c55e88}70%{box-shadow:0 0 0 8px #22c55e00}100%{box-shadow:0 0 0 0 #22c55e00}}
+
+  main{max-width:1180px;margin:0 auto;padding:20px}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:20px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    padding:18px 20px;position:relative;overflow:hidden}
+  .kpi .label{font-size:12px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;font-weight:600}
+  .kpi .value{font-size:28px;font-weight:800;margin-top:6px;letter-spacing:-1px}
+  .kpi .foot{font-size:12px;color:var(--dim);margin-top:4px}
+  .kpi.red .value{color:var(--red)} .kpi.amber .value{color:var(--amber)}
+  .kpi.green .value{color:var(--green)} .kpi.brand .value{color:#6ea0ff}
+
+  .grid{display:grid;grid-template-columns:1.3fr 1fr;gap:18px}
+  @media(max-width:860px){.grid{grid-template-columns:1fr}}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    margin-bottom:18px;overflow:hidden}
+  .card h2{font-size:14px;padding:14px 18px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;font-weight:700}
+  .card h2 .count{font-size:12px;color:var(--dim);font-weight:600}
+  .card .body{padding:6px 0;max-height:440px;overflow-y:auto}
+
+  .alert{padding:12px 18px;border-bottom:1px solid var(--line);display:flex;gap:12px}
+  .alert:last-child{border-bottom:none}
+  .alert .sev{width:4px;border-radius:3px;flex-shrink:0}
+  .alert.alta .sev{background:var(--red)} .alert.média .sev,.alert.media .sev{background:var(--amber)}
+  .alert.baixa .sev{background:var(--dim)}
+  .alert .t{font-weight:600;font-size:13px}
+  .alert .d{font-size:12px;color:var(--dim);margin-top:3px}
+  .alert .meta{font-size:11px;color:var(--dim);margin-top:4px}
+  .badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:20px;
+    font-weight:700;text-transform:uppercase;letter-spacing:.4px}
+  .badge.alta{background:#ef444422;color:#fca5a5}
+  .badge.média,.badge.media{background:#f59e0b22;color:#fcd34d}
+  .badge.baixa{background:#8aa0bd22;color:var(--dim)}
+
+  .row{padding:10px 18px;border-bottom:1px solid var(--line);display:flex;
+    align-items:center;justify-content:space-between;gap:10px}
+  .row:last-child{border-bottom:none}
+  .row .nm{font-weight:600;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .row .vl{font-weight:700;color:#6ea0ff;font-size:13px;white-space:nowrap}
+  .row .sm{font-size:11px;color:var(--dim)}
+
+  .searchbar{display:flex;gap:8px;margin-bottom:18px}
+  .searchbar input{flex:1;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;padding:12px 16px;color:var(--txt);font-size:14px}
+  .searchbar input:focus{outline:none;border-color:var(--brand)}
+  .searchbar button{background:var(--brand);color:#fff;border:none;border-radius:10px;
+    padding:0 20px;font-weight:700;cursor:pointer;font-size:14px}
+  .searchbar button:hover{background:var(--brand2)}
+
+  .lesson{padding:10px 18px;border-bottom:1px solid var(--line);font-size:13px;color:var(--dim)}
+  .lesson:before{content:"💡 ";}
+  .lesson:last-child{border-bottom:none}
+
+  .empty{padding:30px;text-align:center;color:var(--dim);font-size:13px}
+  .tabs{display:flex;gap:6px;padding:0 18px;margin-top:-2px}
+  footer{text-align:center;color:var(--dim);font-size:11px;padding:24px}
+
+  #modal{position:fixed;inset:0;background:#000a;display:none;place-items:center;z-index:50;padding:20px}
+  #modal.on{display:grid}
+  #modal .mc{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    max-width:560px;width:100%;max-height:80vh;overflow-y:auto;padding:22px}
+  #modal h3{margin-bottom:12px} #modal pre{white-space:pre-wrap;font-family:inherit;
+    font-size:13px;color:var(--dim);line-height:1.6}
+  #modal .x{float:right;cursor:pointer;color:var(--dim);font-size:20px}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo">JFN</div>
+    <div>
+      <h1>Painel de Auditoria Financeira</h1>
+      <div class="sub">Governo do Estado do Rio de Janeiro · SIAFE2 + DOERJ</div>
+    </div>
+  </div>
+  <div class="live"><span class="dot"></span><span id="liveLabel">ao vivo</span></div>
+</header>
+
+<main>
+  <div class="kpis" id="kpis"></div>
+
+  <div class="searchbar">
+    <input id="q" placeholder="Investigar pessoa ou empresa na internet (nome ou CNPJ)…"
+           onkeydown="if(event.key==='Enter')investigar()" />
+    <button onclick="investigar()">🔎 Investigar</button>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card">
+        <h2>Alertas <span class="count" id="alCount"></span></h2>
+        <div class="body" id="alertas"><div class="empty">Carregando…</div></div>
+      </div>
+      <div class="card">
+        <h2>Ordens Bancárias recentes <span class="count" id="obCount"></span></h2>
+        <div class="body" id="obs"><div class="empty">Carregando…</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h2>Maiores favorecidos</h2>
+        <div class="body" id="top"><div class="empty">Carregando…</div></div>
+      </div>
+      <div class="card">
+        <h2>O que o agente aprendeu</h2>
+        <div class="body" id="licoes"><div class="empty">Sem lições ainda.</div></div>
+      </div>
+    </div>
+  </div>
+  <footer id="foot"></footer>
+</main>
+
+<div id="modal" onclick="if(event.target.id==='modal')fechar()">
+  <div class="mc">
+    <span class="x" onclick="fechar()">×</span>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+const money = v => "R$ " + (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const esc = s => (s||"").replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+
+async function carregar(){
+  try{
+    const r = await fetch('/api/compliance/painel');
+    const d = await r.json();
+    if(d.error){document.getElementById('kpis').innerHTML='<div class="kpi red"><div class="label">Erro</div><div class="foot">'+esc(d.error)+'</div></div>';return;}
+
+    document.getElementById('kpis').innerHTML = `
+      <div class="kpi brand"><div class="label">OBs hoje</div><div class="value">${d.obs.hoje}</div><div class="foot">${d.obs.total} no total</div></div>
+      <div class="kpi"><div class="label">Valor hoje</div><div class="value" style="font-size:22px">${money(d.obs.valor_hoje)}</div><div class="foot">${money(d.obs.valor_total)} acumulado</div></div>
+      <div class="kpi red"><div class="label">Alertas altos</div><div class="value">${d.alertas.alta}</div><div class="foot">${d.alertas.total} alertas totais</div></div>
+      <div class="kpi amber"><div class="label">Alertas médios</div><div class="value">${d.alertas.media}</div><div class="foot">última coleta: ${esc(d.ultima_coleta)}</div></div>`;
+
+    // Alertas
+    const al = d.lista_alertas||[];
+    document.getElementById('alCount').textContent = al.length+' recentes';
+    document.getElementById('alertas').innerHTML = al.length ? al.map(a=>`
+      <div class="alert ${a.severidade}">
+        <div class="sev"></div>
+        <div style="flex:1">
+          <div class="t">${esc(a.titulo)}</div>
+          <div class="d">${esc(a.descricao)}</div>
+          <div class="meta"><span class="badge ${a.severidade}">${a.severidade}</span> · ${esc(a.tipo)} · ${esc(a.data)}</div>
+        </div>
+      </div>`).join('') : '<div class="empty">Nenhum alerta. ✅</div>';
+
+    // OBs
+    const obs = d.obs_recentes||[];
+    document.getElementById('obCount').textContent = obs.length;
+    document.getElementById('obs').innerHTML = obs.length ? obs.map(o=>`
+      <div class="row">
+        <div style="min-width:0;flex:1">
+          <div class="nm">${esc(o.favorecido)}</div>
+          <div class="sm">${esc(o.numero)} · ${esc(o.data)} · proc ${esc(o.processo)}</div>
+        </div>
+        <div class="vl">${money(o.valor)}</div>
+      </div>`).join('') : '<div class="empty">Sem OBs coletadas ainda. Abra o Chrome e rode a coleta.</div>';
+
+    // Top
+    const top = d.top_favorecidos||[];
+    document.getElementById('top').innerHTML = top.length ? top.map((t,i)=>`
+      <div class="row">
+        <div style="min-width:0;flex:1"><div class="nm">${i+1}. ${esc(t.nome)}</div><div class="sm">${t.n} OB(s)</div></div>
+        <div class="vl">${money(t.total)}</div>
+      </div>`).join('') : '<div class="empty">Sem dados.</div>';
+
+    // Lições
+    const lic = d.licoes||[];
+    document.getElementById('licoes').innerHTML = lic.length ?
+      lic.map(l=>`<div class="lesson">${esc(l)}</div>`).join('') :
+      '<div class="empty">O agente aprende a cada dia (reflexão Hermes às 8:00).</div>';
+
+    document.getElementById('foot').textContent = 'Atualizado em '+new Date().toLocaleTimeString('pt-BR')+' · atualiza sozinho a cada 30s';
+  }catch(e){
+    document.getElementById('liveLabel').textContent='offline';
+  }
+}
+
+async function investigar(){
+  const nome = document.getElementById('q').value.trim();
+  if(!nome) return;
+  const cnpj = nome.replace(/\D/g,'').length===14 ? nome.replace(/\D/g,'') : '';
+  abrirModal('<h3>🔎 Investigando…</h3><pre>Buscando '+esc(nome)+' na internet…</pre>');
+  try{
+    const r = await fetch('/api/compliance/investigar?nome='+encodeURIComponent(nome)+'&cnpj='+cnpj);
+    const d = await r.json();
+    let html = '<h3>🔎 '+esc(d.alvo||nome)+'</h3>';
+    if(d.cadastro){const c=d.cadastro;
+      html+='<pre><b>'+esc(c.razao_social||'')+'</b>\nSituação: '+esc(c.descricao_situacao_cadastral||'')+
+        '\nAbertura: '+esc(c.data_inicio_atividade||'')+'\nAtividade: '+esc(c.cnae_fiscal_descricao||'')+'</pre>';}
+    if(d.riscos_detectados&&d.riscos_detectados.length)
+      html+='<pre style="color:#fca5a5">🚨 Termos de risco: '+esc(d.riscos_detectados.join(', '))+'</pre>';
+    if(d.resumo) html+='<pre>'+esc(d.resumo)+'</pre>';
+    if(d.noticias&&d.noticias.length){html+='<pre><b>Notícias:</b>\n'+
+      d.noticias.slice(0,5).map(n=>'• '+esc(n.titulo)).join('\n')+'</pre>';}
+    abrirModal(html);
+  }catch(e){abrirModal('<h3>Erro</h3><pre>'+esc(e.message)+'</pre>');}
+}
+function abrirModal(html){document.getElementById('modalBody').innerHTML=html;document.getElementById('modal').classList.add('on');}
+function fechar(){document.getElementById('modal').classList.remove('on');}
+
+carregar();
+setInterval(carregar, 30000);
+</script>
+</body>
+</html>

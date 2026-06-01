@@ -119,8 +119,111 @@ app.mount("/output", StaticFiles(directory="output"), name="output")
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    """Serve the chat UI."""
+    """Serve the professional compliance dashboard."""
+    return FileResponse("static/dashboard.html")
+
+
+@app.get("/chat", response_class=HTMLResponse)
+async def chat_ui():
+    """Serve the legacy chat UI."""
     return FileResponse("static/index.html")
+
+
+# ── Dashboard data (painel profissional) ──────────────────────────────────────
+
+@app.get("/api/compliance/painel")
+async def api_painel():
+    """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições."""
+    try:
+        from datetime import date
+        import sqlalchemy as sa
+        from sqlalchemy import desc
+        from compliance_agent.database.models import (
+            get_session, init_db, OrdemBancaria, Alerta, SessaoAuditoria
+        )
+        init_db()
+        s = get_session()
+        try:
+            hoje = date.today()
+            total_obs = s.query(sa.func.count(OrdemBancaria.id)).scalar() or 0
+            obs_hoje = s.query(sa.func.count(OrdemBancaria.id)).filter(
+                OrdemBancaria.data_emissao == hoje).scalar() or 0
+            valor_hoje = s.query(sa.func.sum(OrdemBancaria.valor)).filter(
+                OrdemBancaria.data_emissao == hoje).scalar() or 0
+            valor_total = s.query(sa.func.sum(OrdemBancaria.valor)).scalar() or 0
+
+            sev = {}
+            for r in s.query(Alerta.severidade, sa.func.count(Alerta.id)).group_by(Alerta.severidade).all():
+                sev[r[0] or "baixa"] = r[1]
+            alta = sev.get("alta", 0)
+            media = sev.get("média", 0) + sev.get("media", 0)
+
+            alertas = [
+                {"tipo": a.tipo, "severidade": a.severidade, "titulo": a.titulo,
+                 "descricao": (a.descricao or "")[:300], "data": str(a.data_referencia or ""),
+                 "criado": str(a.created_at)[:16]}
+                for a in s.query(Alerta).order_by(desc(Alerta.created_at)).limit(40).all()
+            ]
+            top = [
+                {"nome": r[0], "total": float(r[1] or 0), "n": r[2]}
+                for r in s.query(
+                    OrdemBancaria.favorecido_nome,
+                    sa.func.sum(OrdemBancaria.valor),
+                    sa.func.count(OrdemBancaria.id),
+                ).filter(OrdemBancaria.favorecido_nome.isnot(None))
+                .group_by(OrdemBancaria.favorecido_nome)
+                .order_by(sa.desc(sa.func.sum(OrdemBancaria.valor)))
+                .limit(12).all()
+            ]
+            obs_recentes = [
+                {"numero": o.numero_ob, "data": str(o.data_emissao),
+                 "favorecido": o.favorecido_nome or "—",
+                 "valor": float(o.valor) if o.valor else 0,
+                 "processo": o.numero_processo or "—", "status": o.status or "—"}
+                for o in s.query(OrdemBancaria)
+                .order_by(desc(OrdemBancaria.data_emissao), desc(OrdemBancaria.id))
+                .limit(25).all()
+            ]
+            ult = s.query(SessaoAuditoria).order_by(desc(SessaoAuditoria.created_at)).first()
+            ultima_coleta = (f"{ult.data_sessao} [{ult.tipo}] {ult.status}"
+                             if ult else "nenhuma ainda")
+
+            licoes = []
+            try:
+                from compliance_agent.llm.memoria import lembrar
+                licoes = [m["valor"][:200] for m in lembrar("licao", session=s)[:8]]
+            except Exception:
+                pass
+
+            return JSONResponse(content={
+                "atualizado": str(hoje),
+                "obs": {"total": total_obs, "hoje": obs_hoje,
+                        "valor_hoje": float(valor_hoje), "valor_total": float(valor_total)},
+                "alertas": {"alta": alta, "media": media,
+                            "total": s.query(Alerta).count()},
+                "ultima_coleta": ultima_coleta,
+                "lista_alertas": alertas,
+                "top_favorecidos": top,
+                "obs_recentes": obs_recentes,
+                "licoes": licoes,
+            })
+        finally:
+            s.close()
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
+@app.get("/api/compliance/investigar")
+async def api_investigar(nome: str = "", cnpj: str = ""):
+    """Investiga uma pessoa/empresa na internet (web research)."""
+    if not nome:
+        return JSONResponse(content={"error": "nome obrigatório"}, status_code=400)
+    try:
+        from compliance_agent.collectors.web_research import investigar
+        dossie = await investigar(nome, cnpj)
+        return JSONResponse(content=dossie)
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
 # ── Compliance graph visualization ────────────────────────────────────────────
