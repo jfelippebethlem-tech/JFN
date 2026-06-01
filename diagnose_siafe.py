@@ -1131,13 +1131,60 @@ async def main_consultas():
     print(f"\n✅ Relatório salvo em: {REPORT}")
 
 
+async def _adf_wait(pg, timeout: int = 8000):
+    """Wait for Oracle ADF partial-page refresh to settle."""
+    try:
+        await pg.wait_for_load_state("networkidle", timeout=timeout)
+    except Exception:
+        pass
+    await asyncio.sleep(1.5)
+
+
+async def _js_click_adf(pg, css: str, text: str) -> str | None:
+    """Click an ADF element by CSS selector + exact text via JS evaluate.
+
+    Uses page.evaluate() so no ElementHandle is stored — avoids stale-handle
+    errors that occur when ADF's PPR (Partial Page Refresh) replaces the DOM.
+    Returns the element description if found, None otherwise.
+    """
+    safe = text.replace("'", "\\'")
+    return await pg.evaluate(f"""
+        () => {{
+            for (const el of document.querySelectorAll('{css}')) {{
+                if (el.textContent.trim() === '{safe}' && !el.className.includes('p_AFDisabled')) {{
+                    el.dispatchEvent(new MouseEvent('mouseover', {{bubbles: true}}));
+                    el.click();
+                    return el.tagName + '|' + el.className.trim();
+                }}
+            }}
+            return null;
+        }}
+    """)
+
+
+async def _js_read_items(pg, css: str) -> list[dict]:
+    """Read all items matching a CSS selector via JS evaluate (fresh DOM context)."""
+    return await pg.evaluate(f"""
+        () => [...document.querySelectorAll('{css}')].map(e => ({{
+            tag:      e.tagName,
+            text:     e.textContent.trim(),
+            cls:      e.className.trim(),
+            disabled: e.className.includes('p_AFDisabled'),
+            visible:  e.getBoundingClientRect().width > 0
+        }})).filter(e => e.text && e.text.length < 120)
+    """)
+
+
 async def main_siafe2():
     """
-    Modo SIAFE2: mapeia o menu Oracle ADF do SIAFE2 via CDP.
-    Explora todos os menus principais e submenus procurando OB / Ordens Bancárias.
+    Modo SIAFE2: navega Oracle ADF até Execução → Execução Financeira → OB.
 
     Uso: python diagnose_siafe.py --siafe2
     Chrome deve estar aberto com --remote-debugging-port=9222 e logado no SIAFE2.
+
+    Correção vs versão anterior: não usa ElementHandle em loops — o ADF faz PPR
+    (Partial Page Refresh) após cada clique, o que invalida handles guardados.
+    Todo acesso ao DOM usa page.evaluate() para evitar 'Execution context destroyed'.
     """
     log(f"SIAFE2 Diagnóstico (modo SIAFE2) — {datetime.now():%d/%m/%Y %H:%M}")
 
@@ -1165,207 +1212,207 @@ async def main_siafe2():
     # ── 1. Snapshot inicial ───────────────────────────────────────────────────
     sep("1. Página atual do SIAFE2")
     await dump_page(siafe2_page, "s01_siafe2_inicial")
-    body_init = await siafe2_page.inner_text("body")
     if "login" in siafe2_page.url.lower():
         log("⚠️  Ainda na página de login. Faça login e execute de novo.")
-        REPORT.write_text("\n".join(report_lines), encoding="utf-8")
         await p.stop()
+        REPORT.write_text("\n".join(report_lines), encoding="utf-8")
         return
 
-    # ── 2. Mapear menu principal (classe .xyo) ────────────────────────────────
-    sep("2. Menu principal (.xyo)")
-    main_menu_els = await siafe2_page.query_selector_all(".xyo")
-    log(f"  {len(main_menu_els)} itens .xyo:")
-    menu_texts: list[str] = []
-    for item in main_menu_els:
-        try:
-            t = (await item.inner_text()).strip()
-            cls = await item.get_attribute("class") or ""
-            if t:
-                menu_texts.append(t)
-                log(f"    - {t!r:40} cls={cls!r}")
-        except Exception:
-            pass
+    # ── 2. Mapa top-level via JS (sem guardar ElementHandle) ─────────────────
+    sep("2. Menu principal (.xyo) — leitura via JS")
+    top_items = await _js_read_items(siafe2_page, "a.xyo")
+    log(f"  {len(top_items)} itens:")
+    for it in top_items:
+        mark = "[D]" if it["disabled"] else "   "
+        log(f"  {mark} {it['text']!r:40} cls={it['cls']!r}")
 
-    # Fallback seletores se .xyo vazio
-    if not menu_texts:
-        sep("2b. Fallback — outros seletores de menu")
-        for sel in [
-            ".af_menuBar_item", "[role='menuitem']", ".xfl", ".xfk",
-            "a[class*='menu']", "td[class*='menu']",
-        ]:
-            items = await siafe2_page.query_selector_all(sel)
-            if items:
-                log(f"  {sel!r}: {len(items)} itens")
-                for it in items[:20]:
-                    try:
-                        t = (await it.inner_text()).strip()
-                        cls = await it.get_attribute("class") or ""
-                        if t and len(t) < 100:
-                            log(f"    - {t!r:50} cls={cls!r}")
-                    except Exception:
-                        pass
+    # ── 3. Mapear submenus de cada menu via JS (sem stale handles) ────────────
+    sep("3. Mapa completo de menus (JS evaluate — sem ElementHandle)")
 
-    # ── 3. Clicar em cada menu e registrar submenus ───────────────────────────
-    sep("3. Mapa completo de menus")
-    menu_map: dict[str, list] = {}
-    all_top_els = await siafe2_page.query_selector_all(".xyo")
-    for menu_el in all_top_els:
-        try:
-            menu_text = (await menu_el.inner_text()).strip()
-            if not menu_text:
-                continue
-            await menu_el.click()
-            await asyncio.sleep(1.2)
+    # Get unique top-level menu names (exclude already-disabled)
+    top_names = [it["text"] for it in top_items if not it["disabled"] and it["text"]]
+    seen_top: set[str] = set()
+    unique_tops = [n for n in top_names if not (n in seen_top or seen_top.add(n))]
 
-            sub_items = await siafe2_page.query_selector_all(".xgh")
-            sub_data: list[dict] = []
-            for si in sub_items:
-                try:
-                    t = (await si.inner_text()).strip()
-                    cls = await si.get_attribute("class") or ""
-                    if not t:
-                        continue
-                    disabled = "p_AFDisabled" in cls
-                    sub_data.append({"text": t, "disabled": disabled, "cls": cls})
-                except Exception:
-                    pass
+    menu_map: dict[str, list[dict]] = {}
+    for menu_name in unique_tops:
+        clicked = await _js_click_adf(siafe2_page, "a.xyo", menu_name)
+        if not clicked:
+            log(f"\n  ── {menu_name!r}: ❌ não clicável")
+            continue
+        await _adf_wait(siafe2_page, 6000)
 
-            menu_map[menu_text] = sub_data
-            log(f"\n  ── {menu_text!r} ({len(sub_data)} submenus) ──")
-            for sd in sub_data:
-                mark = "[D]" if sd["disabled"] else "   "
-                ob_flag = " ⭐OB" if any(
-                    kw in sd["text"].upper() for kw in ("OB", "ORDEM BANC", "ORDENS BANC")
-                ) else ""
-                log(f"    {mark} {sd['text']!r}{ob_flag}")
+        subs = await _js_read_items(siafe2_page, "a.xgh")
+        # xgh shows both the tab bar AND current submenu — filter to just new subs
+        # (they don't include the top-level menu names)
+        subs = [s for s in subs if s["text"] not in unique_tops]
+        menu_map[menu_name] = subs
 
-            # Press Escape to close menu before next iteration
-            await siafe2_page.keyboard.press("Escape")
-            await asyncio.sleep(0.5)
-        except Exception as ex:
-            log(f"  [erro: {ex}]")
+        log(f"\n  ── {menu_name!r} ({len(subs)} submenus) ──")
+        for s in subs:
+            mark = "[D]" if s["disabled"] else "   "
+            ob_flag = " ⭐OB" if any(
+                kw in s["text"].upper() for kw in ("OB", "ORDEM BANC", "ORDENS BANC")
+            ) else ""
+            log(f"    {mark} {s['text']!r}{ob_flag}")
 
-    # ── 4. Explorar submenus de Execução em profundidade ─────────────────────
-    sep("4. Submenus de Execução (com sub-submenus)")
-    exec_el = None
-    for menu_el in await siafe2_page.query_selector_all(".xyo"):
-        try:
-            if (await menu_el.inner_text()).strip() == "Execução":
-                exec_el = menu_el
+        await siafe2_page.keyboard.press("Escape")
+        await asyncio.sleep(0.8)
+
+    # ── 4. Navegar: Execução → Execução Financeira ────────────────────────────
+    sep("4. Navegando: Execução → Execução Financeira")
+
+    r1 = await _js_click_adf(siafe2_page, "a.xyo", "Execução")
+    if not r1:
+        log("  ❌ 'Execução' não encontrado em a.xyo — tentando texto parcial")
+        r1 = await siafe2_page.evaluate("""
+            () => {
+                for (const el of document.querySelectorAll('a.xyo, td.xyo')) {
+                    if (el.textContent.includes('Execu') && !el.className.includes('Disabled')) {
+                        el.click();
+                        return el.tagName + '|' + el.textContent.trim();
+                    }
+                }
+                return null;
+            }
+        """)
+    log(f"  Clicou 'Execução': {r1}")
+    await _adf_wait(siafe2_page, 8000)
+    await dump_page(siafe2_page, "s02_execucao_tab")
+
+    # Read Execução submenus
+    exec_subs = await _js_read_items(siafe2_page, "a.xgh")
+    exec_subs = [s for s in exec_subs if s["text"] not in unique_tops]
+    log(f"\n  Submenus de Execução ({len(exec_subs)}):")
+    for s in exec_subs:
+        mark = "[D]" if s["disabled"] else "   "
+        log(f"    {mark} {s['text']!r}")
+
+    # Click "Execução Financeira"
+    r2 = await _js_click_adf(siafe2_page, "a.xgh", "Execução Financeira")
+    if not r2:
+        # Try partial match
+        r2 = await siafe2_page.evaluate("""
+            () => {
+                for (const el of document.querySelectorAll('a.xgh')) {
+                    const t = el.textContent.trim();
+                    if (t.includes('Financeira') && !el.className.includes('Disabled')) {
+                        el.click();
+                        return t;
+                    }
+                }
+                return null;
+            }
+        """)
+    log(f"  Clicou 'Execução Financeira': {r2}")
+    await _adf_wait(siafe2_page, 8000)
+    await dump_page(siafe2_page, "s03_exec_financeira")
+
+    # ── 5. Painel esquerdo após Execução Financeira ───────────────────────────
+    sep("5. Painel esquerdo (Execução Financeira)")
+
+    # ADF left panel items are typically a.xg8 or similar
+    left_items = await _js_read_items(siafe2_page, "a.xg8")
+    if not left_items:
+        # Try broader selectors for left nav
+        for sel in ["a[class*='xg']", ".af_navigationPane a", ".af_tree a", "a.x1ub", "a.x1uc"]:
+            left_items = await _js_read_items(siafe2_page, sel)
+            if left_items:
+                log(f"  (encontrado com seletor: {sel!r})")
                 break
-        except Exception:
-            pass
 
-    if exec_el:
-        for sd in menu_map.get("Execução", []):
-            if sd["disabled"]:
-                log(f"  ⏭️  '{sd['text']}' — desativado")
-                continue
+    log(f"  {len(left_items)} itens no painel esquerdo:")
+    for it in left_items:
+        ob_flag = " ⭐OB" if "OB" in it["text"].upper() else ""
+        vis = "✓" if it["visible"] else "·"
+        log(f"  {vis} {it['text']!r:50} cls={it['cls']!r}{ob_flag}")
 
-            # Reopen Execução menu
-            try:
-                exec_el2 = None
-                for el in await siafe2_page.query_selector_all(".xyo"):
-                    if (await el.inner_text()).strip() == "Execução":
-                        exec_el2 = el
-                        break
-                if not exec_el2:
-                    break
-                await exec_el2.click()
-                await asyncio.sleep(1)
+    if not left_items:
+        log("  (painel vazio — listando TODOS elementos visíveis para diagnóstico)")
+        all_vis = await siafe2_page.evaluate(_JS_LEAF_ELEMENTS)
+        for e in all_vis:
+            if e.get("visible"):
+                log(f"  ✓ <{e['tag'].lower():6}> {e['text']!r:60} cls={e['cls']!r}")
 
-                # Find and click this submenu item
-                sub_items2 = await siafe2_page.query_selector_all(".xgh")
-                target = None
-                for si in sub_items2:
-                    try:
-                        t = (await si.inner_text()).strip()
-                        cls = await si.get_attribute("class") or ""
-                        if t == sd["text"] and "p_AFDisabled" not in cls:
-                            target = si
-                            break
-                    except Exception:
-                        pass
+    # ── 6. Clicar em 'OB' no painel esquerdo ─────────────────────────────────
+    sep("6. Clicando em 'OB' no painel esquerdo")
 
-                if not target:
-                    log(f"  ❌ '{sd['text']}' não clicável")
-                    await siafe2_page.keyboard.press("Escape")
-                    continue
-
-                await target.click()
-                await asyncio.sleep(1)
-
-                sub2 = await siafe2_page.query_selector_all(".xgg")
-                if sub2:
-                    log(f"\n  ▶ '{sd['text']}' → {len(sub2)} sub-submenus:")
-                    for ssi in sub2:
-                        try:
-                            t = (await ssi.inner_text()).strip()
-                            cls2 = await ssi.get_attribute("class") or ""
-                            disabled2 = "p_AFDisabled" in cls2
-                            ob_flag = " ⭐OB" if any(
-                                kw in t.upper() for kw in ("OB", "ORDEM BANC", "ORDENS BANC")
-                            ) else ""
-                            mark2 = "[D]" if disabled2 else "   "
-                            if t:
-                                log(f"      {mark2} {t!r}{ob_flag}")
-                        except Exception:
-                            pass
-                else:
-                    log(f"  ▶ '{sd['text']}' — sem sub-submenus (abriu página?)")
-                    body_after = await siafe2_page.inner_text("body")
-                    if len(body_after) != len(body_init):
-                        log(f"    Texto página ({len(body_after)} chars): {body_after[:300]}")
-                    await dump_page(siafe2_page, f"s04_exec_{sd['text'][:20].replace(' ','_').lower()}")
-
-                await siafe2_page.keyboard.press("Escape")
-                await asyncio.sleep(0.5)
-            except Exception as ex:
-                log(f"  [erro: {ex}]")
-    else:
-        log("  ❌ Menu 'Execução' não encontrado no DOM")
-
-    # ── 5. Busca por 'OB' em todo o DOM ──────────────────────────────────────
-    sep("5. Elementos com 'OB' / 'Ordem Bancária' no DOM")
-    ob_elements = await siafe2_page.evaluate("""
+    # Try known left-panel selectors for exact text "OB"
+    r3 = await siafe2_page.evaluate("""
         () => {
-            const kws = ['OB', 'Ordem Banc', 'Ordens Banc', 'ordem banc'];
-            const results = [];
-            for (const el of document.querySelectorAll('*')) {
-                const direct = [...el.childNodes]
-                    .filter(n => n.nodeType === 3)
-                    .map(n => n.textContent.trim())
-                    .filter(Boolean)
-                    .join(' ');
-                if (!direct || direct.length > 200) continue;
-                if (kws.some(k => direct.includes(k))) {
-                    const r = el.getBoundingClientRect();
-                    results.push({
-                        tag: el.tagName, cls: el.className,
-                        text: direct, visible: r.width > 0 && r.height > 0
-                    });
+            const candidates = ['a.xg8', 'a[class*="xg"]', 'a', 'span', 'td'];
+            for (const sel of candidates) {
+                for (const el of document.querySelectorAll(sel)) {
+                    const direct = [...el.childNodes]
+                        .filter(n => n.nodeType === 3)
+                        .map(n => n.textContent.trim())
+                        .filter(Boolean)
+                        .join('');
+                    if ((direct === 'OB' || direct === 'OB ' || direct === ' OB')
+                        && el.getBoundingClientRect().width > 0) {
+                        el.click();
+                        return el.tagName + '|cls=' + el.className + '|text=' + direct;
+                    }
                 }
             }
-            return results;
+            // Broader: any visible element containing standalone 'OB'
+            for (const el of document.querySelectorAll('a, span, td, li')) {
+                const t = el.textContent.trim();
+                if (t === 'OB' && el.getBoundingClientRect().width > 0) {
+                    el.click();
+                    return 'BROAD|' + el.tagName + '|' + el.className;
+                }
+            }
+            return null;
         }
     """)
-    log(f"  {len(ob_elements)} elementos encontrados:")
-    for e in ob_elements:
-        vis = "✓" if e.get("visible") else "·"
-        log(f"  {vis} <{e['tag'].lower():8}> text={e['text']!r:60} cls={e['cls']!r}")
 
-    # ── 6. Dump todos os itens visíveis ──────────────────────────────────────
-    sep("6. Todos os elementos visíveis (leaf nodes)")
-    leaf_els = await siafe2_page.evaluate(_JS_LEAF_ELEMENTS)
-    visible_els = [e for e in leaf_els if e.get("visible")]
-    log(f"  {len(visible_els)} visíveis:")
-    for e in visible_els:
-        log(f"  ✓ <{e['tag'].lower():6}> {e['text']!r:60} cls={e['cls'][:50]!r}")
+    if r3:
+        log(f"  ✅ Clicou OB: {r3}")
+        await _adf_wait(siafe2_page, 10000)
+        await dump_page(siafe2_page, "s04_ob_screen")
+
+        # ── 6a. Mapear a tela de OB completamente ────────────────────────────
+        sep("6a. Tela OB — inputs e filtros")
+        await _dump_inputs(siafe2_page, "Formulário OB")
+
+        sep("6b. Tela OB — colunas da grid")
+        headers = await siafe2_page.evaluate("""
+            () => {
+                for (const sel of ['th', 'thead td', '.af_column_cell-text',
+                                   '[class*="Header"]', '[class*="header"]']) {
+                    const els = [...document.querySelectorAll(sel)];
+                    const texts = els.map(e => e.textContent.trim()).filter(Boolean);
+                    if (texts.length > 0) return {sel, texts};
+                }
+                return null;
+            }
+        """)
+        if headers:
+            log(f"  Colunas ({headers['sel']}): {headers['texts']}")
+        else:
+            log("  (grid headers não encontrados)")
+
+        sep("6c. Tela OB — todos os elementos visíveis")
+        ob_els = await siafe2_page.evaluate(_JS_LEAF_ELEMENTS)
+        for e in ob_els:
+            if e.get("visible"):
+                log(f"  ✓ <{e['tag'].lower():6}> {e['text']!r:60} cls={e['cls'][:50]!r}")
+
+        sep("6d. Tela OB — texto completo da página")
+        ob_body = await siafe2_page.inner_text("body")
+        log(f"  Texto completo ({len(ob_body)} chars):\n{ob_body[:5000]}")
+
+    else:
+        log("  ❌ 'OB' não encontrado — listando itens visíveis para diagnóstico")
+        all_vis2 = await siafe2_page.evaluate(_JS_LEAF_ELEMENTS)
+        for e in all_vis2:
+            if e.get("visible"):
+                log(f"  ✓ <{e['tag'].lower():6}> {e['text']!r:60} cls={e['cls']!r}")
 
     # ── 7. HTML completo ──────────────────────────────────────────────────────
     html = await siafe2_page.content()
-    html_path = SCREENSHOTS / "siafe2_dom.html"
+    html_path = SCREENSHOTS / "siafe2_ob_dom.html"
     html_path.write_text(html, encoding="utf-8")
     log(f"\n  HTML completo: {html_path.name} ({len(html)} chars)")
 
