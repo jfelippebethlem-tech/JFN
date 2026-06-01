@@ -74,7 +74,7 @@ _ANTHROPIC_MODEL = "claude-opus-4-8"
 
 
 def _openrouter_model() -> str:
-    return os.environ.get("OPENROUTER_SMART_MODEL", "nousresearch/hermes-3-llama-3.1-405b:free")
+    return os.environ.get("OPENROUTER_SMART_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
 
 
 def _detect_provider() -> tuple[str, str, str]:
