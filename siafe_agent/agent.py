@@ -49,7 +49,8 @@ Estrutura do SIAFE2:
 - Caminho: FlexVision > Consultas > Execução por OB
 
 Diretrizes:
-- Se o usuário pedir dados, faça login automaticamente (sem perguntar credenciais)
+- O LOGIN JÁ FOI REALIZADO na inicialização. NÃO chame login_siafe a menos que
+  receba explicitamente um erro de "sessão expirada" ou "não autenticado".
 - Se o usuário mencionar um ano específico, troque o exercício com switch_exercicio
 - Se aparecer campo de código por e-mail (2FA), peça ao usuário
 - Se um passo falhar, tire screenshot e explique o problema
@@ -74,7 +75,9 @@ _ANTHROPIC_MODEL = "claude-opus-4-8"
 
 
 def _openrouter_model() -> str:
-    return os.environ.get("OPENROUTER_SMART_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+    # "openrouter/free" é o roteador inteligente do OpenRouter: escolhe automaticamente
+    # um modelo gratuito que suporte tool calling — nunca retorna 404.
+    return os.environ.get("OPENROUTER_SMART_MODEL", "openrouter/free")
 
 
 def _detect_provider() -> tuple[str, str, str]:
@@ -156,8 +159,8 @@ async def _llm_request(
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429:
                 if attempt == 0:
-                    console.print(f"[yellow]⏳ {provider} no limite de taxa — aguardando 3s...[/yellow]")
-                    await asyncio.sleep(3)
+                    console.print(f"[yellow]⏳ {provider} no limite de taxa — aguardando 10s...[/yellow]")
+                    await asyncio.sleep(10)
                     continue
                 if fallback and fallback[0]:
                     fb_provider, fb_key, fb_model = fallback
@@ -369,6 +372,8 @@ class SIAFEAgent:
     # ── Dispatcher ────────────────────────────────────────────────────────────
 
     async def _execute_tool(self, name: str, inputs: dict) -> Any:
+        if not isinstance(inputs, dict):
+            inputs = {}
         try:
             match name:
                 case "login_siafe":
