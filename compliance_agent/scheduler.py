@@ -135,6 +135,26 @@ async def rodar_ciclo_diario():
     except Exception as e:
         console.print(f"    [yellow]Groq análise indisponível: {e}[/yellow]")
 
+    # Verificação CEIS/CNEP (sanções federais)
+    try:
+        from compliance_agent.collectors.ceis import verificar_obs_contra_sancoes
+        sancoes = await verificar_obs_contra_sancoes(session, hoje)
+        if sancoes:
+            console.print(f"    [red]🚨 {len(sancoes)} PAGAMENTO(S) A EMPRESA(S) SANCIONADA(S)![/red]")
+        else:
+            console.print("    CEIS/CNEP: nenhuma sanção detectada.")
+    except Exception as e:
+        console.print(f"    [yellow]CEIS/CNEP: {e}[/yellow]")
+
+    # Histórico no Querido Diário
+    try:
+        from compliance_agent.collectors.querido_diario import enriquecer_obs_com_historico
+        hist_alertas = await enriquecer_obs_com_historico(session, hoje)
+        if hist_alertas:
+            console.print(f"    [yellow]{len(hist_alertas)} empresa(s) com histórico suspeito no DOERJ.[/yellow]")
+    except Exception as e:
+        console.print(f"    [yellow]Querido Diário: {e}[/yellow]")
+
     # Enriquecimento CNPJ + verificação PNCP + anomalias estatísticas + grafo
     console.print("[cyan]  Enriquecendo CNPJs e verificando PNCP...[/cyan]")
     try:
