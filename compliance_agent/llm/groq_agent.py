@@ -69,7 +69,15 @@ async def _groq(messages: list[dict], max_tokens: int = 800, temperature: float 
     async with httpx.AsyncClient(timeout=30) as client:
         resp = await client.post(GROQ_URL, json=payload, headers=headers)
         resp.raise_for_status()
-        return resp.json()["choices"][0]["message"]["content"]
+        data = resp.json()
+        choices = data.get("choices") or []
+        if not choices:
+            raise ValueError(f"Groq sem choices: {data}")
+        msg = choices[0].get("message") or {}
+        content = msg.get("content") or ""
+        if not content:
+            raise ValueError(f"Groq conteúdo vazio: {choices[0]}")
+        return content
 
 
 def _parse_json(raw: str) -> dict | list | None:
