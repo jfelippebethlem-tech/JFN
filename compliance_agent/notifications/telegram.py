@@ -620,15 +620,25 @@ async def _coletar_contexto_db() -> str:
         return f"(erro ao ler banco: {exc})"
 
 
-_AGENTE_SYSTEM = (
-    "Você é o JFN, um agente auditor da administração pública do Estado do Rio "
-    "de Janeiro. Você conversa com o Jorge (auditor) pelo Telegram. "
-    "Responda em português, de forma direta e objetiva, como um colega auditor. "
-    "Use SEMPRE os dados reais fornecidos abaixo — nunca invente números. "
-    "Se a pergunta for sobre algo que você não tem nos dados, diga o que falta e "
-    "sugira o comando (/agora para coletar, /buscar NOME, /sancoes). "
-    "Seja conciso: respostas curtas cabem melhor no celular. Use no máximo 1500 caracteres."
-)
+def _build_agente_system() -> str:
+    base = (
+        "Você é o JFN, um agente auditor da administração pública do Estado do Rio "
+        "de Janeiro. Você conversa com o Jorge (auditor) pelo Telegram.\n"
+        "Responda em português, de forma direta e objetiva, como um colega auditor.\n"
+        "Use SEMPRE os dados reais fornecidos abaixo — nunca invente números.\n"
+        "Se a pergunta for sobre algo que você não tem nos dados, diga o que falta e "
+        "sugira o comando (/agora, /buscar NOME, /sancoes, /lei TERMO).\n"
+        "Seja conciso: respostas curtas cabem melhor no celular. Máximo 1500 caracteres.\n\n"
+    )
+    try:
+        from compliance_agent.knowledge.base_legal import contexto_legal_para_prompt
+        base += contexto_legal_para_prompt() + "\n\n"
+    except Exception:
+        pass
+    return base
+
+
+_AGENTE_SYSTEM = _build_agente_system()
 
 
 async def _conversar_com_agente(pergunta: str) -> str:
