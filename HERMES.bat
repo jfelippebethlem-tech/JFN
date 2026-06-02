@@ -70,23 +70,7 @@ exit /b 1
 
 REM ====== PASSO 4: Chrome debug 9222 =========================
 echo   [4/6] Abrindo Chrome no modo debug (porta 9222)...
-python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9222/json/version',timeout=2)" >nul 2>&1
-if not errorlevel 1 goto :chrome_ok
-call :abrir_chrome
-set /a tent=0
-:espera_chrome
-set /a tent+=1
-timeout /t 3 /nobreak >nul
-python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9222/json/version',timeout=2)" >nul 2>&1
-if not errorlevel 1 goto :chrome_subiu
-if !tent! lss 12 goto :espera_chrome
-echo         AVISO: Chrome nao subiu no modo debug. O Hermes tentara abrir sozinho.
-goto :passo5
-:chrome_subiu
-echo         OK - Chrome debug no ar (9222) — faca login no SIAFE nessa janela
-goto :passo5
-:chrome_ok
-echo         OK - Chrome debug ja estava no ar (9222)
+python _abrir_chrome.py
 :passo5
 
 REM ====== PASSO 5: painel web + chat do Hermes ===============
@@ -113,18 +97,3 @@ echo   [%date% %time%] Agente encerrou. Reiniciando em 10s... (feche para parar)
 ping 127.0.0.1 -n 11 >nul
 goto :rodar
 
-REM ============================================================
-:abrir_chrome
-set "CHROME_EXE="
-if exist "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%PROGRAMFILES%\Google\Chrome\Application\chrome.exe"
-if exist "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe"
-if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
-if not defined CHROME_EXE goto :sem_chrome
-set "JFN_PERFIL=%LOCALAPPDATA%\JFN\ChromeDebug"
-echo         Perfil JFN: %JFN_PERFIL%
-echo         Abrindo Chrome com porta 9222...
-start "" "%CHROME_EXE%" --remote-debugging-port=9222 --user-data-dir="%JFN_PERFIL%" --no-first-run --no-default-browser-check "https://siafe2.fazenda.rj.gov.br/Siafe/"
-goto :eof
-:sem_chrome
-echo         AVISO: Chrome nao encontrado.
-goto :eof
