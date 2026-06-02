@@ -10,7 +10,7 @@ from sqlalchemy import (
     Column, String, Integer, Float, Date, DateTime, Boolean,
     Text, ForeignKey, Index, create_engine, event, text
 )
-from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker
+from sqlalchemy.orm import DeclarativeBase, relationship, sessionmaker, Session
 from pathlib import Path
 
 
@@ -301,6 +301,7 @@ class OrdemBancaria(Base):
     numero_processo   = Column(String(50), index=True)  # SEI process number
     numero_sei        = Column(String(50), index=True)
     observacao        = Column(Text)
+    categoria         = Column(String(50), index=True) # Ex: obras, saude, TI
     raw_json          = Column(Text)             # full data captured from SIAFE2
     exercicio         = Column(Integer, index=True)
     coletado_em       = Column(DateTime, default=datetime.utcnow, index=True)
@@ -393,16 +394,49 @@ def init_db(db_path: Path = DB_PATH):
     return engine
 
 
+import importlib.util
+import sys
+
 def _migrate(engine):
-    """Apply ALTER TABLE migrations for columns added after initial deploy."""
-    migrations = [
-        # Added when OrdemBancaria model was introduced
-        "ALTER TABLE alertas ADD COLUMN ordem_bancaria_id INTEGER REFERENCES ordens_bancarias(id)",
-    ]
+    """Apply incremental migrations."""
+    migrations_dir = Path(__file__).parent / "migrations"
+    if not migrations_dir.exists():
+        return
+
+    # Keep track of applied migrations in a simple table
     with engine.connect() as conn:
-        for stmt in migrations:
-            try:
-                conn.execute(text(stmt))
-                conn.commit()
-            except Exception:
-                pass  # Column already exists — safe to ignore
+        conn.execute(text("""
+            CREATE TABLE IF NOT EXISTS _alembic_version (
+                version_num VARCHAR(32) NOT NULL PRIMARY KEY
+            )
+        """))
+        conn.commit()
+
+    applied_migrations = set()
+    with engine.connect() as conn:
+        result = conn.execute(text("SELECT version_num FROM _alembic_version"))
+        for row in result:
+            applied_migrations.add(row[0])
+        conn.commit()
+
+    for migration_file in sorted(migrations_dir.glob("*.py")):
+        version_num = migration_file.stem  # e.g., "001_extract_raw_json_data"
+        if version_num in applied_migrations:
+            continue
+
+        try:
+            spec = importlib.util.spec_from_file_location(version_num, migration_file)
+            mod = importlib.util.module_from_spec(spec)
+            sys.modules[version_num] = mod
+            spec.loader.exec_module(mod)
+
+            with Session(engine) as session:
+                mod.upgrade(session)
+                session.execute(text("INSERT INTO _alembic_version (version_num) VALUES (:version_num)"),
+                                {"version_num": version_num})
+                session.commit()
+            print(f"Migração {version_num} aplicada com sucesso.")
+        except Exception as e:
+            print(f"Erro ao aplicar migração {version_num}: {e}")
+            # Depending on policy, might re-raise or just log
+            raise
