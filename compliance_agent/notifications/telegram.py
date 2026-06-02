@@ -336,6 +336,8 @@ _AJUDA = (
     "  /lei TERMO — busca lei, acórdão ou princípio (TCE-RJ, TCU, Planalto)\n\n"
     "*Hermes 405B (análise profunda):*\n"
     "  /hermes PERGUNTA — análise sênior com raciocínio profundo\n"
+    "  /missao DESCRIÇÃO — define a missão autônoma (estilo /goal)\n"
+    "  /trabalhar — Hermes avança na missão agora (ciclo autônomo)\n"
     "  /esquemas — esquemas identificados pelo Hermes\n"
     "  /aprendi — lições aprendidas pelo agente\n"
     "  /memoria NOME — perfil acumulado de uma entidade\n\n"
@@ -730,6 +732,55 @@ async def _hermes_reply(pergunta: str, chat_id: str) -> str:
         return f"Hermes indisponível: {exc}"
 
 
+async def _missao_reply(args: str) -> str:
+    """Define ou mostra a missão autônoma do Hermes (estilo /goal)."""
+    from compliance_agent.database.models import get_session
+    from compliance_agent.hermes_goal import HermesGoalAgent
+    session = get_session()
+    try:
+        ag = HermesGoalAgent(session=session)
+        texto = (args or "").strip()
+        if not texto:
+            atual = ag.missao_atual()
+            if atual:
+                return (f"🎯 *Missão atual do Hermes:*\n_{atual}_\n\n"
+                        "Mande /trabalhar para ele avançar agora, ou /missao NOVA para trocar.")
+            return ("Nenhuma missão definida.\n\n"
+                    "Use: /missao DESCRIÇÃO\n"
+                    "Ex.: /missao audite as OBs acima de R$100 mil de hoje e investigue a maior empresa")
+        ag.definir_missao(texto)
+        return (f"🎯 *Missão definida!*\n_{texto}_\n\n"
+                "O Hermes vai persegui-la sozinho em background. "
+                "Mande /trabalhar para um ciclo imediato.")
+    finally:
+        session.close()
+
+
+async def _trabalhar_reply() -> str:
+    """Dispara um ciclo autônomo imediato do Hermes rumo à missão."""
+    from compliance_agent.database.models import get_session
+    from compliance_agent.hermes_goal import HermesGoalAgent
+    session = get_session()
+    try:
+        ag = HermesGoalAgent(session=session)
+        if not ag.missao_atual():
+            return "Defina uma missão primeiro: /missao DESCRIÇÃO"
+        res = await ag.trabalhar()
+        if res.get("erro"):
+            return f"⚠ {res['erro']}"
+        linhas = [f"🎯 *Ciclo concluído* ({res.get('n_passos',0)} passos)\n"]
+        for p in res.get("passos", []):
+            if p["acao"] == "concluir":
+                continue
+            det = str(p.get("resultado", {}))[:90]
+            linhas.append(f"⚙ {p['acao']}: {det}")
+        if res.get("resumo"):
+            linhas.append(f"\n_{res['resumo'][:400]}_")
+        return "\n".join(linhas)
+    finally:
+        session.close()
+
+
 async def _esquemas_reply() -> str:
     """Lista os esquemas identificados pelo Hermes."""
     try:
@@ -852,6 +903,13 @@ async def processar_comando(texto: str, chat_id: str) -> None:
 
     elif cmd == "/hermes":
         await enviar_mensagem(await _hermes_reply(args, chat_id), chat_id=chat_id)
+
+    elif cmd == "/missao":
+        await enviar_mensagem(await _missao_reply(args), chat_id=chat_id)
+
+    elif cmd == "/trabalhar":
+        await enviar_mensagem("🎯 Hermes iniciando ciclo autônomo na missão...", chat_id=chat_id)
+        await enviar_mensagem(await _trabalhar_reply(), chat_id=chat_id)
 
     elif cmd == "/esquemas":
         await enviar_mensagem(await _esquemas_reply(), chat_id=chat_id)

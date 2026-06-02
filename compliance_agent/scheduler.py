@@ -816,6 +816,7 @@ if __name__ == "__main__":
         from compliance_agent.llm.memoria import garantir_contexto_inicial
         from compliance_agent.llm.orquestrador import loop_investigador_autonomo
         from compliance_agent.llm.hermes_agent import loop_hermes_continuo
+        from compliance_agent.hermes_goal import loop_hermes_goal
 
         async def _loop_completo():
             init_db()
@@ -825,7 +826,8 @@ if __name__ == "__main__":
                 pass
             await _ping_inicio()
             await asyncio.gather(
-                _loop_resiliente("hermes",       loop_hermes_continuo),    # primeiro: bootstrap
+                _loop_resiliente("hermes",       loop_hermes_continuo),    # 1º: bootstrap
+                _loop_resiliente("hermes_goal",  loop_hermes_goal),        # persegue a missão
                 _loop_resiliente("monitor",      loop_monitoramento),
                 _loop_resiliente("relatorio",    loop_relatorio),
                 _loop_resiliente("telegram",     loop_comandos),

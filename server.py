@@ -136,6 +136,104 @@ async def chat_ui():
     return FileResponse("static/index.html")
 
 
+@app.get("/hermes", response_class=HTMLResponse)
+async def hermes_ui():
+    """Serve a interface do Hermes — auditor autônomo guiado por missão."""
+    return FileResponse("static/hermes.html")
+
+
+# ── Hermes Goal Agent (missão autônoma + chat) ────────────────────────────────
+
+@app.get("/api/hermes/estado")
+async def api_hermes_estado():
+    """Estado do Hermes: missão, Chrome 9222, contagens e aprendizados recentes."""
+    from compliance_agent.database.models import get_session, init_db, OrdemBancaria, Alerta
+    from compliance_agent.hermes_goal import HermesGoalAgent, chrome_disponivel
+    from compliance_agent.llm.free_llm import openrouter_available, groq_available
+    from compliance_agent.llm.memoria import lembrar
+    init_db()
+    s = get_session()
+    try:
+        ag = HermesGoalAgent(session=s)
+        aprendizados = [m["valor"][:140] for m in lembrar("licao", session=s)[:6]]
+        return JSONResponse({
+            "missao": ag.missao_atual(),
+            "chrome_9222": await chrome_disponivel(),
+            "llm_ok": bool(openrouter_available() or groq_available()),
+            "n_obs": s.query(OrdemBancaria).count(),
+            "n_alertas": s.query(Alerta).count(),
+            "aprendizados": aprendizados,
+        })
+    finally:
+        s.close()
+
+
+@app.post("/api/hermes/missao")
+async def api_hermes_definir_missao(payload: dict):
+    from compliance_agent.database.models import get_session, init_db
+    from compliance_agent.hermes_goal import HermesGoalAgent
+    init_db()
+    s = get_session()
+    try:
+        texto = (payload or {}).get("missao", "").strip()
+        if not texto:
+            return JSONResponse({"erro": "missão vazia"}, status_code=400)
+        HermesGoalAgent(session=s).definir_missao(texto)
+        return JSONResponse({"ok": True, "missao": texto})
+    finally:
+        s.close()
+
+
+@app.delete("/api/hermes/missao")
+async def api_hermes_limpar_missao():
+    from compliance_agent.database.models import get_session, init_db
+    from compliance_agent.hermes_goal import HermesGoalAgent
+    init_db()
+    s = get_session()
+    try:
+        HermesGoalAgent(session=s).limpar_missao()
+        return JSONResponse({"ok": True})
+    finally:
+        s.close()
+
+
+@app.post("/api/hermes/trabalhar")
+async def api_hermes_trabalhar():
+    """Dispara UM ciclo autônomo do Hermes rumo à missão e devolve os passos."""
+    from compliance_agent.database.models import get_session, init_db
+    from compliance_agent.hermes_goal import HermesGoalAgent
+    init_db()
+    s = get_session()
+    try:
+        ag = HermesGoalAgent(session=s)
+        if not ag.missao_atual():
+            return JSONResponse({"erro": "Defina uma missão antes de trabalhar."})
+        return JSONResponse(await ag.trabalhar())
+    except Exception as e:
+        return JSONResponse({"erro": f"{type(e).__name__}: {e}"})
+    finally:
+        s.close()
+
+
+@app.post("/api/hermes/chat")
+async def api_hermes_chat(payload: dict):
+    """Conversa livre com o Hermes (com todo o contexto do banco + memória)."""
+    from compliance_agent.database.models import get_session, init_db
+    from compliance_agent.hermes_goal import HermesGoalAgent
+    init_db()
+    s = get_session()
+    try:
+        pergunta = (payload or {}).get("pergunta", "").strip()
+        if not pergunta:
+            return JSONResponse({"erro": "pergunta vazia"}, status_code=400)
+        resposta = await HermesGoalAgent(session=s).conversar(pergunta)
+        return JSONResponse({"resposta": resposta})
+    except Exception as e:
+        return JSONResponse({"erro": f"{type(e).__name__}: {e}"})
+    finally:
+        s.close()
+
+
 # ── Dashboard data (painel profissional) ──────────────────────────────────────
 
 @app.get("/api/compliance/painel")
