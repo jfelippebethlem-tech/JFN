@@ -594,22 +594,33 @@ class HermesGoalAgent:
     # ── Ciclo autônomo (estilo /goal: trabalha sem parar) ────────────────────
 
     async def _pensar(self, contexto: str) -> dict:
-        from compliance_agent.llm.hermes_agent import _hermes
+        # O auditor precisa RACIOCINAR longamente — não truncar o pensamento.
+        from compliance_agent.llm.hermes_agent import _hermes, HERMES_MAX_TOKENS
         try:
-            raw = await _hermes(_SYSTEM_GOAL, contexto, max_tokens=400)
+            raw = await _hermes(_SYSTEM_GOAL, contexto, max_tokens=HERMES_MAX_TOKENS)
             if not isinstance(raw, str):
                 raw = str(raw)
         except Exception as exc:
-            return {"acao": "concluir", "resumo": f"LLM indisponível ({type(exc).__name__})", "pensamento": str(exc)[:200]}
+            return {"acao": "__llm_falhou__", "resumo": f"LLM indisponível ({type(exc).__name__})", "pensamento": str(exc)[:200]}
         m = re.search(r"\{.*\}", raw, re.DOTALL)
         if not m:
-            return {"acao": "concluir", "resumo": "sem ação clara", "pensamento": raw[:200]}
+            return {"acao": "__llm_falhou__", "resumo": "sem JSON na resposta", "pensamento": raw[:400]}
         try:
             return json.loads(m.group())
         except Exception:
-            return {"acao": "concluir", "resumo": "JSON inválido", "pensamento": raw[:200]}
+            return {"acao": "__llm_falhou__", "resumo": "JSON inválido", "pensamento": raw[:400]}
 
-    async def trabalhar(self, max_passos_por_ciclo: int = MAX_PASSOS_POR_CICLO, max_ciclos: int = 3, on_step=None) -> dict:
+    async def trabalhar(self, max_passos_por_ciclo: int = MAX_PASSOS_POR_CICLO,
+                        max_ciclos: int = 3, on_step=None, usar_llm=None) -> dict:
+        """
+        Executa o ciclo de auditoria guiado por missão.
+
+        usar_llm:
+          - None  (auto): usa o LLM (Hermes/Groq) para pensar; se falhar, cai para
+                          a sequência local determinística.
+          - True:         força raciocínio via LLM.
+          - False:        força a sequência local (sem LLM).
+        """
         missao = self.missao_atual()
         if not missao:
             return {"ok": False, "erro": "Nenhuma missão definida. Use definir_missao()."}
@@ -619,8 +630,16 @@ class HermesGoalAgent:
         chrome_ok = await chrome_disponivel()
         conhecimento = contexto_para_prompt(self.session, max_itens=12)
 
-        # Modo /goal contínuo: executa a SEQUÊNCIA PADRÃO localmente quando o LLM falhar.
-        modo_local = True
+        # Auto-detecta disponibilidade de LLM. modo_local=True só quando NÃO há LLM
+        # ou quando o LLM falha em tempo de execução (degradação graciosa).
+        if usar_llm is None:
+            try:
+                from compliance_agent.llm.free_llm import groq_available, openrouter_available
+                modo_local = not (groq_available() or openrouter_available())
+            except Exception:
+                modo_local = True
+        else:
+            modo_local = not usar_llm
 
         for ciclo_num in range(max_ciclos):
             passos = []
@@ -648,6 +667,14 @@ class HermesGoalAgent:
                     acao = (decisao.get("acao") or "concluir").strip()
                     args = decisao.get("args") or {}
                     pensamento = decisao.get("pensamento", "")
+                    # LLM caiu em runtime → degrada para a sequência local sem
+                    # abortar o ciclo (o auditor não pode parar por um 429).
+                    if acao == "__llm_falhou__":
+                        modo_local = True
+                        acao = self._proxima_acao_local(passos)
+                        args = self._args_padrao_acao(acao)
+                        pensamento = (f"LLM indisponível ({decisao.get('resumo','')}); "
+                                      f"seguindo sequência local: {acao}")
 
                 if acao == "concluir":
                     resumo = pensamento or "ciclo concluído"
@@ -960,6 +987,219 @@ def detalhe_missao(missao_id: int, session=None) -> Optional[dict]:
     finally:
         if fechar:
             s.close()
+
+
+# ─── Auditor 24 horas: auditoria automática e ininterrupta ───────────────────
+#
+# Modo "liga e esquece": o Hermes roda um CICLO COMPLETO de auditoria
+# (coleta SIAFE + DOERJ → análise → padrões → hipóteses → teste → alertas →
+# reflexão do Hermes) repetidamente, 24h por dia, até ser desligado pelo botão
+# na interface. Estado global em memória + persistência das missões.
+
+_AUDITOR_24H = {
+    "ativo": False,
+    "task": None,
+    "iniciado_em": None,
+    "ciclos": 0,
+    "ultimo_ciclo_em": None,
+    "ultimo_resumo": "",
+    "ultimo_erro": None,
+    "objetivo": "",
+    "proximo_ciclo_em": None,
+    "intervalo_seg": int(os.environ.get("AUDITOR_24H_INTERVALO", "1800")),  # 30 min
+}
+
+_OBJETIVO_24H_PADRAO = (
+    "Auditoria contínua e abrangente das finanças do Estado do RJ: coletar OBs do "
+    "SIAFE2 e publicações do DOERJ do dia, cruzar com SEI quando houver processo, "
+    "detectar fracionamento, superfaturamento, valores redondos, OBs sem SEI, "
+    "concentração de favorecidos e nepotismo; gerar alertas fundamentados e "
+    "aprender padrões. Nunca encerrar definitivamente — repetir indefinidamente."
+)
+
+
+def status_auditor_24h() -> dict:
+    """Snapshot do estado do auditor 24h (para a interface)."""
+    st = _AUDITOR_24H
+    return {
+        "ativo": st["ativo"],
+        "iniciado_em": st["iniciado_em"],
+        "ciclos": st["ciclos"],
+        "ultimo_ciclo_em": st["ultimo_ciclo_em"],
+        "ultimo_resumo": st["ultimo_resumo"][:1000],
+        "ultimo_erro": st["ultimo_erro"],
+        "objetivo": st["objetivo"][:300],
+        "proximo_ciclo_em": st["proximo_ciclo_em"],
+        "intervalo_seg": st["intervalo_seg"],
+    }
+
+
+async def _ciclo_auditor_completo(session, objetivo: str, on_step=None) -> dict:
+    """
+    Um ciclo COMPLETO de auditoria automática:
+      1) garante Chrome 9222
+      2) coleta SIAFE2 + DOERJ do dia
+      3) roda o ciclo de raciocínio do agente (analisar→padrões→hipóteses→testar→aprender)
+      4) gera alertas de compliance
+      5) Hermes reflete sobre os alertas novos
+    Retorna um resumo do que aconteceu.
+    """
+    resumo_partes = []
+    agente = HermesGoalAgent(session=session, objetivo=objetivo)
+
+    # 1+2) Coleta (best-effort; não derruba o ciclo se uma fonte falhar)
+    for acao in ("abrir_chrome", "coletar_siafe", "coletar_doerj"):
+        try:
+            r = await agente.executar_acao(acao, agente._args_padrao_acao(acao) if acao not in
+                                           ("abrir_chrome", "coletar_siafe", "coletar_doerj") else {})
+            if acao == "coletar_siafe":
+                resumo_partes.append(f"SIAFE: {r.get('obs_salvas', 0)} OBs")
+            elif acao == "coletar_doerj":
+                resumo_partes.append(f"DOERJ: {r.get('publicacoes', 0)} pubs")
+            if on_step:
+                await _maybe_await(on_step, {"acao": acao, "resultado": r})
+        except Exception as e:
+            resumo_partes.append(f"{acao}: erro {type(e).__name__}")
+
+    # 3) Raciocínio guiado por missão (usa LLM se disponível)
+    try:
+        res = await agente.trabalhar(max_ciclos=2, on_step=on_step)
+        resumo_partes.append(f"{res.get('n_passos', 0)} passos de raciocínio")
+        if res.get("resumo"):
+            resumo_partes.append(res["resumo"][:200])
+    except Exception as e:
+        resumo_partes.append(f"raciocínio: erro {type(e).__name__}")
+
+    # 4) Gera alertas de compliance
+    try:
+        from compliance_agent.rules.generate_alerts import gerar_alertas
+        n_alertas = gerar_alertas(session)
+        if isinstance(n_alertas, int):
+            resumo_partes.append(f"{n_alertas} alertas")
+    except Exception:
+        pass
+
+    # 5) Hermes reflete sobre os alertas novos
+    try:
+        from compliance_agent.llm.hermes_agent import aprender_com_alertas_novos
+        refl = await aprender_com_alertas_novos(session)
+        if refl:
+            prio = refl.get("prioridade_investigacao", "")
+            if prio:
+                resumo_partes.append(f"Prioridade: {prio[:120]}")
+    except Exception:
+        pass
+
+    return {"ok": True, "resumo": " | ".join(resumo_partes)}
+
+
+async def _loop_auditor_24h(objetivo: str):
+    """Loop interno do auditor 24h. Roda até _AUDITOR_24H['ativo'] virar False."""
+    from compliance_agent.database.models import get_session, init_db
+    from compliance_agent.notifications.telegram import enviar_mensagem
+
+    init_db()
+    st = _AUDITOR_24H
+    try:
+        await enviar_mensagem(
+            "🟢 *Auditor 24h LIGADO*\n\n"
+            "Vou coletar SIAFE2 + DOERJ, cruzar com SEI, detectar irregularidades "
+            "e aprender padrões — em ciclos contínuos, sem parar.\n"
+            f"Intervalo entre ciclos: {st['intervalo_seg']//60} min."
+        )
+    except Exception:
+        pass
+
+    while st["ativo"]:
+        session = get_session()
+        try:
+            console.print(f"[cyan]🔁 Auditor 24h — ciclo {st['ciclos']+1}[/cyan]")
+            res = await _ciclo_auditor_completo(session, objetivo)
+            st["ciclos"] += 1
+            st["ultimo_ciclo_em"] = datetime.utcnow().isoformat()
+            st["ultimo_resumo"] = res.get("resumo", "")
+            st["ultimo_erro"] = None
+            console.print(f"[green]✓ Ciclo {st['ciclos']}: {st['ultimo_resumo'][:150]}[/green]")
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            st["ultimo_erro"] = f"{type(e).__name__}: {e}"
+            console.print(f"[yellow]Auditor 24h ciclo falhou: {e}[/yellow]")
+        finally:
+            session.close()
+
+        if not st["ativo"]:
+            break
+        st["proximo_ciclo_em"] = (
+            datetime.utcnow() + timedelta(seconds=st["intervalo_seg"])
+        ).isoformat()
+        # Espera em fatias para responder rápido ao desligamento
+        restante = st["intervalo_seg"]
+        while restante > 0 and st["ativo"]:
+            await asyncio.sleep(min(5, restante))
+            restante -= 5
+
+    st["proximo_ciclo_em"] = None
+    console.print("[dim]Auditor 24h desligado.[/dim]")
+
+
+def iniciar_auditor_24h(objetivo: str = "", intervalo_seg: Optional[int] = None) -> dict:
+    """
+    Liga o modo auditoria automática e ininterrupta (botão 'Auditor 24 horas').
+    Idempotente: se já estiver ativo, apenas devolve o estado.
+    """
+    st = _AUDITOR_24H
+    if st["ativo"]:
+        return {"ok": True, "ja_ativo": True, **status_auditor_24h()}
+
+    obj = objetivo.strip() or _OBJETIVO_24H_PADRAO
+    if intervalo_seg and intervalo_seg >= 60:
+        st["intervalo_seg"] = int(intervalo_seg)
+
+    # Persiste a missão como a "atual" para coerência com o resto do sistema
+    try:
+        from compliance_agent.database.models import get_session
+        s = get_session()
+        try:
+            HermesGoalAgent(session=s).definir_missao(obj)
+        finally:
+            s.close()
+    except Exception:
+        pass
+
+    st["ativo"] = True
+    st["objetivo"] = obj
+    st["iniciado_em"] = datetime.utcnow().isoformat()
+    st["ciclos"] = 0
+    st["ultimo_erro"] = None
+
+    try:
+        loop = asyncio.get_running_loop()
+        st["task"] = loop.create_task(_loop_auditor_24h(obj))
+    except RuntimeError:
+        # Sem event loop (chamada síncrona/teste): marca ativo mas não dispara task.
+        st["task"] = None
+
+    return {"ok": True, "ja_ativo": False, **status_auditor_24h()}
+
+
+def parar_auditor_24h() -> dict:
+    """Desliga o auditor 24h. O loop encerra no próximo check (até ~5s)."""
+    st = _AUDITOR_24H
+    st["ativo"] = False
+    task = st.get("task")
+    if task and not task.done():
+        task.cancel()
+    st["task"] = None
+    try:
+        from compliance_agent.notifications.telegram import enviar_mensagem
+        loop = asyncio.get_running_loop()
+        loop.create_task(enviar_mensagem(
+            f"🔴 *Auditor 24h DESLIGADO*\nCiclos executados: {st['ciclos']}."
+        ))
+    except Exception:
+        pass
+    return {"ok": True, **status_auditor_24h()}
 
 
 async def loop_hermes_goal():

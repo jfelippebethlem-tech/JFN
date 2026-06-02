@@ -49,17 +49,23 @@ def gerar_alerta(tipo: str, severidade: str, id_ob: int | None, descricao: str, 
     return num_ob
 
 
-def main() -> int:
+def gerar_alertas(session=None) -> int:
+    """
+    Gera alertas de compliance varrendo todas as OBs e retorna a CONTAGEM.
+    Reaproveita uma session se fornecida (senão abre/fecha a própria).
+    """
     init_db()
     cfg = CONFIG_PADRAO
     from sqlalchemy import select
     from compliance_agent.database.models import OrdemBancaria
 
-    sess = get_session()
+    sess = session or get_session()
+    fechar = session is None
     try:
         rows = sess.execute(select(OrdemBancaria)).scalars().all()
     finally:
-        sess.close()
+        if fechar:
+            sess.close()
 
     obs = []
     for o in rows:
@@ -148,6 +154,11 @@ def main() -> int:
     gerar_alerta("pendencias_investigacao", "baixa", None, txt, referencia="politica_complementar")
     count += 1
 
+    return count
+
+
+def main() -> int:
+    count = gerar_alertas()
     print(f"Alertas gerados: {count}")
     return 0
 
