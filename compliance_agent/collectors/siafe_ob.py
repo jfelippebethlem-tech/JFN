@@ -765,11 +765,22 @@ async def run_daily_collection(
                     # 1. Lê a tabela de OBs
                     raw = await page.evaluate(_JS_READ_OB_TABLE)
                     if not raw.get("found"):
-                        result["errors"].append("Tabela tblOBOrcamentaria não encontrada")
+                        result["errors"].append(
+                            "Tabela tblOBOrcamentaria não encontrada (não chegou na grade de OB)"
+                        )
                     else:
                         header = raw.get("header", [])
                         rows = raw.get("rows", [])[:1000]
                         result["records_fetched"] = len(rows)
+                        # Observabilidade: grade encontrada porém vazia é diferente de
+                        # tabela ausente. Quase sempre significa que o filtro de data/UG
+                        # não foi aplicado, ou que não há OB para a data (fim de semana).
+                        if len(rows) == 0:
+                            result["errors"].append(
+                                "Grade de OB encontrada porém VAZIA — aplique filtro de "
+                                "data/UG na tela do SIAFE ou verifique se há OB nesta data "
+                                "(fim de semana/feriado costuma ter zero)."
+                            )
 
                         # 2. Salva lista no banco
                         summary = {
