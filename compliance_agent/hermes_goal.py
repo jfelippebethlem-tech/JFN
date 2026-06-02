@@ -256,12 +256,15 @@ _SYSTEM_GOAL = (
 class HermesGoalAgent:
     """Auditor autônomo guiado por missão, com memória persistente."""
 
-    def __init__(self, session=None):
+    def __init__(self, session=None, objetivo: str = ""):
         from compliance_agent.database.models import get_session, init_db
         init_db()
         self.session = session or get_session()
         self._compliance = None  # ComplianceAgent sob demanda (tem as 22 ferramentas)
         self._historico_ciclo: list[dict] = []
+        # Override de objetivo por instância: permite missões paralelas distintas
+        # sem colidir com a missão "atual" global (slot único na memória).
+        self._objetivo_override: str = objetivo or ""
 
     # ── Missão persistente (estilo /goal) ───────────────────────────────────
 
@@ -284,6 +287,9 @@ class HermesGoalAgent:
         console.print(f"[green]🎯 Missão definida:[/green] {texto[:120]}")
 
     def missao_atual(self) -> str:
+        # Missão por instância (multi-missão) tem precedência sobre o slot global.
+        if self._objetivo_override:
+            return self._objetivo_override
         from compliance_agent.llm.memoria import lembrar
         m = lembrar("missao", chave="atual", session=self.session)
         return m[0]["valor"] if m else ""
@@ -756,6 +762,151 @@ class MissionQueue:
         return self._queue.qsize()
 
 mission_queue = MissionQueue()
+
+
+# ─── Orquestração de múltiplas missões paralelas ──────────────────────────────
+#
+# Persiste cada missão em MissaoAuditoria (histórico real no banco) e executa
+# até _MAX_CONCURRENT em paralelo via asyncio.Task. O estado em memória
+# (_running/_last na classe) reflete o que está rodando agora.
+
+_mission_semaphore: Optional[asyncio.Semaphore] = None
+_mission_tasks: set = set()
+
+
+def _get_mission_semaphore() -> asyncio.Semaphore:
+    global _mission_semaphore
+    if _mission_semaphore is None:
+        _mission_semaphore = asyncio.Semaphore(HermesGoalAgent._MAX_CONCURRENT)
+    return _mission_semaphore
+
+
+async def _executar_missao_persistida(missao_id: int, objetivo: str, titulo: str) -> None:
+    """Roda uma missão paralela, atualizando MissaoAuditoria no banco."""
+    from compliance_agent.database.models import get_session, MissaoAuditoria
+    sem = _get_mission_semaphore()
+    async with sem:
+        session = get_session()
+        try:
+            row = session.get(MissaoAuditoria, missao_id)
+            if row:
+                row.status = "executando"
+                row.started_at = datetime.utcnow()
+                session.commit()
+
+            agente = HermesGoalAgent(session=session, objetivo=objetivo)
+            resultado = await agente.run_as(str(missao_id), titulo=titulo)
+
+            row = session.get(MissaoAuditoria, missao_id)
+            if row:
+                row.status = "erro" if resultado.get("ok") is False else "concluida"
+                row.resultado = json.dumps(resultado, ensure_ascii=False)[:4000]
+                row.erro = resultado.get("erro")
+                row.finished_at = datetime.utcnow()
+                session.commit()
+        except Exception as e:
+            try:
+                row = session.get(MissaoAuditoria, missao_id)
+                if row:
+                    row.status = "erro"
+                    row.erro = f"{type(e).__name__}: {e}"
+                    row.finished_at = datetime.utcnow()
+                    session.commit()
+            except Exception:
+                pass
+        finally:
+            session.close()
+
+
+def criar_missao_paralela(objetivo: str, titulo: str = "", prioridade: str = "media",
+                          session=None) -> dict:
+    """
+    Cria uma missão paralela: persiste em MissaoAuditoria e dispara a execução
+    em background (respeitando o pool de _MAX_CONCURRENT). Retorna o registro.
+    """
+    from compliance_agent.database.models import get_session, MissaoAuditoria
+    s = session or get_session()
+    fechar = session is None
+    try:
+        row = MissaoAuditoria(
+            titulo=(titulo or objetivo[:80]),
+            objetivo=objetivo,
+            status="pendente",
+            prioridade=prioridade if prioridade in {"baixa", "media", "alta"} else "media",
+        )
+        s.add(row)
+        s.commit()
+        missao_id = row.id
+        dados = {
+            "id": missao_id, "titulo": row.titulo, "objetivo": row.objetivo,
+            "status": row.status, "prioridade": row.prioridade,
+        }
+    finally:
+        if fechar:
+            s.close()
+
+    # Dispara em background se houver loop rodando; senão fica "pendente" no banco.
+    try:
+        loop = asyncio.get_running_loop()
+        task = loop.create_task(
+            _executar_missao_persistida(missao_id, objetivo, dados["titulo"])
+        )
+        _mission_tasks.add(task)
+        task.add_done_callback(_mission_tasks.discard)
+    except RuntimeError:
+        pass  # sem event loop (chamada síncrona) — execução fica adiada
+
+    return dados
+
+
+def listar_missoes(session=None, limit: int = 50) -> list[dict]:
+    """Lista missões do banco (histórico + em execução), mais recentes primeiro."""
+    from compliance_agent.database.models import get_session, MissaoAuditoria
+    s = session or get_session()
+    fechar = session is None
+    try:
+        rows = (s.query(MissaoAuditoria)
+                .order_by(MissaoAuditoria.created_at.desc())
+                .limit(limit).all())
+        return [{
+            "id": r.id, "titulo": r.titulo, "objetivo": r.objetivo,
+            "status": r.status, "prioridade": r.prioridade,
+            "started_at": r.started_at.isoformat() if r.started_at else None,
+            "finished_at": r.finished_at.isoformat() if r.finished_at else None,
+            "erro": r.erro,
+        } for r in rows]
+    finally:
+        if fechar:
+            s.close()
+
+
+def detalhe_missao(missao_id: int, session=None) -> Optional[dict]:
+    """Detalhe de uma missão específica, incluindo resultado JSON."""
+    from compliance_agent.database.models import get_session, MissaoAuditoria
+    s = session or get_session()
+    fechar = session is None
+    try:
+        r = s.get(MissaoAuditoria, missao_id)
+        if not r:
+            return None
+        resultado = None
+        if r.resultado:
+            try:
+                resultado = json.loads(r.resultado)
+            except Exception:
+                resultado = {"raw": r.resultado}
+        return {
+            "id": r.id, "titulo": r.titulo, "objetivo": r.objetivo,
+            "status": r.status, "prioridade": r.prioridade,
+            "parametros": r.parametros, "resultado": resultado, "erro": r.erro,
+            "started_at": r.started_at.isoformat() if r.started_at else None,
+            "finished_at": r.finished_at.isoformat() if r.finished_at else None,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+        }
+    finally:
+        if fechar:
+            s.close()
+
 
 async def loop_hermes_goal():
     """

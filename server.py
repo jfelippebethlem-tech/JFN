@@ -200,6 +200,61 @@ async def api_hermes_limpar_missao():
         s.close()
 
 
+# ── Multi-missão paralela (pool limitado + histórico no banco) ────────────────
+
+@app.post("/api/hermes/missoes")
+async def api_hermes_criar_missao(payload: dict):
+    """Cria uma missão paralela e dispara a execução em background."""
+    from compliance_agent.database.models import get_session, init_db
+    from compliance_agent.hermes_goal import criar_missao_paralela
+    init_db()
+    s = get_session()
+    try:
+        objetivo = (payload or {}).get("objetivo", "").strip()
+        if not objetivo:
+            return JSONResponse({"erro": "objetivo vazio"}, status_code=400)
+        titulo = (payload or {}).get("titulo", "").strip()
+        prioridade = (payload or {}).get("prioridade", "media").strip()
+        dados = criar_missao_paralela(objetivo, titulo=titulo,
+                                      prioridade=prioridade, session=s)
+        return JSONResponse({"ok": True, "missao": dados})
+    finally:
+        s.close()
+
+
+@app.get("/api/hermes/missoes")
+async def api_hermes_listar_missoes():
+    """Lista missões (em execução + histórico), mais recentes primeiro."""
+    from compliance_agent.database.models import get_session, init_db
+    from compliance_agent.hermes_goal import listar_missoes, HermesGoalAgent
+    init_db()
+    s = get_session()
+    try:
+        return JSONResponse({
+            "ok": True,
+            "missoes": listar_missoes(session=s),
+            "em_execucao": HermesGoalAgent.running_missions(),
+        })
+    finally:
+        s.close()
+
+
+@app.get("/api/hermes/missoes/{missao_id}")
+async def api_hermes_detalhe_missao(missao_id: int):
+    """Detalhe de uma missão específica."""
+    from compliance_agent.database.models import get_session, init_db
+    from compliance_agent.hermes_goal import detalhe_missao
+    init_db()
+    s = get_session()
+    try:
+        d = detalhe_missao(missao_id, session=s)
+        if not d:
+            return JSONResponse({"erro": "missão não encontrada"}, status_code=404)
+        return JSONResponse({"ok": True, "missao": d})
+    finally:
+        s.close()
+
+
 _agent_loop_trabalhar_task: Optional[asyncio.Task] = None
 _agent_loop_lock = asyncio.Lock()
 _agent_loop_queue: Optional[asyncio.Queue] = None  # SSE stream

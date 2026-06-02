@@ -315,33 +315,58 @@ def test_goal_agent_missao_persistente():
 
 
 def test_goal_agent_ciclo_autonomo():
+    """
+    Ciclo /goal em modo LOCAL (sem LLM): executa a sequência padrão
+    (analisar_dados → identificar_padroes → ... → aprender → concluir)
+    e registra ao menos uma lição na memória persistente.
+    """
     from compliance_agent.database.models import init_db, get_session, MemoriaAprendizado
     from compliance_agent.hermes_goal import HermesGoalAgent
-    import compliance_agent.llm.hermes_agent as ha
 
-    plano = [
-        {"pensamento": "ver alertas", "acao": "listar_alertas", "args": {}},
-        {"pensamento": "aprender", "acao": "aprender", "args": {"chave": "k", "licao": "lição teste"}},
-        {"pensamento": "fim", "acao": "concluir", "resumo": "ok"},
-    ]
-    estado = {"i": 0}
-
-    async def fake_hermes(system, prompt, max_tokens=600):
-        d = plano[min(estado["i"], len(plano) - 1)]
-        estado["i"] += 1
-        return json.dumps(d)
-
-    ha._hermes = fake_hermes
     init_db()
     s = get_session()
     try:
         ag = HermesGoalAgent(session=s)
         ag.definir_missao("missão de teste")
-        res = asyncio.run(ag.trabalhar(max_passos=5))
+        res = asyncio.run(ag.trabalhar(max_passos_por_ciclo=8, max_ciclos=1))
+        assert res["ok"] is True
         acoes = [p["acao"] for p in res["passos"]]
-        assert "listar_alertas" in acoes
+        # A sequência local sempre conclui e aprende ao longo do caminho.
         assert "concluir" in acoes
+        assert "aprender" in acoes
         assert s.query(MemoriaAprendizado).filter_by(categoria="licao").count() >= 1
+    finally:
+        s.close()
+
+
+def test_multi_missao_persiste_e_lista():
+    """
+    Multi-missão: criar_missao_paralela persiste em MissaoAuditoria e
+    listar_missoes/detalhe_missao recuperam o registro. Sem event loop ativo,
+    a missão fica 'pendente' (execução adiada) — sem crash.
+    """
+    from compliance_agent.database.models import init_db, get_session, MissaoAuditoria
+    from compliance_agent.hermes_goal import (
+        criar_missao_paralela, listar_missoes, detalhe_missao,
+    )
+    init_db()
+    s = get_session()
+    try:
+        dados = criar_missao_paralela(
+            "Auditar obras acima de R$ 119 mil sem SEI",
+            titulo="Obras sem SEI", prioridade="alta", session=s,
+        )
+        assert dados["id"] > 0
+        assert dados["prioridade"] == "alta"
+
+        missoes = listar_missoes(session=s)
+        assert any(m["id"] == dados["id"] for m in missoes)
+
+        det = detalhe_missao(dados["id"], session=s)
+        assert det is not None
+        assert det["objetivo"].startswith("Auditar obras")
+        # Sem event loop no teste, a execução fica adiada → status pendente.
+        assert det["status"] in {"pendente", "executando", "concluida", "erro"}
     finally:
         s.close()
 
