@@ -339,6 +339,158 @@ async def graph_page():
     return FileResponse("static/graph.html")
 
 
+@app.get("/graph", response_class=HTMLResponse)
+async def graph_page():
+    """Serve the D3.js graph visualization page."""
+    return FileResponse("static/graph.html")
+
+
+@app.get("/api/compliance/relatorio_30d")
+async def api_relatorio_30d():
+    """Gera relatório estruturado das OBs dos últimos 30 dias em Markdown."""
+    try:
+        import sqlalchemy as sa
+        from datetime import date, timedelta
+        from pathlib import Path
+        from compliance_agent.database.models import (
+            get_session, init_db, OrdemBancaria, Alerta,
+        )
+
+        init_db()
+        session = get_session()
+        try:
+            hoje = date.today()
+            inicio = hoje - timedelta(days=30)
+
+            rows = (
+                session.query(OrdemBancaria)
+                .filter(OrdemBancaria.data_emissao >= inicio)
+                .order_by(
+                    sa.desc(OrdemBancaria.data_emissao),
+                    sa.desc(OrdemBancaria.id),
+                )
+                .all()
+            )
+
+            obs_list = []
+            erros = []
+            for o in rows:
+                credor = (o.favorecido_cpf or "").strip() or (o.favorecido_banco or "").strip()
+                ob_info = {
+                    "id": o.id,
+                    "numero_ob": o.numero_ob,
+                    "numero_sei": o.numero_sei or "—",
+                    "numero_processo": o.numero_processo or "—",
+                    "credor": credor,
+                    "favorecido": o.favorecido_nome or "—",
+                    "ug": o.ug_codigo or "—",
+                    "tipo": o.tipo_ob or "—",
+                    "status": o.status or "—",
+                    "categoria": o.categoria or "outros",
+                    "data_emissao": str(o.data_emissao) if getattr(o, "data_emissao", None) else "—",
+                    "data_pagamento": str(o.data_pagamento) if getattr(o, "data_pagamento", None) else "—",
+                    "valor": float(o.valor) if o.valor is not None else 0.0,
+                }
+                obs_list.append(ob_info)
+
+                if not o.numero_sei:
+                    erros.append({
+                        "tipo": "SEI ausente",
+                        "OB": o.numero_ob or str(o.id),
+                        "favorecido": ob_info["favorecido"],
+                        "valor": ob_info["valor"],
+                    })
+                if o.status and o.status.lower() in {"anulada", "cancelada"}:
+                    erros.append({
+                        "tipo": f"OB {o.status.lower()}",
+                        "OB": o.numero_ob or str(o.id),
+                        "favorecido": ob_info["favorecido"],
+                        "valor": ob_info["valor"],
+                    })
+                if o.numero_sei and "SEI-" not in (o.numero_sei or ""):
+                    erros.append({
+                        "tipo": "SEI em formato suspeito",
+                        "OB": o.numero_ob or str(o.id),
+                        "favorecido": ob_info["favorecido"],
+                        "valor": ob_info["valor"],
+                        "detalhe": o.numero_sei,
+                    })
+
+            resumo = {}
+            for ob in obs_list:
+                cat = ob["categoria"]
+                resumo[cat] = {
+                    "qtd": resumo.get(cat, {}).get("qtd", 0) + 1,
+                    "total": resumo.get(cat, {}).get("total", 0.0) + ob["valor"],
+                }
+
+            fav_map = {}
+            for ob in obs_list:
+                key = ob["favorecido"] or "—"
+                fav_map[key] = {
+                    "qtd": fav_map.get(key, {}).get("qtd", 0) + 1,
+                    "total": fav_map.get(key, {}).get("total", 0.0) + ob["valor"],
+                    "documento": ob["credor"],
+                }
+            top_fav = sorted(
+                [{"nome": k, **v} for k, v in fav_map.items()],
+                key=lambda x: x["total"],
+                reverse=True,
+            )[:20]
+
+            linhas = []
+            linhas.append("# Relatório de Auditoria — Últimos 30 dias")
+            linhas.append(f"Gerado em {hoje} | Janela {inicio} a {hoje}")
+            linhas.append("")
+            linhas.append(f"- OBs analisadas: {len(obs_list)}")
+            linhas.append(f"- Erros coletados: {len(erros)}")
+            linhas.append("")
+
+            linhas.append("## Resumo por categoria")
+            for cat, vals in sorted(resumo.items(), key=lambda x: x[1]["total"], reverse=True):
+                linhas.append(f"- **{cat}**: {vals['qtd']} OBs | R$ {vals['total']:,.2f}")
+            linhas.append("")
+
+            linhas.append("## Top favorecidos")
+            linhas.append("| Favorecido | Documento | QTD | Total |")
+            linhas.append(" | -- | -- | --: | --: |")
+            for f in top_fav:
+                linhas.append(
+                    f"| {f['nome']} | {f['documento']} | {f['qtd']} | R$ {f['total']:,.2f} |"
+                )
+            linhas.append("")
+
+            if obs_list:
+                linhas.append("## OBs")
+                linhas.append("| OB | SEI | Processo | Documento | Favorecido | UG | Categoria | Data | Valor |")
+                linhas.append(" | -- | -- | -- | -- | -- | -- | -- | -- | --: |")
+                for ob in obs_list[:200]:
+                    linhas.append(
+                        f"| {ob['numero_ob'] or ob['id']} | {ob['numero_sei']} | {ob['numero_processo']} | {ob['credor']} | {ob['favorecido']} | {ob['ug']} | {ob['categoria']} | {ob['data_emissao']} | R$ {ob['valor']:,.2f} |"
+                    )
+                linhas.append("")
+
+            if erros:
+                linhas.append("## Erros / Pendências (para enviar ao Claude Code)")
+                linhas.append("```")
+                for er in erros[:200]:
+                    linhas.append(
+                        f"- [{er['tipo']}] OB {er['OB']} | {er['favorecido']} | R$ {er.get('valor', 0):,.2f}"
+                        + (f" | {er.get('detalhe', '')}" if er.get('detalhe') else "")
+                    )
+                linhas.append("```")
+
+            relatorio = "\n".join(linhas)
+            Path("reports").mkdir(exist_ok=True)
+            out = Path(f"reports/relatorio_30d_{hoje}.md")
+            out.write_text(relatorio, encoding="utf-8")
+            return JSONResponse(content={"ok": True, "path": str(out), "erros_coletados": len(erros)})
+        finally:
+            session.close()
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
+
+
 @app.get("/api/compliance/graph")
 async def api_compliance_graph():
     """
