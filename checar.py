@@ -76,7 +76,13 @@ async def main():
                 bad(f"Chrome respondeu HTTP {r.status_code}")
     except Exception as e:
         bad(f"Chrome 9222 inacessivel: {e}")
-        print("       -> Rode o JFN.bat: o passo 5 abre o Chrome no modo debug.")
+        import platform, os
+        if platform.system() == "Windows":
+            perfil = os.path.join(os.environ.get("LOCALAPPDATA", ""), "JFN", "ChromeDebug")
+            print(f"       -> Rode HERMES.bat — o passo 4 abre o Chrome no modo debug.")
+            print(f"          Perfil que sera usado: {perfil}")
+        else:
+            print("       -> Rode HERMES.bat — o passo 4 abre o Chrome no modo debug.")
 
     # 3. DOERJ ----------------------------------------------------------------
     print("\n=== 3. DOERJ (diario oficial - publico) ===")
