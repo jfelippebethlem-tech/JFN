@@ -365,6 +365,27 @@ class MemoriaAprendizado(Base):
     )
 
 
+# ── Missões de auditoria (múltiplas paralelas) ───────────────────────────────
+class MissaoAuditoria(Base):
+    __tablename__ = "missoes_auditoria"
+
+    id            = Column(Integer, primary_key=True)
+    titulo        = Column(String(300), nullable=False)
+    objetivo      = Column(Text, nullable=False)
+    status        = Column(String(30), default="pendente", index=True)
+    prioridade    = Column(String(20), default="media")   # baixa | media | alta
+    parametros    = Column(Text)                          # JSON
+    resultado     = Column(Text)                          # JSON com resumo/arquivos
+    erro          = Column(Text)
+    started_at    = Column(DateTime)
+    finished_at   = Column(DateTime)
+    created_at    = Column(DateTime, default=datetime.utcnow)
+    updated_at    = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    __table_args__ = (
+        Index("ix_missao_status_criacao", "status", "created_at"),
+    )
+
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 
 def get_engine(db_path: Path = DB_PATH):

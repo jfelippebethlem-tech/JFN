@@ -661,7 +661,57 @@ class HermesGoalAgent:
 
     # ── Ciclo autônomo com LLM (quando disponível) ────────────────────────────
 
-    # ── Conversa (chat livre com o Hermes, com todo o contexto) ──────────────
+    # ── Multi-missão (pool limitado) ────────────────────────────────────────
+    _MAX_CONCURRENT = 4
+    _running: dict[str, dict] = {}
+    _last: dict[str, dict] = {}
+
+    @classmethod
+    def running_missions(cls) -> list[dict]:
+        out = []
+        for ident, info in list(cls._running.items()):
+            out.append({"id": ident, "titulo": info.get("titulo", ""), "status": info.get("status", "running")})
+        return out
+
+    @classmethod
+    def last_missions(cls, limit: int = 20) -> list[dict]:
+        items = sorted(cls._last.values(), key=lambda x: x.get("created_at") or "", reverse=True)[:limit]
+        return items
+
+    async def run_as(self, missao_id: str, titulo: str = "", max_passos_por_ciclo: int = MAX_PASSOS_POR_CICLO, max_ciclos: int = 3, on_step=None) -> dict:
+        payload = {
+            "id": missao_id,
+            "titulo": titulo,
+            "objetivo": self.missao_atual() or titulo,
+            "status": "running",
+            "started_at": datetime.utcnow().isoformat(),
+            "finished_at": None,
+            "resultado": None,
+            "erro": None,
+            "n_passos": 0,
+        }
+        type(self)._running[missao_id] = payload
+        try:
+            resultado = await self.trabalhar(max_passos_por_ciclo=max_passos_por_ciclo, max_ciclos=max_ciclos, on_step=on_step)
+            payload["status"] = "concluida"
+            payload["finished_at"] = datetime.utcnow().isoformat()
+            payload["resultado"] = {
+                "ok": bool(resultado.get("ok")),
+                "n_passos": int(resultado.get("n_passos") or 0),
+                "resumo": (resultado.get("resumo") or "")[:1000],
+                "missao": resultado.get("missao"),
+            }
+            payload["n_passos"] = payload["resultado"]["n_passos"]
+            return payload["resultado"]
+        except Exception as e:
+            payload["status"] = "erro"
+            payload["finished_at"] = datetime.utcnow().isoformat()
+            payload["erro"] = f"{type(e).__name__}: {e}"
+            return {"ok": False, "erro": payload["erro"]}
+        finally:
+            payload["created_at"] = payload.get("created_at") or payload["started_at"]
+            type(self)._last[missao_id] = payload
+            type(self)._running.pop(missao_id, None)
 
     async def conversar(self, pergunta: str) -> str:
         from compliance_agent.llm.hermes_agent import responder_hermes
