@@ -197,6 +197,55 @@ def test_doerj_fatiador_de_atos():
     assert len(extrair_cnpjs(texto)) == 1
 
 
+# ─── 8. Hermes Goal Agent (missão autônoma estilo /goal) ──────────────────────
+
+def test_goal_agent_missao_persistente():
+    from compliance_agent.database.models import init_db, get_session
+    from compliance_agent.hermes_goal import HermesGoalAgent
+    init_db()
+    s = get_session()
+    try:
+        ag = HermesGoalAgent(session=s)
+        ag.definir_missao("Auditar OBs altas de hoje")
+        assert ag.missao_atual() == "Auditar OBs altas de hoje"
+        ag.limpar_missao()
+        assert ag.missao_atual() == ""
+    finally:
+        s.close()
+
+
+def test_goal_agent_ciclo_autonomo():
+    from compliance_agent.database.models import init_db, get_session, MemoriaAprendizado
+    from compliance_agent.hermes_goal import HermesGoalAgent
+    import compliance_agent.llm.hermes_agent as ha
+
+    plano = [
+        {"pensamento": "ver alertas", "acao": "listar_alertas", "args": {}},
+        {"pensamento": "aprender", "acao": "aprender", "args": {"chave": "k", "licao": "lição teste"}},
+        {"pensamento": "fim", "acao": "concluir", "resumo": "ok"},
+    ]
+    estado = {"i": 0}
+
+    async def fake_hermes(system, prompt, max_tokens=600):
+        d = plano[min(estado["i"], len(plano) - 1)]
+        estado["i"] += 1
+        return json.dumps(d)
+
+    ha._hermes = fake_hermes
+    init_db()
+    s = get_session()
+    try:
+        ag = HermesGoalAgent(session=s)
+        ag.definir_missao("missão de teste")
+        res = asyncio.run(ag.trabalhar(max_passos=5))
+        acoes = [p["acao"] for p in res["passos"]]
+        assert "listar_alertas" in acoes
+        assert "concluir" in acoes
+        assert s.query(MemoriaAprendizado).filter_by(categoria="licao").count() >= 1
+    finally:
+        s.close()
+
+
 # ─── Runner standalone (sem pytest) ───────────────────────────────────────────
 
 if __name__ == "__main__":
