@@ -529,9 +529,20 @@ async def _sei_reply(numero: str) -> str:
         finally:
             session.close()
         if not resultado or resultado.get("erro"):
-            return (f"Processo SEI {numero} não encontrado ou inacessível.\n"
-                    f"{resultado.get('erro','') if resultado else ''}")
-        linhas = [f"📂 *Processo SEI {numero}*\n"]
+            erro = resultado.get("erro", "") if resultado else ""
+            # CAPTCHA: orienta o caminho humano-no-loop (não quebramos o desafio).
+            if "captcha" in erro.lower() or resultado.get("aguardou_humano"):
+                return (f"🔐 O processo SEI {numero} está atrás de CAPTCHA.\n\n"
+                        "Abra a janela do Chrome (porta 9222), resolva o CAPTCHA uma vez "
+                        "e mande /sei novamente — eu leio o resto sozinho.\n"
+                        "Dica: deixe o portal SEI já aberto nessa janela.")
+            return (f"Processo SEI {numero} não encontrado ou inacessível.\n{erro}")
+        proc = resultado.get("processo", resultado)
+        via_cdp = proc.get("via") == "chrome_cdp_humano_no_loop"
+        linhas = [f"📂 *Processo SEI {numero}*"]
+        if via_cdp:
+            linhas.append("_(lido via Chrome — CAPTCHA resolvido por você)_")
+        linhas.append("")
         if resultado.get("assunto"):
             linhas.append(f"Assunto: {resultado['assunto'][:200]}")
         if resultado.get("tipo"):

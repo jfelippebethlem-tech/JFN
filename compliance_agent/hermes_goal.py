@@ -357,6 +357,28 @@ class HermesGoalAgent:
                 mems += lembrar("padrao_fraude", chave=args.get("termo", ""), session=self.session)
                 return {"ok": True, "memorias": [m["valor"][:200] for m in mems[:6]]}
 
+            if acao == "ler_sei":
+                # Lê um processo SEI na íntegra via Chrome 9222, com HUMANO-NO-LOOP
+                # para o CAPTCHA (avisa por Telegram e espera você resolver).
+                from compliance_agent.collectors.sei_cdp import ler_processo_sei
+                numero = args.get("numero") or args.get("numero_sei") or ""
+                if not numero:
+                    return {"ok": False, "erro": "informe 'numero' do processo SEI"}
+                r = await ler_processo_sei(numero)
+                if r.get("erro"):
+                    return {"ok": False, "erro": r["erro"],
+                            "aguardou_humano": r.get("aguardou_humano", False)}
+                return {
+                    "ok": True,
+                    "numero": r.get("numero"),
+                    "n_documentos": len(r.get("documentos", [])),
+                    "cpfs": r.get("cpfs", [])[:10],
+                    "cnpjs": r.get("cnpjs", [])[:10],
+                    "valores": r.get("valores", [])[:10],
+                    "captcha_resolvido": r.get("captcha_resolvido", False),
+                    "texto_amostra": (r.get("texto", "") or "")[:600],
+                }
+
             if acao == "analisar_dados":
                 return await self._analisar_dados(args)
 

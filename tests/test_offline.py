@@ -339,6 +339,39 @@ def test_goal_agent_ciclo_autonomo():
         s.close()
 
 
+def test_sei_detecta_captcha_e_marca_fallback():
+    """
+    O parser do SEI marca `captcha=True` quando a página exige o desafio,
+    e a heurística de fallback humano-no-loop reconhece o bloqueio.
+    """
+    from compliance_agent.collectors.sei_portal import (
+        _parse_resultado_pesquisa, _bloqueado_por_captcha,
+    )
+    html_captcha = (
+        "<html><body><form>"
+        "<label>Digite os caracteres da imagem</label>"
+        "<img src='/sei/captcha.php'/>"
+        "<input id='txtInfraCaptcha'/>"
+        "</form></body></html>"
+    )
+    res = _parse_resultado_pesquisa(html_captcha, "E-12/345/2026")
+    assert res.get("captcha") is True
+    assert _bloqueado_por_captcha(res) is True
+
+    # Página normal com documento NÃO deve disparar o fallback.
+    ok = {"documentos": [{"url": "x"}], "assunto": "Contrato"}
+    assert _bloqueado_por_captcha(ok) is False
+
+
+def test_sei_cdp_sem_chrome_retorna_erro_claro():
+    """Sem Chrome 9222, o leitor CDP devolve erro explicativo (não crasha)."""
+    from compliance_agent.collectors.sei_cdp import ler_processo_sei_via_chrome
+    res = asyncio.run(ler_processo_sei_via_chrome("E-12/345/2026", usar_cache=False))
+    assert res["numero"] == "E-12/345/2026"
+    assert "erro" in res
+    assert "9222" in res["erro"] or "Chrome" in res["erro"]
+
+
 def test_multi_missao_persiste_e_lista():
     """
     Multi-missão: criar_missao_paralela persiste em MissaoAuditoria e
