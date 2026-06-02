@@ -1,0 +1,641 @@
+SIAFE2 Diagnóstico — 01/06/2026 03:29
+Usuário: 14398839712
+Exercício configurado: (padrão)
+
+============================================================
+  ETAPA 1: Página de Login
+============================================================
+  Abrindo: https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp
+  📸 Screenshot: 01_login_page_032941.png
+  🌐 URL: https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp;jsessionid=78557CEE42241989789CFD97F0E13CD6
+  📄 Título: Siafe-Rio2
+
+  --- Texto visível (primeiros 1500 chars) ---
+<link rel='icon' href='/Siafe/logus/images/favicon.ico'> <link rel='shortcut icon' href='/Siafe/logus/images/favicon.ico'>
+ 
+ 
+ 
+	
+	
+* Usuário	
+* Senha	
+* Exercício	
+Selecione
+2027
+2026
+2025
+2024
+2023
+
+	
+	
+	
+	
+	
+
+
+	
+	
+Esqueceu sua senha?	Ok
+
+	
+	Solicitar Acesso
+	Versão 4.167.12 - Build: 202605281616
+
+============================================================
+  Inputs em '01_login_page'
+============================================================
+  <input> id='oracle.adf.view.faces.RICH_UPDATE' name=''                             type='hidden'   value=''                   placeholder=''                   text=''
+  <input> id='loginBox:itxUsuario::content' name='loginBox:itxUsuario'          type='text'     value=''                   placeholder=''                   text=''
+  <input> id='loginBox:itxSenhaAtual::content' name='loginBox:itxSenhaAtual'       type='password' value=''                   placeholder=''                   text=''
+  <select> id='loginBox:cbxCliente::content' name='loginBox:cbxCliente'          type=''         value=''                   placeholder=''                   text='Rio de Janeiro'
+  <select> id='loginBox:cbxExercicio::content' name='loginBox:cbxExercicio'        type=''         value=''                   placeholder=''                   text='Selecione\n2027\n2026\n2025\n2024\n2023'
+  <input> id=''                             name='org.apache.myfaces.trinidad.faces.FORM' type='hidden'   value='frmPrincipal'       placeholder=''                   text=''
+  <input> id=''                             name='Adf-Window-Id'                type='hidden'   value='w0'                 placeholder=''                   text=''
+  <input> id=''                             name='javax.faces.ViewState'        type='hidden'   value='!55yhicv5o'         placeholder=''                   text=''
+
+============================================================
+  Links/clicáveis em '01_login_page'
+============================================================
+  'Ignorar para conteúdo principal'        href='#'                            class='x143'
+  'Esqueceu sua senha?'                    href='#'                            class='xga'
+  'Ok'                                     href=''                             class='x7j'
+  'Sim'                                    href=''                             class='x7j'
+  'Não'                                    href=''                             class='x7j'
+  'Solicitar Acesso'                       href='#'                            class='xga'
+  'OK'                                     href=''                             class='xg2 p_AFTextOnly'
+  'Cancelar'                               href=''                             class='xg2 p_AFTextOnly'
+
+============================================================
+  iFrames em '01_login_page'
+============================================================
+  Frame URL: https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp;jsessionid=78557CEE42241989789CFD97F0E13CD6
+  Frame URL: https://siafe2.fazenda.rj.gov.br/Siafe/afr/blank.html
+
+  💾 HTML completo salvo: 01_login_page_032941.html (27593 chars)
+
+============================================================
+  ETAPA 2: Preenchendo credenciais
+============================================================
+  Encontrados 6 inputs
+  → Preenchendo usuário em: id='loginBox:itxUsuario::content' name='loginBox:itxUsuario'
+  → Preenchendo senha em: id='loginBox:itxSenhaAtual::content' name='loginBox:itxSenhaAtual'
+
+  Encontrados 2 selects
+  Select id='loginBox:cbxCliente::content' name='loginBox:cbxCliente' opções: ['Rio de Janeiro']
+  Select id='loginBox:cbxExercicio::content' name='loginBox:cbxExercicio' opções: ['Selecione', '2027', '2026', '2025', '2024', '2023']
+  📸 Screenshot: 02_credentials_filled_032943.png
+  🌐 URL: https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp;jsessionid=78557CEE42241989789CFD97F0E13CD6
+  📄 Título: Siafe-Rio2
+
+  --- Texto visível (primeiros 1500 chars) ---
+<link rel='icon' href='/Siafe/logus/images/favicon.ico'> <link rel='shortcut icon' href='/Siafe/logus/images/favicon.ico'>
+ 
+ 
+ 
+	
+	
+* Usuário	
+* Senha	
+* Exercício	
+Selecione
+2027
+2026
+2025
+2024
+2023
+
+	
+	
+	
+	
+	
+
+
+	
+	
+Esqueceu sua senha?	Ok
+
+	
+	Solicitar Acesso
+	Versão 4.167.12 - Build: 202605281616
+
+============================================================
+  Inputs em '02_credentials_filled'
+============================================================
+  <input> id='oracle.adf.view.faces.RICH_UPDATE' name=''                             type='hidden'   value='dirty'              placeholder=''                   text=''
+  <input> id='loginBox:itxUsuario::content' name='loginBox:itxUsuario'          type='text'     value=''                   placeholder=''                   text=''
+  <input> id='loginBox:itxSenhaAtual::content' name='loginBox:itxSenhaAtual'       type='password' value=''                   placeholder=''                   text=''
+  <select> id='loginBox:cbxCliente::content' name='loginBox:cbxCliente'          type=''         value=''                   placeholder=''                   text='Rio de Janeiro'
+  <select> id='loginBox:cbxExercicio::content' name='loginBox:cbxExercicio'        type=''         value=''                   placeholder=''                   text='Selecione\n2027\n2026\n2025\n2024\n2023'
+  <input> id=''                             name='org.apache.myfaces.trinidad.faces.FORM' type='hidden'   value='frmPrincipal'       placeholder=''                   text=''
+  <input> id=''                             name='Adf-Window-Id'                type='hidden'   value='w0'                 placeholder=''                   text=''
+  <input> id=''                             name='javax.faces.ViewState'        type='hidden'   value='!55yhicv5o'         placeholder=''                   text=''
+
+============================================================
+  Links/clicáveis em '02_credentials_filled'
+============================================================
+  'Ignorar para conteúdo principal'        href='#'                            class='x143'
+  'Esqueceu sua senha?'                    href='#'                            class='xga'
+  'Ok'                                     href=''                             class='x7j'
+  'Sim'                                    href=''                             class='x7j'
+  'Não'                                    href=''                             class='x7j'
+  'Solicitar Acesso'                       href='#'                            class='xga'
+  'OK'                                     href=''                             class='xg2 p_AFTextOnly'
+  'Cancelar'                               href=''                             class='xg2 p_AFTextOnly'
+
+============================================================
+  iFrames em '02_credentials_filled'
+============================================================
+  Frame URL: https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp;jsessionid=78557CEE42241989789CFD97F0E13CD6
+  Frame URL: https://siafe2.fazenda.rj.gov.br/Siafe/afr/blank.html
+
+  💾 HTML completo salvo: 02_credentials_filled_032943.html (27430 chars)
+
+============================================================
+  ETAPA 3: Submetendo login
+============================================================
+  Encontrados 6 botões:
+  Botão: 'Ok'                 id='loginBox:btnConfirmar'        class='x7j'
+  Botão: 'Sim'                id='myBtnOk'                      class='x7j'
+  Botão: 'Não'                id='myBtnCancel'                  class='x7j'
+  Botão: 'OK'                 id='docPrincipal::msgDlg::cancel' class='xg2 p_AFTextOnly'
+  Botão: 'OK'                 id='j_id5::ok'                    class='xg2 p_AFTextOnly'
+  Botão: 'Cancelar'           id='j_id5::cancel'                class='xg2 p_AFTextOnly'
+  → Clicando botão: 'ok'
+  Aguardando carregamento pós-login...
+  📸 Screenshot: 03_after_login_033000.png
+  🌐 URL: https://siafe2.fazenda.rj.gov.br/Siafe/faces/administracao/seguranca/acessoRapido.jsp
+  📄 Título: Siafe-Rio2
+
+  --- Texto visível (primeiros 1500 chars) ---
+<link rel='icon' href='/Siafe/logus/images/favicon.ico'> <link rel='shortcut icon' href='/Siafe/logus/images/favicon.ico'>
+ 
+ 
+ 
+			
+		SiafeRio 2 - Produção
+Página InicialAjudaSair
+ 
+ 
+ 
+Execução
+Projetos
+Apoio
+Administração
+Relatórios
+Acesso Rápido	
+	
+		
+UG	
+	
+TODAS
+010100 - ALERJ
+016100 - FUNDO ALERJ
+016200 - FUNPGALERJ
+020100 - TCE-RJ
+026100 - FEM/TCE-RJ
+026200 - FUNPGT
+030100 - TJ
+036100 - FETJ
+036200 - FEEMERJ
+036300 - FUNARPEN
+040100 - SEPLANIG- Extinta
+043400 - AGETRANSP
+043500 - AGENERSA
+044100 - DER-RJ
+045200 - EMOP
+046500 - FRSCPER
+050100 - SEDC - Extinta
+053100 - IPEM
+060100 - GSI
+070100 - SEINFRA - Extinta
+070200 - CEDAE ACOES DESC.
+080100 - VICE-GOV
+090100 - PGE
+090200 - CASC-PGE
+096100 - FUNPERJ
+100100 - MP
+100200 - CEJ
+106100 - FEMP
+110100 - DPGE
+116100 - FUNDPERJ
+120100 - Antiga SEPLAG-Em Extinção
+120200 - SEFAZ LOGISTICA
+123400 - RIOPREVIDEN
+123401 - RIOPREVI-ALERJ
+123402 - RIOPREVI-TCE
+123403 - RIOPREVI-TJUSTICA
+123404 - RIOPREVI-EXECUTIVO
+123410 - RIOPREVI-MP
+123411 - RIOFUNDOPREVI-ALERJ
+123412 - RIOFUNDOPREVI-TCE
+123413 - RIOFUNDOPREVI-TJ
+123414 - RIOFUNDOPREVI-EXEC.
+123420 - RIOFUNDOPREVI-MP
+123422 - RIOPREV-SPSM
+123425 - RIOPREV-TXADM
+123499 - RIOFUNDOPREVI
+124100 - CEPERJ
+124200 - RJPREV
+130100 - SEAPPA
+130200 - FUNDEAGRO-RJ
+130900 - PROJ. RIO RURAL/GEF
+133100 - ITERJ
+134100 - FIPERJ
+135300 - EMATER-RIO
+135400 - PESAGRO-RIO
+136200 - FUNDEAGRO
+137100 - CASERJ
+137200 - CEASA
+140100 - SECC
+146400 - FEFOSP
+150100 - SECEC
+154100 - FUNARJ
+154300 - FTMRJ
+15440
+
+============================================================
+  Inputs em '03_after_login'
+============================================================
+  <input> id='oracle.adf.view.faces.RICH_UPDATE' name=''                             type='hidden'   value='dirty'              placeholder=''                   text=''
+  <input> id='pt1:iTxtCad::content'         name='pt1:iTxtCad'                  type='text'     value=''                   placeholder=''                   text=''
+  <select> id='pt1:selUg::content'           name='pt1:selUg'                    type=''         value=''                   placeholder=''                   text='TODAS\n010100 - ALERJ\n016100 - FUNDO ALERJ\n016200 - FUNPGALER'
+  <input> id=''                             name='org.apache.myfaces.trinidad.faces.FORM' type='hidden'   value='frmPrincipal'       placeholder=''                   text=''
+  <input> id=''                             name='Adf-Window-Id'                type='hidden'   value='w0'                 placeholder=''                   text=''
+  <input> id=''                             name='javax.faces.ViewState'        type='hidden'   value='!55yhicv5p'         placeholder=''                   text=''
+
+============================================================
+  Links/clicáveis em '03_after_login'
+============================================================
+  'Ignorar para conteúdo principal'        href='#'                            class='x143'
+  'Sim'                                    href=''                             class='x7j'
+  'Não'                                    href=''                             class='x7j'
+  'Página Inicial'                         href='#'                            class='xge'
+  'Ajuda'                                  href='#'                            class='xge'
+  'Sair'                                   href='#'                            class='xge'
+  'Planejamento'                           href='#'                            class='xyo'
+  'Execução'                               href=''                             class='xgh'
+  'Projetos'                               href=''                             class='xgh'
+  'Apoio'                                  href=''                             class='xgh'
+  'Administração'                          href=''                             class='xgh p_AFSelected'
+  'Relatórios'                             href=''                             class='xgh'
+  'Segurança'                              href=''                             class='xgh p_AFSelected'
+  'Configuração'                           href=''                             class='xgh'
+  'Estrutura Classificatória'              href=''                             class='xgh'
+  'Migração de Dados'                      href=''                             class='xgh'
+  'Monitoramento'                          href=''                             class='xgh p_AFDisabled'
+  'Agendamento'                            href=''                             class='xgh'
+  'Assinatura Eletrônica'                  href=''                             class='xgh p_AFDisabled'
+  '1021 mensagens não lidas'               href='#'                            class='xg9'
+  'Acesso Rápido'                          href='#'                            class='xgg p_AFSelected'
+  'Alteração de Senha'                     href='#'                            class='xgg'
+  'Conformidade de Usuários'               href='#'                            class='xgg'
+  'Anterior'                               href=''                             class='x7j p_AFDisabled'
+  'Próxima'                                href=''                             class='x7j p_AFDisabled'
+  'OK'                                     href=''                             class='x7j'
+  'Cancelar'                               href=''                             class='xg2 p_AFTextOnly'
+
+============================================================
+  iFrames em '03_after_login'
+============================================================
+  Frame URL: https://siafe2.fazenda.rj.gov.br/Siafe/faces/administracao/seguranca/acessoRapido.jsp
+  Frame URL: https://siafe2.fazenda.rj.gov.br/Siafe/afr/blank.html
+  Frame URL: 
+  Frame URL: https://siafe2.fazenda.rj.gov.br/Siafe/afr/blank.html
+
+  💾 HTML completo salvo: 03_after_login_033000.html (69017 chars)
+
+============================================================
+  ETAPA 4: Mapeando menu principal
+============================================================
+  URL após login: https://siafe2.fazenda.rj.gov.br/Siafe/faces/administracao/seguranca/acessoRapido.jsp
+  ✅ Login realizado!
+
+============================================================
+  ETAPA 5: Procurando FlexVision no menu
+============================================================
+  43 elementos de navegação encontrados:
+  - 'Ignorar para conteúdo principal'        class='x143'
+  - 'Sim'                                    class='x7j'
+  - 'Não'                                    class='x7j'
+  - 'Página Inicial'                         class='xge'
+  - 'Ajuda'                                  class='xge'
+  - 'Sair'                                   class='xge'
+  - 'Planejamento'                           class='xyo'
+  - 'Planejamento'                           class='xyo'
+  - 'Execução'                               class='xyo'
+  - 'Projetos'                               class='xyo'
+  - 'Apoio'                                  class='xyo'
+  - 'Administração'                          class='xyo p_AFSelected'
+  - 'Relatórios'                             class='xyo'
+  - 'Segurança'                              class='xyo p_AFSelected'
+  - 'Configuração'                           class='xyo'
+  - 'Estrutura Classificatória'              class='xyo'
+  - 'Migração de Dados'                      class='xyo'
+  - 'Monitoramento'                          class='xyo p_AFDisabled'
+  - 'Agendamento'                            class='xyo'
+  - 'Assinatura Eletrônica'                  class='xyo p_AFDisabled'
+  - '1021 mensagens não lidas'               class='xg9'
+  - 'Acesso Rápido'                          class='xgg p_AFSelected'
+  - 'Alteração de Senha'                     class='xgg'
+  - 'Conformidade de Usuários'               class='xgg'
+  - 'Administração'                          class='xg8'
+  - 'Segurança'                              class='xg8'
+  - 'Acesso Rápido'                          class='xg8 p_AFSelected p_AFDisabled'
+  - 'Configuração'                           class='x7j'
+  - 'Anterior'                               class='x7j p_AFDisabled'
+  - 'Próxima'                                class='x7j p_AFDisabled'
+  - 'OK'                                     class='x7j'
+  - 'OK'                                     class='xg2 p_AFTextOnly'
+  - 'OK'                                     class='xg2 p_AFTextOnly'
+  - 'Cancelar'                               class='xg2 p_AFTextOnly'
+  ❌ FlexVision não encontrado no menu. Listando TODOS os links:
+    link: 'Ignorar para conteúdo principal'                  href='#'
+    link: 'Página Inicial'                                   href='#'
+    link: 'Ajuda'                                            href='#'
+    link: 'Sair'                                             href='#'
+    link: 'Planejamento'                                     href='#'
+    link: 'Planejamento'                                     href='#'
+    link: 'Execução'                                         href='#'
+    link: 'Projetos'                                         href='#'
+    link: 'Apoio'                                            href='#'
+    link: 'Administração'                                    href='#'
+    link: 'Relatórios'                                       href='#'
+    link: 'Segurança'                                        href='#'
+    link: 'Configuração'                                     href='#'
+    link: 'Estrutura Classificatória'                        href='#'
+    link: 'Migração de Dados'                                href='#'
+    link: 'Monitoramento'                                    href=''
+    link: 'Agendamento'                                      href='#'
+    link: 'Assinatura Eletrônica'                            href=''
+    link: '1021 mensagens não lidas'                         href='#'
+    link: 'Acesso Rápido'                                    href='#'
+    link: 'Alteração de Senha'                               href='#'
+    link: 'Conformidade de Usuários'                         href='#'
+    link: 'Administração'                                    href='#'
+    link: 'Segurança'                                        href='#'
+    link: 'Acesso Rápido'                                    href=''
+
+============================================================
+  ETAPA 6: Procurando 'Execução por OB' / 'Consultas'
+============================================================
+  4 frames na página:
+  Frame: https://siafe2.fazenda.rj.gov.br/Siafe/faces/administracao/seguranca/acessoRapido.jsp
+  Frame: https://siafe2.fazenda.rj.gov.br/Siafe/afr/blank.html
+  Frame: 
+  Frame: https://siafe2.fazenda.rj.gov.br/Siafe/afr/blank.html
+
+  🎯 Conteúdo relevante no frame: https://siafe2.fazenda.rj.gov.br/Siafe/faces/administracao/seguranca/acessoRapido.jsp
+  Texto: <link rel='icon' href='/Siafe/logus/images/favicon.ico'> <link rel='shortcut icon' href='/Siafe/logus/images/favicon.ico'>
+ 
+ 
+ 
+			
+		SiafeRio 2 - Produção
+Página InicialAjudaSair
+ 
+ 
+ 
+Execução
+Projetos
+Apoio
+Administração
+Relatórios
+Acesso Rápido	
+	
+		
+UG	
+	
+TODAS
+010100 - ALERJ
+016100 - FUNDO ALERJ
+016200 - FUNPGALERJ
+020100 - TCE-RJ
+026100 - FEM/TCE-RJ
+026200 - FUNPGT
+030100 - TJ
+036100 - FETJ
+036200 - FEEMERJ
+036300 - FUNARPEN
+040100 - SEPLANIG- Extinta
+043400 - AGETRANSP
+043500 - AGENERSA
+044100 - DER-RJ
+045200 - EMOP
+046500 - FRSCPER
+050100 - SEDC - Extinta
+053100 - IPEM
+060100 - GSI
+070100 - SEINFRA - Extinta
+070200 - CEDAE ACOES DESC.
+080100 - VICE-GOV
+090100 - PGE
+090200 - CASC-PGE
+096100 - FUNPERJ
+100100 - MP
+100200 - CEJ
+106100 - FEMP
+110100 - DPGE
+116100 - FUNDPERJ
+120100 - Antiga SEPLAG-Em Extinção
+120200 - SEFAZ LOGISTICA
+123400 - RIOPREVIDEN
+123401 - RIOPREVI-ALERJ
+123402 - RIOPREVI-TCE
+123403 - RIOPREVI-TJUSTICA
+123404 - RIOPREVI-EXECUTIVO
+123410 - RIOPREVI-MP
+123411 
+
+  Links no frame (138 elementos):
+    - 'Ignorar para conteúdo principal'
+    - 'SiafeRio 2 - Produção'
+    - 'Sim'
+    - 'Não'
+    - 'Página Inicial'
+    - 'Ajuda'
+    - 'Sair'
+    - 'Planejamento'
+    - 'Planejamento'
+    - 'Planejamento'
+    - 'Execução'
+    - 'Projetos'
+    - 'Apoio'
+    - 'Administração'
+    - 'Relatórios'
+    - 'Acesso Rápido'
+    - 'Acesso Rápido'
+    - 'UG'
+    - 'Seja bem-vindo(a), JORGE MIGUEL FELIPPE POYARES BETHLEM'
+    - 'Exercício 2026'
+    - 'Segurança'
+    - 'Configuração'
+    - 'Estrutura Classificatória'
+    - 'Migração de Dados'
+    - 'Monitoramento'
+    - 'Agendamento'
+    - 'Assinatura Eletrônica'
+    - '1021 mensagens não lidas'
+    - 'Acesso Rápido'
+    - 'Acesso Rápido'
+    - 'Alteração de Senha'
+    - 'Alteração de Senha'
+    - 'Conformidade de Usuários'
+    - 'Conformidade de Usuários'
+    - 'Administração > Segurança > Acesso Rápido'
+    - 'Administração'
+
+============================================================
+  ETAPA 7: Screenshot final
+============================================================
+  📸 Screenshot: 07_final_state_033019.png
+  🌐 URL: https://siafe2.fazenda.rj.gov.br/Siafe/faces/administracao/seguranca/acessoRapido.jsp
+  📄 Título: Siafe-Rio2
+
+  --- Texto visível (primeiros 1500 chars) ---
+<link rel='icon' href='/Siafe/logus/images/favicon.ico'> <link rel='shortcut icon' href='/Siafe/logus/images/favicon.ico'>
+ 
+ 
+ 
+			
+		SiafeRio 2 - Produção
+Página InicialAjudaSair
+ 
+ 
+ 
+Execução
+Projetos
+Apoio
+Administração
+Relatórios
+Acesso Rápido	
+	
+		
+UG	
+	
+TODAS
+010100 - ALERJ
+016100 - FUNDO ALERJ
+016200 - FUNPGALERJ
+020100 - TCE-RJ
+026100 - FEM/TCE-RJ
+026200 - FUNPGT
+030100 - TJ
+036100 - FETJ
+036200 - FEEMERJ
+036300 - FUNARPEN
+040100 - SEPLANIG- Extinta
+043400 - AGETRANSP
+043500 - AGENERSA
+044100 - DER-RJ
+045200 - EMOP
+046500 - FRSCPER
+050100 - SEDC - Extinta
+053100 - IPEM
+060100 - GSI
+070100 - SEINFRA - Extinta
+070200 - CEDAE ACOES DESC.
+080100 - VICE-GOV
+090100 - PGE
+090200 - CASC-PGE
+096100 - FUNPERJ
+100100 - MP
+100200 - CEJ
+106100 - FEMP
+110100 - DPGE
+116100 - FUNDPERJ
+120100 - Antiga SEPLAG-Em Extinção
+120200 - SEFAZ LOGISTICA
+123400 - RIOPREVIDEN
+123401 - RIOPREVI-ALERJ
+123402 - RIOPREVI-TCE
+123403 - RIOPREVI-TJUSTICA
+123404 - RIOPREVI-EXECUTIVO
+123410 - RIOPREVI-MP
+123411 - RIOFUNDOPREVI-ALERJ
+123412 - RIOFUNDOPREVI-TCE
+123413 - RIOFUNDOPREVI-TJ
+123414 - RIOFUNDOPREVI-EXEC.
+123420 - RIOFUNDOPREVI-MP
+123422 - RIOPREV-SPSM
+123425 - RIOPREV-TXADM
+123499 - RIOFUNDOPREVI
+124100 - CEPERJ
+124200 - RJPREV
+130100 - SEAPPA
+130200 - FUNDEAGRO-RJ
+130900 - PROJ. RIO RURAL/GEF
+133100 - ITERJ
+134100 - FIPERJ
+135300 - EMATER-RIO
+135400 - PESAGRO-RIO
+136200 - FUNDEAGRO
+137100 - CASERJ
+137200 - CEASA
+140100 - SECC
+146400 - FEFOSP
+150100 - SECEC
+154100 - FUNARJ
+154300 - FTMRJ
+15440
+
+============================================================
+  Inputs em '07_final_state'
+============================================================
+  <input> id='oracle.adf.view.faces.RICH_UPDATE' name=''                             type='hidden'   value='dirty'              placeholder=''                   text=''
+  <input> id='pt1:iTxtCad::content'         name='pt1:iTxtCad'                  type='text'     value=''                   placeholder=''                   text=''
+  <select> id='pt1:selUg::content'           name='pt1:selUg'                    type=''         value=''                   placeholder=''                   text='TODAS\n010100 - ALERJ\n016100 - FUNDO ALERJ\n016200 - FUNPGALER'
+  <input> id=''                             name='org.apache.myfaces.trinidad.faces.FORM' type='hidden'   value='frmPrincipal'       placeholder=''                   text=''
+  <input> id=''                             name='Adf-Window-Id'                type='hidden'   value='w0'                 placeholder=''                   text=''
+  <input> id=''                             name='javax.faces.ViewState'        type='hidden'   value='!55yhicv5p'         placeholder=''                   text=''
+
+============================================================
+  Links/clicáveis em '07_final_state'
+============================================================
+  'Ignorar para conteúdo principal'        href='#'                            class='x143'
+  'Sim'                                    href=''                             class='x7j'
+  'Não'                                    href=''                             class='x7j'
+  'Página Inicial'                         href='#'                            class='xge'
+  'Ajuda'                                  href='#'                            class='xge'
+  'Sair'                                   href='#'                            class='xge'
+  'Planejamento'                           href='#'                            class='xyo'
+  'Execução'                               href=''                             class='xgh'
+  'Projetos'                               href=''                             class='xgh'
+  'Apoio'                                  href=''                             class='xgh'
+  'Administração'                          href=''                             class='xgh p_AFSelected'
+  'Relatórios'                             href=''                             class='xgh'
+  'Segurança'                              href=''                             class='xgh p_AFSelected'
+  'Configuração'                           href=''                             class='xgh'
+  'Estrutura Classificatória'              href=''                             class='xgh'
+  'Migração de Dados'                      href=''                             class='xgh'
+  'Monitoramento'                          href=''                             class='xgh p_AFDisabled'
+  'Agendamento'                            href=''                             class='xgh'
+  'Assinatura Eletrônica'                  href=''                             class='xgh p_AFDisabled'
+  '1021 mensagens não lidas'               href='#'                            class='xg9'
+  'Acesso Rápido'                          href='#'                            class='xgg p_AFSelected'
+  'Alteração de Senha'                     href='#'                            class='xgg'
+  'Conformidade de Usuários'               href='#'                            class='xgg'
+  'Anterior'                               href=''                             class='x7j p_AFDisabled'
+  'Próxima'                                href=''                             class='x7j p_AFDisabled'
+  'OK'                                     href=''                             class='x7j'
+  'Cancelar'                               href=''                             class='xg2 p_AFTextOnly'
+
+============================================================
+  iFrames em '07_final_state'
+============================================================
+  Frame URL: https://siafe2.fazenda.rj.gov.br/Siafe/faces/administracao/seguranca/acessoRapido.jsp
+  Frame URL: https://siafe2.fazenda.rj.gov.br/Siafe/afr/blank.html
+  Frame URL: 
+  Frame URL: https://siafe2.fazenda.rj.gov.br/Siafe/afr/blank.html
+
+  💾 HTML completo salvo: 07_final_state_033019.html (69033 chars)
+
+
+============================================================
+  DIAGNÓSTICO CONCLUÍDO
+  Screenshots em: diagnostic_screenshots/
+  Relatório em:   diagnostic_report.txt
+============================================================
+
+  Aguardando 15s para você visualizar... (feche o browser para encerrar)

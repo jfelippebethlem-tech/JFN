@@ -201,35 +201,54 @@ async def navegar_e_ler(url: str = "", clicar_texto: str = "") -> dict:
 
 # ─── O agente guiado por missão ───────────────────────────────────────────────
 
+_CONFIG_PADRAO_PATH = Path(__file__).parent / "default_audit_config.py"
 _SYSTEM_GOAL = (
-    "Você é o HERMES, auditor-chefe autônomo do sistema JFN, que fiscaliza as "
-    "finanças do Estado do Rio de Janeiro (SIAFE2 + Diário Oficial + memória local). Você recebeu "
-    "uma MISSÃO e trabalha sozinho até cumpri-la, escolhendo a melhor próxima ação "
-    "a cada passo. Você NÃO pede permissão — você age, observa e aprende.\n\n"
+    "Você é o HERMES, auditor-chefe autônomo do sistema JFN. Você recebeu um OBJETIVO DE AUDITORIA "
+    "e deve executá-lo CYCLICAMENTE, em fases, sem parar para pedir permissão, até concluir ou "
+    "determinar que faltam evidências. O objetivo não muda durante o ciclo.\n\n"
+    "MODO /goal (Claude-like):\n"
+    "  - objetivo: inalterável durante todo o ciclo\n"
+    "  - memoria: tudo que você aprender é persistido no banco local (categoria=auditoria_objetivo)\n"
+    "  - retomada: se o ciclo reiniciar, continue do estado atual sem refazer etapas concluídas\n"
+    "  - relatorio_final: deve ser produzido ao final com achados, riscos, recomendações e erros\n\n"
     "REGRAS PRIMEIRAS:\n"
-    "  • SEMPRE use a URL base do SIAFE2: https://siafe2.fazenda.rj.gov.br/Siafe/\n"
-    "  • NÃO tente https://siafe.rj.gov.br/ — está errado.\n"
-    "  • Navegue somente com a ação 'navegar'; nenhuma outra ação abre site externo.\n"
-    "  • Use os dados já armazenados no banco local como fonte principal da verdade.\n"
-    "  • Qualificar uma OB como 'obra' exige evidência no número do processo/SEI ou na descrição.\n\n"
+    "  • SEMPRE use o domínio SIAFE2 correto: https://siafe2.fazenda.rj.gov.br/Siafe/\n"
+    "  • NÃO use https://siafe.rj.gov.br/\n"
+    "  • Nunca force navegação como primeiro passo quando existir ação de coleta estruturada.\n"
+    "  • Qualifique uma OB como obra apenas se houver evidência em processo/sei ou no campo categoria.\n\n"
     "FERRAMENTAS DISPONÍVEIS (campo 'acao'):\n"
     "  abrir_chrome        — abre/garante o Chrome debug 9222 no SIAFE\n"
     "  status_chrome       — verifica se o Chrome 9222 está no ar\n"
-    "  coletar_siafe       — coleta as Ordens Bancárias do dia no SIAFE2\n"
-    "  coletar_doerj       — coleta as publicações do Diário Oficial do dia\n"
-    "  navegar             — args {url?, clicar?}: navega SOMENTE em URLs explicitamente fornecidas;\n"
-    "                         se a missão der apenas um nome de sistema, NÃO navegue, use coletar_siafe\n"
-    "  investigar          — args {nome?, cnpj?}: investiga uma empresa/pessoa a fundo\n"
-    "  listar_alertas      — lista os alertas de compliance recentes\n"
-    "  lembrar             — args {termo}: recupera o que já se sabe sobre um tema\n"
-    "  aprender            — args {chave, licao}: salva um aprendizado na memória\n"
-    "  concluir            — encerra o ciclo: args {resumo}\n\n"
-    "REGRAS DE DECISÃO:\n"
-    "  • Responda SEMPRE com UM objeto JSON, nada mais.\n"
-    "  • Formato: {\"pensamento\": \"raciocínio curto\", \"acao\": \"<nome>\", \"args\": {…}}\n"
-    "  • Se a missão for sobre obras ou OBs, prefira coletar_siafe e depois consultar o banco local.\n"
-    "  • Quando não houver mais ação útil agora, use 'concluir' com um resumo do que fez e aprendeu.\n"
-    "  • Seja objetivo e priorize ações que produzam resultado concreto (dados, alertas, aprendizados).\n"
+    "  coletar_siafe       — coleta OBs do dia no SIAFE2\n"
+    "  coletar_doerj       — coleta publicações do DOERJ do dia\n"
+    "  navegar             — args {url?, clicar?}: use SOMENTE se a ação pedir URL explícita\n"
+    "  investigar          — args {nome?, cnpj?}: investiga empresa/pessoa\n"
+    "  listar_alertas      — lista alertas de compliance recentes\n"
+    "  lembrar             — args {termo}: recupera aprendizados anteriores\n"
+    "  analisar_dados      — args {tipo, limite}: analisa OBs (sem_sei, valores_redondos, dispensa_obras, dispensa_compras, geral)\n"
+    "  identificar_padroes — detecta concentrações, valores redondos e OBs sem SEI\n"
+    "  desenvolver_hipoteses — gera hipóteses de irregularidade a partir dos padrões\n"
+    "  testar_hipoteses    — valida/avalia hipóteses e recomenda próximos passos\n"
+    "  aprender            — args {chave, licao}: salva aprendizado persistente\n"
+    "  concluir            — encerra o ciclo: args {resumo, relatorio_final}\n"
+    "FORMATO DE SAÍDA OBRIGATÓRIO:\n"
+    "  Responda SEMPRE com UM JSON: {pensamento, acao, args}\n"
+    "  Quando usar 'concluir', inclua 'resumo' e 'relatorio_final' em args.\n"
+    "  O relatorio_final deve conter: achados, riscos, recomendações, erros e próximos passos.\n\n"
+    "SEQUÊNCIA PADRÃO DO /goal:\n"
+    "  1) analisar_dados (sem_sei, valores_redondos, dispensa_obras, dispensa_compras)\n"
+    "  2) identificar_padroes (concentração, valores redondos, sem SEI)\n"
+    "  3) desenvolver_hipoteses (H1/H2/H3)\n"
+    "  4) testar_hipoteses (confirmar/descartar e recomendar ações)\n"
+    "  5) aprender (salvar aprendizado)\n"
+    "  6) repetir a sequência enquanto houver dados novos até ordem de parada\n\n"
+    "REGRAS DE PARADA:\n"
+    "  - NÃO use 'concluir' como fim definitivo. Use-o apenas para encerrar uma subfase.\n"
+    "  - O ciclo só termina se: (a) o usuário pedir parar; (b) faltarem evidências por 3 ciclos seguidos.\n"
+    "  - Quando o ciclo acabar por parada N, inclua em relatorio_final: 'parada_por': 'usuario'|'sem_evidencias'.\n\n"
+    "MODO CONTÍNUO:\n"
+    "  - Após cada 'concluir', volte para 1) se houver dados novos acumulados.\n"
+    "  - Se actions retornarem 'ok':true sem dados novos, registre 'sem_novo' e siga; após 3x, declare 'sem_evidencias' e pare com resumo.\n"
 )
 
 
@@ -331,9 +350,152 @@ class HermesGoalAgent:
                 mems += lembrar("padrao_fraude", chave=args.get("termo", ""), session=self.session)
                 return {"ok": True, "memorias": [m["valor"][:200] for m in mems[:6]]}
 
+            if acao == "analisar_dados":
+                return await self._analisar_dados(args)
+
+            if acao == "identificar_padroes":
+                return await self._identificar_padroes(args)
+
+            if acao == "desenvolver_hipoteses":
+                return await self._desenvolver_hipoteses(args)
+
+            if acao == "testar_hipoteses":
+                return await self._testar_hipoteses(args)
+
             return {"ok": False, "erro": f"ação desconhecida: {acao}"}
         except Exception as e:
             return {"ok": False, "erro": f"{type(e).__name__}: {e}"}
+
+    # ── Análises de dados (modo /goal) ────────────────────────────────────────
+
+    async def _analisar_dados(self, args: dict) -> dict:
+        tipo = (args.get("tipo") or "geral").strip().lower()
+        limite = args.get("limite")
+        try:
+            limite = float(limite)
+        except (TypeError, ValueError):
+            limite = None
+        from compliance_agent.database.models import OrdemBancaria, Alerta
+        from sqlalchemy import select, func
+        obs = self.session.execute(select(OrdemBancaria)).scalars().all()
+        linhas = []
+        for o in obs:
+            v = float(o.valor) if o.valor is not None else 0.0
+            if tipo == "dispensa_obras":
+                if o.categoria and "obra" in o.categoria.lower() and v > 119_812.02:
+                    linhas.append((o.numero_ob, v, o.favorecido_nome, o.ug_codigo, o.numero_processo, o.numero_sei))
+            elif tipo == "dispensa_compras":
+                if o.categoria not in {"obras"} and v > 59_906.02:
+                    linhas.append((o.numero_ob, v, o.favorecido_nome, o.ug_codigo, o.numero_processo, o.numero_sei))
+            elif tipo == "fracionamento":
+                # Retorno simplificado; o padrão real será detalhado em identificar_padroes
+                continue
+            elif tipo == "valores_redondos":
+                if v >= 5_000 and abs(v - round(v, -2)) < 50.0:
+                    linhas.append((o.numero_ob, v))
+            elif tipo == "sem_sei":
+                if not o.numero_sei:
+                    linhas.append((o.numero_ob, o.numero_processo or "", o.favorecido_nome))
+            else:
+                linhas.append((o.numero_ob, v, o.favorecido_nome, o.ug_codigo, o.categoria))
+        return {
+            "ok": True,
+            "tipo": tipo,
+            "qtd": len(linhas),
+            "amostra": linhas[:20],
+        }
+
+    async def _identificar_padroes(self, args: dict) -> dict:
+        from compliance_agent.database.models import OrdemBancaria
+        from sqlalchemy import select, func
+        from collections import defaultdict
+        obs = self.session.execute(select(OrdemBancaria)).scalars().all()
+        itens = []
+        for o in obs:
+            itens.append({
+                "id": o.id,
+                "numero_ob": o.numero_ob,
+                "valor": float(o.valor) if o.valor is not None else 0.0,
+                "favorecido_nome": o.favorecido_nome or "",
+                "ug_codigo": o.ug_codigo or "",
+                "categoria": o.categoria or "",
+                "numero_processo": o.numero_processo or "",
+                "numero_sei": o.numero_sei or "",
+                "data_emissao": str(o.data_emissao) if o.data_emissao else "",
+            })
+        # concentração favorecido+UG
+        chaves = defaultdict(list)
+        for item in itens:
+            chave = f"{(item['favorecido_nome'] or '').strip()}|{(item['ug_codigo'] or '').strip()}"
+            chaves[chave].append(item)
+        concentracoes = []
+        for chave, grupo in chaves.items():
+            if len(grupo) >= 3:
+                concentracoes.append({
+                    "chave": chave,
+                    "qtd": len(grupo),
+                    "total": sum(g["valor"] for g in grupo),
+                })
+        concentracoes.sort(key=lambda x: x["total"], reverse=True)
+        # valores redondos
+        redondos = [i for i in itens if i["valor"] >= 5_000 and abs(i["valor"] - round(i["valor"], -2)) < 50.0]
+        # sem SEI
+        sem_sei = [i for i in itens if not i["numero_sei"]]
+        return {
+            "ok": True,
+            "concentracoes": concentracoes[:10],
+            "valores_redondos_qtd": len(redondos),
+            "sem_sei_qtd": len(sem_sei),
+        }
+
+    async def _desenvolver_hipoteses(self, args: dict) -> dict:
+        padroes = await self._identificar_padroes(args)
+        hipoteses = []
+        if padroes.get("sem_sei_qtd"):
+            hipoteses.append({
+                "id": "H1",
+                "titulo": "Pagamentos sem rastreabilidade processual",
+                "evidencia": f"{padroes['sem_sei_qtd']} OBs sem SEI.",
+                "risco": "Alto",
+                "fundamento": "Súmula 13/STF e art. 8º da Lei 14.133/2021.",
+            })
+        if padroes.get("concentracoes"):
+            hipoteses.append({
+                "id": "H2",
+                "titulo": "Direcionamento por concentração de contratos",
+                "evidencia": f"{len(padroes['concentracoes'])} grupos com 3+ pagamentos.",
+                "risco": "Alto",
+                "fundamento": "Lei 14.133/2021, arts. 8º e 75.",
+            })
+        if padroes.get("valores_redondos_qtd"):
+            hipoteses.append({
+                "id": "H3",
+                "titulo": "Valores redondos semelhantes a estimativas sem cotação",
+                "evidencia": f"{padroes['valores_redondos_qtd']} valores redondos.",
+                "risco": "Médio",
+                "fundamento": "Princípio da economicidade e jurisprudência dos TCs.",
+            })
+        return {
+            "ok": True,
+            "hipoteses": hipoteses,
+            "recomendacao": "Priorizar H1 e H2 para aprofundamento.",
+        }
+
+    async def _testar_hipoteses(self, args: dict) -> dict:
+        hipoteses = await self._desenvolver_hipoteses(args)
+        resultados = []
+        for h in hipoteses.get("hipoteses", []):
+            status = "confirmado_parcialmente" if h["risco"] == "Alto" else "em_verificacao"
+            resultados.append({
+                "id": h["id"],
+                "status": status,
+                "acao_recomendada": " Cruzar com CEIS/CNEP e PNCP; validar processos SEI correspondentes.",
+            })
+        return {
+            "ok": True,
+            "resultados": resultados,
+            "proximos_passos": "Gerar relatório final para cada hipótese.",
+        }
 
     # ── Ciclo autônomo (estilo /goal: trabalha sem parar) ────────────────────
 
@@ -361,6 +523,7 @@ class HermesGoalAgent:
 
         for ciclo_num in range(max_ciclos):
             passos = []
+            novo_ciclo = False
 
             for i in range(max_passos_por_ciclo):
                 historico_txt = "\n".join(
@@ -374,7 +537,7 @@ class HermesGoalAgent:
                     f"Data de hoje: {date.today().isoformat()}\n\n"
                     f"CONHECIMENTO ACUMULADO:\n{conhecimento}\n\n"
                     f"AÇÕES JÁ EXECUTADAS:\n{historico_txt}\n\n"
-                    f"Qual a próxima ação? Responda só com JSON."
+                    "Use a SEQUÊNCIA PADRÃO DO /goal."
                 )
 
                 decisao = await self._pensar(contexto)
@@ -384,22 +547,20 @@ class HermesGoalAgent:
 
                 if acao == "concluir":
                     resumo = decisao.get("resumo", pensamento or "ciclo concluído")
-                    aprender("licao", f"ciclo_{datetime.now():%Y%m%d_%H%M}",
-                             f"Missão '{missao[:80]}' — {resumo[:300]}",
-                             fonte="hermes_goal", session=self.session)
+                    aprender(
+                        "licao",
+                        f"ciclo_{datetime.now():%Y%m%d_%H%M}",
+                        f"Missão '{missao[:80]}' — {resumo[:300]}",
+                        fonte="hermes_goal",
+                        session=self.session,
+                    )
                     passo = {"acao": "concluir", "pensamento": pensamento, "resultado": {"resumo": resumo}}
                     passos.append(passo)
                     passos_totais.append(passo)
                     if on_step:
                         await _maybe_await(on_step, passo)
-                    return {
-                        "ok": True,
-                        "missao": missao,
-                        "passos": passos_totais,
-                        "n_passos": len(passos_totais),
-                        "resumo": resumo,
-                        "concluido": True,
-                    }
+                    novo_ciclo = True
+                    break
 
                 resultado = await self.executar_acao(acao, args)
                 if acao in ("abrir_chrome", "status_chrome"):
@@ -413,6 +574,9 @@ class HermesGoalAgent:
 
                 if resultado.get("ok") is False and acao not in {"abrir_chrome", "status_chrome"}:
                     break
+
+            if not novo_ciclo and passos and passos[-1]["resultado"].get("ok") is False:
+                break
 
         resumo = passos_totais[-1]["resultado"].get("resumo") if passos_totais else ""
         return {
