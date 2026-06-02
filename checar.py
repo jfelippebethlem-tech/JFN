@@ -14,19 +14,15 @@ from datetime import date
 from pathlib import Path
 
 
-# ── Carrega .env (mesmo metodo do server.py) ──────────────────────────────────
+# ── Carrega credenciais (.env e/ou .env.txt) ──────────────────────────────────
 def _load_env():
-    env = Path(__file__).parent / ".env"
-    if not env.exists():
-        print("  [X] .env nao encontrado na pasta do projeto.")
-        return
-    for line in env.read_text(encoding="utf-8-sig").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
-            continue
-        k, _, v = line.partition("=")
-        if k.strip() and k.strip() not in os.environ:
-            os.environ[k.strip()] = v.strip()
+    try:
+        from compliance_agent.envfile import carregar_env
+        lidos = carregar_env()
+        if not lidos:
+            print("  [X] Nenhum .env / .env.txt encontrado na pasta do projeto.")
+    except Exception as e:
+        print(f"  [X] Falha ao carregar .env: {e}")
 
 
 _load_env()

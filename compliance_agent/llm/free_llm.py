@@ -232,31 +232,39 @@ async def _openai_compat_chat_retry(
 GROQ_BASE = "https://api.groq.com/openai/v1"
 
 
+def _groq_key() -> str:
+    # Resolve em tempo de execução: cobre .env carregado após o import deste módulo.
+    return os.environ.get("GROQ_API_KEY", GROQ_API_KEY)
+
+
 def groq_available() -> bool:
-    return bool(GROQ_API_KEY)
+    return bool(_groq_key())
 
 
 def groq_chat(prompt: str, system: str = "", smart: bool = False) -> str:
-    """Envia prompt para Groq (síncrono). Usa llama-3.1-8b por padrão."""
-    if not GROQ_API_KEY:
+    """Envia prompt para Groq (síncrono). Usa llama-3.1-8b por padrão. Com retry."""
+    key = _groq_key()
+    if not key:
         raise RuntimeError("GROQ_API_KEY não configurada. Obtenha gratuitamente em console.groq.com")
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     model = GROQ_MODEL_SMART if smart else GROQ_MODEL_FAST
-    return _openai_compat_chat_sync(GROQ_BASE, GROQ_API_KEY, model, messages)
+    # Groq no plano gratuito retorna 429 com frequência — retry/backoff é essencial.
+    return _openai_compat_chat_sync_retry(GROQ_BASE, key, model, messages)
 
 
 async def groq_chat_async(prompt: str, system: str = "", smart: bool = False) -> str:
-    if not GROQ_API_KEY:
+    key = _groq_key()
+    if not key:
         raise RuntimeError("GROQ_API_KEY não configurada.")
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     model = GROQ_MODEL_SMART if smart else GROQ_MODEL_FAST
-    return await _openai_compat_chat(GROQ_BASE, GROQ_API_KEY, model, messages)
+    return await _openai_compat_chat_retry(GROQ_BASE, key, model, messages)
 
 
 # ── OpenRouter (Hermes e outros modelos gratuitos) ────────────────────────────
@@ -268,8 +276,12 @@ OPENROUTER_HEADERS = {
 }
 
 
+def _openrouter_key() -> str:
+    return os.environ.get("OPENROUTER_API_KEY", OPENROUTER_API_KEY)
+
+
 def openrouter_available() -> bool:
-    return bool(OPENROUTER_API_KEY)
+    return bool(_openrouter_key())
 
 
 def openrouter_chat(prompt: str, system: str = "", smart: bool = False) -> str:
@@ -277,7 +289,8 @@ def openrouter_chat(prompt: str, system: str = "", smart: bool = False) -> str:
     Envia prompt para OpenRouter usando modelos gratuitos.
     smart=True usa Hermes-3 405B; False usa Gemma-2 9B.
     """
-    if not OPENROUTER_API_KEY:
+    key = _openrouter_key()
+    if not key:
         raise RuntimeError(
             "OPENROUTER_API_KEY não configurada. "
             "Obtenha gratuitamente em openrouter.ai"
@@ -289,7 +302,7 @@ def openrouter_chat(prompt: str, system: str = "", smart: bool = False) -> str:
     model = OPENROUTER_MODEL_SMART if smart else OPENROUTER_MODEL_FAST
     return _openai_compat_chat_sync_retry(
         OPENROUTER_BASE,
-        OPENROUTER_API_KEY,
+        key,
         model,
         messages,
         extra_headers=OPENROUTER_HEADERS,
@@ -297,7 +310,8 @@ def openrouter_chat(prompt: str, system: str = "", smart: bool = False) -> str:
 
 
 async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = False) -> str:
-    if not OPENROUTER_API_KEY:
+    key = _openrouter_key()
+    if not key:
         raise RuntimeError(
             "OPENROUTER_API_KEY não configurada. "
             "Obtenha gratuitamente em openrouter.ai"
@@ -309,7 +323,7 @@ async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = Fal
     model = OPENROUTER_MODEL_SMART if smart else OPENROUTER_MODEL_FAST
     return await _openai_compat_chat_retry(
         OPENROUTER_BASE,
-        OPENROUTER_API_KEY,
+        key,
         model,
         messages,
         extra_headers=OPENROUTER_HEADERS,
@@ -463,8 +477,9 @@ def analisar_red_flags_contrato(objeto: str, orgao: str, valor: float) -> list[s
         if flag in texto_lower
     ]
 
-    # Depois: análise semântica via LLM gratuito
-    if not best_free_chat.__module__:
+    # Depois: análise semântica via LLM gratuito (só se houver provedor disponível)
+    from compliance_agent.llm import local as _ollama
+    if not (groq_available() or openrouter_available() or _ollama.is_available()):
         return flags_locais
 
     prompt = (
