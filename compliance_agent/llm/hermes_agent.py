@@ -38,9 +38,21 @@ _RATE_LIMIT_SECS = 20            # min entre chamadas ao OpenRouter
 _alertas_processados: set[int] = set()
 _ultima_chamada: float = 0.0
 
+# Cascata de modelos OpenRouter — tenta do mais capaz ao mais disponível.
+# Hermes-3 405B é limitado; os fallbacks garantem que o sistema nunca trava.
+_HERMES_MODELO_PRINCIPAL = "nousresearch/hermes-3-llama-3.1-405b:free"
+_HERMES_MODELOS_FALLBACK = [
+    "google/gemma-2-27b-it:free",
+    "google/gemma-2-9b-it:free",
+    "mistralai/mistral-7b-instruct:free",
+]
+
 
 async def _hermes(system: str, prompt: str, max_tokens: int = 1500) -> str:
-    """Chama Hermes-3 405B via OpenRouter com rate-limit interno."""
+    """
+    Chama LLM via cascata de modelos: Hermes-3 405B → Gemma-2 27B → Gemma-2 9B
+    → Mistral 7B → Groq llama-3.3-70b. Nunca trava por rate-limit de um modelo só.
+    """
     global _ultima_chamada
     import time
 
@@ -48,10 +60,54 @@ async def _hermes(system: str, prompt: str, max_tokens: int = 1500) -> str:
     if elapsed < _RATE_LIMIT_SECS:
         await asyncio.sleep(_RATE_LIMIT_SECS - elapsed)
 
-    from compliance_agent.llm.free_llm import openrouter_chat_async
-    resultado = await openrouter_chat_async(prompt, system=system, smart=True)
-    _ultima_chamada = time.time()
-    return resultado
+    from compliance_agent.llm.free_llm import (
+        _openai_compat_chat_retry,
+        _openrouter_key,
+        OPENROUTER_BASE,
+        OPENROUTER_HEADERS,
+        groq_available,
+        groq_chat_async,
+    )
+
+    key = _openrouter_key()
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+
+    cascade = [_HERMES_MODELO_PRINCIPAL] + _HERMES_MODELOS_FALLBACK
+
+    if key:
+        for model in cascade:
+            try:
+                resultado = await _openai_compat_chat_retry(
+                    OPENROUTER_BASE, key, model, messages,
+                    max_tokens=max_tokens,
+                    extra_headers=OPENROUTER_HEADERS,
+                    max_retries=1,  # 1 retry por modelo; se falhar, tenta o próximo
+                )
+                _ultima_chamada = time.time()
+                if model != _HERMES_MODELO_PRINCIPAL:
+                    console.print(
+                        f"[dim]Hermes: modelo principal indisponível, "
+                        f"usando {model.split('/')[-1]} como fallback[/dim]"
+                    )
+                return resultado
+            except Exception:
+                await asyncio.sleep(3)
+                continue
+
+    # Último recurso: Groq (llama-3.3-70b)
+    if groq_available():
+        console.print("[dim]Hermes: OpenRouter indisponível — usando Groq como fallback[/dim]")
+        resultado = await groq_chat_async(prompt, system=system, smart=True)
+        _ultima_chamada = time.time()
+        return resultado
+
+    raise RuntimeError(
+        "Hermes indisponível: OpenRouter 429 em todos os modelos e Groq sem chave. "
+        "Aguarde alguns minutos (cota :free reseta) ou configure GROQ_API_KEY no .env."
+    )
 
 
 # ─── 1. Aprender padrões de alertas novos ────────────────────────────────────
