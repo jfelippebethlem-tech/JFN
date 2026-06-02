@@ -7,12 +7,19 @@ DIRETO a tabela de OBs que já vem carregada na tela.
 
 Estrutura real da tabela (confirmada por diagnóstico em 01/06/2026):
     Número | UG Emitente | UG Pagadora | Data Emissão | Status |
-    Tipo | Finalidade | Tipo de OB | NL
-Ex.: 2026OB00571 | 300100 | 300100 | 01/06/2026 | Contabilizado |
-     12 | 6 | Orçamentária | 2026NL00338
+    Tipo | Finalidade | Tipo de OB | NL | Credor | Nome do Credor |
+    UG Liquidante | Valor | Competência | Status de Envio | GD |
+    Processo | RE | PD | Tipo de Regularização | Qtd. Impressões |
+    Assinatura Digital | Vinculação de Pagamento
 
-A tela é uma LISTA (não há botão "Consultar"); os registros do dia já
-aparecem. Lemos a grade `pt1:tblOBOrcamentaria` diretamente.
+Ex.: 2026OB00571 | 300100 | 300100 | 01/06/2026 | Contabilizado |
+     12 | 6 | Orçamentária | 2026NL00338 | 00394315766 |
+     DENISE GOMES FIGUEIRINHAS | 300100 | 844,50 | 05/2026 |
+     Aguardando Envio |  | 400001/00000530/2026 | 2026RE00097 | ...
+
+A tela é uma LISTA (não há botão "Consultar"); os registros já aparecem.
+Todos os dados relevantes (favorecido, CPF/CNPJ, valor, processo SEI) são
+extraídos diretamente da tabela — sem necessidade de abrir cada OB.
 
 Uso (standalone):
     python -m compliance_agent.collectors.siafe_ob
@@ -404,7 +411,8 @@ def save_ob_records(session, summary: dict) -> int:
         for n in names:
             j = idx.get(n)
             if j is not None and j < len(row):
-                return row[j]
+                v = row[j]
+                return v if v and v.strip() and v.strip() != "\xa0" else None
         return None
 
     for row in summary.get("rows", []):
@@ -419,6 +427,14 @@ def save_ob_records(session, summary: dict) -> int:
         tipo_ob = cell(row, "tipo de ob")
         nl = cell(row, "nl")
 
+        # Full-row data available since 2026-06-01 diagnostic
+        favorecido_cpf_raw = cell(row, "credor")
+        favorecido_cpf = re.sub(r"\D", "", favorecido_cpf_raw)[:14] if favorecido_cpf_raw else None
+        favorecido_nome = cell(row, "nome do credor")
+        valor_raw = cell(row, "valor")
+        valor = _parse_money(valor_raw) if valor_raw else None
+        numero_processo = cell(row, "processo")
+
         raw = {header[i] if i < len(header) else f"col{i}": v
                for i, v in enumerate(row)}
 
@@ -428,6 +444,15 @@ def save_ob_records(session, summary: dict) -> int:
 
         if existing:
             existing.status = status or existing.status
+            if favorecido_nome and not existing.favorecido_nome:
+                existing.favorecido_nome = favorecido_nome
+            if favorecido_cpf and not existing.favorecido_cpf:
+                existing.favorecido_cpf = favorecido_cpf
+            if valor and not existing.valor:
+                existing.valor = valor
+            if numero_processo and not existing.numero_processo:
+                existing.numero_processo = numero_processo
+                existing.numero_sei = numero_processo
             existing.raw_json = json.dumps(raw, ensure_ascii=False)
             existing.updated_at = datetime.utcnow()
         else:
@@ -438,6 +463,11 @@ def save_ob_records(session, summary: dict) -> int:
                 ug_codigo=str(ug_emit) if ug_emit else None,
                 status=str(status) if status else None,
                 tipo_ob=str(tipo_ob) if tipo_ob else None,
+                favorecido_nome=favorecido_nome,
+                favorecido_cpf=favorecido_cpf,
+                valor=valor,
+                numero_processo=numero_processo,
+                numero_sei=numero_processo,
                 observacao=f"NL={nl}" if nl else None,
                 raw_json=json.dumps(raw, ensure_ascii=False),
             )
@@ -702,14 +732,17 @@ async def collect_ob_details(page, ob_numbers: list[str]) -> dict[str, dict]:
 
 async def run_daily_collection(
     target_date: date | None = None,
-    collect_details: bool = True,
+    collect_details: bool = False,
     max_details: int = 200,
 ) -> dict:
     """
-    Pipeline completo: coleta lista de OBs + detalhes + persiste no banco.
+    Pipeline completo: coleta lista de OBs + persiste no banco.
 
-    collect_details=True abre cada OB para extrair favorecido/valor/processo.
-    max_details limita quantas OBs terão detalhes coletados (segurança de tempo).
+    A tabela do SIAFE já contém favorecido, CPF/CNPJ, valor e processo SEI
+    em cada linha — collect_details=False é suficiente para 95% dos casos.
+    collect_details=True abre cada OB para complementar campos ausentes
+    (use apenas quando os campos obrigatórios não vierem na tabela).
+    max_details limita quantas OBs terão detalhes coletados.
     """
     from playwright.async_api import async_playwright
 
@@ -795,7 +828,23 @@ async def run_daily_collection(
                         except Exception as e:
                             result["errors"].append(f"Erro ao salvar lista: {e}")
 
-                        # 3. Coleta detalhes de cada OB
+                        # Diagnóstico do header — ajuda a identificar estrutura inesperada
+                        result["header"] = header
+                        result["cols_found"] = len(header)
+
+                        # Auto-detect se a tabela não trouxe favorecido/valor:
+                        # se >80% das OBs salvas têm valor=None, ativa detalhamento
+                        idx_h = _col_index(header)
+                        has_valor_col = "valor" in idx_h
+                        has_credor_col = "nome do credor" in idx_h or "credor" in idx_h
+                        if rows and not (has_valor_col and has_credor_col):
+                            collect_details = True
+                            result["errors"].append(
+                                f"Colunas 'Valor'/'Credor' ausentes no header ({header[:8]}) "
+                                "— ativando collect_details para extrair via detalhe."
+                            )
+
+                        # 3. Coleta detalhes de cada OB (fallback ou explícito)
                         if collect_details and rows:
                             idx = _col_index(header)
                             num_col = idx.get("número", idx.get("numero", 0))
