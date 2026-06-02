@@ -376,7 +376,134 @@ async def recomendar_proximo_alvo(candidatos: list[dict], session) -> Optional[s
         return None
 
 
-# ─── 5. Loop contínuo do Hermes ──────────────────────────────────────────────
+# ─── 5. Bootstrap inicial — Hermes estuda antes de haver dados ───────────────
+
+_SYSTEM_BOOTSTRAP = (
+    "Você é o Hermes, o auditor sênior de inteligência do sistema JFN que monitora "
+    "as finanças do Estado do Rio de Janeiro. Você acabou de ser ativado.\n\n"
+    "Com base na legislação e jurisprudência que lhe foi fornecida, sua missão agora é:\n"
+    "  1. Listar os 5 TIPOS DE IRREGULARIDADE mais comuns em estados brasileiros\n"
+    "     (fracionamento, superfaturamento, nepotismo, empresa fachada, etc.)\n"
+    "  2. Para cada tipo: quais SINAIS nas OBs/DOERJ indicariam esse esquema?\n"
+    "  3. Quais REGRAS NUMÉRICAS específicas do RJ merecem atenção imediata?\n"
+    "  4. Formule 3 HIPÓTESES INICIAIS sobre o que provavelmente encontraremos\n"
+    "     quando os dados do SIAFE2 chegarem.\n\n"
+    "Responda em JSON:\n"
+    "{\n"
+    '  "padroes_prioritarios": [\n'
+    '    {"tipo": "fracionamento", "sinais": ["OBs iguais no mesmo dia", "..."], '
+    '"lei_aplicavel": "Lei 14.133/2021 art. 75"}\n'
+    "  ],\n"
+    '  "regras_numericas_rj": [\n'
+    '    {"regra": "Dispensa compras <= R$ 57.208", "alerta_se": "soma diária > R$ 57.208"}\n'
+    "  ],\n"
+    '  "hipoteses_iniciais": [\n'
+    '    {"chave": "id_curto", "hipotese": "texto da hipótese a verificar nos dados"}\n'
+    "  ],\n"
+    '  "mensagem_telegram": "Mensagem curta (2-3 linhas) para o usuário saber que o Hermes está ativo e o que vai monitorar"\n'
+    "}"
+)
+
+
+async def _bootstrap_hermes(session) -> None:
+    """
+    Roda UMA VEZ na inicialização: Hermes estuda a base legal + jurisprudência
+    e formula hipóteses iniciais ANTES de qualquer dado chegar do SIAFE/DOERJ.
+    Assim ele já está "aquecido" quando os primeiros alertas aparecerem.
+    """
+    from compliance_agent.llm.memoria import (
+        aprender, garantir_contexto_inicial, contexto_para_prompt
+    )
+    from compliance_agent.notifications.telegram import enviar_mensagem
+
+    # Não refaz o bootstrap se já foi feito nessa execução
+    ja_feito = [m for m in [None] if False]  # marcador simples abaixo
+
+    garantir_contexto_inicial(session)
+    contexto_mem = contexto_para_prompt(session, max_itens=30)
+
+    try:
+        base_legal = ""
+        jurisp = ""
+        try:
+            from compliance_agent.knowledge.base_legal import contexto_legal_para_prompt
+            base_legal = contexto_legal_para_prompt()
+        except Exception:
+            pass
+        try:
+            from compliance_agent.knowledge.jurisprudencia import contexto_jurisprudencial_para_prompt
+            jurisp = contexto_jurisprudencial_para_prompt()
+        except Exception:
+            pass
+
+        prompt = (
+            f"BASE LEGAL DISPONÍVEL:\n{base_legal}\n\n"
+            f"JURISPRUDÊNCIA (TCE-RJ + TCU):\n{jurisp}\n\n"
+            f"CONHECIMENTO ACUMULADO:\n{contexto_mem}\n\n"
+            "Analise e formule hipóteses iniciais para a auditoria do Estado do RJ."
+        )
+
+        console.print("[cyan]🧠 Hermes: estudando base legal e jurisprudência...[/cyan]")
+        raw = await _hermes(_SYSTEM_BOOTSTRAP, prompt, max_tokens=2000)
+
+        import re as _re
+        m = _re.search(r"\{.*\}", raw, re.DOTALL)
+        if not m:
+            console.print("[yellow]Hermes bootstrap: resposta sem JSON válido.[/yellow]")
+            return
+
+        dados = json.loads(m.group())
+
+        # Salva padrões prioritários na memória
+        for i, p in enumerate(dados.get("padroes_prioritarios", [])[:6]):
+            chave = f"bootstrap_padrao_{i}_{p.get('tipo','x')}"[:300]
+            valor = (
+                f"Tipo: {p.get('tipo','')} | "
+                f"Sinais: {', '.join(p.get('sinais', [])[:3])} | "
+                f"Lei: {p.get('lei_aplicavel','')}"
+            )
+            aprender("padrao_fraude", chave, valor[:400],
+                     fonte="hermes_bootstrap", delta_confianca=0.15, session=session)
+
+        # Salva regras numéricas
+        for i, r in enumerate(dados.get("regras_numericas_rj", [])[:5]):
+            chave = f"bootstrap_regra_{i}"
+            valor = f"{r.get('regra','')} → alerta se: {r.get('alerta_se','')}"
+            aprender("contexto_admin", chave, valor[:400],
+                     fonte="hermes_bootstrap", delta_confianca=0.2, session=session)
+
+        # Salva hipóteses iniciais
+        for hip in dados.get("hipoteses_iniciais", [])[:4]:
+            chave = hip.get("chave", "")[:300]
+            texto = hip.get("hipotese", "")
+            if chave and texto:
+                aprender("hipotese", chave, texto[:400],
+                         fonte="hermes_bootstrap", delta_confianca=0.1, session=session)
+
+        n_padroes  = len(dados.get("padroes_prioritarios", []))
+        n_regras   = len(dados.get("regras_numericas_rj", []))
+        n_hipoteses = len(dados.get("hipoteses_iniciais", []))
+        console.print(
+            f"[green]🧠 Hermes pronto: {n_padroes} padrões + {n_regras} regras + "
+            f"{n_hipoteses} hipóteses iniciais salvas.[/green]"
+        )
+
+        # Telegram: avisa que o Hermes está ativo e o que vai monitorar
+        msg_base = dados.get("mensagem_telegram", "")
+        msg = (
+            f"🧠 *Hermes-3 ativo e estudando*\n\n"
+            + (f"_{msg_base}_\n\n" if msg_base else "")
+            + f"Aprendi *{n_padroes}* padrões de irregularidade e formulei "
+            f"*{n_hipoteses}* hipóteses para testar nos dados.\n"
+            "Quando o SIAFE e DOERJ coletarem, começo a cruzar tudo."
+        )
+        await enviar_mensagem(msg)
+
+    except Exception as e:
+        console.print(f"[yellow]Hermes bootstrap: {e}[/yellow]")
+
+
+# ─── 6. Loop contínuo do Hermes ──────────────────────────────────────────────
 
 async def loop_hermes_continuo():
     """
@@ -402,6 +529,15 @@ async def loop_hermes_continuo():
     init_db()
 
     _sintese_feita_na_semana: set[str] = set()
+
+    # ── Bootstrap: Hermes estuda antes dos dados chegarem ────────────────────
+    _boot_session = get_session()
+    try:
+        await _bootstrap_hermes(_boot_session)
+    except Exception as _e:
+        console.print(f"[yellow]Hermes bootstrap falhou: {_e}[/yellow]")
+    finally:
+        _boot_session.close()
 
     while True:
         agora = datetime.now()

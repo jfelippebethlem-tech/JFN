@@ -793,11 +793,10 @@ async def _ping_inicio():
     try:
         await enviar_mensagem(
             f"🟢 *JFN Agente online* ({datetime.now():%d/%m %H:%M})\n"
-            "• SIAFE2 + DOERJ monitorados a cada 15 min\n"
-            "• Investigo alvos suspeitos sozinho 24/7\n"
+            "• Hermes-3 arranca primeiro: estuda base legal e formula hipóteses\n"
+            "• SIAFE2 + DOERJ: coleta imediata (depois a cada 15 min)\n"
             "• Relatório completo às 08:00\n"
-            "• Base legal: Lei 14.133, 8.666, 8.429 + TCU/TCE-RJ\n"
-            "Comandos: /ajuda — /lei TERMO — ou pergunte algo."
+            "Comandos: /ajuda — /lei TERMO — /hermes — /esquemas"
         )
     except Exception:
         pass
@@ -821,12 +820,12 @@ if __name__ == "__main__":
                 pass
             await _ping_inicio()
             await asyncio.gather(
+                _loop_resiliente("hermes",       loop_hermes_continuo),    # primeiro: bootstrap
                 _loop_resiliente("monitor",      loop_monitoramento),
                 _loop_resiliente("relatorio",    loop_relatorio),
                 _loop_resiliente("telegram",     loop_comandos),
                 _loop_resiliente("investigador", loop_investigador_autonomo),
                 _loop_resiliente("juridico",     loop_atualizacao_juridica),
-                _loop_resiliente("hermes",       loop_hermes_continuo),
             )
 
         try:
