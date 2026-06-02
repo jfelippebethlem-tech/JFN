@@ -336,8 +336,10 @@ _AJUDA = (
     "  /sei NUMERO — consulta processo no SEI-RJ\n\n"
     "*Base jurídica:*\n"
     "  /lei TERMO — busca lei, acórdão ou princípio (TCE-RJ, TCU, Planalto)\n\n"
-    "*Aprendizado:*\n"
-    "  /aprendi — o que o agente aprendeu (lições do Hermes)\n"
+    "*Hermes 405B (análise profunda):*\n"
+    "  /hermes PERGUNTA — análise sênior com raciocínio profundo\n"
+    "  /esquemas — esquemas identificados pelo Hermes\n"
+    "  /aprendi — lições aprendidas pelo agente\n"
     "  /memoria NOME — perfil acumulado de uma entidade\n\n"
     "*Painel e ajuda:*\n"
     "  /painel — link do dashboard web (PC e celular)\n"
@@ -641,10 +643,18 @@ def _build_agente_system() -> str:
 _AGENTE_SYSTEM = _build_agente_system()
 
 
+_PERGUNTAS_COMPLEXAS = (
+    "esquema", "padrão", "conecte", "analise", "explique", "hipótese",
+    "suspeito", "compare", "relação", "ligação", "rede", "cartel",
+    "semana", "mês", "histórico", "ao longo", "tendência", "evolução",
+)
+
+
 async def _conversar_com_agente(pergunta: str) -> str:
     """
-    Conversa em linguagem natural: junta dados do banco + memória aprendida
-    e responde via Groq (rápido) com fallback Hermes/OpenRouter.
+    Conversa em linguagem natural.
+    Perguntas simples → Groq (rápido).
+    Perguntas complexas (padrões, esquemas, análise profunda) → Hermes-3 405B.
     """
     contexto_db = await _coletar_contexto_db()
     try:
@@ -653,6 +663,22 @@ async def _conversar_com_agente(pergunta: str) -> str:
     except Exception:
         contexto_mem = ""
 
+    # Detecta se a pergunta é complexa → usa Hermes
+    pergunta_lower = pergunta.lower()
+    e_complexa = any(kw in pergunta_lower for kw in _PERGUNTAS_COMPLEXAS)
+
+    if e_complexa:
+        try:
+            from compliance_agent.llm.hermes_agent import responder_hermes
+            from compliance_agent.database.models import get_session
+            session = get_session()
+            try:
+                return await responder_hermes(pergunta, contexto_db, session)
+            finally:
+                session.close()
+        except Exception:
+            pass  # fallback para Groq abaixo
+
     prompt = (
         f"{contexto_db}\n\n"
         f"{contexto_mem}\n\n"
@@ -660,7 +686,7 @@ async def _conversar_com_agente(pergunta: str) -> str:
         "Responda usando os dados acima."
     )
 
-    # Tenta Groq primeiro (rápido), cai para OpenRouter/Hermes
+    # Groq rápido → OpenRouter fallback
     try:
         from compliance_agent.llm.free_llm import (
             groq_chat_async, groq_available,
@@ -678,6 +704,65 @@ async def _conversar_com_agente(pergunta: str) -> str:
 
     return ("LLM indisponível. Use comandos diretos: /status, /obs, /alertas, "
             "/buscar NOME, /agora.")
+
+
+async def _hermes_reply(pergunta: str, chat_id: str) -> str:
+    """Hermes-3 405B responde com raciocínio profundo e dados do banco."""
+    if not pergunta.strip():
+        return (
+            "Use: /hermes PERGUNTA\n\n"
+            "Exemplos:\n"
+            "  /hermes qual empresa mais suspeita nos últimos 30 dias?\n"
+            "  /hermes existe padrão de fracionamento no DETRAN?\n"
+            "  /hermes conecte os alertas desta semana\n"
+            "  /hermes quais esquemas o agente identificou?"
+        )
+    await enviar_mensagem("🧠 Hermes pensando... (pode levar até 30s)", chat_id=chat_id)
+    try:
+        from compliance_agent.llm.hermes_agent import responder_hermes
+        from compliance_agent.database.models import get_session
+        contexto_db = await _coletar_contexto_db()
+        session = get_session()
+        try:
+            resposta = await responder_hermes(pergunta.strip(), contexto_db, session)
+        finally:
+            session.close()
+        return f"🧠 *Hermes:*\n\n{resposta}"
+    except Exception as exc:
+        return f"Hermes indisponível: {exc}"
+
+
+async def _esquemas_reply() -> str:
+    """Lista os esquemas identificados pelo Hermes."""
+    try:
+        from compliance_agent.llm.memoria import lembrar
+        esquemas = lembrar("esquema", min_confianca=0.0)
+        hipoteses = lembrar("hipotese", min_confianca=0.0)
+        linhas = ["*🕸️ Esquemas e hipóteses identificados pelo Hermes:*\n"]
+        if esquemas:
+            linhas.append(f"*Esquemas ({len(esquemas)}):*")
+            for e in esquemas[:5]:
+                dados = {}
+                try:
+                    dados = __import__("json").loads(e["valor"])
+                except Exception:
+                    pass
+                nome = dados.get("nome") or e["chave"]
+                modus = dados.get("modus_operandi", e["valor"][:100])
+                linhas.append(f"• *{nome[:60]}*\n  _{modus[:120]}_")
+        if hipoteses:
+            linhas.append(f"\n*Hipóteses em investigação ({len(hipoteses)}):*")
+            for h in hipoteses[:5]:
+                linhas.append(f"• {h['valor'][:120]}")
+        if len(linhas) == 1:
+            return (
+                "Nenhum esquema identificado ainda.\n"
+                "O Hermes precisa de mais alertas acumulados. "
+                "Use /agora para coletar dados ou aguarde o ciclo automático."
+            )
+        return "\n".join(linhas)
+    except Exception as exc:
+        return f"Erro: {exc}"
 
 
 async def _lei_reply(termo: str) -> str:
@@ -766,6 +851,12 @@ async def processar_comando(texto: str, chat_id: str) -> None:
         else:
             await enviar_mensagem(f"📂 Consultando SEI {args}...", chat_id=chat_id)
             await enviar_mensagem(await _sei_reply(args.strip()), chat_id=chat_id)
+
+    elif cmd == "/hermes":
+        await enviar_mensagem(await _hermes_reply(args, chat_id), chat_id=chat_id)
+
+    elif cmd == "/esquemas":
+        await enviar_mensagem(await _esquemas_reply(), chat_id=chat_id)
 
     elif cmd == "/aprendi":
         await enviar_mensagem(await _aprendi_reply(), chat_id=chat_id)

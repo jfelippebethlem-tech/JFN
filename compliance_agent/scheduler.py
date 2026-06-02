@@ -805,6 +805,7 @@ if __name__ == "__main__":
         from compliance_agent.database.models import init_db
         from compliance_agent.llm.memoria import garantir_contexto_inicial
         from compliance_agent.llm.orquestrador import loop_investigador_autonomo
+        from compliance_agent.llm.hermes_agent import loop_hermes_continuo
 
         async def _loop_completo():
             init_db()
@@ -819,6 +820,7 @@ if __name__ == "__main__":
                 _loop_resiliente("telegram",     loop_comandos),
                 _loop_resiliente("investigador", loop_investigador_autonomo),
                 _loop_resiliente("juridico",     loop_atualizacao_juridica),
+                _loop_resiliente("hermes",       loop_hermes_continuo),
             )
 
         try:

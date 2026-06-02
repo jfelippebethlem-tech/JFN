@@ -268,7 +268,32 @@ async def loop_investigador_autonomo():
         try:
             session = get_session()
             try:
-                alvo = await escolher_proximo_alvo(session)
+                # Pede ao Hermes para recomendar o alvo mais urgente
+                candidatos_raw = []
+                for _ in range(1):  # coleta candidatos sem escolher
+                    c = await escolher_proximo_alvo(session)
+                    if c:
+                        candidatos_raw.append(c)
+
+                if not candidatos_raw:
+                    console.print("[dim]Orquestrador: nada novo para investigar agora.[/dim]")
+                    await asyncio.sleep(PAUSA_SEM_ALVOS)
+                    continue
+
+                # Hermes orienta qual priorizar (se disponível)
+                alvo = candidatos_raw[0]
+                try:
+                    from compliance_agent.llm.hermes_agent import recomendar_proximo_alvo
+                    recomendado = await recomendar_proximo_alvo(candidatos_raw, session)
+                    if recomendado:
+                        console.print(f"[dim]Hermes recomendou: {recomendado[:60]}[/dim]")
+                        for c in candidatos_raw:
+                            if recomendado.lower() in (c.get("nome") or "").lower():
+                                alvo = c
+                                break
+                except Exception:
+                    pass
+
                 if not alvo:
                     console.print("[dim]Orquestrador: nada novo para investigar agora.[/dim]")
                     await asyncio.sleep(PAUSA_SEM_ALVOS)
