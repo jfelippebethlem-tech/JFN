@@ -1,0 +1,106 @@
+{
+  "url": "https://www.ioerj.com.br/portal/modules/content/index.php?id=61",
+  "title": "Imprensa Oficial do Estado do Rio de Janeiro :",
+  "clickables": [
+    {
+      "tag": "a",
+      "text": "Facebook",
+      "cls": "elementor-icon elementor-social-icon elementor-soc",
+      "id": ""
+    },
+    {
+      "tag": "a",
+      "text": "Instagram",
+      "cls": "elementor-icon elementor-social-icon elementor-soc",
+      "id": ""
+    },
+    {
+      "tag": "a",
+      "text": "Linkedin",
+      "cls": "elementor-icon elementor-social-icon elementor-soc",
+      "id": ""
+    },
+    {
+      "tag": "a",
+      "text": "Portal",
+      "cls": "elementor-item elementor-item-anchor",
+      "id": ""
+    },
+    {
+      "tag": "a",
+      "text": "E-DOFS",
+      "cls": "elementor-item elementor-item-anchor",
+      "id": ""
+    },
+    {
+      "tag": "a",
+      "text": "Login",
+      "cls": "elementor-item elementor-item-anchor",
+      "id": ""
+    },
+    {
+      "tag": "a",
+      "text": "Administração",
+      "cls": "elementor-item elementor-item-anchor",
+      "id": ""
+    },
+    {
+      "tag": "a",
+      "text": "ÚLTIMA EDIÇÃO",
+      "cls": "elementor-button elementor-button-link elementor-s",
+      "id": ""
+    },
+    {
+      "tag": "a",
+      "text": "BUSCA POR DATA",
+      "cls": "elementor-button elementor-button-link elementor-s",
+      "id": ""
+    },
+    {
+      "tag": "a",
+      "text": "E-DOFS",
+      "cls": "elementor-button elementor-button-link elementor-s",
+      "id": ""
+    },
+    {
+      "tag": "input",
+      "text": "buscar",
+      "cls": "",
+      "id": ""
+    },
+    {
+      "tag": "a",
+      "text": "Busca Avançada",
+      "cls": "",
+      "id": ""
+    }
+  ],
+  "inputs": [
+    {
+      "tag": "input",
+      "type": "search",
+      "name": "textobusca",
+      "id": "txtBusca",
+      "placeholder": "Desde Julho de 2005",
+      "label": "Busca por palavra"
+    },
+    {
+      "tag": "input",
+      "type": "submit",
+      "name": "buscar",
+      "id": "",
+      "placeholder": "",
+      "label": "Busca por palavra"
+    }
+  ],
+  "forms": [
+    {
+      "action": "https://www.ioerj.com.br/portal/modules/conteudoonline/busca_do.php?acao=busca",
+      "method": "post",
+      "id": "",
+      "n_fields": 5
+    }
+  ],
+  "bodyText": "Facebook\n \nInstagram\n \nLinkedin\nPORTAL\nE-DOFS\nLOGIN\nADMINISTRAÇÃO\n \nÚLTIMA EDIÇÃO\nBUSCA POR DATA\nE-DOFS\n\nPublique no Diário Oficial\n\nBusca por palavra\nDigite uma palavra ou expressão\n\nBusca Avançada\n \n  ",
+  "htmlLen": 42300
+}

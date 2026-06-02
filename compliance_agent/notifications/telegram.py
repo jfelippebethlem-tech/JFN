@@ -21,11 +21,9 @@ from typing import Union
 
 import httpx
 
-_DEFAULT_TOKEN = "8840263255:AAFsNh8nHEZk5xga-TRmLOTduIe_EpUEESQ"
-_DEFAULT_CHAT_ID = "45338178"
-
-BOT_TOKEN: str = os.environ.get("TELEGRAM_BOT_TOKEN", _DEFAULT_TOKEN)
-CHAT_ID: str = os.environ.get("TELEGRAM_CHAT_ID", _DEFAULT_CHAT_ID)
+_BOT_TOKEN, _CHAT_ID = "", ""
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", _BOT_TOKEN)
+CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", _CHAT_ID)
 
 # Chat ID auto-descoberto na primeira mensagem recebida (salvo em memória)
 _auto_chat_id: str = ""
