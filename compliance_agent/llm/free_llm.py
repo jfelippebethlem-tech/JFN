@@ -20,9 +20,12 @@ Configure as chaves no .env:
   FREE_LLM_PREFER=groq          # groq | openrouter | ollama (qual usar primeiro)
 """
 
+import asyncio
 import json
 import os
+import random
 import re
+import time
 from typing import Optional
 
 import httpx
@@ -70,7 +73,7 @@ async def _openai_compat_chat(
         "temperature": 0.1,
     }
 
-    async with httpx.AsyncClient(timeout=30) as client:
+    async with httpx.AsyncClient(timeout=60) as client:
         resp = await client.post(
             f"{base_url}/chat/completions",
             json=payload,
@@ -112,6 +115,116 @@ def _openai_compat_chat_sync(
         resp.raise_for_status()
         data = resp.json()
         return data["choices"][0]["message"]["content"]
+
+
+# ── Retry helpers para OpenRouter (trata 429 e erros transitórios) ───────────
+
+_RETRYABLE_STATUS = {429, 500, 502, 503, 504}
+
+
+def _sleep_backoff(attempt: int, base: float = 2.0, cap: float = 120.0) -> None:
+    delay = min(cap, base * (2 ** attempt)) + random.uniform(0, 1)
+    time.sleep(delay)
+
+
+def _openai_compat_chat_sync_retry(
+    base_url: str,
+    api_key: str,
+    model: str,
+    messages: list[dict],
+    max_tokens: int = 1024,
+    extra_headers: dict | None = None,
+    max_retries: int = 4,
+) -> str:
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    if extra_headers:
+        headers.update(extra_headers)
+
+    payload = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": 0.1,
+    }
+
+    last_exc: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            with httpx.Client(timeout=60) as client:
+                resp = client.post(
+                    f"{base_url}/chat/completions",
+                    json=payload,
+                    headers=headers,
+                )
+                if resp.status_code in _RETRYABLE_STATUS:
+                    last_exc = RuntimeError(
+                        f"Retryable status {resp.status_code} from {base_url}"
+                    )
+                    _sleep_backoff(attempt)
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                return data["choices"][0]["message"]["content"]
+        except (httpx.HTTPError, RuntimeError) as e:
+            last_exc = e
+            if attempt < max_retries:
+                _sleep_backoff(attempt)
+            else:
+                raise last_exc
+    raise last_exc  # type: ignore[misc]
+
+
+async def _openai_compat_chat_retry(
+    base_url: str,
+    api_key: str,
+    model: str,
+    messages: list[dict],
+    max_tokens: int = 1024,
+    extra_headers: dict | None = None,
+    max_retries: int = 4,
+) -> str:
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    if extra_headers:
+        headers.update(extra_headers)
+
+    payload = {
+        "model": model,
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": 0.1,
+    }
+
+    last_exc: Exception | None = None
+    for attempt in range(max_retries + 1):
+        try:
+            async with httpx.AsyncClient(timeout=60) as client:
+                resp = await client.post(
+                    f"{base_url}/chat/completions",
+                    json=payload,
+                    headers=headers,
+                )
+                if resp.status_code in _RETRYABLE_STATUS:
+                    last_exc = RuntimeError(
+                        f"Retryable status {resp.status_code} from {base_url}"
+                    )
+                    await asyncio.sleep(min(120.0, 2.0 * (2 ** attempt)) + random.uniform(0, 1))
+                    continue
+                resp.raise_for_status()
+                data = resp.json()
+                return data["choices"][0]["message"]["content"]
+        except (httpx.HTTPError, RuntimeError) as e:
+            last_exc = e
+            if attempt < max_retries:
+                await asyncio.sleep(min(120.0, 2.0 * (2 ** attempt)) + random.uniform(0, 1))
+            else:
+                raise last_exc
+    raise last_exc  # type: ignore[misc]
 
 
 # ── Groq ──────────────────────────────────────────────────────────────────────
@@ -165,28 +278,40 @@ def openrouter_chat(prompt: str, system: str = "", smart: bool = False) -> str:
     smart=True usa Hermes-3 405B; False usa Gemma-2 9B.
     """
     if not OPENROUTER_API_KEY:
-        raise RuntimeError("OPENROUTER_API_KEY não configurada. Obtenha gratuitamente em openrouter.ai")
+        raise RuntimeError(
+            "OPENROUTER_API_KEY não configurada. "
+            "Obtenha gratuitamente em openrouter.ai"
+        )
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     model = OPENROUTER_MODEL_SMART if smart else OPENROUTER_MODEL_FAST
-    return _openai_compat_chat_sync(
-        OPENROUTER_BASE, OPENROUTER_API_KEY, model, messages,
+    return _openai_compat_chat_sync_retry(
+        OPENROUTER_BASE,
+        OPENROUTER_API_KEY,
+        model,
+        messages,
         extra_headers=OPENROUTER_HEADERS,
     )
 
 
 async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = False) -> str:
     if not OPENROUTER_API_KEY:
-        raise RuntimeError("OPENROUTER_API_KEY não configurada.")
+        raise RuntimeError(
+            "OPENROUTER_API_KEY não configurada. "
+            "Obtenha gratuitamente em openrouter.ai"
+        )
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     model = OPENROUTER_MODEL_SMART if smart else OPENROUTER_MODEL_FAST
-    return await _openai_compat_chat(
-        OPENROUTER_BASE, OPENROUTER_API_KEY, model, messages,
+    return await _openai_compat_chat_retry(
+        OPENROUTER_BASE,
+        OPENROUTER_API_KEY,
+        model,
+        messages,
         extra_headers=OPENROUTER_HEADERS,
     )
 
