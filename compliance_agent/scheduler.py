@@ -346,6 +346,7 @@ async def loop_monitoramento():
     init_db()
 
     _doerj_coletado_hoje: set[str] = set()
+    _primeira_vez = True
 
     while True:
         agora = datetime.now()
@@ -355,7 +356,12 @@ async def loop_monitoramento():
         if chave_dia not in _doerj_coletado_hoje:
             _doerj_coletado_hoje.clear()
 
-        if 7 <= agora.hour < 20:
+        # Na 1ª execução coleta JÁ, mesmo fora do horário, para o usuário
+        # ver dados na hora. Depois respeita a janela 7h-20h.
+        if _primeira_vez or 7 <= agora.hour < 20:
+            if _primeira_vez:
+                console.print("[cyan]Coleta inicial (na inicialização)...[/cyan]")
+                _primeira_vez = False
             console.print(f"\n[dim]── Monitor {agora:%H:%M} ──[/dim]")
             chrome_ok = await _chrome_disponivel()
 
