@@ -439,6 +439,51 @@ def test_multi_missao_persiste_e_lista():
         s.close()
 
 
+def test_dados_abertos_ckan_parseia_resposta(monkeypatch=None):
+    """O coletor CKAN parseia package_search corretamente (httpx mockado)."""
+    import compliance_agent.collectors.dados_abertos_rj as dar
+
+    fake_payload = {
+        "success": True,
+        "result": {
+            "count": 1,
+            "results": [{
+                "title": "Despesas SIAFE-Rio 2026",
+                "name": "despesas-siafe-2026",
+                "organization": {"title": "SEFAZ-RJ"},
+                "notes": "Pagamentos do Estado",
+                "resources": [
+                    {"name": "CSV 2026", "format": "csv",
+                     "url": "http://x/d.csv", "id": "res-1",
+                     "datastore_active": False},
+                ],
+            }],
+        },
+    }
+
+    class FakeResp:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return fake_payload
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, url, params=None): return FakeResp()
+
+    orig = dar.httpx.AsyncClient
+    dar.httpx.AsyncClient = FakeClient
+    try:
+        out = asyncio.run(dar.buscar_datasets("despesa"))
+        assert out["ok"] is True
+        assert out["total"] == 1
+        assert out["datasets"][0]["organizacao"] == "SEFAZ-RJ"
+        assert out["datasets"][0]["recursos"][0]["formato"] == "CSV"
+    finally:
+        dar.httpx.AsyncClient = orig
+
+
 def test_auditor_24h_liga_desliga():
     """O Auditor 24h liga (idempotente), reporta status e desliga limpo."""
     from compliance_agent.hermes_goal import (

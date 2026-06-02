@@ -222,6 +222,9 @@ _SYSTEM_GOAL = (
     "  status_chrome       — verifica se o Chrome 9222 está no ar\n"
     "  coletar_siafe       — coleta OBs do dia no SIAFE2\n"
     "  coletar_doerj       — coleta publicações do DOERJ do dia\n"
+    "  dados_abertos       — args {termo}: consulta o portal CKAN de dados abertos do RJ (despesas, contratos, servidores) SEM Chrome/CAPTCHA\n"
+    "  ler_sei             — args {numero}: lê processo SEI na íntegra (OCR no CAPTCHA)\n"
+    "  ler_doerj           — args {url|data}: lê edição do DOERJ direto por URL ou data\n"
     "  navegar             — args {url?, clicar?}: use SOMENTE se a ação pedir URL explícita\n"
     "  investigar          — args {nome?, cnpj?}: investiga empresa/pessoa\n"
     "  listar_alertas      — lista alertas de compliance recentes\n"
@@ -410,6 +413,13 @@ class HermesGoalAgent:
                     "orgaos": list({p.get("orgao", "")[:80] for p in pubs if p.get("orgao")})[:10],
                     "amostra": [p["titulo"][:120] for p in pubs[:5]],
                 }
+
+            if acao == "dados_abertos":
+                # Consulta o portal CKAN de dados abertos do RJ (sem Chrome/CAPTCHA).
+                from compliance_agent.collectors.dados_abertos_rj import pesquisar
+                termo = args.get("termo") or args.get("q") or "despesa"
+                r = await pesquisar(termo, limite=int(args.get("limite", 8) or 8))
+                return r
 
             if acao == "analisar_dados":
                 return await self._analisar_dados(args)

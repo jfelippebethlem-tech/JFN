@@ -10,7 +10,30 @@ Auditor autônomo para dados públicos do Estado do Rio de Janeiro: **SIAFE2**, 
 - Integração com **SEI-RJ** para cruzamento de processos, com leitura na
   íntegra e resolução automática do CAPTCHA de imagem por **OCR** (ver abaixo).
 - Integração com **PNCP** para compras públicas.
+- **Dados Abertos do RJ** (portal CKAN `dadosabertos.rj.gov.br`): busca de
+  datasets de despesas/contratos/servidores por HTTP, com fallback automático
+  via Chrome 9222 quando o WAF bloqueia acesso direto.
 - Diagnóstico rápido (`checar.py`) com verificação de Chrome debug, DOERJ e SIAFE2.
+
+### Auditor 24 horas (auditoria automática e ininterrupta)
+
+Botão **"Auditor 24 horas"** na interface do Hermes (`/hermes`). Quando ligado,
+o Hermes roda um ciclo completo a cada N minutos, sem parar:
+
+1. Garante o Chrome 9222 e coleta SIAFE2 + DOERJ do dia
+2. Cruza com SEI quando há processo
+3. Raciocina (analisa → padrões → hipóteses → testa → aprende)
+4. Gera alertas fundamentados e reflete sobre os novos achados
+
+Controle: botão na UI, ou API
+(`POST /api/hermes/auditor24h/iniciar|parar`, `GET .../status`).
+Config: `AUDITOR_24H_INTERVALO` (segundos entre ciclos; padrão 1800).
+
+### Pensamento amplo do Hermes
+
+O "cérebro" do Hermes raciocina com até `HERMES_MAX_TOKENS` tokens (padrão
+8000, configurável) em todas as frentes — chat, síntese e ciclo autônomo —
+em vez do antigo teto de 1024 que truncava as análises.
 
 ### Compliance e regras
 - Motor de regras com múltiplos detectores.
