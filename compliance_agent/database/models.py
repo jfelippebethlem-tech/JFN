@@ -418,11 +418,55 @@ def init_db(db_path: Path = DB_PATH):
 import importlib.util
 import sys
 
+def _sync_columns(engine):
+    """
+    Adiciona colunas novas a tabelas já existentes (ALTER TABLE ADD COLUMN).
+
+    `create_all` cria tabelas que faltam, mas NUNCA altera tabelas existentes.
+    Quando o modelo ganha uma coluna nova (ex.: `categoria`), bancos antigos
+    ficam sem ela e qualquer query ORM quebra. Aqui comparamos o schema físico
+    com o modelo e adicionamos o que falta — torna o upgrade transparente.
+    """
+    from sqlalchemy import inspect as _sa_inspect
+
+    inspector = _sa_inspect(engine)
+    existing_tables = set(inspector.get_table_names())
+
+    # Mapa SQLAlchemy type → SQLite column type para o ADD COLUMN
+    def _sqlite_type(col):
+        try:
+            return col.type.compile(dialect=engine.dialect)
+        except Exception:
+            return "TEXT"
+
+    with engine.connect() as conn:
+        for table in Base.metadata.sorted_tables:
+            if table.name not in existing_tables:
+                continue  # create_all já cuidou das tabelas novas
+            cols_fisicas = {c["name"] for c in inspector.get_columns(table.name)}
+            for col in table.columns:
+                if col.name in cols_fisicas:
+                    continue
+                # SQLite ADD COLUMN não aceita PRIMARY KEY/UNIQUE nem default não-constante
+                tipo = _sqlite_type(col)
+                ddl = f'ALTER TABLE "{table.name}" ADD COLUMN "{col.name}" {tipo}'
+                try:
+                    conn.execute(text(ddl))
+                    conn.commit()
+                    print(f"Schema-sync: coluna {table.name}.{col.name} adicionada.")
+                except Exception as e:
+                    print(f"Schema-sync: nao foi possivel adicionar {table.name}.{col.name}: {e}")
+
+
 def _migrate(engine):
     """Apply incremental migrations."""
     migrations_dir = Path(__file__).parent / "migrations"
     if not migrations_dir.exists():
         return
+
+    # Antes de qualquer migração de dados: garante que o schema físico tem
+    # todas as colunas do modelo (bancos antigos podem estar defasados).
+    _sync_columns(engine)
 
     # Keep track of applied migrations in a simple table
     with engine.connect() as conn:
@@ -458,6 +502,9 @@ def _migrate(engine):
                 session.commit()
             print(f"Migração {version_num} aplicada com sucesso.")
         except Exception as e:
-            print(f"Erro ao aplicar migração {version_num}: {e}")
-            # Depending on policy, might re-raise or just log
-            raise
+            # Política: migração com defeito NÃO derruba o agente autônomo.
+            # Registra o erro e segue — a migração será tentada de novo no
+            # próximo boot (não foi marcada como aplicada). O schema-sync já
+            # garantiu as colunas, então o app funciona mesmo sem o enriquecimento.
+            print(f"Erro ao aplicar migração {version_num} (seguindo mesmo assim): {e}")
+            continue
