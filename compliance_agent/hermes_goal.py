@@ -360,12 +360,45 @@ class HermesGoalAgent:
             if acao == "desenvolver_hipoteses":
                 return await self._desenvolver_hipoteses(args)
 
+            if acao == "gerar_relatorio":
+                return await self._gerar_relatorio(args)
+
             if acao == "testar_hipoteses":
                 return await self._testar_hipoteses(args)
 
             return {"ok": False, "erro": f"ação desconhecida: {acao}"}
         except Exception as e:
             return {"ok": False, "erro": f"{type(e).__name__}: {e}"}
+
+    async def _gerar_relatorio(self, args: dict) -> dict:
+        try:
+            from compliance_agent.reporting.export_relatorios import generate_report
+            fmt = (args.get("formato") or "txt").strip().lower()
+            limite = args.get("limit")
+            try:
+                limite = int(limite) if limite is not None else None
+            except (TypeError, ValueError):
+                limite = None
+
+            result = generate_report(limit=limite, fmt=fmt)
+
+            aprender(
+                "licao",
+                f"relatorio_{fmt}",
+                f"Relatório gerado em {fmt}: {result['arquivo']}",
+                fonte="hermes_goal",
+                session=self.session,
+            )
+            return {
+                "ok": result["ok"],
+                "arquivo": result["arquivo"],
+                "formato": fmt,
+                "obs": result["obs"],
+                "alertas": result["alertas"],
+                "msg": "Relatório gerado com sucesso.",
+            }
+        except Exception as exc:
+            return {"ok": False, "erro": f"{type(exc).__name__}: {exc}"}
 
     # ── Análises de dados (modo /goal) ────────────────────────────────────────
 
@@ -501,9 +534,13 @@ class HermesGoalAgent:
     # ── Ciclo autônomo (estilo /goal: trabalha sem parar) ────────────────────
 
     async def _pensar(self, contexto: str) -> dict:
-        """Pede ao Hermes a próxima ação em JSON."""
         from compliance_agent.llm.hermes_agent import _hermes
-        raw = await _hermes(_SYSTEM_GOAL, contexto, max_tokens=600)
+        try:
+            raw = await _hermes(_SYSTEM_GOAL, contexto, max_tokens=400)
+            if not isinstance(raw, str):
+                raw = str(raw)
+        except Exception as exc:
+            return {"acao": "concluir", "resumo": f"LLM indisponível ({type(exc).__name__})", "pensamento": str(exc)[:200]}
         m = re.search(r"\{.*\}", raw, re.DOTALL)
         if not m:
             return {"acao": "concluir", "resumo": "sem ação clara", "pensamento": raw[:200]}
@@ -654,6 +691,21 @@ async def _maybe_await(fn, arg):
 
 
 # ─── Loop contínuo: persegue a missão permanente em background ────────────────
+
+class MissionQueue:
+    def __init__(self):
+        self._queue = asyncio.Queue()
+
+    async def enqueue(self, item):
+        await self._queue.put(item)
+
+    async def get(self):
+        return await self._queue.get()
+
+    def qsize(self):
+        return self._queue.qsize()
+
+mission_queue = MissionQueue()
 
 async def loop_hermes_goal():
     """
