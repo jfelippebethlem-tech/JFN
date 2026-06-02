@@ -30,7 +30,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
-from compliance_agent.llm.memoria import contexto_para_prompt
+from compliance_agent.llm.memoria import aprender, contexto_para_prompt
 from rich.console import Console
 
 console = Console()

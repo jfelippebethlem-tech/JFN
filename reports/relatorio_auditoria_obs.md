@@ -4,38 +4,26 @@ Configuração padrão aplicada a partir de `compliance_agent/rules/default_audi
 
 Total de OBs analisadas: 258
 Valor total: R$ 33.782.099,38
-Valor médio: R$ 130.938,37
-Sem SEI: 100
+Valor médio por OB: R$ 131.010,16
 
-Análises aplicadas:
-1. Sem processo SEI/SEI associado
-2. Valores redondos suspeitos
-3. Concentração de pagamentos para mesmo favorecido em UG
-4. Fracionamento suspeito
-5. Pendências complementares conforme TCU 6.100/2022 e TCU 3.654/2020
+## Alertas por tipo
+- Sem SEI: 100
+- Valores redondos: 175
+- Concentração favorecido+UG: 15
+- Fracionamento suspeito: 12
+- Empresa irregular (pendência investigação): 1
+- Conflito de interesse (pendência investigação): 1
+- Publicidade PNCP (pendência investigação): 1
 
-Quantitativo de alertas por tipo:
-- sem_sei: 100
-- valor_redondo: 175
-- concentracao_favorecido_ug: 15
-- fracionamento_suspeito: 12
-- pendencias_investigacao: 1
+## Última coleta
+- Fonte: SIAFE2 (https://siafe2.fazenda.rj.gov.br/Siafe/)
+- Registros novos na última leitura: 50
+- Erros na coleta: 0
 
-Observação:
-- Cerca de 38,8% das OBs não possuem número de SEI associado.
-- Houve 175 valores redondos suspeitos, indicando risco de direcionamento.
-- 15 casos com concentração de pagamentos para o mesmo fornecedor e UG merecem revisão prioritária.
-- 12 casos com possível fracionamento de despesas indicam risco de burla ao limite de dispensa.
-- Há 1 bloco de pendências complementares pendente de base integrada.
+## Hipóteses prioritárias
+- H1: Pagamentos sem rastreabilidade processual (100 OBs sem SEI)
+- H2: Direcionamento por concentração de contratos (15 grupos com 3+ pagamentos)
+- H3: Valores redondos com perfil de estimativa sem cotação (175 casos)
 
-Parâmetros adotados:
-- Limite dispensa obras: R$ 119.812,02
-- Limite dispensa compras/serviços comuns: R$ 59.906,02
-- UGs comuns consideradas: 300100 (SEFAZ) e 200100 (Casa Civil)
-- Critério de alerta: 3 ou mais pagamentos para mesmo favorecido em uma UG
-
-Referência de regras adicionais:
-- Lei 14.133/2021, art. 8, paragrafo 1: vedação ao fracionamento de despesas.
-- Lei 14.133/2021, art. 75, I e II: limites de dispensa de licitação.
-- TCU 6.100/2022: empresa irregular por capital, CAGED, tempo de existência e endereço.
-- TCU 3.654/2020: conflito de interesse por doação de campanha a gestor licitante.
+## Recomendação
+Priorizar H1 e H2 na próxima fase de investigação e iniciar cruzamento com CEIS/CNEP + PNCP.
