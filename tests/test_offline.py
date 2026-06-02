@@ -92,33 +92,68 @@ def test_memoria_perfil_entidade():
 
 # ─── 4a. Hermes cascade: fallback quando modelo principal dá 429 ──────────────
 
-def test_hermes_cascade_fallback():
-    """Garante que _hermes() cai para modelos menores quando o principal falha."""
+def test_hermes_groq_first():
+    """Groq é tentado antes do OpenRouter quando GROQ_API_KEY está disponível."""
     import compliance_agent.llm.hermes_agent as h
+    import compliance_agent.llm.free_llm as fl
 
-    chamadas = []
+    groq_chamado = []
+
+    async def fake_groq(prompt, system="", smart=False):
+        groq_chamado.append(True)
+        return "resposta-groq"
+
+    orig_groq = fl.groq_chat_async
+    orig_key = fl._groq_key
+    fl.groq_chat_async = fake_groq
+    fl._groq_key = lambda: "gsk_fake"
+    h._ultima_chamada = 0.0
+    try:
+        result = asyncio.run(h._hermes("sys", "prompt", max_tokens=10))
+        assert result == "resposta-groq"
+        assert groq_chamado, "Groq deve ser chamado antes do OpenRouter"
+    finally:
+        fl.groq_chat_async = orig_groq
+        fl._groq_key = orig_key
+
+
+def test_hermes_openrouter_fallback_quando_groq_falha():
+    """Quando Groq falha com 429, cai para OpenRouter e usa modelo de fallback."""
+    import compliance_agent.llm.hermes_agent as h
+    import compliance_agent.llm.free_llm as fl
+
+    modelos_or = []
+
+    async def fake_groq_fail(prompt, system="", smart=False):
+        raise RuntimeError("Retryable status 429 from groq")
 
     async def fake_retry(base_url, api_key, model, messages,
                          max_tokens=1024, extra_headers=None, max_retries=4):
-        chamadas.append(model)
+        modelos_or.append(model)
         if model == h._HERMES_MODELO_PRINCIPAL:
             raise RuntimeError("Retryable status 429 from openrouter")
         return '{"ok": true}'  # primeiro fallback responde
 
-    import compliance_agent.llm.free_llm as fl
-    orig = fl._openai_compat_chat_retry
+    orig_groq = fl.groq_chat_async
+    orig_key_groq = fl._groq_key
+    orig_retry = fl._openai_compat_chat_retry
+    orig_key_or = fl._openrouter_key
+    fl.groq_chat_async = fake_groq_fail
+    fl._groq_key = lambda: "gsk_fake"
     fl._openai_compat_chat_retry = fake_retry
-    orig_key = fl._openrouter_key
-    fl._openrouter_key = lambda: "fake-key"
+    fl._openrouter_key = lambda: "sk-or-fake"
+    h._ultima_chamada = 0.0
     try:
         result = asyncio.run(h._hermes("sys", "prompt", max_tokens=10))
         assert result == '{"ok": true}'
-        assert chamadas[0] == h._HERMES_MODELO_PRINCIPAL  # tentou o principal
-        assert len(chamadas) >= 2                          # caiu para fallback
-        assert chamadas[1] in h._HERMES_MODELOS_FALLBACK  # usou um fallback
+        assert modelos_or[0] == h._HERMES_MODELO_PRINCIPAL  # tentou o principal OR
+        assert len(modelos_or) >= 2                          # caiu para fallback OR
+        assert modelos_or[1] in h._HERMES_MODELOS_FALLBACK
     finally:
-        fl._openai_compat_chat_retry = orig
-        fl._openrouter_key = orig_key
+        fl.groq_chat_async = orig_groq
+        fl._groq_key = orig_key_groq
+        fl._openai_compat_chat_retry = orig_retry
+        fl._openrouter_key = orig_key_or
 
 
 # ─── 4. Bootstrap do Hermes (LLM simulado) ────────────────────────────────────

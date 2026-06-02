@@ -38,8 +38,7 @@ _RATE_LIMIT_SECS = 20            # min entre chamadas ao OpenRouter
 _alertas_processados: set[int] = set()
 _ultima_chamada: float = 0.0
 
-# Cascata de modelos OpenRouter — tenta do mais capaz ao mais disponível.
-# Hermes-3 405B é limitado; os fallbacks garantem que o sistema nunca trava.
+# Modelos OpenRouter como segundo plano — todos :free compartilham a mesma cota.
 _HERMES_MODELO_PRINCIPAL = "nousresearch/hermes-3-llama-3.1-405b:free"
 _HERMES_MODELOS_FALLBACK = [
     "google/gemma-2-27b-it:free",
@@ -50,8 +49,15 @@ _HERMES_MODELOS_FALLBACK = [
 
 async def _hermes(system: str, prompt: str, max_tokens: int = 1500) -> str:
     """
-    Chama LLM via cascata de modelos: Hermes-3 405B → Gemma-2 27B → Gemma-2 9B
-    → Mistral 7B → Groq llama-3.3-70b. Nunca trava por rate-limit de um modelo só.
+    Cascata de LLMs em ordem de confiabilidade:
+      1. Groq llama-3.3-70b   — 100 req/min grátis, chave no .env
+      2. Hermes-3 405B         — melhor qualidade, mas cota :free restrita
+      3. Gemma-2 27B/9B        — fallback OpenRouter
+      4. Mistral 7B             — último recurso OpenRouter
+
+    Groq vem PRIMEIRO porque: (a) rate limit muito mais generoso que :free do
+    OpenRouter, (b) o usuário já tem GROQ_API_KEY configurada. Quando o Groq
+    não estiver disponível, tenta a cascata OpenRouter.
     """
     global _ultima_chamada
     import time
@@ -69,44 +75,43 @@ async def _hermes(system: str, prompt: str, max_tokens: int = 1500) -> str:
         groq_chat_async,
     )
 
+    # ── 1. Groq (prioritário — rate limit generoso, chave do usuário) ──────────
+    if groq_available():
+        try:
+            resultado = await groq_chat_async(prompt, system=system, smart=True)
+            _ultima_chamada = time.time()
+            return resultado
+        except Exception as e:
+            console.print(f"[dim]Hermes: Groq falhou ({e}), tentando OpenRouter…[/dim]")
+
+    # ── 2. OpenRouter cascade (:free — fallback quando Groq indisponível) ──────
     key = _openrouter_key()
-    messages = []
-    if system:
-        messages.append({"role": "system", "content": system})
-    messages.append({"role": "user", "content": prompt})
-
-    cascade = [_HERMES_MODELO_PRINCIPAL] + _HERMES_MODELOS_FALLBACK
-
     if key:
-        for model in cascade:
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+
+        for model in [_HERMES_MODELO_PRINCIPAL] + _HERMES_MODELOS_FALLBACK:
             try:
                 resultado = await _openai_compat_chat_retry(
                     OPENROUTER_BASE, key, model, messages,
                     max_tokens=max_tokens,
                     extra_headers=OPENROUTER_HEADERS,
-                    max_retries=1,  # 1 retry por modelo; se falhar, tenta o próximo
+                    max_retries=1,
                 )
                 _ultima_chamada = time.time()
+                label = model.split("/")[-1]
                 if model != _HERMES_MODELO_PRINCIPAL:
-                    console.print(
-                        f"[dim]Hermes: modelo principal indisponível, "
-                        f"usando {model.split('/')[-1]} como fallback[/dim]"
-                    )
+                    console.print(f"[dim]Hermes: usando {label} (fallback OpenRouter)[/dim]")
                 return resultado
             except Exception:
-                await asyncio.sleep(3)
+                await asyncio.sleep(2)
                 continue
 
-    # Último recurso: Groq (llama-3.3-70b)
-    if groq_available():
-        console.print("[dim]Hermes: OpenRouter indisponível — usando Groq como fallback[/dim]")
-        resultado = await groq_chat_async(prompt, system=system, smart=True)
-        _ultima_chamada = time.time()
-        return resultado
-
     raise RuntimeError(
-        "Hermes indisponível: OpenRouter 429 em todos os modelos e Groq sem chave. "
-        "Aguarde alguns minutos (cota :free reseta) ou configure GROQ_API_KEY no .env."
+        "Hermes indisponível: Groq + todos os modelos OpenRouter :free falharam. "
+        "Verifique GROQ_API_KEY e OPENROUTER_API_KEY no .env."
     )
 
 
