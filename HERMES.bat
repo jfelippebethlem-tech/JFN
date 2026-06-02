@@ -70,23 +70,23 @@ exit /b 1
 
 REM ====== PASSO 4: Chrome debug 9222 =========================
 echo   [4/6] Abrindo Chrome no modo debug (porta 9222)...
-curl -s "http://127.0.0.1:9222/json/version" >nul 2>&1
+python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9222/json/version',timeout=2)" >nul 2>&1
 if not errorlevel 1 goto :chrome_ok
 call :abrir_chrome
 set /a tent=0
 :espera_chrome
 set /a tent+=1
 timeout /t 3 /nobreak >nul
-curl -s "http://127.0.0.1:9222/json/version" >nul 2>&1
+python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:9222/json/version',timeout=2)" >nul 2>&1
 if not errorlevel 1 goto :chrome_subiu
 if !tent! lss 12 goto :espera_chrome
 echo         AVISO: Chrome nao subiu no modo debug. O Hermes tentara abrir sozinho.
 goto :passo5
 :chrome_subiu
-echo         OK - Chrome no ar (9222)
+echo         OK - Chrome debug no ar (9222) — faca login no SIAFE nessa janela
 goto :passo5
 :chrome_ok
-echo         OK - Chrome ja estava no modo debug
+echo         OK - Chrome debug ja estava no ar (9222)
 :passo5
 
 REM ====== PASSO 5: painel web + chat do Hermes ===============
@@ -120,9 +120,9 @@ if exist "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%
 if exist "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe"
 if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
 if not defined CHROME_EXE goto :sem_chrome
-REM Pasta de perfil exclusiva do JFN — nao interfere com o Chrome normal
-REM e forca uma instancia nova que obedece o --remote-debugging-port
 set "JFN_PERFIL=%LOCALAPPDATA%\JFN\ChromeDebug"
+echo         Perfil JFN: %JFN_PERFIL%
+echo         Abrindo Chrome com porta 9222...
 start "" "%CHROME_EXE%" --remote-debugging-port=9222 --user-data-dir="%JFN_PERFIL%" --no-first-run --no-default-browser-check "https://siafe2.fazenda.rj.gov.br/Siafe/"
 goto :eof
 :sem_chrome
