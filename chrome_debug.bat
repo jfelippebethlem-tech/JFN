@@ -1,20 +1,12 @@
 @echo off
 REM chrome_debug.bat
 REM Abre o Chrome com a porta de debug para o JFN Compliance Agent.
-REM USE ESTE ARQUIVO AO INVES DO CHROME NORMAL enquanto usar o JFN.
-REM
-REM O que ele faz:
-REM   1. Fecha o Chrome se estiver aberto
-REM   2. Abre o Chrome com --remote-debugging-port=9222
-REM   3. Abre automaticamente o SIAFE2
+REM Nao fecha o Chrome normal — usa um perfil separado (JFN\ChromeDebug)
+REM que forca uma instancia nova com o remote-debugging-port ativo.
 
 echo.
-echo   JFN - Abrindo Chrome com porta de debug...
+echo   JFN - Abrindo Chrome com porta de debug (perfil JFN)...
 echo.
-
-REM Fecha qualquer Chrome aberto (necessario para ativar a porta de debug)
-taskkill /f /im chrome.exe >nul 2>&1
-ping 127.0.0.1 -n 3 >nul
 
 REM Tenta localizar o Chrome em varios locais comuns
 set "CHROME_EXE="
@@ -25,12 +17,15 @@ if not defined CHROME_EXE if exist "%LOCALAPPDATA%\Google\Chrome\Application\chr
 if not defined CHROME_EXE goto :nao_achou
 
 echo   Chrome encontrado: %CHROME_EXE%
+echo   Perfil exclusivo: %LOCALAPPDATA%\JFN\ChromeDebug
 echo   Abrindo com porta de debug 9222...
 echo.
 
 start "" "%CHROME_EXE%" ^
     --remote-debugging-port=9222 ^
-    --user-data-dir="%LOCALAPPDATA%\Google\Chrome\User Data" ^
+    --user-data-dir="%LOCALAPPDATA%\JFN\ChromeDebug" ^
+    --no-first-run ^
+    --no-default-browser-check ^
     "https://siafe2.fazenda.rj.gov.br/Siafe/"
 goto :depois
 

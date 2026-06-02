@@ -162,10 +162,8 @@ if exist "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%
 if exist "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe"
 if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
 if not defined CHROME_EXE goto :sem_chrome
-echo         fechando Chrome antigo e reabrindo no modo debug...
-taskkill /f /im chrome.exe >nul 2>&1
-ping 127.0.0.1 -n 3 >nul
-start "" "%CHROME_EXE%" --remote-debugging-port=9222 --user-data-dir="%LOCALAPPDATA%\Google\Chrome\User Data" "https://siafe2.fazenda.rj.gov.br/Siafe/"
+echo         abrindo Chrome JFN no modo debug (perfil separado, porta 9222)...
+start "" "%CHROME_EXE%" --remote-debugging-port=9222 --user-data-dir="%LOCALAPPDATA%\JFN\ChromeDebug" --no-first-run --no-default-browser-check "https://siafe2.fazenda.rj.gov.br/Siafe/"
 goto :eof
 
 :sem_chrome
