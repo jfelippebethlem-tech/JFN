@@ -17,35 +17,30 @@ taskkill /f /im chrome.exe >nul 2>&1
 ping 127.0.0.1 -n 3 >nul
 
 REM Tenta localizar o Chrome em varios locais comuns
-set CHROME_EXE=
+set "CHROME_EXE="
 
-if exist "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" (
-    set CHROME_EXE="%PROGRAMFILES%\Google\Chrome\Application\chrome.exe"
-    goto :encontrou
-)
-if exist "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" (
-    set CHROME_EXE="%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe"
-    goto :encontrou
-)
-if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" (
-    set CHROME_EXE="%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
-    goto :encontrou
-)
+if exist "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%PROGRAMFILES%\Google\Chrome\Application\chrome.exe"
+if not defined CHROME_EXE if exist "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe"
+if not defined CHROME_EXE if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
+if not defined CHROME_EXE goto :nao_achou
 
+echo   Chrome encontrado: %CHROME_EXE%
+echo   Abrindo com porta de debug 9222...
+echo.
+
+start "" "%CHROME_EXE%" ^
+    --remote-debugging-port=9222 ^
+    --user-data-dir="%LOCALAPPDATA%\Google\Chrome\User Data" ^
+    "https://siafe2.fazenda.rj.gov.br/Siafe/"
+goto :depois
+
+:nao_achou
 echo   ERRO: Chrome nao encontrado!
 echo   Instale o Chrome ou edite este arquivo com o caminho correto.
 pause
 exit /b 1
 
-:encontrou
-echo   Chrome encontrado: %CHROME_EXE%
-echo   Abrindo com porta de debug 9222...
-echo.
-
-start "" %CHROME_EXE% ^
-    --remote-debugging-port=9222 ^
-    --user-data-dir="%LOCALAPPDATA%\Google\Chrome\User Data" ^
-    "https://siafe2.fazenda.rj.gov.br/Siafe/"
+:depois
 
 echo   Chrome aberto! Aguarde carregar e faca login no SIAFE2.
 echo.

@@ -115,14 +115,14 @@ goto :rodar
 
 REM ============================================================
 :abrir_chrome
-set CHROME_EXE=
-if exist "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" set CHROME_EXE="%PROGRAMFILES%\Google\Chrome\Application\chrome.exe"
-if exist "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" set CHROME_EXE="%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe"
-if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set CHROME_EXE="%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
-if "%CHROME_EXE%"=="" goto :sem_chrome
+set "CHROME_EXE="
+if exist "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%PROGRAMFILES%\Google\Chrome\Application\chrome.exe"
+if exist "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe"
+if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
+if not defined CHROME_EXE goto :sem_chrome
 taskkill /f /im chrome.exe >nul 2>&1
 ping 127.0.0.1 -n 3 >nul
-start "" %CHROME_EXE% --remote-debugging-port=9222 --user-data-dir="%LOCALAPPDATA%\Google\Chrome\User Data" "https://siafe2.fazenda.rj.gov.br/Siafe/"
+start "" "%CHROME_EXE%" --remote-debugging-port=9222 --user-data-dir="%LOCALAPPDATA%\Google\Chrome\User Data" "https://siafe2.fazenda.rj.gov.br/Siafe/"
 goto :eof
 :sem_chrome
 echo         AVISO: Chrome nao encontrado.
