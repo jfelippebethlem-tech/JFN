@@ -1,0 +1,198 @@
+{
+  "working_patterns": [],
+  "edition_map": {},
+  "errors": [
+    {
+      "data": "2026-06-01",
+      "erros": [
+        "listagem: ",
+        "aprendizado: "
+      ],
+      "ts": "2026-06-01T10:11:21.734266"
+    },
+    {
+      "data": "2026-05-31",
+      "erros": [
+        "listagem: ",
+        "aprendizado: "
+      ],
+      "ts": "2026-06-01T10:11:22.232895"
+    },
+    {
+      "data": "2026-06-01",
+      "erros": [
+        "listagem: ConnectError: ",
+        "aprendizado: ConnectError: "
+      ],
+      "ts": "2026-06-01T10:14:08.498225"
+    },
+    {
+      "data": "2026-05-31",
+      "erros": [
+        "listagem: ConnectError: ",
+        "aprendizado: ConnectError: "
+      ],
+      "ts": "2026-06-01T10:14:08.995338"
+    },
+    {
+      "data": "2026-06-01",
+      "erros": [
+        "listagem: ConnectError: ",
+        "aprendizado: ConnectError: "
+      ],
+      "ts": "2026-06-01T10:19:00.182120"
+    },
+    {
+      "data": "2026-05-31",
+      "erros": [
+        "listagem: ConnectError: ",
+        "aprendizado: ConnectError: "
+      ],
+      "ts": "2026-06-01T10:19:00.375342"
+    },
+    {
+      "data": "2026-06-01",
+      "erros": [
+        "busca_oficial: Exception: submit form: ",
+        "listagem: Exception: listagem HTTP 404",
+        "aprendizado: Exception: Estrutura mapeada (9 links), 01/06/2026 não encontrada. Veja data/doerj_learning.json."
+      ],
+      "ts": "2026-06-01T10:25:45.144869"
+    },
+    {
+      "data": "2026-05-31",
+      "erros": [
+        "busca_oficial: Exception: submit form: ",
+        "listagem: Exception: listagem HTTP 404",
+        "aprendizado: Exception: Estrutura mapeada (9 links), 31/05/2026 não encontrada. Veja data/doerj_learning.json."
+      ],
+      "ts": "2026-06-01T10:25:45.471031"
+    },
+    {
+      "data": "2026-06-01",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: Timeout 30000ms exceeded.\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n  - <ws connecting> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n  - <ws connected> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n"
+      ],
+      "ts": "2026-06-01T23:05:16.622568"
+    },
+    {
+      "data": "2026-06-01",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: Timeout 30000ms exceeded.\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n  - <ws connecting> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n  - <ws connected> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n"
+      ],
+      "ts": "2026-06-01T23:22:21.704597"
+    },
+    {
+      "data": "2026-06-02",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: Timeout 30000ms exceeded.\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n  - <ws connecting> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n  - <ws connected> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n"
+      ],
+      "ts": "2026-06-02T00:45:56.559392"
+    },
+    {
+      "data": "2026-06-01",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: Timeout 30000ms exceeded.\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n  - <ws connecting> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n  - <ws connected> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n"
+      ],
+      "ts": "2026-06-02T00:46:28.701236"
+    },
+    {
+      "data": "2026-06-02",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: Timeout 5000ms exceeded.\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n  - <ws connecting> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n  - <ws connected> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n"
+      ],
+      "ts": "2026-06-02T00:49:47.293958"
+    },
+    {
+      "data": "2026-06-01",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: Timeout 5000ms exceeded.\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n  - <ws connecting> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n  - <ws connected> ws://127.0.0.1:9222/devtools/browser/5806b95e-f6ee-4b7b-8793-1372d031f029\n"
+      ],
+      "ts": "2026-06-02T00:49:54.966376"
+    },
+    {
+      "data": "2026-06-02",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: Timeout 5000ms exceeded.\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n"
+      ],
+      "ts": "2026-06-02T00:55:32.121988"
+    },
+    {
+      "data": "2026-06-01",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: Timeout 5000ms exceeded.\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n"
+      ],
+      "ts": "2026-06-02T00:55:39.227877"
+    }
+  ],
+  "site_links_aprendidos": {
+    "ts": "2026-06-01T10:25:45.471031",
+    "links": [
+      {
+        "text": "",
+        "url": "https://portal.ioerj.com.br"
+      },
+      {
+        "text": "Portal",
+        "url": "https://portal.ioerj.com.br"
+      },
+      {
+        "text": "E-DOFS",
+        "url": "https://www.ioerj.com.br/asps/login.asp"
+      },
+      {
+        "text": "Login",
+        "url": "http://www.ioerj.com.br/portal/modules/profile/user.php?xoops_redirect=%2Fportal%2F"
+      },
+      {
+        "text": "Administração",
+        "url": "http://www.ioerj.com.br/portal/admin.php"
+      },
+      {
+        "text": "TransparÃªncia",
+        "url": "https://transparencia.ioerj.com.br/"
+      },
+      {
+        "text": "",
+        "url": "https://portal.ioerj.com.br/"
+      },
+      {
+        "text": "Login",
+        "url": "http://www.ioerj.com.br/portal/modules/profile/user.php?xoops_redirect=%2Fportal%2F"
+      },
+      {
+        "text": "Adm",
+        "url": "http://www.ioerj.com.br/portal/admin.php"
+      }
+    ]
+  },
+  "edicoes_por_data": {
+    "2026-06-01": {
+      "n_edicoes": 5,
+      "titulos": [
+        "Parte I (Poder Executivo)",
+        "Parte IB - (Tribunal de Contas)",
+        "Parte II (Poder Legislativo)",
+        "Parte IV (Municipalidades)",
+        "Parte V (Publicações a Pedido)"
+      ],
+      "ts": "2026-06-01T16:22:29.206976"
+    },
+    "2026-05-31": {
+      "n_edicoes": 0,
+      "titulos": [],
+      "ts": "2026-06-01T16:22:40.463166"
+    },
+    "2026-06-02": {
+      "n_edicoes": 5,
+      "titulos": [
+        "Parte I (Poder Executivo)",
+        "Parte IB - (Tribunal de Contas)",
+        "Parte II (Poder Legislativo)",
+        "Parte IV (Municipalidades)",
+        "Parte V (Publicações a Pedido)"
+      ],
+      "ts": "2026-06-02T11:27:48.196863"
+    }
+  }
+}

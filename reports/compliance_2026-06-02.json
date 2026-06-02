@@ -1,0 +1,23 @@
+{
+  "data": "2026-06-02",
+  "hora": "2026-06-02T00:56:01.043540",
+  "doerj": {
+    "total_publicacoes": 0,
+    "nomeacoes": 0,
+    "contratos": 0,
+    "licitacoes": 0
+  },
+  "siafe_ob": {
+    "records_fetched": 0,
+    "records_saved": 0,
+    "errors": []
+  },
+  "alertas": {
+    "total": 0,
+    "alta": 0,
+    "media": 0,
+    "baixa": 0,
+    "por_tipo": {}
+  },
+  "alertas_detalhe": []
+}
