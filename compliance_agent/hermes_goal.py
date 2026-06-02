@@ -203,26 +203,33 @@ async def navegar_e_ler(url: str = "", clicar_texto: str = "") -> dict:
 
 _SYSTEM_GOAL = (
     "Você é o HERMES, auditor-chefe autônomo do sistema JFN, que fiscaliza as "
-    "finanças do Estado do Rio de Janeiro (SIAFE2 + Diário Oficial). Você recebeu "
+    "finanças do Estado do Rio de Janeiro (SIAFE2 + Diário Oficial + memória local). Você recebeu "
     "uma MISSÃO e trabalha sozinho até cumpri-la, escolhendo a melhor próxima ação "
     "a cada passo. Você NÃO pede permissão — você age, observa e aprende.\n\n"
+    "REGRAS PRIMEIRAS:\n"
+    "  • SEMPRE use a URL base do SIAFE2: https://siafe2.fazenda.rj.gov.br/Siafe/\n"
+    "  • NÃO tente https://siafe.rj.gov.br/ — está errado.\n"
+    "  • Navegue somente com a ação 'navegar'; nenhuma outra ação abre site externo.\n"
+    "  • Use os dados já armazenados no banco local como fonte principal da verdade.\n"
+    "  • Qualificar uma OB como 'obra' exige evidência no número do processo/SEI ou na descrição.\n\n"
     "FERRAMENTAS DISPONÍVEIS (campo 'acao'):\n"
     "  abrir_chrome        — abre/garante o Chrome debug 9222 no SIAFE\n"
     "  status_chrome       — verifica se o Chrome 9222 está no ar\n"
     "  coletar_siafe       — coleta as Ordens Bancárias do dia no SIAFE2\n"
     "  coletar_doerj       — coleta as publicações do Diário Oficial do dia\n"
-    "  navegar             — args {url?, clicar?}: navega/clica e lê a página no Chrome\n"
+    "  navegar             — args {url?, clicar?}: navega SOMENTE em URLs explicitamente fornecidas;\n"
+    "                         se a missão der apenas um nome de sistema, NÃO navegue, use coletar_siafe\n"
     "  investigar          — args {nome?, cnpj?}: investiga uma empresa/pessoa a fundo\n"
     "  listar_alertas      — lista os alertas de compliance recentes\n"
-    "  aprender            — args {chave, licao}: salva um aprendizado na memória\n"
     "  lembrar             — args {termo}: recupera o que já se sabe sobre um tema\n"
+    "  aprender            — args {chave, licao}: salva um aprendizado na memória\n"
     "  concluir            — encerra o ciclo: args {resumo}\n\n"
-    "REGRAS:\n"
+    "REGRAS DE DECISÃO:\n"
     "  • Responda SEMPRE com UM objeto JSON, nada mais.\n"
     "  • Formato: {\"pensamento\": \"raciocínio curto\", \"acao\": \"<nome>\", \"args\": {…}}\n"
-    "  • Se a missão exige dados do SIAFE/DOERJ e o Chrome não está no ar, comece por abrir_chrome.\n"
+    "  • Se a missão for sobre obras ou OBs, prefira coletar_siafe e depois consultar o banco local.\n"
     "  • Quando não houver mais ação útil agora, use 'concluir' com um resumo do que fez e aprendeu.\n"
-    "  • Seja objetivo e priorize ações que produzam resultado concreto (dados, alertas, aprendizados)."
+    "  • Seja objetivo e priorize ações que produzam resultado concreto (dados, alertas, aprendizados).\n"
 )
 
 
@@ -342,73 +349,79 @@ class HermesGoalAgent:
         except Exception:
             return {"acao": "concluir", "resumo": "JSON inválido", "pensamento": raw[:200]}
 
-    async def trabalhar(self, max_passos: int = MAX_PASSOS_POR_CICLO,
-                        on_step=None) -> dict:
-        """
-        Executa um ciclo autônomo rumo à missão. Não bloqueia pedindo permissão.
-        `on_step(passo_dict)` é chamado a cada passo (para UI ao vivo).
-        Retorna {missao, passos, resumo}.
-        """
-        from compliance_agent.llm.memoria import contexto_para_prompt, aprender
-
+    async def trabalhar(self, max_passos_por_ciclo: int = MAX_PASSOS_POR_CICLO, max_ciclos: int = 3, on_step=None) -> dict:
         missao = self.missao_atual()
         if not missao:
             return {"ok": False, "erro": "Nenhuma missão definida. Use definir_missao()."}
 
         self._historico_ciclo = []
-        passos = []
+        passos_totais = []
         chrome_ok = await chrome_disponivel()
         conhecimento = contexto_para_prompt(self.session, max_itens=12)
 
-        for i in range(max_passos):
-            historico_txt = "\n".join(
-                f"- {p['acao']}: {json.dumps(p['resultado'], ensure_ascii=False)[:180]}"
-                for p in passos[-5:]
-            ) or "(nenhuma ação ainda)"
+        for ciclo_num in range(max_ciclos):
+            passos = []
 
-            contexto = (
-                f"MISSÃO: {missao}\n\n"
-                f"Chrome debug 9222 no ar: {'sim' if chrome_ok else 'não'}\n"
-                f"Data de hoje: {date.today().isoformat()}\n\n"
-                f"CONHECIMENTO ACUMULADO:\n{conhecimento}\n\n"
-                f"AÇÕES JÁ EXECUTADAS NESTE CICLO:\n{historico_txt}\n\n"
-                f"Qual a próxima ação? Responda só com JSON."
-            )
+            for i in range(max_passos_por_ciclo):
+                historico_txt = "\n".join(
+                    f"- {p['acao']}: {json.dumps(p['resultado'], ensure_ascii=False)[:180]}"
+                    for p in passos[-5:]
+                ) or "(nenhuma ação ainda)"
 
-            decisao = await self._pensar(contexto)
-            acao = (decisao.get("acao") or "concluir").strip()
-            args = decisao.get("args") or {}
-            pensamento = decisao.get("pensamento", "")
+                contexto = (
+                    f"MISSÃO: {missao}\n\n"
+                    f"Chrome debug 9222 no ar: {'sim' if chrome_ok else 'não'}\n"
+                    f"Data de hoje: {date.today().isoformat()}\n\n"
+                    f"CONHECIMENTO ACUMULADO:\n{conhecimento}\n\n"
+                    f"AÇÕES JÁ EXECUTADAS:\n{historico_txt}\n\n"
+                    f"Qual a próxima ação? Responda só com JSON."
+                )
 
-            if acao == "concluir":
-                resumo = decisao.get("resumo", pensamento or "ciclo concluído")
-                aprender("licao", f"ciclo_{datetime.now():%Y%m%d_%H%M}",
-                         f"Missão '{missao[:80]}' — {resumo[:300]}",
-                         fonte="hermes_goal", session=self.session)
-                passo = {"acao": "concluir", "pensamento": pensamento,
-                         "resultado": {"resumo": resumo}}
+                decisao = await self._pensar(contexto)
+                acao = (decisao.get("acao") or "concluir").strip()
+                args = decisao.get("args") or {}
+                pensamento = decisao.get("pensamento", "")
+
+                if acao == "concluir":
+                    resumo = decisao.get("resumo", pensamento or "ciclo concluído")
+                    aprender("licao", f"ciclo_{datetime.now():%Y%m%d_%H%M}",
+                             f"Missão '{missao[:80]}' — {resumo[:300]}",
+                             fonte="hermes_goal", session=self.session)
+                    passo = {"acao": "concluir", "pensamento": pensamento, "resultado": {"resumo": resumo}}
+                    passos.append(passo)
+                    passos_totais.append(passo)
+                    if on_step:
+                        await _maybe_await(on_step, passo)
+                    return {
+                        "ok": True,
+                        "missao": missao,
+                        "passos": passos_totais,
+                        "n_passos": len(passos_totais),
+                        "resumo": resumo,
+                        "concluido": True,
+                    }
+
+                resultado = await self.executar_acao(acao, args)
+                if acao in ("abrir_chrome", "status_chrome"):
+                    chrome_ok = await chrome_disponivel()
+
+                passo = {"acao": acao, "args": args, "pensamento": pensamento, "resultado": resultado}
                 passos.append(passo)
+                passos_totais.append(passo)
                 if on_step:
                     await _maybe_await(on_step, passo)
-                break
 
-            resultado = await self.executar_acao(acao, args)
-            if acao == "abrir_chrome" or acao == "status_chrome":
-                chrome_ok = await chrome_disponivel()
+                if resultado.get("ok") is False and acao not in {"abrir_chrome", "status_chrome"}:
+                    break
 
-            passo = {"acao": acao, "args": args, "pensamento": pensamento,
-                     "resultado": resultado}
-            passos.append(passo)
-            self._historico_ciclo.append(passo)
-            if on_step:
-                await _maybe_await(on_step, passo)
-
+        resumo = passos_totais[-1]["resultado"].get("resumo") if passos_totais else ""
         return {
             "ok": True,
             "missao": missao,
-            "passos": passos,
-            "n_passos": len(passos),
-            "resumo": passos[-1]["resultado"].get("resumo", "") if passos else "",
+            "passos": passos_totais,
+            "n_passos": len(passos_totais),
+            "resumo": resumo or "Ciclo encerrado sem conclusão.",
+            "concluido": False,
         }
 
     # ── Conversa (chat livre com o Hermes, com todo o contexto) ──────────────
