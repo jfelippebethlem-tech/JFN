@@ -1,26 +1,36 @@
+"""
+Módulo experimental de OCR para CAPTCHA de imagem (pytesseract + OpenCV).
+
+ATENÇÃO: Este módulo NÃO é usado no fluxo principal do JFN. O fluxo principal
+usa humano-no-loop (sei_cdp.py). Este arquivo existe apenas para experimentos
+offline com imagens já capturadas.
+
+Dependências opcionais: cv2, numpy, pytesseract, Pillow.
+Se não estiverem instaladas, as funções lançam ImportError apenas quando chamadas.
+"""
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Optional
 
-import cv2
-import numpy as np
-import pytesseract
-import requests
-from PIL import Image
+# Imports opcionais — não falham em ambientes sem cv2/pytesseract
+def _lazy_imports():
+    import cv2
+    import numpy as np
+    import pytesseract
+    from PIL import Image
+    return cv2, np, pytesseract, Image
 
-pytesseract.pytesseract.tesseract_cmd = (
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-)
+try:
+    import requests as _requests
+except ImportError:
+    _requests = None  # type: ignore
+
+_TESSERACT_CMD = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 
-def _preprocess(
-    image: np.ndarray,
-    *,
-    gray: bool = True,
-    blur: bool = True,
-    threshold: bool = True,
-) -> np.ndarray:
+def _preprocess(image, *, gray=True, blur=True, threshold=True):
+    cv2, np, pytesseract, _ = _lazy_imports()
     if gray:
         if len(image.shape) == 3:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -28,26 +38,22 @@ def _preprocess(
         image = cv2.medianBlur(image, 3)
     if threshold:
         image = cv2.adaptiveThreshold(
-            image,
-            255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY,
-            11,
-            2,
+            image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2,
         )
     return image
 
 
 def solve_captcha_image(
-    image_path: str | Path,
+    image_path,
     *,
     lang: str = "eng",
     config: str = "--psm 7 --oem 3",
 ) -> str:
+    cv2, np, pytesseract, _ = _lazy_imports()
+    pytesseract.pytesseract.tesseract_cmd = _TESSERACT_CMD
     img = cv2.imread(str(image_path))
     if img is None:
         raise FileNotFoundError(f"Imagem não encontrada: {image_path}")
-
     candidates = []
     for prep in [
         _preprocess(img.copy(), gray=True, blur=True, threshold=True),
@@ -58,7 +64,6 @@ def solve_captcha_image(
         text = "".join(ch for ch in text if ch.isalnum()).strip()
         if text:
             candidates.append(text)
-
     if not candidates:
         return ""
     return max(candidates, key=len)
@@ -69,8 +74,10 @@ def solve_captcha_url(
     *,
     lang: str = "eng",
     config: str = "--psm 7 --oem 3",
-    session: Optional[requests.Session] = None,
+    session=None,
 ) -> str:
+    cv2, np, pytesseract, _ = _lazy_imports()
+    import requests
     sess = session or requests.Session()
     resp = sess.get(url, timeout=30)
     resp.raise_for_status()
@@ -86,5 +93,6 @@ def solve_captcha_pil(
     lang: str = "eng",
     config: str = "--psm 7 --oem 3",
 ) -> str:
+    cv2, np, pytesseract, _ = _lazy_imports()
     img = cv2.cvtColor(np.array(pil_image), cv2.COLOR_RGB2BGR)
     return solve_captcha_image(img, lang=lang, config=config)
