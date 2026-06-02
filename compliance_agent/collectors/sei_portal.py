@@ -46,6 +46,22 @@ _HEADERS = {
 }
 
 
+def _bloqueado_por_captcha(resultado: dict) -> bool:
+    """
+    Heurística: a busca via httpx provavelmente esbarrou no CAPTCHA do SEI.
+    Sinais: marcação explícita do parser, ou erro genérico sem nenhum documento.
+    """
+    if resultado.get("captcha"):
+        return True
+    erro = (resultado.get("erro") or "").lower()
+    if any(t in erro for t in ("captcha", "robô", "robo", "verificação", "verificacao")):
+        return True
+    # Sem documentos e sem erro claro → vale tentar o caminho humano-no-loop.
+    if not resultado.get("documentos") and not resultado.get("assunto"):
+        return True
+    return False
+
+
 # ── Busca de processos ────────────────────────────────────────────────────────
 
 async def buscar_processo(numero_sei: str, usar_cache: bool = True) -> dict:
@@ -93,6 +109,33 @@ async def buscar_processo(numero_sei: str, usar_cache: bool = True) -> dict:
         # Estratégia 2: URL de exibição direta (algumas instâncias SEI)
         if resultado.get("erro") and not resultado.get("documentos"):
             resultado = await _tentar_url_direta(client, numero_sei)
+
+    # Estratégia 3: CAPTCHA/restrição bloqueou o httpx → cai para o caminho
+    # HUMANO-NO-LOOP via Chrome 9222 (o agente NÃO quebra o CAPTCHA; ele avisa
+    # o operador, que resolve uma vez na janela, e então a leitura continua).
+    if (not resultado.get("documentos")) and _bloqueado_por_captcha(resultado):
+        try:
+            from compliance_agent.collectors.sei_cdp import ler_processo_sei
+            via_cdp = await ler_processo_sei(numero_sei)
+            if via_cdp.get("documentos") or not via_cdp.get("erro"):
+                # Normaliza para o formato esperado por buscar_processo
+                resultado = {
+                    "numero": numero_limpo,
+                    "tipo": "", "assunto": "", "interessados": [],
+                    "data_abertura": "", "orgao_origem": "", "situacao": "",
+                    "documentos": via_cdp.get("documentos", []),
+                    "cpfs": via_cdp.get("cpfs", []),
+                    "cnpjs": via_cdp.get("cnpjs", []),
+                    "valores": via_cdp.get("valores", []),
+                    "url": via_cdp.get("url", ""),
+                    "texto": via_cdp.get("texto", ""),
+                    "via": "chrome_cdp_humano_no_loop",
+                    "captcha_resolvido": via_cdp.get("captcha_resolvido", False),
+                }
+                if via_cdp.get("erro"):
+                    resultado["erro"] = via_cdp["erro"]
+        except Exception as e:
+            resultado.setdefault("erro", f"fallback CDP falhou: {e}")
 
     resultado["_cached_at"] = datetime.now().isoformat()
     try:
@@ -184,9 +227,18 @@ def _parse_resultado_pesquisa(html: str, numero: str) -> dict:
         "url": "",
     }
 
-    # Detecta "processo não encontrado" ou "acesso restrito"
+    # Detecta CAPTCHA na página (marca para o fallback humano-no-loop via CDP)
     page_text = soup.get_text(" ", strip=True)
-    if any(t in page_text.lower() for t in
+    pl = page_text.lower()
+    if ("captcha" in pl or "não sou um robô" in pl or "nao sou um robo" in pl
+            or "digite os caracteres" in pl or "código da imagem" in pl
+            or soup.find("img", src=re.compile(r"[Cc]aptcha"))):
+        resultado["captcha"] = True
+        resultado["erro"] = "CAPTCHA exigido — use o caminho via Chrome (humano-no-loop)."
+        return resultado
+
+    # Detecta "processo não encontrado" ou "acesso restrito"
+    if any(t in pl for t in
            ["não encontrado", "acesso restrito", "sigiloso", "não localizado"]):
         resultado["erro"] = "Processo não encontrado ou restrito/sigiloso."
         return resultado
