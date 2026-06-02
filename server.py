@@ -30,6 +30,13 @@ from fastapi.staticfiles import StaticFiles
 # ── Load .env ─────────────────────────────────────────────────────────────────
 
 def _load_env():
+    # Carregador unificado: aceita .env e .env.txt (fallback do Windows).
+    try:
+        from compliance_agent.envfile import carregar_env
+        carregar_env()
+        return
+    except Exception:
+        pass
     env_path = Path(__file__).parent / ".env"
     if not env_path.exists():
         return

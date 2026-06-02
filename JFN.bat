@@ -29,18 +29,21 @@ echo     Auditoria continua SIAFE2 + DOERJ  (RJ)
 echo   ============================================================
 echo.
 
-REM ====== PASSO 1: .env ======================================
-echo   [1/7] Carregando credenciais (.env)...
-if not exist .env goto :sem_env
-for /f "usebackq tokens=1,* delims==" %%A in (".env") do (
+REM ====== PASSO 1: .env (aceita .env e .env.txt) =============
+echo   [1/7] Carregando credenciais (.env / .env.txt)...
+set "ENV_FILE="
+if exist .env set "ENV_FILE=.env"
+if not defined ENV_FILE if exist .env.txt set "ENV_FILE=.env.txt"
+if not defined ENV_FILE goto :sem_env
+for /f "usebackq tokens=1,* delims==" %%A in ("%ENV_FILE%") do (
     if not "%%A"=="" if not "%%A"=="#" set "%%A=%%B"
 )
 if "%SIAFE_USER%"=="" goto :sem_user
-echo         OK - credenciais carregadas (usuario %SIAFE_USER%)
+echo         OK - credenciais carregadas de %ENV_FILE% (usuario %SIAFE_USER%)
 goto :passo2
 
 :sem_env
-echo         ERRO: .env nao encontrado. Nao da pra continuar.
+echo         ERRO: .env (nem .env.txt) encontrado. Nao da pra continuar.
 echo         Crie o .env com SIAFE_USER, SIAFE_PASS, GROQ_API_KEY...
 pause
 exit /b 1
