@@ -44,7 +44,7 @@ SIAFE_FINANCEIRA = (
 )
 IOERJ_BUSCA = "https://www.ioerj.com.br/portal/modules/content/index.php?id=61"
 SEI_BUSCA = (
-    "https://sei.rj.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php"
+    "https://sei.fazenda.rj.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php"
     "?acao_externa=protocolo_pesquisar&acao_origem_externa=protocolo_pesquisar"
     "&id_orgao_acesso_externo=6"
 )
