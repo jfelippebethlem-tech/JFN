@@ -197,7 +197,41 @@ def test_doerj_fatiador_de_atos():
     assert len(extrair_cnpjs(texto)) == 1
 
 
-# ─── 8. Hermes Goal Agent (missão autônoma estilo /goal) ──────────────────────
+# ─── 8. SIAFE OB: mapeamento completo de colunas ─────────────────────────────
+
+def test_siafe_ob_salva_favorecido_e_valor():
+    """Confirma que save_ob_records extrai favorecido/CPF/valor/processo do header real."""
+    from compliance_agent.database.models import init_db, get_session, OrdemBancaria
+    from compliance_agent.collectors.siafe_ob import save_ob_records
+    init_db()
+    s = get_session()
+    try:
+        header = [
+            "Número", "UG Emitente", "UG Pagadora", "Data Emissão", "Status",
+            "Tipo", "Finalidade", "Tipo de OB", "NL", "Credor",
+            "Nome do Credor", "UG Liquidante", "Valor", "Competência",
+            "Status de Envio", "GD", "Processo",
+        ]
+        rows = [
+            ["2026OB99001", "300100", "300100", "01/06/2026", "Contabilizado",
+             "12", "6", "Orçamentária", "2026NL00338", "00394315766",
+             "EMPRESA TESTE LTDA", "300100", "1.250,00", "05/2026",
+             "Aguardando Envio", "", "400001/00000123/2026"],
+        ]
+        summary = {"date": "2026-06-01", "records": 1, "rows": rows, "header": header, "errors": []}
+        n = save_ob_records(s, summary)
+        assert n == 1
+        ob = s.query(OrdemBancaria).filter_by(numero_ob="2026OB99001").first()
+        assert ob is not None
+        assert ob.favorecido_nome == "EMPRESA TESTE LTDA"
+        assert ob.favorecido_cpf == "00394315766"
+        assert ob.valor == 1250.0
+        assert ob.numero_processo == "400001/00000123/2026"
+    finally:
+        s.close()
+
+
+# ─── 9. Hermes Goal Agent (missão autônoma estilo /goal) ──────────────────────
 
 def test_goal_agent_missao_persistente():
     from compliance_agent.database.models import init_db, get_session
