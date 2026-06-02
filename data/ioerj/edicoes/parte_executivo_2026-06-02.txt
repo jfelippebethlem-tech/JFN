@@ -1,0 +1,200 @@
+Data:  
+Caderno: 
+Parte I (Poder Executivo)
+Parte IB - (Tribunal de Contas)
+Parte II (Poder Legislativo)
+Parte IV (Municipalidades)
+Parte V (Publicações a Pedido)
+
+Sumário: 
+Poder Executivo
+Atos do Poder Legislativo
+Atos do Poder Executivo
+Atos do Governador
+Secretaria de Estado da Casa Civil
+- - Administração Vinculada
+- - - Imprensa Oficial do Estado do Rio de Janeiro
+- - - Departamento de Trânsito do Estado do Rio de Janeiro
+- - - - Presidente
+- - - - Corregedoria Geral
+- - - - Diretoria de Habilitação
+- - - Loteria do Estado do Rio de Janeiro
+- - - - Presidente
+- - - Fundação Centro Estadual de Estatística, Pesquisa e Formação de Servidores Públicos do Rio de Janeiro
+Secretaria de Estado de Governo
+Secretaria de Estado de Fazenda
+- - Subsecretarias e Órgãos da Administração Direta
+- - - Subsecretaria Geral de Fazenda e Planejamento
+- - - - Superintendência de Recursos Humanos
+- - Órgãos e/ou Fundos Colegiados
+- - - Conselho Superior de Fiscalização Tributária
+- - - Conselho de Ética
+- - Administração Vinculada
+- - - Fundo Único de Previdência Social do Estado do Rio de Janeiro
+- - - - Diretoria de Seguridade
+Secretaria de Estado de Desenvolvimento Econômico, Indústria, Comércio e Serviços
+Secretaria de Estado de Polícia Militar
+Secretaria de Estado de Polícia Civil
+- - Subsecretarias e Órgãos da Administração Direta
+- - - Corregedoria Geral de Polícia Civil
+- - - Departamento Geral de Administração e Finanças
+- - - - Serviço de Suporte Administrativo
+- - - Departamento Geral de Gestão de Pessoas
+- - - - Serviço de Promoções
+- - Órgãos e/ou Fundos Colegiados
+- - - Comissão Permanente de Licitação
+- - - - Comissão de Pregão Eletrônico
+Secretaria de Estado de Polícia Penal
+- - Subsecretarias e Órgãos da Administração Direta
+- - - Corregedoria
+- - Órgãos e/ou Fundos Colegiados
+- - - Conselho Penitenciário do Estado do Rio de Janeiro
+Secretaria de Estado de Defesa Civil
+Secretaria de Estado de Saúde
+- - Chefia de Gabinete
+- - Administração Vinculada
+- - - Fundação Saúde
+Secretaria de Estado de Educação
+- - Gabinete do Secretário
+- - Subsecretaria de Gestão da Rede e de Ensino
+- - - Coordenadoria Regional
+- - - - Coordenadoria Regional do Norte Fluminense I
+- - - - Coordenadoria Regional da Baixada Litorânea I
+- - Departamento Geral de Ações Socio-Educativas
+- - - Corregedor
+Secretaria de Estado de Ciência, Tecnologia e Inovação
+- - Administração Vinculada
+- - - Fundação de Apoio à Escola Técnica
+- - - Fundação Universidade do Estado do Rio de Janeiro
+- - - - Diretoria de Administração Financeira
+- - - - Superintendência de Recursos Humanos
+- - - Universidade Estadual do Norte Fluminense Darcy Ribeiro
+Secretaria de Estado de Transporte e Mobilidade Urbana
+- - Administração Vinculada
+- - - Departamento de Transportes Rodoviários do Estado do Rio de Janeiro
+- - - Companhia Estadual de Engenharia de Transportes e Logística
+- - - - Presidente
+Secretaria de Estado do Ambiente e Sustentabilidade
+- - Administração Vinculada
+- - - Instituto Estadual do Ambiente
+Secretaria de Estado de Agricultura, Pecuária e Abastecimento
+- - Subsecretarias e Órgãos da Administração Direta
+- - - Subsecretaria de Gestão e Desenvolvimento Rural Sustentável
+Secretaria de Estado de Desenvolvimento Regional do Interior, Pesca e Agricultura Familiar
+- - Administração Vinculada
+- - - Empresa de Assistência Técnica e Extensão Rural do Rio de Janeiro - EMATER - RIO
+Secretaria de Estado de Cultura e Economia Criativa
+- - Ordenador de Despesas
+- - Administração Vinculada
+- - - Fundação Anita Mantuano de Artes do Estado do Rio de Janeiro
+- - - - Presidente
+- - - Fundação Theatro Municipal
+- - - - Presidente
+Secretaria de Estado de Desenvolvimento Social e Direitos Humanos
+- - Administração Vinculada
+- - - Fundação para a Infância e Adolescência
+- - - - Presidente
+Secretaria de Estado de Esporte e Lazer
+Secretaria de Estado de Turismo
+- - Administração Vinculada
+- - - Companhia de Turismo do Estado do Rio de Janeiro
+- - - - Diretor-Presidente
+Controladoria Geral do Estado
+- - Gabinete da Controladoria Geral do Estado
+- - - Chefia de Gabinete
+Gabinete de Segurança Institucional do Governo do Estado do Rio de Janeiro
+- - Subsecretarias e Órgãos da Administração Direta
+- - - Subsecretaria Militar
+Secretaria de Estado de Transformação Digital
+- - Administração Vinculada
+- - - Centro de Tecnologia de Informação e Comunicação do Estado do Rio de Janeiro
+Secretaria de Estado de Infraestrutura e Obras Públicas
+- - Administração Vinculada
+- - - Instituto de Terras e Cartografia do Estado do Rio de Janeiro
+- - - - Diretoria de Administração
+Secretaria de Estado de Energia e Economia do Mar
+- - Administração Vinculada
+- - - Agência Reguladora de Energia e Saneamento Básico do Estado do Rio de Janeiro
+- - - - Conselheiro-Presidente
+Secretaria de Estado de Defesa do Consumidor
+Procuradoria Geral do Estado
+- - Procurador-Geral do Estado
+- - Coordenadoria Geral de Recursos Humanos, Administração e Finanças
+Avisos, Editais e Termos de Contrato
+- - Secretaria de Estado da Casa Civil
+- - - Administração Vinculada
+- - - - Companhia Estadual de Águas e Esgotos
+- - - - Departamento de Trânsito do Estado do Rio de Janeiro
+- - - - Loteria do Estado do Rio de Janeiro
+- - - - Instituto de Pesos e Medidas
+- - Secretaria de Estado de Governo
+- - Secretaria de Estado de Fazenda
+- - Secretaria de Estado de Polícia Militar
+- - - Órgãos e/ou Fundos Colegiados
+- - - - Fundo Especial da Polícia Militar
+- - Secretaria de Estado de Polícia Civil
+- - Secretaria de Estado de Defesa Civil
+- - Secretaria de Estado de Saúde
+- - - Chefia de Gabinete
+- - - Administração Vinculada
+- - - - Fundação Saúde
+- - Secretaria de Estado de Educação
+- - - Subsecretarias e Órgãos da Administração Direta
+- - - - Subsecretaria de Gestão da Educação
+- - - - - Coordenadoria Regional do Noroeste Fluminense II
+- - - - - Coordenadoria Regional da Baixada Litorânea I
+- - - - - Coordenadoria Regional Serrana I
+- - - - - Coordenadoria Regional Médio Paraíba II
+- - - - Departamento de Ações Socioeducativas
+- - Secretaria de Estado de Ciência, Tecnologia e Inovação
+- - - Administração Vinculada
+- - - - Fundação Centro de Ciências e de Educação Superior à Distância do Estado do Rio de Janeiro
+- - - - Fundação de Apoio à Escola Técnica
+- - - - Fundação Universidade do Estado do Rio de Janeiro
+- - - - Universidade Estadual do Norte Fluminense Darcy Ribeiro
+- - Secretaria de Estado de Transporte e Mobilidade Urbana
+- - - Administração Vinculada
+- - - - Companhia de Transportes Sobre Trilhos do Estado do Rio de Janeiro
+- - - - Departamento de Transportes Rodoviários do Estado do Rio de Janeiro
+- - Secretaria de Estado de Agricultura, Pecuária, Pesca e Abastecimento
+- - - Subsecretarias e Órgãos da Administração Direta
+- - - - Subsecretaria de Gestão e Desenvolvimento Rural Sustentável
+- - Secretaria de Estado de Cultura e Economia Criativa
+- - - Administração Vinculada
+- - - - Fundação Anita Mantuano de Artes do Estado do Rio de Janeiro
+- - Secretaria de Estado de Infraestrutura e Obras Públicas
+- - - Administração Vinculada
+- - - - Empresa de Obras Públicas do Estado do Rio de Janeiro
+- - - - Instituto de Terras e Cartografia do Estado do Rio de Janeiro
+- - Secretaria de Estado de Energia e Economia do Mar
+- - - Subsecretaria Executiva
+- - - Administração Vinculada
+- - - - Agência Reguladora de Energia e Saneamento Básico do Estado do Rio de Janeiro
+- - Secretaria de Estado de Habitação de Interesse Social
+- - Procuradoria Geral do Estado
+- - - Coordenadoria Geral de Recursos Humanos, Administração e Finanças
+
+
+Exibir/ocultar painel
+Localizar
+Anterior
+Próxima
+Página:
+de 61
+Modo de apresentação
+Download
+Ferramentas
+Diminuir zoom
+Aumentar zoom
+Zoom automático
+Tamanho real
+Ajustar à janela
+Largura da página
+50%
+75%
+100%
+125%
+150%
+200%
+300%
+400%
