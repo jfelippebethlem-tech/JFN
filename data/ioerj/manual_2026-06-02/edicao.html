@@ -1,0 +1,859 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd"><html dir="ltr" mozdisallowselectionprint="" moznomarginboxes=""><head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <meta name="google" content="notranslate">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>D.O. Digital : Imprensa Oficial do Estado do Rio de Janeiro</title>
+    <script type="text/javascript" async="" src="https://ssl.google-analytics.com/ga.js"></script><script type="text/javascript">
+      //Analytics
+      var _gaq = _gaq || [];
+      _gaq.push(['_setAccount', 'UA-8531359-2']);
+      _gaq.push(['_trackPageview']);
+
+      (function() {
+        var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+        ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+        var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+      })();
+
+      //Passa os parametros iniciais para o pdf.js
+      
+      //var DEFAULT_URL = 'include/pdfjs/web/tmp.pdf';
+      //var InitialBookmark = "page=";
+	  var InitialBookmark = "page=1";
+
+
+
+      function fim_load(){
+        resize_iframe();
+      }
+
+
+    </script>
+    <link rel="stylesheet" href="include/pdfjs/web/viewer.css">
+
+    <script src="include/pdfjs/web/compatibility.js"></script>
+    <!-- This snippet is used in production (included from viewer.html) -->
+    <link rel="resource" type="application/l10n" href="include/pdfjs/web/locale/locale.properties">
+    <script src="include/pdfjs/web/l10n.js"></script>
+    <script src="include/pdfjs/build/pdf.js"></script>
+
+    <script src="include/pdfjs/web/viewer-min.js"></script>
+    <link rel="stylesheet" type="text/css" media="all" title="Color" href="/portal/class/thickbox/thickbox.css">
+    <script type="text/javascript" src="/portal/class/thickbox/jquery-latest.pack.js"></script>
+    <script type="text/javascript" src="/portal/class/thickbox/thickbox-comp.js"></script>
+    <style type="text/css" media="print">
+	* { display: none; }
+    </style>
+<style type="text/css">
+<!--
+
+html,body{
+  margin:0;
+  padding:0;
+  width:100%;
+  height: 100%;
+}
+
+img{
+border:none;  
+}
+.fundo {
+  background-image: url(/portal/modules/conteudoonline/images/visualiza_edicao/topo.png);
+  background-repeat: no-repeat;
+  background-color: #FFFFFF;
+  height: 70px;
+  width: 100%;
+  text-align: right;
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+@media only screen and (max-width: 570px) {
+    .fundo{ display:none;}
+}
+
+.edicoes,  .sumario,.data{
+  font-family: Verdana, Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  color: #003399;
+  border: 1px solid #225196;
+   margin-bottom: 3px;
+}
+
+.calendario img {
+padding:0;
+margin:0;
+
+}
+.calendario  {
+padding:0;
+margin:0;
+text-decoration:none;
+}
+
+.data {
+  height: 15px;
+  width: 280px;
+  margin-top: 5px;
+ 
+}
+.edicoes,  .sumario  {
+  height: 18px;
+  width: 310px;
+}
+.frame1{
+  width: 99%  ;
+  
+}
+.caixapdf {
+  width:300px;
+  top: 70px;
+  left: 10px;
+  color: white;
+}
+
+.divdo{
+  width: 99,5%  ;
+  height: 300px;
+  pargin:0;
+  padding:0;
+}
+
+/*Sumario das edicoes de pdf*/
+.sum1n {
+  font-weight:bold;
+}
+
+-->
+</style>
+</head>
+<body tabindex="1" class="" onload="fim_load();">
+  <div class="fundo">
+    Data:
+    <input name="input" type="text" disabled="disabled" class="data" value="terça,  2 de junho de 2026">
+    <a href="/portal/modules/conteudoonline/mostra_edicao.php?session=VG10YVIxSnJXVEZTVlVsMFVYcFNSMDFwTURCU1JHTjNURlJuTUUxVlNYUk9NRVpEVVdwak5FMVVZM2xOUkVaSA==&amp;calendario=true&amp;keepThis=true&amp;TB_iframe=true&amp;height=300&amp;width=550" title="Selecionar uma nova data" class="thickbox calendario"><img src="/portal/modules/conteudoonline/images/visualiza_swf/calendario.gif" width="23" height="15"></a>
+    <br>
+    Caderno: 
+      <label>
+        <select name="edicoes" id="edicoes" class="edicoes" onchange="javascript:MudaEdicao(this);">
+                      <option value="VG10YVIxSnJXVEZTVlVsMFVYcFNSMDFwTURCU1JHTjNURlJuTUUxVlNYUk9NRVpEVVdwak5FMVVZM2xOUkVaSA==" selected="selected">Parte I (Poder Executivo)</option>
+                      <option value="VWtSQ1JFNXJWVEZSYWtsMFVsUm9SbEZUTURCUFJWVTBURlZGZVUxVlNYUk9SR1JIVG1wYVFsSnFhRWRTYWxaQw==">Parte IB - (Tribunal de Contas)</option>
+                      <option value="VFZWVmVsSnJUa05PTUVsMFVtdFZOVkpETURCU1ZFa3pURlZGTlUxcVVYUlBSVkY1VFZSR1FsSkVSa1JTVkZVeA==">Parte II (Poder Legislativo)</option>
+                      <option value="VGxWU1JFOUZVVFZTYWxWMFRqQktSRTFETURCTmVsbDNURlJzUWsxVVRYUlBWR3Q1VWxWWk5VOVVXVEZTYW1kNg==">Parte IV (Municipalidades)</option>
+                      <option value="VVZSbmVrMUZXa2ROZWsxMFRsUlpkMUpETURCTmFrbDNURlZLUkU1cVFYUlJhbWQ1VWtSV1IxRlVhek5OUkZsMw==">Parte V (Publicações a Pedido)</option>
+               
+        </select>
+      </label>
+    <br>
+    Sumário:
+      <label>
+        <select name="sumario" id="sumario" class="sumario" onchange="javascript:MudaPagina(this);">
+                                                    <option class="sum1n" value="1">Poder Executivo</option>
+                                  
+                                          <option class="sum1n" value="1">Atos do Poder Legislativo</option>
+                                  
+                                          <option class="sum1n" value="3">Atos do Poder Executivo</option>
+                                  
+                                          <option class="sum1n" value="3">Atos do Governador</option>
+                                  
+                                          <option class="sum1n" value="3">Secretaria de Estado da Casa Civil</option>
+                                  
+                                          <option value="6">- - Administração Vinculada</option>
+                                  
+                                          <option value="6">- - - Imprensa Oficial do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="6">- - - Departamento de Trânsito do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="6">- - - - Presidente</option>
+                                  
+                                          <option value="6">- - - - Corregedoria Geral</option>
+                                  
+                                          <option value="6">- - - - Diretoria de Habilitação</option>
+                                  
+                                          <option value="6">- - - Loteria do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="6">- - - - Presidente</option>
+                                  
+                                          <option value="7">- - - Fundação Centro Estadual de Estatística, Pesquisa e Formação de Servidores Públicos do Rio de Janeiro</option>
+                                  
+                                          <option class="sum1n" value="7">Secretaria de Estado de Governo</option>
+                                  
+                                          <option class="sum1n" value="7">Secretaria de Estado de Fazenda</option>
+                                  
+                                          <option value="7">- - Subsecretarias e Órgãos da Administração Direta</option>
+                                  
+                                          <option value="7">- - - Subsecretaria Geral de Fazenda e Planejamento</option>
+                                  
+                                          <option value="7">- - - - Superintendência de Recursos Humanos</option>
+                                  
+                                          <option value="7">- - Órgãos e/ou Fundos Colegiados</option>
+                                  
+                                          <option value="7">- - - Conselho Superior de Fiscalização Tributária</option>
+                                  
+                                          <option value="8">- - - Conselho de Ética</option>
+                                  
+                                          <option value="8">- - Administração Vinculada</option>
+                                  
+                                          <option value="8">- - - Fundo Único de Previdência Social do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="8">- - - - Diretoria de Seguridade</option>
+                                  
+                                          <option class="sum1n" value="8">Secretaria de Estado de Desenvolvimento Econômico, Indústria, Comércio e Serviços</option>
+                                  
+                                          <option class="sum1n" value="8">Secretaria de Estado de Polícia Militar</option>
+                                  
+                                          <option class="sum1n" value="15">Secretaria de Estado de Polícia Civil</option>
+                                  
+                                          <option value="16">- - Subsecretarias e Órgãos da Administração Direta</option>
+                                  
+                                          <option value="16">- - - Corregedoria Geral de Polícia Civil</option>
+                                  
+                                          <option value="16">- - - Departamento Geral de Administração e Finanças</option>
+                                  
+                                          <option value="16">- - - - Serviço de Suporte Administrativo</option>
+                                  
+                                          <option value="16">- - - Departamento Geral de Gestão de Pessoas</option>
+                                  
+                                          <option value="16">- - - - Serviço de Promoções</option>
+                                  
+                                          <option value="47">- - Órgãos e/ou Fundos Colegiados</option>
+                                  
+                                          <option value="47">- - - Comissão Permanente de Licitação</option>
+                                  
+                                          <option value="47">- - - - Comissão de Pregão Eletrônico</option>
+                                  
+                                          <option class="sum1n" value="16">Secretaria de Estado de Polícia Penal</option>
+                                  
+                                          <option value="16">- - Subsecretarias e Órgãos da Administração Direta</option>
+                                  
+                                          <option value="17">- - - Corregedoria</option>
+                                  
+                                          <option value="17">- - Órgãos e/ou Fundos Colegiados</option>
+                                  
+                                          <option value="17">- - - Conselho Penitenciário do Estado do Rio de Janeiro</option>
+                                  
+                                          <option class="sum1n" value="18">Secretaria de Estado de Defesa Civil</option>
+                                  
+                                          <option class="sum1n" value="18">Secretaria de Estado de Saúde</option>
+                                  
+                                          <option value="18">- - Chefia de Gabinete</option>
+                                  
+                                          <option value="20">- - Administração Vinculada</option>
+                                  
+                                          <option value="20">- - - Fundação Saúde</option>
+                                  
+                                          <option class="sum1n" value="21">Secretaria de Estado de Educação</option>
+                                  
+                                          <option value="20">- - Gabinete do Secretário</option>
+                                  
+                                          <option value="22">- - Subsecretaria de Gestão da Rede e de Ensino</option>
+                                  
+                                          <option value="22">- - - Coordenadoria Regional</option>
+                                  
+                                          <option value="22">- - - - Coordenadoria Regional do Norte Fluminense I</option>
+                                  
+                                          <option value="22">- - - - Coordenadoria Regional da Baixada Litorânea I</option>
+                                  
+                                          <option value="23">- - Departamento Geral de Ações Socio-Educativas</option>
+                                  
+                                          <option value="23">- - - Corregedor</option>
+                                  
+                                          <option class="sum1n" value="23">Secretaria de Estado de Ciência, Tecnologia e Inovação</option>
+                                  
+                                          <option value="24">- - Administração Vinculada</option>
+                                  
+                                          <option value="24">- - - Fundação de Apoio à Escola Técnica</option>
+                                  
+                                          <option value="25">- - - Fundação Universidade do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="25">- - - - Diretoria de Administração Financeira</option>
+                                  
+                                          <option value="24">- - - - Superintendência de Recursos Humanos</option>
+                                  
+                                          <option value="25">- - - Universidade Estadual do Norte Fluminense Darcy Ribeiro</option>
+                                  
+                                          <option class="sum1n" value="27">Secretaria de Estado de Transporte e Mobilidade Urbana</option>
+                                  
+                                          <option value="27">- - Administração Vinculada</option>
+                                  
+                                          <option value="27">- - - Departamento de Transportes Rodoviários do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="27">- - - Companhia Estadual de Engenharia de Transportes e Logística</option>
+                                  
+                                          <option value="27">- - - - Presidente</option>
+                                  
+                                          <option class="sum1n" value="27">Secretaria de Estado do Ambiente e Sustentabilidade</option>
+                                  
+                                          <option value="27">- - Administração Vinculada</option>
+                                  
+                                          <option value="27">- - - Instituto Estadual do Ambiente</option>
+                                  
+                                          <option class="sum1n" value="28">Secretaria de Estado de  Agricultura, Pecuária e Abastecimento</option>
+                                  
+                                          <option value="28">- - Subsecretarias e Órgãos da Administração Direta</option>
+                                  
+                                          <option value="28">- - - Subsecretaria de Gestão e Desenvolvimento Rural Sustentável</option>
+                                  
+                                          <option class="sum1n" value="28">Secretaria de Estado de Desenvolvimento Regional do Interior, Pesca e Agricultura Familiar</option>
+                                  
+                                          <option value="28">- - Administração Vinculada</option>
+                                  
+                                          <option value="28">- - - Empresa de Assistência Técnica e Extensão Rural do Rio de Janeiro - EMATER - RIO</option>
+                                  
+                                          <option class="sum1n" value="28">Secretaria de Estado de Cultura e Economia Criativa</option>
+                                  
+                                          <option value="28">- - Ordenador de Despesas</option>
+                                  
+                                          <option value="28">- - Administração Vinculada</option>
+                                  
+                                          <option value="28">- - - Fundação Anita Mantuano de Artes do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="28">- - - - Presidente</option>
+                                  
+                                          <option value="28">- - - Fundação Theatro Municipal</option>
+                                  
+                                          <option value="28">- - - - Presidente</option>
+                                  
+                                          <option class="sum1n" value="28">Secretaria de Estado de Desenvolvimento Social e Direitos Humanos</option>
+                                  
+                                          <option value="29">- - Administração Vinculada</option>
+                                  
+                                          <option value="29">- - - Fundação para a Infância e Adolescência</option>
+                                  
+                                          <option value="29">- - - - Presidente</option>
+                                  
+                                          <option class="sum1n" value="30">Secretaria de Estado de Esporte e Lazer</option>
+                                  
+                                          <option class="sum1n" value="30">Secretaria de Estado de Turismo</option>
+                                  
+                                          <option value="30">- - Administração Vinculada</option>
+                                  
+                                          <option value="30">- - - Companhia de Turismo do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="30">- - - - Diretor-Presidente</option>
+                                  
+                                          <option class="sum1n" value="30">Controladoria Geral do Estado</option>
+                                  
+                                          <option value="30">- - Gabinete da Controladoria Geral do Estado</option>
+                                  
+                                          <option value="30">- - - Chefia de Gabinete</option>
+                                  
+                                          <option class="sum1n" value="30">Gabinete de Segurança Institucional do Governo do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="30">- - Subsecretarias e Órgãos da Administração Direta</option>
+                                  
+                                          <option value="30">- - - Subsecretaria  Militar</option>
+                                  
+                                          <option class="sum1n" value="31">Secretaria de Estado de Transformação Digital</option>
+                                  
+                                          <option value="31">- - Administração Vinculada</option>
+                                  
+                                          <option value="31">- - - Centro de Tecnologia de Informação e Comunicação do Estado do Rio de Janeiro</option>
+                                  
+                                          <option class="sum1n" value="31">Secretaria de Estado de Infraestrutura e Obras Públicas</option>
+                                  
+                                          <option value="31">- - Administração Vinculada</option>
+                                  
+                                          <option value="31">- - - Instituto de Terras e Cartografia do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="31">- - - - Diretoria de Administração</option>
+                                  
+                                          <option class="sum1n" value="32">Secretaria de Estado de Energia e Economia do Mar</option>
+                                  
+                                          <option value="32">- - Administração Vinculada</option>
+                                  
+                                          <option value="32">- - - Agência Reguladora de Energia e Saneamento Básico do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="32">- - - - Conselheiro-Presidente</option>
+                                  
+                                          <option class="sum1n" value="32">Secretaria de Estado de Defesa do Consumidor</option>
+                                  
+                                          <option class="sum1n" value="32">Procuradoria Geral do Estado</option>
+                                  
+                                          <option value="32">- - Procurador-Geral do Estado</option>
+                                  
+                                          <option value="32">- - Coordenadoria Geral de Recursos Humanos, Administração e Finanças</option>
+                                  
+                                          <option class="sum1n" value="33">Avisos, Editais e Termos de Contrato</option>
+                                  
+                                          <option value="33">- - Secretaria de Estado da Casa Civil</option>
+                                  
+                                          <option value="33">- - - Administração Vinculada</option>
+                                  
+                                          <option value="33">- - - - Companhia Estadual de Águas e Esgotos</option>
+                                  
+                                          <option value="33">- - - - Departamento de Trânsito do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="46">- - - - Loteria do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="46">- - - - Instituto de Pesos e Medidas</option>
+                                  
+                                          <option value="46">- - Secretaria de Estado de Governo</option>
+                                  
+                                          <option value="46">- - Secretaria de Estado de Fazenda</option>
+                                  
+                                          <option value="47">- - Secretaria de Estado de Polícia Militar</option>
+                                  
+                                          <option value="13">- - - Órgãos e/ou Fundos Colegiados</option>
+                                  
+                                          <option value="13">- - - - Fundo Especial da Polícia Militar</option>
+                                  
+                                          <option value="47">- - Secretaria de Estado de Polícia Civil</option>
+                                  
+                                          <option value="18">- - Secretaria de Estado de Defesa Civil</option>
+                                  
+                                          <option value="48">- - Secretaria de Estado de Saúde</option>
+                                  
+                                          <option value="48">- - - Chefia de Gabinete</option>
+                                  
+                                          <option value="48">- - - Administração Vinculada</option>
+                                  
+                                          <option value="48">- - - - Fundação Saúde</option>
+                                  
+                                          <option value="48">- - Secretaria de Estado de Educação</option>
+                                  
+                                          <option value="49">- - - Subsecretarias e Órgãos da Administração Direta</option>
+                                  
+                                          <option value="49">- - - - Subsecretaria de Gestão da Educação</option>
+                                  
+                                          <option value="49">- - - - - Coordenadoria Regional do Noroeste Fluminense II</option>
+                                  
+                                          <option value="49">- - - - - Coordenadoria Regional da Baixada Litorânea I</option>
+                                  
+                                          <option value="49">- - - - - Coordenadoria Regional Serrana I</option>
+                                  
+                                          <option value="50">- - - - - Coordenadoria Regional Médio Paraíba II</option>
+                                  
+                                          <option value="50">- - - - Departamento de Ações Socioeducativas</option>
+                                  
+                                          <option value="56">- - Secretaria de Estado de Ciência, Tecnologia e Inovação</option>
+                                  
+                                          <option value="56">- - - Administração Vinculada</option>
+                                  
+                                          <option value="56">- - - - Fundação Centro de Ciências e de Educação Superior à Distância do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="56">- - - - Fundação de Apoio à Escola Técnica</option>
+                                  
+                                          <option value="56">- - - - Fundação Universidade do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="56">- - - - Universidade Estadual do Norte Fluminense Darcy Ribeiro</option>
+                                  
+                                          <option value="57">- - Secretaria de Estado de Transporte e Mobilidade Urbana</option>
+                                  
+                                          <option value="57">- - - Administração Vinculada</option>
+                                  
+                                          <option value="57">- - - - Companhia de Transportes Sobre Trilhos do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="57">- - - - Departamento de Transportes Rodoviários do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="59">- - Secretaria de Estado de Agricultura, Pecuária, Pesca e Abastecimento</option>
+                                  
+                                          <option value="59">- - - Subsecretarias e Órgãos da Administração Direta</option>
+                                  
+                                          <option value="59">- - - - Subsecretaria de Gestão e Desenvolvimento Rural Sustentável</option>
+                                  
+                                          <option value="60">- - Secretaria de Estado de Cultura e Economia Criativa</option>
+                                  
+                                          <option value="60">- - - Administração Vinculada</option>
+                                  
+                                          <option value="60">- - - - Fundação Anita Mantuano de Artes do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="60">- - Secretaria de Estado de Infraestrutura e Obras Públicas</option>
+                                  
+                                          <option value="61">- - - Administração Vinculada</option>
+                                  
+                                          <option value="61">- - - - Empresa de Obras Públicas do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="61">- - - - Instituto de Terras e Cartografia do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="32">- - Secretaria de Estado de Energia e Economia do Mar</option>
+                                  
+                                          <option value="32">- - - Subsecretaria Executiva</option>
+                                  
+                                          <option value="61">- - - Administração Vinculada</option>
+                                  
+                                          <option value="61">- - - - Agência Reguladora de Energia e Saneamento Básico do Estado do Rio de Janeiro</option>
+                                  
+                                          <option value="61">- - Secretaria de Estado de Habitação  de Interesse Social</option>
+                                  
+                                          <option value="61">- - Procuradoria Geral do Estado</option>
+                                  
+                                          <option value="61">- - - Coordenadoria Geral de Recursos Humanos, Administração e Finanças</option>
+                                  
+               
+                  </select>
+      </label><br>
+  </div>
+
+  <div id="ContDo" name="ContDo" class="divdo" style="height: 644px;">
+    <div id="outerContainer">
+      <div id="sidebarContainer">
+        <div id="toolbarSidebar">
+          <div class="splitToolbarButton toggled">
+            <button id="viewThumbnail" class="toolbarButton group toggled" title="Mostrar miniaturas" tabindex="2" data-l10n-id="thumbs">
+               <span data-l10n-id="thumbs_label">Miniaturas</span>
+            </button>
+            <button id="viewOutline" class="toolbarButton group" title="Exibir estrutura de tópicos" tabindex="3" data-l10n-id="outline" disabled="">
+               <span data-l10n-id="outline_label">Estrutura de tópicos do documento</span>
+            </button>
+            <button id="viewAttachments" class="toolbarButton group" title="Mostrar anexos" tabindex="4" data-l10n-id="attachments" disabled="">
+               <span data-l10n-id="attachments_label">Anexos</span>
+            </button>
+          </div>
+        </div>
+        <div id="sidebarContent">
+          <div id="thumbnailView">
+          <a href="#page=1" title="Página 1"><div id="thumbnailContainer1" class="thumbnail selected"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=2" title="Página 2"><div id="thumbnailContainer2" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=3" title="Página 3"><div id="thumbnailContainer3" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=4" title="Página 4"><div id="thumbnailContainer4" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=5" title="Página 5"><div id="thumbnailContainer5" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=6" title="Página 6"><div id="thumbnailContainer6" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=7" title="Página 7"><div id="thumbnailContainer7" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=8" title="Página 8"><div id="thumbnailContainer8" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=9" title="Página 9"><div id="thumbnailContainer9" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=10" title="Página 10"><div id="thumbnailContainer10" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=11" title="Página 11"><div id="thumbnailContainer11" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=12" title="Página 12"><div id="thumbnailContainer12" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=13" title="Página 13"><div id="thumbnailContainer13" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=14" title="Página 14"><div id="thumbnailContainer14" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=15" title="Página 15"><div id="thumbnailContainer15" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=16" title="Página 16"><div id="thumbnailContainer16" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=17" title="Página 17"><div id="thumbnailContainer17" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=18" title="Página 18"><div id="thumbnailContainer18" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=19" title="Página 19"><div id="thumbnailContainer19" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=20" title="Página 20"><div id="thumbnailContainer20" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=21" title="Página 21"><div id="thumbnailContainer21" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=22" title="Página 22"><div id="thumbnailContainer22" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=23" title="Página 23"><div id="thumbnailContainer23" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=24" title="Página 24"><div id="thumbnailContainer24" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=25" title="Página 25"><div id="thumbnailContainer25" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=26" title="Página 26"><div id="thumbnailContainer26" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=27" title="Página 27"><div id="thumbnailContainer27" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=28" title="Página 28"><div id="thumbnailContainer28" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=29" title="Página 29"><div id="thumbnailContainer29" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=30" title="Página 30"><div id="thumbnailContainer30" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=31" title="Página 31"><div id="thumbnailContainer31" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=32" title="Página 32"><div id="thumbnailContainer32" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=33" title="Página 33"><div id="thumbnailContainer33" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=34" title="Página 34"><div id="thumbnailContainer34" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=35" title="Página 35"><div id="thumbnailContainer35" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=36" title="Página 36"><div id="thumbnailContainer36" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=37" title="Página 37"><div id="thumbnailContainer37" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=38" title="Página 38"><div id="thumbnailContainer38" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=39" title="Página 39"><div id="thumbnailContainer39" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=40" title="Página 40"><div id="thumbnailContainer40" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=41" title="Página 41"><div id="thumbnailContainer41" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=42" title="Página 42"><div id="thumbnailContainer42" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=43" title="Página 43"><div id="thumbnailContainer43" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=44" title="Página 44"><div id="thumbnailContainer44" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=45" title="Página 45"><div id="thumbnailContainer45" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=46" title="Página 46"><div id="thumbnailContainer46" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=47" title="Página 47"><div id="thumbnailContainer47" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=48" title="Página 48"><div id="thumbnailContainer48" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=49" title="Página 49"><div id="thumbnailContainer49" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=50" title="Página 50"><div id="thumbnailContainer50" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=51" title="Página 51"><div id="thumbnailContainer51" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=52" title="Página 52"><div id="thumbnailContainer52" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=53" title="Página 53"><div id="thumbnailContainer53" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=54" title="Página 54"><div id="thumbnailContainer54" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=55" title="Página 55"><div id="thumbnailContainer55" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=56" title="Página 56"><div id="thumbnailContainer56" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=57" title="Página 57"><div id="thumbnailContainer57" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=58" title="Página 58"><div id="thumbnailContainer58" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=59" title="Página 59"><div id="thumbnailContainer59" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=60" title="Página 60"><div id="thumbnailContainer60" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a><a href="#page=61" title="Página 61"><div id="thumbnailContainer61" class="thumbnail"><div class="thumbnailSelectionRing" style="width: 100px; height: 154px;"></div></div></a></div>
+          <div id="outlineView" class="hidden">
+          </div>
+          <div id="attachmentsView" class="hidden">
+          </div>
+        </div>
+      </div>  <!-- sidebarContainer -->
+
+      <div id="mainContainer">
+        <div class="findbar hidden doorHanger hiddenSmallView" id="findbar">
+          <label for="findInput" class="toolbarLabel" data-l10n-id="find_label">Localizar:</label>
+          <input id="findInput" class="toolbarField" value="" tabindex="91">
+          <div class="splitToolbarButton">
+            <button class="toolbarButton findPrevious" title="Localizar a ocorrência anterior do texto" id="findPrevious" tabindex="92" data-l10n-id="find_previous">
+              <span data-l10n-id="find_previous_label">Anterior</span>
+            </button>
+            <div class="splitToolbarButtonSeparator"></div>
+            <button class="toolbarButton findNext" title="Localizar a próxima ocorrência do texto" id="findNext" tabindex="93" data-l10n-id="find_next">
+              <span data-l10n-id="find_next_label">Próxima</span>
+            </button>
+          </div>
+          <input type="checkbox" id="findHighlightAll" class="toolbarField" tabindex="94" checked="">
+          <label for="findHighlightAll" class="toolbarLabel" data-l10n-id="find_highlight">Realçar tudo</label>
+          <input type="checkbox" id="findMatchCase" class="toolbarField" tabindex="95">
+          <label for="findMatchCase" class="toolbarLabel" data-l10n-id="find_match_case_label">Diferenciar maiúsculas/minúsculas</label>
+          <span id="findResultsCount" class="toolbarLabel hidden"></span>
+          <span id="findMsg" class="toolbarLabel"></span>
+        </div>  <!-- findbar -->
+
+        <div id="secondaryToolbar" class="secondaryToolbar hidden doorHangerRight">
+          <div id="secondaryToolbarButtonContainer">
+            <button id="secondaryPresentationMode" class="secondaryToolbarButton presentationMode visibleLargeView" title="Alternar para modo de apresentação" tabindex="51" data-l10n-id="presentation_mode">
+              <span data-l10n-id="presentation_mode_label">Modo de apresentação</span>
+            </button>
+
+            <button id="secondaryOpenFile" class="secondaryToolbarButton openFile visibleLargeView hidden" title="Abrir arquivo" tabindex="52" data-l10n-id="open_file">
+              <span data-l10n-id="open_file_label">Abrir</span>
+            </button>
+
+            <button id="secondaryPrint" class="secondaryToolbarButton print visibleMediumView hidden" title="Imprimir" tabindex="53" data-l10n-id="print">
+              <span data-l10n-id="print_label">Imprimir</span>
+            </button>
+
+            <button id="secondaryDownload" class="secondaryToolbarButton download visibleMediumView" title="Download" tabindex="54" data-l10n-id="download">
+              <span data-l10n-id="download_label">Download</span>
+            </button>
+
+            <a href="#page=1&amp;zoom=auto,-13,1276" id="secondaryViewBookmark" class="secondaryToolbarButton bookmark visibleSmallView hidden" title="Visualização atual (copie ou abra em uma nova janela)" tabindex="55" data-l10n-id="bookmark">
+              <span data-l10n-id="bookmark_label">Visualização atual</span>
+            </a>
+
+            <div class="horizontalToolbarSeparator visibleLargeView"></div>
+
+            <button id="firstPage" class="secondaryToolbarButton firstPage" title="Ir para a primeira página" tabindex="56" data-l10n-id="first_page" disabled="">
+              <span data-l10n-id="first_page_label">Ir para a primeira página</span>
+            </button>
+            <button id="lastPage" class="secondaryToolbarButton lastPage" title="Ir para a última página" tabindex="57" data-l10n-id="last_page">
+              <span data-l10n-id="last_page_label">Ir para a última página</span>
+            </button>
+
+            <div class="horizontalToolbarSeparator"></div>
+
+            <button id="pageRotateCw" class="secondaryToolbarButton rotateCw" title="Girar no sentido horário" tabindex="58" data-l10n-id="page_rotate_cw">
+              <span data-l10n-id="page_rotate_cw_label">Girar no sentido horário</span>
+            </button>
+            <button id="pageRotateCcw" class="secondaryToolbarButton rotateCcw" title="Girar no sentido anti-horário" tabindex="59" data-l10n-id="page_rotate_ccw">
+              <span data-l10n-id="page_rotate_ccw_label">Girar no sentido anti-horário</span>
+            </button>
+
+            <div class="horizontalToolbarSeparator"></div>
+
+            <button id="toggleHandTool" class="secondaryToolbarButton handTool" title="Desativar ferramenta da mão" tabindex="60" data-l10n-id="hand_tool_enable">
+              <span data-l10n-id="hand_tool_enable_label">Desativar ferramenta da mão</span>
+            </button>
+
+            <div class="horizontalToolbarSeparator"></div>
+
+            <button id="documentProperties" class="secondaryToolbarButton documentProperties" title="Propriedades do documento…" tabindex="61" data-l10n-id="document_properties">
+              <span data-l10n-id="document_properties_label">Propriedades do documento…</span>
+            </button>
+          </div>
+        </div>  <!-- secondaryToolbar -->
+
+        <div class="toolbar">
+          <div id="toolbarContainer">
+            <div id="toolbarViewer">
+              <div id="toolbarViewerLeft">
+                <button id="sidebarToggle" class="toolbarButton" title="Exibir/ocultar painel" tabindex="11" data-l10n-id="toggle_sidebar">
+                  <span data-l10n-id="toggle_sidebar_label">Exibir/ocultar painel</span>
+                </button>
+                <div class="toolbarButtonSpacer"></div>
+                <button id="viewFind" class="toolbarButton group hiddenSmallView" title="Localizar no documento" tabindex="12" data-l10n-id="findbar">
+                   <span data-l10n-id="findbar_label">Localizar</span>
+                </button>
+                <div class="splitToolbarButton">
+                  <button class="toolbarButton pageUp" title="Página anterior" id="previous" tabindex="13" data-l10n-id="previous" disabled="">
+                    <span data-l10n-id="previous_label">Anterior</span>
+                  </button>
+                  <div class="splitToolbarButtonSeparator"></div>
+                  <button class="toolbarButton pageDown" title="Próxima página" id="next" tabindex="14" data-l10n-id="next">
+                    <span data-l10n-id="next_label">Próxima</span>
+                  </button>
+                </div>
+                <label id="pageNumberLabel" class="toolbarLabel" for="pageNumber" data-l10n-id="page_label">Página:</label>
+         
+		   <input type="number" id="pageNumber" class="toolbarField pageNumber" value="1" size="4" min="1" tabindex="15" max="61">
+         
+               <!-- <input type="number" id="pageNumber" class="toolbarField pageNumber" value="1" size="4" min="1" tabindex="15">-->
+                <span id="numPages" class="toolbarLabel">de 61</span>
+              </div>
+              <div id="toolbarViewerRight">
+                <button id="presentationMode" class="toolbarButton presentationMode hiddenLargeView" title="Alternar para modo de apresentação" tabindex="31" data-l10n-id="presentation_mode">
+                  <span data-l10n-id="presentation_mode_label">Modo de apresentação</span>
+                </button>
+
+                <button id="openFile" class="toolbarButton openFile hiddenLargeView hidden" title="Abrir arquivo" tabindex="32" data-l10n-id="open_file">
+                  <span data-l10n-id="open_file_label">Abrir</span>
+                </button>
+
+                <button id="print" class="toolbarButton print hiddenMediumView hidden" title="Imprimir" tabindex="33" data-l10n-id="print">
+                  <span data-l10n-id="print_label">Imprimir</span>
+                </button>
+
+                <button id="download" class="toolbarButton download hiddenMediumView" title="Download" tabindex="34" data-l10n-id="download">
+                  <span data-l10n-id="download_label">Download</span>
+                </button>
+                <a href="#page=1&amp;zoom=auto,-13,1276" id="viewBookmark" class="toolbarButton bookmark hiddenSmallView hidden" title="Visualização atual (copie ou abra em uma nova janela)" tabindex="35" data-l10n-id="bookmark">
+                  <span data-l10n-id="bookmark_label">Visualização atual</span>
+                </a>
+
+                <div class="verticalToolbarSeparator hiddenSmallView"></div>
+
+                <button id="secondaryToolbarToggle" class="toolbarButton" title="Ferramentas" tabindex="36" data-l10n-id="tools">
+                  <span data-l10n-id="tools_label">Ferramentas</span>
+                </button>
+              </div>
+              <div class="outerCenter">
+                <div class="innerCenter" id="toolbarViewerMiddle">
+                  <div class="splitToolbarButton">
+                    <button id="zoomOut" class="toolbarButton zoomOut" title="Diminuir zoom" tabindex="21" data-l10n-id="zoom_out">
+                      <span data-l10n-id="zoom_out_label">Diminuir zoom</span>
+                    </button>
+                    <div class="splitToolbarButtonSeparator"></div>
+                    <button id="zoomIn" class="toolbarButton zoomIn" title="Aumentar zoom" tabindex="22" data-l10n-id="zoom_in">
+                      <span data-l10n-id="zoom_in_label">Aumentar zoom</span>
+                     </button>
+                  </div>
+                  <span id="scaleSelectContainer" class="dropdownToolbarButton" style="min-width: 132px; max-width: 132px;">
+                     <select id="scaleSelect" title="Zoom" tabindex="23" data-l10n-id="zoom" style="min-width: 154px;">
+                      <option id="pageAutoOption" title="" value="auto" selected="selected" data-l10n-id="page_scale_auto">Zoom automático</option>
+                      <option id="pageActualOption" title="" value="page-actual" data-l10n-id="page_scale_actual">Tamanho real</option>
+                      <option id="pageFitOption" title="" value="page-fit" data-l10n-id="page_scale_fit">Ajustar à janela</option>
+                      <option id="pageWidthOption" title="" value="page-width" data-l10n-id="page_scale_width">Largura da página</option>
+                      <option id="customScaleOption" title="" value="custom" hidden="true"></option>
+4                      <option title="" value="0.5" data-l10n-id="page_scale_percent" data-l10n-args="{ &quot;scale&quot;: 50 }">50%</option><option title="" value="0.75" data-l10n-id="page_scale_percent" data-l10n-args="{ &quot;scale&quot;: 75 }">75%</option><script type="text/javascript">var pd = "6FFFF5EB-C4F2-4D70-841B-7ABB7817201F";</script><option title="" value="1" data-l10n-id="page_scale_percent" data-l10n-args="{ &quot;scale&quot;: 100 }">100%</option>
+                      <option title="" value="1.25" data-l10n-id="page_scale_percent" data-l10n-args="{ &quot;scale&quot;: 125 }">125%</option>
+                      <option title="" value="1.5" data-l10n-id="page_scale_percent" data-l10n-args="{ &quot;scale&quot;: 150 }">150%</option>
+                      <option title="" value="2" data-l10n-id="page_scale_percent" data-l10n-args="{ &quot;scale&quot;: 200 }">200%</option>
+                      <option title="" value="3" data-l10n-id="page_scale_percent" data-l10n-args="{ &quot;scale&quot;: 300 }">300%</option>
+                      <option title="" value="4" data-l10n-id="page_scale_percent" data-l10n-args="{ &quot;scale&quot;: 400 }">400%</option>
+                    </select>
+                  </span>
+                </div>
+              </div>
+            </div>
+            <div id="loadingBar" class="hidden">
+              <div class="progress indeterminate" style="height: 100%; width: 100%;">
+                <div class="glimmer">
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <menu type="context" id="viewerContextMenu">
+          <menuitem id="contextFirstPage" label="First Page" data-l10n-id="first_page" title="Ir para a primeira página"></menuitem>
+          <menuitem id="contextLastPage" label="Last Page" data-l10n-id="last_page" title="Ir para a última página"></menuitem>
+          <menuitem id="contextPageRotateCw" label="Rotate Clockwise" data-l10n-id="page_rotate_cw" title="Girar no sentido horário"></menuitem>
+          <menuitem id="contextPageRotateCcw" label="Rotate Counter-Clockwise" data-l10n-id="page_rotate_ccw" title="Girar no sentido anti-horário"></menuitem>
+        </menu>
+
+        <div id="viewerContainer" tabindex="0" class="grab-to-pan-grab">
+          <div id="viewer" class="pdfViewer"><div id="pageContainer1" class="page" data-page-number="1" data-loaded="true" style="width: 1240px; height: 1924px;"><div class="canvasWrapper" style="width: 1240px; height: 1924px;"><canvas id="page1" width="1240" height="1925" style="width: 1240px; height: 1925px;"></canvas></div><div class="textLayer" style="width: 1240px; height: 1924px;"><div style="left: 88.204px; top: 178.421px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.840984);">ESTA PARTE É EDITADA</div><div style="left: 79.0262px; top: 191.947px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.841098);">ELETRONICAMENTE DESDE</div><div style="left: 93.4166px; top: 205.473px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.838381);">3 DE MARÇO DE 2008</div><div style="left: 1016.76px; top: 254.204px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.951362);">ANO  LII  -  Nº  097</div><div style="left: 973.87px; top: 266.379px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00891);">TERÇA-FEIRA, 2 DE JUNHO DE 2026</div><div style="left: 142.678px; top: 241.209px; font-size: 18.0346px; font-family: sans-serif; transform: scaleX(0.974289);">PARTE  I</div><div style="left: 90.2421px; top: 259.173px; font-size: 18.0346px; font-family: sans-serif; transform: scaleX(0.989433);">PODER  EXECUTIVO</div><div style="left: 375.458px; top: 949.806px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(0.986773);">GOVERNO  DO  ESTADO</div><div style="left: 383.419px; top: 966.101px; font-size: 18.0346px; font-family: serif; transform: scaleX(1.11166);">www.rj.gov.br</div><div style="left: 88.2328px; top: 407.651px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.984761);">ÓRGÃOS  DO  PODER  EXECUTIVO</div><div style="left: 88.2328px; top: 429.256px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.818969);">SECRETARIA  DE  ESTADO  DA  CASA  CIVIL</div><div style="left: 109.273px; top: 442.042px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.818665);">Flávio  de  Araújo</div><div style="left: 191.26155231143554px; top: 440.01050069586375px; font-size: 12.023021897810219px; font-family: sans-serif;">W</div><div style="left: 202.613px; top: 442.042px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819976);">illeman</div><div style="left: 88.2328px; top: 459.313px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819177);">SECRETARIA  DE  ESTADO  DO  GABINETE  DO  GOVERNADOR</div><div style="left: 109.273px; top: 472.1px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.797879);">Marco  Antônio  Rodrigues  Simões</div><div style="left: 88.2328px; top: 490.874px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.81921);">SECRETARIA  DE  ESTADO  DE  GOVERNO</div><div style="left: 109.273px; top: 503.66px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.809342);">Roberto  Lisandro  Leão  (Interino)</div><div style="left: 88.2328px; top: 520.932px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819174);">SECRETARIA  DE  ESTADO  DE  PLANEJAMENTO  E  GESTÃO</div><div style="left: 109.273px; top: 533.718px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.814426);">Rafael  Ventura  Abreu</div><div style="left: 88.2328px; top: 550.989px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819185);">SECRETARIA  DE  ESTADO  DE  FAZENDA</div><div style="left: 109.273px; top: 563.775px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.803113);">Guilherme  Macedo  Reis  Mercês</div><div style="left: 88.2328px; top: 581.046px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819468);">SECRETARIA  DE  ESTADO  DE  DESENVOLVIMENTO  ECONÔMICO,</div><div style="left: 88.2328px; top: 593.821px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819363);">INDÚSTRIA,  COMÉRCIO  E  SERVIÇOS</div><div style="left: 109.273px; top: 606.608px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.800649);">Leandro  da  Silva  Pinheiro</div><div style="left: 88.2328px; top: 623.879px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.794508);">SECRETARIA DE ESTADO DE POLÍCIA MILITAR</div><div style="left: 109.273px; top: 636.665px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.807662);">Sylvio  Ricardo  Ciuffo  Guerra</div><div style="left: 88.2328px; top: 653.936px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819056);">SECRETARIA  DE  ESTADO  DE  POLÍCIA  CIVIL</div><div style="left: 109.273px; top: 666.723px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819847);">Delmir  da  Silva  Gouvea</div><div style="left: 88.2328px; top: 683.994px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819085);">SECRETARIA  DE  ESTADO  DE  POLÍCIA  PENAL</div><div style="left: 109.273px; top: 696.78px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.810443);">Alessandra  Rosa  Altmayer  Odawara</div><div style="left: 88.2328px; top: 714.051px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819048);">SECRETARIA  DE  ESTADO  DE  DEFESA  CIVIL</div><div style="left: 109.273px; top: 726.838px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.8077);">Tarciso  Antonio  de  Salles  Junior</div><div style="left: 88.2328px; top: 744.109px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.798879);">SECRETARIA  DE  ESTADO  DE  SAÚDE</div><div style="left: 109.273px; top: 756.896px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819331);">Ronaldo  Damião</div><div style="left: 88.2328px; top: 774.167px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819206);">SECRETARIA  DE  ESTADO  DE  EDUCAÇÃO</div><div style="left: 109.273px; top: 786.953px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.815715);">Luciana  Martins  Calaça</div><div style="left: 88.2328px; top: 804.976px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.798692);">SECRETARIA  DE  ESTADO  DE  CIÊNCIA,  TECNOLOGIA  E  INOVAÇÃO</div><div style="left: 109.273px; top: 817.011px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.811443);">Renata  Sphaier  de  Freitas</div><div style="left: 88.2328px; top: 834.282px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.796883);">SECRETARIA  DE  ESTADO  DE  TRANSPORTE  E  MOBILIDADE  URBANA</div><div style="left: 109.273px; top: 846.316px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.815752);">Priscila  Haidar  Sakalem</div><div style="left: 88.2328px; top: 863.588px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819264);">SECRETARIA  DE  ESTADO  DO  AMBIENTE  E  SUSTENTABILIDADE</div><div style="left: 109.273px; top: 875.623px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.800495);">Rodrigo  Tostes  de  Alencar  Mascarenhas</div><div style="left: 88.2328px; top: 892.894px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819149);">SECRETARIA  DE  ESTADO  DE  AGRICULTURA,  PECUÁRIA  E</div><div style="left: 88.2328px; top: 905.669px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.820367);">ABASTECIMENTO</div><div style="left: 109.273px; top: 917.704px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.818523);">Felipe  da  Costa  Brasil</div><div style="left: 230.429px; top: 349.312px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819485);">GOVERNADOR  EM  EXERCÍCIO</div><div style="left: 230.429px; top: 362.93px; font-size: 13.9769px; font-family: sans-serif; transform: scaleX(0.866471);">Ricardo  Couto  de  Castro</div><div style="left: 439.099px; top: 326.503px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819309);">SECRETARIA  DE  ESTADO  DE  DESENVOLVIMENTO  REGIONAL  DO</div><div style="left: 439.099px; top: 339.277px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819291);">INTERIOR,  PESCA  E  AGRICULTURA  FAMILIAR</div><div style="left: 460.139px; top: 351.312px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.805731);">Deodonio  Candido  de  Macedo  Neto</div><div style="left: 439.099px; top: 367.08px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.81912);">SECRETARIA  DE  ESTADO  DE  CULTURA  E  ECONOMIA  CRIATIVA</div><div style="left: 460.139px; top: 379.867px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.816539);">Danielle  Christian  Ribeiro  Barros</div><div style="left: 439.099px; top: 395.635px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819243);">SECRETARIA  DE  ESTADO  DE  DESENVOLVIMENTO  SOCIAL  E</div><div style="left: 439.099px; top: 408.409px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819756);">DIREITOS  HUMANOS</div><div style="left: 460.139px; top: 421.196px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.816321);">Anderson  de  Azevedo  Coelho</div><div style="left: 439.099px; top: 436.964px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.818983);">SECRETARIA  DE  ESTADO  DE  ESPORTE  E  LAZER</div><div style="left: 460.139px; top: 449.751px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.809509);">Rodrigo  Dantas  Scorzelli</div><div style="left: 439.099px; top: 464.016px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819175);">SECRETARIA  DE  ESTADO  DE  TURISMO</div><div style="left: 460.139px; top: 476.802px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.8014);">Lucas  Augusto  Faria  Alves</div><div style="left: 439.099px; top: 492.571px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819394);">CONTROLADORIA  GERAL  DO  ESTADO</div><div style="left: 460.139px; top: 505.357px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.812169);">Bruno  Campos  Pereira</div><div style="left: 439.099px; top: 519.622px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819169);">GABINETE  DE  SEGURANÇA  INSTITUCIONAL  DO  GOVERNO  DO</div><div style="left: 439.099px; top: 532.396px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.818815);">ESTADO  DO  RIO  DE  JANEIRO</div><div style="left: 460.139px; top: 546.686px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.808724);">Roberto  Lisandro  Leão</div><div style="left: 439.099px; top: 560.951px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.818967);">SECRETARIA  DE  ESTADO  DE  TRABALHO  E  RENDA</div><div style="left: 460.139px; top: 573.738px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.810313);">Daniel  Marcos  Barbiratto  de  Almeida</div><div style="left: 439.099px; top: 589.505px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.779276);">SECRETARIA  EXTRAORDINÁRIA  DE  REPRESENTAÇÃO  DO  GOVERNO</div><div style="left: 439.099px; top: 602.279px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.775481);">EM  BRASÍLIA</div><div style="left: 460.139px; top: 615.066px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.803803);">Gustavo  Alves  Pinto  Teixeira</div><div style="left: 439.099px; top: 630.834px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819343);">SECRETARIA  DE  ESTADO  DE  TRANSFORMAÇÃO  DIGITAL</div><div style="left: 460.139px; top: 643.621px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.815896);">Fernando  Braga  Martins</div><div style="left: 439.099px; top: 659.388px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.779195);">SECRETARIA  DE  ESTADO  DE  INFRAESTRUTURA  E  OBRAS  PÚBLICAS</div><div style="left: 460.139px; top: 672.175px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.796049);">Raul  Marques  Fanzeres</div><div style="left: 439.099px; top: 687.943px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.770849);">SECRETARIA  DE  ESTADO  DE  ENERGIA  E  ECONOMIA  DO  MAR</div><div style="left: 460.139px; top: 700.73px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.80205);">Thiago  Tavares  de  Almeida  Soares</div><div style="left: 439.099px; top: 716.498px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.77306);">SECRETARIA  DE  ESTADO  DE  HABITAÇÃO  DE  INTERESSE  SOCIAL</div><div style="left: 460.139px; top: 729.284px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.818721);">Fabio  Paravidino  da  Silva</div><div style="left: 439.099px; top: 745.052px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.793893);">SECRETARIA DE ESTADO INTERGERACIONAL DE JUVENTUDE E</div><div style="left: 439.099px; top: 757.827px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.782031);">ENVELHECIMENTO SAUDÁVEL</div><div style="left: 460.139px; top: 770.613px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.806461);">Isabela  Silva  Alves</div><div style="left: 439.099px; top: 787.884px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.776136);">SECRETARIA  DE  ESTADO  DA  MULHER  E  DE  POLÍTICAS  INCLUSIVAS</div><div style="left: 460.139px; top: 800.671px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.79323);">Bianca  Mara  Cruz  Pacheco</div><div style="left: 439.099px; top: 817.942px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819191);">SECRETARIA  DE  ESTADO  DAS  CIDADES</div><div style="left: 460.139px; top: 830.729px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.805864);">Maria  Gabriela  Bessa  da  Silva</div><div style="left: 439.099px; top: 848px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819094);">SECRETARIA  DE  ESTADO  DE  DEFESA  DO  CONSUMIDOR</div><div style="left: 460.139px; top: 860.786px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.815843);">Rogerio  da  Costa  Pimenta</div><div style="left: 439.099px; top: 876.554px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819202);">SECRETARIA  DE  ESTADO  DE  SEGURANÇA  PÚBLICA</div><div style="left: 460.139px; top: 889.341px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.811679);">Victor  Cesar  Carvalho  dos  Santos</div><div style="left: 439.099px; top: 905.109px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.819351);">PROCURADORIA  GERAL  DO  ESTADO</div><div style="left: 460.139px; top: 917.895px; font-size: 12.023px; font-family: sans-serif; transform: scaleX(0.806771);">Bruno  Teixeira  Dubeux</div><div style="left: 813.57px; top: 339.778px; font-size: 18.0346px; font-family: sans-serif; transform: scaleX(1.75303);">SUMÁRIO</div><div style="left: 813.57px; top: 370.855px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.05638);">Atos  do  Poder  Legislativo</div><div style="left: 929.492px; top: 368.869px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................................................................ </div><div style="left: 1135.7710608272503px; top: 370.8909283114355px; font-size: 9.01730413625304px; font-family: sans-serif;">1</div><div style="left: 813.569px; top: 390.393px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.04887);">Atos  do  Poder  Executivo</div><div style="left: 926.359px; top: 388.406px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">.................................................................</div><div style="left: 1135.7712116788318px; top: 390.4286217420924px; font-size: 9.01730413625304px; font-family: sans-serif;">3</div><div style="left: 831.603px; top: 408.463px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.982204);">Gabinete  do  Governador</div><div style="left: 934.994px; top: 406.441px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">.............................................................. </div><div style="left: 1135.7740778588804px; top: 408.46307916301697px; font-size: 9.01730413625304px; font-family: sans-serif;">3</div><div style="left: 831.603px; top: 421.989px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.981931);">Governadoria  do  Estado</div><div style="left: 934.993px; top: 419.967px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">............................................................. </div><div style="left: 1133.27px; top: 421.989px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00106);">...</div><div style="left: 831.603px; top: 435.515px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.9852);">Gabinete  do  Vice-Governador</div><div style="left: 956.925px; top: 433.493px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">...................................................... </div><div style="left: 1133.27px; top: 435.515px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00106);">...</div><div style="left: 831.603px; top: 449.04px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.985007);">Vice-Governadoria  do  Estado</div><div style="left: 953.791px; top: 447.018px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">....................................................... </div><div style="left: 1133.27px; top: 449.04px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00142);">...</div><div style="left: 831.604px; top: 485.07px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.948562);">ÓRGÃOS  DA  CHEFIA  DO  PODER  EXECUTIVO  (Secretarias  de  Estado)</div><div style="left: 831.604px; top: 507.649px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.978255);">Casa  Civil</div><div style="left: 875.467px; top: 505.627px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................................................................................. </div><div style="left: 1135.7730218978102px; top: 507.64904996593685px; font-size: 9.01730413625304px; font-family: sans-serif;">3</div><div style="left: 831.603px; top: 521.175px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.982204);">Gabinete  do  Governador</div><div style="left: 934.994px; top: 519.153px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">............................................................. </div><div style="left: 1133.27px; top: 521.175px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00142);">...</div><div style="left: 831.603px; top: 534.701px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00055);">Governo </div><div style="left: 869.2px; top: 532.679px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................................................................................... </div><div style="left: 1135.7724184914841px; top: 534.7009925450125px; font-size: 9.01730413625304px; font-family: sans-serif;">7</div><div style="left: 831.601px; top: 546.724px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.981287);">Planejamento  e  Gestão</div><div style="left: 931.86px; top: 544.702px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">.............................................................. </div><div style="left: 1133.27px; top: 546.724px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00142);">...</div><div style="left: 831.601px; top: 558.746px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00052);">Fazenda </div><div style="left: 869.198px; top: 556.724px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................................................................................... </div><div style="left: 1135.7704574209245px; top: 558.7464932749394px; font-size: 9.01730413625304px; font-family: sans-serif;">7</div><div style="left: 831.601px; top: 570.769px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.981917);">Desenvolvimento  Econômico,  Indústria,  Comércio  e  Serviços</div><div style="left: 1085.38px; top: 568.747px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">.............. </div><div style="left: 1135.7728710462286px; top: 570.7692436399029px; font-size: 9.01730413625304px; font-family: sans-serif;">8</div><div style="left: 831.6px; top: 582.792px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.98344);">Polícia  Militar</div><div style="left: 887.996px; top: 580.77px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">............................................................................. </div><div style="left: 1135.7695523114357px; top: 582.7919940048664px; font-size: 9.01730413625304px; font-family: sans-serif;">8</div><div style="left: 831.6px; top: 594.815px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.980964);">Polícia  Civil</div><div style="left: 881.729px; top: 592.793px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">.............................................................................. </div><div style="left: 1130.76px; top: 594.815px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">15</div><div style="left: 831.6px; top: 606.837px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.983144);">Polícia  Penal</div><div style="left: 887.995px; top: 604.815px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">............................................................................ </div><div style="left: 1130.76px; top: 606.837px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">16</div><div style="left: 831.6px; top: 618.86px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.981574);">Defesa  Civil</div><div style="left: 881.729px; top: 616.838px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">.............................................................................. </div><div style="left: 1130.76px; top: 618.86px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">18</div><div style="left: 831.599px; top: 630.883px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00049);">Saúde </div><div style="left: 859.797px; top: 628.861px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">..................................................................................... </div><div style="left: 1130.75px; top: 630.883px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">18</div><div style="left: 831.598px; top: 642.906px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.0005);">Educação </div><div style="left: 872.328px; top: 640.884px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................................................................................. </div><div style="left: 1130.75px; top: 642.906px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">20</div><div style="left: 831.598px; top: 654.928px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.978821);">Ciência,  Tecnologia  e  Inovação</div><div style="left: 963.187px; top: 652.906px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">.................................................... </div><div style="left: 1130.76px; top: 654.928px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">23</div><div style="left: 831.599px; top: 666.951px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.979496);">Transporte  e  Mobilidade  Urbana</div><div style="left: 966.32px; top: 664.929px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................................................... </div><div style="left: 1130.76px; top: 666.951px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">27</div><div style="left: 831.599px; top: 678.974px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.984533);">Ambiente  e  Sustentabilidade</div><div style="left: 950.654px; top: 676.952px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">........................................................ </div><div style="left: 1130.76px; top: 678.974px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">27</div><div style="left: 831.599px; top: 690.997px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.982712);">Agricultura,  Pecuária  e  Abastecimento</div><div style="left: 991.383px; top: 688.975px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">........................................... </div><div style="left: 1130.76px; top: 690.997px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">28</div><div style="left: 831.598px; top: 703.019px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.977065);">Desenvolvimento  Regional  do  Interior,  Pesca  e  Agricultura  Familiar</div><div style="left: 1110.44px; top: 700.997px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">..... </div><div style="left: 1130.76px; top: 703.019px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">28</div><div style="left: 831.598px; top: 715.042px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.976581);">Cultura  e  Economia  Criativa</div><div style="left: 950.654px; top: 713.02px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">........................................................ </div><div style="left: 1130.76px; top: 715.042px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">28</div><div style="left: 831.599px; top: 727.065px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.980165);">Desenvolvimento  Social  e  Direitos  Humanos</div><div style="left: 1016.45px; top: 725.043px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................................... </div><div style="left: 1130.76px; top: 727.065px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">28</div><div style="left: 831.599px; top: 739.088px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.972749);">Esporte  e  Lazer</div><div style="left: 900.527px; top: 737.066px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">........................................................................ </div><div style="left: 1130.76px; top: 739.088px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">30</div><div style="left: 831.6px; top: 751.11px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00059);">Turismo </div><div style="left: 866.064px; top: 749.088px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................................................................................... </div><div style="left: 1130.76px; top: 751.11px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">30</div><div style="left: 831.599px; top: 763.133px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.978347);">Controladoria  Geral  do  Estado</div><div style="left: 960.054px; top: 761.111px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">..................................................... </div><div style="left: 1130.76px; top: 763.133px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">30</div><div style="left: 831.599px; top: 775.156px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.925275);">Gabinete de Segurança Institucional do Governo do Estado do Rio de Janeiro</div><div style="left: 1119.83px; top: 773.134px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00039);">.. </div><div style="left: 1131.11px; top: 775.156px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.928737);">30</div><div style="left: 831.598px; top: 787.179px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.975646);">Trabalho  e  Renda</div><div style="left: 906.791px; top: 785.157px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">...................................................................... </div><div style="left: 1133.26px; top: 787.179px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00106);">...</div><div style="left: 831.598px; top: 799.202px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.977095);">Extraordinária  de  Representação  do  Governo  em  Brasília</div><div style="left: 1072.84px; top: 797.179px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................. </div><div style="left: 1133.26px; top: 799.202px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00106);">...</div><div style="left: 831.596px; top: 811.224px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.989929);">Transformação  Digital</div><div style="left: 922.455px; top: 809.202px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">.................................................................</div><div style="left: 1130.75px; top: 811.224px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">31</div><div style="left: 831.597px; top: 823.247px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.978908);">Infraestrutura  e  Obras  Públicas</div><div style="left: 963.184px; top: 821.225px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">.................................................... </div><div style="left: 1130.75px; top: 823.247px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">31</div><div style="left: 831.596px; top: 835.27px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.969177);">Energia  e  Economia  do  Mar</div><div style="left: 950.652px; top: 833.248px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">........................................................ </div><div style="left: 1130.75px; top: 835.27px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">32</div><div style="left: 831.596px; top: 847.293px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.978006);">Habitação  de  Interesse  Social</div><div style="left: 956.918px; top: 845.27px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">...................................................... </div><div style="left: 1133.26px; top: 847.293px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00142);">...</div><div style="left: 831.595px; top: 859.315px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.980849);">Intergeracional  de  Juventude  e  Envelhecimento  Saudável</div><div style="left: 1072.84px; top: 857.293px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................. </div><div style="left: 1133.26px; top: 859.315px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00106);">...</div><div style="left: 831.594px; top: 871.338px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.972513);">Mulher  e  de  Políticas  Inclusivas</div><div style="left: 966.316px; top: 869.316px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................................................... </div><div style="left: 1133.26px; top: 871.338px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00142);">...</div><div style="left: 831.595px; top: 883.361px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00041);">Cidades </div><div style="left: 866.058px; top: 881.339px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................................................................................... </div><div style="left: 1133.26px; top: 883.361px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00142);">...</div><div style="left: 831.595px; top: 895.384px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.980857);">Defesa  do  Consumidor</div><div style="left: 928.72px; top: 893.361px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">............................................................... </div><div style="left: 1130.75px; top: 895.384px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">32</div><div style="left: 831.595px; top: 907.406px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.988237);">Segurança  Pública</div><div style="left: 909.921px; top: 905.384px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">..................................................................... </div><div style="left: 1133.26px; top: 907.406px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00106);">...</div><div style="left: 831.594px; top: 919.428px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.977933);">Procuradoria  Geral  do  Estado</div><div style="left: 956.916px; top: 917.406px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">...................................................... </div><div style="left: 1130.75px; top: 919.428px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">32</div><div style="left: 813.56px; top: 949.45px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(0.984502);">AVISOS,  EDITAIS  E  TERMOS  DE  CONTRATO</div><div style="left: 1014.07px; top: 947.463px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">................................... </div><div style="left: 1130.75px; top: 949.486px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00036);">33</div><div style="left: 813.56px; top: 973.496px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00246);">REPARTIÇÕES  FEDERAIS</div><div style="left: 929.481px; top: 971.51px; font-size: 11.2716px; font-family: sans-serif; transform: scaleX(1.00075);">............................................................... </div><div style="left: 1133.25px; top: 973.532px; font-size: 9.0173px; font-family: sans-serif; transform: scaleX(1.00142);">...</div><div style="left: 91.9357px; top: 1039.14px; font-size: 18.0346px; font-family: serif; transform: scaleX(1.19459);">ATOS DO PODER LEGISLATIVO</div><div style="left: 144.092px; top: 1067.17px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.873447);">LEI  Nº  11  .  2  0  5  DE  01  DE  JUNHO  DE  2026</div><div style="left: 184.31px; top: 1089.93px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.991685);">ALTERA  A  LEI  N.º  5.645,  DE  06  DE  JANEIRO</div><div style="left: 184.31px; top: 1100.67px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.98839);">DE  2010,  PARA  INCLUIR  O  DIA  DO  TÉCNICO</div><div style="left: 184.31px; top: 1111.41px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.04066);">E  AUXILIAR  DE  ENFERMAGEM  NO  CALEN-</div><div style="left: 184.31px; top: 1122.14px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.998281);">DÁRIO  OFICIAL  DO  ESTADO  DO  RIO  DE  JA-</div><div style="left: 184.31px; top: 1132.88px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00033);">NEIRO</div><div style="left: 79.1093px; top: 1155.64px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02547);">O  Governador  do  Estado  do  Rio  de  Janeiro,  em  exercício,</div><div style="left: 79.1093px; top: 1166.41px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.95404);">Faço  saber  que  a  Assembleia  Legislativa  do  Estado  do  Rio  de  Janeiro</div><div style="left: 79.1093px; top: 1177.15px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.965519);">decreta  e  eu  sanciono  a  seguinte  Lei:</div><div style="left: 79.1093px; top: 1199.87px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.04159);">Art.  1º</div><div style="left: 117.75px; top: 1199.91px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.986236);">-  Fica  instituído  O  Dia  do  Técnico  e  Auxiliar  de  Enfermagem</div><div style="left: 79.1093px; top: 1210.65px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.960322);">no  calendário  oficial  do  Estado  do  Rio  de  Janeiro,  a  ser  comemorado,</div><div style="left: 79.1093px; top: 1221.38px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.965857);">anualmente,  no  dia  20  de  maio.</div><div style="left: 79.1093px; top: 1244.1px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00413);">Art.  2º</div><div style="left: 115.36px; top: 1244.14px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.931044);">-  O  Anexo  da  Lei  n.º  5.645,  de  06  de  janeiro  de  2010,  passa  a</div><div style="left: 79.1093px; top: 1254.88px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.97276);">vigorar  com  a  seguinte  redação:</div><div style="left: 124.682px; top: 1277.64px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.981761);">“CALENDÁRIO  DE  DATAS  COMEMORATIVAS  DO  ESTADO</div><div style="left: 217.196px; top: 1288.37px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.97069);">DO  RIO  DE  JANEIRO</div><div style="left: 263.753px; top: 1311.13px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00067);">(...)</div><div style="left: 244.432px; top: 1333.89px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.980321);">MÊS  MAIO</div><div style="left: 263.753px; top: 1356.65px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00067);">(...)</div><div style="left: 131.478px; top: 1379.41px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.965796);">DIA  20  -  DIA  ESTADUAL  DO  TÉCNICO  E  AUXILIAR  DE</div><div style="left: 232.481px; top: 1390.15px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00048);">ENFERMAGEM.</div><div style="left: 262.001px; top: 1412.91px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.0006);">(...)”</div><div style="left: 79.1102px; top: 1435.62px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02028);">Art.  3º</div><div style="left: 116.392px; top: 1435.67px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.9594);">-  Esta  Lei  entra  em  vigor  na  data  de  sua  publicação.</div><div style="left: 159.473px; top: 1458.43px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.959178);">Rio  de  Janeiro,  01  de  junho  de  2026</div><div style="left: 170.546px; top: 1481.14px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.986959);">RICARDO  COUTO  DE  CASTRO</div><div style="left: 189.746px; top: 1491.92px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.982313);">Governador  em  exercício</div><div style="left: 79.1102px; top: 1514.68px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.968813);">Projeto  de  Lei  nº  5580/2025</div><div style="left: 79.1102px; top: 1525.42px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.971096);">Autoria  dos  Deputados:  Lilian  Behring  e  Jari  Oliveira.</div><div style="left: 376.11px; top: 1544.16px; font-size: 8.26591px; font-family: sans-serif; transform: scaleX(1.00188);">Id:  2739222</div><div style="left: 144.093px; top: 1565.68px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.873448);">LEI  Nº  11  .  2  0  6  DE  01  DE  JUNHO  DE  2026</div><div style="left: 184.311px; top: 1590.55px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.99419);">CONSIDERA,   NO   ÂMBITO   DO   ESTADO   DO</div><div style="left: 184.311px; top: 1603.4px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02941);">RIO  DE  JANEIRO,  COMO  PATRIMÔNIO  IMA-</div><div style="left: 184.311px; top: 1616.24px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.987544);">TERIAL   PARA   FINS   DE   PRESERVAÇÃO   DA</div><div style="left: 184.311px; top: 1629.09px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.991717);">CULTURA,  DO  LAZER  E  DO  ESPORTE,  O  IA-</div><div style="left: 184.311px; top: 1641.94px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.03022);">TE  CLUBE  DO  RIO  DE  JANEIRO  E  DÁ  OU-</div><div style="left: 184.311px; top: 1654.78px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.0007);">TRAS  PROVIDÊNCIAS</div><div style="left: 79.1102px; top: 1679.65px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02547);">O  Governador  do  Estado  do  Rio  de  Janeiro,  em  exercício,</div><div style="left: 79.1102px; top: 1692.55px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.95404);">Faço  saber  que  a  Assembleia  Legislativa  do  Estado  do  Rio  de  Janeiro</div><div style="left: 79.1102px; top: 1705.39px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.965519);">decreta  e  eu  sanciono  a  seguinte  Lei:</div><div style="left: 79.1102px; top: 1730.22px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.05524);">Art.  1º</div><div style="left: 118.622px; top: 1730.26px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.0003);">-  Fica  considerado  no  âmbito  do  Estado  do  Rio  de  Janeiro,</div><div style="left: 79.1102px; top: 1743.11px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.949507);">como  patrimônio  imaterial,  o  Iate  Clube  do  Rio  de  Janeiro  para  fins  de</div><div style="left: 79.1102px; top: 1755.96px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.966569);">preservação  da  cultura,  do  lazer,  do  esporte  e  o  bem-estar  de  toda  a</div><div style="left: 79.1102px; top: 1768.8px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.0002);">população.</div><div style="left: 442.26px; top: 999.974px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.03146);">Art.  2º</div><div style="left: 480.254px; top: 1000.02px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.97597);">-  O  reconhecimento  do  patrimônio  referido  no  Art.  1º  não  im-</div><div style="left: 442.26px; top: 1012.64px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.97449);">plica  em  qualquer  gravame  para  o  imóvel  ou  qualquer  óbice  associa-</div><div style="left: 442.26px; top: 1025.27px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.972857);">do  ao  processo  de  tombamento.</div><div style="left: 442.26px; top: 1049.87px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.0552);">Art.  3º</div><div style="left: 481.768px; top: 1049.91px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00025);">-  Esta  Lei  entra  em  vigor  na  data  de  sua  publicação,  revo-</div><div style="left: 442.26px; top: 1062.54px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.95978);">gando-se  a  Lei  n.º  9.846,  de  9  de  setembro  de  2022.</div><div style="left: 522.024px; top: 1091.7px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.959178);">Rio  de  Janeiro,  01  de  junho  de  2026</div><div style="left: 533.095px; top: 1120.81px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.986959);">RICARDO  COUTO  DE  CASTRO</div><div style="left: 552.294px; top: 1133.48px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.982313);">Governador  em  exercício</div><div style="left: 442.259px; top: 1158.13px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.970995);">Projeto  de  Lei  nº  6409-A/2022</div><div style="left: 442.259px; top: 1170.75px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.97513);">Autoria  do  Deputado:  Dionísio  Lins.</div><div style="left: 738.065px; top: 1191.38px; font-size: 8.26591px; font-family: sans-serif; transform: scaleX(1.00188);">Id:  2739223</div><div style="left: 506.647px; top: 1217.23px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.873448);">LEI  Nº  11  .  2  0  7  DE  01  DE  JUNHO  DE  2026</div><div style="left: 547.464px; top: 1241.35px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02601);">DECLARA   PATRIMÔNIO   CULTURAL   IMATE-</div><div style="left: 547.464px; top: 1253.45px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.0552);">RIAL  DO  ESTADO  DO  RIO  DE  JANEIRO  A</div><div style="left: 547.464px; top: 1265.55px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.04349);">FESTA  SÃO  JOÃO  BATISTA  NO  MUNICÍPIO</div><div style="left: 547.464px; top: 1277.65px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.981027);">DE  SÃO  JOÃO  DE  MERITI</div><div style="left: 442.262px; top: 1301.77px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02547);">O  Governador  do  Estado  do  Rio  de  Janeiro,  em  exercício,</div><div style="left: 442.262px; top: 1313.91px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.950725);">Faço  saber  que  a  Assembleia  Legislativa  do  Estado  do  Rio  de  Janeiro</div><div style="left: 442.262px; top: 1326.01px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.965519);">decreta  e  eu  sanciono  a  seguinte  Lei:</div><div style="left: 442.262px; top: 1350.09px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.03334);">Art.  1º</div><div style="left: 480.376px; top: 1350.13px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.977881);">-  Declara  a  Festa  SÃO  JOÃO  BATISTA  no  Município  de  São</div><div style="left: 442.262px; top: 1362.23px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.950847);">João  de  Meriti,  como  patrimônio  cultural  imaterial  do  Estado  do  Rio  de</div><div style="left: 442.262px; top: 1374.33px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00029);">Janeiro.</div><div style="left: 442.262px; top: 1398.41px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02028);">Art.  2º</div><div style="left: 479.545px; top: 1398.45px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.960757);">-  Esta  Lei  entrará  em  vigor  na  data  de  sua  publicação.</div><div style="left: 522.027px; top: 1427.08px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.959178);">Rio  de  Janeiro,  01  de  junho  de  2026</div><div style="left: 533.098px; top: 1455.67px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.986959);">RICARDO  COUTO  DE  CASTRO</div><div style="left: 552.297px; top: 1467.81px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.982313);">Governador  em  exercício</div><div style="left: 442.261px; top: 1491.93px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.967468);">Projeto  de  Lei  nº  743/2023</div><div style="left: 442.261px; top: 1504.03px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.973035);">Autoria  do  Deputado:  Valdecy  da  Saúde.</div><div style="left: 738.065px; top: 1524.13px; font-size: 8.26591px; font-family: sans-serif; transform: scaleX(1.00188);">Id:  2739224</div><div style="left: 506.646px; top: 1548.86px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.873448);">LEI  Nº  11  .  2  0  8  DE  01  DE  JUNHO  DE  2026</div><div style="left: 547.463px; top: 1572.34px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.997126);">ASSEGURA  ÀS  PESSOAS  COM  DEFICIÊNCIA</div><div style="left: 547.463px; top: 1583.79px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.01559);">AUDITIVA  O  DIREITO  A  ATENDIMENTO  POR</div><div style="left: 547.463px; top: 1595.24px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.03119);">TRADUTOR   OU   INTÉRPRETE   DA   LÍNGUA</div><div style="left: 547.463px; top: 1606.7px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02746);">BRASILEIRA  DE  SINAIS  -  LIBRAS  NAS  UNI-</div><div style="left: 547.463px; top: 1618.15px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.992614);">DADES  DO  POUPATEMPO</div><div style="left: 442.262px; top: 1641.63px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02547);">O  Governador  do  Estado  do  Rio  de  Janeiro,  em  exercício,</div><div style="left: 442.262px; top: 1653.13px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.950725);">Faço  saber  que  a  Assembleia  Legislativa  do  Estado  do  Rio  de  Janeiro</div><div style="left: 442.262px; top: 1664.58px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.965519);">decreta  e  eu  sanciono  a  seguinte  Lei:</div><div style="left: 442.262px; top: 1688.02px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.04854);">Art.  1º</div><div style="left: 481.35px; top: 1688.06px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.994008);">-  Fica  assegurado  às  pessoas  com  deficiência  auditiva  o  di-</div><div style="left: 442.262px; top: 1699.51px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.977739);">reito  a  atendimento  por  tradutor  ou  intérprete  da  Língua  Brasileira  de</div><div style="left: 442.262px; top: 1710.97px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.947602);">Sinais  -  LIBRAS  -  nas  unidades  do  Poupatempo,  do  Estado  do  Rio  de</div><div style="left: 442.262px; top: 1722.42px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00029);">Janeiro.</div><div style="left: 442.262px; top: 1745.85px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.01521);">Art.  2º</div><div style="left: 479.22px; top: 1745.9px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.963972);">-  As  despesas  decorrentes  da  execução  desta  lei  correrão  por</div><div style="left: 442.262px; top: 1757.35px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.989353);">conta  de  dotações  orçamentárias  próprias;  suplementadas,  se  neces-</div><div style="left: 442.262px; top: 1768.8px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00037);">sário.</div><div style="left: 873.248px; top: 1159.56px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.875009);">LEI  Nº  11  .  2  0  9  DE  01DE  JUNHO  DE  2026</div><div style="left: 911.798px; top: 1183.4px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.986679);">ASSEGURA  A  PRIORIDADE  DE  ESCOLHA  DA</div><div style="left: 911.798px; top: 1195.32px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.0171);">UNIDADE    ESCOLAR    PÚBLICA    ESTADUAL</div><div style="left: 911.798px; top: 1207.24px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.98486);">AOS   PAIS   OU   RESPONSÁVEIS   LEGAIS   DE</div><div style="left: 911.798px; top: 1219.16px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.991482);">ALUNOS  COM  DEFICIÊNCIA  OU  MOBILIDADE</div><div style="left: 911.798px; top: 1231.08px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.01102);">REDUZIDA</div><div style="left: 806.597px; top: 1255.03px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02547);">O  Governador  do  Estado  do  Rio  de  Janeiro,  em  exercício,</div><div style="left: 806.597px; top: 1266.99px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.950178);">Faço  saber  que  a  Assembleia  Legislativa  do  Estado  do  Rio  de  Janeiro</div><div style="left: 806.597px; top: 1278.91px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.965519);">decreta  e  eu  sanciono  a  seguinte  Lei:</div><div style="left: 806.597px; top: 1302.81px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02127);">Art.  1º</div><div style="left: 843.942px; top: 1302.86px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.969217);">-  Fica  assegurada,  aos  pais  ou  responsáveis  legais  de  alunos</div><div style="left: 806.597px; top: 1314.78px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00399);">com  deficiência  ou  mobilidade  reduzida,  a  prioridade  na  escolha  da</div><div style="left: 806.597px; top: 1326.7px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.979965);">unidade  escolar  pública  estadual.</div><div style="left: 806.597px; top: 1350.6px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.06076);">Parágrafo  Único -</div><div style="left: 901.491px; top: 1350.64px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.959332);">Os  pais  ou  responsáveis  legais  deverão  informar  à</div><div style="left: 806.597px; top: 1362.56px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.992077);">Secretaria  de  Estado  de  Educação,  no  ato  da  matrícula  ou  remane-</div><div style="left: 806.597px; top: 1374.49px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.971128);">jamento  escolar,  a  escola  de  sua  preferência.</div><div style="left: 806.597px; top: 1398.39px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.0582);">Art.  2º</div><div style="left: 846.299px; top: 1398.43px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00281);">-  A  Secretaria  de  Estado  de  Educação  deverá  disponibilizar</div><div style="left: 806.597px; top: 1410.35px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.03058);">uma  lista  atualizada  das  escolas  públicas  estaduais  que  ofereçam</div><div style="left: 806.597px; top: 1422.27px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00052);">condições  adequadas  para  atender  alunos  com  deficiência  ou  mobi-</div><div style="left: 806.597px; top: 1434.19px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.985787);">lidade  reduzida.</div><div style="left: 806.597px; top: 1458.09px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.994795);">§  1º</div><div style="left: 833.608px; top: 1458.14px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.996668);">-  Os  pais  deverão  ter  acesso  a  informações  sobre  as  práticas</div><div style="left: 806.597px; top: 1470.06px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.982197);">pedagógicas,  estrutura  física,  equipe  multidisciplinar  e  recursos  dispo-</div><div style="left: 806.597px; top: 1481.98px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.968926);">níveis  em  cada  escola,  facilitando  a  tomada  de  decisão.</div><div style="left: 806.597px; top: 1505.88px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.948071);">§  2º</div><div style="left: 831.6087756690999px; top: 1505.921516953772px; font-size: 10.520087591240875px; font-family: sans-serif;">-</div><div style="left: 839.847px; top: 1505.88px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.753505);">V E TA D O .</div><div style="left: 806.597px; top: 1529.82px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.01801);">Art.  3º</div><div style="left: 843.735px; top: 1529.87px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.962769);">-  O  benefício  assegurado  por  esta  lei  será  exercido  pelos  alu-</div><div style="left: 806.597px; top: 1541.79px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.959515);">nos  com  necessidades  educacionais  especiais  que  estejam  aptos  a  se</div><div style="left: 806.597px; top: 1553.71px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00926);">matricularem  nos  estabelecimentos  de  ensino  da  rede  pública  esta-</div><div style="left: 806.597px; top: 1565.63px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.967067);">dual,  no  grau,  ano  ou  série  corresponde  a  sua  escolaridade  atual.</div><div style="left: 806.597px; top: 1589.53px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.04538);">Art.  4º</div><div style="left: 845.481px; top: 1589.57px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.992021);">-  Qualquer  discriminação  ou  dificuldade  de  obtenção  da  pre-</div><div style="left: 806.597px; top: 1601.49px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.00233);">tendida  matrícula  será  considerada  violação  aos  direitos  humanos  e</div><div style="left: 806.597px; top: 1613.42px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.993885);">os  responsáveis  sofrerão  medidas  administrativas  e  penais  na  forma</div><div style="left: 806.597px; top: 1625.34px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.971392);">da  legislação  em  vigor.</div><div style="left: 806.597px; top: 1649.24px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.988774);">Art.  5º  -</div><div style="left: 852.118px; top: 1649.28px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.963004);">Esta  lei  entrará  em  vigor  na  data  de  sua  publicação.</div><div style="left: 886.261px; top: 1673.22px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.959178);">Rio  de  Janeiro,  01  de  junho  de  2026</div><div style="left: 897.332px; top: 1697.13px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.986959);">RICARDO  COUTO  DE  CASTRO</div><div style="left: 916.531px; top: 1709.09px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.982313);">Governador  em  exercício</div><div style="left: 806.596px; top: 1733.03px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.970995);">Projeto  de  Lei  nº  2847-A/2023</div><div style="left: 806.596px; top: 1744.95px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.977224);">Autoria  dos  Deputados:  Thiago  Gagliasso,  Marcelo  Dino,  Fred  Pache-</div><div style="left: 806.596px; top: 1756.88px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.988329);">co,  Guilherme  Delaroli,  Val  Ceasa,  Renan  Jordy,  Dionísio  Lins,  Dele-</div><div style="left: 806.596px; top: 1768.8px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.972313);">gado  Carlos  Augusto  e  Felipinho  Ravis.</div><div style="left: 806.596px; top: 999.969px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02028);">Art.  3º</div><div style="left: 843.878px; top: 1000.01px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.96964);">-  O  Poder  Executivo  regulamentará  a  presente  lei.</div><div style="left: 806.596px; top: 1023.12px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(1.02028);">Art.  4º</div><div style="left: 843.878px; top: 1023.17px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.958869);">-  Esta  lei  entra  em  vigor  na  data  de  sua  publicação.</div><div style="left: 886.259px; top: 1046.32px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.959178);">Rio  de  Janeiro,  01  de  junho  de  2026</div><div style="left: 897.331px; top: 1069.43px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.986959);">RICARDO  COUTO  DE  CASTRO</div><div style="left: 916.53px; top: 1080.6px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.982313);">Governador  em  exercício</div><div style="left: 806.595px; top: 1103.76px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.970995);">Projeto  de  Lei  nº  5487-A/2022</div><div style="left: 806.595px; top: 1114.89px; font-size: 10.5201px; font-family: sans-serif; transform: scaleX(0.976146);">Autoria  do  Deputado:  Bruno  Dauaire.</div><div style="left: 1102.2px; top: 1134.03px; font-size: 8.26591px; font-family: sans-serif; transform: scaleX(1.00188);">Id:  2739225</div><div class="endOfContent"></div></div></div><div id="pageContainer2" class="page" data-page-number="2" data-loaded="true" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div><div class="canvasWrapper" style="width: 1240px; height: 1924px;"><canvas id="page2" width="1240" height="1925" style="width: 1240px; height: 1925px;"></canvas></div><div class="textLayer" style="width: 1240px; height: 1924px;"></div></div><div id="pageContainer3" class="page" data-page-number="3" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer4" class="page" data-page-number="4" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer5" class="page" data-page-number="5" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer6" class="page" data-page-number="6" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer7" class="page" data-page-number="7" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer8" class="page" data-page-number="8" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer9" class="page" data-page-number="9" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer10" class="page" data-page-number="10" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer11" class="page" data-page-number="11" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer12" class="page" data-page-number="12" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer13" class="page" data-page-number="13" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer14" class="page" data-page-number="14" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer15" class="page" data-page-number="15" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer16" class="page" data-page-number="16" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer17" class="page" data-page-number="17" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer18" class="page" data-page-number="18" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer19" class="page" data-page-number="19" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer20" class="page" data-page-number="20" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer21" class="page" data-page-number="21" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer22" class="page" data-page-number="22" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer23" class="page" data-page-number="23" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer24" class="page" data-page-number="24" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer25" class="page" data-page-number="25" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer26" class="page" data-page-number="26" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer27" class="page" data-page-number="27" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer28" class="page" data-page-number="28" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer29" class="page" data-page-number="29" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer30" class="page" data-page-number="30" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer31" class="page" data-page-number="31" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer32" class="page" data-page-number="32" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer33" class="page" data-page-number="33" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer34" class="page" data-page-number="34" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer35" class="page" data-page-number="35" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer36" class="page" data-page-number="36" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer37" class="page" data-page-number="37" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer38" class="page" data-page-number="38" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer39" class="page" data-page-number="39" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer40" class="page" data-page-number="40" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer41" class="page" data-page-number="41" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer42" class="page" data-page-number="42" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer43" class="page" data-page-number="43" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer44" class="page" data-page-number="44" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer45" class="page" data-page-number="45" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer46" class="page" data-page-number="46" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer47" class="page" data-page-number="47" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer48" class="page" data-page-number="48" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer49" class="page" data-page-number="49" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer50" class="page" data-page-number="50" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer51" class="page" data-page-number="51" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer52" class="page" data-page-number="52" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer53" class="page" data-page-number="53" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer54" class="page" data-page-number="54" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer55" class="page" data-page-number="55" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer56" class="page" data-page-number="56" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer57" class="page" data-page-number="57" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer58" class="page" data-page-number="58" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer59" class="page" data-page-number="59" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer60" class="page" data-page-number="60" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div><div id="pageContainer61" class="page" data-page-number="61" style="width: 1240px; height: 1924px;"><div class="loadingIcon"></div></div></div>
+        </div>
+
+        <div id="errorWrapper" hidden="true">
+          <div id="errorMessageLeft">
+            <span id="errorMessage"></span>
+            <button id="errorShowMore" data-l10n-id="error_more_info">Mais informações</button>
+            <button id="errorShowLess" data-l10n-id="error_less_info" hidden="true">Menos informações</button>
+          </div>
+          <div id="errorMessageRight">
+            <button id="errorClose" data-l10n-id="error_close">Fechar</button>
+          </div>
+          <div class="clearBoth"></div>
+          <textarea id="errorMoreInfo" hidden="true" readonly="readonly"></textarea>
+        </div>
+      </div> <!-- mainContainer -->
+
+      <div id="overlayContainer" class="hidden">
+        <div id="passwordOverlay" class="container hidden">
+          <div class="dialog">
+            <div class="row">
+              <p id="passwordText" data-l10n-id="password_label">Forneça a senha para abrir este arquivo PDF.</p>
+            </div>
+            <div class="row">
+              <!-- The type="password" attribute is set via script, to prevent warnings in Firefox for all http:// documents. -->
+              <input id="password" class="toolbarField">
+            </div>
+            <div class="buttonRow">
+              <button id="passwordCancel" class="overlayButton"><span data-l10n-id="password_cancel">Cancelar</span></button>
+              <button id="passwordSubmit" class="overlayButton"><span data-l10n-id="password_ok">OK</span></button>
+            </div>
+          </div>
+        </div>
+        <div id="documentPropertiesOverlay" class="container hidden">
+          <div class="dialog">
+            <div class="row">
+              <span data-l10n-id="document_properties_file_name">Nome do arquivo:</span> <p id="fileNameField">-</p>
+            </div>
+            <div class="row">
+              <span data-l10n-id="document_properties_file_size">Tamanho do arquivo:</span> <p id="fileSizeField">-</p>
+            </div>
+            <div class="separator"></div>
+            <div class="row">
+              <span data-l10n-id="document_properties_title">Título:</span> <p id="titleField">-</p>
+            </div>
+            <div class="row">
+              <span data-l10n-id="document_properties_author">Autor:</span> <p id="authorField">-</p>
+            </div>
+            <div class="row">
+              <span data-l10n-id="document_properties_subject">Assunto:</span> <p id="subjectField">-</p>
+            </div>
+            <div class="row">
+              <span data-l10n-id="document_properties_keywords">Palavras-chave:</span> <p id="keywordsField">-</p>
+            </div>
+            <div class="row">
+              <span data-l10n-id="document_properties_creation_date">Data da criação:</span> <p id="creationDateField">-</p>
+            </div>
+            <div class="row">
+              <span data-l10n-id="document_properties_modification_date">Data da modificação:</span> <p id="modificationDateField">-</p>
+            </div>
+            <div class="row">
+              <span data-l10n-id="document_properties_creator">Criação:</span> <p id="creatorField">-</p>
+            </div>
+            <div class="separator"></div>
+            <div class="row">
+              <span data-l10n-id="document_properties_producer">Criador do PDF:</span> <p id="producerField">-</p>
+            </div>
+            <div class="row">
+              <span data-l10n-id="document_properties_version">Versão do PDF:</span> <p id="versionField">-</p>
+            </div>
+            <div class="row">
+              <span data-l10n-id="document_properties_page_count">Número de páginas:</span> <p id="pageCountField">-</p>
+            </div>
+            <div class="buttonRow">
+              <button id="documentPropertiesClose" class="overlayButton"><span data-l10n-id="document_properties_close">Fechar</span></button>
+            </div>
+          </div>
+        </div>
+      </div>  <!-- overlayContainer -->
+    </div> <!-- outerContainer -->
+    <div id="printContainer"></div>
+    <div id="mozPrintCallback-shim" hidden="">
+    <style>
+      @media print {
+        #printContainer div {
+          page-break-after: always;
+          page-break-inside: avoid;
+        }
+      }
+    </style>
+    <style scoped="">
+#mozPrintCallback-shim {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  z-index: 9999999;
+
+  display: block;
+  text-align: center;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+#mozPrintCallback-shim[hidden] {
+  display: none;
+}
+@media print {
+  #mozPrintCallback-shim {
+    display: none;
+  }
+}
+
+#mozPrintCallback-shim .mozPrintCallback-dialog-box {
+  display: inline-block;
+  margin: -50px auto 0;
+  position: relative;
+  top: 45%;
+  left: 0;
+  min-width: 220px;
+  max-width: 400px;
+
+  padding: 9px;
+
+  border: 1px solid hsla(0, 0%, 0%, .5);
+  border-radius: 2px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+
+  background-color: #474747;
+
+  color: hsl(0, 0%, 85%);
+  font-size: 16px;
+  line-height: 20px;
+}
+#mozPrintCallback-shim .progress-row {
+  clear: both;
+  padding: 1em 0;
+}
+#mozPrintCallback-shim progress {
+  width: 100%;
+}
+#mozPrintCallback-shim .relative-progress {
+  clear: both;
+  float: right;
+}
+#mozPrintCallback-shim .progress-actions {
+  clear: both;
+}
+    </style>
+    <div class="mozPrintCallback-dialog-box">
+    <!-- TODO: Localise the following strings -->
+    Preparing document for printing...
+      <div class="progress-row">
+        <progress value="0" max="100"></progress>
+        <span class="relative-progress">0%</span>
+      </div>
+      <div class="progress-actions">
+        <input type="button" value="Cancel" class="mozPrintCallback-cancel">
+      </div>
+    </div>
+  </div>
+</div>
+<script type="text/javascript">
+
+</script> 
+
+
+
+
+
+<input id="fileInput" class="fileInput" type="file"></body></html>
