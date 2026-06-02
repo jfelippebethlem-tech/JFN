@@ -90,6 +90,37 @@ def test_memoria_perfil_entidade():
         s.close()
 
 
+# ─── 4a. Hermes cascade: fallback quando modelo principal dá 429 ──────────────
+
+def test_hermes_cascade_fallback():
+    """Garante que _hermes() cai para modelos menores quando o principal falha."""
+    import compliance_agent.llm.hermes_agent as h
+
+    chamadas = []
+
+    async def fake_retry(base_url, api_key, model, messages,
+                         max_tokens=1024, extra_headers=None, max_retries=4):
+        chamadas.append(model)
+        if model == h._HERMES_MODELO_PRINCIPAL:
+            raise RuntimeError("Retryable status 429 from openrouter")
+        return '{"ok": true}'  # primeiro fallback responde
+
+    import compliance_agent.llm.free_llm as fl
+    orig = fl._openai_compat_chat_retry
+    fl._openai_compat_chat_retry = fake_retry
+    orig_key = fl._openrouter_key
+    fl._openrouter_key = lambda: "fake-key"
+    try:
+        result = asyncio.run(h._hermes("sys", "prompt", max_tokens=10))
+        assert result == '{"ok": true}'
+        assert chamadas[0] == h._HERMES_MODELO_PRINCIPAL  # tentou o principal
+        assert len(chamadas) >= 2                          # caiu para fallback
+        assert chamadas[1] in h._HERMES_MODELOS_FALLBACK  # usou um fallback
+    finally:
+        fl._openai_compat_chat_retry = orig
+        fl._openrouter_key = orig_key
+
+
 # ─── 4. Bootstrap do Hermes (LLM simulado) ────────────────────────────────────
 
 def test_hermes_bootstrap_salva_hipoteses():
