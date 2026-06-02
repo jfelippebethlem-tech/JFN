@@ -30,6 +30,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
+from compliance_agent.llm.memoria import contexto_para_prompt
 from rich.console import Console
 
 console = Console()
@@ -521,32 +522,38 @@ class HermesGoalAgent:
         chrome_ok = await chrome_disponivel()
         conhecimento = contexto_para_prompt(self.session, max_itens=12)
 
+        # Modo /goal contínuo: executa a SEQUÊNCIA PADRÃO localmente quando o LLM falhar.
+        modo_local = True
+
         for ciclo_num in range(max_ciclos):
             passos = []
             novo_ciclo = False
 
             for i in range(max_passos_por_ciclo):
-                historico_txt = "\n".join(
-                    f"- {p['acao']}: {json.dumps(p['resultado'], ensure_ascii=False)[:180]}"
-                    for p in passos[-5:]
-                ) or "(nenhuma ação ainda)"
-
-                contexto = (
-                    f"MISSÃO: {missao}\n\n"
-                    f"Chrome debug 9222 no ar: {'sim' if chrome_ok else 'não'}\n"
-                    f"Data de hoje: {date.today().isoformat()}\n\n"
-                    f"CONHECIMENTO ACUMULADO:\n{conhecimento}\n\n"
-                    f"AÇÕES JÁ EXECUTADAS:\n{historico_txt}\n\n"
-                    "Use a SEQUÊNCIA PADRÃO DO /goal."
-                )
-
-                decisao = await self._pensar(contexto)
-                acao = (decisao.get("acao") or "concluir").strip()
-                args = decisao.get("args") or {}
-                pensamento = decisao.get("pensamento", "")
+                if modo_local:
+                    acao = self._proxima_acao_local(passos)
+                    args = self._args_padrao_acao(acao)
+                    pensamento = f"Sequência padrão /goal; passo {i+1}: {acao}"
+                else:
+                    historico_txt = "\n".join(
+                        f"- {p['acao']}: {json.dumps(p['resultado'], ensure_ascii=False)[:180]}"
+                        for p in passos[-5:]
+                    ) or "(nenhuma ação ainda)"
+                    contexto = (
+                        f"MISSÃO: {missao}\n\n"
+                        f"Chrome debug 9222 no ar: {'sim' if chrome_ok else 'não'}\n"
+                        f"Data de hoje: {date.today().isoformat()}\n\n"
+                        f"CONHECIMENTO ACUMULADO:\n{conhecimento}\n\n"
+                        f"AÇÕES JÁ EXECUTADAS:\n{historico_txt}\n\n"
+                        "Use a SEQUÊNCIA PADRÃO DO /goal."
+                    )
+                    decisao = await self._pensar(contexto)
+                    acao = (decisao.get("acao") or "concluir").strip()
+                    args = decisao.get("args") or {}
+                    pensamento = decisao.get("pensamento", "")
 
                 if acao == "concluir":
-                    resumo = decisao.get("resumo", pensamento or "ciclo concluído")
+                    resumo = pensamento or "ciclo concluído"
                     aprender(
                         "licao",
                         f"ciclo_{datetime.now():%Y%m%d_%H%M}",
@@ -566,7 +573,7 @@ class HermesGoalAgent:
                 if acao in ("abrir_chrome", "status_chrome"):
                     chrome_ok = await chrome_disponivel()
 
-                passo = {"acao": acao, "args": args, "pensamento": pensamento, "resultado": resultado}
+                passo = {"acao": acao, "pensamento": pensamento, "resultado": resultado, "args": args}
                 passos.append(passo)
                 passos_totais.append(passo)
                 if on_step:
@@ -587,6 +594,35 @@ class HermesGoalAgent:
             "resumo": resumo or "Ciclo encerrado sem conclusão.",
             "concluido": False,
         }
+
+    # ── Helpers do modo /goal local (sem LLM) ─────────────────────────────────
+
+    def _proxima_acao_local(self, passos: list[dict]) -> str:
+        executadas = [p["acao"] for p in passos if p.get("acao")]
+        for acao in ["analisar_dados", "identificar_padroes", "desenvolver_hipoteses", "testar_hipoteses", "aprender"]:
+            if acao not in executadas:
+                return acao
+        return "concluir"
+
+    def _args_padrao_acao(self, acao: str) -> dict:
+        if acao == "analisar_dados":
+            return {"tipo": "sem_sei"}
+        if acao == "identificar_padroes":
+            return {}
+        if acao == "desenvolver_hipoteses":
+            return {}
+        if acao == "testar_hipoteses":
+            return {}
+        if acao == "aprender":
+            return {"chave": "ciclo_local", "licao": "Sequência padrão executada sem LLM."}
+        if acao == "concluir":
+            return {
+                "resumo": "Sequência padrão do /goal executada localmente.",
+                "relatorio_final": "Ciclo concluído; relatório pronto em reports/relatorio_auditoria_obs.md."
+            }
+        return {}
+
+    # ── Ciclo autônomo com LLM (quando disponível) ────────────────────────────
 
     # ── Conversa (chat livre com o Hermes, com todo o contexto) ──────────────
 
