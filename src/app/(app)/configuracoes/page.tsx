@@ -150,9 +150,9 @@ export default function ConfiguracoesPage() {
             <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
               <Bot className="w-5 h-5 text-green-500" />
               <div>
-                <p className="text-sm font-medium text-gray-700">Llama 3 via Groq <span className="text-green-600 font-semibold">(Gratuito)</span></p>
+                <p className="text-sm font-medium text-gray-700">Gemini 2.0 Flash <span className="text-green-600 font-semibold">(Gratuito)</span></p>
                 <p className="text-xs text-gray-400">
-                  Variável: <code>GROQ_API_KEY</code> — obtenha em console.groq.com
+                  Variável: <code>GEMINI_API_KEY</code> — obtenha em aistudio.google.com
                 </p>
               </div>
               <div className="ml-auto">

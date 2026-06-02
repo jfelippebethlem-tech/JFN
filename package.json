@@ -12,10 +12,10 @@
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.21.0",
     "@prisma/client": "^5.13.0",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
-    "groq-sdk": "^0.7.0",
     "jose": "^5.2.4",
     "lucide-react": "^0.378.0",
     "next": "14.2.3",

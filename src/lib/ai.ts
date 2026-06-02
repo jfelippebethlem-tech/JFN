@@ -1,34 +1,33 @@
-import Groq from 'groq-sdk'
+import { GoogleGenerativeAI } from '@google/generative-ai'
 
-let client: Groq | null = null
+let client: GoogleGenerativeAI | null = null
 
 function getClient() {
-  if (!process.env.GROQ_API_KEY) return null
+  if (!process.env.GEMINI_API_KEY) return null
   if (!client) {
-    client = new Groq({ apiKey: process.env.GROQ_API_KEY })
+    client = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
   }
   return client
 }
 
-const MODEL_FAST = 'llama-3.1-8b-instant'
-const MODEL_SMART = 'llama-3.3-70b-versatile'
+const MODEL = 'gemini-2.0-flash'
 
-async function chat(model: string, prompt: string, maxTokens = 1024): Promise<string> {
-  const groq = getClient()
-  if (!groq) return ''
+async function chat(prompt: string, maxTokens = 1024): Promise<string> {
+  const genAI = getClient()
+  if (!genAI) return ''
 
-  const completion = await groq.chat.completions.create({
-    model,
-    max_tokens: maxTokens,
-    messages: [{ role: 'user', content: prompt }],
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    generationConfig: { maxOutputTokens: maxTokens },
   })
 
-  return completion.choices[0]?.message?.content ?? ''
+  const result = await model.generateContent(prompt)
+  return result.response.text() ?? ''
 }
 
 export async function gerarResposta(demanda: string, contexto?: string): Promise<string> {
   if (!getClient()) {
-    return 'Configure GROQ_API_KEY no .env para usar o assistente de IA (gratuito em console.groq.com).'
+    return 'Configure GEMINI_API_KEY no .env para usar o assistente de IA (gratuito em aistudio.google.com).'
   }
 
   const prompt = `Você é um assistente de um deputado estadual brasileiro.
@@ -39,7 +38,7 @@ ${contexto ? `\nCONTEXTO ADICIONAL: ${contexto}` : ''}
 
 Responda de forma profissional, em português, com tom respeitoso e solucionador.`
 
-  const result = await chat(MODEL_SMART, prompt, 1024)
+  const result = await chat(prompt, 1024)
   return result || 'Erro ao gerar resposta.'
 }
 
@@ -50,7 +49,7 @@ export async function analisarSentimento(texto: string): Promise<string> {
 Texto: "${texto}"
 Resposta (apenas uma palavra):`
 
-  const result = await chat(MODEL_FAST, prompt, 5)
+  const result = await chat(prompt, 5)
   const s = result.toLowerCase().trim()
   if (s.includes('positivo')) return 'positivo'
   if (s.includes('negativo')) return 'negativo'
@@ -63,7 +62,7 @@ export async function gerarPostRedeSocial(
   tom: string
 ): Promise<string> {
   if (!getClient()) {
-    return 'Configure GROQ_API_KEY no .env para usar o assistente de IA (gratuito em console.groq.com).'
+    return 'Configure GEMINI_API_KEY no .env para usar o assistente de IA (gratuito em aistudio.google.com).'
   }
 
   const limits: Record<string, number> = {
@@ -78,6 +77,6 @@ Tom: ${tom}
 Limite de caracteres: ${limit}
 Escreva apenas o texto do post, sem explicações adicionais.`
 
-  const result = await chat(MODEL_SMART, prompt, 512)
+  const result = await chat(prompt, 512)
   return result || 'Erro ao gerar post.'
 }
