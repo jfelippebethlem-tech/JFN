@@ -63,7 +63,7 @@ if errorlevel 1 (
     pause
     exit /b 1
 )
-python -c "import playwright, sqlalchemy, httpx, rich" >nul 2>&1
+python -m pip show playwright >nul 2>&1
 if errorlevel 1 (
     echo         instalando dependencias (1a vez, pode demorar)...
     python -m pip install -q -r requirements.txt
