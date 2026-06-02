@@ -592,18 +592,28 @@ async def _sei_reply(numero: str) -> str:
             session.close()
         if not resultado or resultado.get("erro"):
             erro = resultado.get("erro", "") if resultado else ""
-            # CAPTCHA: orienta o caminho humano-no-loop (não quebramos o desafio).
-            if "captcha" in erro.lower() or resultado.get("aguardou_humano"):
-                return (f"🔐 O processo SEI {numero} está atrás de CAPTCHA.\n\n"
-                        "Abra a janela do Chrome (porta 9222), resolva o CAPTCHA uma vez "
-                        "e mande /sei novamente — eu leio o resto sozinho.\n"
-                        "Dica: deixe o portal SEI já aberto nessa janela.")
+            # CAPTCHA: tenta o caminho CDP com OCR automático.
+            if "captcha" in erro.lower():
+                from compliance_agent.collectors.sei_cdp import ler_processo_sei
+                r = await ler_processo_sei(numero)
+                if r.get("erro"):
+                    return (f"🔎 O processo SEI {numero} tem CAPTCHA e o OCR não "
+                            f"conseguiu resolver desta vez.\n{r['erro']}")
+                linhas = [f"📂 *Processo SEI {numero}* _(CAPTCHA resolvido por OCR)_", ""]
+                linhas.append(f"Documentos: {len(r.get('documentos', []))}")
+                if r.get("cpfs"):
+                    linhas.append(f"CPFs: {', '.join(r['cpfs'][:5])}")
+                if r.get("cnpjs"):
+                    linhas.append(f"CNPJs: {', '.join(r['cnpjs'][:5])}")
+                if r.get("valores"):
+                    linhas.append(f"Valores: {', '.join(r['valores'][:5])}")
+                return "\n".join(linhas)
             return (f"Processo SEI {numero} não encontrado ou inacessível.\n{erro}")
         proc = resultado.get("processo", resultado)
-        via_cdp = proc.get("via") == "chrome_cdp_humano_no_loop"
+        via_cdp = proc.get("via", "").startswith("chrome_cdp")
         linhas = [f"📂 *Processo SEI {numero}*"]
         if via_cdp:
-            linhas.append("_(lido via Chrome — CAPTCHA resolvido por você)_")
+            linhas.append("_(lido via Chrome — CAPTCHA resolvido por OCR)_")
         linhas.append("")
         if resultado.get("assunto"):
             linhas.append(f"Assunto: {resultado['assunto'][:200]}")
