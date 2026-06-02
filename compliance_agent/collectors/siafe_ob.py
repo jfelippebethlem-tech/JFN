@@ -78,7 +78,7 @@ _JS_READ_OB_TABLE = r"""
 
 async def _adf_wait(pg, timeout: int = 12000):
     try:
-        await pg.wait_for_load_state("networkidle", timeout=timeout)
+        await pg.wait_for_load_state("domcontentloaded", timeout=timeout)
     except Exception:
         pass
     await asyncio.sleep(1.5)
@@ -156,7 +156,7 @@ async def _fazer_login(page) -> bool:
         return False
 
     try:
-        await page.goto(_SIAFE_LOGIN, wait_until="networkidle", timeout=20000)
+        await page.goto(_SIAFE_LOGIN, wait_until="domcontentloaded", timeout=20000)
         await asyncio.sleep(2)
         await _dismiss_dialogs(page)
 
@@ -208,7 +208,7 @@ async def _navigate_to_ob(page) -> bool:
     # Se não está no SIAFE2 ainda, navega para lá
     if "siafe2.fazenda" not in cur:
         try:
-            await page.goto(_SIAFE_HOME, wait_until="networkidle", timeout=20000)
+            await page.goto(_SIAFE_HOME, wait_until="domcontentloaded", timeout=20000)
             await asyncio.sleep(3)
             await _dismiss_dialogs(page)
             cur = page.url.lower()
@@ -221,14 +221,14 @@ async def _navigate_to_ob(page) -> bool:
     # Navega para a seção de Execução Financeira se ainda não está lá
     if "execucaofinanceira" not in page.url.lower() and "ordembancaria" not in page.url.lower():
         try:
-            await page.goto(_SIAFE_FINANCEIRA, wait_until="networkidle", timeout=20000)
+            await page.goto(_SIAFE_FINANCEIRA, wait_until="domcontentloaded", timeout=20000)
             await asyncio.sleep(3)
             await _dismiss_dialogs(page)
             # Re-check login after navigation
             if "login" in page.url.lower() or "autenticacao" in page.url.lower():
                 if not await _fazer_login(page):
                     return False
-                await page.goto(_SIAFE_FINANCEIRA, wait_until="networkidle", timeout=20000)
+                await page.goto(_SIAFE_FINANCEIRA, wait_until="domcontentloaded", timeout=20000)
                 await asyncio.sleep(3)
                 await _dismiss_dialogs(page)
         except Exception:
