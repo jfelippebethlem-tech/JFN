@@ -106,7 +106,11 @@ async def lifespan(app: FastAPI):
     if _agent:
         try:
             await _agent.stop()
+        except Exception as e:
+            print(f"[SIAFE] Erro no stop do agente ({e.__class__.__name__}): {e}")
 
+
+app = FastAPI(lifespan=lifespan)
 
 # Serve static files (screenshots, exports)
 screenshots_dir = Path("screenshots")
@@ -201,7 +205,7 @@ _agent_loop_lock = asyncio.Lock()
 _agent_loop_queue: Optional[asyncio.Queue] = None  # SSE stream
 
 
-async def _trabalhar_loop_until_done(ag: HermesGoalAgent):
+async def _trabalhar_loop_until_done(ag: "HermesGoalAgent"):
     loop_fim = asyncio.Event()
     n_passos = 0
     ultimo_aprendizado = ""
@@ -299,12 +303,13 @@ async def api_hermes_parar():
 
 @app.post("/api/hermes/relatorio")
 async def api_hermes_relatorio(payload: Optional[dict] = None):
-    try:
-        from compliance_agent.reporting.export_relatorios import generate_report
-        fmt = ((payload or {}).get("formato") or "txt").strip().lower()
-        result = generate_report(fmt=fmt)
-        return JSONResponse(result)
+    from compliance_agent.reporting.export_relatorios import generate_report
+    fmt = ((payload or {}).get("formato") or "txt").strip().lower()
+    result = generate_report(fmt=fmt)
+    return JSONResponse(result)
 
+
+@app.get("/api/compliance/painel")
 async def api_painel():
     """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições."""
     try:
@@ -395,10 +400,8 @@ async def api_investigar(nome: str = "", cnpj: str = ""):
         from compliance_agent.collectors.web_research import investigar
         dossie = await investigar(nome, cnpj)
         return JSONResponse(content=dossie)
-
-async def graph_page():
-    """Serve the D3.js graph visualization page."""
-    return FileResponse("static/graph.html")
+    except Exception as e:
+        return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
 @app.get("/graph", response_class=HTMLResponse)
@@ -894,7 +897,8 @@ async def websocket_chat(ws: WebSocket):
     except Exception as e:
         try:
             await ws.send_text(json.dumps({"type": "error", "content": str(e)}))
-
+        except Exception:
+            pass
 
 
 def parse_args():
