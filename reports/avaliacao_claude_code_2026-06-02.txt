@@ -1,0 +1,21 @@
+RELATÓRIO PARA AVALIAÇÃO — JFN
+Gerado em: 2026-06-02T14:20:17.194575
+Branch: claude/rj-finance-agent-BYlhJ
+Commit: 971f69a
+
+O que foi feito:
+- Corrigido fluxo completo de inicialização do servidor JFN.
+- Corrigido `NameError` em `server.py` que impedia o servidor subir.
+- Corrigido dependência de ambiente: Python do projeto (3.12) foi adotado como referência.
+- Coleta SIAFE2 de 2026 validada com 50 OBs salvas em 2026-06-02.
+- Ajuste de navegação no coletor SIAFE2: `networkidle` -> `domcontentloaded` para evitar destruição de contexto.
+- Banco atualizado: 258 OBs.
+- Alertas atuais no banco: 1255
+
+Próximos passos sugeridos:
+- Rodar `iniciar.bat --agora` para executar coleta diária completa via interface oficial do projeto.
+- Validar endpoint `/api/compliance/relatorio_30d` após reinício do servidor com Python do projeto.
+- Integrar verificação PNCP no relatório.
+
+Observação:
+- Este relatório foi gerado a partir de execução real no repositório `C:\JFN\jfn`.
