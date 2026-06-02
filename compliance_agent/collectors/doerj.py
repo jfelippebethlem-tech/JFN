@@ -283,15 +283,20 @@ class DOERJCollector:
         Divide o texto da edição em 'atos' por marcadores comuns do DO.
         Se não houver marcadores claros, salva como uma publicação única.
         """
-        # Marcadores típicos de início de ato
-        partes = re.split(
-            r"(?=\b(?:PORTARIA|RESOLUÇÃO|DECRETO|ATO|EDITAL|EXTRATO|AVISO|"
-            r"DESPACHO|ORDEM DE SERVIÇO|DELIBERAÇÃO)\b)",
-            texto,
-        )
+        _SEP_KEYWORDS = [
+            "PORTARIA", "RESOLUÇÃO", "DECRETO", "ATO", "EDITAL", "EXTRATO", "AVISO",
+            "DESPACHO", "ORDEM DE SERVIÇO", "DELIBERAÇÃO", "INSTRUÇÃO NORMATIVA",
+            "LEI", "MEDIDA PROVISÓRIA", "DECISÃO", "TERMO", "CONTRATO",
+        ]
+        _RE_SEP = re.compile(r"\b(?=" + "|".join(_SEP_KEYWORDS) + r")\b", re.IGNORECASE)
+        _RE_HEAD = re.compile(r"(?i)(extra|supl|suplemento|extraordin|especial)")
         pubs = []
+        partes = re.split(r"\s+", texto)
         ed_nome = (titulo or "")[:40]
-        for i, parte in enumerate(partes):
+        for parte in partes:
+            t = parte.strip()
+            if len(t) < 120:
+                continue
             t = parte.strip()
             if len(t) < 120:
                 continue
