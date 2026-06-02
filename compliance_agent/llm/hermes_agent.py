@@ -406,6 +406,7 @@ async def loop_hermes_continuo():
     while True:
         agora = datetime.now()
         chave_semana = f"{agora.year}-W{agora.isocalendar()[1]}"
+        resultado = None
 
         session = get_session()
         try:
@@ -455,5 +456,10 @@ async def loop_hermes_continuo():
             session.close()
 
         # Espera — se teve novidades fica 30min, senão 1h
+        if not resultado:
+            console.print(
+                "[dim]Hermes vivo, mas sem alertas novos para aprender ainda — "
+                "depende da coleta SIAFE/DOERJ gerar dados.[/dim]"
+            )
         espera = INTERVALO_APRENDIZADO if resultado else INTERVALO_SEM_NOVIDADES
         await asyncio.sleep(espera)
