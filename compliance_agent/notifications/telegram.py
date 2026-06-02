@@ -331,7 +331,8 @@ _AJUDA = (
     "*Busca e investigação:*\n"
     "  /buscar NOME — busca empresa/pessoa no banco\n"
     "  /investigar NOME — pesquisa na INTERNET (notícias, riscos)\n"
-    "  /sei NUMERO — consulta processo no SEI-RJ\n\n"
+    "  /sei NUMERO — consulta processo no SEI-RJ\n"
+    "  /doerj [DATA|URL] — lê o DOERJ do dia (ou data AAAA-MM-DD / URL direto)\n\n"
     "*Base jurídica:*\n"
     "  /lei TERMO — busca lei, acórdão ou princípio (TCE-RJ, TCU, Planalto)\n\n"
     "*Hermes 405B (análise profunda):*\n"
@@ -516,6 +517,67 @@ def _painel_reply() -> str:
     )
 
 
+async def _doerj_reply(arg: str) -> str:
+    """
+    Lê o DOERJ: aceita URL direta (mostra_edicao.php) ou data AAAA-MM-DD.
+    Sem argumento: coleta o dia de hoje.
+    """
+    from compliance_agent.collectors.doerj import DOERJCollector
+    from compliance_agent.database.models import get_session
+    from datetime import date as _date
+    session = get_session()
+    try:
+        col = DOERJCollector(session)
+        arg = arg.strip()
+        if arg.startswith("http"):
+            pubs = await col.coletar_edicao_url(arg)
+            fonte = f"URL direta"
+        else:
+            alvo = _date.today()
+            if arg:
+                try:
+                    alvo = _date.fromisoformat(arg)
+                except ValueError:
+                    return f"❌ Formato inválido. Use `/doerj AAAA-MM-DD` ou cole o URL da edição."
+            pubs = await col.coletar_data(alvo)
+            fonte = alvo.isoformat()
+
+        if not pubs:
+            return (f"📰 DOERJ {fonte}: nenhuma publicação encontrada.\n"
+                    "Verifique se o Chrome (porta 9222) está aberto e logado no IOERJ.")
+
+        tipos: dict = {}
+        for p in pubs:
+            t = p.get("tipo_ato", "outros")
+            tipos[t] = tipos.get(t, 0) + 1
+
+        linhas = [f"📰 *DOERJ — {fonte}*", f"Total: {len(pubs)} atos", ""]
+        for tipo, qtd in sorted(tipos.items(), key=lambda x: -x[1]):
+            linhas.append(f"• {tipo}: {qtd}")
+        linhas.append("")
+
+        # Amostra de atos com CPF/CNPJ/valor para compliance
+        destaques = [p for p in pubs if (
+            p.get("cpfs_extraidos") not in ("[]", "", None)
+            or p.get("cnpjs_extraidos") not in ("[]", "", None)
+            or p.get("valores_extraidos") not in ("[]", "", None)
+        )][:5]
+        if destaques:
+            linhas.append("*Destaques (CPF/CNPJ/Valor detectado):*")
+            for p in destaques:
+                linhas.append(f"• {p['titulo'][:100]}")
+        else:
+            linhas.append("*Primeiros atos:*")
+            for p in pubs[:4]:
+                linhas.append(f"• {p['titulo'][:100]}")
+
+        return "\n".join(linhas)
+    except Exception as e:
+        return f"❌ Erro ao ler DOERJ: {e}"
+    finally:
+        session.close()
+
+
 async def _sei_reply(numero: str) -> str:
     """Consulta um processo no SEI-RJ e resume."""
     try:
@@ -530,18 +592,28 @@ async def _sei_reply(numero: str) -> str:
             session.close()
         if not resultado or resultado.get("erro"):
             erro = resultado.get("erro", "") if resultado else ""
-            # CAPTCHA: orienta o caminho humano-no-loop (não quebramos o desafio).
-            if "captcha" in erro.lower() or resultado.get("aguardou_humano"):
-                return (f"🔐 O processo SEI {numero} está atrás de CAPTCHA.\n\n"
-                        "Abra a janela do Chrome (porta 9222), resolva o CAPTCHA uma vez "
-                        "e mande /sei novamente — eu leio o resto sozinho.\n"
-                        "Dica: deixe o portal SEI já aberto nessa janela.")
+            # CAPTCHA: tenta o caminho CDP com OCR automático.
+            if "captcha" in erro.lower():
+                from compliance_agent.collectors.sei_cdp import ler_processo_sei
+                r = await ler_processo_sei(numero)
+                if r.get("erro"):
+                    return (f"🔎 O processo SEI {numero} tem CAPTCHA e o OCR não "
+                            f"conseguiu resolver desta vez.\n{r['erro']}")
+                linhas = [f"📂 *Processo SEI {numero}* _(CAPTCHA resolvido por OCR)_", ""]
+                linhas.append(f"Documentos: {len(r.get('documentos', []))}")
+                if r.get("cpfs"):
+                    linhas.append(f"CPFs: {', '.join(r['cpfs'][:5])}")
+                if r.get("cnpjs"):
+                    linhas.append(f"CNPJs: {', '.join(r['cnpjs'][:5])}")
+                if r.get("valores"):
+                    linhas.append(f"Valores: {', '.join(r['valores'][:5])}")
+                return "\n".join(linhas)
             return (f"Processo SEI {numero} não encontrado ou inacessível.\n{erro}")
         proc = resultado.get("processo", resultado)
-        via_cdp = proc.get("via") == "chrome_cdp_humano_no_loop"
+        via_cdp = proc.get("via", "").startswith("chrome_cdp")
         linhas = [f"📂 *Processo SEI {numero}*"]
         if via_cdp:
-            linhas.append("_(lido via Chrome — CAPTCHA resolvido por você)_")
+            linhas.append("_(lido via Chrome — CAPTCHA resolvido por OCR)_")
         linhas.append("")
         if resultado.get("assunto"):
             linhas.append(f"Assunto: {resultado['assunto'][:200]}")
@@ -904,6 +976,10 @@ async def processar_comando(texto: str, chat_id: str) -> None:
                 await enviar_mensagem(formatar_dossie_telegram(dossie), chat_id=chat_id)
             except Exception as exc:
                 await enviar_mensagem(f"❌ Erro na investigação: {exc}", chat_id=chat_id)
+
+    elif cmd == "/doerj":
+        await enviar_mensagem("📰 Lendo Diário Oficial...", chat_id=chat_id)
+        await enviar_mensagem(await _doerj_reply(args), chat_id=chat_id)
 
     elif cmd == "/sei":
         if not args.strip():

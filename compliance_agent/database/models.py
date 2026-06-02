@@ -175,8 +175,11 @@ class PublicacaoDOERJ(Base):
     tipo_ato        = Column(String(100))  # nomeação | exoneração | contrato | licitação
     titulo          = Column(String(500))
     texto           = Column(Text)
-    cpfs_extraidos  = Column(Text)   # JSON list de CPFs encontrados no texto
-    cnpjs_extraidos = Column(Text)   # JSON list de CNPJs
+    cpfs_extraidos          = Column(Text)   # JSON list de CPFs encontrados no texto
+    cnpjs_extraidos         = Column(Text)   # JSON list de CNPJs
+    valores_extraidos       = Column(Text)   # JSON list de "R$ X" encontrados
+    processos_sei_extraidos = Column(Text)   # JSON list de números de processo SEI
+    numero_ato              = Column(String(150))  # ex: "PORTARIA Nº 123/2026"
     url_fonte       = Column(Text)
     processado      = Column(Boolean, default=False)
     created_at      = Column(DateTime, default=datetime.utcnow)
