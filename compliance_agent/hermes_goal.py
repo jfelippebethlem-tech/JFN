@@ -379,6 +379,38 @@ class HermesGoalAgent:
                     "texto_amostra": (r.get("texto", "") or "")[:600],
                 }
 
+            if acao == "ler_doerj":
+                # Lê uma edição do DOERJ pelo URL ou coleta o dia especificado.
+                from compliance_agent.collectors.doerj import DOERJCollector
+                url_ed = args.get("url") or args.get("url_edicao") or ""
+                data_str = args.get("data") or args.get("date") or ""
+                col = DOERJCollector(self.session)
+                if url_ed:
+                    pubs = await col.coletar_edicao_url(url_ed)
+                    return {
+                        "ok": True,
+                        "fonte": "url_direta",
+                        "n_atos": len(pubs),
+                        "tipos": list({p["tipo_ato"] for p in pubs}),
+                        "orgaos": list({p.get("orgao", "")[:80] for p in pubs if p.get("orgao")}),
+                        "amostra": [p["titulo"][:120] for p in pubs[:5]],
+                    }
+                alvo = date.today()
+                if data_str:
+                    try:
+                        alvo = date.fromisoformat(data_str)
+                    except ValueError:
+                        pass
+                pubs = await col.coletar_data(alvo)
+                return {
+                    "ok": True,
+                    "data": alvo.isoformat(),
+                    "n_publicacoes": len(pubs),
+                    "tipos": list({p["tipo_ato"] for p in pubs}),
+                    "orgaos": list({p.get("orgao", "")[:80] for p in pubs if p.get("orgao")})[:10],
+                    "amostra": [p["titulo"][:120] for p in pubs[:5]],
+                }
+
             if acao == "analisar_dados":
                 return await self._analisar_dados(args)
 

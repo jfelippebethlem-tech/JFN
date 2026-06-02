@@ -331,7 +331,8 @@ _AJUDA = (
     "*Busca e investigação:*\n"
     "  /buscar NOME — busca empresa/pessoa no banco\n"
     "  /investigar NOME — pesquisa na INTERNET (notícias, riscos)\n"
-    "  /sei NUMERO — consulta processo no SEI-RJ\n\n"
+    "  /sei NUMERO — consulta processo no SEI-RJ\n"
+    "  /doerj [DATA|URL] — lê o DOERJ do dia (ou data AAAA-MM-DD / URL direto)\n\n"
     "*Base jurídica:*\n"
     "  /lei TERMO — busca lei, acórdão ou princípio (TCE-RJ, TCU, Planalto)\n\n"
     "*Hermes 405B (análise profunda):*\n"
@@ -514,6 +515,67 @@ def _painel_reply() -> str:
         "O painel mostra OBs do dia, alertas, maiores favorecidos, lições "
         "aprendidas e permite investigar pessoas/CNPJs na internet."
     )
+
+
+async def _doerj_reply(arg: str) -> str:
+    """
+    Lê o DOERJ: aceita URL direta (mostra_edicao.php) ou data AAAA-MM-DD.
+    Sem argumento: coleta o dia de hoje.
+    """
+    from compliance_agent.collectors.doerj import DOERJCollector
+    from compliance_agent.database.models import get_session
+    from datetime import date as _date
+    session = get_session()
+    try:
+        col = DOERJCollector(session)
+        arg = arg.strip()
+        if arg.startswith("http"):
+            pubs = await col.coletar_edicao_url(arg)
+            fonte = f"URL direta"
+        else:
+            alvo = _date.today()
+            if arg:
+                try:
+                    alvo = _date.fromisoformat(arg)
+                except ValueError:
+                    return f"❌ Formato inválido. Use `/doerj AAAA-MM-DD` ou cole o URL da edição."
+            pubs = await col.coletar_data(alvo)
+            fonte = alvo.isoformat()
+
+        if not pubs:
+            return (f"📰 DOERJ {fonte}: nenhuma publicação encontrada.\n"
+                    "Verifique se o Chrome (porta 9222) está aberto e logado no IOERJ.")
+
+        tipos: dict = {}
+        for p in pubs:
+            t = p.get("tipo_ato", "outros")
+            tipos[t] = tipos.get(t, 0) + 1
+
+        linhas = [f"📰 *DOERJ — {fonte}*", f"Total: {len(pubs)} atos", ""]
+        for tipo, qtd in sorted(tipos.items(), key=lambda x: -x[1]):
+            linhas.append(f"• {tipo}: {qtd}")
+        linhas.append("")
+
+        # Amostra de atos com CPF/CNPJ/valor para compliance
+        destaques = [p for p in pubs if (
+            p.get("cpfs_extraidos") not in ("[]", "", None)
+            or p.get("cnpjs_extraidos") not in ("[]", "", None)
+            or p.get("valores_extraidos") not in ("[]", "", None)
+        )][:5]
+        if destaques:
+            linhas.append("*Destaques (CPF/CNPJ/Valor detectado):*")
+            for p in destaques:
+                linhas.append(f"• {p['titulo'][:100]}")
+        else:
+            linhas.append("*Primeiros atos:*")
+            for p in pubs[:4]:
+                linhas.append(f"• {p['titulo'][:100]}")
+
+        return "\n".join(linhas)
+    except Exception as e:
+        return f"❌ Erro ao ler DOERJ: {e}"
+    finally:
+        session.close()
 
 
 async def _sei_reply(numero: str) -> str:
@@ -904,6 +966,10 @@ async def processar_comando(texto: str, chat_id: str) -> None:
                 await enviar_mensagem(formatar_dossie_telegram(dossie), chat_id=chat_id)
             except Exception as exc:
                 await enviar_mensagem(f"❌ Erro na investigação: {exc}", chat_id=chat_id)
+
+    elif cmd == "/doerj":
+        await enviar_mensagem("📰 Lendo Diário Oficial...", chat_id=chat_id)
+        await enviar_mensagem(await _doerj_reply(args), chat_id=chat_id)
 
     elif cmd == "/sei":
         if not args.strip():
