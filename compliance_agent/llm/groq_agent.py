@@ -67,17 +67,39 @@ async def _groq(messages: list[dict], max_tokens: int = 800, temperature: float 
         "Content-Type": "application/json",
     }
     async with httpx.AsyncClient(timeout=30) as client:
-        resp = await client.post(GROQ_URL, json=payload, headers=headers)
-        resp.raise_for_status()
-        data = resp.json()
-        choices = data.get("choices") or []
-        if not choices:
-            raise ValueError(f"Groq sem choices: {data}")
-        msg = choices[0].get("message") or {}
-        content = msg.get("content") or ""
-        if not content:
-            raise ValueError(f"Groq conteúdo vazio: {choices[0]}")
-        return content
+        last_err = None
+        for attempt in range(3):
+            try:
+                resp = await client.post(GROQ_URL, json=payload, headers=headers)
+            except httpx.TransportError as e:
+                last_err = e
+                await asyncio.sleep(2 ** attempt)
+                continue
+            if resp.status_code == 429:
+                # Respeita cabeçalho Retry-After quando disponível
+                wait = 0
+                ra = resp.headers.get("Retry-After")
+                if ra is not None:
+                    try:
+                        wait = float(ra)
+                    except ValueError:
+                        wait = 0
+                if not wait:
+                    wait = 2 ** attempt
+                await asyncio.sleep(wait)
+                last_err = RuntimeError(f"Rate limited (429) attempt {attempt + 1}")
+                continue
+            resp.raise_for_status()
+            data = resp.json()
+            choices = data.get("choices") or []
+            if not choices:
+                raise ValueError(f"Groq sem choices: {data}")
+            msg = choices[0].get("message") or {}
+            content = msg.get("content") or ""
+            if not content:
+                raise ValueError(f"Groq conteúdo vazio: {choices[0]}")
+            return content
+        raise RuntimeError(f"Groq falhou após retries: {last_err}")
 
 
 def _parse_json(raw: str) -> dict | list | None:
