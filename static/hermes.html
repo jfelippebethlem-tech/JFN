@@ -99,7 +99,7 @@
       <div class="msg he">Olá! Sou o <b>Hermes</b>, seu auditor autônomo. Defina uma missão ao lado e clique em <b>Trabalhar agora</b> — eu trabalho sozinho, ou converse comigo aqui sobre os casos. Aprendo e lembro de tudo.</div>
     </div>
     <div class="composer">
-      <textarea id="msg" placeholder="Pergunte algo ao Hermes (ex.: que esquemas você já identificou?)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviar()}"></textarea>
+      <textarea id="msg" placeholder="Comandos: /goal [missão] | /relatorio [txt|pdf|docx] | /parar | ou conversa livre..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviar()}"></textarea>
       <button onclick="enviar()" id="btnEnviar">Enviar</button>
     </div>
   </main>
@@ -176,16 +176,70 @@ async function trabalhar(){
 }
 
 async function enviar(){
-  const t = $('#msg').value.trim(); if(!t) return;
-  addMsg(t,'me'); $('#msg').value='';
-  const btn=$('#btnEnviar'); btn.disabled=true;
+  const raw = $('#msg').value.trim(); if(!raw) return;
+  addMsg(raw,'me'); $('#msg').value='';
+
+  const lower = raw.toLowerCase();
+  if(lower === '/parar' || lower.startsWith('/parar ')){
+    addStep('parar','Solicitada parada do ciclo autônomo.');
+    await fetch('/api/hermes/parar', {method:'POST'});
+    return;
+  }
+
+  const goalMatch = lower.match(/^\/goal\s+(.+)$/);
+  if(goalMatch){
+    const missao = raw.slice(6).trim() || goalMatch[1].trim();
+    const btn = $('#btnTrabalhar'); btn.disabled=true; btn.textContent='⏳ trabalhando…';
+    addMsg('/goal recebido: ' + missao,'me');
+    try{
+      const r = await fetch('/api/hermes/missao', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({missao})});
+      const d = await r.json();
+      if(d.erro){ addMsg('⚠ '+d.erro,'he'); }
+      else{
+        addStep('missão','Missão definida para /goal.');
+        await trabalharGoal();
+      }
+    }catch(e){ addMsg('Erro: '+e,'he'); }
+    return;
+  }
+
+  const relMatch = lower.match(/^\/relatorio\s*(txt|pdf|docx)?\s*$/);
+  if(relMatch){
+    const fmt = (relMatch[1] || 'txt').toLowerCase();
+    addMsg('/relatorio ' + fmt,'me');
+    try{
+      const r = await fetch('/api/hermes/relatorio?formato=' + encodeURIComponent(fmt), {method:'POST'});
+      const d = await r.json();
+      if(d.erro){ addMsg('⚠ '+d.erro,'he'); }
+      else{ addMsg('✅ Relatório gerado: ' + d.arquivo,'he'); }
+    }catch(e){ addMsg('Erro: '+e,'he'); }
+    return;
+  }
+
+  btn=$('#btnEnviar'); btn.disabled=true;
   const pensando = addMsg('🧠 pensando…','he');
   try{
-    const r = await fetch('/api/hermes/chat', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pergunta:t})});
+    const r = await fetch('/api/hermes/chat', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pergunta:raw})});
     const d = await r.json();
     pensando.textContent = d.resposta || d.erro || '(sem resposta)';
   }catch(e){ pensando.textContent='Erro: '+e; }
   btn.disabled=false; chat.scrollTop=chat.scrollHeight;
+}
+
+async function trabalharGoal(){
+  addMsg('Iniciando ciclo autônomo /goal até ter resultados…','he');
+  try{
+    const r = await fetch('/api/hermes/trabalhar', {method:'POST'});
+    const d = await r.json();
+    if(d.erro){ addMsg('⚠ '+d.erro,'he'); return; }
+    (d.passos||[]).forEach(p=>{
+      const det = p.acao==='concluir' ? (p.resultado.resumo||'') : JSON.stringify(p.resultado).slice(0,200);
+      addStep(p.acao, (p.pensamento? p.pensamento+' · ':'') + det);
+    });
+    addMsg('✅ Ciclo /goal concluído ('+ (d.n_passos||0) +' passos). '+(d.resumo||''),'he');
+  }catch(e){ addMsg('Erro no /goal: '+e,'he'); }
+  const btn=$('#btnTrabalhar'); btn.disabled=false; btn.textContent='▶ Trabalhar agora';
+  carregarEstado();
 }
 
 carregarEstado();

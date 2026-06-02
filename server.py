@@ -106,13 +106,7 @@ async def lifespan(app: FastAPI):
     if _agent:
         try:
             await _agent.stop()
-        except Exception:
-            pass
 
-
-# ── App ───────────────────────────────────────────────────────────────────────
-
-app = FastAPI(title="SIAFE2 Finance Agent", lifespan=lifespan)
 
 # Serve static files (screenshots, exports)
 screenshots_dir = Path("screenshots")
@@ -171,7 +165,7 @@ async def api_hermes_estado():
 @app.post("/api/hermes/missao")
 async def api_hermes_definir_missao(payload: dict):
     from compliance_agent.database.models import get_session, init_db
-    from compliance_agent.hermes_goal import HermesGoalAgent
+    from compliance_agent.hermes_goal import HermesGoalAgent, mission_queue
     init_db()
     s = get_session()
     try:
@@ -179,7 +173,12 @@ async def api_hermes_definir_missao(payload: dict):
         if not texto:
             return JSONResponse({"erro": "missão vazia"}, status_code=400)
         HermesGoalAgent(session=s).definir_missao(texto)
-        return JSONResponse({"ok": True, "missao": texto})
+        try:
+            import asyncio
+            asyncio.create_task(mission_queue.enqueue({"tipo": "missao", "texto": texto}))
+        except Exception:
+            pass
+        return JSONResponse({"ok": True, "missao": texto, "queue_size": mission_queue.qsize()})
     finally:
         s.close()
 
@@ -280,12 +279,6 @@ async def api_hermes_stream():
 
 @app.post("/api/hermes/parar")
 async def api_hermes_parar():
-    await _cancelar_loop_trabalhar()
-    return JSONResponse({"ok": True, "status": "parado"})
-
-
-@app.post("/api/hermes/chat")
-async def api_hermes_chat(payload: dict):
 
 
     from compliance_agent.database.models import get_session, init_db
@@ -304,9 +297,14 @@ async def api_hermes_chat(payload: dict):
         s.close()
 
 
-# ── Dashboard data (painel profissional) ──────────────────────────────────────
+@app.post("/api/hermes/relatorio")
+async def api_hermes_relatorio(payload: Optional[dict] = None):
+    try:
+        from compliance_agent.reporting.export_relatorios import generate_report
+        fmt = ((payload or {}).get("formato") or "txt").strip().lower()
+        result = generate_report(fmt=fmt)
+        return JSONResponse(result)
 
-@app.get("/api/compliance/painel")
 async def api_painel():
     """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições."""
     try:
@@ -397,13 +395,7 @@ async def api_investigar(nome: str = "", cnpj: str = ""):
         from compliance_agent.collectors.web_research import investigar
         dossie = await investigar(nome, cnpj)
         return JSONResponse(content=dossie)
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
 
-
-# ── Compliance graph visualization ────────────────────────────────────────────
-
-@app.get("/graph", response_class=HTMLResponse)
 async def graph_page():
     """Serve the D3.js graph visualization page."""
     return FileResponse("static/graph.html")
@@ -902,13 +894,7 @@ async def websocket_chat(ws: WebSocket):
     except Exception as e:
         try:
             await ws.send_text(json.dumps({"type": "error", "content": str(e)}))
-        except Exception:
-            pass
 
-
-# ── CLI ───────────────────────────────────────────────────────────────────────
-
-_args = None
 
 
 def parse_args():
