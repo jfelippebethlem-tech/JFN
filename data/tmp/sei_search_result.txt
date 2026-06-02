@@ -1,0 +1,3828 @@
+GOVERNO DO ESTADO DO RIO DE JANEIRO
+Producao
+Pesquisa Pública
+Nº SEI
+(protocolo Processo/Documento):
+Texto para Pesquisa:
+Pesquisar em:
+ Processos 
+ Documentos Gerados 
+ Documentos Externos
+Interessado / Remetente:
+Órgão Gerador:
+Todos selecionados
+Unidade Geradora:
+Tipo do Processo:
+ 
+APERJ: Assessoria técnica arquivística
+APERJ: Cessão de direitos sobre depoimento oral
+APERJ: Doação de documentos
+APERJ: Recolhimento de documentos
+APERJ: Solicitação de empréstimo de documentos arquivístico e bibliográfico
+Administrativo: Abalrroamento
+Administrativo: Acompanhamento de Licença Ambiental
+Administrativo: Acordo de Leniência
+Administrativo: Alienação de Imóveis
+Administrativo: Análise de Projetos
+Administrativo: Aperfeiçoamento e Treinamento
+Administrativo: Ata de Reunião
+Administrativo: Atas de Reuniões de Conselhos
+Administrativo: Atendimento à Solicitação Externa
+Administrativo: Atendimento à Solicitação – AGE/CGE
+Administrativo: Atendimento à Ssolicitação
+Administrativo: Atributos/gratificações
+Administrativo: Atualização de Dados Cadastrais do Órgão
+Administrativo: Auto de Abate/Destruição/Sacrifício
+Administrativo: Auto de Advertência
+Administrativo: Auto de Apreensão
+Administrativo: Auto de Desinfecção/Desinfestação
+Administrativo: Auto de Desinterdição
+Administrativo: Auto de Infração
+Administrativo: Auto de Interdição
+Administrativo: Auto de Liberação
+Administrativo: Auto de Multa
+Administrativo: Auto de Vistoria
+Administrativo: Autorização de Imagem
+Administrativo: Autorização de uso
+Administrativo: Autorização para Ocupação de Imóvel
+Administrativo: Auxílio Alimentação
+Administrativo: Avaliação Técnica
+Administrativo: Avaliação Técnica de Imóveis
+Administrativo: Avaliação Ténica
+Administrativo: Baixa de Hipoteca
+Administrativo: Cadastramento de Veículo e Concessão de Autorização para Estacionamento
+Administrativo: Cadastramento/Descadastramento de Usuários
+Administrativo: Cadastro para Envio de Matéria-EDOFS
+Administrativo: Carta Usuário Externo
+Administrativo: Certidão de Inteiro Teor
+Administrativo: Comissão Interna de Prevenção de Acidentes- CIPA
+Administrativo: Contratação de Seguro
+Administrativo: Convênio, cooperação, parceria, prot. de intenções
+Administrativo: Credenciamento de Pessoal
+Administrativo: Credenciamento de Usuário Externo
+Administrativo: Criação de Comissões/Grupos de Trabalho
+Administrativo: Denúncia
+Administrativo: Depreciação
+Administrativo: Depreciação de Bens Imóveis
+Administrativo: Determinações do Tribunal de Contas 
+Administrativo: Direitos, Deveres e Vantagens
+Administrativo: Doação de Bens e Acervo
+Administrativo: Edital de Chamada Pública
+Administrativo: Elaboração de Correspondência Interna
+Administrativo: Elaboração de Correspondência Interna com Informações Restritas
+Administrativo: Elaboração de Decreto
+Administrativo: Elaboração de Mensagem
+Administrativo: Elaboração de Ofício de Mero Expediente
+Administrativo: Elaboração de Ofício de Mero Expediente com Informações Restritas
+Administrativo: Elaboração do Plano Plurianual (PPA)
+Administrativo: Elaboração e Publicação de Normativos Próprios
+Administrativo: Emitir Auto de Infração/ Termo de Apreensão
+Administrativo: Encargos Especiais
+Administrativo: Estratégia Estadual de Governo Digital
+Administrativo: Fatura
+Administrativo: Folha de pagamento
+Administrativo: Gestão de Projetos
+Administrativo: Locação de imóveis
+Administrativo: Mandado Requisitório de Pequeno Valor - RPV
+Administrativo: Mandado de Busca e Apreensão
+Administrativo: Mandado de Penhora de Créditos
+Administrativo: Mandado de Segurança
+Administrativo: Migração de Processos Administrativos para o SEI-RJ
+Administrativo: Minuta de Decisão do Secretário
+Administrativo: Minuta de Informações em Mandado de Segurança
+Administrativo: Notas técnicas ou Notas Explicativas
+Administrativo: Obras 
+Administrativo: Pagamento de Impostos e Taxas
+Administrativo: Parcelamento de Débitos
+Administrativo: Parte Diária
+Administrativo: Permissão / Cessão de uso
+Administrativo: Prestação de Contas Anual de Bens Intangíveis
+Administrativo: Prestação de Contas Anual de Bens Patrimoniais Imóveis
+Administrativo: Prestação de Contas Anual de Bens em Tesouraria
+Administrativo: Prestação de Contas Anual de Gestão
+Administrativo: Prestação de Contas Mensal de Bens Intangíveis
+Administrativo: Prestação de Contas Mensal de Bens Patrimoniais Imóveis
+Administrativo: Prestação de Contas Mensal de Bens em Almoxarifado
+Administrativo: Prestação de Contas Mensal de Bens em Tesouraria
+Administrativo: Prestação de Contas de Bens Imóveis
+Administrativo: Prestação de Contas de Descentralização de Crédito
+Administrativo: Prevenção de Lavagem de Dinheiro
+Administrativo: Processo Administrativo de Responsabilização (PAR)
+Administrativo: Processo de Prestação de Contas de Ordenadores de Despesa
+Administrativo: Projeto de Segurança contra incêndio
+Administrativo: Publicação
+Administrativo: Recursos
+Administrativo: Redução ou Adição de Contrato
+Administrativo: Regularização de Imóveis
+Administrativo: Relatório de Atividades
+Administrativo: Relação Anual de Informação Social - RAIS
+Administrativo: Repetição do Indébito
+Administrativo: Representação da Fazenda
+Administrativo: Requerimento Geral/Envio de Expedientes Diversos
+Administrativo: Resposta às Demandas de Órgãos de Controle
+Administrativo: Ressarcimento
+Administrativo: Roteiro Padrão
+Administrativo: Sancionar/Vetar Projeto de Lei
+Administrativo: Seleção de Servidores/Concurso de Boas Práticas
+Administrativo: Solicitação de Bloco de Autos de Desinterdição
+Administrativo: Solicitação de Bloco de Autos de Infração
+Administrativo: Solicitação de Bloco de Autos de Interdição
+Administrativo: Solicitação de Bloco de Folhas Especiais
+Administrativo: Solicitação de Confecção de Crachá
+Administrativo: Solicitação de Informação
+Administrativo: Solicitação à Chefia da Procuradoria da Dívida Ativa
+Administrativo: Taxa de Ocupação
+Administrativo: Termo de Ajustamento de Conduta
+Administrativo: Termo de Ajuste de Contas - TAC
+Administrativo: Termo de Coleta de Amostra
+Administrativo: Termo de Concordância
+Administrativo: Termo de Fiel Depositário
+Administrativo: Transferência de Bens Imóveis
+Administrativo: Transferência de Titularidade
+Administrativo: Vistas ao Processo
+AgeRio: Processo de concessão de crédito
+Agenersa: Abastecimento de Água 
+Agenersa: Acidente / Incidente
+Agenersa: Acomp. dos Serviços Regulados Feito Mediante Vistorias e Inspeções In Loco Câmaras Técnica
+Agenersa: Acordos. Ajustes. Contratos. Convênios. Prot. de Intenções. Termo de Cooperação Técnica
+Agenersa: Agravo de Instrumento
+Agenersa: Alienação
+Agenersa: Alteração da Marca Empresarial 
+Agenersa: Análise de Estudos Técnicos 
+Agenersa: Análise do Planejamento Financeiro 
+Agenersa: Análise dos Contratos e Legislação Aplicável, Incluindo Penalidades e Multas
+Agenersa: Apresentação de Embargos
+Agenersa: Apresentação de Impugnação
+Agenersa: Auto de Infração de Advertência à Concessionária
+Agenersa: Auto de Infração de Diferença de Taxa de Regulação
+Agenersa: Auto de Infração de Multa à Concessionária
+Agenersa: Ação Declaratória
+Agenersa: Ação Judicial
+Agenersa: Ação de Exceção de Suspeição
+Agenersa: Ação de Execução
+Agenersa: Ações Judiciais
+Agenersa: Balanço Balancete 
+Agenersa: Bens Reversíveis
+Agenersa: Carta de Informação Sobre Concessão de Serviços Públicos
+Agenersa: Carta de Informação Sobre Equilíbrio Econômico-Financeiro e Tarifário
+Agenersa: Construção de Barragens Reguladoras 
+Agenersa: Construção de Comportas na Rede de Canais 
+Agenersa: Consultoria Pareceres Técnicos Pesquisa 
+Agenersa: Contr. Convênios. Protoc. de Intenções. Termo de Cooperação Téc. Acordos. Ajustes. Termo
+Agenersa: Controle Sobre o Uso e Conservação dos Bens Reversíveis
+Agenersa: Correspondência Interna de Informação Acerca de Concessão de Serviços Públicos
+Agenersa: Dano Ambiental 
+Agenersa: Despacho de Esclarecimento de Dúvidas Sobre Política Econômica e Tarifária
+Agenersa: Diligência Administrativa
+Agenersa: Diligência Regulatória
+Agenersa: Diligência do Tribunal de Contas 
+Agenersa: Diligência 
+Agenersa: Documentos, Certidões, Informações
+Agenersa: Educação Ambiental 
+Agenersa: Elaboração dos Relatórios, Votos e Deliberações no Âmbito dos Processos Regulatórios
+Agenersa: Embargo de Declaração 
+Agenersa: Explosão 
+Agenersa: Fiscalização
+Agenersa: Gás
+Agenersa: Impugnação ao Auto de Infração 
+Agenersa: Incêndio 
+Agenersa: Informação da concessão de serviços públicos
+Agenersa: Informação equilíbrio econômico-financeiro e tarifário
+Agenersa: Informações Econômico-Fiscais 
+Agenersa: Informações Prestadas Pelas Prestadoras de Serviços Públicos
+Agenersa: Informações Técnicas 
+Agenersa: Informações de Valores de Tarifas 
+Agenersa: Inscrição de Nota de Débito / Inscrição na Dívida Ativa / Cancelamento na Dívida Ativa
+Agenersa: Inspeção/Fiscalização
+Agenersa: Instalação de Estação de Tratamento de Agua 
+Agenersa: Instrução de Regularização de Concessionária de Energia
+Agenersa: Interposição de Recurso
+Agenersa: Licenciamento Ambiental 
+Agenersa: Migração de Processos Regulatórios para o SEI-RJ
+Agenersa: Nota Técnica de Fiscalização de Concessões de Energia
+Agenersa: Nota Técnica de Fiscalização de Concessões de Resíduos Sólidos
+Agenersa: Nota Técnica de Fiscalização de Concessões de Saneamento Básico
+Agenersa: Nota Técnica de Instrução Sobre Política Econômica e Tarifária
+Agenersa: Nota de Débito
+Agenersa: Notificação Ambiental
+Agenersa: Notificação Extra-Judicial 
+Agenersa: Notificação Judicial 
+Agenersa: Notificação de Autuação de Auto de Infração
+Agenersa: Notificação de Autuação de Novo Processo
+Agenersa: Notificação/Meio Ambiente 
+Agenersa: Obras. Investimentos.
+Agenersa: Ofício de Informação Sobre Equilíbrio Econômico-Financeiro e Tarifário
+Agenersa: Ofício de Prestação de Informação Sobre Concessão de Serviços Públicos
+Agenersa: Ofício de Solicitação de Informação Sobre a Concessão de Serviços Públicos
+Agenersa: Outorga
+Agenersa: Outorga de Abastecimento Público/Captação 
+Agenersa: Outorga de Abastecimento Público/Extração
+Agenersa: Outorga de Abastecimento Público/Lançamento 
+Agenersa: Outorga de Abastecimento Público 
+Agenersa: Outorga de Direito de Uso de Recursos Hídricos 
+Agenersa: Outros Assuntos
+Agenersa: Parecer Técnico de Análise de Prestação de Serviços de Energia
+Agenersa: Parecer Técnico de Análise de Prestação de Serviços de Resíduos Sólidos
+Agenersa: Parecer Técnico de Análise de Prestação de Serviços de Saneamento Básico
+Agenersa: Parecer Técnico de Instrução Sobre Política Econômica e Tarifária
+Agenersa: Planejamento Ambiental 
+Agenersa: Pleitos de Reajuste ou Revisão de Tarifas de Serviços Públicos Concedidos, Permitidos e Au
+Agenersa: Poluição
+Agenersa: Poluição Acidental
+Agenersa: Processo de Aplicação de Advertência
+Agenersa: Processo de Cobrança de Diferença de Taxa de Regulação
+Agenersa: Processo de Cobrança de Multa Contratual
+Agenersa: Processo de Regulação de Concessão de Serviços de Energia
+Agenersa: Processo de Regulação de Concessão de Serviços de Resíduos Sólidos
+Agenersa: Processo de Regulação de Concessão de Serviços de Saneamento Básico
+Agenersa: Projeto Ambiental 
+Agenersa: Qualidade da Água
+Agenersa: Razões Finais
+Agenersa: Reajuste Tarifário
+Agenersa: Reajustes, Revisões Ordinárias, Extraordinárias e Quinquenais e Decisões Colegiadas
+Agenersa: Reclamação de Usuários na Ouvidoria
+Agenersa: Reclamação do Atendimento 
+Agenersa: Registro de Entrada de Documentos
+Agenersa: Registro de Ocorrência
+Agenersa: Relatório de Acidente Ambiental
+Agenersa: Relatório de Controle e Correção das Estruturas Financeiras
+Agenersa: Relatório de Fiscalização de Concessões de Energia
+Agenersa: Relatório de Fiscalização de Concessões de Resíduos Sólidos
+Agenersa: Relatório de Fiscalização de Concessões de Saneamento Básico
+Agenersa: Relatório de Qualidade dos Serviços Públicos Concedidos, Permitidos e Autorizados
+Agenersa: Relatório de Vistoria 
+Agenersa: Relatório de controle e correção das estruturas tarifárias
+Agenersa: Relatórios Bimestrais, Trimestrais e Quadrimestrais 
+Agenersa: Relatórios 
+Agenersa: Requerimento de cópia de processo. Link. Acesso externo.
+Agenersa: Resíduos Sólidos
+Agenersa: Reunião de Conciliação
+Agenersa: Seguro Garantia
+Agenersa: Serviços de Ouvidoria Presencial, On Line e Itinerante
+Agenersa: Solicitação na Dívida Ativa
+Agenersa: Taxa de Regulação
+Agenersa: Termo de Acordo
+Agenersa: Termo de Notificação
+Agenersa: Termo de Notificação de Irregularidades de Concessões de Energia
+Agenersa: Termo de Notificação de Irregularidades de Concessões de Resíduos Sólidos
+Agenersa: Termo de Notificação de Irregularidades de Concessões de Saneamento Básico
+Agenersa: Tomada de Contas Especial
+Agenersa: Vistoria
+Agenersa: Vistoria/Inspeção
+Agenersa: Água e Esgoto
+Agenersa: Índices de desempenho e Controle da Qualidade dos Serviços Públicos
+Agenersa:Pleitos de reajuste ou revisão de tarifas de serviços púb. concedidos, permitidos e autori.
+Aquisição: Compra por Suprimento de Caixa
+Arrecadação: Cheque Não Honrado – Débito Inscrito em Dívida Ativa
+Arrecadação: Cheque Não Honrado – Débito Não Inscrito em Dívida Ativa
+Arrecadação: Devolução de Caução
+Arrecadação: Devolução de Fianças e Depósitos - DARJ
+Arrecadação: Devolução de Fianças e Depósitos – GRE
+Arrecadação: Processo de certificação de pagamento de tributo
+Arrecadação: Retificação de Código de Barra – Documento de Arrecadação
+Auditoria: Auditoria Independente
+Auditoria: Programação Anual de Auditoria
+Auditoria: Relatório de Auditoria Interna
+CECIERJ - Peticionamento: Manifestação de Usuário Externo
+CEDAE: Processo de faturamento de prestação de serviço técnico
+CEDAE: Processo de prestação de serviço técnico
+CENTRAL: Apuração de acidente de bonde
+CODIN - Peticionamento: Manifestação de Usuário Externo
+CODIN: Solicitação de enquadramento em incentivos fiscais
+CODIN: Solicitação de enquadramento em incentivos fiscais disposto na Lei 9.025/2020
+COGSEI: Verificação de Problemas (sei)
+Cecierj: Edital de Seleção Alunos
+Cecierj: Edital de Seleção Bolsistas
+Cecierj: Estágios (Bolsa de Estágio)
+Cecierj: Pagamento de Bolsistas
+Cecierj: Solicitação de Informação
+Ceperj: Cartografia Fluminense
+Ceperj: Limites Territoriais
+Certidão Negativa Processo Administrativo Disciplinar CRE/CGE
+Certidão Positiva Processo Administrativo Disciplinar CRE/CGE
+Coderte: Ação Carta Precatória
+Coderte: Ação Cautelar
+Coderte: Ação Edital de Notificação
+Coderte: Ação Embargos à Execução
+Coderte: Ação Indenizatória
+Coderte: Ação Interdito Proibitório
+Coderte: Ação Medida Cautelar
+Coderte: Ação Monitória
+Coderte: Ação Obrigação de Fazer
+Coderte: Ação Reclamatória
+Coderte: Ação Renovatória
+Coderte: Ação Rescisória
+Coderte: Ação Revisional de Aluguel
+Coderte: Ação Revisão Contratual
+Coderte: Ação de Cobrança
+Coderte: Ação de Dano Moral e Material
+Coderte: Ação de Defesa Civil
+Coderte: Ação de Defesa do Consumidor
+Coderte: Ação de Depósito
+Coderte: Ação de Despejo
+Coderte: Ação de Despejo C/C Cobrança
+Coderte: Ação de Despejo por Falta de Pagamento
+Coderte: Ação de Execução de Título Judicial
+Coderte: Ação de Reparação de Danos Morais
+Coderte: Ação de Responsabilidade Civil
+Coderte: Ação de Ressarcimento
+Coderte: Ação de Vistoria
+Coderte: Confissão de Dívida
+Coderte: Execução de Título Extrajudicial
+Coderte: Licitação para Prestação de Serviço Advocatício
+Coderte: Pagamento de Aluguel em Consignação
+Coderte: Pagamento de Condenação Judicial
+Coderte: Reembolso de Custas Judiciais ao Escritório Contratado
+Comissão de Ética: Juízo de Admissibilidade
+Comissão de Ética: Procedimento de Apuração Ética
+Contabilidade: Nota explicativa para AJEA
+Contabilidade: Prestação Contas Anual dos Ordenadores de Despesa
+Contabilidade: Relatório Contábil
+Contabilidade: Solicitação de desbloqueio de Nota de Empenho – NE
+Contratação: Acompanhamento da Execução
+Contratação: Adesão a Ata Externa
+Contratação: Adesão a Ata de Registro de Preço do Poder Executivo Estadual
+Contratação: Aditivo de Contrato
+Contratação: Aditivo para Reajuste dos Custos de Mão de Obra
+Contratação: Aplicação de Penalidades
+Contratação: Aplicação de Sanção decorrente de Procedimento Licitatório
+Contratação: Apostilamento para Reajuste Contratual
+Contratação: Aquisição de materiais
+Contratação: Autorização Prévia para a Contratação de Seguros
+Contratação: Cobrança/Notificação Extrajudicial
+Contratação: Comparação de Preços – Shopping
+Contratação: Concorrência
+Contratação: Concurso
+Contratação: Consulta Pública
+Contratação: Consultor Individual – CI 
+Contratação: Contratação Direta – CD
+Contratação: Contratação de serviços
+Contratação: Convite
+Contratação: Dispensa de Licitação para Compras de Materiais e Serviços por Valor
+Contratação: Dispensa de Licitação para Locação de Imóvel
+Contratação: Documentos de Habilitação - SES/RJ
+Contratação: Edital de Concurso Público
+Contratação: Engenharia para Licitação- Projeto Básico de Executivo
+Contratação: Gerir e Fiscalizar Contratos
+Contratação: Inexigibilidade
+Contratação: Leilão
+Contratação: Licitação Pública Nacional – NCB
+Contratação: Pregão Eletrônico
+Contratação: Pregão Eletrônico da Diretoria de Gestão - PGE
+Contratação: Pregão Eletrônico para Sistema de Registro de Preços
+Contratação: Prestação de Contas das Contratações da Administração Pública Estadual
+Contratação: Realizar Gestão de Contratos: Aditivo de Alteração de Projeto e/ou Prorrogação de Prazo
+Contratação: Regime Diferenciado de Contratação-RDC
+Contratação: Renovação Contratual
+Contratação: Rescisão Contratual
+Contratação: Seleção Baseada na Qualidade – SQC
+Contratação: Solicitação de Contratação
+Contratação: Tomada de Preços
+Controle Interno: Auditoria Contábil/Financeira
+Controle Interno: Auditoria Governamental | Acompanhamento
+Controle Interno: Auditoria Governamental | Conformidade
+Controle Interno: Auditoria Governamental | Financeira
+Controle Interno: Auditoria Governamental | Inspeção
+Controle Interno: Auditoria Governamental | Monitoramento
+Controle Interno: Auditoria Governamental | Operacional
+Controle Interno: Auditoria Governamental/Levantamento
+Controle Interno: Auditoria de Almoxarifado/Bens Patrimoniais
+Controle Interno: Auditoria de Contratos
+Controle Interno: Auditoria de Inspeção/Acompanhamento/Operacional
+Controle Interno: Auditoria de Recursos Humanos
+Controle Interno: Comunicação de Controle Concomitante
+Controle Interno: Comunicação de Controle Preventivo
+Controle Interno: Orientação Procedimental
+Controle Interno: Plano Anual de Auditoria Interna  
+Controle Interno: Plano de Auditoria
+Controle Interno: Prestação/Tomada de Contas
+Controle Interno: Programa de Integridade Pública
+Controle Interno: Tomada de Contas ex officio de Adiantamentos
+Controle Interno: Tomada de Contas ex officio de Bens Imóveis
+Controle Interno: Tomada de Contas ex officio de Bens Intangíveis
+Controle Interno: Tomada de Contas ex officio de Bens Móveis
+Controle Interno: Tomada de Contas ex officio de Bens em Almoxarifado
+Controle Interno: Tomada de Contas ex officio de Contratações da Administração Pública Estadual
+Controle Interno: Tomada de Contas ex officio de Descentralização de Créditos
+Controle Interno: Tomada de Contas ex officio de Tesouraria
+Correição: Apuração de Conduta Ética Profissional
+Correição: Inspeção
+Correição: Investigação Preliminar
+Correição: Investigação Preliminar - Agente Público - PGE
+Correição: Investigação Preliminar - Procurador - PGE
+Correição: Processo Administrativo Disciplinar
+Correição: Processo Administrativo Disciplinar - Agente Público - PGE
+Correição: Processo Administrativo Disciplinar - Procurador - PGE
+Correição: Processo Administrativo de Responsabilização - PAR
+Correição: Sindicância
+Cultura: Registro de bem cultural de natureza imaterial
+DEGASE - Peticionamento: Manifestação de Usuário Externo
+DER: Anuência de faixa de Domínio e Non Aedificandi
+DER: Autorização Especial de Trânsito
+DER: Autorização de acessos rodoviários a empreendimentos
+DER: Cadastramento de Empresas de Engenharia
+DER: Conservação rodoviária
+DER: Credenciamento de Transportes e Transportadoras
+DER: Defesa Prévia
+DER: Defesa Prévia/Real Infrator
+DER: Implantação de passarelas nas rodovias estaduais
+DER: Implantação de redes de drenagem de águas pluviais
+DER: Ligação em redes de drenagem de águas pluviais
+DER: Obras rodoviárias
+DER: Permissão de passagem de cabos e dutos das concessionárias
+DER: Permissão para implantação de Lombadas Eletrônicas
+DER: Permissão para implantação de Pontos de ônibus
+DER: Permissão para implantação de Pórticos
+DER: Permissão para implantação de Quebra molas
+DER: Permissão para implantação de publicidade
+DER: Projetos rodoviários: Restauração
+DER: Projetos rodoviários:  Implantação
+DER: Real Infrator
+DER: Recurso de Multa
+DER: Sinalização rodoviária
+DER: Vistoria técnica em estruturas em obras de artes especiais e  passarelas
+DETRAN - Peticionamento: Manifestação de Usuário Externo
+DETRAN: Cadastro e ou troca de profissional de clínica médica e psicológica
+DETRAN: Desistência de categoria na 1ª habilitação
+DETRAN: Reabilitação de condutor
+DETRAN: Alteração ou correção de requerimento de CNH
+DETRAN: Apuração de irregularidade em Centro de Formação de Condutor
+DETRAN: Cancelamento de CNH
+DETRAN: Credenciamento de EAD - Aprendizagem
+DETRAN: Credenciamento de clínicas
+DETRAN: Descaracterização de veículo
+DETRAN: Devolução de taxas de serviço de veículo
+DETRAN: Inclusão de restrição administrativa e judicial veicular
+DETRAN: Renovação anual de cadastro de clinicas
+DETRAN: Renovação bienal de cadastro de clinicas
+DETRAN: Revalidação de Documento Único de Arrecadação (DUDA)
+DETRAN: Solicitação de análise de junta médica e psicológica
+DETRAN: Solicitação de análise de qualidade em emissão de CNH
+DETRAN: Solicitação de avaliação por junta psicológica
+DETRAN: Solicitação de laudo para isenção de imposto
+DETRAN: Solicitação de vistoria em trânsito
+DETRAN: credenciamento de Centro de Formação de Condutores
+DETRO - Substituição de veículo de transporte complementar
+DETRO: Suspensão temporária de linhas de ônibus
+DRM: Análise de Estudos Técnicos
+DRM: Análise de Estudos Técnicos Geológicos
+DRM: Confecção de Mapas
+DRM: Estudo de Potencial de Solo
+DRM: Estudos Básicos
+DRM: Mapeamento Geológico
+DRM: Projeto Caminhos Geológicos
+DRM: Projetos
+DRM: Projetos Geológicos
+DRM: Requerimento de Registro Mineral
+DRM: Solicitação de Informações Técnicas
+DRM: Vistoria Técnica
+Decisão Judicial: Cumprimento de Decisão Judicial sobre Consignação
+Decisão Judicial: Orientação para Cumprimento de Julgado
+Defesa Sanitária: Cadastro de Agrotóxicos Fitossanitários
+Defesa Sanitária: Cadastro de Propriedade Rural para Certificação Fitossanitária
+Defesa Sanitária: Certificação de Estabelecimento de Criação Livre de Brucelose e/ou Tuberculose
+Defesa Sanitária: Habilitação de Engenheiros Agrônomos para Emissão de CFO e CFOC
+Defesa Sanitária: Habilitação de Profissionais para Emissão de Receitas Agronômicas
+Defesa Sanitária: Registro Avícola/Renovação Registro Avícola
+Defesa Sanitária: Registro de Estabelecimentos Comerciais (Revendas)
+Defesa Sanitária: Registro de Viveiros
+Defesa Sanitária:Cadast. de Médico Veteri. da Iniciativa Privad. P/ Efetuar Vacina. contra Brucelose
+Defesa Sanitária:Renovação de Certificação de Estabele. de Criação Livre de Brucelose ou Tuberculose
+Detran: 2ª via de CRV/CRLV
+Detran: 2ª via de Plaquetas de Chassi
+Detran: 2ª via de etiqueta automotiva
+Detran: Abono de Permanência
+Detran: Acerto de Comunicação de Venda
+Detran: Acerto de IPVA
+Detran: Acerto de dados
+Detran: Acerto de dados na CNH
+Detran: Ajuste Status Gaide
+Detran: Aproveitamento de Curso com Isenção de Taxas
+Detran: Averbação de CNH Estrangeira
+Detran: Baixa de CSV ativo
+Detran: Boletos Enviados - RENAINF
+Detran: Boletos Recebidos - RENAINF
+Detran: Cadastramento Bin
+Detran: Cadastrar Condutor Principal no Renavam
+Detran: Cadastro Histórico de Veículos
+Detran: Cadastro de Empresas de Financiamento
+Detran: Cadastro de Profissional de Ensino de CFC
+Detran: Cancelamento de Comunicação de Venda
+Detran: Cassação do Direito de Dirigir
+Detran: Certidão de Prontuário - Nura
+Detran: Cidadania sobre rodas
+Detran: Comunicação de Casos Especiais de Venda
+Detran: Comunicação de Venda
+Detran: Credenciamento de Centro de Formação de Condutores Mototaxi/Motofrete Res. CONTRAN nº 410
+Detran: Credenciamento-Recadastramento de Centro de Ensino Mototaxi e Motofrete Res. CONTRAN nº 168
+Detran: Credenciamento-Recadastramento de Centro de Ensino Mototaxi e Motofrete Res. CONTRAN nº 358
+Detran: Credenciamento-Recadastramento de Centro de Ensino de Mototaxi/Motofrete Res. CONTRAN nº 410
+Detran: Curso de Moto Fretista
+Detran: Defesa Prévia de Infração de outros Órgãos
+Detran: Defesa de AutoEscola
+Detran: Demonstrativo de DUDAs Utilizados em Confecção de Placas
+Detran: Demonstrativo de Receita Mensal
+Detran: Descaracterização de Veículo
+Detran: Devolução de Taxas
+Detran: Escolha de Placa Especial
+Detran: Extravio ou Roubo de Identidade
+Detran: Indício de declaração falsa
+Detran: Informação de Venda
+Detran: Isenção de CNH por Atestado
+Detran: Isenção de taxa
+Detran: Juntada de Documentos
+Detran: Leilão Judicial (DRV)
+Detran: Leilão de Veículo Conservado - Cadastrado em outra base estadual
+Detran: Leilão de Veículo Conservado - Emplacado no Estado do Rio de Janeiro
+Detran: Leilão de Veículo Conservado - Primeira Licença
+Detran: Leilão de Veículo Sucata - Cadastrado em outra base estadual
+Detran: Leilão de Veículo Sucata - Emplacado no Estado do Rio de Janeiro
+Detran: Leilão de Veículo Sucata - Primeira Licença
+Detran: Mudança de Endereço
+Detran: Pedido de Prescrição
+Detran: Primeira CNH com isenção de taxas
+Detran: Processo de cassação da Carteira Nacional de Habilitação (CNH)
+Detran: Reabertura de Inclusão de Categoria
+Detran: Rebaixamento de Categoria de CNH
+Detran: Recadastramento de Autoescola
+Detran: Recadastramento de Centro de Formação de Condutores Mototaxi/Motofrete Res. CONTRAN nº 410
+Detran: Recadastramento de Clínica
+Detran: Recredenciamento Anual de Clínicas
+Detran: Recurso de Infração de outros Órgãos
+Detran: Registro Biométrico
+Detran: Regularização de Motor
+Detran: Remarcação de Chassi
+Detran: Remarcação do Motor
+Detran: Renovação de CNH com isenção de taxas
+Detran: Repasse ao DENATRAN
+Detran: Repasse ao FUNSET
+Detran: Retorno a Categoria de CNH Rebaixada
+Detran: Revisão de Ato
+Detran: Sinistro de Veículo (Despachante)
+Detran: Solicitação Geral - Habilitação
+Detran: Solicitação de Arrolamento de Bens e Direitos
+Detran: Solicitação de Averiguação de Clonagem
+Detran: Solicitação de Carteira de Identidade
+Detran: Solicitação de Certidão de Identificação Civil
+Detran: Solicitação de Identificação Civil
+Detran: Solicitação de Perícia Médica
+Detran: Solicitação de avaliação por junta médica
+Detran: Solicitação por Agente de Fiscalização de Cancelamento de Infração
+Detran: Solicitações Gerais - Veículos
+Detran: Suspensão do Direito de Dirigir
+Detran: Transferência de Propriedade
+Detran: Transferência de Responsabilidade
+Detran: Troca de Real Infrator de outros Órgãos
+Detran: Troca ou retirada de Clínica
+Detran: Vistas de Processos
+Detran: Vistoria em Trânsito
+Detro: Abertura de Pátio
+Detro: Alteração de Endereço
+Detro: Alteração de Horário
+Detro: Alteração de Itinerário
+Detro: Apuração Corregedoria
+Detro: Autorização de Operação de Veículos em Teste
+Detro: Baixa Excepcional de Motorista Auxiliar
+Detro: Baixa Excepcional de Veículo
+Detro: Baixa de Motorista Auxiliar
+Detro: Cadastro de Motorista Auxiliar
+Detro: Cadastro de Permissionário (Sucessão/Licitação)
+Detro: Cancelamento de Auto de Infração
+Detro: Cancelamento de Registro de Linha de Ônibus
+Detro: Certificado de Autorização de Tráfego
+Detro: Certificado de Registro de Contrato de Fretamento
+Detro: Cobrança Leilão
+Detro: Cobrança de Débito
+Detro: Comodato
+Detro: Criação de Linha de Ônibus
+Detro: Criação de Serviço Complementar
+Detro: Demonstrativo das Operações de Bens em Almoxarifado
+Detro: Denúncia contra Transporte Irregular de Passageiros
+Detro: Devolução Leilão
+Detro: Edital de Notificação de Leilão
+Detro: Gratificação Natalina
+Detro: Inclusão de Veículo 0Km
+Detro: Inclusão de Veículo Emplacado
+Detro: Incorporação de Veículo
+Detro: Informação de Leilão
+Detro: Leilão de Irrecuperáveis
+Detro: Mandado Judicial
+Detro: Mudança de Ponto Terminal
+Detro: Operação Conjunta
+Detro: Planta de Veículos
+Detro: Processos Daf
+Detro: Processos Dto
+Detro: Prorrogação de Vida Útil de Veículo
+Detro: Públicidade em Vans
+Detro: Quadro de Horário
+Detro: Reclamação contra Depósito
+Detro: Recompra de Veículo
+Detro: Recurso de Auto de Infração
+Detro: Redução de Horário
+Detro: Reforço de Frota
+Detro: Reforço de Horário
+Detro: Registro No Detro
+Detro: Renovação de Registro de Linha de Ônibus
+Detro: Saldo Remanescente de Leilão
+Detro: Suposta Clonagem
+Detro: Tarifa Promocional
+Detro: Transferência de Veículo entre Permissionários
+Detro: Troca de Real Infrator
+Detro: Vistoria Anual
+Detro: Segunda Via de Certificado de Autorização de Tráfego
+Detro: Segunda Via de Selo de Vistoria
+Dívida Ativa: Parcelamento da Dívida Ativa
+Edital de Seleção
+Educaçao: Atualização de Cadastro de Unidade Escolar
+Educação: Absorção de Turmas de Unidade Escolar
+Educação: Absorção de Turnos Escolares
+Educação: Absorção de Unidades Escolares
+Educação: Acordos de Cooperação Técnica-Científica
+Educação: Afastamento de Docente
+Educação: Afastamento de estudante para mobilidade acadêmica nacional ou internacional
+Educação: Alteração da Fundamentação da Aposentadoria
+Educação: Alteração de Entidade Mantenedora de Instituição de Ensino da Rede Privada
+Educação: Análise de Prestação de Contas - PNAE
+Educação: Aposentadoria especial para a função do magistério
+Educação: Ativação de Matrícula
+Educação: Aut. Func Tecnico Presencial
+Educação: Aut. Func. EJA Presencial
+Educação: Autenticação de Documento Escolar
+Educação: Autorização Para Pesquisa Acadêmica 
+Educação: Autorização de ensino bilíngue e internacional
+Educação: Autorização de funcionamento de educação especial
+Educação: Autorização para Funcionamento de Curso Técnico
+Educação: Autorização para funcionamento de curso superior
+Educação: Autorização para funcionamento de curso à distância
+Educação: Autorização para Funcionamento de Curso de Nível Médio
+Educação: Autorização para Funcionamento de Curso Técnico
+Educação: Autorização para Funcionamento de Instituição de Ensino da Rede Privada
+Educação: Autorização para Funcionaneto de Instituição de Educação de Jovens e Adultos
+Educação: Cadastramento de Corpo Técnico-Administrativo-Pedagógico
+Educação: Carta de Anuência para Agência de Fomento
+Educação: Censo da Educação Superior
+Educação: Certidão com Força de Certificado
+Educação: Certidão com Força de Diploma
+Educação: Certificado Escolar / Encceja
+Educação: Certificado Escolar de Instituição de Ensino Extinta
+Educação: Classificação de Unidades Escolares
+Educação: Colação de Grau e Diplomação
+Educação: Colação de grau
+Educação: Comissão de Recolhimento de Arquivo
+Educação: Comissão de Inspeção Escolar
+Educação: Comissão de Verificação Especial
+Educação: Comunicado de falecimento do servidor
+Educação: Concessão de diárias e traslados à aluno
+Educação: Consulta TCE/RJ
+Educação: Continuidade de Estudos
+Educação: Controle de Fichas de Frequência de Discente
+Educação: Convalidação de Estudos Parecer do Cee
+Educação: Credenciamento de Novos Cursos de Especialização e Capacitação Técnica
+Educação: Credenciamento de instituição de educação superior
+Educação: Criação/alteração de Unidade Escolar
+Educação: Declarações
+Educação: Denúncia Referente a Educação e Ensino
+Educação: Descarte e/ou doação de livros
+Educação: Devolução de Unidade Escolar Municipalizada
+Educação: Diplomação
+Educação: Diplomação de Pós-graduação
+Educação: Dispensa e Designação de Servidor (função gratificada)
+Educação: Editais de Seleção para Pós-Graduação
+Educação: Editais para Bolsas
+Educação: Edital de Concurso Público para Professor
+Educação: Edital para Concurso Público de Laboratoristas e Técnicos de Laboratório
+Educação: Elaboração de Edital de Processo Seletivo
+Educação: Encerramento das Atividades de Curso
+Educação: Encerramento de Atividades de Instituição de Ensino da Rede Privada
+Educação: Encerramento de Unidade Escolar
+Educação: Equivalência de Estudos No Exterior
+Educação: Equivalência de Estudos de Ensino Técnico
+Educação: Estadualização de Ensino
+Educação: Exames Supletivos
+Educação: Extensão de Carga Horária de Estágio para 40h
+Educação: Extinção de Unidade Escolar
+Educação: Implantação da modalidade EJA (Educação de Jovens e Adultos) nas escolas
+Educação: Implantação de Curso
+Educação: Implementação de Curso/Rede Publica
+Educação: Ingresso por Aproveitamento de Estudos
+Educação: Inscrição em disciplina isolada
+Educação: Inscrição em mobilidade acadêmica nacional ou internacional
+Educação: Inserção Escolar
+Educação: Invasão de Unidade Escolar
+Educação: Isenção de Disciplinas
+Educação: Mudança de Endereço de Instituição de Ensino da Rede Privadas
+Educação: Municipalização de Ensino
+Educação: Pagamento de Bolsa-Auxílio de Forma Retroativa
+Educação: Parceria
+Educação: Parâmetros para Seleção e Avaliação do Programa de Ações Afirmativas
+Educação: Prestação de Serviços Técnicos
+Educação: Programa de Bolsa Permanência para Ingressantes Globais
+Educação: Programa de Descontos
+Educação: Prorrogação de prazo de integralização curricular
+Educação: Publicação de Resumo
+Educação: Publicação de Listagem de Alunos Concluintes de Instituições de Ensino Extintas
+Educação: Realização de Estágio Somente com o Termo de Convênio de Estágio
+Educação: Reativação de Bolsa-Auxílio
+Educação: Reavaliação Socioeconômica
+Educação: Reconhecimento de Curso Superior
+Educação: Referente a Casos Especiais no Ingresso
+Educação: Regime Especial de Estudos
+Educação: Regime de Dedicação Exclusiva
+Educação: Registro e/ou Depósito de Propriedade Industrial (patente ou registro)
+Educação: Regularização da certificação dos alunos
+Educação: Regularização de impostos
+Educação: Reingresso
+Educação: Remanejamento de Semestres
+Educação: Rematrícula
+Educação: Renovação de Reconhecimento de Curso
+Educação: Retificação da data de Admissão
+Educação: Reversão de Imóvel à SEFAZ
+Educação: Revisão de Proventos
+Educação: Seleção Unificada ( SISU )
+Educação: Solicitação de Equivalência De Estudos
+Educação: Suspensão de Bolsa-Auxílio
+Educação: Termo de Colaboração
+Educação: Termo de Fomento
+Educação: Transferência Escolar
+Educação: Transferência Externa
+Educação: Transferência Interna
+Educação: Transferência de Propriedade Industrial ou Intelectual
+Educação: Transferência ex officio
+Educação: Transformação de Escola Estadual em Colégio Estadual
+Educação: Vagas Remanescentes
+Educação: credenciamento de unidade escolar
+FS - Peticionamento: Manifestação de Usuário Externo
+Faperj: Avaliação de solicitação relativa à auxílios e bolsas
+Faperj: Pedido de Cancelamento de Auxílio
+Faperj: Pedido de Cancelamento de Auxílio - Falecimento do Outorgado
+Faperj: Pedido de Cancelamento de Bolsa
+Financeiro: Abertura de Crédito por Excesso de Arrecadação
+Financeiro: Abertura de Crédito por Superávit
+Financeiro: Acautelamento de Guia
+Financeiro: Acompanhamento Econômico - Financeiro de Parceria Público-Privada
+Financeiro: Apostilamento de GRE
+Financeiro: Autorização para Despesa da Dívida Consolidada Estadual
+Financeiro: Ação de Execução Fiscal
+Financeiro: Cofinanciamento Estadual
+Financeiro: Concessão de Adiantamento
+Financeiro: Conciliação Bancária
+Financeiro: Consulta Contábil
+Financeiro: Consulta Tributária
+Financeiro: Contas de Controle
+Financeiro: Descentralização de Crédito
+Financeiro: Desconto de Publicação
+Financeiro: Despesas de Exercício Anterior (DEA)
+Financeiro: Estímulo Financeiro e Creditícios
+Financeiro: Fechamento de Operação Cambial
+Financeiro: Imposto de Renda Retido na Fonte 
+Financeiro: Inclusão de Balanço Patrimonial
+Financeiro: Movimentação Financeira
+Financeiro: Mudança de Informações Bancárias
+Financeiro: Negociação e Contratação de Operação de Crédito
+Financeiro: Nota de Débito
+Financeiro: Pagamento
+Financeiro: Pagamento Autônomo - RPA
+Financeiro: Pagamento FR de salário educação, operação de crédito e CIDE
+Financeiro: Pagamento de Aluguel
+Financeiro: Pagamento de Auxílio Pecúnio 
+Financeiro: Pagamento de Bolsistas FIA - PGE
+Financeiro: Pagamento de Bolsitas/Estagiários
+Financeiro: Pagamento de Condomínio
+Financeiro: Pagamento de Custas Judiciais
+Financeiro: Pagamento de Despesas com Concessionárias
+Financeiro: Pagamento de Despesas com Concessionárias - SEFAZ
+Financeiro: Pagamento de Despesas de Serviços Contratados
+Financeiro: Pagamento de Despesas de Serviços Contratados - PGE
+Financeiro: Pagamento de Jeton
+Financeiro: Pagamento de Reembolso de Despesas
+Financeiro: Pagamento de Sentenças Judiciais, Ordens Judiciais e Custas Judiciais
+Financeiro: Pagamento de Serviços Prestados por Pessoa Física
+Financeiro: Pagamento de convênio
+Financeiro: Prestação de Contas
+Financeiro: Prestação de Contas Incentivo Fiscal
+Financeiro: Prestação de Contas REDE/FES
+Financeiro: Prestação de Contas de Adiantamento
+Financeiro: Prestação de Contas do Fundo Rotativo 
+Financeiro: Prorrogação de Cheque de Cliente
+Financeiro: Quebra de Caixa 
+Financeiro: Receitas / Despesas
+Financeiro: Reconhecimento Contábil / Patrimonial
+Financeiro: Reconhecimento Orçamentário
+Financeiro: Reconhecimento de Dívida
+Financeiro: Reconhecimento do Tributo
+Financeiro: Reembolso / Restituição
+Financeiro: Reembolso de Publicação
+Financeiro: Relatório Resumido de Execução Orçamentária – RREO
+Financeiro: Relatório de Gestão Fiscal – RGF
+Financeiro: Repasse de Recursos Financeiros
+Financeiro: Requerimento de suprimento de fundos
+Financeiro: Ressarcimento - PGE
+Financeiro: Restituição de GRE
+Financeiro: Sol. de Pagamento nas Fontes de Recursos de Sal. Educação, Operação de Crédito e CIDE
+Financeiro: Solicitação de Alteração de Cota Financeira
+Financeiro: Solicitação de Inscrição de Dívida Ativa
+Financeiro: Solicitação de Limite de Saque para Aporte de Contrapartida de Convênio
+Financeiro: Solicitação de Pagamento da Dívida Consolidada Estadual Externa e Interna
+Financeiro: Solicitação de Pagamento em Caráter Excepcional
+Financeiro: Solicitação de Pagamento por Ofício
+Financeiro: Solicitação de Quebra de Floating Bancário
+Financeiro: Solicitação de pagamento de restos a pagar
+Financeiro: Solicitação de Fundo Rotativo 
+Financeiro: Suprimento de Fundos
+Financeiro: Termo de Responsabilidade - SIAFE-Rio
+Financeiro: detalhamento de dívida da administração indireta
+Financeiro: liberação de ordens bancárias externas-RES
+Financeiro: pagamento de ordens e determinações judiciais
+Financeiro: pagamento de restos a pagar exercícios anteriores
+Financeiro: solicitação de abertura, encerramento ou modificação de conta bancária
+Finanças: Acompanhamento Econômico-Financeiro de Parceria Público-Privada
+Finanças: Depósito Recursal
+Finanças: Depósitos Judiciais - Serviços de Terceiros
+Finanças: Mandados de Penhora ou Bloqueios de Recursos
+Finanças: Modelo de Solicitação de Programa de Desembolso da Dívida
+Finanças: Negociação e Captação de Recursos
+Finanças: Pagamento de Restos a Pagar com Autorização
+Finanças: Processo de Gestão do Fundo da Dívida Pública - FDP
+Finanças: Processo de controle de Cotas do Fundo de Privatização - CFP
+Finanças: Recomposição da Conta a
+Finanças: Recomposição da Conta b
+Finanças: Recomposição da Conta b1
+Finanças: Restituição de Fiança Criminal
+Fiscalização Ambiental: Auto de Constatação
+Fiscalização Ambiental: Auto de Medida Cautelar
+Fiscalização Ambiental: Notificação Ambiental
+Fiscalização: Auto de Infração por Embaraço à Atuação de Fiscalização
+Fiscalização: Cancelamento de Auto de Infração
+Fiscalização: Cancelamento de Notificação
+Fiscalização: Interdição por perigo eminente
+Fiscalização: Notificação 
+Fiscalização: Solicitação de Aplicação de Notificação
+Fiscalização: Solicitação de Vistoria
+Fiscalização: Termo de Ajustamento de Conduta
+Fomento: Auxílio a Pesquisa (APQ)
+Fomento: Concessão de Auxílio
+Fomento: Concessão de Bolsa
+Fomento: Prestação de Contas de Projeto Esportivo Incentivado
+Fomento: Projeto Esportivo Incentivado
+Fomento: Projetos Culturais Incentivados
+Gestão de Pessoas: (Re)cadastramento de Consignatárias
+Gestão de Processos: Mapeamento de fluxo processual
+Gestão de Processos: Mapeamento de serviços
+Gestão do SEI-RJ: Pareceres Sobre Uso do Sistema
+Gestão do SEI-RJ: Processo de Informe de Indisponibilidade
+Gestão: Qualificação de OSS
+Governança: Composição Conselho Fiscal
+Governança: Composição Conselho de Administração
+Governança: Evento Planejamento Estratégico RP
+Governança: Solicitação de espaço para palestra da Diretoria Executiva
+ICMS: Inscrição Estadual - Controle Diferenciado
+ICMS: Alteração de Dado Cadastral - Contr. Diferenciado - Atacado Alimentos - Reg. Normal (AUDFE10)
+ICMS: Alteração de Dado Cadastral - Controle Diferenciado
+ICMS: Alteração de Dado Cadastral - Controle Diferenciado (AUDR64.09)
+ICMS: Alteração de Dado Cadastral - Controle Diferenciado (AUDR64.12)
+ICMS: Alteração de Dado Cadastral - Controle Diferenciado - Combustível (AUDFE04)
+ICMS: Alteração de Dado Cadastral - Produtor Rural
+ICMS: Alteração de Dado Cadastral - Produtor Rural (AUDR64.09)
+ICMS: Alteração de Dado Cadastral - Produtor Rural (AUDR64.12)
+ICMS: Alteração de Situação Cadastral
+ICMS: Alteração de Situação Cadastral - Impedimento
+ICMS: Alteração de Situação Cadastral - Paralisação Temporária
+ICMS: Aproveitamento Extemporâneo de Crédito
+ICMS: Aproveitamento Extemporâneo de Crédito - AUDR64.09
+ICMS: Aproveitamento Extemporâneo de Crédito - AUDR64.12
+ICMS: Auto de Infração
+ICMS: Concessão de Inscrição Estadual para Produtor Rural
+ICMS: Concessão de Inscrição Estadual para Produtor Rural - AUDR64.09
+ICMS: Concessão de Inscrição Estadual para Produtor Rural - AUDR64.12
+ICMS: Concessão de Regime Especial
+ICMS: Concessão de Regime Especial - AUDR64.09
+ICMS: Concessão de Regime Especial - AUDR64.12
+ICMS: Consulta Jurídico Tributária
+ICMS: Consulta Jurídico Tributária - AUDR64.09
+ICMS: Consulta Jurídico Tributária - AUDR64.12
+ICMS: Credenciamento de Regime Optativo de Tributação de Subs. Tributária (ROT-ST) - AUDR64.09
+ICMS: Credenciamento de Regime Optativo de Tributação de Subs. Tributária (ROT-ST) - AUDR64.12
+ICMS: Credenciamento de Regime Optativo de Tributação de Substituição Tributária (ROT-ST)
+ICMS: Descredenciamento de Regime Optativo de Tributação de Subs. Tributária (ROT-ST) - AUDR64.09
+ICMS: Descredenciamento de Regime Optativo de Tributação de Subs. Tributária (ROT-ST) - AUDR64.12
+ICMS: Descredenciamento de Regime Optativo de Tributação de Substituição Tributária (ROT-ST)
+ICMS: Inscrição Estadual - Controle Diferenciado (AUDR64.09)
+ICMS: Inscrição Estadual - Controle Diferenciado (AUDR64.12)
+ICMS: Inscrição Estadual - Controle Diferenciado - Atacado Alimentos - Regime Normal (AUDFE-10)
+ICMS: Inscrição Estadual - Controle Diferenciado - Combustível (AUDFE04)
+ICMS: Nota de Débito
+ICMS: Nota de lançamento
+ICMS: Parcelamento Auto de Infração – Sefaz
+ICMS: Parcelamento de Auto de Infração - REFIS 2025
+ICMS: Parcelamento de Auto de Infração - REFIS 2025 - AUDR 64.09
+ICMS: Parcelamento de Auto de Infração - REFIS 2025 - AUDR 64.12
+ICMS: Parcelamento de débitos - REFIS 2025
+ICMS: Parcelamento de débitos - REFIS 2025 - AUDR 64.09
+ICMS: Parcelamento de débitos - REFIS 2025 - AUDR 64.12
+ICMS: Parcelamento de débitos tributários
+ICMS: Parcelamento de débitos tributários - AUDR64.09
+ICMS: Parcelamento de débitos tributários - AUDR64.12
+ICMS: Prorrogação da Suspensão do ICMS - Saída Industrialização
+ICMS: Prorrogação da Suspensão do ICMS - Saída Industrialização (AUDR64.09)
+ICMS: Prorrogação da Suspensão do ICMS - Saída Industrialização (AUDR64.12)
+ICMS: Prorrogação da Suspensão do ICMS - Saída Reparo
+ICMS: Prorrogação da Suspensão do ICMS - Saída Reparo (AUDR64.09)
+ICMS: Prorrogação da Suspensão do ICMS - Saída Reparo (AUDR64.12)
+ICMS: Reativação de Inscrição - Controle Diferenciado
+ICMS: Reativação de Inscrição - Controle Diferenciado (AUDR64.09)
+ICMS: Reativação de Inscrição - Controle Diferenciado (AUDR64.12)
+ICMS: Reativação de Inscrição - Controle Diferenciado - Atacado Alimentos - Regime Normal (AUDFE10)
+ICMS: Reativação de Inscrição - Controle Diferenciado - Combustível (AUDFE04)
+ICMS: Reativação de Inscrição Estadual
+ICMS: Reativação de Inscrição Estadual - AUDR64.09
+ICMS: Reativação de Inscrição Estadual - AUDR64.12
+ICMS: Recadastramento Obrigatório de Inscrição Estadual
+ICMS: Recadastramento Obrigatório de Inscrição Estadual (AUDR64.09)
+ICMS: Recadastramento Obrigatório de Inscrição Estadual (AUDR64.12)
+ICMS: Recadastramento Obrigatório de Inscrição Estadual - Alimentos (AUDFE10)
+ICMS: Recadastramento Obrigatório de Inscrição Estadual - Combustíveis
+ICMS: Recadastramento Obrigatório de Inscrição Estadual - Combustíveis (AUDR64.09)
+ICMS: Recadastramento Obrigatório de Inscrição Estadual - Combustíveis (AUDR64.12)
+ICMS: Recadastramento Obrigatório de Inscrição Estadual - Combustível (AUDFE04)
+ICMS: Recadastramento Obrigatório de Inscrição Estadual - Derivados de Fumo
+ICMS: Recadastramento Obrigatório de Inscrição Estadual - Derivados de Fumo (AUDR64.09)
+ICMS: Recadastramento Obrigatório de Inscrição Estadual - Derivados de Fumo (AUDR64.12)
+ICMS: Recadastramento Obrigatório de Inscrição Estadual - Recup. De Materiais e Sucatas
+ICMS: Recadastramento Obrigatório de Inscrição Estadual - Recup. De Materiais e Sucatas (AUDR64.09)
+ICMS: Recadastramento Obrigatório de Inscrição Estadual - Recup. De Materiais e Sucatas (AUDR64.12)
+ICMS: Reconhecimento de Isenção - Taxista
+ICMS: Reconhecimento de Isenção - Taxista - AUDR64.09
+ICMS: Reconhecimento de Isenção - Taxista - AUDR64.12
+ICMS: Reconhecimento de Isenção de ICMS
+ICMS: Recurso contra o indeferimento à opção do Regime Simples Nacional
+ICMS: Recurso do Município contra o IPM Provisório
+ICMS: Reparcelamento de débitos tributários
+ICMS: Reparcelamento de débitos tributários - AUDR64.09
+ICMS: Reparcelamento de débitos tributários - AUDR64.12
+ICMS: Ressarcimento de Substit. Tributária - Operações Interestaduais ( Ant. à Dez/2023) - AUDR64.09
+ICMS: Ressarcimento de Substit. Tributária - Operações Interestaduais ( Ant. à Dez/2023) - AUDR64.12
+ICMS: Ressarcimento de Substituição Tributária - Operações Interestaduais ( Ant. à Dez/2023)
+ICMS: Restituição de ICMS-ST Valor Inferior a base de cálculo - STF RE
+ICMS: Restituição de ICMS-ST Valor Inferior a base de cálculo - STF RE (AUDR64.09)
+ICMS: Restituição de ICMS-ST Valor Inferior a base de cálculo - STF RE (AUDR64.12)
+ICMS: Restituição de Indébito
+ICMS: Restituição de Indébito - AUDR64.09
+ICMS: Restituição de Indébito - AUDR64.12
+ICMS: Retificação da Escrituração Fiscal Digital - EFD
+ICMS: Retificação da Escrituração Fiscal Digital - EFD (AUDR64.09)
+ICMS: Retificação da Escrituração Fiscal Digital - EFD (AUDR64.12)
+ICMS: Retificação de Documento de Arrecadação (Apostilamento)
+ICMS: Transferência de créditos acumulados
+ICMS: Transferência de créditos acumulados - AUDR64.09
+ICMS: Transferência de créditos acumulados - AUDR64.12
+ICMS: Utilização de créditos acumulados
+ICMS: Utilização de créditos acumulados - AUDR64.09
+ICMS: Utilização de créditos acumulados - AUDR64.12
+INEA: Processo de acompanhamento ao Procon Fumaça Preta
+INEA: Processo de acompanhamento de licença ambiental
+INEA: Processo de acompanhamento de reparação de danos ambientais
+INEA: Processo de análise de Projeto de Restauração Florestal
+INEA: Processo de análise de instrumentos de controle ambiental
+INEA: Processo de autorização de categorias de uso e manejo em cativeiro
+INEA: Processo de autorização de coleta de sementes no interior de unidades de conservação
+INEA: Processo de autorização de pesquisa científica nas unidades de conservação
+INEA: Processo de autorização de pesquisa no CPRJ
+INEA: Processo de autorização de produção e uso de imagem das unidades de conservação
+INEA: Processo de autorização de uso de espaço em unidade de conservação
+INEA: Processo de averbação de reserva legal florestal
+INEA: Processo de cadastro ambiental rural - CAR
+INEA: Processo de cadastro de área de soltura de animais silvestres
+INEA: Processo de certificação ambiental municipal
+INEA: Processo de concessão de guarda de animais silvestres
+INEA: Processo de consulta de localização de imóvel em unidades de conservação
+INEA: Processo de consulta para registro geral de imóvel
+INEA: Processo de credenciamento de laboratório
+INEA: Processo de criação de reserva particular do patrimônio natural - RPPN
+INEA: Processo de criação de unidade de conservação
+INEA: Processo de demolição de construção irregular
+INEA: Processo de desapropriação de imóvel para aquisição
+INEA: Processo de desenvolvimento de projeto ambiental
+INEA: Processo de estruturação de unidades de conservação
+INEA: Processo de habilitação ambiental municipal
+INEA: Processo de informação de aforamento da área sob consulta/ocupação
+INEA: Processo de infração ambiental
+INEA: Processo de ligação de energia elétrica na unidade de conservação
+INEA: Processo de planejamento da gestão de recursos hídricos
+INEA: Processo de regularização de procedimentos do sistema DOF
+INEA: Processo de solicitação de autorização de reforma na unidade de conservação
+INEA: Processo de solicitação de doação de mudas
+INEA: Processo de vinculação de empresa ao PROCON-ÁGUA
+IPVA: Apostilamento
+IPVA: Auto de Infração
+IPVA: Certidão de Situação Fiscal de IPVA de Veículo
+IPVA: Impugnação de Lançamento
+IPVA: Nota de Débito
+IPVA: Nota de Lançamento
+IPVA: Outros
+IPVA: Parcelamento Espontâneo – Sefaz
+IPVA: Regularização de Cobrança
+IPVA: Solicitação de Compensação
+IPVA: Solicitação de Rec. de Não Incidência - autarquias e fund. instituí. e mantida pelo poder púb.
+IPVA: Solicitação de Rec. de Não Incidência - inst. de educa./assistência social sem fins lucrativos
+IPVA: Solicitação de Rec. de Não Incidência /empresa públi. estad. custeada c/ rec. do tesouro estad
+IPVA: Solicitação de Reconhecimento de Alíquota Reduzida - automóveis de locação
+IPVA: Solicitação de Reconhecimento de Isenção - missão diplomática/consulado
+IPVA: Solicitação de Reconhecimento de Isenção - pessoa com deficiência ou autismo
+IPVA: Solicitação de Reconhecimento de Isenção - transporte escolar
+IPVA: Solicitação de Reconhecimento de Isenção - tratores e máquinas agrícolas
+IPVA: Solicitação de Reconhecimento de Não Incidência - União, Estados, Distrito Federal e Município
+IPVA: Solicitação de Reconhecimento de Não Incidência - entidades sindicais dos trabalhadores
+IPVA: Solicitação de Reconhecimento de Não Incidência - partidos políticos e suas fundações
+IPVA: Solicitação de Reconhecimento de Não Incidência - templos de qualquer culto
+IPVA: Solicitação de Restituição de Indébito
+ISP - Peticionamento: Conversão de férias ou licença prêmio não usufruídas em pecúnia
+ITD: Apostilamento
+ITD: Auto de Infração
+ITD: Ação Fiscal
+ITD: Cancelamento de Declaração / Desativação
+ITD: Certidão de Pagamento
+ITD: Comprovação de Pagamento
+ITD: Consulta Jurídico Tributária
+ITD: Dissolução Conjugal - Pendência / Retificação de Declaração
+ITD: Doação/Cessão/Usufruto/Fideicomisso - Pendência / Retificação de Declaração
+ITD: Herança Extrajudicial - Pendência / Retificação de Declaração
+ITD: Herança Judicial - Pendência / Retificação de Declaração
+ITD: Impugnação de Lançamento
+ITD: Mandado de Segurança
+ITD: Nota de Débito
+ITD: Ofícios / PGE
+ITD: Parcelamento Espontâneo - Sefaz
+ITD: Restituição de Indébito
+ITD: Revisão de Cálculo (guias antigas)
+ITD: Solicitação de Benefício Fiscal de ITD - Guia de Herança
+ITD: Solicitação de Benefício Fiscal de ITD - Guias Demais Naturezas
+ITD: Solicitação de Imunidade de ITD
+ITD: Solicitação de Isenção de ITD - Causa Mortis
+ITD: Solicitação de Isenção de ITD - Demais Casos
+ITD: Solicitação de Isenção de ITD - Extinção Usufruto
+ITD: Solicitação de Não incidência de ITD
+ITD: Solicitação de Redução de Base de Cálculo
+ITD: Solicitação de Remissão de ITD
+ITD: Troca de Declarante de Declaração
+Iterj: Analisar Pedidos de Isenção do Imposto ITD
+Iterj: Conceder Declaração de Cadastro
+Iterj: Conceder Instrumento de Regularização Fundiária
+Iterj: Disponibilizar Equipamento Produtivo
+Iterj: Distribuir Insumo Agrícola
+Iterj: Elaborar Estudos Sobre Questões e Demandas Locais
+Iterj: Executar/ Contratar Projetos de Desenvolvimento das Comunidades Urbanas e Rurais
+Iterj: Implantar Equipamento Comunitário
+Iterj: Proceder à Notificação de Irregularidades Fundiárias
+Iterj: Realizar Atendimento em Ação de Assistência Técnica (ATER)
+Iterj: Realizar Projeto Técnico de Arquitetura, Engenharia Civil e Agronômica
+Iterj: Reformar Equipamento Comunitário
+Iterj: Transferir Titularidade Individual de Lotes Regularizados
+Jucerja: Pagamento de Despesas de Serviços Contratados
+Jurídico: Ação Anulatória 
+Jurídico: Ação Civil Publica
+Jurídico: Ação Ordinária
+Jurídico: Ação Trabalhista
+Jurídico: Bloqueio Judicial
+Jurídico: Consulta a Assessoria Jurídica (AJUFAZ)
+Jurídico: Mandado de Citação e Intimação
+Jurídico: Mandado de Notificação
+LOTERJ - Peticionamento: Manifestação de Usuário Externo
+LOTERJ: Solicitação de aprovação de novo sorteio RP
+Logística : Emissão, Atualização e Renovação de Certificado de Registro Cadastral
+Logística: Alteração de Dados Cadastrais de Veículos
+Logística: Cadastramento de Veículos
+Logística: Cadastro de fornecedor
+Logística: Chamamento público
+Logística: Descadastramento de Veículos
+Logística: Encaminhamento de Nota de Descentralização de Crédito
+Logística: Gestão de Combustíveis no SIADC
+Logística: Plano de contratações anual
+Logística: Solicitação de Combustível
+Logística: Solicitação de Viatura
+Logística: Tratamento de Notas Fiscais Recebidas
+Logística: almoxarifado virtual
+Material: Cautela de Bens Móveis
+Material: Controlar Bens Móveis
+Material: Demonstrativo Mensal de Operações de Almoxarifado
+Material: Depreciação de Bens Móveis
+Material: Desfazimento de Material de Consumo
+Material: Incorporação de Bens Móveis
+Material: Inventário de Bens Móveis
+Material: Inventário de Material de Consumo
+Material: Movimentação de Bens Móveis
+Material: Movimentação de Material de Consumo
+Material: Pagamento de Despesas Com Bens
+Material: Prestação de Contas Anual de Bens Móveis
+Material: Prestação de Contas Anual de Bens de Almoxarifado
+Material: Prestação de Contas Mensal de Bens Móveis
+Orçamento: Abertura de Crédito Adicional por Recursos Novos de Convênio
+Orçamento: Acompanhamento do Programa de Dispêndios Globais - PDG
+Orçamento: Celebração de Convênio de Despesa
+Orçamento: Criação de Natureza de Receita e/ou Fonte de Recursos
+Orçamento: Descentralização de Crédito
+Orçamento: Descentralização de Recursos Orçamentários
+Orçamento: Elaboração de Plano Anual de Investimento
+Orçamento: Movimentação Orçamentária
+Orçamento: Prestação de Conta de Descentralização de Crédito
+Orçamento: Publicar Decreto de Movimentação Orçamentária e/ou Crédito Adicional
+Orçamento: Realizar Abertura de Crédito Adicional por Convênio
+Orçamento: Realizar Abertura de Crédito Adicional por Excesso de Arrecadação
+Orçamento: Realizar Abertura de Crédito Adicional por Superávit Financeiro
+Orçamento: Realizar Liberação/Remanejamento de Cota LME
+Orçamento: Solicitação de Crédito Suplementar para Despesa de Exercício Anterior
+Orçamento: Tabela de Classificação de Despesa
+Ouvidoria: Denúncia
+Ouvidoria: Lei de Acesso à Informação - Recurso Submetido à OGE/RJ
+Ouvidoria: Manifestação - Reclamação, Sugestão, Solicitação e Elogio
+Ouvidoria: Processo de solicitação de acesso à informação
+PGE: Acompanhamento de Acordo de Precatório
+PGE: Inscrição em Dívida Ativa
+PGE: Inscrição em Dívida Ativa - Defensoria Pública RJ
+PGE: Inscrição em Dívida Ativa - Tribunal de Justiça RJ
+PGE: Instauração de correição ordinária
+PGE: Peticionamento Eletrônico Padrão
+PGE: Processo de autocomposição de controvérsias
+Parcelamento Ajuizado de Débito
+Parcelamento Amigável de Débito
+Parcelamento Especial de Débito
+Parcelamento/Anistia de Débito
+Patrimônio: Cessão de Uso de Imóvel Estadual
+Patrimônio: Desapropriação de Imóveis
+Patrimônio: Desfazimento de Bens Móveis
+Patrimônio: Doação de Imóvel em Favor do Estado
+Patrimônio: Doação de imóvel próprio Estadual
+Patrimônio: Entrega e Recebimento de Bens Imóveis
+Patrimônio: Monitoramento de Contraprestações e Encargos do Uso de Imóvel Público
+Patrimônio: Monitoramento de Contraprestações e Encargos por Uso de Imóvel Público por Particular
+Patrimônio: Permissão de Uso de Imóvel para Particular
+Patrimônio: Permuta de Imóvel
+Patrimônio: Pesquisa externa de informação de imóvel
+Patrimônio: Recebimento de Imóvel em Doação
+Patrimônio: Regularização de Titularidade de Imóvel
+Patrimônio: Regularização de Titularidade por Partilha Dominial
+Patrimônio: Regularização de Titularidade por Usucapião – Ext
+Patrimônio: Regularização de Titularidade por Usucapião – Jud
+Patrimônio: Reintegração de Posse
+Patrimônio: Requerimento de imunidade, isenção de tributos e de taxa de Ocupação
+Patrimônio: Tombamento de Bens Culturais
+Patrimônio: Transferência de imóvel para Adm. Indireta Estadual
+Patrimônio: Usucapião
+Patrimônio: Venda de imóvel
+Patrimônio: Vistoria de imóvel do Estado
+Peticionamento de Parcelamento de Débitos - REFIS
+Peticionamento: Manifestação de Usuário Externo
+Planejamento e gestão: Análise de gestão de riscos
+Planejamento e gestão: Manual de análise e gestão de riscos
+Planejamento e gestão: Plano de integridade pública
+Previdenciário: Acerto de Pagamento de Aposentadoria
+Previdenciário: Acerto de Pagamento de Pensão
+Previdenciário: Acompanhamento de Receitas e Despesas de COMPREV
+Previdenciário: Alteração Cadastral
+Previdenciário: Concessão de Pensão
+Previdenciário: Concessão de Pensão Especial
+Previdenciário: Consulta Técnica ou Jurídica
+Previdenciário: Denúncias
+Previdenciário: Descontos e/ou Consignações
+Previdenciário: Devolução de Contribuição Previdenciária
+Previdenciário: Encaminhamento de documentos ao TCE
+Previdenciário: Exclusão de Pensionista e/ou Redistribuição de Cota de Pensão
+Previdenciário: Extinção de Aposentadoria
+Previdenciário: Folha de Pagamento de Benefícios
+Previdenciário: Pagamento de Prêmios
+Previdenciário: Reajuste de Aposentadoria
+Previdenciário: Reajuste de Pensão
+Previdenciário: Reativação ou Continuação de Pensão
+Previdenciário: Recadastramento de Segurado
+Previdenciário: Retificação de Fita DIRF
+Previdenciário: Revisão do fundamento legal ou da fixação da Pensão
+Previdenciário: Revisão do fundamento legal ou da fixação dos proventos de Aposentadoria
+Processo Externo: Tramita GovBR
+Processo de afastamento de servidor
+Processo de análise de Projeto de Restauração Florestal - PRF
+Processo de aposentadoria
+Processo de apuração de abandono de cargo
+Processo de aquisição de combustível
+Processo de averbação de tempo de contribuição/serviço
+Processo de certidão de tempo de contribuição/serviço
+Processo de constituição de comissão, conselho ou grupo de trabalho
+Processo de criação e alteração de ato administrativo
+Processo de solicitação de liberação orçamentária
+Processo de solicitação de publicação de matéria em Diário Oficial
+Procon: Acompanhamento de Processo Judicial
+Procon: Ato Sancionatório
+Procon: Ato de Investigação Preliminar
+Procon: Auto de Constatação
+Procon: Ação Civil Pública
+Procon: Denúncia
+Procon: Reclamação Coletiva de Consumidores
+Procon: Reclamação Consumidor
+Procon: Requerimento Geral/Envio de Expedientes Diversos
+Procon: Requerimento de Acesso Externo à Processo Restrito
+Procon: Requerimento de Acesso à Informação
+Procon: Requerimento de Certidão Nada Consta
+Procon: Requerimento de Desarquivamento de Processo ou Documento
+Procon: Requerimento de Emissão de Guia Integral de Pagamento de Multa
+Procon: Requerimento de Parcelamento de Multa
+Procon: Requerimento de Vista ou Cópia Física de Processo Administrativo
+Protocolo e Arquivo: Aprovação de Plano de Classificação e Tabela de Temporalidade de Documentos
+Protocolo e Arquivo: Desarquivamento de Documento
+Protocolo e Arquivo: Eliminação de documentos
+Protocolo e Arquivo: Recolhimento de Documentos
+Protocolo e Arquivo: Solicitação de Classificação de Documentos
+Protocolo e Arquivo: Transferência de documentos
+Receita: Aproveitamento Extemporâneo de Crédito de ICMS
+Receita: Cancelamento de Auto de Infração
+Receita: Cancelamento de Certidão de Dívida Ativa
+Receita: Cancelamento de Certidão de Regularidade Fiscal
+Receita: Concessão de Ressarcimento de ICMS - Substituição Tributária
+Receita: Enquadramento em Benefícios Fiscais
+Receita: Fundo de Regulação
+Receita: Levantamento de Depósito Judicial
+Receita: Nota de Débito Substitutiva
+Receita: Nota de Débito não Tributário
+Receita: Recurso Contra o Valor Adicionado Aplicado ao Município
+Receita: Reestimativa de Receita
+Receita: Regularização de Cobrança de Débitos Fiscais
+Receita: Representação fiscal para fins penais
+Receita: Verificação de Incentivos Fiscais - Tratar Recurso
+Recursos Humanos: Reconhecimento de Estabilidade de Servidor
+Recursos Humanos: Abono de Permanência
+Recursos Humanos: Abono por Doação de Sangue
+Recursos Humanos: Acumulação de Cargos
+Recursos Humanos: Adicional Noturno
+Recursos Humanos: Adicional de Experiência em Cargo de Confiança
+Recursos Humanos: Adicional de Insalubridade/Periculosidade
+Recursos Humanos: Adicional de Qualificação
+Recursos Humanos: Adicional de Qualificação - PGE
+Recursos Humanos: Adicional por Atividade Penosa
+Recursos Humanos: Adicional por Serviço Extraordinário
+Recursos Humanos: Adicional por Tempo de Serviço
+Recursos Humanos: Adicional por Trabalho em Período Definido - TPD
+Recursos Humanos: Admissão de Empregado
+Recursos Humanos: Afastamento
+Recursos Humanos: Afastamento Eleitoral
+Recursos Humanos: Afastamento Para Estudo, Congressos, Seminários ou Reuniões Similares
+Recursos Humanos: Afastamento para Aleitamento
+Recursos Humanos: Afastamento para Curso de Formação
+Recursos Humanos: Afastamento para Estudo ou Missão no Exterior
+Recursos Humanos: Afastamento para Exercer Mandato Eletivo
+Recursos Humanos: Agregação
+Recursos Humanos: Ajuda de Custo Procurador - PGE
+Recursos Humanos: Ajuda de Custo Servidor - PGE
+Recursos Humanos: Alteração de Nome
+Recursos Humanos: Anotação Funcional
+Recursos Humanos: Aposentadoria Compulsória 
+Recursos Humanos: Aposentadoria Integral 
+Recursos Humanos: Aposentadoria Voluntária
+Recursos Humanos: Aposentadoria por invalidez
+Recursos Humanos: Atestado Médico
+Recursos Humanos: Auxilio doença
+Recursos Humanos: Auxílio Adoção
+Recursos Humanos: Auxílio Creche
+Recursos Humanos: Auxílio Educação
+Recursos Humanos: Auxílio Educação - PGE
+Recursos Humanos: Auxílio Funeral
+Recursos Humanos: Auxílio Moradia
+Recursos Humanos: Auxílio Saúde
+Recursos Humanos: Auxílio ao Dependente com Deficiência/Doença Grave
+Recursos Humanos: Auxílio-Natalidade
+Recursos Humanos: Auxílio-Reclusão
+Recursos Humanos: Auxílio-Transporte
+Recursos Humanos: Auxílios
+Recursos Humanos: Avaliação de Desempenho
+Recursos Humanos: Avaliação de Estágio Probatório
+Recursos Humanos: Averbação de Tempo de Serviço
+Recursos Humanos: Benefícios
+Recursos Humanos: Bolsa de Estudos
+Recursos Humanos: Bolsa de Graduação/Pós-Graduação
+Recursos Humanos: Cadastro de Dependentes
+Recursos Humanos: Cadastro de Responsáveis/ Prestação de Contas RH
+Recursos Humanos: Cancelamento de Descontos
+Recursos Humanos: Cancelamento de Pensão – PREVIBANERJ
+Recursos Humanos: Cancelamento de aposentadoria – PREVIBANERJ
+Recursos Humanos: Capacitação e desenvolvimento de servidor
+Recursos Humanos: Carreira
+Recursos Humanos: Certidão e Declaração
+Recursos Humanos: Certidão e Declaração - PGE
+Recursos Humanos: Certificação Profissional
+Recursos Humanos: Cessão de Servidor
+Recursos Humanos: Comunicação de Aposentadoria
+Recursos Humanos: Comunicação de Faltas
+Recursos Humanos: Concessão de Auxílio Funeral
+Recursos Humanos: Concessão de Licença Prêmio
+Recursos Humanos: Concessão de aposentadoria – PREVIBANERJ
+Recursos Humanos: Concessão de diária
+Recursos Humanos: Concessão de passagem aérea ou terrestre
+Recursos Humanos: Concessão de pensão – PREVIBANERJ
+Recursos Humanos: Confirmação na Carreira Procurador
+Recursos Humanos: Consignações
+Recursos Humanos: Contagem de Tempo de Serviço/Contribuição
+Recursos Humanos: Contagem de férias em dobro
+Recursos Humanos: Contagem em Dobro - Licença Especial/Prêmio
+Recursos Humanos: Contratação Temporária
+Recursos Humanos: Contratação de Bolsistas/Estagiários
+Recursos Humanos: Contratação de Pessoal
+Recursos Humanos: Controle de Frequência
+Recursos Humanos: Conversão de Licença-Prêmio em Pecúnia
+Recursos Humanos: Conversão de Licença-Prêmio/Férias em Pecúnia
+Recursos Humanos: Conversão de férias ou licença prêmio não usufruídas em pecúnia
+Recursos Humanos: Credencial de Motorista
+Recursos Humanos: Credenciamento para Concessão de descontos a servidores
+Recursos Humanos: Cursos/Palestras/Seminários Internos
+Recursos Humanos: Declaração de Bens 
+Recursos Humanos: Declaração de Comorbidade
+Recursos Humanos: Declaração de Grupo Vulnerável à Covid-19
+Recursos Humanos: Declaração Previdenciária
+Recursos Humanos: Delegação de Competência 
+Recursos Humanos: Descentralização de Servidor
+Recursos Humanos: Designação de Servidor em Cargo em Comissão
+Recursos Humanos: Designação de servidor
+Recursos Humanos: Desligamento do Quadro
+Recursos Humanos: Dispensa por Serviço Eleitoral
+Recursos Humanos: Disposição de Servidor
+Recursos Humanos: Documento de Atualização de Pensão
+Recursos Humanos: Elaboração de Manuais Normativos
+Recursos Humanos: Emissão de Carteira Funcional
+Recursos Humanos: Emissão de Certidão de Tempo de Serviço e Contribuição
+Recursos Humanos: Emissão de Certidões e Declarações
+Recursos Humanos: Encerramento de Folha
+Recursos Humanos: Encerramento de Folha Servidor Exonerado
+Recursos Humanos: Encerramento de Folha de Pensionista Especial
+Recursos Humanos: Encerramento de Folha de Servidor Falecido
+Recursos Humanos: Enquadramento
+Recursos Humanos: Estágio Experimental 
+Recursos Humanos: Exclusão de dependentes
+Recursos Humanos: Exoneração de Servidor em Cargo Efetivo
+Recursos Humanos: Gerenciamento da Avaliação de Desempenho
+Recursos Humanos: Gerenciamento de Pessoal Cedido/Ressarcimento
+Recursos Humanos: Gratificação de Remuneração Variável/GRV
+Recursos Humanos: Gratificação de Titulação e Adicional de Qualificação
+Recursos Humanos: Gratificação por Acréscimo de Atribuição
+Recursos Humanos: Gratificação por Acréscimo de Atribuição - GAA - PGE
+Recursos Humanos: Gratificação por Exercício de Função Remunerada
+Recursos Humanos: Incentivos Funcionais (Prêmios, Medalhas, Diplomas, Elogios)
+Recursos Humanos: Inclusão de Dependentes para Imposto de Renda
+Recursos Humanos: Inclusão de Dependentes para Imposto de Renda - PGE
+Recursos Humanos: Incorporação de Chefia e Gratificação
+Recursos Humanos: Incorporação de Gratificação de Encargos Especiais
+Recursos Humanos: Indenização por Acidente de Trabalho
+Recursos Humanos: Informações Gerenciais RH
+Recursos Humanos: Isenção de Imposto de Renda
+Recursos Humanos: Licença Maternidade/Paternidade
+Recursos Humanos: Licença Maternidade/Paternidade por Adoção
+Recursos Humanos: Licença Médica
+Recursos Humanos: Licença Prêmio
+Recursos Humanos: Licença para Acompanhar Cônjuge
+Recursos Humanos: Licença para Acompanhar Cônjuge - PGE
+Recursos Humanos: Licença para Mandato Classista
+Recursos Humanos: Licença para Serviço Militar
+Recursos Humanos: Licença para Trato de Interesse Particular
+Recursos Humanos: Licença por Aborto/Natimorto
+Recursos Humanos: Licença por Acidente em Serviço
+Recursos Humanos: Licença por Casamento
+Recursos Humanos: Licença por Doença Profissional
+Recursos Humanos: Licença por Doença em Pessoa da Família
+Recursos Humanos: Licença por Falecimento de Familiar
+Recursos Humanos: Licença sem Vencimento
+Recursos Humanos: Medicina e Segurança do Trabalho 
+Recursos Humanos: Mobilidade Interna
+Recursos Humanos: Nomeação Composta em Cargo em Comissão
+Recursos Humanos: Nomeação e Investidura 
+Recursos Humanos: Nomeação em Cargo em Comissão
+Recursos Humanos: Obrigações Tributárias Acessórias (GFIP/DIRF/RAIS/eSocial)
+Recursos Humanos: Outros expedientes de Recursos Humanos.
+Recursos Humanos: PASEP
+Recursos Humanos: Pagamento de Folha de Pessoal
+Recursos Humanos: Pagamento de PPEs de servidor falecido ou ex-servidor
+Recursos Humanos: Pagamento em pecúnia de Licença Especial
+Recursos Humanos: Participação em Tribunal do Júri ou Outros Serviços Obrigatórios por Lei
+Recursos Humanos: Pedido de Revisão Administrativa da Comissão Mista
+Recursos Humanos: Pensão Alimentícia
+Recursos Humanos: Perfil Profissiográfico Previdenciário Social
+Recursos Humanos: Perícia Médica
+Recursos Humanos: Pesquisa Acadêmica
+Recursos Humanos: Plano de cargos e salários
+Recursos Humanos: Processo de Concessão de Salário Família
+Recursos Humanos: Processo de Reintegração de Servidor
+Recursos Humanos: Programa de Demissão Voluntária - PDV
+Recursos Humanos: Progressão Horizontal
+Recursos Humanos: Promoção e Progressão
+Recursos Humanos: Provimento por Aproveitamento
+Recursos Humanos: Provimento por Recondução
+Recursos Humanos: Provimento por Reintegração
+Recursos Humanos: Provimento por Reversão
+Recursos Humanos: Prêmio Aposentadoria
+Recursos Humanos: Quinquênio de Chefia
+Recursos Humanos: Realização de Concurso Público
+Recursos Humanos: Reativação de pagamento por regularização de prova de vida - PREVIBANERJ
+Recursos Humanos: Reconhecimento de Dívida
+Recursos Humanos: Redução de Carga Horária 
+Recursos Humanos: Remoção de Servidor
+Recursos Humanos: Renúncia de Estipêndios
+Recursos Humanos: Renúncia de Férias - PGE
+Recursos Humanos: Revisão de aposentadoria – PREVIBANERJ
+Recursos Humanos: Revisão de pensão
+Recursos Humanos: Segunda via de contracheque
+Recursos Humanos: Segunda via do ato de investidura
+Recursos Humanos: Seleção Interna – PSI
+Recursos Humanos: Solicitação de Diárias - PGE
+Recursos Humanos: Solicitação de Férias
+Recursos Humanos: Solicitações Diversas/outras
+Recursos Humanos: Substituição de Pessoal
+Recursos Humanos: Suspensão de pagamento por falta de prova de vida – PREVIBANERJ
+Recursos Humanos: Escala 
+Recursos humanos: Exoneração de servidor
+Recursos humanos: Nomeação de servidor
+Recursos humanos: Readaptação de servidor
+Recursos humanos: Reassunção de servidor
+Regulatório: Concessionária CCR Barcas
+Regulatório: Concessionária CCR Via Lagos
+Regulatório: Concessionária MetrôRio
+Regulatório: Concessionária RioBarra
+Regulatório: Concessionária Rota 116
+Regulatório: Concessionária SuperVia
+Regulatório: Normativo
+Riotrilhos - Medição de Serviços
+SEAP - Peticionamento: Manifestação de Usuário Externo
+SEAP: Processo de concessão de visita íntima
+SECC - Peticionamento: Conversão de férias ou licença prêmio não usufruídas em pecúnia
+SEDSOSH - Peticionamento: Manifestação de Usuário Externo
+SEFAZ (AUDR64.09) - Peticionamento: Manifestação de Usuário Externo
+SEFAZ (AUDR64.12) - Peticionamento: Manifestação de Usuário Externo
+SEFAZ - Peticionamento: Manifestação de Usuário Externo
+SEGOV - Peticionamento: Conversão de férias ou licença prêmio não usufruídas em pecúnia
+SEI Federação
+SEPM: Averiguação Disciplinar de Servidor
+SEPM: Chamamento público - alertas e sensores
+SEPM: Chamamento público - videomonitoramento
+SEPM: Inquérito Técnico de Material
+SEPOL - Peticionamento: Manifestação de Usuário Externo
+Saúde: Aprovação de projeto de arquitetura
+Saúde: Concessão de licenciamento sanitário
+Saúde: Processo de Infração Sanitária
+Saúde: Processo de Supervisão Sanitária
+Saúde: Solicitação de pesquisa em saúde
+Saúde: Tratamento Fora de Domicílio - TFD
+Seeduc: Prestação de Contas de Repasse de Recursos Estaduais às Associações de Apoio à Escola
+Seeduc: Prestação de Contas de Repasse de Recursos Federais às Associações de Apoio à Escola
+Seeduc: Prestação de Contas de Repasse de Recursos às Diretorias Regionais Administrativas
+Sefaz: Elaboração de Atos Normativos Tributários
+Sefaz: Programa de Ajuste Fiscal - PAF
+Sefaz: Projeção de Receitas
+Sefaz: Regime de Recuperação Fiscal
+Segurança Institucional: avaliação de risco para uso de veículo blindado
+Segurança: Acautelamento de Armas
+Segurança: Análise de Delitos
+Segurança: Apreensão de Material
+Segurança: Avaliação Qualitativa AISP
+Segurança: Carga de material bélico
+Segurança: Cautela de Material Bélico Para Uso Pessoal
+Segurança: Concessão de visita íntima entre pessoas privadas de liberdade
+Segurança: Disponibilização de Imagens de Videomonitoramento Urbano
+Segurança: Efetivo Carcerário
+Segurança: Eleição dos Conselheiros CONSPERJ
+Segurança: Gestão de Boas Práticas
+Segurança: Homologação de Conselho Comunitário de Segurança
+Segurança: Inatividade de Conselho Comunitário de Segurança
+Segurança: Inauguração de RISP
+Segurança: Indicadores Estratégicos de Criminalidade
+Segurança: Informe de Entrada na Unidade Administrativa
+Segurança: Informe do Ponto Focal
+Segurança: Ingresso de Apenado na Colônia Agrícola
+Segurança: Mudança de Área
+Segurança: Ocorrência com material bélico patrimonial
+Segurança: Pesquisa Social
+Segurança: Processo Disciplinar de Apenado
+Segurança: Publicação Calendário de Reuniões do SIM 
+Segurança: Publicação das Diretorias dos Conselhos Comunitários de Segurança
+Segurança: Publicação das Metas Desdobradas
+Segurança: Publicação das Metas D.O
+Segurança: Publicação de Taxa de Elucidação
+Segurança: Publicação dos Indicadores de Criminalidade em Diário Oficial
+Segurança: Recambiamento
+Segurança: Relatório Mensal de Incidências
+Segurança: Renovação de Cautela de Armas
+Segurança: Resultado Oficial de Contemplados no SIM
+Segurança: Resumo Mensal por AISP
+Segurança: Reunião de Nível 1 do SIM
+Segurança: Reunião de Nível 3 E 2 do SIM
+Segurança: Solenidade de Premiação
+Segurança: Solicitação de Dados Estatísticos
+Segurança: Solicitação de Registros de Serviço 190
+Segurança: Solicitação de Registros de Utilização de Viaturas Policiais via GPS
+Segurança: Transferência de Presos
+Segurança: Visita Íntima
+Segurança: Workshop RISP
+Segurança:Solicitação de Registros de Radiocomunicação Crítica
+Serviço de Inspeção: Cancelamento de Registro de Produto
+Serviço de Inspeção: Cancelamento de Registro/Relacionamento de Estabelecimento Agroindustrial
+Serviço de Inspeção: Pesquisa
+Serviço de Inspeção: Registro de Produto
+Serviço de Inspeção: Registro/Relacionamento de Estabelecimento Agroindustrial
+Termo de transferência de responsabilidade de documentos
+Tributos: Declaração de Débitos e Créditos Tributários Federais - DCTF
+Tributos: Declaração de Imposto de Renda
+Tributos: Pagamento de Taxa de Incêndio
+Tributos: Pagamento de Taxas e Tributos
+Tributos: Recolhimento do FGTS
+Tributos: Recolhimento do PIS/PASEP
+Tributos: Restituição para Agente Arrecadador
+UERJ - Peticionamento: Manifestação de Usuário Externo
+UERJ: Revalidação de diploma
+Veículos: Baixa de Restrição
+Veículos: Baixa de Veículo
+Tipo do Documento:
+ 
+APR - Autorização de Aplicação e Resgate
+ATA - Conselho de Administração e Diretoria
+Abaixo-Assinado
+Acompanhamento de Processo Judicial
+Acordo
+Acordo de Cooperação Técnica
+Acordo de Nível de Serviço - PGE
+Acordo de nível de serviço
+Acórdão
+Acórdão Conselho Pleno
+Acórdão Recurso Voluntário
+Acórdão Recurso de Ofício
+Acórdão de 1ª instância administrativa
+Acórdão de Pedido de Revisão
+Afasta. de cargo para realiz. de Curso de Formação
+Agenda
+Alegações
+Alteração Qualitativa - PGE
+Alteração Quantitativa - PGE
+Alvará
+Alvará de Localização e Funcionamento
+Anais
+Anexo
+Anexo Apostilamento
+Anexo Cancelamento Declaração
+Anexo Certidão Pagamento
+Anexo Dissolução Conjugal
+Anexo Doação/Cessão/Usufruto/fideicomisso
+Anexo Herança Extrajudicial
+Anexo Herança Judicial
+Anexo Revisão de Cálculo
+Anexo do Edital de Leilão (Listagem de Veículos)
+Anotação
+Anteprojeto
+Anuidade
+Anulação de Empenho
+Análise de local. espacial de ativ./empreendimento
+Análise técnica complementar sobre criação de RPPN
+Análise técnica preliminar para criação de RPPN
+Apartado
+Aplicações
+Apostila
+Apostila - SEPM
+Apostila de Designação de Servidor
+Apostila de Exoneração de Servidor
+Apostila de Nomeação Composta de Servidor
+Apostila de Nomeação de Servidor
+Apostila de revalidação de diploma
+Apresentação
+Aprovação
+Apuração de Clonagem de Veículo Apreendido
+Apólice
+Arquivo
+Arrolamento das Existências Físicas - Almoxarifado
+Arrolamento dos Bens Móveis
+Ata
+Ata Correicional
+Ata Saneadora CGE/CRE
+Ata da CGFUSPOM
+Ata da Comissão de Adicional de Qualificação
+Ata de Avaliação de CRV
+Ata de Comitê
+Ata de Deliberação
+Ata de Deliberação - Declaração de revelia
+Ata de Deliberação /Prorroga prazo p/ defesa escr.
+Ata de Deliberação Exculpação da PJ
+Ata de Deliberação Indiciação da PJ
+Ata de Deliberação Motivação Testemunha Defesa
+Ata de Deliberação de Diligências
+Ata de Deliberação oitivas de testemunhas
+Ata de Oitiva-SEFAZ/CTCE
+Ata de Registro de Preços
+Ata de Registro de Preços - PGE
+Ata de Registro de Preços NI
+Ata de Reunião
+Ata de Reunião - NI
+Ata de Reunião - SEAP
+Ata de Reunião Interna
+Ata de Sessão Regulatória
+Ata de instalação e início dos trabalhos
+Ata de providências para instrução
+Ata de reunião para ultimação
+Ata do Conselho Técnico da DGS
+Atestado
+Atestado de Adiantamento de Despesas
+Atestado de Capacidade Técnica.
+Atestado de Locação/Permissão Onerosa de Imóveis
+Atestado de Pagamento pelo Uso Recursos Hídricos
+Atestado de Realização de Serviços
+Atestado de Realização de Serviços - PGE
+Atestado de Recebimento de Materiais
+Atestado de Recebimento de Materiais - PGE
+Atestado de Regularidade da Liquidação da Despesa
+Atestado de Vistoria do Corpo de Bombeiros
+Atestado de antecedentes criminais
+Atestado de recebimento de material de consumo
+Atestado de vinculação ao prog PROCON Fumaça Preta
+Atesto das existências de material de consumo
+Ativos
+Ato - DETRAN
+Ato Constitutivo
+Ato Constitutivo, Estatuto ou Contrato Social
+Ato Executivo de Decisão Administrativa
+Ato Sancionatório
+Ato de Absorção de Procurador - PGE
+Ato de Anulação de Ata de Registro de Preços
+Ato de Aposentadoria
+Ato de Aposentadoria de Servidor
+Ato de Autorização de Despesa
+Ato de Cessação de Designação de Servidor
+Ato de Concessão Adicional de Qualificação
+Ato de Concessão de Abono Permanência
+Ato de Concessão de Adicional de Qualificação
+Ato de Concessão de Auxílio Funeral
+Ato de Concessão de Licença Prêmio
+Ato de Concessão de Licença com Vencimentos p/ CF
+Ato de Concessão de Licença sem Vencimentos
+Ato de Designação de Comissão de Fiscalização
+Ato de Designação de Servidor
+Ato de Dispensa de Licitação
+Ato de Dispensa de Licitação - PGE
+Ato de Exoneração Término de Mandato - Cargo Comis
+Ato de Exoneração de Servidor
+Ato de Homologação de Licitação
+Ato de Inexigibilidade de Licitação
+Ato de Inexigibilidade de Licitação - PGE
+Ato de Inst. de Sind. e Des. de Com. Sindicância
+Ato de Inst. de Sindicância e Des. de Sindicante
+Ato de Nomeação Composta de Servidor
+Ato de Nomeação de Servidor
+Ato de Promoção
+Ato de Reconhecimento de Dívida
+Ato de Redução de Carga Horária
+Ato de Reforma
+Ato de Remoção de Servidor
+Ato de Rescisão de Termo de Ocupação
+Ato de Reserva Remunerada
+Ato de Revogação de Ata de Registro de Preços
+Ato de Tornar sem Efeito Exoneração de Servidor
+Ato de Tornar sem Efeito Nomeação Composta
+Ato de Tornar sem Efeito Nomeação de Servidor
+Ato de abertura do plano de contratações anual
+Ato de anulação de ato administrativo
+Ato de concessão de pensão
+Ato de designação de servidor
+Ato de homologação de certidão de tempo de contrib
+Ato de investidura de servidor
+Ato de investidura do servidor
+Ato de reassunção de servidor
+Atos de Criação, Atas e Relatórios
+Auto
+Auto Susp. Cautelar Parcial/Total das Ativididades
+Auto constatação descump. proced. res. legal flor.
+Auto de Apreensão Cautelar INEA
+Auto de Constatação
+Auto de Embargo Cautelar de Obra - INEA
+Auto de Infração
+Auto de Infração - INEA
+Auto de Infração Sanitária
+Auto de Infração de Trânsito - DETRAN
+Auto de Interdição Cautelar de Estabelecimento
+Auto de Leilão
+Auto de Multa Sanitária
+Auto de Susp. Cautelar de Venda/Fab. de Produto
+Auto de const. de des. de proced. relat. a reserv.
+Auto de constatação de infração ambiental.
+Auto de infração ambiental
+Auto de infração na lavratura
+Auto de infração na retificação
+Auto de interdição de imóvel do Estado
+Auto de medidas cautelares ambientais
+Autodeclaração de opção por trabalho presencial
+Autodeclaração de saúde
+Autor. de func. de curso educ. profis. tec. prese
+Autor. de func. na modali. de Edu. de Jovens e Adu
+Autori p/ ativ didática em unidades de conservação
+Autoriz. de pesq. científica nas unid. de conserv.
+Autorização
+Autorização ambiental
+Autorização ambiental comunicada
+Autorização ambiental func. cont. de empr. ou ativ
+Autorização de Chamamento Público
+Autorização de Ensino Bilíngue ou Internacional
+Autorização de Fornecimento - CODIN
+Autorização de Fornecimento de Material - PGE
+Autorização de Serviços
+Autorização de categ. uso e manejo cativeiro
+Autorização de exposição espec. fauna silvestre
+Autorização de pesquisa no CPRJ
+Autorização de serviço preliminar de recapeamento
+Autorização de transferência de propriedade de veículo (ATPV-e)
+Autorização de transporte espéc. fauna silvestre
+Autorização extensão universitária nas UCs
+Autorização para Credenciamento
+Autorização para func. de modal. de Educ. a distân
+Autorização para funcionamento de Curso Superior
+Autorizo de Cessão de Servidor
+Autorizo de Descentralização do Servidor
+Autorizo de Despesas
+Autuação
+Avaliação
+Avaliação de solicitação rel. à auxílios e bolsas
+Averbação de Tempo de Serviço
+Aviso Prévio de Licitação Restrita a Pré-Qualifica
+Aviso amigável
+Aviso de Leilão
+Aviso de Leilão publicado em Diário Oficial
+Aviso de Leilão publicado em Jornal de Grande Circ
+Aviso de Recebimento
+Ações
+Balancete
+Balanço
+Balanço Patrimonial e Demonstrações Contábeis
+Banco de horas
+Banner de divulgação de unidades de conservação
+Base de Conhecimento
+Base/banco de dados de cobrança pelo uso da água
+Base/banco de dados de informações geoespaciais
+Base/banco de dados gestão informa. e serv. labor.
+Base/banco de dados ident. usuários rec. Hídricos
+Bens Patrimoniais - Termo de Conferência Anual
+Bilhete
+Boletim
+Boletim de Avaliação de Desempenho
+Boletim de Gestão Contratual
+Boletim de análise da qualidade das águas
+Boletim de medição de opacidade
+Boletim de subscrição de ações
+Boletim informação sobre balneabilidade de praias
+Boleto
+Boleto da taxa a ser devolvida
+C.I. de encam. de custo de capacitação de servidor
+C.I. de solicitação de capacitação
+CADEG
+CI Oitiva Testemunha Servidor
+CI de Solicitação de Prorrogação de Prazo da CIP
+CI de instalação e início dos trabalhos
+CI de solicit. de inf. e serviç. de manut. predial
+CI de solicitação de designação de assist. técnico
+CI de solicitação de prorrogação de prazo da CPAR
+CND Falência, Concordata e Recuperação Judicial
+CND PGE
+CND SEFAZ
+CND Trabalhistas TST
+CNH
+CNH (PCD ou Autista habilitado)
+CNH (Representante Legal ou condutor autorizado)
+CNPJ
+CPF
+CRC (válido e atualizado)
+CRLV
+CRP
+CRV
+Cad. dos Resp. pela origem/causa do dano ao erário
+Cadast. de fornec. das unid. escolares e diretoria
+Cadastro EDOFS- Procuração do Responsável
+Cadastro EDOFS-Acordo de Intercâmbio
+Cadastro EDOFS-Formulário Dados dos Responsáveis
+Cadastro EDOFS-Ofício de Solicitação de Cadastro
+Cadastro de Contatos
+Cadastro de Pessoa Física - CPF
+Cadastro do Responsável
+Cadastro do Responsável - Almoxarifado
+Cadastro do Responsável - Bens Móveis
+Cadastro do Responsável - Deliberação TCE
+Caderno de gestão ambiental municipal
+Calendário
+Canhoto
+Capital ou Patrimônio Líquido Mínimo
+Carta
+Carta Consulta
+Carta Consulta II
+Carta Instrutor de Próprio Punho
+Carta consulta de enquadramento em incentivos fisc
+Carta convite capacitação em educação ambiental
+Carta de Apresentação Prestação de Contas
+Carta de Intenção de Patrocínio
+Carta de abertura de conta salário e corrente
+Carta de acesso ao sistema de licenciamento
+Carta de anuência
+Carta de autor. de realização de consulta pública
+Carta de convite membros comitês CERHI
+Carta de convite para curso de capacitação
+Carta de informação andamento de projeto ambiental
+Carta de informação ref. gest. part. das águas
+Carta de informação sobre educação ambiental
+Carta de notificação alterações em projeto ambient
+Carta de orienta. técnica licenciamento municipal
+Carta de quitação
+Carta de solicitação acesso sist. de licenciamento
+Carta de solicitação de dados do município
+Carta definição competências licenc. amb. munic.
+Carta inf. anál. aforamento área sob cons./ocup.
+Carta informa. habilitação licenciamento municipal
+Carta resposta questionamentos licencia. municipal
+Carta sol. de just. de inadimplemento de contrato
+Carta sol. doc. aforam. área sob consulta/ocupação
+Carta solic. inform. refer. gestão particip. Águas
+Carta solici. docum. credenciamento de laboratório
+Carta solici. parceria projetos educação ambiental
+Carta solicit. vinculação empresa ao PROCON-ÁGUA
+Carta/CODERTE/PRES
+Carta/Declaração de Apoio (empresa patrocinadora)
+Cartaz
+Cartaz de consulta pública para criação de UC
+Carteira
+Carteira de Identidade Nacional - CIN
+Carteira de acesso ao bonde
+Cartilha de divulgação das unidades de conservação
+Cartão
+Certidão
+Certidão Administrativa
+Certidão Decurso do Prazo
+Certidão Neg. Exp. Cartório Distribuições Cíveis
+Certidão Neg. do Reg. de Dist. e Exec. Criminais
+Certidão Negat.-Pena. em Proc. Adm Discip. CRE/CRE
+Certidão Negativa Proc. Adm. Disciplinar CGE/CRE
+Certidão Negativa da Vara de Execução Penal
+Certidão Negativa de Falência ou Concordata
+Certidão Posit.-Penal. em Proc. Adm Discip.CGE/CRE
+Certidão Positiva Proc. Adm. Disciplinar CGE/CRE
+Certidão RFB
+Certidão SEFAZ
+Certidão União
+Certidão ambiental
+Certidão ambiental – INEA
+Certidão da Prefeitura
+Certidão da Procuradoria da Dívida Ativa (PGE)
+Certidão de Conclusão
+Certidão de Contato CGE/CRE
+Certidão de Débitos Trabalhistas MTPS
+Certidão de Envio de Notificação
+Certidão de Escolaridade
+Certidão de Identificação Civil
+Certidão de Inteiro Teor de Veículo
+Certidão de Intimação Cumprida
+Certidão de Não Compare. p/ Prestar Oitiva CGE/CRE
+Certidão de Regularidade Fiscal (SEFAZ-RJ)
+Certidão de Regularidade Fiscal PGE
+Certidão de Regularidade Previdenciária
+Certidão de Servidor Não Citado CGE/CRE
+Certidão de Tempestividade
+Certidão de Tempo de Contribuição
+Certidão de Tempo de Contribuição-Verso
+Certidão de Trânsito em Julgado
+Certidão de Trânsito em Julgado Administrativo
+Certidão de ausência de servidor
+Certidão de férias e licenças-prêmio não gozadas
+Certidão de nada consta
+Certidão de nada consta com Apontamento
+Certidão de nada consta sem Apontamento
+Certidão de pagamento ITBI
+Certidão de pagamento de tributo
+Certidão de publicação de edital de chamada
+Certidão de registro de imóvel
+Certidão de tempo de afastamento eleitoral
+Certidão de tempo de contribuição/ serviço
+Certidão do Estado
+Certidão para fins de recebimento de PASEP
+Certidões Neg. de Débitos Estaduais
+Certidões Neg. de Débitos Federais
+Certidões Neg. de Débitos Federais INSS
+Certidões Neg. de Débitos Municipais
+Certidões Neg. de Débitos Trabalhistas
+Certidões Negativa de Débitos em Dívida Ativa
+Certidões Negativas do FGTS
+Certif. de reserva de disponib. hídrica (Out Prev)
+Certif. de uso insignificante de recursos hídricos
+Certificado
+Certificado Aprovação Corpos de Bombeiros
+Certificado Conclusão de Curso Médio
+Certificado Curso Diretor Geral
+Certificado Curso Diretor de Ensino
+Certificado Curso Superior
+Certificado Curso de Instrutor
+Certificado Curso de Instrutor Especializado
+Certificado Pós-Graduação
+Certificado ambiental aprovação reserva legal
+Certificado ambiental cadastro soltura anim. silv.
+Certificado ambiental municipal
+Certificado de Conclusão
+Certificado de Registro Cadastral
+Certificado de Registro Mineral
+Certificado de Registro e Licenciamento de Veículo
+Certificado de Regularidade do FGTS – CRF
+Certificado de controle de agrotóxicos
+Certificado de credenciamento de laboratório
+Certificado de participação em curso/evento
+Certificado de registro medição emis. veic.
+Certificado de registro para controle de fauna
+Certificado de reserva particular de patr. natural
+Checklist
+Cheque
+Citação por Edital - SEAP
+Citação-SEFAZ/CTCE
+Ciência
+Ciência de Ocorrências
+Com. int. solic. infor. refer. recursos hídricos
+Com. inter. de infor. referente recursos hídricos
+Comp. de Resid. (Representante Legal/Condutor Aut)
+Comprov. de Aptidão p/ Desempenho de Atividade
+Comprov. entr. mat. refer. credenc. de laboratório
+Comprovante
+Comprovante de Comunicação - Dec
+Comprovante de Conta Bancária
+Comprovante de Encerramento da Conta do projeto
+Comprovante de Endereço
+Comprovante de Pagamento Indevido/Maior
+Comprovante de Pagamento Taxa
+Comprovante de Recolhimento do Saldo Residual
+Comprovante de Residência
+Comprovante de leilão de material de Consumo
+Comprovante de publicação da disponibilidade de material de consumo
+Comprovante do Representante Legal
+Comprovante inscrição e de situação cadastral
+Comprovantes dos Demons. de Pagamento/Contracheque
+Comprovação Conhecimento das Inf. e Condições
+Comprovação da Capacitação Técnico Operacional
+Comprovação de regularidade ambiental
+Comun. inter. divulgação consulta públ. criação UC
+Comun. inter. inclu. técn. análise qualidade do ar
+Comun. inter. solic. avaliação da qualidade do ar
+Comun. inter. solic. parc. proj. relat. educ. amb.
+Comun. inter. solicit. acesso siste. licenciamento
+Comun. inter. solicit. infor. andam. proj. ambien.
+Comunicado
+Comunicado de Afastamento de Procurador - PGE
+Comunicado de Férias - PGE
+Comunicado de regularização de uso de recursos híd
+Comunicação de Auditoria (CA)
+Comunicação de Licenciamento Sanitário
+Comunicação de nova Irregularidade CGE/CRE
+Conciliação Bancária
+Conciliação Bancária - SEPM
+Conclusivo/Promoção
+Confirmação
+Consulta
+Consulta Sistêmica
+Conta
+Contestação
+Conteúdo de Mídia
+Contracheque
+Contrarrazões
+Contrato
+Contrato NI
+Contrato Social
+Contrato Social ou Alteração Contratual
+Controle Mensal do Gestor de Bens Móveis/Unidade
+Controle Mensal dos Bens Móveis
+Controle Patrimonial
+Controle de Pontos Função Previstos e Realizados
+Convenção
+Convite
+Convite/Convocação CGE/CRE
+Convocação de Sindicância
+Convênio
+Convênio de Cooperação Técnica
+Convênio de Cooperação Técnica NI
+Correspondência
+Correspondência Interna - Deliberação TCE 280/281
+Correspondência Interna - NA
+Correspondência Interna - NA (Concessão Fomento)
+Correspondência Interna - NI
+Correspondência interna de comunicação de acidente
+Correspondência interna de informação sobre operações do bonde de Santa Teresa
+Correspondência interna de relação de contratos em vigor
+Correspondência interna de solicitação de doação d
+Correspondência interna de solicitação de informação para cumprimento de determinação judicial
+Correspondência interna de solicitação de inventário de bens permanentes.
+Cotação
+Crachá
+Credencial
+Credencial Diretor Ensino
+Credencial do Diretor Geral
+Cronograma
+Cronograma de adequações estruturais sanitária
+Cronograma de execução de atividades
+Cronograma físico financeiro de exercício da obra
+Croqui
+Créditos
+Currículo
+Currículos, Dipl. e Contr. Trab. de Profissionais
+Cálculo
+Cálculo de Diferença de Diárias
+Cálculo de Diárias
+Cédula
+Cédula de Identidade
+Cédula de crédito bancário
+Código, Decreto, Deliberação, Estatuto, Instrução Normativa, Norma, Organograma, Portaria, Regimento
+Cópia Planta Baixa do Imóvel
+Cópia RAIS Empresa ou CTPS Corpo Funcional
+Cópia do CRLV
+Cópia do Contrato de Locação ou Escritura
+Cópia do Laudo do PPRA
+Cópia dos Documentos Fiscais e Recibos
+DARJ
+DARJ – Doc. Arrecadação Comprovando Recolhimento
+DARJ – Documento de Arrecadação a ser retificado
+DUDA - Documento Único do DETRAN Arrecadação
+Dacon
+Dados Bancários
+Dados do Consultor
+Dados/Relatórios do Programa de Prevenção de Acide
+Debênture
+Dec. de restri. ao porte de arma por deter. judici
+Dec. de restri. ao porte de arma por recom. médica
+Decisão
+Decisão Administrativa
+Decisão Monocrática de Segunda Instância Administ.
+Decisão da Autoridade Julgadora
+Decisão de Arquivamento de Investigação Preliminar
+Decl. de Paridade de Reg. de Saldo de Bens Patrimo
+Decl. de Paridade de Reg. de Saldo de Bens em Almo
+Decl. de compromisso de Implantação de Programa
+Decl.não.ajuiza.aç.jud.p.conv.fér.lic.prêm.em pec.
+Decla. de dados p/ Remanej. de Servidor por Permu.
+Decla. de respon. de afasta. para pleito eleitoral
+Declar. aprese. doc. credenciamento de laboratório
+Declar. capacid. manutenção de animais silvestres
+Declar. de resp. de entr. da cert. de regist. da c
+Declaração
+Declaração Adequação LDO
+Declaração Discriminada dos Débitos - ANEXO II
+Declaração Diversa
+Declaração Entrega Certidão de Reg. de Candidatura
+Declaração Estimativa de Receita
+Declaração Lei 8666-Art 34, da lei nº 11.488
+Declaração Não Afetação Metas Fiscais
+Declaração Recolhimento Contrib. Previdenciária
+Declaração Resp Entrega CRC_Afastamento eleitoral
+Declaração Simples Nacional
+Declaração anual do contador
+Declaração de Atendimento ao Art 4º-DECRETO 47.242
+Declaração de Atividades a Exercer
+Declaração de Autenticidade Documentos Fiscais
+Declaração de Certificação de Despesa
+Declaração de Ciência
+Declaração de Comparecimento em Capacitação
+Declaração de Compromisso (somente p/ provisória)
+Declaração de Disp. de Canteiros, Máquinas, Equip.
+Declaração de Disponibilidade Orçamentária
+Declaração de Elaboração Independente de Proposta
+Declaração de Execução de Serviços
+Declaração de Impacto Financeiro e Orçamentário
+Declaração de Inexistência de Penalidade
+Declaração de Não Escravidão
+Declaração de Possível Conflito de Interesse
+Declaração de Programa de Compliance
+Declaração de Próprio Punho
+Declaração de Recebimento de Materiais
+Declaração de Residência
+Declaração de Vaga para Remanejamento de Servidor
+Declaração de Vantagem e Economicidade
+Declaração de Vínculo
+Declaração de acumulação de cargo
+Declaração de acumulação de função
+Declaração de beneficiário
+Declaração de destinação final
+Declaração de entrega de documentos de integridade
+Declaração de função de magistério
+Declaração de informação uso de recursos hídricos
+Declaração de manutenção condições de integridade
+Declaração de não acumulação de cargo
+Declaração de ordenador de despesas
+Declaração de permanência em exercício
+Declaração de revelia
+Declaração de tempo de contribuição ao RGPS
+Declaração de Revelia
+Declaração do Ordenador de Despesa
+Declaração do Ordenador de Despesa Executante
+Declaração do Titular da Unidade - Bens Móveis
+Declaração do Trabalho Infantil
+Declaração do(s) Proprietário(s) do Centro Ensino
+Declaração negativa de beneficiário
+Declaração para Atendimento a Lei 8666
+Decreto
+Decreto Classificação REURB
+Decreto de Autorização, Ato de Registro
+Decreto de Cessação de Designação de Servidor
+Decreto de Designação de Servidor
+Decreto de Exoneração de Servidor
+Decreto de Nomeação Composta de Servidor
+Decreto de Nomeação de Servidor
+Decreto de Tornar Sem Efeito Nomeação Composta
+Decreto de Tornar Sem Efeito Nomeação de Servidor
+Decreto de Tornar sem Efeito Exoneração
+Defesa
+Defesa - SEAP
+Defesa Prévia
+Defesa Prévia / Real Infrator
+Degravacão
+Deliberação
+Deliberação - NI
+Deliberação Final da Diretoria-Faperj
+Deliberação de Diretoria BBP - Faperj
+Deliberação de Diretoria-Faperj
+Demonst. da Mov. dos Bens em Almox. no Exercício
+Demonst. desp. adiant. ou transf. a terc.
+Demonst. orç. financ. adiant. ou transf. a terc
+Demonstrativo
+Demonstrativo Anual de Bens Patrimoniais
+Demonstrativo Mensal das Operações - DMO
+Demonstrativo Mensal das Operações - PGE
+Demonstrativo Orçamentário Financeiro
+Demonstrativo da Mov. dos Bens Móveis Bruto/PGE
+Demonstrativo da Mov. dos Bens Móveis Líquidos/PGE
+Demonstrativo da Mov. dos Bens Patri. no Exercício
+Demonstrativo da quantificação do dano ao erário
+Demonstrativo de Imóveis não Inventariados
+Demonstrativo de Movimentação dos Bens Moveis
+Demonstrativo de Val. dos Descontos Previdenciário
+Demonstrativos de Pagamento/Contracheques
+Demonstração
+Demonstração Média Reprovação Prático
+Demonstração Média Reprovação Teórico
+Demonstração do Resultado do Exercício
+Denúncia
+Depoimento
+Depoimento sobre acidente de bonde
+Desp. de análise de requerim. de docum. do SELCA
+Desp. de dispon. docum. SELCA com pendên. finan.
+Desp. de indefer. dos instrum. de contr. Ambiental
+Desp. de solici. de avali. de pare. técn. ambien.
+Desp. de solicitação de vistoria técnica ambiental
+Desp. desvinculação de multas de veículo leiloado
+Desp. infor. admin. finan. relat. Com. Bac. Hidro.
+Desp. resp. cancel. doc. refer. à infr. Ambiental
+Desp. solic. ajustes resp. demanda fiscal. ambient
+Desp. solic. anál. demanda fiscalização ambiental
+Desp. solic. anál. doc. refer. à infra. ambiental
+Desp. solic. anál. rec. impug. infração ambiental
+Desp. solic. aval. dispo. docum. SELCA pend. fin.
+Desp. solic. emis. docum. refer. à infr. amb.
+Desp. solic. infor. referente recursos hídricos
+Desp. solic. manif. sobre instr. contr. Ambiental
+Desp. solic. realiz. vist. averig. infr. Ambiental
+Desp. sug. sobre cancel. doc. refer. à infr. amb.
+Desp. verif. pagam. de auto de infração ambiental
+Despacho
+Despacho Ordinatório
+Despacho Sobre Autorização para Lavratura de Termo
+Despacho de Adiantamento de Despesas
+Despacho de Análise da Pesquisa de Preços
+Despacho de Análise da Pesquisa de Preços - PGE
+Despacho de Análise da Prestação de Contas
+Despacho de Análise de Ata de Registro de Preços
+Despacho de Análise de Estudo Técnico Preliminar
+Despacho de Análise de Minuta de TR
+Despacho de Análise de Minuta do Contrato
+Despacho de Análise de Reembolso Financeiro
+Despacho de Análise de Situação de Ocupação
+Despacho de Análise de Solicitação de Viagem
+Despacho de Análise sobre Aquisição ou Contratação
+Despacho de Análise sobre Aquisição/Contratação
+Despacho de Análise sobre Auditoria GPS
+Despacho de Aprovação de Orçamento Estimado
+Despacho de Autorização Governamental
+Despacho de Autorização de Auxílio Funeral
+Despacho de Autorização de Designação
+Despacho de Autorização de Emissão e Execução - PD
+Despacho de Autorização de Exoneração
+Despacho de Autorização de Férias
+Despacho de Autorização de Gozo de Licença Prêmio
+Despacho de Autorização de Nomeação
+Despacho de Autorização de Nomeação Composta
+Despacho de Autorização para Emissão de PD
+Despacho de Classificação de Despesas
+Despacho de Concessão de Férias
+Despacho de Correção de Solicitação de Combustível
+Despacho de Decisão Sobre Recurso
+Despacho de Decisão em Processo Administrativo
+Despacho de Decisão sobre Impugnação do Edital
+Despacho de Decisão sobre Pedido de AEC
+Despacho de Decisão sobre Pedido de RI
+Despacho de Decisão sobre Pedido de Ressarcimento
+Despacho de Encaminhamento de Documento
+Despacho de Encaminhamento de Prestações de Contas
+Despacho de Encaminhamento de Processo
+Despacho de Encaminhamento de Processo - ASSJUR
+Despacho de Encaminhamento de Processo - PGE
+Despacho de Formalização de Liquidação de Despesa
+Despacho de Indeferimento de Pagamento de Auxílio
+Despacho de Informação sobre Correção do DL
+Despacho de Informação sobre Pagamento de Auxílio
+Despacho de Instauração de Investigação Preliminar
+Despacho de Início de Investigação
+Despacho de Justificativa sobre Vistoria
+Despacho de Numeração de Decreto
+Despacho de Pagamento de Guia/Impugnação - ITD/DC
+Despacho de Prorrogação de Investigação Preliminar
+Despacho de Publicação
+Despacho de Reprovação de Combustível
+Despacho de Reprovação de Designação
+Despacho de Reprovação de Exoneração
+Despacho de Reprovação de Nomeação
+Despacho de Reprovação de Nomeação Composta
+Despacho de Reserva Orçamentária e Financeira
+Despacho de Solicitação de Abertura de Ação Fiscal
+Despacho de Solicitação de Adequação de Apostila
+Despacho de Solicitação de Adequação de Designação
+Despacho de Solicitação de Adequação de Exoneração
+Despacho de Solicitação de Adequação de Nomeação
+Despacho de Solicitação de Ajustes no Contrato
+Despacho de Solicitação de Análise - AEC
+Despacho de Solicitação de Análise Jurídica
+Despacho de Solicitação de Análise da NAD
+Despacho de Solicitação de Análise da NE
+Despacho de Solicitação de Análise de Designação
+Despacho de Solicitação de Análise de Exoneração
+Despacho de Solicitação de Análise de Normativo
+Despacho de Solicitação de Análise de Pedido
+Despacho de Solicitação de Análise de Pedido de RI
+Despacho de Solicitação de Apostilamento
+Despacho de Solicitação de Aquisição/Contratação
+Despacho de Solicitação de Auditoria via Rádio
+Despacho de Solicitação de Autorização de PD
+Despacho de Solicitação de Bilhete Aéreo
+Despacho de Solicitação de Cancelamento de DL
+Despacho de Solicitação de Combustível
+Despacho de Solicitação de Correção da DC
+Despacho de Solicitação de Correção de DL
+Despacho de Solicitação de Elaboração de TR
+Despacho de Solicitação de Elaboração do Termo
+Despacho de Solicitação de Encerramento de Folha
+Despacho de Solicitação de Exoneração
+Despacho de Solicitação de Liquidação de Despesa
+Despacho de Solicitação de Localização via Rádio
+Despacho de Solicitação de Mapeamento de Processos
+Despacho de Solicitação de Nomeação
+Despacho de Solicitação de Nomeação Composta
+Despacho de Solicitação de Número ISSI
+Despacho de Solicitação de Parecer jurídico
+Despacho de Solicitação de Prestações de Contas
+Despacho de Solicitação de Registro de Serviço 190
+Despacho de Solicitação de Registros
+Despacho de Solicitação de Reserva Orçamentária
+Despacho de Solicitação de Vistoria
+Despacho de Verificação de Demanda - SIGA
+Despacho de análise de admissibilidade de autocomp
+Despacho de análise de habilitação jurídica
+Despacho de análise de qualificação econômico-fina
+Despacho de análise de qualificação técnica
+Despacho de análise de regularidade fiscal/trabalh
+Despacho de atesto de aquisição material/serviço
+Despacho de atesto de aquisição material/serviço - SECEC
+Despacho de autor. para emissão de docum. do SELCA
+Despacho de autoriz. de apostilamento de nomeação
+Despacho de concessão
+Despacho de deferimento da Consignatária
+Despacho de deferimento de projeto de arquitetura
+Despacho de especificações técnicas
+Despacho de homologação de autocomposição
+Despacho de informação referente recursos hídricos
+Despacho de informação sobre projeto ambiental
+Despacho de liquidação das despesas
+Despacho de reprov. de apostil. de nomeação compos
+Despacho de reserva orçamentária e financeira
+Despacho de resposta à sol. de classif. de Tip Doc
+Despacho de retificação de dados
+Despacho de solic. de ajuste de parecer técn. amb.
+Despacho de solic. de análise técn. amb. Conjunta
+Despacho de solic. de elabor. parecer técn. amb.
+Despacho de solicit. de autoriz. para licitação
+Despacho de solicit. de nota de autoriz. de despes
+Despacho de solicitação de análise de designação
+Despacho de solicitação de análise de exoneração
+Despacho de solicitação de análise de nomeação
+Despacho de solicitação de assin. de doc. do SELCA
+Despacho de solicitação de designação de servidor
+Despacho de solicitação de documento
+Despacho de solicitação de encerramento de process
+Despacho de solicitação de manifestação
+Despacho de solicitação de publicação de matéria em Diário Oficial
+Despacho de valoração de infração ambiental
+Despacho do Relator
+Despacho informação de vinculação ao PROCON- ÁGUA
+Despacho redirecion. demanda fiscaliz. ambiental
+Despacho resp. demanda sobre fiscaliz. Ambiental
+Despacho sobre Adjudicação do Contratado
+Despacho sobre Alteração ou Cancelamento de Férias
+Despacho sobre Análise Prévia - TCE
+Despacho sobre Análise de Normativo
+Despacho sobre Apresentação de Recurso
+Despacho sobre Arquivamento do Processo
+Despacho sobre Autorização de Despesa
+Despacho sobre Concessão de Licença Prêmio
+Despacho sobre Correção de Combustível
+Despacho sobre Edital de Licitação - TCE
+Despacho sobre Emissão de Guia de ITD
+Despacho sobre Envio de Declaração - ITD/DC
+Despacho sobre Envio de Folha Suplementar - ITD/DC
+Despacho sobre Homologação de Contratação
+Despacho sobre Pedido de Reajuste Contratual
+Despacho sobre Pregão Eletrônico
+Despacho sobre Questionamentos Acerca do Edital
+Despacho sobre Registro de Serviço 190
+Despacho sobre Registros de Radiocomunicação
+Despacho sobre Resposta a Solicitação de Imóvel
+Despacho sobre Resposta à Consulta
+Despacho sobre Situação de Ocupação do Imóvel
+Despacho sobre Solicitação de Auditoria via Rádio
+Despacho sobre Solicitação de Autorização de PD
+Despacho sobre Solicitação de Imagens
+Despacho sobre Solução de Pendências Cadastrais
+Despacho sobre Suplementação de Crédito
+Despacho sobre alteração de natureza de receita
+Despacho sobre análise de incorporação de servidor
+Despacho sobre atendimento à solicitação de alteração orçamentária
+Despacho sobre avaliação de servidor
+Despacho sobre impugnação de infração ambiental
+Despacho sobre instauração de PAD
+Despacho sobre penalização de PAD
+Despacho sobre recurso de infração ambiental
+Despacho sobre reforma de imóvel do Estado
+Despacho solic. autori. para emissão de doc. SELCA
+Despachos do Governador
+Despachos do Secretário
+Diagnóstico
+Diploma
+Diploma de Conclusão
+Diretriz
+Disponibilidade em Estoque
+Dispositivo Aparador de Linha
+Dispositivo de Fixação de Transporte de Cargas
+Dispositivo de Proteção Pernas e Motor
+Dissertação
+Distrato
+Distribuição Aluguel Social e Diploma - PGE
+Distribuição Comum - PGE
+Distribuição Detran Acervo 2308 - PGE
+Distribuição Detran Acervo 3808 - PGE
+Diário
+Doc. de averbação dos instru. de controle ambient.
+Doc. de identificação dos sócios com CPF
+Docs. de Exp. (Contr, CNES e Ates. Cap. Técnica
+Documento
+Documento Experiência Área de trânsito
+Documento TESTE COGSEI
+Documento de Apresentação de Demanda
+Documento de Atualização de Pensão (DAP)
+Documento de Comunicação
+Documento de Formalização da Demanda - RIOPREV
+Documento de Formalização da Demanda-UEZO
+Documento de Formalização de Demanda
+Documento de Oficialização da Demanda
+Documento de Oficialização de Demanda
+Documento de Requisição de Contratação
+Documentos diversos
+Documentos fiscais
+Dossiê
+Débitos
+E-mail
+EFD
+Edital
+Edital Externo
+Edital Sucata Aproveitável
+Edital Sucata Inservível
+Edital Veículo Conservado
+Edital convocação referente à infração ambiental
+Edital de Chamada CGE/CRE
+Edital de Chamamento Público
+Edital de Concurso
+Edital de Convocação do Servidor
+Edital de Licitação
+Edital de Licitação NI
+Edital de Seleção
+Edital de Seleção NI
+Edital de citação do servidor
+Edital de eliminação de documentos
+Edital de intimação apresentação de defesa escrita
+Edital de intimação da PJ (Notificação Prévia)
+Edital de regula. do proc. seletivo para Bolsa-Aux
+Edital de regulamentação de ingresso de aluno
+Edital de regulamentação de reingresso de aluno
+Edital de regulamentação de transferência externa
+Edital de regulamentação de transferência interna
+Embargos
+Emenda
+Ementa de Curso
+Encaminhamento de Material
+Errata
+Escala de Férias
+Escala de serviço
+Esclarecimento
+Esclarecimentos TCE
+Escritura
+Escritura de compra e venda de imóvel
+Escritura de desapropriação de imóvel
+Escrituração
+Especificação Técnica
+Especificação Técnica - PGE
+Especificações de Objeto
+Estatuto
+Estatuto Consolidado e Registrado
+Estratégia
+Estudo
+Estudo Técnico Preliminar
+Estudo Técnico Preliminar - CECIERJ
+Estudo Técnico Preliminar - PGE
+Estudo Técnico Preliminar - SEPM
+Estudo de Verificação de Economicidade
+Estudo de viabilidade
+Estudos de Impacto Financeiro
+Estudos de informações de indicadores ambientais
+Exame
+Exposição
+Exposição de Motivos
+Extrato
+Extrato de Acordo de Cooperação Técnica
+Extrato de Prorrogação de Prazo
+Extrato de Termo de Credenciamento de Consignação
+Extrato de efetivação de despesas
+Extratos
+Extratos da Conta Corrente
+Faperj: Pedido de Cancelamento de Auxílio
+Faperj: Pedido de Cancelamento de Bolsa
+Fatura
+Fatura de pag. aluguel loj., esp., bilhe. e estac.
+Faturamento
+Ficha
+Ficha Individual de Bem Patrimonial
+Ficha Liberação para Remanejamento de Servidor
+Ficha de Análise Prel. Adicional de Qualificação
+Ficha de Avaliação Esp de Desempenho - Anexo I
+Ficha de Avaliação Individual-Faperj
+Ficha de Avaliação Per de Desempenho/GER-Anexo III
+Ficha de Avaliação Per. de Desempenho - Anexo II
+Ficha de Avaliação de Desempenho de Servidor - SES
+Ficha de Cadastro Funcional
+Ficha de Descri. de Bem Móvel- Inventário Notebook
+Ficha de Descri. do Bem Móvel- Desktop c/ Monitor
+Ficha de Req. de Inscrição para Membro do Conselho
+Ficha de Vistoria Téc.-Dados Físicos/Cartográficos
+Ficha de Vistoria Técnica
+Ficha de atenuantes e agravantes ambientais
+Ficha de avaliação de desempenho de servidor
+Ficha de avaliação periódica de desempenho
+Ficha de cadastro para concessão de crédito
+Ficha de controle de estoque de material de consumo
+Ficha de informação de cobrança pelo uso da água
+Ficha de informações de imóvel do Estado
+Ficha de inspeção de bonde
+Ficha de registro de acidente de bonde
+Ficha de registro de dependentes de servidor
+Ficha de registro de vistoria de praias
+Ficha de solicitação de material de consumo
+Fluxograma
+Folder
+Folder/folheto de divulgação de Ucs
+Folder/folheto de educação ambiental
+Folha
+Folha Suplementar - ITD
+Folha de Aluguel
+Folha de Ponto Individual/Folha de Frequência
+Folheto
+Form de comun de adesão a ata de registro de preço
+Form. Inclus Pauta nas reuniões Téc. e Ord. CIB-RJ
+Form. anál. técn. prelim. aver. reser. legal flor.
+Form. apres. doc. para evol. func. modal. promoção
+Form. autoriz. retirada de documento laboratoriais
+Form. av. de risco p/ uso de veículo blindado
+Form. aval. situacional do munic. à legis. Vigente
+Form. cad. vis. ínt. entre pessoas priv. de liber.
+Form. cadast. concessão guarda animais silvestres
+Form. contr. solic. refer. localização geográfica
+Form. de Cadast. de Usuários no Sistema PCA RJ
+Form. de Identificação de Tipologia Documental
+Form. de Solicitação de Restituição de Indébito
+Form. de alt. de dados na Carteira Nacional de Hab
+Form. de análise de reconsid. de avalia. de desem
+Form. de análise de reconsid. de avalia.-DEGASE
+Form. de cadast. de prof. de clínica médica e psic
+Form. de cadastro de usuário para acesso a sistema
+Form. de identificação de tipologia documental
+Form. de reconsid. de nota de aval. periód. desem.
+Form. de reiteração de manifes. externa ambiental
+Form. de sol. de passagem aérea ou terrestre
+Form. de solic. de consulta jurídica trabalhista
+Form. de vinculação ao prog. PROCON Fumaça Petra
+Form. detalhamento de dívida da administ. indireta
+Form. impugnação list. serv. habil. prog. ou prom.
+Form. solic. cessão/disposição de servidor EPPGGPO
+Form. solic. isenção IPVA – pessoa com deficiência
+Form. solic. parecer de local. imóvel em rel. à UC
+Formul. avaliação certificação ambiental municipal
+Formul. de análise de doc. para habilit. de pensão
+Formul. de verificação de documentos p/ pagamento
+Formulário
+Formulário - Despesas de Transportes
+Formulário Concessão de Aposentadoria
+Formulário Deliberação 164
+Formulário I - Apresentação da Prestação de Contas
+Formulário I Dispensa de Interposição de Rec - PGE
+Formulário II - Identificação da Unidade
+Formulário II Dispensa de Interposição de Rec PGE
+Formulário III - Recursos Recebidos
+Formulário III Dispensa de Interposição de Rec PGE
+Formulário IV-A - Despesas Realizadas
+Formulário Para Solicitação de Adiantamento
+Formulário Projeto Esportivo 2º fase
+Formulário V - Balancete Consolidado
+Formulário VI - Relatório de Gestão
+Formulário VII - Relação Equipamentos Adquiridos
+Formulário autorização de doação de mudas
+Formulário comunicação implan. ativ. silvi. econô.
+Formulário de Acompanhamento da Exec. do Contrato
+Formulário de Análise Contábil - PGE
+Formulário de Apresentação Projeto Esportivo
+Formulário de Arrolamento das Existências Anuais 
+Formulário de Cadastro Funcional
+Formulário de Cadastro de Estacionamento
+Formulário de Comunicação de Faltas
+Formulário de Comunicação de Registro de Preço
+Formulário de Confecção e Controle de Crachá
+Formulário de Criação e Manut. de Login de Acesso
+Formulário de Cronograma Mensal para Solicitação de Crédito Suplementar sem Compensação
+Formulário de Devolução de Taxas
+Formulário de Enc para Comissão de Avaliação de AQ
+Formulário de Excepcionalidades
+Formulário de Habilidades e Atribuições
+Formulário de Inscrição-Faperj
+Formulário de Pedido de Reconsideração
+Formulário de Projeto Básico - FIA
+Formulário de Recurso
+Formulário de Req. de Adicional de Qualificação
+Formulário de Requerimento Geral
+Formulário de Solicitação de Férias
+Formulário de Solicitação de Férias - DETRAN
+Formulário de Solicitação de Imóvel
+Formulário de Solicitação de Liberação Provisória
+Formulário de Solicitação de cartão de pagamento
+Formulário de Soluções para Crise
+Formulário de acomp. de execução de contrato.
+Formulário de acompanhamento da execução do contrato - SECEC
+Formulário de acompanhamento da gestão do contrato - SECEC
+Formulário de alteração de dados na Carteira Nacio
+Formulário de análise de recurso de nota de avaliação de desempenho de servidor
+Formulário de apresentação para inspeção médica
+Formulário de autorização de pesquisa em UC
+Formulário de cadastro de responsável de almoxarifado
+Formulário de cadastro de visita íntima
+Formulário de cadastro para gratuidade
+Formulário de cancelamento de auto de infração de trânsito
+Formulário de comunicação atividade agropecuária
+Formulário de concessão de tempo de contribuição/serviço
+Formulário de inclusão de item de material de cons
+Formulário de inclusão de pauta em reunião
+Formulário de informação de análises laboratoriais
+Formulário de manifestação externa ambiental
+Formulário de manutenção de viatura
+Formulário de pesquisa ações do program. agenda 21
+Formulário de reclamação ou sugestão
+Formulário de recurso de nota de avaliação de desempenho de servidor
+Formulário de registro de reabilitação de condutor
+Formulário de representação fiscal para fim penal
+Formulário de requisitos para qualificação de OSS
+Formulário de requisição de material de consumo
+Formulário de solic de material bélico trein/curso
+Formulário de solicitação cadastro de laboratório
+Formulário de solicitação de LDE para NR/NC
+Formulário de solicitação de acesso à rede
+Formulário de solicitação de afastamento de servidor
+Formulário de solicitação de afastamento do país de servidor
+Formulário de solicitação de cancelamento de acesso à rede
+Formulário de solicitação de cancelamento de e-mail institucional
+Formulário de solicitação de capacitação
+Formulário de solicitação de diária
+Formulário de solicitação de doação de mudas
+Formulário de solicitação de e-mail institucional
+Formulário de solicitação de liberação de LDE
+Formulário de solicitação de material ou serviço
+Formulário de solicitação de pagamento
+Formulário de solicitação de pagamentos FUSPRJ
+Formulário de solicitação de remanejamento de LDE
+Formulário de solicitação de uso de espaço em UC
+Formulário de solicitação de viatura
+Formulário de tipificação de despesa
+Formulário de vistoria de estação ferroviária
+Formulário do Declarante no SD-ITD
+Formulário p/ sol. desbloqueio de nota de empenho
+Formulário para Levantamento de Necessidade de TI
+Formulário para contratação individual de trabalho
+Foto
+Gabarito Arquivamento Corregedoria
+Gabarito Arquivamento Fem LGBT
+Gabarito Arquivamento Gericinó
+Gabarito Designação Corregedoria
+Gabarito Designação Fem e LGBT
+Gabarito Designação Gericinó
+Gabarito Designação Grande Rio
+Gabarito Designação Norte Noroeste
+Gabarito GR
+Gabarito NI
+Gabarito Norte Noroeste
+Garantia de Proposta
+Grade Curricular
+Gratificação
+Gratificação por Acréscimo de Atrib. em Conjunto
+Guia
+Guia de Informação e Apuração ICMS
+Guia de Recolhimento de Veículo (GRV)
+Guia de Recolhimento do FGTS
+Guia de Recolhimento do PIS/PASEP
+Guia de Remessa - Recebimento de Mat. Permanente
+Guia de arrecadação e circulação de mudas e sement
+Guia de movimentação de bem móvel
+Guia de recolhimento a ser restituída
+Guia e Comprovante FGTS
+Guia e Comprovante Vale Alimentação
+Guia e comprovante GPS/DARF
+Guia e comprovante Vale Transporte
+Histórico
+Homologação
+ICMS: Alteração de Dado Cadastral - Controle Diferenciado - Combustível (AUDFE04)
+Identidade Especial
+Identidade Funcional
+Identidade do Representante Legal
+Identidade do procurador
+Impacto
+Implementação dos Serviços
+Imposto de Renda - IR
+Imposto Predial e Territorial Urbano - IPTU
+Imposto sobre a Propriedade Territorial Rural -ITR
+Impugnação
+Impugnação de Lançamento de ITD
+Indicação
+Indicação de Relator CGE/CRE
+Inexistência de débitos perante a Justiça do Trab.
+Informativo sobre Estoque
+Informação
+Informe
+Informe de divulgação sobre programa da agenda 21
+Inscrição
+Inscrição CPF ou CGC
+Inscrição Contribuinte Estadual ou Municipal
+Inscrição Estadual
+Inscrição Municipal
+Inscrição de Entidade no CRM e Resp. Técnico
+Inscrição do Ato Constitutivo
+Instr. técn. orient. estudo dispersão atmosférica
+Instrução
+Instrução Normativa
+Instrução Normativa Bens Móveis
+Instrução Normativa Bens em Almoxarifado
+Instrução Técnica
+Intenção
+Intimação
+Intimação motivação testemunha defesa
+Intimação para Cumprimento de Exigências Fiscais
+Intimação para Oitiva
+Intimação para apresentação de defesa escrita
+Intimação para prestar esclarecimentos
+Intimação testemunha Servidor
+Intimação testemunha particular
+Intimação à PJ /oitiva testemunha videoconferência
+Intimação à PJ - Oitivas
+Intimação-SEFAZ/CTCE
+Inventário
+Inventário das Existências Físicas /31 de Dezembro
+Inventário de material de consumo
+Jornal de Grande Circulação
+Juntada
+Just. Inaplicabilidade Regul. Fiscal e Trabalhista
+Justificativa
+Justificativa de Inaplicabilidade Habil. Jurídica
+Justificativa de Inaplicabilidade Qual. Econ. Fin.
+Justificativa de Inaplicabilidade Qual. Técnica
+Justificativas de Vícios, Defeitos ou Incorreções
+Laudo
+Laudo Médico
+Laudo de Avaliação
+Laudo de Classificação
+Laudo de Exigências Corpo de Bombeiros
+Laudo de apuração de acidente de bonde
+Laudo de avaliação para fins de aquisição, oneração e alienação de imóvel do Estado
+Laudo de avaliação para fins de permissão de uso
+Laudo de avaliação patrimonial
+Laudo técn. vistor. credenciamento de laboratório
+Laudos de Avaliação – Engenharia
+Layout do Bilhete
+Lei
+Lei 8666-Art 109, II
+Libelo Acusatório
+Licenciamento Ambiental
+Licença
+Licença Operacional
+Licença Prévia (LP)
+Licença ambiental comunicada
+Licença ambiental de recuperação
+Licença ambiental integrada
+Licença ambiental simplificada
+Licença ambiental unificada
+Licença de instalação (LI)
+Licença de instalação e de operação (LIO)
+Licença de operação (LO)
+Licença de operação e recuperação (LOR)
+Licença prévia e de instalação (LPI)
+Lista
+Lista de Verificação Conformidade
+Lista de disponibilidade de material de consumo
+Lista de estabelecimentos em território fluminense
+Lista de verif. de pesq. de preços de mat ou servi
+Lista de verif. p/ análise de proced. correcionais
+Lista de verificação de pagamento do contrato
+Lista de verificação para vistoria de laboratório
+Lista/listagem de documentos doados
+Lista/listagem de eliminação de documentos
+Lista/listagem de emendas propostas à abertura do orçamento
+Lista/listagem de verificação de segurança de barr
+Listagem
+Listagem Analítica da Folha de Pagamento Mensal
+Listagem Sintética da Folha de Pagamento Mensal
+Listagem de Eliminação de Documentos
+Listagem de Recolhimento de Documentos
+Listagem de Transferência de Documentos
+Listagem de controle de horas-aula de curso
+Livro
+Livro de Parte Diária - Bases Segurança Presentes
+Mandado
+Mandado de Notificação Prévia
+Mandado de Notificação de Alegações Finais
+Manif. sobre impossibil. local. espacial do imóvel
+Manifestação
+Manifestação - NI
+Manifestação do Ordenador de Despesa Concedente
+Manifestação técnica instrumento contr. amb.
+Manifesto
+Manual
+Manual avaliação certificação ambiental municipal
+Manual de análise e gestão de riscos
+Manual de instrução para sindicância
+Mapa
+Mapa Discriminativo das Despesas Realizadas
+Mapa Mensal de Combustíveis
+Mapa Mensal de Produtividade Fiscal
+Mapa de Controle de Consumo de Viaturas
+Mapa de Controle de Frequência
+Mapa de Controle de Frequência - DEGASE
+Mapa de Demonstração de Pesquisa de Mercado
+Mapa de Indicadores
+Mapa de Registro Diário de Abastecimento
+Mapa de Risco - SEPM
+Mapa de Risco-UEZO
+Mapa de Riscos
+Mapa de Tempo de Serviço - MTS
+Mapa de Tempo de Serviço de Aposentadoria
+Mapa de controle de hora extra
+Mapa de local. geogr. propriedade para aquisição
+Mapa de localização espacial
+Mapas de Preços
+Materiais
+Material
+Material Audiovisual
+Material Comprobatório do Cumprimento do Objeto
+Material Impresso
+Matriz
+Matriz de Responsabilização
+Matriz de Risco
+Matéria
+Medida Provisória
+Memorial
+Memorial descritivo de propriedade para aquisição
+Memória
+Mens. eletr. infor. habilita. ao licenc. Municipal
+Mensag. eletrôni. informação do programa agenda 21
+Mensagem
+Metodologia de Execução
+Minuta
+Minuta Edital de Convocação
+Minuta Edital de Notificação
+Minuta Edital de TAF
+Minuta Promoção PGE
+Minuta Termo de Transferência de Bens Patrimoniais
+Minuta da Ata de Registro de Preço
+Minuta da OS de Atribuição de Número de Ordem
+Minuta da OS de Exclusão de Número de Ordem
+Minuta de Acordo de Cooperação Técnica
+Minuta de Chamada
+Minuta de Chamamento Público
+Minuta de Contrato
+Minuta de Convênio
+Minuta de Correspondência Interna
+Minuta de Decreto
+Minuta de Distrato
+Minuta de Distrato - INEA
+Minuta de Edital
+Minuta de Edital de Concurso
+Minuta de Edital de Licitação
+Minuta de Edital de Seleção
+Minuta de Especificação Técnica - PGE
+Minuta de Mensagem
+Minuta de Notificação-IOERJ
+Minuta de OS de Alteração de Número de Ordem
+Minuta de Ofício
+Minuta de Ofício Circular
+Minuta de Pacto de Colaboração
+Minuta de Portaria
+Minuta de Projeto de Lei
+Minuta de Recurso de Acesso à Informação
+Minuta de Resolução
+Minuta de Termo Aditivo ao Contrato
+Minuta de Termo de Ajuste de Contas
+Minuta de Termo de Ajuste de Contas - INEA
+Minuta de Termo de Apostilamento
+Minuta de Termo de Cessão de Uso de Bem Móvel
+Minuta de Termo de Cooperação Técnica
+Minuta de edital de chamamento público
+Minuta de termo de referência - CatELog - P01
+Minuta de termo de referência - CatELog - P04
+Minuta do Termo de Acordo de Leniência
+Minuta do Termo de Cessão de Uso
+Minuta do Termo de Entrega da Posse e Chaves
+Minuta do Termo de Entrega e Recebimento
+Minuta do Termo de Referência
+Motivação para uso de algema
+Movimentação
+Moção
+Multa
+NIR
+NIR COVID
+Norma
+Norma Interna
+Not. pend. doc. para local. espacial ativ./empr.
+Nota
+Nota Explicativa
+Nota Explicativa - SEAPPA
+Nota Fiscal - NF
+Nota Função
+Nota Patrimonial - NP
+Nota Técnica
+Nota Técnica - CGE
+Nota Técnica de Juízo de Admissibilidade
+Nota de Aplicação e Resgate
+Nota de Arrematação
+Nota de Autorização de Despesa - NAD
+Nota de Autorização de Despesa - NAD - NI
+Nota de Autorização de Despesas - NAD
+Nota de Autorização de Despesas - NAD (FAPERJ)
+Nota de Autorização de Despesas - NAD (FATEC)
+Nota de Autorização de Despesas - NAD - CECIERJ
+Nota de Compromisso e Bloqueio - NCB
+Nota de Compromisso/Bloqueio - NCB - NI
+Nota de Consultoria - NC
+Nota de Descentralização de Crédito - DC
+Nota de Débito
+Nota de Débito - ND
+Nota de Débito - SEAPA
+Nota de Débito Substitutiva
+Nota de Débito-SES
+Nota de Empenho Original - NE
+Nota de Empenho Reforço - NE
+Nota de Empenho de Anulação - NE
+Nota de Empenho de Anulação Parcial - NE
+Nota de Levantamento - CGE
+Nota de Liquidação - NL
+Nota de Liquidação - NL de despesas correntes
+Nota de Recomendação - NR
+Nota de auditoria
+Nota de débito não tributário
+Nota de débito referente à infração ambiental
+Nota de lançamento de imposto
+Nota de lançamento na lavratura
+Nota de lançamento na retificação
+Nota explicativa para AJEA
+Nota fiscal de aquisição de material de consumo
+Nota fiscal de prestador de serviços
+Nota just. técn. anál. dados est. qual. ar meteo.
+Nota just. técn. uso dados meteo. elabor. Estudos
+Nota patrimonial de material de consumo
+Nota técn. aval. parcial est. disper. Atmosférica
+Nota técn. infor. gest. territ. dados geoespaciais
+Nota técn. informação referente recursos hídricos
+Nota técnica análise referente a recursos hídricos
+Nota técnica de avaliação da qualidade do ar
+Nota técnica de avaliação de impacto ambiental
+Nota técnica de instauração de PAD
+Notif de convocação p/ depoimento e opção de cargo
+Notif. dispensa emis. do MTR oper. de emerg. amb.
+Notif. orient. e/ou solic. de providências ambien.
+Notif. pendências para averb. reserva legal flor.
+Notif. procedimentos relacionados ao PROCON-ÁGUA
+Notifi. cancelamento credenciamento de laboratório
+Notifi. exigência doc. p/ análise de proj de arqui
+Notific. de convocação de servidor para depoimento
+Notificação
+Notificação A.C.
+Notificação A.I.
+Notificação ATO
+Notificação CARTO
+Notificação Prévia-SEFAZ/CTCE
+Notificação REC
+Notificação ambiental.
+Notificação de Diligência CGE/CRE
+Notificação de Inadimplemento de Contrato
+Notificação de comunicação sobre gestão ambiental
+Notificação de convocação para citação
+Notificação de indiciação de servidor
+Notificação de pendências para PRF
+Notificação de pendências sobre qualidade do ar
+Notificação de solicitação de provas materiais
+Notificação do Servidor CGE/CRE
+Notificação regularização uso de recursos hídricos
+Notificação sobre cadastro ambiental rural - CAR
+Notificação sobre penalidade de servidor
+OCJ - Aluguel Social - PGE
+OCJ - Competência Chefia - PGE
+OCJ - Comum e Prioritário Padrão - PGE
+OCJ - Fundo de Saúde CBMERJ - PGE
+OCJ - Fundo de Saúde PMERJ - PGE
+OCJ - Medicamentos - PGE
+OCJ - Passe Livre - PGE
+OCJ - RPV- PGE
+OCJ - Vale Social - PGE
+OCJ Núcleo Detran- Obrigação de Fazer
+OCJ Núcleo Detran- Pagamento RPV
+Of. comun. pendências aprovação área reserva legal
+Of. de agendamento de supervisão sanitária remota
+Of. encam. infor. técn. qual. do ar e meteorologia
+Of. infor. pend. refer. à área sob consulta/ocup.
+Of. sol. autor. inst. equip. est. mon. qual. do ar
+Of. sol. de informações da localização de ocupação
+Of. solic. inform. para andam. projeto ambiental
+Of. solic. informação referente recursos hídricos
+Of. solicit. pag. FR salário educ, oper. cred CIDE
+Of. solicit. parceria proj. relat. à ed. ambiental
+Of. solicitação de encerramento de conta bancária
+Of. solicitação pag. de ordens e determ. judiciais
+Ofíc. solic. infor. gestão participativa das águas
+Ofício
+Ofício - NA
+Ofício - NI
+Ofício Bancário (Faperj)
+Ofício Circular
+Ofício Comunicação ao CGE da instauração
+Ofício Comunicação ao MP (Autoridade Julgadora)
+Ofício Isenção Contribuição Previdenciária
+Ofício NA - PGE
+Ofício NI - PGE
+Ofício Perícia CGE/CRE
+Ofício Solict. dados fiscais PJ (opt. Simpl. Nac)
+Ofício comunicação abertura consulta pública RPPN
+Ofício comunicação ao MP (CPAR)
+Ofício de Aprovação
+Ofício de Diligência
+Ofício de Reiteração
+Ofício de Reprovação
+Ofício de agendamento de supervisão sanitária
+Ofício de alteração de supervisão sanitária
+Ofício de análise de PRF
+Ofício de comunicação de pendências criação RPPN
+Ofício de convoc. p/ comp. no órgão de vig. sanit.
+Ofício de fechamento de câmbio
+Ofício de infor. cobr. pelo uso de rec. Hídricos
+Ofício de informação de frequência
+Ofício de informação de localiz. de imóvel em UC
+Ofício de informação gestão ambiental municipal
+Ofício de informação referente a recursos hídricos
+Ofício de informação sobre reserva legal florestal
+Ofício de liberação de ordens bancárias externas
+Ofício de modificação de conta bancária
+Ofício de recolhimento de documentos
+Ofício de retirada de restrição do cad. do veículo
+Ofício de solicit. de quebra de floating bancário
+Ofício de solicit. de restos a pagar exerc. anteri
+Ofício de solicitação de empréstimo de material de consumo
+Ofício de solicitação de gratificação para servidor
+Ofício de solicitação de nomeação composta
+Ofício de solicitação de pagamento de convênio
+Ofício de solicitação de pagamento por ofício
+Ofício de solicitação de restos a pagar
+Ofício inform. referentes à qualidade das águas
+Ofício informação gestão participativa das águas
+Ofício sol abert. ou encerramento conta bancária
+Ofício solic. abert., enc. de suprimento de fundos
+Ofício solicit. cópia de doc. de PJ diversa da inv
+Ofício solicit. dados fiscais PJ (não opt. Simpl.
+Ofício solicitação de abertura de conta bancária
+Ofício-Circular
+Ordem
+Ordem de Fornecimento de Bens
+Ordem de Operações
+Ordem de Policiamento
+Ordem de Serviço
+Ordem de Serviço - CGE
+Ordem de Serviço - CODERTE
+Ordem de Serviço de Alteração de Número de Ordem
+Ordem de Serviço de Atribuição de Número de Ordem
+Ordem de Serviço de Exclusão de Número de Ordem
+Ordem de Serviço para Vistoria
+Ordem de fornecimento de material ou serviço
+Ordem de operações de combate ao crime ambiental
+Ordem de serviço
+Ordem de serviço para coleta de sementes em UC
+Organograma
+Orientação
+Orientação de Cumprimento de Julgado - OCJ
+Orientação de Cumprimento de Julgado-OCJ-SEAP
+Original das Propostas e dos Documentos
+Orçamento
+Outorga
+Outorga de direito de uso de recursos hídric (OUT)
+Outros Documentos
+Pacto de Colaboração
+Pagamentos
+Panfleto
+Par. Técn. sobre plano de manejo de RPPN
+Par. aval. técn. acomp. monit. qual. ar e meteoro.
+Par. aval. técn. estud. amostragem de fontes fixas
+Par. aval. técn. estudo de plano básico ambiental
+Par. técn. da gestão participativa das águas
+Par. técn. da área sob consulta/ocupação
+Par. técn. de análise de proj. rest. Florestal
+Par. técn. de aval. das emis. atmosf. de font. móv
+Par. técn. de gestão ecossistêmica
+Par. técn. para averb. de res. legal florestal
+Par. técn. referente a infração ambiental
+Par. técn. sobre cadastro ambiental rural
+Par. técn. sobre inscr. de ocupação de imóvel
+Par. técn. sobre projeto ambiental
+Pare. aval. técn. de software de inspeção veicular
+Pare. aval. técn. estudo de dispersão atmosférica
+Pare. avaliação técnica cumprimento de notificação
+Parecer
+Parecer Contábil - Bens Almoxarifado - PGE
+Parecer Contábil Sobre Bens Patrimoniais - PGE
+Parecer Técnico Deferimento Inst. Contr. Amb.
+Parecer Técnico de Acomp. de Licença Ambiental
+Parecer avalia. técnica parcial da qualidade do ar
+Parecer cancelam. de credenciamento de laboratório
+Parecer concessão da guarda de animais silvestres
+Parecer da Comissão de Adicional de Qualificação
+Parecer de Análise de Conformidade da NE
+Parecer de Análise para Emissão DL
+Parecer de Assessoria de Controle Interno
+Parecer de Comitê
+Parecer de acompanhamento de licença ambiental
+Parecer de análise de determinação judicial
+Parecer de análise impugnação infr. amb.
+Parecer de análise projeto de arquitetura
+Parecer de análise recurso de infração ambiental
+Parecer de análise solicitação de pesquisa no CPRJ
+Parecer de aprovação de plano de manejo de Ucs
+Parecer de av. de risco p/uso de veículo blindado
+Parecer de avaliação técn. proc. licenciamento
+Parecer de credenciamento de laboratório
+Parecer de localização espacial de ativ./empreend.
+Parecer de localização geográfica
+Parecer gestão do território e dados geoespaciais
+Parecer jurídico - ASSJUR
+Parecer jurídico - PGE
+Parecer jurídico de análise de contratação direta - ASSJUR
+Parecer jurídico de análise de contratação direta - PGE
+Parecer jurídico de análise de licitação - ASSJUR
+Parecer jurídico de análise de licitação - PGE
+Parecer jurídico sobre apuração de acidente de bonde
+Parecer jurídico sobre proposta de criação de RPPN
+Parecer projeto de pesquisa científica nas UC
+Parecer sobre Análise da DC
+Parecer sobre Autorização de Despesa
+Parecer sobre Disponibilidade Orçamentária
+Parecer sobre Interposição de Recurso
+Parecer sobre Pedido de Consulta Tributária
+Parecer sobre Pendências Cadastrais de Veículos
+Parecer sobre Regularidade de Minuta de Edital
+Parecer sobre Situação de Pendências Cadastrais
+Parecer sobre Solicitação de Auxílio Funeral
+Parecer sobre Solicitação de Cessar Designação
+Parecer sobre Solicitação de Designação
+Parecer sobre Solicitação de Exoneração
+Parecer sobre Solicitação de Nomeação
+Parecer sobre Solicitação de Tornar sem Efeito
+Parecer sobre Solicitação de Viagem
+Parecer sobre alteração orçamentária
+Parecer sobre conclusão de PAD
+Parecer sobre orçamento
+Parecer sobre projeto pesquisa científica nas UC
+Parecer sobre solicitação de combustível
+Parecer téc. de apoio à análise de instru. de Cont
+Parecer téc. de indeferi. de instr de Cont. ambie.
+Parecer téc. sobre a execução e cumprimento do obj
+Parecer técn. de anuênc. inst. contr. amb.
+Parecer técn. de infor. regis. imóv. em UC
+Parecer técnico de aceite de produtos e/ou serviço
+Parecer técnico de localização de imóvel
+Parte Diária
+Parte Diária do Oficial de Dia
+Partilha
+Passagem
+Passaporte
+Pauta
+Pauta de Reunião Interna
+Pauta de Sessão Regulatória
+Pedido
+Pedido de Canc. de Auxílio - Falecimento do Outorg
+Pedido de Cancelamento de Auxílio
+Pedido de Cancelamento de Auxílio - Faleci. Outorg
+Pedido de Cancelamento de Bolsa
+Pedido de Impugnação
+Pedido de Informações ou Esclarecimentos
+Pedido de Parcelamento/Reparcelamento ITD-ANEXO IV
+Pedido de Reconhecimento de Isenção de ITD /Doação
+Pedido de Reconsideração
+Pedido de cred. regime optativo tribut. subst. tri
+Pedido descred. regime optativo tribut. subst. tri
+Pesquisa
+Pesquisa de Mercado
+Pesquisa de Preços
+Petição
+Petição Inicial
+Petição de Inscrição Estadual p/ Produtor Rural
+Petição de Parcelamento Débitos Tributários
+Petição de Parcelamento de Débitos – REFIS
+Petição de Reativação de Inscrição Estadual
+Petição de Regularização de Cobrança de IPVA
+Petição de Reparcelamento Débitos Tributários
+Petição de Restituição de Indébito
+Petição de defesa contra pretensão punitiva estata
+Petição de recadas. obrigatório de Insc. Estadual
+Petição sobre Emissão de Guia de ITD
+Plan. prest. contas da arrec. uso de rec. Hídricos
+Planilha
+Planilha consol. de acompanh. qualidade das águas
+Planilha de alterações contratuais
+Planilha de apresen. de resultados físico-químicos
+Planilha de controle de acompanhamento da execução orçamentária
+Planilha de controle de circulação de trens
+Planilha de controle de consumo de energia
+Planilha de controle de consumo de material
+Planilha de controle de consumo de água
+Planilha de controle de credenciamento
+Planilha de controle de partidas e chegadas de trens
+Planilha de controle de programas de trabalho contingenciados
+Planilha de controle de receita de passagens
+Planilha de controle de vistoria de imóvel Est.
+Planilhas Orçamentárias
+Plano
+Plano Anual de Auditoria
+Plano Anual de Auditoria Interna
+Plano Operacional
+Plano de Ação
+Plano de Ação - CECIERJ
+Plano de Curso
+Plano de Dados Abertos - PDA
+Plano de Inserção no SEI-RJ
+Plano de Premiação
+Plano de Trabalho
+Plano de Trabalho - EMOP
+Plano de Trabalho - SEEDUC
+Plano de definição de ações e atividades
+Plano de gestão de recursos hídricos
+Plano de integridade pública
+Plano de trab para conv coop prot de int term parc
+Planta
+Planta Baixa ou layout das Instalações
+Port. reconheciment. provisório de criação de RPPN
+Port. reconhecimento definitivo de criação RPPN
+Portaria
+Portaria - SES
+Portaria - NI
+Portaria Aplicação de Penalidade
+Portaria Conjunta
+Portaria Prorrogação Prazo CPAR
+Portaria Substituição Membro de Comissão
+Portaria de Comitê
+Portaria de Instauração
+Portaria de Instauração de PAD
+Portaria de reconhecimento definitivo criação RPPN
+Portaria de reconhecimento provisório criação RPPN
+Poupança
+Precatório
+Prestação de Contas
+Prestação de Contas de Convênio
+Prestação de Contas de Edital
+Prestação de Contas de ICMS
+Preâmbulo do Edital de Leilão
+Procedimento operacional padrão
+Procedimentos Analíticos
+Processo
+Processo de acomp. e fiscal. de segurança de barra
+Procuração
+Procuração - IOERJ
+Procuração Eletrônica Especial
+Procuração Eletrônica Simples
+Procuração – Banco (Faperj)
+Programa
+Programação
+Programação de Desembolso - PD
+Projeto
+Projeto Básico
+Projeto Básico de Materiais/Serviços
+Projeto Básico de Obras
+Projeto Socioambiental
+Projeto básico para execução de obras
+Projeto de Inovação Tecnológica
+Promoção
+Promoção-SEFAZ/CTCE
+Prontuário
+Pronunciamento
+Proposta
+Proposta de Deliberação
+Proposta de Plano de Aula
+Proposta de criação ou redelimitação de UC
+Prorrogação de Prazo - SEAP
+Prospecto
+Protocolo
+Protocolo Cadastro
+Protocolo Público
+Protocolo de Conectividade Social
+Protocolo de Intenções
+Protocolo de recebimento da Autorização de transferência de propriedade de veículo (ATPV-e)
+Prova
+Prova Regularidade - Tributos Estaduais
+Prova Regularidade Fazenda Municipal
+Prova Regularidade INSS e Fazenda Federal
+Prova de Atendimento Requisitos Previstos em Lei
+Prova de Regularidade Fiscal junto à Dívida Ativa
+Publicação
+Página
+Quadro Auxiliar das Disponibilidades Financeiras
+Quadro de Profissionais
+Qualificações Publicas
+Questionário
+RG
+RGI
+Rastreamento de Entrega dos Correios
+Ratifico de Despesas
+Ratifico de Inexigibilidade de Licitação
+Real Infrator
+Receita
+Recibo
+Recibo Eletrônico de Protocolo
+Recibo de Pagamento Autônomo - RPA
+Recibo de Pedido Guia de Pagamento
+Recibo de entrega de boletim de medição de opacida
+Recibo de entrega de talão de tíquetes de combustíveis
+Recurso
+Recurso Administrativo Hierárquico
+Recurso de Acesso à Informação
+Recurso de Multa
+Recursos Humanos: Abono de faltas
+Regimento
+Regimento interno
+Registro
+Registro Cadastral (ex: SICAF)
+Registro Comercial
+Registro de Ocorrência e/ou Correções dos Serviços
+Registro de Ocorrência e/ou Correções dos Serviços - SECEC
+Registro de ocorrência com mat. bélico acautelado
+Registro fotogr. de realização de consulta pública
+Registro ou Inscrição na Entidade Profissional
+Regulamento
+Regularidade Fazenda Federal, Estadual e Municipal
+Regularidade com a Seguridade Social e FGTS
+Rel. aval. técn. cumpr. notif. sobre qualid. do ar
+Rel. de entrevista social p/ conc de visita íntima
+Rel. de operação e manutenção do sistema de cheias
+Rel. de vist. de atendimento a emergências
+Rel. de vist. de caracterização de propriedade
+Rel. de vist. referente à infração ambiental
+Rel. de vist. relativa a projeto ambiental
+Rel. técn. atend. órg. contr. just. refer. à fauna
+Rel. técn. cadastro área soltura de animais silv.
+Rel. técn. compl. ativ. fiscal. monitor. e cont.
+Rel. técn. resp. questiona. emergências ambientais
+Rel. técn. sobre uso e manejo dda fauna silvestre
+Rela. acompa. avali. procedi. de inspeção veicular
+Relat. Téc. de atend. a emerg. com produtos perig.
+Relat. acompanham. andamento do programa agenda 21
+Relat. anál. técn. requer. instrum. contr. ambien.
+Relat. avalia. ativ. agentes program. da agenda 21
+Relat. de acompanha. de pesquisa cient. nas Ucs
+Relat. de ativ. e result. de projeto de pesq. agro
+Relat. de avaliação técnica de emissão atmosférica
+Relat. de averig. conformidades de credenciamento
+Relat. de vist. de ativ. de competência municipal
+Relat. entrev. social p/ conc. visita ínt. entre p
+Relat. fiscal. averig. necessid. de reforma na UC
+Relat. localiz. espacial atividade/empreendimento
+Relat. téc. vist. aprovação área de reserva legal
+Relat. técn. visto. aprovação área de reserva lega
+Relat. visita técnica de avaliação qualidade do ar
+Relato de Reunião
+Relatório
+Relatório Administrativo
+Relatório Anual de Auditoria
+Relatório Correcional
+Relatório Enc. de Pres. Contas - Sup. Fundos-PGE
+Relatório Final
+Relatório Final da Comissão de Ética
+Relatório Final de Investigação Preliminar
+Relatório Físico Financeiro
+Relatório GFIP/SEFIP
+Relatório Reanálise de Pres. de Contas de Convên
+Relatório Sucinto
+Relatório analitico de pesquisa de preços - RAPP
+Relatório anual de execução orçamentária
+Relatório cobrança anual para recursos hídricos
+Relatório da Comissão de Qualificação
+Relatório de Análise de Pres. de Contas de Convên.
+Relatório de Análise de Pres. de Contas de Editais
+Relatório de Análise de Prestação de Contas - ICMS
+Relatório de Arquivamento do Processo
+Relatório de Assessoria de Controle Interno
+Relatório de Auditoria GPS
+Relatório de Auditoria Independente
+Relatório de Auditoria Interna
+Relatório de Auditoria de Radiocomunicação
+Relatório de Balanço de Comitê
+Relatório de Correição
+Relatório de Cumprimento da Contrapartida Social
+Relatório de Cumprimento do Objeto
+Relatório de Cumprimento do Objeto - SECTI
+Relatório de Exame
+Relatório de Execução Físico-Financeiro
+Relatório de Execução da Receita x Despesa
+Relatório de Fiscalização
+Relatório de Fiscalização NA
+Relatório de Mídia - SEAP
+Relatório de Pesquisa de Videomonitoramento
+Relatório de Programação Financeira
+Relatório de Realização de Eventos
+Relatório de Reanálise de Pres. de Contas de Edit.
+Relatório de Reanálise de Prest. de Contas de ICMS
+Relatório de Registros de Serviços 190
+Relatório de Resposta ao Recurso
+Relatório de Resumo do Pedido (Vale transporte)
+Relatório de Sindicância
+Relatório de Viagem
+Relatório de análise de impacto mercadológico
+Relatório de análise e gestão de riscos
+Relatório de atividades de comissão, conselho ou grupo de trabalho
+Relatório de atividades desenvolvidas nas APA
+Relatório de auditoria
+Relatório de avaliação da qualidade das águas
+Relatório de avaliação de educação ambiental
+Relatório de avaliação de estágio
+Relatório de averiguação da reforma na UC
+Relatório de comprovação de execução de serviço
+Relatório de comprovação de execução de serviço mensal - SECEC
+Relatório de conclusão do PAD
+Relatório de consumo de material bélico
+Relatório de controle de manutenção predial
+Relatório de destinação de mudas doadas
+Relatório de ensaio de amostras laboratoriais
+Relatório de estatística de acesso
+Relatório de exame da execução de contas
+Relatório de execução físico financeiro do convêni
+Relatório de fisc. de denúncia de crime ambiental
+Relatório de indícios de declarações falsas
+Relatório de servidores cedidos
+Relatório de servidores com cargo em comissão
+Relatório de servidores efetivos
+Relatório de solicitação de aprovação de crédito adicional
+Relatório de solicitação de carteira de identidade
+Relatório de valoração de infração ambiental
+Relatório de visita técnica arquivística
+Relatório de visita técnica de preserv. de acervo
+Relatório de vistoria das unidades de conservação
+Relatório de vistoria de imóvel do Estado
+Relatório de vistoria técnica ambiental.
+Relatório de vistoria técnica ambiental. NA
+Relatório e Voto - SEAP
+Relatório mensal de execução orçamentária
+Relatório sobre Pedido de Regime Especial
+Relatório técnico atend. emergência prod. perig.
+Relatório técnico de análise de danos ambientais
+Relatório técnico de vistoria para criação de RPPN
+Relatório técnico sobre cadastro ambiental rural -
+Relatório técnico sobre projeto ambiental
+Relatório COSEA Executante
+Relatório COSEA Concedente
+Relação
+Relação Bens Adquiridos/Produzidos/Construídos
+Relação Compromissos Assumidos, Cál. Patr. Líquido
+Relação das Remunerações de Contribuições - RGPS
+Relação de Bases de Cálculo de Contribuição
+Relação de Bens
+Relação de Bens adiquirídos ou construídos
+Relação de Ordens Bancárias Externas
+Relação de Pagamento
+Relação de Pagamentos
+Relação de Pagamentos - SECTI
+Relação de Posse
+Relação de pagamento de despesas
+Relação do Corpo Diretivo
+Relação do Corpo Docente
+Relação do(s) Proprietário(s)
+Relações
+Release
+Renúncia de Procuração Eletrônica
+Representação
+Req. de análise de qualidade em emissão de CNH
+Req. conc. visita íntima entre pessoas priv. liber
+Req. de afast. para reg. da candidatura eleitoral
+Req. de aprovação de proj. de restauração floresta
+Req. de avaliação de junta médica e psicológica
+Req. de cancelamento carteira nacional de habilit.
+Req. de conv. de fér. ou licença prêmio em pecúnia
+Req. de manutenção de mat. bélico para uso pessoal
+Req. de pesquisa externa de informação de imóvel
+Req. de regularização de titularidade de imóvel
+Req. de revisão administrativa/Comissão Mista
+Req. de sol. de Prorrogação da Suspensão de ICMS
+Req. de solicit. de inf. e serv. de manut. predial
+Req. de subst. de veículo de transp. complementar
+Req. de substituição de mat. bélico p/ uso pessoal
+Req. de suspensão temporária de linhas de ônibus
+Requer. apuração de duplicidade de placa veículo
+Requer. autor. categorias uso manejo em cativeiros
+Requer. autor. exposição de fauna silvestre
+Requer. autor. transporte da fauna silvestre
+Requer. cadas. área soltura de animais silvestres
+Requer. de cancelamento de comunicação de venda
+Requer. solic. infor. registro geral de imóvel
+Requerime. regula. de procedimentos do sistema DOF
+Requerimento
+Requerimento Adicional de Qualificação
+Requerimento Certidão Nada Consta
+Requerimento Desarquivamento
+Requerimento Emissão Guia para Pagamento de Multa
+Requerimento Habilitação Membros Conselho Fiscal
+Requerimento Inicial
+Requerimento PM
+Requerimento Padrão - PGE
+Requerimento Padrão - SEFAZ
+Requerimento Padrão RH
+Requerimento Parcelamento de Multa
+Requerimento SAC
+Requerimento Vista ou Cópia PA
+Requerimento com Indicação Repres. Poder Público
+Requerimento de Abono de Permanência
+Requerimento de Acesso à Informação
+Requerimento de Adiantamento
+Requerimento de Atestado Técnico
+Requerimento de Autorização de Acumulação
+Requerimento de Cancelamento de Nota Fiscal
+Requerimento de Concessão de Benefício Fiscal -ITD
+Requerimento de Desarquivamento de Documentos
+Requerimento de Licença para Acompanhar Cônjuge
+Requerimento de Não Incidência - ITD
+Requerimento de Reconhecimento de Imunidade - ITD
+Requerimento de Reconhecimento de Isenção - ITD/CM
+Requerimento de Reconhecimento de Isenção - ITD/DM
+Requerimento de Reconhecimento de Isenção - ITD/EU
+Requerimento de Redução da Base de Cálculo de ITD
+Requerimento de Rematrícula de Aluno
+Requerimento de Remissão de ITD
+Requerimento de Remoção de Servidor
+Requerimento de Suprimento de Fundo
+Requerimento de adicional de qualificação
+Requerimento de adicional de qualificação PROCON
+Requerimento de aposentadoria
+Requerimento de autorização de reforma na UC
+Requerimento de criação de RPPN
+Requerimento de devolução de taxas de serviço de veículo
+Requerimento de informação de venda
+Requerimento de manut. de material bélico em carga
+Requerimento de material bélico em carga
+Requerimento de material bélico para uso pessoal
+Requerimento de material ou prestação de serviço
+Requerimento de participação- alertas e sensores
+Requerimento de participação- videomonitoramento
+Requerimento de prorrogação de prazo de sindicânci
+Requerimento de retif. da Escrit. Fiscal Dig (EFD)
+Requerimento de solicit. de restituição de ICMS-ST
+Requerimento de solicitação de consulta UC
+Requerimento de solicitação de defensor
+Requerimento de solicitação de diploma do aluno
+Requerimento de solicitação de reserva legal
+Requerimento de subst. de material bélico em carga
+Requerimento de vista e cópia de documentos
+Requerimento do Interessado Dirigido ao Órgão
+Requerimento ligação de energia elétrica na UC
+Requerimento para Qualificação
+Requerimento regular. procedimentos do sistema DOF
+Requisição
+Requisição de Matéria Prima
+Requisição de material
+Reserva Orçamentária
+Resolução
+Resolução - NI
+Resolução Conjunta
+Resolução NA
+Resposta ao Requerimento SAC
+Ressalva CGE/CRE
+Restabelecimento de Procuração Eletrônica
+Restabelecimento de Vinculação a Pessoa Jurídica
+Resultado
+Resumo
+Resumo de informa. cálculo da cobrança uso da água
+Resumo dos Assentamentos
+Revogação de Procuração Eletrônica
+Roteiro
+Roteiro Padrão - Anexo I - Formulário I
+Roteiro Padrão - Anexo I - Formulário II
+Roteiro Padrão - Anexo I - Formulário III
+Roteiro Padrão - Anexo I - Formulário IV
+Roteiro Padrão - Anexo I - Formulário IX
+Roteiro Padrão - Anexo I - Formulário V
+Roteiro Padrão - Anexo I - Formulário VI
+Roteiro Padrão - Anexo I - Formulário VII
+Roteiro Padrão - Anexo I - Formulário VIII
+Roteiro Padrão - Anexo I - Formulário X
+Roteiro Padrão - Anexo II - Formulário XI
+Roteiro Padrão - Anexo II - Formulário XII
+Roteiro de supervisão sanitária
+Saldo Remanescente
+Sede ou Filial no Estado do RJ (Contr. Comercial)
+Sentença
+Serviço e Estoque de Dívida Pública
+Sinopse
+Solic. de autor. produção e uso de imagem das Ucs
+Solic. de ret. do afast. p/ pleito eleit. por desi
+Solic. de ret. do afast. p/ pleito eleit. por inde
+Solicitação
+Solicitação de Afastamento - Licença Aleitamento
+Solicitação de Afastamento - Licença Paternidade
+Solicitação de Afastamento Licença Maternidade PGE
+Solicitação de Alteração de Cota Financeira
+Solicitação de Baixa de Restrição
+Solicitação de Compra
+Solicitação de Compra de Material Permanente
+Solicitação de Contratação de Serviço
+Solicitação de Desfazimento de Negócio Jurídico
+Solicitação de Diárias e Cotas - PGE
+Solicitação de Informação de Leilão
+Solicitação de Liberação Provisória
+Solicitação de Material
+Solicitação de Prorrogação de Prazo CGE/CRE
+Solicitação de Reclamação Contra Pátio
+Solicitação de Remanejamento de Servidor
+Solicitação de Reserva Orçamentária
+Solicitação de Serviços
+Solicitação de acesso aos sistemas
+Solicitação de afastamento para curso
+Solicitação de autorização para pesquisa nas UCs
+Solicitação de material bélico
+Solicitação para Confecção de Envelopes/Impressos
+Solicitação para Realização de Leilão
+Sumário
+Suspensão de Procuração Eletrônica
+Suspensão de Vinculação a Pessoa Jurídica
+Suspensão de Vinculação à Pessoa Jurídica Automática
+Súmula de Julgamento de Litígio Tributário
+Tabela
+Tabela de Cômputo de Tempo de Serviço
+Tabela de Economicidade
+Tabela de inspeção de locais técnicos
+Taxa
+Telegrama
+Termo
+Termo Aditivo
+Termo Aditivo NI
+Termo Aditivo de Alteração do Objeto
+Termo Aditivo para Prorrogação de Prazo
+Termo Circunstanciado de Recebimento Provisório
+Termo Compromisso Redução CH p/ treinamento
+Termo Responsabilidade - Afastamento eleitoral
+Termo aceit. definit. de obra e/ou serviço de enge
+Termo aprovação parecer técnico de licen. ambien.
+Termo circuns de receb definit de mater ou serviço
+Termo circuns de receb provisó de mater ou serviço
+Termo conc. visita íntima entre pessoas priv. libe
+Termo contrapartida por prod. e uso imagem de Ucs
+Termo de Acareação
+Termo de Acareação - SEAP
+Termo de Acareação CGE/CRE
+Termo de Acautelamento de Bem Móvel
+Termo de Acautelamento de Bem Móvel - SEPLAG
+Termo de Aceitação Provisória
+Termo de Aceite
+Termo de Acordo de Incentivo ou Financeiro Fiscal
+Termo de Acordo de Leniência
+Termo de Advertência Sanitária
+Termo de Ajustamento de Conduta
+Termo de Ajustamento de Conduta -SEAP
+Termo de Ajustamento de Conduta-SEFAZ/CTCE
+Termo de Ajuste de Contas
+Termo de Ajuste de Contas - PGE
+Termo de Ajuste de Contas NA
+Termo de Ajuste de Contas NI
+Termo de Alteração de Ata de Registro de Preços
+Termo de Aplicação da Pena de Advertência
+Termo de Apostilamento
+Termo de Apostilamento - CECIERJ
+Termo de Apreensão - INEA
+Termo de Apreensão e Amostra de Produtos
+Termo de Autorização de Uso de Bem Imóvel
+Termo de Baixa Definitiva de Bens Móveis
+Termo de Baixa Definitiva de Bens Patrimoniais
+Termo de Cancelamento de Documento
+Termo de Cautela de Material
+Termo de Cessão de Uso de Bem Móvel
+Termo de Cessão de Uso de Imóvel
+Termo de Citação do Servidor
+Termo de Ciência
+Termo de Ciência de Adicional de Qualificação PGE
+Termo de Colação de Grau
+Termo de Comp. e Adesão ao Cód. de Cond. Ética-EXT
+Termo de Comp. e Adesão ao Cód. de Cond. Ética-INT
+Termo de Compromisso
+Termo de Compromisso - Confirmação de Ciência
+Termo de Compromisso - Formulário de Inscrição
+Termo de Compromisso - SES
+Termo de Compromisso Ambiental
+Termo de Compromisso de Compensação Ambiental
+Termo de Compromisso de Custeio de Curso - PGE
+Termo de Compromisso de Restauração Florestal
+Termo de Compromisso Ético
+Termo de Conclusão CGE/CRE
+Termo de Conclusão do PAD
+Termo de Conduta e Confidencialidade
+Termo de Confidencialidade
+Termo de Cooperação Técnica
+Termo de Credenciamento de Consignação
+Termo de Credenciamento de Usuário Externo
+Termo de Código de Ética e Conduta Profissional
+Termo de Declaração de Sindicância
+Termo de Depoimento
+Termo de Depoimento - SEAP
+Termo de Depósito - INEA
+Termo de Descarga de Material Permanente
+Termo de Descarga de Material Permante - SEPM
+Termo de Desinterdição Sanitária
+Termo de Devolução de Material
+Termo de Diligência - SEAP
+Termo de Diligência CGE/CRE
+Termo de Distrato
+Termo de Doação de Bem Móvel
+Termo de Eliminação de Documentos
+Termo de Encerramento de Contrato
+Termo de Encerramento de Contrato-SES
+Termo de Encerramento de Processo
+Termo de Encerramento de Sindicância
+Termo de Encerramento de Trâmite Físico
+Termo de Entrega da Posse e Chaves do Imóvel
+Termo de Entrega de Bens e Valores
+Termo de Entrega de Bens e Valores - Almoxarifado
+Termo de Entrega de Imagens de Videomonitoramento
+Termo de Entrega e Recebimento de Imóvel do Estado
+Termo de Essencialidade
+Termo de Estorno
+Termo de Ex. e Aval. p/ Descarga de Material Perm.
+Termo de Indiciamento-SEFAZ/CTCE
+Termo de Indiciação - SES
+Termo de Interdição Sanitária
+Termo de Interrogatório - SEAP
+Termo de Intimação - SEAP
+Termo de Intimação Sanitária
+Termo de Início de Serviços
+Termo de Juntada CGE/CRE
+Termo de Juntada de Documento de Sindicância
+Termo de Lançamento de Valores
+Termo de Nada Consta - Bens Móveis
+Termo de Notificação
+Termo de Oitiva Testemunha / Declarante CGE/CRE
+Termo de Oitiva de Testemunha
+Termo de Outorga e Aceitação de Auxílio
+Termo de Outorga e Aceitação de BBP
+Termo de Outorga e Aceitação de Bolsa
+Termo de Parceria
+Termo de Permissão de Uso de Imóvel do Estado
+Termo de Posse - SEAP
+Termo de Posse - SEAS
+Termo de Posse de Servidor
+Termo de Pron. da Prest. de Contas de Bens Patrimo
+Termo de Quitação
+Termo de Reabertura de Processo
+Termo de Recebimento de Exame de Material
+Termo de Recebimento de Material Permanente
+Termo de Recolhimento de Documentos
+Termo de Recusa de Material - PGE
+Termo de Referência
+Termo de Referência de Material/Serviço
+Termo de Remessa CGE/CRE
+Termo de Rescisão de Cessão de Uso de Imóvel
+Termo de Rescisão de Permissão de Uso de Imóvel
+Termo de Responsabilidade
+Termo de Responsabilidade - CRC
+Termo de Responsabilidade de Utilização do SIAFE-R
+Termo de Responsabilidade e Confidencialidade SETD
+Termo de Retificação e/ou Complement. de Documento
+Termo de Sigilo/Confidencialidade/Não Divulgação
+Termo de Solicitação de Parcelamento
+Termo de Soltura - INEA
+Termo de Transf. de Resp. Consolidado/Bens Móveis
+Termo de Transf. de Responsab. - Bens Patrimoniais
+Termo de Transf. de Responsabilidade - Tesouraria
+Termo de Transf. de Responsabilidade -Almoxarifado
+Termo de Transf. de Responsabilidade / Bens Móveis
+Termo de Transferência de Bem Móvel - PGE
+Termo de Transferência de Bens Patrimoniais
+Termo de Transferência de Documentos
+Termo de Transferência de Responsabilidade
+Termo de Ultimação - SEAP
+Termo de Visita Sanitária
+Termo de Vista - SEAP
+Termo de abertura de apuração preliminar de sindic
+Termo de aceitação definitiva do objeto contratado
+Termo de acordo de metas para enquad. em inc fisc.
+Termo de adesão de modalidade de trabalho flexível
+Termo de adesão de modalidade de trabalho remoto
+Termo de adesão progr. certif. ambiental municipal
+Termo de apostilamento de contrato
+Termo de apreensão de bens
+Termo de autor. para prod. e uso de imagem de Ucs
+Termo de autorização para reprodução de documentos
+Termo de cautela de armamento
+Termo de cessão de direitos sobre depoimento oral
+Termo de citação do servidor
+Termo de ciência designação de memb do contrato
+Termo de ciência e opção
+Termo de coleta de amostra para análise fiscal
+Termo de coleta de amostras análise orient. téc.
+Termo de coleta de amostras em tripl. anál. fiscal
+Termo de compromisso para criação de RPPN
+Termo de concessão de vista aos autos do processo
+Termo de depósito de bens apreendidos
+Termo de desanexação de processo
+Termo de desapensação de processo
+Termo de designação de defensor de ofício
+Termo de designação de defensor de ofício para servidor
+Termo de desistência de recursos ou impugnação
+Termo de desistência de solicitação de combustível
+Termo de devolução de bens apreendidos
+Termo de diligência de sindicância
+Termo de distribuição de PAD
+Termo de doação de documentos
+Termo de doação de produtos perecíveis
+Termo de eliminação de documentos
+Termo de encerramento de contrato
+Termo de encerramento de empreendimento ou ativid.
+Termo de entrada e saída de documentos
+Termo de entrada e saída de documentos emprestados
+Termo de entrega e receb. de chaves e/ou imóvel
+Termo de existência de doc. físico/mídia digital
+Termo de guarda de animais silvestres
+Termo de indiciação de servidor
+Termo de inutilização de bens apreendidos
+Termo de início ou reinício de obra
+Termo de juntada de documentos
+Termo de opção de cargo
+Termo de preensão e Inutilização de Produtos
+Termo de quitação de compensação ambiental
+Termo de quitação de exigências de PRF
+Termo de quitação de restauração florestal
+Termo de quitação exigências Proj. Rest. Florestal
+Termo de recebimento definitivo de contrato
+Termo de recebimento e aceite de bens e serviços
+Termo de recebimento provisório de contrato
+Termo de reconhecimento de risco - TRR
+Termo de registro de depoimentos
+Termo de renúncia/Comissão Mista
+Termo de rerratificação de ato administrativo
+Termo de rescisão de contrato
+Termo de responsabilidade de material bélico
+Termo de responsabilidade para acesso à sistemas
+Termo de revelia
+Termo de soltura de bens apreendidos
+Termo de transferência de resp. de material bélico
+Termo de ultimação para citação do servidor
+Termo de vistoria e baixa de vida útil
+Termo de Ética e Conduta
+Termo quitação compromisso restauração florestal
+Termo resp.de empréstimo de doc. arquiv. e bibl.
+Termo revisão condicio., objeto e valid. licenc.
+Termos de Recebimento Provisório
+Tese
+Testamento
+Título
+Títulos
+Vale Alimentação
+Vale Alimentação Eletrônico (beneficiários)
+Vale Transporte
+Vale Transporte Eletrônico (beneficiários)
+Vinculação de Responsável Legal a Pessoa Jurídica
+Visto - PGE
+Visto - ASSJUR
+Visto Jurídico
+Visto de Aprovação de Parecer
+Volume
+Voto
+Voto da Comissão - SEAP
+Voucher
+Vídeo
+Áudio
+Índices da Capacidade Financeira
+Última GFIP (SEFIP)
+Data entre:
+   e 
+ 
+ 
+ 
