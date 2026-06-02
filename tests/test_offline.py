@@ -250,17 +250,47 @@ def test_doerj_reconhece_links_reais():
 
 def test_doerj_fatiador_de_atos():
     from datetime import date
-    from compliance_agent.collectors.doerj import DOERJCollector, extrair_cpfs, extrair_cnpjs
-    c = DOERJCollector(session=None)
-    texto = (
-        "PORTARIA Nº 123 - O Secretário resolve nomear JOAO DA SILVA, CPF 123.456.789-09, "
-        "para o cargo. CONTRATO Nº 45/2026 firmado com ACME LTDA, CNPJ 12.345.678/0001-95, "
-        "no valor de R$ 250.000,00. Processo SEI-123456/2026."
+    from compliance_agent.collectors.doerj import (
+        DOERJCollector, extrair_cpfs, extrair_cnpjs,
+        extrair_valores, extrair_processos_sei,
     )
-    atos = c._fatiar_atos(texto, date(2026, 6, 1), "https://test", edicao="normal", titulo="Parte I")
-    assert len(atos) >= 1
-    assert len(extrair_cpfs(texto)) == 1
-    assert len(extrair_cnpjs(texto)) == 1
+    c = DOERJCollector(session=None)
+
+    # Dois atos separados por linha em branco dupla (padrão real do DOERJ)
+    ato1 = (
+        "PORTARIA Nº 123/2026 — O Secretário resolve nomear JOAO DA SILVA, "
+        "CPF 123.456.789-09, para o cargo de Diretor. Processo E-18/000456/2026."
+    )
+    ato2 = (
+        "CONTRATO Nº 45/2026 firmado com ACME CONSTRUÇÕES LTDA, "
+        "CNPJ 12.345.678/0001-95, no valor de R$ 250.000,00. "
+        "SEI-300100/001234/2026."
+    )
+    texto_multi = ato1 + "\n\n\n" + ato2
+
+    atos = c._fatiar_atos(texto_multi, date(2026, 6, 1), "https://test",
+                          edicao="normal", titulo="Parte I")
+
+    # Deve ter separado em pelo menos 2 atos
+    assert len(atos) >= 2, f"esperado ≥2 atos, obteve {len(atos)}"
+
+    # Campos novos presentes em todos os atos
+    for ato in atos:
+        assert "valores_extraidos" in ato
+        assert "processos_sei_extraidos" in ato
+        assert "orgao" in ato
+        assert "numero_ato" in ato
+
+    # Primeiro ato deve ter o número da portaria
+    assert any("123" in (a.get("numero_ato") or "") for a in atos), \
+        "número do ato (PORTARIA 123) não extraído"
+
+    # Segundo ato deve ter valor monetário
+    todos_textos = " ".join(a.get("texto", "") for a in atos)
+    assert len(extrair_valores(todos_textos)) >= 1
+    assert len(extrair_cpfs(todos_textos)) >= 1
+    assert len(extrair_cnpjs(todos_textos)) >= 1
+    assert len(extrair_processos_sei(todos_textos)) >= 1
 
 
 # ─── 8. SIAFE OB: mapeamento completo de colunas ─────────────────────────────
