@@ -21,6 +21,16 @@ from pathlib import Path
 
 from rich.console import Console
 
+# Carrega `.env.txt` automaticamente se existir, antes de ler qualquer variável.
+_ENV_TXT = Path(__file__).resolve().parents[1] / ".env.txt"
+if _ENV_TXT.exists():
+    for line in _ENV_TXT.read_text(encoding="utf-8", errors="ignore").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip())
+
 from compliance_agent.notifications.telegram import (
     enviar_mensagem, enviar_arquivo, enviar_alerta_urgente, BOT_TOKEN
 )
