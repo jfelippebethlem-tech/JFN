@@ -1,79 +1,95 @@
-# JFN — SIAFE2 / SEI Finance Agent
+# JFN — Agente Auditor de Compliance
 
-Agente conversacional com IA para navegar o [SIAFE2](https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp) e o SEI Rio de Janeiro, extrair dados de **Execução por OB** e cruzar com números de processo SEI.
+Auditor autônomo para dados públicos do Estado do Rio de Janeiro: **SIAFE2**, **DOERJ**, **SEI-RJ** e **PNCP**. Executa coleta estruturada, regras de compliance, geração de alertas, relatórios e missões paralelas.
 
-## Funcionalidades
+## Funcionalidades atuais
 
-- Login no SIAFE2 com suporte a código OTP via e-mail
-- Navegação até FlexVision → Execução por OB
-- Pesquisa com filtros: órgão, período, número de OB
-- Extração de dados com paginação automática
-- Exportação para CSV e JSON
-- Cruzamento com SEI Rio para obter número de processo
-- Interface conversacional em português
+### Coleta e ingestão
+- Coleta de OBs do **SIAFE2** (inclusive exercício 2026) com navegação assistida.
+- Coleta de publicações do **DOERJ** (Diário Oficial do Estado do RJ).
+- Integração com **SEI-RJ** para cruzamento de processos.
+- Integração com **PNCP** para compras públicas.
+- Diagnóstico rápido (`checar.py`) com verificação de Chrome debug, DOERJ e SIAFE2.
+
+### Compliance e regras
+- Motor de regras com múltiplos detectores.
+- Geração automática de alertas.
+- Exportação de relatórios em **TXT / PDF / DOCX / MD**.
+- Histórico de sessões e memória de aprendizado persistente.
+
+### Interface
+- Servidor HTTP com endpoints REST para painel e operação do agente auditor.
+- Suporte a múltiplas missões paralelas, com pool limitado, retomada e histórico.
+
+## Stack
+
+- **Python 3.12** (ambiente do projeto JFN).
+- **FastAPI / Uvicorn** para API.
+- **SQLAlchemy + SQLite** para banco local.
+- **Playwright** para automação navegacional.
+- **Relatórios** com geração local (txt, pdf, docx).
 
 ## Requisitos
 
-- Python 3.11+
-- Chave da API Anthropic
-
-## Instalação
+- Python 3.12.
+- Dependências em `requirements.txt`.
+- Playwright/Chromium instalado.
 
 ```bash
 pip install -r requirements.txt
 playwright install chromium
 ```
 
-## Uso
-
-### Interativo (recomendado)
+## Como rodar
 
 ```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-python main.py
+python checar.py
+python server.py --host 0.0.0.0 --port 8000
 ```
 
-### Com browser visível (para depuração)
+## Endpoints principais
 
-```bash
-python main.py --visible
-```
+- `GET /` e `/chat` — Painel/chat.
+- `GET /api/hermes/estado` — Estado do agente.
+- `POST /api/hermes/missao` — Definir missão atual.
+- `DELETE /api/hermes/missao` — Limpar missão atual.
+- `POST /api/hermes/missoes` — Criar missão paralela (multi-missão).
+- `GET /api/hermes/missoes` — Listar missões.
+- `GET /api/hermes/missoes/{id}` — Detalhe de missão.
+- `POST /api/hermes/trabalhar` — Disparar execução da missão.
+- `POST /api/hermes/parar` — Parar execução.
+- `POST /api/hermes/relatorio` — Gerar relatório.
+- `GET /api/compliance/painel` — Snapshot do painel.
+- `GET /api/compliance/investigar` — Investigar pessoa/empresa.
+- `GET /api/compliance/relatorio_30d` — Relatório últimos 30 dias.
+- `GET /api/compliance/graph` — Grafo de relacionamentos.
+- `GET /api/compliance/alerts` — Alertas.
+- `GET /api/compliance/stats` — Estatísticas.
+- `GET /api/compliance/buscar` — Busca textual.
+- `GET /graph` — Visualização de grafo.
 
-### Consulta única
-
-```bash
-python main.py --query "Mostre os gastos da SEEDUC em maio de 2025"
-```
-
-## Exemplos de perguntas ao agente
-
-```
-Faça login com meu usuário e extraia as OBs da última semana
-Liste todos os gastos do órgão 260 em abril de 2025
-Qual o número SEI da OB 2025OB000123?
-Exporte os dados extraídos para CSV
-Quais órgãos aparecem na tela de Execução por OB?
-```
-
-## Fluxo típico
-
-1. `login_siafe` — autentica (pede OTP se necessário)
-2. `navigate_flexvision` — acessa o módulo
-3. `navigate_execucao_ob` — vai para a seção de OBs
-4. `search_execucao_ob` — filtra por período/órgão
-5. `extract_ob_data` — extrai todos os registros
-6. `enrich_with_sei` — busca números de processo SEI
-7. `export_data` — salva em CSV/JSON
-
-## Estrutura
+## Estrutura principal
 
 ```
-siafe_agent/
-  browser/
-    siafe_browser.py   # Automação Playwright para SIAFE2
-    sei_browser.py     # Automação Playwright para SEI Rio
-  tools.py             # Definições das ferramentas para Claude
-  agent.py             # Loop agentico com Claude API
-main.py                # CLI
-requirements.txt
-```
+compliance_agent/
+  collectors/
+    siafe_ob.py
+    doerj.py
+    sei_portal.py
+    pncp.py
+    caged.py
+    web_research.py
+  rules/
+    default_audit_config.py
+    generate_alerts.py
+    engine.py
+    obra.py
+    preco.py
+  reporting/
+    export_relatorios.py
+    charts.py
+    pdf.py
+  database/
+    models.py
+    migrations/
+  herm
