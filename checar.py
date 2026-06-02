@@ -10,6 +10,7 @@ Uso:
 
 import asyncio
 import os
+import platform
 from datetime import date
 from pathlib import Path
 
@@ -31,7 +32,9 @@ _load_env()
 def _mask(v: str) -> str:
     if not v:
         return "(VAZIO)"
-    return (v[:6] + "..." + v[-4:]) if len(v) > 12 else v
+    if len(v) <= 4:
+        return "****"
+    return v[:4] + "..." + v[-3:]
 
 
 def ok(m):
@@ -76,7 +79,7 @@ async def main():
                 bad(f"Chrome respondeu HTTP {r.status_code}")
     except Exception as e:
         bad(f"Chrome 9222 inacessivel: {e}")
-        import platform, os
+
         if platform.system() == "Windows":
             perfil = os.path.join(os.environ.get("LOCALAPPDATA", ""), "JFN", "ChromeDebug")
             print(f"       -> Rode HERMES.bat — o passo 4 abre o Chrome no modo debug.")
@@ -133,25 +136,47 @@ async def main():
         from compliance_agent.llm.free_llm import groq_available, groq_chat_async
         if not groq_available():
             bad("GROQ_API_KEY ausente — analise por IA desligada")
+            print("       -> Pegue chave gratis em https://console.groq.com e ponha no .env")
         else:
             resp = await groq_chat_async("Responda apenas: OK", system="Teste.")
             ok(f"Groq respondeu: {resp[:40].strip()}")
     except Exception as e:
         bad(f"Groq falhou: {type(e).__name__}: {e}")
 
-    # 6. Hermes / OpenRouter --------------------------------------------------
-    print("\n=== 6. Hermes-3 (OpenRouter - aprendizado) ===")
+    # 6. Hermes (cascata de modelos) ------------------------------------------
+    print("\n=== 6. Hermes (OpenRouter - aprendizado) ===")
     try:
-        from compliance_agent.llm.free_llm import openrouter_available, openrouter_chat_async
+        from compliance_agent.llm.free_llm import openrouter_available
+        from compliance_agent.llm import hermes_agent as _ha
+
         if not openrouter_available():
-            bad("OPENROUTER_API_KEY ausente — Hermes NAO roda (loop desliga sozinho)")
+            bad("OPENROUTER_API_KEY ausente — Hermes NAO roda")
             print("       -> Pegue uma chave gratis em https://openrouter.ai e ponha no .env")
         else:
-            resp = await openrouter_chat_async("Responda apenas: OK", system="Teste.", smart=True)
-            ok(f"Hermes respondeu: {resp[:50].strip()}")
+            # Testa a cascata completa: _hermes() tenta 405B, faz fallback automatico se der 429
+            import time
+            _ha._ultima_chamada = 0.0  # reseta rate-limit interno para o teste
+            t0 = time.time()
+            resp = await _ha._hermes(
+                "Voce e um assistente de teste.",
+                "Responda apenas com a palavra: OK",
+                max_tokens=10,
+            )
+            dt = time.time() - t0
+            # Detecta qual modelo foi usado (modelo de fallback imprime no console)
+            if resp.strip():
+                ok(f"Hermes respondeu em {dt:.1f}s: {resp.strip()[:60]}")
+            else:
+                bad("Hermes retornou resposta vazia")
     except Exception as e:
-        bad(f"Hermes/OpenRouter falhou: {type(e).__name__}: {e}")
-        print("       -> Modelo :free pode estar com limite. Tente de novo em minutos.")
+        errmsg = str(e)
+        bad(f"Hermes falhou: {errmsg[:120]}")
+        if "429" in errmsg:
+            print("       -> Todos os modelos :free com cota esgotada.")
+            print("          Aguarde alguns minutos e rode checar.py de novo.")
+            print("          Com GROQ_API_KEY no .env, Groq serve de fallback.")
+        elif "OPENROUTER_API_KEY" in errmsg:
+            print("       -> Configure OPENROUTER_API_KEY no .env")
 
     # 7. Telegram -------------------------------------------------------------
     print("\n=== 7. Telegram ===")
@@ -199,4 +224,7 @@ if __name__ == "__main__":
         asyncio.run(main())
     except KeyboardInterrupt:
         pass
-    input("\nPressione ENTER para fechar...")
+    try:
+        input("\nPressione ENTER para fechar...")
+    except (EOFError, KeyboardInterrupt):
+        pass
