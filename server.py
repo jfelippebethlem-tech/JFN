@@ -197,9 +197,53 @@ async def api_hermes_limpar_missao():
         s.close()
 
 
+_agent_loop_trabalhar_task: Optional[asyncio.Task] = None
+_agent_loop_lock = asyncio.Lock()
+_agent_loop_queue: Optional[asyncio.Queue] = None  # SSE stream
+
+
+async def _trabalhar_loop_until_done(ag: HermesGoalAgent):
+    loop_fim = asyncio.Event()
+    n_passos = 0
+    ultimo_aprendizado = ""
+    while not loop_fim.is_set():
+        ciclo = await ag.trabalhar()
+        n_passos += len(ciclo.get("passos", []))
+        for item in ciclo.get("passos", []):
+            payload = {
+                "acao": item.get("acao"),
+                "pensamento": item.get("pensamento"),
+                "resultado": item.get("resultado"),
+            }
+            if _agent_loop_queue:
+                await _agent_loop_queue.put(payload)
+        if ciclo.get("resumo"):
+            ultimo_aprendizado = str(ciclo.get("resumo"))
+        if ciclo.get("concluido") or ciclo.get("erro"):
+            break
+        await asyncio.sleep(1)
+    if _agent_loop_queue:
+        await _agent_loop_queue.put({
+            "acao": "concluir",
+            "pensamento": "Ciclo autônomo finalizado",
+            "resultado": {"resumo": ultimo_aprendizado or "Missão processada."},
+        })
+
+
+async def _cancelar_loop_trabalhar():
+    global _agent_loop_trabalhar_task
+    async with _agent_loop_lock:
+        if _agent_loop_trabalhar_task and not _agent_loop_trabalhar_task.done():
+            _agent_loop_trabalhar_task.cancel()
+            try:
+                await _agent_loop_trabalhar_task
+            except asyncio.CancelledError:
+                pass
+            _agent_loop_trabalhar_task = None
+
+
 @app.post("/api/hermes/trabalhar")
 async def api_hermes_trabalhar():
-    """Dispara UM ciclo autônomo do Hermes rumo à missão e devolve os passos."""
     from compliance_agent.database.models import get_session, init_db
     from compliance_agent.hermes_goal import HermesGoalAgent
     init_db()
@@ -208,16 +252,42 @@ async def api_hermes_trabalhar():
         ag = HermesGoalAgent(session=s)
         if not ag.missao_atual():
             return JSONResponse({"erro": "Defina uma missão antes de trabalhar."})
-        return JSONResponse(await ag.trabalhar())
+        await _cancelar_loop_trabalhar()
+        _agent_loop_queue = asyncio.Queue()
+        loop_task = asyncio.create_task(_trabalhar_loop_until_done(ag))
+        _agent_loop_trabalhar_task = loop_task
+        return JSONResponse({"ok": True, "status": "trabalhando"})
     except Exception as e:
         return JSONResponse({"erro": f"{type(e).__name__}: {e}"})
     finally:
         s.close()
 
 
+@app.get("/api/hermes/stream")
+async def api_hermes_stream():
+    async def event_stream():
+        while True:
+            if _agent_loop_queue is None:
+                await asyncio.sleep(0.25)
+                continue
+            try:
+                item = await _agent_loop_queue.get()
+            except asyncio.CancelledError:
+                break
+            yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n"
+    return StreamingResponse(event_stream(), media_type="text/event-stream")
+
+
+@app.post("/api/hermes/parar")
+async def api_hermes_parar():
+    await _cancelar_loop_trabalhar()
+    return JSONResponse({"ok": True, "status": "parado"})
+
+
 @app.post("/api/hermes/chat")
 async def api_hermes_chat(payload: dict):
-    """Conversa livre com o Hermes (com todo o contexto do banco + memória)."""
+
+
     from compliance_agent.database.models import get_session, init_db
     from compliance_agent.hermes_goal import HermesGoalAgent
     init_db()
