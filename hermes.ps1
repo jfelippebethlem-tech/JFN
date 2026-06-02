@@ -70,10 +70,11 @@ if (-not $chromeUp) {
     )
     $chrome = $paths | Where-Object { Test-Path $_ } | Select-Object -First 1
     if ($chrome) {
-        $perfil = "$env:LOCALAPPDATA\Google\Chrome\User Data"
-        Start-Process $chrome -ArgumentList "--remote-debugging-port=9222","--user-data-dir=`"$perfil`"","https://siafe2.fazenda.rj.gov.br/Siafe/"
-        for ($i=0; $i -lt 7; $i++) {
-            Start-Sleep -Seconds 2
+        # Perfil exclusivo do JFN — nao interfere com o Chrome normal e garante --remote-debugging-port
+        $perfil = "$env:LOCALAPPDATA\JFN\ChromeDebug"
+        Start-Process $chrome -ArgumentList "--remote-debugging-port=9222","--user-data-dir=`"$perfil`"","--no-first-run","--no-default-browser-check","https://siafe2.fazenda.rj.gov.br/Siafe/"
+        for ($i=0; $i -lt 12; $i++) {
+            Start-Sleep -Seconds 3
             try { (Invoke-WebRequest "http://127.0.0.1:9222/json/version" -TimeoutSec 3 -UseBasicParsing) | Out-Null; $chromeUp = $true; break } catch {}
         }
     }

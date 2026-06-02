@@ -76,10 +76,10 @@ call :abrir_chrome
 set /a tent=0
 :espera_chrome
 set /a tent+=1
-ping 127.0.0.1 -n 3 >nul
+timeout /t 3 /nobreak >nul
 curl -s "http://127.0.0.1:9222/json/version" >nul 2>&1
 if not errorlevel 1 goto :chrome_subiu
-if !tent! lss 7 goto :espera_chrome
+if !tent! lss 12 goto :espera_chrome
 echo         AVISO: Chrome nao subiu no modo debug. O Hermes tentara abrir sozinho.
 goto :passo5
 :chrome_subiu
@@ -120,9 +120,10 @@ if exist "%PROGRAMFILES%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%
 if exist "%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%PROGRAMFILES(X86)%\Google\Chrome\Application\chrome.exe"
 if exist "%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe" set "CHROME_EXE=%LOCALAPPDATA%\Google\Chrome\Application\chrome.exe"
 if not defined CHROME_EXE goto :sem_chrome
-taskkill /f /im chrome.exe >nul 2>&1
-ping 127.0.0.1 -n 3 >nul
-start "" "%CHROME_EXE%" --remote-debugging-port=9222 --user-data-dir="%LOCALAPPDATA%\Google\Chrome\User Data" "https://siafe2.fazenda.rj.gov.br/Siafe/"
+REM Pasta de perfil exclusiva do JFN — nao interfere com o Chrome normal
+REM e forca uma instancia nova que obedece o --remote-debugging-port
+set "JFN_PERFIL=%LOCALAPPDATA%\JFN\ChromeDebug"
+start "" "%CHROME_EXE%" --remote-debugging-port=9222 --user-data-dir="%JFN_PERFIL%" --no-first-run --no-default-browser-check "https://siafe2.fazenda.rj.gov.br/Siafe/"
 goto :eof
 :sem_chrome
 echo         AVISO: Chrome nao encontrado.

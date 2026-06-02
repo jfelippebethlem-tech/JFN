@@ -90,15 +90,23 @@ async def abrir_chrome_debug(url: str = SIAFE_HOME) -> dict:
     if not exe:
         return {"ok": False, "erro": "Chrome não encontrado no sistema."}
 
-    perfil = os.environ.get("LOCALAPPDATA", str(Path.home())) + "/Google/Chrome/User Data"
+    # Perfil exclusivo do JFN — força nova instância independente do Chrome normal.
+    # Usar o perfil padrão faz Chrome reutilizar processo existente e ignorar --remote-debugging-port.
+    if platform.system() == "Windows":
+        base = os.environ.get("LOCALAPPDATA", str(Path.home()))
+        perfil = str(Path(base) / "JFN" / "ChromeDebug")
+    else:
+        perfil = str(Path.home() / ".config" / "jfn-chrome-debug")
+
     args = [
         exe,
         "--remote-debugging-port=9222",
         f"--user-data-dir={perfil}",
+        "--no-first-run",
+        "--no-default-browser-check",
         url,
     ]
     try:
-        # Em Windows usa DETACHED para não morrer junto com o processo pai.
         kwargs = {}
         if platform.system() == "Windows":
             kwargs["creationflags"] = 0x00000008  # DETACHED_PROCESS
@@ -108,11 +116,11 @@ async def abrir_chrome_debug(url: str = SIAFE_HOME) -> dict:
     except Exception as e:
         return {"ok": False, "erro": f"falha ao abrir Chrome: {e}"}
 
-    # Espera subir a porta (até ~20s)
-    for _ in range(10):
+    # Espera subir a porta (até ~30s)
+    for _ in range(15):
         await asyncio.sleep(2)
         if await chrome_disponivel():
-            return {"ok": True, "ja_estava": False, "msg": "Chrome debug aberto na porta 9222."}
+            return {"ok": True, "ja_estava": False, "msg": f"Chrome debug aberto (perfil: {perfil})."}
     return {"ok": False, "erro": "Chrome aberto mas a porta 9222 não respondeu a tempo."}
 
 
