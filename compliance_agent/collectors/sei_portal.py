@@ -101,7 +101,7 @@ async def buscar_processo(numero_sei: str, usar_cache: bool = True) -> dict:
             pass
 
     async with httpx.AsyncClient(
-        timeout=30, follow_redirects=True, headers=_HEADERS
+        timeout=45, follow_redirects=True, headers=_HEADERS
     ) as client:
         # Estratégia 1: busca direta por número no portal de pesquisa
         resultado = await _tentar_pesquisa_direta(client, numero_limpo)
@@ -133,58 +133,82 @@ async def buscar_processo(numero_sei: str, usar_cache: bool = True) -> dict:
 
 
 async def _tentar_pesquisa_direta(client: httpx.AsyncClient, numero: str) -> dict:
-    """Usa o formulário de pesquisa pública do SEI-RJ."""
-    try:
-        # GET para obter cookies e possível token CSRF
-        resp = await client.get(SEI_PESQUISA)
-        if resp.status_code != 200:
-            return {"erro": f"Portal SEI retornou HTTP {resp.status_code}"}
+    """Usa o formulário de pesquisa pública do SEI-RJ com retry/backoff."""
+    tentativas = 3
+    atraso_base = 2.0
+    ultima_excecao: Exception | None = None
+    for tentativa in range(tentativas):
+        try:
+            # GET para obter cookies e possível token CSRF
+            resp = await client.get(SEI_PESQUISA)
+            if resp.status_code != 200:
+                return {"erro": f"Portal SEI retornou HTTP {resp.status_code}"}
 
-        soup = BeautifulSoup(resp.text, "lxml")
+            soup = BeautifulSoup(resp.text, "lxml")
 
-        # Extrai campos ocultos do formulário (alguns portais SEI usam token)
-        form = soup.find("form")
-        hidden_data: dict = {}
-        if form:
-            for inp in form.find_all("input", {"type": "hidden"}):
-                name = inp.get("name", "")
-                value = inp.get("value", "")
-                if name:
-                    hidden_data[name] = value
+            # Extrai campos ocultos do formulário (alguns portais SEI usam token)
+            form = soup.find("form")
+            hidden_data: dict = {}
+            if form:
+                for inp in form.find_all("input", {"type": "hidden"}):
+                    name = inp.get("name", "")
+                    value = inp.get("value", "")
+                    if name:
+                        hidden_data[name] = value
 
-        # Monta payload de pesquisa
-        payload = {
-            **hidden_data,
-            "txtPesquisaRapida": numero,
-            "txtNroProcesso":    numero,
-            "chkSinExato":       "on",
-            "btnPesquisar":      "Pesquisar",
-        }
+            # Monta payload de pesquisa
+            payload = {
+                **hidden_data,
+                "txtPesquisaRapida": numero,
+                "txtNroProcesso":    numero,
+                "chkSinExato":       "on",
+                "btnPesquisar":      "Pesquisar",
+            }
 
-        resp2 = await client.post(SEI_PESQUISA, data=payload)
-        if resp2.status_code != 200:
-            return {"erro": f"Pesquisa SEI retornou HTTP {resp2.status_code}"}
+            resp2 = await client.post(SEI_PESQUISA, data=payload)
+            if resp2.status_code != 200:
+                return {"erro": f"Pesquisa SEI retornou HTTP {resp2.status_code}"}
 
-        return _parse_resultado_pesquisa(resp2.text, numero)
+            return _parse_resultado_pesquisa(resp2.text, numero)
+        except httpx.TimeoutException:
+            ultima_excecao = TimeoutError("Timeout ao acessar portal SEI")
+        except Exception as e:
+            ultima_excecao = e
 
-    except httpx.TimeoutException:
-        return {"erro": "Timeout ao acessar portal SEI"}
-    except Exception as e:
-        return {"erro": str(e)}
+        if tentativa < tentativas - 1:
+            await asyncio.sleep(atraso_base * (2 ** tentativa))
+
+    if isinstance(ultima_excecao, TimeoutError):
+        return {"erro": str(ultima_excecao)}
+    return {"erro": f"Falha na pesquisa SEI: {ultima_excecao}"}
 
 
 async def _tentar_url_direta(client: httpx.AsyncClient, numero: str) -> dict:
-    """Tenta acessar o processo via URL direta do controlador SEI."""
-    try:
-        params = {
-            "acao": "procedimento_trabalhar",
-            "txtNroProcedimento": numero,
-        }
-        resp = await client.get(SEI_CONTROLADOR, params=params)
-        if resp.status_code == 200:
-            return _parse_resultado_pesquisa(resp.text, numero)
-        return {"erro": f"URL direta retornou HTTP {resp.status_code}"}
-    except Exception as e:
+    """Tenta acessar o processo via URL direta do controlador SEI com retry/backoff."""
+    tentativas = 2
+    atraso_base = 1.5
+    ultima_excecao: Exception | None = None
+    for tentativa in range(tentativas):
+        try:
+            params = {
+                "acao": "procedimento_trabalhar",
+                "txtNroProcedimento": numero,
+            }
+            resp = await client.get(SEI_CONTROLADOR, params=params)
+            if resp.status_code == 200:
+                return _parse_resultado_pesquisa(resp.text, numero)
+            return {"erro": f"URL direta retornou HTTP {resp.status_code}"}
+        except httpx.TimeoutException:
+            ultima_excecao = TimeoutError("Timeout ao acessar URL direta do SEI")
+        except Exception as e:
+            ultima_excecao = e
+
+        if tentativa < tentativas - 1:
+            await asyncio.sleep(atraso_base * (2 ** tentativa))
+
+    if isinstance(ultima_excecao, TimeoutError):
+        return {"erro": str(ultima_excecao)}
+    return {"erro": f"Falha na URL direta SEI: {ultima_excecao}"}
         return {"erro": str(e)}
 
 
