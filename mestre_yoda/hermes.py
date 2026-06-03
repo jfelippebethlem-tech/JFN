@@ -29,6 +29,7 @@ _RETRYABLE_NAMES = (
     "apiconnection",
     "apitimeout",
     "timeout",
+    "connection",  # ProviderConnectionError (provedores OpenAI-compatible)
     "internalserver",
     "serviceunavailable",
     "apistatus",

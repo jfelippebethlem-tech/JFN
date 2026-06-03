@@ -142,3 +142,69 @@ def test_briefing_timezone_invalido(monkeypatch):
     monkeypatch.setenv("YODA_BRIEFING_TIMEZONE", "Marte/Olympus")
     with pytest.raises(ConfigError):
         Settings.from_env()
+
+
+# --- seleção de provedor de modelo --------------------------------------
+def _clear_providers(monkeypatch):
+    for var in (
+        "ANTHROPIC_API_KEY",
+        "OPENROUTER_API_KEY",
+        "YODA_LLM_BASE_URL",
+        "YODA_LLM_API_KEY",
+        "YODA_PROVIDER",
+    ):
+        monkeypatch.delenv(var, raising=False)
+
+
+def test_provider_anthropic_por_padrao(monkeypatch):
+    _base_env(monkeypatch)
+    s = Settings.from_env()
+    assert s.provider == "anthropic"
+    assert s.llm_api_key == "key"
+    assert s.model == "claude-opus-4-8"
+
+
+def test_provider_openrouter_sem_chave_anthropic(monkeypatch):
+    _clear_providers(monkeypatch)
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-v1-abc")
+    s = Settings.from_env()
+    assert s.provider == "openrouter"
+    assert s.llm_api_key == "sk-or-v1-abc"
+    assert s.model == "stepfun/step-3.7-flash:free"
+    assert s.llm_base_url.startswith("https://openrouter.ai")
+
+
+def test_provider_openrouter_modelo_customizado(monkeypatch):
+    _clear_providers(monkeypatch)
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-v1-abc")
+    monkeypatch.setenv("OPENROUTER_SMART_MODEL", "qwen/qwen-2.5-72b-instruct:free")
+    s = Settings.from_env()
+    assert s.model == "qwen/qwen-2.5-72b-instruct:free"
+
+
+def test_provider_compat_generico(monkeypatch):
+    _clear_providers(monkeypatch)
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    monkeypatch.setenv("YODA_LLM_BASE_URL", "http://127.0.0.1:11434/v1")
+    monkeypatch.setenv("YODA_LLM_API_KEY", "ollama")
+    monkeypatch.setenv("YODA_MODEL", "llama3.1")
+    s = Settings.from_env()
+    assert s.provider == "compat"
+    assert s.llm_base_url == "http://127.0.0.1:11434/v1"
+    assert s.model == "llama3.1"
+
+
+def test_sem_nenhum_provedor_erra(monkeypatch):
+    _clear_providers(monkeypatch)
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "tok")
+    with pytest.raises(ConfigError):
+        Settings.from_env()
+
+
+def test_yoda_model_sobrepoe_anthropic(monkeypatch):
+    _base_env(monkeypatch)
+    monkeypatch.setenv("YODA_MODEL", "claude-sonnet-4-6")
+    s = Settings.from_env()
+    assert s.model == "claude-sonnet-4-6"

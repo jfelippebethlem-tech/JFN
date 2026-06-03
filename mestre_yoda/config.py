@@ -20,6 +20,11 @@ except ImportError:  # pragma: no cover - dotenv é só conveniência de dev
 
 
 _VALID_EFFORTS = {"low", "medium", "high", "xhigh", "max"}
+_VALID_PROVIDERS = {"anthropic", "openrouter", "compat"}
+
+# Endpoint e modelo padrão quando se usa OpenRouter (provedor gratuito).
+_OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+_DEFAULT_OPENROUTER_MODEL = "stepfun/step-3.7-flash:free"
 
 # Fuso e horário padrão da rotina "BOM DIA" (alinhado com README-AGENTES.md: 7:30).
 _DEFAULT_BRIEFING_TIME = _dt.time(7, 30)
@@ -79,6 +84,11 @@ class Settings:
 
     telegram_token: str
     anthropic_api_key: str
+    # Provedor de modelo: "anthropic" (Claude), "openrouter" (gratuito) ou
+    # "compat" (qualquer endpoint OpenAI-compatible). Resolvido em from_env.
+    provider: str = "anthropic"
+    llm_api_key: str = ""
+    llm_base_url: str = ""
     model: str = "claude-opus-4-8"
     db_path: str = "yoda_memory.db"
     effort: str = "high"
@@ -102,21 +112,78 @@ class Settings:
     @classmethod
     def from_env(cls) -> "Settings":
         telegram_token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
-        anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
-
-        missing = [
-            name
-            for name, value in (
-                ("TELEGRAM_BOT_TOKEN", telegram_token),
-                ("ANTHROPIC_API_KEY", anthropic_api_key),
-            )
-            if not value
-        ]
-        if missing:
+        if not telegram_token:
             raise ConfigError(
-                "Variáveis de ambiente obrigatórias ausentes: "
-                + ", ".join(missing)
+                "Variável de ambiente obrigatória ausente: TELEGRAM_BOT_TOKEN"
             )
+
+        # Provedor de modelo. Sem chave Anthropic, cai para OpenRouter (grátis)
+        # ou para um endpoint OpenAI-compatible genérico (Nous, Ollama, etc.).
+        anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", "").strip()
+        openrouter_api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+        compat_base = os.getenv("YODA_LLM_BASE_URL", "").strip()
+        compat_key = os.getenv("YODA_LLM_API_KEY", "").strip()
+
+        forced = os.getenv("YODA_PROVIDER", "").strip().lower()
+        if forced:
+            provider = forced
+        elif anthropic_api_key:
+            provider = "anthropic"
+        elif openrouter_api_key:
+            provider = "openrouter"
+        elif compat_base and compat_key:
+            provider = "compat"
+        else:
+            raise ConfigError(
+                "Nenhum provedor de modelo configurado. Defina UM destes:\n"
+                "  - ANTHROPIC_API_KEY (Claude, pago), ou\n"
+                "  - OPENROUTER_API_KEY (modelos :free, gratuito), ou\n"
+                "  - YODA_LLM_BASE_URL + YODA_LLM_API_KEY (OpenAI-compatible)."
+            )
+        if provider not in _VALID_PROVIDERS:
+            raise ConfigError(
+                f"YODA_PROVIDER inválido: {provider!r}. "
+                f"Use um de: {', '.join(sorted(_VALID_PROVIDERS))}."
+            )
+
+        # Resolve chave, endpoint e modelo conforme o provedor escolhido.
+        generic_model = os.getenv("YODA_MODEL", "").strip()
+        if provider == "anthropic":
+            if not anthropic_api_key:
+                raise ConfigError(
+                    "YODA_PROVIDER=anthropic exige ANTHROPIC_API_KEY."
+                )
+            llm_api_key = anthropic_api_key
+            llm_base_url = ""
+            model = (
+                generic_model
+                or os.getenv("ANTHROPIC_MODEL", "").strip()
+                or "claude-opus-4-8"
+            )
+        elif provider == "openrouter":
+            if not openrouter_api_key:
+                raise ConfigError(
+                    "YODA_PROVIDER=openrouter exige OPENROUTER_API_KEY."
+                )
+            llm_api_key = openrouter_api_key
+            llm_base_url = (
+                os.getenv("OPENROUTER_BASE_URL", _OPENROUTER_BASE_URL).strip()
+                or _OPENROUTER_BASE_URL
+            )
+            model = (
+                generic_model
+                or os.getenv("OPENROUTER_SMART_MODEL", "").strip()
+                or _DEFAULT_OPENROUTER_MODEL
+            )
+        else:  # compat
+            if not (compat_base and compat_key):
+                raise ConfigError(
+                    "YODA_PROVIDER=compat exige YODA_LLM_BASE_URL e "
+                    "YODA_LLM_API_KEY."
+                )
+            llm_api_key = compat_key
+            llm_base_url = compat_base
+            model = generic_model or _DEFAULT_OPENROUTER_MODEL
 
         effort = os.getenv("YODA_EFFORT", "high").strip().lower()
         if effort not in _VALID_EFFORTS:
@@ -195,7 +262,10 @@ class Settings:
         return cls(
             telegram_token=telegram_token,
             anthropic_api_key=anthropic_api_key,
-            model=os.getenv("ANTHROPIC_MODEL", "claude-opus-4-8").strip(),
+            provider=provider,
+            llm_api_key=llm_api_key,
+            llm_base_url=llm_base_url,
+            model=model,
             db_path=os.getenv("YODA_DB_PATH", "yoda_memory.db").strip(),
             effort=effort,
             max_history=max_history,

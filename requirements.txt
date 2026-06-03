@@ -3,3 +3,5 @@ python-telegram-bot[job-queue]>=21.0
 python-dotenv>=1.0
 # Cotações reais da rotina BOM DIA (dólar, Ibovespa, ouro, petróleo).
 yfinance>=0.2.40
+# Cliente HTTP para provedores OpenAI-compatible (OpenRouter, Nous, Ollama).
+httpx>=0.27
