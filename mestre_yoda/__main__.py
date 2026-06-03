@@ -49,6 +49,7 @@ def main() -> int:
         model=settings.model,
         system_prompt=YODA_SYSTEM_PROMPT,
         effort=settings.effort,
+        enable_web_search=settings.enable_web_search,
     )
     # O resumidor da memória é o próprio Hermes — fecha o ciclo aqui para
     # evitar dependência circular na construção.

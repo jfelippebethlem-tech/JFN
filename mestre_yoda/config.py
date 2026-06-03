@@ -19,9 +19,18 @@ except ImportError:  # pragma: no cover - dotenv é só conveniência de dev
 
 _VALID_EFFORTS = {"low", "medium", "high", "xhigh", "max"}
 
+# Versão GA da ferramenta de busca na web do Claude (sem beta header).
+WEB_SEARCH_TOOL = {"type": "web_search_20260209", "name": "web_search"}
+
 
 class ConfigError(RuntimeError):
     """Configuração ausente ou inválida."""
+
+
+def _parse_bool(raw: str | None, default: bool) -> bool:
+    if raw is None or not raw.strip():
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "sim", "on")
 
 
 def _parse_chat_ids(raw: str | None) -> frozenset[int]:
@@ -51,6 +60,7 @@ class Settings:
     db_path: str = "yoda_memory.db"
     effort: str = "high"
     max_history: int = 20
+    enable_web_search: bool = True
     allowed_chat_ids: frozenset[int] = field(default_factory=frozenset)
     log_level: str = "INFO"
 
@@ -94,6 +104,9 @@ class Settings:
             db_path=os.getenv("YODA_DB_PATH", "yoda_memory.db").strip(),
             effort=effort,
             max_history=max_history,
+            enable_web_search=_parse_bool(
+                os.getenv("YODA_ENABLE_WEB_SEARCH"), default=True
+            ),
             allowed_chat_ids=_parse_chat_ids(os.getenv("YODA_ALLOWED_CHAT_IDS")),
             log_level=os.getenv("YODA_LOG_LEVEL", "INFO").strip().upper(),
         )

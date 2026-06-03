@@ -1,0 +1,13 @@
+services:
+  yoda:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Sobrepõe o caminho do banco para o volume persistente.
+      YODA_DB_PATH: /data/yoda_memory.db
+    volumes:
+      - yoda_data:/data
+
+volumes:
+  yoda_data:

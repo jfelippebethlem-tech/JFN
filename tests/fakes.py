@@ -20,6 +20,14 @@ class FakeToolUseBlock:
 
 
 @dataclass
+class FakeServerToolUseBlock:
+    name: str = "web_search"
+    id: str = "srvtoolu_1"
+    input: dict = field(default_factory=dict)
+    type: str = "server_tool_use"
+
+
+@dataclass
 class FakeUsage:
     input_tokens: int = 10
     output_tokens: int = 5

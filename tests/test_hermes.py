@@ -7,6 +7,7 @@ from mestre_yoda.protocol import AgentRequest
 from .fakes import (
     FakeAnthropic,
     FakeResponse,
+    FakeServerToolUseBlock,
     FakeTextBlock,
     FakeToolUseBlock,
 )
@@ -19,13 +20,14 @@ def memory(tmp_path):
     store.close()
 
 
-def _agent(client, memory):
+def _agent(client, memory, **kwargs):
     return HermesAgent(
         client,
         memory,
         model="claude-opus-4-8",
         system_prompt="Yoda você é.",
         effort="high",
+        **kwargs,
     )
 
 
@@ -102,6 +104,39 @@ async def test_falha_vira_resposta_amigavel(memory):
     resp = await agent.respond(AgentRequest(chat_id=1, user_text="oi"))
     assert resp.ok is False
     assert "Força" in resp.text  # mensagem de fallback do Yoda
+
+
+async def test_web_search_no_conjunto_de_ferramentas(memory):
+    client = FakeAnthropic([FakeResponse(content=[FakeTextBlock("ok")])])
+    agent = _agent(client, memory, enable_web_search=True)
+    await agent.respond(AgentRequest(chat_id=1, user_text="oi"))
+    nomes = {t.get("name") for t in client.calls[0]["tools"]}
+    assert "web_search" in nomes
+
+
+async def test_web_search_desligada(memory):
+    client = FakeAnthropic([FakeResponse(content=[FakeTextBlock("ok")])])
+    agent = _agent(client, memory, enable_web_search=False)
+    await agent.respond(AgentRequest(chat_id=1, user_text="oi"))
+    nomes = {t.get("name") for t in client.calls[0]["tools"]}
+    assert "web_search" not in nomes
+
+
+async def test_pause_turn_retoma(memory):
+    client = FakeAnthropic(
+        [
+            FakeResponse(
+                content=[FakeServerToolUseBlock(name="web_search")],
+                stop_reason="pause_turn",
+            ),
+            FakeResponse(content=[FakeTextBlock("Encontrei, eu.")]),
+        ]
+    )
+    agent = _agent(client, memory, enable_web_search=True)
+    resp = await agent.respond(AgentRequest(chat_id=1, user_text="notícias de hoje?"))
+    assert "Encontrei" in resp.text
+    assert "web_search" in resp.tools_used
+    assert len(client.calls) == 2  # pausou e retomou
 
 
 async def test_summarize(memory):

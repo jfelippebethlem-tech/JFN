@@ -59,6 +59,7 @@ Defina no `.env` (ou no ambiente):
 | `YODA_DB_PATH` | não | `yoda_memory.db` | Caminho do banco SQLite. |
 | `YODA_EFFORT` | não | `high` | Esforço de raciocínio (`low`/`medium`/`high`/`xhigh`/`max`). |
 | `YODA_MAX_HISTORY` | não | `20` | Mensagens mantidas antes de resumir. |
+| `YODA_ENABLE_WEB_SEARCH` | não | `true` | Liga a busca na web do Hermes (fatos atuais). |
 | `YODA_ALLOWED_CHAT_IDS` | não | — | Lista de chat IDs permitidos (separados por vírgula). Vazio = todos. |
 | `YODA_LOG_LEVEL` | não | `INFO` | Nível de log. |
 
@@ -67,6 +68,20 @@ Defina no `.env` (ou no ambiente):
 ```bash
 python -m mestre_yoda
 ```
+
+### Com Docker (recomendado para produção)
+
+O Docker evita problemas de bibliotecas nativas do host e mantém a memória num
+volume persistente:
+
+```bash
+cp .env.example .env   # preencha os tokens
+docker compose up -d --build
+docker compose logs -f
+```
+
+A memória fica no volume `yoda_data` (`/data/yoda_memory.db` dentro do
+contêiner), então sobrevive a reinícios e atualizações.
 
 ## Comandos do bot
 
@@ -87,3 +102,22 @@ pytest
 
 Os testes de memória e protocolo rodam sem rede. O agente Hermes é exercitado
 com um cliente Claude *fake*, então `pytest` não consome créditos da API.
+
+## Trazer o código do bot original
+
+Este repositório foi escrito do zero porque o repositório original
+(`Yoda-Telegram-e-Agente-Hermes`) é privado e não estava no escopo desta
+sessão do Claude Code. Para que o assistente possa ler/migrar o código de lá
+diretamente, escolha **uma** opção:
+
+1. **Adicionar o repo à sessão na web** — na interface do Claude Code on the
+   web, inclua `jfelippebethlem-tech/Yoda-Telegram-e-Agente-Hermes` entre os
+   repositórios da sessão (seletor de repositórios / "Add repository"). Em
+   sessões com esse escopo, o assistente passa a ter acesso direto.
+2. **Tornar o repo público** (temporariamente) — aí o conteúdo pode ser lido
+   sem credenciais.
+3. **Importar manualmente** — copie os arquivos relevantes para este repo
+   (ex.: numa pasta `legado/`) e o assistente migra a partir daqui.
+
+Sem uma dessas, o acesso ao repositório original fica bloqueado no gateway
+(escopo restrito a `jfelippebethlem-tech/jfn`).

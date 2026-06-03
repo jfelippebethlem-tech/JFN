@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 
+from .config import WEB_SEARCH_TOOL
 from .memory import ConversationMemory, ConversationContext
 from .protocol import AgentRequest, AgentResponse
 from .tools import build_registry
@@ -78,6 +79,7 @@ class HermesAgent:
         effort: str = "high",
         max_tokens: int = 8192,
         max_tool_iterations: int = 5,
+        enable_web_search: bool = True,
     ) -> None:
         self._client = client
         self._memory = memory
@@ -86,6 +88,7 @@ class HermesAgent:
         self._effort = effort
         self._max_tokens = max_tokens
         self._max_tool_iterations = max_tool_iterations
+        self._enable_web_search = enable_web_search
 
     # ------------------------------------------------------------------
     async def respond(self, request: AgentRequest) -> AgentResponse:
@@ -111,6 +114,8 @@ class HermesAgent:
             {"role": m.role, "content": m.content} for m in ctx.messages
         ]
         tools = registry.schemas()
+        if self._enable_web_search:
+            tools = [*tools, dict(WEB_SEARCH_TOOL)]
 
         tools_used: list[str] = []
         last_usage: dict[str, int] = {}
@@ -128,12 +133,25 @@ class HermesAgent:
                     output_config={"effort": self._effort},
                 )
                 last_usage = _usage_dict(resp) or last_usage
+                stop = getattr(resp, "stop_reason", None)
 
-                if getattr(resp, "stop_reason", None) == "tool_use":
+                # Servidor pausou um loop de ferramenta server-side (ex.: web_search).
+                # Reenvia para retomar de onde parou — sem mensagem extra.
+                if stop == "pause_turn":
+                    for blk in resp.content:
+                        if getattr(blk, "type", None) == "server_tool_use":
+                            tools_used.append(blk.name)
+                    messages.append({"role": "assistant", "content": resp.content})
+                    continue
+
+                if stop == "tool_use":
                     messages.append({"role": "assistant", "content": resp.content})
                     results = []
                     for blk in resp.content:
-                        if getattr(blk, "type", None) == "tool_use":
+                        btype = getattr(blk, "type", None)
+                        if btype == "server_tool_use":
+                            tools_used.append(blk.name)  # executada no servidor
+                        elif btype == "tool_use":
                             tools_used.append(blk.name)
                             out = registry.execute(blk.name, blk.input)
                             results.append(
@@ -143,8 +161,16 @@ class HermesAgent:
                                     "content": out,
                                 }
                             )
+                    if not results:
+                        # Só ferramentas de servidor nesta rodada; retoma.
+                        continue
                     messages.append({"role": "user", "content": results})
                     continue
+
+                # Registra busca na web mesmo quando termina na mesma resposta.
+                for blk in resp.content:
+                    if getattr(blk, "type", None) == "server_tool_use":
+                        tools_used.append(blk.name)
 
                 final_text = _text_from_content(resp.content)
                 break

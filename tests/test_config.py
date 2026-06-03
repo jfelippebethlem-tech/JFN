@@ -53,3 +53,15 @@ def test_lista_vazia_libera_todos(monkeypatch):
     monkeypatch.setenv("YODA_ALLOWED_CHAT_IDS", "")
     s = Settings.from_env()
     assert s.chat_is_allowed(12345)
+
+
+def test_web_search_padrao_ligado(monkeypatch):
+    _base_env(monkeypatch)
+    monkeypatch.delenv("YODA_ENABLE_WEB_SEARCH", raising=False)
+    assert Settings.from_env().enable_web_search is True
+
+
+def test_web_search_desligado(monkeypatch):
+    _base_env(monkeypatch)
+    monkeypatch.setenv("YODA_ENABLE_WEB_SEARCH", "false")
+    assert Settings.from_env().enable_web_search is False
