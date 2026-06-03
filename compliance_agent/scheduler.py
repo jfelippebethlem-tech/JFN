@@ -4,14 +4,16 @@ Scheduler de compliance — monitoramento CONTÍNUO.
 Arquitetura:
   loop_monitoramento()  — a cada 15 min (7h-20h): coleta OBs novas, analisa,
                           alerta imediatamente via Telegram se algo grave
-  loop_relatorio()      — às 08:00: gera PDF + resumo diário completo
+  loop_relatorio()      — às 08:00: gera .txt + resumo diário completo
   loop_comandos()       — sempre: bot Telegram escuta comandos do celular
 
 Uso:
-    python -m compliance_agent.scheduler         # roda ciclo completo agora e sai
-    python -m compliance_agent.scheduler --loop  # entra nos 3 loops permanentes
+    python -m compliance_agent.scheduler              # rodar ciclo único (gera .txt)
+    python -m compliance_agent.scheduler --pdf        # ciclo único + PDF
+    python -m compliance_agent.scheduler --loop       # loops permanentes
 """
 
+import argparse
 import asyncio
 import json
 import os
@@ -621,18 +623,30 @@ async def rodar_ciclo_relatorio_diario():
     except Exception as e:
         console.print(f"    [yellow]Reflexão Hermes: {e}[/yellow]")
 
-    # 6. Relatório + Telegram
-    console.print("[cyan]6/6 Relatório PDF + Telegram...[/cyan]")
+    # 6. Relatório (padrão: .txt leve; PDF só com flag --pdf)
+    console.print("[cyan]6/6 Relatório...[/cyan]")
     report = _montar_report(hoje, publicacoes, siafe_result, alertas)
     report_path = REPORT_DIR / f"compliance_{hoje.isoformat()}.json"
     report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2, default=str))
 
+    txt_path = None
     pdf_path = None
+
+    # Sempre gera .txt (padrão leve)
     try:
-        pdf_path = gerar_relatorio_diario(report, alertas, REPORT_DIR)
-        console.print(f"    PDF: {pdf_path}")
+        from compliance_agent.reports.text_report import gerar_relatorio_txt
+        txt_path = gerar_relatorio_txt(report, alertas, REPORT_DIR)
+        console.print(f"    TXT: {txt_path}")
     except Exception as e:
-        console.print(f"    [red]PDF: {e}[/red]")
+        console.print(f"    [yellow]TXT: {e}[/yellow]")
+
+    # Apenas gera PDF se a flag --pdf foi passada
+    if getattr(args, "pdf", False):
+        try:
+            pdf_path = gerar_relatorio_diario(report, alertas, REPORT_DIR)
+            console.print(f"    PDF: {pdf_path}")
+        except Exception as e:
+            console.print(f"    [red]PDF: {e}[/red]")
 
     if BOT_TOKEN:
         try:
@@ -650,9 +664,18 @@ async def rodar_ciclo_relatorio_diario():
         except Exception as e:
             console.print(f"    [red]Telegram resumo: {e}[/red]")
 
+        # Envia txt sempre; envia PDF apenas se foi gerado
+        if txt_path and Path(txt_path).exists():
+            try:
+                r_txt = await enviar_arquivo(txt_path, caption=f"Relatório Compliance {hoje.isoformat()}")
+                if r_txt.get("ok"):
+                    console.print("    TXT Telegram ✓")
+            except Exception as e:
+                console.print(f"    [red]TXT Telegram: {e}[/red]")
+
         if pdf_path and Path(pdf_path).exists():
             try:
-                r2 = await enviar_arquivo(pdf_path, caption=f"Relatório Compliance {hoje.isoformat()}")
+                r2 = await enviar_arquivo(pdf_path, caption=f"Relatório Compliance PDF {hoje.isoformat()}")
                 if r2.get("ok"):
                     console.print("    PDF Telegram ✓")
             except Exception as e:
@@ -693,12 +716,18 @@ def _montar_report(hoje: date, publicacoes: list, siafe_result: dict, alertas: l
 
 # ─── Ciclo único (chamado sem --loop, para testes) ────────────────────────────
 
-async def rodar_ciclo_diario():
+async def rodar_ciclo_diario(args=None):
     """Chamado sem --loop: roda o ciclo completo uma vez e retorna."""
-    return await rodar_ciclo_relatorio_diario()
+    return await rodar_ciclo_relatorio_diario(args=args)
 
 
-# ─── Resiliência: cada loop se auto-recupera ──────────────────────────────────
+# ─── Wrapper síncrono para o entrypoint ───────────────────────────────────────
+
+def _main_single(pdf: bool = False):
+    args_ns = argparse.Namespace(pdf=pdf)
+    report = asyncio.run(rodar_ciclo_diario(args=args_ns))
+    return report
+
 
 async def loop_atualizacao_juridica():
     """
@@ -810,7 +839,12 @@ async def _ping_inicio():
 # ─── Entry point ──────────────────────────────────────────────────────────────
 
 if __name__ == "__main__":
-    if "--loop" in sys.argv:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--pdf", action="store_true", help="Gera PDF adicional no relatório")
+    parser.add_argument("--loop", action="store_true", help="Entra nos loops permanentes")
+    args, _ = parser.parse_known_args()
+
+    if args.loop:
         from compliance_agent.notifications.telegram import loop_comandos
         from compliance_agent.database.models import init_db
         from compliance_agent.llm.memoria import garantir_contexto_inicial
