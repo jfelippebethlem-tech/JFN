@@ -31,18 +31,18 @@ INTERVALO   = 60   # segundos entre tentativas
 
 
 def _achar_chave_oci():
-    """Procura o arquivo .pem da chave OCI na pasta do script."""
-    pasta = os.path.dirname(os.path.abspath(__file__))
-    candidatos = (
-        glob.glob(os.path.join(pasta, "*.pem"))
-        + glob.glob(os.path.join(pasta, "oci_key.pem"))
-    )
-    # Prefere o que não tem "public" no nome
-    privados = [c for c in candidatos if "public" not in c.lower()]
-    if privados:
-        return privados[0]
-    if candidatos:
-        return candidatos[0]
+    """Procura o arquivo .pem da chave OCI em várias pastas possíveis."""
+    pasta_script = os.path.dirname(os.path.abspath(__file__))
+    pasta_pai    = os.path.dirname(pasta_script)
+    # Busca na pasta do script, pasta pai e C:\JFN (fallback Windows)
+    dirs = [pasta_script, pasta_pai, r"C:\JFN", os.path.expanduser("~")]
+    for d in dirs:
+        candidatos = glob.glob(os.path.join(d, "*.pem"))
+        privados = [c for c in candidatos if "public" not in c.lower()]
+        if privados:
+            return privados[0]
+        if candidatos:
+            return candidatos[0]
     return None
 
 
