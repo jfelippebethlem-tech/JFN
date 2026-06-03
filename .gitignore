@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Segredos e ambiente
+.env
+*.env
+!.env.example
+
+# Banco de memória do Yoda
+*.db
+*.sqlite
+*.sqlite3
+yoda_memory.db*
+
+# Ferramentas
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Editores
+.vscode/
+.idea/
+*.swp
+.DS_Store
