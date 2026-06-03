@@ -77,6 +77,14 @@ def test_resiliencia_padroes(monkeypatch):
     assert s.max_retries == 2
     assert s.retry_base_delay == 0.5
     assert s.summary_buffer == 10
+    assert s.max_facts == 200
+
+
+def test_max_facts_invalido(monkeypatch):
+    _base_env(monkeypatch)
+    monkeypatch.setenv("YODA_MAX_FACTS", "-5")
+    with pytest.raises(ConfigError):
+        Settings.from_env()
 
 
 def test_max_retries_negativo(monkeypatch):

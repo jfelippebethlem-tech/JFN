@@ -81,6 +81,47 @@ async def test_maybe_summarize_nao_dispara_abaixo_do_limite(store):
     assert await mem.maybe_summarize(1) is False
 
 
+def test_prune_facts_mantem_recentes(store):
+    for i in range(5):
+        store.upsert_fact(1, f"k{i}", f"v{i}")
+    removidos = store.prune_facts(1, keep=2)
+    assert removidos == 3
+    assert store.fact_count(1) == 2
+
+
+def test_max_facts_evita_enchimento(store):
+    mem = ConversationMemory(store, max_history=10, max_facts=3)
+    for i in range(6):
+        mem.remember_fact(1, f"k{i}", f"v{i}")
+    # Nunca passa do teto: a memória não "enche" como a do Hermes.
+    assert store.fact_count(1) == 3
+
+
+def test_max_facts_zero_sem_limite(store):
+    mem = ConversationMemory(store, max_history=10, max_facts=0)
+    for i in range(5):
+        mem.remember_fact(1, f"k{i}", f"v{i}")
+    assert store.fact_count(1) == 5
+
+
+def test_stats_reporta_memoria(store):
+    mem = ConversationMemory(store, max_history=10)
+    mem.record_user(1, "oi")
+    mem.remember_fact(1, "nome", "Jorge")
+    s = mem.stats(1)
+    assert s["messages"] == 1
+    assert s["facts"] == 1
+    assert s["has_summary"] is False
+    assert s["db_bytes"] > 0
+
+
+def test_maintain_nao_quebra(store):
+    mem = ConversationMemory(store, max_history=10)
+    mem.record_user(1, "oi")
+    mem.maintain()  # VACUUM não deve levantar
+    assert store.message_count(1) == 1
+
+
 async def test_summary_buffer_adia_resumo(store):
     chamadas = []
 

@@ -45,6 +45,7 @@ def main() -> int:
         store,
         max_history=settings.max_history,
         summary_buffer=settings.summary_buffer,
+        max_facts=settings.max_facts,
     )
 
     agent = HermesAgent(

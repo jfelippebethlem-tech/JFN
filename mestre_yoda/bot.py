@@ -67,6 +67,7 @@ class YodaBot:
         app.add_handler(CommandHandler("help", self._cmd_help))
         app.add_handler(CommandHandler("esquecer", self._cmd_forget))
         app.add_handler(CommandHandler("lembrancas", self._cmd_facts))
+        app.add_handler(CommandHandler("status", self._cmd_status))
         app.add_handler(CommandHandler("bomdia", self._cmd_bomdia))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._on_message)
@@ -149,6 +150,22 @@ class YodaBot:
             return
         linhas = "\n".join(f"• {k}: {v}" for k, v in facts.items())
         await update.message.reply_text(f"O que sobre você lembro:\n\n{linhas}")
+
+    async def _cmd_status(self, update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+        """Mostra a saúde da memória deste chat (mensagens, fatos, tamanho)."""
+        if self._denied(update) or update.message is None:
+            return
+        s = self._memory.stats(update.effective_chat.id)
+        kib = int(s["db_bytes"]) / 1024
+        resumo = "sim" if s["has_summary"] else "não"
+        await update.message.reply_text(
+            "Minha memória, esta é:\n\n"
+            f"• Mensagens guardadas: {s['messages']}\n"
+            f"• Fatos sobre você: {s['facts']}\n"
+            f"• Resumo da conversa: {resumo}\n"
+            f"• Banco de memória: {kib:.1f} KiB\n\n"
+            "Encher, ela não enche — podo o que é antigo, eu."
+        )
 
     async def _cmd_bomdia(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         """Dispara a rotina BOM DIA sob demanda, no chat que pediu."""

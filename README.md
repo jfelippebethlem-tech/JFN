@@ -65,6 +65,7 @@ Defina no `.env` (ou no ambiente):
 | `YODA_EFFORT` | não | `high` | Esforço de raciocínio (`low`/`medium`/`high`/`xhigh`/`max`). |
 | `YODA_MAX_HISTORY` | não | `20` | Mensagens mantidas no contexto antes de resumir. |
 | `YODA_SUMMARY_BUFFER` | não | `10` | Folga acima de `MAX_HISTORY` antes de resumir (resumo em lote). |
+| `YODA_MAX_FACTS` | não | `200` | Teto de fatos por chat (0 = ilimitado); poda os mais antigos. |
 | `YODA_MAX_RETRIES` | não | `2` | Retentativas em falhas transitórias da API (sobrecarga, 5xx, rede). |
 | `YODA_RETRY_BASE_DELAY` | não | `0.5` | Atraso base do backoff exponencial (segundos). |
 | `YODA_ENABLE_WEB_SEARCH` | não | `true` | Liga a busca na web do Hermes (fatos atuais). |
@@ -102,9 +103,22 @@ contêiner), então sobrevive a reinícios e atualizações.
 | `/start` | Apresentação do Mestre Yoda. |
 | `/help` | Lista de comandos. |
 | `/bomdia` | Monta a rotina matinal (mercado + notícias) sob demanda. |
-| `/esquecer` | Apaga a memória da conversa atual. |
 | `/lembrancas` | Mostra os fatos que o Yoda guardou sobre você. |
+| `/status` | Saúde da memória (mensagens, fatos, tamanho do banco). |
+| `/esquecer` | Apaga a memória da conversa atual. |
 | _(qualquer texto)_ | Conversa com o Mestre Yoda. |
+
+### Memória que não enche
+
+O problema do bot original era a memória do Hermes desktop: um perfil de
+**tamanho fixo (~2.200 caracteres) que chegou a 96%** e travava novas entradas.
+A reescrita evita isso por construção:
+
+- **Memória própria do Yoda** (SQLite), separada do perfil do Hermes.
+- **Resumo automático em lote** — o passado é condensado, não acumulado.
+- **Teto de fatos** por chat (`YODA_MAX_FACTS`): ao estourar, os mais antigos
+  são podados, então nunca há um "100% cheio" que bloqueia.
+- **Manutenção** (`VACUUM`) e o comando **`/status`** para inspecionar a memória.
 
 ## Rotina diária "BOM DIA"
 

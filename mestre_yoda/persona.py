@@ -54,6 +54,7 @@ def help_text() -> str:
         "/help — esta mensagem mostrar.\n"
         "/bomdia — a rotina matinal (mercado e notícias) montar.\n"
         "/lembrancas — o que sobre você guardei, ver.\n"
+        "/status — a saúde da minha memória mostrar.\n"
         "/esquecer — nossa conversa esquecer.\n\n"
         "Ou simplesmente fale comigo, e responder eu irei."
     )

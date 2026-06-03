@@ -172,11 +172,51 @@ class MemoryStore:
             ).fetchall()
         return {r["key"]: r["value"] for r in rows}
 
-    # --- limpeza ---------------------------------------------------------
+    def fact_count(self, chat_id: int) -> int:
+        with self._lock:
+            row = self._conn.execute(
+                "SELECT COUNT(*) AS n FROM facts WHERE chat_id = ?",
+                (chat_id,),
+            ).fetchone()
+        return int(row["n"])
+
+    def prune_facts(self, chat_id: int, keep: int) -> int:
+        """Mantém só os `keep` fatos mais recentes; devolve quantos removeu.
+
+        Diferente da memória do Hermes (perfil de tamanho fixo que *enchia*),
+        aqui o teto é explícito e a poda descarta os fatos mais antigos.
+        """
+        if keep < 0:
+            return 0
+        with self._lock:
+            cur = self._conn.execute(
+                "DELETE FROM facts WHERE chat_id = ? AND key NOT IN ("
+                "  SELECT key FROM facts WHERE chat_id = ? "
+                "  ORDER BY ts DESC, key LIMIT ?"
+                ")",
+                (chat_id, chat_id, keep),
+            )
+            self._conn.commit()
+            return cur.rowcount or 0
+
+    # --- limpeza e manutenção -------------------------------------------
     def clear_chat(self, chat_id: int) -> None:
         with self._lock:
             self._conn.execute("DELETE FROM messages WHERE chat_id = ?", (chat_id,))
             self._conn.execute("DELETE FROM summaries WHERE chat_id = ?", (chat_id,))
+            self._conn.commit()
+
+    def db_size_bytes(self) -> int:
+        """Tamanho aproximado do banco em bytes (páginas × tamanho da página)."""
+        with self._lock:
+            pages = self._conn.execute("PRAGMA page_count").fetchone()[0]
+            size = self._conn.execute("PRAGMA page_size").fetchone()[0]
+        return int(pages) * int(size)
+
+    def vacuum(self) -> None:
+        """Compacta o banco e recupera espaço livre (manutenção periódica)."""
+        with self._lock:
+            self._conn.execute("VACUUM")
             self._conn.commit()
 
 
@@ -203,6 +243,7 @@ class ConversationMemory:
         summarizer: Summarizer | None = None,
         *,
         summary_buffer: int = 0,
+        max_facts: int = 0,
     ) -> None:
         self._store = store
         self._max_history = max_history
@@ -210,6 +251,9 @@ class ConversationMemory:
         # rode em lote (a cada `summary_buffer` mensagens novas) em vez de a
         # cada turno — menos chamadas à API depois que a conversa cresce.
         self._summary_buffer = max(0, summary_buffer)
+        # Teto de fatos por chat (0 = sem limite). Ao estourar, os mais antigos
+        # são descartados — a memória nunca "enche" e trava novas entradas.
+        self._max_facts = max(0, max_facts)
         self._summarizer = summarizer
 
     def set_summarizer(self, summarizer: Summarizer) -> None:
@@ -224,6 +268,8 @@ class ConversationMemory:
 
     def remember_fact(self, chat_id: int, key: str, value: str) -> None:
         self._store.upsert_fact(chat_id, key, value)
+        if self._max_facts:
+            self._store.prune_facts(chat_id, self._max_facts)
 
     def facts(self, chat_id: int) -> dict[str, str]:
         return self._store.get_facts(chat_id)
@@ -231,6 +277,19 @@ class ConversationMemory:
     def forget(self, chat_id: int) -> None:
         """Esquece a conversa (mensagens + resumo). Fatos persistem."""
         self._store.clear_chat(chat_id)
+
+    def stats(self, chat_id: int) -> dict[str, int | bool]:
+        """Números da memória deste chat (para o comando /status)."""
+        return {
+            "messages": self._store.message_count(chat_id),
+            "facts": self._store.fact_count(chat_id),
+            "has_summary": self._store.get_summary(chat_id) is not None,
+            "db_bytes": self._store.db_size_bytes(),
+        }
+
+    def maintain(self) -> None:
+        """Manutenção do banco (compactação). Seguro chamar periodicamente."""
+        self._store.vacuum()
 
     def build_context(self, chat_id: int) -> ConversationContext:
         return ConversationContext(
