@@ -20,6 +20,12 @@ class FakeToolUseBlock:
 
 
 @dataclass
+class FakeThinkingBlock:
+    thinking: str
+    type: str = "thinking"
+
+
+@dataclass
 class FakeServerToolUseBlock:
     name: str = "web_search"
     id: str = "srvtoolu_1"

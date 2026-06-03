@@ -201,9 +201,15 @@ class ConversationMemory:
         store: MemoryStore,
         max_history: int,
         summarizer: Summarizer | None = None,
+        *,
+        summary_buffer: int = 0,
     ) -> None:
         self._store = store
         self._max_history = max_history
+        # Folga acima de `max_history` antes de resumir, para que o resumo
+        # rode em lote (a cada `summary_buffer` mensagens novas) em vez de a
+        # cada turno — menos chamadas à API depois que a conversa cresce.
+        self._summary_buffer = max(0, summary_buffer)
         self._summarizer = summarizer
 
     def set_summarizer(self, summarizer: Summarizer) -> None:
@@ -242,7 +248,8 @@ class ConversationMemory:
         """
         if self._summarizer is None:
             return False
-        if self._store.message_count(chat_id) <= self._max_history:
+        threshold = self._max_history + self._summary_buffer
+        if self._store.message_count(chat_id) <= threshold:
             return False
 
         old = self._store.messages_excluding_recent(chat_id, self._max_history)

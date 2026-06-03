@@ -63,7 +63,10 @@ Defina no `.env` (ou no ambiente):
 | `ANTHROPIC_MODEL` | não | `claude-opus-4-8` | Modelo do Claude. |
 | `YODA_DB_PATH` | não | `yoda_memory.db` | Caminho do banco SQLite. |
 | `YODA_EFFORT` | não | `high` | Esforço de raciocínio (`low`/`medium`/`high`/`xhigh`/`max`). |
-| `YODA_MAX_HISTORY` | não | `20` | Mensagens mantidas antes de resumir. |
+| `YODA_MAX_HISTORY` | não | `20` | Mensagens mantidas no contexto antes de resumir. |
+| `YODA_SUMMARY_BUFFER` | não | `10` | Folga acima de `MAX_HISTORY` antes de resumir (resumo em lote). |
+| `YODA_MAX_RETRIES` | não | `2` | Retentativas em falhas transitórias da API (sobrecarga, 5xx, rede). |
+| `YODA_RETRY_BASE_DELAY` | não | `0.5` | Atraso base do backoff exponencial (segundos). |
 | `YODA_ENABLE_WEB_SEARCH` | não | `true` | Liga a busca na web do Hermes (fatos atuais). |
 | `YODA_ALLOWED_CHAT_IDS` | não | — | Lista de chat IDs permitidos (separados por vírgula). Vazio = todos. |
 | `YODA_LOG_LEVEL` | não | `INFO` | Nível de log. |
@@ -115,6 +118,29 @@ busca na web (clima e notícias). As regras herdadas do formato original
 continuam valendo: **links sempre completos** (nunca encurtados), **dados de
 mercado reais** (nunca inventados) e notícias do **Brasil e do Rio**. Se a
 fonte real falhar, o Yoda diz que faltou em vez de fabricar números.
+
+### Produção (Mestre Jorge)
+
+Há um modelo pronto com a rotina já habilitada para o chat do Mestre Jorge
+(`45338178`), às 07:00 no fuso `America/Sao_Paulo`:
+
+```bash
+cp .env.production.example .env   # preencha só os dois segredos
+docker compose up -d --build
+```
+
+## Resiliência e adaptatividade
+
+- **Retry com backoff exponencial + jitter** em toda chamada ao Claude. Apenas
+  falhas transitórias (sobrecarga, `429`, `5xx`, rede) são repetidas; erros
+  definitivos (auth, requisição inválida) sobem na hora. Configurável por
+  `YODA_MAX_RETRIES` e `YODA_RETRY_BASE_DELAY`.
+- **Resumo de memória em lote** — o Hermes só condensa o histórico a cada
+  `YODA_SUMMARY_BUFFER` mensagens acima do limite, em vez de a cada turno,
+  reduzindo chamadas à API em conversas longas.
+- **Protocolo unificado** — conversa e rotina diária devolvem o mesmo
+  `AgentResponse` (com `tools_used`, `usage` e `thinking`), e o `AgentRequest`
+  carrega `kind` (`chat`/`briefing`) e a origem em `metadata`.
 
 ## Testes
 

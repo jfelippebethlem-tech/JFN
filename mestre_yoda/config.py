@@ -86,6 +86,10 @@ class Settings:
     enable_web_search: bool = True
     allowed_chat_ids: frozenset[int] = field(default_factory=frozenset)
     log_level: str = "INFO"
+    # Resiliência (retry/backoff) e memória (resumo em lote).
+    max_retries: int = 2
+    retry_base_delay: float = 0.5
+    summary_buffer: int = 10
     # Rotina diária "BOM DIA do Mestre Jorge" (migrada do bot original).
     briefing_enabled: bool = False
     briefing_chat_id: int | None = None
@@ -124,6 +128,27 @@ class Settings:
             raise ConfigError("YODA_MAX_HISTORY deve ser um inteiro.") from exc
         if max_history < 2:
             raise ConfigError("YODA_MAX_HISTORY deve ser pelo menos 2.")
+
+        try:
+            max_retries = int(os.getenv("YODA_MAX_RETRIES", "2"))
+        except ValueError as exc:
+            raise ConfigError("YODA_MAX_RETRIES deve ser um inteiro.") from exc
+        if max_retries < 0:
+            raise ConfigError("YODA_MAX_RETRIES não pode ser negativo.")
+
+        try:
+            retry_base_delay = float(os.getenv("YODA_RETRY_BASE_DELAY", "0.5"))
+        except ValueError as exc:
+            raise ConfigError("YODA_RETRY_BASE_DELAY deve ser numérico.") from exc
+        if retry_base_delay < 0:
+            raise ConfigError("YODA_RETRY_BASE_DELAY não pode ser negativo.")
+
+        try:
+            summary_buffer = int(os.getenv("YODA_SUMMARY_BUFFER", "10"))
+        except ValueError as exc:
+            raise ConfigError("YODA_SUMMARY_BUFFER deve ser um inteiro.") from exc
+        if summary_buffer < 0:
+            raise ConfigError("YODA_SUMMARY_BUFFER não pode ser negativo.")
 
         briefing_enabled = _parse_bool(
             os.getenv("YODA_BRIEFING_ENABLED"), default=False
@@ -169,6 +194,9 @@ class Settings:
             ),
             allowed_chat_ids=_parse_chat_ids(os.getenv("YODA_ALLOWED_CHAT_IDS")),
             log_level=os.getenv("YODA_LOG_LEVEL", "INFO").strip().upper(),
+            max_retries=max_retries,
+            retry_base_delay=retry_base_delay,
+            summary_buffer=summary_buffer,
             briefing_enabled=briefing_enabled,
             briefing_chat_id=briefing_chat_id,
             briefing_time=briefing_time,

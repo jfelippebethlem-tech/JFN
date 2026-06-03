@@ -12,6 +12,7 @@ Telegram é responsabilidade do `bot.py`.
 from __future__ import annotations
 
 from .hermes import HermesAgent
+from .protocol import AgentResponse
 
 # Regras herdadas do template original, agora explícitas para o agente:
 # - links de notícia sempre completos (jamais encurtados);
@@ -55,6 +56,6 @@ Encerre com uma saudação curta ao Mestre Jorge. 💪
 """
 
 
-async def compose_briefing(agent: HermesAgent) -> str:
-    """Pede ao Hermes que monte a rotina diária e devolve o texto."""
+async def compose_briefing(agent: HermesAgent) -> AgentResponse:
+    """Pede ao Hermes que monte a rotina diária e devolve a resposta."""
     return await agent.compose(BRIEFING_INSTRUCTIONS)

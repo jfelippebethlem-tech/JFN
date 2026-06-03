@@ -24,15 +24,16 @@ def _agent(client, memory, **kwargs):
     )
 
 
-async def test_compose_briefing_devolve_texto(memory):
+async def test_compose_briefing_devolve_resposta(memory):
     client = FakeAnthropic(
         [FakeResponse(content=[FakeTextBlock("Bom dia, Mestre Jorge! 🌅")])]
     )
     agent = _agent(client, memory)
 
-    texto = await compose_briefing(agent)
+    resp = await compose_briefing(agent)
 
-    assert "Mestre Jorge" in texto
+    assert resp.ok is True
+    assert "Mestre Jorge" in resp.text
     # O roteiro do briefing foi enviado como mensagem do usuário.
     assert client.calls[0]["messages"][0]["content"] == BRIEFING_INSTRUCTIONS
 
@@ -67,13 +68,15 @@ async def test_compose_falha_vira_fallback(memory):
     client.messages.create = boom  # type: ignore[assignment]
     agent = _agent(client, memory)
 
-    texto = await compose_briefing(agent)
-    assert texto == _BRIEFING_FALLBACK
+    resp = await compose_briefing(agent)
+    assert resp.ok is False
+    assert resp.text == _BRIEFING_FALLBACK
 
 
 async def test_compose_texto_vazio_vira_fallback(memory):
     client = FakeAnthropic([FakeResponse(content=[FakeTextBlock("")])])
     agent = _agent(client, memory)
 
-    texto = await compose_briefing(agent)
-    assert texto == _BRIEFING_FALLBACK
+    resp = await compose_briefing(agent)
+    assert resp.ok is False
+    assert resp.text == _BRIEFING_FALLBACK

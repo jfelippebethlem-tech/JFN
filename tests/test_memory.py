@@ -81,6 +81,30 @@ async def test_maybe_summarize_nao_dispara_abaixo_do_limite(store):
     assert await mem.maybe_summarize(1) is False
 
 
+async def test_summary_buffer_adia_resumo(store):
+    chamadas = []
+
+    async def fake_summarizer(text: str) -> str:
+        chamadas.append(text)
+        return "RESUMO"
+
+    # max_history=4, buffer=4 → só resume acima de 8 mensagens.
+    mem = ConversationMemory(
+        store, max_history=4, summarizer=fake_summarizer, summary_buffer=4
+    )
+    for i in range(8):
+        mem.record_user(1, f"msg{i}")
+    # 8 == limiar; ainda não resume.
+    assert await mem.maybe_summarize(1) is False
+    assert chamadas == []
+
+    mem.record_user(1, "estourou")  # agora são 9, acima do limiar
+    assert await mem.maybe_summarize(1) is True
+    assert len(chamadas) == 1
+    # Mantém as 4 mais recentes intactas.
+    assert len(mem.build_context(1).messages) == 4
+
+
 async def test_maybe_summarize_resiliente_a_erro(store):
     async def boom(text: str) -> str:
         raise RuntimeError("falha de rede")

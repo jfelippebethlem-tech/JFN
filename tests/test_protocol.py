@@ -1,12 +1,23 @@
 import pytest
 
-from mestre_yoda.protocol import AgentRequest, AgentResponse
+from mestre_yoda.protocol import BRIEFING, CHAT, AgentRequest, AgentResponse
 
 
 def test_request_valido():
     req = AgentRequest(chat_id=1, user_text="olá", user_name="Luke")
     assert req.chat_id == 1
     assert req.metadata == {}
+    assert req.kind == CHAT
+
+
+def test_request_kind_briefing():
+    req = AgentRequest(chat_id=1, user_text="briefing", kind=BRIEFING)
+    assert req.kind == BRIEFING
+
+
+def test_request_kind_invalido():
+    with pytest.raises(ValueError):
+        AgentRequest(chat_id=1, user_text="olá", kind="telepatia")
 
 
 def test_request_texto_vazio():

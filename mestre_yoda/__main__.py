@@ -41,7 +41,11 @@ def main() -> int:
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
 
     store = MemoryStore(settings.db_path)
-    memory = ConversationMemory(store, max_history=settings.max_history)
+    memory = ConversationMemory(
+        store,
+        max_history=settings.max_history,
+        summary_buffer=settings.summary_buffer,
+    )
 
     agent = HermesAgent(
         client,
@@ -50,6 +54,8 @@ def main() -> int:
         system_prompt=YODA_SYSTEM_PROMPT,
         effort=settings.effort,
         enable_web_search=settings.enable_web_search,
+        max_retries=settings.max_retries,
+        retry_base_delay=settings.retry_base_delay,
     )
     # O resumidor da memória é o próprio Hermes — fecha o ciclo aqui para
     # evitar dependência circular na construção.

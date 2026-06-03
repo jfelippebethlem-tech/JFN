@@ -69,6 +69,30 @@ def test_web_search_desligado(monkeypatch):
     assert Settings.from_env().enable_web_search is False
 
 
+def test_resiliencia_padroes(monkeypatch):
+    _base_env(monkeypatch)
+    for var in ("YODA_MAX_RETRIES", "YODA_RETRY_BASE_DELAY", "YODA_SUMMARY_BUFFER"):
+        monkeypatch.delenv(var, raising=False)
+    s = Settings.from_env()
+    assert s.max_retries == 2
+    assert s.retry_base_delay == 0.5
+    assert s.summary_buffer == 10
+
+
+def test_max_retries_negativo(monkeypatch):
+    _base_env(monkeypatch)
+    monkeypatch.setenv("YODA_MAX_RETRIES", "-1")
+    with pytest.raises(ConfigError):
+        Settings.from_env()
+
+
+def test_summary_buffer_invalido(monkeypatch):
+    _base_env(monkeypatch)
+    monkeypatch.setenv("YODA_SUMMARY_BUFFER", "muito")
+    with pytest.raises(ConfigError):
+        Settings.from_env()
+
+
 def test_briefing_desligado_por_padrao(monkeypatch):
     _base_env(monkeypatch)
     monkeypatch.delenv("YODA_BRIEFING_ENABLED", raising=False)

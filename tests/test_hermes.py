@@ -9,8 +9,17 @@ from .fakes import (
     FakeResponse,
     FakeServerToolUseBlock,
     FakeTextBlock,
+    FakeThinkingBlock,
     FakeToolUseBlock,
 )
+
+
+class _Overloaded(Exception):
+    status_code = 529
+
+
+class _BadRequest(Exception):
+    status_code = 400
 
 
 @pytest.fixture
@@ -21,6 +30,7 @@ def memory(tmp_path):
 
 
 def _agent(client, memory, **kwargs):
+    kwargs.setdefault("sleeper", _noop_sleep)
     return HermesAgent(
         client,
         memory,
@@ -29,6 +39,11 @@ def _agent(client, memory, **kwargs):
         effort="high",
         **kwargs,
     )
+
+
+async def _noop_sleep(_seconds: float) -> None:
+    """Sleeper de teste — não dorme de verdade."""
+    return None
 
 
 async def test_resposta_simples(memory):
@@ -145,3 +160,82 @@ async def test_summarize(memory):
     out = await agent.summarize("conversa longa aqui")
     assert out == "Um resumo curto."
     assert client.calls[0]["output_config"] == {"effort": "low"}
+
+
+async def test_captura_thinking(memory):
+    client = FakeAnthropic(
+        [
+            FakeResponse(
+                content=[FakeThinkingBlock("ponderei a Força"), FakeTextBlock("resposta")]
+            )
+        ]
+    )
+    agent = _agent(client, memory)
+    resp = await agent.respond(AgentRequest(chat_id=1, user_text="oi"))
+    assert resp.thinking == "ponderei a Força"
+    assert resp.text == "resposta"
+
+
+async def test_retry_em_erro_transitorio(memory):
+    chamadas = {"n": 0}
+    esperas: list[float] = []
+
+    async def flaky(**kwargs):
+        chamadas["n"] += 1
+        if chamadas["n"] == 1:
+            raise _Overloaded("sobrecarga")
+        return FakeResponse(content=[FakeTextBlock("Recuperei, eu.")])
+
+    async def spy_sleep(s):
+        esperas.append(s)
+
+    client = FakeAnthropic()
+    client.messages.create = flaky  # type: ignore[assignment]
+    agent = _agent(client, memory, sleeper=spy_sleep)
+
+    resp = await agent.respond(AgentRequest(chat_id=1, user_text="oi"))
+    assert resp.ok is True
+    assert "Recuperei" in resp.text
+    assert chamadas["n"] == 2  # falhou e tentou de novo
+    assert len(esperas) == 1  # esperou uma vez (backoff)
+
+
+async def test_nao_retry_em_erro_definitivo(memory):
+    chamadas = {"n": 0}
+
+    async def fails(**kwargs):
+        chamadas["n"] += 1
+        raise _BadRequest("requisição inválida")
+
+    client = FakeAnthropic()
+    client.messages.create = fails  # type: ignore[assignment]
+    agent = _agent(client, memory)
+
+    resp = await agent.respond(AgentRequest(chat_id=1, user_text="oi"))
+    assert resp.ok is False  # vira fallback amigável
+    assert chamadas["n"] == 1  # 400 não é retentável
+
+
+async def test_esgota_retries(memory):
+    chamadas = {"n": 0}
+
+    async def always(**kwargs):
+        chamadas["n"] += 1
+        raise _Overloaded("sempre sobrecarregado")
+
+    client = FakeAnthropic()
+    client.messages.create = always  # type: ignore[assignment]
+    agent = _agent(client, memory, max_retries=2, sleeper=_noop_sleep)
+
+    resp = await agent.respond(AgentRequest(chat_id=1, user_text="oi"))
+    assert resp.ok is False
+    assert chamadas["n"] == 3  # 1 tentativa + 2 retentativas
+
+
+async def test_compose_retorna_response_com_uso(memory):
+    client = FakeAnthropic([FakeResponse(content=[FakeTextBlock("Bom dia!")])])
+    agent = _agent(client, memory)
+    resp = await agent.compose("monte o briefing")
+    assert resp.ok is True
+    assert resp.text == "Bom dia!"
+    assert resp.usage  # contadores de tokens presentes

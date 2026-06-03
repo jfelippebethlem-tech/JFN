@@ -10,6 +10,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+# Tipos de pedido reconhecidos. "chat" é uma conversa normal; "briefing" é a
+# rotina diária. O agente pode adaptar seu comportamento ao tipo.
+CHAT = "chat"
+BRIEFING = "briefing"
+_KINDS = frozenset({CHAT, BRIEFING})
+
 
 @dataclass(frozen=True)
 class AgentRequest:
@@ -19,12 +25,14 @@ class AgentRequest:
         chat_id: identificador estável da conversa (chave de memória).
         user_text: a mensagem do usuário, já em texto puro.
         user_name: nome de exibição do usuário, se conhecido.
-        metadata: campos extras e opcionais para futuros canais.
+        kind: natureza do pedido (`chat` ou `briefing`).
+        metadata: campos extras e opcionais (ex.: canal de origem).
     """
 
     chat_id: int
     user_text: str
     user_name: str | None = None
+    kind: str = CHAT
     metadata: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -32,6 +40,8 @@ class AgentRequest:
             raise TypeError("chat_id deve ser int")
         if not self.user_text or not self.user_text.strip():
             raise ValueError("user_text não pode ser vazio")
+        if self.kind not in _KINDS:
+            raise ValueError(f"kind inválido: {self.kind!r}")
 
 
 @dataclass(frozen=True)

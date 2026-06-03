@@ -24,7 +24,7 @@ from .config import Settings
 from .hermes import HermesAgent
 from .memory import ConversationMemory
 from .persona import greeting, help_text
-from .protocol import AgentRequest
+from .protocol import CHAT, AgentRequest
 
 logger = logging.getLogger(__name__)
 
@@ -102,8 +102,10 @@ class YodaBot:
     async def _deliver_briefing(self, bot, chat_id: int | None) -> None:
         if chat_id is None:
             return
-        text = await compose_briefing(self._agent)
-        for pedaco in _split(text):
+        response = await compose_briefing(self._agent)
+        if response.usage:
+            logger.info("BOM DIA chat %s — uso: %s", chat_id, response.usage)
+        for pedaco in _split(response.text):
             await bot.send_message(chat_id, pedaco)
 
     # --- guarda de acesso ------------------------------------------------
@@ -169,6 +171,8 @@ class YodaBot:
             chat_id=chat.id,
             user_text=update.message.text,
             user_name=(user.full_name if user else None),
+            kind=CHAT,
+            metadata={"source": "telegram"},
         )
         response = await self._agent.respond(request)
 
