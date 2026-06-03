@@ -56,14 +56,10 @@ HERMES_MAX_TOKENS = int(os.environ.get("HERMES_MAX_TOKENS", "8000"))
 async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS) -> str:
     """
     Cascata de LLMs em ordem de confiabilidade:
-      1. Groq llama-3.3-70b   — 100 req/min grátis, chave no .env
-      2. Hermes-3 405B         — melhor qualidade, mas cota :free restrita
-      3. Gemma-2 27B/9B        — fallback OpenRouter
-      4. Mistral 7B             — último recurso OpenRouter
-
-    Groq vem PRIMEIRO porque: (a) rate limit muito mais generoso que :free do
-    OpenRouter, (b) o usuário já tem GROQ_API_KEY configurada. Quando o Groq
-    não estiver disponível, tenta a cascata OpenRouter.
+      1. Qwen (prioritário — evita 429 recorrente do Groq)
+      2. Groq llama-3.3-70b   — 100 req/min grátis, chave no .env
+      3. Hermes/Nemotron/Ring/HY3/Step via provedores configurados
+    """
 
     max_tokens é repassado a TODOS os provedores — antes o Groq (caminho
     primário) ignorava o limite e truncava em 1024 tokens, encolhendo o
