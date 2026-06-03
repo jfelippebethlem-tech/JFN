@@ -10,6 +10,7 @@
 | Agente | Função | Repositório GitHub | Branch | Caminho Local |
 |---|---|---|---|---|
 | **JFN** | Agente auditor / compliance do governo RJ | https://github.com/jfelippebethlem-tech/JFN.git | `claude/rj-finance-agent-BYlhJ` | `C:\JFN\jfn` |
+| **Massare** | Agente de análise de mercado autônomo (câmbio, bolsas, commodities, riscos e oportunidades) | Skill própria `investidor-mercados/market-analyst-massare` | Integrado ao briefing diário | `C:\Users\socah\AppData\Local\hermes\skills\investidor-mercados\market-analyst-massare` |
 | **Hermes** | Agente desktop / CLI pessoal | https://github.com/nousresearch/hermes-agent | — | `C:\Users\socah\.hermes` |
 | **Mestre Yoda** | Bot Telegram | *Não é repo separado* — usa a instância Hermes configurada como bot Telegram | — | `C:\Users\socah\.hermes` |
 
