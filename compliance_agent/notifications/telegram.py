@@ -332,7 +332,8 @@ _AJUDA = (
     "  /buscar NOME — busca empresa/pessoa no banco\n"
     "  /investigar NOME — pesquisa na INTERNET (notícias, riscos)\n"
     "  /sei NUMERO — consulta processo no SEI-RJ\n"
-    "  /doerj [DATA|URL] — lê o DOERJ do dia (ou data AAAA-MM-DD / URL direto)\n\n"
+    "  /doerj [DATA|URL] — lê o DOERJ do dia (ou data AAAA-MM-DD / URL direto)\n"
+    "  /dados [TERMO] — consulta dados abertos do RJ (despesas, contratos, etc.)\n\n"
     "*Base jurídica:*\n"
     "  /lei TERMO — busca lei, acórdão ou princípio (TCE-RJ, TCU, Planalto)\n\n"
     "*Hermes 405B (análise profunda):*\n"
@@ -576,6 +577,29 @@ async def _doerj_reply(arg: str) -> str:
         return f"❌ Erro ao ler DOERJ: {e}"
     finally:
         session.close()
+
+
+async def _dados_abertos_reply(termo: str) -> str:
+    """Consulta o portal CKAN de dados abertos do RJ e resume os datasets."""
+    from compliance_agent.collectors.dados_abertos_rj import pesquisar
+    termo = (termo or "despesa").strip()
+    try:
+        out = await pesquisar(termo, limite=8)
+        if out.get("erro"):
+            return (f"📦 Dados abertos ({termo}): {out['erro']}\n"
+                    "Dica: se for bloqueio do portal, deixe o Chrome (9222) aberto "
+                    "que eu busco pelo navegador.")
+        linhas = [f"📦 *Dados abertos RJ — '{termo}'*",
+                  f"Datasets encontrados: {out.get('total_datasets', 0)}", ""]
+        for d in out.get("datasets", [])[:8]:
+            fmts = "/".join(d.get("formatos", [])) or "?"
+            linhas.append(f"• {d['titulo'][:70]} _({fmts})_")
+        amostra = out.get("amostra_linhas")
+        if amostra and amostra.get("campos"):
+            linhas.append(f"\nCampos da amostra: {', '.join(amostra['campos'][:8])}")
+        return "\n".join(linhas)
+    except Exception as e:
+        return f"❌ Erro ao consultar dados abertos: {e}"
 
 
 async def _sei_reply(numero: str) -> str:
@@ -980,6 +1004,10 @@ async def processar_comando(texto: str, chat_id: str) -> None:
     elif cmd == "/doerj":
         await enviar_mensagem("📰 Lendo Diário Oficial...", chat_id=chat_id)
         await enviar_mensagem(await _doerj_reply(args), chat_id=chat_id)
+
+    elif cmd == "/dados":
+        await enviar_mensagem("📦 Consultando dados abertos do RJ...", chat_id=chat_id)
+        await enviar_mensagem(await _dados_abertos_reply(args), chat_id=chat_id)
 
     elif cmd == "/sei":
         if not args.strip():

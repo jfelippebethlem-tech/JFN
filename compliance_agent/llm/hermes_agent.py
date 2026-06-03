@@ -19,6 +19,7 @@ Taxa de uso: 1 ciclo a cada 30 min — respeita limite gratuito do OpenRouter.
 
 import asyncio
 import json
+import os
 import re
 from datetime import date, datetime, timedelta
 from typing import Optional
@@ -47,7 +48,12 @@ _HERMES_MODELOS_FALLBACK = [
 ]
 
 
-async def _hermes(system: str, prompt: str, max_tokens: int = 1500) -> str:
+# Teto de tokens para o "pensamento" do Hermes. O auditor precisa raciocinar
+# longamente — não truncar. Configurável por env (HERMES_MAX_TOKENS).
+HERMES_MAX_TOKENS = int(os.environ.get("HERMES_MAX_TOKENS", "8000"))
+
+
+async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS) -> str:
     """
     Cascata de LLMs em ordem de confiabilidade:
       1. Groq llama-3.3-70b   — 100 req/min grátis, chave no .env
@@ -58,6 +64,10 @@ async def _hermes(system: str, prompt: str, max_tokens: int = 1500) -> str:
     Groq vem PRIMEIRO porque: (a) rate limit muito mais generoso que :free do
     OpenRouter, (b) o usuário já tem GROQ_API_KEY configurada. Quando o Groq
     não estiver disponível, tenta a cascata OpenRouter.
+
+    max_tokens é repassado a TODOS os provedores — antes o Groq (caminho
+    primário) ignorava o limite e truncava em 1024 tokens, encolhendo o
+    "pensamento" do Hermes.
     """
     global _ultima_chamada
     import time
@@ -91,7 +101,8 @@ async def _hermes(system: str, prompt: str, max_tokens: int = 1500) -> str:
     )
     if groq_available():
         try:
-            resultado = await groq_chat_async(prompt, system=system, smart=True)
+            resultado = await groq_chat_async(prompt, system=system, smart=True,
+                                              max_tokens=max_tokens)
             _ultima_chamada = time.time()
             return resultado
         except Exception as e:
@@ -327,7 +338,7 @@ async def sintetizar_semana(session) -> Optional[dict]:
     )
 
     try:
-        raw = await _hermes(_SYSTEM_SINTESE, prompt, max_tokens=2000)
+        raw = await _hermes(_SYSTEM_SINTESE, prompt, max_tokens=max(4000, HERMES_MAX_TOKENS // 2))
         m = re.search(r"\{.*\}", raw, re.DOTALL)
         if not m:
             return None
@@ -366,7 +377,9 @@ _SYSTEM_RESPOSTA = (
     "de dados fornecido. Jamais invente dados. Se não souber, diga o que falta.\n\n"
     "Quando relevante, cite: artigos de lei, acórdãos do TCE-RJ ou TCU, "
     "e o que o sistema já aprendeu de casos anteriores.\n"
-    "Seja objetivo — máximo 2.000 caracteres na resposta."
+    "Responda com a PROFUNDIDADE que a auditoria exigir — não se limite a "
+    "respostas curtas quando o caso pedir análise detalhada. Estruture com "
+    "tópicos, fundamentação e próximos passos investigativos."
 )
 
 
@@ -412,7 +425,7 @@ async def responder_hermes(pergunta: str, contexto_db: str, session) -> str:
     )
 
     try:
-        return await _hermes(_SYSTEM_RESPOSTA, prompt, max_tokens=1500)
+        return await _hermes(_SYSTEM_RESPOSTA, prompt, max_tokens=HERMES_MAX_TOKENS)
     except Exception as e:
         return f"Hermes indisponível agora ({e}). Tente /status ou pergunte de forma mais simples."
 
