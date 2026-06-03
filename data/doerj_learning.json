@@ -130,6 +130,34 @@
         "CDP: BrowserType.connect_over_cdp: connect ECONNREFUSED 127.0.0.1:9222\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n"
       ],
       "ts": "2026-06-02T21:34:48.964435"
+    },
+    {
+      "data": "2026-06-03",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: connect ECONNREFUSED 127.0.0.1:9222\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n"
+      ],
+      "ts": "2026-06-03T17:22:43.610161"
+    },
+    {
+      "data": "2026-06-02",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: connect ECONNREFUSED 127.0.0.1:9222\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n"
+      ],
+      "ts": "2026-06-03T17:22:44.632098"
+    },
+    {
+      "data": "2026-06-03",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: connect ECONNREFUSED 127.0.0.1:9222\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n"
+      ],
+      "ts": "2026-06-03T17:35:22.279105"
+    },
+    {
+      "data": "2026-06-02",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: connect ECONNREFUSED 127.0.0.1:9222\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n"
+      ],
+      "ts": "2026-06-03T17:35:23.263330"
     }
   ],
   "site_links_aprendidos": {
