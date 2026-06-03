@@ -34,15 +34,12 @@ import httpx
 
 GROQ_API_KEY        = os.environ.get("GROQ_API_KEY", "")
 OPENROUTER_API_KEY  = os.environ.get("OPENROUTER_API_KEY", "")
-FREE_LLM_PREFER     = os.environ.get("FREE_LLM_PREFER", "groq").lower()
+# Preferência explícita para usar Qwen antes de Groq, evitando 429.
+FREE_LLM_PREFER = os.environ.get("FREE_LLM_PREFER", "qwen").lower()
 
-# Modelos padrão por provedor
-GROQ_MODEL_FAST     = "llama-3.1-8b-instant"          # rápido, gratuito
-GROQ_MODEL_SMART    = "llama-3.3-70b-versatile"        # mais capaz, gratuito
-
-# Hermes-3 (NousResearch) 405B — completamente gratuito via OpenRouter
-OPENROUTER_MODEL_FAST  = os.environ.get("OPENROUTER_FAST_MODEL",  "google/gemma-2-9b-it:free")
-OPENROUTER_MODEL_SMART = os.environ.get("OPENROUTER_SMART_MODEL", "nousresearch/hermes-3-llama-3.1-405b:free")
+# Qwen via OpenRouter (fallbacks possíveis)
+OPENROUTER_MODEL_FAST  = os.environ.get("OPENROUTER_FAST_MODEL", "qwen/qwen-2.5-72b-instruct:free")
+OPENROUTER_MODEL_SMART = os.environ.get("OPENROUTER_SMART_MODEL", "qwen/qwen-2.5-72b-instruct:free")
 
 
 # ── Cliente genérico OpenAI-compatible ────────────────────────────────────────

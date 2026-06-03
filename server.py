@@ -337,21 +337,28 @@ async def api_hermes_stream():
 
 
 @app.post("/api/hermes/parar")
-async def api_hermes_parar():
-
-
+async def api_hermes_parar(payload: Optional[dict] = None):
     from compliance_agent.database.models import get_session, init_db
-    from compliance_agent.hermes_goal import HermesGoalAgent
+    from compliance_agent.hermes_goal import HermesGoalAgent, mission_queue
     init_db()
     s = get_session()
     try:
-        pergunta = (payload or {}).get("pergunta", "").strip()
-        if not pergunta:
-            return JSONResponse({"erro": "pergunta vazia"}, status_code=400)
-        resposta = await HermesGoalAgent(session=s).conversar(pergunta)
-        return JSONResponse({"resposta": resposta})
+        await _cancelar_loop_trabalhar()
+        try:
+            import asyncio
+            for _ in range(min(20, mission_queue.qsize())):
+                try:
+                    mission_queue.dequeue_nowait()
+                except Exception:
+                    break
+            while not mission_queue.empty():
+                mission_queue.dequeue_nowait()
+        except Exception:
+            pass
+        HermesGoalAgent(session=s).limpar_missao()
+        return JSONResponse({"ok": True, "status": "parado"})
     except Exception as e:
-        return JSONResponse({"erro": f"{type(e).__name__}: {e}"})
+        return JSONResponse({"erro": f"{type(e).__name__}: {e}"}, status_code=500)
     finally:
         s.close()
 

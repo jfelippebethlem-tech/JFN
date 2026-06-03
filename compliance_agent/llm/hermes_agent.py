@@ -75,7 +75,20 @@ async def _hermes(system: str, prompt: str, max_tokens: int = 1500) -> str:
         groq_chat_async,
     )
 
-    # ── 1. Groq (prioritário — rate limit generoso, chave do usuário) ──────────
+    # ── 1. Qwen (prioritário — evita 429 recorrente do Groq) ──────────────────
+    try:
+        from compliance_agent.llm.free_llm import qwen_chat_async
+        resultado = await qwen_chat_async(prompt, system=system)
+        _ultima_chamada = time.time()
+        return resultado
+    except Exception as e:
+        console.print(f"[dim]Hermes: Qwen falhou ({e}), tentando Groq…[/dim]")
+
+    # ── 2. Groq ─────────────────────────────────────────────────────────────────
+    from compliance_agent.llm.free_llm import (
+        groq_available,
+        groq_chat_async,
+    )
     if groq_available():
         try:
             resultado = await groq_chat_async(prompt, system=system, smart=True)
@@ -84,7 +97,14 @@ async def _hermes(system: str, prompt: str, max_tokens: int = 1500) -> str:
         except Exception as e:
             console.print(f"[dim]Hermes: Groq falhou ({e}), tentando OpenRouter…[/dim]")
 
-    # ── 2. OpenRouter cascade (:free — fallback quando Groq indisponível) ──────
+    # ── 3. OpenRouter cascade (:free — fallback) ────────────────────────────────
+    from compliance_agent.llm.free_llm import (
+        _openai_compat_chat_retry,
+        _openrouter_key,
+        OPENROUTER_BASE,
+        OPENROUTER_HEADERS,
+    )
+
     key = _openrouter_key()
     if key:
         messages = []
@@ -110,8 +130,8 @@ async def _hermes(system: str, prompt: str, max_tokens: int = 1500) -> str:
                 continue
 
     raise RuntimeError(
-        "Hermes indisponível: Groq + todos os modelos OpenRouter :free falharam. "
-        "Verifique GROQ_API_KEY e OPENROUTER_API_KEY no .env."
+        "Hermes indisponível: Qwen, Groq e todos os modelos OpenRouter :free falharam. "
+        "Verifique chaves/roteamento no código."
     )
 
 
