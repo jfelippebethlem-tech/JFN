@@ -29,14 +29,14 @@ from typing import Optional, Callable
 
 CDP_URL = "http://127.0.0.1:9222"
 SEI_PESQUISA = (
-    "https://portalsei.rj.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php"
+    "https://sei.rj.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php"
 )
 SEI_PESQUISA_PUBLICA = (
     SEI_PESQUISA
     + "?acao_externa=protocolo_pesquisar"
-    + "&acao_origem_externa=protocolo_pesquisar&id_orgao_acesso_externo=0"
+    + "&acao_origem_externa=protocolo_pesquisar&id_orgao_acesso_externo=6"
 )
-SEI_CONTROLADOR = "https://portalsei.rj.gov.br/sei/controlador.php"
+SEI_CONTROLADOR = "https://sei.rj.gov.br/sei/controlador.php"
 
 CACHE_DIR = Path("data/sei_cache")
 
