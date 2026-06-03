@@ -62,12 +62,19 @@ class YodaBot:
         self._memory = memory
 
     def build_application(self) -> Application:
-        app = Application.builder().token(self._settings.telegram_token).build()
+        app = (
+            Application.builder()
+            .token(self._settings.telegram_token)
+            .post_init(self._on_startup)
+            .build()
+        )
         app.add_handler(CommandHandler("start", self._cmd_start))
         app.add_handler(CommandHandler("help", self._cmd_help))
         app.add_handler(CommandHandler("esquecer", self._cmd_forget))
         app.add_handler(CommandHandler("lembrancas", self._cmd_facts))
         app.add_handler(CommandHandler("status", self._cmd_status))
+        app.add_handler(CommandHandler("metricas", self._cmd_metricas))
+        app.add_handler(CommandHandler("atualizar", self._cmd_atualizar))
         app.add_handler(CommandHandler("bomdia", self._cmd_bomdia))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._on_message)
@@ -75,6 +82,21 @@ class YodaBot:
         if self._settings.briefing_enabled:
             self._schedule_briefing(app)
         return app
+
+    # --- startup ---------------------------------------------------------
+    async def _on_startup(self, app: Application) -> None:
+        """Notifica o Mestre Jorge quando o bot acorda (útil após atualizações)."""
+        chat_id = self._settings.briefing_chat_id
+        if chat_id is None:
+            return
+        try:
+            await app.bot.send_message(
+                chat_id,
+                "Despertei, Mestre Jorge. 👁️ Mestre Yoda online.\n"
+                "Use /help para ver os comandos disponíveis.",
+            )
+        except Exception:  # noqa: BLE001
+            logger.warning("Não foi possível enviar notificação de startup")
 
     # --- rotina diária "BOM DIA" -----------------------------------------
     def _schedule_briefing(self, app: Application) -> None:
@@ -174,6 +196,44 @@ class YodaBot:
         chat_id = update.effective_chat.id
         await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
         await self._deliver_briefing(context.bot, chat_id)
+
+    async def _cmd_metricas(self, update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
+        """Mostra tokens consumidos desde o início desta sessão."""
+        if self._denied(update) or update.message is None:
+            return
+        usage = self._agent.usage_today()
+        if not usage:
+            await update.message.reply_text(
+                "Tokens usados: nenhum ainda nesta sessão."
+            )
+            return
+        inp = usage.get("input_tokens", 0)
+        out = usage.get("output_tokens", 0)
+        cache_r = usage.get("cache_read_input_tokens", 0)
+        cache_w = usage.get("cache_creation_input_tokens", 0)
+        await update.message.reply_text(
+            "Tokens desta sessão:\n\n"
+            f"• Entrada: {inp:,}\n"
+            f"• Saída: {out:,}\n"
+            f"• Cache leitura: {cache_r:,}\n"
+            f"• Cache escrita: {cache_w:,}\n\n"
+            "Econômico com a Força, o Yoda é. 🌿"
+        )
+
+    async def _cmd_atualizar(
+        self, update: Update, context: ContextTypes.DEFAULT_TYPE
+    ) -> None:
+        """Puxa o código mais recente e reinicia (zero-downtime com Docker)."""
+        if self._denied(update) or update.message is None:
+            return
+        chat_id = update.effective_chat.id
+
+        async def _send(text: str) -> None:
+            await context.bot.send_message(chat_id, text)
+
+        from .updater import run_update  # importação lazy — mantém bot.py leve
+
+        await run_update(_send, repo_path=self._settings.repo_path)
 
     # --- conversa --------------------------------------------------------
     async def _on_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

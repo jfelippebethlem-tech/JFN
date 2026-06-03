@@ -140,6 +140,15 @@ class HermesAgent:
         self._max_retries = max(0, max_retries)
         self._retry_base_delay = max(0.0, retry_base_delay)
         self._sleep: Sleeper = sleeper or asyncio.sleep
+        self._usage_today: dict[str, int] = {}
+
+    def _accumulate_usage(self, usage: dict[str, int]) -> None:
+        for k, v in usage.items():
+            self._usage_today[k] = self._usage_today.get(k, 0) + v
+
+    def usage_today(self) -> dict[str, int]:
+        """Retorna os tokens acumulados desde a inicialização do processo."""
+        return dict(self._usage_today)
 
     # ------------------------------------------------------------------
     async def _create(self, **kwargs):
@@ -208,6 +217,7 @@ class HermesAgent:
 
         self._memory.record_assistant(chat_id, final_text)
         await self._memory.maybe_summarize(chat_id)
+        self._accumulate_usage(last_usage)
 
         return AgentResponse(
             text=final_text,
@@ -332,6 +342,7 @@ class HermesAgent:
         if not final_text:
             return AgentResponse.failure(_BRIEFING_FALLBACK)
 
+        self._accumulate_usage(last_usage)
         return AgentResponse(
             text=final_text,
             ok=True,

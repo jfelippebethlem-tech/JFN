@@ -6,6 +6,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Git necessário para /atualizar (git pull dentro do container).
+RUN apt-get update && apt-get install -y --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/*
+
 # Dependências primeiro, para aproveitar o cache de camadas.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt

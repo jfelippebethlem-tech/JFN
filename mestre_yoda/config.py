@@ -21,8 +21,8 @@ except ImportError:  # pragma: no cover - dotenv é só conveniência de dev
 
 _VALID_EFFORTS = {"low", "medium", "high", "xhigh", "max"}
 
-# Fuso e horário padrão da rotina "BOM DIA" (herdados do bot original).
-_DEFAULT_BRIEFING_TIME = _dt.time(7, 0)
+# Fuso e horário padrão da rotina "BOM DIA" (alinhado com README-AGENTES.md: 7:30).
+_DEFAULT_BRIEFING_TIME = _dt.time(7, 30)
 _DEFAULT_BRIEFING_TZ = "America/Sao_Paulo"
 
 # Versão GA da ferramenta de busca na web do Claude (sem beta header).
@@ -96,6 +96,8 @@ class Settings:
     briefing_chat_id: int | None = None
     briefing_time: _dt.time = _DEFAULT_BRIEFING_TIME
     briefing_timezone: str = _DEFAULT_BRIEFING_TZ
+    # Caminho local do repositório — usado pelo /atualizar para git pull + rebuild.
+    repo_path: str = "."
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -210,6 +212,7 @@ class Settings:
             briefing_chat_id=briefing_chat_id,
             briefing_time=briefing_time,
             briefing_timezone=briefing_timezone,
+            repo_path=os.getenv("YODA_REPO_PATH", ".").strip() or ".",
         )
 
     def chat_is_allowed(self, chat_id: int) -> bool:

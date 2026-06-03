@@ -106,7 +106,7 @@ def test_briefing_desligado_por_padrao(monkeypatch):
     monkeypatch.delenv("YODA_BRIEFING_ENABLED", raising=False)
     s = Settings.from_env()
     assert s.briefing_enabled is False
-    assert s.briefing_time == dt.time(7, 0)
+    assert s.briefing_time == dt.time(7, 30)
     assert s.briefing_timezone == "America/Sao_Paulo"
 
 
