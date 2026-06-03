@@ -158,6 +158,20 @@
         "CDP: BrowserType.connect_over_cdp: connect ECONNREFUSED 127.0.0.1:9222\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n"
       ],
       "ts": "2026-06-03T17:35:23.263330"
+    },
+    {
+      "data": "2026-06-03",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: connect ECONNREFUSED 127.0.0.1:9222\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n"
+      ],
+      "ts": "2026-06-03T17:47:39.593248"
+    },
+    {
+      "data": "2026-06-02",
+      "erros": [
+        "CDP: BrowserType.connect_over_cdp: connect ECONNREFUSED 127.0.0.1:9222\nCall log:\n<ws preparing> retrieving websocket url from http://127.0.0.1:9222\n"
+      ],
+      "ts": "2026-06-03T17:47:40.547111"
     }
   ],
   "site_links_aprendidos": {
