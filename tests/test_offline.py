@@ -99,7 +99,7 @@ def test_hermes_groq_first():
 
     groq_chamado = []
 
-    async def fake_groq(prompt, system="", smart=False):
+    async def fake_groq(prompt, system="", smart=False, max_tokens=1024):
         groq_chamado.append(True)
         return "resposta-groq"
 
@@ -124,7 +124,7 @@ def test_hermes_openrouter_fallback_quando_groq_falha():
 
     modelos_or = []
 
-    async def fake_groq_fail(prompt, system="", smart=False):
+    async def fake_groq_fail(prompt, system="", smart=False, max_tokens=1024):
         raise RuntimeError("Retryable status 429 from groq")
 
     async def fake_retry(base_url, api_key, model, messages,
@@ -176,6 +176,8 @@ def test_hermes_bootstrap_salva_hipoteses():
     async def fake_send(*a, **k):
         return {"ok": True}
 
+    orig_hermes = h._hermes
+    orig_send = tg.enviar_mensagem
     h._hermes = fake_hermes
     tg.enviar_mensagem = fake_send
 
@@ -187,6 +189,9 @@ def test_hermes_bootstrap_salva_hipoteses():
         assert s.query(MemoriaAprendizado).filter_by(categoria="padrao_fraude").count() >= 1
     finally:
         s.close()
+        # Restaura para não poluir os testes seguintes (ex.: cascata do Hermes).
+        h._hermes = orig_hermes
+        tg.enviar_mensagem = orig_send
 
 
 # ─── 5. Análise automática de OB + fundamentação ──────────────────────────────
@@ -432,6 +437,98 @@ def test_multi_missao_persiste_e_lista():
         assert det["status"] in {"pendente", "executando", "concluida", "erro"}
     finally:
         s.close()
+
+
+def test_dados_abertos_ckan_parseia_resposta(monkeypatch=None):
+    """O coletor CKAN parseia package_search corretamente (httpx mockado)."""
+    import compliance_agent.collectors.dados_abertos_rj as dar
+
+    fake_payload = {
+        "success": True,
+        "result": {
+            "count": 1,
+            "results": [{
+                "title": "Despesas SIAFE-Rio 2026",
+                "name": "despesas-siafe-2026",
+                "organization": {"title": "SEFAZ-RJ"},
+                "notes": "Pagamentos do Estado",
+                "resources": [
+                    {"name": "CSV 2026", "format": "csv",
+                     "url": "http://x/d.csv", "id": "res-1",
+                     "datastore_active": False},
+                ],
+            }],
+        },
+    }
+
+    class FakeResp:
+        status_code = 200
+        def raise_for_status(self): pass
+        def json(self): return fake_payload
+
+    class FakeClient:
+        def __init__(self, *a, **k): pass
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, url, params=None): return FakeResp()
+
+    orig = dar.httpx.AsyncClient
+    dar.httpx.AsyncClient = FakeClient
+    try:
+        out = asyncio.run(dar.buscar_datasets("despesa"))
+        assert out["ok"] is True
+        assert out["total"] == 1
+        assert out["datasets"][0]["organizacao"] == "SEFAZ-RJ"
+        assert out["datasets"][0]["recursos"][0]["formato"] == "CSV"
+    finally:
+        dar.httpx.AsyncClient = orig
+
+
+def test_auditor_24h_liga_desliga():
+    """O Auditor 24h liga (idempotente), reporta status e desliga limpo."""
+    from compliance_agent.hermes_goal import (
+        iniciar_auditor_24h, parar_auditor_24h, status_auditor_24h,
+    )
+    # Garante estado limpo
+    parar_auditor_24h()
+    assert status_auditor_24h()["ativo"] is False
+
+    r1 = iniciar_auditor_24h(objetivo="Auditoria de teste", intervalo_seg=120)
+    assert r1["ativo"] is True
+    assert r1["ja_ativo"] is False
+    assert status_auditor_24h()["intervalo_seg"] == 120
+
+    # Idempotente: segunda chamada não duplica
+    r2 = iniciar_auditor_24h()
+    assert r2["ja_ativo"] is True
+
+    p = parar_auditor_24h()
+    assert p["ativo"] is False
+
+
+def test_hermes_max_tokens_repassado_ao_groq():
+    """Garante que _hermes repassa max_tokens ao Groq (bug do 'pensamento pequeno')."""
+    import compliance_agent.llm.hermes_agent as h
+    import compliance_agent.llm.free_llm as fl
+
+    capturado = {}
+
+    async def fake_groq(prompt, system="", smart=False, max_tokens=1024):
+        capturado["max_tokens"] = max_tokens
+        return "ok"
+
+    orig_groq = fl.groq_chat_async
+    orig_key = fl._groq_key
+    fl.groq_chat_async = fake_groq
+    fl._groq_key = lambda: "gsk_fake"
+    h._ultima_chamada = 0.0
+    try:
+        asyncio.run(h._hermes("sys", "prompt", max_tokens=7777))
+        assert capturado.get("max_tokens") == 7777, \
+            "max_tokens não foi repassado ao Groq — pensamento ficaria truncado"
+    finally:
+        fl.groq_chat_async = orig_groq
+        fl._groq_key = orig_key
 
 
 # ─── Runner standalone (sem pytest) ───────────────────────────────────────────

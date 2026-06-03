@@ -69,6 +69,15 @@
 
 <div class="wrap">
   <aside class="side">
+    <div class="card" style="border-color:#1d4d34;background:linear-gradient(135deg,#0e1f17,#121c2e)">
+      <h3>🛡️ Auditor 24 horas</h3>
+      <div class="sub" id="aud24Status">desligado</div>
+      <div class="row">
+        <button id="btnAud24" style="flex:1" onclick="toggleAuditor24h()">🟢 Ligar Auditor 24h</button>
+      </div>
+      <div class="sub" id="aud24Info" style="margin-top:8px"></div>
+    </div>
+
     <div class="card">
       <h3>🎯 Missão atual</h3>
       <div id="missaoBox" class="missao vazia">Nenhuma missão definida.</div>
@@ -242,8 +251,56 @@ async function trabalharGoal(){
   carregarEstado();
 }
 
+// ── Auditor 24 horas ──────────────────────────────────────────────────────
+let _aud24Ativo = false;
+
+async function carregarAuditor24h(){
+  try{
+    const r = await fetch('/api/hermes/auditor24h/status'); const d = await r.json();
+    _aud24Ativo = !!d.ativo;
+    const btn = $('#btnAud24');
+    const st = $('#aud24Status');
+    if(d.ativo){
+      btn.textContent = '🔴 Desligar Auditor 24h';
+      btn.style.background = 'linear-gradient(135deg,#ef4444,#b91c1c)';
+      st.innerHTML = '<span class="dot on"></span><b>LIGADO</b> · ciclos: '+(d.ciclos||0);
+      let info = '';
+      if(d.ultimo_resumo) info += '🔎 '+d.ultimo_resumo.slice(0,220)+'<br>';
+      if(d.ultimo_erro) info += '⚠ '+d.ultimo_erro+'<br>';
+      if(d.intervalo_seg) info += 'Intervalo: '+Math.round(d.intervalo_seg/60)+' min';
+      $('#aud24Info').innerHTML = info;
+    } else {
+      btn.textContent = '🟢 Ligar Auditor 24h';
+      btn.style.background = '';
+      st.innerHTML = '<span class="dot off"></span>desligado';
+      $('#aud24Info').innerHTML = d.ciclos ? ('Último: '+(d.ciclos||0)+' ciclos rodados') : '';
+    }
+  }catch(e){ /* servidor offline */ }
+}
+
+async function toggleAuditor24h(){
+  const btn = $('#btnAud24'); btn.disabled = true;
+  try{
+    if(_aud24Ativo){
+      await fetch('/api/hermes/auditor24h/parar', {method:'POST'});
+      addStep('Auditor 24h','Desligado pelo usuário.');
+    } else {
+      const obj = $('#missaoInput').value.trim();
+      await fetch('/api/hermes/auditor24h/iniciar', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(obj ? {objetivo: obj} : {})
+      });
+      addMsg('🛡️ Auditor 24h LIGADO — vou coletar SIAFE2 + DOERJ, cruzar com SEI, detectar irregularidades e aprender padrões, em ciclos contínuos.','he');
+    }
+  }catch(e){ addMsg('Erro no Auditor 24h: '+e,'he'); }
+  btn.disabled = false;
+  setTimeout(carregarAuditor24h, 800);
+}
+
 carregarEstado();
+carregarAuditor24h();
 setInterval(carregarEstado, 12000);
+setInterval(carregarAuditor24h, 10000);
 </script>
 </body>
 </html>

@@ -238,7 +238,8 @@ def groq_available() -> bool:
     return bool(_groq_key())
 
 
-def groq_chat(prompt: str, system: str = "", smart: bool = False) -> str:
+def groq_chat(prompt: str, system: str = "", smart: bool = False,
+              max_tokens: int = 1024) -> str:
     """Envia prompt para Groq (síncrono). Usa llama-3.1-8b por padrão. Com retry."""
     key = _groq_key()
     if not key:
@@ -249,10 +250,12 @@ def groq_chat(prompt: str, system: str = "", smart: bool = False) -> str:
     messages.append({"role": "user", "content": prompt})
     model = GROQ_MODEL_SMART if smart else GROQ_MODEL_FAST
     # Groq no plano gratuito retorna 429 com frequência — retry/backoff é essencial.
-    return _openai_compat_chat_sync_retry(GROQ_BASE, key, model, messages)
+    return _openai_compat_chat_sync_retry(GROQ_BASE, key, model, messages,
+                                          max_tokens=max_tokens)
 
 
-async def groq_chat_async(prompt: str, system: str = "", smart: bool = False) -> str:
+async def groq_chat_async(prompt: str, system: str = "", smart: bool = False,
+                          max_tokens: int = 1024) -> str:
     key = _groq_key()
     if not key:
         raise RuntimeError("GROQ_API_KEY não configurada.")
@@ -261,7 +264,8 @@ async def groq_chat_async(prompt: str, system: str = "", smart: bool = False) ->
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
     model = GROQ_MODEL_SMART if smart else GROQ_MODEL_FAST
-    return await _openai_compat_chat_retry(GROQ_BASE, key, model, messages)
+    return await _openai_compat_chat_retry(GROQ_BASE, key, model, messages,
+                                           max_tokens=max_tokens)
 
 
 # ── OpenRouter (Hermes e outros modelos gratuitos) ────────────────────────────
@@ -281,7 +285,8 @@ def openrouter_available() -> bool:
     return bool(_openrouter_key())
 
 
-def openrouter_chat(prompt: str, system: str = "", smart: bool = False) -> str:
+def openrouter_chat(prompt: str, system: str = "", smart: bool = False,
+                    max_tokens: int = 1024) -> str:
     """
     Envia prompt para OpenRouter usando modelos gratuitos.
     smart=True usa Hermes-3 405B; False usa Gemma-2 9B.
@@ -302,11 +307,13 @@ def openrouter_chat(prompt: str, system: str = "", smart: bool = False) -> str:
         key,
         model,
         messages,
+        max_tokens=max_tokens,
         extra_headers=OPENROUTER_HEADERS,
     )
 
 
-async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = False) -> str:
+async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = False,
+                                max_tokens: int = 1024) -> str:
     key = _openrouter_key()
     if not key:
         raise RuntimeError(
@@ -323,6 +330,7 @@ async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = Fal
         key,
         model,
         messages,
+        max_tokens=max_tokens,
         extra_headers=OPENROUTER_HEADERS,
     )
 

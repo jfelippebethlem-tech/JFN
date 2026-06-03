@@ -337,7 +337,9 @@ async def api_hermes_stream():
 
 
 @app.post("/api/hermes/parar")
+@app.post("/api/hermes/parar")
 async def api_hermes_parar(payload: Optional[dict] = None):
+    """Para o ciclo 'trabalhar agora' em andamento."""
     from compliance_agent.database.models import get_session, init_db
     from compliance_agent.hermes_goal import HermesGoalAgent, mission_queue
     init_db()
@@ -361,6 +363,49 @@ async def api_hermes_parar(payload: Optional[dict] = None):
         return JSONResponse({"erro": f"{type(e).__name__}: {e}"}, status_code=500)
     finally:
         s.close()
+
+
+@app.post("/api/hermes/chat")
+async def api_hermes_chat(payload: dict):
+    """Conversa com o Hermes (raciocínio profundo sobre os casos)."""
+
+
+# ── Auditor 24 horas (auditoria automática e ininterrupta) ────────────────────
+
+@app.post("/api/hermes/auditor24h/iniciar")
+async def api_auditor24h_iniciar(payload: Optional[dict] = None):
+    """Liga o modo Auditor 24 horas (botão da interface)."""
+    from compliance_agent.hermes_goal import iniciar_auditor_24h
+    objetivo = ((payload or {}).get("objetivo") or "").strip()
+    intervalo = (payload or {}).get("intervalo_seg")
+    try:
+        intervalo = int(intervalo) if intervalo else None
+    except (TypeError, ValueError):
+        intervalo = None
+    try:
+        return JSONResponse(iniciar_auditor_24h(objetivo=objetivo, intervalo_seg=intervalo))
+    except Exception as e:
+        return JSONResponse({"ok": False, "erro": f"{type(e).__name__}: {e}"})
+
+
+@app.post("/api/hermes/auditor24h/parar")
+async def api_auditor24h_parar():
+    """Desliga o modo Auditor 24 horas."""
+    from compliance_agent.hermes_goal import parar_auditor_24h
+    try:
+        return JSONResponse(parar_auditor_24h())
+    except Exception as e:
+        return JSONResponse({"ok": False, "erro": f"{type(e).__name__}: {e}"})
+
+
+@app.get("/api/hermes/auditor24h/status")
+async def api_auditor24h_status():
+    """Estado atual do Auditor 24 horas (ciclos, último resumo, etc.)."""
+    from compliance_agent.hermes_goal import status_auditor_24h
+    try:
+        return JSONResponse(status_auditor_24h())
+    except Exception as e:
+        return JSONResponse({"ativo": False, "erro": f"{type(e).__name__}: {e}"})
 
 
 @app.post("/api/hermes/relatorio")
