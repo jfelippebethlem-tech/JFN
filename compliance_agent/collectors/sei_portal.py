@@ -114,29 +114,12 @@ async def buscar_processo(numero_sei: str, usar_cache: bool = True) -> dict:
     # HUMANO-NO-LOOP via Chrome 9222 (o agente NÃO quebra o CAPTCHA; ele avisa
     # o operador, que resolve uma vez na janela, e então a leitura continua).
     if (not resultado.get("documentos")) and _bloqueado_por_captcha(resultado):
-        try:
-            from compliance_agent.collectors.sei_cdp import ler_processo_sei
-            via_cdp = await ler_processo_sei(numero_sei)
-            if via_cdp.get("documentos") or not via_cdp.get("erro"):
-                # Normaliza para o formato esperado por buscar_processo
-                resultado = {
-                    "numero": numero_limpo,
-                    "tipo": "", "assunto": "", "interessados": [],
-                    "data_abertura": "", "orgao_origem": "", "situacao": "",
-                    "documentos": via_cdp.get("documentos", []),
-                    "cpfs": via_cdp.get("cpfs", []),
-                    "cnpjs": via_cdp.get("cnpjs", []),
-                    "valores": via_cdp.get("valores", []),
-                    "url": via_cdp.get("url", ""),
-                    "texto": via_cdp.get("texto", ""),
-                    "via": "chrome_cdp_humano_no_loop",
-                    "captcha_resolvido": via_cdp.get("captcha_resolvido", False),
-                }
-                if via_cdp.get("erro"):
-                    resultado["erro"] = via_cdp["erro"]
-        except Exception as e:
-            resultado.setdefault("erro", f"fallback CDP falhou: {e}")
-
+        diag = {
+            "status": "bloqueado_desconhecido",
+            "captcha": bool(resultado.get("captcha")),
+            "indicio": resultado.get("erro") or "sem indício",
+        }
+        resultado["diagnostico"] = diag
     resultado["_cached_at"] = datetime.now().isoformat()
     try:
         cache_file.write_text(

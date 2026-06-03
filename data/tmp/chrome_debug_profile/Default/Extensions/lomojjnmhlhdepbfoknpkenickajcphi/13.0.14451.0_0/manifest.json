@@ -1,0 +1,21 @@
+{
+   "background": {
+      "service_worker": "background.js"
+   },
+   "content_scripts": [ {
+      "js": [ "injection.js" ],
+      "matches": [ "*://mail.google.com/*", "*://*.mail.live.com/*", "*://*.outlook.live.com/*", "*://*.outlook.office.com/*", "*://*.outlook.office365.com/*", "*://*.mail.yahoo.com/*", "*://mail.zoho.com/*", "*://mail.zoho.com.cn/*", "*://*.gmx.com/mcstarter/mail.html*" ]
+   } ],
+   "default_locale": "en_US",
+   "description": "WinZip Courier Google Chrome Extension",
+   "host_permissions": [ "*://mail.google.com/*", "*://*.mail.live.com/*", "*://*.outlook.live.com/*", "*://*.outlook.office.com/*", "*://*.outlook.office365.com/*", "*://*.mail.yahoo.com/*", "*://mail.zoho.com/*", "*://mail.zoho.com.cn/*", "*://*.gmx.com/mcstarter/mail.html*" ],
+   "icons": {
+      "48": "icon.png"
+   },
+   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApVXheEUyU1f9JMmjvrrfsxaH/EflsxPIAlO9Yew9WaGMOT/XfWN7zlQc0pmJlUFUUQp8UEZelRTDL6sGy2a75hyWVidEyV8EebGd0iDgqxCn6PZtz21qRFaFVmpFUnBrPOmyrntmBca2zgH1s+srA2xDVa6snDkQQb2JbLowhixdaNUJyC8hQTKKTInqWMJlpYR6s/AJ0/vzfAAwsd0T0SePnhfgmjuKLrpnejJNf1nETl7sPjjApBbu2ohhUazev6MljqwGh6ioyurvAb/1elN7YyWnxlYrw1xqZmuwsviOdbmZau+/xcoBmjUlBgEBXXjARHXwKf6R2OgBaA3PpQIDAQAB",
+   "manifest_version": 3,
+   "name": "WinZip Courier",
+   "permissions": [ "tabs", "nativeMessaging" ],
+   "update_url": "https://clients2.google.com/service/update2/crx",
+   "version": "13.0.14451.0"
+}
