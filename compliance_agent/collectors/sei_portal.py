@@ -209,7 +209,6 @@ async def _tentar_url_direta(client: httpx.AsyncClient, numero: str) -> dict:
     if isinstance(ultima_excecao, TimeoutError):
         return {"erro": str(ultima_excecao)}
     return {"erro": f"Falha na URL direta SEI: {ultima_excecao}"}
-        return {"erro": str(e)}
 
 
 def _parse_resultado_pesquisa(html: str, numero: str) -> dict:
