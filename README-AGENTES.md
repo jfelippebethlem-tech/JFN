@@ -49,6 +49,13 @@
 
 ---
 
+
+---
+
+## Questões Conhecidas
+
+- **Memória do Agente Hermes**: O agente Hermes tem uma limitação na sua memória de usuário (user profile). A ferramenta `memory` exige uma correspondência exata de texto para remover ou substituir entradas, o que pode dificultar a atualização e o gerenciamento de informações. Esta questão precisa ser investigada e resolvida para garantir que o agente possa manter suas configurações e preferências de forma eficiente.
+
 ## Regras Fixas
 
 - **Nunca encurtar links** de notícias — usar URLs completas dos portais
