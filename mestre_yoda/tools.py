@@ -11,9 +11,16 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+from .market import MarketDataUnavailable, fetch_quotes, format_quotes
 from .memory import ConversationMemory
 
 ToolHandler = Callable[[dict], str]
+
+# Mensagem quando a fonte real falha: orienta a usar a web, jamais inventar.
+_MARKET_UNAVAILABLE = (
+    "Cotações em tempo real indisponíveis agora (fonte yfinance fora do ar). "
+    "Busque os valores na web e cite a fonte; números não invente."
+)
 
 
 @dataclass(frozen=True)
@@ -52,6 +59,32 @@ class ToolRegistry:
             return tool.handler(tool_input or {})
         except Exception as exc:  # noqa: BLE001 - erro vira tool_result, não derruba o loop
             return f"Erro ao executar {name}: {exc}"
+
+
+def market_tool() -> Tool:
+    """Ferramenta de cotações reais (dólar, Ibovespa, ouro, petróleo).
+
+    Independente de chat ou memória, então serve tanto à conversa quanto à
+    rotina diária "BOM DIA".
+    """
+
+    def _get_market_data(_: dict) -> str:
+        try:
+            quotes = fetch_quotes()
+        except MarketDataUnavailable:
+            return _MARKET_UNAVAILABLE
+        return format_quotes(quotes)
+
+    return Tool(
+        name="get_market_data",
+        description=(
+            "Retorna cotações reais e atuais de dólar (USD/BRL), Ibovespa, "
+            "ouro e petróleo WTI. Use sempre que o usuário pedir mercado ou "
+            "ao montar a rotina diária. Nunca invente cotações."
+        ),
+        input_schema={"type": "object", "properties": {}},
+        handler=_get_market_data,
+    )
 
 
 def build_registry(memory: ConversationMemory, chat_id: int) -> ToolRegistry:
@@ -119,5 +152,6 @@ def build_registry(memory: ConversationMemory, chat_id: int) -> ToolRegistry:
                 input_schema={"type": "object", "properties": {}},
                 handler=_recall_facts,
             ),
+            market_tool(),
         ]
     )

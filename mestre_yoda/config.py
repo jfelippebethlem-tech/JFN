@@ -6,8 +6,10 @@ ler variáveis de ambiente diretamente.
 
 from __future__ import annotations
 
+import datetime as _dt
 import os
 from dataclasses import dataclass, field
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 try:  # carregamento opcional do .env — não é obrigatório em produção
     from dotenv import load_dotenv
@@ -18,6 +20,10 @@ except ImportError:  # pragma: no cover - dotenv é só conveniência de dev
 
 
 _VALID_EFFORTS = {"low", "medium", "high", "xhigh", "max"}
+
+# Fuso e horário padrão da rotina "BOM DIA" (herdados do bot original).
+_DEFAULT_BRIEFING_TIME = _dt.time(7, 0)
+_DEFAULT_BRIEFING_TZ = "America/Sao_Paulo"
 
 # Versão GA da ferramenta de busca na web do Claude (sem beta header).
 WEB_SEARCH_TOOL = {"type": "web_search_20260209", "name": "web_search"}
@@ -31,6 +37,23 @@ def _parse_bool(raw: str | None, default: bool) -> bool:
     if raw is None or not raw.strip():
         return default
     return raw.strip().lower() in ("1", "true", "yes", "sim", "on")
+
+
+def _parse_time(raw: str | None, default: _dt.time) -> _dt.time:
+    if raw is None or not raw.strip():
+        return default
+    raw = raw.strip()
+    try:
+        parts = raw.split(":")
+        if len(parts) not in (2, 3):
+            raise ValueError
+        hh, mm = int(parts[0]), int(parts[1])
+        ss = int(parts[2]) if len(parts) == 3 else 0
+        return _dt.time(hh, mm, ss)
+    except ValueError as exc:
+        raise ConfigError(
+            f"YODA_BRIEFING_TIME inválido: {raw!r}. Use HH:MM (ex.: 07:00)."
+        ) from exc
 
 
 def _parse_chat_ids(raw: str | None) -> frozenset[int]:
@@ -63,6 +86,11 @@ class Settings:
     enable_web_search: bool = True
     allowed_chat_ids: frozenset[int] = field(default_factory=frozenset)
     log_level: str = "INFO"
+    # Rotina diária "BOM DIA do Mestre Jorge" (migrada do bot original).
+    briefing_enabled: bool = False
+    briefing_chat_id: int | None = None
+    briefing_time: _dt.time = _DEFAULT_BRIEFING_TIME
+    briefing_timezone: str = _DEFAULT_BRIEFING_TZ
 
     @classmethod
     def from_env(cls) -> "Settings":
@@ -97,6 +125,38 @@ class Settings:
         if max_history < 2:
             raise ConfigError("YODA_MAX_HISTORY deve ser pelo menos 2.")
 
+        briefing_enabled = _parse_bool(
+            os.getenv("YODA_BRIEFING_ENABLED"), default=False
+        )
+        briefing_chat_id_raw = os.getenv("YODA_BRIEFING_CHAT_ID", "").strip()
+        briefing_chat_id: int | None = None
+        if briefing_chat_id_raw:
+            try:
+                briefing_chat_id = int(briefing_chat_id_raw)
+            except ValueError as exc:
+                raise ConfigError(
+                    "YODA_BRIEFING_CHAT_ID deve ser um inteiro."
+                ) from exc
+        if briefing_enabled and briefing_chat_id is None:
+            raise ConfigError(
+                "YODA_BRIEFING_ENABLED está ligado, mas YODA_BRIEFING_CHAT_ID "
+                "não foi definido. Informe o chat que receberá a rotina diária."
+            )
+
+        briefing_time = _parse_time(
+            os.getenv("YODA_BRIEFING_TIME"), _DEFAULT_BRIEFING_TIME
+        )
+        briefing_timezone = (
+            os.getenv("YODA_BRIEFING_TIMEZONE", _DEFAULT_BRIEFING_TZ).strip()
+            or _DEFAULT_BRIEFING_TZ
+        )
+        try:
+            ZoneInfo(briefing_timezone)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ConfigError(
+                f"YODA_BRIEFING_TIMEZONE inválido: {briefing_timezone!r}."
+            ) from exc
+
         return cls(
             telegram_token=telegram_token,
             anthropic_api_key=anthropic_api_key,
@@ -109,8 +169,16 @@ class Settings:
             ),
             allowed_chat_ids=_parse_chat_ids(os.getenv("YODA_ALLOWED_CHAT_IDS")),
             log_level=os.getenv("YODA_LOG_LEVEL", "INFO").strip().upper(),
+            briefing_enabled=briefing_enabled,
+            briefing_chat_id=briefing_chat_id,
+            briefing_time=briefing_time,
+            briefing_timezone=briefing_timezone,
         )
 
     def chat_is_allowed(self, chat_id: int) -> bool:
         """True se o chat pode falar com o bot (lista vazia = todos)."""
         return not self.allowed_chat_ids or chat_id in self.allowed_chat_ids
+
+    def briefing_tzinfo(self) -> ZoneInfo:
+        """Fuso horário (objeto) da rotina diária."""
+        return ZoneInfo(self.briefing_timezone)

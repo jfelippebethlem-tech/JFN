@@ -19,6 +19,7 @@ from telegram.ext import (
     filters,
 )
 
+from .briefing import compose_briefing
 from .config import Settings
 from .hermes import HermesAgent
 from .memory import ConversationMemory
@@ -66,10 +67,44 @@ class YodaBot:
         app.add_handler(CommandHandler("help", self._cmd_help))
         app.add_handler(CommandHandler("esquecer", self._cmd_forget))
         app.add_handler(CommandHandler("lembrancas", self._cmd_facts))
+        app.add_handler(CommandHandler("bomdia", self._cmd_bomdia))
         app.add_handler(
             MessageHandler(filters.TEXT & ~filters.COMMAND, self._on_message)
         )
+        if self._settings.briefing_enabled:
+            self._schedule_briefing(app)
         return app
+
+    # --- rotina diária "BOM DIA" -----------------------------------------
+    def _schedule_briefing(self, app: Application) -> None:
+        """Agenda a rotina matinal no horário/fuso configurados."""
+        job_queue = app.job_queue
+        if job_queue is None:
+            logger.warning(
+                "JobQueue indisponível; rotina BOM DIA não agendada. "
+                "Instale 'python-telegram-bot[job-queue]'."
+            )
+            return
+        when = self._settings.briefing_time.replace(
+            tzinfo=self._settings.briefing_tzinfo()
+        )
+        job_queue.run_daily(self._job_briefing, time=when, name="bom-dia")
+        logger.info(
+            "Rotina BOM DIA agendada para %s (%s), chat %s.",
+            when.strftime("%H:%M"),
+            self._settings.briefing_timezone,
+            self._settings.briefing_chat_id,
+        )
+
+    async def _job_briefing(self, context: ContextTypes.DEFAULT_TYPE) -> None:
+        await self._deliver_briefing(context.bot, self._settings.briefing_chat_id)
+
+    async def _deliver_briefing(self, bot, chat_id: int | None) -> None:
+        if chat_id is None:
+            return
+        text = await compose_briefing(self._agent)
+        for pedaco in _split(text):
+            await bot.send_message(chat_id, pedaco)
 
     # --- guarda de acesso ------------------------------------------------
     def _denied(self, update: Update) -> bool:
@@ -112,6 +147,14 @@ class YodaBot:
             return
         linhas = "\n".join(f"• {k}: {v}" for k, v in facts.items())
         await update.message.reply_text(f"O que sobre você lembro:\n\n{linhas}")
+
+    async def _cmd_bomdia(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+        """Dispara a rotina BOM DIA sob demanda, no chat que pediu."""
+        if self._denied(update) or update.message is None:
+            return
+        chat_id = update.effective_chat.id
+        await context.bot.send_chat_action(chat_id, ChatAction.TYPING)
+        await self._deliver_briefing(context.bot, chat_id)
 
     # --- conversa --------------------------------------------------------
     async def _on_message(self, update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

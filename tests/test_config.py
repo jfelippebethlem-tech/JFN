@@ -1,3 +1,5 @@
+import datetime as dt
+
 import pytest
 
 from mestre_yoda.config import ConfigError, Settings
@@ -65,3 +67,46 @@ def test_web_search_desligado(monkeypatch):
     _base_env(monkeypatch)
     monkeypatch.setenv("YODA_ENABLE_WEB_SEARCH", "false")
     assert Settings.from_env().enable_web_search is False
+
+
+def test_briefing_desligado_por_padrao(monkeypatch):
+    _base_env(monkeypatch)
+    monkeypatch.delenv("YODA_BRIEFING_ENABLED", raising=False)
+    s = Settings.from_env()
+    assert s.briefing_enabled is False
+    assert s.briefing_time == dt.time(7, 0)
+    assert s.briefing_timezone == "America/Sao_Paulo"
+
+
+def test_briefing_ligado_exige_chat_id(monkeypatch):
+    _base_env(monkeypatch)
+    monkeypatch.setenv("YODA_BRIEFING_ENABLED", "true")
+    monkeypatch.delenv("YODA_BRIEFING_CHAT_ID", raising=False)
+    with pytest.raises(ConfigError):
+        Settings.from_env()
+
+
+def test_briefing_completo(monkeypatch):
+    _base_env(monkeypatch)
+    monkeypatch.setenv("YODA_BRIEFING_ENABLED", "true")
+    monkeypatch.setenv("YODA_BRIEFING_CHAT_ID", "45338178")
+    monkeypatch.setenv("YODA_BRIEFING_TIME", "06:30")
+    s = Settings.from_env()
+    assert s.briefing_enabled is True
+    assert s.briefing_chat_id == 45338178
+    assert s.briefing_time == dt.time(6, 30)
+    assert s.briefing_tzinfo().key == "America/Sao_Paulo"
+
+
+def test_briefing_time_invalido(monkeypatch):
+    _base_env(monkeypatch)
+    monkeypatch.setenv("YODA_BRIEFING_TIME", "25h")
+    with pytest.raises(ConfigError):
+        Settings.from_env()
+
+
+def test_briefing_timezone_invalido(monkeypatch):
+    _base_env(monkeypatch)
+    monkeypatch.setenv("YODA_BRIEFING_TIMEZONE", "Marte/Olympus")
+    with pytest.raises(ConfigError):
+        Settings.from_env()

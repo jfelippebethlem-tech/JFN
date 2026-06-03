@@ -52,6 +52,7 @@ def help_text() -> str:
         "Comandos que conheço, estes são:\n\n"
         "/start — apresentar-me novamente.\n"
         "/help — esta mensagem mostrar.\n"
+        "/bomdia — a rotina matinal (mercado e notícias) montar.\n"
         "/lembrancas — o que sobre você guardei, ver.\n"
         "/esquecer — nossa conversa esquecer.\n\n"
         "Ou simplesmente fale comigo, e responder eu irei."

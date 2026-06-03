@@ -12,7 +12,7 @@ import logging
 from .config import WEB_SEARCH_TOOL
 from .memory import ConversationMemory, ConversationContext
 from .protocol import AgentRequest, AgentResponse
-from .tools import build_registry
+from .tools import ToolRegistry, build_registry, market_tool
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,12 @@ logger = logging.getLogger(__name__)
 _FALLBACK = (
     "Hmm. Nublado pela Força, meu pensamento está agora. "
     "Tente de novo em um instante, você deve."
+)
+
+# Fallback específico da rotina diária (briefing), também na voz do Yoda.
+_BRIEFING_FALLBACK = (
+    "Bom dia, Mestre Jorge. 🌅 Nublada pela Força, a rotina de hoje ficou. "
+    "Mais tarde, montá-la de novo eu posso."
 )
 
 _SUMMARY_SYSTEM = (
@@ -113,70 +119,14 @@ class HermesAgent:
         messages = [
             {"role": m.role, "content": m.content} for m in ctx.messages
         ]
-        tools = registry.schemas()
-        if self._enable_web_search:
-            tools = [*tools, dict(WEB_SEARCH_TOOL)]
-
-        tools_used: list[str] = []
-        last_usage: dict[str, int] = {}
-        final_text = ""
 
         try:
-            for _ in range(self._max_tool_iterations):
-                resp = await self._client.messages.create(
-                    model=self._model,
-                    max_tokens=self._max_tokens,
-                    system=system,
-                    messages=messages,
-                    tools=tools,
-                    thinking={"type": "adaptive"},
-                    output_config={"effort": self._effort},
-                )
-                last_usage = _usage_dict(resp) or last_usage
-                stop = getattr(resp, "stop_reason", None)
-
-                # Servidor pausou um loop de ferramenta server-side (ex.: web_search).
-                # Reenvia para retomar de onde parou — sem mensagem extra.
-                if stop == "pause_turn":
-                    for blk in resp.content:
-                        if getattr(blk, "type", None) == "server_tool_use":
-                            tools_used.append(blk.name)
-                    messages.append({"role": "assistant", "content": resp.content})
-                    continue
-
-                if stop == "tool_use":
-                    messages.append({"role": "assistant", "content": resp.content})
-                    results = []
-                    for blk in resp.content:
-                        btype = getattr(blk, "type", None)
-                        if btype == "server_tool_use":
-                            tools_used.append(blk.name)  # executada no servidor
-                        elif btype == "tool_use":
-                            tools_used.append(blk.name)
-                            out = registry.execute(blk.name, blk.input)
-                            results.append(
-                                {
-                                    "type": "tool_result",
-                                    "tool_use_id": blk.id,
-                                    "content": out,
-                                }
-                            )
-                    if not results:
-                        # Só ferramentas de servidor nesta rodada; retoma.
-                        continue
-                    messages.append({"role": "user", "content": results})
-                    continue
-
-                # Registra busca na web mesmo quando termina na mesma resposta.
-                for blk in resp.content:
-                    if getattr(blk, "type", None) == "server_tool_use":
-                        tools_used.append(blk.name)
-
-                final_text = _text_from_content(resp.content)
-                break
-            else:
-                # Estourou o limite de iterações de ferramenta.
-                logger.warning("Hermes atingiu o limite de iterações no chat %s", chat_id)
+            final_text, tools_used, last_usage = await self._run_loop(
+                system,
+                messages,
+                registry,
+                enable_web_search=self._enable_web_search,
+            )
         except Exception:  # noqa: BLE001 - qualquer falha vira resposta amigável
             logger.exception("Falha do Hermes no chat %s", chat_id)
             return AgentResponse.failure(_FALLBACK)
@@ -195,6 +145,116 @@ class HermesAgent:
             tools_used=tuple(tools_used),
             usage=last_usage,
         )
+
+    # ------------------------------------------------------------------
+    async def _run_loop(
+        self,
+        system: list,
+        messages: list,
+        registry: ToolRegistry,
+        *,
+        enable_web_search: bool,
+    ) -> tuple[str, tuple[str, ...], dict[str, int]]:
+        """Loop agêntico com Claude. Compartilhado por `respond` e `compose`.
+
+        Devolve (texto_final, ferramentas_usadas, último_uso). Não toca a
+        memória — quem chama decide o que persistir.
+        """
+        tools = registry.schemas()
+        if enable_web_search:
+            tools = [*tools, dict(WEB_SEARCH_TOOL)]
+
+        tools_used: list[str] = []
+        last_usage: dict[str, int] = {}
+        final_text = ""
+
+        for _ in range(self._max_tool_iterations):
+            resp = await self._client.messages.create(
+                model=self._model,
+                max_tokens=self._max_tokens,
+                system=system,
+                messages=messages,
+                tools=tools,
+                thinking={"type": "adaptive"},
+                output_config={"effort": self._effort},
+            )
+            last_usage = _usage_dict(resp) or last_usage
+            stop = getattr(resp, "stop_reason", None)
+
+            # Servidor pausou um loop de ferramenta server-side (ex.: web_search).
+            # Reenvia para retomar de onde parou — sem mensagem extra.
+            if stop == "pause_turn":
+                for blk in resp.content:
+                    if getattr(blk, "type", None) == "server_tool_use":
+                        tools_used.append(blk.name)
+                messages.append({"role": "assistant", "content": resp.content})
+                continue
+
+            if stop == "tool_use":
+                messages.append({"role": "assistant", "content": resp.content})
+                results = []
+                for blk in resp.content:
+                    btype = getattr(blk, "type", None)
+                    if btype == "server_tool_use":
+                        tools_used.append(blk.name)  # executada no servidor
+                    elif btype == "tool_use":
+                        tools_used.append(blk.name)
+                        out = registry.execute(blk.name, blk.input)
+                        results.append(
+                            {
+                                "type": "tool_result",
+                                "tool_use_id": blk.id,
+                                "content": out,
+                            }
+                        )
+                if not results:
+                    # Só ferramentas de servidor nesta rodada; retoma.
+                    continue
+                messages.append({"role": "user", "content": results})
+                continue
+
+            # Registra busca na web mesmo quando termina na mesma resposta.
+            for blk in resp.content:
+                if getattr(blk, "type", None) == "server_tool_use":
+                    tools_used.append(blk.name)
+
+            final_text = _text_from_content(resp.content)
+            break
+        else:
+            # Estourou o limite de iterações de ferramenta.
+            logger.warning("Hermes atingiu o limite de iterações de ferramenta")
+
+        return final_text, tuple(tools_used), last_usage
+
+    # ------------------------------------------------------------------
+    async def compose(self, instructions: str) -> str:
+        """Geração one-shot, com ferramentas, sem tocar a memória.
+
+        Usada pela rotina diária "BOM DIA": o Hermes recebe um roteiro, pode
+        chamar a ferramenta de mercado e a busca na web, e devolve o texto
+        pronto para enviar. Falhas viram um fallback amigável — nunca exceção,
+        para não derrubar o agendador.
+        """
+        system = [
+            {
+                "type": "text",
+                "text": self._system_prompt,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ]
+        messages = [{"role": "user", "content": instructions}]
+        registry = ToolRegistry([market_tool()])
+        try:
+            final_text, _, _ = await self._run_loop(
+                system,
+                messages,
+                registry,
+                enable_web_search=self._enable_web_search,
+            )
+        except Exception:  # noqa: BLE001 - o briefing nunca pode derrubar o bot
+            logger.exception("Falha ao compor o briefing diário")
+            return _BRIEFING_FALLBACK
+        return final_text or _BRIEFING_FALLBACK
 
     # ------------------------------------------------------------------
     async def summarize(self, text: str) -> str:
