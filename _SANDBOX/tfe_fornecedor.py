@@ -125,7 +125,7 @@ def consultar(cnpj, ano):
         por_mes["%s/%s" % (md.group(2), md.group(3))][1] += val
         if len(c) > 4 and c[4].strip(): por_org[c[4]] += val
         hist = c[7] if len(c) > 7 else " ".join(c)
-        mc = re.search(r"(?:CONTRATO|CTT)\s*N?[º o:\s]*\s*(\d{1,4}(?:/\d{2,4}){1,2})", hist, re.I)
+        mc = re.search(r"(?:CONTRATO|CTT)\b[\s.]*[Nn]?[\sºo°.:]*\s*(\d{1,4}(?:/\d{2,4}){1,2})", hist, re.I)
         if mc: contratos[mc.group(1)] += val
         mp = re.search(r"SEI[\-\s]?(\d{6}/\d{6}/\d{4})", hist, re.I)
         if mp: processos["SEI-" + mp.group(1)] += val
