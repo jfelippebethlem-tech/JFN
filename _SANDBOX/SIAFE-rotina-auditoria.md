@@ -91,6 +91,11 @@ os contratos do fornecedor (com valor, objeto, aditivos).
 
 Esse é exatamente o "aprimorar o módulo de auditoria": implementar `buscar_contratos_por_contratado(nome_ou_cnpj)` no `siafe_browser.py`, rodando na VM. Caminho 100% mapeado acima.
 
+> ✅ **RESOLVIDO (2026-06-04)** — `_SANDBOX/siafe_contratos.py` já faz: abre filtro (`sdtFilter::disAcr`),
+> Propriedade `7` (Cod. Contratado) + Operador `0` (igual), e **DIGITA o CNPJ** com `keyboard.type`
+> (o `fill` NÃO aplica; só keystrokes reais disparam a query ADF) + Enter. Resultado validado:
+> **41 contratos da MGS CLEAN, R$ 146,7 mi**. `connect_over_cdp` funciona com poucas abas abertas.
+
 ## PASSO 8b — EMPENHOS SEM CONTRATO NO HISTÓRICO
 Os ~16–20% do empenhado cujo histórico não cita contrato: abrir cada **Nota de Empenho**
 (Execução Orçamentária → Nota de Empenho, filtro pelo nº do empenho da coluna "Empenho" do TFE)
