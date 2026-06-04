@@ -82,13 +82,14 @@ Situação | Valor do Contrato | Qtd. Aditivos | Qtd. Reajustes | Qtd. Anexos`.
 Filtrar por **Cod. Contratado (CNPJ)** ou **Nome do Contratado** → lista AUTORITATIVA de todos
 os contratos do fornecedor (com valor, objeto, aditivos).
 
-⚠️ **PONTO QUE EXIGE DOMÍNIO DO ADF (a desenvolver na VM com Playwright):** o acordeão
-**"Filtro"** (`pt1:tblContrato:pnlAccordionDec_afrCl0` / `pt1:tblOrdemBancaria:pnlAccordionDec_afrCl0`)
-NÃO expande de forma confiável via CDP cru (dispatchMouseEvent) nem via Playwright
-`connect_over_cdp` (timeout ao anexar num Chrome local cheio de abas). Solução correta:
-rodar o `siafe_browser.py` (Playwright nativo) **na VM**, em Chrome próprio de aba única,
-onde `page.get_by_text('Filtro').click()` + preencher o campo do contratado funciona.
-Esse é o item de "aprimorar o módulo de auditoria" — desenvolver/testar lá.
+### 🔑 SEGREDO DO FILTRO ADF (descoberto ao vivo — economiza horas)
+1. O texto **"Filtro"** (`...pnlAccordionDec_afrCl0`) tem **`onclick="return false"`** — clicar nele NÃO faz nada (armadilha!).
+2. Quem expande o painel é o disclosure **`pt1:tblContrato:sdtFilter::disAcr`** (title "Mostrar este painel"). Clique REAL nesse.
+3. Aberto, o filtro é um "rich table filter": **Propriedade** (`...table_rtfFilter:0:cbx_col_sel_rtfFilter::content`) → escolher **`9` = Nome do Contratado** (ou `7` = Cod. Contratado); **Operador** (`...cbx_op_sel_rtfFilter::content`) → "contém"/"igual".
+4. ⚠️ O **campo de VALOR só aparece depois que o ADF faz o refresh parcial (PPR)** ao trocar a Propriedade — e isso o **JS/CDP cru NÃO dispara** (setar `.value`+`change` não aciona o autosubmit do ADF). 
+   **Solução (Playwright NATIVO na VM):** `page.select_option(prop, '9')` dispara o evento real → o campo de valor renderiza → `page.fill(valor, 'MGS CLEAN')` → aplicar. Em Chrome de **aba única na VM** (não `connect_over_cdp` num Chrome local lotado, que dá timeout).
+
+Esse é exatamente o "aprimorar o módulo de auditoria": implementar `buscar_contratos_por_contratado(nome_ou_cnpj)` no `siafe_browser.py`, rodando na VM. Caminho 100% mapeado acima.
 
 ## PASSO 8b — EMPENHOS SEM CONTRATO NO HISTÓRICO
 Os ~16–20% do empenhado cujo histórico não cita contrato: abrir cada **Nota de Empenho**
