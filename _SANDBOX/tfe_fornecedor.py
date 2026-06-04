@@ -107,27 +107,37 @@ def consultar(cnpj, ano):
     os.makedirs(cache, exist_ok=True)
     safe = re.sub(r"\D", "", cnpj)
     json.dump(data, open(os.path.join(cache, "tfe_%s_%s.json" % (safe, ano)), "w", encoding="utf-8"), ensure_ascii=False)
-    # agrega
-    por_mes = collections.defaultdict(lambda: [0, 0.0]); por_org = collections.defaultdict(float); total = 0.0; n = 0
+    # agrega (valor = coluna Total, idx 8, quando ha 9 colunas; senao ultimo monetario)
+    por_mes = collections.defaultdict(lambda: [0, 0.0]); por_org = collections.defaultdict(float)
+    contratos = collections.defaultdict(float); processos = collections.defaultdict(float)
+    total = 0.0; n = 0
     for c in data:
-        md = re.search(r"(\d{2})/(\d{2})/(\d{4})", " ".join(c))
-        val = None
-        for cell in reversed(c):
-            v = _val(cell)
-            if v is not None: val = v; break
-        if md and val is not None:
-            por_mes["%s/%s" % (md.group(2), md.group(3))][0] += 1
-            por_mes["%s/%s" % (md.group(2), md.group(3))][1] += val
-            if len(c) > 4 and c[4].strip(): por_org[c[4]] += val
-            total += val; n += 1
-    return por_mes, por_org, total, n
+        md = re.search(r"(\d{2})/(\d{2})/(\d{4})", " ".join(c[:2]) if len(c) >= 2 else "")
+        if not md:
+            continue
+        if len(c) >= 9:
+            val = _val(c[8])
+        else:
+            val = next((v for v in (_val(x) for x in reversed(c)) if v is not None), 0.0)
+        if not val:
+            continue
+        por_mes["%s/%s" % (md.group(2), md.group(3))][0] += 1
+        por_mes["%s/%s" % (md.group(2), md.group(3))][1] += val
+        if len(c) > 4 and c[4].strip(): por_org[c[4]] += val
+        hist = c[7] if len(c) > 7 else " ".join(c)
+        mc = re.search(r"(?:CONTRATO|CTT)\s*N?[º o:\s]*\s*(\d{1,4}(?:/\d{2,4}){1,2})", hist, re.I)
+        if mc: contratos[mc.group(1)] += val
+        mp = re.search(r"SEI[\-\s]?(\d{6}/\d{6}/\d{4})", hist, re.I)
+        if mp: processos["SEI-" + mp.group(1)] += val
+        total += val; n += 1
+    return por_mes, por_org, contratos, processos, total, n
 
 
 def main():
     if len(sys.argv) < 3:
         print("Uso: python tfe_fornecedor.py <CNPJ> <ANO>"); return
     cnpj, ano = sys.argv[1], sys.argv[2]
-    por_mes, por_org, total, n = consultar(cnpj, ano)
+    por_mes, por_org, contratos, processos, total, n = consultar(cnpj, ano)
     print("\n===== EMPENHADO POR MES (%s, %s) =====" % (cnpj, ano))
     for mes in sorted(por_mes):
         print("  %s: %2d empenhos | R$ %15s" % (mes, por_mes[mes][0], "{:,.2f}".format(por_mes[mes][1])))
@@ -135,7 +145,13 @@ def main():
     print("\n===== POR ORGAO (top 10) =====")
     for o, v in sorted(por_org.items(), key=lambda x: -x[1])[:10]:
         print("  R$ %15s  %s" % ("{:,.2f}".format(v), o[:55]))
-    print("\n(ATENCAO: valores EMPENHADOS, nao necessariamente pagos.)")
+    print("\n===== CONTRATOS (nº no historico) =====")
+    for k, v in sorted(contratos.items(), key=lambda x: -x[1]):
+        print("  Contrato %-14s R$ %15s" % (k, "{:,.2f}".format(v)))
+    print("\n===== PROCESSOS SEI (%d) =====" % len(processos))
+    print("  " + ", ".join(sorted(processos.keys())))
+    print("\n(ATENCAO: valores EMPENHADOS, nao necessariamente pagos. Empenhos sem nº de")
+    print(" contrato/processo no historico precisam ser abertos no SIAFE - 2a etapa.)")
 
 
 if __name__ == "__main__":
