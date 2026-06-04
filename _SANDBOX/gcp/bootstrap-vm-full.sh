@@ -74,6 +74,9 @@ sudo tee /etc/systemd/system/yoda.service >/dev/null <<EOF
 Description=Yoda - Hermes Telegram Gateway
 After=network-online.target
 Wants=network-online.target
+# guarda anti restart-storm (se falhar 8x em 5min, para de tentar)
+StartLimitIntervalSec=300
+StartLimitBurst=8
 [Service]
 Type=simple
 User=$USER
@@ -81,10 +84,15 @@ WorkingDirectory=$HOME/hermes-agent
 Environment=HERMES_HOME=$HOME/.hermes
 Environment=PYTHONIOENCODING=utf-8
 Environment=DISPLAY=:99
+# carrega o .env explicitamente (- = opcional, nao quebra se sumir)
+EnvironmentFile=-$HOME/.hermes/.env
 ExecStartPre=/bin/bash -c 'Xvfb :99 -screen 0 1280x800x24 >/dev/null 2>&1 &'
 ExecStart=$PYBIN -m hermes_cli.main gateway run
 Restart=always
 RestartSec=10
+KillSignal=SIGTERM
+# >= drain_timeout (180s) p/ o systemd nao matar no meio do encerramento limpo
+TimeoutStopSec=210
 [Install]
 WantedBy=multi-user.target
 EOF

@@ -3,24 +3,45 @@ model:
   provider: gemini
   base_url: https://generativelanguage.googleapis.com/v1beta
 providers: {}
+# Cadeia de fallback (melhor -> mais disponivel). Dispara em 429/503/529/erro.
+# Os 3 entries Nous foram REMOVIDOS: na VM o Nous NAO esta autenticado (token
+# expirado/exhausted) -> gerava "Fallback to nous failed: provider not configured"
+# e cortava a resposta no meio. Trocados por modelos que respondem de fato.
 fallback_providers:
-  - provider: nous
-    model: stepfun/step-3.7-flash:free
-    base_url: https://inference-api.nousresearch.com/v1
-  - provider: nous
-    model: inclusionai/ring-2.6-1t:free
-    base_url: https://inference-api.nousresearch.com/v1
-  - provider: nous
-    model: tencent/hy3-preview:free
-    base_url: https://inference-api.nousresearch.com/v1
-credential_pool_strategies: {}
+  # 1) Mesma familia Gemini, descendo em demanda (dodge do 503 do 2.5-flash):
+  - provider: gemini
+    model: gemini-2.5-flash-lite
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    key_env: GEMINI_API_KEY
+  - provider: gemini
+    model: gemini-2.0-flash
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    key_env: GEMINI_API_KEY
+  - provider: gemini
+    model: gemini-2.0-flash-lite
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    key_env: GEMINI_API_KEY
+  # 2) Rede de seguranca cross-provider (infra fora do Google, sobrevive a apagao do Gemini):
+  - provider: mistral
+    model: mistral-large-latest
+    base_url: https://api.mistral.ai/v1
+    key_env: MISTRAL_API_KEY
+  - provider: mistral
+    model: mistral-small-latest
+    base_url: https://api.mistral.ai/v1
+    key_env: MISTRAL_API_KEY
+# Rotacao de credenciais: round_robin alterna entre as 8 chaves Gemini do pool
+# (auth.json) e pula a exausta (429). fill_first usa a Mistral ate esgotar.
+credential_pool_strategies:
+  gemini: round_robin
+  mistral: fill_first
 toolsets:
   - hermes-cli
 agent:
   max_turns: 150
   gateway_timeout: 1800
   restart_drain_timeout: 180
-  api_max_retries: 1
+  api_max_retries: 3
   service_tier: ''
   tool_use_enforcement: auto
   task_completion_guidance: true
