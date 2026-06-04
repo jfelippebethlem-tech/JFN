@@ -22,6 +22,7 @@ from .collectors.cnpj_receita import buscar_cnpj
 from .collectors.contratos_pncp import buscar_contratos_por_cnpj
 from .collectors.sancoes import verificar_sancoes
 from .collectors.whois_br import buscar_dominios_grupo
+from .collectors.cache import cached, limpar_expirados
 from .analise.rede_societaria import expandir_rede
 from .analise.sinais_risco import calcular_sinais
 from .relatorio.gerador import gerar_md, gerar_txt, salvar_relatorio
@@ -122,18 +123,30 @@ async def gerar_relatorio_risco(
     # 5. Geração do relatório
     relatorio_md = gerar_md(empresa, rede, contratos, sancoes, sinais, data_analise)
 
-    if formato == "txt":
+    relatorio_path = ""
+    if formato == "pdf":
+        from .relatorio.pdf import salvar_pdf
+        if salvar:
+            try:
+                relatorio_path = salvar_pdf(empresa, rede, contratos, sancoes, sinais, data_analise, relatorio_md)
+                logger.info("PDF salvo em: %s", relatorio_path)
+            except Exception as exc:
+                logger.error("Erro ao gerar PDF: %s", exc)
+        conteudo_salvar = ""
+        ext = "pdf"
+    elif formato == "txt":
         conteudo_salvar = gerar_txt(empresa, rede, contratos, sancoes, sinais, data_analise)
         ext = "txt"
     elif formato == "json":
-        conteudo_salvar = ""  # JSON não é salvo em arquivo de texto
+        conteudo_salvar = ""
         ext = "json"
     else:
         conteudo_salvar = relatorio_md
         ext = "md"
 
-    relatorio_path = ""
-    if salvar and conteudo_salvar:
+    limpar_expirados()
+
+    if salvar and conteudo_salvar and formato != "pdf":
         try:
             relatorio_path = salvar_relatorio(conteudo_salvar, cnpj_limpo, data_analise, ext)
             logger.info("Relatório salvo em: %s", relatorio_path)
