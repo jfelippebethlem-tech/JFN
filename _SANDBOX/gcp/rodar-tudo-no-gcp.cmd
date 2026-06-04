@@ -1,7 +1,5 @@
 @echo off
-chcp 65001 >nul
 setlocal enableextensions
-title Yoda no GCP - instalacao de um clique
 
 rem ====== caminhos ======
 set "CLOUDSDK_PYTHON=C:\Users\socah\google-cloud-sdk\platform\bundledpython\python.exe"
@@ -12,12 +10,12 @@ set "ZONE=southamerica-east1-b"
 set "VM=server-1"
 
 echo ============================================================
-echo   YODA NO GCP — vou instalar e subir o bot no servidor.
+echo   YODA NO GCP - instala e sobe o bot no servidor.
 echo   So precisa do SEU login Google UMA vez (abre o navegador).
 echo ============================================================
 echo.
 
-echo [1/7] Login Google (clique na sua conta jfelippebethlem@gmail.com e Permitir)...
+echo [1/7] Login Google (escolha jfelippebethlem@gmail.com e clique Permitir)...
 call "%GC%" auth login
 if errorlevel 1 ( echo ERRO no login. & pause & exit /b 1 )
 
@@ -27,14 +25,13 @@ call "%GC%" config set project jfn-vps
 
 echo.
 echo [3/7] Liberando SSH via tunel seguro (IAP)...
-call "%GC%" services enable iap.googleapis.com compute.googleapis.com 2>nul
+call "%GC%" services enable iap.googleapis.com compute.googleapis.com
 call "%GC%" compute firewall-rules create allow-iap-ssh --direction=INGRESS --action=allow --rules=tcp:22 --source-ranges=35.235.240.0/20 2>nul
 
 echo.
-echo [4/7] Preparando configuracao (so as chaves do bot, sem segredos do SEI/Oracle)...
+echo [4/7] Preparando config (so as chaves do bot, sem segredos do SEI/Oracle)...
 if exist "%STAGE%" rmdir /s /q "%STAGE%"
 mkdir "%STAGE%"
-rem .env enxuto: somente o que o bot precisa
 > "%STAGE%\.env" (
   findstr /B /C:"TELEGRAM_BOT_TOKEN=" "%HERMESHOME%\.env"
   findstr /B /C:"TELEGRAM_ALLOWED_USERS=" "%HERMESHOME%\.env"
@@ -52,21 +49,17 @@ echo [5/7] Parando o bot LOCAL (pra nao conflitar com o do servidor)...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%HERMESHOME%\gateway-service\bot-control.ps1" stop 2>nul
 
 echo.
-echo [6/7] Enviando configuracao para a VM (tunel IAP)...
+echo [6/7] Enviando config para a VM (tunel IAP)...
 call "%GC%" compute scp --recurse --zone=%ZONE% --tunnel-through-iap --quiet "%STAGE%" %VM%:~/hermes-config
 if errorlevel 1 ( echo ERRO ao enviar arquivos. Veja a mensagem acima. & pause & exit /b 1 )
 
 echo.
 echo [7/7] Instalando e subindo o Yoda na VM (pode levar 3-6 min)...
-call "%GC%" compute ssh %VM% --zone=%ZONE% --tunnel-through-iap --quiet --command="tr -d '\r' < ~/hermes-config/bootstrap-vm.sh > ~/bootstrap.sh && bash ~/bootstrap.sh"
+call "%GC%" compute ssh %VM% --zone=%ZONE% --tunnel-through-iap --quiet --command="sed -i 's/\r$//' ~/hermes-config/bootstrap-vm.sh ; bash ~/hermes-config/bootstrap-vm.sh"
 
 echo.
 echo ============================================================
 echo   PRONTO! O Yoda deve estar rodando no servidor GCP.
 echo   Teste mandando uma mensagem pro bot no Telegram.
-echo.
-echo   Comandos uteis (rode no servidor):
-echo     ver status:  gcloud compute ssh %VM% --zone=%ZONE% --tunnel-through-iap --command="systemctl status yoda"
-echo     ver logs:    gcloud compute ssh %VM% --zone=%ZONE% --tunnel-through-iap --command="journalctl -u yoda -n 50"
 echo ============================================================
 pause
