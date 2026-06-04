@@ -12,6 +12,10 @@ Este documento consolida as observações e "armadilhas" encontradas durante a r
 *   **Problema**: Instruções do usuário podem mudar ou ser corrigidas durante o processo, exigindo adaptação rápida e atualização de informações já processadas.
 *   **Lição Aprendida**: Manter flexibilidade e capacidade de reprocessar informações, garantindo que as fontes de verdade (como as preferências do Mestre Jorge) sejam sempre as mais atualizadas.
 
+### 1.3. Prolixidade nas Respostas do Agente (Auto-avaliação)
+*   **Problema**: Tendência a fornecer respostas muito longas, incluindo introduções e recapitulações desnecessárias antes de cada ação ou etapa, mesmo após a solicitação do Mestre Jorge por respostas curtas e factuais.
+*   **Lição Aprendida**: Esforçar-se para ser mais conciso e direto. As atualizações devem ser breves, focando no progresso e resultados, e evitando justificativas internas ou descrições repetitivas, a menos que explicitamente solicitado. A meta é minimizar a verbosidade e otimizar o tempo do Mestre Jorge.
+
 ## 2. Desafios Técnicos e de Ferramentas
 
 ### 2.1. Leitura de Arquivos Grandes (`read_file`)
