@@ -43,3 +43,7 @@ data/diagnostics/*.json
 auth.json
 **/auth.json
 auth.lock
+
+# bundle gerado (contem segredos) - NUNCA versionar
+hermes-tudo.sh
+**/hermes-tudo.sh
