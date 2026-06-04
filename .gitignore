@@ -27,3 +27,5 @@ data/*.db-shm
 data/diagnostics/*.png
 
 .env.txt
+vm_ssh_key.pem
+*.pem
