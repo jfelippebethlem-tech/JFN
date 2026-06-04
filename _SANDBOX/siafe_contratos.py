@@ -1,112 +1,70 @@
 # -*- coding: utf-8 -*-
 """
-SIAFE - lista TODOS os contratos de um contratado (nome/CNPJ) via Playwright NATIVO.
-Resolve o filtro Oracle ADF (select_option dispara o PPR que renderiza o campo de valor).
-Uso: python siafe_contratos.py "MGS CLEAN" 2025
-Credenciais do .env (SIAFE_USUARIO/SIAFE_SENHA). So leitura.
+SIAFE - lista TODOS os contratos de um fornecedor (por CNPJ) via Playwright.
+✅ MÉTODO QUE FUNCIONA (validado 2026-06-04 com MGS CLEAN: 41 contratos, R$146,7mi).
+
+Pré-requisito: estar LOGADO no SIAFE num Chrome com --remote-debugging-port=9222,
+e na tela Execução > Contratos e Convênios > Contrato (a grade de contratos aberta).
+(O login + navegação por menu ADF ainda é instável de automatizar em sessão nova;
+ por ora faça login/navegação manual OU via o fluxo do siafe_browser.py, e rode isto.)
+
+Uso: python siafe_contratos.py 19088605000104
+
+SEGREDOS DESCOBERTOS (o que faz funcionar):
+1) O painel de filtro abre pelo disclosure 'pt1:tblContrato:sdtFilter::disAcr'
+   (NÃO pelo texto "Filtro", que tem onclick=return false).
+2) Propriedade '7' = Cod. Contratado; Operador '0' = igual.
+3) ⚠️ O valor PRECISA ser DIGITADO (keyboard.type) — o ADF só dispara a query com
+   keystrokes reais. fill() NÃO aplica o filtro. Depois Enter.
 """
-import sys, os, re, time, json
-try: sys.stdout.reconfigure(encoding="utf-8", errors="replace")
-except Exception: pass
+import sys, re, json, time
 from playwright.sync_api import sync_playwright
 
-EX={"2023":"4","2024":"3","2025":"2","2026":"1","2027":"0"}
-def env(k):
-    for ln in open(r"C:\Users\socah\AppData\Local\hermes\.env",encoding="utf-8",errors="replace"):
-        if ln.startswith(k+"="): return ln.split("=",1)[1].strip()
-
-def run(nome, ano):
-    usuario=env("SIAFE_USUARIO"); senha=env("SIAFE_SENHA")
+def filtrar(cnpj_digits):
     with sync_playwright() as pw:
-        br=pw.chromium.launch(headless=False)
-        pg=br.new_page()
-        def sel(i): return f'[id="{i}"]'
+        b = pw.chromium.connect_over_cdp("http://127.0.0.1:9222", timeout=40000)
+        pg = None
+        for ctx in b.contexts:
+            for p in ctx.pages:
+                if "siafe2.fazenda" in (p.url or "") and "contrato" in (p.url or "").lower():
+                    pg = p
+        if not pg:
+            for ctx in b.contexts:
+                for p in ctx.pages:
+                    if "siafe2.fazenda" in (p.url or ""): pg = p
+        if not pg:
+            print("ERRO: abra o SIAFE logado na tela Contrato (porta 9222)."); return
+        def has_filter(): return pg.evaluate("()=>!!document.querySelector('[id*=table_rtfFilter]')")
         def click_vis(i):
-            # clica nas COORDENADAS do elemento VISIVEL (igual ao metodo CDP que funciona no ADF)
-            c=pg.evaluate("""(id)=>{let els=[...document.querySelectorAll('[id=\"'+id+'\"]')];for(let e of els){let r=e.getBoundingClientRect();if(r.width>0&&r.height>0&&r.top>=0&&r.left>=0)return {x:r.left+r.width/2,y:r.top+r.height/2};}return null;}""", i)
-            if not c: raise Exception("sem elemento visivel: "+i)
-            pg.mouse.move(c["x"],c["y"]); pg.mouse.click(c["x"],c["y"])
-        def click_text(txt):
-            c=pg.evaluate("""(t)=>{let els=[...document.querySelectorAll('a,span,td,div')].filter(e=>(e.textContent||'').trim()===t);for(let e of els){let r=e.getBoundingClientRect();if(r.width>0&&r.height>0&&r.top>=0)return {x:r.left+r.width/2,y:r.top+r.height/2};}return null;}""", txt)
-            if not c: return False
-            pg.mouse.move(c["x"],c["y"]); pg.mouse.click(c["x"],c["y"]); return True
-        print("[1] login...")
-        pg.goto("https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp",wait_until="networkidle",timeout=40000)
-        pg.fill(sel("loginBox:itxUsuario::content"),usuario)
-        pg.fill(sel("loginBox:itxSenhaAtual::content"),senha)
-        try: pg.select_option(sel("loginBox:cbxCliente::content"),"0")
-        except Exception: pass
-        pg.select_option(sel("loginBox:cbxExercicio::content"),EX.get(str(ano),"2"))
-        pg.click(sel("loginBox:btnConfirmar"))
-        pg.wait_for_load_state("networkidle",timeout=40000); time.sleep(3)
-        print("    url:",pg.url[:60])
-        # popup decreto
-        try:
-            ok=pg.get_by_text("OK",exact=True).first
-            if ok.is_visible(timeout=2500): ok.click(); time.sleep(1)
-        except Exception: pass
-        # popup "sistema aberto em outra janela" -> Sim
-        try:
-            sim=pg.get_by_text("Sim",exact=True).first
-            if sim.is_visible(timeout=1500): sim.click(); time.sleep(2)
-        except Exception: pass
-        print("[2] Execucao -> Contratos e Convenios -> Contrato")
-        # topo "Execucao" (best-effort, por texto/coordenada)
-        try: click_text("Execução"); time.sleep(2)
-        except Exception: pass
-        try:
-            ok=pg.get_by_text("OK",exact=True).first
-            if ok.is_visible(timeout=1500): ok.click(); time.sleep(1)
-        except Exception: pass
-        # sub-aba "Contratos e Convenios" (direto, por texto/coordenada)
-        if not click_text("Contratos e Convênios"):
-            click_vis("pt1:pt_np3:3:pt_cni4::disclosureAnchor")
-        time.sleep(3)
-        # item lateral "Contrato"
-        if not click_text("Contrato"):
-            click_vis("pt1:pt_np2:2:pt_cni3")
-        pg.wait_for_load_state("networkidle",timeout=30000); time.sleep(3)
-        pg.screenshot(path=r"C:\JFN\jfn\data\tmp\pw_contrato_grid.png")
-        print("[3] abrir filtro + propriedade Nome do Contratado")
-        click_vis("pt1:tblContrato:sdtFilter::disAcr"); time.sleep(2)
-        pg.select_option(sel("pt1:tblContrato:table_rtfFilter:0:cbx_col_sel_rtfFilter::content"),"9")
-        pg.wait_for_load_state("networkidle",timeout=20000); time.sleep(2)
-        # operador "contem"
-        try:
-            pg.select_option(sel("pt1:tblContrato:table_rtfFilter:0:cbx_op_sel_rtfFilter::content"),label=re.compile("cont", re.I))
-        except Exception:
-            pg.select_option(sel("pt1:tblContrato:table_rtfFilter:0:cbx_op_sel_rtfFilter::content"),"7")
-        pg.wait_for_load_state("networkidle",timeout=20000); time.sleep(2)
-        # campo de valor: input de texto dentro da linha do filtro (apareceu apos PPR)
-        vals=pg.locator('[id*="table_rtfFilter:0"] input[type="text"]')
-        print("    inputs de valor no filtro:",vals.count())
-        if vals.count()==0:
-            pg.screenshot(path=r"C:\JFN\jfn\data\tmp\pw_sem_valor.png")
-            print("    !! campo de valor nao apareceu"); br.close(); return
-        vals.last.fill(nome)
-        pg.keyboard.press("Enter")
-        pg.wait_for_load_state("networkidle",timeout=25000); time.sleep(3)
-        pg.screenshot(path=r"C:\JFN\jfn\data\tmp\pw_contrato_filtrado.png")
-        print("[4] extrai contratos")
-        # headers + linhas
-        rows=pg.evaluate("""()=>{
-          let tbls=[...document.querySelectorAll('table')],best=null,mx=0;
-          for(let tb of tbls){let r=tb.querySelectorAll('tr');if(r.length>mx){mx=r.length;best=tb}}
-          if(!best)return [];
-          let out=[];
-          for(let tr of best.querySelectorAll('tr')){
-            let c=[...tr.querySelectorAll('td')].map(td=>(td.textContent||'').replace(/\\s+/g,' ').trim());
-            if(c.length>=5)out.push(c);
-          } return out;
-        }""")
-        os.makedirs(r"C:\JFN\jfn\data\sei_cache",exist_ok=True)
-        json.dump(rows,open(r"C:\JFN\jfn\data\sei_cache\siafe_contratos_%s.json"%re.sub(r'\W','',nome),"w",encoding="utf-8"),ensure_ascii=False)
-        print("    linhas extraidas:",len(rows))
-        for c in rows[:30]:
-            print("   ",c[:13])
-        br.close()
+            c = pg.evaluate("""(id)=>{for(let e of document.querySelectorAll('[id=\"'+id+'\"]')){let r=e.getBoundingClientRect();if(r.width>0&&r.height>0)return{x:r.left+r.width/2,y:r.top+r.height/2}}return null}""", i)
+            if c: pg.mouse.click(c["x"], c["y"]); return True
+            return False
+        for t in ("OK", "Sim"):
+            try:
+                e = pg.get_by_text(t, exact=True).first
+                if e.is_visible(timeout=1000): e.click(); time.sleep(1)
+            except Exception: pass
+        if not has_filter():
+            click_vis("pt1:tblContrato:sdtFilter::disAcr"); time.sleep(2.5)
+        P = '[id="pt1:tblContrato:table_rtfFilter:0:cbx_col_sel_rtfFilter::content"]:visible'
+        O = '[id="pt1:tblContrato:table_rtfFilter:0:cbx_op_sel_rtfFilter::content"]:visible'
+        pg.locator(P).first.select_option("7"); time.sleep(2.5)       # Cod. Contratado
+        pg.locator(O).first.select_option("0"); time.sleep(2.5)       # igual
+        v = pg.locator('[id*="table_rtfFilter:0"] input[type="text"]:visible').last
+        v.click(); v.press("Control+a"); v.press("Delete")
+        pg.keyboard.type(cnpj_digits, delay=80)                       # DIGITAR (essencial!)
+        pg.keyboard.press("Enter"); time.sleep(6)
+        rows = pg.evaluate("""()=>{let tb=[...document.querySelectorAll('table')].sort((a,b)=>b.querySelectorAll('tr').length-a.querySelectorAll('tr').length)[0];if(!tb)return[];let o=[];for(let tr of tb.querySelectorAll('tr')){let c=[...tr.querySelectorAll('td')].map(td=>(td.textContent||'').replace(/\\s+/g,' ').trim());if(c.length>=5)o.push(c);}return o;}""")
+        rows = [r for r in rows if cnpj_digits in " ".join(r)]
+        def val(s):
+            m = re.search(r'([\d\.]+,\d{2})', s or ''); return float(m.group(1).replace('.','').replace(',','.')) if m else 0.0
+        tot = sum(val(r[11]) for r in rows if len(r) > 11)
+        print("CONTRATOS:", len(rows), "| VALOR TOTAL: R$ %s" % "{:,.2f}".format(tot))
+        for r in rows:
+            if len(r) > 11:
+                print("  R$ %15s | %-18s | %s" % ("{:,.2f}".format(val(r[11])), (r[2] or r[1] or r[0])[:18], r[6][:32]))
+        json.dump(rows, open(r"C:\JFN\jfn\data\sei_cache\siafe_contratos_%s.json" % cnpj_digits, "w", encoding="utf-8"), ensure_ascii=False)
 
-if __name__=="__main__":
-    nome=sys.argv[1] if len(sys.argv)>1 else "MGS CLEAN"
-    ano=sys.argv[2] if len(sys.argv)>2 else "2025"
-    run(nome,ano)
+if __name__ == "__main__":
+    cnpj = re.sub(r"\D", "", sys.argv[1] if len(sys.argv) > 1 else "19088605000104")
+    filtrar(cnpj)
