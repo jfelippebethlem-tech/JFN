@@ -1,28 +1,33 @@
-# Análise do Modelo LLM na Sessão Atual
+# Análise do Modelo LLM nesta Sessão
 
-## Introdução
-Mestre Jorge solicitou um esclarecimento sobre o modelo LLM utilizado nesta sessão e a razão pela qual o Gemini não foi o modelo principal, e se houve alguma substituição.
+## Pergunta
+O Gemini foi substituído por outra IA? Por quê?
 
-## Modelo LLM Ativo na Sessão
-Conforme o ambiente de execução, o modelo ativo para esta sessão para tarefas de raciocínio geral, interpretação de código e geração de texto é:
-*   **Modelo:** `stepfun/step-3.7-flash:free`
-*   **Provedor:** `nous`
+## Resposta direta
+Nesta sessão, NÃO houve substituição do Gemini, porque ele nunca foi o modelo padrão da sessão atual. O motor desta conversa é outro modelo, diferente de Gemini, e ele permanece ativo.
 
-## Papel do Gemini conforme Diretrizes do Mestre Jorge
-Minhas diretrizes operacionais, definidas pelo Mestre Jorge, estabelecem os seguintes papéis para o Gemini:
-*   **Principal para tarefas específicas:** Visão/OCR (para capturas do SEI, PDFs/imagens escaneados do DOERJ/SIAFE) e extração/parsing web (para DOERJ/SEI).
-*   **Provedor de fallback:** Gemini é listado como um dos provedores de reserva automática (juntamente com Mistral, HuggingFace/Llama, Nemotron, OpenRouter) caso o modelo principal para raciocínio (`Qwen 3.6`) falhe.
+## Por que o Gemini não é o motor da sessão
+1. A configuração da sessão define outro provedor/modelo como padrão.
+2. Para esta execução, o padrão adotado é `stepfun/step-3.7-flash:free`, provedor `nous`.
+3. O Gemini continua disponível como opção/fallback em pontos específicos do projeto.
 
-## Análise da Não-Substituição e Razões
+## Como o Gemini aparece no projeto
+O código usa Gemini quando a tarefa exige:
+- visão/OCR (captcha do SEI, PDFs escaneados, imagens do DOERJ/SIAFE)
+- parsing/extraction web (DOERJ/SEI)
 
-1.  **Gemini não foi o modelo principal para raciocínio geral:** Nesta sessão, fui instanciado com o modelo `stepfun/step-3.7-flash:free` do provedor `nous` para as tarefas de raciocínio, interpretação de código e geração de respostas textuais. Portanto, o Gemini não foi "substituído", pois ele nunca foi o modelo principal para estas funções no início desta sessão. A escolha do modelo `stepfun/step-3.7-flash:free` como primário é determinada pela configuração de inicialização da plataforma para esta sessão.
+O ponto de entrada para essas funcionalidades é o módulo Gemini via ferramentas de imagem e parsers específicos, executados no agente de visão quando chamados. Não é o caminho padrão de texto para texto.
 
-2.  **Não houve acionamento dos papéis específicos do Gemini:** Nas interações recentes, não surgiram tarefas que exigissem explicitamente as capacidades de visão/OCR ou parsing web do Gemini (e.g., análise de imagens ou documentos escaneados, extração de dados do DOERJ/SEI).
+## Quando outra IA assume
+A troca real acontece por fallback automático:
+1. Falha de provedor/modelo principal
+2. Erro de timeout/rate limit
+3. Requisição de tarefa específica (OCR/visão/web parsing) onde o Gemini é a ferramenta adequada
 
-3.  **Não houve falha do modelo principal atual para acionar fallback:** O modelo `stepfun/step-3.7-flash:free` não apresentou falhas de comunicação, rate limit ou timeout que teriam disparado o mecanismo de fallback para um dos modelos de reserva, incluindo o Gemini.
+Nenhum desses gatilhos ocorreu nesta sessão, por isso não houve troca.
 
 ## Conclusão
-Em resumo, o Gemini não foi "substituído" por outra IA nesta sessão para as tarefas de raciocínio e código porque ele não foi o modelo principal para essas funções desde o início da sessão. O modelo `stepfun/step-3.7-flash:free` tem sido o motor para essas atividades. As funções específicas e o papel de fallback do Gemini não foram acionados devido à natureza das tarefas realizadas e à estabilidade do modelo principal.
-
----
-**Gerado por Mestre Yoda para avaliação de outra IA.**
+- Não houve substituição do Gemini.
+- O modelo atual é `stepfun/step-3.7-flash:free`.
+- O Gemini continua reservado para tarefas visuais/web scraping.
+- Outras IAs entram só em fallback ou em tarefas específicas.
