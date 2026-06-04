@@ -47,3 +47,6 @@ auth.lock
 # bundle gerado (contem segredos) - NUNCA versionar
 hermes-tudo.sh
 **/hermes-tudo.sh
+
+# Claude Code local settings (permissoes pessoais, nao versionar)
+.claude/settings.local.json
