@@ -120,3 +120,85 @@ model HermesInsight {
   lido       Boolean  @default(false)
   criadoEm  DateTime @default(now())
 }
+
+model BondPerfil {
+  id           String    @id @default(cuid())
+  plataforma   String    // "facebook" | "instagram" | "twitter"
+  handle       String
+  nomeCompleto String?
+  seguidores   Int       @default(0)
+  seguindo     Int       @default(0)
+  totalPosts   Int       @default(0)
+  bio          String?
+  fotoUrl      String?
+  ativo        Boolean   @default(true)
+  ultimaSync   DateTime?
+  criadoEm    DateTime  @default(now())
+  postagens    BondPost[]
+
+  @@unique([plataforma, handle])
+}
+
+model BondPost {
+  id             String   @id @default(cuid())
+  plataforma     String
+  postId         String
+  conteudo       String
+  tipo           String   @default("texto") // "texto"|"foto"|"video"|"reel"|"story"|"link"
+  url            String?
+  imagemUrl      String?
+  likes          Int      @default(0)
+  comentarios    Int      @default(0)
+  compartilhos   Int      @default(0)
+  alcance        Int      @default(0)
+  impressoes     Int      @default(0)
+  engajamento    Float    @default(0)
+  publicadoEm   DateTime
+  sincronizadoEm DateTime @default(now())
+  fasJson        String?  // JSON array of {id,nome,username} who engaged
+  perfilId       String
+  perfil         BondPerfil @relation(fields: [perfilId], references: [id])
+
+  @@unique([plataforma, postId])
+}
+
+model BondFa {
+  id           String   @id @default(cuid())
+  plataforma   String
+  externalId   String
+  nome         String?
+  username     String?
+  fotoUrl      String?
+  totalLikes   Int      @default(0)
+  totalComents Int      @default(0)
+  totalShares  Int      @default(0)
+  ultimaInter  DateTime?
+  criadoEm    DateTime @default(now())
+  atualizadoEm DateTime @updatedAt
+
+  @@unique([plataforma, externalId])
+}
+
+model BondInsight {
+  id         String   @id @default(cuid())
+  titulo     String
+  descricao  String
+  tipo       String   @default("sugestao") // "performance"|"audiencia"|"horario"|"conteudo"|"sugestao"|"alerta"
+  plataforma String?  // null = cross-platform
+  dados      String?  // JSON with extra data
+  lido       Boolean  @default(false)
+  criadoEm  DateTime @default(now())
+}
+
+model BondRascunho {
+  id           String    @id @default(cuid())
+  titulo       String?
+  texto        String
+  plataformas  String    @default("todas") // comma-separated or "todas"
+  tipo         String    @default("post")
+  hashtags     String?
+  status       String    @default("rascunho") // "rascunho"|"aprovado"|"publicado"
+  agendadoPara DateTime?
+  criadoEm    DateTime  @default(now())
+  atualizadoEm DateTime  @updatedAt
+}

@@ -10,8 +10,9 @@
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
     "hermes": "tsx src/agent/hermes-worker.ts",
+    "bond": "tsx src/agent/bond-worker.ts",
     "test": "tsx src/tests/run.ts",
-    "launch": "concurrently --prefix-colors \"bgBlue.bold,bgMagenta.bold\" --names \"🏛 APP,🪽 HERMES\" \"next dev\" \"tsx src/agent/hermes-worker.ts\"",
+    "launch": "concurrently --prefix-colors \"bgBlue.bold,bgMagenta.bold,bgGreen.bold\" --names \"🏛 APP,🪽 HERMES,🔗 BOND\" \"next dev\" \"tsx src/agent/hermes-worker.ts\" \"tsx src/agent/bond-worker.ts\"",
     "postinstall": "prisma generate"
   },
   "dependencies": {
