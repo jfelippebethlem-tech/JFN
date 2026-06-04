@@ -38,3 +38,8 @@ data/sei_cache/
 **/sessao_cookies.json
 data/diagnostics/*.html
 data/diagnostics/*.json
+
+# Pool de credenciais (8 chaves Gemini etc.) - NUNCA versionar
+auth.json
+**/auth.json
+auth.lock
