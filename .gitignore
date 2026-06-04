@@ -29,3 +29,12 @@ data/diagnostics/*.png
 .env.txt
 vm_ssh_key.pem
 *.pem
+*.pem.txt
+
+# SEI: sessao e dados de processos NUNCA vao pro git (seguranca)
+data/tmp/chrome_debug_profile/
+data/tmp/
+data/sei_cache/
+**/sessao_cookies.json
+data/diagnostics/*.html
+data/diagnostics/*.json
