@@ -13,6 +13,13 @@ from cryptography.hazmat.backends import default_backend
 import glob
 import os
 
+# Windows: garante que emojis/acentos nao quebrem o print (console cp1252).
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 # ── Configurações da sua conta Oracle ────────────────────────────────────────
 CONFIG = {
     "user":        "ocid1.user.oc1..aaaaaaaamnwgebr5junqyaxiabqeihgvaotle5kob7fh33odx5w4myqyrfka",
@@ -31,18 +38,36 @@ INTERVALO   = 60   # segundos entre tentativas
 
 
 def _achar_chave_oci():
-    """Procura o arquivo .pem da chave OCI em várias pastas possíveis."""
+    """Acha a CHAVE DA API OCI (privada, formato PEM 'BEGIN PRIVATE KEY').
+
+    Ignora chaves SSH ('BEGIN OPENSSH...', como vm_ssh_key.pem) e chaves
+    públicas. Inclui arquivos .pem e .pem.txt (a chave da API costuma vir
+    como oci_key.pem.txt). Valida pelo CONTEÚDO, não só pelo nome.
+    """
     pasta_script = os.path.dirname(os.path.abspath(__file__))
     pasta_pai    = os.path.dirname(pasta_script)
-    # Busca na pasta do script, pasta pai e C:\JFN (fallback Windows)
     dirs = [pasta_script, pasta_pai, r"C:\JFN", os.path.expanduser("~")]
+    # nomes mais prováveis primeiro
+    padroes = ["oci_key*.pem*", "*api*key*.pem*", "*.pem", "*.pem.txt"]
+    vistos = set()
     for d in dirs:
-        candidatos = glob.glob(os.path.join(d, "*.pem"))
-        privados = [c for c in candidatos if "public" not in c.lower()]
-        if privados:
-            return privados[0]
-        if candidatos:
-            return candidatos[0]
+        for pat in padroes:
+            for c in sorted(glob.glob(os.path.join(d, pat))):
+                if c in vistos:
+                    continue
+                vistos.add(c)
+                nome = c.lower()
+                if "public" in nome or "vm_ssh" in nome:
+                    continue  # chave pública ou SSH não servem para a API
+                try:
+                    with open(c, "r", errors="ignore") as f:
+                        cabecalho = f.read(200)
+                except Exception:
+                    continue
+                if "OPENSSH" in cabecalho:
+                    continue  # chave SSH, não é chave de API OCI
+                if "PRIVATE KEY" in cabecalho:
+                    return c  # chave de API válida (PKCS8 ou RSA)
     return None
 
 
@@ -103,10 +128,12 @@ def tentar(cc, img, sub, ssh_pub, n):
         return inst
     except oci.exceptions.ServiceError as e:
         msg = getattr(e, "message", str(e))
-        if "Out of capacity" in msg:
-            print(f"   ⚠️  Sem capacidade ainda. Próxima tentativa em {INTERVALO}s...")
+        if "out of capacity" in msg.lower() or "out of host capacity" in msg.lower():
+            print(f"   ⚠️  Oracle sem vaga ainda (Out of host capacity). Tento de novo em {INTERVALO}s...")
+        elif "limitexceeded" in msg.lower() or "limit" in msg.lower():
+            print(f"   ⚠️  Limite/quota: {msg}. Tento de novo em {INTERVALO}s...")
         else:
-            print(f"   ❌ Erro inesperado: {msg}")
+            print(f"   ❌ Erro: {msg}. Tento de novo em {INTERVALO}s...")
         return None
     except Exception as e:
         print(f"   ❌ {type(e).__name__}: {e}")
