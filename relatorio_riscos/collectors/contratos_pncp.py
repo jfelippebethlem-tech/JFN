@@ -47,20 +47,22 @@ def _normalizar_contrato(c: dict) -> dict:
 async def buscar_contratos_por_cnpj(
     cnpj: str,
     pagina: int = 1,
-    tam: int = 20,
+    tam: int = 50,
+    todas_paginas: bool = True,
 ) -> dict:
     """
     Busca contratos públicos vinculados ao CNPJ fornecedor no PNCP.
 
     Parâmetros
     ----------
-    cnpj   : CNPJ do fornecedor (com ou sem pontuação)
-    pagina : página da consulta (começa em 1)
-    tam    : tamanho da página (máx. 500 na API)
+    cnpj         : CNPJ do fornecedor (com ou sem pontuação)
+    pagina       : página inicial (começa em 1)
+    tam          : tamanho da página (máx. 500 na API)
+    todas_paginas: se True, percorre todas as páginas automaticamente
 
     Retorno
     -------
-    dict com "ok", "total", "contratos" (lista normalizada)
+    dict com "ok", "total", "contratos" (lista normalizada completa)
     """
     cnpj_limpo = _limpar_cnpj(cnpj)
     if len(cnpj_limpo) != 14:
@@ -72,50 +74,56 @@ async def buscar_contratos_por_cnpj(
         "tamanhoPagina": tam,
     }
 
+    async def _buscar_pagina(client: httpx.AsyncClient, pag: int) -> tuple[int, list]:
+        p = {**params, "pagina": pag}
+        r = await client.get(_PNCP_URL, params=p, timeout=_TIMEOUT)
+        if r.status_code == 404:
+            return 0, []
+        if r.status_code != 200:
+            raise RuntimeError(f"HTTP {r.status_code}")
+        data = r.json()
+        if isinstance(data, list):
+            return len(data), data
+        itens = data.get("data") or data.get("contratos") or data.get("content") or []
+        total = int(
+            data.get("totalRegistros")
+            or data.get("total")
+            or data.get("totalElements")
+            or len(itens)
+        )
+        return total, itens
+
     try:
         async with httpx.AsyncClient() as client:
-            r = await client.get(_PNCP_URL, params=params, timeout=_TIMEOUT)
+            total, primeira_pagina = await _buscar_pagina(client, pagina)
 
-        if r.status_code == 404:
-            # PNCP retorna 404 quando não encontra contratos
-            return {"ok": True, "total": 0, "contratos": [], "cnpj": cnpj_limpo}
+            todos_itens = list(primeira_pagina)
 
-        if r.status_code != 200:
-            return {
-                "ok": False,
-                "erro": f"PNCP retornou HTTP {r.status_code}",
-                "total": 0,
-                "contratos": [],
-                "cnpj": cnpj_limpo,
-            }
+            if todas_paginas and total > tam:
+                import math
+                n_paginas = math.ceil(total / tam)
+                # Busca demais páginas em paralelo (até 10 por vez para não sobrecarregar)
+                for inicio in range(pagina + 1, n_paginas + 1, 10):
+                    fim = min(inicio + 10, n_paginas + 1)
+                    resultados = await asyncio.gather(
+                        *[_buscar_pagina(client, p) for p in range(inicio, fim)],
+                        return_exceptions=True,
+                    )
+                    for res in resultados:
+                        if isinstance(res, Exception):
+                            logger.warning("Erro em página PNCP: %s", res)
+                            continue
+                        _, itens = res
+                        todos_itens.extend(itens)
 
-        data = r.json()
-
-        # A API pode retornar lista direta ou objeto paginado
-        if isinstance(data, list):
-            itens = data
-            total = len(itens)
-        elif isinstance(data, dict):
-            itens = data.get("data") or data.get("contratos") or data.get("content") or []
-            total = (
-                data.get("totalRegistros")
-                or data.get("total")
-                or data.get("totalElements")
-                or len(itens)
-            )
-            total = int(total)
-        else:
-            itens = []
-            total = 0
-
-        contratos = [_normalizar_contrato(c) for c in itens]
+        contratos = [_normalizar_contrato(c) for c in todos_itens]
 
         return {
             "ok": True,
             "cnpj": cnpj_limpo,
             "total": total,
-            "pagina": pagina,
-            "tam_pagina": tam,
+            "total_obtidos": len(contratos),
+            "paginas_completas": todas_paginas,
             "contratos": contratos,
         }
 

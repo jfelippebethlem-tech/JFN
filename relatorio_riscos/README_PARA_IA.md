@@ -122,28 +122,95 @@ dados = resultado["dados"]          # dict com empresa/rede/contratos/sancoes/si
 
 ---
 
-## O que falta implementar
+## Implementado — soluções gratuitas
 
-1. **Busca reversa por CPF/sócio** — nenhuma API pública gratuita brasileira oferece busca de empresas
-   por CPF do sócio. Para expansão automática da rede, seria necessário:
-   - API privada (ex: Serpro DataValid, Receita Web Service)
-   - Scraping do portal Receita Federal (risco de bloqueio)
-   - Base local com dump do CNPJ (disponível via dados.gov.br — arquivos pesados)
+### 1. Dump da Receita Federal → busca reversa por nome de sócio
 
-2. **Análise de múltiplos endereços** — o sinal de concentração de endereço só funciona com
-   CNPJs adicionais fornecidos manualmente.
+**Arquivo:** `collectors/cnpj_dump_rf.py`
 
-3. **Monitoramento contínuo** — sem scheduler; executar periodicamente é responsabilidade do chamador.
+A Receita Federal disponibiliza gratuitamente todos os dados do CNPJ em:
+`https://dadosabertos.rfb.gov.br/CNPJ/dados_abertos_cnpj/YYYY-MM/`
 
-4. **Cache de resultados** — cada chamada consulta as APIs ao vivo; sem TTL ou banco local.
+Arquivos relevantes: `Socios0.zip` … `Socios9.zip` (~10 GB expandidos, ~1 GB comprimidos)
 
-5. **CNEP e CEPIM por CPF** — o módulo `sancoes.py` consulta por CNPJ; pessoas físicas (sócios)
-   não são verificadas individualmente.
+```python
+from relatorio_riscos.collectors.cnpj_dump_rf import baixar_e_indexar, buscar_empresas_por_nome_socio
 
-6. **Relatório em PDF** — apenas Markdown e TXT gerados; converter para PDF requer `fpdf2` ou `weasyprint`.
+# 1. Indexar uma vez por mês (cria SQLite em data/cnpj_socios.db)
+asyncio.run(baixar_e_indexar())  # ~10 min na primeira vez
 
-7. **Paginação completa de contratos** — busca apenas a primeira página (20 contratos padrão);
-   empresas com muitos contratos podem ter dados incompletos.
+# 2. Busca reversa por nome do sócio (offline, instantânea)
+empresas = buscar_empresas_por_nome_socio("EDUARDO DA SILVA AZEVEDO")
+# → [{"cnpj_base": "19088605", "nome": "EDUARDO...", "qualificacao": "..."}]
+
+# 3. Busca por fragmento de CPF mascarado
+empresas = buscar_empresas_por_cpf_parcial("67759")
+```
+
+> **Limitação:** Os CPFs no dump da RF vêm mascarados (`***XXX.XX**`). Busca exata de CPF não é
+> possível, mas busca por nome completo permite expansão da rede de 3 graus.
+
+---
+
+### 2. Paginação completa de contratos PNCP
+
+**Arquivo:** `collectors/contratos_pncp.py` — parâmetro `todas_paginas=True` (padrão)
+
+Agora busca todas as páginas automaticamente via `asyncio.gather` em lotes de 10, limitando
+sobrecarga na API. Empresas com centenas de contratos recebem dados completos.
+
+---
+
+### 3. Cache SQLite com TTL
+
+**Arquivo:** `collectors/cache.py`
+
+```python
+from relatorio_riscos.collectors.cache import cached, get, set
+
+# Usar decorator:
+@cached("cnpj", ttl=86400)  # 24 horas
+async def buscar_cnpj(cnpj: str) -> dict:
+    ...
+
+# Ou usar direto:
+resultado = get("cnpj", "19088605000104")
+set("cnpj", dados, "19088605000104", ttl=3600)
+```
+
+Cache armazenado em `data/coleta_cache.db`. Entradas expiradas são limpas automaticamente
+a cada chamada de `gerar_relatorio_risco()`.
+
+---
+
+### 4. Relatório em PDF (fpdf2)
+
+**Arquivo:** `relatorio/pdf.py`
+
+```python
+# Instalar: pip install fpdf2
+resultado = asyncio.run(gerar_relatorio_risco("19088605000104", formato="pdf"))
+print(resultado["relatorio_path"])  # reports/risco_19088605000104_2026-06-04.pdf
+```
+
+Gera PDF com: cabeçalho colorido por nível de risco, dados cadastrais, tabela de contratos,
+status de sanções, lista de sinais classificados.
+
+---
+
+## O que ainda falta (sem solução gratuita fácil)
+
+1. **Busca reversa por CPF completo** — CPFs no dump RF são mascarados por design. Para desmascarar
+   seria necessário acesso à base da Receita via Serpro (pago) ou cruzamento com outras bases.
+
+2. **Análise automática de endereço** — Requer download adicional do dump de Estabelecimentos (~5GB)
+   e indexação por logradouro/CEP.
+
+3. **Monitoramento contínuo** — Adicionar integração com `APScheduler` ou `cron` é responsabilidade
+   do chamador.
+
+4. **CNEP e CEPIM por CPF de sócios** — A API do Portal da Transparência aceita busca por CPF
+   (endpoint `/ceis?cpfCnpjSancionado=`), mas requer `TRANSPARENCIA_API_KEY`.
 
 ---
 
