@@ -16,6 +16,11 @@ Este documento consolida as observações e "armadilhas" encontradas durante a r
 *   **Problema**: Tendência a fornecer respostas muito longas, incluindo introduções e recapitulações desnecessárias antes de cada ação ou etapa, mesmo após a solicitação do Mestre Jorge por respostas curtas e factuais.
 *   **Lição Aprendida**: Esforçar-se para ser mais conciso e direto. As atualizações devem ser breves, focando no progresso e resultados, e evitando justificativas internas ou descrições repetitivas, a menos que explicitamente solicitado. A meta é minimizar a verbosidade e otimizar o tempo do Mestre Jorge.
 
+### 1.4. Definição de Discernimento (Prolixidade vs. Concisão)
+
+*   **Ação Realizada**: Foram adicionadas diretrizes claras à skill `jorge-felippe-neto-preferences` que detalham cenários específicos para ser prolixo (erros críticos, tarefas complexas, documentação para outras IAs, solicitações explícitas do Mestre Jorge) e cenários padrão para ser conciso (comandos diretos, atualizações de progresso simples, confirmações).
+*   **Lição Aprendida**: O agente deve aplicar rigorosamente estas novas diretrizes para otimizar a clareza e a eficiência da comunicação, reduzindo a verbosidade desnecessária e alinhando-se ainda mais às expectativas do Mestre Jorge.
+
 ## 2. Desafios Técnicos e de Ferramentas
 
 ### 2.1. Leitura de Arquivos Grandes (`read_file`)
