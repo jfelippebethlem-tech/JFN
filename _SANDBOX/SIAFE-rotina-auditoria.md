@@ -72,10 +72,28 @@ Da Data Emissão (DD/MM/AAAA), somar **Valor** por mês (01..12). Gerar tabela:
 Sair (ou relogar) escolhendo **exercício 2026 (`1`)** e refazer PASSOS 3–6.
 (O exercício é escolhido no LOGIN; para trocar de ano, deslogar e logar de novo no outro exercício.)
 
-## PASSO 8 — CONTRATOS
-Menu **Execução → Contratos e Convênios** (`pt1:pt_np3:3:pt_cni4::disclosureAnchor`), item de
-**Contrato/Consulta**, filtrar pelo CNPJ do contratado. Capturar: nº do contrato, objeto,
-vigência, valor, nº do processo. (Mapear os IDs do menu lateral igual ao PASSO 3.)
+## PASSO 8 — CONTRATOS (caminho VERIFICADO ao vivo)
+Menu **Execução → Contratos e Convênios** (`pt1:pt_np3:3:pt_cni4::disclosureAnchor`) →
+menu lateral **Contrato** (`pt1:pt_np2:2:pt_cni3`) — clique de MOUSE REAL.
+Grade carrega com as colunas (confirmadas):
+`Número Automático | Número da Licitação | Número Original | Natureza | Objeto |
+Cód. Contratante | Nome Contratante | Cod. Contratado | Modalidade | Nome do Contratado |
+Situação | Valor do Contrato | Qtd. Aditivos | Qtd. Reajustes | Qtd. Anexos`.
+Filtrar por **Cod. Contratado (CNPJ)** ou **Nome do Contratado** → lista AUTORITATIVA de todos
+os contratos do fornecedor (com valor, objeto, aditivos).
+
+⚠️ **PONTO QUE EXIGE DOMÍNIO DO ADF (a desenvolver na VM com Playwright):** o acordeão
+**"Filtro"** (`pt1:tblContrato:pnlAccordionDec_afrCl0` / `pt1:tblOrdemBancaria:pnlAccordionDec_afrCl0`)
+NÃO expande de forma confiável via CDP cru (dispatchMouseEvent) nem via Playwright
+`connect_over_cdp` (timeout ao anexar num Chrome local cheio de abas). Solução correta:
+rodar o `siafe_browser.py` (Playwright nativo) **na VM**, em Chrome próprio de aba única,
+onde `page.get_by_text('Filtro').click()` + preencher o campo do contratado funciona.
+Esse é o item de "aprimorar o módulo de auditoria" — desenvolver/testar lá.
+
+## PASSO 8b — EMPENHOS SEM CONTRATO NO HISTÓRICO
+Os ~16–20% do empenhado cujo histórico não cita contrato: abrir cada **Nota de Empenho**
+(Execução Orçamentária → Nota de Empenho, filtro pelo nº do empenho da coluna "Empenho" do TFE)
+— o detalhe do empenho traz o contrato e o processo vinculados.
 
 ## PASSO 9 — CRUZAR COM O SEI
 Para cada **Processo** achado nas OBs/contratos, rodar `python _SANDBOX/sei_auditor.py <numero>`
