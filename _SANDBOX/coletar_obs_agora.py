@@ -281,9 +281,10 @@ async def _dismiss_popups(pg, tries: int = 6, allow_confirm: bool = False):
     allow_confirm=False: apenas 'ok/sim/fechar', nunca clica dentro de loginBox
                          (evita re-click no botão de login após falha).
     """
-    kws_overlay = ['ok','sim','fechar','confirmar','continuar','continue'] if allow_confirm \
+    kws_overlay = ['ok','sim','fechar','confirmar','continuar','continue','prosseguir'] if allow_confirm \
                   else ['ok','sim','fechar']
-    kws_body    = ['ok','sim','fechar']
+    kws_body    = ['ok','sim','fechar','continuar','prosseguir','continue'] if allow_confirm \
+                  else ['ok','sim','fechar']
 
     for _ in range(tries):
         result = await pg.evaluate(f"""() => {{
@@ -538,14 +539,37 @@ async def _login(pg, ano: int) -> bool:
         print("    [w] Botão não encontrado — pressionando Enter")
         await pg.keyboard.press("Enter")
 
-    # Aguarda navegação para fora de login.jsp (máx 20s); se não sair verifica MFA
-    try:
-        await pg.wait_for_url(
-            lambda u: "login" not in u.lower() and "autenticacao" not in u.lower(),
-            timeout=20_000,
-        )
-    except Exception:
-        pass
+    # Aguarda navegação pós-login — poll a cada 2s por até 25s.
+    # Durante a espera descarta o popup ADF "usuário já logado" clicando Continuar.
+    _deadline_login = asyncio.get_event_loop().time() + 25
+    while asyncio.get_event_loop().time() < _deadline_login:
+        if "login" not in pg.url.lower() and "autenticacao" not in pg.url.lower():
+            break
+        # Tenta dispensar popup "já está logado" (aparece APÓS clicar Ok de login)
+        _pop = await pg.evaluate("""() => {
+            const LABELS = ['continuar','prosseguir','continue','sim','yes','ok'];
+            const SKIP   = ['loginbox','itxusuario','itxsenha'];
+            for (const el of document.querySelectorAll(
+                'button, a[role="button"], input[type="button"], input[type="submit"]'
+            )) {
+                const t = (el.textContent || el.value || '').trim().toLowerCase();
+                const r = el.getBoundingClientRect();
+                const id = (el.id || el.className || '').toLowerCase();
+                if (r.width > 0 && r.height > 0
+                    && LABELS.some(l => t === l || t.startsWith(l))
+                    && !SKIP.some(s => id.includes(s))
+                    && !el.closest('[id*="loginBox"]')) {
+                    el.click();
+                    return 'popup_continuar:' + t;
+                }
+            }
+            return null;
+        }""")
+        if _pop:
+            print(f"    → Popup pós-login dispensado: [{_pop}]")
+            await asyncio.sleep(2)
+        else:
+            await asyncio.sleep(2)
 
     # Detecta tela MFA (SIAFE exige código por e-mail após credenciais válidas)
     if "login" in pg.url.lower():
