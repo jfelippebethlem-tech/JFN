@@ -89,6 +89,29 @@ def _brl(v: float) -> str:
     s = f"{abs(v):,.2f}".replace(",","X").replace(".",",").replace("X",".")
     return f"R$ {s}"
 
+def _load_empresas() -> list[dict]:
+    """Carrega lista de empresas alvo do arquivo de configuração."""
+    env_cnpjs = os.environ.get("SIAFE_CNPJS", "").strip()
+    if env_cnpjs:
+        empresas = []
+        for raw in env_cnpjs.split(","):
+            cnpj = re.sub(r"[^\d]", "", raw.strip())
+            if len(cnpj) == 14:
+                fmt = f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
+                empresas.append({"cnpj": cnpj, "cnpj_fmt": fmt, "nome": cnpj, "categoria": f"obs_{cnpj}"})
+        if empresas:
+            return empresas
+
+    cfg = REPO_ROOT / "data" / "empresas_target.json"
+    if cfg.exists():
+        try:
+            dados = json.loads(cfg.read_text(encoding="utf-8"))
+            return dados if isinstance(dados, list) else dados.get("empresas", [])
+        except Exception:
+            pass
+
+    return [{"cnpj": CNPJ, "cnpj_fmt": CNPJ_FMT, "nome": NOME_EMP, "categoria": "mgs_clean_real"}]
+
 def _parse_money(s) -> float:
     try:
         return float(re.sub(r"[^\d,]","",str(s)).replace(",",".") or "0")
@@ -285,8 +308,8 @@ async def _dismiss_popups(pg, tries: int = 6, allow_confirm: bool = False):
     """
     kws = ['ok','sim','fechar','confirmar','continuar','continue','prosseguir','yes'] \
           if allow_confirm else ['ok','sim','fechar']
-    # Quando allow_confirm=False evitamos apenas o botão de login para não entrar em loop.
-    skip_ids = [] if allow_confirm else ['btnconfirmar']
+    # Sempre exclui o botão principal de submit do formulário de login para não entrar em loop.
+    skip_ids = ['btnconfirmar']
 
     for _ in range(tries):
         result = await pg.evaluate(f"""() => {{
@@ -604,11 +627,11 @@ async def _login(pg, ano: int) -> bool:
         elif _pop:
             print(f"    → Poll#{_poll_n}: {_pop}", flush=True)
             # Tenta Enter como fallback (confirma dialog com foco padrão ADF)
-            await pg.keyboard.press("Return")
+            await pg.keyboard.press("Enter")
             await asyncio.sleep(2)
         else:
             # Sem botões visíveis — tenta Enter mesmo assim
-            await pg.keyboard.press("Return")
+            await pg.keyboard.press("Enter")
             await asyncio.sleep(2)
 
     # Detecta tela MFA (SIAFE exige código por e-mail após credenciais válidas)
@@ -928,8 +951,10 @@ _JS_APLICAR_FILTRO_CNPJ = """
 }
 """
 
-async def _filtrar_por_cnpj(pg) -> bool:
-    print(f"  → Filtrando por CNPJ {CNPJ_FMT} …")
+async def _filtrar_por_cnpj(pg, cnpj: str = None, cnpj_fmt: str = None) -> bool:
+    cnpj = cnpj or CNPJ
+    cnpj_fmt = cnpj_fmt or CNPJ_FMT
+    print(f"  → Filtrando por CNPJ {cnpj_fmt} …", flush=True)
 
     # Tenta abrir acordeão primeiro com clique nativo
     for acc_id in [
@@ -946,7 +971,7 @@ async def _filtrar_por_cnpj(pg) -> bool:
             pass
 
     # Tenta preencher campo
-    for cnpj_val in [CNPJ_FMT, CNPJ]:
+    for cnpj_val in [cnpj_fmt, cnpj]:
         filled = await pg.evaluate(_JS_APLICAR_FILTRO_CNPJ, cnpj_val)
         if filled:
             print(f"    ✔ Campo preenchido ({cnpj_val}): {filled}")
@@ -1137,7 +1162,13 @@ def _parse_rows(header: list, rows: list, cnpj_filter: Optional[str] = None) -> 
 
 # ── Coleta de um exercício ─────────────────────────────────────────────────────
 
-async def _coletar_exercicio(browser, ano: int) -> list[dict]:
+async def _coletar_exercicio(browser, ano: int, empresa: dict | None = None) -> list[dict]:
+    if empresa is None:
+        empresa = {"cnpj": CNPJ, "cnpj_fmt": CNPJ_FMT, "nome": NOME_EMP, "categoria": "mgs_clean_real"}
+    _cnpj     = empresa["cnpj"]
+    _cnpj_fmt = empresa.get("cnpj_fmt", _cnpj)
+    _nome     = empresa.get("nome", _cnpj)
+    _cat      = empresa.get("categoria", f"obs_{_cnpj}")
     print(f"\n{'━'*56}")
     print(f"  Exercício {ano}")
     print(f"{'━'*56}")
@@ -1173,8 +1204,8 @@ async def _coletar_exercicio(browser, ano: int) -> list[dict]:
                 return []
 
         # 3. Filtrar pelo CNPJ
-        filtrou = await _filtrar_por_cnpj(page)
-        cnpj_f  = None if filtrou else CNPJ
+        filtrou = await _filtrar_por_cnpj(page, _cnpj, _cnpj_fmt)
+        cnpj_f  = None if filtrou else _cnpj
 
         # 4. Ler tabela (todas as páginas)
         header, rows = await _ler_tabela(page)
@@ -1182,15 +1213,19 @@ async def _coletar_exercicio(browser, ano: int) -> list[dict]:
 
         # 5. Parse
         records = _parse_rows(header, rows, cnpj_filter=cnpj_f)
+        for r in records:
+            r.setdefault("empresa_cnpj", _cnpj)
+            r.setdefault("empresa_nome", _nome)
         total   = sum(r["valor"] for r in records)
-        print(f"  → OBs MGS CLEAN: {len(records)} | {_brl(total)}")
+        print(f"  → OBs {_nome[:30]}: {len(records)} | {_brl(total)}", flush=True)
 
         # 6. Salva por ano
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        out = CACHE_DIR / f"mgsclean_obs_{ano}.json"
+        cnpj_safe = re.sub(r'[^\w]', '_', _cnpj)
+        out = CACHE_DIR / f"obs_{cnpj_safe}_{ano}.json"
         out.write_text(
             json.dumps({
-                "ano": ano, "cnpj": CNPJ, "nome_empresa": NOME_EMP,
+                "ano": ano, "cnpj": _cnpj, "nome_empresa": _nome,
                 "coleta": datetime.now().isoformat(),
                 "total_linhas_brutas": len(rows),
                 "total_obs_filtradas": len(records),
@@ -1433,6 +1468,15 @@ def _salvar_no_db(obs: list[dict]):
             )
             print(f"    → Estimativas removidas para {ano}: {cur.rowcount} registros")
 
+        # Remove coletas anteriores do mesmo CNPJ para este ano
+        for ano in anos_reais:
+            cnpjs_reais = {ob.get("empresa_cnpj") for ob in obs if ob.get("ano") == ano and ob.get("empresa_cnpj")}
+            for cnpj_r in cnpjs_reais:
+                cur.execute(
+                    "DELETE FROM ordens_bancarias WHERE exercicio=? AND favorecido_cpf=? AND categoria NOT LIKE '%auditoria%'",
+                    (ano, cnpj_r)
+                )
+
         # Insere OBs reais
         for ob in obs:
             cur.execute("""
@@ -1454,7 +1498,7 @@ def _salvar_no_db(obs: list[dict]):
                 ob.get("processo"),
                 ob.get("ano"),
                 now, now, now,
-                "mgs_clean_real",
+                ob.get("categoria", ob.get("empresa_categoria", "obs_siafe")),
                 json.dumps(ob, ensure_ascii=False),
             ))
 
@@ -1508,9 +1552,11 @@ async def main():
         reverse=True,
     )
 
+    empresas = _load_empresas()
+    print(f"  Empresas: {len(empresas)} ({', '.join(e.get('nome','?')[:20] for e in empresas[:3])}{'...' if len(empresas) > 3 else ''})")
+
     print(f"\n{'━'*56}")
-    print(f"  MGS CLEAN — Coleta de Ordens Bancárias SIAFE")
-    print(f"  CNPJ: {CNPJ_FMT}")
+    print(f"  JFN — Coleta de Ordens Bancárias SIAFE")
     print(f"  Anos: {anos}")
     print(f"  Usuário: {SIAFE_USER[:4]}***")
     print(f"{'━'*56}")
@@ -1544,12 +1590,17 @@ async def main():
     anos_coletados: list[int] = []
 
     try:
+        todas_por_empresa: dict[str, list] = {}
         for ano in anos:
-            obs_ano = await _coletar_exercicio(browser, ano)
-            if obs_ano:
-                todas_obs.extend(obs_ano)
-                anos_coletados.append(ano)
-            await asyncio.sleep(4)
+            for empresa in empresas:
+                obs_ano = await _coletar_exercicio(browser, ano, empresa)
+                if obs_ano:
+                    _cnpj = empresa["cnpj"]
+                    todas_por_empresa.setdefault(_cnpj, []).extend(obs_ano)
+                    todas_obs.extend(obs_ano)
+                    if ano not in anos_coletados:
+                        anos_coletados.append(ano)
+                await asyncio.sleep(3)
 
         if not todas_obs:
             msg = "[ERRO] Nenhuma OB coletada — login falhou (MFA expirado/inválido?) ou CNPJ sem dados."
@@ -1560,12 +1611,13 @@ async def main():
 
         # Salva consolidado
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
-        f_json = CACHE_DIR / "mgsclean_obs_todas.json"
+        f_json = CACHE_DIR / "obs_todas.json"
         f_json.write_text(
             json.dumps({
-                "cnpj": CNPJ, "nome_empresa": NOME_EMP,
                 "coleta": datetime.now().isoformat(),
-                "anos_cobertos": anos_coletados,
+                "empresas": len(todas_por_empresa),
+                "cnpjs_coletados": list(todas_por_empresa.keys()),
+                "anos_cobertos": sorted(anos_coletados),
                 "total_obs": len(todas_obs),
                 "total_valor": sum(ob["valor"] for ob in todas_obs),
                 "obs": todas_obs,
@@ -1573,6 +1625,31 @@ async def main():
             encoding="utf-8",
         )
         print(f"\n✔ Consolidado: {f_json} ({len(todas_obs)} OBs)")
+
+        # Salva por-empresa consolidado
+        for cnpj_e, obs_e in todas_por_empresa.items():
+            cnpj_safe = re.sub(r'[^\w]', '_', cnpj_e)
+            fp = CACHE_DIR / f"obs_{cnpj_safe}_todas.json"
+            fp.write_text(json.dumps({
+                "cnpj": cnpj_e,
+                "coleta": datetime.now().isoformat(),
+                "anos_cobertos": sorted(anos_coletados),
+                "total_obs": len(obs_e),
+                "total_valor": sum(o["valor"] for o in obs_e),
+                "obs": obs_e,
+            }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        # Backward compat: arquivo MGS CLEAN legado
+        mgs_cnpj = "19088605000104"
+        if mgs_cnpj in todas_por_empresa:
+            legacy = CACHE_DIR / "mgsclean_obs_todas.json"
+            mgs_obs = todas_por_empresa[mgs_cnpj]
+            legacy.write_text(json.dumps({
+                "cnpj": mgs_cnpj, "nome_empresa": "MGS CLEAN SOLUCOES E SERVICOS LTDA",
+                "coleta": datetime.now().isoformat(), "anos_cobertos": sorted(anos_coletados),
+                "total_obs": len(mgs_obs), "total_valor": sum(o["valor"] for o in mgs_obs),
+                "obs": mgs_obs,
+            }, ensure_ascii=False, indent=2), encoding="utf-8")
 
         # Relatório Markdown
         md = _gerar_relatorio_md(todas_obs, anos_coletados)
@@ -1597,14 +1674,17 @@ async def main():
 
         # Git push automático
         print("→ Fazendo git push …")
-        arquivos_json = [
-            str(CACHE_DIR / "mgsclean_obs_todas.json"),
-            str(CACHE_DIR / "mgsclean_obs_resumo.md"),
-            str(CACHE_DIR / "mgsclean_obs_todas.xlsx"),
-        ] + [str(CACHE_DIR / f"mgsclean_obs_{a}.json") for a in anos_coletados]
+        arquivos_json = [str(f_json), str(f_md)]
+        for cnpj_e in todas_por_empresa:
+            cnpj_safe = re.sub(r'[^\w]', '_', cnpj_e)
+            arquivos_json += [
+                str(CACHE_DIR / f"obs_{cnpj_safe}_todas.json"),
+            ] + [str(CACHE_DIR / f"obs_{cnpj_safe}_{a}.json") for a in anos_coletados]
+        if (CACHE_DIR / "mgsclean_obs_todas.json").exists():
+            arquivos_json.append(str(CACHE_DIR / "mgsclean_obs_todas.json"))
         _git_push(
             arquivos_json,
-            f"dados: OBs MGS CLEAN {'/'.join(str(a) for a in sorted(anos_coletados))} — {len(todas_obs)} OBs {_brl(total)}"
+            f"dados: OBs SIAFE {len(todas_por_empresa)} empresas {'/'.join(str(a) for a in sorted(anos_coletados))} — {len(todas_obs)} OBs {_brl(total)}"
         )
 
         # Notificação Telegram
