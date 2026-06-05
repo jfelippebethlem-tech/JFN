@@ -1753,6 +1753,77 @@ def _salvar_no_db(obs: list[dict]):
         print(f"  [w] Erro DB: {exc}")
 
 
+# ── Índice de progresso da coleta ────────────────────────────────────────────
+
+_PROGRESS_FILE = REPO_ROOT / "data" / "sei_cache" / "obs_progress.json"
+
+def _carregar_progresso() -> dict:
+    """Carrega obs_progress.json para saber quais pares (empresa, ano) já foram coletados."""
+    if _PROGRESS_FILE.exists():
+        try:
+            return json.loads(_PROGRESS_FILE.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+    return {"empresas": {}, "historico_runs": []}
+
+def _ja_coletado(progresso: dict, cnpj: str, ano: int) -> bool:
+    """Retorna True se o par (cnpj, ano) já foi coletado com sucesso."""
+    _skip = os.environ.get("SIAFE_SKIP_COLETADOS", "true").lower() != "false"
+    if not _skip:
+        return False
+    emp = progresso.get("empresas", {}).get(cnpj, {})
+    status = emp.get("anos", {}).get(str(ano), {}).get("status", "pendente")
+    return status == "coletado"
+
+def _atualizar_progresso(progresso: dict, cnpj: str, nome: str, ano: int,
+                          total_obs: int, total_valor: float, run_id: str = ""):
+    """Marca um par (cnpj, ano) como coletado no índice de progresso."""
+    now = datetime.now().isoformat()
+    emp = progresso.setdefault("empresas", {}).setdefault(cnpj, {
+        "nome": nome, "anos": {}
+    })
+    emp["anos"][str(ano)] = {
+        "status": "coletado" if total_obs > 0 else "vazio",
+        "total_obs": total_obs,
+        "total_valor": total_valor,
+        "coletado_em": now,
+        "run_id": run_id,
+    }
+    # Atualiza resumo
+    todos = [v for e in progresso.get("empresas", {}).values()
+             for v in e.get("anos", {}).values()]
+    coletados = sum(1 for v in todos if v.get("status") in ("coletado", "vazio"))
+    progresso["ultima_atualizacao"] = now
+    progresso["resumo"] = {
+        "total_empresas": len(progresso.get("empresas", {})),
+        "total_pares_empresa_ano": len(todos),
+        "coletados": coletados,
+        "pendentes": len(todos) - coletados,
+        "percentual_completo": round(coletados / len(todos) * 100, 1) if todos else 0.0,
+    }
+
+def _salvar_progresso(progresso: dict):
+    """Persiste o índice de progresso em disco."""
+    try:
+        _PROGRESS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        _PROGRESS_FILE.write_text(
+            json.dumps(progresso, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except Exception as exc:
+        print(f"  [w] Progresso não salvo: {exc}")
+
+def _imprimir_progresso(progresso: dict):
+    """Imprime resumo do progresso de coleta."""
+    r = progresso.get("resumo", {})
+    print(f"\n  ► Progresso coleta: {r.get('coletados',0)}/{r.get('total_pares_empresa_ano',0)} pares "
+          f"({r.get('percentual_completo',0)}%) — {r.get('pendentes',0)} pendentes")
+    for cnpj, emp in progresso.get("empresas", {}).items():
+        anos_ok = [a for a, v in emp.get("anos", {}).items() if v.get("status") == "coletado"]
+        anos_pend = [a for a, v in emp.get("anos", {}).items() if v.get("status") == "pendente"]
+        if anos_ok or anos_pend:
+            print(f"    {emp.get('nome','')[:35]} | ✔ {','.join(anos_ok)} | ○ {','.join(anos_pend)}")
+
+
 # ── Git push automático ────────────────────────────────────────────────────────
 
 def _git_push(arquivos: list[str], mensagem: str):
@@ -1800,8 +1871,12 @@ async def main():
     _ugs_env = os.environ.get("SIAFE_UGS", "").strip()
 
     empresas = _load_empresas()
+    progresso = _carregar_progresso()
+    _run_id = os.environ.get("GITHUB_RUN_ID", "local")
+
     print(f"  Modo: {_modo}")
     print(f"  Empresas: {len(empresas)} ({', '.join(e.get('nome','?')[:20] for e in empresas[:3])}{'...' if len(empresas) > 3 else ''})")
+    _imprimir_progresso(progresso)
 
     print(f"\n{'━'*56}")
     print(f"  JFN — Coleta de Ordens Bancárias SIAFE")
@@ -1876,15 +1951,42 @@ async def main():
                             cnpj_fav = ob.get("favorecido_cnpj", "")
                             if cnpj_fav:
                                 todas_por_empresa.setdefault(cnpj_fav, []).append(ob)
+                        # Marca UG como coletada no progresso
+                        _atualizar_progresso(progresso, f"ug_{ug_code}", _ug_nome(ug_code),
+                                             ano, len(obs_ug), sum(o["valor"] for o in obs_ug), _run_id)
+                        _salvar_progresso(progresso)
                     await asyncio.sleep(2)
 
         else:
             # ── Modo padrão: por empresa/CNPJ ────────────────────────────────────
             for ano in anos:
                 for empresa in empresas:
+                    _cnpj = empresa["cnpj"]
+                    _nome = empresa.get("nome", _cnpj)
+                    if _ja_coletado(progresso, _cnpj, ano):
+                        prev = progresso["empresas"][_cnpj]["anos"][str(ano)]
+                        print(f"  ↷ Pulando {_nome[:30]} / {ano} — já coletado ({prev['total_obs']} OBs)")
+                        # Recarrega as OBs do arquivo salvo
+                        cnpj_safe = re.sub(r'[^\w]', '_', _cnpj)
+                        f_prev = CACHE_DIR / f"obs_{cnpj_safe}_{ano}.json"
+                        if f_prev.exists():
+                            try:
+                                prev_data = json.loads(f_prev.read_text(encoding="utf-8"))
+                                obs_prev = prev_data.get("obs", [])
+                                todas_por_empresa.setdefault(_cnpj, []).extend(obs_prev)
+                                todas_obs.extend(obs_prev)
+                                if ano not in anos_coletados:
+                                    anos_coletados.append(ano)
+                            except Exception:
+                                pass
+                        continue
+
                     obs_ano = await _coletar_exercicio(browser, ano, empresa)
+                    _atualizar_progresso(progresso, _cnpj, _nome, ano,
+                                         len(obs_ano), sum(o["valor"] for o in obs_ano), _run_id)
+                    _salvar_progresso(progresso)
+
                     if obs_ano:
-                        _cnpj = empresa["cnpj"]
                         todas_por_empresa.setdefault(_cnpj, []).extend(obs_ano)
                         todas_obs.extend(obs_ano)
                         if ano not in anos_coletados:
@@ -1963,7 +2065,8 @@ async def main():
 
         # Git push automático
         print("→ Fazendo git push …")
-        arquivos_json = [str(f_json), str(f_md)]
+        _imprimir_progresso(progresso)
+        arquivos_json = [str(f_json), str(f_md), str(_PROGRESS_FILE)]
         for cnpj_e in todas_por_empresa:
             cnpj_safe = re.sub(r'[^\w]', '_', cnpj_e)
             arquivos_json += [

@@ -1,0 +1,116 @@
+{
+  "descricao": "Índice de progresso da coleta de Ordens Bancárias SIAFE por empresa e ano",
+  "ultima_atualizacao": "2026-06-05T07:18:00",
+  "versao": "1.0",
+  "instrucao": "Este arquivo é atualizado automaticamente ao final de cada run de coleta. Use para saber quais pares (empresa, ano) já foram coletados e retomar de onde parou.",
+  "empresas": {
+    "19088605000104": {
+      "nome": "MGS CLEAN SOLUCOES E SERVICOS LTDA",
+      "categoria": "mgs_clean_real",
+      "anos": {
+        "2023": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2024": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2025": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2026": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null}
+      }
+    },
+    "05526816000183": {
+      "nome": "BRINKS SEGURANCA E TRANSPORTE DE VALORES LTDA",
+      "categoria": "obs_siafe",
+      "anos": {
+        "2023": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2024": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2025": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2026": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null}
+      }
+    },
+    "33592510000154": {
+      "nome": "LIGHT SERVICOS DE ELETRICIDADE S.A.",
+      "categoria": "obs_siafe",
+      "anos": {
+        "2023": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2024": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2025": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2026": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null}
+      }
+    },
+    "33200056000123": {
+      "nome": "CEDAE - CIA ESTADUAL AGUAS E ESGOTOS",
+      "categoria": "obs_siafe",
+      "anos": {
+        "2023": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2024": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2025": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2026": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null}
+      }
+    },
+    "60923714000181": {
+      "nome": "OI S.A. (TELEMAR NORTE LESTE)",
+      "categoria": "obs_siafe",
+      "anos": {
+        "2023": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2024": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2025": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2026": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null}
+      }
+    },
+    "02558157000162": {
+      "nome": "CLARO S.A.",
+      "categoria": "obs_siafe",
+      "anos": {
+        "2023": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2024": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2025": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2026": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null}
+      }
+    },
+    "14380200000121": {
+      "nome": "SMART FIT ESCOLA DE GINASTICA E DANCA SA",
+      "categoria": "obs_siafe",
+      "anos": {
+        "2023": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2024": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2025": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2026": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null}
+      }
+    },
+    "17245234000100": {
+      "nome": "ECOURBIS AMBIENTAL S.A.",
+      "categoria": "obs_siafe",
+      "anos": {
+        "2023": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2024": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2025": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2026": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null}
+      }
+    },
+    "38065730000144": {
+      "nome": "GRUPO COMPORTE - TRANSPORTE COLETIVO",
+      "categoria": "obs_siafe",
+      "anos": {
+        "2023": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2024": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2025": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2026": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null}
+      }
+    },
+    "34028316000103": {
+      "nome": "COMLURB - CIA MUNICIPAL LIMPEZA URBANA",
+      "categoria": "obs_siafe",
+      "anos": {
+        "2023": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2024": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2025": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null},
+        "2026": {"status": "pendente", "total_obs": 0, "total_valor": 0.0, "coletado_em": null, "run_id": null}
+      }
+    }
+  },
+  "historico_runs": [],
+  "resumo": {
+    "total_empresas": 10,
+    "total_pares_empresa_ano": 40,
+    "coletados": 0,
+    "pendentes": 40,
+    "percentual_completo": 0.0
+  }
+}
