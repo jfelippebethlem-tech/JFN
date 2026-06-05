@@ -1,4 +1,4 @@
-timestamp: 2026-06-05T04:47:17.748944
+timestamp: 2026-06-05T04:54:39.956624
 ano: 2023
 exercicio_val: 4
 url_pos_load: https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp
@@ -41,7 +41,7 @@ Esqueceu sua senha?	Ok
 	
 Autenticação Multifator
 	 
- 	O código informado é inválido. Tente novamente ou solicite um novo código.
+ 	Um código de autenticação foi enviado para jo***@al***.
 	
 * Código	
 Dispensar código neste dispositivo por 30 dias.	
