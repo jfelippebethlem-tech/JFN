@@ -403,6 +403,21 @@
   .mt-4 { margin-top: 16px; }
   .mb-4 { margin-bottom: 16px; }
 
+  /* ── TABELA WRAPPER RESPONSIVO ── */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  @media (max-width: 720px) {
+    .capa { padding: 28px 20px 24px; }
+    .capa-titulo { font-size: 18px; }
+    .capa-meta { grid-template-columns: 1fr; gap: 6px; }
+    .conteudo { padding: 24px 16px; }
+    .kpi-grid { grid-template-columns: 1fr 1fr; }
+    .alerta-grid { grid-template-columns: 1fr; }
+    .rodape { flex-direction: column; gap: 8px; padding: 16px; }
+    table { font-size: 11px; }
+    thead th, tbody td { padding: 6px 8px; }
+  }
+
   @media print {
     body { background: white; }
     .page { box-shadow: none; }
@@ -496,7 +511,7 @@
       <!-- Exposição financeira -->
       <div class="subsecao-titulo mt-4">Exposição Financeira — Estado do RJ (2023–2026)</div>
 
-      <table>
+      <div class="table-wrap"><table>
         <thead>
           <tr>
             <th>Período / Dado</th>
@@ -557,7 +572,7 @@
             <td class="center"><span class="badge badge-estimado">BRUTO</span></td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <div class="callout callout-aviso">
         <strong>Empenho ≠ Pagamento.</strong> Notas de empenho podem ser canceladas antes da liquidação. O valor definitivo de pagamento público é a Ordem Bancária (OB). Os R$ 205,1M acima representam o limite máximo de exposição — o valor efetivamente pago será igual ou menor, e será confirmado quando a coleta de OBs (Run #27) for concluída.
@@ -600,7 +615,7 @@
 
       <div class="subsecao-titulo">2.1 Dados de Registro</div>
 
-      <table>
+      <div class="table-wrap"><table>
         <colgroup><col style="width:35%"><col style="width:65%"></colgroup>
         <tbody>
           <tr><td><strong>Razão Social</strong></td><td>MGS CLEAN SOLUCOES E SERVICOS LTDA</td></tr>
@@ -620,7 +635,7 @@
           <tr><td><strong>Administrador atual</strong></td><td>Eduardo da Silva Azevedo (desde 11/12/2024)</td></tr>
           <tr><td><strong>Domínio</strong></td><td>mgsclean.net (.net — sem CNPJ vinculado)</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <div class="callout callout-critico">
         <strong>⚠ CNAE INCOMPATÍVEL:</strong> A empresa vence licitações de serviços de limpeza e conservação predial (objeto real), mas seu CNAE declarado é J-6319-4/00 — "Portais, provedores de conteúdo e outros serviços na Internet" (TI). Esta inconsistência foi invocada como fundamento de impugnação de habilitação no Pregão Eletrônico 05/2025, Prefeitura de Estância/SE. Risco: anulação de contratos, responsabilidade dos agentes públicos que atestaram a habilitação.
@@ -628,7 +643,7 @@
 
       <div class="subsecao-titulo">2.2 Quadro Societário</div>
 
-      <table>
+      <div class="table-wrap"><table>
         <thead>
           <tr>
             <th>Nome</th>
@@ -645,7 +660,7 @@
             <td><span class="badge badge-alerta">34 dias após contrato PM R$ 21,8M</span></td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <div class="callout callout-medio">
         A entrada do administrador (11/12/2024) coincide com a abertura da filial em Maricá, ambos 34 dias após o Contrato 215/2024 com a SEPM (R$ 21,8M). Padrão sugestivo de reestruturação societária pós-contrato — possível blindagem patrimonial (ACFE Red Flag Checklist, Item 4.2).
@@ -653,7 +668,7 @@
 
       <div class="subsecao-titulo">2.3 Verificação em Listas Restritivas</div>
 
-      <table>
+      <div class="table-wrap"><table>
         <thead>
           <tr>
             <th>Base</th>
@@ -669,7 +684,7 @@
           <tr><td>Inabilitações TCE-RJ</td><td>TCE-RJ</td><td class="center"><span class="badge badge-ok">Não consta</span></td><td>—</td></tr>
           <tr><td>OFAC / FATF / Listas internacionais</td><td>—</td><td class="center"><span class="badge badge-ok">Não consta</span></td><td>—</td></tr>
         </tbody>
-      </table>
+      </table></div>
     </div>
 
     <!-- ─── CARTEIRA DE CONTRATOS ─── -->
@@ -678,7 +693,7 @@
 
       <div class="subsecao-titulo">3.1 Distribuição por Órgão Contratante — Análise HHI</div>
 
-      <table>
+      <div class="table-wrap"><table>
         <thead>
           <tr>
             <th>Órgão</th>
@@ -715,7 +730,7 @@
             <td class="num">HHI = 2.669</td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <div class="callout callout-critico">
         <strong>HHI = 2.669 — ALTAMENTE CONCENTRADO</strong> (limiar: &gt;2.500 — DOJ/FTC Horizontal Merger Guidelines; equivalente ao limiar TCU para risco de captura institucional). O Corpo de Bombeiros responde por 42,3% do portfólio e 22 dos 41 contratos. Uma empresa de limpeza predial com portfólio saudável deveria ter HHI abaixo de 1.500.
@@ -723,7 +738,7 @@
 
       <div class="subsecao-titulo">3.2 Contratos de Maior Valor — Top 10</div>
 
-      <table>
+      <div class="table-wrap"><table>
         <thead>
           <tr>
             <th class="center">#</th>
@@ -747,7 +762,7 @@
           <tr><td class="center">9</td><td>4/2025</td><td>INEA</td><td class="num">4.598.000,00</td><td class="center"><span class="badge badge-vigente">Em Vigor</span></td><td class="center">0</td><td>2025-01</td></tr>
           <tr><td class="center">10</td><td>CTT 123/2024</td><td>Corpo de Bombeiros</td><td class="num">4.189.804,20</td><td class="center"><span class="badge badge-vigente">Em Vigor</span></td><td class="center">1</td><td>2024-05</td></tr>
         </tbody>
-      </table>
+      </table></div>
     </div>
 
     <!-- ─── ANÁLISE ITERJ ─── -->
@@ -756,7 +771,7 @@
 
       <div class="subsecao-titulo">4.1 Contrato 005/2021 — ITERJ</div>
 
-      <table>
+      <div class="table-wrap"><table>
         <colgroup><col style="width:35%"><col style="width:65%"></colgroup>
         <tbody>
           <tr><td><strong>Número</strong></td><td>005/2021</td></tr>
@@ -768,11 +783,11 @@
           <tr><td><strong>Início Estimado</strong></td><td>Junho de 2021</td></tr>
           <tr style="background:#FFF3E0;"><td><strong>Processos SEI vinculados</strong></td><td>SEI-270042/000678/2021 · SEI-270042/000681/2021 · SEI-270042/001804/2022</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <div class="subsecao-titulo">4.2 Execução Financeira ITERJ por Exercício</div>
 
-      <table>
+      <div class="table-wrap"><table>
         <thead>
           <tr>
             <th>Exercício</th>
@@ -788,7 +803,7 @@
           <tr style="background:#FFF0F0;"><td><strong>2026</strong></td><td class="num"><strong style="color:#B71C1C;">0,00</strong></td><td><span class="badge badge-real">Real (TFE)</span></td><td><strong style="color:#B71C1C;">Não aparece na base 2026</strong></td></tr>
           <tr style="background:var(--amarelo-bg);"><td><strong>OBs 2023–2026</strong></td><td class="num"><strong>PENDENTE</strong></td><td><span class="badge badge-pendente">Em coleta</span></td><td>SIAFE Tesouraria — Run #27</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <div class="callout callout-critico">
         <strong>ACHADO CRÍTICO — CONTRATO INATIVO NÃO RESCINDIDO:</strong> O contrato 005/2021 com o ITERJ consta como "Em Vigor" no SIAFE CDP mas não registra empenhos em 2025 e 2026 (dados reais TFE). O contrato vigente desde junho de 2021 <strong>atingirá o limite legal de 60 meses (Art. 57 Lei 8.666/93) em junho de 2026</strong>. Com 3 aditivos e ausência de execução nos últimos 2 anos, três hipóteses são possíveis:
@@ -811,7 +826,7 @@
       <div class="secao-header"><span>05</span> Análise Financeira — Empenhos por Ano e Órgão</div>
 
       <div class="subsecao-titulo">5.1 Empenhos 2025 — Dados Reais TFE (84 empenhos)</div>
-      <table>
+      <div class="table-wrap"><table>
         <thead>
           <tr><th>Órgão</th><th>UG</th><th class="num">Empenhos 2025 (R$)</th><th class="num">Share</th></tr>
         </thead>
@@ -829,10 +844,10 @@
           <tr><td>Fundo Estadual de Saúde</td><td>UG 29</td><td class="num">525.206,51</td><td class="num">0,6%</td></tr>
           <tr style="background:var(--azul-bg); font-weight:700;"><td>TOTAL 2025</td><td>—</td><td class="num">89.965.844,73</td><td class="num">100%</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <div class="subsecao-titulo">5.2 Empenhos 2026 — Dados Reais TFE (47 empenhos, jan–jun)</div>
-      <table>
+      <div class="table-wrap"><table>
         <thead>
           <tr><th>Órgão</th><th>UG</th><th class="num">Empenhos 2026 (R$)</th><th class="num">Share</th></tr>
         </thead>
@@ -849,7 +864,7 @@
           <tr><td>Infraestrutura</td><td>UG 53</td><td class="num">222.871,86</td><td class="num">0,4%</td></tr>
           <tr style="background:var(--azul-bg); font-weight:700;"><td>TOTAL 2026</td><td>—</td><td class="num">58.598.234,38</td><td class="num">100%</td></tr>
         </tbody>
-      </table>
+      </table></div>
     </div>
 
     <!-- ─── MATRIZ DE RISCO ─── -->
@@ -861,7 +876,7 @@
         Faixas: <strong>Baixo</strong> (1–9) · <strong>Médio</strong> (10–39) · <strong>Alto</strong> (40–79) · <strong>Extremo</strong> (80–81)
       </p>
 
-      <table style="margin-top:16px;">
+      <div class="table-wrap"><table style="margin-top:16px;">
         <thead>
           <tr>
             <th class="center">#</th>
@@ -944,7 +959,7 @@
             <td class="center"><span class="badge badge-baixo">BAIXO</span></td>
           </tr>
         </tbody>
-      </table>
+      </table></div>
 
       <p style="margin-top:12px; font-size:12px; color:var(--texto-claro);">
         <strong>Rating Composto JFN:</strong> 6,2 / 10 — <strong style="color:#B71C1C;">ALTO</strong>
@@ -1033,7 +1048,7 @@
       <div class="secao-header"><span>09</span> Recomendações</div>
 
       <div class="subsecao-titulo">Imediatas (0–30 dias)</div>
-      <table>
+      <div class="table-wrap"><table>
         <thead><tr><th class="center">#</th><th>Ação</th><th>Prazo</th></tr></thead>
         <tbody>
           <tr><td class="center"><span class="badge badge-alto">I-01</span></td><td>Aguardar e revisar OBs coletadas (Run #27) — atualizar análise financeira com valores reais de pagamento</td><td>7 dias</td></tr>
@@ -1041,10 +1056,10 @@
           <tr><td class="center"><span class="badge badge-alto">I-03</span></td><td>Confirmar publicação dos 22 contratos CBMERJ no PNCP (obrigatório desde 01/04/2023, Lei 14.133 Art. 94)</td><td>15 dias</td></tr>
           <tr><td class="center"><span class="badge badge-alto">I-04</span></td><td>Verificar CNAE atual na Receita Federal — se ainda J-6319-4/00, reportar inconsistência ao órgão contratante</td><td>15 dias</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <div class="subsecao-titulo">Curto Prazo (30–90 dias)</div>
-      <table>
+      <div class="table-wrap"><table>
         <thead><tr><th class="center">#</th><th>Ação</th><th>Prazo</th></tr></thead>
         <tbody>
           <tr><td class="center"><span class="badge badge-medio">C-01</span></td><td>Analisar os 22 contratos CBMERJ individualmente: objetos, valores, modalidade licitatória (verificar fracionamento)</td><td>45 dias</td></tr>
@@ -1052,17 +1067,17 @@
           <tr><td class="center"><span class="badge badge-medio">C-03</span></td><td>Cruzar empenhos com liquidações no SIAFE — identificar gaps temporais empenho→liquidação &gt; 90 dias</td><td>60 dias</td></tr>
           <tr><td class="center"><span class="badge badge-medio">C-04</span></td><td>Consultar TCE-RJ: auditorias ou inspeções em contratos CBMERJ/MGS CLEAN</td><td>60 dias</td></tr>
         </tbody>
-      </table>
+      </table></div>
 
       <div class="subsecao-titulo">Estrutural (90+ dias)</div>
-      <table>
+      <div class="table-wrap"><table>
         <thead><tr><th class="center">#</th><th>Ação</th></tr></thead>
         <tbody>
           <tr><td class="center"><span class="badge badge-baixo">E-01</span></td><td>Indexação completa de OBs de todos os órgãos do Estado do RJ (todos_ugs mode no SIAFE)</td></tr>
           <tr><td class="center"><span class="badge badge-baixo">E-02</span></td><td>Relatório comparativo: MGS CLEAN vs. concorrentes em licitações CBMERJ (análise de concentração de mercado)</td></tr>
           <tr><td class="center"><span class="badge badge-baixo">E-03</span></td><td>Análise de redes: mapeamento de sócios e relacionamentos com agentes públicos do CBMERJ</td></tr>
         </tbody>
-      </table>
+      </table></div>
     </div>
 
     <!-- ─── REFERÊNCIAS ─── -->
