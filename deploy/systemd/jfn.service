@@ -1,0 +1,20 @@
+[Unit]
+Description=JFN — Agente de Auditoria/Compliance RJ (server 24h)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/JFN
+Environment=JFN_DATA_DIR=%h/JFN/data
+Environment=JFN_HOST=127.0.0.1
+Environment=JFN_PORT=8000
+ExecStart=%h/JFN/.venv/bin/python %h/JFN/server.py --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+# logs em journalctl --user -u jfn
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

@@ -60,3 +60,7 @@ hermes-tudo.sh
 
 # Claude Code local settings (permissoes pessoais, nao versionar)
 .claude/settings.local.json
+
+# ronda (runtime)
+data/ronda.log
+data/ronda_state.json
