@@ -4,11 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       siafe_user:
-        description: 'SIAFE_USER (CPF sem pontos)'
-        required: true
+        description: 'SIAFE_USER (CPF sem pontos) — deixe vazio para usar secret SIAFE_USER'
+        required: false
+        default: ''
       siafe_pass:
-        description: 'SIAFE_PASS'
-        required: true
+        description: 'SIAFE_PASS — deixe vazio para usar secret SIAFE_PASS'
+        required: false
+        default: ''
       anos:
         description: 'Anos para coletar (ex: 2023,2024,2025,2026)'
         required: false
@@ -48,17 +50,31 @@ jobs:
           pip install -r requirements.txt 2>/dev/null || true
 
       - name: Configurar .env com credenciais
+        env:
+          INPUT_USER: ${{ github.event.inputs.siafe_user }}
+          INPUT_PASS: ${{ github.event.inputs.siafe_pass }}
+          SECRET_USER: ${{ secrets.SIAFE_USER }}
+          SECRET_PASS: ${{ secrets.SIAFE_PASS }}
+          INPUT_TG_TOKEN: ${{ github.event.inputs.telegram_token }}
+          INPUT_TG_CHAT: ${{ github.event.inputs.telegram_chat }}
+          SECRET_TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          SECRET_TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           mkdir -p data/sei_cache screenshots/obs_coleta
-          cat > .env << 'ENVEOF'
-          SIAFE_USER=${{ github.event.inputs.siafe_user }}
-          SIAFE_PASS=${{ github.event.inputs.siafe_pass }}
-          TELEGRAM_BOT_TOKEN=${{ github.event.inputs.telegram_token }}
-          TELEGRAM_CHAT_ID=${{ github.event.inputs.telegram_chat }}
+          SIAFE_USER="${INPUT_USER:-$SECRET_USER}"
+          SIAFE_PASS="${INPUT_PASS:-$SECRET_PASS}"
+          TG_TOKEN="${INPUT_TG_TOKEN:-$SECRET_TG_TOKEN}"
+          TG_CHAT="${INPUT_TG_CHAT:-$SECRET_TG_CHAT}"
+          echo "::add-mask::$SIAFE_PASS"
+          cat > .env << EOF
+          SIAFE_USER=$SIAFE_USER
+          SIAFE_PASS=$SIAFE_PASS
+          TELEGRAM_BOT_TOKEN=$TG_TOKEN
+          TELEGRAM_CHAT_ID=$TG_CHAT
           CI=true
           HEADLESS=true
-          ENVEOF
-          echo "Ambiente configurado."
+          EOF
+          echo "Ambiente configurado. USER=${SIAFE_USER:0:4}***"
 
       - name: Coletar Ordens Bancárias SIAFE
         run: |
