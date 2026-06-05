@@ -1117,6 +1117,69 @@ def _gerar_relatorio_md(todas: list[dict], anos: list[int]) -> str:
     return "\n".join(L)
 
 
+# ── Excel navegável ───────────────────────────────────────────────────────────
+
+def _salvar_excel(obs: list[dict]):
+    """Gera Excel com aba geral + uma aba por ano, formatação básica."""
+    try:
+        import openpyxl
+        from openpyxl.styles import Font, PatternFill, Alignment
+        from openpyxl.utils import get_column_letter
+
+        f_xl = CACHE_DIR / "mgsclean_obs_todas.xlsx"
+        wb = openpyxl.Workbook()
+
+        HDR = ["Ano", "Mês", "Número OB", "Data Emissão", "UG Código", "UG Nome",
+               "Favorecido CNPJ", "Favorecido Nome", "Valor (R$)", "Tipo OB",
+               "Status", "Processo"]
+        HDR_FILL = PatternFill("solid", fgColor="2F5597")
+        HDR_FONT = Font(bold=True, color="FFFFFF")
+
+        def _fill_sheet(ws, rows):
+            ws.append(HDR)
+            for cell in ws[1]:
+                cell.fill = HDR_FILL
+                cell.font = HDR_FONT
+                cell.alignment = Alignment(horizontal="center")
+            for ob in rows:
+                dt = ob.get("data_emissao","")
+                ws.append([
+                    ob.get("ano"), ob.get("mes"),
+                    ob.get("numero_ob"), dt,
+                    ob.get("ug_emitente"), _ug_nome(ob.get("ug_emitente","")),
+                    ob.get("favorecido_cnpj"), ob.get("favorecido_nome"),
+                    ob.get("valor", 0.0),
+                    ob.get("tipo_ob"), ob.get("status"), ob.get("processo"),
+                ])
+            # Formata coluna de valor como moeda
+            val_col = 9
+            for row in ws.iter_rows(min_row=2, min_col=val_col, max_col=val_col):
+                for cell in row:
+                    cell.number_format = '#,##0.00'
+            # Auto-width (approximate)
+            for col in ws.columns:
+                max_len = max((len(str(c.value or "")) for c in col), default=0)
+                ws.column_dimensions[get_column_letter(col[0].column)].width = min(max_len + 2, 40)
+            # Freeze header row
+            ws.freeze_panes = "A2"
+
+        # Aba geral
+        ws_all = wb.active
+        ws_all.title = "Todas OBs"
+        _fill_sheet(ws_all, sorted(obs, key=lambda o: (o.get("ano",0), o.get("data_emissao",""))))
+
+        # Uma aba por ano
+        for ano in sorted({o.get("ano") for o in obs if o.get("ano")}, reverse=True):
+            ws_ano = wb.create_sheet(str(ano))
+            _fill_sheet(ws_ano, [o for o in obs if o.get("ano") == ano])
+
+        wb.save(str(f_xl))
+        print(f"✔ Excel: {f_xl} ({len(obs)} OBs)")
+
+    except Exception as exc:
+        print(f"  [w] Excel falhou: {exc}")
+
+
 # ── Persistência no compliance.db ────────────────────────────────────────────
 
 def _salvar_no_db(obs: list[dict]):
@@ -1296,6 +1359,9 @@ async def main():
         print(f"  Anos:             {', '.join(str(a) for a in sorted(anos_coletados))}")
         print(f"{'━'*56}")
 
+        # Excel navegável
+        _salvar_excel(todas_obs)
+
         # Salva no compliance.db
         print("\n→ Salvando no banco de dados …")
         _salvar_no_db(todas_obs)
@@ -1305,6 +1371,7 @@ async def main():
         arquivos_json = [
             str(CACHE_DIR / "mgsclean_obs_todas.json"),
             str(CACHE_DIR / "mgsclean_obs_resumo.md"),
+            str(CACHE_DIR / "mgsclean_obs_todas.xlsx"),
         ] + [str(CACHE_DIR / f"mgsclean_obs_{a}.json") for a in anos_coletados]
         _git_push(
             arquivos_json,
