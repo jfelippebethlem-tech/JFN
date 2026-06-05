@@ -224,3 +224,37 @@ Todo relatório gerado deve seguir este padrão mínimo:
 8. **Linha do tempo** — eventos relevantes cronológicos
 9. **Recomendações** — priorizadas por nível (imediato / curto / estrutural)
 10. **Referências** — fontes nacionais (CGU, TCU, TCE-RJ) e internacionais (FATF, ACFE, OCDE)
+
+---
+
+## OPERAÇÃO MULTIPLATAFORMA (um repo, três alvos)
+
+O mesmo repositório roda em três lugares. **Não** colocar caminhos fixos de SO no
+código (ex.: `C:\...`); usar `Path` relativo, `platform.system()` ou variável de ambiente.
+
+| Alvo | Caminho | Como rodar |
+|---|---|---|
+| **Windows desktop** | `C:\JFN\jfn` | `JFN.bat` / `.bat` launchers; Chrome real na porta 9222 |
+| **VM Linux GCP** | `~/JFN` | `docker compose up -d` **ou** `python server.py --host 0.0.0.0 --port 8000` |
+| **GitHub Actions** ("rodar no git") | nuvem | aba **Actions** → `coletar-obs-siafe` → **Run workflow** (disparável pelo celular) |
+
+**Celular:** controle via **Telegram** (comandos do JFN / bot Yoda) e disparo do
+workflow pelo app do GitHub. O painel web (porta 8000) **não** é exposto à internet por padrão.
+
+### Variáveis de ambiente (resumo — ver `.env.example`)
+- **LLM (≥1 obrigatória):** `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `FREE_LLM_PREFER`.
+- **SIAFE (rede gov/Actions):** `SIAFE_USER`, `SIAFE_PASS`, `SIAFE_CLIENTE`, `SIAFE_EXERCICIO`.
+- **Telegram (celular):** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`.
+- **Portabilidade (opcionais):** `TESSERACT_CMD` (caminho do Tesseract), `JFN_DATA_DIR` (pasta de dados).
+- **Outras:** `HERMES_MAX_TOKENS`, `SEI_CAPTCHA_TENTATIVAS`, `AUDITOR_24H_INTERVALO`, `ANTHROPIC_API_KEY`.
+
+### Setup rápido (Linux/VM)
+```bash
+pip install -r requirements.txt && playwright install chromium
+cp .env.example .env   # preencher as chaves
+python server.py --host 0.0.0.0 --port 8000
+```
+No Docker, o `Dockerfile` já instala Chromium **e** Tesseract (pt) para o OCR do SEI.
+
+> **Handoff de portabilidade:** ver `docs/HANDOFF-2026-06-05-multiplataforma.md` —
+> passo a passo do que foi tornado independente de SO e como testar/validar em cada alvo.

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-path = Path(r"C:/JFN/jfn/server.py")
+path = Path(__file__).resolve().parent / "server.py"
 text = path.read_text(encoding="utf-8", errors="ignore")
 lines = text.splitlines()
 
