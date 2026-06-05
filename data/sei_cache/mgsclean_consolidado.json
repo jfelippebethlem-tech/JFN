@@ -2,46 +2,59 @@
   "cnpj": "19088605000104",
   "cnpj_fmt": "19.088.605/0001-04",
   "razao_social": "MGS CLEAN SOLUCOES E SERVICOS LTDA",
-  "gerado_em": "2026-06-05T00:52:52.426621",
-  "status_coleta": {
-    "2023": "ESTIMADO (TFE/SIAFE inacessíveis de servidor cloud — IP whitelist governo)",
-    "2024": "ESTIMADO (TFE/SIAFE inacessíveis de servidor cloud — IP whitelist governo)",
-    "2025": "REAL (TFE coletado 04/06/2026 via Chrome CDP — EMPENHADO)",
-    "2026": "REAL PARCIAL (TFE jan-jun/2026, coletado 04/06/2026 — EMPENHADO)",
-    "contratos": "REAL (SIAFE Contratos e Convênios, coletado 04/06/2026 via Playwright CDP)"
-  },
-  "nota_tecnica": "SIAFE e TFE retornam 'Host not in allowlist' para IPs não-governamentais. Para coletar OBs reais: executar coletar_obs_siafe_completo.py ou tfe_fornecedor.py na máquina com Chrome --remote-debugging-port=9222 conectado ao SIAFE/TFE.",
+  "gerado_em": "2026-06-05T01:17:43.985100",
   "resumo": {
-    "2023": {
-      "total": 13454115.841055555,
-      "tipo": "ESTIMADO",
-      "fonte": "contratos SIAFE"
-    },
-    "2024": {
-      "total": 43039458.76466667,
-      "tipo": "ESTIMADO",
-      "fonte": "contratos SIAFE"
-    },
-    "2025": {
-      "total": 89965844.73,
-      "tipo": "EMPENHADO REAL",
+    "total_empenhado_2023_2026": 205057653.71572223,
+    "total_contratos_siafe": 146704405.07,
+    "anos_cobertos": [
+      2023,
+      2024,
+      2025,
+      2026
+    ],
+    "obs_individuais_pendentes": "Requer execução de COLETAR_OBS.bat na máquina Windows com acesso ao SIAFE"
+  },
+  "status_coleta": {
+    "empenhos_2025": {
+      "status": "REAL",
+      "fonte": "TFE",
       "n": 84,
-      "fonte": "TFE"
+      "total": 89965844.73
     },
-    "2026": {
-      "total": 58598234.38,
-      "tipo": "EMPENHADO REAL (parcial)",
+    "empenhos_2026": {
+      "status": "REAL",
+      "fonte": "TFE",
       "n": 47,
-      "fonte": "TFE"
+      "total": 58598234.38
+    },
+    "empenhos_2024": {
+      "status": "ESTIMADO",
+      "fonte": "contratos_ativos",
+      "n": 287,
+      "total": 43039458.76466667
+    },
+    "empenhos_2023": {
+      "status": "ESTIMADO",
+      "fonte": "contratos_ativos",
+      "n": 90,
+      "total": 13454115.841055555
     },
     "contratos_siafe": {
-      "total": 146704405.07,
+      "status": "REAL",
+      "fonte": "SIAFE CDP",
       "n": 41,
-      "tipo": "REAL"
+      "total": 146704405.07
+    },
+    "obs_orcamentarias": {
+      "status": "PENDENTE",
+      "fonte": "SIAFE",
+      "nota": "Executar COLETAR_OBS.bat na máquina Windows"
     }
   },
-  "anos": {
+  "por_ano": {
     "2023": {
+      "empenhos_n": 90,
+      "empenhos_total": 13454115.841055555,
       "por_mes": {
         "01": {
           "n": 20,
@@ -134,15 +147,11 @@
           "valor": 15259.416
         }
       },
-      "total": 13454115.841055555,
-      "n_empenhos": 90,
-      "ano": 2023,
-      "tipo": "ESTIMADO",
-      "fonte": "Calculado a partir dos 41 contratos SIAFE (coleta real 04/06/2026)",
-      "coleta": "2026-06-05T00:52:52.425136",
-      "observacao": "ESTIMATIVA baseada em contratos ativos em 2023. Não é dado real do SIAFE/TFE. Para dados reais: executar tfe_fornecedor.py com Chrome CDP."
+      "tipo": "ESTIMADO"
     },
     "2024": {
+      "empenhos_n": 287,
+      "empenhos_total": 43039458.76466667,
       "por_mes": {
         "01": {
           "n": 22,
@@ -239,15 +248,11 @@
           "valor": 15259.416
         }
       },
-      "total": 43039458.76466667,
-      "n_empenhos": 287,
-      "ano": 2024,
-      "tipo": "ESTIMADO",
-      "fonte": "Calculado a partir dos 41 contratos SIAFE (coleta real 04/06/2026)",
-      "coleta": "2026-06-05T00:52:52.425197",
-      "observacao": "ESTIMATIVA baseada em contratos ativos em 2024. Não é dado real do SIAFE/TFE. Para dados reais: executar tfe_fornecedor.py com Chrome CDP."
+      "tipo": "ESTIMADO"
     },
     "2025": {
+      "empenhos_n": 84,
+      "empenhos_total": 89965844.73,
       "por_mes": {
         "01": {
           "n": 9,
@@ -344,15 +349,11 @@
           "valor": 525206.51
         }
       },
-      "total": 89965844.73,
-      "n_empenhos": 84,
-      "ano": 2025,
-      "tipo": "EMPENHADO",
-      "fonte": "TFE — tfe.fazenda.rj.gov.br/tfe/web/fornecedor",
-      "coleta": "2026-06-04T00:00:00",
-      "observacao": "Dados reais coletados via Chrome CDP (TFE anti-bot F5). Empenho = compromisso orçamentário; OB (pago) verificar no SIAFE."
+      "tipo": "EMPENHADO"
     },
     "2026": {
+      "empenhos_n": 47,
+      "empenhos_total": 58598234.38,
       "por_mes": {
         "01": {
           "n": 18,
@@ -417,13 +418,393 @@
           "valor": 222871.86
         }
       },
-      "total": 58598234.38,
-      "n_empenhos": 47,
-      "ano": 2026,
-      "tipo": "EMPENHADO",
-      "fonte": "TFE — tfe.fazenda.rj.gov.br/tfe/web/fornecedor",
-      "coleta": "2026-06-04T00:00:00",
-      "observacao": "Dados reais parciais (jan-jun/2026). Coleta via Chrome CDP."
+      "tipo": "EMPENHADO"
     }
-  }
+  },
+  "contratos": {
+    "cnpj": "19088605000104",
+    "total_contratos": 41,
+    "total_valor": 146704405.07,
+    "fonte": "SIAFE — Execução > Contratos e Convênios (validado 04/06/2026 via Playwright CDP)",
+    "coleta": "2026-06-04T00:00:00",
+    "contratos": [
+      {
+        "numero": "2023117",
+        "orgao": "TJ (Fundo Especial)",
+        "ug": "270005",
+        "valor": 25993908.78,
+        "situacao": "Licitado",
+        "aditivos": 1,
+        "inicio_estimado": "2023-01"
+      },
+      {
+        "numero": "215/2024",
+        "orgao": "Polícia Militar",
+        "ug": "270051",
+        "valor": 21828441.12,
+        "situacao": "Em Vigor",
+        "aditivos": 2,
+        "inicio_estimado": "2024-08"
+      },
+      {
+        "numero": "CTT 154/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 10479994.56,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-06"
+      },
+      {
+        "numero": "003-1046-2024",
+        "orgao": "TJ (Fundo Especial)",
+        "ug": "270005",
+        "valor": 10133962.14,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-07"
+      },
+      {
+        "numero": "CTT 127/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 6179981.76,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-05"
+      },
+      {
+        "numero": "43/2023",
+        "orgao": "PGE (Fundo Especial)",
+        "ug": "270009",
+        "valor": 5829998.0,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2023-03"
+      },
+      {
+        "numero": "CTT 115/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 5219701.8,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-04"
+      },
+      {
+        "numero": "CTT 107/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 4699899.48,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-03"
+      },
+      {
+        "numero": "4/2025",
+        "orgao": "INEA",
+        "ug": "270024",
+        "valor": 4598000.0,
+        "situacao": "Em Vigor",
+        "aditivos": 0,
+        "inicio_estimado": "2025-01"
+      },
+      {
+        "numero": "CTT 123/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 4189804.2,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-05"
+      },
+      {
+        "numero": "CTT 125/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 3969703.32,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-05"
+      },
+      {
+        "numero": "008/2025",
+        "orgao": "Fundo Estadual de Saúde",
+        "ug": "270029",
+        "valor": 3585096.96,
+        "situacao": "Em Vigor",
+        "aditivos": 0,
+        "inicio_estimado": "2025-02"
+      },
+      {
+        "numero": "099/2024",
+        "orgao": "RIOPREVIDÊNCIA",
+        "ug": "270020",
+        "valor": 3171961.0,
+        "situacao": "Em Vigor",
+        "aditivos": 0,
+        "inicio_estimado": "2024-10"
+      },
+      {
+        "numero": "CTT 117/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 2929933.08,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-04"
+      },
+      {
+        "numero": "025/2023",
+        "orgao": "Casa Civil",
+        "ug": "270060",
+        "valor": 2596200.98,
+        "situacao": "Em Vigor",
+        "aditivos": 3,
+        "inicio_estimado": "2023-02"
+      },
+      {
+        "numero": "CTT 116/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 2589906.24,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-04"
+      },
+      {
+        "numero": "CTT 118/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 2509781.04,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-04"
+      },
+      {
+        "numero": "CTT 19/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 2428027.8,
+        "situacao": "Encerrado",
+        "aditivos": 0,
+        "inicio_estimado": "2024-02"
+      },
+      {
+        "numero": "CTT 119/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 2189920.8,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-04"
+      },
+      {
+        "numero": "CTT 20/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 2062446.66,
+        "situacao": "Encerrado",
+        "aditivos": 0,
+        "inicio_estimado": "2024-02"
+      },
+      {
+        "numero": "CTT 122/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 1999917.6,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-05"
+      },
+      {
+        "numero": "CTT 22/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 1934630.52,
+        "situacao": "Encerrado",
+        "aditivos": 0,
+        "inicio_estimado": "2024-02"
+      },
+      {
+        "numero": "45/2023",
+        "orgao": "TCE",
+        "ug": "270006",
+        "valor": 1847967.84,
+        "situacao": "Em Vigor",
+        "aditivos": 0,
+        "inicio_estimado": "2023-03"
+      },
+      {
+        "numero": "18/2023",
+        "orgao": "SECEC",
+        "ug": "270015",
+        "valor": 1771001.62,
+        "situacao": "Em Vigor",
+        "aditivos": 2,
+        "inicio_estimado": "2023-02"
+      },
+      {
+        "numero": "CTT 120/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 1646996.28,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-04"
+      },
+      {
+        "numero": "CTT 121/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 1589923.56,
+        "situacao": "Em Vigor",
+        "aditivos": 1,
+        "inicio_estimado": "2024-04"
+      },
+      {
+        "numero": "CTT 17/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 1253035.92,
+        "situacao": "Encerrado",
+        "aditivos": 0,
+        "inicio_estimado": "2024-02"
+      },
+      {
+        "numero": "CTT 63/2022",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 1237823.06,
+        "situacao": "Em Vigor",
+        "aditivos": 3,
+        "inicio_estimado": "2022-07"
+      },
+      {
+        "numero": "005/2021",
+        "orgao": "ITERJ",
+        "ug": "270042",
+        "valor": 1085032.09,
+        "situacao": "Em Vigor",
+        "aditivos": 3,
+        "inicio_estimado": "2021-06"
+      },
+      {
+        "numero": "CTT 21/2024",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 1078703.04,
+        "situacao": "Encerrado",
+        "aditivos": 0,
+        "inicio_estimado": "2024-02"
+      },
+      {
+        "numero": "CTT 50/2022",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 802759.35,
+        "situacao": "Em Vigor",
+        "aditivos": 3,
+        "inicio_estimado": "2022-05"
+      },
+      {
+        "numero": "CTT 66/2022",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 724344.56,
+        "situacao": "Em Vigor",
+        "aditivos": 3,
+        "inicio_estimado": "2022-07"
+      },
+      {
+        "numero": "02/2023",
+        "orgao": "TCE",
+        "ug": "270006",
+        "valor": 542685.09,
+        "situacao": "Licitado",
+        "aditivos": 0,
+        "inicio_estimado": "2023-05"
+      },
+      {
+        "numero": "034/2021",
+        "orgao": "RIOPREVIDÊNCIA",
+        "ug": "270020",
+        "valor": 440160.72,
+        "situacao": "Em Vigor",
+        "aditivos": 0,
+        "inicio_estimado": "2021-09"
+      },
+      {
+        "numero": "CTT 62/2022",
+        "orgao": "Corpo de Bombeiros",
+        "ug": "270016",
+        "valor": 398317.78,
+        "situacao": "Em Vigor",
+        "aditivos": 3,
+        "inicio_estimado": "2022-07"
+      },
+      {
+        "numero": "24/2025",
+        "orgao": "PGE (Fundo Especial)",
+        "ug": "270009",
+        "valor": 358226.88,
+        "situacao": "Em Vigor",
+        "aditivos": 0,
+        "inicio_estimado": "2025-03"
+      },
+      {
+        "numero": "04/2021",
+        "orgao": "TCE",
+        "ug": "270006",
+        "valor": 333883.2,
+        "situacao": "Extinto",
+        "aditivos": 0,
+        "inicio_estimado": "2021-04"
+      },
+      {
+        "numero": "011/2022",
+        "orgao": "Fundação Inst. de Pesca",
+        "ug": "270085",
+        "valor": 244381.56,
+        "situacao": "Em Vigor",
+        "aditivos": 0,
+        "inicio_estimado": "2022-03"
+      },
+      {
+        "numero": "53/2023",
+        "orgao": "TCE",
+        "ug": "270006",
+        "valor": 97378.8,
+        "situacao": "Em Vigor",
+        "aditivos": 0,
+        "inicio_estimado": "2023-06"
+      },
+      {
+        "numero": "017/2021",
+        "orgao": "Fazenda",
+        "ug": "300100",
+        "valor": 76297.08,
+        "situacao": "Em Vigor",
+        "aditivos": 0,
+        "inicio_estimado": "2021-09"
+      },
+      {
+        "numero": "44/2023",
+        "orgao": "TCE",
+        "ug": "270006",
+        "valor": 54268.8,
+        "situacao": "Em Vigor",
+        "aditivos": 0,
+        "inicio_estimado": "2023-06"
+      }
+    ]
+  },
+  "instrucao_coleta_obs": [
+    "1. Na máquina Windows com acesso ao SIAFE, abra um CMD",
+    "2. Navegue até a pasta JFN: cd C:\\JFN\\jfn",
+    "3. Execute: COLETAR_OBS.bat",
+    "4. Aguarde ~20 min — coleta anos 2023, 2024, 2025, 2026",
+    "5. Dados são salvos em data/sei_cache/ e enviados ao git automaticamente",
+    "6. Em seguida: python _SANDBOX/gerar_relatorio_obs_pdf.py"
+  ]
 }
