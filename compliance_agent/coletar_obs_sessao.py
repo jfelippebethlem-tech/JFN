@@ -46,7 +46,7 @@ async def _navegar_ob(pg):
     return await pg.evaluate(r"""() => !!document.querySelector('[id*="tblOrdemBancaria"]')""")
 
 
-async def coletar(cnpj, cnpj_fmt, ano):
+async def coletar(cnpj, cnpj_fmt, ano, max_paginas=3):
     if not STATE.exists():
         return {"erro": "sem sessão — rode siafe_session --login primeiro"}
     mod = _load_collector()
@@ -77,13 +77,31 @@ async def coletar(cnpj, cnpj_fmt, ano):
                 await mod._screenshot(pg, "ERRO_nav_obs_sessao")
                 return {"erro": "não chegou na tela de OBs", "url": pg.url}
 
-            # filtra por CNPJ
-            await mod._filtrar_por_cnpj(pg, cnpj=cnpj, cnpj_fmt=cnpj_fmt)
-            await mod._settle(pg, 4000)
-
-            # lê a tabela
-            rows, headers = await mod._ler_tabela(pg)
-            return {"cnpj": cnpj, "ano": ano, "headers": headers, "n": len(rows), "rows": rows}
+            # lê a grade real (tabViewerDec) com paginação; filtra por favorecido em Python
+            HEADERS = ["numero", "ug_emitente", "ug_pagadora", "data_emissao", "status", "tipo",
+                       "tipo_ob", "favorecido", "nome_favorecido", "gd", "processo", "re", "pd",
+                       "status_envio", "valor", "assinatura"]
+            todas, vistos = [], set()
+            for pag in range(1, max_paginas + 1):
+                page_rows = await pg.evaluate(r"""() => {
+                  const db=document.getElementById('pt1:tblOrdemBancaria:tabViewerDec::db'); if(!db) return [];
+                  const out=[];
+                  db.querySelectorAll('tr').forEach(tr=>{const tds=[...tr.querySelectorAll('td')].map(td=>(td.innerText||'').replace(/\s+/g,' ').trim()); if(tds.some(x=>x)&&tds.length>=14) out.push(tds);});
+                  return out;
+                }""")
+                for r in page_rows:
+                    num = r[0] if r else ""
+                    if num and num not in vistos:
+                        vistos.add(num)
+                        todas.append(dict(zip(HEADERS, r)))
+                # próxima página (botão next do ADF), se existir e habilitado
+                avancou = await pg.evaluate(r"""() => {
+                  const nx=[...document.querySelectorAll('a,div')].find(e=>/próxim|proxim|next/i.test((e.title||e.getAttribute('aria-label')||''))&&!/disabled/i.test(e.className)&&e.getBoundingClientRect().width>0);
+                  if(nx){nx.click(); return true;} return false;}""")
+                if not avancou:
+                    break
+                await pg.wait_for_timeout(3500)
+            return {"cnpj": cnpj, "ano": ano, "headers": HEADERS, "n_total_lidas": len(todas), "rows": todas}
         except Exception as e:
             try:
                 await mod._screenshot(pg, "ERRO_coleta_sessao")
@@ -99,17 +117,25 @@ def main():
     ap.add_argument("--cnpj", default="19088605000104")
     ap.add_argument("--cnpj-fmt", default="19.088.605/0001-04")
     ap.add_argument("--ano", type=int, default=2025)
+    ap.add_argument("--nome", default="", help="filtra OBs cujo Nome do Favorecido contém este termo")
+    ap.add_argument("--max-paginas", type=int, default=3)
     a = ap.parse_args()
-    res = asyncio.run(coletar(a.cnpj, a.cnpj_fmt, a.ano))
+    res = asyncio.run(coletar(a.cnpj, a.cnpj_fmt, a.ano, max_paginas=a.max_paginas))
     if "erro" in res:
         print(json.dumps(res, ensure_ascii=False))
     else:
-        print(f"OBs coletadas: {res['n']} | headers: {res['headers']}")
+        rows = res["rows"]
+        # filtra por favorecido (nome contém termo OU favorecido == CNPJ) — opcional
+        termo = (a.nome or "").upper()
+        if termo:
+            rows = [r for r in rows if termo in (r.get("nome_favorecido", "") or "").upper()
+                    or termo in (r.get("favorecido", "") or "").upper()]
+        print(f"OBs lidas: {res['n_total_lidas']} | após filtro '{a.nome}': {len(rows)}")
         out = DATA / f"obs_sessao_{a.cnpj}_{a.ano}.json"
-        out.write_text(json.dumps(res, ensure_ascii=False, indent=1), encoding="utf-8")
+        out.write_text(json.dumps({**res, "rows": rows}, ensure_ascii=False, indent=1), encoding="utf-8")
         print(f"salvo em {out}")
-        for r in res["rows"][:5]:
-            print("  ", r)
+        for r in rows[:6]:
+            print(f"  {r.get('numero')} | {r.get('data_emissao')} | {r.get('nome_favorecido','')[:30]} | proc={r.get('processo')} | R$ {r.get('valor')}")
 
 
 if __name__ == "__main__":

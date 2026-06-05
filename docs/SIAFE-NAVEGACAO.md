@@ -44,6 +44,18 @@ Código de Barras · Fechamento do Dia · Guia de Devolução · Guia de Recolhi
 OB de Dedução · OB de Retenção · OB de Transferência · OB Extra-orçamentária ·
 Programações de Desembolso (PD Orçamentária/Retenção/Transferência/Extra) · Tipo de Conciliação Bancária.
 
+### ✅✅ LEITURA DA GRADE — FUNCIONANDO (coleta provada com OBs reais)
+A grade de dados das OBs é **`pt1:tblOrdemBancaria:tabViewerDec::db`** (NÃO `tblOrdemBancaria::db`,
+que é o filtro). Cabeçalho em `:tabViewerDec::ch`. **16 colunas, nesta ordem:**
+`Número, UG Emitente, UG Pagadora, Data Emissão, Status, Tipo, Tipo de OB, Favorecido,
+Nome do Favorecido, GD, Processo (nº SEI), RE, PD, Status de Envio, Valor, Assinatura Digital`.
+- Reader: ler `tr`→`td` de `tabViewerDec::db`. Validado: 50 OBs reais lidas (ex.: `2026OB04836` Tesouro
+  R$221.324.029,50; `2026OB05568` proc `0001.0034022.2026-03` R$35.998,28). Driver: `coletar_obs_sessao.py`.
+- **Paginação:** botão "próxima" do ADF ainda a afinar (a 1ª tentativa leu só a página 1 = 50 linhas).
+- **Filtro por favorecido:** ainda o problema do PPR do rtfFilter (abaixo) — alternativa atual: filtrar por
+  `Nome do Favorecido` em Python (`--nome`), mas só sobre as páginas lidas. Para MGS, ou afinar o filtro ADF
+  ou ler todas as páginas. Coluna **Processo** dá o nº SEI → liga OB ao processo (objetivo do Mestre Jorge).
+
 ### Tela de Ordens Bancárias  ✅ IDs MAPEADOS
 URL: `/Siafe/faces/execucao/financeira/execucaoFinanceiraMain.jsf` (carrega a grade async — esperar ~10s).
 Abas: **"Filtro"** e **"Lista de Favorecido para OB"**.
@@ -66,6 +78,29 @@ O campo de favorecido/CNPJ fica **atrás do botão "Filtro"** (LOV do ADF "Favor
 - `_filtrar_por_cnpj` (antigo) não acha o campo (`_JS_APLICAR_FILTRO_CNPJ` não casa o LOV) — adaptar para
   o campo "Favorecido" desta build. Screenshots de apoio: `data/sei_cache/siafe_*.png`.
 - Alternativa: aba "Filtro" (accordion `pt1:tblOrdemBancaria:sdtFilter::disAcr`) com campos por UG/data/número.
+
+### ✅ Filtro avançado (rtfFilter) — MAPEADO; falta só o PPR do valor
+O accordion **Filtro** (`pt1:tblOrdemBancaria:sdtFilter::head` para abrir) tem um **filtro dinâmico por linha**
+(`pt1:tblOrdemBancaria:table_rtfFilter:0:`):
+- **Propriedade** (`cbx_col_sel_rtfFilter::content`, `<select>`): opções = Número, UG Emitente, UG Pagadora,
+  Data Emissão, Status, Tipo, Tipo de OB, **Favorecido**, **Nome do Favorecido**, GD, **Processo** (nº SEI!),
+  RE, PD, Status de Envio, Valor, Assinatura Digital.
+- **Operador** (`cbx_op_sel_rtfFilter::content`): igual, contém, começa com, termina com, maior/menor que, é nulo,
+  diferente de, pertence (separado por ;).
+- **Negação** (`chk_neg_rtfFilter::content`, checkbox).
+- Botões: **"Filtro"** (aplica) e **"Limpar"**.
+
+**🔴 BLOQUEIO TÉCNICO (último 5%):** ao setar a Propriedade via `page.select_option` (Playwright), o **campo
+de VALOR não é criado** — o ADF só renderiza o input de valor após o **PPR (partial page refresh) disparado
+pelo evento de mudança do WIDGET ADF**, não do `<select>` nativo. `select_option` muda o `<select>` oculto mas
+não aciona o `AdfRichUIPeer`/autosubmit.
+**Próximo passo (fix):** interagir com o widget visual do ADF — clicar o dropdown (`...cbx_col_sel_rtfFilter`),
+clicar a opção pelo texto, deixar o ADF fazer o PPR; idem operador; então o input de valor aparece → preencher
+"MGS CLEAN" (ou CNPJ na propriedade "Favorecido") → clicar "Filtro" → `_ler_tabela` (`pt1:tblOrdemBancaria`).
+Alternativa: disparar o autosubmit do ADF via JS (`AdfPage.PAGE.... ` / evento `_adfsu`) após setar o select.
+
+> **Dedup SIAFE×TFE:** ao gravar OBs coletadas, usar UPSERT por `numero_ob` (idempotente) e manter SEPARADO do
+> agregado TFE (granularidades diferentes: TFE = execução agregada por classificação; OB = pagamento nominal).
 
 ## Coleta de OBs (objetivo)
 - Filtrar por CNPJ do favorecido. Funções prontas em `_SANDBOX/coletar_obs_agora.py`:
