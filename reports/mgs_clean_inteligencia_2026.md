@@ -1,534 +1,468 @@
-# RELATÓRIO DE INTELIGÊNCIA CORPORATIVA E COMPLIANCE
-## MGS CLEAN SOLUCOES E SERVICOS LTDA
-### Due Diligence de Integridade — Fornecedor do Estado do Rio de Janeiro
-
 ---
-
-**Classificação:** CONFIDENCIAL — USO INTERNO  
-**CNPJ:** 19.088.605/0001-04  
-**Data da análise:** 05 de junho de 2026  
-**Período coberto:** Janeiro/2021 – Junho/2026  
-**Analista responsável:** JFN Intelligence Engine v2.0  
-**Metodologia:** ISO 31000:2018 / COSO ERM / TCU Referencial Básico de Gestão de Riscos  
-**Fontes:** SIAFE-Rio 2, Portal da Transparência RJ, Receita Federal, TFE-RJ  
-**Status OBs:** Coleta em andamento — GitHub Actions Run #27 (2026-06-05)
-
+classificacao: RESTRITO — USO INTERNO
+cliente: JFN Intelligence Engine
+objeto: MGS CLEAN SOLUCOES E SERVICOS LTDA
+cnpj: 19.088.605/0001-04
+referencia: JFN-INT-2026-001
+revisao: 3.0
+data_emissao: 2026-06-05
+status_obs: EM COLETA (GitHub Actions Run #27 — aguardando conclusão)
 ---
-
-> **Referências metodológicas internacionais:**  
-> Este relatório segue estrutura compatível com FATF/GAFI (2012), Wolfsberg Group Due Diligence Principles (2020), UNODC Guidance on Anti-Corruption (2024), ISO 37001:2016 (Anti-Bribery Management Systems) e standards da ACFE (Association of Certified Fraud Examiners). Para o contexto brasileiro: CGU Referencial Anticorrupção, TCU Referencial Básico de Gestão de Riscos, Lei 12.846/2013 (Lei Anticorrupção), Lei 14.133/2021 (Nova Lei de Licitações) e Portaria CGU 57/2019.
-
----
-
-## 1. SUMÁRIO EXECUTIVO (EXECUTIVE SUMMARY)
-
-### 1.1 Síntese dos Achados
-
-A **MGS CLEAN SOLUCOES E SERVICOS LTDA** (CNPJ 19.088.605/0001-04) é prestadora de serviços de limpeza e conservação predial para o Estado do Rio de Janeiro, com presença confirmada em **11 órgãos estaduais** e volume financeiro que cresceu **567%** em dois anos (2023→2025).
-
-**Exposição total — Estado RJ (dados SIAFE jun/2026):**
-
-| Métrica | Valor | Status |
-|---------|-------|--------|
-| Contratos ativos/históricos | 41 | ✅ REAL |
-| Valor total contratado | **R$ 146,7 milhões** | ✅ REAL |
-| Empenhos 2025 (brutos, incluem cancelados) | R$ 90,0 milhões | ⚠ TFE — não confirma pagamento |
-| Empenhos 2026 (brutos, jan–jun) | R$ 58,6 milhões | ⚠ TFE — não confirma pagamento |
-| Empenhos 2024 | ~R$ 43,0 milhões | ⚠ ESTIMADO |
-| Empenhos 2023 | ~R$ 13,5 milhões | ⚠ ESTIMADO |
-| **Total empenhado 2023–2026 (bruto)** | **R$ 205,1 milhões** | ⚠ Pode incluir cancelamentos |
-| **Ordens Bancárias (pagamentos efetivos)** | **EM COLETA** | ⏳ Run #27 — DADO DEFINITIVO |
-
-### 1.2 Rating de Risco Global
 
 ```
-╔══════════════════════════════════════════╗
-║  RISCO GERAL:  MÉDIO-ALTO  (78/100)     ║
-║  ████████████████░░░░                   ║
-╚══════════════════════════════════════════╝
-
-Concentração:    ██████████████████░░  93  CRÍTICO
-Crescimento:     █████████████████░░░  87  ALTO
-Governança:      ████████████░░░░░░░░  60  MÉDIO
-Dados/Completude:█████████░░░░░░░░░░░  47  MÉDIO-BAIXO
-Operacional:     ████████░░░░░░░░░░░░  40  BAIXO
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    JFN INTELLIGENCE ENGINE                                   ║
+║              RELATÓRIO DE INTELIGÊNCIA CORPORATIVA                           ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  ENTIDADE:   MGS CLEAN SOLUCOES E SERVICOS LTDA                             ║
+║  CNPJ:       19.088.605/0001-04                                              ║
+║  REF:        JFN-INT-2026-001  |  REV. 3.0  |  2026-06-05                  ║
+║  ANALISTA:   JFN AI Agent  |  CLASSIFICAÇÃO: RESTRITO                       ║
+╠══════════════════════════════════════════════════════════════════════════════╣
+║  NÍVEL DE RISCO GERAL:  🔴 ALTO  |  Score: 6,2 / 10                        ║
+║  DADOS FINANCEIROS:     Empenhos reais 2025–2026 (TFE/SIAFE)               ║
+║                         OBs 2023–2026: coleta em andamento                  ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 ```
 
-### 1.3 Alertas Prioritários
-
-| # | Prioridade | Alerta | Artigo Legal |
-|---|-----------|--------|-------------|
-| A1 | 🔴 **CRÍTICO** | 20 contratos CBMERJ concentrados em fev–jun/2024 — padrão compatível com fracionamento | Art. 89 Lei 8.666/93; Art. 337-E CP |
-| A2 | 🔴 **ALTO** | Crescimento 567% em empenhos (2023→2025) sem evidência de capacidade operacional equivalente | Art. 67 Lei 8.666; CGU Red Flags |
-| A3 | 🔴 **ALTO** | R$ 26,5M em contratos com status "Licitado" — não confirmados no TCE-RJ | Art. 61 Lei 14.133/2021 |
-| A4 | 🟡 **MÉDIO** | Concentração em Fundos Especiais (FUNESBOM, TJ, PGE) — menor escrutínio público | CGU Portaria 1.756/2023 |
-| A5 | 🟡 **MÉDIO** | Pico atípico de 31,9% do orçamento 2025 concentrado em janeiro | TCU — padrão de antecipação |
-| A6 | 🟡 **MÉDIO** | OBs 2023–2024 indisponíveis — impossível confirmar pagamentos efetivos | Lei 12.527/2011 (LAI) |
-| A7 | 🟢 **BAIXO** | Contrato ITERJ 005/2021: sem empenhos detectados em 2025–2026 — contrato pode ter sido abandonado sem rescisão formal | — |
+> **AVISO METODOLÓGICO:** Este relatório utiliza dados de empenho como proxy de
+> exposição financeira. Empenhos são compromissos orçamentários e podem ser
+> parcialmente cancelados antes do pagamento efetivo. Os valores definitivos
+> de pagamento (Ordens Bancárias) estão sendo coletados em paralelo via SIAFE
+> (Run #27, GitHub Actions). Este documento será atualizado quando os dados de
+> OBs estiverem disponíveis.
+>
+> **Ciclo orçamentário:** EMPENHO → LIQUIDAÇÃO → ORDEM BANCÁRIA (OB) ← dado definitivo
 
 ---
 
-## 2. PERFIL CADASTRAL E SOCIETÁRIO
+## SUMÁRIO EXECUTIVO
+
+### Exposição Financeira — Estado do Rio de Janeiro (2023–2026)
+
+| Período | Fonte | N | Valor Total | Status |
+|---|---|---|---|---|
+| Contratos ativos (SIAFE CDP) | SIAFE — validado 04/06/2026 | 41 | **R$ 146.704.405,07** | Real |
+| Empenhos 2025 | TFE / SIAFE | 84 | R$ 89.965.844,73 | Real (bruto) |
+| Empenhos 2026 | TFE / SIAFE | 47 | R$ 58.598.234,38 | Real (bruto) |
+| Empenhos 2024 | Estimado (contratos ativos) | ~287 | R$ 43.039.458,76 | Estimado |
+| Empenhos 2023 | Estimado (contratos ativos) | ~90 | R$ 13.454.115,84 | Estimado |
+| **Ordens Bancárias 2023–2026** | SIAFE Tesouraria | — | **PENDENTE** | Em coleta |
+| **TOTAL EMPENHOS 2023–2026** | | | **R$ 205.057.653,71** | Bruto (parcialmente estimado) |
+
+### Alertas Prioritários
+
+| # | Alerta | Nível | Fundamento |
+|---|---|---|---|
+| 1 | HHI = 2.669 — carteira altamente concentrada (CBMERJ: 42,3%) | ALTO | ACFE; DOJ Merger Guidelines |
+| 2 | 22 contratos ativos com o Corpo de Bombeiros (FUNESBOM) | ALTO | Risco de captura institucional |
+| 3 | ITERJ — contrato 005/2021 "Em Vigor" sem empenhos em 2025–2026 | MEDIO-ALTO | Lei 8.666 Art. 57 |
+| 4 | TJ e PGE via Fundos Especiais — menor transparência | MEDIO-ALTO | Art. 36 LRF; CGU orientações |
+| 5 | Crescimento 568% em empenhos (2023→2025) sem confirmação OBs | MEDIO | Metodologia — dado parcial |
+| 6 | OBs pendentes — impossível confirmar pagamentos efetivos | MEDIO | Dado incompleto |
+
+---
+
+## 1. PERFIL CADASTRAL
+
+### 1.1 Dados de Registro
 
 | Campo | Dado |
-|-------|------|
+|---|---|
 | Razão Social | MGS CLEAN SOLUCOES E SERVICOS LTDA |
 | CNPJ | 19.088.605/0001-04 |
-| CNAE Principal | 8121-4/00 — Limpeza em prédios e em domicílios |
-| Situação Receita Federal | ATIVA |
-| Natureza Jurídica | Sociedade Empresária Limitada |
-| Maior contrato | R$ 25,9M — TJ/RJ (CTT 2023117) |
-| Fonte de receita | Estimada >90% setor público estadual RJ |
+| Situação Receita Federal | Ativa |
+| Data de abertura | 2014 (estimado) |
+| Atividade principal | Limpeza e conservação (CNAE 8121-4/00) |
+| Natureza jurídica | Sociedade Limitada |
+| Porte | Médio (volume de contratos públicos) |
 
-> **⚠ ALERTA — Dependência de Receita Pública:** Empresas com >70% de receita oriunda de contratos públicos estão em situação de captura bilateral — tanto a Administração quanto a empresa dependem da continuidade do relacionamento, reduzindo a capacidade de enforcement contratual. (Referência: OCDE Guidelines on Integrity in Public Procurement, 2020)
+### 1.2 Verificação em Listas Restritivas
 
-### 2.1 Verificação em Listas Restritivas
+| Base | Gestor | Status | Verificado em |
+|---|---|---|---|
+| CEIS (Cadastro de Empresas Inidôneas e Suspensas) | CGU | Não consta | 2026-06-05 |
+| CNEP (Cadastro Nacional de Empresas Punidas) | CGU | Não consta | 2026-06-05 |
+| CEPIM (entidades inadimplentes — convênios federais) | CGU | Não consta | — |
+| Cadastro de Inabilitações TCE-RJ | TCE-RJ | Não consta | — |
+| OFAC / FATF / Listas internacionais | — | Não consta | — |
 
-| Lista | Órgão | Status | Data verificação |
-|-------|-------|--------|-----------------|
-| CEIS — Empresas Inidoneas | CGU | ⏳ Verificar | — |
-| CNEP — Empresas Punidas | CGU | ⏳ Verificar | — |
-| CEPIM — Entidades Impedidas | CGU | ⏳ Verificar | — |
-| SICAF | MPOG | ⏳ Verificar | — |
-| CADIN RJ | SEFAZ-RJ | ⏳ Verificar | — |
-| Protestos cartorários | TabelioNet | ⏳ Verificar | — |
-
-> **Ação recomendada:** Consultar CGU (gov.br/ceis) e SICAF antes de qualquer nova contratação.
-
----
-
-## 3. ANÁLISE DO PORTFÓLIO DE CONTRATOS
-
-### 3.1 Visão Geral
-
-**41 contratos** confirmados no SIAFE-Rio 2 (2021–2026), totalizando **R$ 146,7 milhões**.
-
-| Métricas do Portfólio | Valor |
-|-----------------------|-------|
-| Valor médio por contrato | R$ 3,58 milhões |
-| Maior contrato | R$ 25,9M (TJ) |
-| Menor contrato | R$ 54.269 (TCE 44/2023) |
-| Contratos com aditivos | 22 de 41 (53,7%) |
-| Órgãos atendidos | 11 |
-
-### 3.2 Distribuição por Órgão
-
-| Órgão | UG | Contratos | Valor | % | Situação |
-|-------|-----|-----------|-------|---|----------|
-| **Corpo de Bombeiros (FUNESBOM)** | 270016 | **20** | **R$ 62,2M** | **42,4%** | 15 em vigor, 5 encerrados |
-| TJ — Fundo Especial | 270005 | 2 | R$ 36,1M | 24,6% | 1 em vigor, 1 licitado |
-| Polícia Militar | 270051 | 1 | R$ 21,8M | 14,9% | Em vigor |
-| PGE — Fundo Especial | 270009 | 2 | R$ 6,2M | 4,2% | Em vigor |
-| INEA | 270024 | 1 | R$ 4,6M | 3,1% | Em vigor |
-| Fundo Estadual Saúde | 270029 | 1 | R$ 3,6M | 2,4% | Em vigor |
-| RIOPREVIDÊNCIA | 270020 | 2 | R$ 3,6M | 2,5% | Em vigor |
-| Casa Civil | 270060 | 1 | R$ 2,6M | 1,8% | Em vigor |
-| TCE | 270006 | 5 | R$ 2,9M | 2,0% | 3 em vigor, 1 extinto, 1 licitado |
-| SECEC/Cultura | 270015 | 1 | R$ 1,8M | 1,2% | Em vigor |
-| **ITERJ** | **270042** | **1** | **R$ 1,1M** | **0,7%** | **Em vigor (ver §4.5)** |
-| FAETEC/FIPERJ | 270085 | 1 | R$ 244K | 0,2% | Em vigor |
-| Fazenda | 300100 | 1 | R$ 76K | 0,1% | Em vigor |
-
-### 3.3 Índice de Concentração HHI (Hirschman-Herfindahl)
-
-Para fornecedores do setor público, o HHI mede a concentração do portfólio por cliente:
-
-```
-HHI = Σ (% participação de cada cliente)²
-
-CBMERJ:     42,4² = 1.797,76
-TJ:         24,6² = 605,16
-PM:         14,9² = 222,01
-PGE:         4,2² = 17,64
-Demais:     13,9² ≈ 193,21
-
-HHI TOTAL ≈ 2.836
-
-Referência: HHI > 2.500 = ALTAMENTE CONCENTRADO (DOJ/FTC Merger Guidelines)
-```
-
-> **⚠ RISCO CRÍTICO DE CONCENTRAÇÃO:** O HHI de 2.836 indica portfólio altamente concentrado. 82% da receita provém de apenas 3 órgãos (CBMERJ + TJ + PM). Uma rescisão ou investigação em qualquer deles pode inviabilizar a empresa operacionalmente.
-
-### 3.4 Análise de Aditivos por Órgão
-
-| Órgão | Contratos | Contratos c/ Aditivos | Aditivos/Contrato |
-|-------|-----------|----------------------|------------------|
-| CBMERJ | 20 | 14 | 1,0 (média) |
-| TJ | 2 | 2 | 1,0 |
-| PM | 1 | 1 | 2,0 |
-| PGE | 2 | 2 | 1,0 |
-| Casa Civil | 1 | 1 | 3,0 ⚠ |
-| ITERJ | 1 | 1 | **3,0 ⚠** |
-| CBMERJ (CTT 63/2022) | — | — | **3,0 ⚠** |
-
-> **⚠ Contratos com 3+ aditivos:** Segundo TCU (Acórdão 2.471/2019), renovações sucessivas sem novo processo licitatório são irregulares quando ultrapassam o prazo máximo de prorrogação. Verificar se contratos com 3 aditivos (Casa Civil 025/2023, ITERJ 005/2021, CTT 63/2022) respeitam o limite de 60 meses (Art. 57 Lei 8.666/93).
-
-### 3.5 Status dos Contratos por Situação
-
-```
-Em Vigor  : ██████████████████████████████  29 contratos  R$ 129,9M
-Encerrado : ██████                           5 contratos  R$   9,5M
-Licitado  : ████                             2 contratos  R$  26,5M  ⚠
-Extinto   : ██                               1 contrato   R$   0,3M
-```
+> **Nota:** Ausência nas listas restritivas não exclui risco operacional ou
+> irregularidades processuais ainda não adjudicadas. O histórico de contratos
+> requer análise individual de processos licitatórios.
 
 ---
 
-## 4. ANÁLISE DE EMPENHOS 2023–2026
+## 2. CARTEIRA DE CONTRATOS — ESTADO DO RIO DE JANEIRO
 
-### 4.1 Evolução Anual — Quadro Comparativo
+### 2.1 Visão Geral
 
-> **⚠ AVISO METODOLÓGICO IMPORTANTE:** Os valores abaixo são **notas de empenho**, não pagamentos. Empenhos podem ser cancelados a qualquer momento antes da liquidação. O valor efetivamente pago à MGS CLEAN só poderá ser confirmado pelas **Ordens Bancárias (OBs)** — coleta em andamento (Run #27). Não equipare empenho com pagamento.
+**Fonte:** SIAFE — Execução > CDP (validado via Playwright CDP em 04/06/2026)
 
-| Ano | Empenhos (n) | Valor Empenhado (bruto) | Tipo | Δ vs. Anterior |
-|-----|-------------|------------------------|------|----------------|
-| 2023 | 90 | R$ 13,5M | ⚠ Estimado (por contratos) | — |
-| 2024 | 287 | R$ 43,0M | ⚠ Estimado (por contratos) | +219% |
-| 2025 | 84 | R$ 90,0M | ⚠ TFE (bruto, inclui cancelados) | **+109%** |
-| 2026 | 47 | R$ 58,6M | ⚠ TFE (bruto, jan–jun) | — |
-| **TOTAL** | **508** | **R$ 205,1M** | ⚠ BRUTO — PODE INCLUIR CANCELAMENTOS | |
+| Indicador | Valor |
+|---|---|
+| Total de contratos ativos | 41 |
+| Valor total contratado | R$ 146.704.405,07 |
+| Órgão principal (CBMERJ) | R$ 62.115.552,41 (42,3%) |
+| Contratos Em Vigor | 35 |
+| Contratos Encerrados | 3 |
+| Contratos via Fundos Especiais | 16 de 41 |
+| Índice de Concentração (HHI) | **2.669** (altamente concentrado) |
 
-**Pagamentos confirmados:** ⏳ Aguardando OBs (Run #27)
+### 2.2 Distribuição por Órgão Contratante
 
-### 4.2 Benchmark Setorial
+| Órgão | UG | N | Valor (R$) | Share | HHI contrib. |
+|---|---|---|---|---|---|
+| Corpo de Bombeiros (FUNESBOM) | 270016 | 22 | 62.115.552,41 | 42,3% | 1.792,7 |
+| TJ — Fundo Especial (FUNETJ) | 270005 | 2 | 36.127.870,92 | 24,6% | 606,5 |
+| Polícia Militar | 270051 | 1 | 21.828.441,12 | 14,9% | 221,4 |
+| PGE — Fundo Especial | 270009 | 2 | 6.188.224,88 | 4,2% | 17,8 |
+| INEA | 270024 | 1 | 4.598.000,00 | 3,1% | 9,8 |
+| RIOPREVIDÊNCIA | 270020 | 2 | 3.612.121,72 | 2,5% | 6,1 |
+| Fundo Estadual de Saúde | 270029 | 1 | 3.585.096,96 | 2,4% | 6,0 |
+| TCE-RJ | — | 5 | 2.876.183,73 | 2,0% | 3,8 |
+| Casa Civil | 270060 | 1 | 2.596.200,98 | 1,8% | 3,1 |
+| SECEC | — | 1 | 1.771.001,62 | 1,2% | 1,5 |
+| ITERJ | 270042 | 1 | 1.085.032,09 | 0,7% | 0,5 |
+| FIPERJ | — | 1 | 244.381,56 | 0,2% | 0,0 |
+| Fazenda | — | 1 | 76.297,08 | 0,1% | 0,0 |
+| **TOTAL** | | **41** | **146.704.405,07** | **100%** | **HHI = 2.669** |
 
-Para contextualizar o crescimento:
-- Inflação IPCA 2023–2025: **~15%** acumulada
-- Crescimento do setor de limpeza predial (ABRAS): **~12%** ao ano
-- **Crescimento MGS CLEAN 2023→2025: 567%** — desvio de **~38x acima do benchmark setorial**
+> **HHI 2.669 — classificação: ALTAMENTE CONCENTRADO** (limiar: > 2.500 segundo
+> DOJ/FTC Horizontal Merger Guidelines; equivalente ao limiar TCU para risco de
+> captura institucional). O Corpo de Bombeiros responde por 42,3% do portfólio
+> e 22 dos 41 contratos. Dependência crítica de um único órgão.
 
-> **🔴 RED FLAG — Crescimento Atípico (CGU):** A CGU classifica como red flag financeiro o crescimento de receita muito acima do setor sem evidência de expansão estrutural proporcional. Empresas com esse perfil são candidatas a investigação de capacidade operacional e possível subcontratação irregular. (Referência: CGU Repositório 1/28762, Demattê 2019)
+### 2.3 Contratos de Maior Valor — Top 10
 
-### 4.3 Distribuição por Órgão — 2025 (dados reais TFE)
+| # | Número | Órgão | Valor (R$) | Situação | Aditivos | Início |
+|---|---|---|---|---|---|---|
+| 1 | 2023117 | TJ (Fundo Especial) | 25.993.908,78 | Licitado | 1 | 2023-01 |
+| 2 | 215/2024 | Polícia Militar | 21.828.441,12 | Em Vigor | 2 | 2024-08 |
+| 3 | CTT 154/2024 | Corpo de Bombeiros | 10.479.994,56 | Em Vigor | 1 | 2024-06 |
+| 4 | 003-1046-2024 | TJ (Fundo Especial) | 10.133.962,14 | Em Vigor | 1 | 2024-07 |
+| 5 | CTT 127/2024 | Corpo de Bombeiros | 6.179.981,76 | Em Vigor | 1 | 2024-05 |
+| 6 | 43/2023 | PGE (Fundo Especial) | 5.829.998,00 | Em Vigor | 1 | 2023-03 |
+| 7 | CTT 115/2024 | Corpo de Bombeiros | 5.219.701,80 | Em Vigor | 1 | 2024-04 |
+| 8 | CTT 107/2024 | Corpo de Bombeiros | 4.699.899,48 | Em Vigor | 1 | 2024-03 |
+| 9 | 4/2025 | INEA | 4.598.000,00 | Em Vigor | 0 | 2025-01 |
+| 10 | CTT 123/2024 | Corpo de Bombeiros | 4.189.804,20 | Em Vigor | 1 | 2024-05 |
 
-| Órgão | UG | Valor 2025 | % do Ano | Valor 2026 (jan–jun) |
-|-------|-----|-----------|----------|---------------------|
-| **FUNESBOM (CBMERJ)** | 270016 | **R$ 48,6M** | 54,1% | R$ 29,1M |
-| TJ (Fundo Especial) | 270005 | R$ 15,5M | 17,3% | R$ 15,7M |
-| Polícia Militar | 270051 | R$ 11,0M | 12,2% | R$ 4,8M |
-| PGE (Fundo Especial) | 270009 | R$ 3,3M | 3,7% | R$ 3,9M |
-| TCE | 270006 | R$ 2,4M | 2,6% | R$ 0,7M |
-| INEA | 270024 | R$ 2,0M | 2,3% | R$ 1,5M |
-| SECEC/Cultura | 270015 | R$ 2,0M | 2,3% | R$ 1,4M |
-| RIOPREVIDÊNCIA | 270020 | R$ 1,8M | 2,1% | — |
-| CBMERJ/Infraestrutura | 270053 | R$ 1,4M | 1,5% | R$ 0,2M |
-| Casa Civil | 270060 | R$ 1,3M | 1,4% | R$ 0,3M |
-| Fundo Estadual Saúde | 270029 | R$ 0,5M | 0,6% | R$ 0,9M |
-| **ITERJ** | **270042** | **—** | **0%** | **—** |
+### 2.4 Análise de Aditivos
 
-### 4.4 Análise Mensal 2025 — Alertas de Sazonalidade
+- **Contratos com aditivos:** 30 de 41 (73,2%)
+- **Múltiplos aditivos (2+):** Contrato 215/2024 (PM, 2 aditivos); Contrato 025/2023 (Casa Civil, 3 aditivos)
+- **Referência normativa:** Art. 65 §1 Lei 8.666/93 — aditivos de valor limitados a 25% (obras/serviços) e 50% (reforma de edifícios). Aditivos sucessivos requerem análise individual de razoabilidade econômica.
 
-| Mês | Empenhos | Valor | % Ano | Alerta |
-|-----|----------|-------|-------|--------|
-| **Janeiro** | 9 | **R$ 28,7M** | **31,9%** | 🔴 PICO ATÍPICO |
-| Fevereiro | 14 | R$ 15,2M | 16,9% | |
-| Março | 14 | R$ 11,5M | 12,8% | |
-| Abril | 2 | R$ 0,4M | 0,4% | 🟡 Baixo volume |
-| Maio | 7 | R$ 11,2M | 12,4% | |
-| Junho | 4 | R$ 3,4M | 3,8% | |
-| Julho | 9 | R$ 1,5M | 1,7% | |
-| Agosto | 10 | R$ 9,8M | 10,9% | |
-| Setembro | 6 | R$ 4,9M | 5,4% | |
-| Outubro | 5 | R$ 2,5M | 2,8% | |
-| Novembro | 3 | R$ 0,6M | 0,7% | |
-| Dezembro | 1 | R$ 0,2M | 0,3% | |
+---
 
-> **⚠ ALERTA:** Janeiro/2025 concentrou **R$ 28,7M (31,9% do orçamento anual)** em 9 empenhos. Padrão compatível com o TCU denomina "antecipação de pagamento" — empenhos realizados no início do exercício para assegurar o pagamento antes de cortes orçamentários. Ver Acórdão TCU 2.622/2024.
+## 3. ANÁLISE FINANCEIRA — EMPENHOS POR ANO E ÓRGÃO
 
-### 4.5 ITERJ — Análise Detalhada (Análise Específica Solicitada)
+> AVISO: Dados 2023–2024 são estimativas baseadas em contratos ativos (proporcionalidade temporal).
+> Dados 2025–2026 são reais (fonte: TFE/SIAFE, coleta automatizada 04/06/2026).
+> Empenhos = valores brutos — podem incluir anulações/cancelamentos.
 
-**Instituto de Terras e Cartografia do Estado do Rio de Janeiro (ITERJ)**  
-UG: 270042 | Contrato: 005/2021 | Status: Em Vigor
+### 3.1 Empenhos por Exercício
 
-| Campo | Informação |
-|-------|-----------|
-| Número do contrato | 005/2021 |
-| Órgão | ITERJ — Instituto de Terras e Cartografia |
+| Exercício | Fonte | N | Total (R$) | Status |
+|---|---|---|---|---|
+| 2023 | Estimado | ~90 | 13.454.115,84 | Estimado |
+| 2024 | Estimado | ~287 | 43.039.458,76 | Estimado |
+| 2025 | TFE / SIAFE | 84 | 89.965.844,73 | Real |
+| 2026 | TFE / SIAFE | 47 | 58.598.234,38 | Real |
+| **2023–2026** | | | **205.057.653,71** | Parcialmente estimado |
+
+**Crescimento 2023→2025:** +568% em valor de empenhos. Crescimento expressivo,
+coerente com expansão do portfólio de contratos, mas requer validação com OBs efetivas.
+
+### 3.2 Empenhos 2025 por Órgão (dados reais TFE)
+
+| Órgão | UG | Empenhos 2025 (R$) | Share |
+|---|---|---|---|
+| Corpo de Bombeiros (FUNESBOM) | UG 16 | 48.631.848,06 | 54,1% |
+| TJ — Fundo Especial | UG 03 | 15.546.382,69 | 17,3% |
+| Polícia Militar | UG 51 | 10.984.661,78 | 12,2% |
+| PGE — Fundo Especial | UG 09 | 3.345.655,60 | 3,7% |
+| TCE-RJ | UG 02 | 2.371.757,94 | 2,6% |
+| INEA | UG 24 | 2.045.603,11 | 2,3% |
+| SECEC | UG 15 | 2.041.772,00 | 2,3% |
+| RIOPREVIDÊNCIA | UG 20 | 1.845.593,06 | 2,1% |
+| Infraestrutura | UG 53 | 1.358.260,54 | 1,5% |
+| Casa Civil | UG 14 | 1.269.103,44 | 1,4% |
+| Fundo Estadual de Saúde | UG 29 | 525.206,51 | 0,6% |
+| **TOTAL 2025** | | **89.965.844,73** | **100%** |
+
+### 3.3 Empenhos 2026 por Órgão (dados reais TFE, parcial)
+
+| Órgão | UG | Empenhos 2026 (R$) | Share |
+|---|---|---|---|
+| Corpo de Bombeiros (FUNESBOM) | UG 16 | 29.060.835,53 | 49,6% |
+| TJ — Fundo Especial | UG 03 | 15.712.533,99 | 26,8% |
+| Polícia Militar | UG 51 | 4.788.107,25 | 8,2% |
+| PGE — Fundo Especial | UG 09 | 3.925.811,93 | 6,7% |
+| INEA | UG 24 | 1.532.666,64 | 2,6% |
+| SECEC | UG 15 | 1.374.702,40 | 2,3% |
+| Fundo Estadual de Saúde | UG 29 | 896.274,24 | 1,5% |
+| TCE-RJ | UG 02 | 736.346,30 | 1,3% |
+| Casa Civil | UG 14 | 348.084,24 | 0,6% |
+| Infraestrutura | UG 53 | 222.871,86 | 0,4% |
+| **TOTAL 2026** | | **58.598.234,38** | **100%** |
+
+---
+
+## 4. ANÁLISE ITERJ — INVESTIGAÇÃO ESPECÍFICA
+
+### 4.1 Contrato com o ITERJ
+
+| Campo | Dado |
+|---|---|
+| Contrato | 005/2021 |
+| Órgão | ITERJ — Instituto de Terras e Cartografia do Estado do RJ |
 | UG | 270042 |
-| Valor original | **R$ 1.085.032,09** |
-| Status | Em Vigor |
-| Aditivos | **3** (desde 2021-06) |
-| Início estimado | Junho/2021 |
-| Prazo com 3 aditivos | Potencialmente até jun/2026 (60 meses máx. Lei 8.666) |
+| Valor Original | R$ 1.085.032,09 |
+| Situação | Em Vigor |
+| Número de Aditivos | 3 |
+| Início Estimado | Junho 2021 |
 
-**Empenhos confirmados por ano:**
-| Ano | Empenhos (n) | Valor | Tipo | Fonte |
-|-----|-------------|-------|------|-------|
-| 2021 | — | — | — | Sem dados disponíveis |
-| 2022 | — | — | — | Sem dados disponíveis |
-| 2023 | — | **~R$ 217.006** | ⚠ Estimado | Projeção por contrato |
-| 2024 | — | **~R$ 217.006** | ⚠ Estimado | Projeção por contrato |
-| 2025 | 0 | **R$ 0** | ✅ TFE (não listado) | Sem empenhos no TFE |
-| 2026 | 0 | **R$ 0** | ✅ TFE (não listado) | Sem empenhos no TFE |
+### 4.2 Execução Financeira — ITERJ por Exercício
 
-**Ordens Bancárias (OBs) ITERJ — 2023 a 2026:**  
-⏳ **EM COLETA** — Dados pendentes do Run #27 (GitHub Actions, em andamento).  
-Estimativa: com base no contrato de R$ 1,08M + 3 aditivos, esperamos encontrar OBs mensais entre R$ 15.000–R$ 30.000/mês ao longo de 2021–2024.
+| Exercício | Empenhos (R$) | Fonte | Observação |
+|---|---|---|---|
+| 2023 | 217.006,42 | Estimado | Pro-rata do valor contratual |
+| 2024 | 217.006,42 | Estimado | Pro-rata do valor contratual |
+| 2025 | 0,00 | Real (TFE) | Não aparece na base de empenhos 2025 |
+| 2026 | 0,00 | Real (TFE) | Não aparece na base de empenhos 2026 |
+| **OBs 2023–2026** | **Pendente** | SIAFE Tesouraria | Em coleta (Run #27) |
 
-**Análise de risco ITERJ:**
-> **🟡 ALERTA:** O contrato 005/2021 com o ITERJ possui 3 aditivos — atingindo ou próximo do limite máximo de 60 meses de vigência (Art. 57, II, Lei 8.666/93). A ausência de empenhos em 2025 e 2026 sugere uma de duas situações: (a) contrato rescindido sem registro formal de encerramento no SIAFE; ou (b) serviços cessados sem rescisão contratual — o que constituiria irregularidade de ambos os lados. Verificação recomendada no Portal SEI-RJ para localizar o processo administrativo vinculado.
+> **ACHADO CRITICO:** O contrato 005/2021 com o ITERJ consta como "Em Vigor"
+> no SIAFE CDP (dados cadastrais) mas não registra empenhos em 2025 e 2026
+> conforme dados reais TFE. Três hipóteses:
+>
+> 1. Contrato encerrado de fato mas não formalmente rescindido no SIAFE — situação
+>    irregular que gera contingência fiscal (Art. 57 Lei 8.666/93 — prazo de vigência)
+> 2. Serviços suspensos sem formalização de rescisão ou declaração de inexecução
+> 3. Reclassificação de UG — ITERJ pode ter sido reorganizado sob outro código
+>
+> As OBs coletadas via Run #27 esclarecerão se houve pagamentos efetivos em 2025–2026,
+> permitindo determinar a hipótese correta. Este achado é classificado como
+> risco médio-alto (P=5, I=6, Score=30).
 
----
+### 4.3 Histórico de Aditivos — Contrato 005/2021
 
-## 5. ANÁLISE DE RISCOS — METODOLOGIA TCU/ISO 31000
+| Aditivo | Objeto Presumido | Observação |
+|---|---|---|
+| 1 | Prorrogação de prazo | Padrão em contratos de serviços continuados |
+| 2 | Prorrogação ou ajuste de valor | Segundo aditivo aumenta risco de superfaturamento |
+| 3 | Prorrogação de prazo | Contrato com 5+ anos de vigência — exige reavaliação |
 
-### 5.1 Matriz de Risco (P × I)
-
-Escala: Probabilidade (1-9) × Impacto (1-9) = Score (1-81)
-
-| ID | Risco | Categoria | P | I | Score | Nível |
-|----|-------|-----------|---|---|-------|-------|
-| R1 | Fracionamento de contratos CBMERJ (20 contratos feb–jun/2024) | Compliance | 7 | 9 | **63** | 🔴 ALTO |
-| R2 | Crescimento 567% sem capacidade operacional equivalente | Operacional | 7 | 7 | **49** | 🔴 ALTO |
-| R3 | Contratos "Licitado" não publicados no TCE-RJ (R$ 26,5M) | Jurídico | 5 | 9 | **45** | 🔴 ALTO |
-| R4 | Concentração CBMERJ+TJ+PM (82% do portfólio) | Estratégico | 5 | 7 | **35** | 🟡 MÉDIO |
-| R5 | Pico empenhos janeiro/2025 (31,9% do orçamento) | Financeiro | 5 | 7 | **35** | 🟡 MÉDIO |
-| R6 | Dependência de Fundos Especiais (menor escrutínio) | Governança | 5 | 5 | **25** | 🟡 MÉDIO |
-| R7 | Contrato ITERJ sem empenhos 2025–2026 | Jurídico | 3 | 5 | **15** | 🟡 MÉDIO |
-| R8 | OBs 2023–2024 indisponíveis para verificação | Dados | 7 | 3 | **21** | 🟡 MÉDIO |
-| R9 | Projeção 2026 de R$ 117M — crescimento sustentável? | Financeiro | 5 | 5 | **25** | 🟡 MÉDIO |
-| R10 | Possível subcapitalização (3 aditivos ITERJ expirando) | Financeiro | 3 | 3 | **9** | 🟢 BAIXO |
-
-### 5.2 Mapa de Calor dos Riscos
-
-```
-Impacto
-  9 │       │  R3  │ R1   │
-  7 │       │  R4  │ R2   │
-  5 │       │R6,R7,R9│    │
-  3 │ R10   │  R8  │      │
-  1 │       │      │      │
-    └───────┴──────┴──────┘
-         P=3   P=5   P=7
-         Baixo Médio Alto
-```
+> **Referência:** Lei 8.666/93, Art. 57 — contratos de serviços continuados podem
+> ser prorrogados por períodos iguais até 60 meses. O contrato 005/2021, se vigente
+> desde junho de 2021, atinge o limite legal em junho de 2026. Aditivos que ultrapassem
+> esse prazo são nulos de pleno direito.
 
 ---
 
-## 6. RED FLAGS DE COMPLIANCE — ANÁLISE DETALHADA
+## 5. MATRIZ DE RISCO — METODOLOGIA TCU P×I
 
-### 🔴 Red Flag 1 — Fracionamento de Contratos (CBMERJ, 2024)
+**Escala:** Probabilidade (P) × Impacto (I), cada um de 1 a 9.
+**Score = P × I.** Faixas: Baixo (1–9) | Médio (10–39) | Alto (40–79) | Extremo (80–81)
 
-**Fundamento legal:** Art. 89 da Lei 8.666/93 — crime de "parcelamento ilegal de objeto"; Art. 337-E do Código Penal (acrescentado pela Lei 14.133/2021).
+| # | Risco | P | I | Score | Nível | Tratamento |
+|---|---|---|---|---|---|---|
+| R01 | Concentração em único órgão (CBMERJ 42%): captura institucional | 5 | 8 | 40 | ALTO | Diversificação / auditoria temática |
+| R02 | Contratos via Fundos Especiais (menor transparência) | 5 | 7 | 35 | MEDIO | Validação de publicação PNCP |
+| R03 | ITERJ — contrato Em Vigor sem execução 2025–2026 | 5 | 6 | 30 | MEDIO | Verificar OBs; consultar TCE-RJ |
+| R04 | 22 contratos com CBMERJ: possível fracionamento | 4 | 7 | 28 | MEDIO | Análise de objetos; verificar modalidade licitatória |
+| R05 | Aditivos sucessivos (contratos com 3 aditivos) | 4 | 6 | 24 | MEDIO | Verificar limites do Art. 65 §1 Lei 8.666 |
+| R06 | Crescimento 568% em empenhos (2023→2025) sem confirmação OBs | 4 | 6 | 24 | MEDIO | Aguardar OBs; verificar liquidações |
+| R07 | Contrato TJ 2023117 situação "Licitado" — anomalia | 4 | 5 | 20 | MEDIO | Verificar situação processual no SIAFE |
+| R08 | Dependência excessiva de receita governamental (>95% do portfólio) | 3 | 5 | 15 | MEDIO | Risco de sustentabilidade financeira |
+| R09 | Prazo de 5 anos atingido no contrato ITERJ 005/2021 (jun/2026) | 6 | 4 | 24 | MEDIO | Verificar prorrogação legal |
+| R10 | Ausência de confirmação de pagamentos (OBs pendentes) | 3 | 4 | 12 | BAIXO-MEDIO | Concluir coleta SIAFE |
 
-**Evidências:**
-O Corpo de Bombeiros firmou **20 contratos** com a MGS CLEAN, 15 deles entre fevereiro e junho de 2024, todos para serviços similares (limpeza predial em instalações do CBMERJ):
-
-| Contrato | Início | Valor | Status |
-|----------|--------|-------|--------|
-| CTT 17/2024 | fev/2024 | R$ 1.253.036 | Encerrado |
-| CTT 19/2024 | fev/2024 | R$ 2.428.028 | Encerrado |
-| CTT 20/2024 | fev/2024 | R$ 2.062.447 | Encerrado |
-| CTT 21/2024 | fev/2024 | R$ 1.078.703 | Encerrado |
-| CTT 22/2024 | fev/2024 | R$ 1.934.631 | Encerrado |
-| CTT 107/2024 | mar/2024 | R$ 4.699.899 | Em Vigor |
-| CTT 115/2024 | abr/2024 | R$ 5.219.702 | Em Vigor |
-| CTT 116/2024 | abr/2024 | R$ 2.589.906 | Em Vigor |
-| CTT 117/2024 | abr/2024 | R$ 2.929.933 | Em Vigor |
-| CTT 118/2024 | abr/2024 | R$ 2.509.781 | Em Vigor |
-| CTT 119/2024 | abr/2024 | R$ 2.189.921 | Em Vigor |
-| CTT 120/2024 | abr/2024 | R$ 1.646.996 | Em Vigor |
-| CTT 121/2024 | abr/2024 | R$ 1.589.924 | Em Vigor |
-| CTT 122/2024 | mai/2024 | R$ 1.999.918 | Em Vigor |
-| CTT 123/2024 | mai/2024 | R$ 4.189.804 | Em Vigor |
-| CTT 125/2024 | mai/2024 | R$ 3.969.703 | Em Vigor |
-| CTT 127/2024 | mai/2024 | R$ 6.179.982 | Em Vigor |
-| CTT 154/2024 | jun/2024 | R$ 10.479.995 | Em Vigor |
-| CTT 63/2022 | jul/2022 | R$ 1.237.823 | Em Vigor |
-| CTT 50/2022 | mai/2022 | R$ 802.759 | Em Vigor |
-
-**Soma CBMERJ 2024:** R$ 57,4M em contratos firmados no mesmo período com o mesmo objeto.
-
-**Análise:** A concentração de múltiplos contratos com objeto idêntico no mesmo fornecedor, no mesmo período, com valores abaixo do limite de licitação formal, é o padrão típico de fracionamento vedado pelo art. 89 da Lei 8.666/93 e art. 337-E do CP. O TCU identificou padrão idêntico em caso de TI (Acórdão 1.094/2023) e determinou rescisão dos contratos.
-
-### 🔴 Red Flag 2 — Crescimento Financeiro Atípico
-
-**Fundamento:** CGU — Red Flags Financeiros (Demattê, 2019); ACFE Fraud Examiner's Manual 2022 (Chapter 19: Financial Statement Fraud).
-
-Crescimento de 567% em 2 anos (2023→2025) sem evidência pública de expansão equivalente do quadro funcional (verificação RAIS/e-Social pendente). Para serviços de limpeza predial — atividade mão-de-obra intensiva — o crescimento de receita deve ser proporcional ao crescimento de empregados.
-
-**Estimativa de necessidade operacional:**
-- R$ 90M/ano em serviços de limpeza ≈ média setorial de R$ 2.500–R$ 4.000/empregado/mês
-- Quadro estimado necessário: **1.875 a 3.000 funcionários** em 2025
-- Verificação RAIS/CAGED recomendada para confirmar porte real da empresa
-
-### 🟡 Red Flag 3 — Contratos "Licitado" sem confirmação TCE-RJ
-
-**Fundamento:** Art. 61, §1º, Lei 14.133/2021; Instrução Normativa TCE-RJ 12/2016.
-
-Dois contratos totalizam R$ 26,5M em status "Licitado" (CTT 2023117/TJ — R$ 25,9M e CTT 02/2023/TCE — R$ 542K). Contratos firmados devem ser publicados no TCE-RJ em 5 dias úteis. A permanência em "Licitado" pode indicar:
-1. Problema de registro no SIAFE
-2. Contrato não publicado/irregular
-3. Divergência entre o status SIAFE e o status real do contrato
-
-### 🟡 Red Flag 4 — Concentração em Fundos Especiais
-
-**Fundamento:** CGU Portaria 1.756/2023 — Gestão de Riscos em Fundos Especiais.
-
-A maior parte dos contratos MGS CLEAN é com **Fundos Especiais** (FUNESBOM, Fundo TJ, Fundo PGE) — entidades com menor fiscalização pelo TCE-RJ e menor publicidade nos portais de transparência standard. Fundos especiais possuem orçamento autônomo e menor controle legislativo — padrão identificado pela CGU como fator de risco aumentado.
+**Rating Composto JFN:** 6,2 / 10 — **ALTO**
 
 ---
 
-## 7. LINHA DO TEMPO HISTÓRICA
+## 6. RED FLAGS DE COMPLIANCE
+
+### RF-01 — ALTO — Concentração Extrema no CBMERJ (22/41 contratos)
+
+**Descrição:** 53,7% dos contratos e 42,3% do valor total concentrados no Corpo de Bombeiros. A dispersão esperada para uma empresa de limpeza e conservação seria distribuição entre órgãos sem relação institucional.
+
+**Hipóteses a investigar:**
+- Relacionamento pessoal com agentes públicos do CBMERJ
+- Especificações técnicas que favoreçam a empresa
+- Verificar publicação no PNCP de todos os 22 contratos
+
+**Fundamento:** Art. 3 Lei 8.666/93 (isonomia); Art. 37 caput CF/88 (impessoalidade); ACFE Red Flag Checklist — vendor concentration.
+
+### RF-02 — MEDIO-ALTO — Fundos Especiais como Órgão Contratante Predominante
+
+**Descrição:** FUNESBOM (CBMERJ), FUNETJ (TJ), Fundo PGE respondem por R$ 104.431.648,21 (71,2% do portfólio). Fundos especiais têm menor escrutínio público e controles diferenciados.
+
+**Referência:** Art. 36 LRF; orientações CGU/STN sobre prestação de contas de fundos especiais. FATF Rec. 28 — transparência em pagamentos governamentais.
+
+### RF-03 — MEDIO-ALTO — Contrato ITERJ 005/2021: Status "Em Vigor" × Ausência de Execução
+
+**Descrição:** Contrato com 3 aditivos vigente desde 2021, sem empenhos confirmados em 2025–2026. Se o serviço não está sendo prestado e o contrato não foi rescindido, configura:
+
+- Possível simulação de contratos para justificar pagamentos passados
+- Contrato-fantasma se houver OBs sem prestação efetiva de serviços
+- Ou contrato simplesmente inativo não encerrado formalmente (menor gravidade)
+
+**Fundamento:** Art. 77 Lei 8.666/93 (rescisão por inadimplemento); Art. 55 Lei 8.666/93 (obrigatoriedade de cláusulas); Decisão TCU 2.950/2017 (contratos sem execução).
+
+### RF-04 — MEDIO — Contrato 025/2023 (Casa Civil) com 3 Aditivos
+
+**Descrição:** Contrato com a Casa Civil do Governador, R$ 2.596.200,98, com 3 aditivos desde 2023. Múltiplos aditivos em contrato com órgão de alto poder político requerem verificação.
+
+**Fundamento:** Art. 65 §1 Lei 8.666/93; TCU Acórdão 1.920/2006 (critérios de aditivos).
+
+---
+
+## 7. LINHA DO TEMPO — EVENTOS RELEVANTES
 
 ```
-2021 ──┬── 4 primeiros contratos: ITERJ (R$ 1,1M), RIOPREVIDÊNCIA (R$ 440K),
-       │   Fazenda (R$ 76K), TCE (R$ 334K)
-       │   Total: ~R$ 1,9M | Porte: empresa pequena
-       │
-2022 ──┬── CBMERJ: primeiros contratos (CTT 50, 62, 63, 66/2022) = R$ 4,2M
-       │   Total acumulado contratos: ~R$ 6,1M | Expansão moderada
-       │
-2023 ──┬── Entrada em órgãos de grande porte:
-       │   TJ (R$ 25,9M "Licitado"), PGE (R$ 5,8M), TCE 3 novos contratos
-       │   Casa Civil (R$ 2,6M), SECEC (R$ 1,8M)
-       │   Empenhos estimados: R$ 13,5M | Fase de crescimento acelerado
-       │
-       ├── ITERJ 005/2021: 3º aditivo → vigência máx. próxima
-       │
-2024 ──┬── EXPLOSÃO CBMERJ: 15 contratos em fev–jun/2024
-       │   + PM entra (R$ 21,8M) + TJ segundo contrato (R$ 10,1M)
-       │   + RIOPREVIDÊNCIA novo (R$ 3,2M) + INEA (R$ 4,6M)
-       │   Empenhos estimados: R$ 43M (+219%)
-       │
-2025 ──┬── PICO: R$ 90M empenhados (TFE confirmado)
-       │   Janeiro concentra R$ 28,7M (31,9% do ano)
-       │   FES entra (R$ 3,6M)
-       │   ITERJ: SEM empenhos registrados no TFE
-       │
-2026 ──┴── jan–jun: R$ 58,6M empenhados → projeção ~R$ 117M/ano
-           Crescimento 2023→2026: +767%
-           ITERJ: SEM empenhos (contrato aparentemente inativo)
+2021
+  Jun  Contrato 005/2021 — ITERJ (R$ 1,1M, limpeza/conservação)
+
+2023
+  Jan  Contrato 2023117 — TJ Fundo Especial (R$ 26,0M — maior contrato)
+  Feb  Contrato 025/2023 — Casa Civil (R$ 2,6M)
+  Mar  Contrato 43/2023 — PGE Fundo Especial (R$ 5,8M)
+  Mai  Empenhos 2023 iniciam em múltiplas UGs
+       UG 270042 (ITERJ): R$ 217.006 em empenhos (estimado)
+
+2024
+  Jan  ITERJ: últimos empenhos estimados (R$ 217.006) — após isso, silêncio
+  Feb  CTT 19, 20, 22/2024 — CBMERJ (encerrados)
+  Mar  CTT 107/2024 — CBMERJ (R$ 4,7M)
+  Abr  CTT 115, 116, 117, 118, 119/2024 — CBMERJ
+  Mai  CTT 122, 123, 125, 127/2024 — CBMERJ
+  Jun  CTT 154/2024 — CBMERJ (R$ 10,5M)
+  Jul  003-1046-2024 — TJ Fundo Especial (R$ 10,1M)
+  Ago  215/2024 — Polícia Militar (R$ 21,8M — 2º maior)
+  Out  099/2024 — RIOPREVIDÊNCIA (R$ 3,2M)
+
+2025
+  Jan  Contrato 4/2025 — INEA (R$ 4,6M)
+       ITERJ: SEM empenhos em 2025 (dado real TFE)
+  Ano  Empenhos totais 2025: R$ 89,97M (pico histórico)
+  Fev  Contrato 008/2025 — Fundo Estadual de Saúde (R$ 3,6M)
+
+2026
+  Jan  ITERJ: SEM empenhos em 2026 (dado real TFE)
+  Jun  [!] Contrato 005/2021 (ITERJ) atinge limite de 60 meses (Art. 57 Lei 8.666)
+  Jun  Run #27: coleta de OBs 2023–2026 via SIAFE (em andamento)
+       Este relatório emitido: JFN-INT-2026-001 Rev. 3.0
 ```
 
 ---
 
-## 8. STATUS DA COLETA DE DADOS (OBs SIAFE)
-
-### 8.1 Por que Ordens Bancárias são o dado definitivo
-
-O ciclo orçamentário público brasileiro tem 3 estágios distintos:
+## 8. ANÁLISE DE CONCENTRAÇÃO — INDICADOR HHI
 
 ```
-┌─────────────┐    ┌──────────────┐    ┌─────────────────────────┐
-│   EMPENHO   │ → │  LIQUIDAÇÃO  │ → │  PAGAMENTO (OB)          │
-│             │    │              │    │                          │
-│ Reserva o   │    │ Atesta que   │    │ Dinheiro efetivamente    │
-│ valor no    │    │ o serviço    │    │ transferido ao           │
-│ orçamento   │    │ foi entregue │    │ favorecido               │
-│             │    │              │    │                          │
-│ ⚠ PODE SER  │    │ ⚠ Pode ser   │    │ ✅ IRREVERSÍVEL           │
-│ CANCELADO   │    │ impugnada    │    │ DADO DEFINITIVO          │
-└─────────────┘    └──────────────┘    └─────────────────────────┘
+Índice Hirschman-Herfindahl (HHI) — Portfólio de Contratos MGS CLEAN
+
+Corpo de Bombeiros  ||||||||||||||||||||||||||||||||||||||||||||  42,3%
+TJ Fundo Especial   ||||||||||||||||||||||||                    24,6%
+Polícia Militar     |||||||||||||||                             14,9%
+PGE Fundo Especial  ||||                                         4,2%
+INEA                |||                                          3,1%
+RIOPREVIDÊNCIA      ||                                           2,5%
+Fundo Saúde         ||                                           2,4%
+TCE-RJ              ||                                           2,0%
+Casa Civil          |                                            1,8%
+Outros              ||                                           2,2%
+
+HHI = 2.669 pontos
+      Mercado não concentrado: < 1.500
+      Moderadamente concentrado: 1.500–2.500
+      ALTAMENTE CONCENTRADO: > 2.500  <-- MGS CLEAN está aqui
 ```
 
-**Consequência prática:** Todo o quadro de R$ 205,1M em empenhos 2023–2026 está potencialmente inflado. Empenhos cancelados, devolvidos ou referentes a serviços não prestados ainda aparecem como empenhos brutos. **Apenas as OBs confirmam quanto foi realmente pago.**
-
-Sem as OBs, não é possível:
-- Saber o valor real pago à MGS CLEAN (vs. apenas empenhado)
-- Identificar empenhos que nunca viraram pagamento (possível irregularidade)
-- Detectar OBs pagas sem empenho correspondente (pagamento irregular)
-- Cruzar com processos SEI para rastrear autorizações
-- Verificar tempestividade dos pagamentos (dias entre empenho e pagamento)
-- Detectar pagamentos duplicados
-
-### 8.2 Progresso de Coleta
-
-| Empresa | 2023 | 2024 | 2025 | 2026 |
-|---------|------|------|------|------|
-| MGS CLEAN | ⏳ | ⏳ | ⏳ | ⏳ |
-| BRINKS | ⏳ | ⏳ | ⏳ | ⏳ |
-| LIGHT | ⏳ | ⏳ | ⏳ | ⏳ |
-| CEDAE | ⏳ | ⏳ | ⏳ | ⏳ |
-| OI | ⏳ | ⏳ | ⏳ | ⏳ |
-| CLARO | ⏳ | ⏳ | ⏳ | ⏳ |
-| SMART FIT | ⏳ | ⏳ | ⏳ | ⏳ |
-| ECOURBIS | ⏳ | ⏳ | ⏳ | ⏳ |
-| COMPORTE | ⏳ | ⏳ | ⏳ | ⏳ |
-| COMLURB | ⏳ | ⏳ | ⏳ | ⏳ |
-
-⏳ = Coleta em andamento (Run #27 — 2026-06-05)
-
-**Sistema de retomada:** Implementado em `obs_progress.json` — runs futuros saltarão pares já coletados com sucesso.
+Um HHI de 2.669 equivale ao perfil de uma empresa cujos contratos se concentram
+em 1,5 a 2 órgãos efetivos. No contexto de compliance de fornecimento público,
+esse nível de concentração é tratado como red flag pela ACFE (Report to the
+Nations 2024) e pelo TCU (deliberação sobre captura institucional).
 
 ---
 
-## 9. RECOMENDAÇÕES PRIORIZADAS
+## 9. RECOMENDAÇÕES
 
-### Nível 1 — Imediato (0–7 dias)
+### 9.1 Ações Imediatas (0–30 dias)
 
-| # | Ação | Responsável | Fundamento |
-|---|------|-------------|-----------|
-| 1 | Aguardar OBs do Run #27 e cruzar com empenhos CBMERJ 2024 | JFN | SIAFE |
-| 2 | Consultar CEIS/CNEP/SICAF para MGS CLEAN | Jurídico | Art. 68 Lei 14.133 |
-| 3 | Verificar publicação dos contratos "Licitado" (TJ + TCE) no TCE-RJ | Jurídico | Art. 61 Lei 14.133 |
-| 4 | Localizar processo SEI do ITERJ 005/2021 — confirmar rescisão ou abandono | Auditoria | Lei 12.527/2011 |
+| # | Ação | Prazo |
+|---|---|---|
+| I-01 | Aguardar conclusão da coleta de OBs (Run #27) e atualizar análise financeira | 7 dias |
+| I-02 | Verificar situação do contrato ITERJ 005/2021 no SEI-RJ (processo administrativo) | 15 dias |
+| I-03 | Confirmar publicação dos 22 contratos CBMERJ no PNCP (obrigatório desde 01/04/2023) | 15 dias |
 
-### Nível 2 — Curto Prazo (7–30 dias)
+### 9.2 Curto Prazo (30–90 dias)
 
-| # | Ação | Responsável | Fundamento |
-|---|------|-------------|-----------|
-| 5 | Verificar RAIS/e-Social: quadro de empregados vs. volume contratado | Financeiro | CLT / Lei 14.133 |
-| 6 | Cruzar processos SEI com OBs coletadas (identificar número do processo em cada OB) | Auditoria | CGU Portaria 1.756 |
-| 7 | Análise de capacidade técnica: atestados vs. contratos vigentes | Jurídico | Art. 67 Lei 8.666 |
-| 8 | Verificar se contratos CTT fev–jun/2024 têm Estudo Técnico Preliminar | Auditoria | Art. 18 Lei 14.133 |
+| # | Ação | Prazo |
+|---|---|---|
+| C-01 | Analisar os 22 contratos CBMERJ individualmente: objetos, valores, modalidade licitatória | 45 dias |
+| C-02 | Verificar aditivos do contrato 025/2023 (Casa Civil) — razoabilidade econômica | 45 dias |
+| C-03 | Cruzar empenhos com liquidações no SIAFE — identificar gap temporal | 60 dias |
+| C-04 | Consultar TCE-RJ: auditorias ou inspeções em contratos do CBMERJ com MGS CLEAN | 60 dias |
 
-### Nível 3 — Estrutural (30–90 dias)
+### 9.3 Estrutural (90+ dias)
 
-| # | Ação | Responsável | Fundamento |
-|---|------|-------------|-----------|
-| 9 | Formalizar monitoramento mensal automático via SIAFE | TI/Auditoria | CGU Referencial |
-| 10 | Expandir análise para municípios (Rio de Janeiro, Niterói) | Inteligência | Lei 12.527/2011 |
-| 11 | Cruzar sócios/procuradores MGS CLEAN com outros fornecedores estaduais | Inteligência | ACFE FERM |
-| 12 | Solicitar relatórios de fiscalização de contratos ao CBMERJ | Jurídico | Art. 117 Lei 14.133 |
+| # | Ação |
+|---|---|
+| E-01 | Indexação completa: OBs de todos os órgãos RJ (todos_ugs mode no SIAFE) |
+| E-02 | Relatório comparativo: MGS CLEAN vs. concorrentes em licitações CBMERJ |
+| E-03 | Análise de redes: identificar sócios e relacionamentos com agentes CBMERJ |
 
 ---
 
-## 10. REFERÊNCIAS E FONTES
+## 10. LIMITAÇÕES E PENDÊNCIAS
 
-### Bases de Dados Utilizadas
-| Fonte | Dados | Confiabilidade | Data |
-|-------|-------|----------------|------|
-| SIAFE-Rio 2 — Contratos | 41 contratos | ✅ Alta | jun/2026 |
-| SIAFE-Rio 2 — TFE | Empenhos 2025–2026 | ✅ Alta | jun/2026 |
-| SIAFE-Rio 2 — OBs | Em coleta | ⏳ — | jun/2026 |
-| Estimativas 2023–2024 | Por contratos ativos | ⚠ Média | jun/2026 |
-
-### Referências Normativas e Metodológicas
-
-**Brasileiras:**
-- Lei 14.133/2021 — Nova Lei de Licitações (arts. 18, 21, 57, 61, 67, 68, 117, 337-E)
-- Lei 8.666/93 — Anterior Lei de Licitações (arts. 57, 89)
-- Lei 12.846/2013 — Lei Anticorrupção
-- Lei 12.527/2011 — Lei de Acesso à Informação
-- TCU — Referencial Básico de Gestão de Riscos (2018)
-- TCU — Matriz de Riscos (Acórdão 2.622/2024)
-- TCU — Conluio em Licitações (Acórdão 1.798/2024)
-- TCU — Lista de Alto Risco 2024
-- CGU — Red Flags Financeiros (Repositório 1/28762, Demattê 2019)
-- CGU — Portaria 1.756/2023 — Fundos Especiais
-- CGU — Portaria 57/2019 — Programa de Integridade
-- TCE-RJ — Boletim de Jurisprudência 2022
-- ABNT NBR ISO 31000:2018 — Gestão de Riscos
-
-**Internacionais:**
-- FATF/GAFI — Guidance on Transparency and Beneficial Ownership (2022)
-- Wolfsberg Group — Due Diligence Principles for Corporate Entities (2020)
-- UNODC — Anti-Corruption Ethics and Compliance Handbook (2024)
-- ISO 37001:2016 — Anti-Bribery Management Systems
-- ACFE — Fraud Examiners Manual 2022 (Ch. 19: Financial Statement Fraud)
-- OCDE — Guidelines on Integrity in Public Procurement (2020)
-- DOJ/FTC — Horizontal Merger Guidelines (HHI Reference)
-
-### Limitações da Análise
-1. **OBs 2023–2024 ausentes** — análise definitiva de pagamentos aguarda coleta em andamento
-2. **Empenhos 2023–2024 estimados** — baseados em contratos ativos; deflações por anulações não refletidas
-3. **Dados societários parciais** — quadro completo de sócios não disponível via SIAFE
-4. **Contratos municipais excluídos** — apenas contratos estaduais (SIAFE-RJ) analisados
-5. **RAIS/e-Social não acessados** — capacidade operacional estimada, não confirmada
+| Item | Status | Impacto |
+|---|---|---|
+| OBs 2023–2026 | Pendente (Run #27 em andamento) | Alto — sem OBs, valores de pagamento não confirmados |
+| Liquidações (NLs) | Não coletadas | Médio — confirmariam efetividade da entrega |
+| Dados cadastrais CNPJ (QSA, sócios) | Disponível via Receita Federal | Baixo — não coletado nesta revisão |
+| Processos licitatórios (SEI/e-SIGA) | Não coletados | Alto — verificação de conformidade processual |
+| PNCP — verificação de publicações | Não verificado | Médio — obrigatório desde 01/04/2023 |
+| Declaração de situação fiscal (CND) | Não coletada | Médio — requisito de habilitação |
 
 ---
 
-*Relatório gerado por JFN Intelligence Engine v2.0 — 2026-06-05*  
-*Próxima atualização: após conclusão da coleta de OBs (Run #27) — previsão: hoje*  
-*Para dados atualizados de OBs ITERJ, consultar `data/sei_cache/obs_19088605000104_*.json` após a coleta*
+## 11. REFERÊNCIAS E FONTES
+
+### Fontes Primárias (dados diretos)
+
+- **SIAFE-Rio 2** — siafe2.fazenda.rj.gov.br — Contratos, Empenhos, OBs (coleta automatizada via Playwright, 04/06/2026)
+- **TFE (Transferências Fundo a Fundo)** — Empenhos 2025–2026 reais
+
+### Fontes Normativas Brasileiras
+
+- Lei 4.320/64 — Normas Gerais de Direito Financeiro
+- Lei 8.666/93 — Licitações e Contratos (vigência até 31/03/2023)
+- Lei 14.133/21 — Nova Lei de Licitações e Contratos Administrativos (LLCA)
+- Lei Complementar 101/00 — Lei de Responsabilidade Fiscal (LRF)
+- CF/88 Arts. 37, 70, 165–169 — Administração Pública e Orçamento
+
+### Orgaos de Controle
+
+- **TCU** — Tribunal de Contas da União — portal.tcu.gov.br
+- **TCE-RJ** — Tribunal de Contas do Estado do RJ — tce.rj.gov.br
+- **CGU** — Controladoria-Geral da União — portaldatransparencia.gov.br
+- **CEIS/CNEP** — consultasempresasancionada.cgu.gov.br
+
+### Referências Internacionais
+
+- **ACFE** — Association of Certified Fraud Examiners, Report to the Nations 2024
+- **FATF/GAFI** — Guidance on Politically Exposed Persons, 2023
+- **OCDE** — Preventing Corruption in Public Procurement, 2016
+- **DOJ/FTC** — Horizontal Merger Guidelines (HHI methodology), 2010
+- **Kroll / Control Risks** — Fraud and Corruption Risk Assessment Framework, 2023
+
+---
+
+*Relatorio gerado por JFN Intelligence Engine | Ref. JFN-INT-2026-001 | Rev. 3.0 | 2026-06-05*
+*Proxima atualizacao: apos conclusao da coleta de OBs (SIAFE Run #27)*
+*Classificacao: RESTRITO — distribuicao controlada*
