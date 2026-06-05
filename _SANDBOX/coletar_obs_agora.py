@@ -58,8 +58,8 @@ CACHE_DIR   = REPO_ROOT / "data" / "sei_cache"
 SS_DIR      = REPO_ROOT / "screenshots" / "obs_coleta"
 TIMEOUT     = 40_000
 
-# Exercício → valor do SELECT de login (confirmado ao vivo 2026-06-04)
-EXERCICIOS = {2026: "1", 2025: "2", 2024: "3", 2023: "4"}
+# Exercício → valor do SELECT de login (confirmado ao vivo 2026-06-05)
+EXERCICIOS = {2027: "0", 2026: "1", 2025: "2", 2024: "3", 2023: "4"}
 
 MESES_PT = {
     1:"Janeiro",2:"Fevereiro",3:"Março",4:"Abril",5:"Maio",6:"Junho",
@@ -1324,10 +1324,11 @@ async def main():
             await asyncio.sleep(4)
 
         if not todas_obs:
-            msg = "[AVISO] Nenhuma OB coletada."
+            msg = "[ERRO] Nenhuma OB coletada — login falhou (MFA expirado/inválido?) ou CNPJ sem dados."
             print(f"\n{msg}")
-            _telegram(f"⚠️ {msg}")
-            return
+            print("  → Verifique data/sei_cache/debug_login_*.txt para diagnóstico.")
+            _telegram(f"❌ {msg}")
+            sys.exit(1)
 
         # Salva consolidado
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
