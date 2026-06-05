@@ -1,6 +1,6 @@
 {
   "descricao": "Índice de progresso da coleta de Ordens Bancárias SIAFE por empresa e ano",
-  "ultima_atualizacao": "2026-06-05T16:03:25.845754",
+  "ultima_atualizacao": "2026-06-05T20:21:09.475334",
   "versao": "1.0",
   "instrucao": "Este arquivo é atualizado automaticamente ao final de cada run de coleta. Use para saber quais pares (empresa, ano) já foram coletados e retomar de onde parou.",
   "empresas": {
@@ -26,8 +26,8 @@
           "status": "vazio",
           "total_obs": 0,
           "total_valor": 0,
-          "coletado_em": "2026-06-05T09:00:54.228408",
-          "run_id": "27005228900"
+          "coletado_em": "2026-06-05T20:11:58.491415",
+          "run_id": "27037586452"
         },
         "2026": {
           "status": "vazio",
@@ -60,8 +60,8 @@
           "status": "vazio",
           "total_obs": 0,
           "total_valor": 0,
-          "coletado_em": "2026-06-05T09:01:55.234425",
-          "run_id": "27005228900"
+          "coletado_em": "2026-06-05T20:12:59.855509",
+          "run_id": "27037586452"
         },
         "2026": {
           "status": "vazio",
@@ -94,8 +94,8 @@
           "status": "vazio",
           "total_obs": 0,
           "total_valor": 0,
-          "coletado_em": "2026-06-05T09:02:55.982638",
-          "run_id": "27005228900"
+          "coletado_em": "2026-06-05T20:14:01.090592",
+          "run_id": "27037586452"
         },
         "2026": {
           "status": "vazio",
@@ -128,8 +128,8 @@
           "status": "vazio",
           "total_obs": 0,
           "total_valor": 0,
-          "coletado_em": "2026-06-05T09:03:56.693469",
-          "run_id": "27005228900"
+          "coletado_em": "2026-06-05T20:15:02.482124",
+          "run_id": "27037586452"
         },
         "2026": {
           "status": "vazio",
@@ -162,8 +162,8 @@
           "status": "vazio",
           "total_obs": 0,
           "total_valor": 0,
-          "coletado_em": "2026-06-05T09:04:57.379712",
-          "run_id": "27005228900"
+          "coletado_em": "2026-06-05T20:16:03.613237",
+          "run_id": "27037586452"
         },
         "2026": {
           "status": "vazio",
@@ -196,8 +196,8 @@
           "status": "vazio",
           "total_obs": 0,
           "total_valor": 0,
-          "coletado_em": "2026-06-05T09:05:58.125210",
-          "run_id": "27005228900"
+          "coletado_em": "2026-06-05T20:17:04.827548",
+          "run_id": "27037586452"
         },
         "2026": {
           "status": "vazio",
@@ -230,8 +230,8 @@
           "status": "vazio",
           "total_obs": 0,
           "total_valor": 0,
-          "coletado_em": "2026-06-05T09:06:59.207577",
-          "run_id": "27005228900"
+          "coletado_em": "2026-06-05T20:18:05.976128",
+          "run_id": "27037586452"
         },
         "2026": {
           "status": "vazio",
@@ -264,8 +264,8 @@
           "status": "vazio",
           "total_obs": 0,
           "total_valor": 0,
-          "coletado_em": "2026-06-05T09:07:59.954233",
-          "run_id": "27005228900"
+          "coletado_em": "2026-06-05T20:19:07.054884",
+          "run_id": "27037586452"
         },
         "2026": {
           "status": "vazio",
@@ -298,8 +298,8 @@
           "status": "vazio",
           "total_obs": 0,
           "total_valor": 0,
-          "coletado_em": "2026-06-05T09:09:00.684703",
-          "run_id": "27005228900"
+          "coletado_em": "2026-06-05T20:20:08.337082",
+          "run_id": "27037586452"
         },
         "2026": {
           "status": "vazio",
@@ -332,8 +332,8 @@
           "status": "vazio",
           "total_obs": 0,
           "total_valor": 0,
-          "coletado_em": "2026-06-05T09:10:01.418359",
-          "run_id": "27005228900"
+          "coletado_em": "2026-06-05T20:21:09.475334",
+          "run_id": "27037586452"
         },
         "2026": {
           "status": "vazio",
