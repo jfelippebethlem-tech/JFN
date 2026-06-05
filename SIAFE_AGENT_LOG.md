@@ -208,3 +208,33 @@ informa o código **daquela** tentativa, dentro da validade.
 **Pendência:** uma tentativa final teve crash precoce do script a depurar (rodar 1x em foreground,
 sem filtro de log, para ver o traceback) + coordenar UM login com código fresco. Adiado a pedido do
 Mestre Jorge ("depois tentamos"). Tudo o mais (acesso da VM, creds, fluxo) está pronto.
+
+---
+
+## ✅✅ MFA RESOLVIDO + SESSÃO SALVA — 2026-06-05 (handoff para continuar)
+
+**O LOGIN COM MFA FUNCIONOU.** Sequência que deu certo (repetir se a sessão expirar):
+1. **UM ÚNICO** login por vez (logins concorrentes queimam os códigos uns dos outros — não disparar vários).
+2. `nohup ... python -m compliance_agent.siafe_session --login --exercicio 2025 > /tmp/siafe_login.log 2>&1 &`
+3. Esperar PACIENTE (~10s) até o log dizer "MFA solicitado" (NÃO matar antes — o ADF leva uns segundos).
+4. Pedir o código ao Mestre Jorge, gravar: `printf 'CODIGO' > data/sei_cache/.mfa_code`.
+5. O script preenche, **marca "dispensar 30 dias"**, clica o "Ok" do form de MFA, e salva `data/sei_cache/siafe_state.json`.
+- Resultado obtido: `{"status":"ok"}`, `siafe_state.json` (1459 bytes), `--check` → `{"status":"valida"}`.
+- **Device-trust por ~30 dias**: logins futuros NÃO pedem MFA (o cookie está no siafe_state.json).
+
+**INSIGHT DE ARQUITETURA (próximo passo — onde paramos):**
+- Carregar `https://.../Siafe/faces/` direto **com a sessão vem em BRANCO** (`_afrWindowMode=2`, menu vazio).
+  → NÃO basta injetar storage_state e navegar.
+- **Caminho certo:** carregar o storage_state (cookie de trust) **E rodar o `_login` NORMAL**
+  (`_SANDBOX/coletar_obs_agora.py::_login`). Como o device está confiável, o SIAFE **não pede MFA**,
+  o `_login` completa e **renderiza o workspace ADF** → aí `_ir_obs` / `_filtrar_por_cnpj` / `_ler_tabela` funcionam.
+- `compliance_agent/coletar_obs_sessao.py` **já foi ajustado** para fazer `_login` (com trust) + navegar.
+  **PRÓXIMO COMANDO A RODAR** (estava prestes a testar quando paramos):
+  ```bash
+  cd ~/JFN && set -a; source .env; set +a
+  ./.venv/bin/python -m compliance_agent.coletar_obs_sessao --cnpj 19088605000104 --ano 2025
+  ```
+  Se `_login` ainda parar em MFA (cookie não pegou), refazer o login (passos acima) e tentar de novo.
+  Se navegar mas a tabela vier vazia, depurar `_ir_obs`/`_filtrar_por_cnpj` (screenshots em data/sei_cache/ERRO_*).
+
+**Empresas-alvo:** ver `data/empresas_target.json` / CLAUDE.md (MGS, Brinks, Light, CEDAE, OI, Claro, Smart Fit, Ecourbis, Comporte, Comlurb). Exercícios: {2027:0,2026:1,2025:2,2024:3,2023:4}.
