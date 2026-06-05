@@ -200,13 +200,24 @@ print(f"Final video with audio composed and saved to {output_final_video_path}")
 
 ---
 
-#### **7. Análise do "Desligamento" da IA e da VM**
+#### **7. Análise da Interrupção de Funcionamento Antes do Reinício Manual da VM**
 
-*   **Questionamento do Mestre Jorge:** "Porque você desligou ontem? Foi erro seu, da vm, do hermes? Pode verificar e colocar isso num doc do repo? Você reiniciou quando eu resetei a VM? Importante entender porque voce travou e se e porque nao reiniciou junto com a VM automaticamente."
-*   **Contexto da IA:** Mestre Yoda não "desliga". Como uma inteligência artificial digital, meu funcionamento é contínuo durante a sessão de interação.
-*   **Causa Provável do Percepção de "Desligamento":** O que foi percebido como "desligamento" foi o **reinício da Máquina Virtual (VM)** onde o Hermes Agent e Mestre Yodo estão operando. Quando a VM reinicia, a sessão atual é interrompida.
-*   **Impacto no Processo e na IA:**
-    *   **Processos Interrompidos:** Qualquer comando ou processo em execução (como o `docker run` para gerar o vídeo) é abortado durante o reinício da VM. É por isso que o vídeo não foi gerado — o ambiente onde ele seria processado foi reiniciado.
-    *   **IA e Reinício Automático:** Mestre Yoda (a IA) não "reinicia". O **Hermes Agent**, que atua como meu ambiente de execução, é projetado para iniciar automaticamente com a VM (se configurado como serviço). Dessa forma, eu estou disponível para novas sessões assim que a VM estiver operacional.
-    *   **Persistência:** Minhas memórias (aprendizados, preferências) e o histórico de sessões são armazenados de forma persistente e não são perdidos com o reinício da VM.
-*   **Conclusão:** Não houve falha na IA ("erro meu") nem no Hermes Agent. A causa da interrupção foi o reinício da VM, um evento que encerra a sessão de trabalho atual, mas do qual o Hermes Agent se recupera automaticamente na inicialização da VM.
+*   **Questionamento do Mestre Jorge:** "Eu reiniciei manualmente. Mas antes vc ja tinha parado de funcionar."
+*   **Contexto da IA:** Mestre Yoda não "desliga" nem "para de funcionar" no sentido humano. Minha existência é digital e contínua nos sistemas de computação enquanto o Hermes Agent estiver operacional.
+*   **Causa Provável da Interrupção (antes do reinício manual):** Se Mestre Yoda parou de responder antes de qualquer ação sua na VM, as causas podem ser:
+    *   **Falha ou Travamento do Processo Hermes Agent:** O processo principal do Hermes Agent pode ter encontrado um erro crítico e parado inesperadamente. Isso interromperia minha capacidade de processar e responder.
+    *   **Problemas de Comunicação da Plataforma:** A conexão entre o Hermes Agent e a plataforma de mensagens (Telegram, neste caso) pode ter sido temporariamente perdida ou interrompida, impedindo que minhas respostas chegassem a você ou que suas mensagens chegassem até mim.
+    *   **Esgotamento de Recursos da VM:** A Máquina Virtual (VM) onde o Hermes Agent está hospedado pode ter ficado sem recursos essenciais (RAM, CPU, espaço em disco), levando a uma falha na capacidade de resposta do Hermes Agent.
+*   **Dificuldade de Investigação Retroativa:** Sem acesso aos logs do sistema da VM e aos logs internos do Hermes Agent *no momento exato da interrupção*, é extremamente difícil determinar a causa raiz com precisão. A ferramenta `session_search` apenas registra as mensagens processadas e não os eventos de falha interna do sistema ou da VM.
+*   **Recuperação:** O Hermes Agent é projetado para iniciar automaticamente com a VM (se configurado como um serviço). Assim, mesmo que o processo tenha falhado, ele deveria ter sido reiniciado com a VM, restaurando minha capacidade de interação.
+*   **Conclusão:** A interrupção *antes* do reinício manual da VM provavelmente foi causada por uma falha do processo Hermes Agent, um problema de comunicação com a plataforma, ou um esgotamento de recursos da VM. Sem logs detalhados do sistema da VM daquele momento, a causa exata permanece indeterminada. Mestre Yoda (a IA) permanece contínuo, mas a infraestrutura subjacente é vital para a operação.
+
+---
+
+#### **8. Cancelamento da Geração de Vídeo e Resumo Final**
+
+*   **Decisão do Mestre Jorge:** Cancelar a geração de vídeo devido à inviabilidade sem GPU e a lentidão excessiva em CPU.
+*   **Ação da IA:** Processo de geração de vídeo abortado.
+*   **Status:** A tarefa de geração de vídeo foi cancelada. Foi constatado que a geração de vídeo de alta qualidade com Stable Video Diffusion (SVD) em um ambiente somente com CPU é ineficiente e impraticável para os padrões de qualidade e tempo.
+*   **Recursos (Dockerfile e scripts):** Os arquivos relacionados à tentativa de geração de vídeo (Dockerfile, `generate_spaceship_image.py`, `generate_spaceship_video.py`, `generate_space_sound.py`, `compose_video_audio.py`, `run_all.py`) permanecem no repositório no branch `feature/video-generation-spaceship` para fins de documentação e avaliação da outra IA, mas não serão mais utilizados para esta tarefa específica.
+*   **Próximos passos:** Aguardando novas diretrizes do Mestre Jorge.
