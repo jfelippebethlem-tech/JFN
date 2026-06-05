@@ -9,16 +9,20 @@ on:
       siafe_pass:
         description: 'SIAFE_PASS'
         required: true
+      siafe_mfa_code:
+        description: 'Código MFA (se necessário — alphanumerico, ex: aB3xYz)'
+        required: false
+        default: ''
       anos:
         description: 'Anos (ex: 2023,2024,2025,2026)'
         required: false
         default: '2023,2024,2025,2026'
       telegram_token:
-        description: 'TELEGRAM_BOT_TOKEN — necessário para MFA automático'
+        description: 'TELEGRAM_BOT_TOKEN — fallback MFA automático'
         required: false
         default: ''
       telegram_chat:
-        description: 'TELEGRAM_CHAT_ID — necessário para MFA automático'
+        description: 'TELEGRAM_CHAT_ID — fallback MFA automático'
         required: false
         default: ''
 
@@ -48,7 +52,6 @@ jobs:
 
       - name: Instalar dependencias do sistema para Chromium
         run: |
-          # Ubuntu 24.04 Noble renomeou libasound2 para libasound2t64
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libasound2t64 libgbm1 libxkbcommon0 libxfixes3 libxrandr2 \
@@ -74,6 +77,7 @@ jobs:
         env:
           CI: "true"
           HEADLESS: "true"
+          SIAFE_MFA_CODE: ${{ github.event.inputs.siafe_mfa_code }}
           TELEGRAM_BOT_TOKEN: ${{ github.event.inputs.telegram_token }}
           TELEGRAM_CHAT_ID: ${{ github.event.inputs.telegram_chat }}
         run: python _SANDBOX/coletar_obs_agora.py
@@ -83,11 +87,11 @@ jobs:
         run: |
           if [ -f data/sei_cache/mgsclean_obs_todas.json ]; then
             python3 -c "
-          import json, sys
-          d = json.load(open('data/sei_cache/mgsclean_obs_todas.json'))
-          print(f'OBs coletadas : {d.get(\"total_obs\",0)}')
-          print(f'Valor total   : R\$ {d.get(\"total_valor\",0):,.2f}')
-          sys.exit(0 if d.get('total_obs',0)>0 else 1)
+import json, sys
+d = json.load(open('data/sei_cache/mgsclean_obs_todas.json'))
+print(f'OBs coletadas : {d.get(\"total_obs\",0)}')
+print(f'Valor total   : R\$ {d.get(\"total_valor\",0):,.2f}')
+sys.exit(0 if d.get('total_obs',0)>0 else 1)
             "
           else
             echo 'ERRO: arquivo de OBs nao gerado'
