@@ -73,3 +73,6 @@ massare/data/*.db-*
 data/sei_cache/siafe_state.json
 data/sei_cache/.mfa_code
 data/sei_cache/obs_sessao_*.json
+
+# TFE: CSVs grandes baixados (regeneráveis)
+data/tfe_cache/
