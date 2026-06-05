@@ -41,6 +41,11 @@ FREE_LLM_PREFER = os.environ.get("FREE_LLM_PREFER", "qwen").lower()
 OPENROUTER_MODEL_FAST  = os.environ.get("OPENROUTER_FAST_MODEL", "qwen/qwen-2.5-72b-instruct:free")
 OPENROUTER_MODEL_SMART = os.environ.get("OPENROUTER_SMART_MODEL", "qwen/qwen-2.5-72b-instruct:free")
 
+# Modelos Groq (free tier) — usados em groq_chat_async e status_provedores.
+# Antes eram referenciados sem definição global (NameError). Configuráveis por env.
+GROQ_MODEL_FAST  = os.environ.get("GROQ_MODEL_FAST",  "llama-3.1-8b-instant")
+GROQ_MODEL_SMART = os.environ.get("GROQ_MODEL_SMART", "llama-3.3-70b-versatile")
+
 
 # ── Cliente genérico OpenAI-compatible ────────────────────────────────────────
 
@@ -333,6 +338,22 @@ async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = Fal
         max_tokens=max_tokens,
         extra_headers=OPENROUTER_HEADERS,
     )
+
+
+async def qwen_chat_async(prompt: str, system: str = "", smart: bool = False,
+                          max_tokens: int = 1024) -> str:
+    """Qwen como provedor PRIMÁRIO (via OpenRouter, evitando o 429 recorrente do Groq).
+
+    Antes era importado em hermes_agent.py mas não existia (ImportError a cada chamada,
+    mascarado pelo fallback). Aqui roteia para o modelo Qwen do OpenRouter; se OpenRouter/Qwen
+    falhar, cai para o melhor provedor livre disponível (Ollama/Groq/OpenRouter).
+    """
+    try:
+        if openrouter_available():
+            return await openrouter_chat_async(prompt, system=system, smart=smart, max_tokens=max_tokens)
+    except Exception:
+        pass
+    return await best_free_chat_async(prompt, system=system, smart=smart)
 
 
 # ── Interface unificada (escolhe o melhor disponível) ─────────────────────────
