@@ -128,33 +128,53 @@ async def _settle(pg, ms: int = 4000):
     await asyncio.sleep(max(1.5, ms / 2500))
 
 
-async def _dismiss_popups(pg, tries: int = 6):
-    """Fecha modais ADF (OK/Fechar/Sim) que travam a navegação."""
+async def _dismiss_popups(pg, tries: int = 6, allow_confirm: bool = False):
+    """Fecha modais ADF que travam a navegação.
+
+    allow_confirm=True: inclui 'confirmar/continuar' (para popups PRÉ-login).
+    allow_confirm=False: apenas 'ok/sim/fechar', nunca clica dentro de loginBox
+                         (evita re-click no botão de login após falha).
+    """
+    kws_overlay = ['ok','sim','fechar','confirmar','continuar','continue'] if allow_confirm \
+                  else ['ok','sim','fechar']
+    kws_body    = ['ok','sim','fechar']
+
     for _ in range(tries):
-        result = await pg.evaluate("""() => {
-            // Exclui 'confirmar'/'continue'/'continuar' — evita re-click no botão de login
-            const kws = ['ok','sim','fechar'];
-            // Só fecha popups dentro de overlays/dialogs ADF
-            const containers = [
-                ...document.querySelectorAll('[id*="popup"], [id*="dlg"], [id*="modal"], [id*="dialog"], .xc9, .x1n'),
-                document.body,  // fallback: qualquer botão visível
-            ];
-            for (const root of containers) {
-                for (const el of root.querySelectorAll('button, a, input[type="button"], input[type="submit"]')) {
+        result = await pg.evaluate(f"""() => {{
+            const kws_overlay = {json.dumps(kws_overlay)};
+            const kws_body    = {json.dumps(kws_body)};
+
+            // 1. Tenta em overlays/dialogs ADF primeiro
+            for (const root of document.querySelectorAll(
+                '[id*="popup"], [id*="dlg"], [id*="modal"], [id*="dialog"], .xc9, .x1n'
+            )) {{
+                for (const el of root.querySelectorAll(
+                    'button, a, input[type="button"], input[type="submit"]'
+                )) {{
                     const t = (el.textContent || el.value || '').trim().toLowerCase();
                     const r = el.getBoundingClientRect();
-                    if (r.width > 0 && r.height > 0 && kws.some(k => t === k || t === k.toUpperCase())) {
-                        // Só clica se for inside um overlay/dialog ou se o id contiver popup/dlg
-                        const isInOverlay = el.closest('[id*="popup"], [id*="dlg"], [id*="dialog"], .xc9, .x1n');
-                        if (isInOverlay || root === document.body) {
-                            el.click();
-                            return t;
-                        }
-                    }
-                }
-            }
+                    if (r.width > 0 && r.height > 0 && kws_overlay.some(k => t === k)) {{
+                        el.click();
+                        return 'overlay:' + t;
+                    }}
+                }}
+            }}
+
+            // 2. Fallback: qualquer botão visível no body, mas NÃO dentro de loginBox
+            for (const el of document.querySelectorAll(
+                'button, a, input[type="button"], input[type="submit"]'
+            )) {{
+                const t = (el.textContent || el.value || '').trim().toLowerCase();
+                const r = el.getBoundingClientRect();
+                if (r.width > 0 && r.height > 0 && kws_body.some(k => t === k)) {{
+                    if (!el.closest('[id*="loginBox"]')) {{
+                        el.click();
+                        return 'body:' + t;
+                    }}
+                }}
+            }}
             return null;
-        }""")
+        }}""")
         if result:
             print(f"    → Popup fechado: [{result}]")
             await asyncio.sleep(2)
@@ -183,26 +203,54 @@ async def _login(pg, ano: int) -> bool:
 
     exercicio_val = EXERCICIOS.get(ano, "1")
     print(f"\n  → Login exercício {ano} (SELECT valor={exercicio_val}) …")
+    print(f"    Usuário: {usuario[:4]}*** | Credenciais: {'OK' if usuario and senha else 'AUSENTES'}")
 
+    # Navega para login — espera rede estabilizar (ADF renderiza via JS)
     await pg.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=TIMEOUT)
-    await asyncio.sleep(3)
-    await _dismiss_popups(pg)
+    await _settle(pg, 6000)
+
+    title = await pg.title()
+    print(f"    Página: '{title[:60]}' | URL: {pg.url[:70]}")
+
+    # Fecha popups de sessão expirada/aviso (allow_confirm=True: aceita continuar/confirmar em overlays)
+    await _dismiss_popups(pg, allow_confirm=True)
     await _screenshot(pg, f"01_login_{ano}")
 
-    # Preenche campos com teclado real (ADF requer keystroke real)
+    # Debug: elementos do formulário visíveis
+    form_els = await pg.evaluate("""() =>
+        [...document.querySelectorAll('input,select')].filter(
+            e => e.getBoundingClientRect().width > 0
+        ).map(e => e.id || e.name || e.type).filter(Boolean).slice(0,15)
+    """)
+    print(f"    Form elements visíveis: {form_els}")
+
+    # Debug: todos os <select> da página (opções incluídas)
+    sel_info = await pg.evaluate("""() =>
+        [...document.querySelectorAll('select')].map(s => ({
+            id: s.id,
+            visible: s.getBoundingClientRect().width > 0,
+            opts: [...s.options].map(o => o.value + ':' + o.text.substring(0,18))
+        }))
+    """)
+    print(f"    Selects: {json.dumps(sel_info, ensure_ascii=False)[:600]}")
+
+    # Preenche usuário
     for field_id, value in [
-        ("loginBox:itxUsuario::content", usuario),
+        ("loginBox:itxUsuario::content",  usuario),
         ("loginBox:itxSenhaAtual::content", senha),
     ]:
+        filled = False
         try:
             el = pg.locator(f'[id="{field_id}"]').first
-            await el.click(timeout=5000)
+            await el.wait_for(state="visible", timeout=5000)
+            await el.click(timeout=4000)
             await el.fill("")
-            await pg.keyboard.type(value, delay=50)
-            await asyncio.sleep(0.4)
+            await pg.keyboard.type(value, delay=40)
+            await asyncio.sleep(0.3)
+            filled = True
         except Exception as exc:
             print(f"    [w] campo {field_id}: {exc}")
-            # Fallback via JS
+        if not filled:
             await pg.evaluate(
                 f"""(v) => {{
                     const el = document.getElementById('{field_id}');
@@ -210,51 +258,108 @@ async def _login(pg, ano: int) -> bool:
                         e => el.dispatchEvent(new Event(e, {{bubbles:true}})));
                     }}
                 }}""",
-                value
+                value,
             )
 
-    # Seleciona cliente (RJ=0) e exercício
-    # ADF af:selectOneChoice renderiza <tr id="...cbxCliente"> com <select id="...cbxCliente::content"> dentro
+    # Seleciona cliente (RJ=0) e exercício — ADF af:selectOneChoice
+    # Tenta várias estratégias em cascata
     for sel_id, val in [("cbxCliente", "0"), ("cbxExercicio", exercicio_val)]:
-        try:
+        set_ok = False
+
+        # Estratégia 1: Playwright nativo no elemento ::content (seletor CSS direto)
+        for css in [
+            f'select[id*="{sel_id}::content"]',
+            f'[id*="{sel_id}::content"]',
+        ]:
+            try:
+                loc = pg.locator(css).first
+                if await loc.count() > 0:
+                    await loc.select_option(val, timeout=3000)
+                    print(f"    select {sel_id}: native css={css} → {val} ✔")
+                    set_ok = True
+                    break
+            except Exception:
+                pass
+
+        # Estratégia 2: JavaScript com múltiplos padrões
+        if not set_ok:
             result = await pg.evaluate(f"""(v) => {{
+                // Tenta ID com ::content (padrão ADF)
                 let el = document.querySelector('[id*="{sel_id}::content"]');
+                // Fallback: select filho do container ADF
                 if (!el) {{
                     const c = document.querySelector('[id*="{sel_id}"]');
-                    el = c ? (c.tagName === 'SELECT' ? c : c.querySelector('select')) : null;
+                    el = c ? (c.tagName==='SELECT' ? c : c.querySelector('select')) : null;
+                }}
+                // Fallback: qualquer select com nome/id parecido
+                if (!el) {{
+                    for (const s of document.querySelectorAll('select')) {{
+                        if ((s.id||'').toLowerCase().includes('{sel_id.lower()}') ||
+                            (s.name||'').toLowerCase().includes('{sel_id.lower()}')) {{
+                            el = s; break;
+                        }}
+                    }}
                 }}
                 if (el && el.tagName === 'SELECT') {{
                     el.value = v;
-                    ['change', 'blur'].forEach(e => el.dispatchEvent(new Event(e, {{bubbles:true}})));
-                    return el.id + '=' + v;
+                    ['change','blur'].forEach(e => el.dispatchEvent(new Event(e,{{bubbles:true}})));
+                    return 'js:' + el.id + '=' + el.value + ' (opts=' + el.options.length + ')';
                 }}
-                return 'not found';
+                // Diagnóstico: mostra todos os selects
+                const all = [...document.querySelectorAll('select')].map(s=>s.id||s.name||'?');
+                return 'not_found selects=' + JSON.stringify(all);
             }}""", val)
             print(f"    select {sel_id}: {result}")
-            await asyncio.sleep(0.5)
-        except Exception as exc:
-            print(f"    [w] JS select {sel_id}: {exc}")
+            if "js:" in result:
+                set_ok = True
+
+        # Estratégia 3: ADF Page API (se disponível)
+        if not set_ok:
+            r3 = await pg.evaluate(f"""(v) => {{
+                try {{
+                    if (typeof AdfPage !== 'undefined') {{
+                        const comp = AdfPage.PAGE.findComponentByAbsoluteId('loginBox:{sel_id}');
+                        if (comp) {{ comp.setValue(v); return 'adf_api:ok'; }}
+                    }}
+                }} catch(e) {{}}
+                return 'adf_api:n/a';
+            }}""", val)
+            print(f"    select {sel_id} ADF API: {r3}")
+
+        await asyncio.sleep(0.5)
 
     await asyncio.sleep(1)
+    await _screenshot(pg, f"01b_presubmit_{ano}")
 
-    # Clica OK
-    for btn in ["loginBox:btnConfirmar", "btnConfirmar"]:
+    # Clica botão Confirmar/Login
+    btn_clicked = False
+    for btn_sel in [
+        '[id*="loginBox"][id*="btnConfirmar"]',
+        '[id*="btnConfirmar"]',
+        'input[type="submit"]',
+        'button[type="submit"]',
+    ]:
         try:
-            loc = pg.locator(f'[id*="{btn}"]').first
-            if await loc.count() > 0:
+            loc = pg.locator(btn_sel).first
+            cnt = await loc.count()
+            if cnt > 0:
+                txt = (await loc.text_content() or "").strip()[:20]
+                print(f"    Clicando botão: '{txt}' ({btn_sel})")
                 await loc.click(timeout=5000)
+                btn_clicked = True
                 break
         except Exception:
             pass
-    else:
+    if not btn_clicked:
+        print("    [w] Botão não encontrado — pressionando Enter")
         await pg.keyboard.press("Enter")
 
-    await asyncio.sleep(8)
-    await _dismiss_popups(pg)
+    await asyncio.sleep(10)
+    await _dismiss_popups(pg, allow_confirm=False)
     await _screenshot(pg, f"02_pos_login_{ano}")
 
     url = pg.url.lower()
-    ok = "login" not in url and "autenticacao" not in url
+    ok  = "login" not in url and "autenticacao" not in url
     print(f"  → Login {'✔ OK' if ok else '✖ FALHOU'} — {pg.url[:80]}")
     return ok
 
