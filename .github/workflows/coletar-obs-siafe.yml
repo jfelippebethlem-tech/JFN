@@ -13,6 +13,14 @@ on:
         description: 'Anos (ex: 2023,2024,2025,2026)'
         required: false
         default: '2023,2024,2025,2026'
+      telegram_token:
+        description: 'TELEGRAM_BOT_TOKEN — necessário para MFA automático'
+        required: false
+        default: ''
+      telegram_chat:
+        description: 'TELEGRAM_CHAT_ID — necessário para MFA automático'
+        required: false
+        default: ''
 
 jobs:
   coletar-obs:
@@ -56,14 +64,18 @@ jobs:
       - name: Criar .env e diretorios
         run: |
           mkdir -p data/sei_cache screenshots/obs_coleta
-          printf 'SIAFE_USER=%s\nSIAFE_PASS=%s\nCI=true\nHEADLESS=true\n' \
+          printf 'SIAFE_USER=%s\nSIAFE_PASS=%s\nTELEGRAM_BOT_TOKEN=%s\nTELEGRAM_CHAT_ID=%s\nCI=true\nHEADLESS=true\n' \
             '${{ github.event.inputs.siafe_user }}' \
-            '${{ github.event.inputs.siafe_pass }}' > .env
+            '${{ github.event.inputs.siafe_pass }}' \
+            '${{ github.event.inputs.telegram_token }}' \
+            '${{ github.event.inputs.telegram_chat }}' > .env
 
       - name: Coletar OBs SIAFE 2023-2026
         env:
           CI: "true"
           HEADLESS: "true"
+          TELEGRAM_BOT_TOKEN: ${{ github.event.inputs.telegram_token }}
+          TELEGRAM_CHAT_ID: ${{ github.event.inputs.telegram_chat }}
         run: python _SANDBOX/coletar_obs_agora.py
         timeout-minutes: 45
 
