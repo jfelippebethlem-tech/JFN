@@ -18,6 +18,7 @@ import os
 import sys
 import argparse
 from contextlib import asynccontextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
@@ -61,6 +62,13 @@ _load_env()
 _agent = None
 _agent_lock = asyncio.Lock()
 _otp_queue: Optional[asyncio.Queue] = None  # for passing OTP from web UI to agent
+
+# ── Reverse tunnel state ──────────────────────────────────────────────────────
+_tunnel_ws: Optional["WebSocket"] = None          # Windows tunnel connection
+_tunnel_lock = asyncio.Lock()
+_tunnel_collect_event = asyncio.Event()           # signals a collect request
+_tunnel_collect_args: dict = {}                   # {"anos": [...]}
+_tunnel_results: list = []                        # accumulated OBs from Windows
 
 
 async def get_agent():
@@ -897,6 +905,200 @@ async def submit_otp(payload: dict):
         if not fut.done():
             fut.set_result(code)
     return {"ok": True}
+
+
+# ── Reverse tunnel (Windows → Server) ────────────────────────────────────────
+
+@app.get("/api/tunnel/status")
+async def api_tunnel_status():
+    """Retorna se o tunnel do Windows está conectado."""
+    return JSONResponse({
+        "connected": _tunnel_ws is not None,
+        "obs_recebidas": len(_tunnel_results),
+    })
+
+
+@app.post("/api/tunnel/collect")
+async def api_tunnel_collect(payload: dict = None):
+    """Dispara coleta de OBs pelo tunnel Windows. Requer tunnel conectado."""
+    global _tunnel_collect_args, _tunnel_results
+    if _tunnel_ws is None:
+        return JSONResponse({"erro": "Tunnel Windows não conectado"}, status_code=503)
+    anos = (payload or {}).get("anos", [2023, 2024, 2025, 2026])
+    _tunnel_collect_args = {"anos": anos}
+    _tunnel_results = []
+    _tunnel_collect_event.set()
+    try:
+        await _tunnel_ws.send_text(json.dumps({"type": "collect", "anos": anos}))
+    except Exception as e:
+        return JSONResponse({"erro": str(e)}, status_code=500)
+    return JSONResponse({"ok": True, "anos": anos, "msg": "Comando enviado ao tunnel Windows"})
+
+
+def _salvar_obs_no_db(obs: list[dict]):
+    """Persiste OBs recebidas via tunnel no banco de dados."""
+    try:
+        from compliance_agent.database.models import init_db, get_session, OrdemBancaria
+        init_db()
+        session = get_session()
+        try:
+            salvos = 0
+            for ob in obs:
+                ano = ob.get("exercicio")
+                if ano:
+                    session.query(OrdemBancaria).filter(
+                        OrdemBancaria.exercicio == str(ano),
+                        OrdemBancaria.favorecido_cpf == "19.088.605/0001-04",
+                        OrdemBancaria.categoria == "mgs_clean_auditoria",
+                    ).delete(synchronize_session=False)
+                novo = OrdemBancaria(
+                    numero_ob       = ob.get("numero_ob", ""),
+                    data_emissao    = ob.get("data_emissao"),
+                    ug_codigo       = ob.get("ug_codigo", ""),
+                    ug_nome         = ob.get("ug_nome", ""),
+                    favorecido_cpf  = ob.get("favorecido_cpf", ""),
+                    favorecido_banco= ob.get("favorecido_nome", ""),
+                    valor           = float(ob.get("valor") or 0),
+                    tipo_ob         = ob.get("tipo_ob", ""),
+                    status          = ob.get("status", "PAGO"),
+                    numero_processo = ob.get("numero_processo", ""),
+                    exercicio       = str(ob.get("exercicio", "")),
+                    categoria       = "mgs_clean_real",
+                    raw_json        = ob.get("raw_json", "{}"),
+                )
+                session.add(novo)
+                salvos += 1
+            session.commit()
+            return salvos
+        finally:
+            session.close()
+    except Exception as e:
+        print(f"[tunnel] erro ao salvar OBs: {e}")
+        return 0
+
+
+def _salvar_obs_json(obs: list[dict]):
+    """Salva OBs em JSON por ano e consolidado."""
+    cache_dir = Path(__file__).parent / "data" / "sei_cache"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    por_ano: dict[int, list] = {}
+    for ob in obs:
+        ano = int(ob.get("exercicio", 0))
+        por_ano.setdefault(ano, []).append(ob)
+
+    for ano, lst in por_ano.items():
+        (cache_dir / f"mgsclean_obs_{ano}.json").write_text(
+            json.dumps(lst, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
+    consolidado = {
+        "empresa": "MGS CLEAN SOLUCOES E SERVICOS LTDA",
+        "cnpj": "19.088.605/0001-04",
+        "fonte": "SIAFE via tunnel",
+        "coleta": datetime.now().isoformat(),
+        "total_obs": len(obs),
+        "total_valor": sum(float(o.get("valor") or 0) for o in obs),
+        "por_ano": {
+            str(ano): {
+                "count": len(lst),
+                "valor": sum(float(o.get("valor") or 0) for o in lst),
+            }
+            for ano, lst in por_ano.items()
+        },
+        "obs": obs,
+    }
+    (cache_dir / "mgsclean_obs_todas.json").write_text(
+        json.dumps(consolidado, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return cache_dir / "mgsclean_obs_todas.json"
+
+
+def _git_push_obs():
+    """Commita e faz push dos arquivos de OBs coletados."""
+    try:
+        import subprocess
+        root = str(Path(__file__).parent)
+        subprocess.run(["git", "-C", root, "add",
+                        "data/sei_cache/mgsclean_obs*.json",
+                        "data/compliance.db"], check=False, capture_output=True)
+        subprocess.run(["git", "-C", root, "commit", "-m",
+                        "data: OBs MGS CLEAN coletadas via tunnel Windows"],
+                       check=False, capture_output=True)
+        subprocess.run(["git", "-C", root, "push", "-u", "origin",
+                        "claude/rj-finance-agent-BYlhJ"],
+                       check=False, capture_output=True, timeout=60)
+        print("[tunnel] git push concluído")
+    except Exception as e:
+        print(f"[tunnel] git push falhou: {e}")
+
+
+@app.websocket("/tunnel")
+async def websocket_tunnel(ws: WebSocket):
+    """WebSocket reverso: Windows conecta aqui para transmitir OBs do SIAFE."""
+    global _tunnel_ws, _tunnel_results
+
+    await ws.accept()
+    async with _tunnel_lock:
+        _tunnel_ws = ws
+
+    print("[tunnel] Windows conectado!")
+    total_obs_recebidas = 0
+
+    try:
+        while True:
+            raw = await ws.receive_text()
+            msg = json.loads(raw)
+            t   = msg.get("type", "")
+
+            if t == "hello":
+                print(f"[tunnel] hello de {msg.get('role', '?')}")
+                await ws.send_text(json.dumps({"type": "ack", "msg": "JFN Server OK"}))
+
+            elif t == "obs_batch":
+                ano = msg.get("ano")
+                obs = msg.get("obs", [])
+                print(f"[tunnel] {len(obs)} OBs recebidas do ano {ano}")
+                _tunnel_results.extend(obs)
+                total_obs_recebidas += len(obs)
+                # Salva no DB em tempo real
+                salvos = _salvar_obs_no_db(obs)
+                await ws.send_text(json.dumps({
+                    "type": "ack_batch", "ano": ano,
+                    "salvos": salvos, "total": total_obs_recebidas,
+                }))
+
+            elif t == "done":
+                total = msg.get("total", total_obs_recebidas)
+                print(f"[tunnel] Coleta finalizada: {total} OBs")
+                # Salva JSON consolidado + git push
+                json_path = _salvar_obs_json(_tunnel_results)
+                _git_push_obs()
+                await ws.send_text(json.dumps({
+                    "type": "saved",
+                    "total": total,
+                    "json": str(json_path),
+                    "msg": "OBs salvas no DB e JSON. Git push feito.",
+                }))
+
+            elif t == "progress":
+                print(f"[tunnel] {msg.get('msg', '')}")
+
+            elif t == "error":
+                print(f"[tunnel] erro no Windows: {msg.get('msg', '')}")
+                await ws.send_text(json.dumps({"type": "ack_error", "msg": msg.get("msg", "")}))
+
+            elif t == "pong":
+                pass
+
+    except WebSocketDisconnect:
+        print("[tunnel] Windows desconectou")
+    except Exception as e:
+        print(f"[tunnel] erro: {e}")
+    finally:
+        async with _tunnel_lock:
+            if _tunnel_ws is ws:
+                _tunnel_ws = None
 
 
 # ── WebSocket chat ────────────────────────────────────────────────────────────
