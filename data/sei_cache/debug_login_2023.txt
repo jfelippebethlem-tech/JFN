@@ -1,4 +1,4 @@
-timestamp: 2026-06-05T05:31:28.695184
+timestamp: 2026-06-05T06:02:02.501962
 ano: 2023
 exercicio_val: 4
 url_pos_load: https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp
@@ -39,21 +39,22 @@ Esqueceu sua senha?	Ok
 	Versão 4.167.12 - Build: 202605281616
  	
 	
-Autenticação Multifator
+Usuário Logado
+	
 	 
- 	O código informado é inválido. Tente novamente ou solicite um novo código.
+ 	
 	
-* Código	
-Dispensar código neste dispositivo por 30 dias.	
+	O usuário '14398839712' já está logado no sistema a partir do endereço IP 172.172.87.66. Ao prosseguir com o Login, a conexão feita a partir do outro local será fechada. Deseja continuar?
+	
 
-
 	
+Sim
 	
-	Ok	Reenviar código	Cancelar
+Não
 	 
 
 	
 	
 	
 error_msgs: []
-buttons_after: ["Ok", "Ok", "Reenviar c\u00f3digo", "Cancelar"]
+buttons_after: ["Ok"]
