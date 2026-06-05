@@ -34,7 +34,12 @@ vm_ssh_key.pem
 # SEI: sessao e dados de processos NUNCA vao pro git (seguranca)
 data/tmp/chrome_debug_profile/
 data/tmp/
-data/sei_cache/
+# sei_cache: excluir dados temporários mas manter dados estruturados de auditoria
+data/sei_cache/tfe_*.json
+data/sei_cache/siafe_*.json
+data/sei_cache/2026*.json
+data/sei_cache/SEI-*.json
+data/sei_cache/cdp_*.json
 **/sessao_cookies.json
 data/diagnostics/*.html
 data/diagnostics/*.json
