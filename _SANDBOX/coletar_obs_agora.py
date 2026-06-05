@@ -484,7 +484,7 @@ async def _dismiss_popups(pg, tries: int = 6, allow_confirm: bool = False):
     kws = ['ok','sim','fechar','confirmar','continuar','continue','prosseguir','yes'] \
           if allow_confirm else ['ok','sim','fechar']
     # Sempre exclui o botão principal de submit do formulário de login para não entrar em loop.
-    skip_ids = ['btnconfirmar']
+    skip_ids = ['btnconfirmar'] if allow_confirm else ['btnconfirmar', 'cancel', 'nao', 'não']
 
     for _ in range(tries):
         result = await pg.evaluate(f"""() => {{
@@ -767,10 +767,10 @@ async def _login(pg, ano: int) -> bool:
             await _screenshot(pg, f"01d_poll2_{ano}")
 
         # Tenta dispensar popup "O Sistema está aberto em outra janela" / "já está logado"
-        # PRIORIDADE 1: clica explicitamente no botão de confirmação ADF (msgDlg::ok)
+        # PRIORIDADE 1: IDs explícitos — click SEM checar visibilidade (ADF usa CSS 0x0 durante animação)
         # NUNCA clica em botões com 'cancel' no id — são os botões "Não/Cancelar"
         _pop = await pg.evaluate("""() => {
-            // Prioridade 1: botão positivo ADF por ID explícito (evita confusão com cancel)
+            // Prioridade 1: botão positivo ADF por ID explícito — click mesmo com 0x0 (ADF CSS quirk)
             const okSel = [
                 'docPrincipal::msgDlg::ok',
                 'docPrincipal:msgDlg:ok',
@@ -778,26 +778,37 @@ async def _login(pg, ano: int) -> bool:
             for (const selId of okSel) {
                 const btn = document.getElementById(selId);
                 if (btn) {
-                    const r = btn.getBoundingClientRect();
-                    const visible = (r.width > 0 && r.height > 0) || (btn.offsetWidth > 0 && btn.offsetHeight > 0);
-                    if (visible) { btn.click(); return 'popup_clicado:msgDlg_ok id=' + btn.id; }
+                    btn.click();
+                    return 'popup_clicado:msgDlg_ok id=' + btn.id;
                 }
             }
-            // Seletor genérico para outros dialogs ADF (nunca cancel)
+            // Seletor genérico para outros dialogs ADF (nunca cancel) — também sem check de visibilidade
             const okGeneric = document.querySelector('[id$="::msgDlg::ok"],[id$=":msgDlg:ok"]');
             if (okGeneric) {
-                const r = okGeneric.getBoundingClientRect();
-                if ((r.width > 0 && r.height > 0) || (okGeneric.offsetWidth > 0 && okGeneric.offsetHeight > 0)) {
-                    okGeneric.click();
-                    return 'popup_clicado:msgDlg_ok_generic id=' + okGeneric.id;
+                okGeneric.click();
+                return 'popup_clicado:msgDlg_ok_generic id=' + okGeneric.id;
+            }
+
+            // Prioridade 2: busca texto "Sim" em QUALQUER elemento folha (ADF às vezes usa <a> simples)
+            const SKIP_IDS = ['itxusuario','itxsenha','btnconfirmar','cancel','nao','não'];
+            for (const el of document.querySelectorAll('*')) {
+                if (el.childElementCount === 0) {
+                    const t = (el.textContent || '').trim();
+                    if (t === 'Sim' || t === 'sim') {
+                        const id = (el.id || '').toLowerCase();
+                        if (!SKIP_IDS.some(s => id.includes(s))) {
+                            el.click();
+                            return 'sim_folha:' + el.tagName + '[' + el.id + ']';
+                        }
+                    }
                 }
             }
 
-            // Prioridade 2: varredura por texto — exclui botões de cancelar/não
+            // Prioridade 3: varredura por texto em botões/links visíveis — exclui cancelar/não
             const LABELS = ['continuar','prosseguir','continue','sim','yes'];
             const SKIP   = ['itxusuario','itxsenha','btnconfirmar','cancel','nao','não'];
             for (const el of document.querySelectorAll(
-                'button, a[role="button"], input[type="button"], input[type="submit"]'
+                'button, a, input[type="button"], input[type="submit"]'
             )) {
                 const t = (el.textContent || el.value || '').trim().toLowerCase();
                 const id = (el.id || el.className || '').toLowerCase();
@@ -820,17 +831,14 @@ async def _login(pg, ano: int) -> bool:
             }).map(el => (el.textContent || el.value || '').trim().substring(0,20) + '[' + el.id.substring(0,30) + ']');
             return allBtns.length ? 'no_match btns=' + JSON.stringify(allBtns.slice(0,8)) : null;
         }""")
-        if _pop and _pop.startswith('popup_clicado:'):
+        if _pop and (_pop.startswith('popup_clicado:') or _pop.startswith('sim_folha:')):
             print(f"    → Popup dispensado: [{_pop}]", flush=True)
             await asyncio.sleep(2)
         elif _pop:
             print(f"    → Poll#{_poll_n}: {_pop}", flush=True)
-            # Tenta Enter como fallback (confirma dialog com foco padrão ADF)
-            await pg.keyboard.press("Enter")
+            # NÃO pressiona Enter — o foco ADF padrão pode estar no botão "Não"
             await asyncio.sleep(2)
         else:
-            # Sem botões visíveis — tenta Enter mesmo assim
-            await pg.keyboard.press("Enter")
             await asyncio.sleep(2)
 
     # Detecta tela MFA (SIAFE exige código por e-mail após credenciais válidas)
