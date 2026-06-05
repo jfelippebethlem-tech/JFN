@@ -10,7 +10,7 @@ on:
         description: 'SIAFE_PASS'
         required: true
       siafe_mfa_code:
-        description: 'Código MFA (se necessário — alphanumerico, ex: aB3xYz)'
+        description: 'Codigo MFA (se necessario - alfanumerico)'
         required: false
         default: ''
       anos:
@@ -18,11 +18,11 @@ on:
         required: false
         default: '2023,2024,2025,2026'
       telegram_token:
-        description: 'TELEGRAM_BOT_TOKEN — fallback MFA automático'
+        description: 'TELEGRAM_BOT_TOKEN - fallback MFA automatico'
         required: false
         default: ''
       telegram_chat:
-        description: 'TELEGRAM_CHAT_ID — fallback MFA automático'
+        description: 'TELEGRAM_CHAT_ID - fallback MFA automatico'
         required: false
         default: ''
 
@@ -87,11 +87,11 @@ jobs:
         run: |
           if [ -f data/sei_cache/mgsclean_obs_todas.json ]; then
             python3 -c "
-import json, sys
-d = json.load(open('data/sei_cache/mgsclean_obs_todas.json'))
-print(f'OBs coletadas : {d.get(\"total_obs\",0)}')
-print(f'Valor total   : R\$ {d.get(\"total_valor\",0):,.2f}')
-sys.exit(0 if d.get('total_obs',0)>0 else 1)
+          import json, sys
+          d = json.load(open('data/sei_cache/mgsclean_obs_todas.json'))
+          print(f'OBs coletadas : {d.get(\"total_obs\",0)}')
+          print(f'Valor total   : R\$ {d.get(\"total_valor\",0):,.2f}')
+          sys.exit(0 if d.get('total_obs',0)>0 else 1)
             "
           else
             echo 'ERRO: arquivo de OBs nao gerado'
