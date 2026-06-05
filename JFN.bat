@@ -120,12 +120,21 @@ goto :passo6
 echo         OK - Chrome ja estava no modo debug
 
 :passo6
-REM ====== PASSO 6: aviso de login automatico =================
-echo   [6/7] Login automatico no SIAFE2...
-echo         O agente faz login sozinho com as credenciais do .env
-echo         e re-loga quando a sessao expira ~1h. Nada manual.
+REM ====== PASSO 6: coleta inicial de OBs (se nao existir) ====
+echo   [6/7] Verificando dados de Ordens Bancarias...
+if exist "data\sei_cache\mgsclean_obs_todas.json" goto :obs_ok
+echo         Dados de OBs nao encontrados.
+echo         Iniciando coleta SIAFE 2023-2026 (pode levar ~20 min)...
+python _SANDBOX/coletar_obs_agora.py
+if errorlevel 1 echo         AVISO: coleta de OBs falhou - o agente continua sem esses dados.
+if not errorlevel 1 echo         OBs coletadas e salvas.
+goto :passo7
 
-REM ====== PASSO 7: dashboard web + agente continuo ===========
+:obs_ok
+echo         OK - dados de OBs ja coletados anteriormente.
+
+:passo7
+REM ====== (passo 7 continua) dashboard web + agente continuo ==
 echo   [7/7] Subindo dashboard web e o agente...
 
 REM Sobe o painel profissional numa janela separada (PC e celular)
