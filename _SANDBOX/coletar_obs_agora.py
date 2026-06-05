@@ -1435,9 +1435,12 @@ async def main():
         print("Defina SIAFE_USER e SIAFE_PASS no arquivo .env")
         sys.exit(1)
 
+    _cur_year = datetime.now().year
+    _anos_env = os.environ.get("SIAFE_ANOS", "")
+    _anos_raw = sys.argv[1:] if sys.argv[1:] else _anos_env.split(",")
     anos = sorted(
-        [int(a) for a in sys.argv[1:] if a.isdigit() and int(a) in EXERCICIOS]
-        or list(EXERCICIOS.keys()),
+        [int(a.strip()) for a in _anos_raw if a.strip().isdigit() and int(a.strip()) in EXERCICIOS]
+        or [y for y in EXERCICIOS if y <= _cur_year],
         reverse=True,
     )
 
