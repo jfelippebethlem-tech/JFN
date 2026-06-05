@@ -31,11 +31,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias Python
         run: |
-          pip install playwright==1.43.0 requests python-dotenv 2>/dev/null || true
-          playwright install chromium
-          if [ -f requirements.txt ]; then pip install -r requirements.txt 2>/dev/null || true; fi
+          pip install -r requirements.txt
+          pip install requests python-dotenv 2>/dev/null || true
+
+      - name: Instalar Chromium (versao correta para playwright)
+        run: playwright install chromium --with-deps
 
       - name: Criar .env e diretorios
         run: |
