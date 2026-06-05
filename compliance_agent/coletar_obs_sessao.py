@@ -30,6 +30,22 @@ def _load_collector():
     return mod
 
 
+async def _navegar_ob(pg):
+    """Execução → Execução Financeira → Ordens Bancárias (caminho mapeado em docs/SIAFE-NAVEGACAO.md).
+    Retorna True se a grade pt1:tblOrdemBancaria apareceu."""
+    # 1) menu Execução (anchor xyo, texto exato)
+    await pg.evaluate(r"""() => {const a=[...document.querySelectorAll('a.xyo')].find(e=>(e.innerText||'').trim()==='Execução'); if(a)a.click();}""")
+    await pg.wait_for_timeout(1800)
+    # 2) Execução Financeira (disclosureAnchor)
+    await pg.evaluate(r"""() => {const a=document.getElementById('pt1:pt_np3:1:pt_cni4::disclosureAnchor')
+                                  || [...document.querySelectorAll('a.xyo')].find(e=>(e.innerText||'').trim()==='Execução Financeira'); if(a)a.click();}""")
+    await pg.wait_for_timeout(2200)
+    # 3) Ordens Bancárias (por texto)
+    await pg.evaluate(r"""() => {const a=[...document.querySelectorAll('a')].find(e=>(e.innerText||'').trim()==='Ordens Bancárias'); if(a)a.click();}""")
+    await pg.wait_for_timeout(10000)
+    return await pg.evaluate(r"""() => !!document.querySelector('[id*="tblOrdemBancaria"]')""")
+
+
 async def coletar(cnpj, cnpj_fmt, ano):
     if not STATE.exists():
         return {"erro": "sem sessão — rode siafe_session --login primeiro"}
@@ -53,10 +69,10 @@ async def coletar(cnpj, cnpj_fmt, ano):
                 await mod._screenshot(pg, "ERRO_login_sessao")
                 return {"erro": "login (com trust) falhou", "url": pg.url}
 
-            # navega até as OBs (tenta o caminho direto, depois 'Lista de Favorecido')
-            nav = await mod._ir_obs(pg)
+            # navega até as OBs pelo caminho mapeado (Execução > Execução Financeira > Ordens Bancárias)
+            nav = await _navegar_ob(pg)
             if not nav:
-                nav = await mod._ir_lista_favorecido(pg)
+                nav = await mod._ir_obs(pg)  # fallback
             if not nav:
                 await mod._screenshot(pg, "ERRO_nav_obs_sessao")
                 return {"erro": "não chegou na tela de OBs", "url": pg.url}
