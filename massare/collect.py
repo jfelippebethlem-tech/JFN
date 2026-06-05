@@ -21,6 +21,7 @@ UNIVERSE = [
     # Índices BR / câmbio
     ("^BVSP",   "Ibovespa",            "index",     "BR", "BRL"),
     ("USDBRL=X","Dólar/Real",          "fx",        "BR", "BRL"),
+    ("DX-Y.NYB","DXY (índice dólar)",  "fx",        "US", "USD"),
     ("EWZ",     "iShares Brazil ETF",  "etf",       "US", "USD"),
     # Índices EUA
     ("^GSPC",   "S&P 500",             "index",     "US", "USD"),
