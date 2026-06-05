@@ -803,6 +803,67 @@ def _gerar_relatorio_md(todas: list[dict], anos: list[int]) -> str:
     return "\n".join(L)
 
 
+# ── Persistência no compliance.db ────────────────────────────────────────────
+
+def _salvar_no_db(obs: list[dict]):
+    """
+    Salva OBs reais no compliance.db.
+    Remove estimativas ('mgs_clean_auditoria') dos exercícios coletados antes de inserir.
+    """
+    try:
+        import sqlite3
+        db_path = REPO_ROOT / "data" / "compliance.db"
+        if not db_path.exists():
+            print("  [w] compliance.db não encontrado — pulando inserção DB")
+            return
+
+        conn = sqlite3.connect(str(db_path))
+        cur  = conn.cursor()
+        now  = datetime.now().isoformat()
+
+        anos_reais = sorted({ob["ano"] for ob in obs if ob.get("ano")})
+
+        # Remove estimativas dos exercícios que vamos inserir com dados reais
+        for ano in anos_reais:
+            cur.execute(
+                "DELETE FROM ordens_bancarias WHERE exercicio=? AND categoria='mgs_clean_auditoria'",
+                (ano,)
+            )
+            print(f"    → Estimativas removidas para {ano}: {cur.rowcount} registros")
+
+        # Insere OBs reais
+        for ob in obs:
+            cur.execute("""
+                INSERT INTO ordens_bancarias
+                    (numero_ob, data_emissao, ug_codigo, ug_nome, favorecido_cpf,
+                     favorecido_nome, valor, tipo_ob, status, numero_processo,
+                     exercicio, coletado_em, created_at, updated_at, categoria, raw_json)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, (
+                ob.get("numero_ob"),
+                ob.get("data_emissao"),
+                ob.get("ug_emitente"),
+                _ug_nome(ob.get("ug_emitente","")) if ob.get("ug_emitente") else None,
+                ob.get("favorecido_cnpj"),
+                ob.get("favorecido_nome"),
+                ob.get("valor", 0.0),
+                ob.get("tipo_ob"),
+                ob.get("status"),
+                ob.get("processo"),
+                ob.get("ano"),
+                now, now, now,
+                "mgs_clean_real",
+                json.dumps(ob, ensure_ascii=False),
+            ))
+
+        conn.commit()
+        conn.close()
+        print(f"  ✔ DB: {len(obs)} OBs reais inseridas ({anos_reais})")
+
+    except Exception as exc:
+        print(f"  [w] Erro DB: {exc}")
+
+
 # ── Git push automático ────────────────────────────────────────────────────────
 
 def _git_push(arquivos: list[str], mensagem: str):
@@ -914,8 +975,12 @@ async def main():
         print(f"  Anos:             {', '.join(str(a) for a in sorted(anos_coletados))}")
         print(f"{'━'*56}")
 
+        # Salva no compliance.db
+        print("\n→ Salvando no banco de dados …")
+        _salvar_no_db(todas_obs)
+
         # Git push automático
-        print("\n→ Fazendo git push …")
+        print("→ Fazendo git push …")
         arquivos_json = [
             str(CACHE_DIR / "mgsclean_obs_todas.json"),
             str(CACHE_DIR / "mgsclean_obs_resumo.md"),
