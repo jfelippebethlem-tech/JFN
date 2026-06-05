@@ -64,3 +64,7 @@ hermes-tudo.sh
 # ronda (runtime)
 data/ronda.log
 data/ronda_state.json
+
+# Massare: DB regenerável via massare.collect --backfill
+massare/data/*.db
+massare/data/*.db-*
