@@ -27,6 +27,14 @@ on:
         description: 'TELEGRAM_CHAT_ID (opcional)'
         required: false
         default: ''
+      modo:
+        description: 'Modo de coleta: cnpjs (padrão) ou todos_ugs (varre todos os órgãos SIAFE)'
+        required: false
+        default: 'cnpjs'
+      ugs:
+        description: 'UGs alvo em modo todos_ugs (ex: 270016,270042 — vazio = descobre dinamicamente)'
+        required: false
+        default: ''
 
 jobs:
   coletar-obs:
@@ -86,6 +94,8 @@ jobs:
           PYTHONUNBUFFERED: '1'
           SIAFE_ANOS: ${{ github.event.inputs.anos }}
           SIAFE_CNPJS: ${{ github.event.inputs.cnpjs }}
+          SIAFE_MODO: ${{ github.event.inputs.modo }}
+          SIAFE_UGS: ${{ github.event.inputs.ugs }}
 
       - name: Verificar e exibir resultado
         if: always()
