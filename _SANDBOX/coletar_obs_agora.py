@@ -921,10 +921,17 @@ async def main():
         print("✔ Chrome CDP (porta 9222)")
     except Exception:
         print("ℹ Lançando Chromium …")
+        # headless=True em CI/GitHub Actions; False localmente para facilitar debug
+        _ci = bool(os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"))
+        _headless = _ci or os.environ.get("HEADLESS", "false").lower() == "true"
         browser = await p.chromium.launch(
-            headless=False,
-            slow_mo=150,
-            args=["--start-maximized", "--disable-blink-features=AutomationControlled"],
+            headless=_headless,
+            slow_mo=0 if _headless else 150,
+            args=[
+                "--no-sandbox", "--disable-dev-shm-usage",
+                "--disable-gpu" if _headless else "--start-maximized",
+                "--disable-blink-features=AutomationControlled",
+            ],
         )
         print("✔ Chromium lançado")
 
