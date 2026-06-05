@@ -772,7 +772,34 @@ async def _login(pg, ano: int) -> bool:
             break
 
         # Tenta dispensar popup "O Sistema está aberto em outra janela" / "já está logado"
-        # PRIORIDADE 1: IDs explícitos — click SEM checar visibilidade (ADF usa CSS 0x0 durante animação)
+        # PRIORIDADE 0 (Python Playwright): click nativo com simulação de mouse completa
+        # ADF NÃO responde a JS el.click() — precisa de mouseover→mousedown→mouseup→click
+        _pw_clicked = False
+        for _pw_id in ['myBtnOk', 'docPrincipal::msgDlg::ok', 'docPrincipal:msgDlg:ok',
+                       'docPrincipal::msgDlg::ok::button', 'cmdSim', 'btnSim']:
+            try:
+                _loc = pg.locator(f'[id="{_pw_id}"]')
+                if await _loc.count() > 0:
+                    await _loc.click(force=True, timeout=1500)
+                    print(f"    → Sim clicado (PW native): [{_pw_id}]", flush=True)
+                    _pw_clicked = True
+                    await asyncio.sleep(2)
+                    break
+            except Exception:
+                pass
+        # Fallback: click nativo em qualquer botão/link visível com texto "Sim"
+        if not _pw_clicked:
+            try:
+                _loc_sim = pg.get_by_text("Sim", exact=True).first
+                if await _loc_sim.count() > 0:
+                    await _loc_sim.click(force=True, timeout=1500)
+                    print(f"    → Sim clicado (PW get_by_text)", flush=True)
+                    _pw_clicked = True
+                    await asyncio.sleep(2)
+            except Exception:
+                pass
+
+        # PRIORIDADE 1 (JS fallback): IDs explícitos — click SEM checar visibilidade (ADF usa CSS 0x0 durante animação)
         # NUNCA clica em botões com 'cancel' no id — são os botões "Não/Cancelar"
         try:
             _pop = await pg.evaluate("""() => {
