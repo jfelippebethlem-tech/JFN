@@ -46,9 +46,12 @@ async def coletar(cnpj, cnpj_fmt, ano):
         pg = await ctx.new_page()
         await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
         try:
-            await pg.goto(APP_URL, timeout=60000, wait_until="domcontentloaded")
-            await mod._settle(pg, 5000)
-            await mod._dismiss_popups(pg, tries=4)
+            # Login NORMAL, mas com o cookie de device-trust carregado -> SIAFE NÃO pede MFA,
+            # e o workspace ADF renderiza corretamente (carregar /faces/ direto vinha em branco).
+            ok = await mod._login(pg, ano)
+            if not ok:
+                await mod._screenshot(pg, "ERRO_login_sessao")
+                return {"erro": "login (com trust) falhou", "url": pg.url}
 
             # navega até as OBs (tenta o caminho direto, depois 'Lista de Favorecido')
             nav = await mod._ir_obs(pg)
