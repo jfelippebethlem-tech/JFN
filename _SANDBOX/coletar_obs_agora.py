@@ -120,9 +120,14 @@ def _telegram(msg: str):
 
 async def _aguardar_codigo_mfa(masked_email: str) -> str:
     """
-    SIAFE tem MFA — envia alerta Telegram e aguarda código de 6 dígitos do usuário.
-    Retorna o código ou "" se Telegram não configurado / timeout.
+    SIAFE tem MFA — verifica env SIAFE_MFA_CODE primeiro, depois Telegram.
+    Retorna o código ou "" se não disponível.
     """
+    # Código fornecido diretamente via env var (run com MFA code pré-configurado)
+    direct = os.environ.get("SIAFE_MFA_CODE", "").strip()
+    if direct:
+        print(f"  → Código MFA via env SIAFE_MFA_CODE: ******")
+        return direct
     import time
     import urllib.request
 
@@ -164,7 +169,7 @@ async def _aguardar_codigo_mfa(masked_email: str) -> str:
             for upd in data.get("result", []):
                 last_id = upd["update_id"]
                 txt = ((upd.get("message") or {}).get("text") or "").strip()
-                if re.match(r"^\d{6}$", txt):
+                if re.match(r"^[A-Za-z0-9]{4,12}$", txt):
                     print(f"  → Código MFA recebido: ******")
                     return txt
         except Exception:
