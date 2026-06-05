@@ -73,23 +73,26 @@ jobs:
           d = json.load(open('data/sei_cache/mgsclean_obs_todas.json'))
           print(f'OBs coletadas : {d.get(\"total_obs\",0)}')
           print(f'Valor total   : R\$ {d.get(\"total_valor\",0):,.2f}')
-          for ano,info in sorted((d.get(\"por_ano\") or {}).items()):
-              print(f'  {ano}: {info.get(\"count\",0)} OBs / R\$ {info.get(\"valor\",0):,.2f}')
           sys.exit(0 if d.get('total_obs',0)>0 else 1)
             "
           else
-            echo 'ERRO: arquivo de OBs nao gerado'; ls data/sei_cache/ || true; exit 1
+            echo 'ERRO: arquivo de OBs nao gerado'
+            ls -la data/sei_cache/ || true
+            cat data/sei_cache/debug_login_*.txt 2>/dev/null || true
+            exit 1
           fi
 
       - name: Gerar PDF de auditoria
         run: python _SANDBOX/gerar_relatorio_obs_pdf.py 2>/dev/null || true
 
       - name: Commit e push dos dados
+        if: always()
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "JFN Coleta SIAFE"
-          git add data/sei_cache/mgsclean_obs*.json data/compliance.db reports/*.pdf 2>/dev/null || true
-          git diff --staged --quiet || git commit -m "data: OBs MGS CLEAN coletadas $(date +%Y-%m-%d)"
+          git add data/sei_cache/ reports/ 2>/dev/null || true
+          git add data/compliance.db 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "data: OBs/debug SIAFE $(date +%Y-%m-%d_%H%M)"
           git push origin claude/rj-finance-agent-BYlhJ
 
       - name: Salvar artefatos
@@ -98,7 +101,7 @@ jobs:
         with:
           name: obs-siafe-run-${{ github.run_number }}
           path: |
-            data/sei_cache/mgsclean_obs*.json
+            data/sei_cache/
             reports/auditoria*.pdf
             screenshots/obs_coleta/
           retention-days: 30
