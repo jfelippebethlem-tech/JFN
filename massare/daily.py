@@ -62,6 +62,12 @@ def run(horizon=5, record=True):
     # 4) placar + sentimento
     out["placar"] = learning.scoreboard()
     out["sentimento"] = behavior.snapshot()
+    # regime de mercado (HMM) dos índices-âncora, p/ condicionar leitura
+    try:
+        from massare import ml
+        out["regimes"] = {s: ml.regime_hmm(s).get("rotulo_atual") for s in ["^GSPC", "^BVSP", "BTC-USD"]}
+    except Exception as e:
+        out["regimes_erro"] = str(e)[:60]
     store.set_meta("last_daily", out["ts"])
     return out
 
