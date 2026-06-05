@@ -118,9 +118,63 @@ def _telegram(msg: str):
         pass
 
 
+async def _poll_github_for_mfa(repo: str, masked_email: str) -> str:
+    """
+    Polling do arquivo data/sei_cache/.mfa_input no GitHub (branch feature).
+    O arquivo é escrito externamente (por IA/humano via push) com o código MFA.
+    Script permanece na MESMA sessão SIAFE — não faz novo login.
+    """
+    import urllib.request, base64, time as _time
+
+    branch   = os.environ.get("GITHUB_HEAD_REF") or "claude/rj-finance-agent-BYlhJ"
+    mfa_path = "data/sei_cache/.mfa_input"
+    api_url  = f"https://api.github.com/repos/{repo}/contents/{mfa_path}"
+
+    print(f"\n  ╔══════════════════════════════════════════════════════════╗")
+    print(f"  ║  AGUARDANDO CÓDIGO MFA — NÃO FAÇA NOVO LOGIN            ║")
+    print(f"  ║  SIAFE enviou código para: {masked_email[:28]:<28}║")
+    print(f"  ║  Para fornecer o código, empurre no GitHub:             ║")
+    print(f"  ║  Arquivo: {mfa_path:<48}║")
+    print(f"  ║  Branch : {branch:<48}║")
+    print(f"  ║  Conteúdo: apenas o código alfanumérico (ex: aB3xYz)   ║")
+    print(f"  ╚══════════════════════════════════════════════════════════╝\n")
+
+    deadline  = _time.time() + 300
+    loop      = asyncio.get_event_loop()
+    last_sha  = None
+
+    while _time.time() < deadline:
+        await asyncio.sleep(10)
+        try:
+            req = urllib.request.Request(
+                f"{api_url}?ref={branch}&t={int(_time.time())}",
+                headers={
+                    "Accept":     "application/vnd.github+json",
+                    "User-Agent": "siafe-collector/2.0",
+                },
+            )
+            resp = await loop.run_in_executor(None, lambda: urllib.request.urlopen(req, timeout=8))
+            data = json.loads(resp.read())
+            sha  = data.get("sha", "")
+            raw  = base64.b64decode(data.get("content", "")).decode("utf-8").strip()
+            if raw and sha != last_sha and re.match(r"^[A-Za-z0-9]{4,12}$", raw):
+                last_sha = sha
+                print(f"  → Código MFA recebido via GitHub polling: ******")
+                return raw
+        except Exception as _e:
+            if "404" not in str(_e):
+                pass
+        remaining = int(deadline - _time.time())
+        if remaining > 0 and remaining % 60 == 0:
+            print(f"  → Aguardando código MFA… {remaining}s restantes")
+
+    print("  → Timeout GitHub polling (5 min)")
+    return ""
+
+
 async def _aguardar_codigo_mfa(masked_email: str) -> str:
     """
-    SIAFE tem MFA — verifica env SIAFE_MFA_CODE primeiro, depois Telegram.
+    SIAFE tem MFA — verifica env SIAFE_MFA_CODE primeiro, depois GitHub polling, depois Telegram.
     Retorna o código ou "" se não disponível.
     """
     # Código fornecido diretamente via env var (run com MFA code pré-configurado)
@@ -128,13 +182,22 @@ async def _aguardar_codigo_mfa(masked_email: str) -> str:
     if direct:
         print(f"  → Código MFA via env SIAFE_MFA_CODE: ******")
         return direct
+
     import time
     import urllib.request
+
+    # GitHub file polling (CI/cloud — mantém sessão SIAFE ativa, não faz novo login)
+    gh_repo = os.environ.get("GITHUB_REPOSITORY", "")
+    if gh_repo and (os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS")):
+        code = await _poll_github_for_mfa(gh_repo, masked_email)
+        if code:
+            return code
+        # Polling timeout — fall through to Telegram if configured
 
     token   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
     if not token or not chat_id:
-        print("  → MFA requer Telegram. Configure TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID no .env")
+        print("  → MFA: sem GitHub repo, sem Telegram — configure SIAFE_MFA_CODE ou TELEGRAM_BOT_TOKEN")
         return ""
 
     _telegram(
