@@ -183,3 +183,28 @@ copiadas do `.env.example`). Para logar de verdade da VM, faltam o **CPF (SIAFE_
 4. Coletar OBs (empenho→liquidação→pagamento) por empresa×exercício; cruzar com nº de processo SEI
    para avaliar o processo na íntegra (cadeia OB→NL→NE→processo existe no SIAFE, não no espelho TFE).
 5. Agendar coleta recorrente na VM (systemd-timer), persistindo em `data/compliance.db`.
+
+---
+
+## 🔐 MFA — aprendizado 2026-06-05 (login direto da VM)
+
+**As credenciais FUNCIONAM** (CPF `14398839712`): o login da VM passou da senha e chegou no MFA
+(não foi rejeitado). O SIAFE exige **MFA por email**: tela "Autenticação Multifator — Um código foi
+enviado para jo***@al***", com campo `loginBox:frmTokenMfa:itxTokenMfa` e checkbox
+**"Dispensar código neste dispositivo por 30 dias"** (`loginBox:frmTokenMfa:ckTrustDevice`).
+
+**Característica crítica:** o código é **por login e muda a cada tentativa** — abrir um novo login
+**invalida o código anterior**. Logo, NÃO disparar logins concorrentes (foi o erro: vários logins
+simultâneos queimavam os códigos uns dos outros). Regra: **um único login por vez**, e o usuário
+informa o código **daquela** tentativa, dentro da validade.
+
+**Estratégia de automação (implementada em `compliance_agent/siafe_session.py`):**
+1. `login_with_mfa()` loga, espera o código em `data/sei_cache/.mfa_code` (a IA pergunta ao Mestre
+   Jorge e grava), preenche, **marca "dispensar 30 dias"**, submete clicando o **"Ok" do form de MFA**
+   (Enter não basta no ADF), e salva a sessão em `data/sei_cache/siafe_state.json`.
+2. Coletas seguintes reusam `siafe_state.json` (`check_session()`) → **sem MFA por ~30 dias**.
+3. `siafe_state.json` deve ficar no `.gitignore` (sessão autenticada).
+
+**Pendência:** uma tentativa final teve crash precoce do script a depurar (rodar 1x em foreground,
+sem filtro de log, para ver o traceback) + coordenar UM login com código fresco. Adiado a pedido do
+Mestre Jorge ("depois tentamos"). Tudo o mais (acesso da VM, creds, fluxo) está pronto.
