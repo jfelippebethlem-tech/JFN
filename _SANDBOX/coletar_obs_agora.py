@@ -767,22 +767,46 @@ async def _login(pg, ano: int) -> bool:
             await _screenshot(pg, f"01d_poll2_{ano}")
 
         # Tenta dispensar popup "O Sistema está aberto em outra janela" / "já está logado"
-        # SKIP exclui campos de credenciais e o botão do formulário de login
+        # PRIORIDADE 1: clica explicitamente no botão de confirmação ADF (msgDlg::ok)
+        # NUNCA clica em botões com 'cancel' no id — são os botões "Não/Cancelar"
         _pop = await pg.evaluate("""() => {
-            const LABELS = ['continuar','prosseguir','continue','sim','yes','ok'];
-            const SKIP   = ['itxusuario','itxsenha','btnconfirmar'];
+            // Prioridade 1: botão positivo ADF por ID explícito (evita confusão com cancel)
+            const okSel = [
+                'docPrincipal::msgDlg::ok',
+                'docPrincipal:msgDlg:ok',
+            ];
+            for (const selId of okSel) {
+                const btn = document.getElementById(selId);
+                if (btn) {
+                    const r = btn.getBoundingClientRect();
+                    const visible = (r.width > 0 && r.height > 0) || (btn.offsetWidth > 0 && btn.offsetHeight > 0);
+                    if (visible) { btn.click(); return 'popup_clicado:msgDlg_ok id=' + btn.id; }
+                }
+            }
+            // Seletor genérico para outros dialogs ADF (nunca cancel)
+            const okGeneric = document.querySelector('[id$="::msgDlg::ok"],[id$=":msgDlg:ok"]');
+            if (okGeneric) {
+                const r = okGeneric.getBoundingClientRect();
+                if ((r.width > 0 && r.height > 0) || (okGeneric.offsetWidth > 0 && okGeneric.offsetHeight > 0)) {
+                    okGeneric.click();
+                    return 'popup_clicado:msgDlg_ok_generic id=' + okGeneric.id;
+                }
+            }
+
+            // Prioridade 2: varredura por texto — exclui botões de cancelar/não
+            const LABELS = ['continuar','prosseguir','continue','sim','yes'];
+            const SKIP   = ['itxusuario','itxsenha','btnconfirmar','cancel','nao','não'];
             for (const el of document.querySelectorAll(
                 'button, a[role="button"], input[type="button"], input[type="submit"]'
             )) {
                 const t = (el.textContent || el.value || '').trim().toLowerCase();
                 const id = (el.id || el.className || '').toLowerCase();
-                // Aceita visible via rect OU via offset (cobre dialogs ADF animados)
                 const r = el.getBoundingClientRect();
                 const visible = (r.width > 0 && r.height > 0)
                              || (el.offsetWidth > 0 && el.offsetHeight > 0);
                 if (visible
                     && LABELS.some(l => t === l || t.startsWith(l))
-                    && !SKIP.some(s => id.includes(s))) {
+                    && !SKIP.some(s => id.includes(s) || t === s)) {
                     el.click();
                     return 'popup_clicado:' + t + ' id=' + el.id;
                 }
