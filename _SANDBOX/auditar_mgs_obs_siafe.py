@@ -492,119 +492,204 @@ def _ug_nome(codigo: str) -> str:
 
 # ── Relatório final ──────────────────────────────────────────────────────────
 
-def _gerar_relatorio(todas_obs: list[dict], anos: list[int]) -> str:
-    """Gera o relatório consolidado em Markdown."""
+MESES_PT = {
+    1:"Janeiro", 2:"Fevereiro", 3:"Março", 4:"Abril",
+    5:"Maio", 6:"Junho", 7:"Julho", 8:"Agosto",
+    9:"Setembro", 10:"Outubro", 11:"Novembro", 12:"Dezembro",
+}
+
+
+def _brl(v: float) -> str:
+    """Formata valor em R$ no padrão brasileiro."""
+    s = f"{abs(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"R$ {s}"
+
+
+def _gerar_bloco_orgao(ug: str, obs_ug: list[dict], ano: int) -> list[str]:
+    """
+    Gera bloco Markdown para UM órgão: por mês, cada OB individual.
+    Formato solicitado: orgao → mês → OBs individuais com nº, data, valor, processo
+    """
+    nome = _ug_nome(ug)
+    total_ug = sum(ob["valor"] for ob in obs_ug)
+    n_obs = len(obs_ug)
+
     lines = [
-        "# OBs PAGAS — MGS CLEAN SOLUCOES E SERVICOS LTDA",
-        f"**CNPJ:** {CNPJ_FMT}",
-        f"**Fonte:** SIAFE2 — Execução > Execução Financeira > Ordens Bancárias",
-        f"**Coleta:** {datetime.now():%Y-%m-%d %H:%M}",
-        f"**Anos:** {', '.join(str(a) for a in sorted(anos))}",
+        f"### Órgão: {nome}",
+        f"**Código UG:** {ug}  |  **Ano:** {ano}  |  "
+        f"**Total pago:** {_brl(total_ug)}  |  **{n_obs} OBs**",
         "",
     ]
 
+    # Agrupar por mês
+    por_mes: dict[int, list] = defaultdict(list)
+    for ob in obs_ug:
+        if ob.get("mes"):
+            por_mes[ob["mes"]].append(ob)
+
+    lines.append("| Mês | Nº OB | Data Emissão | Valor (R$) | Processo SEI | Status |")
+    lines.append("|---|---|---|---:|---|---|")
+
+    for mes in sorted(por_mes.keys()):
+        obs_mes = sorted(por_mes[mes], key=lambda o: o.get("data_emissao") or "")
+        sub_total = sum(ob["valor"] for ob in obs_mes)
+
+        for i, ob in enumerate(obs_mes):
+            mes_label = f"{MESES_PT[mes][:3]}/{ano}" if i == 0 else ""
+            processo  = (ob.get("processo") or "—")[:28]
+            status    = (ob.get("status")   or "—")[:12]
+            lines.append(
+                f"| {mes_label} | {ob['numero_ob']} | {ob['data_emissao']} "
+                f"| {ob['valor']:>16,.2f} | {processo} | {status} |"
+                .replace(",", "X").replace(".", ",").replace("X", ".")
+            )
+
+        # Subtotal do mês
+        lines.append(
+            f"| ***{MESES_PT[mes][:3]} subtotal*** | | | ***{sub_total:>16,.2f}*** "
+            f"| {len(obs_mes)} OBs | |"
+            .replace(",", "X").replace(".", ",").replace("X", ".")
+        )
+
+    # Linha de total anual do órgão
+    lines.append(
+        f"| **TOTAL {ano}** | | | **{total_ug:>16,.2f}** | **{n_obs} OBs** | |"
+        .replace(",", "X").replace(".", ",").replace("X", ".")
+    )
+    lines.append("")
+    return lines
+
+
+def _gerar_relatorio(todas_obs: list[dict], anos: list[int]) -> str:
+    """
+    Gera relatório consolidado em Markdown:
+    - Resumo global
+    - Matriz consolidada ano × órgão
+    - POR ÓRGÃO: tabela mês a mês com CADA OB listada individualmente (número, data, valor, processo)
+    """
+    coleta = datetime.now().strftime("%Y-%m-%d %H:%M")
     total_geral = sum(ob["valor"] for ob in todas_obs)
-    lines += [
-        f"**Total geral de OBs pagas:** {_fmt_r(total_geral)} ({len(todas_obs)} OBs)",
+
+    lines = [
+        "# ORDENS BANCÁRIAS PAGAS — MGS CLEAN SOLUCOES E SERVICOS LTDA",
+        "",
+        f"- **CNPJ:** {CNPJ_FMT}",
+        f"- **Fonte:** SIAFE2 — Execução > Execução Financeira > Ordens Bancárias",
+        f"- **Coleta:** {coleta}",
+        f"- **Anos cobertos:** {', '.join(str(a) for a in sorted(anos))}",
+        f"- **Total geral pago:** {_brl(total_geral)} ({len(todas_obs)} OBs)",
+        f"- **Tipo de valor:** PAGO (Ordem Bancária emitida e liquidada)",
+        "",
+        "> **Nota:** Múltiplas OBs por mês são normais — cada competência ou nota fiscal",
+        "> gera uma OB separada. Cada OB tem número único e processo SEI vinculado.",
         "",
         "---",
         "",
     ]
 
-    # ── Por ano ──
-    por_ano: dict[int, list] = defaultdict(list)
+    # ── Índice de órgãos ──────────────────────────────────────────────────────
+    todos_ugs   = sorted({ob.get("ug_emitente", "—") for ob in todas_obs})
+    todos_anos_ord = sorted({ob["ano"] for ob in todas_obs if ob.get("ano")})
+
+    # Organiza: {ano: {ug: [obs]}}
+    estrutura: dict[int, dict[str, list]] = defaultdict(lambda: defaultdict(list))
     for ob in todas_obs:
-        if ob["ano"]:
-            por_ano[ob["ano"]].append(ob)
+        if ob.get("ano") and ob.get("ug_emitente"):
+            estrutura[ob["ano"]][ob["ug_emitente"]].append(ob)
 
-    for ano in sorted(por_ano.keys()):
-        obs_ano = por_ano[ano]
-        total_ano = sum(ob["valor"] for ob in obs_ano)
-        lines += [
-            f"## Ano {ano} — {_fmt_r(total_ano)} ({len(obs_ano)} OBs)",
-            "",
-        ]
+    # ── Seção 1: Resumo global ────────────────────────────────────────────────
+    lines += ["## 1. Resumo Global — Valor Pago por Ano", ""]
 
-        # ── Por mês ──
-        por_mes: dict[int, list] = defaultdict(list)
-        for ob in obs_ano:
-            if ob["mes"]:
-                por_mes[ob["mes"]].append(ob)
+    por_ano_total: dict[int, float] = {}
+    for ano in todos_anos_ord:
+        v = sum(ob["valor"] for ob in todas_obs if ob.get("ano") == ano)
+        por_ano_total[ano] = v
 
-        lines.append("### Por mês")
-        lines.append("| Mês | OBs | Valor (R$) |")
-        lines.append("|---|---:|---:|")
-        for mes in sorted(por_mes.keys()):
-            obs_mes = por_mes[mes]
-            lines.append(f"| {mes:02d}/{ano} | {len(obs_mes)} | {sum(ob['valor'] for ob in obs_mes):>15,.2f} |".replace(",", "X").replace(".", ",").replace("X", "."))
-        lines.append(f"| **TOTAL** | **{len(obs_ano)}** | **{total_ano:>15,.2f}** |".replace(",", "X").replace(".", ",").replace("X", "."))
-        lines.append("")
+    lines.append("| Ano | OBs | Valor Total Pago (R$) |")
+    lines.append("|---|---:|---:|")
+    for ano in todos_anos_ord:
+        n = sum(1 for ob in todas_obs if ob.get("ano") == ano)
+        lines.append(f"| {ano} | {n} | {por_ano_total[ano]:>18,.2f} |"
+                     .replace(",", "X").replace(".", ",").replace("X", "."))
+    lines.append(f"| **TOTAL** | **{len(todas_obs)}** | **{total_geral:>18,.2f}** |"
+                 .replace(",", "X").replace(".", ",").replace("X", "."))
+    lines += ["", "---", ""]
 
-        # ── Por órgão (UG Emitente) ──
-        por_ug: dict[str, list] = defaultdict(list)
-        for ob in obs_ano:
-            ug = ob.get("ug_emitente") or "—"
-            por_ug[ug].append(ob)
+    # ── Seção 2: Matriz órgão × ano ───────────────────────────────────────────
+    lines += ["## 2. Matriz Consolidada — Valor Pago por Órgão × Ano", ""]
+    hdr = "| Órgão (UG) | Código |" + "".join(f" {a} (R$) |" for a in todos_anos_ord) + " TOTAL (R$) |"
+    sep = "|---|---|" + "---:|" * (len(todos_anos_ord) + 1)
+    lines += [hdr, sep]
 
-        lines.append("### Por órgão (UG Emitente)")
-        lines.append("| Órgão | UG Code | OBs | Valor (R$) |")
-        lines.append("|---|---|---:|---:|")
-        for ug, obs_ug in sorted(por_ug.items(), key=lambda x: -sum(o["valor"] for o in x[1])):
-            tv = sum(ob["valor"] for ob in obs_ug)
-            nome = _ug_nome(ug)
-            lines.append(f"| {nome} | {ug} | {len(obs_ug)} | {tv:>15,.2f} |".replace(",", "X").replace(".", ",").replace("X", "."))
-        lines.append("")
-
-        # ── Detalhamento (primeiras 30 OBs) ──
-        lines.append("### Detalhamento das OBs")
-        lines.append("| Número OB | Data | UG | Valor (R$) | Processo SEI | Status |")
-        lines.append("|---|---|---|---:|---|---|")
-        for ob in sorted(obs_ano, key=lambda o: (o.get("data_emissao") or "")):
-            lines.append(
-                f"| {ob['numero_ob']} | {ob['data_emissao']} | {ob.get('ug_emitente','—')} "
-                f"| {ob['valor']:>15,.2f} | {ob.get('processo','—')} | {ob.get('status','—')} |"
-                .replace(",", "X").replace(".", ",").replace("X", ".")
-            )
-        lines.append("")
-        lines.append("---")
-        lines.append("")
-
-    # ── Resumo consolidado (matriz ano × órgão) ──
-    lines.append("## Resumo consolidado — Valor PAGO por ano e por órgão")
-    lines.append("")
-
-    todos_ugs = sorted({ob.get("ug_emitente", "—") for ob in todas_obs})
-    todos_anos_ord = sorted(por_ano.keys())
-
-    # Cabeçalho da tabela
-    header_row = "| Órgão |" + "".join(f" {a} |" for a in todos_anos_ord) + " TOTAL |"
-    sep_row    = "|---|" + "---:|" * (len(todos_anos_ord) + 1)
-    lines.append(header_row)
-    lines.append(sep_row)
-
-    totais_ano = {a: 0.0 for a in todos_anos_ord}
-    for ug in todos_ugs:
+    totais_col = {a: 0.0 for a in todos_anos_ord}
+    for ug in sorted(todos_ugs, key=lambda u: -sum(
+            ob["valor"] for ob in todas_obs if ob.get("ug_emitente") == u)):
         nome = _ug_nome(ug)
-        row = f"| {nome} |"
-        tot_ug = 0.0
+        row  = f"| {nome} | {ug} |"
+        tot  = 0.0
         for a in todos_anos_ord:
-            v = sum(ob["valor"] for ob in por_ano.get(a, []) if ob.get("ug_emitente") == ug)
-            tot_ug += v
-            totais_ano[a] = totais_ano.get(a, 0.0) + v
-            row += f" {v:,.2f} |".replace(",", "X").replace(".", ",").replace("X", ".") if v else " — |"
-        row += f" {tot_ug:,.2f} |".replace(",", "X").replace(".", ",").replace("X", ".")
+            v = sum(ob["valor"] for ob in estrutura[a].get(ug, []))
+            tot += v
+            totais_col[a] = totais_col.get(a, 0.0) + v
+            row += f" {v:,.2f} |".replace(",","X").replace(".","," ).replace("X",".") if v else " — |"
+        row += f" {tot:,.2f} |".replace(",","X").replace(".","," ).replace("X",".")
         lines.append(row)
 
-    # Linha de totais por ano
-    tot_row = "| **TOTAL** |"
-    tot_geral = 0.0
+    # Linha total
+    tr = "| **TOTAL GERAL** | — |"
+    tt = 0.0
     for a in todos_anos_ord:
-        v = totais_ano.get(a, 0.0)
-        tot_geral += v
-        tot_row += f" **{v:,.2f}** |".replace(",", "X").replace(".", ",").replace("X", ".")
-    tot_row += f" **{tot_geral:,.2f}** |".replace(",", "X").replace(".", ",").replace("X", ".")
-    lines.append(tot_row)
-    lines.append("")
+        tt += totais_col.get(a, 0.0)
+        tr += f" **{totais_col[a]:,.2f}** |".replace(",","X").replace(".","," ).replace("X",".")
+    tr += f" **{tt:,.2f}** |".replace(",","X").replace(".","," ).replace("X",".")
+    lines += [tr, "", "---", ""]
+
+    # ── Seção 3: Por órgão — detalhe mês a mês + OB a OB ─────────────────────
+    lines += [
+        "## 3. Detalhamento por Órgão — Pagamentos Mês a Mês (OB individual)",
+        "",
+        "> Para cada órgão: cada linha é uma Ordem Bancária individual.",
+        "> Múltiplas OBs no mesmo mês são normais (cada nota fiscal / competência = 1 OB).",
+        "",
+    ]
+
+    for ano in todos_anos_ord:
+        lines += [f"### === Exercício {ano} ===", ""]
+        ugs_ano = sorted(
+            estrutura[ano].keys(),
+            key=lambda u: -sum(ob["valor"] for ob in estrutura[ano][u])
+        )
+        for ug in ugs_ano:
+            obs_ug = sorted(estrutura[ano][ug],
+                           key=lambda o: (o.get("mes") or 0, o.get("data_emissao") or ""))
+            lines.extend(_gerar_bloco_orgao(ug, obs_ug, ano))
+        lines += ["---", ""]
+
+    # ── Seção 4: Resumo mensal geral (todos os órgãos, por mês) ──────────────
+    lines += ["## 4. Resumo Mensal Geral (todos os órgãos combinados)", ""]
+    for ano in todos_anos_ord:
+        obs_ano = [ob for ob in todas_obs if ob.get("ano") == ano]
+        lines += [f"### Ano {ano}", ""]
+        por_mes_geral: dict[int, list] = defaultdict(list)
+        for ob in obs_ano:
+            if ob.get("mes"):
+                por_mes_geral[ob["mes"]].append(ob)
+        lines.append("| Mês | OBs | Valor Total (R$) | % do ano |")
+        lines.append("|---|---:|---:|---:|")
+        total_ano = sum(ob["valor"] for ob in obs_ano)
+        for mes in sorted(por_mes_geral.keys()):
+            obs_m = por_mes_geral[mes]
+            v     = sum(ob["valor"] for ob in obs_m)
+            pct   = v / total_ano * 100 if total_ano else 0
+            lines.append(
+                f"| {MESES_PT[mes]}/{ano} | {len(obs_m)} | {v:>16,.2f} | {pct:.1f}% |"
+                .replace(",","X").replace(".","," ).replace("X",".")
+            )
+        lines.append(
+            f"| **TOTAL {ano}** | **{len(obs_ano)}** | **{total_ano:>16,.2f}** | 100% |"
+            .replace(",","X").replace(".","," ).replace("X",".")
+        )
+        lines += ["", ""]
 
     return "\n".join(lines)
 
