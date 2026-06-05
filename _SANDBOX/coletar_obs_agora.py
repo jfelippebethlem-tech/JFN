@@ -361,6 +361,26 @@ async def _login(pg, ano: int) -> bool:
     url = pg.url.lower()
     ok  = "login" not in url and "autenticacao" not in url
     print(f"  → Login {'✔ OK' if ok else '✖ FALHOU'} — {pg.url[:80]}")
+
+    # Salva diagnóstico em arquivo para inspecção remota
+    try:
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        dbg = CACHE_DIR / f"debug_login_{ano}.txt"
+        dbg.write_text(
+            f"timestamp: {datetime.now().isoformat()}\n"
+            f"ano: {ano}\n"
+            f"exercicio_val: {exercicio_val}\n"
+            f"url_pos_load: {pg.url}\n"
+            f"title: {title}\n"
+            f"form_els: {json.dumps(form_els)}\n"
+            f"sel_info: {json.dumps(sel_info, ensure_ascii=False)}\n"
+            f"login_ok: {ok}\n"
+            f"url_final: {pg.url}\n",
+            encoding="utf-8",
+        )
+    except Exception as _e:
+        print(f"    [w] debug save: {_e}")
+
     return ok
 
 
