@@ -34,6 +34,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
+# Habilita flush imediato de stdout (necessário para logs em tempo real no GitHub Actions)
+sys.stdout.reconfigure(line_buffering=True)
+
 # ── Carregar .env ──────────────────────────────────────────────────────────────
 for _env_path in [
     Path.home() / ".hermes" / ".env",
@@ -277,53 +280,59 @@ async def _settle(pg, ms: int = 4000):
 async def _dismiss_popups(pg, tries: int = 6, allow_confirm: bool = False):
     """Fecha modais ADF que travam a navegação.
 
-    allow_confirm=True: inclui 'confirmar/continuar' (para popups PRÉ-login).
-    allow_confirm=False: apenas 'ok/sim/fechar', nunca clica dentro de loginBox
-                         (evita re-click no botão de login após falha).
+    allow_confirm=True: clica em confirmar/continuar/sim em qualquer popup (PRÉ-login).
+    allow_confirm=False: apenas 'ok/sim/fechar', evita re-click no btnConfirmar de login.
     """
-    kws_overlay = ['ok','sim','fechar','confirmar','continuar','continue','prosseguir'] if allow_confirm \
-                  else ['ok','sim','fechar']
-    kws_body    = ['ok','sim','fechar','continuar','prosseguir','continue'] if allow_confirm \
-                  else ['ok','sim','fechar']
+    kws = ['ok','sim','fechar','confirmar','continuar','continue','prosseguir','yes'] \
+          if allow_confirm else ['ok','sim','fechar']
+    # Quando allow_confirm=False evitamos apenas o botão de login para não entrar em loop.
+    skip_ids = [] if allow_confirm else ['btnconfirmar']
 
     for _ in range(tries):
         result = await pg.evaluate(f"""() => {{
-            const kws_overlay = {json.dumps(kws_overlay)};
-            const kws_body    = {json.dumps(kws_body)};
+            const kws     = {json.dumps(kws)};
+            const skipIds = {json.dumps(skip_ids)};
 
-            // 1. Tenta em overlays/dialogs ADF primeiro
+            // Verifica visibilidade via rect OU offset (cobre dialogs ADF animados)
+            const isVisible = el => {{
+                const r = el.getBoundingClientRect();
+                return (r.width > 0 && r.height > 0) || (el.offsetWidth > 0 && el.offsetHeight > 0);
+            }};
+
+            // 1. Tenta em overlays/dialogs ADF primeiro (selectors específicos)
             for (const root of document.querySelectorAll(
-                '[id*="popup"], [id*="dlg"], [id*="modal"], [id*="dialog"], .xc9, .x1n'
+                '[id*="popup"], [id*="dlg"], [id*="modal"], [id*="dialog"], ' +
+                '[role="dialog"], [role="alertdialog"], .xc9, .x1n, .AFPanelWindow'
             )) {{
                 for (const el of root.querySelectorAll(
                     'button, a, input[type="button"], input[type="submit"]'
                 )) {{
                     const t = (el.textContent || el.value || '').trim().toLowerCase();
-                    const r = el.getBoundingClientRect();
-                    if (r.width > 0 && r.height > 0 && kws_overlay.some(k => t === k)) {{
+                    const id = (el.id || '').toLowerCase();
+                    if (isVisible(el) && kws.some(k => t === k || t.startsWith(k + ' '))
+                        && !skipIds.some(s => id.includes(s))) {{
                         el.click();
-                        return 'overlay:' + t;
+                        return 'overlay:' + t + '[' + el.id + ']';
                     }}
                 }}
             }}
 
-            // 2. Fallback: qualquer botão visível no body, mas NÃO dentro de loginBox
+            // 2. Fallback: qualquer botão visível — exclui apenas btnConfirmar quando pedido
             for (const el of document.querySelectorAll(
-                'button, a, input[type="button"], input[type="submit"]'
+                'button, input[type="button"], input[type="submit"]'
             )) {{
                 const t = (el.textContent || el.value || '').trim().toLowerCase();
-                const r = el.getBoundingClientRect();
-                if (r.width > 0 && r.height > 0 && kws_body.some(k => t === k)) {{
-                    if (!el.closest('[id*="loginBox"]')) {{
-                        el.click();
-                        return 'body:' + t;
-                    }}
+                const id = (el.id || '').toLowerCase();
+                if (isVisible(el) && kws.some(k => t === k || t.startsWith(k + ' '))
+                    && !skipIds.some(s => id.includes(s))) {{
+                    el.click();
+                    return 'body:' + t + '[' + el.id + ']';
                 }}
             }}
             return null;
         }}""")
         if result:
-            print(f"    → Popup fechado: [{result}]")
+            print(f"    → Popup fechado: [{result}]", flush=True)
             await asyncio.sleep(2)
         else:
             break
@@ -529,46 +538,77 @@ async def _login(pg, ano: int) -> bool:
             cnt = await loc.count()
             if cnt > 0:
                 txt = (await loc.text_content() or "").strip()[:20]
-                print(f"    Clicando botão: '{txt}' ({btn_sel})")
+                print(f"    Clicando botão: '{txt}' ({btn_sel})", flush=True)
                 await loc.click(timeout=5000)
                 btn_clicked = True
                 break
         except Exception:
             pass
     if not btn_clicked:
-        print("    [w] Botão não encontrado — pressionando Enter")
+        print("    [w] Botão não encontrado — pressionando Enter", flush=True)
         await pg.keyboard.press("Enter")
 
-    # Aguarda navegação pós-login — poll a cada 2s por até 25s.
-    # Durante a espera descarta o popup ADF "usuário já logado" clicando Continuar.
-    _deadline_login = asyncio.get_event_loop().time() + 25
+    # Aguarda popup aparecer (popup ADF pode levar ~1s para animar)
+    await asyncio.sleep(1.5)
+    await _screenshot(pg, f"01c_postclick_{ano}")
+
+    # Aguarda navegação pós-login — poll a cada 2s por até 35s.
+    # SIAFE mostra popup "O Sistema está aberto em outra janela" após clicar Ok
+    # O botão "Sim" pode estar dentro do loginBox (ADF aninha dialogs no container da página).
+    # Portanto NÃO usamos !el.closest('[id*="loginBox"]') — apenas excluímos
+    # os campos de credenciais e o próprio btnConfirmar para não fazer loop.
+    _deadline_login = asyncio.get_event_loop().time() + 35
+    _poll_n = 0
     while asyncio.get_event_loop().time() < _deadline_login:
         if "login" not in pg.url.lower() and "autenticacao" not in pg.url.lower():
             break
-        # Tenta dispensar popup "já está logado" (aparece APÓS clicar Ok de login)
+        _poll_n += 1
+
+        # Captura screenshot na 2a iteração para diagnóstico (1a é imediatamente pós-click)
+        if _poll_n == 2:
+            await _screenshot(pg, f"01d_poll2_{ano}")
+
+        # Tenta dispensar popup "O Sistema está aberto em outra janela" / "já está logado"
+        # SKIP exclui campos de credenciais e o botão do formulário de login
         _pop = await pg.evaluate("""() => {
             const LABELS = ['continuar','prosseguir','continue','sim','yes','ok'];
-            const SKIP   = ['loginbox','itxusuario','itxsenha'];
+            const SKIP   = ['itxusuario','itxsenha','btnconfirmar'];
             for (const el of document.querySelectorAll(
                 'button, a[role="button"], input[type="button"], input[type="submit"]'
             )) {
                 const t = (el.textContent || el.value || '').trim().toLowerCase();
-                const r = el.getBoundingClientRect();
                 const id = (el.id || el.className || '').toLowerCase();
-                if (r.width > 0 && r.height > 0
+                // Aceita visible via rect OU via offset (cobre dialogs ADF animados)
+                const r = el.getBoundingClientRect();
+                const visible = (r.width > 0 && r.height > 0)
+                             || (el.offsetWidth > 0 && el.offsetHeight > 0);
+                if (visible
                     && LABELS.some(l => t === l || t.startsWith(l))
-                    && !SKIP.some(s => id.includes(s))
-                    && !el.closest('[id*="loginBox"]')) {
+                    && !SKIP.some(s => id.includes(s))) {
                     el.click();
-                    return 'popup_continuar:' + t;
+                    return 'popup_clicado:' + t + ' id=' + el.id;
                 }
             }
-            return null;
+            // Diagnóstico: lista todos os botões visíveis (para debug nos logs)
+            const allBtns = [...document.querySelectorAll(
+                'button, a[role="button"], input[type="button"], input[type="submit"]'
+            )].filter(el => {
+                const r = el.getBoundingClientRect();
+                return r.width > 0 || el.offsetWidth > 0;
+            }).map(el => (el.textContent || el.value || '').trim().substring(0,20) + '[' + el.id.substring(0,30) + ']');
+            return allBtns.length ? 'no_match btns=' + JSON.stringify(allBtns.slice(0,8)) : null;
         }""")
-        if _pop:
-            print(f"    → Popup pós-login dispensado: [{_pop}]")
+        if _pop and _pop.startswith('popup_clicado:'):
+            print(f"    → Popup dispensado: [{_pop}]", flush=True)
+            await asyncio.sleep(2)
+        elif _pop:
+            print(f"    → Poll#{_poll_n}: {_pop}", flush=True)
+            # Tenta Enter como fallback (confirma dialog com foco padrão ADF)
+            await pg.keyboard.press("Return")
             await asyncio.sleep(2)
         else:
+            # Sem botões visíveis — tenta Enter mesmo assim
+            await pg.keyboard.press("Return")
             await asyncio.sleep(2)
 
     # Detecta tela MFA (SIAFE exige código por e-mail após credenciais válidas)
