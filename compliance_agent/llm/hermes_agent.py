@@ -59,7 +59,6 @@ async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS)
       1. Qwen (prioritário — evita 429 recorrente do Groq)
       2. Groq llama-3.3-70b   — 100 req/min grátis, chave no .env
       3. Hermes/Nemotron/Ring/HY3/Step via provedores configurados
-    """
 
     max_tokens é repassado a TODOS os provedores — antes o Groq (caminho
     primário) ignorava o limite e truncava em 1024 tokens, encolhendo o

@@ -1,12 +1,15 @@
 """Analisa as 258 OBs e atualiza o relatório."""
 
 if __name__ == "__main__":
+    import os
     import json
     import sqlite3
     from pathlib import Path
     from collections import defaultdict, Counter
 
-    db_path = Path(r"C:\JFN\jfn\data\compliance.db")
+    # Portável: JFN_DATA_DIR (env) > <repo>/data (no Windows = C:\JFN\jfn\data)
+    _data = Path(os.environ.get("JFN_DATA_DIR", Path(__file__).resolve().parent.parent / "data"))
+    db_path = _data / "compliance.db"
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
     try:
@@ -73,7 +76,7 @@ Valores redondos suspeitos (>= R$ 5.000,00): {len(redondos)}
 - {chr(10).join([f"  {o['numero_ob']} R$ {o['valor']:,.2f} ({o['favorecido_nome']})" for o in redondos[:5]])}
 """
 
-    out_path = Path(r"C:\JFN\jfn\reports\relatorio_geral_obs.md")
+    out_path = Path(__file__).resolve().parent / "relatorio_geral_obs.md"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(report, encoding="utf-8")
     print("OK")

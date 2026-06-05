@@ -6,14 +6,16 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
-import time, base64, re, json
+import os, time, base64, re, json
 from pathlib import Path
 from PIL import Image
 from io import BytesIO
 import easyocr
 
 SEARCH_URL = "https://sei.rj.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php?acao_externa=protocolo_pesquisar&acao_origem_externa=protocolo_pesquisar&id_orgao_acesso_externo=6"
-SAVE_DIR = Path(r"C:\JFN\jfn\data\tmp\sei_captchas")
+# Portável: JFN_DATA_DIR (env) > <repo>/data (no Windows = C:\JFN\jfn\data, idêntico ao antigo)
+_DATA = Path(os.environ.get("JFN_DATA_DIR", Path(__file__).resolve().parent.parent / "data"))
+SAVE_DIR = _DATA / "tmp" / "sei_captchas"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
 reader = easyocr.Reader(['en'], gpu=False)
@@ -22,7 +24,7 @@ reader = easyocr.Reader(['en'], gpu=False)
 def build_driver() -> webdriver.Chrome:
     opts = Options()
     # reutilizar perfil já autenticado se existir
-    profile = Path(r"C:\Users\socah\AppData\Local\Google\Chrome\User Data")
+    profile = Path(os.environ.get("CHROME_USER_DATA_DIR", r"C:\Users\socah\AppData\Local\Google\Chrome\User Data"))
     if profile.exists():
         opts.add_argument(f"--user-data-dir={profile}")
         opts.add_argument("--profile-directory=Default")

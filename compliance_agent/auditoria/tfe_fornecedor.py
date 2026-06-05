@@ -103,7 +103,8 @@ def consultar(cnpj, ano):
     rows = p.ev("""(function(){var tbls=[...document.querySelectorAll('table')];var best=null,mx=0;for(var tb of tbls){var rs=tb.querySelectorAll('tr');if(rs.length>mx){mx=rs.length;best=tb}}if(!best)return '[]';var out=[];for(var tr of best.querySelectorAll('tr')){var cells=[...tr.querySelectorAll('td')].map(td=>(td.textContent||'').replace(/\\s+/g,' ').trim());if(cells.length>=5)out.push(cells);}return JSON.stringify(out)})()""")
     data = json.loads(rows or "[]")
     # salva bruto
-    cache = r"C:\JFN\jfn\data\sei_cache"
+    cache = os.environ.get("JFN_DATA_DIR") and os.path.join(os.environ["JFN_DATA_DIR"], "sei_cache") \
+        or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "sei_cache")
     os.makedirs(cache, exist_ok=True)
     safe = re.sub(r"\D", "", cnpj)
     json.dump(data, open(os.path.join(cache, "tfe_%s_%s.json" % (safe, ano)), "w", encoding="utf-8"), ensure_ascii=False)
