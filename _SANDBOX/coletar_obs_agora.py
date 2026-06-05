@@ -440,14 +440,14 @@ async def _login(pg, ano: int) -> bool:
             code = await _aguardar_codigo_mfa(masked)
 
             if code:
-                # Preenche campo de código MFA (excluindo campos de usuário/senha)
+                # Preenche campo de código MFA
+                # Exclui: campos de login/senha E inputs ocultos (ADF backing fields)
                 excluidos = ["itxUsuario", "itxSenhaAtual"]
                 filled = await pg.evaluate(f"""(c) => {{
                     const excl = {json.dumps(excluidos)};
-                    const inputs = [...document.querySelectorAll(
-                        'input[type="text"], input[type="number"], input:not([type])'
-                    )].filter(el => {{
-                        if (!el.getBoundingClientRect().width) return false;
+                    const inputs = [...document.querySelectorAll('input:not([type="hidden"])')].filter(el => {{
+                        const r = el.getBoundingClientRect();
+                        if (!r.width || !r.height) return false;
                         const id = el.id || '';
                         return !excl.some(x => id.includes(x));
                     }});
@@ -455,7 +455,7 @@ async def _login(pg, ano: int) -> bool:
                     const el = inputs[0];
                     el.focus(); el.value = c;
                     ['input','change','blur'].forEach(ev => el.dispatchEvent(new Event(ev,{{bubbles:true}})));
-                    return el.id || 'ok';
+                    return el.id + ':count=' + inputs.length;
                 }}""", code)
                 print(f"  → Código MFA preenchido: {filled}")
 
@@ -465,18 +465,21 @@ async def _login(pg, ano: int) -> bool:
                     if (cb && !cb.checked) cb.click();
                 }""")
 
-                # Clica Ok do formulário MFA (não o do loginBox)
-                await pg.evaluate("""() => {
-                    for (const el of document.querySelectorAll(
+                # Clica Ok do formulário MFA
+                # Usa o ÚLTIMO botão Ok visível (o primeiro é do loginBox, o último é do MFA)
+                clicked = await pg.evaluate("""() => {
+                    const okBtns = [...document.querySelectorAll(
                         'button, input[type="submit"], input[type="button"]'
-                    )) {
+                    )].filter(el => {
                         const t = (el.textContent || el.value || '').trim().toLowerCase();
                         const r = el.getBoundingClientRect();
-                        if (t === 'ok' && r.width > 0 && !el.closest('[id*="loginBox"]')) {
-                            el.click(); return;
-                        }
-                    }
+                        return t === 'ok' && r.width > 0 && r.height > 0;
+                    });
+                    if (!okBtns.length) return 'nao_encontrado';
+                    okBtns[okBtns.length - 1].click();
+                    return 'clicked_ok_' + okBtns.length + '_of_' + okBtns.length;
                 }""")
+                print(f"  → Botão MFA Ok: {clicked}")
 
                 try:
                     await pg.wait_for_url(
