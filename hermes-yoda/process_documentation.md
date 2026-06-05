@@ -105,3 +105,33 @@ entradas reais → o agente chutava de novo (loop, como o Yoda fez 4×).
 > Pendente: outra IA validar a branch e, se aprovar, `git merge` na `main` + `systemctl --user restart hermes-gateway`.
 > Diretriz eterna do Mestre Jorge: workflows/propostas devem assumir IAs mais simples — passos
 > explícitos, comandos prontos, resultado esperado e rollback (foi o padrão usado na PROPOSAL).
+
+---
+
+## 2026-06-05 (adendo 2) — Rotina BOM DIA + Yoda mais inteligente e menos prolixo
+
+### Rotina BOM DIA do Mestre Jorge
+- Cronjob **existia** (`81cae9684db0`, 07:30 BRT = cron `30 10 * * *`, entrega Telegram, skill
+  `gold-morning-brief`), mas o prompt era genérico. **Enriquecido** via `hermes cron edit` com o
+  formato canônico: elogio de 1 palavra + clima Barra da Tijuca + piada do dia (não repetir) +
+  versículo + MERCADO (dólar/Bovespa/ouro/petróleo, links completos) + 10 notícias (5 Brasil + 5 Rio),
+  URLs completas, nunca encurtar.
+- **Yoda lembra das rotinas a cada início:** registrei todas as rotinas ativas em
+  `~/.hermes/memories/MEMORY.md` (injetado no system prompt no início de cada sessão). Inclui a
+  nota de que jobs são por **perfil** (causa do sumiço do job original `676c8988952a`).
+  Conferir sempre com `hermes cron list`.
+
+### Modelo do Yoda — mais inteligente e menos prolixo
+Causa do "burro/prolixo": `reasoning_effort: low` cortava o raciocínio do gemini-2.5-flash, e não
+havia personalidade de concisão.
+- `agent.reasoning_effort: low → medium` (raciocínio de volta; modelo continua gemini-2.5-flash).
+- `display.personality: '' → concise` (instrução de brevidade no system prompt).
+- `agent.environment_hint`: corrigida info **desatualizada** (dizia "Qwen principal"; o real é
+  gemini-2.5-flash) e adicionada regra de estilo: responder direto, sem preâmbulo, sem narrar.
+- Backup: `~/.hermes/config.yaml.bak.pre-model-2026-06-05`.
+- **Teste (one-shot):** "3 aditivos sucessivos 10%/15%/8%, acréscimo composto?" → respondeu
+  **36,62%** (composto correto; "burro" diria 33%) em **uma linha**, 8s. Inteligente + conciso. ✅
+
+> Rollback do modelo: `cp ~/.hermes/config.yaml.bak.pre-model-2026-06-05 ~/.hermes/config.yaml && systemctl --user restart hermes-gateway`.
+> Upgrade opcional futuro: `model.default: gemini-2.5-pro` (mais inteligente, porém mais lento e
+> com cota free mais restrita — avaliar impacto na rotina diária antes).
