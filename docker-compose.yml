@@ -1,0 +1,27 @@
+services:
+  jfn-agent:
+    build: .
+    image: jfn-agent:latest
+    container_name: jfn-agent
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    volumes:
+      # SQLite database and reports persist between restarts
+      - ./data:/app/data
+      - ./reports:/app/reports
+      - ./output:/app/output
+    shm_size: '512mb'          # Chromium needs shared memory
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/api/hermes/estado"]
+      interval: 60s
+      timeout: 15s
+      retries: 3
+      start_period: 45s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"

@@ -1,0 +1,378 @@
+{
+  "cnpj": "19088605000104",
+  "total_contratos": 41,
+  "total_valor": 146704405.07,
+  "fonte": "SIAFE — Execução > Contratos e Convênios (validado 04/06/2026 via Playwright CDP)",
+  "coleta": "2026-06-04T00:00:00",
+  "contratos": [
+    {
+      "numero": "2023117",
+      "orgao": "TJ (Fundo Especial)",
+      "ug": "270005",
+      "valor": 25993908.78,
+      "situacao": "Licitado",
+      "aditivos": 1,
+      "inicio_estimado": "2023-01"
+    },
+    {
+      "numero": "215/2024",
+      "orgao": "Polícia Militar",
+      "ug": "270051",
+      "valor": 21828441.12,
+      "situacao": "Em Vigor",
+      "aditivos": 2,
+      "inicio_estimado": "2024-08"
+    },
+    {
+      "numero": "CTT 154/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 10479994.56,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-06"
+    },
+    {
+      "numero": "003-1046-2024",
+      "orgao": "TJ (Fundo Especial)",
+      "ug": "270005",
+      "valor": 10133962.14,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-07"
+    },
+    {
+      "numero": "CTT 127/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 6179981.76,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-05"
+    },
+    {
+      "numero": "43/2023",
+      "orgao": "PGE (Fundo Especial)",
+      "ug": "270009",
+      "valor": 5829998.0,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2023-03"
+    },
+    {
+      "numero": "CTT 115/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 5219701.8,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-04"
+    },
+    {
+      "numero": "CTT 107/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 4699899.48,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-03"
+    },
+    {
+      "numero": "4/2025",
+      "orgao": "INEA",
+      "ug": "270024",
+      "valor": 4598000.0,
+      "situacao": "Em Vigor",
+      "aditivos": 0,
+      "inicio_estimado": "2025-01"
+    },
+    {
+      "numero": "CTT 123/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 4189804.2,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-05"
+    },
+    {
+      "numero": "CTT 125/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 3969703.32,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-05"
+    },
+    {
+      "numero": "008/2025",
+      "orgao": "Fundo Estadual de Saúde",
+      "ug": "270029",
+      "valor": 3585096.96,
+      "situacao": "Em Vigor",
+      "aditivos": 0,
+      "inicio_estimado": "2025-02"
+    },
+    {
+      "numero": "099/2024",
+      "orgao": "RIOPREVIDÊNCIA",
+      "ug": "270020",
+      "valor": 3171961.0,
+      "situacao": "Em Vigor",
+      "aditivos": 0,
+      "inicio_estimado": "2024-10"
+    },
+    {
+      "numero": "CTT 117/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 2929933.08,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-04"
+    },
+    {
+      "numero": "025/2023",
+      "orgao": "Casa Civil",
+      "ug": "270060",
+      "valor": 2596200.98,
+      "situacao": "Em Vigor",
+      "aditivos": 3,
+      "inicio_estimado": "2023-02"
+    },
+    {
+      "numero": "CTT 116/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 2589906.24,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-04"
+    },
+    {
+      "numero": "CTT 118/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 2509781.04,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-04"
+    },
+    {
+      "numero": "CTT 19/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 2428027.8,
+      "situacao": "Encerrado",
+      "aditivos": 0,
+      "inicio_estimado": "2024-02"
+    },
+    {
+      "numero": "CTT 119/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 2189920.8,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-04"
+    },
+    {
+      "numero": "CTT 20/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 2062446.66,
+      "situacao": "Encerrado",
+      "aditivos": 0,
+      "inicio_estimado": "2024-02"
+    },
+    {
+      "numero": "CTT 122/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 1999917.6,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-05"
+    },
+    {
+      "numero": "CTT 22/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 1934630.52,
+      "situacao": "Encerrado",
+      "aditivos": 0,
+      "inicio_estimado": "2024-02"
+    },
+    {
+      "numero": "45/2023",
+      "orgao": "TCE",
+      "ug": "270006",
+      "valor": 1847967.84,
+      "situacao": "Em Vigor",
+      "aditivos": 0,
+      "inicio_estimado": "2023-03"
+    },
+    {
+      "numero": "18/2023",
+      "orgao": "SECEC",
+      "ug": "270015",
+      "valor": 1771001.62,
+      "situacao": "Em Vigor",
+      "aditivos": 2,
+      "inicio_estimado": "2023-02"
+    },
+    {
+      "numero": "CTT 120/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 1646996.28,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-04"
+    },
+    {
+      "numero": "CTT 121/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 1589923.56,
+      "situacao": "Em Vigor",
+      "aditivos": 1,
+      "inicio_estimado": "2024-04"
+    },
+    {
+      "numero": "CTT 17/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 1253035.92,
+      "situacao": "Encerrado",
+      "aditivos": 0,
+      "inicio_estimado": "2024-02"
+    },
+    {
+      "numero": "CTT 63/2022",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 1237823.06,
+      "situacao": "Em Vigor",
+      "aditivos": 3,
+      "inicio_estimado": "2022-07"
+    },
+    {
+      "numero": "005/2021",
+      "orgao": "ITERJ",
+      "ug": "270042",
+      "valor": 1085032.09,
+      "situacao": "Em Vigor",
+      "aditivos": 3,
+      "inicio_estimado": "2021-06"
+    },
+    {
+      "numero": "CTT 21/2024",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 1078703.04,
+      "situacao": "Encerrado",
+      "aditivos": 0,
+      "inicio_estimado": "2024-02"
+    },
+    {
+      "numero": "CTT 50/2022",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 802759.35,
+      "situacao": "Em Vigor",
+      "aditivos": 3,
+      "inicio_estimado": "2022-05"
+    },
+    {
+      "numero": "CTT 66/2022",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 724344.56,
+      "situacao": "Em Vigor",
+      "aditivos": 3,
+      "inicio_estimado": "2022-07"
+    },
+    {
+      "numero": "02/2023",
+      "orgao": "TCE",
+      "ug": "270006",
+      "valor": 542685.09,
+      "situacao": "Licitado",
+      "aditivos": 0,
+      "inicio_estimado": "2023-05"
+    },
+    {
+      "numero": "034/2021",
+      "orgao": "RIOPREVIDÊNCIA",
+      "ug": "270020",
+      "valor": 440160.72,
+      "situacao": "Em Vigor",
+      "aditivos": 0,
+      "inicio_estimado": "2021-09"
+    },
+    {
+      "numero": "CTT 62/2022",
+      "orgao": "Corpo de Bombeiros",
+      "ug": "270016",
+      "valor": 398317.78,
+      "situacao": "Em Vigor",
+      "aditivos": 3,
+      "inicio_estimado": "2022-07"
+    },
+    {
+      "numero": "24/2025",
+      "orgao": "PGE (Fundo Especial)",
+      "ug": "270009",
+      "valor": 358226.88,
+      "situacao": "Em Vigor",
+      "aditivos": 0,
+      "inicio_estimado": "2025-03"
+    },
+    {
+      "numero": "04/2021",
+      "orgao": "TCE",
+      "ug": "270006",
+      "valor": 333883.2,
+      "situacao": "Extinto",
+      "aditivos": 0,
+      "inicio_estimado": "2021-04"
+    },
+    {
+      "numero": "011/2022",
+      "orgao": "Fundação Inst. de Pesca",
+      "ug": "270085",
+      "valor": 244381.56,
+      "situacao": "Em Vigor",
+      "aditivos": 0,
+      "inicio_estimado": "2022-03"
+    },
+    {
+      "numero": "53/2023",
+      "orgao": "TCE",
+      "ug": "270006",
+      "valor": 97378.8,
+      "situacao": "Em Vigor",
+      "aditivos": 0,
+      "inicio_estimado": "2023-06"
+    },
+    {
+      "numero": "017/2021",
+      "orgao": "Fazenda",
+      "ug": "300100",
+      "valor": 76297.08,
+      "situacao": "Em Vigor",
+      "aditivos": 0,
+      "inicio_estimado": "2021-09"
+    },
+    {
+      "numero": "44/2023",
+      "orgao": "TCE",
+      "ug": "270006",
+      "valor": 54268.8,
+      "situacao": "Em Vigor",
+      "aditivos": 0,
+      "inicio_estimado": "2023-06"
+    }
+  ]
+}

@@ -1,0 +1,247 @@
+{
+  "data": "2026-06-03",
+  "hora": "2026-06-03T17:48:56.485304",
+  "doerj": {
+    "total_publicacoes": 0,
+    "nomeacoes": 0,
+    "contratos": 0,
+    "licitacoes": 0
+  },
+  "siafe_ob": {
+    "records_fetched": 0,
+    "records_saved": 0,
+    "errors": []
+  },
+  "alertas": {
+    "total": 34,
+    "alta": 31,
+    "media": 3,
+    "baixa": 0,
+    "por_tipo": {}
+  },
+  "alertas_detalhe": [
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 1.3% do limite de licitação — R$ 29,598.76 (dispensa obras)",
+      "descricao": "OB nº 2026OB02616 para 'Webtrip Agencia de Viagens e Turismo Ltda' tem valor R$ 29,598.76, apenas 1.3% abaixo do limite de dispensa obras (R$ 30,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 11,
+      "numero_ob": "2026OB02616",
+      "valor": 29598.76,
+      "limite": 30000.0,
+      "pct_do_limite": 98.66253333333333
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 9.3% do limite de licitação — R$ 149,667.87 (concorrencia peq)",
+      "descricao": "OB nº 2026OB03079 para 'Comercial Milano Brasil Ltda' tem valor R$ 149,667.87, apenas 9.3% abaixo do limite de concorrencia peq (R$ 165,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 45,
+      "numero_ob": "2026OB03079",
+      "valor": 149667.87,
+      "limite": 165000.0,
+      "pct_do_limite": 90.70779999999999
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 8.3% do limite de licitação — R$ 27,497.98 (dispensa obras)",
+      "descricao": "OB nº 2026OB03071 para 'Comercial Milano Brasil Ltda' tem valor R$ 27,497.98, apenas 8.3% abaixo do limite de dispensa obras (R$ 30,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 53,
+      "numero_ob": "2026OB03071",
+      "valor": 27497.98,
+      "limite": 30000.0,
+      "pct_do_limite": 91.65993333333333
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 3.4% do limite de licitação — R$ 28,988.57 (dispensa obras)",
+      "descricao": "OB nº 2026OB03943P para 'AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA.' tem valor R$ 28,988.57, apenas 3.4% abaixo do limite de dispensa obras (R$ 30,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 70,
+      "numero_ob": "2026OB03943P",
+      "valor": 28988.57,
+      "limite": 30000.0,
+      "pct_do_limite": 96.62856666666667
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 1.3% do limite de licitação — R$ 162,820.04 (concorrencia peq)",
+      "descricao": "OB nº 2026OB03926 para 'SGHN - HIGIENIZACAO TEXTIL E NUTRICAO HOSPITALAR LTDA' tem valor R$ 162,820.04, apenas 1.3% abaixo do limite de concorrencia peq (R$ 165,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 87,
+      "numero_ob": "2026OB03926",
+      "valor": 162820.04,
+      "limite": 165000.0,
+      "pct_do_limite": 98.67881212121212
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 5.0% do limite de licitação — R$ 3,135,898.35 (concorrencia alta)",
+      "descricao": "OB nº 2026OB00873 para 'Abre Construções Ltda' tem valor R$ 3,135,898.35, apenas 5.0% abaixo do limite de concorrencia alta (R$ 3,300,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 103,
+      "numero_ob": "2026OB00873",
+      "valor": 3135898.35,
+      "limite": 3300000.0,
+      "pct_do_limite": 95.02722272727273
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 5.9% do limite de licitação — R$ 155,248.38 (concorrencia peq)",
+      "descricao": "OB nº 2026OB05904 para 'JP SERVIÇOS, CONSTRUÇÕES, REFORMAS E INSTALAÇÕES EM GERAL EIRELI' tem valor R$ 155,248.38, apenas 5.9% abaixo do limite de concorrencia peq (R$ 165,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 113,
+      "numero_ob": "2026OB05904",
+      "valor": 155248.38,
+      "limite": 165000.0,
+      "pct_do_limite": 94.08992727272728
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 4.3% do limite de licitação — R$ 157,871.74 (concorrencia peq)",
+      "descricao": "OB nº 2026OB05903 para 'JP SERVIÇOS, CONSTRUÇÕES, REFORMAS E INSTALAÇÕES EM GERAL EIRELI' tem valor R$ 157,871.74, apenas 4.3% abaixo do limite de concorrencia peq (R$ 165,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 114,
+      "numero_ob": "2026OB05903",
+      "valor": 157871.74,
+      "limite": 165000.0,
+      "pct_do_limite": 95.67984242424242
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 4.1% do limite de licitação — R$ 158,216.88 (concorrencia peq)",
+      "descricao": "OB nº 2026OB05901 para 'JP SERVIÇOS, CONSTRUÇÕES, REFORMAS E INSTALAÇÕES EM GERAL EIRELI' tem valor R$ 158,216.88, apenas 4.1% abaixo do limite de concorrencia peq (R$ 165,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 116,
+      "numero_ob": "2026OB05901",
+      "valor": 158216.88,
+      "limite": 165000.0,
+      "pct_do_limite": 95.88901818181819
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 6.1% do limite de licitação — R$ 46,974.06 (dispensa servicos)",
+      "descricao": "OB nº 2026OB05899 para 'JNRF MODELO PEÇAS E ACESSÓRIOS DE MOTOS LTDA ME' tem valor R$ 46,974.06, apenas 6.1% abaixo do limite de dispensa servicos (R$ 50,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 118,
+      "numero_ob": "2026OB05899",
+      "valor": 46974.06,
+      "limite": 50000.0,
+      "pct_do_limite": 93.94811999999999
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 3.2% do limite de licitação — R$ 29,054.84 (dispensa obras)",
+      "descricao": "OB nº 2026OB05892 para 'REDE SOL FUEL DISTRIBUIDORA S/A' tem valor R$ 29,054.84, apenas 3.2% abaixo do limite de dispensa obras (R$ 30,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 131,
+      "numero_ob": "2026OB05892",
+      "valor": 29054.84,
+      "limite": 30000.0,
+      "pct_do_limite": 96.84946666666667
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 7.7% do limite de licitação — R$ 46,166.66 (dispensa servicos)",
+      "descricao": "OB nº 2026OB00404P para 'OTONI SEGURANCA E SERVICOS LTDA' tem valor R$ 46,166.66, apenas 7.7% abaixo do limite de dispensa servicos (R$ 50,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 138,
+      "numero_ob": "2026OB00404P",
+      "valor": 46166.66,
+      "limite": 50000.0,
+      "pct_do_limite": 92.33332000000001
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 3.2% do limite de licitação — R$ 29,045.39 (dispensa obras)",
+      "descricao": "OB nº 2026OB04066 para 'SEVEN SEGURANCA PATRIMONIAL LTDA' tem valor R$ 29,045.39, apenas 3.2% abaixo do limite de dispensa obras (R$ 30,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 195,
+      "numero_ob": "2026OB04066",
+      "valor": 29045.39,
+      "limite": 30000.0,
+      "pct_do_limite": 96.81796666666666
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 8.8% do limite de licitação — R$ 45,581.75 (dispensa servicos)",
+      "descricao": "OB nº 2026OB04065 para 'Conferencia Sao Jose Do Avai' tem valor R$ 45,581.75, apenas 8.8% abaixo do limite de dispensa servicos (R$ 50,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 196,
+      "numero_ob": "2026OB04065",
+      "valor": 45581.75,
+      "limite": 50000.0,
+      "pct_do_limite": 91.1635
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 9.1% do limite de licitação — R$ 45,435.16 (dispensa servicos)",
+      "descricao": "OB nº 2026OB01114 para 'A. C. F. DA SILVA LTDA-ME' tem valor R$ 45,435.16, apenas 9.1% abaixo do limite de dispensa servicos (R$ 50,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 201,
+      "numero_ob": "2026OB01114",
+      "valor": 45435.16,
+      "limite": 50000.0,
+      "pct_do_limite": 90.87032
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 9.7% do limite de licitação — R$ 27,075.13 (dispensa obras)",
+      "descricao": "OB nº 2026OB01026 para 'FOCO SERVIÇOS TERCEIRIZADOS LTDA' tem valor R$ 27,075.13, apenas 9.7% abaixo do limite de dispensa obras (R$ 30,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 211,
+      "numero_ob": "2026OB01026",
+      "valor": 27075.13,
+      "limite": 30000.0,
+      "pct_do_limite": 90.25043333333333
+    },
+    {
+      "tipo": "threshold_fracionamento",
+      "severidade": "alta",
+      "titulo": "OB a 2.6% do limite de licitação — R$ 160,718.35 (concorrencia peq)",
+      "descricao": "OB nº 2026OB02249 para 'REDE SOL FUEL DISTRIBUIDORA S/A' tem valor R$ 160,718.35, apenas 2.6% abaixo do limite de concorrencia peq (R$ 165,000). Padrão clássico de fracionamento para fugir da obrigação de licitar.",
+      "ob_id": 277,
+      "numero_ob": "2026OB02249",
+      "valor": 160718.35,
+      "limite": 165000.0,
+      "pct_do_limite": 97.40506060606062
+    },
+    {
+      "tipo": "valor_outlier",
+      "severidade": "alta",
+      "titulo": "OB com valor outlier na UG 261100 — R$ 1,816,350 (z=4.9σ)",
+      "descricao": "OB nº 2026OB05862 para 'EXTREME DIGITAL CONSULTORIA E REPRESENTACOES LTDA.' tem valor R$ 1,816,349.97, que é 4.9 desvios-padrão acima da média da UG 261100 (média R$ 160,826, DP R$ 338,933). Verificar se o valor tem respaldo em medição/contrato.",
+      "ob_id": 149,
+      "numero_ob": "2026OB05862",
+      "valor": 1816349.97,
+      "media_ug": 160826.00326086956,
+      "desvio_ug": 338932.9174730759,
+      "z_score": 4.884518090133992
+    },
+    {
+      "tipo": "valor_outlier",
+      "severidade": "alta",
+      "titulo": "OB com valor outlier na UG 266500 — R$ 162,820 (z=3.7σ)",
+      "descricao": "OB nº 2026OB03926 para 'SGHN - HIGIENIZACAO TEXTIL E NUTRICAO HOSPITALAR LTDA' tem valor R$ 162,820.04, que é 3.7 desvios-padrão acima da média da UG 266500 (média R$ 27,775, DP R$ 36,597). Verificar se o valor tem respaldo em medição/contrato.",
+      "ob_id": 87,
+      "numero_ob": "2026OB03926",
+      "valor": 162820.04,
+      "media_ug": 27774.9920754717,
+      "desvio_ug": 36596.83321081581,
+      "z_score": 3.690074688883659
+    },
+    {
+      "tipo": "valor_outlier",
+      "severidade": "alta",
+      "titulo": "OB com valor outlier na UG 096100 — R$ 72,018 (z=3.6σ)",
+      "descricao": "OB nº 2026OB01008 para 'BOLSISTAS' tem valor R$ 72,018.03, que é 3.6 desvios-padrão acima da média da UG 096100 (média R$ 14,247, DP R$ 16,130). Verificar se o valor tem respaldo em medição/contrato.",
+      "ob_id": 226,
+      "numero_ob": "2026OB01008",
+      "valor": 72018.03,
+      "media_ug": 14246.795384615385,
+      "desvio_ug": 16130.172080023764,
+      "z_score": 3.581563440785035
+    }
+  ]
+}

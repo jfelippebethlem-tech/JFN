@@ -1,0 +1,25 @@
+{
+  "data": "2026-06-01",
+  "hora": "2026-06-01T16:23:06.110139",
+  "doerj": {
+    "total_publicacoes": 6,
+    "nomeacoes": 0,
+    "contratos": 0,
+    "licitacoes": 1
+  },
+  "siafe_ob": {
+    "records_fetched": 0,
+    "records_saved": 0,
+    "errors": [
+      "Não chegou na tela de OB — URL: https://siafe2.fazenda.rj.gov.br/Siafe/faces/execucao/financeira/execucaoFinanceiraMain.jsp"
+    ]
+  },
+  "alertas": {
+    "total": 0,
+    "alta": 0,
+    "media": 0,
+    "baixa": 0,
+    "por_tipo": {}
+  },
+  "alertas_detalhe": []
+}

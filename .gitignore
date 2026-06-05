@@ -1,0 +1,57 @@
+# Environment & secrets
+.env
+*.env.local
+
+# Browser artifacts
+screenshots/
+output/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+build/
+
+# Playwright
+playwright/.cache/
+
+# Database (auto-generated at runtime, do not commit binary data)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Diagnósticos: enviar só .json e .html (estrutura), ignorar screenshots pesados
+data/diagnostics/*.png
+
+.env.txt
+vm_ssh_key.pem
+*.pem
+*.pem.txt
+
+# SEI: sessao e dados de processos NUNCA vao pro git (seguranca)
+data/tmp/chrome_debug_profile/
+data/tmp/
+# sei_cache: excluir dados temporários mas manter dados estruturados de auditoria
+data/sei_cache/tfe_*.json
+data/sei_cache/siafe_*.json
+data/sei_cache/2026*.json
+data/sei_cache/SEI-*.json
+data/sei_cache/cdp_*.json
+**/sessao_cookies.json
+data/diagnostics/*.html
+data/diagnostics/*.json
+
+# Pool de credenciais (8 chaves Gemini etc.) - NUNCA versionar
+auth.json
+**/auth.json
+auth.lock
+
+# bundle gerado (contem segredos) - NUNCA versionar
+hermes-tudo.sh
+**/hermes-tudo.sh
+
+# Claude Code local settings (permissoes pessoais, nao versionar)
+.claude/settings.local.json

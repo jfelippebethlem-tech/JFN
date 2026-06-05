@@ -1,0 +1,65 @@
+========================================
+LOG DA SESSAO — SISTEMA JFN
+Data da sessao: 2026-06-02 (ciclo /goal e auditoria SIAFE/SEI)
+========================================
+
+1) DADOS DO BANCO
+-----------------
+- Total de OBs: 258
+- Alertas gerados na ultima auditoria: 303
+- Fontes: SIAFE2 + DOERJ + memória local
+- Referencia oficial SIAFE2: https://siafe2.fazenda.rj.gov.br/Siafe/
+
+2) CONHECIMENTO ACUMULADO
+-------------------------
+- Lei 14.133/21, art. 75 I: dispensa ate R$ 119.812,02 para obras/servicos de engenharia
+- Lei 14.133/21, art. 75 II: dispensa ate R$ 59.906,02 para compras/servicos comuns
+- Lei 8.666/93, art. 23, §5: convite ate R$ 176.000 para obras e R$ 80.000 para compras
+- Empresa no CEIS/CNEP nao pode receber pagamento publico
+- Todo pagamento estadual do RJ deve ter processo SEI associado
+- UGs comuns no RJ: 300100 (SEFAZ), 200100 (Casa Civil)
+- TCU 6.100/2022: indícios de empresa irregular (capital < 50k, menos de 6m, sem CAGED, endereco residencial)
+- TCU 3.654/2020: conflito de interesse por doacao de campanha
+- Súmula Vinculante 13/STF: vedacao ao nepotismo
+- Principios aplicaveis: legalidade, impessoalidade, moralidade, publicidade, eficiencia, economicidade
+
+3) ACOES EXECUTADAS
+-------------------
+- Criação e aplicacao da configuração padrão de auditoria
+- Geracao de 303 alertas automaticos (sem SEI, valores redondos, concentracao, fracionamento, pendencias TCU/PNCP)
+- Implementação do modo /goal (sequencia padrao local sem LLM quando necessário)
+- Correção de URL SIAFE quebrada (remocao de referencia a https://siafe.rj.gov.br/)
+- Streaming de passos na interface /hermes
+- Adicao de botao Parar no frontend
+
+4) ERROS E CORRECOES
+--------------------
+- 429 do provedor LLM em chamadas externas (bloqueio momentaneo)
+- URL SIAFE incorreta causando falha de navegacao
+- NameError em _proxima_acao_local (corrigido)
+
+5) ARQUIVOS-CHAVE
+-----------------
+- C:\JFN\jfn\compliance_agent\rules\default_audit_config.py
+- C:\JFN\jfn\compliance_agent\rules\generate_alerts.py
+- C:\JFN\jfn\compliance_agent\hermes_goal.py
+- C:\JFN\jfn\reports\relatorio_auditoria_obs.md
+- C:\JFN\jfn\reports\errors.md
+
+6) COMMITS RECENTES
+-------------------
+- 52f817d feat: configuração padrão de auditoria e geração de alertas
+- 6fe0270 feat: /goal non-self-destructive continuous audit loop and SEI/OB extraction plan
+- 1d00ed8 feat: /goal runs a non-destructive local loop when no LLM is available, with auto-conclude
+
+7) PROXIMOS PASSOS
+-----------------
+- Continuar learnings SIAFE2 e SEI ininterruptamente
+- Cruzar OBs com CEIS/CNEP e PNCP
+- Priorizar ranking das 100 OBs sem SEI
+- Aprofundar os 12 casos de fracionamento
+- Aprofundar os 15 casos de concentracao
+
+========================================
+FIM DO LOG
+========================================

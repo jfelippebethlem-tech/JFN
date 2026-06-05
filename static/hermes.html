@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hermes — Auditor Autônomo · JFN</title>
+<style>
+  :root{
+    --bg:#0b1220; --panel:#121c2e; --panel2:#0e1626; --line:#243149;
+    --txt:#e6edf7; --dim:#8aa0bd; --brand:#2f6fed; --brand2:#7c3aed;
+    --red:#ef4444; --amber:#f59e0b; --green:#22c55e; --radius:14px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    height:100vh;display:flex;flex-direction:column}
+  header{padding:14px 20px;border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:12px;background:var(--panel2)}
+  .logo{width:38px;height:38px;border-radius:10px;
+    background:linear-gradient(135deg,var(--brand2),var(--brand));
+    display:flex;align-items:center;justify-content:center;font-size:20px}
+  header h1{font-size:16px;margin:0}
+  header .sub{color:var(--dim);font-size:12px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px}
+  .on{background:var(--green)} .off{background:var(--red)}
+  .wrap{flex:1;display:flex;min-height:0}
+  .side{width:320px;border-right:1px solid var(--line);padding:16px;
+    overflow-y:auto;background:var(--panel2)}
+  .main{flex:1;display:flex;flex-direction:column;min-width:0}
+  .card{background:var(--panel);border:1px solid var(--line);
+    border-radius:var(--radius);padding:14px;margin-bottom:14px}
+  .card h3{margin:0 0 8px;font-size:13px;color:var(--dim);
+    text-transform:uppercase;letter-spacing:.5px}
+  textarea,input{width:100%;background:var(--panel2);border:1px solid var(--line);
+    color:var(--txt);border-radius:10px;padding:10px;font-size:14px;font-family:inherit;resize:vertical}
+  button{background:linear-gradient(135deg,var(--brand2),var(--brand));
+    color:#fff;border:0;border-radius:10px;padding:10px 14px;font-size:14px;
+    cursor:pointer;font-weight:600}
+  button.ghost{background:#1b2840;color:var(--txt)}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  .row{display:flex;gap:8px;margin-top:8px}
+  .missao{font-size:14px;line-height:1.5;color:var(--txt);
+    background:#0e1f17;border:1px solid #1d4d34;border-radius:10px;padding:10px}
+  .missao.vazia{background:var(--panel2);border-color:var(--line);color:var(--dim)}
+  .chat{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:14px}
+  .msg{max-width:80%;padding:12px 14px;border-radius:14px;font-size:14px;line-height:1.55;white-space:pre-wrap}
+  .me{align-self:flex-end;background:var(--brand);color:#fff;border-bottom-right-radius:4px}
+  .he{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:4px}
+  .step{align-self:flex-start;max-width:88%;font-size:12.5px;color:var(--dim);
+    background:var(--panel2);border:1px dashed var(--line);border-radius:10px;padding:8px 10px}
+  .step b{color:var(--amber)}
+  .composer{border-top:1px solid var(--line);padding:14px;display:flex;gap:10px;background:var(--panel2)}
+  .composer textarea{height:48px}
+  .learn{font-size:12.5px;color:var(--dim);padding:6px 0;border-bottom:1px solid var(--line)}
+  .learn:last-child{border:0}
+  a{color:var(--brand)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🧠</div>
+  <div style="flex:1">
+    <h1>Hermes — Auditor Autônomo</h1>
+    <div class="sub">JFN Compliance · Estado do RJ · memória persistente</div>
+  </div>
+  <div class="sub"><span id="dotChrome" class="dot off"></span>Chrome 9222</div>
+  <div class="sub" style="margin-left:14px"><span id="dotLLM" class="dot off"></span>Hermes</div>
+</header>
+
+<div class="wrap">
+  <aside class="side">
+    <div class="card" style="border-color:#1d4d34;background:linear-gradient(135deg,#0e1f17,#121c2e)">
+      <h3>🛡️ Auditor 24 horas</h3>
+      <div class="sub" id="aud24Status">desligado</div>
+      <div class="row">
+        <button id="btnAud24" style="flex:1" onclick="toggleAuditor24h()">🟢 Ligar Auditor 24h</button>
+      </div>
+      <div class="sub" id="aud24Info" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <h3>🎯 Missão atual</h3>
+      <div id="missaoBox" class="missao vazia">Nenhuma missão definida.</div>
+      <textarea id="missaoInput" placeholder="Ex.: Audite as OBs acima de R$100 mil de hoje, investigue a maior empresa e me avise riscos." style="margin-top:10px;height:80px"></textarea>
+      <div class="row">
+        <button onclick="definirMissao()" style="flex:1">Definir missão</button>
+        <button class="ghost" onclick="limparMissao()">Limpar</button>
+      </div>
+      <div class="row">
+        <button class="ghost" style="flex:1" onclick="trabalhar()" id="btnTrabalhar">▶ Trabalhar agora</button>
+        <button class="ghost" onclick="parar()" id="btnParar" disabled>⏹ Parar</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>📊 Estado</h3>
+      <div class="sub" id="estadoBox">carregando…</div>
+    </div>
+
+    <div class="card">
+      <h3>💡 Últimos aprendizados</h3>
+      <div id="learnBox"><div class="sub">carregando…</div></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="chat" id="chat">
+      <div class="msg he">Olá! Sou o <b>Hermes</b>, seu auditor autônomo. Defina uma missão ao lado e clique em <b>Trabalhar agora</b> — eu trabalho sozinho, ou converse comigo aqui sobre os casos. Aprendo e lembro de tudo.</div>
+    </div>
+    <div class="composer">
+      <textarea id="msg" placeholder="Comandos: /goal [missão] | /relatorio [txt|pdf|docx] | /parar | ou conversa livre..." onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();enviar()}"></textarea>
+      <button onclick="enviar()" id="btnEnviar">Enviar</button>
+    </div>
+  </main>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const chat = $('#chat');
+
+function addMsg(txt, cls){
+  const d = document.createElement('div');
+  d.className = 'msg ' + cls;
+  d.textContent = txt;
+  chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+  return d;
+}
+function addStep(acao, detalhe){
+  const d = document.createElement('div');
+  d.className = 'step';
+  d.innerHTML = '<b>⚙ '+acao+'</b> — ' + detalhe;
+  chat.appendChild(d); chat.scrollTop = chat.scrollHeight;
+}
+
+async function carregarEstado(){
+  try{
+    const r = await fetch('/api/hermes/estado'); const d = await r.json();
+    $('#dotChrome').className = 'dot ' + (d.chrome_9222 ? 'on':'off');
+    $('#dotLLM').className = 'dot ' + (d.llm_ok ? 'on':'off');
+    const mb = $('#missaoBox');
+    if(d.missao){ mb.textContent = d.missao; mb.className='missao'; }
+    else { mb.textContent = 'Nenhuma missão definida.'; mb.className='missao vazia'; }
+    $('#estadoBox').innerHTML =
+      'OBs no banco: <b>'+d.n_obs+'</b><br>Alertas: <b>'+d.n_alertas+'</b>'+
+      '<br>Chrome 9222: <b>'+(d.chrome_9222?'no ar':'desligado')+'</b>';
+    const lb = $('#learnBox'); lb.innerHTML='';
+    (d.aprendizados||[]).forEach(a=>{
+      const e=document.createElement('div'); e.className='learn'; e.textContent='• '+a; lb.appendChild(e);
+    });
+    if(!(d.aprendizados||[]).length) lb.innerHTML='<div class="sub">ainda aprendendo…</div>';
+  }catch(e){ $('#estadoBox').textContent='servidor offline'; }
+}
+
+async function definirMissao(){
+  const t = $('#missaoInput').value.trim();
+  if(!t) return;
+  await fetch('/api/hermes/missao', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({missao:t})});
+  $('#missaoInput').value='';
+  addStep('missão definida', t);
+  carregarEstado();
+}
+async function limparMissao(){
+  await fetch('/api/hermes/missao', {method:'DELETE'});
+  carregarEstado();
+}
+
+async function trabalhar(){
+  const btn = $('#btnTrabalhar'); btn.disabled=true; btn.textContent='⏳ trabalhando…';
+  addMsg('Iniciando ciclo autônomo rumo à missão…','he');
+  try{
+    const r = await fetch('/api/hermes/trabalhar', {method:'POST'});
+    const d = await r.json();
+    if(d.erro){ addMsg('⚠ '+d.erro,'he'); }
+    else{
+      (d.passos||[]).forEach(p=>{
+        const det = p.acao==='concluir' ? (p.resultado.resumo||'') :
+          JSON.stringify(p.resultado).slice(0,160);
+        addStep(p.acao, (p.pensamento? p.pensamento+' · ':'') + det);
+      });
+      addMsg('✅ Ciclo concluído ('+ (d.n_passos||0) +' passos). '+(d.resumo||''),'he');
+    }
+  }catch(e){ addMsg('Erro: '+e,'he'); }
+  btn.disabled=false; btn.textContent='▶ Trabalhar agora';
+  carregarEstado();
+}
+
+async function enviar(){
+  const raw = $('#msg').value.trim(); if(!raw) return;
+  addMsg(raw,'me'); $('#msg').value='';
+
+  const lower = raw.toLowerCase();
+  if(lower === '/parar' || lower.startsWith('/parar ')){
+    addStep('parar','Solicitada parada do ciclo autônomo.');
+    await fetch('/api/hermes/parar', {method:'POST'});
+    return;
+  }
+
+  const goalMatch = lower.match(/^\/goal\s+(.+)$/);
+  if(goalMatch){
+    const missao = raw.slice(6).trim() || goalMatch[1].trim();
+    const btn = $('#btnTrabalhar'); btn.disabled=true; btn.textContent='⏳ trabalhando…';
+    addMsg('/goal recebido: ' + missao,'me');
+    try{
+      const r = await fetch('/api/hermes/missao', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({missao})});
+      const d = await r.json();
+      if(d.erro){ addMsg('⚠ '+d.erro,'he'); }
+      else{
+        addStep('missão','Missão definida para /goal.');
+        await trabalharGoal();
+      }
+    }catch(e){ addMsg('Erro: '+e,'he'); }
+    return;
+  }
+
+  const relMatch = lower.match(/^\/relatorio\s*(txt|pdf|docx)?\s*$/);
+  if(relMatch){
+    const fmt = (relMatch[1] || 'txt').toLowerCase();
+    addMsg('/relatorio ' + fmt,'me');
+    try{
+      const r = await fetch('/api/hermes/relatorio?formato=' + encodeURIComponent(fmt), {method:'POST'});
+      const d = await r.json();
+      if(d.erro){ addMsg('⚠ '+d.erro,'he'); }
+      else{ addMsg('✅ Relatório gerado: ' + d.arquivo,'he'); }
+    }catch(e){ addMsg('Erro: '+e,'he'); }
+    return;
+  }
+
+  btn=$('#btnEnviar'); btn.disabled=true;
+  const pensando = addMsg('🧠 pensando…','he');
+  try{
+    const r = await fetch('/api/hermes/chat', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pergunta:raw})});
+    const d = await r.json();
+    pensando.textContent = d.resposta || d.erro || '(sem resposta)';
+  }catch(e){ pensando.textContent='Erro: '+e; }
+  btn.disabled=false; chat.scrollTop=chat.scrollHeight;
+}
+
+async function trabalharGoal(){
+  addMsg('Iniciando ciclo autônomo /goal até ter resultados…','he');
+  try{
+    const r = await fetch('/api/hermes/trabalhar', {method:'POST'});
+    const d = await r.json();
+    if(d.erro){ addMsg('⚠ '+d.erro,'he'); return; }
+    (d.passos||[]).forEach(p=>{
+      const det = p.acao==='concluir' ? (p.resultado.resumo||'') : JSON.stringify(p.resultado).slice(0,200);
+      addStep(p.acao, (p.pensamento? p.pensamento+' · ':'') + det);
+    });
+    addMsg('✅ Ciclo /goal concluído ('+ (d.n_passos||0) +' passos). '+(d.resumo||''),'he');
+  }catch(e){ addMsg('Erro no /goal: '+e,'he'); }
+  const btn=$('#btnTrabalhar'); btn.disabled=false; btn.textContent='▶ Trabalhar agora';
+  carregarEstado();
+}
+
+// ── Auditor 24 horas ──────────────────────────────────────────────────────
+let _aud24Ativo = false;
+
+async function carregarAuditor24h(){
+  try{
+    const r = await fetch('/api/hermes/auditor24h/status'); const d = await r.json();
+    _aud24Ativo = !!d.ativo;
+    const btn = $('#btnAud24');
+    const st = $('#aud24Status');
+    if(d.ativo){
+      btn.textContent = '🔴 Desligar Auditor 24h';
+      btn.style.background = 'linear-gradient(135deg,#ef4444,#b91c1c)';
+      st.innerHTML = '<span class="dot on"></span><b>LIGADO</b> · ciclos: '+(d.ciclos||0);
+      let info = '';
+      if(d.ultimo_resumo) info += '🔎 '+d.ultimo_resumo.slice(0,220)+'<br>';
+      if(d.ultimo_erro) info += '⚠ '+d.ultimo_erro+'<br>';
+      if(d.intervalo_seg) info += 'Intervalo: '+Math.round(d.intervalo_seg/60)+' min';
+      $('#aud24Info').innerHTML = info;
+    } else {
+      btn.textContent = '🟢 Ligar Auditor 24h';
+      btn.style.background = '';
+      st.innerHTML = '<span class="dot off"></span>desligado';
+      $('#aud24Info').innerHTML = d.ciclos ? ('Último: '+(d.ciclos||0)+' ciclos rodados') : '';
+    }
+  }catch(e){ /* servidor offline */ }
+}
+
+async function toggleAuditor24h(){
+  const btn = $('#btnAud24'); btn.disabled = true;
+  try{
+    if(_aud24Ativo){
+      await fetch('/api/hermes/auditor24h/parar', {method:'POST'});
+      addStep('Auditor 24h','Desligado pelo usuário.');
+    } else {
+      const obj = $('#missaoInput').value.trim();
+      await fetch('/api/hermes/auditor24h/iniciar', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify(obj ? {objetivo: obj} : {})
+      });
+      addMsg('🛡️ Auditor 24h LIGADO — vou coletar SIAFE2 + DOERJ, cruzar com SEI, detectar irregularidades e aprender padrões, em ciclos contínuos.','he');
+    }
+  }catch(e){ addMsg('Erro no Auditor 24h: '+e,'he'); }
+  btn.disabled = false;
+  setTimeout(carregarAuditor24h, 800);
+}
+
+carregarEstado();
+carregarAuditor24h();
+setInterval(carregarEstado, 12000);
+setInterval(carregarAuditor24h, 10000);
+</script>
+</body>
+</html>
