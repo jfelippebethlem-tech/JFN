@@ -6,6 +6,11 @@
 screenshots/
 output/
 
+# Binary packages (never commit)
+*.deb
+*.rpm
+*.pkg
+
 # Python
 __pycache__/
 *.py[cod]
