@@ -1,0 +1,90 @@
+name: Coleta OBs SIAFE (MGS CLEAN 2023-2026)
+
+on:
+  workflow_dispatch:
+    inputs:
+      siafe_user:
+        description: 'SIAFE_USER (CPF sem pontos)'
+        required: true
+      siafe_pass:
+        description: 'SIAFE_PASS'
+        required: true
+      anos:
+        description: 'Anos (ex: 2023,2024,2025,2026)'
+        required: false
+        default: '2023,2024,2025,2026'
+
+jobs:
+  coletar-obs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout feature branch
+        uses: actions/checkout@v4
+        with:
+          ref: claude/rj-finance-agent-BYlhJ
+          token: ${{ github.token }}
+
+      - name: Instalar Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        run: |
+          pip install playwright==1.43.0 requests python-dotenv 2>/dev/null || true
+          playwright install chromium
+          if [ -f requirements.txt ]; then pip install -r requirements.txt 2>/dev/null || true; fi
+
+      - name: Criar .env e diretorios
+        run: |
+          mkdir -p data/sei_cache screenshots/obs_coleta
+          printf 'SIAFE_USER=%s\nSIAFE_PASS=%s\nCI=true\nHEADLESS=true\n' \
+            '${{ github.event.inputs.siafe_user }}' \
+            '${{ github.event.inputs.siafe_pass }}' > .env
+
+      - name: Coletar OBs SIAFE 2023-2026
+        env:
+          CI: "true"
+          HEADLESS: "true"
+        run: python _SANDBOX/coletar_obs_agora.py
+        timeout-minutes: 45
+
+      - name: Verificar resultado
+        run: |
+          if [ -f data/sei_cache/mgsclean_obs_todas.json ]; then
+            python3 -c "
+          import json, sys
+          d = json.load(open('data/sei_cache/mgsclean_obs_todas.json'))
+          print(f'OBs coletadas : {d.get(\"total_obs\",0)}')
+          print(f'Valor total   : R\$ {d.get(\"total_valor\",0):,.2f}')
+          for ano,info in sorted((d.get(\"por_ano\") or {}).items()):
+              print(f'  {ano}: {info.get(\"count\",0)} OBs / R\$ {info.get(\"valor\",0):,.2f}')
+          sys.exit(0 if d.get('total_obs',0)>0 else 1)
+            "
+          else
+            echo 'ERRO: arquivo de OBs nao gerado'; ls data/sei_cache/ || true; exit 1
+          fi
+
+      - name: Gerar PDF de auditoria
+        run: python _SANDBOX/gerar_relatorio_obs_pdf.py 2>/dev/null || true
+
+      - name: Commit e push dos dados
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "JFN Coleta SIAFE"
+          git add data/sei_cache/mgsclean_obs*.json data/compliance.db reports/*.pdf 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "data: OBs MGS CLEAN coletadas $(date +%Y-%m-%d)"
+          git push origin claude/rj-finance-agent-BYlhJ
+
+      - name: Salvar artefatos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: obs-siafe-run-${{ github.run_number }}
+          path: |
+            data/sei_cache/mgsclean_obs*.json
+            reports/auditoria*.pdf
+            screenshots/obs_coleta/
+          retention-days: 30
