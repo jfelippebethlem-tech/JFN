@@ -118,6 +118,62 @@ def _telegram(msg: str):
         pass
 
 
+async def _aguardar_codigo_mfa(masked_email: str) -> str:
+    """
+    SIAFE tem MFA — envia alerta Telegram e aguarda código de 6 dígitos do usuário.
+    Retorna o código ou "" se Telegram não configurado / timeout.
+    """
+    import time
+    import urllib.request
+
+    token   = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    chat_id = os.environ.get("TELEGRAM_CHAT_ID", "")
+    if not token or not chat_id:
+        print("  → MFA requer Telegram. Configure TELEGRAM_BOT_TOKEN e TELEGRAM_CHAT_ID no .env")
+        return ""
+
+    _telegram(
+        f"🔐 SIAFE MFA — coletar OBs MGS CLEAN\n"
+        f"Código enviado para: {masked_email}\n"
+        f"Responda esta mensagem com o código de 6 dígitos."
+    )
+    print(f"  → MFA: aguardando código via Telegram (máx 5 min) …")
+
+    # Obtém último update_id para não pegar mensagens antigas
+    last_id = 0
+    loop = asyncio.get_event_loop()
+    try:
+        r = await loop.run_in_executor(None, lambda: urllib.request.urlopen(
+            f"https://api.telegram.org/bot{token}/getUpdates?limit=1&offset=-1", timeout=10
+        ))
+        data = json.loads(r.read())
+        if data.get("result"):
+            last_id = data["result"][-1]["update_id"]
+    except Exception as e:
+        print(f"    [w] getUpdates inicial: {e}")
+
+    deadline = time.time() + 300
+    while time.time() < deadline:
+        await asyncio.sleep(5)
+        try:
+            r = await loop.run_in_executor(None, lambda: urllib.request.urlopen(
+                f"https://api.telegram.org/bot{token}/getUpdates?offset={last_id+1}&timeout=5",
+                timeout=8,
+            ))
+            data = json.loads(r.read())
+            for upd in data.get("result", []):
+                last_id = upd["update_id"]
+                txt = ((upd.get("message") or {}).get("text") or "").strip()
+                if re.match(r"^\d{6}$", txt):
+                    print(f"  → Código MFA recebido: ******")
+                    return txt
+        except Exception:
+            pass
+
+    print("  → Timeout MFA (5 min) — login cancelado")
+    return ""
+
+
 # ── Helpers Browser ───────────────────────────────────────────────────────────
 
 async def _settle(pg, ms: int = 4000):
@@ -357,7 +413,7 @@ async def _login(pg, ano: int) -> bool:
         print("    [w] Botão não encontrado — pressionando Enter")
         await pg.keyboard.press("Enter")
 
-    # Aguarda navegação para fora de login.jsp (máx 20s); se não sair = login falhou
+    # Aguarda navegação para fora de login.jsp (máx 20s); se não sair verifica MFA
     try:
         await pg.wait_for_url(
             lambda u: "login" not in u.lower() and "autenticacao" not in u.lower(),
@@ -365,6 +421,67 @@ async def _login(pg, ano: int) -> bool:
         )
     except Exception:
         pass
+
+    # Detecta tela MFA (SIAFE exige código por e-mail após credenciais válidas)
+    if "login" in pg.url.lower():
+        body_txt = await pg.evaluate("() => document.body.innerText")
+        if "Autenticação Multifator" in body_txt or "código de autenticação" in body_txt.lower():
+            masked = await pg.evaluate("""() => {
+                const m = (document.body.innerText || '').match(/enviado para ([^\\n.]+)/);
+                return m ? m[1].trim() : 'email cadastrado';
+            }""")
+            print(f"  → MFA detectado — código enviado para {masked}")
+
+            code = await _aguardar_codigo_mfa(masked)
+
+            if code:
+                # Preenche campo de código MFA (excluindo campos de usuário/senha)
+                excluidos = ["itxUsuario", "itxSenhaAtual"]
+                filled = await pg.evaluate(f"""(c) => {{
+                    const excl = {json.dumps(excluidos)};
+                    const inputs = [...document.querySelectorAll(
+                        'input[type="text"], input[type="number"], input:not([type])'
+                    )].filter(el => {{
+                        if (!el.getBoundingClientRect().width) return false;
+                        const id = el.id || '';
+                        return !excl.some(x => id.includes(x));
+                    }});
+                    if (!inputs.length) return 'nao_encontrado';
+                    const el = inputs[0];
+                    el.focus(); el.value = c;
+                    ['input','change','blur'].forEach(ev => el.dispatchEvent(new Event(ev,{{bubbles:true}})));
+                    return el.id || 'ok';
+                }}""", code)
+                print(f"  → Código MFA preenchido: {filled}")
+
+                # Marca "Dispensar código neste dispositivo por 30 dias"
+                await pg.evaluate("""() => {
+                    const cb = document.querySelector('input[type="checkbox"]');
+                    if (cb && !cb.checked) cb.click();
+                }""")
+
+                # Clica Ok do formulário MFA (não o do loginBox)
+                await pg.evaluate("""() => {
+                    for (const el of document.querySelectorAll(
+                        'button, input[type="submit"], input[type="button"]'
+                    )) {
+                        const t = (el.textContent || el.value || '').trim().toLowerCase();
+                        const r = el.getBoundingClientRect();
+                        if (t === 'ok' && r.width > 0 && !el.closest('[id*="loginBox"]')) {
+                            el.click(); return;
+                        }
+                    }
+                }""")
+
+                try:
+                    await pg.wait_for_url(
+                        lambda u: "login" not in u.lower() and "autenticacao" not in u.lower(),
+                        timeout=15_000,
+                    )
+                except Exception:
+                    pass
+                print(f"  → Pós-MFA: {pg.url[:80]}")
+
     await _dismiss_popups(pg, allow_confirm=False)
     await _screenshot(pg, f"02_pos_login_{ano}")
 
