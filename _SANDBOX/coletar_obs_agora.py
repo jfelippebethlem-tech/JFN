@@ -118,48 +118,68 @@ def _telegram(msg: str):
         pass
 
 
-async def _poll_github_for_mfa(repo: str, masked_email: str) -> str:
+async def _poll_github_for_mfa(repo: str, masked_email: str, ano: int = 0) -> str:
     """
     Polling do arquivo data/sei_cache/.mfa_input no GitHub (branch feature).
     O arquivo é escrito externamente (por IA/humano via push) com o código MFA.
     Script permanece na MESMA sessão SIAFE — não faz novo login.
+
+    Para suportar múltiplos exercícios (cada um com seu próprio MFA):
+    - Lê o SHA atual do arquivo ANTES de começar o wait
+    - Só aceita código com SHA DIFERENTE do SHA inicial (novo push)
+    - Assim nunca reutiliza código de exercício anterior
     """
     import urllib.request, base64, time as _time
 
     branch   = os.environ.get("GITHUB_HEAD_REF") or "claude/rj-finance-agent-BYlhJ"
     mfa_path = "data/sei_cache/.mfa_input"
     api_url  = f"https://api.github.com/repos/{repo}/contents/{mfa_path}"
+    loop     = asyncio.get_event_loop()
 
+    def _fetch_file(ts: int):
+        req = urllib.request.Request(
+            f"{api_url}?ref={branch}&t={ts}",
+            headers={"Accept": "application/vnd.github+json", "User-Agent": "siafe-collector/2.0"},
+        )
+        return json.loads(urllib.request.urlopen(req, timeout=8).read())
+
+    # Lê SHA atual (para ignorar código já existente de exercício anterior)
+    initial_sha = ""
+    try:
+        current = await loop.run_in_executor(None, lambda: _fetch_file(0))
+        initial_sha = current.get("sha", "")
+        existing   = base64.b64decode(current.get("content","")).decode("utf-8").strip()
+        if existing:
+            print(f"  → MFA polling: arquivo tem conteúdo antigo (sha={initial_sha[:7]}) — aguardando novo push")
+    except Exception:
+        pass
+
+    ano_str = f" exercício {ano}" if ano else ""
     print(f"\n  ╔══════════════════════════════════════════════════════════╗")
-    print(f"  ║  AGUARDANDO CÓDIGO MFA — NÃO FAÇA NOVO LOGIN            ║")
+    print(f"  ║  AGUARDANDO CÓDIGO MFA{ano_str:<35}║")
     print(f"  ║  SIAFE enviou código para: {masked_email[:28]:<28}║")
-    print(f"  ║  Para fornecer o código, empurre no GitHub:             ║")
+    print(f"  ║  Empurre o código para o GitHub:                        ║")
     print(f"  ║  Arquivo: {mfa_path:<48}║")
     print(f"  ║  Branch : {branch:<48}║")
     print(f"  ║  Conteúdo: apenas o código alfanumérico (ex: aB3xYz)   ║")
     print(f"  ╚══════════════════════════════════════════════════════════╝\n")
 
-    deadline  = _time.time() + 300
-    loop      = asyncio.get_event_loop()
-    last_sha  = None
+    # Notifica via Telegram se configurado
+    _telegram(f"🔐 SIAFE MFA{ano_str}\nCódigo enviado para: {masked_email}\nEmpurre para GitHub:\n{mfa_path} (branch {branch})")
+
+    deadline = _time.time() + 300
+    last_sha = initial_sha  # Só aceita SHAs novos (diferentes do inicial)
 
     while _time.time() < deadline:
         await asyncio.sleep(10)
         try:
-            req = urllib.request.Request(
-                f"{api_url}?ref={branch}&t={int(_time.time())}",
-                headers={
-                    "Accept":     "application/vnd.github+json",
-                    "User-Agent": "siafe-collector/2.0",
-                },
-            )
-            resp = await loop.run_in_executor(None, lambda: urllib.request.urlopen(req, timeout=8))
-            data = json.loads(resp.read())
+            data = await loop.run_in_executor(None, lambda: _fetch_file(int(_time.time())))
             sha  = data.get("sha", "")
             raw  = base64.b64decode(data.get("content", "")).decode("utf-8").strip()
             if raw and sha != last_sha and re.match(r"^[A-Za-z0-9]{4,12}$", raw):
                 last_sha = sha
                 print(f"  → Código MFA recebido via GitHub polling: ******")
+                _telegram(f"✅ Código MFA{ano_str} recebido — autenticando no SIAFE")
                 return raw
         except Exception as _e:
             if "404" not in str(_e):
@@ -167,12 +187,14 @@ async def _poll_github_for_mfa(repo: str, masked_email: str) -> str:
         remaining = int(deadline - _time.time())
         if remaining > 0 and remaining % 60 == 0:
             print(f"  → Aguardando código MFA… {remaining}s restantes")
+            _telegram(f"⏳ SIAFE MFA{ano_str}: {remaining}s restantes")
 
     print("  → Timeout GitHub polling (5 min)")
+    _telegram(f"❌ SIAFE MFA{ano_str}: timeout — código não recebido em 5 min")
     return ""
 
 
-async def _aguardar_codigo_mfa(masked_email: str) -> str:
+async def _aguardar_codigo_mfa(masked_email: str, ano: int = 0) -> str:
     """
     SIAFE tem MFA — verifica env SIAFE_MFA_CODE primeiro, depois GitHub polling, depois Telegram.
     Retorna o código ou "" se não disponível.
@@ -189,7 +211,7 @@ async def _aguardar_codigo_mfa(masked_email: str) -> str:
     # GitHub file polling (CI/cloud — mantém sessão SIAFE ativa, não faz novo login)
     gh_repo = os.environ.get("GITHUB_REPOSITORY", "")
     if gh_repo and (os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS")):
-        code = await _poll_github_for_mfa(gh_repo, masked_email)
+        code = await _poll_github_for_mfa(gh_repo, masked_email, ano=ano)
         if code:
             return code
         # Polling timeout — fall through to Telegram if configured
@@ -316,6 +338,32 @@ async def _screenshot(pg, name: str):
         pass
 
 
+async def _logout(pg):
+    """Faz logout do SIAFE clicando 'Sair' — preserva cookie de 30 dias."""
+    try:
+        # Tenta clicar no link "Sair" no topo da página
+        r = await pg.evaluate("""() => {
+            for (const el of document.querySelectorAll('a, button')) {
+                const t = el.textContent.trim().toLowerCase();
+                if (t === 'sair' || t === 'logout' || t === 'exit') {
+                    el.click(); return 'sair:' + t;
+                }
+            }
+            return null;
+        }""")
+        if r:
+            print(f"    → Logout via click: {r}")
+            await _settle(pg, 4000)
+        else:
+            # Fallback: navega diretamente para URL de logout
+            await pg.goto("https://siafe2.fazenda.rj.gov.br/Siafe/logout",
+                          wait_until="domcontentloaded", timeout=15_000)
+            await _settle(pg, 3000)
+            print("    → Logout via URL direta")
+    except Exception as exc:
+        print(f"    [w] logout: {exc}")
+
+
 # ── PASSO 1: Login ─────────────────────────────────────────────────────────────
 
 async def _login(pg, ano: int) -> bool:
@@ -328,6 +376,15 @@ async def _login(pg, ano: int) -> bool:
     exercicio_val = EXERCICIOS.get(ano, "1")
     print(f"\n  → Login exercício {ano} (SELECT valor={exercicio_val}) …")
     print(f"    Usuário: {usuario[:4]}*** | Credenciais: {'OK' if usuario and senha else 'AUSENTES'}")
+
+    # Se já logado (sessão de exercício anterior), faz logout primeiro
+    # Isso garante que o formulário de login com cbxExercicio vai aparecer
+    try:
+        if pg.url and "login" not in pg.url.lower() and "about:blank" not in pg.url.lower():
+            print("    → Sessão anterior detectada — fazendo logout para trocar exercício")
+            await _logout(pg)
+    except Exception:
+        pass
 
     # Navega para login — espera rede estabilizar (ADF renderiza via JS)
     await pg.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=TIMEOUT)
@@ -500,7 +557,7 @@ async def _login(pg, ano: int) -> bool:
             }""")
             print(f"  → MFA detectado — código enviado para {masked}")
 
-            code = await _aguardar_codigo_mfa(masked)
+            code = await _aguardar_codigo_mfa(masked, ano=ano)
 
             if code:
                 # Preenche campo de código MFA
@@ -551,6 +608,12 @@ async def _login(pg, ano: int) -> bool:
                     )
                 except Exception:
                     pass
+                # Aguarda a página pós-MFA carregar completamente antes de sair do _login
+                try:
+                    await pg.wait_for_load_state("domcontentloaded", timeout=10_000)
+                except Exception:
+                    pass
+                await _settle(pg, 5000)
                 print(f"  → Pós-MFA: {pg.url[:80]}")
 
     await _dismiss_popups(pg, allow_confirm=False)
@@ -624,6 +687,13 @@ async def _ir_obs(pg) -> bool:
     if "ordembancaria" in pg.url.lower():
         return True
 
+    # Aguarda a página estar completamente carregada antes de interagir
+    try:
+        await pg.wait_for_load_state("domcontentloaded", timeout=12_000)
+    except Exception:
+        pass
+    await _settle(pg, 4000)
+
     print("  → Navegando: Execução Financeira > Ordens Bancárias …")
 
     # Estratégia 1: a.xgg direto (sempre renderizado no DOM do ADF)
@@ -673,23 +743,51 @@ async def _ir_obs(pg) -> bool:
             print(f"    ✔ Clique a.xgg após xgh: {r3}")
             await _settle(pg, 6000)
         else:
-            # Estratégia 3: IDs pt1 (fallback rotina-auditoria)
+            # Estratégia 3: expansão por CSS + busca por texto (robusto a mudanças de índice)
+            # 3a: tenta expandir "Execução" / "Execução Financeira" via IDs pt1 conhecidos
             for eid, lbl in [
                 ("pt1:pt_np4:1:pt_cni6::disclosureAnchor", "Execução"),
                 ("pt1:pt_np3:1:pt_cni4::disclosureAnchor", "Execução Financeira"),
-                ("pt1:pt_np2:8:pt_cni3", "Ordens Bancárias"),
             ]:
                 try:
                     loc = pg.locator(f'[id="{eid}"]').first
                     if await loc.count() > 0:
                         await loc.click(timeout=5000, force=True)
                         print(f"    ✔ Clique pt1: {lbl}")
-                        await asyncio.sleep(4)
+                        await asyncio.sleep(3)
                         await _dismiss_popups(pg)
                     else:
                         print(f"    [w] pt1 não achou: {eid}")
                 except Exception as exc:
                     print(f"    [w] pt1 erro {lbl}: {exc}")
+
+            # 3b: busca "Ordens Bancárias" por texto em QUALQUER elemento (índice não hardcoded)
+            r_ob = await pg.evaluate("""() => {
+                const LABELS = ['Ordens Bancárias', 'OB Orçamentária', 'OB Orcamentaria', 'Ordem Bancária'];
+                for (const el of document.querySelectorAll('a, li, span, div')) {
+                    const t = el.textContent.trim();
+                    const r = el.getBoundingClientRect();
+                    if (r.width > 0 && r.height > 0 && LABELS.some(l => t === l || t.startsWith('Ordens Banc'))) {
+                        el.click(); return 'text_scan:' + t;
+                    }
+                }
+                // Fallback: procura pt1:pt_np2:N:pt_cni3 varrendo índices 0-25
+                for (let i = 0; i <= 25; i++) {
+                    const el = document.querySelector('[id="pt1:pt_np2:'+i+':pt_cni3"]');
+                    if (el) {
+                        const t = el.textContent.trim();
+                        if (t.includes('Ordens') || t.includes('OB')) {
+                            el.click(); return 'pt1_scan_idx'+i+':'+t;
+                        }
+                    }
+                }
+                return null;
+            }""")
+            if r_ob:
+                print(f"    ✔ OB encontrado: {r_ob}")
+                await _settle(pg, 5000)
+            else:
+                print("    [w] pt1 OB não encontrado por texto")
 
     await _screenshot(pg, "03_tela_obs")
 
