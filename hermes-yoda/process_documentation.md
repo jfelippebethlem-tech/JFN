@@ -85,3 +85,23 @@ Abaixo, cada problema **documentado na sessão** com a causa-raiz e a correção
 | este repo | `hermes-yoda/process_documentation.md` (novo) | — |
 
 > Nada de credencial neste arquivo. Token do bot e IDs ficam só em `~/.hermes/.env` (fora do git).
+
+---
+
+## 2026-06-05 (adendo) — Fix de verdade do bug de memória do Hermes (para outra IA avaliar)
+
+Investiguei o código do Hermes (`~/hermes-agent/tools/memory_tool.py`). **Causa-raiz do loop:**
+`replace`/`remove` localizavam a entrada por **substring exata** (`old_text in e`); modelos mais
+fracos **parafraseiam** o texto e a substring não casa, e o erro `No entry matched` não mostrava as
+entradas reais → o agente chutava de novo (loop, como o Yoda fez 4×).
+
+**Correção (branch dedicada, NÃO aplicada em produção ainda):**
+- Repo: `~/hermes-agent` (clone do NousResearch/hermes-agent).
+- Branch: **`claude/fix-memory-resolve-for-weaker-models`** (commit `d8d62b5`). A `main` está intacta.
+- O quê: endereçamento por índice `#N`; erros que listam entradas reais com `#index` + `closest`;
+  sem fuzzy silencioso; schema atualizado. **76 testes passam** (7 novos, incl. regressão do loop).
+- Como avaliar/aplicar/reverter: ver `~/hermes-agent/PROPOSAL-memory-resolve-fix.md` (passo a passo).
+
+> Pendente: outra IA validar a branch e, se aprovar, `git merge` na `main` + `systemctl --user restart hermes-gateway`.
+> Diretriz eterna do Mestre Jorge: workflows/propostas devem assumir IAs mais simples — passos
+> explícitos, comandos prontos, resultado esperado e rollback (foi o padrão usado na PROPOSAL).
