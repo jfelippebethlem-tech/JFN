@@ -1,0 +1,20 @@
+# Dependências OPCIONAIS — agentes pesados de coleta SEI (OCR/CDP/Selenium).
+# O core do JFN (server.py, compliance_agent, siafe_agent) roda só com requirements.txt.
+# Instale estes EXTRAS apenas onde for rodar OCR de CAPTCHA / driver Selenium do SEI:
+#     pip install -r requirements.txt -r requirements-sei.txt
+#
+# Habilitam:
+#   compliance_agent/captcha_solver.py ............ pytesseract + opencv (cv2)
+#   compliance_agent/collectors/sei_sei_direct.py . easyocr (puxa torch CPU ~1.5GB)
+#   compliance_agent/sei_driver.py ................ selenium + webdriver-manager
+#   compliance_agent/auditoria/*.py (CDP) ......... websocket-client
+#
+# Sistema (Linux/Docker): tesseract-ocr tesseract-ocr-por libgl1 libglib2.0-0
+#   (o Dockerfile já instala; em VM: sudo apt-get install -y <esses pacotes>)
+
+pytesseract>=0.3.10
+opencv-python-headless>=4.9.0
+websocket-client>=1.7.0
+selenium>=4.20.0
+webdriver-manager>=4.0.0
+easyocr>=1.7.0

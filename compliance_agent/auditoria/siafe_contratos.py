@@ -17,7 +17,7 @@ SEGREDOS DESCOBERTOS (o que faz funcionar):
 3) ⚠️ O valor PRECISA ser DIGITADO (keyboard.type) — o ADF só dispara a query com
    keystrokes reais. fill() NÃO aplica o filtro. Depois Enter.
 """
-import sys, re, json, time
+import os, sys, re, json, time
 from playwright.sync_api import sync_playwright
 
 def filtrar(cnpj_digits):
@@ -63,7 +63,10 @@ def filtrar(cnpj_digits):
         for r in rows:
             if len(r) > 11:
                 print("  R$ %15s | %-18s | %s" % ("{:,.2f}".format(val(r[11])), (r[2] or r[1] or r[0])[:18], r[6][:32]))
-        json.dump(rows, open(r"C:\JFN\jfn\data\sei_cache\siafe_contratos_%s.json" % cnpj_digits, "w", encoding="utf-8"), ensure_ascii=False)
+        _cache = os.environ.get("JFN_DATA_DIR") and os.path.join(os.environ["JFN_DATA_DIR"], "sei_cache") \
+            or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "sei_cache")
+        os.makedirs(_cache, exist_ok=True)
+        json.dump(rows, open(os.path.join(_cache, "siafe_contratos_%s.json" % cnpj_digits), "w", encoding="utf-8"), ensure_ascii=False)
 
 if __name__ == "__main__":
     cnpj = re.sub(r"\D", "", sys.argv[1] if len(sys.argv) > 1 else "19088605000104")

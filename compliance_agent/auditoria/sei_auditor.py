@@ -29,10 +29,16 @@ import websocket  # websocket-client
 # ---------- CONFIG ----------
 CDP_PORT = 9222
 CDP = "http://127.0.0.1:%d" % CDP_PORT
-PROFILE = r"C:\JFN\jfn\data\tmp\chrome_debug_profile"
-CHROME = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
-ENV = r"C:\Users\socah\AppData\Local\hermes\.env"
-CACHE = r"C:\JFN\jfn\data\sei_cache"
+# Raiz do repo (este arquivo: <repo>/compliance_agent/auditoria/sei_auditor.py)
+_REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+_DATA = os.environ.get("JFN_DATA_DIR", os.path.join(_REPO, "data"))
+# Windows mantém os defaults antigos; Linux/Mac usa env ou fallback gracioso.
+PROFILE = os.environ.get("CHROME_DEBUG_PROFILE", os.path.join(_DATA, "tmp", "chrome_debug_profile"))
+CHROME = os.environ.get("CHROME_BIN", r"C:\Program Files\Google\Chrome\Application\chrome.exe")
+# Windows continua lendo o .env do Hermes se existir; Linux/Mac usa o .env do repo.
+_WIN_HERMES_ENV = r"C:\Users\socah\AppData\Local\hermes\.env"
+ENV = os.environ.get("JFN_ENV_FILE") or (_WIN_HERMES_ENV if os.path.exists(_WIN_HERMES_ENV) else os.path.join(_REPO, ".env"))
+CACHE = os.path.join(_DATA, "sei_cache")
 ORGAO_VALOR = "71"  # ITERJ
 
 
