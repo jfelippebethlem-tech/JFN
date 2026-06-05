@@ -495,7 +495,7 @@
           <div class="barra-wrap"><div class="barra-fill barra-alto" style="width:80%"></div><span class="barra-val">80 / ALTO</span></div>
         </div>
         <div class="barra-container">
-          <div class="barra-label">Opacidade (Fundos Especiais, ITERJ inativo)</div>
+          <div class="barra-label">Opacidade (Fundos Especiais, cobertura TFE incompleta)</div>
           <div class="barra-wrap"><div class="barra-fill barra-medio" style="width:68%"></div><span class="barra-val">68 / MÉDIO</span></div>
         </div>
         <div class="barra-container">
@@ -595,10 +595,10 @@
           <div class="alerta-fundamento">Art. 30 Lei 8.666/93 — habilitação técnica</div>
         </div>
         <div class="alerta-card medio">
-          <div class="alerta-num">🟠 A3 — MÉDIO-ALTO</div>
-          <div class="alerta-titulo">ITERJ — Contrato "Em Vigor" sem execução 2025–2026</div>
-          <div class="alerta-desc">Contrato 005/2021 (3 aditivos) sem empenhos nos últimos 2 anos. Possível contrato inativo não rescindido.</div>
-          <div class="alerta-fundamento">Art. 57 Lei 8.666/93 · TCU 2.950/2017</div>
+          <div class="alerta-num">🟡 A3 — ATENÇÃO</div>
+          <div class="alerta-titulo">ITERJ — Limite legal 60 meses atingido em jun/2026</div>
+          <div class="alerta-desc">Contrato 005/2021 (3 aditivos, vigente desde jun/2021) atinge o prazo máximo de prorrogação. Portal TFE não reflete transações ITERJ — execução confirmada pelo gestor, dados completos via SIAFE pendentes.</div>
+          <div class="alerta-fundamento">Art. 57 II Lei 8.666/93 — limite 60 meses serviços continuados</div>
         </div>
         <div class="alerta-card medio">
           <div class="alerta-num">🟠 A4 — MÉDIO</div>
@@ -767,7 +767,7 @@
 
     <!-- ─── ANÁLISE ITERJ ─── -->
     <div class="secao">
-      <div class="secao-header"><span>04</span> Análise ITERJ — Investigação Específica</div>
+      <div class="secao-header"><span>04</span> Análise ITERJ — Contrato 005/2021 e Prazo Legal</div>
 
       <div class="subsecao-titulo">4.1 Contrato 005/2021 — ITERJ</div>
 
@@ -799,20 +799,15 @@
         <tbody>
           <tr><td>2023</td><td class="num">217.006,42</td><td><span class="badge badge-estimado">Estimado</span></td><td>Pro-rata do valor contratual</td></tr>
           <tr><td>2024</td><td class="num">217.006,42</td><td><span class="badge badge-estimado">Estimado</span></td><td>Pro-rata do valor contratual</td></tr>
-          <tr style="background:#FFF0F0;"><td><strong>2025</strong></td><td class="num"><strong style="color:#B71C1C;">0,00</strong></td><td><span class="badge badge-real">Real (TFE)</span></td><td><strong style="color:#B71C1C;">Não aparece na base 2025</strong></td></tr>
-          <tr style="background:#FFF0F0;"><td><strong>2026</strong></td><td class="num"><strong style="color:#B71C1C;">0,00</strong></td><td><span class="badge badge-real">Real (TFE)</span></td><td><strong style="color:#B71C1C;">Não aparece na base 2026</strong></td></tr>
+          <tr style="background:#FFF8E1;"><td><strong>2025</strong></td><td class="num"><strong style="color:#E65100;">N/D</strong></td><td><span class="badge badge-pendente">TFE incompleto</span></td><td><strong style="color:#E65100;">ITERJ não indexado pelo TFE — execução confirmada pelo gestor</strong></td></tr>
+          <tr style="background:#FFF8E1;"><td><strong>2026</strong></td><td class="num"><strong style="color:#E65100;">N/D</strong></td><td><span class="badge badge-pendente">TFE incompleto</span></td><td><strong style="color:#E65100;">ITERJ não indexado pelo TFE — execução confirmada pelo gestor</strong></td></tr>
           <tr style="background:var(--amarelo-bg);"><td><strong>OBs 2023–2026</strong></td><td class="num"><strong>PENDENTE</strong></td><td><span class="badge badge-pendente">Em coleta</span></td><td>SIAFE Tesouraria — Run #27</td></tr>
         </tbody>
       </table></div>
 
-      <div class="callout callout-critico">
-        <strong>ACHADO CRÍTICO — CONTRATO INATIVO NÃO RESCINDIDO:</strong> O contrato 005/2021 com o ITERJ consta como "Em Vigor" no SIAFE CDP mas não registra empenhos em 2025 e 2026 (dados reais TFE). O contrato vigente desde junho de 2021 <strong>atingirá o limite legal de 60 meses (Art. 57 Lei 8.666/93) em junho de 2026</strong>. Com 3 aditivos e ausência de execução nos últimos 2 anos, três hipóteses são possíveis:
-        <ol style="margin-top:8px; padding-left:20px; line-height:2;">
-          <li><strong>Contrato encerrado de fato mas não rescindido formalmente</strong> — situação irregular, contingência fiscal</li>
-          <li><strong>Serviços suspensos</strong> sem formalização de rescisão ou declaração de inexecução</li>
-          <li><strong>Reclassificação de UG</strong> — ITERJ reorganizado sob outro código não rastreado</li>
-        </ol>
-        <p style="margin-top:8px; margin-bottom:0;">As OBs da Run #27 esclarecerão se houve pagamentos efetivos em 2025–2026. A investigação dos processos SEI listados acima permitirá determinar a hipótese correta.</p>
+      <div class="callout callout-info">
+        <strong>NOTA METODOLÓGICA — LIMITAÇÃO DO PORTAL TFE:</strong> O Portal de Transparência Fiscal do Estado do RJ (TFE) não retornou empenhos de ITERJ (UG 270042) para 2025 e 2026 na consulta por CNPJ da fornecedora. O gestor confirmou que houve execução financeira nesse período. A ausência no TFE reflete <strong>cobertura incompleta do portal público</strong>, e não necessariamente inexecução. O SIAFE é a fonte definitiva — a coleta de OBs em andamento fornecerá os valores exatos.
+        <p style="margin-top:8px; margin-bottom:0;"><strong>Ponto de atenção independente:</strong> o contrato 005/2021, vigente desde junho de 2021, <strong>atingiu o limite legal de 60 meses (Art. 57, II, Lei 8.666/93) em junho de 2026</strong>. Com 3 aditivos já realizados, qualquer prorrogação adicional exige demonstração de situação excepcional (Art. 57, §4º) sob pena de nulidade.</p>
       </div>
 
       <div class="subsecao-titulo">4.3 Limite Legal — Prazo Contratual (Art. 57 Lei 8.666/93)</div>
@@ -904,9 +899,9 @@
           </tr>
           <tr>
             <td class="center">R03</td>
-            <td>ITERJ 005/2021: "Em Vigor" sem execução 2025–2026</td>
-            <td class="center">5</td><td class="center">6</td>
-            <td class="center"><strong>30</strong></td>
+            <td>ITERJ 005/2021: limite 60 meses atingido jun/2026 (Art. 57 Lei 8.666/93)</td>
+            <td class="center">4</td><td class="center">5</td>
+            <td class="center"><strong>20</strong></td>
             <td class="center"><span class="badge badge-medio">MÉDIO</span></td>
           </tr>
           <tr>
@@ -983,9 +978,9 @@
       </div>
 
       <div class="callout callout-medio" style="margin-bottom:16px;">
-        <strong>RF-03 — MÉDIO-ALTO — Contrato ITERJ 005/2021: "Em Vigor" × Ausência de Execução</strong><br>
-        Contrato com 3 aditivos vigente desde 2021, sem empenhos confirmados em 2025–2026 (dados reais TFE). Se o serviço não está sendo prestado e o contrato não foi rescindido: (a) possível simulação de contrato para justificar pagamentos passados; (b) contrato-fantasma se houver OBs sem prestação efetiva; (c) ou inativo não encerrado formalmente (menor gravidade).<br>
-        <span style="font-size:11px; opacity:0.8;">Art. 77 Lei 8.666/93 (rescisão por inadimplemento) · TCU Decisão 2.950/2017</span>
+        <strong>RF-03 — MÉDIO — Contrato ITERJ 005/2021: Limite Legal 60 Meses Atingido</strong><br>
+        Contrato vigente desde junho de 2021, com 3 aditivos, atinge o prazo máximo de prorrogação permitido pelo Art. 57, II, Lei 8.666/93 (60 meses para serviços continuados) em <strong>junho de 2026</strong>. Qualquer prorrogação adicional é nula de pleno direito, salvo situação excepcional comprovada (Art. 57, §4º). O portal TFE não indexa transações ITERJ completamente — execução financeira em 2025–2026 confirmada pelo gestor; valores via SIAFE pendentes.<br>
+        <span style="font-size:11px; opacity:0.8;">Art. 57 II e §4º Lei 8.666/93 · TCU Acórdão 1.214/2013-Plenário (prazo máximo contratos continuados)</span>
       </div>
 
       <div class="callout callout-medio">
@@ -1030,11 +1025,11 @@
         </div>
         <div class="tl-item destaque">
           <div class="tl-ano">2025–2026</div>
-          <div class="tl-desc"><strong>ITERJ: zero empenhos</strong> nos dois anos (dado real TFE). Contrato 005/2021 marcado "Em Vigor" sem execução financeira detectada.</div>
+          <div class="tl-desc">Portal TFE não retorna transações ITERJ (UG 270042) para MGS CLEAN — limitação de cobertura do portal público. Execução financeira confirmada pelo gestor; dados completos via SIAFE em coleta.</div>
         </div>
         <div class="tl-item destaque">
           <div class="tl-ano">2026 — Jun</div>
-          <div class="tl-desc"><strong>Limite legal 60 meses (Art. 57 Lei 8.666):</strong> contrato ITERJ 005/2021 atinge prazo máximo. Qualquer prorrogação adicional é nula de pleno direito.</div>
+          <div class="tl-desc"><strong>Ponto crítico de prazo (Art. 57 Lei 8.666):</strong> contrato ITERJ 005/2021 atinge o limite de 60 meses para serviços continuados. Continuidade requer novo processo licitatório ou demonstração de situação excepcional (§4º).</div>
         </div>
         <div class="tl-item">
           <div class="tl-ano">2026 — Jun 05</div>
@@ -1052,7 +1047,7 @@
         <thead><tr><th class="center">#</th><th>Ação</th><th>Prazo</th></tr></thead>
         <tbody>
           <tr><td class="center"><span class="badge badge-alto">I-01</span></td><td>Aguardar e revisar OBs coletadas (Run #27) — atualizar análise financeira com valores reais de pagamento</td><td>7 dias</td></tr>
-          <tr><td class="center"><span class="badge badge-alto">I-02</span></td><td>Verificar situação do contrato ITERJ 005/2021 no SEI-RJ — consultar processos 270042/000678/2021, 000681/2021 e 001804/2022</td><td>15 dias</td></tr>
+          <tr><td class="center"><span class="badge badge-medio">I-02</span></td><td>Verificar situação do contrato ITERJ 005/2021 quanto ao prazo (limite 60 meses jun/2026) — consultar processos SEI 270042/000678/2021, 000681/2021 e 001804/2022; confirmar se há novo processo licitatório ou prorrogação justificada por Art. 57, §4º</td><td>30 dias</td></tr>
           <tr><td class="center"><span class="badge badge-alto">I-03</span></td><td>Confirmar publicação dos 22 contratos CBMERJ no PNCP (obrigatório desde 01/04/2023, Lei 14.133 Art. 94)</td><td>15 dias</td></tr>
           <tr><td class="center"><span class="badge badge-alto">I-04</span></td><td>Verificar CNAE atual na Receita Federal — se ainda J-6319-4/00, reportar inconsistência ao órgão contratante</td><td>15 dias</td></tr>
         </tbody>
