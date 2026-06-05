@@ -102,6 +102,19 @@ Alternativa: disparar o autosubmit do ADF via JS (`AdfPage.PAGE.... ` / evento `
 > **Dedup SIAFE×TFE:** ao gravar OBs coletadas, usar UPSERT por `numero_ob` (idempotente) e manter SEPARADO do
 > agregado TFE (granularidades diferentes: TFE = execução agregada por classificação; OB = pagamento nominal).
 
+### ⚠️ LIMITE TÉCNICO do ADF (filtro/paginação) — honesto
+A grade entrega **as 50 OBs mais recentes** (fetch size do ADF) e isso JÁ é ingerido no painel
+(`coletar_obs_sessao --ingest` → `ordens_bancarias` → painel mostra valor total). PORÉM, para
+**filtrar por favorecido** ou **paginar além das 50**, o ADF rich-client **não responde a interação
+programática**: `select_option`/`fill`/`dispatchEvent` não disparam o PPR (o campo de valor do filtro
+não renderiza; `txt_maxResults` e scroll não recarregam). Cliques em **âncoras de menu** funcionam
+(é como `_navegar_ob` navega), mas inputs/selects com autosubmit exigem eventos "trusted" que o ADF
+headless ignora. **Caminhos viáveis para coleta completa/MGS (futuro):**
+1. **Interceptar as respostas PPR** (XHR/XML) do ADF e ler os dados crus da resposta do servidor.
+2. **Export nativo** do ADF (botão `pt1:tblOrdemBancaria:btnImprimir` / `menuImprimir` → Excel/CSV) — exporta tudo.
+3. **GitHub Actions** com o `_SANDBOX/coletar_obs_agora.py` (mesma sessão, mas o filtro lá idem precisa do fix).
+> Não é falha de credencial/navegação (essas funcionam 100%) — é a barreira de automação do Oracle ADF.
+
 ## Coleta de OBs (objetivo)
 - Filtrar por CNPJ do favorecido. Funções prontas em `_SANDBOX/coletar_obs_agora.py`:
   `_ir_obs`, `_ir_lista_favorecido`, `_filtrar_por_cnpj`, `_ler_tabela`.
