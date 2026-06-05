@@ -132,13 +132,25 @@ async def _dismiss_popups(pg, tries: int = 6):
     """Fecha modais ADF (OK/Fechar/Sim) que travam a navegação."""
     for _ in range(tries):
         result = await pg.evaluate("""() => {
-            const kws = ['ok','sim','fechar','confirmar','continue','continuar'];
-            for (const el of document.querySelectorAll('button, a, input[type="button"], input[type="submit"]')) {
-                const t = (el.textContent || el.value || '').trim().toLowerCase();
-                const r = el.getBoundingClientRect();
-                if (r.width > 0 && r.height > 0 && kws.some(k => t === k || t === k.toUpperCase())) {
-                    el.click();
-                    return t;
+            // Exclui 'confirmar'/'continue'/'continuar' — evita re-click no botão de login
+            const kws = ['ok','sim','fechar'];
+            // Só fecha popups dentro de overlays/dialogs ADF
+            const containers = [
+                ...document.querySelectorAll('[id*="popup"], [id*="dlg"], [id*="modal"], [id*="dialog"], .xc9, .x1n'),
+                document.body,  // fallback: qualquer botão visível
+            ];
+            for (const root of containers) {
+                for (const el of root.querySelectorAll('button, a, input[type="button"], input[type="submit"]')) {
+                    const t = (el.textContent || el.value || '').trim().toLowerCase();
+                    const r = el.getBoundingClientRect();
+                    if (r.width > 0 && r.height > 0 && kws.some(k => t === k || t === k.toUpperCase())) {
+                        // Só clica se for inside um overlay/dialog ou se o id contiver popup/dlg
+                        const isInOverlay = el.closest('[id*="popup"], [id*="dlg"], [id*="dialog"], .xc9, .x1n');
+                        if (isInOverlay || root === document.body) {
+                            el.click();
+                            return t;
+                        }
+                    }
                 }
             }
             return null;
@@ -202,13 +214,26 @@ async def _login(pg, ano: int) -> bool:
             )
 
     # Seleciona cliente (RJ=0) e exercício
+    # ADF af:selectOneChoice renderiza <tr id="...cbxCliente"> com <select id="...cbxCliente::content"> dentro
     for sel_id, val in [("cbxCliente", "0"), ("cbxExercicio", exercicio_val)]:
         try:
-            loc = pg.locator(f'[id*="{sel_id}"]').first
-            await loc.select_option(val, timeout=4000)
-            await asyncio.sleep(0.8)
+            result = await pg.evaluate(f"""(v) => {{
+                let el = document.querySelector('[id*="{sel_id}::content"]');
+                if (!el) {{
+                    const c = document.querySelector('[id*="{sel_id}"]');
+                    el = c ? (c.tagName === 'SELECT' ? c : c.querySelector('select')) : null;
+                }}
+                if (el && el.tagName === 'SELECT') {{
+                    el.value = v;
+                    ['change', 'blur'].forEach(e => el.dispatchEvent(new Event(e, {{bubbles:true}})));
+                    return el.id + '=' + v;
+                }}
+                return 'not found';
+            }}""", val)
+            print(f"    select {sel_id}: {result}")
+            await asyncio.sleep(0.5)
         except Exception as exc:
-            print(f"    [w] select {sel_id}: {exc}")
+            print(f"    [w] JS select {sel_id}: {exc}")
 
     await asyncio.sleep(1)
 
