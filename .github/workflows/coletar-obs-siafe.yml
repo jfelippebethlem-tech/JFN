@@ -1,0 +1,111 @@
+name: Coleta OBs SIAFE (MGS CLEAN 2023-2026)
+
+on:
+  workflow_dispatch:
+    inputs:
+      siafe_user:
+        description: 'SIAFE_USER (CPF sem pontos)'
+        required: true
+      siafe_pass:
+        description: 'SIAFE_PASS'
+        required: true
+      anos:
+        description: 'Anos para coletar (ex: 2023,2024,2025,2026)'
+        required: false
+        default: '2023,2024,2025,2026'
+      telegram_token:
+        description: 'TELEGRAM_BOT_TOKEN (opcional)'
+        required: false
+        default: ''
+      telegram_chat:
+        description: 'TELEGRAM_CHAT_ID (opcional)'
+        required: false
+        default: ''
+
+jobs:
+  coletar-obs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+        with:
+          ref: claude/rj-finance-agent-BYlhJ
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependências
+        run: |
+          pip install playwright==1.43.0 requests python-dotenv 2>/dev/null || true
+          playwright install chromium
+          pip install -r requirements.txt 2>/dev/null || true
+
+      - name: Configurar .env com credenciais
+        run: |
+          mkdir -p data/sei_cache screenshots/obs_coleta
+          cat > .env << 'ENVEOF'
+          SIAFE_USER=${{ github.event.inputs.siafe_user }}
+          SIAFE_PASS=${{ github.event.inputs.siafe_pass }}
+          TELEGRAM_BOT_TOKEN=${{ github.event.inputs.telegram_token }}
+          TELEGRAM_CHAT_ID=${{ github.event.inputs.telegram_chat }}
+          CI=true
+          HEADLESS=true
+          ENVEOF
+          echo "Ambiente configurado."
+
+      - name: Coletar Ordens Bancárias SIAFE
+        run: |
+          echo "Iniciando coleta para anos: ${{ github.event.inputs.anos }}"
+          python _SANDBOX/coletar_obs_agora.py
+        timeout-minutes: 45
+        env:
+          CI: true
+          HEADLESS: true
+          DISPLAY: ''
+
+      - name: Verificar e exibir resultado
+        run: |
+          if [ -f "data/sei_cache/mgsclean_obs_todas.json" ]; then
+            python3 -c "
+          import json
+          d = json.load(open('data/sei_cache/mgsclean_obs_todas.json'))
+          print('=== RESULTADO DA COLETA ===')
+          print(f'Total OBs: {d.get(\"total_obs\", 0)}')
+          print(f'Valor total: R\$ {d.get(\"total_valor\", 0):,.2f}')
+          for ano, info in sorted((d.get(\"por_ano\") or {}).items()):
+              print(f'  {ano}: {info.get(\"count\",0)} OBs / R\$ {info.get(\"valor\",0):,.2f}')
+          "
+          else
+            echo "AVISO: arquivo de OBs não gerado"
+            ls -la data/sei_cache/ || true
+            cat screenshots/obs_coleta/*.log 2>/dev/null || true
+          fi
+
+      - name: Gerar PDF de auditoria
+        run: python _SANDBOX/gerar_relatorio_obs_pdf.py 2>/dev/null || true
+
+      - name: Commit e push dos dados coletados
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "JFN Coleta SIAFE"
+          git add data/sei_cache/mgsclean_obs*.json 2>/dev/null || true
+          git add data/compliance.db 2>/dev/null || true
+          git add reports/*.pdf 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "data: OBs MGS CLEAN coletadas via GitHub Actions $(date '+%Y-%m-%d %H:%M')"
+          git push origin claude/rj-finance-agent-BYlhJ
+
+      - name: Salvar artefatos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: obs-siafe-${{ github.run_number }}
+          path: |
+            data/sei_cache/mgsclean_obs*.json
+            reports/auditoria*.pdf
+            screenshots/obs_coleta/
+          retention-days: 30
