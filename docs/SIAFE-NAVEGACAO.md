@@ -115,6 +115,23 @@ headless ignora. **Caminhos viáveis para coleta completa/MGS (futuro):**
 3. **GitHub Actions** com o `_SANDBOX/coletar_obs_agora.py` (mesma sessão, mas o filtro lá idem precisa do fix).
 > Não é falha de credencial/navegação (essas funcionam 100%) — é a barreira de automação do Oracle ADF.
 
+### Tentativas EXAUSTIVAS de coleta completa (>50 OBs) — todas bloqueadas em HEADLESS
+A grade exibe "**Limite de 1000 registros**" (o dado existe), mas o DOM (`tabViewerDec::db`) só contém
+~50 linhas (scroll virtual). Testado e FALHOU em headless:
+1. `select_option`/`fill` no filtro e em `txt_maxResults` → ADF não dispara o PPR (campo de valor não renderiza).
+2. Scroll JS (`scrollTop`) e **scroll real (`mouse.wheel`)** sobre a grade → DOM permanece 50 (sem lazy-load).
+3. Nenhum container com `overflow:auto/scroll` dentro da grade (ADF gerencia o scroll por JS próprio).
+4. Interceptar requests PPR → as 50 linhas chegam EMBUTIDAS na resposta do clique de menu, não num fetch
+   de range replicável.
+5. Export/Imprimir (`btnImprimir` → "Imprimir") → não gera download nem nova página em headless (usa window.print).
+
+**CAMINHO REALISTA p/ a base completa (próxima sessão dedicada):**
+- **Rodar o navegador em modo HEADED com display virtual (xvfb)** — em headless o ADF rich-client
+  suprime scroll-fetch/export; com display real, `mouse.wheel`/export tendem a funcionar como num browser
+  de verdade. (Setup: `xvfb-run` + `headless=False`.) É a aposta mais promissora.
+- Alternativa: reverter o protocolo de partial-submit do ADF (replicar o XML de evento de scroll da tabela).
+- A coleta das **50 OBs recentes funciona** e já alimenta o painel/relatório — é a base mínima confiável.
+
 ## Coleta de OBs (objetivo)
 - Filtrar por CNPJ do favorecido. Funções prontas em `_SANDBOX/coletar_obs_agora.py`:
   `_ir_obs`, `_ir_lista_favorecido`, `_filtrar_por_cnpj`, `_ler_tabela`.
