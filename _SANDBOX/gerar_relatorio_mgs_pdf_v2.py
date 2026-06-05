@@ -621,6 +621,7 @@ class AuditPDF(FPDF):
     def page_cover(self):
         self._in_cover = True
         self.add_page()
+        self.set_auto_page_break(False)  # evita quebras automáticas na capa
         # navy background
         self._rect(0, 0, 210, 297, C_NAVY)
         # gold bar top
@@ -694,6 +695,7 @@ class AuditPDF(FPDF):
         self._tc(C_NAVY2)
         self.cell(174, 4, "Valores tipo EMPENHADO (Nota de Empenho, TFE/RJ). Valores PAGOS requerem consulta ao SIAFE (Etapa 2).", 0, 0, "C")
 
+        self.set_auto_page_break(True, margin=20)  # restaura para o restante do doc
         self._in_cover = False
 
     # ── Page 2: Sumário ────────────────────────────────────────────────────
