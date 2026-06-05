@@ -1,4 +1,4 @@
-timestamp: 2026-06-05T05:27:44.098163
+timestamp: 2026-06-05T05:37:24.490327
 ano: 2027
 exercicio_val: 0
 url_pos_load: https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp
