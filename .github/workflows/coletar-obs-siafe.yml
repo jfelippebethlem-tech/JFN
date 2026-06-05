@@ -70,14 +70,8 @@ jobs:
           TG_TOKEN="${INPUT_TG_TOKEN:-$SECRET_TG_TOKEN}"
           TG_CHAT="${INPUT_TG_CHAT:-$SECRET_TG_CHAT}"
           echo "::add-mask::$SIAFE_PASS"
-          cat > .env << EOF
-SIAFE_USER=$SIAFE_USER
-SIAFE_PASS=$SIAFE_PASS
-TELEGRAM_BOT_TOKEN=$TG_TOKEN
-TELEGRAM_CHAT_ID=$TG_CHAT
-CI=true
-HEADLESS=true
-EOF
+          printf 'SIAFE_USER=%s\nSIAFE_PASS=%s\nTELEGRAM_BOT_TOKEN=%s\nTELEGRAM_CHAT_ID=%s\nCI=true\nHEADLESS=true\n' \
+            "$SIAFE_USER" "$SIAFE_PASS" "$TG_TOKEN" "$TG_CHAT" > .env
           echo "Ambiente configurado. USER=${SIAFE_USER:0:4}***"
 
       - name: Coletar Ordens Bancárias SIAFE
