@@ -85,6 +85,7 @@ jobs:
           CI: true
           HEADLESS: true
           DISPLAY: ''
+          PYTHONUNBUFFERED: '1'
           SIAFE_ANOS: ${{ github.event.inputs.anos }}
 
       - name: Verificar e exibir resultado
