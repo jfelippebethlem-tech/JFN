@@ -748,7 +748,9 @@ async def _login(pg, ano: int) -> bool:
 
     # Aguarda popup aparecer (popup ADF pode levar ~1s para animar)
     await asyncio.sleep(1.5)
-    await _screenshot(pg, f"01c_postclick_{ano}")
+    await _screenshot(pg, f"01c_postclick_t0_{ano}")
+    await asyncio.sleep(1.5)
+    await _screenshot(pg, f"01c_postclick_t1_{ano}")
 
     # Aguarda navegação pós-login — poll a cada 2s por até 35s.
     # SIAFE mostra popup "O Sistema está aberto em outra janela" após clicar Ok
@@ -762,9 +764,8 @@ async def _login(pg, ano: int) -> bool:
             break
         _poll_n += 1
 
-        # Captura screenshot na 2a iteração para diagnóstico (1a é imediatamente pós-click)
-        if _poll_n == 2:
-            await _screenshot(pg, f"01d_poll2_{ano}")
+        # Screenshot em todos os polls para diagnóstico visual completo
+        await _screenshot(pg, f"01d_poll{_poll_n:02d}_{ano}")
 
         # Tenta dispensar popup "O Sistema está aberto em outra janela" / "já está logado"
         # PRIORIDADE 1: IDs explícitos — click SEM checar visibilidade (ADF usa CSS 0x0 durante animação)
@@ -833,6 +834,7 @@ async def _login(pg, ano: int) -> bool:
         }""")
         if _pop and (_pop.startswith('popup_clicado:') or _pop.startswith('sim_folha:')):
             print(f"    → Popup dispensado: [{_pop}]", flush=True)
+            await _screenshot(pg, f"01e_sim_clicado_p{_poll_n:02d}_{ano}")
             await asyncio.sleep(2)
         elif _pop:
             print(f"    → Poll#{_poll_n}: {_pop}", flush=True)
