@@ -72,3 +72,4 @@ massare/data/*.db-*
 # SIAFE: sessão autenticada e código MFA (nunca versionar)
 data/sei_cache/siafe_state.json
 data/sei_cache/.mfa_code
+data/sei_cache/obs_sessao_*.json
