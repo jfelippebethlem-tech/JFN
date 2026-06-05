@@ -1,5 +1,17 @@
 {
   "env": {
     "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "32000"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p ~/.claude; MARKER='# Instruções Globais — jfelippebethlem@gmail.com'; if [ ! -f ~/.claude/CLAUDE.md ]; then cp \"$(pwd)/.claude/global_preferences.md\" ~/.claude/CLAUDE.md; elif ! grep -qF \"$MARKER\" ~/.claude/CLAUDE.md 2>/dev/null; then printf '\\n' >> ~/.claude/CLAUDE.md && cat \"$(pwd)/.claude/global_preferences.md\" >> ~/.claude/CLAUDE.md; fi 2>/dev/null || true"
+          }
+        ]
+      }
+    ]
   }
 }
