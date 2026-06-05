@@ -313,22 +313,25 @@ async def _login(pg, ano: int) -> bool:
             if "js:" in result:
                 set_ok = True
 
-        # Estratégia 3: ADF Page API (se disponível)
-        if not set_ok:
-            r3 = await pg.evaluate(f"""(v) => {{
-                try {{
-                    if (typeof AdfPage !== 'undefined') {{
-                        const comp = AdfPage.PAGE.findComponentByAbsoluteId('loginBox:{sel_id}');
-                        if (comp) {{ comp.setValue(v); return 'adf_api:ok'; }}
-                    }}
-                }} catch(e) {{}}
-                return 'adf_api:n/a';
-            }}""", val)
-            print(f"    select {sel_id} ADF API: {r3}")
+        # Estratégia 3: ADF Page API — tenta SEMPRE (não só como fallback)
+        # ADF mantém estado interno separado do DOM; setValue() dispara PPR correto
+        r3 = await pg.evaluate(f"""(v) => {{
+            try {{
+                if (typeof AdfPage !== 'undefined') {{
+                    const comp = AdfPage.PAGE.findComponentByAbsoluteId('loginBox:{sel_id}');
+                    if (comp) {{ comp.setValue(v); return 'adf_api:ok'; }}
+                    return 'adf_api:comp_not_found';
+                }}
+            }} catch(e) {{ return 'adf_api:err=' + e.message; }}
+            return 'adf_api:AdfPage_undefined';
+        }}""", val)
+        print(f"    select {sel_id} ADF API: {r3}")
 
-        await asyncio.sleep(0.5)
+        # Aguarda PPR (partial page render) do ADF estabilizar
+        await _settle(pg, 2000)
 
-    await asyncio.sleep(1)
+    # Aguarda ADF finalizar qualquer PPR pendente após todas as seleções
+    await _settle(pg, 3000)
     await _screenshot(pg, f"01b_presubmit_{ano}")
 
     # Clica botão Confirmar/Login
@@ -354,7 +357,14 @@ async def _login(pg, ano: int) -> bool:
         print("    [w] Botão não encontrado — pressionando Enter")
         await pg.keyboard.press("Enter")
 
-    await asyncio.sleep(10)
+    # Aguarda navegação para fora de login.jsp (máx 20s); se não sair = login falhou
+    try:
+        await pg.wait_for_url(
+            lambda u: "login" not in u.lower() and "autenticacao" not in u.lower(),
+            timeout=20_000,
+        )
+    except Exception:
+        pass
     await _dismiss_popups(pg, allow_confirm=False)
     await _screenshot(pg, f"02_pos_login_{ano}")
 
@@ -362,7 +372,33 @@ async def _login(pg, ano: int) -> bool:
     ok  = "login" not in url and "autenticacao" not in url
     print(f"  → Login {'✔ OK' if ok else '✖ FALHOU'} — {pg.url[:80]}")
 
-    # Salva diagnóstico em arquivo para inspecção remota
+    # Diagnóstico pós-login: captura texto da página e mensagens de erro
+    page_text = ""
+    error_msgs: list = []
+    buttons_after: list = []
+    try:
+        page_text   = await pg.evaluate("() => document.body.innerText.substring(0,3000)")
+        error_msgs  = await pg.evaluate("""() =>
+            [...document.querySelectorAll(
+                '[id*="msg"], [id*="err"], [id*="alert"], [class*="error"], [class*="alert"], ' +
+                '[id*="Msg"], [id*="Error"], .xif, .xi5, .xm4'
+            )].map(e => e.textContent.replace(/\\s+/g,' ').trim().substring(0,300))
+              .filter(t => t.length > 3).slice(0,15)
+        """)
+        buttons_after = await pg.evaluate("""() =>
+            [...document.querySelectorAll('button, input[type="button"], input[type="submit"]')]
+            .filter(e => e.getBoundingClientRect().width > 0)
+            .map(e => (e.textContent || e.value || '').trim().substring(0,30))
+            .filter(Boolean).slice(0,10)
+        """)
+    except Exception:
+        pass
+
+    print(f"    Page text (200): {page_text[:200].replace(chr(10),' ')}")
+    if error_msgs:
+        print(f"    Error elements: {error_msgs[:5]}")
+
+    # Salva diagnóstico completo em arquivo para inspecção remota
     try:
         CACHE_DIR.mkdir(parents=True, exist_ok=True)
         dbg = CACHE_DIR / f"debug_login_{ano}.txt"
@@ -375,7 +411,10 @@ async def _login(pg, ano: int) -> bool:
             f"form_els: {json.dumps(form_els)}\n"
             f"sel_info: {json.dumps(sel_info, ensure_ascii=False)}\n"
             f"login_ok: {ok}\n"
-            f"url_final: {pg.url}\n",
+            f"url_final: {pg.url}\n"
+            f"page_text_after: {page_text[:3000]}\n"
+            f"error_msgs: {json.dumps(error_msgs, ensure_ascii=False)}\n"
+            f"buttons_after: {json.dumps(buttons_after)}\n",
             encoding="utf-8",
         )
     except Exception as _e:
