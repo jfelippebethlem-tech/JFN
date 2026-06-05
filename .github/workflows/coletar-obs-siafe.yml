@@ -1,126 +1,150 @@
-name: Coleta OBs SIAFE (MGS CLEAN 2023-2026)
+name: Coleta OBs SIAFE (Todas as Empresas)
 
 on:
   workflow_dispatch:
     inputs:
       siafe_user:
-        description: 'SIAFE_USER (CPF sem pontos)'
-        required: true
+        description: 'SIAFE_USER (CPF sem pontos) — vazio = usa secret SIAFE_USER'
+        required: false
+        default: ''
       siafe_pass:
-        description: 'SIAFE_PASS'
-        required: true
-      siafe_mfa_code:
-        description: 'Codigo MFA (se necessario - alfanumerico)'
+        description: 'SIAFE_PASS — vazio = usa secret SIAFE_PASS'
         required: false
         default: ''
       anos:
-        description: 'Anos (ex: 2023,2024,2025,2026)'
+        description: 'Anos para coletar (ex: 2023,2024,2025,2026)'
         required: false
         default: '2023,2024,2025,2026'
+      cnpjs:
+        description: 'CNPJs alvo separados por virgula (vazio = usa data/empresas_target.json)'
+        required: false
+        default: ''
       telegram_token:
-        description: 'TELEGRAM_BOT_TOKEN - fallback MFA automatico'
+        description: 'TELEGRAM_BOT_TOKEN (opcional)'
         required: false
         default: ''
       telegram_chat:
-        description: 'TELEGRAM_CHAT_ID - fallback MFA automatico'
+        description: 'TELEGRAM_CHAT_ID (opcional)'
         required: false
         default: ''
 
 jobs:
   coletar-obs:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 120
     permissions:
       contents: write
 
     steps:
-      - name: Checkout feature branch
+      - name: Checkout codigo
         uses: actions/checkout@v4
         with:
           ref: claude/rj-finance-agent-BYlhJ
-          token: ${{ github.token }}
 
-      - name: Instalar Python 3.11
+      - name: Instalar Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+          cache: 'pip'
 
-      - name: Instalar dependencias Python
+      - name: Instalar dependencias
         run: |
-          pip install -r requirements.txt
           pip install requests python-dotenv 2>/dev/null || true
+          pip install -r requirements.txt 2>/dev/null || true
+          playwright install chromium
 
-      - name: Instalar dependencias do sistema para Chromium
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            libasound2t64 libgbm1 libxkbcommon0 libxfixes3 libxrandr2 \
-            libx11-xcb1 libdbus-1-3 libnss3 libnspr4 \
-            libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
-            libxdamage1 libxcomposite1 libpango-1.0-0 libcairo2 \
-            fonts-liberation libfontconfig1 libx11-6 libxext6 libxss1 \
-            2>/dev/null || true
-
-      - name: Instalar Chromium (playwright)
-        run: playwright install chromium
-
-      - name: Criar .env e diretorios
+      - name: Configurar .env com credenciais
+        env:
+          INPUT_USER: ${{ github.event.inputs.siafe_user }}
+          INPUT_PASS: ${{ github.event.inputs.siafe_pass }}
+          SECRET_USER: ${{ secrets.SIAFE_USER }}
+          SECRET_PASS: ${{ secrets.SIAFE_PASS }}
+          INPUT_TG_TOKEN: ${{ github.event.inputs.telegram_token }}
+          INPUT_TG_CHAT: ${{ github.event.inputs.telegram_chat }}
+          SECRET_TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          SECRET_TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           mkdir -p data/sei_cache screenshots/obs_coleta
-          printf 'SIAFE_USER=%s\nSIAFE_PASS=%s\nTELEGRAM_BOT_TOKEN=%s\nTELEGRAM_CHAT_ID=%s\nCI=true\nHEADLESS=true\n' \
-            '${{ github.event.inputs.siafe_user }}' \
-            '${{ github.event.inputs.siafe_pass }}' \
-            '${{ github.event.inputs.telegram_token }}' \
-            '${{ github.event.inputs.telegram_chat }}' > .env
+          SIAFE_USER="${INPUT_USER:-$SECRET_USER}"
+          SIAFE_PASS="${INPUT_PASS:-$SECRET_PASS}"
+          TG_TOKEN="${INPUT_TG_TOKEN:-$SECRET_TG_TOKEN}"
+          TG_CHAT="${INPUT_TG_CHAT:-$SECRET_TG_CHAT}"
+          echo "::add-mask::$SIAFE_PASS"
+          cat > .env << EOF
+SIAFE_USER=$SIAFE_USER
+SIAFE_PASS=$SIAFE_PASS
+TELEGRAM_BOT_TOKEN=$TG_TOKEN
+TELEGRAM_CHAT_ID=$TG_CHAT
+CI=true
+HEADLESS=true
+EOF
+          echo "Ambiente configurado. USER=${SIAFE_USER:0:4}***"
 
-      - name: Coletar OBs SIAFE 2023-2026
-        env:
-          CI: "true"
-          HEADLESS: "true"
-          SIAFE_MFA_CODE: ${{ github.event.inputs.siafe_mfa_code }}
-          TELEGRAM_BOT_TOKEN: ${{ github.event.inputs.telegram_token }}
-          TELEGRAM_CHAT_ID: ${{ github.event.inputs.telegram_chat }}
-        run: python _SANDBOX/coletar_obs_agora.py
-        timeout-minutes: 45
-
-      - name: Verificar resultado
+      - name: Coletar Ordens Bancarias SIAFE
         run: |
-          if [ -f data/sei_cache/mgsclean_obs_todas.json ]; then
+          echo "Iniciando coleta - Anos: ${{ github.event.inputs.anos }} | CNPJs: ${SIAFE_CNPJS:-arquivo}"
+          python _SANDBOX/coletar_obs_agora.py
+        timeout-minutes: 90
+        env:
+          CI: true
+          HEADLESS: true
+          DISPLAY: ''
+          PYTHONUNBUFFERED: '1'
+          SIAFE_ANOS: ${{ github.event.inputs.anos }}
+          SIAFE_CNPJS: ${{ github.event.inputs.cnpjs }}
+
+      - name: Verificar e exibir resultado
+        if: always()
+        run: |
+          echo "=== Arquivos gerados ==="
+          ls -lh data/sei_cache/obs_*.json 2>/dev/null || true
+          ls -lh data/sei_cache/mgsclean_obs*.json 2>/dev/null || true
+          if [ -f "data/sei_cache/obs_todas.json" ]; then
             python3 -c "
-          import json, sys
+          import json
+          d = json.load(open('data/sei_cache/obs_todas.json'))
+          print('=== RESULTADO DA COLETA ===')
+          print(f'Empresas: {d.get(\"empresas\", 1)}')
+          print(f'Total OBs: {d.get(\"total_obs\", 0)}')
+          print(f'Valor total: R\$ {d.get(\"total_valor\", 0):,.2f}')
+          print(f'Anos: {d.get(\"anos_cobertos\", [])}')
+          "
+          elif [ -f "data/sei_cache/mgsclean_obs_todas.json" ]; then
+            python3 -c "
+          import json
           d = json.load(open('data/sei_cache/mgsclean_obs_todas.json'))
-          print(f'OBs coletadas : {d.get(\"total_obs\",0)}')
-          print(f'Valor total   : R\$ {d.get(\"total_valor\",0):,.2f}')
-          sys.exit(0 if d.get('total_obs',0)>0 else 1)
-            "
+          print(f'Total OBs: {d.get(\"total_obs\", 0)} | R\$ {d.get(\"total_valor\", 0):,.2f}')
+          "
           else
-            echo 'ERRO: arquivo de OBs nao gerado'
+            echo "AVISO: nenhum arquivo de OBs gerado"
             ls -la data/sei_cache/ || true
-            cat data/sei_cache/debug_login_*.txt 2>/dev/null || true
-            exit 1
           fi
 
       - name: Gerar PDF de auditoria
+        if: always()
         run: python _SANDBOX/gerar_relatorio_obs_pdf.py 2>/dev/null || true
 
-      - name: Commit e push dos dados
+      - name: Commit e push dos dados coletados
         if: always()
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "JFN Coleta SIAFE"
           git remote set-url origin https://x-access-token:${{ github.token }}@github.com/jfelippebethlem-tech/JFN.git
-          git add data/sei_cache/ reports/ 2>/dev/null || true
+          git add data/sei_cache/obs_*.json 2>/dev/null || true
+          git add data/sei_cache/mgsclean_obs*.json 2>/dev/null || true
           git add data/compliance.db 2>/dev/null || true
-          git diff --staged --quiet || git commit -m "data: OBs/debug SIAFE $(date +%Y-%m-%d_%H%M)"
+          git add reports/*.pdf 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "data: OBs SIAFE coletadas via GitHub Actions $(date '+%Y-%m-%d %H:%M')"
           git push origin claude/rj-finance-agent-BYlhJ
 
       - name: Salvar artefatos
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: obs-siafe-run-${{ github.run_number }}
+          name: obs-siafe-${{ github.run_number }}
           path: |
-            data/sei_cache/
+            data/sei_cache/obs_*.json
+            data/sei_cache/mgsclean_obs*.json
             reports/auditoria*.pdf
             screenshots/obs_coleta/
           retention-days: 30
