@@ -135,6 +135,28 @@ controlada pelo celular. Última revisão: 01/06/2026.
 
 ---
 
+## 8. Auditoria MGS CLEAN (2023–2026) — Status
+
+| Item | Status | Valor | Fonte |
+|---|---|---|---|
+| Contratos SIAFE | ✅ Real | R$ 146,7 mi (41 contratos) | SIAFE CDP 04/06/2026 |
+| Empenhos 2025 | ✅ Real | R$ 89,9 mi (84 empenhos) | TFE CDP 04/06/2026 |
+| Empenhos 2026 | ✅ Real | R$ 58,6 mi (47 empenhos) | TFE CDP 04/06/2026 |
+| Empenhos 2024 | ⚠️ Estimado | R$ 43,0 mi | contratos ativos |
+| Empenhos 2023 | ⚠️ Estimado | R$ 13,4 mi | contratos ativos |
+| **OBs 2023–2026** | **⏳ Pendente** | — | **Executar COLETAR_OBS.bat** |
+
+### Como coletar as Ordens Bancárias (pagamentos SIAFE):
+1. Na máquina Windows com acesso ao SIAFE, duplo clique em **`COLETAR_OBS.bat`**
+2. Aguarde ~20 min (coleta 4 anos × filtro CNPJ 19.088.605/0001-04)
+3. Dados salvos automaticamente em `data/sei_cache/mgsclean_obs_todas.json`
+4. Git push automático ao final
+5. PDF gerado em `reports/auditoria_mgs_obs_*.pdf`
+
+> ⚠️ SIAFE só acessível da rede do governo RJ. Não roda neste servidor cloud.
+
+---
+
 ## Como usar (resumo)
 
 1. **Uma vez só:** duplo clique em `configurar_tudo.bat`
