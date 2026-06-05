@@ -148,10 +148,38 @@ O SIAFE-Rio 2 pode exibir popups após o login:
 
 ---
 
-## Próximos Passos
+## Próximos Passos (Actions)
 
 1. Usuário confirma que `SIAFE_USER` está configurado no GitHub
 2. Disparar Run 27 via workflow_dispatch
 3. Monitorar login e popup de "outra janela"
 4. Se MFA solicitado, perguntar código ao usuário no chat e fazer push via API
 5. Confirmar coleta com `total_obs > 0`
+
+---
+
+## 🔥 ACHADO DECISIVO — 2026-06-05 (Claude Code, VM GCP)
+
+**A VM GCP ACESSA o SIAFE-Rio 2 DIRETAMENTE — o WAF NÃO bloqueia este IP.**
+
+Teste real desta VM (`~/JFN/.venv` + Playwright headless):
+- `GET https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp` → **HTTP 200, 28 KB**, é o login real
+  (contém `loginBox`, `usuario`, `senha`, `ADF`, `Oracle`, `faces`).
+- Playwright headless carregou a página: **título "Siafe-Rio2"**, campos **Usuário + Senha**,
+  dropdown **Exercício (2027..2023)**, botão **Ok** — versão `4.167.12 - Build 202605281616`.
+
+**Implicação (muda a arquitetura):** a coleta de OBs pode rodar **direto na VM, 24/7**, sem depender
+do GitHub Actions. Isso é o objetivo do Mestre Jorge (tudo na VM 24h). O Actions continua como
+fallback (outro IP) se o WAF mudar de comportamento.
+
+**BLOQUEIO ATUAL:** o `~/JFN/.env` desta VM tem credenciais **placeholder** (`SIAFE_USER=SEU_CPF...`,
+copiadas do `.env.example`). Para logar de verdade da VM, faltam o **CPF (SIAFE_USER)** e a
+**senha (SIAFE_PASS)** reais — as reais hoje só estão nos GitHub Secrets / no Windows.
+
+### Próximos passos (VM direta — preferencial)
+1. Mestre Jorge põe as credenciais reais em `~/JFN/.env` (`SIAFE_USER`, `SIAFE_PASS`) — ou as envia.
+2. Rodar o login da VM com a lógica já corrigida (`_SANDBOX/coletar_obs_agora.py`, popups/Enter/MFA já tratados).
+3. Se aparecer MFA/popup de sessão, pedir o código ao Mestre Jorge no chat e injetar.
+4. Coletar OBs (empenho→liquidação→pagamento) por empresa×exercício; cruzar com nº de processo SEI
+   para avaliar o processo na íntegra (cadeia OB→NL→NE→processo existe no SIAFE, não no espelho TFE).
+5. Agendar coleta recorrente na VM (systemd-timer), persistindo em `data/compliance.db`.
