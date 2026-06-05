@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import os
+import platform
+import shutil
 from pathlib import Path
 from typing import Optional
 
@@ -11,7 +13,28 @@ import pytesseract
 import requests
 from PIL import Image, ImageFilter
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+def _resolver_tesseract() -> Optional[str]:
+    """Localiza o binário do Tesseract em qualquer SO.
+
+    Ordem: variável TESSERACT_CMD > caminho padrão do Windows > PATH (Linux/Mac).
+    Em Linux/Docker o Tesseract fica no PATH (apt install tesseract-ocr), então
+    não forçamos nenhum caminho fixo.
+    """
+    override = os.environ.get("TESSERACT_CMD")
+    if override and Path(override).exists():
+        return override
+    if platform.system() == "Windows":
+        base = os.environ.get("PROGRAMFILES", r"C:\Program Files")
+        win = Path(base) / "Tesseract-OCR" / "tesseract.exe"
+        if win.exists():
+            return str(win)
+    return shutil.which("tesseract")
+
+
+_tess = _resolver_tesseract()
+if _tess:
+    pytesseract.pytesseract.tesseract_cmd = _tess
 
 TMP = Path("data/tmp/captcha_solver")
 TMP.mkdir(parents=True, exist_ok=True)

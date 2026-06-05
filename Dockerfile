@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libgbm1 libasound2 libpango-1.0-0 libcairo2 libxshmfence1 \
     libx11-6 libxext6 libxrender1 \
     fonts-liberation fonts-noto-color-emoji \
+    tesseract-ocr tesseract-ocr-por libgl1 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

@@ -4,7 +4,7 @@ from playwright.sync_api import sync_playwright
 import easyocr
 
 SEARCH_URL = "https://sei.rj.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php?acao_externa=protocolo_pesquisar&acao_origem_externa=protocolo_pesquisar&id_orgao_acesso_externo=6"
-OUT = Path("C:/JFN/jfn/data/tmp/sei_run")
+OUT = Path(os.environ.get("JFN_DATA_DIR", "data")) / "tmp" / "sei_run"
 OUT.mkdir(parents=True, exist_ok=True)
 
 reader = easyocr.Reader(['en'], gpu=False)
