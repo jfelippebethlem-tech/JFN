@@ -112,6 +112,55 @@ async def coletar(cnpj, cnpj_fmt, ano, max_paginas=3):
             await b.close()
 
 
+def _money_br(s):
+    s = (s or "").strip().replace(".", "").replace(",", ".")
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def ingest_obs(rows, ano):
+    """Grava as OBs coletadas no compliance.db (idempotente por numero_ob). Dedup vs TFE: tabela
+    separada (ordens_bancarias = nominal do SIAFE; TFE fica em tfe_cache, agregado)."""
+    import sqlite3
+    from datetime import datetime
+    db = Path(os.environ.get("JFN_DATA_DIR", _REPO / "data")) / "compliance.db"
+    if not db.exists():
+        return 0
+    con = sqlite3.connect(str(db))
+    n = 0
+    for r in rows:
+        num = (r.get("numero") or "").strip()
+        if not num:
+            continue
+        try:
+            de = r.get("data_emissao", "")
+            data = datetime.strptime(de, "%d/%m/%Y").date().isoformat() if de else None
+        except Exception:
+            data = None
+        proc = (r.get("processo") or "").strip()
+        vals = dict(numero_ob=num, data_emissao=data, ug_codigo=r.get("ug_emitente"),
+                    favorecido_nome=r.get("nome_favorecido"), valor=_money_br(r.get("valor")),
+                    tipo_ob=r.get("tipo_ob"), status=r.get("status"),
+                    numero_processo=proc, numero_sei=proc if proc and proc != "não há" else None,
+                    categoria="siafe_ob", exercicio=str(ano))
+        ex = con.execute("SELECT id FROM ordens_bancarias WHERE numero_ob=?", (num,)).fetchone()
+        if ex:
+            con.execute("""UPDATE ordens_bancarias SET data_emissao=?, ug_codigo=?, favorecido_nome=?,
+                           valor=?, tipo_ob=?, status=?, numero_processo=?, numero_sei=?, categoria=?,
+                           exercicio=? WHERE id=?""",
+                        (vals["data_emissao"], vals["ug_codigo"], vals["favorecido_nome"], vals["valor"],
+                         vals["tipo_ob"], vals["status"], vals["numero_processo"], vals["numero_sei"],
+                         vals["categoria"], vals["exercicio"], ex[0]))
+        else:
+            cols = ",".join(vals.keys()); ph = ",".join("?" * len(vals))
+            con.execute(f"INSERT INTO ordens_bancarias({cols}) VALUES({ph})", tuple(vals.values()))
+        n += 1
+    con.commit(); con.close()
+    return n
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--cnpj", default="19088605000104")
@@ -119,6 +168,7 @@ def main():
     ap.add_argument("--ano", type=int, default=2025)
     ap.add_argument("--nome", default="", help="filtra OBs cujo Nome do Favorecido contém este termo")
     ap.add_argument("--max-paginas", type=int, default=3)
+    ap.add_argument("--ingest", action="store_true", help="grava as OBs no compliance.db (ordens_bancarias)")
     a = ap.parse_args()
     res = asyncio.run(coletar(a.cnpj, a.cnpj_fmt, a.ano, max_paginas=a.max_paginas))
     if "erro" in res:
@@ -136,6 +186,9 @@ def main():
         print(f"salvo em {out}")
         for r in rows[:6]:
             print(f"  {r.get('numero')} | {r.get('data_emissao')} | {r.get('nome_favorecido','')[:30]} | proc={r.get('processo')} | R$ {r.get('valor')}")
+        if a.ingest:
+            ning = ingest_obs(rows, a.ano)
+            print(f"  → ingeridas no compliance.db (ordens_bancarias): {ning}")
 
 
 if __name__ == "__main__":
