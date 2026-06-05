@@ -1,6 +1,6 @@
 {
   "descricao": "Índice de progresso da coleta de Ordens Bancárias SIAFE por empresa e ano",
-  "ultima_atualizacao": "2026-06-05T15:58:55.687746",
+  "ultima_atualizacao": "2026-06-05T16:03:25.845754",
   "versao": "1.0",
   "instrucao": "Este arquivo é atualizado automaticamente ao final de cada run de coleta. Use para saber quais pares (empresa, ano) já foram coletados e retomar de onde parou.",
   "empresas": {
@@ -33,8 +33,8 @@
           "status": "vazio",
           "total_obs": 0,
           "total_valor": 0,
-          "coletado_em": "2026-06-05T15:58:55.687746",
-          "run_id": "27025406022"
+          "coletado_em": "2026-06-05T16:03:25.845754",
+          "run_id": "27025644474"
         }
       }
     },
