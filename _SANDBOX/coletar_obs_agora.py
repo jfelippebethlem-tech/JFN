@@ -69,21 +69,196 @@ MESES_PT = {
     7:"Julho",8:"Agosto",9:"Setembro",10:"Outubro",11:"Novembro",12:"Dezembro",
 }
 
-# Nomes de UG conhecidos (completar à medida que forem aparecendo)
+# Nomes de UG conhecidos — Secretarias e órgãos do Estado do RJ
+# Fonte: SIAFE-Rio 2 / Portal da Transparência RJ
 _UG_NOMES: dict[str, str] = {
-    "270001":"Secretaria de Estado PM",   "270003":"FUNESBOM",
-    "270005":"Tribunal de Justiça",        "270006":"TCE-RJ",
-    "270009":"PGE",                        "270015":"SECEC",
-    "270016":"FUNESBOM (FEE)",            "270020":"RIOPREVIDÊNCIA",
-    "270024":"INEA",                       "270029":"Fundo Estadual Saúde",
-    "270042":"ITERJ",                      "270051":"Polícia Militar (PM)",
-    "270060":"Casa Civil",                 "300100":"SEFAZ-RJ",
-    "270011":"Secretaria de Educação",     "270018":"DER-RJ",
-    "270013":"Secretaria de Saúde",
+    # Poder Executivo — Secretarias
+    "270001": "Casa Civil",
+    "270002": "SEFAZ — Sec. Fazenda",
+    "270003": "FUNESBOM",
+    "270004": "SESDEC — Sec. Defesa Civil",
+    "270005": "SEAP — Sec. Administração Penitenciária",
+    "270006": "TCE-RJ",
+    "270007": "SESEG — Sec. Segurança",
+    "270008": "SSP — Subsec. Segurança",
+    "270009": "PGE — Proc. Geral Estado",
+    "270010": "SEAAPI — Sec. Agricultura",
+    "270011": "SEEDUC — Sec. Educação",
+    "270012": "SECCR — Sec. Esporte",
+    "270013": "SES — Sec. Saúde",
+    "270014": "SEST — Sec. Trabalho",
+    "270015": "SECEC — Sec. Cultura",
+    "270016": "FUNESBOM (FEE)",
+    "270017": "DETRAN-RJ",
+    "270018": "DER-RJ",
+    "270019": "SEHAB — Sec. Habitação",
+    "270020": "RIOPREVIDÊNCIA",
+    "270021": "SEOBRAS — Sec. Obras",
+    "270022": "SEOP — Sec. Obras Públicas",
+    "270023": "SEMADS — Sec. Meio Ambiente",
+    "270024": "INEA — Inst. Amb. Est.",
+    "270025": "SETUR — Sec. Turismo",
+    "270026": "SEIO — Sec. Interior",
+    "270027": "SECI — Sec. Ciência",
+    "270028": "SERLA — Fund. Rio Águas",
+    "270029": "FES — Fundo Estadual Saúde",
+    "270030": "PRODERJ — TI Estado",
+    "270031": "SEJUDH — Sec. Direitos Humanos",
+    "270032": "SEDS — Sec. Desenvolvimento Social",
+    "270033": "SEFAZ — DG",
+    "270034": "SEDAM — Sec. Desenv. Agro.",
+    "270035": "SEPLAG — Planejamento",
+    "270036": "SDE — Sec. Desenv. Econômico",
+    "270037": "SECTMA — Ciência e Tecnologia",
+    "270038": "SETRANS — Sec. Transportes",
+    "270039": "SEINFRA — Infraestrutura",
+    "270040": "SEEA — Sec. Energia",
+    "270041": "SESMICT — Inovação",
+    "270042": "ITERJ — Instituto Terras",
+    "270043": "EMATER-Rio",
+    "270044": "SECOM — Comunicação",
+    "270045": "SEJURIS — Jurídico",
+    "270046": "SECTUR",
+    "270047": "SEAS — Assist. Social",
+    "270048": "SESM — Serviço Militar",
+    "270049": "SEEQ",
+    "270050": "SEPEN — Penitenciária",
+    "270051": "PMERJ — Polícia Militar",
+    "270052": "PCERJ — Polícia Civil",
+    "270053": "CBMERJ — Bombeiros",
+    "270054": "IGP-RJ",
+    "270060": "Casa Civil (DG)",
+    "270070": "ALERJ — Assembléia Leg.",
+    "270075": "TCE-RJ (Tribunal)",
+    "270080": "FAPERJ",
+    "270081": "UERJ",
+    "270082": "UENF",
+    "270083": "UEZO",
+    "270084": "FAETEC",
+    "270085": "CEFET-RJ",
+    "270086": "FENORTE-RJ",
+    "270090": "CEP-RJ",
+    "270091": "CREA-RJ",
+    "270092": "CODIN",
+    "270093": "INVESTE-RIO",
+    "270094": "CEDAE",
+    "270095": "LIGHT (Estado)",
+    "270096": "FLUMITRENS",
+    "270097": "METRO-RIO (Estado)",
+    "270100": "SuperVia (Estado)",
+    "300100": "SEFAZ-RJ — Receita",
+    "300200": "Tesouro Estadual",
+    "300300": "FESP — Fund. Escola Serv.",
+    "320001": "Fundo Especial Saúde",
+    "320002": "Fundo Manutenção Educ.",
+    "510001": "DER — Fundo Rodoviário",
+    "510002": "RIOPREVIDÊNCIA (Fundo)",
+    "510003": "FES (Fundo Saúde)",
+    "510004": "FECP",
 }
 
 def _ug_nome(c: str) -> str:
     return _UG_NOMES.get(str(c).strip(), str(c))
+
+
+async def _descobrir_ugs_siafe(page) -> list[str]:
+    """
+    Descobre UGs disponíveis na tela de OBs do SIAFE (campo de filtro UG emitente).
+    Retorna lista de códigos de UG. Fallback: lista estática _UG_NOMES.
+    """
+    print("  → Descobrindo UGs disponíveis no SIAFE …", flush=True)
+    ugs_found = await page.evaluate("""() => {
+        const ugs = new Set();
+        // 1. Procura em selects com "ug", "emitente", "orgao" no ID ou label
+        for (const sel of document.querySelectorAll('select')) {
+            const id  = (sel.id   || '').toLowerCase();
+            const lbl = (document.querySelector('label[for="' + sel.id + '"]') || {}).textContent || '';
+            const ltl = lbl.toLowerCase();
+            if (id.includes('ug') || id.includes('emitente') || id.includes('orgao') ||
+                ltl.includes('ug') || ltl.includes('emitente') || ltl.includes('unidade gestora')) {
+                for (const opt of sel.options) {
+                    const v = opt.value.trim();
+                    if (v && /^\\d{5,6}$/.test(v)) ugs.add(v);
+                }
+            }
+        }
+        // 2. Procura em qualquer option com valor numérico de 6 dígitos (padrão UG SIAFE)
+        if (ugs.size < 3) {
+            for (const opt of document.querySelectorAll('select option')) {
+                const v = opt.value.trim();
+                if (/^\\d{6}$/.test(v)) ugs.add(v);
+            }
+        }
+        return [...ugs].slice(0, 300);
+    }""")
+
+    if len(ugs_found) >= 3:
+        print(f"  ✔ {len(ugs_found)} UGs descobertas no SIAFE (interface)")
+        # Mescla com lista estática para completar nomes
+        for ug in ugs_found:
+            _UG_NOMES.setdefault(ug, ug)
+        return ugs_found
+
+    # Fallback: lista estática
+    ugs_static = list(_UG_NOMES.keys())
+    print(f"  → UGs estáticas (fallback): {len(ugs_static)}")
+    return ugs_static
+
+
+async def _aplicar_filtro_ug(pg, ug_code: str) -> bool:
+    """Aplica filtro de UG emitente na tela de OBs. Retorna True se conseguiu."""
+    print(f"  → Filtrando por UG {ug_code} ({_ug_nome(ug_code)}) …", flush=True)
+
+    # Abre acordeão de filtro
+    for acc_id in [
+        "pt1:tblOrdemBancaria:pnlAccordionDec_afrCl0",
+        "pt1:tblOrdemBancaria:sdtFilter::disAcr",
+    ]:
+        try:
+            loc = pg.locator(f'[id*="{acc_id.split(":")[-1]}"]').first
+            if await loc.count() > 0:
+                await loc.click(timeout=4000, force=True)
+                await asyncio.sleep(2)
+                break
+        except Exception:
+            pass
+
+    filled = await pg.evaluate("""(ug) => {
+        const candidatos = [...document.querySelectorAll(
+            'input[type="text"], input:not([type])'
+        )].filter(el => {
+            const id  = (el.id  || '').toLowerCase();
+            const ph  = (el.placeholder || '').toLowerCase();
+            const lbl = document.querySelector('label[for="' + el.id + '"]');
+            const lt  = lbl ? lbl.textContent.toLowerCase() : '';
+            return (id.includes('emitente') || id.includes('ug') ||
+                    ph.includes('ug') || lt.includes('ug emitente') ||
+                    lt.includes('unidade gestora'))
+                   && el.getBoundingClientRect().width > 0;
+        });
+        if (!candidatos.length) return null;
+        const el = candidatos[0];
+        el.focus(); el.value = ug;
+        ['input','change','blur','keyup'].forEach(e =>
+            el.dispatchEvent(new Event(e, {bubbles: true})));
+        return el.id || 'ok';
+    }""", ug_code)
+
+    if not filled:
+        return False
+
+    await asyncio.sleep(1.5)
+    # Clica Pesquisar
+    await pg.evaluate("""() => {
+        for (const el of document.querySelectorAll('button, a, input[type="button"]')) {
+            const t = (el.textContent || el.value || '').trim().toLowerCase();
+            if ((t.includes('pesquis') || t.includes('filtrar') || t.includes('consult')) &&
+                el.getBoundingClientRect().width > 0) { el.click(); return t; }
+        }
+    }""")
+    await _settle(pg, 6000)
+    await _dismiss_popups(pg)
+    return True
 
 def _brl(v: float) -> str:
     s = f"{abs(v):,.2f}".replace(",","X").replace(".",",").replace("X",".")
@@ -1160,7 +1335,75 @@ def _parse_rows(header: list, rows: list, cnpj_filter: Optional[str] = None) -> 
     return records
 
 
-# ── Coleta de um exercício ─────────────────────────────────────────────────────
+# ── Coleta de um exercício (modo UG — todas as empresas) ──────────────────────
+
+async def _coletar_ug_ano(browser, ug_code: str, ano: int) -> list[dict]:
+    """
+    Coleta TODAS as OBs de uma UG específica para um ano, SEM filtro de CNPJ.
+    Usado no modo SIAFE_MODO=todos_ugs para varrer todos os órgãos do SIAFE.
+    """
+    ug_nome = _ug_nome(ug_code)
+    print(f"\n  → UG {ug_code} ({ug_nome}) / Ano {ano}", flush=True)
+
+    ctx = browser.contexts[0] if browser.contexts else await browser.new_context(
+        viewport={"width": 1366, "height": 900}, locale="pt-BR",
+        timezone_id="America/Sao_Paulo", ignore_https_errors=True,
+    )
+    page = await ctx.new_page()
+    await page.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+
+    try:
+        ok = await _login(page, ano)
+        if not ok:
+            await _screenshot(page, f"ERRO_login_ug{ug_code}_{ano}")
+            return []
+
+        nav_ok = await _ir_obs(page)
+        if not nav_ok:
+            print(f"    [ERRO] Não chegou na tela de OBs para UG {ug_code}/{ano}")
+            return []
+
+        # Aplica filtro de UG (não de CNPJ)
+        await _aplicar_filtro_ug(page, ug_code)
+
+        # Lê todas as páginas
+        header, rows = await _ler_tabela(page)
+        print(f"    → Linhas brutas: {len(rows)}")
+
+        # Parse sem filtro CNPJ — captura TODOS os favorecidos
+        records = _parse_rows(header, rows, cnpj_filter=None)
+        for r in records:
+            r.setdefault("ug_coleta", ug_code)
+            r.setdefault("ug_coleta_nome", ug_nome)
+            r["categoria"] = f"siafe_ug_{ug_code}"
+
+        total = sum(r["valor"] for r in records)
+        print(f"    → OBs UG {ug_code}: {len(records)} | {_brl(total)}", flush=True)
+
+        # Salva arquivo por UG × ano
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        out = CACHE_DIR / f"obs_ug{ug_code}_{ano}.json"
+        out.write_text(json.dumps({
+            "ano": ano, "ug_codigo": ug_code, "ug_nome": ug_nome,
+            "coleta": datetime.now().isoformat(),
+            "total_obs": len(records), "total_valor": total,
+            "header": header, "obs": records,
+        }, ensure_ascii=False, indent=2), encoding="utf-8")
+
+        return records
+
+    except Exception as exc:
+        print(f"    [ERRO] UG {ug_code}/{ano}: {exc}")
+        import traceback; traceback.print_exc()
+        return []
+    finally:
+        try:
+            await page.close()
+        except Exception:
+            pass
+
+
+# ── Coleta de um exercício (modo empresa/CNPJ) ────────────────────────────────
 
 async def _coletar_exercicio(browser, ano: int, empresa: dict | None = None) -> list[dict]:
     if empresa is None:
@@ -1552,16 +1795,21 @@ async def main():
         reverse=True,
     )
 
+    # Modo de coleta: "cnpjs" (padrão) ou "todos_ugs" (varre todos os órgãos SIAFE)
+    _modo = os.environ.get("SIAFE_MODO", "cnpjs").strip().lower()
+    _ugs_env = os.environ.get("SIAFE_UGS", "").strip()
+
     empresas = _load_empresas()
+    print(f"  Modo: {_modo}")
     print(f"  Empresas: {len(empresas)} ({', '.join(e.get('nome','?')[:20] for e in empresas[:3])}{'...' if len(empresas) > 3 else ''})")
 
     print(f"\n{'━'*56}")
     print(f"  JFN — Coleta de Ordens Bancárias SIAFE")
-    print(f"  Anos: {anos}")
+    print(f"  Anos: {anos} | Modo: {_modo}")
     print(f"  Usuário: {SIAFE_USER[:4]}***")
     print(f"{'━'*56}")
 
-    _telegram(f"🟡 Iniciando coleta SIAFE OBs: {CNPJ_FMT} | Anos: {anos}")
+    _telegram(f"🟡 Iniciando coleta SIAFE OBs — Modo: {_modo} | Anos: {anos}")
 
     p = await async_playwright().start()
     browser = None
@@ -1572,7 +1820,6 @@ async def main():
         print("✔ Chrome CDP (porta 9222)")
     except Exception:
         print("ℹ Lançando Chromium …")
-        # headless=True em CI/GitHub Actions; False localmente para facilitar debug
         _ci = bool(os.environ.get("CI") or os.environ.get("GITHUB_ACTIONS"))
         _headless = _ci or os.environ.get("HEADLESS", "false").lower() == "true"
         browser = await p.chromium.launch(
@@ -1591,16 +1838,58 @@ async def main():
 
     try:
         todas_por_empresa: dict[str, list] = {}
-        for ano in anos:
-            for empresa in empresas:
-                obs_ano = await _coletar_exercicio(browser, ano, empresa)
-                if obs_ano:
-                    _cnpj = empresa["cnpj"]
-                    todas_por_empresa.setdefault(_cnpj, []).extend(obs_ano)
-                    todas_obs.extend(obs_ano)
-                    if ano not in anos_coletados:
-                        anos_coletados.append(ano)
-                await asyncio.sleep(3)
+
+        if _modo == "todos_ugs":
+            # ── Modo varredura total: login, descobre UGs, coleta tudo ──────────────
+            # Determina lista de UGs (env SIAFE_UGS, ou descoberta dinâmica, ou estática)
+            if _ugs_env:
+                ugs_alvo = [u.strip() for u in _ugs_env.split(",") if u.strip()]
+                print(f"  UGs via SIAFE_UGS: {ugs_alvo}")
+            else:
+                # Faz login temporário para descobrir UGs da interface
+                _ctx0 = await browser.new_context(viewport={"width":1366,"height":900}, locale="pt-BR",
+                    timezone_id="America/Sao_Paulo", ignore_https_errors=True)
+                _p0 = await _ctx0.new_page()
+                try:
+                    if await _login(_p0, anos[0]):
+                        if await _ir_obs(_p0):
+                            ugs_alvo = await _descobrir_ugs_siafe(_p0)
+                        else:
+                            ugs_alvo = list(_UG_NOMES.keys())
+                    else:
+                        ugs_alvo = list(_UG_NOMES.keys())
+                finally:
+                    await _p0.close()
+
+            print(f"\n  ► Modo todos_ugs: {len(ugs_alvo)} UGs × {len(anos)} anos = {len(ugs_alvo)*len(anos)} sessões")
+            _telegram(f"🔄 todos_ugs: {len(ugs_alvo)} UGs × {len(anos)} anos")
+
+            for ano in anos:
+                for ug_code in ugs_alvo:
+                    obs_ug = await _coletar_ug_ano(browser, ug_code, ano)
+                    if obs_ug:
+                        todas_obs.extend(obs_ug)
+                        if ano not in anos_coletados:
+                            anos_coletados.append(ano)
+                        # Agrupa por CNPJ favorecido
+                        for ob in obs_ug:
+                            cnpj_fav = ob.get("favorecido_cnpj", "")
+                            if cnpj_fav:
+                                todas_por_empresa.setdefault(cnpj_fav, []).append(ob)
+                    await asyncio.sleep(2)
+
+        else:
+            # ── Modo padrão: por empresa/CNPJ ────────────────────────────────────
+            for ano in anos:
+                for empresa in empresas:
+                    obs_ano = await _coletar_exercicio(browser, ano, empresa)
+                    if obs_ano:
+                        _cnpj = empresa["cnpj"]
+                        todas_por_empresa.setdefault(_cnpj, []).extend(obs_ano)
+                        todas_obs.extend(obs_ano)
+                        if ano not in anos_coletados:
+                            anos_coletados.append(ano)
+                    await asyncio.sleep(3)
 
         if not todas_obs:
             msg = "[ERRO] Nenhuma OB coletada — login falhou (MFA expirado/inválido?) ou CNPJ sem dados."

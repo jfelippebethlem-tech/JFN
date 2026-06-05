@@ -4,5 +4,59 @@
     "cnpj_fmt": "19.088.605/0001-04",
     "nome": "MGS CLEAN SOLUCOES E SERVICOS LTDA",
     "categoria": "mgs_clean_real"
+  },
+  {
+    "cnpj": "05526816000183",
+    "cnpj_fmt": "05.526.816/0001-83",
+    "nome": "BRINKS SEGURANCA E TRANSPORTE DE VALORES LTDA",
+    "categoria": "obs_siafe"
+  },
+  {
+    "cnpj": "33592510000154",
+    "cnpj_fmt": "33.592.510/0001-54",
+    "nome": "LIGHT SERVICOS DE ELETRICIDADE S.A.",
+    "categoria": "obs_siafe"
+  },
+  {
+    "cnpj": "33200056000123",
+    "cnpj_fmt": "33.200.056/0001-23",
+    "nome": "CEDAE — CIA ESTADUAL AGUAS E ESGOTOS",
+    "categoria": "obs_siafe"
+  },
+  {
+    "cnpj": "60923714000181",
+    "cnpj_fmt": "60.923.714/0001-81",
+    "nome": "OI S.A. (TELEMAR NORTE LESTE)",
+    "categoria": "obs_siafe"
+  },
+  {
+    "cnpj": "02558157000162",
+    "cnpj_fmt": "02.558.157/0001-62",
+    "nome": "CLARO S.A.",
+    "categoria": "obs_siafe"
+  },
+  {
+    "cnpj": "14380200000121",
+    "cnpj_fmt": "14.380.200/0001-21",
+    "nome": "SMART FIT ESCOLA DE GINASTICA E DANCA SA",
+    "categoria": "obs_siafe"
+  },
+  {
+    "cnpj": "17245234000100",
+    "cnpj_fmt": "17.245.234/0001-00",
+    "nome": "ECOURBIS AMBIENTAL S.A.",
+    "categoria": "obs_siafe"
+  },
+  {
+    "cnpj": "38065730000144",
+    "cnpj_fmt": "38.065.730/0001-44",
+    "nome": "GRUPO COMPORTE — TRANSPORTE COLETIVO",
+    "categoria": "obs_siafe"
+  },
+  {
+    "cnpj": "34028316000103",
+    "cnpj_fmt": "34.028.316/0001-03",
+    "nome": "COMLURB — CIA MUNICIPAL LIMPEZA URBANA",
+    "categoria": "obs_siafe"
   }
 ]
