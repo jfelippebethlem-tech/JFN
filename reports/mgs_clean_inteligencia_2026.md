@@ -32,12 +32,12 @@ A **MGS CLEAN SOLUCOES E SERVICOS LTDA** (CNPJ 19.088.605/0001-04) é prestadora
 |---------|-------|--------|
 | Contratos ativos/históricos | 41 | ✅ REAL |
 | Valor total contratado | **R$ 146,7 milhões** | ✅ REAL |
-| Empenhos 2025 | R$ 90,0 milhões | ✅ REAL (TFE) |
-| Empenhos 2026 (jan–jun) | R$ 58,6 milhões | ✅ REAL (TFE) |
+| Empenhos 2025 (brutos, incluem cancelados) | R$ 90,0 milhões | ⚠ TFE — não confirma pagamento |
+| Empenhos 2026 (brutos, jan–jun) | R$ 58,6 milhões | ⚠ TFE — não confirma pagamento |
 | Empenhos 2024 | ~R$ 43,0 milhões | ⚠ ESTIMADO |
 | Empenhos 2023 | ~R$ 13,5 milhões | ⚠ ESTIMADO |
-| **Total empenhado 2023–2026** | **R$ 205,1 milhões** | COMBINADO |
-| Ordens Bancárias (pagamentos efetivos) | **EM COLETA** | ⏳ Run #27 |
+| **Total empenhado 2023–2026 (bruto)** | **R$ 205,1 milhões** | ⚠ Pode incluir cancelamentos |
+| **Ordens Bancárias (pagamentos efetivos)** | **EM COLETA** | ⏳ Run #27 — DADO DEFINITIVO |
 
 ### 1.2 Rating de Risco Global
 
@@ -178,13 +178,17 @@ Extinto   : ██                               1 contrato   R$   0,3M
 
 ### 4.1 Evolução Anual — Quadro Comparativo
 
-| Ano | Empenhos (n) | Valor Total | Tipo | Δ vs. Anterior | Projeção Anual |
-|-----|-------------|-------------|------|----------------|----------------|
-| 2023 | 90 | **R$ 13,5M** | ⚠ Estimado | — | R$ 13,5M |
-| 2024 | 287 | **R$ 43,0M** | ⚠ Estimado | +219% | R$ 43,0M |
-| 2025 | 84 | **R$ 90,0M** | ✅ Real (TFE) | **+109%** | R$ 90,0M |
-| 2026 | 47 | **R$ 58,6M** | ✅ Real (TFE) | jan–jun | **~R$ 117M** projetado |
-| **TOTAL** | **508** | **R$ 205,1M** | | **+567% (23→25)** | |
+> **⚠ AVISO METODOLÓGICO IMPORTANTE:** Os valores abaixo são **notas de empenho**, não pagamentos. Empenhos podem ser cancelados a qualquer momento antes da liquidação. O valor efetivamente pago à MGS CLEAN só poderá ser confirmado pelas **Ordens Bancárias (OBs)** — coleta em andamento (Run #27). Não equipare empenho com pagamento.
+
+| Ano | Empenhos (n) | Valor Empenhado (bruto) | Tipo | Δ vs. Anterior |
+|-----|-------------|------------------------|------|----------------|
+| 2023 | 90 | R$ 13,5M | ⚠ Estimado (por contratos) | — |
+| 2024 | 287 | R$ 43,0M | ⚠ Estimado (por contratos) | +219% |
+| 2025 | 84 | R$ 90,0M | ⚠ TFE (bruto, inclui cancelados) | **+109%** |
+| 2026 | 47 | R$ 58,6M | ⚠ TFE (bruto, jan–jun) | — |
+| **TOTAL** | **508** | **R$ 205,1M** | ⚠ BRUTO — PODE INCLUIR CANCELAMENTOS | |
+
+**Pagamentos confirmados:** ⏳ Aguardando OBs (Run #27)
 
 ### 4.2 Benchmark Setorial
 
@@ -403,13 +407,29 @@ A maior parte dos contratos MGS CLEAN é com **Fundos Especiais** (FUNESBOM, Fun
 
 ### 8.1 Por que Ordens Bancárias são o dado definitivo
 
-As **Ordens Bancárias (OBs)** representam a liquidação financeira efetiva — o momento em que o dinheiro sai do cofre público. Diferentemente de empenhos (reserva orçamentária) e liquidações (confirmação de entrega do serviço), a OB confirma o **pagamento efetivo**.
+O ciclo orçamentário público brasileiro tem 3 estágios distintos:
+
+```
+┌─────────────┐    ┌──────────────┐    ┌─────────────────────────┐
+│   EMPENHO   │ → │  LIQUIDAÇÃO  │ → │  PAGAMENTO (OB)          │
+│             │    │              │    │                          │
+│ Reserva o   │    │ Atesta que   │    │ Dinheiro efetivamente    │
+│ valor no    │    │ o serviço    │    │ transferido ao           │
+│ orçamento   │    │ foi entregue │    │ favorecido               │
+│             │    │              │    │                          │
+│ ⚠ PODE SER  │    │ ⚠ Pode ser   │    │ ✅ IRREVERSÍVEL           │
+│ CANCELADO   │    │ impugnada    │    │ DADO DEFINITIVO          │
+└─────────────┘    └──────────────┘    └─────────────────────────┘
+```
+
+**Consequência prática:** Todo o quadro de R$ 205,1M em empenhos 2023–2026 está potencialmente inflado. Empenhos cancelados, devolvidos ou referentes a serviços não prestados ainda aparecem como empenhos brutos. **Apenas as OBs confirmam quanto foi realmente pago.**
 
 Sem as OBs, não é possível:
-- Confirmar se todos os empenhos foram de fato pagos
-- Detectar OBs pagas fora de contrato (irregularidade grave)
+- Saber o valor real pago à MGS CLEAN (vs. apenas empenhado)
+- Identificar empenhos que nunca viraram pagamento (possível irregularidade)
+- Detectar OBs pagas sem empenho correspondente (pagamento irregular)
 - Cruzar com processos SEI para rastrear autorizações
-- Verificar tempestividade dos pagamentos
+- Verificar tempestividade dos pagamentos (dias entre empenho e pagamento)
 - Detectar pagamentos duplicados
 
 ### 8.2 Progresso de Coleta
