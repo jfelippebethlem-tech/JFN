@@ -767,10 +767,15 @@ async def _login(pg, ano: int) -> bool:
         # Screenshot em todos os polls para diagnóstico visual completo
         await _screenshot(pg, f"01d_poll{_poll_n:02d}_{ano}")
 
+        # Verifica se já saiu da página de login após possível navegação
+        if "login" not in pg.url.lower() and "autenticacao" not in pg.url.lower():
+            break
+
         # Tenta dispensar popup "O Sistema está aberto em outra janela" / "já está logado"
         # PRIORIDADE 1: IDs explícitos — click SEM checar visibilidade (ADF usa CSS 0x0 durante animação)
         # NUNCA clica em botões com 'cancel' no id — são os botões "Não/Cancelar"
-        _pop = await pg.evaluate("""() => {
+        try:
+            _pop = await pg.evaluate("""() => {
             // Prioridade 1: botão positivo ADF por ID explícito — click mesmo com 0x0 (ADF CSS quirk)
             const okSel = [
                 'docPrincipal::msgDlg::ok',
@@ -790,16 +795,28 @@ async def _login(pg, ano: int) -> bool:
                 return 'popup_clicado:msgDlg_ok_generic id=' + okGeneric.id;
             }
 
-            // Prioridade 2: busca texto "Sim" em QUALQUER elemento folha (ADF às vezes usa <a> simples)
+            // Prioridade 2: busca "Sim" em elementos folha — clica no ANCESTRAL clicável (não no span)
+            // ADF renderiza: <a id="...ok"><span>Sim</span></a> — click no <a>, não no <span>
             const SKIP_IDS = ['itxusuario','itxsenha','btnconfirmar','cancel','nao','não'];
             for (const el of document.querySelectorAll('*')) {
                 if (el.childElementCount === 0) {
                     const t = (el.textContent || '').trim();
                     if (t === 'Sim' || t === 'sim') {
-                        const id = (el.id || '').toLowerCase();
-                        if (!SKIP_IDS.some(s => id.includes(s))) {
-                            el.click();
-                            return 'sim_folha:' + el.tagName + '[' + el.id + ']';
+                        // Sobe na árvore até achar button/a/[role=button]/[onclick]
+                        let target = el;
+                        let p = el.parentElement;
+                        while (p && p !== document.body) {
+                            const tag = p.tagName.toLowerCase();
+                            const role = (p.getAttribute('role') || '').toLowerCase();
+                            if (tag === 'button' || tag === 'a' || role === 'button' || p.onclick) {
+                                target = p; break;
+                            }
+                            p = p.parentElement;
+                        }
+                        const tid = (target.id || '').toLowerCase();
+                        if (!SKIP_IDS.some(s => tid.includes(s))) {
+                            target.click();
+                            return 'sim_parent:' + target.tagName + '[' + target.id + ']';
                         }
                     }
                 }
@@ -832,7 +849,13 @@ async def _login(pg, ano: int) -> bool:
             }).map(el => (el.textContent || el.value || '').trim().substring(0,20) + '[' + el.id.substring(0,30) + ']');
             return allBtns.length ? 'no_match btns=' + JSON.stringify(allBtns.slice(0,8)) : null;
         }""")
-        if _pop and (_pop.startswith('popup_clicado:') or _pop.startswith('sim_folha:')):
+        except Exception as _nav_err:
+            # Página navegou durante evaluate() — login provavelmente aceito
+            print(f"    → Navegação durante poll#{_poll_n} (OK): {_nav_err}", flush=True)
+            await asyncio.sleep(2)
+            break
+
+        if _pop and (_pop.startswith('popup_clicado:') or _pop.startswith('sim_parent:')):
             print(f"    → Popup dispensado: [{_pop}]", flush=True)
             await _screenshot(pg, f"01e_sim_clicado_p{_poll_n:02d}_{ano}")
             await asyncio.sleep(2)
