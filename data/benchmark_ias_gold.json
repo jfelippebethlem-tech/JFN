@@ -1,0 +1,67 @@
+{
+  "_meta": {
+    "descricao": "GABARITO (gold) — Passo 1 do benchmark: Claude Opus 4.8 rodando cada funcao do ecossistema UMA vez.",
+    "baseline": "claude-opus-4-8",
+    "gerado_em": "2026-06-06",
+    "uso": "comparar a saida das IAs fracas (Gemini/Qwen/nous) contra estes gabaritos; ver docs/IAS-ECOSSISTEMA-BENCHMARK.md"
+  },
+  "tarefas": [
+    {
+      "id": "T1",
+      "agente": "Yoda",
+      "funcao": "roteamento NL -> rota do barramento",
+      "entrada": "quanto a MGS recebeu da saude?",
+      "gold": {
+        "intencao": "consulta de FORNECEDOR (MGS) com recorte de ORGAO (saude)",
+        "rota": "POST /api/relatorio/inteligencia {\"empresa\":\"MGS\"}",
+        "observacao": "ler a secao por orgao do relatorio para isolar a Secretaria de Saude; NAO inventar ferramenta (web_search nao existe)",
+        "criterio_sucesso": "respondeu chamando /api/relatorio/inteligencia (ou /orgao) com empresa=MGS; nao inventou ferramenta"
+      }
+    },
+    {
+      "id": "T2",
+      "agente": "Yoda",
+      "funcao": "resumir JSON de /api/anomalias em PT-BR",
+      "entrada": "JSON de /api/anomalias?top=3 (3 itens com ob/fornecedor/valor/score/regras)",
+      "gold": {
+        "formato": "lista curta PT-BR; por item: OB, fornecedor, R$ valor, score, red flag legivel",
+        "obrigatorio": "incluir o aviso de honestidade ('indicio para apuracao interna, nao acusacao')",
+        "criterio_sucesso": "todos os itens resumidos com valor/fornecedor/score/flag + aviso de honestidade presente"
+      }
+    },
+    {
+      "id": "T5",
+      "agente": "JFN",
+      "funcao": "escrever 1 regra SQL de red flag (concentracao > 30% por UG)",
+      "entrada": "fornecedores que concentram >30% do pago por uma UG num exercicio",
+      "gold": {
+        "sql": "SELECT ug_codigo, exercicio, favorecido_cpf, SUM(valor) tot_forn, (SELECT SUM(v2.valor) FROM ordens_bancarias v2 WHERE v2.ug_codigo=o.ug_codigo AND v2.exercicio=o.exercicio) tot_ug FROM ordens_bancarias o GROUP BY ug_codigo, exercicio, favorecido_cpf HAVING tot_forn > 0.30 * tot_ug AND tot_ug > 0",
+        "criterio_sucesso": "SQL roda e o nº de grupos bate (+-5%) com a contagem do gabarito (594 flags R_CONCENTRACAO no dataset_hash atual)"
+      }
+    },
+    {
+      "id": "T6",
+      "agente": "Lex",
+      "funcao": "parecer de 1 paragrafo (merito + juridico)",
+      "entrada": "fornecedor concentra 64% do pago por uma UG e tem OBs de R$ 0,01",
+      "gold": {
+        "paragrafo": "Os dados revelam INDICIOS que merecem apuracao: a concentracao de 64% do pago pela UG num unico fornecedor sugere risco de captura/baixa competitividade (art. 37 CF/88; art. 36 §3º I 'd' da Lei 12.529/2011), e a existencia de Ordens Bancarias de valor simbolico (R$ 0,01) e economicamente incompativel com o objeto, indicando possivel remuneracao oculta/extraorcamentaria a esclarecer. Vigora a PRESUNCAO DE LEGITIMIDADE dos atos; trata-se de indicio, nao de acusacao, e a configuracao de improbidade exige DOLO ESPECIFICO (Lei 14.230/2021) e dano efetivo (art. 10 da Lei 8.429/92). Recomenda-se diligencia documental (processo SEI/atos do PNCP) e, havendo indicio de dano, ciencia ao controle externo (TCE-RJ) e ao MP-RJ.",
+        "criterio_sucesso": "cita fundamento legal; usa linguagem condicional; NAO afirma crime/improbidade; menciona presuncao de legitimidade e/ou exigencia de dolo"
+      }
+    },
+    {
+      "id": "T3",
+      "agente": "Visao/JFN",
+      "funcao": "extrair OBs de uma tabela DOERJ/SIAFE",
+      "entrada": "PENDENTE — precisa de 1 pagina HTML/scan real como artefato",
+      "gold": {"criterio_sucesso": "nº de OBs, valores e fornecedores corretos vs. gabarito da pagina"}
+    },
+    {
+      "id": "T4",
+      "agente": "Visao",
+      "funcao": "OCR de captcha SEI",
+      "entrada": "PENDENTE — precisa de imagens de captcha reais",
+      "gold": {"criterio_sucesso": "taxa de acerto do texto do captcha"}
+    }
+  ]
+}
