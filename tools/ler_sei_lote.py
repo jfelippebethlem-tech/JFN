@@ -83,7 +83,25 @@ def main():
     ap.add_argument("processos", nargs="*", help="números de processo SEI a ler")
     ap.add_argument("--pendentes", type=int, metavar="N", help="ler N processos correlacionados ainda sem cache")
     ap.add_argument("--headful", action="store_true", help="janela visível (debug local)")
+    ap.add_argument("--diagnostico", action="store_true",
+                    help="só testa se o egress (proxy) chega ao SEI — não lê processo nem loga")
     a = ap.parse_args()
+
+    if a.diagnostico:
+        from compliance_agent.collectors.sei_cdp import testar_acesso
+        r = asyncio.run(testar_acesso(headless=not a.headful))
+        rotulo = {"OK_LOGIN": "✅ egress ACEITO — chegou na tela de login",
+                  "WAF_BLOCK": "🔴 WAF bloqueou (página de bloqueio)",
+                  "TIMEOUT_DROP": "🔴 conexão dropada/timeout (WAF blackhole ou proxy morto)",
+                  "CAPTCHA": "🟡 caiu em CAPTCHA (pesquisa pública, não no login interno)",
+                  "DESCONHECIDO": "🟡 respondeu, mas sem tela de login reconhecível",
+                  "ERRO": "⚠ erro inesperado"}.get(r["estado"], r["estado"])
+        print(f"Proxy: {r['proxy'] or '(nenhum — egress direto da máquina)'}")
+        print(f"HTTP: {r['http_status']} | Estado: {rotulo}")
+        if r.get("_amostra"):
+            print(f"Amostra: {r['_amostra'][:160]}")
+        print("\n→ Se 'WAF_BLOCK'/'TIMEOUT' SEM proxy e 'OK_LOGIN' COM proxy, o proxy resolve o gargalo.")
+        return
 
     numeros = list(a.processos)
     if a.pendentes:
