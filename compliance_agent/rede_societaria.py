@@ -40,13 +40,70 @@ CREATE TABLE IF NOT EXISTS socios_fornecedor (
 )
 """
 
+# tabela leve de endereço por CNPJ (1 linha/empresa) — alimenta o cruzamento sócio×endereço sem
+# inchar socios_fornecedor (que é 1 linha/sócio). Idempotente.
+_DDL_END = """
+CREATE TABLE IF NOT EXISTS endereco_fornecedor (
+    cnpj TEXT PRIMARY KEY, razao TEXT, endereco TEXT, endereco_norm TEXT,
+    municipio TEXT, uf TEXT, cep TEXT, atualizado_em TEXT
+)
+"""
+
 
 def _con():
     c = sqlite3.connect(_DB)
     c.execute(_DDL)
+    c.execute(_DDL_END)
     c.execute("CREATE INDEX IF NOT EXISTS ix_socio_norm ON socios_fornecedor(socio_nome_norm)")
     c.execute("CREATE INDEX IF NOT EXISTS ix_socio_cnpj ON socios_fornecedor(cnpj)")
+    c.execute("CREATE INDEX IF NOT EXISTS ix_end_norm ON endereco_fornecedor(endereco_norm)")
     return c
+
+
+def _montar_endereco(raw: dict) -> str:
+    """Endereço completo a partir do JSON cru da BrasilAPI (logradouro..CEP)."""
+    partes = [raw.get("descricao_tipo_de_logradouro") or "", raw.get("logradouro") or "",
+              raw.get("numero") or "", raw.get("complemento") or "", raw.get("bairro") or "",
+              raw.get("municipio") or "", raw.get("uf") or "", raw.get("cep") or ""]
+    return ", ".join(str(p).strip() for p in partes if str(p).strip())
+
+
+def _norm_end(s: str) -> str:
+    """Canoniza endereço p/ comparar 'mesma sede' (tira acento/pontuação/espaços)."""
+    s = (s or "").upper()
+    s = "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
+    s = re.sub(r"[^A-Z0-9]", "", s)
+    return s
+
+
+def _gravar_endereco(con, cnpj: str, dados: dict, agora: str) -> None:
+    """Persiste o endereço da empresa em endereco_fornecedor (best-effort, idempotente)."""
+    raw = dados.get("raw") or {}
+    end = _montar_endereco(raw)
+    if not end:
+        return
+    con.execute(
+        "INSERT OR REPLACE INTO endereco_fornecedor VALUES (?,?,?,?,?,?,?,?)",
+        (cnpj, dados.get("razao_social") or dados.get("nome") or "", end, _norm_end(end),
+         dados.get("municipio") or raw.get("municipio") or "", dados.get("uf") or raw.get("uf") or "",
+         dados.get("cep") or raw.get("cep") or "", agora),
+    )
+
+
+def endereco_de(cnpj: str) -> dict:
+    """Endereço armazenado de um CNPJ (ou {} se ainda não ingerido). Não faz rede."""
+    cnpj = re.sub(r"\D", "", cnpj or "")
+    con = _con()
+    try:
+        r = con.execute(
+            "SELECT cnpj, razao, endereco, endereco_norm, municipio, uf, cep FROM endereco_fornecedor WHERE cnpj=?",
+            (cnpj,)).fetchone()
+    finally:
+        con.close()
+    if not r:
+        return {}
+    return {"cnpj": r[0], "razao": r[1], "endereco": r[2], "endereco_norm": r[3],
+            "municipio": r[4], "uf": r[5], "cep": r[6]}
 
 
 def _norm_nome(s: str) -> str:
@@ -87,6 +144,7 @@ async def ingerir(cnpjs: list[str], delay: float = 0.5) -> dict:
             try:
                 r = await buscar_cnpj(cnpj, client=client)
                 socios = r.get("socios", []) or []
+                _gravar_endereco(con, cnpj, r, agora)  # endereço p/ cruzamento sócio×sede
                 rows = []
                 for s in socios:
                     nome = s.get("nome", "") or ""
