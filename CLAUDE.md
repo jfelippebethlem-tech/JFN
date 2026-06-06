@@ -266,7 +266,17 @@ O **Yoda** (bot Telegram) é o MAESTRO e aciona o JFN pela **API HTTP em `127.0.
 Resolvem por **nome parcial ou CNPJ/UG**; se ambíguo, devolvem `{ambiguo:true, pergunta, candidatos}`.
 
 **Toda saída tem 3 formatos:** `.md` + `.pdf` (fonte Unicode DejaVu) + **`.xlsx` interativo** (Tabela do Excel
-com autofiltro; abas Resumo/Pagamentos/Concentração [+ "Por Fornecedor" no de órgão]). O Yoda envia **PDF + XLSX**.
+com autofiltro; abas Resumo/Pagamentos/Concentração [+ "Por Fornecedor" no de órgão]).
+
+**`/relatorio` de FORNECEDOR gera 3 DOCUMENTOS** (o Yoda envia os 3): (1) PDF de inteligência, (2) planilha XLSX,
+(3) **Parecer do agente LEX** (`compliance_agent/lex.py`) — avaliação fático-jurídica/tomada de contas, mesma
+estética, com `grau_lex` 🟢/🟡/🔴. Lex aplica os red flags do controle externo (TCU/TCE-RJ) aos dados +
+processos SEI correlacionados; base jurídica em [`docs/LEX-BASE-JURIDICA.md`](docs/LEX-BASE-JURIDICA.md). Retorno
+do endpoint: `path_pdf`, `path_xlsx`, `path_lex`, `grau_lex`.
+
+**Correlação OB↔SEI** (`compliance_agent/correlacao_sei.py`): o SIAFE traz o **processo SEI** que originou cada OB
+(campo Processo). `correlacionar()` casa por `numero_ob`+UG e preenche `ordens_bancarias.numero_sei` (SIAFE
+prepondera). É o insumo do Lex (`processos_de_fornecedor(cnpj)`).
 
 **Obrigatório em todo relatório:** a seção **"Análise Jurídica e de Mérito — Parecer Preliminar do JFN"**
 (`parecer_fornecedor`/`parecer_orgao`): mérito + avaliação jurídica (CF/88 art.37, Lei 14.133/8.666/4.320,

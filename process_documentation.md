@@ -129,3 +129,44 @@
     *   **ID do Job (Recriado):** `81cae9684db0` (o job original com ID `676c8988952a` não foi encontrado nos sistemas).
     *   **Skills Associadas:** `gold-morning-brief` (mencionado, mas funcionalidade não validada).
 *   **Status:** Ambas as rotinas estão agendadas, e Mestre Yoda está pronto para executá-las.
+
+---
+
+## Sessão 2026-06-06 — Agente LEX + correlação OB↔SEI + `/relatorio` com 3 documentos
+
+**Objetivo (Mestre Jorge):** (1) varrer as OBs do SIAFE e correlacionar com os processos SEI; (2) criar o
+agente **Lex**, especialista em Direito Administrativo, que lê o fluxo do processo e emite parecer sobre
+indícios de direcionamento/fracionamento/sobrepreço com base em TCU/TCE-RJ; (3) `/relatorio` de fornecedor
+passa a gerar **3 documentos** (inteligência PDF + planilha XLSX + **parecer Lex PDF**, mesma estética).
+
+### O que foi feito (para a próxima IA validar)
+1. **Correlação OB↔SEI** — `compliance_agent/correlacao_sei.py`. O SIAFE traz o nº do processo SEI que
+   originou cada OB. `correlacionar()` casa por `numero_ob`+`ug_pagadora` (corrigido de super-matching) e
+   grava `ordens_bancarias.numero_sei`. Helpers: `obs_por_processo`, `processo_de_ob`,
+   `processos_de_fornecedor(cnpj)`. **SIAFE prepondera sobre TFE** em conflito.
+2. **Varredura SIAFE** — `compliance_agent/siafe_ob_orcamentaria.py --exercicio N --ingerir`. Base
+   `ob_orcamentaria_siafe` com **2917 OBs** (2024/2025/2026, ~1000/ano = limite da tela ADF). 2023 fica
+   bloqueado pelo servidor (permissão da conta, não bug — há verificação `exercicio_bloqueado`).
+   Correlação atual: **251 processos SEI distintos** no SIAFE; **234 OBs** casadas na base TFE.
+   ⚠️ **Limite conhecido:** varredura por UG ainda travada — o filtro rico do ADF ignora eventos sintéticos
+   do Playwright (0 POSTs). Saída: replay HTTP do curl do filtro **ou** Computer Use. Documentado em
+   `docs/SIAFE-ARQUITETURA.md`.
+3. **Agente Lex** — `compliance_agent/lex.py` + base jurídica `docs/LEX-BASE-JURIDICA.md` (marco legal,
+   12 red flags com fundamento, jurisprudência TCU/TCE-RJ, estrutura do parecer). `gerar(ctx)` →
+   `{ok, grau, n_indicios, path_lex_pdf, path_lex_md}`. Detecção data-driven (R2 fracionamento, R8
+   concentração, R10 estornos, R12 crescimento) + grau 🟢/🟡/🔴. **Presunção de legitimidade**: aponta
+   indícios e recomenda diligências; **nunca afirma crime/improbidade**.
+4. **`/relatorio` = 3 documentos** — `reporting/inteligencia.montar()` chama `lex.gerar()` após o XLSX e
+   devolve `path_lex` + `grau_lex`. Skill `~/.hermes/skills/yoda-commands/relatorio/SKILL.md` atualizada
+   para o Yoda enviar os 3 anexos. Retenção: `_prune_reports()` apaga relatórios >7 dias.
+
+### Validação feita
+- Mobiliza for Rent: 3 documentos gerados e **enviados ao Telegram** (chat 45338178). Lex = 🟡 **AMARELO**
+  (R8 concentração + R12 crescimento abrupto; 1 processo SEI correlacionado). Endpoint
+  `/api/relatorio/inteligencia` retorna `path_pdf`, `path_xlsx`, `path_lex`, `grau_lex` = OK.
+- `jfn.service` e `hermes-gateway.service` reiniciados (user services) e ativos.
+
+### Próximos passos sugeridos
+- Destravar a varredura por-UG do SIAFE (replay HTTP do filtro) para cobertura total das OBs/processos.
+- Lex ler o **inteiro teor** do processo SEI (edital→contrato→liquidação) quando o acesso estiver disponível,
+  hoje a detecção é data-driven sobre OBs + metadados do processo.
