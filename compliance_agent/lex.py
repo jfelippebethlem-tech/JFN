@@ -43,6 +43,56 @@ _RF = {
 }
 
 
+# Anatomia do achado (modelo TCU/ISSAI/CGU — ver docs/PESQUISA-DIREITO-ADMIN-CGE.md):
+# critério × condição → causa → efeito, com evidência e recomendação. Causa/efeito/recomendação por red flag.
+_MATRIZ = {
+    "R2": ("possível divisão da despesa para fugir da modalidade/teto de dispensa",
+           "elisão do dever de licitar; restrição à competição e risco de sobrepreço",
+           "consolidar a demanda e licitar; apurar o planejamento (DFD/ETP)"),
+    "R3": ("instrução deficiente do valor estimado (sem cesta de preços)",
+           "risco de sobrepreço não detectado na contratação",
+           "exigir pesquisa/cesta de preços (Acórdão 1875/2021-TCU)"),
+    "R4": ("ausência de referência de mercado / BDI fora de parâmetro",
+           "potencial dano ao erário por preço acima do mercado",
+           "recompor preços e, se confirmado, glosar a diferença"),
+    "R5": ("enquadramento possivelmente indevido de contratação direta",
+           "afastamento da licitação sem amparo legal robusto",
+           "verificar a fundamentação (art. 74/75 Lei 14.133); se indevida, anular"),
+    "R7": ("especificação/habilitação restritiva ou direcionada",
+           "redução da competitividade; possível direcionamento",
+           "revisar o edital; admitir 'ou equivalente' (art. 9º Lei 14.133)"),
+    "R8": ("baixa rotatividade/captura de fornecedor por um órgão",
+           "risco de cartel/sobrepreço e dependência do prestador",
+           "ampliar a competição; cruzar sócios/endereços dos licitantes"),
+    "R9": ("execução além do valor contratado (aditivos sucessivos)",
+           "elisão do limite de aditivo (25%/50%) e burla à licitação",
+           "auditar os aditivos e os limites (arts. 125-126 Lei 14.133)"),
+    "R10": ("falha de liquidação/regularização (estornos, OB R$ 0,00)",
+            "risco de pagamento sem liquidação regular",
+            "conferir ateste e NL (arts. 62-63 Lei 4.320/64)"),
+    "R12": ("planejamento de fachada (DFD/ETP/TR genéricos) ou crescimento sem lastro",
+            "contratação sem planejamento real; sobre/subdimensionamento",
+            "exigir ETP robusto e justificativa da demanda (art. 18 Lei 14.133)"),
+}
+
+
+def _fmt_proc(s: str) -> str:
+    """Encurta nº de processo concatenado (a base TCE-RJ às vezes junta vários numa célula)."""
+    s = (s or "").strip()
+    partes = [p.strip() for p in s.split(",") if p.strip()]
+    if len(partes) <= 1:
+        return s or "—"
+    return f"{partes[0]} (+{len(partes)-1})"
+
+
+def _anatomia(a: dict) -> dict:
+    """Decompõe um indício na anatomia do achado de auditoria (critério/condição/causa/efeito/recomendação)."""
+    nome, criterio = _RF.get(a["rf"], (a["rf"], "—"))
+    causa, efeito, recom = _MATRIZ.get(a["rf"], ("a apurar", "a apurar", "diligência documental"))
+    return {"rf": a["rf"], "nome": nome, "criterio": criterio, "condicao": a["obs"],
+            "causa": causa, "efeito": efeito, "recomendacao": recom, "grav": a["grav"]}
+
+
 def _sei_do_fornecedor(cnpj: str) -> list[dict]:
     try:
         from compliance_agent.correlacao_sei import processos_de_fornecedor
@@ -368,6 +418,8 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     add("*Tomada de contas preliminar — Direito Administrativo e Controle Externo (TCU/TCE-RJ)*")
     add("")
     add(f"**CNPJ:** {fmt_cnpj(cnpj)}  |  **Data:** {ctx.get('data','')}  |  **Analista:** Agente Lex (JFN)")
+    classif = "COM Achado" if achados else "SEM Achado"
+    add(f"**Classificação (modelo CGE-RJ — Decreto 47.408/2020):** Nota Técnica **{classif}**.")
     add(f"**Grau de atenção:** {emoji} **{rotulo}** — {just}.")
     add("")
     add("---")
@@ -449,8 +501,9 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
             add("| Processo | Ano | Objeto | Critério | Valor contrato (R$) | Unidade |")
             add("|---|---:|---|---|---:|---|")
             for c in tcerj["contratos"][:12]:
-                obj = (c.get("objeto") or "")[:55]
-                add(f"| {c.get('processo','')} | {c.get('ano_processo','')} | {obj} | "
+                obj = (c.get("objeto") or "").strip()
+                obj = (obj[:55] + "…") if len(obj) > 55 else (obj or "—")
+                add(f"| {_fmt_proc(c.get('processo',''))} | {c.get('ano_processo','')} | {obj} | "
                     f"{c.get('criterio_julgamento') or '—'} | {moeda(c.get('valor_contrato'))} | "
                     f"{(c.get('unidade') or '')[:30]} |")
             add("")
@@ -460,9 +513,11 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
             add("| Processo | Ano | Objeto | Afastamento | Enquadramento legal | Valor (R$) |")
             add("|---|---:|---|---|---|---:|")
             for c in tcerj["compras"][:12]:
-                obj = (c.get("objeto") or "")[:45]
-                enq = (c.get("enquadramento_legal") or "")[:55]
-                add(f"| {c.get('processo','')} | {c.get('ano_processo','')} | {obj} | "
+                obj = (c.get("objeto") or "").strip()
+                obj = (obj[:45] + "…") if len(obj) > 45 else (obj or "—")
+                enq = (c.get("enquadramento_legal") or "").strip()
+                enq = (enq[:55] + "…") if len(enq) > 55 else (enq or "—")
+                add(f"| {_fmt_proc(c.get('processo',''))} | {c.get('ano_processo','')} | {obj} | "
                     f"{c.get('afastamento') or '—'} | {enq} | {moeda(c.get('valor'))} |")
             add("")
     else:
@@ -471,8 +526,31 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
             "no PNCP e no próprio processo SEI.")
         add("")
 
-    # III. Análise por red flag
-    add("## III. ANÁLISE DE MÉRITO POR INDÍCIO (red flags do controle externo)")
+    # III. Matriz de Achados + análise por red flag
+    add("## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)")
+    add("")
+    add("*Modelo TCU/ISSAI/CGU: **critério × condição → causa → efeito**, com evidência e recomendação "
+        "(ver `docs/PESQUISA-DIREITO-ADMIN-CGE.md`).*")
+    add("")
+    if achados:
+        add("| # | Critério (norma) | Condição (situação) | Causa provável | Efeito potencial | Recomendação |")
+        add("|---|---|---|---|---|---|")
+        for an in (_anatomia(a) for a in achados):
+            cond = an["condicao"].replace("**", "").replace("|", "/")
+            cond = (cond[:90] + "…") if len(cond) > 90 else cond
+            crit = (an["criterio"][:55] + "…") if len(an["criterio"]) > 55 else an["criterio"]
+            add(f"| {an['rf']} | {crit} | {cond} | {an['causa']} | {an['efeito']} | {an['recomendacao']} |")
+        add("")
+        add("> **Evidência** de todos os achados: Ordens Bancárias (SIAFE/TFE) e contratos/compras diretas do "
+            "TCE-RJ (Dados Abertos); quando lida, a íntegra do processo SEI. **Conclusão:** os itens acima são "
+            "**indícios** que sustentam a classificação como Nota Técnica COM Achado, sujeitos a contraditório.")
+    else:
+        add("> **Nota Técnica SEM Achado** — não há indício que sustente um achado. Mantém-se a presunção de "
+            "regularidade dos atos administrativos.")
+    add("")
+
+    # III-B. Detalhe por indício
+    add("## III-B. DETALHAMENTO DOS INDÍCIOS (red flags do controle externo)")
     add("")
     if analise.get("tem_leitura_doc"):
         add("*Indícios marcados abaixo combinam os dados financeiros (OBs) com a **leitura do inteiro teor** dos processos.*")
