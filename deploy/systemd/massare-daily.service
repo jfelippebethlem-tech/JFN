@@ -1,7 +1,0 @@
-[Unit]
-Description=Massare — ciclo diário de aprendizado (prevê, avalia, placar)
-After=network-online.target
-[Service]
-Type=oneshot
-WorkingDirectory=%h/JFN
-ExecStart=%h/JFN/.venv/bin/python -m massare.daily

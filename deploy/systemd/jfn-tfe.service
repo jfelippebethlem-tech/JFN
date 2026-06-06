@@ -1,9 +1,0 @@
-[Unit]
-Description=JFN — coleta TFE Despesa (espelho D-1 do SIAFE, dados abertos RJ)
-After=network-online.target
-[Service]
-Type=oneshot
-WorkingDirectory=%h/JFN
-Environment=JFN_DATA_DIR=%h/JFN/data
-ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.collectors.tfe_aberto --ano 2025
-ExecStartPost=%h/JFN/.venv/bin/python -m compliance_agent.collectors.tfe_aberto --ano 2026
