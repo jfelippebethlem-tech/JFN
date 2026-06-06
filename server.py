@@ -523,6 +523,17 @@ async def api_massare_cenarios(recalcular: bool = False):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@app.get("/api/briefing/dados")
+async def api_briefing_dados():
+    """Dados confiáveis para a rotina BOM DIA: clima (Open-Meteo) + mercado (Massare) + notícias (Google News
+    RSS). O Yoda chama isto em vez de raspar HTML frágil (climatempo/g1/infomoney, que falhavam)."""
+    try:
+        from compliance_agent.briefing import dados
+        return JSONResponse(dados())
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @app.get("/api/siafe/stats")
 async def api_siafe_stats():
     """Resumo das OBs do SIAFE (tela OB Orçamentária) já coletadas/ingeridas na base (SIAFE preponderante)."""
