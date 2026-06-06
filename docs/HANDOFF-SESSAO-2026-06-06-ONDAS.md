@@ -1,0 +1,73 @@
+# HANDOFF — sessão 2026-06-06 (Ondas + Lex + ecossistema) — CONTINUAR DAQUI
+
+> Para a próxima IA / próxima sessão. Branch de trabalho: **`linux`** (VM). Tudo abaixo já está committed+pushed
+> salvo onde indicado. Leia também: `CLAUDE.md`, `docs/ECOSSISTEMA-EVOLUCAO.md`, `docs/BRANCHES-POR-SO.md`,
+> e a memória em `~/.claude/.../memory/` (MEMORY.md). Diretriz eterna: instruções explícitas p/ IAs mais fracas.
+
+## ✅ JÁ FEITO nesta sessão (commits na branch `linux`)
+1. **Lex lê a íntegra do SEI** (`compliance_agent/lex.py`): liga `sei_cdp`/`sei_portal`; achados sobre o texto real
+   (R5/R3/R9/R7); seção "II-B". ⚠️ Leitura efetiva bloqueada por **WAF** (IP GCP barrado em sei.rj.gov.br) — Lex
+   reporta honestamente. Commit 1461bd7.
+2. **Branches por SO**: só `linux` (VM, default) + `windows` (preservado em origin/windows). `gitactions` foi
+   absorvida pela `linux` (tem `.github`). Guia: `docs/BRANCHES-POR-SO.md`.
+3. **Storage**: −3.3G (torch CUDA→CPU; **nunca reinstalar torch sem `--index-url .../whl/cpu`**), node_modules fora
+   do git+disco. **33G livres**. `.git` (118M) só encolhe com history-rewrite (proibido: sem push --force).
+4. **Onda 1 FEITA** (`compliance_agent/anomalias.py`, commit f125acc): rodou nos 1.121.303 OBs →
+   `ob_quarentena` (32.753), `ob_redflag` (69.807: valor_simbólico/fracionamento same-day+mês/concentração),
+   `ob_anomaly` (1,08M, PyOD ECOD+IForest, com dataset_hash+versão). Endpoint **`GET /api/anomalias`** + skill
+   Yoda `/anomalias` (~/.hermes). Achado real: SCALLE CONSTRUÇÕES, 5 OBs/mesmo dia = R$ 8,4M c/ parcelas R$ 0,07.
+   Rodar de novo: `python -m compliance_agent.anomalias --rodar`.
+5. **Onda 2 (parte) — TCE-RJ** (`compliance_agent/collectors/tcerj_aberto.py`, commit 69dfb87): **a API
+   `https://dados.tcerj.tc.br/api/v1/` responde da VM e traz o nº SEI como chave** (resolve OB↔processo SEM
+   scrapear o SEI/WAF). Ingeridos: `contratos_tcerj` (35.5k, c/ CNPJ+objeto+modalidade+valores),
+   `compras_diretas_tcerj` (19.7k, c/ EnquadramentoLegal de dispensa), `penalidades_tcerj` (913). Correlação:
+   31 OBs por SEI (via SIAFE), **466.091 OBs cujo fornecedor tem contrato** (5.007 CNPJs). Helper p/ Lex:
+   `tcerj_aberto.contratos_de_fornecedor(cnpj)`. Re-rodar: `--ingerir --correlacionar`.
+6. **Docs do Lex** (commits 963fff0, f125acc, 3508c00): `LEX-DOUTRINA-IMPROBIDADE.md` (Lei 14.230/2021 — dolo
+   específico, Tema 1199 STF, fim do dano presumido), `LEX-APRENDIZADOS-CGE-CASHPAGO.md` (molde de achado CGU
+   situação/critério/causa/efeito/recomendação; rede por sócio 3 níveis; ler íntegra revela modelo oculto),
+   `CONTROLES-FONTES-DADOS.md` (40 fontes ingeríveis: TCU/TCE-RJ/PNCP/Transparência/Querido Diário).
+7. **Benchmark de IAs** (`compliance_agent/benchmark_ias.py` + `data/benchmark_ias_gold.json`, commit 3508c00):
+   IAs do ecossistema = Gemini 2.5 Flash (Yoda/visão), Qwen 3.6 (código), fallbacks nous; baseline = Claude Opus 4.8.
+   Loop de 5 passos em `docs/IAS-ECOSSISTEMA-BENCHMARK.md`. Passo 1 (gold do Claude) FEITO p/ T1/T2/T5/T6.
+8. **BOM DIA** (`compliance_agent/briefing.py`, commit 93771bc): notícias via **RSS direto** (URL limpa, não o
+   redirect gigante do Google News) + `_texto_artigo()` extrai a **íntegra** p/ resumo RACIOCINADO de até 5 linhas.
+   Cron `~/.hermes/cron/jobs.json` (job 81cae9684db0) atualizado: ler `texto`, usar `url` limpa, não transcrever.
+   Endpoint `/api/briefing/dados` OK (clima Open-Meteo + mercado Massare + 5+5 notícias c/ íntegra).
+9. **Avaliação Yoda/PNCP**: a queixa do Yoda ("PNCP 400 bloqueia o relatório") é FALSA — `inteligencia._enriquecer`
+   é best-effort, "nunca derruba o relatório" (marca INDISPONÍVEL). Já resolvido; Yoda (Gemini) entrou em pânico.
+
+## 🔄 EM ANDAMENTO / A INTEGRAR
+- **deep-research** (workflow, rodando em background): "direito administrativo + relatórios CGE-RJ". Quando
+  terminar: gravar `docs/PESQUISA-DIREITO-ADMIN-CGE.md` e fundir os achados VERIFICADOS no Lex.
+
+## 📋 BACKLOG ORDENADO (fazer nesta ordem)
+1. **Integrar Onda 2 no produto**: usar `contratos_de_fornecedor(cnpj)` no `lex.py` e no `/relatorio`
+   (objeto/modalidade/EnquadramentoLegal por CNPJ); enriquecer a seção financeira com contrato vs. pago.
+2. **Lex → "Nota Técnica de Indícios"**: aplicar no `lex.py` o molde de achado CGU (situação/critério/causa/
+   efeito/evidência/recomendação/manifestação) + mapa improbidade (art. 9/10/11) e crime (CP/14.133) com a
+   cautela do DOLO (Lei 14.230) — ver `LEX-DOUTRINA-IMPROBIDADE.md` e `LEX-APRENDIZADOS-CGE-CASHPAGO.md`.
+3. **Onda 2 (resto)**: (a) fix endpoint PNCP (`relatorio_riscos/collectors/contratos_pncp.py` dá HTTP 400 —
+   faltam `dataInicial/dataFinal`); cache+retry+circuit-breaker no enriquecimento; (b) sanções CEIS/CNEP/CEPIM
+   (Portal Transparência); (c) rede por sócio comum 3 níveis (`rede_societaria.py` — Receita/QSA + Splink + networkx,
+   aprendizado CASHPAGO); (d) regra "valor simbólico" já existe (Onda 1) — boa.
+4. **Onda 3**: grafo fornecedor-órgão (cartel); SHAP no relatório; calibração por UG + PU-learning + drift;
+   eval com ground-truth TCE-RJ (penalidades_tcerj!); calibração de corte do score (top-50, marcar 10-15).
+5. **Benchmark Passos 2-4**: rodar T1/T2/T5/T6 nas IAs fracas (Gemini/Qwen/nous) via Hermes, pontuar vs. gold,
+   ajustar instruções, montar painel (`benchmark_ias.py --painel`).
+6. **DuckDB nos relatórios** (Onda 1 item pendente): acelerar queries pesadas lendo o próprio SQLite.
+
+## ❓ DECISÕES PENDENTES (confirmar com o Mestre Jorge)
+- **Multiusuário Telegram (filha usar, sem mexer em código)**: Hermes tem allowlist BINÁRIO
+  (`~/.hermes/config.yaml` telegram.allowed_users='45338178'); SEM papel/sandbox de ferramenta por usuário
+  (`disabled_toolsets` é global; `guest_mode` só libera menção em grupo). Risco: ferramenta `terminal` = shell.
+  **Recomendação:** bot-convidado SEPARADO (token próprio + allowlist própria) com toolsets perigosos
+  desabilitados, expondo só skills seguras que chamam a API do JFN; auto-allow só nesse bot-convidado.
+  NÃO auto-liberar no bot admin. Confirmar a abordagem antes de implementar (é fronteira de segurança).
+- **Rotacionar o PAT do git** no remote (pendência antiga de segurança — memória `jfn-projeto-essencial`).
+
+## Estado operacional
+- Serviços de usuário ativos: `jfn.service` (:8000) e `hermes-gateway.service` (Yoda). NUNCA parar/reiniciar com
+  `sudo`; são `systemctl --user`. NUNCA `push --force`. Commit só na branch `linux`; merge p/ windows = cherry-pick.
+- Tabelas novas no `compliance.db`: ob_quarentena, ob_redflag, ob_anomaly, contratos_tcerj, compras_diretas_tcerj,
+  penalidades_tcerj, ob_contrato_tcerj.
