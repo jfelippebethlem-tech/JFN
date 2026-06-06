@@ -487,6 +487,23 @@ def _render_cruzamento(ctx: dict) -> str:
         add(f"**Processos SEI do alvo (origem das OBs/contratos):** {amostra}")
         add("")
 
+    # Fornecedores na MESMA sede (independe de sócio em comum) — red flag de fachada/laranja
+    coend = cz.get("coendereco") or []
+    if coend:
+        n_pagos = sum(1 for c in coend if c.get("total_pago", 0) > 0)
+        add(f"### 🔴 Fornecedores no MESMO endereço ({len(coend)}; {n_pagos} também recebem OBs)")
+        add("")
+        add("> Empresas com **sede idêntica** ao alvo — mesmo sem sócio declarado em comum. Compartilhar imóvel "
+            "entre fornecedores do Estado é indício de empresa de fachada/laranja ou direcionamento "
+            "(art. 337-F CP; art. 11 Lei 8.429/92). **Indício a verificar, não acusação.**")
+        add("")
+        add("| Empresa (CNPJ) | OBs | Pago (R$) | SEI |")
+        add("|---|---:|---:|---:|")
+        for c in coend[:25]:
+            add(f"| {(c.get('razao') or '—')[:48]} ({fmt_cnpj(c['cnpj'])}) | {c.get('n_obs',0)} | "
+                f"{moeda(c.get('total_pago',0))} | {c.get('n_sei',0)} |")
+        add("")
+
     if not cz.get("tem_rede"):
         msg = cz.get("_nota") or "Sem rede societária ingerida para este CNPJ."
         if not cz.get("socios"):  # QSA ainda não ingerido → ofereça o comando
@@ -940,6 +957,18 @@ def _red_flags(ctx: dict) -> list[tuple]:
                 "indicar retrabalho de execução ou ajustes — vale conferir o motivo.",
                 "Boa prática de controle interno (CGE-RJ); rastreabilidade da execução (Lei 4.320/64).",
             ))
+    # red flag de co-localização (fornecedores na mesma sede) — vindo do cruzamento
+    coend = (ctx.get("cruzamento") or {}).get("coendereco") or []
+    if coend:
+        n_pagos = sum(1 for c in coend if c.get("total_pago", 0) > 0)
+        end = (ctx.get("cruzamento") or {}).get("endereco", {}).get("endereco", "")
+        out.append((
+            "RF-03 — Fornecedores na mesma sede",
+            f"{len(coend)} outro(s) fornecedor(es) com sede IDÊNTICA à do alvo ({end}); {n_pagos} também "
+            "recebem OBs do Estado. Empresas distintas no mesmo imóvel disputando/recebendo recursos públicos é "
+            "indício clássico de fachada/laranja ou direcionamento — verificar QSA, sócios de fato e licitações comuns.",
+            "Art. 337-F CP (frustração do caráter competitivo); art. 11 Lei 8.429/92; ACFE — shell company red flags.",
+        ))
     return out
 
 
