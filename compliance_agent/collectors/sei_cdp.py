@@ -517,6 +517,28 @@ async def ler_processo_sei_via_chrome(
             pass
 
 
+def _proxy_do_env() -> dict | None:
+    """Constrói o dict de proxy do Playwright a partir de PROXY_URL/SEI_PROXY_URL (.env).
+
+    Aceita http://user:pass@host:porta (ou socks5://...). Retorna {server, username?, password?}
+    ou None se nenhuma variável estiver definida. Separa credenciais do host (exigência do Playwright).
+    """
+    url = (os.environ.get("SEI_PROXY_URL") or os.environ.get("PROXY_URL") or "").strip()
+    if not url:
+        return None
+    from urllib.parse import urlparse
+    u = urlparse(url)
+    if not u.hostname:
+        return None
+    server = f"{u.scheme or 'http'}://{u.hostname}" + (f":{u.port}" if u.port else "")
+    cfg: dict = {"server": server}
+    if u.username:
+        cfg["username"] = u.username
+    if u.password:
+        cfg["password"] = u.password
+    return cfg
+
+
 async def ler_processo_sei_launch(
     numero_sei: str,
     *,
@@ -547,7 +569,15 @@ async def ler_processo_sei_launch(
     p = await async_playwright().start()
     resultado: dict = {"numero": numero, "documentos": [], "texto": "", "captcha_resolvido": False}
     try:
-        browser = await p.chromium.launch(headless=headless, args=["--no-sandbox", "--disable-dev-shm-usage"])
+        # Proxy opcional (decisão do Mestre: rotear o SEI por IP residencial BR, já que o WAF dropa o IP da VM).
+        # Lê PROXY_URL / SEI_PROXY_URL do .env no formato http://user:pass@host:porta. No-op se ausente.
+        proxy_cfg = _proxy_do_env()
+        if proxy_cfg:
+            resultado["_proxy"] = proxy_cfg.get("server")
+        browser = await p.chromium.launch(
+            headless=headless, args=["--no-sandbox", "--disable-dev-shm-usage"],
+            **({"proxy": proxy_cfg} if proxy_cfg else {}),
+        )
         ctx = await browser.new_context(ignore_https_errors=True)
         page = await ctx.new_page()
 

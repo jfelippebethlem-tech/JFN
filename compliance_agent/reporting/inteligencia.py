@@ -478,6 +478,8 @@ def _render_cruzamento(ctx: dict) -> str:
     osi = cz.get("obs_sei") or {}
     add(f"**Pegada do alvo no SIAFE:** {osi.get('n_obs', 0)} OBs · R$ {moeda(osi.get('total_pago', 0))} pagos · "
         f"{osi.get('n_sei', 0)} processo(s) SEI vinculado(s).")
+    if cz.get("cidade"):
+        add(f"**Cidade-sede do alvo:** {cz['cidade']}.")
     add("")
     seis = osi.get("sei_processos") or []
     if seis:
@@ -503,14 +505,20 @@ def _render_cruzamento(ctx: dict) -> str:
     rel = cz.get("relacionados") or []
     add(f"**Empresas com sócio em comum ({len(rel)}):** ordenadas por sede compartilhada e valor pago.")
     add("")
-    add("| Empresa (CNPJ) | Sócio(s) em comum | OBs | Pago (R$) | SEI | Mesma sede? |")
-    add("|---|---|---:|---:|---:|:---:|")
+    add("| Empresa (CNPJ) | Sócio(s) em comum | Cidade-sede | OBs | Pago (R$) | SEI | Mesma sede? |")
+    add("|---|---|---|---:|---:|---:|:---:|")
     for r in rel[:25]:
         razao = (r.get("razao") or "—")[:38]
         comuns = (r.get("socios_comuns") or "—")
         comuns = (comuns[:40] + "…") if len(comuns) > 40 else comuns
-        flag = "🔴 SIM" if r.get("mesmo_endereco") else "—"
-        add(f"| {razao} ({fmt_cnpj(r['cnpj'])}) | {comuns} | {r.get('n_obs',0)} | "
+        cidade = r.get("cidade") or "—"
+        if r.get("mesmo_endereco"):
+            flag = "🔴 SIM"
+        elif r.get("mesma_cidade"):
+            flag = "🟡 cidade"
+        else:
+            flag = "—"
+        add(f"| {razao} ({fmt_cnpj(r['cnpj'])}) | {comuns} | {cidade} | {r.get('n_obs',0)} | "
             f"{moeda(r.get('total_pago',0))} | {r.get('n_sei',0)} | {flag} |")
     add("")
 

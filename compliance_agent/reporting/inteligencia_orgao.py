@@ -150,8 +150,14 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     ug_cod = escolhido["ug"]
     pagamentos = consultar_orgao(ug_cod, anos)
     nome = escolhido["nome"]
+    # concentração geográfica dos fornecedores da UG (best-effort, sobre endereços ingeridos)
+    try:
+        from compliance_agent.cruzamento import cidades_de_orgao
+        geo = cidades_de_orgao(ug=ug_cod, anos=anos, limite=15)
+    except Exception as exc:  # noqa: BLE001
+        geo = {"ok": False, "_nota": str(exc)[:120]}
     ctx = {"ug": ug_cod, "nome": nome, "data": date.today().isoformat(), "pagamentos": pagamentos,
-           "alias": ugs.ALIASES.get(ug_cod, {})}
+           "alias": ugs.ALIASES.get(ug_cod, {}), "geo": geo}
 
     md = render_md(ctx)
     path_md = path_pdf = path_xlsx = ""
@@ -316,6 +322,40 @@ def render_md(ctx: dict) -> str:
             add("")
     else:
         add("_Sem OBs para esta UG._")
+        add("")
+
+    # Concentração GEOGRÁFICA dos fornecedores (cidade-sede)
+    geo = ctx.get("geo") or {}
+    add("## 1-B. CONCENTRAÇÃO GEOGRÁFICA DOS FORNECEDORES (CIDADE-SEDE)")
+    add("")
+    add("> Em que **cidades** estão sediados os fornecedores que este órgão paga. Concentração alta numa "
+        "cidade pequena/distante da atuação do órgão é red flag clássico (empresas de fachada/direcionamento — "
+        "art. 337-F CP). Cruza as OBs com o endereço (Receita/BrasilAPI) do CNPJ.")
+    add("")
+    if geo.get("ok"):
+        add(f"**Cobertura:** {geo.get('cobertura_valor',0)*100:.0f}% do valor pago e "
+            f"{geo.get('cobertura_forn',0)*100:.0f}% dos fornecedores têm endereço ingerido "
+            "(o ranking abaixo é sobre essa fração).")
+        add("")
+        add("| Cidade/UF | Fornecedores | OBs | Valor recebido (R$) | % (da fração conhecida) |")
+        add("|---|---:|---:|---:|---:|")
+        for c in geo["cidades"]:
+            cid = f"{c['cidade']}/{c['uf']}" if c.get("uf") else c["cidade"]
+            add(f"| {cid} | {c['n_fornecedores']} | {c['n_obs']} | {moeda(c['total_pago'])} | {c['pct']:.1f}% |")
+        add("")
+        top = geo["cidades"][0]
+        if top["pct"] >= 50 and (top.get("uf") or "") and top["cidade"]:
+            add(f"> 🟡 **Indício:** {top['pct']:.0f}% do valor (na fração com endereço) vai a fornecedores "
+                f"sediados em **{top['cidade']}/{top['uf']}** — verificar se a concentração geográfica é "
+                "compatível com o objeto e a competitividade das contratações.")
+            add("")
+        if geo.get("_nota"):
+            add(f"> ℹ️ {geo['_nota']}")
+            add("")
+    else:
+        _motivo = geo.get("_nota") or "sem endereços ingeridos para os fornecedores desta UG"
+        add(f"_Concentração geográfica indisponível ({_motivo}). "
+            "Rode `python -m compliance_agent.rede_societaria --ingerir-top 2000`._")
         add("")
 
     # Tabelas de OBs por ano (pagamentos individuais a cada fornecedor)
