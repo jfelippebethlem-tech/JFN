@@ -93,6 +93,14 @@ def main():
 
     if not os.environ.get("SEI_PASS"):
         print("⚠ SEI_PASS não definido (.env ou secret). Sem login interno o WAF/CAPTCHA barra a leitura.")
+    _proxy = os.environ.get("SEI_PROXY_URL") or os.environ.get("PROXY_URL")
+    if _proxy:
+        from urllib.parse import urlparse
+        _h = urlparse(_proxy).hostname or "?"
+        print(f"🌐 Proxy ativo p/ o SEI (via {_h}) — rota residencial BR p/ contornar o WAF da VM.")
+    else:
+        print("ℹ Sem PROXY_URL/SEI_PROXY_URL: da VM (IP GCP) o WAF do SEI dropa a conexão. "
+              "Defina PROXY_URL=http://user:pass@host:porta no .env p/ rotear por IP residencial.")
 
     res = asyncio.run(_rodar(numeros, headless=not a.headful))
     print(f"\nResumo: {res['lido']} lido(s), {res['erro']} erro(s) de {res['total']}. "
