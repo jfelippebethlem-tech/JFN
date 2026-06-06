@@ -133,6 +133,8 @@ def manutencao(tudo: bool = False, comprimir: bool = False, podar: int | None = 
     out = {"antes": relatorio()}
     out["checkpoint"] = checkpoint_wal()
     out["vacuum"] = vacuum()
+    # o VACUUM roda em modo WAL e regera um WAL do tamanho do DB — checkpoint final p/ truncá-lo
+    out["checkpoint_pos_vacuum"] = checkpoint_wal()
     if tudo or comprimir:
         out["comprimir"] = comprimir_caches()
     if tudo or podar is not None:
