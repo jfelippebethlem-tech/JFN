@@ -93,30 +93,80 @@ def mercado() -> dict:
     return out
 
 
-def _noticias_rss(query: str, n: int) -> list:
+# RSS DIRETO dos portais: URL real (limpa, não o redirect gigante do Google News) + resumo (<description>).
+_FEEDS_BR = [("https://g1.globo.com/rss/g1/", "G1"), ("https://g1.globo.com/rss/g1/economia/", "G1 Economia")]
+_FEEDS_RJ = [("https://pox.globo.com/rss/g1/rio-de-janeiro/", "G1 Rio"),
+             ("https://oglobo.globo.com/rss/oglobo/rio/", "O Globo Rio")]
+
+
+def _limpa(s: str) -> str:
+    s = re.sub(r"<!\[CDATA\[|\]\]>", "", s or "")
+    s = re.sub(r"<[^>]+>", "", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _feed(url: str, fonte: str, n: int) -> list:
     try:
-        url = ("https://news.google.com/rss/search?q=" + urllib.parse.quote(query)
-               + "&hl=pt-BR&gl=BR&ceid=BR:pt-419")
         xml = _http(url, timeout=12)
-        itens = []
-        for m in list(re.finditer(r"<item>(.*?)</item>", xml, re.S))[:n]:
-            bloco = m.group(1)
-            tit = re.search(r"<title>(.*?)</title>", bloco, re.S)
-            link = re.search(r"<link>(.*?)</link>", bloco, re.S)
-            fonte = re.search(r"<source[^>]*>(.*?)</source>", bloco, re.S)
-            titulo = re.sub(r"<!\[CDATA\[|\]\]>", "", tit.group(1)).strip() if tit else ""
-            if titulo:
-                itens.append({"titulo": titulo, "url": (link.group(1).strip() if link else ""),
-                              "fonte": (fonte.group(1).strip() if fonte else "")})
-        return itens
     except Exception:
         return []
+    itens = []
+    for m in re.finditer(r"<item>(.*?)</item>", xml, re.S):
+        b = m.group(1)
+        t = re.search(r"<title>(.*?)</title>", b, re.S)
+        l = re.search(r"<link>(.*?)</link>", b, re.S)
+        d = re.search(r"<description>(.*?)</description>", b, re.S)
+        titulo = _limpa(t.group(1)) if t else ""
+        link = (l.group(1).strip() if l else "")
+        tl = titulo.lower()
+        if not titulo or not link or "/noticia/" not in link:
+            continue  # só matérias reais (descarta vídeos, playlists, ao vivo, especiais)
+        if tl.startswith(("vídeos:", "videos:")) or "ao vivo" in tl or any(
+                seg in link for seg in ("/ao-vivo/", "/videos", "/playlist/", "/podcast/")):
+            continue
+        itens.append({"titulo": titulo, "url": link, "fonte": fonte, "resumo": _limpa(d.group(1))[:400] if d else ""})
+        if len(itens) >= n:
+            break
+    return itens
+
+
+def _texto_artigo(url: str, limite: int = 1800) -> str:
+    """Baixa a notícia e extrai o CORPO (íntegra) — insumo p/ a rotina RACIOCINAR (não é o resumo final)."""
+    try:
+        html = _http(url, timeout=10)
+    except Exception:
+        return ""
+    html = re.sub(r"(?is)<script.*?</script>|<style.*?</style>", " ", html)
+    ps = re.findall(r'<p[^>]*class="[^"]*content-text__container[^"]*"[^>]*>(.*?)</p>', html, re.S)
+    if not ps:
+        ps = re.findall(r"<p[^>]*>(.*?)</p>", html, re.S)
+    out = []
+    for p in ps:
+        t = _limpa(p)
+        if len(t) < 30 or any(j in t for j in ("glb.", "cdnConfig", "function(", "{", "var ", "©")):
+            continue
+        out.append(t)
+    return re.sub(r"\s+", " ", " ".join(out))[:limite]
+
+
+def _coletar(feeds: list, n: int) -> list:
+    out = []
+    for url, fonte in feeds:
+        out += _feed(url, fonte, n - len(out))
+        if len(out) >= n:
+            break
+    out = out[:n]
+    for it in out:  # enriquece com a íntegra (p/ resumo raciocinado de até 5 linhas)
+        it["texto"] = _texto_artigo(it["url"])
+    return out
 
 
 def noticias() -> dict:
-    """10 notícias: 5 do Brasil + 5 do Rio de Janeiro (Google News RSS)."""
-    return {"brasil": _noticias_rss("Brasil notícias", 5),
-            "rio": _noticias_rss("Rio de Janeiro notícias", 5)}
+    """10 notícias (5 Brasil + 5 Rio) via RSS DIRETO: URL real limpa + `texto` (íntegra) p/ resumo raciocinado.
+
+    O campo `texto` é o CORPO da matéria — a rotina BOM DIA deve LER e RACIOCINAR sobre ele para produzir um
+    resumo de até 5 linhas (NÃO transcrever). `resumo` é só a chamada do RSS (fallback se a íntegra falhar)."""
+    return {"brasil": _coletar(_FEEDS_BR, 5), "rio": _coletar(_FEEDS_RJ, 5)}
 
 
 def dados() -> dict:
