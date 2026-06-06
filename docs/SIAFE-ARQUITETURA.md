@@ -69,6 +69,19 @@ Para abrir uma OB: **selecionar a linha** (clique) e clicar **`pt1:tblOBOrcament
 `dblclick` via JS NÃO funciona. Tela de detalhe: form `frmDocumento`, prefixo `tplSip:` (ex.: `tplSip:itxNumero::content`,
 `tplSip:itxDataEmissao::content`, `tplSip:lovUgEmitente:itxLovDec::content`). Abas: Detalhamento, etc.
 
+## 8b. INTELIGÊNCIA-CHAVE — por que o filtro rico resiste ao Playwright (medido)
+**Fato medido (captura de rede):** selecionar Propriedade e Operador do filtro via `select_option`
+(ou `dispatchEvent('change')`, ou clique real de blur em outro campo) dispara **ZERO requisições HTTP**.
+Os `<select>` do filtro **não têm `onchange` inline** (atributos só `id/name/class=x2h/title`); o ADF registra
+o listener via JS (peer `AdfDhtmlSelectOneChoicePeer`; `AdfPage` existe como função global). Logo, o PPR que
+**cria o campo Valor** (`in_value_rtfFilter`) **nunca é acionado** por eventos sintéticos.
+**Implicação:** para dirigir esses componentes ADF é preciso **emulação humana genuína** (mouse/teclado reais
+no nível do SO), como faz o Claude/Chrome. Opções profissionais: **Anthropic Computer Use** (modelo + screenshot +
+`xdotool` num Chrome headed sob Xvfb) ou invocar a API interna do ADF (`AdfPage.PAGE.findComponent(...)` +
+value-change/autosubmit — frágil entre versões). **O que JÁ funciona** (login + navegação + colheita de ~1000/consulta
++ ingestão) NÃO depende disso; só a **varredura completa por filtro** depende. Replay HTTP do PPR também é viável se
+capturarmos (DevTools→Network) a requisição exata que o filtro dispara num navegador real.
+
 ## 8. GOTCHAS de automação (o que custou horas)
 - **Headless vs ADF:** o pipeline de eventos/PPR do ADF pode não disparar 100% em Chromium headless. Rodar
   **headed em Xvfb** (`xvfb-run`) aproxima do comportamento real (como o Claude/Chrome "enxerga"). Ver `_HEADED` no coletor.
