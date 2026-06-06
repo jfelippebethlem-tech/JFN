@@ -23,8 +23,9 @@ O **Yoda** (bot Telegram, `hermes-gateway.service`) é o MAESTRO. Ele NÃO faz a
 curl -s -X POST http://127.0.0.1:8000/api/relatorio/inteligencia -H 'Content-Type: application/json' -d '{"empresa":"MGS Clean"}'
 curl -s -X POST http://127.0.0.1:8000/api/relatorio/orgao        -H 'Content-Type: application/json' -d '{"orgao":"iterj"}'
 ```
-Retorno: `{ok, ..., resumo, path_md, path_pdf, fonte}`. Se `ambiguo:true`, há o campo `pergunta` (lista de
-candidatos) — o Yoda repassa ao Mestre Jorge e chama de novo com o CNPJ/UG escolhido.
+Retorno: `{ok, ..., resumo, path_md, path_pdf, path_xlsx, fonte}`. **Envie sempre o PDF E o XLSX** no
+Telegram. Se `ambiguo:true`, há o campo `pergunta` (lista de candidatos) — o Yoda repassa ao Mestre Jorge
+e chama de novo com o CNPJ/UG escolhido.
 
 **b) Pela CLI (offline, para depurar):**
 ```bash
@@ -47,6 +48,7 @@ curl -s -F chat_id=45338178 -F document=@reports/SEU_RELATORIO.pdf -F caption=".
 |---|---|
 | `compliance_agent/reporting/inteligencia.py` | Motor do relatório de **fornecedor** (resolução por nome/CNPJ, tabelas de OB por ano, HHI, **parecer jurídico/mérito** `parecer_fornecedor`, PDF DejaVu). |
 | `compliance_agent/reporting/inteligencia_orgao.py` | Motor do relatório de **órgão** (reusa helpers do de fornecedor; concentração por fornecedor; `parecer_orgao`). |
+| `compliance_agent/reporting/planilha.py` | **Planilha Excel interativa** (anexo padrão): Tabela do Excel c/ autofiltro, painel congelado, moeda/data, aba Resumo + Pagamentos + Concentração, formatação condicional. `gerar(ctx, dest, modo)`. |
 | `compliance_agent/ugs.py` + `data/ug_canonico.json` | **Mapa canônico de UG → nome da unidade.** Corrige o nome do órgão pelo CÓDIGO da UG (ver §4). |
 | `server.py` | Endpoints REST (o barramento). |
 | `massare/market.py` + `massare-market.timer` | Massare no pregão (cenários multi-horizonte). |
