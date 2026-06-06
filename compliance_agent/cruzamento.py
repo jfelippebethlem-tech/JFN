@@ -123,6 +123,35 @@ async def _garantir_enderecos(cnpjs: list[str]) -> dict:
     return res
 
 
+def fornecedores_no_mesmo_endereco(endereco_norm: str, cnpj_excluir: str = "") -> list[dict]:
+    """Outros fornecedores (com endereço ingerido) sediados no MESMO endereço normalizado.
+
+    Independe de sócio em comum — pega 'empresas no mesmo imóvel' que a rede societária não veria.
+    Dois+ fornecedores recebendo do Estado na MESMA sede é red flag forte (fachada/laranja/
+    direcionamento — art. 337-F CP). Retorna [{cnpj, razao, n_obs, total_pago, n_sei}].
+    """
+    endereco_norm = (endereco_norm or "").strip()
+    if not endereco_norm or len(endereco_norm) < 12 or not os.path.exists(_DB):
+        return []  # endereço vazio/curto demais não é evidência confiável de co-localização
+    cnpj_excluir = _so_digitos(cnpj_excluir)
+    con = sqlite3.connect(_DB)
+    con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(
+            "SELECT cnpj, razao FROM endereco_fornecedor WHERE endereco_norm=? AND cnpj!=?",
+            (endereco_norm, cnpj_excluir)).fetchall()
+    finally:
+        con.close()
+    out = []
+    for r in rows:
+        os_ = obs_e_sei(r["cnpj"])
+        out.append({"cnpj": r["cnpj"], "razao": r["razao"] or "",
+                    "n_obs": os_["n_obs"], "total_pago": os_["total_pago"], "n_sei": os_["n_sei"]})
+    # prioriza quem também recebe OBs (mais relevante p/ o controle)
+    out.sort(key=lambda x: (-x["total_pago"], -x["n_obs"]))
+    return out
+
+
 # ───────────────────────── cruzamento principal ─────────────────────────
 
 async def cruzar_async(cnpj: str) -> dict:
@@ -132,7 +161,8 @@ async def cruzar_async(cnpj: str) -> dict:
     cnpj = _so_digitos(cnpj)
     out = {
         "cnpj": cnpj, "tem_rede": False, "socios": [], "relacionados": [],
-        "endereco": {}, "obs_sei": obs_e_sei(cnpj), "indicios": [], "_nota": "",
+        "endereco": {}, "obs_sei": obs_e_sei(cnpj), "coendereco": [], "indicios": [],
+        "red_flags": [], "_nota": "",
     }
 
     rede = rs.rede_por_socio(cnpj)
@@ -158,6 +188,19 @@ async def cruzar_async(cnpj: str) -> dict:
     cidade_alvo = _cidade(out["endereco"])
     out["cidade"] = cidade_alvo
     mun_alvo = (out["endereco"].get("municipio") or "").strip().upper()
+
+    # RED FLAG: outros fornecedores na MESMA sede (independe de sócio comum — pega fachada/laranja)
+    coend = fornecedores_no_mesmo_endereco(end_alvo_norm, cnpj_excluir=cnpj)
+    out["coendereco"] = coend
+    coend_pagos = [c for c in coend if c["total_pago"] > 0]
+    if coend:
+        _msg = (f"{len(coend)} outro(s) fornecedor(es) com sede no MESMO endereço do alvo "
+                f"({out['endereco'].get('endereco','')}); "
+                f"{len(coend_pagos)} deles também recebem OBs do Estado. Compartilhar sede sem sócio "
+                "declarado em comum é red flag de empresa de fachada/laranja a verificar (art. 337-F CP; "
+                "art. 11 Lei 8.429/92).")
+        out["red_flags"].append({"codigo": "R-COEND", "nivel": "ALTO" if coend_pagos else "MÉDIO",
+                                 "descricao": _msg})
 
     enriquecidos = []
     for r in relacionados:
