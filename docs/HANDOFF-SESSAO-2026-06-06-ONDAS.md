@@ -12,14 +12,15 @@
 >      `rede_societaria --ingerir-top N`; já rodou top-2000). API: `/api/cruzamento`, `/api/orgao/cidades`, `/api/coendereco/clusters`.
 >    - Memória: [[cruzamento-socio-ob-sei-endereco]].
 >
-> **2. SEI — diagnóstico FECHADO (não repita os testes):** o WAF do SEI-RJ **dropa o IP da VM** (GCP 35.247.224.30)
->    em `sei.rj.gov.br` E `sei.fazenda.rj.gov.br` (ERR_CONNECTION_CLOSED) — é bloqueio de **rede**, não de código nem
->    de captcha. O login interno está pronto (`itkava` / órgão **iterj** / senha no `.env`, `SEI_ORGAO=iterj`). O Mestre
->    **vetou** whitelisting de IP e túnel/proxy. **Caminho aberto a perseguir:** a **API REST do SEI (módulo WSSEI)** —
->    o ITERJ pede ao operador do SEI-RJ (Sec. de Transformação Digital) o cadastro do JFN como sistema externo + token;
->    aí lê processos **sem browser/captcha**, da VM. **TODO:** construir um cliente WSSEI (`mod-wssei`, ver
->    `docs/` da pesquisa SEI) pronto p/ plugar o token. `sei_cdp` já suporta `PROXY_URL` e tem `testar_acesso()` +
->    `tools/ler_sei_lote.py --diagnostico`. Memória: [[sei-login-itkava]].
+> **2. SEI — RESOLVIDO o acesso da VM (corrige diagnóstico antigo!):** o WAF do SEI bloqueia por **FINGERPRINT**,
+>    não por IP — `curl`/`httpx` são dropados, mas **Chromium real PASSA** (HTTP 200, intermitente). Com retry+backoff,
+>    o **login interno `itkava`/órgão ITERJ funciona DA VM, SEM captcha** (`tools/sei_login_retry.py`), e clicando os
+>    **links internos** do app (não URL crua) chega à **Pesquisa autenticada com a sessão intacta**
+>    (`tools/sei_reader.py` — ✅ validado, unidade ITERJ/CHEGAB). **Não precisa de proxy/Actions/WSSEI.** ⚠️ Logar e LER
+>    na MESMA sessão (sessão não sobrevive a contexto novo nem a `goto` cru). **FALTA (passo final bounded):** no
+>    `sei_reader`, usar o protocolo EXATO (`#txtProtocoloPesquisa`) → abrir o processo (`procedimento_trabalhar`) →
+>    extrair a árvore de documentos reaproveitando os extractors do `sei_cdp` → gravar `data/sei_cache/cdp_*.json`
+>    (Lex consome 24h). Memória: [[sei-login-itkava]]. (WSSEI/Actions viram fallback opcional.)
 >
 > **3. SIAFE — `docs/SIAFE-RIO2-GUIA-AUTOMACAO.md`** (mapeamento do Mestre): destrava o **limite de 1000** via
 >    checkbox `chkRemoveLimit` (ou iterar UG+período). Mapa das 207 UGs (índice 2026), filtro PPR, gotchas que
