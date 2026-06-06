@@ -1,5 +1,32 @@
 # HANDOFF — sessão 2026-06-06 (Ondas + Lex + ecossistema) — CONTINUAR DAQUI
 
+> ## ⏯️ RETOMADA pós-session-limit (2026-06-06 ~14:xx UTC) — LER PRIMEIRO
+> Sessão pausou por limite (reset 4:50pm UTC). Estado salvo e committed na branch `linux`:
+> 1. **Onda 2 integrada no Lex** (commit feito): `lex.py` ganhou `_contratos_tcerj()` +
+>    `_analisar_contratos_tcerj()` (red flags **R5 dispensa / R2 fracionamento / R9 sobre-execução** a partir dos
+>    **Dados Abertos do TCE-RJ**, que NÃO dependem do SEI/WAF) + nova **seção II-C** no parecer (tabelas de
+>    contratos e de compras diretas com EnquadramentoLegal). **FALTA VALIDAR:** rodar
+>    `.venv/bin/python -m compliance_agent.lex` via um ctx real (ou gerar um `/relatorio` de fornecedor, ex.
+>    "MGS Clean") e conferir a seção II-C + grau. Integração degrada com elegância se a tabela estiver vazia.
+> 2. **Bugs de qualidade da Onda 2 corrigidos** em `collectors/tcerj_aberto.py`: `_fnum` agora entende formato BR
+>    ("7.188,00"); coluna `modalidade` (que guardava o nº da contratação) renomeada p/ `num_contratacao`
+>    (contratos_estado **não tem** campo de modalidade — só `CriterioJulgamento`); compras diretas casam por NOME
+>    (a base não traz CNPJ na compra direta). **Tabela `contratos_tcerj` foi DROPADA e está sendo re-ingerida**
+>    por um subprocesso (log em `data/manutencao_pos_reset.log`). Conferir que voltou a ~35k linhas:
+>    `python -m compliance_agent.collectors.tcerj_aberto --stats`.
+> 3. **Storage racionalizado** (pedido do Mestre): novo `compliance_agent/manutencao.py` — `--tudo` faz
+>    **checkpoint do WAL (TRUNCATE)** [o `compliance.db-wal` tinha inchado p/ **2 GB**], **VACUUM**, **gzip** dos CSV
+>    regeneráveis de `data/tfe_cache` (~64M) e poda relatórios antigos. Roda ao fim da re-ingestão acima.
+>    Sugestão: agendar no cron do Hermes (semanal). Conferir ganho: `python -m compliance_agent.manutencao --relatorio`.
+> 4. **deep-research** (direito admin + CGE-RJ) completou parcialmente (16 claims verificados; síntese e parte das
+>    verificações falharam por session-limit). Resultado bruto em `tasks/wf9ans6r6.output`. **A FAZER:** gravar
+>    `docs/PESQUISA-DIREITO-ADMIN-CGE.md` com os 16 claims VERIFICADOS (STJ REsp 1.929.685 dano efetivo; dolo
+>    específico art.1 §2/§3 Lei 14.230; art.10 sem culpa; CP 312/316/317/333; anatomia do achado situação/critério/
+>    causa/efeito + evidência) e fundir no Lex (molde de Nota Técnica/achado CGU já está em LEX-APRENDIZADOS-CGE).
+>    Re-rodar a síntese do deep-research após o reset se quiser o relatório completo.
+> **Backlog segue igual abaixo (itens 2-6).** "voltamos com tudo" após o reset.
+
+
 > Para a próxima IA / próxima sessão. Branch de trabalho: **`linux`** (VM). Tudo abaixo já está committed+pushed
 > salvo onde indicado. Leia também: `CLAUDE.md`, `docs/ECOSSISTEMA-EVOLUCAO.md`, `docs/BRANCHES-POR-SO.md`,
 > e a memória em `~/.claude/.../memory/` (MEMORY.md). Diretriz eterna: instruções explícitas p/ IAs mais fracas.
