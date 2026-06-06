@@ -560,6 +560,29 @@ async def api_siafe_stats():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@app.get("/api/anomalias")
+async def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] = None, top: int = 20):
+    """Ranking de OBs suspeitas (Onda 1): score PyOD + red flags determinísticas. Filtros: ?orgao= &fornecedor= &top=.
+
+    Honestidade: cada item é INDÍCIO para investigação interna, NUNCA acusação. Rode antes:
+    `python -m compliance_agent.anomalias --rodar`."""
+    try:
+        from compliance_agent import anomalias
+        top = max(1, min(int(top or 20), 200))
+        rows = anomalias.top_anomalias(top, orgao, fornecedor)
+        itens = [{
+            "ob": r.get("numero_ob"), "data": r.get("data_emissao"),
+            "ug": r.get("ug_codigo"), "ug_nome": r.get("ug_nome"),
+            "fornecedor": r.get("favorecido_nome"), "cnpj": r.get("favorecido_cpf"),
+            "valor": round(r.get("valor") or 0, 2), "score": round(r.get("score") or 0, 3),
+            "regras": r.get("regras"), "parecer": r.get("pareceres"),
+        } for r in rows]
+        return JSONResponse({"ok": True, "n": len(itens), "itens": itens,
+                             "aviso": "Indícios para apuração interna — não constituem acusação."})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @app.post("/api/massare/prever")
 async def api_massare_prever(payload: Optional[dict] = None):
     """Previsão direcional de um ativo. Body: {"symbol":"^BVSP","horizon":5}."""
