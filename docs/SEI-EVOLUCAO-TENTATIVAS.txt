@@ -1,0 +1,150 @@
+================================================================================
+SEI-RJ — EVOLUÇÃO DAS NOSSAS TENTATIVAS (erros e acertos, todo o repo)
+Documento de inteligência para consulta. Gerado em 2026-06-06.
+================================================================================
+
+OBJETIVO
+--------
+Ler a ÍNTEGRA de processos do SEI-RJ (Sistema Eletrônico de Informações) — edital/TR,
+contrato, pareceres, pagamentos — para o agente jurídico LEX usar como prova, e
+correlacionar OB <-> contrato <-> processo SEI. Dois caminhos no SEI:
+  (a) PESQUISA PÚBLICA (sem login) — tem CAPTCHA.
+  (b) LOGIN INTERNO (usuário itkava, órgão ITERJ) — sem captcha, acesso autenticado.
+
+================================================================================
+1. LINHA DO TEMPO (resumo dos commits)
+================================================================================
+01/06  Scraper SEI-RJ inicial + pesquisa pública no diagnóstico. Ajuste p/ portalsei.rj.gov.br.
+02/06  Leitura de processos com CAPTCHA: 1º humano-no-loop; depois OCR automático
+       (EasyOCR + Tesseract) + fallback via CDP (Chrome 9222). captcha_solver local.
+03/06  Roteamento multi-IA (Gemini p/ OCR/SEI). Pendências SEI documentadas.
+04/06  SEI acesso INTERNO + ferramenta simples p/ agente auditor (Gemini Flash).
+       Auditoria MGS: identificados contratos + processos SEI (24 em 2025, 18 em 2026).
+06/06  Correlação OB<->SEI (correlacao_sei.py). Lex passa a "ler a íntegra do SEI".
+       Onda 2: contratos TCE-RJ no Lex SEM depender do SEI (Dados Abertos) — contorna o WAF.
+       bef7d5a: login interno autenticado itkava/SIP. NOTA (errada à época): "WAF bloqueia
+                o IP da VM até no login — rodar do desktop/IP gov".
+       e5c7485: re-teste "confirma WAF dropa a VM (ERR_CONNECTION_CLOSED)".
+       0f65b58: autoteste de acesso (sei_cdp.testar_acesso) + CLI --diagnostico.
+       >>> 4e72f45: VENCE o WAF — login interno itkava via Chromium da VM (sem proxy/captcha) <<<
+       faee0ad: reader autenticado da VM (login + Pesquisa interna, sessão intacta).
+       b148af2: handoff — "acesso da VM RESOLVIDO (WAF é fingerprint)".
+
+================================================================================
+2. FERRAMENTAS NO REPO (e status)
+================================================================================
+compliance_agent/collectors/sei_cdp.py    Núcleo: lê processo via Chrome (login interno itkava
+                                           + OCR de captcha na pesquisa pública); extractors da
+                                           árvore/documentos; cache data/sei_cache/cdp_*.json (24h).
+                                           Funções: login_sei_interno, submit_sei_search,
+                                           ler_processo_sei_via_chrome (CDP 9222),
+                                           ler_processo_sei_launch (Playwright launch),
+                                           testar_acesso, _resolver_captcha_ocr, _is_waf_block.
+compliance_agent/collectors/sei_portal.py  Scraper do portal (httpx) — fallback.
+compliance_agent/collectors/sei_sei_direct.py  Playwright sync direto.
+compliance_agent/collectors/sei_captcha_crawler.py  Crawler com captcha.
+compliance_agent/captcha_solver.py         OCR do captcha (EasyOCR/Tesseract).
+compliance_agent/correlacao_sei.py         Correlaciona OB<->processo SEI (preenche numero_sei).
+compliance_agent/sei_driver.py             Selenium (legado).
+tools/ler_sei_lote.py                       Leitura em lote (Actions/desktop); --pendentes N; --diagnostico.
+tools/sei_login_retry.py    >>> NOVO/OK <<< login itkava via Chromium + retry (vence o flap do WAF).
+tools/sei_reader.py         >>> NOVO/OK <<< login + Pesquisa interna autenticada (mesma sessão).
+.github/workflows/ler-sei.yml               Leitura via GitHub Actions (IP Azure) — fallback.
+DOCS: _SANDBOX/SEI-INSTRUCOES-AGENTE.md, _SANDBOX/SEI-mapa-de-funcoes.md,
+      _SANDBOX/sei-protocolo-seguro.md, docs/LEX-* (uso da íntegra no parecer).
+
+================================================================================
+3. ERROS (o que tentamos e NÃO funcionou — não repetir)
+================================================================================
+[ERRO 1] curl/httpx contra o SEI: SEMPRE dropado (ERR_CONNECTION_CLOSED / 000), 0/10.
+         -> o WAF derruba pelo FINGERPRINT do cliente, não (só) pelo IP.
+[ERRO 2] PREMISSA FALSA "o WAF bloqueia o IP da VM": levou semanas de desvio (GitHub Actions,
+         pedido de proxy residencial, whitelisting). REALIDADE: a VM ACESSA o SEI com um
+         CHROMIUM REAL — o que falha é curl/httpx (fingerprint) e o flap intermitente.
+[ERRO 3] Pesquisa PÚBLICA: exige CAPTCHA (friction; OCR nem sempre acerta). Melhor evitar:
+         o LOGIN INTERNO (itkava) não tem captcha.
+[ERRO 4] storage_state (sessão salva) reusada em contexto NOVO -> volta pro login. A sessão
+         do SEI não sobrevive a novo contexto.
+[ERRO 5] goto de URL CRUA de ação interna (ex.: controlador.php?acao=protocolo_pesquisar)
+         -> redireciona pro login. Tem que navegar pelos LINKS internos do app (carregam tokens).
+[ERRO 6] Buscar processo de OUTRO órgão pela "Pesquisa Rápida" (escopada à unidade do itkava)
+         -> não abre o processo (caímos no menu). itkava/ITERJ vê processos do ITERJ + públicos.
+[ERRO 7] ler_processo_sei_launch ia pela pesquisa PÚBLICA (caminho com captcha/flap) e por isso
+         reportava WAF — o caminho certo é o login interno + pesquisa autenticada.
+
+================================================================================
+4. ACERTOS (o que JÁ FUNCIONA — validado 2026-06-06 da VM)
+================================================================================
+[OK 1] LOGIN INTERNO itkava/ITERJ DA VM, SEM CAPTCHA: Chromium real + retry+backoff vence o
+       flap do WAF. Cai autenticado em controlador.php?acao=procedimento_controlar (Controle de
+       Processos), unidade ITERJ/CHEGAB. Ferramenta: tools/sei_login_retry.py (acerta na 1ª/poucas).
+[OK 2] PESQUISA AUTENTICADA acessível NA MESMA SESSÃO: clicando o link interno "Pesquisa Rápida"
+       (clique real), a sessão se mantém e a busca executa. Ferramenta: tools/sei_reader.py.
+[OK 3] CORRELAÇÃO OB<->SEI já popula numero_sei (1.527 OBs) e liga OB<->contrato TCE-RJ (correlacao_sei).
+[OK 4] Cache compartilhado data/sei_cache/cdp_*.json -> o Lex consome a íntegra por 24h
+       (qualquer agente que leia o SEI alimenta esse cache).
+
+================================================================================
+5. ESTRUTURA DOM DO SITE (mapa de IDs)
+================================================================================
+URL de login (a que funciona):
+  https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI&infra_url=L3NlaS8=
+  (host sei.fazenda.rj.gov.br dá timeout da VM; usar o sei.rj.gov.br acima.)
+
+FORM DE LOGIN INTERNO (SEM captcha):
+  input[name="txtUsuario"]        -> usuário (itkava, minúsculo)
+  #pwdSenha                       -> senha (campo VISÍVEL type=text; há também hidden name=pwdSenha)
+                                     preencher AMBOS por segurança
+  #selOrgao                       -> <select> com 107 órgãos; escolher a opção "ITERJ"
+  botão "ACESSAR"                 -> submit (clicar por texto/JS)
+  (NÃO há #txtInfraCaptcha visível no login interno -> sem captcha)
+
+PÓS-LOGIN:
+  controlador.php?acao=procedimento_controlar&acao_origem=principal  (Controle de Processos)
+  Menu lateral: Acompanhamento Especial, Base de Conhecimento, Blocos, Controle de Processos,
+                Iniciar Processo, Painel de Controle, PESQUISA, Pontos de Controle, ...
+
+PESQUISA:
+  - "Pesquisa Rápida": link com onclick "document.getElementById('frmProtocoloPesquisaRapida').submit();"
+    campo: #txtPesquisaRapida  -> vai p/ controlador.php?acao=protocolo_pesquisa_rapida (escopo da unidade)
+  - Pesquisa avançada: controlador.php?acao=protocolo_pesquisar (público/amplo)
+    campo de protocolo exato: #txtProtocoloPesquisa ; + filtros txtAssunto, txtUnidade, etc.
+
+PROCESSO ABERTO (extração da íntegra):
+  - Usa FRAMES: ifrArvore (árvore de documentos) e ifrVisualizacao (conteúdo do doc).
+  - Links de documento casam: documento_visualizar | exibir_documento | acessar_documento |
+    md_doc | procedimento_visualizar  -> abrir cada um e ler o innerText.
+  - Extractor pronto: sei_cdp._JS_LE_ARVORE_E_TEXTO (rodar em TODOS os page.frames).
+  - Abrir 1º resultado: sei_cdp._abrir_primeiro_resultado (clica a[href*="procedimento_trabalhar"]).
+
+CACHE (formato que o Lex consome):
+  data/sei_cache/cdp_<numero_sanitizado>.json =
+    {numero, url, documentos[{texto,url}], texto, conteudo_documentos[{doc,conteudo}],
+     cnpjs[], valores[], _cached_at}  (validade 24h)
+
+================================================================================
+6. O QUE FALTA (passo final) + ALTERNATIVAS
+================================================================================
+FALTA: dentro da sessão autenticada, BUSCAR pelo protocolo EXATO (#txtProtocoloPesquisa na
+  pesquisa avançada, que é mais ampla que a Rápida) -> abrir o processo (procedimento_trabalhar)
+  -> extrair a árvore/documentos (sei_cdp._JS_LE_ARVORE_E_TEXTO em todos os frames) -> gravar
+  cdp_*.json. A autenticação e a navegação já estão provadas; falta só essa amarração.
+  Nuance: itkava/ITERJ enxerga processos do ITERJ + públicos; para processos restritos de outros
+  órgãos pode não haver acesso.
+
+ALTERNATIVAS (se quisermos robustez/escala):
+  - API REST do SEI (módulo WSSEI): o ITERJ pede ao operador do SEI-RJ (Sec. de Transformação
+    Digital) o cadastro do JFN como sistema externo + token -> lê processos por API, sem browser.
+  - Barramento PEN / Tramita.GOV.BR (interoperabilidade federal) — mais pesado.
+  - GitHub Actions (ler-sei.yml) e CDP no desktop -> fallback (não mais necessários p/ login).
+
+================================================================================
+7. LIÇÕES (resumo de 1 linha)
+================================================================================
+- SEI da VM: SÓ via Chromium REAL + retry (curl/httpx = dropado por fingerprint).
+- Login INTERNO itkava = SEM captcha; pesquisa pública = COM captcha (evitar).
+- Logar e LER na MESMA sessão; navegar por cliques internos, nunca URL crua/storage_state.
+- A premissa antiga "WAF bloqueia por IP" estava ERRADA — não voltar a ela.
+================================================================================
+FIM — detalhes em tools/sei_login_retry.py, tools/sei_reader.py, sei_cdp.py.
+================================================================================
