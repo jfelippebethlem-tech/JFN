@@ -132,11 +132,11 @@ def main():
         api_ok = True
     except Exception as e:
         log(f"⚠ API /estado não respondeu: {type(e).__name__}: {e}")
-        if prev.get("api_ok", True):  # só alerta na transição ok→down
-            eventos.append("🔴 API do JFN (8000) <b>não responde</b>.")
+    # debounce: a API pisca por ~10s sob carga do DB; só alerta se ficou fora em 2 rondas SEGUIDAS
+    api_fails = 0 if api_ok else int(prev.get("api_fails", 0) or 0) + 1
+    if api_fails == 2:
+        eventos.append("🔴 API do JFN (8000) <b>não responde</b> há 2 rondas seguidas.")
 
-    n_alertas = 0
-    n_alertas_lista = 0
     if api_ok:
         n_alertas = int(estado.get("n_alertas", 0) or 0)
         if not estado.get("llm_ok", True) and prev.get("llm_ok", True):
@@ -145,11 +145,16 @@ def main():
             alerts = http_json("/api/compliance/alerts")
             n_alertas_lista = len(alerts) if isinstance(alerts, list) else int(alerts.get("total", 0))
         except Exception:
-            n_alertas_lista = prev.get("n_alertas_lista", 0)
+            n_alertas_lista = int(prev.get("n_alertas_lista", 0) or 0)
+    else:
+        # API fora: PRESERVA a contagem anterior — senão, ao voltar, 0→2 vira "2 novos alertas" falso
+        n_alertas = int(prev.get("n_alertas", 0) or 0)
+        n_alertas_lista = int(prev.get("n_alertas_lista", 0) or 0)
 
-    # 3) novos alertas (subiu em relação à última ronda)
-    novos = max(n_alertas, n_alertas_lista) - max(prev.get("n_alertas", 0), prev.get("n_alertas_lista", 0))
-    if novos > 0:
+    # 3) novos alertas — só quando há monitoramento CONTÍNUO (api ok agora E na ronda anterior),
+    #    evitando o falso positivo do flapping (recuperação da API não é "novo alerta")
+    novos = max(n_alertas, n_alertas_lista) - max(int(prev.get("n_alertas", 0) or 0), int(prev.get("n_alertas_lista", 0) or 0))
+    if novos > 0 and api_ok and prev.get("api_ok", False):
         eventos.append(f"🚨 <b>{novos} novo(s) alerta(s)</b> de compliance no JFN "
                        f"(total agora: {max(n_alertas, n_alertas_lista)}).")
 
@@ -163,7 +168,7 @@ def main():
                   + f"\n<code>{agora()}</code>")
 
     salvar_estado({
-        "ativo": ativo, "api_ok": api_ok,
+        "ativo": ativo, "api_ok": api_ok, "api_fails": api_fails,
         "llm_ok": bool(estado.get("llm_ok", True)) if api_ok else prev.get("llm_ok", True),
         "n_alertas": n_alertas, "n_alertas_lista": n_alertas_lista,
         "ultima_ronda": agora(),
