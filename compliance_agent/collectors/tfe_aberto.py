@@ -82,11 +82,45 @@ def resumo(ano, orgao_filtro=""):
     return {"ano": ano, "linhas": n, "totais": dict(tot), "top_orgaos": [(o, v["pago"], v["empenhado"]) for o, v in top]}
 
 
+def ingest_db(ano):
+    """Ingere a despesa COMPLETA (todos os elementos: folha, previdência, dívida, serviços...) numa
+    tabela despesa_execucao — o quadro financeiro total (≠ só fornecedores). Idempotente por ano."""
+    import sqlite3
+    db = Path(os.environ.get("JFN_DATA_DIR", _REPO / "data")) / "compliance.db"
+    con = sqlite3.connect(str(db))
+    con.execute("""CREATE TABLE IF NOT EXISTS despesa_execucao(
+        exercicio TEXT, posicao TEXT, orgao TEXT, ug TEXT, nome_ug TEXT, fonte TEXT,
+        funcao TEXT, subfuncao TEXT, elemento TEXT, empenhado REAL, liquidado REAL, pago REAL)""")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_desp_ex ON despesa_execucao(exercicio)")
+    con.execute("DELETE FROM despesa_execucao WHERE exercicio=?", (str(ano),))
+    txt = baixar_ano(ano)
+    rows, n = [], 0
+    for r in _rows(txt):
+        rows.append((str(ano), (r.get("Posição") or "").strip(), (r.get("Nome Órgão") or "").strip(),
+                     (r.get("UG") or "").strip(), (r.get("Nome UG") or "").strip(), (r.get("Nome Fonte") or "").strip(),
+                     (r.get("Nome Função") or "").strip(), (r.get("Nome Sub Função") or "").strip(),
+                     (r.get("Nome Elemento de Despesa") or "").strip(),
+                     _money(r.get("Valor Empenhado")), _money(r.get("Valor Liquidado")), _money(r.get("Valor Pago"))))
+        n += 1
+        if len(rows) >= 5000:
+            con.executemany("INSERT INTO despesa_execucao VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", rows); rows = []
+    if rows:
+        con.executemany("INSERT INTO despesa_execucao VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", rows)
+    pago = con.execute("SELECT SUM(pago) FROM despesa_execucao WHERE exercicio=?", (str(ano),)).fetchone()[0] or 0
+    con.commit(); con.close()
+    return n, pago
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ano", type=int, default=2025)
     ap.add_argument("--orgao", default="")
+    ap.add_argument("--ingest", action="store_true")
     a = ap.parse_args()
+    if a.ingest:
+        n, pago = ingest_db(a.ano)
+        print(f"despesa_execucao {a.ano}: {n:,} linhas | PAGO TOTAL R$ {pago:,.2f}")
+        return
     r = resumo(a.ano, a.orgao)
     print(f"== TFE Despesa {r['ano']} (espelho SIAFE D-1) — {r['linhas']:,} linhas ==")
     t = r["totais"]
