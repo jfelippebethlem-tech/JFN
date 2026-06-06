@@ -54,7 +54,22 @@ Isso não é opcional. Aplica-se em todas as sessões, em todos os contextos, se
 - Se push rejeitar por divergência: `git pull --rebase` antes de tentar novamente
 - Mensagens de commit: convenção semântica (`feat:`, `fix:`, `data:`, `docs:`)
 
-### 5. COLETA SIAFE
+### 5. RACIONALIZAÇÃO DE COTA DE SESSÃO (tokens da IA)
+
+A cota de sessão é dos **tokens da IA** (raciocínio + chamadas de ferramenta), **não** do tempo de CPU de
+subprocessos. Ao estourar o limite, a IA pausa por ~1h30 e perde contexto/trabalho não-committed. Portanto:
+
+- **Offload do trabalho pesado para subprocesso** (background): re-ingestões, VACUUM, coletas longas e
+  benchmarks devem rodar como processo de SO (`&`/`nohup`/`run_in_background`), encadeando etapas
+  (`coleta && manutencao`). Subprocesso roda sem gastar cota — só espera relógio.
+- **Não fazer polling** do output de tarefa longa em loop (cada leitura custa tokens); aguardar a notificação.
+- **Salvar estado cedo** sob pressão: `git commit` do que existe (anotar "validar depois" se não-testado) +
+  atualizar o handoff com um bloco **"RETOMADA pós-session-limit"** no topo. Retomada = "continue pelo handoff".
+- **Perto do limite, não** disparar workflows caros / muitos subagents; só ações mínimas de alto valor.
+- Ferramenta de apoio: `python -m compliance_agent.manutencao` (checkpoint WAL/VACUUM/gzip caches) — agendar no
+  cron do Hermes para o disco não inchar (o `compliance.db-wal` já chegou a 2 GB após ingestões pesadas).
+
+### 6. COLETA SIAFE
 
 - SIAFE-Rio 2: `siafe2.fazenda.rj.gov.br` — WAF bloqueia IPs não-governamentais
 - GitHub Actions (Azure IPs) têm acesso — usar workflows para coleta remota
