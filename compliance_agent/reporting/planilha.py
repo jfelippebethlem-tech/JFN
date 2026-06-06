@@ -19,6 +19,7 @@ USO:
 """
 from __future__ import annotations
 
+from collections import defaultdict
 from datetime import date
 from pathlib import Path
 
@@ -198,6 +199,43 @@ def gerar(ctx: dict, destino: str, modo: str = "fornecedor") -> str:
         ws3.freeze_panes = "A2"
         ws3.conditional_formatting.add(f"B2:B{r-1}", DataBarRule(start_type="min", end_type="max", color="63A0D8"))
     ws3.column_dimensions["A"].width = 52; ws3.column_dimensions["B"].width = 18; ws3.column_dimensions["C"].width = 12
+
+    # ── Aba 4 (só órgão): Por Fornecedor — OBs AGRUPADAS por fornecedor (já organizado) ──
+    if modo == "orgao" and p.get("tem_dados"):
+        ws4 = wb.create_sheet("Por Fornecedor")
+        ws4.sheet_view.showGridLines = False
+        ws4.sheet_properties.outlinePr.summaryBelow = False  # subtotal do fornecedor ACIMA das suas OBs
+        porf: dict = defaultdict(list)
+        for a in p["anos"]:
+            for ln in p["por_ano"][a]["linhas"]:
+                porf[ln["favorecido"]].append({**ln, "ano": a})
+        ordem = sorted(porf, key=lambda fav: sum(x["valor"] for x in porf[fav]), reverse=True)
+        cab4 = ["Fornecedor / Nº OB", "CNPJ", "Ano", "Data", "Valor (R$)"]
+        for j, h in enumerate(cab4):
+            c = ws4.cell(row=1, column=1 + j, value=h); c.font = f_hdr; c.fill = fill_az; c.alignment = center
+        ws4.freeze_panes = "A2"
+        r = 2
+        bold = Font(bold=True)
+        fill_grp = PatternFill("solid", fgColor="E8ECF5")
+        for fav in ordem:
+            obs = sorted(porf[fav], key=lambda x: (x["ano"], str(x["data"])))
+            tot_f = sum(x["valor"] for x in obs)
+            cnpj = next((x["cnpj"] for x in obs if x.get("cnpj")), "")
+            cf = ws4.cell(row=r, column=1, value=fav); cf.font = bold; cf.fill = fill_grp
+            cc = ws4.cell(row=r, column=2, value=("'" + cnpj) if cnpj else ""); cc.fill = fill_grp
+            cn = ws4.cell(row=r, column=4, value=f"{len(obs)} OBs"); cn.alignment = right; cn.fill = fill_grp; cn.font = bold
+            cv = ws4.cell(row=r, column=5, value=tot_f); cv.number_format = _FMT_MOEDA; cv.alignment = right; cv.font = bold; cv.fill = fill_grp
+            ws4.cell(row=r, column=3).fill = fill_grp
+            r += 1
+            for x in obs:
+                ws4.cell(row=r, column=1, value="    " + str(x["numero_ob"]))
+                ws4.cell(row=r, column=3, value=x["ano"]).alignment = center
+                cd = ws4.cell(row=r, column=4, value=_data(x["data"])); cd.number_format = "dd/mm/yyyy"; cd.alignment = center
+                cvv = ws4.cell(row=r, column=5, value=x["valor"]); cvv.number_format = _FMT_MOEDA; cvv.alignment = right
+                ws4.row_dimensions[r].outline_level = 1  # agrupável: clique no "-" para colapsar o fornecedor
+                r += 1
+        for col, w in zip("ABCDE", (50, 20, 8, 14, 18)):
+            ws4.column_dimensions[col].width = w
 
     Path(destino).parent.mkdir(parents=True, exist_ok=True)
     wb.save(destino)
