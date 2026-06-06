@@ -45,9 +45,20 @@ data/sei_cache/siafe_*.json
 data/sei_cache/2026*.json
 data/sei_cache/SEI-*.json
 data/sei_cache/cdp_*.json
+data/sei_cache/
 **/sessao_cookies.json
 data/diagnostics/*.html
 data/diagnostics/*.json
+data/diagnostics/
+
+# Dependencias JS (reinstalaveis via `npm install`; nunca commitar)
+node_modules/
+
+# Relatorios GERADOS em runtime (PDF/XLSX/MD) — nao versionar
+/reports/
+
+# Bytecode Python
+**/__pycache__/
 
 # Pool de credenciais (8 chaves Gemini etc.) - NUNCA versionar
 auth.json
