@@ -56,16 +56,23 @@ Isso não é opcional. Aplica-se em todas as sessões, em todos os contextos, se
 
 ### 5. RACIONALIZAÇÃO DE COTA DE SESSÃO (tokens da IA)
 
-A cota de sessão é dos **tokens da IA** (raciocínio + chamadas de ferramenta), **não** do tempo de CPU de
-subprocessos. Ao estourar o limite, a IA pausa por ~1h30 e perde contexto/trabalho não-committed. Portanto:
+**Regra de ouro: racionalizar é cortar DESPERDÍCIO, jamais profundidade/qualidade.** A cota de sessão é dos
+**tokens da IA** (raciocínio + ferramentas), **não** do tempo de CPU de subprocessos. Economizar overhead existe
+para **liberar orçamento para mais trabalho bom** — nunca para entregar uma versão rasa. NÃO usar economia como
+desculpa para reduzir análise, verificação adversarial, abrangência de fontes ou rigor.
 
-- **Offload do trabalho pesado para subprocesso** (background): re-ingestões, VACUUM, coletas longas e
-  benchmarks devem rodar como processo de SO (`&`/`nohup`/`run_in_background`), encadeando etapas
-  (`coleta && manutencao`). Subprocesso roda sem gastar cota — só espera relógio.
-- **Não fazer polling** do output de tarefa longa em loop (cada leitura custa tokens); aguardar a notificação.
-- **Salvar estado cedo** sob pressão: `git commit` do que existe (anotar "validar depois" se não-testado) +
-  atualizar o handoff com um bloco **"RETOMADA pós-session-limit"** no topo. Retomada = "continue pelo handoff".
-- **Perto do limite, não** disparar workflows caros / muitos subagents; só ações mínimas de alto valor.
+- **Cortar só desperdício de valor zero:** reler arquivo já em contexto; pollar em loop o output de subprocesso
+  (aguardar a notificação); repetir busca idêntica; re-derivar o que já se sabe.
+- **Offload do compute pesado para subprocesso** (`&`/`nohup`/`run_in_background`, encadeando `coleta &&
+  manutencao`): ganho puro — a máquina mói os dados enquanto a cota fica livre para raciocínio. Qualidade intacta.
+- **Nunca despachar trabalho pela metade para poupar tokens.** Perto de um limite rígido: concluir a unidade
+  atual com profundidade total, `git commit` + bloco **"RETOMADA pós-session-limit"** no topo do handoff, e
+  **retomar o resto após o reset no mesmo rigor** (retomada = "continue pelo handoff"). Caso real: o deep-research
+  parou no limite; o certo foi preservar os claims verificados, re-verificar em fonte primária os interrompidos e
+  só então sintetizar — não publicar incompleto.
+- **Salvar estado cedo é seguro, não motivo para encerrar antes da hora.**
+- **Workflows/subagents:** usar quando agregam profundidade real; evitar apenas quando redundantes ou quando uma
+  pausa iminente os deixaria pela metade (preferir rodá-los inteiros após o reset).
 - Ferramenta de apoio: `python -m compliance_agent.manutencao` (checkpoint WAL/VACUUM/gzip caches) — agendar no
   cron do Hermes para o disco não inchar (o `compliance.db-wal` já chegou a 2 GB após ingestões pesadas).
 
