@@ -170,3 +170,36 @@ passa a gerar **3 documentos** (inteligência PDF + planilha XLSX + **parecer Le
 - Destravar a varredura por-UG do SIAFE (replay HTTP do filtro) para cobertura total das OBs/processos.
 - Lex ler o **inteiro teor** do processo SEI (edital→contrato→liquidação) quando o acesso estiver disponível,
   hoje a detecção é data-driven sobre OBs + metadados do processo.
+
+---
+
+## Sessão 2026-06-06 (cont.) — Lex LÊ a íntegra do SEI (módulo de leitura transferido do JFN)
+
+**Pedido (Mestre Jorge):** "transfere o módulo de acesso e leitura do JFN pro Lex — ele pode acessar o SEI e
+tem a íntegra de cada processo." E antes: "o Lex NÃO leu a íntegra do processo SEI."
+
+**Feito:** `compliance_agent/lex.py` agora **lê a íntegra** dos processos SEI correlacionados, reusando os
+coletores que já existiam no JFN:
+- `_ler_integra_sei(numero)` → `collectors/sei_cdp.ler_processo_sei_via_chrome` (Chrome 9222 + OCR de CAPTCHA),
+  fallback `collectors/sei_portal.buscar_processo` (httpx). Cache 24h (`data/sei_cache/cdp_*.json`).
+- `_analisar_conteudo_sei(integra)` → achados sobre o **texto real**: R5 (dispensa/inexigibilidade sem prova de
+  exclusividade), R3 (sem pesquisa/cesta de preços), R9 (aditivos), R7 (restrição/marca sem "ou equivalente").
+- `_analise(ctx)` computa tudo UMA vez (lê o SEI uma vez), funde achados data-driven + documentais e passa para
+  `parecer_md`/`render_pdf`. Nova seção **"II-B. Leitura dos processos SEI (íntegra)"** no parecer.
+- Envs: `JFN_LEX_LER_SEI` (1), `JFN_LEX_MAX_SEI` (3), `JFN_LEX_SEI_BUDGET` (120s).
+
+**⚠️ Bloqueio de infraestrutura (importante para a próxima IA):** da VM (IP GCP `35.247.224.30`) a consulta
+pública do SEI-RJ está **barrada na rede**:
+- `sei.rj.gov.br` → **WAF**: "Web Page Blocked! Attack ID: 20000051" (bloqueio de IP de datacenter).
+- `portalsei.rj.gov.br` → responde 200, mas **não** hospeda o módulo de busca (`md_pesq_processo_pesquisar.php`
+  retorna "Página não encontrada").
+- `consultaprocessos.rj.gov.br` (o consultor público real, linkado no portalsei) → **não resolve DNS** na VM.
+
+Conclusão: a **ligação leitor↔Lex está pronta e correta**; a leitura efetiva exige **IP autorizado/proxy
+residencial** (mesma classe do bloqueio do ADF do SIAFE). O Lex detecta a página de WAF (`_bloqueio_rede`) e
+**reporta honestamente** ("bloqueio de rede (WAF)…") em vez de fingir leitura. Quando o cache for preenchido de
+um IP permitido, o parecer passa a usar a íntegra automaticamente.
+
+**Próxima IA — opções para destravar a leitura SEI:** (a) proxy/VPN residencial BR no egress do leitor;
+(b) solicitar allowlist do IP da VM ao SEI-RJ; (c) job que lê os processos de uma máquina permitida e popula
+`data/sei_cache/`; (d) descobrir o IP/endpoint correto do `consultaprocessos.rj.gov.br`.
