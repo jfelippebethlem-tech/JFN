@@ -17,8 +17,14 @@
 >   `manutencao.py`. **Ronda:** spam JFN_ronda eliminado. **PNCP:** HTTP 400 corrigido.
 > - **Diretriz de cota** no CLAUDE.md (cortar desperdício, nunca profundidade).
 >
-> **RESTA na Onda 3:** SHAP no relatório (explicar score PyOD); eval com ground-truth `penalidades_tcerj`;
-> calibração do corte do score (top-50 marcar 10-15) por UG + drift; skill Yoda `/cartel` (espelhar `/anomalias`).
+> **Onda 3 — CONCLUÍDA nesta sessão:** grafo cartel (captura/dependencia/vizinhanca) + DuckDB; II-D no Lex +
+> `/api/cartel`; **explicabilidade** (`anomalias.explicar_features` → campo `porque` no `/api/anomalias`, equivalente
+> honesto a SHAP); **eval ground-truth TCE-RJ** (`eval_groundtruth.py` — achado: score por-OB NÃO prediz punição de
+> órgão, AUC<0.5; só volume, 0.65); **calibração+drift** (`calibrar.py` — corte p99, fila balanceada por UG, motor
+> estável sem drift 2019-2026); **skill Yoda `/cartel`** em `~/.hermes`.
+> **RESTA (Onda 4+, opcional):** melhorar a calibração do score (a eval mostrou que precisa normalizar por UG p/
+> agregar bem a risco de órgão); Splink/rede societária por sócio (QSA) p/ confirmar cartel; PU-learning usando o
+> ground-truth do TCE.
 > **Pendência de infra (não-código):** rodar `ler-sei.yml` no Actions (definir secret `SEI_PASS`) p/ o Lex ler a
 > íntegra real do SEI.
 >
