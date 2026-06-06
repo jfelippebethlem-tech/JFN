@@ -15,7 +15,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 _PNCP_URL = "https://pncp.gov.br/api/consulta/v1/contratos"
-_TIMEOUT = 30
+_TIMEOUT = 18  # apertado p/ não estourar o cap de 35s do relatório (o terminal do Yoda mata em 60s)
 
 
 def _limpar_cnpj(cnpj: str) -> str:

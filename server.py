@@ -109,6 +109,21 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"[SIAFE] Browser não iniciado ({e.__class__.__name__}) — sistema de compliance funciona normalmente")
 
+    # WARMUP do motor de relatório (contorna o "cold start": 1º relatório após boot levava ~78s por DNS/TLS
+    # frios às fontes externas). Aquece em background ~6s após subir, sem atrasar o startup nem o usuário.
+    async def _warmup_relatorio():
+        try:
+            await asyncio.sleep(6)
+            from compliance_agent.reporting.inteligencia import _enriquecer
+            await _enriquecer("19088605000104")  # MGS — prima DNS/TLS/pools de conexão (Receita/PNCP/sanções)
+            print("[warmup] motor de relatório aquecido (fontes externas primadas)")
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warmup] aquecimento falhou (não-fatal): {exc.__class__.__name__}")
+    try:
+        asyncio.create_task(_warmup_relatorio())
+    except Exception:
+        pass
+
     yield
 
     if _agent:

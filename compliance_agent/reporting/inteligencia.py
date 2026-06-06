@@ -43,8 +43,11 @@ _DB = _DATA / "compliance.db"
 _REPORTS = _ROOT / "reports"
 _REGISTRY = _DATA / "empresas_target.json"
 
-# timeout (s) para o enriquecimento via APIs públicas (egress da VM é lento)
-_ENRIQUECE_TIMEOUT = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_TIMEOUT", "75"))
+# timeout (s) para o enriquecimento via APIs públicas (egress da VM é lento).
+# MANTER ABAIXO do timeout do `terminal` do Yoda (60s) — senão o curl morre antes do relatório retornar.
+# Se as fontes externas (Receita/PNCP/sanções) demorarem, o relatório sai assim mesmo com os dados REAIS
+# locais (OBs/contratos) e marca o enriquecimento como INDISPONÍVEL.
+_ENRIQUECE_TIMEOUT = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_TIMEOUT", "35"))
 
 
 # ───────────────────────────── helpers de formatação ─────────────────────────────
