@@ -207,3 +207,16 @@ Ex.: MGS CLEAN agora 2021–2026 (R$ 136.225.497,94; não há OB em 2019/2020).
   as rotas (fornecedor/órgão), o fluxo de desambiguação e o envio PDF+XLSX. `AMBIENTE.md`/`ambiente.json`/HANDOFF idem.
 - **Validação:** 17 testes passam; endpoints testados ao vivo (PDF+XLSX); MGS e ITERJ enviados ao Telegram
   (ITERJ já com 2019–2026: 2.457 OBs). Serviços hermes-gateway/jfn/chrome-jfn ativos.
+
+### 2026-06-06 (continuação) — Coletor SIAFE (OB Orçamentária) integrado ao JFN
+- **Coletor** `compliance_agent/siafe_ob_orcamentaria.py`: login real (Playwright) com seleção de exercício
+  (logout-primeiro + retry; detecção de ano bloqueado — 2023 bloqueado p/ a conta, pula), navegação até
+  "OB Orçamentária", detector de load (`tabela_pronta`), colheita rolando o container virtual `::scroller`
+  (23 colunas ricas: NL, PD, Processo, Credor...). Resiliência: checkpoint + coordenação Telegram (sessão única).
+- **Ingestão** `ingerir()`: grava na `compliance.db` tabela `ob_orcamentaria_siafe`, **SIAFE preponderando**
+  (INSERT OR REPLACE por numero_ob). CLI: `--ingerir`. Validado: 237 OBs de 2025 ingeridas (230 com processo).
+- **Barramento JFN:** `GET /api/siafe/stats`. **Yoda:** comandos `/siafe <ano>` e `/siafestats` (skills criadas).
+- **APRENDIZADO PROFISSIONAL (guardado em docs/SIAFE-ARQUITETURA.md §8b):** o ADF/Trinidad **ignora eventos
+  sintéticos** (select_option/dispatchEvent/clique de blur disparam ZERO requisições) — por isso o filtro rico
+  não automatiza por Playwright (headless OU headed). Caminhos p/ varredura completa por UG: replay HTTP do
+  request de filtro (capturar 1 cURL no Chrome) ou Computer Use (mouse/teclado reais). Documentado.

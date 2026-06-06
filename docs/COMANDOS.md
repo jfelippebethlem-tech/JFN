@@ -12,9 +12,16 @@
 - `/mercado` — Cenários e sentimento do mercado
 - `/prever <ativo>` — Previsão direcional de ativo
 
-## 🛰️ SIAFE — coordenação de sessão
+## 🛰️ SIAFE — coleta e coordenação de sessão
+- `/siafe <ano>` — Coletar OBs do SIAFE (ano)
+- `/siafestats` — Quantas OBs do SIAFE coletadas
 - `/siafelivre` — Liberar SIAFE para o JFN
 - `/siafeocupado` — JFN espera você sair
+
+> `/siafe <ano>`: anos liberados 2024–2026 (2023 bloqueado pela conta — o coletor pula). Roda em background
+> (Playwright + login; coordena sessão única via Telegram). Comando: `cd ~/JFN && .venv/bin/python -m
+> compliance_agent.siafe_ob_orcamentaria --exercicio <ano> --max 1000 --ingerir --resiliente`.
+> `/siafestats`: `curl -s http://127.0.0.1:8000/api/siafe/stats`.
 
 ## 🤖 Geral — Yoda / Hermes
 - `/goal <objetivo>` — Definir meta principal

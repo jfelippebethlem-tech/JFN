@@ -508,6 +508,32 @@ async def api_massare_cenarios(recalcular: bool = False):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@app.get("/api/siafe/stats")
+async def api_siafe_stats():
+    """Resumo das OBs do SIAFE (tela OB Orçamentária) já coletadas/ingeridas na base (SIAFE preponderante)."""
+    try:
+        import sqlite3
+        from pathlib import Path as _P
+        db = _P(os.environ.get("JFN_DATA_DIR", _P(__file__).parent / "data")) / "compliance.db"
+        con = sqlite3.connect(str(db))
+        try:
+            tem = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ob_orcamentaria_siafe'").fetchone()
+            if not tem:
+                return JSONResponse({"ok": True, "total": 0, "detail": "Tabela ainda não criada — rode a coleta SIAFE."})
+            tot = con.execute("SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ob_orcamentaria_siafe").fetchone()
+            por_ano = [{"exercicio": r[0], "n": r[1], "valor": round(r[2] or 0, 2)}
+                       for r in con.execute("SELECT exercicio, COUNT(*), COALESCE(SUM(valor),0) "
+                                            "FROM ob_orcamentaria_siafe GROUP BY exercicio ORDER BY exercicio")]
+            com_processo = con.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE processo IS NOT NULL AND processo!=''").fetchone()[0]
+        finally:
+            con.close()
+        return JSONResponse({"ok": True, "total": tot[0], "valor_total": round(tot[1] or 0, 2),
+                             "por_ano": por_ano, "com_processo": com_processo,
+                             "fonte": "SIAFE-Rio 2 / OB Orçamentária (23 colunas: NL, PD, Processo, Credor...)"})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @app.post("/api/massare/prever")
 async def api_massare_prever(payload: Optional[dict] = None):
     """Previsão direcional de um ativo. Body: {"symbol":"^BVSP","horizon":5}."""
