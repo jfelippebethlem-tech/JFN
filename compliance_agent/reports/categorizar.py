@@ -50,6 +50,14 @@ _REGRAS = [
     ("Telecom / TI", ["TELECOM", "OI S", "CLARO", "VIVO", "TIM ", "TELEFONIC", "INTERNET", "DATACENTER", "SOFTWARE", "TECNOLOGIA DA INFORMACAO"]),
     ("Tributos / Retenção", ["IMPOSTO", "ICMS", "ISS", "INSS", "FGTS", "DARF", "RETENCAO", "RETENÇÃO", "RECEITA FEDERAL"]),
     ("Assistência / Social", ["ASSISTENCIA", "ASSISTÊNCIA", "SOCIAL", "CRAS", "CREAS", "BOLSA", "CARTAO SOCIAL"]),
+    # padrões extraídos do Histórico das OBs (reduzem "Outros")
+    ("Diárias / Viagens a serviço", ["DIARIA", "DIÁRIA", "DIARIAS", "DIÁRIAS", "VIAGEM A SERVICO", "AJUDA DE CUSTO", "DESLOCAMENTO"]),
+    ("Alimentação", ["ALIMENTACAO", "ALIMENTAÇÃO", "REFEICAO", "REFEIÇÃO", "MERENDA", "CESTA BASICA", "CESTA BÁSICA"]),
+    ("Locação", ["LOCACAO", "LOCAÇÃO", "ALUGUEL", "LOCATIVA", "ARRENDAMENTO"]),
+    ("Manutenção", ["MANUTENCAO", "MANUTENÇÃO", "REPARO", "CONSERTO", "REVISAO", "REVISÃO"]),
+    ("Locação de veículos / Frota", ["LOCACAO DE VEICULO", "FROTA", "VEICULOS", "VEÍCULOS", "COMBUSTIVEL", "COMBUSTÍVEL"]),
+    ("Aluguel social / Habitação", ["ALUGUEL SOCIAL", "HABITACAO", "HABITAÇÃO", "MORADIA"]),
+    ("Serviços gerais (PJ)", ["PRESTACAO DE SERVICO", "PRESTAÇÃO DE SERVIÇO", "PRESTACAO DE SERVICOS", "CONTRATACAO DE EMPRESA", "CONTRATAÇÃO DE EMPRESA"]),
 ]
 
 
