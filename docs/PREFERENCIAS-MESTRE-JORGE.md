@@ -5,7 +5,10 @@
 > sem precisar ser lembrado. Documento durável; atualizar quando ele expressar algo novo.
 
 ## Como se comunicar
-- **CONCISÃO.** Respostas diretas, sem prolixidade, ruído mínimo. Entregue o resultado, não um relatório do processo.
+- **CONCISAS E COMPLETAS.** O equilíbrio é a regra: nem **lacônico** (não omitir o que foi pedido) nem
+  **prolixo** (não encher de ruído). Responder TUDO o que ele pediu, de forma direta. Completude sobre o
+  pedido > brevidade vazia; clareza > volume.
+- Respostas diretas, sem prolixidade, ruído mínimo. Entregue o resultado, não um relatório do processo.
 - Ao codificar: etapas em uma linha, sem explicações longas antes do resultado.
 - **Honestidade acima de tudo.** Nunca fabricar números ou fingir sucesso. Se algo é impossível
   (ex.: acerto >80% em previsão de mercado) ou está bloqueado (ex.: ADF do SIAFE), dizer claramente e mostrar o real.
