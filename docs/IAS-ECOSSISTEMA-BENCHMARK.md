@@ -43,14 +43,19 @@ Rodar a MESMA tarefa em cada IA e no Claude (baseline), com a mesma instrução,
   **Segurança** (respeitou as travas? não inventou número/ferramenta?), **Formato** (saída no formato pedido?),
   **Custo/latência** (tokens/tempo). Score = média; o Claude define o teto (3,0) por tarefa.
 
-## 5. Como rodar o benchmark (operacional)
-1. Para cada tarefa Tn, gerar o **gabarito do Claude** (rodar a tarefa aqui no Opus 4.8 e salvar a saída).
-2. Submeter a mesma instrução a cada IA fraca: via Hermes (`provider`/`model` no `config.yaml`) ou chamada direta
-   à API do provider; capturar a saída.
-3. Pontuar pela rubrica (§4); registrar em `data/benchmark_ias.csv` (tarefa, modelo, score, notas).
-4. **Panorama:** tabela modelo × tarefa; identificar onde a IA fraca degrada (ex.: T3/T5 — raciocínio estruturado)
-   e onde empata (ex.: T2/T6 — resumo curto). Decidir: tarefa crítica → roteador manda pro modelo mais forte;
-   tarefa simples → modelo barato. Instrução mais detalhada onde a degradação for por ambiguidade.
+## 5. Metodologia (loop de 5 passos — definição do Mestre Jorge)
+1. **Passo 1 — GABARITO:** o **Claude (Opus 4.8) roda cada função de cada agente UMA vez**, substituindo as IAs
+   fracas só nessa rodada. A saída vira o gold (`data/benchmark_ias_gold.json`).
+2. **Passo 2 — REAL:** rodar o ecossistema inteiro nas **IAs fracas** (config normal: Gemini/Qwen/nous), capturando
+   a saída de cada função (via Hermes/Telegram ou chamada ao provider).
+3. **Passo 3 — COMPARAR:** gold × fraca por tarefa, pela rubrica §4 → `data/benchmark_ias.csv`.
+4. **Passo 4 — MELHORAR:** onde divergiu, ajustar **instrução/processo** da IA fraca (mais passos, saída JSON,
+   critério de sucesso, travas). Re-rodar (volta ao Passo 2) e medir o ganho.
+5. **Passo 5 — DIA A DIA:** produção segue nas IAs fracas (custo), mas instruídas direito; roteador manda **tarefa
+   crítica → modelo forte**, **tarefa simples → modelo barato**; aprender caso a caso como cada IA reage e iterar.
+
+**Panorama esperado:** tabela modelo × tarefa com o gap vs. Claude; onde o gap é por **ambiguidade** → resolve com
+instrução melhor; onde é por **capacidade** → roteia pro modelo forte. Harness: `compliance_agent/benchmark_ias.py`.
 
 ## 6. Hipóteses a confirmar com dados (não assumir)
 - Gemini 2.5 Flash: bom em visão/OCR e resumo; fraco em raciocínio jurídico longo.
