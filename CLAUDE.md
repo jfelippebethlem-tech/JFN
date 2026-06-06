@@ -5,6 +5,8 @@
 **Branch padrão:** `claude/rj-finance-agent-BYlhJ`  
 **Repo:** https://github.com/jfelippebethlem-tech/JFN.git
 
+> 🐧 **BRANCH `claude/ambiente-e-relatorio` = USO EXCLUSIVO LINUX (VM).** Não usar no Windows — ver [`PLATAFORMA-LINUX-ONLY.md`](PLATAFORMA-LINUX-ONLY.md).
+
 > 🧭 **Ambiente de execução:** leia [`AMBIENTE.md`](AMBIENTE.md) (+ [`ambiente.json`](ambiente.json)) — a
 > fonte única de verdade de ONDE tudo roda (VM Linux GCP, **não** Windows), o workflow de boot e como o
 > Yoda aciona o JFN/Massare pela API em `127.0.0.1:8000`. O JFN é o **motor + barramento** do ecossistema.

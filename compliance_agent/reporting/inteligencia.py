@@ -43,6 +43,25 @@ _DB = _DATA / "compliance.db"
 _REPORTS = _ROOT / "reports"
 _REGISTRY = _DATA / "empresas_target.json"
 
+# retenção: relatórios são REGENERÁVEIS sob demanda (cada /relatorio gera de novo), então não precisam ficar
+# acumulando no disco. Mantemos só os recentes (JFN_REPORTS_RETENCAO_DIAS, default 7).
+_RETENCAO_DIAS = int(os.environ.get("JFN_REPORTS_RETENCAO_DIAS", "7"))
+
+
+def _prune_reports():
+    """Apaga relatórios gerados (inteligencia*/risco* .md/.pdf/.xlsx) mais antigos que a retenção."""
+    try:
+        import time as _t
+        corte = _t.time() - _RETENCAO_DIAS * 86400
+        for f in _REPORTS.glob("inteligencia*"):
+            try:
+                if f.is_file() and f.stat().st_mtime < corte:
+                    f.unlink()
+            except Exception:
+                pass
+    except Exception:
+        pass
+
 # timeout (s) para o enriquecimento via APIs públicas (egress da VM é lento).
 # MANTER ABAIXO do timeout do `terminal` do Yoda (60s) — senão o curl morre antes do relatório retornar.
 # Se as fontes externas (Receita/PNCP/sanções) demorarem, o relatório sai assim mesmo com os dados REAIS
@@ -365,6 +384,7 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
     md = render_md(contexto)
     path_md = path_pdf = path_xlsx = ""
     if salvar:
+        _prune_reports()  # poda relatórios antigos (regeneráveis sob demanda) antes de salvar os novos
         _REPORTS.mkdir(parents=True, exist_ok=True)
         base = f"inteligencia_{_slug(nome) or cnpj_d}_{contexto['data']}"
         path_md = str(_REPORTS / f"{base}.md")

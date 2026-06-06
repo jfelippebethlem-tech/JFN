@@ -228,8 +228,11 @@ async def _login(pg, exercicio: int):
 
 
 async def _shot(pg, nome):
+    # screenshots só quando JFN_SIAFE_DEBUG está setado, e vão para /tmp (efêmero) — não acumulam na base.
+    if not os.environ.get("JFN_SIAFE_DEBUG"):
+        return
     try:
-        await pg.screenshot(path=str(_REPO / "data/sei_cache" / f"nav_{nome}.png"))
+        await pg.screenshot(path=f"/tmp/siafe_nav_{nome}.png")
     except Exception:
         pass
 
