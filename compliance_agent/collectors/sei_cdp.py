@@ -244,6 +244,61 @@ def _is_captcha_page(text: str) -> bool:
     ])
 
 
+def _is_waf_block(text: str) -> bool:
+    """Detecta a página de bloqueio do WAF (ou o vazio de uma conexão dropada)."""
+    t = (text or "").lower()
+    return any(k in t for k in [
+        "web page blocked", "página bloqueada", "pagina bloqueada", "access denied",
+        "acesso negado", "request blocked", "your request has been blocked", "incident id",
+        "attention required", "cloudflare",
+    ])
+
+
+async def testar_acesso(headless: bool = True, timeout_ms: int = 25000) -> dict:
+    """Autoteste de acesso ao SEI-RJ a partir do egress atual (respeita PROXY_URL/SEI_PROXY_URL).
+
+    Diagnóstico rápido p/ saber se um proxy contorna o WAF, SEM tentar ler processo nem logar.
+    Retorna {ok, estado, http_status, proxy, url, _amostra}. estado ∈
+      OK_LOGIN (chegou na tela de login — egress aceito!) | WAF_BLOCK | TIMEOUT_DROP | CAPTCHA | ERRO.
+    """
+    from playwright.async_api import async_playwright
+    proxy_cfg = _proxy_do_env()
+    res = {"ok": False, "estado": "ERRO", "http_status": None,
+           "proxy": (proxy_cfg or {}).get("server", None), "url": SEI_LOGIN_URL, "_amostra": ""}
+    p = await async_playwright().start()
+    try:
+        browser = await p.chromium.launch(
+            headless=headless, args=["--no-sandbox", "--disable-dev-shm-usage"],
+            **({"proxy": proxy_cfg} if proxy_cfg else {}))
+        ctx = await browser.new_context(ignore_https_errors=True)
+        page = await ctx.new_page()
+        try:
+            resp = await page.goto(SEI_LOGIN_URL, wait_until="domcontentloaded", timeout=timeout_ms)
+            res["http_status"] = resp.status if resp else None
+            body = (await page.content()) or ""
+            res["_amostra"] = re.sub(r"\s+", " ", body)[:300]
+            tem_login = await page.evaluate(
+                "() => !!(document.querySelector('#txtUsuario, input[name=\"txtUsuario\"], #pwdSenha, "
+                "input[type=\"password\"]'))")
+            if _is_waf_block(body):
+                res["estado"] = "WAF_BLOCK"
+            elif tem_login:
+                res["estado"], res["ok"] = "OK_LOGIN", True
+            elif _is_captcha_page(body):
+                res["estado"] = "CAPTCHA"
+            else:
+                res["estado"] = "DESCONHECIDO"
+        except Exception as exc:  # noqa: BLE001
+            msg = str(exc).lower()
+            res["estado"] = "TIMEOUT_DROP" if ("timeout" in msg or "err_" in msg or "net::" in msg) else "ERRO"
+            res["_amostra"] = str(exc)[:200]
+        finally:
+            await browser.close()
+    finally:
+        await p.stop()
+    return res
+
+
 # ── Resolução do CAPTCHA via OCR ───────────────────────────────────────────────
 
 async def _resolver_captcha_ocr(page) -> bool:
