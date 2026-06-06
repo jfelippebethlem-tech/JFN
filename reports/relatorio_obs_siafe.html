@@ -1,0 +1,163 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JFN — Relatório de Inteligência Financeira</title>
+<style>
+ :root{--azul:#0b2545;--azul2:#13315c;--acc:#7fb3ff}
+ *{box-sizing:border-box} body{font-family:'Segoe UI',Arial,sans-serif;color:#1a2332;margin:0;background:#eef1f5}
+ .wrap{max-width:1000px;margin:0 auto;background:#fff;box-shadow:0 0 24px rgba(0,0,0,.1)}
+ .capa{background:linear-gradient(135deg,var(--azul),var(--azul2));color:#fff;padding:54px 60px}
+ .capa .cls{display:inline-block;border:1px solid var(--acc);color:var(--acc);font-size:11px;text-transform:uppercase;letter-spacing:2px;padding:4px 10px;border-radius:3px}
+ .capa h1{margin:18px 0 6px;font-size:32px} .capa h2{margin:0;font-weight:400;font-size:17px;color:#cfe0ff}
+ .capa .meta{margin-top:22px;font-size:13px;color:#cfe0ff;line-height:1.9;border-top:1px solid rgba(255,255,255,.2);padding-top:16px}
+ section{padding:28px 60px;border-bottom:1px solid #eef1f5}
+ h2.sec{font-size:19px;color:var(--azul);border-left:5px solid var(--azul2);padding-left:14px;margin:0 0 18px}
+ h3{font-size:15px;color:var(--azul2);margin:18px 0 8px}
+ table{width:100%;border-collapse:collapse;font-size:12.5px;margin:8px 0}
+ th,td{padding:8px 11px;text-align:left;border-bottom:1px solid #eef1f5;vertical-align:top}
+ th{background:var(--azul);color:#fff;font-weight:600} td.num{text-align:right;font-variant-numeric:tabular-nums}
+ tr:nth-child(even) td{background:#f8fafc}
+ .rating{font-size:38px;font-weight:800} .kpi{display:flex;gap:18px;flex-wrap:wrap;margin:12px 0}
+ .kpi div{background:#f4f6f9;border-radius:10px;padding:16px 20px;min-width:160px;border:1px solid #e6ebf2}
+ .kpi small{color:#6b7a90} .kpi b{font-size:21px;color:var(--azul);display:block;margin-top:4px}
+ .badge{padding:2px 9px;border-radius:10px;font-size:11px;font-weight:700;color:#fff}
+ .badge.alto,.badge.extremo{background:#c0392b} .badge.médio,.badge.medio,.badge.médio-alto{background:#e67e22} .badge.baixo{background:#27ae60}
+ .rf{border:1px solid #f0d9d5;border-left:5px solid #c0392b;border-radius:6px;margin:12px 0;overflow:hidden}
+ .rf-h{background:#fff7f6;padding:11px 16px;font-size:13.5px} .rf-b{padding:10px 16px;font-size:12.5px}
+ .rf .sev{color:#c0392b;font-weight:700} .rf ul{margin:6px 0 8px 18px} .base{font-size:12px;color:#7a4a45}
+ .warn{color:#c0392b;font-weight:600}
+ blockquote{background:#eef4ff;border-left:4px solid var(--azul2);margin:8px 0;padding:12px 16px;font-size:13px}
+ .foot{padding:22px 60px;font-size:11px;color:#7a8aa0;background:#fafbfc}
+ ul.rec{font-size:13px;line-height:1.9} .tl{font-size:13px;line-height:1.8;border-left:2px solid #d6deea;padding-left:16px;margin-left:6px}
+</style></head><body><div class="wrap">
+
+<div class="capa">
+  <span class="cls">Confidencial · Due Diligence · Uso Interno</span>
+  <h1>Relatório de Inteligência Financeira e Compliance</h1>
+  <h2>Amostra SIAFE-Rio (Estado do RJ)</h2>
+  <div class="meta">
+    <b>CNPJ/Sujeito:</b> — &nbsp;·&nbsp; <b>Classificação:</b> Confidencial<br>
+    <b>Fonte primária:</b> SIAFE-Rio 2 (Ordem Bancária = pagamento definitivo) + TFE/Dados Abertos RJ<br>
+    <b>Período da amostra:</b> 2026-05-18 a 2026-06-05 &nbsp;·&nbsp; <b>OBs:</b> 52 &nbsp;·&nbsp; <b>Contratos:</b> 41<br>
+    <b>Emitido em:</b> 06/06/2026 00:02 UTC &nbsp;·&nbsp; <b>Analista:</b> JFN Intelligence Engine &nbsp;·&nbsp; <b>Metodologia:</b> TCU P×I / ACFE / HHI
+  </div>
+</div>
+
+<section>
+  <h2 class="sec">Sumário Executivo</h2>
+  <div class="kpi">
+    <div><small>Rating de risco composto</small><span class="rating">🟡 5.9/10</span> <b>MÉDIO</b></div>
+    <div><small>Total pago (OBs)</small><b>R$ 441.185.312,15</b></div>
+    <div><small>Carteira de contratos</small><b>R$ 146.704.405,07</b></div>
+    <div><small>Concentração HHI</small><b>5803</b></div>
+    <div><small>OBs c/ processo SEI</small><b>26/52</b></div>
+  </div>
+  <blockquote><b>Nota metodológica:</b> Ordem Bancária (OB) é o dado <b>definitivo</b> de pagamento público
+  (saída de caixa, irreversível). Empenho ≠ pagamento — empenhos são valor bruto e podem ser cancelados.
+  Esta análise prioriza OBs confirmadas; contratos e empenhos contextualizam a exposição.</blockquote>
+  <h3>Alertas Prioritários</h3>
+  <table><tr><th>#</th><th>Alerta</th><th>Nível</th></tr><tr><td>1</td><td>Concentração em único órgão (Corpo de Bombeiros: 42%) — captura institucional</td><td><span class='badge alto'>ALTO</span></td></tr><tr><td>2</td><td>Carteira altamente concentrada (HHI 5803 > 2500)</td><td><span class='badge médio'>MÉDIO</span></td></tr><tr><td>3</td><td>26 OB(s) sem processo SEI (50%) — rastreabilidade da liquidação</td><td><span class='badge médio'>MÉDIO</span></td></tr><tr><td>4</td><td>4 OB(s) com valor redondo (múltiplo de R$10k) — padrão atípico</td><td><span class='badge médio'>MÉDIO</span></td></tr><tr><td>5</td><td>Exposição contratual elevada com o Estado (>R$50mi) — dependência de receita pública</td><td><span class='badge médio'>MÉDIO</span></td></tr></table>
+</section>
+
+<section>
+  <h2 class="sec">1. Perfil Cadastral e Exposição</h2>
+  <table><tr><th>Item</th><th>Valor</th></tr>
+   <tr><td>Sujeito / Razão social</td><td>Amostra SIAFE-Rio (Estado do RJ)</td></tr>
+   <tr><td>CNPJ</td><td>—</td></tr>
+   <tr><td>Contratos mapeados</td><td>41 — R$ 146.704.405,07</td></tr>
+   <tr><td>Ordens Bancárias (amostra)</td><td>52 — R$ 441.185.312,15</td></tr>
+   <tr><td>Verificação CEIS/CNEP/CEPIM</td><td><span class="warn">Pendente</span> — cruzamento automático recomendado (Portal da Transparência)</td></tr>
+  </table>
+</section>
+
+<section>
+  <h2 class="sec">2. Carteira de Contratos — por Órgão</h2>
+  <table><tr><th>Órgão contratante</th><th>Valor</th><th>% carteira</th></tr><tr><td>Corpo de Bombeiros</td><td class='num'>R$ 62.115.552,41</td><td class='num'>42.3%</td></tr><tr><td>TJ (Fundo Especial)</td><td class='num'>R$ 36.127.870,92</td><td class='num'>24.6%</td></tr><tr><td>Polícia Militar</td><td class='num'>R$ 21.828.441,12</td><td class='num'>14.9%</td></tr><tr><td>PGE (Fundo Especial)</td><td class='num'>R$ 6.188.224,88</td><td class='num'>4.2%</td></tr><tr><td>INEA</td><td class='num'>R$ 4.598.000,00</td><td class='num'>3.1%</td></tr><tr><td>RIOPREVIDÊNCIA</td><td class='num'>R$ 3.612.121,72</td><td class='num'>2.5%</td></tr><tr><td>Fundo Estadual de Saúde</td><td class='num'>R$ 3.585.096,96</td><td class='num'>2.4%</td></tr><tr><td>TCE</td><td class='num'>R$ 2.876.183,73</td><td class='num'>2.0%</td></tr><tr><td>Casa Civil</td><td class='num'>R$ 2.596.200,98</td><td class='num'>1.8%</td></tr><tr><td>SECEC</td><td class='num'>R$ 1.771.001,62</td><td class='num'>1.2%</td></tr><tr><td>ITERJ</td><td class='num'>R$ 1.085.032,09</td><td class='num'>0.7%</td></tr><tr><td>Fundação Inst. de Pesca</td><td class='num'>R$ 244.381,56</td><td class='num'>0.2%</td></tr></table>
+  <h3>Contratos de maior valor</h3>
+  <table><tr><th>Número</th><th>Órgão</th><th>Situação</th><th>Valor</th></tr><tr><td>2023117</td><td>TJ (Fundo Especial)</td><td>Licitado</td><td class='num'>R$ 25.993.908,78</td></tr><tr><td>215/2024</td><td>Polícia Militar</td><td>Em Vigor</td><td class='num'>R$ 21.828.441,12</td></tr><tr><td>CTT 154/2024</td><td>Corpo de Bombeiros</td><td>Em Vigor</td><td class='num'>R$ 10.479.994,56</td></tr><tr><td>003-1046-2024</td><td>TJ (Fundo Especial)</td><td>Em Vigor</td><td class='num'>R$ 10.133.962,14</td></tr><tr><td>CTT 127/2024</td><td>Corpo de Bombeiros</td><td>Em Vigor</td><td class='num'>R$ 6.179.981,76</td></tr><tr><td>43/2023</td><td>PGE (Fundo Especial)</td><td>Em Vigor</td><td class='num'>R$ 5.829.998,00</td></tr><tr><td>CTT 115/2024</td><td>Corpo de Bombeiros</td><td>Em Vigor</td><td class='num'>R$ 5.219.701,80</td></tr><tr><td>CTT 107/2024</td><td>Corpo de Bombeiros</td><td>Em Vigor</td><td class='num'>R$ 4.699.899,48</td></tr><tr><td>4/2025</td><td>INEA</td><td>Em Vigor</td><td class='num'>R$ 4.598.000,00</td></tr><tr><td>CTT 123/2024</td><td>Corpo de Bombeiros</td><td>Em Vigor</td><td class='num'>R$ 4.189.804,20</td></tr><tr><td>CTT 125/2024</td><td>Corpo de Bombeiros</td><td>Em Vigor</td><td class='num'>R$ 3.969.703,32</td></tr><tr><td>008/2025</td><td>Fundo Estadual de Saúde</td><td>Em Vigor</td><td class='num'>R$ 3.585.096,96</td></tr><tr><td>099/2024</td><td>RIOPREVIDÊNCIA</td><td>Em Vigor</td><td class='num'>R$ 3.171.961,00</td></tr><tr><td>CTT 117/2024</td><td>Corpo de Bombeiros</td><td>Em Vigor</td><td class='num'>R$ 2.929.933,08</td></tr><tr><td>025/2023</td><td>Casa Civil</td><td>Em Vigor</td><td class='num'>R$ 2.596.200,98</td></tr></table>
+</section>
+
+<section>
+  <h2 class="sec">3. Análise Financeira — Maiores Favorecidos (OBs)</h2>
+  <table><tr><th>Favorecido</th><th>Valor pago</th><th>% do total</th></tr><tr><td>TESOURO DO ESTADO DO RIO DE JANEIRO</td><td class='num'>R$ 324.522.664,37</td><td class='num'>73.6%</td></tr><tr><td>ENCARGOS GERAIS - PRECATORIOS JUDICIAIS/SEFAZ</td><td class='num'>R$ 81.237.056,10</td><td class='num'>18.4%</td></tr><tr><td>FOLHA DE PAGAMENTOS</td><td class='num'>R$ 32.087.593,78</td><td class='num'>7.3%</td></tr><tr><td>FUNDO ESPECIAL DA PROCURADORIA GERAL DO ERJ</td><td class='num'>R$ 2.000.000,00</td><td class='num'>0.5%</td></tr><tr><td>RC CONSTRUCOES COMÉRCIO E SERVIÇOS EM GERAL LTDA</td><td class='num'>R$ 386.890,25</td><td class='num'>0.1%</td></tr><tr><td>TRULY TECNOLOGIA E INOVAÇÃO LTDA</td><td class='num'>R$ 257.009,32</td><td class='num'>0.1%</td></tr><tr><td>Diagnostico Sudeste Equip.medicos E Serv.ltda</td><td class='num'>R$ 230.387,32</td><td class='num'>0.1%</td></tr><tr><td>MULTIPLY SERVICOS DE MANUTENCAO LTDA</td><td class='num'>R$ 92.741,26</td><td class='num'>0.0%</td></tr><tr><td>TESTE LTDA</td><td class='num'>R$ 80.000,00</td><td class='num'>0.0%</td></tr><tr><td>Nova Rio Servicos Gerais Ltda.</td><td class='num'>R$ 77.130,92</td><td class='num'>0.0%</td></tr><tr><td>LABOR MED APARELHAGEM DE PRECISAO LTDA</td><td class='num'>R$ 61.241,36</td><td class='num'>0.0%</td></tr><tr><td>PERITOS</td><td class='num'>R$ 59.843,96</td><td class='num'>0.0%</td></tr></table>
+</section>
+
+<section>
+  <h2 class="sec">4. Distribuição por Área / Objeto do Gasto</h2>
+  <p style="font-size:12.5px">Categorização inferida a partir do Nome do Favorecido, Tipo de OB e órgão pagador.
+  O objeto contratual exato (ex.: "pavimentação", "insumos médicos") vem do contrato/processo SEI vinculado —
+  aprofundamento por OB disponível via detalhe no SIAFE.</p>
+  <table><tr><th>Área / Objeto</th><th>Valor pago</th><th>% do total</th></tr>
+   <tr><td>Transferência ao Tesouro / Financeira</td><td class='num'>R$ 324.522.664,37</td><td class='num'>73.6%</td></tr><tr><td>Judicial / Precatórios</td><td class='num'>R$ 81.237.056,10</td><td class='num'>18.4%</td></tr><tr><td>Pessoal / Folha</td><td class='num'>R$ 32.087.593,78</td><td class='num'>7.3%</td></tr><tr><td>Transferência financeira</td><td class='num'>R$ 2.000.000,00</td><td class='num'>0.5%</td></tr><tr><td>Outros / a classificar</td><td class='num'>R$ 461.794,00</td><td class='num'>0.1%</td></tr><tr><td>Tributos / Retenção</td><td class='num'>R$ 453.039,69</td><td class='num'>0.1%</td></tr><tr><td>Obras / Infraestrutura</td><td class='num'>R$ 386.890,25</td><td class='num'>0.1%</td></tr><tr><td>Pessoal / Pensão e Benefícios</td><td class='num'>R$ 35.998,28</td><td class='num'>0.0%</td></tr><tr><td>Utilidades (energia/água/saneamento)</td><td class='num'>R$ 210,07</td><td class='num'>0.0%</td></tr><tr><td>Saúde</td><td class='num'>R$ 65,61</td><td class='num'>0.0%</td></tr></table>
+  <h3>Órgãos pagadores (UG Pagadora → órgão)</h3>
+  <table><tr><th>Órgão pagador</th><th>Valor pago</th><th>% do total</th></tr>
+   <tr><td>Tesouro do Estado do RJ</td><td class='num'>R$ 405.561.085,60</td><td class='num'>91.9%</td></tr><tr><td>Governadoria / Casa Civil</td><td class='num'>R$ 32.123.592,06</td><td class='num'>7.3%</td></tr><tr><td>UG 096100</td><td class='num'>R$ 2.000.000,00</td><td class='num'>0.5%</td></tr><tr><td>UG 294200</td><td class='num'>R$ 751.511,41</td><td class='num'>0.2%</td></tr><tr><td>UG 036100</td><td class='num'>R$ 513.159,33</td><td class='num'>0.1%</td></tr><tr><td>UG 254100</td><td class='num'>R$ 147.382,35</td><td class='num'>0.0%</td></tr><tr><td>Tesouro Estadual</td><td class='num'>R$ 81.250,00</td><td class='num'>0.0%</td></tr><tr><td>UG 036200</td><td class='num'>R$ 5.197,00</td><td class='num'>0.0%</td></tr><tr><td>UG 404310</td><td class='num'>R$ 2.134,40</td><td class='num'>0.0%</td></tr></table>
+</section>
+
+<section>
+  <h2 class="sec">5. Detalhe das Ordens Bancárias (top 30 por valor)</h2>
+  <table><tr><th>Número</th><th>Data</th><th>Favorecido</th><th>Área/Objeto</th><th>Órgão pagador</th><th>Processo SEI</th><th>Valor</th></tr><tr><td>2026OB04836</td><td>2026-05-29</td><td>TESOURO DO ESTADO DO RIO DE JA</td><td><b>Transferência ao Tesouro / Financeira</b></td><td>Tesouro do Estado do RJ</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 221.324.029,50</td></tr><tr><td>2026OB04833</td><td>2026-05-25</td><td>ENCARGOS GERAIS - PRECATORIOS </td><td><b>Judicial / Precatórios</b></td><td>Tesouro do Estado do RJ</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 75.560.309,59</td></tr><tr><td>2026OB04835</td><td>2026-05-26</td><td>TESOURO DO ESTADO DO RIO DE JA</td><td><b>Transferência ao Tesouro / Financeira</b></td><td>Tesouro do Estado do RJ</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 53.000.000,00</td></tr><tr><td>2026OB04832</td><td>2026-05-18</td><td>TESOURO DO ESTADO DO RIO DE JA</td><td><b>Transferência ao Tesouro / Financeira</b></td><td>Tesouro do Estado do RJ</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 50.000.000,00</td></tr><tr><td>2026OB05569</td><td>2026-05-27</td><td>FOLHA DE PAGAMENTOS</td><td><b>Pessoal / Folha</b></td><td>Governadoria / Casa Civil</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 32.087.593,78</td></tr><tr><td>2026OB04834</td><td>2026-05-25</td><td>ENCARGOS GERAIS - PRECATORIOS </td><td><b>Judicial / Precatórios</b></td><td>Tesouro do Estado do RJ</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 5.676.746,51</td></tr><tr><td>2026OB01034</td><td>2026-06-03</td><td>FUNDO ESPECIAL DA PROCURADORIA</td><td><b>Transferência financeira</b></td><td>UG 096100</td><td>SEI-140001/004768/2020</td><td class='num'>R$ 2.000.000,00</td></tr><tr><td>2026OB21909</td><td>2026-06-03</td><td>RC CONSTRUCOES COMÉRCIO E SERV</td><td><b>Obras / Infraestrutura</b></td><td>UG 294200</td><td>SEI-080002/010868/2026</td><td class='num'>R$ 386.890,25</td></tr><tr><td>2026OB10345</td><td>2026-06-02</td><td>TRULY TECNOLOGIA E INOVAÇÃO LT</td><td><b>Tributos / Retenção</b></td><td>UG 036100</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 257.009,32</td></tr><tr><td>2026OB21911</td><td>2026-06-03</td><td>Diagnostico Sudeste Equip.medi</td><td><b>Outros / a classificar</b></td><td>UG 294200</td><td>SEI-080002/015002/2026</td><td class='num'>R$ 230.387,32</td></tr><tr><td>2026OB01364</td><td>2026-06-03</td><td>TESOURO DO ESTADO DO RIO DE JA</td><td><b>Transferência ao Tesouro / Financeira</b></td><td>UG 254100</td><td>s/n</td><td class='num'>R$ 147.382,35</td></tr><tr><td>2026OB10346</td><td>2026-06-02</td><td>MULTIPLY SERVICOS DE MANUTENCA</td><td><b>Tributos / Retenção</b></td><td>UG 036100</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 92.741,26</td></tr><tr><td>2026OBTEST</td><td>2026-06-05</td><td>TESTE LTDA</td><td><b>Outros / a classificar</b></td><td>Tesouro Estadual</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 80.000,00</td></tr><tr><td>2026OB10344</td><td>2026-06-02</td><td>Nova Rio Servicos Gerais Ltda.</td><td><b>Tributos / Retenção</b></td><td>UG 036100</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 77.130,92</td></tr><tr><td>2026OB21908</td><td>2026-06-03</td><td>LABOR MED APARELHAGEM DE PRECI</td><td><b>Outros / a classificar</b></td><td>UG 294200</td><td>SEI-080002/015099/2026</td><td class='num'>R$ 61.241,36</td></tr><tr><td>2026OB10343</td><td>2026-06-01</td><td>PERITOS</td><td><b>Outros / a classificar</b></td><td>UG 036100</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 59.843,96</td></tr><tr><td>2026OB05568</td><td>2026-05-27</td><td>PENSAO ALIMENTICIA</td><td><b>Pessoal / Pensão e Benefícios</b></td><td>Governadoria / Casa Civil</td><td>0001.0034022.2026-03</td><td class='num'>R$ 35.998,28</td></tr><tr><td>2026OB10347</td><td>2026-06-02</td><td>TAPEVAS SOLUCOES INTEGRADAS LT</td><td><b>Tributos / Retenção</b></td><td>UG 036100</td><td><span class='warn'>sem processo</span></td><td class='num'>R$ 22.091,30</td></tr><tr><td>2026OB21915</td><td>2026-06-03</td><td>TESOURO DO ESTADO DO RIO DE JA</td><td><b>Transferência ao Tesouro / Financeira</b></td><td>UG 294200</td><td>SEI-080002/014989/2026</td><td class='num'>R$ 18.445,68</td></tr><tr><td>2026OB21907</td><td>2026-06-03</td><td>MARCELO BARRETO DE AZEVEDO</td><td><b>Outros / a classificar</b></td><td>UG 294200</td><td>SEI-080002/014923/2026</td><td class='num'>R$ 16.884,76</td></tr><tr><td>2026OB21923</td><td>2026-06-03</td><td>TESOURO DO ESTADO DO RIO DE JA</td><td><b>Transferência ao Tesouro / Financeira</b></td><td>UG 294200</td><td>SEI-080002/015002/2026</td><td class='num'>R$ 11.616,17</td></tr><tr><td>2026OB21914</td><td>2026-06-03</td><td>TESOURO DO ESTADO DO RIO DE JA</td><td><b>Transferência ao Tesouro / Financeira</b></td><td>UG 294200</td><td>SEI-080002/015053/2026</td><td class='num'>R$ 7.750,00</td></tr><tr><td>2026OB21921</td><td>2026-06-03</td><td>TESOURO DO ESTADO DO RIO DE JA</td><td><b>Transferência ao Tesouro / Financeira</b></td><td>UG 294200</td><td>SEI-080002/010868/2026</td><td class='num'>R$ 4.968,30</td></tr><tr><td>2026OB21910</td><td>2026-06-03</td><td>INTER QUALITY REPRESENTACOES E</td><td><b>Outros / a classificar</b></td><td>UG 294200</td><td>SEI-080002/015011/2026</td><td class='num'>R$ 4.855,20</td></tr><tr><td>2026OB21920</td><td>2026-06-03</td><td>TESOURO DO ESTADO DO RIO DE JA</td><td><b>Transferência ao Tesouro / Financeira</b></td><td>UG 294200</td><td>SEI-080002/015099/2026</td><td class='num'>R$ 3.087,80</td></tr><tr><td>2026OB00958</td><td>2026-05-20</td><td>LOJA LOU ART LTDA</td><td><b>Outros / a classificar</b></td><td>UG 036200</td><td>2026-06056120</td><td class='num'>R$ 2.897,00</td></tr><tr><td>2026OB21918</td><td>2026-06-03</td><td>TESOURO DO ESTADO DO RIO DE JA</td><td><b>Transferência ao Tesouro / Financeira</b></td><td>UG 294200</td><td>SEI-080002/015190/2026</td><td class='num'>R$ 2.408,28</td></tr><tr><td>2026OB00957</td><td>2026-05-20</td><td>LOJA LOU ART LTDA</td><td><b>Outros / a classificar</b></td><td>UG 036200</td><td>2026-06056120</td><td class='num'>R$ 2.300,00</td></tr><tr><td>2026OB05422</td><td>2026-05-29</td><td>Banco Do Brasil S/a</td><td><b>Outros / a classificar</b></td><td>UG 404310</td><td>SEI-260006/000012/2026</td><td class='num'>R$ 1.350,40</td></tr><tr><td>2026OB21917</td><td>2026-06-03</td><td>TESOURO DO ESTADO DO RIO DE JA</td><td><b>Transferência ao Tesouro / Financeira</b></td><td>UG 294200</td><td>SEI-080002/006949/2026</td><td class='num'>R$ 1.267,20</td></tr></table>
+</section>
+
+<section>
+  <h2 class="sec">5. Matriz de Risco — Metodologia TCU (P×I)</h2>
+  <p style="font-size:12.5px">Escala: Probabilidade (P) × Impacto (I), 1–9. Score = P×I. Faixas: Baixo 1–9 · Médio 10–39 · Alto 40–79 · Extremo 80–81.</p>
+  <table><tr><th>#</th><th>Risco</th><th>P</th><th>I</th><th>Score</th><th>Nível</th></tr><tr><td>R01</td><td>Concentração em único órgão (Corpo de Bombeiros: 42%) — captura institucional</td><td class='num'>5</td><td class='num'>8</td><td class='num'><b>40</b></td><td>ALTO</td></tr><tr><td>R02</td><td>Carteira altamente concentrada (HHI 5803 > 2500)</td><td class='num'>5</td><td class='num'>7</td><td class='num'><b>35</b></td><td>MÉDIO</td></tr><tr><td>R03</td><td>26 OB(s) sem processo SEI (50%) — rastreabilidade da liquidação</td><td class='num'>4</td><td class='num'>6</td><td class='num'><b>24</b></td><td>MÉDIO</td></tr><tr><td>R04</td><td>4 OB(s) com valor redondo (múltiplo de R$10k) — padrão atípico</td><td class='num'>4</td><td class='num'>5</td><td class='num'><b>20</b></td><td>MÉDIO</td></tr><tr><td>R05</td><td>Exposição contratual elevada com o Estado (>R$50mi) — dependência de receita pública</td><td class='num'>3</td><td class='num'>6</td><td class='num'><b>18</b></td><td>MÉDIO</td></tr></table>
+  <p style="margin-top:10px"><b>Rating composto JFN:</b> <span class="rating" style="font-size:22px">🟡 5.9/10 — MÉDIO</span></p>
+</section>
+
+<section>
+  <h2 class="sec">6. Red Flags de Compliance</h2><div class='rf'><div class='rf-h'><b>RF-01</b> · <span class='sev'>ALTO</span> · Concentração de contratos no órgão Corpo de Bombeiros (42% do valor)</div><div class='rf-b'><b>Hipóteses a investigar:</b><ul><li>Relacionamento com agentes públicos do órgão</li><li>Especificações técnicas direcionadas</li><li>Verificar publicação no PNCP de todos os contratos</li></ul><span class='base'>⚖ Fundamento: Art. 3 Lei 8.666/93 (isonomia); Art. 37 CF/88 (impessoalidade); ACFE — vendor concentration.</span></div></div><div class='rf'><div class='rf-h'><b>RF-02</b> · <span class='sev'>MÉDIO-ALTO</span> · 26 OB(s) sem nº de processo SEI vinculado</div><div class='rf-b'><b>Hipóteses a investigar:</b><ul><li>Pagamento sem processo administrativo rastreável</li><li>Verificar liquidação correspondente</li><li>Cruzar com empenho/contrato</li></ul><span class='base'>⚖ Fundamento: Lei 4.320/64 (liquidação como pré-requisito do pagamento) — rastreabilidade do gasto.</span></div></div><div class='rf'><div class='rf-h'><b>RF-03</b> · <span class='sev'>MÉDIO</span> · 4 OB(s) com valor exato múltiplo de R$10.000</div><div class='rf-b'><b>Hipóteses a investigar:</b><ul><li>Possível estimativa/arredondamento sem memória de cálculo</li><li>Verificar nota fiscal/medição</li></ul><span class='base'>⚖ Fundamento: ACFE Report to the Nations 2024 — red flag de valores redondos.</span></div></div><div class='rf'><div class='rf-h'><b>RF-04</b> · <span class='sev'>MÉDIO-ALTO</span> · Concentração de pagamentos por favorecido (HHI 5803)</div><div class='rf-b'><b>Hipóteses a investigar:</b><ul><li>Poucos favorecidos absorvem a maioria dos pagamentos</li><li>Verificar natureza dos repasses</li></ul><span class='base'>⚖ Fundamento: Metodologia TCU; DOJ/FTC HHI (>2500 = alta concentração).</span></div></div>
+</section>
+
+<section>
+  <h2 class="sec">7. Concentração — Indicador HHI</h2>
+  <table><tr><th>Dimensão</th><th>HHI</th><th>Leitura</th></tr>
+   <tr><td>Por órgão (contratos)</td><td class="num">2669</td><td>Alta concentração (>2500)</td></tr>
+   <tr><td>Por favorecido (OBs)</td><td class="num">5803</td><td>Alta concentração (>2500)</td></tr>
+  </table>
+  <blockquote>Referência DOJ/FTC: HHI &gt; 2500 indica mercado/carteira altamente concentrado — red flag de dependência e captura.</blockquote>
+</section>
+
+<section>
+  <h2 class="sec">8. Recomendações</h2>
+  <h3>Imediato (0–30 dias)</h3>
+  <ul class="rec">
+    <li>Rastrear no SEI as OBs com processo vinculado e revisar as OBs sem processo (rastreabilidade da liquidação).</li>
+    <li>Cruzar todos os favorecidos/CNPJs contra CEIS/CNEP/CEPIM (sanções) — Portal da Transparência.</li>
+  </ul>
+  <h3>Curto prazo (30–90 dias)</h3>
+  <ul class="rec">
+    <li>Mapear contratos no PNCP por CNPJ (objeto, modalidade, aditivos) e verificar fracionamento.</li>
+    <li>Validar a concentração por órgão com análise de objetos e modalidade licitatória.</li>
+  </ul>
+  <h3>Estrutural (90+ dias)</h3>
+  <ul class="rec">
+    <li>Coletar a série completa do exercício no SIAFE (além das OBs recentes) para análise de tendência e liquidações.</li>
+    <li>Construir grafo de sócios (QSA via BrasilAPI/minha-receita) para detectar conluio entre licitantes.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 class="sec">9. Limitações e Pendências</h2>
+  <ul class="rec">
+    <li>Amostra de OBs limitada às mais recentes do SIAFE (fetch do ADF = 50); série completa pendente.</li>
+    <li>Verificação de sanções (CEIS/CNEP) e enriquecimento de CNPJ ainda não automatizados nesta versão.</li>
+    <li>Empenhos são valor bruto (podem incluir cancelamentos); OBs são o dado definitivo.</li>
+  </ul>
+</section>
+
+<section>
+  <h2 class="sec">10. Referências e Fontes</h2>
+  <p style="font-size:12px;color:#5a6b85;line-height:1.8">
+   <b>Primárias:</b> SIAFE-Rio 2 (SEFAZ-RJ) · Portal de Dados Abertos RJ (TFE Despesa) · PNCP.<br>
+   <b>Normativas:</b> Lei 4.320/64 · Lei 14.133/2021 · Lei 8.666/93 · CF/88 Art. 37.<br>
+   <b>Controle:</b> TCU (matriz P×I) · TCE-RJ · CGU (CEIS/CNEP/CEPIM).<br>
+   <b>Internacionais:</b> ACFE Report to the Nations 2024 · DOJ/FTC (HHI) · FATF/GAFI.</p>
+</section>
+
+<div class="foot">
+  <b>JFN Intelligence Engine</b> — relatório gerado automaticamente a partir do compliance.db (06/06/2026 00:02 UTC).
+  Documento confidencial de uso interno. OBs = pagamento definitivo (não inclui empenhos brutos).
+  As hipóteses de red flags são indicativos a investigar, não conclusões de irregularidade.
+</div>
+</div></body></html>

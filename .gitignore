@@ -76,3 +76,8 @@ data/sei_cache/obs_sessao_*.json
 
 # TFE: CSVs grandes baixados (regeneráveis)
 data/tfe_cache/
+
+# SIAFE debug/screenshots
+data/sei_cache/siafe_*.png
+data/sei_cache/debug_*.txt
+data/sei_cache/ERRO_*.png
