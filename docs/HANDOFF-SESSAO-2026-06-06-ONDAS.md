@@ -1,6 +1,29 @@
 # HANDOFF — sessão 2026-06-06 (Ondas + Lex + ecossistema) — CONTINUAR DAQUI
 
-> ## ⏯️ RETOMADA pós-session-limit (2026-06-06 ~14:xx UTC) — LER PRIMEIRO
+> ## ✅ SESSÃO 2026-06-06 (continuação) — TUDO FEITO, ler este bloco primeiro
+> Entregue e committed na branch `linux` (≈22 commits). Resumo do que mudou nesta sessão:
+> - **Onda 2 no produto:** Lex ganhou seção **II-C** (contratos/compras TCE-RJ) + red flags R5/R2/R9 e a
+>   **Matriz de Achados** (critério×condição→causa→efeito) + rótulo **Nota Técnica COM/SEM Achado** (Decreto
+>   47.408/2020). `/relatorio` ganhou seção **4-B** (TCE-RJ + contratado-vs-pago). Fixes em `tcerj_aberto`
+>   (`_fnum` BR, coluna `num_contratacao`). **Validado ao vivo** (MGS Clean: 🟡, R8/R12/R2/R5/R10).
+> - **Onda 3 (início):** `compliance_agent/grafo_cartel.py` (+`duckdb_util.py`) — `captura_orgaos`,
+>   `dependencia_fornecedores`, `vizinhanca_cartel` (exclui ubíquos). Integrado: **II-D do Lex** + **GET
+>   /api/cartel**. Achado real: UG 316100 (Fundo Estadual de Transportes) R$4,01bi, 99,8% num fornecedor.
+> - **2 deep-research sintetizados:** `docs/PESQUISA-DIREITO-ADMIN-CGE.md` (improbidade/achado/CGE-RJ) e
+>   `docs/PESQUISA-SIAFE-ADF-PPR.md` (formato HTTP do row-fetch da af:table — destrava extração SIAFE §8b).
+> - **SEI via Actions:** `ler_processo_sei_launch` + `tools/ler_sei_lote.py` + `.github/workflows/ler-sei.yml`
+>   (IP Azure passa o WAF; loga `itkava`; commita cache de volta). VM é dropada pelo WAF — usar Actions/desktop.
+> - **Memória:** podados 6 stubs + semeados 6 fatos verificados (contexto do Yoda/Lex). **Storage:** WAL 5.8GB→0,
+>   `manutencao.py`. **Ronda:** spam JFN_ronda eliminado. **PNCP:** HTTP 400 corrigido.
+> - **Diretriz de cota** no CLAUDE.md (cortar desperdício, nunca profundidade).
+>
+> **RESTA na Onda 3:** SHAP no relatório (explicar score PyOD); eval com ground-truth `penalidades_tcerj`;
+> calibração do corte do score (top-50 marcar 10-15) por UG + drift; skill Yoda `/cartel` (espelhar `/anomalias`).
+> **Pendência de infra (não-código):** rodar `ler-sei.yml` no Actions (definir secret `SEI_PASS`) p/ o Lex ler a
+> íntegra real do SEI.
+>
+> ---
+> ## ⏯️ (histórico) RETOMADA pós-session-limit (2026-06-06 ~14:xx UTC)
 > Sessão pausou por limite (reset 4:50pm UTC). Estado salvo e committed na branch `linux`:
 > 1. **Onda 2 integrada no Lex** (commit feito): `lex.py` ganhou `_contratos_tcerj()` +
 >    `_analisar_contratos_tcerj()` (red flags **R5 dispensa / R2 fracionamento / R9 sobre-execução** a partir dos
