@@ -50,8 +50,12 @@ Para NÃO falhar:
 - Honestidade acima de tudo: se não há dado, diga; nunca preencha com invenção.
 - Documentação detalhada vai para arquivo, **nunca no chat**.
 
-## Para o orquestrador (qual modelo para qual função)
-- **Roteamento / decisão de rota:** modelo **forte** (Gemini-2.5-Pro/Flash-Lite ou Claude) — os flash/Llama reprovam.
-- **Resumo / formatação de JSON:** modelo **barato** serve (todos passam o básico, mas exija a cláusula de honestidade).
+## Para o orquestrador (qual modelo para qual função) — medido no benchmark 2026-06-06
+- **Roteamento / decisão de rota:** **Gemini-2.5-Flash/Pro** ou **Mistral-Small** (score 3 = igual ao Claude).
+  EVITAR **Llama-3.3** (0) e **Mistral-Large** (1) aqui — *maior ≠ melhor*: a tarefa é seguir regra estrita.
+- **Resumo / interpretar JSON:** **Mistral-Large** (3, o melhor); Gemini-flash só passam **com** o lembrete de
+  formato curto + cláusula de honestidade (sem isso, score 1).
 - **Código/SQL/compliance:** Qwen/Claude; **visão/OCR (captcha/PDF):** Gemini.
+- **Higiene de chaves:** keys válidas em `~/.hermes/.env` (as do `JFN/.env` estavam inválidas/sincronizadas).
+  OpenRouter pode estar sem crédito (402/429) — preferir **Gemini direto** (2.5-Flash-Lite estável) + **Mistral**.
 - **Sempre** com fallback automático: se a principal falhar (401/402/429), cair para a próxima — e logar o motivo.

@@ -36,22 +36,23 @@ from compliance_agent.llm.free_llm import _openai_compat_chat_sync  # noqa: E402
 from compliance_agent import benchmark_ias as BM  # noqa: E402
 
 OPENROUTER = "https://openrouter.ai/api/v1"
-GROQ = "https://api.groq.com/openai/v1"
+GEMINI = "https://generativelanguage.googleapis.com/v1beta/openai"  # Gemini direto (quota própria, OpenAI-compat)
+MISTRAL = "https://api.mistral.ai/v1"
 K_OR = os.environ.get("OPENROUTER_API_KEY", "")
-K_GQ = os.environ.get("GROQ_API_KEY", "")
+K_GEM = os.environ.get("GEMINI_API_KEY", "")
+K_MIS = os.environ.get("MISTRAL_API_KEY", "")
 
-# Roster de modelos de fallback DISTINTOS (várias Gemini de versões diferentes + Qwen + Llama + Hermes),
-# todos via OpenRouter (chave válida sincronizada do Hermes). Sem repetir versão/modelo.
+# Roster de modelos de fallback DISTINTOS — 3 Gemini de versões diferentes (API direta, quota própria) + 3
+# Mistral. Sem OpenRouter (sem crédito) e sem repetir versão/modelo.
 MODELOS = [
-    ("Gemini-2.5-Flash", OPENROUTER, K_OR, "google/gemini-2.5-flash"),
-    ("Gemini-2.5-Flash-Lite", OPENROUTER, K_OR, "google/gemini-2.5-flash-lite"),
-    ("Gemini-2.5-Pro", OPENROUTER, K_OR, "google/gemini-2.5-pro"),
-    ("Gemini-3-Flash", OPENROUTER, K_OR, "google/gemini-3-flash-preview"),
-    ("Qwen3-Coder", OPENROUTER, K_OR, "qwen/qwen3-coder:free"),
-    ("Llama-3.3-70B", OPENROUTER, K_OR, "meta-llama/llama-3.3-70b-instruct:free"),
-    ("Hermes-3-405B", OPENROUTER, K_OR, "nousresearch/hermes-3-llama-3.1-405b:free"),
+    ("Gemini-2.5-Flash-Lite", GEMINI, K_GEM, "gemini-2.5-flash-lite"),
+    ("Gemini-2.5-Flash", GEMINI, K_GEM, "gemini-2.5-flash"),
+    ("Gemini-2.0-Flash", GEMINI, K_GEM, "gemini-2.0-flash"),
+    ("Mistral-Large", MISTRAL, K_MIS, "mistral-large-latest"),
+    ("Mistral-Small", MISTRAL, K_MIS, "mistral-small-latest"),
+    ("Mistral-Nemo", MISTRAL, K_MIS, "open-mistral-nemo"),
 ]
-JUIZ = ("Gemini-2.5-Pro", OPENROUTER, K_OR, "google/gemini-2.5-pro")  # juiz dos tasks de juízo (modelo forte)
+JUIZ = ("Gemini-2.5-Flash-Lite", GEMINI, K_GEM, "gemini-2.5-flash-lite")  # juiz confiável e barato
 
 CTX_YODA = ("Você é o Yoda, maestro do JFN. Ferramentas REAIS = rotas HTTP em 127.0.0.1:8000: "
             "POST /api/relatorio/inteligencia {empresa|cnpj}; POST /api/relatorio/orgao {orgao|ug}; "
@@ -59,13 +60,14 @@ CTX_YODA = ("Você é o Yoda, maestro do JFN. Ferramentas REAIS = rotas HTTP em 
             "NÃO invente ferramenta (web_search NÃO existe). Princípio: indício, nunca acusação.")
 
 
-def _chat(prov, key, model, system, user, max_tokens=400):
+def _chat(prov, key, model, system, user, max_tokens=1500):  # teto alto: Gemini 2.5/3 "pensam" antes de responder
     msgs = [{"role": "system", "content": system}, {"role": "user", "content": user}]
     hdr = {"HTTP-Referer": "https://jfn.local", "X-Title": "JFN-Benchmark"} if "openrouter" in prov else None
     err = None
     for tent in range(3):
         try:
-            return _openai_compat_chat_sync(prov, key, model, msgs, max_tokens=max_tokens, extra_headers=hdr)
+            r = _openai_compat_chat_sync(prov, key, model, msgs, max_tokens=max_tokens, extra_headers=hdr)
+            return r if r is not None else ""
         except Exception as e:  # noqa: BLE001
             err = e
             time.sleep(2 * (tent + 1))
@@ -107,23 +109,16 @@ def _extrai_sql(txt: str) -> str:
 def _juiz(tarefa: dict, saida: str) -> tuple[float, str]:
     crit = tarefa.get("gold", {}).get("criterio_sucesso", "")
     gold = json.dumps(tarefa.get("gold", {}), ensure_ascii=False)
-    sys_j = ("Você é um juiz rigoroso. Dê uma NOTA de 0 a 3 (3=atende plenamente) à RESPOSTA contra o CRITÉRIO e "
-             "o GABARITO. Responda SÓ em JSON: {\"nota\": <0-3>, \"motivo\": \"<1 linha>\"}.")
-    user_j = f"CRITÉRIO: {crit}\nGABARITO: {gold}\nRESPOSTA: {saida[:1500]}"
-    out = _chat(JUIZ[1], JUIZ[2], JUIZ[3], sys_j, user_j, max_tokens=200)
-    txt = re.sub(r"```(?:json)?", "", out)  # tira cercas de código
-    m = re.search(r"\{.*\}", txt, re.S)
-    if m:
-        try:
-            j = json.loads(m.group(0))
-            return float(j.get("nota", 0)), str(j.get("motivo", ""))[:160]
-        except Exception:
-            pass
-    # fallback: extrai um número 0-3 do texto
-    mn = re.search(r'"?nota"?\s*[:=]\s*([0-3](?:\.\d)?)', txt) or re.search(r"\b([0-3](?:\.\d)?)\b", txt)
-    if mn:
-        return float(mn.group(1)), f"(nota extraída) {txt[:100]}"
-    return 0.0, f"juiz não-parseável: {out[:80]}"
+    sys_j = ("Você é um juiz rigoroso de qualidade de respostas de IA. Compare a RESPOSTA com o CRITÉRIO e o "
+             "GABARITO. Responda APENAS UM NÚMERO: 0 (errado), 1 (fraco), 2 (bom), 3 (atende plenamente). "
+             "Nada além do número.")
+    user_j = f"CRITÉRIO: {crit}\nGABARITO: {gold}\nRESPOSTA: {saida[:1500]}\n\nNota (só o número 0-3):"
+    out = _chat(JUIZ[1], JUIZ[2], JUIZ[3], sys_j, user_j, max_tokens=1500)
+    # pega o ÚLTIMO dígito 0-3 do texto (após eventual raciocínio, a nota final vem por último)
+    digs = re.findall(r"[0-3]", out or "")
+    if digs:
+        return float(digs[-1]), f"juiz: {(out or '').strip()[-40:]}"
+    return 0.0, f"juiz s/ nota: {(out or '')[:60]}"
 
 
 def main():
@@ -151,6 +146,7 @@ def main():
             resultados.append({"tarefa": tarefa["id"], "modelo": nome, "model_id": model,
                                "score": score, "seg": dt, "nota": nota, "saida": saida[:1200]})
             print(f"{tarefa['id']:>3} | {nome:18} | score {score} | {dt}s | {nota[:70]}", flush=True)
+            time.sleep(1.5)  # respiro p/ não estourar rate-limit da OpenRouter
 
     Path(REPO / "data" / "benchmark_resultados.json").write_text(
         json.dumps(resultados, ensure_ascii=False, indent=2), encoding="utf-8")

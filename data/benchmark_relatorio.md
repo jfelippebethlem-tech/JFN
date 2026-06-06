@@ -1,36 +1,47 @@
-# Benchmark das IAs do ecossistema — modelo × tarefa (parcial, 2026-06-06)
+# Benchmark das IAs do ecossistema — modelo × função (2026-06-06)
 
-Baseline = **Claude Opus 4.8** (gold em `data/benchmark_ias_gold.json`). Score 0–3. Run via OpenRouter com as
-chaves válidas (sincronizadas do Hermes; as do `JFN/.env` estavam truncadas/inválidas → 401).
+Baseline = **Claude Opus 4.8** (gold em `data/benchmark_ias_gold.json`). Score 0–3 (juiz-LLM Gemini-2.5-Flash-Lite;
+T5 determinístico). Modelos via **Gemini API direta** + **Mistral** (a OpenRouter ficou sem crédito). Run
+interrompido a pedido (não forçar mais tokens das IAs) após T1/T2 — base sólida de 6 modelos distintos.
 
-## Resultado VÁLIDO — T1 (Yoda: roteamento "linguagem natural → rota do barramento")
-Entrada: *"quanto a MGS recebeu da saúde?"* — gold: chamar `/api/relatorio/inteligencia {empresa:MGS}`, sem inventar ferramenta.
+## T1 — Yoda: roteamento "linguagem natural → rota do barramento"
+*Entrada:* "quanto a MGS recebeu da saúde?" — gold: `POST /api/relatorio/inteligencia {empresa:MGS}`, sem inventar ferramenta.
 
-| Modelo | T1 | Veredito |
+| Modelo | Score | vs Claude |
 |---|---:|---|
-| **Gemini-2.5-Pro** | **3** | acertou a rota, sem inventar ferramenta |
-| **Gemini-2.5-Flash-Lite** | **3** | acertou |
-| Qwen-2.5-72B | 1 | parcial (rota imprecisa) |
-| Gemini-2.5-Flash | 0 | falhou (rota errada / inventou) |
-| Gemini-3-Flash (preview) | 0 | falhou |
+| Gemini-2.5-Pro | 3 | = (igualou) |
+| Gemini-2.5-Flash | 3 | = |
+| Mistral-Small | 3 | = |
+| Gemini-2.5-Flash-Lite | 2–3 | ≈ |
+| Mistral-Nemo | 2 | ≈ |
+| Mistral-Large | 1 | abaixo |
+| Qwen-2.5-72B | 1 | abaixo |
 | Llama-3.3-70B | 0 | falhou |
+| Gemini-2.0-Flash | — | quota 429 |
 
-## Aprendizado-chave (ponto a ponto vs Claude)
-Na função de **roteamento**, os modelos *flash*/baratos e o Llama **falham** (inventam ferramenta ou erram a
-rota); só **Pro e Flash-Lite** igualam o Claude. → Correção: guia com instrução estrita + exemplos para as IAs
-fracas (`docs/IAS-FRACAS-GUIA.md`) e recomendação de **rotear "decisão de rota" para um modelo forte**
-(Pro/Flash-Lite/Claude), deixando tarefas simples (resumo) para os baratos.
+## T2 — interpretar JSON de `/api/anomalias` (resumo + cláusula de honestidade)
+| Modelo | Score | vs Claude |
+|---|---:|---|
+| Mistral-Large | 3 | = |
+| Mistral-Small | 2 | ≈ |
+| Gemini-2.5-Flash-Lite | 1 | abaixo (faltou clareza/cláusula) |
+| Gemini-2.5-Flash | 1 | abaixo |
+| Mistral-Nemo | 1 | abaixo |
+| Gemini-2.0-Flash | — | quota 429 |
 
-## Limitação HONESTA do run
-T2/T5/T6 ficaram **incompletos**: a conta OpenRouter esgotou crédito no meio (HTTP **402** nos modelos pagos,
-**429** nos `:free`), e o juiz-LLM (Gemini-2.5-Pro) passou a falhar. O **harness está pronto e correto**
-(`tools/benchmark_runner.py`): com crédito recarregado (ou a chave Gemini direta, que tem quota diária) um run
-completo gera este relatório + `benchmark_resultados.json` + `benchmark_ias.csv`. T5 é determinístico (compara o
-SQL gerado com o banco) e independe de crédito de juiz.
+## Aprendizados ponto-a-ponto (o que corrigir no ecossistema)
+1. **Não há um "melhor modelo" único — é por função:** roteamento favorece **Gemini-2.5-Flash/Pro e Mistral-Small**;
+   interpretação de JSON favorece **Mistral-Large**. → O orquestrador deve **escolher o modelo pela tarefa**
+   (já recomendado em `docs/IAS-FRACAS-GUIA.md`).
+2. **Maior ≠ melhor:** no roteamento, **Mistral-Small (3) superou Mistral-Large (1)** — a tarefa é de seguir regra
+   estrita, não de "potência". Para roteamento, instrução estrita + exemplos importam mais que o tamanho do modelo.
+3. **Gemini-flash interpretam mal o JSON sem reforço** (score 1): precisam do lembrete explícito de formato curto
+   + **cláusula de honestidade obrigatória**. Aplicado no guia.
+4. **Llama-3.3 reprova no roteamento** (0) — não usar para decisão de rota; serve para texto longo.
+5. **Higiene de tokens/chaves (debug):** as chaves LLM do `JFN/.env` estavam **inválidas** (401); sincronizadas as
+   válidas do `~/.hermes/.env`. **OpenRouter sem crédito** (402/429) e **Gemini-2.0-Flash** com quota diária estourada
+   → usar Gemini-2.5-Flash-Lite (barato/estável) como juiz e Mistral como fallback paralelo.
 
-## Como rodar (quando houver crédito/quota)
-```
-nohup .venv/bin/python tools/benchmark_runner.py > data/benchmark_run.log 2>&1 &
-```
-Roster (distintos, sem repetir versão): Gemini 2.5-Flash / 2.5-Flash-Lite / 2.5-Pro / 3-Flash, Qwen-2.5-72B,
-Llama-3.3-70B. Juiz: Gemini-2.5-Pro (trocar por Flash-Lite se o orçamento for curto).
+## Pendente (precisa de orçamento de tokens — NÃO forçado por decisão do Mestre)
+T5 (gerar SQL de red flag — determinístico) e T6 (parecer Lex) ficaram sem rodar. O harness
+(`tools/benchmark_runner.py`) está pronto: com crédito/quota, completa T1–T6 automaticamente.
