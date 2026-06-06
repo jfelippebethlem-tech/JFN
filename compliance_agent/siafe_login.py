@@ -23,6 +23,12 @@ EXERCICIOS = {2027: "0", 2026: "1", 2025: "2", 2024: "3", 2023: "4"}
 
 
 def _creds():
+    # garante que o .env esteja carregado (o CLI `python -m` não passa pelo loader do server.py)
+    try:
+        from compliance_agent.envfile import carregar_env
+        carregar_env()
+    except Exception:
+        pass
     u = (os.environ.get("SIAFE_USER") or "").strip()
     p = (os.environ.get("SIAFE_PASS") or "").strip()
     placeholder = (not u or not p or u.upper().startswith("SEU_") or p.upper().startswith("SUA_"))
@@ -60,27 +66,38 @@ def login(exercicio=2025, headless=True, timeout_ms=45000):
             # 2) preenche e submete (só com credenciais reais)
             pg.locator("input[type=text]").first.fill(u)
             pg.locator("input[type=password]").first.fill(p)
-            # seleciona exercício, se houver dropdown
+            # seleciona o EXERCÍCIO no dropdown certo (cbxExercicio); o 1º <select> é o cliente "Rio de Janeiro".
             try:
-                sel = pg.locator("select").first
+                sel = pg.locator("select[id*='cbxExercicio']")
+                if not sel.count():
+                    selects = pg.locator("select")
+                    sel = selects.nth(selects.count() - 1)  # exercício é o último
                 if sel.count():
-                    sel.select_option(label=str(exercicio))
+                    sel.first.select_option(label=str(exercicio))
             except Exception:
                 pass
             pg.keyboard.press("Enter")
             pg.wait_for_timeout(6000)
 
-            # 3) trata popup "sistema aberto em outra janela" → Sim
-            for _ in range(3):
+            # 3) trata o diálogo de SESSÃO/popup. O SIAFE permite 1 sessão por usuário: ao logar de novo,
+            #    aparece "O usuário '...' já está logado ... Deseja continuar? [Sim]" (fecha a outra sessão).
+            #    Também cobre "sistema aberto em outra janela". Clicar "Sim" para prosseguir.
+            for _ in range(4):
                 txt = (pg.inner_text("body") or "").lower()
-                if "outra janela" in txt or "deseja acess" in txt:
-                    for lbl in ["Sim", "OK", "Ok"]:
+                precisa_confirmar = any(k in txt for k in (
+                    "já está logado", "ja esta logado", "deseja continuar",
+                    "outra janela", "deseja acess", "conexão feita a partir"))
+                if precisa_confirmar:
+                    clicou = False
+                    for lbl in ["Sim", "Continuar", "OK", "Ok"]:
                         try:
                             btn = pg.get_by_text(lbl, exact=True)
                             if btn.count():
-                                btn.first.click(); pg.wait_for_timeout(3000); break
+                                btn.first.click(); pg.wait_for_timeout(3500); clicou = True; break
                         except Exception:
                             pass
+                    if not clicou:
+                        break
                 else:
                     break
 
