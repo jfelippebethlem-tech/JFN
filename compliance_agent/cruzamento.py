@@ -245,6 +245,60 @@ def cruzar(cnpj: str) -> dict:
     return asyncio.run(cruzar_async(cnpj))
 
 
+# ───────────────────────── descoberta: clusters de mesma sede ─────────────────────────
+
+def clusters_mesmo_endereco(min_forn: int = 2, limite: int = 50, so_com_obs: bool = True) -> dict:
+    """Varre TODA a base ingerida e acha grupos de fornecedores que dividem a MESMA sede.
+
+    Ferramenta de auditoria proativa (não parte de um CNPJ): ranqueia os imóveis com mais fornecedores
+    distintos e/ou maior valor pago do Estado. Cluster de empresas no mesmo endereço recebendo recursos
+    públicos é red flag clássico de fachada/laranja/direcionamento (art. 337-F CP; art. 11 Lei 8.429/92).
+
+    {ok, n_clusters, clusters:[{endereco, municipio, uf, n_fornecedores, total_pago, empresas:[{cnpj,razao,
+     n_obs,total_pago}]}], _nota}
+    """
+    out = {"ok": False, "n_clusters": 0, "clusters": [], "_nota": ""}
+    if not os.path.exists(_DB):
+        out["_nota"] = "compliance.db ausente."
+        return out
+    con = sqlite3.connect(_DB)
+    con.row_factory = sqlite3.Row
+    try:
+        grupos = con.execute(
+            """SELECT endereco_norm, COUNT(*) n, MAX(endereco) endereco, MAX(municipio) municipio, MAX(uf) uf
+               FROM endereco_fornecedor
+               WHERE endereco_norm!='' AND length(endereco_norm)>=12
+               GROUP BY endereco_norm HAVING n>=? ORDER BY n DESC""", (min_forn,)).fetchall()
+        clusters = []
+        for g in grupos:
+            membros = con.execute(
+                "SELECT cnpj, razao FROM endereco_fornecedor WHERE endereco_norm=?", (g["endereco_norm"],)).fetchall()
+            empresas, total_pago, n_com_obs = [], 0.0, 0
+            for m in membros:
+                os_ = obs_e_sei(m["cnpj"])
+                if os_["total_pago"] > 0 or os_["n_obs"] > 0:
+                    n_com_obs += 1
+                total_pago += os_["total_pago"]
+                empresas.append({"cnpj": m["cnpj"], "razao": m["razao"] or "",
+                                 "n_obs": os_["n_obs"], "total_pago": os_["total_pago"]})
+            if so_com_obs and n_com_obs < min_forn:
+                continue  # só interessa quando ≥min_forn co-localizados de fato recebem do Estado
+            empresas.sort(key=lambda x: -x["total_pago"])
+            clusters.append({"endereco": g["endereco"], "municipio": g["municipio"] or "", "uf": g["uf"] or "",
+                             "n_fornecedores": len(empresas), "n_com_obs": n_com_obs,
+                             "total_pago": total_pago, "empresas": empresas})
+    finally:
+        con.close()
+    clusters.sort(key=lambda c: (-c["total_pago"], -c["n_fornecedores"]))
+    out["clusters"] = clusters[:limite]
+    out["n_clusters"] = len(clusters)
+    out["ok"] = bool(clusters)
+    if not clusters:
+        out["_nota"] = ("Nenhum cluster com fornecedores que recebem OBs na fração ingerida. "
+                        "Amplie a base: `rede_societaria --ingerir-top`.")
+    return out
+
+
 # ───────────────────────── concentração geográfica de fornecedores ─────────────────────────
 
 def cidades_de_orgao(ug: str | None = None, anos: list[int] | None = None, limite: int = 20) -> dict:
@@ -316,7 +370,25 @@ def cidades_de_orgao(ug: str | None = None, anos: list[int] | None = None, limit
 
 if __name__ == "__main__":
     import argparse, json
-    ap = argparse.ArgumentParser(description="Cruzamento sócio×OB×SEI×endereço")
-    ap.add_argument("cnpj")
+    ap = argparse.ArgumentParser(description="Cruzamento sócio×OB×SEI×endereço + descobertas")
+    ap.add_argument("cnpj", nargs="?", help="CNPJ p/ cruzamento individual")
+    ap.add_argument("--clusters", action="store_true", help="varre a base: grupos de fornecedores na mesma sede")
+    ap.add_argument("--orgao", metavar="UG", help="concentração geográfica dos fornecedores de uma UG")
+    ap.add_argument("--limite", type=int, default=30)
     a = ap.parse_args()
-    print(json.dumps(cruzar(a.cnpj), ensure_ascii=False, indent=2))
+    if a.clusters:
+        r = clusters_mesmo_endereco(limite=a.limite)
+        print(f"Clusters de mesma sede (com OBs): {r['n_clusters']}\n")
+        for c in r["clusters"]:
+            print(f"• {c['n_fornecedores']} forn. ({c['n_com_obs']} c/ OB) · R$ {c['total_pago']:,.2f} · "
+                  f"{c['municipio']}/{c['uf']} · {c['endereco'][:60]}")
+            for e in c["empresas"][:6]:
+                print(f"    - {e['cnpj']} {(e['razao'] or '')[:42]} · {e['n_obs']} OBs · R$ {e['total_pago']:,.2f}")
+        if r["_nota"]:
+            print("\n" + r["_nota"])
+    elif a.orgao:
+        print(json.dumps(cidades_de_orgao(ug=a.orgao, limite=a.limite), ensure_ascii=False, indent=2))
+    elif a.cnpj:
+        print(json.dumps(cruzar(a.cnpj), ensure_ascii=False, indent=2))
+    else:
+        ap.error("informe um CNPJ, ou --clusters, ou --orgao UG")

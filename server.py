@@ -615,6 +615,47 @@ async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@app.get("/api/cruzamento")
+async def api_cruzamento(cnpj: str):
+    """Cruzamento sócio × OB (SIAFE) × processo SEI × endereço de um fornecedor (Onda 4+).
+    Retorna sócios, empresas com sócio em comum (com cidade/mesma sede), fornecedores no MESMO
+    endereço (red flag de fachada, independe de sócio), processos SEI e indícios. Indício, nunca acusação."""
+    try:
+        from compliance_agent.cruzamento import cruzar_async
+        dados = await cruzar_async(cnpj)
+        return JSONResponse({"ok": True, "dados": dados,
+                             "aviso": "Indícios de grupo econômico/fachada para apuração interna — não são acusação."})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@app.get("/api/coendereco/clusters")
+async def api_coendereco_clusters(min_forn: int = 2, top: int = 50):
+    """Descoberta proativa: grupos de fornecedores que dividem a MESMA sede e recebem do Estado.
+    Red flag de fachada/laranja (art. 337-F CP). Varre a base de endereços ingeridos."""
+    try:
+        from compliance_agent.cruzamento import clusters_mesmo_endereco
+        top = max(1, min(int(top or 50), 200))
+        dados = clusters_mesmo_endereco(min_forn=max(2, int(min_forn or 2)), limite=top)
+        return JSONResponse({"ok": dados.get("ok", False), "dados": dados,
+                             "aviso": "Indícios de fachada/co-localização para apuração interna — não são acusação."})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@app.get("/api/orgao/cidades")
+async def api_orgao_cidades(ug: Optional[str] = None, top: int = 20):
+    """Concentração GEOGRÁFICA dos fornecedores de um órgão (ou de todo o Estado se ug ausente):
+    em que cidades se sediam quem o órgão paga. Red flag de fachada/direcionamento (art. 337-F CP)."""
+    try:
+        from compliance_agent.cruzamento import cidades_de_orgao
+        top = max(1, min(int(top or 20), 100))
+        dados = cidades_de_orgao(ug=ug, limite=top)
+        return JSONResponse({"ok": dados.get("ok", False), "dados": dados})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @app.post("/api/massare/prever")
 async def api_massare_prever(payload: Optional[dict] = None):
     """Previsão direcional de um ativo. Body: {"symbol":"^BVSP","horizon":5}."""
