@@ -135,3 +135,63 @@ havia personalidade de concisão.
 > Rollback do modelo: `cp ~/.hermes/config.yaml.bak.pre-model-2026-06-05 ~/.hermes/config.yaml && systemctl --user restart hermes-gateway`.
 > Upgrade opcional futuro: `model.default: gemini-2.5-pro` (mais inteligente, porém mais lento e
 > com cota free mais restrita — avaliar impacto na rotina diária antes).
+
+---
+
+## 2026-06-06 — Yoda-maestro + barramento JFN + /relatorio de inteligência + correção de UGs
+
+**Autor:** Claude Code (Opus 4.8) a pedido do Mestre Jorge. Branch JFN: `claude/ambiente-e-relatorio`.
+
+### Problema de origem
+Yoda não entendia "gere um relatório do JFN sobre o fornecedor MGS": pedia esclarecimento, tentava uma
+ferramenta inexistente (`web_search`) e perguntava "como ativo o JFN agente auditor?". Causa estrutural:
+os agentes não sabiam o ambiente (system prompt do Yoda dizia que o JFN ficava em `c:/JFN/jfn` — caminho
+Windows que não existe na VM Linux) e o Yoda não sabia acionar o JFN.
+
+### O que foi feito (visão geral)
+1. **Fase 0 — infra/boot:**
+   - Desabilitado o `yoda.service` (systemd de SISTEMA) que duplicava e brigava com `hermes-gateway.service`
+     (user) pelo bot do Telegram (causava loop de FAILURE/restart). Gateway canônico = `hermes-gateway.service`.
+   - Instalados **Google Chrome 149** + **Chromium 149**; criado `chrome-jfn.service` (user) = ponte CDP
+     headless na porta 9222 (habilita coleta TFE/SIAFE ao vivo do JFN).
+2. **Fase 1 — fonte única de verdade do ambiente:** criados `AMBIENTE.md` + `ambiente.json` (VM GCP Ubuntu,
+   4 agentes, workflow de boot, barramento). Corrigido o system prompt do Yoda (`~/.hermes/config.yaml`):
+   `c:/JFN/jfn` → `/home/jfelippebethlem/JFN`, + mapa de capacidades (rotas da API do JFN), + "não existe
+   web_search". Ponteiros para `AMBIENTE.md` em CLAUDE.md, README-AGENTES.md, SOUL.md (Hermes) e massare/README.md.
+3. **Fase 2 — barramento de agentes no JFN (FastAPI :8000):**
+   - `POST /api/relatorio/inteligencia` → "Relatório de Inteligência de Fornecedor" (due diligence de
+     integridade + exposição financeira + risco). Motor: `compliance_agent/reporting/inteligencia.py`.
+     Resolve por **nome (parcial) ou CNPJ**; se ambíguo, devolve `{ambiguo:true, pergunta, candidatos}`
+     para o Yoda perguntar ao Mestre Jorge. Gera `.md` + `.pdf` (fonte Unicode DejaVu) em `reports/`.
+     Inclui **uma tabela de OBs pagas POR ANO** (2023/2024/2025/2026) com pagamentos individuais (>12/ano).
+   - Massare exposto: `GET /api/massare/placar`, `GET /api/massare/cenarios`, `POST /api/massare/prever`.
+   - **Massare como agente de pregão:** `massare/market.py` (cenários multi-horizonte curtíssimo/curto/médio/
+     longo + notícias via Google News RSS + snapshot) e `massare-market.timer` (dias úteis 12:50–21:00 UTC =
+     09:50–18:00 BRT, a cada 15min). Não polui o placar (record=False); o `massare-daily` segue registrando a
+     previsão oficial.
+   - Testes: `tests/test_relatorio_inteligencia.py` (12 passam).
+4. **Fase 3 — Yoda-maestro:** convenção `/relatorio <empresa|cnpj>` + roteamento de mercado no `USER.md`;
+   mapa de capacidades no `MEMORY.md`. Gateway recarregado.
+
+### APRENDIZADO IMPORTANTE — UGs (ITERJ)
+Mestre Jorge apontou: "pagamentos do ITERJ saíram como Secretaria de Infraestrutura e Obras". Verificado:
+no espelho TFE (`compliance.db`), **ITERJ = UG `133100`** (SIAFE-Rio 2 = 270042). As OBs rotulavam a UG 133100
+com o nome do ÓRGÃO SUPERIOR ("Secretaria de Infraestrutura..."), diluindo o ITERJ. A `despesa_execucao.nome_ug`
+tem o nome correto. Implementado `compliance_agent/ugs.py` (mapa canônico `data/ug_canonico.json` + overrides
+curados); relatórios passam a resolver o órgão pelo CÓDIGO da UG. Agora o ITERJ aparece separado (R$ 3,16M, 2,4%).
+
+### Validação
+- 12/12 testes; relatório MGS gerado (23 páginas) e enviado ao Telegram para o Mestre Jorge validar.
+- Endpoints testados ao vivo (relatório ambíguo "clean" → desambiguação; massare placar/cenarios/prever OK).
+- Dados REAIS do MGS: pago 2023–2026 = R$ 133.435.889,29 (1056 OBs, 13 órgãos; HHI ALTA 3897, maior órgão 59,5%).
+
+### Regras respeitadas
+Código em branch dedicada; honestidade (REAL vs CACHE/INDISPONÍVEL, nunca fabricar número); OB = pagamento.
+
+### 2026-06-06 (continuação) — Base ampliada 2019–2026 (gestão Cláudio Castro)
+Ingeridas as OBs de **2019, 2020, 2021 e 2022** a partir do ZIP do TFE (`data/tfe_cache/fornecedor_ob.zip`,
+já continha 2017–2026) via `compliance_agent.collectors.tfe_ob.ingest(ano)`. Contagens: 2019=122.964,
+2020=104.971, 2021=124.707, 2022=155.911 OBs. A base `ordens_bancarias` agora cobre **2019–2026**.
+Timer `jfn-tfe-ob.service` atualizado para reingerir 2019–2026 (era 2023–2026). Relatórios passam a
+refletir todos os anos com OB do favorecido (anos sem pagamento simplesmente não aparecem — normal).
+Ex.: MGS CLEAN agora 2021–2026 (R$ 136.225.497,94; não há OB em 2019/2020).

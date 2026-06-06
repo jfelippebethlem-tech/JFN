@@ -3,6 +3,10 @@
 **Última atualização:** 2026-06-03  
 **Mestre Jorge** | Telegram Bot: **Mestre Yoda** | Agente Desktop: **Hermes** | Auditoria: **JFN**
 
+> ⚠️ **Os caminhos `C:\...` abaixo são do desktop Windows legado.** O ambiente de PRODUÇÃO é a **VM Linux
+> GCP** — veja [`AMBIENTE.md`](AMBIENTE.md) para os caminhos e serviços reais (JFN em `~/JFN`, Yoda em
+> `hermes-gateway.service`, barramento HTTP em `127.0.0.1:8000`). Em caso de divergência, **`AMBIENTE.md` vence.**
+
 ---
 
 ## Repositórios Principais

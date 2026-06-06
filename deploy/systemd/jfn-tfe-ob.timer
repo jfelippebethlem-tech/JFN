@@ -1,0 +1,7 @@
+[Unit]
+Description=JFN — agenda a coleta completa de OBs (semanal, D-1)
+[Timer]
+OnCalendar=Mon *-*-* 09:00:00 UTC
+Persistent=true
+[Install]
+WantedBy=timers.target

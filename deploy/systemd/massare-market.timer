@@ -1,0 +1,10 @@
+[Unit]
+Description=Massare — dispara cenarios durante o pregao (dias uteis, 12:50-21:00 UTC = 09:50-18:00 BRT)
+
+[Timer]
+# a cada 15 min nas horas do pregao (UTC); o ciclo se auto-rotula pregao_aberto
+OnCalendar=Mon..Fri *-*-* 12..21:00/15 UTC
+Persistent=false
+
+[Install]
+WantedBy=timers.target

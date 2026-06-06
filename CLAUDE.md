@@ -5,6 +5,10 @@
 **Branch padrão:** `claude/rj-finance-agent-BYlhJ`  
 **Repo:** https://github.com/jfelippebethlem-tech/JFN.git
 
+> 🧭 **Ambiente de execução:** leia [`AMBIENTE.md`](AMBIENTE.md) (+ [`ambiente.json`](ambiente.json)) — a
+> fonte única de verdade de ONDE tudo roda (VM Linux GCP, **não** Windows), o workflow de boot e como o
+> Yoda aciona o JFN/Massare pela API em `127.0.0.1:8000`. O JFN é o **motor + barramento** do ecossistema.
+
 ---
 
 ## REGRAS ABSOLUTAS — LER ANTES DE QUALQUER COISA
@@ -207,6 +211,19 @@ EMPENHO (NE) → LIQUIDAÇÃO → PAGAMENTO (OB)
 | 270051 | Secretaria de Polícia Militar |
 | 270060 | Casa Civil |
 | 300100 | Tesouro Estadual |
+
+> ⚠️ **Dois sistemas de numeração de UG.** A tabela acima é do **SIAFE-Rio 2**. Os dados abertos
+> **TFE** (que alimentam `data/compliance.db`) usam **outra numeração** (6 dígitos, ex.: `166100`,
+> `036100`, `133100`). **Não confundir.**
+>
+> **APRENDIZADO 2026-06-06 — ITERJ:** no espelho TFE/`compliance.db`, **ITERJ = UG `133100`**
+> (SIAFE-Rio 2 = `270042`). As Ordens Bancárias (`ordens_bancarias.ug_nome`) rotulavam a UG 133100
+> com o nome do **órgão superior** ("Secretaria de Estado de Infraestrutura e Obras/Cidades"), fazendo
+> os pagamentos do ITERJ "sumirem" dentro da Secretaria. A tabela `despesa_execucao.nome_ug` traz o
+> nome **correto** da unidade. Correção implementada em `compliance_agent/ugs.py` (mapa canônico
+> `data/ug_canonico.json` + overrides curados) e aplicada em todos os relatórios: o nome do órgão é
+> resolvido pelo **código** da UG, não pelo texto da OB. Para regerar o mapa:
+> `python -m compliance_agent.ugs --reconstruir`.
 
 ---
 

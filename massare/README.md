@@ -4,6 +4,10 @@ Módulo do ecossistema Mestre Jorge. Objetivo: analisar e prever movimentos de m
 condicionado a **fundamentos + variável humana (comportamento)**, com **aprendizado contínuo** e
 **medição honesta de acurácia**. Tudo com fontes 100% gratuitas, sem depender do Windows.
 
+> 🧭 **Ambiente:** roda na VM Linux dentro de `~/JFN` (mesmo venv do JFN). É exposto ao Yoda pela API do
+> JFN (`/api/massare/*` em `127.0.0.1:8000`) e trabalha durante o pregão via `massare-market.timer`.
+> Visão geral do ecossistema e boot: [`../AMBIENTE.md`](../AMBIENTE.md).
+
 ## Onde os dados são agregados
 **`massare/data/massare.db`** (SQLite) é a sede única. Tabelas: `prices` (OHLCV diário),
 `macro` (juros/câmbio/inflação + sentimento), `assets` (catálogo), `meta`, `forecasts`

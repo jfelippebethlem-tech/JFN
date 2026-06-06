@@ -424,6 +424,110 @@ async def api_hermes_relatorio(payload: Optional[dict] = None):
     return JSONResponse(result)
 
 
+@app.post("/api/relatorio/inteligencia")
+async def api_relatorio_inteligencia(payload: Optional[dict] = None):
+    """
+    Relatório de INTELIGÊNCIA de fornecedor (motor do comando /relatorio do Yoda).
+    Body JSON: {"empresa": "NOME"} OU {"cnpj": "..."} (parcial serve no nome), opcional {"anos": [2025,2026]}.
+    Retorna {ok, cnpj, empresa, risco, score, resumo, path_md, path_pdf, fonte}.
+    Se o nome for ambíguo, retorna {ok:false, ambiguo:true, pergunta, candidatos:[...]} para o Yoda
+    repassar a dúvida ao Mestre Jorge.
+    """
+    from compliance_agent.reporting.inteligencia import montar
+    payload = payload or {}
+    cnpj = (payload.get("cnpj") or "").strip() or None
+    empresa = (payload.get("empresa") or payload.get("nome") or "").strip() or None
+    anos = payload.get("anos") or None
+    if anos:
+        try:
+            anos = [int(a) for a in anos]
+        except (TypeError, ValueError):
+            anos = None
+    if not cnpj and not empresa:
+        return JSONResponse({"ok": False, "erro": "Informe 'empresa' (nome, parcial serve) ou 'cnpj'."},
+                            status_code=400)
+    try:
+        result = await montar(cnpj=cnpj, empresa=empresa, anos=anos)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": f"Falha ao gerar relatório: {exc}"}, status_code=500)
+    return JSONResponse(result)
+
+
+@app.post("/api/relatorio/orgao")
+async def api_relatorio_orgao(payload: Optional[dict] = None):
+    """
+    Relatório de inteligência de ÓRGÃO (UG): quanto a unidade gestora pagou, a quem, por ano.
+    Body: {"orgao":"NOME ou parcial"} OU {"ug":"133100"}, opcional {"anos":[2025,2026]}.
+    Retorna {ok, ug, orgao, resumo, path_md, path_pdf, fonte} ou {ambiguo, pergunta, candidatos}.
+    """
+    from compliance_agent.reporting.inteligencia_orgao import montar as montar_orgao
+    payload = payload or {}
+    ug = (payload.get("ug") or "").strip() or None
+    orgao = (payload.get("orgao") or payload.get("nome") or "").strip() or None
+    anos = payload.get("anos") or None
+    if anos:
+        try:
+            anos = [int(a) for a in anos]
+        except (TypeError, ValueError):
+            anos = None
+    if not ug and not orgao:
+        return JSONResponse({"ok": False, "erro": "Informe 'orgao' (nome, parcial serve) ou 'ug' (código)."},
+                            status_code=400)
+    try:
+        result = montar_orgao(orgao=orgao, ug=ug, anos=anos)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": f"Falha ao gerar relatório: {exc}"}, status_code=500)
+    return JSONResponse(result)
+
+
+# ── MASSARE (mercado/predição) — exposto no barramento para o Yoda ────────────
+
+@app.get("/api/massare/placar")
+async def api_massare_placar():
+    """Acurácia out-of-sample acumulada + sentimento de mercado (Fear&Greed/VIX)."""
+    try:
+        from massare import learning, behavior, store
+        store.init_db()
+        return JSONResponse({"ok": True, "placar": learning.scoreboard(),
+                             "sentimento": behavior.snapshot()})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@app.get("/api/massare/cenarios")
+async def api_massare_cenarios(recalcular: bool = False):
+    """
+    Último snapshot multi-horizonte do pregão (curtíssimo/curto/médio/longo).
+    Por padrão lê o snapshot salvo pelo `massare-market.timer` (rápido). `?recalcular=true` recomputa na hora.
+    """
+    try:
+        from massare import market
+        snap = market.cenarios() if recalcular else (market.ler_snapshot() or market.cenarios())
+        return JSONResponse({"ok": True, "snapshot": snap, "briefing": market.briefing(snap)})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@app.post("/api/massare/prever")
+async def api_massare_prever(payload: Optional[dict] = None):
+    """Previsão direcional de um ativo. Body: {"symbol":"^BVSP","horizon":5}."""
+    payload = payload or {}
+    symbol = (payload.get("symbol") or "^BVSP").strip()
+    try:
+        horizon = int(payload.get("horizon") or 5)
+    except (TypeError, ValueError):
+        horizon = 5
+    try:
+        from massare import engine, store
+        store.init_db()
+        p = engine.predict_today(symbol, horizon=horizon)
+        if not p:
+            return JSONResponse({"ok": False, "erro": f"Sem dados para {symbol}."}, status_code=404)
+        return JSONResponse({"ok": True, "previsao": p})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @app.get("/api/compliance/painel")
 async def api_painel():
     """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições."""

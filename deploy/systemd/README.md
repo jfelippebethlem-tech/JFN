@@ -1,41 +1,16 @@
-# JFN — serviço 24h + ronda automática (systemd --user)
+# Units systemd (--user) do ecossistema — VM Linux
 
-Mantém o agente JFN **sempre ativo** nesta VM Linux e faz uma **ronda** periódica que
-checa o serviço e os alertas (e notifica via Telegram, se configurado). Roda independente
-de qualquer sessão do Claude.
-
-## Componentes
-| Unit | Papel |
-|---|---|
-| `jfn.service` | Sobe `server.py` (porta 8000), reinicia se cair (`Restart=always`). |
-| `jfn-ronda.service` | Oneshot: executa `tools/ronda.py` (checa serviço + alertas, loga, notifica). |
-| `jfn-ronda.timer` | Dispara a ronda a cada 10 min (`OnUnitActiveSec=10min`). |
-
-## Instalar numa VM nova
+Instalar/atualizar:
 ```bash
-cd ~/JFN
-./start_linux.sh --setup            # venv + deps + chromium
-mkdir -p ~/.config/systemd/user
-cp deploy/systemd/jfn*.service deploy/systemd/jfn-ronda.timer ~/.config/systemd/user/
-sudo loginctl enable-linger "$USER" # sobrevive a logout/reboot
+cp deploy/systemd/*.service deploy/systemd/*.timer ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now jfn.service jfn-ronda.timer
+systemctl --user enable --now chrome-jfn.service massare-market.timer
 ```
 
-## Operar
-```bash
-systemctl --user status jfn jfn-ronda.timer   # estado
-systemctl --user list-timers jfn-ronda.timer  # próxima ronda
-journalctl --user -u jfn -f                    # logs do servidor
-tail -f ~/JFN/data/ronda.log                   # log da ronda
-~/JFN/.venv/bin/python tools/ronda.py --test   # testar notificação Telegram
-```
+- `chrome-jfn.service` — ponte Chrome headless CDP na porta 9222 (coleta TFE/SIAFE ao vivo do JFN).
+- `massare-market.service` + `.timer` — Massare no pregão (dias úteis 12:50–21:00 UTC = 09:50–18:00 BRT, a cada 15min).
 
-## Notificações Telegram
-A ronda só envia mensagem em **eventos** (serviço caiu, API fora, novos alertas, LLM fora)
-e **somente** se `TELEGRAM_BOT_TOKEN` e `TELEGRAM_CHAT_ID` estiverem preenchidos de verdade
-no `.env` (os placeholders `SEU_...` do `.env.example` são ignorados). Sem isso, a ronda
-apenas grava em `data/ronda.log`.
+Já existentes (não versionados aqui, criados anteriormente): `jfn.service`, `hermes-gateway.service`,
+`jfn-tfe.timer`, `jfn-tfe-ob.timer`, `jfn-ronda.timer`, `massare-daily.timer`. Ver `../../AMBIENTE.md`.
 
-> Os arquivos aqui usam `%h` (home), então são portáveis entre usuários/VMs.
-> Bind em `127.0.0.1` por padrão (painel não exposto à internet — ver CLAUDE.md).
+> ⚠️ O `yoda.service` (nível de SISTEMA) foi DESABILITADO em 2026-06-06 (duplicava o hermes-gateway). Não reativar.
