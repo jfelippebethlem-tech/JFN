@@ -53,7 +53,8 @@ def _prune_reports():
     try:
         import time as _t
         corte = _t.time() - _RETENCAO_DIAS * 86400
-        for f in _REPORTS.glob("inteligencia*"):
+        import itertools
+        for f in itertools.chain(_REPORTS.glob("inteligencia*"), _REPORTS.glob("parecer_lex*")):
             try:
                 if f.is_file() and f.stat().st_mtime < corte:
                     f.unlink()
@@ -401,11 +402,24 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
             path_xlsx = ""
             contexto["_xlsx_erro"] = str(exc)[:160]
 
+    # 3º documento: PARECER do agente Lex (avaliação jurídica/tomada de contas)
+    path_lex = ""
+    grau_lex = None
+    if salvar:
+        try:
+            from compliance_agent import lex
+            lexout = lex.gerar(contexto)
+            path_lex = lexout.get("path_lex_pdf", "")
+            grau_lex = lexout.get("grau")
+        except Exception as exc:  # noqa: BLE001
+            contexto["_lex_erro"] = str(exc)[:160]
+
     return {
         "ok": True, "cnpj": cnpj_d, "cnpj_fmt": fmt_cnpj(cnpj_d), "empresa": nome,
         "risco": risco, "score": score,
         "resumo": _resumo_executivo(contexto),
         "path_md": path_md, "path_pdf": path_pdf, "path_xlsx": path_xlsx,
+        "path_lex": path_lex, "grau_lex": grau_lex,
         "fonte": fonte_global, "fonte_enriq": contexto["fonte_enriq"],
     }
 
