@@ -87,11 +87,19 @@ O Yoda chama via `terminal`/`execute_code` (ferramenta `curl`). **Não existe fe
 Yoda — não inventar. Rotas oficiais:
 
 ```bash
-# Relatório de inteligência completo de um fornecedor (por nome conhecido OU CNPJ):
+# Relatório de inteligência de um FORNECEDOR (por nome — parcial serve — OU CNPJ):
 curl -s -X POST http://127.0.0.1:8000/api/relatorio/inteligencia \
      -H 'Content-Type: application/json' \
      -d '{"empresa":"MGS Clean"}'
-# → {ok, cnpj, empresa, risco, score, resumo, path_md, path_pdf, fonte}
+# → {ok, cnpj, empresa, risco, score, resumo, path_md, path_pdf, path_xlsx, fonte}
+#   Se ambíguo: {ok:false, ambiguo:true, pergunta, candidatos} — pergunte ao Mestre Jorge.
+#   Envie SEMPRE path_pdf E path_xlsx (planilha Excel interativa) no Telegram.
+
+# Relatório de inteligência de um ÓRGÃO (por nome do órgão OU código de UG):
+curl -s -X POST http://127.0.0.1:8000/api/relatorio/orgao \
+     -H 'Content-Type: application/json' \
+     -d '{"orgao":"iterj"}'   # ou {"ug":"133100"}
+# → {ok, ug, orgao, resumo, path_md, path_pdf, path_xlsx, fonte}  (quem o órgão pagou, por ano)
 
 # Auditoria autônoma aberta (pedido complexo em texto livre):
 curl -s -X POST http://127.0.0.1:8000/api/hermes/missao \

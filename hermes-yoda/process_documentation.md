@@ -195,3 +195,15 @@ já continha 2017–2026) via `compliance_agent.collectors.tfe_ob.ingest(ano)`. 
 Timer `jfn-tfe-ob.service` atualizado para reingerir 2019–2026 (era 2023–2026). Relatórios passam a
 refletir todos os anos com OB do favorecido (anos sem pagamento simplesmente não aparecem — normal).
 Ex.: MGS CLEAN agora 2021–2026 (R$ 136.225.497,94; não há OB em 2019/2020).
+
+### 2026-06-06 (continuação) — Planilha Excel interativa + relatório por órgão + integração Yoda
+- **Planilha Excel** (`compliance_agent/reporting/planilha.py`): anexo PADRÃO de todo relatório. Tabela do
+  Excel (autofiltro + zebra), painel congelado, moeda/data reais, abas Resumo/Pagamentos(OBs)/Concentração,
+  formatação condicional (estornos em vermelho, barras de dados). `montar()` (fornecedor e órgão) agora
+  retorna também `path_xlsx`. O Yoda envia SEMPRE PDF + XLSX no Telegram.
+- **Relatório por ÓRGÃO** (`inteligencia_orgao.py`, `POST /api/relatorio/orgao`): quanto a UG pagou e a quem,
+  por ano, com concentração por fornecedor + parecer. Título "Relatório de Inteligência de <órgão>".
+- **Integração Yoda↔JFN**: `config.yaml` (environment_hint), `USER.md` e `MEMORY.md` do Yoda atualizados com
+  as rotas (fornecedor/órgão), o fluxo de desambiguação e o envio PDF+XLSX. `AMBIENTE.md`/`ambiente.json`/HANDOFF idem.
+- **Validação:** 17 testes passam; endpoints testados ao vivo (PDF+XLSX); MGS e ITERJ enviados ao Telegram
+  (ITERJ já com 2019–2026: 2.457 OBs). Serviços hermes-gateway/jfn/chrome-jfn ativos.

@@ -360,7 +360,7 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
     }
 
     md = render_md(contexto)
-    path_md = path_pdf = ""
+    path_md = path_pdf = path_xlsx = ""
     if salvar:
         _REPORTS.mkdir(parents=True, exist_ok=True)
         base = f"inteligencia_{_slug(nome) or cnpj_d}_{contexto['data']}"
@@ -371,12 +371,18 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
         except Exception as exc:  # noqa: BLE001
             path_pdf = ""
             contexto["_pdf_erro"] = str(exc)[:160]
+        try:
+            from compliance_agent.reporting import planilha
+            path_xlsx = planilha.gerar(contexto, str(_REPORTS / f"{base}.xlsx"), modo="fornecedor")
+        except Exception as exc:  # noqa: BLE001
+            path_xlsx = ""
+            contexto["_xlsx_erro"] = str(exc)[:160]
 
     return {
         "ok": True, "cnpj": cnpj_d, "cnpj_fmt": fmt_cnpj(cnpj_d), "empresa": nome,
         "risco": risco, "score": score,
         "resumo": _resumo_executivo(contexto),
-        "path_md": path_md, "path_pdf": path_pdf,
+        "path_md": path_md, "path_pdf": path_pdf, "path_xlsx": path_xlsx,
         "fonte": fonte_global, "fonte_enriq": contexto["fonte_enriq"],
     }
 

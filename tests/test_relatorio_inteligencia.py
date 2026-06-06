@@ -184,6 +184,22 @@ def test_orgao_montar_gera_md_pdf_com_parecer():
         assert Path(res["path_pdf"]).stat().st_size > 1000
 
 
+@skip_sem_db
+def test_planilha_excel_gerada(tmp_path):
+    from compliance_agent.reporting import planilha
+    import openpyxl
+    p = I.consultar_pagamentos(CNPJ_MGS)
+    ctx = {"nome": "MGS", "cnpj_fmt": I.fmt_cnpj(CNPJ_MGS), "data": "2026-06-06", "pagamentos": p}
+    dest = str(tmp_path / "t.xlsx")
+    planilha.gerar(ctx, dest, modo="fornecedor")
+    wb = openpyxl.load_workbook(dest)
+    assert "Pagamentos (OBs)" in wb.sheetnames
+    ws = wb["Pagamentos (OBs)"]
+    assert "Pagamentos" in ws.tables          # é uma Tabela do Excel (interativa)
+    assert ws.freeze_panes == "A2"            # cabeçalho congelado
+    assert ws.max_row - 1 == p["n_geral"]     # uma linha por OB
+
+
 def test_parecer_fornecedor_sem_dados_nao_quebra():
     ctx = {"nome": "X", "score": 0, "risco": "—",
            "pagamentos": {"tem_dados": False}}

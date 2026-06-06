@@ -154,7 +154,7 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
            "alias": ugs.ALIASES.get(ug_cod, {})}
 
     md = render_md(ctx)
-    path_md = path_pdf = ""
+    path_md = path_pdf = path_xlsx = ""
     if salvar:
         _REPORTS.mkdir(parents=True, exist_ok=True)
         base = f"inteligencia_orgao_{_slug(nome) or ug_cod}_{ctx['data']}"
@@ -165,9 +165,16 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
         except Exception as exc:  # noqa: BLE001
             path_pdf = ""
             ctx["_pdf_erro"] = str(exc)[:160]
+        try:
+            from compliance_agent.reporting import planilha
+            path_xlsx = planilha.gerar(ctx, str(_REPORTS / f"{base}.xlsx"), modo="orgao")
+        except Exception as exc:  # noqa: BLE001
+            path_xlsx = ""
+            ctx["_xlsx_erro"] = str(exc)[:160]
 
     return {"ok": True, "ug": ug_cod, "orgao": nome, "resumo": _resumo(ctx),
-            "path_md": path_md, "path_pdf": path_pdf, "fonte": "REAL" if pagamentos["tem_dados"] else "SEM_DADOS"}
+            "path_md": path_md, "path_pdf": path_pdf, "path_xlsx": path_xlsx,
+            "fonte": "REAL" if pagamentos["tem_dados"] else "SEM_DADOS"}
 
 
 def gerar(orgao: Optional[str] = None, ug: Optional[str] = None, anos: Optional[list[int]] = None) -> dict:
