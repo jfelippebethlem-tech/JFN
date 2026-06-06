@@ -1,0 +1,103 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Leitura em LOTE de processos SEI — para rodar no **GitHub Actions** (IPs Azure passam pelo WAF do SEI-RJ,
+como já acontece no SIAFE) ou no **desktop** (rede gov). Loga no SEI interno como `itkava` e popula o cache
+`data/sei_cache/cdp_*.json`, que o Lex/JFN passam a usar automaticamente (24h).
+
+Da VM (IP GCP) o WAF DROPA a conexão — por isso este lote é pensado para o Actions/desktop.
+
+Uso:
+    python tools/ler_sei_lote.py SEI-070002/008633/2022 E-12/345/2026     # processos explícitos
+    python tools/ler_sei_lote.py --pendentes 30                            # 30 processos correlacionados sem cache
+    python tools/ler_sei_lote.py --pendentes 50 --headful                  # janela visível (debug local)
+"""
+from __future__ import annotations
+
+import argparse
+import asyncio
+import os
+import sqlite3
+import sys
+from pathlib import Path
+
+REPO = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO))
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(REPO / ".env")
+except Exception:
+    pass
+
+_DB = os.environ.get("JFN_DB", str(REPO / "data" / "compliance.db"))
+CACHE_DIR = REPO / "data" / "sei_cache"
+
+
+def _ja_em_cache(numero: str) -> bool:
+    import re
+    n = re.sub(r"\s+", "", numero.strip().upper()).replace("/", "_")
+    return (CACHE_DIR / f"cdp_{n}.json").exists()
+
+
+def _pendentes(limite: int) -> list[str]:
+    """Processos SEI correlacionados (SIAFE/contratos TCE-RJ) que ainda NÃO têm cache lido."""
+    con = sqlite3.connect(_DB)
+    nums: list[str] = []
+    for sql in (
+        "SELECT DISTINCT processo FROM ob_orcamentaria_siafe WHERE processo IS NOT NULL AND processo!=''",
+        "SELECT DISTINCT processo FROM contratos_tcerj WHERE processo IS NOT NULL AND processo!=''",
+        "SELECT DISTINCT numero_sei FROM ordens_bancarias WHERE numero_sei IS NOT NULL AND numero_sei!=''",
+    ):
+        try:
+            for (p,) in con.execute(sql):
+                p = (p or "").strip().lstrip("*").strip()
+                if p and not _ja_em_cache(p) and p not in nums:
+                    nums.append(p)
+                    if len(nums) >= limite:
+                        con.close()
+                        return nums
+        except sqlite3.OperationalError:
+            continue
+    con.close()
+    return nums
+
+
+async def _rodar(numeros: list[str], headless: bool) -> dict:
+    from compliance_agent.collectors import sei_cdp
+    lido = erro = 0
+    for i, n in enumerate(numeros, 1):
+        r = await sei_cdp.ler_processo_sei_launch(n, usar_cache=True, headless=headless)
+        if r.get("erro") and not (r.get("texto") or r.get("conteudo_documentos")):
+            erro += 1
+            print(f"[{i}/{len(numeros)}] ✗ {n}: {str(r.get('erro'))[:90]}")
+        else:
+            lido += 1
+            nd = len(r.get("conteudo_documentos", []) or [])
+            print(f"[{i}/{len(numeros)}] ✓ {n}: {len(r.get('texto',''))} chars, {nd} doc(s) lidos")
+    return {"total": len(numeros), "lido": lido, "erro": erro}
+
+
+def main():
+    ap = argparse.ArgumentParser(description="Leitura em lote de processos SEI (Actions/desktop).")
+    ap.add_argument("processos", nargs="*", help="números de processo SEI a ler")
+    ap.add_argument("--pendentes", type=int, metavar="N", help="ler N processos correlacionados ainda sem cache")
+    ap.add_argument("--headful", action="store_true", help="janela visível (debug local)")
+    a = ap.parse_args()
+
+    numeros = list(a.processos)
+    if a.pendentes:
+        numeros += _pendentes(a.pendentes)
+    if not numeros:
+        print("Nada a ler. Passe números ou use --pendentes N."); return
+
+    if not os.environ.get("SEI_PASS"):
+        print("⚠ SEI_PASS não definido (.env ou secret). Sem login interno o WAF/CAPTCHA barra a leitura.")
+
+    res = asyncio.run(_rodar(numeros, headless=not a.headful))
+    print(f"\nResumo: {res['lido']} lido(s), {res['erro']} erro(s) de {res['total']}. "
+          f"Cache em {CACHE_DIR}")
+
+
+if __name__ == "__main__":
+    main()

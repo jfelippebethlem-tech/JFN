@@ -517,6 +517,104 @@ async def ler_processo_sei_via_chrome(
             pass
 
 
+async def ler_processo_sei_launch(
+    numero_sei: str,
+    *,
+    usar_cache: bool = True,
+    max_tentativas_captcha: int = MAX_TENTATIVAS_CAPTCHA,
+    headless: bool = True,
+) -> dict:
+    """Lê um processo SEI lançando o PRÓPRIO Chromium (Playwright launch), em vez de conectar no Chrome 9222.
+
+    É o caminho para rodar onde NÃO há Chrome debug: **GitHub Actions (IPs Azure passam pelo WAF do SEI-RJ, como
+    no SIAFE)** ou o desktop. Loga no SEI interno como `itkava` (env SEI_*) — sessão autenticada dispensa CAPTCHA.
+    Reusa exatamente os mesmos extractors da leitura via CDP. Mesmo cache (data/sei_cache/cdp_*.json)."""
+    numero = re.sub(r"\s+", "", numero_sei.strip().upper())
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file = CACHE_DIR / f"cdp_{numero.replace('/', '_')}.json"
+    if usar_cache and cache_file.exists():
+        try:
+            cached = json.loads(cache_file.read_text(encoding="utf-8"))
+            if cached.get("_cached_at") and (
+                datetime.now() - datetime.fromisoformat(cached["_cached_at"])
+            ).total_seconds() < 86400:
+                cached["_de_cache"] = True
+                return cached
+        except Exception:
+            pass
+
+    from playwright.async_api import async_playwright
+    p = await async_playwright().start()
+    resultado: dict = {"numero": numero, "documentos": [], "texto": "", "captcha_resolvido": False}
+    try:
+        browser = await p.chromium.launch(headless=headless, args=["--no-sandbox", "--disable-dev-shm-usage"])
+        ctx = await browser.new_context(ignore_https_errors=True)
+        page = await ctx.new_page()
+
+        if _tem_credenciais_sei():
+            resultado["_login"] = await login_sei_interno(page)
+
+        try:
+            await page.goto(SEI_PESQUISA_PUBLICA, wait_until="domcontentloaded", timeout=30000)
+            await asyncio.sleep(2)
+        except Exception as e:
+            resultado["erro"] = f"falha ao abrir pesquisa SEI: {e}"
+            return resultado
+        if any(m in (await page.inner_text("body")).lower() for m in _WAF_MARK):
+            resultado["erro"] = "bloqueio de rede (WAF) na pesquisa — IP não autorizado (rodar no Actions/IP gov)"
+            return resultado
+
+        await page.evaluate(_JS_PREENCHE_BUSCA, numero)
+        await asyncio.sleep(0.5)
+        await page.evaluate(_JS_CLICA_PESQUISAR)
+        await asyncio.sleep(2.5)
+
+        if (await page.evaluate(_JS_DETECTA_CAPTCHA)).get("presente"):
+            for _ in range(max_tentativas_captcha):
+                await _resolver_captcha_ocr(page)
+                if not (await page.evaluate(_JS_DETECTA_CAPTCHA)).get("presente"):
+                    resultado["captcha_resolvido"] = True
+                    break
+
+        await _abrir_primeiro_resultado(page)
+        dump = await page.evaluate(_JS_LE_ARVORE_E_TEXTO)
+        resultado.update({"url": dump.get("url", ""), "title": dump.get("title", ""),
+                          "documentos": dump.get("documentos", []), "texto": dump.get("texto", "")})
+
+        textos_docs = []
+        for doc in resultado["documentos"][:8]:
+            url = doc.get("url")
+            if not url:
+                continue
+            try:
+                await page.goto(url, wait_until="domcontentloaded", timeout=20000)
+                await asyncio.sleep(1.0)
+                txt = await page.evaluate("() => document.body ? document.body.innerText.slice(0, 6000) : ''")
+                if txt and len(txt) > 50:
+                    textos_docs.append({"doc": doc.get("texto", "")[:80], "conteudo": txt})
+            except Exception:
+                continue
+        resultado["conteudo_documentos"] = textos_docs
+        tot = resultado["texto"] + "\n\n" + "\n\n".join(d["conteudo"] for d in textos_docs)
+        resultado["cpfs"] = sorted(set(re.findall(r"\d{3}\.?\d{3}\.?\d{3}-?\d{2}", tot)))
+        resultado["cnpjs"] = sorted(set(re.findall(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}", tot)))
+        resultado["valores"] = sorted(set(re.findall(r"R\$\s*[\d.,]+", tot)))
+        resultado["_cached_at"] = datetime.now().isoformat()
+        try:
+            cache_file.write_text(json.dumps(resultado, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        except Exception:
+            pass
+        return resultado
+    except Exception as e:
+        resultado["erro"] = f"{type(e).__name__}: {e}"
+        return resultado
+    finally:
+        try:
+            await p.stop()
+        except Exception:
+            pass
+
+
 async def _abrir_primeiro_resultado(page) -> bool:
     """Se a busca devolveu uma LISTA, abre o primeiro processo. Idempotente."""
     try:
