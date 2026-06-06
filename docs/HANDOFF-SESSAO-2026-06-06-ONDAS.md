@@ -1,5 +1,44 @@
 # HANDOFF — sessão 2026-06-06 (Ondas + Lex + ecossistema) — CONTINUAR DAQUI
 
+> ## 🟢 SESSÃO 2026-06-06 (4ª parte) — Cruzamento endereço/sócio, SEI diagnosticado, SIAFE mapeado, Lex enriquecido
+> Branch `linux`. Commits desta parte: `21b821b`, `fac87a2`, `f533ab5`, `429a258`, `0f65b58`, `026d587`, `a44dca9`.
+> **Para a próxima IA — leia este bloco primeiro e siga as instruções explícitas (assuma IAs mais simples):**
+>
+> **1. CRUZAMENTO sócio × OB(SIAFE) × SEI × ENDEREÇO** (`compliance_agent/cruzamento.py`, no `/relatorio`):
+>    - Seção **1-B** no relatório de fornecedor (sócios em comum, cidade-sede, **co-endereço** = red flag de fachada
+>      independente de sócio, `R-COEND`/`RF-03`) e seção **1-B** no de órgão (concentração geográfica `cidades_de_orgao`).
+>    - **Descoberta proativa:** `python -m compliance_agent.cruzamento --clusters` acha grupos na mesma sede (achou
+>      PLAZA MEDICAL+INOVA MEDIC em 2 cidades; FOCO ESP.+FOCO TERC.). Endereços em `endereco_fornecedor` (cresce com
+>      `rede_societaria --ingerir-top N`; já rodou top-2000). API: `/api/cruzamento`, `/api/orgao/cidades`, `/api/coendereco/clusters`.
+>    - Memória: [[cruzamento-socio-ob-sei-endereco]].
+>
+> **2. SEI — diagnóstico FECHADO (não repita os testes):** o WAF do SEI-RJ **dropa o IP da VM** (GCP 35.247.224.30)
+>    em `sei.rj.gov.br` E `sei.fazenda.rj.gov.br` (ERR_CONNECTION_CLOSED) — é bloqueio de **rede**, não de código nem
+>    de captcha. O login interno está pronto (`itkava` / órgão **iterj** / senha no `.env`, `SEI_ORGAO=iterj`). O Mestre
+>    **vetou** whitelisting de IP e túnel/proxy. **Caminho aberto a perseguir:** a **API REST do SEI (módulo WSSEI)** —
+>    o ITERJ pede ao operador do SEI-RJ (Sec. de Transformação Digital) o cadastro do JFN como sistema externo + token;
+>    aí lê processos **sem browser/captcha**, da VM. **TODO:** construir um cliente WSSEI (`mod-wssei`, ver
+>    `docs/` da pesquisa SEI) pronto p/ plugar o token. `sei_cdp` já suporta `PROXY_URL` e tem `testar_acesso()` +
+>    `tools/ler_sei_lote.py --diagnostico`. Memória: [[sei-login-itkava]].
+>
+> **3. SIAFE — `docs/SIAFE-RIO2-GUIA-AUTOMACAO.md`** (mapeamento do Mestre): destrava o **limite de 1000** via
+>    checkbox `chkRemoveLimit` (ou iterar UG+período). Mapa das 207 UGs (índice 2026), filtro PPR, gotchas que
+>    derrubam a sessão. **Operacionalizar em `siafe_ob_orcamentaria.py`.** ⚠️ Fonte truncada na §7.6 — completar.
+>
+> **4. LEX enriquecido** — `docs/PESQUISA-DIREITO-ADMIN-DOUTRINA-RJ.md` (deep-research, 25 teses 3-0):
+>    - **CORREÇÃO propagada:** controle externo no RJ = **CERJ arts. 122-123** (NÃO art. 97). Dano efetivo pós-14.230 =
+>      **só art. 10** (STJ REsp 1.929.685/TO); dolo nos arts. 9/10/11 (STF Tema 1199). Já citado no parecer do `lex.py`.
+>    - **TODO opcional:** enriquecer `knowledge/jurisprudencia.py` com Tema 1199 e REsp 1.929.685 como precedentes; e
+>      rodar nova deep-research p/ as questões em aberto (tipos penais CP 312-337; normas estaduais Lei 14.133; Di Pietro/Carvalho Filho).
+>    - **Relançar deep-research** (cara, cai por session limit): `Workflow({scriptPath, resumeFromRunId, args})` —
+>      **sempre repassar o `args` idêntico** (sem args, aborta e queima o lançamento). Memória: [[deep-research-relancar]].
+>
+> **5. Avaliação do "briefing de outra IA"** (memória [[briefing-outra-ia-verificar]]): tinha caminhos alucinados
+>    (DB `jfn.db` → é `compliance.db`; `tools/yoda.py` inexistente; symlink `.env` destrutivo). **Sempre `ls`/`grep`
+>    no repo antes de agir sobre handoff externo.** P2 (chaves LLM) já estava sincronizado; P4 (cron WAL) feito no DB
+>    certo; P1 (proxy SEI) implementado; P3/P5/P6/P7 dependem de decisão/recurso do Mestre.
+
+
 > ## ✅ SESSÃO 2026-06-06 (continuação) — TUDO FEITO, ler este bloco primeiro
 > Entregue e committed na branch `linux` (≈22 commits). Resumo do que mudou nesta sessão:
 > - **Onda 2 no produto:** Lex ganhou seção **II-C** (contratos/compras TCE-RJ) + red flags R5/R2/R9 e a
