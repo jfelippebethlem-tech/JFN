@@ -115,6 +115,19 @@ headless ignora. **Caminhos viáveis para coleta completa/MGS (futuro):**
 3. **GitHub Actions** com o `_SANDBOX/coletar_obs_agora.py` (mesma sessão, mas o filtro lá idem precisa do fix).
 > Não é falha de credencial/navegação (essas funcionam 100%) — é a barreira de automação do Oracle ADF.
 
+### ✅ Replay PPR (mitmproxy/requests) — FUNCIONA para as 50; avanço de range é o limite
+`compliance_agent/siafe_ppr.py` replica o protocolo ADF Rich Client (login Playwright p/ sessão+ViewState →
+POST do evento de scroll via `context.request`). **Confirmado:** retorna e parseia as **50 linhas** (RK 0-49)
+com `Adf-Rich-Message: true`, `event.<tableId>=<m xmlns="http://oracle.com/richClient/comm"><k v="type"><s>scroll</s>...`,
+e renovando o `javax.faces.ViewState` a cada resposta (ele ROTACIONA). Sem `oracle.adf.view.rich.RENDER=<tableId>`
+a resposta vem vazia (755b); com RENDER ela re-renderiza a tabela.
+**BLOQUEIO do avanço:** a tabela `tabViewerDec` é `contentDelivery:'immediate', fetchSize:50` — entrega 50 de
+uma vez e SEMPRE retorna RK 0-49; avançar o range exige navegar o **iterator de binding** do ADF (operação de
+"próximo conjunto"), cujo evento exato não foi capturável (a UI não dispara scroll-fetch sob automação). Caminho
+restante: capturar UMA requisição real de "next range" (mitmproxy num cliente real) e replicá-la — ou RPA ADF-aware.
+**Redundância:** a base COMPLETA de OBs já vem do download TFE (`tfe_ob.py`, 612k OBs). O SIAFE só agregaria
+tempo-real + folha nominal por servidor (não-público no TFE). Ver `docs/JFN-PIPELINE-OBS.md`.
+
 ### Tentativas EXAUSTIVAS de coleta completa (>50 OBs) — todas bloqueadas em HEADLESS
 A grade exibe "**Limite de 1000 registros**" (o dado existe), mas o DOM (`tabViewerDec::db`) só contém
 ~50 linhas (scroll virtual). Testado e FALHOU em headless:
