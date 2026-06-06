@@ -15,3 +15,15 @@ fpdf2>=2.7.0
 matplotlib>=3.9.0
 ollama>=0.3.0
 openpyxl>=3.1.0
+# --- Análise/ML (motor de anomalias Onda 1, grafo Onda 3/4, Massare) ---
+scikit-learn>=1.5.0
+pyod>=2.0.0          # ECOD + IForest (detector de anomalias) — NÃO precisa de torch
+duckdb>=1.1.0        # acelera queries analíticas sobre o SQLite (grafo/calibração/eval)
+xgboost>=2.0.0       # Massare (massare/ml.py)
+hmmlearn>=0.3.0      # Massare (regimes de mercado)
+# --- OCR do SEI (CAPTCHA) ---
+pytesseract>=0.3.10  # caminho principal (sei_cdp/captcha_solver) — requer Tesseract no SO
+opencv-python-headless>=4.9.0
+easyocr>=1.7.0       # caminho alternativo do SEI (sei_driver/sei_sei_direct). Puxa torch+torchvision.
+# torch/torchvision: instalar SEMPRE a versão CPU para não baixar CUDA (vários GB):
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
