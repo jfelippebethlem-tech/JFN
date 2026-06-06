@@ -40,16 +40,34 @@ class SessaoPerdida(Exception):
 
 
 async def _sessao_perdida(pg) -> bool:
-    """Detecta se fomos deslogados: voltou pra tela de login ou mensagem de sessão encerrada."""
+    """Detecta se fomos REALMENTE deslogados. ESTRITO: só voltar pro login.jsp ou mensagem explícita de
+    expiração conta — NÃO confundir com o widget 'Sua sessão expira em...' do workspace (falso positivo)."""
     try:
-        if "login.jsp" in (pg.url or "").lower():
-            return True
+        url = (pg.url or "").lower()
+        if "login.jsp" in url:
+            # confirma que o form de login está presente (não só a URL)
+            return await pg.evaluate("""()=>!!document.getElementById('loginBox:itxSenhaAtual::content')""")
         txt = ((await pg.inner_text("body")) or "").lower()
     except Exception:
         return True  # página morreu = trate como perda
-    return any(k in txt for k in ("sessão encerrada", "sessao encerrada", "sessão expirou",
-                                  "sessão expirada", "sua sessão", "faça login novamente",
-                                  "esqueceu sua senha"))
+    return any(k in txt for k in ("sessão expirada", "sessao expirada", "sessão encerrada",
+                                  "sessao encerrada", "sua sessão expirou", "sua sessao expirou",
+                                  "faça login novamente", "faca login novamente"))
+
+
+async def _click_texto(pg, textos: list[str]):
+    """Clica via JS no 1º elemento VISÍVEL cujo texto bate (sem o auto-wait de 30s do Playwright)."""
+    return await pg.evaluate(
+        """(textos)=>{
+            const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
+                return r.width>0 && r.height>0 && s.visibility!=='hidden' && s.display!=='none' && s.opacity!=='0'; };
+            const els = [...document.querySelectorAll('a,button,span,div,td,input[type=button],input[type=submit]')];
+            for (const t of textos) {
+                const el = els.find(e => ((e.innerText||e.value||'').trim() === t) && vis(e));
+                if (el) { el.click(); return t; }
+            }
+            return null;
+        }""", textos)
 
 
 async def _login(pg, exercicio: int):
@@ -64,83 +82,213 @@ async def _login(pg, exercicio: int):
         return {"ok": False, "erro": "sem SIAFE_USER/SIAFE_PASS no .env"}
     await pg.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=45000)
     await pg.wait_for_timeout(2500)
-    await pg.locator("input[type=text]").first.fill(u)
-    await pg.locator("input[type=password]").first.fill(p)
-    # exercício no dropdown correto (cbxExercicio); o 1º <select> é o cliente "Rio de Janeiro"
+    # ORDEM IMPORTA: usuário → exercício → SENHA por último, e Enter na senha (o form ADF submete com o
+    # foco no campo de senha; setar o <select> por último tira o foco e o submit não dispara).
+    # RECEITA PROVADA (diagnóstico): preencher usuário+senha e CLICAR o botão de login direto pelo ID
+    # (clique real do Playwright dispara o handler ADF). NÃO usar Enter antes (quebra o submit). NÃO mexer
+    # no select de exercício antes (autoSubmit/PPR quebra). Exercício é tratado depois do login.
+    await pg.fill('[id="loginBox:itxUsuario::content"]', u)
+    await pg.fill('[id="loginBox:itxSenhaAtual::content"]', p)
+    await pg.wait_for_timeout(400)
     try:
-        sel = pg.locator("select[id*='cbxExercicio']")
-        if not await sel.count():
-            sels = pg.locator("select"); sel = sels.nth(await sels.count() - 1)
-        if await sel.count():
-            await sel.first.select_option(label=str(exercicio))
+        await pg.click('[id="loginBox:btnConfirmar"]', timeout=8000)
+    except Exception:
+        await pg.evaluate("""()=>{const b=document.getElementById('loginBox:btnConfirmar');if(b)b.click();}""")
+    await pg.wait_for_timeout(4000)
+    # SEQUÊNCIA DE POPUPS pós-Ok (sessão única "já logado" + avisos/termos). Clica nos botões conhecidos
+    # até não haver mais (até 7 rodadas). Tudo via JS por ID/texto (sem o auto-wait de 30s do Playwright).
+    for _ in range(7):
+        agiu = await pg.evaluate(
+            """()=>{
+                const vis = el => { if(!el) return false; const r=el.getBoundingClientRect(); const s=getComputedStyle(el);
+                    return r.width>0 && r.height>0 && s.visibility!=='hidden' && s.display!=='none'; };
+                // 1) botão "Sim" do diálogo de sessão única (id conhecido)
+                const sim = document.getElementById('myBtnConfirm');
+                if (vis(sim)) { sim.click(); return 'sim'; }
+                // 2) qualquer botão/link visível de confirmação/aviso
+                const alvo = ['Sim','Continuar','Confirmar','Ciente','Estou ciente','Acessar','Prosseguir','Fechar','OK','Ok'];
+                const els = [...document.querySelectorAll('button,a,input[type=button],input[type=submit]')];
+                for (const t of alvo) {
+                    const el = els.find(e => ((e.innerText||e.value||'').trim()===t) && vis(e)
+                                              && (e.id||'').indexOf('loginBox:btnConfirmar')<0);
+                    if (el) { el.click(); return t; }
+                }
+                return null;
+            }""")
+        if not agiu:
+            break
+        await pg.wait_for_timeout(2800)
+    await pg.wait_for_timeout(3000)
+    body = ((await pg.inner_text("body")) or "")
+    bl = body.lower()
+    # marcadores de sucesso: sumiu o campo de senha do login E/OU apareceu o menu do workspace
+    tem_senha_login = await pg.evaluate("""()=>!!document.getElementById('loginBox:itxSenhaAtual::content')""")
+    tem_workspace = await pg.evaluate("""()=>[...document.querySelectorAll('a.xyo')].some(e=>(e.innerText||'').trim()==='Execução')||/workspace/.test(location.href)""")
+    print(f"   [login] url={pg.url} | senha_login={tem_senha_login} workspace={tem_workspace} | body[:140]={body[:140].replace(chr(10),' ')!r}", flush=True)
+    if any(k in bl for k in ("token", "código de verificação", "autenticação de dois")):
+        return {"ok": False, "erro": "mfa", "detail": "SIAFE pediu MFA — fornecer o código."}
+    if tem_workspace or not tem_senha_login:
+        return {"ok": True, "url": pg.url}
+    try:
+        await pg.screenshot(path=str(_REPO / "data/sei_cache/ERRO_login.png"))
     except Exception:
         pass
-    await pg.keyboard.press("Enter")
-    await pg.wait_for_timeout(6000)
-    # diálogo de sessão única: "já está logado ... Deseja continuar? [Sim]"
-    for _ in range(4):
-        txt = ((await pg.inner_text("body")) or "").lower()
-        if any(k in txt for k in ("já está logado", "ja esta logado", "deseja continuar",
-                                  "outra janela", "deseja acess", "conexão feita a partir")):
-            for lbl in ("Sim", "Continuar", "OK", "Ok"):
-                try:
-                    btn = pg.get_by_text(lbl, exact=True)
-                    if await btn.count():
-                        await btn.first.click(); await pg.wait_for_timeout(3500); break
-                except Exception:
-                    pass
-        else:
-            break
-    await pg.wait_for_timeout(3000)
-    body = ((await pg.inner_text("body")) or "").lower()
-    if any(k in body for k in ("token", "código de verificação", "autenticação de dois")):
-        return {"ok": False, "erro": "mfa", "detail": "SIAFE pediu MFA — fornecer o código."}
-    if "esqueceu sua senha" in body and "login" in pg.url.lower():
-        return {"ok": False, "erro": "login_falhou", "url": pg.url}
-    return {"ok": True, "url": pg.url}
+    return {"ok": False, "erro": "login_falhou", "url": pg.url, "body": body[:300]}
+
+
+async def _shot(pg, nome):
+    try:
+        await pg.screenshot(path=str(_REPO / "data/sei_cache" / f"nav_{nome}.png"))
+    except Exception:
+        pass
+
+
+async def _contar_linhas(pg) -> int:
+    return await pg.evaluate(
+        r"""()=>{const db=document.getElementById('""" + TABLE_DB + r"""');
+            return db ? [...db.querySelectorAll('tr')].filter(tr=>/20\d\dOB\d{5,6}/.test(tr.innerText||'')).length : 0;}""")
+
+
+async def _glasspane_ativo(pg) -> bool:
+    """True se há um glasspane/spinner de carregamento do ADF visível (tabela ainda carregando)."""
+    return await pg.evaluate(r"""()=>{
+        const vis = e => { const r=e.getBoundingClientRect(); const s=getComputedStyle(e);
+            return r.width>3 && r.height>3 && s.visibility!=='hidden' && s.display!=='none'; };
+        return [...document.querySelectorAll('.AFBlockingGlassPane,[id*="glassPane"],[id*="GlassPane"],.xlk,.x1ie')].some(vis);
+    }""")
+
+
+async def tabela_pronta(pg) -> bool:
+    """Detector de 'load concluído': tabela existe + tem linhas de OB + sem glasspane + contagem estável."""
+    if await _glasspane_ativo(pg):
+        return False
+    n1 = await _contar_linhas(pg)
+    if n1 <= 0:
+        return False
+    await pg.wait_for_timeout(1500)
+    if await _glasspane_ativo(pg):
+        return False
+    n2 = await _contar_linhas(pg)
+    return n2 == n1 and n2 > 0  # estável entre duas leituras
 
 
 async def _navegar(pg) -> dict:
     """Execução → Execução Financeira → OB Orçamentária. Retorna {ok, itens_submenu}."""
+    await _shot(pg, "0_poslogin")
     await pg.evaluate(r"""()=>{const a=[...document.querySelectorAll('a.xyo')].find(e=>(e.innerText||'').trim()==='Execução');if(a)a.click();}""")
     await pg.wait_for_timeout(1800)
+    await _shot(pg, "1_execucao")
     await pg.evaluate(r"""()=>{const a=document.getElementById('pt1:pt_np3:1:pt_cni4::disclosureAnchor')||[...document.querySelectorAll('a.xyo')].find(e=>(e.innerText||'').trim()==='Execução Financeira');if(a)a.click();}""")
     await pg.wait_for_timeout(2200)
+    await _shot(pg, "2_execfinanceira")
     itens = await pg.evaluate(r"""()=>[...document.querySelectorAll('a')].map(e=>(e.innerText||'').trim()).filter(t=>t.length>2&&t.length<60)""")
-    # clica o item da OB Orçamentária (varia o rótulo)
-    await pg.evaluate(r"""()=>{const cand=[...document.querySelectorAll('a')].find(e=>{const t=(e.innerText||'').trim().toLowerCase();return /ob.*or[çc]ament|ordem banc.*or[çc]ament|or[çc]ament[áa]ria/.test(t);});if(cand)cand.click();}""")
-    await pg.wait_for_timeout(12000)
-    achou = await pg.evaluate(r"""()=>!!document.querySelector('[id*="tblOBOrcamentaria"]')""")
-    return {"ok": bool(achou), "itens_submenu": [t for t in itens if "ob" in t.lower() or "orçament" in t.lower() or "orcament" in t.lower()][:10]}
+    # clica EXATAMENTE em "OB Orçamentária" (não em "Execução Orçamentária", que também casa "orçamentária")
+    clicou = await pg.evaluate(r"""()=>{
+        const norm = s => (s||'').trim().toLowerCase().replace(/\s+/g,' ');
+        const els = [...document.querySelectorAll('a')];
+        let el = els.find(e => norm(e.innerText)==='ob orçamentária' || norm(e.innerText)==='ob orcamentaria');
+        if(!el) el = els.find(e => /^ob\s+or[çc]ament[áa]ria$/.test(norm(e.innerText)));
+        if(el){el.click();return (el.innerText||'').trim();}
+        return null;
+    }""")
+    await pg.wait_for_timeout(2000)
+    await _shot(pg, "3_clicou_ob_orcamentaria")
+    # a grade é PESADA e demora bastante a aparecer/carregar — espera a tabela (poll até ~90s)
+    achou = False
+    for i in range(45):
+        await pg.wait_for_timeout(2000)
+        achou = await pg.evaluate(r"""()=>!!document.querySelector('[id*="tblOBOrcamentaria"]')""")
+        if achou:
+            break
+        if i in (10, 25):
+            await _shot(pg, f"4_aguardando_tabela_{i}")
+    # detector de LOAD CONCLUÍDO: espera a tabela ficar pronta (linhas + sem spinner + contagem estável)
+    pronta = False
+    if achou:
+        for _ in range(30):  # até ~70s
+            if await tabela_pronta(pg):
+                pronta = True
+                break
+            await pg.wait_for_timeout(2000)
+    await _shot(pg, "5_tabela_final")
+    n_ini = await _contar_linhas(pg) if achou else 0
+    return {"ok": bool(achou and pronta), "clicou": clicou, "linhas_iniciais": n_ini,
+            "itens_submenu": [t for t in itens if "ob" in t.lower() or "orçament" in t.lower() or "orcament" in t.lower()][:10]}
+
+
+TABLE = "pt1:tblOBOrcamentaria:tabViewerDec"
+_EV_SCROLL = ('<m xmlns="http://oracle.com/richClient/comm">'
+              '<k v="type"><s>scroll</s></k><k v="first"><n>{first}</n></k><k v="rows"><n>50</n></k></m>')
+
+
+def _viewstate_txt(text):
+    m = (re.search(r'javax\.faces\.ViewState[^>]*?>\s*<!\[CDATA\[(.*?)\]\]>', text, re.S)
+         or re.search(r'name="javax\.faces\.ViewState"[^>]*value="([^"]+)"', text)
+         or re.search(r'<value>([^<]+)</value>', text))
+    return m.group(1) if m else None
+
+
+def _parse_rows_txt(text):
+    """Extrai linhas de OB do envelope PPR (regex). Retorna lista de listas (células)."""
+    rows = []
+    for tr in re.findall(r'<tr[^>]*>(.*?)</tr>', text, re.S):
+        cells = [re.sub(r'<[^>]+>', '', c).replace('&nbsp;', ' ').strip()
+                 for c in re.findall(r'<td[^>]*>(.*?)</td>', tr, re.S)]
+        cells = [re.sub(r'\s+', ' ', x) for x in cells]
+        if OB_RE.search(tr) and len([c for c in cells if c]) >= 4:
+            rows.append(cells)
+    return rows
+
+
+TABLE_SCROLLER = "pt1:tblOBOrcamentaria:tabViewerDec::scroller"
 
 
 async def _colher(pg, maxn: int, vistos: set, linhas: list, save_cb=None) -> list:
-    """Rola a tabela virtualizada e colhe as linhas do DOM (acumula em `linhas`/`vistos`).
-    Levanta SessaoPerdida se o SIAFE nos deslogar no meio. `save_cb()` persiste o progresso."""
+    """Colhe as OBs ROLANDO O CONTAINER VIRTUAL (`::scroller`, ~40000px), colhendo o corpo (`::db`) a cada
+    passo. A tabela é virtualizada (só ~50 linhas no DOM por vez) e tem limite de 1000 registros por
+    consulta — rolar o ::db (1950px) não bastava; é o ::scroller que dispara o fetch do ADF.
+    Levanta SessaoPerdida se deslogar. `save_cb()` persiste o progresso."""
     header = await pg.evaluate(r"""()=>{
         const h=document.querySelector('[id="pt1:tblOBOrcamentaria:tabViewerDec::ch"]')||document.querySelector('[id*="tblOBOrcamentaria"][id*="::ch"]');
         if(!h)return[];return [...h.querySelectorAll('th,td')].map(c=>(c.innerText||'').replace(/\s+/g,' ').trim()).filter(x=>x);
     }""")
-    seco = 0
     js_rows = r"""()=>{const db=document.getElementById('""" + TABLE_DB + r"""');const o=[];if(db)db.querySelectorAll('tr').forEach(tr=>{const tds=[...tr.querySelectorAll('td')].map(td=>(td.innerText||'').replace(/\s+/g,' ').trim());if(tds.some(x=>x))o.push(tds);});return o;}"""
-    js_scroll = r"""()=>{const db=document.getElementById('""" + TABLE_DB + r"""');if(db){db.scrollTop=db.scrollHeight;return db.scrollTop;}return -1;}"""
-    ciclo = 0
-    while len(linhas) < maxn and seco < 6:
-        rows = await pg.evaluate(js_rows)
+    js_geo = r"""()=>{const s=document.getElementById('""" + TABLE_SCROLLER + r"""');return s?{top:s.scrollTop,sh:s.scrollHeight,ch:s.clientHeight}:null;}"""
+
+    def js_scroll_to(y):
+        return (r"""()=>{const s=document.getElementById('""" + TABLE_SCROLLER + r"""');
+            if(!s)return -1;s.scrollTop=""" + str(int(y)) + r""";
+            s.dispatchEvent(new Event('scroll',{bubbles:true}));return s.scrollTop;}""")
+
+    async def _harvest():
         novos = 0
-        for r in rows:
+        for r in await pg.evaluate(js_rows):
             m = OB_RE.search(" ".join(r))
             if m and m.group(0) not in vistos and len([c for c in r if c]) >= 4:
                 vistos.add(m.group(0)); linhas.append(r); novos += 1
+        return novos
+
+    await _harvest()  # 1ª janela (já no DOM)
+    geo = await pg.evaluate(js_geo) or {"sh": 0, "ch": 727}
+    sh, ch = geo["sh"], max(geo["ch"], 300)
+    passo = int(ch * 0.7)  # sobreposição p/ não pular linhas
+    y, seco, ciclo = 0, 0, 0
+    while len(linhas) < maxn and seco < 10:
+        y += passo
+        await pg.evaluate(js_scroll_to(y))
+        await pg.wait_for_timeout(1100)  # espera o ADF buscar/renderizar o próximo bloco
+        novos = await _harvest()
         seco = 0 if novos else seco + 1
-        if novos and save_cb and len(linhas) % 200 < novos:
+        if save_cb and novos:
             save_cb(header, linhas)
-        if len(linhas) >= maxn:
-            break
-        await pg.evaluate(js_scroll)
-        await pg.wait_for_timeout(1400)  # espera o PPR carregar o próximo bloco
         ciclo += 1
-        if ciclo % 5 == 0 and await _sessao_perdida(pg):
+        # chegou ao fim do scroller? recalcula (pode crescer conforme carrega) e encerra se passou do fim
+        geo = await pg.evaluate(js_geo)
+        if geo:
+            sh = max(sh, geo["sh"])
+            if y >= sh - ch and not novos:
+                break
+        if ciclo % 8 == 0 and await _sessao_perdida(pg):
             if save_cb:
                 save_cb(header, linhas)
             raise SessaoPerdida(f"deslogado após colher {len(linhas)} OBs")
