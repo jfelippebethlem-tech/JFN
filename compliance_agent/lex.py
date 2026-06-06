@@ -111,6 +111,15 @@ def _contratos_tcerj(cnpj: str) -> list[dict]:
         return []
 
 
+def _cartel_do_fornecedor(cnpj: str) -> dict:
+    """Ego-rede fornecedor↔órgão (Onda 3): co-ocorrência com outros fornecedores não-ubíquos nos mesmos órgãos."""
+    try:
+        from compliance_agent.grafo_cartel import vizinhanca_cartel
+        return vizinhanca_cartel(cnpj, limite=10)
+    except Exception:
+        return {}
+
+
 # ── Leitura da ÍNTEGRA dos processos SEI ──────────────────────────────────────
 
 def _run_coro(factory):
@@ -376,6 +385,17 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     itens_tcerj = _contratos_tcerj(cnpj)
     ach_tcerj, resumo_tcerj = _analisar_contratos_tcerj(itens_tcerj)
 
+    # Onda 3 — rede fornecedor↔órgão (indício de rodízio/cartel)
+    cartel = _cartel_do_fornecedor(cnpj)
+    ach_cartel = []
+    fortes = [v for v in (cartel.get("vizinhos") or []) if v.get("orgaos_comuns", 0) >= 3]
+    if len(fortes) >= 3 and (cartel.get("n_orgaos") or 0) >= 2:
+        nomes = ", ".join((v.get("nome") or "")[:30] for v in fortes[:3])
+        ach_cartel.append({"rf": "R8", "grav": 2,
+                           "obs": f"{len(fortes)} fornecedores não-ubíquos atuam nos mesmos órgãos deste favorecido "
+                                  f"(ex.: {nomes}) — verificar possível **rodízio/cartel** (bid rigging) entre players "
+                                  "que compartilham um conjunto estreito de órgãos."})
+
     leituras: list[dict] = []
     ach_doc: list[dict] = []
     fazer_leitura = _LER_SEI if ler_sei is None else ler_sei
@@ -391,10 +411,10 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
             leituras.append(resumo)
             ach_doc.extend(ach)
 
-    achados = _merge_achados(ach_dados + ach_doc + ach_tcerj)
+    achados = _merge_achados(ach_dados + ach_doc + ach_tcerj + ach_cartel)
     emoji, rotulo, just = _grau(achados)
     return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
-            "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj,
+            "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj, "cartel": cartel,
             "emoji": emoji, "rotulo": rotulo, "just": just}
 
 
@@ -407,6 +427,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     achados = analise["achados"]
     emoji, rotulo, just = analise["emoji"], analise["rotulo"], analise["just"]
     tcerj = analise.get("tcerj") or {}
+    cartel = analise.get("cartel") or {}
     p = ctx.get("pagamentos") or {}
     lidos = [l for l in leituras if l.get("lido")]
     L = []
@@ -524,6 +545,25 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
         add("> Não há contratos nem compras diretas deste CNPJ na base de Dados Abertos do TCE-RJ. Isso pode "
             "ocorrer quando a contratação é municipal, federal, ou ainda não publicada — **diligência:** confirmar "
             "no PNCP e no próprio processo SEI.")
+        add("")
+
+    # II-D. Rede fornecedor↔órgão (Onda 3 — indício de rodízio/cartel)
+    vz = cartel.get("vizinhos") or []
+    if vz:
+        add("## II-D. REDE FORNECEDOR–ÓRGÃO (indício de rodízio/cartel)")
+        add("")
+        add(f"O favorecido atua em **{cartel.get('n_orgaos',0)} órgão(s)**. Outros fornecedores **não-ubíquos** "
+            "(excluídas utilities/tributos) que atuam nos **mesmos** órgãos — co-ocorrência estreita é indício de "
+            "rodízio/cartel (bid rigging, art. 36 Lei 12.529) a **verificar** (sócios, endereços, datas de proposta):")
+        add("")
+        add("| Fornecedor co-ocorrente | Órgãos em comum | Footprint total | Valor nesses órgãos (R$) |")
+        add("|---|---:|---:|---:|")
+        for v in vz[:8]:
+            add(f"| {(v.get('nome') or '')[:40]} | {v.get('orgaos_comuns')} | {v.get('footprint_total')} | "
+                f"{moeda(v.get('valor_nos_orgaos'))} |")
+        add("")
+        add("> Co-ocorrência **não prova** conluio (podem ser do mesmo ramo legítimo). É ponto de diligência: "
+            "cruzar quadro societário (QSA), endereços e a cronologia das propostas nas licitações comuns.")
         add("")
 
     # III. Matriz de Achados + análise por red flag

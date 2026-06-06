@@ -583,6 +583,27 @@ async def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] =
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@app.get("/api/cartel")
+async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int = 20):
+    """Grafo fornecedor↔órgão (Onda 3). ?modo=captura (UGs concentradas) | dependencia (fornecedores
+    presos a 1 órgão) | vizinhanca&cnpj=... (co-ocorrência/rodízio). Indício a verificar, nunca acusação."""
+    try:
+        from compliance_agent import grafo_cartel as G
+        top = max(1, min(int(top or 20), 100))
+        if modo == "vizinhanca":
+            if not cnpj:
+                return JSONResponse({"ok": False, "erro": "informe ?cnpj="}, status_code=400)
+            dados = G.vizinhanca_cartel(cnpj, limite=top)
+        elif modo == "dependencia":
+            dados = G.dependencia_fornecedores(limite=top)
+        else:
+            dados = G.captura_orgaos(limite=top)
+        return JSONResponse({"ok": True, "modo": modo, "dados": dados,
+                             "aviso": "Indícios de captura/cartel para apuração interna — não constituem acusação."})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @app.post("/api/massare/prever")
 async def api_massare_prever(payload: Optional[dict] = None):
     """Previsão direcional de um ativo. Body: {"symbol":"^BVSP","horizon":5}."""
