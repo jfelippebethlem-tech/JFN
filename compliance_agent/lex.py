@@ -3,9 +3,10 @@
 LEX — Agente de avaliação jurídica (Direito Administrativo / Controle Externo).
 
 Emite um PARECER fático-jurídico (tomada de contas) sobre a contratação/licitação/pagamentos de um
-fornecedor: aplica os red flags do controle externo (TCU/TCE-RJ) aos dados disponíveis (carteira de
-pagamentos por OB, concentração, processos SEI correlacionados) e classifica o grau de atenção
-(🟢 verde / 🟡 amarelo / 🔴 vermelho), com fundamento legal. Base de conhecimento: `docs/LEX-BASE-JURIDICA.md`.
+fornecedor. Lex agora **LÊ A ÍNTEGRA** de cada processo SEI correlacionado (via o leitor do JFN —
+Chrome 9222 + OCR de CAPTCHA; fallback no portal público httpx) e cruza o **texto real** dos documentos
+(edital, TR, contrato, despachos) com os red flags do controle externo (TCU/TCE-RJ). Classifica o grau de
+atenção (🟢 verde / 🟡 amarelo / 🔴 vermelho), com fundamento legal. Base: `docs/LEX-BASE-JURIDICA.md`.
 
 Princípio (cláusula de honestidade): aponta INDÍCIOS a verificar, sob presunção de legitimidade dos atos
 administrativos; NUNCA afirma crime/improbidade/dolo (compete ao TCE-RJ/MP-RJ/Judiciário, após contraditório).
@@ -14,11 +15,19 @@ administrativos; NUNCA afirma crime/improbidade/dolo (compete ao TCE-RJ/MP-RJ/Ju
 """
 from __future__ import annotations
 
+import os
+import re
+import time
 from pathlib import Path
 
 from compliance_agent.reporting.inteligencia import (
     _REPORTS, _mc, _registrar_fonte, _render_parecer_pdf, _slug, fmt_cnpj, moeda, so_digitos,
 )
+
+# Leitura da íntegra do SEI: liga/desliga, quantos processos ler e orçamento de tempo (s).
+_LER_SEI = os.environ.get("JFN_LEX_LER_SEI", "1") != "0"
+_MAX_SEI = int(os.environ.get("JFN_LEX_MAX_SEI", "3"))
+_SEI_BUDGET = float(os.environ.get("JFN_LEX_SEI_BUDGET", "120"))
 
 # Red flags (resumo operacional; detalhe em docs/LEX-BASE-JURIDICA.md)
 _RF = {
@@ -42,8 +51,158 @@ def _sei_do_fornecedor(cnpj: str) -> list[dict]:
         return []
 
 
+# ── Leitura da ÍNTEGRA dos processos SEI ──────────────────────────────────────
+
+def _run_coro(factory):
+    """Roda uma corrotina com segurança, mesmo dentro de um event loop (FastAPI)."""
+    import asyncio
+    import concurrent.futures
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop and loop.is_running():
+        with concurrent.futures.ThreadPoolExecutor(1) as ex:
+            return ex.submit(lambda: asyncio.run(factory())).result()
+    return asyncio.run(factory())
+
+
+def _ler_integra_sei(numero: str) -> dict:
+    """Lê a íntegra de UM processo SEI (Chrome 9222 + OCR; fallback portal httpx). Cacheia 24h."""
+    res = {}
+    try:
+        from compliance_agent.collectors import sei_cdp
+        res = _run_coro(lambda: sei_cdp.ler_processo_sei_via_chrome(numero, usar_cache=True)) or {}
+        if not res.get("erro") and (res.get("texto") or res.get("conteudo_documentos")):
+            return res
+    except Exception as exc:  # noqa: BLE001
+        res = {"numero": numero, "erro": f"cdp: {str(exc)[:120]}"}
+    # fallback: portal público httpx (metadados + documentos)
+    try:
+        from compliance_agent.collectors import sei_portal
+        meta = _run_coro(lambda: sei_portal.buscar_processo(numero, usar_cache=True)) or {}
+        if not meta.get("erro"):
+            meta.setdefault("texto", "")
+            meta.setdefault("conteudo_documentos", [])
+            return meta
+    except Exception:
+        pass
+    return res or {"numero": numero, "erro": "indisponível"}
+
+
+_WAF_MARCADORES = ("web page blocked", "url you requested has been blocked", "attack id",
+                   "página não encontrada", "pagina nao encontrada", "acesso negado")
+
+
+def _bloqueio_rede(integra: dict) -> str:
+    """Detecta página de WAF/erro (o IP da VM é barrado no SEI-RJ). Retorna motivo ou ''."""
+    amostra = ((integra.get("texto", "") or "") + " " + (integra.get("title", "") or "")).lower()
+    if any(m in amostra for m in _WAF_MARCADORES):
+        return ("bloqueio de rede (WAF) — o IP de saída da VM (GCP) não é autorizado pelo SEI-RJ; "
+                "ler de um IP permitido/proxy ou preencher o cache externamente")
+    return ""
+
+
+def _texto_integra(integra: dict) -> str:
+    if _bloqueio_rede(integra):
+        return ""  # página de bloqueio não é conteúdo de processo
+    txt = integra.get("texto", "") or ""
+    for d in integra.get("conteudo_documentos", []) or []:
+        txt += "\n" + (d.get("conteudo", "") or "")
+    return txt
+
+
+def _modalidade(low: str) -> str:
+    for chave, rotulo in [
+        ("pregão eletrônico", "Pregão eletrônico"), ("pregão", "Pregão"),
+        ("concorrência", "Concorrência"), ("inexigibilidade", "Inexigibilidade"),
+        ("dispensa de licitação", "Dispensa de licitação"), ("dispensa", "Dispensa"),
+        ("credenciamento", "Credenciamento"), ("adesão", "Adesão a ata (carona)"),
+        ("registro de preços", "Registro de preços"),
+    ]:
+        if chave in low:
+            return rotulo
+    return "—"
+
+
+def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
+    """Red flags a partir do TEXTO REAL do processo. Retorna (achados, resumo)."""
+    txt = _texto_integra(integra)
+    low = txt.lower()
+    achados: list[dict] = []
+    modal = _modalidade(low)
+
+    objeto = ""
+    m = re.search(r"objeto[:\s]+([A-Z0-9À-Ú][^\n.;]{15,180})", txt, re.I)
+    if m:
+        objeto = m.group(1).strip()
+
+    if txt.strip():
+        # R5 — contratação direta sem prova robusta de exclusividade/singularidade
+        if "dispensa" in low or "inexigibil" in low:
+            tem_just = any(k in low for k in [
+                "exclusividade", "singular", "notória especialização", "notoria especializacao",
+                "inviabilidade de competição", "inviabilidade de competicao", "art. 74", "artigo 74",
+            ])
+            achados.append({"rf": "R5", "grav": 2 if tem_just else 3,
+                            "obs": f"O processo registra **{modal if modal != '—' else 'contratação direta'}**" +
+                                   ("." if tem_just else
+                                    " — no texto lido **não localizei** prova robusta de exclusividade/singularidade "
+                                    "(art. 74 Lei 14.133/Art. 25 Lei 8.666).")})
+        # R3 — sem pesquisa/cesta de preços visível
+        if any(k in low for k in ["edital", "contrato", "termo de referência", "termo de referencia"]) and \
+           not any(k in low for k in ["pesquisa de preç", "cesta de preç", "mapa de preç", "cotaç", "orçament"]):
+            achados.append({"rf": "R3", "grav": 2,
+                            "obs": "No texto lido **não localizei** pesquisa/cesta de preços (Acórdão 1875/2021-TCU) — "
+                                   "verificar a instrução do ETP/valor estimado."})
+        # R9 — aditivos
+        n_adit = low.count("termo aditivo") + low.count("aditamento")
+        if n_adit >= 2:
+            achados.append({"rf": "R9", "grav": 2,
+                            "obs": f"{n_adit} menções a termo aditivo/aditamento no processo — verificar se a soma "
+                                   "respeita os limites de 25%/50% (arts. 125-126 Lei 14.133)."})
+        # R7 — restrição/direcionamento por especificação
+        if any(k in low for k in ["atestado de capacidade", "marca", "modelo "]) and "ou equivalente" not in low:
+            achados.append({"rf": "R7", "grav": 2,
+                            "obs": "Há exigências de habilitação/especificação (atestado/marca) sem a cláusula "
+                                   "'ou equivalente' visível — verificar restrição à competitividade (art. 9º Lei 14.133)."})
+
+    resumo = {
+        "numero": integra.get("numero", ""),
+        "objeto": objeto,
+        "modalidade": modal,
+        "tipo": integra.get("tipo", "") or integra.get("title", ""),
+        "n_docs": len(integra.get("documentos", []) or []),
+        "n_docs_lidos": len(integra.get("conteudo_documentos", []) or []),
+        "cnpjs": (integra.get("cnpjs", []) or [])[:8],
+        "valores": (integra.get("valores", []) or [])[:8],
+        "url": integra.get("url", ""),
+        "lido": bool(txt.strip()),
+        "de_cache": bool(integra.get("_de_cache") or integra.get("_cached_at")),
+        "erro": integra.get("erro", "") or _bloqueio_rede(integra),
+    }
+    return achados, resumo
+
+
+def _merge_achados(lst: list[dict]) -> list[dict]:
+    """Funde achados por red flag (mantém maior gravidade, concatena observações)."""
+    por: dict = {}
+    for a in lst:
+        k = a["rf"]
+        if k not in por:
+            por[k] = dict(a)
+        else:
+            if a["grav"] > por[k]["grav"]:
+                por[k]["grav"] = a["grav"]
+            if a["obs"] not in por[k]["obs"]:
+                por[k]["obs"] += " " + a["obs"]
+    return sorted(por.values(), key=lambda x: -x["grav"])
+
+
+# ── Detecção data-driven (carteira de pagamentos) ─────────────────────────────
+
 def _detectar(ctx: dict) -> list[dict]:
-    """Detecta indícios a partir dos dados disponíveis. Cada item: {rf, obs, gravidade(1-5)}."""
+    """Indícios a partir dos dados financeiros (OBs). Cada item: {rf, obs, grav(1-5)}."""
     p = ctx.get("pagamentos") or {}
     achados = []
     if not p.get("tem_dados"):
@@ -51,15 +210,12 @@ def _detectar(ctx: dict) -> list[dict]:
     hhi = p.get("hhi", {})
     top = hhi.get("top_share", 0) or 0
     org_top = next(iter(p.get("por_orgao_geral", {})), "—")
-    # R8 — concentração
     if top >= 60:
         achados.append({"rf": "R8", "grav": 4,
                         "obs": f"{top:.1f}% do valor pago concentrado em um único órgão (**{org_top}**) — "
                                "concentração extrema para um prestador de serviços."})
     elif top >= 40:
-        achados.append({"rf": "R8", "grav": 3,
-                        "obs": f"Concentração relevante ({top:.1f}%) em **{org_top}**."})
-    # crescimento abrupto -> indício de planejamento/captura (R12) + materialidade
+        achados.append({"rf": "R8", "grav": 3, "obs": f"Concentração relevante ({top:.1f}%) em **{org_top}**."})
     anos = p.get("anos", [])
     if len(anos) >= 2:
         t0 = p["por_ano"][anos[0]]["total"] or 0
@@ -68,24 +224,21 @@ def _detectar(ctx: dict) -> list[dict]:
             achados.append({"rf": "R12", "grav": 3,
                             "obs": f"Crescimento abrupto dos pagamentos de R$ {moeda(t0)} ({anos[0]}) para "
                                    f"R$ {moeda(t1)} ({anos[-1]}) — {((t1-t0)/t0*100):+.0f}%."})
-    # R10 — estornos (OB valor zero)
     zeros = sum(1 for a in anos for ln in p["por_ano"][a]["linhas"] if ln["valor"] == 0)
     if zeros >= 3:
         achados.append({"rf": "R10", "grav": 2,
                         "obs": f"{zeros} ordens bancárias de valor R$ 0,00 (estornos/regularizações) — verificar a regularidade da liquidação."})
-    # materialidade alta + muitos órgãos sem objeto homogêneo -> R2/R5 a verificar
     if (p.get("total_geral") or 0) >= 50_000_000 and len(p.get("por_orgao_geral", {})) >= 6:
         achados.append({"rf": "R2", "grav": 2,
                         "obs": f"Volume expressivo (R$ {moeda(p['total_geral'])}) pulverizado em {len(p['por_orgao_geral'])} órgãos — "
                                "verificar se há fracionamento ou contratações por dispensa abaixo do teto."})
-    # risco corporativo alto -> reforça R8
     if ctx.get("risco") == "ALTO":
         achados.append({"rf": "R8", "grav": 2, "obs": f"Rating de risco corporativo ALTO (score {ctx.get('score')}/100) — diligência sobre quadro societário/vínculos."})
     return achados
 
 
-def _grau(achados: list, sei: list) -> tuple:
-    """(emoji, rótulo, justificativa). VERDE/AMARELO/VERMELHO conforme convergência + gravidade."""
+def _grau(achados: list) -> tuple:
+    """(emoji, rótulo, justificativa) conforme convergência + gravidade dos indícios."""
     n = len(achados)
     gmax = max((a["grav"] for a in achados), default=0)
     if n >= 3 and gmax >= 4:
@@ -97,19 +250,50 @@ def _grau(achados: list, sei: list) -> tuple:
     return "🟢", "VERDE", "sem indícios relevantes nos dados disponíveis — presunção de regularidade mantida"
 
 
-def parecer_md(ctx: dict) -> str:
+def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
+    """Computa TODA a análise UMA vez (lê o SEI uma vez) e devolve o dossiê para md/pdf."""
     cnpj = ctx.get("cnpj", "")
     sei = _sei_do_fornecedor(cnpj)
-    achados = _detectar(ctx)
-    emoji, rotulo, just = _grau(achados, sei)
+    ach_dados = _detectar(ctx)
+
+    leituras: list[dict] = []
+    ach_doc: list[dict] = []
+    fazer_leitura = _LER_SEI if ler_sei is None else ler_sei
+    if fazer_leitura and sei:
+        t0 = time.monotonic()
+        for s in sei[:_MAX_SEI]:
+            if time.monotonic() - t0 > _SEI_BUDGET:
+                break
+            integra = _ler_integra_sei(s.get("numero_sei", ""))
+            ach, resumo = _analisar_conteudo_sei(integra)
+            resumo["n_obs"] = s.get("n_obs")
+            resumo["total"] = s.get("total")
+            leituras.append(resumo)
+            ach_doc.extend(ach)
+
+    achados = _merge_achados(ach_dados + ach_doc)
+    emoji, rotulo, just = _grau(achados)
+    return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
+            "tem_leitura_doc": bool(ach_doc), "emoji": emoji, "rotulo": rotulo, "just": just}
+
+
+def parecer_md(ctx: dict, analise: dict | None = None) -> str:
+    if analise is None:
+        analise = _analise(ctx)
+    cnpj = analise["cnpj"]
+    sei = analise["sei"]
+    leituras = analise["leituras"]
+    achados = analise["achados"]
+    emoji, rotulo, just = analise["emoji"], analise["rotulo"], analise["just"]
     p = ctx.get("pagamentos") or {}
+    lidos = [l for l in leituras if l.get("lido")]
     L = []
     add = L.append
 
     add(f"# PARECER JURÍDICO PRELIMINAR — {ctx.get('nome','')}")
-    add(f"### Lex · Avaliação fático-jurídica de contratação, licitação e pagamentos")
+    add("### Lex · Avaliação fático-jurídica de contratação, licitação e pagamentos")
     add("")
-    add(f"*Tomada de contas preliminar — Direito Administrativo e Controle Externo (TCU/TCE-RJ)*")
+    add("*Tomada de contas preliminar — Direito Administrativo e Controle Externo (TCU/TCE-RJ)*")
     add("")
     add(f"**CNPJ:** {fmt_cnpj(cnpj)}  |  **Data:** {ctx.get('data','')}  |  **Analista:** Agente Lex (JFN)")
     add(f"**Grau de atenção:** {emoji} **{rotulo}** — {just}.")
@@ -124,15 +308,16 @@ def parecer_md(ctx: dict) -> str:
     if p.get("tem_dados"):
         add(f"- **Exposição:** R$ {moeda(p['total_geral'])} em {p['n_geral']} OBs, {len(p.get('por_orgao_geral',{}))} órgãos, "
             f"exercícios {', '.join(map(str, p.get('anos', [])))}")
-    add(f"- **Processos SEI vinculados (origem das OBs):** {len(sei)} identificado(s) na base correlacionada (SIAFE)")
+    add(f"- **Processos SEI vinculados (origem das OBs):** {len(sei)} identificado(s) na base correlacionada (SIAFE); "
+        f"**{len(lidos)} lido(s) na íntegra** nesta análise.")
     add("")
 
     # II. Fatos
-    add("## II. FATOS — processos administrativos a examinar")
+    add("## II. FATOS — processos administrativos")
     add("")
     if sei:
         add("Cada Ordem Bancária remete a um processo SEI (DFD → ETP → TR/edital → contrato → empenho → liquidação → OB). "
-            "Processos vinculados a este fornecedor (insumo para a análise documental):")
+            "Processos vinculados a este fornecedor:")
         add("")
         add("| Processo SEI | Nº de OBs | Valor pago (R$) |")
         add("|---|---:|---:|")
@@ -140,27 +325,62 @@ def parecer_md(ctx: dict) -> str:
             add(f"| {s.get('numero_sei')} | {s.get('n_obs')} | {moeda(s.get('total'))} |")
         add("")
     else:
-        add("> Ainda não há processos SEI correlacionados a este CNPJ na base (a correlação OB↔SEI vem da coleta SIAFE — "
-            "tela OB Orçamentária). **Diligência:** rodar a coleta SIAFE do(s) exercício(s) e a correlação para puxar os processos.")
+        add("> Ainda não há processos SEI correlacionados a este CNPJ na base. **Diligência:** rodar a coleta SIAFE "
+            "(tela OB Orçamentária) e a correlação para puxar os processos.")
+        add("")
+
+    # II-B. Leitura da íntegra
+    add("## II-B. LEITURA DOS PROCESSOS SEI (íntegra)")
+    add("")
+    if lidos:
+        add(f"Lex abriu e leu o inteiro teor de **{len(lidos)} processo(s)** no sistema SEI-RJ (pesquisa pública), "
+            "extraindo objeto, modalidade, documentos, partes (CNPJs) e valores:")
+        add("")
+        for l in lidos:
+            add(f"### Processo {l.get('numero')}")
+            if l.get("tipo"):
+                add(f"- **Tipo/título:** {l['tipo']}")
+            if l.get("objeto"):
+                add(f"- **Objeto (lido):** {l['objeto']}")
+            add(f"- **Modalidade/fundamento aparente:** {l.get('modalidade','—')}")
+            add(f"- **Documentos no processo:** {l.get('n_docs',0)} (lidos na íntegra: {l.get('n_docs_lidos',0)})")
+            if l.get("cnpjs"):
+                add(f"- **CNPJs no processo:** {', '.join(l['cnpjs'][:6])}")
+            if l.get("valores"):
+                add(f"- **Valores citados:** {', '.join(l['valores'][:6])}")
+            add(f"- **OBs deste processo:** {l.get('n_obs','—')} (R$ {moeda(l.get('total'))})")
+            add("")
+    else:
+        nao = [l for l in leituras if not l.get("lido")]
+        if nao:
+            motivos = "; ".join(f"{l.get('numero')}: {l.get('erro') or 'sem texto'}" for l in nao[:5])
+            add(f"> A leitura automática não retornou o inteiro teor nesta execução ({motivos}). Causas comuns: "
+                "CAPTCHA não resolvido pelo OCR, processo restrito/sigiloso, ou Chrome de leitura (9222) indisponível. "
+                "**Diligência:** reexecutar a leitura (o cache é preenchido) ou abrir manualmente.")
+        else:
+            add("> Não houve leitura de íntegra nesta execução (sem processos correlacionados ou leitura desabilitada).")
         add("")
 
     # III. Análise por red flag
     add("## III. ANÁLISE DE MÉRITO POR INDÍCIO (red flags do controle externo)")
     add("")
+    if analise.get("tem_leitura_doc"):
+        add("*Indícios marcados abaixo combinam os dados financeiros (OBs) com a **leitura do inteiro teor** dos processos.*")
+        add("")
     if achados:
         for a in achados:
             nome, fund = _RF.get(a["rf"], (a["rf"], ""))
             add(f"### {a['rf']} — {nome}")
             add(f"- **Observação:** {a['obs']}")
             add(f"- **Fundamento:** {fund}")
-            add(f"- **Contraponto (presunção de regularidade):** o fato pode ter explicação legítima (objeto técnico, "
+            add("- **Contraponto (presunção de regularidade):** o fato pode ter explicação legítima (objeto técnico, "
                 "demanda concentrada por competência institucional). Não há, aqui, juízo de irregularidade.")
-            add(f"- **Diligência sugerida:** abrir os processos SEI vinculados e verificar edital (especificações), "
-                "pesquisa de preços, mapa de licitantes/sócios, atestos e aditivos.")
+            add("- **Diligência sugerida:** confrontar com edital (especificações), pesquisa de preços, mapa de "
+                "licitantes/sócios, atestos e aditivos do processo SEI.")
             add("")
     else:
-        add("Nenhum indício automático disparou a partir dos dados financeiros disponíveis. A análise documental dos "
-            "processos SEI (edital, contrato, pagamento) é a diligência recomendada para confirmação.")
+        add("Nenhum indício automático disparou a partir dos dados financeiros nem da leitura documental disponível. "
+            "Mantém-se a presunção de regularidade.")
         add("")
 
     # IV. Matriz P×I
@@ -187,7 +407,7 @@ def parecer_md(ctx: dict) -> str:
     # VI. Recomendações
     add("## VI. RECOMENDAÇÕES DE ENCAMINHAMENTO")
     add("")
-    add("- **Diligência documental:** obter, nos processos SEI vinculados, o edital/TR (especificações), a pesquisa "
+    add("- **Diligência documental:** confrontar, nos processos SEI, o edital/TR (especificações), a pesquisa "
         "de preços (cesta — Acórdão 1875/2021-TCU), o mapa de licitantes (sócios/endereços) e os atestos/medições.")
     add("- **Controle externo:** havendo indício de dano, representar ao **TCE-RJ** (jurisdição sobre a despesa estadual).")
     add("- **Demais órgãos:** ciência ao **MP-RJ** (improbidade) e ao **CADE** (conluio/bid rigging, Lei 12.529) se cabível; "
@@ -200,19 +420,21 @@ def parecer_md(ctx: dict) -> str:
     add("> 1. Os apontamentos são **INDÍCIOS**, sujeitos a contraditório e ampla defesa. "
         "2. Vigora a **presunção de legitimidade** dos atos administrativos (dúvida sobre economicidade favorece o gestor — "
         "TCE-RJ, Proc. 101.922-9/12). 3. Lex **não afirma crime, improbidade ou dolo** — competência do TCE-RJ, MP-RJ e "
-        "Judiciário. 4. Conclusões limitadas aos dados/documentos analisados; lacunas geram **diligência**, não condenação.")
+        "Judiciário. 4. Conclusões limitadas aos dados/documentos analisados; lacunas geram **diligência**, não condenação. "
+        "5. A leitura automática do SEI extrai texto público; trechos podem faltar por OCR/restrição — sempre confirmar na fonte.")
     add("")
     add(f"_Parecer gerado automaticamente pelo Agente Lex (JFN) em {ctx.get('data','')}. "
         "Base jurídica: docs/LEX-BASE-JURIDICA.md. Não substitui parecer jurídico formal._")
     return "\n".join(L)
 
 
-def render_pdf(ctx: dict, destino: str) -> str:
+def render_pdf(ctx: dict, destino: str, analise: dict | None = None) -> str:
     """PDF do parecer Lex — mesma estética do JFN (capa azul + texto corrido)."""
     from fpdf import FPDF
-    md = parecer_md(ctx)
-    achados = _detectar(ctx)
-    emoji, rotulo, _ = _grau(achados, _sei_do_fornecedor(ctx.get("cnpj", "")))
+    if analise is None:
+        analise = _analise(ctx)
+    md = parecer_md(ctx, analise)
+    rotulo = analise["rotulo"]
     cor = {"VERMELHO": (220, 53, 69), "AMARELO": (255, 150, 0), "VERDE": (40, 167, 69)}.get(rotulo, (90, 90, 90))
 
     pdf = FPDF()
@@ -238,11 +460,11 @@ def render_pdf(ctx: dict, destino: str) -> str:
     _mc(pdf, 8, _t(ctx.get("nome", "")))
     pdf.set_font(pdf._fam, "", 10); pdf.cell(0, 6, _t(f"CNPJ: {fmt_cnpj(ctx.get('cnpj',''))}"), ln=True)
     pdf.ln(2)
-    pdf.set_fill_color(*cor); pdf.set_text_color(255, 255, 255) if rotulo != "AMARELO" else pdf.set_text_color(0, 0, 0)
+    pdf.set_fill_color(*cor)
+    pdf.set_text_color(0, 0, 0) if rotulo == "AMARELO" else pdf.set_text_color(255, 255, 255)
     pdf.set_font(pdf._fam, "B", 12)
     pdf.cell(0, 9, _t(f"  GRAU DE ATENÇÃO: {rotulo}"), fill=True, ln=True)
     pdf.set_text_color(0, 0, 0); pdf.ln(3)
-    # corpo (pula o cabeçalho markdown já renderizado na capa)
     corpo = md.split("---\n\n", 1)[-1]
     _render_parecer_pdf(pdf, _t, corpo)
 
@@ -251,18 +473,19 @@ def render_pdf(ctx: dict, destino: str) -> str:
     return destino
 
 
-def gerar(ctx: dict, salvar: bool = True) -> dict:
-    """Gera o parecer Lex (md + pdf) para o contexto de um fornecedor. Retorna {ok, path_lex_pdf, path_lex_md, grau}."""
-    achados = _detectar(ctx)
-    emoji, rotulo, _ = _grau(achados, _sei_do_fornecedor(ctx.get("cnpj", "")))
-    out = {"ok": True, "grau": rotulo, "n_indicios": len(achados), "path_lex_pdf": "", "path_lex_md": ""}
+def gerar(ctx: dict, salvar: bool = True, ler_sei: bool | None = None) -> dict:
+    """Gera o parecer Lex (md + pdf). Lê a íntegra do SEI UMA vez. Retorna {ok, grau, n_indicios, n_sei_lidos, path_lex_pdf, path_lex_md}."""
+    analise = _analise(ctx, ler_sei=ler_sei)
+    n_lidos = sum(1 for l in analise["leituras"] if l.get("lido"))
+    out = {"ok": True, "grau": analise["rotulo"], "n_indicios": len(analise["achados"]),
+           "n_sei": len(analise["sei"]), "n_sei_lidos": n_lidos, "path_lex_pdf": "", "path_lex_md": ""}
     if salvar:
         base = f"parecer_lex_{_slug(ctx.get('nome','')) or so_digitos(ctx.get('cnpj',''))}_{ctx.get('data','')}"
         md_path = _REPORTS / f"{base}.md"
-        md_path.write_text(parecer_md(ctx), encoding="utf-8")
+        md_path.write_text(parecer_md(ctx, analise), encoding="utf-8")
         out["path_lex_md"] = str(md_path)
         try:
-            out["path_lex_pdf"] = render_pdf(ctx, str(_REPORTS / f"{base}.pdf"))
+            out["path_lex_pdf"] = render_pdf(ctx, str(_REPORTS / f"{base}.pdf"), analise)
         except Exception as exc:  # noqa: BLE001
             out["_pdf_erro"] = str(exc)[:160]
     return out

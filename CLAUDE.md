@@ -274,6 +274,15 @@ estética, com `grau_lex` 🟢/🟡/🔴. Lex aplica os red flags do controle ex
 processos SEI correlacionados; base jurídica em [`docs/LEX-BASE-JURIDICA.md`](docs/LEX-BASE-JURIDICA.md). Retorno
 do endpoint: `path_pdf`, `path_xlsx`, `path_lex`, `grau_lex`.
 
+**Lex LÊ A ÍNTEGRA do SEI** (módulo do JFN ligado ao Lex): `_ler_integra_sei()` usa `collectors/sei_cdp.py`
+(Chrome 9222 + OCR de CAPTCHA) com fallback em `collectors/sei_portal.py` (httpx), extrai objeto/modalidade/
+documentos/CNPJs/valores e gera achados sobre o **texto real** (R5 dispensa/inexigibilidade, R3 pesquisa de
+preços, R9 aditivos, R7 restrição) — seção "II-B" do parecer. Env: `JFN_LEX_LER_SEI`, `JFN_LEX_MAX_SEI`,
+`JFN_LEX_SEI_BUDGET`. ⚠️ **Bloqueio de infra:** da VM (IP GCP) o `sei.rj.gov.br` é barrado por **WAF**
+("Web Page Blocked") e `consultaprocessos.rj.gov.br` não resolve DNS — a leitura efetiva exige **IP
+autorizado/proxy**; o Lex detecta a página de WAF e reporta honestamente. Cache 24h em
+`data/sei_cache/cdp_*.json`: se preenchido de um IP permitido, o parecer passa a usar a íntegra.
+
 **Correlação OB↔SEI** (`compliance_agent/correlacao_sei.py`): o SIAFE traz o **processo SEI** que originou cada OB
 (campo Processo). `correlacionar()` casa por `numero_ob`+UG e preenche `ordens_bancarias.numero_sei` (SIAFE
 prepondera). É o insumo do Lex (`processos_de_fornecedor(cnpj)`).
