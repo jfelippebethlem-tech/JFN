@@ -87,6 +87,36 @@ def fila_investigacao(top: int = 50, por_ug: bool = False) -> list[dict]:
         con.close()
 
 
+def fila_relativa_ug(top: int = 50, min_ob_ug: int = 30) -> list[dict]:
+    """Onda 4 — fila por score RELATIVO À UG: percentil do score da OB DENTRO do próprio órgão. Corrige o viés
+    que a eval revelou (score global dominado por UGs pequenas). Só UGs com >= min_ob_ug OBs (base estatística)."""
+    con = conectar()
+    try:
+        rows = con.execute(f"""
+            WITH base AS (
+                SELECT o.numero_ob, o.ug_codigo, o.ug_nome, o.favorecido_nome, o.favorecido_cpf,
+                       o.valor, o.data_emissao, a.score,
+                       COUNT(*) OVER (PARTITION BY o.ug_codigo) n_ug,
+                       percent_rank() OVER (PARTITION BY o.ug_codigo ORDER BY a.score) pr_ug
+                FROM db.ob_anomaly a JOIN db.ordens_bancarias o ON o.id=a.ob_id
+            )
+            SELECT numero_ob, ug_codigo, ug_nome, favorecido_nome, favorecido_cpf, valor, data_emissao,
+                   score, pr_ug
+            FROM base WHERE n_ug >= ? ORDER BY pr_ug DESC, score DESC LIMIT ?
+        """, [min_ob_ug, top]).fetchall()
+        cols = ["numero_ob", "ug", "ug_nome", "fornecedor", "cnpj", "valor", "data", "score", "percentil_ug"]
+        out = []
+        for r in rows:
+            d = dict(zip(cols, r))
+            d["valor"] = float(d["valor"] or 0)
+            d["score"] = round(d["score"] or 0, 4)
+            d["percentil_ug"] = round((d["percentil_ug"] or 0) * 100, 1)
+            out.append(d)
+        return out
+    finally:
+        con.close()
+
+
 def drift() -> list[dict]:
     """Estatística do score por exercício — detecta deriva do modelo/dado ao longo do tempo."""
     con = conectar()
@@ -109,11 +139,14 @@ if __name__ == "__main__":
     ap.add_argument("--percentis", action="store_true")
     ap.add_argument("--fila", type=int, metavar="N", help="fila de investigação top-N")
     ap.add_argument("--por-ug", action="store_true", help="balanceia a fila por UG")
+    ap.add_argument("--fila-rel", type=int, metavar="N", help="fila por score RELATIVO à UG (Onda 4)")
     ap.add_argument("--drift", action="store_true")
     a = ap.parse_args()
     if a.percentis:
         print(json.dumps(percentis(), ensure_ascii=False, indent=2))
     if a.fila:
         print(json.dumps(fila_investigacao(a.fila, a.por_ug), ensure_ascii=False, indent=2, default=str))
+    if a.fila_rel:
+        print(json.dumps(fila_relativa_ug(a.fila_rel), ensure_ascii=False, indent=2, default=str))
     if a.drift:
         print(json.dumps(drift(), ensure_ascii=False, indent=2))
