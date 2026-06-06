@@ -42,7 +42,7 @@ _DDL = {
             id TEXT PRIMARY KEY, processo TEXT, sei_norm TEXT, ano_processo INTEGER,
             data_contratacao TEXT, valor_contrato REAL, status TEXT, unidade TEXT, objeto TEXT,
             fornecedor TEXT, cnpj TEXT, vig_inicio TEXT, vig_fim TEXT, criterio_julgamento TEXT,
-            modalidade TEXT, valor_empenhado REAL, valor_liquidado REAL, valor_pago REAL, ingerido_em TEXT
+            num_contratacao TEXT, valor_empenhado REAL, valor_liquidado REAL, valor_pago REAL, ingerido_em TEXT
         )""",
     "compras_diretas_tcerj": """
         CREATE TABLE IF NOT EXISTS compras_diretas_tcerj (
@@ -82,8 +82,17 @@ def _hid(*parts) -> str:
 
 
 def _fnum(v):
+    """Converte número da API p/ float. Aceita float/int e o formato BR em string ('7.188,00')."""
+    if v is None or v == "":
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    s = str(v).strip()
+    # formato BR: ponto = milhar, vírgula = decimal  ->  remove pontos, troca vírgula por ponto
+    if "," in s:
+        s = s.replace(".", "").replace(",", ".")
     try:
-        return float(v) if v is not None else None
+        return float(s)
     except (TypeError, ValueError):
         return None
 
@@ -171,7 +180,7 @@ def correlacionar() -> dict:
     con.execute("DROP TABLE IF EXISTS ob_contrato_tcerj")
     con.execute(f"""CREATE TABLE ob_contrato_tcerj AS
         SELECT o.id AS ob_id, o.numero_ob, o.valor AS valor_ob, c.processo, c.objeto,
-               c.modalidade, c.valor_contrato, c.valor_pago, c.fornecedor, c.cnpj AS cnpj_contrato, 'SEI' AS via
+               c.criterio_julgamento, c.valor_contrato, c.valor_pago, c.fornecedor, c.cnpj AS cnpj_contrato, 'SEI' AS via
         FROM ordens_bancarias o JOIN contratos_tcerj c
           ON c.sei_norm != '' AND c.sei_norm = {_SEI_OB.replace('numero_sei','o.numero_sei')}""")
     con.commit()
@@ -189,17 +198,22 @@ def correlacionar() -> dict:
 
 
 def contratos_de_fornecedor(cnpj: str, limite: int = 100) -> list[dict]:
-    """Contratos + compras diretas do TCE-RJ de um CNPJ — insumo do Lex (objeto, modalidade, EnquadramentoLegal)."""
+    """Contratos + compras diretas do TCE-RJ de um CNPJ — insumo do Lex (objeto, critério, valores, dispensa/
+    EnquadramentoLegal). Casa compras diretas pelo NOME do fornecedor (a base não traz CNPJ na compra direta)."""
     cnpj = re.sub(r"\D", "", cnpj or "")
     con = _con(); _ddl(con); con.row_factory = sqlite3.Row
     try:
         ctr = [dict(r) for r in con.execute(
-            "SELECT processo, ano_processo, objeto, modalidade, valor_contrato, valor_pago, unidade, status "
+            "SELECT processo, ano_processo, objeto, criterio_julgamento, valor_contrato, valor_empenhado, "
+            "valor_liquidado, valor_pago, unidade, status, vig_inicio, vig_fim "
             "FROM contratos_tcerj WHERE cnpj=? ORDER BY valor_contrato DESC LIMIT ?", (cnpj, limite))]
-        cmp = [dict(r) for r in con.execute(
-            "SELECT processo, ano_processo, objeto, enquadramento_legal, valor, unidade "
-            "FROM compras_diretas_tcerj WHERE fornecedor LIKE '%'||(SELECT fornecedor FROM contratos_tcerj "
-            "WHERE cnpj=? LIMIT 1)||'%' LIMIT ?", (cnpj, limite))]
+        nome = con.execute("SELECT fornecedor FROM contratos_tcerj WHERE cnpj=? LIMIT 1", (cnpj,)).fetchone()
+        cmp = []
+        if nome and nome[0]:
+            cmp = [dict(r) for r in con.execute(
+                "SELECT processo, ano_processo, objeto, afastamento, enquadramento_legal, valor, unidade "
+                "FROM compras_diretas_tcerj WHERE fornecedor LIKE ? ORDER BY valor DESC LIMIT ?",
+                (f"%{nome[0]}%", limite))]
     finally:
         con.close()
     return [{"_tipo": "contrato", **c} for c in ctr] + [{"_tipo": "compra_direta", **c} for c in cmp]

@@ -51,6 +51,16 @@ def _sei_do_fornecedor(cnpj: str) -> list[dict]:
         return []
 
 
+def _contratos_tcerj(cnpj: str) -> list[dict]:
+    """Contratos + compras diretas do TCE-RJ Dados Abertos (objeto/critério/valores/dispensa). Fonte que
+    NÃO depende do SEI (WAF) — traz o texto oficial do controle externo direto da API pública."""
+    try:
+        from compliance_agent.collectors.tcerj_aberto import contratos_de_fornecedor
+        return contratos_de_fornecedor(cnpj, limite=100)
+    except Exception:
+        return []
+
+
 # ── Leitura da ÍNTEGRA dos processos SEI ──────────────────────────────────────
 
 def _run_coro(factory):
@@ -199,6 +209,62 @@ def _merge_achados(lst: list[dict]) -> list[dict]:
     return sorted(por.values(), key=lambda x: -x["grav"])
 
 
+# ── Análise dos contratos/compras do TCE-RJ (Dados Abertos — não depende do SEI) ──
+
+def _analisar_contratos_tcerj(itens: list[dict]) -> tuple[list, dict]:
+    """Red flags a partir dos contratos/compras diretas oficiais do TCE-RJ. Retorna (achados, resumo).
+
+    Esta é a fonte que CONTORNA o bloqueio de WAF do SEI: traz objeto, critério de julgamento, valores e —
+    sobretudo — o **EnquadramentoLegal** das compras diretas (dispensa/inexigibilidade) direto da API pública."""
+    achados: list[dict] = []
+    contratos = [i for i in itens if i.get("_tipo") == "contrato"]
+    compras = [i for i in itens if i.get("_tipo") == "compra_direta"]
+
+    soma_contr = sum(c.get("valor_contrato") or 0 for c in contratos)
+    soma_compras = sum(c.get("valor") or 0 for c in compras)
+
+    # R5 — contratações diretas (dispensa/inexigibilidade) registradas no TCE-RJ
+    diretas = [c for c in compras if any(
+        k in ((c.get("afastamento") or "") + " " + (c.get("enquadramento_legal") or "")).lower()
+        for k in ["dispensa", "inexigibil"])]
+    if diretas:
+        total_d = sum(c.get("valor") or 0 for c in diretas)
+        grav = 3 if len(diretas) >= 5 else 2
+        achados.append({"rf": "R5", "grav": grav,
+                        "obs": f"O TCE-RJ registra **{len(diretas)} contratação(ões) direta(s)** (dispensa/"
+                               f"inexigibilidade) deste fornecedor, somando R$ {moeda(total_d)} — verificar o "
+                               "enquadramento legal e a regularidade da fundamentação (art. 74/75 Lei 14.133/Art. 24-25 Lei 8.666)."})
+
+    # R2 — fracionamento: muitas compras diretas no MESMO ano e MESMA unidade (indício de divisão de despesa)
+    from collections import Counter
+    ano_unid = Counter((c.get("ano_processo"), (c.get("unidade") or "")[:40]) for c in diretas)
+    repet = [(k, n) for k, n in ano_unid.items() if n >= 3]
+    if repet:
+        pior = max(repet, key=lambda x: x[1])
+        achados.append({"rf": "R2", "grav": 3,
+                        "obs": f"{pior[1]} contratações diretas no mesmo exercício ({pior[0][0]}) e na mesma unidade "
+                               f"(**{pior[0][1]}**) — possível **fracionamento de despesa** para se manter abaixo do "
+                               "teto de dispensa (art. 75 §1º Lei 14.133)."})
+
+    # R9 — execução acima do contratado (valor pago > contrato + 25%, limite de aditivo)
+    for c in contratos:
+        vc, vp = c.get("valor_contrato") or 0, c.get("valor_pago") or 0
+        if vc > 0 and vp > vc * 1.25:
+            achados.append({"rf": "R9", "grav": 2,
+                            "obs": f"Contrato {c.get('processo')}: pago R$ {moeda(vp)} sobre valor contratado "
+                                   f"R$ {moeda(vc)} (+{((vp-vc)/vc*100):.0f}%) — verificar aditivos e o limite de "
+                                   "25%/50% (arts. 125-126 Lei 14.133)."})
+            break  # um exemplo basta para o indício
+
+    resumo = {
+        "n_contratos": len(contratos), "soma_contratos": soma_contr,
+        "n_compras_diretas": len(compras), "soma_compras": soma_compras,
+        "n_diretas_dispensa": len(diretas),
+        "contratos": contratos[:15], "compras": compras[:15],
+    }
+    return achados, resumo
+
+
 # ── Detecção data-driven (carteira de pagamentos) ─────────────────────────────
 
 def _detectar(ctx: dict) -> list[dict]:
@@ -256,6 +322,10 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     sei = _sei_do_fornecedor(cnpj)
     ach_dados = _detectar(ctx)
 
+    # Onda 2 — contratos/compras do TCE-RJ (não dependem do SEI/WAF)
+    itens_tcerj = _contratos_tcerj(cnpj)
+    ach_tcerj, resumo_tcerj = _analisar_contratos_tcerj(itens_tcerj)
+
     leituras: list[dict] = []
     ach_doc: list[dict] = []
     fazer_leitura = _LER_SEI if ler_sei is None else ler_sei
@@ -271,10 +341,11 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
             leituras.append(resumo)
             ach_doc.extend(ach)
 
-    achados = _merge_achados(ach_dados + ach_doc)
+    achados = _merge_achados(ach_dados + ach_doc + ach_tcerj)
     emoji, rotulo, just = _grau(achados)
     return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
-            "tem_leitura_doc": bool(ach_doc), "emoji": emoji, "rotulo": rotulo, "just": just}
+            "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj,
+            "emoji": emoji, "rotulo": rotulo, "just": just}
 
 
 def parecer_md(ctx: dict, analise: dict | None = None) -> str:
@@ -285,6 +356,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     leituras = analise["leituras"]
     achados = analise["achados"]
     emoji, rotulo, just = analise["emoji"], analise["rotulo"], analise["just"]
+    tcerj = analise.get("tcerj") or {}
     p = ctx.get("pagamentos") or {}
     lidos = [l for l in leituras if l.get("lido")]
     L = []
@@ -359,6 +431,44 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
                 "**Diligência:** reexecutar a leitura (o cache é preenchido) ou abrir manualmente.")
         else:
             add("> Não houve leitura de íntegra nesta execução (sem processos correlacionados ou leitura desabilitada).")
+        add("")
+
+    # II-C. Contratos e compras diretas no TCE-RJ (Dados Abertos — independe do SEI/WAF)
+    add("## II-C. CONTRATOS E COMPRAS DIRETAS — TCE-RJ (Dados Abertos)")
+    add("")
+    if tcerj.get("n_contratos") or tcerj.get("n_compras_diretas"):
+        add(f"A base de **Dados Abertos do TCE-RJ** (controle externo) registra, para este fornecedor, "
+            f"**{tcerj.get('n_contratos',0)} contrato(s)** (R$ {moeda(tcerj.get('soma_contratos',0))}) e "
+            f"**{tcerj.get('n_compras_diretas',0)} compra(s) direta(s)** (R$ {moeda(tcerj.get('soma_compras',0))}), "
+            f"dos quais **{tcerj.get('n_diretas_dispensa',0)} por dispensa/inexigibilidade**. Esta fonte é oficial e "
+            "não depende da leitura do SEI.")
+        add("")
+        if tcerj.get("contratos"):
+            add("**Contratos formais (maiores por valor):**")
+            add("")
+            add("| Processo | Ano | Objeto | Critério | Valor contrato (R$) | Unidade |")
+            add("|---|---:|---|---|---:|---|")
+            for c in tcerj["contratos"][:12]:
+                obj = (c.get("objeto") or "")[:55]
+                add(f"| {c.get('processo','')} | {c.get('ano_processo','')} | {obj} | "
+                    f"{c.get('criterio_julgamento') or '—'} | {moeda(c.get('valor_contrato'))} | "
+                    f"{(c.get('unidade') or '')[:30]} |")
+            add("")
+        if tcerj.get("compras"):
+            add("**Compras diretas (dispensa/inexigibilidade — fundamento legal citado):**")
+            add("")
+            add("| Processo | Ano | Objeto | Afastamento | Enquadramento legal | Valor (R$) |")
+            add("|---|---:|---|---|---|---:|")
+            for c in tcerj["compras"][:12]:
+                obj = (c.get("objeto") or "")[:45]
+                enq = (c.get("enquadramento_legal") or "")[:55]
+                add(f"| {c.get('processo','')} | {c.get('ano_processo','')} | {obj} | "
+                    f"{c.get('afastamento') or '—'} | {enq} | {moeda(c.get('valor'))} |")
+            add("")
+    else:
+        add("> Não há contratos nem compras diretas deste CNPJ na base de Dados Abertos do TCE-RJ. Isso pode "
+            "ocorrer quando a contratação é municipal, federal, ou ainda não publicada — **diligência:** confirmar "
+            "no PNCP e no próprio processo SEI.")
         add("")
 
     # III. Análise por red flag
