@@ -54,12 +54,13 @@ def avaliar() -> dict:
                 SELECT ug_codigo, ANY_VALUE(ug_nome) ug_nome, SUM(tot) total, MAX(tot) topv, COUNT(*) nf
                 FROM forn GROUP BY ug_codigo
             ), sc AS (
-                SELECT o.ug_codigo, AVG(a.score) score_medio, COUNT(*) n_ob
+                SELECT o.ug_codigo, AVG(a.score) score_medio, COUNT(*) n_ob,
+                       SUM(a.score * o.valor) / NULLIF(SUM(o.valor),0) score_ponderado
                 FROM db.ordens_bancarias o JOIN db.ob_anomaly a ON a.ob_id=o.id
                 GROUP BY o.ug_codigo
             )
             SELECT cap.ug_codigo, cap.ug_nome, cap.total, cap.topv/cap.total AS top_share, cap.nf,
-                   COALESCE(sc.score_medio,0) score_medio
+                   COALESCE(sc.score_medio,0) score_medio, COALESCE(sc.score_ponderado,0) score_ponderado
             FROM cap LEFT JOIN sc USING (ug_codigo)
             WHERE cap.total > 0
         """).fetchall()
@@ -75,7 +76,7 @@ def avaliar() -> dict:
     pun_tokens = [( _tokens(o), o, n, v) for o, n, v in punidos]
 
     rows = []
-    for ug, ugn, total, top_share, nf, score_medio in ugs:
+    for ug, ugn, total, top_share, nf, score_medio, score_pond in ugs:
         tks = _tokens(ugn or "")
         punido = 0
         match_nome = ""
@@ -89,7 +90,8 @@ def avaliar() -> dict:
                     break
         rows.append({"ug": ug, "ug_nome": ugn, "total": float(total),
                      "top_share": round((top_share or 0) * 100, 1), "n_fornecedores": nf,
-                     "score_medio": round(score_medio or 0, 4), "punido": punido, "match_tce": match_nome})
+                     "score_medio": round(score_medio or 0, 4),
+                     "score_ponderado": round(score_pond or 0, 4), "punido": punido, "match_tce": match_nome})
 
     n_pun = sum(r["punido"] for r in rows)
     resultado = {"n_ugs": len(rows), "n_orgaos_punidos_tce": len(punidos),
@@ -102,6 +104,7 @@ def avaliar() -> dict:
             y = [r["punido"] for r in rows]
             resultado["auc_top_share"] = round(roc_auc_score(y, [r["top_share"] for r in rows]), 3)
             resultado["auc_score_medio"] = round(roc_auc_score(y, [r["score_medio"] for r in rows]), 3)
+            resultado["auc_score_ponderado"] = round(roc_auc_score(y, [r["score_ponderado"] for r in rows]), 3)
             resultado["auc_total_pago"] = round(roc_auc_score(y, [r["total"] for r in rows]), 3)
         except Exception as exc:  # noqa: BLE001
             resultado["auc_erro"] = str(exc)[:120]
