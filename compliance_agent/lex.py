@@ -43,8 +43,9 @@ _RF = {
 }
 
 
-# Anatomia do achado (modelo TCU/ISSAI/CGU — ver docs/PESQUISA-DIREITO-ADMIN-CGE.md):
-# critério × condição → causa → efeito, com evidência e recomendação. Causa/efeito/recomendação por red flag.
+# Anatomia do achado (modelo TCU/ISSAI/CGU — ver docs/PESQUISA-DIREITO-ADMIN-CGE.md e
+# docs/PESQUISA-DIREITO-ADMIN-DOUTRINA-RJ.md): critério × condição → causa → efeito, com evidência e
+# recomendação. Causa/efeito/recomendação por red flag. Base citável (doutrina/improbidade/controle/RJ) no 2º doc.
 _MATRIZ = {
     "R2": ("possível divisão da despesa para fugir da modalidade/teto de dispensa",
            "elisão do dever de licitar; restrição à competição e risco de sobrepreço",
@@ -670,6 +671,9 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     add("- **Controle externo:** havendo indício de dano, representar ao **TCE-RJ** (jurisdição sobre a despesa estadual).")
     add("- **Demais órgãos:** ciência ao **MP-RJ** (improbidade) e ao **CADE** (conluio/bid rigging, Lei 12.529) se cabível; "
         "PAR (Lei 12.846) e ciência à **CGE-RJ** (controle interno).")
+    add("  > Cautela na qualificação de improbidade (Lei 8.429/92 pós-Lei 14.230/2021): exige-se **dolo** nos "
+        "arts. 9/10/11 (**STF Tema 1199, ARE 843989/PR**) e, no **art. 10**, **dano efetivo** — fim do dano presumido "
+        "(**STJ REsp 1.929.685/TO**, 1ª T., 2024). O Lex aponta o indício; a tipificação é do MP-RJ/Judiciário.")
     add("")
 
     # VII. Ressalvas
@@ -682,7 +686,8 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
         "5. A leitura automática do SEI extrai texto público; trechos podem faltar por OCR/restrição — sempre confirmar na fonte.")
     add("")
     add(f"_Parecer gerado automaticamente pelo Agente Lex (JFN) em {ctx.get('data','')}. "
-        "Base jurídica: docs/LEX-BASE-JURIDICA.md. Não substitui parecer jurídico formal._")
+        "Base jurídica: docs/LEX-BASE-JURIDICA.md + docs/PESQUISA-DIREITO-ADMIN-DOUTRINA-RJ.md "
+        "(doutrina, improbidade pós-14.230, controle e RJ — CERJ arts. 122-123). Não substitui parecer jurídico formal._")
     return "\n".join(L)
 
 

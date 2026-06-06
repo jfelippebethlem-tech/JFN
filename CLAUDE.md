@@ -173,7 +173,7 @@ EMPENHO (NE) → LIQUIDAÇÃO → PAGAMENTO (OB)
 
 | Órgão | Competência | Base Legal |
 |---|---|---|
-| TCE-RJ | Controle externo estadual/municipal | CE-RJ Art. 97 |
+| TCE-RJ | Controle externo estadual/municipal | CE-RJ Arts. 122-123 (auxílio à ALERJ) |
 | TCU | Controle externo federal | CF/88 Art. 71 |
 | CGU | Controle interno federal | Lei 10.683/03 |
 | MP-RJ/GAECO | Ação penal | CF/88 Art. 127 |
