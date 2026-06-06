@@ -232,3 +232,19 @@ Botões: `btnInsert · btnEdit · btnView · ...` **[mensagem-fonte truncada aqu
 - **`compliance_agent/ugs.py`**: cruzar o mapa de UGs (§4) com o canônico TFE (lembrar: numeração SIAFE-Rio 2
   ≠ numeração TFE; ITERJ = 133100 nas duas, mas índices diferem).
 - **Gotchas que evitam derrubar a sessão:** §2 (popup `myModal`) e §6 (interação visual, não `el.click()`/dblclick JS).
+
+## ⚡ Achados AO VIVO (2026-06-06) — varredura validada da VM
+- **A VM acessa o SIAFE!** `siafe2.fazenda.rj.gov.br` respondeu **HTTP 200** da VM (GCP) e o login+navegação
+  funcionaram (login ~14s, nav ~28s). **Diferente do SEI**, o WAF do SIAFE **não** está dropando o IP da VM.
+  Login real OK com `SIAFE_USER` (CPF) + `SIAFE_PASS` do `.env`. Colhidas/ingeridas **951 OBs de 2026**.
+- **A tela OB Orçamentária NÃO tem `chkRemoveLimit`** (confirmado): o `_remover_limite()` loga "checkbox
+  ausente". Logo a view sem filtro **trava em ~1000** (951 colhidas; há >10 mil OBs/2026 — nº até `2026OB10361`).
+- **O seletor `selUg` NÃO filtra esta tabela** (testado: selecionar SEFAZ/FES/ALERJ via `select_option` nativo
+  retornou o **mesmo** conjunto misto de UGs). selUg é contexto, não filtro de listagem.
+- **Caminho para romper o teto (a implementar) = o filtro genérico `sdtFilter` (§5).** Sondagem confirmou que
+  `pt1:tblOBOrcamentaria:sdtFilter` **existe mas está COLAPSADO** (só `::head/::btn/::disAcr/::body`; os selects
+  `cbx_col_sel_rtfFilter`/`cbx_op_sel_rtfFilter` ainda não estão no DOM). **Próximo passo:** clicar
+  `sdtFilter::disAcr` p/ expandir → a linha `rtfFilter` aparece → `select_option` em Propriedade ("UG Emitente"
+  ou "Data Emissão") + Operador + preencher Valor → PPR refiltra ao vivo → iterar por UG/período (<1000 cada).
+  Validar ao vivo (cada iteração ~1-2 min). É o desfecho do §8b sem precisar de replay HTTP/Computer Use.
+- **Decisão pendente com o Mestre** antes de implementar o sweep por filtro (custo de runtime + sessão única).
