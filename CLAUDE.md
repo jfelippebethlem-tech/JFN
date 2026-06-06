@@ -257,6 +257,7 @@ O **Yoda** (bot Telegram) é o MAESTRO e aciona o JFN pela **API HTTP em `127.0.
 | `POST /api/relatorio/inteligencia` `{empresa\|cnpj, anos?}` | Relatório de Inteligência de **Fornecedor** |
 | `POST /api/relatorio/orgao` `{orgao\|ug, anos?}` | Relatório de Inteligência de **Órgão** (quanto a UG pagou e a quem) |
 | `GET/POST /api/massare/{placar,cenarios,prever}` | Massare (mercado/predição) |
+| `GET /api/siafe/stats` | OBs do SIAFE (OB Orçamentária) coletadas/ingeridas |
 
 **Motores:** `compliance_agent/reporting/inteligencia.py` (fornecedor), `inteligencia_orgao.py` (órgão),
 `planilha.py` (Excel). Rodar pela CLI: `.venv/bin/python -m compliance_agent.reporting.inteligencia "MGS Clean"`.
@@ -276,6 +277,17 @@ da UG** (as OBs às vezes rotulam a UG com o órgão superior). Aprendizado-chav
 
 **Base de dados:** `ordens_bancarias` (OB = pagamento) cobre **2019–2026** (gestão Cláudio Castro), ingerida do
 ZIP TFE via `compliance_agent.collectors.tfe_ob`. Anos sem OB do favorecido não aparecem — normal.
+
+**Coletor SIAFE (OB Orçamentária):** `compliance_agent/siafe_ob_orcamentaria.py` raspa a tela
+"Execução > Execução Financeira > OB Orçamentária" do SIAFE-Rio 2 (login real via Playwright; arquitetura ADF
+documentada em [`docs/SIAFE-ARQUITETURA.md`](docs/SIAFE-ARQUITETURA.md)). Traz **23 colunas ricas** (NL, PD,
+**Processo**, Credor, Competência...) que o TFE não tem, e ingere na tabela **`ob_orcamentaria_siafe`**
+(**SIAFE prepondera** por `numero_ob`). CLI: `python -m compliance_agent.siafe_ob_orcamentaria --exercicio 2025
+--max 1000 --ingerir --resiliente`. Anos liberados na conta: **2024–2026** (2023 bloqueado pelo servidor — o
+coletor detecta e pula). Sessão única do SIAFE: coordenação via Telegram (`/siafelivre`, `/siafeocupado`,
+flag `siafe_coord.json`). **Limitação conhecida:** a varredura COMPLETA por UG (passar do limite de 1000/consulta)
+depende do filtro rico do ADF, que resiste a eventos sintéticos do Playwright — ver §8b do doc de arquitetura
+(caminho: replay HTTP do request de filtro, ou Computer Use).
 
 ---
 

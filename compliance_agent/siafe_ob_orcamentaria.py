@@ -35,6 +35,65 @@ _STATE = _REPO / "data" / "sei_cache" / "siafe_state.json"
 _CKPT = _REPO / "data" / "sei_cache" / "ob_orcamentaria_checkpoint.json"
 
 
+_DB = _REPO / "data" / "compliance.db"
+# colunas da OB Orçamentária na ordem do header do SIAFE (23) -> nomes de coluna na base
+_COLS_SIAFE = [
+    "numero_ob", "ug_emitente", "ug_pagadora", "data_emissao", "status", "tipo", "finalidade",
+    "tipo_ob", "nl", "credor", "nome_credor", "ug_liquidante", "valor", "competencia", "status_envio",
+    "gd", "processo", "re", "pd", "tipo_regularizacao", "qtd_impressoes", "assinatura_digital",
+    "vinculacao_pagamento",
+]
+
+
+def _money_br(s) -> float:
+    """'32.087.593,78' -> 32087593.78. Vazio/—/inválido -> 0.0."""
+    s = (str(s) or "").strip().replace(".", "").replace(",", ".")
+    try:
+        return float(s)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def ingerir(exercicio: int, header: list, linhas: list) -> dict:
+    """
+    Ingere as OBs da OB Orçamentária na `compliance.db`, tabela `ob_orcamentaria_siafe`.
+    **SIAFE PREPONDERA**: chave = numero_ob; INSERT OR REPLACE (a versão do SIAFE sobrescreve a anterior).
+    Guarda as 23 colunas ricas (NL, PD, Processo, Credor, Competência...) que o TFE não tem.
+    """
+    import sqlite3
+    import time as _t
+    if not linhas:
+        return {"ok": True, "ingeridas": 0, "exercicio": exercicio}
+    con = sqlite3.connect(str(_DB))
+    try:
+        con.execute(
+            "CREATE TABLE IF NOT EXISTS ob_orcamentaria_siafe ("
+            + ", ".join(f"{c} TEXT" for c in _COLS_SIAFE if c not in ("valor",))
+            + ", valor REAL, exercicio INTEGER, coletado_em TEXT, "
+            "PRIMARY KEY (numero_ob))"
+        )
+        con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ug ON ob_orcamentaria_siafe(ug_emitente)")
+        con.execute("CREATE INDEX IF NOT EXISTS ix_obsiafe_ex ON ob_orcamentaria_siafe(exercicio)")
+        agora = _t.strftime("%Y-%m-%d %H:%M:%S", _t.gmtime())
+        campos = _COLS_SIAFE + ["exercicio", "coletado_em"]
+        sql = (f"INSERT OR REPLACE INTO ob_orcamentaria_siafe ({','.join(campos)}) "
+               f"VALUES ({','.join('?' * len(campos))})")
+        n = 0
+        for r in linhas:
+            vals = []
+            for i, c in enumerate(_COLS_SIAFE):
+                v = r[i] if i < len(r) else ""
+                vals.append(_money_br(v) if c == "valor" else v)
+            vals += [int(exercicio) if exercicio else None, agora]
+            con.execute(sql, vals)
+            n += 1
+        con.commit()
+        tot = con.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe").fetchone()[0]
+    finally:
+        con.close()
+    return {"ok": True, "ingeridas": n, "total_tabela": tot, "exercicio": exercicio}
+
+
 class SessaoPerdida(Exception):
     """Disparada quando o SIAFE nos desconecta no meio (ex.: o Mestre Jorge logou e tomou a sessão única)."""
 
@@ -461,13 +520,21 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--exercicio", type=int, default=2025)
     ap.add_argument("--max", type=int, default=300)
+    ap.add_argument("--ingerir", action="store_true", help="grava as OBs colhidas na compliance.db (SIAFE prepondera)")
+    ap.add_argument("--resiliente", action="store_true", help="coordena via Telegram e retoma se a sessão cair")
     a = ap.parse_args()
-    res = asyncio.run(coletar(a.exercicio, a.max))
+    if a.resiliente:
+        res = asyncio.run(coletar_resiliente(a.exercicio, a.max))
+    else:
+        res = asyncio.run(coletar(a.exercicio, a.max))
     if not res.get("ok"):
         print(json.dumps(res, ensure_ascii=False, indent=1)); return
     print(f"OK — {res['n']} OBs colhidas (exercício {res['exercicio']})")
-    print("HEADER:", res["header"])
-    for r in res["linhas"][:5]:
+    if a.ingerir:
+        ing = ingerir(res["exercicio"], res.get("header", []), res.get("linhas", []))
+        print(f"INGESTÃO: {ing.get('ingeridas')} OBs gravadas | total na tabela: {ing.get('total_tabela')}")
+    print("HEADER:", res.get("header"))
+    for r in res.get("linhas", [])[:5]:
         print("  ", r[:10])
 
 
