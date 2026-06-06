@@ -310,6 +310,28 @@ async def _navegar(pg) -> dict:
             "itens_submenu": [t for t in itens if "ob" in t.lower() or "orçament" in t.lower() or "orcament" in t.lower()][:10]}
 
 
+async def _remover_limite(pg) -> str:
+    """Marca o checkbox `chkRemoveLimit` da tabela OB Orçamentária p/ remover o teto de 1000 registros por
+    consulta (ver docs/SIAFE-RIO2-GUIA-AUTOMACAO.md §5 — destrava o gargalo §8b). Best-effort: se o checkbox
+    não existir ou já estiver marcado, segue o fluxo (com o limite padrão / filtros). Dispara o PPR do ADF e
+    aguarda a tabela recarregar. Retorna 'marcado'|'ja_marcado'|'ausente'."""
+    estado = await pg.evaluate(r"""()=>{
+        const cb = document.getElementById('pt1:tblOBOrcamentaria:chkRemoveLimit::content')
+                 || document.querySelector('[id*="tblOBOrcamentaria"][id*="chkRemoveLimit"][type="checkbox"]');
+        if(!cb) return 'ausente';
+        if(cb.checked) return 'ja_marcado';
+        cb.click(); cb.dispatchEvent(new Event('change',{bubbles:true}));
+        return 'marcado';
+    }""")
+    if estado == "marcado":
+        # ADF recarrega a tabela sem o limite — aguardar o glasspane sumir / a tabela ficar pronta
+        for _ in range(20):  # ~30s
+            await pg.wait_for_timeout(1500)
+            if await tabela_pronta(pg):
+                break
+    return estado
+
+
 TABLE = "pt1:tblOBOrcamentaria:tabViewerDec"
 _EV_SCROLL = ('<m xmlns="http://oracle.com/richClient/comm">'
               '<k v="type"><s>scroll</s></k><k v="first"><n>{first}</n></k><k v="rows"><n>50</n></k></m>')
@@ -452,6 +474,10 @@ async def coletar(exercicio=2025, maxn=300, headless=True, vistos=None, linhas=N
                 await ctx.storage_state(path=str(_STATE))
             except Exception:
                 pass
+            # remove o teto de 1000 registros/consulta antes de varrer (docs/SIAFE-RIO2-GUIA-AUTOMACAO.md §5)
+            lim = await _remover_limite(pg)
+            _log("limite 1000: " + {"marcado": "removido via chkRemoveLimit", "ja_marcado": "já removido",
+                 "ausente": "checkbox ausente nesta tela — usar filtros/iteração p/ >1000"}.get(lim, lim))
             _log(f"colhendo (rolando a tabela, alvo {maxn})...")
             header = await _colher(pg, maxn, vistos, linhas, save_cb)
             _log(f"colheu {len(linhas)} OBs | header={header}")
