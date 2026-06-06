@@ -288,6 +288,29 @@ def rodar(limite: int | None = None) -> dict:
             "red_flags": n_flags, "scores": n_score, "dataset_hash": dh, "modelo_versao": MODELO_VERSAO}
 
 
+# Rótulos legíveis das features do score (explicabilidade — equivalente honesto a SHAP p/ o ensemble ECOD+IForest;
+# o top_features já guarda as 3 features de maior |z| por OB).
+_FEATURE_LABELS = {
+    "log_valor": "valor atípico para o conjunto (muito alto ou muito baixo)",
+    "forn_freq": "frequência de pagamentos a este fornecedor fora do padrão",
+    "forn_tot": "volume total pago a este fornecedor atípico",
+    "ug_freq": "volume de OBs desta UG fora do padrão",
+    "share_ug": "fatia do fornecedor na UG/exercício muito alta (concentração)",
+    "mes": "mês atípico (ex.: concentração em fim de exercício)",
+    "dow": "dia da semana atípico para o pagamento",
+}
+
+
+def explicar_features(top_features) -> list[str]:
+    """Traduz os top_features (nomes) em motivos legíveis — por que a OB entrou na fila de anomalia."""
+    if isinstance(top_features, str):
+        try:
+            top_features = json.loads(top_features)
+        except Exception:
+            top_features = [top_features]
+    return [_FEATURE_LABELS.get(f, f) for f in (top_features or [])]
+
+
 def top_anomalias(limite: int = 20, orgao: str | None = None, fornecedor: str | None = None) -> list[dict]:
     """Ranking de OBs por score, com red flags agregadas. Lê ob_anomaly JOIN ordens_bancarias/ob_redflag."""
     con = _con()

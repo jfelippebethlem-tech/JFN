@@ -576,6 +576,7 @@ async def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] =
             "fornecedor": r.get("favorecido_nome"), "cnpj": r.get("favorecido_cpf"),
             "valor": round(r.get("valor") or 0, 2), "score": round(r.get("score") or 0, 3),
             "regras": r.get("regras"), "parecer": r.get("pareceres"),
+            "porque": anomalias.explicar_features(r.get("top_features")),
         } for r in rows]
         return JSONResponse({"ok": True, "n": len(itens), "itens": itens,
                              "aviso": "Indícios para apuração interna — não constituem acusação."})
