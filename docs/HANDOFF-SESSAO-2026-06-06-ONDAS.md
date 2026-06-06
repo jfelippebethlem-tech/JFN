@@ -17,7 +17,23 @@
 >   `manutencao.py`. **Ronda:** spam JFN_ronda eliminado. **PNCP:** HTTP 400 corrigido.
 > - **Diretriz de cota** no CLAUDE.md (cortar desperdício, nunca profundidade).
 >
-> **Onda 3 — CONCLUÍDA nesta sessão:** grafo cartel (captura/dependencia/vizinhanca) + DuckDB; II-D no Lex +
+> ## 🟢 SESSÃO 2026-06-06 (3ª parte) — Onda 4 + benchmark + multiusuário + limpeza
+> - **Onda 4 (rede societária):** `rede_societaria.py` cruza fornecedores por **sócio em comum** (QSA/BrasilAPI);
+>   `cruzar_cartel` = co-ocorrência + sócio (indício forte, art. 337-F). Integrado no Lex (II-D) e `/api/cartel?modo=rede|cruzado`.
+>   Ingeridos 800 fornecedores → 285 sócios compartilhados. **Caso real achado:** grupo Vieira (F P/R C VIEIRA +
+>   FILIPE A. F. MARQUES) co-ocorre e compartilha sócio com 4 consórcios de obras.
+> - **Yoda multiusuário:** `tools/guest_bot.py` (bot SEPARADO, read-only, sem shell) + serviço systemd + `docs/YODA-MULTIUSUARIO.md`.
+>   FALTA o Mestre: criar bot no @BotFather, pôr `TELEGRAM_BOT_TOKEN_GUEST` + `TELEGRAM_GUEST_USERS` (id da filha) no `.env`, `enable` o serviço.
+> - **Benchmark IAs:** harness `tools/benchmark_runner.py` + guia `docs/IAS-FRACAS-GUIA.md`. Rodou T1/T2 em 6 modelos
+>   (3 Gemini direto + 3 Mistral) vs Claude. Aprendizado: roteamento=Gemini-Flash/Mistral-Small; JSON=Mistral-Large;
+>   Llama reprova roteamento. **Chaves do JFN/.env estavam inválidas** → sincronizadas do `~/.hermes/.env`. T5/T6 e
+>   run completo pendentes (OpenRouter sem crédito 402/429; Mestre pediu p/ não forçar tokens).
+> - **Storage/repo:** removidos scripts de geração de vídeo; `requirements.txt` sincronizado com o real
+>   (pyod/duckdb/sklearn/xgboost/hmmlearn/easyocr/pytesseract/opencv). torch/easyocr (SEI) e whisper (voz) mantidos. 35 GB livres.
+> - **SEI:** WAF dropa o IP da VM → leitura só via Actions (`ler-sei.yml`, definir secret `SEI_PASS`) ou desktop.
+>
+> ---
+> ## (histórico) Onda 3 — CONCLUÍDA nesta sessão: grafo cartel (captura/dependencia/vizinhanca) + DuckDB; II-D no Lex +
 > `/api/cartel`; **explicabilidade** (`anomalias.explicar_features` → campo `porque` no `/api/anomalias`, equivalente
 > honesto a SHAP); **eval ground-truth TCE-RJ** (`eval_groundtruth.py` — achado: score por-OB NÃO prediz punição de
 > órgão, AUC<0.5; só volume, 0.65); **calibração+drift** (`calibrar.py` — corte p99, fila balanceada por UG, motor
