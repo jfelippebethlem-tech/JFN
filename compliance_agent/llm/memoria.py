@@ -53,6 +53,30 @@ CONTEXTO_INICIAL = [
     ("nepotismo",
      "Súmula Vinculante 13 do STF veda nomeação de parentes até 3º grau. "
      "Cruzar sobrenomes de nomeados com servidores/políticos do mesmo órgão."),
+    # ── Conhecimento da pesquisa 2026-06-06 (docs/PESQUISA-DIREITO-ADMIN-CGE.md) ──
+    ("improbidade_dolo_especifico",
+     "Improbidade pós Lei 14.230/2021: exige DOLO ESPECÍFICO (art. 1º §2º — vontade livre e consciente de "
+     "alcançar o resultado ilícito); o mero exercício da função sem ato doloso com fim ilícito AFASTA a "
+     "improbidade (§3º). Acabou a modalidade culposa do art. 10. Apontar SEMPRE como indício, nunca afirmar dolo."),
+    ("improbidade_dano_efetivo",
+     "Fim do dano presumido: STJ REsp 1.929.685 (1ª Turma) — condenação pelo art. 10 da Lei 8.429 exige PROVA de "
+     "dano EFETIVO ao erário; aplica-se a fatos anteriores à reforma se o processo ainda está pendente (Tema 1199/STF)."),
+    ("anatomia_achado",
+     "Achado de auditoria (TCU/ISSAI/CGU) = CRITÉRIO (o que deveria ser) × CONDIÇÃO (o que é) → CAUSA (razão do "
+     "desvio) → EFEITO (consequência), sustentado por EVIDÊNCIA e fechado com CONCLUSÃO + RECOMENDAÇÃO. É o molde "
+     "de todo parecer do Lex."),
+    ("nota_tecnica_cge",
+     "Modelo CGE-RJ (Decreto 47.408/2020): a saída é uma NOTA TÉCNICA 'COM Achado' (há indício) ou 'SEM Achado' "
+     "(presunção de regularidade). PLANAT/RANAT = Resolução CGE 70/2020. Controle interno = Decreto 46.873/2019; "
+     "integridade = Decreto 46.745/2019."),
+    ("tcerj_dados_abertos",
+     "dados.tcerj.tc.br (API pública) traz contratos/compras diretas do Estado com o nº do processo SEI e o "
+     "EnquadramentoLegal das dispensas — fonte oficial que CONTORNA o WAF do sei.rj.gov.br. Usar p/ objeto, "
+     "critério e contrato-vs-pago por CNPJ."),
+    ("crimes_contratacao",
+     "Crimes: peculato (CP 312), concussão (316), corrupção passiva (317)/ativa (333) — reclusão 2-12 anos; "
+     "crimes licitatórios na Lei 14.133 (CP arts. 337-E a 337-P: contratação direta indevida, frustração do "
+     "caráter competitivo etc.). Improbidade ≠ crime ≠ ilícito administrativo — separar as esferas."),
 ]
 
 
@@ -189,6 +213,37 @@ def garantir_contexto_inicial(session=None):
                     fonte="humano",
                 ))
         s.commit()
+    finally:
+        if own:
+            s.close()
+
+
+def podar_memoria(session=None) -> int:
+    """Higiene da memória: remove stubs de bootstrap/teste de baixa confiança que poluem o contexto do prompt.
+    Conservador — preserva tudo de fonte humano/pesquisa/usuario e qualquer item com confiança/observações reais.
+    Retorna o nº de registros removidos."""
+    own = session is None
+    s = _session(session)
+    removidos = 0
+    try:
+        from sqlalchemy import or_, and_
+        q = s.query(MemoriaAprendizado).filter(
+            or_(
+                MemoriaAprendizado.fonte == "hermes_bootstrap",                      # stubs de bootstrap
+                MemoriaAprendizado.fonte == "hermes_goal",                           # lições de ciclo de teste
+                and_(MemoriaAprendizado.categoria.in_(["entidade", "hipotese"]),     # entidades/hipóteses de teste
+                     MemoriaAprendizado.n_observacoes <= 1,
+                     MemoriaAprendizado.confianca < 0.6),
+                and_(MemoriaAprendizado.categoria == "padrao_fraude",                # padrões-stub não confirmados
+                     MemoriaAprendizado.n_observacoes <= 1,
+                     MemoriaAprendizado.confianca <= 0.5),
+            )
+        )
+        for item in q.all():
+            s.delete(item)
+            removidos += 1
+        s.commit()
+        return removidos
     finally:
         if own:
             s.close()
