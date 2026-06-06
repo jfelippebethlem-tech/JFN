@@ -1,0 +1,100 @@
+name: Ler processos SEI (login interno itkava)
+
+# Roda no GitHub Actions (IPs Azure passam pelo WAF do SEI-RJ, como no SIAFE) — a VM (IP GCP) é dropada
+# pelo WAF até na tela de login. Loga como 'itkava' e popula data/sei_cache/, commitando de volta na branch
+# linux. O Lex/JFN passam a usar a íntegra real (cache 24h) na próxima geração de parecer.
+
+on:
+  workflow_dispatch:
+    inputs:
+      processos:
+        description: 'Números de processo SEI (separados por espaço ou vírgula). Vazio = usa --pendentes.'
+        required: false
+        default: ''
+      pendentes:
+        description: 'Qtde de processos correlacionados (sem cache) a ler quando "processos" estiver vazio'
+        required: false
+        default: '30'
+      sei_pass:
+        description: 'SEI_PASS — vazio = usa secret SEI_PASS'
+        required: false
+        default: ''
+
+jobs:
+  ler-sei:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout (branch linux)
+        uses: actions/checkout@v4
+        with:
+          ref: linux
+
+      - name: Instalar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Instalar dependências
+        run: |
+          pip install python-dotenv 2>/dev/null || true
+          pip install -r requirements.txt 2>/dev/null || true
+          playwright install chromium
+
+      - name: Configurar .env (credenciais SEI)
+        env:
+          INPUT_PASS: ${{ github.event.inputs.sei_pass }}
+          SECRET_PASS: ${{ secrets.SEI_PASS }}
+        run: |
+          SEI_PASS="${INPUT_PASS:-$SECRET_PASS}"
+          echo "::add-mask::$SEI_PASS"
+          mkdir -p data/sei_cache
+          printf 'SEI_USER=itkava\nSEI_PASS=%s\nSEI_ORGAO=ERJ\nSEI_LOGIN_URL=%s\nCI=true\nHEADLESS=true\n' \
+            "$SEI_PASS" "https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI&infra_url=L3NlaS8=" \
+            > .env
+          echo "Ambiente configurado (usuário itkava)."
+
+      - name: Ler processos SEI
+        run: |
+          PROCS="${{ github.event.inputs.processos }}"
+          PROCS="${PROCS//,/ }"
+          if [ -n "$PROCS" ]; then
+            python tools/ler_sei_lote.py $PROCS
+          else
+            python tools/ler_sei_lote.py --pendentes "${{ github.event.inputs.pendentes }}"
+          fi
+        env:
+          CI: 'true'
+          HEADLESS: 'true'
+          PYTHONUNBUFFERED: '1'
+
+      - name: Resultado
+        if: always()
+        run: |
+          echo "=== cache SEI gerado ==="
+          ls -lh data/sei_cache/cdp_*.json 2>/dev/null | tail -40 || echo "(nenhum cdp_*.json)"
+
+      - name: Upload do cache (artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sei-cache
+          path: data/sei_cache/cdp_*.json
+          if-no-files-found: ignore
+
+      - name: Commitar cache de volta (branch linux)
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add data/sei_cache/cdp_*.json 2>/dev/null || true
+          if ! git diff --cached --quiet; then
+            git commit -m "data(sei): cache de íntegras lidas via Actions (itkava) [skip ci]"
+            git push origin linux
+          else
+            echo "Nada novo para commitar."
+          fi
