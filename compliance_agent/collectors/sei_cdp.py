@@ -43,6 +43,80 @@ CACHE_DIR = Path("data/sei_cache")
 # Máximo de tentativas de OCR no CAPTCHA antes de desistir
 MAX_TENTATIVAS_CAPTCHA = int(os.environ.get("SEI_CAPTCHA_TENTATIVAS", "4"))
 
+# ── Login interno autenticado (usuário ITKAVA) ────────────────────────────────
+# O app autenticado do SEI (SIP) não passa pela pesquisa pública (WAF/CAPTCHA).
+# IMPORTANTE: o usuário é MINÚSCULO ("itkava") — faz diferença no login do SIP.
+SEI_USER = os.environ.get("SEI_USER", "itkava")
+SEI_PASS = os.environ.get("SEI_PASS", "")
+SEI_ORGAO = os.environ.get("SEI_ORGAO", "")          # sigla/nome do órgão no dropdown de login
+SEI_LOGIN_URL = os.environ.get("SEI_LOGIN_URL", "https://sei.rj.gov.br/sip/login.php?sigla_sistema=SEI")
+
+
+def _tem_credenciais_sei() -> bool:
+    return bool(SEI_PASS)
+
+
+_JS_PREENCHE_LOGIN = r"""
+(c) => {
+    const u = document.querySelector('#txtUsuario, input[name="txtUsuario"], input[name*="suario"]');
+    const p = document.querySelector('#pwdSenha, input[name="pwdSenha"], input[type="password"]');
+    const o = document.querySelector('#selOrgao, select[name="selOrgao"], select[name*="rgao"]');
+    if (u) { u.value = c.u; }
+    if (p) { p.value = c.p; }
+    if (o && c.o) {
+        for (const opt of o.options) {
+            if (opt.text.trim() === c.o || opt.value === c.o) { o.value = opt.value; break; }
+        }
+    }
+    return {u: !!u, p: !!p, o: !!o};
+}
+"""
+
+_JS_CLICA_LOGIN = r"""
+() => {
+    const b = document.querySelector('#sbmLogin, #Acessar, button[type="submit"], input[type="submit"]');
+    if (b) { b.click(); return true; }
+    const f = document.querySelector('form'); if (f) { f.submit(); return true; }
+    return false;
+}
+"""
+
+
+async def login_sei_interno(page) -> dict:
+    """Loga no SEI interno (SIP) com o usuário ITKAVA (minúsculo). Contorna a pesquisa pública (WAF/CAPTCHA).
+    Configuração via .env: SEI_USER (default 'itkava'), SEI_PASS, SEI_ORGAO, SEI_LOGIN_URL. Retorna {ok}/{erro}."""
+    if not _tem_credenciais_sei():
+        return {"erro": "SEI_PASS não configurado no .env — login interno indisponível"}
+    try:
+        await page.goto(SEI_LOGIN_URL, wait_until="domcontentloaded", timeout=30000)
+        await asyncio.sleep(1.0)
+        body = (await page.inner_text("body")).lower()
+        if any(m in body for m in _WAF_MARK):
+            return {"erro": "WAF bloqueou a página de login (IP da VM não autorizado) — rodar de IP gov/permitido"}
+        achou = await page.evaluate(_JS_PREENCHE_LOGIN, {"u": SEI_USER, "p": SEI_PASS, "o": SEI_ORGAO})
+        if not achou.get("p"):
+            return {"erro": "campo de senha não encontrado na página de login (conferir SEI_LOGIN_URL/seletores)"}
+        await asyncio.sleep(0.4)
+        await page.evaluate(_JS_CLICA_LOGIN)
+        try:
+            await page.wait_for_load_state("domcontentloaded", timeout=30000)
+        except Exception:
+            pass
+        await asyncio.sleep(1.5)
+        txt = (await page.inner_text("body")).lower()
+        if any(m in txt for m in ("senha inválida", "senha invalida", "usuário ou senha", "usuario ou senha",
+                                  "não foi possível", "nao foi possivel")):
+            return {"erro": "login recusado (usuário/senha/órgão) — confira credenciais e SEI_ORGAO"}
+        # sinais de sessão autenticada
+        autent = any(m in txt for m in ("controle de processos", "menu", "sair", "pesquisar")) and \
+            "login.php" not in (page.url or "")
+        return {"ok": True, "autenticado": autent, "url": page.url}
+    except Exception as e:
+        return {"erro": f"{type(e).__name__}: {e}"}
+
+
+_WAF_MARK = ("web page blocked", "url you requested has been blocked", "attack id", "acesso negado")
+
 
 # ── Detecção de CAPTCHA ────────────────────────────────────────────────────────
 
@@ -228,6 +302,13 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
         page = await _aba_sei(browser)
         if page is None:
             return {"erro": "Nenhuma aba encontrada no Chrome."}
+
+        # Login interno (usuário itkava) quando há credenciais — sessão autenticada dispensa CAPTCHA.
+        if _tem_credenciais_sei():
+            lg = await login_sei_interno(page)
+            if lg.get("erro"):
+                # WAF bloqueia o IP da VM até no login; segue p/ a pesquisa pública (best-effort)
+                pass
 
         await page.goto(SEI_PESQUISA_PUBLICA, wait_until="domcontentloaded", timeout=30000)
         await asyncio.sleep(1.5)
