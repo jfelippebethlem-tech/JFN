@@ -40,3 +40,13 @@ Não apague dados — **aumente o disco no GCP** (a quente, sem downtime):
 gcloud compute disks resize <DISK> --size=100GB --zone=southamerica-east1-b
 sudo growpart /dev/sda 1 && sudo resize2fs /dev/sda1   # (ou o device da raiz)
 ```
+
+## 2026-06-06 — torch CPU-only (−3.3 GB) e higiene de git
+- **`.venv` 6.0G → 2.7G:** o `torch` estava em build CUDA (`+cu130`) puxando `nvidia-*` (~2.9G) numa VM **sem GPU**
+  (`torch.cuda.is_available()==False`). Trocado por CPU-only:
+  `pip install --force-reinstall --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu`
+  e `pip uninstall -y nvidia-*`. OCR (easyocr) e Massare (xgboost) seguem funcionando (CPU). O OCR é **lazy**, fora
+  do caminho de boot do JFN. ⚠️ **NÃO reinstalar torch do índice padrão** (volta a puxar CUDA) — sempre usar o índice `/whl/cpu`.
+- **Git:** `node_modules/`, `data/sei_cache/` (segurança) e `/reports/` saíram do versionamento (`git rm --cached` + `.gitignore`).
+  `.git` (~118M) só encolhe com reescrita de história (proibida: sem `push --force`).
+- Disco final: **34G livres / 48G (30% usado)**.
