@@ -70,6 +70,17 @@ async def _click_texto(pg, textos: list[str]):
         }""", textos)
 
 
+async def _logado(pg) -> bool:
+    return await pg.evaluate("""()=>[...document.querySelectorAll('a.xyo')].some(e=>(e.innerText||'').trim()==='Execução')""")
+
+
+async def _logout(pg):
+    """Clica 'Sair' (canto superior direito) para encerrar a sessão — necessário para TROCAR de exercício
+    (o SIAFE reconecta automaticamente no exercício anterior se não sair)."""
+    await pg.evaluate("""()=>{const a=[...document.querySelectorAll('a,button,span,td')].find(e=>(e.innerText||'').trim()==='Sair');if(a)a.click();}""")
+    await pg.wait_for_timeout(4000)
+
+
 async def _login(pg, exercicio: int):
     from compliance_agent.envfile import carregar_env
     try:
@@ -82,19 +93,40 @@ async def _login(pg, exercicio: int):
         return {"ok": False, "erro": "sem SIAFE_USER/SIAFE_PASS no .env"}
     await pg.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=45000)
     await pg.wait_for_timeout(2500)
-    # ORDEM IMPORTA: usuário → exercício → SENHA por último, e Enter na senha (o form ADF submete com o
-    # foco no campo de senha; setar o <select> por último tira o foco e o submit não dispara).
-    # RECEITA PROVADA (diagnóstico): preencher usuário+senha e CLICAR o botão de login direto pelo ID
-    # (clique real do Playwright dispara o handler ADF). NÃO usar Enter antes (quebra o submit). NÃO mexer
-    # no select de exercício antes (autoSubmit/PPR quebra). Exercício é tratado depois do login.
+    # se o SIAFE reconectou numa sessão existente (exercício anterior), SAIR para poder escolher o ano
+    if await _logado(pg):
+        await _logout(pg)
+        await pg.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=45000)
+        await pg.wait_for_timeout(2500)
+    # FLUXO QUE FUNCIONA: preencher usuário+senha, escolher o exercício (com retry — o ADF reverte o
+    # <select> sozinho), repor a senha se o re-render limpou, e CLICAR o botão de login por ID.
     await pg.fill('[id="loginBox:itxUsuario::content"]', u)
     await pg.fill('[id="loginBox:itxSenhaAtual::content"]', p)
+    if exercicio:
+        alvo = str(exercicio)
+        for _ in range(12):
+            try:
+                await pg.select_option('[id="loginBox:cbxExercicio::content"]', label=alvo)
+            except Exception:
+                break
+            await pg.wait_for_timeout(150)
+            atual = await pg.evaluate("""()=>{const s=document.getElementById('loginBox:cbxExercicio::content');return s?(s.options[s.selectedIndex]||{}).label:'';}""")
+            if atual == alvo:
+                break
+        # repõe a senha se o re-render do ADF a limpou
+        if (await pg.evaluate("""()=>{const e=document.getElementById('loginBox:itxSenhaAtual::content');return e?e.value.length:0;}""")) == 0:
+            await pg.fill('[id="loginBox:itxSenhaAtual::content"]', p)
     await pg.wait_for_timeout(400)
     try:
         await pg.click('[id="loginBox:btnConfirmar"]', timeout=8000)
     except Exception:
         await pg.evaluate("""()=>{const b=document.getElementById('loginBox:btnConfirmar');if(b)b.click();}""")
     await pg.wait_for_timeout(4000)
+    # EXERCÍCIO BLOQUEADO para esta conta? (ex.: "O SIAFE-Rio 2023 está bloqueado...")
+    body0 = ((await pg.inner_text("body")) or "")
+    if "bloqueado" in body0.lower() and "exerc" in body0.lower() or "está bloqueado" in body0.lower():
+        return {"ok": False, "erro": "exercicio_bloqueado", "ano": exercicio,
+                "detail": f"Exercício {exercicio} bloqueado para esta conta (pedir liberação ao Administrador do SIAFE)."}
     # SEQUÊNCIA DE POPUPS pós-Ok (sessão única "já logado" + avisos/termos). Clica nos botões conhecidos
     # até não haver mais (até 7 rodadas). Tudo via JS por ID/texto (sem o auto-wait de 30s do Playwright).
     for _ in range(7):
@@ -404,6 +436,10 @@ async def coletar_resiliente(exercicio=2025, maxn=100000, max_tentativas=24,
             await _esperar(f"fui desconectado no meio da varredura (já tenho {len(linhas)} OBs)")
             continue
         if not res.get("ok"):
+            if res.get("erro") == "exercicio_bloqueado":
+                # ano bloqueado para a conta (ex.: 2023). NÃO insistir — devolve para o sweep PULAR este ano.
+                return {"ok": False, "erro": "exercicio_bloqueado", "ano": res.get("ano"),
+                        "n": len(linhas), "detail": res.get("detail")}
             if res.get("erro") == "mfa":
                 if siafe_coord:
                     siafe_coord.notificar("🔐 SIAFE pediu MFA na varredura — me mande o código, Mestre Jorge.")
