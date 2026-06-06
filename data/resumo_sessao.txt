@@ -1,0 +1,67 @@
+RESUMO DA SESSÃO JFN — 2026-06-06 (branch linux; ~30 commits)
+
+Mestre Jorge, segue tudo o que foi feito nesta sessão longa, agrupado por frente.
+
+1) ONDA 2 NO PRODUTO (contratos TCE-RJ no Lex e no /relatorio)
+   - Lex ganhou a seção II-C (contratos e compras diretas do TCE-RJ, com objeto/critério/EnquadramentoLegal),
+     red flags R5 (dispensa) / R2 (fracionamento) / R9 (sobre-execução) — tudo SEM depender do SEI (que o WAF bloqueia).
+   - /relatorio ganhou a seção 4-B (TCE-RJ) + comparação "contratado vs pago" (achado: MGS executou 137% do contratado).
+   - Bugs de qualidade corrigidos no coletor TCE-RJ (formato BR de número; coluna modalidade->num_contratacao).
+   - MATRIZ DE ACHADOS (critério×condição→causa→efeito→recomendação) + rótulo "Nota Técnica COM/SEM Achado"
+     (modelo CGE-RJ, Decreto 47.408/2020). Validado ao vivo na MGS Clean.
+
+2) DOIS DEEP-RESEARCH SINTETIZADOS
+   - docs/PESQUISA-DIREITO-ADMIN-CGE.md: improbidade pós-Lei 14.230 (dolo específico, fim do dano presumido,
+     STJ REsp 1.929.685), crimes (CP 312-333 / Lei 14.133 337-E..P), anatomia do achado, modelo CGE-RJ. 25 claims
+     verificados (9 re-verificados em fonte primária após o session-limit).
+   - docs/PESQUISA-SIAFE-ADF-PPR.md: formato HTTP exato do row-fetch da tabela Oracle ADF do SIAFE — destrava a
+     extração completa por UG (§8b), recuperado de um deep-research anterior que estava solto nos transcripts.
+
+3) SEI INTERNO (usuário itkava)
+   - Implementado login interno (sei_cdp.login_sei_interno + ler_processo_sei_launch), env SEI_USER=itkava/SEI_PASS/ERJ.
+   - ACHADO: o WAF do SEI-RJ DROPA a conexão do IP da VM (testado 2x) — não dá para ler da VM.
+   - Solução: workflow GitHub Actions ler-sei.yml (IP Azure passa o WAF, como no SIAFE) + runner tools/ler_sei_lote.py
+     (lê os processos pendentes do banco e commita o cache de volta). FALTA: definir o secret SEI_PASS e rodar.
+
+4) ONDA 3 (motor de risco)
+   - grafo_cartel.py + duckdb_util.py: captura por órgão, dependência de fornecedor, vizinhança (co-ocorrência).
+     Achado real: Fundo Estadual de Transportes (UG 316100) = R$ 4,01 bi, 99,8% num único fornecedor.
+   - Explicabilidade do score (campo "porque" no /api/anomalias) — equivalente honesto a SHAP.
+   - Eval contra ground-truth do TCE-RJ (penalidades): honesto — o score por-OB NÃO prediz punição de órgão
+     (AUC<0,5); só volume (0,65). Calibração + drift: motor estável 2019-2026, corte p99.
+   - Endpoint /api/cartel + skill Yoda /cartel.
+
+5) ONDA 4 (rede societária — sua ideia de cruzar por sócios)
+   - rede_societaria.py: cruza fornecedores por SÓCIO em comum (QSA via BrasilAPI). cruzar_cartel = co-ocorrência
+     nos mesmos órgãos + sócio compartilhado = indício forte (art. 337-F CP). Integrado no Lex (II-D) e /api/cartel.
+   - Ingeridos 800 fornecedores -> 285 sócios compartilhados por 2+ empresas.
+   - CASO REAL achado: grupo Vieira (F P/R C VIEIRA ENG. + sócio Filipe A. F. Marques) co-ocorre e compartilha
+     sócio com 4 consórcios de obras — padrão clássico de empresas-irmãs/cartel.
+
+6) YODA MULTIUSUÁRIO (sua filha e convidados sem acesso a código)
+   - tools/guest_bot.py: bot SEPARADO, read-only, SEM shell/código/arquivos — só chama a API do JFN. Token e
+     allowlist próprios. Serviço systemd + docs/YODA-MULTIUSUARIO.md. FALTA: criar o bot no @BotFather e pôr
+     TELEGRAM_BOT_TOKEN_GUEST + TELEGRAM_GUEST_USERS (id da filha) no .env, depois habilitar o serviço.
+
+7) BENCHMARK DAS IAs DE FALLBACK (vs Claude Opus 4.8)
+   - Harness tools/benchmark_runner.py + guia docs/IAS-FRACAS-GUIA.md. Rodou T1 (roteamento) e T2 (interpretar JSON)
+     em 6 modelos distintos (3 Gemini diretas + 3 Mistral).
+   - APRENDIZADOS: roteamento -> Gemini-2.5-Flash/Pro e Mistral-Small igualam o Claude; Llama-3.3 e Mistral-Large
+     reprovam (maior != melhor). Interpretar JSON -> Mistral-Large é o melhor; Gemini-flash só passam com lembrete.
+   - DEBUG: as chaves LLM do JFN/.env estavam INVÁLIDAS (401); sincronizadas as válidas do ~/.hermes/.env.
+   - T5/T6 e run completo ficaram pendentes (OpenRouter sem crédito 402/429; você pediu para não forçar tokens).
+
+8) RACIONALIZAÇÃO (storage, memória, tokens, diretrizes)
+   - Storage: WAL do SQLite reduzido de ~6 GB para 0 (checkpoint), caches comprimidos, scripts de geração de vídeo
+     removidos (não-JFN). módulo compliance_agent/manutencao.py. 35 GB livres.
+   - requirements.txt SINCRONIZADO com o que a VM realmente usa (pyod/duckdb/sklearn/xgboost/hmmlearn/easyocr/
+     pytesseract/opencv) — antes faltava e um pip install limpo quebraria o motor.
+   - Memória da inteligência progressiva: removidos 6 stubs de teste e semeados 6 fatos verificados (dolo, achado, CGE-RJ...).
+   - Diretriz de racionalização de cota de sessão gravada (cortar desperdício, NUNCA profundidade/qualidade).
+
+PENDÊNCIAS (dependem de você / infra, não de mais trabalho meu):
+   a) Benchmark T5/T6 completos -> recarregar crédito OpenRouter ou quota Gemini.
+   b) Yoda convidado -> criar bot no @BotFather + token/ID no .env.
+   c) SIAFE/SEI todos os anos -> rodar o Actions ler-sei.yml (secret SEI_PASS); o WAF bloqueia a VM.
+
+Tudo committed na branch linux. Estado completo no doc docs/HANDOFF-SESSAO-2026-06-06-ONDAS.md.
