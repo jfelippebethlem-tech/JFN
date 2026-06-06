@@ -597,6 +597,16 @@ async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int
             dados = G.vizinhanca_cartel(cnpj, limite=top)
         elif modo == "dependencia":
             dados = G.dependencia_fornecedores(limite=top)
+        elif modo == "rede":  # fornecedores com sócio em comum (Onda 4)
+            if not cnpj:
+                return JSONResponse({"ok": False, "erro": "informe ?cnpj="}, status_code=400)
+            from compliance_agent import rede_societaria as R
+            dados = R.rede_por_socio(cnpj)
+        elif modo == "cruzado":  # co-ocorrência + sócio comum = indício forte (Onda 4)
+            if not cnpj:
+                return JSONResponse({"ok": False, "erro": "informe ?cnpj="}, status_code=400)
+            from compliance_agent import rede_societaria as R
+            dados = R.cruzar_cartel(cnpj)
         else:
             dados = G.captura_orgaos(limite=top)
         return JSONResponse({"ok": True, "modo": modo, "dados": dados,

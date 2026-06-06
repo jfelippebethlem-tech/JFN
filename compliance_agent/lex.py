@@ -396,6 +396,22 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
                                   f"(ex.: {nomes}) — verificar possível **rodízio/cartel** (bid rigging) entre players "
                                   "que compartilham um conjunto estreito de órgãos."})
 
+    # Onda 4 — cruzamento por sócio em comum (indício FORTE quando há co-ocorrência + sócio)
+    cruzado = {}
+    try:
+        from compliance_agent.rede_societaria import cruzar_cartel
+        cruzado = cruzar_cartel(cnpj)
+    except Exception:
+        cruzado = {}
+    socio_match = cruzado.get("co_ocorrencia_com_socio_comum") or []
+    if socio_match:
+        nomes = "; ".join(f"{(m.get('nome') or '')[:28]} (sócio: {(m.get('socios_comuns') or '')[:30]})"
+                          for m in socio_match[:3])
+        ach_cartel.append({"rf": "R8", "grav": 4,
+                           "obs": f"**Indício forte:** {len(socio_match)} fornecedor(es) que co-ocorrem nos mesmos "
+                                  f"órgãos **e compartilham sócio** com o favorecido ({nomes}) — possível "
+                                  "cartel/laranja/empresas-irmãs (art. 337-F CP; art. 36 Lei 12.529)."})
+
     leituras: list[dict] = []
     ach_doc: list[dict] = []
     fazer_leitura = _LER_SEI if ler_sei is None else ler_sei
@@ -415,7 +431,7 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     emoji, rotulo, just = _grau(achados)
     return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
             "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj, "cartel": cartel,
-            "emoji": emoji, "rotulo": rotulo, "just": just}
+            "cruzado": cruzado, "emoji": emoji, "rotulo": rotulo, "just": just}
 
 
 def parecer_md(ctx: dict, analise: dict | None = None) -> str:
@@ -428,6 +444,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     emoji, rotulo, just = analise["emoji"], analise["rotulo"], analise["just"]
     tcerj = analise.get("tcerj") or {}
     cartel = analise.get("cartel") or {}
+    cruzado = analise.get("cruzado") or {}
     p = ctx.get("pagamentos") or {}
     lidos = [l for l in leituras if l.get("lido")]
     L = []
@@ -565,6 +582,19 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
         add("> Co-ocorrência **não prova** conluio (podem ser do mesmo ramo legítimo). É ponto de diligência: "
             "cruzar quadro societário (QSA), endereços e a cronologia das propostas nas licitações comuns.")
         add("")
+        # cruzamento por sócio (Onda 4) — quando há QSA ingerido
+        match = cruzado.get("co_ocorrencia_com_socio_comum") or []
+        if match:
+            add("**⚠ Indício forte — co-ocorrência COM sócio em comum (QSA):**")
+            add("")
+            add("| Fornecedor | Órgãos em comum | Sócio(s) compartilhado(s) |")
+            add("|---|---:|---|")
+            for m in match[:6]:
+                add(f"| {(m.get('nome') or '')[:38]} | {m.get('orgaos_comuns')} | {(m.get('socios_comuns') or '')[:50]} |")
+            add("")
+            add("> Compartilhar sócio **e** atuar nos mesmos órgãos eleva o indício (possível cartel/laranja/"
+                "empresas-irmãs — art. 337-F CP; art. 36 Lei 12.529). Diligência: confirmar no contrato social e nas atas.")
+            add("")
 
     # III. Matriz de Achados + análise por red flag
     add("## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)")
