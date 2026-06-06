@@ -98,3 +98,44 @@
 - CGE-RJ — formulários (Nota Técnica com/sem Achado, Dec. 47.408/2020): https://cge.rj.gov.br/formularios/
 - CGE-RJ — Tomada de Contas: http://www.cge.rj.gov.br/tomada-de-contas-de-acordo-com-o-manual-da-controladoria-geral-da-uniao-e-deliberacao-tce-279/
 - Lei 14.133/2021 (texto): https://www.planalto.gov.br/ccivil_03/_ato2019-2022/2021/lei/l14133.htm
+
+---
+
+# PARTE II — Penal, normas do RJ e doutrina complementar (deep-research #3, 06/06/2026)
+> 10 teses sintetizadas, votação 3-0. ⚠️ **Confirmar nº/data no texto oficial antes de citar formalmente**
+> (atos infralegais identificados por páginas-resumo; acórdãos do STJ via Notícias, não inteiro teor).
+
+## 6. Tipos penais (CP + Lei 14.133)
+- **Núcleo (CP):** **peculato** (art. 312 — apropriação/desvio de bem que o funcionário detém em razão do cargo);
+  **concussão** (art. 316 — exigir vantagem indevida em razão da função); **corrupção passiva** (art. 317 —
+  solicitar/receber vantagem ligada ao ofício); **corrupção ativa** (art. 333 — oferecer/prometer; **crime
+  formal**, consuma-se na oferta, sem precisar de aceitação). Demais: 313-A, 315, 319, 321.
+- **STJ REsp 2.069.436 (6ª T.):** a revogação do **art. 89 da Lei 8.666/93 NÃO é abolitio criminis** — é
+  **continuidade típico-normativa** migrada para o **art. 337-E do CP**. ⚠️ Vale **só** para *dispensar/inexigir
+  fora das hipóteses*; *descumprir formalidade* teve abolitio (AgRg AREsp 2.079.040). Citar a conduta com precisão.
+- **STJ AREsp 2.786.212 (rel. Schietti):** a supressão da **majorante do art. 84, §2º/8.666** (cargo de confiança)
+  é **novatio legis in mellius** e **retroage** (art. 2º, p.ú., CP) para afastar o aumento.
+- **Lei 14.133 arts. 337-E a 337-P:** crimes em licitações/contratos (inseridos no CP) — contratação direta
+  ilegal (337-E), frustração da competitividade (337-F), etc.
+
+## 7. Normas do Estado do RJ que regulamentam a Lei 14.133
+- **Decreto estadual 47.680/2021** (12.07.2021): Comitês Executivo e Técnico de Governança em Contratações +
+  transição 8.666→14.133.
+- **Resoluções SEPLAG 179/2023** (pesquisa de preços) e **180/2023** (hipóteses de dispensa + compras.gov.br).
+- **PGE-RJ:** Resolução 4.937/2023 (comissão de implantação) e 5.059/2024.
+- **CGE-RJ** (Lei estadual 7.989/2018): controle interno central — AGE/OGE/CRE/Integridade; decreto de 29/01/2026
+  sobre programas de integridade (nº a confirmar).
+- **TCE-RJ Deliberação 279/2017:** rito das Tomadas de Contas (arts. 4º/5º; e-TCERJ); **art. 7º fixa o limiar de
+  "elementos que INDIQUEM"** — alinhado à natureza de **parecer de indícios** do Lex.
+
+## 8. Doutrina complementar (regime sancionador)
+- **Fábio Medina Osório**, *Direito Administrativo Sancionador* (2000): aplica o regime sancionador à improbidade
+  (dupla natureza; tese intermediária).
+- **Pimenta Oliveira & Grotti** (*Panorama…*, RDAI): a Lei 14.230/2021 lida sob a lente do direito sancionador.
+
+## Como incorporar (Parte II)
+- Na seção de **crimes** do parecer: mapear indícios a CP 312/316/317/333 e Lei 14.133 337-E..P, **com a mesma
+  cautela do dolo** usada na improbidade; ao citar dispensa/inexigibilidade irregular, usar **art. 337-E (ex-art.
+  89/8.666, continuidade típica — REsp 2.069.436)**, nunca afirmar crime (competência do MP/Judiciário).
+- Base **RJ** citável: Decreto 47.680/2021; Resoluções SEPLAG 179/180/2023; PGE 4.937/2023; **TCE-RJ Del. 279/2017
+  art. 7º** (limiar de indício). Reforça que o Lex aponta **indício**, não condenação.
