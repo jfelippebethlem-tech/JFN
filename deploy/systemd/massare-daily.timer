@@ -1,0 +1,7 @@
+[Unit]
+Description=Massare — agenda o ciclo diário
+[Timer]
+OnCalendar=*-*-* 07:30:00 UTC
+Persistent=true
+[Install]
+WantedBy=timers.target

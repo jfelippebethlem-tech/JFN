@@ -1,0 +1,92 @@
+{
+  "_comment": "FONTE ÚNICA DE VERDADE do ambiente de execução do ecossistema Mestre Jorge. Lido por agentes/scripts para NÃO hardcodar caminhos. Atualize aqui quando a infra mudar. Gerado/curado em 2026-06-06.",
+  "vm": {
+    "provider": "Google Cloud (GCE)",
+    "instance": "server-1",
+    "zone": "southamerica-east1-b",
+    "hostname": "server-1.southamerica-east1-b.c.jfn-vps.internal",
+    "os": "Ubuntu 24.04 LTS",
+    "kernel": "linux x86_64",
+    "user": "jfelippebethlem",
+    "home": "/home/jfelippebethlem",
+    "is_windows": false,
+    "note": "Ambiente de PRODUÇÃO é esta VM Linux. Caminhos C:\\ que aparecem em docs antigos são do desktop Windows legado e NÃO existem aqui."
+  },
+  "paths": {
+    "jfn_root": "/home/jfelippebethlem/JFN",
+    "jfn_venv_python": "/home/jfelippebethlem/JFN/.venv/bin/python",
+    "jfn_data_dir": "/home/jfelippebethlem/JFN/data",
+    "jfn_compliance_db": "/home/jfelippebethlem/JFN/data/compliance.db",
+    "jfn_reports_dir": "/home/jfelippebethlem/JFN/reports",
+    "massare_db": "/home/jfelippebethlem/JFN/massare/data/massare.db",
+    "hermes_code": "/home/jfelippebethlem/hermes-agent",
+    "hermes_venv_python": "/home/jfelippebethlem/hermes-agent/venv/bin/python",
+    "hermes_home": "/home/jfelippebethlem/.hermes",
+    "yoda_config": "/home/jfelippebethlem/.hermes/config.yaml",
+    "yoda_memory_dir": "/home/jfelippebethlem/.hermes/memories",
+    "process_documentation": "/home/jfelippebethlem/JFN/hermes-yoda/process_documentation.md"
+  },
+  "ports": {
+    "jfn_api": 8000,
+    "chrome_cdp": 9222
+  },
+  "agents": {
+    "yoda": {
+      "papel": "Bot assistente do Telegram (front-end / MAESTRO do ecossistema). Orquestra os outros agentes.",
+      "runtime": "instância Hermes rodando como gateway Telegram",
+      "service": "hermes-gateway.service (systemd --user)",
+      "telegram_chat_id": "45338178",
+      "como_aciona_outros": "chama a API do JFN em http://127.0.0.1:8000 (barramento único)"
+    },
+    "jfn": {
+      "papel": "Motor de auditoria/compliance do governo do RJ + barramento de agentes (API HTTP).",
+      "service": "jfn.service (systemd --user)",
+      "entrypoint": "/home/jfelippebethlem/JFN/.venv/bin/python /home/jfelippebethlem/JFN/server.py --host 127.0.0.1 --port 8000",
+      "api_base": "http://127.0.0.1:8000",
+      "endpoints_relatorio": [
+        "POST /api/relatorio/inteligencia  (fornecedor; body {cnpj?|empresa?, anos?})",
+        "POST /api/relatorio/orgao         (órgão/UG; body {ug?|orgao?, anos?})",
+        "GET  /api/compliance/relatorio_30d",
+        "POST /api/hermes/missao  (auditoria autônoma em texto livre)"
+      ]
+    },
+    "massare": {
+      "papel": "Agente de mercado: coleta e analisa preços/notícias e prevê cenários (curtíssimo/curto/médio/longo). Trabalha durante o pregão.",
+      "modulo": "massare (dentro de ~/JFN, mesmo venv do JFN)",
+      "db": "/home/jfelippebethlem/JFN/massare/data/massare.db",
+      "endpoints": [
+        "GET  /api/massare/placar   (acurácia OOS + sentimento)",
+        "GET  /api/massare/cenarios (último snapshot multi-horizonte)",
+        "POST /api/massare/prever   (body {symbol?, horizon?})"
+      ]
+    },
+    "hermes": {
+      "papel": "Plataforma/runtime sobre a qual o Yoda roda (CLI/gateway). Não é um agente de tarefa separado.",
+      "code": "/home/jfelippebethlem/hermes-agent",
+      "state": "/home/jfelippebethlem/.hermes"
+    }
+  },
+  "boot_workflow": {
+    "mecanismo": "systemd --user com linger=yes (sobe no boot da VM, sem login)",
+    "ordem": [
+      "hermes-gateway.service  -> Yoda online no Telegram",
+      "jfn.service             -> API JFN :8000 (auditoria + painel + barramento)",
+      "chrome-jfn.service      -> ponte Chrome headless CDP :9222 (coleta TFE/SIAFE ao vivo)",
+      "timers abaixo disparam por agenda"
+    ],
+    "timers": {
+      "jfn-tfe.timer": "08:00 UTC diário — coleta TFE Despesa (espelho D-1 SIAFE, dados abertos RJ)",
+      "jfn-tfe-ob.timer": "Seg 09:00 UTC — base completa de OBs 2019-2026 (download + ingestão)",
+      "jfn-ronda.timer": "a cada 10min — ronda (saúde do serviço + alertas)",
+      "massare-daily.timer": "07:30 UTC — ciclo diário (registra a previsão oficial do dia)",
+      "massare-market.timer": "pregão BRT (pré-market 12:50 UTC ~ fechamento 21:00 UTC), dias úteis — cenários multi-horizonte ao vivo"
+    }
+  },
+  "servico_desabilitado": {
+    "yoda.service": "Serviço de SISTEMA duplicado, DESABILITADO em 2026-06-06 (brigava com hermes-gateway.service pelo mesmo bot). NÃO reativar — usar hermes-gateway.service (user)."
+  },
+  "dados": {
+    "ordens_bancarias_cobertura": "2019-2026 (gestão Cláudio Castro)",
+    "fonte": "TFE/SIAFE-RJ (OB=pagamento)"
+  }
+}

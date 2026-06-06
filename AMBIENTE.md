@@ -1,0 +1,132 @@
+# AMBIENTE — Fonte Única de Verdade do Ecossistema Mestre Jorge
+
+> **Para qualquer IA/agente que abrir este arquivo:** isto descreve EXATAMENTE onde tudo roda e como
+> os agentes se falam. Companheiro de máquina: [`ambiente.json`](ambiente.json) (mesma info, legível por
+> script — use-o para não hardcodar caminhos). **Atualize os dois juntos quando a infra mudar.**
+> Última curadoria: **2026-06-06**.
+
+---
+
+## 1. Onde estamos rodando (NÃO é Windows)
+
+| Item | Valor |
+|---|---|
+| Nuvem | Google Cloud (GCE) |
+| Instância | `server-1`, zona `southamerica-east1-b` |
+| SO | **Ubuntu 24.04 LTS** (Linux x86_64) |
+| Usuário | `jfelippebethlem` |
+| Home | `/home/jfelippebethlem` |
+
+⚠️ **Caminhos `C:\...` em docs antigos (ex.: `C:\JFN\jfn`) são do desktop Windows legado e NÃO existem aqui.**
+Na VM, o JFN fica em **`/home/jfelippebethlem/JFN`** (ou `~/JFN`). Sempre use `Path` relativo / variável de
+ambiente no código — nunca caminho fixo de SO.
+
+---
+
+## 2. Os agentes e quem é quem
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│  MESTRE JORGE  (Telegram, celular)                                     │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                 │  manda pedido em PT-BR / comandos /relatorio etc.
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  YODA  = bot assistente / MAESTRO                                      │
+│  (instância Hermes  →  hermes-gateway.service)                         │
+│  Decide QUAL agente aciona e chama a API do JFN (barramento único).    │
+└───────────────────────────────┬──────────────────────────────────────┘
+                                 │  HTTP  →  http://127.0.0.1:8000
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│  JFN  = motor + BARRAMENTO DE AGENTES   (jfn.service, FastAPI :8000)   │
+│   ├─ Auditoria/Compliance RJ  (OBs, contratos, red flags)             │
+│   ├─ /api/relatorio/inteligencia   → relatório due-diligence          │
+│   ├─ /api/hermes/missao            → auditoria autônoma (texto livre)  │
+│   └─ /api/massare/*                → MASSARE (mercado/predição)        │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+- **Hermes** — a *plataforma* (CLI/gateway) em `~/hermes-agent`, estado em `~/.hermes`. O Yoda É uma
+  instância do Hermes. Não é um "agente de tarefa" separado.
+- **Yoda** — o bot do Telegram (`hermes-gateway.service`, chat `45338178`). É o **maestro**: roteia o
+  pedido do Jorge para o agente certo e responde no Telegram.
+- **JFN** — o motor de auditoria/compliance do RJ **e** o barramento HTTP por onde o Yoda aciona tudo.
+  Servidor FastAPI em `127.0.0.1:8000` (`jfn.service`). Código em `~/JFN`, venv `~/JFN/.venv`.
+- **Massare** — agente de **mercado**: coleta/analisa preços e notícias e prevê cenários
+  (curtíssimo/curto/médio/longo). É um **módulo dentro de `~/JFN`** (mesmo venv), exposto pela API do JFN.
+
+---
+
+## 3. Workflow de boot (o que sobe e em que ordem)
+
+Mecanismo: **systemd `--user`** com `linger=yes` → sobe no boot da VM mesmo sem login.
+
+1. `hermes-gateway.service` → **Yoda** online no Telegram.
+2. `jfn.service` → **API JFN** em `:8000` (auditoria + painel + barramento).
+3. `chrome-jfn.service` → **ponte Chrome headless CDP** em `:9222` (coleta TFE/SIAFE ao vivo).
+4. Timers por agenda:
+
+| Timer | Quando (UTC) | O quê |
+|---|---|---|
+| `jfn-tfe.timer` | 08:00 diário | Coleta TFE Despesa (espelho D-1 do SIAFE, dados abertos RJ) |
+| `jfn-tfe-ob.timer` | Seg 09:00 | Base completa de OBs 2023–2026 (download + ingestão) |
+| `jfn-ronda.timer` | a cada 10 min | Ronda: saúde do serviço + alertas |
+| `massare-daily.timer` | 07:30 | Massare: ciclo diário (registra a previsão **oficial** do dia) |
+| `massare-market.timer` | 12:50→21:00, dias úteis | Massare: cenários multi-horizonte **ao vivo** durante o pregão (09:50→18:00 BRT) |
+
+> ⛔ **`yoda.service` (nível de SISTEMA) foi DESABILITADO em 2026-06-06.** Era um duplicado que brigava
+> com o `hermes-gateway.service` pelo mesmo bot do Telegram (causava loop de FAILURE/restart). **Não reativar.**
+> O gateway canônico do Yoda é o `hermes-gateway.service` (user).
+
+---
+
+## 4. Como o Yoda aciona cada agente (barramento = API do JFN em :8000)
+
+O Yoda chama via `terminal`/`execute_code` (ferramenta `curl`). **Não existe ferramenta `web_search`** no
+Yoda — não inventar. Rotas oficiais:
+
+```bash
+# Relatório de inteligência completo de um fornecedor (por nome conhecido OU CNPJ):
+curl -s -X POST http://127.0.0.1:8000/api/relatorio/inteligencia \
+     -H 'Content-Type: application/json' \
+     -d '{"empresa":"MGS Clean"}'
+# → {ok, cnpj, empresa, risco, score, resumo, path_md, path_pdf, fonte}
+
+# Auditoria autônoma aberta (pedido complexo em texto livre):
+curl -s -X POST http://127.0.0.1:8000/api/hermes/missao \
+     -H 'Content-Type: application/json' -d '{"missao":"investigar contratos do fornecedor X"}'
+
+# Mercado (Massare):
+curl -s http://127.0.0.1:8000/api/massare/placar      # acurácia + sentimento
+curl -s http://127.0.0.1:8000/api/massare/cenarios    # último snapshot multi-horizonte
+curl -s -X POST http://127.0.0.1:8000/api/massare/prever -d '{"symbol":"^BVSP","horizon":5}'
+```
+
+Roteamento (intenção → agente):
+- "relatório / auditoria / fornecedor / CNPJ / SIAFE / OB / due diligence" → **JFN** (`/api/relatorio/inteligencia`).
+- "mercado / câmbio / bolsa / ação / dólar / previsão / cenário" → **Massare** (`/api/massare/*`).
+- Pedido de auditoria aberto/complexo → **`/api/hermes/missao`**.
+- Conversa geral / código / texto → o **próprio Yoda** (Hermes).
+
+---
+
+## 5. Comandos de operação rápidos (para humanos e IAs)
+
+```bash
+# Saúde dos serviços
+systemctl --user status hermes-gateway jfn chrome-jfn --no-pager
+curl -s http://127.0.0.1:8000/status           # JFN vivo?
+curl -s http://127.0.0.1:9222/json/version     # ponte Chrome viva?
+
+# Logs
+journalctl --user -u jfn -n 50 --no-pager
+journalctl --user -u hermes-gateway -n 50 --no-pager
+
+# Rodar coisas do JFN à mão (sempre com o venv do JFN)
+cd ~/JFN && .venv/bin/python -m compliance_agent.auditoria.auditar_fornecedor 19.088.605/0001-04 2025 2026
+cd ~/JFN && .venv/bin/python -m massare.daily --json
+```
+
+**Regra de ouro do JFN:** Empenho ≠ Pagamento. A Ordem Bancária (OB) é o dado definitivo de pagamento.
+Todo número é marcado **REAL** vs **ESTIMADO/CACHE**; nunca fabricar valor. (Ver `CLAUDE.md`.)
