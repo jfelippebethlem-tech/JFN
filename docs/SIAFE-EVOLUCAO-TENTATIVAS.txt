@@ -1,0 +1,178 @@
+================================================================================
+SIAFE-RIO 2 — EVOLUÇÃO DAS NOSSAS TENTATIVAS (todo o repo)
+Documento de inteligência para consulta. Gerado em 2026-06-06.
+================================================================================
+
+OBJETIVO
+--------
+Extrair do SIAFE-Rio 2 (siafe2.fazenda.rj.gov.br) a execução financeira — sobretudo
+as Ordens Bancárias (OB = pagamento DEFINITIVO) com a coluna PROCESSO (nº SEI), os
+CONTRATOS por fornecedor, e correlacionar OB <-> contrato <-> processo SEI. O SIAFE é
+um Oracle ADF Faces (MyFaces Trinidad), que renderiza por PPR (AJAX parcial) e tem
+gatilhos que resistem à automação ingênua. Abaixo, tudo que tentamos, o que aprendemos
+e o que JÁ FUNCIONA.
+
+--------------------------------------------------------------------------------
+1. LINHA DO TEMPO (resumo dos commits, do +antigo ao +novo)
+--------------------------------------------------------------------------------
+31/05  Agente SIAFE2/SEI inicial (Playwright + Claude API). SIAFE_EXERCICIO=2026.
+01/06  diagnose_siafe.py: explora menus, FlexVision, hashes e formulários via CDP.
+       siafe_browser.py reescrito com seletores reais; navegação Vaadin/ADF.
+       Deep-dive de Execução com captura de SEI; "lock in" dos seletores ADF de OB.
+02/06  Extrai favorecido/CPF/valor/processo DIRETO da tabela; coleta 2026 destravada.
+       Suite de testes offline + observabilidade da coleta.
+04/06  >>> BREAKTHROUGH DO FILTRO ADF (contratos) <<<
+       - Descoberto que o texto "Filtro" (pnlAccordionDec_afrCl0) é ARMADILHA
+         (onclick="return false"); quem abre o painel é o disclosure sdtFilter::disAcr.
+       - Decifrado: Propriedade/Operador via select_option; o VALOR exige keyboard.type
+         (keystrokes reais) + Enter — fill() NÃO dispara a query do ADF.
+       - siafe_contratos.py FUNCIONAL: lista TODOS os contratos por CNPJ.
+         VALIDADO: MGS CLEAN = 41 contratos, R$ 146,7 mi.
+       - Pacote compliance_agent/auditoria/ (auditar_fornecedor: TFE + contrato + SEI).
+       - Protocolo de operação SEGURA (ritmo humano anti-bloqueio).
+05/06  Coletor SIAFE autônomo (sem CDP manual). Login robusto + diagnóstico.
+       MFA: SIAFE passou a exigir 2FA -> suporte a MFA via Telegram / SIAFE_MFA_CODE.
+       Vários fixes de login ADF: cbxCliente/cbxExercicio, popup "usuário já logado"
+       (clicar "Sim" com mouse REAL — ADF ignora JS click; quirk 0x0 do CSS),
+       logout entre exercícios, "context destroyed", lista de anos sem futuros.
+       Coleta de OBs via GitHub Actions (IP Azure) — workflows criados.
+06/06  siafe_ppr.py: replay HTTP do PPR (scroll) p/ furar o limite de 50 da view.
+       siafe_ob_orcamentaria.py: varredura por SCROLL da tabela virtualizada.
+       docs SIAFE-ARQUITETURA / PESQUISA-SIAFE-ADF-PPR / NAVEGACAO / GUIA-AUTOMACAO.
+       (sessão atual) Achados ao vivo da VM — ver seção 4.
+
+--------------------------------------------------------------------------------
+2. FERRAMENTAS QUE EXISTEM NO REPO (e status)
+--------------------------------------------------------------------------------
+compliance_agent/siafe_login.py         Login direto da VM (Playwright headless).
+compliance_agent/siafe_session.py       Login c/ MFA + persistência de sessão 24/7.
+compliance_agent/siafe_coord.py         Coordenação da SESSÃO ÚNICA via Telegram
+                                        (SIAFE só aceita 1 sessão por usuário).
+compliance_agent/siafe_ob_orcamentaria.py  Varredura da tela "OB Orçamentária"
+                                        (tabela pt1:tblOBOrcamentaria). Colhe rolando
+                                        o ::scroller; ingere em ob_orcamentaria_siafe.
+                                        Tem coletar_resiliente (retoma se a sessão cair)
+                                        e chkRemoveLimit (ver seção 4 — ausente nesta tela).
+compliance_agent/siafe_ppr.py           Coleta via replay HTTP do PPR (scroll), tabela
+                                        pt1:tblOrdemBancaria. Fura o limite de 50/view.
+compliance_agent/collectors/siafe_ob.py Coletor diário OB Orçamentária.
+compliance_agent/auditoria/siafe_contratos.py  >>> O QUE FUNCIONA <<< lista TODOS os
+                                        contratos por CNPJ via filtro ADF (keyboard.type).
+compliance_agent/auditoria/auditar_fornecedor.py  Orquestrador 1-comando (TFE+contrato+SEI).
+siafe_agent/ (agent.py, browser/siafe_browser.py, llm/groq_explorer.py)  Agente autônomo
+                                        de exploração (loop agêntico sem Claude API).
+diagnose_siafe.py                       Diagnóstico: coleta seletores reais.
+.github/workflows/*siafe*               Coleta headless por GitHub Actions (IP Azure).
+DOCS: docs/SIAFE-ARQUITETURA.md, docs/PESQUISA-SIAFE-ADF-PPR.md, docs/SIAFE-NAVEGACAO.md,
+      docs/SIAFE-RIO2-GUIA-AUTOMACAO.md, _SANDBOX/SIAFE-rotina-auditoria.md,
+      _SANDBOX/gcp/briefing-VM-siafe-auditoria.md, SIAFE_AGENT_LOG.md (diário de erros/fixes).
+
+--------------------------------------------------------------------------------
+3. APRENDIZADOS TÉCNICOS (o miolo)
+--------------------------------------------------------------------------------
+LOGIN (login.jsp):
+  - Campos: loginBox:itxUsuario::content, loginBox:itxSenhaAtual::content,
+    cbxCliente::content (0=Rio), cbxExercicio::content (2027=0,2026=1,2025=2,2024=3,2023=4),
+    botão btnConfirmar.
+  - Popup "usuário já logado / Deseja continuar?": clicar "Sim" (myBtnOk) com MOUSE REAL
+    (Playwright native click) — ADF ignora el.click() de JS; o botão pode estar 0x0 no CSS.
+  - SESSÃO ÚNICA: logar derruba a sessão do Jorge e vice-versa -> coordenação via Telegram.
+  - MFA/2FA: passou a ser exigido às vezes; injeção via SIAFE_MFA_CODE / código no Telegram.
+  - Exercícios liberados na conta: 2024-2026 (2023 bloqueado pelo servidor — detectar e pular).
+
+NAVEGAÇÃO (sem derrubar a sessão):
+  - Menus ADF (disclosureAnchor) por índice; PREFIXO varia por tela (pt1/tpl/ptPrincipal).
+  - Clicar por COORDENADA/elemento real, aguardar 2-3s, confirmar pela URL/título.
+  - NÃO usar el.click() de JS em link de menu com o popup myModal ativo (encerra a sessão).
+
+ADF / PPR (Partial Page Rendering):
+  - A página atualiza pedaços via AJAX. Campos aparecem só após eventos (ex.: o campo
+    "Valor" do filtro só nasce DEPOIS de escolher o Operador e dar blur).
+  - Eventos SINTÉTICOS (dispatchEvent change/blur) e fill() NÃO disparam o autoSubmit/PPR
+    de forma confiável em headless. É a origem de quase toda a dor.
+
+>>> O SEGREDO DO FILTRO ADF (decifrado 04/06, VALIDADO em contratos) <<<
+  1. O texto "Filtro" (pnlAccordionDec_afrCl0) é ARMADILHA (onclick="return false").
+     Quem ABRE o painel é o disclosure  PREFIXO:TABELA:sdtFilter::disAcr  (title "Mostrar
+     este painel"). Ex.: pt1:tblContrato:sdtFilter::disAcr (contratos),
+     pt1:tblOrdemBancaria:sdtFilter::disAcr (OB), pt1:tblOBOrcamentaria:sdtFilter::disAcr.
+  2. Propriedade (cbx_col_sel_rtfFilter::content) e Operador (cbx_op_sel_rtfFilter::content)
+     são <select> nativos -> select_option() FUNCIONA neles.
+       Operadores: 0=igual,1=>,2=>=,3=<,4=<=,5=!=,6=nulo,7=contém,8=começa,9=termina,10=pertence(;)
+  3. O VALOR (in_value_rtfFilter::content) PRECISA ser DIGITADO com keyboard.type(valor, delay=80)
+     + keyboard.press("Enter"). fill()/dispatchEvent NÃO aplicam o filtro. ESTE é o pulo do gato.
+  Receita validada (contratos, MGS): abrir sdtFilter::disAcr -> Propriedade=7 (Cod. Contratado)
+  -> Operador=0 (igual) -> clicar o campo Valor, Ctrl+A/Delete -> keyboard.type(cnpj) -> Enter.
+  RESULTADO: 41 contratos, R$ 146,7 mi.
+
+LIMITE DE 1000 REGISTROS:
+  - As consultas trazem no máximo ~1000 linhas por vez (corte do servidor na carga).
+  - Algumas telas têm checkbox chkRemoveLimit que remove o teto (ex.: Acompanhamento de PD,
+    Código de Barras, Guia de Devolução). A tela OB Orçamentária NÃO tem esse checkbox.
+  - Estratégia p/ >1000: segmentar com o filtro (UG Emitente, Data Emissão por faixa,
+    Número "começa com", "pertence ;") e iterar. Órgãos grandes (Casa Civil, SEEDUC, SES,
+    ALERJ, TJRJ) têm >1000 OBs/ano -> precisam de sub-filtro por período além da UG.
+
+PPR via HTTP (alternativa ao browser — siafe_ppr.py / docs/PESQUISA-SIAFE-ADF-PPR.md):
+  - Usa Playwright só p/ logar; depois pagina com context.request (mesmos cookies),
+    disparando o evento de SCROLL via POST e lendo o envelope ADF (<fragment><![CDATA[...]]>).
+  - O javax.faces.ViewState ROTACIONA: extrair o novo a cada resposta.
+  - Fura o limite de 50/view; replicar o FILTRO por HTTP (não só scroll) é o caminho
+    documentado p/ extração completa sem o browser.
+
+--------------------------------------------------------------------------------
+4. ACHADOS AO VIVO DESTA SESSÃO (2026-06-06, da VM)
+--------------------------------------------------------------------------------
+  - A VM ACESSA O SIAFE: siafe2.fazenda.rj.gov.br respondeu HTTP 200 da VM (GCP); login +
+    navegação OK (≈14s login, ≈28s nav). DIFERENTE do SEI, o WAF do SIAFE não dropa a VM.
+  - Coletadas/ingeridas 951 OBs de 2026 pela tela OB Orçamentária (sem filtro).
+  - CONFIRMADO o teto: ob_orcamentaria_siafe tem 2024=995, 2025=971, 2026=951 — todos no ~1000.
+  - A tela OB Orçamentária NÃO tem chkRemoveLimit (degrada com log honesto).
+  - O seletor selUg (topo) NÃO filtra a listagem (testado select_option + teclado: distribuição
+    de UGs idêntica, sem glasspane). selUg é contexto, não filtro de grade.
+  - O sdtFilter da OB Orçamentária EXISTE (sondado): Propriedade tem 24 opções (Número=0,
+    UG Emitente=1, UG Pagadora=2, Data Emissão=3, ..., Processo=16); Operador 12 opções.
+  - ERRO DESTA SESSÃO (corrigido pelo histórico): tentei o filtro com fill()+dispatchEvent e
+    select_option no valor -> 0 PPR. O MÉTODO CERTO (já provado em 04/06) é keyboard.type+Enter
+    no campo Valor. >>> Próximo passo: aplicar keyboard.type na OB Orçamentária p/ furar o 1000.
+
+--------------------------------------------------------------------------------
+5. O QUE JÁ FUNCIONA HOJE
+--------------------------------------------------------------------------------
+  [OK] Login na VM (com tratamento de popup/MFA/sessão única).
+  [OK] CONTRATOS por fornecedor: filtro ADF via keyboard.type (siafe_contratos.py). MGS=41.
+  [OK] OB Orçamentária: varredura por scroll até ~1000/consulta + ingestão (rico: 23 colunas,
+       inclui PROCESSO/SEI que o TFE não tem).
+  [OK] Base de VOLUME de OBs já existe por OUTRA via: 1.121.303 OBs (2019-2026) do DOWNLOAD TFE
+       (dados abertos, sem SIAFE/MFA/ADF) em ordens_bancarias. O scrape SIAFE agrega o nº SEI.
+  [OK] Correlação OB<->SEI<->contrato (correlacao_sei.py + tcerj_aberto): nº SEI em 1.527 OBs,
+       31 links OB<->contrato por SEI, 466k OBs casadas por CNPJ.
+
+--------------------------------------------------------------------------------
+6. O QUE FALTA / OPÇÕES PARA DECIDIR
+--------------------------------------------------------------------------------
+  (A) OB Orçamentária COMPLETA (>1000/ano): aplicar a técnica keyboard.type no filtro
+      (Propriedade=UG Emitente ou Data Emissão por faixa) e iterar por UG/período. É a
+      continuação natural do que já funciona em contratos. Custo: runtime (browser, lento)
+      + sessão única (coordenar c/ o Jorge). Cada UG <1000 -> uma consulta; UGs grandes ->
+      sub-faixa de período.
+  (B) PPR por HTTP com FILTRO: estender siafe_ppr.py p/ replicar o request de filtro (não só
+      scroll) e paginar. Mais robusto/rápido, sem browser; exige decifrar o payload do filtro.
+  (C) Ficar com o TFE (1,12M OBs) como volume e usar o SIAFE só p/ o que ele tem de único
+      (PROCESSO/SEI) no alcançável — pragmático, já quase pronto.
+
+  Recomendação: (A) reusando a receita de contratos (keyboard.type) — menor risco, já provada.
+
+--------------------------------------------------------------------------------
+7. ARMADILHAS A NÃO REPETIR (lições)
+--------------------------------------------------------------------------------
+  - fill()/dispatchEvent/select_option NO CAMPO VALOR do filtro = não dispara PPR. Use keyboard.type+Enter.
+  - Clicar o label "Filtro" (onclick=return false) = nada. Use sdtFilter::disAcr.
+  - el.click() de JS em menu/popup ADF = pode encerrar a sessão. Use clique real (mouse).
+  - selUg do topo NÃO filtra a grade da OB Orçamentária.
+  - SIAFE = sessão única: combinar antes de logar (siafe_coord / Telegram).
+  - 2023 bloqueado p/ a conta; só 2024-2026.
+
+================================================================================
+FIM — dúvidas? Os detalhes finos estão em docs/SIAFE-*.md e SIAFE_AGENT_LOG.md.
+================================================================================
