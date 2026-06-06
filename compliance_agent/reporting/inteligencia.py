@@ -370,6 +370,13 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
     contratos = consultar_contratos(cnpj_d)
     enriq = await _enriquecer(cnpj_d)
 
+    # cruzamento sócio × OB (SIAFE) × processo SEI × endereço (best-effort, não derruba o relatório)
+    try:
+        from compliance_agent.cruzamento import cruzar_async
+        cruz = await asyncio.wait_for(cruzar_async(cnpj_d), timeout=25)
+    except Exception as exc:  # noqa: BLE001
+        cruz = {"_erro": str(exc)[:140]}
+
     nome = (enriq.get("empresa") or resolv["nome"] or "").strip() or fmt_cnpj(cnpj_d)
     risco = enriq.get("risco", "—")
     score = enriq.get("score", 0)
@@ -380,6 +387,7 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
         "data": date.today().isoformat(), "risco": risco, "score": score,
         "pagamentos": pagamentos, "contratos": contratos, "enriq": enriq,
         "fonte_enriq": enriq.get("_fonte", "INDISPONIVEL"),
+        "cruzamento": cruz,
     }
 
     md = render_md(contexto)
@@ -449,6 +457,69 @@ def _resumo_executivo(ctx: dict) -> str:
     return " ".join(linhas)
 
 
+def _render_cruzamento(ctx: dict) -> str:
+    """Seção 1-B: cruzamento sócio × OB (SIAFE) × processo SEI × endereço."""
+    cz = ctx.get("cruzamento") or {}
+    L: list[str] = []
+    add = L.append
+    add("## 1-B. REDE SOCIETÁRIA — CRUZAMENTO SÓCIO × OB × SEI × ENDEREÇO")
+    add("")
+    add("> Cruza o **quadro societário** (QSA/Receita) com **as OBs do SIAFE**, os **processos SEI** de origem dos "
+        "pagamentos e o **endereço (sede)** das empresas. Empresas que compartilham sócio — e sobretudo as que "
+        "compartilham a mesma sede — recebendo recursos do mesmo Estado são indício de grupo econômico/empresas-"
+        "irmãs a verificar (art. 337-F CP; art. 11 Lei 8.429/92). **Indício, nunca acusação.**")
+    add("")
+
+    if cz.get("_erro"):
+        add(f"> ⚠️ Cruzamento indisponível nesta execução ({cz['_erro']}). As demais seções não dependem dele.")
+        add("")
+        return "\n".join(L)
+
+    osi = cz.get("obs_sei") or {}
+    add(f"**Pegada do alvo no SIAFE:** {osi.get('n_obs', 0)} OBs · R$ {moeda(osi.get('total_pago', 0))} pagos · "
+        f"{osi.get('n_sei', 0)} processo(s) SEI vinculado(s).")
+    add("")
+    seis = osi.get("sei_processos") or []
+    if seis:
+        amostra = ", ".join(seis[:12]) + (f" (+{len(seis)-12})" if len(seis) > 12 else "")
+        add(f"**Processos SEI do alvo (origem das OBs/contratos):** {amostra}")
+        add("")
+
+    if not cz.get("tem_rede"):
+        msg = cz.get("_nota") or "Sem rede societária ingerida para este CNPJ."
+        if not cz.get("socios"):  # QSA ainda não ingerido → ofereça o comando
+            msg += (" Para habilitar o cruzamento por sócio: "
+                    "`python -m compliance_agent.rede_societaria --ingerir " + (cz.get("cnpj") or "") + "`.")
+        add(f"> {msg}")
+        add("")
+        return "\n".join(L)
+
+    socios = cz.get("socios") or []
+    if socios:
+        add(f"**Sócios do alvo (QSA):** {', '.join(socios[:15])}"
+            + (f" (+{len(socios)-15})" if len(socios) > 15 else "") + ".")
+        add("")
+
+    rel = cz.get("relacionados") or []
+    add(f"**Empresas com sócio em comum ({len(rel)}):** ordenadas por sede compartilhada e valor pago.")
+    add("")
+    add("| Empresa (CNPJ) | Sócio(s) em comum | OBs | Pago (R$) | SEI | Mesma sede? |")
+    add("|---|---|---:|---:|---:|:---:|")
+    for r in rel[:25]:
+        razao = (r.get("razao") or "—")[:38]
+        comuns = (r.get("socios_comuns") or "—")
+        comuns = (comuns[:40] + "…") if len(comuns) > 40 else comuns
+        flag = "🔴 SIM" if r.get("mesmo_endereco") else "—"
+        add(f"| {razao} ({fmt_cnpj(r['cnpj'])}) | {comuns} | {r.get('n_obs',0)} | "
+            f"{moeda(r.get('total_pago',0))} | {r.get('n_sei',0)} | {flag} |")
+    add("")
+
+    for ind in (cz.get("indicios") or []):
+        add(f"> 🟡 **Indício:** {ind}")
+        add("")
+    return "\n".join(L)
+
+
 # ───────────────────────────── render Markdown (11 seções) ─────────────────────────────
 
 def render_md(ctx: dict) -> str:
@@ -494,6 +565,7 @@ def render_md(ctx: dict) -> str:
             ("Data de abertura", emp.get("data_abertura")), ("Porte", emp.get("porte")),
             ("Natureza jurídica", emp.get("natureza_juridica")), ("Capital social", f"R$ {moeda(emp.get('capital_social'))}"),
             ("CNAE principal", emp.get("cnae_principal")), ("Município/UF", f"{emp.get('municipio','—')}/{emp.get('uf','—')}"),
+            ("Endereço (sede)", emp.get("endereco")),
         ]
         for k, v in campos:
             add(f"- **{k}:** {v or '—'}")
@@ -507,7 +579,15 @@ def render_md(ctx: dict) -> str:
         add(f"> ⚠️ Perfil cadastral **{ctx['fonte_enriq']}** "
             f"({ctx['enriq'].get('_motivo','enriquecimento não disponível')}). "
             f"Os dados financeiros abaixo (OBs/contratos) são REAIS e independem desta seção.")
+        # endereço da sede via cruzamento (BrasilAPI direto), mesmo sem o enriquecimento completo
+        _end = (ctx.get("cruzamento") or {}).get("endereco") or {}
+        if _end.get("endereco"):
+            add("")
+            add(f"- **Endereço (sede):** {_end['endereco']}")
     add("")
+
+    # 1-B. Cruzamento sócio × OB (SIAFE) × processo SEI × endereço
+    add(_render_cruzamento(ctx))
 
     # 3. Pagamentos (OBs) por ano — TABELA POR ANO (requisito do Mestre Jorge)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
