@@ -48,8 +48,10 @@ MAX_TENTATIVAS_CAPTCHA = int(os.environ.get("SEI_CAPTCHA_TENTATIVAS", "4"))
 # IMPORTANTE: o usuário é MINÚSCULO ("itkava") — faz diferença no login do SIP.
 SEI_USER = os.environ.get("SEI_USER", "itkava")
 SEI_PASS = os.environ.get("SEI_PASS", "")
-SEI_ORGAO = os.environ.get("SEI_ORGAO", "")          # sigla/nome do órgão no dropdown de login
-SEI_LOGIN_URL = os.environ.get("SEI_LOGIN_URL", "https://sei.rj.gov.br/sip/login.php?sigla_sistema=SEI")
+SEI_ORGAO = os.environ.get("SEI_ORGAO", "ERJ")       # órgão do SEI-RJ (Estado do Rio de Janeiro)
+SEI_LOGIN_URL = os.environ.get(
+    "SEI_LOGIN_URL",
+    "https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI&infra_url=L3NlaS8=")
 
 
 def _tem_credenciais_sei() -> bool:
