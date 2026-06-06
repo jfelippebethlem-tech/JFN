@@ -244,6 +244,41 @@ Todo relatório gerado deve seguir este padrão mínimo:
 
 ---
 
+## MOTOR DE RELATÓRIOS E BARRAMENTO DE AGENTES (atualizado 2026-06-06)
+
+> Documentação completa da sessão: [`docs/HANDOFF-2026-06-06-SESSAO-COMPLETA.md`](docs/HANDOFF-2026-06-06-SESSAO-COMPLETA.md).
+> Ambiente e workflow de boot: [`AMBIENTE.md`](AMBIENTE.md) + [`ambiente.json`](ambiente.json).
+
+O **Yoda** (bot Telegram) é o MAESTRO e aciona o JFN pela **API HTTP em `127.0.0.1:8000`** (`server.py`,
+`jfn.service`). Rotas do barramento:
+
+| Rota | O que faz |
+|---|---|
+| `POST /api/relatorio/inteligencia` `{empresa\|cnpj, anos?}` | Relatório de Inteligência de **Fornecedor** |
+| `POST /api/relatorio/orgao` `{orgao\|ug, anos?}` | Relatório de Inteligência de **Órgão** (quanto a UG pagou e a quem) |
+| `GET/POST /api/massare/{placar,cenarios,prever}` | Massare (mercado/predição) |
+
+**Motores:** `compliance_agent/reporting/inteligencia.py` (fornecedor), `inteligencia_orgao.py` (órgão),
+`planilha.py` (Excel). Rodar pela CLI: `.venv/bin/python -m compliance_agent.reporting.inteligencia "MGS Clean"`.
+Resolvem por **nome parcial ou CNPJ/UG**; se ambíguo, devolvem `{ambiguo:true, pergunta, candidatos}`.
+
+**Toda saída tem 3 formatos:** `.md` + `.pdf` (fonte Unicode DejaVu) + **`.xlsx` interativo** (Tabela do Excel
+com autofiltro; abas Resumo/Pagamentos/Concentração [+ "Por Fornecedor" no de órgão]). O Yoda envia **PDF + XLSX**.
+
+**Obrigatório em todo relatório:** a seção **"Análise Jurídica e de Mérito — Parecer Preliminar do JFN"**
+(`parecer_fornecedor`/`parecer_orgao`): mérito + avaliação jurídica (CF/88 art.37, Lei 14.133/8.666/4.320,
+TCU/ACFE) + grau de atenção + ressalvas. **Honesto:** indícios a verificar, NUNCA afirma irregularidade nem
+inventa número (presunção de regularidade dos atos administrativos).
+
+**UGs canônicas:** `compliance_agent/ugs.py` + `data/ug_canonico.json` resolvem o nome do órgão pelo **código
+da UG** (as OBs às vezes rotulam a UG com o órgão superior). Aprendizado-chave: **ITERJ = UG 133100** (ver §
+"UGs Relevantes"). Regerar: `python -m compliance_agent.ugs --reconstruir`.
+
+**Base de dados:** `ordens_bancarias` (OB = pagamento) cobre **2019–2026** (gestão Cláudio Castro), ingerida do
+ZIP TFE via `compliance_agent.collectors.tfe_ob`. Anos sem OB do favorecido não aparecem — normal.
+
+---
+
 ## OPERAÇÃO MULTIPLATAFORMA (um repo, três alvos)
 
 O mesmo repositório roda em três lugares. **Não** colocar caminhos fixos de SO no
