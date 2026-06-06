@@ -569,6 +569,64 @@ def render_md(ctx: dict) -> str:
         add("_Nenhum contrato oficial vinculado na base local._")
         add("")
 
+    # 4-B. Contratos e compras diretas no TCE-RJ (Dados Abertos — independe do SEI/WAF)
+    add("## 4-B. CONTRATOS E COMPRAS DIRETAS — TCE-RJ (Dados Abertos)")
+    add("")
+    try:
+        from compliance_agent.collectors.tcerj_aberto import contratos_de_fornecedor
+        _itens = contratos_de_fornecedor(ctx["cnpj"], limite=100)
+    except Exception:
+        _itens = []
+    _ctr = [i for i in _itens if i.get("_tipo") == "contrato"]
+    _cmp = [i for i in _itens if i.get("_tipo") == "compra_direta"]
+    if _ctr or _cmp:
+        _soma_ctr = sum(i.get("valor_contrato") or 0 for i in _ctr)
+        _soma_cmp = sum(i.get("valor") or 0 for i in _cmp)
+        _dispensa = [i for i in _cmp if any(k in ((i.get("afastamento") or "") + " " +
+                     (i.get("enquadramento_legal") or "")).lower() for k in ["dispensa", "inexigibil"])]
+        add(f"O controle externo (TCE-RJ) registra **{len(_ctr)} contrato(s)** (R$ {moeda(_soma_ctr)}) e "
+            f"**{len(_cmp)} compra(s) direta(s)** (R$ {moeda(_soma_cmp)}; {len(_dispensa)} por dispensa/"
+            "inexigibilidade). Fonte oficial, independe do SEI.")
+        add("")
+        # contratado (TCE-RJ) vs pago (OBs) — leitura de execução
+        _pago = (ctx.get("pagamentos") or {}).get("total_geral") or 0
+        if _soma_ctr and _pago:
+            _r = _pago / _soma_ctr * 100
+            add(f"> **Contratado vs. pago:** R$ {moeda(_soma_ctr)} contratados (TCE-RJ) × R$ {moeda(_pago)} pagos "
+                f"em OBs (SIAFE/TFE) = **{_r:.0f}%** de execução financeira sobre o valor contratado registrado. "
+                "(Pago superior ao contratado pode indicar aditivos/contratos não listados — verificar.)")
+            add("")
+        if _ctr:
+            add("**Contratos (maiores por valor):**")
+            add("")
+            add("| Processo | Ano | Objeto | Critério | Valor (R$) | Unidade |")
+            add("|---|---:|---|---|---:|---|")
+            for i in _ctr[:10]:
+                obj = (i.get("objeto") or "").strip()
+                obj = (obj[:55] + "…") if len(obj) > 55 else (obj or "—")
+                proc = (i.get("processo") or "").split(",")[0].strip()
+                proc = proc + (f" (+{len(i['processo'].split(','))-1})" if "," in (i.get("processo") or "") else "")
+                add(f"| {proc} | {i.get('ano_processo','')} | {obj} | {i.get('criterio_julgamento') or '—'} | "
+                    f"{moeda(i.get('valor_contrato'))} | {(i.get('unidade') or '')[:28]} |")
+            add("")
+        if _dispensa:
+            add("**Compras diretas (dispensa/inexigibilidade — fundamento legal):**")
+            add("")
+            add("| Processo | Ano | Objeto | Afastamento | Enquadramento legal | Valor (R$) |")
+            add("|---|---:|---|---|---|---:|")
+            for i in _dispensa[:10]:
+                obj = (i.get("objeto") or "").strip()
+                obj = (obj[:40] + "…") if len(obj) > 40 else (obj or "—")
+                enq = (i.get("enquadramento_legal") or "").strip()
+                enq = (enq[:50] + "…") if len(enq) > 50 else (enq or "—")
+                add(f"| {(i.get('processo') or '').split(',')[0].strip()} | {i.get('ano_processo','')} | {obj} | "
+                    f"{i.get('afastamento') or '—'} | {enq} | {moeda(i.get('valor'))} |")
+            add("")
+    else:
+        add("_Sem contratos ou compras diretas deste CNPJ na base de Dados Abertos do TCE-RJ "
+            "(pode ser contratação municipal/federal ou ainda não publicada)._")
+        add("")
+
     # 6. Sinais de risco (do enriquecimento)
     add("## 5. SINAIS DE RISCO CORPORATIVO")
     add("")
