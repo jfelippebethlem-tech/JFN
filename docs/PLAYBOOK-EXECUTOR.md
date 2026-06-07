@@ -105,3 +105,9 @@ Código reutilizável: `siafe_ob_orcamentaria._typeahead()` e `_filtrar_ug()`. D
 - **Limpeza de código morto** via graphify (cuidado: modelo branch-por-SO — não apagar _SANDBOX/win sem checar).
 - **Stats com "frescor"**: adicionar data da última OB por ano em /api/siafe/stats (saber se o diário está em dia).
 - **SIAFE 1 UG grande**: validar a subdivisão (ug-grande) no SIAFE 1 (a coleta direta capou em 1000 p/ ALERJ).
+
+## ✅ TESTE YODA end-to-end (2026-06-07) — leitura E ação validadas
+- LEITURA: Yoda (`hermes -z`) consultou /api/siafe/stats e reportou totais por ano + cobertura SEI. OK.
+- AÇÃO: Yoda rodou `siafe_runner diario` via terminal; com o sweep ativo, o **lockfile RECUSOU** ("coleta SIAFE
+  em andamento por sweep:2") e Yoda reportou isso corretamente ao Mestre Jorge. → comando de ação + proteção de
+  sessão única VALIDADOS. (Quando não houver sweep, o mesmo comando dispara a atualização incremental.)
