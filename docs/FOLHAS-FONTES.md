@@ -51,3 +51,14 @@ STATUS: fontes IDENTIFICADAS (esta descoberta). Coletores: A CONSTRUIR (fase seg
 CONCLUSÃO: dos 6, só a DPRJ tinha download direto. Os outros 5 exigem browser/API por órgão
 (build maior). Recomendo priorizar por valor/risco: MPRJ e TJRJ (volume + relevância), depois SEPLAG
 (cobre UERJ/UENF/estaduais de uma vez se houver export).
+
+## ENGENHARIA-REVERSA (2026-06-07, capturas Playwright)
+- **MPRJ**: Liferay **JSONWS** — dados via POST a `/api/jsonws/invoke` (serviço+params), disparado
+  por interação (selecionar competência + buscar). Próximo passo: capturar o BODY do POST (método+args)
+  interagindo na página, depois replicar em httpx. (Liferay JSONWS é documentável.)
+- **TJRJ**: também Liferay (mesma família) — Anexo VIII de folha é documento Liferay carregado por JS.
+- **Centrais FORA DO AR (2026-06-07):** dados.rj.gov.br sem resposta; consultaremuneracao.rj.gov.br
+  → www.rj.gov.br/remuneracao = HTTP 503. Sem bulk central no momento.
+VEREDITO: das 6, só DPRJ tinha arquivo direto (FEITO, 257k). As outras 5 exigem captura de XHR/POST
+por interação (Liferay JSONWS no MPRJ/TJRJ; .NET por CPF no ConsultaRemuneracao p/ TCE/UERJ/UENF) —
+1 build focado por órgão. Não é "colar script"; é reverse-engineering de portal.
