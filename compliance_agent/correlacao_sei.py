@@ -47,17 +47,14 @@ def correlacionar() -> dict:
         pares = [(p.strip(), _norm_ob(ob), (ugp or "").strip()) for ob, p, ugp in
                  con.execute("SELECT numero_ob, processo, ug_pagadora FROM ob_orcamentaria_siafe "
                              "WHERE processo IS NOT NULL AND processo!=''")]
-        atualizadas = 0
-        for sei, obn, ugp in pares:
-            if ugp:
-                cur = con.execute(
-                    "UPDATE ordens_bancarias SET numero_sei=?, numero_processo=COALESCE(NULLIF(numero_processo,''), ?) "
-                    "WHERE numero_ob=? AND ug_codigo=?", (sei, sei, obn, ugp))
-            else:
-                cur = con.execute(
-                    "UPDATE ordens_bancarias SET numero_sei=?, numero_processo=COALESCE(NULLIF(numero_processo,''), ?) "
-                    "WHERE numero_ob=?", (sei, sei, obn))
-            atualizadas += cur.rowcount
+        # UPDATE em lote (executemany) — antes era 1 execute() por par (N+1, ~65k chamadas). O ramo "com/sem
+        # ug_codigo" foi unificado num só SQL via `(?='' OR ug_codigo=?)` p/ preservar a ORDEM exata da iteração
+        # original (mesma semântica linha-a-linha). Mais rápido sem mudar resultado.
+        params = [(sei, sei, obn, ugp, ugp) for sei, obn, ugp in pares]
+        cur = con.executemany(
+            "UPDATE ordens_bancarias SET numero_sei=?, numero_processo=COALESCE(NULLIF(numero_processo,''), ?) "
+            "WHERE numero_ob=? AND (?='' OR ug_codigo=?)", params)
+        atualizadas = cur.rowcount
         con.commit()
         com_sei = con.execute("SELECT COUNT(*) FROM ordens_bancarias WHERE numero_sei IS NOT NULL AND numero_sei!=''").fetchone()[0]
         n_proc = con.execute("SELECT COUNT(DISTINCT numero_sei) FROM ordens_bancarias WHERE numero_sei IS NOT NULL AND numero_sei!=''").fetchone()[0]
