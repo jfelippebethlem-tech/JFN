@@ -38,3 +38,16 @@ Vários órgãos do RJ usam o MESMO sistema de consulta (por nome/CPF):
    (já existe em collectors/terceirizados.py).
 
 STATUS: fontes IDENTIFICADAS (esta descoberta). Coletores: A CONSTRUIR (fase seguinte).
+
+## STATUS DE COLETA (2026-06-07)
+- ✅ **DPRJ FEITO**: collectors/folha_dprj.py → 257.354 registros, 2016→2025, 5.384 pessoas.
+  Caso FÁCIL: arquivos CSV/XLSX diretos (uploads/arquivos), sem JS.
+- ⏳ **TJRJ**: portal Liferay JS — a página de anexos CNJ NÃO entrega links de arquivo via curl
+  (renderiza por JS). Precisa Playwright (abrir o Anexo de folha e baixar) OU achar o endpoint XHR.
+- ⏳ **MPRJ**: SPA JS (transparencia.mprj.mp.br) — carrega via JSON de uma API não-óbvia (action="#",
+  sem /api público). Precisa capturar o XHR no browser.
+- ⏳ **TCE-RJ / UERJ / UENF**: sistema `ConsultaRemuneracao` (SEPLAG) — consulta por NOME/CPF, não-bulk;
+  para varrer tudo precisa iterar (ou achar export). UERJ/UENF provavelmente na central SEPLAG.
+CONCLUSÃO: dos 6, só a DPRJ tinha download direto. Os outros 5 exigem browser/API por órgão
+(build maior). Recomendo priorizar por valor/risco: MPRJ e TJRJ (volume + relevância), depois SEPLAG
+(cobre UERJ/UENF/estaduais de uma vez se houver export).
