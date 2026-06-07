@@ -701,7 +701,9 @@ async def _filtrar_ug(pg, ug_codigo) -> dict:
     if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
         return {"ok": False, "erro": "painel de filtro não abriu"}
     await _typeahead(pg, _F_PROP, "UG Emi"); await adf.wait()      # Propriedade = UG Emitente
-    await _typeahead(pg, _F_OP, "igual"); await adf.wait()         # Operador = igual
+    # "começa com" (não "igual"): UG tem 6 dígitos → equivale a igual no SIAFE 2 E renderiza o campo de
+    # valor no SIAFE 1 (onde "igual" não rende). Unifica os dois sistemas.
+    await _typeahead(pg, _F_OP, "começa com"); await adf.wait()
     val = pg.locator('[id*="in_value_rtfFilter"]:visible').last     # campo de valor (renderiza após os 2 typeaheads)
     if await val.count() == 0:
         return {"ok": False, "erro": "campo de valor não renderizou"}
@@ -726,11 +728,25 @@ async def _set_valor(pg, sel, valor):
     await v.fill("")                       # limpeza confiável (síncrona)
     await pg.wait_for_timeout(150)
     await pg.keyboard.type(str(valor), delay=90)
-    # confere que o campo tem exatamente o valor (senão re-limpa e re-digita)
     try:
         if (await v.input_value()).strip() != str(valor):
             await v.fill(""); await pg.wait_for_timeout(150)
             await pg.keyboard.type(str(valor), delay=90)
+    except Exception:
+        pass
+    # COMMIT do valor: dispara o valueChange via o CLIENTE ADF (FUNCIONA no SIAFE 1 — campo sem autoSubmit —
+    # e no SIAFE 2). Sem isso, no SIAFE 1 o filtro não aplica. Tab fica como reforço (SIAFE 2).
+    try:
+        await pg.evaluate(
+            """(args)=>{const [sel,val]=args;
+               const els=[...document.querySelectorAll(sel)].filter(e=>{const r=e.getBoundingClientRect();return r.width>0&&r.height>0;});
+               const el=els[els.length-1]; if(!el)return;
+               const id=el.id.replace(/::content$/,'');
+               try{const c=AdfPage.PAGE.findComponentByAbsoluteId(id);
+                   if(c){ if(c.setValue)c.setValue(val);
+                          if(typeof AdfValueChangeEvent!=='undefined') new AdfValueChangeEvent(c, '', val).queue(true); }
+               }catch(e){}}""",
+            [sel, str(valor)])
     except Exception:
         pass
     await pg.keyboard.press("Tab")
@@ -759,7 +775,7 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
                 await _click_real(pg, _F_DISC); await adf.wait()
             # linha 0 = UG Emitente igual <ug>  (uma vez)
             await _typeahead(pg, _F_PROP, "UG Emi"); await adf.wait()
-            await _typeahead(pg, _F_OP, "igual"); await adf.wait()
+            await _typeahead(pg, _F_OP, "começa com"); await adf.wait()  # vale SIAFE 1 e 2 (UG=6 dígitos)
             await _set_valor(pg, _F_VAL_SEL, ug); await adf.wait()
             # linha 1 = Número começa com (prop/op uma vez; valor por prefixo)
             await _typeahead(pg, _F_PROP1, "Número"); await adf.wait()
