@@ -67,6 +67,88 @@ async def abrir_pesquisa(pg) -> bool:
     return "#pwdSenha" not in ((await pg.content()) or "")
 
 
+CACHE_DIR = _REPO / "data" / "sei_cache"
+
+
+async def _extrair_de_todos_frames(pg) -> dict:
+    """Roda o extractor da árvore/texto em TODOS os frames (o SEI usa iframes ifrArvore/ifrVisualizacao)."""
+    from compliance_agent.collectors.sei_cdp import _JS_LE_ARVORE_E_TEXTO
+    docs, textos = {}, []
+    for fr in pg.frames:
+        try:
+            d = await fr.evaluate(_JS_LE_ARVORE_E_TEXTO)
+        except Exception:
+            continue
+        for doc in d.get("documentos", []):
+            if doc.get("url"):
+                docs[doc["url"]] = doc
+        if d.get("texto") and len(d["texto"]) > 80:
+            textos.append(d["texto"])
+    return {"documentos": list(docs.values()), "texto": "\n\n".join(textos)[:20000]}
+
+
+async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
+    """Busca o processo na pesquisa autenticada, abre e extrai a íntegra (árvore + docs). Grava cdp_*.json."""
+    import json as _json
+    from datetime import datetime
+    from compliance_agent.collectors.sei_cdp import _abrir_primeiro_resultado
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file = CACHE_DIR / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json"
+    if usar_cache and cache_file.exists():
+        try:
+            c = _json.loads(cache_file.read_text(encoding="utf-8"))
+            if c.get("_cached_at") and (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < 86400:
+                c["_de_cache"] = True; return c
+        except Exception:
+            pass
+    # navega p/ a Pesquisa AVANÇADA (menu "Pesquisa") — clique REAL preserva a sessão
+    await pg.evaluate(r"""()=>{const e=[...document.querySelectorAll('a')].find(a=>/^pesquisa$/i.test((a.innerText||'').trim())||/protocolo_pesquisar\b/i.test(a.href||a.getAttribute('onclick')||''));if(e)e.click();}""")
+    await pg.wait_for_timeout(5000)
+    tem_avancada = await pg.evaluate("""()=>!!document.querySelector('#txtProtocoloPesquisa,input[name="txtProtocoloPesquisa"]')""")
+    if tem_avancada:
+        # protocolo EXATO: fill; se o ADF não aceitar, keyboard.type (keystrokes reais)
+        try: await pg.fill('#txtProtocoloPesquisa', proc)
+        except Exception: pass
+        if not await pg.evaluate("""()=>{const e=document.querySelector('#txtProtocoloPesquisa');return e?e.value:''}"""):
+            try:
+                await pg.click('#txtProtocoloPesquisa'); await pg.keyboard.type(proc, delay=40)
+            except Exception: pass
+        await pg.evaluate(r"""()=>{const b=[...document.querySelectorAll('button,input[type=submit],input[type=button]')].find(e=>/pesquisar/i.test((e.value||e.innerText||'')));if(b)b.click();}""")
+    else:
+        # fallback: pesquisa rápida (escopo da unidade)
+        await pg.evaluate(r"""(n)=>{const i=document.querySelector('#txtPesquisaRapida');if(i){i.value=n;const f=document.getElementById('frmProtocoloPesquisaRapida');if(f)f.submit();}}""", proc)
+    try: await pg.wait_for_load_state("networkidle", timeout=15000)
+    except Exception: pass
+    await pg.wait_for_timeout(4000)
+    await _abrir_primeiro_resultado(pg)
+    await pg.wait_for_timeout(3000)
+    dump = await _extrair_de_todos_frames(pg)
+    res = {"numero": proc, "url": pg.url, "documentos": dump["documentos"], "texto": dump["texto"],
+           "captcha_resolvido": False, "_login": {"ok": True, "via": "sei_reader/itkava"}}
+    # conteúdo dos primeiros documentos
+    docs_txt = []
+    for doc in dump["documentos"][:8]:
+        try:
+            await pg.goto(doc["url"], wait_until="domcontentloaded", timeout=20000)
+            await pg.wait_for_timeout(900)
+            t = await pg.evaluate("()=>document.body?document.body.innerText.slice(0,6000):''")
+            if t and len(t) > 50:
+                docs_txt.append({"doc": (doc.get("texto") or "")[:80], "conteudo": t})
+        except Exception:
+            continue
+    res["conteudo_documentos"] = docs_txt
+    tot = res["texto"] + "\n\n" + "\n\n".join(d["conteudo"] for d in docs_txt)
+    res["cnpjs"] = sorted(set(re.findall(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}", tot)))
+    res["valores"] = sorted(set(re.findall(r"R\$\s*[\d.,]+", tot)))
+    res["_cached_at"] = datetime.now().isoformat()
+    try:
+        cache_file.write_text(_json.dumps(res, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        res["_cache_path"] = str(cache_file)
+    except Exception:
+        pass
+    return res
+
+
 async def main():
     from playwright.async_api import async_playwright
     proc = sys.argv[1] if len(sys.argv) > 1 else "SEI-070002/008633/2022"
@@ -79,12 +161,14 @@ async def main():
         pg = await ctx.new_page()
         if not await login(pg):
             print("FALHOU login"); await b.close(); return
-        print("✅ LOGADO:", pg.url[:80])
-        if await abrir_pesquisa(pg):
-            print("✅ Pesquisa autenticada acessível (sessão intacta):", pg.url[:90])
-            print("→ próximo: protocolo exato + abrir processo + extrair via sei_cdp")
-        else:
-            print("⚠ Pesquisa voltou ao login (flap) — repetir")
+        print("✅ LOGADO:", pg.url[:80], flush=True)
+        print("→ Lendo processo (pesquisa avançada):", proc, flush=True)
+        res = await ler_processo(pg, proc, usar_cache=False)
+        print(f"   docs: {len(res.get('documentos',[]))} | texto: {len(res.get('texto',''))} chars "
+              f"| conteúdo docs: {len(res.get('conteudo_documentos',[]))} | CNPJs: {len(res.get('cnpjs',[]))} "
+              f"| valores: {len(res.get('valores',[]))}")
+        print("   cache:", res.get("_cache_path", "(não salvo)"))
+        print("   amostra texto:", (res.get("texto", "")[:300] or "(vazio)").replace("\n", " "))
         await b.close()
 
 
