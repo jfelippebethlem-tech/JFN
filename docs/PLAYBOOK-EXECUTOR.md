@@ -5,6 +5,20 @@
 > Ambiente: VM Linux GCP, `/home/jfelippebethlem/JFN`. SEMPRE prefixar `PYTHONPATH=. .venv/bin/python`.
 > Ver também: [`AMBIENTE.md`](AMBIENTE.md), `CLAUDE.md`. Princípio: [[diretriz-workflows-para-ias]].
 
+## ⭐ TL;DR (os comandos mais usados — copie e cole)
+Sempre `cd ~/JFN && PYTHONPATH=. .venv/bin/python ...`. SÓ UMA coleta SIAFE por sistema (lockfile cuida).
+| Quero… | Comando |
+|---|---|
+| Atualizar SIAFE 2 hoje (incremental, é o do cron 05:00) | `-m compliance_agent.siafe_runner diario` |
+| Coletar UMA UG (fura o teto 1000) | `-m compliance_agent.siafe_runner ug <UG> [ANO]` |
+| Sweep completo (backfill) SIAFE 2 / SIAFE 1 | `-m compliance_agent.siafe_runner sweep 2` · `-m tools.siafe_sweep_full 1` |
+| Conferir/completar um dia (overflow >1000) | `-m compliance_agent.siafe_runner verificar DD/MM/AAAA` |
+| Sócios/diretores por OB | `-m tools.enriquecer_socios_ob` |
+| Login FlexVision (folha) | `-m tools.flexvision_cdp auto` |
+| Status (vivo? quanto coletado?) | `curl -s 127.0.0.1:8000/api/siafe/status` · `.../api/siafe/stats` |
+SIAFE 1 (2016-23) = mesmos comandos com `JFN_SIAFE_LOGIN_URL=https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp`
+(sessão independente do 2.0 → roda em paralelo). Receita do filtro que destrava tudo: §2 abaixo.
+
 ## 0. INTELIGÊNCIA DE CÓDIGO — use ANTES de grep/ler tudo
 O repo é indexado por **codegraph** (MCP) e **graphify** — consulte primeiro pra achar função/arquivo/fluxo:
 - **codegraph** (MCP, sub-ms): `codegraph_explore "como funciona X"` (1 chamada já traz o código relevante);
