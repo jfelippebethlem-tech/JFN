@@ -615,6 +615,28 @@ async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@app.get("/api/lista")
+async def api_lista():
+    """Menu das funções do JFN (para o /lista do Yoda). Texto pronto para enviar no Telegram."""
+    texto = (
+        "🧭 *JFN — o que eu faço* (peça em linguagem natural ou pelo comando):\n\n"
+        "📄 */relatorio <empresa ou CNPJ>* — inteligência do fornecedor: OBs por ano, concentração (HHI), "
+        "contratos TCE-RJ, rede de sócios, *cruzamento* e *parecer jurídico Lex*. Gera PDF + planilha + Lex.\n"
+        "🏛️ *relatório de órgão* (ex.: \"relatório do ITERJ\") — quanto a UG pagou e a quem + *concentração "
+        "geográfica dos fornecedores* (cidades-sede).\n"
+        "🚨 */anomalias [órgão|fornecedor]* — Ordens Bancárias de maior risco (score + o porquê).\n"
+        "🕸️ */cartel [captura|<CNPJ>]* — concentração por órgão e co-ocorrência de fornecedores + sócio comum.\n"
+        "🔗 */cruzamento <CNPJ>* — sócios × OB(SIAFE) × processo SEI × *endereço*: empresas com sócio em comum, "
+        "*mesma cidade-sede* e *mesma sede* (red flag de fachada).\n"
+        "📍 */cidades <UG>* — cidades que concentram os fornecedores de um órgão (indício de fachada/direcionamento).\n"
+        "🏢 */clusters* — grupos de fornecedores que dividem a *mesma sede* e recebem do Estado.\n"
+        "📑 *SEI* — leitura da íntegra de processos do SEI-RJ (alimenta o parecer do Lex).\n"
+        "📈 *Massare* — mercado/câmbio/bolsa/previsão (placar, cenários, prever).\n\n"
+        "_Tudo é indício para apuração, nunca acusação._"
+    )
+    return JSONResponse({"ok": True, "texto": texto})
+
+
 @app.get("/api/cruzamento")
 async def api_cruzamento(cnpj: str):
     """Cruzamento sócio × OB (SIAFE) × processo SEI × endereço de um fornecedor (Onda 4+).

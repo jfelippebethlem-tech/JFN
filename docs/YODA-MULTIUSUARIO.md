@@ -22,10 +22,14 @@ TELEGRAM_ALLOWED_USERS=45338178       # (mantido; o allow-all já libera todos)
 telegram:
   allowed_users: '45338178'
   allow_admin_from: '45338178'        # quem é ADMIN (full). Todo o resto = convidado.
-  user_allowed_commands: ['relatorio', 'anomalias', 'cartel', 'status', 'help', 'whoami']
+  user_allowed_commands: ['lista', 'relatorio', 'anomalias', 'cartel', 'cruzamento', 'cidades', 'clusters', 'status', 'help', 'whoami']
 ```
 `~/.hermes/config.yaml` (bloco `approvals:`): `mode: manual`  (comando perigoso pede aprovação do admin).
 Aplicar mudanças: `systemctl --user restart hermes-gateway.service`.
+
+**Comando `/lista`** (menu das funções): o Yoda faz `GET /api/lista` (server.py) e envia o campo `texto`.
+Inclui as funções novas: `/cruzamento <CNPJ>`, `/cidades <UG>`, `/clusters`, além de `/relatorio`, `/anomalias`,
+`/cartel` e Massare. O hint do `environment_hint` mapeia esses comandos para as rotas GET correspondentes.
 
 ## Como funciona (mecanismo nativo do Hermes)
 - `gateway/slash_access.py`: com `allow_admin_from` setado, **não-admins só rodam os `user_allowed_commands`**
