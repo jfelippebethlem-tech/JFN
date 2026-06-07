@@ -56,7 +56,8 @@ Sweep de várias UGs prioritárias: `PYTHONPATH=. .venv/bin/python -m tools.siaf
 JFN_SIAFE_LOGIN_URL="https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp" \
   PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_ob_orcamentaria --por-ug <UG> --exercicio <ANO 2016..2023>
 ```
-(Filtro do SIAFE 1 pode ter labels diferentes — se "campo de valor não renderizou", mapear opções ao vivo. Em ajuste.)
+✅ SIAFE 1 DESTRAVADO (2026-06-07): o coletor já trata o filtro do SIAFE 1 (operador "começa com" + commit do
+valor via cliente ADF, embutido em `_set_valor`). Sweep completo: `-m tools.siafe_sweep_full 1`. Roda em paralelo ao 2.0.
 
 ### 1c. FlexVision (folha/BI da SEFAZ) — login + export
 ```
