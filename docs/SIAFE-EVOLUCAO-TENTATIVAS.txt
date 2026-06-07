@@ -520,3 +520,14 @@ id exato do campo valor) e ajustar _F_VAL_SEL.
 LICAO DE PROCESSO: rodar foreground com REDIRECT P/ ARQUIVO (pipe perde saida bufferizada no
 timeout). E matar python+chromium leftover por PID antes de cada run (timeout deixa o python
 async vivo segurando a sessao unica -> proximo run trava no login).
+
+--- 6.2 UPDATE (probe do campo valor, 2026-06-07 noite) ---
+ACHADO NOVO: na tela OB Orcamentaria, abrir o filtro mostra so um checkbox (chk_neg_rtfFilter).
+Selecionar Propriedade=0 e Operador=8 VIA select_option NAO renderiza o campo VALOR (continua so
+o checkbox). No siafe_contratos o select_option faz o valor aparecer; na OB, nao. => o
+select_option NAO dispara o valueChangeEvent/autoSubmit do ADF que renderiza o campo valor nesta
+tela. PROXIMO PASSO CIRURGICO (1 probe): apos setar o value do select, disparar evento 'change'
+real (pg.evaluate dispatchEvent change/blur) OU mudar o select por teclado (focus+ArrowDown/type),
+depois re-listar inputs ate o in_value_rtfFilter aparecer. So entao o type_filter funciona.
+ALTERNATIVA mais robusta (recomendada se isso resistir): abandonar o browser e ir de PPR HTTP
+replay (har2requests/mitmproxy capturando o POST do filtro uma vez) — vide secao 5/6.
