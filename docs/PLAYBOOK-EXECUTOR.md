@@ -95,3 +95,12 @@ Código reutilizável: `siafe_ob_orcamentaria._typeahead()` e `_filtrar_ug()`. D
 - **Browser**: usar Chrome CDP 9222 (`chrome-jfn.service`) p/ MFA entre turnos; Playwright em background trava — preferir foreground + redirect p/ arquivo, ou os módulos prontos.
 - **Idempotência**: todos os coletores podem re-rodar sem duplicar (chave por OB/CNPJ/competência).
 - **Documentar sempre** tentativas que falham (pra não repetir) nos docs acima.
+
+## 🔜 TODO PÓS-SWEEP (fazer quando os sweeps terminarem — não mexer mid-run)
+- **Lock por sistema:** hoje `siafe_lock.json` é único (SIAFE 1 e 2 compartilham via heartbeat). É SEGURO
+  (erra pro lado de não colidir), mas o diário do 2.0 pode ser bloqueado à toa enquanto só o SIAFE 1 roda.
+  Refatorar p/ `siafe_lock_{1,2}.json` (NÃO trocar o nome mid-run — quebraria a proteção do sweep ativo).
+- **VACUUM** no compliance.db após o sweep (recupera churn de re-ingestão) — `python -m compliance_agent.manutencao`.
+- **Limpeza de código morto** via graphify (cuidado: modelo branch-por-SO — não apagar _SANDBOX/win sem checar).
+- **Stats com "frescor"**: adicionar data da última OB por ano em /api/siafe/stats (saber se o diário está em dia).
+- **SIAFE 1 UG grande**: validar a subdivisão (ug-grande) no SIAFE 1 (a coleta direta capou em 1000 p/ ALERJ).
