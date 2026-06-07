@@ -91,6 +91,13 @@ INDICADORES: list[Indicador] = [
     Indicador("FRACIONAMENTO_SERIE", "Múltiplas contratações de objeto semelhante no exercício, "
               "somando acima do limite da modalidade", "—", "conjunto", ["fracionamento"], 3, "R9",
               "Somar contratações do mesmo objeto/órgão no ano vs. teto (Lei 14.133 art. 75 §1º)."),
+    # — quantitativos (deep-research 2026-06-07: FGV/Benford, TCU-Codevasf, CGU/Dempster-Shafer) —
+    Indicador("BENFORD_DESVIO", "Desvio da Lei de Benford no 1º dígito dos valores (OB/empenho por UG/fornecedor)",
+              "—", "conjunto", ["sobrepreco", "fracionamento"], 2, "",
+              "Teste qui-quadrado do 1º dígito vs. distribuição de Benford; desvio significativo = manipulação de valores (FGV)."),
+    Indicador("DESCONTO_DECRESCENTE", "Queda do desconto médio em certames de um conjunto recorrente de licitantes",
+              "—", "conjunto", ["cartel", "conluio"], 3, "R8",
+              "Tendência decrescente do deságio (caso TCU/Codevasf: 24,5%→5,2% após o conluio) = bid rigging."),
 ]
 
 _IDX = {i.id: i for i in INDICADORES}
@@ -133,6 +140,7 @@ def triagem(sinais: dict) -> dict:
         "desconto_atipico": "DESCONTO_ATIPICO", "abuso_me_epp": "VENCEDOR_ME_EPP",
         "concentracao_alta": "CONCENTRACAO", "perdedores_recorrentes": "PERDEDORES_RECORRENTES",
         "coincidencia_participantes": "COINCIDENCIA_PARTICIPANTES", "fracionamento": "FRACIONAMENTO_SERIE",
+        "benford_desvio": "BENFORD_DESVIO", "desconto_decrescente": "DESCONTO_DECRESCENTE",
     }
     disparados, tipos, score = [], set(), 0
     for chave, ind_id in mapa.items():
