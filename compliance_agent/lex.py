@@ -505,6 +505,13 @@ def _analise_merito(ctx: dict, analise: dict) -> str:
     total = p.get("total_geral", 0) or 0
     nob, norg = p.get("n_geral", 0), len(p.get("por_orgao_geral", {}))
     L = []
+    try:
+        from compliance_agent.lex_base_empirica import contexto_empirico_md
+        _emp = contexto_empirico_md(ctx.get("cnpj"))
+        if _emp:
+            L.append(_emp)
+    except Exception:
+        pass
     natureza = ("prestadora de **serviços contínuos** (limpeza/conservação/vigilância/mão de obra)"
                 if continuo else "fornecedora do Estado")
     L.append(
