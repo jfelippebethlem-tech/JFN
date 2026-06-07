@@ -97,3 +97,12 @@ data/tfe_cache/fornecedor_ob*.csv
 
 # Benchmark runtime (gerado)
 data/benchmark_ias.csv
+
+# Logs e dumps de sessao em runtime (regeneraveis) — nao versionar
+data/*.log
+data/sessao_*.txt
+data/benchmark_resultados.json
+
+# codegraph + graphify: indices locais, regenerados, NAO commitar (diretriz 2026-06-07)
+.codegraph/
+graphify-out/
