@@ -31,9 +31,19 @@ _ORGAO = ("DPRJ", "Defensoria Pública do Estado do RJ")
 
 
 def _num(s) -> float:
-    s = (str(s) or "").strip().replace(".", "").replace(",", ".")
+    # pandas (XLSX) já entrega float/int — usar direto (NÃO transformar, senão corrompe o decimal)
+    if isinstance(s, (int, float)):
+        try:
+            return float(s) if s == s else 0.0  # s==s descarta NaN
+        except (ValueError, TypeError):
+            return 0.0
+    s = str(s or "").strip()
+    if not s or s in ("-", "nan", "None"):
+        return 0.0
+    if "," in s:  # formato BR do CSV: "62.420,48" -> 62420.48
+        s = s.replace(".", "").replace(",", ".")
     try:
-        return float(s) if s and s not in ("-", "") else 0.0
+        return float(s)
     except ValueError:
         return 0.0
 
