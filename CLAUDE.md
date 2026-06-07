@@ -325,12 +325,23 @@ ZIP TFE via `compliance_agent.collectors.tfe_ob`. Anos sem OB do favorecido não
 "Execução > Execução Financeira > OB Orçamentária" do SIAFE-Rio 2 (login real via Playwright; arquitetura ADF
 documentada em [`docs/SIAFE-ARQUITETURA.md`](docs/SIAFE-ARQUITETURA.md)). Traz **23 colunas ricas** (NL, PD,
 **Processo**, Credor, Competência...) que o TFE não tem, e ingere na tabela **`ob_orcamentaria_siafe`**
-(**SIAFE prepondera** por `numero_ob`). CLI: `python -m compliance_agent.siafe_ob_orcamentaria --exercicio 2025
---max 1000 --ingerir --resiliente`. Anos liberados na conta: **2024–2026** (2023 bloqueado pelo servidor — o
-coletor detecta e pula). Sessão única do SIAFE: coordenação via Telegram (`/siafelivre`, `/siafeocupado`,
-flag `siafe_coord.json`). **Limitação conhecida:** a varredura COMPLETA por UG (passar do limite de 1000/consulta)
-depende do filtro rico do ADF, que resiste a eventos sintéticos do Playwright — ver §8b do doc de arquitetura
-(caminho: replay HTTP do request de filtro, ou Computer Use).
+(**SIAFE prepondera** por `numero_ob`).
+
+> ✅ **ATUALIZADO 2026-06-07 — §8b RESOLVIDO + SIAFE 1 destravado + rotina diária.** Ver
+> `docs/SIAFE-RIO2-GUIA-AUTOMACAO.md` e `docs/PLAYBOOK-EXECUTOR.md` (TL;DR no topo).
+> - **Teto de 1000/consulta SUPERADO:** o filtro ADF ignora eventos sintéticos (`select_option`/`fill`); a
+>   solução é selecionar Propriedade/Operador por **TYPEAHEAD** (teclado real) e commitar o valor via **Tab**
+>   (SIAFE 2) ou via **cliente ADF** `AdfValueChangeEvent.queue(true)` (SIAFE 1). Coleta por UG: `coletar_por_ug`;
+>   UG grande (>1000/ano): `coletar_por_ug_grande` (UG + Número prefixo + subdivisão automática).
+> - **SIAFE 1 (www5.fazenda.rj.gov.br/SiafeRio) destravado:** cobre **2016–2023** (o 2023 que era bloqueado no
+>   2.0). Mesmo login, sessão INDEPENDENTE → roda EM PARALELO. Sweep: `tools.siafe_sweep_full 1`.
+> - **PONTO ÚNICO `compliance_agent/siafe_runner.py`** (lockfile de sessão única): `diario` (incremental, no
+>   **cron 05:00** — mantém a base fresca SEM sweep), `ug`, `sweep`, `verificar DD/MM/AAAA` (overflow de dia >1000).
+> - **Rotas:** `POST /api/siafe/atualizar|sweep`, `GET /api/siafe/status|stats`. Yoda comanda via CLI/curl.
+> - Coletor antigo (aba sem filtro, ~1000/exercício) ainda existe: `--exercicio 2025 --max 1000 --ingerir`.
+
+Sessão única do SIAFE: coordenação via Telegram (`/siafelivre`, `/siafeocupado`, flag `siafe_coord.json`) +
+lockfile (`siafe_runner`).
 
 ---
 
