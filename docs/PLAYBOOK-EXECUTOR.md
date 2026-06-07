@@ -1,0 +1,83 @@
+# PLAYBOOK DO EXECUTOR (Hermes/Yoda e qualquer IA) — o que rodar e onde achar
+
+> Objetivo: qualquer IA do ecossistema (mesmo modelo fraco) consegue **fazer o que o Claude faz** e
+> **achar onde está cada coisa**, sem reinventar. Passos explícitos e idempotentes (re-rodar é seguro).
+> Ambiente: VM Linux GCP, `/home/jfelippebethlem/JFN`. SEMPRE prefixar `PYTHONPATH=. .venv/bin/python`.
+> Ver também: [`AMBIENTE.md`](AMBIENTE.md), `CLAUDE.md`. Princípio: [[diretriz-workflows-para-ias]].
+
+## 0. INTELIGÊNCIA DE CÓDIGO — use ANTES de grep/ler tudo
+O repo é indexado por **codegraph** (MCP) e **graphify** — consulte primeiro pra achar função/arquivo/fluxo:
+- **codegraph** (MCP, sub-ms): `codegraph_explore "como funciona X"` (1 chamada já traz o código relevante);
+  `codegraph_search <nome>`, `codegraph_callers/callees/impact`. É o índice pronto — não faça grep do repo todo.
+- **graphify**: `graphify query "where is the auth logic?"` (grafo persistente; god nodes/comunidades).
+- Atualizar índices ANTES de commit (git hook): ver [[codegraph-graphify-precommit]]. Índices ficam **só locais**
+  (nunca no git). Regerar JFN: `cd ~/JFN && codegraph index . ` e `graphify` (ver SKILL `/graphify`).
+
+## 1. COLETORES — comandos prontos (terminal)
+### 1z. PONTO ÚNICO: `siafe_runner` (use ESTE no dia a dia) + atualização DIÁRIA
+`compliance_agent/siafe_runner.py` orquestra tudo com **LOCKFILE de sessão única** (impede coletas SIAFE
+concorrentes que se derrubariam). Comandos:
+```
+PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_runner diario [ANO]   # incremental: OBs novas da aba (sem filtro). Ano corrente por default.
+PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_runner ug <UG> [ANO]  # uma UG (fura o teto; cai p/ subdivisão se capar)
+PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_runner sweep [2|1]    # sweep completo (backfill)
+```
+**ROTINA DIÁRIA (cron, 05:00):** `siafe_runner diario` mantém a base FRESCA sem sweep — a aba OB Orçamentária
+lista as OBs mais novas primeiro e o volume/dia é <1000, então uma passada sem filtro capta o que entrou
+(idempotente, PK numero_ob). Sweep só p/ BACKFILL histórico ou quando comandado.
+**ROTAS NO JFN (pro Yoda via curl; ativas após reload do jfn.service):**
+`POST /api/siafe/atualizar {exercicio?}` · `POST /api/siafe/sweep {sistema|ug,exercicio}` · `GET /api/siafe/status` (lock) · `GET /api/siafe/stats`.
+Enquanto o jfn.service não recarrega, o Yoda roda o CLI acima via a ferramenta `terminal`.
+
+### 1a. SIAFE-Rio 2 (2024–2026) — OBs por UG (FURA o teto de 1000) [detalhe; prefira o siafe_runner acima]
+```
+PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_ob_orcamentaria --por-ug <UG> --exercicio <ANO>
+```
+Ex.: ITERJ 2026 → `--por-ug 133100 --exercicio 2026`. Ingere em `ob_orcamentaria_siafe`. UG pequena cabe;
+UG grande (>1000/ano: SEEDUC, TJRJ) bate o teto → precisa sub-filtro por período (fase 2, ver §3).
+Sweep de várias UGs prioritárias: `PYTHONPATH=. .venv/bin/python -m tools.siafe_sweep_ugs` (resumível, checkpoint).
+
+### 1b. SIAFE 1 (2016–2023) — MESMO coletor, outra URL (sessão independente do 2.0 → roda em PARALELO)
+```
+JFN_SIAFE_LOGIN_URL="https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp" \
+  PYTHONPATH=. .venv/bin/python -m compliance_agent.siafe_ob_orcamentaria --por-ug <UG> --exercicio <ANO 2016..2023>
+```
+(Filtro do SIAFE 1 pode ter labels diferentes — se "campo de valor não renderizou", mapear opções ao vivo. Em ajuste.)
+
+### 1c. FlexVision (folha/BI da SEFAZ) — login + export
+```
+PYTHONPATH=. .venv/bin/python -m tools.flexvision_cdp auto      # loga (Chrome CDP 9222), MFA via log do Hermes, salva sessão 30 dias
+PYTHONPATH=. .venv/bin/python -m tools.flexvision_cdp status     # SINAL=LOGADO|MFA_PENDENTE|SESSAO_OCUPADA|...
+```
+MFA: o código chega no Telegram → está em `~/.hermes/logs/gateway.log` (`msg='<COD>'`); `auto` lê sozinho.
+Doc completa: [`docs/FLEXVISION-EVOLUCAO.md`](docs/FLEXVISION-EVOLUCAO.md).
+
+### 1d. Sócios/diretores por OB (BrasilAPI QSA) — enriquece CNPJs credores das OBs
+```
+PYTHONPATH=. .venv/bin/python -m tools.enriquecer_socios_ob     # idempotente; grava em socios_fornecedor
+```
+
+## 2. RECEITA-CHAVE (decifrada) — filtro ADF do SIAFE (vale p/ TODAS as telas)
+O ADF ignora eventos sintéticos (`isTrusted=false`). Por isso `select_option`/`fill`/`dispatch` NÃO filtram.
+- `<select>` (Propriedade/Operador) → **TYPEAHEAD**: foco por mouse real + `keyboard.type(label)` + Enter + Tab.
+- Campo de VALOR → digitar e **commitar com `Tab` (blur), NÃO Enter** (Enter não aplica; Tab dispara o PPR).
+Código reutilizável: `siafe_ob_orcamentaria._typeahead()` e `_filtrar_ug()`. Detalhes: `docs/SIAFE-RIO2-GUIA-AUTOMACAO.md` (§8b).
+
+## 3. MAPA DE DOCS (onde achar cada coisa)
+- **SIAFE-Rio 2** (telas, IDs, filtro, §8b resolvido, SIAFE 1, paralelismo): `docs/SIAFE-RIO2-GUIA-AUTOMACAO.md`
+- **FlexVision** (login, MFA, export, DOM): `docs/FLEXVISION-EVOLUCAO.md`
+- **Sites difíceis** (WAF/SPA/ADF/HTTP replay — hierarquia de esforço): `docs/SCRAPING-SITES-DIFICEIS.md`
+- **Folhas — fontes por órgão**: `docs/FOLHAS-FONTES.md`
+- **Barramento/relatórios + rotas HTTP**: `CLAUDE.md` (seção MOTOR DE RELATÓRIOS) + `AMBIENTE.md`
+- Tentativas/erros do SIAFE (não repetir): `docs/SIAFE-EVOLUCAO-TENTATIVAS.txt`
+
+## 4. BARRAMENTO JFN (como o Yoda já aciona — via curl/terminal)
+`POST /api/relatorio/inteligencia {empresa|cnpj}` · `POST /api/relatorio/orgao {orgao|ug}` ·
+`GET /api/massare/{placar,cenarios}` · `POST /api/hermes/missao {missao}` · `GET /api/cruzamento?cnpj=` ·
+`GET /api/siafe/stats`. JFN vivo: `curl -s http://127.0.0.1:8000/status`. NUNCA parar `jfn.service`.
+
+## 5. REGRAS DE OPERAÇÃO (não tropeçar)
+- **SIAFE = sessão ÚNICA por sistema**: 2 coletas no MESMO SIAFE se derrubam; SIAFE 1 e 2 são independentes (paralelizáveis).
+- **Browser**: usar Chrome CDP 9222 (`chrome-jfn.service`) p/ MFA entre turnos; Playwright em background trava — preferir foreground + redirect p/ arquivo, ou os módulos prontos.
+- **Idempotência**: todos os coletores podem re-rodar sem duplicar (chave por OB/CNPJ/competência).
+- **Documentar sempre** tentativas que falham (pra não repetir) nos docs acima.

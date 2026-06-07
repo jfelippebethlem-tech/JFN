@@ -560,6 +560,48 @@ async def api_siafe_stats():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+def _siafe_spawn(args: list, quem: str):
+    """Dispara a coleta SIAFE como subprocesso (não bloqueia a request); respeita o lockfile de sessão única."""
+    import subprocess
+    import sys as _sys
+    from pathlib import Path as _P
+    from compliance_agent import siafe_runner
+    st = siafe_runner.lock_status()
+    if st.get("locked"):
+        return {"ok": False, "erro": "ocupado", "detail": "Já há uma coleta SIAFE em andamento.", "lock": st}
+    log = open(_P(__file__).parent / "data" / f"siafe_{quem}.log", "a")
+    subprocess.Popen([_sys.executable, "-m", "compliance_agent.siafe_runner", *args],
+                     cwd=str(_P(__file__).parent), stdout=log, stderr=log, start_new_session=True)
+    return {"ok": True, "iniciado": True, "comando": quem, "detail": "Coleta SIAFE iniciada em background."}
+
+
+@app.post("/api/siafe/atualizar")
+async def api_siafe_atualizar(payload: dict = None):
+    """Atualização DIÁRIA incremental do SIAFE 2 (aba OB Orçamentária, OBs novas, sem filtro). Mantém a base
+    fresca sem sweep. Body opcional {"exercicio": 2026}. Roda em background; veja /api/siafe/stats depois."""
+    ano = (payload or {}).get("exercicio")
+    args = ["diario"] + ([str(int(ano))] if ano else [])
+    return JSONResponse(_siafe_spawn(args, "atualizar"))
+
+
+@app.post("/api/siafe/sweep")
+async def api_siafe_sweep(payload: dict = None):
+    """SWEEP completo do SIAFE por UG (BACKFILL; fura o teto de 1000). Body {"sistema":"2"} (2=2024-26, 1=2016-23)
+    ou {"ug":"133100","exercicio":2026} p/ uma UG. Longo — roda em background."""
+    p = payload or {}
+    if p.get("ug"):
+        args = ["ug", str(p["ug"])] + ([str(int(p["exercicio"]))] if p.get("exercicio") else [])
+        return JSONResponse(_siafe_spawn(args, "ug"))
+    return JSONResponse(_siafe_spawn(["sweep", str(p.get("sistema", "2"))], "sweep"))
+
+
+@app.get("/api/siafe/status")
+async def api_siafe_status():
+    """Estado da coleta SIAFE (lockfile: se há coleta rodando e qual)."""
+    from compliance_agent import siafe_runner
+    return JSONResponse({"ok": True, "lock": siafe_runner.lock_status()})
+
+
 @app.get("/api/anomalias")
 async def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] = None, top: int = 20):
     """Ranking de OBs suspeitas (Onda 1): score PyOD + red flags determinísticas. Filtros: ?orgao= &fornecedor= &top=.

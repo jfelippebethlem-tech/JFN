@@ -248,3 +248,104 @@ Botões: `btnInsert · btnEdit · btnView · ...` **[mensagem-fonte truncada aqu
   ou "Data Emissão") + Operador + preencher Valor → PPR refiltra ao vivo → iterar por UG/período (<1000 cada).
   Validar ao vivo (cada iteração ~1-2 min). É o desfecho do §8b sem precisar de replay HTTP/Computer Use.
 - **Decisão pendente com o Mestre** antes de implementar o sweep por filtro (custo de runtime + sessão única).
+
+## 🔓 §8b RESOLVIDO (2026-06-07) — filtro ADF via TYPEAHEAD (eventos confiáveis)
+**Causa-raiz do "campo Valor não renderiza":** `select_option()` (e dispatch sintético de change)
+geram eventos **não-confiáveis** (`isTrusted=false`) que o **ADF IGNORA** — muda o `<select>` no DOM
+mas NÃO dispara o PPR que renderiza o widget de valor. O select de Propriedade **não tem onchange**
+no DOM (ADF registra via framework). adf.wait() retorna na hora (nada pendente) → parece travado.
+
+**SOLUÇÃO que funciona (validada):** setar Propriedade e Operador por **TYPEAHEAD com teclado real**:
+1. `_click_real(pg, _F_PROP)` (foco por mouse real) → `keyboard.type("UG Emi",delay~110)` → `Enter` → `Tab`.
+2. Idem Operador: `_click_real(pg, _F_OP)` → `keyboard.type("igual")` → `Enter` → `Tab`.
+3. SÓ com AMBOS setados por evento confiável o campo de valor **`...:in_value_rtfFilter::content`** RENDERIZA.
+4. Valor: `click` no `[id*="in_value_rtfFilter"]:visible` → `keyboard.type("133100")` → `Enter` → `adf.wait()`.
+Typeahead dispara um POST PPR real (confirmado no network). `select_option` NÃO.
+
+**Índices/labels do filtro OB Orçamentária (lidos ao vivo):**
+- Propriedade: 1 Número · **2 UG Emitente** · 3 UG Pagadora · 4 Data Emissão · 9 NL · 10 Credor · 13 Valor · 17 Processo …
+- Operador: **1 igual** · 8 contém · 9 começa com · 11 pertence (separado por ;).
+- **ITERJ = UG Emitente 133100** (mesmo nº no SIAFE-Rio2 e TFE).
+→ `_filtrar()` deve usar TYPEAHEAD (não select_option). Próximo: refatorar `_filtrar` e varrer ITERJ 2024/25/26.
+
+## 🆕 SIAFE 1 (legado) — anos 2016–2023 (descoberta do Jorge 2026-06-07)
+- **URL:** https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp  — **MESMO login** (SIAFE_USER/PASS).
+- SIAFE **2.0** (siafe2.fazenda.rj.gov.br) = 2024–2026; **SIAFE 1** = **2016–2023** (inclui 2023 que está
+  bloqueado no 2.0!). Plano: replicar coletor de OB no SIAFE 1 p/ varrer histórico por UG/ano.
+
+## selUg (Acesso Rápido UG context) — tentativas (2026-06-07)
+Objetivo (dica do Jorge): trocar UG TODAS→"133100 - ITERJ" no dropdown do Acesso Rápido escopa as OBs.
+- `pt1:selUg::content` é `<select>` NATIVO (options TODAS/010100…/133100 - ITERJ).
+- ❌ `select_option` (sintético) → doc anterior: não filtrava (evento não-confiável, ADF ignora).
+- ❌ typeahead "133100" com `_click_real`+keyboard → ficou TODAS (foco no dropdown nativo headless não pega typeahead).
+- ❌ `locator.focus()`+typeahead "133100 - ITERJ" / ArrowDown → select vira null durante PPR (ADF re-renderiza).
+- PENDENTE: confirmar a interação exata (o Jorge faz manual: abre, rola até ITERJ, Enter). Testar select_option
+  por label + esperar PPR + re-achar o select + navegar. Alternativa: o filtro in-grid por TYPEAHEAD (§8b resolvido)
+  já renderiza o campo de valor — falta só APLICAR (Enter no valor não refiltrou; achar o gatilho de aplicar).
+
+## ✅✅ §8b TOTALMENTE RESOLVIDO (2026-06-07) — receita FINAL do filtro por UG
+A peça que faltava: **commitar o campo de Valor com `Tab` (blur), NÃO com `Enter`** (Enter não aplica;
+Tab dispara o PPR que refiltra). Validado: filtro UG Emitente=133100 → grade só com OBs do ITERJ.
+**Receita completa (no OB Orçamentária):**
+1. expandir filtro: `_click_real(_F_DISC)`.
+2. Propriedade: `_click_real(_F_PROP)` → `keyboard.type("UG Emi")` → Enter → Tab.  (typeahead = evento confiável)
+3. Operador: `_click_real(_F_OP)` → `keyboard.type("igual")` → Enter → Tab.
+4. AGORA o campo `[id*="in_value_rtfFilter"]:visible` renderiza → click → type("133100") → **Tab** (commit).
+5. `adf.wait()` + ~3s → grade refiltra; `_colher()` pega todas (scroll 50/vez), `ingerir(ano, header, linhas)`.
+→ Iterar por UG (mapa de UGs) e por ano (2024/25/26 no 2.0; 2016–2023 no SIAFE 1) fura o teto de 1000.
+selUg (Acesso Rápido) NÃO é necessário (e por teclado deu chrome-error no headless — abandonado).
+
+## 🌐 REGRA UNIVERSAL ADF (vale p/ TODOS os filtros/forms do SIAFE-Rio2) — 2026-06-07
+A correção do §8b NÃO é específica da OB Orçamentária. É a mecânica do ADF Faces inteiro:
+- **Causa-raiz:** o ADF ignora eventos com `isTrusted=false` (anti-automação). `select_option`,
+  `fill`, `dispatchEvent('change')` → ignorados (mudam o DOM, não disparam o PPR/valueChange).
+- **REGRA:** todo `<select>` ADF → selecionar por **TYPEAHEAD** (`_click_real` p/ focar + `keyboard.type`
+  + Enter + Tab). Todo campo de VALOR/inputText de filtro → digitar e **commitar com `Tab` (blur)**, NÃO Enter.
+- **Aplica-se a:** o filtro genérico `sdtFilter`/`rtfFilter` de TODAS as telas (NE, NL, NP, PD, Contratos,
+  Convênios, Guias…) e ao "outro tipo de filtro" do SIAFE-Rio2. Mesma receita = mesmo destravamento do teto 1000.
+- Reuso no código: `siafe_ob_orcamentaria._typeahead()` e `_filtrar_ug()` (generalizáveis trocando prop/op/valor).
+
+## 🆕🆕 SIAFE 1 (2016–2023) + PARALELISMO confirmado (2026-06-07)
+- **SIAFE 1 login VALIDADO:** `www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp` — MESMOS IDs de login do 2.0
+  (`loginBox:itxUsuario::content`/`itxSenhaAtual::content`/`cbxExercicio::content`/`btnConfirmar`),
+  cliente "Rio de Janeiro". Selecionar exercício (2016–2023) + creds → loga **SEM MFA**. jsessionid próprio.
+- **PARALELO CONFIRMADO:** logar no SIAFE 1 **NÃO derruba** a sessão do SIAFE 2 (o sweep 2.0 continuou
+  coletando durante o login 1). Sessões independentes → coletar 2016-2023 (1) e 2024-2026 (2) AO MESMO TEMPO.
+- **Próximo p/ SIAFE 1:** mapear ao vivo os IDs da tela OB Orçamentária no 1 (podem diferir do 2.0); aplicar
+  a mesma receita §8b (typeahead + Tab) por UG/ano. Pode rodar em paralelo ao 2.0.
+- **CAP por UG grande:** SEEDUC 2026 = 1000 (cap) → UGs grandes precisam **UG Emitente + Data Emissão (período)**
+  no filtro (2ª linha rtfFilter, operador "maior ou igual"/"menor ou igual", por quinzena/mês). Pequenas
+  (ITERJ=280, SES=160) cabem direto.
+
+## 🧩 UGs GRANDES (>1000/ano) — sub-filtro (tentativas 2026-06-07)
+Filtrar só por UG Emitente NÃO basta p/ UGs grandes (SEEDUC, TJRJ): a fatia da UG já passa de 1000/ano → cap.
+**Restrição:** a tela OB Orçamentária tem só **2 linhas de filtro** (`table_rtfFilter:0` e `:1`) — NÃO dá
+range de data (precisaria 3 linhas: UG + Data>= + Data<=). Não achei botão de "adicionar linha".
+**Linha 1 confirmada:** Propriedade "Data Emissão" (idx 4) → campo `in_date_rtfFilter`; "Número" (idx 1) → `in_value`.
+**SOLUÇÃO adotada: UG Emitente (linha 0) + Número "começa com" <prefixo> (linha 1), iterando prefixos.**
+- ❌ Prefixos grossos `{ano}OB0..9` falham p/ ano recente: ex. **SEEDUC 2026 está TODO em `2026OB0...`**
+  (números baixos, ano começou) → prefixo `2026OB0` sozinho ainda dá 1000 (cap); OB1..9 = 0.
+- ✅ **SUBDIVISÃO AUTOMÁTICA:** quando um prefixo bate ≥990, descer p/ `pref+0..9` (worklist recursivo, até
+  profundidade ~7 dígitos). Só ingerir fatia COMPLETA (<990); a capada é coberta pelos filhos. Idempotente.
+- Código: `coletar_por_ug_grande()` + CLI `--por-ug <ug> --ug-grande --exercicio <ano>`.
+- Caveat: gera N consultas (1 por sub-fatia) — mais lento, mas completo. Sessão única ~1h: se uma UG×ano for
+  enorme, pode precisar relogin/checkpoint (a fazer se aparecer). DB dedup por numero_ob (global-único, validado).
+
+### BUG+FIX da iteração de prefixo (2026-06-07)
+1ª tentativa da subdivisão: pai `2026OB0`=1000(CAP) mas filhos `2026OB00..09`=TODOS 0 (impossível). Causa:
+`_set_valor` limpava com Ctrl+A/Delete (NÃO funciona no campo ADF) → na 2ª iteração concatenava lixo → 0.
+FIX: `_set_valor` agora limpa com `locator.fill("")` (confiável) + verifica `input_value()==valor` (re-digita se não).
+Lição geral: ao reusar um campo de filtro ADF entre iterações, **limpar com fill("") e VERIFICAR o valor** antes do Tab.
+
+## ✅ RESUMO DOS AVANÇOS (2026-06-07) — ver /tmp/SIAFE-AVANCOS.txt
+- Teto 1000 SUPERADO (typeahead+Tab). coletar_por_ug (UG pequena) e coletar_por_ug_grande (UG+Número prefixo+
+  subdivisão automática) funcionando. SEEDUC 2026: cap→>6000. SIAFE 1 acessível e PARALELO ao 2.
+- Tabela ob_orcamentaria_siafe: 13.439 OBs, 12.730 com nº SEI. Sócios por OB em background (~3150/12309).
+
+## ⛔ SIAFE 1 — bloqueio do campo de valor (2026-06-07)
+SIAFE 1 (www5/SiafeRio): login OK, nav OK, disclosure abre, filtro com MESMOS rótulos (2=UG Emitente,
+1=igual, 9=começa com). Typeahead SETA prop e op corretamente. PORÉM o **campo de valor NÃO renderiza**
+(linha 0 fica só com `chk_neg`) — diferente do SIAFE 2 (onde renderiza após os 2 typeaheads). ADF mais
+antigo renderiza o valor de outro jeito. PENDENTE: descobrir o gatilho do valor no SIAFE 1 (talvez precise
+de evento extra no operador, wait maior, ou o campo aparece sob outro id/container). Até lá, sweep do SIAFE 1
+fica BLOQUEADO; SIAFE 2 (2024-26) segue normal.

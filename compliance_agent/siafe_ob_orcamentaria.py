@@ -28,7 +28,9 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO))
 
-LOGIN_URL = "https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp"
+# SIAFE 2.0 por padrão; aponte JFN_SIAFE_LOGIN_URL p/ o SIAFE 1 (www5.fazenda.rj.gov.br/SiafeRio,
+# anos 2016–2023) — mesmo login/nav ADF. Sessões independentes → pode rodar 1 e 2 em paralelo.
+LOGIN_URL = os.environ.get("JFN_SIAFE_LOGIN_URL", "https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp")
 TABLE_DB = "pt1:tblOBOrcamentaria:tabViewerDec::db"   # container rolável do corpo da tabela
 OB_RE = re.compile(r"20\d\dOB\d{5,6}")
 _STATE = _REPO / "data" / "sei_cache" / "siafe_state.json"
@@ -179,7 +181,12 @@ async def _login(pg, exercicio: int):
     try:
         await pg.click('[id="loginBox:btnConfirmar"]', timeout=8000)
     except Exception:
-        await pg.evaluate("""()=>{const b=document.getElementById('loginBox:btnConfirmar');if(b)b.click();}""")
+        # o clique pode disparar a navegação ENQUANTO o evaluate roda → "context destroyed" é, na prática,
+        # o login prosseguindo. Tolerar (o fluxo abaixo espera/verifica o estado).
+        try:
+            await pg.evaluate("""()=>{const b=document.getElementById('loginBox:btnConfirmar');if(b)b.click();}""")
+        except Exception:
+            pass
     await pg.wait_for_timeout(4000)
     # EXERCÍCIO BLOQUEADO para esta conta? (ex.: "O SIAFE-Rio 2023 está bloqueado...")
     body0 = ((await pg.inner_text("body")) or "")
@@ -675,6 +682,142 @@ async def coletar_filtrado(exercicio=2026, prefixos=None, headless=True, maxn=40
     return {"ok": not pend, "exercicio": exercicio, "feitos": feitos, "pendentes": pend}
 
 
+async def _typeahead(pg, elem_id, text):
+    """Seleciona um <select> ADF por TYPEAHEAD (evento CONFIÁVEL — select_option/dispatch são
+    ignorados pelo ADF). Foco por mouse real → digita → Enter → Tab. Resolve o §8b."""
+    await _click_real(pg, elem_id); await pg.wait_for_timeout(350)
+    await pg.keyboard.type(str(text), delay=110); await pg.wait_for_timeout(500)
+    await pg.keyboard.press("Enter"); await pg.wait_for_timeout(300)
+    await pg.keyboard.press("Tab"); await pg.wait_for_timeout(1500)
+
+
+async def _filtrar_ug(pg, ug_codigo) -> dict:
+    """Filtra a OB Orçamentária por UG Emitente = <ug_codigo> (receita VALIDADA 2026-06-07).
+    Propriedade/Operador por typeahead; VALOR commitado com **Tab** (Enter NÃO aplica)."""
+    from compliance_agent.siafe_adf import AdfSync
+    adf = AdfSync(pg)
+    if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
+        await _click_real(pg, _F_DISC); await adf.wait()
+    if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
+        return {"ok": False, "erro": "painel de filtro não abriu"}
+    await _typeahead(pg, _F_PROP, "UG Emi"); await adf.wait()      # Propriedade = UG Emitente
+    await _typeahead(pg, _F_OP, "igual"); await adf.wait()         # Operador = igual
+    val = pg.locator('[id*="in_value_rtfFilter"]:visible').last     # campo de valor (renderiza após os 2 typeaheads)
+    if await val.count() == 0:
+        return {"ok": False, "erro": "campo de valor não renderizou"}
+    await val.click(); await val.press("Control+a"); await val.press("Delete")
+    await pg.keyboard.type(str(ug_codigo), delay=100)
+    await pg.keyboard.press("Tab")                                  # COMMIT por Tab (blur) → PPR refiltra
+    await adf.wait(); await pg.wait_for_timeout(3000)
+    return {"ok": True, "ug": ug_codigo}
+
+
+# linha 1 do filtro (a tabela já vem com 2 linhas: 0 e 1) — p/ combinar UG (linha 0) + Número (linha 1)
+_F_PROP1 = "pt1:tblOBOrcamentaria:table_rtfFilter:1:cbx_col_sel_rtfFilter::content"
+_F_OP1 = "pt1:tblOBOrcamentaria:table_rtfFilter:1:cbx_op_sel_rtfFilter::content"
+_F_VAL1_SEL = '[id*="table_rtfFilter:1"] input[type="text"]:visible'
+
+
+async def _set_valor(pg, sel, valor):
+    """Seta o campo de valor do filtro, LIMPANDO de forma confiável antes (Ctrl+A/Delete falha no
+    campo ADF e concatena lixo → 0 resultados na 2ª iteração). Verifica que ficou só o valor novo."""
+    v = pg.locator(sel).last
+    await v.click()
+    await v.fill("")                       # limpeza confiável (síncrona)
+    await pg.wait_for_timeout(150)
+    await pg.keyboard.type(str(valor), delay=90)
+    # confere que o campo tem exatamente o valor (senão re-limpa e re-digita)
+    try:
+        if (await v.input_value()).strip() != str(valor):
+            await v.fill(""); await pg.wait_for_timeout(150)
+            await pg.keyboard.type(str(valor), delay=90)
+    except Exception:
+        pass
+    await pg.keyboard.press("Tab")
+
+
+async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, prefixos=None, maxn=20000) -> dict:
+    """UG GRANDE (>1000/ano): combina UG Emitente (linha 0) + Número 'começa com' <prefixo> (linha 1),
+    iterando prefixos {ano}OB0..9 (sub-divide se uma fatia ainda bater ~1000). Fura o teto p/ UGs grandes."""
+    from playwright.async_api import async_playwright
+    from compliance_agent.siafe_adf import AdfSync
+    if not prefixos:
+        prefixos = [f"{exercicio}OB{d}" for d in range(10)]
+    async with async_playwright() as pw:
+        b = await pw.chromium.launch(headless=headless, args=["--no-sandbox", "--ignore-certificate-errors"])
+        ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", timezone_id="America/Sao_Paulo",
+                                  viewport={"width": 1600, "height": 1000})
+        pg = await ctx.new_page()
+        await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+        try:
+            if not (await _login(pg, exercicio)).get("ok"):
+                return {"ok": False, "etapa": "login"}
+            if not (await _navegar(pg)).get("ok"):
+                return {"ok": False, "etapa": "nav"}
+            adf = AdfSync(pg); await adf.boot()
+            if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
+                await _click_real(pg, _F_DISC); await adf.wait()
+            # linha 0 = UG Emitente igual <ug>  (uma vez)
+            await _typeahead(pg, _F_PROP, "UG Emi"); await adf.wait()
+            await _typeahead(pg, _F_OP, "igual"); await adf.wait()
+            await _set_valor(pg, _F_VAL_SEL, ug); await adf.wait()
+            # linha 1 = Número começa com (prop/op uma vez; valor por prefixo)
+            await _typeahead(pg, _F_PROP1, "Número"); await adf.wait()
+            await _typeahead(pg, _F_OP1, "começa com"); await adf.wait()
+            # worklist com SUBDIVISÃO automática: se um prefixo bate o cap (>=990), desce p/ pref+0..9
+            por_prefixo, tot, work = {}, 0, list(prefixos)
+            while work:
+                pref = work.pop(0)
+                await _set_valor(pg, _F_VAL1_SEL, pref); await adf.wait(); await pg.wait_for_timeout(2200)
+                vistos, linhas = set(), []
+                await _colher(pg, maxn, vistos, linhas, None)
+                n = len(linhas)
+                capou = n >= 990
+                if linhas and not capou:           # só ingere fatia COMPLETA (capada será coberta pelos filhos)
+                    tot += ingerir(exercicio, _COLS_SIAFE, linhas).get("ingeridas", 0)
+                if capou and len(pref) - len(str(exercicio)) - 2 < 7:   # subdivide (limite de profundidade)
+                    filhos = [f"{pref}{d}" for d in range(10)]
+                    work[:0] = filhos
+                    print(f"  {ug} {exercicio} pref {pref}: {n} (CAP) → subdividindo {filhos[0]}..{filhos[-1]}", flush=True)
+                else:
+                    por_prefixo[pref] = n
+                    print(f"  {ug} {exercicio} pref {pref}: {n} OBs ✓", flush=True)
+            return {"ok": True, "exercicio": exercicio, "ug": ug, "ingeridas": tot,
+                    "fatias": len(por_prefixo), "por_prefixo": por_prefixo}
+        finally:
+            await b.close()
+
+
+async def coletar_por_ug(exercicio=2026, ug="133100", headless=True, maxn=20000) -> dict:
+    """Coleta TODAS as OBs de uma UG num exercício (fura o teto de 1000 filtrando por UG Emitente).
+    Login → nav → filtra UG → colhe (scroll) → ingere. Ver docs/SIAFE-RIO2-GUIA-AUTOMACAO.md §8b."""
+    from playwright.async_api import async_playwright
+    from compliance_agent.siafe_adf import AdfSync
+    async with async_playwright() as pw:
+        b = await pw.chromium.launch(headless=headless, args=["--no-sandbox", "--ignore-certificate-errors"])
+        ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", timezone_id="America/Sao_Paulo",
+                                  viewport={"width": 1600, "height": 1000})
+        pg = await ctx.new_page()
+        await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+        try:
+            lg = await _login(pg, exercicio)
+            if not lg.get("ok"):
+                return {"ok": False, "etapa": "login", **lg}
+            if not (await _navegar(pg)).get("ok"):
+                return {"ok": False, "etapa": "navegacao"}
+            adf = AdfSync(pg); await adf.boot()
+            fr = await _filtrar_ug(pg, ug)
+            if not fr.get("ok"):
+                return {"ok": False, "etapa": "filtro", **fr}
+            vistos, linhas = set(), []
+            header = await _colher(pg, maxn, vistos, linhas, None)
+            ing = ingerir(exercicio, header, linhas) if linhas else {"ingeridas": 0}
+            return {"ok": True, "exercicio": exercicio, "ug": ug,
+                    "colhidas": len(linhas), "ingeridas": ing.get("ingeridas")}
+        finally:
+            await b.close()
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--exercicio", type=int, default=2025)
@@ -682,8 +825,14 @@ def main():
     ap.add_argument("--ingerir", action="store_true", help="grava as OBs colhidas na compliance.db (SIAFE prepondera)")
     ap.add_argument("--resiliente", action="store_true", help="coordena via Telegram e retoma se a sessão cair")
     ap.add_argument("--por-numero", action="store_true", help="sweep por filtro Número 'começa com' (fura o teto de 1000)")
+    ap.add_argument("--por-ug", default="", help="coleta TODAS as OBs de uma UG Emitente (ex: 133100 p/ ITERJ); fura o teto de 1000")
+    ap.add_argument("--ug-grande", action="store_true", help="UG grande (>1000/ano): combina UG + Número 'começa com' por prefixo")
     ap.add_argument("--prefixos", default="", help="prefixos custom p/ --por-numero, separados por vírgula (ex: 2026OB0,2026OB1)")
     a = ap.parse_args()
+    if a.por_ug:
+        fn = coletar_por_ug_grande if a.ug_grande else coletar_por_ug
+        res = asyncio.run(fn(a.exercicio, a.por_ug.strip()))
+        print(json.dumps(res, ensure_ascii=False, indent=1)); return
     if a.por_numero:
         pref = [p.strip() for p in a.prefixos.split(",") if p.strip()] or None
         res = asyncio.run(coletar_filtrado(a.exercicio, pref, maxn=a.max))
