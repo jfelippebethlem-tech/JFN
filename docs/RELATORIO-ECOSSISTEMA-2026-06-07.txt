@@ -1,0 +1,75 @@
+================================================================================
+JFN / ECOSSISTEMA — PARECER COMPLETO E HONESTO (2026-06-07)
+================================================================================
+
+## 1. O QUE FOI FEITO NESTA SESSÃO (entregue + commitado no branch linux)
+- ★ SIAFE — teto de 1000 OBs/consulta SUPERADO. Causa-raiz: ADF ignora eventos sintéticos
+  (select_option/fill). Solução: selects por TYPEAHEAD (teclado real) + valor commitado com TAB.
+  Vira regra universal p/ todas as telas ADF.
+- Coletores: coletar_por_ug (UG pequena), coletar_por_ug_grande (UG grande: UG+Número prefixo+
+  subdivisão automática), coletar_por_data (verificador de dia). Tudo em siafe_ob_orcamentaria.py.
+- siafe_runner.py: PONTO ÚNICO com LOCKFILE de sessão única. Comandos: diario / ug / sweep / verificar.
+- ROTINA DIÁRIA (cron 05:00): atualização incremental (aba sem filtro) — mantém a base fresca SEM sweep.
+  + VERIFICADOR: confere ontem/anteontem por Data Emissão; se um dia teve >1000 OBs (ex.: folha), subdivide
+  e completa (sua ideia — boa e necessária).
+- Rotas no JFN p/ o Yoda: POST /api/siafe/atualizar, /api/siafe/sweep, GET /api/siafe/status, /stats.
+- SWEEP COMPLETO do SIAFE 2 RODANDO (205 UGs x 2024-26, começou por TJRJ; resumível por checkpoint).
+- SIAFE 1 (2016-2023): acesso, login (sem MFA) e PARALELISMO com o SIAFE 2 confirmados; filtro mapeado.
+- FlexVision: login (sessão 30 dias), MFA lido do log do Hermes, export de definições de folha.
+- Sócios/diretores por OB (BrasilAPI): em background, ~6.000/12.309 CNPJs.
+- Ecossistema: PLAYBOOK-EXECUTOR.md + memória do Yoda atualizada (codegraph p/ JS, graphify p/ Python).
+- Docs: SIAFE-RIO2-GUIA-AUTOMACAO, FLEXVISION-EVOLUCAO, SCRAPING-SITES-DIFICEIS, PLAYBOOK-EXECUTOR.
+NÚMEROS: 15.914 OBs SIAFE (15.210 com nº SEI), 62 UGs (subindo p/ ~205); sócios 5.989 CNPJs.
+
+## 2. PARECER HONESTO — o que está bom e o que é frágil
+BOM:
+- A receita do filtro ADF (typeahead+Tab) é sólida e generaliza; destravou o gargalo histórico (§8b).
+- Arquitetura de coleta agora tem ponto único + lockfile + idempotência (PK numero_ob global-único).
+- Diário incremental + verificador é o desenho certo (barato no dia a dia; sweep só p/ backfill).
+FRÁGIL / A MELHORAR (honesto):
+- CONTAMINAÇÃO DO SCROLL: o _colher às vezes captura as 1as ~50 linhas ANTES do filtro assentar →
+  ingere linhas de outras UGs; auto-corrige via PK quando a UG certa é coletada, mas as contagens por UG
+  oscilam no meio. FIX recomendado: esperar a 1a linha visível bater o filtro (UG/data) antes de colher.
+- SWEEP É LENTO: UG grande subdivide em muitas fatias de ~100; 205 UGs x 3 anos = multi-dia, ~600+ logins.
+  Risco de instabilidade/rate-limit. Alternativa a avaliar: HTTP replay do PPR do ADF (mais rápido/robusto).
+- DIÁRIO/VERIFICADOR e ROTAS ainda NÃO testados AO VIVO (sessão ocupada pelo sweep). O formato do campo de
+  Data (in_date) precisa de 1 validação ao vivo. As rotas só ficam ativas após reload do jfn.service.
+- SIAFE 1: o campo de valor do filtro NÃO renderiza (ADF antigo) — sweep do 1 BLOQUEADO até resolver.
+- codegraph é fraco em Python (81 nós no JFN) — usar graphify p/ o JFN; codegraph serve melhor ao hermes (JS).
+
+## 3. O QUE ESTÁ PESADO (storage/RAM/CPU)
+DISCO (16G/48G, 33% — folga ok, mas dá p/ enxugar):
+- compliance.db = 1.008 MB (+ WAL 81 MB + shm). É o grosso. WAL folda no checkpoint (cron semanal de manutenção).
+- ~/.cache: ms-playwright 523M (navegadores — MANTER), uv 325M (PURGÁVEL), huggingface 142M (checar se usado).
+- ~/JFN/data/tfe_cache 138M (zip-fonte das OBs — manter).
+- hermes-agent 1.4G (repo + graphify-out + venv).
+RAM: 7.8G total, ~3.8G livre — SAUDÁVEL. Vários chrome (CDP 9222 + playwright transitório) — normal.
+CPU: picos só durante coleta/claude — normal; nada rodando ocioso pesado.
+
+## 4. O QUE DÁ P/ ZIPAR / LIMPAR (ganhos seguros)
+- `uv cache clean` → ~325M. `pip cache purge` (já tentado, 0). Avaliar HF cache (142M) se nenhum modelo local é usado.
+- VACUUM no compliance.db DEPOIS do sweep (recupera espaço de churn de re-ingestão) — o cron de manutenção já
+  faz WAL-checkpoint/VACUUM/gzip semanal; vale rodar manual pós-sweep e talvez aumentar p/ 2x/semana.
+- Logs: rotacionar/gzip data/*.log e os *_cron.log (hoje crescem sem limite). Sugiro logrotate ou gzip no manutencao.
+- Limpar dumps regeneráveis (*.out, screenshots antigas) — já limpei parte; pôr no manutencao como rotina.
+- data/flexvision_export (defs .xml) — pequeno; manter.
+
+## 5. MELHORIAS — playbook / workflow / pipelines
+PLAYBOOK: bom como referência; sugiro (a) um "TL;DR de 1 tela" no topo (3 comandos mais usados);
+  (b) tabela única de rotas+CLI lado a lado; (c) seção "troubleshooting" (erros comuns + fix).
+WORKFLOW/PIPELINES:
+- Coleta: trocar o sweep "dirige o DOM" por HTTP replay do PPR onde der (10x mais barato; doc SCRAPING §4.5).
+- Robustez: esperar o filtro assentar antes de colher (mata a contaminação); checkpoint por sub-prefixo no
+  ug-grande (hoje é por UG/ano) p/ retomar UG enorme sem recomeçar.
+- Orquestração: um cron health-check que dispara o folha_orquestrador/coletores quando as fontes voltam (já
+  existe p/ folhas) — estender p/ um "painel de saúde" único (o que rodou, o que falhou, o que está fresco).
+- Observabilidade: um GET /api/siafe/stats já existe; adicionar "frescor" (data da última OB por ano) p/ saber
+  se o diário está em dia.
+- Multiusuário/Yoda: validar de ponta a ponta o comando "atualiza o siafe" saindo do Telegram (pendente).
+- Eficiência de cota IA: preferir CLI/headless e logs em disco (já fazemos) a despejar no contexto.
+
+## 6. RISCOS/PENDÊNCIAS A NÃO ESQUECER
+- Testar diário+verificador+rotas ao vivo (após o sweep liberar a sessão). Validar formato do campo de Data.
+- Destravar o filtro do SIAFE 1 (campo de valor) p/ liberar 2016-2023.
+- Sweep multi-dia: monitorar estabilidade/rate-limit; ter plano B (HTTP replay) se cair muito.
+================================================================================
