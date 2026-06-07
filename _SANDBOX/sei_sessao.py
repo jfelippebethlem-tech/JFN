@@ -96,12 +96,24 @@ def _eval(ws_url, expr, _id=2):
 
 def _ler_env(chave):
     import os
-    env = os.path.expanduser(r"C:\Users\socah\AppData\Local\hermes\.env")
-    with open(env, "r", encoding="utf-8", errors="replace") as f:
-        for ln in f:
-            ln = ln.strip()
-            if ln.startswith(chave + "="):
-                return ln.split("=", 1)[1].strip()
+    # 1) variável de ambiente tem prioridade (padrão multiplataforma do projeto)
+    val = os.environ.get(chave)
+    if val:
+        return val.strip()
+    # 2) fallback portável: JFN_ENV_FILE > ~/.hermes/.env > .env do Hermes no Windows > <repo>/.env
+    win = r"C:\Users\socah\AppData\Local\hermes\.env"
+    repo_env = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
+    for env in (os.environ.get("JFN_ENV_FILE"),
+                os.path.expanduser("~/.hermes/.env"),
+                win if os.path.exists(win) else None,
+                repo_env):
+        if not env or not os.path.exists(env):
+            continue
+        with open(env, "r", encoding="utf-8", errors="replace") as f:
+            for ln in f:
+                ln = ln.strip()
+                if ln.startswith(chave + "="):
+                    return ln.split("=", 1)[1].strip()
     return None
 
 
