@@ -452,3 +452,13 @@ binding/iterator); (2) precisa capturar a SEQUÊNCIA completa (valueChange + tab
 funcione — mas a UI nunca filtra com sucesso p/ capturar; (3) Computer Use (último recurso) clicando como
 humano p/ observar o request real. SIAFE 1 (2016-2023) FICA PENDENTE; SIAFE 2 (2024-26) 100% operacional.
 DECISÃO: não gastar mais ciclos no SIAFE 1 sem um insight novo (evitar loop). Prioridade segue no SIAFE 2.
+
+## ✅✅✅ SIAFE 1 DESTRAVADO (2026-06-07) — 2016-2023 coletável
+RECEITA QUE FUNCIONA no SIAFE 1 (e unifica com o 2.0):
+- Propriedade/Operador por TYPEAHEAD; operador **"começa com"** (NÃO "igual": no SIAFE 1 "igual" não rende o
+  campo de valor; "começa com" rende e, em UG de 6 dígitos, equivale a igual).
+- VALOR commitado via o **CLIENTE ADF** (não Tab): `c=AdfPage.PAGE.findComponentByAbsoluteId(<id sem ::content>);
+  c.setValue(val); new AdfValueChangeEvent(c,'',val).queue(true)`. (O campo do SIAFE 1 não tem autoSubmit →
+  Tab não dispara; o evento ADF dispara o PPR E o cliente auto-busca as linhas.) Embutido em `_set_valor`.
+VALIDADO: `coletar_por_ug(2023,'010100')` → 1000 OBs ALERJ ingeridas (1ª vez 2023!). UG grande → cai p/ ug-grande.
+Sweep SIAFE 1: `tools.siafe_sweep_full 1` (anos 2016-2023) — sessão INDEPENDENTE do 2.0 → roda EM PARALELO.
