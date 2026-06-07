@@ -1,0 +1,1304 @@
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+MANUAL DE 
+ORIENTAÇÕES 
+PGE/RJ 
+APLICAÇÃO DA LEI Nº 14.133/21 – NOVA LEI DE 
+LICITAÇÕES E CONTRATOS ADMINISTRATIVOS  
+ 
+1 
+ 
+  
+PROCURADORIA GERAL DO ESTADO DO RIO DE JANEIRO 
+ 
+ 
+Procurador Geral do Estado 
+Renan Miguel Saad 
+ 
+Procurador-Chefe da Coordenadoria do Sistema Jurídico 
+Denis Moreira Monassa Martins 
+ 
+Elaboração (novembro/2025) 
+Denis Moreira Monassa Martins 
+Rodrigo Silva Moreira Sampaio 
+ 
+Revisão 
+Comissão PGE/RJ para Lei nº 14.133/21 (Res. PGE nº 4.937/23) 
+ 
+Colaboração 
+Jéssyca Rodrigues de Souza 
+Flávia Claudio Barbosa 
+Yuri Camarinha 
+ 
+ 
+2 
+ 
+  
+ 
+APRESENTAÇÃO 
+ 
+ A Procuradoria -Geral do Estado do Rio de Janeiro 
+(PGE/RJ) é uma instituição essencial à representação 
+judicial e à consultoria jurídica do Estado. Sua atuação 
+técnico-jurídica abrange órgãos, autarquias, fundações, 
+empresas públicas e sociedades de economi a mista, 
+contribuindo para decisões seguras e alinhadas à 
+juridicidade e ao interesse público. 
+ 
+Com esse propósito, a PGE/RJ disponibiliza o presente 
+documento, destinado a reunir e consolidar entendimentos 
+sobre a aplicação da Nova Lei de Licitações e Contratos – 
+Lei nº 14.133/2021. O conteúdo reflete posicionamentos 
+institucionais da Procuradoria expressados em pareceres, 
+manifestações e consultas. 
+ 
+Voltado aos públicos interno e externo, o documento busca 
+contemplar temas de interesse geral e dúvidas recorrentes 
+em matéria de licitações e contratos submetidos à 
+apreciação da PGE/RJ enquanto órgão central do Sistema 
+Jurídico do Estado. 
+ 
+3 
+ 
+ 
+  
+Licença 
+Este material pode ser citado, adaptado e transmitido 
+por qualquer meio ou formato, desde que para fins não 
+comerciais e com indicação de seus autores. 
+ 
+ 
+Martins, Denis Moreira Monassa 
+M386  Manual de orientações PGE/RJ: aplicação da Lei nº 14.133/21 – nova Lei de 
+licitações e contratos administrativos / Denis Moreira Monassa Martins; Rodrigo 
+Silva Moreira Sampaio. — Rio de Janeiro: Procuradoria Geral do Estado do Rio 
+de Janeiro, 2025. 
+ 
+  41 p.; 30 cm   
+ 
+1. Direito – Rio de Janeiro (Estado). 2. Lei de licitações. 3. Direito – Manuais. 
+I. Martins, Denis Moreira Monassa. II. Sampaio, Rodrigo Silva Moreira. III.  
+Título. 
+ 
+         CDD 351 
+ 
+4 
+ 
+ÍNDICE TEMÁTICO 
+ 
+ 
+AGENTE DE CONTRATAÇÃO 7 
+AUDIÊNCIA PÚBLICA 8 
+Obrigatoriedade de realização 8 
+Serviços e fornecimentos contínuos 9 
+Ata de Registro de Preços 10 
+BENS PÚBLICOS 11 
+CESSÃO CONTRATUAL 12 
+CONTRATAÇÃO DIRETA 13 
+Remanescente de obra 13 
+Licitação deserta 14 
+Justificativa de preço 15 
+PATROCÍNIO 16 
+CONTRATOS ADMINISTRATIVOS 17 
+Transferência de contrato entre órgãos 17 
+Código de Defesa do Consumidor 18 
+Prazo de vigência 19 
+Prorrogação com contratado sancionado 20 
+ 
+5 
+ 
+CONVÊNIOS 21 
+CREDENCIAMENTO 22 
+EMPRESAS ESTATAIS 23 
+Publicidade, eficácia e vigência contratual 23 
+Adesão a ARP da Administração Direta 24 
+FASE PREPARATÓRIA 25 
+Pesquisa de preços 25 
+Critério de julgamento “maior desconto” 26 
+Consórcio 28 
+Projeto Básico/Termo de Referência e Projeto Executivo 29 
+HABILITAÇÃO 30 
+Habilitação jurídica 30 
+MICROEMPRESA E EMPRESA DE PEQUENO PORTE 31 
+PARECER JURÍDICO 32 
+REAJUSTE 33 
+SISTEMA DE REGISTRO DE PREÇOS 34 
+Adesão a ARP formada sob a Lei nº 8.666/93 34 
+Adesão a ARP municipal 35 
+Não–obrigatoriedade de adesão a ARP 36 
+Contratação garantida 37 
+ 
+6 
+ 
+Pesquisa de mercado 38 
+Reunião de itens em grupo/lote 39 
+Requisição de itens 40 
+STARTUPS 41 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+ 
+7 
+ 
+AGENTE DE CONTRATAÇÃO 
+ 
+ 
+ 
+É possível a nomeação de servidor 
+ocupante exclusivamente de cargo em 
+comissão para a função de agente de 
+contratação? 
+ 
+Sim, desde que demonstrada a impossibilidade de 
+indicar “preferencialmente, servidor efetivo ou 
+empregado público dos quadros permanentes da 
+Administração Pública” e desde que apresentada 
+justificativa da qualificação do servidor extraquadro 
+indicado, a qual deverá ser submetida à autoridade 
+superior (art. 7º, caput e I, da Lei nº 14.133/21 e art. 35, 
+caput e p.ú., do Decreto nº 48.650/23). 
+ 
+Os artigos 6º, LX, e 8º da Lei nº 14.133/21, que 
+determinam que os agentes de contratação deverão ser 
+“servidores efetivos ou empregados públicos dos 
+quadros permanentes da Administração Pública”, não 
+são normas gerais; portanto, não são de observância 
+obrigatória para o legislador estadual, que pode 
+regulamentar a matéria de forma diferente. Já o art. 7º, 
+caput e I, da Lei nº 14.133/21 veicula norma geral, e 
+deve ser observado por todos os entes federativos. 
+ 
+Referência(s): Parecer nº 35/2024 – GUB – PG-17 
+ 
+ 
+  
+ 
+8 
+ 
+AUDIÊNCIA PÚBLICA 
+ 
+Obrigatoriedade de realização  
+ 
+ 
+A realização de audiência pública é 
+obrigatória ou facultativa? 
+ 
+O Decreto nº 48.816/23, em seu art. 54, §2º, torna 
+obrigatória a realização de audiência pública, 
+convocada com antecedência mínima de 8 (oito) 
+dias úteis, sempre que o valor da licitação ou do 
+conjunto de licitações for igual ou superior ao 
+estipulado no art. 6º, XXII, da Lei nº 14.133/21. 
+ 
+Conforme o Enunciado PGE-RJ nº 35, que segue 
+aplicável sob a Lei nº 14.133/21, tal 
+obrigatoriedade se aplica inclusive aos casos de 
+pregão ou de registro de preços. 
+ 
+Como as contribuições dadas em audiência 
+pública podem influir sensivelmente na formatação 
+das licitações e dos documentos técnicos, como o 
+termo de referência e o edital, trata-se de etapa 
+necessariamente antecedente à análise jurídica 
+definitiva. 
+ 
+Referência(s): Parecer LAS n.º 36/2024/SETD/ASSJUR e 
+Parecer nº 44/2024/SECID/ASSJUR 
+ 
+ 
+9 
+ 
+AUDIÊNCIA PÚBLICA  
+Serviços e fornecimentos contínuos  
+ 
+ 
+ 
+ 
+Nas contratações de serviços e 
+fornecimentos contínuos, como se apura o 
+valor da licitação para se aferir a 
+obrigatoriedade de realizar audiência 
+pública (art. 54 do Decreto nº 48.816/23)? 
+ 
+A apuração se dá com base no valor estimado para 
+o primeiro ano de contratação, na forma do §3º do 
+art. 54 do Decreto nº 48.816/23. 
+ 
+ 
+Referência(s): Visto ao Parecer LAS n.º 36/2024/SETD/ASSJUR 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+10 
+ 
+AUDIÊNCIA PÚBLICA  
+Ata de Registro de Preços  
+ 
+ 
+ 
+Nas atas de registro de preços, como se 
+apura o valor da licitação para se aferir a 
+obrigatoriedade de realizar audiência 
+pública (art. 54 do Decreto nº 48.816/23)? 
+ 
+Considera-se apenas o valor estimado da ARP para 
+o órgão gerenciador e os órgãos/entidades 
+participantes; as possíveis adesões por não-
+participantes não devem ser contabilizadas. 
+ 
+ 
+Referência(s): Parecer n.º 32/2024/SEHIS/ASSJUR – LFFA 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+11 
+ 
+ 
+BENS PÚBLICOS  
+ 
+ 
+Qual a modalidade licitatória adequada 
+para licitar a permissão de uso de bens 
+públicos? 
+ 
+Pregão ou concorrência, desde que, em se tratando 
+da opção pelo pregão, seja justificado no caso 
+concreto que o objeto se enquadra como comum, 
+diante da existência de condições padronizáveis e 
+objetivas no edital. 
+ 
+O critério de julgamento a ser adotado deve ser o de 
+maior lance/outorga ou o de maior lance/outorga 
+aliado ao critério de técnica - nesta última hipótese, 
+deve ser adotada a modalidade concorrência. 
+ 
+Referência(s): Parecer BVLA n.º 01/2024 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+12 
+ 
+CESSÃO CONTRATUAL  
+ 
+ 
+É possível a cessão do contrato 
+administrativo pelo contratado? 
+ 
+Sim. A falta de autorização expressa na NLLC não 
+deve ser compreendida como proibição absoluta à 
+cessão contratual. São necessários: (i) que a 
+possibilidade de cessão e requisitos estejam 
+previstos e disciplinados no edital; e (ii) que as 
+mesmas exigências ao licitante vencedor, inclusive 
+de habilitação e eventual proposta técnica, sejam 
+atendidas por eventual novo contratado.  
+ 
+Eventual inclusão desta possibilidade em edital 
+representa alteração substancial da minuta-padrão, 
+devendo ser submetida à PGE (art. 4º, V, d, do 
+Decreto nº 40.500/07). 
+ 
+Referência(s): Parecer ASA n.º 39/2024  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+13 
+ 
+CONTRATAÇÃO DIRETA 
+Remanescente de obra 
+ 
+ 
+ 
+Na hipótese de licitação realizada sob a 
+Lei n° 8.666/93, é possível a contratação 
+de remanescente de obra, serviço ou 
+fornecimento, com fundamento em seu 
+art. 24, XI, após o dia 30/12/23? 
+ 
+Sim. Nesse caso, a licitação original não exauriu os 
+seus efeitos, de modo que o novo contratado adere 
+às condições originais. 
+ 
+ 
+Referência(s): Parecer FAG n.º 28/2024 
+  
+ 
+ 
+ 
+14 
+ 
+CONTRATAÇÃO DIRETA 
+Licitação deserta  
+ 
+ 
+Na hipótese de licitação realizada sob a 
+Lei n° 8.666/93 que tenha restado deserta, 
+é possível realizar contratação direta com 
+base neste fundamento? 
+ 
+Não é possível a realização da contratação direta, 
+seja pela Lei n° 8.666/93 (art. 24, V) - que exauriu 
+seus efeitos -, seja pela Lei nº 14.133/21 (art. 75, III, 
+“a”) - sob pena de combinação dos regimes jurídicos, 
+que é vedada. Nesse caso, será cabível a realização 
+de nova licitação, a partir do regime da Lei n° 
+14.133/21. 
+ 
+ 
+Referência(s): Parecer FAG n.º 28/2024 
+ 
+  
+ 
+15 
+ 
+CONTRATAÇÃO DIRETA 
+Justificativa de preço  
+ 
+ 
+Na contratação de fornecimento de água 
+e/ou coleta de esgoto de concessionárias 
+de serviços públicos, considerando que o 
+preço corresponde a tarifas públicas, 
+como deve se dar a justificativa de 
+preços? 
+ 
+O processo administrativo deve ser instruído com o 
+ato normativo que fixa as tarifas correspondentes, 
+inclusive com a discriminação de eventuais tarifas 
+diferentes conforme, p. ex., categorias de usuários e 
+faixas de consumo.  
+ 
+Além disso, o setor competente deve certificar-se 
+que a tarifa empregada ao caso concreto é, dentre 
+as diferentes categorias e faixas porventura 
+existentes, a adequada e aplicável às características 
+do órgão ou entidade contratante, correspondendo 
+ao correto enquadramento. 
+ 
+Referência(s): Parecer Referencial LFEC n.º 01/2025 
+ 
+  
+ 
+16 
+ 
+PATROCÍNIO  
+ 
+Qual o regime jurídico aplicável aos contratos 
+administrativos de patrocínio? 
+ 
+Trata-se de contrato atípico, bilateral, oneroso e 
+comutativo. Ainda que não haja previsão legal ou 
+regulamentar sobre o contrato de patrocínio no Estado do 
+Rio de Janeiro, é viável a sua celebração pela 
+Administração. 
+ 
+Na ausência de norma específica, é recomendável a 
+adoção de procedimento seletivo público com critérios 
+objetivos para a seleção de projetos, ou, se se tratar de 
+contratação direta, impositivo o procedimento para 
+inexigibilidade de licitação previsto na Lei nº 14.133/21, 
+com demonstração pelo gestor da inviabilidade de 
+competição. 
+ 
+A contratação direta por inexigibilidade exige mais do que a 
+mera comprovação de que a empresa é a organizadora 
+exclusiva do evento. Antes da aferição da exclusividade, 
+deve-se demonstrar a inviabilidade de competição, seja 
+pela inexistência de outros eventos similares que atendam 
+ao mesmo objetivo, seja pela impossibilidade de 
+comparação objetiva entre os eventos. 
+ 
+Algumas normas da NLLC poderão, em certas 
+circunstâncias, sofrer temperamentos, nos casos em que 
+sua observância e de seus regulamentos se revele 
+incompatível com a natureza dos contratos de patrocínio. 
+ 
+Referência(s): Parecer LFEC n.º 98/2024 
+ 
+ 
+ 
+ 
+17 
+ 
+CONTRATOS ADMINISTRATIVOS  
+Transferência de contrato entre órgãos 
+ 
+ 
+Como deve ser formalizada a 
+“transferência” de contratos entre 
+Secretarias de Estado, em razão de 
+modificações na estrutura organizacional 
+do Estado, como, p. ex., extinção ou cisão 
+de órgãos? 
+ 
+Em razão da ausência de personalidade jurídica pelos 
+órgãos (Secretarias de Estado), ostentando-a somente os 
+entes federados (União Federal, Estados, Distrito Federal e 
+Municípios) e suas entidades descentralizadas (autarquias, 
+fundações, empresas públicas e sociedades de economia 
+mista), não ocorre alteração subjetiva: a parte contratante 
+continua sendo o Estado do Rio de Janeiro, modificando-se 
+tão somente o órgão que lhe representa nessa relação.  
+ 
+Não há, assim, sob o aspecto jurídico, alteração da parte 
+contratante, bastando a modificação do nome do órgão 
+representante do contratante no instrumento contratual. 
+Nesses casos, a alteração deve ser feita por meio do 
+apostilamento do contrato, desde que não exista 
+modificação da substância do contrato (Lei nº 14.133/21, 
+art. 136). 
+ 
+Referência(s): Parecer Referencial nº 01/2022/PGE/PG15/COO-CSJ 
+ 
+18 
+ 
+CONTRATOS ADMINISTRATIVOS  
+Código de Defesa do Consumidor  
+ 
+ 
+ 
+Aplica-se a Lei nº 8.078/90 (CDC) aos 
+contratos celebrados pela Administração 
+Pública na qualidade de tomadora dos 
+serviços? 
+ 
+Sim, na forma do art. 89 da Lei nº 14.133/21 e 
+conforme entendimento firmado pelo Tribunal de 
+Contas da União. 
+ 
+ 
+ 
+Referência(s): Parecer FMBM n.º 7/2024; Acórdão TCU 2569/2018-
+Plenário 
+ 
+ 
+19 
+ 
+CONTRATOS ADMINISTRATIVOS  
+Prazo de vigência  
+ 
+ 
+ 
+O prazo de vigência do contrato 
+corresponde ao prazo de execução dos 
+serviços? 
+ 
+Trata-se de prazos diferentes. A vigência do contrato 
+deve levar em conta também os procedimentos 
+necessários para liquidação e pagamento da 
+despesa, conforme o cronograma físico-financeiro e 
+os critérios estabelecidos para pagamento, e não 
+somente o tempo de execução dos serviços. 
+  
+ 
+Referência(s): Visto ao Parecer nº 2/2025/SEEDUC/NUCALC 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+20 
+ 
+CONTRATOS ADMINISTRATIVOS  
+Prorrogação com contratado sancionado 
+ 
+ 
+ 
+É possível a prorrogação contratual 
+quando a contratada foi sancionada com 
+impedimento de licitar e contratar com a 
+Administração Pública estadual? 
+ 
+Não. Tanto à luz da Lei nº 8.666/93 quanto da Lei nº 
+14.133/21 (art. 91, §4º), a sanção de impedimento 
+de licitar ou contratar impede a prorrogação de 
+contrato em vigor. 
+ 
+ 
+Referência(s): Visto ao Parecer SEPOL/ASSEJUR nº 199/2025–
+JMCG 
+  
+  
+ 
+   
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+21 
+ 
+CONVÊNIOS  
+ 
+ 
+Qual regulamento se aplica aos convênios 
+celebrados com fundamento no art. 184 da 
+NLLC? 
+ 
+A partir de 09/02/2026, aplicar-se-á o Decreto nº 
+49.792/25 (art. 57). 
+ 
+Permanecem regidos pelo Decreto nº 44.879/14, que 
+seguiu em vigor mesmo após a revogação da Lei nº 
+8.666/93, os: (i) instrumentos celebrados antes de 
+09/02/2026, inclusive seus termos aditivos 
+celebrados após esta data; (ii) as situações previstas 
+no art. 56 do Decreto nº 49.792/25. 
+ 
+Qual regulamento se aplica às parcerias 
+voluntárias celebradas com base na Lei nº 
+13.019/14? 
+ 
+Aplica-se o Decreto nº 44.879/14 enquanto não for 
+editado novo regulamento estadual que o substitua. 
+ 
+ 
+Referência(s): Visto ao Parecer LAS n.º 01/2024 
+ 
+ 
+ 
+ 
+22 
+ 
+CREDENCIAMENTO  
+ 
+ 
+É possível utilizar o credenciamento para 
+instituição de “Clube de Descontos” em 
+benefício de servidores? 
+ 
+É possível, com fundamento no art. 79, I, da Lei nº 
+14.133/21, por se tratar de caso no qual “é viável e 
+vantajosa para a Administração a realização de 
+contratações simultâneas em condições 
+padronizadas”, ou seja, de contratações paralelas e 
+não excludentes (no caso, a celebração, por todos 
+os credenciados interessados em conceder 
+descontos a servidores, de termos de adesão às 
+condições estipuladas em edital pela Administração). 
+ 
+Referência(s): Parecer GTB n.º 01/2025 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+23 
+ 
+EMPRESAS ESTATAIS  
+Publicidade, eficácia e vigência contratual  
+ 
+ 
+A obrigatoriedade de publicação de 
+licitações, contratações, termos aditivos e 
+atos de contratação direta no PNCP se 
+estende às empresas estatais? 
+ 
+Sim, mas apenas para fins de conferir publicidade ao 
+ato, e não como condição de eficácia da 
+contratação. 
+  
+As estatais se submetem ao art. 51, §2º, da Lei nº 
+13.303/16, que estabelece que os avisos contendo o 
+resumo dos contratos devem “ser previamente 
+publicados no Diário Oficial da União, do Estado ou 
+do Município e na internet”. 
+ 
+Para fins de eficácia e vigência contratual, caso não 
+exista previsão no regulamento interno da estatal, é 
+lícito considerar a data de publicação do ato no 
+Diário Oficial do Estado do Rio de Janeiro como o 
+termo inicial de vigência da contratação. 
+ 
+ 
+Referência(s): Parecer MOR n.º 55/2024/CENTRAL/ASSJUR 
+ 
+ 
+ 
+ 
+24 
+ 
+EMPRESAS ESTATAIS  
+Adesão a ARP da Administração Direta  
+ 
+ 
+É possível que empresa estatal participe ou 
+adira às atas de registro de preços da 
+Administração direta, autárquica e fundacional?  
+ 
+Empresas estatais não podem participar de processos de registro de 
+preços gerenciados pela Administração direta, autárquica ou 
+fundacional.  
+ 
+Excepcionalmente, poderão aderir a atas já formalizadas, desde que: 
+(i) a matéria seja especificamente disciplinada no regulamento de 
+cada estatal (Lei nº 13.303/16, art. 40); (ii)  previsões exorbitantes e 
+de referência à NLLC não sejam adotadas pela esta tal quando 
+contrárias à Lei nº 13.303/06 e seu regulamento interno, mantendo -
+se as condições essenciais da proposta (objeto, valor, regime de 
+execução, modelo de manutenção do equilíbrio econômico -
+financeiro), de modo a não haver desvirtuamento substancial  do 
+regime contratual aplicável às estatais; (iii) seja comprovada a 
+vantajosidade das condições e a compatibilidade das regras 
+estabelecidas no certame que originou a ARP com as necessidades 
+e condições incidentes sobre o interessado na adesão. 
+ 
+Nesse sentido, o §7º do art. 33 do Decreto nº 48.843/23 prevê que “é 
+facultada a adesão das sociedades de economia mista e das 
+empresas públicas do Estado à ARP gerenciada por órgãos e 
+entidades da Administração Pública Estadual direta, autárquica e 
+fundacional, observando -se o disposto neste artigo e nos seus 
+regulamentos de licitações e contratos”. 
+ 
+ 
+Referência(s): Parecer MOR n.º 1/2025/RIOTRILHOS/ASSJUR; 
+visto ao Parecer n° 08/2020-ASA/PG17 
+ 
+  
+ 
+25 
+ 
+FASE PREPARATÓRIA  
+Pesquisa de preços  
+ 
+ 
+Na pesquisa de preços, é possível 
+descartar valores praticados em contrato 
+administrativo em vigor? 
+ 
+Um contrato administrativo em vigor, em execução, 
+oriundo de licitação, é um preço real de mercado, 
+que está sendo praticado no mundo real - razão pela 
+qual deve, em regra, ser aproveitado na formação de 
+preços, sendo certo que este parâmetro goza de 
+preferência em relação aos demais (art. 29, §1º, 
+Decreto nº 48.816/23). 
+ 
+Por isso, a presunção de exequibilidade que emana 
+deste tipo de contrato demanda elementos robustos 
+para ser afastada (ex.: prova de suspensão da 
+execução do contrato por este fundamento ou pleito 
+de reequilíbrio econômico-financeiro embasado em 
+evidências críveis), sendo vedado descartar tais 
+preços sem prova robusta (a ser previamente 
+apurada) de sua incompatibilidade com o mercado. 
+ 
+ 
+Referência(s): Visto ao Parecer RT n.º 16/2024 
+ 
+ 
+ 
+ 
+26 
+ 
+FASE PREPARATÓRIA  
+Critério de julgamento “maior desconto”  
+ 
+ 
+Para adoção do critério de julgamento “maior 
+desconto” de forma linear, quais requisitos 
+devem ser observados? 
+ 
+Convenciona-se chamar “desconto linear” o critério de julgamento 
+que exige que o percentual de desconto oferecido pela proposta 
+vencedora, que obrigatoriamente tem como referência o preço 
+global (art. 34, §2º, NLLC), incida homogeneamente sobre todos os 
+custos unitários que o compõem. 
+ 
+De acordo com o art. 18 do Decreto nº 48.929/24, o desconto linear 
+é obrigatório para obras e serviços de engenharia. 
+ 
+Para as demais categorias de objeto, segundo as Cortes de Contas, 
+ante os riscos de distorção dos preços de mercado que gera, seu 
+uso tem como pressupostos (i) uma maior qualidade da estimativa 
+orçamentária elaborada pela Administração e (ii) a necessidade de 
+que o orçamento abranja bens que tenham comportamentos 
+homogêneos de mercado, condição esta que deve ser atestada 
+com justificativa técnica. 
+ 
+Sobre a estimativa orçamentária, a base de preços sobre a qual 
+incidirão os descontos - seja uma tabela oficial editada pela 
+Administração (como a tabela EMOP , p. ex.), seja um orçamento 
+estimado especificamente para aquele objeto na forma do Decreto 
+nº 48.816/23 - precisa ser a mais fidedigna possível, pois apenas se 
+cumpre o objetivo de evitar o jogo de planilhas se o preço estimado 
+para todos os custos unitários corresponder ao de mercado. [1/2]  
+ 
+ 
+ 
+ 
+27 
+ 
+FASE PREPARATÓRIA  
+Critério de julgamento “maior desconto”  
+ 
+ 
+[2/2] É vedado que os descontos incidam sobre custos unitários da 
+proposta: caso o licitante pudesse definir os custos unitários iniciais 
+sobre os quais incidir o desconto, haveria margem para 
+manipulação dos preços. 
+ 
+Neste sentido, além da aplicação rigorosa dos arts. 29 e ss. do 
+Decreto nº 48.816/23 e da Orientação Administrativa PGE-RJ nº 18 
+na estimativa de preços, é de especial importância a obrigação de 
+que "as pesquisas de preços não devem se limitar a consulta a 
+fornecedores, devendo obedecer aos critérios de amplitude e 
+diversificação, de maneira a possibilitar o acesso a fontes de 
+pesquisa variadas e a obtenção das melhores condições de preço" 
+(art. 29, §2º, do Decreto e Enunciado nº 02 do TCERJ). 
+ 
+Em licitação de objeto para o qual inexistia tabela oficial de preços 
+ou específica adotada pelo segmento econômico, o TCERJ 
+recomendou ao gestor a opção pelo desconto não-linear, "na 
+medida em que a incidência dos descontos incidirá sobre o 
+orçamento prévio elaborado pela Administração a partir de suas 
+pesquisas de mercado, o que torna mais sensível a equívocos e 
+possibilitaria, ao menos potencialmente, a manipulação de preços 
+pelos concorrentes" (Processo nº 103.626-4/22). 
+ 
+Referência(s): Visto ao Parecer DT n.º 102/2025 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+28 
+ 
+FASE PREPARATÓRIA  
+Consórcio  
+ 
+ 
+É obrigatório admitir a participação de 
+empresas reunidas em consórcio nas 
+licitações? 
+ 
+Não é obrigatório, mas a possibilidade de 
+participação em consórcio é a regra geral 
+estabelecida no art. 15 da NLLC, "salvo vedação 
+devidamente justificada no processo licitatório".  
+ 
+Como a admissão de consórcios é a regra, não são 
+suficientes, como justificativa, alegações genéricas 
+(isto é, desacompanhadas de uma análise técnica 
+específica do mercado em que se insere o objeto da 
+licitação) de que haveria diminuição da concorrência, 
+ou de que a admissão de consórcios não seria 
+necessária a atingir a finalidade da licitação. 
+ 
+ 
+Referência(s): Visto ao Parecer JMCG nº 80/2025 
+ 
+ 
+ 
+  
+  
+ 
+29 
+ 
+FASE PREPARATÓRIA  
+Projeto Básico/Termo de Referência e Projeto 
+Executivo  
+ 
+ 
+É possível delegar à contratada a elaboração do 
+projeto básico ou termo de referência que define 
+o objeto do contrato em questão? 
+ 
+Não. A delegação à contratada da confecção, ainda que parcial, do 
+próprio termo de referência/projeto básico não é permitida pela Lei 
+nº 14.133/21, ressalvada a hipótese de contratação integrada. É 
+obrigatório que o termo de referência/projeto básico contenha todos 
+os elementos mínimos exigidos pelo art. 6º, XXIII e XXV, sendo 
+vedada também a previsão, nestes documentos, de formas indiretas 
+de alteração ou complementação dos mesmos pelo contratado a 
+posteriori. 
+ 
+É possível a utilização de projetos básico e 
+executivo não atualizados? 
+ 
+Não. As Cortes de Contas têm entendimento de que a utilização de 
+projetos desatualizados ou incompletos configura ação desidiosa da 
+Administração contratante, podendo ensejar a responsabilização de 
+quem o aprove (Acórdãos TCU 678/2015–Plenário e nº 1576/2022–
+Plenário, por todos). 
+ 
+ 
+Referência(s): Visto ao Parecer CASB n.º 44/2025–ASSJUR/SEAS, 
+Parecer nº 35/2025 –CASB–ASSJUR/SEAS; Parecer nº 
+3/2025/PGE/PG15/COO-CSJ-APCBCA; Visto ao Parecer nº 
+065/2025–CASB–ASSJUR/SEAS; Promoção nº 19/2025 –CASB–
+ASSJUR/SEAS 
+ 
+ 
+30 
+ 
+HABILITAÇÃO  
+Habilitação jurídica  
+ 
+ 
+ 
+Alvará de funcionamento pode ser exigido 
+como requisito de habilitação jurídica? 
+ 
+A exigência de alvará de funcionamento deve 
+constituir requisito de habilitação jurídica, caso haja 
+legislação específica que determine expressamente 
+essa exigência prévia. 
+ 
+ 
+ 
+Referência(s): Visto ao Parecer DT n.º 102/2025; Súmula TCERJ 
+nº 08 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+31 
+ 
+MICROEMPRESA E EMPRESA DE PEQUENO PORTE  
+ 
+ 
+Caso o sistema eletrônico de contratações não 
+tenha funcionalidade que permita aplicar a 
+reserva de cotas a MEs/EPPs (art. 48, III, da LC 
+n° 123/06) no mesmo lote em que realizada a 
+disputa ampla entre todos os fornecedores, a 
+divisão do objeto em dois lotes (um de 
+concorrência ampla, outro reservado a 
+MEs/EPPs) é vedada pelo art. 3º, §7º, do Decreto 
+nº 48.843/23 (que veda a existência simultânea 
+de mais de um registro de preços pelo mesmo 
+órgão/entidade para o mesmo objeto no mesmo 
+local, condições mercadológicas e de 
+logística)? 
+ 
+A regra do art. 3º, §7º, do Decreto nº 48.843/23 não pode 
+ser interpretada como impedimento ao cumprimento do 
+dever de reserva de cotas previsto na Lei Complementar nº 
+123/06, impondo-se ser afastada nessa situação 
+específica. 
+ 
+ 
+Referência(s): Visto ao Parecer JMCG n.º 82/2024 
+ 
+ 
+ 
+ 
+ 
+ 
+32 
+ 
+PARECER JURÍDICO  
+ 
+ 
+Em quais hipóteses há dispensa de análise 
+jurídica nas licitações e contratações públicas? 
+ 
+Nas seguintes hipóteses: 
+(1) contratações diretas de pequeno valor, em quaisquer 
+dos casos enumerados nos artigos 74 e 75 da NLLC, 
+desde que seus valores não ultrapassem os limites 
+previstos nos incisos I e II do art. 75 (Res. PGE nº 
+5.059/24);  
+(2) contratação por órgãos ou entidades participantes de 
+Ata de Registro de Preços (Res. PGE nº 5.059/24); 
+(3) caso exista parecer referencial aprovado pelo 
+Procurador-Geral. Os pareceres referenciais estão 
+disponíveis no sítio oficial da PGE-RJ. Nesta hipótese, 
+conforme Resolução PGE nº 4.475/19, os autos devem ser 
+instruídos com (i) cópia integral do parecer referencial com 
+a aprovação da Procuradoria-Geral; e (ii) declaração 
+firmada pela autoridade competente atestando que o caso 
+concreto se enquadra nos termos do parecer referencial e 
+que suas orientações foram atendidas. 
+Em todos os casos, faculta-se a remessa dos autos ao 
+órgão de assessoramento jurídico com o fim de dirimir 
+dúvida jurídica específica. 
+ 
+Referência(s): Resolução PGE nº 5.059/2024; Resolução PGE nº 
+4.475/2019 
+ 
+ 
+ 
+ 
+ 
+33 
+ 
+REAJUSTE  
+ 
+ 
+É obrigatória a previsão de reajustamento 
+de preço no contrato?  
+ 
+Sim, é obrigatória a previsão, nos contratos, de 
+cláusula que estabeleça o índice de reajustamento 
+de preço, independentemente do prazo de duração, 
+conforme §3º do art. 92 da Lei nº 14.133/21. Todavia, 
+se a empresa contratada aceitar que não haverá 
+reajuste, é possível a inserção de cláusula prevendo 
+que os preços não serão reajustáveis. 
+ 
+ 
+Referência(s): Visto ao Parecer nº 45/2024/RIOPREV/DIRJU 
+ 
+ 
+ 
+ 
+ 
+  
+ 
+ 
+ 
+34 
+ 
+SISTEMA DE REGISTRO DE PREÇOS  
+Adesão a ata de registro de preços (ARP) 
+formada sob a Lei nº 8.666/93  
+ 
+ 
+É possível aderir a ARP do Estado do Rio de 
+Janeiro, decorrente de licitação realizada sob a 
+Lei nº 8.666/93?  
+ 
+Sim, desde que a ARP esteja vigente, mesmo que se trate de 
+processo de contratação iniciado, ou pedido de adesão formulado, 
+após 29/12/2023.  
+ 
+É possível aderir a ARP que não seja do Estado 
+do Rio de Janeiro, decorrente de licitação 
+realizada sob a Lei nº 8.666/93?  
+ 
+Sim, desde que a ARP esteja vigente e desde que, na formação da 
+ARP, tenha sido respeitado o marco adotado na legislação daquele 
+ente federativo para o exercício da “opção por licitar” (art. 191 da 
+NLLC) com base na Lei nº 8.666/93 (na ausência de marco 
+expresso, o uso do marco eleito pelo Estado do Rio de Janeiro – 
+publicação do edital de SRP antes de 30/12/2023 – é admissível). 
+ 
+Nesses casos, o contrato que será celebrado 
+com base na ARP deverá observar qual regime 
+jurídico? 
+ 
+Será aplicável ao contrato o regime da Lei nº 8.666/93, o mesmo 
+empregado para a formação da ARP (art. 191, p. ú., da NLLC). 
+ 
+Referência(s): Parecer GTB n.º 03/2024 
+ 
+ 
+ 
+35 
+ 
+SISTEMA DE REGISTRO DE PREÇOS  
+Adesão a ARP municipal  
+ 
+ 
+É admissível a adesão, por órgão ou 
+entidade do Estado do Rio de Janeiro, a 
+uma ata de registro de preços municipal? 
+ 
+Os dispositivos da Lei nº 14.133/21 que restringem a 
+adesão interfederativa a atas de registro de preços 
+não são normas gerais; portanto, não são de 
+observância obrigatória para o legislador estadual, 
+que pode regulamentar a matéria 
+discricionariamente, seja para admiti-la ou proibi-la. 
+Atualmente, no âmbito do Estado do Rio de Janeiro, 
+a matéria encontra-se tratada no art. 33, §6º, do 
+Decreto nº 48.843/23. 
+ 
+No caso de adesão a ARP municipal com 
+fundamento na Lei nº 8.666/93, é possível, pois os 
+requisitos aplicáveis serão aqueles previstos 
+naquela Lei e no Decreto nº 46.751/19 – nos quais 
+não consta vedação a adesão a atas municipais. 
+ 
+Referência(s): Parecer nº 62/2025 - FAG - PG-17; Parecer 
+ASJUR/SECC nº 05/2025-RCCS  
+ 
+ 
+ 
+ 
+36 
+ 
+SISTEMA DE REGISTRO DE PREÇOS  
+Não–obrigatoriedade de adesão a ARP  
+ 
+ 
+Constatada na fase preparatória de uma 
+contratação a existência de ARP de mesmo 
+objeto em vigor, é obrigatório verificar a 
+possibilidade de adesão, ou é possível 
+prosseguir na demanda por meio de regular 
+licitação ou contratação direta? 
+ 
+Não existe uma opção preferencial. É dever do gestor 
+avaliar todas as alternativas possíveis (adesão, licitação e 
+contratação direta mediante processo eletrônico de 
+dispensa, entre outras possíveis), com prolação de decisão 
+motivada, “orientada a partir de uma análise comparativa 
+entre as soluções identificadas, com base em todos os 
+seguintes critérios (...)” (art. 10 do Decreto nº 48.816/23), 
+que demonstre a maior vantajosidade da opção escolhida 
+diante da necessidade pública. 
+ 
+Dadas as hipóteses em que a contratação por dispensa de 
+licitação ocorre obrigatoriamente por processo eletrônico de 
+dispensa, com fase de lances (art. 8º do Decreto nº 
+48.820/23), a comparação especificamente entre as 
+possibilidades de adesão e de dispensa não deve levar em 
+conta, quanto a essa última, no aspecto preço, apenas as 
+eventuais propostas iniciais de interessados (como se dava 
+usualmente sob o regime da Lei nº 8.666), devendo-se 
+considerar também o potencial de obtenção de melhores 
+propostas durante a fase de lances. 
+ 
+Referência(s): Parecer JMCG n.º 109/2024 
+ 
+37 
+ 
+ 
+SISTEMA DE REGISTRO DE PREÇOS  
+Contratação garantida  
+ 
+ 
+É possível prever, no edital para registro de 
+preços, que o órgão gerenciador e/ou 
+participantes contratarão obrigatoriamente o 
+objeto da ARP? 
+ 
+Em regra, não é possível prever a contratação garantida de 
+todo o objeto da ARP, o que desvirtuaria o propósito do 
+procedimento, que é o registro formal de preços para 
+contratações futuras. É condição inafastável do SRP que “a 
+existência de preços registrados implicará compromisso de 
+fornecimento nas condições estabelecidas, mas não 
+obrigará a Administração a contratar (...)” (art. 83 da NLLC). 
+Neste sentido, o TCU já decidiu pela “impossibilidade de 
+utilização do sistema de registro de preços para as 
+hipóteses de o objeto ensejar uma única contratação, 
+exaurindo os quantitativos registrados” (Acórdão nº 
+1351/25 – Plenário). 
+Excepcionalmente, e desde que não desvirtuado o objetivo 
+do SRP, é possível prever a contratação garantida de uma 
+parcela do objeto. Neste caso, não se aplica o art. 11 do 
+Decreto nº 48.843/23, sendo necessário o cumprimento 
+dos arts. 44 a 46 do Decreto n° 48.816/23, isto é, não 
+apenas a indicação da fonte orçamentária como também a 
+efetivação da reserva orçamentária relativa à parcela do 
+objeto cuja contratação é garantida. 
+ 
+Referência(s): Vistos ao Parecer RT n.º 11/2024, Parecer nº 
+279/2024/SEDEC/ASSJUR, Parecer JMCG n.º 145/2025 e ao 
+Parecer SEPOL/ASSEJUR nº 169/2025–JMCG 
+ 
+38 
+ 
+SISTEMA DE REGISTRO DE PREÇOS  
+Pesquisa de mercado  
+ 
+ 
+Admite-se a contratação por meio do sistema 
+de registro de preços sem a realização de 
+prévia pesquisa de mercado? 
+ 
+Para a formação da ARP, a pesquisa é indispensável, 
+cabendo posteriormente ao órgão gerenciador da ata aferir, 
+semestralmente, a compatibilidade dos preços registrados 
+com os efetivamente praticados, conforme art. 6º, VIII, “a” e 
+"c", do Decreto nº 48.843/23. Já para o órgão participante 
+ou o aderente, é possível dispensá-la quando for realizar a 
+contratação, desde que a ARP esteja com seus valores 
+atualizados na forma acima mencionada (art. 8º). 
+ 
+Para a prorrogação da vigência de ARP é 
+necessária prévia pesquisa de mercado? 
+ 
+Sim. É necessário confirmar se os preços registrados 
+permanecem atualizados, por meio de pesquisa de preços 
+realizada na forma do Decreto nº 48.816/23 (art. 20 do 
+Decreto nº 48.843/23). 
+ 
+Referência(s): Decreto nº 48.843/2023 
+ 
+ 
+ 
+ 
+39 
+ 
+SISTEMA DE REGISTRO DE PREÇOS  
+Reunião de itens em grupo/lote  
+ 
+ 
+Quando diferentes participantes de licitação 
+para o registro de preços têm demandas 
+heterogêneas em relação a determinados itens, 
+é possível reunir estes itens em um único lote 
+ou grupo de itens? 
+ 
+Não. Para a licitação por grupo de itens no sistema de 
+registro de preços, o art. 82, § 1º, da Lei nº 14.133/21 exige 
+demonstração da “inviabilidade de se promover a 
+adjudicação por item”, além da vantagem técnica e 
+econômica. Embora o art. 82, §2º, da Lei nº 14.133/2021 
+admita a "contratação posterior de item específico 
+constante de grupo de itens", trata-se de medida 
+excepcional e sujeita a requisitos legais cuja presença deve 
+ser avaliada a cada contratação. Por isso, a admissão da 
+possibilidade de contratação de item específico não pode 
+ser presumida nem fazer parte da própria concepção do 
+objeto e da formatação de lotes. 
+ 
+Por exemplo, em uma licitação com três órgãos 
+participantes, o primeiro demanda determinada quantidade 
+do item A; o segundo, apenas do item B; e o terceiro 
+demanda os itens A e C. Os itens A, B e C não poderão ser 
+licitados em lote único. 
+ 
+Referência(s): Visto ao Parecer nº 36/2024/SETD/ASSJUR
+ 
+ 
+ 
+40 
+ 
+SISTEMA DE REGISTRO DE PREÇOS  
+Requisição de itens  
+ 
+ 
+É possível contratar apenas parcela de um 
+item de ARP? 
+ 
+Quando a administração escolhe definir o objeto no 
+edital como item, e não lote, unificando neste 
+mesmo item bens e/ou serviços distintos e cindíveis 
+(p. ex., a aquisição de veículo juntamente com 
+serviços de customização do mesmo em viatura 
+policial), a precificação deste item pelos licitantes em 
+suas propostas também se dá de forma unificada e 
+inseparável. Desse modo, não se mostra possível a 
+contratação de apenas uma parcela do item com 
+pagamento proporcional, ou, ainda, o pagamento 
+total com renúncia à entrega de uma parcela do 
+objeto, pois representaria medida antieconômica à 
+Administração. 
+ 
+Esta hipótese não se confunde com a possibilidade 
+excepcional de contratação de item específico 
+constante de grupo de itens em ARP, admitida pelo 
+art. 82, §2º, da Lei nº 14.133/21. 
+ 
+Referência(s): Visto ao Parecer SEPOL/ASSEJUR nº 169/2025–
+JMCG 
+ 
+ 
+ 
+41 
+ 
+STARTUPS  
+ 
+ 
+Nas contratações de soluções inovadoras pelo 
+Estado com base na LC nº 182/21, aplicam-se 
+subsidiariamente as disposições da NLLC e sua 
+regulamentação à fase preparatória do 
+procedimento licitatório? 
+ 
+Não. Trata-se de modalidade especial de licitação, cuja 
+fase preparatória se encontra disciplinada pelo §1º do art. 
+13 da LC nº 182/21. 
+ 
+Em caso concreto submetido à PGE, ausente 
+regulamentação estadual, recomendou-se a adoção dos 
+seguintes parâmetros mínimos: “(i) descrição do objeto, 
+indicando-se o desafio a ser contratado; (ii) a aprovação da 
+contratação na forma em foi concebida, pela autoridade 
+competente; (iii) a estimativa do valor da contratação; (iv) a 
+verificação da compatibilidade da despesa pública com o 
+orçamento e a efetivação da reserva orçamentária; (v) a 
+elaboração das minuta do instrumento convocatório e da 
+minuta do contrato público para solução inovadora – CPSI 
+e, por fim, (vi) o exame pelo órgão jurídico, com a prolação 
+do parecer.” 
+ 
+Referência(s): Parecer nº 25/2024 – ARCY; Parecer nº 
+3/2024/PGE/PG15/COO-CSJ-APCBCA 
+ 
+ 
