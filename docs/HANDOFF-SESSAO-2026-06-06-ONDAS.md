@@ -16,11 +16,12 @@
 >    não por IP — `curl`/`httpx` são dropados, mas **Chromium real PASSA** (HTTP 200, intermitente). Com retry+backoff,
 >    o **login interno `itkava`/órgão ITERJ funciona DA VM, SEM captcha** (`tools/sei_login_retry.py`), e clicando os
 >    **links internos** do app (não URL crua) chega à **Pesquisa autenticada com a sessão intacta**
->    (`tools/sei_reader.py` — ✅ validado, unidade ITERJ/CHEGAB). **Não precisa de proxy/Actions/WSSEI.** ⚠️ Logar e LER
->    na MESMA sessão (sessão não sobrevive a contexto novo nem a `goto` cru). **FALTA (passo final bounded):** no
->    `sei_reader`, usar o protocolo EXATO (`#txtProtocoloPesquisa`) → abrir o processo (`procedimento_trabalhar`) →
->    extrair a árvore de documentos reaproveitando os extractors do `sei_cdp` → gravar `data/sei_cache/cdp_*.json`
->    (Lex consome 24h). Memória: [[sei-login-itkava]]. (WSSEI/Actions viram fallback opcional.)
+>    (`tools/sei_reader.py`). **Não precisa de proxy/Actions/WSSEI.** ⚠️ Logar e LER na MESMA sessão.
+>    ✅ **RESOLVIDO END-TO-END (2026-06-07):** `sei_reader.ler_processo` usa a **Pesquisa AVANÇADA**
+>    (`#txtProtocoloPesquisa`) → abre o processo → extrai a árvore/documentos de todos os frames → grava
+>    `data/sei_cache/cdp_*.json` (Lex consome 24h). Validado: SEI-270042/002000/2022 = 10 docs, 3 conteúdos reais,
+>    R$95.000,00. **A FAZER:** batch tipo `ler_sei_lote` usando `sei_reader.ler_processo` p/ os processos pendentes
+>    (enche o cache → Lex usa). Memória: [[sei-login-itkava]]. (WSSEI/Actions = fallback.)
 >
 > **3. SIAFE — `docs/SIAFE-RIO2-GUIA-AUTOMACAO.md`** (mapeamento do Mestre): destrava o **limite de 1000** via
 >    checkbox `chkRemoveLimit` (ou iterar UG+período). Mapa das 207 UGs (índice 2026), filtro PPR, gotchas que
