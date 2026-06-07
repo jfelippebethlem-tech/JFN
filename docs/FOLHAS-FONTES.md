@@ -62,3 +62,16 @@ CONCLUSÃO: dos 6, só a DPRJ tinha download direto. Os outros 5 exigem browser/
 VEREDITO: das 6, só DPRJ tinha arquivo direto (FEITO, 257k). As outras 5 exigem captura de XHR/POST
 por interação (Liferay JSONWS no MPRJ/TJRJ; .NET por CPF no ConsultaRemuneracao p/ TCE/UERJ/UENF) —
 1 build focado por órgão. Não é "colar script"; é reverse-engineering de portal.
+
+## MPRJ — API CNMP115 (cracking parcial, 2026-06-07) — reutilizável
+- Liferay proxeia (ods.exportods/get-json-api) p/ API REST: BASE
+  `https://api-transparencia.mprj.mp.br:8280/cnmp115/1.0.0` (gateway WSO2; padrão CNMP Res.115).
+- OAuth FUNCIONA: POST `https://api-transparencia.mprj.mp.br:8280/token` Authorization Basic
+  `cERmaFZtNUpOS1VfSjFCcUNSak1IMGN6dGpVYTpwb2dVS2Fta2kzZjN3UXZWWjJXdmtpSXRYazhh`
+  (client `pDfhVm5JNKU_J1BqCRjMH0cztjUa`), grant_type=client_credentials → access_token (200).
+- Recurso CONFIRMADO no gateway: `/anos` (lista anos; deu backend-404 numa tentativa, mas é resource
+  definido). Os de dados (remuneração por ano/mês) ainda NÃO descobertos — os widgets de ano/mês são
+  JS custom (sem <select>); "pesquisar" sem setá-los só chama /anos.
+- PRÓXIMO PASSO (rápido c/ isto): (a) achar o spec CNMP115 (Modelo Nacional de Dados CNMP) p/ os nomes
+  dos endpoints, OU (b) Playwright: setar os widgets de ano/mês e capturar o param api= do POST de dados.
+  Depois: httpx com o token → paginar por ano/mês → registros_folha (fonte=mprj). Auth já resolvida.
