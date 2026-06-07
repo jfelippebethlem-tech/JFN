@@ -423,3 +423,10 @@ valueChange → não filtra. (No 2.0 o Tab/blur manda; no 1 não.)
    Combinar UG + Número prefixo (2 linhas de filtro) p/ furar 1000, igual ao 2.0.
 ALTERNATIVA mais simples (sem httpx): na UI, após digitar o valor, DISPARAR via JS o mesmo `event` de
 valueChange no `in_value` (injetar o POST do ADF client). A investigar.
+
+### SIAFE 1 — workaround de UI tentado e BLOQUEADO (2026-06-07)
+Tentativa: preencher o valor e re-disparar o autoSubmit de um select p/ carregar o valor. BLOQUEADO porque
+SÓ o operador "começa com" renderiza o campo de valor (com "igual" some) → não dá p/ alternar o operador e
+re-firar o autoSubmit sem perder o campo. Mudar a Propriedade reseta op/valor. → Conclusão: o caminho é o
+**httpx replay** (formato já capturado acima) OU disparar via JS o `event` de valueChange do `in_value`
+no formato ADF rich client. Implementação = próximo passo focado (tudo documentado).
