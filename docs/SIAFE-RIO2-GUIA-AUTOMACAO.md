@@ -394,3 +394,32 @@ Inspeção do container do filtro (sdtFilter) no SIAFE 1, com captura de rede:
 aplica com formato **DD/MM/AAAA** (typeahead "Data Emi" + "igual" + valor no in_date + Tab). 844 num dia
 NORMAL → dias de folha passam de 1000 (risco real do Jorge confirmado) → o verificador subdivide por Número.
 Coletor DIÁRIO (incremental + verificador de ontem/anteontem) testado de ponta a ponta.
+
+## 🔓 SIAFE 1 — FORMATO DO PPR CAPTURADO (chave do HTTP replay) — 2026-06-07
+SIAFE 1 é **ADF Faces Rich Client** (eventos `oracle.adf.view.rich`), mesmo motor do 2.0 (não Trinidad puro).
+PPR de filtro = POST `application/x-www-form-urlencoded` p/ `.../ordemBancariaOrcamentariaCad.jsp?Adf-Window-Id=w0`
+(header extra observado: `adf-ads-page-id`). Corpo capturado (typeahead do operador, que FUNCIONA):
+```
+pt1:iTxtCad=&pt1:selUg=0
+&pt1:tblOBOrcamentaria:table_rtfFilter:0:cbx_col_sel_rtfFilter=<PROP_IDX>
+&pt1:tblOBOrcamentaria:table_rtfFilter:0:cbx_op_sel_rtfFilter=<OP_IDX>
+&org.apache.myfaces.trinidad.faces.FORM=frmPrincipal
+&Adf-Window-Id=w0
+&javax.faces.ViewState=<VIEWSTATE rotativo, ex.: !dds0foqsb>
+&oracle.adf.view.rich.DELTAS=%7Bpt1%3AtblOBOrcamentaria%3Atable_rtfFilter%3D%7Brows%3D1%2CselectedRowKeys%3D0%7D%7D
+&event=pt1:tblOBOrcamentaria:table_rtfFilter:0:<COMPONENTE>
+&event.<COMPONENTE>=<m xmlns="http://oracle.com/richClient/comm"><k v="autoSubmit"><b>1</b></k><k v="suppressMessageShow"><s>true</s></k><k v="type"><s>valueChange</s></k></m>  (URL-encoded)
+&oracle.adf.view.rich.PROCESS=pt1:tblOBOrcamentaria:table_rtfFilter:0:<COMPONENTE>
+```
+**CAUSA-RAIZ confirmada:** os selects (cbx_col_sel/cbx_op_sel) têm autoSubmit → disparam o PPR; o campo de
+VALOR (`in_value_rtfFilter`) NÃO tem autoSubmit (onchange/onblur null) → digitar+Tab não manda o `event` de
+valueChange → não filtra. (No 2.0 o Tab/blur manda; no 1 não.)
+**RECEITA DO REPLAY (a implementar):**
+1. Login Playwright no SIAFE 1 → nav OB → reaproveitar cookies (storage_state) + ler ViewState atual.
+2. POST acima com: cbx_col_sel=2 (UG Emitente), cbx_op_sel=9 (começa com), `pt1:...:in_value_rtfFilter=<UG>`,
+   `event`/`PROCESS` apontando p/ o `in_value_rtfFilter` (valueChange autoSubmit=1). Header `Faces-Request: partial/ajax` se exigido.
+3. Resposta = XML rich-client com o grid + NOVO ViewState (extrair de `<![CDATA[...]]>`/`javax.faces.ViewState`) → reenviar no próximo POST.
+4. Paginar com `oracle.adf.view.rich.DELTAS` scroll (rows/scrollTopRowKey) em fetchSize.
+   Combinar UG + Número prefixo (2 linhas de filtro) p/ furar 1000, igual ao 2.0.
+ALTERNATIVA mais simples (sem httpx): na UI, após digitar o valor, DISPARAR via JS o mesmo `event` de
+valueChange no `in_value` (injetar o POST do ADF client). A investigar.
