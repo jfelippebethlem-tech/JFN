@@ -630,7 +630,7 @@ async def api_lista():
         "   📊 *Planilha XLSX* interativa (abas Resumo / Pagamentos / Concentração).\n"
         "   ⚖️ *Parecer Lex*: fatos · achados (modelo CGE-RJ, Dec. 47.408/2020) · análise de mérito · "
         "fracionamento (conceito TCU) · improbidade/penal · grau 🟢🟡🔴 · recomendações.\n\n"
-        "▪️ *relatório de ÓRGÃO* — ex.: _\"relatório do ITERJ\"_ ou por UG (ex.: 133100). Due diligence da "
+        "▪️ *relatório de ÓRGÃO* — ex.: _\"relatório da Secretaria da Casa Civil\"_ (ou por código de UG). Due diligence da "
         "*UNIDADE*: quanto pagou e *a quem* (por ano) · concentração por fornecedor (HHI) · *cidades-sede* dos "
         "fornecedores · parecer. Também em PDF + XLSX.\n"
         "━━━━━━━━━━━━━━━━━━━━\n"
