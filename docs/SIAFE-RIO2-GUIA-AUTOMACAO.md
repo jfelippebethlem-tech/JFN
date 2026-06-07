@@ -430,3 +430,15 @@ SÓ o operador "começa com" renderiza o campo de valor (com "igual" some) → n
 re-firar o autoSubmit sem perder o campo. Mudar a Propriedade reseta op/valor. → Conclusão: o caminho é o
 **httpx replay** (formato já capturado acima) OU disparar via JS o `event` de valueChange do `in_value`
 no formato ADF rich client. Implementação = próximo passo focado (tudo documentado).
+
+### SIAFE 1 — replay: PPR de filtro ACEITO (avanço 2026-06-07), falta o fetch de linhas
+Enviei o PPR de valueChange do `in_value_rtfFilter` via `page.request.post` (cookies herdados + ViewState da
+página) no formato capturado → **STATUS 200**, resposta `<partial-response>` (36KB) re-renderizando
+`pnlAccordionDec` (filtro+tabela). MAS: a resposta **NÃO contém as linhas** ("2023OB" = 0 ocorrências) e
+`page.reload()` depois dá grid VAZIO (0) — ou seja, no ADF o PPR de filtro só re-renderiza a CASCA da tabela;
+as LINHAS vêm por um **fetch/stream separado** (`oracle.adf.view.rich` table fetch / DELTAS scroll) que o
+CLIENTE dispara automaticamente. Como uso `page.request` (fora do cliente ADF), esse auto-fetch não ocorre.
+PRÓXIMO PASSO (replay completo): (a) capturar o request de FETCH DE LINHAS da tabela (o stream que roda logo
+após o filtro) e replicá-lo com o ViewState pós-filtro; OU (b) disparar o valueChange via o CLIENTE ADF na
+própria página (AdfPage.PAGE.findComponentByAbsoluteId(in_value).setValue+submit) p/ o ADF auto-buscar as
+linhas e aí `_colher` o grid. (b) é provavelmente mais simples. Sessão SIAFE 1 é paralela ao sweep do 2.
