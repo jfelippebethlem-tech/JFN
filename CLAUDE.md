@@ -73,8 +73,10 @@ desculpa para reduzir análise, verificação adversarial, abrangência de fonte
 - **Salvar estado cedo é seguro, não motivo para encerrar antes da hora.**
 - **Workflows/subagents:** usar quando agregam profundidade real; evitar apenas quando redundantes ou quando uma
   pausa iminente os deixaria pela metade (preferir rodá-los inteiros após o reset).
-- Ferramenta de apoio: `python -m compliance_agent.manutencao` (checkpoint WAL/VACUUM/gzip caches) — agendar no
-  cron do Hermes para o disco não inchar (o `compliance.db-wal` já chegou a 2 GB após ingestões pesadas).
+- Ferramenta de apoio: `python -m compliance_agent.manutencao` (checkpoint WAL/VACUUM/ANALYZE/gzip caches) — já no
+  cron (domingo 03:00) para o disco não inchar (o `compliance.db-wal` já chegou a 2 GB após ingestões pesadas).
+- **Ver também:** [`docs/OTIMIZACAO.md`](docs/OTIMIZACAO.md) — índice único de otimização (tokens·CPU·storage·memória),
+  análise do roadmap/playbook e o backlog de Fases (1 feito, 3 documentado).
 
 ### 6. COLETA SIAFE
 
