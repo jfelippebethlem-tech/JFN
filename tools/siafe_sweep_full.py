@@ -20,7 +20,11 @@ import time
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
-_CACHE_UG = _REPO / "data" / "sei_cache" / "ugs_siafe.json"
+# Cache de UGs POR SISTEMA: o SIAFE 1 (conta ALERJ-only) e o SIAFE 2 têm listas de selUg DIFERENTES.
+# Um cache compartilhado fazia o S1 reusar as ~205 UGs do S2 → 205×8 anos varrendo uma conta que só
+# enxerga a ALERJ (010100) → milhares de falsos-0 (era o "bug §41"). (achado 2026-06-07)
+def _cache_ug(sistema: str) -> Path:
+    return _REPO / "data" / "sei_cache" / f"ugs_siafe_{sistema}.json"
 TJRJ = "030100"
 LOGIN_1 = "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"
 ANOS = {"2": [2026, 2025, 2024], "1": [2023, 2022, 2021, 2020, 2019, 2018, 2017, 2016]}
@@ -55,11 +59,13 @@ def _log(sistema, m):
         pass
 
 
-async def _ler_ugs(login_url) -> list[str]:
-    """Lê os códigos de UG do selUg (1 login). Cacheia."""
-    if _CACHE_UG.exists():
+async def _ler_ugs(login_url, sistema) -> list[str]:
+    """Lê os códigos de UG do selUg da PRÓPRIA conta (1 login). Cacheia POR SISTEMA.
+    No SIAFE 1 a conta só expõe TODAS + 010100 (ALERJ) → retorna ['010100']."""
+    cache = _cache_ug(sistema)
+    if cache.exists():
         try:
-            return json.loads(_CACHE_UG.read_text())
+            return json.loads(cache.read_text())
         except Exception:
             pass
     from playwright.async_api import async_playwright
@@ -87,7 +93,7 @@ async def _ler_ugs(login_url) -> list[str]:
                 if code.isdigit() and len(code) >= 6:
                     ugs.append(code)
             if ugs:
-                _CACHE_UG.write_text(json.dumps(ugs, ensure_ascii=False))
+                cache.write_text(json.dumps(ugs, ensure_ascii=False))
             return ugs
         finally:
             await b.close()
@@ -102,13 +108,14 @@ async def main():
     import compliance_agent.siafe_ob_orcamentaria as M
     importlib.reload(M)
 
-    ugs = await _ler_ugs(login_url)
+    ugs = await _ler_ugs(login_url, sistema)
     if not ugs:
         _log(sistema, "FALHA ao ler lista de UGs — abortando."); return
-    # começar por TJRJ, depois o resto (ordem estável)
-    ugs = [TJRJ] + [u for u in ugs if u != TJRJ]
+    # começar por TJRJ (se a conta tiver acesso), depois o resto (ordem estável). No SIAFE 1 a conta só
+    # expõe a ALERJ → NÃO prepender TJRJ (senão varre uma UG inacessível gerando falso-0).
+    ugs = ([TJRJ] if TJRJ in ugs else []) + [u for u in ugs if u != TJRJ]
     anos = ANOS[sistema]
-    _log(sistema, f"UGs={len(ugs)} × anos={anos} — começando por {TJRJ} (TJRJ)")
+    _log(sistema, f"UGs={len(ugs)} × anos={anos} — começando por {ugs[0]}")
     ck = _ck(sistema)
     try:
         from compliance_agent import siafe_runner as _sr

@@ -38,13 +38,28 @@ sócios=13.341 CNPJs. (Backfill histórico é multi-dia.)
 Quando chegar o Telegram "ANÁLISE PÓS-SWEEP pronta" → ler `docs/ANALISE-POS-SWEEP-*.md` e fechar o TODO acima.
 Comandos: ver `docs/PLAYBOOK-EXECUTOR.md` (TL;DR no topo). SIAFE 1 = `JFN_SIAFE_LOGIN_URL=...www5.../SiafeRio/...`.
 
-## ⚠️ CORREÇÃO (2026-06-07, achado tarde) — SIAFE 1 sweep com FALSOS-VAZIOS
-O sweep do SIAFE 1 está coletando **SÓ a ALERJ (010100)** corretamente; as demais ~105 UG:ano retornaram **0**
-(falso). DB SIAFE 1 = só 010100 (21k OBs). Hipótese forte: no SIAFE 1 a listagem da OB é **escopada pela UG
-de CONTEXTO (Acesso Rápido/selUg = ALERJ, default da conta)** — filtrar UG Emitente≠contexto dá 0. (No 2.0 a
-listagem não é escopada → o filtro por UG Emitente funciona p/ todas.)
-FIX NECESSÁRIO (dedicado): no SIAFE 1, antes de coletar cada UG, **trocar o selUg do Acesso Rápido p/ a UG alvo**
-(o sweep do SIAFE 2 não precisa disso). Depois, **LIMPAR o checkpoint `siafe_sweep_full_1.json`** (tem UG:ano
-marcadas como done-0 falsas) e re-rodar. ATÉ LÁ: o SIAFE 1 só tem ALERJ; **NÃO confiar nos dados <=2023 das
-demais UGs**. (O SIAFE 2 / 2024-26 está OK.) Considerar PAUSAR o sweep do SIAFE 1 (ajustar o supervisor) p/ não
-gastar ciclos gerando 0s — ou deixar (idempotente, e o fix re-roda após limpar o checkpoint).
+## ✅ RESOLVIDO (2026-06-07, sessão seguinte) — SIAFE 1 falsos-vazios: causa REAL ≠ hipótese §41
+A hipótese do §41 (trocar o `selUg` de contexto p/ a UG alvo) era **IMPOSSÍVEL e desnecessária**. Investigação
+ao vivo (`tools/_probe_selug.py`, já removido) provou:
+- O `selUg` da **conta SIAFE 1** só expõe **2 opções**: `TODAS` (default) e `010100 - ALERJ`. TJRJ/INEA/etc.
+  **nem existem** no seletor → a conta é **escopada à ALERJ** no SIAFE 1 (www5/SiafeRio).
+- Com contexto=`TODAS` e sem filtro, **300/300 linhas = ALERJ**. A conta não enxerga outras UGs no SIAFE 1.
+- **Causa real dos ~105 falsos-0:** o cache de UGs era **COMPARTILHADO** (`ugs_siafe.json`). O S2 (siafe2, conta
+  com 205 UGs) escrevia o cache; o S1 **reusava** essa lista de 205 UGs contra a conta ALERJ-only → 205×8 anos = 0
+  exceto ALERJ. Não era escopo de listagem; era lista de UGs errada.
+
+**FIX aplicado:** (1) cache de UGs **por sistema** `data/sei_cache/ugs_siafe_{1,2}.json` (`tools/siafe_sweep_full.py`);
+`ugs_siafe_1.json=["010100"]`. (2) não prepender TJRJ se a conta não tiver acesso. (3) checkpoint S1 podado p/
+ALERJ-only (8 anos, ~21k OBs, todos ok). (4) flag de pausa por sistema no supervisor (`data/.pause_sweep_$S`).
+Agora o S1 loga **SWEEP COMPLETO em segundos** sem gerar 0s. SIAFE 2 (2024-26, todas as UGs) intacto.
+
+> ⚠️ **GAP DE DADOS (limitação de credencial, não bug):** 2016-2023 das UGs **≠ ALERJ** é **inacessível** com
+> a conta atual do SIAFE 1. Para preencher, é preciso uma **conta SIAFE 1 com acesso ampliado** (mais UGs no
+> selUg) — então basta apagar `ugs_siafe_1.json` p/ regenerar a lista e re-rodar o sweep. SIAFE 2 cobre 2024-26.
+
+## ✅ COBERTURA DE ENDEREÇO (goal 2026-06-07) — todo CNPJ coletado tem endereço
+Diagnóstico: `rede_societaria.ingerir` marcava o CNPJ como "feito" (sentinela em `socios_fornecedor`) mesmo quando
+a BrasilAPI devolvia erro/429, **sem gravar endereço e sem retentar** → 843 CNPJs válidos (inclusive Banco do
+Brasil) ficaram sem endereço por falha transitória (NÃO eram entidades especiais — todos retornam endereço na
+BrasilAPI). Fix: `tools/backfill_enderecos.py` (idempotente, backoff de 429) ataca direto o gap de
+`endereco_fornecedor`. Rodar com `run_in_background`; recomputa o gap a cada execução (cobre novos CNPJs do sweep).
