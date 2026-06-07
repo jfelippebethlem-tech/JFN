@@ -79,6 +79,19 @@ def vacuum(db: str = _DB) -> dict:
     return {"db_antes": antes, "db_depois": _sz(db)}
 
 
+def analyze(db: str = _DB) -> dict:
+    """ANALYZE — recolhe estatísticas (sqlite_stat1) p/ o query planner escolher índices melhores.
+    Risco zero (só estatísticas); essencial num DB de 1M+ linhas e barato. Roda junto do VACUUM."""
+    con = sqlite3.connect(db, timeout=120)
+    try:
+        con.execute("ANALYZE")
+        con.commit()
+        n = con.execute("SELECT COUNT(*) FROM sqlite_stat1").fetchone()[0]
+    finally:
+        con.close()
+    return {"sqlite_stat1_linhas": n}
+
+
 def comprimir_caches(dirs=("tfe_cache",), extensoes=(".csv",), manter=()) -> dict:
     """Gzip nos arquivos regeneráveis dos caches (CSV já ingeridos). Mantém .zip/.png e qualquer nome em `manter`.
     O arquivo original é removido só após o .gz ser gravado com sucesso e validado pelo tamanho."""
@@ -133,6 +146,7 @@ def manutencao(tudo: bool = False, comprimir: bool = False, podar: int | None = 
     out = {"antes": relatorio()}
     out["checkpoint"] = checkpoint_wal()
     out["vacuum"] = vacuum()
+    out["analyze"] = analyze()   # estatísticas p/ o query planner (após reescrever no VACUUM)
     # o VACUUM roda em modo WAL e regera um WAL do tamanho do DB — checkpoint final p/ truncá-lo
     out["checkpoint_pos_vacuum"] = checkpoint_wal()
     if tudo or comprimir:

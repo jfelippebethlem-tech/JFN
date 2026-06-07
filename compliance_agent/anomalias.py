@@ -70,6 +70,7 @@ def _ddl(con):
     con.execute("CREATE INDEX IF NOT EXISTS ix_redflag_ob ON ob_redflag(ob_id)")
     con.execute("CREATE INDEX IF NOT EXISTS ix_redflag_regra ON ob_redflag(regra)")
     con.execute("CREATE INDEX IF NOT EXISTS ix_anomaly_score ON ob_anomaly(score)")
+    # (NÃO indexar ob_id: já é INTEGER PRIMARY KEY = rowid, indexado nativamente — índice extra seria redundante.)
     con.commit()
 
 
