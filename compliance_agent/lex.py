@@ -766,6 +766,15 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
         add("| — | — | — | — | — |")
     add("")
 
+    # III-C. Triagem por indicadores de risco de fraude (lex_indicadores_fraude)
+    try:
+        from compliance_agent import lex_indicadores_fraude as _lif
+        _sinais = _lif.sinais_do_contexto(ctx, analise)
+        add(_lif.parecer_indicadores_md(_lif.triagem(_sinais)))
+        add("")
+    except Exception:
+        pass
+
     # IV-B. Análise de mérito (parecer raciocinado)
     add("## IV-B. ANÁLISE DE MÉRITO")
     add("")

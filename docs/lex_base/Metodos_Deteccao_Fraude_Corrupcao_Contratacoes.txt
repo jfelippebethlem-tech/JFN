@@ -1,0 +1,2254 @@
+
+ZZZZZ mÁdfk^ N ZZZZZ
+Apoio Parceria
+MTODOSDE
+DETECODEFRAUDEECORRUPO
+EMCONTRA T AESPBLICAS
+
+ZZZZZ mÁdfk^ O ZZZZZ
+AutorBiancaVazMondo
+Edi©¥o 
+Diagrama©¥o  EduardoAlvarado
+MaterialproduzidopelaT ranspar¬nciaBrasil
+EquipeExecutiva
+ManoelGaldino Diretorexecutivo
+JulianaSakai Diretoradeopera©·es
+BiancaVazMondo
+JessicaV oigt
+LorenaCardoso
+BiancaBerti
+ElisaT obias
+ConselhoDeliberativo
+EduardoCapobianco Presidente
+KavitaMiadairaHamza Vicepresidente
+AugustoMiranda
+BrunaSantos
+FranciscoSoaresMasculo
+GuilhermeAlpendre
+MarcelaCristinaArrudaNunes
+MarceloKalilIssa
+MariaGorettiDalBosco
+RaymundoMaglianoFilho
+RubensNaves
+
+ZZZZZ mÁdfk^ P ZZZZZ
+Agradecimentos ___________________________________________________
+ParteIFraudeecorrup©¥onascontrata©·esp¼blicas ____________________
+ParteIITipologiadefraudesemlicita©·es ______________________________ 
+ParteIIIIndicadoresderiscoet«cnicasdedetec©¥odefraudes _____________
+___________________________________________
+NDICE
+
+ZZZZZ mÁdfk^ Q ZZZZZ
+
+Osesfor©osparaaelabora©¥odestemanualforamenormementefacili 
+tadospelofant£sticotrabalhodosautoresFranklinBrasilSantoseKle 
+bersonRobertodeSouzacujaspublica©·esserviramdebaseparanos 
+satentativadeaproximartµpicost«cnicossobreadetec©¥odefraudes
+emcontrata©·esp¼blicasparaarealidadedosagentesdocontroleso 
+cialAgradecemosespecialmenteaosdoisautoresporteremautoriza 
+doaadapta©¥odoconte¼doj£publicadoparaintegraromaterialaqui
+apresentado
+Estematerialn¥oseriaposs¯velsemoapoiodoFundodeDemocracia
+
+te e a produ©¥o deste manual em particular Agradecemos tamb«m a 
+todososparticipantesdoscursosonlineepresenciaisquenospermiti 
+ramtestarnapr£ticaoconte¼doaquiapresentado
+AGRADECIMENTOS
+
+ZZZZZ mÁdfk^ R ZZZZZ
+
+Desenvolvidono¤mbitodoprojetoObraT ransparenteestemanualbuscacontribuirparaa
+©¥oemprocessosdecontrata©¥op¼blicaApesardeoprojetofocaracontrata©¥odeobrasde
+modalidadedecontrata©¥op¼blicaindependentementedotipodeobjetocontratado
+Ainda que a legisla©¥o de licita©·es tenha imposto certa rigidez procedimental de modo 
+aevitarfraudesaAdministra©¥oP¼blicaseguevulner£vel¢suaocorr¬nciaSepensarmos
+apenasnos¼ltimosgrandesesc¤ndalosdecorrup©¥oem¤mbitonacionalcomooMensa
+l¥oSanguessugasPetrobrastodosenvolveramalgumtipodeesquemadefraudesemlici
+queessadimens¥odacorrup©¥o«umlugarcomumemnossopa¯seimportantecausade
+danosparaagest¥op¼blica
+caseauxiliarosµrg¥osdecontroleemsuafun©¥odedetectareinvestigarcasosdessanatu
+antesmesmodaefetiva©¥odacontrata©¥oedaconcretiza©¥ododanopotencialaoer£rio
+dacomplexidadeinerenteaalgunsprocedimentosoprµpriovolumedeprocessosquepodem
+seracompanhadosadependerdon¯veldaadministra©¥oedoportedoµrg¥op¼blicomoni
+criticidadeoumaisrelevantesisto«cujaan£lisemaisdetalhadasejapriorit£ria
+Desta forma o projeto ObraT ransparente traz uma iniciativa pioneira para o treinamento 
+deagentesdocontrolesocialnatem£ticadadetec©¥oepreven©¥odefraudesemlicita
+©·esAmaiorpartedoconte¼doapresentadoaquifoiadaptadadeummaterialproduzido
+porFranklinBrasilSantoseKlebersonRobertodeSouzaauditoresdaControladoriaGeral
+daUni¥oCGUcomgrandeexperi¬ncianacapacita©¥odeservidoresp¼blicosdediversas
+esferasparaadetec©¥odefraudesemlicita©·espensandonosagentesdecontrolesocial
+apreven©¥odacorrup©¥o
+
+AdaptadoparcialmentedeSantoseSouzaeSouza 
+PARTEI
+CONTRATAESPBLICAS
+
+INTRODUO
+AutoraBiancaVazMondo
+
+ZZZZZ mÁdfk^ S ZZZZZ
+
+Emumprocessolicitatµrio«comumencontrarmosinconformidadesoufalhasComodistin
+guirsesetratadeumcasodefraudeoun¥o?
+Fraudeimplicaaexist¬nciadeinten©¥odefazeralgoil¯citoisto«doloAssimparaseiden
+presen©adeatosdeliberadosparadistorceroufrustrarocar£tercompetitivodalicita©¥oa
+T amb«msedeveobservarqueh£diferen©aentreatosfraudulentosefalhasprocedimentais
+emumprocessolicitatµrioAsfalhasprocedimentaispodemocorrerdevidoaproblemases
+©¥oereciclagemdeservidoresda£readecomprasp¼blicasquemuitasvezesdesconhecem
+ouinterpretamequivocadamentealegisla©¥oaplic£vel
+Equal«arela©¥oentrefraudeecorrup©¥onocontextodaslicita©·esp¼blicas?Adistin©¥o
+essencialdizrespeito¢participa©¥odaAdministra©¥oP¼blicanocasoAtosdecorrup©¥o
+envolvemnecessariamenteumdetentordecargop¼blicoquefazusodesuafun©¥oparafa
+voreceralgu«mouproduzirvantagemindevidaIssoaconteceemgrandepartedoscasosde
+fraudesemlicita©·esumexemplo«odirecionamentodalicita©¥ocombaseemcondi©·es
+restritivas estabelecidasj£ no editalH£ tamb«m situa©·es em queafraudepodeocorrer
+apenasporatua©¥odeempresaslicitantescomonocasodeumconluioentreparticipantes
+ouat«mesmodaconstitui©¥odeumcartelPortantofraudeecorrup©¥opodemestarasso
+ciadasoun¥onocasodefraudeslicitatµrias
+CONCEITOS
+
+ZZZZZ mÁdfk^ T ZZZZZ
+
+Como mencionado acima a fraude nos processos de contrata©¥o p¼blica est£ essencial
+mente relacionada a uma tentativa de frustrar o car£ter competitivo isto « seu objetivo 
+direto«distorceralivredisputaentreosparticipantesnaturalemumprocessocompetitivo
+demodoquealgu«msejaindevidamentefavorecidoecontratado
+Aigualdadedecondi©·esatodososconcorrentesnosprocessosdelicita©¥oest£assegu
+radapeloartigo incisoXXIdaConstitui©¥oFederalNaregulamenta©¥odadapelaLein|
+tamaisvantajosa¢Administra©¥omedianteamplacompetitividadeAssimafraudeatenta
+contraumprinc¯pioelementardalicita©¥op¼blicaodacompeti©¥o
+Al«mdalegisla©¥oacimamencionadaajurisprud¬nciadoTCUincluiin¼merosjulgadosque
+destacamailegalidadedeprocedimentosquerestrinjamocar£tercompetitivodeumalici
+ta©¥oensejandoat«mesmoemalgunscasosanulidadedoprocessoemquest¥oAbaixo
+listamosalgunsexemplosdedecis·esnessesentidoextra¯dasdaquartaedi©¥odomanual
+Licita©·esecontratospublicadopeloprµprioTCU
+Acµrd¥oPlen£rioSum£rio
+ inconstitucional e ilegal o estabelecimento de exig¬ncias que restrinjam o car£ter 
+competitivodoscertames
+Acµrd¥oPlen£rioSum£rio
+Devemserevitadasexig¬nciasquecomprometamocar£tercompetitivodalicita©¥o
+Alicita©¥odeveserprocessadaejulgadaemestritaconformidadecomosprinc¯pios
+b£sicos
+Acµrd¥oPlen£rioSum£rio
+Asexig¬nciasedital¯ciasdevemlimitarseaom¯nimonecess£rioparaocumprimento
+doobjetolicitadodemodoaevitararestri©¥oaocar£tercompetitivodocertame
+Vale ressaltar que as fraudes licitatµrias podem ocorrer de diversas formas e « comum a 
+utiliza©¥odedistintosǐmecanismosǑdea©¥ofraudulentaparaqueseatinjaoobjetivode
+fraudes muitas vezes implicam em viola©·es de outros princ¯pios b£sicos norteadores da 
+
+ZZZZZ mÁdfk^ U ZZZZZ
+
+CabemencionaraquiojulgadodoTCUdestacandoanecess£riavincula©¥oaessesprinc¯piose
+aimplica©¥oquanto¢nulidadedocertamequeapresentev¯ciosnessesentido
+Acµrd¥oPrimeiraC¤maraSum£rio
+Aviola©¥odeprinc¯piosb£sicosdarazoabilidadedaeconomicidadedalegalidadeedamorali 
+dadeadministrativaeadesobedi¬ncia¢sdiretrizesfundamentaisdalicita©¥op¼blicanocasoa
+isonomiaentrelicitantesojulgamentoobjetivoavincula©¥oaoinstrumentoconvocatµriobem
+prazoparaexatocumprimentodaleinosentidodedeclararanulidadedocertame
+T emosdeumladooobjetivodiretodafraudeisto«adistor©¥odacompeti©¥onecess£riapara
+
+casecomumentenoscasosdefraudeaafrontaaoutrosprinc¯piosb£sicosvinculantesparaa
+licita©¥op¼blica
+Deoutroladotemosumsegundoobjetivoqueapesardeindireto«namaioriadasvezesoob 
+jetivoprim£riodafraudeaapropria©¥oderecursosp¼blicospormeiodacontrata©¥odebense
+servi©oscomsuperfaturamentoPortantoviaderegraadistor©¥odacompeti©¥ovisapropor 
+cionaraosfraudadoresocontrolesobreoresultadodocertameparagarantirqueacontrata©¥o
+PRINCPIO
+DESCRIO
+Legalidade
+Isonomia
+Impessoalidade
+Obriga a Administra©¥o a observar nas decis·es crit«rios objetivos 
+previamenteestabelecidosafastandoadiscricionariedadeeosubje 
+tivismonacondu©¥odosprocedimentosdelicita©¥o
+Acondutadoslicitantesedosagentesp¼blicostemdeseral«mde
+l¯citacompat¯velcomamorala«ticaosbonscostumeseasregras
+daboaadministra©¥o
+Qualquerinteressadopodeteracesso¢slicita©·esp¼blicaseaores 
+pectivocontrolemediantedivulga©¥odosatospraticadospelosad 
+ministradoresemtodoprocedimentodelicita©¥o
+ObrigaaAdministra©¥oeolicitanteaobservaremasnormasecon 
+di©·esestabelecidasnoatoconvocatµrioNadapoder£sercriadoou
+feitosemquehajaprevis¥onoinstrumentodeconvoca©¥o
+
+nidos no ato convocatµrio para julgamento da documenta©¥o e das 
+propostas
+VinculaoslicitanteseaAdministra©¥oP¼blica¢sregrasestabelecidas
+nasnormaseprinc¯piosemvigor
+Garantetratamentoigualatodososinteressadoscondi©¥oessencial
+paraacompeti©¥oemtodososprocedimentoslicitatµrios
+Publicidade
+Moralidade
+eprobidade
+administrativa
+Vincula©¥o
+aoinstrumento
+convocatµrio
+Julgamento
+objetivo
+FonteElabora©¥oprµpriaadaptadadomanual Licita©·esecontratos leddoTCU
+
+ZZZZZ mÁdfk^ V ZZZZZ
+
+Osuperfaturamentorepresentaoefetivodanoaoer£rioproduzidoepodesecaracterizarde
+diversasformasParaocasodeobrasp¼blicasporexemplooRoteirodeauditoriadeobras
+p¼blicaspublicadopeloTCUdescreveumavariedadedesitua©·esqueconstituemsu
+bensoudecontrata©¥odeoutrostiposdeservi©os
+a  Superfaturamentoporquantidademedi©¥odequantidadesdeservi©ossuperiores
+¢sefetivamenteexecutadasfornecidaspodendoocorrertamb«mcomopagamen
+toemduplicidadeouporservi©osn¥oexecutados
+execu©¥odeobraseservi©osdeengenhariaqueresultememdiminui©¥odaquali
+dadevida¼tilouseguran©aoualtera©¥oqualitativadosinsumosequipamentose
+si©¥odecustosunit£riosgerandodiminui©¥onocustodiretodacontratadaquen¥o
+«contabilizadanaplanilhaor©ament£riacontratual
+c  Superfaturamento por altera©¥o de metodologia executiva altera©¥o de metodo
+logiaexecutivaduranteaobraǊcasooor©amentooriginaltenhaprevistom«todo
+d  Superfaturamentoporpre©osexcessivospagamentoscompre©osmanifestamente
+superioresaospraticadospelomercadoouincompat¯veiscomosconstantesemta
+belasreferenciaisdepre©os
+cialdocontratoemdesfavordaAdministra©¥opormeiodaaltera©¥odequantitativos
+
+
+f  Superfaturamentoporreajustamentoirregulardepre©ospagamentoscompre©os
+indevidamentereajustados
+g  Superfaturamentoporadiantamentodepagamentospagamentosantecipadosn¥o
+previstosemedital contrato
+pagamento de servi©os iniciais com sobrepre©o compensado pela medi©¥opaga
+mentodeservi©osposteriorescomdesconto
+
+
+
+ ParamaisdetalhessobrecomoocorreoǐjogodeplanilhaǑ consulteaparteIIIdoMµduloIMonitoramentodeeditaiselicita©·esdeobrasp¼
+blicasno Manualparacontrolesocialdeobrasp¼blicas
+
+ MaisdetalhessobrecomoocorreoǐjogodecronogramaǑtamb«mest¥odispon¯veisnaparteIIIdoMµduloIMonitoramentodeeditaiselicita
+©·esdeobrasp¼blicasno Manualparacontrolesocialdeobrasp¼blicas 
+
+ZZZZZ mÁdfk^ NM ZZZZZ
+
+T endoemcontaacomumrela©¥oentreessesdoisobjetivosdiretoeindiretodafraudeli 
+citatµria«importantequeosagentesdocontrolesocialengajadosnomonitoramentode
+compras p¼blicas tenham em mente a import¤ncia de se analisarem potenciais casos de 
+
+mentoApresen©adeind¯ciosouevid¬nciasdosdoistiposdeirregularidadescontribuipara
+refor©arassuspeitasefortalecerosachadosquandoforemencaminhadosparaosµrg¥os
+decontrolecompetentes
+naAdministra©¥oP¼blicaUmmodelobastanteestabelecidosobreessaabordagemtrata
+daschamadasǐtr¬slinhasdedefesaǑdeumaorganiza©¥oquecompreendemasresponsa 
+bilidadesdediferentespartesdaorganiza©¥oemgerenciarriscosemecanismosdecontrole
+Nessaperspectivaaprimeiraeprincipalbarreiracontraosriscosest£relacionadaameca 
+nismosdecontroleinternoimplementadospelosgestoresnasatividadesrotineirasdaorga 
+
+pormonitorarriscosremanescentesǊsendoessaasegundalinhadedefesaAterceirapor
+vemosummodeloadaptadopeloTCUqueindicaapresen©aaindadeumaquartalinhade
+defesaaauditoriaexterna
+FIQUEA TENTO
+
+ZZZZZ mÁdfk^ NN ZZZZZ
+
+FonteAdaptadodeSouza 
+importantedestacarqueocontrolesocialtamb«mtemgranderelev¤nciadiretaeindireta
+no funcionamento de todas as linhas de defesa De maneira direta pode ser interpretado 
+agirdemodoaprovocargestoresecontroladoresinternosparaqueaprimoremoscontroles
+existentesdemodoamelhorresguardarosprinc¯piosdaboaadministra©¥op¼blica
+Assim a atua©¥o de agentes do controle social pode contribuir muito para prevenir irre
+monitoradosoudecontroleexternoparaquesejammelhoradosOenfoqueempreven©¥o«
+umaspectocrucialpoisajudaaevitardanosquesejamdedif¯cilrepara©¥oposteriormente
+Desse ponto de vista o monitoramento de licita©·es e contratos p¼blicos pode ser visto 
+comoestrat«giapriorit£riaparaocontrolesocialpoisomomentodalicita©¥ooudacontra
+faturadasqueconstituemumdoscanaismaiscomunsparacorrup©¥oedesvioderecursos
+Demaneiracomplementaroacompanhamentodaexecu©¥ocontratualtamb«mpodeaju
+daraevitarosuperfaturamentoemsuasdiversasformasprevenindoodanoaoer£riopor
+meiodaentregairregulardebensouservi©os
+
+
+ZZZZZ mÁdfk^ NO ZZZZZ
+
+licita©·esentreoutrasformasdefraudeedeprocedimentosdecontrata©¥ocomriscomais
+elevadoquepodemserpriorizadosnotrabalhodemonitoramento
+Para apoiar a realiza©¥o dessas atividades buscaremos contextualizar e apresentar os ti 
+posmaiscomunsdefraudesemlicita©·esdemodoafamiliarizarosparticipantescomos
+mecanismoseartif¯ciosmaisutilizadosporpotenciaisfraudadoressejamelesagentesp¼ 
+blicosouempresaslicitantesCombasenesserepertµriodiscutidoemdetalhenaParteII
+nosvoltamosent¥onaParteIIIparaumaabordagempr£ticaapontandofatoresderisco
+relevantesquepodemorientarocontrolesocialdelicita©·esecontrata©·esp¼blicasAl«m
+dissoapresentamosferramentaseprocedimentosdean£liseesugest·esdecomoeventu 
+aisind¯cioseevid¬nciaspodemserrelatadosaosµrg¥oscontratantesou¢sinst¤nciasde
+controleparainvestiga©¥oquandonecess£rio
+
+ZZZZZ mÁdfk^ NP ZZZZZ
+
+Asfraudespodemassumirdiversasformasemgeralcomainten©¥odedirecionaracontra
+licita©·esafraudepodeestarassociadaaumaoumaisdasdistintasetapasdoprocesso
+necedorOobjetivo«namaiorpartedoscasosmaximizarolucrodosenvolvidos
+Aspr£ticasfraudulentaspodemvariardesimplesacordosverbaisepontuaisentrelicitantes
+ouentreesteseaAdministra©¥oP¼blicacontratantecelebradospoucoantesdassess·es
+p¼blicasdelicita©¥oat«complexoseduradourosmecanismosdepartilhadecontratose
+distribui©¥odoslucrosobtidosilicitamentecomumautiliza©¥odemaisdeumalinhade
+a©¥ofraudulentaeanticompetitiva
+Esta parte do manual tem por objetivo demonstrar os principais tipos de fraudes em lici
+ta©¥oasformasmaiscomunsdeocorr¬nciasj£detectadaspelosµrg¥osdecontrolesem
+decomportamentoquepodemvariarecongregarelementosdiversosdeacordocomcada
+casoeascondi©·esobservadas
+petitividadeemlicita©·espodeterduasorigensprincipaisPortariaSDEn|iato
+mais uma origem em que um agente da Administra©¥o age deliberadamente em conluio 
+comumaempresaparafraudaroufrustrarocar£tercompetitivo
+Assims¥oexemplosdoprimeirotipooscasosdeimposi©¥oderequisitosdeparticipa©¥o
+projeto m£gico edital restritivo publicidade prec£ria julgamento conivente contrata©¥o 
+diretaindevidaJ£oconluioentrelicitantesoucartel«oprincipalexemplodosegundo
+tipo A legisla©¥o de licita©·es Leis n|  n|  n|  etc 
+buscaprimordialmenteimpediroprimeirotipoderestri©¥oaopassoquealegisla©¥ocon
+correncialLein|cuidadosegundotipo
+Asse©·esseguintesdescrevemasprincipaiscaracter¯sticasdecadaumdostiposdefraudes
+
+AdaptadodeSantoseSouzaeSouza
+PARTEII
+
+INTRODUO
+AutoraBiancaVazMondo
+
+ZZZZZ mÁdfk^ NQ ZZZZZ
+
+OProjetoB£sicoparalicita©·esdeobraseservi©oseoT ermodeRefer¬nciaparalicita 
+©·esnamodalidadePreg¥os¥odocumentosessenciaisobrigatµrioseimprescind¯veis¢
+legitimidadedoprocessodecontrata©¥osejaestadiretaouprecedidadelicita©¥o
+S¥oessesdocumentosquedeacordocomamodalidadedelicita©¥oadotadafornecem
+¢Administra©¥oconhecimentoplenodoobjetoquesequerlicitardeformadetalhada
+claraeprecisaal«mdeproporcionaraolicitanteasinforma©·esnecess£rias¢elabora 
+
+jetoal«mdassuascaracter¯sticasfundamentaisascondi©·esdefornecimentoenvol 
+vendoaspectoscomolocaleprazosdeentregafretecondi©·esefetivasdepagamento
+periodicidadedacompragarantiatreinamentoesuportet«cnicoentreoutros
+N¥oselicitanadasemcaracterizaroobjetodeformaadequadaAcaracteriza©¥oprecisa
+ecompletadoobjeto«condi©¥oessencialparaavalidadedoprocessolicitatµrioartigos
+eincisoIdaLein|art|incisoIIdaLein|Esseenten 
+dimento«refor©adoemamplajurisprud¬nciadoTCUS¼mula Acµrd¥os
+ e doPlen£rioeda
+lC¤mara
+EsperasequeoProjetoB£sicosejaprecedidodeestudost«cnicosplanejamentoeava 
+lia©¥o de solu©·es alternativas que possam suprir as necessidades da Administra©¥o 
+
+dospreliminaresparaumaelabora©¥oprecisadoProjetoB£sico
+NoentendimentodoTCUarealiza©¥odessesestudos«obriga©¥odaentidadecontra 
+tanteAcµrd¥olC¤maraassimcomotamb«m«obrigatµrioqueconste
+doProjetoB£sicooregistroformaldaResponsabilidadeT «cnicanoscasosqueenvolvem
+Esseregistro«umaferramentaimportanteparaagarantiadequeosrequisitosdoPro 
+Aautoria«t¥orelevantequeoTCUconsiderapass¯veldecondena©¥oquemaprovaum
+considerapun¯velquemelaboraouaprovaprojetoinadequadoAcµrd¥oǊ
+mas tamb«m leva ¢ anula©¥o de contratos pois s¥o nulas as licita©·es baseadas em 
+projetoincompletodefeituosoouobsoletoAcµrd¥oǊPlen£rio
+PROJETOMGICO
+
+ZZZZZ mÁdfk^ NR ZZZZZ
+
+E«justamenteissoqueacontecenasfraudesdotipoǐProjetom£gicoǑ Aslicita©·esseba
+pressupostodaigualdadeentreoslicitantes
+A exig¬ncia de caracteriza©¥o precisa e completa do objeto da licita©¥o n¥o se confunde 
+eviteodetalhamentoexcessivodoobjetoparan¥odirecionaralicita©¥oourestringiroseu
+car£ter competitivo Existe a possibilidade de referenciar uma marca ou estabelecer uma 
+condi©¥orestritivamasissosµpodeacontecerquandoforestritamentenecess£rioparao
+atendimentodasnecessidadesdaAdministra©¥ocomoemprocedimentosdepadroniza©¥o
+vemosrequisitosmencionadosS¼muladoTCU
+FIQUEA TENTO
+tenaestimativadequantidadesmuitosuperiores¢sreaisnecessidadesdosquantitativos
+Damesmaformaexpress·esgen«ricasevagasbemcomodescri©¥oconfusaimprecisaou
+incompletadoobjetotamb«mcaracterizamgraveirregularidadeporcontrariarosprinc¯pios
+fundamentaisdalicita©¥oEssetipodefalhanadescri©¥odoobjetopodeserindicativode
+simula©¥odetodooprocessolicitatµrio
+
+ZZZZZ mÁdfk^ NS ZZZZZ
+
+CASOCONCRETOESPECIFICAODEMAISOUDEMENOS?
+«umapr£ticabastantecomumOscasosmaisevidentessed¥ocomainclu 
+comcapacidadeparapassageirosǑ Contudoessemodelodeve¯culohavia
+deixadodeserproduzidoanosantesdalicita©¥oApenasumdoslicitantes
+ǊovencedorclaroǊtinhaumKadett
+prefeituradaPara¯baporexemplorealizoupreg¥oemparacomprarjo 
+gosebrinquedosparacrechesUmlotecomitensdoeditalBandinhaR¯t 
+micaconjuntocontendoinstrumentosmusicaisacondicionadoemcaixa
+MatoGrossoumexpresidentedoT ribunaldeJusti©afoidenunciadoporque
+emsuagest¥oforamcompradosT oyotaCorollaOeditalexigiave¯culos
+commotortipoVVT iParaoMinist«rioP¼blicohouvedirecionamentoparaa
+concession£riadamarca
+infantilcomp£ginasmaiscapasformatoXcmǑ N¥o«precisoser
+
+ca©¥oPerguntachaveComoformularumapropostaparaesseobjeto?Ares 
+posta « simples simulando o processo licitatµrio O importante « saber qual 
+seriaaverbadispon¯velparapagaroservi©on¥oquantocustadefatoexecu 
+t£loIncrivelmentetodososlicitantesapresentarampropostasabsolutamen 
+tesemelhantesinclusivecomdetalhesiguaisquen¥oconstavamnoedital
+AindaquantoaoǐProjetom£gicoǑ valelembrarque«proibidov¯nculoentreprojetistaelici 
+tanteSegundooartdaLein|oautordoprojeton¥opodeparticipardireta
+ouindiretamentedalicita©¥ooudaexecu©¥odeobraouservi©oedofornecimentodebens
+aelesnecess£rios
+Consideraseparticipa©¥oindiretaaexist¬nciadequalquerv¯nculodenaturezat«cnicaco 
+
+tadoNoentendimentodoTCUessaproibi©¥oseaplicaaǐqualquerv¯nculoǑ isto«elen¥o
+
+ZZZZZ mÁdfk^ NT ZZZZZ
+
+docontratoeautordoprojetoǑ aplicandosetamb«marela©·espessoaisoufamiliarespor
+exemploAcµrd¥oǊPlen£rio
+Avincula©¥oentreoautordoprojetoeolicitante«umdoscasosmaiscomunsdefraude
+aoprocessolicitatµrioemespecialnascontrata©·esdeobrasOconhecimentoprivilegia
+dodoprojetorepresentavantagemil¯citanaslicita©·essobretudoporferiroprinc¯pioda
+maneiraadirecion£loparaofornecedoraoqualest£vinculadoEmfun©¥odisson¥o«raro
+Comoj£mencionadoessasitua©¥osujeitaogestorqueaprovaoprojetoapenalidades
+quesejaposs¯velavaliaraposs¯velrela©¥oirregularcomolicitante
+AindarelacionadasairregularidadesnoProjetoB£sicoouT ermodeRefer¬nciaest¥oassi
+tua©·esdefracionamentoparcelamentoeloteamentodoobjeto
+Ofracionamentoconsisteemdividiradespesasemobedeceramodalidadecab¯velparao
+totaldadespesaourealizarumacontrata©¥odiretasemlicita©¥onoscasosemqueopro
+cedimento«obrigatµrioT alpr£tica«vedadapelaLein|
+PorǐtotaldadespesaǑ«comumconsiderarapenasaquelasrelativasaoexerc¯ciocorrente
+Por«mnocasodeservi©oscontinuadosdeveselevaremcontaoper¯ododevig¬nciado
+concorr¬nciatomadadepre©osouconviteconformeentendimentoprevistonaOrienta
+©¥oNormativadaAdvocaciaGeraldaUni¥oAGUn|
+Para fugir de uma concorr¬ncia por exemplo Ǌ modalidade mais competitiva com maior 
+prazo de publicidade e participa©¥o sem cadastro pr«vio Ǌ optase deliberadamente por 
+fracionarascontrata©·esemcurtoper¯ododetemporealizandov£riastomadasdepre©os
+Emoutrasitua©¥oparafugirdaobriga©¥odelicitarfracionamseascontrata©·esempe
+quenosmontantesparaseenquadrarnahipµtesededispensaporvalor
+CASOCONCRETOLICITAESFRACIONADAS
+Umcasoemblem£ticodefracionamentodedespesasparafraudaracompetiti
+baseemauditoriadaControladoriaGeraldaUni¥oCGUaopera©¥odesarti
+
+ZZZZZ mÁdfk^ NU ZZZZZ
+
+J£ o parcelamento de acordo com a Lei n|  « obrigatµrio quando o objeto da 
+contrata©¥otivernaturezadivis¯veldesdequen¥ohajapreju¯zoparaoconjuntoaserlicita 
+doParcelamentonadamais«queadivis¥odoobjetoempartesmenoreseindependentes
+Cadaparteitemetapaouparcelarepresentaumalicita©¥oisoladaouemseparado
+Sobreoassunto«importantelembrarqueoarti|daLein|estabeleceo
+
+docabendoaogestordemonstrarosmotivosqueolevaraman¥odividiroobjetolicitado
+Aadjudica©¥odoobjetopelopre©oglobalquando«poss¯veloseuparcelamentoimpede
+aparticipa©¥odelicitantesqueemboran¥odispondodecapacidadeparaexecu©¥oforne 
+cimentoouaquisi©¥odatotalidadedoobjetopossamfaz¬locomrela©¥oadeterminados
+itensdeformaqueleva¢restri©¥odacompetitividadedocertameEsseentendimentoest£
+consolidadonaS¼muladoTCU
+culouumaquadrilhaquefraudavaacompradeambul¤nciasemtodoopa¯sO
+esquemafracionavaoobjetodaseguinteformaaquisi©¥odove¯culoe
+equipamentos e transforma©¥o em ambul¤ncia As contrata©·es eram feitas 
+comduascartasconvitefugindodatomadadepre©oseevitandoapublici 
+dadedoscertamesparaconvidarapenasasempresasenvolvidasnoesquema
+P¼blicodoT ocantinsdenuncioufraude¢licita©¥opelacontrata©¥osemproces 
+solicitatµrioduranteoitoanosadecaminh¥oparaotransportede
+entulhosNoper¯odoaloca©¥odove¯culofoipraticadavezesdeformadireta
+demodoquenuncaatingisseRmilquandoseriaobrigatµriolicitar
+CASOCONCRETODIRECIONAMENTOPORNOPARCELAMENTO
+N¥oparcelarumobjetopodeserumaformaderestringirumprocessolicita 
+tµrioEmumaprefeituradoMatoGrossoporexemploumaconcorr¬nciapara
+pavimenta©¥oderuaseconstru©¥odecasasfoirealizadaporpre©oglobalV e 
+jaseques¥odoistiposdeobrasmuitodiferentesexecutadasemgeralpor
+empresascomespecialidadesdistintasN¥ohaviaqualquerpreju¯zot«cnicoou
+emprocessosdistintosLicitaremconjuntoapenasrepresentariaexig¬nciasde
+habilita©¥omaisrestritivastantoemtermost«cnicosdeexperi¬nciapr«viaem
+
+trata©¥o da execu©¥o de remanescente de tr¬s obras de creches apresentou 
+
+ZZZZZ mÁdfk^ NV ZZZZZ
+
+Outroscasosmaiscomunsenvolvemacontrata©¥odeobrascomofornecimentodeequi
+pamentosquepoderiamsercomprados¢partecomoaparelhosdearcondicionadomo
+toresescadasrolanteselevadoresesteirasAl«mdissoseparteexpressivadaobracor
+respondeaofornecimentodeequipamentosmateriaisen¥oforposs¯veloparcelamento
+teriaiseequipamentosS¼muladoTCU
+OTCUtemrecomendado¢sUnidadesJurisdicionadasquepromovamasepara©¥odoob
+jetoemlotesdistintosquandodenaturezadivis¯velcomobjetivodepermitiraparticipa
+©¥o de empresas que embora n¥o tenham condi©·es de fornecer a totalidade dos itens 
+itensAcµrd¥oseambosdoPlen£rio
+T antoalicita©¥oporpre©oglobalquantooloteamentodositensagrupamentoemlotes
+s¥omecanismosdepotencialdirecionamentodeumalicita©¥oComoexemplopodemos
+nhasdoesquemaconsistiaemconvencerservidoresp¼blicosrespons£veispelaelabora
+setornavainvi£velOmercadodemedicamentos«marcadoporacordoscomerciaisentre
+fabricantes e distribuidores e nesse caso bastaria que um dos produtos dentro do lote 
+fosse exclusivo do licitante para quem se desejava direcionar o certame Ningu«m mais 
+conseguiriaformularpropostaparaaquelegrupodeitensporn¥osercapazdeentregara
+totalidadedasmercadoriasprevistas
+N¥o « o caso de se proibir genericamente o agrupamento de itens Embora o tema seja 
+pol¬micoajurisprud¬nciamaisrecentedoTCUtempermitidooloteamentodeitensho
+mog¬neos ou que guardem correla©¥o entre si entendendo que o excesso de contrata
+dalC¤maraAcµrd¥odalC¤mara
+comoobjetoastr¬sobrasemconjuntocomtipoǐmenorpre©oglobalǑ Acom
+petitividadepoderiasermaiorcomoparcelamentodoobjetotendocadaobra
+comoumitemdistinto
+
+
+ZZZZZ mÁdfk^ OM ZZZZZ
+
+Esselicitantevencecommenorpropostanolotemas
+com pre©os altos para os produtos que ser¥o real
+mentecompradosebaixosparaaquelesqueest¥oali
+apenasparafazervolumeeconstarnaAta
+
+Durante a vig¬ncia da Ata compramse apenas os 
+produtosqueestavamcompre©osmaisaltosresul
+tandoempreju¯zoselevadosaoer£rio
+
+O licitante em conluio com a Administra©¥o sabe 
+exatamente quais produtos daquela Ata ser¥o de 
+fatocomprados
+
+AAdministra©¥omontaolotecomdiversosprodutos
+equantidadesparaaAtadeRegistrodePre©os
+
+FonteAdaptadodeSantoseSouza
+Essa « uma conclus¥o racional  importante promover o gerenciamento adequado do 
+quesedevecomprarporitensedoquesedevecomprarporlotesaproveitandoganhos
+deescalalog¯sticaecontroleeevitandoosriscosdedirecionamentoouderestri©¥oao
+car£tercompetitivoContudo«tamb«mprecisodemonstrarasraz·est«cnicaslog¯sticas
+propiciarcontrata©·esmaisvantajosasemcompara©¥o¢adjudica©¥oporitemAcµrd¥o
+ǊPlen£rio
+Emboraarealiza©¥odelicita©¥oporlotesejal¯citaoprocedimentotamb«menvolveris
+cosUmdelesconsistenapossibilidadedochamadoǐjogodeplanilhaǑEmumprocessode
+aquisi©¥odebensporexemploissopoderiaocorrerdaseguinteforma
+Nesse caso a melhor proposta por lote n¥o « necessariamente a mais vantajosa pois o 
+tipo de irregularidade oTCU tem orientado que ǐnas licita©·es por lote para registro de 
+
+ZZZZZ mÁdfk^ ON ZZZZZ
+
+Al«mdassitua©·esanterioresafraudenapesquisadepre©ospormeiodesimula©¥oou
+Noprocessodeplanejamentodacontrata©¥oaAdministra©¥odeveapresentarumaam
+Alegisla©¥oaplic£vel¢slicita©·esexigeesseor©amentopr«viosemoqualalicita©¥o«
+consideradaanul£vel
+dalidadedelicita©¥oǊnoscasosprevistosnaLein|Ǌfundamentaoscrit«rios
+nosistemaderegistrodepre©os
+Se a pesquisa de pre©os « malfeita ela pode trazer preju¯zo j£ que a concorr¬ncia nem 
+seusprodutoscomlucrosmaioresSantos
+InfelizmentecriouseumaculturasimplistaemtornodapesquisaPartedajurisprud¬ncia
+acaboucristalizandoalµgicadequetr¬sor©amentosvalidamopre©odemercadomasa
+lein¥odeterminaessasistem£ticaOquealeidetermina«queascomprassempreque
+poss¯veldever¥oǐbalizarsepelospre©ospraticadosno¤mbitodosµrg¥oseentidadesda
+Administra©¥oP¼blicaǑartdaLein|
+Para oTCU devese utilizar a maior amplitude poss¯vel de fontes de refer¬ncias para a 
+pesquisa de pre©os nos processos de contrata©¥o Ǌ seja por licita©¥o dispensa ou ine
+xigibilidadeEsse«oconceitodeǐcestadepre©osaceit£veisǑfornecedorespesquisaem
+cat£logosdefornecedorespesquisaembasesdesistemasdecomprasavalia©¥odecon
+tratosrecentesouvigentesvaloresadjudicadosemlicita©·esdeoutrosµrg¥osp¼blicos
+valoresregistradosematasderegistrodepre©oseanalogiacomcomprasecontrata©·es
+realizadasporcorpora©·esprivadasAcµrd¥osedoPlen£rio
+NessesentidooTCUentendequesomentequandon¥oforposs¯velobterpre©osreferenciais
+pre©osmedianteadjudica©¥opormenorpre©oglobaldolotedevesevedarapossibili
+dadedeaquisi©¥oindividualdeitensregistradosparaosquaisalicitantevencedoran¥o
+apresentouomenorpre©oǑAcµrd¥oǊPlen£rio
+
+ZZZZZ mÁdfk^ OO ZZZZZ
+
+lucrooudenegocia©¥ocomoµrg¥ocompradornaparticipa©¥odalicita©¥omaisadianteEm
+outrojulgamentooTCUj£reconheceuqueosfornecedoresn¥os¥oboasrefer¬nciasdepre©o
+Acµrd¥oǊPlen£rio
+Aestimativaqueconsidereapenascota©¥odepre©osjuntoafornecedorespodeapresentar
+pre©ossuperestimadosumavezqueasempresasn¥ot¬minteresseemrevelarnessafase
+orealvaloraqueest¥odispostasarealizaronegµcioOsfornecedorest¬mconhecimento
+dispostoapagareosvaloresobtidosnessasconsultastendemasersuperestimados
+CASOCONCRETOPESQUISASDEPREOSFICTCIAS
+Pesquisasdepre©ossimuladass¥ofraudescomunsemlicita©¥oEman£lise
+deumpreg¥oparaaquisi©¥odemateriaispermanentesparaaSecretariade
+
+presasdistanteskmekmemsentidosopostosdomunic¯piores 
+pons£velpelalicita©¥oparticiparamdecoletadepre©oscomdocumentos
+f¯sicosdeofertadepre©osnamesmadataemqueacota©¥ofoisolicitada
+Umadelasfoia¼nicaaparticipareavencerocertameAcµrd¥o
+lC¤mara
+diferente portanto do com«rcio de equipamentos hospitalares Al«m dis 
+soobservaramsesemelhan©asentreosdocumentospretensamentecon 
+feccionados pelas duas empresas mesma tabula©¥o mesmos t¯tulos das 
+os itens a serem licitados materiais e equipamentos m«dicohospitalares 
+eodontolµgicosmateriaispermanentesdiversosmateriaisderefrigera©¥o
+diversosmaterialpermanentedeinform£ticaressaltandoqueaAdminis 
+Em  a Secretaria de Esportes licitou pe©as de xadrez Os valores ho 
+mologadosforamextremamenteinferioresaopre©oestimadoNacota©¥o
+pr«via um tabuleiro sairia por R  mas foi ofertado a R  na 
+licita©¥oOMinist«rioP¼blicopassouainvestigarent¥oumaposs¯velfrau 
+oor©amentodeoutraOservidorp¼blicorespons£velpelacota©¥ocontou
+queelaaoentregaracota©¥odesuaempresaseofereceuparafornecero
+or©amentodeoutra
+
+ZZZZZ mÁdfk^ OP ZZZZZ
+
+senvolvimentodalicita©¥oe¢futuracontrata©¥oAAdministra©¥oest£vinculadaaoster
+mosdoeditalsendolhevedadoampliarosentidodesuascl£usulasdemodoaexigirmais
+doquenelasprevisto
+comoaLein|pro¯bemqualquerexig¬nciaal«mdoindispens£velparaas
+segurarocumprimentodasobriga©·escontratuaisPelaLein|somentepoder£
+serexigidadosinteressadosparahabilita©¥onaslicita©·esdocumenta©¥orelativaa
+Ǖ Habilita©¥ojur¯dica
+Ǖ
+Ǖ
+Ǖ
+Ǖ  CumprimentododispostonoincisoXXXIIdoart|daConstitui©¥oFederal
+restri©·eseproibi©·esaotrabalhodemenores
+Portantoalegisla©¥ovigenteprev¬umroldecondi©·esquepodemoudevemserimpostas
+pela Administra©¥o para resguardar o seu interesse na contrata©¥o por«m dentro de um 
+equil¯brioentreessanecessidadeeoprinc¯piodacompeti©¥oAsbalizasparaqueesseequi
+l¯briosejamantidoisto«paraquen¥ohajarestri©¥oindevida¢competitividades¥odadas
+pelostermosdaprµprialegisla©¥obemcomopelajurisprud¬nciadostribunaisdecontas
+queinterpretamasuaaplica©¥oacasosconcretos
+Assimainclus¥odecl£usulasrestritivasnoseditaisdelicita©¥ocomprometeaefetivacom
+peti©¥oentreoslicitantespormeiodedirecionamentoindevidodoprocessoparafavorecer
+determinado fornecedor Nesse sentido o direcionamento de licita©·esp¼blicas«umdos
+mecanismosmaiscomunsdecanaliza©¥oderecursosp¼blicosparaosagentesfraudadores
+Ogestormalintencionadodirigeaslicita©·esparadeterminadosfornecedorespormeioda
+demaisfornecedoresempotencialn¥ot¬mcondi©·esdeatender
+Essa pr£tica visa excluir indevidamente a participa©¥o de um ou mais concorrentes ao se 
+cedorcomousodeartimanhastaiscomoexig¬nciast«cnicascombinadasqueterminam
+poreliminarosoutrosconcorrentes
+EDITALRESTRITIVO
+
+ZZZZZ mÁdfk^ OQ ZZZZZ
+
+
+cessoslicitatµriosest¥orelacionadas¢sseguintessitua©·es
+aExig¬nciairregulardegarantiadeproposta
+ALein|prev¬apossibilidadedeaAdministra©¥oexigiragarantiadepartici 
+lµgica « reduzir o risco de participa©¥o dos chamados licitantes ǐaventureirosǑ  No preg¥o 
+essaexig¬ncia«proibida
+restritivos¢competi©¥o
+afrontaodispostonoarti|daLein|enaS¼muladoTCU
+Ǖ Recolhimentocomanteced¬ncia¢aberturadocertameissolevaaoconhecimento
+antecipadodasempresasqueefetivamenteparticipar¥odocertameoquecom 
+promete o car£ter competitivo da licita©¥o e permite a forma©¥o de conluio no 
+entendimentodoTCUAcµrd¥osedoPlen£rio
+Ǖ Limita©¥o das modalidades de garantia aceitas a legisla©¥o prev¬ as possibili 
+banc£ria n¥o havendo raz¥o que autorize a Administra©¥o a restringir qualquer 
+umadelascabendo¢licitanteavaliaramodalidadequemaislheconv«m
+Ǖ Aplica©¥odepercentualexcessivoagarantiapropostapodeserexigidadurantea
+licita©¥onomontantedeat«dototallicitadopor«mmuitasvezesessaexig¬n 
+ciadeterminapercentualsuperioraopermitidopelalegisla©¥o
+Ǖ Garantiaexigidaparaovalorglobaldalicita©¥oquandoalicita©¥o«realizadapor
+loteouporitemagarantiadepropostaassimcomoosdemaisrequisitosdequa 
+olicitanteest£concorrendoen¥ocalculadacombasenovalorglobaldalicita©¥o
+bDemonstra©·escont£beisexigidasindevidamente
+edemonstra©·escont£beisdo¼ltimoexerc¯ciosocialcomomeiodecomprovaros¯ndices
+cont£beism¯nimosseestesforemexigidosnocertame
+Sobreoassuntoajurisprud¬nciadostribunaistemseposicionadodaseguinteforma
+Ǖ O prazo para aprova©¥o do balan©o patrimonial e demais demonstra©·es con 
+t£beis«oestabelecidonoartdoCµdigoCivilportantoat«oquartom¬s
+seguinteaot«rminodoexerc¯ciosocialdeabrilocorrendoasess¥odeaber 
+
+ZZZZZ mÁdfk^ OR ZZZZZ
+
+Asempresasqueapresentaremresultadoigualoumenordoqueumemqualquerdos
+¯ndicesreferidosnoincisoVquandodesuashabilita©·esdever¥ocomprovarconsiderados
+osriscosparaaAdministra©¥oeacrit«riodaautoridadecompetenteocapitalm¯nimoouo
+patrim¶niol¯quidom¯nimonaformadosii|e|doartigodaLein|como
+Oinstrumentoconvocatµriodever£prevertamb«maalternativaescolhidaeseurespec
+tivopercentualbemcomoanecessidadedegarantiaseforocaso
+Segundoessanormaseriamaceit£veisesses¯ndicesemvalorigualoumaiordoqueEditais
+t«cnicasquemotivaramaescolhados¯ndicescont£beisprevistosnoeditalDamesmaforma
+ajurisprud¬nciadoTCUpro¯beaescolhaarbitr£riade¯ndicesPelaS¼mulaqualquer¯ndi
+ferentesaoexerc¯cioimediatamenteanteriorAcµrd¥oǊPlen£rio
+Ǖ A  e x i g ¬ n c i a  d e  f o t o c µ p i a  i n t e g r a l  d o  l i v r o  d i £ r i o  c o m o  r e q u i s i t o  d e  h a b i l i t a © ¥ o  e m 
+rentesaobalan©opatrimonial¢sdemonstra©·escont£beiseaostermosdeaber
+turaedeencerramentoautenticadaspelaJuntaComercialAcµrd¥o
+ǊPlen£rio
+cCapacidadeecon¶micaexagerada
+neiradid£ticanaInstru©¥oNormativaMAREn|
+deLiquidezGeralLGSolv¬nciaGeralSGeLiquidezCorrenteLCresultantesdaapli
+ca©¥odasfµrmulas
+LG 
+AtivoCirculanteRealiz£velaLongoPrazo
+PassivoCirculanteExig¯velaLongoPrazo
+LC 
+AtivoCirculante
+PassivoCirculante
+SG 
+AtivoTotal
+PassivoCirculanteExig¯velaLongoPrazo
+
+ZZZZZ mÁdfk^ OS ZZZZZ
+
+
+ta©¥odalegisla©¥ovigenteindicaqueoeditaltemqueoptarclaramenteporumadessas
+duasop©·esn¥osendopermitidaainclus¥odeambosospar¤metrosOpercentualexigido
+at«olimitededeveserproporcionalaosriscosqueainexecu©¥odocontratopoder£
+acarretarparaaAdministra©¥oconsiderandoseentreoutrosfatoresovalordocontratoa
+essencialidadedoobjetoeotempodedura©¥odocontrato
+
+tabilmenteosrecursosprµpriosdaempresaquen¥oest¥ocomprometidoscomterceiros
+J£oCSrepresentaoaportederecursosfeitospelosdonosougeradospelaempresaefor 
+malmenteincorporadosaocapitalCapitalintegralizado«quandoosrecursosj£entraram
+na empresa e capital subscrito « quando os sµcios se comprometeram a formalmente a 
+investirnaempresa
+
+teradomediantedelibera©¥odossµciosisto«independedoexerc¯ciodaatividadedaem 
+presaContabilmentes¥oconceitosdiferentesmasnumalicita©¥oatuamdamesmaforma
+fornecemind¯ciosdecapacidadepatrimonialprµpriadalicitante
+Resumindooeditalpodeexigir
+isomente¯ndicescont£beism¯nimos
+iisomenteCapitalSocialm¯nimovedadaaexig¬nciadequesejaintegralizado
+ivgarantiadepropostaat«doestimadoproibidaempreg¥o
+v¯ndicescont£beisesen¥oatingiros¯ndicesCSm¯nimo
+vi¯ndicescont£beisesen¥oatingiros¯ndicesPLm¯nimoou
+vii ¯ndicescont£beisesen¥oatingiros¯ndicesgarantiadepropostaexcetoempreg¥o
+cecont£bildiferentedousualdeveestarfundamentadoporparecert«cnicoqueapresenteos
+par¤metrosutilizadosparasechegaraos¯ndicesdeterminadoscomprovandoques¥ousual 
+menteadotadosparaservi©osdeigualcomplexidadeouqueaescolhasebaseiaempesquisa
+emempresasdoramodemodoaresguardaroprinc¯piodacompetitividade
+FIQUEA TENTO
+
+ZZZZZ mÁdfk^ OT ZZZZZ
+
+entidadebanc£riaemnomedaempresalicitanteeat«mesmoemnomedeseussµciose
+administradoresn¥otemprevis¥olegale«portantoirregular
+doisaspectosgarantirqueaempresacontratadaestejaaptaaexecutaroobjetoeevitar
+quesefrustreacompetitividadedocertamelicitatµrioemdecorr¬nciadaconstri©¥odouni
+versodelicitantesEditaisrestritivospodemapresentarasseguintesexig¬ncias
+sionalcomalicitante
+Editaisrestritivoscomumenteexigemv¯nculoempregat¯ciocomprovadoporcarteiraassinada
+provantesderecolhimentodeFGTSassimcomotempom¯nimodev¯nculoantesdalicita©¥o
+deservi©osregidopelalegisla©¥ocivilcomumououtrodocumentocomomesmovalor
+entregadosenvelopesconformearti|IdaLein|
+Acµrd¥oǊPlen£rio
+N¥osepodeconceberqueasempresassejamobrigadasacontratarsobv¯nculoemprega
+deefetivamentedesempenharseustrabalhosporocasi¥odofuturocontratoin¼tilpara
+semv¯nculotrabalhistaeregidopelalegisla©¥ocivilcomum
+bVisitat«cnicarestritiva
+
+ZZZZZ mÁdfk^ OU ZZZZZ
+
+Ǖ Anteced¬nciaexcessivacomrela©¥o¢datadeabertura«irregularimporqueavi 
+sitat«cnicaocorracomumaanteced¬nciaqueefetivamentereduzaoprazom¯nimo
+depublicidadedalicita©¥oprejudicandopotenciaislicitantesqueeventualmente
+tomemconhecimentodocertamenos¼ltimosdiasdoprazodepublicidadeAAd 
+ministra©¥o tem o dever de conceder integralmente esse prazo art  da Lei de 
+Licita©·esantesdeexigirocumprimentodequalquerrequisitoreferente¢licita©¥o
+
+n£rioS¥oconsideradasirregularesexig¬nciascomo
+Ǖ
+
+tra©¥odeterminarquemestariacapacitadoarealizartalvisitacabendoaescolha
+unicamente¢empresalicitanteAcµrd¥osedoPlen£rio
+Ǖ Obrigatoriedadedecomprova©¥odavisitat«cnicademaneirageraloentendimen 
+torecentedoTCUconsideraqueavisitat«cnican¥o«o¼nicomeiodeolicitante
+tomarconhecimentodasinforma©·esedascondi©·eslocaisparaocumprimento
+dasobriga©·esdocertamelicitatµriopodendosersubstitu¯daporumadeclara©¥o
+prestadapelaempresaaoµrg¥ocontratanteinformandoqueconheceascondi©·es
+quandosuaimprescindibilidadeforcomprovadaAcµrd¥o ǊPlen£rio
+Ǖ Visitaacompanhadadeservidordacontratanten¥ohavendorestri©¥odeacesso
+
+nistra©¥oconhecimentopr«viodospotenciaisparticipantesdalicita©¥o
+Ǖ
+poispermite¢slicitantesconhecerouniversodeconcorrentesfacilitandooconluio
+CASOCONCRETOOPERAOCAPIVARA
+Em  o Minist«rio P¼blico do Rio Grande do Sul denunciou  proprie 
+t£rios e representantes de  empresas do ramo da constru©¥o civil e uma 
+servidorap¼blicamunicipalPublicadooeditalorepresentantedaempresa
+
+©¥oderetiradadoeditalquaisospotenciaisconcorrentesoferecendoent¥o
+entreRmileRmilparaquedeixassemdeparticiparouoferecessem
+propostassuperioresapenasparapreencherasformalidadesexigidas
+
+ZZZZZ mÁdfk^ OV ZZZZZ
+
+cComprova©¥odecapacidadet«cnicaexagerada
+A legisla©¥o prev¬ a exig¬ncia de atestados para a comprova©¥o de capacidade t«cnico
+operacionaldaempresalicitanteeemalgunscasostamb«mdecapacidadet«cnicopro
+Listamosalgumassitua©·esconsideradasrestritivas
+Ǖ
+remapresentadospelaempresalicitanteAcµrd¥os 
+   edoPlen£rio
+Ǖ
+doqueacomplexidadedoobjeton¥o«compat¯velcomessapossibilidadeespecial
+mentequandosedesejaaferiracapacidadedolicitanteemdeterminadasmetodolo
+giaset«cnicasAcµrd¥osedoPlen£rio
+Ǖ Quantitativos m¯nimos exagerados embora oTCU aceite a exig¬ncia de quanti
+tativosm¯nimosparasecomprovaraexperi¬nciadaempresalicitantenotipode
+servi©o contratado esses quantitativos n¥o devem exceder  dos quantitati
+vos previstos na licita©¥o sob pena de restringir indevidamente a competitivida
+de dos certames Acµrd¥o  da l C¤mara e   
+ edoPlen£rio
+CASOCONCRETOHABILITAOTCNICARESTRITIVA
+Aexig¬nciadequantitativosm¯nimosexageradosparaahabilita©¥ot«cnica
+delicitantes«umat£ticausadacomfrequ¬nciaparadirecionareditaisde
+narestri©¥odacompeti©¥odalicita©¥opoispodesozinhaafastarquais
+quereventuaisempresasinteressadasquen¥otenhamemseuportfµlioa
+execu©¥on¥oraroemuma¼nicaobraanteriordequantidadesexageradas
+iguaisouat«superioresaototaldoqueest£sendolicitado
+paraaconstru©¥odecasascujoeditalexigiaquealicitantej£houvesse
+constru¯do  unidades habitacionais a ser comprovado ǐem um sµ ates
+tadoǑNemavencedora¼nicaparticipantecomprovouoexigidoapresen
+tandoatestadodecasasEmesmoassimfoihabilitadaOTCUjulgoua
+situa©¥ocomoabsolutamenteirregularAcµrd¥o ǊPlen£rio
+
+ZZZZZ mÁdfk^ PM ZZZZZ
+
+Ǖ Exig¬nciadeatestadodeaptid¥ot«cnicaregistradojuntoaoCREAajurisprud¬n 
+ciarecentedoTCUtemressaltadoque«ilegalexigircomprova©¥ot«cnicaregis 
+tradajuntoaoCREAemnomedaempresaporcontrariaraResolu©¥o
+doConselhoFederaldeEngenhariaeAgronomiaConfeaAcµrd¥osda
+lC¤maraeedoPlen£rio
+Ǖ
+veda expressamente a exig¬ncia de quantitativos m¯nimos ou prazos m£ximos 
+TCU refor©a esse entendimento Acµrd¥os     
+ edoPlen£riotendoadmi 
+tido algumas exce©·es em casos especiais em que a exig¬ncia foi formalmente 
+
+sumida pela empresa vencedora do certame Acµrd¥os   e 
+doPlen£rio
+Ǖ
+¢s parcelas do objeto licitado que sejam cumulativamente de maior relev¤ncia 
+querepresentamumvolumeirrisµrioderecursosemrela©¥oaoconjuntodoobjeto
+S¼mulaeAcµrd¥oǊPlen£rio
+em sua dela©¥o a respeito da contrata©¥o de servi©os para a reforma do 
+Maracan¥queaempreiteirateriapagadopropinaaexgovernadoresdoRio
+deJaneiroparaimporajustesnoeditaldalicita©¥oǐOeditalfoipublicado
+eantesdeserpublicadoapresenteiexig¬nciasnopapelparaqueessas
+quedefatoocorreuOArtigodoeditalfoiredigidoporencomendada
+OdebrechtNestapartedoacordoseestipulavaqueaempreiteiravence 
+doradeveriaterconstru¯doumcomplexoesportivocompelomenosmil
+lugaresinstalandomilassentoseterexperi¬nciasemobrasdeacessos
+de obras da Copa do Mundo de  Segundo o delator a Odebrecht se 
+amparouemoutraconstru©¥oparamostrarqueestavaemcondi©·esǐEram
+restri©·esprµpriasparaquemtinhaexecutadoumest£dioenµst¯nhamos
+noacervorecenteaconclus¥odoEngenh¥oEst£vamosgarantidosǑFonte
+ǐOdebrechtexigiumudan©asnoeditaldelicita©¥odoMaracan¥revelade 
+latorǑLanceabr
+
+ZZZZZ mÁdfk^ PN ZZZZZ
+
+Ǖ Faltadecrit«riosobjetivosparaavalia©¥odeexperi¬nciapr«viaasexig¬nciasde
+experi¬nciat«cnicadevemserestabelecidasdeformaclaraexpl¯citaeobjetivae
+devemserproporcionais¢dimens¥oe¢complexidadedoobjetoaserexecutado
+licitadoemtermosdeexperi¬nciat«cnicapr«viaqualquerjulgamentoser£subje
+tivoeportantoirregular
+Ǖ
+n¥opodeexigirqueosatestadosdecapacidadet«cnicaestejamacompanhados
+dedocumentosdehabilita©¥oconstantedosartsadaLein|«
+taxativaAcµrd¥osedoPlen£rio
+FIQUEA TENTO
+CASOCONCRETO
+EXPERINCIAEMSERVIOSDEPOUCARELEVNCIA
+Emumjulgamentosobrelicita©¥odomunic¯piode T r¬sLagoasMSparaacons
+tru©¥o de uma Unidade de Sa¼de oTCU considerou indevida a exig¬ncia de 
+experi¬nciapr«vianacoloca©¥odepisoemgranilitequerepresentavaapenas
+dovalortotalAcµrd¥on|ǊlC¤maraValeressaltarqueas
+s¥onecess£riasepertinentesaoobjetolicitadoAcµrd¥oǊPlen£rio
+Emlicita©·esdeobrasmonitoradaspeloprojetoObraT ransparentetamb«m
+j£foramobservadasexig¬nciassemelhantescomorequisitoparaahabilita
+©¥ot«cnicadelicitantesEmUberl¤ndiaMGporexemplooeditaldelici
+ta©¥oparaaconclus¥odeumaescolanoJardimCana¥IIexigiaatestados
+comprovandoexperi¬ncianaexecu©¥odepisodepedraroladaepisodealta
+resist¬nciaemmassagranil¯ticaitensquerepresentavamrespectivamente
+apenasedovalortotalor©adoparaaobra
+
+
+ZZZZZ mÁdfk^ PO ZZZZZ
+
+dExig¬nciadepropriedadeelocaliza©¥opr«via
+Asexig¬nciasm¯nimasrelativasainstala©·esdecanteirosm£quinasequipamentosepes 
+soalt«cnicoespecializadoconsideradasessenciaisparaocumprimentodoobjetodalici 
+ta©¥odevemseratendidasmedianteaapresenta©¥oderela©¥oexpl¯citaedadeclara©¥o
+formaldasuadisponibilidadepelolicitantevedadasasexig¬nciasdepropriedadeedeloca 
+liza©¥opr«viaAcµrd¥os edoPlen£rio
+
+
+tividadedoHabitatAcµrd¥os   
+
+t«riodepontua©¥oemlicita©·esdotipot«cnicaepre©oAcµrd¥oǊPlen£rio
+fVistodoCREAlocal
+OTCUconsiderailegalexigircomocondi©¥odehabilita©¥ovistodoCREAdolocaldaobra
+nacertid¥oderegistrodalicitanteOinstanteapropriadoparaatendimentodetalrequisito
+«oin¯ciodoexerc¯ciodaatividadequesed£comacontrata©¥oen¥onafasedehabilita 
+©¥osobpenadecomprometimentodacompetitividadedocertameAcµrd¥os
+edoPlen£rio
+gCartadesolidariedadedofabricante
+Editaisrestritivoscostumamexigircomprova©¥odequeoconcorrente«representanteau 
+torizadodoprodutoofertadoouexigirdeclara©¥odesolidariedadedofabricanteparacom
+olicitantenotocante¢garantiadoproduto
+Conformeajurisprud¬nciadoTCUǐaexig¬nciadedeclara©¥odofabricantecartadesolida 
+riedadeoucredenciamentocomocondi©¥oparahabilita©¥odelicitantecarecedeamparo
+legalporextrapolaroquedeterminamosartsadaLein|eartigodo
+Decreton|Ǒ 
+Essaexig¬nciapodetercar£terrestritivoeferiroprinc¯piodaisonomiaentreoslicitantespor
+deixaraoarb¯triodofabricanteaindica©¥odequaisrepresentantespoder¥oparticipardocer 
+tameExistemoutrosmeiosdeassegurarocumprimentodasobriga©·espactuadastaiscomo
+pontua©¥odiferenciadaemlicita©·esdotipot«cnicaepre©oexig¬nciadegarantiaparaexecu 
+©¥ocontratualouaindamultacontratualAcµrd¥osedoPlen£rio
+hExig¬nciadeamostrasdetodososlicitantes
+Segundoentendimentodo TCUaexig¬nciadeapresenta©¥odeamostras«admitidaapenas
+primeirolugaredesdequedeformapreviamentedisciplinadaedetalhadanoinstrumento
+convocatµrioAcµrd¥osedalC¤maradalC¤marae
+edoPlen£rio
+
+ZZZZZ mÁdfk^ PP ZZZZZ
+
+iAlvar£domunic¯piodalicita©¥o
+nomunic¯pioemqueser£realizadaacontrata©¥ofavorecendolicitantesquetenhamdomic¯lio
+emdeterminadolugarrestringeocar£tercompetitivodocertameefereoprinc¯piodaisonomia
+contrariandoaveda©¥odoart|i|incisoIdaLein|eoartdomesmodiploma
+Aan£lisedaamostradeveserrealizadaporquemdetenhaconhecimentost«cnicosespec¯
+daAdministra©¥olicitadoradeveserrealizadaporterceirosdosetorp¼blicoouprivadotais
+casoN¥o«l¯citaaan£liseejulgamentodeamostrasporagentesp¼blicosn¥oespecializa
+dosouqueatuemsegundocrit«riossubjetivosUmexemplocl£ssico«aan£lisedeamostra
+dascaracter¯sticasinerentesaosprodutosestabelecendopar¤metrosen¯veisdeaceitabili
+dadedevaria©·esassimcomoinstrumentosdeavalia©¥o
+Outroelementofundamentalparaaexig¬nciadeamostras«atranspar¬nciadosprocedi
+contraditµrioeaampladefesa
+CASOCONCRETO
+AMOSTRARESTRITIVAEMPREGODENIBUSUSADOS
+Em uma prefeitura de Minas Gerais realizouse um preg¥o para a compra 
+sentassemosve¯culosparavistoriaOsinteressadosalegaraminviabilidade
+Diantedessaexig¬nciaumapessoaparticipousozinhaSegundoaatado
+preg¥oteriacumpridoacl£usulaMasemdepoimentoaoMinist«rioP¼bli
+vistoria e os demais teriam sido avaliados em outra cidade Consta de um 
+AgravodeInstrumentoqueovendedorjamaisatuounocom«rciodeve¯cu
+participa©¥odepessoasf¯sicasmesmoexistindocl£usulaexigindoqueos
+licitantesfossemdoramoParaoMinist«rioP¼blicohouvefraude¢licita©¥o
+visandoaosuperfaturamentodepre©oscadave¯culofoicompradoporR
+milevendido¢PrefeituranodiaseguinteporRmil
+
+ZZZZZ mÁdfk^ PQ ZZZZZ
+
+Emconformidadecomodispostonoarti|daLein|«ilegalaexig¬nciade
+
+paraaperfeitaexecu©¥odoobjetolicitadoAcµrd¥osedoPlen£rio
+exig¬nciastaiscomo
+Ǖ
+ doPlen£rioeS¼mularessaltaquen¥ocabe¢
+Administra©¥oP¼blicaexigirqueoslicitantesapresentemcertid·esdeǐquita©¥oǑde
+FGTSeINSSnemoutrosdocumentosn¥oprevistosnalegisla©¥oesimet¥oso 
+mentedemandaracomprova©¥odaǐregularidadeǑjuntoaessasinstitui©·es
+Ǖ Certid¥onegativaded«bitosalarialeinfra©·estrabalhistassegundooTCUn¥oh£
+amparolegalparaessetipodedocumenta©¥oAcµrd¥os e
+doPlen£rio
+Ǖ Certid¥oderegularidadesindicaltamb«m«ilegalaexig¬nciadeCertid¥odeRe 
+gularidadeSindicaledeguiasderecolhimentodesindicatosejampatronaisoude
+trabalhadoresAcµrd¥oǊPlen£rio
+Ǖ Certid¥onegativadeprotestosquaisquerexig¬nciasespeciaisdehabilita©¥ode 
+
+remconsideradasrestritivas¢competitividadedocertamen¥opodemserexigidos
+documentosn¥oprevistosnoroltaxativodedocumenta©¥oestabelecidonoart
+daLein|
+Al«mdessesrequisitosdehabilita©¥odoslicitantes«importanteobservarnaelabora©¥o
+doeditalasregrasdeveda©¥o¢participa©¥odiretaouindiretaemlicita©·esouexecu©¥o
+deobraservi©oedofornecimentodebensaelesnecess£riosparan¥oincorreremrestri©¥o
+¢competitividade
+NostermosdoartdaLein|
+ǐ[] n¥o poder£ participar direta ou indiretamente da licita©¥o ou da execu©¥o de 
+
+ZZZZZ mÁdfk^ PR ZZZZZ
+
+Al«mdascl£usulasecondi©·esrestritivasemumeditaldelicita©¥odestacamosaseguirou
+trashipµtesesquepodemseconstituiremind¯ciodeumafraudeemumprocessolicitatµrio
+aCobran©aexcessivadoedital
+Muitoseditaisexigemcobran©adetaxadeaquisi©¥odeeditalsuperioraocustoefetivoda
+AutordoProjetoB£sico
+ouT ermodeRefer¬ncia
+n¥opodeserter
+Licitante
+Sµcio
+Parentescoat«o|GrauCiv¯l
+V¯nculodenaturezat«cnicacomercial
+Servidores
+ouDirigentes
+Servidorescom
+nalicita©¥o
+Parceristas
+CPLPregoeiro
+Autoridade
+Competente
+Licitante
+Sµcio
+Parentescoat«o|GrauCiv¯l
+V¯nculodenaturezat«cnicacomercial
+FonteSouza 
+obraouservi©oedofornecimentodebensaelesnecess£rios
+IoautordoprojetoB£sicoouExecutivopessoaf¯sicaoujur¯dica
+II empresaisoladamenteouemconsµrciorespons£velpelaelabora©¥odoProjeto
+B£sicoouExecutivooudaqualoautordoprojetosejadirigentegerenteacionista
+oudetentordemaisdecincoporcentodocapitalcomdireitoavotooucon
+troladorrespons£velt«cnicoousubcontratado
+III servidoroudirigentedeµrg¥oouentidadecontratanteourespons£velpelalicita©¥oǑ 
+Essasregrasdeveda©¥oestabelecidaspeloEstatutodeLicita©·eseContratosepelajuris
+prud¬nciadostribunaisdecontaspodemsersintetizadasdaseguinteforma
+
+ZZZZZ mÁdfk^ PS ZZZZZ
+
+ceroeditalmasapenasparacobriroscustosefetivosdereprodu©¥oconformecorroborado
+peloTCUAcµrd¥oseambosdoPlen£rio
+Acµrd¥olC¤maraALei«de«pocaemqueosarquivosdigitaisainda
+n¥oerampopularesAtualmentecomadissemina©¥omassivadedispositivosdememµria
+areprodu©¥odeeditaispodeserfacilmenterealizadasemqualquercusto
+bVeda©¥o¢participa©¥odeconsµrciosemmotiva©¥o
+OTCUtemorientadoquecasoseopteporn¥opermitirnoeditaldocertameaparticipa©¥o
+deempresasnaformadeconsµrciosconsiderandoafaculdadeconstantedoartcaput
+
+nistrativodalicita©¥oAcµrd¥os 
+doPlen£rioedalC¤maraedalC¤mara
+AAdministra©¥opodeoptarporpermitiroun¥oaparticipa©¥odeconsµrciosemlicita©·esp¼ 
+blicasdevendoadecis¥osermotivadaoque«especialmenteimportanteseaop©¥oforvedar
+aparticipa©¥ooqueemregrarestringeacompetitividadedocertameDeveriaseranalisada
+portantoasitua©¥odecadacontrata©¥oapartirdesuasvari£veistalqualorisco¢competiti 
+cVeda©¥o¢participa©¥odesµciosemcomum
+Outra situa©¥o que pode levar ¢ restri©¥o da competi©¥o mas que n¥o encontra amparo 
+legal«aproibi©¥oindevidadeparticipa©¥odeempresascomsµciosemcomumousocie 
+Sobre a participa©¥o de empresas com sµcios em comum e sociedades do mesmo grupo 
+seguintestermos
+ǐ Do exposto temos que a legisla©¥o que regula a realiza©¥o de procedimentos 
+licitatµriosn¥ovedaexplicitamenteaparticipa©¥odeempresascomsµciosemco 
+mumT odaviaesteT ribunalj£considerouirregularaparticipa©¥odeempresascom
+sµcioscomunsemlicita©·esnosseguintescasos
+aquandodarealiza©¥odeconvites
+bquandodacontrata©¥opordispensadelicita©¥o
+c quandoexisterela©¥oentreaslicitanteseaempresarespons£velpelaelabora©¥o
+doProjetoExecutivo
+cujossµciossejamosmesmosǑ
+Assim nas modalidades de licita©¥o n¥o mencionadas na jurisprud¬ncia doTCU a Corte 
+considerairregularaproibi©¥odeparticipa©¥odeempresascomsµcioscomuns
+
+ZZZZZ mÁdfk^ PT ZZZZZ
+
+ApublicidadeexpressamenteconsignadanocaputdoartdaConstitui©¥oFederal«o
+princ¯pioqueexigedaAdministra©¥oP¼blicaaampladivulga©¥odeseusatoscomoforma
+de efetivar a transpar¬ncia e coibir abusos e atos de fraude e corrup©¥o A transpar¬ncia 
+estatal«umacondi©¥oprim£riaparaagarantiadosdireitosdocidad¥oemfacedoEstado
+Aadequadapublicidadedoavisodelicita©¥onosmeiosexigidospelalegisla©¥o«condi©¥o
+essencialparaocumprimentodosprinc¯piosconstitucionaisdapublicidadeedaisonomiae
+doartincisoIIIdaLein|
+Al«mdosdispositivospresentesnaLeideLicita©·esaLein| LAILeideAcesso
+¢Informa©¥otrazasseguintesorienta©·es
+Art| OsprocedimentosprevistosnestaLeidestinamseaassegurarodireitofun
+damentaldeacesso¢informa©¥oedevemserexecutadosemconformidade
+comosprinc¯piosb£sicosdaadministra©¥op¼blicaecomasseguintesdire
+trizes
+I observ¤nciadapublicidadecomopreceitogeraledosigilocomoexce©¥o
+II divulga©¥odeinforma©·esdeinteressep¼blicoindependentementedesolicita
+©·es
+II utiliza©¥odemeiosdecomunica©¥oviabilizadospelatecnologiadainforma©¥o
+IV fomentoaodesenvolvimentodaculturadetranspar¬ncianaadministra©¥op¼
+blica
+Vdesenvolvimentodocontrolesocialdaadministra©¥op¼blica
+Art| deverdoEstadogarantirodireitodeacesso¢informa©¥oqueser£franque
+adamedianteprocedimentosobjetivose£geisdeformatransparenteclara
+eemlinguagemdef£cilcompreens¥o
+Art| Oacesso¢informa©¥odequetrataestaLeicompreendeentreoutrososdi
+reitosdeobterVIinforma©¥opertinente¢administra©¥odopatrim¶nio
+p¼blicoutiliza©¥oderecursosp¼blicoslicita©¥ocontratosadministrativose
+
+Art| « dever dos µrg¥os e entidades p¼blicas promover independentemente de 
+requerimentosadivulga©¥oemlocaldef£cilacessono¤mbitodesuascom
+pet¬nciasdeinforma©·esdeinteressecoletivoougeralporelesproduzidas
+oucustodiadas
+i|   Nadivulga©¥odasinforma©·esaqueserefereocaputdever¥oconstarnom¯
+nimoIVinforma©·esconcernentesaprocedimentoslicitatµriosinclusiveos
+respectivoseditaiseresultadosbemcomoatodososcontratoscelebrados
+PUBLICIDADEPRECRIA
+
+ZZZZZ mÁdfk^ PU ZZZZZ
+
+i| Paracumprimentododispostonocaputosµrg¥oseentidadesp¼blicasdever¥outi 
+lizartodososmeioseinstrumentosleg¯timosdequedispuseremsendoobrigatµriaa
+OTCUrecomendaqueasorganiza©·esdosetorp¼blicoemtodasasesferasatendendoaos
+artigossupracitadospubliquemnainternettodososdocumentosqueintegramosproces 
+sosdeaquisi©¥ocomosolicita©¥odeaquisi©¥oestudost«cnicospreliminaresestimativas
+depre©osparecerest«cnicosejur¯dicosetcmenososconsideradossigilososnostermos
+daleiAcµrd¥oǊPlen£rio
+Demaneirageralafraudelicitatµriamuitasvezescontacommeiosderestri©¥otamb«mda
+publicidadedalicita©¥odemodoalimitarouniversodeparticipantesquetomar¥oconhe 
+cimentodocertameEmboraapublica©¥osejaobrigatµriaainda«comumencontrarlicita 
+©·essemadivulga©¥oadequadanosjornaisounainternet
+Apublicidadeprec£riapodesedardediferentesformassendomaiscomunsestasdescritas
+abaixo
+Apublica©¥odoavisodelicita©¥odeverespeitaroprazom¯nimoparaaberturadaspropos 
+tastempestividadeeocorrernosmeiosdecomunica©¥oadequadosAaus¬nciadepubli 
+naregi¥odaaquisi©¥odobemoudapresta©¥odosservi©osfereosprinc¯piosconstitucio 
+naisdapublicidadeedaisonomiaeoartincisoIIIdaLein|
+Reiteradasdelibera©·esdoTCUexAcµrd¥osedoPlen£rio
+doDistritoFederalconformeocasobemcomoemumjornaldegrandecircula©¥onolocal
+daaquisi©¥odobemoudapresta©¥odosservi©osMaisrecentementeemfun©¥odaLein|
+ Art|i|IVei|adivulga©¥odeeditaisnainternetsetornouobrigatµria
+CASOCONCRETOPUBLICAOFICTCIA
+Fant£sticodaRedeGloboabordouumcasodessesSegundoasinvestiga 
+©·esumaPrefeituradoestadodoRiodeJaneiroconseguiacriarapar¬ncia
+delegalidadeforjandoavisosdelicita©¥oemumjornallocalOpulodogato
+ojornaldispon¯velparavendanasbancasn¥oeraomesmodoprocessoA
+¢licita©¥oAp£ginaforjadafuncionavacomoevid¬nciadelegalidade
+
+ZZZZZ mÁdfk^ PV ZZZZZ
+
+zemaedi©¥ocomadataqueoclientequiserǐaindamaisque«proT ribunal
+ciaalegandoquesegeravaumapublica©¥ocomdataanteriorparaconstar
+naPrefeituraparaapresentaraosµrg¥osdecontrole
+OutrocasocuriosoaconteceunointeriordeMatoGrossoOeditalteriasido
+publicado no site da Prefeitura As propriedades do arquivo uma esp«cie 
+de ǐimpress¥o digitalǑ de documentos de computador indicam que ele foi 
+criadoemdeabrildeSµquealicita©¥oteriasidoabertaemde
+mar©odeOarquivodoeditalsµpassouaexistirdepoisqueocertame
+haviaacabado
+Umadasformasderestringiroprazom¯nimodepublicidadeat«aaberturadaspropostas
+«publicaroavisodalicita©¥onasextafeiraouantesdeumferiadocontandoosdiascor
+ridos e reduzindo os dias ¼teis para conhecimento e participa©¥o no certame Essa forma 
+derestri©¥oaocar£tercompetitivofrequentemente«conjugadacomgarantiadeproposta
+antecipadae oucomvisitat«cnicaobrigatµria
+At£tica«aseguinteescolheseumadataprop¯ciaparadivulga©¥odocertamedemaneira
+requisitosanteriores¢aberturadocertamecomoaexig¬nciadegarantiadepropostaat«
+dias¼teisantesdaentregadeenvelopesporexemploDessamaneiraumaconcorr¬ncia
+quedeveriarespeitardiasdeprazom¯nimoentreadivulga©¥oeaaberturapodeserre
+duzidaefetivamenteparamenosdediasdetempo¼til
+Comoexemplopodesecitarumalicita©¥oemummunic¯piodoestadodeS¥oPaulopara
+loca©¥odeambul¤nciasOavisofoipublicadoemdedezembroAaberturafoimarcada
+paraodiaAprefeituraestavafechadaentreosdiaseporcontadoNatalComo
+resultadoaslicitantestiveramapenasdoisdiasparaobteroeditaleparticipardalicita©¥o
+favorecendoaempresapreviamenteacertadaparavencerocertame
+EmoutrocasorealnumaPrefeituranoMatoGrossodistantekmdacapitalparacom
+praroeditaloquesomentepoderiaserfeitodemaneirapresencialointeressadodeveria
+pagarRpormeiodeguianobancoDepoisdeveriaapresentarocomprovantepara
+queemat«horasumacµpiadoeditalfossedisponibilizadaOavisodalicita©¥ofoipu
+blicadonasextafeiradeCarnavalAreparti©¥osµvoltariaaabrirnaquintafeirapµsferia
+doEasextafeiraseguinteeraadataparaavisitaobrigatµriamarcadaparacincodias¼teis
+antesdaaberturaaserrealizadasomentepelorespons£velt«cnicodainteressada
+
+ZZZZZ mÁdfk^ QM ZZZZZ
+
+QuemtomasseconhecimentodoavisosµteriaumdiaquintaparacompraroeditalMas
+precisariaesperarat«horasparaobt¬loparaent¥odescobrirquedeveriaterrealizado
+avisitaobrigatµriacujoprazoj£teriapassadoN¥o«deseadmirarqueuma¼nicaempresa
+tenhaaparecidoevencido
+editaleaparticipa©¥odepotenciaisinteressadosmesmopublicandooavisoemtodosos
+meiosprevistosnaleiParaissocriamseobst£culoserequisitosdispendiososparaaefetiva
+participa©¥onadisputa
+H£casosemquemesmoquandos¥opublicadososavisosdeacordocomosrequisitosle 
+gaisasinforma©·esrelevantesparapotenciaislicitantespodemvirdemaneirapoucoatra 
+tivaoucompreens¯velsen¥oparaquemtiverinforma©¥oprivilegiadasobrealicita©¥oou
+Adescri©¥oinadequadadoobjetolicitadonoavisodeeditalporexemplopodeserummeio
+de intencionalmente restringir a competitividade do certame Informa©·es erradas sobre 
+CASOCONCRETODESCRIOGENRICADOOBJETO
+Ema©¥odeimprobidadeadministrativanoPar£oMinist«rioP¼blicoFederaltra 
+toudeumaconcorr¬nciaparacontrataraimplanta©¥odeinfraestruturaetec 
+nologiadoServi©odeAtendimentoMµveldeUrg¬nciaSAMUOsavisosforam
+foidescritocomoǐcontrata©¥odeservi©osadministrativoscomimplanta©¥oe
+implementa©¥o de infraestrutura e tecnologia com obrigatoriedade de manu 
+ten©¥oǑ semfazerqualquermen©¥oaoSAMUpontocentraldalicita©¥oSegun 
+dodepoimentodeumadasintegrantesdaComiss¥oPermanentedeLicita©¥o
+a orienta©¥o para essa reda©¥o partiu dos empres£rios que mais tarde seriam 
+vencedoresdocertameAordemerapublicarosavisossemfazerrefer¬nciaao
+termoSAMUpoisissopoderiaǐsuscitarinteressedeparticipantesǑ 
+
+ZZZZZ mÁdfk^ QN ZZZZZ
+
+Porcontadessasarmadilhasparalicitantesumat«cnicadedetec©¥orelevante«checaras
+datasdepublica©¥odosavisosparaavaliarseelaspodemrestringirnapr£ticaoprazom¯
+dosdointeressadoeocumprimentoemprazoanterior¢aberturadocertamecomogaran
+tiadepropostaouvisitat«cnica
+soshumanosedetempos¥ovari£veisconsideradaspeloempres£rioantesdeparticiparde
+umalicita©¥omotivopeloqualpodemserconsideradosrestri©¥o¢competitividade
+Oexemploabaixoilustraumasitua©¥ocomin¼merosǐobst£culosǑapotenciaisinteressados
+nalicita©¥o
+AQUISIOPRESENCIALDOEDIT ALOBRIGA TRIA
+RECURSOSEIMPUGNAESDOEDIT ALSOMENTEPRESENCIALMENTE
+VISTORIAOBRIGA TRIA
+PARTICIPAONALICIT AO
+RECURSOSEIMPUGNAESDORESUL T ADOSOMENTEPRESENCIALMENTE
+RESUL T ADO
+
+
+
+
+
+
+FonteAdaptadodeSantoseSouza
+
+ZZZZZ mÁdfk^ QO ZZZZZ
+
+AAdministra©¥oP¼blicadevebuscarreduziressescustosdeparticipa©¥ocomoobjetivode
+aumentaraparticipa©¥odasempresasnessesentidooentendimentodoTCUconsubs 
+tanciadonaS¼mulaquevedaainclus¥odeexig¬nciasdehabilita©¥oedequesitosde
+pontua©¥ot«cnicaparacasosemqueoslicitantestenhamdeincorreremcustosdesneces 
+s£riosanteriormente¢celebra©¥odocontrato
+Nessalinhaacobran©aexcessivapelareprodu©¥odoedital«umexemploderestri©¥ocom 
+apenasparacoberturadoscustosefetivosdereprodu©¥oAcµrd¥ose
+doPlen£rio
+Para compreender melhor esta tipologia de fraudes « importante conhecer as etapas da 
+chamada ǐfase externaǑ da licita©¥o habilita©¥o dos licitantes julgamento adjudica©¥o e 
+homologa©¥o
+doslicitantesparagarantirqueolicitantenahipµtesedeserovencedordocertametenha
+contratoobjetodalicita©¥o
+
+cabendo ¢ comiss¥o de licita©¥o promover dilig¬ncias destinadas a esclarecer d¼vidas ou 
+complementaroprocessamentodocertamearti|daLein|Nocasodas
+microempresaseempresasdepequenoporteaLeiComplementarn|admitea
+possibilidadedecorrigirfalhasporventuraexistentesnosdocumentosdehabilita©¥oqual 
+querquesejaamodalidadedelicita©¥oadotada
+constamrestri©·esparacontratarcomaAdministra©¥oExistemdiversoscadastrosquepo 
+demserconsultadostaiscomo
+Ǖ Cadastro Nacional de Empresas Punidas pela Anticorrup©¥o CNEP Lei n|  
+ǕCadastrodeEntidadesPrivadasSemFinsLucrativosImpedidasCEPIM
+ǕCadastroNacionaldeCondena©·esporImprobidadeAdministrativaCNIA
+ǕCadastrodeempresaspunidaspelaprµpriaEntidadecontratante
+ JULGAMENTONEGLIGENTECONIVENTE
+OUDEFICIENTE
+
+ZZZZZ mÁdfk^ QP ZZZZZ
+
+mina©¥odovencedoraoqualser£adjudicadooobjetodalicita©¥o
+examedeveserregistradonaatadejulgamento
+turadasatasdoscertameslicitatµriosnostermosdoartincisoVIIIdaLein|
+DestacaseaindaqueoartdaLein|disp·equeaAdministra©¥on¥opode
+descumprirasnormasecondi©·esdoeditalaoqualseachaestritamentevinculada
+Deigualmodooprinc¯piodojulgamentoobjetivoart|daLein|vinculaaAd
+nidosnoeditalEsteprinc¯piogarantequeojulgamentosefa©asegundocrit«riosobjetivose
+conhecidosdoslicitantes
+Adjudica©¥o«atopeloqualaAdministra©¥oatribuiaolicitantevencedoroobjetodalicita
+recursodalicitanteregistradoemataNasoutrasmodalidadesaadjudica©¥opodeserfeita
+pelacomiss¥odelicita©¥o
+atospraticadosaprova©¥oparaqueproduzamosefeitosjur¯dicosnecess£riosAhomologa
+©¥odoprocedimentolicitatµrion¥o«umatomeramenteformalesimaaprova©¥odasdeci
+s·estomadaspelosmembrosdacomiss¥odelicita©¥oumatointransfer¯veleindeleg£vel
+cabendoexclusivamente¢autoridadecompetenteindependentedamodalidade
+atosdareferidacomiss¥otornandoseporelesigualmenterespons£velrelevantedestacar
+
+ZZZZZ mÁdfk^ QQ ZZZZZ
+
+aindaqueemrela©¥oaosv¯ciosocorridosnoprocedimentolicitatµriocaberesponsabiliza©¥o
+solid£ria da autoridade que homologa a licita©¥o exceto se as irregularidades decorrerem de 
+Acµrd¥os e doPlen£riodentreoutros
+Emboran¥oexistaumcomandonormativoexpressonaLein|queobrigueaAdmi 
+nistra©¥oapublicarosT ermosdeAdjudica©¥oedeHomologa©¥odaslicita©·esapublica©¥o
+dessesatossefaznecess£riaparafazercumpriroprinc¯piodapublicidadeinsculpidonocaput
+doart|daLeideLicita©·es
+Nessecontextoaspossibilidadesdefraudeedeseusucessoest¥oassociadas¢atua©¥odaau 
+toridadejulgadoraquepodesecaracterizarcomo
+aJulgamentoconivente
+T ratase da conduta dolosa em que o processamento da fase externa da licita©¥o ocorre com a par 
+ticipa©¥odiretadosrespons£veispeloµrg¥olicitantecomoobjetivodesimularatosefatosdire 
+cionar resultado encobrir a verdade frustrando deliberadamente o car£ter competitivo do certame 
+bJulgamentonegligente
+Nestecasopassamdespercebidoserrosgrosseirosfalhasfacilmentevis¯veisaus¬nciadedocu 
+mentosevid¬nciasexpl¯citasdemontagemsimula©¥oadultera©¥oconluiocombina©¥oentre
+licitantescaracterizadopelodesleixodescuidodisplic¬nciaomiss¥odesaten©¥ofaltadezelo
+faltadecuidadoproporcionalaosriscosdaatividadedeprocessarojulgamentodalicita©¥o
+Aquiosrespons£veispeloprocessamentodafaseexternadocertamedeixamdeobservaroµb 
+viocontribuindoparaafraudeaon¥oexercerdeformadiligenteseupapeldecontroleinterno
+dosatosadministrativosdoprocessolicitatµrioEmambososcasosconiv¬nciaouneglig¬ncia
+existeresponsabilidadepelasfraudesSejapelaomiss¥ooupelaa©¥oosservidoresdoµrg¥o
+contratantes¥oelementosdeterminantesparaosucessodaempreitadacriminosa
+Diferentedasduasoutrassitua©·esaquiafraudetemorigemexclusivamentenacondutade
+agentesexternosaoµrg¥ocontratanteeoselementosapresentadosnoprocessos¥oelabora 
+
+moinviabilizandoadetec©¥opormeiodoexametradicionalcomoconhecimentoaexperi¬ncia
+easferramentasdispon¯veisaosrespons£veispeloprocessamentodocertame
+Asprincipaisocorr¬nciasrelacionadasaessassitua©·esest¥odemonstradasaseguir
+
+
+
+
+ZZZZZ mÁdfk^ QR ZZZZZ
+
+Essascondutasn¥os¥oexcludentespodendoocorrerisoladamenteouemconjuntoeenvolver
+umouv£riosconcorrentesT amb«mocorremoconluiodeempresasleg¯timaseautiliza©¥ode
+empresasfantasmaoudefachadavejaitem
+quepossuiumfalsopre©oofertadomastamb«maquelaquepropositalmenten¥oatendeaos
+requisitosdehabilita©¥oconstantesnoeditaldelicita©¥o
+Nosprocessoslicitatµriospresenciaisaspropostasdepre©oseosdocumentosdehabilita©¥o
+berturaquandoporexemplonoenvelopedehabilita©¥odeumaempresafaltaintencionalmen
+decapacidadet«cnicas¥osabidamenteincompat¯veiscomoobjetolicitado
+ideiadequehouveapenasainabilita©¥odeumdosconcorrentesquandonaverdadeoque
+houvefoiumbemsucedidoconluioentreosparticipantes
+comonoscasosdoscart«isvejaitemenaquelesemqueaAdministra©¥ocompactuacoma
+farsaIssoseaplicaespecialmenteaosprocessospormeiodeconviteemqueh£controlequase
+absolutosobreosparticipantes
+indicativasdeconluioentreempresastaisquais
+aDocumentosemitidosemsequ¬ncia
+Umadassitua©·esquemelhorevidenciaasimula©¥odecompetitividade«asequ¬nciatemporal
+deemiss¥odedocumentosdesupostosconcorrentesN¥o«plaus¯velquediversoslicitantesem
+condi©·esefetivasdeindepend¬nciasejamcapazesdeapenasporcoincid¬nciaemitirimpri
+mirextrairouautenticardocumentosemsequ¬ncianum«ricaounomesmointervalodetempo
+palmentepelofatodeconferiremumcar£terdeaparentecompetitividadeaocertamelicitatµrio
+comoobjetivodeafastarinvestiga©·espelasautoridadesdecontroleedefesadoEstado
+PROPOSTAFICTCIAOUDECOBERTURA
+Consentimentodeumoumais
+concorrentesparaapresentar
+propostadevalormaiselevado
+doqueapropostadolicitante
+queoconcorrentesabe
+antecipadamenteser
+muitoaltaparaseraceita
+FonteAdaptadodeSouza 
+
+ZZZZZ mÁdfk^ QS ZZZZZ
+
+bPropor©¥olinearnospre©os
+Outrocasodecoincid¬nciainexplic£vel«araz¥omatem£ticaentrepropostasPlanilhasde
+pre©osunit£rioscomamesmapropor©¥olinearindicamaus¬nciadecompetividadeequebra
+dosigilodaspropostasParaoTCUn¥o«plaus¯velcrerqueavaria©¥odepre©osnosmesmos
+percentuaisemtodosositenscotadossejameracoincid¬nciaAcµrd¥o ǊPlen£rio
+Parailustraressasitua©¥ovejamoexemploabaixoondetodosospre©osdaLicitantes¥o
+exatamentemaioresdoqueosdaLicitantequeporsuavezs¥omaioresdo
+queospre©osdaLicitante
+FonteSouza 
+desmontagemdepaineldebronze
+revis¥odasinstala©·esel«tricas
+balc¥odoamericanbar
+arm£riodoamericanbar
+portasvidrodavitrine
+vidrommesuportecromado
+tampoemmadeira
+testadaemmadeira
+molduracomtela
+vitrinedoamericanbar
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+SERVIO
+Licitante
+ValordaPropostaR
+Licitante Licitante
+FonteSouza 
+Umimportanteindicativodefraudepodeestarnostermosempregadosenoscaracteresgr£
+meiodesseselementos«poss¯velevidenciaroconluioouasimula©¥odecompetitividade
+
+ZZZZZ mÁdfk^ QT ZZZZZ
+
+Documentos com o mesmo padr¥o de apresenta©¥o as mesmas caracter¯sticas de abre
+elaboradosporumamesmapessoafatoquecomprometeaisonomiadocertamelicitatµrio
+emraz¥odaviola©¥odosigilodaspropostas
+Comoexemplodecoincid¬nciasrelevantespodemserdestacadasaidentidadeeaseme
+lhan©aentreaspropostascomerciaisdeempresasparticipantesdeumprocessolicitatµrio
+demonstrandoexistirconte¼dopraticamenteid¬nticosendodiferentesapenasovalorda
+propostaologotipodaempresaousodeit£licooucaixaaltaaolongodotextoepequenas
+inser©·esevidenciandoqueforamelaboradasemconjunto
+V£riosediversosind¯ciosdeidentidadedepropostasdedoisconcorrentess¥oconsiderados
+um dos elementos que levaram ¢ conclus¥o de conluio e declara©¥o de inidoneidade pelo TCU foi 
+Em outra oportunidade por meio do Acµrd¥o  Plen£rio o TCU entendeu que havia 
+fraude ao car£ter competitivo do certame em fun©¥o de entre outros elementos as propostas 
+dastr¬sempresasteremamesmadiagrama©¥omesmoformatomesmon¼merodep£ginas
+mesma itemiza©¥o e mesma reda©¥o indicando que foram elaboradas por uma mesma pessoa 
+ou com um mesmo modelo O TCU nesse caso declarou a inidoneidade das empresas envolvidas
+FonteSantoseSouza
+Ousodeempresafantasmaoudefachada«apr£ticadefraude¢licita©¥oqueconsistena
+cria©¥opormeioderegistronasjuntascomerciaisdeempresasquen¥oatuamdefatono
+mercadoouatuamsevalendodaestruturaempresarialdeoutra
+Essetipodefraudequeviabilizaaparticipa©¥odefalsasempresasemlicita©·esp¼blicastem
+
+ZZZZZ mÁdfk^ QU ZZZZZ
+
+Napr£ticavencendoumaMEouEPPfantasmaquemvaiexecutarocontrato«umaǐcon
+correnteǑderrotadanocertameouumaempresaquesequerparticipoumasquedet«ma
+estruturaoperacionalnecess£riaempregadosmaquin£riove¯culosetcmuitasvezescom
+omesmoendere©oetelefoneemesmorepresentantedaempresadefachada
+Ǖ  ObjetosocialǐguardachuvaǑ«comumqueempresasfantasmarealizemsupos
+tamenteatividadesheterog¬neascomofornecimentodealimentosprodu©¥ode
+mobili£riopresta©¥odeservi©osadministrativosengenhariaecom«rciodeinfor
+m£ticaApesardeexistiremexce©·escomograndesgruposqueoperamemdiver
+sas£reascomerciaisnamaiorpartedoscasosaatividadeempres£ria«setorizada
+adstritaaumdeterminadosegmentoen¥o«plaus¯velaatua©¥oefetivaemmui
+tosramosdistintos
+FIQUEA TENTO
+ointuitodeconferirapar¬nciadeamplacompetitividadeaocertameapartirdaapresenta©¥o
+depropostadecoberturacomodescritoacimaAsempresasfantasmapodemat«mesmo
+Namaiorpartedoscasosessasempresasassumemanaturezademicrooupequenaempresa
+ME ou EPP gozando de prerrogativas de desempate e prefer¬ncia nas licita©·es conforme 
+disp·eoartdaLeiComplementarn|Ousejan¥obastasseacompetitividadede
+fantasmapodeaindalevar¢prefer¬nciadecontrata©¥odestasemdetrimentodasdemais
+
+ZZZZZ mÁdfk^ QV ZZZZZ
+
+Ǖ  Sµciocomrendaincompat¯velinforma©·esdebasesdedadoscomoaRela©¥oAnual
+deInforma©·esSociaisRAIScadastrossociaiscomooBolsaFam¯liamoradiade
+apar¬nciahumildefotosepostagensnoFacebookestilodaassinaturaentreoutros
+elementospodemindicaracondi©¥odeǐlaranjaǑdesµciocujascondi©·essociaisn¥o
+sejamcondizentescomaposi©¥oocupadanaempresa
+Ǖ  Representa©¥oporprocura©¥ocomplenospoderesn¥o«razo£velquepropriet£rios
+eadministradoresdefatodeempresasatuantesdeleguemplenospoderesatercei
+rospararepresent£losetomaremamplasdecis·escomimpactoemseusnegµcios
+Ǖ  Coincid¬nciadeendere©ooutelefonecomoutrasempresaspesquisassobrea
+oquesugeretratarsedeuma¼nicaempresanarealidade
+Ǖ  Faltadeestruturaoperacionalaparenteissopodeserevidenciadoporaus¬nciade
+indica©¥odaempresanoendere©oemqueest£registradaoGoogleStreetView«
+aexist¬nciadeequipamentoseativosnecess£riosparaoexerc¯ciodesuaatividade
+apropostaeosdocumentosdehabilita©¥odeempresasqueapresentemessascaracter¯sticas
+OT ribunalRegionalFederalTRFcondenouumempres£rioeseuǐlaranjaǑnos
+crimesdefalsidadeideolµgicaefraude¢licita©¥oNocasoemquest¥oosµ
+cioadministradordeumaempresaprestadoradeservi©osporterrestri©·esca
+dastraisemseunometransferiuapropriedadedaempresaaumconhecidoEn
+tretantoonovopropriet£riojamaisadicionouqualquerimport¤nciamonet£ria
+paraaaquisi©¥odecotasdasociedadeempres£riatampoucopraticouatosde
+gest¥oParaodesembargadoracomposi©¥osociet£riademonstradanocontra
+tosocialapresentadonocursodoprocedimentolicitatµrion¥osetraduziana
+verdadedosfatospoisaempresaestavaemnomedeǐlaranjasǑ 
+T amb«msedevedaraten©¥oaosprocuradoresrepresentanteserespons£veist«cnicosdas
+empresasparticipantesdecertameslicitatµriospoispodemexistircoincid¬nciasNessasi
+tua©¥oamesmapessoaatuapormaisdeumaconcorrentefatoquecomprometeaisono
+miaemraz¥odaviola©¥odosigilodaspropostasIgualmenteacoincid¬nciadecontadores
+podeindicarrela©¥oindesejadaentreparticipantes
+
+ZZZZZ mÁdfk^ RM ZZZZZ
+
+representanteousejaqueestejamsobocontroledamesmapessoacometemocrimedefraude
+aoprocessolicitatµrioporviolaroprinc¯piodacompetitividadeAcµrd¥oǊPlen£rio
+Aparticipa©¥odeservidorp¼blicoemlicita©·esaindaqueindireta«vedadapeloincisoIII
+art|daLein|OTCUpossuiinterpreta©¥oclarasobreessedispositivo
+Acµrd¥oPlen£rioSum£rio
+irregularaparticipa©¥oemlicita©¥oconduzidaporµrg¥o entidadedaAdministra©¥ode
+empresacujosµcioprestaservi©osaoµrg¥o entidaderelacionadosdealgumaforma¢lici 
+daLein|
+T alposicionamentosefundanoprinc¯piodamoralidaden¥ohavendodistin©¥oemrela©¥oao
+poderdecisµriodoservidorenvolvidoouseuconhecimentot«cnicoacercadoobjetolicitado
+composi©¥odoquadrosociet£riodaempresavencedoradalicita©¥oeinforma©·esdeservi 
+doresemportaisdetranspar¬nciabuscandoevid¬nciasdaexist¬nciadeservidoresperten 
+centesaoquadrosociet£riodalicitantevencedorasitua©¥ovedadapelaLein|e
+jurisprud¬nciadoTCU
+Sobrecasosemqueov¯nculo«familiaroTCUtemseposicionadodaseguinteforma
+Acµrd¥oPlen£rio
+[] a despeito de n¥o haver na Lei n|  veda©¥o expressa de contrata©¥o pela 
+Administra©¥o de empresas pertencentes a parentes de gestores p¼blicos envolvidos no 
+damoralidadeedaimpessoalidade
+Valeressaltarpor«mquen¥o«amerarela©¥odeparentescoentreumservidorouoautor
+doprojetoeumsµciodalicitantequeimpedir£aparticipa©¥onoprocessolicitatµrioAju 
+risprud¬nciaconsideraqueaveda©¥onessecaso«relativaadependerdacapacidadedo
+P¼blicaparaobterinforma©·esprivilegiadasresguardandoosprinc¯piosdamoralidadeeda
+igualdadeSehouverevid¬nciasdefavorecimentoinforma©¥oprivilegiadadirecionamento
+ouqualqueroutravantagemindevidaoriginadadessarela©¥oautordoprojetocomaem 
+presalicitanteent¥osimosprinc¯pioster¥osidoviolados
+
+ZZZZZ mÁdfk^ RN ZZZZZ
+
+aspectos garantir que a empresa contratada esteja apta a executar o objeto e evitar que se frustre 
+a competitividade do certame licitatµrio em decorr¬ncia da constri©¥o do universo de licitantes 
+Cumprese essa exig¬ncia por meio de atestados de experi¬ncia Consoante a jurisprud¬ncia 
+consolidadadoTCUameraapresenta©¥odeumatestadocomconte¼dofalsocaracterizaoil¯
+citoadministrativoprevistonoartdaLeiOrg¤nicadoTCUefazsurgirapossibilidadedede
+clararainidoneidadedalicitantefraudadoraAcµrd¥osn|edoPlen£rio
+Noscasosded¼vidasquanto¢idoneidadedosatestados«facultada¢Comiss¥oouauma
+autoridadesuperioremqualquerfasedalicita©¥oapromo©¥odeumadilig¬nciadestinada
+aesclarecerouacomplementarainstru©¥odoprocessovedadaainclus¥oposteriordedo
+cumentoouinforma©¥oquedeveriaconstaroriginariamentedapropostai|doartda
+Lein|
+Elementosindicativosdefalsidadenosdocumentosapresentadospodemincluir
+Ǖ  Informa©·es incompat¯veis com bases de dados governamentais o cruzamento 
+deinforma©·esconstantesdadocumenta©¥oapresentadapelaempresacomda
+queaempresaalegaterprestadoservi©osoutidoreceitaemseuregistrocont£bil
+Ǖ Inautenticidadedeseloscartoriais«poss¯velconsultaraautenticidadedeselos
+ma©¥oconstantedodocumento«condizentecomascircunst¤nciasdeutiliza©¥o
+doseloemquest¥o
+Ǖ Inautenticidadedecertid·esp¼blicasassimcomonocasodosselosdecartµrios
+autenticidadegeralmentesobconsultanap£ginadoµrg¥oqueemitiuacertid¥o
+Ǖ Assinaturasdivergentesdiscrep¤nciasentreassinaturassupostamentedames
+Umafraudeemlicita©¥opodesercaracterizadapelasimula©¥ointegraldoprocessoamon
+
+ZZZZZ mÁdfk^ RO ZZZZZ
+
+CASOCONCRETOFBRICADELICITAES
+EmaJusti©aFederalcondenoupessoasenvolvidasemfraudesalicita 
+©·esnoAmazonasOesquemafoidesarticuladopelaOpera©¥oV oraxapartirde
+
+queparticipavamdeprocessosdirecionadosmasdepoispassouautilizarem 
+presasdefachadaeemnomedelaranjasemprocessosinteiramentefabricados
+Muitoscarimbosdeempresasforamapreendidosduranteaopera©¥oescondi 
+dosnoforrodeumacasaASecretariadeObrasdomunic¯piofuncionoucomo
+ǐverdadeiralinhademontagemǑ simulandointegralmenteaslicita©·esSegundo
+depoimentodeumdigitadorqueatuavanaSecretariadeObrasdaprefeituraǐ
+[]osfuncion£riosorganizavamosdocumentosempastasmontavamplanilhas
+nocomputadorcomaslogomarcasdasempresasdeconstru©¥oeat«assinavam
+emalgunsdocumentospelossµciosdessasempresasoqueerapassadoparaos
+deveriaserultrapassadoparan¥ocairemoutrotipodemodalidadedelicita©¥oǑ 
+modalidadeconvitesobreaqualaAdministra©¥otemabsolutocontrole
+Processosdessetipocostumamapresentarv£riosdosindicativosj£descritosanteriormen 
+te como propostas com caracter¯sticas comuns participa©¥o de empresas inexistentes e 
+documentosfalsos
+Al«mdissoexistemcasosemqueh£absolutainconsist¬nciaquanto¢sdataspresentesnos
+documentosUmalicita©¥ocomotodoprocessoadministrativoexigeaobserva©¥ocrono 
+lµgicadosfatosH£umasequ¬nciadepassosaolongodoprocessoprazosrotinasforma 
+liza©¥o Frequentemente em casos de fraude encontramse elementos que evidenciam a 
+comasitua©¥oesperada
+Umcasocl£ssico«odacartaconviterel¤mpagoT udo«feitonomesmodiapedidodecom 
+
+ra©¥odoeditalenviodascartasmesmoqueosconvidadosestejamlocalizadosacentenas
+emitidosouimpressosdepoisdeabertoocertameat«mesmodepoisdeassinadoocontrato
+Fraudessobretudonamodalidadeconvitepodemenvolvertamb«maaquisi©¥odebense
+servi©osdeempresasmuitodistantesdomunic¯piocontratanteSegundooTCUoconvite
+imotivadoexpedidoexclusivamenteaempresassediadasemlocaisdistantesdalicitante
+preterindooutrasdalocalidadeoudacircunvizinhan©amaculaoprocedimentolicitatµrio
+fereosprinc¯piosdaisonomiadacompetitividadedamoralidadedaimpessoalidadeeda
+probidadeadministrativaAcµrd¥oǊPlen£rio
+
+ZZZZZ mÁdfk^ RP ZZZZZ
+
+Arealiza©¥odalicita©¥o«aregrageraldosµrg¥oseentidadesdaAdministra©¥oP¼blica
+quandoprecisamcomprarbensoucontratarobraseservi©osNoentantoaprµpriaConsti
+tui©¥oFederalcontemplaapossibilidadedealeiestabelecerhipµtesesemquealicita©¥o
+n¥oacontecer£oupoder£n¥oacontecerEssassitua©·esest¥oapresentadasnoEstatuto
+deLicita©·eseContratoscomocontrata©¥odiretahipµteseemquealicita©¥o«legalmente
+inexig¯veldispensadaoudispens£vel
+aInexigibilidade
+Inexigibilidadedelicita©¥o«umasitua©¥odeexce©¥ocaracterizadapelaimpossibilidade
+jur¯dicadecompeti©¥ooqueinviabilizaarealiza©¥odoprocedimentolicitatµrio
+OartdaLein|relacionaexemplosdecasosdeinexigibilidadedelicita©¥on¥o
+sendo portanto taxativo quando ¢s situa©·es aplic£veis Assim outras contrata©·es em 
+queestejacaracterizadaainviabilidadedecompeti©¥oal«mdaquelasdescritasnaleipo
+demserefetivadaspormeiodainexigibilidadedelicita©¥oAlgunsexemplosrelevantess¥o
+Ǖ Comprademateriaisequipamentosoug¬nerosquesµpossamserfornecidospor
+produtorempresaourepresentantecomercialexclusivovedadaaprefer¬nciade
+µrg¥ocompetentecomojuntascomerciaissindicatosfedera©·esouconfedera
+©·espatronaisouentidadesequivalentesquecomproveessacondi©¥o
+Ǖ Contrata©¥odeservi©ost«cnicosespecializadosdenaturezasingularcompro
+servi©osdepublicidadeedivulga©¥o
+Ǖ
+m«diodeempres£rioexclusivodesdequeconsagradopelacr¯ticaespecializada
+oupelaopini¥op¼blicaexigidaaapresenta©¥odocontratodeexclusividadere
+gistradoemcartµrioentreoartistaeoempres£riocontratado
+Umaoutrahipµtesedeinviabilidadedecompeti©¥on¥oexpressamentemencionadanoart
+daLein|«ocasodocredenciamentoAdotaseocredenciamentoquando
+aAdministra©¥otemporobjetivodispordamaiorredeposs¯veldeprestadoresdeservi©os
+Nessa situa©¥o a inviabilidade de competi©¥o n¥o decorre da aus¬ncia de possibilidade 
+de competi©¥o e sim pela falta de interesse da Administra©¥o em restringir o n¼mero de 
+contratadosdeacordocomainterpreta©¥odoTCUAcµrd¥os edo
+Plen£rioedalC¤mara
+pr«viadepre©osdemercadocomobjetivodedemonstraraadequa©¥odovalorcontratado
+instruindooprocedimentodeinexigibilidadeparaefeitodecumprimentodaexig¬ncialegal
+CONTRATAODIRETAINDEVIDA
+
+ZZZZZ mÁdfk^ RQ ZZZZZ
+
+bDispensadelicita©¥o
+Adispensadelicita©¥oocorrequandoexistepossibilidadejur¯dicadecompeti©¥opor«ma
+leideterminasuadispensaouautorizaacontrata©¥odiretadoobjetoparaatenderasne 
+cessidadesdaadministra©¥o
+S¥otamb«msitua©·esdeexce©¥oemqueemborapossahavercompeti©¥oarealiza©¥odo
+procedimentolicitatµriopodesedemonstrarinconvenienteaointeressep¼blicoDeveogestor
+p¼blicosercautelosoaosedecidirpelacontrata©¥odiretahajavistaaLein|art
+considerarcrimedispensarouinexigirlicita©¥oforadashipµtesesconsideradaslegais
+Al«mdissoogestorquedispensarlicita©¥oindevidamentecometeatodeimprobidadeadminis 
+trativaIncisoVIIIartdaLein|Casocomprovadosuperfaturamentonoscasosde
+dispensaedeinexigibilidadedelicita©¥orespondemsolidariamentepelodanocausado¢Fazen 
+daP¼blicaofornecedordobemoexecutordaobraouoprestadordeservi©oseoagentep¼blico
+respons£velsempreju¯zodeoutrassan©·eslegaiscab¯veisi|doartdaLein|
+S¥ohipµtesesdedispensaalicita©¥odispensadaealicita©¥odispens£velconformedes 
+critoaseguir
+DISPENSADA
+LICIT AODISPENS VELartincisoIaXXXIV
+LICIT AODISPENSADAart incisoIaIIdaLein|
+DISPENS VEL
+FonteSouza 
+Em face do exposto os principais tipos de fraudes observados por meio de contrata©·es 
+diretasindevidass¥oosseguintes
+Adispensadelicita©¥ocomfundamentonobaixovalorparaaaquisi©¥odebensouacon 
+trata©¥o de servi©os cujos montantes globais ultrapassem os limites previstos na Lei de 
+
+ZZZZZ mÁdfk^ RR ZZZZZ
+
+dosµrg¥osdecontrole
+O fracionamento de despesa se caracteriza quando se divide a despesa para utilizar uma 
+modalidadedelicita©¥oinferior¢determinadapelalegisla©¥oparaototaldadespesaou
+paraefetuarcontrata©¥odireta
+OentendimentodoTCU«quearealiza©¥odecontrata©·esouaquisi©·esdemesmanatu
+rezanomesmoanocujosvaloresexcedamolimiteprevistoparadispensadelicita©¥ode
+monstrafaltadeplanejamentoecaracterizafugaaoprocedimentolicitatµrioefracionamen
+toilegaldadespesaAcµrd¥osdoPlen£rio
+dalC¤maraeedalC¤mara
+AAGUpormeiodaOrienta©¥oNormativan|expediuaseguinterecomenda©¥oǐacon
+trata©¥odiretacomfundamentonoincIVdoartdaLein|deexigeque
+concomitantementesejaapuradoseasitua©¥oemergencialfoigeradaporfaltadeplane
+jamentodes¯diaoum£gest¥ohipµteseemquequemlhedeucausaser£responsabilizado
+naformadaleiǑ
+No entendimento doTCU os processos licitatµrios devem ser providenciados com a an
+deevitaradescontinuidadedosservi©osetamb«madispensadelicita©¥ocombasena
+hipµtesedeemerg¬nciaAcµrd¥osedoPlen£rio
+Asfraudesocorremquandoaǐemerg¬nciaǑ«fabricadaporn¥oexistirdefatoouporter
+acontecidoemfun©¥odaneglig¬nciaadministrativaintencionalAssimcomoacontrata
+CASOCONCRETOFRACIONAMENTODEDESPESA
+EmnojulgamentodaA©¥oPenaln|oSupremoT ribunalFederalSTF
+condenouoexprefeitoporfraude¢licita©¥oSegundoasinvestiga©·esoes
+quemacriminosoconsistianofracionamentoilegaldelicita©¥oemobraseservi
+©osdeengenhariaparapermitiraaplica©¥odamodalidadeconvitedirecionan
+comoent¥oprefeitoOSTFentendeuqueǐaexist¬nciaoun¥odedanoaoer£
+rio«irrelevanteparaacaracteriza©¥odafraudeprevistanoartigodaLein|
+DuranteojulgamentooSTFaindaaplicoumultaaoscondenados
+
+ZZZZZ mÁdfk^ RS ZZZZZ
+
+Conformereiteradajurisprud¬nciadoTCUnascontrata©·esoriundasdeinexigibilidadede
+licita©¥oemqueoobjetosµpossaserfornecidoporumprodutorempresaourepresentante
+comercialexclusivo«necess£riaacomprova©¥odeexclusividademedianteatestadoforne 
+cidoporµrg¥ocompetenteAcµrd¥osedoPlen£rioe
+edalC¤mara
+
+mercialnasaquisi©·esdequetratamestedispositivoǑAcµrd¥oǊPlen£rio
+AdemaispormeiodaOrienta©¥oNormativan|aAGUdisp·equeǐcompete¢Ad 
+ministra©¥oaveriguaraveracidadedoatestadodeexclusividadeapresentadonostermos
+doartincIdaLein|Ǒ 
+©¥oaprorroga©¥oindevidadecontratosobalega©¥odeemerg¬ncia«pr£ticacondenada
+hipµteses resultantes de fato superveniente Acµrd¥os      
+ edoPlen£rio
+CASOCONCRETODISPENSASEMERGENCIAISIRREGULARES
+As cortes brasileiras t¬m punido gestores que realizam contrata©·es diretas 
+condena©¥oemprimeirainst¤nciadeumexgovernadordoDistritoFederalpor
+contratarsemlicita©¥oareformadoGin£sioNilsonNelsonemparasediar
+oCampeonatoMundialdeFutsalSegundoaden¼nciaoent¥ogovernadorde 
+moroudemaisparaprovidenciaracontrata©¥ooqueresultouemdispensarea 
+lizada¢spressasParaoMinist«rioP¼blicoaAdministra©¥on¥opodeǐfabricarǑ
+umasupostaemerg¬nciaecomissoburlaraobrigatoriedadedalicita©¥o
+No Maranh¥o foram condenados os envolvidos em dispensa para compra de 
+quatromesasparaosal¥odoPlenodoT ribunaldeJusti©adoMaranh¥oapµsa
+cria©¥odequatrovagasparadesembargadorAlegaramqueanecessidadeera
+urgentemasojuizdocasoentendeuquemuitoantesdapossedosnovosde 
+contratardiretamentesobaalega©¥odeemerg¬ncia
+
+ZZZZZ mÁdfk^ RT ZZZZZ
+
+Ajurisprud¬nciadoTCUconsubstanciadanaS¼mula«dequeainviabilidadedecompe
+ti©¥oaqueserefereoartincisoIIdaLein|decorredaconverg¬nciadetr¬sfa
+toresoservi©ot«cnicoespecializadoquedeveestarinclu¯doentreosmencionadosnoart
+dareferidaleianaturezasingulardoservi©oeanotµriaespecializa©¥odocontratado
+Assimn¥obastacomprovarqueoservi©ot«cnico«especializadodentreaquelesindicados
+noroldoartdaLein|equetemnaturezasingular«indispens£veldemons
+tendecontrataristo«queoexecutorpossuinotµriaespecializa©¥onostermosdoi|do
+artdamesmalei
+Cartelpodeserentendidocomoumacordoexpressoout£citoentreconcorrentesparaprin
+cadosoucombinarpre©oseajustarvantagensemconcorr¬nciasp¼blicaseprivadas
+ALein|prev¬expressamentecomoexemplodeil¯citoconcorrencialoconluio
+entrelicitantespararestringiradisputaemlicita©·esp¼blicasnosseguintestermos
+ArtConstitueminfra©¥odaordemecon¶micaindependentementedeculpaos
+atossobqualquerformamanifestadosquetenhamporobjetooupossamproduziros
+seguintesefeitosaindaquen¥osejamalcan©ados[ǖ]
+i|
+Iacordarcombinarmanipularouajustarcomconcorrentesobqualquerforma[]
+dpre©oscondi©·esvantagensouabsten©¥oemlicita©¥op¼blica
+Lein|
+FIQUEA TENTO
+CARTELIZAO
+
+ZZZZZ mÁdfk^ RU ZZZZZ
+
+Essapr£tica«conhecidacomoǐconluioǑ ǐcartelǑ ǐconcerta©¥oǑ ǐcombina©¥oǑdelicitantese
+temporobjetivorestringiroueliminararivalidadeentreparticipantespotenciaisouefetivos
+
+©oampliandoolucrodosconspiradores
+Cart«iss¥oparticularmentecomunsemlicita©·esprejudicandoosesfor©osdoPoderP¼blico
+emutilizaradequadamenteosrecursosembenef¯ciodasociedadeElesfavorecemirregular 
+menteempresasquepormeiodeacordoentresifraudamocar£tercompetitivodoscertames
+Assitua©·esmaiscomunsemesquemasdecart«isemlicita©·ess¥o
+Ǖ
+Ǖ Supress¥odepropostasessasitua©¥oenvolveacordosentreosconcorrentesnos
+quaisumaoumaisempresasestipulamabstersedeconcorrerouretiramumapro 
+postapreviamenteapresentadaparaqueoconcorrentesejavencedor
+Ǖ Propostas rotativas ou rod¯zio as empresas conspiradoras alternam a proposta 
+vencedoraentreosmembrosdogrupo
+Ǖ
+ocorrertamb«mcomadivis¥odelotesdeumalicita©¥oentreosmembrosdocartel
+BrasilEmummunic¯piodeS¥oPauloporexemplooCADEapurouemumsuposto
+cartelcujoobjetoseriafalsearocar£tercompetitivodelicita©·esparacontrata©¥odera 
+
+doentresidemaneiraqueasdemaisn¥oapresentariampropostasouapenasofertariam
+ǐpropostasdecoberturaǑ comvistasaconferirumaapar¬nciadecompeti©¥oaocertame
+OCADEconcluiuemqueempresasdeveriamsercondenadasporpr£ticadecartel
+aplicandomultasuperioraRmilh·es
+NoRioGrandedoSulemumdosmembrosdeumcarteldeempresasdevigil¤ncia
+denunciouoesquemaapresentandoevid¬nciasdasfraudes¢licita©¥oincluindotestemu 
+
+cias demonstraram que o grupo realizava reuni·es semanais para organizar os resultados 
+faturamentobrutoaempresasdevigil¤nciaeseguran©aAquantiatotaldemultasultra 
+passouRmilh·es
+EmaOpera©¥oG investigouempreiteirasdoAcrequeatuariamemconjuntopara
+fraudar licita©·es de obras Segundo o Minist«rio P¼blico Federalasempresassimulavam
+concorr¬nciaentresigarantindoqueumadelassemprevencessealicita©¥oConcorrentes
+quen¥ointegrassemaorganiza©¥oerameliminadosnafasedahabilita©¥ot«cnica
+
+ZZZZZ mÁdfk^ RV ZZZZZ
+
+Essassitua©·esdecarteliza©¥ocostumamserdetectadaspormeiodean£lisedeumcon
+diversoscertamesasequ¬nciadevencedoresaposs¯velaltern¤nciaentreelesafaltade
+disposi©¥o para concorrer a apresenta©¥o de documentos ou propostas incoerentes pela 
+mesmaempresaemcertamesdiferentes
+Valelembrarqueasfraudeslicitatµriaspormeiodeconluioentrelicitantesedaatua©¥ode
+cart«isseenquadramtamb«mnaLeideDefesadaConcorr¬nciaLein|quese
+n¥oapenasaosµrg¥osdecontroleCGUTCUAGUetce oudetutelacriminalMPFMPe
+Pol¯ciasmastamb«m¢autoridadeantitrusteCADE
+CASOCONCRETOCONTRATODECARTEL
+Umcasoinusitadodecarteliza©¥ofoijulgadopeloTCUnoAcµrd¥o
+ParticulardeCompromissoǑ pormeiodoqualestabeleceramqueseAganhasse
+o contrato de R  milh·es pagaria  a B Esse ajuste se tornou conheci
+doporqueAabriuprocessojudicialcontraBparacobrarovalorpactuadoNa
+agiramemconluioincorrendonocrimedoartdaLein|qualseja
+ǐ Afastarouprocurarafastarlicitantepormeiodeviol¬nciagraveamea©afraude
+ouoferecimentodevantagemdequalquertipo[]Ǒ Etamb«mnoqueregeoPa
+r£grafonicoǐIncorrenamesmapenaquemseabst«moudesistedelicitarem
+
+ZZZZZ mÁdfk^ SM ZZZZZ
+
+
+ta¼ltimaparteapresentaremosalgumasorienta©·esdecunhopr£ticosobrecomoavaliar
+Pretendemosassimcontribuircomapropostadeumametodologiadetrabalhoparaomo 
+nitoramentodelicita©·esporagentesdocontrolesocialdestacandoalgunsǐsinaisdealer 
+monitoradas
+T aisindicadoress¥obaseadosnaliteraturaderefer¬nciadestematerialdeacordocomsitu 
+a©·esetiposdelicita©·esconsideradosmaissuscet¯veis¢ocorr¬nciadefraudeOpropµsito
+dessetipodemetodologia«auxiliarnasele©¥oeprioriza©¥odeprocedimentoslicitatµrios
+com um grau de risco mais alto para acompanhamento mais detalhado ou an£lise mais 
+situa©·espotencialmentemaiscr¯ticasourelevantes
+T endoemcontaastipologiasdefraudesapresentadasnaParteIIeasdistintasfasesdopro 
+cessolicitatµriopropomosaquialgunsindicadoresderiscodefraudeemlicita©·esquepodem
+serobservadosdemaneirageralseguindoaordemcronolµgicadasetapasdeumalicita©¥o
+Osindicadorespodemserassociadosadoismomentosprincipaisdeumalicita©¥oafase
+interna incluindo os procedimentos adotados at« a publica©¥o do extrato de licita©¥o e 
+afaseexternacompreendendoasan£lisesdehabilita©¥odasempresasparticipantesea
+Abaixodestacamososindicadoresmaisrelevantescorrespondentesacadaumadessasfa 
+seseostiposdefraudesquepodemevidenciarElespodemser¼teistantoparacasosem
+queocontrolesocialpossaserfeitoconcomitantemente¢licita©¥oisto«acompanhando
+s¥otamb«mapontadosindicadoresrelevantesparaaan£lisedeumconjuntodelicita©·es
+doµrg¥omonitorado
+
+AdaptadoparcialmentedeSantoseSouzaeSouza 
+PARTEIII
+INDICADORESDERISCOETCNICASDEDE
+INTRODUO
+  INDICADORES DE RISCO DE FRAUDE EM LICITAES
+AutoraBiancaVazMondo
+
+ZZZZZ mÁdfk^ SN ZZZZZ
+
+a Contrata©·essemlicita©¥ooutipicamentecombaixacompetitividade
+dispensasinexigibilidadeseconvites
+Conformej£mencionadoopotencialdefraudenalicita©¥oaumentaquantomaior«opoder
+queaAdministra©¥ocontratantedet«mparadelimitarourestringirouniversodeparticipantes
+edecidirquemir£contratarEssepoder«substancialnoscasosdedispensaouinexigibilidade
+emquen¥oocorredisputacompetitivaentrepotenciaisfornecedoresounocasodamodali
+dadeconviteemqueoµrg¥ocontratanteselecionapreviamenteospotenciaislicitantes
+Porissoaado©¥odessesprocedimentosn¥ocompetitivosoutipicamentecombaixacom
+petitividadenafaseinternadoprocessolicitatµriotrazconsigoumriscomaiordeocorr¬ncia
+defraudeMesmoemsitua©·esemqueautiliza©¥odessesprocedimentos«legalassuas
+caracter¯sticasoferecemmaioroportunidadedemanipula©¥oedirecionamento
+observarcuidadosamenteseforamcumpridososrequisitoslegaisnadocumenta©¥odopro
+caracter¯sticasdaempresacontratada
+Valelembrarqueogestorquecontrataindevidamentepormeiodessesinstrumentosincorre
+emcrimedaLeideLicita©·esartdaLein|eematodeimprobidadeadmi
+nistrativaIncisoVIIIartdaLein|
+tamb«mparaoscasosdedispensaeinexigibilidadeParaessetipodeprocedimento«cab¯
+defraudenapesquisarealizadacomoempresasderamosn¥opertinentesourelacionadas
+Amodalidadeconviteporsuavez«particularmenteprop¯ciaafraudesenvolvendoempre
+sasfantasmaoudefachadacomv¯nculosentresioucomaprµpriaAdministra©¥oal«mde
+situa©·esdesimula©¥oemontagemdelicita©·escomousodedocumentosfalsos
+doTCUdeterminandoanecessidadedenom¯nimotr¬spropostasv£lidas
+ǐN¥oseobtendoon¼merolegalm¯nimodetr¬spropostasaptas¢sele©¥onalicita©¥osoba
+modalidadeconviteimp·esearepeti©¥odoatocomaconvoca©¥odeoutrosposs¯veisinte
+ressadosressalvadasashipµtesesprevistasnopar£grafo|doartdaLein|Ǒ
+T amb«m«importanteobservarseh£utiliza©¥oindevidadamodalidadeconviteemcasos
+emqueh£aobrigatoriedadedecontrata©¥opelopreg¥oporexemploǊquandooobjetose
+
+ZZZZZ mÁdfk^ SO ZZZZZ
+
+Valeumaobserva©¥ocomrela©¥oaumaoutramodalidadedelicita©¥oqualsejaatoma 
+dadepre©osPordemandarpr«viocadastramentodasparticipantesat«tr¬sdiasantesdo
+prazoparaapresenta©¥odaspropostasessamodalidadeemboraemtesesejamaiscom 
+petitivadoqueoconvitepodepermitir¢Administra©¥ocontratantealgumgraudeconhe 
+cimentopr«viodouniversodelicitantesoquetamb«mimplicacertograuderiscopor«m
+menordoquenasoutrassitua©·eselencadasacima
+bPrazodepublicidadeex¯guoepublica©¥orestrita
+Como destacado na discuss¥o das fraudes do tipo publicidade prec£ria h£ situa©·es em 
+que o prazo de publicidade « intencionalmente reduzido para restringir o tempo h£bil de 
+
+mento dos requisitos legais para a publicidade da licita©¥o em quest¥o de acordo com a 
+modalidadeadotadaeaesferadecontrata©¥oobservandosehouverestri©¥o¢divulga©¥o
+acessoaoeditalouredu©¥odoprazo¼tilnocertame
+cLicita©·esexclusivasparaMEouEPP
+Emlicita©·esreservadasparaparticipa©¥odeempresasenquadradascomoMEouEPP pode
+ocorreraparticipa©¥oindevidadelicitantesdem«dioegrandeportepormeiodeempresas
+defachadaPortantolicita©·esdessetipomerecematen©¥oredobrada
+dValorestimadomuitoprµximoaolimitedamodalidadeadotada
+Essetipodesitua©¥opodeserindicativodefracionamentodedespesascomcomprasrea 
+lizadascomvalorestimadopoucoabaixodolimiteparaamodalidadeadotadaAconstata 
+casodecompraspordispensadevaloroumodalidademaiscompetitivaNestecasoevi 
+denciasefuga¢modalidadeadequada
+eEditalcomind¯ciosdedirecionamentooucl£usulasrestritivas
+Para todo processo licitatµrio recomendase uma an£lise cuidadosa do instrumento con 
+
+Casoessa
+an£liseindiqueapresen©adecl£usulaspotencialmenterestritivasissodeveservirdealerta
+para uma avalia©¥o mais detalhada Se necess£rio questionamentos ou at« mesmo uma 
+impugna©¥opodemserapresentadosdentrodoprazolegalperanteaAdministra©¥ocon 
+tratanteinstandoaacorrigirasfalhasobservadas
+
+Demaneiracomplementar«convenienteacompanhardepertoafasedejulgamentodali 
+alteradas mesmo apµs eventuais questionamentos a concretiza©¥o do objetivo buscado 
+ocorrer£comaparticipa©¥odemenosempresasoucomainabilita©¥odeparticipantes
+
+Paraessaan£lisedisponibilizamosnomaterialcomplementarumconjuntodechecklistsparaaan£lisedeeditaisdelicita©·esconformeotipodeobjetoli 
+citado ComprasServi©osouObrasParaobrasumaan£lisemaisaprofundadapodeserfeitatamb«mcomo ChecklistAAn£liset«cnicadoeditaldeobras
+
+ZZZZZ mÁdfk^ SP ZZZZZ
+
+aInabilita©·esemdesacordocomoeditalouporexcessivaformalidade
+Como mencionado na Parte II algumas fraudes podem ocorrer por a©¥o deliberada dos 
+agentesrespons£veispelalicita©¥oquepodemdirecionartamb«mdecis·esnasfasesde
+habilita©¥oejulgamentoUmexemploseriaainabilita©¥odeparticipantecombaseemcri
+t«rion¥oestabelecidonoeditaldemodoaintencionalmenteafast£ladocertame
+Damesmaformaaaplica©¥odeexcessivorigorformalnafasedehabilita©¥olevando¢inabilita
+©¥odeparticipantesporfalhassan£veispodeindicara©¥odeliberadaouconluioparaoafasta
+mentodelicitantecujaparticipa©¥osedeusomenteparaconferirapar¬nciadecompetitividade
+dedireitosinterpreta©·esequivocadasafastamentoindevidodelicitanteouaceita©¥oirre
+gulardeoutrosbemcomooformalismoexagerado
+bEscassezdelicitantesefracadisputa
+Comoj£discutidonaParteIoobjetivodiretodasfraudeslicitatµrias«frustraracompeti©¥o
+Portantoapresen©adepoucoslicitantesesobretudodeumbaixon¼merodepropostas
+v£lidasǊisto«apresentadasporlicitantehabilitadoedentrodoscrit«riosdeaceitabilidade
+depre©osǊdeveservirdealertaparaquesejamobservadoscommaiscuidadooutrosas
+pectospotencialmenteindicativosdefraudenadocumenta©¥oenacondu©¥odocertame
+Casosemquehouverapenasumaparticipanteouumapropostav£lidadevemsuscitaran£
+natipologiaapresentadanaParteII
+c Descontoat¯picoexcessivamentebaixooualtoemrela©¥oaovalorestimado
+paraalicita©¥o
+Ressaltamostamb«mnaParteIqueafraudelicitatµriaest£comumenteassociada¢inten©¥o
+decontrata©·essuperfaturadasvisando¢apropria©¥oindevidaderecursosp¼blicosUmadas
+maneirasdeatingiresseobjetivo«naadjudica©¥odoobjetodalicita©¥oporpre©oselevados
+muitoprµximosid¬nticosouat«mesmoacimadosvaloresderefer¬nciaadotadosnoedital
+Dependendodocasopodeserinteressantedopontodevistaestrat«gicoesperaraaber
+tura do certame e observar a din¤mica das empresas participantes e do julgamento pela 
+autoridadecontratanteantesdeapresentarquestionamentosacl£usulaspotencialmente
+restritivas¢competitividadeIssoporqueaconcretiza©¥odoefeitorestritivoisto«oafas
+tamentoouaelimina©¥odeparticipantesdefatocontribuiparacorroboraraargumenta©¥o
+dequehouveviola©¥oaoprinc¯piodacompetitividadeNumcasoemqueoeditalapresente
+umacl£usulapotencialmenterestritivadehabilita©¥ot«cnicaporexemploofatodeape
+nas uma empresa participar ou de outras licitantes serem efetivamente inabilitadas com 
+basenacl£usulaemquest¥oservir£denovoind¯ciodequeh£v¯ciosnalicita©¥o
+
+ZZZZZ mÁdfk^ SQ ZZZZZ
+
+aConcentra©¥odecontratosnasm¥osdeumoupoucosfornecedores
+Umsinaldealertaparacompraspossivelmentedirecionadasfavorecendocertasempresas«
+aconcentra©¥odasaquisi©·esoucontrata©·esparacertostiposdeobjetocomum¼nicoou
+poucosfornecedoresIssopodeserobservadocombasenon¼merodecontratosounovalor
+totalcontratadodofornecedoremquest¥ocomparadoaovolumedascontrata©·esrelevan 
+tesObservandoseessetipodesitua©¥o«importanteanalisarosprocessosdecontrata©¥o
+bCoincid¬nciadeparticipantesemv£riaslicita©·es
+Aexist¬nciadegruposdelicitantesqueparticipamdasmesmaslicita©·esrecorrentemente
+
+tequeesperaparticipardeumalicita©¥odefatocompetitivan¥otemincentivosparaoferecer
+umpre©omuitoprµximoouaindaigualaovalorestimadoque«geralmenteovalorm£ximo
+aceitopelaentidadecontratantePortantodescontomuitobaixoemrela©¥o¢estimativade
+refer¬nciapodeserumind¯ciodequealicitanteganhadoradocertameatuouparafraudaro
+por«m que o sobrepre©o pode n¥o ser facilmente observ£vel quando os pre©os estimados 
+Emborapossaparecercontraintuitivoh£casostamb«memqueaadjudica©¥odoobjetoporpro 
+postacomdescontoexcessivamentealtoparaomercadoemquest¥opodeserind¯ciodeirregula 
+ridadeEssetipodesitua©¥opodeestarassociadoaosobrepre©oelevadonaestimativadoµrg¥o
+contratanteoutamb«mapropostasdecoberturaempreg·esemqueparticipantesemconluio
+comaeventualganhadoraapresentampropostasbaixasparaafastaroutrascompetidorasda
+fasedelancesdessamodalidadeEmlicita©·esdeobrastamb«mh£situa©·esemqueempresas
+
+lhamǑnopre©oparagarantiraobten©¥odocontratoemdetrimentodeoutrascompetidoras
+dLicita©·esvencidasporMEouEPP
+Nomonitoramentodelicita©·esemqueavencedora«umaempresaenquadradacomoME
+deempresafantasmaoudefachadaEmpresasdem«dioegrandeportepodemfazeruso
+deMEsouEPPsparaparticipardelicita©·eseseaproveitardotratamentopreferencialofe 
+recidoaessasempresaspelostermosdaLeiComplementarn|
+H£ tamb«m indicadores de risco relevantes para a an£lise de v£rias contrata©·es isto « 
+
+terminadoµrg¥oporumcertoper¯odo
+Nessaperspectivapodemserconsideradasindicadoresderiscoasseguintessitua©·es
+
+ZZZZZ mÁdfk^ SR ZZZZZ
+
+INDICADOR
+FASEINTERNA
+FASEEXTERNA
+TIPODEFRAUDEASSOCIADO
+Contrata©·essemlicita©¥ooutipicamente
+combaixacompetitividadedispensas
+inexigibilidadeseconvites
+Inabilita©·esemdesacordocomedital
+ouporexcessivaformalidade
+Prazodepublicidadeex¯guo
+epublica©¥orestrita
+Escassezdelicitantesefracadisputa
+Licita©·esexclusivasparaMEouEPP
+Valorestimadomuitoprµximo
+aolimitedamodalidadeadotada
+Editalcomind¯ciosdedirecionamento
+oucl£usulasrestritivas
+Contrata©¥odiretaindevida
+Projetom£gicoJulgamentonegligente
+Julgamentonegligenteconivente
+Publicidadeprec£ria
+Projetom£gicoEditalrestritivo
+Publicidadeprec£riaJulgamento
+Julgamentonegligenteconivente
+Contrata©¥odiretaindevida
+Projetom£gico
+Projetom£gicoEditalrestritivo
+pode ser um ind¯cio de conluio eventualmente com presen©a de empresasfantasma ou 
+cartelValeent¥oobservaraolongodeumper¯odopadr·esnaparticipa©¥odaslicitantes
+cPerdedoresrecorrentes
+Apresen©adeempresasqueparticipandosemprecomummesmogrupodeempresasre
+correntementeperdemlicita©·espodeserumindicativodequesetratadeempresasfan
+tasmaapenasutilizadasparadarapar¬nciadecompetitividade¢sdisputas
+dFracionamentodedespesas
+M¼ltiplascontrata©·esparaobjetosemelhantenummesmoexerc¯cioultrapassandonoto
+tal o limite para a modalidade adotada representam irregularidade por si sµ Contudo o 
+fracionamentodedespesascostumaserumaartimanhaparaseevitaremmodalidadesmais
+competitivasdecontrata©¥odandomargem¢frustra©¥odacompetitividadetamb«mna
+deoutrosind¯ciosdefraudetamb«mnosprocedimentosisolados
+Atabelaabaixoapresentaumbreveresumodessassitua©·esedosrespectivosindicadores
+
+ZZZZZ mÁdfk^ SS ZZZZZ
+
+FonteElabora©¥oprµpria
+Descontoat¯picoexcessivamentebaixo
+oualtoemrela©¥oaovalorestimado
+paraalicita©¥o
+Licita©·esvencidasporMEouEPP
+Projetom£gicoJulgamentonegligente
+JulgamentoNegligenteConivente
+CONJUNTODECONTRATAES
+Concentra©¥odecontratosnasm¥os
+deumoupoucosfornecedores
+Perdedoresrecorrentes
+Coincid¬nciadeparticipantes
+emv£riaslicita©·es
+Fracionamentodedespesas
+Projetom£gicoEditalrestritivo
+Julgamentonegligenteconivente
+Julgamentonegligenteconivente
+Julgamentonegligenteconivente
+Contrata©¥odiretaindevida
+Projetom£gico
+Ocontrolesocialdelicita©·esecontrata©·esp¼blicaspodeserrealizadosegundodiferen 
+tesestrat«giasOsobservatµriossociaisporexemplobuscammonitorarlicita©·esemtem 
+porealisto«acompanhandooprocessodesdeapublica©¥odeumeditalpassandopelas
+Caso n¥o seja poss¯vel ou vi£vel realizar esse trabalho que requer grande mobiliza©¥o de 
+recursoshumanosparaasdiversasfasesdoprocessodecontrata©¥otamb«msepodemo 
+nitorarumaamostrareduzidadelicita©·esemcursoouacompanharapublica©¥odenovos
+contratoseanalisarascaracter¯sticasdeumaamostradecontrata©·esdemaneiraretroa 
+tivaAlternativamentecomousoderecursostecnolµgicosparaacoletaeaan£lisedeum
+volumemaiordedadostamb«msepodeanalisaraslicita©·esecontrata©·esdeumoumais
+µrg¥osp¼blicosdemaneiraagregada
+Qualquerquesejaaestrat«giaadotadaosindicadoresderiscoapresentadosanteriormente
+podemservirparaumatriagemsegundoaqualprocedimentosassociados¢presen©ade
+umoumaisindicadorespodempassarporetapasadicionaisdean£lisecomaaplica©¥ode
+algumast«cnicasdedetec©¥odefraudes
+Recomendamseosseguintesprocedimentoscomplementandoaavalia©¥odosindicado 
+resderiscocoman£lisesmaisaprofundadasquandonecess£rio
+ COMO APLICAR OS INDICADORES DE RISCO 
+NOMONITORAMENTODASLICITAES
+
+ZZZZZ mÁdfk^ ST ZZZZZ
+
+FonteElabora©¥oprµpria
+
+Algumasorienta©·esesugest·esparaaformula©¥odepedidospelaLeideAcesso¢Informa©¥oLAIs¥oapresentadasnomaterialdoMµdulo
+IMonitoramentodeeditaiselicita©·esdeobrasp¼blicas
+Paraexecutarcadaumadessasetapaspodemserutilizadast«cnicasdeauditoriaaplic£
+veistamb«m¢situa©¥odeagentesdocontrolesocialdeformaacolherdemaneiramais
+sistem£ticaind¯cioseevid¬nciasquedeemsuporteprobatµrioaumaeventualden¼ncia
+Assimapresentamosaquialgunsprocedimentos¼teisparaadetec©¥odefraudesoupelo
+menosdeumconjuntodeind¯ciosrelevantesquepodemserseguidosporagentesdocon
+trolesocialValelembrarquen¥oh£umprocedimentogen«ricoqueleve¢evidencia©¥o
+dafraudeAst«cnicasparadetec©¥odecorremdaprocuradepistasevest¯giosnosv£rios
+componentesdoprocessolicitatµrioefontesdeinforma©·esdispon¯veisedevido¢spe
+culiaridadesdecadasitua©¥oalgumast«cnicaspodemsermaisadequadasdoqueoutras
+Dentreast«cnicascomumenteutilizadasporauditoresdestacamosaseguirasmaisrelevantes
+COMBASEEMINDICADORESDERISCO
+MONITORAMENTODEPROCESSOS
+INDIVIDUAIS
+PASSO
+MONITORAMENTODEUMCONJUNTO
+DELICITAESOUCONTRATAES
+aan£lisedoschecklistsaplic£veleis
+Noscasosemqueumoumaisindicadoresestiverempresentesprocedercomaan£lisedo
+processolicitatµriocompletosolicitaracessoviaLAI
+
+senecess£rioeaplicaroChecklistD
+Fraudesemlicita©·esǊJulgamentovermaterialcomplementar
+Organizarerelatarind¯cioseevid¬nciascoletadosparaencaminhamentoaosµrg¥osdecontrole
+competentes
+
+
+
+
+
+
+
+correspondentescombasenosdados
+agregadosdispon¯veis
+Noscasosemqueumoumaisindicadores
+estiverempresentesselecionaras
+licita©·esoucontrata©·esrelacionadas
+paraan£liseindividual
+
+ZZZZZ mÁdfk^ SU ZZZZZ
+
+At«cnicaconsistenaan£lisedeprocessosatosformalizadosedocumentosavulsosacerca
+doobjetoauditadoembuscadedadosouinforma©·esquepossamservirdeevid¬nciasde
+fraudesemlicita©·esS¥oexemplosdedocumentosquepodemseranalisadosprocessos
+
+caischequesrelatµriosetc
+Oexamedocumental«aprincipalt«cnicautilizadaparaadetec©¥odostiposdefraudes
+descritosnaParteIIPodemserobservadososseguintesaspectos
+aAn£lisecomparativadosdocumentosapresentados
+Podemserencontradosind¯ciosdeconluionosdiversosdocumentosapresentadospelasem 
+presas Mesmo que as empresas procurem manter segredo o descuido a prepot¬ncia ou a 
+culpaporpartedosconspiradorespodemfornecerpistasquelevem¢suadescobertaDevem
+sercomparadoscuidadosamentetodososdocumentosnointuitodeencontrarelementosque
+sugiramqueaspropostasforampreparadaspelamesmapessoaouemconjuntotaiscomo
+Ǖ
+Ǖ
+oupapeltimbrado
+Ǖ Refer¬ncia ¢ proposta de concorrente cabe©alho endere©o n¼mero de telefone 
+emailiguais
+Ǖ Estimativas semelhantes de custo ou mesma propor©¥o nos pre©os propostos 
+Ǖ Carimbospostaisoumarcasderegistopostalsemelhantessemquehajaexpli 
+ca©¥olµgicaparatal
+Ǖ Ajustesde¼ltimahorausodecorretorrasurasadultera©·esgrosseiras
+Ǖ Conte¼do ou formata©¥o diferentes do modelo disponibilizado pela entidade 
+contratantemasiguaisentreconcorrentescoincid¬nciasdemarcasprazosmo 
+Ǖ Sequ¬ncianum«ricaoudehor£rionosdocumentosdeconcorrentes
+Algunspadr·esepr£ticasdeapresenta©¥odepropostasparecemestaremdesacordocomas
+
+dospadr·esestranhosnaformacomoasempresasconcorremeafrequ¬nciacomqueganhamou
+perdemnascontrata©·esp¼blicasAsubcontrata©¥oeosacordosocultosdecoopera©¥oentre
+empresaspodemigualmentelevantarsuspeitasAlgunsind¯ciosquepodemserdestacados
+
+ZZZZZ mÁdfk^ SV ZZZZZ
+
+Ǖ Apropostamaisbaixa«frequentementedomesmofornecedor
+Ǖ
+Ǖ  Fornecedorhabitualn¥oconcorrenaquelalicita©¥omasconcorreemoutrosprocessos
+Ǖ
+Ǖ  Certasempresassempreapresentampropostasmasnuncavencem
+Ǖ  Empresasganhamasdisputasdeformaalternadaentresi
+Ǖ   Atua©¥oemconsµrcioquandointegrantetemcapacidadeparaparticiparsozinho
+Ǖ   Concorrentevencedorsubcontrataosperdedores
+Ǖ   Concorrentedesistedocertameedepois«subcontratadopelovencedor
+Ǖ   Concorrentessere¼nemantesdaapresenta©¥odepropostas
+cPadr·esnoestabelecimentodepre©os
+Ospre©osdaspropostaspodemajudaradescobrirfraudesemlicita©¥oDevemseprocurar
+ind¯ciosdequeosconcorrentesestejamcoordenandoesfor©oscomoaumentosdepre©os
+quen¥opodemserexplicadosporaumentosdoscustosQuandoaspropostasvencidast¬m
+pre©osmuitomaiselevadosdoqueavencedoraosconspiradorespodemestarutilizando
+Umapr£ticacomumnosesquemasdepropostadecobertura«aadi©¥odeumpercentual
+custosoudoquepropostasanterioresparacontrata©·essemelhantespodemigualmente
+indicarpr£ticascolusivasOsseguintescomportamentospodemdarmargemasuspeitas
+Ǖ   Pre©os ou faixas de pre©os aumentam de forma s¼bita e id¬ntica sem aumento dos custos 
+Ǖ   Pre©os aumentam depois de terem se mantido inalterados durante longo per¯odo de 
+tempo
+Ǖ   Licitantesqueantespraticavampre©osdiferentespassamaofertarpre©ossemelhantes
+Ǖ   H£umagrandediferen©aentreopre©odapropostaadjudicadaeasrestantes
+Ǖ   Pre©osdeumapropostanocertames¥omuitosuperioresaospre©osapresentadosem
+outraslicita©·essemelhantes
+Ǖ
+Ǖ   Fornecedoreslocaiscobrammaisbaratoparaentregaemdestinosafastados
+Ǖ   Custosdefreten¥os¥ocoerentescomalµgicademercadoe
+Ǖ   Pre©osn¥oacompanhamvolumesdevendaquantidadedeprodutoservi©o
+delicita©·esparaobjetossemelhantescobrindoumcertointervalotemporalParaissoumaes
+trat«giaquepodeseradotadamesmonoscasosemqueomonitoramentodascontrata©·essµ
+possaserfeitoporamostragem«acompanharlicita©·esdeobjetossemelhantescontribuindo
+paraoac¼mulodeconhecimentodadin¤micadedeterminadosmercadosefornecedores
+
+ZZZZZ mÁdfk^ TM ZZZZZ
+
+Inspe©¥of¯sica«oexameusadoparatestaraefetividadedoscontrolesparticularmenteda 
+quelesrelativos¢seguran©adequantidadesf¯sicasouqualidadedebenstang¯veisConsiste
+naconstata©¥oinlocodaexist¬nciaf¯sicadeumobjetobemcomodesuascaracter¯sticas
+Nocasodadetec©¥odefraudesemcontrata©·esp¼blicasessat«cnicapodeseraplicada
+
+endere©osdeempresasregistradasemsualocalidadeporexemplo
+Outrasitua©¥orelevanteparaainspe©¥of¯sicadizrespeito¢scondi©·esdaexecu©¥ocon 
+tratualcomonaentregadebensadquiridosounapresta©¥odeservi©oscontratadospor
+exemploaconstru©¥odeobras
+umbemoprazodevalidadedeprodutoseostiposdemateriaisutilizadosemumaobraA
+comprova©¥o«essencialmentevisualsendorecomend£velsuadocumenta©¥opormeiode
+acompanharainspe©¥of¯sicadeformaaevitarfuturasalega©·esdeequ¯vocosnaavalia 
+©¥otamb«mrecomend£velproduzirfotosouv¯deodainspe©¥o
+Muitas informa©·es relevantes podem ser obtidas em entrevistas ou conversas informais 
+n¥oconstituamevid¬nciasµlidaporsisµessetipodefontedeinforma©¥opodesuscitar
+NoprojetoObraT ransparenteporexemplovolunt£riosdosobservatµriosparticipantest¬m
+aplicadoessat«cnicacomresultadosimportantesEmalgunscasosrelatadosocontatodi 
+retocomlicitantesdaregi¥otrazinforma©·es¼teissobreadin¤micadomercadolocaleum
+histµricodeaparentefavorecimentoacertasempresasemlicita©·esCombasenessetipo
+podecontribuirparavalidaroun¥oasinforma©·esobtidas
+No monitoramento de obras p¼blicas tamb«m temos casos em que conversas informais 
+obraedaatua©¥odaempresacontratadaparaaexecu©¥odosservi©os
+
+ZZZZZ mÁdfk^ TN ZZZZZ
+
+Comocomplementodaan£lisedocumental«importanterealizarpesquisassobreasem
+p¼blicasououtrasfontesfacilmenteacess¯veis
+Ǖ
+noPortaldaT ranspar¬nciadoGovernoFederal
+Ǖ Penalidades ou condena©·es de sµcios ou empresas em buscas em cadastros de 
+Ǖ  Sµcioscomparticipa©¥oemoutrasempresaseseusrespectivosdados
+Ǖ  Poss¯vel incompatibilidade no faturamento de empresas registradas como ME ou 
+Ǖ  Relacionamentoentrelicitantesaoseobservaremcoincid¬nciasdeendere©ostele
+fonesemailssµciosrespons£veist«cnicosv¯nculospessoaisemredessociaisetc
+Ǖ V¯nculocomservidordaentidadecontratante
+Ǖ  InidoneidadedasgarantiasapresentadasemconsultaaoSusepouaositedaSecre
+tariadoT esouroNacionalsobrefraudescomt¯tulosdad¯vidap¼blica
+Ǖ  Conferirexist¬nciaformaldoCNP Jecompatibilidadedoramodeatividade
+Ǖ
+Ǖ  Autentica©¥odedocumentoseregistrosdecartµrios
+©¥oadaptadasdomaterialdesenvolvidoporSantoseSouzaElasservemdeapoioe
+sistematiza©¥onaan£lisedeprocessoslicitatµriossobaperspectivadadetec©¥odefrau
+desAslistasest¥odispon¯veisnomaterialcomplementardocurso
+Paraafaseinternaeapublicidadedalicita©¥oforamelaboradastr¬slistasdeacordocomo
+objetocomprasservi©osouobrasParaafaseexternah£umalistageralsobreojulgamento
+Cadaprocedimentosugeridoest£descritoemdetalhesnase©¥odetipologiacomasuares
+pectivafundamenta©¥olegalejurisprudencialAst«cnicasdedetec©¥oaseremaplicadas
+emcadaprocedimentoest¥odescritasabaixonaT abela
+
+ZZZZZ mÁdfk^ TO ZZZZZ
+
+PROCEDIMENTOITEM
+Analisarcabe©alhosendere©amenton¼merodefaxouemailiguaisentreconcorrentes
+ConferirautenticidadedosregistrosdecartµrioOdocumentodeveindicaroendere©ona
+Nocasodeobraseservi©osdeengenhariaavaliarregistronoConselhoconsultap¼blicanosite
+Avaliarseh£errostiposformatossemelhantesnosdocumentosdeempresasdiferentes
+dispon¯velnaconsultaaoCNP JnaReceitaFederalouemoutrosportaisdainternetrespons£veis
+t«cnicosrepresentanteseprocuradoresemcomumrespons£veist«cnicospodemserconsultados
+nositedaentidadedeclassecomoCREAouCAUv¯nculosemredessociaiscomooFacebook
+Avaliarenvelopescomcarimbospostaisoumarcasderegistopostalsemelhantes
+Analisarparticipa©¥odeMEouEPPcomfaturamentodoanoanteriorsuperioraolimiteeque
+tenhausadobenef¯ciosilegalmenteOnovoPortaldaT ranspar¬nciadoGovernoFederalhttp
+wwwportaldatransparenciagov brtemumaferramentadebuscaqueapresentatodasas
+UmabuscanoGooglepoderevelarcontratosdaempresacomµrg¥osdeoutrasesferasde
+governoExemplodepesquisaǑnomeouCNP JdaempresaǑǐanoǑsitegov br>
+Conferirexist¬nciaformaldoCNP Jacessarwwwreceitafazendagov br>servi©osparaa
+empresa>cadastros>comprovantedeinscri©¥oedesitua©¥ocadastralnoCNP J>acesso
+
+
+
+
+
+
+
+
+
+
+
+
+
+Checarerrosdec£lculosemelhantesoumesmapropor©¥olinearnospre©os
+Avaliarparticipa©¥oaindaqueindiretadeservidordoµrg¥o entidadecontratanteEssarotina
+podeserexecutadacruzandodadosdoquadrosociet£rioet«cnicodaempresalicitantecomo
+quadrodeservidoresespecialmentedirigentesdoµrg¥ooudaentidadecontratante
+participa©¥opodeserdiretaouindiretanoscasosemqueaMEEPPlicitanteatuaapenasde
+fachadasendoagrandeouam«diaempresaaverdadeirafornecedoraProcedimentosque
+podemajudarchecagemdoendere©oetelefonedaMEEPPeconfer¬nciadequemrealizaa
+entregadoprodutoouexecutaoservi©o
+Elasapontamoscasosmaiscomunscommaiorprobabilidadedeocorr¬nciaparaorientar
+adotandoseabordagemsimilar¢quelatratadanosprocedimentosdochecklist
+
+ZZZZZ mÁdfk^ TP ZZZZZ
+
+FonteAdaptadodeSantoseSouza
+Avaliardiverg¬nciasentreassinaturasnosdocumentosreferentes¢mesmapessoa
+Seconviteanalisarseh£pelomenostr¬spropostasv£lidas
+Checarodescumprimentoderegrasdoeditalnafasedejulgamento
+Pesquisaroutraslicita©·esemqueaempresaparticipouecomparardocumentos
+Avaliarmudan©asexpressivasnocapitalsocialdalicitantesobretudoemdinheiroeem
+dataprµximaaocertameoquepodeindicarfraudecont£bilparaatenderaoscrit«riosde
+ConsultarnossitesdaJusti©aEstadualeFederalosnomesdaempresadossµciosedos
+relacionadosairregularidadesemlicita©·es
+ChecaraIdoneidadedalicitanteparacontratarcomaAdministra©¥oP¼blicaConsultar
+cadastrosimpeditivosnoCEISwwwportaltransparenciagov br>San©·esecontrolede
+empresaspenalizadasdaprµpriaentidadecontratanteassimcomoregistrosnoGoogle
+ChecaridoneidadedasgarantiasNocasodesegurogarantiaconferirnaSusepwwwsusep
+gov br>servi©osaocidad¥o>consultadeapµlicedesegurogarantiaNocasodeT¯tulosda
+D¯vidaP¼blicaconsultarSTNsobrefraudespotenciaissobretudocomT¯tulosdaD¯vidaAgr£ria
+TDAet¯tulosp¼blicosantigoswwwstnfazendagov br
+paraconferiravalidadecoer¬nciacomoprocessamentodocertamesequ¬nciatemporal
+entreconcorrentessemelhan©asquepossamsugeriremiss¥opelamesmapessoaChecar
+autenticidadenossitesemissoresconformeendere©oindicadoemcadadocumento
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+noGoogleMapas
+Avaliarselicitante«doramodeatividadecompat¯velcomoobjetoconformeContratoSociale
+cadastroCNP JnaReceitaFederaleSINTEGRAVideitem 
+Consultarnainternetosnomesdaempresadossµciosedosrepresentantesprocurando
+comoutrasempresaseservidoresp¼blicos
+Avaliardemonstra©·escont£beisespecialmenteoBalan©oPatrimonialDemonstra©¥o
+compatibilidadecomoportedaempresaramodeatividadeeatestados
+atestadosapresentados
+
+ZZZZZ mÁdfk^ TQ ZZZZZ
+
+atua©¥odosagentesdecontrolesocialinvestigarafundoessetipodesitua©¥oelespodem
+ter um papel essencial no encaminhamento de casos desse tipo aos µrg¥os competentes 
+paraaapura©¥odosfatos
+Contudo para acionar os µrg¥os de controle « fundamental possuir elementos concretos 
+«importantereunireorganizarind¯cioseevid¬nciasqueapontemparaaprov£velirregulari 
+dadedemodoasubstanciarumaden¼nciaNafaltadesseselementos«menoraprobabili 
+dadedequeasinst¤nciasdecontrolecompetentesdeemseguimentoaocasoDessemodo
+se©·esanterioresbemcomoosseusresultadossejamcuidadosamentedocumentados
+T antooind¯cioquantoaevid¬nciad¥ocontadadiscrep¤nciaentreumasitua©¥oencontra 
+daeumcrit«rioleijurisprud¬nciapadr·esboaspr£ticasetcEntretantooind¯cio«uma
+No entanto um conjunto robusto de ind¯cios convergentes e concordantes entre si que 
+permitaaforma©¥odeju¯zodeumaopera©¥oanalisadatemsidoadmitidonasesferasad 
+ministrativa e judici£ria como prova indireta J£ existe nesse sentido ampla jurisprud¬ncia 
+dosT ribunaisSuperioresbemcomodoTCU
+Noschamadoscrimesdelicita©¥onamodalidadedefraudeoudefrustra©¥oaocar£ter
+
+envolvidos
+Portantoaexist¬nciadefraudesemlicita©·espodeserdemonstradatantoporprovasdi 
+retascomodocumentosquecomprovemasuaexist¬nciamaterialquantoporprovasin 
+dedu©·esǊacercadesitua©·esqueanalisadasemconjuntosejamcapazesdecomprovar
+oatofraudulentoposton¥ohaveroutraexplica©¥oplaus¯velparaocaso
+licitantesnocertamedisputalimitadaoupequenodescontoemrela©¥oaovalorderefer¬n 
+ciaEsteselementosj£foramapresentadosanteriormentecomoindicadoresderiscoparaa
+ocorr¬nciadefraudesjustamenteporconstitu¯remind¯ciosdeirregularidadesaindapass¯ 
+veisdecomprova©¥opormeiodeoutrosmeiosean£lisesT amb«ms¥oprovasindiretasre 
+levantesosind¯ciosdecomunica©¥oentrelicitantesosquaisindicamaatua©¥ocombinada
+dosconcorrentesepodemservircomoaprincipalcomprova©¥oparaaexist¬nciadeconluio
+
+mospre©osmesmasdatasmesmosendere©ossµciosemcomumentreoutros
+COMOREPORTAROSCASOSDETECTADOS
+
+ZZZZZ mÁdfk^ TR ZZZZZ
+
+SANTOSFranklinBrasilPre©oderefer¬nciaemcomprasp¼blicas¬nfaseemme
+dicamentosCuiab£Publicontas
+SANTOSFranklinBrasileSOUZAKlebersonRobertodeComocombateracorrup
+©¥oemlicita©·esdetec©¥oepreven©¥odefraudesBeloHorizonteFµrum
+SOUZAKlebersonRobertodeDetec©¥odefraudesemlicita©·esCuiab£Publi
+contas 
+TRIBUNALDECONT ASDAUNIOTCULicita©·esecontratosOrienta©·eseju
+risprud¬nciadoTCUledBras¯lia
+T ribunaldeContasdaUni¥oRoteirodeauditoriadeobrasp¼blicasBras¯lia
+ORGANIZAOPARAACOOPERAOEODESENVOL VIMENTOECONMICO
+OCDE Diretrizes para combater o conluio entre concorrentes em contrata©·es 
+p¼blicasDispon¯velemhttpwwwcomprasnetgov brbannerseguro di
+retrizesocdepdf>
+REFERNCIAS
+BIBLIOGRFICAS
+
+ZZZZZ mÁdfk^ TS ZZZZZ
