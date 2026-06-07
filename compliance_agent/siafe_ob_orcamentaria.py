@@ -764,23 +764,43 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
             # linha 1 = Número começa com (prop/op uma vez; valor por prefixo)
             await _typeahead(pg, _F_PROP1, "Número"); await adf.wait()
             await _typeahead(pg, _F_OP1, "começa com"); await adf.wait()
-            # worklist com SUBDIVISÃO automática: se um prefixo bate o cap (>=990), desce p/ pref+0..9
+            # worklist com SUBDIVISÃO automática + CHECKPOINT por prefixo (RESUMÍVEL: se cair no meio de uma
+            # UG enorme, retoma sem re-coletar as fatias já feitas). Ckpt: {done:[leaf ok], capped:[subdivididos]}.
+            import json as _json
+            ckp = _REPO / "data" / "sei_cache" / f"uggrande_{ug}_{exercicio}.json"
+            try:
+                _st = _json.loads(ckp.read_text()) if ckp.exists() else {}
+            except Exception:
+                _st = {}
+            done = set(_st.get("done", [])); capped = set(_st.get("capped", []))
+
+            def _save_ckpt():
+                try:
+                    ckp.write_text(_json.dumps({"done": sorted(done), "capped": sorted(capped)}, ensure_ascii=False))
+                except Exception:
+                    pass
+
             por_prefixo, tot, work = {}, 0, list(prefixos)
             while work:
                 pref = work.pop(0)
+                if pref in done:                       # já coletado numa execução anterior
+                    continue
+                if pref in capped:                     # já se sabe que estoura → subdivide sem re-consultar
+                    work[:0] = [f"{pref}{d}" for d in range(10)]
+                    continue
                 await _set_valor(pg, _F_VAL1_SEL, pref); await adf.wait(); await pg.wait_for_timeout(2200)
                 vistos, linhas = set(), []
                 await _colher(pg, maxn, vistos, linhas, None)
                 n = len(linhas)
                 capou = n >= 990
-                if linhas and not capou:           # só ingere fatia COMPLETA (capada será coberta pelos filhos)
-                    tot += ingerir(exercicio, _COLS_SIAFE, linhas).get("ingeridas", 0)
                 if capou and len(pref) - len(str(exercicio)) - 2 < 7:   # subdivide (limite de profundidade)
-                    filhos = [f"{pref}{d}" for d in range(10)]
-                    work[:0] = filhos
-                    print(f"  {ug} {exercicio} pref {pref}: {n} (CAP) → subdividindo {filhos[0]}..{filhos[-1]}", flush=True)
+                    capped.add(pref); _save_ckpt()
+                    work[:0] = [f"{pref}{d}" for d in range(10)]
+                    print(f"  {ug} {exercicio} pref {pref}: {n} (CAP) → subdividindo", flush=True)
                 else:
-                    por_prefixo[pref] = n
+                    if linhas:                          # ingere fatia COMPLETA
+                        tot += ingerir(exercicio, _COLS_SIAFE, linhas).get("ingeridas", 0)
+                    done.add(pref); _save_ckpt(); por_prefixo[pref] = n
                     print(f"  {ug} {exercicio} pref {pref}: {n} OBs ✓", flush=True)
             return {"ok": True, "exercicio": exercicio, "ug": ug, "ingeridas": tot,
                     "fatias": len(por_prefixo), "por_prefixo": por_prefixo}
