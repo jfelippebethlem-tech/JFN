@@ -772,6 +772,16 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     add(_analise_merito(ctx, analise))
     add("")
 
+    # IV-C. Proposta preliminar de sanção administrativa (dosimetria — lex_sancoes)
+    try:
+        from compliance_agent import lex_sancoes
+        _valor_sancao = (ctx.get("pagamentos") or {}).get("total_geral") or 0
+        _prop_sancao = lex_sancoes.sugerir_sancoes(achados, valor_contrato=_valor_sancao, regime="14133")
+        add(lex_sancoes.parecer_sancionatorio_md(_prop_sancao))
+        add("")
+    except Exception:
+        pass
+
     # V. Conclusão
     add("## V. CONCLUSÃO — GRAU DE ATENÇÃO")
     add("")
