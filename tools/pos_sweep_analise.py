@@ -91,7 +91,6 @@ def main():
         linhas.append(f"- {ug}: {n:,}")
     linhas += ["", "## TODOs de código (revisão MANUAL — não automatizados)",
                "- Lock por sistema (`siafe_lock_{1,2}.json`).",
-               "- Remover dead-code `collectors/sei_sei_direct.py` (confirmar refs).",
                "- Dividir módulos grandes (hermes_goal, inteligencia, telegram, terceirizados).",
                "- Ver docs/ECOSSISTEMA-ANALISE-2026-06-07.md e o TODO do playbook."]
     rel = "\n".join(linhas)
