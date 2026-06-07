@@ -1,44 +1,40 @@
-# Yoda multiusuário — bot-convidado SEGURO (sua filha e outros sem acesso a código)
+# Yoda multiusuário — decisão e configuração (atualizado 2026-06-07)
 
-## Por que um bot SEPARADO (e não liberar no bot admin)
-O bot admin do Yoda roda sobre o **Hermes**, que é um agente de código completo — a ferramenta `terminal`
-é um **shell**. O allowlist do Hermes é **binário** (`telegram.allowed_users`) e `disabled_toolsets` é
-**global**: não há como dar a um convidado um acesso *parcial* seguro. Adicionar a filha ao bot admin daria
-a ela poder de rodar comandos/editar o ecossistema. **Não fazer isso.**
+## Decisão final: BOT ÚNICO (sem 2º bot), aberto, com poder por usuário
+O Mestre Jorge optou por **manter o Yoda aberto** (qualquer pessoa pode falar) e **não criar outro bot** no
+@BotFather. O poder fica **por usuário**:
+- **Admin (Jorge, ID `45338178`)** = acesso TOTAL (todos os comandos + chat livre + ferramentas, inclusive shell).
+- **Convidados (qualquer outro ID)** = somente os slash commands seguros listados; e **comando perigoso
+  (shell/`execute_code`) exige APROVAÇÃO do admin** (botão no Telegram) — convidado **não codifica nada sozinho**.
 
-## A solução: `tools/guest_bot.py` — mínimo e estrutural-seguro
-Um bot dedicado que **não tem shell, não executa código, não acessa arquivos**. Ele só faz chamadas HTTP de
-**leitura** à API do JFN (`127.0.0.1:8000`) e devolve texto formatado. É impossível, por construção, um
-convidado alcançar o código do ecossistema por ele.
+> O `tools/guest_bot.py` (bot separado read-only) foi **DESCONTINUADO/REMOVIDO** — recuperável via git se um dia
+> se quiser o caminho de 2º bot. Storage do guest bot era ~7 KB + unit `disabled` (nunca rodou): **nada relevante
+> a liberar**. A remoção foi por **clareza** (evitar dois caminhos contraditórios), não por espaço.
 
-- **Token próprio** (`TELEGRAM_BOT_TOKEN_GUEST`) — um bot SEPARADO criado no @BotFather. NUNCA o token do admin.
-- **Allowlist própria** (`TELEGRAM_GUEST_USERS`, IDs separados por vírgula). Quem não está na lista é recusado.
-- **Comandos read-only:** `/relatorio <empresa|cnpj>`, `/anomalias [arg]`, `/cartel [captura|<cnpj>]`, `/ajuda`.
+## Como está configurado (no `~/.hermes/`, fora do git — reproduza se reinstalar)
+`~/.hermes/.env`:
+```
+GATEWAY_ALLOW_ALL_USERS=true          # bot ABERTO: qualquer um manda mensagem (auto, sem allowlist manual)
+TELEGRAM_ALLOWED_USERS=45338178       # (mantido; o allow-all já libera todos)
+```
+`~/.hermes/config.yaml` (bloco `telegram:`):
+```yaml
+telegram:
+  allowed_users: '45338178'
+  allow_admin_from: '45338178'        # quem é ADMIN (full). Todo o resto = convidado.
+  user_allowed_commands: ['relatorio', 'anomalias', 'cartel', 'status', 'help', 'whoami']
+```
+`~/.hermes/config.yaml` (bloco `approvals:`): `mode: manual`  (comando perigoso pede aprovação do admin).
+Aplicar mudanças: `systemctl --user restart hermes-gateway.service`.
 
-## Como ativar (passos do Mestre Jorge — uma vez)
-1. **Criar o bot-convidado:** no Telegram, fale com **@BotFather** → `/newbot` → copie o token.
-2. **Descobrir o ID da filha:** peça para ela mandar uma mensagem ao bot **@userinfobot** (ele responde o `id`),
-   ou rode o guest_bot e veja o log quando ela escrever (o ID recusado aparece).
-3. **Preencher o `.env`** (em `/home/jfelippebethlem/JFN/.env`):
-   ```
-   TELEGRAM_BOT_TOKEN_GUEST=<token do BotFather>
-   TELEGRAM_GUEST_USERS=<id_da_filha>            # vários: 111,222,333
-   ```
-4. **Subir o serviço:**
-   ```
-   systemctl --user enable --now hermes-guest-bot.service
-   systemctl --user status hermes-guest-bot.service
-   ```
-   (O serviço já está instalado em `~/.config/systemd/user/hermes-guest-bot.service`; sem token ele apenas sai.)
+## Como funciona (mecanismo nativo do Hermes)
+- `gateway/slash_access.py`: com `allow_admin_from` setado, **não-admins só rodam os `user_allowed_commands`**
+  (+ piso `/help`, `/whoami`). Admin roda tudo.
+- `approvals: mode=manual` + `gateway/run.py`: comando perigoso dispara pedido de aprovação; **só usuário
+  autorizado (admin) aprova** — convidado não executa shell/código.
 
-## Garantias de segurança
-- Sem `terminal`/shell, sem `eval`/`subprocess`, sem filesystem — só `httpx` para rotas GET/POST de leitura do JFN.
-- Usuário fora da allowlist recebe "Acesso restrito" e nada é executado.
-- Não altera nada no sistema; não toca o bot admin nem o `jfn.service`.
-- Mesma cláusula de honestidade: tudo é **indício**, nunca acusação.
-
-## Adicionar/remover usuários depois
-Edite `TELEGRAM_GUEST_USERS` no `.env` e `systemctl --user restart hermes-guest-bot.service`.
-
-> Conteúdo do serviço (para referência/reprovisionamento), em `~/.config/systemd/user/hermes-guest-bot.service`:
-> `ExecStart=.venv/bin/python tools/guest_bot.py`, `EnvironmentFile=.../JFN/.env`, `WorkingDirectory=.../JFN`.
+## ⚠️ Resíduo conhecido (e como apertar)
+O gate nativo é por **slash command**; o **chat livre** de convidado ainda chega ao agente (custa token e pode
+acionar ferramentas de leitura). O `approvals: manual` impede a EXECUÇÃO de código/shell, mas não o chat em si.
+**Para travar o chat livre de convidados** (só permitir os slash commands) — recomendado num sistema com dados
+sensíveis — adicionar um *hook* de mensagem que nega entrada de não-admin fora da allowlist. Item p/ próxima run.
