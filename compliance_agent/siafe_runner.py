@@ -120,9 +120,18 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
                     _log(f"diário {ano}: ⚠️ dia {d} teve >1000 OBs — completado por subdivisão (+{r.get('ingeridas')})")
             except Exception as e:  # noqa: BLE001
                 verif[d] = {"erro": f"{type(e).__name__}: {str(e)[:60]}"}
+        # CORRELAÇÃO OB↔SEI: propaga o nº de processo SEI (que o SIAFE traz) p/ ordens_bancarias.
+        # Roda no fim do diário p/ manter os links frescos automaticamente (insumo do Lex/cruzamento).
+        corr = {}
+        try:
+            from compliance_agent import correlacao_sei
+            corr = correlacao_sei.correlacionar()
+            _log(f"diário {ano}: correlação OB↔SEI → {corr.get('ordens_com_sei')} OBs com SEI ({corr.get('processos_sei_distintos')} processos)")
+        except Exception as e:  # noqa: BLE001
+            _log(f"diário {ano}: correlação SEI falhou: {type(e).__name__}: {str(e)[:60]}")
         return {"ok": True, "exercicio": ano, "colhidas": res.get("n"),
                 "ingeridas": ing.get("ingeridas"), "total_tabela": ing.get("total_tabela"),
-                "verificador_dias": verif}
+                "verificador_dias": verif, "correlacao_sei": corr}
     finally:
         _release()
 
