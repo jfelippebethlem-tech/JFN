@@ -469,3 +469,39 @@ Código (siafe_contratos.py):
   locator(Operador).select_option("0"); sleep 2.5
   v.click(); v.press("Control+a"); v.press("Delete")
   keyboard.type(cnpj_digits, delay=80); keyboard.press("Enter"); sleep 6
+
+================================================================================
+6. SESSÃO 2026-06-07 — RECEITA DO FILTRO DA OB VALIDADA (furar o 1000)
+================================================================================
+VALIDADO AO VIVO (VM, sessão salva, sem MFA):
+- AdfPage.PAGE.isSynchronizedWithServer() RETORNA TRUE na view real da OB Orçamentária
+  (build 4.167.12). => a solução canônica (trocar sleep fixo por esse wait) FUNCIONA aqui.
+  Helper pronto: compliance_agent/siafe_adf.py (classe AdfSync: boot/wait/click_real/
+  select_option/type_filter, com fallback gracioso). setAnimationEnabled disponível.
+- Painel de filtro da OB abre pelo disclosure 'pt1:tblOBOrcamentaria:sdtFilter::disAcr'.
+- IDs REAIS dos selects (infixo table_rtfFilter:0: — NÃO é 'sdtFilter:cbx_col_sel'):
+    Propriedade: pt1:tblOBOrcamentaria:table_rtfFilter:0:cbx_col_sel_rtfFilter::content
+    Operador:    pt1:tblOBOrcamentaria:table_rtfFilter:0:cbx_op_sel_rtfFilter::content
+    Valor:       pt1:tblOBOrcamentaria:table_rtfFilter:0:in_value_rtfFilter::content
+- PROPRIEDADES (value->label): 0 Número, 1 UG Emitente, 2 UG Pagadora, 3 Data Emissão,
+    4 Status, 5 Tipo, 6 Finalidade, 7 Tipo de OB, 8 NL, 9 Credor, 10 Nome do Credor,
+    11 UG Liquidante, 12 Valor, 13 Competência, 14 Status de Envio, 15 GD, 16 Processo,
+    17 RE, 18 PD, 19 Tipo de Regularização, 20 Qtd. Impressões, 21 Assinatura, 22 Vinculação.
+- OPERADORES: 0 igual, 1 maior que, 2 maior ou igual a, 3 menor que, 4 menor ou igual a,
+    5 diferente de, 6 é nulo, 7 contém, 8 começa com, 9 termina com, 10 pertence (;).
+- RECEITA: disclosure (clique REAL) -> Propriedade/Operador (select_option) -> Valor
+  (keyboard.type+Enter). Esperar AdfSync.wait() a cada passo.
+ESTRATÉGIA p/ furar 1000 (cada consulta <1000):
+  A) Número "começa com" (prop 0, op 8): "2024OB0".."2024OB9" (10 blocos; subdividir se >1000).
+  B) Data Emissão por faixa (prop 3): op 2 (>=) e op 4 (<=) por quinzena (~50/ano).
+  C) "pertence (;)" (op 10): agrupar UGs.
+ABORDAGENS DA OUTRA IA (avaliação): VÁLIDAS. isSynchronizedWithServer/keyboard.type = corretas
+  (confirmadas). MAS o código que ela mandou estava CEGO: IDs errados (faltava table_rtfFilter:0:)
+  e ROW_SELECTOR chutado (tr[_afrrk]). NÃO colar; usar os IDs reais acima.
+PENDENTE p/ coleta confiável: o _navegar/_login ainda usam sleep fixo -> "context destroyed"
+  INTERMITENTE. PRÓXIMO PASSO: integrar AdfSync no _login/_navegar/_colher do
+  siafe_ob_orcamentaria.py e adicionar coletar_filtrado(prefixos) -> sweep 2024/25/26.
+ERRO A NÃO REPETIR: rodar o sweep em BACKGROUND (nohup OU run_in_background) TRAVA o chromium
+  headless no launch (contexto detached). Só FOREGROUND via terminal funciona. E o `timeout`
+  deixa chromium órfão segurando a sessão única -> próxima run trava no login: matar o chromium
+  (ps comm=chrome + ms-playwright, por PID; NUNCA pkill -f <padrão> que casa o próprio shell).
