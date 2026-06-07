@@ -375,3 +375,16 @@ e se "igual" aceita o dia — assume DD/MM/AAAA (padrão SIAFE). (sessão ocupad
 - Nível sub-prefixo (dentro de UG grande): `coletar_por_ug_grande` agora grava ckpt
   `data/sei_cache/uggrande_{ug}_{ano}.json` ({done:[fatias ok], capped:[subdivididas]}) → se cair no meio de
   uma UG enorme, retoma sem re-coletar as fatias já feitas. Idempotente (PK numero_ob).
+
+## ⛔ SIAFE 1 — diagnóstico F12 conclusivo (2026-06-07) — precisa HTTP replay
+Inspeção do container do filtro (sdtFilter) no SIAFE 1, com captura de rede:
+- Operador "começa com" RENDERIZA o `in_value_rtfFilter` (≠ "igual", que não rende). Metade do caminho.
+- MAS: o input de valor tem **onchange=null, onblur=null, autosubmit=null** (sem gatilho client-side) e o
+  container do filtro tem só **"Limpar"** (btnClearFilter) — **NÃO existe botão Filtrar/Pesquisar/Aplicar**.
+- Resultado: typing+Tab e typing+Enter **NÃO disparam PPR** (capturado: 0 POST) → grade fica sem filtrar (50).
+  No SIAFE 2 o Tab(blur)→queryListener aplica; no SIAFE 1 (ADF mais antigo) NÃO há esse autoSubmit.
+- Web (ADF Faces): filtro depende de `autoSubmit`/`partialSubmit` + `queryListener`; sem eles, não refiltra.
+- CAMINHO RECOMENDADO p/ SIAFE 1: **HTTP replay do PPR** (capturar o POST de filtro do SIAFE 2 — que funciona —
+  e adaptar ViewState/clientId/URL p/ o SIAFE 1; javax.faces.partial.ajax=true + header Faces-Request: partial/ajax;
+  ViewState rotativo). Ver docs/SCRAPING-SITES-DIFICEIS.md §4.5. Cliques na UI do SIAFE 1 = beco sem saída.
+- BÔNUS observado: SIAFE 1 tem menu próprio "Folha de Pagamento" (p3:4) — investigar como fonte de folha depois.
