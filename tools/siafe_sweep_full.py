@@ -110,11 +110,17 @@ async def main():
     anos = ANOS[sistema]
     _log(sistema, f"UGs={len(ugs)} × anos={anos} — começando por {TJRJ} (TJRJ)")
     ck = _ck(sistema)
+    try:
+        from compliance_agent import siafe_runner as _sr
+    except Exception:
+        _sr = None
     for ug in ugs:
         for ano in anos:
             chave = f"{ug}:{ano}"
             if ck.get(chave, {}).get("ok"):
                 continue
+            if _sr:
+                _sr.refresh_lock(f"sweep:{sistema}")   # heartbeat: mantém o lock vivo no sweep longo
             try:
                 r = await M.coletar_por_ug(ano, ug)
                 colh = r.get("colhidas", 0)

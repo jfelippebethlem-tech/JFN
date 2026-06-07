@@ -26,7 +26,8 @@ from pathlib import Path
 _REPO = Path(__file__).resolve().parent.parent
 _LOCK = _REPO / "data" / "sei_cache" / "siafe_lock.json"
 _LOG = _REPO / "data" / "siafe_runner.log"
-LOCK_TTL = 2 * 3600  # lock vence em 2h (evita travar p/ sempre se um processo morrer)
+LOCK_TTL = 1800  # lock vence em 30min SEM heartbeat (recuperação de crash). Processos longos (sweep)
+                 # RENOVAM o lock via refresh_lock() a cada passo → fica vivo enquanto ativo, sem colisão.
 
 
 def _ano_corrente() -> int:
@@ -71,6 +72,21 @@ def _acquire(quem: str) -> bool:
 def _release():
     try:
         _LOCK.unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
+def refresh_lock(quem: str | None = None) -> None:
+    """Heartbeat: renova o ts do lock (processos longos como o sweep chamam a cada passo p/ não vencer)."""
+    try:
+        if not _LOCK.exists():
+            return
+        d = json.loads(_LOCK.read_text())
+        d["ts"] = time.time()
+        d["iso"] = datetime.now(timezone.utc).isoformat()
+        if quem:
+            d["quem"] = quem
+        _LOCK.write_text(json.dumps(d, ensure_ascii=False))
     except Exception:
         pass
 
