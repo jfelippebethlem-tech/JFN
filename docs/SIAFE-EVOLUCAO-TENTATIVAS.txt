@@ -505,3 +505,18 @@ ERRO A NÃO REPETIR: rodar o sweep em BACKGROUND (nohup OU run_in_background) TR
   headless no launch (contexto detached). Só FOREGROUND via terminal funciona. E o `timeout`
   deixa chromium órfão segurando a sessão única -> próxima run trava no login: matar o chromium
   (ps comm=chrome + ms-playwright, por PID; NUNCA pkill -f <padrão> que casa o próprio shell).
+
+--- 6.1 UPDATE (validacao do sweep filtrado, 2026-06-07 noite) ---
+FUNCIONA: infra do sweep RESUMIVEL (coletar_filtrado): checkpoint POR PREFIXO
+(siafe_filtro_ckpt_<ex>.json), ingere por prefixo, e RELOGA continuando de onde parou
+(loop de sessoes) — provado no log (login OK / nav OK a cada sessao; sessao SIAFE ~1h).
+Disclosure do filtro abre com _click_real (mouse no centro do bbox; locator.click NAO abre).
+Propriedade/Operador (select_option) aplicam OK.
+GAP (ultimo seletor): o CAMPO VALOR do filtro da OB. O seletor herdado de contratos
+('[id*="table_rtfFilter:0"] input[type=text]:visible' .last) da Locator.click timeout 30s na
+tela da OB — o input do valor tem estrutura/id diferente em tblOBOrcamentaria. PROXIMO PASSO:
+1 probe do DOM do painel ABERTO na OB (listar inputs visiveis dentro de table_rtfFilter:0 e o
+id exato do campo valor) e ajustar _F_VAL_SEL.
+LICAO DE PROCESSO: rodar foreground com REDIRECT P/ ARQUIVO (pipe perde saida bufferizada no
+timeout). E matar python+chromium leftover por PID antes de cada run (timeout deixa o python
+async vivo segurando a sessao unica -> proximo run trava no login).

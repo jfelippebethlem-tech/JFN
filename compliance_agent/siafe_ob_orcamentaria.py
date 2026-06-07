@@ -291,7 +291,10 @@ async def _navegar(pg) -> dict:
     achou = False
     for i in range(45):
         await pg.wait_for_timeout(2000)
-        achou = await pg.evaluate(r"""()=>!!document.querySelector('[id*="tblOBOrcamentaria"]')""")
+        try:  # o evaluate pode estourar "context destroyed" se um PPR/navegação está em voo — tolerar e repetir
+            achou = await pg.evaluate(r"""()=>!!document.querySelector('[id*="tblOBOrcamentaria"]')""")
+        except Exception:
+            achou = False
         if achou:
             break
         if i in (10, 25):
@@ -545,14 +548,147 @@ async def coletar_resiliente(exercicio=2025, maxn=100000, max_tentativas=24,
     return {"ok": False, "erro": "max_tentativas", "n": len(linhas), "linhas": linhas}
 
 
+# ── Filtro ADF da OB Orçamentária (IDs VALIDADOS 2026-06-07 — docs/SIAFE-EVOLUCAO-TENTATIVAS §6) ──
+_F_DISC = "pt1:tblOBOrcamentaria:sdtFilter::disAcr"
+_F_PROP = "pt1:tblOBOrcamentaria:table_rtfFilter:0:cbx_col_sel_rtfFilter::content"
+_F_OP = "pt1:tblOBOrcamentaria:table_rtfFilter:0:cbx_op_sel_rtfFilter::content"
+_F_VAL_SEL = '[id*="table_rtfFilter:0"] input[type="text"]:visible'  # campo valor (locator robusto)
+_FILTRO_CKPT = lambda ex: _REPO / "data" / "sei_cache" / f"siafe_filtro_ckpt_{ex}.json"
+
+
+async def _click_real(pg, elem_id) -> bool:
+    """Clique de MOUSE real no centro do bbox — o ADF IGNORA locator.click()/JS click em
+    disclosure/popup (botão pode estar 0x0). Receita validada (siafe_contratos.click_vis)."""
+    c = await pg.evaluate(
+        """(id)=>{for(const e of document.querySelectorAll('[id=\"'+id+'\"]')){const r=e.getBoundingClientRect();if(r.width>0&&r.height>0)return{x:r.left+r.width/2,y:r.top+r.height/2}}return null}""",
+        elem_id)
+    if c:
+        await pg.mouse.click(c["x"], c["y"]); return True
+    return False
+
+
+async def _filtrar(pg, prop, op, valor) -> dict:
+    """Filtro: fecha popups → disclosure (mouse real) → Propriedade/Operador (select) →
+    Valor (keyboard.type+Enter), esperando o sync do ADF a cada passo. Receita validada."""
+    from compliance_agent.siafe_adf import AdfSync
+    adf = AdfSync(pg)
+    for t in ("OK", "Sim"):  # popups que às vezes cobrem a tela
+        try:
+            e = pg.get_by_text(t, exact=True).first
+            if await e.is_visible(timeout=800):
+                await e.click(); await adf.wait()
+        except Exception:
+            pass
+    if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
+        await _click_real(pg, _F_DISC); await adf.wait()
+    if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
+        return {"ok": False, "erro": "painel de filtro não abriu"}
+    await pg.locator(f'[id="{_F_PROP}"]:visible').first.select_option(str(prop)); await adf.wait()
+    await pg.locator(f'[id="{_F_OP}"]:visible').first.select_option(str(op)); await adf.wait()
+    v = pg.locator(_F_VAL_SEL).last
+    await v.click(); await v.press("Control+a"); await v.press("Delete")
+    await pg.keyboard.type(str(valor), delay=80); await pg.keyboard.press("Enter")
+    await adf.wait()
+    return {"ok": True, "prop": prop, "op": op, "valor": valor}
+
+
+def _ckpt_prefixos(ex) -> set:
+    p = _FILTRO_CKPT(ex)
+    try:
+        return set(json.loads(p.read_text())) if p.exists() else set()
+    except Exception:
+        return set()
+
+
+def _ckpt_marca(ex, pref) -> None:
+    feitos = _ckpt_prefixos(ex); feitos.add(pref)
+    try:
+        _FILTRO_CKPT(ex).write_text(json.dumps(sorted(feitos)))
+    except Exception:
+        pass
+
+
+async def _sweep_sessao(exercicio, prefixos, maxn, headless, _log) -> dict:
+    """UMA sessão SIAFE: login+nav, aplica cada prefixo PENDENTE, INGERE por prefixo (persiste) e
+    marca o checkpoint. Para na 1ª falha (sessão ~1h caiu) p/ o chamador relogar e continuar."""
+    from playwright.async_api import async_playwright
+    from compliance_agent.siafe_adf import AdfSync
+    pend = [p for p in prefixos if p not in _ckpt_prefixos(exercicio)]
+    if not pend:
+        return {"ok": True, "pendentes": []}
+    async with async_playwright() as pw:
+        b = await pw.chromium.launch(headless=headless, args=["--no-sandbox", "--ignore-certificate-errors"])
+        ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", timezone_id="America/Sao_Paulo",
+                                  viewport={"width": 1600, "height": 1000})
+        pg = await ctx.new_page()
+        await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+        try:
+            lg = await _login(pg, exercicio); _log(f"login: {lg.get('ok')}")
+            if not lg.get("ok"):
+                return {"ok": False, "etapa": "login"}
+            nv = await _navegar(pg); _log(f"nav: {nv.get('ok')}")
+            if not nv.get("ok"):
+                return {"ok": False, "etapa": "navegacao"}
+            try:
+                await ctx.storage_state(path=str(_STATE))
+            except Exception:
+                pass
+            adf = AdfSync(pg); await adf.boot()
+            for pref in pend:
+                try:
+                    fr = await _filtrar(pg, 0, 8, pref)
+                    if not fr.get("ok"):
+                        _log(f"filtro {pref} falhou ({fr.get('erro')}) — relogar"); return {"ok": False}
+                    vistos, linhas = set(), []
+                    header = await _colher(pg, maxn, vistos, linhas, None)
+                    ing = ingerir(exercicio, header, linhas) if linhas else {"ingeridas": 0}
+                    _ckpt_marca(exercicio, pref)
+                    _log(f"prefixo {pref}: {len(linhas)} OBs, {ing.get('ingeridas')} ingeridas ✓")
+                except Exception as e:
+                    _log(f"prefixo {pref} ERRO {type(e).__name__}: {str(e)[:70]} — relogar")
+                    return {"ok": False}
+            return {"ok": True, "pendentes": []}
+        finally:
+            await b.close()
+
+
+async def coletar_filtrado(exercicio=2026, prefixos=None, headless=True, maxn=4000, max_sessoes=8) -> dict:
+    """Sweep RESUMÍVEL por filtro Número 'começa com' (fura o teto de 1000). Ingere e dá checkpoint
+    POR PREFIXO; se a sessão do SIAFE cair (~1h máx) ou der erro, RELOGA e CONTINUA de onde parou.
+    Default: {ex}OB0..{ex}OB9 (subdividir prefixos se um bloco passar de ~1000)."""
+    import time as _t
+    if not prefixos:
+        prefixos = [f"{exercicio}OB{d}" for d in range(10)]
+    t0 = _t.time(); _log = lambda m: print(f"[{_t.time()-t0:6.1f}s] {m}", flush=True)
+    for sessao in range(max_sessoes):
+        if not [p for p in prefixos if p not in _ckpt_prefixos(exercicio)]:
+            _log("todos os prefixos concluídos ✓")
+            break
+        pend = [p for p in prefixos if p not in _ckpt_prefixos(exercicio)]
+        _log(f"sessão {sessao+1}/{max_sessoes}: {len(pend)} pendente(s): {pend}")
+        try:
+            await _sweep_sessao(exercicio, prefixos, maxn, headless, _log)
+        except Exception as e:
+            _log(f"sessão {sessao+1} caiu: {type(e).__name__}: {str(e)[:70]} — nova sessão")
+    feitos = sorted(_ckpt_prefixos(exercicio))
+    pend = [p for p in prefixos if p not in _ckpt_prefixos(exercicio)]
+    return {"ok": not pend, "exercicio": exercicio, "feitos": feitos, "pendentes": pend}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--exercicio", type=int, default=2025)
     ap.add_argument("--max", type=int, default=300)
     ap.add_argument("--ingerir", action="store_true", help="grava as OBs colhidas na compliance.db (SIAFE prepondera)")
     ap.add_argument("--resiliente", action="store_true", help="coordena via Telegram e retoma se a sessão cair")
+    ap.add_argument("--por-numero", action="store_true", help="sweep por filtro Número 'começa com' (fura o teto de 1000)")
+    ap.add_argument("--prefixos", default="", help="prefixos custom p/ --por-numero, separados por vírgula (ex: 2026OB0,2026OB1)")
     a = ap.parse_args()
-    if a.resiliente:
+    if a.por_numero:
+        pref = [p.strip() for p in a.prefixos.split(",") if p.strip()] or None
+        res = asyncio.run(coletar_filtrado(a.exercicio, pref, maxn=a.max))
+        print(json.dumps(res, ensure_ascii=False, indent=1)); return
+    elif a.resiliente:
         res = asyncio.run(coletar_resiliente(a.exercicio, a.max))
     else:
         res = asyncio.run(coletar(a.exercicio, a.max))
