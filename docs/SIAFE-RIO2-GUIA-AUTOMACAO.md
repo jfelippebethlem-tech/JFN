@@ -442,3 +442,13 @@ PRÓXIMO PASSO (replay completo): (a) capturar o request de FETCH DE LINHAS da t
 após o filtro) e replicá-lo com o ViewState pós-filtro; OU (b) disparar o valueChange via o CLIENTE ADF na
 própria página (AdfPage.PAGE.findComponentByAbsoluteId(in_value).setValue+submit) p/ o ADF auto-buscar as
 linhas e aí `_colher` o grid. (b) é provavelmente mais simples. Sessão SIAFE 1 é paralela ao sweep do 2.
+
+### SIAFE 1 — tentativa via cliente ADF também 0 (2026-06-07) → precisa R&D dedicado
+`AdfValueChangeEvent(comp, old, '180100').queue(true)` no in_value: disparou ("ok") mas grid = 0.
+PADRÃO de TODAS as tentativas SIAFE 1: sempre 0 (quando "aplica") ou 50 (sem filtro) — NUNCA os dados
+filtrados. Conclusão: no SIAFE 1 o VALOR não vincula à consulta (nem por UI, nem por PPR replay, nem por
+evento ADF). Hipóteses p/ R&D dedicado: (1) o in_value visível não é o campo BOUND (a query usa outro
+binding/iterator); (2) precisa capturar a SEQUÊNCIA completa (valueChange + table-fetch) de um filtro que
+funcione — mas a UI nunca filtra com sucesso p/ capturar; (3) Computer Use (último recurso) clicando como
+humano p/ observar o request real. SIAFE 1 (2016-2023) FICA PENDENTE; SIAFE 2 (2024-26) 100% operacional.
+DECISÃO: não gastar mais ciclos no SIAFE 1 sem um insight novo (evitar loop). Prioridade segue no SIAFE 2.
