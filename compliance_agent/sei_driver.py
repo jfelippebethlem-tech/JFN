@@ -10,7 +10,6 @@ import os, time, base64, re, json
 from pathlib import Path
 from PIL import Image
 from io import BytesIO
-import easyocr
 
 SEARCH_URL = "https://sei.rj.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php?acao_externa=protocolo_pesquisar&acao_origem_externa=protocolo_pesquisar&id_orgao_acesso_externo=6"
 # Portável: JFN_DATA_DIR (env) > <repo>/data (no Windows = C:\JFN\jfn\data, idêntico ao antigo)
@@ -18,7 +17,17 @@ _DATA = Path(os.environ.get("JFN_DATA_DIR", Path(__file__).resolve().parent.pare
 SAVE_DIR = _DATA / "tmp" / "sei_captchas"
 SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
-reader = easyocr.Reader(['en'], gpu=False)
+_reader = None
+
+
+def _get_reader():
+    """Lazy-load do easyocr.Reader (singleton). easyocr puxa torch (~750MB) — só carregamos no
+    PRIMEIRO CAPTCHA real, evitando o custo de import/RAM em todo caminho que só navega o SEI."""
+    global _reader
+    if _reader is None:
+        import easyocr
+        _reader = easyocr.Reader(['en'], gpu=False)
+    return _reader
 
 
 def build_driver() -> webdriver.Chrome:
@@ -41,7 +50,7 @@ def build_driver() -> webdriver.Chrome:
 
 
 def captcha_ocr(img_path: Path) -> str:
-    results = reader.readtext(str(img_path), detail=1, paragraph=False)
+    results = _get_reader().readtext(str(img_path), detail=1, paragraph=False)
     candidates = []
     for item in results:
         text = item[1].strip()
