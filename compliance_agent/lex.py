@@ -46,6 +46,47 @@ _RF = {
 # Anatomia do achado (modelo TCU/ISSAI/CGU — ver docs/PESQUISA-DIREITO-ADMIN-CGE.md e
 # docs/PESQUISA-DIREITO-ADMIN-DOUTRINA-RJ.md): critério × condição → causa → efeito, com evidência e
 # recomendação. Causa/efeito/recomendação por red flag. Base citável (doutrina/improbidade/controle/RJ) no 2º doc.
+
+# Serviços CONTÍNUOS (Lei 14.133 art. 6º XV; contratos de até 10 anos, arts. 106-107): pluralidade de contratos
+# por órgão é NORMAL e NÃO é fracionamento. Usado p/ calibrar o red flag R2 (fracionamento × serviço contínuo).
+_SERV_CONTINUO_KW = (
+    "limpeza", "conserva", "higieniz", "asseio", "zeladoria", "vigilanc", "vigilânc", "seguranca patrimon",
+    "segurança patrimon", "manutenc", "manutenç", "mao de obra", "mão de obra", "mao-de-obra", "posto de trabalho",
+    "postos de trabalho", "apoio administrativo", "apoio operacional", "recepc", "recepç", "copeir", "brigad",
+    "facilit", "terceiriz", "servico continuad", "serviço continuad", "servicos continu", "serviços contínu",
+    "jardinagem", "portaria", "dedetiz", "transporte", "lavanderia", "nutric", "alimentac", "alimentaç",
+)
+
+
+def _eh_servico_continuo(objetos) -> bool:
+    """True se os objetos contratuais indicam serviço CONTÍNUO (calibra o R2: não acusar fracionamento)."""
+    txt = " ".join((o or "") for o in objetos).lower()
+    return any(k in txt for k in _SERV_CONTINUO_KW)
+
+
+# Classificação grosseira de "ramo/natureza" do objeto — núcleo do teste de fracionamento (mesma natureza).
+_RAMOS = {
+    "limpeza/conservação": ("limpeza", "conserva", "higieniz", "asseio", "zeladoria", "jardinagem", "dedetiz"),
+    "vigilância/segurança": ("vigilanc", "vigilânc", "seguranca", "segurança", "portaria", "brigad"),
+    "manutenção/reparo": ("manutenc", "manutenç", "reparo", "reforma", "predial"),
+    "obras/engenharia": ("obra", "engenharia", "construç", "construc", "paviment", "infraestrutura"),
+    "informática/TI": ("informat", "software", "computad", "notebook", "licenç", "tecnologia da inf"),
+    "veículos/transporte": ("veicul", "frota", "transporte", "combustiv", "locaç de veic", "locacao de veic"),
+    "material/insumos": ("material", "insumo", "aquisic", "aquisiç", "gênero", "genero", "aliment", "medicament"),
+    "mão de obra/apoio": ("mao de obra", "mão de obra", "apoio administrativo", "apoio operacional",
+                          "terceiriz", "posto de trabalho", "recepc", "recepç", "copeir"),
+    "saúde/serviços médicos": ("hospital", "médic", "medic", "saude", "saúde", "leito", "exame"),
+}
+
+
+def _ramo_objeto(obj) -> str:
+    """Natureza grosseira do objeto (p/ agrupar 'mesma natureza' no teste de fracionamento)."""
+    t = (obj or "").lower()
+    for ramo, kws in _RAMOS.items():
+        if any(k in t for k in kws):
+            return ramo
+    palavras = [w for w in re.findall(r"[a-zçãõáéíóúâêô]+", t) if len(w) > 4][:2]
+    return " ".join(palavras) or "objeto"
 _MATRIZ = {
     "R2": ("possível divisão da despesa para fugir da modalidade/teto de dispensa",
            "elisão do dever de licitar; restrição à competição e risco de sobrepreço",
@@ -295,16 +336,37 @@ def _analisar_contratos_tcerj(itens: list[dict]) -> tuple[list, dict]:
                                f"inexigibilidade) deste fornecedor, somando R$ {moeda(total_d)} — verificar o "
                                "enquadramento legal e a regularidade da fundamentação (art. 74/75 Lei 14.133/Art. 24-25 Lei 8.666)."})
 
-    # R2 — fracionamento: muitas compras diretas no MESMO ano e MESMA unidade (indício de divisão de despesa)
-    from collections import Counter
-    ano_unid = Counter((c.get("ano_processo"), (c.get("unidade") or "")[:40]) for c in diretas)
-    repet = [(k, n) for k, n in ano_unid.items() if n >= 3]
-    if repet:
-        pior = max(repet, key=lambda x: x[1])
+    # R2 — FRACIONAMENTO (teste TCU, Ac. 1.620/2010-Pleno): múltiplas DISPENSAS de objeto de MESMA NATUREZA, na
+    # MESMA unidade gestora, no MESMO exercício, cada uma sob o teto de dispensa, somando ACIMA dele (art. 75 §1º
+    # Lei 14.133). NÃO é fracionamento: várias OBs de um mesmo contrato (parcelas mensais/medição/pagamento parcial),
+    # nem atuar em vários órgãos, nem a pluralidade de contratos de serviço contínuo. Agrupa por (ano, UG, ramo).
+    from collections import defaultdict
+    _TETO_DISP = 59906.02  # dispensa por valor — art. 75, II, Lei 14.133 (serviços/compras), valor de referência
+    grupos = defaultdict(list)
+    for c in diretas:
+        grupos[(c.get("ano_processo"), (c.get("unidade") or "")[:40], _ramo_objeto(c.get("objeto")))].append(c)
+    candidatos = []
+    for (ano, unid, ramo), itens in grupos.items():
+        sob_teto = [i for i in itens if 0 < (i.get("valor") or 0) <= _TETO_DISP]
+        soma = sum(i.get("valor") or 0 for i in itens)
+        if len(sob_teto) >= 2 and soma > _TETO_DISP:   # ≥2 dispensas da mesma natureza que, somadas, furam o teto
+            candidatos.append((ano, unid, ramo, len(sob_teto), soma))
+    if candidatos:
+        ano, unid, ramo, n, soma = max(candidatos, key=lambda x: x[4])
         achados.append({"rf": "R2", "grav": 3,
-                        "obs": f"{pior[1]} contratações diretas no mesmo exercício ({pior[0][0]}) e na mesma unidade "
-                               f"(**{pior[0][1]}**) — possível **fracionamento de despesa** para se manter abaixo do "
-                               "teto de dispensa (art. 75 §1º Lei 14.133)."})
+                        "obs": f"**{n} dispensas** de objeto de mesma natureza (**{ramo}**) na unidade **{unid}** no "
+                               f"exercício {ano}, cada uma sob o teto de dispensa (≈R$ {moeda(_TETO_DISP)}) mas somando "
+                               f"R$ {moeda(soma)} — indício de **FRACIONAMENTO** (substituição da licitação obrigatória "
+                               "por múltiplas dispensas do mesmo objeto; art. 75 §1º Lei 14.133; Ac. 1.620/2010-TCU-"
+                               "Pleno). Diligência: confirmar identidade de objeto/natureza e somatório no exercício."})
+    elif diretas:
+        # há dispensas, mas SEM o padrão de fracionamento — registrar a leitura correta (evita falso achado)
+        achados.append({"rf": "R2", "grav": 1,
+                        "obs": "As contratações diretas registradas **não** apresentam o padrão de fracionamento "
+                               "(múltiplas dispensas do MESMO objeto/natureza, na mesma unidade e exercício, somando "
+                               "acima do teto). Pluralidade de OBs (parcelas mensais/medição de um contrato) e atuação "
+                               "em vários órgãos **não** caracterizam fracionamento — verificar apenas o enquadramento "
+                               "de cada dispensa (art. 75 Lei 14.133)."})
 
     # R9 — execução acima do contratado (valor pago > contrato + 25%, limite de aditivo)
     for c in contratos:
@@ -354,10 +416,9 @@ def _detectar(ctx: dict) -> list[dict]:
     if zeros >= 3:
         achados.append({"rf": "R10", "grav": 2,
                         "obs": f"{zeros} ordens bancárias de valor R$ 0,00 (estornos/regularizações) — verificar a regularidade da liquidação."})
-    if (p.get("total_geral") or 0) >= 50_000_000 and len(p.get("por_orgao_geral", {})) >= 6:
-        achados.append({"rf": "R2", "grav": 2,
-                        "obs": f"Volume expressivo (R$ {moeda(p['total_geral'])}) pulverizado em {len(p['por_orgao_geral'])} órgãos — "
-                               "verificar se há fracionamento ou contratações por dispensa abaixo do teto."})
+    # (Removido o antigo R2 baseado em nº de OBs/órgãos: pluralidade de OBs = parcelas de um contrato (mensal/
+    #  medição/parcial) e atuação em vários órgãos NÃO são fracionamento. O fracionamento real é testado sobre as
+    #  DISPENSAS do TCE-RJ por (ano, UG, mesma natureza) em _analisar_contratos_tcerj.)
     if ctx.get("risco") == "ALTO":
         achados.append({"rf": "R8", "grav": 2, "obs": f"Rating de risco corporativo ALTO (score {ctx.get('score')}/100) — diligência sobre quadro societário/vínculos."})
     return achados
@@ -433,6 +494,54 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
             "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj, "cartel": cartel,
             "cruzado": cruzado, "emoji": emoji, "rotulo": rotulo, "just": just}
+
+
+def _analise_merito(ctx: dict, analise: dict) -> str:
+    """Prosa de mérito (parecer raciocinado), adaptada aos dados — natureza, concentração, dispensas, síntese."""
+    p = ctx.get("pagamentos") or {}
+    emp = (ctx.get("enriq", {}).get("dados") or {}).get("empresa") or {}
+    achados = analise.get("achados", [])
+    continuo = _eh_servico_continuo([emp.get("cnae_principal"), emp.get("atividade"), ctx.get("nome")])
+    total = p.get("total_geral", 0) or 0
+    nob, norg = p.get("n_geral", 0), len(p.get("por_orgao_geral", {}))
+    L = []
+    natureza = ("prestadora de **serviços contínuos** (limpeza/conservação/vigilância/mão de obra)"
+                if continuo else "fornecedora do Estado")
+    L.append(
+        f"Trata-se de empresa {natureza}, com exposição de **R$ {moeda(total)}** em {nob} ordens bancárias "
+        f"junto a {norg} órgão(s) no período. " + (
+            "Para esse segmento, a presença em múltiplos órgãos — cada um com contrato próprio, em regra por pregão "
+            "e com vigência de até 10 anos (arts. 106-107 da Lei 14.133/2021) — é a **estrutura ordinária do "
+            "mercado** e não evidencia, por si só, irregularidade." if continuo else
+            "A pulverização entre órgãos, isoladamente, não indica irregularidade."))
+    hhi = p.get("hhi", {})
+    if hhi.get("top_share", 0):
+        L.append(
+            f"A concentração (HHI) é **{hhi.get('indice')}** ({hhi.get('nivel')}), com o maior órgão respondendo por "
+            f"**{hhi.get('top_share')}%** do valor pago. " + (
+                "Concentração elevada num único contratante, ainda que possa decorrer de mérito técnico, recomenda "
+                "conferir a competitividade dos certames e a isonomia (art. 37 CF/88; art. 5º Lei 14.133)."
+                if hhi.get("top_share", 0) >= 50 else
+                "O grau é compatível com atuação difusa, sem alerta específico de captura."))
+    tcerj = analise.get("tcerj") or {}
+    if tcerj.get("n_diretas_dispensa"):
+        L.append(
+            f"O TCE-RJ registra **{tcerj.get('n_diretas_dispensa')} contratação(ões) por dispensa/inexigibilidade**. " + (
+                "Em serviços contínuos, a dispensa emergencial costuma cobrir o intervalo entre o fim de um contrato e "
+                "a conclusão de novo pregão — regular quando justificada e temporária. O exame deve focar a reiteração "
+                "do **mesmo objeto/local** sob o teto, que aí sim configuraria fracionamento (art. 75 §1º Lei 14.133)."
+                if continuo else
+                "Cabe verificar o enquadramento legal de cada uma e eventual sucessão do mesmo objeto sob o teto."))
+    graves = [a for a in achados if a.get("grav", 0) >= 3]
+    L.append(
+        (f"Em síntese, convergem **{len(achados)} indício(s)**, {len(graves)} de maior gravidade, sustentando a "
+         f"classificação **{analise.get('rotulo')}**. " if achados
+         else "Em síntese, não há indícios relevantes nos dados disponíveis. ") +
+        "Reitere-se que os apontamentos são **indícios** sob **presunção de legitimidade** dos atos administrativos "
+        "(o ônus de provar o vício recai sobre quem o invoca — Meirelles); a confirmação depende de diligência "
+        "documental nos processos SEI (edital/TR, pesquisa de preços, atestos) e de contraditório. Este parecer **não** "
+        "constitui juízo de irregularidade, improbidade ou crime.")
+    return "\n\n".join(L)
 
 
 def parecer_md(ctx: dict, analise: dict | None = None) -> str:
@@ -655,6 +764,12 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
         add(f"| {a['rf']} {nome} | {pp} | {ii} | {sc} | {faixa} |")
     if not achados:
         add("| — | — | — | — | — |")
+    add("")
+
+    # IV-B. Análise de mérito (parecer raciocinado)
+    add("## IV-B. ANÁLISE DE MÉRITO")
+    add("")
+    add(_analise_merito(ctx, analise))
     add("")
 
     # V. Conclusão
