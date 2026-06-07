@@ -360,3 +360,18 @@ VERIFICADOR: filtra por **Data Emissão = igual = <dia>** (Propriedade 4, campo 
 INTEGRAÇÃO: `siafe_runner.atualizar_diario` roda o verificador p/ ONTEM e ANTEONTEM após o incremental.
 CLI: `siafe_runner verificar DD/MM/AAAA`.  ⚠️ A VALIDAR ao vivo: formato exato do campo de data (in_date)
 e se "igual" aceita o dia — assume DD/MM/AAAA (padrão SIAFE). (sessão ocupada pelo sweep ao implementar.)
+
+## SIAFE 1 — destrave parcial do filtro (2026-06-07)
+- Com operador **"começa com"** (NÃO "igual"), o campo de valor (`in_value_rtfFilter`) **RENDERIZA** no
+  SIAFE 1 (com "igual" não aparece). Isso resolve metade do problema.
+- PORÉM: ao digitar o valor + Tab, a grade retorna **0 linhas** (testado UG Emitente começa-com 133100 e
+  180100, 2023) — o gatilho de APLICAR o filtro no SIAFE 1 difere do SIAFE 2 (Tab não refiltra). A INVESTIGAR:
+  Enter no campo, botão "Pesquisar"/"Filtrar" próprio do SIAFE 1, ou refresh da grade. Sweep do SIAFE 1 segue
+  BLOQUEADO até achar o gatilho. (SIAFE 2 ok.)
+
+## RESUMIBILIDADE do sweep (pedido do Jorge 2026-06-07)
+- Nível UG:ano: `tools/siafe_sweep_full.py` tem checkpoint `data/sei_cache/siafe_sweep_full_{sistema}.json`
+  (re-rodar PULA UG:ano já feitos). Re-disparar `siafe_runner sweep` RETOMA de onde parou.
+- Nível sub-prefixo (dentro de UG grande): `coletar_por_ug_grande` agora grava ckpt
+  `data/sei_cache/uggrande_{ug}_{ano}.json` ({done:[fatias ok], capped:[subdivididas]}) → se cair no meio de
+  uma UG enorme, retoma sem re-coletar as fatias já feitas. Idempotente (PK numero_ob).
