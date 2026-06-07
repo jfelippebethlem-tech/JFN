@@ -148,10 +148,14 @@ async def _login(pg, exercicio: int):
         carregar_env()
     except Exception:
         pass
-    u = (os.environ.get("SIAFE_USER") or "").strip()
-    p = (os.environ.get("SIAFE_PASS") or "").strip()
+    # Credenciais POR SISTEMA (opcional): SIAFE1_USER/PASS (www5) e SIAFE2_USER/PASS (siafe2) têm
+    # precedência sobre SIAFE_USER/PASS. Permite plugar uma conta SIAFE 1 com acesso GLOBAL (todas as UGs)
+    # sem mexer na credencial do SIAFE 2. Cai no SIAFE_USER/PASS quando a específica não existe.
+    _sis = "1" if ("www5" in LOGIN_URL or "SiafeRio" in LOGIN_URL) else "2"
+    u = (os.environ.get(f"SIAFE{_sis}_USER") or os.environ.get("SIAFE_USER") or "").strip()
+    p = (os.environ.get(f"SIAFE{_sis}_PASS") or os.environ.get("SIAFE_PASS") or "").strip()
     if not u or not p:
-        return {"ok": False, "erro": "sem SIAFE_USER/SIAFE_PASS no .env"}
+        return {"ok": False, "erro": f"sem SIAFE{_sis}_USER/PASS nem SIAFE_USER/PASS no .env"}
     await pg.goto(LOGIN_URL, wait_until="domcontentloaded", timeout=45000)
     await pg.wait_for_timeout(2500)
     # se o SIAFE reconectou numa sessão existente (exercício anterior), SAIR para poder escolher o ano

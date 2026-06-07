@@ -54,8 +54,18 @@ ALERJ-only (8 anos, ~21k OBs, todos ok). (4) flag de pausa por sistema no superv
 Agora o S1 loga **SWEEP COMPLETO em segundos** sem gerar 0s. SIAFE 2 (2024-26, todas as UGs) intacto.
 
 > ⚠️ **GAP DE DADOS (limitação de credencial, não bug):** 2016-2023 das UGs **≠ ALERJ** é **inacessível** com
-> a conta atual do SIAFE 1. Para preencher, é preciso uma **conta SIAFE 1 com acesso ampliado** (mais UGs no
-> selUg) — então basta apagar `ugs_siafe_1.json` p/ regenerar a lista e re-rodar o sweep. SIAFE 2 cobre 2024-26.
+> a conta atual do SIAFE 1. **Triplo-confirmado** (2026-06-07): (a) `selUg` só tem TODAS+ALERJ; (b) "começa com 0"
+> = 1000 linhas 100% ALERJ; (c) "começa com 03/02/04/27/30" (exclui ALERJ) = 0. GAP REAL é estreito: só
+> **2016-2018 das UGs ≠ ALERJ** (o TFE/`ordens_bancarias` já cobre 2019-2026 com TODAS as ~120 UGs).
+>
+> **QUANDO CHEGAR a credencial SIAFE 1 com acesso GLOBAL (decisão do Jorge 2026-06-07):**
+> 1. Pôr no `.env` (ou `~/.hermes/.env`) as vars **`SIAFE1_USER` / `SIAFE1_PASS`** (precedência por sistema já
+>    implementada em `_login`; SIAFE 2 segue com `SIAFE_USER/PASS` intacto).
+> 2. `rm data/sei_cache/ugs_siafe_1.json` (regenera a lista de UGs do selUg da nova conta).
+> 3. `rm data/sei_cache/siafe_sweep_full_1.json` (limpa o checkpoint ALERJ-only p/ varrer todas as UGs) —
+>    ou manter (ALERJ não re-coleta; as novas UGs entram).
+> 4. Deixar o supervisor relançar (ou `PYTHONPATH=. .venv/bin/python -m tools.siafe_sweep_full 1`). Pronto:
+>    o código varre 2016-2023 de todas as UGs sem nenhuma outra alteração.
 
 ## ✅ COBERTURA DE ENDEREÇO (goal 2026-06-07) — todo CNPJ coletado tem endereço
 Diagnóstico: `rede_societaria.ingerir` marcava o CNPJ como "feito" (sentinela em `socios_fornecedor`) mesmo quando
