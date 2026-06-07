@@ -37,3 +37,14 @@ sócios=13.341 CNPJs. (Backfill histórico é multi-dia.)
 ## COMO RETOMAR
 Quando chegar o Telegram "ANÁLISE PÓS-SWEEP pronta" → ler `docs/ANALISE-POS-SWEEP-*.md` e fechar o TODO acima.
 Comandos: ver `docs/PLAYBOOK-EXECUTOR.md` (TL;DR no topo). SIAFE 1 = `JFN_SIAFE_LOGIN_URL=...www5.../SiafeRio/...`.
+
+## ⚠️ CORREÇÃO (2026-06-07, achado tarde) — SIAFE 1 sweep com FALSOS-VAZIOS
+O sweep do SIAFE 1 está coletando **SÓ a ALERJ (010100)** corretamente; as demais ~105 UG:ano retornaram **0**
+(falso). DB SIAFE 1 = só 010100 (21k OBs). Hipótese forte: no SIAFE 1 a listagem da OB é **escopada pela UG
+de CONTEXTO (Acesso Rápido/selUg = ALERJ, default da conta)** — filtrar UG Emitente≠contexto dá 0. (No 2.0 a
+listagem não é escopada → o filtro por UG Emitente funciona p/ todas.)
+FIX NECESSÁRIO (dedicado): no SIAFE 1, antes de coletar cada UG, **trocar o selUg do Acesso Rápido p/ a UG alvo**
+(o sweep do SIAFE 2 não precisa disso). Depois, **LIMPAR o checkpoint `siafe_sweep_full_1.json`** (tem UG:ano
+marcadas como done-0 falsas) e re-rodar. ATÉ LÁ: o SIAFE 1 só tem ALERJ; **NÃO confiar nos dados <=2023 das
+demais UGs**. (O SIAFE 2 / 2024-26 está OK.) Considerar PAUSAR o sweep do SIAFE 1 (ajustar o supervisor) p/ não
+gastar ciclos gerando 0s — ou deixar (idempotente, e o fix re-roda após limpar o checkpoint).
