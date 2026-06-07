@@ -788,6 +788,61 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
             await b.close()
 
 
+async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -> dict:
+    """VERIFICADOR/COMPLETADOR de DIA: coleta todas as OBs com Data Emissão = <data> (DD/MM/AAAA).
+    Se o dia tiver >1000 OBs (cap), subdivide por Número 'começa com' prefixo (Data na linha 0 + Número
+    na linha 1). Detecta o estouro (algum dia com >1000) E coleta o dia completo. Idempotente.
+    ⚠️ Formato do campo de data (in_date) a validar ao vivo — assume DD/MM/AAAA. Ver doc §verificador-dia."""
+    from playwright.async_api import async_playwright
+    from compliance_agent.siafe_adf import AdfSync
+    async with async_playwright() as pw:
+        b = await pw.chromium.launch(headless=headless, args=["--no-sandbox", "--ignore-certificate-errors"])
+        ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", timezone_id="America/Sao_Paulo",
+                                  viewport={"width": 1600, "height": 1000})
+        pg = await ctx.new_page()
+        await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+        try:
+            if not (await _login(pg, exercicio)).get("ok"):
+                return {"ok": False, "etapa": "login"}
+            if not (await _navegar(pg)).get("ok"):
+                return {"ok": False, "etapa": "nav"}
+            adf = AdfSync(pg); await adf.boot()
+            if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
+                await _click_real(pg, _F_DISC); await adf.wait()
+            # linha 0 = Data Emissão igual <data>  (campo é in_date, não in_value)
+            await _typeahead(pg, _F_PROP, "Data Emi"); await adf.wait()
+            await _typeahead(pg, _F_OP, "igual"); await adf.wait()
+            datasel = '[id*="table_rtfFilter:0"] input[id*="in_date"]:visible, [id*="table_rtfFilter:0"] input[type="text"]:visible'
+            await _set_valor(pg, datasel, data); await adf.wait(); await pg.wait_for_timeout(2500)
+            n0 = await _contar_linhas(pg)
+            estouro = n0 >= 990
+            # coleta direta (sem subdividir) se < cap
+            if not estouro:
+                vistos, linhas = set(), []
+                await _colher(pg, maxn, vistos, linhas, None)
+                ing = ingerir(exercicio, _COLS_SIAFE, linhas) if linhas else {"ingeridas": 0}
+                return {"ok": True, "data": data, "estouro": False, "colhidas": len(linhas),
+                        "ingeridas": ing.get("ingeridas")}
+            # ESTOURO: >1000 no dia → subdivide por Número (linha 1)
+            await _typeahead(pg, _F_PROP1, "Número"); await adf.wait()
+            await _typeahead(pg, _F_OP1, "começa com"); await adf.wait()
+            tot, work = 0, [f"{exercicio}OB{d}" for d in range(10)]
+            while work:
+                pref = work.pop(0)
+                await _set_valor(pg, _F_VAL1_SEL, pref); await adf.wait(); await pg.wait_for_timeout(2000)
+                vistos, linhas = set(), []
+                await _colher(pg, maxn, vistos, linhas, None)
+                n = len(linhas)
+                if n >= 990 and len(pref) - len(str(exercicio)) - 2 < 7:
+                    work[:0] = [f"{pref}{d}" for d in range(10)]
+                elif linhas:
+                    tot += ingerir(exercicio, _COLS_SIAFE, linhas).get("ingeridas", 0)
+            return {"ok": True, "data": data, "estouro": True, "ingeridas": tot,
+                    "detalhe": f">1000 OBs no dia {data} — coletado completo por subdivisão de Número"}
+        finally:
+            await b.close()
+
+
 async def coletar_por_ug(exercicio=2026, ug="133100", headless=True, maxn=20000) -> dict:
     """Coleta TODAS as OBs de uma UG num exercício (fura o teto de 1000 filtrando por UG Emitente).
     Login → nav → filtra UG → colhe (scroll) → ingere. Ver docs/SIAFE-RIO2-GUIA-AUTOMACAO.md §8b."""
