@@ -14,6 +14,7 @@ done_sys(){ # $1=sistema → 0 se concluído (log diz SWEEP COMPLETO e processo 
 say "supervisor iniciado"
 while true; do
   for S in 2 1; do
+    if [ -f "data/.pause_sweep_$S" ]; then continue; fi   # pausa manual (ex.: fix do §41 em andamento)
     if done_sys "$S"; then continue; fi
     if ! pgrep -f "siafe_sweep_full $S" >/dev/null; then
       rm -f data/sei_cache/siafe_lock.json 2>/dev/null   # limpa lock obsoleto do processo morto
