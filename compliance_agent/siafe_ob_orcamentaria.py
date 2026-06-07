@@ -780,8 +780,14 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
                 except Exception:
                     pass
 
+            try:
+                from compliance_agent import siafe_runner as _sr
+            except Exception:
+                _sr = None
             por_prefixo, tot, work = {}, 0, list(prefixos)
             while work:
+                if _sr:
+                    _sr.refresh_lock()                 # heartbeat por sub-prefixo (UG grande pode levar >30min)
                 pref = work.pop(0)
                 if pref in done:                       # já coletado numa execução anterior
                     continue
@@ -846,8 +852,14 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
             # ESTOURO: >1000 no dia → subdivide por Número (linha 1)
             await _typeahead(pg, _F_PROP1, "Número"); await adf.wait()
             await _typeahead(pg, _F_OP1, "começa com"); await adf.wait()
+            try:
+                from compliance_agent import siafe_runner as _sr
+            except Exception:
+                _sr = None
             tot, work = 0, [f"{exercicio}OB{d}" for d in range(10)]
             while work:
+                if _sr:
+                    _sr.refresh_lock()
                 pref = work.pop(0)
                 await _set_valor(pg, _F_VAL1_SEL, pref); await adf.wait(); await pg.wait_for_timeout(2000)
                 vistos, linhas = set(), []
