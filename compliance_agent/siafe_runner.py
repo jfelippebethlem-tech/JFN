@@ -90,8 +90,35 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
             return {"ok": False, "etapa": "coleta", **res}
         ing = M.ingerir(ano, res.get("header", []), res.get("linhas", []))
         _log(f"diário {ano}: {res.get('n')} colhidas, {ing.get('ingeridas')} ingeridas (total {ing.get('total_tabela')})")
+        # VERIFICADOR: o incremental pega as ~1000 OBs mais novas GLOBAIS; se um dia teve >1000 OBs (ex.: dia de
+        # FOLHA), as OBs antigas desse dia caem abaixo da posição 1000 e seriam PERDIDAS. Conferimos o dia anterior
+        # por Data Emissão; se estourou (>1000), coletar_por_data subdivide por Número e completa o dia.
+        from datetime import timedelta
+        verif = {}
+        for delta in (1, 2):                      # ontem e anteontem (margem)
+            d = (datetime.now(timezone.utc) - timedelta(days=delta)).strftime("%d/%m/%Y")
+            try:
+                r = await M.coletar_por_data(ano, d)
+                verif[d] = {"estouro": r.get("estouro"), "ingeridas": r.get("ingeridas")}
+                if r.get("estouro"):
+                    _log(f"diário {ano}: ⚠️ dia {d} teve >1000 OBs — completado por subdivisão (+{r.get('ingeridas')})")
+            except Exception as e:  # noqa: BLE001
+                verif[d] = {"erro": f"{type(e).__name__}: {str(e)[:60]}"}
         return {"ok": True, "exercicio": ano, "colhidas": res.get("n"),
-                "ingeridas": ing.get("ingeridas"), "total_tabela": ing.get("total_tabela")}
+                "ingeridas": ing.get("ingeridas"), "total_tabela": ing.get("total_tabela"),
+                "verificador_dias": verif}
+    finally:
+        _release()
+
+
+async def verificar_dia(data: str, exercicio: int | None = None) -> dict:
+    """Verifica/completa um dia específico (DD/MM/AAAA): conta OBs por Data Emissão; se >1000, subdivide."""
+    from compliance_agent import siafe_ob_orcamentaria as M
+    ano = int(exercicio or _ano_corrente())
+    if not _acquire(f"verificar:{data}"):
+        return {"ok": False, "erro": "lock", "lock": lock_status()}
+    try:
+        return await M.coletar_por_data(ano, data)
     finally:
         _release()
 
@@ -119,6 +146,9 @@ def main():
     elif cmd == "ug":
         ug = sys.argv[2]; ano = int(sys.argv[3]) if len(sys.argv) > 3 else None
         print(json.dumps(asyncio.run(coletar_ug(ug, ano)), ensure_ascii=False, indent=1))
+    elif cmd == "verificar":
+        data = sys.argv[2]; ano = int(sys.argv[3]) if len(sys.argv) > 3 else None
+        print(json.dumps(asyncio.run(verificar_dia(data, ano)), ensure_ascii=False, indent=1))
     elif cmd == "sweep":
         sistema = sys.argv[2] if len(sys.argv) > 2 else "2"
         if not _acquire(f"sweep:{sistema}"):

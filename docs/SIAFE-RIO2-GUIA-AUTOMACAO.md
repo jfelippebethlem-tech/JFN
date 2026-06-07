@@ -349,3 +349,14 @@ SIAFE 1 (www5/SiafeRio): login OK, nav OK, disclosure abre, filtro com MESMOS r�
 antigo renderiza o valor de outro jeito. PENDENTE: descobrir o gatilho do valor no SIAFE 1 (talvez precise
 de evento extra no operador, wait maior, ou o campo aparece sob outro id/container). Até lá, sweep do SIAFE 1
 fica BLOQUEADO; SIAFE 2 (2024-26) segue normal.
+
+## 🔎 VERIFICADOR DE DIA (overflow >1000/dia) — ideia do Jorge 2026-06-07
+RISCO: o coletor DIÁRIO pega as ~1000 OBs mais novas GLOBAIS (aba sem filtro). Se um dia tiver >1000 OBs
+(ex.: dia de FOLHA), as OBs antigas desse dia caem abaixo da posição 1000 e seriam PERDIDAS.
+VERIFICADOR: filtra por **Data Emissão = igual = <dia>** (Propriedade 4, campo in_date) e conta.
+- Se < cap → dia completo (o diário já pegou).
+- Se >=990 (cap) → o dia ESTOUROU → subdivide por Número 'começa com' (Data na linha 0 + Número na linha 1)
+  → coleta o dia completo. `coletar_por_data(ano, "DD/MM/AAAA")` faz tudo (detecta + completa).
+INTEGRAÇÃO: `siafe_runner.atualizar_diario` roda o verificador p/ ONTEM e ANTEONTEM após o incremental.
+CLI: `siafe_runner verificar DD/MM/AAAA`.  ⚠️ A VALIDAR ao vivo: formato exato do campo de data (in_date)
+e se "igual" aceita o dia — assume DD/MM/AAAA (padrão SIAFE). (sessão ocupada pelo sweep ao implementar.)
