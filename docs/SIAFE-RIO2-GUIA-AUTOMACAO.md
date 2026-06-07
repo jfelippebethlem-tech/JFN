@@ -388,3 +388,9 @@ Inspeção do container do filtro (sdtFilter) no SIAFE 1, com captura de rede:
   e adaptar ViewState/clientId/URL p/ o SIAFE 1; javax.faces.partial.ajax=true + header Faces-Request: partial/ajax;
   ViewState rotativo). Ver docs/SCRAPING-SITES-DIFICEIS.md §4.5. Cliques na UI do SIAFE 1 = beco sem saída.
 - BÔNUS observado: SIAFE 1 tem menu próprio "Folha de Pagamento" (p3:4) — investigar como fonte de folha depois.
+
+## ✅ VERIFICADOR validado ao vivo (2026-06-07)
+`coletar_por_data(2026,'02/06/2026')` → ok, 844 OBs, estouro=False. Confirma: filtro **Data Emissão = igual**
+aplica com formato **DD/MM/AAAA** (typeahead "Data Emi" + "igual" + valor no in_date + Tab). 844 num dia
+NORMAL → dias de folha passam de 1000 (risco real do Jorge confirmado) → o verificador subdivide por Número.
+Coletor DIÁRIO (incremental + verificador de ontem/anteontem) testado de ponta a ponta.
