@@ -1138,31 +1138,86 @@ def render_pdf(ctx: dict, destino: str) -> str:
     return destino
 
 
-def _render_parecer_pdf(pdf, _t, md_text: str):
-    """Renderiza o parecer (markdown leve: ###, **negrito**, '- ', '> ') em texto corrido no PDF."""
+def _emit_md_table(pdf, _t, block: list):
+    """Renderiza um bloco de tabela markdown como TABELA bordada que CABE na largura da página
+    (larguras proporcionais ao conteúdo; trunca cada célula p/ não estourar a margem)."""
     import re as _re
-    for raw in md_text.split("\n"):
-        linha = raw.rstrip()
-        if not linha:
-            pdf.ln(1.5)
+    rows = []
+    for ln in block:
+        if _re.match(r"^\|[\s:\-|]+\|?$", ln):  # linha separadora |---|
             continue
+        rows.append([c.strip() for c in ln.strip().strip("|").split("|")])
+    if not rows:
+        return
+    ncol = max(len(r) for r in rows)
+    rows = [r + [""] * (ncol - len(r)) for r in rows]
+    epw = pdf.epw
+    maxlen = [max((len(_re.sub(r"\*\*", "", rows[i][c])) for i in range(len(rows))), default=1) for c in range(ncol)]
+    tot = sum(maxlen) or 1
+    widths = [max(11.0, epw * ml / tot) for ml in maxlen]
+    f = epw / sum(widths)
+    widths = [w * f for w in widths]
+
+    def fit(txt, w):
+        txt = _t(_re.sub(r"\*\*(.+?)\*\*", r"\1", txt))
+        if pdf.get_string_width(" " + txt + " ") <= w:
+            return txt
+        while txt and pdf.get_string_width(" " + txt + "… ") > w:
+            txt = txt[:-1]
+        return txt + "…"
+
+    pdf.set_font(pdf._fam, "B", 7.2); pdf.set_fill_color(60, 70, 90); pdf.set_text_color(255, 255, 255)
+    pdf.set_x(pdf.l_margin)
+    for c in range(ncol):
+        pdf.cell(widths[c], 6, " " + fit(rows[0][c], widths[c]), border=1, fill=True)
+    pdf.ln(); pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 7.2)
+    zebra = False
+    for r in rows[1:]:
+        pdf.set_fill_color(244, 246, 250) if zebra else pdf.set_fill_color(255, 255, 255)
+        zebra = not zebra
+        if pdf.get_y() > pdf.h - pdf.b_margin - 6:
+            pdf.add_page()
+        pdf.set_x(pdf.l_margin)
+        for c in range(ncol):
+            cell = r[c]
+            num = bool(_re.search(r"\d", cell)) and bool(_re.match(r"^[\sR$\d.,%+\-/]+$", cell))
+            pdf.cell(widths[c], 5.0, " " + fit(cell, widths[c]), border=1, align=("R" if num else "L"), fill=True)
+        pdf.ln()
+    pdf.ln(1.5)
+
+
+def _render_parecer_pdf(pdf, _t, md_text: str):
+    """Renderiza o parecer (markdown leve: ###, **negrito**, '- ', '> ', e TABELAS) no PDF, sem estourar a margem."""
+    import re as _re
+    linhas = md_text.split("\n")
+    i, n = 0, len(linhas)
+    while i < n:
+        raw = linhas[i].rstrip()
+        # bloco de tabela markdown
+        if raw.startswith("|") and raw.endswith("|"):
+            bloco = []
+            while i < n and linhas[i].rstrip().startswith("|"):
+                bloco.append(linhas[i].rstrip()); i += 1
+            _emit_md_table(pdf, _t, bloco)
+            continue
+        i += 1
+        linha = raw
+        if not linha:
+            pdf.ln(1.5); continue
         if linha.startswith("### "):
             pdf.ln(1); pdf.set_font(pdf._fam, "B", 11); pdf.set_text_color(30, 45, 70)
-            _mc(pdf, 6, _t(linha[4:])); pdf.set_text_color(0, 0, 0)
-            continue
+            _mc(pdf, 6, _t(linha[4:])); pdf.set_text_color(0, 0, 0); continue
         bullet = linha.startswith("- ")
         quote = linha.startswith("> ")
         txt = linha[2:] if (bullet or quote) else linha
-        txt = _re.sub(r"\*\*(.+?)\*\*", r"\1", txt)  # remove negrito md (core font sem bold inline)
+        txt = _re.sub(r"\*\*(.+?)\*\*", r"\1", txt)  # remove negrito md
         if quote:
             pdf.set_font(pdf._fam, "I", 8.5); pdf.set_text_color(90, 90, 90)
             _mc(pdf, 4.6, _t(txt)); pdf.set_text_color(0, 0, 0)
         elif bullet:
-            pdf.set_font(pdf._fam, "", 9)
-            _mc(pdf, 4.8, _t("•  " + txt))
+            pdf.set_font(pdf._fam, "", 9); _mc(pdf, 4.8, _t("•  " + txt))
         else:
-            pdf.set_font(pdf._fam, "", 9)
-            _mc(pdf, 4.8, _t(txt))
+            pdf.set_font(pdf._fam, "", 9); _mc(pdf, 4.8, _t(txt))
 
 
 def _mc(pdf, h: float, txt: str, **kw):
