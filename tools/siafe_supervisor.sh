@@ -23,10 +23,13 @@ while true; do
     fi
   done
   if done_sys 2 && done_sys 1; then
-    say "AMBOS os sweeps concluídos"
-    TOK=$(grep -m1 '^TELEGRAM_BOT_TOKEN=' /home/jfelippebethlem/.hermes/.env 2>/dev/null | cut -d= -f2- | tr -d '"'"'"' ')
-    N=$(/home/jfelippebethlem/JFN/.venv/bin/python -c "import sqlite3;print(sqlite3.connect('/home/jfelippebethlem/JFN/data/compliance.db').execute('SELECT COUNT(*) FROM ob_orcamentaria_siafe').fetchone()[0])" 2>/dev/null)
-    curl -s -F chat_id=45338178 -F text="✅ SWEEPS SIAFE 1 e 2 CONCLUÍDOS. Total de OBs na base: $N. Pronto p/ a análise pós-sweep e os TODOs (VACUUM, lock-por-sistema, dead-code)." "https://api.telegram.org/bot${TOK}/sendMessage" >/dev/null 2>&1
+    say "AMBOS os sweeps concluídos → rodando análise pós-sweep"
+    # roda a ANÁLISE PÓS-SWEEP automática (VACUUM + análise + avisa no Telegram). Marcador evita rodar 2x.
+    if [ ! -f data/.pos_sweep_feito ]; then
+      PYTHONPATH=. /home/jfelippebethlem/JFN/.venv/bin/python -m tools.pos_sweep_analise >> data/pos_sweep_analise.out 2>&1
+      touch data/.pos_sweep_feito
+      say "análise pós-sweep concluída (ver docs/ANALISE-POS-SWEEP-*.md)"
+    fi
     break
   fi
   sleep 180
