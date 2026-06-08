@@ -21,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import subprocess
 import threading
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -203,10 +204,35 @@ class SkillTree:
             linhas.append(f"{self._DOM_EMOJI.get(dom, '▪️')} *{self._DOM_TITULO.get(dom, dom.upper())}*")
             for cid, c in caps:
                 alvo = c.get("rota") or c.get("comando") or ""
-                qu = c.get("quando_usar", "")
-                qu = f" — _{qu}_" if qu else ""
-                linhas.append(f"▪️ *{cid}* (`{alvo}`): {c.get('descricao', '')}{qu}")
+                linhas.append(f"▪️ *{cid}* (`{alvo}`): {c.get('descricao', '')}")
+                linhas.append(f"   ↳ _ex.:_ {self._exemplo(c)}")
+        linhas.append("━━━━━━━━━━━━━━━━━━━━")
+        linhas.append("_Detalhe de uma função (args/retorno): `/skill <id>`._")
         return "\n".join(linhas)
+
+    @staticmethod
+    def _exemplo(c: dict) -> str:
+        """Exemplo curto de uso p/ o /lista. Prioridade: campo `exemplo` explícito → frase entre aspas
+        no `quando_usar` (exemplo natural já curado) → call HTTP montada dos args → comando CLI."""
+        if c.get("exemplo"):
+            return f"«{c['exemplo']}»"
+        qu = c.get("quando_usar", "") or ""
+        m = re.search(r"['\"]([^'\"]{3,70})['\"]", qu)
+        if m:
+            return f"«{m.group(1)}»"
+        args = c.get("args") or {}
+        rota = c.get("rota")
+        if rota and args:
+            _ph = {"cnpj": "33000167000101", "nome": "MGS Clean", "ug": "133100", "orgao": "ITERJ",
+                   "termo": "ACME", "querystring": "dispensa", "territory_ids": "3304557",
+                   "candidato": "Fulano", "lei": "", "missao": "auditar X", "cid": "33000167000101"}
+            k0 = next(iter(args))
+            return f"`GET {rota}?{k0}={_ph.get(k0, 'valor')}`"
+        if c.get("comando"):
+            return f"`{c['comando']}`"
+        if rota:
+            return f"`{c.get('metodo', 'GET')} {rota}`"
+        return "—"
 
     def detalhe(self, cid: str) -> str:
         """Markdown de uma capacidade (para /skill <id>)."""

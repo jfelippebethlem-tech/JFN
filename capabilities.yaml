@@ -18,17 +18,17 @@ meta:
 capacidades:
   # ---- AUDITORIA ----
   - {id: relatorio_inteligencia, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/relatorio/inteligencia, status: PRONTO,
-     descricao: "Due diligence de FORNECEDOR (PDF+XLSX+parecer Lex)", quando_usar: "relatorio/auditoria/due diligence de empresa, CNPJ",
+     descricao: "Due diligence de FORNECEDOR (PDF+XLSX+parecer Lex)", quando_usar: "relatorio/auditoria/due diligence de empresa, CNPJ", exemplo: "due diligence da MGS Clean",
      args: {empresa: "string (um de empresa|cnpj)", cnpj: "string", anos: "list[int] opcional"},
      retorno: "{cnpj,empresa,risco,score,path_pdf,path_xlsx,path_lex,grau_lex} | {ambiguo,candidatos}", enviar_telegram: [path_pdf, path_xlsx, path_lex]}
   - {id: relatorio_orgao, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/relatorio/orgao, status: PRONTO,
-     descricao: "Inteligencia de ORGAO/UG (quanto pagou e a quem)", quando_usar: "auditoria de orgao/UG/secretaria",
+     descricao: "Inteligencia de ORGAO/UG (quanto pagou e a quem)", quando_usar: "auditoria de orgao/UG/secretaria", exemplo: "quanto o ITERJ pagou e a quem em 2024",
      args: {orgao: "string (um de orgao|ug)", ug: "string", anos: "list[int] opcional"}, retorno: "{ug,orgao,path_pdf,path_xlsx} | {ambiguo}"}
   - {id: anomalias, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/anomalias, status: PRONTO,
      descricao: "Anomalias em OBs (+Benford na Onda 3)", quando_usar: "triagem de risco; 'algo estranho em X'",
      args: {ug: opcional, cnpj: opcional, exercicio: opcional}, retorno: "{alertas[]}"}
   - {id: cartel, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/cartel, status: PRONTO,
-     descricao: "Cartel/bid-rigging em grafo (aprofundado Onda 3 c/ QSA)", quando_usar: "conluio/cartel/combinacao",
+     descricao: "Cartel/bid-rigging em grafo (aprofundado Onda 3 c/ QSA)", quando_usar: "conluio/cartel/combinacao", exemplo: "tem cartel nas licitacoes da UG 133100?",
      args: {ug: opcional}, retorno: "{comunidades[]}"}
   - {id: conflito_doador_contrato, agente: lex, dominio: auditoria, tipo: http, metodo: GET, rota: /api/conflito, status: PRONTO,
      descricao: "Cruza doacoes TSE com contratos/OB (doador->fornecedor)", quando_usar: "'quem me doou ganhou contrato', conflito de interesse",
@@ -39,7 +39,7 @@ capacidades:
   - {id: cruzamento, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/cruzamento, status: PRONTO,
      descricao: "OB<->CNPJ<->SEI<->socios", quando_usar: "'cruze os dados da empresa X'", args: {cnpj: obrigatorio}, retorno: "{obs,processos_sei,socios}"}
   - {id: missao_autonoma, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/hermes/missao, status: PRONTO,
-     descricao: "Auditoria autonoma aberta (loop hermes_goal CANONICO)", quando_usar: "pedido complexo/aberto", args: {missao: obrigatorio}, retorno: "{missao_id}"}
+     descricao: "Auditoria autonoma aberta (loop hermes_goal CANONICO)", quando_usar: "pedido complexo/aberto", exemplo: "audite os pagamentos suspeitos do ITERJ em 2024", args: {missao: obrigatorio}, retorno: "{missao_id}"}
   # ---- GRAFO / DOSSIE ----
   - {id: grafo_poder, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/grafo, status: PRONTO,
      descricao: "Grafo unico: socios+servidores+doacoes+contratos+nomeacoes", quando_usar: "'quem esta ligado a X', 'a N saltos do deputado Y com contrato'",
@@ -57,7 +57,7 @@ capacidades:
      descricao: "Triagem em listas: CEIS/CNEP (BR) + sancoes/PEP (OpenSanctions)", quando_usar: "'a empresa X esta sancionada?', PEP",
      args: {cnpj: opcional, nome: opcional}, retorno: "{resultados[{fonte,estado,dados}]}", fonte: "Portal da Transparencia + OpenSanctions"}
   - {id: consultar_ownership, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/ownership, status: PRONTO,
-     descricao: "Empresa/controle internacional (LEI + relacoes)", quando_usar: "vinculo societario cross-jurisdicao", args: {nome: opcional, lei: opcional}, retorno: "{ok,fonte,dados}", fonte: "GLEIF"}
+     descricao: "Empresa/controle internacional (LEI + relacoes)", quando_usar: "vinculo societario cross-jurisdicao", exemplo: "controle internacional da Petrobras (LEI)", args: {nome: opcional, lei: opcional}, retorno: "{ok,fonte,dados}", fonte: "GLEIF"}
   - {id: consultar_leaks, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/leaks, status: PRONTO,
      descricao: "Busca hospedada em vazamentos offshore (link MANUAL)", quando_usar: "'aparece nos Panama/Pandora Papers?'", args: {termo: obrigatorio}, retorno: "{url}", fonte: "ICIJ Offshore Leaks"}
   - {id: consultar_links, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/links, status: PRONTO,
