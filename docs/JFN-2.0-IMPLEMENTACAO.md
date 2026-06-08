@@ -2,13 +2,18 @@
 
 ## 📍 VOCÊ PAROU AQUI (último checkpoint: 2026-06-08)
 > **Feito:** Onda 0 ✅ (capabilities.yaml+validador+obs_trace) · Onda 1 🟡 (geradores ✅, política de modelo no
-> config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`) · Onda 2 🟡
-> (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
-> **PRÓXIMO PASSO (escolher 1):** (a) **wiring do roteador no gateway** (aplicar `escolher_modelo` por request,
-> `run.py:13078`, via overlay idempotente) — fecha a Onda 1; (b) **Onda 2 rotas** `/api/conflito`+`/api/pncp` em
-> server.py + validar o conflito com os dados TSE (já carregando); (c) **Onda 3** (Benford/sobrepreço/score).
-> **Estado vivo:** sweep SIAFE 2 **PAUSADO** (flag `data/.pause_sweep_2`, parou em 86 UG:ano / 48,6k OBs);
-> download TSE **rodando** (`/tmp/tse_load.py`, já 400k+ doações RJ+presidente); Yoda gateway no ar.
+> config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
+> `compliance_agent/skilltree.py` reload fail-safe+sync+render, +5 capacidades `sistema`, 8 testes — commit `5279edf`)
+> · Onda 2 🟡 (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
+> **PRÓXIMO PASSO:** **Onda 2 rotas** `/api/conflito`+`/api/pncp` em server.py (lex_conflito já existe; expandir
+> `collectors/pncp.py`) + validar o conflito com TSE (já **542k doações** no banco). Depois **Onda 3** (Benford/
+> sobrepreço/score). **ADIADO p/ ÚLTIMA ONDA (decisão do dono):** wiring dos slash commands/roteador no gateway
+> Hermes VIVO (`~/hermes-agent/gateway/run.py`; Hermes É python-telegram-bot mas usa MessageHandler catch-all +
+> registro próprio `hermes_cli/commands.py`, NÃO CommandHandler). **Política de modelo: manter `gemini-2.5-pro`**
+> p/ raciocínio pesado (decisão do dono — NÃO trocar p/ gemini-3-pro-preview do §7 do mestre).
+> **REGRA PERMANENTE:** toda skill nova SEMPRE entra no `capabilities.yaml` e aparece no `/lista`.
+> **Estado vivo:** sweep SIAFE 2 **PAUSADO** (flag `data/.pause_sweep_2`); download TSE **rodando** (`/tmp/tse_load.py`,
+> 542k doações; 2024+2022 RJ completos); Yoda gateway no ar; jfn.service ativo.
 > **Branch `jfn-2.0`** (pushada). Tudo abaixo é o detalhe.
 
 ## ▶ RETOMADA RÁPIDA (ler PRIMEIRO se a sessão caiu / contexto estourou)
@@ -61,7 +66,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 | Onda | Escopo | Status |
 |---|---|---|
 | 0 | capabilities.yaml + validador + obs_trace | 🟢 núcleo ✅ (gen_*→Onda 1; siafe_worker/SEI-proxy diferidos) |
-| 1 | Orquestração (router do YAML, política de modelo) | 🟡 geradores+config ✅; dispatcher nativo no gateway + decisão de roteamento adaptativo PENDENTE |
+| 1 | Orquestração (router do YAML, política de modelo) | 🟡 geradores+config+roteador adaptativo+**skilltree** ✅; dispatcher nativo no gateway VIVO = ADIADO p/ última onda (decisão do dono) |
 | 2 | PNCP + conflito doador↔contrato (Lex) | 🟡 `lex_conflito.py` (doador↔SÓCIO↔OB) ✅ testado; TSE carregando; rotas /api/conflito+/api/pncp pendentes |
 | 3 | Motor de risco (Benford/sobrepreço/score) | ⏳ |
 | 4 | Grafo de Poder + Dossiê 360 | ⏳ |
@@ -153,3 +158,17 @@ roteamento adaptativo (decisão acima).
     Tem que **cruzar doadores TSE × SÓCIOS (QSA, `socios_fornecedor`) das empresas que têm contrato/OB** — i.e., o
     doador (CPF/CNPJ) pode ser SÓCIO da contratada, não a contratada em si. Estender `tse.cruzar_doacoes_contratos`
     (hoje só casa CNPJ direto) para incluir o join via QSA. Mesmo raciocínio p/ parentesco (DD #9/#10).
+- **2026-06-08 (Onda 1 — SKILLTREE ✅, commit `5279edf`)** — 4º PDF do dono (`docs/refs/JFN-SPEC-SKILLTREE-YODA.pdf`,
+  preservado): ver/atualizar a skilltree pelo Telegram a quente. Implementado o **registry puro** e testável:
+  `compliance_agent/skilltree.py` (`SkillTree`: `reload()` fail-safe **em memória** — YAML inválido mantém o estado
+  anterior, nunca derruba o roteador; `sync()` git pull+reload; `validate()`/`tool_specs()` **REUSAM**
+  `tools.validate_capabilities`+`tools.gen_router_tools` = fonte única; `render()`/`detalhe()` p/ Telegram). +5
+  capacidades domínio `sistema` no `capabilities.yaml` (skills, skill_detalhe, skills_reload, skills_sync,
+  skills_validate). `tests/test_jfn2_skilltree.py` (8 verdes; 15 verdes no bloco jfn2). **Revisão pós-leitura dos
+  4 PDFs+doc:** corrigido 1 acoplamento (o `reload()` chamava `gen_router_tools.gerar()` escrevendo em
+  `~/.hermes/jfn_tools.json` no import — removido; `reload()` agora é puro, não toca o Hermes vivo). **ADIADO p/
+  última onda (dono):** wiring dos 5 slash commands no gateway Hermes vivo (`gateway/run.py` — MessageHandler
+  catch-all + `hermes_cli/commands.py`, gating admin via `slash_access.py`). **Política de modelo `gemini-2.5-pro`
+  mantida** (decisão do dono). **Regra permanente:** toda skill nova → `capabilities.yaml` + `/lista`.
+  **PRÓXIMO: Onda 2 rotas** `/api/conflito` (usa `lex_conflito.conflito()`, já existe e testado) + `/api/pncp`
+  (expandir `collectors/pncp.py`) em `server.py`; validar com as **542k doações TSE** já no banco.
