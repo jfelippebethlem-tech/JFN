@@ -38,9 +38,11 @@ cadastral · sócios/diretores · **doações eleitorais dos sócios** (conflito
 ## ⏳ PENDÊNCIAS (retomar aqui)
 1. **/lista lento** = loop do agente Yoda (a rota `/api/lista` é 29ms). **FIX a fazer:** fast-path no gateway
    p/ comandos fixos (devolver o HTTP direto sem o loop do LLM). É no `gateway/run.py` (bot vivo, cuidado).
-2. **Leitura SEI (itkava) ao vivo:** estava em teste (`/tmp/sei_test.out`) — VALIDAR se `sei_cdp.ler_processo_sei`
-   (que delega ao `tools.sei_reader.ler` itkava) lê a íntegra de um processo real. O parecer Lex NÃO deve
-   afirmar "leu na íntegra" se voltar vazio (honestidade — conferir `lex._ler_integra_sei`).
+2. **Leitura SEI (itkava) — ✅ VALIDADA AO VIVO (2026-06-08):** `sei_cdp.ler_processo_sei` → `tools.sei_reader.ler`
+   (itkava) leu `SEI-140001/017080/2022` = **12.000 chars + 3 documentos** (login_via sei_reader/itkava, sem erro).
+   Logo o Lex AGORA consegue ler a íntegra real. **A fazer:** garantir que o parecer Lex use esse texto e NÃO
+   afirme "leu na íntegra" quando voltar vazio (honestidade — `lex._ler_integra_sei`); rodar um `/relatorio` e
+   conferir a seção II-B do parecer com conteúdo SEI real.
 3. **Definição de Pronto** (no `JFN-2.0-IMPLEMENTACAO.md`): merge `jfn-2.0`→`linux` + limpeza da memória de
    retomada + anúncio. **AGUARDA OK do dono** (ação na branch estável). NÃO fazer sem confirmação.
 4. Diferidos com motivo: itens SIAFE da Onda 11 (sweep rodando), crypto_ws daemon (Onda 8), enriquecedores
