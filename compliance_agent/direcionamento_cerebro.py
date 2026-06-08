@@ -157,10 +157,17 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
     (default Groq; injete um fake no teste). Retorna o JSON do schema + `presinais` + proveniência."""
     sig = presinais(ata_txt)
     base = {"presinais": sig, "fonte": "direcionamento_cerebro"}
-    if not sig["tem_ata"] and not (edital_txt and len(edital_txt) > 1500):
-        return {**base, "grau": "verde", "dados_suficientes": False,
-                "resumo": "Dados insuficientes (sem ata/edital com conteúdo) — nada a apurar.",
-                "ressalva": "presunção de legitimidade; indício a apurar, não acusação"}
+    # dados suficientes = tem ATA (cascata) OU o texto realmente PARECE um edital de licitação (marcadores
+    # de habilitação/qualificação). Evita "analisar" menu do SEI ou contrato de execução como se fosse edital.
+    ed_low = (edital_txt or "").lower()
+    edital_de_licitacao = (len(ed_low) > 1500 and sum(
+        ed_low.count(k) for k in ("edital", "atestado", "qualificac", "habilitac", "pregao", "pregão",
+                                  "termo de referencia", "termo de referência", "licitac", "proposta")) >= 3)
+    if not sig["tem_ata"] and not edital_de_licitacao:
+        return {**base, "grau": "indeterminado", "dados_suficientes": False,
+                "resumo": "Dados insuficientes: o texto não é um edital de licitação nem uma ata de julgamento "
+                          "(provável processo de execução/contrato ou tela do SEI) — nada a avaliar aqui.",
+                "ressalva": "sem juízo; buscar o PROCESSO DE LICITAÇÃO (edital/ata), não o de execução"}
     gerar = gerar or _gerar_default
     messages = [{"role": "system", "content": _SYS}, {"role": "user", "content": _montar_user(edital_txt, ata_txt, contexto)}]
     try:
