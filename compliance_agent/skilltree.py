@@ -182,32 +182,46 @@ class SkillTree:
     _DOM_TITULO = {"auditoria": "AUDITORIA & RELATÓRIOS", "inteligencia": "INTELIGÊNCIA / OSINT",
                    "juridico": "JURÍDICO (Lex) / SEI", "mercado": "MERCADO (Massare)", "sistema": "SISTEMA"}
 
+    # /lista = MENU CURADO, em linguagem natural — só o essencial que o Mestre Jorge de fato usa.
+    # O catálogo COMPLETO (todas as capacidades) fica no /skills. Itens inexistentes são omitidos.
+    _MENU_PUBLICO = [
+        ("🏢", "Auditoria & Relatórios", [
+            ("relatorio_inteligencia", "Relatório de um fornecedor", "due diligence da MGS Clean"),
+            ("relatorio_orgao", "Relatório de um órgão/UG", "quanto o ITERJ pagou e a quem em 2024"),
+            ("dossie", "Dossiê 360 de um alvo", "monte um dossiê da Extreme"),
+        ]),
+        ("🔎", "Investigação", [
+            ("cartel", "Cartel/conluio entre fornecedores", "tem cartel nas licitações da UG 133100?"),
+            ("cruzamento", "Cruzar OB × CNPJ × SEI × sócios", "cruze os dados da empresa X"),
+            ("conflito_doador_contrato", "Doador de campanha que virou fornecedor", "quem me doou ganhou contrato?"),
+            ("anomalias", "Anomalias automáticas nos pagamentos", "algo estranho nos pagamentos do ITERJ?"),
+        ]),
+        ("🕸️", "Rede & Idoneidade", [
+            ("grafo_poder", "Rede de poder (quem liga a quem)", "quem está ligado à empresa X"),
+            ("consultar_empresa", "Cadastro + sócios de um CNPJ", "dados da empresa 19.088.605/0001-04"),
+            ("consultar_idoneidade", "A empresa está sancionada? (CEIS/CNEP)", "a empresa X está sancionada?"),
+        ]),
+    ]
+
     def render_menu(self, so_prontas: bool = True) -> str:
-        """Menu COMPLETO p/ o /lista — gerado do capabilities.yaml (fonte única), agrupado por domínio,
-        com descrição + quando usar. Substitui o texto fixo: /lista passa a refletir TODAS as capacidades."""
-        por_dom: dict[str, list] = {}
-        for cid, c in sorted(self.capacidades.items(), key=lambda kv: kv[0]):
-            if so_prontas and c.get("status") != "PRONTO":
-                continue
-            por_dom.setdefault(c.get("dominio", "outros"), []).append((cid, c))
+        """/lista = menu CURADO e enxuto, em linguagem natural (não despeja as ~47 capacidades). O catálogo
+        completo está no /skills. Itens cujo id não existe no capabilities.yaml são omitidos."""
         linhas = [
-            "🧭 *ECOSSISTEMA JFN* — eu, o *Yoda*, sou o maestro e aciono os agentes (JFN · Lex · Massare).",
-            "Peça em linguagem natural ou pelo comando. Detalhe de uma função: `/skill <id>`.",
-            f"_v{self.meta.get('versao', '?')} · {sum(len(v) for v in por_dom.values())} capacidades ativas_",
+            "🧭 *JFN — o que posso fazer por você*",
+            "_Fale em linguagem natural; eu, o Yoda, aciono o agente certo._",
         ]
-        ordem = ["auditoria", "inteligencia", "juridico", "mercado", "sistema"]
-        for dom in ordem + [d for d in sorted(por_dom) if d not in ordem]:
-            caps = por_dom.get(dom)
-            if not caps:
+        for emoji, titulo, itens in self._MENU_PUBLICO:
+            disp = [(cid, nome, ex) for cid, nome, ex in itens if cid in self.capacidades]
+            if not disp:
                 continue
-            linhas.append("━━━━━━━━━━━━━━━━━━━━")
-            linhas.append(f"{self._DOM_EMOJI.get(dom, '▪️')} *{self._DOM_TITULO.get(dom, dom.upper())}*")
-            for cid, c in caps:
-                alvo = c.get("rota") or c.get("comando") or ""
-                linhas.append(f"▪️ *{cid}* (`{alvo}`): {c.get('descricao', '')}")
-                linhas.append(f"   ↳ _ex.:_ {self._exemplo(c)}")
-        linhas.append("━━━━━━━━━━━━━━━━━━━━")
-        linhas.append("_Detalhe de uma função (args/retorno): `/skill <id>`._")
+            linhas.append("")
+            linhas.append(f"{emoji} *{titulo}*")
+            for _cid, nome, ex in disp:
+                linhas.append(f"• *{nome}*")
+                linhas.append(f"   _«{ex}»_")
+        linhas.append("")
+        linhas.append("───────────")
+        linhas.append("_Tudo (catálogo completo): `/skills` · Detalhe de uma função: `/skill <id>`_")
         return "\n".join(linhas)
 
     @staticmethod
