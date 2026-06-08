@@ -70,3 +70,75 @@ def test_capability_grafo_pronto():
     cap = st.capacidades.get("grafo_poder")
     assert cap is not None and cap["status"] == "PRONTO" and cap["rota"] == "/api/grafo"
     assert st.validate() == []
+
+
+# ---- Onda 4b: Dossiê 360 (agregação honesta; mock das fontes de rede) ----
+
+def test_dossie_agrega_e_score(monkeypatch, tmp_path):
+    """dossie() une cadastro+sanções+OB+conflito+rede e calcula o score dos sinais."""
+    import asyncio
+
+    from compliance_agent import dossie as D
+
+    async def fake_cnpj(cnpj, client=None):
+        return {"razao_social": "EMPRESA TESTE LTDA", "cnpj": cnpj}
+
+    async def fake_sancao(cnpj, forcar_update=False):
+        return {"sancionado": True, "sancoes": [{"tipo": "CEIS"}]}
+
+    monkeypatch.setattr("compliance_agent.collectors.cnpj.buscar_cnpj", fake_cnpj)
+    monkeypatch.setattr("compliance_agent.collectors.ceis.verificar_sancao", fake_sancao)
+    monkeypatch.setattr("compliance_agent.lex_conflito.conflito",
+                        lambda cnpj=None, candidato=None, limite=200: {"rede": [{"x": 1}], "_nota": "n"})
+    monkeypatch.setattr("compliance_agent.grafo_poder.vizinhanca",
+                        lambda alvo, saltos=2, so_contrato=False: {"n_nos": 5, "arestas": [], "nos": []})
+    # DB vazio p/ _resumo_ob (sem OB) — não fabrica
+    db = tmp_path / "x.db"
+    import sqlite3
+    sqlite3.connect(str(db)).executescript(
+        "CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, ug_codigo TEXT, ug_nome TEXT, valor REAL);")
+    monkeypatch.setattr(D, "_DB", db)
+
+    d = asyncio.run(D.dossie("11111111000111", gerar_pdf=False))
+    assert d["ok"] is True
+    assert d["cadastro"]["razao_social"] == "EMPRESA TESTE LTDA"
+    # score = conflito (25) + sanção (20); concentração 0 (sem OB)
+    flags = {c["flag"] for c in d["score"]["contribuicoes"]}
+    assert "conflito_doador" in flags and "sancao_ceis_cnep" in flags
+    assert d["score"]["score"] >= 40
+
+
+def test_dossie_fonte_indisponivel_nao_fabrica(monkeypatch, tmp_path):
+    """Se uma fonte falha, vira INDISPONÍVEL — nunca inventa."""
+    import asyncio
+
+    from compliance_agent import dossie as D
+
+    async def boom(*a, **k):
+        raise RuntimeError("rede caiu")
+
+    monkeypatch.setattr("compliance_agent.collectors.cnpj.buscar_cnpj", boom)
+    monkeypatch.setattr("compliance_agent.collectors.ceis.verificar_sancao", boom)
+    db = tmp_path / "y.db"
+    import sqlite3
+    sqlite3.connect(str(db)).executescript(
+        "CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, ug_codigo TEXT, ug_nome TEXT, valor REAL);")
+    monkeypatch.setattr(D, "_DB", db)
+    monkeypatch.setattr("compliance_agent.lex_conflito.conflito",
+                        lambda **k: {"rede": []})
+    monkeypatch.setattr("compliance_agent.grafo_poder.vizinhanca",
+                        lambda *a, **k: {"n_nos": 0, "arestas": [], "nos": []})
+
+    d = asyncio.run(D.dossie("11111111000111", gerar_pdf=False))
+    assert "INDISPONÍVEL" in d["cadastro"]["_nota"]
+    assert d["ok"] is True  # o dossiê não quebra por uma fonte fora
+
+
+def test_capability_dossie_pronto():
+    from compliance_agent.skilltree import SkillTree
+
+    st = SkillTree()
+    st.reload()
+    cap = st.capacidades.get("dossie")
+    assert cap is not None and cap["status"] == "PRONTO" and cap["rota"] == "/api/dossie"
+    assert st.validate() == []

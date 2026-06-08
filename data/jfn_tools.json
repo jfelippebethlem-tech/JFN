@@ -311,6 +311,35 @@
     {
       "type": "function",
       "function": {
+        "name": "dossie",
+        "description": "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias) — usar quando: 'monte um dossie sobre X'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "alvo": {
+              "type": "string",
+              "description": "obrigatorio"
+            }
+          },
+          "required": [
+            "alvo"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/dossie",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "ler_processo_sei",
         "description": "Le processo SEI na integra (SIP autenticado; proxy BR) — usar quando: '/sei E-12/345/2026'",
         "parameters": {
@@ -761,7 +790,6 @@
     }
   ],
   "futuras_desabilitadas": [
-    "dossie",
     "buscar_direcionamento",
     "instrumento_mandato",
     "massare_teses",
