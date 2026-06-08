@@ -3,9 +3,10 @@
 ## ▶ RETOMADA RÁPIDA (ler PRIMEIRO se a sessão caiu / contexto estourou)
 > Trabalho de DIAS — projetado para sobreviver a quedas de sessão. **Para continuar exatamente de onde parou:**
 > 1. `cd ~/JFN && git checkout jfn-2.0` (branch de trabalho; `linux` é o estável/rede de segurança).
-> 2. Ler **este doc inteiro** + o spec-fonte: `docs/refs/JFN-DOCUMENTO-MESTRE-CONSOLIDADO.{pdf,txt}` (o §7 traz
->    o `capabilities.yaml` completo; §5 o passo-a-passo por onda). O PDF foi copiado p/ o repo porque o cache do
->    Hermes se auto-limpa.
+> 2. Ler **este doc inteiro** + os specs-fonte em `docs/refs/` (preservados porque o cache do Hermes auto-limpa):
+>    **`JFN-DOCUMENTO-MESTRE-CONSOLIDADO-v2.{pdf,txt}`** (VERSÃO ATUAL — usar esta; §7 = `capabilities.yaml`, §5 =
+>    passo-a-passo por onda) e **`JFN-ADICIONAL-DUE-DILIGENCE-OSINT.{pdf,txt}`** (metodologia DD/OSINT + catálogo de
+>    ferramentas grátis). (`...-CONSOLIDADO.{pdf,txt}` sem sufixo = v1, histórico.)
 > 3. Olhar a tabela **"Progresso por onda"** e o **"Diário de execução"** (fim do doc) — a última linha diz o
 >    ponto exato. Pegar a primeira onda/ item não-✅ e seguir o §5 do spec.
 > 4. Regras inquebráveis: **branch `jfn-2.0`**; **aditivo**; `pytest -q` antes de cada commit; **commitar cada
@@ -50,7 +51,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 |---|---|---|
 | 0 | capabilities.yaml + validador + obs_trace | 🟢 núcleo ✅ (gen_*→Onda 1; siafe_worker/SEI-proxy diferidos) |
 | 1 | Orquestração (router do YAML, política de modelo) | ⏳ |
-| 2 | PNCP + conflito doador↔contrato (Lex) | ⏳ |
+| 2 | PNCP + conflito doador↔contrato (Lex) | ⏳ (base existe: `pncp.py`, `tse.cruzar_doacoes_contratos`) |
 | 3 | Motor de risco (Benford/sobrepreço/score) | ⏳ |
 | 4 | Grafo de Poder + Dossiê 360 | ⏳ |
 | 5 | SEI inteligência em escala | ⏳ |
@@ -95,3 +96,14 @@ Quando **todas as 12 ondas estiverem ✅ e a suíte verde**, a sessão que concl
   e `gen_capabilities_md.py` + hook pre-commit → **Onda 1** (onde o roteador do Yoda consome o YAML).
   **PRÓXIMO: Onda 2** (PNCP + conflito doador↔contrato) — prioridade do dono, aditiva. Ver mapa em
   `docs/research/DD-METODOLOGIA.md` (#1 screening, #10 COI) e `OSINT-METODOLOGIA.md` (doação↔contrato, cartel).
+- **2026-06-08 (background deps + novos specs)** — ✅ Instaladas (todas GRÁTIS, núcleo intacto, 104 smoke verde):
+  `rapidfuzz, python-louvain, igraph, leidenalg, pyvis, python-bcb, splink` (pinadas em `requirements.txt`).
+  Diferidas com motivo: `followthemoney` (precisa libicu/apt), `sentence-transformers`/`vectorbt`/`weasyprint`
+  (na sua onda). **Torch pode ser reinstalado SE preciso — sempre `--index-url .../whl/cpu`** (autorizado pelo dono).
+  - ✅ **2 novos specs recebidos via Telegram e preservados:** `docs/refs/JFN-DOCUMENTO-MESTRE-CONSOLIDADO-v2.{pdf,txt}`
+    (mestre atualizado — USAR ESTE) e `docs/refs/JFN-ADICIONAL-DUE-DILIGENCE-OSINT.{pdf,txt}` (metodologia DD/OSINT
+    + catálogo de ferramentas grátis: Aleph/OpenCorporates/Brasil.io etc., marcando [JFN]/[INTEGRAR]/[MANUAL]).
+  - 🔴 **REQUISITO CRÍTICO da Onda 2 (instrução do dono):** o conflito NÃO é só doador-CNPJ == fornecedor-CNPJ.
+    Tem que **cruzar doadores TSE × SÓCIOS (QSA, `socios_fornecedor`) das empresas que têm contrato/OB** — i.e., o
+    doador (CPF/CNPJ) pode ser SÓCIO da contratada, não a contratada em si. Estender `tse.cruzar_doacoes_contratos`
+    (hoje só casa CNPJ direto) para incluir o join via QSA. Mesmo raciocínio p/ parentesco (DD #9/#10).

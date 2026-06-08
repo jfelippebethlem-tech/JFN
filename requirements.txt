@@ -27,3 +27,17 @@ opencv-python-headless>=4.9.0
 easyocr>=1.7.0       # caminho alternativo do SEI (sei_driver/sei_sei_direct). Puxa torch+torchvision.
 # torch/torchvision: instalar SEMPRE a versão CPU para não baixar CUDA (vários GB):
 #   pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+
+# --- JFN 2.0 (todas GRATUITAS/OSS; instaladas 2026-06-08, núcleo numpy/pandas/scipy/torch intacto) ---
+rapidfuzz>=3.14       # dedup de adverse media (Radar, Onda 6)
+python-louvain>=0.16  # community detection (import `community`) — Grafo de Poder (Onda 4/6)
+igraph>=1.0           # grafo + Leiden (Onda 4/6)
+leidenalg>=0.12       # community detection Leiden (Onda 4/6)
+pyvis>=0.3            # visualização de grafo HTML (Onda 4)
+python-bcb>=0.3       # BCB/Olinda Focus (import `bcb`) — Massare macro (Onda 8)
+splink>=4.0           # entity resolution sobre DuckDB (Onda 4)
+# DIFERIDAS (instalar na onda que usar):
+#   followthemoney  -> precisa libicu-dev + pkg-config (sudo apt); networkx cobre a Onda 4 sem ela
+#   sentence-transformers -> embeddings SEI (Onda 5); puxa torch — usar índice CPU (acima)
+#   vectorbt        -> backtest (Onda 9); pins estritos de numpy/numba — validar conflito antes
+#   weasyprint      -> HTML→PDF (Onda 7); precisa cairo/pango (apt). Alt sem apt: Playwright page.pdf()
