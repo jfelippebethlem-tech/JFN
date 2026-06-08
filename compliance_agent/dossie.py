@@ -72,6 +72,14 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     except Exception as e:  # noqa: BLE001
         d["sancoes"] = {"_nota": f"INDISPONÍVEL: {e}"}
 
+    # 2b) OpenSanctions (PEP + sanções internacionais) — Onda 12 (key-gated, honesto)
+    try:
+        from compliance_agent.enrich.opensanctions import checar
+        d["opensanctions"] = checar(cnpj)
+        sancionado = sancionado or bool(d["opensanctions"].get("sancionado"))
+    except Exception:  # noqa: BLE001
+        pass
+
     # 3) OB / contratos (dado interno)
     d["ob"] = _resumo_ob(cnpj)
 

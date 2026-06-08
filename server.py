@@ -1367,6 +1367,16 @@ async def api_grafo(alvo: str, saltos: int = 2, so_contrato: bool = False):
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.get("/api/grafo/ftm")
+async def api_grafo_ftm(alvo: str, saltos: int = 2):
+    """Onda 12 — Export do Grafo de Poder no modelo FollowTheMoney (interoperar c/ Aleph/Gephi)."""
+    try:
+        from compliance_agent.grafo_ftm import export
+        return JSONResponse(content=export(alvo, saltos=saltos))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.post("/api/dossie")
 async def api_dossie(payload: Optional[dict] = None):
     """Onda 4 — Dossiê 360 de um CNPJ: cadastro+sanções+OB+conflito+rede+score → PDF.
