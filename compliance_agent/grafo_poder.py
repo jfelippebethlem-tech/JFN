@@ -37,7 +37,14 @@ def _resolver_alvo(con, alvo: str) -> str | None:
     """Resolve o alvo num node-id: 'cnpj:<14>' | 'socio:<nome>' | 'cand:<nome>' | 'ug:<cod>'."""
     d = _digits(alvo)
     if len(d) == 14:
-        return f"cnpj:{d}"
+        # só é nó se o CNPJ aparece em alguma fonte (senão = fora do universo de dados)
+        existe = con.execute(
+            "SELECT 1 FROM socios_fornecedor WHERE cnpj=? LIMIT 1", (d,)).fetchone() or \
+            con.execute(
+                "SELECT 1 FROM ordens_bancarias WHERE "
+                "REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','')=? LIMIT 1",
+                (d,)).fetchone()
+        return f"cnpj:{d}" if existe else None
     if d and len(d) in (6, 7) and con.execute(
             "SELECT 1 FROM ordens_bancarias WHERE ug_codigo=? LIMIT 1", (d,)).fetchone():
         return f"ug:{d}"
