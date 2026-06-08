@@ -74,7 +74,7 @@ CACHE_DIR = _REPO / "data" / "sei_cache"
 async def _extrair_de_todos_frames(pg) -> dict:
     """Roda o extractor da árvore/texto em TODOS os frames (o SEI usa iframes ifrArvore/ifrVisualizacao)."""
     from compliance_agent.collectors.sei_cdp import _JS_LE_ARVORE_E_TEXTO
-    docs, textos = {}, []
+    docs, rel, textos = {}, {}, []
     for fr in pg.frames:
         try:
             d = await fr.evaluate(_JS_LE_ARVORE_E_TEXTO)
@@ -83,9 +83,13 @@ async def _extrair_de_todos_frames(pg) -> dict:
         for doc in d.get("documentos", []):
             if doc.get("url"):
                 docs[doc["url"]] = doc
+        for r in d.get("relacionados", []):  # processos relacionados (cadeia licitação↔contrato↔pagamento)
+            if r.get("url"):
+                rel[r["url"]] = r
         if d.get("texto") and len(d["texto"]) > 80:
             textos.append(d["texto"])
-    return {"documentos": list(docs.values()), "texto": "\n\n".join(textos)[:20000]}
+    return {"documentos": list(docs.values()), "relacionados": list(rel.values()),
+            "texto": "\n\n".join(textos)[:20000]}
 
 
 async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
@@ -124,7 +128,8 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     await _abrir_primeiro_resultado(pg)
     await pg.wait_for_timeout(3000)
     dump = await _extrair_de_todos_frames(pg)
-    res = {"numero": proc, "url": pg.url, "documentos": dump["documentos"], "texto": dump["texto"],
+    res = {"numero": proc, "url": pg.url, "documentos": dump["documentos"],
+           "relacionados": dump.get("relacionados", []), "texto": dump["texto"],
            "captcha_resolvido": False, "_login": {"ok": True, "via": "sei_reader/itkava"}}
     # conteúdo dos primeiros documentos
     docs_txt = []

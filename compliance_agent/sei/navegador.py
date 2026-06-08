@@ -64,8 +64,16 @@ def abrir_processo(numero: str, usar_cache: bool = True) -> dict:
         docs.append(DocSEI(id=str(i), titulo=titulo, tipo_bruto=numero, url=url,
                            formato=_formato(url),
                            conteudo=conteudo_por_titulo.get(numero[:80], "") or conteudo_por_titulo.get(titulo[:80], "")))
+    # processos relacionados (a CADEIA: licitação↔contrato↔empenho/pagamento) — base do índice
+    import re as _re
+    relacionados = []
+    for r in integra.get("relacionados", []) or []:
+        txt = (r.get("texto") or "") + " " + (r.get("titulo") or "")
+        m = _re.search(r"(SEI[- ]?\S+|E-\d[\w./-]+|\d{2}[./]\d{3,}[\w./-]*)", txt)
+        relacionados.append({"numero": m.group(1).strip() if m else (r.get("texto") or "").strip(),
+                             "titulo": (r.get("titulo") or "").strip(), "url": r.get("url") or ""})
     return {"ok": True, "numero": numero, "url": integra.get("url", ""),
-            "texto": integra.get("texto", ""), "docs": docs,
+            "texto": integra.get("texto", ""), "docs": docs, "relacionados": relacionados,
             "cnpjs": integra.get("cnpjs", []), "valores": integra.get("valores", [])}
 
 
