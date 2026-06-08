@@ -5,12 +5,11 @@
 > config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
 > `compliance_agent/skilltree.py` reload fail-safe+sync+render, +5 capacidades `sistema`, 8 testes — commit `5279edf`)
 > · Onda 2 🟡 (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
-> **PRÓXIMO PASSO:** **Onda 4** (Grafo de Poder + Dossiê 360): `grafo_poder.py` (une QSA+servidores+doações+
-> contratos+nomeações+co-endereço; GraphML + DuckDB), `dossie.py` (agrega tudo → PDF). Rotas `/api/grafo`,
-> `/api/dossie`. Já existem peças: `grafo_cartel.py`, `rede_societaria.py`. **Onda 3 ✅ COMPLETA** (commits
-> `d957a11` Benford + `e2fe9c3` sobrepreço + `0d49b95` score; validados live: Benford em 1,08M OBs, sobrepreço
-> CATMAT real +63,6%, score decomposto). **Onda 2 ✅ COMPLETA** (`fb8b9ef`+`37e5922`+`9814c91`).
-> **39 testes JFN 2.0 verdes; 63 rotas; 25 capacidades PRONTO.** **ADIADO p/ ÚLTIMA ONDA
+> **PRÓXIMO PASSO:** **Onda 5** (SEI inteligência em escala): `sei_extract.py` (extração por schema LLM→JSON),
+> `sei_corpus.py` (FTS5 + embeddings), `sei_direcionamento.py` (varredor R1/R7/R8/R12 sobre corpus SEI+PNCP).
+> Rota `/api/sei/direcionamento`. ⚠️ SEI WAF-bloqueado da VM → varrer sobre PNCP (que buscamos) + SEI cacheado.
+> **Ondas 0,1(skilltree),2,3,4 ✅.** Commits Onda 4: `5cab17d`+`2bc915e`(grafo)+`9181084`(dossiê).
+> **53 testes JFN 2.0 verdes; 27 capacidades PRONTO.** Adiado p/ última onda: wiring slash no Yoda vivo. Modelo: gemini-2.5-pro. **ADIADO p/ ÚLTIMA ONDA
 > (dono):** wiring dos slash commands/roteador no gateway Hermes VIVO (`~/hermes-agent/gateway/run.py`; Hermes É
 > python-telegram-bot mas usa MessageHandler catch-all + `hermes_cli/commands.py`, NÃO CommandHandler). **Política de
 > modelo: manter `gemini-2.5-pro`** (decisão do dono). **REGRA PERMANENTE:** toda skill nova → `capabilities.yaml` + `/lista`.
@@ -72,7 +71,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 | 1 | Orquestração (router do YAML, política de modelo) | 🟡 geradores+config+roteador adaptativo+**skilltree** ✅; dispatcher nativo no gateway VIVO = ADIADO p/ última onda (decisão do dono) |
 | 2 | PNCP + conflito doador↔contrato (Lex) | ✅ `/api/conflito` (542k doações TSE) + `/api/pncp` (consulta+abertos+análise de edital). 2c: `id=` baixa edital ZIP/PDF→texto + red flags Lex (R7 validado em edital real) |
 | 3 | Motor de risco (Benford/sobrepreço/score) | ✅ Benford 1º+2º díg MAD-Nigrini (`/api/anomalias`) + sobrepreço CATMAT/CATSER (`/api/sobrepreco`) + score convergência decomponível. Cartel R8 já tinha grafo |
-| 4 | Grafo de Poder + Dossiê 360 | ⏳ |
+| 4 | Grafo de Poder + Dossiê 360 | ✅ `grafo_poder.py` (vizinhança BFS local, `/api/grafo`) + `dossie.py` (cadastro+sanções+OB+conflito+rede+score→PDF, `/api/dossie`). Validado: BEST VIGILANCIA score 37 |
 | 5 | SEI inteligência em escala | ⏳ |
 | 6 | Radar 24/7 | ⏳ |
 | 7 | Relatório classe mundial (HTML→PDF) | ⏳ |
