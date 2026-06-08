@@ -41,6 +41,20 @@ Isso explica os 0 resultados no PNCP (por fornecedor E por órgão PRODERJ) e re
   Contratação"), cujas URLs SÃO navegáveis (`procedimento_trabalhar&id_procedimento=...`) — mas o número do
   processo de licitação não extrai limpo do texto.
 
+## ⛔ MURO FINAL CONFIRMADO (2026-06-08, após implementar `ler_com_cadeia`)
+O reader que **segue a cadeia de relacionados** foi implementado e FUNCIONA mecanicamente
+(`tools/sei_reader.py::ler_com_cadeia` — abre o processo, pega a URL viva do relacionado, `goto`, extrai;
+com retry p/ a busca→abrir intermitente). Ao vivo no `070002/004332`: abriu, achou **40 relacionados**, e
+navegou neles. **PORÉM** os processos de licitação/contratação retornam só **~500-1000 chars (cabeçalho)**,
+`eh_licitacao=False` — porque são de **OUTRA UNIDADE (PRODERJ)**, **FORA do escopo de acesso do login
+itkava/ITERJ** (mesmo limite da Onda 1 / processo 520002). **Conclusão honesta: o login ITERJ NÃO lê os
+processos de licitação do PRODERJ.** O mecanismo está pronto; falta **acesso**.
+
+**O que destrava (decisão do dono):** (a) um login/credencial com **escopo do PRODERJ** (ou unidade gestora
+da ARP) no SEI; (b) ou o **Diário Oficial do RJ** (publicação do edital/homologação da ARP, pré-PNCP);
+(c) ou pedir o processo via **transparência/LAI**. Com o texto do edital+ata em mãos, o
+`direcionamento_cerebro` já avalia (Gemini→Hermes) e o `montar_pacote_claude` envia ao Telegram.
+
 ## PRÓXIMO PASSO (preciso, para a próxima IA)
 1. **Ler o SEI direito seguindo a cadeia:** enhancer no `sei_reader` p/ NAVEGAR as URLs dos `relacionados`
    (`procedimento_trabalhar&id_procedimento=`) na sessão autenticada e extrair a árvore de cada um — até achar

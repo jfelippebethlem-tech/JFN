@@ -254,7 +254,15 @@ async def ler_com_cadeia(numero: str, *, max_rel: int = 5, tentativas_login: int
             try:
                 if not await login(pg, tentativas=tentativas_login):
                     return {"numero": numero, "erro": "INDISPONÍVEL: login itkava não autenticou"}
-                proc = await ler_processo(pg, numero, usar_cache=False)
+                # busca→abrir do SEI é INTERMITENTE (Onda 1) — retry até abrir (relacionados/docs > 0)
+                proc = {}
+                for tentativa in range(3):
+                    proc = await ler_processo(pg, numero, usar_cache=False)
+                    if (proc.get("relacionados") or proc.get("documentos")):
+                        break
+                    out.setdefault("tentativas_abertura", 0)
+                    out["tentativas_abertura"] += 1
+                    await pg.wait_for_timeout(2000)
                 out["processo"] = {k: proc.get(k) for k in ("numero", "url", "documentos", "relacionados",
                                                              "cnpjs", "valores", "motivo_zero")}
                 # relacionados ÚNICOS por id_procedimento (URLs vivas desta sessão)
