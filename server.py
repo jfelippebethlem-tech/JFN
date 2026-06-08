@@ -544,6 +544,26 @@ async def api_massare_noticias(tema: str = "", janela: str = "2d"):
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.get("/api/massare/teses")
+async def api_massare_teses(registrar: bool = True):
+    """Onda 9 — Teses de mercado: narrativa→ativos→direção, registradas como previsão (OOS)."""
+    try:
+        from massare.theses import atual
+        return JSONResponse(content=atual(registrar=registrar))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/massare/carteira")
+async def api_massare_carteira():
+    """Onda 9 — Carteira manual (data/carteira.json) valorizada + cruzada com teses. Sem broker."""
+    try:
+        from massare.carteira import carteira
+        return JSONResponse(content=carteira())
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/api/massare/placar")
 async def api_massare_placar():
     """Acurácia out-of-sample acumulada + sentimento de mercado (Fear&Greed/VIX)."""

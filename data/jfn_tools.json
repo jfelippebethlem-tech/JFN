@@ -574,6 +574,28 @@
     {
       "type": "function",
       "function": {
+        "name": "massare_teses",
+        "description": "Teses de mercado: narrativa->ativos->direcao, com acerto OOS por narrativa — usar quando: 'quais as teses agora', 'o que move o mercado'",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "massare",
+        "dominio": "mercado",
+        "tipo": "http",
+        "rota": "/api/massare/teses",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "massare_focus",
         "description": "Boletim Focus (BCB/Olinda): Selic/IPCA/PIB/cambio + variacao semanal — usar quando: 'o que o mercado espera de juros/inflacao'",
         "parameters": {
@@ -643,6 +665,28 @@
         "dominio": "mercado",
         "tipo": "http",
         "rota": "/api/massare/calendario",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "massare_carteira",
+        "description": "Modo carteira MANUAL: holdings em data/carteira.json x macro/regime/teses (sem broker) — usar quando: 'como esta minha carteira'",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "massare",
+        "dominio": "mercado",
+        "tipo": "http",
+        "rota": "/api/massare/carteira",
         "comando": null,
         "metodo": "GET",
         "status": "PRONTO",
@@ -955,8 +999,6 @@
   ],
   "futuras_desabilitadas": [
     "instrumento_mandato",
-    "massare_teses",
-    "massare_carteira",
     "trace"
   ],
   "politica_modelo": {
