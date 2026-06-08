@@ -87,3 +87,32 @@ def test_singleton_registra_todas_as_funcoes():
     p = get_providers()
     for funcao in ("registry", "sanctions", "ownership", "leaks", "links"):
         assert p.backends(funcao), f"sem backend para {funcao}"
+
+
+def test_opencorporates_sem_token_indisponivel(monkeypatch):
+    monkeypatch.delenv("OPENCORPORATES_API_TOKEN", raising=False)
+    from compliance_agent.providers.ownership_providers import OpenCorporates
+    oc = OpenCorporates()
+    assert oc.disponivel() is False  # sem token → não entra no fallback (honesto)
+
+
+def test_opencorporates_parseia_com_token(monkeypatch):
+    monkeypatch.setenv("OPENCORPORATES_API_TOKEN", "x")
+    from compliance_agent.providers import ownership_providers as O
+
+    class _Resp:
+        status_code = 200
+        def json(self):
+            return {"results": {"companies": [
+                {"company": {"name": "ACME INC", "jurisdiction_code": "us_de",
+                             "company_number": "123", "opencorporates_url": "http://oc/acme"}}]}}
+
+    monkeypatch.setattr(O.httpx, "get", lambda *a, **k: _Resp())
+    r = O.OpenCorporates().consultar(nome="ACME")
+    assert r.ok and r.dados["hits"][0]["jurisdicao"] == "us_de"
+
+
+def test_ownership_tem_gleif_e_opencorporates():
+    from compliance_agent.providers import get_providers
+    ids = {b.id for b in get_providers().backends("ownership")}
+    assert {"gleif", "opencorporates"} <= ids
