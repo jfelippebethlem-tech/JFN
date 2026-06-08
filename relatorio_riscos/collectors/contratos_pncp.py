@@ -93,8 +93,11 @@ async def buscar_contratos_por_cnpj(
         if r.status_code in (204, 404):  # sem conteúdo
             return 0, []
         if r.status_code != 200:
-            raise RuntimeError(f"HTTP {r.status_code}")
-        data = r.json()
+            raise RuntimeError(f"HTTP {r.status_code}")  # 429 etc. → tratado como falha de página
+        try:
+            data = r.json()
+        except ValueError:  # corpo vazio/HTML (acontece em rate-limit): trata como falha, não derruba
+            raise RuntimeError("resposta não-JSON (corpo vazio/rate-limit)")
         if isinstance(data, list):
             return len(data), data
         itens = data.get("data") or data.get("contratos") or data.get("content") or []
