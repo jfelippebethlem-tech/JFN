@@ -1198,6 +1198,21 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
     except Exception:  # noqa: BLE001
         pass
 
+    # 4-D. Pistas de investigação hospedada (Max Intel, OSINT-Brazuca, RedeCNPJ…) — deep-links MANUAIS
+    try:
+        from compliance_agent.providers import lookup as _plookup
+        lk = _plookup("links", nome=(ctx.get("nome") or None), cnpj=cnpj)
+        links = (lk.dados or {}).get("links") if getattr(lk, "ok", False) else None
+        if links:
+            li = "".join(f"<li><a href='{esc(x.get('url'))}'>{esc(x.get('fonte'))}</a> "
+                         f"<span class='nota'>— {esc(x.get('categoria'))}</span></li>" for x in links)
+            secoes.append({"titulo": "4-D. Pistas de investigação (OSINT hospedado — uso manual)",
+                           "html": "<p class='nota'>Agregadores e fontes hospedadas grátis (você pesquisa; o JFN só "
+                                   "monta o link já preenchido com o alvo). Aprofundamento de DD — não são dados coletados.</p>"
+                                   f"<ul>{li}</ul>"})
+    except Exception:  # noqa: BLE001
+        pass
+
     # 5. Pagamentos — TABELA CRUZADA Órgão (UG) × Ano (pedido do dono: por ano, dividido por órgão)
     if p["tem_dados"]:
         # agrega valor por (órgão, ano) a partir das linhas de OB

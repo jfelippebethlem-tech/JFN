@@ -1,0 +1,38 @@
+# -*- coding: utf-8 -*-
+"""Singleton + facade da camada providers. Ordem de registro = prioridade (base ungated primeiro).
+
+Adicionar um backend novo (ex.: OpenCorporates quando a chave sair) = 1 classe + 1 linha aqui,
+sem tocar nas rotas."""
+from __future__ import annotations
+
+from .base import CacheSQLite, Providers, Resultado
+from .leaks_providers import OffshoreLeaksLink
+from .links_providers import InvestigacaoHospedada
+from .ownership_providers import GLEIF
+from .registry_providers import BrasilAPICNPJ, CNPJpw
+from .sanctions_providers import OpenSanctionsSearch, PortalTransparenciaCEIS
+
+_PROV: Providers | None = None
+
+
+def get_providers() -> Providers:
+    global _PROV
+    if _PROV is None:
+        p = Providers(CacheSQLite())
+        for b in (BrasilAPICNPJ(), CNPJpw()):  # registry (fallback em ordem)
+            p.registrar(b)
+        for b in (PortalTransparenciaCEIS(), OpenSanctionsSearch()):  # sanctions (lookup_all)
+            p.registrar(b)
+        p.registrar(GLEIF())  # ownership
+        p.registrar(OffshoreLeaksLink())  # leaks
+        p.registrar(InvestigacaoHospedada())  # links (agregadores hospedados)
+        _PROV = p
+    return _PROV
+
+
+def lookup(funcao: str, **q) -> Resultado:
+    return get_providers().lookup(funcao, **q)
+
+
+def lookup_all(funcao: str, **q) -> list[Resultado]:
+    return get_providers().lookup_all(funcao, **q)
