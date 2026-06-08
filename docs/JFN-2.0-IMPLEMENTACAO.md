@@ -1,5 +1,16 @@
 # JFN 2.0 — Log de Implementação (para avaliação posterior)
 
+## 📍 VOCÊ PAROU AQUI (último checkpoint: 2026-06-08)
+> **Feito:** Onda 0 ✅ (capabilities.yaml+validador+obs_trace) · Onda 1 🟡 (geradores ✅, política de modelo no
+> config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`) · Onda 2 🟡
+> (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
+> **PRÓXIMO PASSO (escolher 1):** (a) **wiring do roteador no gateway** (aplicar `escolher_modelo` por request,
+> `run.py:13078`, via overlay idempotente) — fecha a Onda 1; (b) **Onda 2 rotas** `/api/conflito`+`/api/pncp` em
+> server.py + validar o conflito com os dados TSE (já carregando); (c) **Onda 3** (Benford/sobrepreço/score).
+> **Estado vivo:** sweep SIAFE 2 **PAUSADO** (flag `data/.pause_sweep_2`, parou em 86 UG:ano / 48,6k OBs);
+> download TSE **rodando** (`/tmp/tse_load.py`, já 400k+ doações RJ+presidente); Yoda gateway no ar.
+> **Branch `jfn-2.0`** (pushada). Tudo abaixo é o detalhe.
+
 ## ▶ RETOMADA RÁPIDA (ler PRIMEIRO se a sessão caiu / contexto estourou)
 > Trabalho de DIAS — projetado para sobreviver a quedas de sessão. **Para continuar exatamente de onde parou:**
 > 1. `cd ~/JFN && git checkout jfn-2.0` (branch de trabalho; `linux` é o estável/rede de segurança).
