@@ -492,6 +492,128 @@
         "status": "PRONTO",
         "enviar_telegram": null
       }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "skills",
+        "description": "Lista a skilltree (capacidades) agrupada por dominio com status — usar quando: 'o que voce sabe fazer', 'quais skills', 'capacidades'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "filtro": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "yoda",
+        "dominio": "sistema",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "telegram /skills [filtro]",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "skill_detalhe",
+        "description": "Detalhe de uma capacidade (rota, args, quando usar, status) — usar quando: 'como funciona a skill X', detalhe de uma capacidade",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "obrigatorio"
+            }
+          },
+          "required": [
+            "id"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "yoda",
+        "dominio": "sistema",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "telegram /skill <id>",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "skills_reload",
+        "description": "Recarrega capabilities.yaml do disco e reaplica tools a quente (fail-safe, admin) — usar quando: apos editar o YAML na VM",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "yoda",
+        "dominio": "sistema",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "telegram /skills_reload",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "skills_sync",
+        "description": "git pull --ff-only no projeto + reload + reaplica tools (admin) — usar quando: apos git push do repo",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "yoda",
+        "dominio": "sistema",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "telegram /skills_sync",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "skills_validate",
+        "description": "Valida schema + checa que toda rota PRONTO existe no server.py (admin) — usar quando: antes de sync/reload, sanidade do contrato",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "yoda",
+        "dominio": "sistema",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "telegram /skills_validate",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
     }
   ],
   "futuras_desabilitadas": [

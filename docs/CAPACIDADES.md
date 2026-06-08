@@ -34,6 +34,11 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `massare_teses` | massare | http | `/api/massare/teses` | ONDA 9 | 'quais as teses agora', 'o que move o mercado' |
 | `radar_status` | jfn | http | `/api/radar/status` | ONDA 6 | 'o que voce monitora', 'teve alerta hoje' |
 | `vigiar` | jfn | http | `/api/radar/vigiar` | ONDA 6 | '/vigiar <cnpj|ug|nome>' |
+| `skill_detalhe` | yoda | cli | `telegram /skill <id>` | PRONTO | 'como funciona a skill X', detalhe de uma capacidade |
+| `skills` | yoda | cli | `telegram /skills [filtro]` | PRONTO | 'o que voce sabe fazer', 'quais skills', 'capacidades' |
+| `skills_reload` | yoda | cli | `telegram /skills_reload` | PRONTO | apos editar o YAML na VM |
+| `skills_sync` | yoda | cli | `telegram /skills_sync` | PRONTO | apos git push do repo |
+| `skills_validate` | yoda | cli | `telegram /skills_validate` | PRONTO | antes de sync/reload, sanidade do contrato |
 | `status_jfn` | jfn | http | `/status` | PRONTO | diagnostico |
 | `trace` | jfn | http | `/api/trace/{correlation_id}` | ONDA 0 | debug |
 

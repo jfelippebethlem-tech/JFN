@@ -97,6 +97,22 @@ capacidades:
      descricao: "JFN vivo? healthcheck", quando_usar: "diagnostico", args: {}, retorno: "{ok,uptime}"}
   - {id: trace, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: "/api/trace/{correlation_id}", status: "ONDA 0",
      descricao: "Rastreia pedido ponta-a-ponta", quando_usar: "debug", args: {correlation_id: obrigatorio}, retorno: "{etapas[]}"}
+  # ---- SKILLTREE (Onda 1: o registro se autodescreve; mutacoes so admin) ----
+  - {id: skills, agente: yoda, dominio: sistema, tipo: cli, comando: "telegram /skills [filtro]", status: PRONTO,
+     descricao: "Lista a skilltree (capacidades) agrupada por dominio com status", quando_usar: "'o que voce sabe fazer', 'quais skills', 'capacidades'",
+     args: {filtro: opcional}, retorno: "markdown por dominio"}
+  - {id: skill_detalhe, agente: yoda, dominio: sistema, tipo: cli, comando: "telegram /skill <id>", status: PRONTO,
+     descricao: "Detalhe de uma capacidade (rota, args, quando usar, status)", quando_usar: "'como funciona a skill X', detalhe de uma capacidade",
+     args: {id: obrigatorio}, retorno: "markdown detalhado"}
+  - {id: skills_reload, agente: yoda, dominio: sistema, tipo: cli, comando: "telegram /skills_reload", status: PRONTO,
+     descricao: "Recarrega capabilities.yaml do disco e reaplica tools a quente (fail-safe, admin)", quando_usar: "apos editar o YAML na VM",
+     args: {}, retorno: "{sha,total,add,rm}"}
+  - {id: skills_sync, agente: yoda, dominio: sistema, tipo: cli, comando: "telegram /skills_sync", status: PRONTO,
+     descricao: "git pull --ff-only no projeto + reload + reaplica tools (admin)", quando_usar: "apos git push do repo",
+     args: {}, retorno: "{commit,sha,total,add,rm}"}
+  - {id: skills_validate, agente: yoda, dominio: sistema, tipo: cli, comando: "telegram /skills_validate", status: PRONTO,
+     descricao: "Valida schema + checa que toda rota PRONTO existe no server.py (admin)", quando_usar: "antes de sync/reload, sanidade do contrato",
+     args: {}, retorno: "lista de problemas (vazia = valido)"}
 
 politica_modelo:
   roteamento_chat:   {primario: "gemini-2.5-flash"}
