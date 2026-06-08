@@ -5,10 +5,11 @@
 > config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
 > `compliance_agent/skilltree.py` reload fail-safe+sync+render, +5 capacidades `sistema`, 8 testes — commit `5279edf`)
 > · Onda 2 🟡 (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
-> **PRÓXIMO PASSO:** **Onda 7** (relatório classe mundial: `reporting/render_html.py` Jinja2+CSS → PDF via
-> WeasyPrint/Playwright; `charts_svg.py`; rating card + gráficos SVG + proveniência por número). **Ondas 0,1
-> (skilltree),2,3,4,5,6 ✅.** Onda 6 commit `904cf72` (Radar 24/7: watchlist + ciclo PNCP-aberto-restritivo +
-> OB-anômala → alerta Telegram; systemd timer 20min). **62 testes JFN 2.0 verdes; 30 capacidades PRONTO.**
+> **PRÓXIMO PASSO:** **Onda 8** (Massare notícia/macro/fundamento — prioridade do dono): `massare/news.py`
+> (GDELT DOC 2.0 + Finnhub), `calendar.py` (FRED/Finnhub), `focus.py` (BCB Olinda via python-bcb),
+> `fundamentos.py` (brapi), `crypto_ws.py` (websocket Binance/Coinbase). Rotas `/api/massare/focus|fundamentos|
+> calendario`. **Ondas 0,1(skilltree),2,3,4,5,6,7 ✅.** Onda 7 commit `add3e8e` (HTML→PDF Playwright + SVG; dossiê
+> usa o motor: rating card + ≥3 gráficos + proveniência + hash). **66 testes JFN 2.0 verdes; 30 capacidades PRONTO.**
 > **MODELO (corrigido — verificado jun/2026): default/pesado = `gemini-2.5-flash` (ÚNICO Gemini free junto do
 > flash-lite; Pro e 3.x são PAGOS); `gemini-2.5-pro` só sob "usar o modelo melhor" + confirmação. Rotação de 8
 > chaves Gemini JÁ ATIVA no `~/.hermes/auth.json` (pool nativo Hermes) — commit `0f1b8aa`.** Adiado p/ última
@@ -77,7 +78,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 | 4 | Grafo de Poder + Dossiê 360 | ✅ `grafo_poder.py` (vizinhança BFS local, `/api/grafo`) + `dossie.py` (cadastro+sanções+OB+conflito+rede+score→PDF, `/api/dossie`). Validado: BEST VIGILANCIA score 37 |
 | 5 | SEI inteligência em escala | ✅ `sei_extract` (schema) + `sei_corpus` (FTS5) + `sei_direcionamento` (varredor R1/R7/R8/R12, `/api/sei/direcionamento`). **SEI consolidado no reader itkava** (porta única, sem captcha) |
 | 6 | Radar 24/7 | ✅ `radar.py` (watchlist + ciclo PNCP-aberto-restritivo + OB-anômala → alerta Telegram, idempotente); `/api/radar/vigiar|status|ciclo`; systemd `jfn-radar.{service,timer}` (20min) |
-| 7 | Relatório classe mundial (HTML→PDF) | ⏳ |
+| 7 | Relatório classe mundial (HTML→PDF) | ✅ `reporting/render_html.py` (Jinja2+CSS→PDF via Playwright) + `charts_svg.py` (sparkline/barras/heatmap P×I); dossiê usa o motor (rating card + ≥3 SVG + proveniência + hash SHA-256) |
 | 8 | Massare notícia/macro/Focus | ⏳ |
 | 9 | Massare teses + validação López de Prado | ⏳ |
 | 10 | Lex + instrumentos de mandato | ⏳ |
@@ -241,3 +242,11 @@ roteamento adaptativo (decisão acima).
 - **Grafo aceitava CNPJ inexistente como nó (pego por teste):** corrigido p/ só virar nó se o CNPJ existe em alguma fonte.
 - **Demorei a achar a rotação de chaves:** procurei em `.env`/config antes de olhar o `auth.json` (onde o pool vivia).
   **Aprendizado:** o pool de credenciais do Hermes é o `auth.json`, não o `.env` — checar lá primeiro.
+- **2026-06-08 (Onda 7 ✅ — relatório classe mundial, commit `add3e8e`)** — **POR QUÊ Playwright e não WeasyPrint:**
+  WeasyPrint exige libs de sistema (cairo/pango) não instaladas; o Playwright já estava no projeto (SEI) → `page.pdf()`
+  é o caminho grátis e sem dependência nova. `reporting/render_html.py` (Jinja2+CSS A4: capa, rating card colorido por
+  faixa, score decomposto, tabela de proveniência REAL/CACHE+fonte+data, hash SHA-256 no rodapé) + `charts_svg.py`
+  (matplotlib→SVG vetorial inline: sparkline, barras de concentração, heatmap P×I do TCU). O `dossie.py` passou a gerar
+  o PDF por esse motor (`_gerar_pdf_classe_mundial`), com o FPDF compacto como fallback. Validado e2e: dossiê real → PDF
+  60KB com 3 gráficos + rating + proveniência + hash. 4 testes (HTML/SVG determinísticos). **COMO o hash defende a peça:**
+  SHA-256 dos dados no rodapé → prova de não-adulteração (padrão OSINT, reforça a defensabilidade perante TCE-RJ/MP-RJ).
