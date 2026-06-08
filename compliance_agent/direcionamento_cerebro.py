@@ -1,0 +1,203 @@
+# -*- coding: utf-8 -*-
+"""Cérebro de DIRECIONAMENTO — lê EDITAL + ATA DE JULGAMENTO e avalia indícios (LLM + raciocínio).
+
+Direcionamento é mais comum e mais pegável que conluio (decisão do dono 2026-06-08). O sinal-mestre:
+exigências restritivas no edital (atestado muito específico, marca, certificação sem essencialidade) que
+produzem uma CASCATA de desclassificações/inabilitações — e o vencedor, mal classificado em preço, sobe
+após as quedas dos mais baratos. Não é parâmetro numérico: precisa de "cérebro".
+
+Fonte de dados PROVADA: a ata de julgamento vem no PNCP (`collectors/pncp.baixar_documentos`) — caso RJ real
+tinha a cascata (atestado/desclassificação/ranking) no texto. Spec: docs/DIRECIONAMENTO-CEREBRO-SPEC.md.
+
+HONESTO (cláusula do JFN): indício a verificar, NUNCA acusação (presunção de legitimidade). Cada achado cita
+o TRECHO que o sustenta. Sem ata/sem dado → grau verde + 'dados insuficientes' (nunca inventa). LLM injetável
+(`gerar`) p/ teste sem rede/chave; default = Groq.
+"""
+from __future__ import annotations
+
+import json
+import re
+
+_SYS = (
+    "Você é AUDITOR DE CONTROLE EXTERNO (TCU/TCE-RJ) avaliando INDÍCIOS de DIRECIONAMENTO em licitação. "
+    "Regras ABSOLUTAS: (1) NUNCA afirme irregularidade ou fraude — fale sempre em 'indício a verificar' "
+    "(presunção de legitimidade dos atos administrativos). (2) CADA achado DEVE citar o TRECHO literal que o "
+    "sustenta; sem trecho, não afirme. (3) Se a ATA não trouxer ranking/motivos de desclassificação, retorne "
+    "grau 'verde' e 'dados insuficientes' — NÃO invente. Procure: exigências restritivas (atestado idêntico ao "
+    "objeto/com prazo/local/quantitativo desproporcional; vedação de somatório de atestados sem justificativa "
+    "— Súmula TCU 263; marca; certificações sem essencialidade) e a CASCATA (muitas desclassificações/"
+    "inabilitações pelo MESMO motivo; vencedor longe do menor preço que sobe após quedas dos mais baratos). "
+    "Responda SOMENTE com um objeto JSON no schema pedido, sem texto fora do JSON. Seja CONCISO: no "
+    "máximo 5 exigências restritivas e 8 itens de cascata; cada 'trecho' literal com no máximo 200 caracteres."
+)
+
+_SCHEMA = (
+    '{"grau":"verde|amarelo|vermelho","resumo":"1-2 frases (indício, não acusação)",'
+    '"exigencias_restritivas":[{"trecho":"literal do edital","por_que_restringe":"","jurisprudencia":""}],'
+    '"cascata":[{"licitante":"","ordem_preco":0,"situacao":"classificado|desclassificado|inabilitado",'
+    '"motivo":"","trecho":"literal da ata"}],'
+    '"vencedor":{"nome":"","ordem_preco_original":0,"subiu_apos_quedas":0},'
+    '"dados_suficientes":true,"ressalva":"presunção de legitimidade; indício a apurar, não acusação"}'
+)
+
+
+def presinais(ata_txt: str) -> dict:
+    """Sinais OBJETIVOS (determinísticos) da ata — corroboram o cérebro, não dependem de LLM."""
+    t = (ata_txt or "").lower()
+    return {
+        "n_desclassificacoes": len(re.findall(r"desclassific", t)),
+        "n_inabilitacoes": len(re.findall(r"inabilit", t)),
+        "mencoes_atestado": len(re.findall(r"atestado", t)),
+        "mencoes_recurso": len(re.findall(r"recurso", t)),
+        "tem_ata": bool(re.search(r"desclassific|inabilit|habilitad|classificad", t)) and len(t) > 1500,
+    }
+
+
+_KW_EDITAL = ("atestado", "qualificac", "habilitac", "capacidade tecnica", "capacidade técnica",
+              "comprovac", "exigenc", "exigênc", "marca", "modelo", "certificac", "certificad",
+              "visita tecnica", "vistoria", "amostra", "prazo de", "experiencia", "quantitativo")
+_KW_ATA = ("desclassific", "inabilit", "habilitad", "classificad", "vencedor", "recurso", "lance",
+           "proposta", "menor preco", "menor preço")
+
+
+def _trechos_relevantes(texto: str, keywords: tuple, budget: int, janela: int = 600) -> str:
+    """Extrai janelas ao redor das keywords (onde moram as exigências/decisões) — em vez de cortar o
+    começo do doc. Garante que o LLM veja a qualificação técnica/julgamento mesmo em editais longos."""
+    t = texto or ""
+    if len(t) <= budget:
+        return t
+    low = t.lower()
+    marcas = sorted({m.start() for kw in keywords for m in re.finditer(re.escape(kw), low)})
+    if not marcas:
+        return t[:budget]
+    # funde janelas próximas e concatena até o budget
+    trechos, ult_fim = [], -1
+    total = 0
+    for p in marcas:
+        ini, fim = max(0, p - janela // 3), min(len(t), p + janela)
+        if ini <= ult_fim:  # sobrepõe: estende
+            trechos[-1] = (trechos[-1][0], fim)
+        else:
+            trechos.append((ini, fim))
+        ult_fim = fim
+    out = []
+    for ini, fim in trechos:
+        seg = t[ini:fim]
+        if total + len(seg) > budget:
+            seg = seg[: budget - total]
+        out.append(seg); total += len(seg)
+        if total >= budget:
+            break
+    return " […] ".join(out)
+
+
+def _montar_user(edital_txt: str, ata_txt: str, contexto: dict | None) -> str:
+    ed = _trechos_relevantes(edital_txt, _KW_EDITAL, 11000)
+    at = _trechos_relevantes(ata_txt, _KW_ATA, 12000)   # a ata é o mais importante (cascata)
+    ctx = json.dumps(contexto or {}, ensure_ascii=False)[:400]
+    return (f"CONTEXTO: {ctx}\n\n=== EDITAL (trechos relevantes) ===\n{ed or '(não fornecido)'}\n\n"
+            f"=== ATA DE JULGAMENTO (trechos relevantes) ===\n{at or '(não fornecida)'}\n\n"
+            f"Avalie o direcionamento e responda SOMENTE com este JSON:\n{_SCHEMA}")
+
+
+async def _groq_gerar(messages: list[dict]) -> str:
+    from compliance_agent.llm.groq_agent import _groq
+    return await _groq(messages, max_tokens=2000, temperature=0.1)
+
+
+async def _gerar_default(messages: list[dict]) -> str:
+    """LLM padrão: tenta Gemini; se cair (chave/limite/erro), cai para o Hermes/Groq (pedido do dono).
+    Honesto: se NENHUM responder, propaga o erro (o cérebro reporta 'indisponível', não fabrica)."""
+    import os
+    erros = []
+    if os.environ.get("GEMINI_API_KEY", "").strip():
+        try:
+            r = await gerar_gemini(messages)
+            if r and r.strip():
+                return r
+            erros.append("gemini: vazio")
+        except Exception as e:  # noqa: BLE001
+            erros.append(f"gemini: {str(e)[:50]}")
+    try:
+        return await _groq_gerar(messages)  # Hermes usa Groq/OpenRouter
+    except Exception as e:  # noqa: BLE001
+        erros.append(f"groq: {str(e)[:50]}")
+        raise RuntimeError("nenhum LLM respondeu — " + " | ".join(erros))
+
+
+async def gerar_gemini(messages: list[dict], model: str | None = None) -> str:
+    """LLM = Google Gemini (chave grátis GEMINI_API_KEY). Adapta messages OpenAI→Gemini
+    (system → systemInstruction). Default `gemini-2.5-flash` (bom raciocínio, barato)."""
+    import os
+    import httpx
+    key = os.environ.get("GEMINI_API_KEY", "").strip()
+    if not key:
+        raise RuntimeError("GEMINI_API_KEY vazia")
+    model = model or os.environ.get("DIRECIONAMENTO_GEMINI_MODEL", "gemini-2.5-flash")
+    sys_txt = "\n".join(m["content"] for m in messages if m["role"] == "system")
+    user_txt = "\n".join(m["content"] for m in messages if m["role"] != "system")
+    body: dict = {"contents": [{"role": "user", "parts": [{"text": user_txt}]}],
+                  "generationConfig": {"temperature": 0.1, "maxOutputTokens": 4096,
+                                       "responseMimeType": "application/json"}}
+    if sys_txt:
+        body["systemInstruction"] = {"parts": [{"text": sys_txt}]}
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+    async with httpx.AsyncClient(timeout=60) as client:
+        r = await client.post(url, json=body)
+        r.raise_for_status()
+        j = r.json()
+    return j.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+
+
+async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, contexto: dict | None = None,
+                                 gerar=None) -> dict:
+    """Avalia indícios de direcionamento (LLM sobre edital+ata). `gerar`: callable async(messages)->str
+    (default Groq; injete um fake no teste). Retorna o JSON do schema + `presinais` + proveniência."""
+    sig = presinais(ata_txt)
+    base = {"presinais": sig, "fonte": "direcionamento_cerebro"}
+    if not sig["tem_ata"] and not (edital_txt and len(edital_txt) > 1500):
+        return {**base, "grau": "verde", "dados_suficientes": False,
+                "resumo": "Dados insuficientes (sem ata/edital com conteúdo) — nada a apurar.",
+                "ressalva": "presunção de legitimidade; indício a apurar, não acusação"}
+    gerar = gerar or _gerar_default
+    messages = [{"role": "system", "content": _SYS}, {"role": "user", "content": _montar_user(edital_txt, ata_txt, contexto)}]
+    try:
+        raw = await gerar(messages)
+    except Exception as e:  # noqa: BLE001 — LLM indisponível: honesto, não fabrica
+        return {**base, "grau": "indisponivel", "dados_suficientes": False,
+                "resumo": f"LLM indisponível ({str(e)[:60]}) — análise não realizada.",
+                "ressalva": "sem juízo (LLM offline)"}
+    dados = _parse_json(raw)
+    if not isinstance(dados, dict):
+        return {**base, "grau": "indisponivel", "dados_suficientes": False,
+                "resumo": "Resposta do LLM não-parseável — análise descartada (honesto).",
+                "ressalva": "sem juízo"}
+    dados.setdefault("ressalva", "presunção de legitimidade; indício a apurar, não acusação")
+    return {**base, **dados}
+
+
+def _parse_json(raw: str):
+    """Extrai o 1º objeto JSON do texto do LLM (tolera cercas/lixo ao redor)."""
+    if not raw:
+        return None
+    s = raw.strip()
+    if s.startswith("```"):  # tira cercas markdown (```json ... ```)
+        s = re.sub(r"^```[a-z]*\s*", "", s)
+        s = re.sub(r"\s*```$", "", s)
+    try:
+        return json.loads(s)
+    except (json.JSONDecodeError, ValueError):
+        pass
+    m = re.search(r"\{.*\}", s, re.DOTALL)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(0))
+    except (json.JSONDecodeError, ValueError):
+        return None
+
+
+def avaliar_sync(edital_txt: str = "", ata_txt: str = "", *, contexto: dict | None = None, gerar=None) -> dict:
+    """Wrapper síncrono (p/ chamadores não-async)."""
+    import asyncio
+    return asyncio.run(avaliar_direcionamento(edital_txt, ata_txt, contexto=contexto, gerar=gerar))
