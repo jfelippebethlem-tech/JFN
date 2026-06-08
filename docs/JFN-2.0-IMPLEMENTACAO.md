@@ -5,11 +5,12 @@
 > config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
 > `compliance_agent/skilltree.py` reload fail-safe+sync+render, +5 capacidades `sistema`, 8 testes — commit `5279edf`)
 > · Onda 2 🟡 (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
-> **PRÓXIMO PASSO:** **Onda 3** (motor de risco: `analysis/benford.py` 1º+2º dígito MAD-Nigrini, `sobrepreco.py`
-> mediana Compras Dados Abertos, `score_convergencia.py`; `/api/anomalias` ganha Benford; `/api/sobrepreco` cita
-> referência+%). Cartel R8 depende do grafo (Onda 4) — fazer o possível sem grafo. **Onda 2 ✅ COMPLETA**
-> (commits `fb8b9ef` conflito + `37e5922` pncp + `9814c91` edital/red-flags; validados live: 542k doações, 64
-> editais abertos, R7 em edital real). **ADIADO p/ ÚLTIMA ONDA
+> **PRÓXIMO PASSO:** **Onda 4** (Grafo de Poder + Dossiê 360): `grafo_poder.py` (une QSA+servidores+doações+
+> contratos+nomeações+co-endereço; GraphML + DuckDB), `dossie.py` (agrega tudo → PDF). Rotas `/api/grafo`,
+> `/api/dossie`. Já existem peças: `grafo_cartel.py`, `rede_societaria.py`. **Onda 3 ✅ COMPLETA** (commits
+> `d957a11` Benford + `e2fe9c3` sobrepreço + `0d49b95` score; validados live: Benford em 1,08M OBs, sobrepreço
+> CATMAT real +63,6%, score decomposto). **Onda 2 ✅ COMPLETA** (`fb8b9ef`+`37e5922`+`9814c91`).
+> **39 testes JFN 2.0 verdes; 63 rotas; 25 capacidades PRONTO.** **ADIADO p/ ÚLTIMA ONDA
 > (dono):** wiring dos slash commands/roteador no gateway Hermes VIVO (`~/hermes-agent/gateway/run.py`; Hermes É
 > python-telegram-bot mas usa MessageHandler catch-all + `hermes_cli/commands.py`, NÃO CommandHandler). **Política de
 > modelo: manter `gemini-2.5-pro`** (decisão do dono). **REGRA PERMANENTE:** toda skill nova → `capabilities.yaml` + `/lista`.
@@ -70,7 +71,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 | 0 | capabilities.yaml + validador + obs_trace | 🟢 núcleo ✅ (gen_*→Onda 1; siafe_worker/SEI-proxy diferidos) |
 | 1 | Orquestração (router do YAML, política de modelo) | 🟡 geradores+config+roteador adaptativo+**skilltree** ✅; dispatcher nativo no gateway VIVO = ADIADO p/ última onda (decisão do dono) |
 | 2 | PNCP + conflito doador↔contrato (Lex) | ✅ `/api/conflito` (542k doações TSE) + `/api/pncp` (consulta+abertos+análise de edital). 2c: `id=` baixa edital ZIP/PDF→texto + red flags Lex (R7 validado em edital real) |
-| 3 | Motor de risco (Benford/sobrepreço/score) | ⏳ |
+| 3 | Motor de risco (Benford/sobrepreço/score) | ✅ Benford 1º+2º díg MAD-Nigrini (`/api/anomalias`) + sobrepreço CATMAT/CATSER (`/api/sobrepreco`) + score convergência decomponível. Cartel R8 já tinha grafo |
 | 4 | Grafo de Poder + Dossiê 360 | ⏳ |
 | 5 | SEI inteligência em escala | ⏳ |
 | 6 | Radar 24/7 | ⏳ |
@@ -186,3 +187,13 @@ roteamento adaptativo (decisão acima).
   abertos**. 6 testes determinísticos (mock de rede). Ambas as capacidades → PRONTO no `capabilities.yaml`.
   **Sweep SIAFE 2 RETOMADO** (a pedido do dono) — `rm data/.pause_sweep_2`; supervisor (cron watchdog) relançou
   (resume do checkpoint). Onda 2 não toca SIAFE; re-pausar antes de qualquer módulo SIAFE.
+- **2026-06-08 (Onda 3 ✅ COMPLETA, commits `d957a11`+`e2fe9c3`+`0d49b95`)** — **motor de risco**:
+  (3a) `analysis/benford.py` — Lei de Benford 1º+2º dígito, MAD de Nigrini c/ faixas; `benford_ob(orgao,fornecedor)`
+  sobre `ordens_bancarias`; integrado em `/api/anomalias` (quando há filtro). Validado: lognormal=conformidade alta,
+  uniforme=não conformidade, **1,08M OBs reais MAD 0,0057**. (3b) `sobrepreco.py` — preço pago vs mediana
+  CATMAT/CATSER do **Compras Dados Abertos** (substitui Painel de Preços); `/api/sobrepreco?codigo=&valor=`.
+  Validado live: CATMAT 267758 R\$80 vs mediana R\$48,90 = **+63,6% indício de sobrepreço**; sem amostra=INDISPONÍVEL
+  (não fabrica). (3c) `analysis/score_convergencia.py` — soma ponderada DECOMPONÍVEL de indícios (Benford+sobrepreço+
+  conflito+red flags+concentração+empresa recente+sócio comum+CEIS/CNEP), 0–100 c/ contribuição por flag; risco de
+  **ACHADO ≠ punição**. 15 testes. Sobrepreço/Benford PRONTO no `capabilities.yaml`. **Próximo: Onda 4** (Grafo de
+  Poder + Dossiê 360; já há `grafo_cartel.py`/`rede_societaria.py` p/ reusar).
