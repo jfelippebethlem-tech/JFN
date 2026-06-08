@@ -42,3 +42,4 @@ splink>=4.0           # entity resolution sobre DuckDB (Onda 4)
 #   vectorbt        -> backtest (Onda 9); pins estritos de numpy/numba — validar conflito antes
 #   weasyprint      -> HTML→PDF (Onda 7); precisa cairo/pango (apt). Alt sem apt: Playwright page.pdf()
 python-docx
+pdfplumber  # Onda 5: extração de tabela de preços do SEI (camada 1)
