@@ -57,10 +57,13 @@ def abrir_processo(numero: str, usar_cache: bool = True) -> dict:
 
     docs = []
     for i, d in enumerate(integra.get("documentos", []) or []):
-        titulo = (d.get("texto") or d.get("titulo") or "").strip()
+        # Onda C: 'titulo' (tipo, do title/aria-label/nó pai) é a melhor pista; 'texto' costuma ser só o número
+        numero = (d.get("texto") or "").strip()
+        titulo = (d.get("titulo") or d.get("title_attr") or numero).strip()
         url = d.get("url") or ""
-        docs.append(DocSEI(id=str(i), titulo=titulo, tipo_bruto=titulo, url=url,
-                           formato=_formato(url), conteudo=conteudo_por_titulo.get(titulo[:80], "")))
+        docs.append(DocSEI(id=str(i), titulo=titulo, tipo_bruto=numero, url=url,
+                           formato=_formato(url),
+                           conteudo=conteudo_por_titulo.get(numero[:80], "") or conteudo_por_titulo.get(titulo[:80], "")))
     return {"ok": True, "numero": numero, "url": integra.get("url", ""),
             "texto": integra.get("texto", ""), "docs": docs,
             "cnpjs": integra.get("cnpjs", []), "valores": integra.get("valores", [])}
