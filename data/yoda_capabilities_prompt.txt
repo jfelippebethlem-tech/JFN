@@ -30,6 +30,7 @@ FERRAMENTAS DISPONÍVEIS (chame SÓ estas pelo id; se não houver ferramenta par
 - siafe_stats() — 'quantas OBs temos'
 - siafe_coletar_ug(ug,ano) — backfill de UG
 - enriquecer_socios() — apos novo sweep
+- memoria(limite) — 'o que voce aprendeu', consolidar memoria
 - status_jfn() — diagnostico
 - skills(filtro) — 'o que voce sabe fazer', 'quais skills', 'capacidades'
 - skill_detalhe(id) — 'como funciona a skill X', detalhe de uma capacidade
