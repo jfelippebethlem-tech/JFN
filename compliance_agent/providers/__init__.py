@@ -9,7 +9,7 @@ from .base import CacheSQLite, Providers, Resultado
 from .leaks_providers import OffshoreLeaksLink
 from .links_providers import InvestigacaoHospedada
 from .ownership_providers import GLEIF, OpenCorporates
-from .registry_providers import BrasilAPICNPJ, CNPJpw
+from .registry_providers import BrasilAPICNPJ, CNPJpw, CNPJws, OpenCNPJ
 from .sanctions_providers import OpenSanctionsSearch, PortalTransparenciaCEIS
 
 _PROV: Providers | None = None
@@ -19,7 +19,10 @@ def get_providers() -> Providers:
     global _PROV
     if _PROV is None:
         p = Providers(CacheSQLite())
-        for b in (BrasilAPICNPJ(), CNPJpw()):  # registry (fallback em ordem)
+        # registry (Onda 12): cadeia BrasilAPI→OpenCNPJ→CNPJ.ws (todas ungated; OpenCNPJ/CNPJ.ws
+        # confirmados ao vivo). CNPJpw (api.cnpj.pw) como último fallback. BrasilAPI tem rate-limit
+        # agressivo (429) — por isso a cadeia importa.
+        for b in (BrasilAPICNPJ(), OpenCNPJ(), CNPJws(), CNPJpw()):  # registry (fallback em ordem)
             p.registrar(b)
         for b in (PortalTransparenciaCEIS(), OpenSanctionsSearch()):  # sanctions (lookup_all)
             p.registrar(b)
