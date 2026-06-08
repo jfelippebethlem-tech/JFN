@@ -5,12 +5,14 @@
 > config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
 > `compliance_agent/skilltree.py` reload fail-safe+sync+render, +5 capacidades `sistema`, 8 testes — commit `5279edf`)
 > · Onda 2 🟡 (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
-> **PRÓXIMO PASSO:** **Onda 6** (Radar 24/7 + fiscalização preventiva): `radar.py` (watchlist `radar_watch`;
-> ciclos PNCP novas/abertas+DOERJ+SIAFE+GDELT; alerta no Telegram), rotas `/api/radar/vigiar|status`, systemd
-> `jfn-radar.{service,timer}`. **Ondas 0,1(skilltree),2,3,4,5 ✅.** Onda 5 commit `3cd55d2` (inclui **consolidação
-> SEI→itkava**: porta única `sei_cdp.ler_processo_sei` delega ao `tools.sei_reader.ler` itkava/ITERJ, sem captcha;
-> `/lista` ensina o formato do nº SEI). **55 testes JFN 2.0 verdes; 28 capacidades PRONTO.** Adiado p/ última onda:
-> wiring slash no Yoda vivo. Modelo: gemini-2.5-pro. ⚠️ Sweep SIAFE 2 rodando = não tocar módulos SIAFE. **ADIADO p/ ÚLTIMA ONDA
+> **PRÓXIMO PASSO:** **Onda 7** (relatório classe mundial: `reporting/render_html.py` Jinja2+CSS → PDF via
+> WeasyPrint/Playwright; `charts_svg.py`; rating card + gráficos SVG + proveniência por número). **Ondas 0,1
+> (skilltree),2,3,4,5,6 ✅.** Onda 6 commit `904cf72` (Radar 24/7: watchlist + ciclo PNCP-aberto-restritivo +
+> OB-anômala → alerta Telegram; systemd timer 20min). **62 testes JFN 2.0 verdes; 30 capacidades PRONTO.**
+> **MODELO (corrigido — verificado jun/2026): default/pesado = `gemini-2.5-flash` (ÚNICO Gemini free junto do
+> flash-lite; Pro e 3.x são PAGOS); `gemini-2.5-pro` só sob "usar o modelo melhor" + confirmação. Rotação de 8
+> chaves Gemini JÁ ATIVA no `~/.hermes/auth.json` (pool nativo Hermes) — commit `0f1b8aa`.** Adiado p/ última
+> onda: wiring slash no Yoda vivo. ⚠️ Sweep SIAFE 2 rodando = não tocar módulos SIAFE. **ADIADO p/ ÚLTIMA ONDA
 > (dono):** wiring dos slash commands/roteador no gateway Hermes VIVO (`~/hermes-agent/gateway/run.py`; Hermes É
 > python-telegram-bot mas usa MessageHandler catch-all + `hermes_cli/commands.py`, NÃO CommandHandler). **Política de
 > modelo: manter `gemini-2.5-pro`** (decisão do dono). **REGRA PERMANENTE:** toda skill nova → `capabilities.yaml` + `/lista`.
@@ -74,7 +76,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 | 3 | Motor de risco (Benford/sobrepreço/score) | ✅ Benford 1º+2º díg MAD-Nigrini (`/api/anomalias`) + sobrepreço CATMAT/CATSER (`/api/sobrepreco`) + score convergência decomponível. Cartel R8 já tinha grafo |
 | 4 | Grafo de Poder + Dossiê 360 | ✅ `grafo_poder.py` (vizinhança BFS local, `/api/grafo`) + `dossie.py` (cadastro+sanções+OB+conflito+rede+score→PDF, `/api/dossie`). Validado: BEST VIGILANCIA score 37 |
 | 5 | SEI inteligência em escala | ✅ `sei_extract` (schema) + `sei_corpus` (FTS5) + `sei_direcionamento` (varredor R1/R7/R8/R12, `/api/sei/direcionamento`). **SEI consolidado no reader itkava** (porta única, sem captcha) |
-| 6 | Radar 24/7 | ⏳ |
+| 6 | Radar 24/7 | ✅ `radar.py` (watchlist + ciclo PNCP-aberto-restritivo + OB-anômala → alerta Telegram, idempotente); `/api/radar/vigiar|status|ciclo`; systemd `jfn-radar.{service,timer}` (20min) |
 | 7 | Relatório classe mundial (HTML→PDF) | ⏳ |
 | 8 | Massare notícia/macro/Focus | ⏳ |
 | 9 | Massare teses + validação López de Prado | ⏳ |
@@ -206,3 +208,36 @@ roteamento adaptativo (decisão acima).
   (`tools.sei_reader.ler`, login interno sem captcha, vence o WAF de fingerprint); o caminho antigo CAPTCHA/OCR não
   é mais invocado (só os extractors de DOM seguem, reusados pelo itkava). lex/hermes_goal/telegram/ler_sei_lote
   migrados. `/lista` ensina o formato do nº SEI (`SEI-UUUUUU/NNNNNN/AAAA` ou `E-NN/NNN/AAAA`); `ler()` documenta o padrão.
+- **2026-06-08 (Onda 6 ✅ — Radar 24/7, commit `904cf72`)** — `radar.py`: watchlist `radar_watch` (alvo+tipo
+  cnpj|ug|nome|objeto) + `ciclo()` que, por alvo, busca editais PNCP **EM ABERTO** (preventivo) e, se houver red flag
+  do Lex (R7 etc.), **alerta no prazo de impugnação** via Telegram; também flag de OB anômala (reusa `anomalias`).
+  Idempotente (`radar_alertas` por alvo+ref+motivo — nunca re-alerta). Rotas `/api/radar/vigiar|status|ciclo`;
+  systemd `jfn-radar.{service,timer}` (ciclo 20min). **POR QUÊ assim:** o motor de editais (Onda 2) + red flags
+  (2c) já existiam → o Radar é fina orquestração reusando-os, não código novo de coleta. 7 testes (DB temp + rede
+  mockada). **DOERJ/GDELT no ciclo:** diferidos (DOERJ vazio no banco; GDELT é Onda 8) — o ciclo cobre o que tem dado real.
+- **2026-06-08 (Infra de MODELO + CREDENCIAIS, commit `0f1b8aa` + config/.env/auth)** — **POR QUÊ:** o dono
+  questionou se `gemini-2.5-pro` é grátis. **Verificado na web (jun/2026):** os ÚNICOS Gemini com free tier são
+  `gemini-2.5-flash` e `gemini-2.5-flash-lite`; **Pro e toda a geração 3.x são PAGOS**; `gemini-2.0-flash` foi
+  DESLIGADO em 01/06/2026. → roteador: default/pesado = `gemini-2.5-flash`; `gemini-2.5-pro` (pago) só via
+  `forcar_melhor=True` APÓS o Yoda perguntar (`quer_modelo_melhor()` detecta o pedido; nunca troca sozinho).
+  Fallback 100% grátis (Mistral "Experiment" tier ~1B tok/mês + Nous `:free`; OpenRouter fora, sem crédito).
+  **Rotação de 8 chaves Gemini:** o dono lembrou que existia; **confirmado que JÁ ESTAVA ATIVA** no
+  `~/.hermes/auth.json` → `credential_pool.gemini` (8 chaves únicas, rotação nativa `recover_with_credential_pool`
+  em 429). As 8 também ficam em `GEMINI_API_KEYS` nos `.env` (backup de recuperação — Hermes usa o auth.json).
+  Credenciais enviadas ao Telegram a pedido do dono (auth.json + .env).
+
+## Erros & Aprendizados (honesto — "sempre é importante aprender onde estamos errando")
+> O dono pediu para registrar os erros e correções, não só os acertos — para outra IA (e nós) aprender.
+- **Premissa falsa sobre o Hermes (corrigida):** afirmei cedo que "Hermes não é python-telegram-bot" a partir de
+  greps, sem ler o código. **Errado** — Hermes É PTB (usa `MessageHandler` catch-all + registro próprio de comandos).
+  **Aprendizado:** ler o dispatch real ANTES de afirmar; o dono cobrou ("leia os documentos antes de assumir").
+- **Acoplamento indevido no skilltree (pego na auto-revisão):** o `reload()` chamava `gen_router_tools.gerar()`
+  escrevendo em `~/.hermes/jfn_tools.json` no import → tocava o bot vivo. Removido; `reload()` virou puro.
+- **Modelo errado (corrigido após verificar):** escolhi `gemini-3-flash` para o pesado achando ser free — **3.x é
+  PAGO**. Corrigido para `gemini-2.5-flash`. **Aprendizado:** verificar preço/free-tier na fonte, não de memória.
+- **Bug do contador duplicado (pego por teste):** no varredor (Onda 5) deixei `analisados += 1` duas vezes → teste
+  `n_analisados` falhou. Corrigido. **Erro de processo:** numa vez commitei junto de um teste vermelho (grafo Onda 4)
+  porque rodei pytest no MESMO lote do commit — **lição:** rodar pytest e só então commitar (commit `2bc915e` foi o fix).
+- **Grafo aceitava CNPJ inexistente como nó (pego por teste):** corrigido p/ só virar nó se o CNPJ existe em alguma fonte.
+- **Demorei a achar a rotação de chaves:** procurei em `.env`/config antes de olhar o `auth.json` (onde o pool vivia).
+  **Aprendizado:** o pool de credenciais do Hermes é o `auth.json`, não o `.env` — checar lá primeiro.
