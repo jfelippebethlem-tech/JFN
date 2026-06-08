@@ -116,6 +116,30 @@ def test_parse_id_pncp():
     assert _parse_id_pncp("lixo") is None
 
 
+def test_buscar_itens_preco_unitario(monkeypatch):
+    """buscar_itens normaliza os itens do PNCP no shape {numero,descricao,quantidade,valor_unitario}
+    — a tabela de preço ESTRUTURADA que resolve o muro da Onda 2 (sem raspar SEI). Sem rede."""
+    import asyncio
+    from compliance_agent.collectors import pncp
+
+    class _Resp:
+        status_code = 200
+        def json(self):
+            return [{"numeroItem": 1, "descricao": "Legume in natura", "quantidade": 9600.0,
+                     "unidadeMedida": "Quilograma", "valorUnitarioEstimado": 4.39, "valorTotal": 42144.0}]
+
+    class _FakeClient:
+        def __init__(self, *a, **k): ...
+        async def __aenter__(self): return self
+        async def __aexit__(self, *a): return False
+        async def get(self, *a, **k): return _Resp()
+
+    monkeypatch.setattr(pncp.httpx, "AsyncClient", _FakeClient)
+    out = asyncio.run(pncp.buscar_itens("42441758000105-1-000101/2025"))
+    assert len(out) == 1 and out[0]["valor_unitario"] == 4.39 and out[0]["descricao"] == "Legume in natura"
+    assert asyncio.run(pncp.buscar_itens("lixo")) == []  # id inválido → [] (honesto)
+
+
 def test_analisar_texto_edital_red_flags():
     """O motor Lex roda sobre o texto do edital: R7 quando há marca/atestado sem 'ou equivalente'."""
     from compliance_agent.lex import analisar_texto_edital
