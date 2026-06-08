@@ -5,11 +5,12 @@
 > config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
 > `compliance_agent/skilltree.py` reload fail-safe+sync+render, +5 capacidades `sistema`, 8 testes — commit `5279edf`)
 > · Onda 2 🟡 (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
-> **PRÓXIMO PASSO:** **Onda 8** (Massare notícia/macro/fundamento — prioridade do dono): `massare/news.py`
-> (GDELT DOC 2.0 + Finnhub), `calendar.py` (FRED/Finnhub), `focus.py` (BCB Olinda via python-bcb),
-> `fundamentos.py` (brapi), `crypto_ws.py` (websocket Binance/Coinbase). Rotas `/api/massare/focus|fundamentos|
-> calendario`. **Ondas 0,1(skilltree),2,3,4,5,6,7 ✅.** Onda 7 commit `add3e8e` (HTML→PDF Playwright + SVG; dossiê
-> usa o motor: rating card + ≥3 gráficos + proveniência + hash). **66 testes JFN 2.0 verdes; 30 capacidades PRONTO.**
+> **PRÓXIMO PASSO:** **Onda 9** (Massare teses + validação López de Prado — prioridade do dono): `massare/theses.py`
+> (narrativa→ativos→tese testável, registrada via learning.record_forecast), `validation.py` (CPCV+embargo, DSR+PBO,
+> custos), `regime.py` (HMM roteia ensemble), `carteira.py` (manual, sem broker). Rotas `/api/massare/teses|carteira`.
+> **Ondas 0,1(skilltree),2,3,4,5,6,7,8(core) ✅.** Onda 8 commit `0a0cc78` (Focus/news/fundamentos/calendar grátis;
+> crypto_ws 24/7 daemon diferido). **72 testes JFN 2.0 verdes; 33 capacidades PRONTO.** **Estratégia de modelos:
+> `docs/MODELO-ESTRATEGIA.md`** (free + Gemma + fallback diverso; pegadinha do limite-por-projeto a confirmar).
 > **MODELO (corrigido — verificado jun/2026): default/pesado = `gemini-2.5-flash` (ÚNICO Gemini free junto do
 > flash-lite; Pro e 3.x são PAGOS); `gemini-2.5-pro` só sob "usar o modelo melhor" + confirmação. Rotação de 8
 > chaves Gemini JÁ ATIVA no `~/.hermes/auth.json` (pool nativo Hermes) — commit `0f1b8aa`.** Adiado p/ última
@@ -79,7 +80,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 | 5 | SEI inteligência em escala | ✅ `sei_extract` (schema) + `sei_corpus` (FTS5) + `sei_direcionamento` (varredor R1/R7/R8/R12, `/api/sei/direcionamento`). **SEI consolidado no reader itkava** (porta única, sem captcha) |
 | 6 | Radar 24/7 | ✅ `radar.py` (watchlist + ciclo PNCP-aberto-restritivo + OB-anômala → alerta Telegram, idempotente); `/api/radar/vigiar|status|ciclo`; systemd `jfn-radar.{service,timer}` (20min) |
 | 7 | Relatório classe mundial (HTML→PDF) | ✅ `reporting/render_html.py` (Jinja2+CSS→PDF via Playwright) + `charts_svg.py` (sparkline/barras/heatmap P×I); dossiê usa o motor (rating card + ≥3 SVG + proveniência + hash SHA-256) |
-| 8 | Massare notícia/macro/Focus | ⏳ |
+| 8 | Massare notícia/macro/Focus | ✅ core: `focus.py`(BCB,sem chave) + `news.py`(GDELT) + `fundamentos.py`(brapi) + `calendar.py`(Finnhub). Rotas `/api/massare/focus\|noticias\|fundamentos\|calendario`. Validado live (Selic 13.25/PETR4 R$40,89). crypto_ws 24/7 (daemon) diferido |
 | 9 | Massare teses + validação López de Prado | ⏳ |
 | 10 | Lex + instrumentos de mandato | ⏳ |
 | 11 | Higiene técnica | ⏳ (parte já feita na campanha de otimização anterior) |
@@ -250,3 +251,11 @@ roteamento adaptativo (decisão acima).
   o PDF por esse motor (`_gerar_pdf_classe_mundial`), com o FPDF compacto como fallback. Validado e2e: dossiê real → PDF
   60KB com 3 gráficos + rating + proveniência + hash. 4 testes (HTML/SVG determinísticos). **COMO o hash defende a peça:**
   SHA-256 dos dados no rodapé → prova de não-adulteração (padrão OSINT, reforça a defensabilidade perante TCE-RJ/MP-RJ).
+- **2026-06-08 (Onda 8 core ✅ — Massare dados grátis, commit `0a0cc78`)** — **POR QUÊ é prioridade:** o Massare não
+  tinha "notícia de mercado relevante" nem macro datada. **COMO (100% grátis por classe de fonte):** `focus.py` (BCB/
+  Olinda Expectativas via python-bcb — Selic/IPCA/PIB/câmbio, SEM chave; validado: Selic 13.25, IPCA 5.09); `news.py`
+  (GDELT DOC 2.0 — manchetes+tom por tema, sem chave; GDELT dá 429 sob chamadas rápidas → reportado honesto, não
+  fabrica); `fundamentos.py` (brapi P/L/DY/ROE; PETR4 R$40,89); `calendar.py` (Finnhub key-gated → sem chave =
+  INDISPONÍVEL, nunca inventa agenda). 4 rotas `/api/massare/*`. 6 testes (httpx mockado + honestidade). **DIFERIDO:**
+  `crypto_ws.py` (websocket 24/7 Binance/Coinbase) é um **daemon** (processo contínuo, não rota) — fica p/ depois;
+  o núcleo notícia/macro/fundamento (a prioridade do dono) está pronto. **Modelo:** ver `docs/MODELO-ESTRATEGIA.md`.
