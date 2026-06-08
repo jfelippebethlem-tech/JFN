@@ -58,6 +58,32 @@ def test_opensanctions_parseia_match(monkeypatch):
     assert r["ok"] is True and r["pep"] is True and r["matches"][0]["nome"] == "Fulano PEP"
 
 
+def test_aleph_sem_chave_indisponivel(monkeypatch):
+    from compliance_agent.enrich import aleph
+    monkeypatch.delenv("ALEPH_API_KEY", raising=False)
+    r = aleph.buscar("Construtora X")
+    assert r["ok"] is True and r["matches"] == [] and "INDISPONÍVEL" in r["_nota"]
+
+
+def test_aleph_parseia_match(monkeypatch):
+    from compliance_agent.enrich import aleph
+
+    class _R:
+        status_code = 200
+        def json(self):
+            return {"total": {"value": 1},
+                    "results": [{"id": "ent.123", "caption": "ACME LTDA", "schema": "Company",
+                                 "properties": {"name": ["ACME LTDA"], "country": ["br"]},
+                                 "collection": {"label": "Brasil Empresas"}}]}
+
+    monkeypatch.setenv("ALEPH_API_KEY", "x")
+    monkeypatch.setattr("compliance_agent.enrich.aleph.httpx.get", lambda *a, **k: _R())
+    r = aleph.buscar("ACME")
+    assert r["ok"] is True and r["total"] == 1
+    assert r["matches"][0]["nome"] == "ACME LTDA"
+    assert r["matches"][0]["link"].endswith("ent.123")
+
+
 def test_capability_grafo_ftm_pronto():
     from compliance_agent.skilltree import SkillTree
     st = SkillTree()
