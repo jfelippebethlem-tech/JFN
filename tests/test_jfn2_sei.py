@@ -118,3 +118,23 @@ def test_navegador_extrai_processos_relacionados(monkeypatch):
     assert len(rel) == 2
     assert rel[0]["numero"].startswith("SEI-270060/000123") and "Pregão" in rel[0]["titulo"]
     assert rel[1]["numero"].startswith("E-12/345/2021")
+
+
+def test_navegador_diagnostica_zero_docs(monkeypatch):
+    """0 docs honesto: acesso restrito (RED FLAG) vs busca não resolvida (falha técnica) vs árvore vazia."""
+    from compliance_agent.sei import navegador
+    import compliance_agent.collectors.sei_cdp as cdp
+
+    async def _restrito(numero, usar_cache=True):
+        return {"numero": numero, "url": "http://sei/proc", "documentos": [], "relacionados": [],
+                "texto": "Este processo possui ACESSO RESTRITO conforme nível de acesso definido."}
+    monkeypatch.setattr(cdp, "ler_processo_sei", _restrito)
+    r = navegador.abrir_processo("E-1/1/2025")
+    assert r["acesso_restrito"] is True and r["motivo_zero"] == "acesso_restrito"
+
+    async def _busca(numero, usar_cache=True):
+        return {"numero": numero, "url": "https://sei.rj.gov.br/sei/controlador.php?acao=protocolo_pesquisar",
+                "documentos": [], "relacionados": [], "texto": "GOVERNO... Iniciar Processo Pesquisa"}
+    monkeypatch.setattr(cdp, "ler_processo_sei", _busca)
+    r2 = navegador.abrir_processo("E-2/2/2025")
+    assert r2["acesso_restrito"] is False and r2["motivo_zero"] == "busca_nao_resolveu"
