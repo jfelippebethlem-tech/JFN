@@ -110,9 +110,8 @@ async def _groq_gerar(messages: list[dict]) -> str:
 async def _gerar_default(messages: list[dict]) -> str:
     """LLM padrão: tenta Gemini; se cair (chave/limite/erro), cai para o Hermes/Groq (pedido do dono).
     Honesto: se NENHUM responder, propaga o erro (o cérebro reporta 'indisponível', não fabrica)."""
-    import os
     erros = []
-    if os.environ.get("GEMINI_API_KEY", "").strip():
+    if _gemini_keys():
         try:
             r = await gerar_gemini(messages)
             if r and r.strip():
@@ -127,15 +126,97 @@ async def _gerar_default(messages: list[dict]) -> str:
         raise RuntimeError("nenhum LLM respondeu — " + " | ".join(erros))
 
 
+import threading as _threading
+
+_BG_LOOP = None
+_BG_LOCK = _threading.Lock()
+
+
+def _bg_loop():
+    """Event loop asyncio DEDICADO (thread daemon) — UM loop estável para chamar o LLM async de contexto
+    SÍNCRONO (ex.: lex.gerar) sem o churn de asyncio.run (que causava 'fileobj is not registered')."""
+    global _BG_LOOP
+    if _BG_LOOP is None or _BG_LOOP.is_closed():
+        with _BG_LOCK:
+            if _BG_LOOP is None or _BG_LOOP.is_closed():
+                import asyncio
+                loop = asyncio.new_event_loop()
+                _threading.Thread(target=loop.run_forever, daemon=True, name="jfn-llm-loop").start()
+                _BG_LOOP = loop
+    return _BG_LOOP
+
+
+def gerar_sync(prompt: str, sistema: str = "", timeout: float = 45.0) -> str:
+    """Chamada LLM SÍNCRONA robusta (de qualquer contexto, sync ou async) via loop dedicado persistente.
+    Reusa _gerar_default (Gemini rotacionado). Em teste, injete um mock — não chame isto."""
+    import asyncio
+    msgs = [{"role": "system", "content": sistema or "Você é auditor de controle externo do JFN."},
+            {"role": "user", "content": prompt}]
+    fut = asyncio.run_coroutine_threadsafe(_gerar_default(msgs), _bg_loop())
+    return fut.result(timeout=timeout)
+
+
+def _ler_env_file(caminho) -> dict:
+    """Lê KEY=VALUE de um .env (p/ puxar as chaves válidas do ~/.hermes/.env). Nunca loga valores."""
+    from pathlib import Path
+    d: dict = {}
+    try:
+        for ln in Path(caminho).read_text(encoding="utf-8", errors="ignore").splitlines():
+            ln = ln.strip()
+            if not ln or ln.startswith("#") or "=" not in ln:
+                continue
+            k, v = ln.split("=", 1)
+            d[k.strip()] = v.strip().strip('"').strip("'")
+    except Exception:
+        pass
+    return d
+
+
+_GEMINI_KEYS_CACHE: list | None = None
+
+
+def _gemini_keys() -> list:
+    """POOL de chaves Gemini deduplicado: GEMINI_API_KEYS (pool) + GEMINI_API_KEY do JFN, MAIS o pool
+    VÁLIDO do Yoda em ~/.hermes/.env (as do JFN/.env podem estar esgotadas/erradas). POR QUÊ: o motor com
+    1 chave morta dava 429 e derrubava TODO recurso-LLM (parecer/direção)."""
+    global _GEMINI_KEYS_CACHE
+    if _GEMINI_KEYS_CACHE is not None:
+        return _GEMINI_KEYS_CACHE
+    import os
+    import re
+    from pathlib import Path
+    hm = _ler_env_file(Path.home() / ".hermes" / ".env")
+    fontes = [os.environ.get("GEMINI_API_KEYS", ""), os.environ.get("GEMINI_API_KEY", ""),
+              hm.get("GEMINI_API_KEYS", ""), hm.get("GEMINI_API_KEY", "")]
+    keys: list = []
+    vistos: set = set()
+    for f in fontes:
+        for k in re.split(r"[,\s]+", f or ""):
+            k = k.strip()
+            if k and k not in vistos:
+                vistos.add(k)
+                keys.append(k)
+    _GEMINI_KEYS_CACHE = keys
+    return keys
+
+
+_GEMINI_RR = 0
+
+
 async def gerar_gemini(messages: list[dict], model: str | None = None) -> str:
-    """LLM = Google Gemini (chave grátis GEMINI_API_KEY). Adapta messages OpenAI→Gemini
-    (system → systemInstruction). Default `gemini-2.5-flash` (bom raciocínio, barato)."""
+    """Gemini robusto: ROTAÇÃO do pool de chaves (round-robin) × MODELOS em cascata (buckets de RPM
+    distintos no free tier) × backoff. Adapta messages OpenAI→Gemini (system → systemInstruction)."""
+    global _GEMINI_RR
+    import asyncio as _aio
     import os
     import httpx
-    key = os.environ.get("GEMINI_API_KEY", "").strip()
-    if not key:
-        raise RuntimeError("GEMINI_API_KEY vazia")
-    model = model or os.environ.get("DIRECIONAMENTO_GEMINI_MODEL", "gemini-2.5-flash")
+    keys = _gemini_keys()
+    if not keys:
+        raise RuntimeError("nenhuma chave Gemini (JFN/.env nem ~/.hermes/.env)")
+    modelos = [model] if model else [
+        os.environ.get("DIRECIONAMENTO_GEMINI_MODEL", "gemini-2.5-flash"),
+        "gemini-2.0-flash", "gemini-2.5-flash-lite",
+    ]
     sys_txt = "\n".join(m["content"] for m in messages if m["role"] == "system")
     user_txt = "\n".join(m["content"] for m in messages if m["role"] != "system")
     body: dict = {"contents": [{"role": "user", "parts": [{"text": user_txt}]}],
@@ -143,12 +224,40 @@ async def gerar_gemini(messages: list[dict], model: str | None = None) -> str:
                                        "responseMimeType": "application/json"}}
     if sys_txt:
         body["systemInstruction"] = {"parts": [{"text": sys_txt}]}
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+    n = len(keys)
+    erros = []
     async with httpx.AsyncClient(timeout=60) as client:
-        r = await client.post(url, json=body)
-        r.raise_for_status()
-        j = r.json()
-    return j.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+        for mi, mdl in enumerate(modelos):
+            for tentativa in range(2 if mi == 0 else 1):
+                so_rate = True
+                for off in range(n):
+                    key = keys[(_GEMINI_RR + off) % n]
+                    url = f"https://generativelanguage.googleapis.com/v1beta/models/{mdl}:generateContent?key={key}"
+                    try:
+                        r = await client.post(url, json=body)
+                        if r.status_code in (429, 403, 401):
+                            erros.append(f"{mdl}:{r.status_code}")
+                            continue
+                        if r.status_code == 404:
+                            erros.append(f"{mdl}:404")
+                            so_rate = False
+                            break
+                        r.raise_for_status()
+                        j = r.json()
+                        txt = j.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        _GEMINI_RR = (_GEMINI_RR + off + 1) % n
+                        return txt
+                    except httpx.HTTPStatusError as e:
+                        erros.append(str(e.response.status_code))
+                        so_rate = False
+                    except Exception as e:  # noqa: BLE001
+                        erros.append(str(e)[:20])
+                        so_rate = False
+                if mi == 0 and tentativa == 0 and so_rate:
+                    await _aio.sleep(3.0)
+                else:
+                    break
+    raise RuntimeError(f"Gemini: {len(modelos)} modelos × {n} chaves falharam ({','.join(erros[:14])})")
 
 
 async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, contexto: dict | None = None,
