@@ -199,6 +199,72 @@ def _parse_json(raw: str):
         return None
 
 
+_PARAMS_AUDITOR = (
+    "*Parâmetros de direcionamento (TCU/TCE-RJ/ACFE):*\n"
+    "• Atestado de capacidade técnica restritivo (idêntico ao objeto; prazo/local específico; quantitativo "
+    "desproporcional; *vedação de somatório* sem justificativa — Súmula TCU 263).\n"
+    "• Exigência de marca/modelo ou certificações sem comprovar essencialidade.\n"
+    "• Cascata: muitas desclassificações/inabilitações pelo MESMO motivo; vencedor longe do menor preço que "
+    "sobe após quedas dos mais baratos por tecnicalidade.\n"
+    "• Contrato grande + poucas empresas habilitadas = sinal."
+)
+
+
+def montar_pacote_claude(contratacao: dict, resultado: dict, trecho_doc: str = "", max_trecho: int = 1500) -> str:
+    """Pacote MASTIGADO p/ o Mestre Jorge enviar ao Claude do celular: contratação + parâmetros + os
+    TRECHOS do documento + o parecer do GEMINI + a pergunta para o Claude PENSAR EM CIMA do Gemini.
+    Markdown pronto para copiar/encaminhar. Honesto: tudo indício a verificar, não acusação."""
+    obj = (contratacao.get("objeto") or "")[:160]
+    val = contratacao.get("valor")
+    org = contratacao.get("orgao") or contratacao.get("unidade") or "?"
+    link = contratacao.get("link") or f"https://pncp.gov.br/app/editais?q={contratacao.get('id_pncp','')}"
+    ex = resultado.get("exigencias_restritivas") or []
+    casc = resultado.get("cascata") or []
+    sig = resultado.get("presinais") or {}
+    linhas = [
+        "🧠 *AVALIAÇÃO DE DIRECIONAMENTO — peça ao Claude pensar em cima do Gemini*",
+        f"*Contratação:* {obj}",
+        f"*Órgão:* {org} · *Valor:* {('R$ %s' % f'{val:,.2f}'.replace(',','.')) if val else '?'}",
+        f"*PNCP:* {link}",
+        f"*Id:* `{contratacao.get('id_pncp','?')}`",
+        "",
+        _PARAMS_AUDITOR,
+        "",
+        f"*Sinais objetivos (contagem na ata):* desclass={sig.get('n_desclassificacoes',0)} · "
+        f"inabilit={sig.get('n_inabilitacoes',0)} · atestado={sig.get('mencoes_atestado',0)} · "
+        f"ata_presente={sig.get('tem_ata',False)}",
+        "",
+        "📄 *Trecho do documento (fonte para conferir):*",
+        "```",
+        (trecho_doc or "(não anexado — ver link PNCP)")[:max_trecho],
+        "```",
+        "",
+        "🤖 *PARECER DO GEMINI:*",
+        f"*Grau:* {str(resultado.get('grau','?')).upper()} · dados_suficientes: {resultado.get('dados_suficientes')}",
+        f"*Resumo:* {resultado.get('resumo','')}",
+        f"*Raciocínio do Gemini:* {resultado.get('raciocinio','(não informado)')}",
+    ]
+    if ex:
+        linhas.append("*Exigências que o Gemini achou restritivas:*")
+        for e in ex[:5]:
+            linhas.append(f"  • {(e.get('por_que_restringe') or '')[:120]} _(juris: {e.get('jurisprudencia','—')})_")
+            linhas.append(f"    trecho: “{(e.get('trecho') or '')[:120]}”")
+    if casc:
+        linhas.append("*Cascata que o Gemini leu:*")
+        for x in casc[:6]:
+            linhas.append(f"  • {x.get('situacao','?')} (ordem preço {x.get('ordem_preco','?')}): {(x.get('motivo') or '')[:80]}")
+    linhas += [
+        "",
+        "❓ *PERGUNTA PARA VOCÊ, CLAUDE (julgue o Gemini):*",
+        "1. Você concorda com o GRAU do Gemini? Por quê? "
+        "2. O raciocínio dele está correto/honesto, ou ele errou/exagerou/passou batido em algo? "
+        "3. Olhando os trechos e os parâmetros, há red flag de direcionamento que o Gemini PERDEU? "
+        "4. Dê o SEU parecer (grau + justificativa + o que pediria de diligência). "
+        "Regra: indício a verificar, NUNCA acusação (presunção de legitimidade).",
+    ]
+    return "\n".join(linhas)
+
+
 def avaliar_sync(edital_txt: str = "", ata_txt: str = "", *, contexto: dict | None = None, gerar=None) -> dict:
     """Wrapper síncrono (p/ chamadores não-async)."""
     import asyncio
