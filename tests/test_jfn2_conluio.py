@@ -3,10 +3,14 @@
 from __future__ import annotations
 from compliance_agent.sei import conluio_propostas as C
 
+# descrições REAIS e distintas (produtos diferentes) — como numa tabela de ARP de verdade
+_DESC = ["Notebook corporativo i7 16GB", "Monitor LED 24 polegadas full hd",
+         "Impressora laser monocromatica", "Switch gerenciavel 48 portas",
+         "Servidor rack dois processadores"]
+
 
 def _itens(precos):
-    return [{"descricao": f"Item especifico numero {i} de fornecimento", "valor_unitario": p}
-            for i, p in enumerate(precos)]
+    return [{"descricao": _DESC[i], "valor_unitario": p} for i, p in enumerate(precos)]
 
 
 def test_markup_uniforme_detecta_cobertura():
@@ -29,9 +33,12 @@ def test_precos_identicos():
 
 
 def test_texto_similar():
-    base = " ".join(f"clausula tecnica especificacao detalhada item {i}" for i in range(15))
+    # ≥20 tokens DISTINTOS (len>3) nos dois
+    base = ("clausula tecnica especificacao detalhada fornecimento garantia prazo entrega instalacao suporte "
+            "manutencao treinamento documentacao certificado homologacao compatibilidade desempenho seguranca "
+            "qualidade durabilidade assistencia configuracao integracao")
     assert C.texto_similar(base, base)["jaccard"] >= 0.85
-    assert C.texto_similar(base, "texto totalmente diferente sobre outro assunto qualquer aqui") is None
+    assert C.texto_similar(base, "texto totalmente diferente versando sobre outro assunto qualquer presente aqui agora") is None
 
 
 def test_detectar_par_a_par():
@@ -42,7 +49,5 @@ def test_detectar_par_a_par():
     ]
     r = C.detectar(props)
     assert r["ok"] and r["n_propostas"] == 3
-    tipos = {i["tipo"] for i in r["indicios"]}
-    assert "markup_uniforme" in tipos
-    mu = next(i for i in r["indicios"] if i["tipo"] == "markup_uniforme")
-    assert mu["a"] == "EMPRESA A" and mu["b"] == "EMPRESA B"
+    mu = [i for i in r["indicios"] if i["tipo"] == "markup_uniforme"]
+    assert any(x["a"] == "EMPRESA A" and x["b"] == "EMPRESA B" for x in mu)
