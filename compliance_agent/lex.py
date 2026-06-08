@@ -237,6 +237,24 @@ def _modalidade(low: str) -> str:
     return "—"
 
 
+def _trecho(txt: str, gatilhos, janela: int = 340) -> str:
+    """Excerpt em torno do 1º gatilho encontrado no texto real — para o parecer CITAR 'onde' (o trecho do
+    documento que disparou o indício). Limpo p/ markdown. Vazio se nenhum gatilho aparece."""
+    low = (txt or "").lower()
+    pos = -1
+    for g in gatilhos:
+        p = low.find(g)
+        if p >= 0:
+            pos = p
+            break
+    if pos < 0:
+        return ""
+    ini = max(0, pos - janela // 4)
+    fim = min(len(txt), pos + janela)
+    ex = re.sub(r"\s+", " ", txt[ini:fim].replace("|", "/")).strip()
+    return ("…" if ini > 0 else "") + ex + ("…" if fim < len(txt) else "")
+
+
 def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
     """Red flags a partir do TEXTO REAL do processo. Retorna (achados, resumo)."""
     txt = _texto_integra(integra)
@@ -279,6 +297,16 @@ def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
                             "obs": "Há exigências de habilitação/especificação (atestado/marca) sem a cláusula "
                                    "'ou equivalente' visível — verificar restrição à competitividade (art. 9º Lei 14.133)."})
 
+    # B (qualidade): anexa o TRECHO real do documento + o nº do processo a cada achado, para o parecer
+    # citar ONDE (o trecho que disparou o indício). Sem trecho → fica vazio (não inventa).
+    _gat = {"R5": ["dispensa", "inexigibil"],
+            "R3": ["edital", "termo de referência", "termo de referencia", "contrato"],
+            "R9": ["termo aditivo", "aditamento"],
+            "R7": ["atestado de capacidade", "marca", "modelo "]}
+    for a in achados:
+        a["numero_proc"] = integra.get("numero", "")
+        a["trecho"] = _trecho(txt, _gat.get(a["rf"], []))
+
     resumo = {
         "numero": integra.get("numero", ""),
         "objeto": objeto,
@@ -294,6 +322,69 @@ def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
         "erro": integra.get("erro", "") or _bloqueio_rede(integra),
     }
     return achados, resumo
+
+
+_SYS_DISCURSIVO = (
+    "Voce e auditor de controle externo (TCU/TCE-RJ) redigindo um parecer. Para cada indicio, com base "
+    "ESTRITAMENTE no TRECHO real do documento, escreva 2 a 4 frases de analise: (a) ONDE no documento o "
+    "problema aparece (parafraseie/cite o trecho) e (b) POR QUE e um indicio — o MECANISMO concreto (ex.: "
+    "'a exigencia de atestado X restringe porque elimina concorrentes que nao tem Y'). NAO invente fato "
+    "fora do trecho; se o trecho nao bastar, diga objetivamente o que precisaria conferir. Indicio, nunca "
+    "acusacao. Responda SOMENTE JSON."
+)
+
+
+def _json_lex(texto: str):
+    """Extrai JSON (lista/obj) de uma resposta de LLM, tolerante a cercas ```json e texto ao redor."""
+    import json
+    t = (texto or "").strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+    try:
+        return json.loads(t)
+    except Exception:
+        m = re.search(r"(\[.*\]|\{.*\})", t, re.DOTALL)
+        if m:
+            try:
+                return json.loads(m.group(1))
+            except Exception:
+                return None
+        return None
+
+
+def analise_discursiva(achados: list[dict], gerar=None) -> list[dict]:
+    """Para cada achado COM trecho (= SEI lido), gera uma 'analise' DISCURSIVA (onde + por que, mecanismo)
+    ancorada no texto real, numa UNICA chamada LLM (lote). Robusto: LLM caido/sem trecho → achado segue
+    com a obs deterministica (degrada honesto, nao inventa). `gerar` injetavel p/ teste."""
+    com = [(i, a) for i, a in enumerate(achados) if (a.get("trecho") or "").strip()]
+    if not com:
+        return achados
+    if gerar is None:
+        try:
+            from compliance_agent.direcionamento_cerebro import gerar_sync
+            gerar = lambda p, s="": gerar_sync(p, s, timeout=45.0)  # noqa: E731
+        except Exception:
+            return achados
+    itens = "\n\n".join(
+        f'{j}. INDICIO {a["rf"]} ({_RF.get(a["rf"], (a["rf"], ""))[0]}); processo {a.get("numero_proc", "")}\n'
+        f'   TRECHO: "{(a.get("trecho") or "")[:600]}"'
+        for j, (_i, a) in enumerate(com)
+    )
+    prompt = ('Analise cada indicio abaixo. Responda SOMENTE JSON: lista de '
+              '{"i":<indice>,"analise":"2 a 4 frases citando o trecho e explicando o mecanismo"}.\n\n' + itens)
+    try:
+        d = _json_lex(gerar(prompt, _SYS_DISCURSIVO))
+    except Exception:
+        d = None
+    por: dict = {}
+    if isinstance(d, list):
+        for x in d:
+            try:
+                por[int(x["i"])] = str(x.get("analise", "")).strip()
+            except Exception:
+                pass
+    for j, (_i, a) in enumerate(com):
+        if por.get(j):
+            a["analise"] = por[j]
+    return achados
 
 
 def analisar_texto_edital(texto: str, numero: str = "", url: str = "") -> dict:
@@ -761,8 +852,11 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
             add(f"### {a['rf']} — {nome}")
             add(f"- **Observação:** {a['obs']}")
             add(f"- **Fundamento:** {fund}")
-            add("- **Contraponto (presunção de regularidade):** o fato pode ter explicação legítima (objeto técnico, "
-                "demanda concentrada por competência institucional). Não há, aqui, juízo de irregularidade.")
+            # Análise discursiva (onde no documento + por quê o mecanismo), ancorada no trecho real do SEI.
+            if a.get("analise"):
+                add(f"- **Análise (onde e por quê):** {a['analise']}")
+                if a.get("trecho"):
+                    add(f"  > _Trecho do processo {a.get('numero_proc','')}:_ «{a['trecho'][:300]}»")
             add("- **Diligência sugerida:** confrontar com edital (especificações), pesquisa de preços, mapa de "
                 "licitantes/sócios, atestos e aditivos do processo SEI.")
             add("")
@@ -901,6 +995,13 @@ def render_pdf(ctx: dict, destino: str, analise: dict | None = None) -> str:
 def gerar(ctx: dict, salvar: bool = True, ler_sei: bool | None = None) -> dict:
     """Gera o parecer Lex (md + pdf). Lê a íntegra do SEI UMA vez. Retorna {ok, grau, n_indicios, n_sei_lidos, path_lex_pdf, path_lex_md}."""
     analise = _analise(ctx, ler_sei=ler_sei)
+    # Análise DISCURSIVA (onde+por quê, ancorada no trecho real do SEI). Default ligado; degrada honesto
+    # se o LLM cair (achado fica só com a obs determinística). JFN_LEX_DISCURSIVO=0 desliga.
+    if os.environ.get("JFN_LEX_DISCURSIVO", "1") == "1" and any(a.get("trecho") for a in analise.get("achados", [])):
+        try:
+            analise["achados"] = analise_discursiva(analise["achados"])
+        except Exception:
+            pass
     n_lidos = sum(1 for l in analise["leituras"] if l.get("lido"))
     out = {"ok": True, "grau": analise["rotulo"], "n_indicios": len(analise["achados"]),
            "n_sei": len(analise["sei"]), "n_sei_lidos": n_lidos, "path_lex_pdf": "", "path_lex_md": ""}
