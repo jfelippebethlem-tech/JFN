@@ -63,6 +63,12 @@ capacidades:
   - {id: consultar_links, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/links, status: PRONTO,
      descricao: "Pistas de investigacao HOSPEDADA (Max Intel, OSINT-Brazuca, Bellingcat, RedeCNPJ, JusBrasil/Escavador)", quando_usar: "'onde mais pesquisar sobre X', aprofundar DD",
      args: {nome: opcional, cnpj: opcional}, retorno: "{links[{fonte,categoria,url}]}", fonte: "agregadores OSINT hospedados (uso manual)"}
+  - {id: consultar_diario, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/diario, status: PRONTO,
+     descricao: "Diarios oficiais municipais (Querido Diario): busca por palavra-chave + territorio IBGE + datas", quando_usar: "'saiu no diario oficial de X?', publicacao/extrato de contrato municipal",
+     args: {querystring: obrigatorio, territory_ids: "opcional (IBGE; RJ capital=3304557)", desde: opcional, ate: opcional, size: opcional}, retorno: "{total,itens[{municipio,data,url,trecho}]}", fonte: "Querido Diario (api.queridodiario.ok.org.br)"}
+  - {id: doador_contrato_qsa, agente: lex, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/doador_contrato, status: PRONTO,
+     descricao: "TSE doador x contrato: socios (QSA) do fornecedor que aparecem como DOADORES de campanha (RJ). Indicio a conferir, nunca acusacao (CPF mascarado -> casa por nome)", quando_usar: "'algum socio do fornecedor X financiou campanha?', conflito doador-fornecedor pela via QSA",
+     args: {cnpj: obrigatorio}, retorno: "{fornecedor,n_socios,doacoes_de_socios[{socio,ano,beneficiario,partido,valor}]}", fonte: "TSE prestacao de contas (so RJ, doacao_tse) x QSA do fornecedor"}
   # ---- SEI / LICITACAO ----
   - {id: ler_processo_sei, agente: lex, dominio: juridico, tipo: cli, comando: "tools.sei_reader \"<NUMERO>\"", status: PRONTO,
      descricao: "Le processo SEI-RJ na integra via login interno itkava/ITERJ (Chromium real, SEM captcha, vence o WAF). Cache 24h.",

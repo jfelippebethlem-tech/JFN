@@ -15,6 +15,8 @@ FERRAMENTAS DISPONÍVEIS (chame SÓ estas pelo id; se não houver ferramenta par
 - consultar_ownership(nome,lei) — vinculo societario cross-jurisdicao
 - consultar_leaks(termo) — 'aparece nos Panama/Pandora Papers?'
 - consultar_links(nome,cnpj) — 'onde mais pesquisar sobre X', aprofundar DD
+- consultar_diario(querystring,territory_ids,desde,ate,size) — 'saiu no diario oficial de X?', publicacao/extrato de contrato municipal
+- doador_contrato_qsa(cnpj) — 'algum socio do fornecedor X financiou campanha?', conflito doador-fornecedor pela via QSA
 - ler_processo_sei(numero) — ler/analisar um processo SEI especifico. FORMATO do numero: 'SEI-UUUUUU/NNNNNN/AAAA' (ex.: SEI-070002/008633/2022) ou 'E-NN/NNN/AAAA' (ex.: E-12/345/2026) — unidade/sequencial/ano. Aceita com ou sem o prefixo SEI-.
 - consultar_pncp(uf,orgao,cnpj,abertos) — analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos)
 - buscar_direcionamento(ug,objeto) — 'ache editais restritivos na UG X'

@@ -16,11 +16,13 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `siafe_atualizar` | jfn | http | `/api/siafe/atualizar` | PRONTO | 'atualize o SIAFE' |
 | `siafe_coletar_ug` | jfn | cli | `compliance_agent.siafe_runner ug <UG> [ANO]` | PRONTO | backfill de UG |
 | `siafe_stats` | jfn | http | `/api/siafe/stats` | PRONTO | 'quantas OBs temos' |
+| `consultar_diario` | jfn | http | `/api/diario` | PRONTO | 'saiu no diario oficial de X?', publicacao/extrato de contrato municipal |
 | `consultar_empresa` | jfn | http | `/api/empresa` | PRONTO | 'dados da empresa X', socios de um CNPJ |
 | `consultar_idoneidade` | lex | http | `/api/idoneidade` | PRONTO | 'a empresa X esta sancionada?', PEP |
 | `consultar_leaks` | jfn | http | `/api/leaks` | PRONTO | 'aparece nos Panama/Pandora Papers?' |
 | `consultar_links` | jfn | http | `/api/links` | PRONTO | 'onde mais pesquisar sobre X', aprofundar DD |
 | `consultar_ownership` | jfn | http | `/api/ownership` | PRONTO | vinculo societario cross-jurisdicao |
+| `doador_contrato_qsa` | lex | http | `/api/doador_contrato` | PRONTO | 'algum socio do fornecedor X financiou campanha?', conflito doador-fornecedor pela via QSA |
 | `dossie` | jfn | http | `/api/dossie` | PRONTO | 'monte um dossie sobre X' |
 | `grafo_ftm` | jfn | http | `/api/grafo/ftm` | PRONTO | 'exporte a rede de X p/ FtM/Aleph' |
 | `grafo_poder` | jfn | http | `/api/grafo` | PRONTO | 'quem esta ligado a X', 'a N saltos do deputado Y com contrato' |

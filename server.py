@@ -1386,6 +1386,30 @@ async def api_links(nome: str = "", cnpj: str = ""):
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.get("/api/diario")
+async def api_diario(querystring: str, territory_ids: str = "", desde: str = "", ate: str = "", size: int = 20):
+    """Onda 12 (providers) — diários oficiais municipais (Querido Diário). Busca por palavra-chave +
+    território IBGE (RJ capital = 3304557) + janela de datas. Sem chave; on-demand + cache."""
+    try:
+        from compliance_agent.providers import lookup
+        return JSONResponse(content=lookup("gazettes", querystring=querystring, territory_ids=territory_ids,
+                                           desde=desde, ate=ate, size=size).__dict__)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/doador_contrato")
+async def api_doador_contrato(cnpj: str):
+    """Onda 12 (providers) — TSE doador×contrato: sócios (QSA) do fornecedor que aparecem como
+    doadores de campanha (RJ). Indício de conflito a CONFERIR, nunca acusação (CPF mascarado → casa
+    por nome). Requer doacao_tse populado (carregar_doacoes_rj(ano))."""
+    try:
+        from compliance_agent.providers import lookup
+        return JSONResponse(content=lookup("eleitoral", cnpj=cnpj).__dict__)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/api/grafo")
 async def api_grafo(alvo: str, saltos: int = 2, so_contrato: bool = False):
     """Onda 4 — Grafo de Poder: vizinhança de um alvo (CNPJ/UG/nome) unindo
