@@ -7,6 +7,7 @@ FERRAMENTAS DISPONÍVEIS (chame SÓ estas pelo id; se não houver ferramenta par
 - sobrepreco(codigo,valor,servico) — 'esta caro?', superfaturamento, R4
 - cruzamento(cnpj) — 'cruze os dados da empresa X'
 - missao_autonoma(missao) — pedido complexo/aberto
+- grafo_poder(alvo,saltos,so_contrato) — 'quem esta ligado a X', 'a N saltos do deputado Y com contrato'
 - ler_processo_sei(numero) — '/sei E-12/345/2026'
 - consultar_pncp(uf,orgao,cnpj,abertos) — analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos)
 - parecer_juridico(alvo) — 'tem direcionamento?', parecer

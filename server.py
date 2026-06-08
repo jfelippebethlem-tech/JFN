@@ -1294,6 +1294,19 @@ async def api_sobrepreco(codigo: int, valor: float = 0, servico: bool = False):
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.get("/api/grafo")
+async def api_grafo(alvo: str, saltos: int = 2, so_contrato: bool = False):
+    """Onda 4 — Grafo de Poder: vizinhança de um alvo (CNPJ/UG/nome) unindo
+    sócios+OB+doações+folha+co-endereço, até `saltos`. so_contrato=true foca o fluxo
+    de dinheiro (cnpj↔ug↔sócio). Vínculo = indício de relação, nunca prova."""
+    try:
+        from compliance_agent.grafo_poder import vizinhanca
+
+        return JSONResponse(content=vizinhanca(alvo, saltos=saltos, so_contrato=so_contrato))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/status")
 async def status():
     """Check agent status."""
