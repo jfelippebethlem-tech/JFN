@@ -84,3 +84,60 @@ técnico:** debugar `sei_reader`/`sei_cdp` o fluxo busca→abrir (formato do nú
   pediu para evitar.
 - **CPU:** sweep + suíte + Playwright juntos derrubaram a sessão (load 4,4). Serializar; checar load antes.
 - **`data/*.out` é limpo por cron** — saída de teste importante vai p/ `/tmp` (estável), não `data/`.
+
+---
+# MAPA DETALHADO — estado, arquivos, comandos, validações (para retomar sem repetir nada)
+
+## Commits desta frente (branch `sei-precos-onda5`, base `linux`)
+- `89273dd` Onda A scaffolding SEI (na linux) · daí pra frente na branch:
+- `46d2bf9` Onda F coletor receita TFE · `5c710e6` Onda C validada (tipo do doc) ·
+- `e48deff` índice compacto `sei/indice.py` · `d9f3743` captura processos relacionados ·
+- `fcbcd62` política valor_doc/parecer_juridico · `d8a807e`+`3c11d69` detector conluio (+fix) ·
+- `a7b3735` cadeado (ícone) de acesso restrito · `8a8b102` /lista gerado da skilltree (na linha de base).
+  (`git log --oneline linux..sei-precos-onda5` p/ ver tudo.)
+
+## Arquivos criados/alterados (o que cada um faz)
+- `compliance_agent/sei/navegador.py` — `abrir_processo(numero)` reusa o leitor itkava (`sei_cdp.ler_processo_sei`),
+  devolve `{ok, docs:[DocSEI(titulo=TIPO,tipo_bruto=número,url,formato,conteudo)], relacionados:[{numero,titulo,url}],
+  acesso_restrito, cadeado, n_docs_restritos, motivo_zero, texto, cnpjs, valores}`. `baixar(doc)`=texto.
+- `compliance_agent/sei/classificador_doc.py` — `classificar_doc(titulo)` (parecer_juridico, homologacao, ata_rp,
+  contrato, mapa_lances, planilha_preco, pesquisa_precos, etp, tr, edital, empenho, liquidacao, autorizacao_despesa,
+  tramitacao, outros). `tem_preco`, `valor_doc`(alto|medio|baixo), `deve_guardar_texto`.
+- `compliance_agent/sei/extrator_precos.py` — `extrair_itens(conteudo, gerar=, ver_imagem=)` → (itens, metodo, conf);
+  camadas tabela(pdfplumber)→llm_texto→visao; honesto ('falha',0).
+- `compliance_agent/sei/conluio_propostas.py` — `detectar(propostas)`: markup_uniforme / precos_identicos /
+  texto_similar (bid-rigging).
+- `compliance_agent/sei/indice.py` — SQLite `data/sei_indice.db` (sei_processo/documento/relacionado/item_preco);
+  `persistir(...)`, `ja_indexado(numero)`, `stats()`, `podar_cache(horas)`. ~1-3 KB/processo.
+- `compliance_agent/collectors/tfe_receita.py` — `baixar()/parsear()/ingerir()` da receita mensal (CKAN tfe-receita).
+- `collectors/sei_cdp.py` + `tools/sei_reader.py` — JS `_JS_LE_ARVORE_E_TEXTO` agora separa documentos×relacionados,
+  captura tipo (title/aria-label/nó pai) e cadeado (ícone). Propagam relacionados/cadeado/n_docs_restritos.
+- `tools/pilot_sei_avaliar.py` — piloto: `--processos "a,b"` ou `--auto`; salva árvores em `data/pilot/calibracao/`.
+- Testes: `tests/test_jfn2_sei.py` (11), `_sei_indice.py` (2), `_conluio.py` (5), `_receita.py` (2). **Suíte total verde.**
+
+## Comandos úteis
+- Piloto SEI: `cd ~/JFN && PYTHONPATH=. .venv/bin/python -m tools.pilot_sei_avaliar --processos "SEI-..,SEI-.."`
+  (rodar em background + guardar load; ver `data/pilot/ultimo_pilot.json` e `data/pilot/calibracao/arvore_*.json`).
+- Receita: `python -c "from compliance_agent.collectors import tfe_receita as R; print(R.ingerir())"` (SÓ com sweep idle).
+- Índice SEI: `python -c "from compliance_agent.sei import indice; print(indice.stats())"`.
+
+## ⚠️ VALIDAÇÕES AINDA PENDENTES (heurísticas a confirmar em leitura ao vivo, quando CPU baixa)
+1. **Reader busca→abrir** (BLOQUEADOR): processos recentes abrem na tela `protocolo_pesquisar` e retornam 0 docs
+   (`motivo_zero=busca_nao_resolveu`). DEBUGAR em `tools/sei_reader.py` (fn de pesquisa/abrir) e `sei_cdp` antes do
+   sweep massivo. Os SRP UG 270060 funcionaram (cache/acessível).
+2. **Tipo do doc** (Onda C) — validado nos SRP (NE/NAD/Despacho/Recibo/Ofício/Anexo) ✅, mas pouca variedade
+   (faltou ver homologacao/ata_rp/parecer_juridico reais → ler um processo de LICITAÇÃO).
+3. **relacionados** e **cadeado** — código pronto + testes mockados, mas NÃO confirmados em processo real
+   (cache antigo não tem; leitura fresca deu 0 docs). Confirmar quando o reader (item 1) funcionar.
+
+## SEQUÊNCIA DE RETOMADA recomendada
+(1) checar load/sweep · (2) DEBUGAR o reader busca→abrir (item 1) — sem isso nada do SEI escala ·
+(3) com o reader OK, ler ~10 processos de LICITAÇÃO recentes (Lei 14.133) e validar tipo/relacionados/cadeado/ARP ·
+(4) achar 1 ARP com tabela → travar `extrator_precos` (calibrar mapa de colunas/prompt) ·
+(5) ligar a cadeia: da OB→numero_sei→processo→relacionados→pregão→ARP→itens; persistir em `sei_indice.db` ·
+(6) sweep incremental das OBs (resumível via `indice.ja_indexado`), guarda de CPU sempre ·
+(7) rodar `conluio_propostas.detectar` sobre os itens por licitação · (8) ingerir receita + cruzar receita×despesa×LOA.
+
+## Depende do dono
+Spec `JFN-SPEC-AVALIARGASTOS-RJ` (p/ gastos/avaliargastos) · `/lista` fast-path no gateway (bot vivo) ·
+(chaves Aleph/OpenCorporates: o dono coloca quando/se liberarem — NÃO rastrear).
