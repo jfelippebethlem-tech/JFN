@@ -89,7 +89,10 @@ PARADO, agora é seguro mexer nos módulos SIAFE (ex.: `siafe_worker.py` da Onda
 **Config atual aplicada** (`~/.hermes/config.yaml`, backup `config.yaml.bak.jfn2-onda1-*`): default
 gemini-2.5-flash; `api_max_retries:3`; fallback ordem **gemini-lite → gemini-2.0 → mistral-large →
 mistral-small → nous×3 (100% free, por último — a pedido do dono)**. Gateway reinicia saudável.
-**DECISÃO TOMADA (2026-06-08):** **A — heurística simples**, default **gemini-2.5-flash** (free-tier).
+**DECISÃO TOMADA (2026-06-08):** **A — heurística simples**, **3 trilhas**: (1) chat/default = **gemini-2.5-flash**
+(free); (2) caso difícil (parecer/jurídico/auditoria/edital/14.133/msg longa) = **gemini-2.5-pro**; (3) **bulk
+simples/repetitivo** (extração SEI em massa, classificação de notícias em lote) = **nous (100% free, sem cota)**.
+⚠️ O **sweep SIAFE e coletores NÃO usam LLM** (código determinístico) → fora dessa política. OCR/visão = easyocr/gemini.
 ✅ Lógica implementada e testada: `tools/hermes_model_router.py` (`escolher_modelo(texto, anexo)` → default
 gemini-2.5-flash; gatilhos jurídico/auditoria/edital/dossiê/14.133 OU msg >600 chars → `gemini-2.5-pro`;
 reforço mistral-large). `tests/test_hermes_model_router.py` (4 verdes). **FALTA o WIRING no gateway** (aplicar
