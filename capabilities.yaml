@@ -49,6 +49,20 @@ capacidades:
   - {id: grafo_ftm, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/grafo/ftm, status: PRONTO,
      descricao: "Exporta o Grafo de Poder no modelo FollowTheMoney (interoperar Aleph/Gephi, sem migrar)", quando_usar: "'exporte a rede de X p/ FtM/Aleph'",
      args: {alvo: obrigatorio, saltos: "int=2"}, retorno: "{entidades[FtM]}", fonte: "Grafo de Poder -> FtM (Onda 12)"}
+  # ---- PROVIDERS (Onda 12: consulta hospedada sob demanda, sem baixar base; fallback+cache+proveniencia) ----
+  - {id: consultar_empresa, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/empresa, status: PRONTO,
+     descricao: "Cadastro + socios (QSA) por CNPJ, fonte hospedada (BrasilAPI->cnpj.pw, fallback)", quando_usar: "'dados da empresa X', socios de um CNPJ",
+     args: {cnpj: obrigatorio}, retorno: "{ok,fonte,estado,obtido_em,dados:{razao_social,situacao,abertura,socios[]}}", fonte: "BrasilAPI / api.cnpj.pw (sem baixar base)"}
+  - {id: consultar_idoneidade, agente: lex, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/idoneidade, status: PRONTO,
+     descricao: "Triagem em listas: CEIS/CNEP (BR) + sancoes/PEP (OpenSanctions)", quando_usar: "'a empresa X esta sancionada?', PEP",
+     args: {cnpj: opcional, nome: opcional}, retorno: "{resultados[{fonte,estado,dados}]}", fonte: "Portal da Transparencia + OpenSanctions"}
+  - {id: consultar_ownership, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/ownership, status: PRONTO,
+     descricao: "Empresa/controle internacional (LEI + relacoes)", quando_usar: "vinculo societario cross-jurisdicao", args: {nome: opcional, lei: opcional}, retorno: "{ok,fonte,dados}", fonte: "GLEIF"}
+  - {id: consultar_leaks, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/leaks, status: PRONTO,
+     descricao: "Busca hospedada em vazamentos offshore (link MANUAL)", quando_usar: "'aparece nos Panama/Pandora Papers?'", args: {termo: obrigatorio}, retorno: "{url}", fonte: "ICIJ Offshore Leaks"}
+  - {id: consultar_links, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/links, status: PRONTO,
+     descricao: "Pistas de investigacao HOSPEDADA (Max Intel, OSINT-Brazuca, Bellingcat, RedeCNPJ, JusBrasil/Escavador)", quando_usar: "'onde mais pesquisar sobre X', aprofundar DD",
+     args: {nome: opcional, cnpj: opcional}, retorno: "{links[{fonte,categoria,url}]}", fonte: "agregadores OSINT hospedados (uso manual)"}
   # ---- SEI / LICITACAO ----
   - {id: ler_processo_sei, agente: lex, dominio: juridico, tipo: cli, comando: "tools.sei_reader \"<NUMERO>\"", status: PRONTO,
      descricao: "Le processo SEI-RJ na integra via login interno itkava/ITERJ (Chromium real, SEM captcha, vence o WAF). Cache 24h.",

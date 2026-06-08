@@ -1354,6 +1354,60 @@ async def api_sobrepreco(codigo: int, valor: float = 0, servico: bool = False):
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.get("/api/empresa")
+async def api_empresa(cnpj: str):
+    """Onda 12 (providers) — cadastro + sócios (QSA) por CNPJ, fonte hospedada (BrasilAPI→cnpj.pw).
+    Sem baixar base: HTTP sob demanda + cache TTL. Resposta com proveniência (fonte+data+estado)."""
+    try:
+        from compliance_agent.providers import lookup
+        return JSONResponse(content=lookup("registry", cnpj=cnpj).__dict__)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/idoneidade")
+async def api_idoneidade(cnpj: str = "", nome: str = ""):
+    """Onda 12 (providers) — triagem em listas: CEIS/CNEP (BR) + sanções/PEP (OpenSanctions).
+    lookup_all: consulta todos os backends disponíveis. Indício a confirmar, nunca acusação."""
+    try:
+        from compliance_agent.providers import get_providers
+        res = get_providers().lookup_all("sanctions", cnpj=(cnpj or None), nome=(nome or None))
+        return JSONResponse(content={"resultados": [r.__dict__ for r in res]})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/ownership")
+async def api_ownership(nome: str = "", lei: str = ""):
+    """Onda 12 (providers) — controle internacional (LEI + relações) via GLEIF (sem chave)."""
+    try:
+        from compliance_agent.providers import lookup
+        return JSONResponse(content=lookup("ownership", nome=(nome or None), lei=(lei or None)).__dict__)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/leaks")
+async def api_leaks(termo: str):
+    """Onda 12 (providers) — busca hospedada em vazamentos offshore (ICIJ; link MANUAL)."""
+    try:
+        from compliance_agent.providers import lookup
+        return JSONResponse(content=lookup("leaks", termo=termo).__dict__)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/links")
+async def api_links(nome: str = "", cnpj: str = ""):
+    """Onda 12 (providers) — pistas de investigação HOSPEDADA (Max Intel, OSINT-Brazuca, Bellingcat,
+    RedeCNPJ, JusBrasil/Escavador). Deep-links já preenchidos com o alvo; uso MANUAL (o JFN só monta)."""
+    try:
+        from compliance_agent.providers import lookup
+        return JSONResponse(content=lookup("links", nome=(nome or None), cnpj=(cnpj or None)).__dict__)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/api/grafo")
 async def api_grafo(alvo: str, saltos: int = 2, so_contrato: bool = False):
     """Onda 4 — Grafo de Poder: vizinhança de um alvo (CNPJ/UG/nome) unindo

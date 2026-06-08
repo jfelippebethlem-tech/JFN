@@ -373,6 +373,157 @@
     {
       "type": "function",
       "function": {
+        "name": "consultar_empresa",
+        "description": "Cadastro + socios (QSA) por CNPJ, fonte hospedada (BrasilAPI->cnpj.pw, fallback) — usar quando: 'dados da empresa X', socios de um CNPJ",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "obrigatorio"
+            }
+          },
+          "required": [
+            "cnpj"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/empresa",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "consultar_idoneidade",
+        "description": "Triagem em listas: CEIS/CNEP (BR) + sancoes/PEP (OpenSanctions) — usar quando: 'a empresa X esta sancionada?', PEP",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "nome": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "lex",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/idoneidade",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "consultar_ownership",
+        "description": "Empresa/controle internacional (LEI + relacoes) — usar quando: vinculo societario cross-jurisdicao",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "nome": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "lei": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/ownership",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "consultar_leaks",
+        "description": "Busca hospedada em vazamentos offshore (link MANUAL) — usar quando: 'aparece nos Panama/Pandora Papers?'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "termo": {
+              "type": "string",
+              "description": "obrigatorio"
+            }
+          },
+          "required": [
+            "termo"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/leaks",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "consultar_links",
+        "description": "Pistas de investigacao HOSPEDADA (Max Intel, OSINT-Brazuca, Bellingcat, RedeCNPJ, JusBrasil/Escavador) — usar quando: 'onde mais pesquisar sobre X', aprofundar DD",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "nome": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "cnpj": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/links",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "ler_processo_sei",
         "description": "Le processo SEI-RJ na integra via login interno itkava/ITERJ (Chromium real, SEM captcha, vence o WAF). Cache 24h. — usar quando: ler/analisar um processo SEI especifico. FORMATO do numero: 'SEI-UUUUUU/NNNNNN/AAAA' (ex.: SEI-070002/008633/2022) ou 'E-NN/NNN/AAAA' (ex.: E-12/345/2026) — unidade/sequencial/ano. Aceita com ou sem o prefixo SEI-.",
         "parameters": {
