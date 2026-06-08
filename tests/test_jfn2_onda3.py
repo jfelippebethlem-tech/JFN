@@ -106,3 +106,48 @@ def test_capability_sobrepreco_pronto():
     cap = st.capacidades.get("sobrepreco")
     assert cap is not None and cap["status"] == "PRONTO" and cap["rota"] == "/api/sobrepreco"
     assert st.validate() == []
+
+
+# ---- Onda 3c: score de convergência (decomponível; risco de achado ≠ punição) ----
+
+def test_convergencia_decomposta_e_faixa():
+    from compliance_agent.analysis.score_convergencia import convergencia
+
+    r = convergencia({"conflito_doador": True, "sobrepreco": 0.6,
+                      "benford_nao_conforme": True, "red_flag_edital": 3})
+    assert r["score"] > 60 and r["faixa"] in ("ALTO", "EXTREMO")
+    flags = [c["flag"] for c in r["contribuicoes"]]
+    assert "conflito_doador" in flags
+    # ordenado por contribuição desc
+    contribs = [c["contribuicao"] for c in r["contribuicoes"]]
+    assert contribs == sorted(contribs, reverse=True)
+
+
+def test_convergencia_vazio_zero():
+    from compliance_agent.analysis.score_convergencia import convergencia
+
+    r = convergencia({})
+    assert r["score"] == 0.0 and r["faixa"] == "BAIXO" and r["contribuicoes"] == []
+
+
+def test_convergencia_red_flag_teto():
+    """red_flag_edital satura em 3 (não escala infinito)."""
+    from compliance_agent.analysis.score_convergencia import PESOS, convergencia
+
+    r10 = convergencia({"red_flag_edital": 10})
+    assert r10["contribuicoes"][0]["contribuicao"] == PESOS["red_flag_edital"]  # teto = peso cheio
+
+
+def test_convergencia_ignora_sinal_desconhecido():
+    from compliance_agent.analysis.score_convergencia import convergencia
+
+    r = convergencia({"xpto_invalido": True})
+    assert r["score"] == 0.0 and "xpto_invalido" in r["_nota"]
+
+
+def test_score_e_risco_de_achado_nao_punicao():
+    """Invariante: o score é risco de ACHADO/atenção, nunca de punição/prova."""
+    from compliance_agent.analysis.score_convergencia import convergencia
+
+    nota = convergencia({"conflito_doador": True})["_nota"]
+    assert "ACHADO" in nota and "punição" in nota
