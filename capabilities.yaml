@@ -1,0 +1,122 @@
+# capabilities.yaml — CONTRATO ÚNICO entre o orquestrador (Yoda) e o motor (JFN).
+# Fonte de verdade das capacidades. NÃO editar os derivados à mão — gerar via tools/gen_*.py.
+# Origem: JFN-DOCUMENTO-MESTRE-CONSOLIDADO §7 (docs/refs/). Status: PRONTO = já existe; "ONDA N" = alvo da onda.
+# Regra de ouro do roteador: o Yoda só pode chamar ids presentes aqui; fora do registro = erro explícito.
+meta:
+  versao: "2.1.0"
+  atualizado: "2026-06-08"
+  base_http: "http://127.0.0.1:8000"
+  cli_prefixo: "cd ~/JFN && PYTHONPATH=. .venv/bin/python -m"
+  invariantes:
+    - "OB = pagamento; Empenho != pagamento"
+    - "Honestidade: REAL vs CACHE; nunca fabricar numero"
+    - "Juridico: indicios, nunca acusacao"
+    - "Mercado: reportar OOS + custos; nunca prometer certeza"
+    - "LGPD: dados pessoais so p/ controle publico legitimo (base legal = obrigacao legal/atribuicao, nao legitimo interesse)"
+    - "Ferramentas/fontes 100% gratuitas (sem IBKR/nada pago)"
+
+capacidades:
+  # ---- AUDITORIA ----
+  - {id: relatorio_inteligencia, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/relatorio/inteligencia, status: PRONTO,
+     descricao: "Due diligence de FORNECEDOR (PDF+XLSX+parecer Lex)", quando_usar: "relatorio/auditoria/due diligence de empresa, CNPJ",
+     args: {empresa: "string (um de empresa|cnpj)", cnpj: "string", anos: "list[int] opcional"},
+     retorno: "{cnpj,empresa,risco,score,path_pdf,path_xlsx,path_lex,grau_lex} | {ambiguo,candidatos}", enviar_telegram: [path_pdf, path_xlsx, path_lex]}
+  - {id: relatorio_orgao, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/relatorio/orgao, status: PRONTO,
+     descricao: "Inteligencia de ORGAO/UG (quanto pagou e a quem)", quando_usar: "auditoria de orgao/UG/secretaria",
+     args: {orgao: "string (um de orgao|ug)", ug: "string", anos: "list[int] opcional"}, retorno: "{ug,orgao,path_pdf,path_xlsx} | {ambiguo}"}
+  - {id: anomalias, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/anomalias, status: PRONTO,
+     descricao: "Anomalias em OBs (+Benford na Onda 3)", quando_usar: "triagem de risco; 'algo estranho em X'",
+     args: {ug: opcional, cnpj: opcional, exercicio: opcional}, retorno: "{alertas[]}"}
+  - {id: cartel, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/cartel, status: PRONTO,
+     descricao: "Cartel/bid-rigging em grafo (aprofundado Onda 3 c/ QSA)", quando_usar: "conluio/cartel/combinacao",
+     args: {ug: opcional}, retorno: "{comunidades[]}"}
+  - {id: conflito_doador_contrato, agente: lex, dominio: auditoria, tipo: http, metodo: GET, rota: /api/conflito, status: "ONDA 2",
+     descricao: "Cruza doacoes TSE com contratos/OB (doador->fornecedor)", quando_usar: "'quem me doou ganhou contrato', conflito de interesse",
+     args: {cnpj: "um de cnpj|candidato", candidato: "string"}, retorno: "{rede[]}", fonte: "TSE + SIAFE/PNCP"}
+  - {id: sobrepreco, agente: lex, dominio: auditoria, tipo: http, metodo: GET, rota: /api/sobrepreco, status: "ONDA 3",
+     descricao: "Preco pago vs mediana (Compras Dados Abertos + SINAPI/EMOP/BPS)", quando_usar: "'esta caro?', superfaturamento, R4",
+     args: {cnpj: opcional, item: opcional}, retorno: "{itens[{preco_pago,mediana_ref,pct,fonte}]}"}
+  - {id: cruzamento, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/cruzamento, status: PRONTO,
+     descricao: "OB<->CNPJ<->SEI<->socios", quando_usar: "'cruze os dados da empresa X'", args: {cnpj: obrigatorio}, retorno: "{obs,processos_sei,socios}"}
+  - {id: missao_autonoma, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/hermes/missao, status: PRONTO,
+     descricao: "Auditoria autonoma aberta (loop hermes_goal CANONICO)", quando_usar: "pedido complexo/aberto", args: {missao: obrigatorio}, retorno: "{missao_id}"}
+  # ---- GRAFO / DOSSIE ----
+  - {id: grafo_poder, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/grafo, status: "ONDA 4",
+     descricao: "Grafo unico: socios+servidores+doacoes+contratos+nomeacoes", quando_usar: "'quem esta ligado a X', 'a N saltos do deputado Y com contrato'",
+     args: {alvo: obrigatorio, saltos: "int=2", so_contrato: bool}, retorno: "{nos,arestas,comunidades}"}
+  - {id: dossie, agente: jfn, dominio: inteligencia, tipo: http, metodo: POST, rota: /api/dossie, status: "ONDA 4",
+     descricao: "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias)", quando_usar: "'monte um dossie sobre X'", args: {alvo: obrigatorio}, retorno: "{path_pdf,resumo}"}
+  # ---- SEI / LICITACAO ----
+  - {id: ler_processo_sei, agente: lex, dominio: juridico, tipo: cli, comando: "compliance_agent.collectors.sei_cdp \"<NUMERO>\"", status: PRONTO,
+     descricao: "Le processo SEI na integra (SIP autenticado; proxy BR)", quando_usar: "'/sei E-12/345/2026'", args: {numero: obrigatorio}, retorno: "{objeto,modalidade,fundamento,valor,cnpjs,documentos[]}"}
+  - {id: consultar_pncp, agente: lex, dominio: juridico, tipo: http, metodo: GET, rota: /api/pncp, status: "ONDA 2",
+     descricao: "PNCP API publica (editais/contratos/atas/DOCS) + roda R1-R12", quando_usar: "analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos)",
+     args: {uf: "string=RJ", orgao: opcional, cnpj: opcional, abertos: bool}, retorno: "{contratacoes[{id_pncp,objeto,valor,docs,red_flags}]}", fonte: "pncp.gov.br API consultas (sem login)"}
+  - {id: buscar_direcionamento, agente: lex, dominio: juridico, tipo: http, metodo: GET, rota: /api/sei/direcionamento, status: "ONDA 5",
+     descricao: "Varre corpus (SEI+PNCP) e ranqueia direcionamento (R1/R7/R8/R12)", quando_usar: "'ache editais restritivos na UG X'", args: {ug: opcional, objeto: opcional}, retorno: "{processos[{ref,score,red_flags,trechos}]}"}
+  - {id: parecer_juridico, agente: lex, dominio: juridico, tipo: cli, comando: "compliance_agent.lex \"<empresa|cnpj>\"", status: PRONTO,
+     descricao: "Parecer R1-R12 + base TCU/TCE-RJ (grau verde/amarelo/vermelho)", quando_usar: "'tem direcionamento?', parecer", args: {alvo: obrigatorio}, retorno: "{grau_lex,path_lex,red_flags[]}"}
+  - {id: busca_juridica, agente: lex, dominio: juridico, tipo: cli, comando: "compliance_agent.collectors.lexml_fetcher --termo \"<TERMO>\"", status: PRONTO,
+     descricao: "Lei/acordao (TCE-RJ,TCU,LexML). RAG: Onda 10", quando_usar: "'qual a lei sobre...', jurisprudencia", args: {termo: obrigatorio}, retorno: "{resultados[]}"}
+  - {id: instrumento_mandato, agente: lex, dominio: juridico, tipo: http, metodo: POST, rota: /api/mandato/minuta, status: "ONDA 10",
+     descricao: "Minuta: requerimento(ALERJ)/representacao(TCE)/noticia de fato(MP)/post", quando_usar: "'faca um requerimento sobre esse contrato'",
+     args: {tipo: "requerimento|representacao|noticia_fato|post", base: "cnpj/ug/processo/id parecer"}, retorno: "{path_docx,texto}", nota: "diligencia/representacao, nunca condenacao"}
+  # ---- MERCADO (Massare) ----
+  - {id: massare_cenarios, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/cenarios, status: PRONTO,
+     descricao: "Snapshot multi-horizonte + regime + tom de noticias(Onda 8)", quando_usar: "'como esta o mercado', 'dolar/bolsa/ouro hoje'", args: {}, retorno: "{horizontes,regime_atual,tom_noticias}"}
+  - {id: massare_placar, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/placar, status: PRONTO,
+     descricao: "Acuracia OOS + Sharpe liquido + DSR(Onda 9)", quando_usar: "'o Massare acerta?'", args: {}, retorno: "{hit_rate_oos,sharpe_liquido,dsr}"}
+  - {id: massare_prever, agente: massare, dominio: mercado, tipo: http, metodo: POST, rota: /api/massare/prever, status: PRONTO,
+     descricao: "Previsao direcional (walk-forward; condicionada a regime)", quando_usar: "'previsao do Ibovespa', 'BTC vai subir?'", args: {symbol: obrigatorio, horizon: "int=5"}, retorno: "{direction,prob,ensemble_oos_hit_rate,regime}"}
+  - {id: massare_teses, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/teses, status: "ONDA 9",
+     descricao: "Teses de mercado: narrativa->ativos->direcao, com acerto OOS por narrativa", quando_usar: "'quais as teses agora', 'o que move o mercado'",
+     args: {}, retorno: "{teses[{narrativa,ativos,direcao,horizonte,conf,racional,fontes,acerto_oos}]}"}
+  - {id: massare_focus, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/focus, status: "ONDA 8",
+     descricao: "Boletim Focus (BCB/Olinda): Selic/IPCA/PIB/cambio + variacao semanal", quando_usar: "'o que o mercado espera de juros/inflacao'", args: {}, retorno: "{selic,ipca,pib,cambio,asof}", fonte: "olinda.bcb.gov.br Expectativas (python-bcb)"}
+  - {id: massare_fundamentos, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/fundamentos, status: "ONDA 8",
+     descricao: "Fundamentos de acao BR (P/L,DY,ROE,balancos CVM)", quando_usar: "'fundamentos da PETR4'", args: {ticker: obrigatorio}, retorno: "{preco,pl,dy,roe,balanco}", fonte: "brapi.dev"}
+  - {id: massare_calendario, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/calendario, status: "ONDA 8",
+     descricao: "Agenda macro (US/BR/China): CPI/NFP/FOMC/COPOM/PMI China, previsto vs anterior", quando_usar: "'agenda da semana', 'tem dado importante hoje?'", args: {dias: "int=7"}, retorno: "{eventos[]}", fonte: "Finnhub /calendar/economic (free tier) + FRED (sem chave)"}
+  - {id: massare_carteira, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/carteira, status: "ONDA 9",
+     descricao: "Modo carteira MANUAL: holdings em data/carteira.json x macro/regime/teses (sem broker)", quando_usar: "'como esta minha carteira'", args: {}, retorno: "{posicoes,alertas,leitura_macro}", fonte: "dados gratis (Yahoo/Stooq/brapi/websocket cripto)"}
+  # ---- RADAR ----
+  - {id: vigiar, agente: jfn, dominio: radar, tipo: http, metodo: POST, rota: /api/radar/vigiar, status: "ONDA 6",
+     descricao: "Adiciona alvo a watchlist; alerta no Telegram em evento (PNCP/DOERJ/SIAFE/GDELT)", quando_usar: "'/vigiar <cnpj|ug|nome>'", args: {alvo: obrigatorio, tipo: "cnpj|ug|nome|objeto"}, retorno: "{watchlist}"}
+  - {id: radar_status, agente: jfn, dominio: radar, tipo: http, metodo: GET, rota: /api/radar/status, status: "ONDA 6",
+     descricao: "O que o Radar vigia + ultimos alertas", quando_usar: "'o que voce monitora', 'teve alerta hoje'", args: {}, retorno: "{watchlist,alertas_recentes}"}
+  # ---- COLETA / SISTEMA ----
+  - {id: siafe_atualizar, agente: jfn, dominio: coleta, tipo: http, metodo: POST, rota: /api/siafe/atualizar, status: PRONTO,
+     descricao: "Incremental diaria (cron 05:00); sessao unica via lockfile", quando_usar: "'atualize o SIAFE'", args: {exercicio: opcional}, retorno: "{coletadas,ingeridas}"}
+  - {id: siafe_stats, agente: jfn, dominio: coleta, tipo: http, metodo: GET, rota: /api/siafe/stats, status: PRONTO,
+     descricao: "OBs por ano/UG (+frescor Onda 11)", quando_usar: "'quantas OBs temos'", args: {}, retorno: "{total,por_ano,por_ug}"}
+  - {id: siafe_coletar_ug, agente: jfn, dominio: coleta, tipo: cli, comando: "compliance_agent.siafe_runner ug <UG> [ANO]", status: PRONTO,
+     descricao: "Coleta UMA UG furando teto 1000; SIAFE 1 via JFN_SIAFE_LOGIN_URL=www5", quando_usar: "backfill de UG", args: {ug: obrigatorio, ano: opcional}, retorno: "stdout"}
+  - {id: enriquecer_socios, agente: jfn, dominio: coleta, tipo: cli, comando: "tools.enriquecer_socios_ob", status: PRONTO,
+     descricao: "QSA (socios) via BrasilAPI; insumo do cartel-grafo e do Grafo de Poder", quando_usar: "apos novo sweep", args: {}, retorno: "stdout"}
+  - {id: status_jfn, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: /status, status: PRONTO,
+     descricao: "JFN vivo? healthcheck", quando_usar: "diagnostico", args: {}, retorno: "{ok,uptime}"}
+  - {id: trace, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: "/api/trace/{correlation_id}", status: "ONDA 0",
+     descricao: "Rastreia pedido ponta-a-ponta", quando_usar: "debug", args: {correlation_id: obrigatorio}, retorno: "{etapas[]}"}
+
+politica_modelo:
+  roteamento_chat:   {primario: "gemini-2.5-flash"}
+  raciocinio_pesado: {primario: "gemini-3-pro-preview", fallback: "gemini-2.5-pro", uso: "compliance/juridico/extracao SEI"}
+  visao_ocr:         {primario: "gemini-2.5-flash", uso: "captcha SEI, PDFs"}
+  fallback_chain:    ["gemini-2.5-flash-lite","gemini-2.0-flash","gemini-2.0-flash-lite","mistral-large-latest","mistral-small-latest"]
+  api_max_retries: 3
+  credential_pool: {gemini: round_robin, mistral: fill_first}
+
+fontes_gratuitas:
+  pncp:       "https://pncp.gov.br/api/consulta/v1/  (editais/contratos/atas/docs; SEM login)"
+  compras_da: "https://www.gov.br/compras/pt-br/cidadao/compras-publicas-dados-abertos  (preco de referencia)"
+  tse:        "https://dadosabertos.tse.jus.br/  (doacoes/fornecedores/candidatos/filiacao)"
+  portal_transp: "https://portaldatransparencia.gov.br/api-de-dados  (CEIS/CNEP/CEPIM/PEP/servidores; chave gratis)"
+  querido_diario: "https://docs.queridodiario.ok.org.br/  (Diarios Oficiais municipais; API sem auth)"
+  focus_bcb:  "https://olinda.bcb.gov.br/olinda/servico/Expectativas/versao/v1/odata/  (sem chave; lib python-bcb)"
+  fred:       "https://fred.stlouisfed.org/  (macro US; CSV sem chave)"
+  brapi:      "https://brapi.dev/docs  (B3+fundamentos CVM+PTAX+15 macro BCB; free tier; MCP)"
+  yahoo_stooq:"Yahoo Finance / Stooq  (EOD + intraday atrasado: acoes/indices/futuros/FX; sem chave)"
+  cripto_ws:  "wss://stream.binance.com:9443/ws  +  wss://ws-feed.exchange.coinbase.com  (cripto 24/7 real-time; sem auth)"
+  gdelt:      "https://api.gdeltproject.org/api/v2/doc/doc  +  BigQuery gdelt-bq.gdeltv2  (noticia/tom/GKG; MCP BigQuery)"
+  finnhub:    "https://finnhub.io/docs/api  (news+sentiment+calendario economico; free tier, chave gratis)"
+  sinapi_emop_bps: "SINAPI(obras) / EMOP-RJ(obras estaduais) / Banco de Precos em Saude — referencia p/ sobrepreco"

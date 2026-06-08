@@ -135,6 +135,13 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# JFN 2.0 Onda 0 — observabilidade: correlation-id por request + GET /api/trace/{id} (aditivo, best-effort)
+try:
+    from compliance_agent.obs_trace import register_trace
+    register_trace(app)
+except Exception as _e:  # nunca impedir o boot do servidor por causa do trace
+    print(f"[obs_trace] não registrado: {_e}", flush=True)
+
 # Serve static files (screenshots, exports)
 screenshots_dir = Path("screenshots")
 output_dir = Path("output")
