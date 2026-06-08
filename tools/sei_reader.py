@@ -192,8 +192,13 @@ async def ler(numero: str, usar_cache: bool = True, tentativas_login: int = 30) 
     if not P:
         return {"numero": numero, "erro": "INDISPONÍVEL: SEI_PASS vazio (.env)", "texto": "", "conteudo_documentos": []}
     try:
+        # guarda de recurso (VM 2 cores): cede se o load está alto e serializa com o sweep SIAFE
+        # (browser_lock) — nunca 2 browsers ao mesmo tempo (já derrubou a sessão). Aditivo/honesto:
+        # se não houver folga/lock em tempo hábil, devolve INDISPONÍVEL em vez de crashar a VM.
+        from compliance_agent.recursos import browser_lock_async, aguardar_load_async
+        await aguardar_load_async(max_por_core=1.5, espera_max=90)
         from playwright.async_api import async_playwright
-        async with async_playwright() as pw:
+        async with browser_lock_async(espera_max=600), async_playwright() as pw:
             b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"])
             ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
                   user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
