@@ -61,5 +61,20 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 | 10 | Lex + instrumentos de mandato | ⏳ |
 | 11 | Higiene técnica | ⏳ (parte já feita na campanha de otimização anterior) |
 
+## ✅ DEFINIÇÃO DE PRONTO + LIMPEZA DE MEMÓRIA (último passo — NÃO esquecer)
+Quando **todas as 12 ondas estiverem ✅ e a suíte verde**, a sessão que concluir DEVE, como ato de encerramento:
+1. Mesclar `jfn-2.0` → `linux` (PR/merge), confirmar `pytest -q`, e atualizar a tabela acima toda para ✅.
+2. **Limpar a memória persistente** (o dono pediu): `rm` em
+   `~/.claude/projects/-home-jfelippebethlem/memory/jfn-2.0-implementacao.md` e **remover a linha
+   "▶ JFN 2.0 — CONTINUAR AQUI"** do `MEMORY.md` (o histórico permanece no git/docs; só sai o ponteiro de
+   retomada que era carregado em toda sessão). Opcional: deixar 1 linha curta "JFN 2.0 entregue em <data>".
+3. Anunciar conclusão ao dono no Telegram.
+> ⚠️ Não há remoção automática por tempo; a limpeza é este passo deliberado. A IA NÃO lembra sozinha entre
+> sessões — por isso esta instrução vive aqui e na memória: quem fechar a Onda 11 executa.
+
 ## Diário de execução
-- **2026-06-08** — Branch `jfn-2.0` criada. Documento lido e analisado. Iniciada Onda 0 (fundação aditiva).
+- **2026-06-08** — Branch `jfn-2.0` criada (de `linux`) e pushada p/ origin. Documento mestre lido e analisado;
+  PDF+texto preservados em `docs/refs/`. Infra de RETOMADA + memória persistente criadas. Pesquisa DD+OSINT
+  lançada em background (salvar em `docs/research/`). Invariante reforçado: **todas as ferramentas GRATUITAS**.
+  Iniciada Onda 0 (fundação aditiva: capabilities.yaml → validador → obs_trace). **Próximo:** escrever
+  `capabilities.yaml` (copiar §7 do spec) e `tools/validate_capabilities.py`.
