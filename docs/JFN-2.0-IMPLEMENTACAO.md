@@ -89,10 +89,12 @@ PARADO, agora é seguro mexer nos módulos SIAFE (ex.: `siafe_worker.py` da Onda
 **Config atual aplicada** (`~/.hermes/config.yaml`, backup `config.yaml.bak.jfn2-onda1-*`): default
 gemini-2.5-flash; `api_max_retries:3`; fallback ordem **gemini-lite → gemini-2.0 → mistral-large →
 mistral-small → nous×3 (100% free, por último — a pedido do dono)**. Gateway reinicia saudável.
-**O dono quer ADAPTATIVO:** default 100% free; casos difíceis → modelos melhores. Isso NÃO existe hoje —
-precisa construir. **Aguardando decisão:** (1) **A** heurística simples (gatilhos→escala) vs **B** semantic
-router (ModernBERT/LoRA); (2) default 100%-free = **nous** ou manter **gemini-2.5-flash (free-tier)**.
-Quando decidir → implementar via overlay idempotente no gateway (ponto: `run.py:13078 _tools`).
+**DECISÃO TOMADA (2026-06-08):** **A — heurística simples**, default **gemini-2.5-flash** (free-tier).
+✅ Lógica implementada e testada: `tools/hermes_model_router.py` (`escolher_modelo(texto, anexo)` → default
+gemini-2.5-flash; gatilhos jurídico/auditoria/edital/dossiê/14.133 OU msg >600 chars → `gemini-2.5-pro`;
+reforço mistral-large). `tests/test_hermes_model_router.py` (4 verdes). **FALTA o WIRING no gateway** (aplicar
+`escolher_modelo` por request antes da chamada — ponto `run.py:13078`, via overlay idempotente p/ sobreviver a
+`hermes update`): setar agent.model/provider por mensagem. É o último passo da Onda 1 (fazer com cuidado, bot vivo).
 
 ## Onda 1 — estado detalhado
 ✅ FEITO: `tools/gen_router_tools.py` (→ `data/jfn_tools.json` + `~/.hermes/jfn_tools.json`, 17 tools ativas/15
