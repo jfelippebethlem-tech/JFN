@@ -3,6 +3,14 @@
 > **LER PRIMEIRO.** Continuação do `docs/JFN-2.0-IMPLEMENTACAO.md` (que tem o detalhe por onda + "Erros &
 > Aprendizados"). Branch de trabalho: **`jfn-2.0`** (pushada). Data: 2026-06-08. Ambiente: VM Linux ~/JFN.
 
+> ✅ **ATUALIZAÇÃO 2026-06-08 (tarde) — MERGE FEITO.** `jfn-2.0` foi mergeada na **`linux`** (fast-forward,
+> `linux == jfn-2.0 == 93fd5b8`, pushadas as duas). O working tree **agora está na `linux`**. Novidades desta
+> sessão já dentro: (a) `/relatorio` seção 3 com **doador→sócio→fornecedor→UG pagadora→SEI** (commit `1700e0b`);
+> (b) **tabela mês a mês** das OBs (Órgão×Mês×Ano-exercício, seção 5-B, commit `f95f3be`). **TODOs amanhã:**
+> consolidar **matriz+filiais por raiz** (uma PJ só — base jurídica STJ REsp 1.286.122 já no diário);
+> fast-path do /lista; Lex usar SEI real c/ honestidade; paridade do `render_md` com a 5-B; limpeza da memória
+> de retomada. Detalhe: bloco "SESSÃO 2026-06-08 (tarde)" no `docs/JFN-2.0-IMPLEMENTACAO.md`.
+
 ## ✅ ESTADO: TODAS as 13 ondas implementadas, testadas e DEPLOYADAS (vivas)
 - **0–12 + 13** (skilltree/wiring) com core ✅. **92+ testes JFN 2.0 verdes** (`pytest tests/test_jfn2_*.py`).
 - **Vivo agora:** `systemctl --user is-active hermes-gateway` (Yoda) + `jfn` (motor) = active. Sweep SIAFE 2
