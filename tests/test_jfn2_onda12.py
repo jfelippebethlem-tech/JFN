@@ -111,9 +111,37 @@ def test_midia_adversa_erro_reporta_indisponivel(monkeypatch):
     def _boom(*a, **k):
         raise RuntimeError("rate limit")
 
+    # GDELT (get) e DDG (post) ambos falham → INDISPONÍVEL completo (sem rede real)
     monkeypatch.setattr("compliance_agent.enrich.midia_adversa.httpx.get", _boom)
+    monkeypatch.setattr("compliance_agent.enrich.midia_adversa.httpx.post", _boom)
     r = midia_adversa.varrer("Empresa Y")
     assert r["ok"] is True and r["adversos"] == [] and "INDISPONÍVEL" in r["_nota"]
+
+
+def test_midia_adversa_fallback_ddg(monkeypatch):
+    """GDELT 429 → cai no DuckDuckGo e classifica adverso por termo de risco."""
+    from compliance_agent.enrich import midia_adversa
+
+    class _G429:
+        status_code = 429
+        def json(self):
+            return {}
+
+    _HTML = ('<div class="result"><a class="result__a" href="http://x/1">'
+             'Construtora Y é alvo de operação por fraude</a>'
+             '<a class="result__snippet">MPRJ investiga contrato</a></div>')
+
+    class _DDG:
+        status_code = 200
+        text = _HTML
+
+    monkeypatch.setattr("compliance_agent.enrich.midia_adversa.httpx.get", lambda *a, **k: _G429())
+    monkeypatch.setattr("compliance_agent.enrich.midia_adversa.httpx.post", lambda *a, **k: _DDG())
+    monkeypatch.setattr("compliance_agent.enrich.midia_adversa.time.sleep", lambda *a, **k: None)
+    r = midia_adversa.varrer("Construtora Y")
+    assert r["ok"] is True and r["n_adversos"] >= 1
+    assert "DuckDuckGo" in r["_fonte"]
+    assert r["adversos"][0]["fonte"] == "DuckDuckGo (web)"
 
 
 def test_capability_grafo_ftm_pronto():

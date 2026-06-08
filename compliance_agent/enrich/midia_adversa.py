@@ -41,6 +41,39 @@ def _classificar(titulo: str, tom) -> tuple[bool, list[str]]:
     return adverso, hits
 
 
+def _ddg_fallback(alvo: str, max_r: int = 12) -> tuple[list | None, str]:
+    """Fallback KEYLESS quando o GDELT falha: DuckDuckGo HTML com query de termos de risco.
+    Retorna (adversos, erro). Classifica por título+trecho. Nunca fabrica."""
+    try:
+        from bs4 import BeautifulSoup
+    except Exception:  # noqa: BLE001
+        return None, "BeautifulSoup ausente"
+    q = (f'"{alvo}" (fraude OR operação OR investigação OR improbidade OR TCE OR '
+         '"Ministério Público" OR superfaturamento OR cartel OR propina)')
+    try:
+        r = httpx.post("https://html.duckduckgo.com/html/", data={"q": q},
+                       headers={"User-Agent": "Mozilla/5.0 (JFN/2.0 fiscalizacao)"},
+                       timeout=20, follow_redirects=True)
+        if r.status_code != 200:
+            return None, f"DDG HTTP {r.status_code}"
+        soup = BeautifulSoup(r.text, "html.parser")
+    except Exception as e:  # noqa: BLE001
+        return None, f"DDG {str(e)[:50]}"
+    adversos = []
+    for res in soup.select(".result")[:max_r]:
+        a = res.select_one(".result__a")
+        if not a:
+            continue
+        titulo = a.get_text(strip=True)
+        snip = res.select_one(".result__snippet")
+        trecho = snip.get_text(strip=True) if snip else ""
+        adv, hits = _classificar(f"{titulo} {trecho}", None)
+        if adv:
+            adversos.append({"titulo": titulo, "fonte": "DuckDuckGo (web)", "url": a.get("href", ""),
+                             "data": None, "termos": hits, "trecho": trecho[:160]})
+    return adversos, ""
+
+
 def varrer(nome: str, cnpj: str = "", janela_meses: int = 24, max_artigos: int = 25) -> dict:
     """Varre mídia adversa sobre `nome`. {ok, alvo, n_total, adversos:[{titulo,fonte,url,data,termos}],
     n_adversos} | INDISPONÍVEL (rate-limit/erro). Nunca fabrica."""
@@ -67,9 +100,16 @@ def varrer(nome: str, cnpj: str = "", janela_meses: int = 24, max_artigos: int =
             erro = str(e)[:70]
             break
     if arts is None:
+        # GDELT falhou (tipicamente 429) → fallback KEYLESS no DuckDuckGo
+        ddg, ddg_err = _ddg_fallback(alvo)
+        if ddg is not None:
+            return {"ok": True, "alvo": alvo, "n_total": len(ddg), "n_adversos": len(ddg),
+                    "adversos": ddg[:15], "_fonte": "DuckDuckGo web (fallback do GDELT)",
+                    "_nota": f"GDELT indisponível ({erro}); usei DuckDuckGo. Mídia adversa = indício a confirmar "
+                             "na fonte (cobertura não é prova; pode haver homônimos)."}
         return {"ok": True, "alvo": alvo, "n_total": 0, "n_adversos": 0, "adversos": [],
-                "_fonte": "GDELT DOC 2.0 (grátis, sem chave)",
-                "_nota": f"INDISPONÍVEL: GDELT {erro} (sem chave; reitere mais tarde). Nada fabricado."}
+                "_fonte": "GDELT DOC 2.0 + DuckDuckGo (ambos indisponíveis)",
+                "_nota": f"INDISPONÍVEL: GDELT {erro}; DDG {ddg_err}. Nada fabricado."}
 
     adversos = []
     for a in arts:
