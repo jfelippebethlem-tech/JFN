@@ -1455,6 +1455,16 @@ async def api_mandato_minuta(payload: Optional[dict] = None):
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.get("/api/memoria")
+async def api_memoria(limite: int = 15):
+    """Onda 11 — Memória consolidada do ecossistema (Massare/Lex/Hermes)."""
+    try:
+        from compliance_agent.memoria import consolidar
+        return JSONResponse(content=consolidar(limite))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/status")
 async def status():
     """Check agent status."""

@@ -919,6 +919,33 @@
     {
       "type": "function",
       "function": {
+        "name": "memoria",
+        "description": "Memoria consolidada do ecossistema (licoes Massare + base Lex + Hermes) — usar quando: 'o que voce aprendeu', consolidar memoria",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "limite": {
+              "type": "integer",
+              "description": "int=15"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "sistema",
+        "tipo": "http",
+        "rota": "/api/memoria",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "status_jfn",
         "description": "JFN vivo? healthcheck — usar quando: diagnostico",
         "parameters": {

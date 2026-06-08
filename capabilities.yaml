@@ -98,6 +98,9 @@ capacidades:
      descricao: "Coleta UMA UG furando teto 1000; SIAFE 1 via JFN_SIAFE_LOGIN_URL=www5", quando_usar: "backfill de UG", args: {ug: obrigatorio, ano: opcional}, retorno: "stdout"}
   - {id: enriquecer_socios, agente: jfn, dominio: coleta, tipo: cli, comando: "tools.enriquecer_socios_ob", status: PRONTO,
      descricao: "QSA (socios) via BrasilAPI; insumo do cartel-grafo e do Grafo de Poder", quando_usar: "apos novo sweep", args: {}, retorno: "stdout"}
+  - {id: memoria, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: /api/memoria, status: PRONTO,
+     descricao: "Memoria consolidada do ecossistema (licoes Massare + base Lex + Hermes)", quando_usar: "'o que voce aprendeu', consolidar memoria",
+     args: {limite: "int=15"}, retorno: "{massare_licoes,lex_base,hermes}"}
   - {id: status_jfn, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: /status, status: PRONTO,
      descricao: "JFN vivo? healthcheck", quando_usar: "diagnostico", args: {}, retorno: "{ok,uptime}"}
   - {id: trace, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: "/api/trace/{correlation_id}", status: "ONDA 0",
