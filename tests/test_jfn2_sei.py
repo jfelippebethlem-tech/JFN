@@ -10,7 +10,8 @@ def test_classificar_doc_por_titulo():
     assert classificar_doc("Termo de Contrato 050/2024") == "contrato"
     assert classificar_doc("Mapa de Lances") == "mapa_lances"
     assert classificar_doc("Termo de Referência") == "tr"
-    assert classificar_doc("Ofício de encaminhamento") == "outros"
+    assert classificar_doc("Ofício de encaminhamento") == "tramitacao"  # ruído de tramitação
+    assert classificar_doc("Documento sem rótulo conhecido xyz") == "outros"
     assert tem_preco("homologacao") and not tem_preco("tr")
 
 
@@ -19,11 +20,24 @@ def test_classificar_rotulos_reais_calibrados():
     from compliance_agent.sei.classificador_doc import classificar_doc, tem_preco
     assert classificar_doc("Nota de Empenho Original - NE") == "empenho"
     assert classificar_doc("Nota de Autorização de Despesa - NAD") == "autorizacao_despesa"
-    assert classificar_doc("Despacho de Encaminhamento de Processo") == "parecer"
-    assert classificar_doc("Recibo") == "outros" and classificar_doc("E-mail") == "outros"
+    # despacho de mero encaminhamento = ruído (tramitação), não substância
+    assert classificar_doc("Despacho de Encaminhamento de Processo") == "tramitacao"
+    assert classificar_doc("Recibo") == "tramitacao" and classificar_doc("E-mail") == "tramitacao"
     # novo tipo que CARREGA preço (alvo do varredor)
     assert classificar_doc("Planilha de Preços") == "planilha_preco" and tem_preco("planilha_preco")
     assert classificar_doc("Proposta de Preço da empresa") == "planilha_preco"
+
+
+def test_parecer_juridico_e_politica_de_storage():
+    """Insight do dono: parecer jurídico (PGE/assessoria) aponta as FALHAS → alto valor; ruído não guarda texto."""
+    from compliance_agent.sei.classificador_doc import classificar_doc, valor_doc, deve_guardar_texto
+    assert classificar_doc("Parecer da Procuradoria Geral do Estado") == "parecer_juridico"
+    assert classificar_doc("Análise Jurídica nº 45") == "parecer_juridico"
+    assert valor_doc("parecer_juridico") == "alto" and deve_guardar_texto("parecer_juridico") is True
+    assert valor_doc("ata_rp") == "alto" and valor_doc("empenho") == "medio"
+    # ruído: guarda só título/contagem, não o texto
+    assert valor_doc("tramitacao") == "baixo" and deve_guardar_texto("tramitacao") is False
+    assert deve_guardar_texto("outros") is False
 
 
 def test_num_br():
