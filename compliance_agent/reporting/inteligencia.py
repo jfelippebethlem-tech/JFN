@@ -1452,7 +1452,18 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                 "Indícios a verificar, nunca acusação (presunção de legitimidade).</p>") if cal else ""
     secoes.append({"titulo": "11. Red flags de compliance (fundamento legal)",
                    "html": nota_cal + "<ul>" + "".join(f"<li>{esc(f)}</li>" for f in flags) + "</ul>"})
-    rec = ["<b>Imediato:</b> verificar a motivação técnica da concentração e a pesquisa de preços dos maiores contratos." if p.get("hhi", {}).get("top_share", 0) >= 40 else "<b>Imediato:</b> manter monitoramento de rotina.",
+    # recomendações dirigidas pelos achados reais (coerentes com o risco recalibrado)
+    if contratado and pago > contratado * 1.5:
+        imediato = (f"<b>Imediato:</b> requisitar os termos aditivos e as atas/adesões que expliquem o pago "
+                    f"(R$ {moeda(pago)}) ser {pago/contratado:.1f}× o contratado registrado (R$ {moeda(contratado)}) — "
+                    "checar limites de 25%/50% (arts. 125-126 Lei 14.133).")
+    elif p.get("hhi", {}).get("top_share", 0) >= 40:
+        imediato = "<b>Imediato:</b> verificar a motivação técnica da concentração e a pesquisa de preços dos maiores contratos."
+    elif (ctx.get("risco") or "").upper() in ("ALTO", "MÉDIO"):
+        imediato = "<b>Imediato:</b> abrir diligência sobre os indícios da seção 11 (priorizar os 🔴/🟡 de maior valor)."
+    else:
+        imediato = "<b>Imediato:</b> manter monitoramento de rotina."
+    rec = [imediato,
            "<b>Curto prazo:</b> cruzar doações eleitorais dos sócios com as datas de contratação (conflito de interesse)." if rede else "<b>Curto prazo:</b> confirmar QSA e capacidade operacional (anti-fachada).",
            "<b>Estrutural:</b> consolidar no Radar 24/7 (alerta em novo edital/OB do alvo) e gerar minuta de diligência (TCE-RJ/ALERJ) se confirmado."]
     secoes.append({"titulo": "12. Recomendações (priorizadas)",
