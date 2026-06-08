@@ -486,32 +486,36 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
 
     pagamentos = consultar_pagamentos(cnpj_d, anos)
     contratos = consultar_contratos(cnpj_d)
-    enriq = await _enriquecer(cnpj_d)
 
-    # cruzamento sócio × OB (SIAFE) × processo SEI × endereço (best-effort, não derruba o relatório)
-    try:
-        from compliance_agent.cruzamento import cruzar_async
-        cruz = await asyncio.wait_for(cruzar_async(cnpj_d), timeout=25)
-    except Exception as exc:  # noqa: BLE001
-        cruz = {"_erro": str(exc)[:140]}
+    # 4 chamadas INDEPENDENTES em PARALELO (wall-time: soma → máximo). Cada uma é best-effort e não
+    # derruba o relatório: enriquecimento (APIs) · cruzamento sócio×OB×SEI×endereço · conflito TSE (DB) ·
+    # contratos TCE-RJ (rede). conflito calculado 1× aqui e reusado no render (evita 2ª query).
+    async def _cruz():
+        try:
+            from compliance_agent.cruzamento import cruzar_async
+            return await asyncio.wait_for(cruzar_async(cnpj_d), timeout=25)
+        except Exception as exc:  # noqa: BLE001
+            return {"_erro": str(exc)[:140]}
+
+    async def _conflito_async():
+        try:
+            from compliance_agent.lex_conflito import conflito as _c
+            return (await asyncio.to_thread(_c, cnpj=cnpj_d, limite=30)).get("rede", [])
+        except Exception:  # noqa: BLE001
+            return []
+
+    async def _tcerj_async():
+        try:
+            from compliance_agent.collectors.tcerj_aberto import contratos_de_fornecedor
+            return await asyncio.wait_for(asyncio.to_thread(contratos_de_fornecedor, cnpj_d, 100), timeout=25)
+        except Exception:  # noqa: BLE001
+            return []
+
+    enriq, cruz, rede, tcerj_itens = await asyncio.gather(
+        _enriquecer(cnpj_d), _cruz(), _conflito_async(), _tcerj_async())
+    contratado_tcerj = sum((i.get("valor_contrato") or 0) for i in (tcerj_itens or []) if i.get("_tipo") == "contrato")
 
     nome = (enriq.get("empresa") or resolv["nome"] or "").strip() or fmt_cnpj(cnpj_d)
-
-    # conflito (TSE↔contrato) — calculado UMA vez aqui e reusado no render (evita 2ª query)
-    try:
-        from compliance_agent.lex_conflito import conflito as _conflito
-        rede = _conflito(cnpj=cnpj_d, limite=30).get("rede", [])
-    except Exception:  # noqa: BLE001
-        rede = []
-
-    # contratos TCE-RJ (Dados Abertos) — fonte oficial, não depende do SEI; insumo do red flag pago≫contratado
-    tcerj_itens, contratado_tcerj = [], 0.0
-    try:
-        from compliance_agent.collectors.tcerj_aberto import contratos_de_fornecedor
-        tcerj_itens = await asyncio.wait_for(asyncio.to_thread(contratos_de_fornecedor, cnpj_d, 100), timeout=25)
-        contratado_tcerj = sum((i.get("valor_contrato") or 0) for i in tcerj_itens if i.get("_tipo") == "contrato")
-    except Exception:  # noqa: BLE001
-        tcerj_itens, contratado_tcerj = [], 0.0
 
     # RISCO recalibrado (externo + sinais internos reais) — corrige "BAIXO 0" com indícios
     cal = _recalibrar_risco(pagamentos, rede, contratado_tcerj, enriq.get("score", 0), enriq.get("risco", "—"))
