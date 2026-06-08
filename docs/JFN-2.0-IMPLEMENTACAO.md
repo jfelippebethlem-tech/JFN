@@ -427,3 +427,43 @@ consultas financeiras — aprovado pelo dono, base jurídica pronta); (2) **fast
   narrativa II-B só afirma leitura com `lido=True`. Travado por teste.
 - **Diretriz do dono:** API primeiro · free/free-tier só · self-host só leve sem alternativa (Aleph = via API) ·
   **agregar, nunca substituir** · documentar cada checkpoint.
+
+### FECHAMENTO — avaliação crítica do /relatorio, correções, DD robusta e LIMPEZA (2026-06-08, fim)
+**Teste end-to-end na Extreme Digital Consultoria (R$ 580M, raiz matriz+filial) revelou e corrigiu falhas reais:**
+- **`c0d49d5` + `b0ca8c6` — recalibração de risco (a correção mais importante).** O relatório dizia **"BAIXO score 0"**
+  para um fornecedor de R$ 580M com crescimento 7,6× e conflito — contradizendo o próprio Lex (AMARELO). Criei
+  `_recalibrar_risco()`: risco JFN = **máx[score externo, score interno por sinais REAIS]** (conflito, pago≫contratado,
+  crescimento atípico, concentração, magnitude). Extreme: **BAIXO 0 → ALTO 70**. Seção 7 passou a puxar **contratos
+  TCE-RJ** quando a base local é vazia + flag **pago 2,2× contratado** (arts. 125-126). Red flags e **recomendações**
+  agora coerentes com o risco (deixou de dizer "rotina" em caso ALTO). **Numeração 1–13 sem buracos** (seções 7/10
+  sempre presentes). Conflito calculado 1× em `montar` e reusado no render.
+- **`1c67701` — mídia adversa robusta:** GDELT free dá 429 sob carga → adicionei **fallback DuckDuckGo** (keyless) +
+  retry/backoff. Nunca fabrica; honesto.
+- **`8eee4ce` — LIMPEZA (pedido do dono: storage/CPU/memória/órfãos):**
+  - **−3,1 GB de storage:** removidos os 4 ZIPs brutos do `data/tse_cache` (já ingeridos em `doacoes_eleitorais`=542244;
+    o coletor re-baixa se precisar). Disco 19G→16G usados.
+  - **Higiene de segurança:** o `.env.bak.8keys-*` (backup com chaves) estava **exposto a commit acidental** →
+    `.gitignore` agora cobre `.env.bak*`, `*.bak`, `*.out`, `data/*.out`, `logs/`, `data/{tse,tfe}_cache/`, flexvision,
+    `massare/data`. **Os backups do dono ficam onde estão** (só protegidos de commit — confirmado por ele).
+  - Removido `tools/mgs_relatorio_full.py` (one-off MGS, 0 refs, superado pelo motor). pycache fora do venv limpo.
+    `sei_sei_direct.py` já não existia. Não-rastreados: 12→0.
+
+**Avaliação de qualidade/eficiência (assessment — backlog, não-feito p/ não arriscar em fim de sessão):**
+- **Módulos grandes a dividir:** `server.py` (1952 linhas), `reporting/inteligencia.py` (1752), `hermes_goal.py` (1260),
+  `siafe_ob_orcamentaria.py` (963), `lex.py` (916). Dívida da Onda 11 — split por responsabilidade.
+- **Rapidez:** o `/relatorio` faz chamadas de rede **sequenciais** (enriquecimento + TCE-RJ + conflito + OpenSanctions +
+  Aleph + mídia + links). Paralelizar com `asyncio.gather` cortaria segundos por relatório.
+- **VACUUM/ANALYZE** do `compliance.db` (1,2 GB) e gzip do `tfe_cache` (138 MB): ganho de storage/CPU, mas **trava o DB** —
+  rodar via `compliance_agent.manutencao` só com o sweep **idle** (já no cron de domingo).
+- **Score interno** é heurístico (pesos fixos); calibrar com casos rotulados quando houver.
+- **Sobrepreço (R4)** no relatório exige código CATMAT/CATSER por item (não estruturado nas OBs) — inviável hoje sem
+  parsing do objeto; fica como pesquisa.
+
+**Erros & Aprendizados:**
+- **O score externo sozinho mentia.** Um enriquecedor que devolve 0 não pode ditar a manchete quando o próprio relatório
+  tem conflito + pago≫contratado + Lex AMARELO. **Aprendizado:** a manchete tem de ser coerente com os achados internos;
+  recalibrar combinando fontes, nunca confiar num único score opaco.
+- **GDELT free não é confiável sob carga (429).** **Aprendizado:** toda fonte keyless precisa de fallback (DDG) e
+  retry — senão a seção “mídia adversa” (a mais sensível da DD) falha justamente quando mais importa.
+- **Cache bruto ≠ dado.** 3,1 GB de ZIPs do TSE eram regeneráveis após a ingestão — **aprendizado:** separar “base”
+  (compliance.db, fica) de “cache de download” (regenerável, vai). Backups de credencial: gitignorar SEMPRE, nunca deletar.

@@ -116,3 +116,15 @@ tokens/CPU/latência**:
   lock com o sweep S2 ativo no mesmo DB; o ganho de Python-overhead do executemany é real e estável.)
 - **ANALYZE:** `sqlite_stat1` populada após `manutencao --tudo`.
 - **ruff:** 156 achados report-only (backlog de limpeza manual; sem `--fix` em massa).
+
+## Sessão 2026-06-08 (fim) — storage + backlog de qualidade
+- **Storage −3,1 GB:** removidos os ZIPs brutos `data/tse_cache/*.zip` (já ingeridos em `doacoes_eleitorais`=542244;
+  o coletor re-baixa se precisar). Disco 19G→16G usados. `data/tse_cache/` agora no `.gitignore`.
+- **Higiene:** debris `data/_*.out|json` e `__pycache__` (fora do venv) limpos; órfão `tools/mgs_relatorio_full.py` removido.
+- **Pendente (não-feito p/ não arriscar com o sweep ativo):**
+  - **VACUUM/ANALYZE** `compliance.db` (1,2 GB) + gzip `tfe_cache` (138 MB) — `python -m compliance_agent.manutencao --tudo`
+    SÓ com o sweep idle (trava o DB). Já no cron de domingo 03:00.
+  - **Rapidez do /relatorio:** paralelizar as chamadas de rede (enriquecimento+TCE-RJ+conflito+OSINT+mídia) com
+    `asyncio.gather` — hoje sequenciais.
+  - **Split de módulos grandes:** `server.py` (1952), `reporting/inteligencia.py` (1752), `hermes_goal.py` (1260),
+    `siafe_ob_orcamentaria.py` (963), `lex.py` (916) — dívida da Onda 11.
