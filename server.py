@@ -627,7 +627,13 @@ async def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] =
             "regras": r.get("regras"), "parecer": r.get("pareceres"),
             "porque": anomalias.explicar_features(r.get("top_features")),
         } for r in rows]
-        return JSONResponse({"ok": True, "n": len(itens), "itens": itens,
+        # Onda 3 — Benford sobre a população filtrada (UG/fornecedor); só quando há filtro
+        # (o agregado global sempre conforma; o desvio aparece no recorte).
+        benford = None
+        if orgao or fornecedor:
+            from compliance_agent.analysis.benford import benford_ob
+            benford = benford_ob(orgao, fornecedor)
+        return JSONResponse({"ok": True, "n": len(itens), "itens": itens, "benford": benford,
                              "aviso": "Indícios para apuração interna — não constituem acusação."})
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
