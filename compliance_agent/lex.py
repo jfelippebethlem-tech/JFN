@@ -295,6 +295,18 @@ def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
     return achados, resumo
 
 
+def analisar_texto_edital(texto: str, numero: str = "", url: str = "") -> dict:
+    """API pública (Onda 2c): roda os red flags R3/R5/R7/R9/R12 sobre o texto de um
+    edital/TR (ex.: baixado do PNCP) reusando o mesmo motor do SEI (`_analisar_conteudo_sei`).
+
+    Retorna {achados:[{rf,grav,obs}], resumo:{...}, lido:bool}. Honesto: indício, nunca
+    acusação; se o texto vier vazio (download/extração falhou), `lido=False` e achados=[]."""
+    integra = {"texto": texto or "", "numero": numero, "url": url,
+               "conteudo_documentos": [], "documentos": []}
+    achados, resumo = _analisar_conteudo_sei(integra)
+    return {"achados": _merge_achados(achados), "resumo": resumo, "lido": bool((texto or "").strip())}
+
+
 def _merge_achados(lst: list[dict]) -> list[dict]:
     """Funde achados por red flag (mantém maior gravidade, concatena observações)."""
     por: dict = {}

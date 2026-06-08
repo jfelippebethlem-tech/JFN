@@ -159,6 +159,117 @@ async def buscar_contratacoes(
     return out
 
 
+# ---------------------------------------------------------------------------
+# Onda 2c — baixar documentos do edital (PDF/ZIP/DOCX → texto) p/ red flags Lex
+# ---------------------------------------------------------------------------
+
+def _parse_id_pncp(id_pncp: str) -> Optional[tuple]:
+    """'CNPJ-modulo-SEQ/ANO' -> (cnpj, ano, seq:int). Ex.: 42441758000105-1-000101/2025."""
+    try:
+        esq, ano = id_pncp.split("/")
+        partes = esq.split("-")
+        cnpj = re.sub(r"\D", "", partes[0])
+        seq = int(re.sub(r"\D", "", partes[-1]))
+        if len(cnpj) != 14:
+            return None
+        return cnpj, ano.strip(), seq
+    except Exception:
+        return None
+
+
+def _texto_de_pdf(blob: bytes, max_paginas: int = 12) -> str:
+    try:
+        import io
+
+        from pypdf import PdfReader
+
+        rd = PdfReader(io.BytesIO(blob))
+        return "\n".join((p.extract_text() or "") for p in rd.pages[:max_paginas])
+    except Exception:
+        return ""
+
+
+def _texto_de_docx(blob: bytes) -> str:
+    try:
+        import io
+        import zipfile
+
+        z = zipfile.ZipFile(io.BytesIO(blob))
+        if "word/document.xml" in z.namelist():
+            xml = z.read("word/document.xml").decode("utf-8", "ignore")
+            return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", xml))
+    except Exception:
+        pass
+    return ""
+
+
+def _extrair_texto(nome: str, blob: bytes) -> str:
+    """Extrai texto de PDF, ZIP (PDFs/DOCX internos) ou DOCX. '' se não suportado."""
+    if blob[:4] == b"%PDF":
+        return _texto_de_pdf(blob)
+    if blob[:2] == b"PK":  # zip (pode ser .docx OU um .zip com PDFs)
+        if nome.lower().endswith(".docx"):
+            return _texto_de_docx(blob)
+        try:
+            import io
+            import zipfile
+
+            z = zipfile.ZipFile(io.BytesIO(blob))
+            partes = []
+            for n in z.namelist():
+                inner = z.read(n)
+                if n.lower().endswith(".pdf") or inner[:4] == b"%PDF":
+                    partes.append(_texto_de_pdf(inner))
+                elif n.lower().endswith(".docx"):
+                    partes.append(_texto_de_docx(inner))
+            return "\n".join(p for p in partes if p)
+        except Exception:
+            return ""
+    return ""
+
+
+async def baixar_documentos(id_pncp: str, max_arquivos: int = 5,
+                            max_chars: int = 80_000) -> list[dict]:
+    """Baixa os arquivos de uma contratação do PNCP e extrai o texto (PDF/ZIP/DOCX).
+
+    Retorna [{titulo, tipo, url, n_chars, texto}]. Idempotente (cache em data/pncp_cache/).
+    O texto alimenta os red flags do Lex (Onda 2c). Sem login (API pública).
+    """
+    parsed = _parse_id_pncp(id_pncp)
+    if not parsed:
+        return []
+    cnpj, ano, seq = parsed
+    meta = await _get_pncp(f"/orgaos/{cnpj}/compras/{ano}/{seq}/arquivos", {})
+    arquivos = meta if isinstance(meta, list) else (meta or {}).get("data", []) if meta else []
+    out: list[dict] = []
+    total = 0
+    async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+        for a in (arquivos or [])[:max_arquivos]:
+            url = a.get("url") or a.get("uri")
+            if not url:
+                continue
+            try:
+                d = await client.get(url, headers={"User-Agent": "JFN-Compliance/2.0"})
+                blob = d.content if d.status_code == 200 else b""
+            except Exception:
+                blob = b""
+            texto = _extrair_texto(a.get("titulo", "") or "", blob) if blob else ""
+            if total < max_chars:
+                texto = texto[: max_chars - total]
+                total += len(texto)
+            else:
+                texto = ""
+            out.append({
+                "titulo": a.get("titulo"),
+                "tipo": a.get("tipoDocumentoNome"),
+                "url": url,
+                "n_chars": len(texto),
+                "texto": texto,
+            })
+            await asyncio.sleep(0.2)
+    return out
+
+
 async def buscar_contratos_fornecedor(
     cnpj_fornecedor: str,
     data_inicial: date,
