@@ -836,9 +836,15 @@
       "primario": "gemini-2.5-flash"
     },
     "raciocinio_pesado": {
-      "primario": "gemini-3-pro-preview",
-      "fallback": "gemini-2.5-pro",
-      "uso": "compliance/juridico/extracao SEI"
+      "primario": "gemini-2.5-flash",
+      "fallback": "gemini-2.5-flash-lite",
+      "uso": "compliance/juridico/extracao SEI",
+      "nota": "TETO GRATUITO — unicos Gemini free sao 2.5-flash e 2.5-flash-lite; Pro e geracao 3.x sao PAGOS (verificado jun/2026)"
+    },
+    "modelo_melhor": {
+      "primario": "gemini-2.5-pro",
+      "uso": "tarefa ULTRA-complexa SOB PEDIDO do dono ('usar o modelo melhor')",
+      "nota": "PAGO — excecao consciente ao invariante, acionada a mao, nunca por padrao"
     },
     "visao_ocr": {
       "primario": "gemini-2.5-flash",
@@ -846,10 +852,11 @@
     },
     "fallback_chain": [
       "gemini-2.5-flash-lite",
-      "gemini-2.0-flash",
-      "gemini-2.0-flash-lite",
       "mistral-large-latest",
-      "mistral-small-latest"
+      "mistral-small-latest",
+      "stepfun/step-3.7-flash:free",
+      "inclusionai/ring-2.6-1t:free",
+      "tencent/hy3-preview:free"
     ],
     "api_max_retries": 3,
     "credential_pool": {

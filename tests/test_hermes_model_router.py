@@ -29,3 +29,25 @@ def test_bulk_repetitivo_usa_nous():
     assert escolher_modelo("extraia campos", tarefa="lote") == BULK
     # sem tarefa=bulk, segue a regra normal (parecer -> pesado, nao nous)
     assert escolher_modelo("parecer juridico") != BULK
+
+
+def test_default_e_pesado_sao_so_modelos_FREE():
+    """Invariante (Onda 0): o caminho automático usa SÓ modelos grátis (2.5-flash/flash-lite)."""
+    from tools.hermes_model_router import DEFAULT, PESADO, PESADO_FALLBACK
+    free = {"gemini-2.5-flash", "gemini-2.5-flash-lite"}
+    assert DEFAULT[1] in free and PESADO[1] in free and PESADO_FALLBACK[1] in free
+
+
+def test_modelo_melhor_NUNCA_automatico():
+    """O modelo PAGO (gemini-2.5-pro) só sai com forcar_melhor=True (após o dono confirmar).
+    A mera frase 'modelo melhor' NÃO troca sozinha — só sinaliza p/ o Yoda perguntar."""
+    from tools.hermes_model_router import escolher_modelo, MELHOR, quer_modelo_melhor
+    assert MELHOR[1] == "gemini-2.5-pro"
+    # a frase é detectada (p/ o Yoda perguntar)...
+    assert quer_modelo_melhor("usar o modelo melhor") is True
+    assert quer_modelo_melhor("use o melhor modelo aqui") is True
+    assert quer_modelo_melhor("bom dia") is False
+    # ...mas NÃO escala sozinha (sem confirmação => fica no free)
+    assert escolher_modelo("usar o modelo melhor") != MELHOR
+    # só com a confirmação (forcar_melhor) usa o pago
+    assert escolher_modelo("qualquer coisa", forcar_melhor=True) == MELHOR
