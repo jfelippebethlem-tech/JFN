@@ -6,6 +6,7 @@ sem tocar nas rotas."""
 from __future__ import annotations
 
 from .base import CacheSQLite, Providers, Resultado
+from .gazettes_providers import QueridoDiario
 from .leaks_providers import OffshoreLeaksLink
 from .links_providers import InvestigacaoHospedada
 from .ownership_providers import GLEIF, OpenCorporates
@@ -30,6 +31,7 @@ def get_providers() -> Providers:
             p.registrar(b)
         p.registrar(OffshoreLeaksLink())  # leaks
         p.registrar(InvestigacaoHospedada())  # links (agregadores hospedados)
+        p.registrar(QueridoDiario())  # gazettes (diários municipais — Querido Diário)
         _PROV = p
     return _PROV
 
