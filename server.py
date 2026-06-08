@@ -717,11 +717,15 @@ async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int
                 return JSONResponse({"ok": False, "erro": "informe ?cnpj="}, status_code=400)
             from compliance_agent import rede_societaria as R
             dados = R.rede_por_socio(cnpj)
-        elif modo == "cruzado":  # co-ocorrência + sócio comum = indício forte (Onda 4)
+        elif modo == "cruzado":  # co-ocorrência + sócio comum (persistido socios_fornecedor, top-300)
             if not cnpj:
                 return JSONResponse({"ok": False, "erro": "informe ?cnpj="}, status_code=400)
             from compliance_agent import rede_societaria as R
             dados = R.cruzar_cartel(cnpj)
+        elif modo == "qsa":  # vizinhança de cartel + QSA cruzado AO VIVO (cadeia BrasilAPI→OpenCNPJ→CNPJ.ws)
+            if not cnpj:
+                return JSONResponse({"ok": False, "erro": "informe ?cnpj="}, status_code=400)
+            dados = G.cartel_com_qsa(cnpj, limite=top)
         else:
             dados = G.captura_orgaos(limite=top)
         return JSONResponse({"ok": True, "modo": modo, "dados": dados,
