@@ -5,12 +5,12 @@
 > config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
 > `compliance_agent/skilltree.py` reload fail-safe+sync+render, +5 capacidades `sistema`, 8 testes — commit `5279edf`)
 > · Onda 2 🟡 (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
-> **PRÓXIMO PASSO:** **Onda 9** (Massare teses + validação López de Prado — prioridade do dono): `massare/theses.py`
-> (narrativa→ativos→tese testável, registrada via learning.record_forecast), `validation.py` (CPCV+embargo, DSR+PBO,
-> custos), `regime.py` (HMM roteia ensemble), `carteira.py` (manual, sem broker). Rotas `/api/massare/teses|carteira`.
-> **Ondas 0,1(skilltree),2,3,4,5,6,7,8(core) ✅.** Onda 8 commit `0a0cc78` (Focus/news/fundamentos/calendar grátis;
-> crypto_ws 24/7 daemon diferido). **72 testes JFN 2.0 verdes; 33 capacidades PRONTO.** **Estratégia de modelos:
-> `docs/MODELO-ESTRATEGIA.md`** (free + Gemma + fallback diverso; pegadinha do limite-por-projeto a confirmar).
+> **PRÓXIMO PASSO:** **Onda 13** (ÚLTIMA, adiada pelo dono): wiring dos slash commands/roteador no gateway Hermes
+> VIVO (`~/hermes-agent/gateway/run.py` — MessageHandler catch-all + `hermes_cli/commands.py`; gating admin via
+> `slash_access.py`); + itens SIAFE da Onda 11 quando os sweeps pararem. **TODAS as Ondas 0–12 com CORE ✅ e
+> commitadas; suíte JFN 2.0 = 92 TESTES VERDES (validação integral feita).** ~38 capacidades PRONTO. **Estratégia
+> de modelos: `docs/MODELO-ESTRATEGIA.md`** (free; default `gemini-2.5-flash`; pago só sob confirmação). **Chaves
+> Gemini: 9 chaves de 9 PROJETOS distintos = 9× cota free (rotação nativa Hermes).** Verificador: `tools.check_gemini_key`.
 > **MODELO (corrigido — verificado jun/2026): default/pesado = `gemini-2.5-flash` (ÚNICO Gemini free junto do
 > flash-lite; Pro e 3.x são PAGOS); `gemini-2.5-pro` só sob "usar o modelo melhor" + confirmação. Rotação de 8
 > chaves Gemini JÁ ATIVA no `~/.hermes/auth.json` (pool nativo Hermes) — commit `0f1b8aa`.** Adiado p/ última
@@ -81,9 +81,16 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 | 6 | Radar 24/7 | ✅ `radar.py` (watchlist + ciclo PNCP-aberto-restritivo + OB-anômala → alerta Telegram, idempotente); `/api/radar/vigiar|status|ciclo`; systemd `jfn-radar.{service,timer}` (20min) |
 | 7 | Relatório classe mundial (HTML→PDF) | ✅ `reporting/render_html.py` (Jinja2+CSS→PDF via Playwright) + `charts_svg.py` (sparkline/barras/heatmap P×I); dossiê usa o motor (rating card + ≥3 SVG + proveniência + hash SHA-256) |
 | 8 | Massare notícia/macro/Focus | ✅ core: `focus.py`(BCB,sem chave) + `news.py`(GDELT) + `fundamentos.py`(brapi) + `calendar.py`(Finnhub). Rotas `/api/massare/focus\|noticias\|fundamentos\|calendario`. Validado live (Selic 13.25/PETR4 R$40,89). crypto_ws 24/7 (daemon) diferido |
-| 9 | Massare teses + validação López de Prado | ⏳ |
-| 10 | Lex + instrumentos de mandato | ⏳ |
-| 11 | Higiene técnica | ⏳ (parte já feita na campanha de otimização anterior) |
+| 9 | Massare teses + validação López de Prado | ✅ `theses.py` (narrativa→ativos→tese registrada OOS) + `validation.py` (DSR/PBO/custos, López) + `carteira.py` (manual). `/api/massare/teses\|carteira` |
+| 10 | Lex + instrumentos de mandato | ✅ `mandato.py` gera minuta .docx (requerimento/representação/notícia de fato/post) c/ cláusula de honestidade + precedente LexML. `/api/mandato/minuta` |
+| 11 | Higiene técnica | 🟡 `/api/memoria` (consolidação) ✅; siafe_lock/split de módulos/deprecar agent.py = DIFERIDO (sweep SIAFE rodando + risco em sistema vivo; parte feita na otimização anterior) |
+| 12 | Enriquecimento OSINT/DD (hospedado) | ✅ `grafo_ftm.py` (export FollowTheMoney, `/api/grafo/ftm`) + `enrich/opensanctions.py` (PEP/sanções, key-gated, integrado no dossiê). OpenCorporates = key-gated futuro |
+| 13 | Wiring slash commands no gateway Yoda VIVO | ⏳ ADIADO p/ última onda (decisão do dono) — não arriscar o bot vivo |
+
+> **STATUS GLOBAL (2026-06-08): Ondas 0–12 com CORE implementado e commitado; suíte JFN 2.0 = 92 testes verdes.**
+> Pendências EXPLÍCITAS (diferidas com motivo): wiring no gateway vivo (Onda 13, dono); itens SIAFE da Onda 11
+> (sweep rodando); crypto_ws daemon (Onda 8); chaves grátis brapi/Finnhub/OpenSanctions/OpenCorporates (key-gated,
+> reportam INDISPONÍVEL honestamente). **Chaves Gemini: 9 chaves de 9 projetos = 9× cota free (rotação nativa).**
 
 ## ✅ DEFINIÇÃO DE PRONTO + LIMPEZA DE MEMÓRIA (último passo — NÃO esquecer)
 Quando **todas as 12 ondas estiverem ✅ e a suíte verde**, a sessão que concluir DEVE, como ato de encerramento:
@@ -259,3 +266,13 @@ roteamento adaptativo (decisão acima).
   INDISPONÍVEL, nunca inventa agenda). 4 rotas `/api/massare/*`. 6 testes (httpx mockado + honestidade). **DIFERIDO:**
   `crypto_ws.py` (websocket 24/7 Binance/Coinbase) é um **daemon** (processo contínuo, não rota) — fica p/ depois;
   o núcleo notícia/macro/fundamento (a prioridade do dono) está pronto. **Modelo:** ver `docs/MODELO-ESTRATEGIA.md`.
+- **2026-06-08 (Ondas 9–12 ✅ + validação integral)** — **Onda 9** (`fd6c31a`): teses (narrativa GDELT→ativos→tese
+  registrada via learning, cobrada OOS) + validação López de Prado (DSR deflacionado, custos sempre, maxDD) +
+  carteira manual. **Onda 10** (`9a0e4a2`): instrumentos de mandato — minutas .docx (requerimento/representação/
+  notícia de fato/post) c/ cláusula de honestidade (diligência, nunca condenação) + precedente LexML; python-docx
+  pinado. **Onda 11** (`4cd4f9b`): `/api/memoria` (consolida Massare/Lex/Hermes); SIAFE-lock/split diferidos (sweep).
+  **Onda 12** (`900fed0`): `grafo_ftm` (export FollowTheMoney, 49 entidades) + OpenSanctions (PEP/sanções key-gated,
+  no dossiê). **VALIDAÇÃO FINAL: 92 testes JFN 2.0 verdes** (2m11s). **POR QUÊ as deferidas:** wiring do gateway vivo
+  = decisão do dono (não arriscar o bot); SIAFE-lock = sweep rodando; crypto_ws = daemon; chaves brapi/Finnhub/
+  OpenSanctions = key-gated (reportam INDISPONÍVEL, nunca fabricam). **Chaves Gemini: 9 chaves / 9 projetos = 9× free
+  (dono confirmou projetos distintos); pool deduplicado; verificador `tools.check_gemini_key`.**
