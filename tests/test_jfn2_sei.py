@@ -138,3 +138,17 @@ def test_navegador_diagnostica_zero_docs(monkeypatch):
     monkeypatch.setattr(cdp, "ler_processo_sei", _busca)
     r2 = navegador.abrir_processo("E-2/2/2025")
     assert r2["acesso_restrito"] is False and r2["motivo_zero"] == "busca_nao_resolveu"
+
+
+def test_navegador_cadeado_icone_marca_restrito(monkeypatch):
+    """Cadeado (ícone) é sinal mais confiável que texto: acesso_restrito=True mesmo sem marcador textual."""
+    from compliance_agent.sei import navegador
+    import compliance_agent.collectors.sei_cdp as cdp
+
+    async def _cad(numero, usar_cache=True):
+        return {"numero": numero, "url": "http://sei/proc", "texto": "processo normal sem palavra-chave",
+                "documentos": [{"texto": "Doc 1", "url": "http://sei/documento_visualizar?id=1", "restrito": True}],
+                "relacionados": [], "cadeado": True, "n_docs_restritos": 1}
+    monkeypatch.setattr(cdp, "ler_processo_sei", _cad)
+    r = navegador.abrir_processo("E-9/9/2025")
+    assert r["cadeado"] is True and r["acesso_restrito"] is True and r["n_docs_restritos"] == 1

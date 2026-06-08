@@ -194,6 +194,14 @@ _JS_CLICA_PESQUISAR = r"""
 
 _JS_LE_ARVORE_E_TEXTO = r"""
 () => {
+    // detector de CADEADO de acesso restrito (ícone) — mais confiável que o texto.
+    // SEI marca doc/processo restrito com um <img> de cadeado (src/title/alt contém cadeado/restrito).
+    const _cadeado = (el) => {
+        if (!el) return false;
+        return !!el.querySelector(
+            'img[src*="cadeado" i], img[src*="acesso_restrito" i], img[title*="restrito" i], '
+            + 'img[alt*="restrito" i], img[title*="sigilos" i], .infraIconeRestrito, [class*="restrit" i]');
+    };
     const docs = [];
     const relacionados = [];
     for (const a of document.querySelectorAll('a[href]')) {
@@ -201,20 +209,17 @@ _JS_LE_ARVORE_E_TEXTO = r"""
         const texto = (a.textContent || '').trim();
         if (!texto) continue;
         const titleAttr = (a.getAttribute('title') || a.getAttribute('aria-label') || '').trim();
-        // (1) PROCESSOS RELACIONADOS: links de procedimento (a "cadeia" — licitação↔contrato↔pagamento)
         if (/procedimento_visualizar|procedimento_trabalhar/i.test(href)) {
-            // o número do processo relacionado costuma estar no texto (ex.: SEI-XXX/AAAA) ou no title
             relacionados.push({texto: texto.slice(0, 80), titulo: titleAttr.slice(0, 160), url: href});
             continue;
         }
-        // (2) DOCUMENTOS do processo. Onda C (P0.2): o texto do link costuma ser só o NÚMERO; o TIPO
-        // ("Termo de Homologação", "Ata de Registro de Preços"...) vive no title/aria-label/nó pai.
         if (/documento_visualizar|exibir_documento|md_doc|acessar_documento/i.test(href)) {
             const pai = a.closest('li, tr, .infraArvoreNo, div');
             let textoPai = pai ? (pai.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 120) : '';
             const tipo = titleAttr || textoPai || texto;
             docs.push({texto: texto.slice(0, 120), titulo: tipo.slice(0, 160),
-                       title_attr: titleAttr.slice(0, 160), url: href});
+                       title_attr: titleAttr.slice(0, 160), url: href,
+                       restrito: _cadeado(pai)});  // cadeado no nó do documento
         }
     }
     const corpo = document.body ? document.body.innerText : '';
@@ -223,6 +228,8 @@ _JS_LE_ARVORE_E_TEXTO = r"""
         title: document.title,
         documentos: docs.slice(0, 80),
         relacionados: relacionados.slice(0, 40),
+        cadeado: _cadeado(document),                  // cadeado em qualquer lugar da página/árvore
+        n_docs_restritos: docs.filter(d => d.restrito).length,
         texto: corpo.slice(0, 12000),
     };
 }
@@ -537,6 +544,8 @@ async def ler_processo_sei_via_chrome(
             "title": dump.get("title", ""),
             "documentos": dump.get("documentos", []),
             "relacionados": dump.get("relacionados", []),
+            "cadeado": dump.get("cadeado", False),
+            "n_docs_restritos": dump.get("n_docs_restritos", 0),
             "texto": dump.get("texto", ""),
         })
 
