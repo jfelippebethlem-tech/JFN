@@ -44,7 +44,7 @@ capacidades:
   - {id: grafo_poder, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/grafo, status: PRONTO,
      descricao: "Grafo unico: socios+servidores+doacoes+contratos+nomeacoes", quando_usar: "'quem esta ligado a X', 'a N saltos do deputado Y com contrato'",
      args: {alvo: obrigatorio, saltos: "int=2", so_contrato: bool}, retorno: "{nos,arestas,comunidades}"}
-  - {id: dossie, agente: jfn, dominio: inteligencia, tipo: http, metodo: POST, rota: /api/dossie, status: "ONDA 4",
+  - {id: dossie, agente: jfn, dominio: inteligencia, tipo: http, metodo: POST, rota: /api/dossie, status: PRONTO,
      descricao: "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias)", quando_usar: "'monte um dossie sobre X'", args: {alvo: obrigatorio}, retorno: "{path_pdf,resumo}"}
   # ---- SEI / LICITACAO ----
   - {id: ler_processo_sei, agente: lex, dominio: juridico, tipo: cli, comando: "compliance_agent.collectors.sei_cdp \"<NUMERO>\"", status: PRONTO,

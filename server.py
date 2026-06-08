@@ -1307,6 +1307,21 @@ async def api_grafo(alvo: str, saltos: int = 2, so_contrato: bool = False):
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.post("/api/dossie")
+async def api_dossie(payload: Optional[dict] = None):
+    """Onda 4 — Dossiê 360 de um CNPJ: cadastro+sanções+OB+conflito+rede+score → PDF.
+    Body JSON: {"alvo": "<CNPJ>"}. Indícios para apuração; nenhuma fonte indisponível é fabricada."""
+    try:
+        from compliance_agent.dossie import dossie
+
+        alvo = ((payload or {}).get("alvo") or (payload or {}).get("cnpj") or "").strip()
+        if not alvo:
+            return JSONResponse(content={"ok": False, "erro": "informe {'alvo': CNPJ}"}, status_code=400)
+        return JSONResponse(content=await dossie(alvo))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/status")
 async def status():
     """Check agent status."""
