@@ -176,3 +176,12 @@ def test_navegador_cadeado_icone_marca_restrito(monkeypatch):
     monkeypatch.setattr(cdp, "ler_processo_sei", _cad)
     r = navegador.abrir_processo("E-9/9/2025")
     assert r["cadeado"] is True and r["acesso_restrito"] is True and r["n_docs_restritos"] == 1
+
+
+def test_eh_licitacao_e_id_proc():
+    """ler_com_cadeia: heurística de licitação + extração do id_procedimento da URL do relacionado."""
+    from tools.sei_reader import eh_licitacao, _id_proc
+    assert eh_licitacao("Edital de Pregão. Atestado de qualificação técnica. Termo de Referência.") is True
+    assert eh_licitacao("Termo de Encerramento. Pagamento de nota fiscal. Contrato.") is False
+    assert _id_proc("https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&id_procedimento=77829392&x=1") == "77829392"
+    assert _id_proc("sem id") == ""

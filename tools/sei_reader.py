@@ -216,6 +216,85 @@ async def ler(numero: str, usar_cache: bool = True, tentativas_login: int = 30) 
                 "erro": f"sei_reader/itkava: {str(e)[:140]}"}
 
 
+# ── Seguir a CADEIA de processos relacionados (execução → licitação) ───────────
+_MARK_LICITACAO = ("edital", "atestado", "qualificac", "habilitac", "pregao", "pregão", "licitac",
+                   "termo de referencia", "termo de referência", "ata de registro", "concorrencia",
+                   "concorrência", "julgamento", "desclassific", "inabilit", "proposta de preco")
+
+
+def _id_proc(url: str) -> str:
+    m = re.search(r"id_procedimento=(\d+)", url or "")
+    return m.group(1) if m else ""
+
+
+def eh_licitacao(texto: str) -> bool:
+    """Heurística: o texto do processo parece uma LICITAÇÃO (edital/ata/atestado), não execução."""
+    low = (texto or "").lower()
+    return sum(low.count(k) for k in _MARK_LICITACAO) >= 3
+
+
+async def ler_com_cadeia(numero: str, *, max_rel: int = 5, tentativas_login: int = 30) -> dict:
+    """Lê um processo E SEGUE a cadeia de processos RELACIONADOS (na MESMA sessão — a URL do relacionado
+    extraída agora tem hash válido p/ `goto`). Resolve o caso real: a OB aponta p/ a EXECUÇÃO; a LICITAÇÃO
+    (edital/ata) vive num processo relacionado. Devolve {processo, cadeia:[{id,url,n_docs,eh_licitacao,
+    texto,refs}]}. Guarda de recurso (não crashar a VM). Honesto: erros reportados, nunca fabricados."""
+    if not P:
+        return {"numero": numero, "erro": "INDISPONÍVEL: SEI_PASS vazio (.env)"}
+    out: dict = {"numero": numero, "cadeia": []}
+    try:
+        from compliance_agent.recursos import browser_lock_async, aguardar_load_async
+        await aguardar_load_async(max_por_core=1.5, espera_max=90)
+        from playwright.async_api import async_playwright
+        async with browser_lock_async(espera_max=600), async_playwright() as pw:
+            b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"])
+            ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
+                  user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                             "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            pg = await ctx.new_page()
+            try:
+                if not await login(pg, tentativas=tentativas_login):
+                    return {"numero": numero, "erro": "INDISPONÍVEL: login itkava não autenticou"}
+                proc = await ler_processo(pg, numero, usar_cache=False)
+                out["processo"] = {k: proc.get(k) for k in ("numero", "url", "documentos", "relacionados",
+                                                             "cnpjs", "valores", "motivo_zero")}
+                # relacionados ÚNICOS por id_procedimento (URLs vivas desta sessão)
+                vistos, alvos = set(), []
+                for r in (proc.get("relacionados") or []):
+                    url = r.get("url") or ""
+                    pid = _id_proc(url)
+                    if pid and pid not in vistos and f"id_procedimento={pid}" not in (proc.get("url") or ""):
+                        vistos.add(pid); alvos.append((pid, url, r.get("titulo") or r.get("texto") or ""))
+                    if len(alvos) >= max_rel:
+                        break
+                for pid, url, titulo in alvos:
+                    try:
+                        await pg.goto(url, wait_until="domcontentloaded", timeout=25000)
+                        try: await pg.wait_for_load_state("networkidle", timeout=15000)
+                        except Exception: pass
+                        # espera ATIVA a árvore (ifrArvore) carregar — senão extrai só o cabeçalho
+                        for _ in range(8):
+                            await pg.wait_for_timeout(1500)
+                            if any("arvore" in (fr.url or "").lower() for fr in pg.frames):
+                                await pg.wait_for_timeout(1500); break
+                        dump = await _extrair_de_todos_frames(pg)
+                        txt = dump.get("texto", "")
+                        out["cadeia"].append({
+                            "id_procedimento": pid, "titulo_rel": titulo[:80], "url": url[:90],
+                            "n_docs": len(dump.get("documentos", [])), "n_texto": len(txt),
+                            "eh_licitacao": eh_licitacao(txt),
+                            "documentos": dump.get("documentos", [])[:30],
+                            "texto": txt,
+                        })
+                    except Exception as e:  # noqa: BLE001
+                        out["cadeia"].append({"id_procedimento": pid, "erro": str(e)[:100]})
+                return out
+            finally:
+                await b.close()
+    except Exception as e:  # noqa: BLE001
+        out["erro"] = f"ler_com_cadeia: {str(e)[:140]}"
+        return out
+
+
 async def main():
     from playwright.async_api import async_playwright
     proc = sys.argv[1] if len(sys.argv) > 1 else "SEI-070002/008633/2022"
