@@ -14,6 +14,7 @@ FERRAMENTAS DISPONÍVEIS (chame SÓ estas pelo id; se não houver ferramenta par
 - buscar_direcionamento(ug,objeto) — 'ache editais restritivos na UG X'
 - parecer_juridico(alvo) — 'tem direcionamento?', parecer
 - busca_juridica(termo) — 'qual a lei sobre...', jurisprudencia
+- instrumento_mandato(tipo,base) — 'faca um requerimento sobre esse contrato'
 - massare_cenarios() — 'como esta o mercado', 'dolar/bolsa/ouro hoje'
 - massare_placar() — 'o Massare acerta?'
 - massare_prever(symbol,horizon) — 'previsao do Ibovespa', 'BTC vai subir?'

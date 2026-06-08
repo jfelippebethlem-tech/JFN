@@ -41,3 +41,4 @@ splink>=4.0           # entity resolution sobre DuckDB (Onda 4)
 #   sentence-transformers -> embeddings SEI (Onda 5); puxa torch — usar índice CPU (acima)
 #   vectorbt        -> backtest (Onda 9); pins estritos de numpy/numba — validar conflito antes
 #   weasyprint      -> HTML→PDF (Onda 7); precisa cairo/pango (apt). Alt sem apt: Playwright page.pdf()
+python-docx
