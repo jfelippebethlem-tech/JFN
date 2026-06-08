@@ -21,6 +21,19 @@ from typing import Optional
 import httpx
 
 PNCP_BASE = "https://pncp.gov.br/api/pncp/v1"
+# API de CONSULTA (publica, sem login) — Onda 2. Difere da de gestao (api/pncp/v1).
+CONSULTA_BASE = "https://pncp.gov.br/api/consulta/v1"
+
+# Modalidades (codigoModalidadeContratacao) — a API EXIGE este parametro. Quando o
+# chamador nao especifica, varremos as de maior relevancia fiscalizatoria.
+#   4=Concorrencia-Eletronica · 6=Pregao-Eletronico · 8=Dispensa · 9=Inexigibilidade
+MODALIDADES_PADRAO = [6, 8, 9, 4]
+MODALIDADE_NOME = {
+    1: "Leilao-Eletronico", 2: "Dialogo Competitivo", 3: "Concurso",
+    4: "Concorrencia-Eletronica", 5: "Concorrencia-Presencial", 6: "Pregao-Eletronico",
+    7: "Pregao-Presencial", 8: "Dispensa", 9: "Inexigibilidade", 10: "Manifestacao de Interesse",
+    11: "Pre-qualificacao", 12: "Credenciamento", 13: "Leilao-Presencial",
+}
 
 # CNPJs dos principais órgãos do Estado do RJ para monitoramento
 ORGAOS_RJ = {
@@ -44,6 +57,106 @@ async def _get_pncp(endpoint: str, params: dict) -> Optional[dict]:
     except Exception:
         pass
     return None
+
+
+async def _get_consulta(endpoint: str, params: dict) -> Optional[dict]:
+    """GET na API de CONSULTA do PNCP (sem login). Retorna o JSON ou None."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(f"{CONSULTA_BASE}{endpoint}", params=params,
+                                 headers={"User-Agent": "JFN-Compliance/2.0"})
+            if r.status_code == 200:
+                return r.json()
+    except Exception:
+        pass
+    return None
+
+
+def _simplificar_contratacao(it: dict) -> dict:
+    """Normaliza uma contratacao do PNCP no shape do contrato /api/pncp.
+
+    docs/red_flags ficam vazios aqui (preenchidos na Onda 2c, ao baixar e analisar o
+    edital/TR). Mantem proveniencia (link, numeroControlePNCP) p/ rastreabilidade."""
+    org = it.get("orgaoEntidade") or {}
+    uni = it.get("unidadeOrgao") or {}
+    return {
+        "id_pncp": it.get("numeroControlePNCP"),
+        "objeto": it.get("objetoCompra"),
+        "valor": it.get("valorTotalEstimado") or it.get("valorTotalHomologado"),
+        "modalidade": it.get("modalidadeNome"),
+        "situacao": it.get("situacaoCompraNome"),
+        "orgao_cnpj": org.get("cnpj"),
+        "orgao": org.get("razaoSocial"),
+        "unidade": uni.get("nomeUnidade"),
+        "uf": uni.get("ufSigla"),
+        "municipio": uni.get("municipioNome"),
+        "data_abertura": it.get("dataAberturaProposta"),
+        "data_encerramento": it.get("dataEncerramentoProposta"),
+        "processo": it.get("processo"),
+        "link": it.get("linkSistemaOrigem"),
+        "docs": [],        # Onda 2c
+        "red_flags": [],   # Onda 2c
+    }
+
+
+async def buscar_contratacoes(
+    uf: str = "RJ",
+    data_ini: Optional[date] = None,
+    data_fim: Optional[date] = None,
+    modalidade: Optional[int] = None,
+    abertos: bool = False,
+    orgao_cnpj: Optional[str] = None,
+    max_paginas: int = 3,
+) -> list[dict]:
+    """Consulta contratacoes no PNCP (API publica de consulta) — Onda 2.
+
+    abertos=False: historico por publicacao (janela data_ini..data_fim).
+    abertos=True:  contratacoes com PROPOSTA EM ABERTO (fiscalizacao preventiva) —
+                   a API exige dataFinal >= hoje (prazo de encerramento futuro).
+    modalidade=None varre MODALIDADES_PADRAO. orgao_cnpj filtra por orgao (client-side).
+    tamanhoPagina e fixo em 50 (a API exige >=10). Idempotente; dedup por id_pncp.
+    """
+    hoje = date.today()
+    if abertos:
+        # propostas abertas: encerramento entre hoje e +N dias
+        d_fim = data_fim or (hoje + timedelta(days=30))
+        if d_fim < hoje:
+            d_fim = hoje + timedelta(days=30)
+        endpoint, base_params = "/contratacoes/proposta", {"dataFinal": d_fim.strftime("%Y%m%d")}
+    else:
+        d_ini = data_ini or (hoje - timedelta(days=30))
+        d_fim = data_fim or hoje
+        endpoint = "/contratacoes/publicacao"
+        base_params = {"dataInicial": d_ini.strftime("%Y%m%d"), "dataFinal": d_fim.strftime("%Y%m%d")}
+
+    if uf:
+        base_params["uf"] = uf.upper()
+    modalidades = [modalidade] if modalidade else MODALIDADES_PADRAO
+    alvo_orgao = re.sub(r"\D", "", orgao_cnpj) if orgao_cnpj else None
+
+    vistos: set[str] = set()
+    out: list[dict] = []
+    for mod in modalidades:
+        for pagina in range(1, max_paginas + 1):
+            params = {**base_params, "codigoModalidadeContratacao": mod,
+                      "pagina": pagina, "tamanhoPagina": 50}
+            j = await _get_consulta(endpoint, params)
+            data = (j or {}).get("data") or []
+            if not data:
+                break
+            for it in data:
+                cid = it.get("numeroControlePNCP")
+                if not cid or cid in vistos:
+                    continue
+                if alvo_orgao and re.sub(r"\D", "", (it.get("orgaoEntidade") or {}).get("cnpj", "")) != alvo_orgao:
+                    continue
+                vistos.add(cid)
+                out.append(_simplificar_contratacao(it))
+            total_pag = (j or {}).get("totalPaginas") or 1
+            if pagina >= total_pag:
+                break
+            await asyncio.sleep(0.2)
+    return out
 
 
 async def buscar_contratos_fornecedor(
