@@ -5,11 +5,12 @@
 > config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
 > `compliance_agent/skilltree.py` reload fail-safe+sync+render, +5 capacidades `sistema`, 8 testes — commit `5279edf`)
 > · Onda 2 🟡 (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
-> **PRÓXIMO PASSO:** **Onda 5** (SEI inteligência em escala): `sei_extract.py` (extração por schema LLM→JSON),
-> `sei_corpus.py` (FTS5 + embeddings), `sei_direcionamento.py` (varredor R1/R7/R8/R12 sobre corpus SEI+PNCP).
-> Rota `/api/sei/direcionamento`. ⚠️ SEI WAF-bloqueado da VM → varrer sobre PNCP (que buscamos) + SEI cacheado.
-> **Ondas 0,1(skilltree),2,3,4 ✅.** Commits Onda 4: `5cab17d`+`2bc915e`(grafo)+`9181084`(dossiê).
-> **53 testes JFN 2.0 verdes; 27 capacidades PRONTO.** Adiado p/ última onda: wiring slash no Yoda vivo. Modelo: gemini-2.5-pro. **ADIADO p/ ÚLTIMA ONDA
+> **PRÓXIMO PASSO:** **Onda 6** (Radar 24/7 + fiscalização preventiva): `radar.py` (watchlist `radar_watch`;
+> ciclos PNCP novas/abertas+DOERJ+SIAFE+GDELT; alerta no Telegram), rotas `/api/radar/vigiar|status`, systemd
+> `jfn-radar.{service,timer}`. **Ondas 0,1(skilltree),2,3,4,5 ✅.** Onda 5 commit `3cd55d2` (inclui **consolidação
+> SEI→itkava**: porta única `sei_cdp.ler_processo_sei` delega ao `tools.sei_reader.ler` itkava/ITERJ, sem captcha;
+> `/lista` ensina o formato do nº SEI). **55 testes JFN 2.0 verdes; 28 capacidades PRONTO.** Adiado p/ última onda:
+> wiring slash no Yoda vivo. Modelo: gemini-2.5-pro. ⚠️ Sweep SIAFE 2 rodando = não tocar módulos SIAFE. **ADIADO p/ ÚLTIMA ONDA
 > (dono):** wiring dos slash commands/roteador no gateway Hermes VIVO (`~/hermes-agent/gateway/run.py`; Hermes É
 > python-telegram-bot mas usa MessageHandler catch-all + `hermes_cli/commands.py`, NÃO CommandHandler). **Política de
 > modelo: manter `gemini-2.5-pro`** (decisão do dono). **REGRA PERMANENTE:** toda skill nova → `capabilities.yaml` + `/lista`.
@@ -72,7 +73,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 | 2 | PNCP + conflito doador↔contrato (Lex) | ✅ `/api/conflito` (542k doações TSE) + `/api/pncp` (consulta+abertos+análise de edital). 2c: `id=` baixa edital ZIP/PDF→texto + red flags Lex (R7 validado em edital real) |
 | 3 | Motor de risco (Benford/sobrepreço/score) | ✅ Benford 1º+2º díg MAD-Nigrini (`/api/anomalias`) + sobrepreço CATMAT/CATSER (`/api/sobrepreco`) + score convergência decomponível. Cartel R8 já tinha grafo |
 | 4 | Grafo de Poder + Dossiê 360 | ✅ `grafo_poder.py` (vizinhança BFS local, `/api/grafo`) + `dossie.py` (cadastro+sanções+OB+conflito+rede+score→PDF, `/api/dossie`). Validado: BEST VIGILANCIA score 37 |
-| 5 | SEI inteligência em escala | ⏳ |
+| 5 | SEI inteligência em escala | ✅ `sei_extract` (schema) + `sei_corpus` (FTS5) + `sei_direcionamento` (varredor R1/R7/R8/R12, `/api/sei/direcionamento`). **SEI consolidado no reader itkava** (porta única, sem captcha) |
 | 6 | Radar 24/7 | ⏳ |
 | 7 | Relatório classe mundial (HTML→PDF) | ⏳ |
 | 8 | Massare notícia/macro/Focus | ⏳ |
@@ -196,3 +197,12 @@ roteamento adaptativo (decisão acima).
   conflito+red flags+concentração+empresa recente+sócio comum+CEIS/CNEP), 0–100 c/ contribuição por flag; risco de
   **ACHADO ≠ punição**. 15 testes. Sobrepreço/Benford PRONTO no `capabilities.yaml`. **Próximo: Onda 4** (Grafo de
   Poder + Dossiê 360; já há `grafo_cartel.py`/`rede_societaria.py` p/ reusar).
+- **2026-06-08 (Onda 4 ✅, commits `5cab17d`+`2bc915e`+`9181084`)** — `grafo_poder.py` (vizinhança BFS local,
+  `/api/grafo`, validado: CNPJ real 157 nós) + `dossie.py` (cadastro+sanções+OB+conflito+rede+score→PDF,
+  `/api/dossie`, validado: BEST VIGILANCIA score 37 MÉDIO). Fix: grafo só trata CNPJ como nó se existe em fonte.
+- **2026-06-08 (Onda 5 ✅ + consolidação SEI→itkava, commit `3cd55d2`)** — `sei_extract`/`sei_corpus`(FTS5)/
+  `sei_direcionamento` (varredor R1/R7/R8/R12, `/api/sei/direcionamento`, fonte pncp|sei|ambos). **DECISÃO DO DONO:
+  toda leitura SEI passa por UMA porta** (`sei_cdp.ler_processo_sei`) que **delega ao reader itkava/ITERJ**
+  (`tools.sei_reader.ler`, login interno sem captcha, vence o WAF de fingerprint); o caminho antigo CAPTCHA/OCR não
+  é mais invocado (só os extractors de DOM seguem, reusados pelo itkava). lex/hermes_goal/telegram/ler_sei_lote
+  migrados. `/lista` ensina o formato do nº SEI (`SEI-UUUUUU/NNNNNN/AAAA` ou `E-NN/NNN/AAAA`); `ler()` documenta o padrão.
