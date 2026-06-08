@@ -1055,13 +1055,30 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
     except Exception:  # noqa: BLE001
         rede = []
     if rede:
+        def _ug_cell(r):
+            ugs_l = r.get("ugs") or []
+            if not ugs_l:
+                return "—"
+            top = "; ".join(f"{esc(u.get('nome'))} (R$ {moeda(u.get('total'))})" for u in ugs_l[:3])
+            extra = f" (+{len(ugs_l) - 3} UG)" if len(ugs_l) > 3 else ""
+            return top + extra
+
+        def _sei_cell(r):
+            seis_l = r.get("seis") or []
+            if not seis_l:
+                return "—"
+            return ", ".join(esc(s) for s in seis_l[:8]) + (f" (+{len(seis_l) - 8})" if len(seis_l) > 8 else "")
+
         rows = "".join(f"<tr><td>{esc(r.get('doador'))}</td><td>{esc(r.get('via'))}</td>"
                        f"<td>{esc(r.get('candidato'))}</td><td>{esc(r.get('partido'))}</td>"
-                       f"<td>{esc(r.get('ano'))}</td><td>R$ {moeda(r.get('valor_doacao'))}</td></tr>" for r in rede[:20])
+                       f"<td>{esc(r.get('ano'))}</td><td>R$ {moeda(r.get('valor_doacao'))}</td>"
+                       f"<td>{_ug_cell(r)}</td><td class='nota'>{_sei_cell(r)}</td></tr>" for r in rede[:20])
         secoes.append({"titulo": "3. Doações eleitorais (sócios/empresa → candidatos) — conflito de interesse",
-                       "html": "<p class='nota'>Cruzamento TSE × QSA: o doador pode ser a empresa OU um sócio dela (coluna Via). "
-                               "Indício a verificar (presunção de legitimidade), nunca acusação.</p>"
-                               f"<table><tr><th>Doador</th><th>Via</th><th>Candidato</th><th>Partido</th><th>Ano</th><th>Valor</th></tr>{rows}</table>"})
+                       "html": "<p class='nota'>Cruzamento TSE × QSA × contratos: o doador pode ser a empresa OU um sócio dela (coluna Via). "
+                               "As colunas <b>Órgão (UG) pagador</b> e <b>Processos SEI</b> mostram por onde a empresa contratada recebeu — "
+                               "fechando a cadeia doador→fornecedor→candidato→UG→SEI. Indício a verificar (presunção de legitimidade), nunca acusação.</p>"
+                               f"<table><tr><th>Doador</th><th>Via</th><th>Candidato</th><th>Partido</th><th>Ano</th><th>Valor doado</th>"
+                               f"<th>Órgão (UG) pagador</th><th>Processos SEI</th></tr>{rows}</table>"})
     else:
         secoes.append({"titulo": "3. Doações eleitorais dos sócios/empresa",
                        "html": "<p class='nota'>Nenhuma doação eleitoral (TSE) localizada para a empresa ou seus sócios na base.</p>"})
