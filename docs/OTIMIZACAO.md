@@ -75,9 +75,23 @@ tokens/CPU/latência**:
   import + os snapshots por função fazem o papel de rede.)
 - **3.2a** ✅ `diagnose_siafe.py` (2944 LOC, script de debug, 0 imports) → **`tools/debug/diagnose_siafe.py`**
   (rodar com `PYTHONPATH=. .venv/bin/python tools/debug/diagnose_siafe.py`). Raiz do repo mais limpa.
-- **3.2b** Split de `telegram.py`: extrair formatters puros → `telegram_fmt.py` (API preservada) + teste unitário.
-- **3.1** Dedup de login — ALTO risco; já existe `compliance_agent/siafe_login.py` (avaliar reuso); login SIAFE
-  recém-estabilizado por ÚLTIMO. `server.py`/`hermes_goal.py` split: só com mais cobertura (gate honesto).
+- **3.2b** Split de `telegram.py` — ⏸️ **avaliado → não fazer agora.** O arquivo é majoritariamente **handlers
+  de comando assíncronos com estado** (DB/API), não formatters puros (só 3 helpers triviais: `_base_url`,
+  `_ip_local`, `_painel_reply`). Não há cluster limpo para extrair; reorganizar handlers do bot que a família
+  usa = risco alto sem ganho. Adiado.
+- **3.1** Dedup de login — ⏸️ **avaliado → diferido.** Os 5 logins são **genuinamente diferentes** (SEI vs SIAFE;
+  Selenium vs Playwright; `page` vs método de classe vs `exercicio`): `sei_cdp.login_sei_interno`,
+  `siafe_browser.login`, `sei_browser.login`, `siafe_ob._fazer_login`, `siafe_ob_orcamentaria._login` (este
+  recém-estabilizado). Não compartilham lógica real → dedup é alto-risco/baixo-valor e mexeria no login SIAFE
+  estável. `compliance_agent/siafe_login.py` é um **utilitário CLI de login manual** (0 imports mas executável,
+  citado em docs) — **não** é dead-code, manter.
+- **server.py / hermes_goal.py split** — ⏸️ adiado: mesma classe de risco (servidor FastAPI vivo / orquestrador),
+  só com cobertura comportamental real (gate honesto). A rede de smoke (3.0) cobre import, não comportamento.
+
+> **Conclusão honesta da Fase 3:** as wins seguras foram entregues (rede de smoke + relocação do diagnose, além
+> da Fase 1/2). Os refactors grandes restantes, investigados a fundo, são **alto-risco/baixo-valor no sistema
+> vivo recém-estabilizado** — a decisão correta (alinhada a "não quebrar") é **não forçá-los** sem cobertura
+> comportamental. Ficam especificados acima para execução futura deliberada.
 
 ## 5. Decisões de ferramentas externas
 - **`ruff` — SIM** (1 binário; linter + dead-imports). Uso **report-only**; **sem `--fix` em massa** (imports com
