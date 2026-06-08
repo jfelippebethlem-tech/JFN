@@ -84,6 +84,38 @@ def test_aleph_parseia_match(monkeypatch):
     assert r["matches"][0]["link"].endswith("ent.123")
 
 
+def test_midia_adversa_classifica_por_termo_de_risco(monkeypatch):
+    from compliance_agent.enrich import midia_adversa
+
+    class _R:
+        status_code = 200
+        def json(self):
+            return {"articles": [
+                {"title": "Empresa X é alvo de operação por fraude em licitação", "domain": "g1.globo.com",
+                 "url": "http://g1/1", "seendate": "20260101T000000Z"},
+                {"title": "Empresa X inaugura nova fábrica", "domain": "valor.com", "url": "http://v/2",
+                 "seendate": "20260102T000000Z"},
+            ]}
+
+    monkeypatch.setattr("compliance_agent.enrich.midia_adversa.httpx.get", lambda *a, **k: _R())
+    r = midia_adversa.varrer("Empresa X")
+    assert r["ok"] is True and r["n_total"] == 2 and r["n_adversos"] == 1
+    adv = r["adversos"][0]
+    assert "operação" in adv["termos"] or "fraude" in adv["termos"]
+    assert adv["fonte"] == "g1.globo.com"
+
+
+def test_midia_adversa_erro_reporta_indisponivel(monkeypatch):
+    from compliance_agent.enrich import midia_adversa
+
+    def _boom(*a, **k):
+        raise RuntimeError("rate limit")
+
+    monkeypatch.setattr("compliance_agent.enrich.midia_adversa.httpx.get", _boom)
+    r = midia_adversa.varrer("Empresa Y")
+    assert r["ok"] is True and r["adversos"] == [] and "INDISPONÍVEL" in r["_nota"]
+
+
 def test_capability_grafo_ftm_pronto():
     from compliance_agent.skilltree import SkillTree
     st = SkillTree()

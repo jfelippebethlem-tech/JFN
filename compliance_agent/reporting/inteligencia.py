@@ -1176,6 +1176,28 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         pass
     secoes.append({"titulo": "4. Listas restritivas e OSINT", "html": f"<ul>{''.join(osint)}</ul>"})
 
+    # 4-C. Mídia adversa (fontes abertas, KEYLESS via GDELT) — DD §9; ideia do dono: usar a internet p/ DD
+    try:
+        from compliance_agent.enrich.midia_adversa import varrer as _midia
+        ma = _midia(ctx.get("nome") or "", cnpj)
+        adversos = ma.get("adversos") or []
+        if adversos:
+            li = "".join(
+                f"<li><a href='{esc(a.get('url'))}'>{esc(a.get('titulo'))}</a> "
+                f"<span class='nota'>— {esc(a.get('fonte'))} · {esc(a.get('data'))} · termos: {esc(', '.join(a.get('termos') or []))}</span></li>"
+                for a in adversos[:10])
+            ma_html = (f"<p class='nota'>Varredura de cobertura jornalística (GDELT, fontes abertas, sem chave). "
+                       f"{ma.get('n_adversos')} de {ma.get('n_total')} matérias com termos de risco. "
+                       "Indício a confirmar na fonte — cobertura não é prova e pode haver homônimos.</p>"
+                       f"<ul>{li}</ul>")
+        else:
+            nota = ma.get("_nota", "")
+            ma_html = ("<p class='nota'>Nenhuma matéria com termos de risco localizada em fontes abertas (GDELT)"
+                       + (f" — {esc(nota)}" if "INDISPONÍVEL" in nota else " na janela analisada") + ".</p>")
+        secoes.append({"titulo": "4-C. Mídia adversa (fontes abertas — OSINT)", "html": ma_html})
+    except Exception:  # noqa: BLE001
+        pass
+
     # 5. Pagamentos — TABELA CRUZADA Órgão (UG) × Ano (pedido do dono: por ano, dividido por órgão)
     if p["tem_dados"]:
         # agrega valor por (órgão, ano) a partir das linhas de OB

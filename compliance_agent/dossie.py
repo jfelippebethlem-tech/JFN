@@ -87,6 +87,14 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     except Exception:  # noqa: BLE001
         pass
 
+    # 2d) Mídia adversa (fontes abertas, KEYLESS via GDELT) — DD §9
+    try:
+        from compliance_agent.enrich.midia_adversa import varrer as _midia
+        nome_alvo = (d.get("cadastro") or {}).get("razao_social") or alvo
+        d["midia_adversa"] = _midia(nome_alvo, cnpj)
+    except Exception:  # noqa: BLE001
+        pass
+
     # 3) OB / contratos (dado interno)
     d["ob"] = _resumo_ob(cnpj)
 
