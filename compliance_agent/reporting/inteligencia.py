@@ -343,6 +343,59 @@ def _hhi(por_orgao: dict) -> dict:
     return {"indice": round(indice, 1), "nivel": nivel, "top_share": round(top / total * 100, 1)}
 
 
+def _crescimento(pagamentos: dict) -> float:
+    """Razão pico/base entre exercícios COMPLETOS com dado (>0). 1.0 se não dá p/ medir.
+    Mede salto de faturamento atípico (capacidade operacional / aditivos a verificar)."""
+    anos = pagamentos.get("anos") or []
+    vals = [pagamentos["por_ano"][a]["total"] for a in anos if pagamentos["por_ano"][a]["total"] > 0]
+    if len(vals) < 2:
+        return 1.0
+    base = min(vals)
+    return (max(vals) / base) if base > 0 else 1.0
+
+
+def _recalibrar_risco(pagamentos: dict, rede: list, contratado_tcerj: float,
+                      score_ext: int, risco_ext: str) -> dict:
+    """Risco JFN = MAIOR entre o score externo e o score interno por sinais REAIS do relatório.
+    Corrige o caso em que o enriquecedor externo devolve 0 mas há indícios (conflito, pago≫contratado,
+    crescimento atípico, concentração, magnitude). Indício a verificar — nunca acusação."""
+    total = float(pagamentos.get("total_geral") or 0)
+    top_share = float((pagamentos.get("hhi") or {}).get("top_share") or 0)
+    cresc = _crescimento(pagamentos)
+    sinais: list[str] = []
+    s = 0
+    if rede:
+        s += 20; sinais.append("conflito doador↔contrato (sócio/empresa doou e é fornecedor)")
+    if contratado_tcerj and total > contratado_tcerj * 1.5:
+        s += 25; sinais.append(f"pago (R$ {moeda(total)}) ≫ contratado registrado (R$ {moeda(contratado_tcerj)}) — {total/contratado_tcerj:.1f}×")
+    elif contratado_tcerj and total > contratado_tcerj * 1.2:
+        s += 12; sinais.append(f"pago acima do contratado registrado ({total/contratado_tcerj:.1f}×)")
+    if cresc >= 4:
+        s += 15; sinais.append(f"crescimento de faturamento atípico (pico/base = {cresc:.1f}×)")
+    elif cresc >= 2.5:
+        s += 8; sinais.append(f"crescimento de faturamento relevante ({cresc:.1f}×)")
+    if top_share >= 60:
+        s += 25; sinais.append(f"concentração ≥60% num órgão ({top_share:.0f}%)")
+    elif top_share >= 40:
+        s += 12; sinais.append(f"concentração relevante no maior órgão ({top_share:.0f}%)")
+    if total >= 100e6:
+        s += 10; sinais.append(f"exposição muito alta ao erário (R$ {moeda(total)})")
+    elif total >= 50e6:
+        s += 5; sinais.append(f"exposição alta (R$ {moeda(total)})")
+    interno = min(100, s)
+    final = max(int(score_ext or 0), interno)
+    if final >= 70:
+        risco = "ALTO"
+    elif final >= 35:
+        risco = "MÉDIO"
+    elif final >= 15:
+        risco = "ATENÇÃO"
+    else:
+        risco = "BAIXO"
+    return {"score": final, "risco": risco, "score_externo": int(score_ext or 0),
+            "score_interno": interno, "sinais": sinais}
+
+
 def consultar_contratos(cnpj: str) -> dict:
     """Contratos oficiais (compliance.db). Retorna {n, total, linhas[...]}."""
     out = {"n": 0, "total": 0.0, "linhas": []}
@@ -443,8 +496,26 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
         cruz = {"_erro": str(exc)[:140]}
 
     nome = (enriq.get("empresa") or resolv["nome"] or "").strip() or fmt_cnpj(cnpj_d)
-    risco = enriq.get("risco", "—")
-    score = enriq.get("score", 0)
+
+    # conflito (TSE↔contrato) — calculado UMA vez aqui e reusado no render (evita 2ª query)
+    try:
+        from compliance_agent.lex_conflito import conflito as _conflito
+        rede = _conflito(cnpj=cnpj_d, limite=30).get("rede", [])
+    except Exception:  # noqa: BLE001
+        rede = []
+
+    # contratos TCE-RJ (Dados Abertos) — fonte oficial, não depende do SEI; insumo do red flag pago≫contratado
+    tcerj_itens, contratado_tcerj = [], 0.0
+    try:
+        from compliance_agent.collectors.tcerj_aberto import contratos_de_fornecedor
+        tcerj_itens = await asyncio.wait_for(asyncio.to_thread(contratos_de_fornecedor, cnpj_d, 100), timeout=25)
+        contratado_tcerj = sum((i.get("valor_contrato") or 0) for i in tcerj_itens if i.get("_tipo") == "contrato")
+    except Exception:  # noqa: BLE001
+        tcerj_itens, contratado_tcerj = [], 0.0
+
+    # RISCO recalibrado (externo + sinais internos reais) — corrige "BAIXO 0" com indícios
+    cal = _recalibrar_risco(pagamentos, rede, contratado_tcerj, enriq.get("score", 0), enriq.get("risco", "—"))
+    risco, score = cal["risco"], cal["score"]
 
     fonte_global = "REAL" if pagamentos["tem_dados"] else "SEM_DADOS_OB"
     contexto = {
@@ -452,7 +523,9 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
         "data": date.today().isoformat(), "risco": risco, "score": score,
         "pagamentos": pagamentos, "contratos": contratos, "enriq": enriq,
         "fonte_enriq": enriq.get("_fonte", "INDISPONIVEL"),
-        "cruzamento": cruz,
+        "cruzamento": cruz, "conflito_rede": rede,
+        "tcerj_itens": tcerj_itens, "contratado_tcerj": contratado_tcerj,
+        "calibragem": cal,
     }
 
     md = render_md(contexto)
@@ -1113,12 +1186,14 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                        "html": f"<table><tr><th>Sócio</th><th>Qualificação</th><th>Entrada</th></tr>{rows}</table>"})
 
     # 3. DOAÇÕES ELEITORAIS dos sócios/empresa (conflito doador↔contrato) — pedido do dono
-    rede = []
-    try:
-        from compliance_agent.lex_conflito import conflito
-        rede = conflito(cnpj=cnpj, limite=30).get("rede", [])
-    except Exception:  # noqa: BLE001
-        rede = []
+    # reusa a rede já calculada em montar() (evita 2ª query ao TSE); fallback recalcula
+    rede = ctx.get("conflito_rede")
+    if rede is None:
+        try:
+            from compliance_agent.lex_conflito import conflito
+            rede = conflito(cnpj=cnpj, limite=30).get("rede", [])
+        except Exception:  # noqa: BLE001
+            rede = []
     if rede:
         def _ug_cell(r):
             ugs_l = r.get("ugs") or []
@@ -1191,7 +1266,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                        "Indício a confirmar na fonte — cobertura não é prova e pode haver homônimos.</p>"
                        f"<ul>{li}</ul>")
         else:
-            nota = ma.get("_nota", "")
+            nota = (ma.get("_nota", "") or "").rstrip(". ")
             ma_html = ("<p class='nota'>Nenhuma matéria com termos de risco localizada em fontes abertas (GDELT)"
                        + (f" — {esc(nota)}" if "INDISPONÍVEL" in nota else " na janela analisada") + ".</p>")
         secoes.append({"titulo": "4-C. Mídia adversa (fontes abertas — OSINT)", "html": ma_html})
@@ -1293,13 +1368,32 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                        "html": f"{flag}<table><tr><th>Órgão (UG)</th><th>Valor pago</th><th>%</th></tr>{rows}</table>",
                        "chart": bars})
 
-    # 7. Contratos
+    # 7. Contratos — base local (compliance.db) OU TCE-RJ Dados Abertos (fonte oficial, independe do SEI)
     c = ctx["contratos"]
+    tcerj_itens = ctx.get("tcerj_itens") or []
+    tcerj_contr = [i for i in tcerj_itens if i.get("_tipo") == "contrato"]
+    contratado = float(ctx.get("contratado_tcerj") or 0)
+    pago = float(p.get("total_geral") or 0)
     if c["n"]:
         rows = "".join(f"<tr><td>{esc(ln['numero'])}</td><td>{esc(ln['objeto'])}</td><td>{esc(ln['orgao'])}</td>"
                        f"<td>R$ {moeda(ln['valor'])}</td><td>{esc(ln['status'])}</td></tr>" for ln in c["linhas"])
         secoes.append({"titulo": f"7. Carteira de contratos ({c['n']} — R$ {moeda(c['total'])})",
                        "html": f"<table><tr><th>Nº</th><th>Objeto</th><th>Órgão</th><th>Valor</th><th>Situação</th></tr>{rows}</table>"})
+    elif tcerj_contr:
+        tcerj_contr.sort(key=lambda i: (i.get("valor_contrato") or 0), reverse=True)
+        rows = "".join(f"<tr><td>{esc(i.get('numero') or i.get('processo'))}</td>"
+                       f"<td>{esc((i.get('objeto') or '—')[:70])}</td><td>{esc(i.get('orgao') or i.get('unidade') or '—')}</td>"
+                       f"<td>R$ {moeda(i.get('valor_contrato'))}</td></tr>" for i in tcerj_contr[:15])
+        gap = (f" <b>Pago (OB) R$ {moeda(pago)} = {pago/contratado:.1f}× o contratado</b> — possíveis aditivos/contratos "
+               "não listados, a verificar." if contratado and pago > contratado * 1.2 else "")
+        secoes.append({"titulo": f"7. Carteira de contratos — TCE-RJ ({len(tcerj_contr)} — R$ {moeda(contratado)})",
+                       "html": "<p class='nota'>Fonte: Dados Abertos do TCE-RJ (controle externo; independe do SEI/WAF). "
+                               f"Contratado registrado: R$ {moeda(contratado)}.{gap}</p>"
+                               f"<table><tr><th>Nº/Processo</th><th>Objeto</th><th>Órgão</th><th>Valor contrato</th></tr>{rows}</table>"})
+    else:
+        secoes.append({"titulo": "7. Carteira de contratos",
+                       "html": "<p class='nota'>Nenhum contrato formal localizado na base local nem no TCE-RJ Dados Abertos "
+                               "para este CNPJ (os pagamentos podem decorrer de atas de registro de preços/adesões — verificar).</p>"})
 
     # 8. Matriz de risco P×I (TCU) + 9. Análise estatística (Benford)
     if p["tem_dados"]:
@@ -1320,7 +1414,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         except Exception:  # noqa: BLE001
             pass
 
-    # 10. Co-endereço / sócios em comum (sinal de cartel/laranja)
+    # 10. Co-endereço / sócios em comum (sinal de cartel/laranja) — sempre presente (sem buraco de numeração)
     coend = (ctx.get("cruzamento") or {}).get("coendereco") or []
     if coend:
         rows = "".join(f"<tr><td>{esc(x.get('razao') or x.get('cnpj'))}</td><td>{esc(x.get('cnpj'))}</td></tr>" for x in coend[:15])
@@ -1328,19 +1422,36 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                        "html": "<p class='nota'>Outras empresas registradas no mesmo endereço da sede — indício de "
                                "fachada/cartel a verificar (não é prova).</p>"
                                f"<table><tr><th>Empresa</th><th>CNPJ</th></tr>{rows}</table>"})
+    else:
+        secoes.append({"titulo": "10. Empresas no mesmo endereço (cartel/laranja)",
+                       "html": "<p class='nota'>Nenhuma outra empresa no mesmo endereço da sede localizada na base "
+                               "(não exclui co-endereço fora da base; verificar no RedeCNPJ — seção 4-D).</p>"})
 
-    # 11. Red flags consolidados (com fundamento) + 12. Recomendações + 13. Referências
+    # 11. Red flags consolidados (com fundamento) — agora alimentados pela CALIBRAGEM (sinais reais)
+    cal = ctx.get("calibragem") or {}
+    pago = float(p.get("total_geral") or 0)
+    contratado = float(ctx.get("contratado_tcerj") or 0)
     flags = []
     if p.get("hhi", {}).get("top_share", 0) >= 60:
         flags.append("🔴 Concentração ≥60% num único órgão (isonomia/impessoalidade — Art. 37 CF/88; ACFE).")
+    if contratado and pago > contratado * 1.5:
+        flags.append(f"🔴 Pago (R$ {moeda(pago)}) ≫ contratado registrado no TCE-RJ (R$ {moeda(contratado)}) — "
+                     f"{pago/contratado:.1f}×: aditivos sucessivos (>25%/50% — arts. 125-126 Lei 14.133) ou contratos não publicados, a verificar.")
+    elif contratado and pago > contratado * 1.2:
+        flags.append(f"🟡 Pago acima do contratado registrado ({pago/contratado:.1f}×) — verificar aditivos/atas de adesão.")
     if rede:
         flags.append("🟡 Doador eleitoral (empresa/sócio) que é fornecedor — conflito de interesse a verificar (TSE×contratos).")
+    if _crescimento(p) >= 4:
+        flags.append(f"🟡 Crescimento de faturamento atípico (pico/base = {_crescimento(p):.1f}×) — verificar capacidade operacional vs. salto de receita pública.")
     if coend:
         flags.append("🟡 Empresa(s) no mesmo endereço — possível fachada/cartel (Art. 90 Lei 8.666/Art. 337-F CP).")
     if not flags:
         flags.append("🟢 Sem red flags estruturais automáticos nesta triagem (não exclui exame manual).")
+    nota_cal = (f"<p class='nota'>Risco JFN recalibrado: <b>{esc(ctx.get('risco'))}</b> (score {ctx.get('score')}/100 = "
+                f"máx[externo {cal.get('score_externo',0)}, interno {cal.get('score_interno',0)}]). "
+                "Indícios a verificar, nunca acusação (presunção de legitimidade).</p>") if cal else ""
     secoes.append({"titulo": "11. Red flags de compliance (fundamento legal)",
-                   "html": "<ul>" + "".join(f"<li>{esc(f)}</li>" for f in flags) + "</ul>"})
+                   "html": nota_cal + "<ul>" + "".join(f"<li>{esc(f)}</li>" for f in flags) + "</ul>"})
     rec = ["<b>Imediato:</b> verificar a motivação técnica da concentração e a pesquisa de preços dos maiores contratos." if p.get("hhi", {}).get("top_share", 0) >= 40 else "<b>Imediato:</b> manter monitoramento de rotina.",
            "<b>Curto prazo:</b> cruzar doações eleitorais dos sócios com as datas de contratação (conflito de interesse)." if rede else "<b>Curto prazo:</b> confirmar QSA e capacidade operacional (anti-fachada).",
            "<b>Estrutural:</b> consolidar no Radar 24/7 (alerta em novo edital/OB do alvo) e gerar minuta de diligência (TCE-RJ/ALERJ) se confirmado."]

@@ -13,6 +13,7 @@ confirmar na fonte (presunção de legitimidade) e pode conter homônimos.
 from __future__ import annotations
 
 import re
+import time
 
 import httpx
 
@@ -46,20 +47,29 @@ def varrer(nome: str, cnpj: str = "", janela_meses: int = 24, max_artigos: int =
     alvo = (nome or "").strip()
     if not alvo or len(alvo) < 3:
         return {"ok": False, "erro": "informe o nome (≥3 chars) da empresa/pessoa"}
-    try:
-        r = httpx.get(_GDELT, params={
-            "query": f'"{alvo}"', "mode": "ArtList", "format": "json",
-            "maxrecords": max_artigos, "timespan": f"{janela_meses}m", "sort": "DateDesc",
-        }, headers={"User-Agent": "JFN/2.0 (fiscalizacao publica)"}, timeout=25)
-        if r.status_code != 200:
-            return {"ok": True, "alvo": alvo, "n_total": 0, "n_adversos": 0, "adversos": [],
-                    "_fonte": "GDELT DOC 2.0 (grátis, sem chave)",
-                    "_nota": f"INDISPONÍVEL: GDELT HTTP {r.status_code} (sem chave; reitere mais tarde). Nada fabricado."}
-        arts = (r.json() or {}).get("articles", []) or []
-    except Exception as e:  # noqa: BLE001
+    params = {"query": f'"{alvo}"', "mode": "ArtList", "format": "json",
+              "maxrecords": max_artigos, "timespan": f"{janela_meses}m", "sort": "DateDesc"}
+    headers = {"User-Agent": "JFN/2.0 (fiscalizacao publica)"}
+    arts = None
+    erro = ""
+    for tentativa in range(3):  # GDELT free dá 429 sob carga; backoff curto resolve a maioria
+        try:
+            r = httpx.get(_GDELT, params=params, headers=headers, timeout=25)
+            if r.status_code == 200:
+                arts = (r.json() or {}).get("articles", []) or []
+                break
+            erro = f"HTTP {r.status_code}"
+            if r.status_code == 429 and tentativa < 2:
+                time.sleep(2.5 * (tentativa + 1))  # 2.5s, 5s
+                continue
+            break
+        except Exception as e:  # noqa: BLE001
+            erro = str(e)[:70]
+            break
+    if arts is None:
         return {"ok": True, "alvo": alvo, "n_total": 0, "n_adversos": 0, "adversos": [],
                 "_fonte": "GDELT DOC 2.0 (grátis, sem chave)",
-                "_nota": f"INDISPONÍVEL: GDELT {str(e)[:70]}. Nada fabricado."}
+                "_nota": f"INDISPONÍVEL: GDELT {erro} (sem chave; reitere mais tarde). Nada fabricado."}
 
     adversos = []
     for a in arts:
