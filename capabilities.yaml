@@ -121,12 +121,15 @@ politica_modelo:
   raciocinio_pesado: {primario: "gemini-2.5-flash", fallback: "gemini-2.5-flash-lite", uso: "compliance/juridico/extracao SEI", nota: "TETO GRATUITO — unicos Gemini free sao 2.5-flash e 2.5-flash-lite; Pro e geracao 3.x sao PAGOS (verificado jun/2026)"}
   modelo_melhor:     {primario: "gemini-2.5-pro", uso: "tarefa ULTRA-complexa SOB PEDIDO do dono ('usar o modelo melhor')", nota: "PAGO — excecao consciente ao invariante, acionada a mao, nunca por padrao"}
   visao_ocr:         {primario: "gemini-2.5-flash", uso: "captcha SEI, PDFs"}
-  bulk:              {primario: "groq/gemma2-9b-it", fallback: "stepfun/step-3.7-flash:free", uso: "extracao/classificacao em LOTE — Gemma 9B no Groq = free + INSTANTANEO (avaliacao jun/2026)"}
-  # Cadeia de fallback 100% GRATUITA c/ DIVERSIDADE DE PROVIDER (jun/2026): Gemini flash-tier (8 chaves) →
-  # Groq Gemma (instantaneo, provider nao-Google: vivo mesmo se Google bater rate-limit) → OpenRouter Gemma
-  # (:free, sem credito) → Mistral "Experiment" (large/small free, ~1B tok/mes) → Nous :free (sem cota).
-  # gemini-2.0-flash REMOVIDO (desligado 01/06/2026). Gemma NAO supera o 2.5-flash em qualidade — entra por velocidade+diversidade.
-  fallback_chain:    ["gemini-2.5-flash-lite","groq/gemma2-9b-it","google/gemma-2-9b-it:free","mistral-large-latest","mistral-small-latest","stepfun/step-3.7-flash:free","inclusionai/ring-2.6-1t:free","tencent/hy3-preview:free"]
+  bulk:              {primario: "groq/gemma2-9b-it", fallback: "stepfun/step-3.7-flash:free", uso: "extracao/classificacao em LOTE — Groq Gemma 9B = free+INSTANTANEO (provider nao-Google)"}
+  # FATOS verificados jun/2026 (medidos na API):
+  #  - Gemma free pela MESMA chave Gemini: gemma-4-31b-it / gemma-4-26b-a4b-it (HTTP 200). NAO supera o 2.5-flash.
+  #  - char->token PT-BR juridico = ~3.2 chars/token (use /3 conservador; ou endpoint :countTokens p/ exato).
+  #  - LIMITE FREE E POR PROJETO Google, NAO por chave (~250k TPM, ~15 RPM, ~1.5k RPD). => as 8 chaves so dao 8x
+  #    de cota SE forem de 8 PROJETOS/CONTAS distintas; se do mesmo projeto, compartilham (rotacao nao multiplica).
+  # Fallback prioriza DIVERSIDADE REAL de provider (Google esgota junto): Gemini flash-tier -> Groq Gemma (nao-Google)
+  # -> Mistral "Experiment" free -> Gemma 4 31B (Google, mesma cota: alternativa de modelo, nao failover) -> Nous :free.
+  fallback_chain:    ["gemini-2.5-flash-lite","groq/gemma2-9b-it","mistral-large-latest","mistral-small-latest","gemma-4-31b-it","stepfun/step-3.7-flash:free","inclusionai/ring-2.6-1t:free","tencent/hy3-preview:free"]
   api_max_retries: 3
   credential_pool: {gemini: round_robin, mistral: fill_first}
 
