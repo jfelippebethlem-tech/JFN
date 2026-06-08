@@ -103,6 +103,21 @@ def test_fail_safe_yaml_invalido_mantem_estado(tmp_path):
     assert st.sha == sha_bom
 
 
+def test_rotas_http_skilltree():
+    """Onda 13 (parte JFN): /api/skills|skill|skills/reload|skills/validate respondem (o /skills do Yoda chama estas)."""
+    import warnings
+    warnings.filterwarnings("ignore")
+    from fastapi.testclient import TestClient
+    import server
+
+    c = TestClient(server.app)
+    assert c.get("/api/skills").json()["ok"] is True
+    assert "SISTEMA" in c.get("/api/skills", params={"filtro": "sistema"}).json()["texto"]
+    assert c.get("/api/skill", params={"id": "skills_reload"}).json()["ok"] is True
+    assert c.post("/api/skills/reload").json()["ok"] is True
+    assert c.get("/api/skills/validate").json()["ok"] is True
+
+
 def test_id_duplicado_e_rejeitado(tmp_path):
     """_parse rejeita id duplicado (contrato unico, sem ambiguidade no roteador)."""
     from compliance_agent.skilltree import SkillTree
