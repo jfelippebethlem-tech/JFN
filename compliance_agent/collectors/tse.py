@@ -132,7 +132,12 @@ async def baixar_doacoes_ano(ano: int, session, uf: str = "RJ") -> int:
                     for row in reader:
                         # Determine which UF column is present
                         uf_val = _get_column(row, "SG_UF", "SG_UF_CANDIDATO")
-                        if uf_val.upper() != uf.upper():
+                        cargo = _get_column(row, "DS_CARGO", "DS_CARGO_CANDIDATO")
+                        # Mantém: candidatos do RJ (governador/senador/dep federal e estadual/prefeito/vereador)
+                        # E presidência (cargo nacional, UF=BR) — o cruzamento de conflito depois restringe a
+                        # fornecedores RJ de qualquer forma. (instrução do dono 2026-06-08)
+                        _eh_presidente = "PRESIDENTE" in cargo.upper()
+                        if uf_val.upper() != uf.upper() and not _eh_presidente:
                             continue
 
                         # Extract fields with fallback column names
@@ -141,7 +146,6 @@ async def baixar_doacoes_ano(ano: int, session, uf: str = "RJ") -> int:
                         )
                         nome_doador = _get_column(row, "NM_DOADOR", "NM_DOADOR_RFB")
                         nome_candidato = _get_column(row, "NM_CANDIDATO")
-                        cargo = _get_column(row, "DS_CARGO", "DS_CARGO_CANDIDATO")
                         partido = _get_column(row, "SG_PARTIDO")
                         valor_str = _get_column(row, "VR_RECEITA", "VR_VALOR")
                         data_str = _get_column(row, "DT_RECEITA", "DT_DATA")

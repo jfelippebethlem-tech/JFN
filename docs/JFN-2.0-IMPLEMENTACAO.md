@@ -51,7 +51,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 |---|---|---|
 | 0 | capabilities.yaml + validador + obs_trace | 🟢 núcleo ✅ (gen_*→Onda 1; siafe_worker/SEI-proxy diferidos) |
 | 1 | Orquestração (router do YAML, política de modelo) | ⏳ |
-| 2 | PNCP + conflito doador↔contrato (Lex) | ⏳ (base existe: `pncp.py`, `tse.cruzar_doacoes_contratos`) |
+| 2 | PNCP + conflito doador↔contrato (Lex) | 🟡 `lex_conflito.py` (doador↔SÓCIO↔OB) ✅ testado; TSE carregando; rotas /api/conflito+/api/pncp pendentes |
 | 3 | Motor de risco (Benford/sobrepreço/score) | ⏳ |
 | 4 | Grafo de Poder + Dossiê 360 | ⏳ |
 | 5 | SEI inteligência em escala | ⏳ |
@@ -72,6 +72,16 @@ Quando **todas as 12 ondas estiverem ✅ e a suíte verde**, a sessão que concl
 3. Anunciar conclusão ao dono no Telegram.
 > ⚠️ Não há remoção automática por tempo; a limpeza é este passo deliberado. A IA NÃO lembra sozinha entre
 > sessões — por isso esta instrução vive aqui e na memória: quem fechar a Onda 11 executa.
+
+## ⏸️ SWEEP SIAFE 2 — PAUSADO (2026-06-08, a pedido do dono para implementar a Onda 1)
+**Ponto de parada (para retomar):** 86 UG:ano feitos (29 UGs com dado), parou em **110100/2024** no meio de uma
+subdivisão ug-grande; **48.600 OBs** (2024-26) no banco. Checkpoint: `data/sei_cache/siafe_sweep_full_2.json`
+(resumível; o sub-checkpoint da ug-grande retoma sozinho). **Pausa:** flag `data/.pause_sweep_2` (supervisor
+respeita e NÃO relança). **PARA RETOMAR:** `rm data/.pause_sweep_2` (o supervisor relança em ≤1 min) OU
+`PYTHONPATH=. .venv/bin/python -m tools.siafe_sweep_full 2`. SIAFE 1 (ALERJ) já estava completo. ⚠️ Com o sweep
+PARADO, agora é seguro mexer nos módulos SIAFE (ex.: `siafe_worker.py` da Onda 0, diferido).
+**Download TSE** (doações RJ+presidente, todos os anos) roda em processo SEPARADO (`/tmp/tse_load.py`,
+`data/tse_load.out`) — NÃO é o sweep; deixar terminar (popula `doacoes_eleitorais` p/ o conflito da Onda 2).
 
 ## Diário de execução
 - **2026-06-08** — Branch `jfn-2.0` criada (de `linux`) e pushada p/ origin. Documento mestre lido e analisado;
