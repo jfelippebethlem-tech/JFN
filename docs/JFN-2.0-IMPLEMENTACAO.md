@@ -5,10 +5,11 @@
 > config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
 > `compliance_agent/skilltree.py` reload fail-safe+sync+render, +5 capacidades `sistema`, 8 testes — commit `5279edf`)
 > · Onda 2 🟡 (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
-> **PRÓXIMO PASSO:** **Onda 2c** (red flags R1/R7/R12 sobre o texto do edital PNCP via motor Lex — `baixar_documentos`
-> + análise; preencher `docs`/`red_flags` que hoje saem `[]` em `/api/pncp`), depois **Onda 3** (Benford/sobrepreço/
-> score). **Onda 2a `/api/conflito` ✅ PRONTO** (commit `fb8b9ef`, validado c/ 542k doações TSE). **Onda 2b `/api/pncp`
-> ✅ PRONTO** (commit `37e5922`, API consulta sondada e validada live: 64 editais RJ abertos). **ADIADO p/ ÚLTIMA ONDA
+> **PRÓXIMO PASSO:** **Onda 3** (motor de risco: `analysis/benford.py` 1º+2º dígito MAD-Nigrini, `sobrepreco.py`
+> mediana Compras Dados Abertos, `score_convergencia.py`; `/api/anomalias` ganha Benford; `/api/sobrepreco` cita
+> referência+%). Cartel R8 depende do grafo (Onda 4) — fazer o possível sem grafo. **Onda 2 ✅ COMPLETA**
+> (commits `fb8b9ef` conflito + `37e5922` pncp + `9814c91` edital/red-flags; validados live: 542k doações, 64
+> editais abertos, R7 em edital real). **ADIADO p/ ÚLTIMA ONDA
 > (dono):** wiring dos slash commands/roteador no gateway Hermes VIVO (`~/hermes-agent/gateway/run.py`; Hermes É
 > python-telegram-bot mas usa MessageHandler catch-all + `hermes_cli/commands.py`, NÃO CommandHandler). **Política de
 > modelo: manter `gemini-2.5-pro`** (decisão do dono). **REGRA PERMANENTE:** toda skill nova → `capabilities.yaml` + `/lista`.
@@ -68,7 +69,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 |---|---|---|
 | 0 | capabilities.yaml + validador + obs_trace | 🟢 núcleo ✅ (gen_*→Onda 1; siafe_worker/SEI-proxy diferidos) |
 | 1 | Orquestração (router do YAML, política de modelo) | 🟡 geradores+config+roteador adaptativo+**skilltree** ✅; dispatcher nativo no gateway VIVO = ADIADO p/ última onda (decisão do dono) |
-| 2 | PNCP + conflito doador↔contrato (Lex) | 🟢 `/api/conflito` ✅ (542k doações TSE) + `/api/pncp` ✅ (API consulta, 64 editais RJ abertos); falta só 2c (red flags sobre edital baixado) |
+| 2 | PNCP + conflito doador↔contrato (Lex) | ✅ `/api/conflito` (542k doações TSE) + `/api/pncp` (consulta+abertos+análise de edital). 2c: `id=` baixa edital ZIP/PDF→texto + red flags Lex (R7 validado em edital real) |
 | 3 | Motor de risco (Benford/sobrepreço/score) | ⏳ |
 | 4 | Grafo de Poder + Dossiê 360 | ⏳ |
 | 5 | SEI inteligência em escala | ⏳ |
