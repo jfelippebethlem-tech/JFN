@@ -33,6 +33,8 @@ _SYS = (
 
 _SCHEMA = (
     '{"grau":"verde|amarelo|vermelho","resumo":"1-2 frases (indício, não acusação)",'
+    '"raciocinio":"explique PASSO A PASSO como chegou ao grau: o que leu, o que considerou restritivo ou '
+    'normal e por quê, o que faltou nos documentos (máx 6 frases — para o auditor entender seu pensamento)",'
     '"exigencias_restritivas":[{"trecho":"literal do edital","por_que_restringe":"","jurisprudencia":""}],'
     '"cascata":[{"licitante":"","ordem_preco":0,"situacao":"classificado|desclassificado|inabilitado",'
     '"motivo":"","trecho":"literal da ata"}],'
