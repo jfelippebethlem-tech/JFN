@@ -148,6 +148,37 @@
     {
       "type": "function",
       "function": {
+        "name": "conflito_doador_contrato",
+        "description": "Cruza doacoes TSE com contratos/OB (doador->fornecedor) — usar quando: 'quem me doou ganhou contrato', conflito de interesse",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "um de cnpj|candidato"
+            },
+            "candidato": {
+              "type": "string",
+              "description": "string"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "lex",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/conflito",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "cruzamento",
         "description": "OB<->CNPJ<->SEI<->socios — usar quando: 'cruze os dados da empresa X'",
         "parameters": {
@@ -617,7 +648,6 @@
     }
   ],
   "futuras_desabilitadas": [
-    "conflito_doador_contrato",
     "sobrepreco",
     "grafo_poder",
     "dossie",

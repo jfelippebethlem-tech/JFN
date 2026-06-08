@@ -6,7 +6,7 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 |---|---|---|---|---|---|
 | `anomalias` | jfn | http | `/api/anomalias` | PRONTO | triagem de risco; 'algo estranho em X' |
 | `cartel` | jfn | http | `/api/cartel` | PRONTO | conluio/cartel/combinacao |
-| `conflito_doador_contrato` | lex | http | `/api/conflito` | ONDA 2 | 'quem me doou ganhou contrato', conflito de interesse |
+| `conflito_doador_contrato` | lex | http | `/api/conflito` | PRONTO | 'quem me doou ganhou contrato', conflito de interesse |
 | `cruzamento` | jfn | http | `/api/cruzamento` | PRONTO | 'cruze os dados da empresa X' |
 | `missao_autonoma` | jfn | http | `/api/hermes/missao` | PRONTO | pedido complexo/aberto |
 | `relatorio_inteligencia` | jfn | http | `/api/relatorio/inteligencia` | PRONTO | relatorio/auditoria/due diligence de empresa, CNPJ |

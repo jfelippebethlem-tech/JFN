@@ -1200,6 +1200,24 @@ async def api_compliance_buscar(q: str = "", tabela: str = "todos"):
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
+@app.get("/api/conflito")
+async def api_conflito(cnpj: str = "", candidato: str = "", limite: int = 200):
+    """Onda 2 — Conflito de interesse: doador TSE ↔ (empresa | SÓCIO da empresa) ↔ OB.
+
+    Cruza `doacoes_eleitorais` (TSE) com OBs (TFE/SIAFE) e QSA (`socios_fornecedor`).
+    O doador pode ser a contratada OU sócio dela (via='direto'|'socio'). Indício, nunca
+    acusação (presunção de legitimidade). Query: cnpj= (foca empresa) | candidato= (foca
+    quem recebeu) | nenhum (varredura geral por valor de OB).
+    """
+    try:
+        from compliance_agent.lex_conflito import conflito
+
+        res = conflito(cnpj=cnpj or None, candidato=candidato or None, limite=limite)
+        return JSONResponse(content=res)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/status")
 async def status():
     """Check agent status."""
