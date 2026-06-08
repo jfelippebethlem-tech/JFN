@@ -28,8 +28,21 @@ camada `providers/`), 121 testes verdes, 4/6 chaves ativas.
   (`collectors/sei_cdp.py::_JS_LE_ARVORE_E_TEXTO`) para capturar `title`/`aria-label`/texto do nó pai (onde o
   SEI-RJ põe o tipo), validar com 1 leitura ao vivo (CPU: 1 leitura só, não sweep), recalibrar
   `classificador_doc` com os rótulos reais. **Sem isso, a extração de preço não mira homologação/ata.**
-- **Onda D — paralelizar enrichers OSINT do render** (opensanctions/aleph/midia/links são sequenciais no
-  `render_pdf_html`); ganho de rapidez. Pura, sem browser.
+- **Onda C — VALIDADA ✅ ao vivo (commit `5c710e6`).** Piloto em 4 processos SRP (UG 270060): **4/4 abertos**,
+  scraper captura **rótulos reais** ("Nota de Empenho - NE", "Nota de Autorização de Despesa - NAD", "Despacho de
+  Encaminhamento", "Recibo", "Ofício", "Anexo"). O 0-docs anterior era **transiente**. Classificador calibrado +
+  tipos novos `planilha_preco` (carrega preço) e `autorizacao_despesa`. **DESCOBERTA-CHAVE:** os processos de
+  **execução/empenho** (UG 270060) **NÃO têm a ARP/tabela de preço** — ela vive no **processo de LICITAÇÃO/pregão
+  do SRP** (Lei 14.133 arts. 82-86). **Próximo passo p/ achar a tabela:** mirar o processo de pregão/ata (não o de
+  empenho); candidatos: docs "Anexo"/"Planilha"/"Proposta" e processos cujo tipo de doc inclua ata_rp/homologacao.
+  Árvores salvas em `data/pilot/calibracao/`.
+- **Onda F — Receita TFE ✅ coletor (commit `46d2bf9`).** `collectors/tfe_receita.py` (CKAN `tfe-receita`): CSV
+  mensal 2016→atual com **Previsão Inicial(LOA)·Atualizada·A Realizar·REALIZADA** por Poder/Categoria/Órgão/UG.
+  Parser validado no dado real; **ingestão NÃO rodada** (evitar lock c/ sweep — rodar `tfe_receita.ingerir()` com
+  sweep idle). Próximo: cruzar realizada×prevista (LOA) e receita×despesa no relatório de órgão.
+- **Onda D — paralelizar enrichers OSINT do render** (opensanctions/aleph/midia/links sequenciais no
+  `render_pdf_html`); rapidez. Pura, sem browser.
+- **Pendência UX:** `/lista` mostra menos que `/capacidades` — unificar (o dono quer tudo junto).
 
 ## Bloqueado / depende do dono
 - 2 chaves grátis (`ALEPH_API_KEY`, `OPENCORPORATES_API_TOKEN`) → quando chegarem, **reavaliar tudo**.
