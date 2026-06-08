@@ -60,7 +60,7 @@ capacidades:
      descricao: "Parecer R1-R12 + base TCU/TCE-RJ (grau verde/amarelo/vermelho)", quando_usar: "'tem direcionamento?', parecer", args: {alvo: obrigatorio}, retorno: "{grau_lex,path_lex,red_flags[]}"}
   - {id: busca_juridica, agente: lex, dominio: juridico, tipo: cli, comando: "compliance_agent.collectors.lexml_fetcher --termo \"<TERMO>\"", status: PRONTO,
      descricao: "Lei/acordao (TCE-RJ,TCU,LexML). RAG: Onda 10", quando_usar: "'qual a lei sobre...', jurisprudencia", args: {termo: obrigatorio}, retorno: "{resultados[]}"}
-  - {id: instrumento_mandato, agente: lex, dominio: juridico, tipo: http, metodo: POST, rota: /api/mandato/minuta, status: "ONDA 10",
+  - {id: instrumento_mandato, agente: lex, dominio: juridico, tipo: http, metodo: POST, rota: /api/mandato/minuta, status: PRONTO,
      descricao: "Minuta: requerimento(ALERJ)/representacao(TCE)/noticia de fato(MP)/post", quando_usar: "'faca um requerimento sobre esse contrato'",
      args: {tipo: "requerimento|representacao|noticia_fato|post", base: "cnpj/ug/processo/id parecer"}, retorno: "{path_docx,texto}", nota: "diligencia/representacao, nunca condenacao"}
   # ---- MERCADO (Massare) ----

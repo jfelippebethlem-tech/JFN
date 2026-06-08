@@ -1432,6 +1432,19 @@ async def api_radar_ciclo():
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.post("/api/mandato/minuta")
+async def api_mandato_minuta(payload: Optional[dict] = None):
+    """Onda 10 — Instrumento de mandato: gera minuta .docx (requerimento ALERJ / representação TCE /
+    notícia de fato MP / post). Body {"tipo","base"}. Diligência/representação, NUNCA condenação."""
+    try:
+        from compliance_agent.mandato import gerar
+
+        p = payload or {}
+        return JSONResponse(content=gerar(p.get("tipo", ""), p.get("base", "")))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/status")
 async def status():
     """Check agent status."""

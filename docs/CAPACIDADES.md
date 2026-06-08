@@ -21,7 +21,7 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `busca_juridica` | lex | cli | `compliance_agent.collectors.lexml_fetcher --termo "<TERMO>"` | PRONTO | 'qual a lei sobre...', jurisprudencia |
 | `buscar_direcionamento` | lex | http | `/api/sei/direcionamento` | PRONTO | 'ache editais restritivos na UG X' |
 | `consultar_pncp` | lex | http | `/api/pncp` | PRONTO | analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos) |
-| `instrumento_mandato` | lex | http | `/api/mandato/minuta` | ONDA 10 | 'faca um requerimento sobre esse contrato' |
+| `instrumento_mandato` | lex | http | `/api/mandato/minuta` | PRONTO | 'faca um requerimento sobre esse contrato' |
 | `ler_processo_sei` | lex | cli | `tools.sei_reader "<NUMERO>"` | PRONTO | ler/analisar um processo SEI especifico. FORMATO do numero: 'SEI-UUUUUU/NNNNNN/AAAA' (ex.: SEI-070002/008633/2022) ou 'E-NN/NNN/AAAA' (ex.: E-12/345/2026) — unidade/sequencial/ano. Aceita com ou sem o prefixo SEI-. |
 | `parecer_juridico` | lex | cli | `compliance_agent.lex "<empresa|cnpj>"` | PRONTO | 'tem direcionamento?', parecer |
 | `massare_calendario` | massare | http | `/api/massare/calendario` | PRONTO | 'agenda da semana', 'tem dado importante hoje?' |

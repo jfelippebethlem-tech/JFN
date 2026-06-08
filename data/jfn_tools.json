@@ -497,6 +497,37 @@
     {
       "type": "function",
       "function": {
+        "name": "instrumento_mandato",
+        "description": "Minuta: requerimento(ALERJ)/representacao(TCE)/noticia de fato(MP)/post — usar quando: 'faca um requerimento sobre esse contrato'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "tipo": {
+              "type": "string",
+              "description": "requerimento|representacao|noticia_fato|post"
+            },
+            "base": {
+              "type": "string",
+              "description": "cnpj/ug/processo/id parecer"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "lex",
+        "dominio": "juridico",
+        "tipo": "http",
+        "rota": "/api/mandato/minuta",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "massare_cenarios",
         "description": "Snapshot multi-horizonte + regime + tom de noticias(Onda 8) — usar quando: 'como esta o mercado', 'dolar/bolsa/ouro hoje'",
         "parameters": {
@@ -998,7 +1029,6 @@
     }
   ],
   "futuras_desabilitadas": [
-    "instrumento_mandato",
     "trace"
   ],
   "politica_modelo": {
