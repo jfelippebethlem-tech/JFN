@@ -95,6 +95,14 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     except Exception:  # noqa: BLE001
         pass
 
+    # 2e) Pistas de investigação hospedada (Max Intel/OSINT-Brazuca/RedeCNPJ…) — deep-links MANUAIS
+    try:
+        from compliance_agent.providers import lookup as _plookup
+        nome_alvo = (d.get("cadastro") or {}).get("razao_social") or alvo
+        d["links_investigacao"] = (_plookup("links", nome=nome_alvo, cnpj=cnpj).dados or {}).get("links", [])
+    except Exception:  # noqa: BLE001
+        pass
+
     # 3) OB / contratos (dado interno)
     d["ob"] = _resumo_ob(cnpj)
 
