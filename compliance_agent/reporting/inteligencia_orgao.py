@@ -361,20 +361,26 @@ def render_md(ctx: dict) -> str:
     # Tabelas de OBs por ano (pagamentos individuais a cada fornecedor)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
     add("")
-    add("> Uma tabela por exercício, com cada pagamento (OB) e o fornecedor. OB = pagamento definitivo. "
-        "OBs de valor R$ 0,00 são estornos/regularizações.")
+    add("> Por exercício, as **maiores OBs** (materiais) e o fornecedor; a **lista completa** de cada "
+        "pagamento está na **planilha XLSX** deste relatório. OB = pagamento definitivo; OBs de R$ 0,00 são "
+        "estornos/regularizações.")
     add("")
     if p["tem_dados"]:
+        TOP_OB_ANO = 12  # padrão de due diligence: destacar o material; detalhe completo na planilha
         for a in p["anos"]:
             b = p["por_ano"][a]
             add(f"### Exercício {a} — {b['n']} OBs — Total pago: R$ {moeda(b['total'])}")
             add("")
+            maiores = sorted(b["linhas"], key=lambda ln: -(ln.get("valor") or 0))[:TOP_OB_ANO]
             add("| # | Nº OB | Data | Fornecedor (CNPJ) | Valor (R$) |")
             add("|---:|---|---|---|---:|")
-            for i, ln in enumerate(b["linhas"], 1):
+            for i, ln in enumerate(maiores, 1):
                 forn = f"{ln['favorecido']} ({fmt_cnpj(ln['cnpj'])})" if ln["cnpj"] else ln["favorecido"]
                 add(f"| {i} | {ln['numero_ob']} | {ln['data']} | {forn} | {moeda(ln['valor'])} |")
-            add(f"| | | | **Total {a}** | **{moeda(b['total'])}** |")
+            add(f"| | | | **Total {a} ({b['n']} OBs)** | **{moeda(b['total'])}** |")
+            if b["n"] > len(maiores):
+                add("")
+                add(f"> _{len(maiores)} maiores de {b['n']} OBs do exercício — lista completa na planilha XLSX._")
             add("")
     else:
         add("_Sem OBs para esta UG._")
@@ -463,10 +469,13 @@ def render_pdf(ctx: dict, destino: str) -> str:
             pdf.add_page(); pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
             pdf.cell(0, 9, _t(f"Pagamentos (OBs) — exercício {a}"), ln=True)
             pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 9)
-            pdf.cell(0, 6, _t(f"{b['n']} OBs — Total: R$ {moeda(b['total'])}"), ln=True); pdf.ln(1)
+            _maiores = sorted(b["linhas"], key=lambda ln: -(ln.get("valor") or 0))[:12]
+            _nota = f"{b['n']} OBs — Total: R$ {moeda(b['total'])}" + (
+                f"  ·  {len(_maiores)} maiores abaixo; lista completa na planilha XLSX" if b["n"] > len(_maiores) else "")
+            pdf.cell(0, 6, _t(_nota), ln=True); pdf.ln(1)
             _tab_header(pdf, [("#", 9), ("Nº OB", 26), ("Data", 22), ("Fornecedor", 97), ("Valor (R$)", 36)])
             pdf.set_font(pdf._fam, "", 7)
-            for i, ln in enumerate(b["linhas"], 1):
+            for i, ln in enumerate(_maiores, 1):
                 _tab_row(pdf, [(str(i), 9, "R"), (_t(ln["numero_ob"]), 26, "L"), (_t(ln["data"])[:10], 22, "L"),
                                (_t(ln["favorecido"])[:60], 97, "L"), (moeda(ln["valor"]), 36, "R")], h=4.5)
             pdf.set_font(pdf._fam, "B", 8)
