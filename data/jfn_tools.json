@@ -274,6 +274,43 @@
     {
       "type": "function",
       "function": {
+        "name": "grafo_poder",
+        "description": "Grafo unico: socios+servidores+doacoes+contratos+nomeacoes — usar quando: 'quem esta ligado a X', 'a N saltos do deputado Y com contrato'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "alvo": {
+              "type": "string",
+              "description": "obrigatorio"
+            },
+            "saltos": {
+              "type": "integer",
+              "description": "int=2"
+            },
+            "so_contrato": {
+              "type": "boolean",
+              "description": "bool"
+            }
+          },
+          "required": [
+            "alvo"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/grafo",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "ler_processo_sei",
         "description": "Le processo SEI na integra (SIP autenticado; proxy BR) — usar quando: '/sei E-12/345/2026'",
         "parameters": {
@@ -724,7 +761,6 @@
     }
   ],
   "futuras_desabilitadas": [
-    "grafo_poder",
     "dossie",
     "buscar_direcionamento",
     "instrumento_mandato",
