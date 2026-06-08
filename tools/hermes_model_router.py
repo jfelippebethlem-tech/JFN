@@ -24,6 +24,11 @@ DEFAULT = ("gemini", "gemini-2.5-flash")
 PESADO = ("gemini", "gemini-2.5-pro")
 # reforço se o pesado falhar (failure-fallback já cobre, mas explicitamos a intenção)
 PESADO_FALLBACK = ("mistral", "mistral-large-latest")
+# BULK: tarefas LLM PESADAS NO VOLUME mas SIMPLES/REPETITIVAS (extração SEI em massa, classificação de
+# notícias em lote, normalização) → nous 100% FREE, sem cota (decisão do dono 2026-06-08). Qualidade
+# suficiente p/ trabalho repetitivo; não queima a cota free-tier do gemini.
+# NOTA: NÃO se aplica ao sweep SIAFE/coletores (código determinístico, SEM LLM) nem a OCR/visão (easyocr/gemini).
+BULK = ("nous", "stepfun/step-3.7-flash:free")
 
 # gatilhos de "caso difícil" → escalar p/ PESADO
 _GATILHOS = re.compile(
@@ -37,9 +42,13 @@ _LIMIAR_LONGO = 600  # chars
 
 
 def escolher_modelo(texto: str, tem_anexo_pdf_ou_imagem: bool = False,
-                    forcar_pesado: bool = False) -> tuple[str, str]:
-    """Retorna (provider, model). Default free; escala p/ PESADO em caso difícil.
-    Anexo PDF/imagem fica no default (gemini-2.5-flash já é multimodal/visão — spec: visao_ocr=flash)."""
+                    forcar_pesado: bool = False, tarefa: str = "") -> tuple[str, str]:
+    """Retorna (provider, model).
+    - tarefa in {bulk, repetitivo, lote}: nous (100% free) — trabalho LLM de volume alto e simples.
+    - default free (gemini-2.5-flash); escala p/ PESADO (gemini-2.5-pro) em caso difícil.
+    Anexo PDF/imagem fica no default (gemini-2.5-flash é multimodal — spec: visao_ocr=flash)."""
+    if (tarefa or "").lower() in {"bulk", "repetitivo", "lote", "massa"}:
+        return BULK
     t = texto or ""
     if forcar_pesado or _GATILHOS.search(t) or len(t) >= _LIMIAR_LONGO:
         return PESADO

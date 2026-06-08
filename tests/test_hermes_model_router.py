@@ -21,3 +21,11 @@ def test_mensagem_longa_escala():
 
 def test_forcar_pesado():
     assert escolher_modelo("oi", forcar_pesado=True) == PESADO
+
+
+def test_bulk_repetitivo_usa_nous():
+    from tools.hermes_model_router import escolher_modelo, BULK
+    assert escolher_modelo("classifique esta noticia", tarefa="bulk") == BULK
+    assert escolher_modelo("extraia campos", tarefa="lote") == BULK
+    # sem tarefa=bulk, segue a regra normal (parecer -> pesado, nao nous)
+    assert escolher_modelo("parecer juridico") != BULK
