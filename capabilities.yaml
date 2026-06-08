@@ -82,9 +82,9 @@ capacidades:
   - {id: massare_carteira, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/carteira, status: "ONDA 9",
      descricao: "Modo carteira MANUAL: holdings em data/carteira.json x macro/regime/teses (sem broker)", quando_usar: "'como esta minha carteira'", args: {}, retorno: "{posicoes,alertas,leitura_macro}", fonte: "dados gratis (Yahoo/Stooq/brapi/websocket cripto)"}
   # ---- RADAR ----
-  - {id: vigiar, agente: jfn, dominio: radar, tipo: http, metodo: POST, rota: /api/radar/vigiar, status: "ONDA 6",
+  - {id: vigiar, agente: jfn, dominio: radar, tipo: http, metodo: POST, rota: /api/radar/vigiar, status: PRONTO,
      descricao: "Adiciona alvo a watchlist; alerta no Telegram em evento (PNCP/DOERJ/SIAFE/GDELT)", quando_usar: "'/vigiar <cnpj|ug|nome>'", args: {alvo: obrigatorio, tipo: "cnpj|ug|nome|objeto"}, retorno: "{watchlist}"}
-  - {id: radar_status, agente: jfn, dominio: radar, tipo: http, metodo: GET, rota: /api/radar/status, status: "ONDA 6",
+  - {id: radar_status, agente: jfn, dominio: radar, tipo: http, metodo: GET, rota: /api/radar/status, status: PRONTO,
      descricao: "O que o Radar vigia + ultimos alertas", quando_usar: "'o que voce monitora', 'teve alerta hoje'", args: {}, retorno: "{watchlist,alertas_recentes}"}
   # ---- COLETA / SISTEMA ----
   - {id: siafe_atualizar, agente: jfn, dominio: coleta, tipo: http, metodo: POST, rota: /api/siafe/atualizar, status: PRONTO,

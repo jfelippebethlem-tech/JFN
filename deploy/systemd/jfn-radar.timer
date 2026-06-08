@@ -1,0 +1,12 @@
+[Unit]
+Description=JFN — agenda o Radar (ciclo de vigilância a cada 20 minutos)
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=20min
+AccuracySec=1min
+Persistent=true
+Unit=jfn-radar.service
+
+[Install]
+WantedBy=timers.target

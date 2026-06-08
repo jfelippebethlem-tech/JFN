@@ -32,8 +32,8 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `massare_placar` | massare | http | `/api/massare/placar` | PRONTO | 'o Massare acerta?' |
 | `massare_prever` | massare | http | `/api/massare/prever` | PRONTO | 'previsao do Ibovespa', 'BTC vai subir?' |
 | `massare_teses` | massare | http | `/api/massare/teses` | ONDA 9 | 'quais as teses agora', 'o que move o mercado' |
-| `radar_status` | jfn | http | `/api/radar/status` | ONDA 6 | 'o que voce monitora', 'teve alerta hoje' |
-| `vigiar` | jfn | http | `/api/radar/vigiar` | ONDA 6 | '/vigiar <cnpj|ug|nome>' |
+| `radar_status` | jfn | http | `/api/radar/status` | PRONTO | 'o que voce monitora', 'teve alerta hoje' |
+| `vigiar` | jfn | http | `/api/radar/vigiar` | PRONTO | '/vigiar <cnpj|ug|nome>' |
 | `skill_detalhe` | yoda | cli | `telegram /skill <id>` | PRONTO | 'como funciona a skill X', detalhe de uma capacidade |
 | `skills` | yoda | cli | `telegram /skills [filtro]` | PRONTO | 'o que voce sabe fazer', 'quais skills', 'capacidades' |
 | `skills_reload` | yoda | cli | `telegram /skills_reload` | PRONTO | apos editar o YAML na VM |
