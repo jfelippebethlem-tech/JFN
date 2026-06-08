@@ -574,6 +574,84 @@
     {
       "type": "function",
       "function": {
+        "name": "massare_focus",
+        "description": "Boletim Focus (BCB/Olinda): Selic/IPCA/PIB/cambio + variacao semanal — usar quando: 'o que o mercado espera de juros/inflacao'",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "massare",
+        "dominio": "mercado",
+        "tipo": "http",
+        "rota": "/api/massare/focus",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "massare_fundamentos",
+        "description": "Fundamentos de acao BR (P/L,DY,ROE,balancos CVM) — usar quando: 'fundamentos da PETR4'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ticker": {
+              "type": "string",
+              "description": "obrigatorio"
+            }
+          },
+          "required": [
+            "ticker"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "massare",
+        "dominio": "mercado",
+        "tipo": "http",
+        "rota": "/api/massare/fundamentos",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "massare_calendario",
+        "description": "Agenda macro (US/BR/China): CPI/NFP/FOMC/COPOM/PMI China, previsto vs anterior — usar quando: 'agenda da semana', 'tem dado importante hoje?'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "dias": {
+              "type": "integer",
+              "description": "int=7"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "massare",
+        "dominio": "mercado",
+        "tipo": "http",
+        "rota": "/api/massare/calendario",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "vigiar",
         "description": "Adiciona alvo a watchlist; alerta no Telegram em evento (PNCP/DOERJ/SIAFE/GDELT) — usar quando: '/vigiar <cnpj|ug|nome>'",
         "parameters": {
@@ -878,9 +956,6 @@
   "futuras_desabilitadas": [
     "instrumento_mandato",
     "massare_teses",
-    "massare_focus",
-    "massare_fundamentos",
-    "massare_calendario",
     "massare_carteira",
     "trace"
   ],

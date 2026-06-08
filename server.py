@@ -504,6 +504,46 @@ async def api_relatorio_orgao(payload: Optional[dict] = None):
 
 # ── MASSARE (mercado/predição) — exposto no barramento para o Yoda ────────────
 
+@app.get("/api/massare/focus")
+async def api_massare_focus(ano: str = ""):
+    """Onda 8 — Boletim Focus (BCB/Olinda): Selic/IPCA/PIB/câmbio (mediana), sem chave."""
+    try:
+        from massare.focus import boletim
+        return JSONResponse(content=boletim(ano or None))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/massare/calendario")
+async def api_massare_calendario(dias: int = 7):
+    """Onda 8 — Agenda macro (CPI/NFP/FOMC/COPOM/PMI China) via Finnhub (chave grátis)."""
+    try:
+        from massare.calendar import agenda
+        return JSONResponse(content=agenda(dias))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/massare/fundamentos")
+async def api_massare_fundamentos(ticker: str):
+    """Onda 8 — Fundamentos de ação BR (P/L, DY, ROE) via brapi.dev."""
+    try:
+        from massare.fundamentos import fundamentos
+        return JSONResponse(content=fundamentos(ticker))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/massare/noticias")
+async def api_massare_noticias(tema: str = "", janela: str = "2d"):
+    """Onda 8 — Notícias/narrativas de mercado (GDELT, sem chave). Sem tema = boletim multi-tema."""
+    try:
+        from massare import news
+        return JSONResponse(content=news.coletar(tema, janela) if tema else news.boletim_temas(janela=janela))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/api/massare/placar")
 async def api_massare_placar():
     """Acurácia out-of-sample acumulada + sentimento de mercado (Fear&Greed/VIX)."""
