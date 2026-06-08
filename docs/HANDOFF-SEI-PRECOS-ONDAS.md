@@ -40,6 +40,20 @@ camada `providers/`), 121 testes verdes, 4/6 chaves ativas.
   mensal 2016→atual com **Previsão Inicial(LOA)·Atualizada·A Realizar·REALIZADA** por Poder/Categoria/Órgão/UG.
   Parser validado no dado real; **ingestão NÃO rodada** (evitar lock c/ sweep — rodar `tfe_receita.ingerir()` com
   sweep idle). Próximo: cruzar realizada×prevista (LOA) e receita×despesa no relatório de órgão.
+- **Onda 12 — providers OSINT grátis ✅ (2026-06-08, do PATCH por Telegram).** Implementado ADAPTADO ao
+  `base.py` real (o spec era pseudocódigo idealizado). Commits `2d73ea3`/`6a731a8`/`adc4969`/`154415f`/`915cd55`:
+  - **registry chain BrasilAPI→OpenCNPJ→CNPJ.ws** (add `OpenCNPJ`+`CNPJws`, shape canônico, confirmados ao vivo;
+    BrasilAPI tem rate-limit 429 → cadeia cobre). `CNPJpw` vira último fallback.
+  - **Querido Diário** (`gazettes_providers`): base `api.queridodiario.ok.org.br` (a do spec está atrás de
+    Cloudflare). Confirmado: 5167 diários RJ.
+  - **TSE doador×contrato** (`eleitoral_providers`): store SQLite **dedicado** `data/doacao_tse.db` (índice
+    doador_doc/nome), **separado do compliance.db** (não incha/WAL). Loader streaming lê só `*_RJ.csv` do ZIP
+    nacional, guarda só RJ, **apaga o ZIP** (storage-safe), guarda de disco. **Populado: 20.718 doações RJ/2022
+    em 3,2 MB.** CAVEAT: CNPJ público **mascara CPF do sócio** → casa por NOME (indício, não acusação).
+  - **Rotas** `GET /api/diario` + `GET /api/doador_contrato` no server.py; **capabilities.yaml** `consultar_diario`
+    + `doador_contrato_qsa` (entram no `/lista`/skilltree — 46 caps). `.env.example` atualizado.
+  - **Pendente Onda 12 (menor):** idoneidade ainda só CEIS (falta CNEP); popular outros anos do TSE
+    (`carregar_doacoes_rj(2018/2014)` p/ doação direta de empresa ≤2014) — on-demand, não em cron.
 - **Onda D — paralelizar enrichers OSINT do render** (opensanctions/aleph/midia/links sequenciais no
   `render_pdf_html`); rapidez. Pura, sem browser.
 - **Pendência UX:** `/lista` mostra menos que `/capacidades` — unificar (o dono quer tudo junto). ✅ FEITO
