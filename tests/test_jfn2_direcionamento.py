@@ -33,7 +33,10 @@ def test_dados_insuficientes_nao_chama_llm():
         chamou["n"] += 1
         return "{}"
     out = asyncio.run(DC.avaliar_direcionamento("", "", gerar=_fake))
-    assert out["grau"] == "verde" and out["dados_suficientes"] is False and chamou["n"] == 0
+    assert out["grau"] == "indeterminado" and out["dados_suficientes"] is False and chamou["n"] == 0
+    # texto que NÃO é edital (menu do SEI / contrato) também é insuficiente — não chama o LLM
+    out2 = asyncio.run(DC.avaliar_direcionamento("Controle de Processos. Termo Aditivo ao Contrato. " * 80, "", gerar=_fake))
+    assert out2["dados_suficientes"] is False and chamou["n"] == 0
 
 
 def test_avaliar_parseia_resposta_llm():
