@@ -5,12 +5,13 @@
 > config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
 > `compliance_agent/skilltree.py` reload fail-safe+sync+render, +5 capacidades `sistema`, 8 testes — commit `5279edf`)
 > · Onda 2 🟡 (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
-> **PRÓXIMO PASSO:** **Onda 13** (ÚLTIMA, adiada pelo dono): wiring dos slash commands/roteador no gateway Hermes
-> VIVO (`~/hermes-agent/gateway/run.py` — MessageHandler catch-all + `hermes_cli/commands.py`; gating admin via
-> `slash_access.py`); + itens SIAFE da Onda 11 quando os sweeps pararem. **TODAS as Ondas 0–12 com CORE ✅ e
-> commitadas; suíte JFN 2.0 = 92 TESTES VERDES (validação integral feita).** ~38 capacidades PRONTO. **Estratégia
-> de modelos: `docs/MODELO-ESTRATEGIA.md`** (free; default `gemini-2.5-flash`; pago só sob confirmação). **Chaves
-> Gemini: 9 chaves de 9 PROJETOS distintos = 9× cota free (rotação nativa Hermes).** Verificador: `tools.check_gemini_key`.
+> **STATUS: TODAS as Ondas 0–13 IMPLEMENTADAS ✅** (suíte JFN 2.0 = 93 testes verdes). Onda 13 fechada pela via de
+> menor risco: rotas HTTP da skilltree (JFN) + skill `/capacidades` em `~/.hermes/skills/` (bridge, sem tocar o core
+> do gateway vivo; ativa por `/reload-skills`). **PENDÊNCIAS RESIDUAIS (diferidas com motivo, não-bloqueantes):**
+> itens SIAFE da Onda 11 (sweep rodando) · crypto_ws daemon (Onda 8) · enriquecedores key-gated (brapi/Finnhub/
+> OpenSanctions/OpenCorporates — reportam INDISPONÍVEL). **Estratégia de modelos: `docs/MODELO-ESTRATEGIA.md`** (free;
+> default `gemini-2.5-flash`; pago só sob confirmação). **Chaves Gemini: 9 chaves de 9 PROJETOS = 9× cota free.**
+> **FECHAMENTO (Definição de Pronto abaixo) aguarda OK do dono:** merge `jfn-2.0`→`linux` + limpeza de memória.
 > **MODELO (corrigido — verificado jun/2026): default/pesado = `gemini-2.5-flash` (ÚNICO Gemini free junto do
 > flash-lite; Pro e 3.x são PAGOS); `gemini-2.5-pro` só sob "usar o modelo melhor" + confirmação. Rotação de 8
 > chaves Gemini JÁ ATIVA no `~/.hermes/auth.json` (pool nativo Hermes) — commit `0f1b8aa`.** Adiado p/ última
@@ -85,7 +86,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 | 10 | Lex + instrumentos de mandato | ✅ `mandato.py` gera minuta .docx (requerimento/representação/notícia de fato/post) c/ cláusula de honestidade + precedente LexML. `/api/mandato/minuta` |
 | 11 | Higiene técnica | 🟡 `/api/memoria` (consolidação) ✅; siafe_lock/split de módulos/deprecar agent.py = DIFERIDO (sweep SIAFE rodando + risco em sistema vivo; parte feita na otimização anterior) |
 | 12 | Enriquecimento OSINT/DD (hospedado) | ✅ `grafo_ftm.py` (export FollowTheMoney, `/api/grafo/ftm`) + `enrich/opensanctions.py` (PEP/sanções, key-gated, integrado no dossiê). OpenCorporates = key-gated futuro |
-| 13 | Wiring slash commands no gateway Yoda VIVO | ⏳ ADIADO p/ última onda (decisão do dono) — não arriscar o bot vivo |
+| 13 | Wiring slash commands no gateway Yoda VIVO | ✅ via MENOR RISCO: rotas HTTP `/api/skills\|skill\|skills/reload\|skills/validate` (JFN) + skill `/capacidades` em `~/.hermes/skills/` (bridge, ZERO edição no core do gateway; ativa por `/reload-skills` sem reiniciar). `/skills` é built-in Hermes → comando JFN = `/capacidades`. Versionada em `deploy/hermes-skills/` |
 
 > **STATUS GLOBAL (2026-06-08): Ondas 0–12 com CORE implementado e commitado; suíte JFN 2.0 = 92 testes verdes.**
 > Pendências EXPLÍCITAS (diferidas com motivo): wiring no gateway vivo (Onda 13, dono); itens SIAFE da Onda 11
