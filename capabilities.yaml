@@ -47,12 +47,14 @@ capacidades:
   - {id: dossie, agente: jfn, dominio: inteligencia, tipo: http, metodo: POST, rota: /api/dossie, status: PRONTO,
      descricao: "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias)", quando_usar: "'monte um dossie sobre X'", args: {alvo: obrigatorio}, retorno: "{path_pdf,resumo}"}
   # ---- SEI / LICITACAO ----
-  - {id: ler_processo_sei, agente: lex, dominio: juridico, tipo: cli, comando: "compliance_agent.collectors.sei_cdp \"<NUMERO>\"", status: PRONTO,
-     descricao: "Le processo SEI na integra (SIP autenticado; proxy BR)", quando_usar: "'/sei E-12/345/2026'", args: {numero: obrigatorio}, retorno: "{objeto,modalidade,fundamento,valor,cnpjs,documentos[]}"}
+  - {id: ler_processo_sei, agente: lex, dominio: juridico, tipo: cli, comando: "tools.sei_reader \"<NUMERO>\"", status: PRONTO,
+     descricao: "Le processo SEI-RJ na integra via login interno itkava/ITERJ (Chromium real, SEM captcha, vence o WAF). Cache 24h.",
+     quando_usar: "ler/analisar um processo SEI especifico. FORMATO do numero: 'SEI-UUUUUU/NNNNNN/AAAA' (ex.: SEI-070002/008633/2022) ou 'E-NN/NNN/AAAA' (ex.: E-12/345/2026) — unidade/sequencial/ano. Aceita com ou sem o prefixo SEI-.",
+     args: {numero: "obrigatorio — nº do processo, ex.: SEI-070002/008633/2022"}, retorno: "{numero,texto,documentos[],conteudo_documentos[],cnpjs[],valores[],erro?}"}
   - {id: consultar_pncp, agente: lex, dominio: juridico, tipo: http, metodo: GET, rota: /api/pncp, status: PRONTO,
      descricao: "PNCP API publica (editais/contratos/atas/DOCS) + roda R1-R12", quando_usar: "analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos)",
      args: {uf: "string=RJ", orgao: opcional, cnpj: opcional, abertos: bool}, retorno: "{contratacoes[{id_pncp,objeto,valor,docs,red_flags}]}", fonte: "pncp.gov.br API consultas (sem login)"}
-  - {id: buscar_direcionamento, agente: lex, dominio: juridico, tipo: http, metodo: GET, rota: /api/sei/direcionamento, status: "ONDA 5",
+  - {id: buscar_direcionamento, agente: lex, dominio: juridico, tipo: http, metodo: GET, rota: /api/sei/direcionamento, status: PRONTO,
      descricao: "Varre corpus (SEI+PNCP) e ranqueia direcionamento (R1/R7/R8/R12)", quando_usar: "'ache editais restritivos na UG X'", args: {ug: opcional, objeto: opcional}, retorno: "{processos[{ref,score,red_flags,trechos}]}"}
   - {id: parecer_juridico, agente: lex, dominio: juridico, tipo: cli, comando: "compliance_agent.lex \"<empresa|cnpj>\"", status: PRONTO,
      descricao: "Parecer R1-R12 + base TCU/TCE-RJ (grau verde/amarelo/vermelho)", quando_usar: "'tem direcionamento?', parecer", args: {alvo: obrigatorio}, retorno: "{grau_lex,path_lex,red_flags[]}"}

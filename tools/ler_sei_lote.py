@@ -64,10 +64,11 @@ def _pendentes(limite: int) -> list[str]:
 
 
 async def _rodar(numeros: list[str], headless: bool) -> dict:
+    # porta ÚNICA → reader itkava/ITERJ (sem captcha). headless ignorado (sempre headless).
     from compliance_agent.collectors import sei_cdp
     lido = erro = 0
     for i, n in enumerate(numeros, 1):
-        r = await sei_cdp.ler_processo_sei_launch(n, usar_cache=True, headless=headless)
+        r = await sei_cdp.ler_processo_sei(n, usar_cache=True)
         if r.get("erro") and not (r.get("texto") or r.get("conteudo_documentos")):
             erro += 1
             print(f"[{i}/{len(numeros)}] ✗ {n}: {str(r.get('erro'))[:90]}")
