@@ -33,9 +33,9 @@ capacidades:
   - {id: conflito_doador_contrato, agente: lex, dominio: auditoria, tipo: http, metodo: GET, rota: /api/conflito, status: PRONTO,
      descricao: "Cruza doacoes TSE com contratos/OB (doador->fornecedor)", quando_usar: "'quem me doou ganhou contrato', conflito de interesse",
      args: {cnpj: "um de cnpj|candidato", candidato: "string"}, retorno: "{rede[]}", fonte: "TSE + SIAFE/PNCP"}
-  - {id: sobrepreco, agente: lex, dominio: auditoria, tipo: http, metodo: GET, rota: /api/sobrepreco, status: "ONDA 3",
-     descricao: "Preco pago vs mediana (Compras Dados Abertos + SINAPI/EMOP/BPS)", quando_usar: "'esta caro?', superfaturamento, R4",
-     args: {cnpj: opcional, item: opcional}, retorno: "{itens[{preco_pago,mediana_ref,pct,fonte}]}"}
+  - {id: sobrepreco, agente: lex, dominio: auditoria, tipo: http, metodo: GET, rota: /api/sobrepreco, status: PRONTO,
+     descricao: "Preco pago vs mediana de referencia (Compras Dados Abertos, CATMAT/CATSER)", quando_usar: "'esta caro?', superfaturamento, R4",
+     args: {codigo: "int CATMAT|CATSER obrigatorio", valor: "float preco pago", servico: "bool (CATSER)"}, retorno: "{mediana_ref,p25,p75,pct,classificacao,fonte}"}
   - {id: cruzamento, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/cruzamento, status: PRONTO,
      descricao: "OB<->CNPJ<->SEI<->socios", quando_usar: "'cruze os dados da empresa X'", args: {cnpj: obrigatorio}, retorno: "{obs,processos_sei,socios}"}
   - {id: missao_autonoma, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/hermes/missao, status: PRONTO,

@@ -4,6 +4,7 @@ FERRAMENTAS DISPONÍVEIS (chame SÓ estas pelo id; se não houver ferramenta par
 - anomalias(ug,cnpj,exercicio) — triagem de risco; 'algo estranho em X'
 - cartel(ug) — conluio/cartel/combinacao
 - conflito_doador_contrato(cnpj,candidato) — 'quem me doou ganhou contrato', conflito de interesse
+- sobrepreco(codigo,valor,servico) — 'esta caro?', superfaturamento, R4
 - cruzamento(cnpj) — 'cruze os dados da empresa X'
 - missao_autonoma(missao) — pedido complexo/aberto
 - ler_processo_sei(numero) — '/sei E-12/345/2026'

@@ -11,7 +11,7 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `missao_autonoma` | jfn | http | `/api/hermes/missao` | PRONTO | pedido complexo/aberto |
 | `relatorio_inteligencia` | jfn | http | `/api/relatorio/inteligencia` | PRONTO | relatorio/auditoria/due diligence de empresa, CNPJ |
 | `relatorio_orgao` | jfn | http | `/api/relatorio/orgao` | PRONTO | auditoria de orgao/UG/secretaria |
-| `sobrepreco` | lex | http | `/api/sobrepreco` | ONDA 3 | 'esta caro?', superfaturamento, R4 |
+| `sobrepreco` | lex | http | `/api/sobrepreco` | PRONTO | 'esta caro?', superfaturamento, R4 |
 | `enriquecer_socios` | jfn | cli | `tools.enriquecer_socios_ob` | PRONTO | apos novo sweep |
 | `siafe_atualizar` | jfn | http | `/api/siafe/atualizar` | PRONTO | 'atualize o SIAFE' |
 | `siafe_coletar_ug` | jfn | cli | `compliance_agent.siafe_runner ug <UG> [ANO]` | PRONTO | backfill de UG |

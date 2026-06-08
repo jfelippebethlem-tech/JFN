@@ -179,6 +179,43 @@
     {
       "type": "function",
       "function": {
+        "name": "sobrepreco",
+        "description": "Preco pago vs mediana de referencia (Compras Dados Abertos, CATMAT/CATSER) — usar quando: 'esta caro?', superfaturamento, R4",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "codigo": {
+              "type": "integer",
+              "description": "int CATMAT|CATSER obrigatorio"
+            },
+            "valor": {
+              "type": "string",
+              "description": "float preco pago"
+            },
+            "servico": {
+              "type": "boolean",
+              "description": "bool (CATSER)"
+            }
+          },
+          "required": [
+            "codigo"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "lex",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/sobrepreco",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "cruzamento",
         "description": "OB<->CNPJ<->SEI<->socios — usar quando: 'cruze os dados da empresa X'",
         "parameters": {
@@ -687,7 +724,6 @@
     }
   ],
   "futuras_desabilitadas": [
-    "sobrepreco",
     "grafo_poder",
     "dossie",
     "buscar_direcionamento",
