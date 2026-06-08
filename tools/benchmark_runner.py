@@ -47,7 +47,7 @@ K_MIS = os.environ.get("MISTRAL_API_KEY", "")
 MODELOS = [
     ("Gemini-2.5-Flash-Lite", GEMINI, K_GEM, "gemini-2.5-flash-lite"),
     ("Gemini-2.5-Flash", GEMINI, K_GEM, "gemini-2.5-flash"),
-    ("Gemini-2.0-Flash", GEMINI, K_GEM, "gemini-2.0-flash"),
+    # gemini-2.0-flash REMOVIDO (desligado 01/06/2026). Free Gemini = só 2.5-flash/2.5-flash-lite.
     ("Mistral-Large", MISTRAL, K_MIS, "mistral-large-latest"),
     ("Mistral-Small", MISTRAL, K_MIS, "mistral-small-latest"),
     ("Mistral-Nemo", MISTRAL, K_MIS, "open-mistral-nemo"),
