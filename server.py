@@ -1465,6 +1465,49 @@ async def api_memoria(limite: int = 15):
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+# ---- Skilltree via HTTP (Onda 13, parte JFN — o comando /skills do Yoda chama estas rotas) ----
+@app.get("/api/skills")
+async def api_skills(filtro: str = ""):
+    """Skilltree (capacidades) agrupada por domínio — texto p/ o /skills do Telegram."""
+    try:
+        from compliance_agent.skilltree import SKILLTREE
+        return JSONResponse(content={"ok": True, "texto": SKILLTREE.render(filtro),
+                                     "n": len(SKILLTREE.capacidades), "sha": SKILLTREE.sha})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/skill")
+async def api_skill(id: str):
+    """Detalhe de uma capacidade (rota, args, quando usar, status) — p/ o /skill <id>."""
+    try:
+        from compliance_agent.skilltree import SKILLTREE
+        return JSONResponse(content={"ok": True, "texto": SKILLTREE.detalhe(id)})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.post("/api/skills/reload")
+async def api_skills_reload():
+    """Recarrega capabilities.yaml do disco (fail-safe) — p/ o /skills_reload (admin no Yoda)."""
+    try:
+        from compliance_agent.skilltree import SKILLTREE
+        return JSONResponse(content={"ok": True, **SKILLTREE.reload()})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/skills/validate")
+async def api_skills_validate():
+    """Valida o contrato (schema + rotas PRONTO existem) — p/ o /skills_validate (admin)."""
+    try:
+        from compliance_agent.skilltree import SKILLTREE
+        probs = SKILLTREE.validate()
+        return JSONResponse(content={"ok": not probs, "problemas": probs})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/status")
 async def status():
     """Check agent status."""
