@@ -122,16 +122,30 @@
       "type": "function",
       "function": {
         "name": "cartel",
-        "description": "Cartel/bid-rigging em grafo (aprofundado Onda 3 c/ QSA) — usar quando: conluio/cartel/combinacao",
+        "description": "Cartel/bid-rigging em grafo + QSA (concentracao, rodizio, socios em comum entre concorrentes) — usar quando: conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?'",
         "parameters": {
           "type": "object",
           "properties": {
+            "modo": {
+              "type": "string",
+              "description": "captura|dependencia|vizinhanca|cruzado|qsa"
+            },
+            "cnpj": {
+              "type": "string",
+              "description": "obrigatorio p/ vizinhanca/cruzado/qsa"
+            },
             "ug": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "top": {
               "type": "string",
               "description": "opcional"
             }
           },
-          "required": []
+          "required": [
+            "cnpj"
+          ]
         }
       },
       "_meta": {
