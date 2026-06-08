@@ -8,7 +8,7 @@ from __future__ import annotations
 from .base import CacheSQLite, Providers, Resultado
 from .leaks_providers import OffshoreLeaksLink
 from .links_providers import InvestigacaoHospedada
-from .ownership_providers import GLEIF
+from .ownership_providers import GLEIF, OpenCorporates
 from .registry_providers import BrasilAPICNPJ, CNPJpw
 from .sanctions_providers import OpenSanctionsSearch, PortalTransparenciaCEIS
 
@@ -23,7 +23,8 @@ def get_providers() -> Providers:
             p.registrar(b)
         for b in (PortalTransparenciaCEIS(), OpenSanctionsSearch()):  # sanctions (lookup_all)
             p.registrar(b)
-        p.registrar(GLEIF())  # ownership
+        for b in (GLEIF(), OpenCorporates()):  # ownership (GLEIF sem chave; OpenCorporates key-gated)
+            p.registrar(b)
         p.registrar(OffshoreLeaksLink())  # leaks
         p.registrar(InvestigacaoHospedada())  # links (agregadores hospedados)
         _PROV = p
