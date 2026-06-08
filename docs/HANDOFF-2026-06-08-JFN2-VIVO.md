@@ -3,6 +3,18 @@
 > **LER PRIMEIRO.** Continuação do `docs/JFN-2.0-IMPLEMENTACAO.md` (que tem o detalhe por onda + "Erros &
 > Aprendizados"). Branch de trabalho: **`jfn-2.0`** (pushada). Data: 2026-06-08. Ambiente: VM Linux ~/JFN.
 
+> 🟢 **ATUALIZAÇÃO 2026-06-08 (noite) — sessão autônoma. HEAD `linux`=`jfn-2.0`=`0911b28`.** Tudo pushado, **107 testes
+> verdes**, jfn/gateway active, **sweep SIAFE 2 intacto** o tempo todo. Entregue nesta leva: cruzamento TSE completo
+> (doador→sócio→fornecedor→UG→SEI); tabela mês a mês (5-B); **consolidação matriz+filiais por raiz** (STJ REsp 1.286.122);
+> **DD KEYLESS** — mídia adversa GDELT (4-C), ExifTool forense, e **camada `providers/`** (Onda 12: registry/sanctions/
+> ownership/leaks/**links**) com os agregadores hospedados (Max Intel, OSINT-Brazuca, Bellingcat, RedeCNPJ, JusBrasil,
+> Escavador) na seção 4-D + dossiê; OpenCorporates como backend de ownership (key-gated). **Chaves ativas: 3/6**
+> (OpenSanctions, Finnhub, brapi — validadas ao vivo). Chrome órfãos limpos (~490 MB). PNCP endurecido (não estoura
+> em 429). Honestidade SEI (#6) verificada+travada. **PENDE SÓ DO DONO:** (a) chaves grátis **ALEPH_API_KEY,
+> OPENCORPORATES_API_TOKEN, PORTAL_TRANSPARENCIA_KEY**; (b) decisão do **/lista fast-path** (modifica o core do bot vivo —
+> não fiz sozinho, é risco à interface principal); (c) seu **/relatorio de teste pelo Yoda**. Detalhe: bloco
+> "Continuação" em `docs/JFN-2.0-IMPLEMENTACAO.md` + `docs/REAVALIACAO-2026-06-08.md`.
+
 > ✅ **ATUALIZAÇÃO 2026-06-08 (tarde) — MERGE FEITO.** `jfn-2.0` foi mergeada na **`linux`** (fast-forward,
 > `linux == jfn-2.0 == 93fd5b8`, pushadas as duas). O working tree **agora está na `linux`**. Novidades desta
 > sessão já dentro: (a) `/relatorio` seção 3 com **doador→sócio→fornecedor→UG pagadora→SEI** (commit `1700e0b`);
