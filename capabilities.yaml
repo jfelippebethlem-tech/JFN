@@ -28,8 +28,8 @@ capacidades:
      descricao: "Anomalias em OBs (+Benford na Onda 3)", quando_usar: "triagem de risco; 'algo estranho em X'",
      args: {ug: opcional, cnpj: opcional, exercicio: opcional}, retorno: "{alertas[]}"}
   - {id: cartel, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/cartel, status: PRONTO,
-     descricao: "Cartel/bid-rigging em grafo (aprofundado Onda 3 c/ QSA)", quando_usar: "conluio/cartel/combinacao", exemplo: "tem cartel nas licitacoes da UG 133100?",
-     args: {ug: opcional}, retorno: "{comunidades[]}"}
+     descricao: "Cartel/bid-rigging em grafo + QSA (concentracao, rodizio, socios em comum entre concorrentes)", quando_usar: "conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?'", exemplo: "tem cartel nas licitacoes da UG 133100?",
+     args: {modo: "captura|dependencia|vizinhanca|cruzado|qsa", cnpj: "obrigatorio p/ vizinhanca/cruzado/qsa", ug: opcional, top: opcional}, retorno: "{modo,dados,aviso}"}
   - {id: conflito_doador_contrato, agente: lex, dominio: auditoria, tipo: http, metodo: GET, rota: /api/conflito, status: PRONTO,
      descricao: "Cruza doacoes TSE com contratos/OB (doador->fornecedor)", quando_usar: "'quem me doou ganhou contrato', conflito de interesse",
      args: {cnpj: "um de cnpj|candidato", candidato: "string"}, retorno: "{rede[]}", fonte: "TSE + SIAFE/PNCP"}
