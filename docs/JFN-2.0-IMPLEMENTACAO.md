@@ -408,3 +408,22 @@ consultas financeiras — aprovado pelo dono, base jurídica pronta); (2) **fast
   supervisor corretamente não relança); SIAFE 2 vivo (PID 218890). ⚠️ **24 processos chrome (~22% RAM)**, vários
   órfãos de 2 dias (crash antigo de Playwright) — limpeza dos órfãos antigos pendente de OK (não tocar o chromium do
   sweep vivo).
+
+### Continuação — DD KEYLESS + camada providers (Onda 12 reescrita) + chaves ativadas
+- **Chaves grátis ativadas no `.env` (gitignored) e validadas ao vivo:** OpenSanctions (Putin→sancionado/PEP),
+  Finnhub (60 eventos macro/7d), brapi (PETR4 P/L 4,9). `jfn.service` reiniciado a cada chave (reload-safe;
+  sweep é processo separado, intacto). **Faltam:** ALEPH_API_KEY, OPENCORPORATES_API_KEY, PORTAL_TRANSPARENCIA_KEY.
+- **`midia_adversa` (KEYLESS, GDELT) — commit anterior:** seção 4-C do relatório; classificação por fronteira de palavra.
+- **`exif` (ExifTool, local) — Onda 12:** forense de metadados de documentos SEI/PNCP.
+- **`0e06f0b` — Camada `providers/` (Onda 12 reescrita, AGREGANDO sem substituir enrich/*).** Spec
+  `JFN-SPEC-PROVIDERS-ONDA12`. Interface por função + backends c/ fallback + cache SQLite TTL + proveniência
+  (REAL|CACHE|INDISPONIVEL); **sem baixar base**. Backends: BrasilAPI→cnpj.pw (registry), Portal Transparência CEIS
+  + OpenSanctions (sanctions), GLEIF (ownership), ICIJ (leaks). **NOVO (ideia do dono "usar esses sites"):** provider
+  `links` com deep-links hospedados — **Max Intel, OSINT-Brazuca, Bellingcat, OSINT Framework, RedeCNPJ, JusBrasil,
+  Escavador**. Rotas `/api/empresa|idoneidade|ownership|leaks|links` (validador 43/44 PRONTO); seção 4-D no relatório.
+  Smoke ao vivo: `/api/empresa` BrasilAPI REAL (MGS, 1 sócio), `/api/links` entrega os agregadores. OpenCorporates
+  entra depois como 1 backend de ownership (1 classe + 1 linha, sem tocar rotas). **Suíte: 104 verdes.**
+- **Honestidade SEI (#6) VERIFICADA:** `_ler_integra_sei` usa o caminho itkava; leu 12k chars/3 docs ao vivo;
+  narrativa II-B só afirma leitura com `lido=True`. Travado por teste.
+- **Diretriz do dono:** API primeiro · free/free-tier só · self-host só leve sem alternativa (Aleph = via API) ·
+  **agregar, nunca substituir** · documentar cada checkpoint.
