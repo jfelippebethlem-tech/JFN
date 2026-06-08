@@ -5,15 +5,16 @@
 > config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
 > `compliance_agent/skilltree.py` reload fail-safe+sync+render, +5 capacidades `sistema`, 8 testes — commit `5279edf`)
 > · Onda 2 🟡 (`lex_conflito.py` doador↔SÓCIO↔OB ✅ testado) · pesquisa DD+OSINT ✅ · deps grátis instaladas ✅.
-> **PRÓXIMO PASSO:** **Onda 2 rotas** `/api/conflito`+`/api/pncp` em server.py (lex_conflito já existe; expandir
-> `collectors/pncp.py`) + validar o conflito com TSE (já **542k doações** no banco). Depois **Onda 3** (Benford/
-> sobrepreço/score). **ADIADO p/ ÚLTIMA ONDA (decisão do dono):** wiring dos slash commands/roteador no gateway
-> Hermes VIVO (`~/hermes-agent/gateway/run.py`; Hermes É python-telegram-bot mas usa MessageHandler catch-all +
-> registro próprio `hermes_cli/commands.py`, NÃO CommandHandler). **Política de modelo: manter `gemini-2.5-pro`**
-> p/ raciocínio pesado (decisão do dono — NÃO trocar p/ gemini-3-pro-preview do §7 do mestre).
-> **REGRA PERMANENTE:** toda skill nova SEMPRE entra no `capabilities.yaml` e aparece no `/lista`.
-> **Estado vivo:** sweep SIAFE 2 **PAUSADO** (flag `data/.pause_sweep_2`); download TSE **rodando** (`/tmp/tse_load.py`,
-> 542k doações; 2024+2022 RJ completos); Yoda gateway no ar; jfn.service ativo.
+> **PRÓXIMO PASSO:** **Onda 2c** (red flags R1/R7/R12 sobre o texto do edital PNCP via motor Lex — `baixar_documentos`
+> + análise; preencher `docs`/`red_flags` que hoje saem `[]` em `/api/pncp`), depois **Onda 3** (Benford/sobrepreço/
+> score). **Onda 2a `/api/conflito` ✅ PRONTO** (commit `fb8b9ef`, validado c/ 542k doações TSE). **Onda 2b `/api/pncp`
+> ✅ PRONTO** (commit `37e5922`, API consulta sondada e validada live: 64 editais RJ abertos). **ADIADO p/ ÚLTIMA ONDA
+> (dono):** wiring dos slash commands/roteador no gateway Hermes VIVO (`~/hermes-agent/gateway/run.py`; Hermes É
+> python-telegram-bot mas usa MessageHandler catch-all + `hermes_cli/commands.py`, NÃO CommandHandler). **Política de
+> modelo: manter `gemini-2.5-pro`** (decisão do dono). **REGRA PERMANENTE:** toda skill nova → `capabilities.yaml` + `/lista`.
+> **Estado vivo:** sweep SIAFE 2 **RETOMADO** (pid via supervisor; resume do checkpoint 86 UG:ano em
+> `data/sei_cache/siafe_sweep_full_2.json`; re-pausar com `touch data/.pause_sweep_2` ANTES de tocar módulo SIAFE);
+> download TSE **rodando**; Yoda gateway no ar; jfn.service ativo. ⚠️ Sweep rodando = NÃO mexer em módulos SIAFE.
 > **Branch `jfn-2.0`** (pushada). Tudo abaixo é o detalhe.
 
 ## ▶ RETOMADA RÁPIDA (ler PRIMEIRO se a sessão caiu / contexto estourou)
@@ -67,7 +68,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 |---|---|---|
 | 0 | capabilities.yaml + validador + obs_trace | 🟢 núcleo ✅ (gen_*→Onda 1; siafe_worker/SEI-proxy diferidos) |
 | 1 | Orquestração (router do YAML, política de modelo) | 🟡 geradores+config+roteador adaptativo+**skilltree** ✅; dispatcher nativo no gateway VIVO = ADIADO p/ última onda (decisão do dono) |
-| 2 | PNCP + conflito doador↔contrato (Lex) | 🟡 `lex_conflito.py` (doador↔SÓCIO↔OB) ✅ testado; TSE carregando; rotas /api/conflito+/api/pncp pendentes |
+| 2 | PNCP + conflito doador↔contrato (Lex) | 🟢 `/api/conflito` ✅ (542k doações TSE) + `/api/pncp` ✅ (API consulta, 64 editais RJ abertos); falta só 2c (red flags sobre edital baixado) |
 | 3 | Motor de risco (Benford/sobrepreço/score) | ⏳ |
 | 4 | Grafo de Poder + Dossiê 360 | ⏳ |
 | 5 | SEI inteligência em escala | ⏳ |
@@ -172,3 +173,15 @@ roteamento adaptativo (decisão acima).
   mantida** (decisão do dono). **Regra permanente:** toda skill nova → `capabilities.yaml` + `/lista`.
   **PRÓXIMO: Onda 2 rotas** `/api/conflito` (usa `lex_conflito.conflito()`, já existe e testado) + `/api/pncp`
   (expandir `collectors/pncp.py`) em `server.py`; validar com as **542k doações TSE** já no banco.
+- **2026-06-08 (Onda 2a+2b ✅, commits `fb8b9ef`+`37e5922`)** — **`/api/conflito`** (GET): expõe
+  `lex_conflito.conflito()` (doador TSE ↔ empresa|SÓCIO ↔ OB, via QSA = requisito do dono); validado contra
+  **542.244 doações** reais. Honesto: indício/CPF mascarado (LGPD)/score≠prova. Obs de dados: top dominado por
+  mega-empresa via sinal fraco (`cpf_mascarado` só) — tuning do `lex_conflito` p/ depois, não da rota.
+  **`/api/pncp`** (GET): **sondei a API real de consulta ANTES de codar** (não às cegas) — `/contratacoes/publicacao`
+  (histórico, janela `dataInicial..dataFinal`) e `/contratacoes/proposta` (abertos, `dataFinal≥hoje`, fiscalização
+  preventiva); `uf=RJ` filtra; `tamanhoPagina≥10`; id=`numeroControlePNCP`. `pncp.buscar_contratacoes(uf,datas,
+  modalidade,abertos,orgao_cnpj)` + `_simplificar_contratacao` (shape `{id_pncp,objeto,valor,docs,red_flags}`;
+  `docs/red_flags=[]` até a Onda 2c). modalidade=None varre 6/8/9/4 (maior risco). Validado live: **64 editais RJ
+  abertos**. 6 testes determinísticos (mock de rede). Ambas as capacidades → PRONTO no `capabilities.yaml`.
+  **Sweep SIAFE 2 RETOMADO** (a pedido do dono) — `rm data/.pause_sweep_2`; supervisor (cron watchdog) relançou
+  (resume do checkpoint). Onda 2 não toca SIAFE; re-pausar antes de qualquer módulo SIAFE.
