@@ -288,3 +288,51 @@ roteamento adaptativo (decisão acima).
   /api/memoria…). Sweeps SIAFE + TSE intactos (processos separados, fora do jfn.service). Config validada ANTES
   do religamento (config.yaml YAML ok, auth.json 9 chaves, skill no disco). NRestarts=0 (estável, sem crash-loop).
   **Único passo restante = Definição de Pronto (merge jfn-2.0→linux + limpeza de memória) — aguarda OK do dono.**
+
+## Diário — BATCH FINAL (2026-06-08): ajustes ao vivo, relatório e credenciais (para as próximas IAs)
+> O dono testou o sistema vivo (Telegram/Yoda) e apontou problemas reais; corrigimos tudo com o bot autorizado
+> a parar/religar. Registro o quê/como/porquê de cada item — e os ERROS no caminho.
+
+**Credenciais Gemini (rotação de cota free):**
+- O dono mandou 8 chaves `AQ.Ab8RN6…` (formato NOVO, por isso a busca por `AIza` dava 0). **Descoberta:** o
+  Hermes JÁ tinha as 8 no `~/.hermes/auth.json` (`credential_pool.gemini`, labels `gemini-proj1..8`) — a rotação
+  nativa (`recover_with_credential_pool` em 429) **nunca se perdeu**. Eu demorei a achar porque procurei no `.env`
+  antes do `auth.json` (lição: o pool do Hermes é o auth.json). Depois o dono trocou 1 chave (projeto duplicado) e
+  mandou uma 9ª nova → reconstruí o pool com **9 chaves de 9 PROJETOS distintos = 9× cota free** (deduplicado por
+  valor; labels proj1–9). Criei `tools/check_gemini_key.py` (dedup por fingerprint sha1, sem imprimir a chave).
+- **Pegadinha documentada:** limite free do Gemini é POR PROJETO Google, não por chave → 8 chaves só multiplicam se
+  forem de projetos distintos (o dono confirmou que são). char→token PT-BR ≈ 3,2 (medido); usar /3 conservador.
+
+**Política de modelo (verificada na web + API, jun/2026):** só `gemini-2.5-flash`/`2.5-flash-lite` são free; Pro e
+geração 3.x são PAGOS; `gemini-2.0-flash` desligado 01/06. **Erro meu corrigido:** cheguei a escolher `gemini-3-flash`
+achando free — é pago; voltei p/ 2.5-flash. Avaliei Gemma: free via Groq (gemma2-9b-it, instantâneo) e via a MESMA
+chave Gemini (gemma-4-31b-it, mesma cota) — NÃO supera o flash; entra por velocidade (bulk) + diversidade de provider.
+Fallback 100% grátis com diversidade: gemini flash-lite → Groq Gemma → Mistral → Nous. Pago (2.5-pro) só sob "usar o
+modelo melhor" + confirmação. Ver `docs/MODELO-ESTRATEGIA.md`. Commits `0f1b8aa`, `e15fad3`, `bd6e9da`.
+
+**Gateway Hermes (bot vivo — `~/hermes-agent`, repo próprio; backups com data):**
+- **Nunca tratar "Ok"/resposta vazia como erro:** `(empty)` em `gateway/run.py:~9418` mostrava um aviso assustador.
+  Trocado por cortesia: *"Perfeito! Fico à disposição… 🙂"* (nunca ignora o usuário). Validado por py_compile + restart.
+- **Não interromper tarefa em andamento:** `~/.hermes/config.yaml` `busy_input_mode: interrupt` → **queue** (+
+  `busy_text_mode: queue`). Agora ENFILEIRA a mensagem nova e processa depois (pedido do dono).
+- **Pendente:** `/lista` lento = LOOP do agente (a rota `/api/lista` é 29ms); fix = fast-path no gateway p/ comandos
+  fixos. "Esqueceu prefs/rotinas" = o restart limpou a SESSÃO VIVA; dados intactos (3 rotinas no cron + prefs no
+  `environment_hint` do config). NÃO houve perda de dados.
+
+**Relatório `/relatorio` de fornecedor — RECONSTRUÍDO (queixas reais do dono):** o PDF FPDF tinha CNPJ fora da margem,
+tabelas truncadas ("objeto…") e FALTAVAM perfil cadastral/sócios/OSINT (o `render_md` tinha, o `render_pdf` não).
+Migrado p/ o motor HTML→PDF (Onda 7): `inteligencia.py::render_pdf_html` (FPDF = fallback). **13 seções completas**
+(padrão Kroll/TCU): cadastral · sócios/diretores · **doações eleitorais dos sócios** (conflito) · OSINT (CEIS/CNEP+
+OpenSanctions) · **pagamentos Órgão(UG)×Ano** (tabela cruzada — o dono pediu por órgão, a lista por data ficava
+caótica) · concentração HHI · contratos · **matriz P×I (TCU)** · **Benford** · **co-endereço (cartel/laranja)** ·
+red flags c/ fundamento · recomendações · referências. **Linhas zebradas** em todas as tabelas (CSS do `render_html`).
+Validado live: Extreme Digital → 10/10 seções, PDF ~100KB. jfn.service recarregado (vivo). Commits `b24348c`,
+`12bd2f4`, e a completude.
+
+**SEI via itkava — ✅ VALIDADO AO VIVO:** `sei_cdp.ler_processo_sei` (delega ao `tools.sei_reader.ler` itkava) leu
+`SEI-140001/017080/2022` = **12.000 chars + 3 documentos** (sem captcha, login itkava). A consolidação da Onda 5
+funciona em produção; o Lex agora pode ler a íntegra real.
+
+**Estado final:** Yoda + JFN active; sweep SIAFE 2 rodando (~144 UG:ano); 9 chaves/9 projetos; relatório completo.
+**Falta (próxima sessão):** fast-path do /lista; conferir o parecer Lex com SEI real; **Definição de Pronto**
+(merge `jfn-2.0`→`linux` + limpeza de memória) — AGUARDA OK do dono. Ver `docs/HANDOFF-2026-06-08-JFN2-VIVO.md`.
