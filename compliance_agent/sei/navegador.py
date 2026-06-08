@@ -72,8 +72,24 @@ def abrir_processo(numero: str, usar_cache: bool = True) -> dict:
         m = _re.search(r"(SEI[- ]?\S+|E-\d[\w./-]+|\d{2}[./]\d{3,}[\w./-]*)", txt)
         relacionados.append({"numero": m.group(1).strip() if m else (r.get("texto") or "").strip(),
                              "titulo": (r.get("titulo") or "").strip(), "url": r.get("url") or ""})
-    return {"ok": True, "numero": numero, "url": integra.get("url", ""),
-            "texto": integra.get("texto", ""), "docs": docs, "relacionados": relacionados,
+    # diagnóstico honesto quando 0 docs: distinguir RED FLAG (acesso restrito) de falha técnica (busca)
+    texto = integra.get("texto", "") or ""
+    url = integra.get("url", "") or ""
+    low = texto.lower()
+    acesso_restrito = any(m in low for m in (
+        "acesso restrito", "nivel de acesso", "nível de acesso", "documento restrito",
+        "processo sigiloso", "credencial de acesso"))
+    motivo_zero = ""
+    if not docs:
+        if acesso_restrito:
+            motivo_zero = "acesso_restrito"  # 🔴 red flag se já há OB paga (deveria ser público)
+        elif "protocolo_pesquisar" in url or "iniciar processo" in low:
+            motivo_zero = "busca_nao_resolveu"  # ficou na tela de pesquisa — falha técnica do reader
+        else:
+            motivo_zero = "arvore_vazia"
+    return {"ok": True, "numero": numero, "url": url, "texto": texto,
+            "docs": docs, "relacionados": relacionados,
+            "acesso_restrito": acesso_restrito, "motivo_zero": motivo_zero,
             "cnpjs": integra.get("cnpjs", []), "valores": integra.get("valores", [])}
 
 
