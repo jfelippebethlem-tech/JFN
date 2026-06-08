@@ -34,7 +34,8 @@ TIPOS: dict[str, list[str]] = {
     "liquidacao": ["nota de liquidacao", "liquidacao"],
     "autorizacao_despesa": ["autorizacao de despesa", "nota de autorizacao de despesa", "nad"],
     "tramitacao": ["despacho de encaminhamento", "despacho", "informacao", "oficio", "memorando",
-                   "e-mail", "email", "recibo", "comprovante", "anexo", "capa"],
+                   "e-mail", "email", "recibo", "comprovante", "anexo", "capa",
+                   "termo de encerramento", "relatorio", "termo de juntada", "certidao"],
 }
 
 # documentos que carregam a tabela de itens com preço unitário (prioridade do varredor de preços)
@@ -56,13 +57,25 @@ def _n(s: str) -> str:
     return "".join(c for c in s if not unicodedata.combining(c))
 
 
-def classificar_doc(titulo: str) -> str:
-    """Tipo do documento pelo título. 'outros' quando nenhum rótulo casa (honesto, não chuta)."""
-    t = _n(titulo)
+def _classificar_texto(t: str, min_kw: int = 0) -> str:
+    """Casa o 1º tipo cujo keyword aparece em `t`. `min_kw`>0 ignora keywords curtas (uso em CONTEÚDO,
+    onde 'tr'/'nad'/'arp' dariam falso-positivo por substring — ex.: 'tr' em 'adminisTRacao')."""
     for tipo, kws in TIPOS.items():
-        if any(_n(k) in t for k in kws):
+        if any(_n(k) in t for k in kws if len(k) >= min_kw):
             return tipo
     return "outros"
+
+
+def classificar_doc(titulo: str, conteudo: str = "") -> str:
+    """Tipo do documento. Tenta pelo TÍTULO; se 'outros' e houver CONTEÚDO, classifica pelo CABEÇALHO
+    do texto (os ~400 1os chars, onde o SEI-RJ declara o tipo, ex.: 'TERMO DE ENCERRAMENTO',
+    'ATA DE REGISTRO DE PREÇOS'). Resolve o caso real (Onda 2) em que o título vem como ID numérico
+    e a tipagem por título falha. Só keywords longas (≥7) no conteúdo (evita falso-positivo por
+    substring). 'outros' quando nada casa (honesto, não chuta)."""
+    tipo = _classificar_texto(_n(titulo))
+    if tipo == "outros" and conteudo:
+        tipo = _classificar_texto(_n(conteudo[:400]), min_kw=7)
+    return tipo
 
 
 def tem_preco(tipo: str) -> bool:

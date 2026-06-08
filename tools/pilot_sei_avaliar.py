@@ -73,14 +73,14 @@ def processar(numero: str, gerar) -> dict:
     # calibração: salva a árvore real (rótulos como o SEI-RJ os nomeia — P0.2/P0.3)
     try:
         (CAL / f"arvore_{re.sub(r'[^0-9A-Za-z]', '_', numero)}.json").write_text(
-            json.dumps([{"titulo": d.titulo, "tipo": classificador_doc.classificar_doc(d.titulo),
+            json.dumps([{"titulo": d.titulo, "tipo": classificador_doc.classificar_doc(d.titulo, d.conteudo),
                          "url": d.url, "formato": d.formato} for d in docs], ensure_ascii=False, indent=2),
             encoding="utf-8")
     except Exception:  # noqa: BLE001
         pass
     tipos = Counter()
     for d in docs:
-        tipo = classificador_doc.classificar_doc(d.titulo)
+        tipo = classificador_doc.classificar_doc(d.titulo, d.conteudo)
         tipos[tipo] += 1
         if classificador_doc.tem_preco(tipo) and d.conteudo:
             itens, metodo, conf = extrator_precos.extrair_itens(d.conteudo, gerar=gerar)

@@ -15,6 +15,20 @@ def test_classificar_doc_por_titulo():
     assert tem_preco("homologacao") and not tem_preco("tr")
 
 
+def test_classificar_por_conteudo_quando_titulo_numerico():
+    """Onda 2: título vem como ID numérico → classifica pelo cabeçalho do conteúdo. Sem falso-positivo
+    de keyword curta por substring (ex.: 'tr' em 'administracao' NÃO vira termo_referencia)."""
+    from compliance_agent.sei.classificador_doc import classificar_doc
+    # título numérico + conteúdo de ARP → detecta ata_rp pelo conteúdo
+    assert classificar_doc("132513499", "ATA DE REGISTRO DE PRECOS n 01/2024 itens e valores") == "ata_rp"
+    # título numérico + conteúdo de tramitação → tramitacao
+    assert classificar_doc("99682088", "Diretoria de Administracao. TERMO DE ENCERRAMENTO de processo.") == "tramitacao"
+    # texto administrativo sem tipo de doc → 'outros' (NÃO falso-positivo de 'tr'/'nad')
+    assert classificar_doc("123", "Empresa de Obras. Considerando a quitacao integral do faturamento.") == "outros"
+    # título informativo ainda prevalece (compatibilidade)
+    assert classificar_doc("Termo de Homologacao", "qualquer coisa") == "homologacao"
+
+
 def test_classificar_rotulos_reais_calibrados():
     """Rótulos REAIS vistos no piloto SRP (UG 270060) — calibração empírica."""
     from compliance_agent.sei.classificador_doc import classificar_doc, tem_preco
