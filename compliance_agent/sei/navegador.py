@@ -76,7 +76,9 @@ def abrir_processo(numero: str, usar_cache: bool = True) -> dict:
     texto = integra.get("texto", "") or ""
     url = integra.get("url", "") or ""
     low = texto.lower()
-    acesso_restrito = any(m in low for m in (
+    # CADEADO (ícone — sinal mais confiável que o texto) OU marcadores textuais
+    cadeado = bool(integra.get("cadeado"))
+    acesso_restrito = cadeado or any(m in low for m in (
         "acesso restrito", "nivel de acesso", "nível de acesso", "documento restrito",
         "processo sigiloso", "credencial de acesso"))
     motivo_zero = ""
@@ -89,7 +91,8 @@ def abrir_processo(numero: str, usar_cache: bool = True) -> dict:
             motivo_zero = "arvore_vazia"
     return {"ok": True, "numero": numero, "url": url, "texto": texto,
             "docs": docs, "relacionados": relacionados,
-            "acesso_restrito": acesso_restrito, "motivo_zero": motivo_zero,
+            "acesso_restrito": acesso_restrito, "cadeado": cadeado,
+            "n_docs_restritos": int(integra.get("n_docs_restritos") or 0), "motivo_zero": motivo_zero,
             "cnpjs": integra.get("cnpjs", []), "valores": integra.get("valores", [])}
 
 

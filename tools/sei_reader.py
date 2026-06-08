@@ -75,6 +75,7 @@ async def _extrair_de_todos_frames(pg) -> dict:
     """Roda o extractor da árvore/texto em TODOS os frames (o SEI usa iframes ifrArvore/ifrVisualizacao)."""
     from compliance_agent.collectors.sei_cdp import _JS_LE_ARVORE_E_TEXTO
     docs, rel, textos = {}, {}, []
+    cadeado = False
     for fr in pg.frames:
         try:
             d = await fr.evaluate(_JS_LE_ARVORE_E_TEXTO)
@@ -86,9 +87,12 @@ async def _extrair_de_todos_frames(pg) -> dict:
         for r in d.get("relacionados", []):  # processos relacionados (cadeia licitação↔contrato↔pagamento)
             if r.get("url"):
                 rel[r["url"]] = r
+        cadeado = cadeado or bool(d.get("cadeado"))  # cadeado de acesso restrito em qualquer frame
         if d.get("texto") and len(d["texto"]) > 80:
             textos.append(d["texto"])
-    return {"documentos": list(docs.values()), "relacionados": list(rel.values()),
+    docs_l = list(docs.values())
+    return {"documentos": docs_l, "relacionados": list(rel.values()), "cadeado": cadeado,
+            "n_docs_restritos": sum(1 for d in docs_l if d.get("restrito")),
             "texto": "\n\n".join(textos)[:20000]}
 
 
@@ -129,7 +133,8 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     await pg.wait_for_timeout(3000)
     dump = await _extrair_de_todos_frames(pg)
     res = {"numero": proc, "url": pg.url, "documentos": dump["documentos"],
-           "relacionados": dump.get("relacionados", []), "texto": dump["texto"],
+           "relacionados": dump.get("relacionados", []), "cadeado": dump.get("cadeado", False),
+           "n_docs_restritos": dump.get("n_docs_restritos", 0), "texto": dump["texto"],
            "captcha_resolvido": False, "_login": {"ok": True, "via": "sei_reader/itkava"}}
     # conteúdo dos primeiros documentos
     docs_txt = []
