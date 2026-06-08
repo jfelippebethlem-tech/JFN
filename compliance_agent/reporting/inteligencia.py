@@ -189,7 +189,32 @@ def buscar_candidatos(termo: str, limite: int = 8) -> list[dict]:
         finally:
             con.close()
 
-    ordenados = sorted(cands.values(), key=lambda c: (c["total_pago"], c["n_obs"]), reverse=True)
+    # colapsa estabelecimentos da MESMA raiz (8 díg.) num candidato único — matriz+filiais = uma só PJ
+    # (CC arts. 44/985/1.142; STJ REsp 1.286.122). Evita o Yoda "duplicar" a empresa e consolida o total do grupo.
+    grupos: "OrderedDict[str, dict]" = OrderedDict()
+    for c in cands.values():
+        raiz = so_digitos(c["cnpj"])[:8]
+        g = grupos.setdefault(raiz, {"membros": [], "total_pago": 0.0, "n_obs": 0})
+        g["membros"].append(c)
+        g["total_pago"] += c["total_pago"]
+        g["n_obs"] += c["n_obs"]
+    colapsados = []
+    for raiz, g in grupos.items():
+        membros = g["membros"]
+        # representante: a matriz (0001) se houver, senão o estabelecimento de maior valor pago
+        matriz = next((m for m in membros if so_digitos(m["cnpj"])[8:12] == "0001"), None)
+        rep = matriz or max(membros, key=lambda m: (m["total_pago"], m["n_obs"]))
+        nome = rep["nome"] or ""
+        if len(membros) > 1:
+            if matriz:
+                n_fil = len(membros) - 1
+                nome = f"{nome} (matriz + {n_fil} {'filiais' if n_fil > 1 else 'filial'})"
+            else:
+                nome = f"{nome} ({len(membros)} estabelecimentos — filiais)"
+        colapsados.append({"cnpj": rep["cnpj"], "nome": nome, "fonte": rep["fonte"],
+                           "total_pago": round(g["total_pago"], 2), "n_obs": g["n_obs"],
+                           "raiz": raiz, "n_estabelecimentos": len(membros)})
+    ordenados = sorted(colapsados, key=lambda c: (c["total_pago"], c["n_obs"]), reverse=True)
     return ordenados[:limite]
 
 
@@ -216,16 +241,19 @@ def consultar_pagamentos(cnpj: str, anos: Optional[list[int]] = None) -> dict:
     }
     """
     out = {"tem_dados": False, "anos": [], "total_geral": 0.0, "n_geral": 0,
-           "por_ano": OrderedDict(), "por_orgao_geral": {}, "hhi": {}}
+           "por_ano": OrderedDict(), "por_orgao_geral": {}, "hhi": {},
+           "raiz": so_digitos(cnpj)[:8], "por_estabelecimento": [], "n_estabelecimentos": 0}
     if not _DB.exists():
         return out
     cnpj = so_digitos(cnpj)
+    raiz = cnpj[:8]  # consolidar matriz+filiais = uma só PJ (CC 44/985/1.142; STJ REsp 1.286.122)
     con = sqlite3.connect(_DB)
     con.row_factory = sqlite3.Row
     try:
-        q = ("SELECT numero_ob, data_pagamento, data_emissao, ug_codigo, ug_nome, valor, exercicio "
-             "FROM ordens_bancarias WHERE favorecido_cpf=?")
-        params: list = [cnpj]
+        # LIKE raiz% casa todos os estabelecimentos (matriz 0001 + filiais 0002+) da mesma empresa
+        q = ("SELECT numero_ob, data_pagamento, data_emissao, ug_codigo, ug_nome, valor, exercicio, "
+             "favorecido_cpf, favorecido_nome FROM ordens_bancarias WHERE favorecido_cpf LIKE ?")
+        params: list = [f"{raiz}%"]
         if anos:
             q += " AND exercicio IN (%s)" % ",".join("?" * len(anos))
             params += list(anos)
@@ -242,10 +270,18 @@ def consultar_pagamentos(cnpj: str, anos: Optional[list[int]] = None) -> dict:
     orgao_geral: dict = defaultdict(float)
     # pivot Órgão × Mês × Ano-exercício: (orgao, ano) -> {mes(1..12): total, 0: sem-data}
     orgao_mes_ano: dict = defaultdict(lambda: defaultdict(float))
+    # quebra por estabelecimento (matriz/filial) — transparência da consolidação por raiz
+    por_estab: dict = {}
     for r in rows:
         ano = int(r["exercicio"] or 0)
         bloco = por_ano.setdefault(ano, {"n": 0, "total": 0.0, "linhas": [], "por_orgao": defaultdict(float)})
         valor = float(r["valor"] or 0.0)
+        est_cnpj = so_digitos(r["favorecido_cpf"])
+        est = por_estab.setdefault(est_cnpj, {"cnpj": est_cnpj, "nome": r["favorecido_nome"] or "—",
+                                              "n": 0, "total": 0.0,
+                                              "tipo": "matriz" if est_cnpj[8:12] == "0001" else f"filial {est_cnpj[8:12]}"})
+        est["n"] += 1
+        est["total"] += valor
         # rótulo canônico da unidade gestora (corrige o nome do órgão superior nas OBs)
         orgao = ugs.rotulo(r["ug_codigo"], r["ug_nome"] or "—")
         data = (r["data_pagamento"] or r["data_emissao"] or "—")
@@ -275,6 +311,13 @@ def consultar_pagamentos(cnpj: str, anos: Optional[list[int]] = None) -> dict:
                            "total": round(sum(meses.values()), 2)})
     matriz_mes.sort(key=lambda x: (x["orgao"], x["ano"]))
     out["por_orgao_mes_ano"] = matriz_mes
+    # estabelecimentos (matriz+filiais) consolidados nesta empresa (raiz)
+    estabs = sorted(por_estab.values(), key=lambda e: e["total"], reverse=True)
+    for e in estabs:
+        e["total"] = round(e["total"], 2)
+    out["raiz"] = raiz
+    out["por_estabelecimento"] = estabs
+    out["n_estabelecimentos"] = len(estabs)
     out["anos"] = sorted(por_ano.keys())
     out["n_geral"] = sum(b["n"] for b in por_ano.values())
     out["total_geral"] = sum(b["total"] for b in por_ano.values())
@@ -306,15 +349,18 @@ def consultar_contratos(cnpj: str) -> dict:
     if not _DB.exists():
         return out
     cnpj = so_digitos(cnpj)
+    raiz = cnpj[:8]  # contratos de TODOS os estabelecimentos da raiz (matriz+filiais = uma PJ)
     con = sqlite3.connect(_DB)
     con.row_factory = sqlite3.Row
     try:
-        emp = con.execute("SELECT id FROM empresas WHERE cnpj=?", (cnpj,)).fetchone()
-        if not emp:
+        emps = con.execute("SELECT id FROM empresas WHERE cnpj LIKE ?", (f"{raiz}%",)).fetchall()
+        if not emps:
             return out
+        ids = [e["id"] for e in emps]
         rows = con.execute(
             "SELECT numero, objeto, orgao_contrat, valor_total, data_assinatura, status "
-            "FROM contratos WHERE empresa_id=? ORDER BY valor_total DESC", (emp["id"],),
+            "FROM contratos WHERE empresa_id IN (%s) ORDER BY valor_total DESC" % ",".join("?" * len(ids)),
+            ids,
         ).fetchall()
     finally:
         con.close()
@@ -1150,10 +1196,23 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         body += ("<tr><th>TOTAL</th>" + "".join(f"<th>R$ {moeda(tot_ano.get(a, 0))}</th>" for a in p["anos"])
                  + f"<th>R$ {moeda(p['total_geral'])}</th></tr>")
         spark = C.sparkline([p["por_ano"][a]["total"] for a in p["anos"]], "Total pago por ano")
+        # transparência da consolidação: se a empresa tem matriz+filiais (mesma raiz), mostra a quebra
+        estab = p.get("por_estabelecimento") or []
+        estab_html = ""
+        if len(estab) > 1:
+            linhas_e = "".join(
+                f"<tr><td>{fmt_cnpj(e['cnpj'])}</td><td>{esc(e['tipo'])}</td><td>{esc(e['nome'])}</td>"
+                f"<td>{e['n']}</td><td>R$ {moeda(e['total'])}</td></tr>" for e in estab)
+            estab_html = (f"<p class='nota'>Empresa consolidada pela <b>raiz {p.get('raiz')}</b> "
+                          f"({len(estab)} estabelecimentos — matriz + filiais são <b>uma só pessoa jurídica</b>, "
+                          "CC arts. 44/985/1.142 e STJ REsp 1.286.122; o Estado paga cada estabelecimento pelo CNPJ próprio):</p>"
+                          "<table><tr><th>CNPJ</th><th>Tipo</th><th>Razão social (na OB)</th><th>OBs</th><th>Pago</th></tr>"
+                          f"{linhas_e}</table>")
         secoes.append({"titulo": "5. Pagamentos (Ordens Bancárias) — por Órgão (UG) × Ano",
                        "html": "<p class='nota'>OB = pagamento (dado definitivo, SIAFE/TFE-RJ). Cada célula = total pago "
                                f"àquele órgão naquele exercício ({p['n_geral']} OBs no total). Detalhe por OB individual no XLSX.</p>"
-                               f"<table>{thead}{body}</table>",
+                               + estab_html
+                               + f"<table>{thead}{body}</table>",
                        "chart": spark})
 
         # 5-B. Pagamentos MÊS A MÊS — Órgão × Mês × Ano-exercício (pedido do dono: granularidade mensal de volta)
