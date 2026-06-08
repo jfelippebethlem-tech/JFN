@@ -7,6 +7,7 @@ FERRAMENTAS DISPONÍVEIS (chame SÓ estas pelo id; se não houver ferramenta par
 - cruzamento(cnpj) — 'cruze os dados da empresa X'
 - missao_autonoma(missao) — pedido complexo/aberto
 - ler_processo_sei(numero) — '/sei E-12/345/2026'
+- consultar_pncp(uf,orgao,cnpj,abertos) — analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos)
 - parecer_juridico(alvo) — 'tem direcionamento?', parecer
 - busca_juridica(termo) — 'qual a lei sobre...', jurisprudencia
 - massare_cenarios() — 'como esta o mercado', 'dolar/bolsa/ouro hoje'

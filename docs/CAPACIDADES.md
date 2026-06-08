@@ -20,7 +20,7 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `grafo_poder` | jfn | http | `/api/grafo` | ONDA 4 | 'quem esta ligado a X', 'a N saltos do deputado Y com contrato' |
 | `busca_juridica` | lex | cli | `compliance_agent.collectors.lexml_fetcher --termo "<TERMO>"` | PRONTO | 'qual a lei sobre...', jurisprudencia |
 | `buscar_direcionamento` | lex | http | `/api/sei/direcionamento` | ONDA 5 | 'ache editais restritivos na UG X' |
-| `consultar_pncp` | lex | http | `/api/pncp` | ONDA 2 | analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos) |
+| `consultar_pncp` | lex | http | `/api/pncp` | PRONTO | analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos) |
 | `instrumento_mandato` | lex | http | `/api/mandato/minuta` | ONDA 10 | 'faca um requerimento sobre esse contrato' |
 | `ler_processo_sei` | lex | cli | `compliance_agent.collectors.sei_cdp "<NUMERO>"` | PRONTO | '/sei E-12/345/2026' |
 | `parecer_juridico` | lex | cli | `compliance_agent.lex "<empresa|cnpj>"` | PRONTO | 'tem direcionamento?', parecer |

@@ -49,7 +49,7 @@ capacidades:
   # ---- SEI / LICITACAO ----
   - {id: ler_processo_sei, agente: lex, dominio: juridico, tipo: cli, comando: "compliance_agent.collectors.sei_cdp \"<NUMERO>\"", status: PRONTO,
      descricao: "Le processo SEI na integra (SIP autenticado; proxy BR)", quando_usar: "'/sei E-12/345/2026'", args: {numero: obrigatorio}, retorno: "{objeto,modalidade,fundamento,valor,cnpjs,documentos[]}"}
-  - {id: consultar_pncp, agente: lex, dominio: juridico, tipo: http, metodo: GET, rota: /api/pncp, status: "ONDA 2",
+  - {id: consultar_pncp, agente: lex, dominio: juridico, tipo: http, metodo: GET, rota: /api/pncp, status: PRONTO,
      descricao: "PNCP API publica (editais/contratos/atas/DOCS) + roda R1-R12", quando_usar: "analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos)",
      args: {uf: "string=RJ", orgao: opcional, cnpj: opcional, abertos: bool}, retorno: "{contratacoes[{id_pncp,objeto,valor,docs,red_flags}]}", fonte: "pncp.gov.br API consultas (sem login)"}
   - {id: buscar_direcionamento, agente: lex, dominio: juridico, tipo: http, metodo: GET, rota: /api/sei/direcionamento, status: "ONDA 5",

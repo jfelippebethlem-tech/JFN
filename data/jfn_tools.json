@@ -266,6 +266,45 @@
     {
       "type": "function",
       "function": {
+        "name": "consultar_pncp",
+        "description": "PNCP API publica (editais/contratos/atas/DOCS) + roda R1-R12 — usar quando: analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "uf": {
+              "type": "string",
+              "description": "string=RJ"
+            },
+            "orgao": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "cnpj": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "abertos": {
+              "type": "boolean",
+              "description": "bool"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "lex",
+        "dominio": "juridico",
+        "tipo": "http",
+        "rota": "/api/pncp",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "parecer_juridico",
         "description": "Parecer R1-R12 + base TCU/TCE-RJ (grau verde/amarelo/vermelho) — usar quando: 'tem direcionamento?', parecer",
         "parameters": {
@@ -651,7 +690,6 @@
     "sobrepreco",
     "grafo_poder",
     "dossie",
-    "consultar_pncp",
     "buscar_direcionamento",
     "instrumento_mandato",
     "massare_teses",

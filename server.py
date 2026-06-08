@@ -1218,6 +1218,42 @@ async def api_conflito(cnpj: str = "", candidato: str = "", limite: int = 200):
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.get("/api/pncp")
+async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "",
+                   abertos: bool = False, modalidade: int = 0, dias: int = 30):
+    """Onda 2 — PNCP (API pública de consulta, sem login): licitação SEM depender do SEI.
+
+    - cnpj= : contratos de um FORNECEDOR (CNPJ) no período (API de gestão).
+    - senão : contratações publicadas (histórico) ou com PROPOSTA EM ABERTO (abertos=true,
+      fiscalização preventiva), filtráveis por uf/orgão(cnpj)/modalidade. modalidade=0 varre
+      as de maior risco (pregão/dispensa/inexigibilidade/concorrência). dias = janela de busca.
+    Retorno: {ok, modo, contratacoes|contratos, n}. red_flags por edital chegam na Onda 2c.
+    """
+    from datetime import date, timedelta
+
+    try:
+        from compliance_agent.collectors import pncp
+
+        hoje = date.today()
+        if cnpj:
+            contratos = await pncp.buscar_contratos_fornecedor(
+                cnpj, hoje - timedelta(days=max(dias, 365)), hoje)
+            return JSONResponse(content={"ok": True, "modo": "fornecedor", "cnpj": cnpj,
+                                         "n": len(contratos), "contratos": contratos,
+                                         "_fonte": "PNCP API consulta (sem login)"})
+        contratacoes = await pncp.buscar_contratacoes(
+            uf=uf, data_ini=hoje - timedelta(days=dias), data_fim=hoje,
+            modalidade=(modalidade or None), abertos=abertos,
+            orgao_cnpj=(orgao or None))
+        return JSONResponse(content={
+            "ok": True, "modo": "abertos" if abertos else "publicacao",
+            "uf": uf, "n": len(contratacoes), "contratacoes": contratacoes,
+            "_fonte": "PNCP API consulta (sem login)",
+            "_nota": "Indício/triagem; red_flags do edital virão da Onda 2c. Proveniência: link+id_pncp."})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/status")
 async def status():
     """Check agent status."""
