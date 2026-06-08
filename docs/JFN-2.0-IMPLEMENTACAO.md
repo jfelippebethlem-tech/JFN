@@ -1,5 +1,9 @@
 # JFN 2.0 — Log de Implementação (para avaliação posterior)
 
+> ▶ **CONTINUAR EM NOVA SESSÃO:** ler **`docs/HANDOFF-2026-06-08-JFN2-VIVO.md`** PRIMEIRO — captura o estado
+> VIVO (13 ondas deployadas; mudanças no gateway/config/auth.json fora do git; relatório reconstruído; pendências:
+> /lista fast-path, validar leitura SEI, Definição de Pronto). Este log abaixo tem o detalhe por onda.
+
 ## 📍 VOCÊ PAROU AQUI (último checkpoint: 2026-06-08)
 > **Feito:** Onda 0 ✅ (capabilities.yaml+validador+obs_trace) · Onda 1 🟡 (geradores ✅, política de modelo no
 > config ✅, roteador adaptativo 3-trilhas codificado+testado ✅ — `tools/hermes_model_router.py`; **SKILLTREE ✅**
