@@ -176,6 +176,38 @@ class SkillTree:
                 linhas.append(f"{tag} `{cid}` — {c.get('descricao', '')}")
         return "\n".join(linhas)
 
+    _DOM_EMOJI = {"auditoria": "🏢", "inteligencia": "🔎", "juridico": "⚖️",
+                  "mercado": "📈", "sistema": "⚙️", "outros": "▪️"}
+    _DOM_TITULO = {"auditoria": "AUDITORIA & RELATÓRIOS", "inteligencia": "INTELIGÊNCIA / OSINT",
+                   "juridico": "JURÍDICO (Lex) / SEI", "mercado": "MERCADO (Massare)", "sistema": "SISTEMA"}
+
+    def render_menu(self, so_prontas: bool = True) -> str:
+        """Menu COMPLETO p/ o /lista — gerado do capabilities.yaml (fonte única), agrupado por domínio,
+        com descrição + quando usar. Substitui o texto fixo: /lista passa a refletir TODAS as capacidades."""
+        por_dom: dict[str, list] = {}
+        for cid, c in sorted(self.capacidades.items(), key=lambda kv: kv[0]):
+            if so_prontas and c.get("status") != "PRONTO":
+                continue
+            por_dom.setdefault(c.get("dominio", "outros"), []).append((cid, c))
+        linhas = [
+            "🧭 *ECOSSISTEMA JFN* — eu, o *Yoda*, sou o maestro e aciono os agentes (JFN · Lex · Massare).",
+            "Peça em linguagem natural ou pelo comando. Detalhe de uma função: `/skill <id>`.",
+            f"_v{self.meta.get('versao', '?')} · {sum(len(v) for v in por_dom.values())} capacidades ativas_",
+        ]
+        ordem = ["auditoria", "inteligencia", "juridico", "mercado", "sistema"]
+        for dom in ordem + [d for d in sorted(por_dom) if d not in ordem]:
+            caps = por_dom.get(dom)
+            if not caps:
+                continue
+            linhas.append("━━━━━━━━━━━━━━━━━━━━")
+            linhas.append(f"{self._DOM_EMOJI.get(dom, '▪️')} *{self._DOM_TITULO.get(dom, dom.upper())}*")
+            for cid, c in caps:
+                alvo = c.get("rota") or c.get("comando") or ""
+                qu = c.get("quando_usar", "")
+                qu = f" — _{qu}_" if qu else ""
+                linhas.append(f"▪️ *{cid}* (`{alvo}`): {c.get('descricao', '')}{qu}")
+        return "\n".join(linhas)
+
     def detalhe(self, cid: str) -> str:
         """Markdown de uma capacidade (para /skill <id>)."""
         c = self.capacidades.get(cid)

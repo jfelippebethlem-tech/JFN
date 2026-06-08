@@ -133,3 +133,15 @@ def test_id_duplicado_e_rejeitado(tmp_path):
     st = SkillTree(path=p)
     with pytest.raises(ValueError):
         st.reload()
+
+
+def test_render_menu_completo_e_agrupado():
+    """/lista (render_menu) deve refletir TODAS as capacidades PRONTO da skilltree, agrupadas — não um menu fixo."""
+    from compliance_agent.skilltree import SkillTree
+    st = SkillTree()
+    st.reload()
+    m = st.render_menu()
+    n_prontas = sum(1 for c in st.capacidades.values() if c.get("status") == "PRONTO")
+    assert m.count("▪️ *") >= n_prontas - 1  # ~todas as prontas aparecem
+    assert "relatorio_inteligencia" in m and "consultar_empresa" in m  # comuns + providers (Onda 12)
+    assert "AUDITORIA" in m and "MERCADO" in m  # agrupado por domínio

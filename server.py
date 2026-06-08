@@ -732,35 +732,13 @@ async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int
 
 @app.get("/api/lista")
 async def api_lista():
-    """Menu das funções do JFN (para o /lista do Yoda). Texto pronto para enviar no Telegram."""
-    texto = (
-        "🧭 *ECOSSISTEMA JFN* — eu, o *Yoda*, sou o maestro e aciono os agentes (JFN · Lex · Massare).\n"
-        "Peça em linguagem natural ou pelo comando.\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "🏢 *RELATÓRIOS DE INTELIGÊNCIA*  (motor JFN + parecer Lex)\n\n"
-        "▪️ */relatorio <empresa ou CNPJ>* — due diligence do *FORNECEDOR*. Entrega *3 documentos*:\n"
-        "   📄 *PDF Inteligência*: perfil cadastral + endereço · pagamentos (OBs) por ano · concentração HHI "
-        "por órgão · contratos (SIAFE) · contratos e compras diretas TCE-RJ · *cruzamento* sócio×OB×SEI×endereço "
-        "· sanções (CEIS/CNEP/CEPIM) · matriz de risco TCU P×I · red flags.\n"
-        "   📊 *Planilha XLSX* interativa (abas Resumo / Pagamentos / Concentração).\n"
-        "   ⚖️ *Parecer Lex*: fatos · achados (modelo CGE-RJ, Dec. 47.408/2020) · análise de mérito · "
-        "fracionamento (conceito TCU) · improbidade/penal · grau 🟢🟡🔴 · recomendações.\n\n"
-        "▪️ *relatório de ÓRGÃO* — ex.: _\"relatório da Secretaria da Casa Civil\"_ (ou por UG, ex.: 140100). Due diligence da "
-        "*UNIDADE*: quanto pagou e *a quem* (por ano) · concentração por fornecedor (HHI) · *cidades-sede* dos "
-        "fornecedores · parecer. Também em PDF + XLSX.\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "🔎 *INVESTIGAÇÃO RÁPIDA*  (motor JFN)\n"
-        "▪️ */cruzamento <CNPJ>* — sócios × OB × SEI × *endereço* (mesma cidade / *mesma sede* = red flag de fachada).\n"
-        "▪️ */cidades <UG>* — cidades que concentram os fornecedores de um órgão.\n"
-        "▪️ */clusters* — grupos de fornecedores que dividem a *mesma sede* e recebem do Estado.\n"
-        "▪️ */anomalias [órgão|fornecedor]* — OBs de maior risco (score + o porquê).\n"
-        "▪️ */cartel [captura|<CNPJ>]* — concentração por órgão + co-ocorrência/sócio comum.\n"
-        "━━━━━━━━━━━━━━━━━━━━\n"
-        "⚖️ *LEX* (agente jurídico) — vai junto no /relatorio. Base: improbidade pós-Lei 14.230, crimes "
-        "(CP 312-337 / Lei 14.133), controle TCU/TCE-RJ/CGE-RJ.\n"
-        "📑 *SEI* — leitura da íntegra de processos do SEI-RJ (alimenta o Lex).\n"
-        "📈 *MASSARE* (agente de mercado) — _placar_, _cenários_, _prever_ (câmbio / bolsa / dólar)."
-    )
+    """Menu COMPLETO das funções do JFN (para o /lista do Yoda) — gerado da skilltree (capabilities.yaml,
+    fonte única), agrupado por domínio. Fica sempre em sincronia com /capacidades; nada de menu fixo defasado."""
+    try:
+        from compliance_agent.skilltree import SKILLTREE
+        texto = SKILLTREE.render_menu()
+    except Exception as e:  # noqa: BLE001
+        texto = f"🧭 *ECOSSISTEMA JFN* — menu indisponível ({str(e)[:60]}). Use /skills."
     return JSONResponse({"ok": True, "texto": texto})
 
 
