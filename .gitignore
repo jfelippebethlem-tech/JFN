@@ -106,3 +106,16 @@ data/benchmark_resultados.json
 # codegraph + graphify: indices locais, regenerados, NAO commitar (diretriz 2026-06-07)
 .codegraph/
 graphify-out/
+
+# --- Higiene 2026-06-08: credenciais e debris de execução (NUNCA commitar) ---
+.env.bak*
+*.bak
+*.out
+data/*.out
+logs/
+data/tse_cache/
+data/tfe_cache/
+data/flexvision_export/
+data/flexvision_cubos.*
+data/_*.json
+massare/data/
