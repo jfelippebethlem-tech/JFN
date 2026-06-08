@@ -1128,6 +1128,56 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         secoes.append({"titulo": f"7. Carteira de contratos ({c['n']} — R$ {moeda(c['total'])})",
                        "html": f"<table><tr><th>Nº</th><th>Objeto</th><th>Órgão</th><th>Valor</th><th>Situação</th></tr>{rows}</table>"})
 
+    # 8. Matriz de risco P×I (TCU) + 9. Análise estatística (Benford)
+    if p["tem_dados"]:
+        _prob = max(1, min(round((ctx.get("score", 0) or 0) / 11) + 1, 9))
+        _imp = max(1, min(round((p["hhi"].get("top_share", 0) or 0) / 100 * 9) + 1, 9))
+        secoes.append({"titulo": "8. Matriz de risco P×I (metodologia TCU)",
+                       "html": "<p class='nota'>Probabilidade × Impacto (1–9). ✕ marca a posição do achado.</p>",
+                       "chart": C.heatmap_pxi(_prob, _imp)})
+        try:
+            from compliance_agent.analysis.benford import benford
+            vals = [ln.get("valor") or 0 for a in p["anos"] for ln in p["por_ano"][a].get("linhas", []) if (ln.get("valor") or 0) > 0]
+            bf = benford(vals)
+            d1 = bf["primeiro_digito"]
+            secoes.append({"titulo": "9. Análise estatística (Lei de Benford)",
+                           "html": f"<p class='nota'>1º dígito dos valores de OB (n={d1['n']}). MAD de Nigrini = <b>{d1['mad']}</b> "
+                                   f"→ <b>{d1['faixa_nigrini']}</b>. {'Conforme = sem sinal de fracionamento/fabricação.' if 'CONFORM' in d1['faixa_nigrini'].upper() or 'conformidade' in d1['faixa_nigrini'] else 'NÃO conformidade pede verificação (fracionamento/valores fabricados).'} "
+                                   f"{'(amostra pequena — pouco confiável)' if not bf['suficiente'] else ''}</p>"})
+        except Exception:  # noqa: BLE001
+            pass
+
+    # 10. Co-endereço / sócios em comum (sinal de cartel/laranja)
+    coend = (ctx.get("cruzamento") or {}).get("coendereco") or []
+    if coend:
+        rows = "".join(f"<tr><td>{esc(x.get('razao') or x.get('cnpj'))}</td><td>{esc(x.get('cnpj'))}</td></tr>" for x in coend[:15])
+        secoes.append({"titulo": "10. Empresas no MESMO endereço (sinal de cartel/laranja)",
+                       "html": "<p class='nota'>Outras empresas registradas no mesmo endereço da sede — indício de "
+                               "fachada/cartel a verificar (não é prova).</p>"
+                               f"<table><tr><th>Empresa</th><th>CNPJ</th></tr>{rows}</table>"})
+
+    # 11. Red flags consolidados (com fundamento) + 12. Recomendações + 13. Referências
+    flags = []
+    if p.get("hhi", {}).get("top_share", 0) >= 60:
+        flags.append("🔴 Concentração ≥60% num único órgão (isonomia/impessoalidade — Art. 37 CF/88; ACFE).")
+    if rede:
+        flags.append("🟡 Doador eleitoral (empresa/sócio) que é fornecedor — conflito de interesse a verificar (TSE×contratos).")
+    if coend:
+        flags.append("🟡 Empresa(s) no mesmo endereço — possível fachada/cartel (Art. 90 Lei 8.666/Art. 337-F CP).")
+    if not flags:
+        flags.append("🟢 Sem red flags estruturais automáticos nesta triagem (não exclui exame manual).")
+    secoes.append({"titulo": "11. Red flags de compliance (fundamento legal)",
+                   "html": "<ul>" + "".join(f"<li>{esc(f)}</li>" for f in flags) + "</ul>"})
+    rec = ["<b>Imediato:</b> verificar a motivação técnica da concentração e a pesquisa de preços dos maiores contratos." if p.get("hhi", {}).get("top_share", 0) >= 40 else "<b>Imediato:</b> manter monitoramento de rotina.",
+           "<b>Curto prazo:</b> cruzar doações eleitorais dos sócios com as datas de contratação (conflito de interesse)." if rede else "<b>Curto prazo:</b> confirmar QSA e capacidade operacional (anti-fachada).",
+           "<b>Estrutural:</b> consolidar no Radar 24/7 (alerta em novo edital/OB do alvo) e gerar minuta de diligência (TCE-RJ/ALERJ) se confirmado."]
+    secoes.append({"titulo": "12. Recomendações (priorizadas)",
+                   "html": "<ul>" + "".join(f"<li>{r}</li>" for r in rec) + "</ul>"})
+    secoes.append({"titulo": "13. Referências normativas",
+                   "html": "<p class='nota'>CF/88 art. 37 e 70-71 · Lei 14.133/2021 · Lei 8.666/93 (contratos vigentes) · "
+                           "Lei 4.320/64 (OB = pagamento) · jurisprudência TCU/TCE-RJ (direcionamento, sobrepreço, fracionamento) · "
+                           "metodologia P×I (TCU) e red flags (ACFE Report to the Nations).</p>"})
+
     faixa = (ctx.get("risco") or "BAIXO").upper()
     top = (["concentração ≥60%"] if p.get("hhi", {}).get("top_share", 0) >= 60 else []) + (["doação↔contrato"] if rede else [])
     ctx_html = {
