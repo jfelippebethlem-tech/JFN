@@ -104,3 +104,23 @@ def test_ler_itkava_honesto_sem_senha(monkeypatch):
     monkeypatch.setattr(R, "P", "")  # SEI_PASS vazio
     r = asyncio.run(R.ler("SEI-070002/008633/2022", usar_cache=False))
     assert "INDISPONÍVEL" in r["erro"] and r["texto"] == ""
+
+
+def test_lex_analise_sei_honesta_vazio_e_waf():
+    """Honestidade do Lex: texto vazio OU página de WAF → lido=False e nenhum achado (não finge leitura)."""
+    from compliance_agent.lex import _analisar_conteudo_sei
+
+    # 1) vazio → não leu
+    ach, res = _analisar_conteudo_sei({"texto": "", "conteudo_documentos": []})
+    assert res["lido"] is False and ach == []
+
+    # 2) página de WAF → detectada como bloqueio → tratada como não-lida
+    ach2, res2 = _analisar_conteudo_sei({"texto": "Web Page Blocked - the URL you requested has been blocked",
+                                         "conteudo_documentos": []})
+    assert res2["lido"] is False and ach2 == []
+
+    # 3) texto real com dispensa → lido=True e gera achado (R5)
+    ach3, res3 = _analisar_conteudo_sei({"texto": "Processo de dispensa de licitação para contratação direta. "
+                                                  "Objeto: serviços de limpeza predial continuada.",
+                                         "conteudo_documentos": []})
+    assert res3["lido"] is True and any(a["rf"] == "R5" for a in ach3)
