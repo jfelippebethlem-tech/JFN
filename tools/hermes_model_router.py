@@ -31,10 +31,12 @@ PESADO_FALLBACK = ("gemini", "gemini-2.5-flash-lite")
 # É PAGO (gemini-2.5-pro): exceção consciente ao invariante "tudo grátis", acionada à mão, nunca por padrão.
 MELHOR = ("gemini", "gemini-2.5-pro")
 # BULK: tarefas LLM PESADAS NO VOLUME mas SIMPLES/REPETITIVAS (extração SEI em massa, classificação de
-# notícias em lote, normalização) → nous 100% FREE, sem cota (decisão do dono 2026-06-08). Qualidade
-# suficiente p/ trabalho repetitivo; não queima a cota free-tier do gemini.
+# notícias em lote, normalização) → **Groq + Gemma 2 9B** (100% FREE, resposta INSTANTÂNEA; avaliação
+# 2026-06-08: Gemma não supera o gemini-2.5-flash em qualidade, mas no bulk a VELOCIDADE do Groq+Gemma vence;
+# não queima a cota free-tier do gemini). Nous segue como fallback do bulk.
 # NOTA: NÃO se aplica ao sweep SIAFE/coletores (código determinístico, SEM LLM) nem a OCR/visão (easyocr/gemini).
-BULK = ("nous", "stepfun/step-3.7-flash:free")
+BULK = ("groq", "gemma2-9b-it")
+BULK_FALLBACK = ("nous", "stepfun/step-3.7-flash:free")
 
 # gatilhos de "caso difícil" → escalar p/ PESADO
 _GATILHOS = re.compile(
