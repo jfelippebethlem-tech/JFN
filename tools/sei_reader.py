@@ -23,7 +23,8 @@ sys.path.insert(0, str(_REPO))
 from compliance_agent.envfile import carregar_env
 carregar_env()
 
-URL = os.environ.get("SEI_LOGIN_URL")
+URL = os.environ.get("SEI_LOGIN_URL") or \
+    "https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI&infra_url=L3NlaS8="
 U, P, ORG = os.environ.get("SEI_USER", "itkava"), os.environ.get("SEI_PASS", ""), os.environ.get("SEI_ORGAO", "iterj")
 
 
@@ -147,6 +148,57 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     except Exception:
         pass
     return res
+
+
+async def ler(numero: str, usar_cache: bool = True, tentativas_login: int = 30) -> dict:
+    """READER SEI CANÔNICO (login itkava/ITERJ, SEM captcha) — única porta de leitura do SEI.
+
+    PADRÃO do `numero` (processo SEI-RJ): `SEI-UUUUUU/NNNNNN/AAAA` = unidade/sequencial/ano —
+    ex.: `SEI-070002/008633/2022`. Também aceita a forma curta `E-NN/NNN/AAAA` (ex.: `E-12/345/2026`)
+    e com/sem o prefixo `SEI-`. É o protocolo EXATO digitado na Pesquisa Avançada do SEI.
+
+    Uso:
+        from tools.sei_reader import ler
+        integra = await ler("SEI-070002/008633/2022")     # ou: await ler("E-12/345/2026")
+    CLI:  PYTHONPATH=. .venv/bin/python -m tools.sei_reader "SEI-070002/008633/2022"
+
+    Lança Chromium, autentica como itkava, abre a pesquisa e lê o processo, devolvendo a íntegra
+    {numero, texto, documentos, conteudo_documentos, cnpjs, valores, erro?}. Cache 24h
+    (data/sei_cache/cdp_*.json). Honesto: SEI_PASS vazio ou login não vencido => {erro INDISPONÍVEL},
+    nunca conteúdo fabricado. Requer SEI_PASS no .env e Chromium (Playwright) instalado.
+    """
+    import json as _json
+    from datetime import datetime
+
+    cache_file = CACHE_DIR / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', numero)}.json"
+    if usar_cache and cache_file.exists():
+        try:
+            c = _json.loads(cache_file.read_text(encoding="utf-8"))
+            if c.get("_cached_at") and (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < 86400:
+                c["_de_cache"] = True
+                return c
+        except Exception:
+            pass
+    if not P:
+        return {"numero": numero, "erro": "INDISPONÍVEL: SEI_PASS vazio (.env)", "texto": "", "conteudo_documentos": []}
+    try:
+        from playwright.async_api import async_playwright
+        async with async_playwright() as pw:
+            b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"])
+            ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
+                  user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                             "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            pg = await ctx.new_page()
+            try:
+                if not await login(pg, tentativas=tentativas_login):
+                    return {"numero": numero, "texto": "", "conteudo_documentos": [],
+                            "erro": "INDISPONÍVEL: login itkava não autenticou (WAF/credencial)"}
+                return await ler_processo(pg, numero, usar_cache=usar_cache)
+            finally:
+                await b.close()
+    except Exception as e:  # noqa: BLE001
+        return {"numero": numero, "texto": "", "conteudo_documentos": [],
+                "erro": f"sei_reader/itkava: {str(e)[:140]}"}
 
 
 async def main():

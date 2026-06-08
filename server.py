@@ -1322,6 +1322,21 @@ async def api_dossie(payload: Optional[dict] = None):
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.get("/api/sei/direcionamento")
+async def api_sei_direcionamento(ug: str = "", objeto: str = "", uf: str = "RJ", max_itens: int = 8):
+    """Onda 5 — Varredor de direcionamento: busca editais (PNCP), extrai por schema, roda
+    red flags do Lex e ranqueia por gravidade. ?ug= (cnpj órgão) &objeto= (filtro). Indício
+    de restrição/direcionamento a verificar, nunca acusação."""
+    try:
+        from compliance_agent.sei_direcionamento import varrer_direcionamento
+
+        res = await varrer_direcionamento(uf=uf, ug=(ug or None), objeto=(objeto or None),
+                                          max_itens=max(1, min(int(max_itens), 15)))
+        return JSONResponse(content=res)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/status")
 async def status():
     """Check agent status."""

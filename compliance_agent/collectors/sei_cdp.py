@@ -721,16 +721,17 @@ async def _abrir_primeiro_resultado(page) -> bool:
 
 
 async def ler_processo_sei(numero_sei: str, **kwargs) -> dict:
+    """Porta ÚNICA de leitura do SEI — delega ao reader canônico **itkava/ITERJ**
+    (`tools.sei_reader.ler`, login interno SEM captcha, vence o WAF de fingerprint).
+
+    Toda leitura do SEI passa por aqui (decisão do dono 2026-06-08): o caminho antigo
+    com CAPTCHA/OCR (`ler_processo_sei_via_chrome`/`submit_sei_search`) NÃO é mais usado;
+    só os extractors de DOM deste módulo (`_JS_LE_ARVORE_E_TEXTO`, `_abrir_primeiro_resultado`)
+    seguem em uso, reaproveitados pelo reader itkava.
     """
-    Conveniência: lê o processo via Chrome (OCR no CAPTCHA), usando o Telegram
-    como canal de aviso de progresso. Repassa kwargs para ler_processo_sei_via_chrome.
-    """
-    try:
-        from compliance_agent.notifications.telegram import enviar_mensagem
-        avisar = enviar_mensagem
-    except Exception:
-        avisar = None
-    return await ler_processo_sei_via_chrome(numero_sei, avisar=avisar, **kwargs)
+    from tools.sei_reader import ler as _ler_itkava
+
+    return await _ler_itkava(numero_sei, usar_cache=kwargs.get("usar_cache", True))
 
 
 if __name__ == "__main__":

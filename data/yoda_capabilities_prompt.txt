@@ -9,8 +9,9 @@ FERRAMENTAS DISPONÍVEIS (chame SÓ estas pelo id; se não houver ferramenta par
 - missao_autonoma(missao) — pedido complexo/aberto
 - grafo_poder(alvo,saltos,so_contrato) — 'quem esta ligado a X', 'a N saltos do deputado Y com contrato'
 - dossie(alvo) — 'monte um dossie sobre X'
-- ler_processo_sei(numero) — '/sei E-12/345/2026'
+- ler_processo_sei(numero) — ler/analisar um processo SEI especifico. FORMATO do numero: 'SEI-UUUUUU/NNNNNN/AAAA' (ex.: SEI-070002/008633/2022) ou 'E-NN/NNN/AAAA' (ex.: E-12/345/2026) — unidade/sequencial/ano. Aceita com ou sem o prefixo SEI-.
 - consultar_pncp(uf,orgao,cnpj,abertos) — analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos)
+- buscar_direcionamento(ug,objeto) — 'ache editais restritivos na UG X'
 - parecer_juridico(alvo) — 'tem direcionamento?', parecer
 - busca_juridica(termo) — 'qual a lei sobre...', jurisprudencia
 - massare_cenarios() — 'como esta o mercado', 'dolar/bolsa/ouro hoje'

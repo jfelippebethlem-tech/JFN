@@ -183,7 +183,8 @@ def _ler_integra_sei(numero: str) -> dict:
     res = {}
     try:
         from compliance_agent.collectors import sei_cdp
-        res = _run_coro(lambda: sei_cdp.ler_processo_sei_via_chrome(numero, usar_cache=True)) or {}
+        # porta ÚNICA → reader itkava/ITERJ (sem captcha). Ver sei_cdp.ler_processo_sei.
+        res = _run_coro(lambda: sei_cdp.ler_processo_sei(numero, usar_cache=True)) or {}
         if not res.get("erro") and (res.get("texto") or res.get("conteudo_documentos")):
             return res
     except Exception as exc:  # noqa: BLE001

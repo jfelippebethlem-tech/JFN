@@ -341,13 +341,13 @@
       "type": "function",
       "function": {
         "name": "ler_processo_sei",
-        "description": "Le processo SEI na integra (SIP autenticado; proxy BR) — usar quando: '/sei E-12/345/2026'",
+        "description": "Le processo SEI-RJ na integra via login interno itkava/ITERJ (Chromium real, SEM captcha, vence o WAF). Cache 24h. — usar quando: ler/analisar um processo SEI especifico. FORMATO do numero: 'SEI-UUUUUU/NNNNNN/AAAA' (ex.: SEI-070002/008633/2022) ou 'E-NN/NNN/AAAA' (ex.: E-12/345/2026) — unidade/sequencial/ano. Aceita com ou sem o prefixo SEI-.",
         "parameters": {
           "type": "object",
           "properties": {
             "numero": {
               "type": "string",
-              "description": "obrigatorio"
+              "description": "obrigatorio — nº do processo, ex.: SEI-070002/008633/2022"
             }
           },
           "required": [
@@ -360,7 +360,7 @@
         "dominio": "juridico",
         "tipo": "cli",
         "rota": null,
-        "comando": "compliance_agent.collectors.sei_cdp \"<NUMERO>\"",
+        "comando": "tools.sei_reader \"<NUMERO>\"",
         "metodo": null,
         "status": "PRONTO",
         "enviar_telegram": null
@@ -399,6 +399,37 @@
         "dominio": "juridico",
         "tipo": "http",
         "rota": "/api/pncp",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "buscar_direcionamento",
+        "description": "Varre corpus (SEI+PNCP) e ranqueia direcionamento (R1/R7/R8/R12) — usar quando: 'ache editais restritivos na UG X'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ug": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "objeto": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "lex",
+        "dominio": "juridico",
+        "tipo": "http",
+        "rota": "/api/sei/direcionamento",
         "comando": null,
         "metodo": "GET",
         "status": "PRONTO",
@@ -790,7 +821,6 @@
     }
   ],
   "futuras_desabilitadas": [
-    "buscar_direcionamento",
     "instrumento_mandato",
     "massare_teses",
     "massare_focus",
