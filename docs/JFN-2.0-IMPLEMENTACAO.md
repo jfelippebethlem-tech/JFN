@@ -50,7 +50,7 @@ diligence · credenciais só em .env · SIAFE sessão única por sistema · LGPD
 | Onda | Escopo | Status |
 |---|---|---|
 | 0 | capabilities.yaml + validador + obs_trace | 🟢 núcleo ✅ (gen_*→Onda 1; siafe_worker/SEI-proxy diferidos) |
-| 1 | Orquestração (router do YAML, política de modelo) | ⏳ |
+| 1 | Orquestração (router do YAML, política de modelo) | 🟡 geradores+config ✅; dispatcher nativo no gateway + decisão de roteamento adaptativo PENDENTE |
 | 2 | PNCP + conflito doador↔contrato (Lex) | 🟡 `lex_conflito.py` (doador↔SÓCIO↔OB) ✅ testado; TSE carregando; rotas /api/conflito+/api/pncp pendentes |
 | 3 | Motor de risco (Benford/sobrepreço/score) | ⏳ |
 | 4 | Grafo de Poder + Dossiê 360 | ⏳ |
@@ -82,6 +82,26 @@ respeita e NÃO relança). **PARA RETOMAR:** `rm data/.pause_sweep_2` (o supervi
 PARADO, agora é seguro mexer nos módulos SIAFE (ex.: `siafe_worker.py` da Onda 0, diferido).
 **Download TSE** (doações RJ+presidente, todos os anos) roda em processo SEPARADO (`/tmp/tse_load.py`,
 `data/tse_load.out`) — NÃO é o sweep; deixar terminar (popula `doacoes_eleitorais` p/ o conflito da Onda 2).
+
+## ⏳ DECISÃO PENDENTE DO DONO — roteamento de modelo do Hermes (Onda 1)
+**Como está hoje (investigado):** Hermes NÃO é adaptativo por tarefa. Usa **1 modelo default p/ tudo**
+(`gemini-2.5-flash`) e só troca em FALHA (fallback failure-based). Não há roteamento por dificuldade.
+**Config atual aplicada** (`~/.hermes/config.yaml`, backup `config.yaml.bak.jfn2-onda1-*`): default
+gemini-2.5-flash; `api_max_retries:3`; fallback ordem **gemini-lite → gemini-2.0 → mistral-large →
+mistral-small → nous×3 (100% free, por último — a pedido do dono)**. Gateway reinicia saudável.
+**O dono quer ADAPTATIVO:** default 100% free; casos difíceis → modelos melhores. Isso NÃO existe hoje —
+precisa construir. **Aguardando decisão:** (1) **A** heurística simples (gatilhos→escala) vs **B** semantic
+router (ModernBERT/LoRA); (2) default 100%-free = **nous** ou manter **gemini-2.5-flash (free-tier)**.
+Quando decidir → implementar via overlay idempotente no gateway (ponto: `run.py:13078 _tools`).
+
+## Onda 1 — estado detalhado
+✅ FEITO: `tools/gen_router_tools.py` (→ `data/jfn_tools.json` + `~/.hermes/jfn_tools.json`, 17 tools ativas/15
+futuras), `tools/gen_capabilities_md.py` (→ `docs/CAPACIDADES.md` + `data/yoda_capabilities_prompt.txt`),
+pre-commit (valida+regenera, local), política de modelo no config.yaml (acima).
+⏳ FALTA: dispatcher NATIVO de tool-calling no gateway (injetar jfn_tools.json em `_tools` run.py:13078 +
+executor function-call→HTTP/CLI, via overlay idempotente); injetar `yoda_capabilities_prompt.txt` no system
+prompt (registro fechado, mata invenção de web_search); deprecar `agent.py`/`scheduler.py` (hermes_goal único);
+roteamento adaptativo (decisão acima).
 
 ## Diário de execução
 - **2026-06-08** — Branch `jfn-2.0` criada (de `linux`) e pushada p/ origin. Documento mestre lido e analisado;
