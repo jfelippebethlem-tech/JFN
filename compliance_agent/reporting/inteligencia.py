@@ -399,10 +399,15 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
         path_md = str(_REPORTS / f"{base}.md")
         Path(path_md).write_text(md, encoding="utf-8")
         try:
-            path_pdf = render_pdf(contexto, str(_REPORTS / f"{base}.pdf"))
-        except Exception as exc:  # noqa: BLE001
-            path_pdf = ""
-            contexto["_pdf_erro"] = str(exc)[:160]
+            # Onda 7: PDF classe mundial via HTML→Playwright (sem margem estourada/truncamento,
+            # com cadastral+sócios+doações+OSINT). FPDF compacto = fallback.
+            path_pdf = await render_pdf_html(contexto, str(_REPORTS / f"{base}.pdf"))
+        except Exception as exc_html:  # noqa: BLE001
+            try:
+                path_pdf = render_pdf(contexto, str(_REPORTS / f"{base}.pdf"))
+            except Exception as exc:  # noqa: BLE001
+                path_pdf = ""
+                contexto["_pdf_erro"] = f"html:{str(exc_html)[:70]} | fpdf:{str(exc)[:70]}"
         try:
             from compliance_agent.reporting import planilha
             path_xlsx = planilha.gerar(contexto, str(_REPORTS / f"{base}.xlsx"), modo="fornecedor")
@@ -994,6 +999,135 @@ def _registrar_fonte(pdf) -> tuple[str, bool]:
         except Exception:
             pass
     return "Helvetica", False
+
+
+async def render_pdf_html(ctx: dict, destino: str) -> str:
+    """Onda 7 — relatório de fornecedor CLASSE MUNDIAL (HTML→PDF via Playwright).
+
+    Resolve margem estourada e truncamento (CSS quebra texto) e traz TODAS as seções:
+    perfil cadastral · quadro societário · DOAÇÕES ELEITORAIS DOS SÓCIOS (conflito) ·
+    listas restritivas/OSINT (CEIS/CNEP+OpenSanctions) · pagamentos por ano · concentração ·
+    contratos · proveniência + hash. Indícios, nunca acusação.
+    """
+    import html as _html
+
+    from compliance_agent.reporting import charts_svg as C
+    from compliance_agent.reporting.render_html import gerar_pdf as _html_pdf, render_html, html_to_pdf
+
+    def esc(s):
+        return _html.escape(str(s if s not in (None, "") else "—"))
+
+    p = ctx["pagamentos"]
+    cnpj = ctx["cnpj"]
+    emp = (ctx["enriq"].get("dados") or {}).get("empresa") if ctx["enriq"].get("ok") else None
+    secoes = []
+
+    # 1. Perfil cadastral
+    if emp:
+        campos = [("Razão social", emp.get("razao_social")), ("Situação", emp.get("situacao")),
+                  ("Data de abertura", emp.get("data_abertura")), ("Porte", emp.get("porte")),
+                  ("Natureza jurídica", emp.get("natureza_juridica")),
+                  ("Capital social", f"R$ {moeda(emp.get('capital_social'))}" if emp.get("capital_social") else None),
+                  ("CNAE principal", emp.get("cnae_principal")),
+                  ("Município/UF", f"{emp.get('municipio', '—')}/{emp.get('uf', '—')}"),
+                  ("Endereço (sede)", emp.get("endereco") or (ctx.get("cruzamento") or {}).get("endereco", {}).get("endereco"))]
+        rows = "".join(f"<tr><th>{esc(k)}</th><td>{esc(v)}</td></tr>" for k, v in campos)
+        secoes.append({"titulo": "1. Perfil cadastral", "html": f"<table>{rows}</table>"})
+    else:
+        end = (ctx.get("cruzamento") or {}).get("endereco", {}).get("endereco")
+        secoes.append({"titulo": "1. Perfil cadastral",
+                       "html": f"<p class='nota'>Perfil cadastral {esc(ctx.get('fonte_enriq'))} — dados financeiros abaixo são REAIS."
+                               + (f" Endereço (sede): {esc(end)}." if end else "") + "</p>"})
+
+    # 2. Quadro societário (sócios/diretores)
+    socios = (emp or {}).get("socios") or []
+    if socios:
+        rows = "".join(f"<tr><td>{esc(s.get('nome'))}</td><td>{esc(s.get('qualificacao'))}</td>"
+                       f"<td>{esc(s.get('data_entrada'))}</td></tr>" for s in socios[:25])
+        secoes.append({"titulo": "2. Quadro societário (QSA / diretores)",
+                       "html": f"<table><tr><th>Sócio</th><th>Qualificação</th><th>Entrada</th></tr>{rows}</table>"})
+
+    # 3. DOAÇÕES ELEITORAIS dos sócios/empresa (conflito doador↔contrato) — pedido do dono
+    rede = []
+    try:
+        from compliance_agent.lex_conflito import conflito
+        rede = conflito(cnpj=cnpj, limite=30).get("rede", [])
+    except Exception:  # noqa: BLE001
+        rede = []
+    if rede:
+        rows = "".join(f"<tr><td>{esc(r.get('doador'))}</td><td>{esc(r.get('via'))}</td>"
+                       f"<td>{esc(r.get('candidato'))}</td><td>{esc(r.get('partido'))}</td>"
+                       f"<td>{esc(r.get('ano'))}</td><td>R$ {moeda(r.get('valor_doacao'))}</td></tr>" for r in rede[:20])
+        secoes.append({"titulo": "3. Doações eleitorais (sócios/empresa → candidatos) — conflito de interesse",
+                       "html": "<p class='nota'>Cruzamento TSE × QSA: o doador pode ser a empresa OU um sócio dela (coluna Via). "
+                               "Indício a verificar (presunção de legitimidade), nunca acusação.</p>"
+                               f"<table><tr><th>Doador</th><th>Via</th><th>Candidato</th><th>Partido</th><th>Ano</th><th>Valor</th></tr>{rows}</table>"})
+    else:
+        secoes.append({"titulo": "3. Doações eleitorais dos sócios/empresa",
+                       "html": "<p class='nota'>Nenhuma doação eleitoral (TSE) localizada para a empresa ou seus sócios na base.</p>"})
+
+    # 4. Listas restritivas / OSINT (CEIS/CNEP + OpenSanctions)
+    osint = []
+    try:
+        from compliance_agent.collectors.ceis import verificar_sancao
+        s = await verificar_sancao(cnpj)
+        osint.append(f"<li>CEIS/CNEP (CGU): <b>{'SANCIONADA — verificar' if (s.get('sancionado') or s.get('sancoes')) else 'nada localizado'}</b></li>")
+    except Exception:  # noqa: BLE001
+        osint.append("<li>CEIS/CNEP: INDISPONÍVEL</li>")
+    try:
+        from compliance_agent.enrich.opensanctions import checar
+        o = checar(cnpj)
+        osint.append("<li>OpenSanctions (PEP/sanções intl.): INDISPONÍVEL (sem chave grátis)</li>"
+                     if o.get("sancionado") is None else
+                     f"<li>OpenSanctions: sanção={esc(o.get('sancionado'))} · PEP={esc(o.get('pep'))}</li>")
+    except Exception:  # noqa: BLE001
+        pass
+    secoes.append({"titulo": "4. Listas restritivas e OSINT", "html": f"<ul>{''.join(osint)}</ul>"})
+
+    # 5. Pagamentos por ano + sparkline
+    if p["tem_dados"]:
+        rows = "".join(f"<tr><td>{a}</td><td>{p['por_ano'][a]['n']}</td><td>R$ {moeda(p['por_ano'][a]['total'])}</td></tr>" for a in p["anos"])
+        rows += f"<tr><th>Total</th><th>{p['n_geral']}</th><th>R$ {moeda(p['total_geral'])}</th></tr>"
+        spark = C.sparkline([p["por_ano"][a]["total"] for a in p["anos"]], "Pagamentos por ano")
+        secoes.append({"titulo": "5. Pagamentos (Ordens Bancárias) por ano",
+                       "html": "<p class='nota'>OB = pagamento (dado definitivo, SIAFE/TFE-RJ).</p>"
+                               f"<table><tr><th>Exercício</th><th>Nº OBs</th><th>Total pago</th></tr>{rows}</table>",
+                       "chart": spark})
+        # 6. Concentração por órgão (HHI) + barras
+        tot = p["total_geral"] or 1
+        orgs = list(p["por_orgao_geral"].items())
+        bars = C.barras([o for o, _ in orgs[:8]], [v / tot for _, v in orgs[:8]], "Concentração por órgão")
+        rows = "".join(f"<tr><td>{esc(o)}</td><td>R$ {moeda(v)}</td><td>{v / tot * 100:.1f}%</td></tr>" for o, v in orgs)
+        flag = ("<p class='nota'>🔴 Red flag (ACFE): concentração ≥60% num único órgão sem justificativa pede verificação (Art. 37 CF/88).</p>"
+                if p["hhi"].get("top_share", 0) >= 60 else "")
+        secoes.append({"titulo": f"6. Concentração por órgão — HHI {p['hhi'].get('indice')} ({p['hhi'].get('nivel')}; maior = {p['hhi'].get('top_share')}%)",
+                       "html": f"{flag}<table><tr><th>Órgão (UG)</th><th>Valor pago</th><th>%</th></tr>{rows}</table>",
+                       "chart": bars})
+
+    # 7. Contratos
+    c = ctx["contratos"]
+    if c["n"]:
+        rows = "".join(f"<tr><td>{esc(ln['numero'])}</td><td>{esc(ln['objeto'])}</td><td>{esc(ln['orgao'])}</td>"
+                       f"<td>R$ {moeda(ln['valor'])}</td><td>{esc(ln['status'])}</td></tr>" for ln in c["linhas"])
+        secoes.append({"titulo": f"7. Carteira de contratos ({c['n']} — R$ {moeda(c['total'])})",
+                       "html": f"<table><tr><th>Nº</th><th>Objeto</th><th>Órgão</th><th>Valor</th><th>Situação</th></tr>{rows}</table>"})
+
+    faixa = (ctx.get("risco") or "BAIXO").upper()
+    top = (["concentração ≥60%"] if p.get("hhi", {}).get("top_share", 0) >= 60 else []) + (["doação↔contrato"] if rede else [])
+    ctx_html = {
+        "_dados": {"cnpj": cnpj, "total": p.get("total_geral"), "score": ctx.get("score")},
+        "titulo": f"Relatório de Inteligência — {ctx['nome']}",
+        "subtitulo": f"CNPJ {ctx['cnpj_fmt']} · Due Diligence de Integridade · Exposição Financeira · Risco & Compliance",
+        "classificacao": "CONFIDENCIAL — USO INTERNO (controle externo)",
+        "score": ctx.get("score", 0), "faixa": faixa, "top_flags": top, "secoes": secoes,
+        "metodologia": "Due diligence Nível II + red flags TCU/TCE-RJ + conflito TSE",
+        "proveniencia": [
+            {"dado": "Pagamentos (OB)", "estado": "REAL", "fonte": "SIAFE/TFE", "data": ctx["data"]},
+            {"dado": "Cadastro/QSA", "estado": "REAL" if emp else "INDISPONÍVEL", "fonte": "BrasilAPI", "data": ctx["data"]},
+            {"dado": "Doações eleitorais", "estado": "REAL", "fonte": "TSE", "data": ctx["data"]},
+        ],
+    }
+    return await html_to_pdf(render_html(ctx_html), destino)
 
 
 def render_pdf(ctx: dict, destino: str) -> str:
