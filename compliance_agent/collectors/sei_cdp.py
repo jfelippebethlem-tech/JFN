@@ -195,18 +195,23 @@ _JS_CLICA_PESQUISAR = r"""
 _JS_LE_ARVORE_E_TEXTO = r"""
 () => {
     const docs = [];
+    const relacionados = [];
     for (const a of document.querySelectorAll('a[href]')) {
         const href = a.href || '';
         const texto = (a.textContent || '').trim();
         if (!texto) continue;
-        if (/documento_visualizar|exibir_documento|md_doc|acessar_documento|procedimento_visualizar/i.test(href)) {
-            // Onda C (P0.2): o texto do link costuma ser só o NÚMERO do doc; o TIPO ("Termo de
-            // Homologação", "Ata de Registro de Preços"...) vive no title/aria-label do <a> ou no
-            // texto do nó pai da árvore. Capturamos tudo p/ o classificador_doc não cair em "outros".
-            const titleAttr = (a.getAttribute('title') || a.getAttribute('aria-label') || '').trim();
+        const titleAttr = (a.getAttribute('title') || a.getAttribute('aria-label') || '').trim();
+        // (1) PROCESSOS RELACIONADOS: links de procedimento (a "cadeia" — licitação↔contrato↔pagamento)
+        if (/procedimento_visualizar|procedimento_trabalhar/i.test(href)) {
+            // o número do processo relacionado costuma estar no texto (ex.: SEI-XXX/AAAA) ou no title
+            relacionados.push({texto: texto.slice(0, 80), titulo: titleAttr.slice(0, 160), url: href});
+            continue;
+        }
+        // (2) DOCUMENTOS do processo. Onda C (P0.2): o texto do link costuma ser só o NÚMERO; o TIPO
+        // ("Termo de Homologação", "Ata de Registro de Preços"...) vive no title/aria-label/nó pai.
+        if (/documento_visualizar|exibir_documento|md_doc|acessar_documento/i.test(href)) {
             const pai = a.closest('li, tr, .infraArvoreNo, div');
             let textoPai = pai ? (pai.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 120) : '';
-            // o tipo é a melhor pista textual disponível: title > texto do pai (sem o número) > texto do link
             const tipo = titleAttr || textoPai || texto;
             docs.push({texto: texto.slice(0, 120), titulo: tipo.slice(0, 160),
                        title_attr: titleAttr.slice(0, 160), url: href});
@@ -217,6 +222,7 @@ _JS_LE_ARVORE_E_TEXTO = r"""
         url: location.href,
         title: document.title,
         documentos: docs.slice(0, 80),
+        relacionados: relacionados.slice(0, 40),
         texto: corpo.slice(0, 12000),
     };
 }
@@ -530,6 +536,7 @@ async def ler_processo_sei_via_chrome(
             "url": dump.get("url", ""),
             "title": dump.get("title", ""),
             "documentos": dump.get("documentos", []),
+            "relacionados": dump.get("relacionados", []),
             "texto": dump.get("texto", ""),
         })
 

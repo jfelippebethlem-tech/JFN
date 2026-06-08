@@ -82,3 +82,25 @@ def test_navegador_erro_honesto(monkeypatch):
     monkeypatch.setattr(cdp, "ler_processo_sei", _waf)
     r = navegador.abrir_processo("E-12/001/2026")
     assert r["ok"] is False and "WAF" in r["erro"] and r["docs"] == []
+
+
+def test_navegador_extrai_processos_relacionados(monkeypatch):
+    """A árvore expõe 'Processos Relacionados' (procedimento_visualizar) → cadeia licitação↔contrato↔pagamento."""
+    from compliance_agent.sei import navegador
+
+    async def _fake(numero, usar_cache=True):
+        return {"numero": numero, "url": "http://sei/x", "texto": "...",
+                "documentos": [{"texto": "Nota de Empenho - NE", "url": "http://sei/documento_visualizar?id=1"}],
+                "relacionados": [
+                    {"texto": "SEI-270060/000123/2022", "titulo": "Pregão Eletrônico SRP", "url": "http://sei/procedimento_visualizar?id=9"},
+                    {"texto": "E-12/345/2021", "titulo": "", "url": "http://sei/procedimento_visualizar?id=8"}],
+                "conteudo_documentos": []}
+
+    import compliance_agent.collectors.sei_cdp as cdp
+    monkeypatch.setattr(cdp, "ler_processo_sei", _fake)
+    r = navegador.abrir_processo("E-12/001/2026")
+    assert r["ok"] is True and len(r["docs"]) == 1
+    rel = r["relacionados"]
+    assert len(rel) == 2
+    assert rel[0]["numero"].startswith("SEI-270060/000123") and "Pregão" in rel[0]["titulo"]
+    assert rel[1]["numero"].startswith("E-12/345/2021")
