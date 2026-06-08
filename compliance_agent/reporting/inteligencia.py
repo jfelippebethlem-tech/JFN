@@ -1084,14 +1084,30 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         pass
     secoes.append({"titulo": "4. Listas restritivas e OSINT", "html": f"<ul>{''.join(osint)}</ul>"})
 
-    # 5. Pagamentos por ano + sparkline
+    # 5. Pagamentos — TABELA CRUZADA Órgão (UG) × Ano (pedido do dono: por ano, dividido por órgão)
     if p["tem_dados"]:
-        rows = "".join(f"<tr><td>{a}</td><td>{p['por_ano'][a]['n']}</td><td>R$ {moeda(p['por_ano'][a]['total'])}</td></tr>" for a in p["anos"])
-        rows += f"<tr><th>Total</th><th>{p['n_geral']}</th><th>R$ {moeda(p['total_geral'])}</th></tr>"
-        spark = C.sparkline([p["por_ano"][a]["total"] for a in p["anos"]], "Pagamentos por ano")
-        secoes.append({"titulo": "5. Pagamentos (Ordens Bancárias) por ano",
-                       "html": "<p class='nota'>OB = pagamento (dado definitivo, SIAFE/TFE-RJ).</p>"
-                               f"<table><tr><th>Exercício</th><th>Nº OBs</th><th>Total pago</th></tr>{rows}</table>",
+        # agrega valor por (órgão, ano) a partir das linhas de OB
+        matriz: dict = {}
+        tot_ano: dict = {}
+        for a in p["anos"]:
+            # por_orgao já é a agregação COMPLETA por órgão naquele exercício
+            for org, v in (p["por_ano"][a].get("por_orgao") or {}).items():
+                matriz.setdefault(org or "—", {})[a] = v
+                tot_ano[a] = tot_ano.get(a, 0.0) + (v or 0)
+        orgs_ord = sorted(matriz, key=lambda o: -sum(matriz[o].values()))
+        thead = "<tr><th>Órgão (UG)</th>" + "".join(f"<th>{a}</th>" for a in p["anos"]) + "<th>Total</th></tr>"
+        body = ""
+        for org in orgs_ord:
+            tot_org = sum(matriz[org].values())
+            cells = "".join(f"<td>{('R$ ' + moeda(matriz[org].get(a, 0))) if matriz[org].get(a) else '—'}</td>" for a in p["anos"])
+            body += f"<tr><td>{esc(org)}</td>{cells}<td><b>R$ {moeda(tot_org)}</b></td></tr>"
+        body += ("<tr><th>TOTAL</th>" + "".join(f"<th>R$ {moeda(tot_ano.get(a, 0))}</th>" for a in p["anos"])
+                 + f"<th>R$ {moeda(p['total_geral'])}</th></tr>")
+        spark = C.sparkline([p["por_ano"][a]["total"] for a in p["anos"]], "Total pago por ano")
+        secoes.append({"titulo": "5. Pagamentos (Ordens Bancárias) — por Órgão (UG) × Ano",
+                       "html": "<p class='nota'>OB = pagamento (dado definitivo, SIAFE/TFE-RJ). Cada célula = total pago "
+                               f"àquele órgão naquele exercício ({p['n_geral']} OBs no total). Detalhe por OB individual no XLSX.</p>"
+                               f"<table>{thead}{body}</table>",
                        "chart": spark})
         # 6. Concentração por órgão (HHI) + barras
         tot = p["total_geral"] or 1

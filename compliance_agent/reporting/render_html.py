@@ -36,7 +36,9 @@ _TEMPLATE = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
   h2 { font-size:13px; color:#1f4e79; border-bottom:1px solid #e0e0e0; padding-bottom:3px; margin-top:16px; }
   table { width:100%; border-collapse:collapse; font-size:10px; margin:6px 0; }
   th,td { text-align:left; padding:4px 6px; border-bottom:1px solid #eee; }
-  th { background:#f3f6fa; color:#1f4e79; }
+  th { background:#1f4e79; color:#fff; }
+  table tr:nth-child(even) td { background:#eef3fa; }   /* linhas zebradas — visibilidade */
+  table tr:hover td { background:#e2ebf6; }
   .flag { padding:2px 6px; border-radius:3px; background:#fdecea; color:#c62828; font-size:9px; }
   .chart { margin:8px 0; }
   .nota { font-size:9px; color:#666; font-style:italic; }
