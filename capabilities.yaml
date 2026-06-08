@@ -73,11 +73,11 @@ capacidades:
   - {id: massare_teses, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/teses, status: "ONDA 9",
      descricao: "Teses de mercado: narrativa->ativos->direcao, com acerto OOS por narrativa", quando_usar: "'quais as teses agora', 'o que move o mercado'",
      args: {}, retorno: "{teses[{narrativa,ativos,direcao,horizonte,conf,racional,fontes,acerto_oos}]}"}
-  - {id: massare_focus, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/focus, status: "ONDA 8",
+  - {id: massare_focus, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/focus, status: PRONTO,
      descricao: "Boletim Focus (BCB/Olinda): Selic/IPCA/PIB/cambio + variacao semanal", quando_usar: "'o que o mercado espera de juros/inflacao'", args: {}, retorno: "{selic,ipca,pib,cambio,asof}", fonte: "olinda.bcb.gov.br Expectativas (python-bcb)"}
-  - {id: massare_fundamentos, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/fundamentos, status: "ONDA 8",
+  - {id: massare_fundamentos, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/fundamentos, status: PRONTO,
      descricao: "Fundamentos de acao BR (P/L,DY,ROE,balancos CVM)", quando_usar: "'fundamentos da PETR4'", args: {ticker: obrigatorio}, retorno: "{preco,pl,dy,roe,balanco}", fonte: "brapi.dev"}
-  - {id: massare_calendario, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/calendario, status: "ONDA 8",
+  - {id: massare_calendario, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/calendario, status: PRONTO,
      descricao: "Agenda macro (US/BR/China): CPI/NFP/FOMC/COPOM/PMI China, previsto vs anterior", quando_usar: "'agenda da semana', 'tem dado importante hoje?'", args: {dias: "int=7"}, retorno: "{eventos[]}", fonte: "Finnhub /calendar/economic (free tier) + FRED (sem chave)"}
   - {id: massare_carteira, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/carteira, status: "ONDA 9",
      descricao: "Modo carteira MANUAL: holdings em data/carteira.json x macro/regime/teses (sem broker)", quando_usar: "'como esta minha carteira'", args: {}, retorno: "{posicoes,alertas,leitura_macro}", fonte: "dados gratis (Yahoo/Stooq/brapi/websocket cripto)"}
