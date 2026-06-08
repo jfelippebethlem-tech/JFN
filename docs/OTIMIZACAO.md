@@ -69,10 +69,15 @@ tokens/CPU/latência**:
 > contra os sites gov e arrisca o que acabou de ser estabilizado, para um ganho **só de latência** (não de
 > token/CPU/storage/memória). Entra na Fase 3, atrás dos testes-caracterização.
 
-### FASE 3 — DOCUMENTADA (roadmap; exige testes-caracterização ANTES; cobertura hoje 3,7%)
-- **3.0** Golden tests dos 3+ logins (siafe_browser/sei_browser/sei_cdp/siafe_ob), coletores-chave, `rules/engine.py`, `anomalias.py`.
-- **3.1** Dedup de login (extrair helper comum) — ALTO risco (~6h); login SIAFE recém-estabilizado por ÚLTIMO.
-- **3.2** Split de monólitos: `diagnose_siafe.py` (2944 LOC, debug) → `tools/debug/`; depois `server.py`/`hermes_goal.py`/`telegram.py`.
+### FASE 3 — EM EXECUÇÃO (2026-06-08; cada passo com rede de segurança + verificação)
+- **3.0** ✅ Rede de segurança: `tests/test_imports_smoke.py` (importa **103 módulos** core, ~5,5s) + removido lixo
+  `tests/__tmp_verify.py`. (Golden tests de browser-login são inviáveis de forma determinística — o smoke de
+  import + os snapshots por função fazem o papel de rede.)
+- **3.2a** ✅ `diagnose_siafe.py` (2944 LOC, script de debug, 0 imports) → **`tools/debug/diagnose_siafe.py`**
+  (rodar com `PYTHONPATH=. .venv/bin/python tools/debug/diagnose_siafe.py`). Raiz do repo mais limpa.
+- **3.2b** Split de `telegram.py`: extrair formatters puros → `telegram_fmt.py` (API preservada) + teste unitário.
+- **3.1** Dedup de login — ALTO risco; já existe `compliance_agent/siafe_login.py` (avaliar reuso); login SIAFE
+  recém-estabilizado por ÚLTIMO. `server.py`/`hermes_goal.py` split: só com mais cobertura (gate honesto).
 
 ## 5. Decisões de ferramentas externas
 - **`ruff` — SIM** (1 binário; linter + dead-imports). Uso **report-only**; **sem `--fix` em massa** (imports com
