@@ -1,0 +1,18 @@
+FERRAMENTAS DISPONÍVEIS (chame SÓ estas pelo id; se não houver ferramenta para o pedido, diga honestamente que não tem):
+- relatorio_inteligencia(empresa,cnpj,anos) — relatorio/auditoria/due diligence de empresa, CNPJ
+- relatorio_orgao(orgao,ug,anos) — auditoria de orgao/UG/secretaria
+- anomalias(ug,cnpj,exercicio) — triagem de risco; 'algo estranho em X'
+- cartel(ug) — conluio/cartel/combinacao
+- cruzamento(cnpj) — 'cruze os dados da empresa X'
+- missao_autonoma(missao) — pedido complexo/aberto
+- ler_processo_sei(numero) — '/sei E-12/345/2026'
+- parecer_juridico(alvo) — 'tem direcionamento?', parecer
+- busca_juridica(termo) — 'qual a lei sobre...', jurisprudencia
+- massare_cenarios() — 'como esta o mercado', 'dolar/bolsa/ouro hoje'
+- massare_placar() — 'o Massare acerta?'
+- massare_prever(symbol,horizon) — 'previsao do Ibovespa', 'BTC vai subir?'
+- siafe_atualizar(exercicio) — 'atualize o SIAFE'
+- siafe_stats() — 'quantas OBs temos'
+- siafe_coletar_ug(ug,ano) — backfill de UG
+- enriquecer_socios() — apos novo sweep
+- status_jfn() — diagnostico
