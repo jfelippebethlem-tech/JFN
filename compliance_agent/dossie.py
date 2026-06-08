@@ -110,12 +110,62 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
                   "Nenhum bloco indisponível foi fabricado.")
 
     if gerar_pdf:
+        # Onda 7: relatório classe mundial (HTML→PDF via Playwright). FPDF compacto = fallback.
         try:
-            d["path_pdf"] = _gerar_pdf(d)
-        except Exception as e:  # noqa: BLE001
-            d["path_pdf"] = None
-            d["_pdf_erro"] = str(e)
+            d["path_pdf"] = await _gerar_pdf_classe_mundial(d)
+        except Exception:  # noqa: BLE001
+            try:
+                d["path_pdf"] = _gerar_pdf(d)
+            except Exception as e:  # noqa: BLE001
+                d["path_pdf"] = None
+                d["_pdf_erro"] = str(e)
     return d
+
+
+async def _gerar_pdf_classe_mundial(d: dict) -> str:
+    """Onda 7 — monta o ctx do dossiê (rating card + gráficos SVG + proveniência) e gera o PDF."""
+    from compliance_agent.reporting import charts_svg as C
+    from compliance_agent.reporting.render_html import gerar_pdf
+
+    cad = d.get("cadastro", {}) or {}
+    nome = cad.get("razao_social") or cad.get("nome") or d["alvo"]
+    ob = d.get("ob", {}) or {}
+    sc = d.get("score", {}) or {}
+    conf = d.get("conflito", {}) or {}
+    rede = d.get("rede", {}) or {}
+
+    secoes = []
+    ugs = ob.get("ugs") or []
+    if ugs:
+        total = ob.get("total_ob") or 1
+        secoes.append({"titulo": "Concentração de pagamentos por órgão (OB)",
+                       "chart": C.barras([u["nome"] or u["ug"] for u in ugs],
+                                         [(u["total"] / total) for u in ugs], "Participação por UG")})
+    # matriz P×I a partir do score (heurística: prob~score/10, impacto~concentração)
+    prob = max(1, min(round((sc.get("score", 0) or 0) / 11) + 1, 9))
+    imp = max(1, min(round((ob.get("concentracao_top_ug", 0) or 0) * 9) + 1, 9))
+    secoes.append({"titulo": "Matriz de risco P×I (TCU)", "chart": C.heatmap_pxi(prob, imp)})
+    secoes.append({"titulo": "Síntese",
+                   "html": f"<table><tr><th>Indicador</th><th>Valor</th></tr>"
+                           f"<tr><td>Total pago (OB)</td><td>R$ {ob.get('total_ob', 0):,.2f}</td></tr>"
+                           f"<tr><td>Nº de OBs / UGs</td><td>{ob.get('n_ob', 0)} / {ob.get('n_ugs', 0)}</td></tr>"
+                           f"<tr><td>Conflito doador↔contrato</td><td>{conf.get('n', 0)} vínculo(s)</td></tr>"
+                           f"<tr><td>Rede de poder (2 saltos)</td><td>{rede.get('n_nos', 0)} nós</td></tr></table>"})
+
+    ctx = {
+        "_dados": d, "titulo": f"Dossiê 360 — {nome}", "subtitulo": f"CNPJ {d['alvo']}",
+        "classificacao": "CONFIDENCIAL — USO INTERNO (controle externo)",
+        "score": sc.get("score", 0), "faixa": sc.get("faixa", "BAIXO"),
+        "top_flags": [c["flag"] for c in (sc.get("contribuicoes") or [])[:3]],
+        "secoes": secoes,
+        "proveniencia": [
+            {"dado": "Pagamentos (OB)", "estado": "REAL", "fonte": "TFE/SIAFE", "data": d.get("gerado_em", "")[:10]},
+            {"dado": "Cadastro", "estado": "REAL" if cad.get("razao_social") else "INDISPONÍVEL",
+             "fonte": "BrasilAPI", "data": d.get("gerado_em", "")[:10]},
+            {"dado": "Doações", "estado": "REAL", "fonte": "TSE", "data": d.get("gerado_em", "")[:10]},
+        ],
+    }
+    return await gerar_pdf(ctx, f"dossie_{d['alvo']}")
 
 
 def _gerar_pdf(d: dict) -> str:
