@@ -481,3 +481,24 @@ consultas financeiras — aprovado pelo dono, base jurídica pronta); (2) **fast
   INDISPONÍVEL a REAL nas seções 4/idoneidade. Os backends já estão prontos (key-gated, honestos) — é só colar no `.env`.
 - **Backlog seguro restante (sem chave):** paralelizar também os enrichers do render (OSINT) · split de módulos grandes ·
   VACUUM (só com sweep idle). Itens que dependem do dono: `/lista` fast-path (bot vivo) e as 2 chaves.
+
+### PACOTE SEI/PREÇOS (3 docs novos do dono) — Fase 0 + Onda A + Onda B (2026-06-08, noite)
+Docs recebidos: `JFN-HANDOFF-CLAUDE-CODE` (guia + Fase 0), `JFN-SPEC-SEI-PRECOS` (Onda 5 + extrator de preço),
+`JFN-PILOTO-SEI-10` (piloto). **Planejei antes de codar e fui honesto sobre o viável.**
+- **Fase 0 (descobertas, `#18`):** OB **não tem objeto/natureza/subitem/CNAE** → classificação de gastos depende do
+  **SEI (objeto) + CNAE (BrasilAPI)**, não do SIAFE. `processos_sei` **vazia** → varredura sai de
+  `ordens_bancarias.numero_sei` (**41.545** OBs c/ SEI, mas o campo é **ruidoso**: "0", "000 048 0 26"…).
+  pdfplumber/camelot ausentes (instalei pdfplumber, grátis). **`JFN-SPEC-AVALIARGASTOS-RJ` NÃO foi enviado.**
+- **`89273dd` — Onda A (scaffolding SEI real, testável):** `compliance_agent/sei/{navegador,classificador_doc,
+  extrator_precos}.py`. navegador reusa o leitor itkava validado; classificador por título; extrator em camadas
+  (tabela pdfplumber → LLM texto → visão) **honesto** (`falha`/0 quando não extrai, nunca chuta). 6 testes.
+- **Onda B (`#20`) — piloto empírico que CALIBRA (`tools/pilot_sei_avaliar.py`):** rodou ao vivo no processo
+  validado (SEI-140001/017080/2022): abertura **100%**, 3 docs, **0 itens** (é Credenciamento, sem tabela de preço —
+  honesto). **DESCOBERTA-CHAVE (P0.2/P0.3):** os títulos da árvore vêm como **IDs numéricos** ("132513499"), NÃO como
+  "Termo de Homologação" → o scraper atual **não captura o TIPO** do documento, então `classificador_doc` cai em
+  "outros". **Próximo passo concreto (P0.2):** enriquecer o scraper do SEI para capturar o rótulo de tipo (span/label
+  ao lado do número na árvore) — só então a extração de preço mira homologação/ata. 2 testes do piloto.
+- **NÃO feito (honesto, sem inventar):** `/avaliargastos` + `gastos/*` (sem o spec AVALIARGASTOS-RJ); travar o parser
+  de preço (sem um exemplo real com tabela — o piloto mostrou que o processo validado não tem). **Erros & Aprendizados:**
+  o piloto provou seu valor — em vez de assumir que "classifica por título" funciona, ele revelou que o título real é
+  um ID numérico; **construir o scaffolding + medir no dado real > adicionar função e presumir que funciona.**
