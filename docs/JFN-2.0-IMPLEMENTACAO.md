@@ -277,3 +277,10 @@ roteamento adaptativo (decisão acima).
   = decisão do dono (não arriscar o bot); SIAFE-lock = sweep rodando; crypto_ws = daemon; chaves brapi/Finnhub/
   OpenSanctions = key-gated (reportam INDISPONÍVEL, nunca fabricam). **Chaves Gemini: 9 chaves / 9 projetos = 9× free
   (dono confirmou projetos distintos); pool deduplicado; verificador `tools.check_gemini_key`.**
+- **2026-06-08 (DEPLOY — bot reiniciado, rotas vivas)** — dono autorizou parar/religar o bot. **Yoda
+  (hermes-gateway) reiniciado** → pegou a nova `fallback_chain` (Groq/Gemma), o **pool de 9 chaves/9 projetos**
+  (`auth.json`) e a skill **`/capacidades`** (scan no boot). **jfn.service reiniciado** → TODAS as rotas das
+  ondas 2–13 ficaram VIVAS (validado HTTP 200: /api/skills, /api/conflito, /api/sobrepreco, /api/grafo/ftm,
+  /api/memoria…). Sweeps SIAFE + TSE intactos (processos separados, fora do jfn.service). Config validada ANTES
+  do religamento (config.yaml YAML ok, auth.json 9 chaves, skill no disco). NRestarts=0 (estável, sem crash-loop).
+  **Único passo restante = Definição de Pronto (merge jfn-2.0→linux + limpeza de memória) — aguarda OK do dono.**
