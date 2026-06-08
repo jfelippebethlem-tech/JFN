@@ -92,6 +92,55 @@ def dependencia_fornecedores(min_total: float = 1_000_000, limite: int = 30) -> 
         con.close()
 
 
+def _norm_nome(s: str | None) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", (s or "").lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", re.sub(r"[^a-z ]", " ", s)).strip()
+
+
+def socios_compartilhados(cnpjs: list[str], max_consultas: int = 20) -> dict:
+    """Sócios EM COMUM entre fornecedores que se apresentam como CONCORRENTES = indício de concorrência
+    FICTÍCIA / cartel (Art. 90 Lei 8.666 · 337-F CP · Art. 36 Lei 12.529-CADE). Aprofundamento 'c/ QSA' da
+    Onda 3: pega o QSA de cada CNPJ (registry provider) e cruza por sócio.
+
+    CAVEAT honesto: o CNPJ público MASCARA o CPF do sócio (***127777**) → o casamento é por NOME (o
+    parcial do CPF corrobora). Nome pode ser ambíguo → INDÍCIO a conferir, NUNCA acusação."""
+    from compliance_agent.providers import lookup
+    socio2cnpjs: dict[str, set] = {}
+    doc2cnpjs: dict[str, set] = {}
+    consultados, falhas = [], []
+    for c in list(dict.fromkeys(re.sub(r"\D", "", x or "") for x in cnpjs if x))[:max_consultas]:
+        r = lookup("registry", cnpj=c)
+        if not r.ok or not r.dados:
+            falhas.append(c); continue
+        consultados.append(c)
+        for s in (r.dados.get("socios") or []):
+            nome = _norm_nome(s.get("nome"))
+            if len(nome) > 5:
+                socio2cnpjs.setdefault(nome, set()).add(c)
+            doc = re.sub(r"\D", "", s.get("doc") or "")
+            if len(doc) >= 6:  # parcial mascarado corrobora
+                doc2cnpjs.setdefault(doc, set()).add(c)
+    compart = [{"socio": nome, "cnpjs": sorted(cs), "n": len(cs)}
+               for nome, cs in socio2cnpjs.items() if len(cs) >= 2]
+    compart.sort(key=lambda x: -x["n"])
+    return {"n_consultados": len(consultados), "n_falhas": len(falhas),
+            "socios_compartilhados": compart, "n_socios_comuns": len(compart),
+            "red_flag": bool(compart),
+            "nota": "Sócio em comum entre concorrentes = indício de concorrência fictícia (Art. 90); conferir. "
+                    "CPF público mascarado → casamento por nome."}
+
+
+def cartel_com_qsa(cnpj: str, limite: int = 15, max_ubiquidade: int = 40) -> dict:
+    """Onda 3 completa: ego-rede de cartel (vizinhanca_cartel) + cruzamento de QSA entre o alvo e os
+    vizinhos co-ocorrentes (socios_compartilhados). Indício de rodízio COM concorrência fictícia."""
+    viz = vizinhanca_cartel(cnpj, limite=limite, max_ubiquidade=max_ubiquidade)
+    cnpjs = [cnpj] + [v["cnpj"] for v in viz.get("vizinhos", [])]
+    qsa = socios_compartilhados(cnpjs)
+    return {"cnpj": re.sub(r"\D", "", cnpj or ""), "vizinhanca": viz, "qsa_cruzado": qsa}
+
+
 def vizinhanca_cartel(cnpj: str, limite: int = 15, max_ubiquidade: int = 40) -> dict:
     """Ego-rede de um fornecedor: os órgãos que atende e os OUTROS fornecedores nos MESMOS órgãos.
 
