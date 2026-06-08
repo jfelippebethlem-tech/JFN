@@ -200,7 +200,16 @@ _JS_LE_ARVORE_E_TEXTO = r"""
         const texto = (a.textContent || '').trim();
         if (!texto) continue;
         if (/documento_visualizar|exibir_documento|md_doc|acessar_documento|procedimento_visualizar/i.test(href)) {
-            docs.push({texto: texto.slice(0, 120), url: href});
+            // Onda C (P0.2): o texto do link costuma ser só o NÚMERO do doc; o TIPO ("Termo de
+            // Homologação", "Ata de Registro de Preços"...) vive no title/aria-label do <a> ou no
+            // texto do nó pai da árvore. Capturamos tudo p/ o classificador_doc não cair em "outros".
+            const titleAttr = (a.getAttribute('title') || a.getAttribute('aria-label') || '').trim();
+            const pai = a.closest('li, tr, .infraArvoreNo, div');
+            let textoPai = pai ? (pai.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 120) : '';
+            // o tipo é a melhor pista textual disponível: title > texto do pai (sem o número) > texto do link
+            const tipo = titleAttr || textoPai || texto;
+            docs.push({texto: texto.slice(0, 120), titulo: tipo.slice(0, 160),
+                       title_attr: titleAttr.slice(0, 160), url: href});
         }
     }
     const corpo = document.body ? document.body.innerText : '';
