@@ -139,6 +139,16 @@ def test_navegador_diagnostica_zero_docs(monkeypatch):
     r2 = navegador.abrir_processo("E-2/2/2025")
     assert r2["acesso_restrito"] is False and r2["motivo_zero"] == "busca_nao_resolveu"
 
+    # "Nenhum resultado encontrado" (texto real do SEI-RJ) = processo NÃO localizado/acessível
+    # pela unidade (nº ruidoso da OB ou fora do escopo ITERJ) — NÃO é falha técnica do reader.
+    async def _sem(numero, usar_cache=True):
+        return {"numero": numero, "url": "https://sei.rj.gov.br/sei/controlador.php?acao=protocolo_pesquisar",
+                "documentos": [], "relacionados": [],
+                "texto": "Resultado da Pesquisa ... Nenhum resultado encontrado. Sugestões:"}
+    monkeypatch.setattr(cdp, "ler_processo_sei", _sem)
+    r3 = navegador.abrir_processo("E-3/3/2025")
+    assert r3["acesso_restrito"] is False and r3["motivo_zero"] == "nenhum_resultado"
+
 
 def test_navegador_cadeado_icone_marca_restrito(monkeypatch):
     """Cadeado (ícone) é sinal mais confiável que texto: acesso_restrito=True mesmo sem marcador textual."""

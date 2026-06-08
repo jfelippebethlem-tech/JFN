@@ -81,10 +81,15 @@ def abrir_processo(numero: str, usar_cache: bool = True) -> dict:
     acesso_restrito = cadeado or any(m in low for m in (
         "acesso restrito", "nivel de acesso", "nível de acesso", "documento restrito",
         "processo sigiloso", "credencial de acesso"))
+    # "Nenhum resultado encontrado" = o processo NÃO foi localizado pela busca (nº ruidoso da OB,
+    # processo fora do escopo de acesso da unidade itkava/ITERJ, ou inexistente) — NÃO é falha técnica.
+    sem_resultado = any(m in low for m in ("nenhum resultado encontrado", "nenhum registro", "não encontrado"))
     motivo_zero = ""
     if not docs:
         if acesso_restrito:
             motivo_zero = "acesso_restrito"  # 🔴 red flag se já há OB paga (deveria ser público)
+        elif sem_resultado:
+            motivo_zero = "nenhum_resultado"  # processo não localizado/acessível pela unidade (ou nº ruidoso)
         elif "protocolo_pesquisar" in url or "iniciar processo" in low:
             motivo_zero = "busca_nao_resolveu"  # ficou na tela de pesquisa — falha técnica do reader
         else:

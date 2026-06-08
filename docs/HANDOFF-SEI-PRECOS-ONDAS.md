@@ -63,13 +63,28 @@ camada `providers/`), 121 testes verdes, 4/6 chaves ativas.
 - **Cadeia** (`relacionados`): navegar execução→licitação→**ARP** (onde mora o preço unitário). SRP→ARP (Lei
   14.133 arts. 82-86).
 
-## ⚠️ BLOQUEADOR do sweep massivo (a resolver ANTES de varrer as 41k OBs)
-**O reader é instável na resolução da busca:** processos recentes (UG 520002/2025) **abrem mas retornam 0 docs
-porque o reader fica na tela `protocolo_pesquisar`** (não navega para dentro do processo) — `motivo_zero=
-busca_nao_resolveu`. Os SRP UG 270060 deram árvores cheias (NE/NAD/Despacho/Recibo/Ofício/Anexo). **Próximo passo
-técnico:** debugar `sei_reader`/`sei_cdp` o fluxo busca→abrir (formato do número, clique no resultado, espera do
-`ifrArvore`) — só então o sweep de 10 (e depois 41k) rende. Os `numero_sei` da OB tb são ruidosos ("0",
-"000 048 0 26") → preferir SEI bem-formados (TCE-RJ) e a cadeia `relacionados`.
+## ✅ BLOQUEADOR REINVESTIGADO (2026-06-08) — o reader FUNCIONA; o "0 docs" era diagnóstico errado
+**Depurado ao vivo (login itkava/ITERJ via chromium próprio, que vence o WAF; o Chrome `:9222` NÃO serve p/ SEI —
+WAF derruba a conexão dele, `ERR_CONNECTION_CLOSED`).** Resultado decisivo:
+- **`SEI-520003/000026/2025` → 8 docs + conteúdo + 1 CNPJ + 1 valor.** O reader busca→abrir **funciona** para
+  processos no **escopo de acesso da ITERJ**. (A URL final `procedimento_controlar` é normal — a árvore vive num
+  frame-filho.)
+- **`SEI-520002/001366/2025` → 0 docs, SEM cadeado, SEM texto de restrição.** Screenshot (ground truth) mostrou
+  **"Nenhum resultado encontrado"** no rodapé da busca. **Não é "busca não resolve" (premissa antiga ERRADA), nem
+  timing, nem acesso restrito:** o processo simplesmente **não é localizado pela busca autenticada da ITERJ** —
+  porque é de **outra unidade** (520002) que nunca tramitou pela ITERJ (escopo de acesso do SEI) e/ou o `numero_sei`
+  da OB é **ruidoso**.
+- **Bug pequeno corrigido:** o detector `_JS_TEM_RESULTADO` (sei_cdp) procurava `nenhum registro`/`não encontrado`,
+  mas o texto real do SEI-RJ é **"Nenhum resultado encontrado"** → não casava. Agora casa, e `navegador` retorna
+  `motivo_zero=nenhum_resultado` (honesto: processo não localizado/acessível), distinto de `busca_nao_resolveu`.
+- **Tentativa que REGRIDIU (revertida):** forçar o modo "Processos" clicando o rótulo "Processos" — clicava o item
+  de **menu** "Processos" (vai p/ `procedimento_controlar`) e zerou o caso bom (520003→0). REVERTIDO. Se um dia
+  quiser fixar o modo da busca, mirar o **radio real** dentro do form, nunca o texto "Processos" (colide com o menu).
+
+**Implicação ESTRATÉGICA p/ o sweep (corrige o plano):** **NÃO** dá para varrer os 41k `numero_sei` às cegas pela
+ITERJ — só rende para processos **no escopo da ITERJ**. Próximo passo certo (Onda 2): alimentar o reader pela
+**cadeia `relacionados`** a partir de processos JÁ no escopo, e/ou um login de unidade com acesso mais amplo, e/ou
+a **pesquisa pública** do SEI. `numero_sei` ruidosos ("0", "000 048 0 26") são descartados de saída.
 
 ## Bloqueado / depende do dono
 - 2 chaves grátis (`ALEPH_API_KEY`, `OPENCORPORATES_API_TOKEN`) → quando chegarem, **reavaliar tudo**.
@@ -122,9 +137,10 @@ técnico:** debugar `sei_reader`/`sei_cdp` o fluxo busca→abrir (formato do nú
 - Índice SEI: `python -c "from compliance_agent.sei import indice; print(indice.stats())"`.
 
 ## ⚠️ VALIDAÇÕES AINDA PENDENTES (heurísticas a confirmar em leitura ao vivo, quando CPU baixa)
-1. **Reader busca→abrir** (BLOQUEADOR): processos recentes abrem na tela `protocolo_pesquisar` e retornam 0 docs
-   (`motivo_zero=busca_nao_resolveu`). DEBUGAR em `tools/sei_reader.py` (fn de pesquisa/abrir) e `sei_cdp` antes do
-   sweep massivo. Os SRP UG 270060 funcionaram (cache/acessível).
+1. **Reader busca→abrir** ✅ RESOLVIDO/REINVESTIGADO (2026-06-08): o reader FUNCIONA p/ processos no escopo ITERJ
+   (520003→8 docs). O "0 docs" do 520002 = **"Nenhum resultado encontrado"** = fora do escopo de acesso/nº ruidoso,
+   não bug do reader. Ver seção "BLOQUEADOR REINVESTIGADO". Confirmação pendente do escopo-vs-modo exige 1 leitura
+   de processo que SE SABE estar no escopo ITERJ porém com o form em modo "Documentos" (não testei limpo).
 2. **Tipo do doc** (Onda C) — validado nos SRP (NE/NAD/Despacho/Recibo/Ofício/Anexo) ✅, mas pouca variedade
    (faltou ver homologacao/ata_rp/parecer_juridico reais → ler um processo de LICITAÇÃO).
 3. **relacionados** e **cadeado** — código pronto + testes mockados, mas NÃO confirmados em processo real
