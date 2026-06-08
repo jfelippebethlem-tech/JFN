@@ -64,6 +64,17 @@ camada `providers/`), 121 testes verdes, 4/6 chaves ativas.
   acessível pela cadeia OB→SEI. **PIVOT recomendado:** a tabela de itens/preço unitário da Lei 14.133 está
   ESTRUTURADA no **PNCP (API, já há `consultar_pncp`/`/api/pncp`)** — usar PNCP como fonte de preço em vez de
   raspar a árvore SEI. Onda 3 (conluio em propostas) depende do mesmo dado → também via PNCP.
+- **Onda 2 RESOLVIDA via PNCP ✅ (commit `81ebb9a`).** `collectors/pncp.buscar_itens(id_pncp)` traz a tabela
+  de itens com **preço unitário estruturado** (`GET /api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens`),
+  pública e **sem browser** — resolve o muro (a ARP não era alcançável pela árvore SEI). Validado: 10 itens RJ.
+- **Onda 3 — estado real (2026-06-08):** **sobrepreço JÁ EXISTE** (`compliance_agent/sobrepreco.py` +
+  `/api/sobrepreco`, vs mediana por CATMAT) — pode ser alimentado pelos preços homologados do PNCP
+  (`/itens/{n}/resultados` → `valorUnitarioHomologado`+CNPJ do vencedor, RJ). **Conluio intra-licitação
+  BLOQUEADO:** o PNCP estruturado só expõe o **vencedor**, não as **propostas dos perdedores** → o detector
+  `conluio_propostas` (markup uniforme) precisaria parsear o **mapa de lances** (documento). Caminho cross-
+  licitação (vencedor recorrente + QSA compartilhado) é viável com os dados de vencedor. **Decisão pendente
+  do dono:** (a) construir o pipeline sobrepreço×PNCP-homologado; (b) parser de mapa de lances p/ conluio;
+  (c) orquestrador consciente de recurso (1 browser por vez + guarda de load; TSE=cron-com-guarda).
 - **Onda D — paralelizar enrichers OSINT do render** (opensanctions/aleph/midia/links sequenciais no
   `render_pdf_html`); rapidez. Pura, sem browser.
 - **Pendência UX:** `/lista` mostra menos que `/capacidades` — unificar (o dono quer tudo junto). ✅ FEITO
