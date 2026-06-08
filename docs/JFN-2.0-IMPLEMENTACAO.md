@@ -467,3 +467,17 @@ consultas financeiras — aprovado pelo dono, base jurídica pronta); (2) **fast
   retry — senão a seção “mídia adversa” (a mais sensível da DD) falha justamente quando mais importa.
 - **Cache bruto ≠ dado.** 3,1 GB de ZIPs do TSE eram regeneráveis após a ingestão — **aprendizado:** separar “base”
   (compliance.db, fica) de “cache de download” (regenerável, vai). Backups de credencial: gitignorar SEMPRE, nunca deletar.
+
+**Continuação sem chaves (2026-06-08, fim+1) — `f7eceb6`:**
+- **`d4fbcd7` — PERF: paralelização do `/relatorio`.** As 4 chamadas de rede do `montar` (enriquecimento +
+  cruzamento + conflito TSE + contratos TCE-RJ) eram **sequenciais** (somavam ~timeouts); agora rodam em
+  `asyncio.gather` (wall-time = máximo). Geração da Extreme medida em **~77 s** (com leitura de 7 SEI + Lex + 3 docs).
+  Cada chamada é best-effort e não derruba o relatório.
+- **`f7eceb6` — teste de regressão da recalibração de risco** (5 casos): trava BAIXO0→ALTO, max[externo,interno],
+  empresa limpa=BAIXO, pago≫contratado. **Suíte: 113 verdes.**
+- **AGUARDANDO CHAVES (decisão do dono):** ALEPH_API_KEY e OPENCORPORATES_API_TOKEN ainda não saíram (PORTAL e
+  OpenSanctions/Finnhub/brapi já ativas = 4/6). **Quando as 2 chaves chegarem, REAVALIAR TUDO de novo** — rodar um
+  `/relatorio` e conferir que Aleph (follow-the-money) e OpenCorporates (rede societária internacional) passam de
+  INDISPONÍVEL a REAL nas seções 4/idoneidade. Os backends já estão prontos (key-gated, honestos) — é só colar no `.env`.
+- **Backlog seguro restante (sem chave):** paralelizar também os enrichers do render (OSINT) · split de módulos grandes ·
+  VACUUM (só com sweep idle). Itens que dependem do dono: `/lista` fast-path (bot vivo) e as 2 chaves.
