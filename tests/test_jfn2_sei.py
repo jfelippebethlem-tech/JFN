@@ -14,6 +14,18 @@ def test_classificar_doc_por_titulo():
     assert tem_preco("homologacao") and not tem_preco("tr")
 
 
+def test_classificar_rotulos_reais_calibrados():
+    """Rótulos REAIS vistos no piloto SRP (UG 270060) — calibração empírica."""
+    from compliance_agent.sei.classificador_doc import classificar_doc, tem_preco
+    assert classificar_doc("Nota de Empenho Original - NE") == "empenho"
+    assert classificar_doc("Nota de Autorização de Despesa - NAD") == "autorizacao_despesa"
+    assert classificar_doc("Despacho de Encaminhamento de Processo") == "parecer"
+    assert classificar_doc("Recibo") == "outros" and classificar_doc("E-mail") == "outros"
+    # novo tipo que CARREGA preço (alvo do varredor)
+    assert classificar_doc("Planilha de Preços") == "planilha_preco" and tem_preco("planilha_preco")
+    assert classificar_doc("Proposta de Preço da empresa") == "planilha_preco"
+
+
 def test_num_br():
     from compliance_agent.sei.extrator_precos import _num_br
     assert _num_br("1.234,56") == 1234.56
