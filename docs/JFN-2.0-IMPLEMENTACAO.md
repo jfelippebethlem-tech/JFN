@@ -384,3 +384,16 @@ funciona em produção; o Lex agora pode ler a íntegra real.
 consultas financeiras — aprovado pelo dono, base jurídica pronta); (2) **fast-path do /lista** no gateway;
 (3) **parecer Lex usar o SEI real + honestidade** (não dizer "leu na íntegra" se voltar vazio); (4) paridade do
 `render_md` com a seção 5-B (hoje só o motor HTML/PDF tem); (5) limpeza da memória de retomada.
+
+**Addendum (continuação da sessão) — OSINT por API + reavaliação completa:**
+- **`1bbe7a9` — OCCRP Aleph via API (Onda 12).** Decisão do dono: Aleph **via API** (a versão a evitar é só a
+  self-host pesada). `enrich/aleph.py` no padrão honesto do `opensanctions` (key-gated `ALEPH_API_KEY` grátis OCCRP;
+  sem chave = INDISPONÍVEL). Devolve link da entidade p/ o dossiê. Ligado na seção 4 (OSINT) do `/relatorio` + dossiê.
+  **ExifTool** instalado (apt `libimage-exiftool-perl`) p/ forense de documentos — wrapper fica p/ amanhã. 2 testes.
+- **`6c86269` — `docs/REAVALIACAO-2026-06-08.md`:** reavaliação onda-a-onda (spec×implementação, 38/39 PRONTO,
+  **89 testes**, todos os módulos importam) + **instrumentalização das 4 ferramentas OSINT** (onde cada uma se aplica
+  na DD §A.3) + **gap achado: `enrich/opencorporates.py` não existe** (Onda 12 incompleta) + lista de **credenciais
+  grátis a obter** (enviada ao dono pelo Telegram, msg 3486).
+- **Critério de dados firmado pelo dono:** API primeiro; free/free-tier só; self-host apenas leve e sem alternativa
+  de API. **Não baixar** fontes on-demand em massa nem OSINT GUI/self-host pesado (avaliado e justificado).
+- **Pendências novas:** `enrich/opencorporates.py` (API free) + `enrich/exif.py` (wrapper ExifTool).
