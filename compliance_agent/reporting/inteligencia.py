@@ -240,6 +240,8 @@ def consultar_pagamentos(cnpj: str, anos: Optional[list[int]] = None) -> dict:
 
     por_ano: "OrderedDict[int, dict]" = OrderedDict()
     orgao_geral: dict = defaultdict(float)
+    # pivot Órgão × Mês × Ano-exercício: (orgao, ano) -> {mes(1..12): total, 0: sem-data}
+    orgao_mes_ano: dict = defaultdict(lambda: defaultdict(float))
     for r in rows:
         ano = int(r["exercicio"] or 0)
         bloco = por_ano.setdefault(ano, {"n": 0, "total": 0.0, "linhas": [], "por_orgao": defaultdict(float)})
@@ -247,15 +249,32 @@ def consultar_pagamentos(cnpj: str, anos: Optional[list[int]] = None) -> dict:
         # rótulo canônico da unidade gestora (corrige o nome do órgão superior nas OBs)
         orgao = ugs.rotulo(r["ug_codigo"], r["ug_nome"] or "—")
         data = (r["data_pagamento"] or r["data_emissao"] or "—")
+        # mês do pagamento (ISO YYYY-MM-DD); 0 quando a data não vem
+        mes = 0
+        if isinstance(data, str) and len(data) >= 7 and data[4:5] == "-":
+            try:
+                mes = int(data[5:7])
+                mes = mes if 1 <= mes <= 12 else 0
+            except ValueError:
+                mes = 0
         bloco["n"] += 1
         bloco["total"] += valor
         bloco["por_orgao"][orgao] += valor
         bloco["linhas"].append({"numero_ob": r["numero_ob"] or "—", "data": data, "orgao": orgao, "valor": valor})
         orgao_geral[orgao] += valor
+        orgao_mes_ano[(orgao, ano)][mes] += valor
 
     for ano, b in por_ano.items():
         b["por_orgao"] = dict(sorted(b["por_orgao"].items(), key=lambda kv: kv[1], reverse=True))
     out["por_ano"] = por_ano
+    # consolida o pivot mensal: lista ordenada por (órgão, ano)
+    matriz_mes: list[dict] = []
+    for (orgao, ano), meses in orgao_mes_ano.items():
+        matriz_mes.append({"orgao": orgao, "ano": ano,
+                           "meses": {m: round(v, 2) for m, v in meses.items()},
+                           "total": round(sum(meses.values()), 2)})
+    matriz_mes.sort(key=lambda x: (x["orgao"], x["ano"]))
+    out["por_orgao_mes_ano"] = matriz_mes
     out["anos"] = sorted(por_ano.keys())
     out["n_geral"] = sum(b["n"] for b in por_ano.values())
     out["total_geral"] = sum(b["total"] for b in por_ano.values())
@@ -1126,6 +1145,37 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                                f"àquele órgão naquele exercício ({p['n_geral']} OBs no total). Detalhe por OB individual no XLSX.</p>"
                                f"<table>{thead}{body}</table>",
                        "chart": spark})
+
+        # 5-B. Pagamentos MÊS A MÊS — Órgão × Mês × Ano-exercício (pedido do dono: granularidade mensal de volta)
+        mma = p.get("por_orgao_mes_ano") or []
+        if mma:
+            MESES = {1: "Jan", 2: "Fev", 3: "Mar", 4: "Abr", 5: "Mai", 6: "Jun",
+                     7: "Jul", 8: "Ago", 9: "Set", 10: "Out", 11: "Nov", 12: "Dez", 0: "S/data"}
+            presentes = sorted({m for row in mma for m in row["meses"]}, key=lambda m: (m == 0, m))
+
+            def _mc(v):  # valor compacto p/ caber 12+ colunas no A4
+                if not v:
+                    return "—"
+                if abs(v) >= 1e6:
+                    return f"{v / 1e6:.2f} mi"
+                if abs(v) >= 1e3:
+                    return f"{v / 1e3:.0f} mil"
+                return f"{v:.0f}"
+
+            thead2 = ("<tr><th>Órgão (UG)</th><th>Exerc.</th>"
+                      + "".join(f"<th>{MESES[m]}</th>" for m in presentes) + "<th>Total</th></tr>")
+            body2 = ""
+            for row in mma:
+                cells = "".join(f"<td>{_mc(row['meses'].get(m, 0))}</td>" for m in presentes)
+                body2 += (f"<tr><td>{esc(row['orgao'])}</td><td>{row['ano']}</td>{cells}"
+                          f"<td><b>R$ {moeda(row['total'])}</b></td></tr>")
+            secoes.append({"titulo": "5-B. Pagamentos mês a mês (Órgão × Mês × Ano-exercício)",
+                           "html": "<p class='nota'>Granularidade mensal das OBs por órgão e exercício (complementa a tabela "
+                                   "cruzada acima). Células em forma compacta (mi = milhões, mil = milhares); o Total fica em "
+                                   "precisão cheia e o detalhe por OB individual vai no XLSX. Útil para flagrar pagamentos "
+                                   "concentrados em meses atípicos — fim de exercício / véspera eleitoral (red flag ACFE).</p>"
+                                   f"<table>{thead2}{body2}</table>"})
+
         # 6. Concentração por órgão (HHI) + barras
         tot = p["total_geral"] or 1
         orgs = list(p["por_orgao_geral"].items())
