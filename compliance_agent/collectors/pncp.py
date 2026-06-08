@@ -177,6 +177,42 @@ def _parse_id_pncp(id_pncp: str) -> Optional[tuple]:
         return None
 
 
+async def buscar_itens(id_pncp: str) -> list[dict]:
+    """Itens com PREÇO UNITÁRIO de uma contratação (a 'tabela de preço' da Lei 14.133, ESTRUTURADA).
+
+    Resolve o muro da Onda 2: a ARP/tabela de itens NÃO é alcançável raspando a árvore SEI (processos
+    acessíveis via OB são de pagamento), mas o PNCP a expõe estruturada, pública e sem login —
+    `GET /api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens`. Insumo do extrator de preço e do conluio
+    (comparar valor unitário entre fornecedores do mesmo objeto). id_pncp vem de `buscar_contratacoes`.
+    """
+    pr = _parse_id_pncp(id_pncp)
+    if not pr:
+        return []
+    cnpj, ano, seq = pr
+    try:
+        async with httpx.AsyncClient(timeout=30) as client:
+            r = await client.get(f"{PNCP_BASE}/orgaos/{cnpj}/compras/{ano}/{seq}/itens",
+                                 headers={"User-Agent": "JFN-Compliance/2.0"})
+            if r.status_code != 200:
+                return []
+            itens = r.json() or []
+    except Exception:
+        return []
+    out = []
+    for it in itens:
+        out.append({
+            "numero": it.get("numeroItem"),
+            "descricao": it.get("descricao"),
+            "quantidade": it.get("quantidade"),
+            "unidade": it.get("unidadeMedida"),
+            "valor_unitario": it.get("valorUnitarioEstimado"),
+            "valor_total": it.get("valorTotal"),
+            "ncm_catmat": it.get("ncmNbsCodigo") or it.get("catalogo"),
+            "situacao": it.get("situacaoCompraItemNome"),
+        })
+    return out
+
+
 def _texto_de_pdf(blob: bytes, max_paginas: int = 12) -> str:
     try:
         import io

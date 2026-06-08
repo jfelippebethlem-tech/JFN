@@ -54,6 +54,16 @@ camada `providers/`), 121 testes verdes, 4/6 chaves ativas.
     + `doador_contrato_qsa` (entram no `/lista`/skilltree — 46 caps). `.env.example` atualizado.
   - **Pendente Onda 12 (menor):** idoneidade ainda só CEIS (falta CNEP); popular outros anos do TSE
     (`carregar_doacoes_rj(2018/2014)` p/ doação direta de empresa ≤2014) — on-demand, não em cron.
+- **Onda 2 — validar SEI ao vivo + travar extrator ⚠️ PARCIAL (2026-06-08).** Li lote de 6 processos de
+  alto valor (sweep pausado via `data/.pause_sweep_2`). **Achados:** (a) **3/6 acessíveis** (EMOP UG 330003 →
+  10 docs); 3 fora de escopo (Saúde/Previdência → 0 docs). (b) Os acessíveis são processos de **PAGAMENTO**
+  (TERMO DE ENCERRAMENTO, RELATÓRIO de NF — têm CNPJ+valores totais, mas **NÃO a ARP de preço unitário**).
+  (c) `relacionados` são só "Financeiro: Pagamento" (sem nº) → **não levam à licitação**. (d) Títulos vêm
+  como **ID numérico** → classificador por título falha. **Feito:** `classificar_doc(titulo, conteudo)` agora
+  tipa pelo CONTEÚDO (commit `a6ac430`). **NÃO feito (bloqueado):** travar `extrator_precos` — não há ARP
+  acessível pela cadeia OB→SEI. **PIVOT recomendado:** a tabela de itens/preço unitário da Lei 14.133 está
+  ESTRUTURADA no **PNCP (API, já há `consultar_pncp`/`/api/pncp`)** — usar PNCP como fonte de preço em vez de
+  raspar a árvore SEI. Onda 3 (conluio em propostas) depende do mesmo dado → também via PNCP.
 - **Onda D — paralelizar enrichers OSINT do render** (opensanctions/aleph/midia/links sequenciais no
   `render_pdf_html`); rapidez. Pura, sem browser.
 - **Pendência UX:** `/lista` mostra menos que `/capacidades` — unificar (o dono quer tudo junto). ✅ FEITO

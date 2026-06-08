@@ -1,0 +1,166 @@
+{
+  "numero": "SEI-330003/002262/2024",
+  "url": "https://sei.rj.gov.br/sei/controlador.php?acao=protocolo_pesquisar&acao_origem=protocolo_pesquisar&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=491242132838255108c0dc5d8fe6e53acc35ad5540a218f233479c5b83113f2d#ancoraBarraPesquisa",
+  "documentos": [
+    {
+      "texto": "87420861",
+      "titulo": "Termo de Encerramento de Processo",
+      "title_attr": "Termo de Encerramento de Processo",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=documento_visualizar&acao_origem=protocolo_pesquisar&id_documento=95815550&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=5c017063d120a76ebfcf9572aaf836ff552f538b5bcf70197c2c1622aec82212",
+      "restrito": false
+    },
+    {
+      "texto": "87420163",
+      "titulo": "Anexo Razão",
+      "title_attr": "Anexo Razão",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=documento_visualizar&acao_origem=protocolo_pesquisar&id_documento=95815198&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=aa9dfe364673b2a35313c0a61e6c33fdb35f3b856f4e502ee37d49f8988ec195",
+      "restrito": false
+    },
+    {
+      "texto": "87398055",
+      "titulo": "Despacho de Encaminhamento de Processo",
+      "title_attr": "Despacho de Encaminhamento de Processo",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=documento_visualizar&acao_origem=protocolo_pesquisar&id_documento=95790847&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=ea938b037db8e27c505a715985d897e7772aeeae08b2433ad3e324cc7f9527dc",
+      "restrito": false
+    },
+    {
+      "texto": "87397998",
+      "titulo": "Comprovante",
+      "title_attr": "Comprovante",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=documento_visualizar&acao_origem=protocolo_pesquisar&id_documento=95790656&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=d01bf411d244468d88b3f087dfd67e3e2d4b14ebf35c793e1b95f734a4cb555d",
+      "restrito": false
+    },
+    {
+      "texto": "86939414",
+      "titulo": "Programação de Desembolso - PD",
+      "title_attr": "Programação de Desembolso - PD",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=documento_visualizar&acao_origem=protocolo_pesquisar&id_documento=95287720&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=581ba7fe3b4bc35040c2d8076bd666a76f55a97466d94bf4e0de1345a916ec22",
+      "restrito": false
+    },
+    {
+      "texto": "86857265",
+      "titulo": "Documento de arrecadação de Receitas Federais",
+      "title_attr": "Documento de arrecadação de Receitas Federais",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=documento_visualizar&acao_origem=protocolo_pesquisar&id_documento=95197286&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=566247ca60e41c242a9c17aa399f6b30363f50ebb16a3c8fe5850ebdcefb4470",
+      "restrito": false
+    },
+    {
+      "texto": "86849944",
+      "titulo": "Despacho de Encaminhamento de Processo",
+      "title_attr": "Despacho de Encaminhamento de Processo",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=documento_visualizar&acao_origem=protocolo_pesquisar&id_documento=95190622&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=e358ea30d1e9ad39dfc0ea46913c1969cc09eb7bd66f3fd6f5ac3b0aeeaadb9a",
+      "restrito": false
+    },
+    {
+      "texto": "86826203",
+      "titulo": "Despacho de Encaminhamento de Processo",
+      "title_attr": "Despacho de Encaminhamento de Processo",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=documento_visualizar&acao_origem=protocolo_pesquisar&id_documento=95165163&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=ca309919f2db72b7c7e50b25a6b303cb6a37a91df473720cf39a2711478a9c60",
+      "restrito": false
+    },
+    {
+      "texto": "86826854",
+      "titulo": "Comprovante",
+      "title_attr": "Comprovante",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=documento_visualizar&acao_origem=protocolo_pesquisar&id_documento=95164916&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=8d8d867e47a2c112aead02fe500baccd5b0dd0154920c4daed6d9c8b5d08c9b0",
+      "restrito": false
+    },
+    {
+      "texto": "86682332",
+      "titulo": "Comprovante",
+      "title_attr": "Comprovante",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=documento_visualizar&acao_origem=protocolo_pesquisar&id_documento=95006437&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=29c6c430d889d77bb7e95078ed1c0448f7e58045db2618658c17250d75e63409",
+      "restrito": false
+    }
+  ],
+  "relacionados": [
+    {
+      "texto": "SEI-330003/002262/2024",
+      "titulo": "Financeiro: Pagamento",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&acao_origem=protocolo_pesquisar&id_procedimento=93828341&id_documento=95815550&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=553cb9e99f283811d9af4ec3ef9c75380e2a10e6bdf1bd1c707c03fc32d4ef64"
+    },
+    {
+      "texto": "SEI-330003/002262/2024",
+      "titulo": "Financeiro: Pagamento",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&acao_origem=protocolo_pesquisar&id_procedimento=93828341&id_documento=95815198&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=e91733236546ca3bc612494fa42cc544014a3933a2984c29b37bf0d9b28e1051"
+    },
+    {
+      "texto": "SEI-330003/002262/2024",
+      "titulo": "Financeiro: Pagamento",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&acao_origem=protocolo_pesquisar&id_procedimento=93828341&id_documento=95790847&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=51cd0908f94e52f3d7b3ee409c18aecdfa45b77f7263cc09c060d4afb63501c4"
+    },
+    {
+      "texto": "SEI-330003/002262/2024",
+      "titulo": "Financeiro: Pagamento",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&acao_origem=protocolo_pesquisar&id_procedimento=93828341&id_documento=95790656&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=42a99f112ede61e08fab7e2c57ef348501283e27005af5f35b273a1ef02a8424"
+    },
+    {
+      "texto": "SEI-330003/002262/2024",
+      "titulo": "Financeiro: Pagamento",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&acao_origem=protocolo_pesquisar&id_procedimento=93828341&id_documento=95287720&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=ac930b1fab82e5f93eb94bf82bac63ea5be64ba84b7237410b2b93ab5b5bd620"
+    },
+    {
+      "texto": "SEI-330003/002262/2024",
+      "titulo": "Financeiro: Pagamento",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&acao_origem=protocolo_pesquisar&id_procedimento=93828341&id_documento=95197286&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=50321e0841d1e698cd2491bff246ea23aae74a87b2c92ce4acfce7ae4e4fd0f2"
+    },
+    {
+      "texto": "SEI-330003/002262/2024",
+      "titulo": "Financeiro: Pagamento",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&acao_origem=protocolo_pesquisar&id_procedimento=93828341&id_documento=95190622&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=474f0d859a83c562622aad8625e54119c15935f7bd68e1d728151a06e842aa07"
+    },
+    {
+      "texto": "SEI-330003/002262/2024",
+      "titulo": "Financeiro: Pagamento",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&acao_origem=protocolo_pesquisar&id_procedimento=93828341&id_documento=95165163&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=ec1c4d05c9f7c9c6b416ae0746711d9d55650e278b1d36ab3ef438034b65fc83"
+    },
+    {
+      "texto": "SEI-330003/002262/2024",
+      "titulo": "Financeiro: Pagamento",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&acao_origem=protocolo_pesquisar&id_procedimento=93828341&id_documento=95164916&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=5fa5f73e4b1ddfb0c66e9743dd16b8aa8132b3721943528bda07f15bf0909e46"
+    },
+    {
+      "texto": "SEI-330003/002262/2024",
+      "titulo": "Financeiro: Pagamento",
+      "url": "https://sei.rj.gov.br/sei/controlador.php?acao=procedimento_trabalhar&acao_origem=protocolo_pesquisar&id_procedimento=93828341&id_documento=95006437&infra_sistema=100000100&infra_unidade_atual=120002511&infra_hash=54d9d80e6bb5f1a8a427ed40633f442e2deee890b6d0cbb97802cf2a23381e6b"
+    }
+  ],
+  "cadeado": false,
+  "n_docs_restritos": 0,
+  "texto": "GOVERNO DO ESTADO DO RIO DE JANEIRO\nProducao\nITERJ/CHEGAB\nAcompanhamento Especial\nBase de Conhecimento\nBlocos\nContatos\nControle de Prazos\nControle de Processos\nEstatísticas\nFavoritos\nGrupos\nIniciar Processo\nMarcadores\nPainel de Controle\nPesquisa\nPontos de Controle\nProcessos Sobrestados\nReabertura Programada\nRetorno Programado\nTextos Padrão\nResultado da Pesquisa\nPesquisar Limpar Minhas Pesquisas Salvar Pesquisa\nPesquisar\nProcessos\nDocumentos\nGerados\nExternos\nCom Tramitação na Unidade\nTexto para Pesquisa:\nÓrgão Gerador:\nTodos selecionados\nRestringir ao Órgão da Unidade\nUnidade Geradora:\nAssunto:\nAssinatura / Autenticação:\nContato:\nInteressado\nRemetente\nDestinatário\nEspecificação / Descrição:\nObs. desta Unidade:\nNº SEI:\n(Processo/Documento)\nTipo do Processo:\n \nAPERJ: Assessoria técnica arquivística\nAPERJ: Cessão de direitos sobre depoimento oral\nAPERJ: Doação de documentos\nAPERJ: Recolhimento de documentos\nAPERJ: Solicitação de empréstimo de documentos arquivístico e bibliográfico\nAdministrativo: Abalrroamento\nAdministrativo: Acompanhamento de Licença Ambiental\nAdministrativo: Acordo de Leniência\nAdministrativo: Alienação de Imóveis\nAdministrativo: Análise de Projetos\nAdministrativo: Aperfeiçoamento e Treinamento\nAdministrativo: Ata de Reunião\nAdministrativo: Atas de Reuniões de Conselhos\nAdministrativo: Atendimento à Solicitação Externa\nAdministrativo: Atendimento à Solicitação – AGE/CGE\nAdministrativo: Atendimento à Ssolicitação\nAdministrativo: Atributos/gratificações\nAdministrativo: Atualização de Dados Cadastrais do Órgão\nAdministrativo: Auto de Abate/Destruição/Sacrifício\nAdministrativo: Auto de Advertência\nAdministrativo: Auto de Apreensão\nAdministrativo: Auto de Desinfecção/Desinfestação\nAdministrativo: Auto de Desinterdição\nAdministrativo: Auto de Infração\nAdministrativo: Auto de Interdição\nAdministrativo: Auto de Liberação\nAdministrativo: Auto de Multa\nAdministrativo: Auto de Vistoria\nAdministrativo: Autorização de Imagem\nAdministrativo: Autorização de uso\nAdministrativo: Autorização para Ocupação de Imóvel\nAdministrativo: Auxílio Alimentação\nAdministrativo: Avaliação Técnica\nAdministrativo: Avaliação Técnica de Imóveis\nAdministrativo: Avaliação Ténica\nAdministrativo: Baixa de Hipoteca\nAdministrativo: Cadastramento de Veículo e Concessão de Autorização para Estacionamento\nAdministrativo: Cadastramento/Descadastramento de Usuários\nAdministrativo: Cadastro para Envio de Matéria-EDOFS\nAdministrativo: Carta Usuário Externo\nAdministrativo: Certidão de Inteiro Teor\nAdministrativo: Comissão Interna de Prevenção de Acidentes- CIPA\nAdministrativo: Contratação de Seguro\nAdministrativo: Convênio, cooperação, parceria, prot. de intenções\nAdministrativo: Credenciamento de Pessoal\nAdministrativo: Credenciamento de Usuário Externo\nAdministrativo: Criação de Comissões/Grupos de Trabalho\nAdministrativo: Denúncia\nAdministrativo: Depreciação\nAdministrativo: Depreciação de Bens Imóveis\nAdministrativo: Determinações do Tribunal de Contas \nAdministrativo: Direitos, Deveres e Vantagens\nAdministrativo: Doação de Bens e Acervo\nAdministrativo: Edital de Chamada Pública\nAdministrativo: Elaboração de Correspondência Interna\nAdministrativo: Elaboração de Correspondência Interna com Informações Restritas\nAdministrativo: Elaboração de Decreto\nAdministrativo: Elaboração de Mensagem\nAdministrativo: Elaboração de Ofício de Mero Expediente\nAdministrativo: Elaboração de Ofício de Mero Expediente com Informações Restritas\nAdministrativo: Elaboração do Plano Plurianual (PPA)\nAdministrativo: Elaboração e Publicação de Normativos Próprios\nAdministrativo: Emitir Auto de Infração/ Termo de Apreensão\nAdministrativo: Encargos Especiais\nAdministrativo: Estratégia Estadual de Governo Digital\nAdministrativo: Fatura\nAdministrativo: Folha de pagamento\nAdministrativo: Gestão de Projetos\nAdministrativo: Locação de imóveis\nAdministrativo: Mandado Requisitório de Pequeno Valor - RPV\nAdministrativo: Mandado de Busca e Apreensão\nAdministrativo: Mandado de Penhora de Créditos\nAdministrativo: Mandado de Segurança\nAdministrativo: Migração de Processos Administrativos para o SEI-RJ\nAdministrativo: Minuta de Decisão do Secretário\nAdministrativo: Minuta de Informações em Mandado de Segurança\nAdministrativo: Notas técnicas ou Notas Explicativas\nAdministrativo: Obras \nAdministrativo: Pagamento de Impostos e Taxas\nAdministrativo: Parcelamento de Débitos\nAdministrativo: Parte Diária\nAdministrativo: Permissão / Cessão de uso\nAdministrativo: Prestação de Contas Anual de Bens Intangíveis\nAdministrativo: Prestação de Contas Anual de Bens Patrimoniais Imóveis\nAdministrativo: Prestação de Contas Anual de Bens em Tesouraria\nAdministrativo: Prestação de Contas Anual de Gestão\nAdministrativo: Prestação de Contas Mensal de Bens Intangíveis\nAdministrativo: Prestação de Contas Mensal de Bens Patrimoniais Imóveis\nAdministrativo: Prestação de Contas Mensal de Bens em Almoxarifado\nAdministrativo: Prestação de Contas Mensal de Bens em Tesouraria\nAdministrativo: Prestação de Contas de Bens Imóveis\nAdministrativo: Prestação de Contas de Descentralização de Crédito\nAdministrativo: Prevenção de Lavagem de Dinheiro\nAdministrativo: Processo Administrativo de Responsabilização (PAR)\nAdministrativo: Processo de Prestação de Contas de Ordenadores de Despesa\nAdministrativo: Projeto de Segurança contra incêndio\nAdministrativo: Publicação\nAdministrativo: Recursos\nAdministrativo: Redução ou Adição de Contrato\nAdministrativo: Regularização de Imóveis\nAdministrativo: Relatório de Atividades\nAdministrativo: Relação Anual de Informação Social - RAIS\nAdministrativo: Repetição do Indébito\nAdministrativo: Representação da Fazenda\nAdministrativo: Requerimento Geral/Envio de Expedientes Diversos\nAdministrativo: Resposta às Demandas de Órgãos de Controle\nAdministrativo: Ressarcimento\nAdministrativo: Roteiro Padrão\nAdministrativo: Sancionar/Vetar Projeto de Lei\nAdministrativo: Seleção de Servidores/Concurso de Boas Práticas\nAdministrativo: Solicitação de Bloco de Autos de Desinterdição\nAdministrativo: Solicitação de Bloco de Autos de Infração\nAdministrativo: Solicitação de Bloco de Autos de Interdição\nAdministrativo: Solicitação de Bloco de Folhas Especiais\nAdministrativo: Solicitação de Confecção de Crachá\nAdministrativo: Solicitação de Informação\nAdministrativo: Solicitação à Chefia da Procuradoria da Dívida Ativa\nAdministrativo: Taxa de Ocupação\nAdministrativo: Termo de Ajustamento de Conduta\nAdministrativo: Termo de Ajuste de Contas - TAC\nAdministrativo: Termo de Coleta de Amostra\nAdministrativo: Termo de Concordância\nAdministrativo: Termo de Fiel Depositário\nAdministrativo: Transferência de Bens Imóveis\nAdministrativo: Transferência de Titularidade\nAdministrativo: Vistas ao Processo\nAgeRio: Processo de concessão de crédito\nAgenersa: Abastecimento de Água \nAgenersa: Acidente / Incidente\nAgenersa: Acomp. dos Serviços Regulados Feito Mediante Vistorias e Inspeções In Loco Câmaras Técnica\nAgenersa: Acordos. Ajustes. Contratos. Convênios. Prot. de Intenções. Termo de Cooperação Técnica\nAgenersa: Agravo de Instrumento\nAgenersa: Alienação\nAgenersa: Alteração da Marca Empresarial \nAgenersa: Análise de Estudos Técnicos \nAgenersa: Análise do Planejamento Financeiro \nAgenersa: Análise dos Contratos e Legislação Aplicável, Incluindo Penalidades e Multas\nAgenersa: Apresentação de Embargos\nAgenersa: Apresentação de Impugnação\nAgenersa: Auto de Infração de Advertência à Concessionária\nAgenersa: Auto de Infração de Diferença de Taxa de Regulação\nAgenersa: Auto de Infração de Multa à Concessionária\nAgenersa: Ação Declaratória\nAgenersa: Ação Judicial\nAgenersa: Ação de Exceção de Suspeição\nAgenersa: Ação de Execução\nAgenersa: Ações Judiciais\nAgenersa: Balanço Balancete \nAgenersa: Bens Reversíveis\nAgenersa: Carta de Informação Sobre Concessão de Serviços Públicos\nAgenersa: Carta de Informação Sobre Equilíbrio Econômico-Financeiro e Tarifário\nAgenersa: Construção de Barragens Reguladoras \nAgenersa: Construção de Comportas na Rede de Canais \nAgenersa: Consultoria Pareceres Técnicos Pesquisa \nAgenersa: Contr. Convênios. Protoc. de Intenções. Termo de Cooperação Téc. Acordos. Ajustes. Termo\nAgenersa: Controle Sobre o Uso e Conservação dos Bens Reversíveis\nAgenersa: Correspondência Interna de Informação Acerca de Concessão de Serviços Públicos\nAgenersa: Dano Ambiental \nAgenersa: Despacho de Esclarecimento de Dúvidas Sobre Política Econômica e Tarifária\nAgenersa: Diligência Administrativa\nAgenersa: Diligência Regulatória\nAgenersa: Diligência do Tribunal de Contas \nAgenersa: Diligência \nAgenersa: Documentos, Certidões, Informações\nAgenersa: Educação Ambiental \nAgenersa: Elaboração dos Relatórios, Votos e Deliberações no Âmbito dos Processos Regulatórios\nAgenersa: Embargo de Declaração \nAgenersa: Explosão \nAgenersa: Fiscalização\nAgenersa: Gás\nAgenersa: Impugnação ao Auto de Infração \nAgenersa: Incêndio \nAgenersa: Informação da concessão de serviços públicos\nAgenersa: Informação equilíbrio econômico-financeiro e tarifário\nAgenersa: Informações Econômico-Fiscais \nAgenersa: Informações Prestadas Pelas Prestadoras de Serviços Públicos\nAgenersa: Informações Técnicas \nAgenersa: Informações de Valores de Tarifas \nAgenersa: Inscrição de Nota de Débito / Inscrição na Dívida Ativa / Cancelamento na Dívida Ativa\nAgenersa: Inspeção/Fiscalização\nAgenersa: Instalação de Estação de Tratamento de Agua \nAgenersa: Instrução de Regularização de Concessionária de Energia\nAgenersa: Interposição de Recurso\nAgenersa: Licenciamento Ambiental \nAgenersa: Migração de Processos Regulatórios para o SEI-RJ\nAgenersa: Nota Técnica de Fiscalização de Concessões de Energia\nAgenersa: Nota Técnica de Fiscalização de Concessões de Resíduos Sólidos\nAgenersa: Nota Técnica de Fiscalização de Concessões de Saneamento Básico\nAgenersa: Nota Técnica de Instrução Sobre Política Econômica e Tarifária\nAgenersa: Nota de Débito\nAgenersa: Notificação Ambiental\nAgenersa: Notificação Extra-Judicial \nAgenersa: Notificação Judicial \nAgenersa: Notificação de Autuação de Auto de Infração\nAgenersa: Notificação de Autuação de Novo Processo\nAgenersa: Notificação/Meio Ambiente \nAgenersa: Obras. Investimentos.\nAgenersa: Ofício de Informação Sobre Equilíbrio Econômico-Financeiro e Tarifário\nAgenersa: Ofício de Prestação de Informação Sobre Concessão de Serviços Públicos\nAgenersa: Ofício de Solicitação de Informação Sobre a Concessão de Serviços Públicos\nAgenersa: Outorga\nAgenersa: Outorga de Abastecimento Público/Captação \nAgenersa: Outorga de Abastecimento Público/Extração\nAgenersa: Outorga de Abastecimento Público/Lançamento \nAgenersa: Outorga de Abastecimento Público \nAgenersa: Outorga de Direito de Uso de Recursos Hídricos \nAgenersa: Outros Assuntos\nAgenersa: Parecer Técnico de Análise de Prestação de Serviços de Energia\nAgenersa: Parecer Técnico de Análise de Prestação de Serviços de Resíduos Sólidos\nAgenersa: Parecer Técnico de Análise de Prestação de Serviços de Saneamento Básico\nAgenersa: Parecer Técnico de Instrução Sobre Política Econômica e Tarifária\nAgenersa: Planejamento Ambiental \nAgenersa: Pleitos de Reajuste ou Revisão de Tarifas de Serviços Públicos Concedidos, Permitidos e Au\nAgenersa: Poluição\nAgenersa: Poluição Acidental\nAgenersa: Processo de Aplicação de Advertência\nAgenersa: Processo de Cobrança de Diferença de Taxa de Regulação\nAgenersa: Processo de Cobrança de Multa Contratual\nAgenersa: Processo de Regulação de Concessão de Serviços de Energia\nAgenersa: Processo de Regulação de Concessão de Serviços de Resíduos Sólidos\nAgenersa: Processo de Regulação de Concessão de Serviços de Saneamento Básico\nAgenersa: Projeto Ambiental \nAgenersa: Qualidade da Água\nAgenersa: Razões Finais\nAgenersa: Reajuste Tarifário\nAgenersa: Reajustes, Revisões Ordinárias, Extraordinárias e Quinquenais e Decisões Colegiadas\nAgenersa: Reclamação de Usuários na Ouvidoria\nAgenersa: Reclamação do Atendimento \nAgenersa: Registro de Entrada de Documentos\nAgenersa: Registro de Ocorrência\nAgenersa: Relatório de Acidente Ambiental\nAgenersa: Relatório de Controle e",
+  "captcha_resolvido": false,
+  "_login": {
+    "ok": true,
+    "via": "sei_reader/itkava"
+  },
+  "conteudo_documentos": [
+    {
+      "doc": "87420861",
+      "conteudo": "Governo do Estado do Rio de Janeiro\n\nEmpresa de Obras Públicas do Estado do Rio de Janeiro\n\nDiretoria de Administração e Finanças\n\n \n\nTERMO DE ENCERRAMENTO DE PROCESSO\n\n \n\nO pagamento da Nota Fiscal nº 1001909, emitidas pela empresa SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA, no valor bruto de R$12.426.952,75, referente ao mês de 08/2024 foi efetuado em sua totalidade.\n\nInformamos que o referido processo cumpriu os Estágios da Despesa Orçamentária (Empenho, Liquidação e Pagamento) previstos no art. 83 da Lei Estadual nº 287/1979 e arts. 58 a 65 da Lei Federal nº 4.320/1964, conforme documentos no presente processo.\n\nOs respectivos recibos das Ordens Bancárias, encontram-se nos documentos SEI, abaixo:\n\nN° OB/INDEX\tVALOR\tOBS.\n2024OB03277/86826854\tR$ 7.634.856,61\tFIRMA\n2024OB03279/86826854\tR$ 3.381.637,02\tCOMPLEMENTO\n2024OB03288/86682011\tR$ 683.482,40\tINSS - CÓDIGO DE BARRAS\n2024OB03289/86682332\tR$ 149.123,43 \tIRRF - CÓDIGO DE BARRAS\n2024OB03443/87397998\tR$ 577.853,29\tCSRF - CÓDIGO DE BARRAS\n\n \n\nAs baixas contábeis encontram-se no SIAFE-RIO, conforme index 87420163.\n\n \n\nRio de Janeiro, 12 de novembro de 2024.\n\nPaula Gomes\nAssistente II\nID. Funcional 4322812-7\n\n \n\nDe acordo,\n\n \n\nElane de Almeida Vieira\n\nAssessora - ASSCONT/EMOP\n\nCRC RJ 104205/O-0\n\nID.:570336-0\n\n \n\n\t\n\nDocumento assinado eletronicamente por Paula Valeria Lopes de Castro Gomes, Assistente II, em 12/11/2024, às 17:29, conforme horário oficial de Brasília, com fundamento nos art. 28º e 29º do Decreto nº 48.209, de 19 de setembro de 2022.\n\n\t\n\nDocumento assinado eletronicamente por Elane de Almeida Vieira, Assessora, em 18/11/2024, às 17:12, conforme horário oficial de Brasília, com fundamento nos art. 28º e 29º do Decreto nº 48.209, de 19 de setembro de 2022.\n\n\t\n\nA autenticidade deste documento pode ser conferida no site http://sei.rj.gov.br/sei/controlador_externo.php?acao=documento_conferir&id_orgao_acesso_externo=6, informando o código verificador 87420861 e o código CRC E2B372D8.\n\n\n\nReferência: Processo nº SEI-330003/002262/2024\tSEI nº 87420861\n\nCampo de São Cristóvão, 138, - Bairro São Cristovão, Rio de Janeiro/RJ, CEP 20921-440\nTelefone:  \n\nCriado por paula.gomes, versão 3 por paula.gomes em 12/11/2024 17:29:22."
+    },
+    {
+      "doc": "87398055",
+      "conteudo": "Governo do Estado do Rio de Janeiro\n\nEmpresa de Obras Públicas do Estado do Rio de Janeiro\n\nDiretoria de Administração e Finanças\n\n \n\nA ASSCONT,\n\n \n\nConsiderando a quitação integral deste faturamento o presente expediente está sendo encaminhado à essa Assessoria para as providencias de praxe. Ver registros a seguir onde estão listados os respectivos comprovantes de pagamentos com status de pago (OB+COMPROVANTE+PD).\n\n \n\n \n\nEMPREITEIRA\tN.º NL\tDATA NL\tN.ºNF.Firma\tDATA NF FIRMA\tN.ºpd\tN° OB/INDEX\tDATA PG\tSUB-TOTAL\tOBS.\tTL.MED/ PROC.R$\nSCALLE CONTRUÇÕES REFORMAS E INTALAÇÕES LTDA\t1337/24\t23/10/24\t1001909\t11/10/24\t2024PD03539\t2024OB03277/86826854\t30/10/24\t7.634.856,61\tFIRMA\t \nSCALLE CONTRUÇÕES REFORMAS E INTALAÇÕES LTDA\t1336/24\t23/10/24\t1001909\t11/10/24\t2024PD03541\t2024OB03279/86826854\t30/10/24\t3.381.637,02\tFIRMA\t \nSCALLE CONTRUÇÕES REFORMAS E INTALAÇÕES LTDA\t1336/24\t23/10/24\t1001909\t11/10/24\t2024PD03543\t2024OB03288/86682011\t30/10/24\t683.482,40\tINSS\t \nSCALLE CONTRUÇÕES REFORMAS E INTALAÇÕES LTDA\t1336/24\t23/10/24\t1001909\t11/10/24\t2024PD03544\t2024OB03289/86682332\t30/10/24\t149.123,43\tIRRF\t \nSCALLE CONTRUÇÕES REFORMAS E INTALAÇÕES LTDA\t1336/24\t23/10/24\t1001909\t11/10/24\t2024PD03709\t2024OB03443/87397998\t08/11/24\t577.853,29\tCSRF\t12.426.952,75\n\n \n\nRui Coutinho Ribeiro\n\nAssistente Administrativo\n\nID.2853424-7\n\n \n\n \n\nRio de Janeiro, 12 de novembro de 2024\n\n\t\n\nDocumento assinado eletronicamente por Rui Coutinho Ribeiro, Assistente Administrativo, em 12/11/2024, às 15:24, conforme horário oficial de Brasília, com fundamento nos art. 28º e 29º do Decreto nº 48.209, de 19 de setembro de 2022.\n\n\t\n\nA autenticidade deste documento pode ser conferida no site http://sei.rj.gov.br/sei/controlador_externo.php?acao=documento_conferir&id_orgao_acesso_externo=6, informando o código verificador 87398055 e o código CRC 467E08E5.\n\n\n\nReferência: Processo nº SEI-330003/002262/2024\tSEI nº 87398055\n\nCampo de São Cristóvão, 138, - Bairro São Cristovão, Rio de Janeiro/RJ, CEP 20921-440\nTelefone:   \n\nCriado por rui.coutinho, versão 2 por rui.coutinho em 12/11/2024 15:24:07."
+    },
+    {
+      "doc": "86849944",
+      "conteudo": "Governo do Estado do Rio de Janeiro\n\nEmpresa de Obras Públicas do Estado do Rio de Janeiro\n\nDiretoria de Administração e Finanças\n\n \n\n Ao Senhor Gerente do Departamento Financeiro/EMOP,\n\n\n \n\n  Conforme solicitação do DEFIN, estamos encaminhando o Documento de Arrecadação de Receitas Federais - Cód. 6147 - CSRF da empresa SCALLE CONSTRUCOES REFORMAS E INSTALACOES LTDA, referente ao documento fiscal n° 1001909. Pagamento efetuado com retorno bancário em 05/11/2024 – 2024OB03277, conforme documento SEI n° 86826854\n\n \n\nQUADRO DE INFORMAÇÃO DO TRIBUTO APURADO\nTRIB.\t CÓD\t          CNPJ\t  N.F.\t  RETIDO\tMULTA/JUROS\t  TOTAL\t VENCIMENTO\nCSRF\t 6147\t 42.411.249/0001-30\t 1001909\t  577.853,29\t          0,00\t 577.853,29\t    20/12/2024\n\n \n\n \n\nAtenciosamente,\n\nRenata Silva\n\nAssistente II - ASSCONT/EMOP\n\nID:5148702-0\n\n \n\nDe acordo,\n\nElane de Almeida Vieira\n\nAssessora - ASSCONT/EMOP\n\nID.570336-0\n\nCRC/RJ: 104205/O-0\n\n \n\n \n\nRio de Janeiro, 05 de novembro de 2024\n\n\t\n\nDocumento assinado eletronicamente por Renata da Silva Gonçalves, Assistente, em 05/11/2024, às 12:39, conforme horário oficial de Brasília, com fundamento nos art. 28º e 29º do Decreto nº 48.209, de 19 de setembro de 2022.\n\n\t\n\nDocumento assinado eletronicamente por Elane de Almeida Vieira, Assessora, em 05/11/2024, às 17:12, conforme horário oficial de Brasília, com fundamento nos art. 28º e 29º do Decreto nº 48.209, de 19 de setembro de 2022.\n\n\t\n\nA autenticidade deste documento pode ser conferida no site http://sei.rj.gov.br/sei/controlador_externo.php?acao=documento_conferir&id_orgao_acesso_externo=6, informando o código verificador 86849944 e o código CRC 4CF2486E.\n\n\n\nReferência: Processo nº SEI-330003/002262/2024\tSEI nº 86849944\n\nCampo de São Cristóvão, 138, - Bairro São Cristovão, Rio de Janeiro/RJ, CEP 20921-440\nTelefone:   \n\nCriado por renata.silva, versão 3 por renata.silva em 05/11/2024 12:00:46."
+    },
+    {
+      "doc": "86826203",
+      "conteudo": "Governo do Estado do Rio de Janeiro\n\nEmpresa de Obras Públicas do Estado do Rio de Janeiro\n\nDiretoria de Administração e Finanças\n\n \n\nAsscont,\n\n \n\n \n\nConsiderando quitação do valor principal conforme OB/PD com status de “processado e pago” (Index - 86826854 ), o presente faturamento é submetido a essa Assessoria para que se providencie a(s) guia(s) respectiva(s) objetivando, a posteriori, emissão de PD para a execução do(s) Tributo(s).\n\n \n\nTRIBUTO\n\n\t\n\nVALOR/RETIDO R$\n\n\n\n\nINSS\n\n\t\n\n \n\n\n\n\nIRRF\n\n\t\n\n \n\n\n\n\nISS\n\n\t\n\n \n\n\n\n\nCSRF\n\n\t\n\n577.853,29\n\n \n\nOBS: 1) Retorno bancário em 05/11/2024.\n\n \n\n \n\nRui C. Ribeiro\n\nID.2853424-7\n\n \n\n \n\nRio de Janeiro, 05 de novembro de 2024\n\n\t\n\nDocumento assinado eletronicamente por Rui Coutinho Ribeiro, Assistente Administrativo, em 05/11/2024, às 10:12, conforme horário oficial de Brasília, com fundamento nos art. 28º e 29º do Decreto nº 48.209, de 19 de setembro de 2022.\n\n\t\n\nA autenticidade deste documento pode ser conferida no site http://sei.rj.gov.br/sei/controlador_externo.php?acao=documento_conferir&id_orgao_acesso_externo=6, informando o código verificador 86826203 e o código CRC E96B9E99.\n\n\n\nReferência: Processo nº SEI-330003/002262/2024\tSEI nº 86826203\n\nCampo de São Cristóvão, 138, - Bairro São Cristovão, Rio de Janeiro/RJ, CEP 20921-440\nTelefone:   \n\nCriado por rui.coutinho, versão 2 por rui.coutinho em 05/11/2024 10:12:13."
+    }
+  ],
+  "cnpjs": [
+    "42.411.249/0001-30"
+  ],
+  "valores": [
+    "R$ 149.123,43",
+    "R$ 3.381.637,02",
+    "R$ 577.853,29",
+    "R$ 683.482,40",
+    "R$ 7.634.856,61",
+    "R$12.426.952,75,"
+  ],
+  "_cached_at": "2026-06-08T17:33:31.915526"
+}
