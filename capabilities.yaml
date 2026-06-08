@@ -46,6 +46,9 @@ capacidades:
      args: {alvo: obrigatorio, saltos: "int=2", so_contrato: bool}, retorno: "{nos,arestas,comunidades}"}
   - {id: dossie, agente: jfn, dominio: inteligencia, tipo: http, metodo: POST, rota: /api/dossie, status: PRONTO,
      descricao: "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias)", quando_usar: "'monte um dossie sobre X'", args: {alvo: obrigatorio}, retorno: "{path_pdf,resumo}"}
+  - {id: grafo_ftm, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/grafo/ftm, status: PRONTO,
+     descricao: "Exporta o Grafo de Poder no modelo FollowTheMoney (interoperar Aleph/Gephi, sem migrar)", quando_usar: "'exporte a rede de X p/ FtM/Aleph'",
+     args: {alvo: obrigatorio, saltos: "int=2"}, retorno: "{entidades[FtM]}", fonte: "Grafo de Poder -> FtM (Onda 12)"}
   # ---- SEI / LICITACAO ----
   - {id: ler_processo_sei, agente: lex, dominio: juridico, tipo: cli, comando: "tools.sei_reader \"<NUMERO>\"", status: PRONTO,
      descricao: "Le processo SEI-RJ na integra via login interno itkava/ITERJ (Chromium real, SEM captcha, vence o WAF). Cache 24h.",
