@@ -336,3 +336,51 @@ funciona em produção; o Lex agora pode ler a íntegra real.
 **Estado final:** Yoda + JFN active; sweep SIAFE 2 rodando (~144 UG:ano); 9 chaves/9 projetos; relatório completo.
 **Falta (próxima sessão):** fast-path do /lista; conferir o parecer Lex com SEI real; **Definição de Pronto**
 (merge `jfn-2.0`→`linux` + limpeza de memória) — AGUARDA OK do dono. Ver `docs/HANDOFF-2026-06-08-JFN2-VIVO.md`.
+
+---
+
+## SESSÃO 2026-06-08 (tarde) — Cruzamento TSE completo, tabela mensal, CNPJ matriz/filial, MERGE→linux
+
+**O quê / como / porquê (checkpoints, commit por unidade):**
+- **`1700e0b` — Cadeia completa doador→sócio→fornecedor→UG→SEI.** `lex_conflito.conflito()` ganhou
+  `_ugs_sei_por_empresa()`: para cada empresa contratada da rede de conflito, anexa a **UG pagadora** (nome
+  canônico via `ugs.rotulo`) e os **processos SEI** das OBs (TFE `ordens_bancarias` + SIAFE `ob_orcamentaria_siafe`).
+  A seção 3 do `/relatorio` passou a ter colunas **"Órgão (UG) pagador"** e **"Processos SEI"**. **Porquê:** o dono
+  pediu o cruzamento fechado TSE×QSA×contratos (quem doou, pra quem, quanto, e por onde a empresa recebeu).
+  Só leitura no DB (seguro com o sweep). Testado: onda7 + conflito verdes.
+- **`f95f3be` — Tabela mês a mês das OBs (Órgão × Mês × Ano-exercício, seção 5-B).** `consultar_pagamentos`
+  passou a expor `por_orgao_mes_ano`. **Porquê:** a granularidade mensal tinha sido removida na migração p/ a
+  cruzada UG×Ano; o dono quis de **volta** ("quero ela TAMBÉM"), mas **estruturada** (não a lista corrida por data,
+  que ficava enorme). Só meses com valor entram; células compactas (mi/mil), Total em precisão cheia; detalhe por OB
+  no XLSX. Ajuda a flagrar pagamento em mês atípico (fim de exercício/véspera eleitoral — red flag ACFE). Validado
+  no PDF real (7 págs): 5-B com Jan/Fev e a seção 3 com UG pagador + SEI renderizam.
+- **MERGE `jfn-2.0`→`linux` (Definição de Pronto, com OK explícito do dono).** Fast-forward puro
+  (`git branch -f linux jfn-2.0`) — **zero mudança no working tree**, escolhido de propósito porque o sweep SIAFE 2
+  estava rodando. Conferido antes: **nenhum arquivo SIAFE** difere entre as branches (grep cru), logo o supervisor
+  nunca relançaria com código diferente. `linux == jfn-2.0 == f95f3be`. Pushados os dois (`origin/linux d367326..f95f3be`).
+- **Codegraph + graphify reavaliados:** ambos atualizados (graphify `update` = "no topology changes"; codegraph 238
+  arquivos/4134 nós) — coerentes com o HEAD (commits recentes eram docs). Validador de capabilities: **38/39 PRONTO**.
+
+**Erros & Aprendizados:**
+- **CNPJ matriz/filial = uma só pessoa jurídica (verificado em fonte oficial, a pedido do dono).** O Yoda "duplicava"
+  a empresa porque `buscar_candidatos` deduplica pelo CNPJ de **14 dígitos**, e o Estado paga **cada estabelecimento**
+  pelo seu próprio CNPJ → matriz (`/0001`) e filiais (`/0002+`) aparecem como duas. Estrutura: **8 (raiz/empresa
+  permanente) + 4 (ordem: 0001=matriz, 0002+=filial) + 2 (DV)**. Na base de OBs, **335 raízes têm >1 filial**.
+  Base jurídica p/ consolidar: **CC arts. 44/985/1.142** (PJ é una; filial = estabelecimento sem personalidade
+  própria) + **STJ REsp 1.286.122 / Inf. 865** (unicidade da PJ; CNPJ da filial é derivado do da matriz, autonomia
+  só fiscal). **Decisão do dono:** consolidar matriz+filiais num só relatório do grupo (raiz). **Aprendizado:**
+  verificar em fonte oficial antes de afirmar regra de domínio (o dono cobrou) — e CNPJ alfanumérico (Receita, 2026)
+  vai exigir ajuste no `so_digitos()` no futuro.
+- **"Baixar tudo dos docs ref" — avaliado: NÃO precisa.** Todos os módulos das 13 ondas importam sem erro; o que
+  falta de lib (`vectorbt`, `sentence-transformers`, `yfinance`, `fredapi`, `weasyprint`, `graphviz`) é de onda
+  diferida ou de alternativa **rejeitada pelo próprio spec** (weasyprint→Playwright). Fontes são **on-demand por API**
+  (não baixar em massa: envelhece/incha) e os OSINT self-host (Aleph/Maltego/SpiderFoot) **violam a decisão "sem
+  auto-hospedar"**. Instalar ML pesado com o sweep rodando = custo sem ganho. **Aprendizado:** "abrangência" não é
+  baixar tudo; é cobrir o que agrega respeitando a arquitetura.
+- **Pequena inconsistência (anotada):** a capacidade `trace` ainda está com `status: "ONDA 0"` no `capabilities.yaml`
+  embora a rota `/api/trace/{id}` exista (Onda 0 concluída) — trocar p/ `PRONTO` numa próxima passada.
+
+**Pendências p/ amanhã (ondas):** (1) **consolidar matriz+filiais por raiz** no `/relatorio` (resolver +
+consultas financeiras — aprovado pelo dono, base jurídica pronta); (2) **fast-path do /lista** no gateway;
+(3) **parecer Lex usar o SEI real + honestidade** (não dizer "leu na íntegra" se voltar vazio); (4) paridade do
+`render_md` com a seção 5-B (hoje só o motor HTML/PDF tem); (5) limpeza da memória de retomada.
