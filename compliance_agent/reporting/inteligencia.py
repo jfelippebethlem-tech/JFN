@@ -1118,6 +1118,16 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                      f"<li>OpenSanctions: sanção={esc(o.get('sancionado'))} · PEP={esc(o.get('pep'))}</li>")
     except Exception:  # noqa: BLE001
         pass
+    try:
+        from compliance_agent.enrich.aleph import buscar as _aleph
+        al = _aleph(cnpj)
+        if not al.get("matches"):
+            osint.append("<li>OCCRP Aleph (follow-the-money intl.): INDISPONÍVEL (sem chave grátis) ou sem registro</li>")
+        else:
+            tops = "; ".join(f"{esc(m.get('nome'))} ({esc(m.get('schema'))})" for m in al["matches"][:3])
+            osint.append(f"<li>OCCRP Aleph: <b>{esc(al.get('total'))} registro(s)</b> — {tops} <span class='nota'>(indício a confirmar na fonte)</span></li>")
+    except Exception:  # noqa: BLE001
+        pass
     secoes.append({"titulo": "4. Listas restritivas e OSINT", "html": f"<ul>{''.join(osint)}</ul>"})
 
     # 5. Pagamentos — TABELA CRUZADA Órgão (UG) × Ano (pedido do dono: por ano, dividido por órgão)
