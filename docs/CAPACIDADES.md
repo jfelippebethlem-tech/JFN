@@ -25,13 +25,13 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `ler_processo_sei` | lex | cli | `tools.sei_reader "<NUMERO>"` | PRONTO | ler/analisar um processo SEI especifico. FORMATO do numero: 'SEI-UUUUUU/NNNNNN/AAAA' (ex.: SEI-070002/008633/2022) ou 'E-NN/NNN/AAAA' (ex.: E-12/345/2026) — unidade/sequencial/ano. Aceita com ou sem o prefixo SEI-. |
 | `parecer_juridico` | lex | cli | `compliance_agent.lex "<empresa|cnpj>"` | PRONTO | 'tem direcionamento?', parecer |
 | `massare_calendario` | massare | http | `/api/massare/calendario` | PRONTO | 'agenda da semana', 'tem dado importante hoje?' |
-| `massare_carteira` | massare | http | `/api/massare/carteira` | ONDA 9 | 'como esta minha carteira' |
+| `massare_carteira` | massare | http | `/api/massare/carteira` | PRONTO | 'como esta minha carteira' |
 | `massare_cenarios` | massare | http | `/api/massare/cenarios` | PRONTO | 'como esta o mercado', 'dolar/bolsa/ouro hoje' |
 | `massare_focus` | massare | http | `/api/massare/focus` | PRONTO | 'o que o mercado espera de juros/inflacao' |
 | `massare_fundamentos` | massare | http | `/api/massare/fundamentos` | PRONTO | 'fundamentos da PETR4' |
 | `massare_placar` | massare | http | `/api/massare/placar` | PRONTO | 'o Massare acerta?' |
 | `massare_prever` | massare | http | `/api/massare/prever` | PRONTO | 'previsao do Ibovespa', 'BTC vai subir?' |
-| `massare_teses` | massare | http | `/api/massare/teses` | ONDA 9 | 'quais as teses agora', 'o que move o mercado' |
+| `massare_teses` | massare | http | `/api/massare/teses` | PRONTO | 'quais as teses agora', 'o que move o mercado' |
 | `radar_status` | jfn | http | `/api/radar/status` | PRONTO | 'o que voce monitora', 'teve alerta hoje' |
 | `vigiar` | jfn | http | `/api/radar/vigiar` | PRONTO | '/vigiar <cnpj|ug|nome>' |
 | `skill_detalhe` | yoda | cli | `telegram /skill <id>` | PRONTO | 'como funciona a skill X', detalhe de uma capacidade |

@@ -70,7 +70,7 @@ capacidades:
      descricao: "Acuracia OOS + Sharpe liquido + DSR(Onda 9)", quando_usar: "'o Massare acerta?'", args: {}, retorno: "{hit_rate_oos,sharpe_liquido,dsr}"}
   - {id: massare_prever, agente: massare, dominio: mercado, tipo: http, metodo: POST, rota: /api/massare/prever, status: PRONTO,
      descricao: "Previsao direcional (walk-forward; condicionada a regime)", quando_usar: "'previsao do Ibovespa', 'BTC vai subir?'", args: {symbol: obrigatorio, horizon: "int=5"}, retorno: "{direction,prob,ensemble_oos_hit_rate,regime}"}
-  - {id: massare_teses, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/teses, status: "ONDA 9",
+  - {id: massare_teses, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/teses, status: PRONTO,
      descricao: "Teses de mercado: narrativa->ativos->direcao, com acerto OOS por narrativa", quando_usar: "'quais as teses agora', 'o que move o mercado'",
      args: {}, retorno: "{teses[{narrativa,ativos,direcao,horizonte,conf,racional,fontes,acerto_oos}]}"}
   - {id: massare_focus, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/focus, status: PRONTO,
@@ -79,7 +79,7 @@ capacidades:
      descricao: "Fundamentos de acao BR (P/L,DY,ROE,balancos CVM)", quando_usar: "'fundamentos da PETR4'", args: {ticker: obrigatorio}, retorno: "{preco,pl,dy,roe,balanco}", fonte: "brapi.dev"}
   - {id: massare_calendario, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/calendario, status: PRONTO,
      descricao: "Agenda macro (US/BR/China): CPI/NFP/FOMC/COPOM/PMI China, previsto vs anterior", quando_usar: "'agenda da semana', 'tem dado importante hoje?'", args: {dias: "int=7"}, retorno: "{eventos[]}", fonte: "Finnhub /calendar/economic (free tier) + FRED (sem chave)"}
-  - {id: massare_carteira, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/carteira, status: "ONDA 9",
+  - {id: massare_carteira, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/carteira, status: PRONTO,
      descricao: "Modo carteira MANUAL: holdings em data/carteira.json x macro/regime/teses (sem broker)", quando_usar: "'como esta minha carteira'", args: {}, retorno: "{posicoes,alertas,leitura_macro}", fonte: "dados gratis (Yahoo/Stooq/brapi/websocket cripto)"}
   # ---- RADAR ----
   - {id: vigiar, agente: jfn, dominio: radar, tipo: http, metodo: POST, rota: /api/radar/vigiar, status: PRONTO,
