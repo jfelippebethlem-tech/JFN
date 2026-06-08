@@ -116,6 +116,27 @@ def test_links_hospedados_monta_deeplinks():
     assert "MGS" in maxi["url"]
 
 
+def test_gazettes_querido_diario_parseia(monkeypatch):
+    from compliance_agent.providers import gazettes_providers as G
+
+    class _Resp:
+        status_code = 200
+        def json(self):
+            return {"total_gazettes": 42, "gazettes": [
+                {"territory_name": "Rio de Janeiro", "state_code": "RJ", "date": "2024-01-10",
+                 "url": "http://qd/rj/2024", "excerpts": "...dispensa...", "is_extra_edition": False}]}
+
+    monkeypatch.setattr(G.httpx, "get", lambda *a, **k: _Resp())
+    r = G.QueridoDiario().consultar(querystring="dispensa", territory_ids="3304557", size=2)
+    assert r.ok and r.fonte == "querido_diario" and r.dados["total"] == 42
+    assert r.dados["itens"][0]["municipio"] == "Rio de Janeiro" and r.dados["itens"][0]["uf"] == "RJ"
+
+
+def test_gazettes_registrado_no_singleton():
+    from compliance_agent.providers import get_providers
+    assert {b.id for b in get_providers().backends("gazettes")} == {"querido_diario"}
+
+
 def test_leaks_offshore_link():
     from compliance_agent.providers.leaks_providers import OffshoreLeaksLink
     r = OffshoreLeaksLink().consultar(termo="ACME")
