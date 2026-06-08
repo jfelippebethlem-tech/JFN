@@ -104,3 +104,46 @@ def test_capability_pncp_pronto():
     cap = st.capacidades.get("consultar_pncp")
     assert cap is not None and cap["status"] == "PRONTO" and cap["rota"] == "/api/pncp"
     assert st.validate() == []
+
+
+# ---- Onda 2c: baixar edital PNCP + red flags do Lex (determinístico, sem rede) ----
+
+def test_parse_id_pncp():
+    """numeroControlePNCP -> (cnpj, ano, seq)."""
+    from compliance_agent.collectors.pncp import _parse_id_pncp
+
+    assert _parse_id_pncp("42441758000105-1-000101/2025") == ("42441758000105", "2025", 101)
+    assert _parse_id_pncp("lixo") is None
+
+
+def test_analisar_texto_edital_red_flags():
+    """O motor Lex roda sobre o texto do edital: R7 quando há marca/atestado sem 'ou equivalente'."""
+    from compliance_agent.lex import analisar_texto_edital
+
+    txt = ("EDITAL DE PREGÃO ELETRÔNICO. Objeto: aquisição de equipamento da marca XYZ "
+           "modelo 123, exige-se atestado de capacidade técnica.")
+    a = analisar_texto_edital(txt, numero="X-1-1/2025")
+    assert a["lido"] is True
+    assert any(x["rf"] == "R7" for x in a["achados"])
+    # texto vazio => lido False, sem achados (honestidade: não inventa)
+    vazio = analisar_texto_edital("", numero="X")
+    assert vazio["lido"] is False and vazio["achados"] == []
+
+
+def test_api_pncp_id_analise(monkeypatch):
+    """GET /api/pncp?id= baixa o edital (mockado) e retorna red_flags do texto."""
+    from compliance_agent.collectors import pncp
+
+    async def fake_baixar(id_pncp, *a, **k):
+        return [{"titulo": "Edital", "tipo": "Edital",
+                 "url": "http://x", "n_chars": 80,
+                 "texto": "Pregão eletrônico. Exige marca ABC modelo Z, atestado de capacidade."}]
+
+    monkeypatch.setattr(pncp, "baixar_documentos", fake_baixar)
+    c = _client()
+    j = c.get("/api/pncp", params={"id": "42441758000105-1-000101/2025"}).json()
+    assert j["ok"] is True and j["modo"] == "analise"
+    assert j["lido"] is True
+    assert any(rf["rf"] == "R7" for rf in j["red_flags"])
+    # docs não vazam o texto bruto (só metadados)
+    assert all("texto" not in d for d in j["docs"])

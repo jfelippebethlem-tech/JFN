@@ -1219,15 +1219,17 @@ async def api_conflito(cnpj: str = "", candidato: str = "", limite: int = 200):
 
 
 @app.get("/api/pncp")
-async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "",
+async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "", id: str = "",
                    abertos: bool = False, modalidade: int = 0, dias: int = 30):
     """Onda 2 — PNCP (API pública de consulta, sem login): licitação SEM depender do SEI.
 
+    - id= : ANÁLISE PROFUNDA de uma contratação (numeroControlePNCP) — baixa o edital/TR
+      (PDF/ZIP/DOCX) e roda os red flags R3/R5/R7/R9/R12 do Lex sobre o texto real (Onda 2c).
     - cnpj= : contratos de um FORNECEDOR (CNPJ) no período (API de gestão).
     - senão : contratações publicadas (histórico) ou com PROPOSTA EM ABERTO (abertos=true,
       fiscalização preventiva), filtráveis por uf/orgão(cnpj)/modalidade. modalidade=0 varre
       as de maior risco (pregão/dispensa/inexigibilidade/concorrência). dias = janela de busca.
-    Retorno: {ok, modo, contratacoes|contratos, n}. red_flags por edital chegam na Onda 2c.
+    Retorno: {ok, modo, ...}. Indício, nunca acusação (presunção de legitimidade).
     """
     from datetime import date, timedelta
 
@@ -1235,6 +1237,21 @@ async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "",
         from compliance_agent.collectors import pncp
 
         hoje = date.today()
+        if id:
+            from compliance_agent.lex import analisar_texto_edital
+
+            docs = await pncp.baixar_documentos(id)
+            texto = "\n".join(d.get("texto", "") for d in docs)
+            analise = analisar_texto_edital(texto, numero=id)
+            # não devolve o texto bruto (grande) — só metadados dos docs + os achados
+            docs_meta = [{k: d[k] for k in ("titulo", "tipo", "url", "n_chars")} for d in docs]
+            return JSONResponse(content={
+                "ok": True, "modo": "analise", "id_pncp": id,
+                "docs": docs_meta, "lido": analise["lido"],
+                "red_flags": analise["achados"],
+                "_fonte": "PNCP API (arquivos do edital) + motor Lex R1-R12",
+                "_nota": "Indício a verificar (presunção de legitimidade); achados sobre o TEXTO "
+                         "lido do edital. lido=false => download/extração não retornou texto."})
         if cnpj:
             contratos = await pncp.buscar_contratos_fornecedor(
                 cnpj, hoje - timedelta(days=max(dias, 365)), hoje)
