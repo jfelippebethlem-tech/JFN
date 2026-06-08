@@ -153,7 +153,8 @@ _JS_TEM_RESULTADO = r"""
     );
     const tabela = document.querySelector('table.infraTable, table[id*="Tabela"], .infraAreaTabela');
     const txt = (document.body ? document.body.innerText : '').toLowerCase();
-    const semResultado = txt.includes('nenhum registro') || txt.includes('não encontrado');
+    const semResultado = txt.includes('nenhum resultado encontrado')
+        || txt.includes('nenhum registro') || txt.includes('não encontrado');
     return {
         tem: (linksProc.length > 0 || !!tabela) && !semResultado,
         n_links: linksProc.length,
