@@ -1277,6 +1277,23 @@ async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "", id: str = ""
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.get("/api/sobrepreco")
+async def api_sobrepreco(codigo: int, valor: float = 0, servico: bool = False):
+    """Onda 3 (R4) — Sobrepreço: preço pago vs mediana de referência de mercado.
+
+    codigo = CATMAT (material) ou CATSER (servico=true). valor = preço pago a comparar.
+    Fonte: Compras Dados Abertos. Honesto: sem amostra => mediana_ref=null/INDISPONÍVEL;
+    o % é indício a verificar (especificação/quantidade/região podem justificar), nunca acusação.
+    """
+    try:
+        from compliance_agent.sobrepreco import sobrepreco
+
+        res = await sobrepreco(codigo, valor_pago=(valor or None), servico=servico)
+        return JSONResponse(content=res)
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/status")
 async def status():
     """Check agent status."""

@@ -56,3 +56,53 @@ def test_benford_honesto_sem_dados():
 
     r = benford([])
     assert r["ok"] is True and r["n"] == 0 and r["suficiente"] is False
+
+
+# ---- Onda 3b: sobrepreço (R4) — determinístico (mock do coletor de preços) ----
+
+def test_sobrepreco_classificar():
+    from compliance_agent.sobrepreco import _classificar
+
+    assert "SOBREPREÇO" in _classificar(63.6)
+    assert _classificar(5) == "dentro da faixa usual (até +15%)"
+    assert _classificar(-10) == "no/abaixo do referencial"
+
+
+def test_sobrepreco_com_amostra(monkeypatch):
+    """Mediana de referência + % de desvio (mock da API; sem rede)."""
+    import asyncio
+
+    from compliance_agent import sobrepreco as S
+
+    async def fake(codigo, servico, max_paginas):
+        return [40.0, 45.0, 50.0, 55.0, 60.0]  # mediana 50
+
+    monkeypatch.setattr(S, "_coletar_precos", fake)
+    r = asyncio.run(S.sobrepreco(267758, valor_pago=80.0))
+    assert r["mediana_ref"] == 50.0 and r["n_amostra"] == 5
+    assert r["pct"] == 60.0  # (80-50)/50
+    assert "SOBREPREÇO" in r["classificacao"]
+
+
+def test_sobrepreco_sem_amostra_indisponivel(monkeypatch):
+    """Sem amostra => mediana_ref=None e fonte INDISPONÍVEL (nunca fabrica)."""
+    import asyncio
+
+    from compliance_agent import sobrepreco as S
+
+    async def vazio(codigo, servico, max_paginas):
+        return []
+
+    monkeypatch.setattr(S, "_coletar_precos", vazio)
+    r = asyncio.run(S.sobrepreco(150018, valor_pago=100))
+    assert r["mediana_ref"] is None and "INDISPONÍVEL" in r["fonte"]
+
+
+def test_capability_sobrepreco_pronto():
+    from compliance_agent.skilltree import SkillTree
+
+    st = SkillTree()
+    st.reload()
+    cap = st.capacidades.get("sobrepreco")
+    assert cap is not None and cap["status"] == "PRONTO" and cap["rota"] == "/api/sobrepreco"
+    assert st.validate() == []
