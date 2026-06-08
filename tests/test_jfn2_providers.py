@@ -137,6 +137,36 @@ def test_gazettes_registrado_no_singleton():
     assert {b.id for b in get_providers().backends("gazettes")} == {"querido_diario"}
 
 
+def test_eleitoral_doador_contrato_casa_por_nome(tmp_path, monkeypatch):
+    """Detector TSE: sócio do fornecedor que aparece como doador (casamento por nome — CPF mascarado)."""
+    from compliance_agent.providers import eleitoral_providers as E
+    from compliance_agent.providers.base import Resultado, agora_iso
+
+    monkeypatch.setattr(E, "_DB", tmp_path / "doacao_tse.db")
+    db = E._conn()
+    db.execute("INSERT INTO doacao_tse VALUES (?,?,?,?,?,?,?)",
+               (2022, "RJ", "JOAO DA SILVA", "12345678900", "CANDIDATO X", "PT", 5000.0))
+    db.commit(); db.close()
+
+    # registry devolve sócio com CPF mascarado → casa por NOME
+    monkeypatch.setattr(E, "lookup",
+                        lambda funcao, **q: Resultado(True, {"socios": [{"nome": "Joao da Silva", "doc": "***456789**"}]},
+                                                      "registry", agora_iso()), raising=False)
+    import compliance_agent.providers as P
+    monkeypatch.setattr(P, "lookup",
+                        lambda funcao, **q: Resultado(True, {"socios": [{"nome": "Joao da Silva", "doc": "***456789**"}]},
+                                                      "registry", agora_iso()))
+    r = E.doador_contrato("11222333000144")
+    assert r.ok and r.dados["n_doacoes"] == 1
+    assert r.dados["doacoes_de_socios"][0]["beneficiario"] == "CANDIDATO X"
+    assert r.dados["doacoes_de_socios"][0]["valor"] == 5000.0
+
+
+def test_eleitoral_registrado_no_singleton():
+    from compliance_agent.providers import get_providers
+    assert {b.id for b in get_providers().backends("eleitoral")} == {"tse_doador_contrato"}
+
+
 def test_leaks_offshore_link():
     from compliance_agent.providers.leaks_providers import OffshoreLeaksLink
     r = OffshoreLeaksLink().consultar(termo="ACME")
