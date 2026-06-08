@@ -62,6 +62,73 @@ def _empresas_com_ob(con) -> dict[str, dict]:
     return emp
 
 
+def _ugs_sei_por_empresa(con, cnpjs: set[str], max_ug: int = 8, max_sei: int = 12) -> dict[str, dict]:
+    """Para cada CNPJ contratado, devolve {ugs:[{ug, nome, total, n_ob}], seis:[numero_sei...]}.
+
+    Fonte: ordens_bancarias (TFE, tem ug_codigo/ug_nome/numero_sei) + ob_orcamentaria_siafe (SIAFE, tem
+    ug_pagadora/processo). UG resolvida pelo CÓDIGO via mapa canônico (a OB às vezes rotula com o órgão
+    superior — ver compliance_agent/ugs.py). Só leitura; seguro com o sweep rodando (WAL)."""
+    if not cnpjs:
+        return {}
+    try:
+        from compliance_agent import ugs as _ugs
+        _rotulo = _ugs.rotulo
+    except Exception:
+        def _rotulo(cod, nome=""):  # fallback sem mapa canônico
+            return (nome or f"UG {cod}").strip()
+
+    out: dict[str, dict] = {c: {"_ug": {}, "_sei": {}} for c in cnpjs}
+    place = ",".join("?" * len(cnpjs))
+    alvos = list(cnpjs)
+
+    # (1) TFE — favorecido_cpf guarda o CNPJ (14 díg.); ug_codigo + ug_nome + numero_sei
+    try:
+        for cnpj_e, ugc, ugn, sei, n, tot in con.execute(
+                f"SELECT favorecido_cpf, ug_codigo, ug_nome, numero_sei, COUNT(*), COALESCE(SUM(valor),0) "
+                f"FROM ordens_bancarias WHERE favorecido_cpf IN ({place}) "
+                f"GROUP BY favorecido_cpf, ug_codigo, ug_nome, numero_sei", alvos):
+            d = _digits(cnpj_e)
+            if d not in out:
+                continue
+            cod = _digits(ugc) or (ugc or "")
+            rot = _rotulo(cod, ugn or "")
+            u = out[d]["_ug"].setdefault(rot, {"ug": cod, "nome": rot, "total": 0.0, "n_ob": 0})
+            u["total"] += float(tot or 0); u["n_ob"] += int(n or 0)
+            if sei and str(sei).strip():
+                out[d]["_sei"][str(sei).strip()] = out[d]["_sei"].get(str(sei).strip(), 0) + int(n or 0)
+    except sqlite3.Error:
+        pass
+
+    # (2) SIAFE — credor guarda o CNPJ; ug_pagadora/ug_emitente + processo (=SEI de origem)
+    try:
+        for cnpj_e, ugp, uge, proc, n, tot in con.execute(
+                f"SELECT credor, ug_pagadora, ug_emitente, processo, COUNT(*), COALESCE(SUM(valor),0) "
+                f"FROM ob_orcamentaria_siafe WHERE credor IN ({place}) "
+                f"GROUP BY credor, ug_pagadora, ug_emitente, processo", alvos):
+            d = _digits(cnpj_e)
+            if d not in out:
+                continue
+            cod = _digits(ugp) or _digits(uge) or (ugp or uge or "")
+            rot = _rotulo(cod, "")
+            u = out[d]["_ug"].setdefault(rot, {"ug": cod, "nome": rot, "total": 0.0, "n_ob": 0})
+            u["total"] += float(tot or 0); u["n_ob"] += int(n or 0)
+            if proc and str(proc).strip():
+                out[d]["_sei"][str(proc).strip()] = out[d]["_sei"].get(str(proc).strip(), 0) + int(n or 0)
+    except sqlite3.Error:
+        pass
+
+    # consolida: top UGs por valor, top SEIs por nº de OBs
+    res: dict[str, dict] = {}
+    for c, agg in out.items():
+        ugs_l = sorted(agg["_ug"].values(), key=lambda x: x["total"], reverse=True)
+        for u in ugs_l:
+            u["total"] = round(u["total"], 2)
+        seis_l = [s for s, _ in sorted(agg["_sei"].items(), key=lambda kv: kv[1], reverse=True)]
+        res[c] = {"ugs": ugs_l[:max_ug], "seis": seis_l[:max_sei],
+                  "n_ugs": len(ugs_l), "n_seis": len(seis_l)}
+    return res
+
+
 def conflito(cnpj: str | None = None, candidato: str | None = None, limite: int = 200) -> dict:
     """Rede de conflito doador↔(empresa|sócio da empresa)↔OB.
 
@@ -148,7 +215,17 @@ def conflito(cnpj: str | None = None, candidato: str | None = None, limite: int 
         for r in rede:
             r["score"] = (2 if r["via"] == "direto" else 1) + (1 if len(r["sinais"]) >= 2 else 0)
         rede.sort(key=lambda r: (r["total_ob"], r["valor_doacao"]), reverse=True)
-        return {"ok": True, "rede": rede[:limite], "n_doacoes_base": n_doacoes,
+        rede = rede[:limite]
+
+        # enriquece SÓ as empresas que sobraram na rede: UG pagadora (canônica) + processos SEI
+        cnpjs_rede = {r["empresa_cnpj"] for r in rede}
+        det = _ugs_sei_por_empresa(con, cnpjs_rede)
+        for r in rede:
+            d = det.get(r["empresa_cnpj"], {})
+            r["ugs"] = d.get("ugs", [])
+            r["seis"] = d.get("seis", [])
+
+        return {"ok": True, "rede": rede, "n_doacoes_base": n_doacoes,
                 "_fonte": "TSE Dados Abertos + OBs (TFE/SIAFE) + QSA BrasilAPI",
                 "_nota": "INDÍCIO a verificar (presunção de legitimidade). socio_doc é mascarado (LGPD); "
                          "match por nome+CPF-mascarado. Score = via + corroboração, não prova."}
