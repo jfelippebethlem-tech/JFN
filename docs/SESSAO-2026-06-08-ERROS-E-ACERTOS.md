@@ -111,6 +111,35 @@
 
 ---
 
+## 9. Muro do preço VENCIDO via PNCP — ACERTO (pesquisa do dono)
+
+- **Contexto:** Onda 2 mostrou que a ARP/tabela de preço não é alcançável raspando o SEI. Dono pediu
+  pesquisa de como resolver.
+- **Ação/Evidência:** pesquisei + **provei ao vivo** que o PNCP expõe os itens com **preço unitário
+  estruturado**, público, sem login, **sem browser**: `GET /api/pncp/v1/orgaos/{cnpj}/compras/{ano}/{seq}/itens`.
+  Implementei `buscar_itens()` (commit `81ebb9a`) — validado: 10 itens RJ (hortifruti, R$4,39/kg).
+- **Lição:** quando um caminho (raspar SEI) tem muro estrutural, a melhor saída pode ser **trocar a fonte**
+  (PNCP estruturado) em vez de insistir. E elimina o custo de CPU do browser.
+
+## 10. Guarda de recurso (CPU) — ACERTO (vencer a dificuldade do supervisor)
+
+- **Contexto:** dono pediu "mesmo supervisor p/ SEI/SIAFE/TSE". **Opinião honesta dada:** keep-alive serve
+  ao SIAFE, é ERRADO p/ TSE (batch 1×/ano, re-baixaria GBs) e PREMATURO/perigoso p/ SEI (2 browsers em 2
+  cores = crash). Propus orquestrador **consciente de recurso**.
+- **Ação:** `compliance_agent/recursos.py` (browser-lock com quebra de órfão + load-guard) wired no
+  `sei_reader` (cede se load alto; serializa browser). Commit `5e35592`, 4 testes. Aditivo (não quebra o
+  SIAFE rodando); coordenação SEI×SIAFE via LOAD guard.
+- **Lição:** "o mesmo supervisor p/ tudo" seria pior; honestidade técnica > obediência cega ao pedido.
+
+## 11. Conluio — DIFICULDADE HONESTA (não totalmente vencível com dado público)
+
+- **Contexto:** detector `conluio_propostas` precisa das PROPOSTAS de TODOS os licitantes.
+- **Evidência:** PNCP `/itens/{n}/resultados` expõe **só o vencedor homologado**, não os perdedores. As
+  propostas de todos ficam no sistema de origem (ComprasNet/SIGA-RJ) ou em PDF (ata/mapa de lances).
+- **Honesto:** **conluio intra-licitação (markup uniforme/preços idênticos) NÃO é alcançável** por dado
+  estruturado público. **Viável:** conluio **cross-licitação** (vencedor recorrente/rodízio + QSA
+  compartilhado + concentração) com o dado de vencedor que o PNCP TEM. Pendente de build (Onda 3).
+
 ## Resumo de commits (branch `sei-precos-onda5`)
 `4b1323e` fix SEI reader (diagnóstico correto) · `2d73ea3` registry chain · `6a731a8` Querido Diário ·
 `adc4969` .env · `154415f` TSE doador×contrato · `915cd55` rotas+capabilities · `3b0cc08` handoff ·
