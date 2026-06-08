@@ -397,3 +397,14 @@ consultas financeiras — aprovado pelo dono, base jurídica pronta); (2) **fast
 - **Critério de dados firmado pelo dono:** API primeiro; free/free-tier só; self-host apenas leve e sem alternativa
   de API. **Não baixar** fontes on-demand em massa nem OSINT GUI/self-host pesado (avaliado e justificado).
 - **Pendências novas:** `enrich/opencorporates.py` (API free) + `enrich/exif.py` (wrapper ExifTool).
+- **`e51b6ac` — Consolidação matriz+filiais por raiz (Onda extra, resolve a "duplicação" do Yoda).**
+  Matriz (`/0001`) e filiais (`/0002+`) = **uma só PJ** (CC 44/985/1.142; STJ REsp 1.286.122). `buscar_candidatos`
+  colapsa estabelecimentos da mesma raiz num candidato único (representante = matriz se houver, senão o de maior
+  valor); `consultar_pagamentos`/`consultar_contratos` somam **todos os estabelecimentos** (`LIKE raiz%`) e expõem
+  `por_estabelecimento`; a seção 5 do `/relatorio` mostra a quebra matriz/filiais com fundamento. **Invariante
+  testada:** total consolidado == soma dos estabelecimentos; pedir por qualquer filial dá o mesmo grupo. 3 testes
+  (`test_jfn2_filial.py`). **Suíte: 92 verdes.** Sweeps intactos (mudança só no motor de relatório).
+- **Sweeps conferidos (pedido do dono):** TSE concluído (542k); **SIAFE 1 CONCLUÍDO** (`.log` = SWEEP COMPLETO ×3 —
+  supervisor corretamente não relança); SIAFE 2 vivo (PID 218890). ⚠️ **24 processos chrome (~22% RAM)**, vários
+  órfãos de 2 dias (crash antigo de Playwright) — limpeza dos órfãos antigos pendente de OK (não tocar o chromium do
+  sweep vivo).
