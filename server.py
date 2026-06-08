@@ -1337,6 +1337,41 @@ async def api_sei_direcionamento(ug: str = "", objeto: str = "", uf: str = "RJ",
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.post("/api/radar/vigiar")
+async def api_radar_vigiar(payload: Optional[dict] = None):
+    """Onda 6 — Radar: adiciona um alvo à watchlist 24/7. Body {"alvo","tipo":cnpj|ug|nome|objeto}.
+    Ao surgir edital aberto restritivo / OB anômala do alvo, chega alerta no Telegram."""
+    try:
+        from compliance_agent.radar import vigiar
+
+        p = payload or {}
+        return JSONResponse(content=vigiar(p.get("alvo", ""), p.get("tipo", "cnpj")))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.get("/api/radar/status")
+async def api_radar_status():
+    """Onda 6 — Radar: o que está sendo vigiado + últimos alertas."""
+    try:
+        from compliance_agent.radar import status as radar_status
+
+        return JSONResponse(content=radar_status())
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@app.post("/api/radar/ciclo")
+async def api_radar_ciclo():
+    """Onda 6 — Radar: roda um ciclo de vigilância agora (o timer systemd chama isto)."""
+    try:
+        from compliance_agent.radar import ciclo
+
+        return JSONResponse(content=await ciclo())
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/status")
 async def status():
     """Check agent status."""

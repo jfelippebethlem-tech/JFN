@@ -17,6 +17,8 @@ FERRAMENTAS DISPONÍVEIS (chame SÓ estas pelo id; se não houver ferramenta par
 - massare_cenarios() — 'como esta o mercado', 'dolar/bolsa/ouro hoje'
 - massare_placar() — 'o Massare acerta?'
 - massare_prever(symbol,horizon) — 'previsao do Ibovespa', 'BTC vai subir?'
+- vigiar(alvo,tipo) — '/vigiar <cnpj|ug|nome>'
+- radar_status() — 'o que voce monitora', 'teve alerta hoje'
 - siafe_atualizar(exercicio) — 'atualize o SIAFE'
 - siafe_stats() — 'quantas OBs temos'
 - siafe_coletar_ug(ug,ano) — backfill de UG

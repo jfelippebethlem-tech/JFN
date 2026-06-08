@@ -574,6 +574,61 @@
     {
       "type": "function",
       "function": {
+        "name": "vigiar",
+        "description": "Adiciona alvo a watchlist; alerta no Telegram em evento (PNCP/DOERJ/SIAFE/GDELT) — usar quando: '/vigiar <cnpj|ug|nome>'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "alvo": {
+              "type": "string",
+              "description": "obrigatorio"
+            },
+            "tipo": {
+              "type": "string",
+              "description": "cnpj|ug|nome|objeto"
+            }
+          },
+          "required": [
+            "alvo"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "radar",
+        "tipo": "http",
+        "rota": "/api/radar/vigiar",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "radar_status",
+        "description": "O que o Radar vigia + ultimos alertas — usar quando: 'o que voce monitora', 'teve alerta hoje'",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "radar",
+        "tipo": "http",
+        "rota": "/api/radar/status",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "siafe_atualizar",
         "description": "Incremental diaria (cron 05:00); sessao unica via lockfile — usar quando: 'atualize o SIAFE'",
         "parameters": {
@@ -827,8 +882,6 @@
     "massare_fundamentos",
     "massare_calendario",
     "massare_carteira",
-    "vigiar",
-    "radar_status",
     "trace"
   ],
   "politica_modelo": {
