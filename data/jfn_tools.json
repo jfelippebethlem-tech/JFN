@@ -524,6 +524,80 @@
     {
       "type": "function",
       "function": {
+        "name": "consultar_diario",
+        "description": "Diarios oficiais municipais (Querido Diario): busca por palavra-chave + territorio IBGE + datas — usar quando: 'saiu no diario oficial de X?', publicacao/extrato de contrato municipal",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "querystring": {
+              "type": "string",
+              "description": "obrigatorio"
+            },
+            "territory_ids": {
+              "type": "string",
+              "description": "opcional (IBGE; RJ capital=3304557)"
+            },
+            "desde": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "ate": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "size": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": [
+            "querystring"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/diario",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "doador_contrato_qsa",
+        "description": "TSE doador x contrato: socios (QSA) do fornecedor que aparecem como DOADORES de campanha (RJ). Indicio a conferir, nunca acusacao (CPF mascarado -> casa por nome) — usar quando: 'algum socio do fornecedor X financiou campanha?', conflito doador-fornecedor pela via QSA",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "obrigatorio"
+            }
+          },
+          "required": [
+            "cnpj"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "lex",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/doador_contrato",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "ler_processo_sei",
         "description": "Le processo SEI-RJ na integra via login interno itkava/ITERJ (Chromium real, SEM captcha, vence o WAF). Cache 24h. — usar quando: ler/analisar um processo SEI especifico. FORMATO do numero: 'SEI-UUUUUU/NNNNNN/AAAA' (ex.: SEI-070002/008633/2022) ou 'E-NN/NNN/AAAA' (ex.: E-12/345/2026) — unidade/sequencial/ano. Aceita com ou sem o prefixo SEI-.",
         "parameters": {
