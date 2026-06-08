@@ -67,6 +67,46 @@ def test_registry_brasilapi_parseia(monkeypatch):
     assert r.ok and r.dados["razao_social"] == "ACME LTDA" and r.dados["socios"][0]["nome"] == "FULANO"
 
 
+def test_registry_opencnpj_parseia(monkeypatch):
+    from compliance_agent.providers import registry_providers as R
+
+    class _Resp:
+        status_code = 200
+        def json(self):
+            return {"cnpj": "1", "razao_social": "ACME SA", "situacao_cadastral": "ATIVA",
+                    "cnae_principal": "0600001", "uf": "RJ", "municipio": "RIO DE JANEIRO",
+                    "QSA": [{"nome_socio": "FULANO", "cnpj_cpf_socio": "***1**", "qualificacao_socio": "Diretor"}]}
+
+    monkeypatch.setattr(R.httpx, "get", lambda *a, **k: _Resp())
+    r = R.OpenCNPJ().consultar(cnpj="11.222.333/0001-44")
+    assert r.ok and r.fonte == "opencnpj" and r.dados["razao_social"] == "ACME SA"
+    assert r.dados["socios"][0]["nome"] == "FULANO" and r.dados["uf"] == "RJ"
+
+
+def test_registry_cnpjws_parseia(monkeypatch):
+    from compliance_agent.providers import registry_providers as R
+
+    class _Resp:
+        status_code = 200
+        def json(self):
+            return {"razao_social": "ACME SA",
+                    "socios": [{"nome": "FULANO", "cpf_cnpj_socio": "***1**", "tipo": "Pessoa Física"}],
+                    "estabelecimento": {"cnpj": "1", "situacao_cadastral": "Ativa",
+                                        "atividade_principal": {"id": "0600001", "descricao": "Extração de petróleo"},
+                                        "estado": {"sigla": "RJ"}, "cidade": {"nome": "Rio de Janeiro"}}}
+
+    monkeypatch.setattr(R.httpx, "get", lambda *a, **k: _Resp())
+    r = R.CNPJws().consultar(cnpj="11.222.333/0001-44")
+    assert r.ok and r.fonte == "cnpjws" and r.dados["cnae"] == "Extração de petróleo"
+    assert r.dados["socios"][0]["doc"] == "***1**" and r.dados["uf"] == "RJ"
+
+
+def test_registry_chain_ordem():
+    from compliance_agent.providers import get_providers
+    ids = [b.id for b in get_providers().backends("registry")]
+    assert ids[:3] == ["brasilapi", "opencnpj", "cnpjws"]  # cadeia BrasilAPI→OpenCNPJ→CNPJ.ws
+
+
 def test_links_hospedados_monta_deeplinks():
     from compliance_agent.providers.links_providers import InvestigacaoHospedada
     r = InvestigacaoHospedada().consultar(nome="MGS Clean", cnpj="19088605000104")
