@@ -123,3 +123,26 @@ def test_capability_grafo_ftm_pronto():
     cap = st.capacidades.get("grafo_ftm")
     assert cap is not None and cap["status"] == "PRONTO" and cap["rota"] == "/api/grafo/ftm"
     assert st.validate() == []
+
+
+def test_exif_arquivo_inexistente():
+    from compliance_agent.enrich import exif
+    r = exif.metadados("/tmp/nao_existe_jfn_xyz.pdf")
+    # com ExifTool instalado → erro de arquivo; sem ExifTool → INDISPONÍVEL (ambos honestos, nunca fabrica)
+    assert (r.get("ok") is False and "não encontrado" in r.get("erro", "")) or "INDISPONÍVEL" in r.get("_nota", "")
+
+
+def test_exif_le_pdf_real():
+    """Lê metadados de um PDF real (um relatório já gerado), se houver ExifTool + arquivo."""
+    import glob
+    from compliance_agent.enrich import exif
+    if not exif._disponivel():
+        import pytest
+        pytest.skip("ExifTool não instalado")
+    pdfs = glob.glob("reports/*.pdf")
+    if not pdfs:
+        import pytest
+        pytest.skip("sem PDF de amostra em reports/")
+    r = exif.metadados(pdfs[0])
+    assert r["ok"] is True and "meta" in r and "sinais" in r
+    assert r["meta"].get("tipo") in ("PDF", None)  # ExifTool reporta FileType=PDF
