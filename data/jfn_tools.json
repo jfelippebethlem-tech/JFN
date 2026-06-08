@@ -1,0 +1,540 @@
+{
+  "_gerado_de": "capabilities.yaml (NÃO editar à mão)",
+  "versao": "2.1.0",
+  "base_http": "http://127.0.0.1:8000",
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "relatorio_inteligencia",
+        "description": "Due diligence de FORNECEDOR (PDF+XLSX+parecer Lex) — usar quando: relatorio/auditoria/due diligence de empresa, CNPJ",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "empresa": {
+              "type": "string",
+              "description": "string (um de empresa|cnpj)"
+            },
+            "cnpj": {
+              "type": "string",
+              "description": "string"
+            },
+            "anos": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "list[int] opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/relatorio/inteligencia",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": [
+          "path_pdf",
+          "path_xlsx",
+          "path_lex"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "relatorio_orgao",
+        "description": "Inteligencia de ORGAO/UG (quanto pagou e a quem) — usar quando: auditoria de orgao/UG/secretaria",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "orgao": {
+              "type": "string",
+              "description": "string (um de orgao|ug)"
+            },
+            "ug": {
+              "type": "string",
+              "description": "string"
+            },
+            "anos": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "list[int] opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/relatorio/orgao",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "anomalias",
+        "description": "Anomalias em OBs (+Benford na Onda 3) — usar quando: triagem de risco; 'algo estranho em X'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ug": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "cnpj": {
+              "type": "string",
+              "description": "opcional"
+            },
+            "exercicio": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/anomalias",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "cartel",
+        "description": "Cartel/bid-rigging em grafo (aprofundado Onda 3 c/ QSA) — usar quando: conluio/cartel/combinacao",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ug": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/cartel",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "cruzamento",
+        "description": "OB<->CNPJ<->SEI<->socios — usar quando: 'cruze os dados da empresa X'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "obrigatorio"
+            }
+          },
+          "required": [
+            "cnpj"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/cruzamento",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "missao_autonoma",
+        "description": "Auditoria autonoma aberta (loop hermes_goal CANONICO) — usar quando: pedido complexo/aberto",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "missao": {
+              "type": "string",
+              "description": "obrigatorio"
+            }
+          },
+          "required": [
+            "missao"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/hermes/missao",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "ler_processo_sei",
+        "description": "Le processo SEI na integra (SIP autenticado; proxy BR) — usar quando: '/sei E-12/345/2026'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "numero": {
+              "type": "string",
+              "description": "obrigatorio"
+            }
+          },
+          "required": [
+            "numero"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "lex",
+        "dominio": "juridico",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "compliance_agent.collectors.sei_cdp \"<NUMERO>\"",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "parecer_juridico",
+        "description": "Parecer R1-R12 + base TCU/TCE-RJ (grau verde/amarelo/vermelho) — usar quando: 'tem direcionamento?', parecer",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "alvo": {
+              "type": "string",
+              "description": "obrigatorio"
+            }
+          },
+          "required": [
+            "alvo"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "lex",
+        "dominio": "juridico",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "compliance_agent.lex \"<empresa|cnpj>\"",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "busca_juridica",
+        "description": "Lei/acordao (TCE-RJ,TCU,LexML). RAG: Onda 10 — usar quando: 'qual a lei sobre...', jurisprudencia",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "termo": {
+              "type": "string",
+              "description": "obrigatorio"
+            }
+          },
+          "required": [
+            "termo"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "lex",
+        "dominio": "juridico",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "compliance_agent.collectors.lexml_fetcher --termo \"<TERMO>\"",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "massare_cenarios",
+        "description": "Snapshot multi-horizonte + regime + tom de noticias(Onda 8) — usar quando: 'como esta o mercado', 'dolar/bolsa/ouro hoje'",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "massare",
+        "dominio": "mercado",
+        "tipo": "http",
+        "rota": "/api/massare/cenarios",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "massare_placar",
+        "description": "Acuracia OOS + Sharpe liquido + DSR(Onda 9) — usar quando: 'o Massare acerta?'",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "massare",
+        "dominio": "mercado",
+        "tipo": "http",
+        "rota": "/api/massare/placar",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "massare_prever",
+        "description": "Previsao direcional (walk-forward; condicionada a regime) — usar quando: 'previsao do Ibovespa', 'BTC vai subir?'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "description": "obrigatorio"
+            },
+            "horizon": {
+              "type": "integer",
+              "description": "int=5"
+            }
+          },
+          "required": [
+            "symbol"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "massare",
+        "dominio": "mercado",
+        "tipo": "http",
+        "rota": "/api/massare/prever",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "siafe_atualizar",
+        "description": "Incremental diaria (cron 05:00); sessao unica via lockfile — usar quando: 'atualize o SIAFE'",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "exercicio": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "coleta",
+        "tipo": "http",
+        "rota": "/api/siafe/atualizar",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "siafe_stats",
+        "description": "OBs por ano/UG (+frescor Onda 11) — usar quando: 'quantas OBs temos'",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "coleta",
+        "tipo": "http",
+        "rota": "/api/siafe/stats",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "siafe_coletar_ug",
+        "description": "Coleta UMA UG furando teto 1000; SIAFE 1 via JFN_SIAFE_LOGIN_URL=www5 — usar quando: backfill de UG",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ug": {
+              "type": "string",
+              "description": "obrigatorio"
+            },
+            "ano": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": [
+            "ug"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "coleta",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "compliance_agent.siafe_runner ug <UG> [ANO]",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "enriquecer_socios",
+        "description": "QSA (socios) via BrasilAPI; insumo do cartel-grafo e do Grafo de Poder — usar quando: apos novo sweep",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "coleta",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "tools.enriquecer_socios_ob",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "status_jfn",
+        "description": "JFN vivo? healthcheck — usar quando: diagnostico",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "sistema",
+        "tipo": "http",
+        "rota": "/status",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    }
+  ],
+  "futuras_desabilitadas": [
+    "conflito_doador_contrato",
+    "sobrepreco",
+    "grafo_poder",
+    "dossie",
+    "consultar_pncp",
+    "buscar_direcionamento",
+    "instrumento_mandato",
+    "massare_teses",
+    "massare_focus",
+    "massare_fundamentos",
+    "massare_calendario",
+    "massare_carteira",
+    "vigiar",
+    "radar_status",
+    "trace"
+  ],
+  "politica_modelo": {
+    "roteamento_chat": {
+      "primario": "gemini-2.5-flash"
+    },
+    "raciocinio_pesado": {
+      "primario": "gemini-3-pro-preview",
+      "fallback": "gemini-2.5-pro",
+      "uso": "compliance/juridico/extracao SEI"
+    },
+    "visao_ocr": {
+      "primario": "gemini-2.5-flash",
+      "uso": "captcha SEI, PDFs"
+    },
+    "fallback_chain": [
+      "gemini-2.5-flash-lite",
+      "gemini-2.0-flash",
+      "gemini-2.0-flash-lite",
+      "mistral-large-latest",
+      "mistral-small-latest"
+    ],
+    "api_max_retries": 3,
+    "credential_pool": {
+      "gemini": "round_robin",
+      "mistral": "fill_first"
+    }
+  }
+}
