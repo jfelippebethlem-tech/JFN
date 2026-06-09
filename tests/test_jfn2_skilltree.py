@@ -135,13 +135,16 @@ def test_id_duplicado_e_rejeitado(tmp_path):
         st.reload()
 
 
-def test_render_menu_completo_e_agrupado():
-    """/lista (render_menu) deve refletir TODAS as capacidades PRONTO da skilltree, agrupadas — não um menu fixo."""
+def test_render_menu_curado_e_enxuto():
+    """/lista (render_menu) é CURADO e enxuto (não despeja as ~47 capacidades — UX, pedido do dono). O
+    catálogo COMPLETO fica no /skills (render). Atualizado 2026-06-09."""
     from compliance_agent.skilltree import SkillTree
     st = SkillTree()
     st.reload()
     m = st.render_menu()
-    n_prontas = sum(1 for c in st.capacidades.values() if c.get("status") == "PRONTO")
-    assert m.count("▪️ *") >= n_prontas - 1  # ~todas as prontas aparecem
-    assert "relatorio_inteligencia" in m and "consultar_empresa" in m  # comuns + providers (Onda 12)
-    assert "AUDITORIA" in m and "MERCADO" in m  # agrupado por domínio
+    n_itens = m.count("\n• ")
+    assert 6 <= n_itens <= 14                          # curado, não as ~47 prontas
+    assert "Relatório de um fornecedor" in m           # linguagem humana, não id técnico
+    assert "/skills" in m                              # aponta o catálogo completo
+    assert "GET /api" not in m                         # sem clutter técnico de rota
+    assert st.render().count("`") > 40                 # o /skills (render) segue com o catálogo inteiro
