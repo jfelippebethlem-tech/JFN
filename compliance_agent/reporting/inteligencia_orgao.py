@@ -225,6 +225,17 @@ def parecer_orgao(ctx: dict) -> str:
             "execução evita atribuição equivocada de responsabilidade.")
         add("")
 
+    # Pagamentos recorrentes idênticos — conecta o padrão ao fornecedor dominante (mérito)
+    grupos = _recorrentes_identicos(p)
+    if grupos:
+        g0 = grupos[0]
+        add(f"Registra-se **padrão de pagamentos de valor idêntico**: **{g0['favorecido']}** recebeu "
+            f"**{g0['n']}×** o valor exato de **R$ {moeda(g0['valor'])}** (R$ {moeda(g0['total'])} no total). "
+            "Parcelas fixas são típicas de serviço continuado, mas a reiteração de valores idênticos integra os "
+            "*red flags* da ACFE — cabe caracterizar o contrato (objeto, vigência, **medição** da execução) e "
+            "verificar se a parcela é justificada e o objeto **adere à finalidade institucional do órgão**.")
+        add("")
+
     add("### Avaliação jurídica")
     add("")
     add("- **CF/88, art. 37** — impessoalidade e moralidade na execução da despesa;")
@@ -265,6 +276,27 @@ def _sigla_descr(nome: str) -> tuple[str, str]:
         a, b = nome.split("—", 1)
         return a.strip(), b.strip()
     return nome.strip(), ""
+
+
+def _recorrentes_identicos(p: dict, min_rep: int = 4, min_valor: float = 50_000.0) -> list[dict]:
+    """Grupos (fornecedor, valor exato) pagos ≥min_rep vezes acima de min_valor — ACFE identical payments.
+    Sinaliza parcelas fixas de contrato continuado (legítimo) e possível fracionamento (a verificar)."""
+    if not p.get("tem_dados"):
+        return []
+    contagem: dict = defaultdict(lambda: {"n": 0, "total": 0.0, "cnpj": ""})
+    for a in p["anos"]:
+        for ln in p["por_ano"][a]["linhas"]:
+            v = round(ln.get("valor") or 0.0, 2)
+            if v < min_valor:
+                continue
+            g = contagem[(ln["favorecido"], v)]
+            g["n"] += 1
+            g["total"] += v
+            g["cnpj"] = ln.get("cnpj", "") or g["cnpj"]
+    grupos = [{"favorecido": k[0], "valor": k[1], "n": g["n"], "total": g["total"], "cnpj": g["cnpj"]}
+              for k, g in contagem.items() if g["n"] >= min_rep]
+    grupos.sort(key=lambda x: -x["total"])
+    return grupos
 
 
 def render_md(ctx: dict) -> str:
@@ -360,6 +392,31 @@ def render_md(ctx: dict) -> str:
         _motivo = geo.get("_nota") or "sem endereços ingeridos para os fornecedores desta UG"
         add(f"_Concentração geográfica indisponível ({_motivo}). "
             "Rode `python -m compliance_agent.rede_societaria --ingerir-top 2000`._")
+        add("")
+
+    # 1-C. Pagamentos recorrentes de valor IDÊNTICO ao mesmo fornecedor (ACFE: identical payments)
+    grupos = _recorrentes_identicos(p)
+    add("## 1-C. PAGAMENTOS RECORRENTES DE VALOR IDÊNTICO")
+    add("")
+    add("> O **mesmo valor exato** pago **várias vezes** ao **mesmo fornecedor**. É a assinatura de contrato "
+        "continuado em parcelas fixas (legítimo) — mas valores idênticos reiterados também figuram entre os "
+        "*red flags* da ACFE (pagamentos repetidos/redondos) e podem mascarar fracionamento ou execução sem "
+        "medição. Caracterizar o contrato (objeto, vigência, medição) é o passo de verificação.")
+    add("")
+    if grupos:
+        add("| Fornecedor (CNPJ) | Valor unitário (R$) | Repetições | Total (R$) |")
+        add("|---|---:|---:|---:|")
+        for g in grupos[:12]:
+            forn = f"{g['favorecido']} ({fmt_cnpj(g['cnpj'])})" if g["cnpj"] else g["favorecido"]
+            add(f"| {forn} | {moeda(g['valor'])} | {g['n']}× | {moeda(g['total'])} |")
+        add("")
+        g0 = grupos[0]
+        add(f"> 🟡 **Indício:** **{g0['favorecido']}** recebeu **{g0['n']}×** o valor idêntico de "
+            f"**R$ {moeda(g0['valor'])}** (R$ {moeda(g0['total'])} no total) — confirmar o contrato de origem "
+            "(parcela mensal fixa?), a medição da execução e a aderência do objeto à finalidade do órgão.")
+        add("")
+    else:
+        add("_Nenhum padrão relevante de pagamentos de valor idêntico repetido (≥4× acima de R$ 50 mil)._")
         add("")
 
     # Tabelas de OBs por ano (pagamentos individuais a cada fornecedor)
@@ -466,6 +523,21 @@ def render_pdf(ctx: dict, destino: str) -> str:
         tot = p["total_geral"] or 1
         for nome, val in list(p["por_favorecido_geral"].items())[:30]:
             _tab_row(pdf, [(_t(nome)[:86], 130, "L"), (moeda(val), 36, "R"), (f"{val/tot*100:.1f}", 16, "R")], h=5)
+
+        # Pagamentos recorrentes de valor idêntico (ACFE identical payments)
+        _grupos = _recorrentes_identicos(p)
+        if _grupos:
+            pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+            pdf.cell(0, 8, _t("Pagamentos recorrentes de valor idêntico"), ln=True)
+            pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+            _mc(pdf, 4.5, _t("Mesmo valor exato pago várias vezes ao mesmo fornecedor — parcela fixa de "
+                             "contrato continuado (legítimo) ou red flag ACFE (fracionamento/sem medição) a verificar."))
+            pdf.ln(1)
+            _tab_header(pdf, [("Fornecedor", 96), ("Valor unit. (R$)", 34), ("Rep.", 14), ("Total (R$)", 38)])
+            pdf.set_font(pdf._fam, "", 8)
+            for g in _grupos[:12]:
+                _tab_row(pdf, [(_t(g["favorecido"])[:60], 96, "L"), (moeda(g["valor"]), 34, "R"),
+                               (f"{g['n']}x", 14, "R"), (moeda(g["total"]), 38, "R")], h=4.8)
 
         # OBs por ano
         for a in p["anos"]:
