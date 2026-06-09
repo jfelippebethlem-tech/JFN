@@ -133,6 +133,24 @@ def _render_md(res: dict, stamp: str) -> str:
     return "\n".join(L) + "\n"
 
 
+def por_simbolo(symbol: str, horizon: int = 21) -> dict | None:
+    """Track record OOS de UM ativo/horizonte a partir do último backtest (p/ as teses serem honestas).
+    Retorna {hit_rate, base_naive_rate, edge, n, tem_skill} ou None."""
+    f = _OUT / "backtest.json"
+    if not f.exists():
+        return None
+    try:
+        d = json.loads(f.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    for r in d.get("por_ativo") or []:
+        if r.get("symbol") == symbol and r.get("horizon") == horizon and r.get("n"):
+            edge = r.get("edge")
+            return {"hit_rate": r.get("hit_rate"), "base_naive_rate": r.get("base_naive_rate"),
+                    "edge": edge, "n": r.get("n"), "tem_skill": (edge is not None and edge > 0)}
+    return None
+
+
 def resumo_overall() -> dict | None:
     """Resumo do último backtest (p/ o /placar ser honesto). None se nunca rodou."""
     f = _OUT / "backtest.json"

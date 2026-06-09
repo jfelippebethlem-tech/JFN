@@ -56,6 +56,16 @@ def test_backtest_run_agrega_sem_inventar_brier():
     assert "brier" not in str(res).lower()
 
 
+def test_por_simbolo_para_teses():
+    """As teses consomem backtest.por_simbolo(): None ou track record honesto do ativo-âncora."""
+    from massare import backtest
+    r = backtest.por_simbolo("USDBRL=X", horizon=21)
+    if r is not None:
+        assert set(r) >= {"hit_rate", "base_naive_rate", "edge", "tem_skill"}
+        if r["edge"] is not None:
+            assert r["tem_skill"] == (r["edge"] > 0)
+
+
 def test_resumo_overall_para_placar():
     """O /placar consome backtest.resumo_overall(): ou None (nunca rodou) ou um dict honesto."""
     from massare import backtest
