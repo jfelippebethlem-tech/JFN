@@ -17,7 +17,7 @@ import io
 import os
 import sqlite3
 import zipfile
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
 import httpx

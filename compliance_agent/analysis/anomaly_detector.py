@@ -20,7 +20,7 @@ Detecta:
 
 import statistics
 from collections import defaultdict
-from datetime import date, timedelta
+from datetime import date
 from typing import Optional
 
 
@@ -107,7 +107,6 @@ def detectar_concentracao(obs: list) -> list[dict]:
 
     alertas = []
     if pct_top3 > 70 and total_geral > 100_000:
-        from compliance_agent.database.models import OrdemBancaria
         nomes = []
         for cpf, val in top3:
             ob_ref = next((o for o in obs if o.favorecido_cpf == cpf), None)

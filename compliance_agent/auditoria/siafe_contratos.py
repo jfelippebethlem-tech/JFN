@@ -17,7 +17,11 @@ SEGREDOS DESCOBERTOS (o que faz funcionar):
 3) ⚠️ O valor PRECISA ser DIGITADO (keyboard.type) — o ADF só dispara a query com
    keystrokes reais. fill() NÃO aplica o filtro. Depois Enter.
 """
-import os, sys, re, json, time
+import os
+import sys
+import re
+import json
+import time
 from playwright.sync_api import sync_playwright
 
 def filtrar(cnpj_digits):

@@ -355,7 +355,7 @@ class SIAFEAgent:
                     continue
 
                 response = await self.chat(user_input)
-                console.print(f"\n[bold green]Agente:[/bold green]")
+                console.print("\n[bold green]Agente:[/bold green]")
                 console.print(Markdown(response))
         finally:
             await self.stop()

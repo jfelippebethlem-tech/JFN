@@ -24,7 +24,6 @@ CLI:
 from __future__ import annotations
 
 import argparse
-import glob
 import gzip
 import json
 import os

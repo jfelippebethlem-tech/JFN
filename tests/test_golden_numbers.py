@@ -1,0 +1,75 @@
+"""
+Eixo D do plano de benchmarks — REGRESSÃO FACTUAL.
+
+Congela os números canônicos que alimentam os relatórios. Se um refactor (ou uma
+ingestão acidental) mudar esses totais SEM querer, este teste grita ANTES de o dono
+ver número errado no /relatorio. Quando a base for legitimamente atualizada, os
+valores aqui são revisados DE PROPÓSITO (e o commit documenta a mudança).
+
+Fonte: data/compliance.db (tabela ordens_bancarias). Conferido contra os artefatos
+reais gerados em 2026-06-09 (data/baseline_2026-06-09/).
+Ver docs/PLANO-BENCHMARKS-E-CODIFICACAO-2026-06-09.md.
+"""
+import sqlite3
+from pathlib import Path
+
+import pytest
+
+DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
+
+pytestmark = pytest.mark.skipif(not DB.exists(), reason="compliance.db ausente neste ambiente")
+
+
+def _con():
+    return sqlite3.connect(str(DB))
+
+
+def _norm(col: str) -> str:
+    return f"replace(replace(replace({col},'.',''),'/',''),'-','')"
+
+
+# Números canônicos (2026-06-09). Tolerância 0 nos congelados; a base é estável
+# (gestão 2019-2026 já ingerida). Atualizar conscientemente após nova ingestão.
+GOLDEN = {
+    "mgs_clean": {"cnpj": "19088605000104", "obs": 1127, "total": 136225497.94},
+    "iterj_ug": {"ug": "133100", "obs": 2457, "total": 292292309.08, "fornecedores": 196},
+    "cobertura": {"total_obs": 1121307, "pct_cnpj_min": 76},
+}
+
+
+def test_golden_mgs_clean():
+    g = GOLDEN["mgs_clean"]
+    with _con() as c:
+        obs, total = c.execute(
+            f"SELECT COUNT(*), ROUND(SUM(valor),2) FROM ordens_bancarias "
+            f"WHERE {_norm('favorecido_cpf')}=?",
+            (g["cnpj"],),
+        ).fetchone()
+    assert obs == g["obs"], f"MGS OBs drift: {obs} != {g['obs']}"
+    assert total == g["total"], f"MGS total drift: {total} != {g['total']}"
+
+
+def test_golden_iterj_ug133100():
+    g = GOLDEN["iterj_ug"]
+    with _con() as c:
+        obs, total, forn = c.execute(
+            "SELECT COUNT(*), ROUND(SUM(valor),2), COUNT(DISTINCT favorecido_cpf) "
+            "FROM ordens_bancarias WHERE ug_codigo=?",
+            (g["ug"],),
+        ).fetchone()
+    assert obs == g["obs"], f"ITERJ OBs drift: {obs} != {g['obs']}"
+    assert total == g["total"], f"ITERJ total drift: {total} != {g['total']}"
+    assert forn == g["fornecedores"], f"ITERJ fornecedores drift: {forn} != {g['fornecedores']}"
+
+
+def test_golden_cobertura():
+    g = GOLDEN["cobertura"]
+    with _con() as c:
+        total, com_cnpj = c.execute(
+            f"SELECT COUNT(*), SUM(CASE WHEN length({_norm('favorecido_cpf')})=14 "
+            f"THEN 1 ELSE 0 END) FROM ordens_bancarias"
+        ).fetchone()
+    # Cobertura só cresce (nova ingestão); falha se ENCOLHER (perda de dado).
+    assert total >= g["total_obs"], f"Cobertura encolheu: {total} < {g['total_obs']}"
+    pct = 100 * com_cnpj / total
+    assert pct >= g["pct_cnpj_min"], f"% CNPJ caiu: {pct:.0f}% < {g['pct_cnpj_min']}%"

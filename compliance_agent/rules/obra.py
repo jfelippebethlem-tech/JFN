@@ -8,9 +8,7 @@ Usa:
 
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass
-from typing import Iterable
 
 # Limite legal dispensa licitação (obras/serviços de engenharia) — Lei 14.133/21
 LIMITE_DISPENSA_OBRAS = 119_812.02

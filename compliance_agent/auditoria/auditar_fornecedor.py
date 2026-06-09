@@ -21,7 +21,14 @@ veja PASSO-A-PASSO.md (precisa de login SIAFE) e o módulo siafe_contratos.py.
 
 Regras: só LEITURA, ritmo humano (pausas), nunca expõe segredos.
 """
-import sys, os, re, json, time, collections, urllib.request, urllib.parse
+import sys
+import os
+import re
+import json
+import time
+import collections
+import urllib.request
+import urllib.parse
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")

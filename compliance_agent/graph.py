@@ -5,7 +5,6 @@ Usa NetworkX para análise de redes: detecta clusters suspeitos,
 centralidade de atores, caminhos entre servidor e empresa contratada.
 """
 
-import json
 from typing import Optional
 
 try:

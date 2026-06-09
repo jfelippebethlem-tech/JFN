@@ -13,7 +13,7 @@ Cada padrão tem:
   - risco: alto | médio
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass

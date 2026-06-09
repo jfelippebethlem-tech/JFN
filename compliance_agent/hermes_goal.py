@@ -26,7 +26,7 @@ import platform
 import re
 import shutil
 import subprocess
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
@@ -479,8 +479,8 @@ class HermesGoalAgent:
             limite = float(limite)
         except (TypeError, ValueError):
             limite = None
-        from compliance_agent.database.models import OrdemBancaria, Alerta
-        from sqlalchemy import select, func
+        from compliance_agent.database.models import OrdemBancaria
+        from sqlalchemy import select
         obs = self.session.execute(select(OrdemBancaria)).scalars().all()
         linhas = []
         for o in obs:
@@ -511,7 +511,7 @@ class HermesGoalAgent:
 
     async def _identificar_padroes(self, args: dict) -> dict:
         from compliance_agent.database.models import OrdemBancaria
-        from sqlalchemy import select, func
+        from sqlalchemy import select
         from collections import defaultdict
         obs = self.session.execute(select(OrdemBancaria)).scalars().all()
         itens = []

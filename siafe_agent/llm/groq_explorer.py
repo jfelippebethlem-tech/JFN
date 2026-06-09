@@ -24,7 +24,6 @@ Or standalone:
 import asyncio
 import json
 import os
-from datetime import datetime
 from pathlib import Path
 
 GROQ_API_KEY = os.environ.get(
@@ -135,7 +134,8 @@ async def _call_groq(messages: list[dict], max_tokens: int = 500) -> str | None:
     try:
         import httpx
     except ImportError:
-        import subprocess, sys
+        import subprocess
+        import sys
         subprocess.check_call([sys.executable, "-m", "pip", "install", "httpx", "-q"])
         import httpx
 
@@ -316,7 +316,7 @@ class SIAFEGroqExplorer:
                     + (" [SELECTED]" if e['selected'] else "")
                     for e in state['clickable_elements'][:40]
                 )
-                + f"\n\nInputs:\n"
+                + "\n\nInputs:\n"
                 + "\n".join(
                     f"  <{i['tag']}> id={i['id']!r} type={i['type']!r} value={i['value']!r}"
                     for i in state['inputs'][:20]

@@ -8,7 +8,6 @@ and return the file Path. No interactive display.
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -100,7 +99,6 @@ def grafico_alertas_por_dia(dados: list[dict]) -> Path:
     import matplotlib.pyplot as plt
     import matplotlib.ticker as mticker
     from matplotlib.dates import DateFormatter, AutoDateLocator
-    import matplotlib.dates as mdates
     from datetime import datetime as dt
 
     plt.style.use("dark_background")
@@ -249,7 +247,6 @@ def grafico_superfaturamentos(dados: list[dict]) -> Path:
     """
     import matplotlib.pyplot as plt
     import matplotlib.ticker as mticker
-    import numpy as np
 
     plt.style.use("dark_background")
     _ensure_dir()

@@ -17,7 +17,7 @@ módulo de anomalias/red flags do JFN.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, asdict, field
+from dataclasses import dataclass, asdict
 
 # ── Tipologias de fraude (taxonomia do material) ──────────────────────────────
 TIPOS_FRAUDE = {

@@ -8,7 +8,6 @@ Fontes:
 from __future__ import annotations
 
 import re
-import asyncio
 import logging
 from typing import Optional
 

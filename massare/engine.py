@@ -38,7 +38,7 @@ def load_macro(series):
             "SELECT date, value FROM macro WHERE series=? ORDER BY date", con, params=(series,))
     if df.empty:
         return df
-    df["date"] = pd.to_datetime(df["date"]);
+    df["date"] = pd.to_datetime(df["date"])
     return df.set_index("date")
 
 
@@ -188,7 +188,8 @@ def predict_today(symbol, horizon=5, lookback=126):
 
 
 if __name__ == "__main__":
-    import json, sys
+    import json
+    import sys
     syms = sys.argv[1:] or ["^GSPC", "^BVSP", "BTC-USD"]
     for s in syms:
         print(json.dumps(walk_forward(s), ensure_ascii=False))

@@ -5,7 +5,6 @@ Usa dados do banco local (OrdemBancaria, Alerta) para gerar relatórios.
 
 from __future__ import annotations
 
-import json
 from datetime import datetime
 from pathlib import Path
 from typing import Iterable

@@ -10,8 +10,7 @@ import asyncio
 import json
 import os
 from datetime import date
-from pathlib import Path
-from typing import Optional, Any
+from typing import Any
 
 import httpx
 from rich.console import Console
@@ -19,7 +18,7 @@ from rich.panel import Panel
 from rich.markdown import Markdown
 
 from compliance_agent.database.models import (
-    Alerta, Empresa, Pessoa, RegistroFolha, PublicacaoDOERJ,
+    Alerta, RegistroFolha, PublicacaoDOERJ,
     get_session, init_db,
 )
 from compliance_agent.collectors.cnpj import buscar_cnpj, salvar_empresa

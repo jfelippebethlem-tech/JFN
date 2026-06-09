@@ -5,11 +5,10 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.os_manager import ChromeType
-import os, time, base64, re, json
+import os
+import time
+import json
 from pathlib import Path
-from PIL import Image
-from io import BytesIO
 
 SEARCH_URL = "https://sei.rj.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php?acao_externa=protocolo_pesquisar&acao_origem_externa=protocolo_pesquisar&id_orgao_acesso_externo=6"
 # Portável: JFN_DATA_DIR (env) > <repo>/data (no Windows = C:\JFN\jfn\data, idêntico ao antigo)

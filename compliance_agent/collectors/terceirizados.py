@@ -23,9 +23,7 @@ Base legal:
 
 import json
 import logging
-import os
 from datetime import date
-from typing import Optional
 
 import httpx
 from bs4 import BeautifulSoup
@@ -955,7 +953,6 @@ def cruzar_com_folha_principal(session, competencia: str) -> list[dict]:
 
     try:
         # Busca pares (CPF, fonte) para a competência
-        from sqlalchemy import func
 
         pares = (
             session.query(

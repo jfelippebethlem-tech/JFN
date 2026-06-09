@@ -96,7 +96,7 @@ def main():
         ct = con.execute("SELECT COUNT(*), COALESCE(SUM(valor_total),0) FROM contratos").fetchone()
         ob = con.execute("SELECT COUNT(*) FROM ordens_bancarias").fetchone()[0]
         con.close()
-    print(f"Ingestão concluída:")
+    print("Ingestão concluída:")
     print(f"  empresas: {emp} (novas/atualizadas nesta rodada: {total_emp})")
     print(f"  contratos: {ct[0]} | valor total: R$ {ct[1]:,.2f} (ingeridos: {total_ct})")
     print(f"  ordens_bancarias: {ob}  <- vazio é esperado; OBs nominais dependem da coleta no SIAFE")

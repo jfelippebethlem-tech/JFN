@@ -16,7 +16,14 @@ Pre-requisito: um Chrome aberto com --remote-debugging-port=9222
 Saida: tabela por mes + por orgao + total; salva bruto em data/sei_cache/.
 ATENCAO: valor = EMPENHADO (comprometido), nao necessariamente pago.
 """
-import sys, os, json, time, re, collections, urllib.request, urllib.parse
+import sys
+import os
+import json
+import time
+import re
+import collections
+import urllib.request
+import urllib.parse
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 except Exception:

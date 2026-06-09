@@ -17,7 +17,6 @@ USO (API): POST /api/relatorio/orgao  {"orgao":"iterj"}  ou  {"ug":"133100"}  [,
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import sqlite3
 import sys

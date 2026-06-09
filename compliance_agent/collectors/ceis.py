@@ -14,13 +14,11 @@ Atualiza uma vez por mês. Não exige API key.
 Consulta 100% local — sem rate limit.
 """
 
-import asyncio
 import csv
 import io
 import re
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 import httpx
 
@@ -54,7 +52,6 @@ async def _download_csv(url: str, dest: Path) -> bool:
             for tentativa in range(3):
                 mes_ref = date(hoje.year, hoje.month, 1)
                 # Subtrai tentativa meses
-                import calendar
                 for _ in range(tentativa):
                     primeiro = mes_ref.replace(day=1)
                     mes_anterior = primeiro - __import__("datetime").timedelta(days=1)

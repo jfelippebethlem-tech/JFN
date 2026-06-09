@@ -7,7 +7,6 @@ Uses fpdf2 to generate daily and monthly compliance reports in PDF format.
 import logging
 from datetime import date, datetime
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +57,7 @@ def _make_pdf_class():
                 self.cell(0, 8, "JFN COMPLIANCE", align="L", new_x="LMARGIN", new_y="NEXT")
                 self.set_font("Helvetica", "", 9)
                 self.set_text_color(100, 116, 139)  # slate-500
-                self.cell(0, 5, f"Sistema de Compliance e Auditoria — Estado do Rio de Janeiro", new_x="LMARGIN", new_y="NEXT")
+                self.cell(0, 5, "Sistema de Compliance e Auditoria — Estado do Rio de Janeiro", new_x="LMARGIN", new_y="NEXT")
                 self.cell(0, 5, f"Gerado em: {datetime.now().strftime('%d/%m/%Y %H:%M')}", new_x="LMARGIN", new_y="NEXT")
                 # Horizontal rule
                 self.set_draw_color(203, 213, 225)
@@ -331,7 +330,7 @@ def gerar_relatorio_mensal(
     out_path = output_dir / f"relatorio_mensal_{mes}.pdf"
 
     try:
-        from compliance_agent.database.models import Alerta, Contrato, Empresa, Pessoa
+        from compliance_agent.database.models import Alerta, Contrato, Empresa
         from sqlalchemy import func
 
         # Query alerts for the month

@@ -720,13 +720,13 @@ def render_md(ctx: dict) -> str:
     L: list[str] = []
     add = L.append
 
-    add(f"# RELATÓRIO DE INTELIGÊNCIA DE FORNECEDOR")
+    add("# RELATÓRIO DE INTELIGÊNCIA DE FORNECEDOR")
     add(f"### {ctx['nome']}")
     add("")
     add("*Due Diligence de Integridade · Exposição Financeira · Risco & Compliance*")
     add("")
     add(f"**CNPJ:** {ctx['cnpj_fmt']}  |  **Data:** {ctx['data']}  |  **Analista:** JFN Intelligence Engine")
-    add(f"**Metodologia:** due diligence de integridade (padrão Kroll/Deloitte) · matriz de risco TCU P×I · OB = pagamento (fonte de verdade)")
+    add("**Metodologia:** due diligence de integridade (padrão Kroll/Deloitte) · matriz de risco TCU P×I · OB = pagamento (fonte de verdade)")
     add(f"**Classificação de fonte:** OBs/Contratos = **REAL** (SIAFE/TFE) · Perfil/Sanções/Rede = **{ctx['fonte_enriq']}**")
     add("")
     add("---")
@@ -1184,7 +1184,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
     import html as _html
 
     from compliance_agent.reporting import charts_svg as C
-    from compliance_agent.reporting.render_html import gerar_pdf as _html_pdf, render_html, html_to_pdf
+    from compliance_agent.reporting.render_html import render_html, html_to_pdf
 
     def esc(s):
         return _html.escape(str(s if s not in (None, "") else "—"))

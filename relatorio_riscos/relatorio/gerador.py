@@ -14,11 +14,8 @@ Estrutura do relatório:
 """
 from __future__ import annotations
 
-import os
 import re
-import textwrap
 from pathlib import Path
-from typing import Optional
 
 _REPORTS_DIR = Path(__file__).resolve().parents[3] / "reports"
 

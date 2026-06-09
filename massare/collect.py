@@ -121,7 +121,7 @@ def main():
 
     px, mac = store.coverage()
     total_pregoes = sum(r[1] for r in px)
-    print(f"\n== RESUMO ==")
+    print("\n== RESUMO ==")
     print(f"  símbolos: {len(px)} | total de pregões no DB: {total_pregoes:,}")
     print(f"  séries macro: {len(mac)}")
     print(f"  preços OK/FALHA: {po}/{pf} | macro OK/FALHA: {mo}/{mf}")

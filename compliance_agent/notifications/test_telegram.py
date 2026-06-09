@@ -27,7 +27,7 @@ async def main(chat_id: str = "") -> None:
         print("ERRO: Nenhum chat_id disponível.")
         return
 
-    print(f"Token: presente")
+    print("Token: presente")
     print(f"Chat: {target}")
     print()
 

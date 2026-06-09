@@ -14,7 +14,7 @@ import asyncio
 import logging
 from typing import Optional
 
-from ..collectors.cnpj_receita import buscar_cnpj, _limpar_cnpj, _mascarar_cpf  # type: ignore[attr-defined]
+from ..collectors.cnpj_receita import buscar_cnpj, _limpar_cnpj  # type: ignore[attr-defined]
 
 logger = logging.getLogger(__name__)
 

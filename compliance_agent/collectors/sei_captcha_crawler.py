@@ -1,5 +1,5 @@
-from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeout
-import os, time, re, base64
+from playwright.sync_api import sync_playwright
+import time
 from datetime import datetime
 from pathlib import Path
 

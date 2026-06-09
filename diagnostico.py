@@ -445,7 +445,7 @@ async def main():
     if browser is None:
         print(f"{R}  ERRO: não conectou ao Chrome em {CDP_URL}{RST}")
         print(f"  {DIM}{last_err}{RST}")
-        print(f"\n  Abra o Chrome assim e tente de novo:")
+        print("\n  Abra o Chrome assim e tente de novo:")
         print(f"  {B}chrome.exe --remote-debugging-port=9222{RST}")
         await p.stop()
         return

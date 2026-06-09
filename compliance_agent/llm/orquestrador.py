@@ -19,7 +19,7 @@ Roda dentro do loop contínuo do scheduler, em paralelo ao monitoramento.
 
 import asyncio
 import json
-from datetime import date, datetime, timedelta
+from datetime import date, timedelta
 
 from rich.console import Console
 
@@ -53,7 +53,6 @@ async def escolher_proximo_alvo(session) -> dict | None:
     """
     from compliance_agent.database.models import OrdemBancaria, Alerta
     from compliance_agent.llm.memoria import perfil_entidade
-    import sqlalchemy as sa
 
     # 1. OBs de alto valor recentes (últimos 7 dias) ainda não investigadas
     limite = date.today() - timedelta(days=7)

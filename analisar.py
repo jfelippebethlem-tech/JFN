@@ -15,7 +15,6 @@ import json
 import os
 import sys
 from datetime import date, datetime, timedelta, timezone
-from pathlib import Path
 
 # Habilita VT100/ANSI no Windows 10+ (CMD e PowerShell)
 if sys.platform == "win32":

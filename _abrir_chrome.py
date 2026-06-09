@@ -56,7 +56,7 @@ async def main():
         perfil = str(Path.home() / ".config" / "jfn-chrome-debug")
 
     print(f"        Perfil JFN: {perfil}")
-    print(f"        Abrindo Chrome com porta 9222...")
+    print("        Abrindo Chrome com porta 9222...")
 
     args = [
         exe,

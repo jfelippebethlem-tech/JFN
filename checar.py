@@ -12,7 +12,6 @@ import asyncio
 import os
 import platform
 from datetime import date
-from pathlib import Path
 
 
 # ── Carrega credenciais (.env e/ou .env.txt) ──────────────────────────────────
@@ -82,7 +81,7 @@ async def main():
 
         if platform.system() == "Windows":
             perfil = os.path.join(os.environ.get("LOCALAPPDATA", ""), "JFN", "ChromeDebug")
-            print(f"       -> Rode HERMES.bat — o passo 4 abre o Chrome no modo debug.")
+            print("       -> Rode HERMES.bat — o passo 4 abre o Chrome no modo debug.")
             print(f"          Perfil que sera usado: {perfil}")
         else:
             print("       -> Rode HERMES.bat — o passo 4 abre o Chrome no modo debug.")

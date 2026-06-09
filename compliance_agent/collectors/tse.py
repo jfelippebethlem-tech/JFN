@@ -5,12 +5,10 @@ Downloads candidacy financial disclosure data from TSE's open data portal
 and cross-references donors with public contracts to detect quid pro quo patterns.
 """
 
-import asyncio
 import csv
 import io
 import json
 import logging
-import os
 import zipfile
 from datetime import datetime, date
 from pathlib import Path
@@ -19,7 +17,7 @@ from typing import Optional
 import httpx
 
 from compliance_agent.database.models import (
-    Alerta, Contrato, DoacaoEleitoral, Empresa, get_session,
+    Alerta, Contrato, DoacaoEleitoral, Empresa,
 )
 
 logger = logging.getLogger(__name__)

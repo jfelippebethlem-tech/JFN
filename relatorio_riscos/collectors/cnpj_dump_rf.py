@@ -17,12 +17,9 @@ rede = expandir_por_nome(nome, max_nivel=2)
 """
 from __future__ import annotations
 
-import asyncio
 import csv
 import io
 import logging
-import os
-import re
 import sqlite3
 import zipfile
 from datetime import date

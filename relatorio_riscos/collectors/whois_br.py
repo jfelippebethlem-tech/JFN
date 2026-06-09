@@ -9,7 +9,6 @@ from __future__ import annotations
 import re
 import logging
 import unicodedata
-from typing import Optional
 
 import httpx
 

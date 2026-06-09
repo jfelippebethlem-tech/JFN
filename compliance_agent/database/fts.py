@@ -6,8 +6,6 @@ it via sqlite3 directly so that FTS5 virtual tables and triggers can be managed.
 """
 
 import sqlite3
-from pathlib import Path
-from typing import Any
 
 from compliance_agent.database.models import DB_PATH
 
