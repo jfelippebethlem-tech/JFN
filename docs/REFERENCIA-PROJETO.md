@@ -28,8 +28,11 @@ pagamento**, nunca empenho.
 - **Bot**: `hermes-gateway.service` (Yoda, `~/hermes-agent`, venv=`venv/`). Default LLM = `gemini-2.5-flash`.
 - **LLM válido**: Gemini (pool de 9 chaves em `~/.hermes/.env`/auth.json — rotação) + **nous (100% grátis/sem
   limite)** via auth.json (OAuth, token 15min auto-refresh). Groq/OpenRouter sem crédito.
-- **Sweeps**: SIAFE 2 vivo (supervisor cron auto-relança; base `ob_orcamentaria_siafe` ~94k+ e subindo).
-  SIAFE 1 = conta **ALERJ-only** (só o dono libera a chave p/ todas as UGs). **SEI sweep** novo (ver §6).
+- **Sweeps (ambos supervisionados+auto-cura, cron-minuto relança se cair):** **SIAFE 2** (`tools/siafe_supervisor.sh`;
+  base `ob_orcamentaria_siafe` ~94k+ e subindo) · **SEI** (`tools/sei_supervisor.sh` — relança `sei_sweep --max 12`
+  em lotes, resumível pelo checkpoint `feitos`; back-off 30min quando a fila esvazia; o sweep já é VM-safe por
+  dentro: `browser_lock` serializa com o SIAFE = nunca 2 browsers + `aguardar_load`; pausa manual `.pause_sei_sweep`).
+  SIAFE 1 = conta **ALERJ-only** (só o dono libera a chave p/ todas as UGs). Ver §6.
 - **Cron**: manutenção dom 03:00; folha 06:00; siafe_runner diário 05:00; **massare.daily 06:15 + backtest
   dom 04:30** (Massare se cobra sozinho).
 - DB: `data/compliance.db` (OB 2019-2026, 1.121.307 OBs, 77% c/ CNPJ). `favorecido_cpf`=CNPJ(14)/CPF(11).
