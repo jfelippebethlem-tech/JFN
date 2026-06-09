@@ -1115,6 +1115,36 @@ def parecer_fornecedor(ctx: dict) -> str:
     return "\n".join(L)
 
 
+def troca_controle_societaria(emp: dict, pagamentos: dict,
+                              min_total: float = 1_000_000.0, min_share: float = 15.0) -> dict | None:
+    """Detecta ingresso no QSA POSTERIOR a receita pública relevante (controle trocado depois de a
+    empresa já ter recebido vulto do Estado). Helper puro reusado pelo /relatorio (RF-04) e pelo Lex.
+    Retorna None se não há sinal; senão {recente, quem, total_antes, n_antes, share}."""
+    if not emp or not (pagamentos or {}).get("tem_dados"):
+        return None
+    entradas = [(s.get("data_entrada") or "") for s in (emp.get("socios") or [])]
+    entradas = [d for d in entradas if len(d) == 10 and d.count("-") == 2]
+    if not entradas:
+        return None
+    recente = max(entradas)
+    total_antes = n_antes = 0
+    for a in pagamentos["anos"]:
+        for ln in pagamentos["por_ano"][a]["linhas"]:
+            d = ln.get("data") or ""
+            if len(d) == 10 and d < recente:
+                total_antes += ln.get("valor") or 0
+                n_antes += 1
+    tg = pagamentos.get("total_geral") or 0
+    share = (total_antes / tg * 100) if tg else 0
+    if total_antes < min_total or share < min_share:
+        return None
+    nomes = [s.get("nome", "") for s in (emp.get("socios") or [])
+             if (s.get("data_entrada") or "") == recente]
+    quem = ", ".join(n for n in nomes if n)[:90] or "sócio(s)"
+    return {"recente": recente, "quem": quem, "total_antes": total_antes,
+            "n_antes": n_antes, "share": share}
+
+
 def _red_flags(ctx: dict) -> list[tuple]:
     p = ctx["pagamentos"]
     out = []
@@ -1153,37 +1183,18 @@ def _red_flags(ctx: dict) -> list[tuple]:
     # Cadastral (perfil enriquecido) — base das RF-04/05
     emp = (ctx.get("enriq", {}).get("dados") or {}).get("empresa") if ctx.get("enriq", {}).get("ok") else None
 
-    # RF-04 — Alteração de controle societário POSTERIOR a receita pública relevante.
-    # Conecta dois fatos que o relatório já tem (data de entrada no QSA × histórico de OBs):
-    # controle/administração que ingressa DEPOIS de a empresa já ter recebido vulto do Estado.
-    if emp and p["tem_dados"]:
-        entradas = [(s.get("data_entrada") or "") for s in (emp.get("socios") or [])]
-        entradas = [d for d in entradas if len(d) == 10 and d.count("-") == 2]
-        if entradas:
-            recente = max(entradas)
-            total_antes = n_antes = 0
-            for a in p["anos"]:
-                for ln in p["por_ano"][a]["linhas"]:
-                    d = ln.get("data") or ""
-                    if len(d) == 10 and d < recente:
-                        total_antes += ln.get("valor") or 0
-                        n_antes += 1
-            tg = p["total_geral"] or 0
-            share = (total_antes / tg * 100) if tg else 0
-            # só dispara com receita pré-existente materialmente relevante (sem falso-positivo)
-            if total_antes >= 1_000_000 and share >= 15:
-                nomes = [s.get("nome", "") for s in (emp.get("socios") or [])
-                         if (s.get("data_entrada") or "") == recente]
-                quem = ", ".join(n for n in nomes if n)[:90] or "sócio(s)"
-                out.append((
-                    "RF-04 — Controle societário alterado após receita pública relevante",
-                    f"Ingresso no quadro societário em **{recente}** ({quem}), **posterior** a R$ {moeda(total_antes)} "
-                    f"já pagos pelo Estado ({n_antes} OBs, {share:.0f}% do total do período). Mudança de "
-                    "controle/administração em fornecedor com receita pública pré-existente é indício a verificar: "
-                    "histórico de controle, eventual sucessão ou interposição de pessoas, e se a alteração coincide "
-                    "com escalada de contratos.",
-                    "Art. 14 Lei 14.133/2021 (idoneidade); art. 11 Lei 8.429/92; ACFE — change-of-control / nominee.",
-                ))
+    # RF-04 — Alteração de controle societário POSTERIOR a receita pública relevante (helper reusado pelo Lex).
+    tc = troca_controle_societaria(emp, p)
+    if tc:
+        out.append((
+            "RF-04 — Controle societário alterado após receita pública relevante",
+            f"Ingresso no quadro societário em **{tc['recente']}** ({tc['quem']}), **posterior** a "
+            f"R$ {moeda(tc['total_antes'])} já pagos pelo Estado ({tc['n_antes']} OBs, {tc['share']:.0f}% do "
+            "total do período). Mudança de controle/administração em fornecedor com receita pública pré-existente "
+            "é indício a verificar: histórico de controle, eventual sucessão ou interposição de pessoas, e se a "
+            "alteração coincide com escalada de contratos.",
+            "Art. 14 Lei 14.133/2021 (idoneidade); art. 11 Lei 8.429/92; ACFE — change-of-control / nominee.",
+        ))
 
     # RF-05 — Possível divergência entre atividade-fim (CNAE) e objeto contratado.
     # Conservador: só dispara quando NÃO há sobreposição de termos significativos (≥4 letras,

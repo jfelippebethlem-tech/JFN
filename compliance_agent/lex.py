@@ -22,7 +22,7 @@ from pathlib import Path
 
 from compliance_agent.reporting.inteligencia import (
     _REPORTS, _mc, _registrar_fonte, _render_parecer_pdf, _slug, _termos_significativos,
-    fmt_cnpj, moeda, so_digitos,
+    troca_controle_societaria, fmt_cnpj, moeda, so_digitos,
 )
 
 # Leitura da íntegra do SEI: liga/desliga, quantos processos ler e orçamento de tempo (s).
@@ -36,6 +36,7 @@ _RF = {
     "R3": ("Pesquisa de preços frágil / possível sobrepreço", "Art. 23 Lei 14.133; Acórdão 1875/2021-TCU (cesta de preços)"),
     "R4": ("Sobrepreço / superfaturamento (valores fora de referência)", "Art. 11 III Lei 14.133; Acórdão 2622/2013-TCU (BDI)"),
     "R5": ("Inexigibilidade/dispensa possivelmente indevida", "Art. 74 Lei 14.133 / Art. 25 Lei 8.666; art. 337-E CP"),
+    "R6": ("Alteração de controle societário após receita pública relevante", "Art. 14 Lei 14.133/2021 (idoneidade); art. 11 Lei 8.429/92; ACFE — change-of-control/nominee"),
     "R7": ("Restrição de competitividade", "Art. 9º I Lei 14.133; Art. 3º §1º Lei 8.666"),
     "R8": ("Concentração de fornecedor / risco de captura (bid rigging)", "Art. 37 CF/88; Art. 36 §3º I 'd' Lei 12.529; ACFE/OCDE"),
     "R9": ("Aditivos sucessivos acima dos limites", "Arts. 125-126 Lei 14.133; Art. 65 §1º Lei 8.666"),
@@ -102,6 +103,9 @@ _MATRIZ = {
     "R5": ("enquadramento possivelmente indevido de contratação direta",
            "afastamento da licitação sem amparo legal robusto",
            "verificar a fundamentação (art. 74/75 Lei 14.133); se indevida, anular"),
+    "R6": ("controle/administração alterado após a empresa já receber vulto do Estado",
+           "possível sucessão/interposição de pessoas (laranja) ou aquisição de empresa 'com contratos'",
+           "levantar o histórico de controle (QSA pretérito) e cotejar a troca com a escalada de pagamentos"),
     "R7": ("especificação/habilitação restritiva ou direcionada",
            "redução da competitividade; possível direcionamento",
            "revisar o edital; admitir 'ou equivalente' (art. 9º Lei 14.133)"),
@@ -621,6 +625,17 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     # do TCE-RJ (o contratos.objeto do SIAFE não serve — guarda "Aditivos:N"). Mesma lógica do RF-05 do relatório.
     ach_estrutural: list[dict] = []
     emp_cad = (ctx.get("enriq", {}).get("dados") or {}).get("empresa") or {}
+
+    # R6 — troca de controle societário posterior a receita pública (helper compartilhado com o RF-04 do relatório).
+    tc = troca_controle_societaria(emp_cad, ctx.get("pagamentos") or {})
+    if tc:
+        ach_estrutural.append({"rf": "R6", "grav": 3,
+            "obs": f"Ingresso no quadro societário em **{tc['recente']}** ({tc['quem']}), **posterior** a "
+                   f"R$ {moeda(tc['total_antes'])} já pagos pelo Estado ({tc['n_antes']} OBs, {tc['share']:.0f}% do "
+                   "total). Mudança de controle em fornecedor com receita pública pré-existente é indício de "
+                   "**sucessão/interposição de pessoas** (laranja) ou de aquisição de empresa 'com contratos' — "
+                   "verificar o histórico de controle (QSA pretérito) e a cronologia da escalada de pagamentos."})
+
     cnae = emp_cad.get("cnae_principal") or ""
     objs_reais = [(i.get("objeto") or "").strip() for i in itens_tcerj if len((i.get("objeto") or "").strip()) >= 12]
     if cnae and objs_reais:
