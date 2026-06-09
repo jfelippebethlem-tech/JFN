@@ -145,6 +145,10 @@ oportunístico. Sem mypy/coverage rodando ainda (instalados). Ruff baseline 37.
 - **SIAFE 1**: liberar a chave/perfil p/ todas as UGs (conta ALERJ-only).
 - **SEI de outras unidades**: o itkava lê seu escopo; processos fora (ex.: Saúde/Previdência) = 0 docs (acesso).
 - **CEIS/CNEP**: consertar o download keyless do CSV da CGU OU `TRANSPARENCIA_API_KEY`.
+- **LLM do Yoda (Gemini)**: repor crédito/rotacionar billing das chaves sem saldo (proj1–3) e **renovar os
+  tokens OAuth "AQ." manuais** do pool (`~/.hermes/auth.json`) quando expirarem — sem auto-refresh (caem no nous
+  grátis até lá). Rotação já é resiliente (cooldown 12h p/ billing esgotado). Ver §10 (cont. 5) e
+  [[yoda-gateway-telegram-render]].
 
 ## 10. LOG POR SESSÃO (datado — o que cada sessão fez, acertos & erros)
 > Padrão: cada sessão adiciona seu bloco datado aqui. Ao FIM de cada loop: debug + avaliar storage/RAM/CPU
@@ -288,6 +292,32 @@ exato — **mostrar o dado exato + identificador (nº da OB)**, não só agregad
 **Pendência do dono (segue):** **Gemini 429** (LLM do Yoda sem créditos) — o async/`/lista` não dependem, mas a
 conversa natural sim. Rotacionar chave/repor crédito.
 **Recursos (fim):** load ~1,6 · sweeps vivos (supervisionados) · sem necessidade de liberar.
+
+### Sessão 2026-06-09 (continuação 5 — rotação de chaves LLM do Yoda perfeita)
+**Tema:** "todas as chaves estão sem crédito?" → testei e consertei a rotação. **Não eram todas.**
+**Inventário do pool LLM do Yoda** (em **`~/.hermes/auth.json`** → `credential_pool`; ativo = `active_provider`):
+- **gemini: 10 credenciais.** Teste de **geração real** (não só auth — `generateContent` 1 token; `models.list`
+  retorna 200 mesmo sem saldo): **proj1–3 = 🔴 sem crédito** (429 *prepayment depleted*, billing zerado);
+  **proj4, proj9 = 🟡 429 rate/quota** (transitório); **proj5–8 = 🟢 TÊM crédito**; a `GEMINI_API_KEY` do `.env`
+  = inválida (403). → **4 chaves boas** sobrando que a rotação não usava (`request_count 0`).
+- **nous = 1** (grátis, OAuth auto-refresh) — **era o `active_provider`** (caiu pra ele às 18:56 e ficou; por isso
+  funcionava). openrouter/huggingface/copilot = 1 cada. **Como testar de novo:** ver [[yoda-gateway-telegram-render]].
+**Causa-raiz da rotação ruim:** "prepayment credits depleted" do Gemini chega como **HTTP 429**, e
+`agent/credential_pool.py::_exhausted_ttl(429)` dava **1h** → as chaves sem saldo **voltavam à rotação toda hora**
+e falhavam (prepayment não recarrega), poluindo o pool enquanto as boas ficavam de lado.
+**Fix (hermes-agent, commit `29f6f2c61`):** `_normalize_error_context` detecta as frases de **billing esgotado**
+(`prepayment`/`credits are depleted`/…) e aplica **cooldown de 12h** (`EXHAUSTED_TTL_BILLING_DEPLETED_SECONDS`)
+→ a rotação **prefere as chaves COM saldo**. **Cota diária comum** (`quota exceeded`) mantém 1h (não exagera).
+Unit-testado (prepayment→12h; quota→1h). + **Estado limpo** no `auth.json` (com backup `auth.json.bak.*`):
+proj1–3 parqueadas 12h, proj5–9 disponíveis (**7/10 fora de cooldown**). Gateway reiniciado, saudável.
+**Mantida a ordem:** Gemini = principal; **nous = rede de segurança** (não troquei o provedor).
+**ERROS/LIÇÕES:** (1) `models.list` retorna 200 mesmo SEM saldo — **só `generateContent` testa crédito de
+verdade**. (2) 429 ≠ sempre transitório: **billing esgotado disfarçado de 429** precisa cooldown longo, senão
+churn infinito. (3) sempre **backup antes de editar `auth.json`**.
+**Pendências do dono:** (a) repor crédito/rotacionar billing das chaves Gemini sem saldo (proj1–3); (b) as chaves
+Gemini são **tokens OAuth "AQ." MANUAIS** — funcionam agora mas **podem expirar** (sem auto-refresh); ao expirar
+caem no nous (graceful) e voltam quando o dono renovar o token; (c) se quiser o Yoda **já no Gemini** (modelo mais
+forte) agora, trocar `active_provider` p/ gemini (hoje está em `nous`, que funciona).
 
 ## 11. ⏯️ RETOMADA — INSTRUÇÕES PERMANENTES (ler ANTES de continuar, sessão nova)
 **Branch `feat/lista-limpa` (não pushado, tudo commitado). Serviço/sweeps vivos.** O dono pediu para continuar
