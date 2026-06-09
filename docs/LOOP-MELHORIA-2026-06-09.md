@@ -275,6 +275,33 @@ controle) alimenta `red_flag_edital` → MGS 25→30,3. Renderiza no **PDF entre
 prateleira/interposição/data). **Aprendizado:** o mesmo sinal forte agora converge em **4 produtos**
 (/relatorio · Lex · dossiê · score) — sistema pensante coerente.
 
+## ✅ Loop 20 — Frescor do backtest no /placar
+**Entrega (commit 778d1b3):** o /placar mostrava o backtest sem dizer a cobertura temporal. Agora
+`overall.dados_ate` (na corrida) + `resumo_overall` compara com o preço ao vivo → `preco_mais_recente` +
+`defasado`. Verificado live (dados_ate 2026-06-08, defasado false). **Aprendizado:** número sem data de
+cobertura mente por omissão quando envelhece.
+
+## 🏁 RODADA ESTENDIDA (Loops 6–20) — 15 loops
+| # | Entrega | Commit |
+|---|---|---|
+| 6 | Fundação: scorecard·golden·ruff 733→43·3 bugs reais | 0552059 |
+| 7 | /relatorio RF-04·RF-05·crescimento honesto | c37f339 |
+| 8 | /orgao pagamentos recorrentes idênticos | 67b3387 |
+| 9 | /lista Massare+SIAFE·playbook §6 | b96eecc |
+| 10 | Massare backtest 356k pregões + edge | efb33f7 |
+| 11 | Lex R11 (CNAE×objeto) | 127bbf6 |
+| 12 | /placar honesto (backtest_oos) | 211cba0 |
+| 13 | lint 43→39 (dup router·código morto) | 78f2a7b |
+| 14 | Lex R6 + helper compartilhado | 77de9c6 |
+| 15 | gate ruff no pre-commit | 352f2e7 |
+| 16 | /orgao honestidade geográfica | 0d0e086 |
+| 17 | fix Município/UF | 4e7ee18 |
+| 18 | teses Massare track record OOS | 4ba84f7 |
+| 19 | dossiê red flags estruturais | 9fd5b23 |
+| 20 | frescor do backtest no /placar | 778d1b3 |
+**Tema:** instrumentar e ser honesto. Sinal de fachada (CNAE×objeto, troca de controle) converge em 4 produtos
+(/relatorio·Lex·dossiê·score). Massare confessa onde não tem skill. Lint pagou 4 bugs/duplicatas. Ruff 733→39.
+
 ## 🏁 SEGUNDA RODADA (Loops 6–10) — CONCLUÍDA
 | Loop | Entrega | Verificação | Commit |
 |---|---|---|---|
