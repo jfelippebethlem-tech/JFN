@@ -166,11 +166,11 @@ class SkillTree:
         if not por_dom:
             return f"Nenhuma skill casa com '{filtro}'."
         linhas = [
-            f"🌳 *Skilltree* — v{self.meta.get('versao', '?')} · "
+            f"🌳 **Skilltree** — v{self.meta.get('versao', '?')} · "
             f"`{self.sha}` · {len(self.capacidades)} skills"
         ]
         for dom in sorted(por_dom):
-            linhas.append(f"\n*{dom.upper()}*")
+            linhas.append(f"\n**{dom.upper()}**")
             for cid, c in por_dom[dom]:
                 st = c.get("status", "")
                 tag = "✅" if st == "PRONTO" else f"🔸{st}"
