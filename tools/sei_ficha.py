@@ -8,6 +8,14 @@ via LLM, devolvendo um JSON compacto. Resolve 2 coisas:
 Modo COMPARA: roda a MESMA extração com um modelo BARATO (grátis-ish) e um MELHOR e compara
 (campos preenchidos, tamanho, tempo, concordância) — para decidir qual usar no sweep.
 
+⚠️ ISOLAMENTO DE QUALIDADE (diretriz do dono — qualidade TOTAL do projeto):
+  • O stepfun:free (modelo grátis, fraco) é usado SÓ pela MECÂNICA do sweep do SEI (`tools/sei_sweep.py`):
+    triagem em massa → uma FICHA-ÍNDICE compacta por processo (achar/priorizar + poupar storage).
+  • A FICHA é ÍNDICE/TRIAGEM, NUNCA a análise final. Os PRODUTOS (/relatorio, /orgao, parecer Lex e
+    qualquer ANÁLISE do conteúdo SEI) usam IA FORTE (gemini, via `direcionamento_cerebro.gerar_gemini`/
+    `gerar_sync`) — ex.: `lex.analise_discursiva`. NÃO ligar a ficha do stepfun no parecer como análise.
+  • Regra: stepfun = coletar/indexar (volume, grátis); gemini = analisar/entregar (qualidade impecável).
+
 Uso:
     PYTHONPATH=. .venv/bin/python -m tools.sei_ficha --comparar --n 10
 """
