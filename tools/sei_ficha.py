@@ -72,7 +72,7 @@ async def _chamar_nous(texto: str, model: str) -> str:
     tok, base = _nous_cred()
     if not tok:
         raise RuntimeError("sem access_token nous (auth.json)")
-    async with httpx.AsyncClient(timeout=60) as c:
+    async with httpx.AsyncClient(timeout=200) as c:  # nous é lento; "lento tá ok" se a qualidade segura
         r = await c.post(f"{base}/chat/completions",
                          headers={"Authorization": f"Bearer {tok}"},
                          json={"model": model, "messages": _prompt(texto), "temperature": 0.1})
@@ -142,10 +142,9 @@ def _resumo_ficha(f: dict) -> str:
 # (tag, model, provider). nous *:free = 100% grátis/sem limite (catálogo nousresearch);
 # gemini = a "melhor" de referência (free-tier com limites).
 _MODELOS = [
-    ("nemotron", "nvidia/nemotron-3-ultra:free", "nous"),   # nous grátis FORTE
-    ("stepfun", "stepfun/step-3.7-flash:free", "nous"),     # nous grátis rápido
-    ("g-lite", MODELO_BARATO, "gemini"),
-    ("g-flash", MODELO_MELHOR, "gemini"),
+    ("stepfun", "stepfun/step-3.7-flash:free", "nous"),     # nous 100% grátis/sem limite (lento ~40-60s)
+    ("g-lite", MODELO_BARATO, "gemini"),                    # gemini free-tier (rápido, mas rate-limit 429)
+    ("g-flash", MODELO_MELHOR, "gemini"),                   # gemini "melhor" de referência
 ]
 
 
@@ -168,7 +167,11 @@ async def comparar(n: int):
                     agg[tag]["rel"] += 1
             print(f"  [{tag:7}] {dt:.1f}s  {_resumo_ficha(f)}")
             if not f.get("_erro"):
-                print(f"            objeto: {(f.get('objeto') or '')[:90]}")
+                print(f"            objeto : {(f.get('objeto') or '')[:110]}")
+                print(f"            resumo : {(f.get('resumo') or '')[:110]}")
+                vc = (f.get('valores') or []) + (f.get('cnpjs') or [])
+                if vc:
+                    print(f"            val/cnpj: {', '.join(str(x) for x in vc[:5])}")
         print()
     print("=== AGREGADO ===")
     for tag, _, _ in _MODELOS:
