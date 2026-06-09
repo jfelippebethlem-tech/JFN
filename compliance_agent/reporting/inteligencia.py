@@ -1840,6 +1840,12 @@ def _render_parecer_pdf(pdf, _t, md_text: str):
         if linha.startswith("### "):
             pdf.ln(1); pdf.set_font(pdf._fam, "B", 11); pdf.set_text_color(30, 45, 70)
             _mc(pdf, 6, _t(linha[4:])); pdf.set_text_color(0, 0, 0); continue
+        if linha.startswith("## "):  # cabeçalho de seção (antes saía com '##' literal no PDF)
+            pdf.ln(1.5); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 35, 60)
+            _mc(pdf, 6.5, _t(linha[3:])); pdf.set_text_color(0, 0, 0); continue
+        if linha.startswith("# "):
+            pdf.ln(2); pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
+            _mc(pdf, 7, _t(linha[2:])); pdf.set_text_color(0, 0, 0); continue
         bullet = linha.startswith("- ")
         quote = linha.startswith("> ")
         txt = linha[2:] if (bullet or quote) else linha

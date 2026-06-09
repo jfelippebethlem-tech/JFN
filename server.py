@@ -481,7 +481,8 @@ async def api_relatorio_orgao(payload: Optional[dict] = None):
     """
     Relatório de inteligência de ÓRGÃO (UG): quanto a unidade gestora pagou, a quem, por ano.
     Body: {"orgao":"NOME ou parcial"} OU {"ug":"133100"}, opcional {"anos":[2025,2026]}.
-    Retorna {ok, ug, orgao, resumo, path_md, path_pdf, fonte} ou {ambiguo, pergunta, candidatos}.
+    Retorna {ok, ug, orgao, resumo, path_md, path_pdf, path_xlsx, path_lex, grau_lex, fonte}
+    ou {ambiguo, pergunta, candidatos}. O path_lex é o PARECER LEX de órgão (grau 🟢🟡🔴).
     """
     from compliance_agent.reporting.inteligencia_orgao import montar as montar_orgao
     payload = payload or {}

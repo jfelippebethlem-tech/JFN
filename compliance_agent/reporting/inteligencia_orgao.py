@@ -296,8 +296,21 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
             path_xlsx = ""
             ctx["_xlsx_erro"] = str(exc)[:160]
 
+    # PARECER LEX DE ÓRGÃO — o /orgao "pensa" como o /relatorio (3º documento, com grau 🟢🟡🔴).
+    path_lex = ""
+    grau_lex = ""
+    if salvar:
+        try:
+            from compliance_agent import lex
+            _lex = lex.gerar_orgao(ctx, salvar=True)
+            path_lex = _lex.get("path_lex_pdf", "") or ""
+            grau_lex = _lex.get("grau", "") or ""
+        except Exception as exc:  # noqa: BLE001
+            ctx["_lex_erro"] = str(exc)[:160]
+
     return {"ok": True, "ug": ug_cod, "orgao": nome, "resumo": _resumo(ctx),
             "path_md": path_md, "path_pdf": path_pdf, "path_xlsx": path_xlsx,
+            "path_lex": path_lex, "grau_lex": grau_lex,
             "fonte": "REAL" if pagamentos["tem_dados"] else "SEM_DADOS"}
 
 

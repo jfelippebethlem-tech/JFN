@@ -22,8 +22,9 @@ capacidades:
      args: {empresa: "string (um de empresa|cnpj)", cnpj: "string", anos: "list[int] opcional"},
      retorno: "{cnpj,empresa,risco,score,path_pdf,path_xlsx,path_lex,grau_lex} | {ambiguo,candidatos}", enviar_telegram: [path_pdf, path_xlsx, path_lex]}
   - {id: relatorio_orgao, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/relatorio/orgao, status: PRONTO,
-     descricao: "Inteligencia de ORGAO/UG (quanto pagou e a quem)", quando_usar: "auditoria de orgao/UG/secretaria", exemplo: "quanto o ITERJ pagou e a quem em 2024",
-     args: {orgao: "string (um de orgao|ug)", ug: "string", anos: "list[int] opcional"}, retorno: "{ug,orgao,path_pdf,path_xlsx} | {ambiguo}"}
+     descricao: "Inteligencia de ORGAO/UG (PDF+XLSX+parecer Lex de orgao)", quando_usar: "auditoria de orgao/UG/secretaria", exemplo: "quanto o ITERJ pagou e a quem em 2024",
+     args: {orgao: "string (um de orgao|ug)", ug: "string", anos: "list[int] opcional"},
+     retorno: "{ug,orgao,path_pdf,path_xlsx,path_lex,grau_lex} | {ambiguo,candidatos}", enviar_telegram: [path_pdf, path_xlsx, path_lex]}
   - {id: listar_ugs, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/ugs, status: PRONTO,
      descricao: "Catalogo das UGs/orgaos: codigo + nome + nº OBs + total pago (o /UG)", quando_usar: "'/ug', 'quais os codigos/nomes dos orgaos/UGs', 'listar UGs', 'qual o codigo da SEEDUC', 'que orgaos existem', ANTES de pedir o /orgao quando nao se sabe o codigo", exemplo: "/ug tribunal",
      args: {filtro: "string opcional (nome OU codigo; acento nao importa)", limite: "int opcional"}, retorno: "{texto,ugs[],n,n_total}", enviar_telegram: []}
