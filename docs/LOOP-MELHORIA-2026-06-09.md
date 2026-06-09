@@ -281,6 +281,19 @@ prateleira/interposição/data). **Aprendizado:** o mesmo sinal forte agora conv
 `defasado`. Verificado live (dados_ate 2026-06-08, defasado false). **Aprendizado:** número sem data de
 cobertura mente por omissão quando envelhece.
 
+## ✅ Loop 21 — /anomalias: filtrar ruído intra-governamental
+**Avaliação do artefato real:** **12/20** das top anomalias eram entidades GOV (Estado do RJ, Ministério da
+Fazenda/Economia, INSS) — transferências intra-gov/tributos, não fornecedores de compra. **Entrega (commit
+16ce984):** `_eh_nao_fornecedor` (regex intra-gov/tributo) filtra o ranking por padrão (sobre-busca; robusto a
+acento/caixa); `incluir_gov=1` reinclui. Verificado: 12/20→**0/20**; topo agora são fornecedores reais com red
+flags reais. 2 testes. **Aprendizado:** o sinal só aparece depois de tirar o ruído estrutural (pagamento
+obrigatório ≠ anomalia de compra) — mesma família do "ubíquos" do cartel.
+
+## ✅ Loop 22 — Lint: resolver os 2 F821 forward-ref (39→37)
+**Entrega (commit c1cc1fd):** server.py (HermesGoalAgent) e cnpj.py (Empresa) usavam anotação string com import
+lazy → F821. Bloco `TYPE_CHECKING` (sem custo runtime). Silencia o aviso do gate de lint. **Aprendizado:**
+forward-ref legítimo se resolve com TYPE_CHECKING, não suprimindo a regra.
+
 ## 🏁 RODADA ESTENDIDA (Loops 6–20) — 15 loops
 | # | Entrega | Commit |
 |---|---|---|
