@@ -46,5 +46,21 @@ Sem isso, o "sistema pensante" do Lex fica honesto porém sem matéria-prima.
 
 ---
 
+## ✅ Loop 1 — wiring Yoda↔JFN (teste end-to-end)
+**Teste:** `hermes -z "qual o status da coleta do SIAFE? quantas OBs?"` (one-shot, sem mexer no bot vivo).
+**ANTES:** Yoda respondia *"comando `status` desconhecido"* — `siafe_stats` existia mas o `quando_usar` só
+cobria "quantas OBs"; não havia capability para `/api/siafe/status`.
+**FIX:** enriqueci `siafe_stats.quando_usar` (status/cobertura/quanto coletamos) + registrei `siafe_status`
+(lockfile). Regenerei os derivados (`~/.hermes/jfn_tools.json` lido pelo gateway).
+**DEPOIS (verificado):** Yoda retorna OBs/ano (2016-2026), total R$ 20,16 bi, fonte SIAFE-Rio 2. ✅
+**Aprendizado:** rota existir no `server.py` ≠ Yoda saber usá-la. O wiring real é o `capabilities.yaml`
+(+ derivados regenerados) com `quando_usar` que casa a linguagem natural do dono. Testar com `hermes -z` pega
+gaps que o curl não pega.
+
+⚠️ **Pendente:** o `jfn.service` vivo ainda roda código anterior aos commits OB-enxuta/LLM/Lex-discursivo —
+fazer `systemctl --user restart jfn.service` num momento ocioso (não durante geração de relatório do dono).
+
 ## Loop 2 — (planejado) coletor SEI: navegar até o documento
-(a preencher)
+Alvo: `collectors/sei_cdp.py`/`sei_reader` extrair o INTEIRO TEOR (não o menu). Desbloqueia o "onde/por quê"
+do Lex. Verificar com parecer real (CNPJ com SEI lido) — a análise discursiva deve citar trecho de documento,
+não de interface. (a executar)
