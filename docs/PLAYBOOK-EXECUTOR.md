@@ -97,6 +97,28 @@ Código reutilizável: `siafe_ob_orcamentaria._typeahead()` e `_filtrar_ug()`. D
 - **Idempotência**: todos os coletores podem re-rodar sem duplicar (chave por OB/CNPJ/competência).
 - **Documentar sempre** tentativas que falham (pra não repetir) nos docs acima.
 
+## 6. QUALIDADE & BENCHMARK (medir antes de dizer "melhorou") — desde 2026-06-09
+> Plano completo: [`PLANO-BENCHMARKS-E-CODIFICACAO-2026-06-09.md`](PLANO-BENCHMARKS-E-CODIFICACAO-2026-06-09.md).
+> Regra de ouro: **não declare melhoria sem número**. A cada checkpoint, rode o scorecard e compare o delta.
+
+| Quero… | Comando |
+|---|---|
+| Scorecard objetivo (ruff·LOC·god-files·golden) com delta | `python tools/scorecard.py --stamp "<ISO>"` → `data/scorecard.md` |
+| Suíte RÁPIDA (sem rede, não pendura) | `.venv/bin/pytest -m "not network and not integration" -q --timeout=90` |
+| Só a rede (quando precisar) | `.venv/bin/pytest -m network -q` |
+| Lint (sinal; baseline ~43) | `.venv/bin/ruff check .` · auto-fix seguro: `ruff check . --fix` |
+| Regressão factual (golden numbers) | `.venv/bin/pytest tests/test_golden_numbers.py -q` |
+
+**Regras (aplicam a TODA mudança de relatório/parecer/previsão):**
+1. **Gere o ARTEFATO REAL** antes e depois (`-m compliance_agent.reporting.inteligencia "MGS Clean"` /
+   `...inteligencia_orgao "ITERJ"`) e compare. Baseline gold em `data/baseline_2026-06-09/`.
+2. **Verifique o PDF ENTREGUE, não só o MD** — há 3 renderizadores (MD, FPDF, HTML→PDF). Use pypdf p/ extrair
+   o texto e conferir que o achado novo está no PDF (lição cara: um red flag pode existir no MD e faltar no PDF).
+3. **Honestidade**: tudo é **indício a verificar**, nunca acusação; nunca inventar número; afirmar só dentro
+   da cobertura da base (o cabeçalho de frescor diz qual é). Objeto contratual real vem do **TCE-RJ**
+   (`tcerj_itens`), NÃO do `contratos.objeto` do SIAFE (que só guarda "Aditivos:N").
+4. **Pequeno, isolado, verificado** > camada grande. Commit por unidade; documentar erros & acertos.
+
 ## 🔜 TODO PÓS-SWEEP (fazer quando os sweeps terminarem — não mexer mid-run)
 - **Lock por sistema:** hoje `siafe_lock.json` é único (SIAFE 1 e 2 compartilham via heartbeat). É SEGURO
   (erra pro lado de não colidir), mas o diário do 2.0 pode ser bloqueado à toa enquanto só o SIAFE 1 roda.
