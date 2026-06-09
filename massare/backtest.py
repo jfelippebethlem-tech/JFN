@@ -71,6 +71,13 @@ def run(symbols: list[str] | None = None, horizons: tuple[int, ...] = (5, 10, 21
         num = sum((r[campo] or 0) * r["n"] for r in validos if r.get(campo) is not None)
         den = sum(r["n"] for r in validos if r.get(campo) is not None)
         return round(num / den, 4) if den else None
+    # cobertura temporal dos dados (frescor — p/ o /placar não apresentar número velho como atual)
+    dados_ate = None
+    try:
+        with sqlite3.connect(str(_DB)) as c:
+            dados_ate = c.execute("SELECT MAX(date) FROM prices").fetchone()[0]
+    except Exception:
+        pass
     overall = {
         "n_pregoes_avaliados": n_total,
         "n_series": len(validos),
@@ -78,6 +85,7 @@ def run(symbols: list[str] | None = None, horizons: tuple[int, ...] = (5, 10, 21
         "base_naive_rate": _wavg("base_naive_rate"),
         "edge_medio": _wavg("edge"),
         "series_com_edge_positivo": sum(1 for r in validos if (r.get("edge") or 0) > 0),
+        "dados_ate": dados_ate,
     }
     # resolve previsões logadas cujo alvo já venceu (honesto)
     try:
@@ -160,6 +168,16 @@ def resumo_overall() -> dict | None:
         d = json.loads(f.read_text(encoding="utf-8"))
         o = dict(d.get("overall") or {})
         o["stamp"] = d.get("stamp")
+        # frescor: o backtest cobre dados até `dados_ate`; se há preço mais novo, está DEFASADO.
+        atual = None
+        try:
+            with sqlite3.connect(str(_DB)) as c:
+                atual = c.execute("SELECT MAX(date) FROM prices").fetchone()[0]
+        except Exception:
+            pass
+        o.setdefault("dados_ate", None)
+        o["preco_mais_recente"] = atual
+        o["defasado"] = bool(o.get("dados_ate") and atual and atual > o["dados_ate"])
         return o
     except Exception:
         return None
