@@ -261,6 +261,34 @@ leaks. **Verificar o dono do processo ANTES de matar** (alinha com o auto-pkill)
 rotacionar chave do pool ou repor crédito. O `/lista` novo não depende disso, mas a conversa natural sim.
 **Recursos (fim):** RAM ~3,7G disp · load ~2,5 (2 sweeps vivos) · sem necessidade de liberar.
 
+### Sessão 2026-06-09 (continuação 4 — /relatorio não chegava no Yoda + detalhe por OB)
+**Tema:** o dono pediu `/relatorio` no Yoda e **dava timeout** (toda resposta "timed out"); depois pediu
+**valor exato + nº da OB por mês** no relatório.
+**Diagnóstico (via `state.db`):** o `/relatorio`/`/orgao` levam 1–3 min (PNCP+Playwright) e a ferramenta
+`terminal` do Yoda **corta em 60s** → o Yoda nunca recebia os caminhos e não enviava os docs (o PDF até era
+gerado no disco). Agravado por **contenção**: 3 Chromium/Playwright concorrentes (2 sweeps + relatório) travavam
+a geração (chegou a pendurar 5–7 min).
+**Feito:**
+- **Geração ASSÍNCRONA + push** (`server.py`, commit `b63ee46`): o endpoint responde **na hora**
+  `{status:"gerando", msg}` e o **JFN gera em background e EMPURRA** PDF+XLSX+Lex direto no Telegram
+  (`notifications.telegram.enviar_arquivo`). `{"sync":true}` mantém o modo síncrono p/ CLI/testes.
+- **PRIORIDADE do relatório sobre os sweeps:** ao gerar, pausa (`.pause_*`) e mata os sweeps (pkill com
+  **colchete** `tools[.]sei_sweep` p/ não se auto-matar — lição do auto-pkill); quando não há mais relatório
+  em curso, remove as flags e os **supervisores relançam** os sweeps. Verificado: MGS chegou no Telegram; sweeps
+  voltaram sozinhos.
+- **Seção 5-C — Detalhamento por OB** (`inteligencia.py`, commit `818c60f`): cada OB com **valor EXATO + nº da
+  OB**, por mês (Competência MM/AAAA · OB nº · Órgão · Valor), recente→antigo; a 5-B agregava num número compacto
+  ("93 mil"). Cap 400 + XLSX p/ a lista completa. Verificado no MGS (1127 OBs; meses com 9–10 OBs itemizados).
+- **Skills do Yoda atualizadas** (`~/.hermes/skills/yoda-commands/{relatorio,orgao}/SKILL.md` → v2.0.0): contrato
+  async (repassar o `msg`; o JFN entrega os docs; **sem retry de timeout**; nunca reiniciar o jfn).
+**ERROS/LIÇÕES:** (1) **comando lento + ferramenta com timeout curto = entregar via push assíncrono**, não
+aumentar timeout (que não basta sob contenção). (2) **relatório do dono > sweeps** (prioridade de CPU); os sweeps
+são resumíveis, então pausá-los é seguro. (3) o PDF/produto entregue tinha valor compacto onde o dono queria o
+exato — **mostrar o dado exato + identificador (nº da OB)**, não só agregado.
+**Pendência do dono (segue):** **Gemini 429** (LLM do Yoda sem créditos) — o async/`/lista` não dependem, mas a
+conversa natural sim. Rotacionar chave/repor crédito.
+**Recursos (fim):** load ~1,6 · sweeps vivos (supervisionados) · sem necessidade de liberar.
+
 ## 11. ⏯️ RETOMADA — INSTRUÇÕES PERMANENTES (ler ANTES de continuar, sessão nova)
 **Branch `feat/lista-limpa` (não pushado, tudo commitado). Serviço/sweeps vivos.** O dono pediu para continuar
 com TODAS estas instruções:
