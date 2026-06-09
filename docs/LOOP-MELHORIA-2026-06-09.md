@@ -101,8 +101,18 @@ Testes `hermes -z`:
 **Aprendizado:** o Yoda executa via `terminal`+`curl` e às vezes chuta o método → rotas GET sensíveis devem
 aceitar POST também (ou o gateway ter um executor HTTP que respeite o `metodo` do contrato — TODO gateway).
 
-## Loop 5 — planejado: Massare "pensante" + backtest total
-- Avaliar `/api/massare/*` (previsões com raciocínio + OOS honesto); backtest completo; checkpoint final.
+## 🔎 Loop 5 — Massare (avaliação) + backtest final
+**Massare (probe ao vivo):** o framework "pensante" EXISTE (registra cada tese como previsão e promete
+cobrar OOS). MAS:
+- `/placar`: **44 previsões PENDENTES, 0 resolvidas, hit_rate=null** → as previsões nunca são pontuadas
+  contra o realizado. Sem track record OOS, o "honesto vs realizado" não fecha o ciclo.
+- `/teses`: n=0 (sem narrativas→ativo no momento). `/cenarios`: ok (fear&greed=8 "medo extremo").
+**FIX (sessão nova):** rodar/agendar o **scorer OOS do Massare** (resolver as 44 pendentes contra o preço
+realizado no horizonte) → gerar hit_rate real. Provável módulo `massare/validation.py` / `learning.db`.
+Sem isso, as previsões são opinião sem accountability — contraria a visão ("previsões pensantes + OOS honesto").
+**Aprendizado:** "sistema pensante" exige FECHAR O CICLO (prever → registrar → COBRAR contra o real). O
+Massare prevê e registra, mas não cobra. Igual ao Lex (lê o SEI mas não chega ao documento) — a estrutura
+existe, falta o último elo de execução.
 
 ## APRENDIZADO TRANSVERSAL (atualizado)
 - O dono deu **autonomia total** (mexer em tudo — JFN/Lex/Massare/Hermes/Yoda — e religar à vontade). Minha
