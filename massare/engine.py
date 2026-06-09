@@ -120,11 +120,14 @@ def walk_forward(symbol, horizon=5, warmup=260, lookback=126, sentiment_series="
     ens_correct, ens_total = 0, 0
     sub_correct = {k: 0 for k in SUBS}; sub_total = {k: 0 for k in SUBS}
     weight_log = []
+    actual_up = 0                          # taxa-base do mercado (p/ medir SKILL acima do ingênuo)
 
     for t in range(warmup, n - horizon):
         row = feats.iloc[t]
         fut_ret = closes[t + horizon] / closes[t] - 1.0
         actual = 1 if fut_ret >= 0 else -1
+        if actual == 1:
+            actual_up += 1
 
         votes, weights = {}, {}
         for k, fn in SUBS.items():
@@ -154,9 +157,15 @@ def walk_forward(symbol, horizon=5, warmup=260, lookback=126, sentiment_series="
             weight_log.append({"date": str(dates[t].date()), **{k: round(weights[k], 3) for k in SUBS}})
 
     def hr(c, tot): return round(c / tot, 4) if tot else None
+    n_eval = n - horizon - warmup
+    base_up = hr(actual_up, n_eval)
     return {
         "symbol": symbol, "horizon": horizon,
         "ensemble_hit_rate": hr(ens_correct, ens_total), "ensemble_n": ens_total,
+        # taxa-base: como o mercado de fato se moveu (fração de pregões em que subiu no horizonte).
+        # SKILL real = quanto o ensemble bate o palpite ingênuo (sempre na direção majoritária).
+        "base_up_rate": base_up,
+        "base_naive_rate": round(max(base_up, 1 - base_up), 4) if base_up is not None else None,
         "subestrategias": {k: {"hit_rate": hr(sub_correct[k], sub_total[k]), "n": sub_total[k]} for k in SUBS},
         "pesos_amostra": weight_log[-3:],
     }
@@ -182,9 +191,16 @@ def predict_today(symbol, horizon=5, lookback=126):
         detail[k] = {"voto": v, "peso": round(w, 3)}
     direction = "up" if score > 0 else ("down" if score < 0 else "up")
     conf = min(0.95, 0.5 + abs(score))
+    # honestidade: edge OOS = quanto o ensemble supera o palpite ingênuo NESTE ativo/horizonte.
+    # edge ≤ 0 => sem skill demonstrado aqui (a previsão deve ser lida com ceticismo).
+    hr_oos = wf.get("ensemble_hit_rate")
+    base_naive = wf.get("base_naive_rate")
+    edge = round(hr_oos - base_naive, 4) if (hr_oos is not None and base_naive is not None) else None
     return {"symbol": symbol, "direction": direction, "prob": round(conf, 3),
             "horizon": horizon, "score": round(score, 3), "detail": detail,
-            "asof": str(df.index[-1].date()), "ensemble_oos_hit_rate": wf.get("ensemble_hit_rate")}
+            "asof": str(df.index[-1].date()), "ensemble_oos_hit_rate": hr_oos,
+            "base_naive_rate": base_naive, "edge_oos": edge,
+            "tem_skill": (edge is not None and edge > 0)}
 
 
 if __name__ == "__main__":
