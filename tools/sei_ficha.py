@@ -76,10 +76,50 @@ def _prompt(texto: str) -> list[dict]:
     return [{"role": "system", "content": _SIST}, {"role": "user", "content": p}]
 
 
-def _nous_cred() -> tuple[str, str]:
-    """(access_token, inference_base_url) do auth.json do hermes. Sem refresh (seguro)."""
+_AUTH = Path.home() / ".hermes" / "auth.json"
+
+
+def _refresh_nous_se_preciso() -> None:
+    """Renova o token nous se expirado/perto (sweep roda 'aos poucos', token dura 15min). Rotaciona o
+    refresh_token e PERSISTE atomicamente (senão reuse-detection revoga a sessão). Best-effort/silencioso."""
     try:
-        d = json.loads((Path.home() / ".hermes" / "auth.json").read_text(encoding="utf-8"))
+        import httpx
+        d = json.loads(_AUTH.read_text(encoding="utf-8"))
+        n = (d.get("providers") or {}).get("nous") or {}
+        exp = n.get("expires_at")
+        if exp:
+            import datetime as _dt
+            resta = (_dt.datetime.fromisoformat(exp) - _dt.datetime.now(_dt.timezone.utc)).total_seconds()
+            if resta > 90:
+                return  # ainda válido
+        rt = n.get("refresh_token")
+        if not rt:
+            return
+        r = httpx.post(f"{n.get('portal_base_url', 'https://portal.nousresearch.com')}/api/oauth/token",
+                       data={"grant_type": "refresh_token", "client_id": n.get("client_id", "hermes-cli"),
+                             "refresh_token": rt},
+                       headers={"Accept": "application/json", "x-nous-refresh-token": rt}, timeout=30)
+        if r.status_code != 200:
+            return
+        import datetime as _dt
+        j = r.json()
+        n["access_token"] = j.get("access_token", n.get("access_token"))
+        if j.get("refresh_token"):
+            n["refresh_token"] = j["refresh_token"]  # ROTACIONADO — persistir
+        n["expires_at"] = (_dt.datetime.now(_dt.timezone.utc)
+                           + _dt.timedelta(seconds=j.get("expires_in", 900))).isoformat()
+        tmp = _AUTH.with_suffix(".json.tmp")
+        tmp.write_text(json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
+        tmp.replace(_AUTH)
+    except Exception:
+        pass
+
+
+def _nous_cred() -> tuple[str, str]:
+    """(access_token, inference_base_url) do auth.json — auto-renova se expirado (sweep autossuficiente)."""
+    _refresh_nous_se_preciso()
+    try:
+        d = json.loads(_AUTH.read_text(encoding="utf-8"))
         p = (d.get("providers") or {}).get("nous") or {}
         return p.get("access_token", ""), p.get("inference_base_url", "https://inference-api.nousresearch.com/v1")
     except Exception:
