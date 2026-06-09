@@ -188,6 +188,7 @@ class SkillTree:
         ("🏢", "Auditoria & Relatórios", [
             ("relatorio_inteligencia", "Relatório de um fornecedor", "due diligence da MGS Clean"),
             ("relatorio_orgao", "Relatório de um órgão/UG", "quanto o ITERJ pagou e a quem em 2024"),
+            ("listar_ugs", "Catálogo de UGs/órgãos (códigos e nomes)", "/ug tribunal"),
             ("dossie", "Dossiê 360 de um alvo", "monte um dossiê da Extreme"),
         ]),
         ("🔎", "Investigação", [

@@ -3,6 +3,7 @@ COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a 
 
 - relatorio_inteligencia(empresa,cnpj,anos) [POST /api/relatorio/inteligencia] — relatorio/auditoria/due diligence de empresa, CNPJ
 - relatorio_orgao(orgao,ug,anos) [POST /api/relatorio/orgao] — auditoria de orgao/UG/secretaria
+- listar_ugs(filtro,limite) [GET /api/ugs] — '/ug', 'quais os codigos/nomes dos orgaos/UGs', 'listar UGs', 'qual o codigo da SEEDUC', 'que orgaos existem', ANTES de pedir o /orgao quando nao se sabe o codigo
 - anomalias(ug,cnpj,exercicio) [GET /api/anomalias] — triagem de risco; 'algo estranho em X'
 - cartel(modo,cnpj,top) [GET /api/cartel] — conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?'
 - conflito_doador_contrato(cnpj,candidato) [GET /api/conflito] — 'quem me doou ganhou contrato', conflito de interesse
