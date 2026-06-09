@@ -79,7 +79,11 @@ def _expandir(con, node: str, so_contrato: bool) -> list[tuple]:
                 "SELECT ug_codigo, MAX(ug_nome), SUM(valor) FROM ordens_bancarias "
                 "WHERE REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','')=? "
                 "GROUP BY ug_codigo ORDER BY SUM(valor) DESC LIMIT ?", (cnpj, _FANOUT)):
-            out.append((f"ug:{ug}", "pago_por", {"label": ugn or ug, "total_ob": round(tot or 0, 2)}))
+            # nome CANÔNICO da UG (ITERJ p/ 133100), consistente com /relatorio e /orgao — não o
+            # ug_nome cru da OB (que às vezes traz o órgão superior). Fallback ao nome cru.
+            from compliance_agent import ugs as _ugs
+            _lbl = _ugs.nome_canonico(str(ug), fallback="") or ugn or str(ug)
+            out.append((f"ug:{ug}", "pago_por", {"label": _lbl, "total_ob": round(tot or 0, 2)}))
         if so_contrato:
             return out
         # sócios (QSA)
