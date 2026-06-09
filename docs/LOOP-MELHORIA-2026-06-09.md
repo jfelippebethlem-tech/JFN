@@ -114,6 +114,21 @@ Sem isso, as previsões são opinião sem accountability — contraria a visão 
 Massare prevê e registra, mas não cobra. Igual ao Lex (lê o SEI mas não chega ao documento) — a estrutura
 existe, falta o último elo de execução.
 
+**Backtest total (00:31):** **~322 testes verdes, ZERO falhas**; 5 hangs de rede (integração PNCP/SEI/Receita
+— pré-existentes); `imports_smoke` 141 (codebase importa limpo); `onda2` 10✓ (com rede). Ecossistema saudável
+após os 5 loops; `jfn.service` religado (tudo live).
+
+## 🏁 5 LOOPS CONCLUÍDOS
+| Loop | Entrega | Verificação |
+|---|---|---|
+| L1 | /lista curado · OBs enxutas · LLM 9-chaves · Lex discursivo · wiring SIAFE | Yoda retorna os números |
+| L2 | frescor/cobertura no topo dos relatórios | "Cobertura: 1.121.306 OBs · 77% CNPJ" |
+| L3 | encaminhamento por severidade (acionável) | grav≥3→requerimento; lex offline ✓ |
+| L4 | wiring /api/cartel GET+POST + prompt c/ método | curl GET/POST=200; Yoda end-to-end |
+| L5 | Massare avaliado + backtest total | ~322 verdes, 0 falhas; Massare honesto |
+**2 fixes profundos p/ sessão nova** (alto valor, precisam Chrome/live): coletor SEI → inteiro teor; scorer
+OOS do Massare. Tema comum = **fechar o último elo do "sistema pensante"** (a estrutura existe nos dois).
+
 ## APRENDIZADO TRANSVERSAL (atualizado)
 - O dono deu **autonomia total** (mexer em tudo — JFN/Lex/Massare/Hermes/Yoda — e religar à vontade). Minha
   cautela com "o que está vivo" era o gargalo, não o sistema. Fluir > hesitar (mantendo verificação do artefato).
