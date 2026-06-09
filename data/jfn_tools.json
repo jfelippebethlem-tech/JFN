@@ -134,10 +134,6 @@
               "type": "string",
               "description": "obrigatorio p/ vizinhanca/cruzado/qsa"
             },
-            "ug": {
-              "type": "string",
-              "description": "opcional"
-            },
             "top": {
               "type": "string",
               "description": "opcional"
