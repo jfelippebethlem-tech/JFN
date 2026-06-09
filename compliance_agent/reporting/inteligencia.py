@@ -1487,6 +1487,33 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                                    "concentrados em meses atípicos — fim de exercício / véspera eleitoral (red flag ACFE).</p>"
                                    f"<table>{thead2}{body2}</table>"})
 
+        # 5-C. DETALHAMENTO POR OB — cada pagamento com VALOR EXATO + nº da OB (pedido do dono 2026-06-09):
+        # nos meses com 2-3 OBs, a 5-B agrega num só número compacto; aqui cada OB aparece em sua linha,
+        # com o valor exato e o código da OB. Recente → antigo; lista completa também no XLSX.
+        linhas_ob = []
+        for _ano, _b in (p.get("por_ano") or {}).items():
+            for _ln in _b.get("linhas", []):
+                _d = _ln.get("data") or "—"
+                _ok = isinstance(_d, str) and len(_d) >= 7 and _d[4:5] == "-"
+                _mes = int(_d[5:7]) if _ok else 0
+                linhas_ob.append((int(_ano or 0), _mes, _ln, (f"{_d[5:7]}/{_d[0:4]}" if _ok else "s/data")))
+        if linhas_ob:
+            _LIM = 400
+            linhas_ob.sort(key=lambda t: (t[0], t[1], float(t[2].get("valor") or 0)), reverse=True)
+            _total_ob = len(linhas_ob)
+            _rows = "".join(
+                f"<tr><td>{esc(comp)}</td><td>{esc(ln.get('numero_ob') or '—')}</td>"
+                f"<td>{esc(ln.get('orgao') or '—')}</td><td>R$ {moeda(ln.get('valor'))}</td></tr>"
+                for _a, _m, ln, comp in linhas_ob[:_LIM])
+            _nota_cap = (f" Mostrando as {_LIM} OBs mais recentes de {_total_ob}; a lista completa (todas as OBs) "
+                         "está na planilha XLSX." if _total_ob > _LIM else "")
+            secoes.append({"titulo": "5-C. Detalhamento por OB — valor exato + nº da OB (por mês)",
+                           "html": "<p class='nota'>Cada Ordem Bancária com o <b>valor exato</b> e o <b>número da OB</b>, "
+                                   "do mês mais recente para o mais antigo. Quando um mês tem dois ou mais pagamentos, "
+                                   f"cada um aparece em sua própria linha (a seção 5-B agrega por mês).{_nota_cap}</p>"
+                                   "<table><tr><th>Competência</th><th>OB nº</th><th>Órgão (UG)</th>"
+                                   f"<th>Valor (R$)</th></tr>{_rows}</table>"})
+
         # 6. Concentração por órgão (HHI) + barras
         tot = p["total_geral"] or 1
         orgs = list(p["por_orgao_geral"].items())
