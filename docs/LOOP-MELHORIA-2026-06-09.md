@@ -306,6 +306,20 @@ detectores → 1 classificador compartilhado conserta os dois e os próximos.
 > TOPO; a árvore está no iframe `ifrArvore` e o conteúdo no `ifrVisualizacao` → por isso "fica na caixa".
 > Fix pronto em memória `sei-coletor-fix-pronto`. Fila: 15.107 processos. Chrome 9222 vivo.
 
+## ✅ Loop 24 — /cartel dependencia: filtro intra-gov + refino dos fundos
+**Entrega (commit 68d35ea):** `dependencia_fornecedores` deixava passar "Fundo Municipal de Saúde de X"
+(repasses SUS). Estendi `eh_nao_fornecedor` (fundo municipal/estadual/nacional·de saúde·previdência).
+Verificado: 0/8 intergov; mantém OS reais (Instituto D'Or, Sócrates Guanaes). **Aprendizado:** o classificador
+compartilhado evolui num lugar só e conserta todos os consumidores.
+
+## ✅ Loop 25 — Agendar Massare (cobra as previsões sozinho) + backtest fresco
+**Achado:** `massare.daily` (coleta preços + **grade_due** que cobra as previsões + scoreboard) **não estava no
+cron** — por isso as 44 ficavam pendentes e os preços defasavam. **Entrega:** cron **06:15 diário**
+(`massare.daily`) + **dom 04:30** (`massare.backtest`). Validei o daily ao vivo (preços→2026-06-09, 0 maduras
+ainda=honesto, 11 previsões novas com OOS). Fecha 2 itens do backlog SEM depender do dono — as previsões
+passam a se cobrar conforme os pregões-alvo vencem; /placar não defasa. **Aprendizado:** "fechar o ciclo" às
+vezes é só **agendar** a rotina que já existe.
+
 ## 🏁 RODADA ESTENDIDA (Loops 6–20) — 15 loops
 | # | Entrega | Commit |
 |---|---|---|

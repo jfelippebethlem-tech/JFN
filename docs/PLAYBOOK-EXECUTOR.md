@@ -16,6 +16,8 @@ Sempre `cd ~/JFN && PYTHONPATH=. .venv/bin/python ...`. SÓ UMA coleta SIAFE por
 | Sócios/diretores por OB | `-m tools.enriquecer_socios_ob` |
 | Login FlexVision (folha) | `-m tools.flexvision_cdp auto` |
 | Status (vivo? quanto coletado?) | `curl -s 127.0.0.1:8000/api/siafe/status` · `.../api/siafe/stats` |
+| Massare diário (preços+cobrança das previsões) | `-m massare.daily` (no **cron 06:15**) |
+| Massare backtest OOS (atualiza /placar) | `-m massare.backtest --stamp "$(date -Iseconds)"` (no **cron dom 04:30**) |
 SIAFE 1 (2016-23) = mesmos comandos com `JFN_SIAFE_LOGIN_URL=https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp`
 (sessão independente do 2.0 → roda em paralelo). Receita do filtro que destrava tudo: §2 abaixo.
 
