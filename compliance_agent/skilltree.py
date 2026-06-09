@@ -201,6 +201,14 @@ class SkillTree:
             ("consultar_empresa", "Cadastro + sócios de um CNPJ", "dados da empresa 19.088.605/0001-04"),
             ("consultar_idoneidade", "A empresa está sancionada? (CEIS/CNEP)", "a empresa X está sancionada?"),
         ]),
+        ("📈", "Mercado & Previsão (Massare)", [
+            ("massare_cenarios", "Como está o mercado agora", "dólar/bolsa/ouro hoje"),
+            ("massare_prever", "Previsão direcional de um ativo", "o Ibovespa sobe semana que vem?"),
+            ("massare_placar", "O Massare acerta? (track record OOS)", "qual o placar das previsões?"),
+        ]),
+        ("🛰️", "Coleta & Base", [
+            ("siafe_status", "Status da coleta / cobertura da base", "quantas OBs já coletamos?"),
+        ]),
     ]
 
     def render_menu(self, so_prontas: bool = True) -> str:
