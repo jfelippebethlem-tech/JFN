@@ -211,6 +211,34 @@ futuro (preço até 06-08) → pendentes, honesto. 3 testes verdes.
 **Aprendizado:** track record só é honesto contra a **taxa-base certa**; hit-rate alto sem baseline mente.
 Fechou o último elo do "sistema pensante" de mercado: agora o Massare sabe (e diz) onde NÃO tem skill.
 
+## ✅ Loop 11 — Qualidade do parecer Lex (R11 CNAE×objeto)
+**Avaliação (analista de tomada de contas):** o parecer Lex é sofisticado (achados R2/R5/R8/R12, dosimetria,
+encaminhamento) mas **não tinha** o sinal estrutural do RF-05 do /relatorio. **Entrega (commit 127bbf6):**
+achado **R11 — atividade-fim (CNAE) incompatível com o objeto contratado** (empresa de prateleira/fachada;
+arts. 62-63 Lei 14.133; art. 337-F CP). Reusa `_termos_significativos` (DRY, import já existente, sem
+circular); objeto REAL do TCE-RJ; conservador (zero-overlap). Flui à matriz/detalhamento/PDF pela mesma lista
+`achados` que R5/R8. 2 testes offline (dispara em internet×limpeza; não em limpeza×limpeza).
+**Aprendizado:** um sinal forte deve atravessar os produtos do sistema pensante — /relatorio E parecer Lex.
+
+## ✅ Loop 12 — Massare honesto end-to-end (/placar com backtest)
+**Avaliação:** "O Massare acerta?" (`/api/massare/placar`) devolvia só o diário logado (44 pendentes, hit_rate
+null) — escondia o track record real. **Entrega (commit 211cba0):** `/placar` agora inclui `backtest_oos`
+(hit-rate 0,5445 vs piso ingênuo 0,5572 → edge −0,0127; 20/78 séries com skill; 356k pregões). `backtest.py`
+grava `backtest.json` estável + `resumo_overall()`. **Verificado END-TO-END** (serviço religado + curl). 4 testes.
+**Aprendizado:** honestidade é arquitetural — o endpoint que o dono consulta tem de mostrar o número que cobra o agente.
+
+## ✅ Loop 13 — Caça a bugs reais no baseline de lint (43→39)
+**Pesquisa:** revisei os 43 ruff restantes atrás de bug real (não cosmético). **Entrega (commit 78f2a7b):**
+- **router.py (bug real latente):** `classify()`/`summarize()` definidos **2×** na mesma classe → o Python
+  descartava as versões Ollama-first silenciosamente (F811). Removidas as mortas; risco de alguém corrigir a
+  errada eliminado. Comportamento idêntico.
+- rules/engine.py: removida constante morta `JANELA_DIAS` — **confirmei que a regra de fracionamento NÃO tinha
+  bug** (a janela de 30d é aplicada via `strftime` mensal).
+- lex_base_empirica.py: removida query buscada e descartada (economiza 1 query).
+- Os 11 F841 restantes são no script de debug `diagnose_siafe.py` — baixo valor, não tocados.
+**Aprendizado:** o lint paga bugs (Loop 6: 3 NameError; Loop 13: duplicata silenciosa) — mas é preciso LER cada
+um: a maioria dos F841 era código morto inócuo, não bug. Honestidade vale também na triagem do lint.
+
 ## 🏁 SEGUNDA RODADA (Loops 6–10) — CONCLUÍDA
 | Loop | Entrega | Verificação | Commit |
 |---|---|---|---|
