@@ -77,15 +77,18 @@ def _unidade(proc: str) -> str:
     return m.group(1) if m else ""
 
 
-def _fila(ug: str | None, limite: int) -> list[tuple]:
+def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     """Processos SEI distintos das OBs, priorizando as UNIDADES que o itkava já leu (escopo
-    aprendido), depois por valor desc. Evita queimar tempo em processos fora de escopo."""
+    aprendido), depois por valor desc. Filtra por UG e/ou CNPJ do favorecido (alvo de um relatório)."""
     con = sqlite3.connect(str(DB))
     where = "numero_sei LIKE 'SEI-%/%/20%'"
     args: list = []
     if ug:
         where += " AND ug_codigo=?"
         args.append(ug)
+    if cnpj:  # processos das OBs de UM fornecedor — pré-carrega o SEI antes do /relatorio dele
+        where += " AND replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-','')=?"
+        args.append(re.sub(r"\D", "", cnpj))
     rows = con.execute(
         f"SELECT numero_sei, COUNT(*) nob, ROUND(SUM(valor),2) tot FROM ordens_bancarias "
         f"WHERE {where} GROUP BY numero_sei ORDER BY tot DESC LIMIT ?",
@@ -165,7 +168,8 @@ async def _ficha_e_storage(proc: str):
 
 
 async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
-              seguir_arvore: bool = True, max_rel_arvore: int = 3, fazer_ficha: bool = True):
+              seguir_arvore: bool = True, max_rel_arvore: int = 3, fazer_ficha: bool = True,
+              cnpj: str | None = None):
     from compliance_agent.envfile import carregar_env
     carregar_env()
     from compliance_agent.recursos import browser_lock_async, aguardar_load_async
@@ -182,7 +186,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         # já lido com docs, ou já tentado >=3x sem sucesso (processo vazio/restrito de verdade)
         return bool(f and (f.get("n_docs", 0) > 0 or f.get("tentativas", 1) >= 3))
 
-    fila = [(p, nob, tot) for (p, nob, tot) in _fila(ug, max_n) if not _pular(p)][:max_n]
+    fila = [(p, nob, tot) for (p, nob, tot) in _fila(ug, max_n, cnpj) if not _pular(p)][:max_n]
     if not fila:
         _log("nada novo na fila (tudo já lido/cacheado).")
         return
@@ -270,9 +274,10 @@ def main():
     ap.add_argument("--sem-arvore", action="store_true", help="NÃO seguir os relacionados (só o processo)")
     ap.add_argument("--max-rel", type=int, default=3, help="máx. de relacionados a seguir por processo")
     ap.add_argument("--sem-ficha", action="store_true", help="NÃO extrair ficha/storage (só ler+cachear cru)")
+    ap.add_argument("--cnpj", type=str, default=None, help="só os processos das OBs de um fornecedor (pré-carrega o /relatorio dele)")
     a = ap.parse_args()
     asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel,
-                    fazer_ficha=not a.sem_ficha))
+                    fazer_ficha=not a.sem_ficha, cnpj=a.cnpj))
 
 
 if __name__ == "__main__":
