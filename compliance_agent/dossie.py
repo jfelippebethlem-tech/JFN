@@ -38,12 +38,14 @@ def _resumo_ob(cnpj: str) -> dict:
         return {"total_ob": 0.0, "n_ob": 0, "ugs": [], "concentracao_top_ug": None}
     total = sum(r[2] or 0 for r in rows)
     top = (rows[0][2] or 0) / total if total else 0
+    from compliance_agent import ugs as _ugs  # nome canônico da UG (ITERJ p/ 133100), igual aos relatórios
     return {
         "total_ob": round(total, 2),
         "n_ob": sum(r[3] for r in rows),
         "n_ugs": len(rows),
         "concentracao_top_ug": round(top, 3),
-        "ugs": [{"ug": r[0], "nome": r[1], "total": round(r[2] or 0, 2)} for r in rows[:5]],
+        "ugs": [{"ug": r[0], "nome": _ugs.nome_canonico(str(r[0]), fallback="") or r[1],
+                 "total": round(r[2] or 0, 2)} for r in rows[:5]],
     }
 
 
