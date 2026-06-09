@@ -251,6 +251,17 @@ sobre lint novo (não bloqueia; ignora `_SANDBOX/`, `tools/debug/`). Ligado ao h
 Evita lint novo nos arquivos tocados sem brigar com o baseline (39). **Aprendizado:** gate por arquivos-staged
 ≠ gate global — ratcheta sem brigar com o legado.
 
+## ✅ Loop 16 — Honestidade na concentração geográfica do /orgao
+**Entrega (commit 0d0e086):** "61% PETROPOLIS" era marcado 🟡 como indício geográfico — mas a cidade-topo
+do ITERJ tem **1 só fornecedor** (Enge Prat) → é a concentração de FORNECEDOR (Seção 1) restada, não sinal
+independente. Agora: cidade-topo com 1 fornecedor → nota ℹ️ honesta; multi-empresa → mantém 🟡 (fachada real).
+**Aprendizado:** não dupla-contar o mesmo sinal sob rótulos diferentes — inflar red flags é desonesto.
+
+## ✅ Loop 17 — Bug Município/UF no perfil cadastral do /relatorio
+**Entrega (commit 4e7ee18):** perfil mostrava "—/—" embora o endereço fosse MARICA/RJ (enrich sem município/UF
+separados). Fallback ao endereço do cruzamento (mesma fonte da "Cidade-sede"). Corrigido nos 2 renderizadores
+(MD+PDF), verificado no PDF entregue. **Aprendizado:** dado já existe noutra seção — reaproveitar antes de exibir "—".
+
 ## 🏁 SEGUNDA RODADA (Loops 6–10) — CONCLUÍDA
 | Loop | Entrega | Verificação | Commit |
 |---|---|---|---|
