@@ -75,9 +75,17 @@ slash no gateway vivo; split de god-files (Fase 3).
 **Críticos:** Lex×SEI (precisa input SEI real — destravado nesta sessão, ver §6) · Massare hit-rate OOS (44
 pendentes — mitigado pelo backtest + cron grade_due) · conluio intra-licitação (PNCP só expõe vencedor →
 indetectável por dado público estruturado).
-**Moderados:** OpenCorporates não existe · ExifTool wrapper (`enrich/exif.py`) não existe · CNPJ matriz+filial
-consolidação parcial (SQL feito; /relatorio ainda separa filial) · paridade render_md↔HTML (tabela mensal só
-no HTML) · `/lista` lento no gateway (fast-path pendente).
+**Moderados:** OpenCorporates não existe · ExifTool wrapper (`enrich/exif.py`) não existe · paridade
+render_md↔HTML (tabela mensal só no HTML) · `/lista` lento no gateway (fast-path pendente).
+**⚠ Itens da lista que JÁ estavam feitos (corrigido 2026-06-09 cont.):** (a) **CNPJ matriz+filial**: o
+/relatorio fornecedor JÁ consolida por raiz-8 (`inteligencia.py:213-339`, `LIKE raiz%`, representante=matriz
+0001, quebra por estabelecimento — CC 44/985/1.142; STJ REsp 1.286.122). **Nuance de honestidade aberta:** não
+há guarda contra raízes governamentais/placeholder (ex.: `00394460` Min. Economia 11 "filiais", `00000000`
+Pasep) — consolidar essas como uma PJ privada seria errado; só importa se rodarem DD em CNPJ de governo. (b)
+**Quarentena de ingestão**: JÁ existe (`anomalias.py:quarentena()` — valor≤0, sem favorecido, exercício nulo,
+**CNPJ mód-11**, dup por chave de negócio). Porém a tabela `ob_quarentena` está **stale** (rodou 06-06, só marcou
+valor≤0=32.752; CNPJ/dup atuais=0) e **não filtra os produtos**. Impacto medido na base inteira: 0 negativos,
+0 sem-favorecido, **1 dup**, 32.597 valor=0 (somam R$ 0 → só inflam CONTAGENS, não os totais). Baixa alavancagem.
 **Dívida técnica:** god-files server.py (1959), inteligencia.py (1789/1871), lex.py (1041) — split só
 oportunístico. Sem mypy/coverage rodando ainda (instalados). Ruff baseline 37.
 
@@ -157,6 +165,32 @@ de raciocínio exige max_tokens alto + ler `reasoning`; **testar tudo antes de l
 **Recursos (fim da sessão 2026-06-09):** disco 17G/48G (34%, **32G livre**) · RAM usada 2,5G/7,8G (**5,3G livre**)
 · load 0.58 · compliance.db 1,2G + **WAL 130M** (cron dom 03:00 faz checkpoint/VACUUM) · sei_cache 1,9M. **Sem
 necessidade de liberar espaço.** SIAFE2 sweep ✓ vivo, SEI sweep ✓ vivo.
+
+### Sessão 2026-06-09 (continuação — loop de glifos no PDF + auditoria de gaps stale)
+**Tema:** loop de qualidade do artefato ENTREGUE (PDF), seguindo a metodologia (ler→medir baseline→fix
+isolado→regenerar produto→medir→commit).
+**Feito (Loop 1):**
+- **BUG corrigido no PDF do parecer Lex:** os indicadores 🔴🟡🟢 e a seta ⤴ vazavam para a fonte **DejaVu (que
+  não os possui)** → fpdf2 emitia "missing glyphs" e o PDF entregue mostrava **tofu/quadrados** (viola a regra
+  de estética nº1). Causa-raiz: `lex.py:_t()` retornava a string **sem tratamento no path Unicode** (`_uni=True`,
+  pois a DejaVu registra OK). **Fix:** mapear os glifos que a DejaVu não tem → equivalentes que ela tem (verificado
+  empiricamente via fpdf2: 🔴🟡🟢→**●**, ⤴→**↗**). **Medição (MGS, produto real):** ANTES = 1+ warning + tofu;
+  DEPOIS = **0 warnings**, 3×● + 5×↗ renderizados, 0 emoji órfão, 0 `�`; risco/score/grau inalterados (sem
+  regressão). Mesma blindagem aplicada ao **`inteligencia_orgao.py:_t()`** (bug latente idêntico) — regerado,
+  **output idêntico** (R$ 292.292.309,08 / 2457 OBs), 0 warnings. **dossie** verificado: sem defeito (Helvetica +
+  `_ascii`, sem emoji). **Suíte: 299 passed**, golden numbers ✓.
+- **Auditoria de gaps stale (§5 corrigida):** os "alvos #1/#3" da retomada (quarentena, matriz+filial) **já
+  estavam feitos** no código — confirma a lição "ler o código real > confiar no handoff/doc". §5 atualizada com a
+  medição honesta (base limpa: 0 negativos, 1 dup, 32.597 valor=0 que só inflam contagens) e a nuance aberta
+  (sem guarda p/ raiz governamental na consolidação por raiz).
+**Decisão documentada (não-feito consciente):** 40 `ln=True` (fpdf2 DeprecationWarning) em 4 renderizadores que
+funcionam — migração p/ `new_x/new_y` é churn amplo em código de render que funciona (risco V2 > ganho de só
+silenciar warning). **Deferido** como limpeza de baixa prioridade; preferir mudança pequena/isolada/verificada.
+**Erros/lições:** (1) o glyph-warning do fpdf2 **só dispara no path Unicode quando a fonte registra mas não tem o
+glifo** — emoji nunca devem ir cru p/ DejaVu. (2) De novo: a lista de gaps da doc envelhece; **medir o produto/
+código real cedo** é o que revela o gap verdadeiro (o defeito real estava no PDF entregue, não nos "alvos" da doc).
+**Commits-chave:** (ver `git log` — fix glifos Lex+orgao + doc).
+**Recursos (fim):** ver bloco de recursos abaixo no commit; sem necessidade de liberar espaço.
 
 ## 11. ⏯️ RETOMADA — INSTRUÇÕES PERMANENTES (ler ANTES de continuar, sessão nova)
 **Branch `feat/lista-limpa` (não pushado, tudo commitado). Serviço/sweeps vivos.** O dono pediu para continuar
