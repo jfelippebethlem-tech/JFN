@@ -320,6 +320,19 @@ ainda=honesto, 11 previsões novas com OOS). Fecha 2 itens do backlog SEM depend
 passam a se cobrar conforme os pregões-alvo vencem; /placar não defasa. **Aprendizado:** "fechar o ciclo" às
 vezes é só **agendar** a rotina que já existe.
 
+## ✅ Loop 26 — /orgao: marcar transferências intergovernamentais
+**Entrega (commit e2ce035):** INSS/Ministérios apareciam como "fornecedores" do órgão. Marca ⟨transf. intergov.⟩
++ nota (MD e PDF), SEM mexer em total/HHI/contagem (golden intactos). Reusa `eh_nao_fornecedor`.
+
+## ✅ Loop 27 — /grafo_poder: nome canônico de UG (ITERJ)
+**Entrega (commit cbcd377):** o grafo rotulava UG 133100 como "Secretaria de Infraestrutura" (órgão superior
+cru) enquanto /relatorio e /orgao usam "ITERJ". Corrigido via `ugs.nome_canonico`.
+
+## ✅ Loop 28 — Consistência: nome canônico de UG em dossie/cartel/anomalias
+**Entrega (commit 4ebd88e):** varredura após L27 — dossie, grafo_cartel, anomalias mostravam ug_nome cru →
+todos passam por `nome_canonico` (display-only). UG 133100 = "ITERJ" em **6 produtos**. Verificado live.
+**Aprendizado:** um achado de inconsistência num produto vira varredura — o mesmo dado canônico em todo lugar.
+
 ## 🏁 RODADA ESTENDIDA (Loops 6–20) — 15 loops
 | # | Entrega | Commit |
 |---|---|---|
