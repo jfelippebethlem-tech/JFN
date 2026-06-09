@@ -346,7 +346,12 @@ def top_anomalias(limite: int = 20, orgao: str | None = None, fornecedor: str | 
     con.close()
     if not incluir_gov:
         rows = [r for r in rows if not _eh_nao_fornecedor(r.get("favorecido_nome"))]
-    return rows[:int(limite)]
+    rows = rows[:int(limite)]
+    # nome canônico da UG no display (ITERJ p/ 133100), consistente com os relatórios
+    from compliance_agent import ugs as _ugs
+    for r in rows:
+        r["ug_nome"] = _ugs.nome_canonico(str(r.get("ug_codigo") or ""), fallback="") or r.get("ug_nome")
+    return rows
 
 
 if __name__ == "__main__":
