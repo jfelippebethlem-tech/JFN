@@ -133,6 +133,20 @@ def _render_md(res: dict, stamp: str) -> str:
     return "\n".join(L) + "\n"
 
 
+def resumo_overall() -> dict | None:
+    """Resumo do último backtest (p/ o /placar ser honesto). None se nunca rodou."""
+    f = _OUT / "backtest.json"
+    if not f.exists():
+        return None
+    try:
+        d = json.loads(f.read_text(encoding="utf-8"))
+        o = dict(d.get("overall") or {})
+        o["stamp"] = d.get("stamp")
+        return o
+    except Exception:
+        return None
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--stamp", default="sem-data")
@@ -140,10 +154,13 @@ def main():
     args = ap.parse_args()
     horizons = tuple(int(x) for x in args.horizons.split(",") if x.strip())
     res = run(horizons=horizons)
+    res["stamp"] = args.stamp
     _OUT.mkdir(parents=True, exist_ok=True)
     (_OUT / "backtest.md").write_text(_render_md(res, args.stamp), encoding="utf-8")
-    (_OUT / f"backtest_{args.stamp.replace(':', '').replace('-', '')}.json").write_text(
-        json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+    # JSON estável (consumido pelo /placar) + cópia carimbada (histórico)
+    payload = json.dumps(res, ensure_ascii=False, indent=2)
+    (_OUT / "backtest.json").write_text(payload, encoding="utf-8")
+    (_OUT / f"backtest_{args.stamp.replace(':', '').replace('-', '')}.json").write_text(payload, encoding="utf-8")
     print(_render_md(res, args.stamp))
 
 

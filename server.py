@@ -566,9 +566,13 @@ async def api_massare_carteira():
 async def api_massare_placar():
     """Acurácia out-of-sample acumulada + sentimento de mercado (Fear&Greed/VIX)."""
     try:
-        from massare import learning, behavior, store
+        from massare import learning, behavior, store, backtest
         store.init_db()
+        # HONESTIDADE: o diário de previsões logadas costuma estar pendente (alvo no futuro).
+        # O backtest OOS (walk-forward em TODOS os pregões) é o track record honesto: hit-rate
+        # vs. piso ingênuo (taxa-base) e o EDGE real. None se o backtest ainda não rodou.
         return JSONResponse({"ok": True, "placar": learning.scoreboard(),
+                             "backtest_oos": backtest.resumo_overall(),
                              "sentimento": behavior.snapshot()})
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
