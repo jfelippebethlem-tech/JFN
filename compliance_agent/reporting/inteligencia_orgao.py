@@ -349,9 +349,20 @@ def render_md(ctx: dict) -> str:
         add("| Fornecedor | Valor recebido (R$) | % do total |")
         add("|---|---:|---:|")
         tot = p["total_geral"] or 1
+        from compliance_agent.entidades_gov import eh_nao_fornecedor
+        _tem_intergov = False
         for nome, val in list(p["por_favorecido_geral"].items())[:25]:
-            add(f"| {nome} | {moeda(val)} | {val/tot*100:.1f}% |")
+            tag = ""
+            if eh_nao_fornecedor(nome):
+                tag = " ⟨transf. intergov.⟩"
+                _tem_intergov = True
+            add(f"| {nome}{tag} | {moeda(val)} | {val/tot*100:.1f}% |")
         add("")
+        if _tem_intergov:
+            add("> ℹ️ Itens marcados ⟨transf. intergov.⟩ são **transferências intergovernamentais/tributos** "
+                "(INSS, Ministérios, fundos de saúde/previdência) — pagamentos obrigatórios, **não** fornecedores "
+                "de contratação. Entram no total/HHI por integridade, mas não devem ser lidos como contratos.")
+            add("")
         if p["hhi"].get("top_share", 0) >= 50:
             add("> 🔴 **Red flag (ACFE):** um único fornecedor concentra ≥50% dos pagamentos do órgão — "
                 "verificar competitividade das contratações (Art. 37 CF/88; Lei 14.133/2021).")
@@ -530,8 +541,10 @@ def render_pdf(ctx: dict, destino: str) -> str:
         _tab_header(pdf, [("Fornecedor", 130), ("Valor (R$)", 36), ("%", 16)])
         pdf.set_font(pdf._fam, "", 8)
         tot = p["total_geral"] or 1
+        from compliance_agent.entidades_gov import eh_nao_fornecedor
         for nome, val in list(p["por_favorecido_geral"].items())[:30]:
-            _tab_row(pdf, [(_t(nome)[:86], 130, "L"), (moeda(val), 36, "R"), (f"{val/tot*100:.1f}", 16, "R")], h=5)
+            rot = (_t(nome)[:74] + " [transf.intergov]") if eh_nao_fornecedor(nome) else _t(nome)[:86]
+            _tab_row(pdf, [(rot, 130, "L"), (moeda(val), 36, "R"), (f"{val/tot*100:.1f}", 16, "R")], h=5)
 
         # Pagamentos recorrentes de valor idêntico (ACFE identical payments)
         _grupos = _recorrentes_identicos(p)
