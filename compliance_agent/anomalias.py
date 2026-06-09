@@ -25,6 +25,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sqlite3
 from datetime import datetime
 
@@ -312,8 +313,24 @@ def explicar_features(top_features) -> list[str]:
     return [_FEATURE_LABELS.get(f, f) for f in (top_features or [])]
 
 
-def top_anomalias(limite: int = 20, orgao: str | None = None, fornecedor: str | None = None) -> list[dict]:
-    """Ranking de OBs por score, com red flags agregadas. Lê ob_anomaly JOIN ordens_bancarias/ob_redflag."""
+# Favorecidos que NÃO são fornecedores de contratação: transferências intra-governamentais,
+# tributos e encargos (o Estado paga a si mesmo / à União). Poluem o ranking de anomalias de
+# COMPRA — são pagamentos obrigatórios, não licitação. Filtrados por padrão (incluir_gov reinclui).
+_NAO_FORNECEDOR = re.compile(
+    r"\b(estado do rio|munic[ií]pio d|prefeitura|uni[ãa]o|minist[ée]rio|secretaria de estado|"
+    r"tesouro|receita federal|fazenda nacional|procuradoria|inss|instituto nacional do seguro|"
+    r"seguro social|fgts|pasep|\bpis\b|caixa econ[oô]mica|banco central|tribunal de|"
+    r"c[âa]mara municipal|assembleia legislativa|defensoria|encargos gerais)\b", re.I)
+
+
+def _eh_nao_fornecedor(nome: str) -> bool:
+    return bool(_NAO_FORNECEDOR.search(nome or ""))
+
+
+def top_anomalias(limite: int = 20, orgao: str | None = None, fornecedor: str | None = None,
+                  incluir_gov: bool = False) -> list[dict]:
+    """Ranking de OBs por score, com red flags agregadas. Lê ob_anomaly JOIN ordens_bancarias/ob_redflag.
+    Por padrão EXCLUI transferências intra-governamentais/tributos (não são fornecedores de compra)."""
     con = _con()
     _ddl(con)
     where, params = [], []
@@ -322,6 +339,8 @@ def top_anomalias(limite: int = 20, orgao: str | None = None, fornecedor: str | 
     if fornecedor:
         where.append("(o.favorecido_cpf = ? OR o.favorecido_nome LIKE ?)"); params += [fornecedor, f"%{fornecedor}%"]
     wsql = ("WHERE " + " AND ".join(where)) if where else ""
+    # sobre-busca p/ compensar o filtro de não-fornecedor (feito em Python, robusto a acento/caixa)
+    fetch = int(limite) if incluir_gov else int(limite) * 4 + 20
     sql = f"""
         SELECT o.id, o.numero_ob, o.data_emissao, o.ug_codigo, o.ug_nome,
                o.favorecido_cpf, o.favorecido_nome, o.valor, a.score, a.top_features,
@@ -331,11 +350,13 @@ def top_anomalias(limite: int = 20, orgao: str | None = None, fornecedor: str | 
         {wsql}
         ORDER BY (a.score + (SELECT COALESCE(SUM(rf.peso),0) FROM ob_redflag rf WHERE rf.ob_id=o.id)) DESC
         LIMIT ?"""
-    params.append(int(limite))
+    params.append(fetch)
     con.row_factory = sqlite3.Row
     rows = [dict(r) for r in con.execute(sql, params).fetchall()]
     con.close()
-    return rows
+    if not incluir_gov:
+        rows = [r for r in rows if not _eh_nao_fornecedor(r.get("favorecido_nome"))]
+    return rows[:int(limite)]
 
 
 if __name__ == "__main__":

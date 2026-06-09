@@ -672,7 +672,8 @@ async def api_siafe_status():
 
 
 @app.get("/api/anomalias")
-async def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] = None, top: int = 20):
+async def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] = None, top: int = 20,
+                        incluir_gov: bool = False):
     """Ranking de OBs suspeitas (Onda 1): score PyOD + red flags determinísticas. Filtros: ?orgao= &fornecedor= &top=.
 
     Honestidade: cada item é INDÍCIO para investigação interna, NUNCA acusação. Rode antes:
@@ -680,7 +681,7 @@ async def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] =
     try:
         from compliance_agent import anomalias
         top = max(1, min(int(top or 20), 200))
-        rows = anomalias.top_anomalias(top, orgao, fornecedor)
+        rows = anomalias.top_anomalias(top, orgao, fornecedor, incluir_gov=incluir_gov)
         itens = [{
             "ob": r.get("numero_ob"), "data": r.get("data_emissao"),
             "ug": r.get("ug_codigo"), "ug_nome": r.get("ug_nome"),
