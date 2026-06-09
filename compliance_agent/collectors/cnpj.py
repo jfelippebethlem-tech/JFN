@@ -7,9 +7,12 @@ import asyncio
 import json
 import re
 from datetime import date
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import httpx
+
+if TYPE_CHECKING:  # só p/ anotação (o import real é lazy dentro da função) — resolve F821
+    from compliance_agent.database.models import Empresa
 
 
 BRASILAPI_URL = "https://brasilapi.com.br/api/cnpj/v1/{cnpj}"
