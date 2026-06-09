@@ -1082,7 +1082,7 @@
       "type": "function",
       "function": {
         "name": "siafe_stats",
-        "description": "OBs por ano/UG (+frescor Onda 11) — usar quando: 'quantas OBs temos'",
+        "description": "Quanto já foi coletado do SIAFE: total de OBs, por ano/UG, cobertura/frescor — usar quando: 'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia'",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -1094,6 +1094,28 @@
         "dominio": "coleta",
         "tipo": "http",
         "rota": "/api/siafe/stats",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "siafe_status",
+        "description": "Estado da coleta SIAFE AGORA: ha um sweep/coleta rodando? (lockfile de sessao unica) — usar quando: 'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?'",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "coleta",
+        "tipo": "http",
+        "rota": "/api/siafe/status",
         "comando": null,
         "metodo": "GET",
         "status": "PRONTO",

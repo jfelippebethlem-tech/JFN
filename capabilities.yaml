@@ -113,7 +113,9 @@ capacidades:
   - {id: siafe_atualizar, agente: jfn, dominio: coleta, tipo: http, metodo: POST, rota: /api/siafe/atualizar, status: PRONTO,
      descricao: "Incremental diaria (cron 05:00); sessao unica via lockfile", quando_usar: "'atualize o SIAFE'", args: {exercicio: opcional}, retorno: "{coletadas,ingeridas}"}
   - {id: siafe_stats, agente: jfn, dominio: coleta, tipo: http, metodo: GET, rota: /api/siafe/stats, status: PRONTO,
-     descricao: "OBs por ano/UG (+frescor Onda 11)", quando_usar: "'quantas OBs temos'", args: {}, retorno: "{total,por_ano,por_ug}"}
+     descricao: "Quanto já foi coletado do SIAFE: total de OBs, por ano/UG, cobertura/frescor", quando_usar: "'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia'", args: {}, retorno: "{total,valor_total,por_ano,com_processo}"}
+  - {id: siafe_status, agente: jfn, dominio: coleta, tipo: http, metodo: GET, rota: /api/siafe/status, status: PRONTO,
+     descricao: "Estado da coleta SIAFE AGORA: ha um sweep/coleta rodando? (lockfile de sessao unica)", quando_usar: "'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?'", args: {}, retorno: "{ok,lock}"}
   - {id: siafe_coletar_ug, agente: jfn, dominio: coleta, tipo: cli, comando: "compliance_agent.siafe_runner ug <UG> [ANO]", status: PRONTO,
      descricao: "Coleta UMA UG furando teto 1000; SIAFE 1 via JFN_SIAFE_LOGIN_URL=www5", quando_usar: "backfill de UG", args: {ug: obrigatorio, ano: opcional}, retorno: "stdout"}
   - {id: enriquecer_socios, agente: jfn, dominio: coleta, tipo: cli, comando: "tools.enriquecer_socios_ob", status: PRONTO,
