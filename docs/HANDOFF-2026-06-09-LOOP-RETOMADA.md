@@ -34,13 +34,18 @@
 - Guard `_eh_interface_sei`: rejeita a tela/menu do SEI como conteúdo.
 - `docs/LOOP-MELHORIA-2026-06-09.md` (log dos loops).
 
-## 🐞 ACHADO CRÍTICO (Loop 1) — RAIZ a resolver no Loop 2
-**A leitura do SEI retorna o MENU/desktop** ("Controle de Prazos / Processos recebidos (N registros)"), NÃO o
-inteiro teor do processo. Por isso a análise discursiva (que funciona e é honesta) fica sem matéria-prima — e
-o parecer chegava a "analisar o menu". **Consertar `compliance_agent/collectors/sei_cdp.py` / `sei_reader`
-para NAVEGAR até o documento do processo e extrair o texto** é o desbloqueio do "sistema pensante" do Lex.
-Contexto SEI: WAF bloqueia o IP da VM; o login `itkava` passa (memória [[sei-login-itkava]]), mas a navegação
-até o documento não está completa. Ver [[jfn-siafe-folha-2026-06-07]] e docs SIAFE.
+## 🐞 ACHADO CRÍTICO (Loop 1→2) — DIAGNÓSTICO PRECISO, FIX a executar
+**A leitura do SEI retorna o MENU/desktop, NÃO o inteiro teor.** Evidência no cache real
+`data/sei_cache/cdp_SEI_070002_004332_2024.json` (processo da Extreme): `texto`=menu lateral do SEI;
+`n documentos:0`; `conteudo_documentos:0`; **`cadeado:False`, `n_docs_restritos:0` (NÃO é restrição)**;
+`relacionados:40` → o leitor ficou na **CAIXA/DESKTOP** (≈40 processos recebidos) e **não abriu o processo**.
+**Root cause:** bug de NAVEGAÇÃO em `collectors/sei_cdp.py::ler_processo_sei_via_chrome` (≈L439; extração
+L570/708): loga (itkava, perfil ITERJ/CHEGAB) mas não pesquisa+abre o processo-alvo → captura o desktop.
+SEI usa **frames** — conteúdo do doc no iframe (`ifrArvore` árvore + `ifrVisualizacao` conteúdo), não na página.
+**FIX (Loop 2, sessão nova):** pesquisar nº → abrir processo → entrar no `ifrArvore` → iterar docs → abrir no
+`ifrVisualizacao` → extrair texto (preencher `documentos`+`conteudo_documentos`). Testar AO VIVO (Chrome 9222
+itkava) com SEI-070002/004332/2024 até `n documentos>0`. Aí o Lex discursivo cita trecho REAL.
+Mitigação atual: guard `_eh_interface_sei` mantém o parecer honesto ("não lido"). Ver [[sei-login-itkava]].
 
 ## 🎯 BACKTEST (estado atual, sei-precos-onda5 base)
 - Suíte: ~28 arquivos verdes; 6 hangs de rede (integração: PNCP/SEI). `test_imports_smoke` 151 (imports OK).

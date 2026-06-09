@@ -60,7 +60,27 @@ gaps que o curl não pega.
 ⚠️ **Pendente:** o `jfn.service` vivo ainda roda código anterior aos commits OB-enxuta/LLM/Lex-discursivo —
 fazer `systemctl --user restart jfn.service` num momento ocioso (não durante geração de relatório do dono).
 
-## Loop 2 — (planejado) coletor SEI: navegar até o documento
-Alvo: `collectors/sei_cdp.py`/`sei_reader` extrair o INTEIRO TEOR (não o menu). Desbloqueia o "onde/por quê"
-do Lex. Verificar com parecer real (CNPJ com SEI lido) — a análise discursiva deve citar trecho de documento,
-não de interface. (a executar)
+## 🔎 Loop 2 — ANÁLISE (root cause pinpointed) — FIX a executar em sessão nova
+**Sintoma:** Lex "lê" o SEI mas a análise discursiva cita o MENU, não o documento.
+**Evidência (cache real `data/sei_cache/cdp_SEI_070002_004332_2024.json`, processo da Extreme):**
+- `texto` = menu lateral do SEI ("Acompanhamento Especial, Base de Conhecimento, Controle de Prazos…")
+- `n documentos: 0` · `conteudo_documentos: 0` · **`cadeado: False`, `n_docs_restritos: 0`** (NÃO é restrição)
+- `relacionados: 40` → o leitor ficou na **CAIXA/DESKTOP do SEI** (≈40 processos recebidos), **não abriu o
+  processo individual** nem chegou à **árvore de documentos**.
+**Root cause:** bug de NAVEGAÇÃO em `compliance_agent/collectors/sei_cdp.py::ler_processo_sei_via_chrome`
+(≈linha 439; extração em 570/708). Loga (itkava, perfil ITERJ/CHEGAB) mas não pesquisa+abre o processo-alvo
+→ captura o desktop. SEI usa **frames/iframes** (`ifrArvore`/árvore de documentos + `ifrVisualizacao`/conteúdo);
+o conteúdo do documento está no iframe, não na página externa.
+**FIX (próxima sessão, orçamento cheio):** em `ler_processo_sei_via_chrome`: (1) pesquisar o nº do processo
+(campo de pesquisa SEI), (2) abrir o processo, (3) entrar no iframe da árvore (`ifrArvore`), iterar os
+documentos, (4) abrir cada doc no `ifrVisualizacao` e extrair o texto → preencher `documentos` +
+`conteudo_documentos`. Testar AO VIVO (Chrome 9222 itkava) com SEI-070002/004332/2024 e conferir que
+`n documentos > 0` e o `texto` é do documento. Então o Lex discursivo passa a citar trecho REAL.
+**Honestidade:** enquanto não navega, o guard `_eh_interface_sei` mantém o parecer honesto ("não lido").
+**Benchmark:** prosa que cite "no §X do edital, a exigência Y eliminou as empresas A,B" só é possível com o
+texto do documento — depende 100% deste fix.
+
+## Loops 3-5 — planejados (ver handoff)
+- Loop 3: Massare "pensante" (previsões com raciocínio + OOS honesto).
+- Loop 4: fluidez/rapidez (latência do /relatorio; LLM discursivo bounded+cache).
+- Loop 5: estética/ruído + wiring fino (Yoda↔JFN; mais testes `hermes -z` por capability do playbook).
