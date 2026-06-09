@@ -65,11 +65,20 @@ def atual(registrar: bool = True, janela: str = "2d") -> dict:
             for a in b.get("artigos", [])[:2]:
                 if any(g.split()[0] in (a.get("titulo", "") + b["tema"]).lower() for g in nar["gatilhos"]):
                     fontes.append({"titulo": a.get("titulo", "")[:80], "fonte": a.get("fonte")})
+        # HONESTIDADE: o track record do ativo-âncora vem do BACKTEST OOS (o scoreboard logado
+        # costuma estar pendente). Carrega hit-rate, edge vs. taxa-base e se há skill demonstrado.
+        try:
+            from massare import backtest
+            bt = backtest.por_simbolo(nar["ativos"][0], horizon=21)
+        except Exception:  # noqa: BLE001
+            bt = None
         tese = {
             "narrativa": nar["chave"], "ativos": nar["ativos"], "direcao": nar["direcao"],
             "horizonte_dias": 21, "conf": round(conf, 2), "racional": nar["racional"],
             "fontes": fontes[:3],
-            "acerto_oos": (placar.get(nar["ativos"][0], {}) or {}).get("hit_rate"),
+            "acerto_oos": (bt or {}).get("hit_rate") or (placar.get(nar["ativos"][0], {}) or {}).get("hit_rate"),
+            "edge_oos": (bt or {}).get("edge"),
+            "tem_skill": (bt or {}).get("tem_skill"),
         }
         teses.append(tese)
         if registrar:
