@@ -90,11 +90,14 @@ def dependencia_fornecedores(min_total: float = 1_000_000, limite: int = 30) -> 
             SELECT favorecido_cpf, nome, n_ug, total, top_valor, top_ug
             FROM ag WHERE total >= ?
             ORDER BY (top_valor/total) DESC, total DESC LIMIT ?
-        """, [min_total, limite]).fetchall()
-        return [{
+        """, [min_total, limite * 3 + 10]).fetchall()
+        # exclui não-fornecedores (intra-gov/tributo) — não são "dependentes" de captura
+        from compliance_agent.entidades_gov import eh_nao_fornecedor
+        out = [{
             "cnpj": c, "nome": n, "n_orgaos": nu, "total": float(t),
             "dependencia_top": round(tv / t * 100, 1), "top_ug": tu,
-        } for c, n, nu, t, tv, tu in rows]
+        } for c, n, nu, t, tv, tu in rows if not eh_nao_fornecedor(n)]
+        return out[:limite]
     finally:
         con.close()
 

@@ -294,6 +294,18 @@ obrigatório ≠ anomalia de compra) — mesma família do "ubíquos" do cartel.
 lazy → F821. Bloco `TYPE_CHECKING` (sem custo runtime). Silencia o aviso do gate de lint. **Aprendizado:**
 forward-ref legítimo se resolve com TYPE_CHECKING, não suprimindo a regra.
 
+## ✅ Loop 23 — /cartel: mesmo filtro intra-gov + classificador compartilhado
+**Avaliação:** o /cartel (captura) flagrava UG 217300 como "capturada" 99,8% mas o top "fornecedor" era
+MINISTÉRIO DA FAZENDA (tributo) — falso cartel, mesmo ruído do Loop 21. **Entrega (commit 2c6fc3f):** extraí
+`compliance_agent/entidades_gov.py` (módulo leve, fonte ÚNICA do classificador intra-gov) reusado por
+anomalias E cartel (sem acoplar ao numpy). `captura_orgaos` exclui top não-fornecedor. Verificado: /cartel top
+0/8 gov; capturas reais surgem (Riocard 99,8%, FGV, Nissan). **Aprendizado:** ruído estrutural idêntico em 2
+detectores → 1 classificador compartilhado conserta os dois e os próximos.
+
+> **SEI (fix profundo #1) — diagnóstico cravado, deferido pelo dono ("voltar depois"):** o coletor lê o frame
+> TOPO; a árvore está no iframe `ifrArvore` e o conteúdo no `ifrVisualizacao` → por isso "fica na caixa".
+> Fix pronto em memória `sei-coletor-fix-pronto`. Fila: 15.107 processos. Chrome 9222 vivo.
+
 ## 🏁 RODADA ESTENDIDA (Loops 6–20) — 15 loops
 | # | Entrega | Commit |
 |---|---|---|
