@@ -876,6 +876,13 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
                     add(f"  > _Trecho do processo {a.get('numero_proc','')}:_ «{a['trecho'][:300]}»")
             add("- **Diligência sugerida:** confrontar com edital (especificações), pesquisa de preços, mapa de "
                 "licitantes/sócios, atestos e aditivos do processo SEI.")
+            # Encaminhamento por severidade (o que FAZER com este indício) — dirige a ação, não só descreve.
+            g = a.get("grav", 0)
+            if g >= 3:
+                add(f"- **⤴ Encaminhamento:** indício relevante (gravidade {g}/5) — cabe **requerimento** ao órgão "
+                    "exigindo a justificativa documental; persistindo a dúvida, representação ao TCE-RJ/MP-RJ.")
+            else:
+                add(f"- **Encaminhamento:** gravidade {g}/5 — manter em diligência/monitoramento; reavaliar com mais dados.")
             add("")
     else:
         add("Nenhum indício automático disparou a partir dos dados financeiros nem da leitura documental disponível. "
