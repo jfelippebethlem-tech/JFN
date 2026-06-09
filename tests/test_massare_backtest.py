@@ -54,3 +54,14 @@ def test_backtest_run_agrega_sem_inventar_brier():
     assert o["edge_medio"] is not None
     # honestidade: nada de Brier calibrado fabricado
     assert "brier" not in str(res).lower()
+
+
+def test_resumo_overall_para_placar():
+    """O /placar consome backtest.resumo_overall(): ou None (nunca rodou) ou um dict honesto."""
+    from massare import backtest
+    r = backtest.resumo_overall()
+    if r is not None:
+        assert "hit_rate_oos" in r and "base_naive_rate" in r and "edge_medio" in r
+        # edge é hit_rate - piso ingênuo (coerência)
+        if all(r.get(k) is not None for k in ("hit_rate_oos", "base_naive_rate", "edge_medio")):
+            assert abs((r["hit_rate_oos"] - r["base_naive_rate"]) - r["edge_medio"]) < 0.01
