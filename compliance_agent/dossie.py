@@ -47,6 +47,55 @@ def _resumo_ob(cnpj: str) -> dict:
     }
 
 
+def _red_flags_estruturais(cnpj: str, cadastro: dict) -> list[dict]:
+    """Sinais estruturais de fachada/laranja que o dossiê passa a convergir (mesma lógica do
+    /relatorio RF-04/RF-05 e do Lex R6/R11), reusando os helpers — honesto, indício a verificar."""
+    out: list[dict] = []
+    cad = cadastro or {}
+    # CNAE/atividade × objeto contratado (TCE-RJ) — atividade-fim incompatível.
+    cnae = cad.get("cnae_principal") or cad.get("atividade") or ""
+    try:
+        from compliance_agent.reporting.inteligencia import _termos_significativos
+        from compliance_agent.collectors.tcerj_aberto import contratos_de_fornecedor
+        objs = [(c.get("objeto") or "").strip() for c in contratos_de_fornecedor(cnpj, limite=60)]
+        objs = [o for o in objs if len(o) >= 12]
+        if cnae and objs:
+            tc, to_ = _termos_significativos(cnae), _termos_significativos(" ".join(objs))
+            if tc and to_ and not (tc & to_):
+                out.append({"flag": "cnae_objeto_incompativel",
+                            "obs": f"CNAE/atividade (“{cnae[:60]}”) sem aderência ao objeto contratado "
+                                   f"(ex.: “{objs[0][:60]}…”) — possível empresa de prateleira/fachada."})
+    except Exception:  # noqa: BLE001
+        pass
+    # Troca de controle societário posterior a receita pública (socios data_entrada × OBs antes).
+    try:
+        socios = cad.get("socios") or []
+        entradas = [s.get("data_entrada") or "" for s in socios]
+        entradas = [d for d in entradas if len(d) == 10 and d.count("-") == 2]
+        if entradas and _DB.exists():
+            recente = max(entradas)
+            con = sqlite3.connect(str(_DB))
+            try:
+                norm = "REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','')"
+                antes = con.execute(
+                    f"SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ordens_bancarias WHERE {norm}=? "
+                    "AND data_pagamento IS NOT NULL AND length(data_pagamento)=10 AND data_pagamento<?",
+                    (cnpj, recente)).fetchone()
+                tg = con.execute(f"SELECT COALESCE(SUM(valor),0) FROM ordens_bancarias WHERE {norm}=?",
+                                 (cnpj,)).fetchone()[0] or 0
+            finally:
+                con.close()
+            n_antes, tot_antes = antes[0], antes[1] or 0
+            share = (tot_antes / tg * 100) if tg else 0
+            if tot_antes >= 1_000_000 and share >= 15:
+                out.append({"flag": "troca_controle_pos_receita",
+                            "obs": f"Ingresso no QSA em {recente} posterior a R$ {tot_antes:,.2f} já pagos "
+                                   f"({n_antes} OBs, {share:.0f}%) — sucessão/interposição a verificar."})
+    except Exception:  # noqa: BLE001
+        pass
+    return out
+
+
 async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     """Monta o dossiê 360 de um CNPJ. Retorna {ok, alvo, cadastro, sancoes, ob, conflito,
     rede, score, path_pdf, _fontes}. Cada bloco é best-effort e honesto (INDISPONÍVEL)."""
@@ -124,11 +173,16 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     except Exception as e:  # noqa: BLE001
         d["rede"] = {"_nota": f"INDISPONÍVEL: {e}"}
 
+    # 5b) red flags ESTRUTURAIS (fachada/laranja) — mesma lógica do /relatorio e do Lex
+    d["red_flags_estruturais"] = _red_flags_estruturais(cnpj, d.get("cadastro") or {})
+
     # 6) score de convergência (a partir dos sinais reunidos)
     sinais = {
         "conflito_doador": bool(d.get("conflito", {}).get("n")),
         "sancao_ceis_cnep": sancionado,
         "concentracao_orgao": 1.0 if (d["ob"].get("concentracao_top_ug") or 0) >= 0.6 else 0.0,
+        # cada red flag estrutural conta como um red flag de edital/TR (teto interno de 3 no score)
+        "red_flag_edital": len(d["red_flags_estruturais"]),
     }
     try:
         from compliance_agent.analysis.score_convergencia import convergencia
@@ -182,6 +236,11 @@ async def _gerar_pdf_classe_mundial(d: dict) -> str:
                            f"<tr><td>Nº de OBs / UGs</td><td>{ob.get('n_ob', 0)} / {ob.get('n_ugs', 0)}</td></tr>"
                            f"<tr><td>Conflito doador↔contrato</td><td>{conf.get('n', 0)} vínculo(s)</td></tr>"
                            f"<tr><td>Rede de poder (2 saltos)</td><td>{rede.get('n_nos', 0)} nós</td></tr></table>"})
+    rfe = d.get("red_flags_estruturais") or []
+    if rfe:
+        linhas = "".join(f"<li>{(r.get('obs') or '')}</li>" for r in rfe)
+        secoes.append({"titulo": "Red flags estruturais (fachada/laranja — indício a verificar)",
+                       "html": f"<ul>{linhas}</ul>"})
 
     ctx = {
         "_dados": d, "titulo": f"Dossiê 360 — {nome}", "subtitulo": f"CNPJ {d['alvo']}",
