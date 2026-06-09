@@ -25,7 +25,6 @@ import argparse
 import hashlib
 import json
 import os
-import re
 import sqlite3
 from datetime import datetime
 
@@ -313,18 +312,9 @@ def explicar_features(top_features) -> list[str]:
     return [_FEATURE_LABELS.get(f, f) for f in (top_features or [])]
 
 
-# Favorecidos que NÃO são fornecedores de contratação: transferências intra-governamentais,
-# tributos e encargos (o Estado paga a si mesmo / à União). Poluem o ranking de anomalias de
-# COMPRA — são pagamentos obrigatórios, não licitação. Filtrados por padrão (incluir_gov reinclui).
-_NAO_FORNECEDOR = re.compile(
-    r"\b(estado do rio|munic[ií]pio d|prefeitura|uni[ãa]o|minist[ée]rio|secretaria de estado|"
-    r"tesouro|receita federal|fazenda nacional|procuradoria|inss|instituto nacional do seguro|"
-    r"seguro social|fgts|pasep|\bpis\b|caixa econ[oô]mica|banco central|tribunal de|"
-    r"c[âa]mara municipal|assembleia legislativa|defensoria|encargos gerais)\b", re.I)
-
-
-def _eh_nao_fornecedor(nome: str) -> bool:
-    return bool(_NAO_FORNECEDOR.search(nome or ""))
+# Favorecidos que NÃO são fornecedores de contratação (intra-gov/tributos) — classificador
+# compartilhado em compliance_agent.entidades_gov (reusado também pelo cartel/captura).
+from compliance_agent.entidades_gov import eh_nao_fornecedor as _eh_nao_fornecedor  # noqa: E402
 
 
 def top_anomalias(limite: int = 20, orgao: str | None = None, fornecedor: str | None = None,
