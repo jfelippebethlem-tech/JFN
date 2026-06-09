@@ -1041,16 +1041,19 @@ def parecer_fornecedor(ctx: dict) -> str:
     hhi = p["hhi"]
     top_share = hhi.get("top_share", 0)
     org_top = next(iter(p["por_orgao_geral"]), "—")
-    # crescimento
+    # crescimento — HONESTO: usa pico/base entre exercícios (o 1º e o último da série
+    # costumam ser parciais; comparar base→último parcial gera manchete distorcida).
     cresc_txt = ""
-    if len(p["anos"]) >= 2:
-        a0, a1 = p["anos"][0], p["anos"][-1]
-        t0 = p["por_ano"][a0]["total"] or 0
-        t1 = p["por_ano"][a1]["total"] or 0
-        if t0 > 0:
-            pct = (t1 - t0) / t0 * 100
-            cresc_txt = (f"Os pagamentos evoluíram de R$ {moeda(t0)} ({a0}) para R$ {moeda(t1)} ({a1}), "
-                         f"variação de {pct:+.0f}%. ")
+    anos_pos = [a for a in p["anos"] if (p["por_ano"][a]["total"] or 0) > 0]
+    if len(anos_pos) >= 2:
+        a_base = anos_pos[0]
+        t_base = p["por_ano"][a_base]["total"]
+        a_pico = max(anos_pos, key=lambda a: p["por_ano"][a]["total"])
+        t_pico = p["por_ano"][a_pico]["total"]
+        mult = _crescimento(p)
+        cresc_txt = (f"Os pagamentos saltaram de R$ {moeda(t_base)} ({a_base}) ao pico de R$ {moeda(t_pico)} "
+                     f"({a_pico}) — fator pico/base de {mult:.1f}× entre exercícios "
+                     "(o primeiro e o último ano da série podem ser parciais; usa-se o pico para evitar distorção). ")
     zeros = sum(1 for a in p["anos"] for ln in p["por_ano"][a]["linhas"] if ln["valor"] == 0)
 
     # 1) Mérito
@@ -1146,7 +1149,81 @@ def _red_flags(ctx: dict) -> list[tuple]:
             "indício clássico de fachada/laranja ou direcionamento — verificar QSA, sócios de fato e licitações comuns.",
             "Art. 337-F CP (frustração do caráter competitivo); art. 11 Lei 8.429/92; ACFE — shell company red flags.",
         ))
+
+    # Cadastral (perfil enriquecido) — base das RF-04/05
+    emp = (ctx.get("enriq", {}).get("dados") or {}).get("empresa") if ctx.get("enriq", {}).get("ok") else None
+
+    # RF-04 — Alteração de controle societário POSTERIOR a receita pública relevante.
+    # Conecta dois fatos que o relatório já tem (data de entrada no QSA × histórico de OBs):
+    # controle/administração que ingressa DEPOIS de a empresa já ter recebido vulto do Estado.
+    if emp and p["tem_dados"]:
+        entradas = [(s.get("data_entrada") or "") for s in (emp.get("socios") or [])]
+        entradas = [d for d in entradas if len(d) == 10 and d.count("-") == 2]
+        if entradas:
+            recente = max(entradas)
+            total_antes = n_antes = 0
+            for a in p["anos"]:
+                for ln in p["por_ano"][a]["linhas"]:
+                    d = ln.get("data") or ""
+                    if len(d) == 10 and d < recente:
+                        total_antes += ln.get("valor") or 0
+                        n_antes += 1
+            tg = p["total_geral"] or 0
+            share = (total_antes / tg * 100) if tg else 0
+            # só dispara com receita pré-existente materialmente relevante (sem falso-positivo)
+            if total_antes >= 1_000_000 and share >= 15:
+                nomes = [s.get("nome", "") for s in (emp.get("socios") or [])
+                         if (s.get("data_entrada") or "") == recente]
+                quem = ", ".join(n for n in nomes if n)[:90] or "sócio(s)"
+                out.append((
+                    "RF-04 — Controle societário alterado após receita pública relevante",
+                    f"Ingresso no quadro societário em **{recente}** ({quem}), **posterior** a R$ {moeda(total_antes)} "
+                    f"já pagos pelo Estado ({n_antes} OBs, {share:.0f}% do total do período). Mudança de "
+                    "controle/administração em fornecedor com receita pública pré-existente é indício a verificar: "
+                    "histórico de controle, eventual sucessão ou interposição de pessoas, e se a alteração coincide "
+                    "com escalada de contratos.",
+                    "Art. 14 Lei 14.133/2021 (idoneidade); art. 11 Lei 8.429/92; ACFE — change-of-control / nominee.",
+                ))
+
+    # RF-05 — Possível divergência entre atividade-fim (CNAE) e objeto contratado.
+    # Conservador: só dispara quando NÃO há sobreposição de termos significativos (≥4 letras,
+    # fora do boilerplate de licitação) entre o CNAE principal e o objeto REAL dos contratos.
+    # IMPORTANTE: o campo `contratos.objeto` do SIAFE guarda só "Aditivos: N" (não é o objeto);
+    # o objeto verdadeiro vem do TCE-RJ (Dados Abertos) em `tcerj_itens`.
+    if emp:
+        objs_reais = [(i.get("objeto") or "").strip() for i in (ctx.get("tcerj_itens") or [])]
+        objs_reais = [o for o in objs_reais if len(o) >= 12]
+        cnae = emp.get("cnae_principal") or ""
+        tc = _termos_significativos(cnae)
+        to_ = _termos_significativos(" ".join(objs_reais))
+        if cnae and objs_reais and tc and to_ and not (tc & to_):
+            amostra = objs_reais[0][:70]
+            out.append((
+                "RF-05 — Atividade-fim (CNAE) sem aderência ao objeto contratado",
+                f"O CNAE principal registrado (“{cnae}”) não evidencia aderência ao objeto efetivamente "
+                f"contratado (ex.: “{amostra}…”). Atividade econômica de registro incompatível com o objeto "
+                "contratado é indício a verificar (adequação do CNAE, pós-fixação de objeto, ou empresa de "
+                "prateleira/fachada habilitada para fim diverso).",
+                "Art. 37 CF/88 (impessoalidade); Lei 14.133/2021 arts. 62-63 (qualificação técnica); "
+                "ACFE — shell company red flags.",
+            ))
     return out
+
+
+# Boilerplate de licitação que NÃO distingue setor (não conta como aderência de objeto×CNAE).
+_BOILERPLATE = {
+    "contratacao", "contratação", "prestacao", "prestação", "servico", "serviço", "servicos",
+    "serviços", "empresa", "pessoa", "juridica", "jurídica", "especializada", "especializado",
+    "atividade", "atividades", "outros", "outras", "demais", "fornecimento", "objeto", "trata",
+    "presente", "carater", "caráter", "para", "pela", "pelo", "continuado", "continuada",
+    "continuos", "contínuos", "diversos", "geral", "comum", "execucao", "execução",
+}
+
+
+def _termos_significativos(texto: str) -> set:
+    """Tokens ≥4 letras, fora do boilerplate de licitação — base da aderência CNAE×objeto."""
+    return {t for t in re.findall(r"[a-zà-úãõâêôçáéíóú]{4,}", (texto or "").lower())
+            if t not in _BOILERPLATE}
 
 
 # ───────────────────────────── render PDF (fpdf2) ─────────────────────────────
@@ -1479,6 +1556,11 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         flags.append(f"🟡 Crescimento de faturamento atípico (pico/base = {_crescimento(p):.1f}×) — verificar capacidade operacional vs. salto de receita pública.")
     if coend:
         flags.append("🟡 Empresa(s) no mesmo endereço — possível fachada/cartel (Art. 90 Lei 8.666/Art. 337-F CP).")
+    # RF-04/05 (controle societário · CNAE×objeto): fonte ÚNICA em _red_flags(ctx) p/ MD e PDF concordarem.
+    for _tit, _desc, _f in _red_flags(ctx):
+        if _tit.startswith(("RF-04", "RF-05")):
+            _resumo = _desc.split(". ")[0].replace("**", "")
+            flags.append("🟡 " + esc(_tit.split("—", 1)[-1].strip()) + ": " + esc(_resumo) + ".")
     if not flags:
         flags.append("🟢 Sem red flags estruturais automáticos nesta triagem (não exclui exame manual).")
     nota_cal = (f"<p class='nota'>Risco JFN recalibrado: <b>{esc(ctx.get('risco'))}</b> (score {ctx.get('score')}/100 = "
