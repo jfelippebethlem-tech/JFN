@@ -206,6 +206,34 @@ WAL **130M** (cron dom 03:00 faz checkpoint/VACUUM) · **sem necessidade de libe
 **SIAFE 2 ✓ supervisionado** (pid do supervisor vivo, auto-cura) · **SEI ✓ relançado** (`--max 12`, resumível,
 checkpoint 15+ feitos).
 
+### Sessão 2026-06-09 (continuação 2 — /orgao: /UG, busca inteligente, Lex de órgão)
+**Tema:** o dono apontou que o /orgao do TJRJ veio com "poucas OBs" e que o **Lex não estava wired no /orgao**
+(o /orgao não "pensava" como o /relatorio). Loop de 3 frentes (planejado, adaptado, testado).
+**Feito:**
+- **A — comando /UG** (`listar_ugs` + `GET /api/ugs` + capability + menu): catálogo das 151 UGs (código+nome
+  canônico+nº OBs+total), filtro **acento-insensível**. O Mestre Jorge vê os códigos/nomes e pede o /orgao certo.
+- **B — busca de órgão automática** (`buscar_orgaos` reescrito): **acento-insensível** (corrige `Justiça`≠`Justica`
+  — com cedilha o Fundo 036100 sumia), **token-AND** ignorando genéricos (de/estado/rio/janeiro), **mapa de
+  SIGLAS** (SEEDUC→educação, SEFAZ, TJRJ, CBMERJ, PCERJ…), e **sugestões** quando não há match (montar confirma,
+  não chuta). Verificado vivo: `/orgao seeduc` → Educação 180100 (R$ 6,97 bi) + Degase. **Sem consolidar UGs**
+  (decisão do dono: TJRJ e Fundo Especial ficam separados; o usuário escolhe o código).
+- **C — Lex wired no /orgao** (`lex.gerar_orgao`): o /orgao emite o **3º documento = Parecer Lex de ÓRGÃO**
+  (grau 🟢🟡🔴), como o fornecedor. Achados de NÍVEL ÓRGÃO das OBs já consolidadas: **R8** concentração/captura
+  (top_share≥30/50/60), **R2** recorrência de valor idêntico, **R10** estornos/OB R$0 — mesmos red flags/
+  fundamentos do controle externo, `_grau` por convergência, matriz P×I, encaminhamento. `render_pdf` ficou
+  org-aware (mostra UG, aceita `md=`). `montar()`→`path_lex`+`grau_lex`; capability `enviar_telegram=[pdf,xlsx,lex]`.
+  Verificado: **ITERJ → VERMELHO** (R8 61,2% Enge Prat + R2 + R10), header UG, glifos limpos.
+- **Bônus:** `_render_parecer_pdf` passou a tratar `## `/`# ` como cabeçalho (antes saíam **`##` LITERAIS** no PDF)
+  — melhora **fornecedor E órgão** (MGS: 0 `##`, sem regressão AMARELO/69).
+**ERROS/LIÇÕES:** (1) **bug do auto-pkill DE NOVO** — `pkill -f "tools.sei_sweep"` se automatou (o padrão estava no
+próprio comando, exit 144); a correção é **colchete** (`pkill -f "tools[.]sei_sweep"`) ou matar por PID. Reforça §8.
+(2) a lista de gaps da doc envelhece: o /orgao "errado" do TJRJ era, na verdade, o Tribunal (030100) sem o Fundo
+Especial (036100) — busca acento-sensível; não era dado faltando. (3) planejar ANTES de codar (o dono lembrou):
+fechei o plano A/B/C e o escopo (não consolidar) antes de seguir.
+**Commits-chave:** `6c3f4d6` (/UG + busca) · `697d649` (Lex de órgão + headers). + `e7d7241` (sei_supervisor).
+**Recursos (fim):** ver checagem ao encerrar; suíte **299** (1 teste de menu ajustado 14→16 pelo novo /ug);
+sweeps retomados (SIAFE 2 + SEI supervisionados; flags `.pause_*` removidas).
+
 ## 11. ⏯️ RETOMADA — INSTRUÇÕES PERMANENTES (ler ANTES de continuar, sessão nova)
 **Branch `feat/lista-limpa` (não pushado, tudo commitado). Serviço/sweeps vivos.** O dono pediu para continuar
 com TODAS estas instruções:
