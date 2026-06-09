@@ -52,13 +52,30 @@ Mitigação atual: guard `_eh_interface_sei` mantém o parecer honesto ("não li
 - Lex offline (onda2/onda5): 3 passed com as mudanças. direcionamento: 6 passed. Rodar:
   `PYTHONPATH=. .venv/bin/pytest tests/test_jfn2_onda5.py -k "lex or sei" -p no:cacheprovider`.
 
-## 🔜 PRÓXIMOS LOOPS (planejados)
-- **Loop 2:** coletor SEI → inteiro teor (desbloqueia onde/por quê do Lex). Verificar com parecer real.
-- **Loop 3:** Massare "sistema pensante" (previsões com raciocínio + OOS honesto) — avaliar `/api/massare/*`.
-- **Loop 4:** fluidez/rapidez — latência do `/relatorio` (hoje 60-90s; o LLM discursivo é bounded+cacheável).
-- **Loop 5:** estética/ruído + wiring (integração Yoda↔JFN sem fricção); revisar `/skills`, mensagens, PDFs.
-- A CADA loop: codegraph/graphify p/ navegar; backtest; pesquisar best practices (Kroll/Deloitte como bench);
-  checkpoint + commit + atualizar `docs/LOOP-MELHORIA-2026-06-09.md` com erros & acertos.
+## ✅ 5 LOOPS EXECUTADOS (2026-06-09) — detalhe em `docs/LOOP-MELHORIA-2026-06-09.md`
+- **L1:** /lista curado · OBs enxutas · LLM robusto (9 chaves) · Lex discursivo · wiring SIAFE (Yoda retorna números).
+- **L2:** frescor/cobertura no topo dos relatórios (verificado).
+- **L3:** encaminhamento por severidade no parecer (acionável; grav≥3→requerimento/representação).
+- **L4:** wiring `/api/cartel` GET+POST (Yoda chutava método→405) — verificado end-to-end (Yoda retorna análise).
+- **L5:** avaliação Massare + backtest final (161 passed; corrigido o teste que forçava o /lista poluído).
+- Autonomia dada pelo dono: religar/ajustar à vontade; "fazer melhorias em tudo, inclusive Hermes/Yoda".
+
+## 🔜 2 FIXES PROFUNDOS p/ SESSÃO NOVA (orçamento cheio + teste ao vivo) — alto valor
+1. **Coletor SEI → inteiro teor** (`collectors/sei_cdp.py::ler_processo_sei_via_chrome`): hoje fica na
+   CAIXA/desktop (cache: `n documentos:0`, `relacionados:40`, `cadeado:False`). Navegar: pesquisar nº →
+   abrir processo → `ifrArvore` → iterar docs → `ifrVisualizacao` → extrair. **Desbloqueia o "onde/por quê"
+   do Lex** (a análise discursiva e o guard já estão prontos esperando o input real). Testar AO VIVO (Chrome
+   9222 itkava) com SEI-070002/004332/2024 até `n documentos>0`.
+2. **Scorer OOS do Massare**: 44 previsões PENDENTES, 0 resolvidas, hit_rate=null (`/api/massare/placar`).
+   Rodar/agendar a cobrança contra o realizado (`massare/validation.py`/`learning.db`) → track record honesto.
+**Padrão comum dos dois:** a estrutura existe, falta FECHAR O CICLO (Lex lê mas não chega ao doc; Massare
+prevê mas não cobra). Esse é o tema do "sistema pensante" — execução do último elo.
+
+## TODO menores (loops futuros)
+- Yoda usa `terminal`+`curl` e chuta o método HTTP → ou aceitar GET+POST nas rotas GET sensíveis, ou dar ao
+  gateway um executor HTTP que respeite o `metodo` do contrato (TODO gateway `~/hermes-agent`).
+- "o que você faz?" no Yoda devolve o menu do gateway, não o `/lista` curado — surfaçar o /lista direto.
+- Latência do /relatorio (60-90s): LLM discursivo é bounded+cacheável (cache não portado nesta branch).
 
 ## ⚠️ NÃO REPETIR (erros desta sessão)
 - Não reiniciar `jfn.service` enquanto o dono usa (interrompe a entrega no Telegram).
