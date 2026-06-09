@@ -125,8 +125,47 @@ def _salvar_cadeia_no_cache(proc: str, cadeia: list):
         pass
 
 
+async def _ficha_e_storage(proc: str):
+    """Extrai a FICHA (cascata gemini-lite→stepfun:free) do conteúdo REAL e guarda SÓ a ficha no cache,
+    DESCARTANDO o `texto` (menu lateral do SEI = lixo de ~12k chars). Storage: ~3-7× menor, sem perda útil.
+    Retorna (n_chars_antes, n_chars_depois, modelo) ou None."""
+    from tools.sei_ficha import conteudo_real, extrair_ficha, MODELO_BARATO
+    cf = CACHE / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json"
+    if not cf.exists():
+        return None
+    try:
+        d = json.loads(cf.read_text(encoding="utf-8"))
+        antes = len(cf.read_text(encoding="utf-8"))
+        cont = conteudo_real(d)
+        if len(cont) < 150:
+            return None
+        f = await extrair_ficha(cont, MODELO_BARATO, provider="gemini")
+        modelo = MODELO_BARATO
+        if f.get("_erro"):  # gemini saturou (429) → cai pro nous grátis/ilimitado
+            f = await extrair_ficha(cont, "stepfun/step-3.7-flash:free", provider="nous")
+            modelo = "stepfun:free"
+        if f.get("_erro"):
+            return None
+        d["ficha"] = f
+        d["texto"] = (d.get("texto") or "")[:200]   # descarta o menu lixo; mantém só uma amostra
+        # STORAGE: com a ficha (relevante) em mãos, trima o conteúdo cru — guarda só um EXCERTO de cada
+        # doc (traçabilidade), não o texto inteiro. A ficha é a fonte queryável; o excerto aponta a origem.
+        for c in (d.get("conteudo_documentos") or []):
+            if isinstance(c, dict) and c.get("conteudo"):
+                c["conteudo"] = c["conteudo"][:400]
+                c["_trimado"] = True
+        for rel in (d.get("cadeia") or []):
+            if rel.get("texto"):
+                rel["texto"] = rel["texto"][:400]
+        d["_ficha_modelo"] = modelo
+        cf.write_text(json.dumps(d, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+        return (antes, len(cf.read_text(encoding="utf-8")), modelo)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
-              seguir_arvore: bool = True, max_rel_arvore: int = 3):
+              seguir_arvore: bool = True, max_rel_arvore: int = 3, fazer_ficha: bool = True):
     from compliance_agent.envfile import carregar_env
     carregar_env()
     from compliance_agent.recursos import browser_lock_async, aguardar_load_async
@@ -196,6 +235,13 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                 nd_arv = sum(c.get("n_docs", 0) for c in cadeia)
                 if cadeia:
                     _salvar_cadeia_no_cache(proc, cadeia)  # Lex passa a enxergar a árvore
+                # FICHA + STORAGE: extrai só o relevante e descarta o `texto` (menu lixo de ~12k chars).
+                ficha_info = None
+                if fazer_ficha and (nd or nd_arv):
+                    try:
+                        ficha_info = await _ficha_e_storage(proc)
+                    except Exception:  # noqa: BLE001
+                        ficha_info = None
                 _f = prog["feitos"].get(proc, {})
                 prog["feitos"][proc] = {"n_docs": nd, "tentativas": _f.get("tentativas", 0) + 1,
                                         "rel": len(rel), "arvore_docs": nd_arv, "arvore_n": len(cadeia),
@@ -206,7 +252,11 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                 else:
                     n_zero += 1
                 _arv = f" +árvore {len(cadeia)} proc/{nd_arv} docs" if cadeia else ""
-                _log(f"  [{i}/{len(fila)}] {proc} → {nd} docs{_arv} (R$ {tot:,.0f}, {nob} OBs) {time.time()-t0:.0f}s")
+                _fic = ""
+                if ficha_info:
+                    a, dp, mdl = ficha_info
+                    _fic = f" · ficha[{mdl}] {a}→{dp}ch ({a / max(dp, 1):.0f}× menor)"
+                _log(f"  [{i}/{len(fila)}] {proc} → {nd} docs{_arv}{_fic} (R$ {tot:,.0f}, {nob} OBs) {time.time()-t0:.0f}s")
         finally:
             await b.close()
     _log(f"FIM: {n_ok} com docs ({n_doc_total} docs), {n_zero} sem (fora de escopo/vazio). "
@@ -219,8 +269,10 @@ def main():
     ap.add_argument("--ug", type=str, default=None)
     ap.add_argument("--sem-arvore", action="store_true", help="NÃO seguir os relacionados (só o processo)")
     ap.add_argument("--max-rel", type=int, default=3, help="máx. de relacionados a seguir por processo")
+    ap.add_argument("--sem-ficha", action="store_true", help="NÃO extrair ficha/storage (só ler+cachear cru)")
     a = ap.parse_args()
-    asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel))
+    asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel,
+                    fazer_ficha=not a.sem_ficha))
 
 
 if __name__ == "__main__":
