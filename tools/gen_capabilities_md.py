@@ -41,12 +41,23 @@ def gerar() -> dict:
 
     # 2) snippet enxuto p/ system prompt (só PRONTO)
     plinhas = ["FERRAMENTAS DISPONÍVEIS (chame SÓ estas pelo id; se não houver ferramenta para o pedido, "
-               "diga honestamente que não tem):"]
+               "diga honestamente que não tem).",
+               "COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a rota entre "
+               "[colchetes]. GET → curl -s 'http://127.0.0.1:8000<rota>?param=valor'. POST → "
+               "curl -s -X POST 'http://127.0.0.1:8000<rota>' -H 'Content-Type: application/json' -d '{\"param\":\"valor\"}'. "
+               "NUNCA use POST numa rota marcada [GET ...] (dá 405).",
+               ""]
     for c in caps:
         if c.get("status") != "PRONTO":
             continue
         args = ",".join((c.get("args") or {}).keys())
-        plinhas.append(f"- {c['id']}({args}) — {c.get('quando_usar','')}")
+        if c.get("tipo") == "http" and c.get("rota"):
+            chamada = f"[{c.get('metodo', 'GET')} {c['rota']}]"
+        elif c.get("comando"):
+            chamada = f"[cli: {c['comando']}]"
+        else:
+            chamada = ""
+        plinhas.append(f"- {c['id']}({args}) {chamada} — {c.get('quando_usar', '')}")
     _PROMPT.write_text("\n".join(plinhas) + "\n", encoding="utf-8")
 
     return {"md": str(_MD), "prompt": str(_PROMPT),

@@ -46,6 +46,11 @@ def _tool_spec(cap: dict) -> dict:
     descricao = cap.get("descricao", "")
     if cap.get("quando_usar"):
         descricao += f" — usar quando: {cap['quando_usar']}"
+    # COMO CHAMAR (o gateway monta curl via LLM; sem isto ele chuta o método → 405). Ex.: [GET /api/cartel].
+    if cap.get("tipo") == "http" and cap.get("rota"):
+        descricao += f" — chamar: {cap.get('metodo', 'GET')} {cap['rota']} (base http://127.0.0.1:8000)"
+    elif cap.get("comando"):
+        descricao += f" — chamar (cli): {cap['comando']}"
     return {
         "type": "function",
         "function": {
