@@ -30,13 +30,26 @@ MODELO_MELHOR = "gemini-2.5-flash"        # melhor
 
 _SIST = ("Você é analista de auditoria de contratação pública (controle externo, TCE-RJ). "
          "Extraia do texto de um processo SEI-RJ APENAS o que importa para auditoria. "
-         "Seja conciso e factual; NUNCA invente. Responda SOMENTE com JSON válido, sem ```.")
+         "REGRAS: (1) factual — NUNCA invente; campo sem dado no texto = \"\" ou []. "
+         "(2) CONCISO — 'resumo' no MÁXIMO 2 frases; sem repetir. "
+         "(3) Responda SOMENTE o objeto JSON (começa com { e termina com }), SEM texto antes/depois, SEM ```.")
 
-_CAMPOS = ('{"objeto": "o que se contrata (1 frase)", "modalidade": "pregão/dispensa/inexigibilidade/... ou \\"\\"", '
+_CAMPOS = ('{"objeto": "o que se contrata (1 frase)", "modalidade": "pregão/dispensa/inexigibilidade/adesão a ata/... ou \\"\\"", '
            '"fundamento_legal": "artigo/lei citados ou \\"\\"", "valores": ["R$ ..."], "cnpjs": ["..."], '
            '"partes": ["órgãos/empresas"], "datas": ["..."], '
            '"red_flags": ["indícios a verificar, se houver"], '
-           '"relevante": true, "resumo": "2-3 frases do que importa p/ auditoria"}')
+           '"relevante": true, "resumo": "1-2 frases do que importa p/ auditoria"}')
+
+# FEW-SHOT: 1 exemplo input→ficha ideal "ensina" o modelo fraco (formato + profundidade esperada).
+_EXEMPLO_TXT = ("Trata-se de adesão à ata de registro de preços do Pregão Eletrônico 045/2021 da Fundação Saúde "
+                "do ERJ para aquisição de cateter venoso central, demanda da Diretoria-Geral de Saúde do CBMERJ, "
+                "valor estimado R$ 17.156,00. Fornecedor: MEDLINE COMERCIAL LTDA, CNPJ 12.345.678/0001-90.")
+_EXEMPLO_FICHA = ('{"objeto": "Aquisição de cateter venoso central (insumo de saúde) p/ a Diretoria-Geral de Saúde do CBMERJ", '
+                  '"modalidade": "adesão a ata de registro de preços (Pregão 045/2021)", "fundamento_legal": "", '
+                  '"valores": ["R$ 17.156,00"], "cnpjs": ["12.345.678/0001-90"], '
+                  '"partes": ["CBMERJ", "Fundação Saúde do ERJ", "MEDLINE COMERCIAL LTDA"], "datas": [], '
+                  '"red_flags": ["adesão a ata de outro órgão — verificar vantajosidade (art. 86 Lei 14.133)"], '
+                  '"relevante": true, "resumo": "Adesão a ata de RP p/ cateter ao CBMERJ, R$ 17.156,00. Verificar vantajosidade da carona."}')
 
 
 def _carregar_env_completo():
@@ -50,9 +63,16 @@ def _carregar_env_completo():
                 os.environ.setdefault(k.strip(), v.strip())
 
 
+# Tamanho do trecho enviado ao LLM. Payloads grandes (>~5k) fazem o GATEWAY do nous cortar (502/503 =
+# timeout upstream, NÃO o servidor caindo). 3500 cobre o essencial (objeto/valores/partes estão no começo).
+_MAX_TXT = int(os.environ.get("SEI_FICHA_MAX_TXT", "3500"))
+
+
 def _prompt(texto: str) -> list[dict]:
-    p = (f"Texto do processo SEI (pode estar truncado):\n\n{(texto or '')[:8000]}\n\n"
-         f"Extraia em JSON exatamente neste formato:\n{_CAMPOS}")
+    # ENSINAR (few-shot): mostra 1 par TEXTO→FICHA ideal antes de pedir o real. Vira o jogo p/ modelo fraco.
+    p = (f"Formato da FICHA (JSON):\n{_CAMPOS}\n\n"
+         f"=== EXEMPLO ===\nTEXTO:\n{_EXEMPLO_TXT}\nFICHA:\n{_EXEMPLO_FICHA}\n\n"
+         f"=== AGORA (mesmo formato) ===\nTEXTO:\n{(texto or '')[:_MAX_TXT]}\nFICHA:")
     return [{"role": "system", "content": _SIST}, {"role": "user", "content": p}]
 
 
@@ -73,20 +93,40 @@ async def _chamar_nous(texto: str, model: str) -> str:
     if not tok:
         raise RuntimeError("sem access_token nous (auth.json)")
     async with httpx.AsyncClient(timeout=200) as c:  # nous é lento; "lento tá ok" se a qualidade segura
+        # PARAMETRIZAR: stepfun/nemotron são modelos de RACIOCÍNIO — gastam tokens no campo `reasoning`
+        # ANTES do `content`. max_tokens ALTO (4000) p/ caber raciocínio + JSON; cap baixo deixa content=null
+        # (finish_reason 'length'). top_p conservador, temperatura baixa (extração factual).
         r = await c.post(f"{base}/chat/completions",
                          headers={"Authorization": f"Bearer {tok}"},
-                         json={"model": model, "messages": _prompt(texto), "temperature": 0.1})
+                         json={"model": model, "messages": _prompt(texto), "temperature": 0.1,
+                               "max_tokens": 4000, "top_p": 0.9})
         if r.status_code == 401:
             raise RuntimeError("401 token nous expirado (rode `hermes` p/ re-auth)")
         r.raise_for_status()
-        return (r.json().get("choices") or [{}])[0].get("message", {}).get("content", "")
+        msg = (r.json().get("choices") or [{}])[0].get("message", {}) or {}
+        # content é o normal; se vier vazio (modelo de raciocínio cortado), o JSON pode estar no reasoning.
+        return msg.get("content") or msg.get("reasoning") or ""
 
 
 async def extrair_ficha(texto: str, model: str, provider: str = "gemini") -> dict:
-    """Extrai a ficha compacta. provider: 'gemini' (gerar_gemini) ou 'nous' (OpenAI-compat). {'_erro'} em falha."""
+    """Extrai a ficha compacta. provider: 'gemini' (gerar_gemini) ou 'nous' (OpenAI-compat). {'_erro'} em falha.
+    No nous, RETENTA erros transientes do servidor (502/503/timeout) — a infra deles oscila."""
+    raw = None
     try:
         if provider == "nous":
-            raw = await _chamar_nous(texto, model)
+            ult = None
+            for _try in range(3):
+                try:
+                    raw = await _chamar_nous(texto, model)
+                    break
+                except Exception as e:  # noqa: BLE001
+                    ult = e
+                    if any(s in str(e) for s in ("502", "503", "Timeout", "ReadTimeout")):
+                        await asyncio.sleep(3)  # transiente → retenta
+                        continue
+                    raise
+            if raw is None:
+                raise ult or RuntimeError("nous falhou")
         else:
             from compliance_agent.direcionamento_cerebro import gerar_gemini
             raw = await gerar_gemini(_prompt(texto), model=model)
@@ -113,6 +153,26 @@ def conteudo_real(d: dict) -> str:
         if rel.get("texto") and len(rel["texto"]) > 40:
             partes.append("[RELACIONADO] " + rel["texto"])
     return "\n\n---\n\n".join(partes)
+
+
+STEPFUN = "stepfun/step-3.7-flash:free"
+
+
+async def extrair_ficha_producao(texto: str, preferir_gratis: bool = True) -> tuple[dict, str]:
+    """Extrator de PRODUÇÃO. preferir_gratis=True (diretriz do dono): usa o nous stepfun:free (100% grátis,
+    sem limite, qualidade comprovada) — mesmo mais lento — e SÓ cai pro gemini-lite se o nous estiver fora
+    (502/503 após retry). Retorna (ficha, modelo_usado)."""
+    if preferir_gratis:
+        f = await extrair_ficha(texto, STEPFUN, provider="nous")
+        if not f.get("_erro"):
+            return f, "stepfun:free"
+        f = await extrair_ficha(texto, MODELO_BARATO, provider="gemini")
+        return f, MODELO_BARATO + " (fallback)"
+    f = await extrair_ficha(texto, MODELO_BARATO, provider="gemini")
+    if not f.get("_erro"):
+        return f, MODELO_BARATO
+    f = await extrair_ficha(texto, STEPFUN, provider="nous")
+    return f, "stepfun:free (fallback)"
 
 
 def _cached(n: int) -> list[tuple]:
@@ -142,9 +202,8 @@ def _resumo_ficha(f: dict) -> str:
 # (tag, model, provider). nous *:free = 100% grátis/sem limite (catálogo nousresearch);
 # gemini = a "melhor" de referência (free-tier com limites).
 _MODELOS = [
-    ("stepfun", "stepfun/step-3.7-flash:free", "nous"),     # nous 100% grátis/sem limite (lento ~40-60s)
-    ("g-lite", MODELO_BARATO, "gemini"),                    # gemini free-tier (rápido, mas rate-limit 429)
-    ("g-flash", MODELO_MELHOR, "gemini"),                   # gemini "melhor" de referência
+    ("stepfun", "stepfun/step-3.7-flash:free", "nous"),     # nous 100% grátis/sem limite — ENSINADO+PARAMETRIZADO
+    ("g-lite", MODELO_BARATO, "gemini"),                    # gemini free-tier de referência de qualidade
 ]
 
 
