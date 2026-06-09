@@ -99,6 +99,46 @@ async def _extrair_de_todos_frames(pg) -> dict:
             "texto": "\n\n".join(textos)[:20000]}
 
 
+async def seguir_relacionados(pg, proc_url: str, relacionados: list, max_rel: int = 5) -> list[dict]:
+    """Abre cada processo RELACIONADO (na MESMA sessão, URL viva) e extrai a árvore. Reusado pelo
+    ler_com_cadeia E pelo sweep — o processo de pagamento aponta p/ a licitação/contrato (a substância
+    vive no relacionado). Dedup por id_procedimento; pula o próprio processo. Honesto: erro por relacionado."""
+    vistos: set = set()
+    alvos: list = []
+    for r in (relacionados or []):
+        url = r.get("url") or ""
+        pid = _id_proc(url)
+        if pid and pid not in vistos and f"id_procedimento={pid}" not in (proc_url or ""):
+            vistos.add(pid)
+            alvos.append((pid, url, r.get("titulo") or r.get("texto") or ""))
+        if len(alvos) >= max_rel:
+            break
+    cadeia: list = []
+    for pid, url, titulo in alvos:
+        try:
+            await pg.goto(url, wait_until="domcontentloaded", timeout=25000)
+            try:
+                await pg.wait_for_load_state("networkidle", timeout=15000)
+            except Exception:
+                pass
+            for _ in range(8):  # espera ATIVA a árvore (ifrArvore) carregar
+                await pg.wait_for_timeout(1500)
+                if any("arvore" in (fr.url or "").lower() for fr in pg.frames):
+                    await pg.wait_for_timeout(1500)
+                    break
+            dump = await _extrair_de_todos_frames(pg)
+            txt = dump.get("texto", "")
+            cadeia.append({
+                "id_procedimento": pid, "titulo_rel": titulo[:80], "url": url[:90],
+                "n_docs": len(dump.get("documentos", [])), "n_texto": len(txt),
+                "eh_licitacao": eh_licitacao(txt),
+                "documentos": dump.get("documentos", [])[:30], "texto": txt,
+            })
+        except Exception as e:  # noqa: BLE001
+            cadeia.append({"id_procedimento": pid, "erro": str(e)[:100]})
+    return cadeia
+
+
 async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     """Busca o processo na pesquisa autenticada, abre e extrai a íntegra (árvore + docs). Grava cdp_*.json."""
     import json as _json
@@ -278,36 +318,9 @@ async def ler_com_cadeia(numero: str, *, max_rel: int = 5, tentativas_login: int
                     await pg.wait_for_timeout(2000)
                 out["processo"] = {k: proc.get(k) for k in ("numero", "url", "documentos", "relacionados",
                                                              "cnpjs", "valores", "motivo_zero")}
-                # relacionados ÚNICOS por id_procedimento (URLs vivas desta sessão)
-                vistos, alvos = set(), []
-                for r in (proc.get("relacionados") or []):
-                    url = r.get("url") or ""
-                    pid = _id_proc(url)
-                    if pid and pid not in vistos and f"id_procedimento={pid}" not in (proc.get("url") or ""):
-                        vistos.add(pid); alvos.append((pid, url, r.get("titulo") or r.get("texto") or ""))
-                    if len(alvos) >= max_rel:
-                        break
-                for pid, url, titulo in alvos:
-                    try:
-                        await pg.goto(url, wait_until="domcontentloaded", timeout=25000)
-                        try: await pg.wait_for_load_state("networkidle", timeout=15000)
-                        except Exception: pass
-                        # espera ATIVA a árvore (ifrArvore) carregar — senão extrai só o cabeçalho
-                        for _ in range(8):
-                            await pg.wait_for_timeout(1500)
-                            if any("arvore" in (fr.url or "").lower() for fr in pg.frames):
-                                await pg.wait_for_timeout(1500); break
-                        dump = await _extrair_de_todos_frames(pg)
-                        txt = dump.get("texto", "")
-                        out["cadeia"].append({
-                            "id_procedimento": pid, "titulo_rel": titulo[:80], "url": url[:90],
-                            "n_docs": len(dump.get("documentos", [])), "n_texto": len(txt),
-                            "eh_licitacao": eh_licitacao(txt),
-                            "documentos": dump.get("documentos", [])[:30],
-                            "texto": txt,
-                        })
-                    except Exception as e:  # noqa: BLE001
-                        out["cadeia"].append({"id_procedimento": pid, "erro": str(e)[:100]})
+                # segue a ÁRVORE de relacionados (função compartilhada com o sweep)
+                out["cadeia"] = await seguir_relacionados(pg, proc.get("url") or "",
+                                                          proc.get("relacionados") or [], max_rel=max_rel)
                 return out
             finally:
                 await b.close()

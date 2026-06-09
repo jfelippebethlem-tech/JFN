@@ -113,12 +113,25 @@ def _ja_lido_ok(proc: str) -> bool:
     return False
 
 
-async def run(max_n: int, ug: str | None, tentativas_login: int = 20):
+def _salvar_cadeia_no_cache(proc: str, cadeia: list):
+    """Anexa a cadeia (relacionados lidos) ao cache cdp_*.json do processo — o Lex passa a ver a árvore."""
+    cf = CACHE / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json"
+    try:
+        d = json.loads(cf.read_text(encoding="utf-8")) if cf.exists() else {"numero": proc}
+        d["cadeia"] = cadeia
+        d["_cached_at"] = datetime.now().isoformat()
+        cf.write_text(json.dumps(d, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
+    except Exception:
+        pass
+
+
+async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
+              seguir_arvore: bool = True, max_rel_arvore: int = 3):
     from compliance_agent.envfile import carregar_env
     carregar_env()
     from compliance_agent.recursos import browser_lock_async, aguardar_load_async
     from compliance_agent.collectors.sei_cdp import _proxy_do_env
-    from tools.sei_reader import login, ler_processo
+    from tools.sei_reader import login, ler_processo, seguir_relacionados
     from playwright.async_api import async_playwright
 
     prog = _carregar_prog()
@@ -171,16 +184,29 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20):
                 except Exception as e:  # noqa: BLE001
                     _log(f"  [{i}/{len(fila)}] {proc} ERRO {type(e).__name__}: {str(e)[:60]}")
                     continue
+                # SEI-2: segue a ÁRVORE de relacionados (o processo de pagamento tem pouco; a licitação/
+                # contrato relacionado tem a substância). Guarda 1<=N<=15 evita a CAIXA (~40 inbox).
+                rel = r.get("relacionados") or []
+                cadeia = []
+                if seguir_arvore and 1 <= len(rel) <= 15:
+                    try:
+                        cadeia = await seguir_relacionados(pg, r.get("url") or "", rel, max_rel=max_rel_arvore)
+                    except Exception:  # noqa: BLE001
+                        cadeia = []
+                nd_arv = sum(c.get("n_docs", 0) for c in cadeia)
+                if cadeia:
+                    _salvar_cadeia_no_cache(proc, cadeia)  # Lex passa a enxergar a árvore
                 _f = prog["feitos"].get(proc, {})
                 prog["feitos"][proc] = {"n_docs": nd, "tentativas": _f.get("tentativas", 0) + 1,
-                                        "rel": len(r.get("relacionados") or []),
+                                        "rel": len(rel), "arvore_docs": nd_arv, "arvore_n": len(cadeia),
                                         "em": datetime.now().isoformat(timespec="seconds")}
                 _salvar_prog(prog)
-                if nd:
-                    n_ok += 1; n_doc_total += nd
+                if nd or nd_arv:
+                    n_ok += 1; n_doc_total += nd + nd_arv
                 else:
                     n_zero += 1
-                _log(f"  [{i}/{len(fila)}] {proc} → {nd} docs (R$ {tot:,.0f}, {nob} OBs) {time.time()-t0:.0f}s")
+                _arv = f" +árvore {len(cadeia)} proc/{nd_arv} docs" if cadeia else ""
+                _log(f"  [{i}/{len(fila)}] {proc} → {nd} docs{_arv} (R$ {tot:,.0f}, {nob} OBs) {time.time()-t0:.0f}s")
         finally:
             await b.close()
     _log(f"FIM: {n_ok} com docs ({n_doc_total} docs), {n_zero} sem (fora de escopo/vazio). "
@@ -191,8 +217,10 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--max", type=int, default=30)
     ap.add_argument("--ug", type=str, default=None)
+    ap.add_argument("--sem-arvore", action="store_true", help="NÃO seguir os relacionados (só o processo)")
+    ap.add_argument("--max-rel", type=int, default=3, help="máx. de relacionados a seguir por processo")
     a = ap.parse_args()
-    asyncio.run(run(a.max, a.ug))
+    asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel))
 
 
 if __name__ == "__main__":
