@@ -239,6 +239,18 @@ grava `backtest.json` estável + `resumo_overall()`. **Verificado END-TO-END** (
 **Aprendizado:** o lint paga bugs (Loop 6: 3 NameError; Loop 13: duplicata silenciosa) — mas é preciso LER cada
 um: a maioria dos F841 era código morto inócuo, não bug. Honestidade vale também na triagem do lint.
 
+## ✅ Loop 14 — Lex: R6 troca de controle + helper compartilhado (DRY)
+**Entrega (commit 77de9c6):** espelha o RF-04 do /relatorio no Lex (achado **R6** — controle alterado após
+receita pública = sucessão/interposição/laranja). Extraí o helper PURO `troca_controle_societaria(emp,
+pagamentos)` em inteligencia.py; RF-04 e R6 o reusam (DRY, sem circular). 4 testes (dispara/não-dispara nos
+dois produtos). **Aprendizado:** sinal forte atravessa os produtos via **helper compartilhado**, não cópia.
+
+## ✅ Loop 15 — Gate de lint no pre-commit (best-effort)
+**Entrega (commit 352f2e7):** `tools/precommit_ruff.sh` (versionado) roda ruff só nos `.py` STAGED e avisa
+sobre lint novo (não bloqueia; ignora `_SANDBOX/`, `tools/debug/`). Ligado ao hook local. Playbook §6 documenta.
+Evita lint novo nos arquivos tocados sem brigar com o baseline (39). **Aprendizado:** gate por arquivos-staged
+≠ gate global — ratcheta sem brigar com o legado.
+
 ## 🏁 SEGUNDA RODADA (Loops 6–10) — CONCLUÍDA
 | Loop | Entrega | Verificação | Commit |
 |---|---|---|---|

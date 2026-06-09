@@ -381,9 +381,18 @@ def render_md(ctx: dict) -> str:
         add("")
         top = geo["cidades"][0]
         if top["pct"] >= 50 and (top.get("uf") or "") and top["cidade"]:
-            add(f"> 🟡 **Indício:** {top['pct']:.0f}% do valor (na fração com endereço) vai a fornecedores "
-                f"sediados em **{top['cidade']}/{top['uf']}** — verificar se a concentração geográfica é "
-                "compatível com o objeto e a competitividade das contratações.")
+            # HONESTIDADE: se a cidade-topo tem 1 só fornecedor, a "concentração geográfica" é apenas a
+            # concentração de FORNECEDOR (já apontada na Seção 1) restada — não um sinal independente.
+            if top.get("n_fornecedores", 0) <= 1:
+                add(f"> ℹ️ {top['pct']:.0f}% do valor (na fração com endereço) vai a **um único fornecedor** "
+                    f"sediado em **{top['cidade']}/{top['uf']}** — isto **não é** um sinal geográfico "
+                    "independente: é a mesma concentração de fornecedor da Seção 1, vista pela ótica da sede. "
+                    "O ponto de verificação é a competitividade do certame, não a geografia em si.")
+            else:
+                add(f"> 🟡 **Indício:** {top['pct']:.0f}% do valor (na fração com endereço) vai a "
+                    f"**{top['n_fornecedores']} fornecedores** sediados em **{top['cidade']}/{top['uf']}** — "
+                    "concentração geográfica multi-empresa é red flag clássico (fachada/direcionamento); "
+                    "verificar compatibilidade com o objeto e a competitividade das contratações.")
             add("")
         if geo.get("_nota"):
             add(f"> ℹ️ {geo['_nota']}")
