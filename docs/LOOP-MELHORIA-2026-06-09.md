@@ -262,6 +262,19 @@ independente. Agora: cidade-topo com 1 fornecedor → nota ℹ️ honesta; multi
 separados). Fallback ao endereço do cruzamento (mesma fonte da "Cidade-sede"). Corrigido nos 2 renderizadores
 (MD+PDF), verificado no PDF entregue. **Aprendizado:** dado já existe noutra seção — reaproveitar antes de exibir "—".
 
+## ✅ Loop 18 — Massare: teses carregam track record OOS por ativo
+**Entrega (commit 4ba84f7):** `acerto_oos` das teses vinha do scoreboard logado (vazio) → null. Agora puxa do
+**backtest** (`backtest.por_simbolo(ativo,21)`): hit_rate + edge + `tem_skill`. Tese sobre Ibovespa mostra
+`tem_skill=False` (edge −0,021); USDBRL `True` (+0,054). **Aprendizado:** a opinião (tese) tem de carregar a
+evidência (track record) do ativo que ela aposta.
+
+## ✅ Loop 19 — Dossiê 360: red flags estruturais no score de convergência
+**Entrega (commit 9fd5b23):** o dossiê convergia 3 sinais; faltavam os estruturais de fachada/laranja que o
+/relatorio (RF-04/05) e o Lex (R6/R11) já detectam. Agora `_red_flags_estruturais` (CNAE×objeto + troca de
+controle) alimenta `red_flag_edital` → MGS 25→30,3. Renderiza no **PDF entregue** (verificado: fachada/
+prateleira/interposição/data). **Aprendizado:** o mesmo sinal forte agora converge em **4 produtos**
+(/relatorio · Lex · dossiê · score) — sistema pensante coerente.
+
 ## 🏁 SEGUNDA RODADA (Loops 6–10) — CONCLUÍDA
 | Loop | Entrega | Verificação | Commit |
 |---|---|---|---|
