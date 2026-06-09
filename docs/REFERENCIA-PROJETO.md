@@ -186,11 +186,22 @@ isolado→regenerar produto→medir→commit).
 **Decisão documentada (não-feito consciente):** 40 `ln=True` (fpdf2 DeprecationWarning) em 4 renderizadores que
 funcionam — migração p/ `new_x/new_y` é churn amplo em código de render que funciona (risco V2 > ganho de só
 silenciar warning). **Deferido** como limpeza de baixa prioridade; preferir mudança pequena/isolada/verificada.
-**Erros/lições:** (1) o glyph-warning do fpdf2 **só dispara no path Unicode quando a fonte registra mas não tem o
-glifo** — emoji nunca devem ir cru p/ DejaVu. (2) De novo: a lista de gaps da doc envelhece; **medir o produto/
-código real cedo** é o que revela o gap verdadeiro (o defeito real estava no PDF entregue, não nos "alvos" da doc).
-**Commits-chave:** (ver `git log` — fix glifos Lex+orgao + doc).
-**Recursos (fim):** ver bloco de recursos abaixo no commit; sem necessidade de liberar espaço.
+**ACERTOS:** (1) seguir a metodologia à risca pegou um defeito **no artefato ENTREGUE** (PDF), que nenhum teste
+de número pegaria — "verificar o PDF entregue" funciona. (2) Verificar a cobertura de glifos da DejaVu
+**empiricamente** (via fpdf2) antes de escolher os substitutos — não chutar (● ↗ confirmados presentes; ⤴ emoji
+ausentes). (3) Endurecer o irmão (`/orgao`) com **verificação de output-idêntico** (mesmos R$/OBs) = blindagem
+sem regressão. (4) Auditar os "alvos" da doc contra o código real evitou retrabalho (quarentena e matriz+filial
+já feitas). (5) Medir a base inteira antes de priorizar: revelou que a quarentena é baixa-alavancagem (base limpa).
+**ERROS/LIÇÕES:** (1) o glyph-warning do fpdf2 **só dispara no path Unicode quando a fonte registra mas não tem o
+glifo** — emoji nunca devem ir cru p/ DejaVu (a blindagem tem de estar ANTES do early-return `_uni`). (2) De novo:
+a lista de gaps da doc **envelhece**; medir o produto/código real cedo é o que revela o gap verdadeiro (o defeito
+estava no PDF, não nos "alvos" §11). (3) Quase caí na tentação de migrar os 40 `ln=True` no fim da sessão — seria
+churn amplo em render que funciona (risco V2); a regra "pequeno/isolado/verificado" venceu → deferido.
+**Commits-chave:** `4236046` (fix glifos Lex+orgao + doc §5/§10).
+**Recursos (fim):** load **0.61** · RAM **4.2G livre**/7,8G · disco **32G livre**/48G (34%) · `compliance.db` 1,2G +
+WAL **130M** (cron dom 03:00 faz checkpoint/VACUUM) · **sem necessidade de liberar espaço**. Sweeps ao fim:
+**SIAFE 2 ✓ supervisionado** (pid do supervisor vivo, auto-cura) · **SEI ✓ relançado** (`--max 12`, resumível,
+checkpoint 15+ feitos).
 
 ## 11. ⏯️ RETOMADA — INSTRUÇÕES PERMANENTES (ler ANTES de continuar, sessão nova)
 **Branch `feat/lista-limpa` (não pushado, tudo commitado). Serviço/sweeps vivos.** O dono pediu para continuar
