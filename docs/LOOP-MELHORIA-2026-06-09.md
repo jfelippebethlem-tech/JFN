@@ -80,7 +80,24 @@ documentos, (4) abrir cada doc no `ifrVisualizacao` e extrair o texto → preenc
 **Benchmark:** prosa que cite "no §X do edital, a exigência Y eliminou as empresas A,B" só é possível com o
 texto do documento — depende 100% deste fix.
 
-## Loops 3-5 — planejados (ver handoff)
-- Loop 3: Massare "pensante" (previsões com raciocínio + OOS honesto).
-- Loop 4: fluidez/rapidez (latência do /relatorio; LLM discursivo bounded+cache).
-- Loop 5: estética/ruído + wiring fino (Yoda↔JFN; mais testes `hermes -z` por capability do playbook).
+## ✅ Loop 2 — frescor/cobertura no topo dos relatórios
+`inteligencia.cabecalho_frescor()` (sem LLM, 1 COUNT) no topo de fornecedor+órgão. Honestidade: afirmar
+dentro da cobertura. Verificado: "Cobertura da base: 1.121.306 OBs · 77% com CNPJ · OB mais recente:
+2026-06-01". Serviço religado (autonomia dada pelo dono: "ligar/religar à vontade").
+
+## ✅ Loop 3 — encaminhamento por severidade no parecer (acionável)
+Cada indício do Lex passa a dizer O QUE FAZER: grav≥3 → **requerimento** + (se persistir) representação
+TCE-RJ/MP; senão diligência/monitoramento. Sem LLM. "Sistema pensante": dirige a ação, não só descreve.
+3 testes lex offline verdes.
+
+## ⏳ Loop 4 — sweep de wiring Yoda↔JFN (em execução)
+Testar capacidades end-to-end via `hermes -z` e consertar gaps de roteamento (capabilities.yaml + derivados).
+Já corrigido no Loop 1: `siafe_status`. (resultados do sweep a registrar)
+
+## Loop 5 — planejado: Massare "pensante" + backtest total
+- Avaliar `/api/massare/*` (previsões com raciocínio + OOS honesto); backtest completo; checkpoint final.
+
+## APRENDIZADO TRANSVERSAL (atualizado)
+- O dono deu **autonomia total** (mexer em tudo — JFN/Lex/Massare/Hermes/Yoda — e religar à vontade). Minha
+  cautela com "o que está vivo" era o gargalo, não o sistema. Fluir > hesitar (mantendo verificação do artefato).
+- Teste end-to-end (`hermes -z`) > curl: pega gaps de roteamento que o curl não vê (rota existir ≠ Yoda saber usar).
