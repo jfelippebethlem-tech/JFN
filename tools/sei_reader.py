@@ -201,8 +201,13 @@ async def ler(numero: str, usar_cache: bool = True, tentativas_login: int = 30) 
         from compliance_agent.recursos import browser_lock_async, aguardar_load_async
         await aguardar_load_async(max_por_core=1.5, espera_max=90)
         from playwright.async_api import async_playwright
+        # Proxy permitido (opção B p/ furar o WAF do SEI a partir da VM): SEI_PROXY_URL/PROXY_URL no .env.
+        # Aditivo — sem proxy, launch idêntico ao de antes. Reusa o parser do sei_cdp (host/credenciais).
+        from compliance_agent.collectors.sei_cdp import _proxy_do_env
+        _proxy = _proxy_do_env()
         async with browser_lock_async(espera_max=600), async_playwright() as pw:
-            b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"])
+            b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"],
+                                         **({"proxy": _proxy} if _proxy else {}))
             ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
                   user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                              "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
@@ -248,8 +253,13 @@ async def ler_com_cadeia(numero: str, *, max_rel: int = 5, tentativas_login: int
         from compliance_agent.recursos import browser_lock_async, aguardar_load_async
         await aguardar_load_async(max_por_core=1.5, espera_max=90)
         from playwright.async_api import async_playwright
+        # Proxy permitido (opção B p/ furar o WAF do SEI a partir da VM): SEI_PROXY_URL/PROXY_URL no .env.
+        # Aditivo — sem proxy, launch idêntico ao de antes. Reusa o parser do sei_cdp (host/credenciais).
+        from compliance_agent.collectors.sei_cdp import _proxy_do_env
+        _proxy = _proxy_do_env()
         async with browser_lock_async(espera_max=600), async_playwright() as pw:
-            b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"])
+            b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"],
+                                         **({"proxy": _proxy} if _proxy else {}))
             ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
                   user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                              "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
