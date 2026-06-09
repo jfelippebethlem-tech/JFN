@@ -165,6 +165,64 @@ OOS do Massare. Tema comum = **fechar o último elo do "sistema pensante"** (a e
 **Aprendizado:** `ruff check --output-format json` é a forma robusta de contar (o `--quiet`/"Found N" engana).
 **→ Loops 7–10:** usar os baselines + scorecard p/ medir cada melhoria de /relatorio, /orgao, /lista, Massare.
 
+## ✅ Loop 7 — Qualidade do /relatorio (fornecedor) — análise sênior do artefato real
+**Pesquisa/avaliação (auditor sênior sobre o MGS real):** o relatório tinha fatos soltos não-conectados.
+**Entregas (commit c37f339):**
+- **RF-04 — controle societário posterior a receita pública**: ingresso no QSA em data > R$ já pagos
+  (MGS: sócio entrou 2024-12-11 após R$35,7M/380 OBs, 26% do total). Geral, threshold R$1M+15%, honesto.
+- **RF-05 — CNAE × objeto**: atividade-fim registrada incompatível com o objeto contratado. **Achado de
+  dados:** `contratos.objeto` do SIAFE só guarda "Aditivos:N" → usei o objeto REAL do **TCE-RJ**
+  (`tcerj_itens`). MGS: CNAE de internet (6319-4) × objeto de limpeza. Conservador (zero-overlap após
+  remover boilerplate) = sem falso-positivo.
+- **Crescimento honesto**: "+11133%" (1º×último ano parciais) → fator **pico/base** com ressalva de parciais.
+**ERRO PEGO (lição do handoff aplicada):** 1ª versão só entrou no MD; o **PDF entregue NÃO continha** RF-04/05
+(3 renderizadores; PDF usa lista própria na seção 11). Fix: wiring via **fonte única `_red_flags(ctx)`** em MD
++ PDF. Verificado com **pypdf extraindo do PDF** (não só grep no MD). 20 testes de relatório + golden verdes.
+**Aprendizado:** o objeto contratual fica no TCE-RJ, não no SIAFE; e *sempre* verificar o artefato ENTREGUE.
+
+## ✅ Loop 8 — Qualidade do /orgao — pagamentos recorrentes idênticos
+**Pesquisa/avaliação (auditor sênior sobre o ITERJ real):** o sinal mais forte estava nos dados de pagamento
+e não era explorado — a Enge Prat recebe **valores exatos repetidos** (9× R$3.708.333,33 em 2022; 9×
+R$7.362.133,33 em 2024-26 = R$66,3M). É a assinatura de parcela fixa **e** red flag ACFE (identical payments).
+**Entrega (commit 67b3387):** `_recorrentes_identicos()` (grupos fornecedor×valor exato ≥4× acima de R$50k) →
+**seção 1-C** no MD + tabela no PDF (FPDF) + nota no parecer conectando ao fornecedor dominante (caracterizar
+contrato/objeto/**medição** e aderência à **finalidade do órgão** — instituto de terras pagando R$179M a firma
+de engenharia). **Verificado no PDF entregue** (pypdf: 1-C + parecer presentes). 3 testes orgao verdes.
+**Aprendizado:** o ouro estava no padrão dos valores (não só no HHI). Repetir a checagem do PDF (Loop 7) já é hábito.
+
+## ✅ Loop 9 — /lista + playbook
+**Avaliação:** o /lista curado não surfaçava o sistema pensante de **mercado** (Massare — 6 caps existentes,
+invisíveis) nem o status da coleta. **Entrega (commit b96eecc):** 2 grupos novos no `_MENU_PUBLICO`
+(📈 Massare: cenários/previsão/placar-OOS · 🛰️ Coleta: siafe_status), ids reais do capabilities.yaml,
+exemplos NL fiéis. Menu segue enxuto (14/5 grupos). 26 testes skilltree verdes. **Playbook §6**: disciplina
+de qualidade p/ IAs executoras (scorecard+delta, suíte rápida, **verificar o PDF entregue**, objeto real=TCE-RJ,
+honestidade). **Aprendizado:** "toda skill no /lista" vale p/ o sistema pensante inteiro — Massare é parte dele.
+
+## ✅ Loop 10 — Massare: backtest OOS em TODOS os pregões + edge honesto
+**Pedido do dono:** "reproduza como backtest de suas previsões como os mercados agiram; avalie todos os
+pregões possíveis." **Entrega (commit efb33f7):** `massare/backtest.py` roda walk-forward (só passado) sobre
+toda a série — **356.544 pregões** (26 ativos × horizontes 5/10/21). `engine.walk_forward` passa a expor a
+**taxa-base** do mercado; `predict_today` carrega `edge_oos` + `tem_skill`.
+**ACHADO HONESTO (o ponto do loop):** edge médio do ensemble = **−0,0127** (só **20/78** séries com edge>0).
+Ex. matador: **^GSPC 21d acerta 61,9%** mas o ingênuo (S&P sobe 65,6% das vezes) é melhor → edge −0,036,
+**sem skill** — o "62%" enganava. Skill real só em FX/dólar/ETH-longo (USDBRL 21d **+0,054**). **Sem Brier
+calibrado** (sinal é direcional, não probabilístico — reportá-lo seria inventar). As 44 logadas têm alvo no
+futuro (preço até 06-08) → pendentes, honesto. 3 testes verdes.
+**Aprendizado:** track record só é honesto contra a **taxa-base certa**; hit-rate alto sem baseline mente.
+Fechou o último elo do "sistema pensante" de mercado: agora o Massare sabe (e diz) onde NÃO tem skill.
+
+## 🏁 SEGUNDA RODADA (Loops 6–10) — CONCLUÍDA
+| Loop | Entrega | Verificação | Commit |
+|---|---|---|---|
+| L6 | Fundação: pyproject, ruff 733→43, conftest, golden numbers, scorecard, **3 bugs reais** | 287 testes verdes; pypdf | 0552059 |
+| L7 | /relatorio: RF-04 controle societário · RF-05 CNAE×objeto · crescimento honesto | PDF entregue (pypdf) | c37f339 |
+| L8 | /orgao: pagamentos recorrentes idênticos (ACFE) — seção 1-C + parecer | PDF entregue (pypdf) | 67b3387 |
+| L9 | /lista: surfaçar Massare/SIAFE · playbook §6 (disciplina de qualidade) | 26 testes skilltree | b96eecc |
+| L10 | Massare: backtest 356k pregões + edge honesto vs taxa-base | 3 testes; achado real | efb33f7 |
+**Tema da rodada:** *instrumentar e fechar ciclos com honestidade.* Cada loop trocou "acho que melhorou" por
+número verificável; o lint pagou 3 bugs; os relatórios ganharam análise que **conecta fatos**; o Massare agora
+**cobra a si mesmo** contra a taxa-base. Plano-mestre: `docs/PLANO-BENCHMARKS-E-CODIFICACAO-2026-06-09.md`.
+
 ## APRENDIZADO TRANSVERSAL (atualizado)
 - O dono deu **autonomia total** (mexer em tudo — JFN/Lex/Massare/Hermes/Yoda — e religar à vontade). Minha
   cautela com "o que está vivo" era o gargalo, não o sistema. Fluir > hesitar (mantendo verificação do artefato).
