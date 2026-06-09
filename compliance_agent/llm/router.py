@@ -13,9 +13,7 @@ from typing import Optional
 
 from compliance_agent.llm.local import (
     DEFAULT_MODEL,
-    classify_text,
     extract_entities,
-    summarize,
     is_available as _check_ollama,
 )
 
@@ -104,26 +102,9 @@ class LLMRouter:
         return self._ollama_available() and task in SIMPLE_TASKS
 
     # ── Public task methods ───────────────────────────────────────────────────
-
-    def classify(self, text: str, categories: list[str]) -> str:
-        """
-        Classify text into one of the provided categories.
-
-        Uses Ollama if available, otherwise returns categories[0].
-        """
-        if self._ollama_available():
-            return classify_text(text, categories)
-        return categories[0] if categories else ""
-
-    def summarize(self, text: str, max_words: int = 100) -> str:
-        """
-        Summarize text in at most max_words words.
-
-        Uses Ollama if available, otherwise returns first 300 chars.
-        """
-        if self._ollama_available():
-            return summarize(text, max_words=max_words)
-        return text[:300] + ("..." if len(text) > 300 else "")
+    # NB: classify()/summarize() abaixo (via LLM grátis) são as versões VÁLIDAS — havia
+    # definições duplicadas Ollama-first acima que o Python descartava silenciosamente
+    # (F811); removidas para o leitor não corrigir a errada. Comportamento idêntico.
 
     def extract_entities(self, text: str) -> dict:
         """
