@@ -1026,9 +1026,11 @@ def render_pdf(ctx: dict, destino: str, analise: dict | None = None) -> str:
 
     def _t(s):
         s = s or ""
+        # glifos que a DejaVu (Unicode) NÃO possui (emoji de risco, seta ⤴) → equivalentes que ELA possui,
+        # senão o fpdf2 emite "missing glyphs" e o PDF entregue mostra tofu. O grau-cor vem da barra colorida.
         if getattr(pdf, "_uni", False):
-            return s
-        for a, b in (("—", "-"), ("–", "-"), ("·", "-"), ("→", "->"), ("≥", ">="), ("🟢", ""), ("🟡", ""), ("🔴", "")):
+            return s.replace("🔴", "●").replace("🟡", "●").replace("🟢", "●").replace("⤴", "↗")
+        for a, b in (("—", "-"), ("–", "-"), ("·", "-"), ("→", "->"), ("⤴", "->"), ("≥", ">="), ("🟢", ""), ("🟡", ""), ("🔴", "")):
             s = s.replace(a, b)
         return s.encode("latin-1", "replace").decode("latin-1")
 

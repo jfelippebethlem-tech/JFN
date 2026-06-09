@@ -501,9 +501,11 @@ def render_pdf(ctx: dict, destino: str) -> str:
 
     def _t(s: str) -> str:
         s = s or ""
+        # glifos que a DejaVu (Unicode) NÃO possui (emoji de risco, seta ⤴) → equivalentes que ELA possui,
+        # senão o fpdf2 emite "missing glyphs" e o PDF entregue mostra tofu (mesmo blindagem do parecer Lex).
         if getattr(pdf, "_uni", False):
-            return s
-        for a, b in (("—", "-"), ("–", "-"), ("₂", "2"), ("•", "-"), ("·", "-")):
+            return s.replace("🔴", "●").replace("🟡", "●").replace("🟢", "●").replace("⤴", "↗")
+        for a, b in (("—", "-"), ("–", "-"), ("₂", "2"), ("•", "-"), ("·", "-"), ("⤴", "->"), ("🔴", ""), ("🟡", ""), ("🟢", "")):
             s = s.replace(a, b)
         return s.encode("latin-1", "replace").decode("latin-1")
 
