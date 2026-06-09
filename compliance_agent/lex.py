@@ -21,7 +21,8 @@ import time
 from pathlib import Path
 
 from compliance_agent.reporting.inteligencia import (
-    _REPORTS, _mc, _registrar_fonte, _render_parecer_pdf, _slug, fmt_cnpj, moeda, so_digitos,
+    _REPORTS, _mc, _registrar_fonte, _render_parecer_pdf, _slug, _termos_significativos,
+    fmt_cnpj, moeda, so_digitos,
 )
 
 # Leitura da íntegra do SEI: liga/desliga, quantos processos ler e orçamento de tempo (s).
@@ -39,6 +40,7 @@ _RF = {
     "R8": ("Concentração de fornecedor / risco de captura (bid rigging)", "Art. 37 CF/88; Art. 36 §3º I 'd' Lei 12.529; ACFE/OCDE"),
     "R9": ("Aditivos sucessivos acima dos limites", "Arts. 125-126 Lei 14.133; Art. 65 §1º Lei 8.666"),
     "R10": ("Liquidação irregular / pagamento atípico (estornos)", "Arts. 62-63 Lei 4.320/64; Decreto 93.872/86 art. 38"),
+    "R11": ("Atividade-fim (CNAE) incompatível com o objeto contratado", "Arts. 62-63 Lei 14.133 (qualificação técnica); art. 337-F CP; ACFE — shell company"),
     "R12": ("Planejamento de fachada (DFD/ETP/TR genéricos)", "Art. 5º e Art. 18 Lei 14.133"),
 }
 
@@ -112,6 +114,10 @@ _MATRIZ = {
     "R10": ("falha de liquidação/regularização (estornos, OB R$ 0,00)",
             "risco de pagamento sem liquidação regular",
             "conferir ateste e NL (arts. 62-63 Lei 4.320/64)"),
+    "R11": ("atividade econômica de registro (CNAE) diversa do objeto efetivamente contratado",
+            "habilitação técnica frágil / empresa de prateleira ou fachada para fim diverso",
+            "exigir comprovação de qualificação técnica para o objeto (arts. 62-63 Lei 14.133); "
+            "verificar adequação do CNAE e a aptidão operacional real"),
     "R12": ("planejamento de fachada (DFD/ETP/TR genéricos) ou crescimento sem lastro",
             "contratação sem planejamento real; sobre/subdimensionamento",
             "exigir ETP robusto e justificativa da demanda (art. 18 Lei 14.133)"),
@@ -610,7 +616,25 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
             leituras.append(resumo)
             ach_doc.extend(ach)
 
-    achados = _merge_achados(ach_dados + ach_doc + ach_tcerj + ach_cartel)
+    # Onda estrutural — atividade-fim (CNAE) × objeto contratado (empresa de fachada / qualificação técnica).
+    # Conservador: só dispara com ZERO sobreposição de termos significativos entre o CNAE e o objeto REAL
+    # do TCE-RJ (o contratos.objeto do SIAFE não serve — guarda "Aditivos:N"). Mesma lógica do RF-05 do relatório.
+    ach_estrutural: list[dict] = []
+    emp_cad = (ctx.get("enriq", {}).get("dados") or {}).get("empresa") or {}
+    cnae = emp_cad.get("cnae_principal") or ""
+    objs_reais = [(i.get("objeto") or "").strip() for i in itens_tcerj if len((i.get("objeto") or "").strip()) >= 12]
+    if cnae and objs_reais:
+        tc = _termos_significativos(cnae)
+        to_ = _termos_significativos(" ".join(objs_reais))
+        if tc and to_ and not (tc & to_):
+            amostra = objs_reais[0][:80]
+            ach_estrutural.append({"rf": "R11", "grav": 3,
+                "obs": f"O CNAE principal registrado (“{cnae}”) **não evidencia aderência** ao objeto efetivamente "
+                       f"contratado (ex.: “{amostra}…”). Atividade econômica de registro incompatível com o objeto "
+                       "é indício de **empresa de prateleira/fachada** habilitada para fim diverso ou de **qualificação "
+                       "técnica frágil** — verificar a aptidão operacional real e a adequação do CNAE."})
+
+    achados = _merge_achados(ach_dados + ach_doc + ach_tcerj + ach_cartel + ach_estrutural)
     emoji, rotulo, just = _grau(achados)
     return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
             "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj, "cartel": cartel,
