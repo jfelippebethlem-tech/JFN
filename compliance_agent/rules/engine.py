@@ -510,7 +510,7 @@ class MotorCompliance:
         from sqlalchemy import func
 
         LIMITE_DISPENSA = 50_000.0
-        JANELA_DIAS = 30
+        # Janela de ~30 dias aproximada pelo agrupamento por mês-calendário (strftime abaixo).
 
         # Agrupa OBs por favorecido + UG + janela de 30 dias
         subq = (

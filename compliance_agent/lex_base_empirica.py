@@ -70,11 +70,6 @@ def fatos_concentracao(con) -> list[tuple]:
 
 def fatos_ubiquidade(con) -> list[tuple]:
     # fornecedores "ubíquos" (em muitos órgãos) = baseline para NÃO confundir com cartel
-    rows = con.execute("""
-        SELECT n_org, COUNT(*) qtd FROM (
-          SELECT favorecido_cpf, COUNT(DISTINCT ug_codigo) n_org
-          FROM ordens_bancarias WHERE favorecido_cpf IS NOT NULL GROUP BY favorecido_cpf)
-        GROUP BY (n_org>=10)""").fetchall()
     ubiquos = con.execute("""SELECT COUNT(*) FROM (
         SELECT favorecido_cpf FROM ordens_bancarias WHERE favorecido_cpf IS NOT NULL
         GROUP BY favorecido_cpf HAVING COUNT(DISTINCT ug_codigo)>=10)""").fetchone()[0]
