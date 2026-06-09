@@ -215,9 +215,26 @@ def _bloqueio_rede(integra: dict) -> str:
     return ""
 
 
+_INTERFACE_SEI = ("controle de prazos", "processos recebidos", "processos gerados", "acompanhamento especial",
+                  "base de conhecimento", "blocos de assinatura", "registros - 1 a", "menu principal",
+                  "controle de processos", "iniciar processo", "retorno programado")
+
+
+def _eh_interface_sei(integra: dict) -> str:
+    """Detecta a TELA/MENU do SEI (desktop após login) — NÃO é o inteiro teor de um processo. Foi a falha
+    flagrada no Loop 1: a leitura trazia o menu ('Controle de Prazos', 'Processos recebidos (N registros)')
+    e o parecer 'analisava' o menu. Conservador: ≥2 marcadores de UI co-ocorrendo."""
+    amostra = ((integra.get("texto", "") or "") + " " + (integra.get("title", "") or "")).lower()
+    if sum(1 for m in _INTERFACE_SEI if m in amostra) >= 2:
+        return "tela/menu do SEI (não é o inteiro teor do processo) — a leitura não chegou ao documento"
+    return ""
+
+
 def _texto_integra(integra: dict) -> str:
     if _bloqueio_rede(integra):
-        return ""  # página de bloqueio não é conteúdo de processo
+        return ""  # página de bloqueio (WAF) não é conteúdo de processo
+    if _eh_interface_sei(integra):
+        return ""  # tela/menu do SEI não é conteúdo de processo (não vira achado/análise)
     txt = integra.get("texto", "") or ""
     for d in integra.get("conteudo_documentos", []) or []:
         txt += "\n" + (d.get("conteudo", "") or "")
@@ -319,7 +336,7 @@ def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
         "url": integra.get("url", ""),
         "lido": bool(txt.strip()),
         "de_cache": bool(integra.get("_de_cache") or integra.get("_cached_at")),
-        "erro": integra.get("erro", "") or _bloqueio_rede(integra),
+        "erro": integra.get("erro", "") or _bloqueio_rede(integra) or _eh_interface_sei(integra),
     }
     return achados, resumo
 
