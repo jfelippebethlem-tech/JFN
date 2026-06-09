@@ -129,7 +129,7 @@ async def _ficha_e_storage(proc: str):
     """Extrai a FICHA (cascata gemini-lite→stepfun:free) do conteúdo REAL e guarda SÓ a ficha no cache,
     DESCARTANDO o `texto` (menu lateral do SEI = lixo de ~12k chars). Storage: ~3-7× menor, sem perda útil.
     Retorna (n_chars_antes, n_chars_depois, modelo) ou None."""
-    from tools.sei_ficha import conteudo_real, extrair_ficha, MODELO_BARATO
+    from tools.sei_ficha import conteudo_real, extrair_ficha, STEPFUN
     cf = CACHE / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json"
     if not cf.exists():
         return None
@@ -139,11 +139,11 @@ async def _ficha_e_storage(proc: str):
         cont = conteudo_real(d)
         if len(cont) < 150:
             return None
-        f = await extrair_ficha(cont, MODELO_BARATO, provider="gemini")
-        modelo = MODELO_BARATO
-        if f.get("_erro"):  # gemini saturou (429) → cai pro nous grátis/ilimitado
-            f = await extrair_ficha(cont, "stepfun/step-3.7-flash:free", provider="nous")
-            modelo = "stepfun:free"
+        # SÓ o nous stepfun:free (100% grátis/sem limite — diretriz do dono: gemini FORA do sweep).
+        # extrair_ficha já retenta 502/503 transientes. Se falhar, retorna None → fica p/ a próxima passada
+        # (sweep resumível: não marca como feito, retenta depois). Vamos aos poucos.
+        f = await extrair_ficha(cont, STEPFUN, provider="nous")
+        modelo = "stepfun:free"
         if f.get("_erro"):
             return None
         d["ficha"] = f
