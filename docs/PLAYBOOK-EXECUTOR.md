@@ -109,6 +109,12 @@ Código reutilizável: `siafe_ob_orcamentaria._typeahead()` e `_filtrar_ug()`. D
 | Lint (sinal; baseline ~43) | `.venv/bin/ruff check .` · auto-fix seguro: `ruff check . --fix` |
 | Regressão factual (golden numbers) | `.venv/bin/pytest tests/test_golden_numbers.py -q` |
 
+**Gate de lint no commit (best-effort):** `tools/precommit_ruff.sh` roda ruff só nos `.py` STAGED e AVISA
+sobre lint novo (não bloqueia; ignora `_SANDBOX/`, `tools/debug/`). É chamado pelo hook local
+`.git/hooks/pre-commit` (local-only — reinstalar num clone novo: copiar o trecho que chama o script, ou rodar
+`bash tools/precommit_ruff.sh` à mão). Não deixa lint novo entrar nos arquivos que você toca, sem brigar com o
+baseline legado (39).
+
 **Regras (aplicam a TODA mudança de relatório/parecer/previsão):**
 1. **Gere o ARTEFATO REAL** antes e depois (`-m compliance_agent.reporting.inteligencia "MGS Clean"` /
    `...inteligencia_orgao "ITERJ"`) e compare. Baseline gold em `data/baseline_2026-06-09/`.
