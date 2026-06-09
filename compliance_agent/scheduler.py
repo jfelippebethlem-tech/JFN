@@ -17,7 +17,6 @@ import argparse
 import asyncio
 import json
 import os
-import sys
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -29,7 +28,7 @@ from compliance_agent.envfile import carregar_env as _carregar_env
 _carregar_env()
 
 from compliance_agent.notifications.telegram import (
-    enviar_mensagem, enviar_arquivo, enviar_alerta_urgente, BOT_TOKEN
+    enviar_mensagem, enviar_arquivo, BOT_TOKEN
 )
 from compliance_agent.reports.pdf import gerar_relatorio_diario
 

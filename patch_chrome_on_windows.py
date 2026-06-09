@@ -1,4 +1,5 @@
-import subprocess, sys, os
+import subprocess
+import os
 from pathlib import Path
 
 def open_chrome_debug():

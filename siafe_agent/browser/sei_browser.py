@@ -1,6 +1,5 @@
 """Playwright automation for SEI Rio - Sistema Eletrônico de Informações do Estado do RJ."""
 
-import asyncio
 from typing import Optional
 
 from playwright.async_api import Page

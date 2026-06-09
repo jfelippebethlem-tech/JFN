@@ -19,7 +19,7 @@ import asyncio
 import json
 import os
 import re
-from datetime import date, datetime
+from datetime import date
 from pathlib import Path
 
 import httpx
@@ -549,7 +549,6 @@ async def rodar_analise_groq(session) -> list[dict]:
     from compliance_agent.database.models import (
         OrdemBancaria, PublicacaoDOERJ, Alerta
     )
-    from sqlalchemy import desc
 
     hoje = date.today()
 
@@ -691,15 +690,15 @@ async def rodar_analise_groq(session) -> list[dict]:
         media = sum(1 for a in alertas_gerados if a["severidade"] == "media")
         linhas = [
             f"🤖 *Análise Groq — {hoje}*",
-            f"",
+            "",
             f"🔴 Alta: {alta} | 🟡 Média: {media}",
-            f"",
+            "",
             "*Top alertas:*",
         ]
         for a in alertas_gerados[:5]:
             e = "🔴" if a["severidade"] == "alta" else "🟡"
             linhas.append(f"{e} {a['titulo'][:80]}")
-        linhas.append(f"")
+        linhas.append("")
         linhas.append(f"_{resultado_obs.get('resumo_geral','')[:200]}_")
         await enviar_mensagem("\n".join(linhas))
 

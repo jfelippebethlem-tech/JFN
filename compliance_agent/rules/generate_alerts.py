@@ -17,7 +17,6 @@ from __future__ import annotations
 import json
 from collections import defaultdict
 from pathlib import Path
-from typing import List
 
 from compliance_agent.database.models import get_session, init_db, Alerta
 from compliance_agent.rules.default_audit_config import CONFIG_PADRAO

@@ -129,7 +129,44 @@ após os 5 loops; `jfn.service` religado (tudo live).
 **2 fixes profundos p/ sessão nova** (alto valor, precisam Chrome/live): coletor SEI → inteiro teor; scorer
 OOS do Massare. Tema comum = **fechar o último elo do "sistema pensante"** (a estrutura existe nos dois).
 
+---
+
+# 🔁 SEGUNDA RODADA (Loops 6–10) — pedido 2026-06-09
+> Dono: "pesquise e planeje benchmarks em tudo; melhore a codificação; mais 5 loops com playbook, /lista,
+> /relatorio, /orgao e Massare; senior em cada área, não admite erro; amplitude de pensamento e honestidade."
+> Plano-mestre: `docs/PLANO-BENCHMARKS-E-CODIFICACAO-2026-06-09.md` (4 eixos de benchmark). Cada loop:
+> **pesquisar best-practice → gerar/medir artefato real → mudança pequena verificada → checkpoint+commit+doc**.
+
+## ✅ Loop 6 — Fundação de qualidade + scorecard (instrumentação)
+**Pesquisa/tese:** o loop media qualidade "a olho"; sem instrumento não dá pra saber se melhorou/regrediu
+(foi o que custou a reversão da V2). Benchmark = transformar julgamento em número.
+
+**Execução (tudo verificado):**
+1. **`pyproject.toml`** — config única (ruff+pytest+coverage). Ruff calibrado p/ SINAL: mantém pyflakes (F) e
+   erros reais; ignora E701/E702 (estilo de uma-linha deliberado). Ruff 733→**43 de baseline** (174 auto-fix
+   seguros aplicados: 117 imports mortos + f-strings vazias).
+2. **3 BUGS REAIS achados pelo lint e corrigidos** (NameError em runtime que ninguém via):
+   - `collectors/sei_portal.py`: `await asyncio.sleep()` no retry **sem `import asyncio`** (é o fallback do
+     leitor SEI — crasharia ao reconectar; relevante ao Fix profundo #1).
+   - `hermes_goal.py:1144`: `timedelta` usado sem import (crasha o agendador do loop de metas).
+   - `server.py:366`: `StreamingResponse` usado sem import (endpoint SSE `/api/hermes` crasharia).
+3. **`tests/conftest.py`** — auto-marca módulos de rede como `@pytest.mark.network` (um lugar só) → suíte
+   rápida `pytest -m "not network and not integration"` roda limpa, sem os 5-6 hangs.
+4. **`tests/test_golden_numbers.py`** (Eixo D) — congela os números canônicos (MGS 1127 OBs/R$136,2M; ITERJ
+   UG133100 2457 OBs/R$292,3M; cobertura 1.121.307/76,6% CNPJ). 3 passed. Grita se um refactor driftar valor.
+5. **`tools/scorecard.py`** — emite `data/scorecard.{json,md}` + histórico; ruff/LOC/god-files/golden num
+   comando, com delta vs. snapshot anterior. Roda em subprocesso (não gasta cota).
+
+**Baselines REAIS gerados** (antes de mexer, lição V2): `/relatorio` MGS (grau_lex AMARELO, fonte REAL) +
+`/orgao` ITERJ (HHI 3854,4; Enge Prat 61,2%) em `data/baseline_2026-06-09/` — gold p/ os Loops 7/8 comparar.
+
+**ACERTOS:** instrumentar JÁ pagou — o lint revelou 3 bugs latentes de runtime de graça. Scorecard dá o
+"antes/depois" que faltava. Mudanças pequenas/isoladas/verificadas (smoke 141✓ após cada).
+**Aprendizado:** `ruff check --output-format json` é a forma robusta de contar (o `--quiet`/"Found N" engana).
+**→ Loops 7–10:** usar os baselines + scorecard p/ medir cada melhoria de /relatorio, /orgao, /lista, Massare.
+
 ## APRENDIZADO TRANSVERSAL (atualizado)
 - O dono deu **autonomia total** (mexer em tudo — JFN/Lex/Massare/Hermes/Yoda — e religar à vontade). Minha
   cautela com "o que está vivo" era o gargalo, não o sistema. Fluir > hesitar (mantendo verificação do artefato).
 - Teste end-to-end (`hermes -z`) > curl: pega gaps de roteamento que o curl não vê (rota existir ≠ Yoda saber usar).
+- **Instrumentar antes de melhorar**: sem scorecard/golden, "melhor" é opinião. O lint sozinho pagou 3 bugs reais.

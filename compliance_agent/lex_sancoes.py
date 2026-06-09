@@ -19,7 +19,7 @@ Decreto RJ 3.149/1980 arts. 42, 86-87; CC art. 412 (teto da mora).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from typing import Optional
 
 # ──────────────────────────────────────────────────────────────────────────────

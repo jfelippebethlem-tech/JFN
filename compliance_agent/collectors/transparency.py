@@ -11,9 +11,7 @@ Coleta:
 import asyncio
 import csv
 import io
-import json
 import re
-from datetime import date
 from typing import Optional
 
 import httpx

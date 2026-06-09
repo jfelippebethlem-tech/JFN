@@ -16,7 +16,13 @@ O que ela faz SOZINHA:
 Regras: so LEITURA. Ritmo humano. Credenciais so no .env.
 Uso legitimo do Mestre Jorge (deputado) para auditoria/compliance.
 """
-import sys, os, json, time, random, urllib.request, subprocess
+import sys
+import os
+import json
+import time
+import random
+import urllib.request
+import subprocess
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")

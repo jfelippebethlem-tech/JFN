@@ -16,7 +16,7 @@ Camadas:
   fundamentar() — dado um tema/alerta, devolve a fundamentação aplicável
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 # ─── Camada MORAL: princípios constitucionais da Administração ────────────────

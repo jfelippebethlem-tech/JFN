@@ -15,7 +15,6 @@ Data sources:
 import json
 import logging
 import os
-from typing import Optional
 
 import httpx
 from bs4 import BeautifulSoup

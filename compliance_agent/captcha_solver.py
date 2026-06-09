@@ -11,7 +11,6 @@ import cv2
 import numpy as np
 import pytesseract
 import requests
-from PIL import Image, ImageFilter
 
 
 def _resolver_tesseract() -> Optional[str]:

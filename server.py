@@ -15,7 +15,6 @@ No celular: http://<IP-DO-SEU-PC>:8000
 import asyncio
 import json
 import os
-import sys
 import argparse
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -24,7 +23,7 @@ from typing import Optional
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 
@@ -105,7 +104,7 @@ async def lifespan(app: FastAPI):
         if result.get("success"):
             print(f"[SIAFE] Login OK — {result.get('url', '')}")
         else:
-            print(f"[SIAFE] Login não realizado (fora da rede do governo) — sistema de compliance funciona normalmente")
+            print("[SIAFE] Login não realizado (fora da rede do governo) — sistema de compliance funciona normalmente")
     except Exception as e:
         print(f"[SIAFE] Browser não iniciado ({e.__class__.__name__}) — sistema de compliance funciona normalmente")
 
@@ -377,7 +376,6 @@ async def api_hermes_parar(payload: Optional[dict] = None):
     try:
         await _cancelar_loop_trabalhar()
         try:
-            import asyncio
             for _ in range(min(20, mission_queue.qsize())):
                 try:
                     mission_queue.dequeue_nowait()
@@ -917,7 +915,7 @@ async def api_relatorio_30d():
         from datetime import date, timedelta
         from pathlib import Path
         from compliance_agent.database.models import (
-            get_session, init_db, OrdemBancaria, Alerta,
+            get_session, init_db, OrdemBancaria,
         )
 
         init_db()
@@ -1090,7 +1088,6 @@ async def api_compliance_alerts(
         severidade: Filter by severity (alta | média | baixa).
         limite:     Max results (default 50).
     """
-    import json as _json
     try:
         from compliance_agent.database.models import Alerta, get_session, init_db
 

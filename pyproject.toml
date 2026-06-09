@@ -1,0 +1,43 @@
+# Configuração única de qualidade do JFN (ruff + pytest + coverage).
+# Filosofia: SINAL > ruído. Mantemos as regras de CORREÇÃO (pyflakes F, erros E9, bare-except)
+# e ignoramos o estilo de "uma linha" (E701/E702) que é deliberado neste código — evita um
+# reformat gigante misturado com lógica. Ver docs/PLANO-BENCHMARKS-E-CODIFICACAO-2026-06-09.md.
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["_SANDBOX", ".venv", "data", "build", "dist"]
+
+[tool.ruff.lint]
+# E9 (syntax/runtime), F (pyflakes: import morto, nome indefinido, var não usada), W (whitespace),
+# E722 (bare except), B (bugbear — subset via select abaixo).
+select = ["E4", "E7", "E9", "F", "W6"]
+# Ignorados de propósito (estilo herdado, não-bug):
+#   E701/E702 = múltiplos statements numa linha (terso, intencional)
+#   E741       = nome de variável ambíguo (l, I) em código legado
+#   F541       = será limpo no ratchet, mas não é bug
+ignore = ["E701", "E702", "E741"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811", "E402"]  # fixtures/imports condicionais em teste
+"__init__.py" = ["F401"]               # re-exports
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "network: testes que tocam a rede (PNCP/SEI/Receita/SIAFE) — podem pendurar; rodar com -m network",
+    "integration: integração ponta-a-ponta (serviço/DB/Chrome) — fora da suíte unitária rápida",
+    "slow: testes demorados (>5s)",
+]
+# Suíte rápida do dia a dia: `pytest -m "not network and not integration"`
+addopts = "-p no:cacheprovider --strict-markers"
+
+[tool.coverage.run]
+source = ["compliance_agent"]
+omit = ["*/tests/*", "*/_SANDBOX/*", "*/__pycache__/*"]
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
+precision = 1

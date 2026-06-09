@@ -23,7 +23,6 @@ Ao final gera: diagnostic_report.txt + screenshots em diagnostic_screenshots/
 """
 
 import asyncio
-import json
 import os
 import sys
 from datetime import datetime
@@ -89,7 +88,7 @@ async def dump_page(page, name: str):
     # Visible text (truncated)
     try:
         body_text = await page.inner_text("body")
-        log(f"\n  --- Texto visível (primeiros 1500 chars) ---")
+        log("\n  --- Texto visível (primeiros 1500 chars) ---")
         log(body_text[:1500])
     except Exception as e:
         log(f"  [erro ao ler texto: {e}]")
@@ -887,7 +886,7 @@ async def main_cdp():
             pass_input = await target_page.query_selector("input[type='password']")
 
             if user_input and pass_input:
-                log(f"  ✅ Campos encontrados — preenchendo credenciais")
+                log("  ✅ Campos encontrados — preenchendo credenciais")
                 await user_input.fill(USERNAME)
                 await asyncio.sleep(0.5)
                 await pass_input.fill(PASSWORD)
@@ -912,7 +911,7 @@ async def main_cdp():
                         clicked = True
                         break
                 if not clicked and buttons:
-                    log(f"  → Clicando no primeiro botão disponível")
+                    log("  → Clicando no primeiro botão disponível")
                     await buttons[0].click()
 
                 await asyncio.sleep(3)
@@ -1083,7 +1082,7 @@ async def main_consultas():
         # Buscar OB nas linhas
         ob_rows = [r for r in rows if any("OB" in str(c) or "Execu" in str(c) for c in r)]
         if ob_rows:
-            log(f"\n  ✅ Linhas com 'OB'/'Execu':")
+            log("\n  ✅ Linhas com 'OB'/'Execu':")
             for r in ob_rows:
                 log(f"    {r}")
         else:
@@ -2731,7 +2730,7 @@ async def main_ob():
             sep(f"  ABA: {tab_name!r}{'  [DESABILITADA]' if is_dis else ''}")
 
             if is_dis:
-                log(f"  ⏭️  Aba desabilitada — pulando")
+                log("  ⏭️  Aba desabilitada — pulando")
                 continue
 
             # Click tab (skip if already selected — stay and capture)
@@ -2753,7 +2752,7 @@ async def main_ob():
                 log(f"  Clicou aba: {r_tab!r}")
                 await _adf_wait(pg, 10000)
             else:
-                log(f"  (aba já selecionada — capturando conteúdo atual)")
+                log("  (aba já selecionada — capturando conteúdo atual)")
 
             # Screenshot
             await pg.screenshot(path=str(SCREENSHOTS / f"ob_aba_{tab_safe}.png"),
@@ -2807,7 +2806,7 @@ async def main_ob():
                     .filter(el => el.text)
             """)
             if tab_links:
-                log(f"  Links/botões na aba:")
+                log("  Links/botões na aba:")
                 for lnk in tab_links:
                     log(f"    {lnk['text']!r:60} cls={lnk['cls'][:40]!r}")
                     if lnk["href"]:
@@ -2817,7 +2816,7 @@ async def main_ob():
             # TRATAMENTO ESPECIAL: aba Processo (SEI)
             # ──────────────────────────────────────────────────────────────────
             if "processo" in tab_name.lower():
-                sep(f"  ⭐ SEI/Processo — extração especial")
+                sep("  ⭐ SEI/Processo — extração especial")
 
                 # Strategy 1: label-based search
                 sei_label = await pg.evaluate(_JS_FIND_SEI)
@@ -2862,7 +2861,7 @@ async def main_ob():
                         }))
                         .filter(a => a.text || a.href.length > 5)
                 """)
-                log(f"  Todos os links (incluindo ocultos):")
+                log("  Todos os links (incluindo ocultos):")
                 for lnk in all_href:
                     vis_m = "✓" if lnk["vis"] else "·"
                     log(f"    {vis_m} {lnk['text']!r:65} href={lnk['href']!r}")

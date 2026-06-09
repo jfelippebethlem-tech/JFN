@@ -13,7 +13,7 @@ Uso pelo agente: o sistema compara novos alertas contra esses padrões
 para calcular um "score de similaridade" com casos conhecidos.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Optional
 
 

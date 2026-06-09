@@ -92,7 +92,7 @@ def fila_relativa_ug(top: int = 50, min_ob_ug: int = 30) -> list[dict]:
     que a eval revelou (score global dominado por UGs pequenas). Só UGs com >= min_ob_ug OBs (base estatística)."""
     con = conectar()
     try:
-        rows = con.execute(f"""
+        rows = con.execute("""
             WITH base AS (
                 SELECT o.numero_ob, o.ug_codigo, o.ug_nome, o.favorecido_nome, o.favorecido_cpf,
                        o.valor, o.data_emissao, a.score,

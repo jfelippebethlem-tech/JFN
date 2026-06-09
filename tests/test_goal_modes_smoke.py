@@ -18,7 +18,7 @@ async def main():
         print("identificar_padroes:", r2)
         print("desenvolver_hipoteses:", r3)
         print("testar_hipoteses:", r4)
-    except Exception as e:
+    except Exception:
         traceback.print_exc()
 
 asyncio.run(main())

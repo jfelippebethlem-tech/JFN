@@ -90,10 +90,6 @@ async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS)
         console.print(f"[dim]Hermes: Qwen falhou ({e}), tentando Groq…[/dim]")
 
     # ── 2. Groq ─────────────────────────────────────────────────────────────────
-    from compliance_agent.llm.free_llm import (
-        groq_available,
-        groq_chat_async,
-    )
     if groq_available():
         try:
             resultado = await groq_chat_async(prompt, system=system, smart=True,
@@ -104,12 +100,6 @@ async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS)
             console.print(f"[dim]Hermes: Groq falhou ({e}), tentando OpenRouter…[/dim]")
 
     # ── 3. OpenRouter cascade (:free — fallback) ────────────────────────────────
-    from compliance_agent.llm.free_llm import (
-        _openai_compat_chat_retry,
-        _openrouter_key,
-        OPENROUTER_BASE,
-        OPENROUTER_HEADERS,
-    )
 
     key = _openrouter_key()
     if key:
@@ -170,7 +160,7 @@ async def aprender_com_alertas_novos(session) -> Optional[dict]:
     """
     from compliance_agent.database.models import Alerta
     from compliance_agent.llm.memoria import (
-        aprender, contexto_para_prompt, registrar_entidade
+        aprender, contexto_para_prompt
     )
     from sqlalchemy import desc
 
@@ -327,7 +317,7 @@ async def sintetizar_semana(session) -> Optional[dict]:
         + "\n".join(h["valor"][:150] for h in hipoteses[:5])
         + f"\n\nALERTAS DA SEMANA ({len(alertas)}):\n"
         + json.dumps(resumo_alertas, ensure_ascii=False)
-        + f"\n\nTOP FAVORECIDOS DA SEMANA:\n"
+        + "\n\nTOP FAVORECIDOS DA SEMANA:\n"
         + json.dumps(resumo_top, ensure_ascii=False)
         + "\n\nIdentifique esquemas e conexões entre os casos."
     )
@@ -448,11 +438,11 @@ async def recomendar_proximo_alvo(candidatos: list[dict], session) -> Optional[s
     )
 
     prompt = (
-        f"CANDIDATOS A INVESTIGAR:\n"
+        "CANDIDATOS A INVESTIGAR:\n"
         + json.dumps(candidatos[:10], ensure_ascii=False)
-        + f"\n\nESQUEMAS ATIVOS:\n"
+        + "\n\nESQUEMAS ATIVOS:\n"
         + "\n".join(e["valor"][:150] for e in esquemas[:3])
-        + f"\n\nHIPÓTESES:\n"
+        + "\n\nHIPÓTESES:\n"
         + "\n".join(h["valor"][:100] for h in hipoteses[:3])
         + "\n\nQual investigar primeiro?"
     )
@@ -580,7 +570,7 @@ async def _bootstrap_hermes(session) -> None:
         # Telegram: avisa que o Hermes está ativo e o que vai monitorar
         msg_base = dados.get("mensagem_telegram", "")
         msg = (
-            f"🧠 *Hermes-3 ativo e estudando*\n\n"
+            "🧠 *Hermes-3 ativo e estudando*\n\n"
             + (f"_{msg_base}_\n\n" if msg_base else "")
             + f"Aprendi *{n_padroes}* padrões de irregularidade e formulei "
             f"*{n_hipoteses}* hipóteses para testar nos dados.\n"
@@ -667,7 +657,7 @@ async def loop_hermes_continuo():
                         f"🧠 *Síntese semanal do Hermes*\n\n"
                         f"Esquemas identificados: *{n_esquemas}*\n"
                         f"_{resumo}_\n\n"
-                        + (f"*Alvos prioritários:*\n" +
+                        + ("*Alvos prioritários:*\n" +
                            "\n".join(f"• {a[:100]}" for a in alvos[:3])
                            if alvos else "")
                     )

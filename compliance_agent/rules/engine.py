@@ -19,14 +19,13 @@ Referências legais:
 """
 
 import json
-from datetime import date, timedelta
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from compliance_agent.database.models import (
     Alerta, Contrato, Empresa, EmpresaSocio, OrdemBancaria, Pessoa,
-    PublicacaoDOERJ, RegistroFolha, Relacionamento,
+    PublicacaoDOERJ, RegistroFolha,
 )
 
 
@@ -334,7 +333,6 @@ class MotorCompliance:
         Empresa aberta menos de 6 meses antes de receber contrato público
         é padrão clássico de empresa de fachada.
         """
-        from sqlalchemy import and_
 
         contratos_novas = (
             self.session.query(Contrato, Empresa)
@@ -777,7 +775,6 @@ class MotorCompliance:
         (normal) ou ausência total de publicação (irregular) ou se o favorecido
         aparece em publicações suspeitas (rescisões, TCE, improbidade).
         """
-        import re
 
         TIPOS_SUSPEITOS = {"rescisão", "improbidade", "irregularidade", "condenação",
                            "cassação", "multa", "embargos", "inabilitação"}

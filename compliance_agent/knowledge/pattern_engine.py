@@ -10,11 +10,10 @@ O resultado enriquece as análises do agente sem chamadas extras.
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
-from compliance_agent.knowledge.casos_rj import CASOS_RJ, CasoCorrupcao
-from compliance_agent.knowledge.fraudes_licitacao import FRAUDES, FraudePattern, FRAUDES_POR_ID
+from compliance_agent.knowledge.casos_rj import CASOS_RJ
+from compliance_agent.knowledge.fraudes_licitacao import FRAUDES
 
 
 # ── Pontuação por palavras-chave ──────────────────────────────────────────────

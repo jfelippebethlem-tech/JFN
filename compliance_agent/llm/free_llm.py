@@ -26,7 +26,6 @@ import os
 import random
 import re
 import time
-from typing import Optional
 
 import httpx
 

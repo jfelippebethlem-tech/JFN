@@ -15,7 +15,6 @@ import asyncio
 import re
 from datetime import date
 from typing import Optional
-from urllib.parse import quote_plus
 
 import httpx
 from bs4 import BeautifulSoup

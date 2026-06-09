@@ -11,8 +11,6 @@ Escala estimada: 41k processos × ~2 KB ≈ ~80–120 MB. WAL p/ leituras concor
 """
 from __future__ import annotations
 
-import gzip
-import json
 import sqlite3
 import time
 from pathlib import Path

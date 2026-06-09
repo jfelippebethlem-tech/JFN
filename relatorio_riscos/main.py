@@ -22,7 +22,7 @@ from .collectors.cnpj_receita import buscar_cnpj
 from .collectors.contratos_pncp import buscar_contratos_por_cnpj
 from .collectors.sancoes import verificar_sancoes
 from .collectors.whois_br import buscar_dominios_grupo
-from .collectors.cache import cached, limpar_expirados
+from .collectors.cache import limpar_expirados
 from .analise.rede_societaria import expandir_rede
 from .analise.sinais_risco import calcular_sinais
 from .relatorio.gerador import gerar_md, gerar_txt, salvar_relatorio

@@ -15,12 +15,12 @@ Funcionalidades:
 Formato do número SEI-RJ: E-XX/XXXXXX/YYYY ou SEI-XXXXXX/YYYY
 """
 
+import asyncio
 import json
 import re
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
-from typing import Optional
-from urllib.parse import urljoin, urlencode, quote
+from urllib.parse import urljoin
 
 import httpx
 from bs4 import BeautifulSoup

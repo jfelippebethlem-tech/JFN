@@ -12,7 +12,6 @@ Regime (HMM): GaussianHMM sobre (retorno, vol) → estados latentes (ex.: calmo-
 estresse). Não "prevê preço"; classifica o "clima" para condicionar a estratégia.
 """
 import numpy as np
-import pandas as pd
 
 from massare import engine
 
@@ -85,7 +84,8 @@ def xgb_walkforward(symbol, horizon=5, train_min=750, step=21):
 
 
 if __name__ == "__main__":
-    import json, sys
+    import json
+    import sys
     syms = sys.argv[1:] or ["^GSPC", "^BVSP", "^IXIC", "BTC-USD"]
     for s in syms:
         print("REGIME:", json.dumps(regime_hmm(s), ensure_ascii=False))

@@ -21,7 +21,6 @@ Detecta:
 """
 
 import json
-from collections import defaultdict
 from datetime import date
 
 import networkx as nx
@@ -33,7 +32,7 @@ def construir_grafo(session) -> nx.DiGraph:
     Retorna DiGraph do networkx.
     """
     from compliance_agent.database.models import (
-        EmpresaSocio, OrdemBancaria, Pessoa, RegistroFolha, PublicacaoDOERJ
+        EmpresaSocio, OrdemBancaria, RegistroFolha
     )
 
     G = nx.DiGraph()

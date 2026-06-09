@@ -65,10 +65,9 @@ Cube "Documento - OB" (code 000079): OB cadastro data available in FlexVision
 """
 
 import asyncio
-import json
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Union
+from typing import Optional
 
 from playwright.async_api import async_playwright, Page, Browser, BrowserContext
 

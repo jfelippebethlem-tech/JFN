@@ -29,7 +29,6 @@ import asyncio
 import json
 import re
 from datetime import date, datetime
-from pathlib import Path
 
 from compliance_agent.database.models import (
     OrdemBancaria, SessaoAuditoria, get_session, init_db

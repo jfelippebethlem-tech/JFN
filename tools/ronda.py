@@ -14,7 +14,12 @@ O que faz a cada passagem:
 Uso manual:  python tools/ronda.py            (uma passagem)
              python tools/ronda.py --test     (força uma notificação de teste)
 """
-import os, sys, json, ssl, subprocess, urllib.request, urllib.parse
+import os
+import sys
+import json
+import subprocess
+import urllib.request
+import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 

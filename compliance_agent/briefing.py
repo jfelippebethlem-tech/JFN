@@ -14,7 +14,6 @@ a piada e o versículo. Nada de scraping de climatempo/g1/infomoney (que falhava
 from __future__ import annotations
 
 import json
-import os
 import re
 import sqlite3
 import urllib.parse

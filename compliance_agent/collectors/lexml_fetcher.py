@@ -16,7 +16,6 @@ Uso principal:
 
 import asyncio
 import re
-from typing import Optional
 
 import httpx
 

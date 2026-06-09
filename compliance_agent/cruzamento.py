@@ -369,7 +369,8 @@ def cidades_de_orgao(ug: str | None = None, anos: list[int] | None = None, limit
 
 
 if __name__ == "__main__":
-    import argparse, json
+    import argparse
+    import json
     ap = argparse.ArgumentParser(description="Cruzamento sócio×OB×SEI×endereço + descobertas")
     ap.add_argument("cnpj", nargs="?", help="CNPJ p/ cruzamento individual")
     ap.add_argument("--clusters", action="store_true", help="varre a base: grupos de fornecedores na mesma sede")

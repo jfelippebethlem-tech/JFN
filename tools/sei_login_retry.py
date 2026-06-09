@@ -18,7 +18,12 @@ Próximo passo (a integrar no sei_cdp): após o login, clicar a Pesquisa do app 
 processo → gravar em data/sei_cache/cdp_*.json (Lex consome 24h).
 """
 from __future__ import annotations
-import argparse, asyncio, os, re, sys, time
+import argparse
+import asyncio
+import os
+import re
+import sys
+import time
 from pathlib import Path
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO))

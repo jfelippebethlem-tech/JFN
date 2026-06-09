@@ -273,7 +273,7 @@ async def _status_reply() -> str:
                 .limit(4)
                 .all()
             )
-            linhas = [f"*📊 JFN Compliance — Status*\n",
+            linhas = ["*📊 JFN Compliance — Status*\n",
                       f"OBs no banco: *{total_obs}*",
                       f"Alertas totais: *{total_alertas}*"]
             if sessoes:
@@ -532,14 +532,14 @@ async def _doerj_reply(arg: str) -> str:
         arg = arg.strip()
         if arg.startswith("http"):
             pubs = await col.coletar_edicao_url(arg)
-            fonte = f"URL direta"
+            fonte = "URL direta"
         else:
             alvo = _date.today()
             if arg:
                 try:
                     alvo = _date.fromisoformat(arg)
                 except ValueError:
-                    return f"❌ Formato inválido. Use `/doerj AAAA-MM-DD` ou cole o URL da edição."
+                    return "❌ Formato inválido. Use `/doerj AAAA-MM-DD` ou cole o URL da edição."
             pubs = await col.coletar_data(alvo)
             fonte = alvo.isoformat()
 
@@ -647,7 +647,7 @@ async def _sei_reply(numero: str) -> str:
             linhas.append(f"Interessados: {', '.join(resultado['interessados'][:3])}")
         flags = resultado.get("red_flags") or resultado.get("irregularidades") or []
         if flags:
-            linhas.append(f"\n🚨 *Sinais de alerta:*")
+            linhas.append("\n🚨 *Sinais de alerta:*")
             for f in flags[:5]:
                 linhas.append(f"• {f}")
         if resultado.get("resumo"):

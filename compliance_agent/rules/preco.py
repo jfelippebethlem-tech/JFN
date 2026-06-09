@@ -16,7 +16,6 @@ import statistics
 from collections import defaultdict
 from typing import Optional
 
-from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from compliance_agent.database.models import Alerta, Contrato, Empresa
