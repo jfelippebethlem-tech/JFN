@@ -7,7 +7,7 @@
       "type": "function",
       "function": {
         "name": "relatorio_inteligencia",
-        "description": "Due diligence de FORNECEDOR (PDF+XLSX+parecer Lex) — usar quando: relatorio/auditoria/due diligence de empresa, CNPJ",
+        "description": "Due diligence de FORNECEDOR (PDF+XLSX+parecer Lex) — usar quando: relatorio/auditoria/due diligence de empresa, CNPJ — chamar: POST /api/relatorio/inteligencia (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -49,7 +49,7 @@
       "type": "function",
       "function": {
         "name": "relatorio_orgao",
-        "description": "Inteligencia de ORGAO/UG (quanto pagou e a quem) — usar quando: auditoria de orgao/UG/secretaria",
+        "description": "Inteligencia de ORGAO/UG (quanto pagou e a quem) — usar quando: auditoria de orgao/UG/secretaria — chamar: POST /api/relatorio/orgao (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -87,7 +87,7 @@
       "type": "function",
       "function": {
         "name": "anomalias",
-        "description": "Anomalias em OBs (+Benford na Onda 3) — usar quando: triagem de risco; 'algo estranho em X'",
+        "description": "Anomalias em OBs (+Benford na Onda 3) — usar quando: triagem de risco; 'algo estranho em X' — chamar: GET /api/anomalias (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -122,7 +122,7 @@
       "type": "function",
       "function": {
         "name": "cartel",
-        "description": "Cartel/bid-rigging em grafo + QSA (concentracao, rodizio, socios em comum entre concorrentes) — usar quando: conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?'",
+        "description": "Cartel/bid-rigging em grafo + QSA (concentracao, rodizio, socios em comum entre concorrentes) — usar quando: conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?' — chamar: GET /api/cartel (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -159,7 +159,7 @@
       "type": "function",
       "function": {
         "name": "conflito_doador_contrato",
-        "description": "Cruza doacoes TSE com contratos/OB (doador->fornecedor) — usar quando: 'quem me doou ganhou contrato', conflito de interesse",
+        "description": "Cruza doacoes TSE com contratos/OB (doador->fornecedor) — usar quando: 'quem me doou ganhou contrato', conflito de interesse — chamar: GET /api/conflito (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -190,7 +190,7 @@
       "type": "function",
       "function": {
         "name": "sobrepreco",
-        "description": "Preco pago vs mediana de referencia (Compras Dados Abertos, CATMAT/CATSER) — usar quando: 'esta caro?', superfaturamento, R4",
+        "description": "Preco pago vs mediana de referencia (Compras Dados Abertos, CATMAT/CATSER) — usar quando: 'esta caro?', superfaturamento, R4 — chamar: GET /api/sobrepreco (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -227,7 +227,7 @@
       "type": "function",
       "function": {
         "name": "cruzamento",
-        "description": "OB<->CNPJ<->SEI<->socios — usar quando: 'cruze os dados da empresa X'",
+        "description": "OB<->CNPJ<->SEI<->socios — usar quando: 'cruze os dados da empresa X' — chamar: GET /api/cruzamento (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -256,7 +256,7 @@
       "type": "function",
       "function": {
         "name": "missao_autonoma",
-        "description": "Auditoria autonoma aberta (loop hermes_goal CANONICO) — usar quando: pedido complexo/aberto",
+        "description": "Auditoria autonoma aberta (loop hermes_goal CANONICO) — usar quando: pedido complexo/aberto — chamar: POST /api/hermes/missao (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -285,7 +285,7 @@
       "type": "function",
       "function": {
         "name": "grafo_poder",
-        "description": "Grafo unico: socios+servidores+doacoes+contratos+nomeacoes — usar quando: 'quem esta ligado a X', 'a N saltos do deputado Y com contrato'",
+        "description": "Grafo unico: socios+servidores+doacoes+contratos+nomeacoes — usar quando: 'quem esta ligado a X', 'a N saltos do deputado Y com contrato' — chamar: GET /api/grafo (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -322,7 +322,7 @@
       "type": "function",
       "function": {
         "name": "dossie",
-        "description": "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias) — usar quando: 'monte um dossie sobre X'",
+        "description": "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias) — usar quando: 'monte um dossie sobre X' — chamar: POST /api/dossie (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -351,7 +351,7 @@
       "type": "function",
       "function": {
         "name": "grafo_ftm",
-        "description": "Exporta o Grafo de Poder no modelo FollowTheMoney (interoperar Aleph/Gephi, sem migrar) — usar quando: 'exporte a rede de X p/ FtM/Aleph'",
+        "description": "Exporta o Grafo de Poder no modelo FollowTheMoney (interoperar Aleph/Gephi, sem migrar) — usar quando: 'exporte a rede de X p/ FtM/Aleph' — chamar: GET /api/grafo/ftm (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -384,7 +384,7 @@
       "type": "function",
       "function": {
         "name": "consultar_empresa",
-        "description": "Cadastro + socios (QSA) por CNPJ, fonte hospedada (BrasilAPI->cnpj.pw, fallback) — usar quando: 'dados da empresa X', socios de um CNPJ",
+        "description": "Cadastro + socios (QSA) por CNPJ, fonte hospedada (BrasilAPI->cnpj.pw, fallback) — usar quando: 'dados da empresa X', socios de um CNPJ — chamar: GET /api/empresa (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -413,7 +413,7 @@
       "type": "function",
       "function": {
         "name": "consultar_idoneidade",
-        "description": "Triagem em listas: CEIS/CNEP (BR) + sancoes/PEP (OpenSanctions) — usar quando: 'a empresa X esta sancionada?', PEP",
+        "description": "Triagem em listas: CEIS/CNEP (BR) + sancoes/PEP (OpenSanctions) — usar quando: 'a empresa X esta sancionada?', PEP — chamar: GET /api/idoneidade (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -444,7 +444,7 @@
       "type": "function",
       "function": {
         "name": "consultar_ownership",
-        "description": "Empresa/controle internacional (LEI + relacoes) — usar quando: vinculo societario cross-jurisdicao",
+        "description": "Empresa/controle internacional (LEI + relacoes) — usar quando: vinculo societario cross-jurisdicao — chamar: GET /api/ownership (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -475,7 +475,7 @@
       "type": "function",
       "function": {
         "name": "consultar_leaks",
-        "description": "Busca hospedada em vazamentos offshore (link MANUAL) — usar quando: 'aparece nos Panama/Pandora Papers?'",
+        "description": "Busca hospedada em vazamentos offshore (link MANUAL) — usar quando: 'aparece nos Panama/Pandora Papers?' — chamar: GET /api/leaks (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -504,7 +504,7 @@
       "type": "function",
       "function": {
         "name": "consultar_links",
-        "description": "Pistas de investigacao HOSPEDADA (Max Intel, OSINT-Brazuca, Bellingcat, RedeCNPJ, JusBrasil/Escavador) — usar quando: 'onde mais pesquisar sobre X', aprofundar DD",
+        "description": "Pistas de investigacao HOSPEDADA (Max Intel, OSINT-Brazuca, Bellingcat, RedeCNPJ, JusBrasil/Escavador) — usar quando: 'onde mais pesquisar sobre X', aprofundar DD — chamar: GET /api/links (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -535,7 +535,7 @@
       "type": "function",
       "function": {
         "name": "consultar_diario",
-        "description": "Diarios oficiais municipais (Querido Diario): busca por palavra-chave + territorio IBGE + datas — usar quando: 'saiu no diario oficial de X?', publicacao/extrato de contrato municipal",
+        "description": "Diarios oficiais municipais (Querido Diario): busca por palavra-chave + territorio IBGE + datas — usar quando: 'saiu no diario oficial de X?', publicacao/extrato de contrato municipal — chamar: GET /api/diario (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -580,7 +580,7 @@
       "type": "function",
       "function": {
         "name": "doador_contrato_qsa",
-        "description": "TSE doador x contrato: socios (QSA) do fornecedor que aparecem como DOADORES de campanha (RJ). Indicio a conferir, nunca acusacao (CPF mascarado -> casa por nome) — usar quando: 'algum socio do fornecedor X financiou campanha?', conflito doador-fornecedor pela via QSA",
+        "description": "TSE doador x contrato: socios (QSA) do fornecedor que aparecem como DOADORES de campanha (RJ). Indicio a conferir, nunca acusacao (CPF mascarado -> casa por nome) — usar quando: 'algum socio do fornecedor X financiou campanha?', conflito doador-fornecedor pela via QSA — chamar: GET /api/doador_contrato (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -609,7 +609,7 @@
       "type": "function",
       "function": {
         "name": "ler_processo_sei",
-        "description": "Le processo SEI-RJ na integra via login interno itkava/ITERJ (Chromium real, SEM captcha, vence o WAF). Cache 24h. — usar quando: ler/analisar um processo SEI especifico. FORMATO do numero: 'SEI-UUUUUU/NNNNNN/AAAA' (ex.: SEI-070002/008633/2022) ou 'E-NN/NNN/AAAA' (ex.: E-12/345/2026) — unidade/sequencial/ano. Aceita com ou sem o prefixo SEI-.",
+        "description": "Le processo SEI-RJ na integra via login interno itkava/ITERJ (Chromium real, SEM captcha, vence o WAF). Cache 24h. — usar quando: ler/analisar um processo SEI especifico. FORMATO do numero: 'SEI-UUUUUU/NNNNNN/AAAA' (ex.: SEI-070002/008633/2022) ou 'E-NN/NNN/AAAA' (ex.: E-12/345/2026) — unidade/sequencial/ano. Aceita com ou sem o prefixo SEI-. — chamar (cli): tools.sei_reader \"<NUMERO>\"",
         "parameters": {
           "type": "object",
           "properties": {
@@ -638,7 +638,7 @@
       "type": "function",
       "function": {
         "name": "consultar_pncp",
-        "description": "PNCP API publica (editais/contratos/atas/DOCS) + roda R1-R12 — usar quando: analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos)",
+        "description": "PNCP API publica (editais/contratos/atas/DOCS) + roda R1-R12 — usar quando: analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos) — chamar: GET /api/pncp (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -677,7 +677,7 @@
       "type": "function",
       "function": {
         "name": "buscar_direcionamento",
-        "description": "Varre corpus (SEI+PNCP) e ranqueia direcionamento (R1/R7/R8/R12) — usar quando: 'ache editais restritivos na UG X'",
+        "description": "Varre corpus (SEI+PNCP) e ranqueia direcionamento (R1/R7/R8/R12) — usar quando: 'ache editais restritivos na UG X' — chamar: GET /api/sei/direcionamento (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -708,7 +708,7 @@
       "type": "function",
       "function": {
         "name": "parecer_juridico",
-        "description": "Parecer R1-R12 + base TCU/TCE-RJ (grau verde/amarelo/vermelho) — usar quando: 'tem direcionamento?', parecer",
+        "description": "Parecer R1-R12 + base TCU/TCE-RJ (grau verde/amarelo/vermelho) — usar quando: 'tem direcionamento?', parecer — chamar (cli): compliance_agent.lex \"<empresa|cnpj>\"",
         "parameters": {
           "type": "object",
           "properties": {
@@ -737,7 +737,7 @@
       "type": "function",
       "function": {
         "name": "busca_juridica",
-        "description": "Lei/acordao (TCE-RJ,TCU,LexML). RAG: Onda 10 — usar quando: 'qual a lei sobre...', jurisprudencia",
+        "description": "Lei/acordao (TCE-RJ,TCU,LexML). RAG: Onda 10 — usar quando: 'qual a lei sobre...', jurisprudencia — chamar (cli): compliance_agent.collectors.lexml_fetcher --termo \"<TERMO>\"",
         "parameters": {
           "type": "object",
           "properties": {
@@ -766,7 +766,7 @@
       "type": "function",
       "function": {
         "name": "instrumento_mandato",
-        "description": "Minuta: requerimento(ALERJ)/representacao(TCE)/noticia de fato(MP)/post — usar quando: 'faca um requerimento sobre esse contrato'",
+        "description": "Minuta: requerimento(ALERJ)/representacao(TCE)/noticia de fato(MP)/post — usar quando: 'faca um requerimento sobre esse contrato' — chamar: POST /api/mandato/minuta (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -797,7 +797,7 @@
       "type": "function",
       "function": {
         "name": "massare_cenarios",
-        "description": "Snapshot multi-horizonte + regime + tom de noticias(Onda 8) — usar quando: 'como esta o mercado', 'dolar/bolsa/ouro hoje'",
+        "description": "Snapshot multi-horizonte + regime + tom de noticias(Onda 8) — usar quando: 'como esta o mercado', 'dolar/bolsa/ouro hoje' — chamar: GET /api/massare/cenarios (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -819,7 +819,7 @@
       "type": "function",
       "function": {
         "name": "massare_placar",
-        "description": "Acuracia OOS + Sharpe liquido + DSR(Onda 9) — usar quando: 'o Massare acerta?'",
+        "description": "Acuracia OOS + Sharpe liquido + DSR(Onda 9) — usar quando: 'o Massare acerta?' — chamar: GET /api/massare/placar (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -841,7 +841,7 @@
       "type": "function",
       "function": {
         "name": "massare_prever",
-        "description": "Previsao direcional (walk-forward; condicionada a regime) — usar quando: 'previsao do Ibovespa', 'BTC vai subir?'",
+        "description": "Previsao direcional (walk-forward; condicionada a regime) — usar quando: 'previsao do Ibovespa', 'BTC vai subir?' — chamar: POST /api/massare/prever (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -874,7 +874,7 @@
       "type": "function",
       "function": {
         "name": "massare_teses",
-        "description": "Teses de mercado: narrativa->ativos->direcao, com acerto OOS por narrativa — usar quando: 'quais as teses agora', 'o que move o mercado'",
+        "description": "Teses de mercado: narrativa->ativos->direcao, com acerto OOS por narrativa — usar quando: 'quais as teses agora', 'o que move o mercado' — chamar: GET /api/massare/teses (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -896,7 +896,7 @@
       "type": "function",
       "function": {
         "name": "massare_focus",
-        "description": "Boletim Focus (BCB/Olinda): Selic/IPCA/PIB/cambio + variacao semanal — usar quando: 'o que o mercado espera de juros/inflacao'",
+        "description": "Boletim Focus (BCB/Olinda): Selic/IPCA/PIB/cambio + variacao semanal — usar quando: 'o que o mercado espera de juros/inflacao' — chamar: GET /api/massare/focus (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -918,7 +918,7 @@
       "type": "function",
       "function": {
         "name": "massare_fundamentos",
-        "description": "Fundamentos de acao BR (P/L,DY,ROE,balancos CVM) — usar quando: 'fundamentos da PETR4'",
+        "description": "Fundamentos de acao BR (P/L,DY,ROE,balancos CVM) — usar quando: 'fundamentos da PETR4' — chamar: GET /api/massare/fundamentos (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -947,7 +947,7 @@
       "type": "function",
       "function": {
         "name": "massare_calendario",
-        "description": "Agenda macro (US/BR/China): CPI/NFP/FOMC/COPOM/PMI China, previsto vs anterior — usar quando: 'agenda da semana', 'tem dado importante hoje?'",
+        "description": "Agenda macro (US/BR/China): CPI/NFP/FOMC/COPOM/PMI China, previsto vs anterior — usar quando: 'agenda da semana', 'tem dado importante hoje?' — chamar: GET /api/massare/calendario (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -974,7 +974,7 @@
       "type": "function",
       "function": {
         "name": "massare_carteira",
-        "description": "Modo carteira MANUAL: holdings em data/carteira.json x macro/regime/teses (sem broker) — usar quando: 'como esta minha carteira'",
+        "description": "Modo carteira MANUAL: holdings em data/carteira.json x macro/regime/teses (sem broker) — usar quando: 'como esta minha carteira' — chamar: GET /api/massare/carteira (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -996,7 +996,7 @@
       "type": "function",
       "function": {
         "name": "vigiar",
-        "description": "Adiciona alvo a watchlist; alerta no Telegram em evento (PNCP/DOERJ/SIAFE/GDELT) — usar quando: '/vigiar <cnpj|ug|nome>'",
+        "description": "Adiciona alvo a watchlist; alerta no Telegram em evento (PNCP/DOERJ/SIAFE/GDELT) — usar quando: '/vigiar <cnpj|ug|nome>' — chamar: POST /api/radar/vigiar (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -1029,7 +1029,7 @@
       "type": "function",
       "function": {
         "name": "radar_status",
-        "description": "O que o Radar vigia + ultimos alertas — usar quando: 'o que voce monitora', 'teve alerta hoje'",
+        "description": "O que o Radar vigia + ultimos alertas — usar quando: 'o que voce monitora', 'teve alerta hoje' — chamar: GET /api/radar/status (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -1051,7 +1051,7 @@
       "type": "function",
       "function": {
         "name": "siafe_atualizar",
-        "description": "Incremental diaria (cron 05:00); sessao unica via lockfile — usar quando: 'atualize o SIAFE'",
+        "description": "Incremental diaria (cron 05:00); sessao unica via lockfile — usar quando: 'atualize o SIAFE' — chamar: POST /api/siafe/atualizar (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -1078,7 +1078,7 @@
       "type": "function",
       "function": {
         "name": "siafe_stats",
-        "description": "Quanto já foi coletado do SIAFE: total de OBs, por ano/UG, cobertura/frescor — usar quando: 'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia'",
+        "description": "Quanto já foi coletado do SIAFE: total de OBs, por ano/UG, cobertura/frescor — usar quando: 'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia' — chamar: GET /api/siafe/stats (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -1100,7 +1100,7 @@
       "type": "function",
       "function": {
         "name": "siafe_status",
-        "description": "Estado da coleta SIAFE AGORA: ha um sweep/coleta rodando? (lockfile de sessao unica) — usar quando: 'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?'",
+        "description": "Estado da coleta SIAFE AGORA: ha um sweep/coleta rodando? (lockfile de sessao unica) — usar quando: 'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?' — chamar: GET /api/siafe/status (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -1122,7 +1122,7 @@
       "type": "function",
       "function": {
         "name": "siafe_coletar_ug",
-        "description": "Coleta UMA UG furando teto 1000; SIAFE 1 via JFN_SIAFE_LOGIN_URL=www5 — usar quando: backfill de UG",
+        "description": "Coleta UMA UG furando teto 1000; SIAFE 1 via JFN_SIAFE_LOGIN_URL=www5 — usar quando: backfill de UG — chamar (cli): compliance_agent.siafe_runner ug <UG> [ANO]",
         "parameters": {
           "type": "object",
           "properties": {
@@ -1155,7 +1155,7 @@
       "type": "function",
       "function": {
         "name": "enriquecer_socios",
-        "description": "QSA (socios) via BrasilAPI; insumo do cartel-grafo e do Grafo de Poder — usar quando: apos novo sweep",
+        "description": "QSA (socios) via BrasilAPI; insumo do cartel-grafo e do Grafo de Poder — usar quando: apos novo sweep — chamar (cli): tools.enriquecer_socios_ob",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -1177,7 +1177,7 @@
       "type": "function",
       "function": {
         "name": "memoria",
-        "description": "Memoria consolidada do ecossistema (licoes Massare + base Lex + Hermes) — usar quando: 'o que voce aprendeu', consolidar memoria",
+        "description": "Memoria consolidada do ecossistema (licoes Massare + base Lex + Hermes) — usar quando: 'o que voce aprendeu', consolidar memoria — chamar: GET /api/memoria (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
@@ -1204,7 +1204,7 @@
       "type": "function",
       "function": {
         "name": "status_jfn",
-        "description": "JFN vivo? healthcheck — usar quando: diagnostico",
+        "description": "JFN vivo? healthcheck — usar quando: diagnostico — chamar: GET /status (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -1226,7 +1226,7 @@
       "type": "function",
       "function": {
         "name": "skills",
-        "description": "Lista a skilltree (capacidades) agrupada por dominio com status — usar quando: 'o que voce sabe fazer', 'quais skills', 'capacidades'",
+        "description": "Lista a skilltree (capacidades) agrupada por dominio com status — usar quando: 'o que voce sabe fazer', 'quais skills', 'capacidades' — chamar (cli): telegram /skills [filtro]",
         "parameters": {
           "type": "object",
           "properties": {
@@ -1253,7 +1253,7 @@
       "type": "function",
       "function": {
         "name": "skill_detalhe",
-        "description": "Detalhe de uma capacidade (rota, args, quando usar, status) — usar quando: 'como funciona a skill X', detalhe de uma capacidade",
+        "description": "Detalhe de uma capacidade (rota, args, quando usar, status) — usar quando: 'como funciona a skill X', detalhe de uma capacidade — chamar (cli): telegram /skill <id>",
         "parameters": {
           "type": "object",
           "properties": {
@@ -1282,7 +1282,7 @@
       "type": "function",
       "function": {
         "name": "skills_reload",
-        "description": "Recarrega capabilities.yaml do disco e reaplica tools a quente (fail-safe, admin) — usar quando: apos editar o YAML na VM",
+        "description": "Recarrega capabilities.yaml do disco e reaplica tools a quente (fail-safe, admin) — usar quando: apos editar o YAML na VM — chamar (cli): telegram /skills_reload",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -1304,7 +1304,7 @@
       "type": "function",
       "function": {
         "name": "skills_sync",
-        "description": "git pull --ff-only no projeto + reload + reaplica tools (admin) — usar quando: apos git push do repo",
+        "description": "git pull --ff-only no projeto + reload + reaplica tools (admin) — usar quando: apos git push do repo — chamar (cli): telegram /skills_sync",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -1326,7 +1326,7 @@
       "type": "function",
       "function": {
         "name": "skills_validate",
-        "description": "Valida schema + checa que toda rota PRONTO existe no server.py (admin) — usar quando: antes de sync/reload, sanidade do contrato",
+        "description": "Valida schema + checa que toda rota PRONTO existe no server.py (admin) — usar quando: antes de sync/reload, sanidade do contrato — chamar (cli): telegram /skills_validate",
         "parameters": {
           "type": "object",
           "properties": {},

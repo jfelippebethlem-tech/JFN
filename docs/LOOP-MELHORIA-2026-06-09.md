@@ -90,9 +90,16 @@ Cada indício do Lex passa a dizer O QUE FAZER: grav≥3 → **requerimento** + 
 TCE-RJ/MP; senão diligência/monitoramento. Sem LLM. "Sistema pensante": dirige a ação, não só descreve.
 3 testes lex offline verdes.
 
-## ⏳ Loop 4 — sweep de wiring Yoda↔JFN (em execução)
-Testar capacidades end-to-end via `hermes -z` e consertar gaps de roteamento (capabilities.yaml + derivados).
-Já corrigido no Loop 1: `siafe_status`. (resultados do sweep a registrar)
+## ✅ Loop 4 — sweep de wiring Yoda↔JFN (gaps achados e corrigidos)
+Testes `hermes -z`:
+- T2 "tem cartel na UG 133100?" → Yoda usou `terminal`+`curl` e **chutou POST → 405**; a capability ainda
+  listava um param `ug` que a rota **não tem**. **FIX:** `/api/cartel` aceita **GET+POST** (robustez contra
+  chute de método) + args fiéis (`modo|cnpj|top`, sem `ug`). **Verificado:** curl GET/POST=200; Yoda retorna
+  a análise real (Casa Civil→Consórcio RJ Cidadão 56,1% de R$1,24bi…) com conclusão pensada.
+- T1 "o que você faz?" → Yoda devolveu o menu de comandos do gateway (aponta p/ /lista). Menor; melhoria
+  futura: surfaçar o `/lista` curado direto.
+**Aprendizado:** o Yoda executa via `terminal`+`curl` e às vezes chuta o método → rotas GET sensíveis devem
+aceitar POST também (ou o gateway ter um executor HTTP que respeite o `metodo` do contrato — TODO gateway).
 
 ## Loop 5 — planejado: Massare "pensante" + backtest total
 - Avaliar `/api/massare/*` (previsões com raciocínio + OOS honesto); backtest completo; checkpoint final.
