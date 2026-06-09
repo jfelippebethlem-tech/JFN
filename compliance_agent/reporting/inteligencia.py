@@ -757,11 +757,16 @@ def render_md(ctx: dict) -> str:
     add("")
     emp = (ctx["enriq"].get("dados") or {}).get("empresa") if ctx["enriq"].get("ok") else None
     if emp:
+        # Município/UF: o enrich às vezes vem sem esses campos separados; o cruzamento já os
+        # extrai do endereço (mesma fonte que alimenta "Cidade-sede" na Seção 1-B) — fallback honesto.
+        _endcz = (ctx.get("cruzamento") or {}).get("endereco") or {}
+        _mun = emp.get("municipio") or _endcz.get("municipio") or "—"
+        _uf = emp.get("uf") or _endcz.get("uf") or "—"
         campos = [
             ("Razão social", emp.get("razao_social")), ("Situação", emp.get("situacao")),
             ("Data de abertura", emp.get("data_abertura")), ("Porte", emp.get("porte")),
             ("Natureza jurídica", emp.get("natureza_juridica")), ("Capital social", f"R$ {moeda(emp.get('capital_social'))}"),
-            ("CNAE principal", emp.get("cnae_principal")), ("Município/UF", f"{emp.get('municipio','—')}/{emp.get('uf','—')}"),
+            ("CNAE principal", emp.get("cnae_principal")), ("Município/UF", f"{_mun}/{_uf}"),
             ("Endereço (sede)", emp.get("endereco")),
         ]
         for k, v in campos:
@@ -1284,12 +1289,15 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
 
     # 1. Perfil cadastral
     if emp:
+        _endcz = (ctx.get("cruzamento") or {}).get("endereco") or {}  # fallback município/UF (mesma fonte da Seção 1-B)
+        _mun = emp.get("municipio") or _endcz.get("municipio") or "—"
+        _uf = emp.get("uf") or _endcz.get("uf") or "—"
         campos = [("Razão social", emp.get("razao_social")), ("Situação", emp.get("situacao")),
                   ("Data de abertura", emp.get("data_abertura")), ("Porte", emp.get("porte")),
                   ("Natureza jurídica", emp.get("natureza_juridica")),
                   ("Capital social", f"R$ {moeda(emp.get('capital_social'))}" if emp.get("capital_social") else None),
                   ("CNAE principal", emp.get("cnae_principal")),
-                  ("Município/UF", f"{emp.get('municipio', '—')}/{emp.get('uf', '—')}"),
+                  ("Município/UF", f"{_mun}/{_uf}"),
                   ("Endereço (sede)", emp.get("endereco") or (ctx.get("cruzamento") or {}).get("endereco", {}).get("endereco"))]
         rows = "".join(f"<tr><th>{esc(k)}</th><td>{esc(v)}</td></tr>" for k, v in campos)
         secoes.append({"titulo": "1. Perfil cadastral", "html": f"<table>{rows}</table>"})
