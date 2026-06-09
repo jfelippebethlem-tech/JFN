@@ -700,6 +700,7 @@ async def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] =
 
 
 @app.get("/api/cartel")
+@app.post("/api/cartel")  # aceita GET e POST: o Yoda às vezes chuta o método (evita 405 na integração)
 async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int = 20):
     """Grafo fornecedor↔órgão (Onda 3). ?modo=captura (UGs concentradas) | dependencia (fornecedores
     presos a 1 órgão) | vizinhanca&cnpj=... (co-ocorrência/rodízio). Indício a verificar, nunca acusação."""
