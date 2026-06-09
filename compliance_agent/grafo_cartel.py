@@ -53,14 +53,21 @@ def captura_orgaos(min_fornecedores: int = 5, min_total: float = 1_000_000,
             SELECT ug_codigo, ug_nome, n_forn, total, top_valor, top_nome, top_cnpj
             FROM ag WHERE n_forn >= ? AND total >= ?
             ORDER BY (top_valor/total) DESC, total DESC LIMIT ?
-        """, [min_fornecedores, min_total, limite]).fetchall()
+        """, [min_fornecedores, min_total, limite * 3 + 10]).fetchall()
+        # exclui UGs cujo "top fornecedor" é entidade intra-gov/tributo (Min. Fazenda, Estado, INSS…):
+        # 99% indo a um repasse obrigatório NÃO é captura/cartel — é falso-positivo estrutural.
+        from compliance_agent.entidades_gov import eh_nao_fornecedor
         out = []
         for ug, ugn, nf, total, topv, topn, topc, in rows:
+            if eh_nao_fornecedor(topn):
+                continue
             out.append({
                 "ug": ug, "ug_nome": ugn, "n_fornecedores": nf,
                 "total": float(total), "top_share": round(topv / total * 100, 1),
                 "top_fornecedor": topn, "top_cnpj": topc,
             })
+            if len(out) >= limite:
+                break
         return out
     finally:
         con.close()
