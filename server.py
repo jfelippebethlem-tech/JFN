@@ -19,7 +19,10 @@ import argparse
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:  # só p/ anotações (o import real é lazy dentro das rotas) — resolve F821
+    from compliance_agent.hermes_goal import HermesGoalAgent
 
 import uvicorn
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
