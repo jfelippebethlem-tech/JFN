@@ -43,6 +43,27 @@ _DB = _DATA / "compliance.db"
 _REPORTS = _ROOT / "reports"
 _REGISTRY = _DATA / "empresas_target.json"
 
+
+def cabecalho_frescor() -> str:
+    """Cabeçalho de FRESCOR/COBERTURA dos dados de OB (honestidade: afirmar dentro da cobertura). Sem LLM —
+    só um COUNT na base. Vazio se a base não estiver acessível. Reusado pelos relatórios de fornecedor/órgão."""
+    try:
+        import sqlite3
+        con = sqlite3.connect(str(_DB))
+        try:
+            tot = con.execute("SELECT COUNT(*) FROM ordens_bancarias").fetchone()[0] or 0
+            cnpj = con.execute("SELECT COUNT(*) FROM ordens_bancarias WHERE length(favorecido_cpf)=14").fetchone()[0] or 0
+            ult = con.execute("SELECT MAX(data_pagamento) FROM ordens_bancarias").fetchone()[0]
+        finally:
+            con.close()
+        if not tot:
+            return ""
+        pct = round(100 * cnpj / tot)
+        return (f"> _Cobertura da base: {tot:,} OBs · {pct}% com CNPJ (PJ) · OB mais recente: {ult or '—'}. "
+                f"OB = pagamento definitivo (SIAFE/TFE-RJ); afirmações limitadas a esta cobertura._").replace(",", ".")
+    except Exception:
+        return ""
+
 # retenção: relatórios são REGENERÁVEIS sob demanda (cada /relatorio gera de novo), então não precisam ficar
 # acumulando no disco. Mantemos só os recentes (JFN_REPORTS_RETENCAO_DIAS, default 7).
 _RETENCAO_DIAS = int(os.environ.get("JFN_REPORTS_RETENCAO_DIAS", "7"))
@@ -710,6 +731,10 @@ def render_md(ctx: dict) -> str:
     add("")
     add("---")
     add("")
+    _fr = cabecalho_frescor()  # honestidade: cobertura/frescor da base no topo
+    if _fr:
+        add(_fr)
+        add("")
 
     # 1. Sumário executivo
     add("## SUMÁRIO EXECUTIVO")

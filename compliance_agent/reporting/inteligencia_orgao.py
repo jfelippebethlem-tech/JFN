@@ -28,6 +28,7 @@ from typing import Optional
 
 from compliance_agent import ugs
 from compliance_agent.reporting.inteligencia import (
+    cabecalho_frescor,
     _DB, _REPORTS, _hhi, _mc, _registrar_fonte, _render_parecer_pdf, _slug,
     _tab_header, _tab_row, fmt_cnpj, moeda, so_digitos,
 )
@@ -287,6 +288,10 @@ def render_md(ctx: dict) -> str:
     add("")
     add("---")
     add("")
+    _fr = cabecalho_frescor()  # honestidade: cobertura/frescor da base no topo
+    if _fr:
+        add(_fr)
+        add("")
     add("## SUMÁRIO EXECUTIVO")
     add("")
     add(_resumo(ctx))
