@@ -86,6 +86,37 @@
     {
       "type": "function",
       "function": {
+        "name": "listar_ugs",
+        "description": "Catalogo das UGs/orgaos: codigo + nome + nº OBs + total pago (o /UG) — usar quando: '/ug', 'quais os codigos/nomes dos orgaos/UGs', 'listar UGs', 'qual o codigo da SEEDUC', 'que orgaos existem', ANTES de pedir o /orgao quando nao se sabe o codigo — chamar: GET /api/ugs (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "filtro": {
+              "type": "string",
+              "description": "string opcional (nome OU codigo; acento nao importa)"
+            },
+            "limite": {
+              "type": "integer",
+              "description": "int opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/ugs",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": []
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "anomalias",
         "description": "Anomalias em OBs (+Benford na Onda 3) — usar quando: triagem de risco; 'algo estranho em X' — chamar: GET /api/anomalias (base http://127.0.0.1:8000)",
         "parameters": {

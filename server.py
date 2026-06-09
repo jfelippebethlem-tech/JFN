@@ -794,6 +794,20 @@ async def api_orgao_cidades(ug: Optional[str] = None, top: int = 20):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@app.get("/api/ugs")
+async def api_ugs(filtro: Optional[str] = None, limite: int = 50):
+    """Catálogo das UGs (órgãos) — o /UG do Yoda. Código + nome canônico + nº de OBs + total pago, para
+    o Mestre Jorge saber quais existem e pedir o /orgao certo. Filtro acento-insensível por nome OU código."""
+    try:
+        from compliance_agent.reporting.inteligencia_orgao import listar_ugs
+        limite = max(1, min(int(limite or 50), 151))
+        dados = listar_ugs(filtro=filtro, limite=limite)
+        return JSONResponse({"ok": dados.get("ok", True), "texto": dados.get("texto", ""),
+                             "ugs": dados.get("ugs", []), "n": dados.get("n", 0), "n_total": dados.get("n_total", 0)})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @app.post("/api/massare/prever")
 async def api_massare_prever(payload: Optional[dict] = None):
     """Previsão direcional de um ativo. Body: {"symbol":"^BVSP","horizon":5}."""

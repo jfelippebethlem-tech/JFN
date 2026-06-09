@@ -35,44 +35,157 @@ from compliance_agent.reporting.inteligencia import (
 
 # ───────────────────────────── resolução de órgão ─────────────────────────────
 
+# Siglas comuns de órgãos do ERJ → termo temático que casa o nome canônico (acento não importa).
+# Honesto: a sigla só EXPANDE a busca; se casar várias UGs, o Yoda pergunta qual (NÃO consolida).
+SIGLAS_ORGAO = {
+    "seeduc": "educacao", "see": "educacao",
+    "ses": "saude", "sesrj": "saude",
+    "sefaz": "fazenda",
+    "seplag": "planejamento gestao", "seplan": "planejamento",
+    "seap": "administracao penitenciaria",
+    "pcerj": "policia civil", "pc": "policia civil",
+    "pmerj": "policia militar", "pm": "policia militar",
+    "cbmerj": "bombeiros", "funesbom": "corpo de bombeiros",
+    "detran": "detran", "detro": "detro",
+    "seinfra": "infraestrutura", "seobras": "infraestrutura obras",
+    "setur": "turismo",
+    "secti": "ciencia tecnologia", "sects": "ciencia tecnologia",
+    "secec": "cultura", "secult": "cultura",
+    "sedeics": "desenvolvimento economico", "sedeic": "desenvolvimento economico",
+    "tjrj": "tribunal justica", "tj": "tribunal justica",
+    "tcerj": "tribunal contas", "tce": "tribunal contas",
+    "alerj": "assembleia legislativa",
+    "pgerj": "procuradoria", "pge": "procuradoria",
+    "mprj": "ministerio publico", "mp": "ministerio publico",
+    "uerj": "universidade estado", "uenf": "universidade norte fluminense",
+    "rioprevidencia": "rioprevidencia", "rioprev": "rioprevidencia",
+    "degase": "degase",
+}
+# tokens genéricos ignorados no casamento (quase toda UG os tem) — preserva os DISTINTIVOS.
+_STOP_UG = {"de", "do", "da", "dos", "das", "e", "estado", "rio", "janeiro", "rj", "erj", "governo"}
+
+
+def _tokens_sig(s: str) -> list[str]:
+    """tokens distintivos (sem acento, sem genéricos) — o que de fato identifica o órgão."""
+    return [t for t in _sem_acento(s).split() if t and t not in _STOP_UG]
+
+
+def _todas_ugs(con) -> list[dict]:
+    """Todas as UGs com métricas (uma query). Reusado por buscar_orgaos."""
+    rows = con.execute(
+        "SELECT ug_codigo, MAX(ug_nome) ug_nome, COUNT(*) n, ROUND(SUM(valor),2) total, "
+        "COUNT(DISTINCT favorecido_cpf) forn FROM ordens_bancarias "
+        "WHERE valor>0 AND ug_codigo IS NOT NULL GROUP BY ug_codigo").fetchall()
+    out = []
+    for r in rows:
+        cod = str(r["ug_codigo"]).strip()
+        out.append({"ug": cod, "nome": ugs.nome_canonico(cod, "") or (r["ug_nome"] or f"UG {cod}"),
+                    "total_pago": float(r["total"] or 0.0), "n_obs": int(r["n"] or 0),
+                    "n_forn": int(r["forn"] or 0), "_raw": r["ug_nome"] or ""})
+    return out
+
+
 def buscar_orgaos(termo: str, limite: int = 8) -> list[dict]:
-    """Resolve órgão por CÓDIGO de UG ou por NOME (parcial). Retorna [{ug, nome, total_pago, n_obs, n_forn}]."""
+    """Resolve órgão por CÓDIGO, NOME (parcial, ACENTO-insensível) ou SIGLA (SEEDUC, SEFAZ, TJRJ…).
+    Casa quando TODOS os tokens distintivos do termo aparecem no nome (ignora de/estado/rio/janeiro).
+    Sem match exato → devolve SUGESTÕES (overlap de tokens, _match='sugestao'). NÃO consolida várias UGs
+    (se o termo casar mais de uma, o Yoda pergunta qual). Retorna [{ug,nome,total_pago,n_obs,n_forn,_match}]."""
     termo = (termo or "").strip()
     if not termo or not _DB.exists():
         return []
-    con = sqlite3.connect(_DB)
-    con.row_factory = sqlite3.Row
-    cands: "OrderedDict[str, dict]" = OrderedDict()
+    cod = "".join(ch for ch in termo if ch.isdigit())
+    con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
     try:
-        # candidatos por nome canônico (mapa) — casa o termo no nome amigável (ex.: "iterj")
-        alvo = termo.lower()
-        ug_por_nome = {ug for ug, nome in ugs.carregar().items() if alvo in (nome or "").lower()}
-        # candidatos por código direto
-        cod = "".join(ch for ch in termo if ch.isdigit())
-        ugs_match = set(ug_por_nome)
-        if cod:
-            ugs_match.add(cod)
-        # candidatos por nome cru das OBs (ug_nome) — pega o ug_codigo correspondente
-        for r in con.execute(
-            "SELECT DISTINCT ug_codigo FROM ordens_bancarias WHERE lower(ug_nome) LIKE ? AND ug_codigo IS NOT NULL LIMIT 50",
-            (f"%{alvo}%",)):
-            if r["ug_codigo"]:
-                ugs_match.add(str(r["ug_codigo"]).strip())
-        # métricas de cada UG candidata
-        for ug in ugs_match:
-            r = con.execute(
-                "SELECT COUNT(*) n, ROUND(SUM(valor),2) total, COUNT(DISTINCT favorecido_cpf) forn, "
-                "MAX(ug_nome) ug_nome FROM ordens_bancarias WHERE ug_codigo=?", (ug,)).fetchone()
-            if not r or not r["n"]:
-                continue
-            cands[ug] = {
-                "ug": ug, "nome": ugs.nome_canonico(ug, "") or (r["ug_nome"] or f"UG {ug}"),
-                "total_pago": float(r["total"] or 0.0), "n_obs": int(r["n"] or 0),
-                "n_forn": int(r["forn"] or 0),
-            }
+        todas = _todas_ugs(con)
     finally:
         con.close()
-    return sorted(cands.values(), key=lambda c: (c["total_pago"], c["n_obs"]), reverse=True)[:limite]
+    # 1) código exato de UG
+    if cod:
+        exato = [u for u in todas if u["ug"] == cod]
+        if exato:
+            for u in exato:
+                u["_match"] = "exato"
+            return exato[:limite]
+    # 2) expande sigla(s): termo-base + expansão temática (se houver)
+    base = _sem_acento(termo)
+    termos = [base]
+    chave = base.replace(" ", "")
+    if chave in SIGLAS_ORGAO:
+        termos.append(SIGLAS_ORGAO[chave])
+    else:
+        for sig, exp in SIGLAS_ORGAO.items():
+            if sig in base.split():
+                termos.append(exp)
+    # 3) casamento token-AND (todos os tokens distintivos presentes), por QUALQUER um dos termos
+    exatos = []
+    for u in todas:
+        nome_norm = _sem_acento(u["nome"] + " " + u["_raw"])
+        if any(toks and all(t in nome_norm for t in toks) for toks in (_tokens_sig(t) for t in termos)):
+            u["_match"] = "exato"
+            exatos.append(u)
+    if exatos:
+        return sorted(exatos, key=lambda c: (c["total_pago"], c["n_obs"]), reverse=True)[:limite]
+    # 4) sem match exato → SUGESTÕES por overlap de tokens (OR), ranqueadas por nº de tokens batidos
+    alvo_toks = set()
+    for t in termos:
+        alvo_toks.update(_tokens_sig(t))
+    sug = []
+    for u in todas:
+        nome_norm = _sem_acento(u["nome"] + " " + u["_raw"])
+        hits = sum(1 for t in alvo_toks if t in nome_norm)
+        if hits:
+            u2 = dict(u); u2["_match"] = "sugestao"; u2["_hits"] = hits
+            sug.append(u2)
+    sug.sort(key=lambda c: (c["_hits"], c["total_pago"]), reverse=True)
+    return sug[:limite]
+
+
+def _sem_acento(s: str) -> str:
+    """minúsculas + sem acento (a busca de UG no banco é acento-sensível: 'Justiça' != 'Justica')."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", (s or "").lower())
+    return "".join(c for c in s if not unicodedata.combining(c))
+
+
+def listar_ugs(filtro: Optional[str] = None, limite: int = 50) -> dict:
+    """Catálogo das UGs (órgãos) das OBs: código + nome canônico + nº de OBs + total pago. É o /UG do Yoda
+    — para o Mestre Jorge saber quais códigos/nomes existem e então pedir o /orgao certo. Filtro opcional
+    (acento-INsensível) por nome OU código. Honesto: só OBs com valor>0; total = pagamento (OB), nunca empenho."""
+    out = {"ok": True, "filtro": filtro or "", "n": 0, "n_total": 0, "ugs": [], "texto": ""}
+    if not _DB.exists():
+        out["ok"] = False; out["texto"] = "Base local indisponível."; return out
+    con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(
+            "SELECT ug_codigo, MAX(ug_nome) ug_nome, COUNT(*) n, ROUND(SUM(valor),2) total "
+            "FROM ordens_bancarias WHERE valor>0 AND ug_codigo IS NOT NULL GROUP BY ug_codigo").fetchall()
+    finally:
+        con.close()
+    itens = []
+    for r in rows:
+        cod = str(r["ug_codigo"]).strip()
+        nome = ugs.nome_canonico(cod, "") or (r["ug_nome"] or f"UG {cod}")
+        itens.append({"ug": cod, "nome": nome, "n_obs": int(r["n"] or 0), "total": float(r["total"] or 0.0)})
+    out["n_total"] = len(itens)
+    if filtro:
+        f = _sem_acento(filtro); fdig = "".join(ch for ch in filtro if ch.isdigit())
+        itens = [it for it in itens if f in _sem_acento(it["nome"]) or (fdig and fdig in it["ug"])]
+    itens.sort(key=lambda it: it["total"], reverse=True)
+    itens = itens[:max(1, limite)]
+    out["ugs"] = itens; out["n"] = len(itens)
+    # texto pronto p/ Telegram (markdown)
+    titulo = f"🏛️ *UGs / órgãos* — {out['n']}" + (f" resultado(s) para “{filtro}”" if filtro else f" de {out['n_total']} (top por pagamento)")
+    linhas = [titulo, "_Use o **código** no /orgao (ex.: «relatório do órgão 036100»)._", ""]
+    for it in itens:
+        nobs = f"{it['n_obs']:,}".replace(",", ".")
+        linhas.append(f"• `{it['ug']}` — {it['nome']}")
+        linhas.append(f"    {nobs} OBs · R$ {moeda(it['total'])}")
+    if not filtro and out["n_total"] > out["n"]:
+        linhas += ["", f"_…{out['n_total'] - out['n']} UGs a mais. Filtre por nome: «/ug saúde», «/ug tribunal»._"]
+    elif filtro and not itens:
+        linhas = [f"🏛️ Nenhuma UG encontrada para “{filtro}”. Tente outro termo (acento não importa) ou «/ug» sem filtro."]
+    out["texto"] = "\n".join(linhas)
+    return out
 
 
 # ───────────────────────────── consulta ─────────────────────────────
@@ -135,17 +248,22 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     termo = (ug or orgao or "").strip()
     cands = buscar_orgaos(termo)
     if not cands:
-        return {"ok": False, "erro": f"Não encontrei órgão/UG para {termo!r}. Tente outro nome ou o código da UG."}
+        return {"ok": False, "erro": f"Não encontrei órgão/UG para {termo!r}. Veja os códigos/nomes com /ug "
+                                     f"(ex.: «/ug {termo}») e tente de novo."}
     cod = "".join(ch for ch in termo if ch.isdigit())
-    if len(cands) == 1 or (cod and any(c["ug"] == cod for c in cands)):
+    eh_sugestao = cands[0].get("_match") == "sugestao"  # não houve match exato → confirmar mesmo com 1
+    if not eh_sugestao and (len(cands) == 1 or (cod and any(c["ug"] == cod for c in cands))):
         escolhido = next((c for c in cands if c["ug"] == cod), cands[0])
     else:
         opcoes = [{"n": i + 1, "ug": c["ug"], "nome": c["nome"], "total_pago": c["total_pago"], "n_obs": c["n_obs"]}
                   for i, c in enumerate(cands)]
         linhas = [f"{o['n']}) {o['nome']} (UG {o['ug']}) — R$ {moeda(o['total_pago'])} em {o['n_obs']} OBs" for o in opcoes]
+        cabec = (f"Não achei um órgão exato para \"{termo}\". Você quis dizer:"
+                 if eh_sugestao else
+                 f"Encontrei {len(opcoes)} órgãos para \"{termo}\". Qual deles, Mestre Jorge?")
         return {"ok": False, "ambiguo": True, "termo": termo, "candidatos": opcoes,
-                "pergunta": f"Encontrei {len(opcoes)} órgãos para \"{termo}\". Qual deles, Mestre Jorge?\n"
-                            + "\n".join(linhas) + "\n\nResponda com o número ou o código da UG."}
+                "pergunta": cabec + "\n" + "\n".join(linhas)
+                            + "\n\nResponda com o número ou o código da UG (ou use /ug para ver todos)."}
 
     ug_cod = escolhido["ug"]
     pagamentos = consultar_orgao(ug_cod, anos)
