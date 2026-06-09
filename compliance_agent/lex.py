@@ -1010,12 +1010,13 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     return "\n".join(L)
 
 
-def render_pdf(ctx: dict, destino: str, analise: dict | None = None) -> str:
-    """PDF do parecer Lex — mesma estética do JFN (capa azul + texto corrido)."""
+def render_pdf(ctx: dict, destino: str, analise: dict | None = None, md: str | None = None) -> str:
+    """PDF do parecer Lex — mesma estética do JFN (capa azul + texto corrido). `md` opcional permite
+    reaproveitar a estética para o parecer de ÓRGÃO (sem recomputar o fornecedor)."""
     from fpdf import FPDF
     if analise is None:
         analise = _analise(ctx)
-    md = parecer_md(ctx, analise)
+    md = md if md is not None else parecer_md(ctx, analise)
     rotulo = analise["rotulo"]
     cor = {"VERMELHO": (220, 53, 69), "AMARELO": (255, 150, 0), "VERDE": (40, 167, 69)}.get(rotulo, (90, 90, 90))
 
@@ -1042,7 +1043,8 @@ def render_pdf(ctx: dict, destino: str, analise: dict | None = None) -> str:
     pdf.ln(4)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "B", 14)
     _mc(pdf, 8, _t(ctx.get("nome", "")))
-    pdf.set_font(pdf._fam, "", 10); pdf.cell(0, 6, _t(f"CNPJ: {fmt_cnpj(ctx.get('cnpj',''))}"), ln=True)
+    _ident = f"CNPJ: {fmt_cnpj(ctx.get('cnpj',''))}" if so_digitos(ctx.get("cnpj", "")) else f"Unidade Gestora (UG): {ctx.get('ug','—')}"
+    pdf.set_font(pdf._fam, "", 10); pdf.cell(0, 6, _t(_ident), ln=True)
     pdf.ln(2)
     pdf.set_fill_color(*cor)
     pdf.set_text_color(0, 0, 0) if rotulo == "AMARELO" else pdf.set_text_color(255, 255, 255)
@@ -1077,6 +1079,141 @@ def gerar(ctx: dict, salvar: bool = True, ler_sei: bool | None = None) -> dict:
         out["path_lex_md"] = str(md_path)
         try:
             out["path_lex_pdf"] = render_pdf(ctx, str(_REPORTS / f"{base}.pdf"), analise)
+        except Exception as exc:  # noqa: BLE001
+            out["_pdf_erro"] = str(exc)[:160]
+    return out
+
+
+# ─────────────────────── PARECER LEX DE ÓRGÃO (UG) ───────────────────────
+# O /orgao passa a "pensar" como o /relatorio: além do PDF/XLSX, emite um PARECER LEX próprio. Os indícios
+# são de nível ÓRGÃO (concentração/captura, recorrência idêntica, estornos), com os mesmos red flags e
+# fundamentos do controle externo, grau 🟢🟡🔴 e encaminhamento. Honesto: indícios a verificar, nunca acusação.
+
+def _ob_zero_da_ug(ug: str) -> int:
+    """Quantas OBs de valor <=0 (estornos/regularizações/OB R$ 0,00) a UG tem — insumo do R10."""
+    try:
+        import sqlite3
+
+        from compliance_agent.reporting.inteligencia import _DB
+        if not ug or not _DB.exists():
+            return 0
+        con = sqlite3.connect(_DB)
+        try:
+            n = con.execute("SELECT COUNT(*) FROM ordens_bancarias WHERE ug_codigo=? AND (valor IS NULL OR valor<=0)",
+                            (str(ug),)).fetchone()[0]
+        finally:
+            con.close()
+        return int(n or 0)
+    except Exception:
+        return 0
+
+
+def _achados_orgao(ctx: dict) -> list[dict]:
+    """Indícios de NÍVEL ÓRGÃO a partir dos pagamentos (OB) já consolidados pelo /orgao."""
+    p = ctx.get("pagamentos") or {}
+    if not p.get("tem_dados"):
+        return []
+    ach: list[dict] = []
+    hhi = p.get("hhi") or {}
+    nivel = (hhi.get("nivel") or "").lower()
+    top_share = float(hhi.get("top_share") or 0)  # percentual (0-100)
+    total = float(p.get("total_geral") or 0) or 1.0
+    top_nome, top_val = next(iter((p.get("por_favorecido_geral") or {}).items()), ("—", 0))
+    if top_share >= 60:
+        ach.append({"rf": "R8", "grav": 4, "obs": f"**{top_nome}** concentra **{top_share:.1f}%** dos pagamentos do órgão "
+                    f"(R$ {moeda(top_val)} de R$ {moeda(total)}; HHI {hhi.get('indice')} — {nivel}). Concentração ≥60% em um "
+                    "único fornecedor é *red flag* clássico de captura/cartel (ACFE/OCDE) — exige comprovar a competitividade."})
+    elif top_share >= 50:
+        ach.append({"rf": "R8", "grav": 3, "obs": f"**{top_nome}** concentra **{top_share:.1f}%** (R$ {moeda(top_val)}; HHI "
+                    f"{hhi.get('indice')} — {nivel}). Verificar competitividade dos certames ou fracionamento/dispensa reiterada/direcionamento."})
+    elif top_share >= 30:
+        ach.append({"rf": "R8", "grav": 2, "obs": f"Concentração relevante: **{top_nome}** com **{top_share:.1f}%** "
+                    f"(HHI {hhi.get('indice')} — {nivel}). Examinar a competitividade dos certames e o parcelamento do objeto."})
+    try:
+        from compliance_agent.reporting.inteligencia_orgao import _recorrentes_identicos
+        grupos = _recorrentes_identicos(p)
+    except Exception:
+        grupos = []
+    if grupos:
+        g0 = grupos[0]
+        ach.append({"rf": "R2", "grav": 2, "obs": f"Padrão de **valores idênticos**: **{g0['favorecido']}** recebeu "
+                    f"**{g0['n']}×** o valor exato de R$ {moeda(g0['valor'])} (R$ {moeda(g0['total'])} no total). Típico de "
+                    "serviço continuado, mas a reiteração integra os *red flags* da ACFE — caracterizar objeto/vigência/medição."})
+    n_zero = _ob_zero_da_ug(ctx.get("ug", ""))
+    if n_zero >= 10:
+        ach.append({"rf": "R10", "grav": 2, "obs": f"A UG tem **{n_zero}** OBs de valor zero/estorno — verificar regularizações/"
+                    "anulações de liquidação (Lei 4.320/64 arts. 62-63; Decreto 93.872/86 art. 38) e seu motivo."})
+    return ach
+
+
+def _parecer_orgao_md(ctx: dict, analise: dict, merito: str = "") -> str:
+    """Corpo (markdown) do parecer Lex de órgão — mesma anatomia do parecer de fornecedor."""
+    achados = analise.get("achados", [])
+    L = ["---", ""]
+    add = L.append
+    add("## I. MÉRITO DA EXECUÇÃO DO ÓRGÃO")
+    add("")
+    add(merito or "Sem narrativa de mérito disponível.")
+    add("")
+    add("## II. INDÍCIOS ESTRUTURADOS (red flags do controle externo)")
+    add("")
+    if achados:
+        for a in achados:
+            nome, fund = _RF.get(a["rf"], (a["rf"], ""))
+            add(f"### {a['rf']} — {nome}")
+            add(f"- **Observação:** {a['obs']}")
+            add(f"- **Fundamento:** {fund}")
+            g = a.get("grav", 0)
+            if g >= 3:
+                add(f"- **⤴ Encaminhamento:** indício relevante (gravidade {g}/5) — cabe **requerimento** ao órgão exigindo "
+                    "justificativa documental (contratos, modalidade, pesquisa de preços); persistindo, representação ao TCE-RJ/MP-RJ.")
+            else:
+                add(f"- **Encaminhamento:** gravidade {g}/5 — manter em diligência/monitoramento; reavaliar com mais dados.")
+            add("")
+    else:
+        add("Nenhum indício automático disparou a partir dos pagamentos (OB) disponíveis. Mantém-se a presunção de regularidade.")
+        add("")
+    add("## III. MATRIZ DE RISCO (P × I — metodologia TCU)")
+    add("")
+    add("| Indício | P (1-5) | I (1-5) | Score | Faixa |")
+    add("|---|---:|---:|---:|---|")
+    for a in achados:
+        nome = _RF.get(a["rf"], (a["rf"], ""))[0]
+        pp = min(5, 2 + a["grav"] // 2); ii = a["grav"]; sc = pp * ii
+        faixa = "Baixo" if sc <= 4 else "Médio" if sc <= 9 else "Alto" if sc <= 14 else "Extremo"
+        add(f"| {a['rf']} {nome} | {pp} | {ii} | {sc} | {faixa} |")
+    if not achados:
+        add("| — | — | — | — | — |")
+    add("")
+    add("## IV. CONCLUSÃO — GRAU DE ATENÇÃO")
+    add("")
+    add(f"{analise.get('emoji','')} **{analise.get('rotulo','')}** — {analise.get('just','')}.")
+    add("")
+    add("> **Ressalva:** baseado em dados de pagamento (OB) públicos, sem exame documental dos contratos. "
+        "Indícios a verificar, NÃO conclusão de irregularidade — vigora a presunção de regularidade dos atos administrativos.")
+    return "\n".join(L)
+
+
+def gerar_orgao(ctx: dict, salvar: bool = True) -> dict:
+    """Parecer LEX de ÓRGÃO (UG) — faz o /orgao 'pensar' como o /relatorio. `ctx` é o contexto do relatório
+    de órgão (nome, ug, data, pagamentos). Retorna {ok, grau, n_indicios, path_lex_pdf, path_lex_md}."""
+    achados = _achados_orgao(ctx)
+    emoji, rotulo, just = _grau(achados)
+    analise = {"achados": achados, "emoji": emoji, "rotulo": rotulo, "just": just}
+    try:  # mérito jurídico textual do próprio módulo de órgão (import tardio evita ciclo)
+        from compliance_agent.reporting.inteligencia_orgao import parecer_orgao
+        merito = parecer_orgao(ctx)
+    except Exception:
+        merito = ""
+    md = _parecer_orgao_md(ctx, analise, merito)
+    out = {"ok": True, "grau": rotulo, "n_indicios": len(achados), "path_lex_pdf": "", "path_lex_md": ""}
+    if salvar:
+        base = f"parecer_lex_orgao_{_slug(ctx.get('nome','')) or ctx.get('ug','')}_{ctx.get('data','')}"
+        md_path = _REPORTS / f"{base}.md"
+        md_path.write_text(md, encoding="utf-8")
+        out["path_lex_md"] = str(md_path)
+        try:
+            out["path_lex_pdf"] = render_pdf(ctx, str(_REPORTS / f"{base}.pdf"), analise, md=md)
         except Exception as exc:  # noqa: BLE001
             out["_pdf_erro"] = str(exc)[:160]
     return out
