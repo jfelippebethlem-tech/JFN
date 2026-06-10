@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pip install -q -r requirements-dev.txt > /dev/null 2>&1 || true"
+          }
+        ]
+      }
+    ]
+  }
+}
