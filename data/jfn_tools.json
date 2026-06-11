@@ -193,6 +193,37 @@
     {
       "type": "function",
       "function": {
+        "name": "rodizio",
+        "description": "Rodizio temporal de cartel (bid rotation): vencedores que se revezam no topo de uma UG ano a ano — usar quando: rodizio/revezamento de vencedores; 'a UG X tem fornecedores que se alternam no 1o lugar?' — chamar: GET /api/rodizio (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ug": {
+              "type": "string",
+              "description": "opcional (sem ug = varredura)"
+            },
+            "top": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/rodizio",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "conflito_doador_contrato",
         "description": "Cruza doacoes TSE com contratos/OB (doador->fornecedor) — usar quando: 'quem me doou ganhou contrato', conflito de interesse — chamar: GET /api/conflito (base http://127.0.0.1:8000)",
         "parameters": {
