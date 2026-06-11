@@ -1057,14 +1057,15 @@ async def api_massare_prever(payload: Optional[dict] = None):
     except (TypeError, ValueError):
         horizon = 5
     try:
-        from massare import engine, store, market
+        from massare import engine, engine_regime4, store, market
         store.init_db()
         symbol = market.resolver_symbol(termo)  # prata→SI=F, ouro→GC=F, etc.
         try:
             market._refresh_precos([symbol])  # garante dados mesmo fora do núcleo diário (ex.: prata)
         except Exception:  # noqa: BLE001
             pass
-        p = engine.predict_today(symbol, horizon=horizon)
+        # motor 4-regimes+drift (edge OOS do universo ≥0); cai p/ o ensemble global se faltar dado
+        p = engine_regime4.predict_today(symbol, horizon=horizon) or engine.predict_today(symbol, horizon=horizon)
         if not p:
             return JSONResponse({"ok": False, "erro": f"Sem dados para {termo} ({symbol}).",
                                  "dica": "símbolos: prata=SI=F, ouro=GC=F, bitcoin=BTC-USD, ibovespa=^BVSP"},

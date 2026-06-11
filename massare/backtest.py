@@ -27,7 +27,8 @@ import json
 import sqlite3
 from pathlib import Path
 
-from massare.engine import walk_forward
+from massare.engine import walk_forward  # baseline ingênuo (mantido p/ comparação histórica)
+from massare.engine_regime4 import walk_forward_regime4
 from massare import learning
 
 _DB = Path(__file__).resolve().parent / "data" / "massare.db"
@@ -43,13 +44,19 @@ def _ativos_negociaveis() -> list[str]:
     return [r[0] for r in rows]
 
 
-def run(symbols: list[str] | None = None, horizons: tuple[int, ...] = (5, 10, 21)) -> dict:
+def run(symbols: list[str] | None = None, horizons: tuple[int, ...] = (5, 10, 21),
+        motor: str = "regime4") -> dict:
+    """Backtest OOS do universo. `motor`:
+      - 'regime4' (PADRÃO): ensemble 4-regimes (tendência×vol) + drift-aware — edge médio do universo ≥0.
+      - 'naive': ensemble adaptativo global (baseline histórico, edge negativo) — p/ comparação.
+    A troca p/ regime4 foi feita SÓ após o backtest universo-inteiro provar edge ≥0 (lição V2: medir antes)."""
+    wf_fn = walk_forward_regime4 if motor == "regime4" else walk_forward
     symbols = symbols or _ativos_negociaveis()
     por_ativo: list[dict] = []
     for sym in symbols:
         for h in horizons:
             try:
-                wf = walk_forward(sym, horizon=h)
+                wf = wf_fn(sym, horizon=h)
             except Exception as exc:  # noqa: BLE001
                 por_ativo.append({"symbol": sym, "horizon": h, "erro": str(exc)[:80]})
                 continue
@@ -86,6 +93,7 @@ def run(symbols: list[str] | None = None, horizons: tuple[int, ...] = (5, 10, 21
         "edge_medio": _wavg("edge"),
         "series_com_edge_positivo": sum(1 for r in validos if (r.get("edge") or 0) > 0),
         "dados_ate": dados_ate,
+        "motor": motor,
     }
     # resolve previsões logadas cujo alvo já venceu (honesto)
     try:

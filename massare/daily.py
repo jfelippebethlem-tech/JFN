@@ -15,7 +15,7 @@ import json
 import sys
 import time
 
-from massare import store, behavior, learning, engine
+from massare import store, behavior, learning, engine, engine_regime4
 
 NUCLEO = ["^GSPC", "^IXIC", "^DJI", "^BVSP", "BTC-USD", "ETH-USD",
           "GC=F", "CL=F", "DX-Y.NYB", "USDBRL=X", "NVDA"]
@@ -46,7 +46,7 @@ def run(horizon=5, record=True):
     calls = []
     for sym in NUCLEO:
         try:
-            p = engine.predict_today(sym, horizon=horizon)
+            p = engine_regime4.predict_today(sym, horizon=horizon) or engine.predict_today(sym, horizon=horizon)
             if not p:
                 continue
             if record:
