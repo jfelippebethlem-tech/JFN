@@ -79,7 +79,12 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
 ## 8. LIÇÕES DURAS (não repetir)
 - **⛔ V2 (2026-06-08):** LLM síncrono no hot-path + mudar o que funcionava = regressão. Gerar o **artefato real cedo**
   como baseline; perfeição = perfeiçoar o existente.
-- **Auto-pkill:** `pkill -f "x"` com o padrão no próprio comando se auto-mata → usar colchete `x[_]y` ou PID.
+- **Auto-pkill / auto-pgrep:** `pkill -f "x"` (ou `pgrep -f "x" && kill`) com o padrão "x" no PRÓPRIO comando se
+  auto-mata/auto-casa → usar colchete `x[_]y` ou PID. **Variante do cron-respawn (06-11 cont.18):** o guard
+  `* * * * * pgrep -f superv.sh || nohup superv.sh` **casa o próprio sh do cron** (o cmdline tem "superv.sh") →
+  nunca faz bootstrap nem respawn de verdade. Fix: **bracket no pgrep** `pgrep -f 'superv[i]sor.sh'` (casa o
+  processo real, não o guard) + lançar 1× DIRETO no boot/@reboot. ⚠ o cron do `sei_supervisor.sh` tem o mesmo
+  bug latente (só não morde porque o SEI nunca morre); brackear se for mexer nele.
 - **Verificar o dono do processo antes de matar/concluir** (o Chromium vivo era do server.py, não de sweep).
 - **Reboot-safe lock:** lock por PID não basta (PID reusado após boot parece vivo) → ancorar no boot time
   (`/proc/stat btime`): lock anterior ao boot = obsoleto na hora (`recursos._lock_obsoleto`).
