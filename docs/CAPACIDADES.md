@@ -18,16 +18,19 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `siafe_coletar_ug` | jfn | cli | `compliance_agent.siafe_runner ug <UG> [ANO]` | PRONTO | backfill de UG |
 | `siafe_stats` | jfn | http | `/api/siafe/stats` | PRONTO | 'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia' |
 | `siafe_status` | jfn | http | `/api/siafe/status` | PRONTO | 'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?' |
+| `sweeps_status` | jfn | http | `/api/sweeps/status` | PRONTO | 'como esta o sweep', 'o sweep do SEI/SIAFE esta funcionando', 'a coleta continua esta rodando', 'quantos processos SEI ja foram lidos' |
 | `consultar_diario` | jfn | http | `/api/diario` | PRONTO | 'saiu no diario oficial de X?', publicacao/extrato de contrato municipal |
 | `consultar_empresa` | jfn | http | `/api/empresa` | PRONTO | 'dados da empresa X', socios de um CNPJ |
 | `consultar_idoneidade` | lex | http | `/api/idoneidade` | PRONTO | 'a empresa X esta sancionada?', PEP |
 | `consultar_leaks` | jfn | http | `/api/leaks` | PRONTO | 'aparece nos Panama/Pandora Papers?' |
 | `consultar_links` | jfn | http | `/api/links` | PRONTO | 'onde mais pesquisar sobre X', aprofundar DD |
+| `consultar_noticias` | jfn | http | `/api/massare/noticias` | PRONTO | 'noticias sobre X', 'saiu algo na midia sobre X', 'aparicoes/repercussao recente de X' — quando NAO houver web_search, esta e a fonte de midia disponivel |
 | `consultar_ownership` | jfn | http | `/api/ownership` | PRONTO | vinculo societario cross-jurisdicao |
 | `doador_contrato_qsa` | lex | http | `/api/doador_contrato` | PRONTO | 'algum socio do fornecedor X financiou campanha?', conflito doador-fornecedor pela via QSA |
 | `dossie` | jfn | http | `/api/dossie` | PRONTO | 'monte um dossie sobre X' |
 | `grafo_ftm` | jfn | http | `/api/grafo/ftm` | PRONTO | 'exporte a rede de X p/ FtM/Aleph' |
 | `grafo_poder` | jfn | http | `/api/grafo` | PRONTO | 'quem esta ligado a X', 'a N saltos do deputado Y com contrato' |
+| `investigar_web` | jfn | http | `/api/compliance/investigar` | PRONTO | 'pesquise na web sobre X', 'noticias recentes de X', 'atividade publica/aparicoes na midia de X', 'o que saiu sobre X', monitoramento diario de uma pessoa |
 | `busca_juridica` | lex | cli | `compliance_agent.collectors.lexml_fetcher --termo "<TERMO>"` | PRONTO | 'qual a lei sobre...', jurisprudencia |
 | `buscar_direcionamento` | lex | http | `/api/sei/direcionamento` | PRONTO | 'ache editais restritivos na UG X' |
 | `consultar_pncp` | lex | http | `/api/pncp` | PRONTO | analisar licitacao SEM SEI; editais por UF/orgao/fornecedor; preventivo (abertos) |
@@ -40,7 +43,7 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `massare_focus` | massare | http | `/api/massare/focus` | PRONTO | 'o que o mercado espera de juros/inflacao' |
 | `massare_fundamentos` | massare | http | `/api/massare/fundamentos` | PRONTO | 'fundamentos da PETR4' |
 | `massare_placar` | massare | http | `/api/massare/placar` | PRONTO | 'o Massare acerta?' |
-| `massare_prever` | massare | http | `/api/massare/prever` | PRONTO | 'previsao do Ibovespa', 'BTC vai subir?' |
+| `massare_prever` | massare | http | `/api/massare/prever` | PRONTO | 'como esta a prata/ouro hoje?', 'previsao do Ibovespa', 'BTC vai subir?', perspectivas de um ativo |
 | `massare_teses` | massare | http | `/api/massare/teses` | PRONTO | 'quais as teses agora', 'o que move o mercado' |
 | `radar_status` | jfn | http | `/api/radar/status` | PRONTO | 'o que voce monitora', 'teve alerta hoje' |
 | `vigiar` | jfn | http | `/api/radar/vigiar` | PRONTO | '/vigiar <cnpj|ug|nome>' |
