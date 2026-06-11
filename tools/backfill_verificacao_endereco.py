@@ -75,7 +75,11 @@ def main() -> int:
         except Exception as e:  # noqa: BLE001
             res = {"status": "INDISPONIVEL", "nivel": "—", "evidencia": f"erro: {str(e)[:60]}", "sinais": {}}
         g = (res.get("sinais") or {}).get("geocode") or {}
-        con.execute("INSERT OR REPLACE INTO endereco_verificacao VALUES (?,?,?,?,?,?,?,?,?)",
+        # colunas NOMEADAS (a tabela ganhou visual_* na cont.15 → 13 colunas; o INSERT posicional de 9
+        # quebrava em TODA linha. Os visual_* ficam NULL aqui — só o resolvedor de imagem os preenche).
+        con.execute("INSERT OR REPLACE INTO endereco_verificacao "
+                    "(cnpj,status,nivel,exato,lat,lon,municipio_geo,evidencia,verificado_em) "
+                    "VALUES (?,?,?,?,?,?,?,?,?)",
                     (f["cnpj"], res["status"], res.get("nivel", "—"), 1 if g.get("exato") else 0,
                      g.get("lat"), g.get("lon"), g.get("municipio_geo", ""),
                      res.get("evidencia", "")[:500], ts))

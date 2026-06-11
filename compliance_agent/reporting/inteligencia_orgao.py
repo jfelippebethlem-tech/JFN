@@ -278,6 +278,12 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
         geo = {"ok": False, "_nota": str(exc)[:120]}
     ctx = {"ug": ug_cod, "nome": nome, "data": date.today().isoformat(), "pagamentos": pagamentos,
            "alias": ugs.ALIASES.get(ug_cod, {}), "geo": geo}
+    # CRUZAMENTOS DE INTELIGÊNCIA (pedido do dono: todos os cruzamentos no relatório):
+    #   - DD fachada/laranja + rodízio temporal (cartel) dos maiores fornecedores + processos SEI a priorizar
+    #   - realidade do endereço das sedes (as empresas são reais?)
+    # Bounded/degrada honesto. Vêm ANTES do raciocínio p/ a IA conectar também esses achados.
+    ctx["dd_orgao"] = _dd_orgao_bounded(ug_cod, anos)
+    ctx["endereco_real"] = _endereco_real_orgao(ug_cod)
     ctx["raciocinio"] = parecer_raciocinado_orgao(ctx)  # síntese de IA sobre os fatos (degrada honesto)
 
     md = render_md(ctx)
@@ -343,17 +349,50 @@ def _fatos_orgao(ctx: dict) -> str:
         c0 = geo["cidades"][0]
         L.append(f"Concentração geográfica dos fornecedores: maior cidade-sede = "
                  f"{c0.get('cidade')}/{c0.get('uf', '')} ({c0.get('pct', 0):.0f}% do valor com endereço ingerido).")
+    # cruzamentos de inteligência (DD fachada/laranja + rodízio/cartel + realidade de endereço)
+    dd = ctx.get("dd_orgao") or {}
+    if dd.get("ok"):
+        alvos = dd.get("alvos_prioritarios") or []
+        if alvos:
+            L.append("Triagem de Due Diligence (fachada/laranja) nos maiores fornecedores PJ: "
+                     f"{len(alvos)} com indício de {dd.get('n_avaliados')} avaliados — ex.: "
+                     + "; ".join(f"{a['nome'][:28]} {a['grau']} (score {a['score']}, "
+                                 f"{', '.join(c.replace('H-', '') for c in a.get('codigos', [])) or 'sem código'})"
+                                 for a in alvos[:3]) + ".")
+        else:
+            L.append(f"Triagem de Due Diligence: {dd.get('n_avaliados')} maiores fornecedores PJ avaliados, "
+                     "nenhum com indício nas hipóteses verificáveis (fachada/laranja costuma morar na cauda, "
+                     "não no topo por valor).")
+        rod = dd.get("rodizio")
+        if rod and rod.get("indicio"):
+            L.append(f"Rodízio temporal de vencedores (bid rotation / cartel — OCDE): score {rod.get('score')}, "
+                     f"{rod.get('n_campeoes')} 'campeões' revezando o 1º lugar em {rod.get('n_anos')} exercícios "
+                     f"(dominância do grupo {rod.get('share_ring')}).")
+        if dd.get("processos_prioritarios"):
+            L.append(f"{len(dd['processos_prioritarios'])} processo(s) SEI a priorizar no sweep "
+                     "(correlação OB↔SEI dos fornecedores com indício).")
+    er = ctx.get("endereco_real") or {}
+    if er.get("ok"):
+        L.append(f"Realidade do endereço das sedes (amostra verificada): {er['afastado']} confirmadas reais, "
+                 f"{er['indicio']} com indício (possível baldio/precário), {er['indisponivel']} sem conclusão — "
+                 f"de {er['n_verificados']} verificadas em {er['n_forn']} fornecedores PJ. "
+                 "INDISPONÍVEL não é prova de inexistência (cobertura cartográfica incompleta).")
     return "\n".join("- " + x for x in L)
 
 
 _SYS_RACIOCINIO_ORGAO = (
     "Você é auditor sênior de controle externo (TCE-RJ/TCU) analisando a EXECUÇÃO de um órgão público. "
     "A partir EXCLUSIVAMENTE dos fatos listados (NÃO invente dados/nomes/fontes; sem conhecimento externo), "
-    "escreva uma ANÁLISE RACIOCINADA que CONECTE os achados (concentração em fornecedor, pagamentos "
-    "recorrentes idênticos, concentração geográfica): o que chama atenção, COMO se relacionam, que hipóteses "
-    "de risco (captura, fracionamento, direcionamento) merecem apuração e POR QUÊ, e o que verificar. "
-    "Linguagem condicional (indício, sugere, merece apuração) — NUNCA afirme irregularidade nem culpa "
-    "(presunção de legitimidade). Responda em MARKDOWN com bullets curtos '- ' (NUNCA JSON/cercas). Máx ~300 palavras."
+    "escreva uma ANÁLISE RACIOCINADA que CONECTE TODOS os achados disponíveis (concentração em fornecedor, "
+    "pagamentos recorrentes idênticos, concentração geográfica, triagem de DUE DILIGENCE de fachada/laranja "
+    "nos maiores fornecedores, RODÍZIO TEMPORAL de vencedores/cartel, processos SEI a priorizar e a "
+    "VERIFICAÇÃO DE REALIDADE do endereço das sedes): o que chama atenção, COMO os sinais se REFORÇAM entre si "
+    "(ex.: fornecedor dominante + rodízio + sede em endereço não confirmado = hipótese mais forte de "
+    "direcionamento/cartel), que hipóteses de risco (captura, fracionamento, direcionamento, conluio, "
+    "interposição/laranja) merecem apuração e POR QUÊ, e exatamente O QUE verificar (contrato, certame, SEI). "
+    "Construa o raciocínio com PROSA densa e específica aos números dados — cite os valores/percentuais/nomes "
+    "dos fatos. Linguagem condicional (indício, sugere, merece apuração) — NUNCA afirme irregularidade nem culpa "
+    "(presunção de legitimidade). Responda em MARKDOWN com bullets '- ' (NUNCA JSON/cercas). Até ~450 palavras."
 )
 
 
@@ -452,6 +491,76 @@ def _resumo(ctx: dict) -> str:
             f"{(top[1]/(p['total_geral'] or 1)*100):.1f}%).")
 
 
+# ──────────── cruzamentos de inteligência (DD fachada/laranja · cartel · SEI · endereço) ────────────
+
+def _dd_orgao_bounded(ug: str, anos: Optional[list[int]], top_n: int = 12) -> dict:
+    """Triagem de DD (fachada/laranja) + rodízio temporal (cartel/bid rotation) dos maiores fornecedores
+    PJ da UG, ranqueada por grau/score, com os processos SEI a priorizar. Reusa
+    `compliance_agent.investigacao_orgao_dd`. Bounded (top_n) e degrada HONESTO (uma rede cadastral por
+    fornecedor, cacheada; se a rede/DuckDB falhar, devolve {ok:False} e o relatório registra como tal)."""
+    try:
+        from compliance_agent import investigacao_orgao_dd as iod
+        out = iod.investigar_orgao(str(ug), top_n=top_n, anos=anos)
+        out["ok"] = bool(out.get("ranking"))
+        return out
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "_nota": str(exc)[:160]}
+
+
+def _endereco_real_orgao(ug: str) -> dict:
+    """Cruza os fornecedores (PJ) que a UG pagou com a tabela `endereco_verificacao` para responder
+    'as empresas são reais?'. Buckets honestos: **AFASTADO** = sede real/edificada (afasta fachada);
+    **INDICIO** = ponto possivelmente baldio/precário (a verificar); **INDISPONIVEL** = sem conclusão
+    (cobertura OSM incompleta — NÃO é prova de inexistência, lição §endereço). Lista os indícios com nome."""
+    out = {"ok": False, "n_forn": 0, "n_verificados": 0, "afastado": 0, "indicio": 0,
+           "indisponivel": 0, "indicios": []}
+    try:
+        con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
+        try:
+            cnpjs = {r[0] for r in con.execute(
+                "SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE ug_codigo=? "
+                "AND favorecido_cpf IS NOT NULL AND length(favorecido_cpf)=14", (str(ug),)).fetchall()}
+            if not cnpjs:
+                return out
+            out["n_forn"] = len(cnpjs)
+            try:
+                rows = con.execute(
+                    "SELECT cnpj,status,nivel,municipio_geo,evidencia FROM endereco_verificacao").fetchall()
+            except sqlite3.OperationalError:
+                return out  # tabela ainda não existe (sweep de endereços não rodou)
+            indic_cnpjs = []
+            for r in rows:
+                if r["cnpj"] not in cnpjs:
+                    continue
+                out["n_verificados"] += 1
+                st = (r["status"] or "").upper()
+                if st == "AFASTADO":
+                    out["afastado"] += 1
+                elif st == "INDICIO":
+                    out["indicio"] += 1
+                    if len(out["indicios"]) < 12:
+                        out["indicios"].append({"cnpj": r["cnpj"], "nivel": r["nivel"],
+                                                "evidencia": (r["evidencia"] or "")[:160], "nome": ""})
+                        indic_cnpjs.append(r["cnpj"])
+                else:
+                    out["indisponivel"] += 1
+            # nomes dos fornecedores com indício (p/ a tabela ficar legível)
+            if indic_cnpjs:
+                qs = ",".join("?" * len(indic_cnpjs))
+                nomes = {r[0]: r[1] for r in con.execute(
+                    f"SELECT favorecido_cpf, MAX(favorecido) FROM ordens_bancarias "
+                    f"WHERE favorecido_cpf IN ({qs}) GROUP BY favorecido_cpf", indic_cnpjs).fetchall()}
+                for it in out["indicios"]:
+                    it["nome"] = nomes.get(it["cnpj"], "")
+        finally:
+            con.close()
+        out["ok"] = out["n_verificados"] > 0
+        return out
+    except Exception as exc:  # noqa: BLE001
+        out["_nota"] = str(exc)[:160]
+        return out
+
+
 # ───────────────────────────── render Markdown ─────────────────────────────
 
 def _sigla_descr(nome: str) -> tuple[str, str]:
@@ -481,6 +590,103 @@ def _recorrentes_identicos(p: dict, min_rep: int = 4, min_valor: float = 50_000.
               for k, g in contagem.items() if g["n"] >= min_rep]
     grupos.sort(key=lambda x: -x["total"])
     return grupos
+
+
+def _secao_dd_md(add, ctx: dict) -> None:
+    """Seção 1-D — triagem de DD (fachada/laranja) dos maiores fornecedores + rodízio temporal (cartel) +
+    processos SEI a priorizar. É o cruzamento central de inteligência do relatório de órgão."""
+    dd = ctx.get("dd_orgao") or {}
+    add("## 1-D. TRIAGEM DE DUE DILIGENCE DOS FORNECEDORES (FACHADA / LARANJA / CARTEL)")
+    add("")
+    add("> Os maiores fornecedores PJ da UG passam por uma **investigação de due diligence** (rede societária, "
+        "situação cadastral, capital × recebido, recência, sócio único, endereço, PEP/benefício) que classifica "
+        "cada um em **🔴 alto / 🟡 médio / 🟢 sem indício**. Cruza-se ainda o **rodízio temporal de vencedores** "
+        "(revezamento no topo ano a ano — assinatura de cartel/*bid rotation*, OCDE) e os **processos SEI** a "
+        "priorizar. 🟢 não é atestado de regularidade; **fachada/laranja costuma morar na cauda**, não no topo "
+        "por valor — a varredura de cauda roda em background.")
+    add("")
+    if not dd.get("ok"):
+        _nota = dd.get("_nota") or "rede cadastral/DuckDB indisponível no momento"
+        add(f"_Triagem de DD indisponível nesta execução ({_nota}). Rode "
+            "`python -m compliance_agent.investigacao_orgao_dd {ug}` para o detalhe._".replace("{ug}", ctx["ug"]))
+        add("")
+        return
+    rod = dd.get("rodizio")
+    if rod and rod.get("indicio"):
+        camps = ", ".join(f"{c['nome'][:26]} ({c['n_vitorias']}×)" for c in (rod.get("campeoes") or [])[:5])
+        add(f"### ⟳ Rodízio temporal de vencedores (bid rotation) — score {rod.get('score')}")
+        add("")
+        add(f"> 🟡 **Indício de cartel/conluio:** {rod.get('n_campeoes')} fornecedores se **revezaram no 1º lugar** "
+            f"da UG ao longo de {rod.get('n_anos')} exercícios (alternância {rod.get('alternancia')}, dominância "
+            f"do grupo {rod.get('share_ring')}). Campeões: {camps}. O revezamento sistemático do vencedor é "
+            "assinatura clássica de *bid rotation* (OCDE *Guidelines for Fighting Bid Rigging*). "
+            "OB expõe o **vencedor**, não os licitantes — corroborar no SEI/PNCP (atas, propostas, habilitação).")
+        add("")
+    ranking = dd.get("ranking") or []
+    alvos = dd.get("alvos_prioritarios") or []
+    add(f"### Ranking de risco dos {len(ranking)} maiores fornecedores PJ")
+    add("")
+    add("| # | Grau | Score | Fornecedor | Total pago (R$) | Indícios (hipóteses) | Proc. SEI |")
+    add("|--:|:--:|--:|---|--:|---|--:|")
+    for i, r in enumerate(ranking, 1):
+        cods = ", ".join(c.replace("H-", "") for c in (r.get("codigos") or [])) or "—"
+        forn = f"{r['nome'][:42]} ({fmt_cnpj(r['cnpj'])})" if r.get("cnpj") else r["nome"][:42]
+        add(f"| {i} | {r['grau']} | {r['score']} | {forn} | {moeda(r['total_pago'])} | {cods} "
+            f"| {len(r.get('processos_sei') or [])} |")
+    add("")
+    if alvos:
+        a0 = alvos[0]
+        cods0 = ", ".join(c.replace("H-", "") for c in (a0.get("codigos") or [])) or "—"
+        add(f"> 🟡 **{len(alvos)} fornecedor(es) com indício** (graus 🔴/🟡). O de maior atenção é "
+            f"**{a0['nome']}** (grau {a0['grau']}, score {a0['score']}; hipóteses: {cods0}) — recomenda-se "
+            "puxar o contrato, o processo SEI e a regularidade fiscal/sancionatória. Indício ≠ acusação.")
+    else:
+        add("> 🟢 Nenhum dos maiores fornecedores por valor disparou indício nas hipóteses verificáveis. "
+            "Isso **não** afasta fachada/laranja — eles tendem a aparecer em contratos menores (cauda), "
+            "cobertos pela varredura de DD estrutural em background.")
+    add("")
+    procs = dd.get("processos_prioritarios") or []
+    if procs:
+        add("**Processos SEI a priorizar no sweep** (correlação OB↔SEI dos fornecedores com indício): "
+            + ", ".join(procs[:30]) + (" …" if len(procs) > 30 else "") + ".")
+        add("")
+
+
+def _secao_endereco_md(add, ctx: dict) -> None:
+    """Seção 1-E — realidade do endereço das sedes (responde 'as empresas são reais?')."""
+    er = ctx.get("endereco_real") or {}
+    add("## 1-E. REALIDADE DO ENDEREÇO DAS SEDES (AS EMPRESAS SÃO REAIS?)")
+    add("")
+    add("> Cruza o CNPJ de cada fornecedor com o **mapa** (geocodificação + base cartográfica aberta) para "
+        "checar se a **sede declarada existe e é edificada** — afastando (ou sinalizando) empresa de fachada. "
+        "Veredito honesto: **AFASTADO** = sede real/edificada; **INDÍCIO** = ponto possivelmente baldio/precário "
+        "(a verificar in loco/imagem); **INDISPONÍVEL** = sem conclusão. **INDISPONÍVEL ≠ inexistência** — a "
+        "cobertura cartográfica na periferia é incompleta, e satélite no nível da rua nunca acusa baldio "
+        "(só Street View/in loco conclui).")
+    add("")
+    if not er.get("ok"):
+        cob = (f"0 de {er.get('n_forn', 0)}") if er.get("n_forn") else "0"
+        add(f"_Ainda sem endereços verificados para os fornecedores desta UG ({cob} verificados). O sweep de "
+            "endereços (`backfill_verificacao_endereco`) cobre o universo de sedes incrementalmente — esta "
+            "seção se preenche à medida que avança._")
+        add("")
+        return
+    add(f"**Cobertura:** {er['n_verificados']} de {er['n_forn']} fornecedores PJ já verificados "
+        f"({er['n_verificados']/(er['n_forn'] or 1)*100:.0f}%). "
+        f"✔ {er['afastado']} sede real (afastado) · 🟡 {er['indicio']} com indício · "
+        f"… {er['indisponivel']} sem conclusão.")
+    add("")
+    if er.get("indicios"):
+        add("| Fornecedor (CNPJ) | Nível | Evidência |")
+        add("|---|:--:|---|")
+        for it in er["indicios"]:
+            forn = f"{(it.get('nome') or '—')[:40]} ({fmt_cnpj(it['cnpj'])})"
+            add(f"| {forn} | {it.get('nivel') or '—'} | {(it.get('evidencia') or '—')[:90]} |")
+        add("")
+        add("> 🟡 **Indício a verificar:** sede em ponto possivelmente não edificado. Conferir o endereço no "
+            "mapa real (CEP/Google), por imagem (Street View) ou in loco antes de tratar como achado — "
+            "INDISPONÍVEL/centróide de rua não comprova baldio.")
+        add("")
 
 
 def render_md(ctx: dict) -> str:
@@ -623,6 +829,11 @@ def render_md(ctx: dict) -> str:
         add("_Nenhum padrão relevante de pagamentos de valor idêntico repetido (≥4× acima de R$ 50 mil)._")
         add("")
 
+    # 1-D. Triagem de Due Diligence (fachada/laranja) + rodízio temporal (cartel) — o coração da inteligência
+    _secao_dd_md(add, ctx)
+    # 1-E. Verificação de realidade do endereço das sedes (as empresas são reais?)
+    _secao_endereco_md(add, ctx)
+
     # Tabelas de OBs por ano (pagamentos individuais a cada fornecedor)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
     add("")
@@ -698,6 +909,71 @@ def _risco_orgao(ctx: dict) -> dict:
     base = sum({1: 6, 2: 12, 3: 22, 4: 34}.get(a.get("grav", 0), 0) for a in ach)
     score = min(99, int(base + min(top, 60) * 0.5))
     return {"achados": ach, "emoji": emoji, "rotulo": rotulo, "just": just, "score": score}
+
+
+def _secao_dd_pdf(pdf, _t, ctx: dict) -> None:
+    """PDF — triagem de DD (fachada/laranja) + rodízio/cartel + processos SEI (cruzamento central)."""
+    dd = ctx.get("dd_orgao") or {}
+    pdf.add_page(); pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
+    pdf.cell(0, 9, _t("Triagem de Due Diligence dos fornecedores (fachada/laranja/cartel)"), ln=True)
+    pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+    _mc(pdf, 4.5, _t("Os maiores fornecedores PJ passam por due diligence (rede societária, situação cadastral, "
+                     "capital x recebido, sócio único, endereço) e recebem grau de risco. Cruza-se o rodízio "
+                     "temporal de vencedores (bid rotation/cartel) e os processos SEI a priorizar. Grau verde NÃO "
+                     "atesta regularidade; fachada/laranja costuma morar na cauda, não no topo por valor."))
+    pdf.ln(1)
+    if not dd.get("ok"):
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t("Triagem de DD indisponível nesta execução (rede cadastral/DuckDB) — degrada honesto."))
+        pdf.set_text_color(0, 0, 0); return
+    rod = dd.get("rodizio")
+    if rod and rod.get("indicio"):
+        camps = ", ".join(f"{c['nome'][:22]} ({c['n_vitorias']}x)" for c in (rod.get("campeoes") or [])[:4])
+        pdf.set_font(pdf._fam, "B", 10); pdf.set_text_color(150, 90, 0)
+        pdf.cell(0, 7, _t(f"Rodizio temporal de vencedores (bid rotation) - score {rod.get('score')}"), ln=True)
+        pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+        _mc(pdf, 4.5, _t(f"Indício de cartel/conluio: {rod.get('n_campeoes')} fornecedores revezaram o 1o lugar "
+                         f"em {rod.get('n_anos')} exercícios (dominância {rod.get('share_ring')}). Campeões: "
+                         f"{camps}. OB expõe o vencedor, não os licitantes - corroborar no SEI/PNCP."))
+        pdf.ln(1)
+    ranking = dd.get("ranking") or []
+    pdf.set_font(pdf._fam, "B", 10); pdf.cell(0, 7, _t(f"Ranking de risco - {len(ranking)} maiores fornecedores PJ"), ln=True)
+    _tab_header(pdf, [("Grau", 12), ("Sc.", 12), ("Fornecedor", 96), ("Total (R$)", 34), ("Indícios", 22), ("SEI", 10)])
+    pdf.set_font(pdf._fam, "", 7)
+    for r in ranking:
+        cods = ", ".join(c.replace("H-", "") for c in (r.get("codigos") or [])) or "-"
+        _tab_row(pdf, [(_t(r["grau"]), 12, "C"), (str(r["score"]), 12, "R"), (_t(r["nome"])[:60], 96, "L"),
+                       (moeda(r["total_pago"]), 34, "R"), (_t(cods)[:14], 22, "L"),
+                       (str(len(r.get("processos_sei") or [])), 10, "R")], h=4.6)
+    procs = dd.get("processos_prioritarios") or []
+    if procs:
+        pdf.ln(1); pdf.set_font(pdf._fam, "", 7); pdf.set_text_color(80, 80, 80)
+        _mc(pdf, 4, _t("Processos SEI a priorizar: " + ", ".join(procs[:24]) + (" ..." if len(procs) > 24 else "")))
+        pdf.set_text_color(0, 0, 0)
+
+
+def _secao_endereco_pdf(pdf, _t, ctx: dict) -> None:
+    """PDF — realidade do endereço das sedes (as empresas são reais?)."""
+    er = ctx.get("endereco_real") or {}
+    pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+    pdf.cell(0, 8, _t("Realidade do endereço das sedes (as empresas são reais?)"), ln=True)
+    pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+    if not er.get("ok"):
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t(f"Sem endereços verificados para esta UG ainda ({er.get('n_forn', 0)} fornecedores PJ). "
+                         "O sweep de endereços cobre o universo incrementalmente."))
+        pdf.set_text_color(0, 0, 0); return
+    _mc(pdf, 4.5, _t(f"Cobertura: {er['n_verificados']} de {er['n_forn']} fornecedores verificados. "
+                     f"Sede real (afastado): {er['afastado']} | com indício: {er['indicio']} | "
+                     f"sem conclusão: {er['indisponivel']}. INDISPONÍVEL nao prova inexistência (cobertura "
+                     "cartográfica incompleta; satélite no nível da rua nunca acusa baldio)."))
+    if er.get("indicios"):
+        pdf.ln(1); _tab_header(pdf, [("Fornecedor (CNPJ)", 96), ("Nível", 24), ("Evidência", 60)])
+        pdf.set_font(pdf._fam, "", 7)
+        for it in er["indicios"]:
+            forn = f"{(it.get('nome') or '-')[:36]} ({fmt_cnpj(it['cnpj'])})"
+            _tab_row(pdf, [(_t(forn)[:60], 96, "L"), (_t(it.get("nivel") or "-"), 24, "C"),
+                           (_t(it.get("evidencia") or "-")[:38], 60, "L")], h=4.6)
 
 
 def render_pdf(ctx: dict, destino: str) -> str:
@@ -830,6 +1106,10 @@ def render_pdf(ctx: dict, destino: str) -> str:
         else:
             _mc(pdf, 4.5, _t("Nenhum red flag automático disparou a partir dos pagamentos (OB). Presunção de "
                              "regularidade dos atos administrativos mantida."))
+
+        # Triagem de DD (fachada/laranja) + rodízio/cartel + realidade de endereço (cruzamentos de inteligência)
+        _secao_dd_pdf(pdf, _t, ctx)
+        _secao_endereco_pdf(pdf, _t, ctx)
 
         # OBs por ano
         for a in p["anos"]:
