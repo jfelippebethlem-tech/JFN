@@ -42,14 +42,17 @@ pagamento**, nunca empenho.
 **Produtos (barramento, 3 formatos md+pdf+xlsx):**
 - **/relatorio** (fornecedor) — `reporting/inteligencia.py`: perfil, rede sócio×OB×SEI×endereço, pagamentos
   por ano (top-12), concentração HHI, contratos (SIAFE+TCE-RJ), matriz risco TCU P×I, red flags
-  (RF-01..05 incl. **CNAE×objeto** e **troca de controle**), parecer + recomendações.
+  (RF-01..05 incl. **CNAE×objeto** e **troca de controle**), **sanções CEIS/CNEP/CEPIM via API (honesto)**,
+  OSINT (Querido Diário/diários oficiais), **§11-B Análise raciocinada (IA conecta os achados)**, parecer + recomendações.
 - **/orgao** — `reporting/inteligencia_orgao.py`: concentração por fornecedor, geográfica (honesta),
-  **pagamentos recorrentes idênticos (ACFE)**, marcação de transferências intergov, parecer.
+  **pagamentos recorrentes idênticos (ACFE)**, marcação de transferências intergov, **análise raciocinada (IA)**, parecer.
 - **Lex** — `lex.py`: parecer jurídico (achados R2/R3/R5/R6/R7/R8/R9/R10/R11/R12, dosimetria, encaminhamento
   por severidade), análise discursiva via **gemini** sobre o SEI; lê a íntegra do cache cdp_*.json.
 - **Dossiê 360** — `dossie.py`: cadastro+sanções+rede+conflito TSE+OB+**red flags estruturais** no score.
 - **Massare** — backtest OOS (356k pregões), edge vs taxa-base, `/placar` honesto, teses c/ track record.
-- **Yoda** — `/lista` curado (Massare/SIAFE incluídos), wiring por capabilities.yaml.
+- **Yoda** — `/lista` curado (Massare/SIAFE incluídos), wiring por capabilities.yaml; rotina **"Bom dia"**
+  (cron 07:30 BRT, `~/.hermes/cron/jobs.json`) = clima+mercado+**8 notícias de POLÍTICA multi-fonte com
+  `sempaywall`** via `GET /api/briefing/dados` (`compliance_agent/briefing.py`).
 
 **Coletores/base:** TFE OB (1,1M), SIAFE 1+2 (23 colunas ricas), TSE 542k doações, PNCP (itens/preço),
 correlação OB↔SEI, grafo de poder, CEIS/CNEP (ver gap em §5), mídia adversa GDELT (keyless).
@@ -135,11 +138,25 @@ oportunístico. Sem mypy/coverage rodando ainda (instalados). Ruff baseline 37.
   /relatorio · Lex · dossiê via **helper compartilhado** (não cópia).
 - **✅ Honestidade dura no Massare:** edge médio −0,0127 (não bate o ingênuo no geral); ^GSPC "62%" é pior que
   sempre "sobe". Track record só é honesto contra a **taxa-base certa**.
-- **✅ Testar antes de ligar:** o CEIS keyless retorna "limpo" porque o **download falha silencioso** (cache=None)
-  = falso-negativo. NÃO ligar path não-verificado. (Por isso: "teste tudo, não aja às cegas.")
+- **✅ Testar antes de ligar:** o CEIS keyless retornava "limpo" por falha silenciosa = falso-negativo.
+  **RESOLVIDO em 2026-06-11** (cont.7): o problema eram **3 bugs** (chave lida da var errada — estava em
+  `PORTAL_TRANSPARENCIA_KEY`; header `chave-api`→401; param `cnpjSancionado` IGNORADO). LIÇÃO durável:
+  **ler a doc da API (swagger `/v3/api-docs`) revela o contrato certo** — param de filtro VARIA por endpoint
+  (`codigoSancionado` em CEIS/CNEP; `cnpjSancionado` em CEPIM); usar o errado faz a API devolver a página
+  inteira (falso-POSITIVO). Sempre distinguir verificado=False (INDISPONÍVEL) de "limpo".
 - **✅ Ler o código real > confiar no handoff:** o "fix de frames do SEI" já estava feito; o reader funcionava.
 - **Bug do auto-pkill:** ver §6.
 - **Modelo de raciocínio (nous):** ler `reasoning`, max_tokens alto — ver §6.
+- **✅ Reabilitar LLM nos PRODUTOS é seguro (≠ V2) QUANDO:** assíncrono (`asyncio.to_thread`, não bloqueia o
+  event loop) + **bounded** (timeout 45s) + **degrada honesto** (o parecer-template segue como base, sem
+  regressão) + **medido no PDF entregue**. Foi assim que a "análise raciocinada" entrou em /relatorio e /orgao
+  (2026-06-11) sem repetir o erro da V2 (que era LLM **síncrono no hot-path** + mudar o que já funcionava).
+- **✅ Saída do LLM vem como JSON/dict mesmo proibindo:** normalizar SEMPRE (achatar array/dict → bullets;
+  `ast.literal_eval` p/ aspas simples) — `_normaliza_raciocinio` em `reporting/inteligencia.py`.
+- **✅ Notícia robusta = RSS de seção dos veículos (URL real), não Google News:** decodificar a URL do Google
+  News (`batchexecute`/`data-n-a-sg`) está **quebrado no formato 2025** e o GDELT dá **429 agressivo** da VM.
+  Feeds RSS de seção (G1 Política, Folha/Poder, Poder360, Agência Brasil, Estadão; RJ: G1 Rio/O Globo/Diário do
+  Rio) trazem URL real → o `sempaywall.com` funciona direto. Honra "multi-fonte por tema" sem fragilidade.
 
 ## 9. PENDÊNCIAS DEPENDENTES DO DONO
 - **SIAFE 1**: liberar a chave/perfil p/ todas as UGs (conta ALERJ-only).
@@ -447,11 +464,15 @@ com TODAS estas instruções:
    (/relatorio, /orgao, Lex) **só gemini (forte)**. Ver §6.
 8. **Sweeps sempre vivos** quando der (SIAFE 2 + SEI), respeitando CPU (não rodar sweep+suíte+Playwright juntos).
 
-**Próximos alvos de maior alavancagem (de §4/§5, ranqueados):** (1) **quarentena de ingestão** P0
-(pré-requisito de qualquer score); (2) **proveniência/INDISPONÍVEL** honesta nas 3 camadas de enriquecimento;
-(3) **resolução de entidade** (Splink, CNPJ-raiz) → destrava grafo/concentração + consolida matriz+filial;
-(4) **rodar o SEI sweep aos poucos** (resumível) → enriquece Lex/relatorio; (5) consertar **CEIS/CNEP keyless**
-(download da CGU está quebrado → falso-negativo). **A cada um: medir o produto antes/depois.**
+**FEITO em 2026-06-11 (cont.7):** bom dia (multi-fonte política + sempaywall), **CEIS/CNEP** (era o alvo #5 —
+RESOLVIDO via API com chave), **relatórios raciocinados** (/relatorio + /orgao) + OSINT diários oficiais.
+**Próximos alvos de maior alavancagem (de §4/§5, ranqueados):** (1) **proveniência/INDISPONÍVEL** honesta nas
+demais camadas de enriquecimento (padronizar o estado REAL/CACHE/INDISPONÍVEL como o `providers/base.Resultado`);
+(2) **resolução de entidade** (Splink, CNPJ-raiz) → destrava grafo/concentração + consolida matriz+filial;
+(3) **rodar o SEI sweep aos poucos** (resumível) → enriquece Lex/relatorio; (4) **ativar as OSINT ainda dormentes**
+nos produtos além do Querido Diário: `eleitoral` (TSE doador×contrato), `ownership` (GLEIF), `leaks`
+(OffshoreLeaks) — keyless/honesto, alimentando a análise raciocinada; (5) **quarentena de ingestão** (baixa
+alavancagem — base já limpa, ver §5). **A cada um: medir o produto antes/depois (PDF entregue).**
 
 **Estado SEI vivo:** `tools/sei_sweep.py` rodando `--max 10` em background (resumível, checkpoint
 `data/sei_cache/sei_sweep_progress.json`); ficha via stepfun:free (token nous auto-refresh).
