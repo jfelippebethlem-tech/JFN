@@ -568,6 +568,29 @@ def _grau(achados: list) -> tuple:
     return "🟢", "VERDE", "sem indícios relevantes nos dados disponíveis — presunção de regularidade mantida"
 
 
+def _primeira_data_pag(p: dict) -> str:
+    """Data do PRIMEIRO pagamento (menor `data` entre as linhas das OBs) em ISO, ou '' se indisponível.
+
+    Usada pela investigação de fachada/laranja (H-RECENTE: empresa aberta pouco antes de receber)."""
+    import datetime as _dt
+    melhor = None
+    for ano in (p.get("anos") or []):
+        for ln in (p.get("por_ano", {}).get(ano, {}).get("linhas") or []):
+            s = str(ln.get("data") or "").strip()
+            if not s:
+                continue
+            d = None
+            for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+                try:
+                    d = _dt.datetime.strptime(s[:10], fmt).date()
+                    break
+                except ValueError:
+                    continue
+            if d and (melhor is None or d < melhor):
+                melhor = d
+    return melhor.isoformat() if melhor else ""
+
+
 def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     """Computa TODA a análise UMA vez (lê o SEI uma vez) e devolve o dossiê para md/pdf."""
     cnpj = ctx.get("cnpj", "")
@@ -649,11 +672,32 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
                        "é indício de **empresa de prateleira/fachada** habilitada para fim diverso ou de **qualificação "
                        "técnica frágil** — verificar a aptidão operacional real e a adequação do CNAE."})
 
+    # Investigação de fachada/laranja (motor único — investigacao_dd). O Lex CONDUZ a investigação:
+    # cada hipótese CONFIRMADA/INDÍCIO vira um achado (entra no grau); o quadro completo vai à seção
+    # dedicada do parecer e alimenta a análise raciocinada (gemini). Honesto: INDISPONÍVEL ≠ achado.
+    investigacao = {}
+    try:
+        from compliance_agent.investigacao_dd import investigar
+        p_inv = ctx.get("pagamentos") or {}
+        investigacao = investigar(cnpj, cadastral=None, pagamentos={
+            "total_pago": p_inv.get("total_geral") or 0.0,
+            "primeira_data": _primeira_data_pag(p_inv),
+        })
+        for h in investigacao.get("hipoteses", []):
+            if h["status"] in ("CONFIRMADO", "INDICIO"):
+                grav = (4 if (h["status"] == "CONFIRMADO" and h["nivel"] == "ALTO")
+                        else 3 if h["nivel"] == "ALTO" else 2)
+                ach_estrutural.append({"rf": f"DD/{h['codigo']}", "grav": grav,
+                                       "obs": f"**{h['titulo']}.** {h['evidencia']}"})
+    except Exception:
+        investigacao = {}
+
     achados = _merge_achados(ach_dados + ach_doc + ach_tcerj + ach_cartel + ach_estrutural)
     emoji, rotulo, just = _grau(achados)
     return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
             "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj, "cartel": cartel,
-            "cruzado": cruzado, "emoji": emoji, "rotulo": rotulo, "just": just}
+            "cruzado": cruzado, "investigacao": investigacao,
+            "emoji": emoji, "rotulo": rotulo, "just": just}
 
 
 def _analise_merito(ctx: dict, analise: dict) -> str:
