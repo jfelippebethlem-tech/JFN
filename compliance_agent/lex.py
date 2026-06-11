@@ -43,6 +43,15 @@ _RF = {
     "R10": ("Liquidação irregular / pagamento atípico (estornos)", "Arts. 62-63 Lei 4.320/64; Decreto 93.872/86 art. 38"),
     "R11": ("Atividade-fim (CNAE) incompatível com o objeto contratado", "Arts. 62-63 Lei 14.133 (qualificação técnica); art. 337-F CP; ACFE — shell company"),
     "R12": ("Planejamento de fachada (DFD/ETP/TR genéricos)", "Art. 5º e Art. 18 Lei 14.133"),
+    # Investigação de Due Diligence (fachada/laranja) — motor investigacao_dd; detalhe na seção II-E.
+    "DD/H-END-RESID": ("Sede em endereço de natureza residencial", "art. 337-F CP; art. 11 Lei 8.429/92"),
+    "DD/H-END-EXISTE": ("Endereço não confirmado fisicamente (geocodificação)", "art. 337-F CP"),
+    "DD/H-COEND": ("Outros fornecedores do Estado na mesma sede", "art. 337-F CP; art. 11 Lei 8.429/92"),
+    "DD/H-CAPITAL": ("Capital social ínfimo frente ao recebido", "art. 11 Lei 8.429/92; Art. 69 Lei 14.133"),
+    "DD/H-RECENTE": ("Empresa recém-aberta antes do 1º recebimento", "art. 337-F CP"),
+    "DD/H-SITUACAO": ("Situação cadastral irregular na Receita", "Art. 14 Lei 14.133; Art. 87 Lei 8.666/93"),
+    "DD/H-PORTE": ("Volume recebido acima do teto do porte declarado", "LC 123/2006; Art. 4º Lei 14.133"),
+    "DD/H-SOCIO-UNICO": ("Sócio único com sinais de fachada", "art. 337-F CP; art. 11 Lei 8.429/92"),
 }
 
 
@@ -755,6 +764,50 @@ def _analise_merito(ctx: dict, analise: dict) -> str:
     return "\n\n".join(L)
 
 
+_BADGE_STATUS = {"CONFIRMADO": "🔴 CONFIRMADO", "INDICIO": "🟡 INDÍCIO",
+                 "AFASTADO": "🟢 AFASTADO", "INDISPONIVEL": "⚪ INDISPONÍVEL"}
+
+
+def _secao_investigacao(add, inv: dict) -> None:
+    """Renderiza a seção II-E — a investigação de fachada/laranja que o Lex conduziu (motor investigacao_dd).
+
+    Apresenta cada hipótese com status/nível/evidência/fonte/base legal E a cobertura honesta (o que foi
+    verificado e o que ficou INDISPONÍVEL) — indício merece apuração, nunca acusação; INDISPONÍVEL ≠ risco zero."""
+    add("## II-E. INVESTIGAÇÃO DE DUE DILIGENCE — empresa de fachada / laranja")
+    add("")
+    add("*Bateria de hipóteses investigativas (cadastro Receita + base JFN/OBs + OSINT). Base legal: controle "
+        "externo e fiscalização (CF art. 70-71; LGPD art. 7º,II e 23). **Honesto:** indício merece apuração, "
+        "nunca acusação; **INDISPONÍVEL ≠ ausência de risco**; CPF de pessoa física mascarado (LGPD).*")
+    add("")
+    if not inv or not isinstance(inv, dict):
+        add("> Investigação não disponível para este alvo nesta análise (cadastro/base insuficientes).")
+        add("")
+        return
+    grau = inv.get("grau", "🟢")
+    add(f"**Grau da investigação:** {grau} · score {inv.get('score', 0)}/100 · "
+        f"{inv.get('n_confirmados', 0)} fato(s) confirmado(s), {inv.get('n_indicios', 0)} indício(s) a apurar.")
+    add("")
+    add(inv.get("resumo", ""))
+    add("")
+    hips = inv.get("hipoteses") or []
+    if hips:
+        for h in hips:
+            badge = _BADGE_STATUS.get(h.get("status", ""), h.get("status", ""))
+            add(f"### {h.get('codigo', '')} — {h.get('titulo', '')}")
+            add(f"- **Status:** {badge}  ·  **Nível:** {h.get('nivel', '—')}")
+            add(f"- **Constatação:** {h.get('evidencia', '')}")
+            add(f"- **Fonte:** {h.get('fonte', '—')}  ·  **Base legal:** {h.get('base_legal', '—')}")
+            add("")
+    else:
+        add("> Nenhuma hipótese de fachada/laranja se confirmou nas fontes verificáveis nesta varredura.")
+        add("")
+    cob = inv.get("cobertura") or {}
+    if cob:
+        itens = "; ".join(f"{k.replace('_', ' ')}: {v}" for k, v in cob.items())
+        add(f"> **Cobertura da investigação (honestidade):** {itens}.")
+        add("")
+
+
 def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     if analise is None:
         analise = _analise(ctx)
@@ -917,6 +970,10 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
                 "empresas-irmãs — art. 337-F CP; art. 36 Lei 12.529). Diligência: confirmar no contrato social e nas atas.")
             add("")
 
+    # II-E. Investigação de Due Diligence (fachada/laranja) — o Lex apresenta a investigação que conduziu.
+    inv = analise.get("investigacao") or {}
+    _secao_investigacao(add, inv)
+
     # III. Matriz de Achados + análise por red flag
     add("## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)")
     add("")
@@ -946,8 +1003,10 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     if analise.get("tem_leitura_doc"):
         add("*Indícios marcados abaixo combinam os dados financeiros (OBs) com a **leitura do inteiro teor** dos processos.*")
         add("")
-    if achados:
-        for a in achados:
+    # Os indícios DD/* (fachada/laranja) são apresentados na seção II-E (não duplicar aqui).
+    achados_rf = [a for a in achados if not str(a.get("rf", "")).startswith("DD/")]
+    if achados_rf:
+        for a in achados_rf:
             nome, fund = _RF.get(a["rf"], (a["rf"], ""))
             add(f"### {a['rf']} — {nome}")
             add(f"- **Observação:** {a['obs']}")
@@ -967,6 +1026,10 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
             else:
                 add(f"- **Encaminhamento:** gravidade {g}/5 — manter em diligência/monitoramento; reavaliar com mais dados.")
             add("")
+    elif any(str(a.get("rf", "")).startswith("DD/") for a in achados):
+        add("Nenhum indício a partir dos dados financeiros/documentais; os achados desta análise são de "
+            "**fachada/laranja** e estão detalhados na seção II-E (Investigação de Due Diligence).")
+        add("")
     else:
         add("Nenhum indício automático disparou a partir dos dados financeiros nem da leitura documental disponível. "
             "Mantém-se a presunção de regularidade.")
