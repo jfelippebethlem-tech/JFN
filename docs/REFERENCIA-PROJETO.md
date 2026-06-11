@@ -485,6 +485,26 @@ sobre endpoint morto; PETI/Safra/Seguro-Defeso cobrem o mesmo sinal por CPF. (2)
 segurança = wiring dentro de try/except + helper definido + suíte verde antes do commit (sem PDF a meio).
 **Commit-chave:** (ver commit desta sessão).
 
+### Sessão 2026-06-11 (continuação 9 — seção II-E do Lex + sweeps reboot-safe)
+**Tema:** terminar o Loop 1 da investigação de DD (apresentação no parecer) e, após um **restart da VM**,
+resolver a recuperação automática dos sweeps.
+**Feito:**
+- **Lex II-E (commit `8c6c7e4`):** seção dedicada **"II-E. INVESTIGAÇÃO DE DUE DILIGENCE — empresa de
+  fachada/laranja"** apresenta cada hipótese com **status** (🔴CONFIRMADO/🟡INDÍCIO/🟢AFASTADO/⚪INDISPONÍVEL),
+  nível, constatação, fonte, base legal + a **cobertura honesta** (o que foi verificado vs. INDISPONÍVEL). Nomes
+  amigáveis dos códigos `DD/*` no `_RF` (matrizes III/IV limpas); III-B **não duplica** os DD (vão só na II-E);
+  PDF herda via markdown. Validado: render II-E ok, sem duplicação; onda11(Lex)+golden+investigacao verdes.
+- **Sweeps reboot-safe (commit `4981323`):** **causa-raiz** do SEI sweep travado após o restart = o `browser.lock`
+  de uma sessão anterior pode coincidir com um **PID reusado** após o boot e **parecer vivo** → o sweep esperava
+  `idade_max` (30min) p/ roubar o lock. Fix em `recursos._lock_obsoleto`: lock criado **antes do último boot**
+  (`ts < /proc/stat btime`) é obsoleto **na hora** (reboot-safe). + **`@reboot` no cron** limpa o lock e relança o
+  supervisor 20s após boot (cron-minuto já previne duplicata). 5 testes novos. **Verificado ao vivo:** removido o
+  lock stale (PID 544748 morto), sweep voltou a progredir ([1/12], [2/12]…), load 0.82, RAM 5.7G livre.
+- **SIAFE 2:** varredura completa (concluída 09/06); incremental diário via cron 05:00 — não precisa de supervisor vivo.
+**Lições:** (1) lock baseado em PID **não** é reboot-safe sozinho (PID reusado parece vivo) — ancorar no
+**boot time** resolve. (2) ao diagnosticar processo "sumido", confirmar o **pai** (o Chromium vivo era do
+`server.py`, não de um sweep) antes de concluir/matar (alinha com a lição do auto-pkill).
+
 ## 11. ⏯️ RETOMADA — INSTRUÇÕES PERMANENTES (ler ANTES de continuar, sessão nova)
 **Branch `feat/lista-limpa` (não pushado, tudo commitado). Serviço/sweeps vivos.** O dono pediu para continuar
 com TODAS estas instruções:
