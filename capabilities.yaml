@@ -102,7 +102,8 @@ capacidades:
   - {id: massare_placar, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/placar, status: PRONTO,
      descricao: "Acuracia OOS + Sharpe liquido + DSR(Onda 9)", quando_usar: "'o Massare acerta?'", args: {}, retorno: "{hit_rate_oos,sharpe_liquido,dsr}"}
   - {id: massare_prever, agente: massare, dominio: mercado, tipo: http, metodo: POST, rota: /api/massare/prever, status: PRONTO,
-     descricao: "Previsao direcional (walk-forward; condicionada a regime)", quando_usar: "'previsao do Ibovespa', 'BTC vai subir?'", args: {symbol: obrigatorio, horizon: "int=5"}, retorno: "{direction,prob,ensemble_oos_hit_rate,regime}"}
+     descricao: "Previsao direcional + estado ATUAL de um ativo (walk-forward; honesto: edge_oos/tem_skill)", quando_usar: "'como esta a prata/ouro hoje?', 'previsao do Ibovespa', 'BTC vai subir?', perspectivas de um ativo", exemplo: "como a prata esta hoje e a previsao?",
+     args: {symbol: "NOME (prata, ouro, bitcoin, ibovespa, dolar, petroleo, cobre...) OU simbolo; resolve sozinho", horizon: "int=5"}, retorno: "{ativo,symbol,atual:{preco,var_pct},previsao:{direction,prob,edge_oos,tem_skill}}"}
   - {id: massare_teses, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/teses, status: PRONTO,
      descricao: "Teses de mercado: narrativa->ativos->direcao, com acerto OOS por narrativa", quando_usar: "'quais as teses agora', 'o que move o mercado'",
      args: {}, retorno: "{teses[{narrativa,ativos,direcao,horizonte,conf,racional,fontes,acerto_oos}]}"}
