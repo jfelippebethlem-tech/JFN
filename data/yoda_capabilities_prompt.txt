@@ -30,6 +30,7 @@ COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a 
 - instrumento_mandato(tipo,base) [POST /api/mandato/minuta] — 'faca um requerimento sobre esse contrato'
 - massare_cenarios() [GET /api/massare/cenarios] — 'como esta o mercado', 'dolar/bolsa/ouro hoje'
 - consultar_noticias(tema,janela) [GET /api/massare/noticias] — 'noticias sobre X', 'saiu algo na midia sobre X', 'aparicoes/repercussao recente de X' — quando NAO houver web_search, esta e a fonte de midia disponivel
+- massare_regime(symbol) [GET /api/massare/regime] — 'qual o regime/clima do mercado?', 'estamos em bull ou bear?', 'o S&P esta em estresse?'
 - massare_placar() [GET /api/massare/placar] — 'o Massare acerta?'
 - massare_prever(symbol,horizon) [POST /api/massare/prever] — 'como esta a prata/ouro hoje?', 'previsao do Ibovespa', 'BTC vai subir?', perspectivas de um ativo
 - massare_teses() [GET /api/massare/teses] — 'quais as teses agora', 'o que move o mercado'

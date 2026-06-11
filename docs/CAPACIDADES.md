@@ -45,6 +45,7 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `massare_fundamentos` | massare | http | `/api/massare/fundamentos` | PRONTO | 'fundamentos da PETR4' |
 | `massare_placar` | massare | http | `/api/massare/placar` | PRONTO | 'o Massare acerta?' |
 | `massare_prever` | massare | http | `/api/massare/prever` | PRONTO | 'como esta a prata/ouro hoje?', 'previsao do Ibovespa', 'BTC vai subir?', perspectivas de um ativo |
+| `massare_regime` | massare | http | `/api/massare/regime` | PRONTO | 'qual o regime/clima do mercado?', 'estamos em bull ou bear?', 'o S&P esta em estresse?' |
 | `massare_teses` | massare | http | `/api/massare/teses` | PRONTO | 'quais as teses agora', 'o que move o mercado' |
 | `radar_status` | jfn | http | `/api/radar/status` | PRONTO | 'o que voce monitora', 'teve alerta hoje' |
 | `vigiar` | jfn | http | `/api/radar/vigiar` | PRONTO | '/vigiar <cnpj|ug|nome>' |

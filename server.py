@@ -684,6 +684,24 @@ async def api_massare_carteira():
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@app.get("/api/massare/regime")
+async def api_massare_regime(symbol: str = "^GSPC"):
+    """Regime de mercado (clima) via HMM gaussiano sobre (retorno, vol): calmo-alta (bull) / calmo-baixa
+    (bear) / estresse-alta-vol. Não prevê preço — classifica o ambiente p/ condicionar a leitura.
+    Aceita NOME amigável (ibovespa, bitcoin, ouro…). Honesto: estados latentes, não certeza."""
+    try:
+        from massare import ml, market, store
+        store.init_db()
+        sym = market.resolver_symbol((symbol or "^GSPC").strip())
+        try:
+            market._refresh_precos([sym])
+        except Exception:  # noqa: BLE001
+            pass
+        return JSONResponse(content={"ok": True, "symbol": sym, "regime": ml.regime_hmm(sym)})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/api/massare/placar")
 async def api_massare_placar():
     """Acurácia out-of-sample acumulada + sentimento de mercado (Fear&Greed/VIX)."""

@@ -205,6 +205,11 @@ class SkillTree:
         ("📈", "Mercado & Previsão (Massare)", [
             ("massare_cenarios", "Como está o mercado agora", "dólar/bolsa/ouro hoje"),
             ("massare_prever", "Previsão direcional de um ativo", "o Ibovespa sobe semana que vem?"),
+            ("massare_regime", "Regime/clima do mercado (bull/bear/estresse)", "estamos em bull ou bear?"),
+            ("massare_teses", "Teses de mercado (narrativa → ativos)", "quais as teses de mercado hoje?"),
+            ("massare_fundamentos", "Fundamentos de um ativo", "fundamentos da Petrobras?"),
+            ("massare_carteira", "Minha carteira valorizada", "como está minha carteira?"),
+            ("massare_calendario", "Agenda econômica (próximos eventos)", "o que tem na agenda econômica?"),
             ("massare_placar", "O Massare acerta? (track record OOS)", "qual o placar das previsões?"),
         ]),
         ("🛰️", "Coleta & Base", [
