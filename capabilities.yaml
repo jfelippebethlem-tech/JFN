@@ -67,6 +67,9 @@ capacidades:
   - {id: consultar_links, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/links, status: PRONTO,
      descricao: "Pistas de investigacao HOSPEDADA (Max Intel, OSINT-Brazuca, Bellingcat, RedeCNPJ, JusBrasil/Escavador)", quando_usar: "'onde mais pesquisar sobre X', aprofundar DD",
      args: {nome: opcional, cnpj: opcional}, retorno: "{links[{fonte,categoria,url}]}", fonte: "agregadores OSINT hospedados (uso manual)"}
+  - {id: investigar_web, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/compliance/investigar, status: PRONTO,
+     descricao: "PESQUISA NA WEB (DuckDuckGo + noticias) sobre pessoa/empresa: midia recente, riscos, mencoes. ESTE e o jeito de pesquisar na web — o Yoda NAO tem web_search proprio; SEMPRE use esta rota.", quando_usar: "'pesquise na web sobre X', 'noticias recentes de X', 'atividade publica/aparicoes na midia de X', 'o que saiu sobre X', monitoramento diario de uma pessoa", exemplo: "pesquise na web sobre Jorge Felippe Neto",
+     args: {nome: obrigatorio, cnpj: opcional}, retorno: "{noticias[],riscos[],resumo}", fonte: "DuckDuckGo + noticias (web_research)"}
   - {id: consultar_diario, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/diario, status: PRONTO,
      descricao: "Diarios oficiais municipais (Querido Diario): busca por palavra-chave + territorio IBGE + datas", quando_usar: "'saiu no diario oficial de X?', publicacao/extrato de contrato municipal",
      args: {querystring: obrigatorio, territory_ids: "opcional (IBGE; RJ capital=3304557)", desde: opcional, ate: opcional, size: opcional}, retorno: "{total,itens[{municipio,data,url,trecho}]}", fonte: "Querido Diario (api.queridodiario.ok.org.br)"}
