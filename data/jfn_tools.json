@@ -952,6 +952,33 @@
     {
       "type": "function",
       "function": {
+        "name": "massare_regime",
+        "description": "Regime/clima de mercado via HMM (calmo-alta/bull, calmo-baixa/bear, estresse-alta-vol) de um ativo — usar quando: 'qual o regime/clima do mercado?', 'estamos em bull ou bear?', 'o S&P esta em estresse?' — chamar: GET /api/massare/regime (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "symbol": {
+              "type": "string",
+              "description": "NOME (ibovespa, sp500, bitcoin, ouro...) OU simbolo; default ^GSPC"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "massare",
+        "dominio": "mercado",
+        "tipo": "http",
+        "rota": "/api/massare/regime",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "massare_placar",
         "description": "Acuracia OOS + Sharpe liquido + DSR(Onda 9) — usar quando: 'o Massare acerta?' — chamar: GET /api/massare/placar (base http://127.0.0.1:8000)",
         "parameters": {

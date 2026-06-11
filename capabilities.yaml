@@ -102,6 +102,9 @@ capacidades:
   - {id: consultar_noticias, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/massare/noticias, status: PRONTO,
      descricao: "Noticias/midia sobre um tema/pessoa/empresa via GDELT (sem chave; tom/cobertura). NAO e web search generica", quando_usar: "'noticias sobre X', 'saiu algo na midia sobre X', 'aparicoes/repercussao recente de X' — quando NAO houver web_search, esta e a fonte de midia disponivel", exemplo: "noticias sobre Jorge Felippe Neto",
      args: {tema: "string (pessoa/empresa/assunto)", janela: "ex.: 2d/7d (opcional)"}, retorno: "{ok,artigos[],tom} | {ok:false,erro}"}
+  - {id: massare_regime, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/regime, status: PRONTO,
+     descricao: "Regime/clima de mercado via HMM (calmo-alta/bull, calmo-baixa/bear, estresse-alta-vol) de um ativo", quando_usar: "'qual o regime/clima do mercado?', 'estamos em bull ou bear?', 'o S&P esta em estresse?'", exemplo: "qual o regime atual do Ibovespa? e do bitcoin?",
+     args: {symbol: "NOME (ibovespa, sp500, bitcoin, ouro...) OU simbolo; default ^GSPC"}, retorno: "{symbol,regime:{regime_atual,rotulo_atual,regimes[]}}"}
   - {id: massare_placar, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/placar, status: PRONTO,
      descricao: "Acuracia OOS + Sharpe liquido + DSR(Onda 9)", quando_usar: "'o Massare acerta?'", args: {}, retorno: "{hit_rate_oos,sharpe_liquido,dsr}"}
   - {id: massare_prever, agente: massare, dominio: mercado, tipo: http, metodo: POST, rota: /api/massare/prever, status: PRONTO,
