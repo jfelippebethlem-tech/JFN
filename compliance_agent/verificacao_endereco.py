@@ -194,15 +194,181 @@ def edificacao_no_ponto(lat: float, lon: float, raio: int = 35) -> dict:
             "landuse_vago": vago, "landuses": landuses, "motivo": ""}
 
 
+# Classes do veredito visual (auditoria de fachada): o que predomina no ponto/entorno do endereço.
+_CLASSES_VISUAIS = ["terreno_baldio", "area_aberta_rural", "construcao_precaria_barraco",
+                    "casa_residencial", "predio_residencial", "comercial_industrial",
+                    "galpao_logistico", "indeterminado"]
+# Classes que reforçam indício de fachada/inexistência operacional:
+_CLASSE_INDICIO = {"terreno_baldio", "area_aberta_rural", "construcao_precaria_barraco"}
+
+
+def _fetch_satelite_esri(lat: float, lon: float, delta: float = 0.0009) -> bytes | None:
+    """Imagem de satélite do entorno (Esri World Imagery — pública, sem chave). PNG ~600px ou None."""
+    try:
+        import httpx
+    except Exception:
+        return None
+    bbox = f"{lon - delta},{lat - delta},{lon + delta},{lat + delta}"
+    url = ("https://services.arcgisonline.com/arcgis/rest/services/World_Imagery/MapServer/export"
+           f"?bbox={bbox}&bboxSR=4326&imageSR=3857&size=640,640&format=png&f=image")
+    try:
+        r = httpx.get(url, headers={"User-Agent": _UA}, timeout=25)
+        return r.content if (r.status_code == 200 and r.content[:4] in (b"\x89PNG", b"\xff\xd8\xff\xe0")) else None
+    except Exception:
+        return None
+
+
+def _fetch_streetview_google(lat: float, lon: float, chave: str) -> bytes | None:
+    """Foto de rua (Google Street View Static) do ponto — precisa de chave. JPG ou None."""
+    try:
+        import httpx
+    except Exception:
+        return None
+    url = ("https://maps.googleapis.com/maps/api/streetview"
+           f"?size=640x480&location={lat},{lon}&fov=80&key={chave}")
+    try:
+        r = httpx.get(url, timeout=20)
+        # o Street View devolve uma imagem 'sem cobertura' (cinza) com 200 — filtrar é trabalho do VLM
+        return r.content if (r.status_code == 200 and r.content[:3] == b"\xff\xd8\xff") else None
+    except Exception:
+        return None
+
+
+def _gemini_vision_sync(img: bytes, mime: str, prompt: str) -> str:
+    """Gemini nativo (pool de chaves, tier grátis) com visão. Retorna o texto ou '' se todas falharem."""
+    import base64
+
+    import httpx
+    try:
+        from compliance_agent.direcionamento_cerebro import _gemini_keys
+        keys = _gemini_keys()
+    except Exception:
+        keys = [k.strip() for k in (os.environ.get("GEMINI_API_KEYS", "")
+                or os.environ.get("GEMINI_API_KEY", "")).replace(",", " ").split() if k.strip()]
+    if not keys:
+        return ""
+    body = {"contents": [{"role": "user", "parts": [
+        {"text": prompt},
+        {"inline_data": {"mime_type": mime, "data": base64.b64encode(img).decode()}}]}],
+        "generationConfig": {"temperature": 0, "maxOutputTokens": 250, "responseMimeType": "application/json"}}
+    for mdl in ("gemini-2.5-flash-lite", "gemini-2.0-flash", "gemini-2.5-flash"):
+        for key in keys:
+            try:
+                r = httpx.post(
+                    f"https://generativelanguage.googleapis.com/v1beta/models/{mdl}:generateContent?key={key}",
+                    json=body, timeout=40)
+                if r.status_code in (429, 401, 403):
+                    continue
+                if r.status_code == 404:
+                    break  # modelo indisponível → próximo modelo
+                r.raise_for_status()
+                j = r.json()
+                return j.get("candidates", [{}])[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+            except Exception:  # noqa: BLE001
+                continue
+    return ""
+
+
+def _vlm_classificar(img: bytes, fonte: str, endereco: str = "") -> dict:
+    """Classifica a imagem (satélite/rua) via VLM — Gemini nativo (pool) e, em falta, OpenRouter visão."""
+    import base64
+    if not img:
+        return {"ok": False, "motivo": "sem imagem"}
+    mime = "image/png" if img[:4] == b"\x89PNG" else "image/jpeg"
+    tipo = "satélite (vista aérea do entorno da quadra)" if fonte == "esri" else "foto de rua (Street View)"
+    prompt = (
+        f"Você audita a SEDE de uma empresa fornecedora do poder público. Esta é uma imagem de {tipo} no "
+        f"endereço declarado{(' (' + endereco + ')') if endereco else ''}. Classifique o que PREDOMINA no centro "
+        "da imagem em UMA destas categorias: terreno_baldio (lote vazio/sem construção), area_aberta_rural "
+        "(campo/mato/rural sem edificações), construcao_precaria_barraco (construção precária/favela/barraco), "
+        "casa_residencial, predio_residencial, comercial_industrial, galpao_logistico, indeterminado (nuvem/"
+        "imagem ruim/ambíguo). Responda SOMENTE JSON: "
+        '{"classe":"<categoria>","confianca":<0-1>,"descricao":"<breve, em português>"}')
+    txt = _gemini_vision_sync(img, mime, prompt)
+    if not txt:  # fallback OpenRouter (visão)
+        chave = os.environ.get("OPENROUTER_API_KEY", "").strip()
+        if chave:
+            modelo = os.environ.get("OPENROUTER_VISION_MODEL", "google/gemini-2.5-flash-lite")
+            b64 = base64.b64encode(img).decode()
+            messages = [{"role": "user", "content": [
+                {"type": "text", "text": prompt},
+                {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}}]}]
+            try:
+                from compliance_agent.llm.free_llm import OPENROUTER_BASE, _openai_compat_chat_sync
+                txt = _openai_compat_chat_sync(OPENROUTER_BASE, chave, modelo, messages, max_tokens=220)
+            except Exception as e:  # noqa: BLE001
+                return {"ok": False, "motivo": f"VLM erro: {str(e)[:60]}"}
+    if not txt:
+        return {"ok": False, "motivo": "VLM indisponível (Gemini pool + OpenRouter falharam)"}
+    m = re.search(r"\{.*\}", txt or "", re.DOTALL)
+    if not m:
+        return {"ok": False, "motivo": "VLM sem JSON"}
+    try:
+        d = json.loads(m.group(0))
+    except Exception:
+        return {"ok": False, "motivo": "VLM JSON inválido"}
+    classe = str(d.get("classe", "")).strip().lower()
+    if classe not in _CLASSES_VISUAIS:
+        classe = "indeterminado"
+    return {"ok": True, "classe": classe, "confianca": float(d.get("confianca") or 0),
+            "descricao": str(d.get("descricao", ""))[:200]}
+
+
+def classificar_local_por_imagem(lat: float, lon: float, endereco: str = "") -> dict:
+    """Resolve um endereço por IMAGEM: Street View (Google, se chave) ou satélite (Esri, grátis) → VLM.
+
+    Retorna {ok, status, nivel, classe, confianca, fonte, evidencia}. status: INDICIO|AFASTADO|INDISPONIVEL.
+    HONESTO: o satélite usa coords no nível da rua (±~100m) → veredito do ENTORNO, não do lote exato; baldio/
+    rural no entorno de uma fornecedora é indício a apurar (confirmar in loco), não acusação."""
+    base = {"ok": False, "status": "INDISPONIVEL", "nivel": "—", "classe": "", "confianca": 0.0,
+            "fonte": "", "evidencia": ""}
+    if lat is None or lon is None:
+        return {**base, "evidencia": "sem coordenadas p/ buscar imagem"}
+    gkey = (os.environ.get("GOOGLE_MAPS_KEY", "") or os.environ.get("STREETVIEW_KEY", "")).strip()
+    img, fonte = (None, "")
+    if gkey:
+        img = _fetch_streetview_google(lat, lon, gkey)
+        fonte = "streetview"
+    if img is None:
+        img = _fetch_satelite_esri(lat, lon)
+        fonte = "esri"
+    if img is None:
+        return {**base, "evidencia": "não foi possível obter imagem (Street View/satélite indisponível)"}
+    v = _vlm_classificar(img, fonte, endereco)
+    if not v.get("ok"):
+        return {**base, "fonte": fonte, "evidencia": f"imagem obtida ({fonte}) mas VLM indisponível: {v.get('motivo', '')}"}
+    classe, conf, desc = v["classe"], v["confianca"], v.get("descricao", "")
+    preciso = fonte == "streetview"  # só o Street View mira o lote; satélite é o ENTORNO (±~100m)
+    fonte_lbl = "Google Street View" if preciso else "satélite Esri (entorno da quadra, ±~100m)"
+
+    # ACUSAÇÃO (baldio/barraco/rural) só com fonte PRECISA. Satélite no centroide da rua já classificou
+    # o Banco do Brasil como 'barraco' (falso) — imprecisão + alucinação do VLM. Honestidade: não acusar.
+    if classe in _CLASSE_INDICIO:
+        if preciso:
+            return {"ok": True, "status": "INDICIO", "nivel": "ALTO" if conf >= 0.6 else "MEDIO",
+                    "classe": classe, "confianca": conf, "fonte": fonte_lbl,
+                    "evidencia": (f"Street View classifica a sede como **{classe.replace('_', ' ')}** "
+                                  f"(confiança {conf:.0%}): {desc}. Sede de fornecedora do Estado sem edificação "
+                                  "compatível com operação é indício de fachada/inexistência — confirmar in loco.")}
+        return {**base, "ok": True, "status": "INDISPONIVEL", "classe": classe, "confianca": conf,
+                "fonte": fonte_lbl,
+                "evidencia": (f"O satélite do entorno SUGERE '{classe.replace('_', ' ')}', mas a coordenada é no "
+                              "nível da rua (imprecisa p/ o lote) — NÃO conclusivo (satélite chega a confundir "
+                              "prédio com construção precária). Confirmar por Street View (requer GOOGLE_MAPS_KEY) "
+                              "ou diligência in loco antes de qualquer conclusão.")}
+    if classe == "indeterminado":
+        return {**base, "ok": True, "fonte": fonte_lbl, "classe": classe, "confianca": conf,
+                "evidencia": f"Análise visual ({fonte_lbl}) inconclusiva: {desc}."}
+    # classes EDIFICADAS (casa/prédio/comercial/galpão) → AFASTAR é seguro (falso-negativo é aceitável; nunca acusa)
+    return {"ok": True, "status": "AFASTADO", "nivel": "BAIXO", "classe": classe, "confianca": conf,
+            "fonte": fonte_lbl,
+            "evidencia": (f"Análise visual ({fonte_lbl}) indica área edificada ({classe.replace('_', ' ')}, "
+                          f"confiança {conf:.0%}): {desc}. Compatível com sede real — sem indício visual de fachada.")}
+
+
 def _classificar_visual(lat: float, lon: float) -> dict:
-    """Hook imagem→VLM (Street View/Mapillary + gemini). Ativa só com chave; senão INDISPONÍVEL honesto."""
-    chave = (os.environ.get("GOOGLE_MAPS_KEY", "") or os.environ.get("STREETVIEW_KEY", "")
-             or os.environ.get("MAPILLARY_TOKEN", "")).strip()
-    if not chave:
-        return {"ok": False, "classe": "", "motivo": "INDISPONIVEL (sem chave de imagem de rua — "
-                "defina GOOGLE_MAPS_KEY/MAPILLARY_TOKEN p/ classificar baldio/barraco/casa via VLM)"}
-    # Implementação ativável: buscar imagem do ponto e classificar via VLM (gemini/OpenRouter).
-    return {"ok": False, "classe": "", "motivo": "INDISPONIVEL (classificador visual ainda não ativado)"}
+    """Compat: hook usado no fluxo exato. Delega ao classificador por imagem."""
+    return classificar_local_por_imagem(lat, lon)
 
 
 def analisar_endereco(endereco: str, municipio: str | None = None, uf: str | None = None,
