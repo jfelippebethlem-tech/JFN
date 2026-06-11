@@ -93,6 +93,9 @@ capacidades:
   # ---- MERCADO (Massare) ----
   - {id: massare_cenarios, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/cenarios, status: PRONTO,
      descricao: "Snapshot multi-horizonte + regime + tom de noticias(Onda 8)", quando_usar: "'como esta o mercado', 'dolar/bolsa/ouro hoje'", args: {}, retorno: "{horizontes,regime_atual,tom_noticias}"}
+  - {id: consultar_noticias, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/massare/noticias, status: PRONTO,
+     descricao: "Noticias/midia sobre um tema/pessoa/empresa via GDELT (sem chave; tom/cobertura). NAO e web search generica", quando_usar: "'noticias sobre X', 'saiu algo na midia sobre X', 'aparicoes/repercussao recente de X' — quando NAO houver web_search, esta e a fonte de midia disponivel", exemplo: "noticias sobre Jorge Felippe Neto",
+     args: {tema: "string (pessoa/empresa/assunto)", janela: "ex.: 2d/7d (opcional)"}, retorno: "{ok,artigos[],tom} | {ok:false,erro}"}
   - {id: massare_placar, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/placar, status: PRONTO,
      descricao: "Acuracia OOS + Sharpe liquido + DSR(Onda 9)", quando_usar: "'o Massare acerta?'", args: {}, retorno: "{hit_rate_oos,sharpe_liquido,dsr}"}
   - {id: massare_prever, agente: massare, dominio: mercado, tipo: http, metodo: POST, rota: /api/massare/prever, status: PRONTO,
