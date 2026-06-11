@@ -802,6 +802,42 @@ def _render_cruzamento(ctx: dict) -> str:
 
 # ───────────────────────────── render Markdown (11 seções) ─────────────────────────────
 
+def _realidade_sede_texto(cnpj: str) -> str:
+    """Veredito (texto puro) de realidade da sede do fornecedor (tabela `endereco_verificacao`) — responde
+    'a empresa é real?'. Honesto: AFASTADO = sede real/edificada; INDÍCIO = possível baldio/precário (a
+    verificar); INDISPONÍVEL/ausente = sem conclusão (cobertura cartográfica incompleta; ≠ inexistência)."""
+    cnpj = so_digitos(cnpj or "")
+    if not cnpj or not _DB.exists():
+        return ""
+    try:
+        con = sqlite3.connect(str(_DB))
+        try:
+            row = con.execute("SELECT status,nivel,evidencia FROM endereco_verificacao WHERE cnpj=?",
+                              (cnpj,)).fetchone()
+        except sqlite3.OperationalError:
+            return ""
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001
+        return ""
+    if not row:
+        return "ainda não verificada (sweep de endereços em andamento) — INDISPONÍVEL não é prova de inexistência."
+    st, nivel, evid = (row[0] or "").upper(), row[1] or "—", (row[2] or "")[:160]
+    if st == "AFASTADO":
+        return f"endereço real/edificado — afastada a hipótese de fachada. {evid}".rstrip()
+    if st == "INDICIO":
+        return (f"🟡 indício ({nivel}) de endereço não edificado/precário — conferir no mapa/imagem/in loco "
+                f"antes de concluir. {evid}").rstrip()
+    return ("sem conclusão pela base cartográfica aberta (cobertura incompleta) — "
+            "INDISPONÍVEL ≠ inexistência (Street View/in loco conclui).")
+
+
+def _realidade_sede(cnpj: str) -> str:
+    """Versão Markdown (bullet) do veredito de realidade da sede."""
+    t = _realidade_sede_texto(cnpj)
+    return f"- **Realidade da sede:** {t}" if t else ""
+
+
 def render_md(ctx: dict) -> str:
     p = ctx["pagamentos"]
     L: list[str] = []
@@ -873,6 +909,10 @@ def render_md(ctx: dict) -> str:
         if _end.get("endereco"):
             add("")
             add(f"- **Endereço (sede):** {_end['endereco']}")
+    # realidade da sede (a empresa é real?) — cruza a verificação de endereço do próprio CNPJ
+    _rs = _realidade_sede(ctx.get("cnpj", ""))
+    if _rs:
+        add(_rs)
     add("")
 
     # 1-B. Cruzamento sócio × OB (SIAFE) × processo SEI × endereço
@@ -1522,13 +1562,18 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                   ("CNAE principal", emp.get("cnae_principal")),
                   ("Município/UF", f"{_mun}/{_uf}"),
                   ("Endereço (sede)", emp.get("endereco") or (ctx.get("cruzamento") or {}).get("endereco", {}).get("endereco"))]
+        _rs = _realidade_sede_texto(ctx.get("cnpj", ""))
+        if _rs:
+            campos.append(("Realidade da sede", _rs))  # a empresa é real? (cruzamento de endereço)
         rows = "".join(f"<tr><th>{esc(k)}</th><td>{esc(v)}</td></tr>" for k, v in campos)
         secoes.append({"titulo": "1. Perfil cadastral", "html": f"<table>{rows}</table>"})
     else:
         end = (ctx.get("cruzamento") or {}).get("endereco", {}).get("endereco")
+        _rs = _realidade_sede_texto(ctx.get("cnpj", ""))
         secoes.append({"titulo": "1. Perfil cadastral",
                        "html": f"<p class='nota'>Perfil cadastral {esc(ctx.get('fonte_enriq'))} — dados financeiros abaixo são REAIS."
-                               + (f" Endereço (sede): {esc(end)}." if end else "") + "</p>"})
+                               + (f" Endereço (sede): {esc(end)}." if end else "")
+                               + (f" Realidade da sede: {esc(_rs)}." if _rs else "") + "</p>"})
 
     # 2. Quadro societário (sócios/diretores)
     socios = (emp or {}).get("socios") or []
