@@ -278,6 +278,7 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
         geo = {"ok": False, "_nota": str(exc)[:120]}
     ctx = {"ug": ug_cod, "nome": nome, "data": date.today().isoformat(), "pagamentos": pagamentos,
            "alias": ugs.ALIASES.get(ug_cod, {}), "geo": geo}
+    ctx["raciocinio"] = parecer_raciocinado_orgao(ctx)  # síntese de IA sobre os fatos (degrada honesto)
 
     md = render_md(ctx)
     path_md = path_pdf = path_xlsx = ""
@@ -318,6 +319,56 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
 
 def gerar(orgao: Optional[str] = None, ug: Optional[str] = None, anos: Optional[list[int]] = None) -> dict:
     return montar(orgao=orgao, ug=ug, anos=anos)
+
+
+def _fatos_orgao(ctx: dict) -> str:
+    """Compila os FATOS de execução do órgão (sem inventar) p/ a análise raciocinada conectar."""
+    p = ctx["pagamentos"]
+    if not p.get("tem_dados"):
+        return "- Sem Ordens Bancárias na base local para esta UG."
+    hhi = p["hhi"]
+    top_nome, top_val = next(iter(p["por_favorecido_geral"].items()), ("—", 0))
+    L = [f"Órgão/UG: {ctx['nome']} (UG {ctx['ug']}).",
+         f"Execução financeira (OB): R$ {moeda(p['total_geral'])} em {p['n_geral']} ordens bancárias a "
+         f"{len(p['por_favorecido_geral'])} fornecedores.",
+         f"Concentração: maior fornecedor '{top_nome}' = {hhi.get('top_share', 0):.1f}% do valor "
+         f"(R$ {moeda(top_val)}); HHI {hhi.get('indice')} (nível {hhi.get('nivel')})."]
+    grupos = _recorrentes_identicos(p)
+    if grupos:
+        L.append("Pagamentos recorrentes de valor IDÊNTICO (ACFE identical payments): "
+                 f"{len(grupos)} grupo(s) — ex.: "
+                 + "; ".join(f"{g['favorecido'][:30]} {g['n']}× R$ {moeda(g['valor'])}" for g in grupos[:3]) + ".")
+    geo = ctx.get("geo") or {}
+    if geo.get("ok") and geo.get("cidades"):
+        c0 = geo["cidades"][0]
+        L.append(f"Concentração geográfica dos fornecedores: maior cidade-sede = "
+                 f"{c0.get('cidade')}/{c0.get('uf', '')} ({c0.get('pct', 0):.0f}% do valor com endereço ingerido).")
+    return "\n".join("- " + x for x in L)
+
+
+_SYS_RACIOCINIO_ORGAO = (
+    "Você é auditor sênior de controle externo (TCE-RJ/TCU) analisando a EXECUÇÃO de um órgão público. "
+    "A partir EXCLUSIVAMENTE dos fatos listados (NÃO invente dados/nomes/fontes; sem conhecimento externo), "
+    "escreva uma ANÁLISE RACIOCINADA que CONECTE os achados (concentração em fornecedor, pagamentos "
+    "recorrentes idênticos, concentração geográfica): o que chama atenção, COMO se relacionam, que hipóteses "
+    "de risco (captura, fracionamento, direcionamento) merecem apuração e POR QUÊ, e o que verificar. "
+    "Linguagem condicional (indício, sugere, merece apuração) — NUNCA afirme irregularidade nem culpa "
+    "(presunção de legitimidade). Responda em MARKDOWN com bullets curtos '- ' (NUNCA JSON/cercas). Máx ~300 palavras."
+)
+
+
+def parecer_raciocinado_orgao(ctx: dict) -> str:
+    """Síntese raciocinada (gemini→cerebras, bounded) sobre os fatos do órgão. '' se LLM indisponível."""
+    try:
+        fatos = _fatos_orgao(ctx)
+        if not fatos.strip() or fatos.startswith("- Sem"):
+            return ""
+        from compliance_agent.direcionamento_cerebro import gerar_sync
+        from compliance_agent.reporting.inteligencia import _normaliza_raciocinio
+        txt = _normaliza_raciocinio(gerar_sync("FATOS:\n" + fatos, _SYS_RACIOCINIO_ORGAO, timeout=45.0))
+        return txt if len(txt) > 80 else ""
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def parecer_orgao(ctx: dict) -> str:
@@ -603,6 +654,15 @@ def render_md(ctx: dict) -> str:
     # Parecer escrito do JFN
     add("## 3. ANÁLISE JURÍDICA E DE MÉRITO — PARECER PRELIMINAR DO JFN")
     add("")
+    raciocinio = ctx.get("raciocinio")
+    if raciocinio:
+        add("### Análise raciocinada — cruzamento dos achados (IA sobre os fatos coletados)")
+        add("")
+        add(raciocinio)
+        add("")
+        add("> _Síntese gerada por IA **a partir dos fatos coletados** (não inventa dados); indícios para "
+            "apuração, não conclusão. O parecer estruturado abaixo permanece como base._")
+        add("")
     add(parecer_orgao(ctx))
     add("")
 
@@ -795,6 +855,12 @@ def render_pdf(ctx: dict, destino: str) -> str:
     pdf.set_font(pdf._fam, "B", 14); pdf.set_text_color(20, 30, 50)
     pdf.cell(0, 10, _t("Análise Jurídica e de Mérito — Parecer Preliminar do JFN"), ln=True)
     pdf.set_text_color(0, 0, 0)
+    raciocinio = ctx.get("raciocinio")
+    if raciocinio:
+        pdf.set_font(pdf._fam, "B", 11); pdf.cell(0, 7, _t("Análise raciocinada — cruzamento dos achados"), ln=True)
+        pdf.set_font(pdf._fam, "", 10)
+        _render_parecer_pdf(pdf, _t, raciocinio)
+        pdf.ln(2)
     _render_parecer_pdf(pdf, _t, parecer_orgao(ctx))
 
     pdf.ln(3); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(120, 120, 120)
