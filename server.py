@@ -869,14 +869,15 @@ async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int
 
 @app.get("/api/rodizio")
 @app.post("/api/rodizio")  # aceita GET e POST (o Yoda às vezes chuta o método)
-async def api_rodizio(ug: Optional[str] = None, top: int = 20):
+async def api_rodizio(ug: Optional[str] = None, top: int = 20, qsa: int = 0):
     """Rodízio temporal de cartel (bid rotation): vencedores que se revezam no topo de uma UG ano a ano.
-    ?ug=036100 → analisa uma UG | sem ug → varredura das UGs com indício. Indício a verificar, nunca acusação."""
+    ?ug=036100 → analisa uma UG (&qsa=1 cruza sócios dos campeões = concorrência fictícia) | sem ug →
+    varredura das UGs com indício. Indício a verificar, nunca acusação."""
     try:
         from compliance_agent import rodizio_temporal as RT
         top = max(1, min(int(top or 20), 100))
         if ug:
-            dados = RT.rodizio_orgao(str(ug))
+            dados = RT.rodizio_com_qsa(str(ug)) if qsa else RT.rodizio_orgao(str(ug))
         else:
             dados = RT.rodizio_varredura(limite=top)
         return JSONResponse({"ok": True, "ug": ug, "dados": dados,

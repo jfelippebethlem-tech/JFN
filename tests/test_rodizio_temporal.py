@@ -77,3 +77,26 @@ def test_poucos_anos_nao_dispara():
     }
     r = R._detectar_rodizio(por_ano)  # só 2 anos < min_anos
     assert r["indicio"] is False
+
+
+# --------------------------------------------------------------------------- corroboração por QSA
+def _rodizio_fake(indicio):
+    return {"indicio": indicio, "score": 80.0, "n_campeoes": 3, "nota": "..."}
+
+
+def test_combinar_revezam_e_socio_comum_eleva_para_alto():
+    rod = _rodizio_fake(True)
+    qsa = {"red_flag": True, "n_socios_comuns": 1, "socios_compartilhados": [{"socio": "joao", "n": 2}]}
+    out = R._combinar(rod, qsa)
+    assert out["corroborado"] is True and out["nivel"] == "ALTO"
+    assert out["socio_comum_entre_campeoes"] is True and out["qsa"] is qsa
+
+
+def test_combinar_so_rodizio_sem_socio_fica_medio():
+    out = R._combinar(_rodizio_fake(True), {"red_flag": False, "n_socios_comuns": 0})
+    assert out["corroborado"] is False and out["nivel"] == "MEDIO"
+
+
+def test_combinar_sem_indicio_de_rodizio_fica_baixo():
+    out = R._combinar(_rodizio_fake(False), {"red_flag": True})
+    assert out["corroborado"] is False and out["nivel"] == "BAIXO"
