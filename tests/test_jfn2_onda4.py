@@ -84,7 +84,8 @@ def test_dossie_agrega_e_score(monkeypatch, tmp_path):
         return {"razao_social": "EMPRESA TESTE LTDA", "cnpj": cnpj}
 
     async def fake_sancao(cnpj, forcar_update=False):
-        return {"sancionado": True, "sancoes": [{"tipo": "CEIS"}]}
+        # contrato honesto: 'verificado' precisa ser True p/ a sanção entrar no score (INDISPONÍVEL ≠ pontua)
+        return {"verificado": True, "sancionado": True, "sancoes": [{"_fonte": "CEIS"}]}
 
     monkeypatch.setattr("compliance_agent.collectors.cnpj.buscar_cnpj", fake_cnpj)
     monkeypatch.setattr("compliance_agent.collectors.ceis.verificar_sancao", fake_sancao)

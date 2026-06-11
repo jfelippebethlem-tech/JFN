@@ -114,14 +114,16 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     except Exception as e:  # noqa: BLE001
         d["cadastro"] = {"_nota": f"INDISPONÍVEL: {e}"}
 
-    # 2) sanções CEIS/CNEP
+    # 2) sanções CEIS/CNEP — honesto: só pontua se VERIFICADO (INDISPONÍVEL ≠ "limpo")
     sancionado = False
+    sancao_verificada = False
     try:
         from compliance_agent.collectors.ceis import verificar_sancao
         d["sancoes"] = await verificar_sancao(cnpj)
-        sancionado = bool(d["sancoes"].get("sancionado") or d["sancoes"].get("sancoes"))
+        sancao_verificada = bool(d["sancoes"].get("verificado"))
+        sancionado = sancao_verificada and bool(d["sancoes"].get("sancionado"))
     except Exception as e:  # noqa: BLE001
-        d["sancoes"] = {"_nota": f"INDISPONÍVEL: {e}"}
+        d["sancoes"] = {"_nota": f"INDISPONÍVEL: {e}", "verificado": False}
 
     # 2b) OpenSanctions (PEP + sanções internacionais) — Onda 12 (key-gated, honesto)
     try:
@@ -181,11 +183,14 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     # 6) score de convergência (a partir dos sinais reunidos)
     sinais = {
         "conflito_doador": bool(d.get("conflito", {}).get("n")),
-        "sancao_ceis_cnep": sancionado,
         "concentracao_orgao": 1.0 if (d["ob"].get("concentracao_top_ug") or 0) >= 0.6 else 0.0,
         # cada red flag estrutural conta como um red flag de edital/TR (teto interno de 3 no score)
         "red_flag_edital": len(d["red_flags_estruturais"]),
     }
+    if sancao_verificada:  # só entra no score quando a consulta foi REALMENTE feita
+        sinais["sancao_ceis_cnep"] = sancionado
+    else:
+        d["sancoes"]["_aviso_score"] = "sanção não verificada → não pontuada (INDISPONÍVEL ≠ limpo)"
     try:
         from compliance_agent.analysis.score_convergencia import convergencia
         d["score"] = convergencia(sinais)
