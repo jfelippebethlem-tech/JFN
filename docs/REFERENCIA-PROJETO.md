@@ -90,12 +90,18 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
   periferia é ruim; a Rua Tapajós/Meriti existe mas o Nominatim só resolveu COM CEP + prefixo "Rua". Geocode
   precisa tentar variantes (CEP/logradouro) e distinguir `exato` (nº) de centroide da rua antes de afirmar
   baldio/inexistência. Sempre conferir no mapa real (CEP/Google) antes de tratar como achado. INDISPONÍVEL ≠ baldio.
+- **⛔ Divergência de município só com geocode EXATO** (036100, 06-11): match coarse (logradouro/CEP) cai em
+  cidade errada por fallback do Nominatim → 83 falsas "divergências" (todas exato=False). Só afirmar com o nº resolvido.
+- **⛔ Satélite (entorno) NUNCA acusa baldio/barraco** (lição Banco do Brasil, 06-11): coord no nível da rua
+  (±100m) + VLM alucinou "barraco 80%" p/ o BB e p/ Polis Informática. Satélite só AFASTA área edificada;
+  acusação de baldio/barraco/casa SÓ por Street View (rooftop, requer GOOGLE_MAPS_KEY). Nunca acusar com evidência fraca.
 
 ## 9. PENDÊNCIAS DO DONO
 SIAFE 1 (liberar chave p/ todas as UGs) · SEI de outras unidades (acesso do itkava) · repor/rotacionar billing das
 chaves Gemini sem saldo e renovar tokens OAuth "AQ." manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-11 cont.15:** Verificação de endereço endurecida: divergência/baldio só com geocode `exato` (fim de 83 falsos); **resolução por imagem** (`classificar_local_por_imagem` + `tools/resolver_endereco_imagem`): satélite Esri grátis + Street View (chave) → VLM Gemini pool. **Satélite NUNCA acusa** (lição BB §8 — virou "barraco" falso), só AFASTA; acusação real só por Street View (`GOOGLE_MAPS_KEY`). Dono pausou o visual (decisão: caminho grátis afasta, não conclui). Tabela `endereco_verificacao` (2 INDÍCIO / 201 INDISP no Fundo). +8 testes.
 - **06-11 cont.14:** Geocoder corrigido (lição NEW LINK §8: usa CEP+variantes, distingue `exato` do centroide). **Verificação de endereço de TODAS as fornecedoras via backfill incremental diário** (`backfill_verificacao_endereco.py` + tabela `endereco_verificacao` + cron 06:45 `--limite 600` → cobre 14.418 sedes em ~24d, educado/VM-safe; `--ug` prioriza órgão). DD estrutural Fundo 036100 fechou **1363/1363 → 64 candidatos (8🔴/56🟡)**; 🔴 = END-RESID+situação irregular+sócio único (ex.: HG REPRESENTACOES, A V SUPRIMENTOS, EMBRACOM). Lote OSM duplicado irritou rate-limit → back-off implementado + sweep ad-hoc trocado pelo cron. +5 testes.
 - **06-11 cont.13:** **Verificação de realidade do endereço** (`verificacao_endereco.py`): geocode-match (bate município? Nominatim) + **edificação/baldio** (Overpass/OSM — sem prédio no ponto + landuse vago = indício de terreno não edificado; ressalva honesta de cobertura OSM incompleta) + hook imagem→VLM (ativa com chave Street View/Mapillary). Plugado no H-END-EXISTE. Back-off 429/5xx + cache 30d → **sweep `endereco_sweep --todos`** avalia TODAS as fornecedoras da UG (resumível/reboot-safe, educado). Rodando no Fundo 036100. Co-endereço = H-COEND (já existia). +6 testes.
 - **06-11 cont.12:** **Alvo 2** — triagem de DD priorizada por órgão (`investigacao_orgao_dd.py`): ranqueia top fornecedores PJ da UG por grau/score + lista processos SEI a priorizar; CLI + render_md; 3 testes. Medido ao vivo TJRJ 030100/Fundo 036100: **top-por-valor = grandes prestadores legítimos (todos 🟢)** — achado honesto: **fachada/laranja mora na CAUDA, não no topo** (varredura de cauda = trabalho de background). Regra de corroboração confirmada (CAPITAL isolado score-8 não sobe a 🟡).
