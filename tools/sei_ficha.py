@@ -104,7 +104,7 @@ def _refresh_nous_se_preciso() -> None:
         d = json.loads(_AUTH.read_text(encoding="utf-8"))
         n = (d.get("providers") or {}).get("nous") or {}
         exp = n.get("expires_at")
-        if exp:
+        if exp and n.get("access_token"):  # só pula refresh se JÁ HÁ token válido (vazio → refaz, mesmo standalone)
             import datetime as _dt
             resta = (_dt.datetime.fromisoformat(exp) - _dt.datetime.now(_dt.timezone.utc)).total_seconds()
             if resta > 90:

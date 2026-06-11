@@ -54,14 +54,10 @@ async def main():
             continue
         cont = conteudo_real(d)
         t0 = time.time()
-        # Backfill ÚNICO (não o sweep contínuo): cerebras grátis/rápido e sem o problema do token nous
-        # standalone. O sweep contínuo segue no nous stepfun:free. Cai p/ nous se cerebras indisponível.
-        from compliance_agent.llm.free_llm import cerebras_available
-        if cerebras_available():
-            f = await extrair_ficha(cont, "gpt-oss-120b", provider="cerebras")
-        else:
-            _refresh_nous_se_preciso()
-            f = await extrair_ficha(cont, STEPFUN, provider="nous")
+        # SWEEP = SÓ nous stepfun:free (ilimitado/grátis — diretriz do dono; cerebras NÃO é ilimitado, fica
+        # fora do volume do sweep). _refresh corrigido p/ funcionar standalone (refaz token se vazio).
+        _refresh_nous_se_preciso()
+        f = await extrair_ficha(cont, STEPFUN, provider="nous")
         if f.get("_erro"):
             erros += 1
             print(f"  ERRO {Path(caminho).name}: {f['_erro'][:60]}", flush=True)
