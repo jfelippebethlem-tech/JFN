@@ -23,7 +23,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 from compliance_agent.investigacao_orgao_dd import _moeda, top_fornecedores_pj
-from compliance_agent.verificacao_endereco import analisar_endereco
+from compliance_agent.verificacao_endereco import analisar_endereco, em_backoff
 
 _DIR = Path("data") / "dd_sweep"
 _ORDEM = {"INDICIO": 0, "INDISPONIVEL": 1, "AFASTADO": 2}
@@ -127,6 +127,10 @@ def main() -> int:
         for i, f in enumerate(forns, 1):
             if f["cnpj"] in feitos:
                 continue
+            espera = em_backoff()  # fontes OSM pediram trégua (429/5xx) → respeitar antes de seguir
+            if espera > 0:
+                print(f"  ⏸ back-off {espera:.0f}s (respeitando a fonte OSM)", flush=True)
+                time.sleep(espera + 1)
             cad = _endereco_cadastral(f["cnpj"])
             if not cad.get("endereco"):
                 res = {"status": "INDISPONIVEL", "nivel": "—", "peso": 0,
