@@ -319,6 +319,28 @@ Gemini são **tokens OAuth "AQ." MANUAIS** — funcionam agora mas **podem expir
 caem no nous (graceful) e voltam quando o dono renovar o token; (c) se quiser o Yoda **já no Gemini** (modelo mais
 forte) agora, trocar `active_provider` p/ gemini (hoje está em `nous`, que funciona).
 
+### Sessão 2026-06-09 (continuação 6 — auditoria dos erros do Yoda + /orgao rico)
+**Tema:** o dono mandou olhar TODAS as interações de hoje no Telegram (via `state.db`) e resolver os erros;
+"os relatórios do Tribunal de Justiça estão pobres".
+**Erros achados no log de hoje + status:**
+- **/orgao POBRE** (✅ RESOLVIDO, commit `5b554ac`): o `render_pdf` (FPDF, entregue) renderizava MENOS que o
+  `render_md`. Adicionado ao PDF: **sumário executivo** (rating 🔴🟡🟢 + **score 0-100** via `_risco_orgao`,
+  reusa o motor do Lex), **concentração GEOGRÁFICA** (já calculada em `ctx['geo']`, antes descartada no PDF),
+  **red flags + matriz P×I** no corpo. Verificado no Fundo TJ 036100 (12 pgs, AMARELO 29/100).
+- **Yoda não conhecia o "sweep do SEI"** (✅ RESOLVIDO, commit `509f209`): hoje ele se perdeu (5 tentativas).
+  Criado **`GET /api/sweeps/status`** + capability `sweeps_status` → responde "como está o sweep" (SEI processos
+  lidos/fila; SIAFE 2 rodando/**COMPLETO**/pausado). **SIAFE 2 está COMPLETO** (varreu todas as UGs em 20:24;
+  supervisor encerrou certo — não estava "quebrado"). SEI: 339 lidos, fila vazia (back-off, escopo itkava esgotado).
+- **Cron diário "Pesquisa Jorge Felippe Neto" falha todo dia** (⚠ PARCIAL, commit `8d7a800`): o Yoda **não tem
+  web_search**. Registrei `consultar_noticias` (GDELT `/api/massare/noticias`, sem chave) p/ ele dar notícias/mídia
+  em vez de só dizer "não posso". **NÃO** é web-search genérica (não cobre "projetos de lei"). **Decisão do dono:**
+  manter (vira boletim GDELT), repointar o prompt do cron p/ a capability, ou desativar o cron.
+**Pendências apontadas (decisão do dono):** (a) cron "bom dia" saiu truncado ("Mestre Yoda, a") — é **corte do
+LLM** (nous/Gemini); some quando o LLM estabilizar. (b) Massare não tem **prata** (XAG=F sem dados). (c) tasks
+abertas: **Cerebras nos pools** (#5) e **SEI sweep estudar TODOS os processos de TODAS as OBs** (#7 — hoje o
+escopo é só unidades que o itkava lê: 140001/270042/270060/330003/520003).
+**Recursos (fim):** load baixo · sweeps: SEI supervisionado / SIAFE 2 completo · sem necessidade de liberar.
+
 ## 11. ⏯️ RETOMADA — INSTRUÇÕES PERMANENTES (ler ANTES de continuar, sessão nova)
 **Branch `feat/lista-limpa` (não pushado, tudo commitado). Serviço/sweeps vivos.** O dono pediu para continuar
 com TODAS estas instruções:
