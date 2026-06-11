@@ -156,12 +156,35 @@ async def _chamar_nous(texto: str, model: str) -> str:
         return msg.get("content") or msg.get("reasoning") or ""
 
 
+CEREBRAS_MODEL = os.environ.get("CEREBRAS_MODEL_FAST", "gpt-oss-120b")
+
+
+async def _chamar_cerebras(texto: str) -> str:
+    """Cerebras (gpt-oss-120b, OpenAI-compat) — ULTRARRÁPIDO (~0,04s) e com saldo. Modelo de RACIOCÍNIO:
+    max_tokens alto (raciocínio + JSON); lê `content` (ou `reasoning` se cortado). Tier coletor (≠ produtos)."""
+    import httpx
+    key = os.environ.get("CEREBRAS_API_KEY", "")
+    base = os.environ.get("CEREBRAS_BASE_URL", "https://api.cerebras.ai/v1")
+    if not key:
+        raise RuntimeError("sem CEREBRAS_API_KEY")
+    async with httpx.AsyncClient(timeout=120) as c:
+        r = await c.post(f"{base}/chat/completions",
+                         headers={"Authorization": f"Bearer {key}"},
+                         json={"model": CEREBRAS_MODEL, "messages": _prompt(texto), "temperature": 0.1,
+                               "max_tokens": 4000, "top_p": 0.9})
+        r.raise_for_status()
+        msg = (r.json().get("choices") or [{}])[0].get("message", {}) or {}
+        return msg.get("content") or msg.get("reasoning") or ""
+
+
 async def extrair_ficha(texto: str, model: str, provider: str = "gemini") -> dict:
     """Extrai a ficha compacta. provider: 'gemini' (gerar_gemini) ou 'nous' (OpenAI-compat). {'_erro'} em falha.
     No nous, RETENTA erros transientes do servidor (502/503/timeout) — a infra deles oscila."""
     raw = None
     try:
-        if provider == "nous":
+        if provider == "cerebras":
+            raw = await _chamar_cerebras(texto)
+        elif provider == "nous":
             ult = None
             for _try in range(3):
                 try:
@@ -211,6 +234,12 @@ async def extrair_ficha_producao(texto: str, preferir_gratis: bool = True) -> tu
     sem limite, qualidade comprovada) — mesmo mais lento — e SÓ cai pro gemini-lite se o nous estiver fora
     (502/503 após retry). Retorna (ficha, modelo_usado)."""
     if preferir_gratis:
+        # Cerebras gpt-oss-120b primeiro: ultrarrápido + com saldo (acelera MUITO o sweep) e melhor que o
+        # stepfun. Tier coletor (produtos seguem gemini). Cai p/ nous stepfun:free e por fim gemini-lite.
+        if os.environ.get("CEREBRAS_API_KEY"):
+            f = await extrair_ficha(texto, CEREBRAS_MODEL, provider="cerebras")
+            if not f.get("_erro"):
+                return f, "cerebras:" + CEREBRAS_MODEL
         f = await extrair_ficha(texto, STEPFUN, provider="nous")
         if not f.get("_erro"):
             return f, "stepfun:free"
