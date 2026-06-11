@@ -191,39 +191,65 @@ async def _chamar_cerebras(texto: str) -> str:
         return msg.get("content") or msg.get("reasoning") or ""
 
 
+def _parse_ficha_json(raw: str):
+    """Extrai/salva o JSON da ficha de uma resposta possivelmente suja (fences ```), com vírgula final, ou
+    com texto em volta. Retorna dict ou None (modelo fraco às vezes malforma). SALVAGE antes de desistir."""
+    if not raw:
+        return None
+    s = raw.strip()
+    for pre in ("```json", "```JSON", "```"):
+        if s.startswith(pre):
+            s = s[len(pre):].strip()
+    if s.endswith("```"):
+        s = s[:-3].strip()
+    m = re.search(r"\{.*\}", s, re.S)
+    if not m:
+        return None
+    cand = m.group(0)
+    for fix in (cand, re.sub(r",\s*([}\]])", r"\1", cand)):  # tenta cru e sem vírgula final
+        try:
+            obj = json.loads(fix)
+            if isinstance(obj, dict):
+                return obj
+        except Exception:  # noqa: BLE001
+            pass
+    return None
+
+
 async def extrair_ficha(texto: str, model: str, provider: str = "gemini") -> dict:
-    """Extrai a ficha compacta. provider: 'gemini' (gerar_gemini) ou 'nous' (OpenAI-compat). {'_erro'} em falha.
-    No nous, RETENTA erros transientes do servidor (502/503/timeout) — a infra deles oscila."""
-    raw = None
-    try:
+    """Extrai a ficha compacta. provider: 'gemini'/'nous'/'cerebras'. {'_erro'} em falha. RETENTA erros
+    transientes do nous (502/503/timeout) E o PARSE (modelo fraco às vezes corta/malforma o JSON)."""
+    async def _chamar() -> str:
         if provider == "cerebras":
-            raw = await _chamar_cerebras(texto)
-        elif provider == "nous":
+            return await _chamar_cerebras(texto)
+        if provider == "nous":
             ult = None
             for _try in range(3):
                 try:
-                    raw = await _chamar_nous(texto, model)
-                    break
+                    return await _chamar_nous(texto, model)
                 except Exception as e:  # noqa: BLE001
                     ult = e
                     if any(s in str(e) for s in ("502", "503", "Timeout", "ReadTimeout")):
-                        await asyncio.sleep(3)  # transiente → retenta
+                        await asyncio.sleep(3)
                         continue
                     raise
-            if raw is None:
-                raise ult or RuntimeError("nous falhou")
-        else:
-            from compliance_agent.direcionamento_cerebro import gerar_gemini
-            raw = await gerar_gemini(_prompt(texto), model=model)
-    except Exception as e:  # noqa: BLE001
-        return {"_erro": f"{type(e).__name__}: {str(e)[:80]}"}
-    m = re.search(r"\{.*\}", raw or "", re.S)
-    if not m:
-        return {"_erro": "sem JSON", "_raw": (raw or "")[:120]}
-    try:
-        return json.loads(m.group(0))
-    except Exception:
-        return {"_erro": "JSON inválido", "_raw": (raw or "")[:120]}
+            raise ult or RuntimeError("nous falhou")
+        from compliance_agent.direcionamento_cerebro import gerar_gemini
+        return await gerar_gemini(_prompt(texto), model=model)
+
+    ult_raw = ""
+    for tent in range(2):  # parse-retry: pede de novo se vier sem JSON válido
+        try:
+            raw = await _chamar()
+        except Exception as e:  # noqa: BLE001
+            return {"_erro": f"{type(e).__name__}: {str(e)[:80]}"}
+        ult_raw = raw or ""
+        f = _parse_ficha_json(raw)
+        if f is not None:
+            return f
+        if tent == 0:
+            await asyncio.sleep(1)
+    return {"_erro": "JSON inválido", "_raw": ult_raw[:160]}
 
 
 def conteudo_real(d: dict) -> str:

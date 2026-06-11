@@ -471,8 +471,10 @@ async def _enriquecer(cnpj: str) -> dict:
 # ───────────────────────────── montagem do relatório ─────────────────────────────
 
 async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
-                 anos: Optional[list[int]] = None, salvar: bool = True) -> dict:
-    """Monta o relatório de inteligência. Retorna dict (ver docstring do módulo)."""
+                 anos: Optional[list[int]] = None, salvar: bool = True, so_resolver: bool = False) -> dict:
+    """Monta o relatório de inteligência. Retorna dict (ver docstring do módulo).
+    so_resolver=True: só RESOLVE (rápido) e devolve {ok,_resolvido,empresa,cnpj} ou {ambiguo}/{erro}, SEM gerar
+    — o endpoint usa p/ tratar a ambiguidade SÍNCRONA (o Yoda roteia a resposta) antes de gerar em background."""
     termo = (cnpj or empresa or "").strip()
     candidatos = buscar_candidatos(termo)
     if not candidatos:
@@ -504,6 +506,8 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
 
     cnpj_d = escolhido["cnpj"]
     resolv = escolhido
+    if so_resolver:  # resolveu sem ambiguidade → o endpoint segue p/ geração em background
+        return {"ok": True, "_resolvido": cnpj_d, "cnpj": cnpj_d, "empresa": escolhido.get("nome") or termo}
 
     pagamentos = consultar_pagamentos(cnpj_d, anos)
     contratos = consultar_contratos(cnpj_d)
