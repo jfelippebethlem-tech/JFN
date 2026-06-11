@@ -897,6 +897,80 @@ async def api_orgao_cidades(ug: Optional[str] = None, top: int = 20):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@app.get("/api/sweeps/status")
+async def api_sweeps_status():
+    """Status dos SWEEPS (coleta contínua): SEI (lê processos SEI das OBs) + SIAFE 2 (OB Orçamentária).
+    Para o Yoda responder 'como está o sweep' sem se perder — texto pronto p/ Telegram."""
+    import subprocess
+    base = Path(__file__).resolve().parent
+
+    def _alive(pat: str) -> bool:
+        try:
+            return bool(subprocess.run(["pgrep", "-f", pat], capture_output=True).stdout.strip())
+        except Exception:  # noqa: BLE001
+            return False
+
+    # SEI
+    sei_feitos = 0
+    try:
+        sei_feitos = len(json.loads((base / "data/sei_cache/sei_sweep_progress.json").read_text()).get("feitos", {}))
+    except Exception:  # noqa: BLE001
+        pass
+    sei_tail = ""
+    try:
+        _ls = [ln for ln in (base / "data/sei_cache/sei_sweep_loop.out").read_text().splitlines() if ln.strip()]
+        sei_tail = _ls[-1][:170] if _ls else ""
+    except Exception:  # noqa: BLE001
+        pass
+    sei_sup, sei_run = _alive("sei_supervisor.sh"), _alive("tools[.]sei_sweep")
+    sia_sup, sia_run = _alive("siafe_supervisor.sh"), _alive("siafe[_]sweep_full")
+    pausado = (base / "data/.pause_sei_sweep").exists() or (base / "data/.pause_sweep_2").exists()
+
+    sia_total = 0
+    try:
+        import sqlite3
+        _c = sqlite3.connect(base / "data/compliance.db")
+        sia_total = _c.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe").fetchone()[0]
+        _c.close()
+    except Exception:  # noqa: BLE001
+        pass
+
+    # SIAFE 2: detecta varredura COMPLETA (o supervisor encerra ao concluir; não é "parado/quebrado")
+    sia_completo = False
+    try:
+        _sl = [ln for ln in (base / "data/siafe_sweep_full_2.log").read_text().splitlines() if ln.strip()][-3:]
+        sia_completo = any("SWEEP COMPLETO" in ln for ln in _sl)
+    except Exception:  # noqa: BLE001
+        pass
+
+    def _ic(ok):
+        return "🟢" if ok else "🔴"
+    estado_sei = "pausado (relatório em curso tem prioridade)" if pausado else ("rodando" if sei_run else ("supervisionado" if sei_sup else "parado"))
+    if pausado:
+        estado_sia = "pausado"
+    elif sia_run:
+        estado_sia = "rodando"
+    elif sia_completo:
+        estado_sia = "✅ varredura completa (todas as UGs); reabre com nova coleta diária"
+    elif sia_sup:
+        estado_sia = "supervisionado"
+    else:
+        estado_sia = "ocioso (varredura concluída)"
+    _sia_fmt = f"{sia_total:,}".replace(",", ".")
+    texto = (
+        "🛰️ **Sweeps (coleta contínua)**\n\n"
+        f"{_ic(sei_sup or sei_run)} **SEI** — {estado_sei}\n"
+        f"   {sei_feitos} processos lidos (checkpoint, resumível).\n"
+        f"   _{sei_tail}_\n\n"
+        f"{_ic(sia_sup or sia_run or sia_completo)} **SIAFE 2** — {estado_sia}\n"
+        f"   base OB Orçamentária: {_sia_fmt} OBs ingeridas."
+    )
+    return JSONResponse({"ok": True, "texto": texto,
+                         "sei": {"feitos": sei_feitos, "supervisor": sei_sup, "rodando": sei_run, "ultima": sei_tail},
+                         "siafe": {"supervisor": sia_sup, "rodando": sia_run, "ob_orcamentaria": sia_total},
+                         "pausado": pausado})
+
+
 @app.get("/api/ugs")
 async def api_ugs(filtro: Optional[str] = None, limite: int = 50):
     """Catálogo das UGs (órgãos) — o /UG do Yoda. Código + nome canônico + nº de OBs + total pago, para

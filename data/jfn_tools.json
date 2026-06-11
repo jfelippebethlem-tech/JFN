@@ -1134,6 +1134,28 @@
     {
       "type": "function",
       "function": {
+        "name": "sweeps_status",
+        "description": "Status dos SWEEPS continuos: SEI (le processos SEI das OBs) + SIAFE 2 (OB Orcamentaria) — usar quando: 'como esta o sweep', 'o sweep do SEI/SIAFE esta funcionando', 'a coleta continua esta rodando', 'quantos processos SEI ja foram lidos' — chamar: GET /api/sweeps/status (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "coleta",
+        "tipo": "http",
+        "rota": "/api/sweeps/status",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "siafe_status",
         "description": "Estado da coleta SIAFE AGORA: ha um sweep/coleta rodando? (lockfile de sessao unica) — usar quando: 'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?' — chamar: GET /api/siafe/status (base http://127.0.0.1:8000)",
         "parameters": {
