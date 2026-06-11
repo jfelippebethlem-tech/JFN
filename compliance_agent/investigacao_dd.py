@@ -174,8 +174,9 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
         cobertura["geocode"] = g.get("estado", "INDISPONIVEL")
         if g.get("status") in ("INDICIO", "CONFIRMADO"):
             hipoteses.append(_hip(
-                "H-END-EXISTE", "Endereço não confirmado fisicamente (geocodificação)", g["status"], g["nivel"],
-                g["evidencia"], "Nominatim/OpenStreetMap", "art. 337-F CP", g["peso"]))
+                "H-END-EXISTE", "Sede não confirmada fisicamente (terreno/baldio/inexistência)",
+                g["status"], g["nivel"], g["evidencia"],
+                "Nominatim + Overpass/OpenStreetMap", "art. 337-F CP", g["peso"]))
     else:
         cobertura["geocode"] = "não solicitado" if endereco_txt.strip() else "INDISPONIVEL"
 
@@ -493,42 +494,17 @@ async def _coletar_beneficios_pep(cnpj: str, total_pago: float, socios: list, ma
 
 def _checar_endereco_geocode(endereco: str, municipio: str | None, uf: str | None,
                              cep: str | None) -> dict:
-    """Consulta o Nominatim (OSM) p/ checar se o endereço EXISTE e que TIPO de feição é.
+    """Verifica a REALIDADE da sede: geocode-match + edificação/baldio (Nominatim + Overpass).
 
-    Honesto: o Nominatim NÃO confirma 'terreno baldio'; o que dá é (a) endereço não-resolvível e
-    (b) tipo da feição (house/residential vs. commercial/retail/industrial). Tudo é INDÍCIO, cacheado,
-    rate-limit ≤1 req/s (política de uso do Nominatim público). Retorna {status,nivel,evidencia,peso,estado}.
+    Delega ao módulo `verificacao_endereco` (geocode resolve? bate o município? há edificação no ponto ou
+    é terreno não edificado/baldio?). Honesto: cobertura do OSM é incompleta → ausência ≠ prova; nunca
+    CONFIRMADO só por OSM. Retorna {status,nivel,evidencia,peso,estado,sinais}.
     """
     try:
-        import httpx
-    except Exception:
-        return {"status": "INDISPONIVEL", "estado": "INDISPONIVEL (httpx ausente)"}
-    consulta = ", ".join(p for p in [endereco, municipio, uf, "Brasil"] if p)
-    params = {"q": consulta, "format": "jsonv2", "addressdetails": 1, "limit": 1, "countrycodes": "br"}
-    headers = {"User-Agent": "JFN-Compliance/1.0 (controle externo; fiscalizacao legitima)"}
-    try:
-        r = httpx.get("https://nominatim.openstreetmap.org/search", params=params,
-                      headers=headers, timeout=12)
-        if r.status_code != 200:
-            return {"status": "INDISPONIVEL", "estado": f"INDISPONIVEL (HTTP {r.status_code})"}
-        data = r.json()
-    except Exception as e:  # noqa: BLE001
+        from compliance_agent.verificacao_endereco import analisar_endereco
+        return analisar_endereco(endereco, municipio, uf, cep, usar_overpass=True)
+    except Exception as e:  # noqa: BLE001 — degrada honesto
         return {"status": "INDISPONIVEL", "estado": f"INDISPONIVEL ({str(e)[:40]})"}
-
-    if not data:
-        return {"status": "INDICIO", "nivel": "MEDIO", "peso": 8, "estado": "verificado (não resolvido)",
-                "evidencia": (f"Endereço não localizado na base cartográfica aberta (OpenStreetMap) para "
-                              f"'{consulta}'. Endereço não-resolvível merece apuração de existência física "
-                              "(possível inexistência/terreno não edificado) — confirmar in loco/imagem.")}
-    feat = data[0]
-    tipo = (feat.get("type") or "").lower()
-    classe = (feat.get("category") or feat.get("class") or "").lower()
-    if tipo in ("house", "residential", "apartments", "dormitory") or classe == "place" and tipo in ("house", "residential"):
-        return {"status": "INDICIO", "nivel": "MEDIO", "peso": 6, "estado": "verificado (residencial)",
-                "evidencia": (f"Geocodificação aponta feição '{classe}/{tipo}' (residencial) para o endereço. "
-                              "Corrobora natureza residencial da sede — verificar operação física.")}
-    return {"status": "AFASTADO", "nivel": "BAIXO", "peso": 0,
-            "estado": f"verificado ({classe}/{tipo})"}
 
 
 # ───────────────────────── CLI ─────────────────────────
