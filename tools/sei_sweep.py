@@ -73,8 +73,25 @@ def _unidades_legiveis() -> set[str]:
 
 
 def _unidade(proc: str) -> str:
-    m = re.match(r"SEI-(\d{6})/", proc)
+    m = re.match(r"SEI-\s*(\d{6})", proc or "")  # tolera 'SEI- 330003' (espaço) e 'SEI-080002'
     return m.group(1) if m else ""
+
+
+def _unidades_sem_acesso(prog: dict, min_amostra: int = 6) -> set:
+    """Unidades APRENDIDAS como fora do acesso do itkava: >= min_amostra processos tentados e TODOS com
+    0 docs → o login não enxerga aquela unidade (INDISPONÍVEL por acesso). Pular o resto dela evita
+    milhares de tentativas fúteis. Honesto: é falta de ACESSO, não 'sem processo'."""
+    from collections import defaultdict
+    tot: dict = defaultdict(int)
+    zero: dict = defaultdict(int)
+    for p, f in (prog.get("feitos") or {}).items():
+        u = _unidade(p)
+        if not u:
+            continue
+        tot[u] += 1
+        if (f.get("n_docs", 0) or 0) == 0:
+            zero[u] += 1
+    return {u for u in tot if tot[u] >= min_amostra and zero[u] == tot[u]}
 
 
 def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
@@ -181,9 +198,14 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
     from playwright.async_api import async_playwright
 
     prog = _carregar_prog()
+    # Unidades APRENDIDAS como fora do acesso do itkava (amostra suficiente, todas 0 docs) → pular o resto
+    # delas (são INDISPONÍVEL por acesso, não vazias) em vez de tentar milhares fútilmente. Adaptativo.
+    sem_acesso = _unidades_sem_acesso(prog)
 
     def _pular(p: str) -> bool:
         if _ja_lido_ok(p):
+            return True
+        if _unidade(p) in sem_acesso:  # unidade inteira fora do acesso do itkava (INDISPONÍVEL)
             return True
         f = prog["feitos"].get(p)
         # já lido com docs, ou já tentado >=3x sem sucesso (processo vazio/restrito de verdade)

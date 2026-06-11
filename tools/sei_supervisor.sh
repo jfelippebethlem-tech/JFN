@@ -20,9 +20,11 @@ while true; do
   if [ -f data/.pause_sei_sweep ]; then sleep 120; continue; fi
   # já rodando (ex.: lançado à mão)? não duplica
   if pgrep -f "tools.sei_sweep" >/dev/null; then sleep 60; continue; fi
-  # fila esvaziou no último lote → back-off 30min (o SIAFE vai gerando novos processos SEI)
+  # fila aparentou vazia no último lote → back-off 30min E DEPOIS RELANÇA p/ reavaliar a fila real
+  # (BUG corrigido: antes dava `continue` e ficava preso na linha antiga 'nada novo' do tail = back-off
+  # infinito, mesmo com 38k processos restantes; novos processos SEI também surgem com o SIAFE).
   if tail -3 "$OUT" 2>/dev/null | grep -q "nada novo na fila"; then
-    say "fila vazia — back-off 30min (aguardando novos processos do SIAFE)"; sleep 1800; continue
+    say "fila aparentou vazia — back-off 30min e reavalia"; sleep 1800
   fi
   say "relançando sei_sweep --max $LOTE"
   PYTHONPATH=. .venv/bin/python -m tools.sei_sweep --max "$LOTE" >> "$OUT" 2>&1
