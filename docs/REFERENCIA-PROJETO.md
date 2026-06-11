@@ -99,8 +99,11 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
   acusação de baldio/barraco/casa SÓ por Street View (rooftop, requer GOOGLE_MAPS_KEY). Nunca acusar com evidência fraca.
 
 ## 9. PENDÊNCIAS DO DONO
-SIAFE 1 (liberar chave p/ todas as UGs) · SEI de outras unidades (acesso do itkava) · repor/rotacionar billing das
-chaves Gemini sem saldo e renovar tokens OAuth "AQ." manuais quando expirarem (caem no nous até lá).
+SIAFE 1 (liberar chave p/ todas as UGs) — **sweep PAUSADO até a chave (06-11 cont.17):** flag `data/.pause_sweep_1`
++ cron de respawn `* * * * * siafe_supervisor.sh` REMOVIDO (não funciona sem chave). Reativar: `rm data/.pause_sweep_1`
+e recolocar a linha do supervisor no crontab. (SIAFE 2 incremental 05:00 segue ativo, funciona por login.) · SEI de
+outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini sem saldo e renovar tokens OAuth "AQ."
+manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
 - **06-11 cont.17:** **EDGE DO MASSARE VIROU ≥0** (alvo do dono). Novo `massare/engine_regime4.py`: ensemble **4 regimes** (grade 2×2 tendência×volatilidade) + **drift-aware** (EWMA por sub×regime, recência pesa mais, rampa anti-ruído por min-amostras). **Universo (26 ativos × 5/10/21d, walk-forward OOS):** naive −0.0133/−0.0163/−0.0082 → regime2 −0.0071/−0.0114/−0.0021 (ainda neg.) → **reg4+drift +0.0006/+0.0005/+0.0070 (≥0 nos 3)**. Ablação honesta: **4 regimes SEM drift PIORA** (esparsidade) — **o drift é o que vira**. **Produto real** (`backtest.json`, 356.655 pregões/78 séries): **edge médio +0.0027**, 38/78 positivas (ETH 21d +0.072, DXY +0.061, USDBRL +0.055). Robustez: positivo half_life 21..63; decai só >~90d. **Motor de produção trocado p/ regime4** (`backtest.run` padrão + `/api/massare/prever` + `daily`) SÓ após o backtest universo provar ≥0 (lição V2); naive mantido p/ comparação. Live OK (BTC bear_turb edge +0.017 tem_skill=True). +6 testes. Commit `825d0f5`.
