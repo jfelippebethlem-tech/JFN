@@ -569,6 +569,39 @@
     {
       "type": "function",
       "function": {
+        "name": "investigar_web",
+        "description": "PESQUISA NA WEB (DuckDuckGo + noticias) sobre pessoa/empresa: midia recente, riscos, mencoes. ESTE e o jeito de pesquisar na web — o Yoda NAO tem web_search proprio; SEMPRE use esta rota. — usar quando: 'pesquise na web sobre X', 'noticias recentes de X', 'atividade publica/aparicoes na midia de X', 'o que saiu sobre X', monitoramento diario de uma pessoa — chamar: GET /api/compliance/investigar (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "nome": {
+              "type": "string",
+              "description": "obrigatorio"
+            },
+            "cnpj": {
+              "type": "string",
+              "description": "opcional"
+            }
+          },
+          "required": [
+            "nome"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/compliance/investigar",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "consultar_diario",
         "description": "Diarios oficiais municipais (Querido Diario): busca por palavra-chave + territorio IBGE + datas — usar quando: 'saiu no diario oficial de X?', publicacao/extrato de contrato municipal — chamar: GET /api/diario (base http://127.0.0.1:8000)",
         "parameters": {
