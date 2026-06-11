@@ -64,3 +64,14 @@ def test_ranking_por_grau_e_processos(tmp_path, monkeypatch):
     assert out["processos_prioritarios"] == ["SEI-RED"]
     assert len(out["alvos_prioritarios"]) == 1
     assert "SEI-RED" in mod.render_md(out)
+    # rodízio é GATED em teste (db_path setado) → não toca o DB real
+    assert out["rodizio"] is None
+
+
+def test_render_md_mostra_rodizio_quando_indicio():
+    out = {"ug": "170100", "resumo": "x", "ranking": [], "processos_prioritarios": [],
+           "rodizio": {"indicio": True, "score": 74.1, "n_campeoes": 6, "n_anos": 8,
+                       "alternancia": 0.714, "share_ring": 0.639,
+                       "campeoes": [{"nome": "Solazer", "n_vitorias": 2}]}}
+    md = mod.render_md(out)
+    assert "Rodízio temporal" in md and "score 74.1" in md and "Solazer" in md
