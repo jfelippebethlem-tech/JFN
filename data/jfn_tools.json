@@ -940,22 +940,20 @@
       "type": "function",
       "function": {
         "name": "massare_prever",
-        "description": "Previsao direcional (walk-forward; condicionada a regime) — usar quando: 'previsao do Ibovespa', 'BTC vai subir?' — chamar: POST /api/massare/prever (base http://127.0.0.1:8000)",
+        "description": "Previsao direcional + estado ATUAL de um ativo (walk-forward; honesto: edge_oos/tem_skill) — usar quando: 'como esta a prata/ouro hoje?', 'previsao do Ibovespa', 'BTC vai subir?', perspectivas de um ativo — chamar: POST /api/massare/prever (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
             "symbol": {
               "type": "string",
-              "description": "obrigatorio"
+              "description": "NOME (prata, ouro, bitcoin, ibovespa, dolar, petroleo, cobre...) OU simbolo; resolve sozinho"
             },
             "horizon": {
               "type": "integer",
               "description": "int=5"
             }
           },
-          "required": [
-            "symbol"
-          ]
+          "required": []
         }
       },
       "_meta": {
