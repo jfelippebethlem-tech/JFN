@@ -33,7 +33,7 @@ def test_terreno_nao_edificado_baldio(monkeypatch, tmp_path):
     _reset(monkeypatch, tmp_path)
     monkeypatch.setattr(ve, "geocodificar", lambda *a, **k: {
         "ok": True, "lat": -22.9, "lon": -43.2, "classe": "highway", "tipo": "residential",
-        "display": "...", "municipio_geo": "Rio de Janeiro", "bate_municipio": True})
+        "display": "...", "municipio_geo": "Rio de Janeiro", "bate_municipio": True, "exato": True})
     monkeypatch.setattr(ve, "edificacao_no_ponto", lambda lat, lon, raio=35: {
         "ok": True, "tem_predio": False, "n_predios": 0, "landuse_vago": True,
         "landuses": ["brownfield"], "motivo": ""})
@@ -43,11 +43,30 @@ def test_terreno_nao_edificado_baldio(monkeypatch, tmp_path):
     assert "incompleta" in out["evidencia"].lower()  # ressalva honesta de cobertura OSM
 
 
+def test_logradouro_existe_mas_numero_nao_geolocalizado(monkeypatch, tmp_path):
+    # lição NEW LINK: a via existe (resolveu por CEP/logradouro), mas não o nº → sem veredito de baldio
+    _reset(monkeypatch, tmp_path)
+    monkeypatch.setattr(ve, "geocodificar", lambda *a, **k: {
+        "ok": True, "lat": -22.79, "lon": -43.33, "classe": "highway", "tipo": "residential",
+        "display": "...", "municipio_geo": "São João de Meriti", "bate_municipio": True, "exato": False})
+    out = ve.analisar_endereco("TAPAJOS, 60", "São João de Meriti", "RJ", "25585650")
+    assert out["status"] == "INDISPONIVEL"
+    assert "logradouro" in out["evidencia"].lower() and "afasta" in out["evidencia"].lower()
+
+
+def test_cep_fmt_e_variantes():
+    assert ve._cep_fmt("25585650") == "25585-650"
+    assert ve._cep_fmt("123") == ""
+    vs = ve._variantes_consulta("TAPAJOS, 60, PARQUE ANALANDIA", "São João de Meriti", "RJ", "25585650")
+    assert any("25585-650" in v for v in vs)          # usa o CEP
+    assert any(v.lower().startswith("rua tapajos") for v in vs)  # tenta prefixo 'Rua'
+
+
 def test_comercial_afastado(monkeypatch, tmp_path):
     _reset(monkeypatch, tmp_path)
     monkeypatch.setattr(ve, "geocodificar", lambda *a, **k: {
         "ok": True, "lat": -22.9, "lon": -43.2, "classe": "building", "tipo": "commercial",
-        "display": "...", "municipio_geo": "Rio de Janeiro", "bate_municipio": True})
+        "display": "...", "municipio_geo": "Rio de Janeiro", "bate_municipio": True, "exato": True})
     monkeypatch.setattr(ve, "edificacao_no_ponto", lambda lat, lon, raio=35: {
         "ok": True, "tem_predio": True, "n_predios": 3, "landuse_vago": False,
         "landuses": ["commercial"], "motivo": ""})
