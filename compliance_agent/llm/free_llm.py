@@ -339,6 +339,47 @@ async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = Fal
     )
 
 
+# ── Cerebras (gpt-oss-120b / zai-glm-4.7) — OpenAI-compat, inferência ULTRARRÁPIDA (~0,04s) ──
+# Modelo de RACIOCÍNIO: precisa max_tokens ALTO (o raciocínio consome tokens; com pouco, content vem vazio).
+CEREBRAS_BASE = os.environ.get("CEREBRAS_BASE_URL", "https://api.cerebras.ai/v1")
+CEREBRAS_MODEL_FAST = os.environ.get("CEREBRAS_MODEL_FAST", "gpt-oss-120b")
+CEREBRAS_MODEL_SMART = os.environ.get("CEREBRAS_MODEL_SMART", "gpt-oss-120b")
+
+
+def _cerebras_key() -> str:
+    return os.environ.get("CEREBRAS_API_KEY", "")
+
+
+def cerebras_available() -> bool:
+    return bool(_cerebras_key())
+
+
+def _cerebras_msgs(prompt: str, system: str) -> list:
+    m = []
+    if system:
+        m.append({"role": "system", "content": system})
+    m.append({"role": "user", "content": prompt})
+    return m
+
+
+def cerebras_chat(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
+    key = _cerebras_key()
+    if not key:
+        raise RuntimeError("CEREBRAS_API_KEY não configurada (Cerebras).")
+    model = CEREBRAS_MODEL_SMART if smart else CEREBRAS_MODEL_FAST
+    return _openai_compat_chat_sync_retry(
+        CEREBRAS_BASE, key, model, _cerebras_msgs(prompt, system), max_tokens=max(max_tokens, 2048))
+
+
+async def cerebras_chat_async(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
+    key = _cerebras_key()
+    if not key:
+        raise RuntimeError("CEREBRAS_API_KEY não configurada (Cerebras).")
+    model = CEREBRAS_MODEL_SMART if smart else CEREBRAS_MODEL_FAST
+    return await _openai_compat_chat_retry(
+        CEREBRAS_BASE, key, model, _cerebras_msgs(prompt, system), max_tokens=max(max_tokens, 2048))
+
+
 async def qwen_chat_async(prompt: str, system: str = "", smart: bool = False,
                           max_tokens: int = 1024) -> str:
     """Qwen como provedor PRIMÁRIO (via OpenRouter, evitando o 429 recorrente do Groq).
@@ -379,7 +420,9 @@ def best_free_chat(
     last_error: Exception | None = None
     for provider in order:
         try:
-            if provider == "ollama" and _ollama.is_available():
+            if provider == "cerebras" and cerebras_available():
+                return cerebras_chat(prompt, system=system, smart=smart)
+            elif provider == "ollama" and _ollama.is_available():
                 return _ollama.chat(prompt, system=system)
             elif provider == "groq" and groq_available():
                 return groq_chat(prompt, system=system, smart=smart)
@@ -411,7 +454,9 @@ async def best_free_chat_async(
     last_error: Exception | None = None
     for provider in order:
         try:
-            if provider == "ollama" and _ollama.is_available():
+            if provider == "cerebras" and cerebras_available():
+                return await cerebras_chat_async(prompt, system=system, smart=smart)
+            elif provider == "ollama" and _ollama.is_available():
                 return _ollama.chat(prompt, system=system)
             elif provider == "groq" and groq_available():
                 return await groq_chat_async(prompt, system=system, smart=smart)
@@ -428,7 +473,8 @@ async def best_free_chat_async(
 
 def _get_provider_order() -> list[str]:
     """Returns provider priority list based on FREE_LLM_PREFER."""
-    all_providers = ["ollama", "groq", "openrouter"]
+    # Cerebras primeiro (ultrarrápido + com saldo); ollama (local) só se instalado; depois groq/openrouter.
+    all_providers = ["cerebras", "ollama", "groq", "openrouter"]
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]
