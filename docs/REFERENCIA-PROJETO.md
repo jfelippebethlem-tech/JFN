@@ -92,6 +92,7 @@ SIAFE 1 (liberar chave p/ todas as UGs) · SEI de outras unidades (acesso do itk
 chaves Gemini sem saldo e renovar tokens OAuth "AQ." manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-11 cont.10:** **FIX conceitual OB≠contrato≠processo** (`cardinalidade_contratual` honesta: TJRJ 1598 OBs/41 proc; Fundo 47895/338; nota + frase no relatório + skill Yoda) `4fff8bd`. Coletor **benefícios sociais (laranja) + PEP (relação política)** `beneficios_sociais.py` (DD Loop 2 base). br-acc entendido (grafo Neo4j de dados públicos — referência p/ fontes+entidade). Doc/MEMORY enxutos.
 - **06-11 cont.9:** Lex seção II-E (apresenta a investigação DD) + sweeps reboot-safe (`recursos` boot-time + `@reboot` cron). `8c6c7e4`,`4981323`.
 - **06-11 cont.8:** motor `investigacao_dd` (fachada/laranja, Loop 1) + wiring no Lex + BrasilAPI capital/porte. `63070cd`.
 - **06-11 cont.7:** bom dia multi-fonte política + sempaywall; **CEIS/CNEP** corrigido (3 bugs, API); relatórios raciocinados (/relatorio+/orgao) + OSINT Querido Diário.
@@ -108,10 +109,19 @@ chaves Gemini sem saldo e renovar tokens OAuth "AQ." manuais quando expirarem (c
 4. **Um só doc** = este, enxuto, 1 linha/sessão no §10. Detalhe no git.
 5. Ao FIM de cada loop: debug + avaliar storage/RAM/CPU + registrar.
 
-**Próximos alvos (maior alavancagem):** (1) **Loop 2 da investigação DD** (benefícios sociais + PEPs por CPF, §5);
-(2) proveniência/INDISPONÍVEL padronizada; (3) resolução de entidade (Splink); (4) rodar SEI sweep aos poucos;
-(5) ativar OSINT dormentes nos produtos (eleitoral TSE×contrato, ownership GLEIF, leaks OffshoreLeaks). **Medir o
-produto antes/depois em cada um.** Detalhe técnico por tema em `docs/` (histórico) e nos commits.
+**Próximos alvos (maior alavancagem, pedidos do dono):**
+1. **Wirar `beneficios_sociais` no motor DD + Lex** — H-PEP (PEP por NOME dos sócios do QSA, desmascarados →
+   relação política) + H-BENEFICIO (benefício por CPF, só em CPF completo: PF favorecida; QSA mascarado=INDISPONÍVEL).
+   Bounded+cacheado+honesto. Alimenta a seção II-E do Lex.
+2. **Investigação priorizada TJRJ (030100) + Fundo Especial do TJ (036100)** — rodar a DD nos fornecedores dessas
+   UGs (fachadas/laranjas) e priorizar o SEI sweep nesses processos. Considerar comando "investigar órgão".
+3. **Cruzar OB+SEI+DD com inteligência** — agrupar OBs por processo/contrato (cardinalidade já medida em
+   `cardinalidade_contratual`), seguir a árvore SEI (processo→atas/SRP→contratos→aditivos→OBs).
+4. **Aplicar br-acc** (github enioxt/br-acc — grafo Neo4j de dados públicos, 32 labels): usar a lista de fontes p/
+   ativar OSINT dormentes (ownership GLEIF, leaks OffshoreLeaks, eleitoral TSE×contrato) e o modelo de grafo p/ a
+   resolução de entidade (Splink). NÃO adotar Neo4j (manter SQLite/networkx, grátis/VM-safe).
+5. proveniência/INDISPONÍVEL padronizada · resolução de entidade (Splink) · rodar SEI sweep aos poucos.
+**Medir o produto antes/depois em cada um. Erros conceituais/conteúdo/código = NÃO permitidos (dono).**
 
 ---
 *Doc enxuto de propósito. Conhecimento jurídico/operacional completo: `docs/CLAUDE-REFERENCIA-COMPLETA.md`.*
