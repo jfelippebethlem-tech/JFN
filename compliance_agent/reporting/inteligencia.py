@@ -557,6 +557,19 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
         "calibragem": cal,
     }
 
+    # OSINT keyless (diários oficiais) + ANÁLISE RACIOCINADA — em thread (não bloqueia o event loop),
+    # best-effort: nunca derruba nem atrasa o relatório além do bound. (relatório é assíncrono/push.)
+    try:
+        contexto["gazetas"] = await asyncio.wait_for(
+            asyncio.to_thread(_gazetas_lookup, nome, cnpj_d), timeout=20)
+    except Exception:  # noqa: BLE001
+        contexto["gazetas"] = {}
+    try:
+        contexto["raciocinio"] = await asyncio.wait_for(
+            asyncio.to_thread(parecer_raciocinado, contexto), timeout=55)
+    except Exception:  # noqa: BLE001
+        contexto["raciocinio"] = ""
+
     md = render_md(contexto)
     path_md = path_pdf = path_xlsx = ""
     if salvar:
@@ -979,6 +992,15 @@ def render_md(ctx: dict) -> str:
     # 9. Análise jurídica e de mérito — o PARECER escrito do JFN
     add("## 9. ANÁLISE JURÍDICA E DE MÉRITO — PARECER PRELIMINAR DO JFN")
     add("")
+    raciocinio = ctx.get("raciocinio")
+    if raciocinio:
+        add("### Análise raciocinada — cruzamento dos achados (IA sobre os fatos coletados)")
+        add("")
+        add(raciocinio)
+        add("")
+        add("> _Síntese gerada por IA **a partir dos fatos coletados** (não inventa dados); indícios para "
+            "apuração, não conclusão. O parecer estruturado abaixo permanece como base._")
+        add("")
     add(parecer_fornecedor(ctx))
     add("")
 
@@ -1029,6 +1051,127 @@ def _fatores_risco(ctx: dict) -> list[tuple]:
         if t1 > t0 * 3:
             fatores.append((f"Crescimento abrupto de pagamentos ({a0}→{a1})", 5, 6))
     return fatores or [("Risco base", 2, 3)]
+
+
+def _gazetas_lookup(nome: str, cnpj: str) -> dict:
+    """Diários oficiais municipais (Querido Diário, keyless). Best-effort; INDISPONÍVEL honesto."""
+    try:
+        from compliance_agent.providers import lookup
+        q = f'"{nome}"' if nome and not nome.replace(".", "").replace("/", "").isdigit() else cnpj
+        r = lookup("gazettes", querystring=q, size=8)
+        return r.dados if r.ok else {"_indisponivel": r.erro or r.estado}
+    except Exception as e:  # noqa: BLE001
+        return {"_indisponivel": str(e)[:60]}
+
+
+def _fatos_para_raciocinio(ctx: dict) -> str:
+    """Compila os FATOS já coletados (sem inventar) p/ a análise raciocinada conectar."""
+    p = ctx["pagamentos"]
+    L: list[str] = [f"Fornecedor: {ctx['nome']} (CNPJ {ctx['cnpj_fmt']}). "
+                    f"Rating interno de risco: {ctx.get('risco')} (score {ctx.get('score')}/100)."]
+    if p.get("tem_dados"):
+        hhi = p["hhi"]
+        org = next(iter(p["por_orgao_geral"]), "—")
+        L.append(f"Pagamentos (OB): R$ {moeda(p['total_geral'])} em {p['n_geral']} ordens bancárias, "
+                 f"{len(p['por_orgao_geral'])} unidades gestoras; maior concentração "
+                 f"{hhi.get('top_share', 0):.1f}% em '{org}' (HHI {hhi.get('indice')}, nível {hhi.get('nivel')}).")
+        zeros = sum(1 for a in p["anos"] for ln in p["por_ano"][a]["linhas"] if ln["valor"] == 0)
+        if zeros:
+            L.append(f"{zeros} OB(s) de valor zero (estornos/regularizações).")
+    else:
+        L.append("Sem Ordens Bancárias na base local para este CNPJ.")
+    cz = ctx.get("cruzamento") or {}
+    if cz.get("coendereco"):
+        L.append(f"Cruzamento: {len(cz['coendereco'])} outro(s) fornecedor(es) do Estado no MESMO endereço do alvo.")
+    rel = cz.get("relacionados") or []
+    if rel:
+        me = sum(1 for r in rel if r.get("mesmo_endereco"))
+        L.append(f"Cruzamento: {len(rel)} empresa(s) com SÓCIO em comum com o alvo"
+                 + (f" ({me} também no mesmo endereço)" if me else "") + ".")
+    if (cz.get("obs_sei") or {}).get("n_sei"):
+        L.append(f"Processos SEI vinculados ao alvo: {cz['obs_sei']['n_sei']}.")
+    cr = ctx.get("conflito_rede") or {}
+    n_conf = (cr.get("n") if isinstance(cr, dict) else 0) or len(cr.get("rede") or []) if isinstance(cr, dict) else 0
+    if n_conf:
+        L.append(f"Conflito doador↔contrato (TSE): {n_conf} vínculo(s) entre doação eleitoral e o alvo/sócios.")
+    sanc = (ctx["enriq"].get("dados") or {}).get("sancoes") if ctx.get("enriq", {}).get("ok") else None
+    if isinstance(sanc, dict) and sanc.get("verificado"):
+        n = sanc.get("n_sancoes", 0)
+        L.append(f"Sanções CEIS/CNEP (consulta verificada): {('SIM — ' + str(n) + ' registro(s)') if n else 'nada localizado'}.")
+    gz = ctx.get("gazetas") or {}
+    if gz.get("total"):
+        muns = ", ".join(dict.fromkeys(f"{i['municipio']}/{i['uf']}" for i in (gz.get("itens") or [])[:5] if i.get("municipio")))
+        L.append(f"Diários oficiais (Querido Diário): {gz['total']} menção(ões) ao nome em diários municipais; ex.: {muns}.")
+    try:
+        rf = _red_flags(ctx)
+        if rf:
+            L.append("Red flags automáticos disparados: " + "; ".join(t for t, _, _ in rf[:6]) + ".")
+    except Exception:  # noqa: BLE001
+        pass
+    return "\n".join("- " + x for x in L)
+
+
+_SYS_RACIOCINIO = (
+    "Você é auditor sênior de controle externo (padrão TCE-RJ/TCU). A partir EXCLUSIVAMENTE dos fatos "
+    "listados (NÃO invente dados, números, nomes ou fontes; não use conhecimento externo), escreva uma "
+    "ANÁLISE RACIOCINADA que CONECTE os achados entre si: o que chama atenção, COMO os fatos se "
+    "relacionam, quais hipóteses de risco merecem apuração e POR QUÊ, e o que verificar a seguir. Use "
+    "linguagem condicional (indício, sugere, merece apuração) — NUNCA afirme fraude/irregularidade nem "
+    "culpa; vigora a presunção de regularidade. Responda em MARKDOWN com bullets curtos iniciados por "
+    "'- ' (NUNCA JSON, NUNCA cercas de código). Máximo ~320 palavras. Se os fatos forem escassos, diga "
+    "objetivamente o que falta apurar."
+)
+
+
+def _normaliza_raciocinio(txt: str) -> str:
+    """Limpa a saída do LLM: tira cercas de código e converte JSON/dict (mesmo com aspas simples) em bullets."""
+    import ast
+    import json as _json
+    t = (txt or "").strip()
+    if t.startswith("```"):
+        t = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", t).strip()
+
+    def _bullets(obj) -> str:
+        frases: list[str] = []
+
+        def _walk(o):
+            if isinstance(o, str):
+                if o.strip():
+                    frases.append(o.strip())
+            elif isinstance(o, list):
+                for x in o:
+                    _walk(x)
+            elif isinstance(o, dict):
+                for x in o.values():
+                    _walk(x)
+        _walk(obj)
+        return "\n".join(f"- {f}" for f in frases)
+
+    if t[:1] in "[{":  # veio estruturado (array ou objeto) — achatar em bullets
+        for parser in (_json.loads, ast.literal_eval):
+            try:
+                b = _bullets(parser(t))
+                if b:
+                    return b
+            except Exception:  # noqa: BLE001
+                continue
+    return t
+
+
+def parecer_raciocinado(ctx: dict) -> str:
+    """Síntese raciocinada (gemini→cerebras, bounded) sobre os FATOS coletados. '' se LLM indisponível.
+
+    Roda no caminho ASSÍNCRONO (via to_thread no montar) — não bloqueia o event loop; degrada honesto
+    (sem regressão: o parecer-template segue como base)."""
+    try:
+        fatos = _fatos_para_raciocinio(ctx)
+        if not fatos.strip():
+            return ""
+        from compliance_agent.direcionamento_cerebro import gerar_sync
+        txt = _normaliza_raciocinio(gerar_sync("FATOS:\n" + fatos, _SYS_RACIOCINIO, timeout=45.0))
+        return txt if len(txt) > 80 else ""
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def parecer_fornecedor(ctx: dict) -> str:
@@ -1393,6 +1536,15 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
             osint.append(f"<li>OCCRP Aleph: <b>{esc(al.get('total'))} registro(s)</b> — {tops} <span class='nota'>(indício a confirmar na fonte)</span></li>")
     except Exception:  # noqa: BLE001
         pass
+    gz = ctx.get("gazetas") or {}
+    if gz.get("total"):
+        muns = "; ".join(dict.fromkeys(
+            f"{esc(i.get('municipio'))}/{esc(i.get('uf'))} ({esc(i.get('data'))})"
+            for i in (gz.get("itens") or [])[:4] if i.get("municipio")))
+        osint.append(f"<li>Diários Oficiais (Querido Diário): <b>{esc(gz['total'])} menção(ões)</b> "
+                     f"em diários municipais — {muns} <span class='nota'>(contexto para cotejar contratos além do Estado)</span></li>")
+    elif gz.get("_indisponivel"):
+        osint.append(f"<li>Diários Oficiais (Querido Diário): INDISPONÍVEL <span class='nota'>({esc(gz['_indisponivel'])})</span></li>")
     secoes.append({"titulo": "4. Listas restritivas e OSINT", "html": f"<ul>{''.join(osint)}</ul>"})
 
     # 4-C. Mídia adversa (fontes abertas, KEYLESS via GDELT) — DD §9; ideia do dono: usar a internet p/ DD
@@ -1628,6 +1780,15 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                 "Indícios a verificar, nunca acusação (presunção de legitimidade).</p>") if cal else ""
     secoes.append({"titulo": "11. Red flags de compliance (fundamento legal)",
                    "html": nota_cal + "<ul>" + "".join(f"<li>{esc(f)}</li>" for f in flags) + "</ul>"})
+    # 11-B. ANÁLISE RACIOCINADA — síntese de IA que CONECTA os achados (cruzamento), sobre os FATOS coletados.
+    raciocinio = ctx.get("raciocinio")
+    if raciocinio:
+        corpo = "".join(f"<li>{esc(b[2:].strip())}</li>" for b in raciocinio.splitlines() if b.strip().startswith("- "))
+        corpo_html = f"<ul>{corpo}</ul>" if corpo else f"<p>{esc(raciocinio)}</p>"
+        secoes.append({"titulo": "11-B. Análise raciocinada — cruzamento dos achados",
+                       "html": corpo_html + "<p class='nota'>Síntese gerada por IA <b>a partir dos fatos coletados "
+                               "neste relatório</b> (não inventa dados); indícios para apuração, jamais conclusão de "
+                               "irregularidade. O parecer estruturado e os red flags acima permanecem como base.</p>"})
     # recomendações dirigidas pelos achados reais (coerentes com o risco recalibrado)
     if contratado and pago > contratado * 1.5:
         imediato = (f"<b>Imediato:</b> requisitar os termos aditivos e as atas/adesões que expliquem o pago "
@@ -1802,6 +1963,12 @@ def render_pdf(ctx: dict, destino: str) -> str:
     pdf.set_font(pdf._fam, "B", 14); pdf.set_text_color(20, 30, 50)
     pdf.cell(0, 10, _t("Análise Jurídica e de Mérito — Parecer Preliminar do JFN"), ln=True)
     pdf.set_text_color(0, 0, 0)
+    raciocinio = ctx.get("raciocinio")
+    if raciocinio:
+        pdf.set_font(pdf._fam, "B", 11); pdf.cell(0, 7, _t("Análise raciocinada — cruzamento dos achados"), ln=True)
+        pdf.set_font(pdf._fam, "", 10)
+        _render_parecer_pdf(pdf, _t, raciocinio)
+        pdf.ln(2)
     _render_parecer_pdf(pdf, _t, parecer_fornecedor(ctx))
 
     pdf.ln(3); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(120, 120, 120)
