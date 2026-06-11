@@ -36,6 +36,13 @@ class BrasilAPICNPJ:
                     "situacao": d.get("descricao_situacao_cadastral"),
                     "abertura": d.get("data_inicio_atividade"),
                     "cnae": d.get("cnae_fiscal_descricao"),
+                    "capital": d.get("capital_social"),
+                    "porte": d.get("porte") or d.get("descricao_porte"),
+                    "complemento": d.get("complemento"),
+                    "logradouro": d.get("logradouro"),
+                    "numero": d.get("numero"),
+                    "bairro": d.get("bairro"),
+                    "cep": d.get("cep"),
                     "municipio": d.get("municipio"),
                     "uf": d.get("uf"),
                     "socios": [

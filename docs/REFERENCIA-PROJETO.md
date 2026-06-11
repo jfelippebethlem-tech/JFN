@@ -445,6 +445,46 @@ RSS de seção dos veículos (URL real) é o caminho robusto. (2) o falso-negati
 "download quebrado" — ler a doc da API (swagger) revelou o param certo por endpoint. (3) reabilitar LLM nos
 produtos é seguro QUANDO assíncrono+bounded+degrada-honesto+medido no PDF real (respeita a lição da V2).
 
+### Sessão 2026-06-11 (continuação 8 — investigação de Due Diligence: motor de fachada/laranja, Loop 1)
+**Tema:** o dono (Deputado Estadual, no dever de fiscalizar/combater corrupção — base legal LGPD art. 7º,II/23,
+controle externo) pediu uma **automação investigativa de DD**: saber se empresas são **fantasmas**, se sócios são
+**laranjas**, relações políticas, antecedentes — cruzando melhor os dados e usando as melhores fontes GRATUITAS.
+Decisão: **o Lex (Law) CONDUZ a investigação e a apresenta no parecer dele**. Hipóteses nomeadas pelo dono:
+**endereço residencial / terreno baldio**; **CPF de sócio que recebe benefício social (laranja)**; e levantar
+outras pesquisando.
+**Pesquisa (entregue):** taxonomia de hipóteses fachada/laranja mapeadas a fonte grátis + regra + ressalva de
+honestidade (TCU; OECD Bid Rigging 2025; ACFE; osint.industries shells). **Contratos de API confirmados no
+swagger vivo do Portal da Transparência:** Bolsa Família por-CPF foi **descontinuado** (Novo Bolsa Família só por
+**NIS** — não temos NIS, só CPF) → INDISPONÍVEL honesto; mas **PETI, Safra/Garantia-Safra, Seguro-Defeso** SÃO
+consultáveis por **CPF** (param `codigo`, header `chave-api-dados`) = mesmo sinal de laranja; **`/peps`** aceita
+`cpf` (exposição política). **Constraint de honestidade:** CPF de sócio do QSA público vem **mascarado** (LGPD) →
+benefício-por-CPF só roda em CPF COMPLETO que temos (PF favorecida; CPF do SEI/TSE) — é o Loop 2.
+**Feito (Loop 1 — motor + wiring, isolado e testado):**
+- **`compliance_agent/investigacao_dd.py`** (novo): motor `investigar(cnpj, cadastral, pagamentos, usar_rede,
+  geocode)` → hipóteses estruturadas `{codigo,titulo,status,nivel,evidencia,fonte,base_legal,peso}` com `status`
+  **CONFIRMADO/INDICIO/AFASTADO/INDISPONIVEL** (INDISPONÍVEL≠achado), score 0-100, grau 🟢🟡🔴 com **corroboração**
+  (1 sinal fraco não conclui). Hipóteses Loop 1 (dos dados que já temos, sem coletor novo): **H-END-RESID**
+  (marcadores residenciais no endereço/complemento), **H-END-EXISTE** (Nominatim/OSM opcional — proxy honesto de
+  'terreno baldio': não-resolvível/feição residencial; rate-limit 1 req/s), **H-COEND** (co-endereço via
+  `cruzamento.py`), **H-CAPITAL** (capital ínfimo vs. recebido), **H-RECENTE** (aberta <180d antes do 1º
+  pagamento), **H-SITUACAO** (baixada/inapta/suspensa = CONFIRMADO), **H-PORTE** (recebido > teto LC 123),
+  **H-SOCIO-UNICO** (composite). **12 testes** puros (sem rede) verdes.
+- **`providers/registry_providers.py`**: BrasilAPI passou a devolver `capital`, `porte`, `complemento`,
+  `logradouro/numero/bairro/cep` (necessários às hipóteses) — aditivo.
+- **`lex.py`**: `_analise` chama o motor; cada hipótese CONFIRMADA/INDÍCIO vira achado `DD/<codigo>` (entra no
+  grau via `_grau`); o quadro completo fica em `analise['investigacao']` para a seção do parecer + raciocínio.
+  Helper `_primeira_data_pag`. **Degrada honesto** (try/except → investigação vazia, nunca quebra o Lex).
+**Validação:** lex importa OK; **158 testes verdes** (motor + golden numbers + imports smoke); ruff limpo nos 4
+arquivos. **PENDENTE (próximo loop, não feito p/ fechar com segurança):** (a) **seção dedicada no parecer md+pdf**
+("Investigação de fachada/laranja") renderizando cada hipótese (hoje aparecem como red flags `DD/*` na tabela);
+(b) **medir o PDF entregue** MGS+ITERJ antes/depois (metodologia §11); (c) **Loop 2**: coletor
+`beneficios_sociais.py` (PETI/Safra/Seguro-Defeso por CPF) + `/peps`, rodando só em CPF completo.
+**Lições:** (1) Bolsa Família por-CPF saiu do ar (2023, Novo BF só por NIS) — ler o swagger vivo evita construir
+sobre endpoint morto; PETI/Safra/Seguro-Defeso cobrem o mesmo sinal por CPF. (2) QSA público = CPF mascarado
+(LGPD) → benefício-por-CPF é INDISPONÍVEL p/ sócio, só roda em CPF completo (honestidade dura). (3) fechar com
+segurança = wiring dentro de try/except + helper definido + suíte verde antes do commit (sem PDF a meio).
+**Commit-chave:** (ver commit desta sessão).
+
 ## 11. ⏯️ RETOMADA — INSTRUÇÕES PERMANENTES (ler ANTES de continuar, sessão nova)
 **Branch `feat/lista-limpa` (não pushado, tudo commitado). Serviço/sweeps vivos.** O dono pediu para continuar
 com TODAS estas instruções:
