@@ -133,14 +133,19 @@ def _refresh_nous_se_preciso() -> None:
 
 
 def _nous_cred() -> tuple[str, str]:
-    """(access_token, inference_base_url) do auth.json — auto-renova se expirado (sweep autossuficiente)."""
+    """(token, inference_base_url). PREFERE NOUS_API_KEY (key estática do portal — sem OAuth/expiração/rotação;
+    o sweep nunca fica sem nous). Senão cai no access_token OAuth do auth.json (auto-renova)."""
+    base = os.environ.get("NOUS_BASE_URL", "https://inference-api.nousresearch.com/v1")
+    k = os.environ.get("NOUS_API_KEY", "").strip()
+    if k:
+        return k, base
     _refresh_nous_se_preciso()
     try:
         d = json.loads(_AUTH.read_text(encoding="utf-8"))
         p = (d.get("providers") or {}).get("nous") or {}
-        return p.get("access_token", ""), p.get("inference_base_url", "https://inference-api.nousresearch.com/v1")
+        return p.get("access_token", ""), p.get("inference_base_url", base)
     except Exception:
-        return "", "https://inference-api.nousresearch.com/v1"
+        return "", base
 
 
 async def _chamar_nous(texto: str, model: str) -> str:
