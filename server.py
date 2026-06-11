@@ -726,10 +726,17 @@ async def api_siafe_stats():
                        for r in con.execute("SELECT exercicio, COUNT(*), COALESCE(SUM(valor),0) "
                                             "FROM ob_orcamentaria_siafe GROUP BY exercicio ORDER BY exercicio")]
             com_processo = con.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE processo IS NOT NULL AND processo!=''").fetchone()[0]
+            # Frescor da coleta — responde "hoje coletou?": MAX do 1º timestamp existente na tabela.
+            cols = {r[1] for r in con.execute("PRAGMA table_info(ob_orcamentaria_siafe)")}
+            ts_col = next((c for c in ("coletado_em", "created_at", "updated_at", "ingerido_em") if c in cols), None)
+            ultima = con.execute(f"SELECT MAX({ts_col}) FROM ob_orcamentaria_siafe").fetchone()[0] if ts_col else None
         finally:
             con.close()
+        from datetime import date as _date
+        coletou_hoje = bool(ultima and str(ultima)[:10] == _date.today().isoformat())
         return JSONResponse({"ok": True, "total": tot[0], "valor_total": round(tot[1] or 0, 2),
                              "por_ano": por_ano, "com_processo": com_processo,
+                             "ultima_atualizacao": ultima, "coletou_hoje": coletou_hoje,
                              "fonte": "SIAFE-Rio 2 / OB Orçamentária (23 colunas: NL, PD, Processo, Credor...)"})
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
