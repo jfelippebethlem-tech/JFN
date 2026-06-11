@@ -557,6 +557,15 @@ async def api_relatorio_inteligencia(payload: Optional[dict] = None):
         except Exception as exc:  # noqa: BLE001
             return JSONResponse({"ok": False, "erro": f"Falha ao gerar relatório: {exc}"}, status_code=500)
         return JSONResponse(result)
+    # Pré-check de ambiguidade SÍNCRONO (resolução é rápida; só a geração é lenta) → o Yoda trata a
+    # dúvida normalmente (a resposta numérica do Mestre Jorge roteia certo), em vez de o JFN empurrar a
+    # pergunta sem o Yoda saber. Erro/ambíguo voltam na hora; só o caso resolvido vai p/ background.
+    try:
+        pre = await montar(cnpj=cnpj, empresa=empresa, so_resolver=True)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": f"Falha ao resolver: {exc}"}, status_code=500)
+    if not pre.get("ok") or pre.get("ambiguo"):
+        return JSONResponse(pre)
     key = f"forn:{(cnpj or empresa or '').lower()}"
     if key in _REL_EM_CURSO:
         return JSONResponse({"ok": True, "status": "gerando",
@@ -595,6 +604,13 @@ async def api_relatorio_orgao(payload: Optional[dict] = None):
         except Exception as exc:  # noqa: BLE001
             return JSONResponse({"ok": False, "erro": f"Falha ao gerar relatório: {exc}"}, status_code=500)
         return JSONResponse(result)
+    # Pré-check de ambiguidade SÍNCRONO (Yoda trata a dúvida/numérico); só o resolvido vai p/ background.
+    try:
+        pre = montar_orgao(orgao=orgao, ug=ug, so_resolver=True)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": f"Falha ao resolver: {exc}"}, status_code=500)
+    if not pre.get("ok") or pre.get("ambiguo"):
+        return JSONResponse(pre)
     key = f"orgao:{(ug or orgao or '').lower()}"
     if key in _REL_EM_CURSO:
         return JSONResponse({"ok": True, "status": "gerando",
@@ -994,20 +1010,38 @@ async def api_ugs(filtro: Optional[str] = None, limite: int = 50):
 
 @app.post("/api/massare/prever")
 async def api_massare_prever(payload: Optional[dict] = None):
-    """Previsão direcional de um ativo. Body: {"symbol":"^BVSP","horizon":5}."""
+    """Previsão direcional + estado atual de um ativo. Body: {"symbol":"prata|^BVSP|SI=F","horizon":5}.
+    Aceita NOME amigável (prata, ouro, bitcoin…) — resolve p/ o símbolo certo (corrige o 'XAG=F' do Yoda)."""
     payload = payload or {}
-    symbol = (payload.get("symbol") or "^BVSP").strip()
+    termo = (payload.get("symbol") or payload.get("ativo") or "^BVSP").strip()
     try:
         horizon = int(payload.get("horizon") or 5)
     except (TypeError, ValueError):
         horizon = 5
     try:
-        from massare import engine, store
+        from massare import engine, store, market
         store.init_db()
+        symbol = market.resolver_symbol(termo)  # prata→SI=F, ouro→GC=F, etc.
+        try:
+            market._refresh_precos([symbol])  # garante dados mesmo fora do núcleo diário (ex.: prata)
+        except Exception:  # noqa: BLE001
+            pass
         p = engine.predict_today(symbol, horizon=horizon)
         if not p:
-            return JSONResponse({"ok": False, "erro": f"Sem dados para {symbol}."}, status_code=404)
-        return JSONResponse({"ok": True, "previsao": p})
+            return JSONResponse({"ok": False, "erro": f"Sem dados para {termo} ({symbol}).",
+                                 "dica": "símbolos: prata=SI=F, ouro=GC=F, bitcoin=BTC-USD, ibovespa=^BVSP"},
+                                status_code=404)
+        # estado ATUAL (preço + variação) para responder "como está hoje"
+        atual = {}
+        try:
+            df = engine.load_prices(symbol)
+            if df is not None and len(df) >= 2:
+                ult, ant = float(df["close"].iloc[-1]), float(df["close"].iloc[-2])
+                atual = {"preco": round(ult, 2), "var_pct": round((ult / ant - 1) * 100, 2) if ant else None}
+        except Exception:  # noqa: BLE001
+            pass
+        return JSONResponse({"ok": True, "ativo": market.NOMES.get(symbol, termo), "symbol": symbol,
+                             "atual": atual, "previsao": p})
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 

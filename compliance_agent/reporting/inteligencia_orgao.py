@@ -244,7 +244,7 @@ def consultar_orgao(ug: str, anos: Optional[list[int]] = None) -> dict:
 # ───────────────────────────── montagem ─────────────────────────────
 
 def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
-           anos: Optional[list[int]] = None, salvar: bool = True) -> dict:
+           anos: Optional[list[int]] = None, salvar: bool = True, so_resolver: bool = False) -> dict:
     termo = (ug or orgao or "").strip()
     cands = buscar_orgaos(termo)
     if not cands:
@@ -266,6 +266,8 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
                             + "\n\nResponda com o número ou o código da UG (ou use /ug para ver todos)."}
 
     ug_cod = escolhido["ug"]
+    if so_resolver:  # resolveu sem ambiguidade → endpoint gera em background
+        return {"ok": True, "_resolvido": ug_cod, "ug": ug_cod, "orgao": escolhido["nome"]}
     pagamentos = consultar_orgao(ug_cod, anos)
     nome = escolhido["nome"]
     # concentração geográfica dos fornecedores da UG (best-effort, sobre endereços ingeridos)

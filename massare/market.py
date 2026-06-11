@@ -44,6 +44,26 @@ NOMES = {
 
 _SNAPSHOT = Path(__file__).resolve().parent / "data" / "market_snapshot.json"
 
+# Nome amigável (PT) → símbolo yfinance. Evita o erro do Yoda (ex.: pedir "prata" virava "XAG=F" inválido).
+_ALIAS_SYMBOL = {
+    "prata": "SI=F", "silver": "SI=F", "xag": "SI=F", "xag=f": "SI=F",
+    "ouro": "GC=F", "gold": "GC=F", "xau": "GC=F",
+    "cobre": "HG=F", "copper": "HG=F",
+    "petroleo": "CL=F", "petróleo": "CL=F", "wti": "CL=F", "oil": "CL=F", "brent": "BZ=F",
+    "gas": "NG=F", "gás": "NG=F", "milho": "ZC=F", "soja": "ZS=F",
+    "bitcoin": "BTC-USD", "btc": "BTC-USD", "ethereum": "ETH-USD", "eth": "ETH-USD",
+    "dolar": "DX-Y.NYB", "dólar": "DX-Y.NYB", "dxy": "DX-Y.NYB", "real": "USDBRL=X", "usdbrl": "USDBRL=X",
+    "ibovespa": "^BVSP", "ibov": "^BVSP", "bovespa": "^BVSP", "bolsa": "^BVSP",
+    "sp500": "^GSPC", "s&p": "^GSPC", "s&p500": "^GSPC", "nasdaq": "^IXIC", "dow": "^DJI", "vix": "^VIX",
+    "nvidia": "NVDA", "nvda": "NVDA",
+}
+
+
+def resolver_symbol(termo: str) -> str:
+    """Resolve nome amigável PT → símbolo yfinance (prata→SI=F). Se já for símbolo, devolve como veio."""
+    t = (termo or "").strip()
+    return _ALIAS_SYMBOL.get(t.lower(), t)
+
 
 # ───────────────────────────── pregão / horário ─────────────────────────────
 
