@@ -55,6 +55,18 @@ def test_comercial_afastado(monkeypatch, tmp_path):
     assert out["status"] == "AFASTADO"
 
 
+def test_backoff_escalona_e_limpa(monkeypatch):
+    monkeypatch.setattr(ve, "_backoff", {"ate": 0.0, "nivel": 0})
+    assert ve.em_backoff() == 0.0
+    ve._marca_backoff()
+    assert ve.em_backoff() > 0  # entrou em trégua
+    assert ve._backoff["nivel"] == 1
+    ve._marca_backoff()
+    assert ve._backoff["nivel"] == 2  # escalona
+    ve._limpa_backoff()
+    assert ve.em_backoff() == 0.0 and ve._backoff["nivel"] == 0
+
+
 def test_imagem_sem_chave_indisponivel(monkeypatch):
     monkeypatch.delenv("GOOGLE_MAPS_KEY", raising=False)
     monkeypatch.delenv("STREETVIEW_KEY", raising=False)

@@ -26,8 +26,10 @@ import unicodedata
 from pathlib import Path
 
 _CACHE_FILE = Path("data") / "endereco_cache.json"
-_CACHE_TTL = 7 * 86400
+_CACHE_TTL = 30 * 86400  # endereço de sede quase não muda → cache longo (poupa as fontes OSM)
 _UA = "JFN-Compliance/1.0 (controle externo; fiscalizacao legitima)"
+# Estado de back-off: ao tomar 429/5xx das fontes OSM, sobe o piso de espera p/ não levar bloqueio.
+_backoff = {"ate": 0.0, "nivel": 0}
 _LANDUSE_VAGO = {"brownfield", "greenfield", "farmland", "grass", "meadow", "construction",
                  "vacant", "scrub", "forest", "orchard", "vineyard"}
 _TIPO_RESID = {"house", "residential", "apartments", "dormitory", "terrace", "bungalow"}
@@ -35,6 +37,23 @@ _TIPO_COMERCIAL = {"commercial", "retail", "industrial", "office", "warehouse", 
 
 _cache: dict | None = None
 _ult_nominatim = [0.0]
+
+
+def em_backoff() -> float:
+    """Segundos restantes de back-off (0 se livre). O sweep deve respeitar antes de seguir."""
+    return max(0.0, _backoff["ate"] - time.time())
+
+
+def _marca_backoff() -> None:
+    """Escalona o back-off ao tomar 429/5xx (30s, 60s, 120s, … teto 600s)."""
+    _backoff["nivel"] = min(_backoff["nivel"] + 1, 5)
+    _backoff["ate"] = time.time() + min(30 * (2 ** (_backoff["nivel"] - 1)), 600)
+
+
+def _limpa_backoff() -> None:
+    if _backoff["nivel"]:
+        _backoff["nivel"] = 0
+        _backoff["ate"] = 0.0
 
 
 def _norm(s: str) -> str:
@@ -80,9 +99,13 @@ def geocodificar(endereco: str, municipio: str | None = None, uf: str | None = N
     try:
         r = httpx.get("https://nominatim.openstreetmap.org/search", params=params,
                       headers={"User-Agent": _UA}, timeout=15)
+        if r.status_code in (429, 503) or r.status_code >= 500:
+            _marca_backoff()
+            return {**base, "motivo": f"HTTP {r.status_code} (back-off)"}
         if r.status_code != 200:
             return {**base, "motivo": f"HTTP {r.status_code}"}
         data = r.json()
+        _limpa_backoff()
     except Exception as e:  # noqa: BLE001
         return {**base, "motivo": str(e)[:60]}
     if not data:
@@ -116,9 +139,13 @@ def edificacao_no_ponto(lat: float, lon: float, raio: int = 35) -> dict:
     try:
         r = httpx.post("https://overpass-api.de/api/interpreter", data={"data": q},
                        headers={"User-Agent": _UA}, timeout=30)
+        if r.status_code in (429, 504) or r.status_code >= 500:
+            _marca_backoff()
+            return {**base, "motivo": f"HTTP {r.status_code} (back-off)"}
         if r.status_code != 200:
             return {**base, "motivo": f"HTTP {r.status_code}"}
         els = (r.json() or {}).get("elements", [])
+        _limpa_backoff()
     except Exception as e:  # noqa: BLE001
         return {**base, "motivo": str(e)[:60]}
     n_predios = sum(1 for e in els if "building" in (e.get("tags") or {}))
