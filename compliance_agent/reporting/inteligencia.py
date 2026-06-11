@@ -511,6 +511,7 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
 
     pagamentos = consultar_pagamentos(cnpj_d, anos)
     contratos = consultar_contratos(cnpj_d)
+    cardinalidade = cardinalidade_contratual(cnpj_d)  # OB ≠ contrato ≠ processo (cadeia da despesa, honesto)
 
     # 4 chamadas INDEPENDENTES em PARALELO (wall-time: soma → máximo). Cada uma é best-effort e não
     # derruba o relatório: enriquecimento (APIs) · cruzamento sócio×OB×SEI×endereço · conflito TSE (DB) ·
@@ -550,7 +551,7 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
     contexto = {
         "cnpj": cnpj_d, "cnpj_fmt": fmt_cnpj(cnpj_d), "nome": nome,
         "data": date.today().isoformat(), "risco": risco, "score": score,
-        "pagamentos": pagamentos, "contratos": contratos, "enriq": enriq,
+        "pagamentos": pagamentos, "contratos": contratos, "cardinalidade": cardinalidade, "enriq": enriq,
         "fonte_enriq": enriq.get("_fonte", "INDISPONIVEL"),
         "cruzamento": cruz, "conflito_rede": rede,
         "tcerj_itens": tcerj_itens, "contratado_tcerj": contratado_tcerj,
@@ -623,6 +624,72 @@ def gerar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
     return asyncio.run(montar(cnpj=cnpj, empresa=empresa, anos=anos, salvar=salvar))
 
 
+# Modelo conceitual da cadeia de despesa (ERRO CONCEITUAL a evitar: OB ≠ contrato). A relação é uma ÁRVORE:
+# um PROCESSO SEI (licitação / Registro de Preços-SRP) pode gerar VÁRIOS contratos, VÁRIOS aditivos e MUITAS
+# OBs; um CONTRATO gera VÁRIAS OBs (parcelas/medições). OB = pagamento (verdade); nunca contar OB como contrato.
+_NOTA_CARDINALIDADE = (
+    "**Nota conceitual (cadeia da despesa):** a **OB (Ordem Bancária) é o pagamento** — a verdade financeira, "
+    "porém **uma parcela**, não um contrato. Um **contrato** gera **várias OBs** (parcelas/medições/aditivos); "
+    "um **processo SEI** (licitação ou **Registro de Preços/SRP**) pode gerar **vários contratos**, **aditivos** "
+    "e **muitas OBs**. Portanto **nº de OBs ≠ nº de contratos ≠ nº de processos** — os contadores abaixo são "
+    "distintos e honestos quanto à cobertura (a vinculação OB→processo só existe onde o SIAFE/SEI a preencheu)."
+)
+
+
+def cardinalidade_contratual(cnpj: str) -> dict:
+    """Relação HONESTA OB × processo SEI × contrato p/ um fornecedor (raiz). NÃO equipara níveis.
+
+    {n_obs, n_obs_com_processo, n_processos, cobertura_processo (0..1), n_contratos, _nota}. OB=pagamento;
+    um contrato→várias OBs; um processo/SRP→vários contratos+aditivos. cobertura_processo = fração de OBs com
+    processo vinculado (o resto é INDISPONÍVEL, não 'sem processo')."""
+    out = {"n_obs": 0, "n_obs_com_processo": 0, "n_processos": 0, "cobertura_processo": 0.0,
+           "n_contratos": 0, "_nota": ""}
+    if not _DB.exists():
+        return out
+    raiz = so_digitos(cnpj)[:8]
+    con = sqlite3.connect(_DB)
+    try:
+        row = con.execute(
+            "SELECT COUNT(*), "
+            "  SUM(CASE WHEN (numero_processo IS NOT NULL AND numero_processo!='') "
+            "        OR (numero_sei IS NOT NULL AND numero_sei!='') THEN 1 ELSE 0 END), "
+            "  COUNT(DISTINCT CASE WHEN numero_processo!='' THEN numero_processo "
+            "                      WHEN numero_sei!='' THEN numero_sei END) "
+            "FROM ordens_bancarias WHERE favorecido_cpf LIKE ?", (f"{raiz}%",)).fetchone()
+        out["n_obs"] = int(row[0] or 0)
+        out["n_obs_com_processo"] = int(row[1] or 0)
+        out["n_processos"] = int(row[2] or 0)
+        try:
+            emps = con.execute("SELECT id FROM empresas WHERE cnpj LIKE ?", (f"{raiz}%",)).fetchall()
+            if emps:
+                ids = [e[0] for e in emps]
+                out["n_contratos"] = int(con.execute(
+                    "SELECT COUNT(*) FROM contratos WHERE empresa_id IN (%s)" % ",".join("?" * len(ids)),
+                    ids).fetchone()[0] or 0)
+        except sqlite3.OperationalError:
+            pass
+    finally:
+        con.close()
+    out["cobertura_processo"] = round(out["n_obs_com_processo"] / out["n_obs"], 3) if out["n_obs"] else 0.0
+    return out
+
+
+def _frase_cardinalidade(card: dict) -> str:
+    """Uma frase honesta com os 3 contadores distintos (OB/processo/contrato) + cobertura."""
+    if not card or not card.get("n_obs"):
+        return ""
+    n_obs, n_proc, n_contr = card["n_obs"], card["n_processos"], card["n_contratos"]
+    cob = card.get("cobertura_processo", 0.0)
+    partes = [f"{n_obs} OBs (pagamentos)"]
+    if n_proc:
+        cob_txt = f", cobertura {cob*100:.0f}%" if cob < 0.99 else ""
+        partes.append(f"vinculadas a {n_proc} processo(s) SEI distinto(s){cob_txt}")
+    if n_contr:
+        partes.append(f"{n_contr} contrato(s) na carteira oficial (SIAFE)")
+    return ("**Cardinalidade (OB ≠ contrato):** " + "; ".join(partes) +
+            ". Um contrato gera várias OBs; um processo/SRP pode gerar vários contratos e aditivos.")
+
+
 def _resumo_executivo(ctx: dict) -> str:
     p = ctx["pagamentos"]
     linhas = [f"{ctx['nome']} (CNPJ {ctx['cnpj_fmt']})"]
@@ -634,7 +701,10 @@ def _resumo_executivo(ctx: dict) -> str:
                       f"({p['hhi'].get('nivel')}; maior órgão = {p['hhi'].get('top_share')}%).")
     else:
         linhas.append("Sem OBs pagas registradas na base local para este CNPJ.")
-    if ctx["contratos"]["n"]:
+    frase_card = _frase_cardinalidade(ctx.get("cardinalidade") or {})
+    if frase_card:
+        linhas.append(frase_card)
+    elif ctx["contratos"]["n"]:
         linhas.append(f"Carteira de contratos (SIAFE): {ctx['contratos']['n']} contratos, "
                       f"R$ {moeda(ctx['contratos']['total'])}.")
     if ctx["risco"] not in ("—", None):
@@ -814,6 +884,12 @@ def render_md(ctx: dict) -> str:
     add("> Fonte: SIAFE/TFE-RJ (Ordem Bancária = dado **definitivo de pagamento**). Por exercício, as **maiores "
         "OBs** (materiais); a **lista completa** de cada pagamento está na **planilha XLSX** deste relatório. "
         "OBs de R$ 0,00 são estornos/regularizações (entram na contagem, não somam ao total).")
+    add("")
+    add(f"> {_NOTA_CARDINALIDADE}")
+    card = ctx.get("cardinalidade") or {}
+    if card.get("n_obs"):
+        add("")
+        add(f"> {_frase_cardinalidade(card)}")
     add("")
     if p["tem_dados"]:
         TOP_OB_ANO = 12  # padrão de due diligence: destacar o material; o detalhe completo vai na planilha
