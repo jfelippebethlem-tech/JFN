@@ -853,6 +853,37 @@
     {
       "type": "function",
       "function": {
+        "name": "consultar_noticias",
+        "description": "Noticias/midia sobre um tema/pessoa/empresa via GDELT (sem chave; tom/cobertura). NAO e web search generica — usar quando: 'noticias sobre X', 'saiu algo na midia sobre X', 'aparicoes/repercussao recente de X' — quando NAO houver web_search, esta e a fonte de midia disponivel — chamar: GET /api/massare/noticias (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "tema": {
+              "type": "string",
+              "description": "string (pessoa/empresa/assunto)"
+            },
+            "janela": {
+              "type": "string",
+              "description": "ex.: 2d/7d (opcional)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "inteligencia",
+        "tipo": "http",
+        "rota": "/api/massare/noticias",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "massare_placar",
         "description": "Acuracia OOS + Sharpe liquido + DSR(Onda 9) — usar quando: 'o Massare acerta?' — chamar: GET /api/massare/placar (base http://127.0.0.1:8000)",
         "parameters": {
