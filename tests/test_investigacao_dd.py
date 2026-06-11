@@ -177,3 +177,32 @@ def test_beneficio_por_cpf_completo_pf_gera_indicio(monkeypatch):
     h = next(h for h in out["hipoteses"] if h["codigo"] == "H-BENEFICIO")
     assert h["status"] == "INDICIO" and h["nivel"] == "ALTO"
     assert "Seguro-Defeso" in h["evidencia"]
+
+
+def test_ponte_cpf_mascarado_destrava_beneficio(monkeypatch):
+    # br-acc: sócio com CPF mascarado é resolvido (nome+6díg) → benefício deixa de ser INDISPONÍVEL
+    import compliance_agent.collectors.beneficios_sociais as bs
+    import compliance_agent.investigacao_dd as dd
+    monkeypatch.setattr(bs, "_chave", lambda: "k")
+    monkeypatch.setattr(dd, "_resolver_cpf",
+                        lambda nome, doc: {"resolvido": True, "cpf": "11122334455", "confianca": 0.85})
+
+    vistos = {}
+
+    async def fake_benef(cpf, forcar_update=False):
+        vistos["cpf"] = cpf
+        return {"verificado": True, "recebe_beneficio": True,
+                "beneficios": [{"tipo": "PETI"}], "motivo": ""}
+
+    async def fake_pep(cpf="", nome="", forcar_update=False):
+        return {"verificado": True, "eh_pep": False, "peps": [], "motivo": ""}
+
+    monkeypatch.setattr(bs, "verificar_beneficios", fake_benef)
+    monkeypatch.setattr(bs, "verificar_pep", fake_pep)
+    out = investigar("11222333000181",
+                     cadastral={"situacao": "ATIVA", "socios": [{"nome": "JOAO DA SILVA", "doc": "***223344**"}]},
+                     pagamentos={"total_pago": 600_000}, usar_rede=False, geocode=False)
+    assert vistos.get("cpf") == "11122334455"   # consultou o CPF resolvido
+    h = next(h for h in out["hipoteses"] if h["codigo"] == "H-BENEFICIO")
+    assert "resolvida por nome" in h["evidencia"]
+    assert "via ponte nome+6díg" in out["cobertura"]["beneficio_social"]

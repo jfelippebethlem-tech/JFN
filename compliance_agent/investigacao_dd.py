@@ -362,6 +362,15 @@ def _socio_eh_pf(s: dict) -> bool:
     return len(_digitos((s or {}).get("doc"))) != 14
 
 
+def _resolver_cpf(nome: str, doc: str) -> dict:
+    """Ponte CPF mascarado → completo (nome+middle6, técnica br-acc). Degrada honesto."""
+    try:
+        from compliance_agent.resolucao_cpf import resolver
+        return resolver(nome, doc)
+    except Exception:  # noqa: BLE001
+        return {"resolvido": False, "cpf": "", "confianca": 0.0}
+
+
 def _wire_beneficios_pep(cnpj: str, total_pago: float, socios: list, hipoteses: list, cobertura: dict) -> None:
     """Conecta o coletor de benefícios/PEP ao motor de DD (degrada honesto: sem chave → INDISPONÍVEL)."""
     try:
@@ -392,7 +401,7 @@ async def _coletar_beneficios_pep(cnpj: str, total_pago: float, socios: list, ma
     cob: dict[str, str] = {}
     pep_matches: list[tuple[str, str]] = []
     benef_matches: list[tuple[str, list]] = []
-    n_pep = n_benef = 0
+    n_pep = n_benef = n_resolvidos = 0
     socio_mascarado = False
 
     def _tipos(b: dict) -> list:
@@ -413,6 +422,14 @@ async def _coletar_beneficios_pep(cnpj: str, total_pago: float, socios: list, ma
             break
         nome = (s.get("nome") or "").strip()
         cpf_full = _cpf_completo(s.get("doc"))
+        nota_resolv = ""
+        # CPF mascarado? tenta a ponte nome+middle6 (br-acc) p/ destravar a consulta de benefício
+        if not cpf_full and len(nome) >= 6:
+            rr = _resolver_cpf(nome, s.get("doc"))
+            if rr.get("resolvido") and rr.get("cpf"):
+                cpf_full = rr["cpf"]
+                n_resolvidos += 1
+                nota_resolv = " (identidade resolvida por nome + 6 díg do meio — confirmar)"
         if len(nome) >= 6:
             n_pep += 1
             p = await verificar_pep(nome=nome)
@@ -428,7 +445,7 @@ async def _coletar_beneficios_pep(cnpj: str, total_pago: float, socios: list, ma
             n_benef += 1
             b = await verificar_beneficios(cpf_full)
             if b.get("verificado") and b.get("recebe_beneficio"):
-                benef_matches.append((f"sócio {nome or cpf_full}", _tipos(b)))
+                benef_matches.append((f"sócio {nome or cpf_full}{nota_resolv}", _tipos(b)))
         else:
             socio_mascarado = True
 
@@ -461,10 +478,12 @@ async def _coletar_beneficios_pep(cnpj: str, total_pago: float, socios: list, ma
             "Portal da Transparência/CGU (PETI/Garantia-Safra/Seguro-Defeso)",
             "art. 337-F CP; art. 11 Lei 8.429/92", 14))
     if n_benef:
-        cob["beneficio_social"] = (f"verificado ({n_benef} CPF(s) completo(s) consultado(s); "
+        resolv = f"; {n_resolvidos} via ponte nome+6díg" if n_resolvidos else ""
+        cob["beneficio_social"] = (f"verificado ({n_benef} CPF(s) consultado(s){resolv}; "
                                    f"{len(benef_matches)} positivo(s))")
     elif socio_mascarado:
-        cob["beneficio_social"] = "INDISPONIVEL (CPF dos sócios mascarado — LGPD; requer CPF completo)"
+        cob["beneficio_social"] = ("INDISPONIVEL (CPF dos sócios mascarado — LGPD; sem par único "
+                                   "nome+6díg no corpus de favorecidos p/ resolver)")
     else:
         cob["beneficio_social"] = "INDISPONIVEL (sem CPF completo p/ consultar)"
     return {"hipoteses": hip, "cobertura": cob}
