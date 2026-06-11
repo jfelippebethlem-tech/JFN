@@ -89,14 +89,17 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     if cnpj:  # processos das OBs de UM fornecedor — pré-carrega o SEI antes do /relatorio dele
         where += " AND replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-','')=?"
         args.append(re.sub(r"\D", "", cnpj))
+    # TODOS os processos distintos das OBs (universo ~49k) — sem teto: o sweep deve estudar TODOS os
+    # processos de TODAS as OBs (pedido do dono). O `run` filtra os já feitos e pega o próximo lote;
+    # o skip-após-3-tentativas trata os fora-de-escopo (acesso do itkava) sem martelar. Ordena: unidade
+    # LEGÍVEL primeiro (rende docs), depois por valor — o trabalho útil sai antes; o resto marcha depois.
     rows = con.execute(
         f"SELECT numero_sei, COUNT(*) nob, ROUND(SUM(valor),2) tot FROM ordens_bancarias "
-        f"WHERE {where} GROUP BY numero_sei ORDER BY tot DESC LIMIT ?",
-        (*args, limite * 12 + 200),
+        f"WHERE {where} GROUP BY numero_sei ORDER BY tot DESC",
+        tuple(args),
     ).fetchall()
     con.close()
     legiveis = _unidades_legiveis()
-    # ordena: unidade legível primeiro (escopo conhecido), depois valor
     rows.sort(key=lambda r: (0 if _unidade(r[0]) in legiveis else 1, -(r[2] or 0)))
     return rows
 
