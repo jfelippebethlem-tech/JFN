@@ -38,13 +38,19 @@ MODELO_MELHOR = "gemini-2.5-flash"        # melhor
 
 _SIST = ("Você é analista de auditoria de contratação pública (controle externo, TCE-RJ). "
          "Extraia do texto de um processo SEI-RJ APENAS o que importa para auditoria. "
+         "INVENTARIE os DOCUMENTOS-CHAVE presentes (no MÍNIMO: edital, concorrência, termo de referência, "
+         "contrato, parecer jurídico, ETP/DFD, pesquisa de preços, despachos, atas, aditivos, notas de empenho, "
+         "ANEXOS instrutivos) e quaisquer OUTROS relevantes — cada um com seu ponto/trecho relevante. "
          "REGRAS: (1) factual — NUNCA invente; campo sem dado no texto = \"\" ou []. "
-         "(2) CONCISO — 'resumo' no MÁXIMO 2 frases; sem repetir. "
+         "(2) CONCISO — 'resumo' no MÁXIMO 2 frases; cada 'ponto' 1 frase; sem repetir. "
          "(3) Responda SOMENTE o objeto JSON (começa com { e termina com }), SEM texto antes/depois, SEM ```.")
 
 _CAMPOS = ('{"objeto": "o que se contrata (1 frase)", "modalidade": "pregão/dispensa/inexigibilidade/adesão a ata/... ou \\"\\"", '
            '"fundamento_legal": "artigo/lei citados ou \\"\\"", "valores": ["R$ ..."], "cnpjs": ["..."], '
            '"partes": ["órgãos/empresas"], "datas": ["..."], '
+           '"documentos": [{"tipo": "edital|concorrência|termo de referência|contrato|parecer jurídico|ETP|DFD|'
+           'pesquisa de preços|despacho|ata|aditivo|nota de empenho|anexo instrutivo|outro", '
+           '"ponto": "ponto/trecho relevante p/ auditoria (1 frase)"}], '
            '"red_flags": ["indícios a verificar, se houver"], '
            '"relevante": true, "resumo": "1-2 frases do que importa p/ auditoria"}')
 
@@ -56,6 +62,9 @@ _EXEMPLO_FICHA = ('{"objeto": "Aquisição de cateter venoso central (insumo de 
                   '"modalidade": "adesão a ata de registro de preços (Pregão 045/2021)", "fundamento_legal": "", '
                   '"valores": ["R$ 17.156,00"], "cnpjs": ["12.345.678/0001-90"], '
                   '"partes": ["CBMERJ", "Fundação Saúde do ERJ", "MEDLINE COMERCIAL LTDA"], "datas": [], '
+                  '"documentos": [{"tipo": "termo de referência", "ponto": "especifica cateter venoso central, qtd e marca"}, '
+                  '{"tipo": "parecer jurídico", "ponto": "opina pela legalidade da adesão à ata"}, '
+                  '{"tipo": "ata de registro de preços", "ponto": "Pregão 045/2021 da Fundação Saúde, vigência e preços"}], '
                   '"red_flags": ["adesão a ata de outro órgão — verificar vantajosidade (art. 86 Lei 14.133)"], '
                   '"relevante": true, "resumo": "Adesão a ata de RP p/ cateter ao CBMERJ, R$ 17.156,00. Verificar vantajosidade da carona."}')
 
