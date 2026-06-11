@@ -51,12 +51,30 @@ def _pid_vivo(pid: int) -> bool:
         return False
 
 
+def _boot_time() -> float:
+    """Epoch do último boot (via /proc/stat btime). 0.0 se indisponível.
+
+    Usado p/ invalidar locks de antes do reboot: após um boot os PIDs são reusados, então um lock órfão
+    pode coincidir com um PID novo e PARECER vivo — travando o sweep até a idade_max (bug que derrubou o
+    SEI sweep após um restart da VM). Qualquer lock criado antes do boot é, por definição, de dono morto."""
+    try:
+        for linha in Path("/proc/stat").read_text(encoding="utf-8").splitlines():
+            if linha.startswith("btime "):
+                return float(linha.split()[1])
+    except (OSError, ValueError, IndexError):
+        pass
+    return 0.0
+
+
 def _lock_obsoleto(idade_max: float) -> bool:
-    """Lock é obsoleto se o dono morreu OU é mais velho que idade_max (s)."""
+    """Lock é obsoleto se foi criado ANTES do último boot, OU o dono morreu, OU é mais velho que idade_max."""
     try:
         txt = _LOCK.read_text(encoding="utf-8").strip().split(":")
         pid, ts = int(txt[0]), float(txt[1])
     except (OSError, ValueError, IndexError):
+        return True
+    bt = _boot_time()
+    if bt and ts < bt:            # lock de uma sessão anterior ao boot — PID reusado parece vivo (reboot-safe)
         return True
     if not _pid_vivo(pid):
         return True
