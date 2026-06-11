@@ -33,19 +33,22 @@ def _moeda(v: float) -> str:
         return "R$ 0,00"
 
 
-def top_fornecedores_pj(ug: str, *, top_n: int = 15, anos: list[int] | None = None,
-                        db_path: str | Path | None = None) -> list[dict]:
-    """Maiores fornecedores PJ (CNPJ de 14 díg) de uma UG, por total pago (OB = pagamento)."""
+def top_fornecedores_pj(ug: str, *, top_n: int | None = 15, anos: list[int] | None = None,
+                        ordem: str = "desc", db_path: str | Path | None = None) -> list[dict]:
+    """Fornecedores PJ (CNPJ de 14 díg) de uma UG, por total pago (OB = pagamento).
+
+    top_n=None → todos (p/ varrer a cauda). ordem='asc' → menores primeiro (cauda fachada-prone)."""
     p = Path(db_path or _DB)
     if not p.exists():
         return []
+    direcao = "ASC" if ordem == "asc" else "DESC"
     q = ("SELECT favorecido_cpf, MAX(favorecido_nome), ROUND(SUM(valor),2), COUNT(*), MIN(data_pagamento) "
          "FROM ordens_bancarias WHERE ug_codigo=? AND valor>0")
     params: list = [str(ug)]
     if anos:
         q += " AND exercicio IN (%s)" % ",".join("?" * len(anos))
         params += [str(a) for a in anos]
-    q += " GROUP BY favorecido_cpf ORDER BY SUM(valor) DESC"
+    q += f" GROUP BY favorecido_cpf ORDER BY SUM(valor) {direcao}"
     con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
     try:
         rows = con.execute(q, params).fetchall()
@@ -58,7 +61,7 @@ def top_fornecedores_pj(ug: str, *, top_n: int = 15, anos: list[int] | None = No
             continue
         out.append({"cnpj": c, "nome": (nome or "—").strip(), "total_pago": float(total or 0.0),
                     "n_obs": int(n or 0), "primeira_data": primeira})
-        if len(out) >= top_n:
+        if top_n is not None and len(out) >= top_n:
             break
     return out
 
