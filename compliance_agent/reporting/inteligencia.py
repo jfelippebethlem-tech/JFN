@@ -1362,7 +1362,17 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
     try:
         from compliance_agent.collectors.ceis import verificar_sancao
         s = await verificar_sancao(cnpj)
-        osint.append(f"<li>CEIS/CNEP (CGU): <b>{'SANCIONADA — verificar' if (s.get('sancionado') or s.get('sancoes')) else 'nada localizado'}</b></li>")
+        if not s.get("verificado"):
+            osint.append(f"<li>CEIS/CNEP/CEPIM (CGU): <b>INDISPONÍVEL</b> "
+                         f"<span class='nota'>({esc(s.get('motivo') or 'não verificado')}) — não equivale a “limpo”</span></li>")
+        elif s.get("sancionado"):
+            sl = s.get("sancoes") or []
+            top = "; ".join(f"{esc(x.get('_fonte'))}: {esc(x.get('tipo_sancao') or x.get('fundamentacao'))}"
+                            for x in sl[:3])
+            osint.append(f"<li>CEIS/CNEP/CEPIM (CGU): <b>SANCIONADA — {esc(len(sl))} registro(s)</b> — {top} "
+                         f"<span class='nota'>(verificar vigência na fonte)</span></li>")
+        else:
+            osint.append("<li>CEIS/CNEP/CEPIM (CGU): nada localizado <span class='nota'>(consulta verificada)</span></li>")
     except Exception:  # noqa: BLE001
         osint.append("<li>CEIS/CNEP: INDISPONÍVEL</li>")
     try:

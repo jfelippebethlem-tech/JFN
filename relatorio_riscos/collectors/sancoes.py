@@ -29,7 +29,11 @@ def _limpar_cnpj(cnpj: str) -> str:
 
 
 def _headers(chave: str) -> dict:
-    return {"chave-api": chave, "Accept": "application/json"}
+    return {"chave-api-dados": chave, "Accept": "application/json"}  # header correto do Portal (era "chave-api" = 401)
+
+
+# Param de filtro por endpoint (varia!): CEIS/CNEP=codigoSancionado; CEPIM=cnpjSancionado. Verificado no swagger.
+_PARAM_FILTRO = {"ceis": "codigoSancionado", "cnep": "codigoSancionado", "cepim": "cnpjSancionado"}
 
 
 def _safe_int(v) -> int:
@@ -51,7 +55,7 @@ async def _consultar_endpoint(
     Retorna (sucesso, lista_sancoes, mensagem_erro).
     """
     url = f"{_BASE}/{endpoint}"
-    params = {"cnpjSancionado": cnpj_limpo, "pagina": 1, "tamanhoPagina": 10}
+    params = {_PARAM_FILTRO.get(endpoint, "codigoSancionado"): cnpj_limpo, "pagina": 1, "tamanhoPagina": 10}
     try:
         r = await client.get(url, params=params, headers=_headers(chave), timeout=_TIMEOUT)
         if r.status_code == 200:
@@ -104,13 +108,13 @@ async def verificar_sancoes(cnpj: str) -> dict:
             "sancoes": [],
         }
 
-    chave = os.environ.get("TRANSPARENCIA_API_KEY", "")
+    chave = (os.environ.get("PORTAL_TRANSPARENCIA_KEY", "") or os.environ.get("TRANSPARENCIA_API_KEY", "")).strip()
     if not chave:
         return {
             "ok": True,
             "cnpj": cnpj_limpo,
             "verificado": False,
-            "motivo": "sem chave API — defina TRANSPARENCIA_API_KEY para ativar verificação",
+            "motivo": "sem chave API — defina PORTAL_TRANSPARENCIA_KEY (ou TRANSPARENCIA_API_KEY)",
             "n_sancoes": 0,
             "sancoes": [],
         }

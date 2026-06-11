@@ -1,161 +1,187 @@
 """
-CEIS / CNEP — Cadastros Federais de Sanções.
+CEIS / CNEP / CEPIM — Cadastros Federais de Sanções (Portal da Transparência / CGU).
 
-Verifica se fornecedores de OBs constam em:
   - CEIS: Cadastro de Empresas Inidôneas e Suspensas
   - CNEP: Cadastro Nacional de Empresas Punidas
   - CEPIM: Entidades sem fins lucrativos impedidas
 
-Fonte: Portal da Transparência Federal
-  https://portaldatransparencia.gov.br/download-de-dados/ceis
+Fonte: **API do Portal da Transparência** (requer chave gratuita).
+  Header obrigatório: `chave-api-dados: <chave>`.
+  Chave em `PORTAL_TRANSPARENCIA_KEY` (ou `TRANSPARENCIA_API_KEY`).
+  Filtro por documento: parâmetro **`codigoSancionado`** (NÃO `cnpjSancionado`/`cpfCnpj`,
+  que a API IGNORA → devolviam a página inteira não-filtrada = falso-positivo/negativo).
 
-Estratégia: baixa o CSV mensal do governo, armazena em data/ceis_cache.csv.
-Atualiza uma vez por mês. Não exige API key.
-Consulta 100% local — sem rate limit.
+HONESTIDADE (regra-mãe): se a consulta não puder ser feita (sem chave, rede, HTTP≠200),
+retorna `verificado=False` + `motivo` (estado INDISPONÍVEL) — **nunca** "limpo" silencioso.
+INDISPONÍVEL ≠ 0. O download keyless do CSV mensal foi DESCONTINUADO pela CGU (URL 405).
 """
 
-import csv
-import io
+import asyncio
+import json
+import os
 import re
+import time
 from datetime import date, datetime
 from pathlib import Path
 
 import httpx
 
 CACHE_DIR = Path("data")
-CEIS_CSV  = CACHE_DIR / "ceis_cache.csv"
-CNEP_CSV  = CACHE_DIR / "cnep_cache.csv"
+_CACHE_FILE = CACHE_DIR / "sancoes_cache.json"
+_CACHE_TTL = 7 * 86400  # 7 dias
 
-# URLs de download direto (atualizado mensalmente pelo governo)
-CEIS_URL = "https://portaldatransparencia.gov.br/download-de-dados/ceis/{ano}{mes:02d}"
-CNEP_URL = "https://portaldatransparencia.gov.br/download-de-dados/cnep/{ano}{mes:02d}"
+_BASE = "https://api.portaldatransparencia.gov.br/api-de-dados"
+# (endpoint, rótulo, nome_do_param_de_filtro, só_cnpj?): o param de filtro VARIA por endpoint —
+# CEIS/CNEP usam `codigoSancionado`; CEPIM usa `cnpjSancionado` (e só aceita CNPJ). Usar o errado
+# faz a API IGNORAR o filtro e devolver a página inteira (falso-positivo). Verificado no swagger.
+_ENDPOINTS = [
+    ("ceis", "CEIS", "codigoSancionado", False),
+    ("cnep", "CNEP", "codigoSancionado", False),
+    ("cepim", "CEPIM", "cnpjSancionado", True),
+]
+_TIMEOUT = 20
 
-# Alternativa: busca via API sem chave (retorna resultados parciais)
-CEIS_API = "https://api.portaldatransparencia.gov.br/api-de-dados/ceis"
-CNEP_API = "https://api.portaldatransparencia.gov.br/api-de-dados/cnep"
-
-
-def _cache_valido(path: Path, dias: int = 30) -> bool:
-    if not path.exists():
-        return False
-    age = (datetime.now() - datetime.fromtimestamp(path.stat().st_mtime)).days
-    return age < dias
+_cache: dict | None = None
 
 
-async def _download_csv(url: str, dest: Path) -> bool:
-    """Tenta baixar CSV do Portal da Transparência."""
-    CACHE_DIR.mkdir(exist_ok=True)
+def _chave() -> str:
+    return (os.environ.get("PORTAL_TRANSPARENCIA_KEY", "")
+            or os.environ.get("TRANSPARENCIA_API_KEY", "")).strip()
+
+
+def _carrega_cache() -> dict:
+    global _cache
+    if _cache is None:
+        try:
+            _cache = json.loads(_CACHE_FILE.read_text("utf-8")) if _CACHE_FILE.exists() else {}
+        except Exception:
+            _cache = {}
+    return _cache
+
+
+def _salva_cache() -> None:
     try:
-        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-            # Tenta mês atual, se falhar tenta mês anterior
-            hoje = date.today()
-            for tentativa in range(3):
-                mes_ref = date(hoje.year, hoje.month, 1)
-                # Subtrai tentativa meses
-                for _ in range(tentativa):
-                    primeiro = mes_ref.replace(day=1)
-                    mes_anterior = primeiro - __import__("datetime").timedelta(days=1)
-                    mes_ref = mes_anterior.replace(day=1)
-
-                url_fmt = url.format(ano=mes_ref.year, mes=mes_ref.month)
-                r = await client.get(url_fmt, headers={"User-Agent": "JFN-Compliance/1.0"})
-                if r.status_code == 200 and len(r.content) > 1000:
-                    dest.write_bytes(r.content)
-                    return True
-    except Exception:
-        pass
-    return False
-
-
-def _buscar_em_csv(csv_path: Path, cnpj_cpf: str) -> list[dict]:
-    """Busca CNPJ/CPF no CSV local. Retorna lista de sanções encontradas."""
-    if not csv_path.exists():
-        return []
-
-    cnpj_limpo = re.sub(r"\D", "", cnpj_cpf)
-    resultados = []
-
-    try:
-        content = csv_path.read_bytes()
-        # Tenta detectar encoding
-        for enc in ("utf-8", "latin-1", "cp1252"):
-            try:
-                texto = content.decode(enc)
-                break
-            except UnicodeDecodeError:
-                continue
-        else:
-            return []
-
-        reader = csv.DictReader(io.StringIO(texto), delimiter=";")
-        for row in reader:
-            # O campo CPF/CNPJ pode ter formatação variada
-            cpf_cnpj_row = re.sub(r"\D", "", str(
-                row.get("CPF ou CNPJ do Sancionado", "")
-                or row.get("CNPJ", "")
-                or row.get("CPF/CNPJ", "")
-                or ""
-            ))
-            if cnpj_limpo and cpf_cnpj_row == cnpj_limpo:
-                resultados.append({k.strip(): v.strip() for k, v in row.items()})
+        CACHE_DIR.mkdir(exist_ok=True)
+        _CACHE_FILE.write_text(json.dumps(_cache, ensure_ascii=False), "utf-8")
     except Exception:
         pass
 
-    return resultados
+
+def _nome_de(obj) -> str:
+    if isinstance(obj, dict):
+        return obj.get("nome") or obj.get("razaoSocial") or obj.get("descricao") or ""
+    return str(obj or "")
+
+
+def _normalizar(s: dict, tipo: str) -> dict:
+    """Normaliza um registro da API para campos estáveis usados por alertas/relatórios."""
+    pessoa = s.get("pessoa") if isinstance(s.get("pessoa"), dict) else {}
+    return {
+        "_fonte": tipo,
+        "nome": _nome_de(pessoa) or _nome_de(s.get("nomeInformado")) or "",
+        "cpf_cnpj": re.sub(r"\D", "", str(pessoa.get("cnpjFormatado") or pessoa.get("cpfFormatado")
+                                          or pessoa.get("numeroInscricaoSocial") or "")),
+        "tipo_sancao": (_nome_de(s.get("tipoSancao")) or s.get("tipoSancao", {}).get("descricaoResumida", "")
+                        if isinstance(s.get("tipoSancao"), dict) else _nome_de(s.get("tipoSancao"))),
+        "orgao": _nome_de(s.get("orgaoSancionador")),
+        "fundamentacao": s.get("fundamentacaoLegal") or s.get("textoPublicacao") or "",
+        "data_inicio": s.get("dataInicioSancao") or s.get("dataPublicacaoSancao") or "",
+        "data_fim": s.get("dataFimSancao") or s.get("dataFinalSancao") or "",
+        "_raw_id": s.get("id"),
+    }
+
+
+async def _consultar(client: httpx.AsyncClient, endpoint: str, param: str, codigo: str, chave: str) -> tuple[bool, list, str]:
+    """(ok, lista_sancoes, motivo_erro). ok=False → não foi possível verificar (INDISPONÍVEL)."""
+    try:
+        r = await client.get(f"{_BASE}/{endpoint}",
+                             params={param: codigo, "pagina": 1},
+                             headers={"chave-api-dados": chave, "Accept": "application/json"},
+                             timeout=_TIMEOUT)
+    except httpx.TimeoutException:
+        return False, [], "timeout"
+    except Exception as exc:  # noqa: BLE001
+        return False, [], str(exc)[:80]
+    if r.status_code == 200:
+        data = r.json()
+        if isinstance(data, list):
+            return True, data, ""
+        if isinstance(data, dict):
+            return True, (data.get("data") or data.get("content") or []), ""
+        return True, [], ""
+    if r.status_code in (401, 403):
+        return False, [], f"chave inválida/sem permissão (HTTP {r.status_code})"
+    return False, [], f"HTTP {r.status_code}"
 
 
 async def verificar_sancao(cnpj_cpf: str, forcar_update: bool = False) -> dict:
     """
-    Verifica se um CNPJ/CPF consta no CEIS ou CNEP.
-    Retorna dict com: sancionado (bool), sancoes (list), fonte.
+    Verifica CEIS/CNEP/CEPIM para um CNPJ/CPF via API do Portal da Transparência.
+
+    Retorna (honesto):
+      {cnpj_cpf, verificado: bool, sancionado: bool|None, sancoes: [...], motivo, fonte, coletado_em}
+    - verificado=True  → consulta feita; `sancionado` é confiável (True/False).
+    - verificado=False → INDISPONÍVEL (sem chave / rede / HTTP); `sancionado=None`. NUNCA tratar como "limpo".
     """
-    # Atualiza cache se necessário
-    if forcar_update or not _cache_valido(CEIS_CSV):
-        await _download_csv(CEIS_URL, CEIS_CSV)
-    if forcar_update or not _cache_valido(CNEP_CSV):
-        await _download_csv(CNEP_URL, CNEP_CSV)
+    codigo = re.sub(r"\D", "", cnpj_cpf or "")
+    base = {"cnpj_cpf": cnpj_cpf, "fonte": "CEIS/CNEP/CEPIM (Portal da Transparência/CGU)",
+            "coletado_em": datetime.now().isoformat(timespec="seconds")}
+    if len(codigo) not in (11, 14):
+        return {**base, "verificado": False, "sancionado": None, "sancoes": [],
+                "motivo": f"documento inválido: {cnpj_cpf!r}"}
 
-    sancoes_ceis = _buscar_em_csv(CEIS_CSV, cnpj_cpf)
-    sancoes_cnep = _buscar_em_csv(CNEP_CSV, cnpj_cpf)
+    chave = _chave()
+    if not chave:
+        return {**base, "verificado": False, "sancionado": None, "sancoes": [],
+                "motivo": "sem chave — defina PORTAL_TRANSPARENCIA_KEY (ou TRANSPARENCIA_API_KEY)"}
 
-    todas = []
-    for s in sancoes_ceis:
-        s["_fonte"] = "CEIS"
-        todas.append(s)
-    for s in sancoes_cnep:
-        s["_fonte"] = "CNEP"
-        todas.append(s)
+    cache = _carrega_cache()
+    ent = cache.get(codigo)
+    if ent and not forcar_update and (time.time() - ent.get("_ts", 0)) < _CACHE_TTL:
+        return {**base, **{k: v for k, v in ent.items() if k != "_ts"}, "_cache": True}
 
-    return {
-        "cnpj_cpf": cnpj_cpf,
-        "sancionado": len(todas) > 0,
-        "sancoes": todas,
-        "cache_ceis": str(CEIS_CSV) if CEIS_CSV.exists() else None,
-        "cache_cnep": str(CNEP_CSV) if CNEP_CSV.exists() else None,
-    }
+    todas: list[dict] = []
+    erros: list[str] = []
+    consultados = 0
+    async with httpx.AsyncClient() as client:
+        for endpoint, tipo, param, so_cnpj in _ENDPOINTS:
+            if so_cnpj and len(codigo) != 14:
+                continue  # CEPIM só aceita CNPJ (entidades) — pular p/ CPF
+            if consultados:
+                await asyncio.sleep(0.3)  # respeita o rate-limit do Portal
+            consultados += 1
+            ok, lista, erro = await _consultar(client, endpoint, param, codigo, chave)
+            if ok:
+                todas += [_normalizar(s, tipo) for s in lista]
+            else:
+                erros.append(f"{tipo}: {erro}")
+
+    if consultados and len(erros) == consultados:  # todos falharam → não dá pra afirmar nada
+        return {**base, "verificado": False, "sancionado": None, "sancoes": [],
+                "motivo": "; ".join(erros)}
+
+    resultado = {"verificado": True, "sancionado": len(todas) > 0, "sancoes": todas,
+                 "motivo": ("parcial: " + "; ".join(erros)) if erros else ""}
+    cache[codigo] = {**resultado, "_ts": time.time()}
+    _salva_cache()
+    return {**base, **resultado, "_cache": False}
 
 
 async def verificar_obs_contra_sancoes(session, target_date: date = None) -> list[dict]:
     """
-    Verifica todas as OBs do dia contra CEIS/CNEP.
-    Gera alertas de severidade ALTA para cada match.
+    Verifica as OBs do dia contra CEIS/CNEP/CEPIM. Gera alertas ALTA para cada match VERIFICADO.
+    (Não gera alerta quando a verificação fica INDISPONÍVEL — honestidade: não inventa nem zera.)
     """
-    from compliance_agent.database.models import OrdemBancaria, Alerta
+    from compliance_agent.database.models import Alerta, OrdemBancaria
 
     target_date = target_date or date.today()
+    obs = (session.query(OrdemBancaria)
+           .filter(OrdemBancaria.data_emissao == target_date,
+                   OrdemBancaria.favorecido_cpf.isnot(None))
+           .all())
 
-    obs = (
-        session.query(OrdemBancaria)
-        .filter(
-            OrdemBancaria.data_emissao == target_date,
-            OrdemBancaria.favorecido_cpf.isnot(None),
-        )
-        .all()
-    )
-
-    alertas = []
+    alertas: list[dict] = []
     verificados: set[str] = set()
-
     for ob in obs:
         cpf_cnpj = re.sub(r"\D", "", str(ob.favorecido_cpf or ""))
         if not cpf_cnpj or cpf_cnpj in verificados:
@@ -163,66 +189,49 @@ async def verificar_obs_contra_sancoes(session, target_date: date = None) -> lis
         verificados.add(cpf_cnpj)
 
         resultado = await verificar_sancao(cpf_cnpj)
-        if not resultado["sancionado"]:
+        if not resultado.get("verificado") or not resultado.get("sancionado"):
             continue
 
         for sancao in resultado["sancoes"]:
             fonte = sancao.get("_fonte", "CEIS/CNEP")
-            tipo_sancao = (
-                sancao.get("Tipo de Sanção", "")
-                or sancao.get("Fundamentação Legal", "")
-                or "Sanção federal"
-            )
-            orgao = sancao.get("Órgão Sancionador", "") or sancao.get("Órgão", "")
-            data_ini = sancao.get("Data de Início da Sanção", "") or sancao.get("Data Início", "")
-            data_fim = sancao.get("Data Final da Sanção", "") or sancao.get("Data Fim", "")
+            tipo_sancao = sancao.get("tipo_sancao") or sancao.get("fundamentacao") or "Sanção federal"
+            orgao = sancao.get("orgao", "")
+            data_ini = sancao.get("data_inicio", "")
+            data_fim = sancao.get("data_fim", "")
             vigente = not data_fim or data_fim >= target_date.strftime("%d/%m/%Y")
-
-            titulo = (
-                f"[{fonte}] Pagamento a empresa SANCIONADA — "
-                f"{ob.favorecido_nome or cpf_cnpj}"
-            )[:300]
-
-            existe = session.query(Alerta).filter_by(titulo=titulo).first()
-            if not existe:
-                alerta = Alerta(
-                    tipo="empresa_sancionada",
-                    severidade="alta",
-                    titulo=titulo,
-                    descricao=(
-                        f"OB nº {ob.numero_ob} (R$ {ob.valor:,.2f}) paga a "
-                        f"'{ob.favorecido_nome}' (CPF/CNPJ {cpf_cnpj}), "
-                        f"que consta no {fonte} com sanção: '{tipo_sancao}'. "
-                        f"Sancionado por: {orgao}. "
-                        f"Período: {data_ini} a {data_fim or 'indeterminado'}. "
-                        f"{'⚠️ SANÇÃO VIGENTE' if vigente else 'Sanção possivelmente expirada'}. "
-                        f"Lei 8.666/93 art. 87 e Lei 14.133/21 art. 156 "
-                        f"vedam contratação de empresa sancionada."
-                    ),
-                    evidencias=str(sancao),
-                    data_referencia=target_date,
-                    ordem_bancaria_id=ob.id,
-                )
-                session.add(alerta)
-                alertas.append({
-                    "ob": ob.numero_ob,
-                    "favorecido": ob.favorecido_nome,
-                    "valor": ob.valor,
-                    "fonte": fonte,
-                    "tipo_sancao": tipo_sancao,
-                    "vigente": vigente,
-                })
+            titulo = (f"[{fonte}] Pagamento a empresa SANCIONADA — "
+                      f"{ob.favorecido_nome or cpf_cnpj}")[:300]
+            if session.query(Alerta).filter_by(titulo=titulo).first():
+                continue
+            session.add(Alerta(
+                tipo="empresa_sancionada", severidade="alta", titulo=titulo,
+                descricao=(f"OB nº {ob.numero_ob} (R$ {ob.valor:,.2f}) paga a "
+                           f"'{ob.favorecido_nome}' (CPF/CNPJ {cpf_cnpj}), que consta no {fonte} "
+                           f"com sanção: '{tipo_sancao}'. Sancionado por: {orgao}. "
+                           f"Período: {data_ini} a {data_fim or 'indeterminado'}. "
+                           f"{'⚠️ SANÇÃO VIGENTE' if vigente else 'Sanção possivelmente expirada'}. "
+                           f"Lei 8.666/93 art. 87 e Lei 14.133/21 art. 156 vedam contratar sancionada."),
+                evidencias=str(sancao), data_referencia=target_date, ordem_bancaria_id=ob.id))
+            alertas.append({"ob": ob.numero_ob, "favorecido": ob.favorecido_nome, "valor": ob.valor,
+                            "fonte": fonte, "tipo_sancao": tipo_sancao, "vigente": vigente})
 
     session.commit()
     return alertas
 
 
 async def atualizar_cache_sancoes():
-    """Força atualização dos CSVs do CEIS e CNEP."""
-    print("  Baixando CEIS...")
-    ok_ceis = await _download_csv(CEIS_URL, CEIS_CSV)
-    print(f"  CEIS: {'OK' if ok_ceis else 'falhou'}")
-    print("  Baixando CNEP...")
-    ok_cnep = await _download_csv(CNEP_URL, CNEP_CSV)
-    print(f"  CNEP: {'OK' if ok_cnep else 'falhou'}")
-    return ok_ceis, ok_cnep
+    """Probe de saúde da API de sanções (a verificação agora é por API, não por CSV mensal).
+
+    Mantido p/ compatibilidade com a manutenção: confirma que a chave responde. Retorna (ok, ok)."""
+    chave = _chave()
+    if not chave:
+        print("  Sanções: SEM CHAVE (defina PORTAL_TRANSPARENCIA_KEY) — verificação INDISPONÍVEL")
+        return False, False
+    try:
+        async with httpx.AsyncClient() as client:
+            ok, _, erro = await _consultar(client, "ceis", "00000000000191", chave)  # CNPJ Banco do Brasil (probe)
+        print(f"  Sanções API: {'OK' if ok else 'falhou — ' + erro}")
+        return ok, ok
+    except Exception as exc:  # noqa: BLE001
+        print(f"  Sanções API: erro {exc}")
+        return False, False
