@@ -92,6 +92,46 @@ def _detectar_rodizio(por_ano: dict[int, list[dict]], *, min_anos: int = 3, min_
     }
 
 
+# --------------------------------------------------------------------------- corroboração por QSA
+def _combinar(rodizio: dict, qsa: dict) -> dict:
+    """Combina o indício de rodízio (temporal) com sócios em comum entre os campeões (QSA).
+
+    Revezam no topo **E** partilham sócio = forte indício de concorrência FICTÍCIA (Art. 90 Lei 8.666 ·
+    337-F CP · Art. 36 Lei 12.529-CADE). Sem sócio comum detectado, fica no indício de rodízio (QSA pode
+    estar mascarado/indisponível — INDISPONÍVEL ≠ afastado)."""
+    indicio_rodizio = bool(rodizio.get("indicio"))
+    socio_comum = bool(qsa.get("red_flag"))
+    corroborado = indicio_rodizio and socio_comum
+    if corroborado:
+        nivel = "ALTO"
+        nota = ("Revezamento no topo + sócio(s) em comum entre os campeões = forte indício de concorrência "
+                "fictícia (Art. 90 Lei 8.666 / 337-F CP / Art. 36 Lei 12.529). Corroborar com a lista de "
+                "licitantes (SEI/PNCP).")
+    elif indicio_rodizio:
+        nivel = "MEDIO"
+        nota = ("Revezamento no topo sem sócio comum detectado entre os campeões (QSA mascarado/indisponível "
+                "≠ afastado). Indício a corroborar.")
+    else:
+        nivel = "BAIXO"
+        nota = rodizio.get("nota", "")
+    return {**rodizio, "qsa": qsa, "socio_comum_entre_campeoes": socio_comum,
+            "corroborado": corroborado, "nivel": nivel, "nota_corroboracao": nota}
+
+
+def rodizio_com_qsa(ug: str, **kw) -> dict:
+    """Rodízio temporal na UG + cruzamento de QSA entre os campeões (concorrência fictícia).
+
+    Só consulta QSA (cadeia BrasilAPI→OpenCNPJ→CNPJ.ws, bounded/cacheado) quando há indício de rodízio —
+    evita gastar lookups onde não há padrão."""
+    r = rodizio_orgao(ug, **kw)
+    if not r.get("indicio"):
+        return {**r, "qsa": None, "socio_comum_entre_campeoes": False, "corroborado": False, "nivel": "BAIXO"}
+    from compliance_agent import grafo_cartel
+    cnpjs = [c["cnpj"] for c in r.get("campeoes", [])]
+    qsa = grafo_cartel.socios_compartilhados(cnpjs)
+    return _combinar(r, qsa)
+
+
 # --------------------------------------------------------------------------- camada de dados (DuckDB)
 def _por_ano_da_ug(con, ug: str) -> dict[int, list[dict]]:
     """Agrega gasto por (exercício, CNPJ) numa UG. Só PJ (CNPJ 14 díg); ignora PF/folha."""
@@ -199,10 +239,14 @@ def render_md(r: dict) -> str:
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="Rodízio temporal de cartel (bid rotation) sobre as OBs.")
     ap.add_argument("--ug", type=str, metavar="UG", help="detecta rodízio numa UG (ex.: 036100)")
+    ap.add_argument("--qsa", action="store_true", help="cruza QSA dos campeões (concorrência fictícia)")
     ap.add_argument("--varredura", type=int, metavar="N", help="top N UGs com indício de rodízio")
     a = ap.parse_args()
     if a.ug:
-        print(render_md(rodizio_orgao(a.ug)))
+        if a.qsa:
+            print(json.dumps(rodizio_com_qsa(a.ug), ensure_ascii=False, indent=2, default=str))
+        else:
+            print(render_md(rodizio_orgao(a.ug)))
     if a.varredura:
         out = rodizio_varredura(limite=a.varredura)
         print(json.dumps(out, ensure_ascii=False, indent=2, default=str))

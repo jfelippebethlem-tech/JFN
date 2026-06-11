@@ -6,7 +6,7 @@ COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a 
 - listar_ugs(filtro,limite) [GET /api/ugs] — '/ug', 'quais os codigos/nomes dos orgaos/UGs', 'listar UGs', 'qual o codigo da SEEDUC', 'que orgaos existem', ANTES de pedir o /orgao quando nao se sabe o codigo
 - anomalias(ug,cnpj,exercicio) [GET /api/anomalias] — triagem de risco; 'algo estranho em X'
 - cartel(modo,cnpj,top) [GET /api/cartel] — conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?'
-- rodizio(ug,top) [GET /api/rodizio] — rodizio/revezamento de vencedores; 'a UG X tem fornecedores que se alternam no 1o lugar?'
+- rodizio(ug,qsa,top) [GET /api/rodizio] — rodizio/revezamento de vencedores; 'a UG X tem fornecedores que se alternam no 1o lugar?'
 - conflito_doador_contrato(cnpj,candidato) [GET /api/conflito] — 'quem me doou ganhou contrato', conflito de interesse
 - sobrepreco(codigo,valor,servico) [GET /api/sobrepreco] — 'esta caro?', superfaturamento, R4
 - cruzamento(cnpj) [GET /api/cruzamento] — 'cruze os dados da empresa X'

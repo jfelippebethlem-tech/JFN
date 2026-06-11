@@ -202,6 +202,10 @@
               "type": "string",
               "description": "opcional (sem ug = varredura)"
             },
+            "qsa": {
+              "type": "string",
+              "description": "1 cruza socios dos campeoes (concorrencia ficticia)"
+            },
             "top": {
               "type": "string",
               "description": "opcional"
