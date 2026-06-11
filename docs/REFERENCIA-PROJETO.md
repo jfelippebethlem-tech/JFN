@@ -341,6 +341,25 @@ abertas: **Cerebras nos pools** (#5) e **SEI sweep estudar TODOS os processos de
 escopo é só unidades que o itkava lê: 140001/270042/270060/330003/520003).
 **Recursos (fim):** load baixo · sweeps: SEI supervisionado / SIAFE 2 completo · sem necessidade de liberar.
 
+### Sessão 2026-06-11 (Cerebras em todos os pools + frentes do dono)
+**Cerebras integrada** (chave em `~/.hermes/.env` e `~/JFN/.env` → `CEREBRAS_API_KEY`; OpenAI-compat
+`https://api.cerebras.ai/v1`; modelos `gpt-oss-120b` (raciocínio) e `zai-glm-4.7`; **ultrarrápido ~0,04s, com
+saldo**). Modelo de RACIOCÍNIO: `max_tokens` ALTO (piso 2048/4000), lê `content` (ou `reasoning` se cortado).
+- **JFN pool grátis** (`compliance_agent/llm/free_llm.py`): `cerebras_chat/_async` + 1º na ordem
+  (`FREE_LLM_PREFER=cerebras`). `best_free_chat` testado → "pronto".
+- **SEI sweep ficha** (`tools/sei_ficha.py`): provider `cerebras` preferido em `extrair_ficha_producao`
+  (coletor) → **0,8s vs ~40s do nous**, todos os campos. Cai p/ nous stepfun:free → gemini-lite. Produtos
+  seguem gemini (isolamento mantido).
+- **Yoda gateway** (`~/.hermes/config.yaml`): Cerebras = **1º `fallback_provider`** (`key_env: CEREBRAS_API_KEY`).
+  `resolve_provider_client('cerebras', …)` testado (chamada real OK). Assume quando o gemini primário 429a.
+**Frentes do dono nesta meta (em andamento):** (1) Cerebras em todos os pools ✅ (JFN+sweep+Yoda); (2) melhorar
+muito o /orgao; (3) SEI sweep estudar TODOS os processos de TODAS as OBs (hoje scope-aware → fila esvazia);
+(4) resolver erros do Yoda do log (cron web-search sem ferramenta; Bom-Dia truncado; Yoda não conhecia o SEI
+sweep; SIAFE 'hoje coletou?' sem timestamp; Massare prata; gap ambiguidade no fluxo async).
+**Erros do Yoda mapeados (state.db, 2026-06-09→11):** cron "Pesquisa Diária JFN" falha todo dia ("não possuo
+web_search"); rotina Bom-Dia saiu truncada ("Mestre Yoda, a"); o Yoda **flailou 5+ msgs** sem saber do SEI sweep
+(falta em capabilities/conhecimento); confusão da resposta "1" (ambiguidade some no push assíncrono).
+
 ## 11. ⏯️ RETOMADA — INSTRUÇÕES PERMANENTES (ler ANTES de continuar, sessão nova)
 **Branch `feat/lista-limpa` (não pushado, tudo commitado). Serviço/sweeps vivos.** O dono pediu para continuar
 com TODAS estas instruções:
