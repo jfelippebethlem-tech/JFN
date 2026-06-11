@@ -22,7 +22,8 @@ Base legal (controle externo, fiscalização legítima — Dep. Estadual no deve
 Indícios de fachada/laranja (literatura: TCU; OECD Bid Rigging 2025; ACFE; osint.industries shells):
   endereço residencial/terreno baldio · co-endereço · capital ínfimo vs. recebido · empresa recém-aberta
   · situação cadastral irregular · sócio único + sinais · porte incompatível com o recebido · sócio
-  recebendo benefício social de subsistência (laranja — Loop 2, coletor à parte).
+  recebendo benefício social de subsistência (H-BENEFICIO, laranja) · sócio politicamente exposto
+  (H-PEP, relação política) — ambos via Portal da Transparência/CGU (collectors/beneficios_sociais).
 """
 from __future__ import annotations
 
@@ -113,7 +114,7 @@ def _hip(codigo, titulo, status, nivel, evidencia, fonte, base_legal, peso) -> d
 
 
 def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | None = None,
-               usar_rede: bool = True, geocode: bool = False) -> dict:
+               usar_rede: bool = True, geocode: bool = False, usar_beneficios: bool = True) -> dict:
     """Roda a bateria de hipóteses de fachada/laranja para um CNPJ.
 
     Args:
@@ -123,6 +124,8 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
       pagamentos: {total_pago, n_obs, primeira_data?} — a pegada nas OBs (verdade de pagamento).
       usar_rede: cruza co-endereço/empresas-irmãs na base ingerida (cruzamento.py).
       geocode: se True, consulta o Nominatim p/ checar existência/tipo do endereço (rate-limit 1 req/s).
+      usar_beneficios: consulta Portal da Transparência/CGU (PEP por nome do sócio = relação política;
+                 benefício social por CPF completo = laranja). Bounded+cacheado; sem chave → INDISPONÍVEL.
 
     Retorna {cnpj, hipoteses:[…], score, grau, n_indicios, n_confirmados, resumo, cobertura}.
     """
@@ -282,6 +285,12 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
             "verificar a pessoa do sócio (capacidade econômica, vínculos, interposição).",
             "Receita Federal (QSA)", "art. 337-F CP; art. 11 Lei 8.429/92", 8))
 
+    # H-PEP / H-BENEFICIO — Portal da Transparência/CGU. PEP por NOME do sócio (QSA desmascarado) =
+    # relação política; benefício social de subsistência por CPF COMPLETO = indício de laranja. Bounded,
+    # cacheado (7d) e honesto: sem chave/CPF mascarado → INDISPONÍVEL (≠ "limpo"). Degrada em try/except.
+    if usar_beneficios:
+        _wire_beneficios_pep(cnpj, total_pago, socios, hipoteses, cobertura)
+
     # ───── consolidação honesta ─────
     confirmados = [h for h in hipoteses if h["status"] == "CONFIRMADO"]
     indicios = [h for h in hipoteses if h["status"] == "INDICIO"]
@@ -321,6 +330,144 @@ def _resumo(grau: str, confirmados: list, indicios: list) -> str:
         partes.append(f"{len(indicios)} indício(s) a apurar")
     return ("Investigação de fachada/laranja: " + " e ".join(partes) +
             ". Indício merece apuração — não constitui acusação (presunção de regularidade).")
+
+
+# ─────────── PEP (relação política) + benefício social (laranja) — Portal da Transparência/CGU ───────────
+
+def _run_coro(factory):
+    """Roda uma corrotina com segurança, mesmo dentro de um event loop (FastAPI/Lex)."""
+    import asyncio
+    import concurrent.futures
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        loop = None
+    if loop and loop.is_running():
+        with concurrent.futures.ThreadPoolExecutor(1) as ex:
+            return ex.submit(lambda: asyncio.run(factory())).result()
+    return asyncio.run(factory())
+
+
+def _cpf_completo(doc) -> str:
+    """CPF completo (11 dígitos, NÃO mascarado) ou '' — o QSA público traz o CPF mascarado (LGPD)."""
+    s = str(doc or "")
+    if "*" in s or "x" in s.lower():
+        return ""
+    d = _digitos(s)
+    return d if len(d) == 11 else ""
+
+
+def _socio_eh_pf(s: dict) -> bool:
+    """Sócio é pessoa física? doc com 14 dígitos limpos = sócio PJ (não buscar PEP/benefício nele)."""
+    return len(_digitos((s or {}).get("doc"))) != 14
+
+
+def _wire_beneficios_pep(cnpj: str, total_pago: float, socios: list, hipoteses: list, cobertura: dict) -> None:
+    """Conecta o coletor de benefícios/PEP ao motor de DD (degrada honesto: sem chave → INDISPONÍVEL)."""
+    try:
+        from compliance_agent.collectors.beneficios_sociais import _chave
+    except Exception:
+        cobertura["pep"] = cobertura["beneficio_social"] = "INDISPONIVEL (coletor ausente)"
+        return
+    if not _chave():
+        cobertura["pep"] = "INDISPONIVEL (sem chave PORTAL_TRANSPARENCIA_KEY)"
+        cobertura["beneficio_social"] = "INDISPONIVEL (sem chave PORTAL_TRANSPARENCIA_KEY)"
+        return
+    try:
+        res = _run_coro(lambda: _coletar_beneficios_pep(cnpj, total_pago, socios or []))
+    except Exception as e:  # noqa: BLE001
+        cobertura["pep"] = cobertura["beneficio_social"] = f"INDISPONIVEL ({str(e)[:40]})"
+        return
+    hipoteses.extend(res["hipoteses"])
+    cobertura.update(res["cobertura"])
+
+
+async def _coletar_beneficios_pep(cnpj: str, total_pago: float, socios: list, max_socios: int = 6,
+                                  budget_s: float = 30.0) -> dict:
+    """Consulta PEP (por nome) + benefício (por CPF completo) p/ a entidade e seus sócios. Bounded por tempo."""
+    import time
+    from compliance_agent.collectors.beneficios_sociais import verificar_beneficios, verificar_pep
+    inicio = time.monotonic()
+    hip: list[dict] = []
+    cob: dict[str, str] = {}
+    pep_matches: list[tuple[str, str]] = []
+    benef_matches: list[tuple[str, list]] = []
+    n_pep = n_benef = 0
+    socio_mascarado = False
+
+    def _tipos(b: dict) -> list:
+        return sorted({x.get("tipo") for x in (b.get("beneficios") or []) if x.get("tipo")})
+
+    # (1) a própria entidade investigada é PF (CPF favorecido)? → benefício de subsistência direto
+    if len(_digitos(cnpj)) == 11:
+        n_benef += 1
+        b = await verificar_beneficios(cnpj)
+        if b.get("verificado") and b.get("recebe_beneficio"):
+            benef_matches.append(("o próprio favorecido (CPF)", _tipos(b)))
+
+    # (2) sócios pessoa física: PEP por NOME (desmascarado) + benefício se houver CPF completo
+    pf_socios = [s for s in (socios or []) if _socio_eh_pf(s)][:max_socios]
+    for s in pf_socios:
+        if time.monotonic() - inicio > budget_s:
+            cob["pep_truncado"] = f"orçamento de tempo ({budget_s:.0f}s) atingido — consulta parcial"
+            break
+        nome = (s.get("nome") or "").strip()
+        cpf_full = _cpf_completo(s.get("doc"))
+        if len(nome) >= 6:
+            n_pep += 1
+            p = await verificar_pep(nome=nome)
+            if p.get("verificado") and p.get("eh_pep"):
+                detalhes = []
+                for x in (p.get("peps") or [])[:2]:
+                    parte = " — ".join(z for z in (x.get("funcao"), x.get("orgao")) if z)
+                    if parte:
+                        detalhes.append(parte)
+                descr = "; ".join(detalhes) if detalhes else "função/órgão não detalhados na base PEP"
+                pep_matches.append((nome, descr))
+        if cpf_full:
+            n_benef += 1
+            b = await verificar_beneficios(cpf_full)
+            if b.get("verificado") and b.get("recebe_beneficio"):
+                benef_matches.append((f"sócio {nome or cpf_full}", _tipos(b)))
+        else:
+            socio_mascarado = True
+
+    # ── H-PEP (relação política) ──
+    if pep_matches:
+        lista = "; ".join(f"{nm} ({d})" for nm, d in pep_matches[:4])
+        hip.append(_hip(
+            "H-PEP", "Sócio politicamente exposto (PEP) — relação política", "INDICIO", "MEDIO",
+            f"{len(pep_matches)} sócio(s) com correspondência na base de Pessoas Expostas Politicamente "
+            f"(PEP/CGU): {lista}. Vínculo político de sócio de empresa que contrata com o Estado é indício de "
+            "risco de conflito de interesses/favorecimento. A correspondência é por NOME e pode envolver "
+            "homônimo (o CPF do QSA é mascarado por LGPD) — confirmar identidade antes de qualquer conclusão.",
+            "Portal da Transparência/CGU (PEP)",
+            "art. 9º Lei 14.133/21 (impedimento); Lei 12.813/13 (conflito de interesses); art. 11 Lei 8.429/92", 8))
+    if n_pep:
+        cob["pep"] = f"verificado ({n_pep} sócio(s) consultado(s); {len(pep_matches)} correspondência(s) por nome)"
+    else:
+        cob["pep"] = "INDISPONIVEL (sem sócio pessoa física com nome no QSA)"
+
+    # ── H-BENEFICIO (laranja) ──
+    if benef_matches:
+        det = "; ".join(f"{quem}: {', '.join(t) or 'benefício social'}" for quem, t in benef_matches[:4])
+        hip.append(_hip(
+            "H-BENEFICIO", "Beneficiário de programa social de subsistência (indício de laranja)",
+            "INDICIO", "ALTO",
+            f"Vínculo com programa(s) social(is) de subsistência (CGU): {det}. Titular/sócio de empresa que "
+            f"recebe recursos públicos ({_moeda(total_pago)}) e que figura como beneficiário de transferência "
+            "de subsistência é indício clássico de interposição de pessoa (laranja) — apurar a capacidade "
+            "econômica real e a efetiva titularidade do negócio.",
+            "Portal da Transparência/CGU (PETI/Garantia-Safra/Seguro-Defeso)",
+            "art. 337-F CP; art. 11 Lei 8.429/92", 14))
+    if n_benef:
+        cob["beneficio_social"] = (f"verificado ({n_benef} CPF(s) completo(s) consultado(s); "
+                                   f"{len(benef_matches)} positivo(s))")
+    elif socio_mascarado:
+        cob["beneficio_social"] = "INDISPONIVEL (CPF dos sócios mascarado — LGPD; requer CPF completo)"
+    else:
+        cob["beneficio_social"] = "INDISPONIVEL (sem CPF completo p/ consultar)"
+    return {"hipoteses": hip, "cobertura": cob}
 
 
 # ───────────────────────── geocode (Nominatim) — proxy honesto de 'terreno baldio' ─────────────────────────

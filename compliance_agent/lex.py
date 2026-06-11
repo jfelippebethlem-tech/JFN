@@ -52,6 +52,8 @@ _RF = {
     "DD/H-SITUACAO": ("Situação cadastral irregular na Receita", "Art. 14 Lei 14.133; Art. 87 Lei 8.666/93"),
     "DD/H-PORTE": ("Volume recebido acima do teto do porte declarado", "LC 123/2006; Art. 4º Lei 14.133"),
     "DD/H-SOCIO-UNICO": ("Sócio único com sinais de fachada", "art. 337-F CP; art. 11 Lei 8.429/92"),
+    "DD/H-PEP": ("Sócio politicamente exposto (PEP) — relação política", "Art. 9º Lei 14.133; Lei 12.813/13; art. 11 Lei 8.429/92"),
+    "DD/H-BENEFICIO": ("Beneficiário de programa social de subsistência (laranja)", "art. 337-F CP; art. 11 Lei 8.429/92"),
 }
 
 
