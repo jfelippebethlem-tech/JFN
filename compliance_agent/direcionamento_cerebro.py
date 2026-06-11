@@ -257,7 +257,16 @@ async def gerar_gemini(messages: list[dict], model: str | None = None) -> str:
                     await _aio.sleep(3.0)
                 else:
                     break
-    raise RuntimeError(f"Gemini: {len(modelos)} modelos × {n} chaves falharam ({','.join(erros[:14])})")
+    # Rede de segurança de QUALIDADE: se TODAS as chaves/modelos Gemini falharem, cai p/ Cerebras
+    # (gpt-oss-120b, ultrarrápido, com saldo) — os produtos nunca ficam sem IA. Gemini continua o 1º (qualidade).
+    try:
+        from compliance_agent.llm.free_llm import cerebras_available, cerebras_chat_async
+        if cerebras_available():
+            return await cerebras_chat_async(
+                user_txt, system=(sys_txt + "\n\nResponda APENAS com JSON válido."), max_tokens=4096)
+    except Exception as e:  # noqa: BLE001
+        erros.append(f"cerebras:{str(e)[:24]}")
+    raise RuntimeError(f"Gemini+Cerebras: {len(modelos)} modelos × {n} chaves falharam ({','.join(erros[:14])})")
 
 
 async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, contexto: dict | None = None,

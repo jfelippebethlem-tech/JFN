@@ -380,6 +380,36 @@ async def cerebras_chat_async(prompt: str, system: str = "", smart: bool = False
         CEREBRAS_BASE, key, model, _cerebras_msgs(prompt, system), max_tokens=max(max_tokens, 2048))
 
 
+# ── Gemini no pool (rotação do pool de chaves do JFN via direcionamento_cerebro) ──
+# Qualidade alta: entra no pool free_llm para REDUNDÂNCIA (todas as IAs têm gemini também).
+# Import local p/ evitar import circular.
+def gemini_available() -> bool:
+    try:
+        from compliance_agent.direcionamento_cerebro import _gemini_keys
+        return bool(_gemini_keys())
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _gemini_msgs(prompt: str, system: str) -> list:
+    return ([{"role": "system", "content": system}] if system else []) + [{"role": "user", "content": prompt}]
+
+
+async def gemini_chat_async(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
+    from compliance_agent.direcionamento_cerebro import gerar_gemini
+    return await gerar_gemini(_gemini_msgs(prompt, system))
+
+
+def gemini_chat(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
+    import asyncio
+    try:
+        return asyncio.run(gemini_chat_async(prompt, system=system, smart=smart, max_tokens=max_tokens))
+    except RuntimeError:  # já há event loop rodando → roda em thread isolada
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor(1) as ex:
+            return ex.submit(lambda: asyncio.run(gemini_chat_async(prompt, system=system))).result()
+
+
 async def qwen_chat_async(prompt: str, system: str = "", smart: bool = False,
                           max_tokens: int = 1024) -> str:
     """Qwen como provedor PRIMÁRIO (via OpenRouter, evitando o 429 recorrente do Groq).
@@ -422,6 +452,8 @@ def best_free_chat(
         try:
             if provider == "cerebras" and cerebras_available():
                 return cerebras_chat(prompt, system=system, smart=smart)
+            elif provider == "gemini" and gemini_available():
+                return gemini_chat(prompt, system=system, smart=smart)
             elif provider == "ollama" and _ollama.is_available():
                 return _ollama.chat(prompt, system=system)
             elif provider == "groq" and groq_available():
@@ -456,6 +488,8 @@ async def best_free_chat_async(
         try:
             if provider == "cerebras" and cerebras_available():
                 return await cerebras_chat_async(prompt, system=system, smart=smart)
+            elif provider == "gemini" and gemini_available():
+                return await gemini_chat_async(prompt, system=system, smart=smart)
             elif provider == "ollama" and _ollama.is_available():
                 return _ollama.chat(prompt, system=system)
             elif provider == "groq" and groq_available():
@@ -473,8 +507,9 @@ async def best_free_chat_async(
 
 def _get_provider_order() -> list[str]:
     """Returns provider priority list based on FREE_LLM_PREFER."""
-    # Cerebras primeiro (ultrarrápido + com saldo); ollama (local) só se instalado; depois groq/openrouter.
-    all_providers = ["cerebras", "ollama", "groq", "openrouter"]
+    # Cerebras 1º (ultrarrápido/grátis, ideal p/ volume do sweep); GEMINI no pool p/ redundância+qualidade
+    # (fallback forte); ollama (local) só se instalado; depois groq/openrouter.
+    all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter"]
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]
