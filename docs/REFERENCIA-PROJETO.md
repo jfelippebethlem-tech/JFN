@@ -360,6 +360,27 @@ sweep; SIAFE 'hoje coletou?' sem timestamp; Massare prata; gap ambiguidade no fl
 web_search"); rotina Bom-Dia saiu truncada ("Mestre Yoda, a"); o Yoda **flailou 5+ msgs** sem saber do SEI sweep
 (falta em capabilities/conhecimento); confusão da resposta "1" (ambiguidade some no push assíncrono).
 
+**ATUALIZAÇÃO pós-queda da sessão de IA (a VM NÃO caiu — 5+ dias up; era limite de contexto do assistente):**
+- **Diretriz LLM consolidada do dono:** *sweep = só IA ilimitada/100% grátis* (nous `stepfun:free`) — mecânica,
+  não gasta; gemini/cerebras FORA do sweep. *Produtos = gemini (qualidade) + cerebras rede de segurança.*
+  *Pool free_llm e Yoda = têm cerebras E gemini (redundância).* "Cerebras onde for mais útil; qualidade em tudo."
+- **(1) Cerebras ✅** + **gemini adicionado ao pool free_llm** (`['cerebras','gemini',ollama,groq,openrouter]`,
+  redundância pedida) + **`gerar_gemini` cai p/ cerebras** se todas as chaves gemini falharem (produtos nunca sem IA).
+  Cerebras registrada no `PROVIDER_REGISTRY` do Yoda + 1º fallback no `config.yaml`. (commits `7fc9471`,`07c9d1a5`)
+- **(2) /orgao rico ✅** (`5b554ac`): sumário executivo+rating, geográfica, red flags ACFE/TCU + P×I (padrão Kroll).
+- **(3) SEI sweep ✅** (`9c4d550`): **BUG do supervisor** (via "nada novo" antigo no tail → `continue` → back-off
+  INFINITO) corrigido → voltou a varrer os **38.416 processos restantes**; unidades antes inalcançadas RENDEM docs
+  (ex.: 080002, 11.120 proc → 9-10 docs/proc). `_unidades_sem_acesso` pula unidades fora do acesso do itkava
+  (≥6 tentativas, todas 0 docs = INDISPONÍVEL por acesso) → "estudar todas as OBs" prático e honesto.
+- **(4) Erros do Yoda ✅:** `/api/siafe/stats` com `ultima_atualizacao`+`coletou_hoje` (resolve "hoje coletou?");
+  capability **`sweeps_status`** (Yoda agora conhece o SEI sweep); capability **`investigar_web`**
+  (`/api/compliance/investigar`, DuckDuckGo+notícias → conserta o cron de pesquisa web). Menores em aberto: Massare
+  não cobre prata; gap de ambiguidade no push async.
+- **SIAFE confirmado:** sweep full SIAFE 2 = **SWEEP COMPLETO** (backfill histórico); **OBs novas do dia** via
+  `siafe_runner diario` (cron 05:00, `coletou_hoje=True`, base 95.286 e subindo).
+- **Lição:** a "queda" foi da sessão de IA (contexto), não da VM — o trabalho persistiu (commits/.env/serviços);
+  ao retomar, **balanço antes de refazer** (muito já fora feito pelo eu pré-queda).
+
 ## 11. ⏯️ RETOMADA — INSTRUÇÕES PERMANENTES (ler ANTES de continuar, sessão nova)
 **Branch `feat/lista-limpa` (não pushado, tudo commitado). Serviço/sweeps vivos.** O dono pediu para continuar
 com TODAS estas instruções:
