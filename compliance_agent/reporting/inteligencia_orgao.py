@@ -622,6 +622,22 @@ def render_md(ctx: dict) -> str:
 
 # ───────────────────────────── render PDF ─────────────────────────────
 
+def _risco_orgao(ctx: dict) -> dict:
+    """Grau/score/achados de NÍVEL ÓRGÃO p/ o sumário executivo (reusa o motor do Lex). Score = indício
+    interno de atenção (concentração + padrões ACFE), NUNCA acusação."""
+    try:
+        from compliance_agent import lex
+        ach = lex._achados_orgao(ctx)
+        emoji, rotulo, just = lex._grau(ach)
+    except Exception:  # noqa: BLE001
+        ach, emoji, rotulo, just = [], "🟢", "VERDE", "sem indícios relevantes nos dados disponíveis"
+    p = ctx.get("pagamentos") or {}
+    top = float((p.get("hhi") or {}).get("top_share") or 0)
+    base = sum({1: 6, 2: 12, 3: 22, 4: 34}.get(a.get("grav", 0), 0) for a in ach)
+    score = min(99, int(base + min(top, 60) * 0.5))
+    return {"achados": ach, "emoji": emoji, "rotulo": rotulo, "just": just, "score": score}
+
+
 def render_pdf(ctx: dict, destino: str) -> str:
     from fpdf import FPDF
     p = ctx["pagamentos"]
@@ -652,6 +668,25 @@ def render_pdf(ctx: dict, destino: str) -> str:
     pdf.ln(1); pdf.set_font(pdf._fam, "", 9)
     _mc(pdf, 5, _t(_resumo(ctx)))
 
+    # ── SUMÁRIO EXECUTIVO: rating de risco + score (padrão due diligence) ──
+    if p["tem_dados"]:
+        _risco = _risco_orgao(ctx)
+        pdf.ln(3)
+        _cor = {"VERMELHO": (220, 53, 69), "AMARELO": (255, 150, 0), "VERDE": (40, 167, 69)}.get(_risco["rotulo"], (90, 90, 90))
+        pdf.set_fill_color(*_cor)
+        if _risco["rotulo"] == "AMARELO":
+            pdf.set_text_color(0, 0, 0)
+        else:
+            pdf.set_text_color(255, 255, 255)
+        pdf.set_font(pdf._fam, "B", 12)
+        pdf.cell(0, 9, _t(f"  GRAU DE ATENÇÃO: {_risco['rotulo']}   ·   Score de risco do órgão: {_risco['score']}/100"),
+                 fill=True, ln=True)
+        pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+        _mc(pdf, 4.5, _t(f"{_risco['just']}. O score é indício INTERNO de atenção (concentração + padrões ACFE), "
+                         "NÃO uma acusação. Os red flags e a matriz P×I estão abaixo; o detalhe jurídico, no Parecer Lex anexo."))
+    else:
+        _risco = {"achados": []}
+
     if p["tem_dados"]:
         pdf.ln(3); pdf.set_font(pdf._fam, "B", 12)
         pdf.cell(0, 8, _t("Pagamentos por exercício"), ln=True)
@@ -679,6 +714,23 @@ def render_pdf(ctx: dict, destino: str) -> str:
             rot = (_t(nome)[:74] + " [transf.intergov]") if eh_nao_fornecedor(nome) else _t(nome)[:86]
             _tab_row(pdf, [(rot, 130, "L"), (moeda(val), 36, "R"), (f"{val/tot*100:.1f}", 16, "R")], h=5)
 
+        # Concentração GEOGRÁFICA (sede dos fornecedores) — já calculada em ctx["geo"], antes descartada no PDF
+        geo = ctx.get("geo") or {}
+        if geo.get("ok") and geo.get("cidades"):
+            pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+            pdf.cell(0, 8, _t("Concentração geográfica (sede dos fornecedores)"), ln=True)
+            pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+            _mc(pdf, 4.5, _t(f"Em que cidades se sediam os fornecedores que o órgão paga (fração com endereço: "
+                             f"{geo.get('cobertura_valor', 0)*100:.0f}% do valor). Concentração alta em cidade pequena/"
+                             "distante da atuação do órgão é red flag de fachada/direcionamento (art. 337-F CP)."))
+            pdf.ln(1)
+            _tab_header(pdf, [("Cidade/UF", 70), ("Forn.", 18), ("OBs", 20), ("Valor (R$)", 40), ("%", 16)])
+            pdf.set_font(pdf._fam, "", 8)
+            for c in geo["cidades"][:12]:
+                cid = f"{c['cidade']}/{c['uf']}" if c.get("uf") else c["cidade"]
+                _tab_row(pdf, [(_t(cid)[:42], 70, "L"), (str(c["n_fornecedores"]), 18, "R"), (str(c["n_obs"]), 20, "R"),
+                               (moeda(c["total_pago"]), 40, "R"), (f"{c['pct']:.1f}", 16, "R")], h=4.8)
+
         # Pagamentos recorrentes de valor idêntico (ACFE identical payments)
         _grupos = _recorrentes_identicos(p)
         if _grupos:
@@ -693,6 +745,29 @@ def render_pdf(ctx: dict, destino: str) -> str:
             for g in _grupos[:12]:
                 _tab_row(pdf, [(_t(g["favorecido"])[:60], 96, "L"), (moeda(g["valor"]), 34, "R"),
                                (f"{g['n']}x", 14, "R"), (moeda(g["total"]), 38, "R")], h=4.8)
+
+        # Red flags do controle externo + matriz P×I (síntese; detalhe e fundamentos no Parecer Lex anexo)
+        _ach = _risco.get("achados") or []
+        pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+        pdf.cell(0, 8, _t("Red flags do controle externo (síntese · matriz P×I — TCU)"), ln=True)
+        pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+        if _ach:
+            from compliance_agent.lex import _RF
+            _tab_header(pdf, [("Indício (red flag)", 112), ("Grav.", 18), ("P×I", 16), ("Faixa", 28)])
+            pdf.set_font(pdf._fam, "", 8)
+            for a in _ach:
+                _nome = _RF.get(a["rf"], (a["rf"], ""))[0]
+                _pp = min(5, 2 + a["grav"] // 2); _ii = a["grav"]; _sc = _pp * _ii
+                _faixa = "Baixo" if _sc <= 4 else "Médio" if _sc <= 9 else "Alto" if _sc <= 14 else "Extremo"
+                _tab_row(pdf, [(_t(f"{a['rf']} — {_nome}")[:68], 112, "L"), (f"{a['grav']}/5", 18, "R"),
+                               (str(_sc), 16, "R"), (_faixa, 28, "L")], h=4.8)
+            pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(110, 110, 110)
+            _mc(pdf, 4, _t("Indícios a verificar (metodologia TCU P×I). Observação, fundamento legal e diligência "
+                           "sugerida de cada um estão no Parecer Lex anexo a este relatório."))
+            pdf.set_text_color(0, 0, 0)
+        else:
+            _mc(pdf, 4.5, _t("Nenhum red flag automático disparou a partir dos pagamentos (OB). Presunção de "
+                             "regularidade dos atos administrativos mantida."))
 
         # OBs por ano
         for a in p["anos"]:
