@@ -84,11 +84,15 @@ def _processos_do_fornecedor(ug: str, cnpj: str, db_path: str | Path | None = No
 
 
 def investigar_orgao(ug: str, *, top_n: int = 15, anos: list[int] | None = None,
-                     usar_beneficios: bool = False, db_path: str | Path | None = None) -> dict:
+                     usar_beneficios: bool = False, incluir_rodizio: bool = True,
+                     db_path: str | Path | None = None) -> dict:
     """Triagem de DD nos maiores fornecedores PJ da UG, ranqueada por grau/score.
 
     Retorna {ug, n_avaliados, ranking:[{cnpj,nome,total_pago,grau,score,n_indicios,n_confirmados,
-    codigos,processos_sei}], alvos_prioritarios, processos_prioritarios, resumo}.
+    codigos,processos_sei}], alvos_prioritarios, processos_prioritarios, rodizio, resumo}.
+
+    `rodizio` = indício de rodízio temporal de vencedores na UG (bid rotation) — só calculado em produção
+    (db_path None; o DuckDB ataca o compliance.db real). Degrada honesto (None se falhar).
     """
     forns = top_fornecedores_pj(ug, top_n=top_n, anos=anos, db_path=db_path)
     ranking: list[dict] = []
@@ -110,15 +114,30 @@ def investigar_orgao(ug: str, *, top_n: int = 15, anos: list[int] | None = None,
               f"{len(procs_prior)} processo(s) a priorizar no sweep SEI. "
               "Grau 🟢 = sem indício nas hipóteses verificáveis (não é atestado de regularidade); "
               "indício merece apuração, não é acusação.")
+    rodizio = None
+    if incluir_rodizio and db_path is None:
+        try:
+            from compliance_agent import rodizio_temporal
+            rod = rodizio_temporal.rodizio_orgao(str(ug))
+            rodizio = rod if rod.get("indicio") else {"indicio": False, "ug": str(ug)}
+        except Exception:  # noqa: BLE001 — degrada honesto
+            rodizio = None
     return {"ug": str(ug), "n_avaliados": len(ranking), "ranking": ranking,
-            "alvos_prioritarios": alvos, "processos_prioritarios": procs_prior, "resumo": resumo}
+            "alvos_prioritarios": alvos, "processos_prioritarios": procs_prior,
+            "rodizio": rodizio, "resumo": resumo}
 
 
 def render_md(out: dict) -> str:
     """Tabela de triagem priorizada (markdown) — para inspeção/CLI."""
-    L = [f"# Triagem de Due Diligence — UG {out['ug']}", "", out["resumo"], "",
-         "| # | Grau | Score | Fornecedor | Total pago | Indícios | Processos SEI |",
-         "|--:|:--:|--:|---|--:|---|--:|"]
+    L = [f"# Triagem de Due Diligence — UG {out['ug']}", "", out["resumo"], ""]
+    rod = out.get("rodizio")
+    if rod and rod.get("indicio"):
+        camps = ", ".join(f"{c['nome'][:24]} ({c['n_vitorias']}x)" for c in rod.get("campeoes", [])[:4])
+        L += [f"**⟳ Rodízio temporal (bid rotation):** score {rod.get('score')}, {rod.get('n_campeoes')} "
+              f"campeões revezando o 1º em {rod.get('n_anos')} exercícios (alternância {rod.get('alternancia')}, "
+              f"dominância {rod.get('share_ring')}). {camps}. Indício a corroborar (SEI/PNCP).", ""]
+    L += ["| # | Grau | Score | Fornecedor | Total pago | Indícios | Processos SEI |",
+          "|--:|:--:|--:|---|--:|---|--:|"]
     for i, r in enumerate(out["ranking"], 1):
         cods = ", ".join(c.replace("H-", "") for c in r["codigos"]) or "—"
         L.append(f"| {i} | {r['grau']} | {r['score']} | {r['nome'][:40]} | {_moeda(r['total_pago'])} "
