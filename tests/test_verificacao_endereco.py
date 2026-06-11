@@ -99,9 +99,39 @@ def test_backoff_escalona_e_limpa(monkeypatch):
     assert ve.em_backoff() == 0.0 and ve._backoff["nivel"] == 0
 
 
-def test_imagem_sem_chave_indisponivel(monkeypatch):
+def test_satelite_nunca_acusa_baldio_barraco(monkeypatch):
+    # lição Banco do Brasil: satélite (entorno, impreciso) classificou banco como 'barraco' → NÃO pode acusar
     monkeypatch.delenv("GOOGLE_MAPS_KEY", raising=False)
     monkeypatch.delenv("STREETVIEW_KEY", raising=False)
-    monkeypatch.delenv("MAPILLARY_TOKEN", raising=False)
-    out = ve._classificar_visual(-22.9, -43.2)
-    assert not out["ok"] and "INDISPONIVEL" in out["motivo"]
+    monkeypatch.setattr(ve, "_fetch_satelite_esri", lambda lat, lon, delta=0.0009: b"\x89PNGfake")
+    monkeypatch.setattr(ve, "_vlm_classificar", lambda img, fonte, endereco="": {
+        "ok": True, "classe": "construcao_precaria_barraco", "confianca": 0.8, "descricao": "x"})
+    out = ve.classificar_local_por_imagem(-15.77, -47.98, "Banco do Brasil")
+    assert out["status"] == "INDISPONIVEL"  # satélite não acusa
+    assert "Street View" in out["evidencia"]
+
+
+def test_streetview_acusa_barraco(monkeypatch):
+    # com fonte PRECISA (Street View) o barraco vira indício de verdade
+    monkeypatch.setenv("GOOGLE_MAPS_KEY", "k")
+    monkeypatch.setattr(ve, "_fetch_streetview_google", lambda lat, lon, chave: b"\xff\xd8\xfffake")
+    monkeypatch.setattr(ve, "_vlm_classificar", lambda img, fonte, endereco="": {
+        "ok": True, "classe": "terreno_baldio", "confianca": 0.7, "descricao": "lote vazio"})
+    out = ve.classificar_local_por_imagem(-22.9, -43.2, "Rua X")
+    assert out["status"] == "INDICIO" and "Street View" in out["fonte"]
+
+
+def test_satelite_afasta_area_construida(monkeypatch):
+    monkeypatch.delenv("GOOGLE_MAPS_KEY", raising=False)
+    monkeypatch.setattr(ve, "_fetch_satelite_esri", lambda lat, lon, delta=0.0009: b"\x89PNGfake")
+    monkeypatch.setattr(ve, "_vlm_classificar", lambda img, fonte, endereco="": {
+        "ok": True, "classe": "comercial_industrial", "confianca": 0.8, "descricao": "prédios"})
+    out = ve.classificar_local_por_imagem(-22.9, -43.17, "Av Rio Branco")
+    assert out["status"] == "AFASTADO"
+
+
+def test_imagem_indisponivel_sem_foto(monkeypatch):
+    monkeypatch.delenv("GOOGLE_MAPS_KEY", raising=False)
+    monkeypatch.setattr(ve, "_fetch_satelite_esri", lambda lat, lon, delta=0.0009: None)
+    out = ve.classificar_local_por_imagem(-22.9, -43.2)
+    assert out["status"] == "INDISPONIVEL" and not out["ok"]
