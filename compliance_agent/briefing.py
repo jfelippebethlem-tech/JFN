@@ -18,7 +18,11 @@ import re
 import sqlite3
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
+from email.utils import parsedate_to_datetime
 from pathlib import Path
+
+_MAX_IDADE_DIAS = 12  # notícia mais velha que isto é descartada (mata evergreen/2018 dos feeds)
 
 _REPO = Path(__file__).resolve().parent.parent
 _MASSARE_DB = _REPO / "massare" / "data" / "massare.db"
@@ -38,7 +42,19 @@ _WMO = {  # Open-Meteo weather codes -> PT
 def _http(url: str, timeout: int = 12) -> str:
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (JFN-Briefing)"})
     with urllib.request.urlopen(req, timeout=timeout) as r:
-        return r.read().decode("utf-8", "replace")
+        raw = r.read()
+        ct = r.headers.get_content_charset()
+    if not ct:  # detecta encoding declarado no XML/HTML (Folha é ISO-8859-1, p.ex.)
+        m = re.search(rb'encoding=["\']([\w-]+)["\']', raw[:200]) or re.search(rb'charset=["\']?([\w-]+)', raw[:600])
+        ct = m.group(1).decode("ascii", "ignore") if m else None
+    for enc in (ct, "utf-8", "latin-1"):
+        if not enc:
+            continue
+        try:
+            return raw.decode(enc)
+        except (LookupError, UnicodeDecodeError):
+            continue
+    return raw.decode("utf-8", "replace")
 
 
 def clima_barra() -> dict:
@@ -92,10 +108,39 @@ def mercado() -> dict:
     return out
 
 
-# RSS DIRETO dos portais: URL real (limpa, não o redirect gigante do Google News) + resumo (<description>).
-_FEEDS_BR = [("https://g1.globo.com/rss/g1/", "G1"), ("https://g1.globo.com/rss/g1/economia/", "G1 Economia")]
-_FEEDS_RJ = [("https://pox.globo.com/rss/g1/rio-de-janeiro/", "G1 Rio"),
-             ("https://oglobo.globo.com/rss/oglobo/rio/", "O Globo Rio")]
+# RSS de SEÇÕES DE POLÍTICA dos principais veículos (URL real do veículo, não o redirect do Google News).
+# (url, fonte, ja_e_politica): feeds de seção política aceitam tudo; feeds gerais do RJ são FILTRADOS por tema.
+_FEEDS_BR = [
+    ("https://g1.globo.com/rss/g1/politica/", "G1 Política", True),
+    ("https://feeds.folha.uol.com.br/poder/rss091.xml", "Folha (Poder)", True),
+    ("https://www.poder360.com.br/feed/", "Poder360", False),  # feed geral → exige tema político
+    ("https://agenciabrasil.ebc.com.br/rss/politica/feed.xml", "Agência Brasil", True),
+    ("https://www.estadao.com.br/arc/outboundfeeds/feeds/rss/sections/politica/?outputType=xml", "Estadão Política", True),
+]
+_FEEDS_RJ = [
+    ("https://pox.globo.com/rss/g1/rio-de-janeiro/", "G1 Rio", False),
+    ("https://oglobo.globo.com/rss/oglobo/rio/", "O Globo Rio", False),
+    ("https://diariodorio.com/feed/", "Diário do Rio", False),
+]
+
+# Termos para FILTRAR notícias de política em feeds gerais (RJ) e priorizar relevância (acento-insensível).
+_POL_KW = (
+    "politic", "governo", "governador", "prefeit", "alerj", "camara", "vereador", "deputad",
+    "eleic", "eleitor", "candidat", "tse", "stf", "stj", "senado", "congresso", "ministr",
+    "secretari", "orcamento", "lei ", "projeto de lei", "votac", "cpi", "ministerio publico",
+    "mp ", "tce", "tribunal de contas", "operacao", "investigac", "corrupc", "licitac",
+    "verba", "emenda", "partido", "campanha", "urna", "impeachment", "decreto", "assembleia",
+)
+# Ruído a descartar (esporte/entretenimento/serviço), mesmo se passar no filtro político.
+_NOISE_KW = (
+    "futebol", "flamengo", "vasco", "fluminense", "botafogo", "libertadores", "brasileirao",
+    "novela", "bbb", "horoscopo", "signos", "celebridad", "famoso", "receita de", "culinaria",
+    "o que fazer", "rio open", "carnaval bloco", "lotec", "mega-sena", "loteria",
+    "copa", "mundial", "brasil joga", "selecao", "jogo do brasil", "o que abre e o que fecha",
+)
+
+# Proxy de bypass de paywall (pedido do dono): toda URL de notícia é reescrita para isto.
+_SEMPAYWALL = "https://sempaywall.com/{}"
 
 
 def _limpa(s: str) -> str:
@@ -104,11 +149,54 @@ def _limpa(s: str) -> str:
     return re.sub(r"\s+", " ", s).strip()
 
 
-def _feed(url: str, fonte: str, n: int) -> list:
+def _sem_acento(s: str) -> str:
+    import unicodedata
+    return "".join(c for c in unicodedata.normalize("NFD", s.lower()) if unicodedata.category(c) != "Mn")
+
+
+def _url_real(link: str) -> str:
+    """URL real e limpa do veículo: resolve o redirect da Folha e tira parâmetros de rastreio."""
+    link = (link or "").strip()
+    if "redir.folha.com.br" in link and "*http" in link:
+        link = "http" + link.split("*http", 1)[1]  # tudo após o '*' é a URL real
+    link = re.split(r"[?#]", link, 1)[0]  # remove utm_/gclid/etc.
+    return link
+
+
+def _sempaywall(url: str) -> str:
+    return _SEMPAYWALL.format(url)
+
+
+def _relevante(titulo: str, link: str, ja_politica: bool) -> bool:
+    blob = _sem_acento(f"{titulo} {link}")
+    if any(n in blob for n in _NOISE_KW):
+        return False
+    if ja_politica:
+        return True  # feed já é de seção política
+    return any(k in blob for k in _POL_KW)  # feed geral (RJ): exige tema político
+
+
+def _quando(bloco: str):
+    """Data de publicação do item (RFC822). None se ausente/inválida."""
+    m = re.search(r"<pubDate>(.*?)</pubDate>", bloco, re.S) or re.search(r"<dc:date>(.*?)</dc:date>", bloco, re.S)
+    if not m:
+        return None
+    try:
+        dt = parsedate_to_datetime(m.group(1).strip())
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except (TypeError, ValueError):
+        try:
+            return datetime.fromisoformat(m.group(1).strip()).astimezone(timezone.utc)
+        except ValueError:
+            return None
+
+
+def _feed(url: str, fonte: str, ja_politica: bool, n: int) -> list:
     try:
         xml = _http(url, timeout=12)
     except Exception:
         return []
+    corte = datetime.now(timezone.utc) - timedelta(days=_MAX_IDADE_DIAS)
     itens = []
     for m in re.finditer(r"<item>(.*?)</item>", xml, re.S):
         b = m.group(1)
@@ -116,17 +204,24 @@ def _feed(url: str, fonte: str, n: int) -> list:
         l = re.search(r"<link>(.*?)</link>", b, re.S)
         d = re.search(r"<description>(.*?)</description>", b, re.S)
         titulo = _limpa(t.group(1)) if t else ""
-        link = (l.group(1).strip() if l else "")
+        link = _url_real(l.group(1) if l else "")
         tl = titulo.lower()
-        if not titulo or not link or "/noticia/" not in link:
-            continue  # só matérias reais (descarta vídeos, playlists, ao vivo, especiais)
+        if not titulo or not link.startswith("http"):
+            continue
         if tl.startswith(("vídeos:", "videos:")) or "ao vivo" in tl or any(
                 seg in link for seg in ("/ao-vivo/", "/videos", "/playlist/", "/podcast/")):
             continue
-        itens.append({"titulo": titulo, "url": link, "fonte": fonte, "resumo": _limpa(d.group(1))[:400] if d else ""})
-        if len(itens) >= n:
-            break
-    return itens
+        if not _relevante(titulo, link, ja_politica):
+            continue
+        quando = _quando(b)
+        if quando and quando < corte:
+            continue  # descarta evergreen/antigo (ex.: itens de 2018 no feed do G1 Rio)
+        itens.append({
+            "titulo": titulo, "url": _sempaywall(link), "url_real": link, "fonte": fonte,
+            "resumo": _limpa(d.group(1))[:400] if d else "", "_quando": quando,
+        })
+    itens.sort(key=lambda it: it.get("_quando") or corte, reverse=True)  # mais recentes primeiro
+    return itens[:n]
 
 
 def _texto_artigo(url: str, limite: int = 1800) -> str:
@@ -148,24 +243,38 @@ def _texto_artigo(url: str, limite: int = 1800) -> str:
     return re.sub(r"\s+", " ", " ".join(out))[:limite]
 
 
-def _coletar(feeds: list, n: int) -> list:
-    out = []
-    for url, fonte in feeds:
-        out += _feed(url, fonte, n - len(out))
-        if len(out) >= n:
-            break
-    out = out[:n]
-    for it in out:  # enriquece com a íntegra (p/ resumo raciocinado de até 5 linhas)
-        it["texto"] = _texto_artigo(it["url"])
+def _dedup(itens: list) -> list:
+    visto, out = set(), []
+    for it in itens:
+        dom = re.sub(r"^https?://(www\.)?", "", it["url_real"]).split("/")[0]
+        chave = (dom, _sem_acento(it["titulo"])[:60])
+        if chave in visto:
+            continue
+        visto.add(chave)
+        out.append(it)
     return out
 
 
-def noticias() -> dict:
-    """10 notícias (5 Brasil + 5 Rio) via RSS DIRETO: URL real limpa + `texto` (íntegra) p/ resumo raciocinado.
+def _coletar(feeds: list, n: int) -> list:
+    por_fonte = [_feed(url, fonte, ja_pol, 4) for url, fonte, ja_pol in feeds]
+    # round-robin entre as fontes p/ DIVERSIDADE (1ª de cada, depois 2ª de cada…) — evita "tudo do mesmo veículo".
+    intercalado = []
+    for i in range(max((len(x) for x in por_fonte), default=0)):
+        for lst in por_fonte:
+            if i < len(lst):
+                intercalado.append(lst[i])
+    cand = _dedup(intercalado)[:n]
+    for it in cand:  # enriquece SÓ os escolhidos com a íntegra (p/ resumo raciocinado)
+        it["texto"] = _texto_artigo(it["url_real"])
+        it.pop("_quando", None)  # datetime não serializa em JSON
+    return cand
 
-    O campo `texto` é o CORPO da matéria — a rotina BOM DIA deve LER e RACIOCINAR sobre ele para produzir um
-    resumo de até 5 linhas (NÃO transcrever). `resumo` é só a chamada do RSS (fallback se a íntegra falhar)."""
-    return {"brasil": _coletar(_FEEDS_BR, 5), "rio": _coletar(_FEEDS_RJ, 5)}
+
+def noticias() -> dict:
+    """8 notícias de POLÍTICA (4 Brasil + 4 Rio) de fontes VARIADAS. `url` já vem via sempaywall (bypass de
+    paywall); `url_real` é a do veículo. `texto` é a íntegra — a rotina deve LER e RACIOCINAR (resumo de até
+    3 linhas, NÃO transcrever); `resumo` é a chamada do RSS (fallback se a íntegra falhar)."""
+    return {"brasil": _coletar(_FEEDS_BR, 4), "rio": _coletar(_FEEDS_RJ, 4)}
 
 
 def dados() -> dict:
