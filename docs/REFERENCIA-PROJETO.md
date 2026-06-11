@@ -144,7 +144,9 @@ oportunístico. Sem mypy/coverage rodando ainda (instalados). Ruff baseline 37.
 ## 9. PENDÊNCIAS DEPENDENTES DO DONO
 - **SIAFE 1**: liberar a chave/perfil p/ todas as UGs (conta ALERJ-only).
 - **SEI de outras unidades**: o itkava lê seu escopo; processos fora (ex.: Saúde/Previdência) = 0 docs (acesso).
-- **CEIS/CNEP**: consertar o download keyless do CSV da CGU OU `TRANSPARENCIA_API_KEY`.
+- **CEIS/CNEP**: ✅ RESOLVIDO (sessão 2026-06-11 cont.7) — via API com a chave `PORTAL_TRANSPARENCIA_KEY` já
+  presente no `.env` (contrato `codigoSancionado`/`cnpjSancionado` por endpoint). O download keyless do CSV foi
+  descontinuado pela CGU (405) e está honestamente desativado. Nada pendente do dono aqui.
 - **LLM do Yoda (Gemini)**: repor crédito/rotacionar billing das chaves sem saldo (proj1–3) e **renovar os
   tokens OAuth "AQ." manuais** do pool (`~/.hermes/auth.json`) quando expirarem — sem auto-refresh (caem no nous
   grátis até lá). Rotação já é resiliente (cooldown 12h p/ billing esgotado). Ver §10 (cont. 5) e
@@ -380,6 +382,51 @@ web_search"); rotina Bom-Dia saiu truncada ("Mestre Yoda, a"); o Yoda **flailou 
   `siafe_runner diario` (cron 05:00, `coletou_hoje=True`, base 95.286 e subindo).
 - **Lição:** a "queda" foi da sessão de IA (contexto), não da VM — o trabalho persistiu (commits/.env/serviços);
   ao retomar, **balanço antes de refazer** (muito já fora feito pelo eu pré-queda).
+
+### Sessão 2026-06-11 (continuação 7 — 3 frentes do dono: bom dia, sanções, relatórios raciocinados)
+**Tema:** o dono apontou 3 frentes e mandou "criar solução pra tudo": (A) cron do **bom dia** grande,
+notícias irrelevantes, **só G1**, sem usar `sempaywall.com`; (B) **/relatorio e Lex sem pensamento**
+(automação) — cruzamento não raciocinado, **OSINT não usadas**; (C) [descoberto] **CEIS/CNEP
+falso-negativo**. Plano refinado no Ultraplan; execução local em loops medidos.
+**Loop A — Bom dia (FEITO, commit `57e56e9`):** reescrito `compliance_agent/briefing.py`. Antes: feeds
+**G1-only**, sem filtro de tema, sem sempaywall, scraping frágil. Depois: seções de **POLÍTICA** de
+veículos variados com **URL real** (G1 Política, Folha/Poder, Poder360, Agência Brasil, Estadão; RJ:
+G1 Rio, O Globo Rio, Diário do Rio), **round-robin** p/ diversidade, **filtro político + descarte de
+ruído**, **toda URL via `https://sempaywall.com/<URL>`**, **recência** (corte 12d mata evergreen/2018),
+**detecção de encoding** (corrige mojibake da Folha ISO-8859-1), resolve redirect da Folha, dedup.
+Prompt da rotina (`~/.hermes/cron/jobs.json` job `81cae9684db0`) enxugado **2114→1372** (8 notícias 4+4,
+resumo ≤3 linhas). **Medição:** `/api/briefing/dados` ao vivo = HTTP 200, **6 fontes distintas**, 4+4,
+política, 100% sempaywall (antes: só globo.com). Golden numbers verdes; ruff limpo. **Sem restart do bot**
+(scheduler relê `jobs.json` por tick). **Achados/lições:** decodificar URL do Google News
+(`batchexecute`) está **quebrado** no formato 2025 e GDELT **429 agressivo** da VM → o caminho robusto
+foi **RSS de seção dos veículos** (URL real, sem decode/rate-limit), honrando o objetivo do dono
+(multi-fonte por tema) sem fragilidade.
+**Loop C — Sanções CEIS/CNEP (FEITO, commit `05256af`):** a checagem SEMPRE dava "limpo" (falso-negativo):
+(a) URL keyless do CSV da CGU morreu (405); (b) chave válida em `PORTAL_TRANSPARENCIA_KEY` mas o código lia
+`TRANSPARENCIA_API_KEY` (vazia); (c) coletor antigo com header errado (`chave-api`→401) e param errado
+(`cnpjSancionado`, IGNORADO → página inteira = falso-positivo). **Contrato verificado (swagger+vivo):** header
+`chave-api-dados`; filtro **`codigoSancionado`** em CEIS/CNEP e **`cnpjSancionado`** em CEPIM (só CNPJ).
+`collectors/ceis.py` reescrito (API, CEIS+CNEP+CEPIM, cache 7d, retorno HONESTO `{verificado,sancionado,
+motivo}`; verificado=False=INDISPONÍVEL, nunca "limpo"); os 3 bugs do `relatorio_riscos/collectors/sancoes.py`
+corrigidos; `dossie.py` só pontua se verificado; render do /relatorio mostra INDISPONÍVEL vs SANCIONADA vs nada
+localizado (verificado). **Medido:** AUSION `17467094000106`=SANCIONADA(3 CEIS); `11222333000181`/MGS=verificado
++nada localizado (sem falso-positivo); sem chave=INDISPONÍVEL. 27+3 testes verdes.
+**Loop B — Relatórios raciocinados + OSINT (FEITO, commits `a1fe94c` /relatorio · `34f5513` /orgao):** o parecer
+era template fixo (automação). Nova seção **"Análise raciocinada — cruzamento dos achados"**: compila os FATOS já
+coletados (pagamentos/HHI, cruzamento sócio×endereço×SEI, conflito TSE, sanções verificadas, diários oficiais,
+red flags) → **gemini→cerebras (bounded 45s) CONECTA os achados** em linguagem condicional. Roda via
+`asyncio.to_thread` (não bloqueia o event loop) e **degrada honesto** (o parecer-template segue como base — sem
+repetir o erro da V2). Renderizada no MD, no **PDF entregue** (HTML §11-B no /relatorio; FPDF no /orgao) e fallback.
+**OSINT keyless ativada:** Querido Diário (diários oficiais municipais) no /relatorio. `_normaliza_raciocinio`
+converte saída JSON/dict do LLM em bullets limpos. **Medido no PDF ENTREGUE:** MGS conecta volume+concentração
+59,1%(Bombeiros)+17 OBs zero; ITERJ conecta 61,2% Enge Prat+61% Petrópolis→hipótese de direcionamento; números
+golden preservados (R$ 136.225.497,94/1127; R$ 292.292.309,08); 0 JSON cru, 0 tofu. Lex já raciocina (gemini/SEI).
+**Recursos (fim):** load 0.90 · RAM 4.2G livre/7,8G · disco 32G livre/48G (35%) · WAL 4K · sweeps vivos
+(SEI supervisor relançando). **Sem necessidade de liberar espaço.**
+**Lições desta sessão:** (1) decode de URL do Google News (`batchexecute`) quebrado em 2025 e GDELT 429 da VM →
+RSS de seção dos veículos (URL real) é o caminho robusto. (2) o falso-negativo de sanção era 3 bugs, não só
+"download quebrado" — ler a doc da API (swagger) revelou o param certo por endpoint. (3) reabilitar LLM nos
+produtos é seguro QUANDO assíncrono+bounded+degrada-honesto+medido no PDF real (respeita a lição da V2).
 
 ## 11. ⏯️ RETOMADA — INSTRUÇÕES PERMANENTES (ler ANTES de continuar, sessão nova)
 **Branch `feat/lista-limpa` (não pushado, tudo commitado). Serviço/sweeps vivos.** O dono pediu para continuar
