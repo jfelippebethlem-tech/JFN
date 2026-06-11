@@ -80,36 +80,75 @@ def _salva_cache() -> None:
         pass
 
 
+def _cep_fmt(cep: str | None) -> str:
+    d = re.sub(r"\D", "", str(cep or ""))
+    return f"{d[:5]}-{d[5:]}" if len(d) == 8 else ""
+
+
+def _variantes_consulta(endereco: str, municipio: str | None, uf: str | None, cep: str | None) -> list[str]:
+    """Variações de busca, da mais específica à menos — periferia mal-mapeada exige usar o CEP e cair p/ a rua.
+
+    Lição NEW LINK (2026-06-11): 'TAPAJOS, 60, ...' falha no Nominatim, mas com CEP e prefixo 'Rua' resolve —
+    não confundir cobertura ruim do OSM com endereço inexistente."""
+    cep = _cep_fmt(cep)
+    via = (endereco or "").split(",")[0].strip()  # só o logradouro (sem número/bairro)
+    tem_tipo = bool(re.match(r"(?i)\s*(rua|av|avenida|estrada|travessa|rod|alameda|praca|praça|r\.|estr)\b", via))
+    via_pref = via if tem_tipo or not via else f"Rua {via}"
+    cauda = ", ".join(p for p in [municipio, uf, "Brasil"] if p)
+    vs = []
+    if endereco:
+        vs.append(", ".join(p for p in [endereco, municipio, uf, cep, "Brasil"] if p))
+        if not tem_tipo:
+            vs.append(", ".join(p for p in [f"Rua {endereco}", municipio, uf, cep, "Brasil"] if p))
+        vs.append(", ".join(p for p in [via_pref, cep, cauda] if p))          # logradouro + CEP
+        vs.append(", ".join(p for p in [via_pref, cauda] if p))                # logradouro só
+    if cep:
+        vs.append(f"{cep}, Brasil")                                           # CEP puro (centroide da rua)
+    # dedup preservando ordem
+    vis, seen = [], set()
+    for v in vs:
+        if v and v not in seen:
+            seen.add(v)
+            vis.append(v)
+    return vis
+
+
 def geocodificar(endereco: str, municipio: str | None = None, uf: str | None = None,
                  cep: str | None = None) -> dict:
-    """Nominatim → {ok, lat, lon, classe, tipo, display, municipio_geo, bate_municipio, motivo}."""
+    """Nominatim com fallback de variações (usa o CEP) → {ok, lat, lon, classe, tipo, display,
+    municipio_geo, bate_municipio, exato, motivo}. `exato`=False quando caiu p/ a rua/CEP (não o nº)."""
     base = {"ok": False, "lat": None, "lon": None, "classe": "", "tipo": "", "display": "",
-            "municipio_geo": "", "bate_municipio": None, "motivo": ""}
+            "municipio_geo": "", "bate_municipio": None, "exato": False, "motivo": ""}
     try:
         import httpx
     except Exception:
         return {**base, "motivo": "httpx ausente"}
-    consulta = ", ".join(p for p in [endereco, municipio, uf, "Brasil"] if p)
-    params = {"q": consulta, "format": "jsonv2", "addressdetails": 1, "limit": 1, "countrycodes": "br"}
-    # rate-limit Nominatim (política de uso: ≤1 req/s)
-    dt = time.time() - _ult_nominatim[0]
-    if dt < 1.1:
-        time.sleep(1.1 - dt)
-    _ult_nominatim[0] = time.time()
-    try:
-        r = httpx.get("https://nominatim.openstreetmap.org/search", params=params,
-                      headers={"User-Agent": _UA}, timeout=15)
-        if r.status_code in (429, 503) or r.status_code >= 500:
-            _marca_backoff()
-            return {**base, "motivo": f"HTTP {r.status_code} (back-off)"}
-        if r.status_code != 200:
-            return {**base, "motivo": f"HTTP {r.status_code}"}
-        data = r.json()
-        _limpa_backoff()
-    except Exception as e:  # noqa: BLE001
-        return {**base, "motivo": str(e)[:60]}
+    variantes = _variantes_consulta(endereco, municipio, uf, cep)
+    data, idx = None, -1
+    for i, consulta in enumerate(variantes):
+        params = {"q": consulta, "format": "jsonv2", "addressdetails": 1, "limit": 1, "countrycodes": "br"}
+        dt = time.time() - _ult_nominatim[0]  # rate-limit Nominatim (≤1 req/s)
+        if dt < 1.1:
+            time.sleep(1.1 - dt)
+        _ult_nominatim[0] = time.time()
+        try:
+            r = httpx.get("https://nominatim.openstreetmap.org/search", params=params,
+                          headers={"User-Agent": _UA}, timeout=15)
+            if r.status_code in (429, 503) or r.status_code >= 500:
+                _marca_backoff()
+                return {**base, "motivo": f"HTTP {r.status_code} (back-off)"}
+            if r.status_code != 200:
+                return {**base, "motivo": f"HTTP {r.status_code}"}
+            d = r.json()
+            _limpa_backoff()
+        except Exception as e:  # noqa: BLE001
+            return {**base, "motivo": str(e)[:60]}
+        if d:
+            data, idx = d, i
+            break
     if not data:
-        return {**base, "motivo": "endereço não localizado"}
+        return {**base, "motivo": "endereço não localizado (nem por logradouro/CEP)"}
+    base["exato"] = idx == 0  # só a 1ª variante mira o nº; as demais são logradouro/CEP (centroide)
     f = data[0]
     addr = f.get("address") or {}
     mun_geo = (addr.get("city") or addr.get("town") or addr.get("municipality")
@@ -120,7 +159,7 @@ def geocodificar(endereco: str, municipio: str | None = None, uf: str | None = N
     return {"ok": True, "lat": float(f["lat"]), "lon": float(f["lon"]),
             "classe": (f.get("category") or f.get("class") or "").lower(),
             "tipo": (f.get("type") or "").lower(), "display": f.get("display_name", ""),
-            "municipio_geo": mun_geo, "bate_municipio": bate, "motivo": ""}
+            "municipio_geo": mun_geo, "bate_municipio": bate, "exato": base["exato"], "motivo": ""}
 
 
 def edificacao_no_ponto(lat: float, lon: float, raio: int = 35) -> dict:
@@ -204,10 +243,25 @@ def analisar_endereco(endereco: str, municipio: str | None = None, uf: str | Non
         _salva_cache()
         return out
 
-    ed = edificacao_no_ponto(g["lat"], g["lon"]) if usar_overpass else {"ok": False, "motivo": "não solicitado"}
+    # Overpass só faz sentido sobre o PONTO do número; no centroide da rua/CEP, 'sem prédio' é ruído.
+    ed = (edificacao_no_ponto(g["lat"], g["lon"]) if (usar_overpass and g.get("exato"))
+          else {"ok": False, "motivo": "geocode no nível da rua/CEP (não do nº) — edificação não checada"})
     sinais["edificacao"] = ed
-    if usar_imagem:
+    if usar_imagem and g.get("exato"):
         sinais["imagem"] = _classificar_visual(g["lat"], g["lon"])
+
+    # resolveu só no nível da rua/CEP (não o nº) → existência da via OK, mas sem veredito de baldio (honesto)
+    if not g.get("exato"):
+        out = {"status": "INDISPONIVEL", "nivel": "BAIXO", "peso": 0,
+               "estado": f"verificado (logradouro existe; nº não geolocalizado em {g['municipio_geo']})",
+               "evidencia": ("O logradouro da sede EXISTE no mapa, mas o número exato não foi geolocalizado "
+                             "(cobertura cartográfica do nº incompleta) — não dá p/ afirmar baldio/edificação por "
+                             "esta via; checar por imagem de rua/in loco. A via existir afasta a hipótese de "
+                             "endereço inexistente."),
+               "sinais": sinais}
+        cache[chave] = {**out, "_ts": time.time()}
+        _salva_cache()
+        return out
 
     # terreno não edificado (baldio): sem prédio no ponto E/ou landuse de área vaga
     if ed.get("ok") and ed.get("tem_predio") is False:
