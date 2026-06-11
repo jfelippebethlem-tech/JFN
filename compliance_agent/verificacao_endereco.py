@@ -231,11 +231,25 @@ def analisar_endereco(endereco: str, municipio: str | None = None, uf: str | Non
         _salva_cache()
         return out
 
-    # endereço resolve mas em município diferente do declarado → forte indício de incoerência
+    # ⚠ Match coarse (logradouro/CEP, não o nº) é RUIDOSO p/ município — pode cair em cidade errada por
+    # fallback do Nominatim (lição 036100: 83 falsas 'divergências', todas exato=False). NÃO afirmar nada.
+    if not g.get("exato"):
+        out = {"status": "INDISPONIVEL", "nivel": "BAIXO", "peso": 0,
+               "estado": "verificado (logradouro/CEP resolve; nº não geolocalizado)",
+               "evidencia": ("O endereço resolve apenas no nível do logradouro/CEP (o número exato não está na "
+                             "base cartográfica aberta) — cobertura incompleta; não dá p/ afirmar baldio nem "
+                             "divergência de município por esta via. Confirmar por imagem de rua/in loco."),
+               "sinais": sinais}
+        cache[chave] = {**out, "_ts": time.time()}
+        _salva_cache()
+        return out
+
+    # ── daqui p/ baixo o geocode mirou o NÚMERO (exato=True) → veredito confiável ──
+    # município divergente COM o nº resolvido em cidade diferente da declarada → incoerência real
     if g["bate_municipio"] is False:
         out = {"status": "INDICIO", "nivel": "ALTO", "peso": 12,
                "estado": f"verificado (município diverge: declarado≠{g['municipio_geo']})",
-               "evidencia": (f"O endereço declarado resolve no mapa em **{g['municipio_geo']}**, divergente do "
+               "evidencia": (f"O número da sede resolve no mapa em **{g['municipio_geo']}**, divergente do "
                              f"município declarado ('{municipio}'). Incoerência entre a sede declarada e a "
                              "localização real é indício de endereço fictício — apurar."),
                "sinais": sinais}
@@ -243,25 +257,10 @@ def analisar_endereco(endereco: str, municipio: str | None = None, uf: str | Non
         _salva_cache()
         return out
 
-    # Overpass só faz sentido sobre o PONTO do número; no centroide da rua/CEP, 'sem prédio' é ruído.
-    ed = (edificacao_no_ponto(g["lat"], g["lon"]) if (usar_overpass and g.get("exato"))
-          else {"ok": False, "motivo": "geocode no nível da rua/CEP (não do nº) — edificação não checada"})
+    ed = edificacao_no_ponto(g["lat"], g["lon"]) if usar_overpass else {"ok": False, "motivo": "não solicitado"}
     sinais["edificacao"] = ed
-    if usar_imagem and g.get("exato"):
+    if usar_imagem:
         sinais["imagem"] = _classificar_visual(g["lat"], g["lon"])
-
-    # resolveu só no nível da rua/CEP (não o nº) → existência da via OK, mas sem veredito de baldio (honesto)
-    if not g.get("exato"):
-        out = {"status": "INDISPONIVEL", "nivel": "BAIXO", "peso": 0,
-               "estado": f"verificado (logradouro existe; nº não geolocalizado em {g['municipio_geo']})",
-               "evidencia": ("O logradouro da sede EXISTE no mapa, mas o número exato não foi geolocalizado "
-                             "(cobertura cartográfica do nº incompleta) — não dá p/ afirmar baldio/edificação por "
-                             "esta via; checar por imagem de rua/in loco. A via existir afasta a hipótese de "
-                             "endereço inexistente."),
-               "sinais": sinais}
-        cache[chave] = {**out, "_ts": time.time()}
-        _salva_cache()
-        return out
 
     # terreno não edificado (baldio): sem prédio no ponto E/ou landuse de área vaga
     if ed.get("ok") and ed.get("tem_predio") is False:

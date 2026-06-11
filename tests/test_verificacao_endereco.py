@@ -19,14 +19,27 @@ def test_nao_resolvido_indicio(monkeypatch, tmp_path):
     assert "não localizado" in out["evidencia"]
 
 
-def test_municipio_divergente_indicio_alto(monkeypatch, tmp_path):
+def test_municipio_divergente_so_quando_exato(monkeypatch, tmp_path):
+    # divergência só vale com o NÚMERO resolvido (exato=True); senão é ruído de match coarse
     _reset(monkeypatch, tmp_path)
     monkeypatch.setattr(ve, "geocodificar", lambda *a, **k: {
         "ok": True, "lat": -22.9, "lon": -43.2, "classe": "place", "tipo": "house",
-        "display": "...", "municipio_geo": "Niterói", "bate_municipio": False})
+        "display": "...", "municipio_geo": "Niterói", "bate_municipio": False, "exato": True})
+    monkeypatch.setattr(ve, "edificacao_no_ponto", lambda *a, **k: {"ok": False})
     out = ve.analisar_endereco("RUA X 1", "Rio de Janeiro", "RJ")
     assert out["status"] == "INDICIO" and out["nivel"] == "ALTO"
     assert "Niterói" in out["evidencia"]
+
+
+def test_divergencia_coarse_nao_acusa(monkeypatch, tmp_path):
+    # lição 036100: match coarse (exato=False) em município diferente NÃO vira indício — INDISPONÍVEL honesto
+    _reset(monkeypatch, tmp_path)
+    monkeypatch.setattr(ve, "geocodificar", lambda *a, **k: {
+        "ok": True, "lat": -22.8, "lon": -42.3, "classe": "place", "tipo": "city",
+        "display": "...", "municipio_geo": "Araruama", "bate_municipio": False, "exato": False})
+    out = ve.analisar_endereco("RUA, CONSELHEIRO SARAIVA, 28", "Rio de Janeiro", "RJ", "20091030")
+    assert out["status"] == "INDISPONIVEL"
+    assert "logradouro/CEP" in out["evidencia"]
 
 
 def test_terreno_nao_edificado_baldio(monkeypatch, tmp_path):
@@ -51,7 +64,7 @@ def test_logradouro_existe_mas_numero_nao_geolocalizado(monkeypatch, tmp_path):
         "display": "...", "municipio_geo": "São João de Meriti", "bate_municipio": True, "exato": False})
     out = ve.analisar_endereco("TAPAJOS, 60", "São João de Meriti", "RJ", "25585650")
     assert out["status"] == "INDISPONIVEL"
-    assert "logradouro" in out["evidencia"].lower() and "afasta" in out["evidencia"].lower()
+    assert "logradouro/CEP" in out["evidencia"]
 
 
 def test_cep_fmt_e_variantes():
