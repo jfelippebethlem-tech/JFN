@@ -838,6 +838,60 @@ def _realidade_sede(cnpj: str) -> str:
     return f"- **Realidade da sede:** {t}" if t else ""
 
 
+def _beneficios_socios(cnpj: str) -> dict:
+    """Cruzamento inteligente: benefícios sociais (laranja) dos sócios/admin deste fornecedor (degrada honesto)."""
+    try:
+        from compliance_agent.reporting import beneficios_view as bv
+        return bv.por_fornecedor(so_digitos(cnpj))
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _render_beneficios_socios(ctx: dict) -> str:
+    """Seção 1-C — benefícios de subsistência dos sócios/administradores deste fornecedor (indício de laranja).
+    Cruzamento INTELIGENTE: dado completo + leitura raciocinada + conclusão honesta (indício, nunca acusação)."""
+    from compliance_agent.reporting import beneficios_view as bv
+    b = ctx.get("beneficios_socios")
+    if b is None:
+        b = _beneficios_socios(ctx.get("cnpj", ""))
+    L: list[str] = []
+    add = L.append
+    add("## 1-C. BENEFÍCIOS SOCIAIS DOS SÓCIOS/ADMINISTRADORES (INDÍCIO DE LARANJA)")
+    add("")
+    add("> Cruza o **CPF dos sócios/administradores** do QSA com os **benefícios de subsistência** por CPF "
+        "(Bolsa Família, BPC, Auxílio Emergencial, PETI, Garantia-Safra, Seguro-Defeso — Portal da "
+        "Transparência/CGU). Ser **dono/gestor** de empresa que recebe recursos públicos **e** receber benefício "
+        "de subsistência é **indício clássico de testa-de-ferro (laranja)** — interposição de pessoas (art. 337-F "
+        "CP; art. 11 Lei 8.429/92). CPF mascarado (LGPD); resolvido por fontes oficiais (favorecidos PF + TSE). "
+        "**INDISPONÍVEL ≠ ausência de benefício.**")
+    add("")
+    if not b or not b.get("total_qsa"):
+        add("_Sem sócios/administradores com CPF mascarado no QSA deste fornecedor (ou QSA público não ingerido) "
+            "— **INDISPONÍVEL** (não equivale a ausência de benefício)._")
+        return "\n".join(L)
+    add(bv.leitura(b, escopo="deste fornecedor"))
+    add("")
+    add(f"- Sócios/administradores no QSA (mascarados): **{b['total_qsa']}** · já varridos: **{b['n_varridos']}** · "
+        f"CPF resolvido: **{b['n_resolvidos']}** · verificados: **{b['n_verificados']}** ({b['cobertura']}%) · "
+        f"**INDISPONÍVEL:** {b['n_indisponivel']}")
+    itens = b.get("itens") or []
+    if itens:
+        add("")
+        add("| Sócio/Administrador | Papel | Benefício | Fonte do CPF |")
+        add("|---|---|---|---|")
+        _f = {"favorecidos_pf": "favorecidos PF", "tse_doadores": "doadores TSE"}
+        for it in itens:
+            tipos = ", ".join(it.get("tipos") or []) or "(tipo não detalhado)"
+            add(f"| {it.get('nome', '')} | {it.get('papel', '')} | {tipos} | "
+                f"{_f.get(it.get('fonte', ''), it.get('fonte', '') or '—')} |")
+        add("")
+        add("> 🟡 **Indício a confirmar:** sócio/gestor que recebe benefício de subsistência sugere **interposição "
+            "de pessoas (laranja)** — confirmar no contrato social, na procuração e no processo SEI. **Indício, não "
+            "prova.** CPF de uso interno (LGPD).")
+    add("")
+    return "\n".join(L)
+
+
 def render_md(ctx: dict) -> str:
     p = ctx["pagamentos"]
     L: list[str] = []
@@ -917,6 +971,9 @@ def render_md(ctx: dict) -> str:
 
     # 1-B. Cruzamento sócio × OB (SIAFE) × processo SEI × endereço
     add(_render_cruzamento(ctx))
+
+    # 1-C. Cruzamento de benefícios sociais dos sócios/administradores (laranja/testa-de-ferro)
+    add(_render_beneficios_socios(ctx))
 
     # 3. Pagamentos (OBs) por ano — TABELA POR ANO (requisito do Mestre Jorge)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
@@ -1218,6 +1275,15 @@ def _fatos_para_raciocinio(ctx: dict) -> str:
     if gz.get("total"):
         muns = ", ".join(dict.fromkeys(f"{i['municipio']}/{i['uf']}" for i in (gz.get("itens") or [])[:5] if i.get("municipio")))
         L.append(f"Diários oficiais (Querido Diário): {gz['total']} menção(ões) ao nome em diários municipais; ex.: {muns}.")
+    bs = ctx.get("beneficios_socios") or _beneficios_socios(ctx.get("cnpj", ""))
+    if bs.get("n_verificados"):
+        if bs.get("n_com_beneficio"):
+            L.append(f"Benefício social de subsistência (laranja): {bs.get('n_pessoas_beneficio', 0)} sócio(s)/"
+                     f"administrador(es) verificado(s) recebe(m) benefício (de {bs['n_verificados']} verificados) — "
+                     "indício de interposição de pessoas (testa-de-ferro), a confirmar no contrato social/SEI.")
+        else:
+            L.append(f"Benefício social dos sócios/administradores: {bs['n_verificados']} verificado(s), nenhum "
+                     "recebe benefício de subsistência (indício de laranja afastado para os verificados).")
     try:
         rf = _red_flags(ctx)
         if rf:
