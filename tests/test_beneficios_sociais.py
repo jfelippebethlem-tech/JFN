@@ -51,6 +51,47 @@ def test_beneficios_todos_falham_indisponivel(monkeypatch):
     assert out["verificado"] is False and out["recebe_beneficio"] is None
 
 
+def test_bolsa_familia_envia_competencia_e_acha(monkeypatch):
+    # BF exige anoMesReferencia (sem ela a API real dá HTTP 400). O coletor DEVE enviá-la → acha o benefício.
+    monkeypatch.setenv("PORTAL_TRANSPARENCIA_KEY", "x")
+    bs._cache = {}
+    async def fake_get(client, endpoint, params, chave):
+        if endpoint.startswith("bolsa-familia"):
+            if "anoMesReferencia" not in params:
+                return (False, [], "HTTP 400: Informe ano e mês de competência ou de referência.")
+            return (True, [{"valor": 600}], "")  # competência presente → registro
+        return (True, [], "")
+    monkeypatch.setattr(bs, "_get", fake_get)
+    monkeypatch.setattr(bs, "_salva_cache", lambda: None)
+    out = _run(bs.verificar_beneficios("11144477735"))
+    assert out["verificado"] is True and out["recebe_beneficio"] is True
+    assert any(b["tipo"] == "Bolsa Família" for b in out["beneficios"])
+    assert out["motivo"] == ""  # sem erro de competência → a competência foi enviada
+
+
+def test_auxilio_emergencial_400_nao_beneficiario_nao_polui(monkeypatch):
+    # 400 "CPF/NIS válido" do Aux. Emergencial p/ não-beneficiário = sem benefício, não INDISPONÍVEL nem erro.
+    monkeypatch.setenv("PORTAL_TRANSPARENCIA_KEY", "x")
+    bs._cache = {}
+    async def fake_get(client, endpoint, params, chave):
+        if endpoint.startswith("auxilio-emergencial"):
+            return (False, [], "HTTP 400: Informe um CPF/NIS válido do Beneficiário ou Responsável Familiar")
+        if endpoint.startswith("bolsa-familia"):
+            return (True, [], "")  # competência respondeu vazio
+        return (True, [], "")
+    monkeypatch.setattr(bs, "_get", fake_get)
+    monkeypatch.setattr(bs, "_salva_cache", lambda: None)
+    out = _run(bs.verificar_beneficios("11144477735"))
+    assert out["verificado"] is True and out["recebe_beneficio"] is False
+    assert "Auxílio Emergencial" not in out["motivo"]  # 400 de não-beneficiário não vira erro
+
+
+def test_ultimos_meses_ordem_e_virada_de_ano():
+    meses = bs._ultimos_meses(3)
+    assert len(meses) == 3 and all(len(m) == 6 for m in meses)
+    assert meses[0] > meses[1] > meses[2]  # mais recente primeiro, sem mês 00
+
+
 def test_pep_por_nome_curto_indisponivel(monkeypatch):
     monkeypatch.setenv("PORTAL_TRANSPARENCIA_KEY", "x")
     out = _run(bs.verificar_pep(nome="Zé"))
