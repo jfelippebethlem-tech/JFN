@@ -165,7 +165,23 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
             try:
                 await pg.click('#txtProtocoloPesquisa'); await pg.keyboard.type(proc, delay=40)
             except Exception: pass
-        await pg.evaluate(r"""()=>{const b=[...document.querySelectorAll('button,input[type=submit],input[type=button]')].find(e=>/pesquisar/i.test((e.value||e.innerText||'')));if(b)b.click();}""")
+        # itkava acessa TODAS as unidades, mas a avançada vem com "Restringir ao Órgão da Unidade" MARCADO →
+        # processo de outra unidade dá 0 resultados. DESMARCAR p/ busca GLOBAL (lição 2026-06-12).
+        await pg.evaluate(r"""()=>{document.querySelectorAll('input[type=checkbox]').forEach(c=>{const l=((c.id||'')+' '+(c.name||'')+' '+(c.parentElement?(c.parentElement.innerText||''):'')).toLowerCase();if(/restring|unidade\s+do\s+[óo]rg|[óo]rg[ãa]o\s+da\s+unidade/.test(l)&&c.checked){try{c.click();}catch(e){}}});}""")
+        # SUBMIT robusto: o clique-por-texto às vezes não dispara o form do SEI. Tenta botão por id/valor,
+        # submit() do form, e Enter no campo (lição 2026-06-12: a busca ficava parada no FORM).
+        await pg.evaluate(r"""()=>{
+          const byId=document.querySelector('#sbmPesquisar,#sbmProtocoloPesquisa,#btnPesquisar,input[name="sbmPesquisar"]');
+          if(byId){byId.click();return 'id';}
+          const b=[...document.querySelectorAll('button,input[type=submit],input[type=button]')].find(e=>/pesquisar/i.test((e.value||e.innerText||'')));
+          if(b){b.click();return 'txt';}
+          const f=document.querySelector('#frmProtocoloPesquisa,form[name="frmProtocoloPesquisa"],form[action*="protocolo_pesquisar"]');
+          if(f){f.submit();return 'form';}
+          return 'none';
+        }""")
+        try:
+            await pg.click('#txtProtocoloPesquisa'); await pg.keyboard.press('Enter')
+        except Exception: pass
     else:
         # fallback: pesquisa rápida (escopo da unidade)
         await pg.evaluate(r"""(n)=>{const i=document.querySelector('#txtPesquisaRapida');if(i){i.value=n;const f=document.getElementById('frmProtocoloPesquisaRapida');if(f)f.submit();}}""", proc)
