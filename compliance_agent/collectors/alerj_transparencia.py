@@ -88,6 +88,36 @@ def parsear_pagamentos(texto: str) -> dict:
     return {"mes_ano": mes_ano, "n": len(itens), "itens": itens}
 
 
+# linha de FOLHA (report/73): "NOME....  CARGO....  <colunas de R$/->". Extraímos NOME (chave do cruzamento) + cargo.
+_RE_FOLHA = re.compile(
+    r"^\s{1,4}(?P<nome>[A-ZÀ-Ú][A-ZÀ-Ú'.\- ]{8,}?)\s{2,}(?P<resto>[A-ZÀ-Ú].+)$")
+_RE_MESANO_FOLHA = re.compile(r"folha de pagamento de\s+([a-zç]+)\s+de\s+(\d{4})", re.I)
+
+
+def parsear_folha(texto: str) -> dict:
+    """Extrai os servidores da folha da ALERJ (report/73): {mes_ano, n, itens:[{nome, cargo}]}. Honesto —
+    pega o NOME (chave do cruzamento de acúmulo) + o cargo/função (best-effort); linha sem padrão fica de fora."""
+    m = _RE_MESANO_FOLHA.search(texto or "")
+    mes_ano = f"{m.group(1).title()}/{m.group(2)}" if m else None
+    itens, vistos = [], set()
+    for ln in (texto or "").splitlines():
+        g = _RE_FOLHA.match(ln)
+        if not g:
+            continue
+        nome = re.sub(r"\s+", " ", g.group("nome")).strip()
+        # exige nome de pessoa plausível (>=2 palavras, sem cara de cabeçalho)
+        if len(nome.split()) < 2 or nome in ("NOME", "TETO REMUNERATORIO") or any(ch.isdigit() for ch in nome):
+            continue
+        # cargo = primeiro pedaço alfabético do resto, antes das colunas numéricas
+        cargo = re.split(r"\s{2,}(?=[-\d])", g.group("resto"))[0].strip()
+        cargo = re.sub(r"\s+", " ", cargo)[:60]
+        if nome in vistos:
+            continue
+        vistos.add(nome)
+        itens.append({"nome": nome, "cargo": cargo})
+    return {"mes_ano": mes_ano, "n": len(itens), "itens": itens}
+
+
 if __name__ == "__main__":  # pragma: no cover
     import sys
     if len(sys.argv) > 1 and sys.argv[1].endswith(".pdf"):
