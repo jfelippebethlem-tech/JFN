@@ -158,32 +158,20 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     await pg.wait_for_timeout(5000)
     tem_avancada = await pg.evaluate("""()=>!!document.querySelector('#txtProtocoloPesquisa,input[name="txtProtocoloPesquisa"]')""")
     if tem_avancada:
-        # MÉTODO CORRETO (fotos do dono 2026-06-12, ☰→Pesquisa): radio "Processos" + ☑ "Considerar Documentos"
-        # + Órgão Gerador "Todos selecionados" + "Restringir ao Órgão" DESMARCADO + protocolo SEM prefixo "SEI-".
-        # Sem isso, processo de OUTRA unidade dá 0 resultados (não é restrição do processo — é o ESCOPO da busca).
-        proc_busca = re.sub(r"(?i)^sei[-\s]*", "", (proc or "").strip())
-        try: await pg.fill('#txtProtocoloPesquisa', proc_busca)
+        # protocolo EXATO: fill; se o ADF não aceitar, keyboard.type (keystrokes reais)
+        try: await pg.fill('#txtProtocoloPesquisa', proc)
         except Exception: pass
         if not await pg.evaluate("""()=>{const e=document.querySelector('#txtProtocoloPesquisa');return e?e.value:''}"""):
             try:
-                await pg.click('#txtProtocoloPesquisa'); await pg.keyboard.type(proc_busca, delay=40)
+                await pg.click('#txtProtocoloPesquisa'); await pg.keyboard.type(proc, delay=40)
             except Exception: pass
-        await pg.evaluate(r"""()=>{
-          const lbl = el => ((el.id||'')+' '+(el.name||'')+' '+(el.parentElement?(el.parentElement.innerText||''):'')+' '+(el.nextElementSibling?(el.nextElementSibling.innerText||''):'')).toLowerCase();
-          // radio "Processos" (não "Documentos") → SELECIONAR
-          [...document.querySelectorAll('input[type=radio]')].forEach(r=>{ const l=lbl(r); if(/process/.test(l) && !/document/.test(l) && !r.checked){ try{r.click();}catch(e){} } });
-          [...document.querySelectorAll('input[type=checkbox]')].forEach(c=>{ const l=lbl(c);
-            // "Considerar Documentos" → MARCAR
-            if(/considerar\s+documento/.test(l) && !c.checked){ try{c.click();}catch(e){} }
-            // "Restringir ao Órgão da Unidade" → DESMARCAR
-            if(/(restring|[óo]rg[ãa]o\s+da\s+unidade|unidade\s+do\s+[óo]rg)/.test(l) && c.checked){ try{c.click();}catch(e){} }
-          });
-          // Órgão Gerador (selOrgaoPesquisa) → garantir TODOS selecionados
-          const s=document.querySelector('#selOrgaoPesquisa,select[name="selOrgaoPesquisa"]');
-          if(s && s.multiple){ [...s.options].forEach(o=>o.selected=true); s.dispatchEvent(new Event('change',{bubbles:true})); }
-        }""")
+        # avançada vem com "Restringir ao Órgão da Unidade" MARCADO → desmarcar p/ busca global (lição 2026-06-12).
+        await pg.evaluate(r"""()=>{document.querySelectorAll('input[type=checkbox]').forEach(c=>{const l=((c.id||'')+' '+(c.name||'')+' '+(c.parentElement?(c.parentElement.innerText||''):'')).toLowerCase();if(/restring|unidade\s+do\s+[óo]rg|[óo]rg[ãa]o\s+da\s+unidade/.test(l)&&c.checked){try{c.click();}catch(e){}}});}""")
         # SUBMIT robusto: o clique-por-texto às vezes não dispara o form do SEI. Tenta botão por id/valor,
         # submit() do form, e Enter no campo (lição 2026-06-12: a busca ficava parada no FORM).
+        # ⚠ MÉTODO CRACKED (fotos do dono) p/ processo de OUTRA unidade = clicar Pesquisar 1× + expect_navigation +
+        # espera ativa ifrArvore (sem _abrir). Abre 510001 isolado, MAS quebrou o ITERJ 270042 quando portado aqui →
+        # revertido; portar com cuidado testando os DOIS casos. Ver [[vault/aprendizados/sei-leitura-itkava]].
         await pg.evaluate(r"""()=>{
           const byId=document.querySelector('#sbmPesquisar,#sbmProtocoloPesquisa,#btnPesquisar,input[name="sbmPesquisar"]');
           if(byId){byId.click();return 'id';}
