@@ -33,8 +33,13 @@ _TIMEOUT = 20
 _CACHE_FILE = Path("data") / "beneficios_cache.json"
 _CACHE_TTL = 7 * 86400  # 7 dias
 
-# (endpoint, rótulo, nome_do_param) — todos aceitam CPF (11) ou NIS no param `codigo`. Verificado no swagger.
+# (endpoint, rótulo, nome_do_param) — aceitam CPF (11) ou NIS no param `codigo`. Endpoints VERIFICADOS ao
+# vivo (HTTP 200 com CPF, 2026-06-12): Bolsa Família e BPC são os sinais FORTES de laranja (subsistência).
+# Auxílio Brasil por-CPF = 403 (sem permissão na chave); "sacado"/Novo Bolsa Família = só por NIS (não temos).
 _BENEFICIOS = [
+    ("bolsa-familia-disponivel-por-cpf-ou-nis", "Bolsa Família", "codigo"),
+    ("bpc-por-cpf-ou-nis", "BPC", "codigo"),
+    ("auxilio-emergencial-por-cpf-ou-nis", "Auxílio Emergencial", "codigo"),
     ("peti-por-cpf-ou-nis", "PETI", "codigo"),
     ("safra-codigo-por-cpf-ou-nis", "Garantia-Safra", "codigo"),
     ("seguro-defeso-codigo", "Seguro-Defeso", "codigo"),
@@ -99,7 +104,7 @@ async def verificar_beneficios(cpf: str, forcar_update: bool = False) -> dict:
     verificado=False → INDISPONÍVEL (sem chave/rede/CPF inválido); NUNCA tratar como "não recebe".
     """
     cpf = _so_digitos(cpf)
-    base = {"cpf": cpf, "fonte": "Portal da Transparência/CGU (PETI/Safra/Seguro-Defeso)",
+    base = {"cpf": cpf, "fonte": "Portal da Transparência/CGU (Bolsa Família, BPC, Aux. Emergencial, PETI, Safra, Seguro-Defeso)",
             "coletado_em": datetime.now().isoformat(timespec="seconds")}
     if len(cpf) != 11:
         return {**base, "verificado": False, "recebe_beneficio": None, "beneficios": [],
