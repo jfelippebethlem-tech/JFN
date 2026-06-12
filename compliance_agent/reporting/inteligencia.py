@@ -1082,6 +1082,82 @@ def _render_conflito_pessoal(ctx: dict) -> str:
     return "\n".join(L)
 
 
+_FEAT_ANOM = {"log_valor": "valor atípico", "valor": "valor atípico", "forn_freq": "frequência do fornecedor",
+              "forn_tot": "volume do fornecedor", "ug_freq": "frequência na UG", "dow": "dia da semana",
+              "mes": "mês", "data": "data", "ano": "ano"}
+
+
+def _anomalias_fornecedor(cnpj: str, limiar: float = 0.70, limite: int = 10) -> dict:
+    """M2 — OBs do fornecedor com score alto no modelo de detecção de anomalias (`ob_anomaly` ⋈ OBs)."""
+    cnpj = so_digitos(cnpj)
+    out = {"ok": False, "n_obs": 0, "n_anomalas": 0, "itens": [], "modelo": ""}
+    if len(cnpj) != 14:
+        return out
+    try:
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+        try:
+            tot = con.execute("SELECT COUNT(*) FROM ob_anomaly a JOIN ordens_bancarias o ON o.id=a.ob_id "
+                              "WHERE o.favorecido_cpf=?", (cnpj,)).fetchone()[0]
+            if not tot:
+                return out
+            nan = con.execute("SELECT COUNT(*) FROM ob_anomaly a JOIN ordens_bancarias o ON o.id=a.ob_id "
+                              "WHERE o.favorecido_cpf=? AND a.score>=?", (cnpj, limiar)).fetchone()[0]
+            rows = con.execute(
+                "SELECT a.score, a.top_features, o.numero_ob, o.valor, o.data_pagamento, a.modelo_versao "
+                "FROM ob_anomaly a JOIN ordens_bancarias o ON o.id=a.ob_id "
+                "WHERE o.favorecido_cpf=? AND a.score>=? ORDER BY a.score DESC LIMIT ?",
+                (cnpj, limiar, limite)).fetchall()
+        finally:
+            con.close()
+        out.update(ok=True, n_obs=tot, n_anomalas=nan, modelo=(rows[0][5] if rows else ""),
+                   itens=[{"score": r[0], "feats": r[1], "ob": r[2], "valor": r[3], "data": r[4]} for r in rows])
+        return out
+    except Exception as exc:  # noqa: BLE001
+        out["_nota"] = str(exc)[:160]
+        return out
+
+
+def _render_anomalias(ctx: dict) -> str:
+    """Seção 8-C — anomalias nas OBs do fornecedor (modelo de detecção). Dado + leitura + conclusão honesta."""
+    import json as _json
+    a = ctx.get("anomalias")
+    if a is None:
+        a = _anomalias_fornecedor(so_digitos(ctx.get("cnpj", "")))
+    L: list[str] = []
+    add = L.append
+    add("## 8-C. ANOMALIAS NAS ORDENS BANCÁRIAS (MODELO DE DETECÇÃO)")
+    add("")
+    add("> Um modelo de detecção de anomalias (ensemble não supervisionado) pontua cada OB de **0 a 1** por quanto "
+        "ela destoa do padrão (valor, frequência do fornecedor, dia/mês, UG). Score alto é **indício** de pagamento "
+        "atípico a inspecionar — **nunca prova** (pode ser contrato grande legítimo, sazonalidade, parcela única).")
+    add("")
+    if not a.get("ok"):
+        add("_Sem OBs pontuadas pelo modelo para este fornecedor — **INDISPONÍVEL**._")
+        add("")
+        return "\n".join(L)
+    add(f"Das **{a['n_obs']}** OBs do fornecedor pontuadas pelo modelo, **{a['n_anomalas']}** têm **score alto "
+        f"(≥ 0,70)** de anomalia.")
+    add("")
+    itens = a.get("itens") or []
+    if not itens:
+        add("> ✅ Nenhuma OB com score alto — **sem anomalia destacada** pelo modelo (não afasta outras irregularidades).")
+        add("")
+        return "\n".join(L)
+    add("| Score | OB | Valor (R$) | Data | Fatores que mais pesaram |")
+    add("|---:|---|---:|---|---|")
+    for it in itens:
+        try:
+            feats = ", ".join(_FEAT_ANOM.get(f, f) for f in _json.loads(it.get("feats") or "[]"))
+        except Exception:  # noqa: BLE001
+            feats = "—"
+        add(f"| {it['score']:.3f} | {it.get('ob', '—')} | {moeda(it.get('valor'))} | {it.get('data', '—')} | {feats} |")
+    add("")
+    add("> 🟡 **Indício a inspecionar:** as OBs acima destoam do padrão do fornecedor segundo o modelo — verificar "
+        "o lastro (contrato, medição, aderência do objeto) das de maior score. **Indício estatístico, não prova.**")
+    add("")
+    return "\n".join(L)
+
+
 def _render_benford(ctx: dict) -> str:
     """Seção 8-B — Lei de Benford sobre os valores de OB (triagem estatística de fracionamento/fabricação)."""
     p = ctx.get("pagamentos") or {}
@@ -1420,6 +1496,9 @@ def render_md(ctx: dict) -> str:
     # 8-B. Análise estatística (Lei de Benford) — paridade com o PDF
     add(_render_benford(ctx))
 
+    # 8-C. Anomalias nas OBs (modelo de detecção) — M2
+    add(_render_anomalias(ctx))
+
     # 9. Análise jurídica e de mérito — o PARECER escrito do JFN
     add("## 9. ANÁLISE JURÍDICA E DE MÉRITO — PARECER PRELIMINAR DO JFN")
     add("")
@@ -1566,6 +1645,10 @@ def _fatos_para_raciocinio(ctx: dict) -> str:
                          "indício estatístico de fracionamento/valores fabricados a verificar nos documentos.")
         except Exception:  # noqa: BLE001
             pass
+        _an = ctx.get("anomalias") or _anomalias_fornecedor(ctx.get("cnpj", ""))
+        if _an.get("ok") and _an.get("n_anomalas"):
+            L.append(f"Modelo de anomalias: {_an['n_anomalas']} de {_an['n_obs']} OBs do fornecedor com score alto "
+                     "(≥0,70) — pagamentos atípicos a inspecionar (lastro/contrato/medição).")
     try:
         rf = _red_flags(ctx)
         if rf:
