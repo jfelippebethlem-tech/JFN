@@ -142,6 +142,12 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-12 cont.28 (goal, agentes):** **Detectores OPERACIONAIS + VIVOS no produto.** Wrappers reusando o código
+  existente (`01ccd00`): **J1** cartel (concentracao_por_grupo+rodizio), **P3** sobrepreço (precos_extract), **C1-C5**
+  fachada (investigacao_dd H-*) + orquestradores `rodar_orgao(ug)`/`rodar_fornecedor(cnpj)`. **§1-I Painel de
+  detectores** no relatório de órgão (`d2869ea`, MD+PDF, alimenta o raciocínio, passo exculpatório visível). Framework
+  agora: P4+J1+P3+C operacionais (REGISTRO), **54+ testes verdes**. Falta: 9 detectores novos (P5/E2-5/J5/X2/X4/X5) +
+  rodar nos editais Vieira (SEI legível). Spec [[notas/detectores-corrupcao-licitacoes-v2]].
 - **06-12 cont.27 (goal, agentes):** **⭐ SEI PORT FUNCIONOU** (`59360d0`) — fallback `_ler_cracked` lê processo de
   OUTRA unidade (510001 Vieira/Cidades = 10 docs reais, contrato 046/2022 Drenagem Av.22 Maio) SEM regredir o ITERJ
   (270042=10 docs); caminho SEPARADO, `ler_processo` intocado. **Destrava editais/sobrepreço no SEI.** **(2) FRAMEWORK
