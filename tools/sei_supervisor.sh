@@ -33,5 +33,8 @@ while true; do
   say "relançando sei_sweep --max $LOTE"
   PYTHONPATH=. .venv/bin/python -m tools.sei_sweep --max "$LOTE" >> "$OUT" 2>&1
   say "lote concluído (exit $?)"
+  # extrai CPFs EXATOS (contrato social/procuração/habilitação) dos docs lidos neste lote → sei_cpf → resolver
+  CPFOUT=$(PYTHONPATH=. .venv/bin/python -m tools.sei_cpf_sweep 2>&1 | tail -1)
+  say "cpf: $CPFOUT"
   sleep 20
 done
