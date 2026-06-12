@@ -107,10 +107,14 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
   acusação de baldio/barraco/casa SÓ por Street View (rooftop, requer GOOGLE_MAPS_KEY). Nunca acusar com evidência fraca.
 
 ## 9. PENDÊNCIAS DO DONO
-- **Hermes Desktop (Linux) — update grande (cont.20):** `~/hermes-agent` (fork NousResearch) tem `apps/desktop`
-  (Electron) e instalador Tauri. Branch local `claude/fix-memory-resolve-for-weaker-models` está **11.416 commits
-  ATRÁS** de `origin/main` (4 à frente). Atualizar = decisão do dono (serviço `hermes-gateway` ativo do qual o JFN
-  depende; preservar 4 commits locais + `.env`). Fazer com branch + estratégia segura quando o dono autorizar.
+- **✅ Hermes ATUALIZADO (cont.20):** `~/hermes-agent` saltou de 11.416 commits atrás → `origin/main` v0.16.0
+  (branch `jfn-updated-2026-06-12`, f3f2386), preservando os **4 commits locais** + as customizações do
+  `gateway/run.py` (speaker marking + resposta vazia cortês) — todas reaplicadas LIMPO via 3-way (`git am`/`apply`).
+  Deps reinstaladas no venv; gateway estável (NRestarts=0, sem crash). Backup: tag `jfn-backup-pre-update-2026-06-12`
+  + patches em `~/hermes-jfn-customizacoes/`. ⚠ **AÇÃO DO DONO:** há um **2º poller usando o mesmo bot token fora
+  desta VM** (app desktop? outro deploy?) — conflito `getUpdates` PRÉ-EXISTENTE (10 conflitos já às 03:00, antes do
+  update). **Desligar a instância duplicada** para o Yoda parar de competir pelo Telegram. (O update NÃO causou isso.)
+  Reaplicar customizações após futuros `hermes update` (os patches estão preservados).
 SIAFE 1 (liberar chave p/ todas as UGs) — **sweep PAUSADO até a chave (06-11 cont.17):** flag `data/.pause_sweep_1`
 + cron de respawn `* * * * * siafe_supervisor.sh` REMOVIDO (não funciona sem chave). Reativar: `rm data/.pause_sweep_1`
 e recolocar a linha do supervisor no crontab. (SIAFE 2 incremental 05:00 segue ativo, funciona por login.) · SEI de
