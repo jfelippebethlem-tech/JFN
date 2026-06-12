@@ -142,6 +142,16 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-12 cont.26 (goal, agentes):** **(1) MANUAL de detecção de corrupção em licitações** (playbook do dono) →
+  `vault/notas/manual-deteccao-corrupcao-licitacoes` com **mapa de cobertura JFN** (✓/⚠/✗) + aplicação aos 12 grupos
+  de cartel. **(2) 4 builds via subagentes (VM-safe, ruff, testes):** `/lista` capabilities + detectores novos
+  (`0c269c5`); **§1-H Concentração-grupo (cartel)** no relatório de órgão (`897edb3`); **Lex** passo-exculpatório
+  (defesa-contra-si → rebaixa achado fraco a monitoramento) + **destinatário** MP/CADE/TCE/CGE por família (`2317395`);
+  **priorizacao** eixo risco-de-punição + quadrante alto-alto (`034b062`). **(3) ⭐ SEI CRACKED** — a busca itkava certa
+  (☰→Pesquisa: radio **Processos** + ☑ **Considerar Documentos** + "Restringir" OFF + Órgão "Todos" + texto SEM prefixo
+  + clicar **Pesquisar 1×** e **esperar a navegação**, sem duplo-submit nem `_abrir`) **ABRE processo de outra unidade**
+  (510001/000876, provado por screenshot) — processo NÃO era restrito, era a mecânica da busca. `ler_processo`
+  corrigido (espera ativa `ifrArvore`); falta afinar a extração dos docs da árvore. Método no vault [[sei-leitura-itkava]].
 - **06-12 cont.25 (goal):** **SWEEPS rearquitetados** — o "2-lane serial" (cont.21) foi RUIM (Chromium 24h +
   sessão única itkava competindo → leitura SEI manual dava 0; 2 lanes em 2 cores + DuckDB = crash) e foi REVERTIDO
   para **sweeps individuais escalonados** (`sweep_sei`/`sweep_dados`/`cruzador` + SIAFE), calibrados à VM real
