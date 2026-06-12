@@ -32,10 +32,15 @@
       "coletar primeiro", não "surfar". O surfar de campos existentes na Fase 2 está completo.
 
 ## FASE 3 — Gaps MÉDIA
-- [ ] **M1** Benford (MD) · **M2** anomalias · **M3** decisões TCE · **M4** receita×despesa (órgão) ·
-      **M5** conflito de endereços · **M6** co-ocorrência de sócios · **M7** OpenSanctions detalhado ·
-      **M8** gazetas estruturado · **M9** tipo de processo SEI · **M10** consórcio. (cada um: dado+leitura+conclusão)
-- [ ] **Checkpoint F3** + revisão final (agent-skills:review) + medição PDF completa.
+- [x] **M1** Benford no MD (§8-B fornecedor) — paridade com PDF. Commit c1c0bff.
+- [x] **M2** Anomalias do modelo (§8-C fornecedor, `ob_anomaly` 1M ⋈ OBs). Commit c3a810b.
+- [⛔] **M3** decisões TCE — `decisoes_tce`=0 linhas (live/async). MAS `penalidades_tcerj` (910, sanções a
+      ÓRGÃOS) é surfável no relatório de ÓRGÃO por match de nome (pendente).
+- [ ] **M4** receita×despesa (órgão, `tfe_receita` CSV) · **M6** co-ocorrência de sócios · **M7** OpenSanctions ·
+      **M8** gazetas estruturado · **M9** tipo de processo SEI · **M10** consórcio.
+- [x] **jfn.service REINICIADO** → todas as seções novas (Fases 1/2/3) VIVAS; API servindo; fornecedor gera com
+      1-C…1-F + capital + 8-B + 8-C end-to-end.
+- [ ] **Checkpoint F3** + revisão final + medição PDF completa.
 
 ## Em curso / feito
 - [x] Sweep de benefícios sócios/admin (detached) + fix BF anoMesReferencia — commitado (cont.20).
