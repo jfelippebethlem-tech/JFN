@@ -289,6 +289,7 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     ctx["endereco_real"] = _endereco_real_orgao(ug_cod)
     ctx["beneficios_socios"] = _beneficios_orgao(ug_cod)  # laranja: benefício de subsistência dos sócios/admin
     ctx["penalidades_tce"] = _penalidades_tce_orgao(ug_cod)  # sanções do TCE-RJ ao órgão (controle externo)
+    ctx["concentracao_grupo"] = _concentracao_grupo_orgao(ug_cod)  # concentração oculta por grupo (cartel/conc. fictícia)
     ctx["raciocinio"] = parecer_raciocinado_orgao(ctx)  # síntese de IA sobre os fatos (degrada honesto)
 
     md = render_md(ctx)
@@ -403,6 +404,16 @@ def _fatos_orgao(ctx: dict) -> str:
                  f"somando R$ {moeda(deb)} em débito e R$ {moeda(mul)} em multa (valor sem dupla contagem da "
                  f"responsabilidade solidária){ress}. Reforça o risco institucional — a Corte de Contas já reconheceu "
                  "falhas de gestão/prestação de contas deste órgão.")
+    cg = ctx.get("concentracao_grupo") or {}
+    if cg.get("ok") and cg.get("indicio"):
+        mm = cg.get("maior_grupo_multi") or {}
+        L.append("Concentração OCULTA por grupo econômico (concorrência fictícia / cartel): colapsando os "
+                 f"fornecedores por sócio em comum, {cg.get('n_grupos_multi', 0)} grupo(s) multi-CNPJ emergem "
+                 f"em {cg.get('n_grupos', 0)} grupos / {cg.get('n_cnpjs', 0)} CNPJs. O maior reúne "
+                 f"{mm.get('n_cnpjs', 0)} CNPJs ({mm.get('n_raizes', 0)} raízes) — aparentes concorrentes — "
+                 f"concentrando {mm.get('share', 0):.1f}% do valor (R$ {moeda(mm.get('total', 0))}; "
+                 f"ex.: {(mm.get('top_nome') or '—')[:30]}). Indício de diversidade fictícia/fracionamento a "
+                 "corroborar com editais/licitantes (SEI/PNCP); QSA mascarado/INDISPONÍVEL ≠ afastado.")
     return "\n".join("- " + x for x in L)
 
 
@@ -621,6 +632,21 @@ def _penalidades_tce_orgao(ug: str) -> dict:
         return pv.por_ug(ug)
     except Exception as exc:  # noqa: BLE001
         _log.warning("Sanções TCE-RJ do órgão %s degradou (seção 1-G): %s", ug, exc)
+        return {"ok": False, "_nota": str(exc)[:160]}
+
+
+def _concentracao_grupo_orgao(ug: str) -> dict:
+    """Concentração OCULTA por GRUPO econômico (CNPJs ligados por sócio em comum) dos fornecedores da UG, via
+    `grafo_cartel.concentracao_por_grupo`. Revela CONCORRÊNCIA FICTÍCIA: muitos CNPJs que parecem concorrentes
+    mas são UM grupo. `indicio=True` quando um grupo MULTI-CNPJ concentra fatia relevante. Degrada honesto
+    (DuckDB/QSA ausente → ok=False; INDISPONÍVEL não é prova de ausência de grupo)."""
+    try:
+        from compliance_agent.grafo_cartel import concentracao_por_grupo
+        out = concentracao_por_grupo(str(ug))
+        out["ok"] = bool(out.get("grupos"))
+        return out
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("Concentração por grupo do órgão %s degradou (seção 1-H): %s", ug, exc)
         return {"ok": False, "_nota": str(exc)[:160]}
 
 
@@ -848,6 +874,56 @@ def _secao_tce_md(add, ctx: dict) -> None:
             add("")
 
 
+def _secao_concentracao_grupo_md(add, ctx: dict) -> None:
+    """Seção 1-H — concentração OCULTA por grupo econômico (cartel / concorrência fictícia). Colapsa os
+    fornecedores por sócio em comum: muitos CNPJs que parecem concorrentes mas são UM grupo. Indício, não prova."""
+    cg = ctx.get("concentracao_grupo") or {}
+    add("## 1-H. CONCENTRAÇÃO OCULTA POR GRUPO ECONÔMICO (CARTEL / CONCORRÊNCIA FICTÍCIA)")
+    add("")
+    add("> Colapsa os fornecedores da UG por **grupo econômico** (CNPJs ligados por **sócio em comum**, dedup "
+        "por raiz). Quando muitos CNPJs que se apresentam como **concorrentes** são na verdade **um só grupo**, "
+        "a diversidade é **fictícia** — possível concorrência simulada/fracionamento ou *bid rigging* "
+        "(**Art. 90 Lei 8.666/93** · **Art. 337-F CP** · **Art. 36 Lei 12.529/2011 — CADE**). É **indício a "
+        "corroborar** com editais/licitantes (SEI/PNCP), nunca acusação: mercado restrito explica parte da "
+        "concentração, e **QSA mascarado/INDISPONÍVEL ≠ grupo afastado**. Destinatário natural de um achado "
+        "confirmado: **Ministério Público** e **CADE**.")
+    add("")
+    if not cg.get("ok"):
+        _nota = cg.get("_nota") or "rede societária (QSA)/DuckDB indisponível ou sem fornecedores PJ para esta UG"
+        add(f"_Concentração por grupo indisponível nesta execução ({_nota}). Rode "
+            "`python -m compliance_agent.grafo_cartel --captura 20` ou ingira o QSA dos fornecedores para o "
+            "detalhe. **INDISPONÍVEL não é prova de ausência de grupo.**_")
+        add("")
+        return
+    add(f"**Panorama:** {cg.get('n_cnpjs', 0)} CNPJs colapsam em **{cg.get('n_grupos', 0)} grupos** "
+        f"(**{cg.get('n_grupos_multi', 0)}** multi-CNPJ). HHI por CNPJ {cg.get('hhi_cnpj', 0)} → por grupo "
+        f"**{cg.get('hhi_grupo', 0)}** (Δ {cg.get('delta_hhi', 0):+}); maior grupo = "
+        f"{cg.get('top_grupo_share', 0):.1f}% do valor.")
+    add("")
+    grupos_multi = [g for g in (cg.get("grupos") or []) if g.get("n_raizes", 0) >= 2]
+    if grupos_multi:
+        add("| # | Grupo (raiz) | Nº CNPJs | Nº raízes | Share % | Total (R$) | Maior CNPJ do grupo |")
+        add("|--:|---|--:|--:|--:|--:|---|")
+        for i, g in enumerate(grupos_multi[:15], 1):
+            add(f"| {i} | {fmt_cnpj(g['grupo']) if g.get('grupo') else '—'} | {g['n_cnpjs']} | {g['n_raizes']} | "
+                f"{g['share']:.1f}% | {moeda(g['total'])} | {(g.get('top_nome') or '—')[:36]} |")
+        add("")
+    if cg.get("indicio"):
+        mm = cg.get("maior_grupo_multi") or {}
+        add(f"> 🟡 **Indício:** o maior grupo econômico reúne **{mm.get('n_cnpjs', 0)} CNPJs** "
+            f"(**{mm.get('n_raizes', 0)} raízes** distintas — aparentes concorrentes) e concentra "
+            f"**{mm.get('share', 0):.1f}%** do valor pago pela UG (R$ {moeda(mm.get('total', 0))}; ex.: "
+            f"**{(mm.get('top_nome') or '—')[:40]}**). Diversidade fictícia desse porte é *red flag* de "
+            "concorrência simulada/cartel (Art. 90 Lei 8.666; Art. 337-F CP; Art. 36 Lei 12.529-CADE) — "
+            "corroborar os licitantes nos editais (SEI/PNCP) e, se confirmado, comunicar **MP e CADE**. "
+            "Indício ≠ prova; mercado restrito explica parte.")
+    else:
+        add("> 🟢 Nenhum grupo econômico multi-CNPJ concentra fatia relevante do valor pago — sem indício de "
+            "concorrência fictícia entre os fornecedores analisados. Isso **não** afasta cartel na cauda nem "
+            "grupos com QSA ainda não ingerido (INDISPONÍVEL ≠ afastado).")
+    add("")
+
+
 def render_md(ctx: dict) -> str:
     p = ctx["pagamentos"]
     sigla, descr = _sigla_descr(ctx["nome"])
@@ -996,6 +1072,8 @@ def render_md(ctx: dict) -> str:
     _secao_beneficios_md(add, ctx)
     # 1-G. Sanções do TCE-RJ ao órgão (controle externo — fato já julgado)
     _secao_tce_md(add, ctx)
+    # 1-H. Concentração OCULTA por grupo econômico (cartel / concorrência fictícia)
+    _secao_concentracao_grupo_md(add, ctx)
 
     # Tabelas de OBs por ano (pagamentos individuais a cada fornecedor)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
@@ -1205,6 +1283,45 @@ def _secao_tce_pdf(pdf, _t, ctx: dict) -> None:
         pdf.set_text_color(0, 0, 0)
 
 
+def _secao_concentracao_grupo_pdf(pdf, _t, ctx: dict) -> None:
+    """PDF — concentração OCULTA por grupo econômico (cartel/concorrência fictícia)."""
+    cg = ctx.get("concentracao_grupo") or {}
+    pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+    pdf.cell(0, 8, _t("Concentração oculta por grupo econômico (cartel/concorrência fictícia)"), ln=True)
+    pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+    _mc(pdf, 4.5, _t("Colapsa os fornecedores por grupo econômico (CNPJs ligados por sócio em comum). Muitos "
+                     "CNPJs que parecem concorrentes mas são um grupo = diversidade fictícia (Art. 90 Lei 8.666; "
+                     "Art. 337-F CP; Art. 36 Lei 12.529-CADE). Indício a corroborar (SEI/PNCP); QSA mascarado/"
+                     "INDISPONÍVEL nao afasta grupo. Destinatário de achado confirmado: MP e CADE."))
+    if not cg.get("ok"):
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t("Concentração por grupo indisponível nesta execução (QSA/DuckDB) — degrada honesto. "
+                         "INDISPONÍVEL não é prova de ausência de grupo."))
+        pdf.set_text_color(0, 0, 0); return
+    pdf.ln(1)
+    _mc(pdf, 4.5, _t(f"{cg.get('n_cnpjs', 0)} CNPJs em {cg.get('n_grupos', 0)} grupos "
+                     f"({cg.get('n_grupos_multi', 0)} multi-CNPJ). HHI por CNPJ {cg.get('hhi_cnpj', 0)} -> por "
+                     f"grupo {cg.get('hhi_grupo', 0)}; maior grupo = {cg.get('top_grupo_share', 0):.1f}% do valor."))
+    grupos_multi = [g for g in (cg.get("grupos") or []) if g.get("n_raizes", 0) >= 2]
+    if grupos_multi:
+        pdf.ln(1); _tab_header(pdf, [("Grupo (raiz)", 40), ("CNPJs", 16), ("Raízes", 16),
+                                     ("Share %", 18), ("Total (R$)", 34), ("Maior CNPJ do grupo", 58)])
+        pdf.set_font(pdf._fam, "", 7)
+        for g in grupos_multi[:15]:
+            _tab_row(pdf, [(_t(fmt_cnpj(g["grupo"]) if g.get("grupo") else "-"), 40, "L"),
+                           (str(g["n_cnpjs"]), 16, "R"), (str(g["n_raizes"]), 16, "R"),
+                           (f"{g['share']:.1f}", 18, "R"), (moeda(g["total"]), 34, "R"),
+                           (_t(g.get("top_nome") or "-")[:36], 58, "L")], h=4.6)
+    if cg.get("indicio"):
+        mm = cg.get("maior_grupo_multi") or {}
+        pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(150, 90, 0)
+        _mc(pdf, 4, _t(f"Indício: maior grupo reúne {mm.get('n_cnpjs', 0)} CNPJs ({mm.get('n_raizes', 0)} raízes "
+                       f"- aparentes concorrentes) e concentra {mm.get('share', 0):.1f}% do valor. Diversidade "
+                       "fictícia = red flag de cartel/concorrência simulada; corroborar editais (SEI/PNCP) e, se "
+                       "confirmado, comunicar MP e CADE. Indício, não prova; mercado restrito explica parte."))
+        pdf.set_text_color(0, 0, 0)
+
+
 def render_pdf(ctx: dict, destino: str) -> str:
     from fpdf import FPDF
     p = ctx["pagamentos"]
@@ -1341,6 +1458,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         _secao_endereco_pdf(pdf, _t, ctx)
         _secao_beneficios_pdf(pdf, _t, ctx)
         _secao_tce_pdf(pdf, _t, ctx)
+        _secao_concentracao_grupo_pdf(pdf, _t, ctx)
 
         # OBs por ano
         for a in p["anos"]:
