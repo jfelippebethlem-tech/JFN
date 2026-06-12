@@ -33,9 +33,11 @@ _TIMEOUT = 20
 _CACHE_FILE = Path("data") / "beneficios_cache.json"
 _CACHE_TTL = 7 * 86400  # 7 dias
 
-# (endpoint, rótulo, nome_do_param) — aceitam CPF (11) ou NIS no param `codigo`. Endpoints VERIFICADOS ao
-# vivo (HTTP 200 com CPF, 2026-06-12): Bolsa Família e BPC são os sinais FORTES de laranja (subsistência).
-# Auxílio Brasil por-CPF = 403 (sem permissão na chave); "sacado"/Novo Bolsa Família = só por NIS (não temos).
+# (endpoint, rótulo, nome_do_param) — aceitam CPF (11) ou NIS no param `codigo`. Bolsa Família e BPC são os
+# sinais FORTES de laranja (subsistência). ⚠ Contrato real (verificado ao vivo 2026-06-12): **Bolsa Família**
+# exige `anoMesReferencia` (AAAAMM) — sem ela = HTTP 400; tratado em `_bolsa_familia_mensal` (varre competências).
+# Auxílio Emergencial dá 400 "CPF/NIS válido" p/ não-beneficiário (= sem benefício, ver loop). BPC/PETI/Safra/
+# Defeso: OK só com `codigo`. Auxílio Brasil por-CPF = 403; "sacado"/Novo BF = só por NIS (não temos).
 _BENEFICIOS = [
     ("bolsa-familia-disponivel-por-cpf-ou-nis", "Bolsa Família", "codigo"),
     ("bpc-por-cpf-ou-nis", "BPC", "codigo"),
@@ -94,7 +96,46 @@ async def _get(client: httpx.AsyncClient, endpoint: str, params: dict, chave: st
         return True, [], ""
     if r.status_code in (401, 403):
         return False, [], f"chave inválida/sem permissão (HTTP {r.status_code})"
+    if r.status_code == 400:  # expõe o motivo (a API explica o que falta: competência, CPF válido, etc.)
+        try:
+            msg = str((r.json() or {}).get("Erro na API") or "")[:90]
+        except Exception:  # noqa: BLE001
+            msg = ""
+        return False, [], f"HTTP 400{(': ' + msg) if msg else ''}"
     return False, [], f"HTTP {r.status_code}"
+
+
+def _ultimos_meses(n: int = 3) -> list[str]:
+    """Últimas `n` competências 'AAAAMM' a partir do mês corrente (mais recente primeiro)."""
+    hoje = datetime.now()
+    y, m = hoje.year, hoje.month
+    out: list[str] = []
+    for _ in range(max(1, n)):
+        out.append(f"{y}{m:02d}")
+        m -= 1
+        if m == 0:
+            m, y = 12, y - 1
+    return out
+
+
+async def _bolsa_familia_mensal(client: httpx.AsyncClient, endpoint: str, cpf: str, chave: str,
+                                meses: int = 3) -> tuple[bool, list, str]:
+    """BF 'disponível' é indexado por competência (`anoMesReferencia`) — sem ela a API dá HTTP 400.
+    Varre as últimas `meses` competências (o dado tem ~1-2 meses de lag) e para no 1º registro encontrado.
+    (ok, lista, motivo): se nenhuma competência tem registro mas ao menos uma respondeu 200 → sem benefício
+    (ok, []); só INDISPONÍVEL (ok=False) se TODAS as competências falharem (sem afirmar 'não recebe')."""
+    erros: list[str] = []
+    for i, ref in enumerate(_ultimos_meses(meses)):
+        if i:
+            await asyncio.sleep(0.2)
+        ok, lista, erro = await _get(client, endpoint, {"codigo": cpf, "anoMesReferencia": ref}, chave)
+        if ok and lista:
+            return True, lista, ""
+        if not ok:
+            erros.append(erro)
+    if len(erros) < meses:  # alguma competência respondeu 200 (vazio) → sem benefício, honesto
+        return True, [], ""
+    return False, [], erros[0] if erros else "sem competência consultável"
 
 
 async def verificar_beneficios(cpf: str, forcar_update: bool = False) -> dict:
@@ -128,7 +169,14 @@ async def verificar_beneficios(cpf: str, forcar_update: bool = False) -> dict:
             if consultados:
                 await asyncio.sleep(0.3)  # respeita o rate-limit do Portal
             consultados += 1
-            ok, lista, erro = await _get(client, endpoint, {param: cpf}, chave)
+            if endpoint.startswith("bolsa-familia"):
+                ok, lista, erro = await _bolsa_familia_mensal(client, endpoint, cpf, chave)
+            else:
+                ok, lista, erro = await _get(client, endpoint, {param: cpf}, chave)
+                # Aux. Emergencial dá HTTP 400 "Informe um CPF/NIS válido do Beneficiário" p/ quem NÃO é
+                # beneficiário → é "sem benefício" (não INDISPONÍVEL); não poluir o motivo com falso erro.
+                if not ok and endpoint.startswith("auxilio-emergencial") and "válido" in erro:
+                    ok, lista, erro = True, [], ""
             if ok:
                 for it in lista:
                     achados.append({"tipo": tipo, "_raw": it if isinstance(it, dict) else {}})
