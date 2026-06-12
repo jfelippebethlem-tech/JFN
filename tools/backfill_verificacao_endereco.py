@@ -32,11 +32,13 @@ _DDL = """CREATE TABLE IF NOT EXISTS endereco_verificacao (
   lat REAL, lon REAL, municipio_geo TEXT, evidencia TEXT, verificado_em TEXT)"""
 
 
-def _gap(con: sqlite3.Connection, ug: str | None, limite: int) -> list[dict]:
-    """Fornecedores com endereço ingerido e ainda SEM verificação geo (ou priorizando uma UG)."""
+def _gap(con: sqlite3.Connection, ug: str | None, limite: int, forcar: bool = False) -> list[dict]:
+    """Fornecedores com endereço ingerido e ainda SEM verificação geo (ou priorizando uma UG).
+    forcar=True (só faz sentido com --ug): inclui também os JÁ verificados, p/ re-rodar com a camada VISUAL."""
+    cond_gap = "" if forcar else "ev.cnpj IS NULL AND "
     base = ("SELECT ef.cnpj, ef.endereco, ef.municipio, ef.uf, ef.cep FROM endereco_fornecedor ef "
             "LEFT JOIN endereco_verificacao ev ON ev.cnpj=ef.cnpj "
-            "WHERE ev.cnpj IS NULL AND ef.endereco IS NOT NULL AND ef.endereco!=''")
+            f"WHERE {cond_gap}ef.endereco IS NOT NULL AND ef.endereco!=''")
     params: list = []
     if ug:
         base += (" AND ef.cnpj IN (SELECT DISTINCT replace(replace(replace(favorecido_cpf,'.',''),'-',''),'/','') "
@@ -54,13 +56,15 @@ def main() -> int:
     ap.add_argument("--limite", type=int, default=400, help="máximo de fornecedores por execução (lote diário)")
     ap.add_argument("--ug", default="", help="priorizar fornecedores desta UG")
     ap.add_argument("--pausa", type=float, default=0.3, help="pausa extra entre alvos (s)")
+    ap.add_argument("--forcar", action="store_true",
+                    help="re-verifica os JÁ verificados (com --ug) — p/ rodar a camada VISUAL nova")
     a = ap.parse_args()
     load_dotenv(str(_REPO / ".env"))
 
     con = sqlite3.connect(str(_DB))
     con.execute(_DDL)
     con.commit()
-    alvos = _gap(con, a.ug or None, a.limite)
+    alvos = _gap(con, a.ug or None, a.limite, forcar=a.forcar)
     ts = datetime.now().isoformat(timespec="seconds")
     # VISUAL (foto de rua → casebre/baldio): gate honesto. ENDERECO_USAR_IMAGEM = auto|1|0.
     #   auto (default): liga SÓ se houver MAPILLARY_TOKEN (fonte GRÁTIS) — assim o sweep do universo não
@@ -79,7 +83,7 @@ def main() -> int:
             time.sleep(espera + 1)
         try:
             res = analisar_endereco(f["endereco"], f["municipio"], f["uf"], f["cep"],
-                                    usar_overpass=True, usar_imagem=usar_imagem)
+                                    usar_overpass=True, usar_imagem=usar_imagem, forcar_update=a.forcar)
         except Exception as e:  # noqa: BLE001
             res = {"status": "INDISPONIVEL", "nivel": "—", "evidencia": f"erro: {str(e)[:60]}", "sinais": {}}
         g = (res.get("sinais") or {}).get("geocode") or {}
