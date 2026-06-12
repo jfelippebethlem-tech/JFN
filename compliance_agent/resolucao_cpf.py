@@ -77,6 +77,53 @@ def resolver(nome: str, doc_mascarado: str, *, db_path: str | Path | None = None
     return {**base, "motivo": "sem correspondência no corpus de favorecidos PF"}
 
 
+def carregar_indice_tse(db_path: str | Path | None = None) -> dict:
+    """Índice {(nome_norm, middle6) -> set(cpf)} dos DOADORES do TSE (`doacoes_eleitorais`, CPF completo —
+    dado PÚBLICO OFICIAL). Construído UMA vez p/ resolver muitos sócios no sweep (evita SQL por sócio).
+    Fonte legítima (oversight de deputado, LGPD art. 7º,II/23) — nada de base de vazamento."""
+    idx: dict = {}
+    p = Path(db_path or _DB)
+    if not p.exists():
+        return idx
+    try:
+        con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+        try:
+            for nome, doc in con.execute("SELECT nome_doador, cpf_cnpj_doador FROM doacoes_eleitorais"):
+                d = _digitos(doc)
+                if len(d) == 11:
+                    idx.setdefault((_norm(nome), d[3:9]), set()).add(d)
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001 — tabela ausente / DB indisponível → índice vazio (honesto)
+        return idx
+    return idx
+
+
+def resolver_multi(nome: str, doc_mascarado: str, *, db_path: str | Path | None = None,
+                   tse_idx: dict | None = None) -> dict:
+    """Resolução de CPF de sócio mascarado MULTI-FONTE (todas oficiais/públicas):
+      1) corpus de favorecidos PF (OB) — `resolver()`;
+      2) doadores do TSE — `tse_idx` (passe `carregar_indice_tse()` no sweep p/ não reconstruir por sócio).
+    Match 1:1 obrigatório (nome + 6 díg do meio como checksum). Ambíguo/sem match → INDISPONÍVEL (nunca chute).
+    Acrescenta `fonte` ao retorno. Cobertura medida: middle-6 ~2% → +TSE ~5% (a somar SEI-docs no futuro)."""
+    r = resolver(nome, doc_mascarado, db_path=db_path)
+    if r.get("resolvido"):
+        return {**r, "fonte": "favorecidos_pf"}
+    if tse_idx is not None:
+        m6 = middle6(doc_mascarado)
+        nome_n = _norm(nome)
+        if m6 and len(nome_n) >= 6:
+            cpfs = tse_idx.get((nome_n, m6))
+            if cpfs and len(cpfs) == 1:
+                return {"resolvido": True, "cpf": next(iter(cpfs)), "confianca": 0.8,
+                        "metodo": "nome+middle6", "fonte": "tse_doadores",
+                        "motivo": "par (nome + 6 díg do meio) único nos doadores TSE (dado público oficial)"}
+            if cpfs and len(cpfs) > 1:
+                return {**r, "resolvido": False, "fonte": "",
+                        "motivo": f"ambíguo no TSE ({len(cpfs)} CPFs p/ nome+6díg) — não resolve"}
+    return {**r, "fonte": ""}
+
+
 if __name__ == "__main__":
     import argparse
     import json

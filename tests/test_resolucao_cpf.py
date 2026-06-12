@@ -56,3 +56,45 @@ def test_doc_nao_mascarado_nao_resolve(tmp_path):
     p = _db(tmp_path, [("11122334455", "JOAO DA SILVA")])
     out = resolver("JOAO DA SILVA", "11122334455", db_path=p)  # sem '*' → não é máscara
     assert not out["resolvido"]
+
+
+# ───────── cont.19: TSE como 2ª fonte (multi-fonte oficial) ─────────
+
+def _db_multi(tmp_path, ob_linhas, tse_linhas):
+    p = tmp_path / "compliance.db"
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, favorecido_nome TEXT)")
+    con.executemany("INSERT INTO ordens_bancarias VALUES (?,?)", ob_linhas)
+    con.execute("CREATE TABLE doacoes_eleitorais (cpf_cnpj_doador TEXT, nome_doador TEXT)")
+    con.executemany("INSERT INTO doacoes_eleitorais VALUES (?,?)", tse_linhas)
+    con.commit()
+    con.close()
+    return p
+
+
+def test_resolver_multi_cai_no_tse_quando_nao_ha_no_ob(tmp_path):
+    from compliance_agent.resolucao_cpf import carregar_indice_tse, resolver_multi
+    # nome NÃO está no OB; está no TSE com CPF cujo middle6 bate a máscara
+    p = _db_multi(tmp_path, [("99999999999", "OUTRA PESSOA")],
+                  [("11122334455", "JOÃO DA SILVA")])
+    idx = carregar_indice_tse(db_path=p)
+    out = resolver_multi("joao da silva", "***223344**", db_path=p, tse_idx=idx)
+    assert out["resolvido"] and out["cpf"] == "11122334455" and out["fonte"] == "tse_doadores"
+
+
+def test_resolver_multi_prefere_ob(tmp_path):
+    from compliance_agent.resolucao_cpf import carregar_indice_tse, resolver_multi
+    p = _db_multi(tmp_path, [("11122334455", "JOAO DA SILVA")],
+                  [("11122334455", "JOAO DA SILVA")])
+    idx = carregar_indice_tse(db_path=p)
+    out = resolver_multi("JOAO DA SILVA", "***223344**", db_path=p, tse_idx=idx)
+    assert out["resolvido"] and out["fonte"] == "favorecidos_pf"
+
+
+def test_resolver_multi_tse_ambiguo_nao_resolve(tmp_path):
+    from compliance_agent.resolucao_cpf import carregar_indice_tse, resolver_multi
+    p = _db_multi(tmp_path, [("99999999999", "X")],
+                  [("11122334455", "JOSE SANTOS"), ("88822334400", "JOSE SANTOS")])
+    idx = carregar_indice_tse(db_path=p)
+    out = resolver_multi("JOSE SANTOS", "***223344**", db_path=p, tse_idx=idx)
+    assert not out["resolvido"] and "ambíguo" in out["motivo"]
