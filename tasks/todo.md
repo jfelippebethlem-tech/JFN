@@ -6,17 +6,14 @@
 > e, quando for indício, no grau/score final). Não é tabela solta: é tabela + raciocínio + conclusão.
 > TDD, honestidade, CPF mascarado, VM-safe, medir o PDF real, 1 commit/unidade.
 
-## FASE 1 — Benefícios dos sócios/administradores (laranja) [dado pronto: socio_beneficio]
-- [ ] **F1.T1** `reporting/beneficios_view.py`: `agregar_por_cnpjs(cnpjs, db)` + `por_fornecedor(cnpj, db)` ⋈
-      `socio_beneficio`×`socios_fornecedor`. Retorna {n_socios,n_resolvidos,n_com_beneficio,n_indisponivel,
-      cobertura, itens[{nome_mascarado,papel,fonte,recebe,tipos}]}. **Teste** com DB temp. **Aceite:** verde + honesto.
-- [ ] **F1.T2** Órgão §1-F `_secao_beneficios_md` + `ctx["beneficios_socios"]` em `montar()`: agregado da UG
-      ("N de M sócios/administradores verificados recebem benefício de subsistência — indício de laranja") +
-      **prosa de conclusão** + INDISPONÍVEL honesto. Entra no `_fatos_orgao` (raciocínio). PDF idem. Render real 036100.
-- [ ] **F1.T3** Fornecedor: bloco por-CNPJ em §1-B/§9 (quais sócios/admin resolvidos recebem; mascarado) +
-      leitura. Entra no `_fatos_para_raciocinio` + (se indício) no grau. Render real de 1 fornecedor.
-- [ ] **F1.T4** Lex II-E: linha agregada ("N de M sócios verificados recebem benefício") acima das hipóteses.
-- [ ] **Checkpoint F1:** testes verdes + 1 PDF órgão + 1 PDF fornecedor inspecionados + §10 doc + CPU ok.
+## FASE 1 — Benefícios dos sócios/administradores (laranja) [dado pronto: socio_beneficio] ✅
+- [x] **F1.T1** `reporting/beneficios_view.py`: agregar_por_cnpjs/por_fornecedor/leitura ⋈ socio_beneficio×
+      socios_fornecedor (indício/AFASTADO/INDISPONÍVEL). +5 testes. Commit 406abed.
+- [x] **F1.T2** Órgão §1-F (MD+PDF) + `ctx["beneficios_socios"]` + `_fatos_orgao`. Medido real (036100). Commit f014165.
+- [x] **F1.T3** Fornecedor §1-C (MD) + `_fatos_para_raciocinio`. Medido real (13210413000142). Commit 8edffd0.
+- [x] **F1.T4** Lex II-E: agregado do sweep acima das hipóteses. Commit 0f5ef6a.
+- [~] **Checkpoint F1:** testes verdes (rodando) + PDF órgão inspecionado ✅ + §10 doc. **Pendente p/ paridade:**
+      fornecedor **PDF** (render_pdf_html) ainda sem a 1-C — fazer na próxima passada (MD já completo).
 
 ## FASE 2 — Gaps ALTA com dado pronto (cada um: dado + leitura + conclusão)
 - [ ] **A8** Capital social × recebido (H-CAPITAL) — §1 fornecedor + leitura "porte incompatível?" + grau.
