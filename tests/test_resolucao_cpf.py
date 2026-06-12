@@ -98,3 +98,17 @@ def test_resolver_multi_tse_ambiguo_nao_resolve(tmp_path):
     idx = carregar_indice_tse(db_path=p)
     out = resolver_multi("JOSE SANTOS", "***223344**", db_path=p, tse_idx=idx)
     assert not out["resolvido"] and "ambíguo" in out["motivo"]
+
+
+def test_resolver_multi_cai_no_sei_quando_nao_ha_ob_nem_tse(tmp_path):
+    from compliance_agent.resolucao_cpf import carregar_indice_sei, resolver_multi
+    import sqlite3
+    p = tmp_path / "compliance.db"
+    con = sqlite3.connect(p)
+    con.execute("CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, favorecido_nome TEXT)")
+    con.execute("CREATE TABLE sei_cpf (nome_norm TEXT, cpf TEXT)")
+    con.execute("INSERT INTO sei_cpf VALUES ('JOAO DA SILVA','11122334455')")
+    con.commit(); con.close()
+    sei = carregar_indice_sei(db_path=p)
+    out = resolver_multi("joao da silva", "***223344**", db_path=p, sei_idx=sei)
+    assert out["resolvido"] and out["cpf"] == "11122334455" and out["fonte"] == "sei_docs"

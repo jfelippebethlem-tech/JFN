@@ -28,6 +28,7 @@ from dotenv import load_dotenv
 from compliance_agent.collectors.beneficios_sociais import verificar_beneficios
 from compliance_agent.resolucao_cpf import (
     carregar_indice_favorecidos,
+    carregar_indice_sei,
     carregar_indice_tse,
     middle6,
     resolver_multi,
@@ -96,7 +97,8 @@ def _gravar(con: sqlite3.Connection, nome: str, doc: str, res: dict, benef: dict
 
 
 async def processar_lote(db_path: str | Path | None = None, limite: int = 800, *, pausa: float = 0.0,
-                         beneficio_fn=None, pf_idx: dict | None = None, tse_idx: dict | None = None) -> dict:
+                         beneficio_fn=None, pf_idx: dict | None = None, tse_idx: dict | None = None,
+                         sei_idx: dict | None = None) -> dict:
     """Processa UM lote de até `limite` sócios pendentes e grava em `socio_beneficio`. Retorna o resumo.
 
     `beneficio_fn(cpf)->dict` (async) e os índices são injetáveis (testes sem rede/SQL); ausentes → reais."""
@@ -111,11 +113,13 @@ async def processar_lote(db_path: str | Path | None = None, limite: int = 800, *
             pf_idx = carregar_indice_favorecidos(db_path=p)
         if tse_idx is None:
             tse_idx = carregar_indice_tse(db_path=p)
+        if sei_idx is None:
+            sei_idx = carregar_indice_sei(db_path=p)  # 3ª fonte: CPF de documento do SEI (autoritativo)
         if beneficio_fn is None:
             beneficio_fn = verificar_beneficios
         resolvidos = com_beneficio = 0
         for nome, doc in pend:
-            res = resolver_multi(nome, doc, db_path=p, tse_idx=tse_idx, pf_idx=pf_idx)
+            res = resolver_multi(nome, doc, db_path=p, tse_idx=tse_idx, pf_idx=pf_idx, sei_idx=sei_idx)
             benef = None
             if res.get("resolvido") and res.get("cpf"):
                 resolvidos += 1

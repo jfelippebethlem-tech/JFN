@@ -143,8 +143,31 @@ def carregar_indice_tse(db_path: str | Path | None = None) -> dict:
     return idx
 
 
+def carregar_indice_sei(db_path: str | Path | None = None) -> dict:
+    """Índice {(nome_norm, middle6) -> set(cpf)} dos CPFs extraídos de DOCUMENTOS do SEI (`sei_cpf` —
+    contrato social/habilitação/procuração, CPF com DV validado). Fonte AUTORITATIVA (contratação pública
+    aberta; dever de fiscalização). Espelha `carregar_indice_tse`; passe como `sei_idx` em `resolver_multi`."""
+    idx: dict = {}
+    p = Path(db_path or _DB)
+    if not p.exists():
+        return idx
+    try:
+        con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+        try:
+            for nome, cpf in con.execute("SELECT nome_norm, cpf FROM sei_cpf"):
+                d = _digitos(cpf)
+                if len(d) == 11 and nome:
+                    idx.setdefault((_norm(nome), d[3:9]), set()).add(d)
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001 — tabela ausente → índice vazio (honesto)
+        return idx
+    return idx
+
+
 def resolver_multi(nome: str, doc_mascarado: str, *, db_path: str | Path | None = None,
-                   tse_idx: dict | None = None, pf_idx: dict | None = None) -> dict:
+                   tse_idx: dict | None = None, pf_idx: dict | None = None,
+                   sei_idx: dict | None = None) -> dict:
     """Resolução de CPF de sócio mascarado MULTI-FONTE (todas oficiais/públicas):
       1) corpus de favorecidos PF (OB) — `resolver()` (SQL) ou `pf_idx` (índice pré-construído, VM-safe);
       2) doadores do TSE — `tse_idx` (passe `carregar_indice_tse()` no sweep p/ não reconstruir por sócio).
@@ -169,6 +192,18 @@ def resolver_multi(nome: str, doc_mascarado: str, *, db_path: str | Path | None 
             if cpfs and len(cpfs) > 1:
                 return {**r, "resolvido": False, "fonte": "",
                         "motivo": f"ambíguo no TSE ({len(cpfs)} CPFs p/ nome+6díg) — não resolve"}
+    if sei_idx is not None:
+        m6 = middle6(doc_mascarado)
+        nome_n = _norm(nome)
+        if m6 and len(nome_n) >= 6:
+            cpfs = sei_idx.get((nome_n, m6))
+            if cpfs and len(cpfs) == 1:
+                return {"resolvido": True, "cpf": next(iter(cpfs)), "confianca": 0.9,
+                        "metodo": "nome+middle6", "fonte": "sei_docs",
+                        "motivo": "par (nome + 6 díg do meio) único em documento do SEI (contrato social/habilitação)"}
+            if cpfs and len(cpfs) > 1:
+                return {**r, "resolvido": False, "fonte": "",
+                        "motivo": f"ambíguo no SEI ({len(cpfs)} CPFs p/ nome+6díg) — não resolve"}
     return {**r, "fonte": ""}
 
 
