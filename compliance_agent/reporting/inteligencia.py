@@ -1061,11 +1061,12 @@ def _render_conflito_pessoal(ctx: dict) -> str:
     add = L.append
     add("## 1-F. CONFLITO DE PESSOAL — SÓCIO/ADMINISTRADOR NA FOLHA DO ESTADO")
     add("")
-    add("> Cruza os sócios/administradores (com **CPF resolvido**) com a **folha do Estado** (servidores/"
-        "terceirizados/bolsistas — `registros_folha`). Ser sócio/gestor de empresa contratada pelo poder público "
-        "**e** integrar sua folha é indício de **conflito de interesse / incompatibilidade** (CF art. 37; Lei "
-        "8.429/92 art. 11; Lei 14.133/21 art. 9º). O CPF do QSA é resolvido por ponte probabilística (~5% do QSA) "
-        "→ cobertura limitada; **INDISPONÍVEL ≠ ausência**. Indício, **nunca acusação**.")
+    add("> Cruza os sócios/administradores do QSA com a **folha do Estado** (servidores/terceirizados/bolsistas — "
+        "`registros_folha`) por **nome + 5 dígitos do CPF** (a sobreposição entre a máscara do QSA e a da folha) — "
+        "cobre **todos** os sócios mascarados, sem depender de resolver o CPF. Ser sócio/gestor de empresa "
+        "contratada pelo poder público **e** integrar sua folha é indício de **conflito de interesse / "
+        "incompatibilidade** (CF art. 37; Lei 8.429/92 art. 11; Lei 14.133/21 art. 9º). **INDISPONÍVEL ≠ ausência**. "
+        "Indício, **nunca acusação**.")
     add("")
     add(cp.leitura(agg))
     itens = agg.get("itens") or []
@@ -1076,8 +1077,8 @@ def _render_conflito_pessoal(ctx: dict) -> str:
         for it in itens[:20]:
             add(f"| {it['nome']} | {it['papel']} | {it['orgao']} | {it['cargo']} | {it['vinculo']} | {it['competencia']} |")
         add("")
-        add("> 🟡 **Indício a confirmar:** confirmar a identidade (CPF resolvido por ponte) e a natureza do vínculo "
-            "(acumulação lícita de cargos? impedimento de contratar? art. 9º Lei 14.133). **Indício, não prova.**")
+        add("> 🟡 **Indício a confirmar:** confirmar a identidade (nome + 5 díg admite homonímia rara) e a natureza "
+            "do vínculo (acumulação lícita de cargos? impedimento de contratar? art. 9º Lei 14.133). **Indício, não prova.**")
     add("")
     return "\n".join(L)
 
@@ -2078,7 +2079,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         _cpa = _cpv.por_fornecedor(cnpj)
     except Exception:  # noqa: BLE001
         _cpa, _cpv = {}, None
-    if _cpa.get("n_resolvidos") and _cpv:
+    if _cpa.get("n_socios") and _cpv:
         _ci = _cpa.get("itens") or []
         _ch = f"<p class='nota'>{esc(_cpv.leitura(_cpa).replace('**', ''))}</p>"
         if _ci:
