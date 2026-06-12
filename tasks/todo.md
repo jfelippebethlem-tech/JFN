@@ -23,10 +23,13 @@
 - [⛔] **A1** Aditivos contratuais — **SEM DADO** (tabela `contratos` não tem colunas de aditivo). Vira "coletar
       aditivos" (coletor novo), fora do escopo de *surfar campos existentes*.
 - [⛔] **A2** Empenho→Liquidação→OB — **SEM DADO** (`ordens_bancarias` não tem empenho/liquidação). Idem A1.
-- [ ] **A4** Rodízio/cartel no fornecedor (`rodizio_temporal`) — §5 + leitura bid rotation. [verificar per-CNPJ]
-- [ ] **A5** Regularidade fiscal/previdenciária (`registry_providers`, async/bounded) — §1 + leitura.
-- [ ] **A6** Terceirizados (conflito de pessoal) — nova seção + leitura incompatibilidade.
-- [ ] **Checkpoint F2.**
+- [x] **A4** Rodízio/cartel no fornecedor (`rodizio_temporal`) — §1-E (bounded top-3 UGs). Commit d2e023b.
+- [⛔] **A5** Regularidade fiscal/previdenciária — **SEM DADO de débito** (`registry_providers` só traz cadastral;
+      situação cadastral já em §1). INSS/ICMS/PGFN/CND = coletor novo (gated). Fora do escopo de *surfar*.
+- [x] **A6** Conflito de pessoal (sócio na folha do Estado) — §1-F, `conflito_pessoal_view`. Commit b62fe6b.
+- [x] **Checkpoint F2:** 106 passed/0 failed. Fornecedor render real com 1-B…1-F + capital. §10 atualizado.
+      **Achado honesto:** A1/A2/A5 do inventário NÃO têm dado na base (colunas/feeds inexistentes) → viram
+      "coletar primeiro", não "surfar". O surfar de campos existentes na Fase 2 está completo.
 
 ## FASE 3 — Gaps MÉDIA
 - [ ] **M1** Benford (MD) · **M2** anomalias · **M3** decisões TCE · **M4** receita×despesa (órgão) ·
