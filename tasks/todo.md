@@ -16,12 +16,14 @@
       fornecedor **PDF** (render_pdf_html) ainda sem a 1-C — fazer na próxima passada (MD já completo).
 
 ## FASE 2 — Gaps ALTA com dado pronto (cada um: dado + leitura + conclusão)
-- [ ] **A8** Capital social × recebido (H-CAPITAL) — §1 fornecedor + leitura "porte incompatível?" + grau.
-- [ ] **A7** QSA detalhe (participação %, qualificação, entrada/saída) — §1 + leitura estrutura societária.
-- [ ] **A1** Aditivos contratuais [VERIFICAR colunas populadas] — §4 + leitura limite 25%/50% (Lei 8.666 art.65).
-- [ ] **A3** Doações eleitorais TSE no MD (portar do PDF) — nova seção + leitura conflito doador↔contrato.
-- [ ] **A4** Rodízio/cartel no fornecedor (`rodizio_temporal`) — §5 + leitura bid rotation.
-- [ ] **A2** Empenho→Liquidação→OB [VERIFICAR colunas] — §2 + leitura execução incompleta.
+- [x] **A3** Doações eleitorais TSE no MD (conflito doador↔contrato) — §1-D fornecedor. Commit 6e50b15.
+- [x] **A8** Capital social × recebido (H-CAPITAL) — §1 + leitura subcapitalização + raciocínio. Commit (a seguir).
+- [~] **A7** QSA detalhe — qualificação + entrada JÁ em §1 (MD/PDF). Participação %/data-saída **NÃO coletados**
+      (não há na base) → exigiria coletor novo; fora do escopo de *surfar*. Marcado como coberto no possível.
+- [⛔] **A1** Aditivos contratuais — **SEM DADO** (tabela `contratos` não tem colunas de aditivo). Vira "coletar
+      aditivos" (coletor novo), fora do escopo de *surfar campos existentes*.
+- [⛔] **A2** Empenho→Liquidação→OB — **SEM DADO** (`ordens_bancarias` não tem empenho/liquidação). Idem A1.
+- [ ] **A4** Rodízio/cartel no fornecedor (`rodizio_temporal`) — §5 + leitura bid rotation. [verificar per-CNPJ]
 - [ ] **A5** Regularidade fiscal/previdenciária (`registry_providers`, async/bounded) — §1 + leitura.
 - [ ] **A6** Terceirizados (conflito de pessoal) — nova seção + leitura incompatibilidade.
 - [ ] **Checkpoint F2.**

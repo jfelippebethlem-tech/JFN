@@ -938,6 +938,42 @@ def _render_doacoes_tse(ctx: dict) -> str:
     return "\n".join(L)
 
 
+def _num_brl(v):
+    """Converte capital social (número ou string '1.234,56') p/ float; None se não der."""
+    if v is None or v == "":
+        return None
+    if isinstance(v, (int, float)):
+        return float(v)
+    try:
+        return float(str(v).strip().replace(".", "").replace(",", "."))
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _capital_recebido_md(emp: dict | None, pagamentos: dict) -> str:
+    """A8 — leitura inteligente capital social × recebido (subcapitalização típica de fachada). Indício honesto.
+    Limiar espelha o H-CAPITAL do motor DD: recebido ≥ 50× capital e > R$ 500 mil = indício (ALTO se ≥ 200×)."""
+    if not emp:
+        return ""
+    cap = _num_brl(emp.get("capital_social"))
+    total = (pagamentos or {}).get("total_geral") or 0
+    if cap is None or total <= 0:
+        return ""
+    if cap <= 0:
+        return ("- **Capital × recebido:** capital social declarado **nulo/não informado** frente a "
+                f"R$ {moeda(total)} recebidos do Estado — **atenção** (capital irrisório/ausente é indício de "
+                "subcapitalização a verificar; INDISPONÍVEL não equivale a regular).")
+    razao = total / cap
+    if total >= 50 * cap and total > 500_000:
+        nivel = "🔴 ALTO" if razao >= 200 else "🟡 MÉDIO"
+        return (f"- **Capital × recebido ({nivel}):** capital social de **R$ {moeda(cap)}** contra "
+                f"**R$ {moeda(total)}** recebidos (**{razao:,.0f}× o capital**) — **indício** de subcapitalização "
+                "típica de empresa de fachada; verificar a capacidade econômico-financeira (art. 11 Lei 8.429/92; "
+                "Lei 14.133/21 art. 69). **Indício, não prova.**")
+    return (f"- **Capital × recebido:** capital social de R$ {moeda(cap)} frente a R$ {moeda(total)} recebidos "
+            f"({razao:,.1f}× o capital) — proporção **sem indício relevante** de subcapitalização.")
+
+
 def render_md(ctx: dict) -> str:
     p = ctx["pagamentos"]
     L: list[str] = []
@@ -1013,6 +1049,10 @@ def render_md(ctx: dict) -> str:
     _rs = _realidade_sede(ctx.get("cnpj", ""))
     if _rs:
         add(_rs)
+    # A8 — capital social × recebido (subcapitalização típica de fachada)
+    _cr = _capital_recebido_md(emp, p)
+    if _cr:
+        add(_cr)
     add("")
 
     # 1-B. Cruzamento sócio × OB (SIAFE) × processo SEI × endereço
@@ -1324,6 +1364,12 @@ def _fatos_para_raciocinio(ctx: dict) -> str:
     if gz.get("total"):
         muns = ", ".join(dict.fromkeys(f"{i['municipio']}/{i['uf']}" for i in (gz.get("itens") or [])[:5] if i.get("municipio")))
         L.append(f"Diários oficiais (Querido Diário): {gz['total']} menção(ões) ao nome em diários municipais; ex.: {muns}.")
+    emp_r = (ctx["enriq"].get("dados") or {}).get("empresa") if ctx.get("enriq", {}).get("ok") else None
+    if emp_r and p.get("tem_dados"):
+        _cap = _num_brl(emp_r.get("capital_social"))
+        if _cap and _cap > 0 and p["total_geral"] >= 50 * _cap and p["total_geral"] > 500_000:
+            L.append(f"Capital social ({moeda(_cap)}) é {p['total_geral'] / _cap:,.0f}× menor que o recebido "
+                     f"({moeda(p['total_geral'])}) — indício de subcapitalização típica de fachada (H-CAPITAL).")
     bs = ctx.get("beneficios_socios") or _beneficios_socios(ctx.get("cnpj", ""))
     if bs.get("n_verificados"):
         if bs.get("n_com_beneficio"):
