@@ -15,6 +15,7 @@ Uso: PYTHONPATH=. .venv/bin/python -m tools.backfill_verificacao_endereco [--lim
 from __future__ import annotations
 
 import argparse
+import os
 import sqlite3
 from datetime import datetime
 from pathlib import Path
@@ -61,8 +62,14 @@ def main() -> int:
     con.commit()
     alvos = _gap(con, a.ug or None, a.limite)
     ts = datetime.now().isoformat(timespec="seconds")
+    # VISUAL (foto de rua → casebre/baldio): gate honesto. ENDERECO_USAR_IMAGEM = auto|1|0.
+    #   auto (default): liga SÓ se houver MAPILLARY_TOKEN (fonte GRÁTIS) — assim o sweep do universo não
+    #   queima sozinho o teto pago do Street View. Com '1' força (usa SV de fallback, dentro do cap 9999/31d).
+    _flag = os.environ.get("ENDERECO_USAR_IMAGEM", "auto").strip().lower()
+    usar_imagem = (bool(os.environ.get("MAPILLARY_TOKEN", "").strip()) if _flag == "auto"
+                   else _flag in ("1", "true", "sim", "yes", "on"))
     print(f"[backfill_verif_end] {len(alvos)} fornecedor(es) a verificar (lote)"
-          + (f" · UG {a.ug}" if a.ug else ""), flush=True)
+          + (f" · UG {a.ug}" if a.ug else "") + (" · VISUAL on" if usar_imagem else ""), flush=True)
     ok = ind = indisp = 0
     import time
     for i, f in enumerate(alvos, 1):
@@ -71,18 +78,23 @@ def main() -> int:
             print(f"  ⏸ back-off {espera:.0f}s (respeitando a fonte OSM)", flush=True)
             time.sleep(espera + 1)
         try:
-            res = analisar_endereco(f["endereco"], f["municipio"], f["uf"], f["cep"], usar_overpass=True)
+            res = analisar_endereco(f["endereco"], f["municipio"], f["uf"], f["cep"],
+                                    usar_overpass=True, usar_imagem=usar_imagem)
         except Exception as e:  # noqa: BLE001
             res = {"status": "INDISPONIVEL", "nivel": "—", "evidencia": f"erro: {str(e)[:60]}", "sinais": {}}
         g = (res.get("sinais") or {}).get("geocode") or {}
-        # colunas NOMEADAS (a tabela ganhou visual_* na cont.15 → 13 colunas; o INSERT posicional de 9
-        # quebrava em TODA linha. Os visual_* ficam NULL aqui — só o resolvedor de imagem os preenche).
+        vis = (res.get("sinais") or {}).get("imagem") or {}  # visual (casebre/baldio) quando usar_imagem
+        # colunas NOMEADAS (a tabela tem 13 colunas desde a cont.15; o INSERT posicional de 9 quebrava em
+        # TODA linha). visual_* preenchidos quando há análise de imagem; NULL caso contrário.
         con.execute("INSERT OR REPLACE INTO endereco_verificacao "
-                    "(cnpj,status,nivel,exato,lat,lon,municipio_geo,evidencia,verificado_em) "
-                    "VALUES (?,?,?,?,?,?,?,?,?)",
+                    "(cnpj,status,nivel,exato,lat,lon,municipio_geo,evidencia,verificado_em,"
+                    " visual_classe,visual_conf,visual_fonte,visual_em) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                     (f["cnpj"], res["status"], res.get("nivel", "—"), 1 if g.get("exato") else 0,
                      g.get("lat"), g.get("lon"), g.get("municipio_geo", ""),
-                     res.get("evidencia", "")[:500], ts))
+                     res.get("evidencia", "")[:500], ts,
+                     vis.get("classe") or None, vis.get("confianca") if vis else None,
+                     vis.get("fonte") or None, ts if vis.get("ok") else None))
         con.commit()
         if res["status"] == "INDICIO":
             ind += 1

@@ -549,7 +549,20 @@ def analisar_endereco(endereco: str, municipio: str | None = None, uf: str | Non
     ed = edificacao_no_ponto(g["lat"], g["lon"]) if usar_overpass else {"ok": False, "motivo": "não solicitado"}
     sinais["edificacao"] = ed
     if usar_imagem:
-        sinais["imagem"] = _classificar_visual(g["lat"], g["lon"])
+        vis = _classificar_visual(g["lat"], g["lon"])
+        sinais["imagem"] = vis
+        # A foto RENTE AO CHÃO (Mapillary/Street View) acusando casebre/baldio/rural PRECEDE o "edificado"
+        # do OSM — pedido do dono: mesmo havendo construção, a fachada pode ser um casebre. (Só fonte precisa
+        # devolve INDICIO; satélite devolve INDISPONIVEL — a lição §8 'satélite nunca acusa' fica preservada.)
+        if vis.get("status") == "INDICIO":
+            out = {"status": "INDICIO", "nivel": vis.get("nivel", "MEDIO"),
+                   "peso": 12 if vis.get("nivel") == "ALTO" else 9,
+                   "estado": f"verificado (imagem de rua: {vis.get('classe', '')})",
+                   "evidencia": vis.get("evidencia") or "Foto de rua indica fachada incompatível com a sede.",
+                   "sinais": sinais}
+            cache[chave] = {**out, "_ts": time.time()}
+            _salva_cache()
+            return out
 
     # terreno não edificado (baldio): sem prédio no ponto E/ou landuse de área vaga
     if ed.get("ok") and ed.get("tem_predio") is False:
