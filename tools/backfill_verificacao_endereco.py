@@ -61,7 +61,9 @@ def main() -> int:
     a = ap.parse_args()
     load_dotenv(str(_REPO / ".env"))
 
-    con = sqlite3.connect(str(_DB))
+    con = sqlite3.connect(str(_DB), timeout=30)
+    con.execute("PRAGMA busy_timeout=30000")  # espera o lock (sweeps concorrentes) em vez de errar "database is locked"
+    con.execute("PRAGMA journal_mode=WAL")
     con.execute(_DDL)
     con.commit()
     alvos = _gap(con, a.ug or None, a.limite, forcar=a.forcar)

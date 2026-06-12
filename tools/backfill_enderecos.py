@@ -43,7 +43,8 @@ def _digs(v) -> str:
 
 
 def _gap() -> list[str]:
-    con = sqlite3.connect(str(_DB))
+    con = sqlite3.connect(str(_DB), timeout=30)
+    con.execute("PRAGMA busy_timeout=30000")  # espera o lock (sweeps concorrentes) em vez de errar
     try:
         cnpjs = set()
         for (c,) in con.execute("SELECT DISTINCT credor FROM ob_orcamentaria_siafe WHERE credor IS NOT NULL"):
@@ -87,7 +88,8 @@ async def main(delay: float = 0.6) -> None:
     if not gap:
         _log("nada a fazer.")
         return
-    con = sqlite3.connect(str(_DB))
+    con = sqlite3.connect(str(_DB), timeout=30)
+    con.execute("PRAGMA busy_timeout=30000")  # espera o lock (sweeps concorrentes) em vez de errar
     agora = datetime.now().isoformat(timespec="seconds")
     ok = falha = 0
     async with httpx.AsyncClient(timeout=20, headers={"User-Agent": "JFN-Compliance/1.0"}) as client:
