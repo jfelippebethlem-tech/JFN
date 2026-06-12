@@ -141,6 +141,16 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-12 cont.23:** **(1) MIGRAÇÃO da memória `.claude` → vault Obsidian** (ninguém em runtime lê os `.claude`):
+  18 diretrizes/lições → 9 `aprendizados/` + 4 refs vivas → `notas/` (CNPJ, Yoda-render, FlexVision, codegraph, SEI-login),
+  **digest do SessionStart agora carrega bloco "Diretrizes SEMPRE-ON"** (obediência·VM·cota·honestidade·aprender), `MEMORY.md`
+  encolheu p/ 19 linhas; 24 originais arquivados em `vault/_archive/*.tar.gz` (nada perdido); 0 links quebrados. Regra de
+  roteamento canônica no `vault/_CLAUDE.md`. **(2) ⛔ QUEDA da VM diagnosticada:** DuckDB pesado + 2 sweeps Playwright vivos
+  numa VM **SEM SWAP** = OOM (sem cushion). Lição dura gravada ([[aprendizados/vm-nao-crashar]]): **parar sweeps antes de
+  DuckDB**; recomendar swap 3-4GB ao dono. **(3) Grupo Vieira QUANTIFICADO** — `concentracao_por_grupo(660100)`: os **10
+  CNPJs + sócio-elo** explícitos (R C/F P Vieira Engenharia + família ligam 6-7 cada), R$543M/56,9%; vault MUV atualizado.
+  **(4) VARREDURA** nas 30 maiores UGs → 7 candidatos novos de concentração-grupo (CONQUISTA vigilância multi-UG, Agile/Milano,
+  PC/Montreal; Supervia/Telemar excluídos como legítimos) → `casos/varredura-concentracao-grupo-2026-06-12`.
 - **06-12 cont.22:** **(1) NOVO detector `grafo_cartel.concentracao_por_grupo(ug)`** — concentração OCULTA por
   grupo econômico (union-find por sócio, dedup raiz; HHI grupo vs CNPJ). Pega o que rodízio/captura-por-CNPJ não
   pegam: muitos CNPJs que parecem concorrentes mas são UM grupo (concorrência fictícia, Art. 90/337-F/CADE).
