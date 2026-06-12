@@ -114,6 +114,8 @@ def test_satelite_nunca_acusa_baldio_barraco(monkeypatch):
 def test_streetview_acusa_barraco(monkeypatch):
     # com fonte PRECISA (Street View) o barraco vira indício de verdade
     monkeypatch.setenv("GOOGLE_MAPS_KEY", "k")
+    # Mapillary é PRIORITÁRIO (cont.19) — desliga p/ testar o caminho do Street View
+    monkeypatch.setattr(ve, "_fetch_mapillary", lambda *a, **k: None)
     monkeypatch.setattr(ve, "_fetch_streetview_google", lambda lat, lon, chave: b"\xff\xd8\xfffake")
     monkeypatch.setattr(ve, "_vlm_classificar", lambda img, fonte, endereco="": {
         "ok": True, "classe": "terreno_baldio", "confianca": 0.7, "descricao": "lote vazio"})
@@ -132,6 +134,9 @@ def test_satelite_afasta_area_construida(monkeypatch):
 
 def test_imagem_indisponivel_sem_foto(monkeypatch):
     monkeypatch.delenv("GOOGLE_MAPS_KEY", raising=False)
+    # nenhuma fonte de foto disponível (Mapillary/Street View/satélite todos None) → INDISPONÍVEL honesto
+    monkeypatch.setattr(ve, "_fetch_mapillary", lambda *a, **k: None)
+    monkeypatch.setattr(ve, "_fetch_streetview_google", lambda *a, **k: None)
     monkeypatch.setattr(ve, "_fetch_satelite_esri", lambda lat, lon, delta=0.0009: None)
     out = ve.classificar_local_por_imagem(-22.9, -43.2)
     assert out["status"] == "INDISPONIVEL" and not out["ok"]
