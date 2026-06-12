@@ -55,3 +55,13 @@ O que falta para "100%" exige trabalho FORA do escopo de *surfar campos existent
 
 ## Em curso / feito
 - [x] Sweep de benefícios sócios/admin (detached) + fix BF anoMesReferencia — commitado (cont.20).
+
+## AUDITORIA + BUGS REAIS CORRIGIDOS (cont.20, foco em FUNCIONALIDADE)
+- [x] **🐛 A6 conflito de pessoal** cruzava CPF completo×mascarado → nunca casava. FIX: nome+5díg (posições 4-8).
+      Acha **7 conflitos reais** (sócios = Defensor Público/cargo em comissão). Índice folha cacheado. Commit 85944bd.
+- [x] **🐛 §1-E endereço do órgão (PRÉ-EXISTENTE)** usava `MAX(favorecido)` (coluna inexistente) → seção SUMIA
+      quando tinha indícios. FIX: `favorecido_nome`. Restaura 7 indícios no Fundo 036100. Commit ecc4c93.
+- [x] +4 fixes (cobertura>100%, mode=ro, dedup, parsing) + hardening (logging nas seções, commit 84f59af).
+- [x] **Auditoria adversarial sistemática** (3 agentes) de TODO o pipeline de relatório → **zero** outros bugs de
+      coluna/query. Código de relatório confirmado SÓLIDO. (Diminishing returns no hunt.)
+- [x] **PDF=MD** (paridade total fornecedor) + Fases 1/2/3 VIVAS (jfn.service reiniciado).
