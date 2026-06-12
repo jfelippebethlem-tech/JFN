@@ -141,6 +141,16 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-12 cont.22:** **(1) NOVO detector `grafo_cartel.concentracao_por_grupo(ug)`** — concentração OCULTA por
+  grupo econômico (union-find por sócio, dedup raiz; HHI grupo vs CNPJ). Pega o que rodízio/captura-por-CNPJ não
+  pegam: muitos CNPJs que parecem concorrentes mas são UM grupo (concorrência fictícia, Art. 90/337-F/CADE).
+  **Medido real:** UG 660100 = 1 grupo (MUV São Gonçalo +9) **57% / R$543M**, HHI 1055→3575 (Δ+2520). Surfado no
+  triage de órgão; +4 testes TDD (núcleo puro); 12 verdes; ruff ok. Commit `756c58d`. Vault MUV/Vieira atualizados.
+  **(2) RECONCILIAÇÃO honesta:** auditoria provou que a doc estava muito atrás do código — **H-PEP, H-BENEFICIO,
+  `investigacao_orgao_dd`, PyOD, DuckDB, CAGED/RAIS, OpenSanctions JÁ EXISTEM** (estavam listados como "próximos").
+  **Único gap real do roadmap P0 = Splink** (entity resolution). **(3) Regra de roteamento de memória** (3 camadas,
+  anti-duplicação, context-economy) em `~/vault/_CLAUDE.md` + 1 frase no `.claude/MEMORY.md`. **(4) Lição gravada:**
+  obediência do dono > qualquer goal/loop; Stop hook/ralph-loop NUNCA ligado sem o dono no controle.
 - **06-12 cont.21:** **(1) Yoda RESOLVIDO** — duplicação = poller externo, provado (diag) e identificado pelo dono
   como o **Hermes Desktop**; conflitos cessaram 12:51 UTC; update do hermes inocentado pela timeline (1º conflito
   01:37 < update 03:07). Ferramentas: `tools/diag_telegram_poller.sh` (já existia) + novo `tools/rotate_telegram_token.sh`
@@ -247,6 +257,15 @@ manuais quando expirarem (caem no nous até lá).
 > máquina (rode `bash tools/diag_telegram_poller.sh` p/ confirmar; fix: BotFather `/revoke` → token novo no
 > `~/.hermes/.env` → `systemctl --user restart hermes-gateway`). **(2) CPF em massa** — toda fonte grátis mascara;
 > passar CSV `nome,cpf` p/ `python -m tools.ingerir_cpf_oficial` (valida DV + confirma contra a máscara).
+
+> **⚠ ESTADO REAL (cont.22 — auditoria do código):** a lista numerada abaixo está MUITO desatualizada. JÁ EXISTEM
+> (não reconstruir): item 1 (**H-PEP/H-BENEFICIO** wired no `investigacao_dd.py` linhas 453-473) · item 2 (**`investigacao_orgao_dd.py`**
+> = o "investigar órgão" batch, com CLI) · `cardinalidade_contratual` · **PyOD** ensemble · **DuckDB** · **CAGED/RAIS** ·
+> **OpenSanctions**. ALVO Nº1(c) (agregado de benefícios no relatório) **FEITO** (testes verdes). **Único gap real do
+> roadmap P0 = Splink** (entity resolution). **NOVO (cont.22):** `grafo_cartel.concentracao_por_grupo` (concentração
+> oculta por grupo; achou MUV/Vieira 57%/R$543M na 660100). **Trabalho autônomo restante** = operar o produto
+> (rodar `investigar_orgao`/`concentracao_por_grupo` nas UGs e gravar casos no vault) + Splink. O resto está bloqueado
+> no DONO (SEI de outra unidade, Street View/`GOOGLE_MAPS_KEY`, CPF em massa).
 
 **Branch `feat/lista-limpa`, tudo commitado, serviços/sweeps vivos.** Instruções permanentes do dono:
 1. Melhorar o projeto INTEIRO em **loops de qualidade máxima** (metodologia no topo deste doc).
