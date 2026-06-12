@@ -115,12 +115,16 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
   desta VM** (app desktop? outro deploy?) — conflito `getUpdates` PRÉ-EXISTENTE (10 conflitos já às 03:00, antes do
   update). **Desligar a instância duplicada** para o Yoda parar de competir pelo Telegram. (O update NÃO causou isso.)
   Reaplicar customizações após futuros `hermes update` (os patches estão preservados).
-- **⚠ Yoda intermitente = POLLER EXTERNO do bot (cont.20, PROVADO):** começou hoje **01:37:36** (166 conflitos
-  `getUpdates` no dia vs 1 em dias anteriores). **Prova:** com o gateway PARADO, loop de `getUpdates` deu 409
-  Conflict e ZERO conexões telegram nesta VM → **há um 2º Hermes/bot rodando em OUTRA máquina** com o mesmo
-  `TELEGRAM_BOT_TOKEN` (bot id 8840263255), pollando a cada ~46s. **NÃO é o desktop nem esta VM nem o update.**
-  **Ação do dono:** achar/desligar esse instance (deploy nuvem? 2ª VM? laptop?) OU `/revoke` no BotFather → token
-  novo → atualizar `~/.hermes/.env` + restart gateway. (O agente, geração de relatório e envio ao Telegram FUNCIONAM.)
+- **✅ Yoda RESOLVIDO (cont.21, 06-12) — era o DESKTOP do dono.** Mensagens duplicadas/triplicadas = 2º poller
+  do bot disputando `getUpdates`. Diag provou externo (gateway parado → ainda 409). O dono fechou o **Hermes
+  Desktop** e os conflitos **cessaram às 12:51:55 UTC** (24 nos 20 min anteriores → 0). Update do hermes INOCENTE
+  (1º conflito 01:37 precede o update 03:07–03:39 em ~1h30). **Sem fix de token necessário.** Recidiva futura:
+  `bash tools/rotate_telegram_token.sh '<token>'` após `/revoke` no BotFather. (Histórico abaixo, cont.20.)
+  **[cont.20 — contexto preservado]** começou **01:37:36** (166 conflitos vs 1 em dias normais); VM 100% limpa
+  (1 só hermes por `ps`/`ss`/diag; sem docker; branch do update nunca pushado; bot sem webhook). Externo às **01:37 UTC
+  (22:37 BRT de 11/06)** — dono confirma que NÃO é o desktop dele = outro dispositivo com o token. **FIX a 1
+  comando:** BotFather `/revoke` → `bash tools/rotate_telegram_token.sh '<token>'` (valida getMe, backup+troca em
+  ~/.hermes/.env **e** ~/JFN/.env, religa o gateway, confirma 0 conflito; mata o externo na hora). Agente/envio OK.
 SIAFE 1 (liberar chave p/ todas as UGs) — **sweep PAUSADO até a chave (06-11 cont.17):** flag `data/.pause_sweep_1`
 + cron de respawn `* * * * * siafe_supervisor.sh` REMOVIDO (não funciona sem chave). Reativar: `rm data/.pause_sweep_1`
 e recolocar a linha do supervisor no crontab. (SIAFE 2 incremental 05:00 segue ativo, funciona por login.) · SEI de
@@ -128,6 +132,19 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-12 cont.21:** **(1) Yoda RESOLVIDO** — duplicação = poller externo, provado (diag) e identificado pelo dono
+  como o **Hermes Desktop**; conflitos cessaram 12:51 UTC; update do hermes inocentado pela timeline (1º conflito
+  01:37 < update 03:07). Ferramentas: `tools/diag_telegram_poller.sh` (já existia) + novo `tools/rotate_telegram_token.sh`
+  (rotação a 1 comando p/ recidiva). **(2) NOVO no relatório de ÓRGÃO — §1-G Sanções do TCE-RJ** (`penalidades_tcerj`,
+  910 condenações, controle externo, antes PARADO por falta de join). `reporting/penalidades_tce_view.py`: vínculo
+  órgão-TCE↔UG **re-derivado dos dados vivos** (auto-matcher token-prefix + **discriminador de tipo** que corrige o
+  bug clássico TJ→Fundo Especial; bônus de acrônimo) + **overrides curados só p/ exceções** (sucessões/multi-UG/sem-âncora)
+  + **`depurar()`** auto-auditoria (0 sem_match; só CEDAE sem UG) + marcador temporal (EXTINTA=histórico). **Honestidade
+  dura:** dedup de **responsabilidade solidária** (402/910 linhas eram o mesmo débito a vários responsáveis — somar
+  inflava Saúde de R$27M→R$66M; agora conta o débito 1×, registra nº de responsáveis). MD §1-G + PDF + alimenta o
+  raciocínio (IA conectou: "48 condenações do TCE… riscos de gestão"). Medido real (Saúde R$28,5M, PRODERJ R$35M,
+  DETRAN; Fundo do TJ corretamente sem sanção). +12 testes (23 verdes nos módulos de órgão), ruff limpo. PDF entregue
+  conferido (sem tofu). **Próximo M3 pendente:** UGs renomeadas → o `depurar()` já sinaliza drift p/ revisão.
 - **06-12 cont.20:** **SWEEP DETACHED DE BENEFÍCIOS DOS SÓCIOS no ar (ALVO Nº1 cont.19 montado).** (1) Tabela
   `socio_beneficio` (resumível, PK nome_norm+doc, CPF resolvido INTERNO/LGPD) + `tools/beneficios_sweep.py`
   (1 lote: índices `carregar_indice_favorecidos`+`carregar_indice_tse` 1×, `resolver_multi`, `verificar_beneficios`
