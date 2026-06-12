@@ -18,6 +18,7 @@ USO (API): POST /api/relatorio/orgao  {"orgao":"iterj"}  ou  {"ug":"133100"}  [,
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
 import sys
 from collections import OrderedDict, defaultdict
@@ -31,6 +32,8 @@ from compliance_agent.reporting.inteligencia import (
     _DB, _REPORTS, _hhi, _mc, _registrar_fonte, _render_parecer_pdf, _slug,
     _tab_header, _tab_row, fmt_cnpj, moeda, so_digitos,
 )
+
+_log = logging.getLogger(__name__)
 
 
 # ───────────────────────────── resolução de órgão ─────────────────────────────
@@ -516,6 +519,7 @@ def _dd_orgao_bounded(ug: str, anos: Optional[list[int]], top_n: int = 12) -> di
         out["ok"] = bool(out.get("ranking"))
         return out
     except Exception as exc:  # noqa: BLE001
+        _log.warning("DD do órgão %s degradou (seção 1-D): %s", ug, exc)  # não somir calado (lição bug favorecido)
         return {"ok": False, "_nota": str(exc)[:160]}
 
 
@@ -569,6 +573,7 @@ def _endereco_real_orgao(ug: str) -> dict:
         out["ok"] = out["n_verificados"] > 0
         return out
     except Exception as exc:  # noqa: BLE001
+        _log.warning("Realidade de endereço do órgão %s degradou (seção 1-E): %s", ug, exc)
         out["_nota"] = str(exc)[:160]
         return out
 
@@ -592,6 +597,7 @@ def _beneficios_orgao(ug: str) -> dict:
         agg["ok"] = agg.get("total_qsa", 0) > 0
         return agg
     except Exception as exc:  # noqa: BLE001
+        _log.warning("Benefícios dos sócios do órgão %s degradou (seção 1-F): %s", ug, exc)
         return {"ok": False, "_nota": str(exc)[:160]}
 
 
