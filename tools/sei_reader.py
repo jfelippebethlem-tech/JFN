@@ -139,6 +139,54 @@ async def seguir_relacionados(pg, proc_url: str, relacionados: list, max_rel: in
     return cadeia
 
 
+async def _conteudo_doc(pg, doc: dict) -> dict | None:
+    """Extrai o conteúdo de UM documento do SEI.
+
+    Caminho normal: navega até ``doc["url"]`` e lê o ``innerText`` (texto HTML nativo).
+    Quando o texto nativo vier VAZIO ou CURTO (``len(t) <= 50``) o documento é provavelmente
+    um SCAN (PDF-imagem / digitalizado) → baixa os BYTES pela request-context da própria página
+    (mesma sessão/cookies) e roda OCR em executor (CPU-bound síncrono, fora do event loop).
+    Se o OCR vier não-vazio, usa-o como conteúdo e marca ``"via": "ocr"`` (proveniência honesta);
+    se vier vazio, segue INDISPONÍVEL (não inventa). Degrada honesto: 1 doc que falha não derruba a
+    leitura (retorna ``None``).
+    """
+    try:
+        await pg.goto(doc["url"], wait_until="domcontentloaded", timeout=20000)
+        await pg.wait_for_timeout(900)
+        t = await pg.evaluate("()=>document.body?document.body.innerText.slice(0,6000):''")
+    except Exception:
+        return None
+    if t and len(t) > 50:
+        return {"doc": (doc.get("texto") or "")[:80], "conteudo": t}
+    # innerText vazio/curto → provável SCAN → download dos bytes + OCR (degrada honesto).
+    try:
+        from compliance_agent.sei.ocr_docs import ocr_documento  # import LAZY (só neste ramo)
+
+        resp = await pg.context.request.get(doc["url"])
+        if not resp.ok:
+            return None
+        ct = (resp.headers.get("content-type") or "").lower()
+        url_l = (doc.get("url") or "").lower()
+        if "pdf" in ct or url_l.endswith(".pdf"):
+            tipo = "pdf"
+        elif ct.startswith("image/") or url_l.endswith(
+            (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".gif")
+        ):
+            tipo = "imagem"
+        else:
+            return None
+        body = await resp.body()
+        loop = asyncio.get_event_loop()
+        txt_ocr = await loop.run_in_executor(
+            None, lambda: ocr_documento(body, tipo=tipo)
+        )
+        if txt_ocr:
+            return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr, "via": "ocr"}
+    except Exception:
+        return None
+    return None
+
+
 async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     """Busca o processo na pesquisa autenticada, abre e extrai a íntegra (árvore + docs). Grava cdp_*.json."""
     import json as _json
@@ -200,14 +248,9 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     # conteúdo dos primeiros documentos
     docs_txt = []
     for doc in dump["documentos"][:8]:
-        try:
-            await pg.goto(doc["url"], wait_until="domcontentloaded", timeout=20000)
-            await pg.wait_for_timeout(900)
-            t = await pg.evaluate("()=>document.body?document.body.innerText.slice(0,6000):''")
-            if t and len(t) > 50:
-                docs_txt.append({"doc": (doc.get("texto") or "")[:80], "conteudo": t})
-        except Exception:
-            continue
+        c = await _conteudo_doc(pg, doc)
+        if c:
+            docs_txt.append(c)
     res["conteudo_documentos"] = docs_txt
     tot = res["texto"] + "\n\n" + "\n\n".join(d["conteudo"] for d in docs_txt)
     res["cnpjs"] = sorted(set(re.findall(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}", tot)))
