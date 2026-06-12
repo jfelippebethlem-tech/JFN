@@ -1649,6 +1649,39 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         secoes.append({"titulo": "2. Quadro societário (QSA / diretores)",
                        "html": f"<table><tr><th>Sócio</th><th>Qualificação</th><th>Entrada</th></tr>{rows}</table>"})
 
+    # 2-B. Benefícios sociais dos sócios/administradores (laranja) — paridade com o MD §1-C
+    try:
+        from compliance_agent.reporting import beneficios_view as bv
+        _b = bv.por_fornecedor(cnpj)
+    except Exception:  # noqa: BLE001
+        _b = {}
+    _intro_bs = ("<p class='nota'>Cruza o CPF dos sócios/administradores do QSA com benefícios de subsistência "
+                 "(Bolsa Família, BPC, Aux. Emergencial, PETI, Safra, Defeso — Portal da Transparência/CGU). Ser "
+                 "dono/gestor de empresa que recebe recursos públicos <b>e</b> receber benefício de subsistência é "
+                 "<b>indício de testa-de-ferro (laranja)</b> — art. 337-F CP; art. 11 Lei 8.429/92. CPF mascarado "
+                 "(LGPD); resolvido via favorecidos PF + doadores TSE. <b>INDISPONÍVEL ≠ ausência.</b> Indício, nunca acusação.</p>")
+    if _b.get("total_qsa"):
+        _leitura_bs = esc(bv.leitura(_b, escopo="deste fornecedor").replace("**", ""))
+        _resumo_bs = (f"<p>QSA mascarado: <b>{_b['total_qsa']}</b> · varridos: {_b['n_varridos']} · CPF resolvido: "
+                      f"{_b['n_resolvidos']} · verificados: {_b['n_verificados']} ({_b['cobertura']}%) · com benefício "
+                      f"(indício): <b>{_b['n_com_beneficio']}</b> · INDISPONÍVEL: {_b['n_indisponivel']}</p>")
+        _fmap_bs = {"favorecidos_pf": "favorecidos PF", "tse_doadores": "doadores TSE"}
+        _itens_bs = _b.get("itens") or []
+        _tab_bs = ""
+        if _itens_bs:
+            _rows_bs = "".join(f"<tr><td>{esc(it.get('nome'))}</td><td>{esc(it.get('papel'))}</td>"
+                               f"<td>{esc(', '.join(it.get('tipos') or []) or '—')}</td>"
+                               f"<td>{esc(_fmap_bs.get(it.get('fonte', ''), it.get('fonte', '') or '—'))}</td></tr>"
+                               for it in _itens_bs[:20])
+            _tab_bs = ("<table><tr><th>Sócio/Administrador</th><th>Papel</th><th>Benefício</th>"
+                       f"<th>Fonte do CPF</th></tr>{_rows_bs}</table>")
+        secoes.append({"titulo": "2-B. Benefícios sociais dos sócios/administradores (indício de laranja)",
+                       "html": _intro_bs + f"<p>{_leitura_bs}</p>" + _resumo_bs + _tab_bs})
+    else:
+        secoes.append({"titulo": "2-B. Benefícios sociais dos sócios/administradores",
+                       "html": _intro_bs + "<p class='nota'>Sem sócios/administradores com CPF mascarado no QSA "
+                               "(ou QSA público não ingerido) — INDISPONÍVEL.</p>"})
+
     # 3. DOAÇÕES ELEITORAIS dos sócios/empresa (conflito doador↔contrato) — pedido do dono
     # reusa a rede já calculada em montar() (evita 2ª query ao TSE); fallback recalcula
     rede = ctx.get("conflito_rede")
