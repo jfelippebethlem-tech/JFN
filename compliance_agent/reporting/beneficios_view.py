@@ -58,10 +58,11 @@ def _agg(total_qsa: int, rows: list) -> dict:
                 tipos = json.loads(bj or "[]")
             except Exception:  # noqa: BLE001
                 tipos = []
-            itens.append({"cnpj": cnpj, "razao": razao, "nome": nome, "papel": qualif or "(sem qualificação)",
-                          "gestao": _papel_gestao(qualif), "fonte": fonte or "", "tipos": tipos})
-    # distinto p/ o headline: pessoas com benefício
-    n_pessoas_benef = len({(i["nome"],) for i in itens})
+            itens.append({"cnpj": cnpj, "razao": razao, "nome": nome, "doc": doc,
+                          "papel": qualif or "(sem qualificação)", "gestao": _papel_gestao(qualif),
+                          "fonte": fonte or "", "tipos": tipos})
+    # distinto p/ o headline: pessoas com benefício (por nome + doc, coerente com os totais)
+    n_pessoas_benef = len({(i["nome"], i["doc"]) for i in itens})
     n_indisponivel = max(0, total_qsa - n_verificados)
     cobertura = round(100.0 * n_verificados / total_qsa, 1) if total_qsa else 0.0
     return {"total_qsa": total_qsa, "n_varridos": n_varridos, "n_resolvidos": n_resolvidos,
@@ -85,7 +86,8 @@ def _join_rows(con, cnpjs: list[str]) -> list:
               FROM socios_fornecedor s
               JOIN socio_beneficio b
                 ON b.socio_nome_norm = s.socio_nome_norm AND b.socio_doc = s.socio_doc
-             WHERE s.cnpj IN ({ph})""", cnpjs).fetchall()
+             WHERE s.cnpj IN ({ph}) AND s.socio_doc LIKE '%*%' AND s.socio_nome_norm <> ''""",
+        cnpjs).fetchall()
 
 
 def agregar_por_cnpjs(cnpjs, db_path: str | Path | None = None) -> dict:

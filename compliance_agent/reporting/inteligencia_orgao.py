@@ -560,7 +560,7 @@ def _endereco_real_orgao(ug: str) -> dict:
             if indic_cnpjs:
                 qs = ",".join("?" * len(indic_cnpjs))
                 nomes = {r[0]: r[1] for r in con.execute(
-                    f"SELECT favorecido_cpf, MAX(favorecido) FROM ordens_bancarias "
+                    f"SELECT favorecido_cpf, MAX(favorecido_nome) FROM ordens_bancarias "
                     f"WHERE favorecido_cpf IN ({qs}) GROUP BY favorecido_cpf", indic_cnpjs).fetchall()}
                 for it in out["indicios"]:
                     it["nome"] = nomes.get(it["cnpj"], "")
@@ -578,7 +578,7 @@ def _beneficios_orgao(ug: str) -> dict:
     `socio_beneficio` (sweep detached) ⋈ `socios_fornecedor`. Cruzamento INTELIGENTE: distingue indício /
     AFASTADO / INDISPONÍVEL e traz a leitura raciocinada. Degrada honesto (tabela/sweep ausente → ok=False)."""
     try:
-        con = sqlite3.connect(_DB)
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
         try:
             cnpjs = [r[0] for r in con.execute(
                 "SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE ug_codigo=? "
