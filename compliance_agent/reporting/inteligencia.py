@@ -2047,6 +2047,47 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                        "html": _intro_bs + "<p class='nota'>Sem sócios/administradores com CPF mascarado no QSA "
                                "(ou QSA público não ingerido) — INDISPONÍVEL.</p>"})
 
+    # 2-C. Capital social × recebido (subcapitalização) — paridade com o MD §1
+    _cap_md = _capital_recebido_md(emp, p)
+    if _cap_md:
+        _cap_txt = (_cap_md[2:] if _cap_md.startswith("- ") else _cap_md).replace("**", "")
+        secoes.append({"titulo": "2-C. Capital social × recebido (subcapitalização)",
+                       "html": f"<p>{esc(_cap_txt)}</p>"})
+
+    # 2-D. Rodízio de vencedores / cartel (bid rotation) — paridade com o MD §1-E
+    _rodf = ctx.get("rodizio_forn") or _rodizio_fornecedor(cnpj)
+    if _rodf.get("ok"):
+        _aneis = _rodf.get("aneis") or []
+        if _aneis:
+            _rr = "".join(f"<tr><td>{esc(a['ug'])}</td><td>{a.get('score')}</td><td>{a.get('n_campeoes')}</td>"
+                          f"<td>{a.get('n_vitorias')}x</td><td>{esc(', '.join(str(y) for y in (a.get('anos') or [])))}</td></tr>"
+                          for a in _aneis)
+            _rh = ("<p class='nota'>Fornecedor é <b>campeão de rodízio</b> (bid rotation/cartel — OCDE; Lei 12.529 "
+                   "art.36; Lei 8.666 art.90) nas UGs abaixo. A OB expõe o vencedor, não os licitantes — corroborar "
+                   "no SEI/PNCP. Indício, não prova.</p>"
+                   f"<table><tr><th>UG</th><th>Score</th><th>Nº campeões</th><th>Vitórias</th><th>Anos</th></tr>{_rr}</table>")
+        else:
+            _rh = (f"<p class='nota'>Avaliadas {_rodf.get('ugs_avaliadas')} UG(s) que mais pagam este fornecedor: "
+                   "nenhum anel de rodízio com ele como campeão (indício de cartel afastado para essas UGs; demais "
+                   "UGs não avaliadas — INDISPONÍVEL).</p>")
+        secoes.append({"titulo": "2-D. Rodízio de vencedores / cartel (bid rotation)", "html": _rh})
+
+    # 2-E. Conflito de pessoal — sócio/admin (CPF resolvido) na folha do Estado — paridade com o MD §1-F
+    try:
+        from compliance_agent.reporting import conflito_pessoal_view as _cpv
+        _cpa = _cpv.por_fornecedor(cnpj)
+    except Exception:  # noqa: BLE001
+        _cpa, _cpv = {}, None
+    if _cpa.get("n_resolvidos") and _cpv:
+        _ci = _cpa.get("itens") or []
+        _ch = f"<p class='nota'>{esc(_cpv.leitura(_cpa).replace('**', ''))}</p>"
+        if _ci:
+            _cr = "".join(f"<tr><td>{esc(it['nome'])}</td><td>{esc(it['papel'])}</td><td>{esc(it['orgao'])}</td>"
+                          f"<td>{esc(it['cargo'])}</td><td>{esc(it['vinculo'])}</td></tr>" for it in _ci[:20])
+            _ch += ("<table><tr><th>Sócio/Adm</th><th>Papel</th><th>Órgão (folha)</th><th>Cargo</th>"
+                    f"<th>Vínculo</th></tr>{_cr}</table>")
+        secoes.append({"titulo": "2-E. Conflito de pessoal — sócio na folha do Estado", "html": _ch})
+
     # 3. DOAÇÕES ELEITORAIS dos sócios/empresa (conflito doador↔contrato) — pedido do dono
     # reusa a rede já calculada em montar() (evita 2ª query ao TSE); fallback recalcula
     rede = ctx.get("conflito_rede")
@@ -2321,6 +2362,23 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                                    f"{'(amostra pequena — pouco confiável)' if not bf['suficiente'] else ''}</p>"})
         except Exception:  # noqa: BLE001
             pass
+
+        # 9-B. Anomalias nas OBs (modelo de detecção) — paridade com o MD §8-C
+        _an = _anomalias_fornecedor(cnpj)
+        if _an.get("ok"):
+            _ai = _an.get("itens") or []
+            if _ai:
+                _ar = "".join(f"<tr><td>{it['score']:.3f}</td><td>{esc(it.get('ob', '-'))}</td>"
+                              f"<td>{esc(moeda(it.get('valor')))}</td><td>{esc(str(it.get('data', '-')))}</td></tr>"
+                              for it in _ai[:12])
+                _ah = (f"<p class='nota'>Das {_an['n_obs']} OBs pontuadas, <b>{_an['n_anomalas']}</b> com score alto "
+                       "(≥0,70) de anomalia (valor/frequência/dia/UG). Indício de pagamento atípico a inspecionar "
+                       "(lastro/contrato/medição) — não prova.</p>"
+                       f"<table><tr><th>Score</th><th>OB</th><th>Valor</th><th>Data</th></tr>{_ar}</table>")
+            else:
+                _ah = (f"<p class='nota'>{_an['n_obs']} OBs pontuadas, nenhuma com score alto — sem anomalia "
+                       "destacada pelo modelo (não afasta outras irregularidades).</p>")
+            secoes.append({"titulo": "9-B. Anomalias nas Ordens Bancárias (modelo de detecção)", "html": _ah})
 
     # 10. Co-endereço / sócios em comum (sinal de cartel/laranja) — sempre presente (sem buraco de numeração)
     coend = (ctx.get("cruzamento") or {}).get("coendereco") or []
