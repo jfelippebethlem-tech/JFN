@@ -137,7 +137,17 @@ manuais quando expirarem (caem no nous até lá).
 4. **Um só doc** = este, enxuto, 1 linha/sessão no §10. Detalhe no git.
 5. Ao FIM de cada loop: debug + avaliar storage/RAM/CPU + registrar.
 
-**Próximos alvos (maior alavancagem, pedidos do dono):**
+**▶ ALVO Nº1 DA PRÓXIMA SESSÃO (pedido direto do dono, cont.19):** **SWEEP DETACHED DE BENEFÍCIOS DOS SÓCIOS**
+(BF/BPC/Aux.Emerg./PETI/Safra/Defeso) + **resolução de CPF multi-fonte**, p/ achar laranjas e MANTER A BASE
+ATUALIZADA. Estado pronto p/ montar: coletor já cobre os 6 benefícios (`collectors/beneficios_sociais.py`);
+resolver de CPF já é **multi-fonte** (`resolucao_cpf.resolver_multi` + `carregar_indice_tse`): favorecidos PF
++ **TSE doadores** (542k) = **~5%** dos 27.729 sócios mascarados (`socios_fornecedor`, 31.449 total). **Montar:**
+(a) tabela `socio_beneficio` (resumível) + `tools/beneficios_sweep.py` (itera sócios, `carregar_indice_tse` 1×,
+`resolver_multi`, consulta benefícios, grava); (b) `tools/beneficios_supervisor.sh` + cron **bracket** `pgrep -f
+'beneficios_superviso[r].sh'` + @reboot (lição §8 do self-match!); (c) surfar no relatório (H-BENEFICIO/Lex II-E
+já existe). **Subir a cobertura de CPF:** próxima fonte LEGÍTIMA = **parsing de CPF nos docs do SEI** (contrato
+social/procuração; `processos_sei` ainda não extrai). **Base legal:** CPF de fornecedor público p/ fiscalização
+por deputado = LGPD art. 7º,II/23 (interno, mascarado nos produtos). **⛔ NUNCA** base de vazamento/"detetive".
 1. **Wirar `beneficios_sociais` no motor DD + Lex** — H-PEP (PEP por NOME dos sócios do QSA, desmascarados →
    relação política) + H-BENEFICIO (benefício por CPF, só em CPF completo: PF favorecida; QSA mascarado=INDISPONÍVEL).
    Bounded+cacheado+honesto. Alimenta a seção II-E do Lex.
