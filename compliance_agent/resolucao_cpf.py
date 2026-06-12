@@ -143,6 +143,31 @@ def carregar_indice_tse(db_path: str | Path | None = None) -> dict:
     return idx
 
 
+def _dv_cpf(base9: str) -> str:
+    """Calcula os 2 dígitos verificadores de um CPF a partir dos 9 primeiros dígitos."""
+    d = base9
+    for i in (9, 10):
+        soma = sum(int(d[n]) * ((i + 1) - n) for n in range(i))
+        dv = (soma * 10) % 11
+        d += str(0 if dv == 10 else dv)
+    return d[9:11]
+
+
+def gerar_cpfs_da_mascara(doc_mascarado: str) -> list[str]:
+    """Da máscara do QSA (mostra os 6 díg do meio = posições 4-9) gera os **1.000 CPFs VÁLIDOS** possíveis:
+    bruta-força as posições 1-3 (000–999) + os 6 do meio conhecidos + 2 DVs calculados. PURO, sem dado externo,
+    100% legal (é só aritmética). Reduz o espaço de 10^9 → 10^3; aí UMA consulta oficial de nome resolve qual é.
+    Base do 'descobrir CPF' pela máscara (ideia do dono) sem nenhuma base de vazamento."""
+    m6 = middle6(doc_mascarado)
+    if not m6:
+        return []
+    out = []
+    for ini in range(1000):
+        base9 = f"{ini:03d}{m6}"
+        out.append(base9 + _dv_cpf(base9))
+    return out
+
+
 def confirmar_cpf(nome: str, cpf_candidato: str, doc_mascarado: str) -> dict:
     """Confirma se um CPF-candidato (de QUALQUER fonte nome→CPF) é REALMENTE o do sócio do QSA, cruzando
     contra a máscara pública (nome + 6 díg do meio = posições 4-9). É o **anti-homônimo**: a máscara do QSA
