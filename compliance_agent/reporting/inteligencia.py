@@ -384,10 +384,12 @@ def _crescimento(pagamentos: dict) -> float:
 
 
 def _recalibrar_risco(pagamentos: dict, rede: list, contratado_tcerj: float,
-                      score_ext: int, risco_ext: str) -> dict:
+                      score_ext: int, risco_ext: str,
+                      coendereco: Optional[list] = None, anomalias: Optional[dict] = None) -> dict:
     """Risco JFN = MAIOR entre o score externo e o score interno por sinais REAIS do relatório.
     Corrige o caso em que o enriquecedor externo devolve 0 mas há indícios (conflito, pago≫contratado,
-    crescimento atípico, concentração, magnitude). Indício a verificar — nunca acusação."""
+    crescimento atípico, concentração, magnitude, rede mesma-sede §1-B, anomalias PyOD §8-C).
+    Indício a verificar — nunca acusação; peso conservador para o NÚMERO refletir a prosa, não inflar."""
     total = float(pagamentos.get("total_geral") or 0)
     top_share = float((pagamentos.get("hhi") or {}).get("top_share") or 0)
     cresc = _crescimento(pagamentos)
@@ -411,6 +413,32 @@ def _recalibrar_risco(pagamentos: dict, rede: list, contratado_tcerj: float,
         s += 10; sinais.append(f"exposição muito alta ao erário (R$ {moeda(total)})")
     elif total >= 50e6:
         s += 5; sinais.append(f"exposição alta (R$ {moeda(total)})")
+
+    # Rede MESMA-SEDE (§1-B): N fornecedores no MESMO endereço também recebendo do Estado = indício de
+    # fachada/laranja/direcionamento (art. 337-F CP; art. 11 Lei 8.429/92). Peso conservador, escalonado
+    # pelo nº de co-endereçados que TAMBÉM recebem OBs (não basta dividir CEP; tem de tocar o erário).
+    coend = coendereco or []
+    n_coend_pagos = sum(1 for c in coend if (c.get("total_pago") or 0) > 0)
+    if n_coend_pagos >= 5:
+        s += 20; sinais.append(f"rede mesma-sede §1-B: {n_coend_pagos} fornecedores na MESMA sede também recebendo do Estado")
+    elif n_coend_pagos >= 2:
+        s += 12; sinais.append(f"rede mesma-sede §1-B: {n_coend_pagos} fornecedores na MESMA sede também recebendo do Estado")
+    elif n_coend_pagos == 1:
+        s += 6; sinais.append("rede mesma-sede §1-B: 1 fornecedor na MESMA sede também recebendo do Estado")
+
+    # Anomalias PyOD (§8-C): alta FRAÇÃO de OBs com score de anomalia ≥0,70 no ensemble não supervisionado.
+    # Usar a FRAÇÃO (não o nº bruto) p/ não punir fornecedor com muitas OBs; peso conservador (indício de
+    # pagamento atípico a inspecionar, nunca prova).
+    an = anomalias or {}
+    if an.get("ok") and (an.get("n_obs") or 0) > 0:
+        frac = (an.get("n_anomalas") or 0) / an["n_obs"]
+        if frac >= 0.30 and (an.get("n_anomalas") or 0) >= 3:
+            s += 18; sinais.append(f"anomalias §8-C: {frac*100:.0f}% das OBs com score alto de anomalia ({an['n_anomalas']}/{an['n_obs']})")
+        elif frac >= 0.15 and (an.get("n_anomalas") or 0) >= 2:
+            s += 10; sinais.append(f"anomalias §8-C: {frac*100:.0f}% das OBs com score alto de anomalia ({an['n_anomalas']}/{an['n_obs']})")
+        elif (an.get("n_anomalas") or 0) >= 1:
+            s += 4; sinais.append(f"anomalias §8-C: {an['n_anomalas']} OB(s) com score alto de anomalia")
+
     interno = min(100, s)
     final = max(int(score_ext or 0), interno)
     if final >= 70:
@@ -596,8 +624,18 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
 
     nome = (enriq.get("empresa") or resolv["nome"] or "").strip() or fmt_cnpj(cnpj_d)
 
-    # RISCO recalibrado (externo + sinais internos reais) — corrige "BAIXO 0" com indícios
-    cal = _recalibrar_risco(pagamentos, rede, contratado_tcerj, enriq.get("score", 0), enriq.get("risco", "—"))
+    # Anomalias PyOD (§8-C) — computadas 1× AQUI (consulta local barata) p/ entrarem no score E serem
+    # reusadas no render (ctx["anomalias"]), evitando 2ª query. Best-effort: nunca derruba o relatório.
+    try:
+        anomalias = await asyncio.to_thread(_anomalias_fornecedor, cnpj_d)
+    except Exception:  # noqa: BLE001
+        anomalias = {"ok": False, "n_obs": 0, "n_anomalas": 0, "itens": []}
+    coend_score = (cruz or {}).get("coendereco") or []  # rede mesma-sede §1-B
+
+    # RISCO recalibrado (externo + sinais internos reais) — corrige "BAIXO 0" com indícios. Inclui rede
+    # mesma-sede §1-B e anomalias §8-C (peso conservador) p/ o NÚMERO refletir a prosa, não inflar.
+    cal = _recalibrar_risco(pagamentos, rede, contratado_tcerj, enriq.get("score", 0), enriq.get("risco", "—"),
+                            coendereco=coend_score, anomalias=anomalias)
     risco, score = cal["risco"], cal["score"]
 
     fonte_global = "REAL" if pagamentos["tem_dados"] else "SEM_DADOS_OB"
@@ -606,7 +644,7 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
         "data": date.today().isoformat(), "risco": risco, "score": score,
         "pagamentos": pagamentos, "contratos": contratos, "cardinalidade": cardinalidade, "enriq": enriq,
         "fonte_enriq": enriq.get("_fonte", "INDISPONIVEL"),
-        "cruzamento": cruz, "conflito_rede": rede,
+        "cruzamento": cruz, "conflito_rede": rede, "anomalias": anomalias,
         "tcerj_itens": tcerj_itens, "contratado_tcerj": contratado_tcerj,
         "calibragem": cal,
     }
@@ -2468,6 +2506,13 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         flags.append(f"🟡 Crescimento de faturamento atípico (pico/base = {_crescimento(p):.1f}×) — verificar capacidade operacional vs. salto de receita pública.")
     if coend:
         flags.append("🟡 Empresa(s) no mesmo endereço — possível fachada/cartel (Art. 90 Lei 8.666/Art. 337-F CP).")
+    # §8-C: alta fração de OBs anômalas (modelo PyOD) — sinal que agora também pesa no score (P1.2).
+    _an = ctx.get("anomalias") or {}
+    if _an.get("ok") and (_an.get("n_obs") or 0) > 0:
+        _frac = (_an.get("n_anomalas") or 0) / _an["n_obs"]
+        if _frac >= 0.15 and (_an.get("n_anomalas") or 0) >= 2:
+            flags.append(f"🟡 {_frac*100:.0f}% das OBs com score alto de anomalia (§8-C, ensemble não supervisionado) — "
+                         f"pagamentos atípicos a inspecionar.")
     # RF-04/05 (controle societário · CNAE×objeto): fonte ÚNICA em _red_flags(ctx) p/ MD e PDF concordarem.
     for _tit, _desc, _f in _red_flags(ctx):
         if _tit.startswith(("RF-04", "RF-05")):
@@ -2477,6 +2522,8 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         flags.append("🟢 Sem red flags estruturais automáticos nesta triagem (não exclui exame manual).")
     nota_cal = (f"<p class='nota'>Risco JFN recalibrado: <b>{esc(ctx.get('risco'))}</b> (score {ctx.get('score')}/100 = "
                 f"máx[externo {cal.get('score_externo',0)}, interno {cal.get('score_interno',0)}]). "
+                "O score interno incorpora os sinais REAIS do relatório — inclusive rede mesma-sede (§1-B) e "
+                "anomalias nas OBs (§8-C) — com peso conservador. "
                 "Indícios a verificar, nunca acusação (presunção de legitimidade).</p>") if cal else ""
     secoes.append({"titulo": "11. Red flags de compliance (fundamento legal)",
                    "html": nota_cal + "<ul>" + "".join(f"<li>{esc(f)}</li>" for f in flags) + "</ul>"})
