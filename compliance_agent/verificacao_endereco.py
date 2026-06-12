@@ -218,18 +218,115 @@ def _fetch_satelite_esri(lat: float, lon: float, delta: float = 0.0009) -> bytes
         return None
 
 
+# ── Teto de requisições PAGAS do Street View (não gerar cobrança) ──
+_SV_QUOTA_FILE = Path("data") / "streetview_quota.json"
+_SV_QUOTA_JANELA = 31 * 86400  # janela rolante de 31 dias
+
+
+def _fontes_rua_ordenadas() -> list[str]:
+    """Ordem das fontes RENTE AO CHÃO, parametrizável por env `IMG_FONTE_ORDEM` (csv).
+    Default `mapillary,streetview` = grátis primeiro; Street View (pago) só como fallback."""
+    ordem = [s.strip().lower() for s in os.environ.get("IMG_FONTE_ORDEM", "mapillary,streetview").split(",")
+             if s.strip() in ("mapillary", "streetview")]
+    return ordem or ["mapillary", "streetview"]
+
+
+def _streetview_max() -> int:
+    try:
+        return int(os.environ.get("STREETVIEW_MAX_31D", "9999"))  # teto p/ ficar no crédito grátis
+    except Exception:
+        return 9999
+
+
+def _streetview_consome_cota() -> bool:
+    """True se ainda há cota de requisição PAGA na janela de 31 dias; consome 1. Persiste em disco.
+    Conta SÓ a requisição de IMAGEM (paga) — a checagem de cobertura (metadata) é grátis e não entra."""
+    try:
+        st = json.loads(_SV_QUOTA_FILE.read_text("utf-8")) if _SV_QUOTA_FILE.exists() else {}
+    except Exception:
+        st = {}
+    now = time.time()
+    ini = st.get("janela_inicio", 0)
+    if not ini or (now - ini) > _SV_QUOTA_JANELA:
+        st = {"janela_inicio": now, "count": 0}  # rola a janela
+    if st.get("count", 0) >= _streetview_max():
+        return False  # teto atingido → não dispara requisição paga (cai p/ Mapillary/satélite)
+    st["count"] = st.get("count", 0) + 1
+    try:
+        _SV_QUOTA_FILE.parent.mkdir(exist_ok=True)
+        _SV_QUOTA_FILE.write_text(json.dumps(st), "utf-8")
+    except Exception:
+        pass
+    return True
+
+
 def _fetch_streetview_google(lat: float, lon: float, chave: str) -> bytes | None:
-    """Foto de rua (Google Street View Static) do ponto — precisa de chave. JPG ou None."""
+    """Foto de rua (Google Street View Static). HONESTO COM A FATURA: 1) checa COBERTURA no endpoint
+    `metadata` (GRÁTIS) — se ZERO_RESULTS, nem dispara a requisição paga; 2) só então consome a cota de
+    31 dias (teto `STREETVIEW_MAX_31D`, default 9999) e baixa a imagem (paga). JPG ou None."""
     try:
         import httpx
     except Exception:
+        return None
+    # 1) cobertura via metadata — GRÁTIS (não conta p/ billing); evita gastar requisição em ponto sem foto
+    try:
+        m = httpx.get("https://maps.googleapis.com/maps/api/streetview/metadata",
+                      params={"location": f"{lat},{lon}", "key": chave}, timeout=15)
+        if m.status_code != 200 or (m.json() or {}).get("status") != "OK":
+            return None  # ZERO_RESULTS / NOT_FOUND → sem cobertura; não gera cobrança
+    except Exception:
+        return None
+    # 2) há cobertura → consome cota paga (respeita o teto 31d) e baixa a imagem
+    if not _streetview_consome_cota():
         return None
     url = ("https://maps.googleapis.com/maps/api/streetview"
            f"?size=640x480&location={lat},{lon}&fov=80&key={chave}")
     try:
         r = httpx.get(url, timeout=20)
-        # o Street View devolve uma imagem 'sem cobertura' (cinza) com 200 — filtrar é trabalho do VLM
         return r.content if (r.status_code == 200 and r.content[:3] == b"\xff\xd8\xff") else None
+    except Exception:
+        return None
+
+
+def _fetch_mapillary(lat: float, lon: float, token: str, raio_m: float = 50.0) -> bytes | None:
+    """Foto de rua do ponto via **Mapillary** (crowdsourced, Meta — token GRÁTIS, sem billing). Pega a
+    imagem mais próxima do ponto e baixa o thumb. JPG ou None. É RENTE AO CHÃO (como o Street View) → pode
+    distinguir casebre/barraco de prédio comercial mesmo quando há edificação (≠ satélite, que só afasta)."""
+    try:
+        import math
+
+        import httpx
+    except Exception:
+        return None
+    # bbox ~raio_m em graus (lat: 1°≈111km; lon corrige por cos(lat))
+    dlat = raio_m / 111_000.0
+    dlon = raio_m / (111_000.0 * max(0.1, math.cos(math.radians(lat))))
+    bbox = f"{lon - dlon},{lat - dlat},{lon + dlon},{lat + dlat}"
+    try:
+        r = httpx.get("https://graph.mapillary.com/images",
+                      params={"access_token": token, "bbox": bbox, "limit": 25,
+                              "fields": "id,thumb_1024_url,computed_geometry,captured_at"},
+                      headers={"User-Agent": _UA}, timeout=20)
+        if r.status_code != 200:
+            return None
+        data = (r.json() or {}).get("data") or []
+    except Exception:
+        return None
+    if not data:
+        return None  # sem cobertura Mapillary nesse ponto (comum na periferia) → cai p/ satélite
+
+    def _dist2(img):  # distância² ao ponto (computed_geometry = Point [lon,lat])
+        g = (img.get("computed_geometry") or {}).get("coordinates")
+        if not g or len(g) < 2:
+            return 9e9
+        return (g[0] - lon) ** 2 + (g[1] - lat) ** 2
+    melhor = min(data, key=_dist2)
+    url = melhor.get("thumb_1024_url")
+    if not url:
+        return None
+    try:
+        r2 = httpx.get(url, headers={"User-Agent": _UA}, timeout=25)
+        return r2.content if (r2.status_code == 200 and r2.content[:3] == b"\xff\xd8\xff") else None
     except Exception:
         return None
 
@@ -275,7 +372,9 @@ def _vlm_classificar(img: bytes, fonte: str, endereco: str = "") -> dict:
     if not img:
         return {"ok": False, "motivo": "sem imagem"}
     mime = "image/png" if img[:4] == b"\x89PNG" else "image/jpeg"
-    tipo = "satélite (vista aérea do entorno da quadra)" if fonte == "esri" else "foto de rua (Street View)"
+    tipo = ("satélite (vista aérea do entorno da quadra)" if fonte == "esri"
+            else "foto de rua (Mapillary, rente ao chão)" if fonte == "mapillary"
+            else "foto de rua (Street View)")
     prompt = (
         f"Você audita a SEDE de uma empresa fornecedora do poder público. Esta é uma imagem de {tipo} no "
         f"endereço declarado{(' (' + endereco + ')') if endereco else ''}. Classifique o que PREDOMINA no centro "
@@ -315,46 +414,70 @@ def _vlm_classificar(img: bytes, fonte: str, endereco: str = "") -> dict:
 
 
 def classificar_local_por_imagem(lat: float, lon: float, endereco: str = "") -> dict:
-    """Resolve um endereço por IMAGEM: Street View (Google, se chave) ou satélite (Esri, grátis) → VLM.
+    """Resolve um endereço por IMAGEM, priorizando o GRÁTIS e rente ao chão (que distingue casebre de prédio):
+    **Mapillary** (token grátis) → **Street View** (Google, pago, capado a 9999/31d, fallback) → **satélite
+    Esri** (grátis, só ENTORNO). Ordem parametrizável por `IMG_FONTE_ORDEM`. VLM classifica a fachada.
 
     Retorna {ok, status, nivel, classe, confianca, fonte, evidencia}. status: INDICIO|AFASTADO|INDISPONIVEL.
-    HONESTO: o satélite usa coords no nível da rua (±~100m) → veredito do ENTORNO, não do lote exato; baldio/
-    rural no entorno de uma fornecedora é indício a apurar (confirmar in loco), não acusação."""
+    HONESTO: o satélite usa coords no nível da rua (±~100m) → veredito do ENTORNO, não do lote exato → só
+    AFASTA, nunca acusa. Mapillary/Street View são rente ao chão → podem acusar casebre/baldio (confirmar in loco)."""
     base = {"ok": False, "status": "INDISPONIVEL", "nivel": "—", "classe": "", "confianca": 0.0,
             "fonte": "", "evidencia": ""}
     if lat is None or lon is None:
         return {**base, "evidencia": "sem coordenadas p/ buscar imagem"}
     gkey = (os.environ.get("GOOGLE_MAPS_KEY", "") or os.environ.get("STREETVIEW_KEY", "")).strip()
+    mly = os.environ.get("MAPILLARY_TOKEN", "").strip()
+    # PRIORIDADE PARAMETRIZÁVEL das fontes RENTE AO CHÃO (que distinguem casebre de prédio comercial).
+    # Default `mapillary,streetview`: tenta o Mapillary (GRÁTIS) primeiro; o Street View (PAGO, capado a
+    # 9999/31d) só é acionado onde o Mapillary NÃO cobre. Trocar a ordem via env `IMG_FONTE_ORDEM`.
+    # O satélite Esri (grátis, só ENTORNO → NUNCA acusa) é sempre o último recurso.
+    raio_mly = float(os.environ.get("MAPILLARY_RAIO_M", "50") or 50)
     img, fonte = (None, "")
-    if gkey:
-        img = _fetch_streetview_google(lat, lon, gkey)
-        fonte = "streetview"
-    if img is None:
+    for src in _fontes_rua_ordenadas():
+        if src == "mapillary" and mly:
+            img = _fetch_mapillary(lat, lon, mly, raio_m=raio_mly)
+            if img is not None:
+                fonte = "mapillary"; break
+        elif src == "streetview" and gkey:
+            img = _fetch_streetview_google(lat, lon, gkey)
+            if img is not None:
+                fonte = "streetview"; break
+    if img is None:  # nenhuma fonte rente ao chão cobriu → satélite (só afasta área edificada)
         img = _fetch_satelite_esri(lat, lon)
-        fonte = "esri"
+        if img is not None:
+            fonte = "esri"
     if img is None:
-        return {**base, "evidencia": "não foi possível obter imagem (Street View/satélite indisponível)"}
+        return {**base, "evidencia": "não foi possível obter imagem (Mapillary/Street View/satélite indisponível)"}
     v = _vlm_classificar(img, fonte, endereco)
     if not v.get("ok"):
         return {**base, "fonte": fonte, "evidencia": f"imagem obtida ({fonte}) mas VLM indisponível: {v.get('motivo', '')}"}
     classe, conf, desc = v["classe"], v["confianca"], v.get("descricao", "")
-    preciso = fonte == "streetview"  # só o Street View mira o lote; satélite é o ENTORNO (±~100m)
-    fonte_lbl = "Google Street View" if preciso else "satélite Esri (entorno da quadra, ±~100m)"
+    # PRECISO = imagem RENTE AO CHÃO (mira a fachada do lote: distingue casebre/barraco de prédio comercial).
+    # Street View e Mapillary são rente ao chão → podem ACUSAR. Satélite é o entorno (±~100m) → só AFASTA.
+    preciso = fonte in ("streetview", "mapillary")
+    fonte_lbl = ("Google Street View" if fonte == "streetview"
+                 else "Mapillary (foto de rua)" if fonte == "mapillary"
+                 else "satélite Esri (entorno da quadra, ±~100m)")
 
     # ACUSAÇÃO (baldio/barraco/rural) só com fonte PRECISA. Satélite no centroide da rua já classificou
     # o Banco do Brasil como 'barraco' (falso) — imprecisão + alucinação do VLM. Honestidade: não acusar.
     if classe in _CLASSE_INDICIO:
         if preciso:
+            _casebre = classe == "construcao_precaria_barraco"
+            _qualifica = ("edificação precária/casebre — incompatível com a operação de uma fornecedora do "
+                          "Estado mesmo havendo construção" if _casebre
+                          else "ausência de edificação compatível com operação")
             return {"ok": True, "status": "INDICIO", "nivel": "ALTO" if conf >= 0.6 else "MEDIO",
                     "classe": classe, "confianca": conf, "fonte": fonte_lbl,
-                    "evidencia": (f"Street View classifica a sede como **{classe.replace('_', ' ')}** "
-                                  f"(confiança {conf:.0%}): {desc}. Sede de fornecedora do Estado sem edificação "
-                                  "compatível com operação é indício de fachada/inexistência — confirmar in loco.")}
+                    "evidencia": (f"{fonte_lbl} (foto rente ao chão) classifica a sede como "
+                                  f"**{classe.replace('_', ' ')}** (confiança {conf:.0%}): {desc}. "
+                                  f"{_qualifica[0].upper() + _qualifica[1:]} é indício de fachada/inexistência "
+                                  "operacional — confirmar in loco.")}
         return {**base, "ok": True, "status": "INDISPONIVEL", "classe": classe, "confianca": conf,
                 "fonte": fonte_lbl,
                 "evidencia": (f"O satélite do entorno SUGERE '{classe.replace('_', ' ')}', mas a coordenada é no "
                               "nível da rua (imprecisa p/ o lote) — NÃO conclusivo (satélite chega a confundir "
-                              "prédio com construção precária). Confirmar por Street View (requer GOOGLE_MAPS_KEY) "
+                              "prédio com construção precária). Confirmar por foto de rua (Mapillary/Street View) "
                               "ou diligência in loco antes de qualquer conclusão.")}
     if classe == "indeterminado":
         return {**base, "ok": True, "fonte": fonte_lbl, "classe": classe, "confianca": conf,

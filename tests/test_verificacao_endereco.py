@@ -135,3 +135,43 @@ def test_imagem_indisponivel_sem_foto(monkeypatch):
     monkeypatch.setattr(ve, "_fetch_satelite_esri", lambda lat, lon, delta=0.0009: None)
     out = ve.classificar_local_por_imagem(-22.9, -43.2)
     assert out["status"] == "INDISPONIVEL" and not out["ok"]
+
+
+# ───────── cont.18+: Mapillary (grátis) prioritário + casebre + teto do Street View ─────────
+
+def test_ordem_fontes_default_mapillary_primeiro(monkeypatch):
+    monkeypatch.delenv("IMG_FONTE_ORDEM", raising=False)
+    assert ve._fontes_rua_ordenadas() == ["mapillary", "streetview"]
+    monkeypatch.setenv("IMG_FONTE_ORDEM", "streetview,mapillary")
+    assert ve._fontes_rua_ordenadas() == ["streetview", "mapillary"]
+
+
+def test_mapillary_prioritario_nao_gasta_streetview(monkeypatch):
+    """Com Mapillary cobrindo o ponto, o Street View (PAGO) NÃO é chamado — economia."""
+    monkeypatch.setenv("MAPILLARY_TOKEN", "tok")
+    monkeypatch.setenv("GOOGLE_MAPS_KEY", "k")
+    monkeypatch.setattr(ve, "_fetch_mapillary", lambda lat, lon, token, raio_m=50.0: b"\xff\xd8\xffmly")
+    def _boom(*a, **k):
+        raise AssertionError("Street View não deveria ser chamado quando o Mapillary cobre")
+    monkeypatch.setattr(ve, "_fetch_streetview_google", _boom)
+    monkeypatch.setattr(ve, "_vlm_classificar", lambda img, fonte, endereco="": {
+        "ok": True, "classe": "comercial_industrial", "confianca": 0.8, "descricao": "loja"})
+    out = ve.classificar_local_por_imagem(-22.9, -43.2, "Rua X")
+    assert out["status"] == "AFASTADO" and "Mapillary" in out["fonte"]
+
+
+def test_mapillary_acusa_casebre_mesmo_edificado(monkeypatch):
+    """Pedido do dono: mesmo edificado, casebre/barraco (rente ao chão) vira INDÍCIO — Mapillary é PRECISO."""
+    monkeypatch.setenv("MAPILLARY_TOKEN", "tok")
+    monkeypatch.delenv("GOOGLE_MAPS_KEY", raising=False)
+    monkeypatch.setattr(ve, "_fetch_mapillary", lambda lat, lon, token, raio_m=50.0: b"\xff\xd8\xffmly")
+    monkeypatch.setattr(ve, "_vlm_classificar", lambda img, fonte, endereco="": {
+        "ok": True, "classe": "construcao_precaria_barraco", "confianca": 0.7, "descricao": "casebre"})
+    out = ve.classificar_local_por_imagem(-22.9, -43.2, "Rua Y")
+    assert out["status"] == "INDICIO" and "Mapillary" in out["fonte"]
+
+
+def test_streetview_teto_31d_bloqueia(monkeypatch, tmp_path):
+    monkeypatch.setattr(ve, "_SV_QUOTA_FILE", tmp_path / "sv_quota.json")
+    monkeypatch.setenv("STREETVIEW_MAX_31D", "2")
+    assert [ve._streetview_consome_cota() for _ in range(4)] == [True, True, False, False]
