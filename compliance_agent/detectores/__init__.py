@@ -35,8 +35,11 @@ from compliance_agent.detectores.e1_barreira import E1Barreira
 from compliance_agent.detectores.e2_prazos import E2Prazos
 from compliance_agent.detectores.e3_lote_pacote import E3LotePacote
 from compliance_agent.detectores.j1_cartel import J1Cartel
+from compliance_agent.detectores.p1_especificacao_dirigida import P1EspecificacaoDirigida
+from compliance_agent.detectores.p2_cotacoes_combinadas import P2CotacoesCombinadas
 from compliance_agent.detectores.p3_sobrepreco import P3Sobrepreco
 from compliance_agent.detectores.p4_fracionamento import P4Fracionamento
+from compliance_agent.detectores.p5_emergencia_fabricada import P5EmergenciaFabricada
 
 # REGISTRO de detectores disponíveis (id → instância). Os próximos cards se registram aqui.
 REGISTRO: dict[str, Detector] = {
@@ -48,6 +51,9 @@ REGISTRO: dict[str, Detector] = {
         E1Barreira(),    # fase de edital — barreira de entrada/qualificação
         E2Prazos(),      # fase de edital — publicidade e prazos minimizados
         E3LotePacote(),  # fase de edital — lote-pacote/agregação anticompetitiva
+        P1EspecificacaoDirigida(),  # fase de planejamento — especificação dirigida/marca disfarçada
+        P2CotacoesCombinadas(),     # fase de planejamento — cotações combinadas/orçamentos de fachada
+        P5EmergenciaFabricada(),    # fase de planejamento — emergência fabricada (dispensa art. 75 VIII)
     )
 }
 
@@ -61,6 +67,9 @@ PESOS_DETECTOR: dict[str, float] = {
     "E1": PESOS_FAMILIA["desenho_certame"],
     "E2": PESOS_FAMILIA["desenho_certame"],
     "E3": PESOS_FAMILIA["desenho_certame"],
+    "P1": PESOS_FAMILIA["desenho_certame"],
+    "P2": PESOS_FAMILIA["preco"],
+    "P5": PESOS_FAMILIA["desenho_certame"],
 }
 
 
@@ -123,6 +132,29 @@ def rodar_edital(processo: str, *, contexto: dict | None = None, exculpatoria: b
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 
+def rodar_planejamento(processo: str, *, contexto: dict | None = None, exculpatoria: bool = False, gerar=None) -> list[ResultadoDetector]:
+    """Orquestra os detectores da FASE DE PLANEJAMENTO (P1/P2/P5) sobre o CONTEXTO de planejamento de um processo.
+    Reusa `pipeline` (um detector que quebra vira nao_avaliavel honesto, não derruba os outros).
+
+    `contexto` traz o que os cards pedem (interface honesta — campo essencial ausente → nao_avaliavel):
+      P1 → {tr_texto?, requisitos[{requisito,valor,unidade,nominativo?}], datasheets_finalistas?,
+            editais_analogos[], resultado{licitantes,vencedor,produto_ofertado?}, processo_padronizacao?,
+            justificativa_marca?}
+      P2 → {cotacoes[{cnpj,razao,data,valores,itens,contato,metadados_pdf?}], qsa_por_cnpj?, vencedor_cnpj,
+            ref_pncp?, item_preco_regulado?}
+      P5 → {data_abertura_processo, data_contrato?, vigencia?, fato_gerador{descricao,data}, contratado?,
+            data_proposta?, contrato_anterior?{vencimento}, emergencias_orgao_24m?, desastre_confirmado?,
+            certame_anterior_fracassado?}
+    `gerar` (callable) alimenta as rubricas LLM-opcionais; ausente → partes subjetivas degradam para nao_avaliavel."""
+    ctx: dict[str, Any] = {"processo": str(processo)}
+    if contexto:
+        ctx.update(contexto)
+    if gerar is not None and "gerar" not in ctx:
+        ctx["gerar"] = gerar
+    dets = [d for d in REGISTRO.values() if d.id in ("P1", "P2", "P5")]
+    return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
+
+
 __all__ = [
     "Detector",
     "ResultadoDetector",
@@ -144,7 +176,11 @@ __all__ = [
     "E1Barreira",
     "E2Prazos",
     "E3LotePacote",
+    "P1EspecificacaoDirigida",
+    "P2CotacoesCombinadas",
+    "P5EmergenciaFabricada",
     "rodar_orgao",
     "rodar_fornecedor",
     "rodar_edital",
+    "rodar_planejamento",
 ]
