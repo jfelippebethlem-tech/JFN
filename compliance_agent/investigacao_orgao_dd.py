@@ -122,9 +122,17 @@ def investigar_orgao(ug: str, *, top_n: int = 15, anos: list[int] | None = None,
             rodizio = rod if rod.get("indicio") else {"indicio": False, "ug": str(ug)}
         except Exception:  # noqa: BLE001 — degrada honesto
             rodizio = None
+    # concentração COLAPSADA por grupo econômico (diversidade fictícia: muitos CNPJs = um grupo)
+    concentracao_grupo = None
+    if db_path is None:
+        try:
+            from compliance_agent import grafo_cartel
+            concentracao_grupo = grafo_cartel.concentracao_por_grupo(str(ug))
+        except Exception:  # noqa: BLE001 — degrada honesto
+            concentracao_grupo = None
     return {"ug": str(ug), "n_avaliados": len(ranking), "ranking": ranking,
             "alvos_prioritarios": alvos, "processos_prioritarios": procs_prior,
-            "rodizio": rodizio, "resumo": resumo}
+            "rodizio": rodizio, "concentracao_grupo": concentracao_grupo, "resumo": resumo}
 
 
 def render_md(out: dict) -> str:
@@ -136,6 +144,15 @@ def render_md(out: dict) -> str:
         L += [f"**⟳ Rodízio temporal (bid rotation):** score {rod.get('score')}, {rod.get('n_campeoes')} "
               f"campeões revezando o 1º em {rod.get('n_anos')} exercícios (alternância {rod.get('alternancia')}, "
               f"dominância {rod.get('share_ring')}). {camps}. Indício a corroborar (SEI/PNCP).", ""]
+    cg = out.get("concentracao_grupo")
+    if cg and cg.get("indicio"):
+        mm = cg.get("maior_grupo_multi") or {}
+        L += [f"**◑ Concentração oculta por grupo econômico (diversidade fictícia):** {cg['n_cnpjs']} CNPJs "
+              f"colapsam em {cg['n_grupos']} grupos; HHI por CNPJ {cg['hhi_cnpj']} → **por grupo "
+              f"{cg['hhi_grupo']}** (Δ +{cg['delta_hhi']}). Maior grupo multi-CNPJ: **{mm.get('top_nome','?')[:40]}** "
+              f"— {mm.get('n_cnpjs')} CNPJs concentram **{mm.get('share')}%** da UG ({_moeda(mm.get('total', 0))}). "
+              f"Muitos 'concorrentes' = um grupo. Indício de concorrência fictícia/fracionamento a corroborar "
+              f"(editais/licitantes SEI-PNCP).", ""]
     L += ["| # | Grau | Score | Fornecedor | Total pago | Indícios | Processos SEI |",
           "|--:|:--:|--:|---|--:|---|--:|"]
     for i, r in enumerate(out["ranking"], 1):
