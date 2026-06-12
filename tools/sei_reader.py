@@ -365,6 +365,15 @@ async def main():
               f"| valores: {len(res.get('valores',[]))}")
         print("   cache:", res.get("_cache_path", "(não salvo)"))
         print("   amostra texto:", (res.get("texto", "")[:300] or "(vazio)").replace("\n", " "))
+        if os.environ.get("SEI_DEBUG_SHOT"):
+            try:
+                await pg.screenshot(path=os.environ["SEI_DEBUG_SHOT"], full_page=True)
+                # também salva os frames p/ diagnóstico
+                fr = [{"name": f.name, "url": f.url[:90]} for f in pg.frames]
+                print("   FRAMES:", fr)
+                print("   SHOT:", os.environ["SEI_DEBUG_SHOT"])
+            except Exception as e:
+                print("   shot erro:", e)
         await b.close()
 
 
