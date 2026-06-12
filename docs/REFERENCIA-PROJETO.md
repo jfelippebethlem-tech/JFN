@@ -142,6 +142,12 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-12 cont.29 (goal, agentes, passo-a-passo):** **Pipeline de detectores de licitação — 17/30 nas 5 fases.**
+  Planejamento P1/P2/P4/P5 (`613d1c0`,`380a967`) · Edital E1/E2/E3 (`58ba433`) · Julgamento J1/J2/J3/J4 (`93edb23`) ·
+  Contratação C1-C5 (`01ccd00`) · Preço P3. Todos no schema §1.4 (score-âncoras, evidência, passo exculpatório,
+  `nao_avaliavel` honesto — ex.: gap PNCP em J2-4 sem lista de propostas). Orquestradores `rodar_{orgao,fornecedor,
+  edital,planejamento,julgamento}`. ~140 testes de detectores verdes. Falta: J5-7, C6, E4-6, X1-6 + coletor que
+  alimenta o `ctx` (editais via SEI/PNCP). Spec [[notas/detectores-corrupcao-licitacoes-v2]].
 - **06-12 cont.28 (goal, agentes):** **Detectores OPERACIONAIS + VIVOS no produto.** Wrappers reusando o código
   existente (`01ccd00`): **J1** cartel (concentracao_por_grupo+rodizio), **P3** sobrepreço (precos_extract), **C1-C5**
   fachada (investigacao_dd H-*) + orquestradores `rodar_orgao(ug)`/`rodar_fornecedor(cnpj)`. **§1-I Painel de
