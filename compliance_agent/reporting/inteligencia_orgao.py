@@ -290,6 +290,7 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     ctx["beneficios_socios"] = _beneficios_orgao(ug_cod)  # laranja: benefício de subsistência dos sócios/admin
     ctx["penalidades_tce"] = _penalidades_tce_orgao(ug_cod)  # sanções do TCE-RJ ao órgão (controle externo)
     ctx["concentracao_grupo"] = _concentracao_grupo_orgao(ug_cod)  # concentração oculta por grupo (cartel/conc. fictícia)
+    ctx["painel_detectores"] = _painel_detectores_orgao(ug_cod)  # §1-I: visão unificada dos detectores (spec licitações)
     ctx["raciocinio"] = parecer_raciocinado_orgao(ctx)  # síntese de IA sobre os fatos (degrada honesto)
 
     md = render_md(ctx)
@@ -414,6 +415,17 @@ def _fatos_orgao(ctx: dict) -> str:
                  f"concentrando {mm.get('share', 0):.1f}% do valor (R$ {moeda(mm.get('total', 0))}; "
                  f"ex.: {(mm.get('top_nome') or '—')[:30]}). Indício de diversidade fictícia/fracionamento a "
                  "corroborar com editais/licitantes (SEI/PNCP); QSA mascarado/INDISPONÍVEL ≠ afastado.")
+    pd = ctx.get("painel_detectores") or {}
+    if pd.get("ok") and pd.get("confirmados"):
+        # Painel CONSOLIDA os detectores do spec (§1-I); aqui só os CONFIRMADOS entram no raciocínio. Não
+        # repetir a tabela de concentração-grupo da §1-H — o detector J1 a referencia, não a duplica.
+        nomes = ", ".join(f"{r['detector']} (score {r['score']:.2f})" for r in pd["confirmados"][:5])
+        L.append(f"Painel de detectores do spec de licitações (§1-I, visão unificada): "
+                 f"{pd.get('n_confirmados', 0)} detector(es) com indício CONFIRMADO (sobreviveram à checagem "
+                 f"inversa) — {nomes}. Ex.: {pd['confirmados'][0]['evidencia']}. São os indícios objetivos do "
+                 "spec a corroborar; o J1 (conluio) referencia a concentração-grupo já detalhada acima, sem "
+                 f"duplicar. ({pd.get('n_descartados', 0)} afastado(s) pela exculpatória, "
+                 f"{pd.get('n_nao_avaliaveis', 0)} INDISPONÍVEL — não somam ao indício.)")
     return "\n".join("- " + x for x in L)
 
 
@@ -648,6 +660,47 @@ def _concentracao_grupo_orgao(ug: str) -> dict:
     except Exception as exc:  # noqa: BLE001
         _log.warning("Concentração por grupo do órgão %s degradou (seção 1-H): %s", ug, exc)
         return {"ok": False, "_nota": str(exc)[:160]}
+
+
+def _painel_detectores_orgao(ug: str) -> dict:
+    """Roda o ORQUESTRADOR de detectores de órgão (`detectores.rodar_orgao`) e normaliza a saída para o painel
+    §1-I — a VISÃO UNIFICADA dos detectores do spec de licitações (hoje J1 conluio; extensível a P/C/E/X sem
+    hardcode: itera sobre a lista de `ResultadoDetector`). Degrada honesto: se o orquestrador quebra (DuckDB/QSA/
+    LLM), `ok=False` e a seção informa INDISPONÍVEL — NÃO some, e INDISPONÍVEL ≠ ausência de indício."""
+    try:
+        from compliance_agent.detectores import rodar_orgao
+        resultados = rodar_orgao(str(ug))
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("Painel de detectores do órgão %s degradou (seção 1-I): %s", ug, exc)
+        return {"ok": False, "_nota": str(exc)[:160]}
+
+    def _resumo_evidencia(r) -> str:
+        # 1ª evidência (trecho) como resumo legível; sem inventar — vazio vira "—".
+        ev = (r.evidencia or [{}])[0] if r.evidencia else {}
+        trecho = str(ev.get("trecho") or "").strip().replace("\n", " ")
+        if not trecho and r.valores:
+            trecho = "; ".join(f"{k}={v}" for k, v in list(r.valores.items())[:3])
+        return (trecho or "—")[:120]
+
+    confirmados = [r for r in resultados if r.status == "confirmado" and not r.refutada]
+    descartados = [r for r in resultados if r.status == "descartado" or r.refutada]
+    nao_avaliaveis = [r for r in resultados if r.status == "nao_avaliavel"]
+    linhas = [{
+        "detector": r.detector,
+        "score": r.score,
+        "status": "descartado" if r.refutada else r.status,
+        "evidencia": _resumo_evidencia(r),
+        "tem_defesa": bool((r.explicacao_inocente or "").strip()),
+        "explicacao_inocente": (r.explicacao_inocente or "").strip(),
+    } for r in confirmados]
+    return {
+        "ok": True,
+        "n_total": len(resultados),
+        "confirmados": linhas,
+        "n_confirmados": len(confirmados),
+        "n_descartados": len(descartados),
+        "n_nao_avaliaveis": len(nao_avaliaveis),
+    }
 
 
 # ───────────────────────────── render Markdown ─────────────────────────────
@@ -924,6 +977,61 @@ def _secao_concentracao_grupo_md(add, ctx: dict) -> None:
     add("")
 
 
+def _secao_painel_detectores_md(add, ctx: dict) -> None:
+    """Seção 1-I — PAINEL DE DETECTORES (spec de licitações). Visão UNIFICADA dos detectores no schema do spec
+    (§1.4): só os `confirmado` (não refutados) no topo, com a defesa inocente visível; um resumo honesto dos
+    `descartado`/`nao_avaliavel` em 1 linha. Itera sobre a lista de `ResultadoDetector` (extensível a P/C/E/X —
+    não hardcode J1). Degrada honesto: se o orquestrador falhou, INFORMA INDISPONÍVEL e a seção NÃO some."""
+    pd = ctx.get("painel_detectores") or {}
+    add("## 1-I. PAINEL DE DETECTORES (SPEC DE LICITAÇÕES)")
+    add("")
+    add("> Visão **unificada** dos detectores de corrupção em licitações no schema fechado do spec (score com "
+        "âncoras fixas · status `confirmado`/`descartado`/`nao_avaliavel` · passo exculpatório adversarial). "
+        "Consolida a leitura por detector (hoje **J1** conluio/cartel — a concentração-grupo da §1-H é a "
+        "evidência objetiva por trás dele; aqui não se repete a tabela, só o veredito do detector). "
+        "Extensível aos demais cards (P/C/E/X). **Indício ≠ acusação**; `descartado` = afastado pela checagem "
+        "inversa; `nao_avaliavel`/**INDISPONÍVEL ≠ 0** (ausência de juízo, não de risco).")
+    add("")
+    if not pd.get("ok"):
+        _nota = pd.get("_nota") or "orquestrador de detectores (DuckDB/QSA/LLM) indisponível nesta execução"
+        add(f"_Painel de detectores **INDISPONÍVEL** nesta execução ({_nota}) — degrada honesto. "
+            "Rode os detectores (`compliance_agent.detectores.rodar_orgao`) com a base/QSA disponível. "
+            "**INDISPONÍVEL não é prova de ausência de indício.**_")
+        add("")
+        return
+    confirmados = pd.get("confirmados") or []
+    if confirmados:
+        add(f"**{pd.get('n_confirmados', 0)} detector(es) com indício CONFIRMADO** (sobreviveram à checagem "
+            f"inversa), de {pd.get('n_total', 0)} avaliado(s):")
+        add("")
+        add("| Detector | Score | Status | Evidência (resumo) | Defesa inocente? |")
+        add("|---|--:|---|---|---|")
+        for r in confirmados:
+            defesa = "sim" if r.get("tem_defesa") else "—"
+            add(f"| {r['detector']} | {r['score']:.2f} | 🔴 {r['status']} | {r['evidencia']} | {defesa} |")
+        add("")
+        # defesa inocente visível (honestidade: exculpatória sempre à vista, não escondida)
+        com_defesa = [r for r in confirmados if r.get("explicacao_inocente")]
+        if com_defesa:
+            add("> **Hipótese inocente registrada** (presunção de legitimidade — a verificar antes de qualquer "
+                "juízo):")
+            for r in com_defesa:
+                add(f"> - **{r['detector']}:** {r['explicacao_inocente'][:240]}")
+            add("")
+        add("> 🔴 **Indício a apurar:** os detectores acima sobreviveram ao passo exculpatório — são "
+            "indícios objetivos a corroborar nos editais/licitantes/contratos (SEI/PNCP), nunca acusação.")
+        add("")
+    else:
+        add("> 🟢 **Nenhum detector com indício confirmado** nesta execução — sem alarme do spec de licitações "
+            "para esta UG. Isso **não** afasta risco na cauda nem detectores ainda INDISPONÍVEIS.")
+        add("")
+    # resumo honesto dos afastados/indisponíveis em 1 linha
+    add(f"> _Resumo: **{pd.get('n_descartados', 0)}** afastado(s) pelo passo exculpatório (checagem inversa), "
+        f"**{pd.get('n_nao_avaliaveis', 0)}** indisponível(is) (`nao_avaliavel` — dado/LLM ausente, não "
+        "avaliado). INDISPONÍVEL ≠ ausência de indício._")
+    add("")
+
+
 def render_md(ctx: dict) -> str:
     p = ctx["pagamentos"]
     sigla, descr = _sigla_descr(ctx["nome"])
@@ -1074,6 +1182,8 @@ def render_md(ctx: dict) -> str:
     _secao_tce_md(add, ctx)
     # 1-H. Concentração OCULTA por grupo econômico (cartel / concorrência fictícia)
     _secao_concentracao_grupo_md(add, ctx)
+    # 1-I. Painel de detectores (spec de licitações) — visão unificada dos ResultadoDetector (J1 + futuros)
+    _secao_painel_detectores_md(add, ctx)
 
     # Tabelas de OBs por ano (pagamentos individuais a cada fornecedor)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
@@ -1322,6 +1432,53 @@ def _secao_concentracao_grupo_pdf(pdf, _t, ctx: dict) -> None:
         pdf.set_text_color(0, 0, 0)
 
 
+def _secao_painel_detectores_pdf(pdf, _t, ctx: dict) -> None:
+    """PDF — espelho da §1-I: painel unificado dos detectores do spec de licitações (só os confirmados no topo +
+    resumo honesto dos afastados/indisponíveis). Degrada honesto: INDISPONÍVEL não some."""
+    pd = ctx.get("painel_detectores") or {}
+    pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+    pdf.cell(0, 8, _t("Painel de detectores (spec de licitações)"), ln=True)
+    pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+    _mc(pdf, 4.5, _t("Visão unificada dos detectores no schema do spec (score com âncoras fixas; status "
+                     "confirmado/descartado/nao_avaliavel; passo exculpatório adversarial). Hoje J1 (conluio/"
+                     "cartel) - a concentração-grupo acima é a evidência por trás dele, não se repete. Extensível "
+                     "a P/C/E/X. Indício != acusação; INDISPONÍVEL/nao_avaliavel != 0."))
+    if not pd.get("ok"):
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t("Painel de detectores INDISPONÍVEL nesta execução (orquestrador DuckDB/QSA/LLM) — "
+                         "degrada honesto. INDISPONÍVEL não é prova de ausência de indício."))
+        pdf.set_text_color(0, 0, 0); return
+    confirmados = pd.get("confirmados") or []
+    pdf.ln(1)
+    if confirmados:
+        _mc(pdf, 4.5, _t(f"{pd.get('n_confirmados', 0)} detector(es) com indício CONFIRMADO de "
+                         f"{pd.get('n_total', 0)} avaliado(s):"))
+        pdf.ln(1); _tab_header(pdf, [("Detector", 20), ("Score", 16), ("Status", 22),
+                                     ("Evidência (resumo)", 84), ("Defesa", 18)])
+        pdf.set_font(pdf._fam, "", 7)
+        for r in confirmados:
+            defesa = "sim" if r.get("tem_defesa") else "-"
+            _tab_row(pdf, [(_t(str(r["detector"]))[:12], 20, "L"), (f"{r['score']:.2f}", 16, "R"),
+                           (_t(r["status"]), 22, "L"), (_t(r["evidencia"])[:52], 84, "L"),
+                           (defesa, 18, "C")], h=4.6)
+        com_defesa = [r for r in confirmados if r.get("explicacao_inocente")]
+        if com_defesa:
+            pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(110, 110, 110)
+            for r in com_defesa:
+                _mc(pdf, 4, _t(f"Hipótese inocente {r['detector']}: {r['explicacao_inocente'][:160]}"))
+            pdf.set_text_color(0, 0, 0)
+    else:
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(40, 110, 40)
+        _mc(pdf, 4.5, _t("Nenhum detector com indício confirmado nesta execução — sem alarme do spec para esta "
+                         "UG (não afasta risco na cauda nem detectores INDISPONÍVEIS)."))
+        pdf.set_text_color(0, 0, 0)
+    pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(110, 110, 110)
+    _mc(pdf, 4, _t(f"Resumo: {pd.get('n_descartados', 0)} afastado(s) pela exculpatória, "
+                   f"{pd.get('n_nao_avaliaveis', 0)} indisponível(is) (nao_avaliavel). INDISPONÍVEL != "
+                   "ausência de indício."))
+    pdf.set_text_color(0, 0, 0)
+
+
 def render_pdf(ctx: dict, destino: str) -> str:
     from fpdf import FPDF
     p = ctx["pagamentos"]
@@ -1459,6 +1616,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         _secao_beneficios_pdf(pdf, _t, ctx)
         _secao_tce_pdf(pdf, _t, ctx)
         _secao_concentracao_grupo_pdf(pdf, _t, ctx)
+        _secao_painel_detectores_pdf(pdf, _t, ctx)
 
         # OBs por ano
         for a in p["anos"]:
