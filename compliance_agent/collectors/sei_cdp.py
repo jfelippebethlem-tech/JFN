@@ -43,6 +43,18 @@ CACHE_DIR = Path("data/sei_cache")
 # Máximo de tentativas de OCR no CAPTCHA antes de desistir
 MAX_TENTATIVAS_CAPTCHA = int(os.environ.get("SEI_CAPTCHA_TENTATIVAS", "4"))
 
+# Quantos documentos da árvore SEI ler por processo (env SEI_MAX_DOCS). Subiu de 8→12 e PRIORIZA os ricos
+# em CPF (contrato social/procuração/habilitação) — onde estão sócios/diretores/procuradores (fonte de CPF).
+SEI_MAX_DOCS = int(os.environ.get("SEI_MAX_DOCS", "12"))
+_DOC_CPF_RICO = ("contrato social", "ato constitutivo", "estatuto", "procuraç", "habilita", "identidade",
+                 "qualificaç", "requerimento de empres", "alteraç", "rg e cpf", "documenta")
+
+
+def _ordena_docs_por_cpf(documentos: list) -> list:
+    """Põe à frente os docs onde costuma haver CPF (contrato social/procuração/habilitação) antes do corte."""
+    return sorted(documentos or [], key=lambda d: 0 if any(
+        t in (d.get("texto") or "").lower() for t in _DOC_CPF_RICO) else 1)
+
 # ── Login interno autenticado (usuário ITKAVA) ────────────────────────────────
 # O app autenticado do SEI (SIP) não passa pela pesquisa pública (WAF/CAPTCHA).
 # IMPORTANTE: o usuário é MINÚSCULO ("itkava") — faz diferença no login do SIP.
@@ -550,9 +562,9 @@ async def ler_processo_sei_via_chrome(
             "texto": dump.get("texto", ""),
         })
 
-        # 6. Lê o conteúdo de cada documento da árvore
+        # 6. Lê o conteúdo de cada documento da árvore (contrato social/procuração priorizados → CPF de sócio)
         textos_docs = []
-        for doc in resultado["documentos"][:8]:
+        for doc in _ordena_docs_por_cpf(resultado["documentos"])[:SEI_MAX_DOCS]:
             url = doc.get("url")
             if not url:
                 continue
@@ -693,7 +705,7 @@ async def ler_processo_sei_launch(
                           "documentos": dump.get("documentos", []), "texto": dump.get("texto", "")})
 
         textos_docs = []
-        for doc in resultado["documentos"][:8]:
+        for doc in _ordena_docs_por_cpf(resultado["documentos"])[:SEI_MAX_DOCS]:
             url = doc.get("url")
             if not url:
                 continue
