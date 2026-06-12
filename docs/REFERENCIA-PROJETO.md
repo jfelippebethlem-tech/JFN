@@ -152,6 +152,12 @@ manuais quando expirarem (caem no nous até lá).
   + clicar **Pesquisar 1×** e **esperar a navegação**, sem duplo-submit nem `_abrir`) **ABRE processo de outra unidade**
   (510001/000876, provado por screenshot) — processo NÃO era restrito, era a mecânica da busca. `ler_processo`
   corrigido (espera ativa `ifrArvore`); falta afinar a extração dos docs da árvore. Método no vault [[sei-leitura-itkava]].
+  **(4) OCR de docs DIGITALIZADOS** — helper `compliance_agent/sei/ocr_docs.py` (pytesseract+poppler+pdfminer, degrada
+  honesto; `189d117`) **fiado no `ler_processo`** (`_conteudo_doc`: innerText vazio → download + OCR, `via=ocr`; `fdcd9cf`,
+  aditivo). **(5) Reader SEI em ESTADO SEGURO** (`fa16348`): o port do método cracked regrediu o ITERJ 270042 → revertido
+  ao fluxo dos 838; cracked fica como **caminho separado a portar com cuidado** (testar ITERJ+510001). Fallback público/captcha
+  vivo em `ler()`. **Sessão toda VM-safe + agent-skills/subagentes** (7 builds, ~38 testes novos verdes, ruff). **Bloqueado
+  (dono/dado):** editais×10-CNPJs e sobrepreço (PNCP só vencedor; SEI restrito precisa do port) · OCR ao vivo (acesso SEI).
 - **06-12 cont.25 (goal):** **SWEEPS rearquitetados** — o "2-lane serial" (cont.21) foi RUIM (Chromium 24h +
   sessão única itkava competindo → leitura SEI manual dava 0; 2 lanes em 2 cores + DuckDB = crash) e foi REVERTIDO
   para **sweeps individuais escalonados** (`sweep_sei`/`sweep_dados`/`cruzador` + SIAFE), calibrados à VM real
