@@ -129,7 +129,9 @@ def _ug_canonico() -> dict[str, str]:
 # valor: (lista de UGs | None p/ sem-âncora, confianca, nota)
 OVERRIDES: dict[str, tuple[list[str] | None, str, str]] = {
     "SEC EST INFRAESTRUTURA E OBRAS (EXTINTA)": (["070100", "530100"], "alta", "mesmo órgão em 2 códigos de UG"),
-    "SEC EST INFRAESTRUTURA E CIDADES": (["070100", "530100"], "media", "infra/cidades reorganizada"),
+    "SEC EST INFRAESTRUTURA E CIDADES": (["070100", "530100", "660100"], "media",
+                                         "pasta combinada infra+cidades: sanções imputadas tanto às UGs de "
+                                         "Infraestrutura/Obras (070100/530100) quanto à sucessora Sec. das Cidades (660100)"),
     "SEC EST SEGURANÇA": (["260100", "260200"], "alta", "segurança em 2 códigos"),
     "UERJ-FUND UNIVERSIDADE DO ESTADO RJ": (["404300", "404350"], "alta", "UERJ em 2 códigos"),
     "AGE-AUDITORIA GERAL DO ESTADO": (["500100"], "media", "AGE = predecessora da Controladoria (CGE)"),
@@ -204,9 +206,13 @@ def _con(db_path: str | Path | None):
     return sqlite3.connect(f"file:{Path(db_path or _DB)}?mode=ro", uri=True)
 
 
-def _vazio() -> dict:
-    return {"ok": False, "n_condenacoes": 0, "n_eventos": 0, "n_processos": 0, "valor_total": 0.0,
-            "por_tipo": {}, "por_ano": {}, "itens": [], "confianca": "", "orgaos_tce": [],
+def _vazio(motivo: str = "indisponivel", orgaos_tce: list[str] | None = None) -> dict:
+    """Resultado vazio. motivo distingue:
+    - 'indisponivel': nenhum órgão-TCE mapeia p/ a UG (correspondência nome↔UG não estabelecida) — INDISPONÍVEL;
+    - 'sem_sancao': órgão(s)-TCE mapeado(s), porém SEM condenação na base — histórico LIMPO de fato (≠ INDISPONÍVEL)."""
+    return {"ok": False, "motivo": motivo, "n_condenacoes": 0, "n_eventos": 0, "n_processos": 0,
+            "valor_total": 0.0, "por_tipo": {}, "por_ano": {}, "itens": [], "confianca": "",
+            "orgaos_tce": orgaos_tce or [],
             "tem_media": False, "tem_historico": False, "tem_solidaria": False}
 
 
@@ -221,10 +227,14 @@ def por_ug(ug: str, db_path: str | Path | None = None) -> dict:
         con = _con(db_path)
         try:
             distintos = _orgaos_distintos(con)
-            res = {o: resolver(o) for o in distintos}
+            # universo de resolução = órgãos com linhas + chaves curadas nos OVERRIDES (o join curado
+            # estabelece a correspondência nome↔UG mesmo que aquele órgão ainda não tenha condenação na base).
+            universo = set(distintos) | set(OVERRIDES.keys())
+            res = {o: resolver(o) for o in universo}
             nomes = [o for o, r in res.items() if ug in r["ug_codes"]]
             if not nomes:
-                return _vazio()
+                # nenhum órgão-TCE (vivo ou curado) mapeia p/ esta UG → correspondência não estabelecida (INDISPONÍVEL)
+                return _vazio("indisponivel")
             ph = ",".join("?" * len(nomes))
             rows = con.execute(
                 f"""SELECT orgao, processo, ano_condenacao, tipo, valor, condenacao,
@@ -233,9 +243,10 @@ def por_ug(ug: str, db_path: str | Path | None = None) -> dict:
         finally:
             con.close()
     except Exception:  # noqa: BLE001 — tabela/DB ausente → vazio honesto
-        return _vazio()
+        return _vazio("indisponivel")
     if not rows:
-        return _vazio()
+        # órgão(s)-TCE mapeado(s) mas SEM condenação na base → histórico limpo de fato (≠ INDISPONÍVEL)
+        return _vazio("sem_sancao", orgaos_tce=nomes)
 
     # DEDUP por EVENTO de condenação (mesmo órgão+processo+valor+sessão+tipo). Responsabilidade SOLIDÁRIA
     # (1 débito imputado a N responsáveis) vem como N linhas idênticas — somar INFLA o erário. Contamos o
@@ -333,9 +344,15 @@ def _moeda(v: float) -> str:
 def leitura(agg: dict, nome_orgao: str = "este órgão") -> str:
     """CONCLUSÃO em prosa honesta. Fato julgado pela Corte, não indício nosso."""
     if not agg.get("ok") or not agg.get("n_condenacoes"):
+        # sem_sancao: a UG resolveu para órgão(s)-TCE, mas a Corte não registrou condenação → limpo de fato.
+        if agg.get("motivo") == "sem_sancao":
+            return (f"**Sem sanção do TCE-RJ** registrada para {nome_orgao} na base local de penalidades: "
+                    "a correspondência órgão↔UG foi estabelecida e não consta condenação (débito/multa) atribuída — "
+                    "histórico limpo na cobertura desta base (não exclui processos em curso).")
+        # indisponivel: nenhum órgão-TCE casou com a UG → não dá p/ afirmar limpo nem condenado.
         return (f"Não constam sanções do TCE-RJ atribuíveis a {nome_orgao} na base local de penalidades "
-                "(INDISPONÍVEL — pode refletir ausência de condenação **ou** correspondência de nome não "
-                "estabelecida com confiança; não equivale automaticamente a histórico limpo).")
+                "(INDISPONÍVEL — correspondência de nome↔UG não estabelecida com confiança; "
+                "não equivale automaticamente a histórico limpo).")
     n, npr, tot = agg["n_condenacoes"], agg["n_processos"], agg["valor_total"]
     nev = agg.get("n_eventos", n)
     pt = agg.get("por_tipo", {})
