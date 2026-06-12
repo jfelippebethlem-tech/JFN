@@ -143,7 +143,7 @@ def test_render_menu_curado_e_enxuto():
     st.reload()
     m = st.render_menu()
     n_itens = m.count("\n• ")
-    assert 6 <= n_itens <= 16                          # curado, não as ~47 prontas (+ /ug em 2026-06-09)
+    assert 6 <= n_itens <= 24                          # curado (grupos + exemplos), não as ~47 prontas; cresceu c/ novas capacidades
     assert "Relatório de um fornecedor" in m           # linguagem humana, não id técnico
     assert "/skills" in m                              # aponta o catálogo completo
     assert "GET /api" not in m                         # sem clutter técnico de rota
