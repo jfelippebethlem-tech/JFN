@@ -164,6 +164,15 @@ manuais quando expirarem (caem no nous até lá).
   poluir contexto; sync **Syncthing** (VM pronta, aguarda Device ID do desktop). **(6) OpenBB avaliado** (yfinance BR
   grátis; AGPL→fronteira; probe `~/openbb_probe`). Vault íntegro (health: 0 links quebrados). Diretriz nova: **usar
   agent-skills sempre**. Commits: TCE (`6017ede`), rotate (`0961e0a`), docs-leveza (`793f695`), sweep-lock fix.
+  **(cont. — sweeps + 2 módulos novos):** **(7) SWEEPS 2-LANE SERIAL** — `tools/sweeps_serial.sh` + systemd
+  `sweeps-serial@{browser,dados}` (browser=SEI+CPF | dados=fachada→benefícios→endereço; ≤2 concorrentes, sem
+  contenção/lock/duplicação; crons individuais removidos). `fachada_sweep_rotativo.sh` (1 UG/passada, começa ALERJ/TJ).
+  **(8) MÓDULO DE RELAÇÕES** `relacoes.py` — sócio↔empresa↔empresa↔órgão (sócio/endereço/UG em comum), **dedup por
+  CNPJ raiz** (matriz/filial=1 PJ). Achou **grupo Vieira** (R$189M, 11 empresas, 7 na mesma UG de obras). CLI+5 testes.
+  **(9) SOBREPREÇO** `precos_extract.py` — extrai preço unitário de edital/contrato + **sobrepreço interno** (mesmo
+  item a preços ≥2× diferentes entre órgãos = indício, sem API). +6 testes. Ativa com editais do sweep SEI/PNCP.
+  **(10) docigp ALERJ** = BLOQUEADO (login de deputado — dependência do dono, como SEI/SIAFE). **(11) Sobrepreço
+  EXTERNO** (CATMAT via `sobrepreco.py`) pendente (mapear item→CATMAT). Vault: 26 notas / 7 casos / 0 links quebrados.
 - **06-12 cont.20:** **SWEEP DETACHED DE BENEFÍCIOS DOS SÓCIOS no ar (ALVO Nº1 cont.19 montado).** (1) Tabela
   `socio_beneficio` (resumível, PK nome_norm+doc, CPF resolvido INTERNO/LGPD) + `tools/beneficios_sweep.py`
   (1 lote: índices `carregar_indice_favorecidos`+`carregar_indice_tse` 1×, `resolver_multi`, `verificar_beneficios`
