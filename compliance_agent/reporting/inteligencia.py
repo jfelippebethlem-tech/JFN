@@ -1082,6 +1082,56 @@ def _render_conflito_pessoal(ctx: dict) -> str:
     return "\n".join(L)
 
 
+def _render_benford(ctx: dict) -> str:
+    """Seção 8-B — Lei de Benford sobre os valores de OB (triagem estatística de fracionamento/fabricação)."""
+    p = ctx.get("pagamentos") or {}
+    L: list[str] = []
+    add = L.append
+    add("## 8-B. ANÁLISE ESTATÍSTICA DOS VALORES (LEI DE BENFORD)")
+    add("")
+    add("> A Lei de Benford prevê a frequência do **1º dígito** em populações de valores naturais (pagamentos). "
+        "Um desvio relevante (MAD de Nigrini) é **indício** estatístico de fracionamento, valores fabricados ou "
+        "direcionamento — **nunca prova**; amostras pequenas (n<50) são pouco confiáveis. Triagem, a confirmar nos documentos.")
+    add("")
+    if not p.get("tem_dados"):
+        add("_Sem Ordens Bancárias na base para este fornecedor — **INDISPONÍVEL**._")
+        add("")
+        return "\n".join(L)
+    try:
+        from compliance_agent.analysis.benford import benford
+        vals = [ln.get("valor") or 0 for a in p["anos"] for ln in p["por_ano"][a].get("linhas", [])
+                if (ln.get("valor") or 0) > 0]
+        bf = benford(vals)
+    except Exception:  # noqa: BLE001
+        add("_Análise de Benford indisponível nesta execução._")
+        add("")
+        return "\n".join(L)
+    d1 = bf.get("primeiro_digito") or {}
+    faixa = d1.get("faixa_nigrini", "—")
+    conforme = "CONFORM" in faixa.upper() and "NÃO" not in faixa.upper()
+    add(f"**1º dígito** (n={d1.get('n', 0)} OBs): **MAD de Nigrini = {d1.get('mad', '—')}** → **{faixa}**.")
+    if not bf.get("suficiente"):
+        add(f"> ⚠️ Amostra pequena (n={d1.get('n', 0)} < 50) — resultado **pouco confiável**, informativo apenas.")
+    add("")
+    obs = d1.get("obs") or {}
+    esp = d1.get("esp") or {}
+    add("| Dígito | Esperado (Benford) | Observado | Δ (pp) |")
+    add("|---:|---:|---:|---:|")
+    for dig in range(1, 10):
+        e = float(esp.get(str(dig), 0) or 0)
+        o = float(obs.get(str(dig), 0) or 0)
+        add(f"| {dig} | {e * 100:.1f}% | {o * 100:.1f}% | {(o - e) * 100:+.1f} |")
+    add("")
+    if conforme:
+        add("> ✅ **Conforme** — a distribuição dos 1ºs dígitos é compatível com Benford; **sem indício** estatístico "
+            "de fracionamento/fabricação de valores (não afasta outras irregularidades).")
+    else:
+        add("> 🟡 **Não conformidade** — a distribuição se afasta do esperado; **indício** estatístico a verificar "
+            "(fracionamento, valores fabricados, direcionamento). Confirmar nos contratos/OBs — Benford é triagem, não prova.")
+    add("")
+    return "\n".join(L)
+
+
 def render_md(ctx: dict) -> str:
     p = ctx["pagamentos"]
     L: list[str] = []
@@ -1367,6 +1417,9 @@ def render_md(ctx: dict) -> str:
         add("_Nenhum red flag automático disparado a partir dos dados locais._")
         add("")
 
+    # 8-B. Análise estatística (Lei de Benford) — paridade com o PDF
+    add(_render_benford(ctx))
+
     # 9. Análise jurídica e de mérito — o PARECER escrito do JFN
     add("## 9. ANÁLISE JURÍDICA E DE MÉRITO — PARECER PRELIMINAR DO JFN")
     add("")
@@ -1501,6 +1554,18 @@ def _fatos_para_raciocinio(ctx: dict) -> str:
         else:
             L.append(f"Benefício social dos sócios/administradores: {bs['n_verificados']} verificado(s), nenhum "
                      "recebe benefício de subsistência (indício de laranja afastado para os verificados).")
+    if p.get("tem_dados"):
+        try:
+            from compliance_agent.analysis.benford import benford
+            _vals = [ln.get("valor") or 0 for a in p["anos"] for ln in p["por_ano"][a].get("linhas", [])
+                     if (ln.get("valor") or 0) > 0]
+            _bf = benford(_vals)
+            _d1 = _bf.get("primeiro_digito") or {}
+            if _bf.get("suficiente") and "NÃO CONFORM" in (_d1.get("faixa_nigrini", "") or "").upper():
+                L.append(f"Lei de Benford (1º dígito, n={_d1.get('n')}): NÃO conformidade (MAD {_d1.get('mad')}) — "
+                         "indício estatístico de fracionamento/valores fabricados a verificar nos documentos.")
+        except Exception:  # noqa: BLE001
+            pass
     try:
         rf = _red_flags(ctx)
         if rf:
