@@ -85,10 +85,18 @@ def _prune_reports():
         pass
 
 # timeout (s) para o enriquecimento via APIs públicas (egress da VM é lento).
-# MANTER ABAIXO do timeout do `terminal` do Yoda (60s) — senão o curl morre antes do relatório retornar.
-# Se as fontes externas (Receita/PNCP/sanções) demorarem, o relatório sai assim mesmo com os dados REAIS
-# locais (OBs/contratos) e marca o enriquecimento como INDISPONÍVEL.
-_ENRIQUECE_TIMEOUT = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_TIMEOUT", "35"))
+# O relatório é ASSÍNCRONO/push (não está no caminho do `terminal` 60s do Yoda): pode esperar mais para que
+# perfil RFB, sinais corporativos (§5) e CEIS/CNEP/CEPIM (§6) populem em vez de cair em INDISPONÍVEL por egress.
+# Antes era 35s e o enriquecimento estourava na VM (2 vCPU, egress lento). Agora ~90s + retry com backoff
+# (sinal transitório) + cache por CNPJ (TTL 7 dias) para não repetir o egress a cada relatório.
+# Se mesmo assim falhar, o relatório sai com os dados REAIS locais (OBs/contratos) e marca o enriquecimento
+# como INDISPONÍVEL — degrada honesto, nunca inventa.
+_ENRIQUECE_TIMEOUT = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_TIMEOUT", "90"))
+# nº de TENTATIVAS do enriquecimento (1 = sem retry). Backoff entre tentativas em _ENRIQUECE_BACKOFF s.
+_ENRIQUECE_TENTATIVAS = int(os.environ.get("JFN_RELATORIO_ENRIQUECE_TENTATIVAS", "2"))
+_ENRIQUECE_BACKOFF = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_BACKOFF", "2"))
+# TTL do cache do enriquecimento por CNPJ (s). 0 desliga o cache (testes determinísticos).
+_ENRIQUECE_CACHE_TTL = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_CACHE_TTL", str(7 * 86400)))
 
 
 # ───────────────────────────── helpers de formatação ─────────────────────────────
@@ -451,21 +459,66 @@ def consultar_contratos(cnpj: str) -> dict:
 
 # ───────────────────────────── enriquecimento (APIs públicas) ─────────────────────────────
 
-async def _enriquecer(cnpj: str) -> dict:
-    """gerar_relatorio_risco best-effort. Nunca derruba o relatório. fonte: REAL|INDISPONIVEL."""
+_ENRIQUECE_CACHE_PREFIXO = "enriquece_relatorio"
+
+
+def _enriquece_cache_get(cnpj: str) -> Optional[dict]:
+    """Lê o enriquecimento cacheado por CNPJ (TTL _ENRIQUECE_CACHE_TTL). None = miss/desligado."""
+    if _ENRIQUECE_CACHE_TTL <= 0:
+        return None
     try:
-        from relatorio_riscos import gerar_relatorio_risco
-        res = await asyncio.wait_for(
-            gerar_relatorio_risco(cnpj, formato="md", salvar=False), timeout=_ENRIQUECE_TIMEOUT
-        )
-        if res.get("ok"):
-            res["_fonte"] = "REAL"
+        from relatorio_riscos.collectors import cache as _cache
+        res = _cache.get(_ENRIQUECE_CACHE_PREFIXO, so_digitos(cnpj))
+        if isinstance(res, dict) and res.get("ok"):
+            res["_fonte"] = "CACHE"  # REAL, porém servido do cache (transparência)
             return res
-        return {"ok": False, "_fonte": "INDISPONIVEL", "_motivo": res.get("erro", "falha")}
-    except asyncio.TimeoutError:
-        return {"ok": False, "_fonte": "INDISPONIVEL", "_motivo": f"timeout {_ENRIQUECE_TIMEOUT:.0f}s (egress lento)"}
-    except Exception as exc:  # noqa: BLE001
-        return {"ok": False, "_fonte": "INDISPONIVEL", "_motivo": str(exc)[:120]}
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def _enriquece_cache_set(cnpj: str, res: dict) -> None:
+    """Persiste APENAS resultado REAL (ok=True). Falha transitória nunca é cacheada por 7 dias."""
+    if _ENRIQUECE_CACHE_TTL <= 0 or not (isinstance(res, dict) and res.get("ok")):
+        return
+    try:
+        from relatorio_riscos.collectors import cache as _cache
+        _cache.set(_ENRIQUECE_CACHE_PREFIXO, res, so_digitos(cnpj), ttl=_ENRIQUECE_CACHE_TTL)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+async def _enriquecer(cnpj: str) -> dict:
+    """gerar_relatorio_risco best-effort, com cache por CNPJ + retry/backoff (egress lento da VM).
+    Nunca derruba o relatório. fonte: REAL (fresco) | CACHE (REAL servido do cache) | INDISPONIVEL.
+    O cache guarda só resultado REAL (TTL 7 dias) para não repetir o egress a cada /relatorio; falhas
+    transitórias NÃO são cacheadas (próximo relatório tenta de novo). Degrada honesto: INDISPONÍVEL ≠ inventar."""
+    cacheado = _enriquece_cache_get(cnpj)
+    if cacheado is not None:
+        return cacheado
+
+    from relatorio_riscos import gerar_relatorio_risco
+    tentativas = max(1, _ENRIQUECE_TENTATIVAS)
+    ultimo_motivo = "falha"
+    for tentativa in range(1, tentativas + 1):
+        try:
+            res = await asyncio.wait_for(
+                gerar_relatorio_risco(cnpj, formato="md", salvar=False), timeout=_ENRIQUECE_TIMEOUT
+            )
+            if res.get("ok"):
+                res["_fonte"] = "REAL"
+                _enriquece_cache_set(cnpj, res)
+                return res
+            ultimo_motivo = res.get("erro", "falha")
+            # erro determinístico do upstream (ex.: CNPJ inválido) — não adianta repetir
+            break
+        except asyncio.TimeoutError:
+            ultimo_motivo = f"timeout {_ENRIQUECE_TIMEOUT:.0f}s (egress lento)"
+        except Exception as exc:  # noqa: BLE001
+            ultimo_motivo = str(exc)[:120]
+        if tentativa < tentativas:
+            await asyncio.sleep(_ENRIQUECE_BACKOFF * tentativa)  # backoff linear (2s, 4s, ...)
+    return {"ok": False, "_fonte": "INDISPONIVEL", "_motivo": ultimo_motivo}
 
 
 # ───────────────────────────── montagem do relatório ─────────────────────────────
