@@ -141,6 +141,16 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-12 cont.24 (goal):** **(1) SEI ENTENDIDO/DOCUMENTADO** — corrigi 2 erros meus recorrentes: itkava lê
+  **TODAS as unidades** (838 cdp de ~20 unidades, não só ITERJ) e o output são os **`cdp_*.json`**, não a tabela
+  `processos_sei` (que fica 0 — NORMAL). Nota definitiva em `vault/aprendizados/sei-leitura-itkava`. **Edge MUV
+  diagnosticado por screenshot:** login OK mas a nav da Pesquisa Avançada não dispara (cai no Controle de Processos)
+  → fix apontado (caixa de busca do topo / link real da avançada). **(2) Grupo Vieira** — sócio-elo dos 10 CNPJs
+  (R C / F P Vieira + família); **varredura tier-2** (UGs 31-80) +5 candidatos (Passarelli 54%, CONQUISTA/Agile/
+  Montreal = grupos reais confirmados). **(3) 4 fortes do Fundo TJ:** endereços apurados (residenciais, 2 fora do RJ);
+  flag **H-END-RESID confirmada** (dispara nos 4). **(4) Sweeps:** saudáveis (endereço 14,4k · benefícios 23,7k
+  completo · SEI 838). **(5) Context-economy:** migração memória→vault, MCP lean (codegraph-only, −5-7k tok/turno
+  via `~/.bashrc`), roteiro de skills.
 - **06-12 cont.23:** **(1) MIGRAÇÃO da memória `.claude` → vault Obsidian** (ninguém em runtime lê os `.claude`):
   18 diretrizes/lições → 9 `aprendizados/` + 4 refs vivas → `notas/` (CNPJ, Yoda-render, FlexVision, codegraph, SEI-login),
   **digest do SessionStart agora carrega bloco "Diretrizes SEMPRE-ON"** (obediência·VM·cota·honestidade·aprender), `MEMORY.md`
