@@ -142,6 +142,13 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-12 cont.30 (goal, agentes):** **QA dos produtos + correções.** Gerados /orgao 660100 e /relatorio MUV
+  REAIS, **enviados ao Yoda** (msg 3745-48), laudo: completos/estéticos/prosa honesta (relatório até autocritica o
+  rating). 6 correções (`02f16e4`..`306518f`): enriquecimento 35s→90s+retry+cache (§5/§6 CEIS/CNEP populam), score
+  recalibrado (incorpora §1-B mesma-sede + §8-C PyOD), MD enviado ao Telegram, **§1-G TCE Cidades 660100→8 eventos/
+  R$162k reais**, bullets `- -`, off-by-one 115/116. 43+181 testes verdes. **obsidian-save** da sessão (codigo/
+  detectores-pipeline + 1º daily + lições). **Pendências p/ próxima sessão:** detectores restantes (J5-7/C6/E4-6/X1-6),
+  rodar pipeline nos editais Vieira (SEI lê 510001 não-restrito agora), coletor PNCP p/ alimentar ctx (propostas).
 - **06-12 cont.29 (goal, agentes, passo-a-passo):** **Pipeline de detectores de licitação — 17/30 nas 5 fases.**
   Planejamento P1/P2/P4/P5 (`613d1c0`,`380a967`) · Edital E1/E2/E3 (`58ba433`) · Julgamento J1/J2/J3/J4 (`93edb23`) ·
   Contratação C1-C5 (`01ccd00`) · Preço P3. Todos no schema §1.4 (score-âncoras, evidência, passo exculpatório,
