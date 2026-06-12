@@ -938,6 +938,83 @@ def _render_doacoes_tse(ctx: dict) -> str:
     return "\n".join(L)
 
 
+def _rodizio_fornecedor(cnpj: str, max_ugs: int = 3) -> dict:
+    """A4 — o fornecedor é 'campeão' de algum anel de rodízio (bid rotation/cartel) nas UGs que mais o pagam?
+    Bounded (top `max_ugs` por valor); reusa `rodizio_temporal.rodizio_orgao` (DuckDB). Degrada honesto."""
+    cnpj = so_digitos(cnpj)
+    out = {"ok": False, "ugs_avaliadas": 0, "aneis": []}
+    if len(cnpj) != 14:
+        return out
+    try:
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+        try:
+            ugs = [str(r[0]) for r in con.execute(
+                "SELECT ug_codigo FROM ordens_bancarias WHERE favorecido_cpf=? AND ug_codigo IS NOT NULL "
+                "GROUP BY ug_codigo ORDER BY SUM(valor) DESC LIMIT ?", (cnpj, max_ugs)).fetchall()]
+        finally:
+            con.close()
+        if not ugs:
+            return out
+        from compliance_agent import rodizio_temporal as rt
+        for ug in ugs:
+            try:
+                r = rt.rodizio_orgao(ug)
+            except Exception:  # noqa: BLE001
+                continue
+            out["ugs_avaliadas"] += 1
+            if r.get("indicio"):
+                camp = next((c for c in r.get("campeoes", []) if so_digitos(c.get("cnpj", "")) == cnpj), None)
+                if camp:
+                    out["aneis"].append({"ug": ug, "score": r.get("score"), "n_campeoes": r.get("n_campeoes"),
+                                         "share_ring": r.get("share_ring"), "n_vitorias": camp.get("n_vitorias"),
+                                         "anos": camp.get("anos", [])})
+        out["ok"] = out["ugs_avaliadas"] > 0
+        return out
+    except Exception as exc:  # noqa: BLE001
+        out["_nota"] = str(exc)[:160]
+        return out
+
+
+def _render_rodizio_fornecedor(ctx: dict) -> str:
+    """Seção 1-E — rodízio de vencedores (bid rotation/cartel) do fornecedor. Dado + leitura + conclusão honesta."""
+    rod = ctx.get("rodizio_forn")
+    if rod is None:
+        rod = _rodizio_fornecedor(ctx.get("cnpj", ""))
+    L: list[str] = []
+    add = L.append
+    add("## 1-E. RODÍZIO DE VENCEDORES / CARTEL (BID ROTATION)")
+    add("")
+    add("> Verifica se este fornecedor é um dos **'campeões' que se revezam no topo** das UGs que mais o pagam — "
+        "padrão de **bid rotation** (rodízio de vencedores), *red flag* de cartel/conluio (OCDE *Guidelines*; Lei "
+        "12.529/11 art. 36; Lei 8.666 art. 90). A OB expõe o **vencedor**, não os licitantes — corroborar no "
+        "SEI/PNCP. **Indício, não prova.**")
+    add("")
+    if not rod.get("ok"):
+        add("_Sem UGs suficientes para avaliar rodízio, ou avaliação indisponível nesta execução — **INDISPONÍVEL**._")
+        add("")
+        return "\n".join(L)
+    aneis = rod.get("aneis") or []
+    if not aneis:
+        add(f"Avaliadas as **{rod['ugs_avaliadas']}** UG(s) que mais pagam este fornecedor: **nenhum anel de "
+            "rodízio** com este fornecedor como campeão (indício de cartel **afastado** para essas UGs; as demais "
+            "UGs do fornecedor não foram avaliadas — INDISPONÍVEL).")
+        add("")
+        return "\n".join(L)
+    add(f"🟡 **Indício:** este fornecedor figura como **campeão de rodízio** em **{len(aneis)}** UG(s):")
+    add("")
+    add("| UG | Score do anel | Nº campeões | Vitórias do fornecedor | Anos no topo | Dominância do anel |")
+    add("|---|---:|---:|---:|---|---:|")
+    for a in aneis:
+        anos = ", ".join(str(y) for y in (a.get("anos") or []))
+        add(f"| {a['ug']} | {a.get('score')} | {a.get('n_campeoes')} | {a.get('n_vitorias')}× | {anos} "
+            f"| {a.get('share_ring')} |")
+    add("")
+    add("> 🟡 **Indício a corroborar:** revezamento sistemático no topo sugere **bid rotation / cartel** — "
+        "confirmar a lista de licitantes (SEI/PNCP) e sócios em comum entre os campeões. **Indício, não prova.**")
+    add("")
+    return "\n".join(L)
+
+
 def _num_brl(v):
     """Converte capital social (número ou string '1.234,56') p/ float; None se não der."""
     if v is None or v == "":
@@ -1063,6 +1140,11 @@ def render_md(ctx: dict) -> str:
 
     # 1-D. Doações eleitorais (TSE) × contratos — conflito doador↔contrato (paridade com o PDF)
     add(_render_doacoes_tse(ctx))
+
+    # 1-E. Rodízio de vencedores / cartel (bid rotation) — o fornecedor é campeão de algum anel?
+    if "rodizio_forn" not in ctx:
+        ctx["rodizio_forn"] = _rodizio_fornecedor(ctx.get("cnpj", ""))
+    add(_render_rodizio_fornecedor(ctx))
 
     # 3. Pagamentos (OBs) por ano — TABELA POR ANO (requisito do Mestre Jorge)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
@@ -1370,6 +1452,12 @@ def _fatos_para_raciocinio(ctx: dict) -> str:
         if _cap and _cap > 0 and p["total_geral"] >= 50 * _cap and p["total_geral"] > 500_000:
             L.append(f"Capital social ({moeda(_cap)}) é {p['total_geral'] / _cap:,.0f}× menor que o recebido "
                      f"({moeda(p['total_geral'])}) — indício de subcapitalização típica de fachada (H-CAPITAL).")
+    rodf = ctx.get("rodizio_forn") or {}
+    if rodf.get("aneis"):
+        _ugs = ", ".join(str(a["ug"]) for a in rodf["aneis"])
+        L.append(f"Rodízio de vencedores (bid rotation/cartel): este fornecedor é campeão de anel em "
+                 f"{len(rodf['aneis'])} UG(s) ({_ugs}) — indício de conluio/cartel a corroborar (lista de "
+                 "licitantes no SEI/PNCP; sócios em comum entre os campeões).")
     bs = ctx.get("beneficios_socios") or _beneficios_socios(ctx.get("cnpj", ""))
     if bs.get("n_verificados"):
         if bs.get("n_com_beneficio"):
