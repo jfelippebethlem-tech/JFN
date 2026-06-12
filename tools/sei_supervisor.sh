@@ -15,8 +15,12 @@ OUT=data/sei_cache/sei_sweep_loop.out
 LOTE="${SEI_LOTE:-12}"
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
-say "sei_supervisor iniciado (lote=$LOTE)"
+say "sei_supervisor iniciado (lote=$LOTE${SWEEP_MAX_SECONDS:+, sessão diária ${SWEEP_MAX_SECONDS}s})"
 while true; do
+  # sessão diária limitada (cron escalonado): encerra após SWEEP_MAX_SECONDS p/ não sobrepor o próximo sweep
+  # (VM-safe — §8). Sem a var = contínuo (retrocompatível). Resumível: o próximo dia continua de onde parou.
+  if [ "${SWEEP_MAX_SECONDS:-0}" -gt 0 ] && [ "$SECONDS" -ge "${SWEEP_MAX_SECONDS}" ]; then
+    say "sessão diária atingiu ${SWEEP_MAX_SECONDS}s — encerrando (resumível amanhã)"; exit 0; fi
   if [ -f data/.pause_sei_sweep ]; then sleep 120; continue; fi
   # já rodando (ex.: lançado à mão)? não duplica
   if pgrep -f "tools.sei_sweep" >/dev/null; then sleep 60; continue; fi

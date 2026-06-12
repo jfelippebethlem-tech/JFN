@@ -29,8 +29,11 @@ Telegram = maestro, aciona o JFN pela API `127.0.0.1:8000`). Padrão de saída: 
 - **Sweeps:** **SEI** vivo e supervisionado (`tools/sei_supervisor.sh`, cron-minuto relança; resumível por checkpoint
   `data/sei_cache/sei_sweep_progress.json`; reboot-safe — ver §8). **SIAFE 2** = varredura completa; incremental
   diário via cron 05:00 (`siafe_runner diario`). SIAFE 1 = conta ALERJ-only (pende chave do dono).
-- **Cron:** manutenção dom 03:00; folha 06:00; siafe diário 05:00; massare 06:15 + backtest dom 04:30; `@reboot`
-  limpa lock + relança SEI supervisor.
+- **Cron (DIÁRIO ESCALONADO, ordem lógica, VM-safe — cont.20):** base → SIAFE 05:00 · backfill_enderecos 05:40 ·
+  folha 06:00 · massare 06:15 (+ manutenção/backtest dom). Sweeps de enriquecimento **diários, sessão limitada
+  `SWEEP_MAX_SECONDS=9000` (~2h30), sem overlap, resumíveis:** **SEI 07:00 → endereço 10:00 → benefícios 13:00**.
+  `@reboot` só limpa `browser.lock` (a agenda diária cuida dos lançamentos). Respawn por-minuto REMOVIDO (era o
+  modelo contínuo). Backup do crontab antigo em `data/crontab.backup.*`; agenda nova em `data/crontab.novo`.
 
 ## 3. LLM — ALOCAÇÃO (isolamento de qualidade)
 - **Sweep SEI** (triagem + raciocínio de fraude em massa) → **nous `stepfun:free`** (ilimitado/grátis). **Cerebras
