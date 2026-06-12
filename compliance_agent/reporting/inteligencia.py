@@ -1051,6 +1051,37 @@ def _capital_recebido_md(emp: dict | None, pagamentos: dict) -> str:
             f"({razao:,.1f}× o capital) — proporção **sem indício relevante** de subcapitalização.")
 
 
+def _render_conflito_pessoal(ctx: dict) -> str:
+    """Seção 1-F — sócio/admin (CPF resolvido) na folha do Estado = conflito de pessoal. Dado + leitura + conclusão."""
+    from compliance_agent.reporting import conflito_pessoal_view as cp
+    agg = ctx.get("conflito_pessoal")
+    if agg is None:
+        agg = cp.por_fornecedor(so_digitos(ctx.get("cnpj", "")))
+    L: list[str] = []
+    add = L.append
+    add("## 1-F. CONFLITO DE PESSOAL — SÓCIO/ADMINISTRADOR NA FOLHA DO ESTADO")
+    add("")
+    add("> Cruza os sócios/administradores (com **CPF resolvido**) com a **folha do Estado** (servidores/"
+        "terceirizados/bolsistas — `registros_folha`). Ser sócio/gestor de empresa contratada pelo poder público "
+        "**e** integrar sua folha é indício de **conflito de interesse / incompatibilidade** (CF art. 37; Lei "
+        "8.429/92 art. 11; Lei 14.133/21 art. 9º). O CPF do QSA é resolvido por ponte probabilística (~5% do QSA) "
+        "→ cobertura limitada; **INDISPONÍVEL ≠ ausência**. Indício, **nunca acusação**.")
+    add("")
+    add(cp.leitura(agg))
+    itens = agg.get("itens") or []
+    if itens:
+        add("")
+        add("| Sócio/Administrador | Papel (QSA) | Órgão (folha) | Cargo | Vínculo | Competência |")
+        add("|---|---|---|---|---|---|")
+        for it in itens[:20]:
+            add(f"| {it['nome']} | {it['papel']} | {it['orgao']} | {it['cargo']} | {it['vinculo']} | {it['competencia']} |")
+        add("")
+        add("> 🟡 **Indício a confirmar:** confirmar a identidade (CPF resolvido por ponte) e a natureza do vínculo "
+            "(acumulação lícita de cargos? impedimento de contratar? art. 9º Lei 14.133). **Indício, não prova.**")
+    add("")
+    return "\n".join(L)
+
+
 def render_md(ctx: dict) -> str:
     p = ctx["pagamentos"]
     L: list[str] = []
@@ -1145,6 +1176,9 @@ def render_md(ctx: dict) -> str:
     if "rodizio_forn" not in ctx:
         ctx["rodizio_forn"] = _rodizio_fornecedor(ctx.get("cnpj", ""))
     add(_render_rodizio_fornecedor(ctx))
+
+    # 1-F. Conflito de pessoal — sócio/administrador (CPF resolvido) na folha do Estado
+    add(_render_conflito_pessoal(ctx))
 
     # 3. Pagamentos (OBs) por ano — TABELA POR ANO (requisito do Mestre Jorge)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
