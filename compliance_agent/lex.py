@@ -579,6 +579,117 @@ def _grau(achados: list) -> tuple:
     return "🟢", "VERDE", "sem indícios relevantes nos dados disponíveis — presunção de regularidade mantida"
 
 
+# ── Passo EXCULPATÓRIO (defesa contra si mesmo) ───────────────────────────────────────────────────
+# Para CADA indício, a explicação inocente mais plausível + se os DADOS a refutam. Achado cuja própria
+# defesa NÃO é refutada pelos dados (a explicação inocente sobrevive) → rebaixado a "monitoramento" (não
+# representação). Protege a credibilidade: indício ≠ acusação; presunção de regularidade. Por família de RF.
+_EXCULPATORIO = {
+    "R2": "Em serviços contínuos, dispensas emergenciais sucessivas podem cobrir o intervalo entre o fim de "
+          "um contrato e a conclusão de novo pregão — fracionamento só se confirma com mesmo objeto/local sob o teto.",
+    "R3": "A pesquisa de preços pode existir no processo SEI e apenas não ter sido lida nesta varredura "
+          "(documento ausente do recorte ≠ ausência do documento).",
+    "R4": "O preço pode refletir composição de custo legítima (BDI, encargos, logística regional) — só há "
+          "sobrepreço frente a uma referência de mercado efetivamente apurada.",
+    "R5": "A contratação direta pode ter amparo legal robusto e justificado (urgência real documentada, "
+          "exclusividade de fato do objeto/marca) — afastamento da licitação nem sempre é irregular.",
+    "R6": "A troca de controle societário pode ser sucessão empresarial legítima (herança, venda regular) "
+          "sem qualquer interposição de pessoas.",
+    "R7": "A especificação restritiva pode decorrer de exigência técnica real do objeto, não de direcionamento.",
+    "R8": "A concentração/co-ocorrência pode refletir um mercado regional naturalmente concentrado ou um "
+          "ramo de poucos players (ex.: engenharia/consórcio legítimo), sem qualquer conluio.",
+    "R9": "Aditivos podem decorrer de fato superveniente legítimo dentro dos limites legais (25%/50%).",
+    "R10": "OBs de R$ 0,00 e estornos são, em regra, regularizações contábeis ordinárias, não pagamento irregular.",
+    "R11": "O CNAE pode estar desatualizado no cadastro sem que a empresa careça de aptidão operacional real "
+           "para o objeto.",
+    "R12": "DFD/ETP genéricos podem refletir padronização administrativa, não ausência de planejamento real.",
+    "DD": "Sinais cadastrais isolados (endereço residencial, capital baixo, empresa recente) são comuns em "
+          "microempresas legítimas e, sozinhos, não caracterizam fachada/laranja.",
+}
+
+
+def _fam_exculpatorio(rf: str) -> str:
+    return "DD" if str(rf).startswith("DD/") else str(rf)
+
+
+def _exculpatorio(achados: list) -> list[dict]:
+    """Para cada achado, gera a explicação inocente mais plausível e avalia se os DADOS a refutam.
+
+    A defesa é considerada REFUTADA (achado sobrevive → representação) quando o próprio indício já traz
+    convergência/cruzamento confirmatório: gravidade alta (≥3) OU achado de conluio COM sócio em comum.
+    Caso contrário a defesa SOBREVIVE → o achado é rebaixado a 'monitoramento' (sobrevive=True). Degrada
+    honesto: qualquer falha devolve o achado como representação (não silencia indício). Honestidade: a
+    dúvida sobre a economicidade favorece o gestor (presunção de regularidade)."""
+    out = []
+    for a in achados or []:
+        try:
+            rf = a.get("rf", "")
+            defesa = _EXCULPATORIO.get(_fam_exculpatorio(rf), "Pode haver explicação administrativa regular para o fato.")
+            grav = int(a.get("grav", 0) or 0)
+            obs = (a.get("obs") or "").lower()
+            socio_comum = "sócio" in obs and ("comum" in obs or "irmã" in obs or "compartilh" in obs)
+            # Refuta a defesa quando há convergência/cruzamento: gravidade alta OU sócio em comum (cartel forte).
+            refuta = grav >= 3 or socio_comum
+            sobrevive = not refuta  # defesa sobrevive → achado fraco → monitoramento
+            out.append({"rf": rf, "grav": grav, "defesa": defesa,
+                        "refuta": ("os dados refutam a defesa (convergência/cruzamento confirmatório) — o "
+                                   "indício sobrevive à própria defesa" if refuta else
+                                   "os dados NÃO refutam a defesa — a explicação inocente é plausível e não foi "
+                                   "afastada"),
+                        "sobrevive": sobrevive,
+                        "encaminhamento": "monitoramento" if sobrevive else "representação"})
+        except Exception:
+            out.append({"rf": a.get("rf", ""), "grav": int(a.get("grav", 0) or 0),
+                        "defesa": "—", "refuta": "avaliação exculpatória indisponível",
+                        "sobrevive": False, "encaminhamento": "representação"})
+    return out
+
+
+# ── Destinatário recomendado por TIPO/família de achado (enquadramento do playbook) ──────────────
+# conluio/cartel → MP + CADE · débito/cautelar → TCE-RJ/TCU · improbidade/penal → MP · PAR anticorrupção → CGU/CGE.
+_DESTINATARIO_FAMILIA = {
+    # família → (rótulo do destinatário, base/motivo)
+    "conluio":     ("MP-RJ + CADE", "conluio/cartel (bid rigging) — atuação simultânea (art. 36 Lei 12.529; art. 337-F CP)"),
+    "debito":      ("TCE-RJ / TCU", "débito/medida cautelar — dano ao erário/sobrepreço/liquidação (jurisdição de contas)"),
+    "improbidade": ("MP-RJ", "improbidade/penal — fracionamento, dispensa indevida, direcionamento (Lei 8.429; CP arts. 337-E ss.)"),
+    "par":         ("CGU / CGE-RJ", "PAR anticorrupção — fachada/laranja/idoneidade (Lei 12.846; controle interno)"),
+}
+# RF → famílias de destinatário (um achado pode disparar mais de uma família).
+_RF_DESTINATARIO = {
+    "R2": ("improbidade",),
+    "R3": ("debito",),
+    "R4": ("debito",),
+    "R5": ("improbidade",),
+    "R6": ("improbidade", "par"),
+    "R7": ("improbidade",),
+    "R8": ("conluio",),
+    "R9": ("debito",),
+    "R10": ("debito",),
+    "R11": ("improbidade", "par"),
+    "R12": ("improbidade",),
+    "DD": ("par", "improbidade"),
+}
+
+
+def _destinatarios(achados: list) -> list[dict]:
+    """Destinatário(s) recomendado(s) derivado(s) das FAMÍLIAS dos achados presentes (sem duplicar).
+
+    Cartel COM sócio em comum reforça 'conluio'. Degrada honesto: sem achado → lista vazia (presunção
+    de regularidade, sem encaminhamento)."""
+    fams: list[str] = []
+    try:
+        for a in achados or []:
+            for f in _RF_DESTINATARIO.get(_fam_exculpatorio(a.get("rf", "")), ()):
+                if f not in fams:
+                    fams.append(f)
+    except Exception:
+        fams = []
+    out = []
+    for f in fams:
+        rotulo, motivo = _DESTINATARIO_FAMILIA.get(f, (f, ""))
+        out.append({"familia": f, "destinatario": rotulo, "motivo": motivo})
+    return out
+
+
 def _primeira_data_pag(p: dict) -> str:
     """Data do PRIMEIRO pagamento (menor `data` entre as linhas das OBs) em ISO, ou '' se indisponível.
 
@@ -705,9 +816,12 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
 
     achados = _merge_achados(ach_dados + ach_doc + ach_tcerj + ach_cartel + ach_estrutural)
     emoji, rotulo, just = _grau(achados)
+    exculpatorio = _exculpatorio(achados)
+    destinatarios = _destinatarios(achados)
     return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
             "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj, "cartel": cartel,
             "cruzado": cruzado, "investigacao": investigacao,
+            "exculpatorio": exculpatorio, "destinatarios": destinatarios,
             "emoji": emoji, "rotulo": rotulo, "just": just}
 
 
@@ -839,6 +953,12 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     tcerj = analise.get("tcerj") or {}
     cartel = analise.get("cartel") or {}
     cruzado = analise.get("cruzado") or {}
+    exculpatorio = analise.get("exculpatorio") or []
+    destinatarios = analise.get("destinatarios") or []
+    # 1º item exculpatório por RF (p/ III-B refletir o rebaixamento a 'monitoramento' quando a defesa sobrevive).
+    _exc_por_rf = {}
+    for _e in exculpatorio:
+        _exc_por_rf.setdefault(_e.get("rf"), _e)
     p = ctx.get("pagamentos") or {}
     lidos = [l for l in leituras if l.get("lido")]
     L = []
@@ -1039,8 +1159,13 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
             add("- **Diligência sugerida:** confrontar com edital (especificações), pesquisa de preços, mapa de "
                 "licitantes/sócios, atestos e aditivos do processo SEI.")
             # Encaminhamento por severidade (o que FAZER com este indício) — dirige a ação, não só descreve.
+            # Respeita o passo exculpatório: achado cuja defesa inocente SOBREVIVE → rebaixado a monitoramento.
             g = a.get("grav", 0)
-            if g >= 3:
+            _exc = _exc_por_rf.get(a.get("rf"))
+            if _exc and _exc.get("sobrevive"):
+                add(f"- **Encaminhamento:** gravidade {g}/5 — a explicação inocente mais plausível **não foi "
+                    "refutada** pelos dados (ver passo exculpatório); rebaixado a **monitoramento**, não representação.")
+            elif g >= 3:
                 add(f"- **⤴ Encaminhamento:** indício relevante (gravidade {g}/5) — cabe **requerimento** ao órgão "
                     "exigindo a justificativa documental; persistindo a dúvida, representação ao TCE-RJ/MP-RJ.")
             else:
@@ -1085,6 +1210,36 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     add(_analise_merito(ctx, analise))
     add("")
 
+    # IV-D. Defesa contra si mesmo (passo exculpatório obrigatório) — protege a credibilidade do parecer.
+    add("## IV-D. DEFESA CONTRA SI MESMO — PASSO EXCULPATÓRIO")
+    add("")
+    add("*Para cada indício, a **explicação inocente mais plausível** e se os dados a refutam. Achado cuja "
+        "defesa **não é refutada** sobrevive à própria defesa apenas como **monitoramento** — não representação "
+        "(presunção de legitimidade; a dúvida sobre a economicidade favorece o gestor).*")
+    add("")
+    if exculpatorio:
+        add("| Indício | Explicação inocente mais plausível | Os dados refutam? | Encaminhamento |")
+        add("|---|---|---|---|")
+        for e in exculpatorio:
+            nome = _RF.get(e.get("rf"), (e.get("rf"), ""))[0]
+            defesa = (e.get("defesa") or "").replace("|", "/")
+            defesa = (defesa[:120] + "…") if len(defesa) > 120 else defesa
+            refuta = "**Sim** — sobrevive" if not e.get("sobrevive") else "Não — defesa de pé"
+            enc = "monitoramento" if e.get("sobrevive") else "representação"
+            add(f"| {e.get('rf')} {nome} | {defesa} | {refuta} | **{enc}** |")
+        add("")
+        _monit = [e for e in exculpatorio if e.get("sobrevive")]
+        if _monit:
+            add(f"> **{len(_monit)} indício(s)** não sobreviveram à própria defesa (a explicação inocente é "
+                "plausível e não foi afastada pelos dados) e foram **rebaixados a monitoramento**, não representação. "
+                "Isso preserva a credibilidade do parecer: indício ≠ acusação.")
+        else:
+            add("> Todos os indícios **sobrevivem** ao passo exculpatório (convergência/cruzamento confirmatório "
+                "refuta a explicação inocente) — sustentam encaminhamento, não mero monitoramento.")
+    else:
+        add("> Sem indícios a submeter ao passo exculpatório — presunção de regularidade mantida.")
+    add("")
+
     # IV-C. Proposta preliminar de sanção administrativa (dosimetria — lex_sancoes)
     try:
         from compliance_agent import lex_sancoes
@@ -1104,6 +1259,23 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     # VI. Recomendações
     add("## VI. RECOMENDAÇÕES DE ENCAMINHAMENTO")
     add("")
+    # Destinatário recomendado por tipo/família de achado (conluio→MP+CADE · débito→TCE/TCU · improbidade/penal→MP · PAR→CGU/CGE).
+    if destinatarios:
+        add("**Destinatário recomendado** (derivado das famílias dos achados presentes):")
+        add("")
+        add("| Destinatário | Fundamento / tipo de achado |")
+        add("|---|---|")
+        for d in destinatarios:
+            add(f"| **{d.get('destinatario')}** | {d.get('motivo')} |")
+        add("")
+        add("> O roteamento acima segue o enquadramento do playbook (conluio/cartel → MP + CADE; débito/cautelar → "
+            "TCE-RJ/TCU; improbidade/penal → MP; PAR anticorrupção → CGU/CGE) e **não** antecipa juízo de mérito — "
+            "o encaminhamento concreto observa o passo exculpatório (seção IV-D).")
+        add("")
+    else:
+        add("> **Destinatário recomendado:** nenhum encaminhamento específico — sem achado que indique competência "
+            "de controle externo, MP, CADE ou CGE (presunção de regularidade).")
+        add("")
     add("- **Diligência documental:** confrontar, nos processos SEI, o edital/TR (especificações), a pesquisa "
         "de preços (cesta — Acórdão 1875/2021-TCU), o mapa de licitantes (sócios/endereços) e os atestos/medições.")
     add("- **Controle externo:** havendo indício de dano, representar ao **TCE-RJ** (jurisdição sobre a despesa estadual).")
