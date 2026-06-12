@@ -53,6 +53,26 @@ O que falta para "100%" exige trabalho FORA do escopo de *surfar campos existent
 - **Subir cobertura de CPF** (~4,7%) via parsing de SEI/procurações (traz procuradores).
 - **Yoda:** poller externo (ação do dono — §9).
 
+## RESOLUÇÃO DE CPF — arquitetura completa (cont.20) + CONCLUSÃO HONESTA
+- [x] **Engine de CPF legal/sem-leak:** bridge favorecidos+TSE (~5%) + **SEI CPF sweep** (`compliance_agent/sei/
+      extrair_cpf` DV-validado + `tools/sei_cpf_sweep` + leitor SEI prioriza contrato social/procuração, lê 12 docs)
+      + `resolucao_cpf.carregar_indice_sei`/`sei_idx` (3ª fonte, conf 0.9; **provado: resolve sócios**) +
+      `ingerir_cpf_oficial` (qualquer lista nome,cpf → valida DV + `confirmar_cpf` anti-homônimo contra a máscara) +
+      `gerar_cpfs_da_mascara` (1000 candidatos válidos — calculadora, não método) + `cadastro_pf_providers` (genérico).
+- [x] **SEI CPF sweep integrado ao supervisor** (cada lote extrai CPF); cresce diário (cron 07:00, leitor novo).
+- ⚠️ **CONCLUSÃO (testado ao vivo):** toda fonte GRÁTIS mascara CPF de PF (cnpj.ws, Portal API, Querido Diário,
+      PNCP = 0/mascarado). Nome→CPF completo em massa só vem de **bureau pago** (dono vetou) ou **leak** (não construo
+      harvester). Teto grátis ~5% + SEI (cresce). **Para 100%: dono passa CSV `nome,cpf` → `ingerir_cpf_oficial`.**
+- [⛔] **Yoda 100%:** poller externo em OUTRA máquina (provado: gateway parado → 409 + 0 conexões locais). Ação do
+      dono: BotFather `/revoke` → novo token no `~/.hermes/.env` → restart gateway. (Agente/relatórios/envio OK.)
+
+## SUÍTE DE TESTES (cont.20): 8 → 2 falhas
+- [x] Corrigidos 6 testes STALE: verificacao_endereco ×2 (pré-Mapillary), skilltree (menu 16→24), hermes ×3 (Qwen
+      virou 1º na cascata, não mockavam). Commits b716d42, 8a32322, 42c5c86.
+- [ ] **2 restantes = ambientais/perf** (não-lógica): `test_goal_agent_ciclo_autonomo` trava (full-scan na DB
+      1,2GB → precisa fixture/temp-DB; `DB_PATH` é hardcoded, `trabalhar()` usa a DB direto) · `test_sei_cdp_sem_
+      chrome` depende do estado do Chrome 9222. Baixa prioridade (não são bugs de produto).
+
 ## Em curso / feito
 - [x] Sweep de benefícios sócios/admin (detached) + fix BF anoMesReferencia — commitado (cont.20).
 
