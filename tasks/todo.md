@@ -36,11 +36,22 @@
 - [x] **M2** Anomalias do modelo (§8-C fornecedor, `ob_anomaly` 1M ⋈ OBs). Commit c3a810b.
 - [⛔] **M3** decisões TCE — `decisoes_tce`=0 linhas (live/async). MAS `penalidades_tcerj` (910, sanções a
       ÓRGÃOS) é surfável no relatório de ÓRGÃO por match de nome (pendente).
-- [ ] **M4** receita×despesa (órgão, `tfe_receita` CSV) · **M6** co-ocorrência de sócios · **M7** OpenSanctions ·
-      **M8** gazetas estruturado · **M9** tipo de processo SEI · **M10** consórcio.
-- [x] **jfn.service REINICIADO** → todas as seções novas (Fases 1/2/3) VIVAS; API servindo; fornecedor gera com
-      1-C…1-F + capital + 8-B + 8-C end-to-end.
-- [ ] **Checkpoint F3** + revisão final + medição PDF completa.
+- [⛔] **M3** penalidades_tcerj — dado existe (910) mas SEM chave de join confiável (nomes abreviados ≠ UG);
+      match fuzzy arriscaria atribuição errada → **honestidade veta**. Precisa de mapa órgão→UG curado.
+- [~] **M6** co-ocorrência de sócios — JÁ surfada no §1-B (empresas com sócio em comum). **M8** gazetas — JÁ no
+      §1-B/raciocínio (Querido Diário). **M9** tipo de processo SEI — JÁ no Lex II-B. (duplicados; não re-surfar)
+- [ ] **M4** receita×despesa (estado, `tfe_receita` CSV) — contexto orçamentário; mais esforço, valor médio. ·
+      **M7** OpenSanctions (API externa) · **M10** consórcio (não coletado).
+- [x] **jfn.service REINICIADO** → seções novas (Fases 1/2/3) VIVAS; API servindo; fornecedor end-to-end OK.
+
+## CONCLUSÃO HONESTA (cont.20)
+**O surfar de TODO sinal com DADO REAL + JOIN CONFIÁVEL está COMPLETO** (Fases 1, 2 e Fase 3 M1/M2).
+O que falta para "100%" exige trabalho FORA do escopo de *surfar campos existentes*:
+- **Coletores novos** (A1 aditivos, A2 empenho→liquidação→OB, A5 débito fiscal, M10 consórcio) — não há o dado.
+- **Mapa de join curado** (M3 órgão→UG) — sem chave confiável, fuzzy é desonesto.
+- **APIs externas** (M7 OpenSanctions).
+- **Subir cobertura de CPF** (~4,7%) via parsing de SEI/procurações (traz procuradores).
+- **Yoda:** poller externo (ação do dono — §9).
 
 ## Em curso / feito
 - [x] Sweep de benefícios sócios/admin (detached) + fix BF anoMesReferencia — commitado (cont.20).
