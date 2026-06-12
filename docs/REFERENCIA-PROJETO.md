@@ -105,6 +105,15 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
 - **⛔ Satélite (entorno) NUNCA acusa baldio/barraco** (lição Banco do Brasil, 06-11): coord no nível da rua
   (±100m) + VLM alucinou "barraco 80%" p/ o BB e p/ Polis Informática. Satélite só AFASTA área edificada;
   acusação de baldio/barraco/casa SÓ por Street View (rooftop, requer GOOGLE_MAPS_KEY). Nunca acusar com evidência fraca.
+- **⛔ Sweeps concorrentes precisam de `busy_timeout` (cont.21, 06-12):** `sqlite3.connect()` sem `busy_timeout`
+  **erra na hora** ("database is locked") se outro sweep segura o write lock → o endereço parava (02:22 e ao
+  rodar os 3 juntos). Fix: `connect(timeout=30)` + `PRAGMA busy_timeout=30000` + WAL nos writers (esperar o lock,
+  não errar). Validado ao vivo com os 3 sweeps concorrendo. **Todo writer novo do `compliance.db` deve setar isso.**
+- **⛔ Dedup de responsabilidade SOLIDÁRIA no TCE (cont.21):** o mesmo débito imputado a N responsáveis vem como N
+  linhas idênticas em `penalidades_tcerj` (402/910). **Somar infla o erário** (Saúde R$66M bruto → R$28,5M real).
+  Contar o débito 1× por evento (processo+valor+sessão), registrar nº de responsáveis. Nunca superestimar (regra-mãe).
+- **Vínculo nome↔código que muda (cont.21):** órgão do TCE↔UG re-derivado dos dados vivos (auto-matcher + tipo +
+  override mínimo + `depurar()`), NÃO dict chumbado (apodrece). Discriminador de TIPO evita o bug órgão→fundo homônimo.
 
 ## 9. PENDÊNCIAS DO DONO
 - **✅ Hermes ATUALIZADO (cont.20):** `~/hermes-agent` saltou de 11.416 commits atrás → `origin/main` v0.16.0
@@ -145,6 +154,16 @@ manuais quando expirarem (caem no nous até lá).
   raciocínio (IA conectou: "48 condenações do TCE… riscos de gestão"). Medido real (Saúde R$28,5M, PRODERJ R$35M,
   DETRAN; Fundo do TJ corretamente sem sanção). +12 testes (23 verdes nos módulos de órgão), ruff limpo. PDF entregue
   conferido (sem tofu). **Próximo M3 pendente:** UGs renomeadas → o `depurar()` já sinaliza drift p/ revisão.
+  **(3) FIX sweep `database is locked`** — `busy_timeout`+WAL nos writers de endereço (§8); validado ao vivo; endereço
+  voltou a avançar (3.9k→4.3k). Sweeps relançados (SEI/endereço/benefícios; benefícios=universo completo). **(4) docs
+  LEVES** — 53 arquivos → 33 vivos + 20 em `docs/historico/` + `docs/INDEX.md` (catálogo); `CLAUDE.md` enxuto ~30%.
+  **(5) SEGUNDO CÉREBRO Obsidian** (`~/vault`, fora do git do JFN) — motor `obsidian-second-brain` (44 cmds, MIT) +
+  kepano; **memória de CASOS** (MOC-Casos + casos reais: 2 laranja BPC, Saúde/TCE); **MOC-Codigo/Dados/Mercado**
+  (architect_scan do JFN/hermes → notas de arquitetura; esquema das 40 tabelas; FMP/OpenBB) correlacionando
+  **código↔dado↔caso**; hook **SessionStart** injeta digest leve (~360 tok, casos abertos) — memória permanente sem
+  poluir contexto; sync **Syncthing** (VM pronta, aguarda Device ID do desktop). **(6) OpenBB avaliado** (yfinance BR
+  grátis; AGPL→fronteira; probe `~/openbb_probe`). Vault íntegro (health: 0 links quebrados). Diretriz nova: **usar
+  agent-skills sempre**. Commits: TCE (`6017ede`), rotate (`0961e0a`), docs-leveza (`793f695`), sweep-lock fix.
 - **06-12 cont.20:** **SWEEP DETACHED DE BENEFÍCIOS DOS SÓCIOS no ar (ALVO Nº1 cont.19 montado).** (1) Tabela
   `socio_beneficio` (resumível, PK nome_norm+doc, CPF resolvido INTERNO/LGPD) + `tools/beneficios_sweep.py`
   (1 lote: índices `carregar_indice_favorecidos`+`carregar_indice_tse` 1×, `resolver_multi`, `verificar_beneficios`
