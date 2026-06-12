@@ -288,30 +288,56 @@ def _fetch_streetview_google(lat: float, lon: float, chave: str) -> bytes | None
         return None
 
 
-def _fetch_mapillary(lat: float, lon: float, token: str, raio_m: float = 50.0) -> bytes | None:
-    """Foto de rua do ponto via **Mapillary** (crowdsourced, Meta — token GRÁTIS, sem billing). Pega a
-    imagem mais próxima do ponto e baixa o thumb. JPG ou None. É RENTE AO CHÃO (como o Street View) → pode
-    distinguir casebre/barraco de prédio comercial mesmo quando há edificação (≠ satélite, que só afasta)."""
+def _mapillary_busca(token: str, lat: float, lon: float, raio_m: float):
+    """Consulta a Mapillary num bbox ~raio_m. Em densidade alta a API responde 500 'reduce data' → o
+    chamador encolhe o raio e tenta de novo. Retorna (status, data) onde status: 'ok'|'vazio'|'denso'|'erro'."""
     try:
         import math
 
         import httpx
     except Exception:
-        return None
-    # bbox ~raio_m em graus (lat: 1°≈111km; lon corrige por cos(lat))
+        return ("erro", [])
     dlat = raio_m / 111_000.0
     dlon = raio_m / (111_000.0 * max(0.1, math.cos(math.radians(lat))))
     bbox = f"{lon - dlon},{lat - dlat},{lon + dlon},{lat + dlat}"
     try:
         r = httpx.get("https://graph.mapillary.com/images",
-                      params={"access_token": token, "bbox": bbox, "limit": 25,
-                              "fields": "id,thumb_1024_url,computed_geometry,captured_at"},
+                      params={"access_token": token, "bbox": bbox, "limit": 30,
+                              "fields": "id,thumb_1024_url,computed_geometry"},
                       headers={"User-Agent": _UA}, timeout=20)
+        if r.status_code == 500 and "reduce the amount" in (r.text or "").lower():
+            return ("denso", [])  # bbox cobre features demais → encolher
         if r.status_code != 200:
-            return None
-        data = (r.json() or {}).get("data") or []
+            return ("erro", [])
+        return ("ok", (r.json() or {}).get("data") or [])
+    except Exception:
+        return ("erro", [])
+
+
+def _fetch_mapillary(lat: float, lon: float, token: str, raio_m: float = 120.0) -> bytes | None:
+    """Foto de rua do ponto via **Mapillary** (crowdsourced, Meta — token GRÁTIS, sem billing). Pega a
+    imagem mais próxima do ponto e baixa o thumb. JPG ou None. É RENTE AO CHÃO (como o Street View) → pode
+    distinguir casebre/barraco de prédio comercial mesmo quando há edificação (≠ satélite, que só afasta).
+    Cobertura é esparsa (raio default 120m); em zona densa a API pede menos dados → encolhe o raio e retenta."""
+    try:
+        import httpx  # noqa: F401
     except Exception:
         return None
+    data, r = [], raio_m
+    for _ in range(4):  # densa demais → encolhe; vazia no raio → expande uma vez
+        status, d = _mapillary_busca(token, lat, lon, r)
+        if status == "ok" and d:
+            data = d
+            break
+        if status == "denso":
+            r = max(25.0, r / 2)
+            continue
+        if status == "ok" and not d:
+            if r >= 250:
+                break
+            r = min(250.0, r * 2)  # sem cobertura nesse raio → tenta um pouco mais largo
+            continue
+        return None  # erro de rede
     if not data:
         return None  # sem cobertura Mapillary nesse ponto (comum na periferia) → cai p/ satélite
 
@@ -325,6 +351,7 @@ def _fetch_mapillary(lat: float, lon: float, token: str, raio_m: float = 50.0) -
     if not url:
         return None
     try:
+        import httpx
         r2 = httpx.get(url, headers={"User-Agent": _UA}, timeout=25)
         return r2.content if (r2.status_code == 200 and r2.content[:3] == b"\xff\xd8\xff") else None
     except Exception:
@@ -431,7 +458,7 @@ def classificar_local_por_imagem(lat: float, lon: float, endereco: str = "") -> 
     # Default `mapillary,streetview`: tenta o Mapillary (GRÁTIS) primeiro; o Street View (PAGO, capado a
     # 9999/31d) só é acionado onde o Mapillary NÃO cobre. Trocar a ordem via env `IMG_FONTE_ORDEM`.
     # O satélite Esri (grátis, só ENTORNO → NUNCA acusa) é sempre o último recurso.
-    raio_mly = float(os.environ.get("MAPILLARY_RAIO_M", "50") or 50)
+    raio_mly = float(os.environ.get("MAPILLARY_RAIO_M", "120") or 120)
     img, fonte = (None, "")
     for src in _fontes_rua_ordenadas():
         if src == "mapillary" and mly:
