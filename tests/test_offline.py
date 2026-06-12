@@ -103,8 +103,13 @@ def test_hermes_groq_first():
         groq_chamado.append(True)
         return "resposta-groq"
 
+    async def _qwen_off(*a, **k):
+        raise RuntimeError("qwen off (teste do cascata Groq)")  # Qwen é 1º na cascata; desliga p/ testar Groq
+
     orig_groq = fl.groq_chat_async
     orig_key = fl._groq_key
+    orig_qwen = fl.qwen_chat_async
+    fl.qwen_chat_async = _qwen_off
     fl.groq_chat_async = fake_groq
     fl._groq_key = lambda: "gsk_fake"
     h._ultima_chamada = 0.0
@@ -115,6 +120,7 @@ def test_hermes_groq_first():
     finally:
         fl.groq_chat_async = orig_groq
         fl._groq_key = orig_key
+        fl.qwen_chat_async = orig_qwen
 
 
 def test_hermes_openrouter_fallback_quando_groq_falha():
@@ -134,10 +140,15 @@ def test_hermes_openrouter_fallback_quando_groq_falha():
             raise RuntimeError("Retryable status 429 from openrouter")
         return '{"ok": true}'  # primeiro fallback responde
 
+    async def _qwen_off(*a, **k):
+        raise RuntimeError("qwen off (teste do fallback OpenRouter)")  # Qwen é 1º; desliga p/ testar groq→OR
+
     orig_groq = fl.groq_chat_async
     orig_key_groq = fl._groq_key
     orig_retry = fl._openai_compat_chat_retry
     orig_key_or = fl._openrouter_key
+    orig_qwen = fl.qwen_chat_async
+    fl.qwen_chat_async = _qwen_off
     fl.groq_chat_async = fake_groq_fail
     fl._groq_key = lambda: "gsk_fake"
     fl._openai_compat_chat_retry = fake_retry
@@ -154,6 +165,7 @@ def test_hermes_openrouter_fallback_quando_groq_falha():
         fl._groq_key = orig_key_groq
         fl._openai_compat_chat_retry = orig_retry
         fl._openrouter_key = orig_key_or
+        fl.qwen_chat_async = orig_qwen
 
 
 # ─── 4. Bootstrap do Hermes (LLM simulado) ────────────────────────────────────
@@ -517,8 +529,13 @@ def test_hermes_max_tokens_repassado_ao_groq():
         capturado["max_tokens"] = max_tokens
         return "ok"
 
+    async def _qwen_off(*a, **k):
+        raise RuntimeError("qwen off (teste do max_tokens no Groq)")  # Qwen é 1º; desliga p/ chegar no Groq
+
     orig_groq = fl.groq_chat_async
     orig_key = fl._groq_key
+    orig_qwen = fl.qwen_chat_async
+    fl.qwen_chat_async = _qwen_off
     fl.groq_chat_async = fake_groq
     fl._groq_key = lambda: "gsk_fake"
     h._ultima_chamada = 0.0
@@ -529,6 +546,7 @@ def test_hermes_max_tokens_repassado_ao_groq():
     finally:
         fl.groq_chat_async = orig_groq
         fl._groq_key = orig_key
+        fl.qwen_chat_async = orig_qwen
 
 
 # ─── Runner standalone (sem pytest) ───────────────────────────────────────────
