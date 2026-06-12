@@ -288,6 +288,7 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     ctx["dd_orgao"] = _dd_orgao_bounded(ug_cod, anos)
     ctx["endereco_real"] = _endereco_real_orgao(ug_cod)
     ctx["beneficios_socios"] = _beneficios_orgao(ug_cod)  # laranja: benefício de subsistência dos sócios/admin
+    ctx["penalidades_tce"] = _penalidades_tce_orgao(ug_cod)  # sanções do TCE-RJ ao órgão (controle externo)
     ctx["raciocinio"] = parecer_raciocinado_orgao(ctx)  # síntese de IA sobre os fatos (degrada honesto)
 
     md = render_md(ctx)
@@ -392,6 +393,16 @@ def _fatos_orgao(ctx: dict) -> str:
             L.append(f"Benefícios sociais dos sócios/administradores: {bs['n_verificados']} verificados, nenhum "
                      "recebe benefício de subsistência (indício de laranja AFASTADO para os verificados; os não "
                      "resolvidos seguem INDISPONÍVEL).")
+    tce = ctx.get("penalidades_tce") or {}
+    if tce.get("ok") and tce.get("n_condenacoes"):
+        deb = tce.get("por_tipo", {}).get("DEBITO", {}).get("valor", 0.0)
+        mul = tce.get("por_tipo", {}).get("MULTA", {}).get("valor", 0.0)
+        ress = " (correspondência de nome incerta p/ parte — conferir o ente no processo)" if tce.get("tem_media") else ""
+        L.append(f"Sanções do TCE-RJ ao órgão (controle externo, fato JÁ JULGADO): {tce['n_condenacoes']} "
+                 f"condenação(ões) em {tce.get('n_eventos', 0)} eventos / {tce['n_processos']} processo(s) de contas, "
+                 f"somando R$ {moeda(deb)} em débito e R$ {moeda(mul)} em multa (valor sem dupla contagem da "
+                 f"responsabilidade solidária){ress}. Reforça o risco institucional — a Corte de Contas já reconheceu "
+                 "falhas de gestão/prestação de contas deste órgão.")
     return "\n".join("- " + x for x in L)
 
 
@@ -400,8 +411,9 @@ _SYS_RACIOCINIO_ORGAO = (
     "A partir EXCLUSIVAMENTE dos fatos listados (NÃO invente dados/nomes/fontes; sem conhecimento externo), "
     "escreva uma ANÁLISE RACIOCINADA que CONECTE TODOS os achados disponíveis (concentração em fornecedor, "
     "pagamentos recorrentes idênticos, concentração geográfica, triagem de DUE DILIGENCE de fachada/laranja "
-    "nos maiores fornecedores, RODÍZIO TEMPORAL de vencedores/cartel, processos SEI a priorizar e a "
-    "VERIFICAÇÃO DE REALIDADE do endereço das sedes): o que chama atenção, COMO os sinais se REFORÇAM entre si "
+    "nos maiores fornecedores, RODÍZIO TEMPORAL de vencedores/cartel, processos SEI a priorizar, a "
+    "VERIFICAÇÃO DE REALIDADE do endereço das sedes e as SANÇÕES DO TCE-RJ ao órgão — fato já julgado pela Corte "
+    "de Contas, que pondera o risco institucional): o que chama atenção, COMO os sinais se REFORÇAM entre si "
     "(ex.: fornecedor dominante + rodízio + sede em endereço não confirmado = hipótese mais forte de "
     "direcionamento/cartel), que hipóteses de risco (captura, fracionamento, direcionamento, conluio, "
     "interposição/laranja) merecem apuração e POR QUÊ, e exatamente O QUE verificar (contrato, certame, SEI). "
@@ -601,6 +613,17 @@ def _beneficios_orgao(ug: str) -> dict:
         return {"ok": False, "_nota": str(exc)[:160]}
 
 
+def _penalidades_tce_orgao(ug: str) -> dict:
+    """Sanções do TCE-RJ (`penalidades_tcerj`) imputadas ao órgão desta UG, via mapa curado/auditável
+    (string do TCE → UG, com confiança). Fato JÁ JULGADO pela Corte (não indício nosso). Degrada honesto."""
+    try:
+        from compliance_agent.reporting import penalidades_tce_view as pv
+        return pv.por_ug(ug)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("Sanções TCE-RJ do órgão %s degradou (seção 1-G): %s", ug, exc)
+        return {"ok": False, "_nota": str(exc)[:160]}
+
+
 # ───────────────────────────── render Markdown ─────────────────────────────
 
 def _sigla_descr(nome: str) -> tuple[str, str]:
@@ -775,6 +798,56 @@ def _secao_beneficios_md(add, ctx: dict) -> None:
         add("")
 
 
+def _secao_tce_md(add, ctx: dict) -> None:
+    """Seção 1-G — sanções do TCE-RJ ao órgão (controle externo). Fato JÁ JULGADO, não indício nosso."""
+    from compliance_agent.reporting import penalidades_tce_view as pv
+    t = ctx.get("penalidades_tce") or {}
+    add("## 1-G. SANÇÕES DO TCE-RJ AO ÓRGÃO (CONTROLE EXTERNO)")
+    add("")
+    add("> Cruza o órgão desta UG com as **condenações do Tribunal de Contas do Estado (TCE-RJ)** — multas e "
+        "**débitos** (imputação de devolução de recursos) em processos de prestação/tomada de contas. É o sinal "
+        "mais **direto** de irregularidade, pois já foi **julgado pela Corte de Contas** (fato, não indício "
+        "interno). O vínculo nome-TCE↔UG usa um **mapa curado** (o TCE usa nome abreviado); correspondências "
+        "incertas são sinalizadas. **INDISPONÍVEL ≠ ausência de condenação.**")
+    add("")
+    if not t.get("ok") or not t.get("n_condenacoes"):
+        add(f"_{pv.leitura(t, 'este órgão')}_")
+        add("")
+        return
+    add(pv.leitura(t, "este órgão"))
+    add("")
+    pt = t.get("por_tipo", {})
+    deb = pt.get("DEBITO", {})
+    mul = pt.get("MULTA", {})
+    add(f"- Condenações: **{t['n_condenacoes']}** (responsáveis) em **{t.get('n_eventos', t['n_condenacoes'])}** "
+        f"eventos distintos · **{t['n_processos']}** processo(s) · valor (sem dupla contagem solidária) "
+        f"**R$ {moeda(t['valor_total'])}**")
+    if deb:
+        add(f"- **DÉBITO** (devolução ao erário): {deb.get('n', 0)} evento(s) · **R$ {moeda(deb.get('valor', 0))}**")
+    if mul:
+        add(f"- **MULTA**: {mul.get('n', 0)} evento(s) · **R$ {moeda(mul.get('valor', 0))}**")
+    anos = t.get("por_ano", {})
+    if anos:
+        add("- Por ano: " + " · ".join(f"{a}: {v['n']}× (R$ {moeda(v['valor'])})" for a, v in anos.items()))
+    add("")
+    itens = t.get("itens") or []
+    if itens:
+        add("| Processo | Ano | Tipo | Valor (R$) | Resp. | Natureza | Sessão | Órgão (TCE) |")
+        add("|---|---|---|---|---|---|---|---|")
+        for it in itens[:20]:
+            flag = " ⚠" if it.get("confianca") == "media" else ""
+            resp = f"{it.get('n_resp', 1)}×" if it.get("n_resp", 1) > 1 else "1"
+            add(f"| {it['processo']} | {it.get('ano', '—')} | {it['tipo']} | {moeda(it['valor'])} | {resp} | "
+                f"{it['grupo_natureza'][:22]} | {it['data_sessao']} | {it['orgao_tce'][:24]}{flag} |")
+        if len(itens) > 20:
+            add(f"\n> (+{len(itens) - 20} eventos — detalhe completo na base do TCE-RJ.)")
+        add("")
+        if t.get("tem_media"):
+            add("> ⚠ Linhas marcadas têm **correspondência de órgão incerta** (extinção/reorganização) — "
+                "confirmar o ente exato no número do processo antes de imputar à gestão atual.")
+            add("")
+
+
 def render_md(ctx: dict) -> str:
     p = ctx["pagamentos"]
     sigla, descr = _sigla_descr(ctx["nome"])
@@ -921,6 +994,8 @@ def render_md(ctx: dict) -> str:
     _secao_endereco_md(add, ctx)
     # 1-F. Benefícios sociais dos sócios/administradores (cruzamento de laranja — testa-de-ferro)
     _secao_beneficios_md(add, ctx)
+    # 1-G. Sanções do TCE-RJ ao órgão (controle externo — fato já julgado)
+    _secao_tce_md(add, ctx)
 
     # Tabelas de OBs por ano (pagamentos individuais a cada fornecedor)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
@@ -973,7 +1048,8 @@ def render_md(ctx: dict) -> str:
     add("")
     add("## 5. REFERÊNCIAS")
     add("")
-    add("- **Dados:** SIAFE-Rio / Transparência Fiscal RJ (OBs) — `data/compliance.db`; mapa de UG `data/ug_canonico.json`.")
+    add("- **Dados:** SIAFE-Rio / Transparência Fiscal RJ (OBs) — `data/compliance.db`; mapa de UG `data/ug_canonico.json`; "
+        "sanções **TCE-RJ** (`penalidades_tcerj`) por mapa curado órgão↔UG.")
     add("- **Normas:** Lei 14.133/2021; Lei 8.666/93; CF/88 Art. 37; metodologia TCU; ACFE Report to the Nations.")
     add("")
     add(f"_Gerado pelo JFN Intelligence Engine em {ctx['data']}. Não substitui análise jurídica especializada._")
@@ -1092,6 +1168,40 @@ def _secao_beneficios_pdf(pdf, _t, ctx: dict) -> None:
         pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(150, 90, 0)
         _mc(pdf, 4, _t("Indício de interposição (laranja), não prova; confirmar no contrato social/procuração/SEI. "
                        "CPF de uso interno (LGPD)."))
+        pdf.set_text_color(0, 0, 0)
+
+
+def _secao_tce_pdf(pdf, _t, ctx: dict) -> None:
+    """PDF — sanções do TCE-RJ ao órgão (controle externo, fato já julgado)."""
+    from compliance_agent.reporting import penalidades_tce_view as pv
+    t = ctx.get("penalidades_tce") or {}
+    pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+    pdf.cell(0, 8, _t("Sanções do TCE-RJ ao órgão (controle externo)"), ln=True)
+    pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+    if not t.get("ok") or not t.get("n_condenacoes"):
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t(pv.leitura(t, "este órgão").replace("**", "")))
+        pdf.set_text_color(0, 0, 0); return
+    _mc(pdf, 4.5, _t(pv.leitura(t, "este órgão").replace("**", "")))
+    pdf.ln(1)
+    pt = t.get("por_tipo", {})
+    deb = pt.get("DEBITO", {}); mul = pt.get("MULTA", {})
+    _mc(pdf, 4.5, _t(f"Condenações: {t['n_condenacoes']} (responsáveis) em {t.get('n_eventos', 0)} eventos / "
+                     f"{t['n_processos']} processo(s) | débito: R$ {moeda(deb.get('valor', 0))} ({deb.get('n', 0)} ev.) | "
+                     f"multa: R$ {moeda(mul.get('valor', 0))} ({mul.get('n', 0)} ev.) | "
+                     f"total (sem dupla contagem solidária) R$ {moeda(t['valor_total'])}."))
+    itens = t.get("itens") or []
+    if itens:
+        pdf.ln(1); _tab_header(pdf, [("Processo", 38), ("Ano", 12), ("Tipo", 20), ("Valor (R$)", 32), ("Resp.", 14), ("Natureza", 36)])
+        pdf.set_font(pdf._fam, "", 7)
+        for it in itens[:20]:
+            resp = f"{it.get('n_resp', 1)}×" if it.get("n_resp", 1) > 1 else "1"
+            _tab_row(pdf, [(_t(str(it["processo"])[:22]), 38, "L"), (_t(str(it.get("ano", "-"))), 12, "C"),
+                           (_t(it["tipo"]), 20, "L"), (_t(moeda(it["valor"])), 32, "R"), (_t(resp), 14, "C"),
+                           (_t(it["grupo_natureza"][:22]), 36, "L")], h=4.6)
+        pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(150, 90, 0)
+        _mc(pdf, 4, _t("Decisões do TCE-RJ (fato já julgado). Correspondência de órgão por mapa curado; "
+                       "linhas incertas exigem conferir o ente no processo."))
         pdf.set_text_color(0, 0, 0)
 
 
@@ -1230,6 +1340,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         _secao_dd_pdf(pdf, _t, ctx)
         _secao_endereco_pdf(pdf, _t, ctx)
         _secao_beneficios_pdf(pdf, _t, ctx)
+        _secao_tce_pdf(pdf, _t, ctx)
 
         # OBs por ano
         for a in p["anos"]:
