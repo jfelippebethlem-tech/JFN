@@ -124,3 +124,13 @@ def test_confirmar_cpf_anti_homonimo():
     assert not homo["confirmado"] and "HOMÔNIMO" in homo["motivo"]
     # CPF inválido (tamanho)
     assert not confirmar_cpf("X", "123", "***223344**")["confirmado"]
+
+
+def test_gerar_cpfs_da_mascara():
+    from compliance_agent.resolucao_cpf import gerar_cpfs_da_mascara
+    from compliance_agent.sei.extrair_cpf import validar_cpf
+    cands = gerar_cpfs_da_mascara("***512815**")
+    assert len(cands) == 1000 and all(validar_cpf(c) for c in cands)
+    assert all(c[3:9] == "512815" for c in cands)
+    assert "94451281504" in cands  # CPF real cai entre os candidatos
+    assert gerar_cpfs_da_mascara("11122334455") == []  # sem máscara
