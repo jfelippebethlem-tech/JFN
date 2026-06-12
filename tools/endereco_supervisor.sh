@@ -12,8 +12,12 @@ LOG=data/endereco_supervisor.log
 LOTE="${ENDERECO_LOTE:-800}"
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
-say "endereco_supervisor iniciado (lote=$LOTE)"
+say "endereco_supervisor iniciado (lote=$LOTE${SWEEP_MAX_SECONDS:+, sessão diária ${SWEEP_MAX_SECONDS}s})"
 while true; do
+  # sessão diária limitada (cron escalonado): encerra após SWEEP_MAX_SECONDS p/ não sobrepor o próximo sweep
+  # (VM-safe — §8). Sem a var = contínuo (retrocompatível). Resumível: o próximo dia continua de onde parou.
+  if [ "${SWEEP_MAX_SECONDS:-0}" -gt 0 ] && [ "$SECONDS" -ge "${SWEEP_MAX_SECONDS}" ]; then
+    say "sessão diária atingiu ${SWEEP_MAX_SECONDS}s — encerrando (resumível amanhã)"; exit 0; fi
   if [ -f data/.pause_endereco_sweep ]; then sleep 120; continue; fi
   # já rodando um lote (ex.: lançado à mão)? não duplica (evita 2 clientes na mesma fonte OSM)
   if pgrep -f "tools.backfill_verificacao_endereco" >/dev/null; then sleep 60; continue; fi
