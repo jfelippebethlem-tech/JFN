@@ -284,6 +284,7 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     # Bounded/degrada honesto. Vêm ANTES do raciocínio p/ a IA conectar também esses achados.
     ctx["dd_orgao"] = _dd_orgao_bounded(ug_cod, anos)
     ctx["endereco_real"] = _endereco_real_orgao(ug_cod)
+    ctx["beneficios_socios"] = _beneficios_orgao(ug_cod)  # laranja: benefício de subsistência dos sócios/admin
     ctx["raciocinio"] = parecer_raciocinado_orgao(ctx)  # síntese de IA sobre os fatos (degrada honesto)
 
     md = render_md(ctx)
@@ -377,6 +378,17 @@ def _fatos_orgao(ctx: dict) -> str:
                  f"{er['indicio']} com indício (possível baldio/precário), {er['indisponivel']} sem conclusão — "
                  f"de {er['n_verificados']} verificadas em {er['n_forn']} fornecedores PJ. "
                  "INDISPONÍVEL não é prova de inexistência (cobertura cartográfica incompleta).")
+    bs = ctx.get("beneficios_socios") or {}
+    if bs.get("ok") and bs.get("n_verificados"):
+        if bs.get("n_com_beneficio"):
+            L.append(f"Benefícios sociais dos sócios/administradores (laranja): {bs['n_com_beneficio']} vínculo(s) / "
+                     f"{bs.get('n_pessoas_beneficio', 0)} pessoa(s) recebem benefício de subsistência entre "
+                     f"{bs['n_verificados']} verificados ({bs['cobertura']}% de cobertura) — indício de interposição "
+                     "de pessoas (testa-de-ferro) a confirmar no contrato social/SEI; INDISPONÍVEL para os demais.")
+        else:
+            L.append(f"Benefícios sociais dos sócios/administradores: {bs['n_verificados']} verificados, nenhum "
+                     "recebe benefício de subsistência (indício de laranja AFASTADO para os verificados; os não "
+                     "resolvidos seguem INDISPONÍVEL).")
     return "\n".join("- " + x for x in L)
 
 
@@ -561,6 +573,28 @@ def _endereco_real_orgao(ug: str) -> dict:
         return out
 
 
+def _beneficios_orgao(ug: str) -> dict:
+    """Agrega os BENEFÍCIOS SOCIAIS (laranja) dos sócios/administradores dos fornecedores PJ da UG, via
+    `socio_beneficio` (sweep detached) ⋈ `socios_fornecedor`. Cruzamento INTELIGENTE: distingue indício /
+    AFASTADO / INDISPONÍVEL e traz a leitura raciocinada. Degrada honesto (tabela/sweep ausente → ok=False)."""
+    try:
+        con = sqlite3.connect(_DB)
+        try:
+            cnpjs = [r[0] for r in con.execute(
+                "SELECT DISTINCT favorecido_cpf FROM ordens_bancarias WHERE ug_codigo=? "
+                "AND favorecido_cpf IS NOT NULL AND length(favorecido_cpf)=14", (str(ug),)).fetchall()]
+        finally:
+            con.close()
+        if not cnpjs:
+            return {"ok": False}
+        from compliance_agent.reporting import beneficios_view as bv
+        agg = bv.agregar_por_cnpjs(cnpjs)
+        agg["ok"] = agg.get("total_qsa", 0) > 0
+        return agg
+    except Exception as exc:  # noqa: BLE001
+        return {"ok": False, "_nota": str(exc)[:160]}
+
+
 # ───────────────────────────── render Markdown ─────────────────────────────
 
 def _sigla_descr(nome: str) -> tuple[str, str]:
@@ -686,6 +720,52 @@ def _secao_endereco_md(add, ctx: dict) -> None:
         add("> 🟡 **Indício a verificar:** sede em ponto possivelmente não edificado. Conferir o endereço no "
             "mapa real (CEP/Google), por imagem (Street View) ou in loco antes de tratar como achado — "
             "INDISPONÍVEL/centróide de rua não comprova baldio.")
+        add("")
+
+
+def _secao_beneficios_md(add, ctx: dict) -> None:
+    """Seção 1-F — benefícios sociais dos sócios/administradores (cruzamento de laranja). Dado + leitura + conclusão."""
+    from compliance_agent.reporting import beneficios_view as bv
+    b = ctx.get("beneficios_socios") or {}
+    add("## 1-F. BENEFÍCIOS SOCIAIS DOS SÓCIOS/ADMINISTRADORES (INDÍCIO DE LARANJA)")
+    add("")
+    add("> Cruza o **CPF dos sócios e administradores** do QSA dos fornecedores com os **benefícios de "
+        "subsistência** por CPF (Bolsa Família, BPC, Auxílio Emergencial, PETI, Garantia-Safra, Seguro-Defeso — "
+        "Portal da Transparência/CGU). Quem é **dono/gestor** de empresa que recebe recursos públicos **e** "
+        "recebe benefício de subsistência é **indício clássico de testa-de-ferro (laranja)** — interposição de "
+        "pessoas (art. 337-F CP; art. 11 Lei 8.429/92). O CPF do QSA vem **mascarado** (LGPD); resolvemos via "
+        "fontes oficiais (favorecidos PF + doadores do TSE). **INDISPONÍVEL ≠ ausência de benefício.**")
+    add("")
+    if not b.get("ok"):
+        add("_Ainda sem QSA com CPF mascarado dos fornecedores desta UG, ou a varredura de benefícios "
+            "(`tools/beneficios_sweep`) ainda não cobriu este conjunto — o sweep roda em segundo plano e esta "
+            "seção se preenche à medida que avança (INDISPONÍVEL, não ausência)._")
+        add("")
+        return
+    add(bv.leitura(b, escopo="desta UG"))
+    add("")
+    add(f"- Sócios/administradores no QSA (CPF mascarado): **{b['total_qsa']}** · já varridos: **{b['n_varridos']}**")
+    add(f"- CPF resolvido (cruzável): **{b['n_resolvidos']}** · benefício verificado: **{b['n_verificados']}** "
+        f"(**{b['cobertura']}%** de cobertura) · **INDISPONÍVEL:** {b['n_indisponivel']}")
+    add(f"- **Com benefício de subsistência (indício de laranja):** {b['n_com_beneficio']} vínculo(s) · "
+        f"{b.get('n_pessoas_beneficio', 0)} pessoa(s)")
+    add("")
+    itens = b.get("itens") or []
+    if itens:
+        add("| Fornecedor | Sócio/Administrador | Papel | Benefício | Fonte do CPF |")
+        add("|---|---|---|---|---|")
+        _fonte = {"favorecidos_pf": "favorecidos PF", "tse_doadores": "doadores TSE"}
+        for it in itens[:20]:
+            tipos = ", ".join(it.get("tipos") or []) or "(tipo não detalhado)"
+            forn = (it.get("razao") or "—")[:38]
+            add(f"| {forn} | {(it.get('nome') or '—')[:34]} | {it.get('papel', '')} | {tipos} | "
+                f"{_fonte.get(it.get('fonte', ''), it.get('fonte', '') or '—')} |")
+        if len(itens) > 20:
+            add(f"\n> (+{len(itens) - 20} vínculos com indício — detalhe na planilha XLSX.)")
+        add("")
+        add("> 🟡 **Indício a confirmar:** receber benefício de subsistência **e** ser sócio/gestor de "
+            "fornecedor do Estado sugere **interposição de pessoas (laranja)** — confirmar no contrato social, "
+            "na procuração e no processo SEI. **Indício, não prova.** CPF de uso interno (LGPD).")
         add("")
 
 
@@ -833,6 +913,8 @@ def render_md(ctx: dict) -> str:
     _secao_dd_md(add, ctx)
     # 1-E. Verificação de realidade do endereço das sedes (as empresas são reais?)
     _secao_endereco_md(add, ctx)
+    # 1-F. Benefícios sociais dos sócios/administradores (cruzamento de laranja — testa-de-ferro)
+    _secao_beneficios_md(add, ctx)
 
     # Tabelas de OBs por ano (pagamentos individuais a cada fornecedor)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
@@ -976,6 +1058,37 @@ def _secao_endereco_pdf(pdf, _t, ctx: dict) -> None:
                            (_t(it.get("evidencia") or "-")[:38], 60, "L")], h=4.6)
 
 
+def _secao_beneficios_pdf(pdf, _t, ctx: dict) -> None:
+    """PDF — benefícios sociais dos sócios/administradores (cruzamento de laranja)."""
+    b = ctx.get("beneficios_socios") or {}
+    pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+    pdf.cell(0, 8, _t("Benefícios sociais dos sócios/administradores (indício de laranja)"), ln=True)
+    pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+    if not b.get("ok"):
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t("Sem QSA mascarado dos fornecedores desta UG, ou a varredura de benefícios ainda não "
+                         "cobriu (INDISPONÍVEL, não ausência — o sweep roda em segundo plano)."))
+        pdf.set_text_color(0, 0, 0); return
+    from compliance_agent.reporting import beneficios_view as bv
+    _mc(pdf, 4.5, _t(bv.leitura(b, escopo="desta UG").replace("**", "")))
+    pdf.ln(1)
+    _mc(pdf, 4.5, _t(f"QSA mascarado: {b['total_qsa']} | varridos: {b['n_varridos']} | CPF resolvido: "
+                     f"{b['n_resolvidos']} | verificados: {b['n_verificados']} ({b['cobertura']}%) | "
+                     f"com benefício (indício): {b['n_com_beneficio']} | INDISPONÍVEL: {b['n_indisponivel']}."))
+    itens = b.get("itens") or []
+    if itens:
+        pdf.ln(1); _tab_header(pdf, [("Fornecedor", 70), ("Sócio/Admin", 56), ("Papel", 30), ("Benefício", 36)])
+        pdf.set_font(pdf._fam, "", 7)
+        for it in itens[:20]:
+            tipos = ", ".join(it.get("tipos") or []) or "-"
+            _tab_row(pdf, [(_t(it.get("razao", "")[:42]), 70, "L"), (_t(it.get("nome", "")[:34]), 56, "L"),
+                           (_t(it.get("papel", "")[:18]), 30, "L"), (_t(tipos)[:22], 36, "L")], h=4.6)
+        pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(150, 90, 0)
+        _mc(pdf, 4, _t("Indício de interposição (laranja), não prova; confirmar no contrato social/procuração/SEI. "
+                       "CPF de uso interno (LGPD)."))
+        pdf.set_text_color(0, 0, 0)
+
+
 def render_pdf(ctx: dict, destino: str) -> str:
     from fpdf import FPDF
     p = ctx["pagamentos"]
@@ -1110,6 +1223,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         # Triagem de DD (fachada/laranja) + rodízio/cartel + realidade de endereço (cruzamentos de inteligência)
         _secao_dd_pdf(pdf, _t, ctx)
         _secao_endereco_pdf(pdf, _t, ctx)
+        _secao_beneficios_pdf(pdf, _t, ctx)
 
         # OBs por ano
         for a in p["anos"]:
