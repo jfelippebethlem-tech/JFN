@@ -892,6 +892,52 @@ def _render_beneficios_socios(ctx: dict) -> str:
     return "\n".join(L)
 
 
+def _render_doacoes_tse(ctx: dict) -> str:
+    """Seção 1-D — doações eleitorais (TSE) × contratos: conflito doador↔contrato. Cruzamento inteligente
+    (paridade com o PDF): dado completo (cadeia doador→fornecedor→candidato→UG→SEI) + leitura + conclusão."""
+    rede = ctx.get("conflito_rede")
+    if rede is None:
+        try:
+            from compliance_agent.lex_conflito import conflito
+            rede = conflito(cnpj=so_digitos(ctx.get("cnpj", "")), limite=30).get("rede", [])
+        except Exception:  # noqa: BLE001
+            rede = []
+    if isinstance(rede, dict):
+        rede = rede.get("rede", [])
+    L: list[str] = []
+    add = L.append
+    add("## 1-D. DOAÇÕES ELEITORAIS — CONFLITO DOADOR ↔ CONTRATO (TSE)")
+    add("")
+    add("> Cruza as **doações eleitorais** (TSE) da empresa **e de seus sócios** com os contratos/pagamentos do "
+        "Estado, fechando a cadeia **doador → fornecedor → candidato → UG pagadora → processo SEI**. Doar a "
+        "campanha e contratar com o poder público é **indício de relação política / conflito de interesse** a "
+        "verificar (Lei 9.504/97; Lei 14.133 art. 14) — presunção de legitimidade, **nunca acusação**.")
+    add("")
+    if not rede:
+        add("_Nenhuma doação eleitoral (TSE) localizada para a empresa ou seus sócios na base — **INDISPONÍVEL / "
+            "sem registro** (não equivale a inexistência de doação fora do período/base ingerida)._")
+        add("")
+        return "\n".join(L)
+    add(f"**{len(rede)}** vínculo(s) doação↔contrato localizado(s) — o doador pode ser a empresa OU um sócio (coluna *Via*):")
+    add("")
+    add("| Doador | Via | Candidato | Partido | Ano | Valor doado (R$) | Órgão (UG) pagador | Processos SEI |")
+    add("|---|---|---|---|---:|---:|---|---|")
+    for r in rede[:20]:
+        ugs = r.get("ugs") or []
+        ug_cell = ("; ".join(f"{u.get('nome')} (R$ {moeda(u.get('total'))})" for u in ugs[:2])
+                   + (f" (+{len(ugs) - 2} UG)" if len(ugs) > 2 else "")) if ugs else "—"
+        seis = r.get("seis") or []
+        sei_cell = (", ".join(str(s) for s in seis[:5]) + (f" (+{len(seis) - 5})" if len(seis) > 5 else "")) if seis else "—"
+        add(f"| {r.get('doador', '')} | {r.get('via', '')} | {r.get('candidato', '')} | {r.get('partido', '')} "
+            f"| {r.get('ano', '')} | {moeda(r.get('valor_doacao'))} | {ug_cell} | {sei_cell} |")
+    add("")
+    add("> 🟡 **Indício a verificar:** doação eleitoral de fornecedor (ou de seu sócio) a candidato, combinada com "
+        "recebimento de recursos públicos no Estado, é indício de **relação política / conflito de interesse** — "
+        "confirmar a cadeia (doação→contrato→UG→SEI) e a regularidade do certame. **Indício, não prova.**")
+    add("")
+    return "\n".join(L)
+
+
 def render_md(ctx: dict) -> str:
     p = ctx["pagamentos"]
     L: list[str] = []
@@ -974,6 +1020,9 @@ def render_md(ctx: dict) -> str:
 
     # 1-C. Cruzamento de benefícios sociais dos sócios/administradores (laranja/testa-de-ferro)
     add(_render_beneficios_socios(ctx))
+
+    # 1-D. Doações eleitorais (TSE) × contratos — conflito doador↔contrato (paridade com o PDF)
+    add(_render_doacoes_tse(ctx))
 
     # 3. Pagamentos (OBs) por ano — TABELA POR ANO (requisito do Mestre Jorge)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
