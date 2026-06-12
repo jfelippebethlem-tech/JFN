@@ -77,6 +77,50 @@ def resolver(nome: str, doc_mascarado: str, *, db_path: str | Path | None = None
     return {**base, "motivo": "sem correspondência no corpus de favorecidos PF"}
 
 
+def _match_indice(nome: str, doc_mascarado: str, idx: dict, rotulo: str, confianca: float = 0.85) -> dict:
+    """Resolve (nome + 6 díg do meio) contra um índice pré-construído {(nome_norm, middle6) -> set(cpf)}.
+
+    Mesmo contrato honesto de `resolver()` (match 1:1; ambíguo/sem match → resolvido=False), mas SEM SQL por
+    chamada — para o sweep usar um índice carregado UMA vez e não fazer 1 full-scan por sócio (VM-safe, §8)."""
+    base = {"resolvido": False, "cpf": "", "confianca": 0.0, "metodo": "nome+middle6", "motivo": ""}
+    m6 = middle6(doc_mascarado)
+    nome_n = _norm(nome)
+    if not m6 or len(nome_n) < 6:
+        return {**base, "motivo": "sem 6 dígitos do meio (máscara) ou nome curto"}
+    cpfs = idx.get((nome_n, m6))
+    if cpfs and len(cpfs) == 1:
+        return {**base, "resolvido": True, "cpf": next(iter(cpfs)), "confianca": confianca,
+                "motivo": f"par (nome + 6 díg do meio) único no {rotulo}"}
+    if cpfs and len(cpfs) > 1:
+        return {**base, "motivo": f"ambíguo ({len(cpfs)} CPFs p/ nome+6díg) — não resolve"}
+    return {**base, "motivo": f"sem correspondência no {rotulo}"}
+
+
+def carregar_indice_favorecidos(db_path: str | Path | None = None) -> dict:
+    """Índice {(nome_norm, middle6) -> set(cpf)} dos FAVORECIDOS PF (`ordens_bancarias`, CPF completo).
+    Espelha `carregar_indice_tse`: construído UMA vez p/ resolver muitos sócios no sweep SEM um full-scan de
+    1,1M OBs por sócio (a query `substr(favorecido_cpf,4,6)` de `resolver()` não usa índice → custo de CPU).
+    Passe-o como `pf_idx` em `resolver_multi`. Fonte legítima/interna (LGPD art. 7º,II/23)."""
+    idx: dict = {}
+    p = Path(db_path or _DB)
+    if not p.exists():
+        return idx
+    try:
+        con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+        try:
+            for cpf, nome in con.execute(
+                    "SELECT DISTINCT favorecido_cpf, favorecido_nome FROM ordens_bancarias "
+                    "WHERE length(favorecido_cpf)=11"):
+                d = _digitos(cpf)
+                if len(d) == 11:
+                    idx.setdefault((_norm(nome), d[3:9]), set()).add(d)
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001 — tabela ausente / DB indisponível → índice vazio (honesto)
+        return idx
+    return idx
+
+
 def carregar_indice_tse(db_path: str | Path | None = None) -> dict:
     """Índice {(nome_norm, middle6) -> set(cpf)} dos DOADORES do TSE (`doacoes_eleitorais`, CPF completo —
     dado PÚBLICO OFICIAL). Construído UMA vez p/ resolver muitos sócios no sweep (evita SQL por sócio).
@@ -100,13 +144,17 @@ def carregar_indice_tse(db_path: str | Path | None = None) -> dict:
 
 
 def resolver_multi(nome: str, doc_mascarado: str, *, db_path: str | Path | None = None,
-                   tse_idx: dict | None = None) -> dict:
+                   tse_idx: dict | None = None, pf_idx: dict | None = None) -> dict:
     """Resolução de CPF de sócio mascarado MULTI-FONTE (todas oficiais/públicas):
-      1) corpus de favorecidos PF (OB) — `resolver()`;
+      1) corpus de favorecidos PF (OB) — `resolver()` (SQL) ou `pf_idx` (índice pré-construído, VM-safe);
       2) doadores do TSE — `tse_idx` (passe `carregar_indice_tse()` no sweep p/ não reconstruir por sócio).
     Match 1:1 obrigatório (nome + 6 díg do meio como checksum). Ambíguo/sem match → INDISPONÍVEL (nunca chute).
-    Acrescenta `fonte` ao retorno. Cobertura medida: middle-6 ~2% → +TSE ~5% (a somar SEI-docs no futuro)."""
-    r = resolver(nome, doc_mascarado, db_path=db_path)
+    Acrescenta `fonte` ao retorno. Cobertura medida: middle-6 ~2% → +TSE ~5% (a somar SEI-docs no futuro).
+    No sweep, passe `pf_idx=carregar_indice_favorecidos()` p/ NÃO fazer 1 full-scan de OBs por sócio (§8)."""
+    if pf_idx is not None:
+        r = _match_indice(nome, doc_mascarado, pf_idx, "corpus de favorecidos PF")
+    else:
+        r = resolver(nome, doc_mascarado, db_path=db_path)
     if r.get("resolvido"):
         return {**r, "fonte": "favorecidos_pf"}
     if tse_idx is not None:

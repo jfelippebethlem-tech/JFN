@@ -9,7 +9,7 @@
 > doc (1 linha no §10). Detalhismo proporcional à complexidade; **testar tudo, nunca às cegas**; ao fim avaliar
 > storage/RAM/CPU. **Honestidade sempre:** indício≠acusação, INDISPONÍVEL≠0, nunca inventar número, CPF PF mascarado.
 
-Última atualização: 2026-06-11.
+Última atualização: 2026-06-12.
 
 ---
 
@@ -111,6 +111,21 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-12 cont.20:** **SWEEP DETACHED DE BENEFÍCIOS DOS SÓCIOS no ar (ALVO Nº1 cont.19 montado).** (1) Tabela
+  `socio_beneficio` (resumível, PK nome_norm+doc, CPF resolvido INTERNO/LGPD) + `tools/beneficios_sweep.py`
+  (1 lote: índices `carregar_indice_favorecidos`+`carregar_indice_tse` 1×, `resolver_multi`, `verificar_beneficios`
+  dos resolvidos, grava honesto — não-resolvido=resolvido0/INDISPONÍVEL≠"não recebe"). (2) `resolucao_cpf`:
+  novo `carregar_indice_favorecidos` + `pf_idx` em `resolver_multi` (helper `_match_indice`) p/ NÃO fazer 1
+  full-scan de 1,1M OBs por sócio (§8 VM-safe; query `substr` não usa índice) — retrocompatível. (3)
+  `tools/beneficios_supervisor.sh` (detached, load-guard, pausa `data/.pause_beneficios_sweep`) + cron **bracket**
+  `pgrep -f 'beneficios_superviso[r].sh'` + @reboot. **Universo:** 23.691 sócios distintos mascarados.
+  **Medido ao vivo:** lote OK; índices ~48s (custo fixo/lote); 1º resolvido (TSE) → benefício consultado,
+  `recebe_beneficio=0` honesto. Supervisor VIVO (lote 800). +6 testes (21 verdes nos módulos tocados).
+  **⚠ Achado a verificar (dono):** alguns endpoints do Portal (Bolsa Família/Aux.Emerg.) deram **HTTP 400**
+  numa consulta — o coletor grava parcial honesto, mas o YIELD de BF/BPC (sinal forte de laranja) pode estar
+  degradado; conferir o contrato do endpoint (talvez exija `anoMesReferencia`). **Próximo:** (c) surfar
+  `socio_beneficio` no relatório de órgão/fornecedor (agregado "N sócios recebem benefício") + subir cobertura
+  de CPF via **parsing de SEI-docs** (contrato social/procuração). **plugin agent-skills** re-cacheado (doctor).
 - **06-12 cont.19:** **Imagem de rua (fachada/casebre) + benefícios sociais.** (1) `verificacao_endereco`: **Mapillary** (token grátis, rente ao chão) como fonte PRIORITÁRIA + **Street View** só de fallback, capado a **9999 req/31d** (`STREETVIEW_MAX_31D`; checa cobertura no `metadata` GRÁTIS antes de gastar) + satélite Esri (só afasta). Ordem `IMG_FONTE_ORDEM`. **Casebre PRECEDE "edificado-OSM"** (foto rente ao chão acusa `construcao_precaria_barraco` mesmo havendo construção — pedido do dono). Visual LIGADO no sweep via gate `ENDERECO_USAR_IMAGEM=auto` (liga só com MAPILLARY_TOKEN, p/ não queimar o teto pago). Chaves SV+Mapillary no `.env` (gitignored). +8 testes. Testado ao vivo (Copacabana/Maracanã/Centro = foto OK; Maracanã→INDÍCIO casebre). **⚠ Piloto 036100 com `--forcar` travou em back-off do Nominatim (re-geocodifica tudo); o sweep normal usa geocode CACHEADO e acumula visual aos poucos.** (2) **Benefícios** (`collectors/beneficios_sociais.py`) 3→**6**: +**Bolsa Família** +**BPC** +**Auxílio Emergencial** (por-CPF, verificados HTTP 200 ao vivo). Auxílio Brasil por-CPF=403; Novo BF/sacado=só NIS (não temos). **PENDENTE (próximo loop, sessão limpa):** **sweep de benefícios dos sócios** detached (universo `socios_fornecedor`=31.449; 27.729 mascarados) + **resolução de CPF de sócio** — gargalo: middle-6 resolve só **2%**; fontes LEGÍTIMAS a somar = **TSE** (`eleitoral_providers`/doacao_tse, doador/candidato) + **SEI docs** (contrato social/procuração têm CPF — exige PARSING; `processos_sei` ainda não extrai CPF). **NÃO usar serviços de leak/"detetive hacker" de CPF-por-nome** (risco LGPD, multa até R$50M; descaracteriza o JFN como ferramenta de compliance). 5 commits (inclui `resolver_multi`+TSE). **⚠ ACHADO A RESOLVER (próx. sessão):** o sweep do universo já verificou 3.320 sedes mas **0 com VISUAL** — a foto só dispara quando o geocode é `exato` (nº da casa), que o Nominatim grátis quase nunca acerta (cai antes, no `exato=False`). P/ o visual funcionar de fato: ou rodar foto de rua também no geocode coarse (centróide da rua — útil p/ "rua de favela", mas marcar como informativo, não acusatório/§8), ou melhorar a precisão do geocode. **Goal aberto do dono ("melhorar todo o ecossistema em loop") → retomar em sessão limpa (regra §5) por este doc.**
 - **06-11 cont.18:** **Relatórios de ÓRGÃO e FORNECEDOR enriquecidos** (dono: "todos os cruzamentos, mais prosa/inteligência, não resumir"). ÓRGÃO ganhou seções (md+PDF): **1-D Triagem de DD dos maiores fornecedores** (fachada/laranja 🔴🟡🟢+score+hipóteses+SEI) + **rodízio temporal/cartel** (bid rotation, OCDE) + processos SEI a priorizar — via `investigacao_orgao_dd` (bounded/honesto); **1-E Realidade do endereço das sedes** ("as empresas são reais?", cruza `endereco_verificacao`; INDISPONÍVEL≠inexistência). Esses fatos alimentam a análise raciocinada (prosa ~450 palavras). FORNECEDOR: veredito **"a empresa é real?"** (realidade da sede) no §1. **FIX real:** `backfill_verificacao_endereco` quebrava em TODA linha desde cont.15 (tabela ganhou colunas visual_*→13; INSERT posicional de 9) → **nenhuma empresa era verificada**; INSERT agora nomeia colunas (+2 testes de regressão). **Sweep de endereços agora DETACHED** (`tools/endereco_supervisor.sh` + cron respawn/minuto + @reboot, igual SEI/SIAFE; pausa `data/.pause_endereco_sweep`; varre o universo até esvaziar, back-off 6h). Medido: FES regenerado com as seções (top-12 🟢 = instituições legítimas, correto). **Suíte (rodada inteira):** **465 passed, 5 failed** (2 arquivos FMP por-rede `--ignore` + 2 testes de integração `--deselect` que TRAVAM em SQL full-scan na DB 1,2GB sob carga: `test_offline::test_goal_agent_ciclo_autonomo`, `test_jfn2_onda10::test_gera_minuta_docx`). As 5 falhas são **pré-existentes e ambientais, NENHUMA nos arquivos alterados**: `test_jfn2_skilltree::test_render_menu_curado_e_enxuto` + 4× `test_offline` (roteamento hermes groq/openrouter/max_tokens + SEI-chrome — exigem chave/chrome). ⚠ os ~4 testes lentos/por-rede são candidatos a fixture-DB/markers `network`. Módulos tocados = 100% verdes (regime4 6, orgao/DD 21, relatório 17, cruzamentos 4). 4 commits.
 - **06-11 cont.17:** **EDGE DO MASSARE VIROU ≥0** (alvo do dono). Novo `massare/engine_regime4.py`: ensemble **4 regimes** (grade 2×2 tendência×volatilidade) + **drift-aware** (EWMA por sub×regime, recência pesa mais, rampa anti-ruído por min-amostras). **Universo (26 ativos × 5/10/21d, walk-forward OOS):** naive −0.0133/−0.0163/−0.0082 → regime2 −0.0071/−0.0114/−0.0021 (ainda neg.) → **reg4+drift +0.0006/+0.0005/+0.0070 (≥0 nos 3)**. Ablação honesta: **4 regimes SEM drift PIORA** (esparsidade) — **o drift é o que vira**. **Produto real** (`backtest.json`, 356.655 pregões/78 séries): **edge médio +0.0027**, 38/78 positivas (ETH 21d +0.072, DXY +0.061, USDBRL +0.055). Robustez: positivo half_life 21..63; decai só >~90d. **Motor de produção trocado p/ regime4** (`backtest.run` padrão + `/api/massare/prever` + `daily`) SÓ após o backtest universo provar ≥0 (lição V2); naive mantido p/ comparação. Live OK (BTC bear_turb edge +0.017 tem_skill=True). +6 testes. Commit `825d0f5`.
@@ -137,17 +152,15 @@ manuais quando expirarem (caem no nous até lá).
 4. **Um só doc** = este, enxuto, 1 linha/sessão no §10. Detalhe no git.
 5. Ao FIM de cada loop: debug + avaliar storage/RAM/CPU + registrar.
 
-**▶ ALVO Nº1 DA PRÓXIMA SESSÃO (pedido direto do dono, cont.19):** **SWEEP DETACHED DE BENEFÍCIOS DOS SÓCIOS**
-(BF/BPC/Aux.Emerg./PETI/Safra/Defeso) + **resolução de CPF multi-fonte**, p/ achar laranjas e MANTER A BASE
-ATUALIZADA. Estado pronto p/ montar: coletor já cobre os 6 benefícios (`collectors/beneficios_sociais.py`);
-resolver de CPF já é **multi-fonte** (`resolucao_cpf.resolver_multi` + `carregar_indice_tse`): favorecidos PF
-+ **TSE doadores** (542k) = **~5%** dos 27.729 sócios mascarados (`socios_fornecedor`, 31.449 total). **Montar:**
-(a) tabela `socio_beneficio` (resumível) + `tools/beneficios_sweep.py` (itera sócios, `carregar_indice_tse` 1×,
-`resolver_multi`, consulta benefícios, grava); (b) `tools/beneficios_supervisor.sh` + cron **bracket** `pgrep -f
-'beneficios_superviso[r].sh'` + @reboot (lição §8 do self-match!); (c) surfar no relatório (H-BENEFICIO/Lex II-E
-já existe). **Subir a cobertura de CPF:** próxima fonte LEGÍTIMA = **parsing de CPF nos docs do SEI** (contrato
-social/procuração; `processos_sei` ainda não extrai). **Base legal:** CPF de fornecedor público p/ fiscalização
-por deputado = LGPD art. 7º,II/23 (interno, mascarado nos produtos). **⛔ NUNCA** base de vazamento/"detetive".
+**▶ ALVO Nº1 — SWEEP DE BENEFÍCIOS DOS SÓCIOS: MONTADO E NO AR (cont.20).** (a) `socio_beneficio` +
+`tools/beneficios_sweep.py` e (b) `tools/beneficios_supervisor.sh` + cron bracket + @reboot = **FEITOS** (não
+reconstruir; o supervisor varre os 23.691 sócios distintos mascarados). **Resta (c):** surfar `socio_beneficio`
+no relatório de órgão/fornecedor (agregado "N sócios de fornecedores desta UG recebem benefício" — o H-BENEFICIO/
+Lex II-E por-pessoa já existe; falta o AGREGADO pré-computado). **Subir cobertura de CPF** (~5% hoje via favorecidos
+PF + TSE 542k): próxima fonte LEGÍTIMA = **parsing de CPF nos docs do SEI** (contrato social/procuração;
+`processos_sei` ainda não extrai). **⚠ verificar:** endpoints BF/BPC do Portal deram HTTP 400 numa consulta —
+conferir contrato (yield do sinal forte). **Base legal:** LGPD art. 7º,II/23 (interno, mascarado nos produtos).
+**⛔ NUNCA** base de vazamento/"detetive".
 1. **Wirar `beneficios_sociais` no motor DD + Lex** — H-PEP (PEP por NOME dos sócios do QSA, desmascarados →
    relação política) + H-BENEFICIO (benefício por CPF, só em CPF completo: PF favorecida; QSA mascarado=INDISPONÍVEL).
    Bounded+cacheado+honesto. Alimenta a seção II-E do Lex.
