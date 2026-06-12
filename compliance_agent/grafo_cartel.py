@@ -143,6 +143,119 @@ def socios_compartilhados(cnpjs: list[str], max_consultas: int = 20) -> dict:
                     "CPF público mascarado → casamento por nome."}
 
 
+# ------------------------------------------------------------- concentração COLAPSADA por grupo econômico
+_NOTA_GRUPO = (
+    "Concentração colapsada por GRUPO econômico (CNPJs ligados por sócio em comum, dedup por raiz). "
+    "Muitos CNPJs que parecem concorrentes mas são UM grupo = diversidade fictícia / possível fracionamento "
+    "ou concorrência simulada (Art. 90 Lei 8.666 · 337-F CP · Art. 36 Lei 12.529-CADE). Indício a corroborar "
+    "com editais/licitantes (SEI/PNCP); QSA mascarado/indisponível ≠ afastado. Nunca acusação.")
+
+
+def _uniao_por_socio(cnpjs: list[str], socios: dict[str, set]) -> dict[str, str]:
+    """Union-find: une CNPJs (por RAIZ-8) que partilham ≥1 sócio (`socio_nome_norm`). Matriz/filial (mesma
+    raiz) já caem juntos. Retorna {cnpj14: grupo_id}, grupo_id = menor raiz do componente (determinístico)."""
+    pai: dict[str, str] = {}
+
+    def find(x: str) -> str:
+        pai.setdefault(x, x)
+        while pai[x] != x:
+            pai[x] = pai[pai[x]]
+            x = pai[x]
+        return x
+
+    def union(a: str, b: str) -> None:
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            pai[max(ra, rb)] = min(ra, rb)  # liga sempre para a menor raiz → id estável
+
+    raiz = {c: c[:8] for c in cnpjs}
+    for c in cnpjs:
+        find(raiz[c])
+    socio2raiz: dict[str, set] = {}
+    for c in cnpjs:
+        for s in socios.get(c, ()):  # socio_nome_norm já normalizado
+            if s:
+                socio2raiz.setdefault(s, set()).add(raiz[c])
+    for rs in socio2raiz.values():
+        ordenadas = sorted(rs)
+        for r in ordenadas[1:]:
+            union(ordenadas[0], r)
+    return {c: find(raiz[c]) for c in cnpjs}
+
+
+def _metrica_grupos(totais: dict[str, float], nomes: dict[str, str], gid: dict[str, str]) -> dict:
+    """Agrega R$ por grupo e mede a concentração (HHI por grupo vs por CNPJ; grupo multi-raiz dominante)."""
+    grupos: dict[str, dict] = {}
+    for c, t in totais.items():
+        g = gid.get(c, c[:8])
+        e = grupos.setdefault(g, {"grupo": g, "cnpjs": [], "raizes": set(), "total": 0.0,
+                                  "top_nome": "", "top_val": -1.0})
+        e["cnpjs"].append(c)
+        e["raizes"].add(c[:8])
+        e["total"] += t
+        if t > e["top_val"]:
+            e["top_val"], e["top_nome"] = t, nomes.get(c, "")
+    grand = sum(totais.values()) or 1.0
+    lst = [{"grupo": e["grupo"], "n_cnpjs": len(e["cnpjs"]), "n_raizes": len(e["raizes"]),
+            "total": round(e["total"], 2), "share": round(e["total"] / grand * 100, 2),
+            "top_nome": e["top_nome"], "cnpjs": sorted(e["cnpjs"])} for e in grupos.values()]
+    lst.sort(key=lambda x: -x["total"])
+    hhi_grupo = _hhi([x["total"] / grand for x in lst])
+    hhi_cnpj = _hhi([t / grand for t in totais.values()])
+    multi = [x for x in lst if x["n_raizes"] >= 2]
+    maior_multi = max(multi, key=lambda x: x["total"], default=None)
+    return {"n_cnpjs": len(totais), "n_grupos": len(lst), "n_grupos_multi": len(multi),
+            "hhi_cnpj": hhi_cnpj, "hhi_grupo": hhi_grupo, "delta_hhi": round(hhi_grupo - hhi_cnpj, 1),
+            "top_grupo_share": lst[0]["share"] if lst else 0.0,
+            "maior_grupo_multi": maior_multi, "grupos": lst}
+
+
+def concentracao_por_grupo(ug: str, *, top_n: int = 200, min_share_grupo: float = 15.0) -> dict:
+    """Concentração de uma UG COLAPSADA por grupo econômico (sócio em comum) — revela concorrência FICTÍCIA:
+    muitos CNPJs que parecem concorrentes mas são UM grupo. Indício quando um grupo MULTI-CNPJ concentra fatia
+    relevante (≥ `min_share_grupo`%) apesar da aparente diversidade. Bounded aos `top_n` maiores da UG."""
+    con = conectar()
+    try:
+        rows = con.execute("""
+            SELECT regexp_replace(favorecido_cpf, '[^0-9]', '', 'g') c,
+                   ANY_VALUE(favorecido_nome) nome, SUM(valor) tot
+            FROM db.ordens_bancarias
+            WHERE ug_codigo = ? AND valor > 0 AND favorecido_cpf IS NOT NULL
+                  AND length(regexp_replace(favorecido_cpf, '[^0-9]', '', 'g')) = 14
+            GROUP BY c ORDER BY tot DESC LIMIT ?
+        """, [str(ug), top_n]).fetchall()
+        from compliance_agent.entidades_gov import eh_nao_fornecedor
+        totais: dict[str, float] = {}
+        nomes: dict[str, str] = {}
+        for c, nome, tot in rows:
+            if not c or eh_nao_fornecedor(nome or ""):
+                continue
+            totais[c] = float(tot or 0.0)
+            nomes[c] = (nome or "").strip()
+        if not totais:
+            from compliance_agent import ugs as _ugs
+            return {"ug": str(ug), "ug_nome": _ugs.nome_canonico(str(ug), fallback="") or "",
+                    "indicio": False, "n_cnpjs": 0, "n_grupos": 0, "grupos": [], "nota": _NOTA_GRUPO}
+        cs = list(totais)
+        ph = ",".join("?" * len(cs))
+        srows = con.execute(
+            f"SELECT regexp_replace(cnpj, '[^0-9]', '', 'g') c, socio_nome_norm "
+            f"FROM db.socios_fornecedor WHERE regexp_replace(cnpj, '[^0-9]', '', 'g') IN ({ph}) "
+            f"AND socio_nome_norm <> ''", cs).fetchall()
+    finally:
+        con.close()
+    socios: dict[str, set] = {}
+    for c, s in srows:
+        socios.setdefault(c, set()).add(s)
+    gid = _uniao_por_socio(cs, socios)
+    m = _metrica_grupos(totais, nomes, gid)
+    mm = m.get("maior_grupo_multi")
+    indicio = bool(mm and mm["share"] >= min_share_grupo)
+    from compliance_agent import ugs as _ugs
+    return {"ug": str(ug), "ug_nome": _ugs.nome_canonico(str(ug), fallback="") or "",
+            "indicio": indicio, **m, "nota": _NOTA_GRUPO}
+
+
 def cartel_com_qsa(cnpj: str, limite: int = 15, max_ubiquidade: int = 40) -> dict:
     """Onda 3 completa: ego-rede de cartel (vizinhanca_cartel) + cruzamento de QSA entre o alvo e os
     vizinhos co-ocorrentes (socios_compartilhados). Indício de rodízio COM concorrência fictícia."""
