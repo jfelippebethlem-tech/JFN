@@ -6,20 +6,24 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 |---|---|---|---|---|---|
 | `anomalias` | jfn | http | `/api/anomalias` | PRONTO | triagem de risco; 'algo estranho em X' |
 | `cartel` | jfn | http | `/api/cartel` | PRONTO | conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?' |
+| `concentracao_grupo` | jfn | cli | `compliance_agent.grafo_cartel --vizinhanca <CNPJ>` | PRONTO | 'ha concentracao escondida por grupo na UG X?', 'esses concorrentes sao na verdade o mesmo grupo?', cartel oculto / concorrencia simulada numa UG |
 | `conflito_doador_contrato` | lex | http | `/api/conflito` | PRONTO | 'quem me doou ganhou contrato', conflito de interesse |
 | `cruzamento` | jfn | http | `/api/cruzamento` | PRONTO | 'cruze os dados da empresa X' |
 | `listar_ugs` | jfn | http | `/api/ugs` | PRONTO | '/ug', 'quais os codigos/nomes dos orgaos/UGs', 'listar UGs', 'qual o codigo da SEEDUC', 'que orgaos existem', ANTES de pedir o /orgao quando nao se sabe o codigo |
 | `missao_autonoma` | jfn | http | `/api/hermes/missao` | PRONTO | pedido complexo/aberto |
+| `relacoes` | jfn | cli | `compliance_agent.relacoes "<CNPJ | nome do socio | UG>"` | PRONTO | 'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo |
 | `relatorio_inteligencia` | jfn | http | `/api/relatorio/inteligencia` | PRONTO | relatorio/auditoria/due diligence de empresa, CNPJ |
 | `relatorio_orgao` | jfn | http | `/api/relatorio/orgao` | PRONTO | auditoria de orgao/UG/secretaria |
 | `rodizio` | jfn | http | `/api/rodizio` | PRONTO | rodizio/revezamento de vencedores; 'a UG X tem fornecedores que se alternam no 1o lugar?' |
 | `sobrepreco` | lex | http | `/api/sobrepreco` | PRONTO | 'esta caro?', superfaturamento, R4 |
+| `sobrepreco_interno` | lex | cli | `compliance_agent.precos_extract` | PRONTO | 'esse item esta caro comparado a outros orgaos?', dispersao de preco unitario do mesmo produto sem precisar de CATMAT/mercado, complemento interno ao /sobrepreco |
+| `cruzador` | jfn | cli | `bash tools/cruzador.sh` | PRONTO | rotina automatica noturna; acionar a mao so p/ recruzar apos coleta grande |
 | `enriquecer_socios` | jfn | cli | `tools.enriquecer_socios_ob` | PRONTO | apos novo sweep |
 | `siafe_atualizar` | jfn | http | `/api/siafe/atualizar` | PRONTO | 'atualize o SIAFE' |
 | `siafe_coletar_ug` | jfn | cli | `compliance_agent.siafe_runner ug <UG> [ANO]` | PRONTO | backfill de UG |
 | `siafe_stats` | jfn | http | `/api/siafe/stats` | PRONTO | 'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia' |
 | `siafe_status` | jfn | http | `/api/siafe/status` | PRONTO | 'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?' |
-| `sweeps_status` | jfn | http | `/api/sweeps/status` | PRONTO | 'como esta o sweep', 'o sweep do SEI/SIAFE esta funcionando', 'a coleta continua esta rodando', 'quantos processos SEI ja foram lidos' |
+| `sweeps_status` | jfn | http | `/api/sweeps/status` | PRONTO | 'como esta o sweep', 'o sweep do SEI/dados esta funcionando', 'a coleta continua esta rodando', 'quantos processos SEI ja foram lidos' |
 | `consultar_diario` | jfn | http | `/api/diario` | PRONTO | 'saiu no diario oficial de X?', publicacao/extrato de contrato municipal |
 | `consultar_empresa` | jfn | http | `/api/empresa` | PRONTO | 'dados da empresa X', socios de um CNPJ |
 | `consultar_idoneidade` | lex | http | `/api/idoneidade` | PRONTO | 'a empresa X esta sancionada?', PEP |

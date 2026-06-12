@@ -325,6 +325,95 @@
     {
       "type": "function",
       "function": {
+        "name": "concentracao_grupo",
+        "description": "Concentracao OCULTA por GRUPO economico numa UG: colapsa os fornecedores por socio em comum (dedup por raiz CNPJ-8) — muitos CNPJs que parecem concorrentes mas sao UM grupo = diversidade/concorrencia FICTICIA (Art. 90 Lei 8.666 · 337-F CP · Art. 36 Lei 12.529-CADE). INDICIO a corroborar no certame (SEI/PNCP), nunca acusacao; QSA mascarado/indisponivel != afastado. — usar quando: 'ha concentracao escondida por grupo na UG X?', 'esses concorrentes sao na verdade o mesmo grupo?', cartel oculto / concorrencia simulada numa UG — chamar (cli): compliance_agent.grafo_cartel --vizinhanca <CNPJ>",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ug": {
+              "type": "string",
+              "description": "obrigatorio (codigo da UG)"
+            }
+          },
+          "required": [
+            "ug"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "compliance_agent.grafo_cartel --vizinhanca <CNPJ>",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "relacoes",
+        "description": "Mapa de RELACOES de um alvo: socio<->empresa (QSA), empresa<->empresa por socio OU endereco em comum (dedup por raiz; indicio de grupo economico/concorrencia ficticia), empresa<->orgao (UGs que pagaram; UG em comum = vinculo mais forte). Resolve sozinho: 14dig=empresa, 6dig=UG, senao=nome de socio. — usar quando: 'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo — chamar (cli): compliance_agent.relacoes \"<CNPJ | nome do socio | UG>\"",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "alvo": {
+              "type": "string",
+              "description": "obrigatorio (CNPJ | nome do socio | codigo de UG)"
+            },
+            "limite": {
+              "type": "integer",
+              "description": "int opcional"
+            }
+          },
+          "required": [
+            "alvo"
+          ]
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "compliance_agent.relacoes \"<CNPJ | nome do socio | UG>\"",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "sobrepreco_interno",
+        "description": "Sobrepreco INTERNO (sem API externa): extrai a TABELA DE ITENS (descricao x qtd x preco unitario) de editais/contratos do SEI/PNCP por heuristica deterministica (regex, nunca inventa) e compara o MESMO item entre orgaos/contratos. Maior preco >= 2x o menor da mesma descricao = INDICIO de sobrepreco (a confirmar: especificacao/regiao/quantidade podem diferir). — usar quando: 'esse item esta caro comparado a outros orgaos?', dispersao de preco unitario do mesmo produto sem precisar de CATMAT/mercado, complemento interno ao /sobrepreco — chamar (cli): compliance_agent.precos_extract",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "texto": {
+              "type": "string",
+              "description": "texto do edital/contrato (extrair_itens); registros[] p/ sobrepreco_interno"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "lex",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "compliance_agent.precos_extract",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "missao_autonoma",
         "description": "Auditoria autonoma aberta (loop hermes_goal CANONICO) — usar quando: pedido complexo/aberto — chamar: POST /api/hermes/missao (base http://127.0.0.1:8000)",
         "parameters": {
@@ -1259,7 +1348,7 @@
       "type": "function",
       "function": {
         "name": "sweeps_status",
-        "description": "Status dos SWEEPS continuos: SEI (le processos SEI das OBs) + SIAFE 2 (OB Orcamentaria) — usar quando: 'como esta o sweep', 'o sweep do SEI/SIAFE esta funcionando', 'a coleta continua esta rodando', 'quantos processos SEI ja foram lidos' — chamar: GET /api/sweeps/status (base http://127.0.0.1:8000)",
+        "description": "Status dos SWEEPS diarios SINGLE-PASS escalonados (cron, sem 2 pesados ao mesmo tempo — licao VM): sweep_sei (le processos SEI das OBs, sessao itkava unica; 07/13/19h) + sweep_dados (endereco/beneficios/fachada, DB/rede; 10/16h) + cruzador (cruzamento noturno OB<->SEI e varredura de concentracao-grupo; 23h) — usar quando: 'como esta o sweep', 'o sweep do SEI/dados esta funcionando', 'a coleta continua esta rodando', 'quantos processos SEI ja foram lidos' — chamar: GET /api/sweeps/status (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {},
@@ -1349,6 +1438,28 @@
         "tipo": "cli",
         "rota": null,
         "comando": "tools.enriquecer_socios_ob",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "cruzador",
+        "description": "Cruzamento NOTURNO (cron 23h, roda SOZINHO sem sweep competindo -> DuckDB seguro): (1) OB<->SEI via correlacao_sei (liga processo SEI aos pagamentos) + (2) varredura de concentracao por GRUPO economico nas ~60 maiores UGs (cartel oculto / diversidade ficticia). LEVE: nice/ionice idle, bounded por timeout, adia se load alto. — usar quando: rotina automatica noturna; acionar a mao so p/ recruzar apos coleta grande — chamar (cli): bash tools/cruzador.sh",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "coleta",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "bash tools/cruzador.sh",
         "metodo": null,
         "status": "PRONTO",
         "enviar_telegram": null
