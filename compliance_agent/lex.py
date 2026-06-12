@@ -770,7 +770,7 @@ _BADGE_STATUS = {"CONFIRMADO": "🔴 CONFIRMADO", "INDICIO": "🟡 INDÍCIO",
                  "AFASTADO": "🟢 AFASTADO", "INDISPONIVEL": "⚪ INDISPONÍVEL"}
 
 
-def _secao_investigacao(add, inv: dict) -> None:
+def _secao_investigacao(add, inv: dict, cnpj: str = "") -> None:
     """Renderiza a seção II-E — a investigação de fachada/laranja que o Lex conduziu (motor investigacao_dd).
 
     Apresenta cada hipótese com status/nível/evidência/fonte/base legal E a cobertura honesta (o que foi
@@ -781,6 +781,24 @@ def _secao_investigacao(add, inv: dict) -> None:
         "externo e fiscalização (CF art. 70-71; LGPD art. 7º,II e 23). **Honesto:** indício merece apuração, "
         "nunca acusação; **INDISPONÍVEL ≠ ausência de risco**; CPF de pessoa física mascarado (LGPD).*")
     add("")
+    # Agregado do sweep de benefícios dos sócios/administradores (socio_beneficio) — cruzamento de laranja
+    # independente do motor DD; complementa o H-BENEFICIO por-pessoa com a cobertura honesta do universo do QSA.
+    try:
+        from compliance_agent.reporting import beneficios_view as bv
+        _b = bv.por_fornecedor(cnpj) if cnpj else {}
+    except Exception:  # noqa: BLE001
+        _b = {}
+    if _b.get("n_verificados"):
+        if _b.get("n_com_beneficio"):
+            add(f"> **Benefícios sociais dos sócios/administradores (sweep):** {_b.get('n_pessoas_beneficio', 0)} de "
+                f"{_b['n_verificados']} verificados recebem benefício de subsistência — **indício de interposição de "
+                f"pessoas (laranja)** a confirmar no contrato social/procuração/SEI (de {_b['total_qsa']} sócios no "
+                f"QSA; {_b['n_indisponivel']} ainda INDISPONÍVEL).")
+        else:
+            add(f"> **Benefícios sociais dos sócios/administradores (sweep):** {_b['n_verificados']} verificado(s), "
+                f"nenhum recebe benefício de subsistência (indício de laranja afastado para os verificados; "
+                f"{_b['n_indisponivel']} de {_b['total_qsa']} ainda INDISPONÍVEL).")
+        add("")
     if not inv or not isinstance(inv, dict):
         add("> Investigação não disponível para este alvo nesta análise (cadastro/base insuficientes).")
         add("")
@@ -974,7 +992,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
 
     # II-E. Investigação de Due Diligence (fachada/laranja) — o Lex apresenta a investigação que conduziu.
     inv = analise.get("investigacao") or {}
-    _secao_investigacao(add, inv)
+    _secao_investigacao(add, inv, cnpj=so_digitos(ctx.get("cnpj", "")))
 
     # III. Matriz de Achados + análise por red flag
     add("## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)")
