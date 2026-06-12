@@ -112,3 +112,15 @@ def test_resolver_multi_cai_no_sei_quando_nao_ha_ob_nem_tse(tmp_path):
     sei = carregar_indice_sei(db_path=p)
     out = resolver_multi("joao da silva", "***223344**", db_path=p, sei_idx=sei)
     assert out["resolvido"] and out["cpf"] == "11122334455" and out["fonte"] == "sei_docs"
+
+
+def test_confirmar_cpf_anti_homonimo():
+    from compliance_agent.resolucao_cpf import confirmar_cpf
+    # QSA mascarado ***223344** => middle6 esperado 223344 (CPF posições 4-9)
+    ok = confirmar_cpf("JOAO DA SILVA", "11122334455", "***223344**")  # 112-223-344-55 -> meio 223344
+    assert ok["confirmado"] and ok["cpf"] == "11122334455"
+    # candidato com OUTRO middle6 = homônimo -> rejeita
+    homo = confirmar_cpf("JOAO DA SILVA", "11199988877", "***223344**")
+    assert not homo["confirmado"] and "HOMÔNIMO" in homo["motivo"]
+    # CPF inválido (tamanho)
+    assert not confirmar_cpf("X", "123", "***223344**")["confirmado"]

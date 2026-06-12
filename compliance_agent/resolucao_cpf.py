@@ -143,6 +143,26 @@ def carregar_indice_tse(db_path: str | Path | None = None) -> dict:
     return idx
 
 
+def confirmar_cpf(nome: str, cpf_candidato: str, doc_mascarado: str) -> dict:
+    """Confirma se um CPF-candidato (de QUALQUER fonte nome→CPF) é REALMENTE o do sócio do QSA, cruzando
+    contra a máscara pública (nome + 6 díg do meio = posições 4-9). É o **anti-homônimo**: a máscara do QSA
+    é o checksum autoritativo — só aceita se o middle6 do candidato bate o da máscara E o nome confere.
+    Retorna {confirmado, cpf, motivo}. Não confirma → INDISPONÍVEL (nunca aceita às cegas)."""
+    base = {"confirmado": False, "cpf": "", "motivo": ""}
+    d = _digitos(cpf_candidato)
+    m6 = middle6(doc_mascarado)
+    if len(d) != 11:
+        return {**base, "motivo": "CPF candidato não tem 11 dígitos"}
+    if not m6:
+        return {**base, "motivo": "QSA sem máscara (6 díg do meio) p/ conferir"}
+    if d[3:9] != m6:
+        return {**base, "motivo": f"middle6 do candidato ({d[3:9]}) ≠ máscara do QSA ({m6}) — provável HOMÔNIMO, rejeitado"}
+    if _norm(nome) and len(_norm(nome)) < 6:
+        return {**base, "motivo": "nome curto p/ confirmar"}
+    return {"confirmado": True, "cpf": d,
+            "motivo": "CPF confirmado: 6 díg do meio batem a máscara pública do QSA (anti-homônimo) + nome"}
+
+
 def carregar_indice_sei(db_path: str | Path | None = None) -> dict:
     """Índice {(nome_norm, middle6) -> set(cpf)} dos CPFs extraídos de DOCUMENTOS do SEI (`sei_cpf` —
     contrato social/habilitação/procuração, CPF com DV validado). Fonte AUTORITATIVA (contratação pública
