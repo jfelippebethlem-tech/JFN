@@ -173,6 +173,17 @@ manuais quando expirarem (caem no nous até lá).
   item a preços ≥2× diferentes entre órgãos = indício, sem API). +6 testes. Ativa com editais do sweep SEI/PNCP.
   **(10) docigp ALERJ** = BLOQUEADO (login de deputado — dependência do dono, como SEI/SIAFE). **(11) Sobrepreço
   EXTERNO** (CATMAT via `sobrepreco.py`) pendente (mapear item→CATMAT). Vault: 26 notas / 7 casos / 0 links quebrados.
+  **(cont. — investigação + folha):** **(12) Coletor ALERJ** (`collectors/alerj_transparencia.py`, dado ABERTO —
+  `transparencia.alerj.rj.gov.br` report/120 pagamentos + report/73 folha; parser PDF: 293 pagamentos, 5.726
+  servidores). **(13) Acúmulo de cargos** (`acumulo_cargos.py`: ALERJ folha ∩ `registros_folha`, com **classificação
+  de LEGALIDADE** — comissionado/cessão/aposentadoria podem ser legais; 6 sobreposições, 5 verificar). **(14) Acima
+  do teto** (`acima_do_teto.py`, CF 37 XI — separa RRA/indenizatórias do supersalário real; 32.353 acima bruto → 0
+  confirmado por falta de composição). **(15) SEI pensante** (`sei_recomendacoes.py`: recomendações de PGE/CGE/jurídico
+  NÃO ATENDIDAS, determinístico + nous). **(16) Caso MUV São Gonçalo** (grupo Vieira, R$182M, ~8 consórcios — vault
+  cruzado OB↔processo↔sócios↔órgão). **(17) Folha RJ — recon** (TJRJ=B WebForms, DPRJ=A, Executivo=C gated, TCE-RJ
+  domínio tcerj.tc.br) — providers a implementar. **fix sei_reader** (submit robusto). **+38 testes novos.**
+  ⚠ **SEI reader NÃO lê árvore de outra unidade ainda** (abre a view mas pega processo errado; falta extrair frameset
+  `ifrArvore`) → **debug VISUAL** (screenshot, não às cegas). **2-lane serial** (`sweeps-serial@{browser,dados}`) no ar.
 - **06-12 cont.20:** **SWEEP DETACHED DE BENEFÍCIOS DOS SÓCIOS no ar (ALVO Nº1 cont.19 montado).** (1) Tabela
   `socio_beneficio` (resumível, PK nome_norm+doc, CPF resolvido INTERNO/LGPD) + `tools/beneficios_sweep.py`
   (1 lote: índices `carregar_indice_favorecidos`+`carregar_indice_tse` 1×, `resolver_multi`, `verificar_beneficios`
