@@ -31,6 +31,9 @@ from compliance_agent.detectores.base import (
     verificar_adversarial,
 )
 from compliance_agent.detectores.c_fachada import CFachada
+from compliance_agent.detectores.e1_barreira import E1Barreira
+from compliance_agent.detectores.e2_prazos import E2Prazos
+from compliance_agent.detectores.e3_lote_pacote import E3LotePacote
 from compliance_agent.detectores.j1_cartel import J1Cartel
 from compliance_agent.detectores.p3_sobrepreco import P3Sobrepreco
 from compliance_agent.detectores.p4_fracionamento import P4Fracionamento
@@ -42,6 +45,9 @@ REGISTRO: dict[str, Detector] = {
         J1Cartel(),
         P3Sobrepreco(),
         CFachada(),
+        E1Barreira(),    # fase de edital — barreira de entrada/qualificação
+        E2Prazos(),      # fase de edital — publicidade e prazos minimizados
+        E3LotePacote(),  # fase de edital — lote-pacote/agregação anticompetitiva
     )
 }
 
@@ -52,6 +58,9 @@ PESOS_DETECTOR: dict[str, float] = {
     "P3": PESOS_FAMILIA["preco"],
     "C1": PESOS_FAMILIA["perfil"], "C2": PESOS_FAMILIA["perfil"],
     "C3/C5": PESOS_FAMILIA["perfil"], "C4": PESOS_FAMILIA["perfil"],
+    "E1": PESOS_FAMILIA["desenho_certame"],
+    "E2": PESOS_FAMILIA["desenho_certame"],
+    "E3": PESOS_FAMILIA["desenho_certame"],
 }
 
 
@@ -96,6 +105,24 @@ def rodar_fornecedor(cnpj: str, *, contexto: dict | None = None, exculpatoria: b
     return resultados
 
 
+def rodar_edital(processo: str, *, contexto: dict | None = None, exculpatoria: bool = False, gerar=None) -> list[ResultadoDetector]:
+    """Orquestra os detectores da FASE DE EDITAL (E1/E2/E3) sobre o CONTEXTO DE EDITAL de um certame. Reusa
+    `pipeline` (um detector que quebra vira nao_avaliavel honesto, não derruba os outros).
+
+    `contexto` traz o que os cards pedem (interface honesta — campo essencial ausente → nao_avaliavel):
+      E1 → {exigencias_habilitacao[], valor_estimado, quantitativos, editais_analogos[], resultado{licitantes,inabilitados}, objeto_critico?}
+      E2 → {data_publicacao, data_abertura, modalidade, criterio?, feriados?, no_pncp?, versoes[]}
+      E3 → {lotes[{itens[{descricao,catmat|catser|classe}]}], catmat_por_item?, justificativa_nao_parcelamento, resultado}
+    `gerar` (callable) alimenta as rubricas LLM-opcionais; ausente → partes subjetivas degradam para nao_avaliavel."""
+    ctx: dict[str, Any] = {"processo": str(processo)}
+    if contexto:
+        ctx.update(contexto)
+    if gerar is not None and "gerar" not in ctx:
+        ctx["gerar"] = gerar
+    dets = [d for d in REGISTRO.values() if d.id in ("E1", "E2", "E3")]
+    return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
+
+
 __all__ = [
     "Detector",
     "ResultadoDetector",
@@ -114,6 +141,10 @@ __all__ = [
     "J1Cartel",
     "P3Sobrepreco",
     "CFachada",
+    "E1Barreira",
+    "E2Prazos",
+    "E3LotePacote",
     "rodar_orgao",
     "rodar_fornecedor",
+    "rodar_edital",
 ]
