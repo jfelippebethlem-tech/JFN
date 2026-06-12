@@ -129,3 +129,62 @@ def test_leitura_cita_debito_multa_e_fato_julgado(db: Path):
     txt = pv.leitura(pv.por_ug("290100", db_path=db), "a Secretaria de Saúde")
     assert "DÉBITO" in txt and "MULTA" in txt
     assert "fato julgado" in txt.lower()
+
+
+# ───────── P2.4: Sec. das Cidades (UG 660100) resolve, e sem_sancao ≠ INDISPONÍVEL ─────────
+def test_cidades_660100_no_override():
+    """A pasta combinada infra+cidades imputa sanções tambén à sucessora Sec. das Cidades (UG 660100)."""
+    ugs, conf, nota = pv.OVERRIDES["SEC EST INFRAESTRUTURA E CIDADES"]
+    assert "660100" in ugs  # antes só 070100/530100 → 660100 caía em INDISPONÍVEL por join
+
+
+def _db_cidades(tmp_path: Path) -> Path:
+    p = tmp_path / "cid.db"
+    con = sqlite3.connect(p)
+    con.execute("""CREATE TABLE penalidades_tcerj (
+        id TEXT, processo TEXT, ano_condenacao INT, tipo TEXT, valor REAL, condenacao TEXT,
+        tipo_ente TEXT, orgao TEXT, grupo_natureza TEXT, data_sessao TEXT, ingerido_em TEXT)""")
+    con.execute("INSERT INTO penalidades_tcerj (id,processo,ano_condenacao,tipo,valor,condenacao,tipo_ente,orgao,grupo_natureza,data_sessao) VALUES (?,?,?,?,?,?,?,?,?,?)",
+                ("9", "777/2025", 2025, "DEBITO", 50000.0, "1/2025", "ESTADUAL", "SEC EST INFRAESTRUTURA E CIDADES", "PRESTAÇÃO DE CONTAS", "2025-05-01T00:00:00"))
+    con.commit(); con.close()
+    return p
+
+
+def test_por_ug_660100_resolve_sancao_real(tmp_path: Path):
+    """UG 660100 deixa de cair em INDISPONÍVEL: resolve p/ a pasta infra+cidades e traz a sanção real."""
+    agg = pv.por_ug("660100", db_path=_db_cidades(tmp_path))
+    assert agg["ok"] is True
+    assert "SEC EST INFRAESTRUTURA E CIDADES" in agg["orgaos_tce"]
+    assert agg["valor_total"] == 50000.0
+
+
+def test_sem_sancao_distingue_de_indisponivel(tmp_path: Path):
+    """UG que RESOLVE p/ órgão-TCE mas sem condenação → 'sem sanção' (limpo de fato), NÃO INDISPONÍVEL."""
+    p = tmp_path / "vazio.db"
+    con = sqlite3.connect(p)
+    con.execute("""CREATE TABLE penalidades_tcerj (
+        id TEXT, processo TEXT, ano_condenacao INT, tipo TEXT, valor REAL, condenacao TEXT,
+        tipo_ente TEXT, orgao TEXT, grupo_natureza TEXT, data_sessao TEXT, ingerido_em TEXT)""")
+    # tabela existe, mas SEM linha p/ a pasta de Cidades
+    con.execute("INSERT INTO penalidades_tcerj (id,orgao,tipo,valor) VALUES ('1','SEC EST SAÚDE','MULTA',10.0)")
+    con.commit(); con.close()
+    agg = pv.por_ug("660100", db_path=p)
+    assert agg["ok"] is False
+    assert agg["motivo"] == "sem_sancao"          # resolveu o join, só não há condenação
+    assert agg["orgaos_tce"]                       # registra a quem o join chegou
+    txt = pv.leitura(agg, "Secretaria de Estado das Cidades")
+    assert "Sem sanção" in txt and "INDISPONÍVEL" not in txt
+
+
+def test_ug_inexistente_e_indisponivel(tmp_path: Path):
+    """UG sem nenhum órgão-TCE correspondente → INDISPONÍVEL (join não estabelecido)."""
+    p = tmp_path / "x.db"
+    con = sqlite3.connect(p)
+    con.execute("""CREATE TABLE penalidades_tcerj (
+        id TEXT, processo TEXT, ano_condenacao INT, tipo TEXT, valor REAL, condenacao TEXT,
+        tipo_ente TEXT, orgao TEXT, grupo_natureza TEXT, data_sessao TEXT, ingerido_em TEXT)""")
+    con.execute("INSERT INTO penalidades_tcerj (id,orgao,tipo,valor) VALUES ('1','SEC EST SAÚDE','MULTA',10.0)")
+    con.commit(); con.close()
+    agg = pv.por_ug("999999", db_path=p)
+    assert agg["ok"] is False and agg["motivo"] == "indisponivel"
+    assert "INDISPONÍVEL" in pv.leitura(agg, "órgão fantasma")
