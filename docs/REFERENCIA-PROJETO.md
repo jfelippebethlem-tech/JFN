@@ -185,7 +185,13 @@ manuais quando expirarem (caem no nous até lá).
 - **06-09:** 23 loops de benchmark (pyproject/scorecard/golden, ruff 733→37, 4 bugs reais); frente SEI (reader funciona, `sei_sweep`/`sei_ficha`); /UG + busca de órgão; Lex de órgão; glifos do PDF corrigidos; este doc criado.
 - **Anterior:** SIAFE 1+2 sweeps supervisionados + correlação OB↔SEI↔CNPJ; JFN 2.0 (12 ondas); Yoda/Hermes na VM.
 
-## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md")
+## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md e tasks/todo.md")
+> **Estado vivo da cont.20 em `tasks/todo.md`** (CPF engine completa, SEI CPF sweep, suíte 8→2, relatórios
+> Fase 1/2/3). **2 itens travados que dependem do DONO** (não-autônomos): **(1) Yoda** — poller externo em outra
+> máquina (rode `bash tools/diag_telegram_poller.sh` p/ confirmar; fix: BotFather `/revoke` → token novo no
+> `~/.hermes/.env` → `systemctl --user restart hermes-gateway`). **(2) CPF em massa** — toda fonte grátis mascara;
+> passar CSV `nome,cpf` p/ `python -m tools.ingerir_cpf_oficial` (valida DV + confirma contra a máscara).
+
 **Branch `feat/lista-limpa`, tudo commitado, serviços/sweeps vivos.** Instruções permanentes do dono:
 1. Melhorar o projeto INTEIRO em **loops de qualidade máxima** (metodologia no topo deste doc).
 2. **Testar tudo, nunca às cegas**; medir o **produto real** (PDF entregue) antes/depois.
