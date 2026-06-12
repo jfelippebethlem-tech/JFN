@@ -26,14 +26,15 @@ Telegram = maestro, aciona o JFN pela API `127.0.0.1:8000`). Padrão de saída: 
   Yoda (`~/hermes-agent`). Ambos auto-start no boot.
 - **DB** `data/compliance.db` (1,2G): `ordens_bancarias` (OB 2019-2026, 1,12M, 77% c/ CNPJ; `favorecido_cpf`=CNPJ(14)/
   CPF(11)) + `ob_orcamentaria_siafe` (95k). **UG 133100=ITERJ** (`data/ug_canonico.json`). WAL via cron dom 03:00.
-- **Sweeps:** **SEI** vivo e supervisionado (`tools/sei_supervisor.sh`, cron-minuto relança; resumível por checkpoint
-  `data/sei_cache/sei_sweep_progress.json`; reboot-safe — ver §8). **SIAFE 2** = varredura completa; incremental
-  diário via cron 05:00 (`siafe_runner diario`). SIAFE 1 = conta ALERJ-only (pende chave do dono).
-- **Cron (DIÁRIO ESCALONADO, ordem lógica, VM-safe — cont.20):** base → SIAFE 05:00 · backfill_enderecos 05:40 ·
-  folha 06:00 · massare 06:15 (+ manutenção/backtest dom). Sweeps de enriquecimento **diários, sessão limitada
-  `SWEEP_MAX_SECONDS=9000` (~2h30), sem overlap, resumíveis:** **SEI 07:00 → endereço 10:00 → benefícios 13:00**.
-  `@reboot` só limpa `browser.lock` (a agenda diária cuida dos lançamentos). Respawn por-minuto REMOVIDO (era o
-  modelo contínuo). Backup do crontab antigo em `data/crontab.backup.*`; agenda nova em `data/crontab.novo`.
+- **SWEEPS = INDIVIDUAIS, escalonados no cron, 1 por vez (cont.25 — o "2-lane serial" foi REVERTIDO: lane contínuo
+  segurava Chromium 24h e a sessão única itkava do SEI competia → leitura manual dava 0).** Calibrado à VM real
+  **(2 vCPU · 7,8GB · SEM swap)**: `nice -n10 ionice -c2 -n6` (best-effort = qualidade, progride sem starvar),
+  bounded (`timeout`), `load-guard ≥4`, single-pass (cron repete; sem `while true`). Scripts:
+  **`tools/sweep_sei.sh`** (07/13/19h, itkava SOZINHO) · **`tools/sweep_dados.sh`** (10/16h, endereço+benefícios+
+  fachada) · **`tools/cruzador.sh`** (23h, OB↔SEI + concentração-grupo, à noite sozinho) · base **SIAFE 05:00**
+  (`siafe_runner diario`) + backfill_enderecos 05:40. Pausas: `data/.pause_sweeps` (tudo) / `.pause_{sei,endereco,
+  beneficios,fachada}_sweep`. SIAFE 1 = conta ALERJ-only (pende chave do dono). Backup crontab: `data/crontab.backup.*`.
+  ⚠ `pkill` de chromium SÓ órfão (`ppid=1`) — server.py também usa ms-playwright (§8); pkill sempre bracket-safe.
 
 ## 3. LLM — ALOCAÇÃO (isolamento de qualidade)
 - **Sweep SEI** (triagem + raciocínio de fraude em massa) → **nous `stepfun:free`** (ilimitado/grátis). **Cerebras
@@ -141,6 +142,12 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-12 cont.25 (goal):** **SWEEPS rearquitetados** — o "2-lane serial" (cont.21) foi RUIM (Chromium 24h +
+  sessão única itkava competindo → leitura SEI manual dava 0; 2 lanes em 2 cores + DuckDB = crash) e foi REVERTIDO
+  para **sweeps individuais escalonados** (`sweep_sei`/`sweep_dados`/`cruzador` + SIAFE), calibrados à VM real
+  (**2 vCPU/7,8GB/sem swap**): nice/ionice best-effort (qualidade > leveza), bounded, load-guard=4, 1-por-vez,
+  cron 07/10/13/16/19/23. **Lições §8 aplicadas:** mata só chromium ÓRFÃO (server.py tb usa ms-playwright); pkill
+  bracket-safe (repeti o auto-pkill 2× hoje). Aprendizado no vault [[aprendizados/vm-nao-crashar]]. Commit `cc7aaa0`.
 - **06-12 cont.24 (goal):** **(1) SEI ENTENDIDO/DOCUMENTADO** — corrigi 2 erros meus recorrentes: itkava lê
   **TODAS as unidades** (838 cdp de ~20 unidades, não só ITERJ) e o output são os **`cdp_*.json`**, não a tabela
   `processos_sei` (que fica 0 — NORMAL). Nota definitiva em `vault/aprendizados/sei-leitura-itkava`. **Edge MUV
