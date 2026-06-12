@@ -35,6 +35,9 @@ from compliance_agent.detectores.e1_barreira import E1Barreira
 from compliance_agent.detectores.e2_prazos import E2Prazos
 from compliance_agent.detectores.e3_lote_pacote import E3LotePacote
 from compliance_agent.detectores.j1_cartel import J1Cartel
+from compliance_agent.detectores.j2_propostas_cobertura import J2PropostasCobertura
+from compliance_agent.detectores.j3_desconto_anomalo import J3DescontoAnomalo
+from compliance_agent.detectores.j4_supressao_propostas import J4SupressaoPropostas
 from compliance_agent.detectores.p1_especificacao_dirigida import P1EspecificacaoDirigida
 from compliance_agent.detectores.p2_cotacoes_combinadas import P2CotacoesCombinadas
 from compliance_agent.detectores.p3_sobrepreco import P3Sobrepreco
@@ -46,6 +49,9 @@ REGISTRO: dict[str, Detector] = {
     d.id: d for d in (
         P4Fracionamento(),
         J1Cartel(),
+        J2PropostasCobertura(),  # fase de julgamento — propostas de cobertura (screens de preço)
+        J3DescontoAnomalo(),     # fase de julgamento — desconto anômalo/irrisório recorrente
+        J4SupressaoPropostas(),  # fase de julgamento — supressão de propostas/licitante único
         P3Sobrepreco(),
         CFachada(),
         E1Barreira(),    # fase de edital — barreira de entrada/qualificação
@@ -61,6 +67,9 @@ REGISTRO: dict[str, Detector] = {
 PESOS_DETECTOR: dict[str, float] = {
     "P4": PESOS_FAMILIA["violacao_legal"],
     "J1": PESOS_FAMILIA["conluio"],
+    "J2": PESOS_FAMILIA["conluio"],
+    "J3": PESOS_FAMILIA["conluio"],
+    "J4": PESOS_FAMILIA["conluio"],
     "P3": PESOS_FAMILIA["preco"],
     "C1": PESOS_FAMILIA["perfil"], "C2": PESOS_FAMILIA["perfil"],
     "C3/C5": PESOS_FAMILIA["perfil"], "C4": PESOS_FAMILIA["perfil"],
@@ -81,7 +90,9 @@ def rodar_orgao(ug: str, *, contexto: dict | None = None, exculpatoria: bool = F
     ctx: dict[str, Any] = {"processo": str(ug), "ug": str(ug)}
     if contexto:
         ctx.update(contexto)
-    dets = [d for d in REGISTRO.values() if d.familia == "conluio"]
+    # J1 é o detector de conluio que opera por UG (concentração/rodízio). J2/J3/J4 operam por CERTAME
+    # (lista de propostas/valores/atas) → ficam no `rodar_julgamento`, não aqui (evita nao_avaliavel inútil na UG).
+    dets = [d for d in REGISTRO.values() if d.id == "J1"]
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 
@@ -155,6 +166,29 @@ def rodar_planejamento(processo: str, *, contexto: dict | None = None, exculpato
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 
+def rodar_julgamento(processo: str, *, contexto: dict | None = None, exculpatoria: bool = False, gerar=None) -> list[ResultadoDetector]:
+    """Orquestra os detectores da FASE DE JULGAMENTO / conluio por CERTAME (J2/J3/J4) sobre o contexto de um
+    certame. Reusa `pipeline` (um detector que quebra vira nao_avaliavel honesto, não derruba os outros).
+
+    CLÁUSULA DE HONESTIDADE (gap PNCP): o PNCP só expõe o VENCEDOR — sem a LISTA de propostas/licitantes, J2
+    (e em parte J4) viram `nao_avaliavel` por construção; conluio NUNCA é pontuado sem os dados das propostas.
+
+    `contexto` traz o que os cards pedem (interface honesta — campo essencial ausente → nao_avaliavel):
+      J2 → {propostas[{licitante_cnpj, valor, classificacao}], valor_estimado?, certames_relacionados?[], mercado_homogeneo?}
+      J3 → {valor_estimado, valor_homologado, desconto_medio_orgao?, desconto_mercado_categoria?,
+            serie_certames_orgao?[], item_preco_regulado?}
+      J4 → {licitantes_inscritos?, licitantes_classificados, inabilitados[{cnpj,motivo}], desistencias[],
+            inabilitacao_fundada_uniforme?}
+    `gerar` (callable) alimenta as rubricas LLM-opcionais; ausente → partes subjetivas degradam para nao_avaliavel."""
+    ctx: dict[str, Any] = {"processo": str(processo)}
+    if contexto:
+        ctx.update(contexto)
+    if gerar is not None and "gerar" not in ctx:
+        ctx["gerar"] = gerar
+    dets = [d for d in REGISTRO.values() if d.id in ("J2", "J3", "J4")]
+    return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
+
+
 __all__ = [
     "Detector",
     "ResultadoDetector",
@@ -171,6 +205,9 @@ __all__ = [
     "REGISTRO",
     "P4Fracionamento",
     "J1Cartel",
+    "J2PropostasCobertura",
+    "J3DescontoAnomalo",
+    "J4SupressaoPropostas",
     "P3Sobrepreco",
     "CFachada",
     "E1Barreira",
@@ -183,4 +220,5 @@ __all__ = [
     "rodar_fornecedor",
     "rodar_edital",
     "rodar_planejamento",
+    "rodar_julgamento",
 ]
