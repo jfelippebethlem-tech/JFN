@@ -483,7 +483,10 @@ def _retomar_sweeps_se_ocioso() -> None:
 
 async def _enviar_docs_telegram(result: dict, titulo: str) -> None:
     from compliance_agent.notifications import telegram as _tg
-    paths = [p for p in (result.get("path_pdf"), result.get("path_xlsx"), result.get("path_lex")) if p]
+    # PDF primeiro (recebe a caption), depois MD (fonte legível/grep-ável p/ o Yoda), xlsx e parecer Lex.
+    # path_md incluído p/ o Yoda mandar MD+PDF (antes só PDF/xlsx/lex iam — o MD ficava de fora).
+    paths = [p for p in (result.get("path_pdf"), result.get("path_md"),
+                         result.get("path_xlsx"), result.get("path_lex")) if p]
     if not paths:
         await _tg.enviar_mensagem(f"⚠️ {titulo}: gerado, mas sem arquivos para enviar.")
         return
