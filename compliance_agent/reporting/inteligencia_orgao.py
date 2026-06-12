@@ -342,8 +342,11 @@ def _fatos_orgao(ctx: dict) -> str:
     hhi = p["hhi"]
     top_nome, top_val = next(iter(p["por_favorecido_geral"].items()), ("—", 0))
     L = [f"Órgão/UG: {ctx['nome']} (UG {ctx['ug']}).",
+         # contagem de fornecedores SEMPRE por CNPJ distinto (n_fornecedores) — não pelo nº de NOMES em
+         # por_favorecido_geral, que infla 1 quando um mesmo CNPJ aparece sob duas grafias (off-by-one:
+         # SUMÁRIO/§1 davam 115 por CNPJ e a §3 dava 116 por nome). CNPJ = identidade canônica da PJ.
          f"Execução financeira (OB): R$ {moeda(p['total_geral'])} em {p['n_geral']} ordens bancárias a "
-         f"{len(p['por_favorecido_geral'])} fornecedores.",
+         f"{p['n_fornecedores']} fornecedores.",
          f"Concentração: maior fornecedor '{top_nome}' = {hhi.get('top_share', 0):.1f}% do valor "
          f"(R$ {moeda(top_val)}); HHI {hhi.get('indice')} (nível {hhi.get('nivel')})."]
     grupos = _recorrentes_identicos(p)
