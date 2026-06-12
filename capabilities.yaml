@@ -45,6 +45,18 @@ capacidades:
      args: {codigo: "int CATMAT|CATSER obrigatorio", valor: "float preco pago", servico: "bool (CATSER)"}, retorno: "{mediana_ref,p25,p75,pct,classificacao,fonte}"}
   - {id: cruzamento, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/cruzamento, status: PRONTO,
      descricao: "OB<->CNPJ<->SEI<->socios", quando_usar: "'cruze os dados da empresa X'", args: {cnpj: obrigatorio}, retorno: "{obs,processos_sei,socios}"}
+  - {id: concentracao_grupo, agente: jfn, dominio: auditoria, tipo: cli, comando: "compliance_agent.grafo_cartel --vizinhanca <CNPJ>", status: PRONTO,
+     descricao: "Concentracao OCULTA por GRUPO economico numa UG: colapsa os fornecedores por socio em comum (dedup por raiz CNPJ-8) — muitos CNPJs que parecem concorrentes mas sao UM grupo = diversidade/concorrencia FICTICIA (Art. 90 Lei 8.666 · 337-F CP · Art. 36 Lei 12.529-CADE). INDICIO a corroborar no certame (SEI/PNCP), nunca acusacao; QSA mascarado/indisponivel != afastado.",
+     quando_usar: "'ha concentracao escondida por grupo na UG X?', 'esses concorrentes sao na verdade o mesmo grupo?', cartel oculto / concorrencia simulada numa UG", exemplo: "concentracao por grupo na UG 660100 (Grupo Vieira concentrou fatia relevante via varios CNPJs)",
+     args: {ug: "obrigatorio (codigo da UG)"}, retorno: "{ug,ug_nome,indicio,n_cnpjs,n_grupos,n_grupos_multi,hhi_grupo,maior_grupo_multi,grupos[],nota}", nota: "Funcao concentracao_por_grupo(ug); a varredura noturna das maiores UGs roda no cruzador. DuckDB pesado -> nao rodar manual na VM em horario de sweep."}
+  - {id: relacoes, agente: jfn, dominio: auditoria, tipo: cli, comando: "compliance_agent.relacoes \"<CNPJ | nome do socio | UG>\"", status: PRONTO,
+     descricao: "Mapa de RELACOES de um alvo: socio<->empresa (QSA), empresa<->empresa por socio OU endereco em comum (dedup por raiz; indicio de grupo economico/concorrencia ficticia), empresa<->orgao (UGs que pagaram; UG em comum = vinculo mais forte). Resolve sozinho: 14dig=empresa, 6dig=UG, senao=nome de socio.",
+     quando_usar: "'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo", exemplo: "relacoes do CNPJ 19088605000104 / relacoes do socio Fulano de Tal",
+     args: {alvo: "obrigatorio (CNPJ | nome do socio | codigo de UG)", limite: "int opcional"}, retorno: "{ok,tipo,alvo,razao,socios[],empresas_via_socio[],empresas_via_endereco[],orgaos[],leitura}", nota: "Relacao e FATO (socio/endereco/contrato em comum), nao prova; CPF de socio mascarado (LGPD)."}
+  - {id: sobrepreco_interno, agente: lex, dominio: auditoria, tipo: cli, comando: "compliance_agent.precos_extract", status: PRONTO,
+     descricao: "Sobrepreco INTERNO (sem API externa): extrai a TABELA DE ITENS (descricao x qtd x preco unitario) de editais/contratos do SEI/PNCP por heuristica deterministica (regex, nunca inventa) e compara o MESMO item entre orgaos/contratos. Maior preco >= 2x o menor da mesma descricao = INDICIO de sobrepreco (a confirmar: especificacao/regiao/quantidade podem diferir).",
+     quando_usar: "'esse item esta caro comparado a outros orgaos?', dispersao de preco unitario do mesmo produto sem precisar de CATMAT/mercado, complemento interno ao /sobrepreco", exemplo: "mesmo item de papel A4 pago a precos >=2x diferentes entre UGs",
+     args: {texto: "texto do edital/contrato (extrair_itens); registros[] p/ sobrepreco_interno"}, retorno: "extrair_itens -> [{descricao,quantidade,unidade,preco_unitario,preco_total,fonte}]; sobrepreco_interno -> [{item,n,min,max,mediana,razao_max_min,mais_caro,mais_barato,sobrepreco_pct_vs_mediana}]", nota: "preco unitario e FATO extraido do texto; dispersao e INDICIO, nunca prova."}
   - {id: missao_autonoma, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/hermes/missao, status: PRONTO,
      descricao: "Auditoria autonoma aberta (loop hermes_goal CANONICO)", quando_usar: "pedido complexo/aberto", exemplo: "audite os pagamentos suspeitos do ITERJ em 2024", args: {missao: obrigatorio}, retorno: "{missao_id}"}
   # ---- GRAFO / DOSSIE ----
@@ -132,7 +144,7 @@ capacidades:
   - {id: siafe_stats, agente: jfn, dominio: coleta, tipo: http, metodo: GET, rota: /api/siafe/stats, status: PRONTO,
      descricao: "Quanto já foi coletado do SIAFE: total de OBs, por ano/UG, cobertura/frescor", quando_usar: "'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia'", args: {}, retorno: "{total,valor_total,por_ano,com_processo}"}
   - {id: sweeps_status, agente: jfn, dominio: coleta, tipo: http, metodo: GET, rota: /api/sweeps/status, status: PRONTO,
-     descricao: "Status dos SWEEPS continuos: SEI (le processos SEI das OBs) + SIAFE 2 (OB Orcamentaria)", quando_usar: "'como esta o sweep', 'o sweep do SEI/SIAFE esta funcionando', 'a coleta continua esta rodando', 'quantos processos SEI ja foram lidos'", exemplo: "como esta o sweep do sei?",
+     descricao: "Status dos SWEEPS diarios SINGLE-PASS escalonados (cron, sem 2 pesados ao mesmo tempo — licao VM): sweep_sei (le processos SEI das OBs, sessao itkava unica; 07/13/19h) + sweep_dados (endereco/beneficios/fachada, DB/rede; 10/16h) + cruzador (cruzamento noturno OB<->SEI e varredura de concentracao-grupo; 23h)", quando_usar: "'como esta o sweep', 'o sweep do SEI/dados esta funcionando', 'a coleta continua esta rodando', 'quantos processos SEI ja foram lidos'", exemplo: "como esta o sweep do sei?",
      args: {}, retorno: "{texto,sei{feitos,supervisor,rodando},siafe{...},pausado}"}
   - {id: siafe_status, agente: jfn, dominio: coleta, tipo: http, metodo: GET, rota: /api/siafe/status, status: PRONTO,
      descricao: "Estado da coleta SIAFE AGORA: ha um sweep/coleta rodando? (lockfile de sessao unica)", quando_usar: "'o SIAFE esta coletando agora?', 'tem sweep rodando?', 'a coleta esta ativa?'", args: {}, retorno: "{ok,lock}"}
@@ -140,6 +152,9 @@ capacidades:
      descricao: "Coleta UMA UG furando teto 1000; SIAFE 1 via JFN_SIAFE_LOGIN_URL=www5", quando_usar: "backfill de UG", args: {ug: obrigatorio, ano: opcional}, retorno: "stdout"}
   - {id: enriquecer_socios, agente: jfn, dominio: coleta, tipo: cli, comando: "tools.enriquecer_socios_ob", status: PRONTO,
      descricao: "QSA (socios) via BrasilAPI; insumo do cartel-grafo e do Grafo de Poder", quando_usar: "apos novo sweep", args: {}, retorno: "stdout"}
+  - {id: cruzador, agente: jfn, dominio: coleta, tipo: cli, comando: "bash tools/cruzador.sh", status: PRONTO,
+     descricao: "Cruzamento NOTURNO (cron 23h, roda SOZINHO sem sweep competindo -> DuckDB seguro): (1) OB<->SEI via correlacao_sei (liga processo SEI aos pagamentos) + (2) varredura de concentracao por GRUPO economico nas ~60 maiores UGs (cartel oculto / diversidade ficticia). LEVE: nice/ionice idle, bounded por timeout, adia se load alto.",
+     quando_usar: "rotina automatica noturna; acionar a mao so p/ recruzar apos coleta grande", args: {}, retorno: "data/cruzador.log (correlacoes OB<->SEI + UGs com indicio de concentracao-grupo)", nota: "saida operacional em log; os indicios viram consulta via concentracao_grupo / cartel. Indicio != acusacao."}
   - {id: memoria, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: /api/memoria, status: PRONTO,
      descricao: "Memoria consolidada do ecossistema (licoes Massare + base Lex + Hermes)", quando_usar: "'o que voce aprendeu', consolidar memoria",
      args: {limite: "int=15"}, retorno: "{massare_licoes,lex_base,hermes}"}
