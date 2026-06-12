@@ -1773,13 +1773,19 @@ def _normaliza_raciocinio(txt: str) -> str:
     if t.startswith("```"):
         t = re.sub(r"^```[a-zA-Z]*\n?|\n?```$", "", t).strip()
 
+    # remove marcador de bullet já presente na string (o LLM às vezes embute "- "/"• "/"* " no próprio
+    # item do JSON) p/ não duplicar quando re-prefixamos com "- " → evita o "- -" no MD (§9).
+    def _desmarca(s: str) -> str:
+        return re.sub(r"^\s*(?:[-*•]\s+)+", "", s).strip()
+
     def _bullets(obj) -> str:
         frases: list[str] = []
 
         def _walk(o):
             if isinstance(o, str):
-                if o.strip():
-                    frases.append(o.strip())
+                f = _desmarca(o)
+                if f:
+                    frases.append(f)
             elif isinstance(o, list):
                 for x in o:
                     _walk(x)
@@ -1797,7 +1803,11 @@ def _normaliza_raciocinio(txt: str) -> str:
                     return b
             except Exception:  # noqa: BLE001
                 continue
-    return t
+    # texto livre (markdown) — colapsa bullets duplicados "- - x" / "- * x" → "- x" linha a linha
+    linhas = []
+    for ln in t.splitlines():
+        linhas.append(re.sub(r"^(\s*)(?:[-*•]\s+){2,}", r"\1- ", ln))
+    return "\n".join(linhas)
 
 
 def parecer_raciocinado(ctx: dict) -> str:
