@@ -115,6 +115,12 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
   desta VM** (app desktop? outro deploy?) — conflito `getUpdates` PRÉ-EXISTENTE (10 conflitos já às 03:00, antes do
   update). **Desligar a instância duplicada** para o Yoda parar de competir pelo Telegram. (O update NÃO causou isso.)
   Reaplicar customizações após futuros `hermes update` (os patches estão preservados).
+- **⚠ Yoda intermitente = POLLER EXTERNO do bot (cont.20, PROVADO):** começou hoje **01:37:36** (166 conflitos
+  `getUpdates` no dia vs 1 em dias anteriores). **Prova:** com o gateway PARADO, loop de `getUpdates` deu 409
+  Conflict e ZERO conexões telegram nesta VM → **há um 2º Hermes/bot rodando em OUTRA máquina** com o mesmo
+  `TELEGRAM_BOT_TOKEN` (bot id 8840263255), pollando a cada ~46s. **NÃO é o desktop nem esta VM nem o update.**
+  **Ação do dono:** achar/desligar esse instance (deploy nuvem? 2ª VM? laptop?) OU `/revoke` no BotFather → token
+  novo → atualizar `~/.hermes/.env` + restart gateway. (O agente, geração de relatório e envio ao Telegram FUNCIONAM.)
 SIAFE 1 (liberar chave p/ todas as UGs) — **sweep PAUSADO até a chave (06-11 cont.17):** flag `data/.pause_sweep_1`
 + cron de respawn `* * * * * siafe_supervisor.sh` REMOVIDO (não funciona sem chave). Reativar: `rm data/.pause_sweep_1`
 e recolocar a linha do supervisor no crontab. (SIAFE 2 incremental 05:00 segue ativo, funciona por login.) · SEI de
