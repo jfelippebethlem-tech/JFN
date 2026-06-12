@@ -1022,7 +1022,10 @@ def _num_brl(v):
     if isinstance(v, (int, float)):
         return float(v)
     try:
-        return float(str(v).strip().replace(".", "").replace(",", "."))
+        s = str(v).strip()
+        if "," in s:  # formato BR (1.234,56): só então o ponto é separador de milhar
+            s = s.replace(".", "").replace(",", ".")
+        return float(s)
     except Exception:  # noqa: BLE001
         return None
 
@@ -1602,7 +1605,7 @@ def _fatos_para_raciocinio(ctx: dict) -> str:
     if (cz.get("obs_sei") or {}).get("n_sei"):
         L.append(f"Processos SEI vinculados ao alvo: {cz['obs_sei']['n_sei']}.")
     cr = ctx.get("conflito_rede") or {}
-    n_conf = (cr.get("n") if isinstance(cr, dict) else 0) or len(cr.get("rede") or []) if isinstance(cr, dict) else 0
+    n_conf = (cr.get("n") or len(cr.get("rede") or [])) if isinstance(cr, dict) else 0
     if n_conf:
         L.append(f"Conflito doador↔contrato (TSE): {n_conf} vínculo(s) entre doação eleitoral e o alvo/sócios.")
     sanc = (ctx["enriq"].get("dados") or {}).get("sancoes") if ctx.get("enriq", {}).get("ok") else None
