@@ -99,6 +99,107 @@ async def _extrair_de_todos_frames(pg) -> dict:
             "texto": "\n\n".join(textos)[:20000]}
 
 
+async def _esperar_arvore(pg, voltas: int = 16) -> bool:
+    """Espera ATIVA o frame da árvore de documentos (``ifrArvore``) carregar — a árvore do SEI
+    aparece num iframe e o parser precisa dela presente ANTES de extrair (lição cracked 06-12:
+    'A árvore abre, mas o parser pega 0 docs se extrair cedo demais'). Retorna True se a árvore
+    apareceu. Honesto: nunca trava — após ``voltas`` desiste e deixa a extração rodar com o que tem."""
+    for _ in range(voltas):
+        for fr in pg.frames:
+            u = (fr.url or "").lower()
+            if "arvore" in u or fr.name == "ifrArvore":
+                # achou o frame; dá um respiro p/ os <a> dos documentos pintarem
+                await pg.wait_for_timeout(2000)
+                return True
+        await pg.wait_for_timeout(1500)
+    return False
+
+
+async def _ler_cracked(pg, proc: str) -> dict:
+    """CAMINHO SEPARADO (anti-regressão) p/ processo de OUTRA unidade que o itkava VÊ mas a busca
+    'normal' do ITERJ não abre (ex.: consórcios Vieira/MUV na 510001). NÃO toca em ``ler_processo``.
+
+    Método CRACKED (provado por screenshot do dono 06-12): ☰ → Pesquisa →
+      - radio **Processos** selecionado (não 'Documentos')
+      - ☑ **Considerar Documentos**
+      - **Restringir ao Órgão da Unidade** DESMARCADO + Órgão Gerador 'Todos'
+      - protocolo **SEM** o prefixo 'SEI-' (ex.: ``510001/000876/2024``)
+      - clicar **Pesquisar** (``#sbmPesquisar``) UMA vez e **esperar a NAVEGAÇÃO** (expect_navigation) —
+        NÃO duplo-submit (clicar+Enter quebra), NÃO ``_abrir_primeiro_resultado`` (navega p/ fora da árvore).
+    A árvore aparece DIRETO após Pesquisar; espera ativa o ``ifrArvore`` e extrai de todos os frames.
+    Degrada honesto: marca ``cadeado``/``n_docs_restritos`` (alguns docs do processo podem ser restritos)
+    e nunca inventa. Retorna o mesmo formato de dump de ``_extrair_de_todos_frames`` + ``via``/``url``."""
+    proto = re.sub(r"(?i)^sei[-\s]*", "", (proc or "").strip())  # SEM prefixo 'SEI-'
+    # 1) abre a Pesquisa interna (clique REAL preserva a sessão)
+    await pg.evaluate(r"""()=>{const e=[...document.querySelectorAll('a')].find(a=>/^pesquisa$/i.test((a.innerText||'').trim())||/protocolo_pesquisar\b/i.test(a.href||a.getAttribute('onclick')||''));if(e)e.click();}""")
+    await pg.wait_for_timeout(5000)
+    if not await pg.evaluate("""()=>!!document.querySelector('#txtProtocoloPesquisa,input[name="txtProtocoloPesquisa"]')"""):
+        return {"documentos": [], "relacionados": [], "via": "cracked", "erro_cracked": "campo de pesquisa não apareceu"}
+    # 2) protocolo SEM prefixo
+    try:
+        await pg.fill('#txtProtocoloPesquisa', proto)
+    except Exception:
+        pass
+    if not await pg.evaluate("""()=>{const e=document.querySelector('#txtProtocoloPesquisa');return e?e.value:''}"""):
+        try:
+            await pg.click('#txtProtocoloPesquisa'); await pg.keyboard.type(proto, delay=40)
+        except Exception:
+            pass
+    # 3) radio 'Processos' (não 'Documentos') + ☑ 'Considerar Documentos' + 'Restringir ao Órgão' DESMARCADO
+    await pg.evaluate(r"""()=>{
+      const txt=el=>((el&&el.parentElement?el.parentElement.innerText:'')||'').toLowerCase();
+      // radio: seleciona o de 'Processos' (e NÃO o de 'Documentos')
+      for(const r of document.querySelectorAll('input[type=radio]')){
+        const l=(txt(r)+' '+(r.value||'')).toLowerCase();
+        if(/process/.test(l) && !/documento/.test(l)){ try{r.checked=true; r.click();}catch(e){} }
+      }
+      // checkboxes
+      for(const c of document.querySelectorAll('input[type=checkbox]')){
+        const l=((c.id||'')+' '+(c.name||'')+' '+txt(c)).toLowerCase();
+        if(/considerar\s+documento|considerar_documento/.test(l) && !c.checked){ try{c.click();}catch(e){} }
+        if(/restring|[óo]rg[ãa]o\s+da\s+unidade|unidade\s+do\s+[óo]rg/.test(l) && c.checked){ try{c.click();}catch(e){} }
+      }
+      // Órgão Gerador 'Todos' (se houver select de órgão, deixa na opção vazia/'Todos')
+      for(const s of document.querySelectorAll('select')){
+        const l=((s.id||'')+' '+(s.name||'')).toLowerCase();
+        if(/orgao|[óo]rg[ãa]o/.test(l)){
+          const todos=[...s.options].find(o=>/^\s*$/.test(o.value)||/todos/i.test(o.text));
+          if(todos){ try{s.value=todos.value; s.dispatchEvent(new Event('change',{bubbles:true}));}catch(e){} }
+        }
+      }
+    }""")
+    await pg.wait_for_timeout(800)
+    if os.environ.get("SEI_DEBUG_SHOT"):
+        try:
+            await pg.screenshot(path=os.environ["SEI_DEBUG_SHOT"].replace(".png", "_form.png"), full_page=True)
+        except Exception:
+            pass
+    # 4) clicar 'Pesquisar' UMA vez + esperar a NAVEGAÇÃO (sem duplo-submit, sem _abrir_primeiro_resultado)
+    try:
+        async with pg.expect_navigation(wait_until="domcontentloaded", timeout=25000):
+            await pg.evaluate(r"""()=>{const b=document.querySelector('#sbmPesquisar')||[...document.querySelectorAll('button,input[type=submit],input[type=button]')].find(e=>/pesquisar/i.test(e.value||e.innerText||''));if(b)b.click();}""")
+    except Exception:
+        # navegação pode não disparar como 'navigation' (frameset) — segue p/ a espera ativa da árvore
+        pass
+    try:
+        await pg.wait_for_load_state("networkidle", timeout=15000)
+    except Exception:
+        pass
+    # 5) espera ATIVA o ifrArvore antes de extrair
+    achou_arvore = await _esperar_arvore(pg)
+    await pg.wait_for_timeout(1500)
+    if os.environ.get("SEI_DEBUG_SHOT"):
+        try:
+            await pg.screenshot(path=os.environ["SEI_DEBUG_SHOT"], full_page=True)
+        except Exception:
+            pass
+    dump = await _extrair_de_todos_frames(pg)
+    dump["via"] = "cracked"
+    dump["url"] = pg.url
+    dump["arvore_carregou"] = achou_arvore
+    return dump
+
+
 async def seguir_relacionados(pg, proc_url: str, relacionados: list, max_rel: int = 5) -> list[dict]:
     """Abre cada processo RELACIONADO (na MESMA sessão, URL viva) e extrai a árvore. Reusado pelo
     ler_com_cadeia E pelo sweep — o processo de pagamento aponta p/ a licitação/contrato (a substância
@@ -185,6 +286,37 @@ async def _conteudo_doc(pg, doc: dict) -> dict | None:
     except Exception:
         return None
     return None
+
+
+async def _montar_resultado_cracked(pg, proc: str, dump: dict, usar_cache: bool = True) -> dict:
+    """Monta o resultado canônico (mesmo formato de ``ler_processo``) a partir do dump CRACKED:
+    extrai o conteúdo dos primeiros docs, regex de cnpjs/valores e grava ``cdp_*.json``. Honesto:
+    propaga ``cadeado``/``n_docs_restritos`` (docs restritos do processo) sem inventar conteúdo."""
+    import json as _json
+    from datetime import datetime
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    cache_file = CACHE_DIR / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json"
+    res = {"numero": proc, "url": dump.get("url") or pg.url, "via": "cracked",
+           "documentos": dump.get("documentos", []), "relacionados": dump.get("relacionados", []),
+           "cadeado": dump.get("cadeado", False), "n_docs_restritos": dump.get("n_docs_restritos", 0),
+           "arvore_carregou": dump.get("arvore_carregou"), "texto": dump.get("texto", ""),
+           "captcha_resolvido": False, "_login": {"ok": True, "via": "sei_reader/itkava+cracked"}}
+    docs_txt = []
+    for doc in dump.get("documentos", [])[:8]:
+        c = await _conteudo_doc(pg, doc)
+        if c:
+            docs_txt.append(c)
+    res["conteudo_documentos"] = docs_txt
+    tot = res["texto"] + "\n\n" + "\n\n".join(d["conteudo"] for d in docs_txt)
+    res["cnpjs"] = sorted(set(re.findall(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}", tot)))
+    res["valores"] = sorted(set(re.findall(r"R\$\s*[\d.,]+", tot)))
+    res["_cached_at"] = datetime.now().isoformat()
+    try:
+        cache_file.write_text(_json.dumps(res, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        res["_cache_path"] = str(cache_file)
+    except Exception:
+        pass
+    return res
 
 
 async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
@@ -377,7 +509,20 @@ async def ler(numero: str, usar_cache: bool = True, tentativas_login: int = 30,
                 if not await login(pg, tentativas=tentativas_login):
                     return {"numero": numero, "texto": "", "conteudo_documentos": [],
                             "erro": "INDISPONÍVEL: login itkava não autenticou (WAF/credencial)"}
-                return await ler_processo(pg, numero, usar_cache=usar_cache)
+                res = await ler_processo(pg, numero, usar_cache=usar_cache)
+                # FALLBACK CRACKED (anti-regressão, caminho SEPARADO): o ITERJ (270042) passa pelo
+                # caminho normal acima (zero risco). Se o normal NÃO trouxe documentos (típico de
+                # processo de OUTRA unidade — ex.: consórcios Vieira/MUV na 510001 — que o itkava VÊ
+                # mas a busca 'normal' do ITERJ não abre), tenta o método CRACKED no MESMO browser
+                # (Processos + Considerar Documentos + Pesquisar + expect_navigation + ifrArvore).
+                if not res.get("documentos"):
+                    try:
+                        dump = await _ler_cracked(pg, numero)
+                        if dump.get("documentos"):
+                            res = await _montar_resultado_cracked(pg, numero, dump, usar_cache)
+                    except Exception as e:  # noqa: BLE001
+                        res.setdefault("_cracked_erro", str(e)[:120])
+                return res
             finally:
                 await b.close()
     except Exception as e:  # noqa: BLE001
@@ -465,7 +610,16 @@ async def main():
         print("✅ LOGADO:", pg.url[:80], flush=True)
         print("→ Lendo processo (pesquisa avançada):", proc, flush=True)
         res = await ler_processo(pg, proc, usar_cache=False)
-        print(f"   docs: {len(res.get('documentos',[]))} | texto: {len(res.get('texto',''))} chars "
+        # mesmo fallback de ler(): se o caminho normal não trouxe docs, tenta o método CRACKED
+        if not res.get("documentos"):
+            print("   normal=0 docs → tentando CRACKED…", flush=True)
+            dump = await _ler_cracked(pg, proc)
+            print(f"   cracked: docs={len(dump.get('documentos',[]))} rel={len(dump.get('relacionados',[]))} "
+                  f"arvore={dump.get('arvore_carregou')} url={(dump.get('url') or '')[:70]}", flush=True)
+            if dump.get("documentos"):
+                res = await _montar_resultado_cracked(pg, proc, dump, usar_cache=False)
+        print(f"   docs: {len(res.get('documentos',[]))} | via: {res.get('via','normal')} "
+              f"| texto: {len(res.get('texto',''))} chars "
               f"| conteúdo docs: {len(res.get('conteudo_documentos',[]))} | CNPJs: {len(res.get('cnpjs',[]))} "
               f"| valores: {len(res.get('valores',[]))}")
         print("   cache:", res.get("_cache_path", "(não salvo)"))
