@@ -142,6 +142,14 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-12 cont.27 (goal, agentes):** **⭐ SEI PORT FUNCIONOU** (`59360d0`) — fallback `_ler_cracked` lê processo de
+  OUTRA unidade (510001 Vieira/Cidades = 10 docs reais, contrato 046/2022 Drenagem Av.22 Maio) SEM regredir o ITERJ
+  (270042=10 docs); caminho SEPARADO, `ler_processo` intocado. **Destrava editais/sobrepreço no SEI.** **(2) FRAMEWORK
+  DE DETECTORES** (`380a967`) — spec V2 do dono (30 detectores: P/E/J/C/X) → `compliance_agent/detectores/base.py`
+  (schema JSON padrão + score-âncoras + verificador adversarial LLM-opcional + pipeline + convergência) + **P4
+  fracionamento**; 33 testes; mapa 30→JFN (21 reusam concentracao_por_grupo/precos_extract/investigacao_dd/etc., 9 a
+  construir). Spec completo em [[notas/detectores-corrupcao-licitacoes-v2]]. Roadmap: implementar os 29 restantes +
+  rodar nos editais Vieira (agora legíveis via SEI).
 - **06-12 cont.26 (goal, agentes):** **(1) MANUAL de detecção de corrupção em licitações** (playbook do dono) →
   `vault/notas/manual-deteccao-corrupcao-licitacoes` com **mapa de cobertura JFN** (✓/⚠/✗) + aplicação aos 12 grupos
   de cartel. **(2) 4 builds via subagentes (VM-safe, ruff, testes):** `/lista` capabilities + detectores novos
