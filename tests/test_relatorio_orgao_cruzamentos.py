@@ -39,7 +39,8 @@ def test_backfill_insert_nomeado_cabe_em_tabela_13_colunas():
 def test_backfill_source_usa_colunas_nomeadas():
     """Guarda extra: o código-fonte do backfill NÃO pode voltar ao INSERT posicional (VALUES sem colunas)."""
     src = open("tools/backfill_verificacao_endereco.py", encoding="utf-8").read()
-    assert "(cnpj,status,nivel,exato,lat,lon,municipio_geo,evidencia,verificado_em)" in src
+    # colunas NOMEADAS (9 base + visual_*); nunca o INSERT posicional que quebrava nas 13 colunas
+    assert "cnpj,status,nivel,exato,lat,lon,municipio_geo,evidencia,verificado_em" in src
     assert "INSERT OR REPLACE INTO endereco_verificacao VALUES" not in src  # o posicional quebrado
 
 

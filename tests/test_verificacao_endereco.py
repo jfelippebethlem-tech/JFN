@@ -175,3 +175,33 @@ def test_streetview_teto_31d_bloqueia(monkeypatch, tmp_path):
     monkeypatch.setattr(ve, "_SV_QUOTA_FILE", tmp_path / "sv_quota.json")
     monkeypatch.setenv("STREETVIEW_MAX_31D", "2")
     assert [ve._streetview_consome_cota() for _ in range(4)] == [True, True, False, False]
+
+
+def test_imagem_casebre_precede_edificado_osm(monkeypatch, tmp_path):
+    """Pedido do dono: mesmo com OSM dizendo 'edificado', foto de rua acusando casebre vira INDÍCIO."""
+    monkeypatch.setattr(ve, "_cache", None)
+    monkeypatch.setattr(ve, "_CACHE_FILE", tmp_path / "c.json")
+    monkeypatch.setattr(ve, "geocodificar", lambda *a, **k: {
+        "ok": True, "lat": -22.9, "lon": -43.2, "classe": "building", "tipo": "yes",
+        "display": "...", "municipio_geo": "Rio de Janeiro", "bate_municipio": True, "exato": True})
+    monkeypatch.setattr(ve, "edificacao_no_ponto", lambda *a, **k: {
+        "ok": True, "tem_predio": True, "n_predios": 3, "landuses": []})  # OSM: edificado
+    monkeypatch.setattr(ve, "_classificar_visual", lambda lat, lon: {
+        "ok": True, "status": "INDICIO", "nivel": "ALTO", "classe": "construcao_precaria_barraco",
+        "confianca": 0.7, "fonte": "Mapillary (foto de rua)", "evidencia": "casebre na fachada"})
+    out = ve.analisar_endereco("RUA Z 10", "Rio de Janeiro", "RJ", usar_imagem=True)
+    assert out["status"] == "INDICIO" and out["nivel"] == "ALTO"
+    assert out["sinais"]["imagem"]["classe"] == "construcao_precaria_barraco"
+
+
+def test_sem_usar_imagem_edificado_afasta(monkeypatch, tmp_path):
+    """Sem usar_imagem (default), o mesmo ponto edificado é AFASTADO — o visual é opt-in."""
+    monkeypatch.setattr(ve, "_cache", None)
+    monkeypatch.setattr(ve, "_CACHE_FILE", tmp_path / "c2.json")
+    monkeypatch.setattr(ve, "geocodificar", lambda *a, **k: {
+        "ok": True, "lat": -22.9, "lon": -43.2, "classe": "building", "tipo": "commercial",
+        "display": "...", "municipio_geo": "Rio de Janeiro", "bate_municipio": True, "exato": True})
+    monkeypatch.setattr(ve, "edificacao_no_ponto", lambda *a, **k: {
+        "ok": True, "tem_predio": True, "n_predios": 3, "landuses": []})
+    out = ve.analisar_endereco("RUA Z 10", "Rio de Janeiro", "RJ")  # usar_imagem=False default
+    assert out["status"] == "AFASTADO"
