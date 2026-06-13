@@ -383,10 +383,13 @@ def _fatos_orgao(ctx: dict) -> str:
                      "(correlação OB↔SEI dos fornecedores com indício).")
     er = ctx.get("endereco_real") or {}
     if er.get("ok"):
-        L.append(f"Realidade do endereço das sedes (amostra verificada): {er['afastado']} confirmadas reais, "
-                 f"{er['indicio']} com indício (possível baldio/precário), {er['indisponivel']} sem conclusão — "
-                 f"de {er['n_verificados']} verificadas em {er['n_forn']} fornecedores PJ. "
-                 "INDISPONÍVEL não é prova de inexistência (cobertura cartográfica incompleta).")
+        _fonte_end = ("Google (Geocoding+Address Validation+Places)" if er.get("fonte") == "GOOGLE"
+                      else "fonte mista Google+OSM" if er.get("fonte") == "MISTA"
+                      else "base cartográfica aberta/OSM")
+        L.append(f"Realidade do endereço das sedes (amostra verificada, {_fonte_end}): {er['afastado']} "
+                 f"confirmadas reais, {er['indicio']} com indício (possível baldio/precário), "
+                 f"{er['indisponivel']} sem conclusão — de {er['n_verificados']} verificadas em "
+                 f"{er['n_forn']} fornecedores PJ. INDISPONÍVEL não é prova de inexistência (cobertura incompleta).")
     bs = ctx.get("beneficios_socios") or {}
     if bs.get("ok") and bs.get("n_verificados"):
         if bs.get("n_com_beneficio"):
@@ -562,12 +565,16 @@ def _dd_orgao_bounded(ug: str, anos: Optional[list[int]], top_n: int = 12) -> di
 
 
 def _endereco_real_orgao(ug: str) -> dict:
-    """Cruza os fornecedores (PJ) que a UG pagou com a tabela `endereco_verificacao` para responder
-    'as empresas são reais?'. Buckets honestos: **AFASTADO** = sede real/edificada (afasta fachada);
-    **INDICIO** = ponto possivelmente baldio/precário (a verificar); **INDISPONIVEL** = sem conclusão
-    (cobertura OSM incompleta — NÃO é prova de inexistência, lição §endereço). Lista os indícios com nome."""
+    """Cruza os fornecedores (PJ) que a UG pagou com a verificação de SEDE para responder 'as empresas
+    são reais?'. PREFERE a verificação AUTORITATIVA do Google (`verificacao_sede`: Geocoding+Address
+    Validation+Places, populada por `tools/sweep_sede_google.py`) e cai p/ o OSM antigo
+    (`endereco_verificacao`, deprecado) quando o CNPJ ainda não foi varrido pelo Google — espelha o
+    padrão honesto de `inteligencia._realidade_sede_texto`. Buckets honestos: **AFASTADO** = sede
+    real/edificada (afasta fachada); **INDICIO** = ponto possivelmente baldio/precário (a verificar);
+    **INDISPONIVEL** = sem conclusão (cobertura incompleta — NÃO é prova de inexistência, lição §endereço).
+    `n_google` = quantos vereditos vieram da fonte Google (selo de fonte na seção). Lista os indícios com nome."""
     out = {"ok": False, "n_forn": 0, "n_verificados": 0, "afastado": 0, "indicio": 0,
-           "indisponivel": 0, "indicios": []}
+           "indisponivel": 0, "n_google": 0, "indicios": []}
     try:
         con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
         try:
@@ -577,25 +584,46 @@ def _endereco_real_orgao(ug: str) -> dict:
             if not cnpjs:
                 return out
             out["n_forn"] = len(cnpjs)
-            try:
-                rows = con.execute(
-                    "SELECT cnpj,status,nivel,municipio_geo,evidencia FROM endereco_verificacao").fetchall()
-            except sqlite3.OperationalError:
-                return out  # tabela ainda não existe (sweep de endereços não rodou)
+            # COALESCE da fonte: 1 veredito por CNPJ, PREFERINDO o Google (verificacao_sede) ao OSM
+            # (endereco_verificacao). Monta-se o OSM primeiro e o Google SOBREPÕE (autoritativo).
+            vereditos: dict = {}  # cnpj -> {status, nivel, evidencia, google: bool}
+
+            def _absorve(tabela: str, google: bool):
+                try:
+                    rows = con.execute(
+                        f"SELECT cnpj,status,nivel,evidencia FROM {tabela}").fetchall()  # noqa: S608 (nome fixo)
+                except sqlite3.OperationalError:
+                    return  # tabela ainda não existe (sweep correspondente não rodou)
+                for r in rows:
+                    if r["cnpj"] not in cnpjs:
+                        continue
+                    # Google sempre sobrepõe; OSM só preenche se ainda não houver veredito p/ o CNPJ
+                    if not google and r["cnpj"] in vereditos:
+                        continue
+                    vereditos[r["cnpj"]] = {"status": (r["status"] or "").upper(),
+                                            "nivel": r["nivel"], "evidencia": (r["evidencia"] or "")[:160],
+                                            "google": google}
+
+            _absorve("endereco_verificacao", google=False)  # base OSM (fallback)
+            _absorve("verificacao_sede", google=True)        # Google sobrepõe (autoritativo)
+            if not vereditos:
+                return out  # nenhuma das tabelas existe / nenhum CNPJ varrido (sweep não rodou)
+
             indic_cnpjs = []
-            for r in rows:
-                if r["cnpj"] not in cnpjs:
-                    continue
+            for cnpj, v in vereditos.items():
                 out["n_verificados"] += 1
-                st = (r["status"] or "").upper()
+                if v["google"]:
+                    out["n_google"] += 1
+                st = v["status"]
                 if st == "AFASTADO":
                     out["afastado"] += 1
                 elif st == "INDICIO":
                     out["indicio"] += 1
                     if len(out["indicios"]) < 12:
-                        out["indicios"].append({"cnpj": r["cnpj"], "nivel": r["nivel"],
-                                                "evidencia": (r["evidencia"] or "")[:160], "nome": ""})
-                        indic_cnpjs.append(r["cnpj"])
+                        out["indicios"].append({"cnpj": cnpj, "nivel": v["nivel"],
+                                                "evidencia": v["evidencia"], "nome": "",
+                                                "google": v["google"]})
+                        indic_cnpjs.append(cnpj)
                 else:
                     out["indisponivel"] += 1
             # nomes dos fornecedores com indício (p/ a tabela ficar legível)
@@ -609,6 +637,13 @@ def _endereco_real_orgao(ug: str) -> dict:
         finally:
             con.close()
         out["ok"] = out["n_verificados"] > 0
+        # selo de fonte: Google quando TODOS (ou parte) dos vereditos vieram da verificacao_sede
+        if out["n_google"] >= out["n_verificados"] and out["n_verificados"] > 0:
+            out["fonte"] = "GOOGLE"
+        elif out["n_google"] > 0:
+            out["fonte"] = "MISTA"
+        else:
+            out["fonte"] = "OSM"
         return out
     except Exception as exc:  # noqa: BLE001
         _log.warning("Realidade de endereço do órgão %s degradou (seção 1-E): %s", ug, exc)
@@ -802,22 +837,27 @@ def _secao_endereco_md(add, ctx: dict) -> None:
     er = ctx.get("endereco_real") or {}
     add("## 1-E. REALIDADE DO ENDEREÇO DAS SEDES (AS EMPRESAS SÃO REAIS?)")
     add("")
-    add("> Cruza o CNPJ de cada fornecedor com o **mapa** (geocodificação + base cartográfica aberta) para "
-        "checar se a **sede declarada existe e é edificada** — afastando (ou sinalizando) empresa de fachada. "
+    add("> Cruza o CNPJ de cada fornecedor com a **verificação de sede** (PREFERINDO o Google — Geocoding + "
+        "Address Validation + Places; fallback à base cartográfica aberta/OSM) para checar se a **sede "
+        "declarada existe e é edificada** — afastando (ou sinalizando) empresa de fachada. "
         "Veredito honesto: **AFASTADO** = sede real/edificada; **INDÍCIO** = ponto possivelmente baldio/precário "
         "(a verificar in loco/imagem); **INDISPONÍVEL** = sem conclusão. **INDISPONÍVEL ≠ inexistência** — a "
-        "cobertura cartográfica na periferia é incompleta, e satélite no nível da rua nunca acusa baldio "
+        "cobertura na periferia é incompleta, e satélite no nível da rua nunca acusa baldio "
         "(só Street View/in loco conclui).")
     add("")
     if not er.get("ok"):
         cob = (f"0 de {er.get('n_forn', 0)}") if er.get("n_forn") else "0"
         add(f"_Ainda sem endereços verificados para os fornecedores desta UG ({cob} verificados). O sweep de "
-            "endereços (`backfill_verificacao_endereco`) cobre o universo de sedes incrementalmente — esta "
-            "seção se preenche à medida que avança._")
+            "sedes (`tools/sweep_sede_google.py`, fallback OSM) cobre o universo de sedes incrementalmente — "
+            "esta seção se preenche à medida que avança._")
         add("")
         return
+    _fonte = er.get("fonte", "OSM")
+    selo = ("[Google: Geocoding+Address Validation+Places]" if _fonte == "GOOGLE"
+            else f"[fonte mista: {er.get('n_google', 0)} Google + OSM]" if _fonte == "MISTA"
+            else "[base cartográfica aberta/OSM]")
     add(f"**Cobertura:** {er['n_verificados']} de {er['n_forn']} fornecedores PJ já verificados "
-        f"({er['n_verificados']/(er['n_forn'] or 1)*100:.0f}%). "
+        f"({er['n_verificados']/(er['n_forn'] or 1)*100:.0f}%) — {selo}. "
         f"✔ {er['afastado']} sede real (afastado) · 🟡 {er['indicio']} com indício · "
         f"… {er['indisponivel']} sem conclusão.")
     add("")
@@ -1318,10 +1358,13 @@ def _secao_endereco_pdf(pdf, _t, ctx: dict) -> None:
         _mc(pdf, 4.5, _t(f"Sem endereços verificados para esta UG ainda ({er.get('n_forn', 0)} fornecedores PJ). "
                          "O sweep de endereços cobre o universo incrementalmente."))
         pdf.set_text_color(0, 0, 0); return
-    _mc(pdf, 4.5, _t(f"Cobertura: {er['n_verificados']} de {er['n_forn']} fornecedores verificados. "
+    _selo = ("[Google: Geocoding+Address Validation+Places]" if er.get("fonte") == "GOOGLE"
+             else f"[fonte mista: {er.get('n_google', 0)} Google + OSM]" if er.get("fonte") == "MISTA"
+             else "[base cartográfica aberta/OSM]")
+    _mc(pdf, 4.5, _t(f"Cobertura: {er['n_verificados']} de {er['n_forn']} fornecedores verificados {_selo}. "
                      f"Sede real (afastado): {er['afastado']} | com indício: {er['indicio']} | "
                      f"sem conclusão: {er['indisponivel']}. INDISPONÍVEL nao prova inexistência (cobertura "
-                     "cartográfica incompleta; satélite no nível da rua nunca acusa baldio)."))
+                     "incompleta; satélite no nível da rua nunca acusa baldio)."))
     if er.get("indicios"):
         pdf.ln(1); _tab_header(pdf, [("Fornecedor (CNPJ)", 96), ("Nível", 24), ("Evidência", 60)])
         pdf.set_font(pdf._fam, "", 7)
