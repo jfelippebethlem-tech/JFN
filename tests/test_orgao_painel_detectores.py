@@ -71,6 +71,7 @@ def test_fato_confirmado_entra_no_raciocinio(monkeypatch):
     pd = io._painel_detectores_orgao("133100")
     ctx = {"nome": "ITERJ — UG X", "ug": "133100",
            "pagamentos": {"tem_dados": True, "total_geral": 10_000_000.0, "n_geral": 30,
+                          "n_fornecedores": 1,  # nº de CNPJs distintos (off-by-one §1/§3 — cont.30 306518f)
                           "por_favorecido_geral": {"ALFA": 5_700_000.0},
                           "hhi": {"indice": 1200.0, "nivel": "ALTO", "top_share": 57.0},
                           "anos": [], "por_ano": {}},

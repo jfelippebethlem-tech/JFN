@@ -30,19 +30,32 @@ from compliance_agent.detectores.base import (
     score_processo,
     verificar_adversarial,
 )
+from compliance_agent.detectores.c6_vinculo_politico import C6VinculoPolitico
 from compliance_agent.detectores.c_fachada import CFachada
 from compliance_agent.detectores.e1_barreira import E1Barreira
 from compliance_agent.detectores.e2_prazos import E2Prazos
 from compliance_agent.detectores.e3_lote_pacote import E3LotePacote
+from compliance_agent.detectores.e4_visita_tecnica import E4VisitaTecnica
+from compliance_agent.detectores.e5_edital_iterado import E5EditalIterado
+from compliance_agent.detectores.e6_pontuacao_dirigida import E6PontuacaoDirigida
 from compliance_agent.detectores.j1_cartel import J1Cartel
 from compliance_agent.detectores.j2_propostas_cobertura import J2PropostasCobertura
 from compliance_agent.detectores.j3_desconto_anomalo import J3DescontoAnomalo
 from compliance_agent.detectores.j4_supressao_propostas import J4SupressaoPropostas
+from compliance_agent.detectores.j5_digitais_compartilhadas import J5DigitaisCompartilhadas
+from compliance_agent.detectores.j6_subcontratacao_cruzada import J6SubcontratacaoCruzada
+from compliance_agent.detectores.j7_inabilitacao_seletiva import J7InabilitacaoSeletiva
 from compliance_agent.detectores.p1_especificacao_dirigida import P1EspecificacaoDirigida
 from compliance_agent.detectores.p2_cotacoes_combinadas import P2CotacoesCombinadas
 from compliance_agent.detectores.p3_sobrepreco import P3Sobrepreco
 from compliance_agent.detectores.p4_fracionamento import P4Fracionamento
 from compliance_agent.detectores.p5_emergencia_fabricada import P5EmergenciaFabricada
+from compliance_agent.detectores.x1_crescimento_aditivo import X1CrescimentoAditivo
+from compliance_agent.detectores.x2_prorrogacao_perpetua import X2ProrrogacaoPerpetua
+from compliance_agent.detectores.x3_execucao_financeira import X3ExecucaoFinanceira
+from compliance_agent.detectores.x4_carona_abusiva import X4CaronaAbusiva
+from compliance_agent.detectores.x5_jogo_planilha import X5JogoDePlanilha
+from compliance_agent.detectores.x6_entrega_fantasma import X6EntregaFantasma
 
 # REGISTRO de detectores disponíveis (id → instância). Os próximos cards se registram aqui.
 REGISTRO: dict[str, Detector] = {
@@ -54,12 +67,25 @@ REGISTRO: dict[str, Detector] = {
         J4SupressaoPropostas(),  # fase de julgamento — supressão de propostas/licitante único
         P3Sobrepreco(),
         CFachada(),
+        J5DigitaisCompartilhadas(),  # julgamento — propostas com metadados/redação/origem compartilhados
+        J6SubcontratacaoCruzada(),   # julgamento/execução — subcontratar perdedores / consórcio anômalo
+        J7InabilitacaoSeletiva(),    # julgamento — inabilitação seletiva (dois pesos na sessão)
         E1Barreira(),    # fase de edital — barreira de entrada/qualificação
         E2Prazos(),      # fase de edital — publicidade e prazos minimizados
         E3LotePacote(),  # fase de edital — lote-pacote/agregação anticompetitiva
+        E4VisitaTecnica(),     # fase de edital — visita técnica obrigatória como filtro
+        E5EditalIterado(),     # fase de edital — republicações dirigidas (edital iterado)
+        E6PontuacaoDirigida(),  # fase de edital — pontuação técnica dirigida (técnica e preço)
         P1EspecificacaoDirigida(),  # fase de planejamento — especificação dirigida/marca disfarçada
         P2CotacoesCombinadas(),     # fase de planejamento — cotações combinadas/orçamentos de fachada
         P5EmergenciaFabricada(),    # fase de planejamento — emergência fabricada (dispensa art. 75 VIII)
+        C6VinculoPolitico(),   # perfil do contratado — vínculo político-financeiro (doações TSE); multiplicador
+        X1CrescimentoAditivo(),  # execução — crescimento aditivo (teto art. 125)
+        X2ProrrogacaoPerpetua(),  # execução — prorrogação perpétua sem teste de mercado
+        X3ExecucaoFinanceira(),   # execução — execução financeira anômala (tríade SIAFE/atesto/fila)
+        X4CaronaAbusiva(),        # execução — carona abusiva em ARP (limites art. 86)
+        X5JogoDePlanilha(),       # execução — jogo de planilha (sobrepreço correlacionado a aditivo)
+        X6EntregaFantasma(),      # execução — entrega fantasma / atesto de fachada (culmina em diligência)
     )
 }
 
@@ -70,15 +96,28 @@ PESOS_DETECTOR: dict[str, float] = {
     "J2": PESOS_FAMILIA["conluio"],
     "J3": PESOS_FAMILIA["conluio"],
     "J4": PESOS_FAMILIA["conluio"],
+    "J5": PESOS_FAMILIA["conluio"],
+    "J6": PESOS_FAMILIA["conluio"],
+    "J7": PESOS_FAMILIA["conluio"],
     "P3": PESOS_FAMILIA["preco"],
     "C1": PESOS_FAMILIA["perfil"], "C2": PESOS_FAMILIA["perfil"],
     "C3/C5": PESOS_FAMILIA["perfil"], "C4": PESOS_FAMILIA["perfil"],
+    "C6": PESOS_FAMILIA["perfil"],
     "E1": PESOS_FAMILIA["desenho_certame"],
     "E2": PESOS_FAMILIA["desenho_certame"],
     "E3": PESOS_FAMILIA["desenho_certame"],
+    "E4": PESOS_FAMILIA["desenho_certame"],
+    "E5": PESOS_FAMILIA["desenho_certame"],
+    "E6": PESOS_FAMILIA["desenho_certame"],
     "P1": PESOS_FAMILIA["desenho_certame"],
     "P2": PESOS_FAMILIA["preco"],
     "P5": PESOS_FAMILIA["desenho_certame"],
+    "X1": PESOS_FAMILIA["execucao"],
+    "X2": PESOS_FAMILIA["execucao"],
+    "X3": PESOS_FAMILIA["execucao"],
+    "X4": PESOS_FAMILIA["execucao"],
+    "X5": PESOS_FAMILIA["execucao"],
+    "X6": PESOS_FAMILIA["execucao"],
 }
 
 
@@ -108,8 +147,9 @@ def rodar_fornecedor(cnpj: str, *, contexto: dict | None = None, exculpatoria: b
         ctx.update(contexto)
 
     resultados: list[ResultadoDetector] = []
-    # P3 e outros detectores de fornecedor de 1-resultado via pipeline padrão
-    simples = [d for d in REGISTRO.values() if d.familia == "preco"]
+    # P3 (preço) + C6 (perfil/vínculo político, multiplicador) — detectores de fornecedor de 1-resultado via
+    # pipeline padrão. C6 é conservador (máx. medio) e nao_avaliavel sem QSA+doações no contexto (honesto).
+    simples = [d for d in REGISTRO.values() if d.familia == "preco" or d.id == "C6"]
     resultados.extend(pipeline(simples, ctx, exculpatoria=exculpatoria, gerar=gerar))
 
     # C (fachada) — multi-resultado por investigação
@@ -139,7 +179,7 @@ def rodar_edital(processo: str, *, contexto: dict | None = None, exculpatoria: b
         ctx.update(contexto)
     if gerar is not None and "gerar" not in ctx:
         ctx["gerar"] = gerar
-    dets = [d for d in REGISTRO.values() if d.id in ("E1", "E2", "E3")]
+    dets = [d for d in REGISTRO.values() if d.id in ("E1", "E2", "E3", "E4", "E5", "E6")]
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 
@@ -185,7 +225,28 @@ def rodar_julgamento(processo: str, *, contexto: dict | None = None, exculpatori
         ctx.update(contexto)
     if gerar is not None and "gerar" not in ctx:
         ctx["gerar"] = gerar
-    dets = [d for d in REGISTRO.values() if d.id in ("J2", "J3", "J4")]
+    dets = [d for d in REGISTRO.values() if d.id in ("J2", "J3", "J4", "J5", "J6", "J7")]
+    return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
+
+
+def rodar_execucao(processo: str, *, contexto: dict | None = None, exculpatoria: bool = False, gerar=None) -> list[ResultadoDetector]:
+    """Orquestra os detectores da FASE DE EXECUÇÃO (X1–X6) sobre o contexto de execução de um contrato. Reusa
+    `pipeline` (um detector que quebra vira nao_avaliavel honesto, não derruba os outros).
+
+    `contexto` traz o que os cards pedem (interface honesta — campo essencial ausente → nao_avaliavel):
+      X1 → {valor_inicial, tipo_objeto?, aditivos[{data?,tipo,valor,justificativa?,descricao_objeto?}], data_inicio_execucao?, indice_atualizacao?}
+      X2 → {vigencia_inicio?, vigencia_fim_atual?|tempo_total_anos?, prorrogacoes[{data?,anos?,pesquisa_vantajosidade?}], cadeia_emergencia?}
+      X3 → {pagamentos[{data_empenho?,data_liquidacao?,data_pagamento,valor,data_atesto?}], tipo_objeto?, tem_cronograma?, fila_orgao?, medicoes?}
+      X4 → {ata{itens[{item,quantitativo_registrado}]}, adesoes[{aderente,item,quantidade,data?,justificativa?,municipio?}], preco_ata_vs_mercado?}
+      X5 → {itens[{item,preco_contratado,quantidade_contratada,referencial,quantidade_executada?}]}
+      X6 → {pagamentos[{valor,data,tem_nf?,tem_recebimento?}]|atestos[{texto,data}], medicoes?, fiscais?, capacidade_fornecedor?, volume_contratado?, tipo_objeto?, documento_conflitante?}
+    `gerar` (callable) alimenta as rubricas LLM-opcionais; ausente → partes subjetivas degradam para nao_avaliavel."""
+    ctx: dict[str, Any] = {"processo": str(processo)}
+    if contexto:
+        ctx.update(contexto)
+    if gerar is not None and "gerar" not in ctx:
+        ctx["gerar"] = gerar
+    dets = [d for d in REGISTRO.values() if d.id in ("X1", "X2", "X3", "X4", "X5", "X6")]
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 
@@ -208,17 +269,31 @@ __all__ = [
     "J2PropostasCobertura",
     "J3DescontoAnomalo",
     "J4SupressaoPropostas",
+    "J5DigitaisCompartilhadas",
+    "J6SubcontratacaoCruzada",
+    "J7InabilitacaoSeletiva",
     "P3Sobrepreco",
     "CFachada",
+    "C6VinculoPolitico",
     "E1Barreira",
     "E2Prazos",
     "E3LotePacote",
+    "E4VisitaTecnica",
+    "E5EditalIterado",
+    "E6PontuacaoDirigida",
     "P1EspecificacaoDirigida",
     "P2CotacoesCombinadas",
     "P5EmergenciaFabricada",
+    "X1CrescimentoAditivo",
+    "X2ProrrogacaoPerpetua",
+    "X3ExecucaoFinanceira",
+    "X4CaronaAbusiva",
+    "X5JogoDePlanilha",
+    "X6EntregaFantasma",
     "rodar_orgao",
     "rodar_fornecedor",
     "rodar_edital",
     "rodar_planejamento",
     "rodar_julgamento",
+    "rodar_execucao",
 ]
