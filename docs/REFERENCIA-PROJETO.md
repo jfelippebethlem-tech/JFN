@@ -69,8 +69,9 @@ CNPJ-raiz) → destrava grafo/concentração + matriz+filial · score anomalia e
 ## 6. GAPS CONHECIDOS
 Lex×SEI precisa input SEI real (sweep rodando aos poucos) · Massare hit-rate OOS (mitigado por backtest) · conluio
 intra-licitação (PNCP só expõe vencedor) · quarentena de ingestão stale mas base já limpa (baixa alavancagem) ·
-god-files (server.py 1959, inteligencia.py ~1800, lex.py ~1100 — split só oportunístico) · server.py possível leak
-de browser Playwright (investigar guard).
+god-files (server.py ~2000, inteligencia.py ~1800, lex.py ~1100 — split só oportunístico) · ~~server.py leak de
+browser Playwright~~ **RESOLVIDO (cont.31, `afeba84`):** guard de idle fecha o Chromium ocioso após 15min
+(env `JFN_BROWSER_IDLE_MIN`, 0=off) e relança lazy; seguro sob `_agent_lock`.
 
 ## 7. INVESTIGAÇÃO DE DUE DILIGENCE (fachada/laranja) — o Lex conduz e apresenta
 `compliance_agent/investigacao_dd.py::investigar(cnpj, cadastral, pagamentos, usar_rede, geocode)` → hipóteses
@@ -142,6 +143,14 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-13 cont.31-b (segue):** **GUARD DE IDLE DO BROWSER** (`afeba84`, fecha o gap do §6). O Chromium do
+  server.py vivia 24h ocioso (~200MB presos numa VM sem swap — diagnosticado ao achar 1 chrome de 20,5h com só
+  16s de CPU). Reaper async encerra após 15min sem uso (env `JFN_BROWSER_IDLE_MIN`, 0=off) + relança lazy no
+  `get_agent()`; seguro sob `_agent_lock` (re-checa o ócio após o lock). Login SIAFE best-effort unificado em todo
+  launch fresco. 4 testes + verificado no jfn.service (boot OK, API 200, guard ativo). **Também:** restart limpo
+  liberou o Chromium preso de 20,5h a pedido do dono (ocioso confirmado antes). **Sweeps checados:** SEI 848 cdp
+  (progredindo, +145 em 06-12), benefícios 23.691 (completo), sem pausa, crons disparando. Anomalia leve a olhar:
+  cron do cruzador 23h disparou mas não deixou "início" no log (não foi load-guard nem pausa).
 - **06-13 cont.31 (goal, agentes):** **⭐ 30/30 DETECTORES DE LICITAÇÃO COMPLETOS** (`cefeee6`). Os 13 cards que
   faltavam, em 4 lotes de subagentes VM-safe (ruff+pytest isolados por arquivo, eu integrei o `__init__`):
   **J5** digitais compartilhadas, **J6** subcontratação cruzada/consórcio, **J7** inabilitação seletiva ·
