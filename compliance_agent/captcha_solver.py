@@ -46,12 +46,6 @@ def _download(url: str, session: Optional[requests.Session] = None) -> bytes:
     return r.content
 
 
-def _save(img: np.ndarray, name: str) -> Path:
-    p = TMP / name
-    cv2.imwrite(str(p), img)
-    return p
-
-
 def _preprocess(image, *, gray=True, blur=True, threshold=True):
     if gray:
         if len(image.shape) == 3:

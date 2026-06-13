@@ -48,43 +48,6 @@ GROQ_MODEL_SMART = os.environ.get("GROQ_MODEL_SMART", "llama-3.3-70b-versatile")
 
 # ── Cliente genérico OpenAI-compatible ────────────────────────────────────────
 
-async def _openai_compat_chat(
-    base_url: str,
-    api_key: str,
-    model: str,
-    messages: list[dict],
-    max_tokens: int = 1024,
-    extra_headers: dict | None = None,
-) -> str:
-    """
-    Envia uma requisição para qualquer endpoint OpenAI-compatible.
-    Retorna o conteúdo da resposta como string.
-    """
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
-    if extra_headers:
-        headers.update(extra_headers)
-
-    payload = {
-        "model": model,
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": 0.1,
-    }
-
-    async with httpx.AsyncClient(timeout=60) as client:
-        resp = await client.post(
-            f"{base_url}/chat/completions",
-            json=payload,
-            headers=headers,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data["choices"][0]["message"]["content"]
-
-
 def _openai_compat_chat_sync(
     base_url: str,
     api_key: str,
