@@ -210,6 +210,21 @@ def buscar_candidatos(termo: str, limite: int = 8) -> list[dict]:
                 "GROUP BY favorecido_cpf ORDER BY total DESC LIMIT 50",
                 (f"%{alvo}%",)):
                 _add(r["cnpj"], r["nome"], "obs")
+            # fallback SEM-ESPAÇO: "engeprat" (junto) não casa "ENGE PRAT" no LIKE normal. Colapsa os espaços
+            # dos DOIS lados e tenta de novo — só quando nada foi achado (full-scan ~1-2s, aceitável no fallback).
+            if not cands:
+                alvo_ns = alvo.replace(" ", "")
+                if len(alvo_ns) >= 3:
+                    for r in con.execute(
+                        "SELECT cnpj, razao_social FROM empresas "
+                        "WHERE REPLACE(lower(razao_social), ' ', '') LIKE ? LIMIT 50", (f"%{alvo_ns}%",)):
+                        _add(r["cnpj"], r["razao_social"], "empresas_db")
+                    for r in con.execute(
+                        "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, COUNT(*) n, "
+                        "ROUND(SUM(valor),2) total FROM ordens_bancarias "
+                        "WHERE REPLACE(lower(favorecido_nome), ' ', '') LIKE ? AND favorecido_cpf IS NOT NULL "
+                        "GROUP BY favorecido_cpf ORDER BY total DESC LIMIT 50", (f"%{alvo_ns}%",)):
+                        _add(r["cnpj"], r["nome"], "obs")
             # preenche métricas de OB para todos os candidatos
             for cnpj, c in cands.items():
                 r = con.execute(
