@@ -116,21 +116,6 @@ async def _sessao_perdida(pg) -> bool:
                                   "faça login novamente", "faca login novamente"))
 
 
-async def _click_texto(pg, textos: list[str]):
-    """Clica via JS no 1º elemento VISÍVEL cujo texto bate (sem o auto-wait de 30s do Playwright)."""
-    return await pg.evaluate(
-        """(textos)=>{
-            const vis = el => { const r = el.getBoundingClientRect(); const s = getComputedStyle(el);
-                return r.width>0 && r.height>0 && s.visibility!=='hidden' && s.display!=='none' && s.opacity!=='0'; };
-            const els = [...document.querySelectorAll('a,button,span,div,td,input[type=button],input[type=submit]')];
-            for (const t of textos) {
-                const el = els.find(e => ((e.innerText||e.value||'').trim() === t) && vis(e));
-                if (el) { el.click(); return t; }
-            }
-            return null;
-        }""", textos)
-
-
 async def _logado(pg) -> bool:
     return await pg.evaluate("""()=>[...document.querySelectorAll('a.xyo')].some(e=>(e.innerText||'').trim()==='Execução')""")
 
@@ -344,30 +329,6 @@ async def _remover_limite(pg) -> str:
             if await tabela_pronta(pg):
                 break
     return estado
-
-
-TABLE = "pt1:tblOBOrcamentaria:tabViewerDec"
-_EV_SCROLL = ('<m xmlns="http://oracle.com/richClient/comm">'
-              '<k v="type"><s>scroll</s></k><k v="first"><n>{first}</n></k><k v="rows"><n>50</n></k></m>')
-
-
-def _viewstate_txt(text):
-    m = (re.search(r'javax\.faces\.ViewState[^>]*?>\s*<!\[CDATA\[(.*?)\]\]>', text, re.S)
-         or re.search(r'name="javax\.faces\.ViewState"[^>]*value="([^"]+)"', text)
-         or re.search(r'<value>([^<]+)</value>', text))
-    return m.group(1) if m else None
-
-
-def _parse_rows_txt(text):
-    """Extrai linhas de OB do envelope PPR (regex). Retorna lista de listas (células)."""
-    rows = []
-    for tr in re.findall(r'<tr[^>]*>(.*?)</tr>', text, re.S):
-        cells = [re.sub(r'<[^>]+>', '', c).replace('&nbsp;', ' ').strip()
-                 for c in re.findall(r'<td[^>]*>(.*?)</td>', tr, re.S)]
-        cells = [re.sub(r'\s+', ' ', x) for x in cells]
-        if OB_RE.search(tr) and len([c for c in cells if c]) >= 4:
-            rows.append(cells)
-    return rows
 
 
 TABLE_SCROLLER = "pt1:tblOBOrcamentaria:tabViewerDec::scroller"

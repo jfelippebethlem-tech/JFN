@@ -75,15 +75,6 @@ def _make_pdf_class():
         return None
 
 
-def _severidade_color(sev: str) -> tuple[int, int, int]:
-    """Return (R, G, B) tuple for severity level."""
-    if sev == "alta":
-        return (239, 68, 68)    # red
-    elif sev in ("média", "media"):
-        return (245, 158, 11)   # amber
-    return (34, 197, 94)        # green
-
-
 def _t(s: str) -> str:
     """Sanitize text for Helvetica (Latin-1): replace chars outside 0x00-0xFF."""
     return (

@@ -396,65 +396,6 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     return res
 
 
-async def _ler_publico(b, numero: str, tentativas_captcha: int = 5) -> dict:
-    """Fallback p/ processo RESTRITO à unidade do itkava ('Unidade atual não possui acesso ao processo
-    restrito'): lê pela **Pesquisa PÚBLICA** do SEI (`md_pesq_processo_pesquisar.php`) com **captcha** (OCR).
-    Protocolo SEM prefixo 'SEI-' (formato do dono). Contexto NOVO (sem a sessão itkava). Degrada honesto."""
-    proto = re.sub(r"(?i)^sei[-\s]*", "", (numero or "").strip())
-    url = ("https://sei.rj.gov.br/sei/modulos/pesquisa/md_pesq_processo_pesquisar.php"
-           "?acao_externa=protocolo_pesquisar&acao_origem_externa=protocolo_pesquisar&id_orgao_acesso_externo=0")
-    try:
-        from compliance_agent.captcha_solver import solve_captcha_image
-    except Exception:
-        return {}
-    cap_png = CACHE_DIR / "captcha_publico.png"
-    CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
-          user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-    pg = await ctx.new_page()
-    try:
-        for _t in range(tentativas_captcha):
-            await _goto_retry(pg, url)
-            await pg.wait_for_timeout(2500)
-            if not await pg.evaluate("""()=>!!document.querySelector('#txtProtocoloPesquisa')"""):
-                continue
-            await pg.fill('#txtProtocoloPesquisa', proto)
-            img = await pg.query_selector('#imgCaptcha')
-            if img:
-                try:
-                    await img.screenshot(path=str(cap_png))
-                    cap = solve_captcha_image(cap_png)
-                except Exception:
-                    cap = ""
-                if not cap:
-                    continue
-                await pg.fill('#txtInfraCaptcha', cap)
-            await pg.evaluate(r"""()=>{const b=document.querySelector('#sbmPesquisar')||[...document.querySelectorAll('button,input')].find(e=>/pesquisar/i.test(e.value||e.innerText||''));if(b)b.click()}""")
-            try:
-                await pg.wait_for_load_state('networkidle', timeout=15000)
-            except Exception:
-                pass
-            await pg.wait_for_timeout(2500)
-            body = ((await pg.evaluate("()=>document.body?document.body.innerText:''")) or "").lower()
-            if "incorret" in body or "caracteres da imagem" in body or "código da imagem incorreto" in body:
-                continue  # captcha errado → novo captcha
-            # abrir o 1º resultado (link do processo na pesquisa pública)
-            await pg.evaluate(r"""()=>{const a=document.querySelector('a[href*="md_pesq_processo_exibir"],a[href*="protocolo_visualizar"],a[href*="procedimento"]');if(a)a.click()}""")
-            await pg.wait_for_timeout(3500)
-            dump = await _extrair_de_todos_frames(pg)
-            if len(dump.get("documentos", [])) > 0:
-                tot = dump.get("texto", "")
-                return {"numero": numero, "via": "pesquisa_publica_captcha",
-                        "documentos": dump["documentos"], "relacionados": dump.get("relacionados", []),
-                        "texto": tot,
-                        "cnpjs": sorted(set(re.findall(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}", tot))),
-                        "valores": sorted(set(re.findall(r"R\$\s*[\d.,]+", tot)))}
-        return {}
-    finally:
-        await ctx.close()
-
-
 async def ler(numero: str, usar_cache: bool = True, tentativas_login: int = 30,
               tentar_publico: bool = True) -> dict:
     """READER SEI CANÔNICO (login itkava/ITERJ, SEM captcha) — única porta de leitura do SEI.
