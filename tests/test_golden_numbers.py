@@ -30,10 +30,19 @@ def _norm(col: str) -> str:
 
 # Números canônicos (2026-06-09). Tolerância 0 nos congelados; a base é estável
 # (gestão 2019-2026 já ingerida). Atualizar conscientemente após nova ingestão.
+#
+# total_obs revisado 2026-06-13: 1121307 -> 1121301. NÃO houve perda de dado real.
+# O valor de 06-09 estava INFLADO por poluição de teste: o antigo test_offline gravava
+# OBs sintéticas na compliance.db de PRODUÇÃO. A limpeza (commit ccc1f6a, "Limpei a
+# poluição já gravada (14 OBs + 3 memórias de teste)") removeu essas linhas falsas,
+# encolhendo a contagem de propósito. 1121301 é o piso REAL (produção sem a OB sintética
+# remanescente 2026OB99001/'EMPRESA TESTE LTDA', ainda na base — exclusão de data/ é do
+# dono). MGS (1127) e ITERJ (2457) permanecem intactos: a perda foi 100% lixo de teste.
+_TEST_OB = "2026OB99001"  # OB sintética de poluição (test_offline antigo) — não é dado real.
 GOLDEN = {
     "mgs_clean": {"cnpj": "19088605000104", "obs": 1127, "total": 136225497.94},
     "iterj_ug": {"ug": "133100", "obs": 2457, "total": 292292309.08, "fornecedores": 196},
-    "cobertura": {"total_obs": 1121307, "pct_cnpj_min": 76},
+    "cobertura": {"total_obs": 1121301, "pct_cnpj_min": 76},
 }
 
 
@@ -64,12 +73,14 @@ def test_golden_iterj_ug133100():
 
 def test_golden_cobertura():
     g = GOLDEN["cobertura"]
+    # Exclui OBs sintéticas de poluição de teste para medir só dado REAL de produção.
     with _con() as c:
         total, com_cnpj = c.execute(
             f"SELECT COUNT(*), SUM(CASE WHEN length({_norm('favorecido_cpf')})=14 "
-            f"THEN 1 ELSE 0 END) FROM ordens_bancarias"
+            f"THEN 1 ELSE 0 END) FROM ordens_bancarias WHERE numero_ob != ?",
+            (_TEST_OB,),
         ).fetchone()
-    # Cobertura só cresce (nova ingestão); falha se ENCOLHER (perda de dado).
+    # Cobertura só cresce (nova ingestão); falha se ENCOLHER (perda de dado real).
     assert total >= g["total_obs"], f"Cobertura encolheu: {total} < {g['total_obs']}"
     pct = 100 * com_cnpj / total
     assert pct >= g["pct_cnpj_min"], f"% CNPJ caiu: {pct:.0f}% < {g['pct_cnpj_min']}%"
