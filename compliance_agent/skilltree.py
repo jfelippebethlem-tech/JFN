@@ -217,12 +217,20 @@ class SkillTree:
         ]),
     ]
 
+    # comando-slash tappável por capacidade (o Telegram auto-linka "/cmd" → vira botão; tap preenche o input).
+    # Só os que o Yoda roteia explicitamente no prompt (config.yaml) — senão o tap não casa.
+    _CMD = {
+        "relatorio_inteligencia": "/relatorio", "relatorio_orgao": "/orgao", "listar_ugs": "/ug",
+        "dossie": "/dossie", "cruzamento": "/cruzamento",
+    }
+
     def render_menu(self, so_prontas: bool = True) -> str:
         """/lista = menu CURADO e enxuto, em linguagem natural (não despeja as ~47 capacidades). O catálogo
-        completo está no /skills. Itens cujo id não existe no capabilities.yaml são omitidos."""
+        completo está no /skills. Itens cujo id não existe no capabilities.yaml são omitidos. Itens com
+        comando-slash (`_CMD`) ganham um atalho TAPPÁVEL (o Telegram transforma "/cmd" em botão)."""
         linhas = [
             "🧭 *JFN — o que posso fazer por você*",
-            "_Fale em linguagem natural; eu, o Yoda, aciono o agente certo._",
+            "_Fale em linguagem natural ou toque num comando; eu, o Yoda, aciono o agente certo._",
         ]
         for emoji, titulo, itens in self._MENU_PUBLICO:
             disp = [(cid, nome, ex) for cid, nome, ex in itens if cid in self.capacidades]
@@ -231,7 +239,8 @@ class SkillTree:
             linhas.append("")
             linhas.append(f"{emoji} *{titulo}*")
             for _cid, nome, ex in disp:
-                linhas.append(f"• *{nome}*")
+                cmd = self._CMD.get(_cid)
+                linhas.append(f"• *{nome}*" + (f" — toque {cmd}" if cmd else ""))
                 linhas.append(f"   _«{ex}»_")
         linhas.append("")
         linhas.append("───────────")
