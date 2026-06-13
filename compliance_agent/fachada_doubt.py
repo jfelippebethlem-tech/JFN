@@ -122,8 +122,10 @@ def candidatos(con: sqlite3.Connection, limite: int = 15, *, incluir_aproximado:
     garantir_schema(con)
     cond_exato = "" if incluir_aproximado else " AND ev.exato = 1 "
     cond_block = "".join(f" AND UPPER(ef.razao) NOT LIKE '{p}' " for p in _BLOCKLIST_NOME)
-    # busca um conjunto MAIOR e filtra o perfil residencial em Python (precisa do helper da DD)
-    fetch = max(int(limite) * 20, 200) if so_residencial else int(limite)
+    # No modo residencial, o filtro (marcador no endereço) roda em Python, então é preciso buscar um conjunto
+    # AMPLO de dúvidas (o GROUP BY de 1,1M OBs já é o custo; trazer mais linhas depois é barato) p/ ter recall
+    # de fachadas residenciais em toda a faixa de R$, não só as de maior valor. Override por env.
+    fetch = int(os.environ.get("FACHADA_FETCH", "12000")) if so_residencial else int(limite)
     sql = f"""
         SELECT ev.cnpj, ev.lat, ev.lon, ev.exato, ev.status, ev.visual_classe, ev.evidencia,
                ef.razao, ef.endereco, ef.municipio, ef.uf, ef.cep,
