@@ -143,6 +143,22 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-13 cont.31-d (segue):** **Cobertura total dos sweeps + consolidação de ferramentas.** (1) `tools/sweep_full.sh`
+  (`69edd51`): drena o universo INTEIRO — endereço (gap ~4,5k) + fachada DD (TODAS as 151 UGs, `--limite 0`, não só
+  cauda) + sócios/CPF (resolver). VM-safe (nice/ionice, load-guard≥3, slices bounded, SERIALIZADO, **lock flock**
+  single-instance, time-bounded MAXH=6h, resumível via tabelas+cache+`data/.sweep_full_fachada_done`). **Está
+  RODANDO** (nohup; se morrer no fim da sessão, relançar `bash tools/sweep_full.sh 6` continua de onde parou).
+  (2) **CPF de sócio — verdade honesta:** teto ≈ **1.081** (TSE 624 + favorecidos-PF 457); QSA público mascarado
+  por LGPD = parede. `ingerir_cpf_oficial` é DORMENTE (depende de base oficial que o dono pode não obter — NÃO é
+  alavanca). Único crescimento legítimo = docs contrato-social/habilitação no SEI (sweep lento; cache hoje é
+  financeiro → só 10 em `sei_cpf`). NÃO chega a ~100%. (3) **gitnexus** instalado (CLI 1.6.7 + índice 126M: 8155
+  símbolos/20651 arestas) e agora **ÚNICO MCP de código** — codegraph REMOVIDO do `~/.claude/mcp-local.json`
+  (backup `.bak`; binário inerte em disco); graphify mantido (escopo qualquer-input). (4) Guard de idle do browser
+  SIAFE (server.py) OK; **Chrome 9222 = `chrome-jfn.service`** (systemd Restart=always, NÃO leak — reaper revertido).
+  **>>> PRÓXIMA SESSÃO (pedido do dono):** construir o **doubt-sender de fachada por Telegram** — quando a DD de
+  fachada ficar em DÚVIDA num endereço (não decide baldio/residencial/sede real), buscar **Street View**
+  (`GOOGLE_MAPS_KEY` ✓ no .env) e **enviar a foto+contexto ao Telegram do dono** (envio via `tools/enviar_sessao_
+  telegram.py` + TELEGRAM_BOT_TOKEN/CHAT_ID ✓), registrar a resposta humana (fachada/legítimo) como veredito.
 - **06-13 cont.31-c (segue):** **SWEEPS À PROVA DE CRASH + todos provados verdes** (pedido do dono: "os sweeps
   não podem dar crash"). O SEI sweep morria com Node EPIPE não-tratado quando o `timeout` matava o browser à
   força. Fixes: (`1664aac`) sessão de browser sob try/except → morte de browser/pipe vira saída LIMPA logada,
