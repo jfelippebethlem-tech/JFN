@@ -260,3 +260,29 @@ def test_dd_veredito_indicio(monkeypatch):
     out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 500000})
     h = [x for x in out["hipoteses"] if x["codigo"] == "H-END-HUMANO"]
     assert h and h[0]["status"] == "INDICIO"
+
+
+# ───────────────────── hipóteses Google na DD (verificacao_sede) ─────────────────────
+def test_dd_hipoteses_google_sede(monkeypatch):
+    from compliance_agent import investigacao_dd as dd
+    # sem veredito humano → as hipóteses Google entram
+    monkeypatch.setattr("compliance_agent.fachada_doubt.veredito_humano", lambda cnpj, db=None: None)
+    monkeypatch.setattr(dd, "_verificacao_sede", lambda cnpj, db_path=None: {
+        "status": "INDICIO", "nivel": "ALTO", "geo_tipo": "APPROXIMATE", "addr_completo": 0,
+        "addr_residencial": 1, "places_achou": 0, "places_bate_nome": None, "evidencia": "x"})
+    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 6_000_000})
+    cods = {h["codigo"] for h in out["hipoteses"]}
+    assert {"H-END-RESID-GOOGLE", "H-SEM-PERFIL", "H-ENDERECO-INVALIDO"} <= cods
+
+
+def test_dd_google_suprimido_por_veredito_humano(monkeypatch):
+    from compliance_agent import investigacao_dd as dd
+    # veredito humano 'real' → NÃO emite as hipóteses Google (o auditor vence)
+    monkeypatch.setattr("compliance_agent.fachada_doubt.veredito_humano",
+                        lambda cnpj, db=None: {"status": "real", "em": "2026-06-13", "raw": "manual"})
+    monkeypatch.setattr(dd, "_verificacao_sede", lambda cnpj, db_path=None: {
+        "status": "INDICIO", "nivel": "ALTO", "geo_tipo": "APPROXIMATE", "addr_completo": 0,
+        "addr_residencial": 1, "places_achou": 0, "places_bate_nome": None, "evidencia": "x"})
+    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 6_000_000})
+    cods = {h["codigo"] for h in out["hipoteses"]}
+    assert not ({"H-END-RESID-GOOGLE", "H-SEM-PERFIL", "H-ENDERECO-INVALIDO"} & cods)
