@@ -1599,7 +1599,7 @@ async def api_compliance_buscar(q: str = "", tabela: str = "todos"):
 
     Query params:
         q:      Search term.
-        tabela: contratos | doerj | alertas | todos (default: todos).
+        tabela: contratos | doerj | alertas | fornecedores | todos (default: todos).
     """
     if not q:
         return JSONResponse(content={"error": "Parâmetro 'q' é obrigatório"}, status_code=400)
@@ -1615,6 +1615,12 @@ async def api_compliance_buscar(q: str = "", tabela: str = "todos"):
             result["doerj"] = buscar_doerj_fts(q)
         if tabela in ("alertas", "todos"):
             result["alertas"] = buscar_alertas_fts(q)
+        if tabela in ("fornecedores", "todos"):
+            # Favorecidos de OB (ordens_bancarias) NÃO entram no FTS acima — reusa o
+            # resolver do /relatorio (empresas+OB, LIKE + fallback sem-espaço), que
+            # casa nomes como "MGS". Sem isto, buscar fornecedor sempre vinha vazio.
+            from compliance_agent.reporting.inteligencia import buscar_candidatos
+            result["fornecedores"] = buscar_candidatos(q)
         return JSONResponse(content=result)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)

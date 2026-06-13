@@ -6,6 +6,7 @@ payroll, and relationship data is stored here before graph analysis.
 """
 
 import importlib.util
+import logging
 import os
 import sys
 from datetime import datetime
@@ -18,6 +19,8 @@ from pathlib import Path
 
 
 DB_PATH = Path(__file__).parent.parent.parent / "data" / "compliance.db"
+
+logger = logging.getLogger(__name__)
 
 
 def _resolver_db(db_path=None) -> Path:
@@ -428,7 +431,22 @@ def init_db(db_path=None):
     engine = get_engine(db_path)
     Base.metadata.create_all(engine)
     _migrate(engine)
+    _criar_indices_fts_seguro(db_path)
     return engine
+
+
+def _criar_indices_fts_seguro(db_path=None):
+    """Cria os índices FTS5 (busca textual) sem derrubar o boot se falhar.
+
+    Import tardio para evitar ciclo (fts.py importa deste módulo). Sem esta chamada
+    as tabelas fts_* nunca existem — `criar_indices_fts()` era órfã — e
+    /api/compliance/buscar retornava vazio para QUALQUER termo (erro engolido).
+    """
+    try:
+        from compliance_agent.database.fts import criar_indices_fts
+        criar_indices_fts(db_path)
+    except Exception as exc:
+        logger.warning("Falha ao criar índices FTS (busca textual indisponível): %s", exc)
 
 
 def _sync_columns(engine):
