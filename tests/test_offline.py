@@ -25,6 +25,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 # Garante que a raiz do projeto esteja no sys.path (rodando standalone ou via pytest).
 _RAIZ = Path(__file__).resolve().parents[1]
 if str(_RAIZ) not in sys.path:
@@ -412,6 +414,13 @@ def test_sei_detecta_captcha_e_marca_fallback():
 
 def test_sei_cdp_sem_chrome_retorna_erro_claro():
     """Sem Chrome 9222, o leitor CDP devolve erro explicativo (não crasha)."""
+    import socket
+    _s = socket.socket()
+    _s.settimeout(0.5)
+    _up = _s.connect_ex(("127.0.0.1", 9222)) == 0
+    _s.close()
+    if _up:  # neste ambiente o chrome-jfn.service ocupa a 9222 → a premissa do teste não se aplica
+        pytest.skip("Chrome 9222 (chrome-jfn.service) presente — teste assume ausência de Chrome")
     from compliance_agent.collectors.sei_cdp import ler_processo_sei_via_chrome
     res = asyncio.run(ler_processo_sei_via_chrome("E-12/345/2026", usar_cache=False))
     assert res["numero"] == "E-12/345/2026"
