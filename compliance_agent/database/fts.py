@@ -44,6 +44,9 @@ def _get_conn(db_path=None) -> sqlite3.Connection:
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
+    # Espera o lock em vez de falhar na hora — o sweep de sede escreve no DB em
+    # paralelo; sem isto, criar_indices_fts() dava "database is locked" e abortava.
+    conn.execute("PRAGMA busy_timeout=30000")
     return conn
 
 
