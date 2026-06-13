@@ -178,10 +178,17 @@ manuais quando expirarem (caem no nous até lá).
   (`ca7446e`). **`/api/compliance/buscar` (FTS) — bug achado:** os `buscar_*_fts` mascaravam `no such table` como
   "0 resultados" (`except: pass`), e `criar_indices_fts()` é ÓRFÃ (nunca chamada no bootstrap) → o endpoint retorna
   vazio para TODO termo (não só MGS; e MGS é favorecido de OB, fonte que o FTS nem indexa — só contratos/doerj/alertas).
-  Fix de honestidade: trocado o `pass` por log que distingue índice-ausente (`bd73959`). **PENDENTE** (não feito —
-  escreve no DB + rebuild custoso, risco com sweep): wirar `criar_indices_fts()` no bootstrap e/ou fazer o `/buscar`
-  cobrir favorecidos de OB (reusando `buscar_candidatos()` de `inteligencia.py`). O `/relatorio` (que o dono usa) já
-  resolve MGS — pipelines independentes.
+  Fix de honestidade: trocado o `pass` por log que distingue índice-ausente (`bd73959`). **FIX FUNCIONAL FEITO
+  (cont.37):** (1) `init_db` chama `criar_indices_fts` (import tardio + try/except, não derruba boot); (2) `fts._get_conn`
+  passou a resolver `JFN_DB` (era `DB_PATH` fixo, furava isolamento) + `busy_timeout=30000` + guard de existência
+  (no-op se já criado, pois `init_db` roda por request); (3) `/buscar` ganhou chave `fornecedores` via `buscar_candidatos`
+  → **q=MGS agora retorna MGS CLEAN (R$136M) e MGS BRASIL** (antes: vazio). Commits `203612a`/`93ac556`/`98d072e`.
+  **Honestidade provada em prod:** logs mostraram "índice ausente... rode criar_indices_fts" (não mais silêncio).
+  **2 PENDÊNCIAS** (janela SEM sweep): (a) as tabelas `fts_*` ainda não criaram em prod — `database is locked` com o
+  `sweep_sede_google` escrevendo; criar DDL durante sweep é frágil mesmo com busy_timeout → auto-cria no 1º `/buscar`
+  após o sweep (idempotente); (b) `/buscar` leva ~11s (full-scan de `buscar_candidatos` em 1,12M OB, sem índice em
+  `favorecido_nome`, agravado pelo sweep) — otimizar com índice ou tornar async. CLAUDE.md: bloco do gitnexus
+  reinjetado pelo `analyze` e MANTIDO a pedido do dono.
 - **06-13 cont.35 (comandos do Yoda):** comandos `/cmd` ficaram **tappáveis no `/lista`** (auto-link do Telegram);
   **fix do resolver `engeprat`** (`REPLACE(nome,' ','')` casa `'ENGE PRAT'`); skill **`/dossie`** + endpoint
   **`/api/dossie` async**; **queue tratado na SKILL.md** (não no system-prompt) — o Yoda descartava pedido novo
