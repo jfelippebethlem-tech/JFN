@@ -1,58 +1,23 @@
 # -*- coding: utf-8 -*-
-"""Guard de idle + auto-abertura do Chrome 9222 do Hermes.
+"""Auto-garantia do Chrome 9222 do Hermes.
 
-Requisito do dono: "o Hermes tem que saber abrir o Chrome 9222 quando necessário". O Chrome 9222 vivia ocioso
-24h+ (mesmo leak do server.py). Solução: (1) `_garantir_chrome()` ABRE o Chrome sob demanda em QUALQUER ação de
-browser (não depende do LLM lembrar de 'abrir_chrome'); (2) o idle-guard do server.py o fecha quando ocioso e o
-Hermes reabre transparente. Estes testes cobrem a lógica SEM Chrome real (mock de chrome_disponivel/abrir/fechar).
+Requisito do dono: "o Hermes tem que saber abrir o Chrome 9222 quando necessário". O Chrome 9222 é o
+`chrome-jfn.service` (systemd user, Restart=always) — ponte CDP PERSISTENTE p/ coleta TFE/SIAFE ao vivo (NÃO é
+leak, NÃO se fecha por idle: brigaria com o systemd). `_garantir_chrome()` é a rede de proteção: em qualquer
+ação de browser (navegar_e_ler, ler_sei), se a porta 9222 não responde, (re)inicia o serviço canônico — sem
+depender do LLM lembrar de 'abrir_chrome' e sem lançar um chrome concorrente. Testes mockam a porta (sem Chrome).
 Rodar só este:  .venv/bin/python -m pytest tests/test_hermes_chrome_guard.py -q
 """
 from __future__ import annotations
 
 import asyncio
 
-import pytest
-
 from compliance_agent import hermes_goal as hg
 
 
-def test_chrome_ocioso_infinito_quando_nunca_usado(monkeypatch):
-    """Sem uso registrado (_chrome_ultimo_uso=0), o ócio é infinito → o reaper fecha o Chrome leak na 1ª checagem."""
-    monkeypatch.setattr(hg, "_chrome_ultimo_uso", 0.0)
-    assert hg.chrome_ocioso_segundos() == float("inf")
-
-
-def test_chrome_ocioso_pequeno_apos_uso(monkeypatch):
-    """Após um uso recente, o ócio é pequeno (o reaper NÃO fecha durante missão ativa)."""
-    import time
-    monkeypatch.setattr(hg, "_chrome_ultimo_uso", time.monotonic())
-    assert hg.chrome_ocioso_segundos() < 5
-
-
-def test_garantir_chrome_abre_quando_fechado(monkeypatch):
-    """_garantir_chrome ABRE o Chrome se a porta não responde — o Hermes não depende do LLM nem de pré-abertura."""
-    chamou = {"abrir": False}
-
-    async def _disp():
-        return False
-
-    async def _abrir():
-        chamou["abrir"] = True
-        return {"ok": True, "ja_estava": False}
-
-    monkeypatch.setattr(hg, "chrome_disponivel", _disp)
-    monkeypatch.setattr(hg, "abrir_chrome_debug", _abrir)
-    monkeypatch.setattr(hg, "_chrome_ultimo_uso", 0.0)
-
-    r = asyncio.run(hg._garantir_chrome())
-    assert chamou["abrir"] is True, "deveria ter chamado abrir_chrome_debug com o Chrome fechado"
-    assert r.get("ok") is True
-    assert hg.chrome_ocioso_segundos() < 5, "uso deve ter sido marcado (timestamp atualizado)"
-
-
-def test_garantir_chrome_nao_reabre_se_ja_no_ar(monkeypatch):
-    """Idempotente: se o Chrome já está no ar, não reabre (não dispara processo à toa)."""
-    chamou = {"abrir": False}
+def test_garantir_chrome_noop_se_ja_no_ar(monkeypatch):
+    """Idempotente: Chrome 9222 já no ar → no-op, não toca no systemd nem abre chrome concorrente."""
+    chamou = {"systemctl": False, "abrir": False}
 
     async def _disp():
         return True
@@ -63,17 +28,32 @@ def test_garantir_chrome_nao_reabre_se_ja_no_ar(monkeypatch):
 
     monkeypatch.setattr(hg, "chrome_disponivel", _disp)
     monkeypatch.setattr(hg, "abrir_chrome_debug", _abrir)
+    monkeypatch.setattr(hg.subprocess, "run", lambda *a, **k: chamou.__setitem__("systemctl", True))
 
     r = asyncio.run(hg._garantir_chrome())
-    assert chamou["abrir"] is False
     assert r.get("ja_estava") is True
+    assert chamou["systemctl"] is False and chamou["abrir"] is False
 
 
-def test_fechar_chrome_idempotente_quando_ja_fechado(monkeypatch):
-    """fechar_chrome_debug é idempotente: Chrome já fechado → ja_fechado=True, sem tentar matar nada."""
+def test_garantir_chrome_sobe_o_servico_quando_fora(monkeypatch):
+    """Porta fora → (re)inicia o chrome-jfn.service (canônico), NÃO um chrome avulso."""
+    chamadas = {"cmd": None}
+
+    estados = iter([False, True])  # 1ª checagem: fora; depois do start: no ar
+
     async def _disp():
-        return False
+        try:
+            return next(estados)
+        except StopIteration:
+            return True
+
+    def _run(cmd, *a, **k):
+        chamadas["cmd"] = cmd
+        return None
 
     monkeypatch.setattr(hg, "chrome_disponivel", _disp)
-    r = asyncio.run(hg.fechar_chrome_debug())
-    assert r.get("ok") is True and r.get("ja_fechado") is True
+    monkeypatch.setattr(hg.subprocess, "run", _run)
+
+    r = asyncio.run(hg._garantir_chrome())
+    assert chamadas["cmd"] == ["systemctl", "--user", "start", "chrome-jfn.service"]
+    assert r.get("via") == "chrome-jfn.service"
