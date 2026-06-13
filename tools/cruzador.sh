@@ -9,7 +9,7 @@ PY=.venv/bin/python
 LOG=data/cruzador.log
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
-[ -f data/.pause_sweeps ] && exit 0
+[ -f data/.pause_sweeps ] && { say "pausado (.pause_sweeps) — pulei este ciclo"; exit 0; }
 # VM = 2 vCPU / 7,8GB / SEM swap → roda à NOITE sozinho; backstop se algo pesado ainda estiver vivo
 L=$(awk '{print int($1)}' /proc/loadavg); [ "$L" -ge 4 ] && { say "load $L alto — adia cruzador"; exit 0; }
 PRIO="nice -n 10 ionice -c2 -n6"
@@ -36,4 +36,5 @@ for ug in ugs:
         pass
 print(f"[cruzador] concentração-grupo: {ach}/60 UGs com indício")
 PYEOF
+say "concentracao-grupo rc=$?"
 say "fim"

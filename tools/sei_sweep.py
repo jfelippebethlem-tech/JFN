@@ -42,6 +42,26 @@ def _log(m: str):
     print(line, flush=True)
 
 
+# Assinaturas de MORTE de browser/pipe (Playwright/Chromium): quando aparecem, a sessão inteira está perdida —
+# não adianta seguir varrendo (toda leitura seguinte falha). Tratamos como saída limpa (cron repete), nunca crash.
+_SINAIS_BROWSER_MORTO = (
+    "epipe", "targetclosed", "target closed", "target page, context or browser has been closed",
+    "browser has been closed", "connection closed", "browser closed", "page closed",
+    "websocket", "pipe closed", "transport", "broken pipe", "playwright was closed",
+)
+
+
+def _browser_morto(exc: BaseException) -> bool:
+    """True se a exceção indica que o BROWSER/pipe caiu (não um erro pontual de um processo). Usado para abortar
+    a sessão de forma LIMPA em vez de insistir 20× num browser morto. Conservador: na dúvida, retorna False
+    (segue para o próximo processo) — só corta a sessão quando a assinatura é claramente de morte de browser."""
+    nome = type(exc).__name__.lower()
+    msg = str(exc).lower()
+    if "targetclosed" in nome or "browser" in nome and "closed" in nome:
+        return True
+    return any(s in msg for s in _SINAIS_BROWSER_MORTO)
+
+
 def _carregar_prog() -> dict:
     if PROG.exists():
         try:
@@ -220,74 +240,89 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
     await aguardar_load_async(max_por_core=1.5, espera_max=120)
     proxy = _proxy_do_env()
     n_ok = n_zero = n_doc_total = 0
-    async with browser_lock_async(espera_max=600), async_playwright() as pw:
-        b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"],
-                                     **({"proxy": proxy} if proxy else {}))
-        ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
-              user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                         "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
-        pg = await ctx.new_page()
-        try:
-            if not await login(pg, tentativas=tentativas_login):
-                _log("ABORTADO: login itkava não venceu o WAF agora (tente mais tarde).")
-                return
-            _log("login OK — varrendo…")
-            for i, (proc, nob, tot) in enumerate(fila, 1):
-                if PAUSE.exists():
-                    _log("pausa detectada (.pause_sei_sweep) — encerrando limpo."); break
-                t0 = time.time()
-                # a busca→abrir do SEI é INTERMITENTE (cai na caixa) — retenta até abrir (docs/relacionados>0),
-                # como o ler_com_cadeia. Sem retry, leituras válidas viravam "0 docs" (era o bug do sweep).
-                try:
-                    r, nd = {}, 0
-                    for _try in range(3):
-                        # SEMPRE fresco: _ja_lido_ok já pulou os sucessos; aqui são 0-doc/novos → não usar cache 0-doc.
-                        r = await ler_processo(pg, proc, usar_cache=False)
-                        nd = len(r.get("documentos") or [])
-                        # sucesso = DOCUMENTOS>0. relacionados sozinho (sem docs) é a CAIXA/desktop (~40 inbox),
-                        # NÃO um processo aberto — não contar como sucesso.
-                        if nd > 0:
+    # CRASH-PROOF (regra do dono: sweep NUNCA crasha): a sessão inteira do browser fica sob try/except. Se o
+    # browser/pipe MORRE (EPIPE, TargetClosed, WAF derrubando, lock estourado), vira SAÍDA LIMPA logada — o cron
+    # repete no próximo slot. Nada de traceback não-tratado nem Node crashando o processo.
+    try:
+        async with browser_lock_async(espera_max=600), async_playwright() as pw:
+            b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"],
+                                         **({"proxy": proxy} if proxy else {}))
+            ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
+                  user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                             "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            pg = await ctx.new_page()
+            try:
+                if not await login(pg, tentativas=tentativas_login):
+                    _log("ABORTADO: login itkava não venceu o WAF agora (tente mais tarde).")
+                    return
+                _log("login OK — varrendo…")
+                for i, (proc, nob, tot) in enumerate(fila, 1):
+                    if PAUSE.exists():
+                        _log("pausa detectada (.pause_sei_sweep) — encerrando limpo."); break
+                    t0 = time.time()
+                    # a busca→abrir do SEI é INTERMITENTE (cai na caixa) — retenta até abrir (docs/relacionados>0),
+                    # como o ler_com_cadeia. Sem retry, leituras válidas viravam "0 docs" (era o bug do sweep).
+                    try:
+                        r, nd = {}, 0
+                        for _try in range(3):
+                            # SEMPRE fresco: _ja_lido_ok já pulou os sucessos; aqui são 0-doc/novos → não usar cache 0-doc.
+                            r = await ler_processo(pg, proc, usar_cache=False)
+                            nd = len(r.get("documentos") or [])
+                            # sucesso = DOCUMENTOS>0. relacionados sozinho (sem docs) é a CAIXA/desktop (~40 inbox),
+                            # NÃO um processo aberto — não contar como sucesso.
+                            if nd > 0:
+                                break
+                            await asyncio.sleep(2)
+                    except Exception as e:  # noqa: BLE001
+                        _log(f"  [{i}/{len(fila)}] {proc} ERRO {type(e).__name__}: {str(e)[:60]}")
+                        # se foi o BROWSER que caiu, as próximas leituras também falham → aborta a sessão limpa
+                        # (o cron repete) em vez de logar 20 erros seguidos; demais erros: segue p/ o próximo.
+                        if _browser_morto(e):
+                            _log("  browser/pipe caiu no meio — encerrando a sessão LIMPO (cron repete). Sem crash.")
                             break
-                        await asyncio.sleep(2)
+                        continue
+                    # SEI-2: segue a ÁRVORE de relacionados (o processo de pagamento tem pouco; a licitação/
+                    # contrato relacionado tem a substância). Guarda 1<=N<=15 evita a CAIXA (~40 inbox).
+                    rel = r.get("relacionados") or []
+                    cadeia = []
+                    if seguir_arvore and 1 <= len(rel) <= 15:
+                        try:
+                            cadeia = await seguir_relacionados(pg, r.get("url") or "", rel, max_rel=max_rel_arvore)
+                        except Exception:  # noqa: BLE001
+                            cadeia = []
+                    nd_arv = sum(c.get("n_docs", 0) for c in cadeia)
+                    if cadeia:
+                        _salvar_cadeia_no_cache(proc, cadeia)  # Lex passa a enxergar a árvore
+                    # FICHA + STORAGE: extrai só o relevante e descarta o `texto` (menu lixo de ~12k chars).
+                    ficha_info = None
+                    if fazer_ficha and (nd or nd_arv):
+                        try:
+                            ficha_info = await _ficha_e_storage(proc)
+                        except Exception:  # noqa: BLE001
+                            ficha_info = None
+                    _f = prog["feitos"].get(proc, {})
+                    prog["feitos"][proc] = {"n_docs": nd, "tentativas": _f.get("tentativas", 0) + 1,
+                                            "rel": len(rel), "arvore_docs": nd_arv, "arvore_n": len(cadeia),
+                                            "em": datetime.now().isoformat(timespec="seconds")}
+                    _salvar_prog(prog)
+                    if nd or nd_arv:
+                        n_ok += 1; n_doc_total += nd + nd_arv
+                    else:
+                        n_zero += 1
+                    _arv = f" +árvore {len(cadeia)} proc/{nd_arv} docs" if cadeia else ""
+                    _fic = ""
+                    if ficha_info:
+                        a, dp, mdl = ficha_info
+                        _fic = f" · ficha[{mdl}] {a}→{dp}ch ({a / max(dp, 1):.0f}× menor)"
+                    _log(f"  [{i}/{len(fila)}] {proc} → {nd} docs{_arv}{_fic} (R$ {tot:,.0f}, {nob} OBs) {time.time()-t0:.0f}s")
+            finally:
+                try:
+                    await b.close()  # fechar um browser JÁ MORTO levanta (EPIPE/TargetClosed) — nunca pode crashar
                 except Exception as e:  # noqa: BLE001
-                    _log(f"  [{i}/{len(fila)}] {proc} ERRO {type(e).__name__}: {str(e)[:60]}")
-                    continue
-                # SEI-2: segue a ÁRVORE de relacionados (o processo de pagamento tem pouco; a licitação/
-                # contrato relacionado tem a substância). Guarda 1<=N<=15 evita a CAIXA (~40 inbox).
-                rel = r.get("relacionados") or []
-                cadeia = []
-                if seguir_arvore and 1 <= len(rel) <= 15:
-                    try:
-                        cadeia = await seguir_relacionados(pg, r.get("url") or "", rel, max_rel=max_rel_arvore)
-                    except Exception:  # noqa: BLE001
-                        cadeia = []
-                nd_arv = sum(c.get("n_docs", 0) for c in cadeia)
-                if cadeia:
-                    _salvar_cadeia_no_cache(proc, cadeia)  # Lex passa a enxergar a árvore
-                # FICHA + STORAGE: extrai só o relevante e descarta o `texto` (menu lixo de ~12k chars).
-                ficha_info = None
-                if fazer_ficha and (nd or nd_arv):
-                    try:
-                        ficha_info = await _ficha_e_storage(proc)
-                    except Exception:  # noqa: BLE001
-                        ficha_info = None
-                _f = prog["feitos"].get(proc, {})
-                prog["feitos"][proc] = {"n_docs": nd, "tentativas": _f.get("tentativas", 0) + 1,
-                                        "rel": len(rel), "arvore_docs": nd_arv, "arvore_n": len(cadeia),
-                                        "em": datetime.now().isoformat(timespec="seconds")}
-                _salvar_prog(prog)
-                if nd or nd_arv:
-                    n_ok += 1; n_doc_total += nd + nd_arv
-                else:
-                    n_zero += 1
-                _arv = f" +árvore {len(cadeia)} proc/{nd_arv} docs" if cadeia else ""
-                _fic = ""
-                if ficha_info:
-                    a, dp, mdl = ficha_info
-                    _fic = f" · ficha[{mdl}] {a}→{dp}ch ({a / max(dp, 1):.0f}× menor)"
-                _log(f"  [{i}/{len(fila)}] {proc} → {nd} docs{_arv}{_fic} (R$ {tot:,.0f}, {nob} OBs) {time.time()-t0:.0f}s")
-        finally:
-            await b.close()
+                    _log(f"  (encerramento do browser ignorado: {type(e).__name__})")
+    except Exception as e:  # noqa: BLE001 — CRASH-PROOF: morte de browser/pipe/lock vira saída LIMPA (cron repete)
+        _log(f"sessão de browser caiu ({type(e).__name__}: {str(e)[:80]}) — encerrando LIMPO, sem crash. Cron repete.")
+        return
     _log(f"FIM: {n_ok} com docs ({n_doc_total} docs), {n_zero} sem (fora de escopo/vazio). "
          f"Progresso em {PROG.name}.")
 
@@ -301,8 +336,13 @@ def main():
     ap.add_argument("--sem-ficha", action="store_true", help="NÃO extrair ficha/storage (só ler+cachear cru)")
     ap.add_argument("--cnpj", type=str, default=None, help="só os processos das OBs de um fornecedor (pré-carrega o /relatorio dele)")
     a = ap.parse_args()
-    asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel,
-                    fazer_ficha=not a.sem_ficha, cnpj=a.cnpj))
+    # BACKSTOP DE PROCESSO (regra do dono: o sweep NUNCA crasha): nada escapa como traceback não-tratado.
+    # KeyboardInterrupt/SystemExit (BaseException) propagam normal; qualquer Exception vira log + saída limpa.
+    try:
+        asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel,
+                        fazer_ficha=not a.sem_ficha, cnpj=a.cnpj))
+    except Exception as e:  # noqa: BLE001
+        _log(f"ABORTADO por erro não previsto ({type(e).__name__}: {str(e)[:120]}) — saída limpa, sem crash. Cron repete.")
 
 
 if __name__ == "__main__":
