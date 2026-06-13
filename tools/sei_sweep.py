@@ -22,6 +22,7 @@ import argparse
 import asyncio
 import json
 import re
+import signal
 import sqlite3
 import time
 from datetime import datetime
@@ -40,6 +41,18 @@ def _log(m: str):
     with open(LOG, "a", encoding="utf-8") as f:
         f.write(line + "\n")
     print(line, flush=True)
+
+
+# ENCERRAMENTO GRACIOSO: o orquestrador (`sweep_sei.sh`) embrulha o sweep em `timeout 1500`. Sem tratar o
+# SIGTERM, o `timeout` mata o processo no meio → o browser é morto à força → Node emite EPIPE (parece crash).
+# Aqui o SIGTERM só LEVANTA UMA FLAG; o loop a checa entre processos e sai LIMPO (fecha o browser no finally),
+# terminando o processo em curso. `timeout` (sem --kill-after) não força SIGKILL, então há tempo de fechar.
+_PARAR = False
+
+
+def _pedir_parada(signum, _frame):  # noqa: ANN001
+    global _PARAR
+    _PARAR = True
 
 
 # Assinaturas de MORTE de browser/pipe (Playwright/Chromium): quando aparecem, a sessão inteira está perdida —
@@ -257,6 +270,8 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                     return
                 _log("login OK — varrendo…")
                 for i, (proc, nob, tot) in enumerate(fila, 1):
+                    if _PARAR:
+                        _log("SIGTERM/timeout — encerrando LIMPO entre processos (browser fecha no finally, sem EPIPE)."); break
                     if PAUSE.exists():
                         _log("pausa detectada (.pause_sei_sweep) — encerrando limpo."); break
                     t0 = time.time()
@@ -336,6 +351,11 @@ def main():
     ap.add_argument("--sem-ficha", action="store_true", help="NÃO extrair ficha/storage (só ler+cachear cru)")
     ap.add_argument("--cnpj", type=str, default=None, help="só os processos das OBs de um fornecedor (pré-carrega o /relatorio dele)")
     a = ap.parse_args()
+    # encerramento gracioso por timeout/SIGTERM: o loop vê a flag e sai limpo (fecha o browser) — sem EPIPE.
+    try:
+        signal.signal(signal.SIGTERM, _pedir_parada)
+    except (ValueError, OSError):  # noqa: BLE001 — em thread non-main signal não pode ser registrado; ignora
+        pass
     # BACKSTOP DE PROCESSO (regra do dono: o sweep NUNCA crasha): nada escapa como traceback não-tratado.
     # KeyboardInterrupt/SystemExit (BaseException) propagam normal; qualquer Exception vira log + saída limpa.
     try:

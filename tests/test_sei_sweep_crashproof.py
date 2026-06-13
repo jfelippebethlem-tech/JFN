@@ -61,6 +61,15 @@ def test_main_engole_excecao_de_run(monkeypatch):
     assert any("ABORTADO por erro não previsto" in ln and "sem crash" in ln for ln in linhas), linhas
 
 
+def test_sigterm_seta_flag_de_parada(monkeypatch):
+    """SIGTERM (o `timeout` do orquestrador) só LEVANTA a flag — o loop sai limpo entre processos e fecha o
+    browser no finally (sem EPIPE). O handler nunca derruba o processo abruptamente."""
+    monkeypatch.setattr(sei_sweep, "_PARAR", False)
+    assert sei_sweep._PARAR is False
+    sei_sweep._pedir_parada(15, None)  # 15 = SIGTERM
+    assert sei_sweep._PARAR is True
+
+
 def test_main_propaga_keyboardinterrupt(monkeypatch):
     """KeyboardInterrupt (BaseException) deve PROPAGAR — Ctrl-C/SIGINT encerra de verdade, não é 'crash a engolir'."""
     _silencia_log(monkeypatch)
