@@ -129,18 +129,9 @@ async def _browser_idle_reaper():
     while True:
         try:
             await asyncio.sleep(_BROWSER_REAP_INTERVAL)
-            # (A) Chrome 9222 do Hermes/Yoda — fecha se ocioso ≥ N min (reabre SOZINHO sob demanda via
-            # _garantir_chrome em qualquer ação de browser do goal-agent). Independente do browser SIAFE abaixo.
-            try:
-                from compliance_agent import hermes_goal as _hg
-                if await _hg.chrome_disponivel() and _hg.chrome_ocioso_segundos() >= _BROWSER_IDLE_MIN * 60:
-                    r = await _hg.fechar_chrome_debug()
-                    if r.get("ok") and not r.get("ja_fechado"):
-                        print(f"[hermes] Chrome 9222 ocioso ≥{_BROWSER_IDLE_MIN:.0f}min — encerrado p/ liberar RAM "
-                              f"(Hermes reabre sob demanda)", flush=True)
-            except Exception as e:  # noqa: BLE001 — reap do 9222 é best-effort; nunca derruba o reaper
-                print(f"[hermes] reap do Chrome 9222 falhou ({e.__class__.__name__}) — ignorado")
-            # (B) browser SIAFE do server.py
+            # NB: o Chrome 9222 NÃO é gerido aqui — é o `chrome-jfn.service` (systemd, Restart=always), ponte CDP
+            # PERSISTENTE p/ coleta TFE/SIAFE ao vivo. Fechá-lo aqui brigaria com o systemd (churn + StartLimit).
+            # Este reaper cuida só do browser Playwright on-demand do server.py (SIAFE via get_agent).
             if _agent is None:
                 continue
             ocioso_s = time.monotonic() - _browser_last_used

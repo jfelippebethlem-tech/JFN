@@ -26,7 +26,6 @@ import platform
 import re
 import shutil
 import subprocess
-import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -126,42 +125,23 @@ async def abrir_chrome_debug(url: str = SIAFE_HOME) -> dict:
     return {"ok": False, "erro": "Chrome aberto mas a porta 9222 não respondeu a tempo."}
 
 
-# marca do último uso do Chrome 9222 (monotônico) — o idle-guard do server.py o fecha após N min ocioso.
-_chrome_ultimo_uso: float = 0.0
-
-
-def chrome_ocioso_segundos() -> float:
-    """Há quantos segundos o Chrome 9222 não é usado por uma ação de browser do Hermes (p/ o idle-guard)."""
-    return time.monotonic() - _chrome_ultimo_uso if _chrome_ultimo_uso else float("inf")
-
-
 async def _garantir_chrome() -> dict:
-    """GARANTE o Chrome 9222 no ar — o Hermes sabe abri-lo SOZINHO quando precisa. Se a porta não responde
-    (fechado pelo idle-guard, reboot, kill, ou nunca aberto), ABRE via `abrir_chrome_debug` de forma transparente.
-    Assim nenhuma ação de browser depende de o LLM lembrar de chamar 'abrir_chrome' nem do Chrome estar pré-aberto.
-    Idempotente (se já está no ar, não reabre). Marca o uso (p/ o idle-guard). Retorna {ok, ja_estava?, ...}."""
-    global _chrome_ultimo_uso
-    _chrome_ultimo_uso = time.monotonic()
+    """GARANTE o Chrome 9222 no ar — o Hermes sabe trazê-lo de volta SOZINHO quando precisa, sem depender do LLM.
+    O Chrome 9222 é o `chrome-jfn.service` (systemd user, Restart=always): a forma CANÔNICA de garanti-lo é
+    (re)iniciar esse serviço — NUNCA lançar um chrome concorrente (conflitaria na porta/perfil). Idempotente:
+    se a porta já responde, no-op. Fallback (sem systemd disponível): `abrir_chrome_debug`."""
     if await chrome_disponivel():
         return {"ok": True, "ja_estava": True}
-    return await abrir_chrome_debug()
-
-
-async def fechar_chrome_debug() -> dict:
-    """Fecha o Chrome 9222 (libera RAM numa VM sem swap). Idempotente. NÃO quebra o Hermes: qualquer ação de
-    browser reabre via `_garantir_chrome`. Mata o processo dono da porta 9222 (cmdline com remote-debugging-port).
-    Linux/VM (pkill bracket-safe p/ não auto-casar). Retorna {ok, ja_fechado?}."""
-    if not await chrome_disponivel():
-        return {"ok": True, "ja_fechado": True}
-    if platform.system() == "Windows":  # no Windows não há pkill; deixa o dono gerenciar
-        return {"ok": False, "erro": "fechar_chrome_debug não suportado no Windows"}
+    # canônico: subir o serviço gerenciado pelo systemd (perfil /tmp/chrome-jfn, Restart=always)
     try:
-        # bracket no padrão evita o pkill casar a si mesmo (lição §8 do projeto)
-        subprocess.run(["pkill", "-f", "remote-debugging-port=922[2]"], timeout=10, check=False)
-    except Exception as e:  # noqa: BLE001 — fechar é best-effort, nunca derruba o chamador
-        return {"ok": False, "erro": str(e)[:80]}
-    await asyncio.sleep(1)
-    return {"ok": not await chrome_disponivel()}
+        subprocess.run(["systemctl", "--user", "start", "chrome-jfn.service"], timeout=15, check=False)
+        for _ in range(8):
+            await asyncio.sleep(2)
+            if await chrome_disponivel():
+                return {"ok": True, "via": "chrome-jfn.service"}
+    except Exception:  # noqa: BLE001 — sem systemd (ex.: Windows/dev): cai no fallback
+        pass
+    return await abrir_chrome_debug()
 
 
 async def _aba_siafe(browser):
