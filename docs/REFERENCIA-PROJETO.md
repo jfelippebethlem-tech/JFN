@@ -104,6 +104,11 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
   baldio/inexistência. Sempre conferir no mapa real (CEP/Google) antes de tratar como achado. INDISPONÍVEL ≠ baldio.
 - **⛔ Divergência de município só com geocode EXATO** (036100, 06-11): match coarse (logradouro/CEP) cai em
   cidade errada por fallback do Nominatim → 83 falsas "divergências" (todas exato=False). Só afirmar com o nº resolvido.
+- **⛔ NUNCA buscar imagem (Street View/satélite) na coord `exato=0`** (lição doubt-sender, 06-13): a coord coarse
+  do Nominatim (logradouro/CEP, sem o nº) cai EM CIDADE ERRADA por fallback (Araçatuba↔SP, Guapimirim↔Freguesia) →
+  a foto não bate o endereço. Para imagem, **geocodificar o ENDEREÇO COMPLETO como string** no próprio Street View
+  (ele resolve o nº internamente; metadata confirma cobertura) — nunca reusar a coord podre guardada. Sem cobertura
+  no endereço → não enviar (≠ inventar foto de outro lugar). Vale p/ QUALQUER produto que mostre foto de endereço.
 - **⛔ Satélite (entorno) NUNCA acusa baldio/barraco** (lição Banco do Brasil, 06-11): coord no nível da rua
   (±100m) + VLM alucinou "barraco 80%" p/ o BB e p/ Polis Informática. Satélite só AFASTA área edificada;
   acusação de baldio/barraco/casa SÓ por Street View (rooftop, requer GOOGLE_MAPS_KEY). Nunca acusar com evidência fraca.
@@ -143,6 +148,14 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-13 cont.32-c (dono pegou bug):** **FIX do doubt-sender — foto não batia o endereço** (`d07e291`). O dono
+  revisou o 1º lote e TODAS as fotos estavam erradas. Causa: eu buscava o Street View na coord guardada
+  (`endereco_verificacao`, `exato=0` = Nominatim coarse/fallback) que **cai em cidade errada** (Araçatuba↔São
+  Paulo, Guapimirim↔Freguesia, Mesquita↔Centro) — violei a minha própria §8 (OSM coarse engana). Fix: `foto_rua`
+  passa o **endereço completo como string** ao Street View, que geocodifica o nº internamente (funciona mesmo com
+  a Geocoding API negada na chave) → coord/pano CORRETOS; metadata confirma cobertura antes do download pago; sem
+  cobertura → não envia; legenda traz data do pano + link do mapa (removida a linha falsa "±100m"); Mapillary
+  removido. Verificado 5/5 (coords certas + fotos conferidas a olho). Lote corrigido reenviado (msgs 3771-3775).
 - **06-13 cont.32-b (goal, "faça tudo isso"):** **⭐ DESMASCARAMENTO DE CPF DE SÓCIO — 3 camadas** (pedido do
   dono; refs **osint-brazuca**/`fernandobortotti/CPF-Tools` + **OSINTKit-Brasil**). Descoberta: o JFN **já tinha o
   método osint-brazuca** em `resolucao_cpf.py` (`gerar_cpfs_da_mascara`=os 1000 candidatos dos 6 díg centrais +
