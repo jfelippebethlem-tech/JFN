@@ -125,6 +125,9 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
   **erra na hora** ("database is locked") se outro sweep segura o write lock → o endereço parava (02:22 e ao
   rodar os 3 juntos). Fix: `connect(timeout=30)` + `PRAGMA busy_timeout=30000` + WAL nos writers (esperar o lock,
   não errar). Validado ao vivo com os 3 sweeps concorrendo. **Todo writer novo do `compliance.db` deve setar isso.**
+- **⛔ Teste NUNCA escreve na `compliance.db` de produção (cont.33-34, 06-13):** isolar via env `JFN_DB` +
+  fixture `_MODULOS_ISOLAR_DB` no `conftest` (tmp DB descartável). Sintoma da violação: teste lento/hang (lock
+  com o `jfn.service`) + linhas "TESTE LTDA" na prod. Ver [[aprendizados/isolamento-db-teste]].
 - **⛔ Dedup de responsabilidade SOLIDÁRIA no TCE (cont.21):** o mesmo débito imputado a N responsáveis vem como N
   linhas idênticas em `penalidades_tcerj` (402/910). **Somar infla o erário** (Saúde R$66M bruto → R$28,5M real).
   Contar o débito 1× por evento (processo+valor+sessão), registrar nº de responsáveis. Nunca superestimar (regra-mãe).
