@@ -5,9 +5,30 @@ Uses the same database as the main SQLAlchemy models (compliance.db) but accesse
 it via sqlite3 directly so that FTS5 virtual tables and triggers can be managed.
 """
 
+import logging
 import sqlite3
 
 from compliance_agent.database.models import DB_PATH
+
+logger = logging.getLogger(__name__)
+
+
+def _log_falha_fts(tabela: str, exc: Exception) -> None:
+    """Loga falha de busca FTS em vez de mascará-la como '0 resultados'.
+
+    O caso mais comum é a tabela virtual não existir (criar_indices_fts() nunca
+    rodou no bootstrap) — aí a busca devolve [] para QUALQUER termo. Sinalizar é
+    questão de honestidade: vazio-por-erro != vazio-por-ausência-de-match.
+    """
+    msg = str(exc)
+    if "no such table" in msg:
+        logger.warning(
+            "Busca FTS em %s falhou: índice ausente (%s). "
+            "Rode criar_indices_fts() no bootstrap — o /buscar retorna vazio para todo termo até lá.",
+            tabela, msg,
+        )
+    else:
+        logger.warning("Busca FTS em %s falhou: %s", tabela, msg)
 
 
 def _get_conn() -> sqlite3.Connection:
@@ -188,8 +209,8 @@ def buscar_contratos_fts(query: str, limite: int = 20) -> list[dict]:
                 "data":       str(row["data_assinatura"]) if row["data_assinatura"] else None,
                 "modalidade": row["modalidade"],
             })
-    except Exception:
-        pass
+    except Exception as exc:
+        _log_falha_fts("fts_contratos", exc)
     finally:
         conn.close()
     return results
@@ -225,8 +246,8 @@ def buscar_doerj_fts(query: str, limite: int = 20) -> list[dict]:
                 "data":  str(row["data_publicacao"]) if row["data_publicacao"] else None,
                 "excerpt": row["excerpt"],
             })
-    except Exception:
-        pass
+    except Exception as exc:
+        _log_falha_fts("fts_doerj", exc)
     finally:
         conn.close()
     return results
@@ -261,8 +282,8 @@ def buscar_alertas_fts(query: str, limite: int = 20) -> list[dict]:
                 "severidade": row["severidade"],
                 "criado_em":  str(row["created_at"]) if row["created_at"] else None,
             })
-    except Exception:
-        pass
+    except Exception as exc:
+        _log_falha_fts("fts_alertas", exc)
     finally:
         conn.close()
     return results
