@@ -11,10 +11,8 @@ Usa NLP simples (TF-IDF + cosine similarity) para agrupar objetos similares.
 """
 
 import json
-import re
 import statistics
 from collections import defaultdict
-from typing import Optional
 
 from sqlalchemy.orm import Session
 
@@ -47,29 +45,6 @@ def _categorizar_objeto(objeto: str) -> str:
         if any(kw in objeto_lower for kw in keywords):
             return categoria
     return "outros"
-
-
-def _valor_unitario(contrato: Contrato) -> Optional[float]:
-    """
-    Tenta extrair valor unitário do objeto.
-    Ex: "10 veículos por R$ 500.000" → 50.000 por unidade.
-    """
-    if not contrato.objeto or not contrato.valor_total:
-        return None
-
-    # Tenta extrair quantidade de unidades do objeto
-    patterns = [
-        r"(\d+)\s*(?:un|und|unidade|veículos|carros|notebooks|computadores|licenças)",
-        r"(\d+)\s*(?:meses?|anos?)\s*de\s*",
-        r"aquisição\s+de\s+(\d+)\s+",
-    ]
-    for pat in patterns:
-        m = re.search(pat, contrato.objeto, re.IGNORECASE)
-        if m:
-            qtd = int(m.group(1))
-            if qtd > 0:
-                return contrato.valor_total / qtd
-    return None
 
 
 class AnalisadorPrecos:
