@@ -720,14 +720,6 @@ async def rodar_ciclo_diario(args=None):
     return await rodar_ciclo_relatorio_diario(args=args)
 
 
-# ─── Wrapper síncrono para o entrypoint ───────────────────────────────────────
-
-def _main_single(pdf: bool = False):
-    args_ns = argparse.Namespace(pdf=pdf)
-    report = asyncio.run(rodar_ciclo_diario(args=args_ns))
-    return report
-
-
 async def loop_atualizacao_juridica():
     """
     Loop semanal — toda segunda-feira às 03:00 busca novos acórdãos no TCU e
