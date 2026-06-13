@@ -143,6 +143,18 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-13 cont.31-c (segue):** **SWEEPS À PROVA DE CRASH + todos provados verdes** (pedido do dono: "os sweeps
+  não podem dar crash"). O SEI sweep morria com Node EPIPE não-tratado quando o `timeout` matava o browser à
+  força. Fixes: (`1664aac`) sessão de browser sob try/except → morte de browser/pipe vira saída LIMPA logada,
+  `b.close()` defensivo, `_browser_morto()` aborta sessão em vez de insistir, backstop de processo no `main()`;
+  (`fd3ebfb`) **SIGTERM gracioso** — `timeout` agora fecha o browser limpo (mata o EPIPE). **+ fim do exit
+  silencioso** nos `.sh` (todo `.pause_*` loga; cruzador loga rc do DuckDB) → resolve a anomalia do cruzador 23h
+  (era o `.pause` saindo sem traço). **12 testes** (crashproof + idle-guard). **Provados AO VIVO 02:00-02:08:**
+  SEI rc=124 (timeout=bound, +17 cdp 848→865) · CPF rc=0 (1ª vez via orquestrador, `sei_cpf` populada) ·
+  cruzador correlacao+concentração rc=0/fim (12/60 UGs) · endereço/benefícios/fachada rc=0/fim. VM estável
+  (load pico transitório 3,9 do DuckDB esfriando, nunca OOM, ≥5,6GB livres). Limpei chromium leftover do sweep
+  pré-fix; idle-guard do server.py reapou às 01:33 ok. ⚠ **Chrome 9222 do Hermes** (pid 1086, `/tmp/chrome-jfn`)
+  vivo ~35h ocioso = candidato a guard de idle próprio (outro subsistema; não mexido).
 - **06-13 cont.31-b (segue):** **GUARD DE IDLE DO BROWSER** (`afeba84`, fecha o gap do §6). O Chromium do
   server.py vivia 24h ocioso (~200MB presos numa VM sem swap — diagnosticado ao achar 1 chrome de 20,5h com só
   16s de CPU). Reaper async encerra após 15min sem uso (env `JFN_BROWSER_IDLE_MIN`, 0=off) + relança lazy no
