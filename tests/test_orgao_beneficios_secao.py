@@ -35,7 +35,7 @@ def test_secao_indisponivel_honesto():
 
 def test_fato_beneficio_entra_no_raciocinio():
     ctx = {"nome": "TESTE — UG X", "ug": "999999",
-           "pagamentos": {"tem_dados": True, "total_geral": 1000.0, "n_geral": 2,
+           "pagamentos": {"tem_dados": True, "total_geral": 1000.0, "n_geral": 2, "n_fornecedores": 1,
                           "por_favorecido_geral": {"ALFA": 1000.0}, "hhi": {"indice": 1.0, "nivel": "BAIXO", "top_share": 100.0},
                           "anos": [], "por_ano": {}},
            "beneficios_socios": {"ok": True, "n_verificados": 6, "n_com_beneficio": 2,

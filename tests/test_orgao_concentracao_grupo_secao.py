@@ -69,7 +69,7 @@ def test_secao_indisponivel_honesto():
 def test_fato_grupo_entra_no_raciocinio():
     cg = dict(_STUB_INDICIO); cg["ok"] = True
     ctx = {"nome": "ITERJ — UG X", "ug": "133100",
-           "pagamentos": {"tem_dados": True, "total_geral": 10_000_000.0, "n_geral": 30,
+           "pagamentos": {"tem_dados": True, "total_geral": 10_000_000.0, "n_geral": 30, "n_fornecedores": 1,
                           "por_favorecido_geral": {"ALFA": 5_700_000.0},
                           "hhi": {"indice": 1200.0, "nivel": "ALTO", "top_share": 57.0},
                           "anos": [], "por_ano": {}},
