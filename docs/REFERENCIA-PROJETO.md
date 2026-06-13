@@ -283,183 +283,33 @@ manuais quando expirarem (caem no nous até lá).
   via SEI o processo do EDITAL/CONTRATO Vieira correto (número a achar; browser/itkava, VM-heavy, owner/dado) +
   coletor PNCP de propostas p/ alimentar o `ctx`. O coletor `montar_ctx_de_sei` mira edital (modalidade/habilit/
   lotes/propostas); para a execução financeira já cacheada, X3 precisaria de um extrator da tríade SIAFE do SEI.
-- **06-12 cont.30 (goal, agentes):** **QA dos produtos + correções.** Gerados /orgao 660100 e /relatorio MUV
-  REAIS, **enviados ao Yoda** (msg 3745-48), laudo: completos/estéticos/prosa honesta (relatório até autocritica o
-  rating). 6 correções (`02f16e4`..`306518f`): enriquecimento 35s→90s+retry+cache (§5/§6 CEIS/CNEP populam), score
-  recalibrado (incorpora §1-B mesma-sede + §8-C PyOD), MD enviado ao Telegram, **§1-G TCE Cidades 660100→8 eventos/
-  R$162k reais**, bullets `- -`, off-by-one 115/116. 43+181 testes verdes. **obsidian-save** da sessão (codigo/
-  detectores-pipeline + 1º daily + lições). **Pendências p/ próxima sessão:** detectores restantes (J5-7/C6/E4-6/X1-6),
-  rodar pipeline nos editais Vieira (SEI lê 510001 não-restrito agora), coletor PNCP p/ alimentar ctx (propostas).
-- **06-12 cont.29 (goal, agentes, passo-a-passo):** **Pipeline de detectores de licitação — 17/30 nas 5 fases.**
-  Planejamento P1/P2/P4/P5 (`613d1c0`,`380a967`) · Edital E1/E2/E3 (`58ba433`) · Julgamento J1/J2/J3/J4 (`93edb23`) ·
-  Contratação C1-C5 (`01ccd00`) · Preço P3. Todos no schema §1.4 (score-âncoras, evidência, passo exculpatório,
-  `nao_avaliavel` honesto — ex.: gap PNCP em J2-4 sem lista de propostas). Orquestradores `rodar_{orgao,fornecedor,
-  edital,planejamento,julgamento}`. ~140 testes de detectores verdes. Falta: J5-7, C6, E4-6, X1-6 + coletor que
-  alimenta o `ctx` (editais via SEI/PNCP). Spec [[notas/detectores-corrupcao-licitacoes-v2]].
-- **06-12 cont.28 (goal, agentes):** **Detectores OPERACIONAIS + VIVOS no produto.** Wrappers reusando o código
-  existente (`01ccd00`): **J1** cartel (concentracao_por_grupo+rodizio), **P3** sobrepreço (precos_extract), **C1-C5**
-  fachada (investigacao_dd H-*) + orquestradores `rodar_orgao(ug)`/`rodar_fornecedor(cnpj)`. **§1-I Painel de
-  detectores** no relatório de órgão (`d2869ea`, MD+PDF, alimenta o raciocínio, passo exculpatório visível). Framework
-  agora: P4+J1+P3+C operacionais (REGISTRO), **54+ testes verdes**. Falta: 9 detectores novos (P5/E2-5/J5/X2/X4/X5) +
-  rodar nos editais Vieira (SEI legível). Spec [[notas/detectores-corrupcao-licitacoes-v2]].
-- **06-12 cont.27 (goal, agentes):** **⭐ SEI PORT FUNCIONOU** (`59360d0`) — fallback `_ler_cracked` lê processo de
-  OUTRA unidade (510001 Vieira/Cidades = 10 docs reais, contrato 046/2022 Drenagem Av.22 Maio) SEM regredir o ITERJ
-  (270042=10 docs); caminho SEPARADO, `ler_processo` intocado. **Destrava editais/sobrepreço no SEI.** **(2) FRAMEWORK
-  DE DETECTORES** (`380a967`) — spec V2 do dono (30 detectores: P/E/J/C/X) → `compliance_agent/detectores/base.py`
-  (schema JSON padrão + score-âncoras + verificador adversarial LLM-opcional + pipeline + convergência) + **P4
-  fracionamento**; 33 testes; mapa 30→JFN (21 reusam concentracao_por_grupo/precos_extract/investigacao_dd/etc., 9 a
-  construir). Spec completo em [[notas/detectores-corrupcao-licitacoes-v2]]. Roadmap: implementar os 29 restantes +
-  rodar nos editais Vieira (agora legíveis via SEI).
-- **06-12 cont.26 (goal, agentes):** **(1) MANUAL de detecção de corrupção em licitações** (playbook do dono) →
-  `vault/notas/manual-deteccao-corrupcao-licitacoes` com **mapa de cobertura JFN** (✓/⚠/✗) + aplicação aos 12 grupos
-  de cartel. **(2) 4 builds via subagentes (VM-safe, ruff, testes):** `/lista` capabilities + detectores novos
-  (`0c269c5`); **§1-H Concentração-grupo (cartel)** no relatório de órgão (`897edb3`); **Lex** passo-exculpatório
-  (defesa-contra-si → rebaixa achado fraco a monitoramento) + **destinatário** MP/CADE/TCE/CGE por família (`2317395`);
-  **priorizacao** eixo risco-de-punição + quadrante alto-alto (`034b062`). **(3) ⭐ SEI CRACKED** — a busca itkava certa
-  (☰→Pesquisa: radio **Processos** + ☑ **Considerar Documentos** + "Restringir" OFF + Órgão "Todos" + texto SEM prefixo
-  + clicar **Pesquisar 1×** e **esperar a navegação**, sem duplo-submit nem `_abrir`) **ABRE processo de outra unidade**
-  (510001/000876, provado por screenshot) — processo NÃO era restrito, era a mecânica da busca. `ler_processo`
-  corrigido (espera ativa `ifrArvore`); falta afinar a extração dos docs da árvore. Método no vault [[sei-leitura-itkava]].
-  **(4) OCR de docs DIGITALIZADOS** — helper `compliance_agent/sei/ocr_docs.py` (pytesseract+poppler+pdfminer, degrada
-  honesto; `189d117`) **fiado no `ler_processo`** (`_conteudo_doc`: innerText vazio → download + OCR, `via=ocr`; `fdcd9cf`,
-  aditivo). **(5) Reader SEI em ESTADO SEGURO** (`fa16348`): o port do método cracked regrediu o ITERJ 270042 → revertido
-  ao fluxo dos 838; cracked fica como **caminho separado a portar com cuidado** (testar ITERJ+510001). Fallback público/captcha
-  vivo em `ler()`. **Sessão toda VM-safe + agent-skills/subagentes** (7 builds, ~38 testes novos verdes, ruff). **Bloqueado
-  (dono/dado):** editais×10-CNPJs e sobrepreço (PNCP só vencedor; SEI restrito precisa do port) · OCR ao vivo (acesso SEI).
-- **06-12 cont.25 (goal):** **SWEEPS rearquitetados** — o "2-lane serial" (cont.21) foi RUIM (Chromium 24h +
-  sessão única itkava competindo → leitura SEI manual dava 0; 2 lanes em 2 cores + DuckDB = crash) e foi REVERTIDO
-  para **sweeps individuais escalonados** (`sweep_sei`/`sweep_dados`/`cruzador` + SIAFE), calibrados à VM real
-  (**2 vCPU/7,8GB/sem swap**): nice/ionice best-effort (qualidade > leveza), bounded, load-guard=4, 1-por-vez,
-  cron 07/10/13/16/19/23. **Lições §8 aplicadas:** mata só chromium ÓRFÃO (server.py tb usa ms-playwright); pkill
-  bracket-safe (repeti o auto-pkill 2× hoje). Aprendizado no vault [[aprendizados/vm-nao-crashar]]. Commit `cc7aaa0`.
-- **06-12 cont.24 (goal):** **(1) SEI ENTENDIDO/DOCUMENTADO** — corrigi 2 erros meus recorrentes: itkava lê
-  **TODAS as unidades** (838 cdp de ~20 unidades, não só ITERJ) e o output são os **`cdp_*.json`**, não a tabela
-  `processos_sei` (que fica 0 — NORMAL). Nota definitiva em `vault/aprendizados/sei-leitura-itkava`. **Edge MUV
-  diagnosticado por screenshot:** login OK mas a nav da Pesquisa Avançada não dispara (cai no Controle de Processos)
-  → fix apontado (caixa de busca do topo / link real da avançada). **(2) Grupo Vieira** — sócio-elo dos 10 CNPJs
-  (R C / F P Vieira + família); **varredura tier-2** (UGs 31-80) +5 candidatos (Passarelli 54%, CONQUISTA/Agile/
-  Montreal = grupos reais confirmados). **(3) 4 fortes do Fundo TJ:** endereços apurados (residenciais, 2 fora do RJ);
-  flag **H-END-RESID confirmada** (dispara nos 4). **(4) Sweeps:** saudáveis (endereço 14,4k · benefícios 23,7k
-  completo · SEI 838). **(5) Context-economy:** migração memória→vault, MCP lean (codegraph-only, −5-7k tok/turno
-  via `~/.bashrc`), roteiro de skills.
-- **06-12 cont.23:** **(1) MIGRAÇÃO da memória `.claude` → vault Obsidian** (ninguém em runtime lê os `.claude`):
-  18 diretrizes/lições → 9 `aprendizados/` + 4 refs vivas → `notas/` (CNPJ, Yoda-render, FlexVision, codegraph, SEI-login),
-  **digest do SessionStart agora carrega bloco "Diretrizes SEMPRE-ON"** (obediência·VM·cota·honestidade·aprender), `MEMORY.md`
-  encolheu p/ 19 linhas; 24 originais arquivados em `vault/_archive/*.tar.gz` (nada perdido); 0 links quebrados. Regra de
-  roteamento canônica no `vault/_CLAUDE.md`. **(2) ⛔ QUEDA da VM diagnosticada:** DuckDB pesado + 2 sweeps Playwright vivos
-  numa VM **SEM SWAP** = OOM (sem cushion). Lição dura gravada ([[aprendizados/vm-nao-crashar]]): **parar sweeps antes de
-  DuckDB**; recomendar swap 3-4GB ao dono. **(3) Grupo Vieira QUANTIFICADO** — `concentracao_por_grupo(660100)`: os **10
-  CNPJs + sócio-elo** explícitos (R C/F P Vieira Engenharia + família ligam 6-7 cada), R$543M/56,9%; vault MUV atualizado.
-  **(4) VARREDURA** nas 30 maiores UGs → 7 candidatos novos de concentração-grupo (CONQUISTA vigilância multi-UG, Agile/Milano,
-  PC/Montreal; Supervia/Telemar excluídos como legítimos) → `casos/varredura-concentracao-grupo-2026-06-12`.
-- **06-12 cont.22:** **(1) NOVO detector `grafo_cartel.concentracao_por_grupo(ug)`** — concentração OCULTA por
-  grupo econômico (union-find por sócio, dedup raiz; HHI grupo vs CNPJ). Pega o que rodízio/captura-por-CNPJ não
-  pegam: muitos CNPJs que parecem concorrentes mas são UM grupo (concorrência fictícia, Art. 90/337-F/CADE).
-  **Medido real:** UG 660100 = 1 grupo (MUV São Gonçalo +9) **57% / R$543M**, HHI 1055→3575 (Δ+2520). Surfado no
-  triage de órgão; +4 testes TDD (núcleo puro); 12 verdes; ruff ok. Commit `756c58d`. Vault MUV/Vieira atualizados.
-  **(2) RECONCILIAÇÃO honesta:** auditoria provou que a doc estava muito atrás do código — **H-PEP, H-BENEFICIO,
-  `investigacao_orgao_dd`, PyOD, DuckDB, CAGED/RAIS, OpenSanctions JÁ EXISTEM** (estavam listados como "próximos").
-  **Único gap real do roadmap P0 = Splink** (entity resolution). **(3) Regra de roteamento de memória** (3 camadas,
-  anti-duplicação, context-economy) em `~/vault/_CLAUDE.md` + 1 frase no `.claude/MEMORY.md`. **(4) Lição gravada:**
-  obediência do dono > qualquer goal/loop; Stop hook/ralph-loop NUNCA ligado sem o dono no controle.
-- **06-12 cont.21:** **(1) Yoda RESOLVIDO** — duplicação = poller externo, provado (diag) e identificado pelo dono
-  como o **Hermes Desktop**; conflitos cessaram 12:51 UTC; update do hermes inocentado pela timeline (1º conflito
-  01:37 < update 03:07). Ferramentas: `tools/diag_telegram_poller.sh` (já existia) + novo `tools/rotate_telegram_token.sh`
-  (rotação a 1 comando p/ recidiva). **(2) NOVO no relatório de ÓRGÃO — §1-G Sanções do TCE-RJ** (`penalidades_tcerj`,
-  910 condenações, controle externo, antes PARADO por falta de join). `reporting/penalidades_tce_view.py`: vínculo
-  órgão-TCE↔UG **re-derivado dos dados vivos** (auto-matcher token-prefix + **discriminador de tipo** que corrige o
-  bug clássico TJ→Fundo Especial; bônus de acrônimo) + **overrides curados só p/ exceções** (sucessões/multi-UG/sem-âncora)
-  + **`depurar()`** auto-auditoria (0 sem_match; só CEDAE sem UG) + marcador temporal (EXTINTA=histórico). **Honestidade
-  dura:** dedup de **responsabilidade solidária** (402/910 linhas eram o mesmo débito a vários responsáveis — somar
-  inflava Saúde de R$27M→R$66M; agora conta o débito 1×, registra nº de responsáveis). MD §1-G + PDF + alimenta o
-  raciocínio (IA conectou: "48 condenações do TCE… riscos de gestão"). Medido real (Saúde R$28,5M, PRODERJ R$35M,
-  DETRAN; Fundo do TJ corretamente sem sanção). +12 testes (23 verdes nos módulos de órgão), ruff limpo. PDF entregue
-  conferido (sem tofu). **Próximo M3 pendente:** UGs renomeadas → o `depurar()` já sinaliza drift p/ revisão.
-  **(3) FIX sweep `database is locked`** — `busy_timeout`+WAL nos writers de endereço (§8); validado ao vivo; endereço
-  voltou a avançar (3.9k→4.3k). Sweeps relançados (SEI/endereço/benefícios; benefícios=universo completo). **(4) docs
-  LEVES** — 53 arquivos → 33 vivos + 20 em `docs/historico/` + `docs/INDEX.md` (catálogo); `CLAUDE.md` enxuto ~30%.
-  **(5) SEGUNDO CÉREBRO Obsidian** (`~/vault`, fora do git do JFN) — motor `obsidian-second-brain` (44 cmds, MIT) +
-  kepano; **memória de CASOS** (MOC-Casos + casos reais: 2 laranja BPC, Saúde/TCE); **MOC-Codigo/Dados/Mercado**
-  (architect_scan do JFN/hermes → notas de arquitetura; esquema das 40 tabelas; FMP/OpenBB) correlacionando
-  **código↔dado↔caso**; hook **SessionStart** injeta digest leve (~360 tok, casos abertos) — memória permanente sem
-  poluir contexto; sync **Syncthing** (VM pronta, aguarda Device ID do desktop). **(6) OpenBB avaliado** (yfinance BR
-  grátis; AGPL→fronteira; probe `~/openbb_probe`). Vault íntegro (health: 0 links quebrados). Diretriz nova: **usar
-  agent-skills sempre**. Commits: TCE (`6017ede`), rotate (`0961e0a`), docs-leveza (`793f695`), sweep-lock fix.
-  **(cont. — sweeps + 2 módulos novos):** **(7) SWEEPS 2-LANE SERIAL** — `tools/sweeps_serial.sh` + systemd
-  `sweeps-serial@{browser,dados}` (browser=SEI+CPF | dados=fachada→benefícios→endereço; ≤2 concorrentes, sem
-  contenção/lock/duplicação; crons individuais removidos). `fachada_sweep_rotativo.sh` (1 UG/passada, começa ALERJ/TJ).
-  **(8) MÓDULO DE RELAÇÕES** `relacoes.py` — sócio↔empresa↔empresa↔órgão (sócio/endereço/UG em comum), **dedup por
-  CNPJ raiz** (matriz/filial=1 PJ). Achou **grupo Vieira** (R$189M, 11 empresas, 7 na mesma UG de obras). CLI+5 testes.
-  **(9) SOBREPREÇO** `precos_extract.py` — extrai preço unitário de edital/contrato + **sobrepreço interno** (mesmo
-  item a preços ≥2× diferentes entre órgãos = indício, sem API). +6 testes. Ativa com editais do sweep SEI/PNCP.
-  **(10) docigp ALERJ** = BLOQUEADO (login de deputado — dependência do dono, como SEI/SIAFE). **(11) Sobrepreço
-  EXTERNO** (CATMAT via `sobrepreco.py`) pendente (mapear item→CATMAT). Vault: 26 notas / 7 casos / 0 links quebrados.
-  **(cont. — investigação + folha):** **(12) Coletor ALERJ** (`collectors/alerj_transparencia.py`, dado ABERTO —
-  `transparencia.alerj.rj.gov.br` report/120 pagamentos + report/73 folha; parser PDF: 293 pagamentos, 5.726
-  servidores). **(13) Acúmulo de cargos** (`acumulo_cargos.py`: ALERJ folha ∩ `registros_folha`, com **classificação
-  de LEGALIDADE** — comissionado/cessão/aposentadoria podem ser legais; 6 sobreposições, 5 verificar). **(14) Acima
-  do teto** (`acima_do_teto.py`, CF 37 XI — separa RRA/indenizatórias do supersalário real; 32.353 acima bruto → 0
-  confirmado por falta de composição). **(15) SEI pensante** (`sei_recomendacoes.py`: recomendações de PGE/CGE/jurídico
-  NÃO ATENDIDAS, determinístico + nous). **(16) Caso MUV São Gonçalo** (grupo Vieira, R$182M, ~8 consórcios — vault
-  cruzado OB↔processo↔sócios↔órgão). **(17) Folha RJ — recon** (TJRJ=B WebForms, DPRJ=A, Executivo=C gated, TCE-RJ
-  domínio tcerj.tc.br) — providers a implementar. **fix sei_reader** (submit robusto). **+38 testes novos.**
-  ⚠ **SEI reader NÃO lê árvore de outra unidade ainda** (abre a view mas pega processo errado; falta extrair frameset
-  `ifrArvore`) → **debug VISUAL** (screenshot, não às cegas). **2-lane serial** (`sweeps-serial@{browser,dados}`) no ar.
-- **06-12 cont.20:** **SWEEP DETACHED DE BENEFÍCIOS DOS SÓCIOS no ar (ALVO Nº1 cont.19 montado).** (1) Tabela
-  `socio_beneficio` (resumível, PK nome_norm+doc, CPF resolvido INTERNO/LGPD) + `tools/beneficios_sweep.py`
-  (1 lote: índices `carregar_indice_favorecidos`+`carregar_indice_tse` 1×, `resolver_multi`, `verificar_beneficios`
-  dos resolvidos, grava honesto — não-resolvido=resolvido0/INDISPONÍVEL≠"não recebe"). (2) `resolucao_cpf`:
-  novo `carregar_indice_favorecidos` + `pf_idx` em `resolver_multi` (helper `_match_indice`) p/ NÃO fazer 1
-  full-scan de 1,1M OBs por sócio (§8 VM-safe; query `substr` não usa índice) — retrocompatível. (3)
-  `tools/beneficios_supervisor.sh` (detached, load-guard, pausa `data/.pause_beneficios_sweep`) + cron **bracket**
-  `pgrep -f 'beneficios_superviso[r].sh'` + @reboot. **Universo:** 23.691 sócios distintos mascarados.
-  **Medido ao vivo:** lote OK; índices ~48s (custo fixo/lote); 1º resolvido (TSE) → benefício consultado,
-  `recebe_beneficio=0` honesto. Supervisor VIVO (lote 800). +6 testes (21 verdes nos módulos tocados).
-  **⚠ Achado a verificar (dono):** alguns endpoints do Portal (Bolsa Família/Aux.Emerg.) deram **HTTP 400**
-  numa consulta. **(cont.) RESOLVIDO:** o contrato real (probe ao vivo) era **Bolsa Família exige
-  `anoMesReferencia` (AAAAMM)** — corrigido em `_bolsa_familia_mensal` (varre as últimas 3 competências, para no
-  1º registro); **Aux. Emergencial** dá 400 "CPF/NIS válido" p/ não-beneficiário → tratado como sem-benefício
-  (não polui motivo); `_get` agora expõe o corpo do 400. BPC/PETI/Safra/Defeso OK só com `codigo`. Coletor
-  verificado ao vivo: motivo vazio (6 endpoints respondem). +3 testes. **Reset honesto:** apaguei os 71
-  resolvidos do 1º lote (BF estava bugado/cacheado) p/ reprocessar; 1.534 não-resolvidos mantidos.
-  **OBS do dono — cruzar sócios+administradores+procuradores:** sócios e **administradores JÁ cobertos** (o
-  universo é o QSA inteiro: Sócio-Adm 11.620, Administrador 2.830, Diretor 4.322, Presidente 2.603, Conselheiro
-  467 — 14.916 mascarados c/ papel de gestão; o sweep não filtra por papel). **Procuradores=0 no QSA** (Receita
-  não traz) → ficam nas **procurações do SEI** (extrator de CPF a construir; arquitetura já extensível: linha
-  nova em `socios_fornecedor` com `qualificacao='Procurador'` é varrida automaticamente). **Próximo:** (c) surfar
-  `socio_beneficio` no relatório (agregado) + extrator de CPF de SEI-docs (procuração/contrato social).
-  **plugin agent-skills** re-cacheado (doctor). **(cont.) RELATÓRIOS 100% (Fase 1 — benefícios surfados nos 3
-  produtos):** `reporting/beneficios_view.py` (agregar/por_fornecedor/leitura — cruzamento inteligente
-  socio_beneficio×QSA, indício/AFASTADO/INDISPONÍVEL) → **órgão §1-F (MD+PDF)**, **fornecedor §1-C (MD)**,
-  **Lex II-E agregado**, todos alimentando a análise raciocinada (IA conecta o sinal de laranja). Dado completo
-  + leitura + conclusão (pedido do dono: inteligência/escrita/conclusão; cruzamentos inteligentes). Medido real
-  (036100, 13210413000142). +14 testes. Pendente paridade: fornecedor PDF (render_pdf_html). Plano/todo em
-  `tasks/`. **Cobertura do CPF medida ao vivo: ~4,7% resolvidos (favorecidos PF + TSE).** **AGENDA DE SWEEPS
-  diária escalonada** (§2) substituiu o respawn contínuo. Próximo: Fase 2 (gaps ALTA: capital×recebido, QSA
-  detalhe, aditivos, TSE-MD, rodízio no fornecedor, empenho→liquidação→OB, regularidade fiscal, terceirizados).
-  **(cont.) FASE 2 (gaps ALTA com dado) entregue:** fornecedor ganhou **§1-C** benefícios (laranja), **§1-D**
-  doações TSE (conflito doador↔contrato), **§1-E** rodízio/cartel (bid rotation, bounded top-3 UGs), **§1-F**
-  conflito de pessoal (sócio resolvido na folha do Estado — `conflito_pessoal_view` × `registros_folha` 257k),
-  e leitura **capital×recebido** (subcapitalização). Todos: dado + leitura + conclusão + alimentam o raciocínio
-  (IA). **Achado honesto:** A1 aditivos, A2 empenho→liquidação→OB e A5 débito fiscal **NÃO têm dado** na base
-  (colunas/feeds inexistentes) → viram "coletar primeiro", não "surfar". 106 passed/0 failed. Commits 6e50b15
-  (TSE), c75c02b (capital), d2e023b (rodízio), b62fe6b (conflito pessoal), 4d7c918 (PDF benefícios). Fase 3
-  (MÉDIA) pendente — M1 Benford já no PDF (falta MD). **Hermes Desktop:** ver §9 (update grande pendente).
-- **06-12 cont.19:** **Imagem de rua (fachada/casebre) + benefícios sociais.** (1) `verificacao_endereco`: **Mapillary** (token grátis, rente ao chão) como fonte PRIORITÁRIA + **Street View** só de fallback, capado a **9999 req/31d** (`STREETVIEW_MAX_31D`; checa cobertura no `metadata` GRÁTIS antes de gastar) + satélite Esri (só afasta). Ordem `IMG_FONTE_ORDEM`. **Casebre PRECEDE "edificado-OSM"** (foto rente ao chão acusa `construcao_precaria_barraco` mesmo havendo construção — pedido do dono). Visual LIGADO no sweep via gate `ENDERECO_USAR_IMAGEM=auto` (liga só com MAPILLARY_TOKEN, p/ não queimar o teto pago). Chaves SV+Mapillary no `.env` (gitignored). +8 testes. Testado ao vivo (Copacabana/Maracanã/Centro = foto OK; Maracanã→INDÍCIO casebre). **⚠ Piloto 036100 com `--forcar` travou em back-off do Nominatim (re-geocodifica tudo); o sweep normal usa geocode CACHEADO e acumula visual aos poucos.** (2) **Benefícios** (`collectors/beneficios_sociais.py`) 3→**6**: +**Bolsa Família** +**BPC** +**Auxílio Emergencial** (por-CPF, verificados HTTP 200 ao vivo). Auxílio Brasil por-CPF=403; Novo BF/sacado=só NIS (não temos). **PENDENTE (próximo loop, sessão limpa):** **sweep de benefícios dos sócios** detached (universo `socios_fornecedor`=31.449; 27.729 mascarados) + **resolução de CPF de sócio** — gargalo: middle-6 resolve só **2%**; fontes LEGÍTIMAS a somar = **TSE** (`eleitoral_providers`/doacao_tse, doador/candidato) + **SEI docs** (contrato social/procuração têm CPF — exige PARSING; `processos_sei` ainda não extrai CPF). **NÃO usar serviços de leak/"detetive hacker" de CPF-por-nome** (risco LGPD, multa até R$50M; descaracteriza o JFN como ferramenta de compliance). 5 commits (inclui `resolver_multi`+TSE). **⚠ ACHADO A RESOLVER (próx. sessão):** o sweep do universo já verificou 3.320 sedes mas **0 com VISUAL** — a foto só dispara quando o geocode é `exato` (nº da casa), que o Nominatim grátis quase nunca acerta (cai antes, no `exato=False`). P/ o visual funcionar de fato: ou rodar foto de rua também no geocode coarse (centróide da rua — útil p/ "rua de favela", mas marcar como informativo, não acusatório/§8), ou melhorar a precisão do geocode. **Goal aberto do dono ("melhorar todo o ecossistema em loop") → retomar em sessão limpa (regra §5) por este doc.**
-- **06-11 cont.18:** **Relatórios de ÓRGÃO e FORNECEDOR enriquecidos** (dono: "todos os cruzamentos, mais prosa/inteligência, não resumir"). ÓRGÃO ganhou seções (md+PDF): **1-D Triagem de DD dos maiores fornecedores** (fachada/laranja 🔴🟡🟢+score+hipóteses+SEI) + **rodízio temporal/cartel** (bid rotation, OCDE) + processos SEI a priorizar — via `investigacao_orgao_dd` (bounded/honesto); **1-E Realidade do endereço das sedes** ("as empresas são reais?", cruza `endereco_verificacao`; INDISPONÍVEL≠inexistência). Esses fatos alimentam a análise raciocinada (prosa ~450 palavras). FORNECEDOR: veredito **"a empresa é real?"** (realidade da sede) no §1. **FIX real:** `backfill_verificacao_endereco` quebrava em TODA linha desde cont.15 (tabela ganhou colunas visual_*→13; INSERT posicional de 9) → **nenhuma empresa era verificada**; INSERT agora nomeia colunas (+2 testes de regressão). **Sweep de endereços agora DETACHED** (`tools/endereco_supervisor.sh` + cron respawn/minuto + @reboot, igual SEI/SIAFE; pausa `data/.pause_endereco_sweep`; varre o universo até esvaziar, back-off 6h). Medido: FES regenerado com as seções (top-12 🟢 = instituições legítimas, correto). **Suíte (rodada inteira):** **465 passed, 5 failed** (2 arquivos FMP por-rede `--ignore` + 2 testes de integração `--deselect` que TRAVAM em SQL full-scan na DB 1,2GB sob carga: `test_offline::test_goal_agent_ciclo_autonomo`, `test_jfn2_onda10::test_gera_minuta_docx`). As 5 falhas são **pré-existentes e ambientais, NENHUMA nos arquivos alterados**: `test_jfn2_skilltree::test_render_menu_curado_e_enxuto` + 4× `test_offline` (roteamento hermes groq/openrouter/max_tokens + SEI-chrome — exigem chave/chrome). ⚠ os ~4 testes lentos/por-rede são candidatos a fixture-DB/markers `network`. Módulos tocados = 100% verdes (regime4 6, orgao/DD 21, relatório 17, cruzamentos 4). 4 commits.
-- **06-11 cont.17:** **EDGE DO MASSARE VIROU ≥0** (alvo do dono). Novo `massare/engine_regime4.py`: ensemble **4 regimes** (grade 2×2 tendência×volatilidade) + **drift-aware** (EWMA por sub×regime, recência pesa mais, rampa anti-ruído por min-amostras). **Universo (26 ativos × 5/10/21d, walk-forward OOS):** naive −0.0133/−0.0163/−0.0082 → regime2 −0.0071/−0.0114/−0.0021 (ainda neg.) → **reg4+drift +0.0006/+0.0005/+0.0070 (≥0 nos 3)**. Ablação honesta: **4 regimes SEM drift PIORA** (esparsidade) — **o drift é o que vira**. **Produto real** (`backtest.json`, 356.655 pregões/78 séries): **edge médio +0.0027**, 38/78 positivas (ETH 21d +0.072, DXY +0.061, USDBRL +0.055). Robustez: positivo half_life 21..63; decai só >~90d. **Motor de produção trocado p/ regime4** (`backtest.run` padrão + `/api/massare/prever` + `daily`) SÓ após o backtest universo provar ≥0 (lição V2); naive mantido p/ comparação. Live OK (BTC bear_turb edge +0.017 tem_skill=True). +6 testes. Commit `825d0f5`.
-- **06-11 cont.16:** Avaliadas 3 specs greenfield de IAs (fraude do Fable, geocoding, OSINT) contra o código real → **~70% já existe** (e mais honesto); geocoding seria REGRESSÃO (lições §8 já codificadas). Delta novo escolhido: **`rodizio_temporal.py`** — rodízio temporal de cartel (vencedores que se revezam no topo da UG ano a ano, OCDE bid rigging), aditivo ao `grafo_cartel` (que era só espacial). Núcleo PURO testável (5 testes TDD), DuckDB sobre 1,1M OBs, exclui intra-gov. CLI + rota `/api/rodizio` + capabilities. **Medido ao vivo:** TJRJ/Fundo 036100 = SEM indício (topo legítimo, correto); varredura achou **20 UGs** com indício (Transporte R$2,6bi, Pgto Concessionárias R$1,37bi, Fundo ALERJ, Comunicação Social). Honesto: OB=vencedor≠licitantes → corroborar no SEI/PNCP. **(cont.)** rodízio→QSA (`rodizio_com_qsa`: revezam+sócio comum=concorrência fictícia, eleva a ALTO) + integrado no `investigar_orgao` (aparece na triagem da UG). **Testado JFN ao vivo:** Fundo 036100 / TJRJ 030100 = top 🟢 legítimo (fachada na cauda); Esporte 170100 = rodízio score 74.1 aparece no relatório. **Massare testado:** funciona, mas edge OOS NEGATIVO (`tem_skill=False`, backtest defasado). **`/lista` ampliado:** bloco financeiro do Massare passou de 3→8 funções (regime/clima HMM [nova rota `/api/massare/regime`], teses, fundamentos, carteira, agenda). **FMP integrado:** chave grátis (`massare/fmp.py`) → fundamentos US TTM, ligado no fallback de `/api/massare/fundamentos` (agora cobre BR+US). Verificado honesto: senate/insider/13F por-ticker = PAGOS (até no MCP, ACCESS DENIED); `massare/sinais_fmp.py` fica DORMENTE até plano pago. Edge OOS do ensemble segue negativo (próximo alvo real). **Ensemble REGIME-condicional** (`massare/engine_regime.py`, experimento aditivo): pesos por acerto da sub DENTRO do regime (bull/bear via SMA200). **Medido OOS (5 ativos): edge −0.029→−0.017 (Δ+0.012, melhora nos 5)** — avanço real, MAS edge ainda NEGATIVO (não bate o ingênuo; não trocar produção sem backtest universo-inteiro). 9 commits; 32 testes verdes.
-- **06-11 cont.15:** Verificação de endereço endurecida: divergência/baldio só com geocode `exato` (fim de 83 falsos); **resolução por imagem** (`classificar_local_por_imagem` + `tools/resolver_endereco_imagem`): satélite Esri grátis + Street View (chave) → VLM Gemini pool. **Satélite NUNCA acusa** (lição BB §8 — virou "barraco" falso), só AFASTA; acusação real só por Street View (`GOOGLE_MAPS_KEY`). Dono pausou o visual (decisão: caminho grátis afasta, não conclui). Tabela `endereco_verificacao` (2 INDÍCIO / 201 INDISP no Fundo). +8 testes.
-- **06-11 cont.14:** Geocoder corrigido (lição NEW LINK §8: usa CEP+variantes, distingue `exato` do centroide). **Verificação de endereço de TODAS as fornecedoras via backfill incremental diário** (`backfill_verificacao_endereco.py` + tabela `endereco_verificacao` + cron 06:45 `--limite 600` → cobre 14.418 sedes em ~24d, educado/VM-safe; `--ug` prioriza órgão). DD estrutural Fundo 036100 fechou **1363/1363 → 64 candidatos (8🔴/56🟡)**; 🔴 = END-RESID+situação irregular+sócio único (ex.: HG REPRESENTACOES, A V SUPRIMENTOS, EMBRACOM). Lote OSM duplicado irritou rate-limit → back-off implementado + sweep ad-hoc trocado pelo cron. +5 testes.
-- **06-11 cont.13:** **Verificação de realidade do endereço** (`verificacao_endereco.py`): geocode-match (bate município? Nominatim) + **edificação/baldio** (Overpass/OSM — sem prédio no ponto + landuse vago = indício de terreno não edificado; ressalva honesta de cobertura OSM incompleta) + hook imagem→VLM (ativa com chave Street View/Mapillary). Plugado no H-END-EXISTE. Back-off 429/5xx + cache 30d → **sweep `endereco_sweep --todos`** avalia TODAS as fornecedoras da UG (resumível/reboot-safe, educado). Rodando no Fundo 036100. Co-endereço = H-COEND (já existia). +6 testes.
-- **06-11 cont.12:** **Alvo 2** — triagem de DD priorizada por órgão (`investigacao_orgao_dd.py`): ranqueia top fornecedores PJ da UG por grau/score + lista processos SEI a priorizar; CLI + render_md; 3 testes. Medido ao vivo TJRJ 030100/Fundo 036100: **top-por-valor = grandes prestadores legítimos (todos 🟢)** — achado honesto: **fachada/laranja mora na CAUDA, não no topo** (varredura de cauda = trabalho de background). Regra de corroboração confirmada (CAPITAL isolado score-8 não sobe a 🟡).
-- **06-11 cont.11:** **Alvo 1 fechado** — `beneficios_sociais` wired no motor DD + Lex: **H-PEP** (PEP por nome do sócio = relação política) + **H-BENEFICIO** (benefício de subsistência por CPF = laranja), bounded/cacheado/honesto, seção II-E. Verificado ao vivo (PEP real, 2.9s). **br-acc avaliado/agregado** (`docs/AVALIACAO-BR-ACC.md`): NÃO Neo4j; **adotada a ponte de CPF mascarado middle-6** (`resolucao_cpf.py`, corpus 59,6k PF favorecidos) que **destrava H-BENEFICIO de sócio mascarado** (semente da resolução de entidade P0). +16 testes.
-- **06-11 cont.10:** **FIX conceitual OB≠contrato≠processo** (`cardinalidade_contratual` honesta: TJRJ 1598 OBs/41 proc; Fundo 47895/338; nota + frase no relatório + skill Yoda) `4fff8bd`. Coletor **benefícios sociais (laranja) + PEP (relação política)** `beneficios_sociais.py` (DD Loop 2 base). br-acc entendido (grafo Neo4j de dados públicos — referência p/ fontes+entidade). Doc/MEMORY enxutos.
-- **06-11 cont.9:** Lex seção II-E (apresenta a investigação DD) + sweeps reboot-safe (`recursos` boot-time + `@reboot` cron). `8c6c7e4`,`4981323`.
-- **06-11 cont.8:** motor `investigacao_dd` (fachada/laranja, Loop 1) + wiring no Lex + BrasilAPI capital/porte. `63070cd`.
-- **06-11 cont.7:** bom dia multi-fonte política + sempaywall; **CEIS/CNEP** corrigido (3 bugs, API); relatórios raciocinados (/relatorio+/orgao) + OSINT Querido Diário.
-- **06-11 (1–6):** Cerebras em todos os pools; /orgao rico (sumário+geográfica+P×I); SEI sweep destravado (bug supervisor back-off infinito); rotação de chaves LLM (cooldown 12h billing); erros do Yoda mapeados/corrigidos.
-- **06-09:** 23 loops de benchmark (pyproject/scorecard/golden, ruff 733→37, 4 bugs reais); frente SEI (reader funciona, `sei_sweep`/`sei_ficha`); /UG + busca de órgão; Lex de órgão; glifos do PDF corrigidos; este doc criado.
+### Histórico condensado (cont.≤30 — detalhe completo no git)
+- **06-12 cont.30:** QA dos produtos + 6 correções (`02f16e4`..`306518f`): enriquecimento+retry+cache, score recalibrado, §1-G TCE Cidades 660100, off-by-one. 224 testes verdes; obsidian-save da sessão.
+- **06-12 cont.29:** Pipeline de detectores de licitação 17/30 nas 5 fases (P1/2/4/5, E1-3, J1-4, C1-5, P3); orquestradores `rodar_*`; ~140 testes. Spec `notas/detectores-corrupcao-licitacoes-v2`.
+- **06-12 cont.28:** Detectores operacionais e vivos no produto (`01ccd00`): J1/P3/C1-5 wrappers + §1-I Painel de detectores no relatório de órgão (`d2869ea`). 54+ testes.
+- **06-12 cont.27:** ⭐ SEI port funcionou (`59360d0`) — `_ler_cracked` lê processo de outra unidade (510001 Vieira) sem regredir ITERJ. Framework de detectores (`380a967`): schema base + P4 fracionamento; 33 testes.
+- **06-12 cont.26:** Manual de detecção de corrupção em licitações (vault) + 4 builds (§1-H concentração-grupo `897edb3`, Lex exculpatório+destinatário `2317395`, priorização `034b062`). ⭐ SEI cracked (mecânica da busca itkava abre outra unidade) + OCR de docs digitalizados (`189d117`/`fdcd9cf`); reader em estado seguro (`fa16348`). ~38 testes.
+- **06-12 cont.25:** Sweeps rearquitetados — "2-lane serial" REVERTIDO p/ sweeps individuais escalonados (VM 2vCPU/7,8GB/sem swap): nice/ionice, bounded, load-guard=4, 1-por-vez. `cc7aaa0`.
+- **06-12 cont.24:** SEI entendido/documentado (itkava lê TODAS as unidades, output=`cdp_*.json`); grupo Vieira sócio-elo + tier-2 (+5 candidatos); 4 fortes do Fundo TJ end. residenciais (H-END-RESID); context-economy (memória→vault, MCP lean).
+- **06-12 cont.23:** Migração da memória `.claude`→vault Obsidian (digest SEMPRE-ON no SessionStart); ⛔ queda da VM diagnosticada (DuckDB+2 sweeps sem swap=OOM → lição vm-nao-crashar); grupo Vieira quantificado R$543M/56,9%; varredura 30 maiores UGs.
+- **06-12 cont.22:** Novo detector `grafo_cartel.concentracao_por_grupo(ug)` (concentração oculta por grupo, union-find; 660100=57%/R$543M, `756c58d`); reconciliação honesta (H-PEP/H-BENEFICIO/PyOD/DuckDB/CAGED/OpenSanctions já existiam; único gap P0=Splink); regra de roteamento de memória.
+- **06-12 cont.21:** Yoda resolvido (poller externo=Hermes Desktop); §1-G Sanções TCE-RJ no relatório de órgão (`6017ede`, vínculo TCE↔UG re-derivado + dedup de responsabilidade solidária); fix sweep `database is locked` (busy_timeout+WAL); docs leves (53→33 + INDEX); segundo cérebro Obsidian; +12 testes. (cont.) sweeps 2-lane serial; módulo `relacoes.py` (grupo Vieira R$189M); sobrepreço `precos_extract.py`; coletor ALERJ; acúmulo de cargos; acima do teto; SEI pensante `sei_recomendacoes.py`; caso MUV São Gonçalo; recon folha RJ. +38 testes.
+- **06-12 cont.20:** Sweep detached de benefícios dos sócios no ar (`socio_beneficio`+`beneficios_sweep.py`+supervisor bracket; universo 23.691 mascarados); `resolucao_cpf` com índice (VM-safe); fix Bolsa Família `anoMesReferencia`. (cont.) relatórios Fase 1 (benefícios surfados nos 3 produtos `beneficios_view.py`) + Fase 2 (fornecedor §1-C a §1-F: TSE/capital/rodízio/conflito pessoal; commits 6e50b15/c75c02b/d2e023b/b62fe6b/4d7c918). Cobertura CPF ~4,7%. 106 testes.
+- **06-12 cont.19:** Imagem de rua (Mapillary prioritário + Street View fallback capado 9999/31d; casebre precede edificado-OSM) + benefícios 3→6 (+Bolsa Família/BPC/Aux.Emergencial). Pendência: sweep só dispara visual no geocode `exato`. ⛔ NUNCA leak/detetive de CPF. +8 testes.
+- **06-11 cont.18:** Relatórios de órgão/fornecedor enriquecidos (§1-D triagem DD + rodízio, §1-E realidade do endereço; veredito "a empresa é real?"); FIX `backfill_verificacao_endereco` quebrava desde cont.15; sweep de endereços detached. Suíte 465 passed/5 failed (pré-existentes/ambientais).
+- **06-11 cont.17:** ⭐ Edge do Massare virou ≥0 — `engine_regime4.py` (4 regimes + drift-aware; OOS +0.0006/+0.0005/+0.0070); produto real edge médio +0.0027 (356.655 pregões); motor de produção trocado p/ regime4. `825d0f5`.
+- **06-11 cont.16:** 3 specs greenfield avaliadas (~70% já existia; geocoding=regressão); novo `rodizio_temporal.py` (rodízio de cartel OCDE, 20 UGs com indício); FMP chave grátis (fundamentos BR+US); ensemble regime-condicional (edge OOS ainda neg.). 9 commits/32 testes.
+- **06-11 cont.15:** Verificação de endereço endurecida (divergência/baldio só com geocode `exato`); resolução por imagem (satélite Esri AFASTA, Street View acusa); dono pausou o visual. +8 testes.
+- **06-11 cont.14:** Geocoder corrigido (CEP+variantes, distingue `exato`); verificação de endereço de TODAS as fornecedoras via backfill diário (cron 06:45); DD Fundo 036100 → 64 candidatos (8🔴/56🟡); back-off OSM. +5 testes.
+- **06-11 cont.13:** Verificação de realidade do endereço (`verificacao_endereco.py`: geocode-match + edificação/baldio Overpass + hook imagem→VLM); sweep `endereco_sweep --todos` resumível. +6 testes.
+- **06-11 cont.12:** Alvo 2 — triagem de DD priorizada por órgão (`investigacao_orgao_dd.py`); achado: fachada/laranja mora na CAUDA, não no topo. 3 testes.
+- **06-11 cont.11:** Alvo 1 fechado — `beneficios_sociais` no motor DD+Lex (H-PEP + H-BENEFICIO); br-acc agregado → ponte CPF mascarado middle-6 (`resolucao_cpf.py`). +16 testes.
+- **06-11 cont.10:** FIX conceitual OB≠contrato≠processo (`cardinalidade_contratual`, `4fff8bd`); coletor benefícios sociais+PEP `beneficios_sociais.py` (DD Loop 2 base).
+- **06-11 cont.9:** Lex seção II-E + sweeps reboot-safe (`recursos` boot-time + @reboot). `8c6c7e4`,`4981323`.
+- **06-11 cont.8:** motor `investigacao_dd` (fachada/laranja Loop 1) + wiring no Lex + BrasilAPI capital/porte. `63070cd`.
+- **06-11 cont.7:** bom dia multi-fonte política; CEIS/CNEP corrigido (3 bugs); relatórios raciocinados + OSINT Querido Diário.
+- **06-11 (1–6):** Cerebras em todos os pools; /orgao rico; SEI sweep destravado; rotação de chaves LLM (cooldown 12h); erros do Yoda corrigidos.
+- **06-09:** 23 loops de benchmark (ruff 733→37, 4 bugs reais); frente SEI (reader, sei_sweep/sei_ficha); /UG + busca de órgão; Lex de órgão; glifos PDF; este doc criado.
 - **Anterior:** SIAFE 1+2 sweeps supervisionados + correlação OB↔SEI↔CNPJ; JFN 2.0 (12 ondas); Yoda/Hermes na VM.
 
 ## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md e tasks/todo.md")
