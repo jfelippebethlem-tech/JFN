@@ -9,8 +9,8 @@ PY=.venv/bin/python
 LOG=data/sweep_sei.log
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 
-[ -f data/.pause_sweeps ] && exit 0
-[ -f data/.pause_sei_sweep ] && exit 0
+[ -f data/.pause_sweeps ] && { say "pausado (.pause_sweeps) — pulei"; exit 0; }
+[ -f data/.pause_sei_sweep ] && { say "pausado (.pause_sei_sweep) — pulei"; exit 0; }
 # bracket evita auto-match; se já há um sei_sweep, NÃO abrir 2ª sessão itkava (o SEI expulsa a duplicada)
 if pgrep -f 'tools\.sei_swee[p]' >/dev/null; then say "já rodando — pula"; exit 0; fi
 # backstop VM-safe: se a VM já está muito carregada, adia (o cron repete no próximo slot)
