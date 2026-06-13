@@ -15,6 +15,7 @@ No celular: http://<IP-DO-SEU-PC>:8000
 import asyncio
 import json
 import os
+import time
 import argparse
 from contextlib import asynccontextmanager
 from datetime import datetime
@@ -65,6 +66,20 @@ _agent = None
 _agent_lock = asyncio.Lock()
 _otp_queue: Optional[asyncio.Queue] = None  # for passing OTP from web UI to agent
 
+# ── Guard de idle do browser (§6: evitar o leak de Chromium ocioso 24h) ────────
+# O browser Playwright (SIAFE/SEI) é um singleton lançado no boot e reusado. Se ficar OCIOSO por muito tempo
+# ele segura ~200MB numa VM sem swap à toa. O reaper abaixo o ENCERRA após N min sem uso e o `get_agent()`
+# relança LAZY na próxima leitura. Seguro: as operações que dirigem o browser seguram `_agent_lock`; o reaper
+# só fecha quando o lock está livre (e re-checa o ócio após adquiri-lo). Configurável por env
+# `JFN_BROWSER_IDLE_MIN` (default 15; 0 = desliga o guard). Usa relógio monotônico (imune a ajuste de hora).
+_browser_last_used: float = time.monotonic()
+try:
+    _BROWSER_IDLE_MIN = float(os.environ.get("JFN_BROWSER_IDLE_MIN", "15"))
+except (TypeError, ValueError):
+    _BROWSER_IDLE_MIN = 15.0
+_BROWSER_REAP_INTERVAL = 120.0  # de quanto em quanto tempo o reaper checa o ócio (segundos)
+_browser_reaper_task: Optional["asyncio.Task"] = None
+
 # ── Reverse tunnel state ──────────────────────────────────────────────────────
 _tunnel_ws: Optional["WebSocket"] = None          # Windows tunnel connection
 _tunnel_lock = asyncio.Lock()
@@ -74,7 +89,8 @@ _tunnel_results: list = []                        # accumulated OBs from Windows
 
 
 async def get_agent():
-    global _agent
+    global _agent, _browser_last_used
+    _browser_last_used = time.monotonic()  # marca uso p/ o guard de idle (toda requisição do browser passa aqui)
     if _agent is None:
         from siafe_agent.agent import SIAFEAgent
         headless = not getattr(_args, "visible", False)
@@ -87,7 +103,54 @@ async def get_agent():
             default_exercicio=os.environ.get("SIAFE_EXERCICIO") or None,
         )
         await _agent.start()
+        # Login SIAFE best-effort em TODO launch fresco (boot OU relaunch após idle-reap) — gov-network only,
+        # silencioso fora da rede; o SEI faz seu próprio login por operação. Mantém o boot e o relaunch idênticos.
+        try:
+            res = await _agent._tool_login_siafe(
+                username=_agent._siafe_username, password=_agent._siafe_password,
+                cliente=_agent._siafe_cliente, exercicio=_agent._siafe_exercicio,
+            )
+            if res.get("success"):
+                print(f"[SIAFE] Login OK — {res.get('url', '')}")
+            else:
+                print("[SIAFE] Login não realizado (fora da rede do governo) — compliance funciona normalmente")
+        except Exception as e:  # noqa: BLE001 — login é best-effort; browser sobe mesmo sem ele
+            print(f"[SIAFE] Browser sem login ({e.__class__.__name__}) — compliance funciona normalmente")
     return _agent
+
+
+async def _browser_idle_reaper():
+    """Encerra o browser Playwright após `_BROWSER_IDLE_MIN` minutos SEM uso, liberando RAM numa VM sem swap.
+    Relança LAZY no próximo `get_agent()`. Seguro contra fechar no meio de uma operação: só fecha quando
+    `_agent_lock` está livre e, após adquiri-lo, re-confirma o ócio (operações de browser seguram esse lock)."""
+    global _agent
+    if _BROWSER_IDLE_MIN <= 0:
+        return  # guard desligado por configuração
+    while True:
+        try:
+            await asyncio.sleep(_BROWSER_REAP_INTERVAL)
+            if _agent is None:
+                continue
+            ocioso_s = time.monotonic() - _browser_last_used
+            if ocioso_s < _BROWSER_IDLE_MIN * 60:
+                continue
+            if _agent_lock.locked():
+                continue  # operação em andamento — não mexer; checa de novo no próximo ciclo
+            async with _agent_lock:
+                # re-checa sob o lock (evita corrida com um get_agent que acabou de marcar uso)
+                if _agent is None or (time.monotonic() - _browser_last_used) < _BROWSER_IDLE_MIN * 60:
+                    continue
+                ag, _agent = _agent, None  # solta o singleton ANTES de fechar; próximo get_agent relança limpo
+                try:
+                    await ag.stop()
+                    print(f"[browser] ocioso {ocioso_s/60:.0f}min — Chromium encerrado p/ liberar RAM "
+                          f"(relança na próxima leitura SEI/SIAFE)", flush=True)
+                except Exception as e:  # noqa: BLE001 — fechar é best-effort; nunca derruba o servidor
+                    print(f"[browser] erro ao encerrar browser ocioso ({e.__class__.__name__}) — ignorado")
+        except asyncio.CancelledError:
+            raise  # shutdown: deixa propagar
+        except Exception as e:  # noqa: BLE001 — o reaper NUNCA pode morrer por uma exceção pontual
+            print(f"[browser] reaper: ciclo falhou ({e.__class__.__name__}) — continua")
 
 
 # ── Lifespan ──────────────────────────────────────────────────────────────────
@@ -97,17 +160,7 @@ async def lifespan(app: FastAPI):
     # Tenta login no SIAFE — falha silenciosa se fora da rede do governo
     print("\n[Servidor] Iniciando... (login SIAFE só funciona na rede do governo)")
     try:
-        agent = await get_agent()
-        result = await agent._tool_login_siafe(
-            username=agent._siafe_username,
-            password=agent._siafe_password,
-            cliente=agent._siafe_cliente,
-            exercicio=agent._siafe_exercicio,
-        )
-        if result.get("success"):
-            print(f"[SIAFE] Login OK — {result.get('url', '')}")
-        else:
-            print("[SIAFE] Login não realizado (fora da rede do governo) — sistema de compliance funciona normalmente")
+        await get_agent()  # lança o browser + login SIAFE best-effort (lógica única em get_agent)
     except Exception as e:
         print(f"[SIAFE] Browser não iniciado ({e.__class__.__name__}) — sistema de compliance funciona normalmente")
 
@@ -126,7 +179,24 @@ async def lifespan(app: FastAPI):
     except Exception:
         pass
 
+    # Guard de idle: encerra o Chromium ocioso após N min (§6, evita o leak de browser 24h numa VM sem swap).
+    global _browser_reaper_task
+    if _BROWSER_IDLE_MIN > 0:
+        try:
+            _browser_reaper_task = asyncio.create_task(_browser_idle_reaper())
+            print(f"[browser] guard de idle ativo: encerra o Chromium após {_BROWSER_IDLE_MIN:.0f}min sem uso "
+                  f"(relança lazy; env JFN_BROWSER_IDLE_MIN, 0=off)", flush=True)
+        except Exception as e:  # noqa: BLE001
+            print(f"[browser] guard de idle não iniciado ({e.__class__.__name__}) — não-fatal")
+
     yield
+
+    if _browser_reaper_task:
+        _browser_reaper_task.cancel()
+        try:
+            await _browser_reaper_task
+        except (asyncio.CancelledError, Exception):  # noqa: BLE001 — shutdown, best-effort
+            pass
 
     if _agent:
         try:
