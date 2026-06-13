@@ -26,6 +26,7 @@ import platform
 import re
 import shutil
 import subprocess
+import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -125,6 +126,44 @@ async def abrir_chrome_debug(url: str = SIAFE_HOME) -> dict:
     return {"ok": False, "erro": "Chrome aberto mas a porta 9222 não respondeu a tempo."}
 
 
+# marca do último uso do Chrome 9222 (monotônico) — o idle-guard do server.py o fecha após N min ocioso.
+_chrome_ultimo_uso: float = 0.0
+
+
+def chrome_ocioso_segundos() -> float:
+    """Há quantos segundos o Chrome 9222 não é usado por uma ação de browser do Hermes (p/ o idle-guard)."""
+    return time.monotonic() - _chrome_ultimo_uso if _chrome_ultimo_uso else float("inf")
+
+
+async def _garantir_chrome() -> dict:
+    """GARANTE o Chrome 9222 no ar — o Hermes sabe abri-lo SOZINHO quando precisa. Se a porta não responde
+    (fechado pelo idle-guard, reboot, kill, ou nunca aberto), ABRE via `abrir_chrome_debug` de forma transparente.
+    Assim nenhuma ação de browser depende de o LLM lembrar de chamar 'abrir_chrome' nem do Chrome estar pré-aberto.
+    Idempotente (se já está no ar, não reabre). Marca o uso (p/ o idle-guard). Retorna {ok, ja_estava?, ...}."""
+    global _chrome_ultimo_uso
+    _chrome_ultimo_uso = time.monotonic()
+    if await chrome_disponivel():
+        return {"ok": True, "ja_estava": True}
+    return await abrir_chrome_debug()
+
+
+async def fechar_chrome_debug() -> dict:
+    """Fecha o Chrome 9222 (libera RAM numa VM sem swap). Idempotente. NÃO quebra o Hermes: qualquer ação de
+    browser reabre via `_garantir_chrome`. Mata o processo dono da porta 9222 (cmdline com remote-debugging-port).
+    Linux/VM (pkill bracket-safe p/ não auto-casar). Retorna {ok, ja_fechado?}."""
+    if not await chrome_disponivel():
+        return {"ok": True, "ja_fechado": True}
+    if platform.system() == "Windows":  # no Windows não há pkill; deixa o dono gerenciar
+        return {"ok": False, "erro": "fechar_chrome_debug não suportado no Windows"}
+    try:
+        # bracket no padrão evita o pkill casar a si mesmo (lição §8 do projeto)
+        subprocess.run(["pkill", "-f", "remote-debugging-port=922[2]"], timeout=10, check=False)
+    except Exception as e:  # noqa: BLE001 — fechar é best-effort, nunca derruba o chamador
+        return {"ok": False, "erro": str(e)[:80]}
+    await asyncio.sleep(1)
+    return {"ok": not await chrome_disponivel()}
+
+
 async def _aba_siafe(browser):
     """Acha a aba do SIAFE no Chrome conectado, ou usa a primeira disponível."""
     for ctx in browser.contexts:
@@ -142,8 +181,9 @@ async def navegar_e_ler(url: str = "", clicar_texto: str = "") -> dict:
     cujo texto casa com `clicar_texto` (se dado), e devolve título + amostra do
     texto + links visíveis. É como o Hermes 'enxerga e clica' no navegador.
     """
+    g = await _garantir_chrome()  # auto-abre se estiver fechado (idle-guard/reboot/kill) — não depende do LLM
     if not await chrome_disponivel():
-        return {"ok": False, "erro": "Chrome 9222 indisponível. Use a ação abrir_chrome antes."}
+        return {"ok": False, "erro": f"Chrome 9222 indisponível e auto-abertura falhou: {g.get('erro', g)}"}
 
     from playwright.async_api import async_playwright
     p = await async_playwright().start()
@@ -367,6 +407,7 @@ class HermesGoalAgent:
                 numero = args.get("numero") or args.get("numero_sei") or ""
                 if not numero:
                     return {"ok": False, "erro": "informe 'numero' do processo SEI"}
+                await _garantir_chrome()  # garante o Chrome 9222 antes da leitura SEI (auto-abre se fechado)
                 r = await ler_processo_sei(numero)
                 if r.get("erro"):
                     return {"ok": False, "erro": r["erro"],
