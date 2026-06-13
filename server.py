@@ -604,6 +604,25 @@ async def _gerar_e_enviar_orgao(orgao, ug, anos, key) -> None:
         _retomar_sweeps_se_ocioso()
 
 
+async def _gerar_e_enviar_dossie(alvo, key) -> None:
+    from compliance_agent.dossie import dossie
+    from compliance_agent.notifications import telegram as _tg
+    _pausar_sweeps_para_relatorio()
+    try:
+        result = await dossie(alvo)
+        if not result.get("ok"):
+            await _tg.enviar_mensagem(result.get("pergunta") if result.get("ambiguo")
+                                      else f"⚠️ Não consegui gerar o dossiê: {(result.get('erro') or '')[:300]}")
+            return
+        # O dossiê só tem path_pdf (sem xlsx/lex) — _enviar_docs_telegram envia o que houver.
+        await _enviar_docs_telegram(result, f"Dossiê 360 — {alvo}")
+    except Exception as exc:  # noqa: BLE001
+        await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o dossiê de {alvo}: {str(exc)[:300]}")
+    finally:
+        _REL_EM_CURSO.discard(key)
+        _retomar_sweeps_se_ocioso()
+
+
 @app.post("/api/relatorio/inteligencia")
 async def api_relatorio_inteligencia(payload: Optional[dict] = None):
     """
@@ -1793,16 +1812,28 @@ async def api_grafo_ftm(alvo: str, saltos: int = 2):
 @app.post("/api/dossie")
 async def api_dossie(payload: Optional[dict] = None):
     """Onda 4 — Dossiê 360 de um CNPJ: cadastro+sanções+OB+conflito+rede+score → PDF.
-    Body JSON: {"alvo": "<CNPJ>"}. Indícios para apuração; nenhuma fonte indisponível é fabricada."""
-    try:
-        from compliance_agent.dossie import dossie
-
-        alvo = ((payload or {}).get("alvo") or (payload or {}).get("cnpj") or "").strip()
-        if not alvo:
-            return JSONResponse(content={"ok": False, "erro": "informe {'alvo': CNPJ}"}, status_code=400)
-        return JSONResponse(content=await dossie(alvo))
-    except Exception as e:  # noqa: BLE001
-        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+    Body JSON: {"alvo": "<CNPJ>"}. Indícios para apuração; nenhuma fonte indisponível é fabricada.
+    Geração ASSÍNCRONA: responde {status:"gerando"} na hora e o JFN empurra o PDF no Telegram quando
+    fica pronto (igual /api/relatorio/inteligencia). Modo síncrono p/ CLI/testes: {"sync": true}."""
+    payload = payload or {}
+    alvo = (payload.get("alvo") or payload.get("cnpj") or "").strip()
+    if not alvo:
+        return JSONResponse(content={"ok": False, "erro": "informe {'alvo': CNPJ}"}, status_code=400)
+    if payload.get("sync"):  # modo síncrono (CLI/testes)
+        try:
+            from compliance_agent.dossie import dossie
+            return JSONResponse(content=await dossie(alvo))
+        except Exception as e:  # noqa: BLE001
+            return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+    key = f"dossie:{alvo.lower()}"
+    if key in _REL_EM_CURSO:
+        return JSONResponse({"ok": True, "status": "gerando",
+                             "msg": "⏳ Já estou preparando esse dossiê — te envio aqui em instantes."})
+    _REL_EM_CURSO.add(key)
+    asyncio.create_task(_gerar_e_enviar_dossie(alvo, key))
+    return JSONResponse({"ok": True, "status": "gerando",
+                         "msg": f"📥 Preparando o Dossiê 360 de *{alvo}* (PDF). "
+                                "Eu te envio aqui mesmo em ~1–2 min — não precisa repetir o comando."})
 
 
 @app.get("/api/sei/direcionamento")
