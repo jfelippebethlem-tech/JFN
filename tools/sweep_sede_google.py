@@ -68,16 +68,19 @@ def _load_ok(teto: float = 4.0) -> bool:
         return True
 
 
-def _suspeito(geo: dict | None, addr: dict | None) -> bool:
-    """Vale gastar 1 Places? (residencial, ou geo impreciso, ou endereço incompleto)."""
+def _suspeito(geo: dict | None, addr: dict | None, total_pago: float = 0.0) -> bool:
+    """Vale gastar 1 Places? CONSERVADOR — Places é a cota mais valiosa e o sweep vai do menor→maior valor,
+    então NÃO desperdiçar na cauda barata (senão esgota antes de chegar nos grandes). Chama Places quando:
+    residencial (saber se há negócio), endereço incompleto (corroborar), OU recebeu >R$100k (confirmar
+    operação da empresa na sede). Cauda barata com endereço comercial completo NÃO gasta Places."""
     g, a = geo or {}, addr or {}
-    if a.get("residencial") is True:
+    if a.get("residencial") is True:                          # saber se há negócio na residência
         return True
-    if (g.get("location_type") or "") not in ("ROOFTOP", "RANGE_INTERPOLATED"):
+    if total_pago and total_pago > 100_000:                   # valor relevante → confirmar operação na sede
         return True
-    if a.get("completo") is False:
-        return True
-    return False
+    # endereço que NÃO fixou no nº (nem GEOMETRIC_CENTER) → vale checar se há negócio. `addressComplete=False`
+    # é comum demais (até endereços bons) e NÃO entra (gastava Places à toa na cauda barata).
+    return (g.get("location_type") or "") in ("APPROXIMATE", "")
 
 
 def _alvos(con: sqlite3.Connection, limite: int) -> list[dict]:
@@ -162,7 +165,7 @@ def main() -> int:
             continue   # sem cota e sem irmão no CEP → fica p/ a próxima janela
         # Places só nos suspeitos, por empresa, se houver cota
         places = None
-        if _suspeito(sig.get("geocode"), sig.get("validacao")) and sg.cota_restante("places") > 0:
+        if _suspeito(sig.get("geocode"), sig.get("validacao"), c["total_recebido"]) and sg.cota_restante("places") > 0:
             places = sg.buscar_negocio(c["razao"], c["endereco"], c["municipio"])
             places_usados += 1
             time.sleep(a.pausa)
