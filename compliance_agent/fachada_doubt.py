@@ -25,9 +25,12 @@ from __future__ import annotations
 
 import datetime as dt
 import hashlib
+import json as _json
+import math as _math
 import os
 import re as _re
 import sqlite3
+import time as _time
 import unicodedata as _ud
 from pathlib import Path
 
@@ -183,42 +186,86 @@ def _digitos(s) -> str:
     return re.sub(r"\D", "", str(s or ""))
 
 
-def coord_do_endereco(endereco: str) -> tuple[dict | None, str]:
-    """Geocodifica o ENDEREÇO via metadata GRATUITO do Street View (o Google resolve o nº internamente —
-    funciona mesmo com a Geocoding API negada na chave). Metadata NÃO consome cota/cobrança (doc Google).
+def _gkey() -> str:
+    return (os.environ.get("GOOGLE_MAPS_KEY", "") or os.environ.get("STREETVIEW_KEY", "")).strip()
 
-    Devolve ({lat,lon,date}, "") se há cobertura de pano, ou (None, motivo). É a base tanto da captura via
-    navegador (grátis) quanto da API Static (paga).
-    """
+
+def limpa_endereco(s: str) -> str:
+    """Normaliza o endereço p/ o geocoder não se perder (lição: "AVENIDA, ..., Nº2596, BAIRRO" caía em
+    GEOMETRIC_CENTER a 2km; limpo → ROOFTOP). Tira "Nº", colapsa vírgulas/espaços duplicados."""
+    s = _re.sub(r"\bN[ºo°]\.?\s*", "", s or "", flags=_re.I)
+    s = _re.sub(r"\s*,\s*", ", ", s)
+    return _re.sub(r"\s+", " ", s).strip(" ,")
+
+
+# ── Teto de uso da GEOCODING API (9999/31d) — igual ao do Street View, p/ ficar no free tier (pedido do dono) ──
+_GEO_QUOTA_FILE = Path("data") / "geocoding_quota.json"
+_GEO_QUOTA_JANELA = 31 * 86400
+
+
+def _geocode_consome_cota() -> bool:
+    """True se ainda há cota de Geocoding na janela de 31 dias; consome 1. Teto `GEOCODING_MAX_31D` (9999)."""
+    try:
+        maxn = int(os.environ.get("GEOCODING_MAX_31D", "9999"))
+    except Exception:
+        maxn = 9999
+    try:
+        st = _json.loads(_GEO_QUOTA_FILE.read_text("utf-8")) if _GEO_QUOTA_FILE.exists() else {}
+    except Exception:
+        st = {}
+    now = _time.time()
+    ini = st.get("janela_inicio", 0)
+    if not ini or (now - ini) > _GEO_QUOTA_JANELA:
+        st = {"janela_inicio": now, "count": 0}
+    if st.get("count", 0) >= maxn:
+        return False
+    st["count"] = st.get("count", 0) + 1
+    try:
+        _GEO_QUOTA_FILE.parent.mkdir(exist_ok=True)
+        _GEO_QUOTA_FILE.write_text(_json.dumps(st), "utf-8")
+    except Exception:
+        pass
+    return True
+
+
+def _pano_meta(location: str) -> dict | None:
+    """Metadata GRATUITO do Street View (cobertura + coord/data do pano) num ponto 'lat,lng' ou endereço."""
     import httpx
-    gkey = (os.environ.get("GOOGLE_MAPS_KEY", "") or os.environ.get("STREETVIEW_KEY", "")).strip()
+    gkey = _gkey()
     if not gkey:
+        return None
+    try:
+        m = httpx.get("https://maps.googleapis.com/maps/api/streetview/metadata",
+                      params={"location": location, "key": gkey}, timeout=20).json()
+    except Exception:  # noqa: BLE001
+        return None
+    if m.get("status") != "OK" or not m.get("location"):
+        return None
+    return {"lat": m["location"]["lat"], "lon": m["location"]["lng"], "date": m.get("date", "")}
+
+
+def coord_do_endereco(endereco: str) -> tuple[dict | None, str]:
+    """Coord do pano via metadata GRATUITO (Google resolve o nº internamente). Devolve ({lat,lon,date}, "")
+    ou (None, motivo). Metadata NÃO consome cota/cobrança (doc Google)."""
+    if not _gkey():
         return None, "sem GOOGLE_MAPS_KEY"
     if not endereco.strip():
         return None, "endereço vazio"
-    try:
-        m = httpx.get("https://maps.googleapis.com/maps/api/streetview/metadata",
-                      params={"location": f"{endereco}, Brasil", "key": gkey}, timeout=20).json()
-    except Exception as e:  # noqa: BLE001
-        return None, f"erro metadata: {str(e)[:40]}"
-    if m.get("status") != "OK" or not m.get("location"):
-        return None, f"sem cobertura Street View no endereço (status {m.get('status')})"
-    return {"lat": m["location"].get("lat"), "lon": m["location"].get("lng"),
-            "date": m.get("date", "")}, ""
+    p = _pano_meta(f"{limpa_endereco(endereco)}, Brasil")
+    return (p, "") if p else (None, "sem cobertura Street View no endereço")
 
 
 def _geocode_predio(endereco: str) -> dict | None:
-    """Coord do PRÉDIO via Geocoding API (≠ pano). Serve p/ calcular o heading da câmera (mirar a fachada).
-
-    Só funciona com a **Geocoding API ligada** na chave; negada/erro → None (degrada: foto sem heading).
+    """Coord do PRÉDIO via Geocoding API (≠ pano) p/ ancorar a foto e calcular o heading. Quota-guarded
+    (9999/31d). Geocoding negada/cota/erro → None (degrada: foto sem heading).
     Devolve {lat,lon,location_type} (ROOFTOP/RANGE_INTERPOLATED/GEOMETRIC_CENTER/APPROXIMATE)."""
     import httpx
-    gkey = (os.environ.get("GOOGLE_MAPS_KEY", "") or os.environ.get("STREETVIEW_KEY", "")).strip()
-    if not gkey or not endereco.strip():
+    gkey = _gkey()
+    if not gkey or not endereco.strip() or not _geocode_consome_cota():
         return None
     try:
         r = httpx.get("https://maps.googleapis.com/maps/api/geocode/json",
-                      params={"address": f"{endereco}, Brasil", "key": gkey, "region": "br"},
+                      params={"address": f"{limpa_endereco(endereco)}, Brasil", "key": gkey, "region": "br"},
                       timeout=20).json()
     except Exception:  # noqa: BLE001
         return None
@@ -232,39 +279,63 @@ def _geocode_predio(endereco: str) -> dict | None:
 
 def _bearing(a_lat: float, a_lon: float, b_lat: float, b_lon: float) -> float:
     """Rumo (compass bearing, 0-360) de A→B — heading p/ a câmera olhar do pano (A) para o prédio (B)."""
-    import math
-    p1, p2 = math.radians(a_lat), math.radians(b_lat)
-    dl = math.radians(b_lon - a_lon)
-    y = math.sin(dl) * math.cos(p2)
-    x = math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl)
-    return (math.degrees(math.atan2(y, x)) + 360) % 360
+    p1, p2 = _math.radians(a_lat), _math.radians(b_lat)
+    dl = _math.radians(b_lon - a_lon)
+    y = _math.sin(dl) * _math.cos(p2)
+    x = _math.cos(p1) * _math.sin(p2) - _math.sin(p1) * _math.cos(p2) * _math.cos(dl)
+    return (_math.degrees(_math.atan2(y, x)) + 360) % 360
+
+
+def _dist_m(a_lat: float, a_lon: float, b_lat: float, b_lon: float) -> float:
+    """Distância em metros (haversine) — guarda do heading (pano longe do prédio = rumo não confiável)."""
+    p1, p2 = _math.radians(a_lat), _math.radians(b_lat)
+    dp, dl = _math.radians(b_lat - a_lat), _math.radians(b_lon - a_lon)
+    h = _math.sin(dp / 2) ** 2 + _math.cos(p1) * _math.cos(p2) * _math.sin(dl / 2) ** 2
+    return 2 * 6371000 * _math.asin(min(1, _math.sqrt(h)))
 
 
 def foto_rua(endereco: str) -> tuple[bytes | None, str, dict]:
-    """Foto Street View da SEDE pela **API Static**. Confirma cobertura via metadata (grátis) antes de baixar.
+    """Foto Street View da SEDE (API Static), ANCORADA na coord do prédio (Geocoding) p/ a câmera mirar a
+    fachada. Fluxo: limpa endereço → geocoda o prédio → metadata no ponto do prédio → heading pano→prédio →
+    foto. Sem Geocoding (negada/cota) → metadata pelo endereço, heading padrão (degrada honesto).
 
-    Se a **Geocoding API** estiver ligada, geocodifica o PRÉDIO e calcula o `heading` pano→prédio → a câmera
-    **mira a fachada** (resolve o ângulo). Sem Geocoding (negada) → heading padrão (degrada honesto).
-    Devolve (bytes_jpeg, fonte, info{lat,lon,date,heading?}) ou (None, motivo, {}).
+    Devolve (bytes_jpeg, fonte, info{lat,lon,date,heading?,geocode?}) ou (None, motivo, {}).
     """
     import httpx
     from compliance_agent import verificacao_endereco as ve
-    coord, motivo = coord_do_endereco(endereco)   # pano (metadata grátis)
-    if not coord:
-        return None, motivo, {}
-    gkey = (os.environ.get("GOOGLE_MAPS_KEY", "") or os.environ.get("STREETVIEW_KEY", "")).strip()
-    if not ve._streetview_consome_cota():  # respeita o teto de requisições PAGAS
+    gkey = _gkey()
+    if not gkey:
+        return None, "sem GOOGLE_MAPS_KEY", {}
+    end = limpa_endereco(endereco)
+    if not end:
+        return None, "endereço vazio", {}
+
+    predio = _geocode_predio(end)   # coord do prédio (só com Geocoding ligada + cota)
+    anchor = None
+    if predio and predio.get("location_type") in ("ROOFTOP", "RANGE_INTERPOLATED", "GEOMETRIC_CENTER"):
+        anchor = (predio["lat"], predio["lon"])
+        pano = _pano_meta(f"{anchor[0]},{anchor[1]}")     # pano mais perto do prédio
+    else:
+        pano = _pano_meta(f"{end}, Brasil")               # fallback: pano pelo endereço
+    if not pano:
+        return None, "sem cobertura Street View no endereço", {}
+    if not ve._streetview_consome_cota():  # respeita o teto de requisições PAGAS (imagem)
         return None, "cota Street View esgotada", {}
-    params = {"size": "640x640", "location": f"{endereco}, Brasil", "fov": "80",
-              "pitch": "0", "source": "outdoor", "key": gkey}
-    info = {**coord}
-    predio = _geocode_predio(endereco)            # coord do prédio (só com Geocoding ligada)
-    if predio and coord.get("lat") is not None:
-        heading = _bearing(coord["lat"], coord["lon"], predio["lat"], predio["lon"])
-        params["heading"] = f"{heading:.0f}"
-        params["fov"] = "90"
-        info["heading"] = round(heading)
+
+    params = {"size": "640x640", "fov": "80", "pitch": "0", "source": "outdoor", "key": gkey}
+    if anchor:
+        info = {"lat": anchor[0], "lon": anchor[1], "date": pano.get("date", "")}
+        params["location"] = f"{anchor[0]},{anchor[1]}"
+        # heading só se o pano está PERTO do prédio (rumo confiável); senão deixa o padrão
+        if _dist_m(pano["lat"], pano["lon"], anchor[0], anchor[1]) <= 120:
+            heading = _bearing(pano["lat"], pano["lon"], anchor[0], anchor[1])
+            params["heading"] = f"{heading:.0f}"
+            params["fov"] = "90"
+            info["heading"] = round(heading)
         info["geocode"] = predio.get("location_type", "")
+    else:
+        info = {**pano}
+        params["location"] = f"{end}, Brasil"
     try:
         r = httpx.get("https://maps.googleapis.com/maps/api/streetview", params=params, timeout=25)
     except Exception as e:  # noqa: BLE001
