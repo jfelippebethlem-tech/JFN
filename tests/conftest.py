@@ -34,3 +34,17 @@ def pytest_collection_modifyitems(config, items):
         nome = item.module.__name__.split(".")[-1]
         if nome in _MODULOS_REDE:
             item.add_marker(pytest.mark.network)
+
+
+# Módulos cujos testes ESCREVEM no DB criando os próprios dados (OBs, memória, hipóteses) → isolar num
+# tmp DB para NÃO poluir a `compliance.db` de produção ("TESTE LTDA"/"missão de teste") nem disputar o write
+# lock com o jfn.service vivo. Resolvido via env JFN_DB (compliance_agent.database.models._resolver_db).
+_MODULOS_ISOLAR_DB = {"test_offline"}
+
+
+@pytest.fixture(autouse=True)
+def _isola_db(request, tmp_path, monkeypatch):
+    nome = request.module.__name__.split(".")[-1]
+    if nome in _MODULOS_ISOLAR_DB:
+        monkeypatch.setenv("JFN_DB", str(tmp_path / "test_compliance.db"))
+    yield
