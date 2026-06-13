@@ -62,6 +62,17 @@ def criar_indices_fts(db_path=None):
     Safe to call multiple times (uses IF NOT EXISTS). Respeita db_path/JFN_DB.
     """
     conn = _get_conn(db_path)
+    # Guard barato: se já existe, no-op — evita DDL+rebuild a cada chamada (init_db
+    # roda por request no /buscar) e não disputa o lock do sweep à toa.
+    try:
+        ja = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='fts_contratos'"
+        ).fetchone()
+        if ja:
+            conn.close()
+            return
+    except Exception:
+        pass
     try:
         # ── fts_contratos ─────────────────────────────────────────────────────
         conn.execute("""
