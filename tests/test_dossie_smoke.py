@@ -4,9 +4,9 @@ O Dossiê 360 foi validado manualmente mas não tinha NENHUM teste — uma regre
 estrutural (chave faltando, crash no agregador, score quebrado) passaria despercebida.
 
 Este smoke valida a ESTRUTURA do retorno de `dossie()`, não o conteúdo das fontes:
-  - semeia 1 OB num DB ISOLADO (env JFN_DB, via fixture autouse do conftest);
-  - aponta TODOS os `_DB` hardcoded que o dossiê toca (dossie/grafo_poder/lex_conflito)
-    para esse mesmo tmp DB — assim NUNCA lê nem escreve a `compliance.db` de produção;
+  - semeia 1 OB num DB ISOLADO (env JFN_DB, via fixture autouse do conftest); os agregadores
+    (dossie/grafo_poder/lex_conflito) resolvem o caminho do DB em call-time via `_resolver_db()`,
+    então respeitam o JFN_DB — assim NUNCA lêem nem escrevem a `compliance.db` de produção;
   - desliga a rede: mocka os coletores externos (BrasilAPI/CEIS/OpenSanctions/Aleph/GDELT)
     para retornos fixos → rápido, offline e determinístico (não depende de WAF/DNS da VM);
   - desliga o PDF (`gerar_pdf=False`) → não depende de Playwright/Skia/FPDF.
@@ -24,15 +24,14 @@ _CNPJ = "12345678000195"
 
 
 @pytest.fixture
-def _db_isolado(tmp_path, monkeypatch):
-    """Cria o tmp DB (apontado por JFN_DB pela fixture `_isola_db` do conftest), semeia 1 OB
-    e redireciona os `_DB` hardcoded que o dossiê consulta para ESSE arquivo."""
+def _db_isolado(tmp_path):
+    """Cria o tmp DB (apontado por JFN_DB pela fixture `_isola_db` do conftest) e semeia 1 OB.
+    Os agregadores resolvem o DB em call-time via `_resolver_db()` → respeitam o JFN_DB sozinhos."""
     import os
 
     from compliance_agent.database.models import OrdemBancaria, get_session, init_db
 
-    # A fixture autouse `_isola_db` já setou JFN_DB → tmp_path/test_compliance.db. Pegamos o caminho
-    # efetivo e o reusamos para os módulos que ignoram o JFN_DB (usam `_DB` de módulo, sqlite3 cru).
+    # A fixture autouse `_isola_db` já setou JFN_DB → tmp_path/test_compliance.db.
     db_path = os.environ["JFN_DB"]
     init_db()
     s = get_session()
@@ -46,17 +45,6 @@ def _db_isolado(tmp_path, monkeypatch):
         s.commit()
     finally:
         s.close()
-
-    # Os agregadores leem um `_DB` de módulo (sqlite3 cru), que ignora o JFN_DB. Aponta-os
-    # para o mesmo tmp DB → leem só o dado semeado, jamais a produção.
-    from pathlib import Path
-    import compliance_agent.dossie as dossie_mod
-    import compliance_agent.grafo_poder as grafo_mod
-    import compliance_agent.lex_conflito as conflito_mod
-
-    monkeypatch.setattr(dossie_mod, "_DB", Path(db_path))
-    monkeypatch.setattr(grafo_mod, "_DB", Path(db_path), raising=False)
-    monkeypatch.setattr(conflito_mod, "_DB", Path(db_path), raising=False)
     return db_path
 
 

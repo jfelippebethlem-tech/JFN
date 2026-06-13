@@ -15,14 +15,13 @@ from __future__ import annotations
 
 import re
 import sqlite3
-from pathlib import Path
+from compliance_agent.database.models import _resolver_db
 
-_DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
 _FANOUT = 12  # teto de vizinhos por nó (evita explosão em UG/sócio de alto grau)
 
 
 def _con() -> sqlite3.Connection:
-    return sqlite3.connect(str(_DB))
+    return sqlite3.connect(str(_resolver_db()))
 
 
 def _digits(s) -> str:
@@ -143,7 +142,7 @@ def _expandir(con, node: str, so_contrato: bool) -> list[tuple]:
 
 def vizinhanca(alvo: str, saltos: int = 2, so_contrato: bool = False) -> dict:
     """Subgrafo ao redor do alvo até `saltos` (BFS limitado). Retorna {ok, alvo, nos, arestas, n_nos}."""
-    if not _DB.exists():
+    if not _resolver_db().exists():
         return {"ok": False, "erro": "compliance.db ausente"}
     saltos = max(1, min(int(saltos), 3))
     con = _con()

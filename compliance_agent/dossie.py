@@ -14,7 +14,8 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-_DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
+from compliance_agent.database.models import _resolver_db
+
 _REPORTS = Path(__file__).resolve().parent.parent / "reports"
 
 
@@ -24,6 +25,7 @@ def _digits(s) -> str:
 
 def _resumo_ob(cnpj: str) -> dict:
     """Total pago, nº de OBs e concentração por UG (OB = pagamento)."""
+    _DB = _resolver_db()
     if not _DB.exists():
         return {"_nota": "INDISPONÍVEL: compliance.db ausente"}
     con = sqlite3.connect(str(_DB))
@@ -74,6 +76,7 @@ def _red_flags_estruturais(cnpj: str, cadastro: dict) -> list[dict]:
         socios = cad.get("socios") or []
         entradas = [s.get("data_entrada") or "" for s in socios]
         entradas = [d for d in entradas if len(d) == 10 and d.count("-") == 2]
+        _DB = _resolver_db()
         if entradas and _DB.exists():
             recente = max(entradas)
             con = sqlite3.connect(str(_DB))
