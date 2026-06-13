@@ -161,40 +161,73 @@ def candidatos(con: sqlite3.Connection, limite: int = 15, *, incluir_aproximado:
     return rows[:limite]
 
 
-# ───────────────────────────── foto de rua (Street View → Mapillary) ─────────────────────────────
-def foto_rua(lat: float, lon: float) -> tuple[bytes | None, str]:
-    """Foto RENTE AO CHÃO do ponto, priorizando o **Street View** (pedido do dono) e caindo p/ Mapillary.
+def endereco_completo(cand: dict) -> str:
+    """Monta a string de endereço p/ o Street View geocodificar (logradouro+nº, bairro, município, UF, CEP)."""
+    cep = str(cand.get("cep") or "").strip()
+    cep = f"{cep[:5]}-{cep[5:]}" if len(_digitos(cep)) == 8 else cep
+    partes = [str(cand.get("endereco") or "").strip(),
+              str(cand.get("municipio") or "").strip(),
+              str(cand.get("uf") or "").strip(), cep]
+    return ", ".join(p for p in partes if p)
 
-    NÃO usa satélite: a dúvida é resolvida pelo olho humano e o satélite (entorno ±100m) engana mais do que
-    ajuda nessa decisão. Devolve (bytes_jpeg, fonte) ou (None, motivo). Respeita a cota paga do Street View.
+
+# ───────────────────────────── foto de rua (Street View POR ENDEREÇO) ─────────────────────────────
+# LIÇÃO DURA (2026-06-13, lote 1): a coord guardada em `endereco_verificacao` é `exato=0` (Nominatim coarse)
+# e CAI EM CIDADE ERRADA (Araçatuba no lugar de SP; Guapimirim no lugar de Freguesia) → a foto não batia o
+# endereço. Conserto: passar o ENDEREÇO COMPLETO como string ao Street View, que geocodifica internamente
+# (funciona mesmo com a Geocoding API negada na chave) e devolve a coord/pano CORRETOS. Não usar a coord podre.
+def _digitos(s) -> str:
+    import re
+    return re.sub(r"\D", "", str(s or ""))
+
+
+def foto_rua(endereco: str) -> tuple[bytes | None, str, dict]:
+    """Foto Street View da SEDE a partir do ENDEREÇO (string) — o Google geocodifica o nº internamente.
+
+    Devolve (bytes_jpeg, fonte, info{lat,lon,date}) ou (None, motivo, {}). Confirma cobertura via metadata
+    (gratuito) ANTES de baixar a imagem (paga, com cota). Sem cobertura no endereço → None (NÃO inventa foto
+    de coord podre). Honesto: o pano pode estar a alguns nºs do alvo, mas no logradouro/quadra certos.
     """
+    import httpx
     from compliance_agent import verificacao_endereco as ve
     gkey = (os.environ.get("GOOGLE_MAPS_KEY", "") or os.environ.get("STREETVIEW_KEY", "")).strip()
-    mly = os.environ.get("MAPILLARY_TOKEN", "").strip()
-    if gkey:
-        img = ve._fetch_streetview_google(lat, lon, gkey)
-        if img:
-            return img, "streetview"
-    if mly:
-        img = ve._fetch_mapillary(lat, lon, mly,
-                                  raio_m=float(os.environ.get("MAPILLARY_RAIO_M", "120") or 120))
-        if img:
-            return img, "mapillary"
-    return None, "sem cobertura (Street View/Mapillary)"
+    if not gkey:
+        return None, "sem GOOGLE_MAPS_KEY", {}
+    if not endereco.strip():
+        return None, "endereço vazio", {}
+    loc = f"{endereco}, Brasil"
+    try:
+        m = httpx.get("https://maps.googleapis.com/maps/api/streetview/metadata",
+                      params={"location": loc, "key": gkey}, timeout=20).json()
+    except Exception as e:  # noqa: BLE001
+        return None, f"erro metadata: {str(e)[:40]}", {}
+    if m.get("status") != "OK" or not m.get("location"):
+        return None, f"sem cobertura Street View no endereço (status {m.get('status')})", {}
+    if not ve._streetview_consome_cota():  # respeita o teto de requisições PAGAS
+        return None, "cota Street View esgotada", {}
+    try:
+        r = httpx.get("https://maps.googleapis.com/maps/api/streetview",
+                      params={"size": "640x640", "location": loc, "fov": "80", "pitch": "0",
+                              "source": "outdoor", "key": gkey}, timeout=25)
+    except Exception as e:  # noqa: BLE001
+        return None, f"erro download: {str(e)[:40]}", {}
+    if r.status_code != 200 or r.content[:3] != b"\xff\xd8\xff":
+        return None, f"download falhou (HTTP {r.status_code})", {}
+    info = {"lat": m["location"].get("lat"), "lon": m["location"].get("lng"), "date": m.get("date", "")}
+    return r.content, "streetview", info
 
 
 # ───────────────────────────── legenda honesta ─────────────────────────────
-def legenda(cand: dict, codigo: str, fonte: str) -> str:
-    exato = bool(cand.get("exato"))
-    coord = ("📍 coordenada do NÚMERO exato" if exato
-             else "📍 ponto APROXIMADO da rua (±100m) — o número não geolocaliza")
-    fonte_lbl = {"streetview": "Google Street View", "mapillary": "Mapillary (foto de rua)"}.get(fonte, fonte)
-    ev = (cand.get("evidencia") or "").strip()
-    if len(ev) > 280:
-        ev = ev[:277] + "…"
+def legenda(cand: dict, codigo: str, fonte: str, info: dict | None = None) -> str:
+    info = info or {}
     end = ", ".join(p for p in [str(cand.get("endereco") or "").strip(),
                                 str(cand.get("municipio") or "").strip(),
                                 str(cand.get("uf") or "").strip()] if p)
+    data = str(info.get("date") or "").strip()
+    lat, lon = info.get("lat"), info.get("lon")
+    mapa = f"https://www.google.com/maps?q=&layer=c&cbll={lat},{lon}" if lat and lon else ""
+    foto_ln = "📷 Google Street View do endereço" + (f" (pano {data})" if data else "")
+    foto_ln += f"\n🔗 conferir no mapa: {mapa}" if mapa else ""
     marcs = cand.get("marcadores") or []
     linha_marc = f"⚠ Marcador residencial no endereço: {', '.join(marcs)}\n" if marcs else ""
     return (
@@ -204,12 +237,11 @@ def legenda(cand: dict, codigo: str, fonte: str) -> str:
         f"Endereço declarado: {end or '—'}\n"
         f"{linha_marc}"
         f"Recebido em OB: {_moeda(cand.get('total_recebido'))}\n"
-        f"{coord} · foto: {fonte_lbl}\n"
-        f"Análise automática (inconclusiva): {ev or '—'}\n\n"
-        f"A sede parece REAL ou é FACHADA? Responda aqui com:\n"
+        f"{foto_ln}\n\n"
+        f"A foto bate com sede comercial REAL ou parece FACHADA (casa/baldio/outro)? Responda com:\n"
         f"  {codigo} fachada   (laranja / sede inexistente)\n"
         f"  {codigo} real      (sede legítima)\n"
-        f"  {codigo} pular     (não dá p/ decidir pela foto)"
+        f"  {codigo} pular     (foto não confere o endereço / não dá p/ decidir)"
     )
 
 
