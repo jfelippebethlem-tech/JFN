@@ -133,6 +133,10 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
   Contar o débito 1× por evento (processo+valor+sessão), registrar nº de responsáveis. Nunca superestimar (regra-mãe).
 - **Vínculo nome↔código que muda (cont.21):** órgão do TCE↔UG re-derivado dos dados vivos (auto-matcher + tipo +
   override mínimo + `depurar()`), NÃO dict chumbado (apodrece). Discriminador de TIPO evita o bug órgão→fundo homônimo.
+- **⛔ Comando do Yoda que "não vem legal" → conserte na CAMADA certa:** o roteamento real é a `SKILL.md` em
+  `~/.hermes/skills/yoda-commands/<cmd>` (queue/duplicata é comportamento do LLM via skill), **não o system-prompt**
+  (`config.yaml` = reforço fraco). Já o resolver de NOME é código do JFN: `REPLACE(nome,' ','')` p/ casar
+  `'engeprat'` ↔ `'ENGE PRAT'` (`LIKE %termo%` não casa nome com espaço).
 
 ## 9. PENDÊNCIAS DO DONO
 - **✅ Hermes ATUALIZADO (cont.20):** `~/hermes-agent` saltou de 11.416 commits atrás → `origin/main` v0.16.0
@@ -160,6 +164,9 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-13 cont.35 (comandos do Yoda):** comandos `/cmd` ficaram **tappáveis no `/lista`** (auto-link do Telegram);
+  **fix do resolver `engeprat`** (`REPLACE(nome,' ','')` casa `'ENGE PRAT'`); skill **`/dossie`** + endpoint
+  **`/api/dossie` async**; **queue tratado na SKILL.md** (não no system-prompt). Lição da camada certa em §8.
 - **06-13 cont.34 (goal "perfeito", QA + cota):** **QA geral + eficiência de cota + wiring + fixes.** (1)
   **Sweep eficiente:** Places era chamado em **99%** (esgotaria a cota mais valiosa na cauda barata antes dos
   grandes, já que varre menor→maior) → `_suspeito` só gasta Places em residencial/>R$100k/geo-não-fixado →
