@@ -61,6 +61,52 @@ CREATE INDEX IF NOT EXISTS ix_vs_status ON verificacao_sede(status);
 """
 
 
+_COLUNAS_VS = (
+    "cnpj,predio_key,cep,razao,endereco,municipio,uf,total_recebido,geo_tipo,geo_lat,geo_lon,geo_municipio,"
+    "addr_completo,addr_validacao,addr_residencial,addr_acao,places_achou,places_status,places_nome,"
+    "places_endereco,places_bate_nome,places_bate_mun,aproximado_cep,status,nivel,evidencia,sinais,verificado_em"
+)
+
+
+def _valores_vs(c: dict, bk: str, cep: str, sig: dict, vd: dict, aprox: int) -> tuple:
+    """Monta a tupla de VALUES de `verificacao_sede` na ordem de `_COLUNAS_VS` (thesaurus ÚNICA de colunas —
+    reusada pelo sweep e pelo on-demand do relatório, p/ não divergir)."""
+    g, v, p = sig.get("geocode") or {}, sig.get("validacao") or {}, sig.get("places") or {}
+    return (
+        c["cnpj"], bk, cep, c["razao"], c["endereco"], c["municipio"], c["uf"], c["total_recebido"],
+        g.get("location_type"), g.get("lat"), g.get("lon"), g.get("municipio"),
+        (None if v.get("completo") is None else int(v.get("completo"))), v.get("validacao"),
+        (None if v.get("residencial") is None else int(v.get("residencial"))), v.get("acao"),
+        (None if p.get("achou") is None else int(bool(p.get("achou")))), p.get("status"),
+        p.get("nome"), p.get("endereco"),
+        (None if p.get("bate_nome") is None else int(bool(p.get("bate_nome")))),
+        (None if p.get("bate_mun") is None else int(bool(p.get("bate_mun")))),
+        aprox, vd["status"], vd["nivel"], vd["evidencia"], json.dumps(sig, ensure_ascii=False),
+        dt.datetime.now().isoformat(timespec="seconds"))
+
+
+def grava_verificacao(db_path: str, fornecedor: dict, total_pago: float, sig: dict, vd: dict,
+                      aproximado_cep: int = 0) -> None:
+    """Grava UMA linha em `verificacao_sede` (INSERT OR REPLACE) — ponto de escrita reusável pelo on-demand do
+    relatório de fornecedor (`reporting/inteligencia.py`). Concorrência com o sweep: connect(timeout=30) +
+    PRAGMA busy_timeout=30000 (igual ao sweep). `fornecedor` = {cnpj,razao,endereco,municipio,uf,cep}.
+    Garante o DDL (idempotente) p/ funcionar mesmo se o sweep nunca rodou nesta base."""
+    c = {**fornecedor, "total_recebido": total_pago}
+    bk = sg.predio_key(c.get("endereco") or "", c.get("cep") or "")
+    cep = sg.cep_de(c.get("cep") or "")
+    con = sqlite3.connect(db_path, timeout=30)
+    try:
+        con.execute("PRAGMA busy_timeout=30000")
+        con.executescript(_DDL)
+        con.execute(
+            f"INSERT OR REPLACE INTO verificacao_sede ({_COLUNAS_VS}) "
+            f"VALUES ({','.join('?' * 28)})",
+            _valores_vs(c, bk, cep, sig, vd, int(aproximado_cep)))
+        con.commit()
+    finally:
+        con.close()
+
+
 def _load_ok(teto: float = 4.0) -> bool:
     try:
         return os.getloadavg()[0] < teto
@@ -171,23 +217,9 @@ def main() -> int:
             time.sleep(a.pausa)
         sig = {**sig, "places": places}
         vd = sg.verdict_de_sinais(sig, c["total_recebido"])
-        g, v, p = sig.get("geocode") or {}, sig.get("validacao") or {}, sig.get("places") or {}
         escrita.execute(
-            "INSERT OR REPLACE INTO verificacao_sede (cnpj,predio_key,cep,razao,endereco,municipio,uf,"
-            "total_recebido,geo_tipo,geo_lat,geo_lon,geo_municipio,addr_completo,addr_validacao,"
-            "addr_residencial,addr_acao,places_achou,places_status,places_nome,places_endereco,"
-            "places_bate_nome,places_bate_mun,aproximado_cep,status,nivel,evidencia,sinais,verificado_em) "
-            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-            (c["cnpj"], bk, cep, c["razao"], c["endereco"], c["municipio"], c["uf"], c["total_recebido"],
-             g.get("location_type"), g.get("lat"), g.get("lon"), g.get("municipio"),
-             (None if v.get("completo") is None else int(v.get("completo"))), v.get("validacao"),
-             (None if v.get("residencial") is None else int(v.get("residencial"))), v.get("acao"),
-             (None if p.get("achou") is None else int(bool(p.get("achou")))), p.get("status"),
-             p.get("nome"), p.get("endereco"),
-             (None if p.get("bate_nome") is None else int(bool(p.get("bate_nome")))),
-             (None if p.get("bate_mun") is None else int(bool(p.get("bate_mun")))),
-             aprox, vd["status"], vd["nivel"], vd["evidencia"], json.dumps(sig, ensure_ascii=False),
-             dt.datetime.now().isoformat(timespec="seconds")))
+            f"INSERT OR REPLACE INTO verificacao_sede ({_COLUNAS_VS}) VALUES ({','.join('?' * 28)})",
+            _valores_vs(c, bk, cep, sig, vd, aprox))
         if i % 50 == 0:  # commit frequente: crash perde no máx. ~50 (resumível)
             con.commit()
             print(f"  …{i}/{len(alvos)} novos={novos} herda_predio={herdados_predio} "

@@ -97,6 +97,10 @@ _ENRIQUECE_TENTATIVAS = int(os.environ.get("JFN_RELATORIO_ENRIQUECE_TENTATIVAS",
 _ENRIQUECE_BACKOFF = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_BACKOFF", "2"))
 # TTL do cache do enriquecimento por CNPJ (s). 0 desliga o cache (testes determinísticos).
 _ENRIQUECE_CACHE_TTL = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_CACHE_TTL", str(7 * 86400)))
+# Idade máxima (dias) de uma linha de `verificacao_sede` para o relatório aceitá-la SEM re-verificar.
+# Acima disso o veredito Google é considerado VELHO e o relatório re-verifica on-demand (quota-guarded).
+# 0 desliga o on-demand (só lê o que o sweep gravou — comportamento antigo; testes determinísticos).
+_SEDE_ONDEMAND_DIAS = int(os.environ.get("JFN_RELATORIO_SEDE_ONDEMAND_DIAS", "30"))
 
 
 # ───────────────────────────── helpers de formatação ─────────────────────────────
@@ -893,20 +897,116 @@ def _render_cruzamento(ctx: dict) -> str:
 
 # ───────────────────────────── render Markdown (11 seções) ─────────────────────────────
 
+def _sede_velho(verificado_em: Optional[str]) -> bool:
+    """True se a verificação de sede é mais antiga que _SEDE_ONDEMAND_DIAS (re-verificar on-demand).
+    Sem data legível → trata como velho (re-verifica) só se o on-demand está ligado."""
+    if _SEDE_ONDEMAND_DIAS <= 0:
+        return False
+    if not verificado_em:
+        return True
+    try:
+        from datetime import datetime
+        dtv = datetime.fromisoformat(str(verificado_em)[:19])
+        return (datetime.now() - dtv).days > _SEDE_ONDEMAND_DIAS
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _sede_total_pago(cnpj: str) -> float:
+    """Total pago (OBs) a TODA a raiz do fornecedor — usado p/ calibrar o veredito de sede (Places só nos
+    relevantes; INDÍCIO ALTO exige magnitude). Best-effort: 0.0 se a base não responde."""
+    if not _DB.exists():
+        return 0.0
+    raiz = so_digitos(cnpj)[:8]
+    try:
+        con = sqlite3.connect(str(_DB))
+        try:
+            r = con.execute("SELECT SUM(valor) FROM ordens_bancarias WHERE favorecido_cpf LIKE ?",
+                            (f"{raiz}%",)).fetchone()
+            return float((r[0] if r else 0) or 0.0)
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001
+        return 0.0
+
+
+def _verificar_sede_ondemand(cnpj: str) -> Optional[tuple]:
+    """Verifica a sede do fornecedor NA HORA via Google (Geocoding+AddrVal+Places) e CACHEIA em
+    `verificacao_sede`, p/ todo relatório ter veredito fresco mesmo que o sweep ainda não tenha varrido o CNPJ.
+
+    BOUNDED e seguro (degrada honesto p/ o caminho atual — OSM/INDISPONÍVEL — em vez de crashar/atrasar):
+      • sem endereço em `endereco_fornecedor` → None;
+      • cota Google esgotada (geocoding/addressvalidation) → None (o sweep cuida quando a cota voltar);
+      • qualquer erro/timeout (timeouts já embutidos no sede_google) → None.
+    Quando consegue, grava com `INSERT OR REPLACE` (mesmas colunas/lógica do sweep `tools.sweep_sede_google`,
+    reusadas via `grava_verificacao`, sem duplicar a thesaurus de colunas) usando busy_timeout=30000
+    (concorrência com o sweep que também escreve), e devolve (status, nivel, evidencia)."""
+    if _SEDE_ONDEMAND_DIAS <= 0:
+        return None
+    cnpj = so_digitos(cnpj or "")
+    if not cnpj or not _DB.exists():
+        return None
+    try:
+        from compliance_agent import sede_google as sg
+    except Exception:  # noqa: BLE001
+        return None
+    # endereço do fornecedor (mesma fonte que o sweep usa: endereco_fornecedor por cnpj)
+    end = None
+    try:
+        con = sqlite3.connect(str(_DB))
+        con.row_factory = sqlite3.Row
+        try:
+            end = con.execute(
+                "SELECT cnpj,razao,endereco,municipio,uf,cep FROM endereco_fornecedor WHERE cnpj=?",
+                (cnpj,)).fetchone()
+        except sqlite3.OperationalError:
+            end = None
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001
+        return None
+    if not end or not (end["endereco"] or "").strip():
+        return None  # sem endereço → degrada p/ o caminho atual (OSM/fallback)
+    # cota: precisa de Geocoding + Address Validation; se estourou, não verifica agora (sweep retoma depois)
+    try:
+        if sg.cota_restante("geocoding") <= 0 or sg.cota_restante("addressvalidation") <= 0:
+            return None
+    except Exception:  # noqa: BLE001
+        return None
+    total_pago = _sede_total_pago(cnpj)
+    try:
+        # com_places=True só faz uma chamada Places (já quota-guarded internamente; no-op se sem cota)
+        sinais = sg.coletar_sinais(end["razao"], end["endereco"], end["municipio"], end["uf"], end["cep"],
+                                   com_validacao=True, com_places=True)
+        vd = sg.verdict_de_sinais(sinais, total_pago)
+    except Exception:  # noqa: BLE001
+        return None  # qualquer falha de coleta → degrada honesto (nunca derruba o relatório)
+    try:
+        from tools.sweep_sede_google import grava_verificacao as _grava
+        _grava(str(_DB), dict(end), total_pago, sinais, vd)
+    except Exception:  # noqa: BLE001
+        # falha ao cachear NÃO invalida o veredito — usamos o resultado fresco mesmo sem persistir
+        pass
+    return (vd.get("status"), vd.get("nivel"), vd.get("evidencia"))
+
+
 def _realidade_sede_texto(cnpj: str) -> str:
     """Veredito (texto puro) de realidade da sede — responde 'a empresa é real?'. PREFERE a verificação
-    autoritativa do Google (`verificacao_sede`: Geocoding+Address Validation+Places); fallback p/ o OSM
-    antigo (`endereco_verificacao`, deprecado). Honesto: AFASTADO = sede real; INDÍCIO = apurar; INDISPONÍVEL/
-    ausente = sem conclusão (≠ inexistência)."""
+    autoritativa do Google (`verificacao_sede`: Geocoding+Address Validation+Places); se o CNPJ NÃO está lá
+    (ou está VELHO, > _SEDE_ONDEMAND_DIAS dias) verifica NA HORA (quota-guarded) e cacheia, p/ relatório de
+    fornecedor GRANDE não cair no fallback só porque o sweep ainda não o varreu. Fallback final p/ o OSM antigo
+    (`endereco_verificacao`, deprecado). Honesto: AFASTADO = sede real; INDÍCIO = apurar; INDISPONÍVEL/ausente
+    = sem conclusão (≠ inexistência)."""
     cnpj = so_digitos(cnpj or "")
     if not cnpj or not _DB.exists():
         return ""
     vs = row = None
+    vs_velho = False
     try:
         con = sqlite3.connect(str(_DB))
         try:
             try:
-                vs = con.execute("SELECT status,nivel,evidencia FROM verificacao_sede WHERE cnpj=?",
+                vs = con.execute("SELECT status,nivel,evidencia,verificado_em FROM verificacao_sede WHERE cnpj=?",
                                  (cnpj,)).fetchone()
             except sqlite3.OperationalError:
                 vs = None
@@ -919,6 +1019,13 @@ def _realidade_sede_texto(cnpj: str) -> str:
             con.close()
     except Exception:  # noqa: BLE001
         return ""
+    if vs and _SEDE_ONDEMAND_DIAS > 0:
+        vs_velho = _sede_velho(vs[3] if len(vs) > 3 else None)
+    # ON-DEMAND: ausente OU velho → verifica na hora (quota-guarded; degrada p/ o que houver se não der)
+    if (not vs or vs_velho):
+        fresco = _verificar_sede_ondemand(cnpj)
+        if fresco is not None:
+            vs = fresco
     fonte, google = (vs, True) if vs else (row, False)
     if not fonte:
         return "ainda não verificada (sweep de endereços em andamento) — INDISPONÍVEL não é prova de inexistência."
