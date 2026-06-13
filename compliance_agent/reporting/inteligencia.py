@@ -894,33 +894,42 @@ def _render_cruzamento(ctx: dict) -> str:
 # ───────────────────────────── render Markdown (11 seções) ─────────────────────────────
 
 def _realidade_sede_texto(cnpj: str) -> str:
-    """Veredito (texto puro) de realidade da sede do fornecedor (tabela `endereco_verificacao`) — responde
-    'a empresa é real?'. Honesto: AFASTADO = sede real/edificada; INDÍCIO = possível baldio/precário (a
-    verificar); INDISPONÍVEL/ausente = sem conclusão (cobertura cartográfica incompleta; ≠ inexistência)."""
+    """Veredito (texto puro) de realidade da sede — responde 'a empresa é real?'. PREFERE a verificação
+    autoritativa do Google (`verificacao_sede`: Geocoding+Address Validation+Places); fallback p/ o OSM
+    antigo (`endereco_verificacao`, deprecado). Honesto: AFASTADO = sede real; INDÍCIO = apurar; INDISPONÍVEL/
+    ausente = sem conclusão (≠ inexistência)."""
     cnpj = so_digitos(cnpj or "")
     if not cnpj or not _DB.exists():
         return ""
+    vs = row = None
     try:
         con = sqlite3.connect(str(_DB))
         try:
-            row = con.execute("SELECT status,nivel,evidencia FROM endereco_verificacao WHERE cnpj=?",
-                              (cnpj,)).fetchone()
-        except sqlite3.OperationalError:
-            return ""
+            try:
+                vs = con.execute("SELECT status,nivel,evidencia FROM verificacao_sede WHERE cnpj=?",
+                                 (cnpj,)).fetchone()
+            except sqlite3.OperationalError:
+                vs = None
+            try:
+                row = con.execute("SELECT status,nivel,evidencia FROM endereco_verificacao WHERE cnpj=?",
+                                  (cnpj,)).fetchone()
+            except sqlite3.OperationalError:
+                row = None
         finally:
             con.close()
     except Exception:  # noqa: BLE001
         return ""
-    if not row:
+    fonte, google = (vs, True) if vs else (row, False)
+    if not fonte:
         return "ainda não verificada (sweep de endereços em andamento) — INDISPONÍVEL não é prova de inexistência."
-    st, nivel, evid = (row[0] or "").upper(), row[1] or "—", (row[2] or "")[:160]
+    st, nivel, evid = (fonte[0] or "").upper(), fonte[1] or "—", (fonte[2] or "")[:200]
+    selo = " [Google: Geocoding+Address Validation+Places]" if google else ""
     if st == "AFASTADO":
-        return f"endereço real/edificado — afastada a hipótese de fachada. {evid}".rstrip()
+        return f"endereço real — afastada a hipótese de fachada{selo}. {evid}".rstrip()
     if st == "INDICIO":
-        return (f"🟡 indício ({nivel}) de endereço não edificado/precário — conferir no mapa/imagem/in loco "
-                f"antes de concluir. {evid}").rstrip()
-    return ("sem conclusão pela base cartográfica aberta (cobertura incompleta) — "
-            "INDISPONÍVEL ≠ inexistência (Street View/in loco conclui).")
+        return (f"🟡 indício ({nivel}) sobre a realidade da sede — apurar{selo}. {evid}").rstrip()
+    return ("sem conclusão" + (selo or " pela base cartográfica aberta (cobertura incompleta)") +
+            " — INDISPONÍVEL ≠ inexistência (Street View/in loco conclui).")
 
 
 def _realidade_sede(cnpj: str) -> str:
