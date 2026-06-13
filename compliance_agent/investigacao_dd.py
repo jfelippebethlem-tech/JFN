@@ -151,6 +151,26 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
     endereco_txt = " ".join(str(cad.get(k) or "") for k in ("logradouro", "numero", "complemento", "bairro"))
     complemento = str(cad.get("complemento") or "")
 
+    # H-END-HUMANO — veredito HUMANO do dono sobre a foto de rua (doubt-sender) PRECEDE o automático:
+    # quando a verificação ficou em dúvida, o dono olhou o Street View e decidiu. Verdade > inferência.
+    try:
+        from compliance_agent.fachada_doubt import veredito_humano
+        vh = veredito_humano(cnpj) if len(cnpj) == 14 else None
+    except Exception:
+        vh = None
+    if vh and vh.get("status") == "fachada":
+        nivel = "ALTO" if total_pago > 500_000 else "MEDIO"
+        hipoteses.append(_hip(
+            "H-END-HUMANO", "Sede confirmada como FACHADA por inspeção visual (veredito do auditor)",
+            "CONFIRMADO", nivel,
+            f"Inspeção visual da sede (Street View) julgada FACHADA/inexistente pelo auditor em "
+            f"{vh.get('em', '—')}. Empresa recebeu {_moeda(total_pago)} do Estado em endereço sem operação "
+            "real — confirmação direta, não inferência.",
+            "Inspeção visual (Street View) + veredito humano", "art. 337-F CP; art. 11 Lei 8.429/92", 24))
+        cobertura["veredito_humano"] = "CONFIRMADO fachada"
+    elif vh and vh.get("status") == "real":
+        cobertura["veredito_humano"] = "sede AFASTADA pelo auditor (foto = sede real)"
+
     # H-END-RESID — endereço com marcador residencial
     marcs = _marcadores_residenciais(complemento, str(cad.get("logradouro") or ""))
     if marcs:

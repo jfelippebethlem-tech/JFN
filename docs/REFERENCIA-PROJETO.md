@@ -143,6 +143,24 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-13 cont.32 (goal "continuar"):** **⭐ DOUBT-SENDER DE FACHADA POR TELEGRAM** (pedido do dono, cont.31-d).
+  `compliance_agent/fachada_doubt.py` + `tools/doubt_sender_fachada.py` (envia) + `tools/registrar_vereditos_
+  fachada.py` (captura). Quando a verificação de endereço fica em **DÚVIDA** (`endereco_verificacao` INDISPONIVEL/
+  VLM indeterminado — não decide baldio/residencial/sede real), seleciona as dúvidas com **perfil de fachada**
+  (exclui órgãos/bancos por blocklist + exige **marcador residencial** no endereço, ranqueado por R$ OB recebido),
+  busca a **foto Street View** do ponto e **envia foto+contexto honesto ao Telegram do dono** (sendPhoto +
+  código curto). O dono responde `<código> fachada|real|pular`; a captura é **PASSIVA** (lê `~/.hermes/state.db`
+  do Yoda, casa o código) — **sem 2º bot, sem editar o Hermes vendored, sem conflito getUpdates** (lição §9). O
+  veredito humano vira **VERDADE na DD** (`investigacao_dd` → hipótese `H-END-HUMANO` CONFIRMADO/AFASTA, override
+  do automático). **Lição §8 reconfirmada (artefato real cedo):** dry-run mostrou que rankear só por R$ traz
+  Min.Fazenda/Banco do Brasil (legítimos) → adicionei blocklist+filtro residencial; e que o CLI não carregava o
+  `.env` p/ `GOOGLE_MAPS_KEY` (foto vinha "sem cobertura" embora SV-meta=OK) → `_carregar_env()`. **19 testes
+  novos verdes + 48 DD sem regressão.** SV fetch provado ao vivo (Copacabana 69KB; 4/4 candidatos com foto 52-86KB).
+  **Smoke test real:** msg 3750 ao dono (TERAPIA INTENSIVA NEONATAL, R$18,7M) + pendência registrada + recorder
+  lê o state.db real (249 msgs, cursor inicializado). **⚠ NÃO posto em cron** (cadência/volume = decisão do dono):
+  ativar com `*/30 * * * * cd ~/JFN && PYTHONPATH=. .venv/bin/python -m tools.registrar_vereditos_fachada` (captura,
+  leve) + envio diário `tools/doubt_sender_fachada --limite N`. Upgrade opcional: 2º bot dedicado (UX com botões
+  inline) se o dono quiser evitar o eco do Yoda nas respostas.
 - **06-13 cont.31-d (segue):** **Cobertura total dos sweeps + consolidação de ferramentas.** (1) `tools/sweep_full.sh`
   (`69edd51`): drena o universo INTEIRO — endereço (gap ~4,5k) + fachada DD (TODAS as 151 UGs, `--limite 0`, não só
   cauda) + sócios/CPF (resolver). VM-safe (nice/ionice, load-guard≥3, slices bounded, SERIALIZADO, **lock flock**
