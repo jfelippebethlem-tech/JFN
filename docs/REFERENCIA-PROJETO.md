@@ -157,6 +157,18 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-13 cont.34 (goal "perfeito", QA + cota):** **QA geral + eficiência de cota + wiring + fixes.** (1)
+  **Sweep eficiente:** Places era chamado em **99%** (esgotaria a cota mais valiosa na cauda barata antes dos
+  grandes, já que varre menor→maior) → `_suspeito` só gasta Places em residencial/>R$100k/geo-não-fixado →
+  **0.99→0.20 places/row**; dedup por prédio confirmado (1 geocode/prédio). **Cron** `sweep_sede.sh` (flock,
+  a cada 2h) finaliza a base sozinho. (2) **QA da suíte (1040 passed/11 failed):** TODAS explicadas — 7 eram
+  **lock de DB por rodar junto do sweep** (consertado com **busy_timeout no engine SQLAlchemy**, lição §8),
+  2 fixture obsoleto de /orgão (`n_fornecedores`, corrigido), 2 ambiente (chrome-9222: sei_cdp vira skip;
+  goal_agent **hang consertado** via `usar_llm=False`, mas segue pesado por usar a `compliance.db` de produção).
+  **Zero regressão de produto.** (3) **Documentos testados de verdade:** /relatorio HEBARA → MD+PDF(14pág)+XLSX+
+  Lex, renderiza Kroll/Deloitte sem tofu, seção II-E + veredito humano + rating. (4) **Wiring:** o campo
+  "Realidade da sede" do relatório agora **prefere `verificacao_sede` (Google)** com fallback OSM. ⚠ Rodar a
+  suíte completa SEMPRE com o sweep pausado (`touch data/.pause_sede_sweep` + matar o worker) senão dá falso-failed.
 - **06-13 cont.33 (goal grande, APIs Google ligadas):** **⭐ VERIFICAÇÃO DE SEDE VIA GOOGLE — substitui o
   Nominatim** (que dava INDÍCIO falso: Min.Fazenda/Praça dos Três Poderes — auditoria confirmou). Dono ligou
   **Geocoding + Address Validation + Places (New)** (cada 9999/31d free tier). **`compliance_agent/sede_google.py`**:
