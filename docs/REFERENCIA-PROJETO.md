@@ -151,8 +151,17 @@ manuais quando expirarem (caem no nous até lá).
   **X6** entrega fantasma (gera roteiro de diligência) · **C6** vínculo político-financeiro (TSE, conservador/
   multiplicador). Todos no schema §1.4 (âncoras, rubrica fechada LLM-opcional, exculpatória, nao_avaliavel≠0).
   REGISTRO=26; orquestradores `rodar_edital`(+E4-6)/`rodar_julgamento`(+J5-7)/`rodar_fornecedor`(+C6)/novo
-  **`rodar_execucao`**(X1-6). **129 testes novos + fix fixture obsoleta (n_fornecedores) → 254 verdes.** Falta:
-  rodar o pipeline nos editais Vieira (SEI lê 510001) + coletor PNCP de propostas p/ alimentar o `ctx`.
+  **`rodar_execucao`**(X1-6). **129 testes novos + fix fixture obsoleta (n_fornecedores) → 254 verdes.**
+  **VALIDAÇÃO em DADO REAL (sem browser):** rodei o pipeline completo sobre o cache SEI Vieira
+  `data/sei_cache/cdp_SEI_510001_000876_2024.json` → 21 detectores `nao_avaliavel` HONESTOS (não quebra, não
+  inventa). **⚠ CORREÇÃO de premissa do handoff:** `510001/000876` **NÃO é o edital Vieira** — é um processo de
+  *Acompanhamento Especial* (só Despachos/E-mails/Ofícios; sem habilitação/lotes/valores/propostas), por isso
+  nao_avaliavel é o ground-truth correto. Varredura dos 848 cdp do cache: dominado por **execução financeira**
+  (OBs/Programação de Desembolso/Liquidação) e admin — **não há edital/contrato com tabelas** no cache para
+  exercitar os detectores de planejamento/edital/julgamento. **Próximo gargalo REAL = INPUT, não detector:** ler
+  via SEI o processo do EDITAL/CONTRATO Vieira correto (número a achar; browser/itkava, VM-heavy, owner/dado) +
+  coletor PNCP de propostas p/ alimentar o `ctx`. O coletor `montar_ctx_de_sei` mira edital (modalidade/habilit/
+  lotes/propostas); para a execução financeira já cacheada, X3 precisaria de um extrator da tríade SIAFE do SEI.
 - **06-12 cont.30 (goal, agentes):** **QA dos produtos + correções.** Gerados /orgao 660100 e /relatorio MUV
   REAIS, **enviados ao Yoda** (msg 3745-48), laudo: completos/estéticos/prosa honesta (relatório até autocritica o
   rating). 6 correções (`02f16e4`..`306518f`): enriquecimento 35s→90s+retry+cache (§5/§6 CEIS/CNEP populam), score
