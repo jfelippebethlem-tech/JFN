@@ -39,7 +39,7 @@ def pytest_collection_modifyitems(config, items):
 # Módulos cujos testes ESCREVEM no DB criando os próprios dados (OBs, memória, hipóteses) → isolar num
 # tmp DB para NÃO poluir a `compliance.db` de produção ("TESTE LTDA"/"missão de teste") nem disputar o write
 # lock com o jfn.service vivo. Resolvido via env JFN_DB (compliance_agent.database.models._resolver_db).
-_MODULOS_ISOLAR_DB = {"test_offline", "test_goal_modes_smoke"}
+_MODULOS_ISOLAR_DB = {"test_offline", "test_goal_modes_smoke", "test_dossie_smoke"}
 
 
 @pytest.fixture(autouse=True)
