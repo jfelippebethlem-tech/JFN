@@ -113,6 +113,28 @@ def _hip(codigo, titulo, status, nivel, evidencia, fonte, base_legal, peso) -> d
             "evidencia": evidencia, "fonte": fonte, "base_legal": base_legal, "peso": peso}
 
 
+def _verificacao_sede(cnpj: str, db_path=None) -> dict | None:
+    """Lê o veredito Google da sede (`verificacao_sede`, populado por tools/sweep_sede_google) p/ o CNPJ,
+    ou None. Sinais autoritativos (Geocoding+Address Validation+Places) — leitura barata, read-only."""
+    import sqlite3
+    from pathlib import Path
+    p = Path(db_path or "data/compliance.db")
+    if not p.exists():
+        return None
+    try:
+        con = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=10)
+        con.row_factory = sqlite3.Row
+        try:
+            r = con.execute(
+                "SELECT status, nivel, geo_tipo, addr_completo, addr_residencial, places_achou, "
+                "places_bate_nome, evidencia FROM verificacao_sede WHERE cnpj=?", (_digitos(cnpj),)).fetchone()
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001 — tabela ausente → None (degrada honesto)
+        return None
+    return dict(r) if r else None
+
+
 def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | None = None,
                usar_rede: bool = True, geocode: bool = False, usar_beneficios: bool = True) -> dict:
     """Roda a bateria de hipóteses de fachada/laranja para um CNPJ.
@@ -208,6 +230,41 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
                 "Nominatim + Overpass/OpenStreetMap", "art. 337-F CP", g["peso"]))
     else:
         cobertura["geocode"] = "não solicitado" if endereco_txt.strip() else "INDISPONIVEL"
+
+    # H-* via Google (verificacao_sede): Geocoding+Address Validation+Places — fonte AUTORITATIVA que
+    # substitui o proxy OSM (que dava falso-positivo: Min.Fazenda/Três Poderes). Só se NÃO há veredito humano
+    # (o olho do auditor vence). Honesto: ausência de perfil ≠ prova (B2B pode não ter); rodovia/'S/N' não é fachada.
+    vs = _verificacao_sede(cnpj) if (len(cnpj) == 14 and not vh) else None
+    if vs:
+        cobertura["sede_google"] = f"{vs.get('status', '')} ({vs.get('geo_tipo', '')})"
+        resid, achou = vs.get("addr_residencial"), vs.get("places_achou")
+        completo, geot = vs.get("addr_completo"), (vs.get("geo_tipo") or "")
+        alto = total_pago > 1_000_000
+        if resid == 1:
+            hipoteses.append(_hip(
+                "H-END-RESID-GOOGLE", "Sede em endereço residencial (Google Address Validation)",
+                "INDICIO", "ALTO" if alto else "MEDIO",
+                f"A Address Validation do Google classifica o endereço da sede como RESIDENCIAL. Empresa que "
+                f"movimenta {_moeda(total_pago)} sediada em residência é indício clássico de fachada — fonte "
+                "autoritativa que corrobora o marcador de endereço (verificar operação física real).",
+                "Google Address Validation", "art. 337-F CP; art. 11 Lei 8.429/92", 12 if alto else 8))
+        if achou == 0 and alto:
+            hipoteses.append(_hip(
+                "H-SEM-PERFIL", "Sem negócio operante registrado na sede declarada",
+                "INDICIO", "ALTO" if total_pago > 5_000_000 else "MEDIO",
+                f"Não há negócio operante registrado no Google na sede declarada, apesar de {_moeda(total_pago)} "
+                "recebidos do Estado. Ausência de operação comercial visível onde se movimenta recurso público é "
+                "indício de fachada — apurar operação física (a ausência NÃO é prova: B2B pode não ter perfil).",
+                "Google Places (perfil de empresa)", "art. 337-F CP; art. 11 Lei 8.429/92",
+                12 if total_pago > 5_000_000 else 8))
+        if completo == 0 and geot in ("APPROXIMATE", "", None):
+            hipoteses.append(_hip(
+                "H-ENDERECO-INVALIDO", "Endereço da sede não confirmado (Geocoding + Address Validation)",
+                "INDICIO", "MEDIO",
+                "O endereço declarado não foi confirmado: a Address Validation o classifica como incompleto e o "
+                "Geocoding não fixou o número. Endereço não-confirmável merece apuração de existência física "
+                "(CUIDADO: rodovia/'S/N'/prédio público também dão isso e podem ser reais — não é prova).",
+                "Google Geocoding + Address Validation", "art. 337-F CP", 8))
 
     # H-COEND — outros fornecedores recebendo do Estado na MESMA sede
     if usar_rede:

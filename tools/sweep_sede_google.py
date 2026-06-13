@@ -114,7 +114,8 @@ def main() -> int:
 
     alvos = _alvos(con, a.limite)
     print(f"{len(alvos)} fornecedor(es) a verificar (ordem: menor→maior R$). "
-          f"Cotas: {({x: sg.cota_restante(x) for x in ('geocoding', 'addressvalidation', 'places')})}")
+          f"Cotas: {({x: sg.cota_restante(x) for x in ('geocoding', 'addressvalidation', 'places')})}",
+          flush=True)
 
     # caches da sessão: prédio (geo+addr) e CEP (fallback do overflow)
     predio_cache: dict[str, dict] = {}
@@ -184,7 +185,7 @@ def main() -> int:
              (None if p.get("bate_mun") is None else int(bool(p.get("bate_mun")))),
              aprox, vd["status"], vd["nivel"], vd["evidencia"], json.dumps(sig, ensure_ascii=False),
              dt.datetime.now().isoformat(timespec="seconds")))
-        if i % 200 == 0:
+        if i % 50 == 0:  # commit frequente: crash perde no máx. ~50 (resumível)
             con.commit()
             print(f"  …{i}/{len(alvos)} novos={novos} herda_predio={herdados_predio} "
                   f"herda_cep={herdados_cep} places={places_usados} sem_cota={sem_cota}", flush=True)
