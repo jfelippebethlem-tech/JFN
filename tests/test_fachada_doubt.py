@@ -105,13 +105,19 @@ def test_candidatos_so_residencial_e_blocklist(tmp_path):
 
 
 # ───────────────────────────────── legenda honesta ─────────────────────────────────
-def test_legenda_marca_aproximado_vs_exato():
-    base = {"cnpj": "1", "razao": "X", "endereco": "RUA", "municipio": "RIO", "uf": "RJ",
-            "total_recebido": 1000, "evidencia": "e"}
-    leg_aprox = fd.legenda({**base, "exato": 0}, "ABCDE", "streetview")
-    leg_exato = fd.legenda({**base, "exato": 1}, "ABCDE", "streetview")
-    assert "±100m" in leg_aprox and "±100m" not in leg_exato
-    assert "ABCDE fachada" in leg_aprox and "ABCDE real" in leg_aprox and "ABCDE pular" in leg_aprox
+def test_legenda_usa_endereco_e_pano():
+    base = {"cnpj": "1", "razao": "X", "endereco": "RUA Y, 10", "municipio": "RIO", "uf": "RJ",
+            "total_recebido": 1000}
+    leg = fd.legenda(base, "ABCDE", "streetview", {"lat": -22.9, "lon": -43.1, "date": "2024-07"})
+    assert "Street View do endereço" in leg and "pano 2024-07" in leg
+    assert "cbll=-22.9,-43.1" in leg                       # link de conferência no mapa
+    assert "RUA Y, 10, RIO, RJ" in leg                     # endereço declarado
+    assert "ABCDE fachada" in leg and "ABCDE real" in leg and "ABCDE pular" in leg
+
+
+def test_endereco_completo_formata_cep():
+    c = {"endereco": "RUA Y, 10", "municipio": "RIO", "uf": "RJ", "cep": "20031000"}
+    assert fd.endereco_completo(c) == "RUA Y, 10, RIO, RJ, 20031-000"
 
 
 # ───────────────────────────────── interpretar ─────────────────────────────────

@@ -99,15 +99,18 @@ def main() -> int:
     enviados = sem_foto = 0
     for c in cands:
         codigo = fd.codigo_de(c["cnpj"])
-        img, fonte = fd.foto_rua(c["lat"], c["lon"])
-        cap = fd.legenda(c, codigo, fonte if img else "—")
-        cab = f"[{codigo}] {c.get('razao') or c['cnpj']} — {fd._moeda(c.get('total_recebido'))} — foto:{fonte}"
+        end = fd.endereco_completo(c)
+        img, fonte, info = fd.foto_rua(end)   # geocode pelo ENDEREÇO (não pela coord podre exato=0)
+        cap = fd.legenda(c, codigo, fonte if img else "—", info)
+        loc = f"({info.get('lat'):.4f},{info.get('lon'):.4f})" if img and info.get("lat") else ""
+        cab = (f"[{codigo}] {c.get('razao') or c['cnpj']} — {fd._moeda(c.get('total_recebido'))} — "
+               f"foto:{fonte if img else '—'} {loc}")
         if img is None:
             sem_foto += 1
-            print(f"  ✗ {cab}  (sem foto de rua → não envia)")
+            print(f"  ✗ {cab}  ({fonte} → não envia)")
             continue
         if a.dry_run:
-            print(f"  • DRY {cab}\n      {cap.splitlines()[0]} … ({len(img)} bytes de foto)")
+            print(f"  • DRY {cab}  pano {info.get('date','?')} ({len(img)} bytes)")
             continue
         mid = _enviar_foto(token, chat, img, cap)
         if mid is not None:
