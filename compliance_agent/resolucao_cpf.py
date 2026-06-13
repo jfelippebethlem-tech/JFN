@@ -210,6 +210,92 @@ def carregar_indice_sei(db_path: str | Path | None = None) -> dict:
     return idx
 
 
+def folha_middle(cpf_mascarado_folha) -> str:
+    """6 dígitos visíveis da máscara da FOLHA de pagamento (`XX######XXX` = posições **3-8**) ou ''.
+
+    A folha do RJ mascara o CPF expondo posições DIFERENTES do QSA (que expõe 4-9). Essa diferença é o
+    que permite a 'fusão de máscaras' (mais dígitos conhecidos do mesmo CPF)."""
+    s = str(cpf_mascarado_folha or "")
+    if "*" not in s and "x" not in s.lower() and "X" not in s:
+        return ""
+    d = _digitos(s)
+    return d if len(d) == 6 else ""
+
+
+def carregar_indice_folha(db_path: str | Path | None = None) -> dict:
+    """Índice {nome_norm -> set(middle_folha)} dos servidores da folha (`registros_folha`, CPF mascarado
+    em posições 3-8). Usado pela fusão de máscaras: descobrir se um sócio do QSA é SERVIDOR público e, de
+    quebra, estreitar o CPF. Fonte legítima (transparência da folha; dever de fiscalização)."""
+    idx: dict = {}
+    p = Path(db_path or _DB)
+    if not p.exists():
+        return idx
+    try:
+        con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+        try:
+            for nome, cpf in con.execute("SELECT nome, cpf FROM registros_folha"):
+                m = folha_middle(cpf)
+                if m and nome:
+                    idx.setdefault(_norm(nome), set()).add(m)
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001 — tabela ausente → índice vazio (honesto)
+        return idx
+    return idx
+
+
+def fusao_folha_qsa(nome: str, doc_mascarado_qsa: str, folha_idx: dict) -> dict:
+    """Funde a máscara do QSA (posições 4-9) com a da FOLHA (posições 3-8) pelo NOME do sócio.
+
+    Se o mesmo nome aparece na folha E os dígitos sobrepostos (posições 4-8) batem, então (1) o sócio é
+    muito provavelmente **servidor público** — indício de conflito/laranja — e (2) conhecemos as posições
+    **3-9** do CPF (7 díg), estreitando os candidatos de 1.000 → ~100. Honesto: exige consistência de
+    dígitos (anti-homônimo); só nome igual SEM consistência = homônimo provável (não afirma servidor).
+
+    Retorna {servidor, conhecidos_3a9, n_candidatos, motivo}. NÃO acusa: indício a apurar (vínculo formal,
+    período, se há impedimento). Fonte: folha de pagamento (transparência) + QSA público.
+    """
+    base = {"servidor": False, "conhecidos_3a9": "", "n_candidatos": 1000, "motivo": ""}
+    m6_qsa = middle6(doc_mascarado_qsa)   # posições 4-9
+    nome_n = _norm(nome)
+    if not m6_qsa or len(nome_n) < 6:
+        return {**base, "motivo": "sem máscara do QSA ou nome curto"}
+    ms_folha = folha_idx.get(nome_n)
+    if not ms_folha:
+        return {**base, "motivo": "nome não consta na folha de pagamento"}
+    # posições comuns 4-8: no QSA são m6_qsa[0:5]; na folha (pos 3-8) são m_folha[1:6]
+    for m_folha in ms_folha:
+        if m6_qsa[0:5] == m_folha[1:6]:
+            # conhecidos: pos3 = m_folha[0], pos4-9 = m6_qsa  → 7 dígitos (posições 3..9)
+            conhecidos = m_folha[0] + m6_qsa
+            return {"servidor": True, "conhecidos_3a9": conhecidos, "n_candidatos": 100,
+                    "motivo": ("nome na folha + dígitos sobrepostos (pos.4-8) consistentes → provável "
+                               "servidor público sócio de fornecedora; CPF estreitado p/ posições 3-9 "
+                               "(~100 candidatos) — apurar vínculo/impedimento (indício, não acusação)")}
+    return {**base, "motivo": "homônimo provável (nome na folha mas dígitos do CPF divergem) — não afirma servidor"}
+
+
+def socios_servidores(cnpj: str, db_path: str | Path | None = None) -> list[dict]:
+    """Sócios da empresa que a fusão folha×QSA marcou como prováveis SERVIDORES (precomputado por
+    `tools/resolver_cpf_socios.py` na coluna `socio_servidor`). Leitura barata p/ a DD (sem recarregar
+    o índice da folha). Retorna [{nome, cpf_pos3a9}] — indício de conflito/laranja, a apurar."""
+    c = _digitos(cnpj)
+    p = Path(db_path or _DB)
+    if len(c) != 14 or not p.exists():
+        return []
+    try:
+        con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+        try:
+            rows = con.execute(
+                "SELECT socio_nome, cpf_pos3a9 FROM socios_fornecedor "
+                "WHERE cnpj=? AND socio_servidor=1", (c,)).fetchall()
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001 — coluna/tabela ausente → vazio (honesto)
+        return []
+    return [{"nome": r[0], "cpf_pos3a9": r[1]} for r in rows]
+
+
 def resolver_multi(nome: str, doc_mascarado: str, *, db_path: str | Path | None = None,
                    tse_idx: dict | None = None, pf_idx: dict | None = None,
                    sei_idx: dict | None = None) -> dict:

@@ -143,6 +143,24 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-13 cont.32-b (goal, "faça tudo isso"):** **⭐ DESMASCARAMENTO DE CPF DE SÓCIO — 3 camadas** (pedido do
+  dono; refs **osint-brazuca**/`fernandobortotti/CPF-Tools` + **OSINTKit-Brasil**). Descoberta: o JFN **já tinha o
+  método osint-brazuca** em `resolucao_cpf.py` (`gerar_cpfs_da_mascara`=os 1000 candidatos dos 6 díg centrais +
+  `confirmar_cpf`=anti-homônimo + `resolver_multi`=favorecidos-PF/TSE/SEI). **(A)** `tools/resolver_cpf_socios.py`
+  aplicou o resolver a TODOS os 27.729 sócios mascarados → **1.190 resolvidos (4,3%)** gravados em
+  `socios_fornecedor` (fav_pf=482, tse=704, sei=4) — confirma a parede interna ~4%. **(B) FUSÃO DE MÁSCARAS
+  folha×QSA** (nova, 100% legal): a folha mascara pos.3-8 (`XX######XXX`) e o QSA pos.4-9 (`***######**`) →
+  cruzando por nome+dígitos consistentes (a) acha **sócio que é SERVIDOR público** (7 achados, ex.: PEDRO DANIEL
+  STROZENBERG — indício de conflito/laranja → nova hipótese **H-SOCIO-SERVIDOR** na DD) e (b) revela pos.3-9 (7
+  díg) estreitando 1000→~100 candidatos. **(C)** `compliance_agent/cpf_externo.py` + `tools/desmascarar_cpf_
+  externo.py` (DORMENTE/GATED, por alvo, default dry-run): motor gerar→consulta externa nome↔CPF→`confirmar_cpf`,
+  2 modos (cpf→nome tipo situação-cadastral/Receita; nome→cpf judicial Escavador/Jusbrasil/TRT) + provider
+  `ProviderSituacaoCadastral` best-effort honesto (captcha/bloqueio→INDISPONÍVEL); usa o estreitamento da fusão.
+  **Honestidade/LGPD:** match 1:1 obrigatório, CPF resolvido = uso INTERNO (produto mascara), sem confirmação →
+  INDISPONÍVEL, ToS respeitado, volume baixo. **23 testes novos verdes (17 resolucao_cpf + 6 cpf_externo); 60 do
+  grupo CPF/DD/fachada sem regressão.** Provado ao vivo: dry-run no CNPJ 00343941000128 estreitou Strozenberg p/
+  100 candidatos. **Pendência do dono:** decidir a fonte externa real (TRT expõe CPF completo? confirmar) p/ ligar
+  a camada C nos alvos (Vieira/4 fortes/MUV).
 - **06-13 cont.32 (goal "continuar"):** **⭐ DOUBT-SENDER DE FACHADA POR TELEGRAM** (pedido do dono, cont.31-d).
   `compliance_agent/fachada_doubt.py` + `tools/doubt_sender_fachada.py` (envia) + `tools/registrar_vereditos_
   fachada.py` (captura). Quando a verificação de endereço fica em **DÚVIDA** (`endereco_verificacao` INDISPONIVEL/
