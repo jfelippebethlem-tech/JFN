@@ -174,7 +174,14 @@ manuais quando expirarem (caem no nous até lá).
   resolvem via `_resolver_db()` (env `JFN_DB`→`DB_PATH`); produção inalterada (OB 1.121.301 antes/depois), smoke
   simplificado, 2 passed (`727e61d`). **Sweep de sede saudável:** 9.602 sedes, distribuição honesta AFASTADO 78% /
   INDÍCIO 13% / INDISPONÍVEL 8%; para limpo em time-bound (resumível), cron retoma 2/2h; cota geo/addr 966 restante,
-  `herda_cep` wired. + remoção de código morto (0 callers) em curso.
+  `herda_cep` wired. **Remoção de código morto:** 6 funções 0-callers (132 linhas) + imports/constantes órfãos
+  (`ca7446e`). **`/api/compliance/buscar` (FTS) — bug achado:** os `buscar_*_fts` mascaravam `no such table` como
+  "0 resultados" (`except: pass`), e `criar_indices_fts()` é ÓRFÃ (nunca chamada no bootstrap) → o endpoint retorna
+  vazio para TODO termo (não só MGS; e MGS é favorecido de OB, fonte que o FTS nem indexa — só contratos/doerj/alertas).
+  Fix de honestidade: trocado o `pass` por log que distingue índice-ausente (`bd73959`). **PENDENTE** (não feito —
+  escreve no DB + rebuild custoso, risco com sweep): wirar `criar_indices_fts()` no bootstrap e/ou fazer o `/buscar`
+  cobrir favorecidos de OB (reusando `buscar_candidatos()` de `inteligencia.py`). O `/relatorio` (que o dono usa) já
+  resolve MGS — pipelines independentes.
 - **06-13 cont.35 (comandos do Yoda):** comandos `/cmd` ficaram **tappáveis no `/lista`** (auto-link do Telegram);
   **fix do resolver `engeprat`** (`REPLACE(nome,' ','')` casa `'ENGE PRAT'`); skill **`/dossie`** + endpoint
   **`/api/dossie` async**; **queue tratado na SKILL.md** (não no system-prompt) — o Yoda descartava pedido novo
