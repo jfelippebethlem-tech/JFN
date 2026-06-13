@@ -8,7 +8,7 @@ it via sqlite3 directly so that FTS5 virtual tables and triggers can be managed.
 import logging
 import sqlite3
 
-from compliance_agent.database.models import DB_PATH
+from compliance_agent.database.models import _resolver_db
 
 logger = logging.getLogger(__name__)
 
@@ -31,17 +31,23 @@ def _log_falha_fts(tabela: str, exc: Exception) -> None:
         logger.warning("Busca FTS em %s falhou: %s", tabela, msg)
 
 
-def _get_conn() -> sqlite3.Connection:
-    """Open a connection to the compliance database with row factory."""
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(str(DB_PATH))
+def _get_conn(db_path=None) -> sqlite3.Connection:
+    """Abre conexão com a compliance.db (row factory).
+
+    Resolve o caminho via _resolver_db (arg > env JFN_DB > DB_PATH) — antes usava
+    DB_PATH fixo, então criava/lia o FTS sempre na produção mesmo sob JFN_DB,
+    furando o isolamento de teste.
+    """
+    alvo = _resolver_db(db_path)
+    alvo.parent.mkdir(parents=True, exist_ok=True)
+    conn = sqlite3.connect(str(alvo))
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
     return conn
 
 
-def criar_indices_fts():
+def criar_indices_fts(db_path=None):
     """
     Create FTS5 virtual tables and associated triggers for full-text search.
 
@@ -50,9 +56,9 @@ def criar_indices_fts():
       - fts_doerj      (content=publicacoes_doerj)
       - fts_alertas    (content=alertas)
 
-    Safe to call multiple times (uses IF NOT EXISTS).
+    Safe to call multiple times (uses IF NOT EXISTS). Respeita db_path/JFN_DB.
     """
-    conn = _get_conn()
+    conn = _get_conn(db_path)
     try:
         # ── fts_contratos ─────────────────────────────────────────────────────
         conn.execute("""
