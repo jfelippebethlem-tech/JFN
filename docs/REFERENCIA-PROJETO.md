@@ -168,6 +168,13 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-13 cont.36 (loop de qualidade, isolamento de DB):** continuação do loop de melhoria com subagentes em
+  background. **Unificação de resolução de DB:** `dossie/grafo_poder/lex_conflito` hardcodavam `data/compliance.db`
+  e ignoravam `JFN_DB` (achado pelo smoke do Dossiê, que precisava de `monkeypatch.setattr` gambiarra) → agora
+  resolvem via `_resolver_db()` (env `JFN_DB`→`DB_PATH`); produção inalterada (OB 1.121.301 antes/depois), smoke
+  simplificado, 2 passed (`727e61d`). **Sweep de sede saudável:** 9.602 sedes, distribuição honesta AFASTADO 78% /
+  INDÍCIO 13% / INDISPONÍVEL 8%; para limpo em time-bound (resumível), cron retoma 2/2h; cota geo/addr 966 restante,
+  `herda_cep` wired. + remoção de código morto (0 callers) em curso.
 - **06-13 cont.35 (comandos do Yoda):** comandos `/cmd` ficaram **tappáveis no `/lista`** (auto-link do Telegram);
   **fix do resolver `engeprat`** (`REPLACE(nome,' ','')` casa `'ENGE PRAT'`); skill **`/dossie`** + endpoint
   **`/api/dossie` async**; **queue tratado na SKILL.md** (não no system-prompt) — o Yoda descartava pedido novo
