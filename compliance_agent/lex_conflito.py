@@ -20,10 +20,8 @@ from __future__ import annotations
 import re
 import sqlite3
 import unicodedata
-from pathlib import Path
 
-_REPO = Path(__file__).resolve().parent.parent
-_DB = _REPO / "data" / "compliance.db"
+from compliance_agent.database.models import _resolver_db
 
 
 def _digits(s) -> str:
@@ -138,6 +136,7 @@ def conflito(cnpj: str | None = None, candidato: str | None = None, limite: int 
     Retorna {ok, rede:[{doador, doc, candidato, partido, ano, valor_doacao, empresa_cnpj, empresa, n_ob,
     total_ob, via:"direto"|"socio", sinais[]}], _fonte, _nota}.
     """
+    _DB = _resolver_db()
     if not _DB.exists():
         return {"ok": False, "erro": "compliance.db ausente"}
     con = sqlite3.connect(str(_DB))
