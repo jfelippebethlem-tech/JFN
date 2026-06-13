@@ -377,7 +377,9 @@ def test_goal_agent_ciclo_autonomo():
     try:
         ag = HermesGoalAgent(session=s)
         ag.definir_missao("missão de teste")
-        res = asyncio.run(ag.trabalhar(max_passos_por_ciclo=8, max_ciclos=1))
+        # FORÇA modo local: o teste valida a sequência LOCAL (sem LLM). Sem isto, `usar_llm=None` auto-detecta
+        # e, num ambiente com chaves de LLM (a VM tem), entra em modo LLM → chamada de rede lenta/pendura.
+        res = asyncio.run(ag.trabalhar(max_passos_por_ciclo=8, max_ciclos=1, usar_llm=False))
         assert res["ok"] is True
         acoes = [p["acao"] for p in res["passos"]]
         # A sequência local sempre conclui e aprende ao longo do caminho.

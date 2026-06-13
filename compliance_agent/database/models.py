@@ -393,11 +393,14 @@ class MissaoAuditoria(Base):
 
 def get_engine(db_path: Path = DB_PATH):
     db_path.parent.mkdir(exist_ok=True)
-    engine = create_engine(f"sqlite:///{db_path}", echo=False)
+    # timeout=30: espera até 30s pelo write lock em vez de falhar na hora ("database is locked") quando um
+    # sweep concorrente escreve o compliance.db (lição §8 — todo writer precisa disso).
+    engine = create_engine(f"sqlite:///{db_path}", echo=False, connect_args={"timeout": 30})
     # Enable WAL mode for concurrent reads
     @event.listens_for(engine, "connect")
     def set_wal(conn, _):
         conn.execute("PRAGMA journal_mode=WAL")
+        conn.execute("PRAGMA busy_timeout=30000")  # espera o lock (não erra na hora)
         conn.execute("PRAGMA foreign_keys=ON")
     return engine
 
