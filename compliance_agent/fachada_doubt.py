@@ -26,7 +26,9 @@ from __future__ import annotations
 import datetime as dt
 import hashlib
 import os
+import re as _re
 import sqlite3
+import unicodedata as _ud
 from pathlib import Path
 
 _DB = Path(os.environ.get("JFN_DB", "data/compliance.db"))
@@ -181,39 +183,94 @@ def _digitos(s) -> str:
     return re.sub(r"\D", "", str(s or ""))
 
 
-def foto_rua(endereco: str) -> tuple[bytes | None, str, dict]:
-    """Foto Street View da SEDE a partir do ENDEREÇO (string) — o Google geocodifica o nº internamente.
+def coord_do_endereco(endereco: str) -> tuple[dict | None, str]:
+    """Geocodifica o ENDEREÇO via metadata GRATUITO do Street View (o Google resolve o nº internamente —
+    funciona mesmo com a Geocoding API negada na chave). Metadata NÃO consome cota/cobrança (doc Google).
 
-    Devolve (bytes_jpeg, fonte, info{lat,lon,date}) ou (None, motivo, {}). Confirma cobertura via metadata
-    (gratuito) ANTES de baixar a imagem (paga, com cota). Sem cobertura no endereço → None (NÃO inventa foto
-    de coord podre). Honesto: o pano pode estar a alguns nºs do alvo, mas no logradouro/quadra certos.
+    Devolve ({lat,lon,date}, "") se há cobertura de pano, ou (None, motivo). É a base tanto da captura via
+    navegador (grátis) quanto da API Static (paga).
+    """
+    import httpx
+    gkey = (os.environ.get("GOOGLE_MAPS_KEY", "") or os.environ.get("STREETVIEW_KEY", "")).strip()
+    if not gkey:
+        return None, "sem GOOGLE_MAPS_KEY"
+    if not endereco.strip():
+        return None, "endereço vazio"
+    try:
+        m = httpx.get("https://maps.googleapis.com/maps/api/streetview/metadata",
+                      params={"location": f"{endereco}, Brasil", "key": gkey}, timeout=20).json()
+    except Exception as e:  # noqa: BLE001
+        return None, f"erro metadata: {str(e)[:40]}"
+    if m.get("status") != "OK" or not m.get("location"):
+        return None, f"sem cobertura Street View no endereço (status {m.get('status')})"
+    return {"lat": m["location"].get("lat"), "lon": m["location"].get("lng"),
+            "date": m.get("date", "")}, ""
+
+
+def _geocode_predio(endereco: str) -> dict | None:
+    """Coord do PRÉDIO via Geocoding API (≠ pano). Serve p/ calcular o heading da câmera (mirar a fachada).
+
+    Só funciona com a **Geocoding API ligada** na chave; negada/erro → None (degrada: foto sem heading).
+    Devolve {lat,lon,location_type} (ROOFTOP/RANGE_INTERPOLATED/GEOMETRIC_CENTER/APPROXIMATE)."""
+    import httpx
+    gkey = (os.environ.get("GOOGLE_MAPS_KEY", "") or os.environ.get("STREETVIEW_KEY", "")).strip()
+    if not gkey or not endereco.strip():
+        return None
+    try:
+        r = httpx.get("https://maps.googleapis.com/maps/api/geocode/json",
+                      params={"address": f"{endereco}, Brasil", "key": gkey, "region": "br"},
+                      timeout=20).json()
+    except Exception:  # noqa: BLE001
+        return None
+    if r.get("status") != "OK" or not r.get("results"):
+        return None
+    g = r["results"][0]
+    loc = g["geometry"]["location"]
+    return {"lat": loc["lat"], "lon": loc["lng"],
+            "location_type": g["geometry"].get("location_type", "")}
+
+
+def _bearing(a_lat: float, a_lon: float, b_lat: float, b_lon: float) -> float:
+    """Rumo (compass bearing, 0-360) de A→B — heading p/ a câmera olhar do pano (A) para o prédio (B)."""
+    import math
+    p1, p2 = math.radians(a_lat), math.radians(b_lat)
+    dl = math.radians(b_lon - a_lon)
+    y = math.sin(dl) * math.cos(p2)
+    x = math.cos(p1) * math.sin(p2) - math.sin(p1) * math.cos(p2) * math.cos(dl)
+    return (math.degrees(math.atan2(y, x)) + 360) % 360
+
+
+def foto_rua(endereco: str) -> tuple[bytes | None, str, dict]:
+    """Foto Street View da SEDE pela **API Static**. Confirma cobertura via metadata (grátis) antes de baixar.
+
+    Se a **Geocoding API** estiver ligada, geocodifica o PRÉDIO e calcula o `heading` pano→prédio → a câmera
+    **mira a fachada** (resolve o ângulo). Sem Geocoding (negada) → heading padrão (degrada honesto).
+    Devolve (bytes_jpeg, fonte, info{lat,lon,date,heading?}) ou (None, motivo, {}).
     """
     import httpx
     from compliance_agent import verificacao_endereco as ve
+    coord, motivo = coord_do_endereco(endereco)   # pano (metadata grátis)
+    if not coord:
+        return None, motivo, {}
     gkey = (os.environ.get("GOOGLE_MAPS_KEY", "") or os.environ.get("STREETVIEW_KEY", "")).strip()
-    if not gkey:
-        return None, "sem GOOGLE_MAPS_KEY", {}
-    if not endereco.strip():
-        return None, "endereço vazio", {}
-    loc = f"{endereco}, Brasil"
-    try:
-        m = httpx.get("https://maps.googleapis.com/maps/api/streetview/metadata",
-                      params={"location": loc, "key": gkey}, timeout=20).json()
-    except Exception as e:  # noqa: BLE001
-        return None, f"erro metadata: {str(e)[:40]}", {}
-    if m.get("status") != "OK" or not m.get("location"):
-        return None, f"sem cobertura Street View no endereço (status {m.get('status')})", {}
     if not ve._streetview_consome_cota():  # respeita o teto de requisições PAGAS
         return None, "cota Street View esgotada", {}
+    params = {"size": "640x640", "location": f"{endereco}, Brasil", "fov": "80",
+              "pitch": "0", "source": "outdoor", "key": gkey}
+    info = {**coord}
+    predio = _geocode_predio(endereco)            # coord do prédio (só com Geocoding ligada)
+    if predio and coord.get("lat") is not None:
+        heading = _bearing(coord["lat"], coord["lon"], predio["lat"], predio["lon"])
+        params["heading"] = f"{heading:.0f}"
+        params["fov"] = "90"
+        info["heading"] = round(heading)
+        info["geocode"] = predio.get("location_type", "")
     try:
-        r = httpx.get("https://maps.googleapis.com/maps/api/streetview",
-                      params={"size": "640x640", "location": loc, "fov": "80", "pitch": "0",
-                              "source": "outdoor", "key": gkey}, timeout=25)
+        r = httpx.get("https://maps.googleapis.com/maps/api/streetview", params=params, timeout=25)
     except Exception as e:  # noqa: BLE001
         return None, f"erro download: {str(e)[:40]}", {}
     if r.status_code != 200 or r.content[:3] != b"\xff\xd8\xff":
         return None, f"download falhou (HTTP {r.status_code})", {}
-    info = {"lat": m["location"].get("lat"), "lon": m["location"].get("lng"), "date": m.get("date", "")}
     return r.content, "streetview", info
 
 
@@ -260,39 +317,103 @@ def registrar_envio(con: sqlite3.Connection, cand: dict, codigo: str, fonte: str
 
 
 # ───────────────────────────── captura passiva do veredito (state.db do Hermes) ─────────────────────────────
-# palavras → status canônico
-_FACHADA = ("fachada", "laranja", "inexist", "falsa", "baldio")
-_REAL = ("real", "legitim", "legítim", "verdadeir", "sede ok", "ok", "existe", "valida", "válida")
-_PULAR = ("pular", "skip", "nao sei", "não sei", "naosei", "duvida", "dúvida", "indeterm")
+# O dono responde no Telegram pelo "responder" (quote) — o state.db guarda `[Replying to: "...CNPJ:<14>..."]`,
+# então correlacionamos pela CNPJ do quote (mais robusto que o código curto). O status vem do texto da resposta,
+# classificado de forma CONSERVADORA (ordem importa): problema-de-foto/inconclusivo → pular ; depois real ;
+# depois indício (residencial/apurar) ; depois fachada. Ambíguo → None (vira 'revisar', NÃO chuta).
+# Classificação CONSERVADORA por frases (não keywords cruas — "fachada" aparece em "fachada certa"=real,
+# "fachada errada"=foto-ruim, "não é a fachada"=ângulo). ORDEM: (1) problema-de-foto/inconclusivo vence
+# (não dá p/ confiar na foto); (2) INDÍCIO — "residencial/merece atenção/indício" é o meio nuançado do dono
+# (vem ANTES de real/fachada porque ele costuma hedge: "pode ser legítima, mas é um indício"); (3) real; (4) fachada.
+_KW_PULAR = ("angulo", "foto errada", "fotos errada", "fachada errada", "fachadas errada", "endereco errado",
+             "foto ta errada", "foto ta no endereco", "veio com a foto", "inconclusiv", "nao da pra saber",
+             "nao e a fachada", "nao da pra ver", "sem foto ", "pular", "skip", "nao sei", "indeterm")
+_KW_INDICIO = ("residencial", "merece atencao", "indicio", "suspeita", "apurar")
+_KW_REAL = ("empresa real", "sede real", "predio comercial", "predio empresarial", "fachada certa",
+            "logomarca", "sede legitima", "empresa legitima", "comercial real", "e real ", "eh real",
+            "parece real", "loja real")
+_KW_FACHADA = ("laranja", "baldio", "inexistente", "e uma casa", "eh uma casa", "casa simples",
+               "e fachada", "eh fachada", "uma fachada", "fantasma", " fachada ")
+# " fachada " (com espaços, via _norm_txt) é o ÚLTIMO recurso: pega o veredito explícito "fachada" sozinho,
+# mas NÃO "fachada certa" (=real) nem "fachada errada"/"nao e a fachada" (=pular), que a ORDEM já capturou antes.
 
 
-def interpretar(texto: str, codigos_pendentes: dict[str, str]) -> list[tuple[str, str, str]]:
-    """Extrai vereditos de um texto livre. Devolve [(cnpj, status, raw)] p/ cada código reconhecido.
+def _norm_txt(s: str) -> str:
+    s = (s or "").lower()
+    s = "".join(c for c in _ud.normalize("NFD", s) if _ud.category(c) != "Mn")
+    return " " + _re.sub(r"\s+", " ", s) + " "   # padding p/ casar "e real " no fim
 
-    Casa um código pendente em qualquer posição do texto e olha as palavras vizinhas p/ o status.
-    Tolerante a maiúsc/minúsc e a "F7ABC: fachada", "fachada F7ABC", "F7ABC real" etc.
-    """
-    import re
-    t = texto or ""
+
+def classificar_resposta(texto: str) -> str | None:
+    """Classifica a resposta livre do dono em fachada|real|indicio|pular, ou None (ambíguo → revisar)."""
+    t = _norm_txt(texto)
+    if not t.strip():
+        return None
+    if any(k in t for k in _KW_PULAR):
+        return "pular"
+    if any(k in t for k in _KW_INDICIO):
+        return "indicio"
+    if any(k in t for k in _KW_REAL):
+        return "real"
+    if any(k in t for k in _KW_FACHADA):
+        return "fachada"
+    return None
+
+
+def _cnpj_do_quote(texto: str) -> str:
+    """CNPJ (14 díg) citado no quote `[Replying to: "...CNPJ: <14>..."]` da resposta, ou ''."""
+    m = _re.search(r"CNPJ:\s*(\d{14})", texto or "")
+    return m.group(1) if m else ""
+
+
+def _texto_resposta(content: str) -> str:
+    """Remove o quote `[Replying to: ...]`, o prefixo `[J FN id=...]` e anexos → só a resposta do dono."""
+    t = _re.sub(r"^\[Replying to:.*?\]\s*", "", content or "", flags=_re.S)
+    t = _re.sub(r"^\[J ?FN[^\]]*\]\s*", "", t)
+    t = _re.sub(r"\[Image attached.*", "", t, flags=_re.S)
+    t = _re.sub(r"\[screenshot\]", "", t)
+    return t.strip()
+
+
+# formato INSTRUÍDO ("<código> fachada|real|indicio|pular") — a palavra é o veredito, casa direta (≠ texto livre,
+# onde "fachada" engana em "fachada certa"/"não é a fachada"). Usado SÓ na via do código curto.
+_EXPLICITO = {"fachada": "fachada", "laranja": "fachada", "baldio": "fachada", "real": "real",
+              "legitima": "real", "legitimo": "real", "indicio": "indicio", "residencial": "indicio",
+              "pular": "pular", "skip": "pular"}
+
+
+def _verdito_explicito(texto: str) -> str | None:
+    toks = set(_norm_txt(texto).split())
+    for w, st in _EXPLICITO.items():
+        if w in toks:
+            return st
+    return None
+
+
+def interpretar(texto: str, codigos_pendentes: dict[str, str],
+                cnpjs_pendentes: set[str] | None = None) -> list[tuple[str, str, str]]:
+    """Extrai vereditos de uma mensagem. Devolve [(cnpj, status, raw)].
+
+    Duas vias: (1) **quote** — CNPJ no `[Replying to: ...]` + status do TEXTO LIVRE (classificador conservador,
+    é como o dono responde); (2) **código curto** com a palavra-veredito explícita do formato instruído."""
     achados: list[tuple[str, str, str]] = []
-    vistos: set[str] = set()
-    low = t.lower()
+    resp = _texto_resposta(texto)
+    raw = resp[:200] or (texto or "")[:200]
+    # via quote (CNPJ do `[Replying to: ...]`) — texto livre → classificador conservador
+    cnpj_q = _cnpj_do_quote(texto)
+    if cnpj_q and (cnpjs_pendentes is None or cnpj_q in cnpjs_pendentes):
+        st = classificar_resposta(resp)
+        if st:
+            achados.append((cnpj_q, st, raw))
+            return achados  # uma resposta = um veredito
+    # via código curto — formato instruído (palavra explícita), com fallback ao classificador
     for codigo, cnpj in codigos_pendentes.items():
-        if codigo in vistos:
+        if not _re.search(rf"(?<![A-Za-z0-9]){_re.escape(codigo)}(?![A-Za-z0-9])", texto or "", _re.IGNORECASE):
             continue
-        # o código é case-insensitive; procura como palavra
-        if not re.search(rf"(?<![A-Za-z0-9]){re.escape(codigo)}(?![A-Za-z0-9])", t, re.IGNORECASE):
-            continue
-        if any(w in low for w in _FACHADA):
-            status = "fachada"
-        elif any(w in low for w in _PULAR):
-            status = "pular"
-        elif any(w in low for w in _REAL):
-            status = "real"
-        else:
-            continue  # código citado mas sem veredito claro → ignora (não chuta)
-        achados.append((cnpj, status, t.strip()[:200]))
-        vistos.add(codigo)
+        st = _verdito_explicito(resp or texto) or classificar_resposta(resp or texto)
+        if st:
+            achados.append((cnpj, st, raw))
+            break
     return achados
 
 
@@ -341,13 +462,14 @@ def processar_respostas(con: sqlite3.Connection, *, state_db: Path | None = None
             con.execute("SELECT codigo, cnpj FROM fachada_veredito WHERE status='pendente'")}
     if not pend:
         return []
+    cnpjs_pend = set(pend.values())
     desde = _ler_cursor()
     msgs = mensagens_novas_telegram(desde, state_db)
     gravados: list[dict] = []
     maior_ts = desde
     for ts, texto in msgs:
         maior_ts = max(maior_ts, ts)
-        for cnpj, status, raw in interpretar(texto, pend):
+        for cnpj, status, raw in interpretar(texto, pend, cnpjs_pend):
             cur = con.execute(
                 "UPDATE fachada_veredito SET status=?, veredito_em=?, veredito_raw=? "
                 "WHERE cnpj=? AND status='pendente'",
@@ -355,6 +477,7 @@ def processar_respostas(con: sqlite3.Connection, *, state_db: Path | None = None
             if cur.rowcount:
                 gravados.append({"cnpj": cnpj, "status": status, "raw": raw})
                 pend.pop(codigo_de(cnpj), None)  # não casar de novo nesta passada
+                cnpjs_pend.discard(cnpj)
     con.commit()
     if avancar_cursor and msgs:
         _grava_cursor(maior_ts)
@@ -365,7 +488,7 @@ def processar_respostas(con: sqlite3.Connection, *, state_db: Path | None = None
 def veredito_humano(cnpj: str, db: Path | str | None = None) -> dict | None:
     """Veredito humano já registrado p/ um CNPJ, ou None. Usado pela DD como VERDADE (override).
 
-    Devolve {status: fachada|real|pular, em, raw} apenas p/ vereditos decididos (não 'pendente'/'pular').
+    Devolve {status: fachada|real|indicio, em, raw} p/ vereditos decididos (não 'pendente'/'pular').
     """
     from compliance_agent.investigacao_dd import _digitos
     c = _digitos(cnpj)
@@ -376,7 +499,7 @@ def veredito_humano(cnpj: str, db: Path | str | None = None) -> dict | None:
     try:
         r = con.execute(
             "SELECT status, veredito_em, veredito_raw FROM fachada_veredito "
-            "WHERE cnpj=? AND status IN ('fachada','real')", (c,)).fetchone()
+            "WHERE cnpj=? AND status IN ('fachada','real','indicio')", (c,)).fetchone()
     except Exception:
         return None
     finally:

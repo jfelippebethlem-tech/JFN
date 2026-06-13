@@ -22,7 +22,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compliance_agent import fachada_doubt as fd  # noqa: E402
 
-_VALIDOS = ("fachada", "real", "pular")
+_VALIDOS = ("fachada", "real", "indicio", "pular")
 
 
 def _registrar_manual(con, cnpj: str, status: str) -> int:

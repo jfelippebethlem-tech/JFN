@@ -58,11 +58,13 @@ def _carregar_env() -> None:
 
 
 def _enviar_foto(token: str, chat: str, img: bytes, caption: str) -> int | None:
-    """sendPhoto; devolve message_id ou None."""
+    """sendPhoto; devolve message_id ou None. Detecta PNG (navegador) vs JPEG (API Static)."""
+    png = img[:4] == b"\x89PNG"
+    nome, mime = ("sede.png", "image/png") if png else ("sede.jpg", "image/jpeg")
     r = httpx.post(
         f"https://api.telegram.org/bot{token}/sendPhoto",
         data={"chat_id": chat, "caption": caption[:1024]},
-        files={"photo": ("sede.jpg", img, "image/jpeg")}, timeout=90)
+        files={"photo": (nome, img, mime)}, timeout=90)
     j = r.json()
     if not j.get("ok"):
         print(f"   ⚠ Telegram sendPhoto falhou: {r.status_code} {str(j)[:160]}")
@@ -95,22 +97,24 @@ def main() -> int:
         print("Nenhuma dúvida pendente no critério (todas já enviadas ou sem cobertura).")
         return 0
 
-    print(f"{len(cands)} dúvida(s) selecionada(s) (ranqueadas por R$ recebido).")
+    print(f"{len(cands)} dúvida(s) selecionada(s) — foto via API Street View Static.")
+
     enviados = sem_foto = 0
     for c in cands:
         codigo = fd.codigo_de(c["cnpj"])
         end = fd.endereco_completo(c)
-        img, fonte, info = fd.foto_rua(end)   # geocode pelo ENDEREÇO (não pela coord podre exato=0)
+        img, fonte, info = fd.foto_rua(end)   # metadata (grátis) → coord/heading → foto Static
         cap = fd.legenda(c, codigo, fonte if img else "—", info)
-        loc = f"({info.get('lat'):.4f},{info.get('lon'):.4f})" if img and info.get("lat") else ""
+        loc = f"({info.get('lat'):.4f},{info.get('lon'):.4f})" if info.get("lat") else ""
         cab = (f"[{codigo}] {c.get('razao') or c['cnpj']} — {fd._moeda(c.get('total_recebido'))} — "
-               f"foto:{fonte if img else '—'} {loc}")
+               f"{fonte if img else 'SEM FOTO'} {loc}")
         if img is None:
             sem_foto += 1
-            print(f"  ✗ {cab}  ({fonte} → não envia)")
+            print(f"  ✗ {cab} → não envia")
             continue
         if a.dry_run:
-            print(f"  • DRY {cab}  pano {info.get('date','?')} ({len(img)} bytes)")
+            print(f"  • DRY {cab}  pano {info.get('date', '?')} heading={info.get('heading', '—')} "
+                  f"({len(img)} bytes)")
             continue
         mid = _enviar_foto(token, chat, img, cap)
         if mid is not None:
