@@ -306,6 +306,29 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
             "verificar a pessoa do sócio (capacidade econômica, vínculos, interposição).",
             "Receita Federal (QSA)", "art. 337-F CP; art. 11 Lei 8.429/92", 8))
 
+    # H-SOCIO-SERVIDOR — fusão de máscaras folha×QSA: sócio que também é servidor público do RJ (nome na
+    # folha + dígitos do CPF consistentes). Vínculo servidor↔fornecedora do Estado é indício de conflito de
+    # interesse/laranja (apurar impedimento/período). Precomputado em socios_fornecedor (leve).
+    if len(cnpj) == 14:
+        try:
+            from compliance_agent.resolucao_cpf import socios_servidores
+            servs = socios_servidores(cnpj)
+        except Exception:
+            servs = []
+        if servs:
+            nomes = ", ".join(s["nome"] for s in servs if s.get("nome"))[:200]
+            nivel = "ALTO" if total_pago > 1_000_000 else "MEDIO"
+            hipoteses.append(_hip(
+                "H-SOCIO-SERVIDOR", "Sócio é servidor público do Estado (fusão de máscaras folha×QSA)",
+                "INDICIO", nivel,
+                f"Sócio(s) com nome na folha de pagamento do RJ e dígitos de CPF consistentes com a máscara "
+                f"do QSA ({nomes}). Servidor público sócio de fornecedora que recebe do Estado "
+                f"({_moeda(total_pago)}) é indício de conflito de interesse/interposição (laranja) — apurar "
+                "vínculo formal, lotação, período e eventual impedimento. Indício, não acusação.",
+                "Folha de pagamento (transparência RJ) + QSA público (fusão de máscaras)",
+                "art. 9º/11 Lei 8.429/92; art. 117 Lei 8.112/90 (impedimento)", 16 if nivel == "ALTO" else 10))
+            cobertura["socio_servidor"] = f"{len(servs)} sócio(s) servidor(es) (fusão folha×QSA)"
+
     # H-PEP / H-BENEFICIO — Portal da Transparência/CGU. PEP por NOME do sócio (QSA desmascarado) =
     # relação política; benefício social de subsistência por CPF COMPLETO = indício de laranja. Bounded,
     # cacheado (7d) e honesto: sem chave/CPF mascarado → INDISPONÍVEL (≠ "limpo"). Degrada em try/except.

@@ -134,3 +134,66 @@ def test_gerar_cpfs_da_mascara():
     assert all(c[3:9] == "512815" for c in cands)
     assert "94451281504" in cands  # CPF real cai entre os candidatos
     assert gerar_cpfs_da_mascara("11122334455") == []  # sem máscara
+
+
+# ───────────────────────── fusão de máscaras folha×QSA (tier B) ─────────────────────────
+def test_folha_middle():
+    from compliance_agent.resolucao_cpf import folha_middle
+    assert folha_middle("XX223344XXX") == "223344"   # folha mascara pos 1-2 e 9-11 → mostra 3-8
+    assert folha_middle("11122334455") == ""          # CPF limpo não é máscara da folha
+    assert folha_middle("") == ""
+
+
+def _db_fusao(tmp_path):
+    p = tmp_path / "compliance.db"
+    con = sqlite3.connect(p)
+    con.executescript("""
+        CREATE TABLE registros_folha (nome TEXT, cpf TEXT);
+        CREATE TABLE socios_fornecedor (cnpj TEXT, socio_nome TEXT, socio_doc TEXT,
+                                        socio_servidor INTEGER, cpf_pos3a9 TEXT);
+    """)
+    # CPF real 11122334455: QSA mostra pos4-9=223344; folha mostra pos3-8=122334
+    con.execute("INSERT INTO registros_folha VALUES('JOAO DA SILVA','XX122334XXX')")
+    con.execute("INSERT INTO registros_folha VALUES('MARIA SOUZA','XX999888XXX')")  # nome bate, dígito não
+    con.commit(); con.close()
+    return p
+
+
+def test_fusao_folha_qsa_servidor_consistente(tmp_path):
+    from compliance_agent.resolucao_cpf import carregar_indice_folha, fusao_folha_qsa
+    idx = carregar_indice_folha(_db_fusao(tmp_path))
+    r = fusao_folha_qsa("JOAO DA SILVA", "***223344**", idx)
+    assert r["servidor"] is True
+    assert r["conhecidos_3a9"] == "1223344"   # pos3 (folha) + pos4-9 (QSA)
+    assert r["n_candidatos"] == 100
+
+
+def test_fusao_folha_qsa_homonimo_rejeita(tmp_path):
+    from compliance_agent.resolucao_cpf import carregar_indice_folha, fusao_folha_qsa
+    idx = carregar_indice_folha(_db_fusao(tmp_path))
+    # nome bate (MARIA SOUZA) mas dígitos do CPF divergem → não afirma servidor
+    r = fusao_folha_qsa("MARIA SOUZA", "***223344**", idx)
+    assert r["servidor"] is False and "homônimo" in r["motivo"].lower()
+    # nome ausente na folha
+    assert fusao_folha_qsa("FULANO INEXISTENTE", "***223344**", idx)["servidor"] is False
+
+
+def test_socios_servidores_accessor(tmp_path):
+    from compliance_agent.resolucao_cpf import socios_servidores
+    p = _db_fusao(tmp_path)
+    con = sqlite3.connect(p)
+    con.execute("UPDATE socios_fornecedor SET cnpj='11111111000111'")  # no-op (vazio)
+    con.execute("INSERT INTO socios_fornecedor VALUES('11111111000111','JOAO DA SILVA','***223344**',1,'1223344')")
+    con.commit(); con.close()
+    out = socios_servidores("11111111000111", db_path=p)
+    assert len(out) == 1 and out[0]["nome"] == "JOAO DA SILVA" and out[0]["cpf_pos3a9"] == "1223344"
+    assert socios_servidores("99999999000199", db_path=p) == []
+
+
+def test_dd_hipotese_socio_servidor(tmp_path, monkeypatch):
+    from compliance_agent import investigacao_dd as dd
+    monkeypatch.setattr("compliance_agent.resolucao_cpf.socios_servidores",
+                        lambda cnpj, db_path=None: [{"nome": "JOAO DA SILVA", "cpf_pos3a9": "1223344"}])
+    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 2_000_000})
+    h = [x for x in out["hipoteses"] if x["codigo"] == "H-SOCIO-SERVIDOR"]
+    assert h and h[0]["status"] == "INDICIO" and h[0]["nivel"] == "ALTO"
