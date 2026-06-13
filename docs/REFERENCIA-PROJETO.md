@@ -184,11 +184,15 @@ manuais quando expirarem (caem no nous até lá).
   (no-op se já criado, pois `init_db` roda por request); (3) `/buscar` ganhou chave `fornecedores` via `buscar_candidatos`
   → **q=MGS agora retorna MGS CLEAN (R$136M) e MGS BRASIL** (antes: vazio). Commits `203612a`/`93ac556`/`98d072e`.
   **Honestidade provada em prod:** logs mostraram "índice ausente... rode criar_indices_fts" (não mais silêncio).
-  **2 PENDÊNCIAS** (janela SEM sweep): (a) as tabelas `fts_*` ainda não criaram em prod — `database is locked` com o
-  `sweep_sede_google` escrevendo; criar DDL durante sweep é frágil mesmo com busy_timeout → auto-cria no 1º `/buscar`
-  após o sweep (idempotente); (b) `/buscar` leva ~11s (full-scan de `buscar_candidatos` em 1,12M OB, sem índice em
-  `favorecido_nome`, agravado pelo sweep) — otimizar com índice ou tornar async. CLAUDE.md: bloco do gitnexus
-  reinjetado pelo `analyze` e MANTIDO a pedido do dono.
+  CLAUDE.md: bloco do gitnexus reinjetado pelo `analyze` e MANTIDO a pedido do dono.
+- **06-13 cont.38 (janela 23:55 sem sweep — fecha as pendências do cont.37):** (a) **`fts_*` materializadas em prod**
+  (`criar_indices_fts()` rodou sem lock) → `/buscar?tabela=contratos` responde em **0,05s** (FTS vivo, fim do
+  "índice ausente"). (b) **Latência do `fornecedores` diagnosticada certo:** ~6-12s mesmo SEM sweep (intrínseco, não
+  contenção). Minha nota anterior de "índice em `favorecido_nome`" estava ERRADA — B-tree não cobre `LIKE '%termo%'`
+  (substring + `lower()`). Fix correto: **tabela-resumo `favorecido_resumo`** — há só **73.881 favorecidos distintos**
+  vs 1,12M OBs (15×), então o mesmo LIKE numa tabela de 74k linhas cai pra sub-segundo. Otimização de `buscar_candidatos`
+  (alto risco — é o resolver do `/relatorio`) delegada a subagente com FALLBACK seguro (usa a tabela só se existir;
+  senão cai no scan atual) + teste de paridade velho-vs-novo. EM ANDAMENTO.
 - **06-13 cont.35 (comandos do Yoda):** comandos `/cmd` ficaram **tappáveis no `/lista`** (auto-link do Telegram);
   **fix do resolver `engeprat`** (`REPLACE(nome,' ','')` casa `'ENGE PRAT'`); skill **`/dossie`** + endpoint
   **`/api/dossie` async**; **queue tratado na SKILL.md** (não no system-prompt) — o Yoda descartava pedido novo
