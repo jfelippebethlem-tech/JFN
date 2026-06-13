@@ -9,7 +9,7 @@
 > doc (1 linha no §10). Detalhismo proporcional à complexidade; **testar tudo, nunca às cegas**; ao fim avaliar
 > storage/RAM/CPU. **Honestidade sempre:** indício≠acusação, INDISPONÍVEL≠0, nunca inventar número, CPF PF mascarado.
 
-Última atualização: 2026-06-12.
+Última atualização: 2026-06-13.
 
 ---
 
@@ -142,6 +142,17 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-13 cont.31 (goal, agentes):** **⭐ 30/30 DETECTORES DE LICITAÇÃO COMPLETOS** (`cefeee6`). Os 13 cards que
+  faltavam, em 4 lotes de subagentes VM-safe (ruff+pytest isolados por arquivo, eu integrei o `__init__`):
+  **J5** digitais compartilhadas, **J6** subcontratação cruzada/consórcio, **J7** inabilitação seletiva ·
+  **E4** visita técnica, **E5** edital iterado, **E6** pontuação dirigida (simula troca de vencedor) ·
+  **X1** crescimento aditivo (teto art.125→crítico objetivo), **X2** prorrogação perpétua, **X3** execução
+  financeira (tríade SIAFE), **X4** carona abusiva ARP (art.86), **X5** jogo de planilha (Pearson inline),
+  **X6** entrega fantasma (gera roteiro de diligência) · **C6** vínculo político-financeiro (TSE, conservador/
+  multiplicador). Todos no schema §1.4 (âncoras, rubrica fechada LLM-opcional, exculpatória, nao_avaliavel≠0).
+  REGISTRO=26; orquestradores `rodar_edital`(+E4-6)/`rodar_julgamento`(+J5-7)/`rodar_fornecedor`(+C6)/novo
+  **`rodar_execucao`**(X1-6). **129 testes novos + fix fixture obsoleta (n_fornecedores) → 254 verdes.** Falta:
+  rodar o pipeline nos editais Vieira (SEI lê 510001) + coletor PNCP de propostas p/ alimentar o `ctx`.
 - **06-12 cont.30 (goal, agentes):** **QA dos produtos + correções.** Gerados /orgao 660100 e /relatorio MUV
   REAIS, **enviados ao Yoda** (msg 3745-48), laudo: completos/estéticos/prosa honesta (relatório até autocritica o
   rating). 6 correções (`02f16e4`..`306518f`): enriquecimento 35s→90s+retry+cache (§5/§6 CEIS/CNEP populam), score
