@@ -168,6 +168,15 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
             "real — confirmação direta, não inferência.",
             "Inspeção visual (Street View) + veredito humano", "art. 337-F CP; art. 11 Lei 8.429/92", 24))
         cobertura["veredito_humano"] = "CONFIRMADO fachada"
+    elif vh and vh.get("status") == "indicio":
+        hipoteses.append(_hip(
+            "H-END-HUMANO", "Sede em endereço residencial confirmada por inspeção visual (veredito do auditor)",
+            "INDICIO", "MEDIO",
+            f"Inspeção visual da sede (Street View) pelo auditor em {vh.get('em', '—')}: endereço de natureza "
+            f"residencial — indício de fachada/laranja a apurar (não conclui sede inexistente). Empresa recebeu "
+            f"{_moeda(total_pago)} do Estado.",
+            "Inspeção visual (Street View) + veredito humano", "art. 337-F CP; art. 11 Lei 8.429/92", 10))
+        cobertura["veredito_humano"] = "INDÍCIO residencial (auditor)"
     elif vh and vh.get("status") == "real":
         cobertura["veredito_humano"] = "sede AFASTADA pelo auditor (foto = sede real)"
 

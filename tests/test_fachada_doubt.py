@@ -213,3 +213,50 @@ def test_dd_usa_veredito_humano(tmp_path, monkeypatch):
     assert "H-END-HUMANO" in cods
     h = next(h for h in out["hipoteses"] if h["codigo"] == "H-END-HUMANO")
     assert h["status"] == "CONFIRMADO"
+
+
+# ───────────────────── classificador de resposta livre + quote (decisões 2 e 3) ─────────────────────
+import pytest as _pytest
+
+
+@_pytest.mark.parametrize("texto,esperado", [
+    ("Empresa real. Tem a logomarca dela no portao", "real"),
+    ("Fachada certa, é um predio comercial", "real"),
+    ("Inconclusivo, mas o endereco ta certo. O angulo da camera que nao é a fachada do endereco", "pular"),
+    ("Marcou certo, mas é endereco residencial sim pelo que parece. Merece atencao. Pode ser laranja", "indicio"),
+    ("Endereco residencial também. Marcador de indício. Acertou o endereco", "indicio"),
+    ("é uma casa, claramente fachada", "fachada"),     # casa + fachada, sem problema-de-foto → fachada
+    ("laranja na certa, baldio", "fachada"),
+    ("foto ta errada, nao é esse endereco", "pular"),
+    ("blá blá sem veredito", None),
+])
+def test_classificar_resposta(texto, esperado):
+    assert fd.classificar_resposta(texto) == esperado
+
+
+def test_interpretar_quote_por_cnpj():
+    content = ('[Replying to: "🕵️ DÚVIDA DE FACHADA Empresa: X CNPJ: 12647362000158 Endereço..."] '
+               'Empresa real. Tem a logomarca no portao')
+    out = fd.interpretar(content, {}, {"12647362000158"})
+    assert out and out[0][0] == "12647362000158" and out[0][1] == "real"
+
+
+def test_interpretar_quote_indicio():
+    content = ('[Replying to: "DÚVIDA Empresa: Y CNPJ: 19543304000123 ..."] '
+               'é endereco residencial, merece atencao')
+    out = fd.interpretar(content, {}, {"19543304000123"})
+    assert out and out[0] == ("19543304000123", "indicio", out[0][2])
+
+
+def test_interpretar_quote_cnpj_nao_pendente_ignora():
+    content = '[Replying to: "... CNPJ: 99999999999999 ..."] real'
+    assert fd.interpretar(content, {}, {"11111111111111"}) == []
+
+
+def test_dd_veredito_indicio(monkeypatch):
+    from compliance_agent import investigacao_dd as dd
+    monkeypatch.setattr("compliance_agent.fachada_doubt.veredito_humano",
+                        lambda cnpj, db=None: {"status": "indicio", "em": "2026-06-13", "raw": "residencial"})
+    out = dd.investigar("11111111000111", cadastral={}, pagamentos={"total_pago": 500000})
+    h = [x for x in out["hipoteses"] if x["codigo"] == "H-END-HUMANO"]
+    assert h and h[0]["status"] == "INDICIO"
