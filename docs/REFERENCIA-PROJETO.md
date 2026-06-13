@@ -104,6 +104,15 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
   baldio/inexistência. Sempre conferir no mapa real (CEP/Google) antes de tratar como achado. INDISPONÍVEL ≠ baldio.
 - **⛔ Divergência de município só com geocode EXATO** (036100, 06-11): match coarse (logradouro/CEP) cai em
   cidade errada por fallback do Nominatim → 83 falsas "divergências" (todas exato=False). Só afirmar com o nº resolvido.
+- **⛔ Verificação de endereço por Nominatim/OSM = falso-positivo em massa** (auditoria 06-13): os 62 INDÍCIO de
+  `endereco_verificacao` eram lugares REAIS difíceis de geocodar (Min. da Fazenda, Praça dos Três Poderes, rodovias,
+  "S/N") flagrados só por buraco do OSM. **Substituído pela tríade Google** (`sede_google.py`): a Address Validation
+  (`addressComplete`/`validationGranularity`) é o sinal HONESTO de existência; Places dá negócio operante; Geocoding
+  ROOFTOP prova o prédio. `verificacao_sede` é a fonte boa; `endereco_verificacao` (OSM) ficou DEPRECADA.
+- **⛔ Todo sweep/CLI novo TEM que carregar o `.env`** (bug recorrente, 3ª vez 06-13): `os.environ.get('GOOGLE_MAPS_KEY')`
+  é vazio rodando como módulo (no `jfn.service` está no ambiente, no CLI não) → as chamadas viram **no-op silencioso**
+  (cotas não baixam, tudo INDISPONIVEL). Padrão `_carregar_env()` no início do `main()`. Pegar no teste ao vivo (a cota
+  que não baixa denuncia).
 - **⛔ NUNCA buscar imagem (Street View/satélite) na coord `exato=0`** (lição doubt-sender, 06-13): a coord coarse
   do Nominatim (logradouro/CEP, sem o nº) cai EM CIDADE ERRADA por fallback (Araçatuba↔SP, Guapimirim↔Freguesia) →
   a foto não bate o endereço. Para imagem, **geocodificar o ENDEREÇO COMPLETO como string** no próprio Street View
@@ -148,6 +157,20 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-13 cont.33 (goal grande, APIs Google ligadas):** **⭐ VERIFICAÇÃO DE SEDE VIA GOOGLE — substitui o
+  Nominatim** (que dava INDÍCIO falso: Min.Fazenda/Praça dos Três Poderes — auditoria confirmou). Dono ligou
+  **Geocoding + Address Validation + Places (New)** (cada 9999/31d free tier). **`compliance_agent/sede_google.py`**:
+  3 coletores quota-guarded + `verdict_de_sinais` honesto (negócio operante DA empresa afasta; ROOFTOP=existe;
+  Address Validation residencial=indício; ausência de perfil≠prova; rodovia/'S/N' não é fachada). **`tools/
+  sweep_sede_google.py`**: varre menor→maior R$ (pedido do dono), **dedup por PRÉDIO** (12.801 distintos;
+  empresas no mesmo prédio herdam 1 verificação), overflow herda de prédio-irmão no CEP (9.190 CEPs), Places só
+  nos suspeitos, resumível, VM-safe, quota-bounded. Grava `verificacao_sede`. **DD**: novas hipóteses
+  **H-END-RESID-GOOGLE / H-SEM-PERFIL / H-ENDERECO-INVALIDO** (gated por veredito humano). **Cota cabe no mês:**
+  ~12,8k prédios > 9999, então building-dedup + CEP-fallback cobrem ~100% (sweep atravessa o mês, resumível).
+  **Heading da foto** (Geocoding→prédio→bearing) corrige o ângulo (NRTT). **34 testes novos** (32 coletor mockado
+  via subagente + 2 DD) + 83 do grupo verdes. **Sweep RODANDO** (background, ~30 prédios/min): 1ºs 230 = 83%
+  AFASTADO/13% INDÍCIO/4% INDISP; **Min.Fazenda agora AFASTADO** (bug consertado). Browser-screenshot REMOVIDO
+  (WebGL/swiftshader travava a VM de 2 vCPU). **Pendência:** sweep terminar a base (resume mensal na cota).
 - **06-13 cont.32-c (dono pegou bug):** **FIX do doubt-sender — foto não batia o endereço** (`d07e291`). O dono
   revisou o 1º lote e TODAS as fotos estavam erradas. Causa: eu buscava o Street View na coord guardada
   (`endereco_verificacao`, `exato=0` = Nominatim coarse/fallback) que **cai em cidade errada** (Araçatuba↔São
