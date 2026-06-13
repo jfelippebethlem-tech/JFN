@@ -5,6 +5,9 @@ Uses SQLite via SQLAlchemy. All public-servant, company, contract,
 payroll, and relationship data is stored here before graph analysis.
 """
 
+import importlib.util
+import os
+import sys
 from datetime import datetime
 from sqlalchemy import (
     Column, String, Integer, Float, Date, DateTime, Boolean,
@@ -15,6 +18,12 @@ from pathlib import Path
 
 
 DB_PATH = Path(__file__).parent.parent.parent / "data" / "compliance.db"
+
+
+def _resolver_db(db_path=None) -> Path:
+    """DB efetivo: arg explícito > env JFN_DB (isolamento de teste) > DB_PATH (produção). Resolvido em
+    CALL-TIME para o conftest poder apontar os testes que ESCREVEM p/ um tmp DB (não poluir produção)."""
+    return Path(db_path or os.environ.get("JFN_DB") or DB_PATH)
 
 
 class Base(DeclarativeBase):
@@ -391,7 +400,8 @@ class MissaoAuditoria(Base):
 
 # ── DB helpers ─────────────────────────────────────────────────────────────────
 
-def get_engine(db_path: Path = DB_PATH):
+def get_engine(db_path=None):
+    db_path = _resolver_db(db_path)
     db_path.parent.mkdir(exist_ok=True)
     # timeout=30: espera até 30s pelo write lock em vez de falhar na hora ("database is locked") quando um
     # sweep concorrente escreve o compliance.db (lição §8 — todo writer precisa disso).
@@ -413,16 +423,13 @@ def get_session(engine=None):
     return Session()
 
 
-def init_db(db_path: Path = DB_PATH):
+def init_db(db_path=None):
     """Create all tables and apply incremental migrations. Safe to call multiple times."""
     engine = get_engine(db_path)
     Base.metadata.create_all(engine)
     _migrate(engine)
     return engine
 
-
-import importlib.util
-import sys
 
 def _sync_columns(engine):
     """
