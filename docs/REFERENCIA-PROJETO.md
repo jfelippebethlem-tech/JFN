@@ -168,6 +168,34 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-14 (itkava-nav destravado + fallback CRACKED no sweep):** o SEI sweep estava sendo SUFOCADO por um
+  **`sei_supervisor.sh` ÓRFÃO** (lançado à mão, **sem `SWEEP_MAX_SECONDS`**) rodando em loop CONTÍNUO 24/7 —
+  exatamente o lane contínuo REVERTIDO no cont.25 (§2) — monopolizando a sessão única itkava. Efeito concreto:
+  o cron canônico `sweep_sei.sh` (07/13/19h) logava **"já rodando — pula"** → os passos `--seguir-pais` e
+  `sei_cpf` NUNCA rodavam. **Fix:** matei o supervisor (SIGTERM gracioso no filho, resumível; **sem respawn** —
+  não há @reboot/cron p/ ele), liberei a sessão, rodei o passo dos pais (recuperou contratação **330032=6 docs**,
+  **330005/000092=5 docs**). **Bug maior achado e consertado:** `run()` e `run_pais` chamavam `ler_processo`
+  DIRETO, **sem o fallback CRACKED** que `ler()`/`ler_com_cadeia` já têm → processos que a busca normal não
+  abre (caem na "caixa" ~40 rel) viravam **0 docs**. Provado ao vivo em página ISOLADA: o cracked recupera
+  **270042 ITERJ (normal=0/rel40 → cracked=10 docs)** e fica **0 HONESTO em restrito** (510001). Adicionei o
+  fallback cracked em **`run_pais`** (após normal=0) e em **`run()`** (gated no sinal de caixa `rel>15`, p/ não
+  gastar navegação nos vazios reais rel≤15). **Honesto:** a navegação SEI é INTERMITENTE (flap do WAF) — o
+  cracked recupera um SUBCONJUNTO, NÃO "tudo"; os 334 "caixa" do cache são mistura de recuperáveis + restritos +
+  vazios reais. cdps recuperados gravam `via:cracked`. 17 testes SEI offline verdes; ruff limpo.
+- **06-14 (SEI segue os PROCESSOS-PAI de contratação — recupera a substância dos "vazios"):** os dockets de
+  EXECUÇÃO/PAGAMENTO não têm peça própria; a substância (contrato/parecer/termo) vive no **processo-pai de
+  contratação**, citado no CORPO de um despacho ("existe processo de contratação em andamento de nº SEI-..."). Novo
+  **`tools/sei_pais.py`** (detector PURO/testável): varre o cache, extrai por regex SEI as refs de pai numa **janela
+  de palavra-chave de contratação** ("processo principal/originário", "contrato de gestão", "termo de
+  colaboração/fomento", "credenciamento", "chamamento", "TAC"), com **DENYLIST de boilerplate** (refs do MENU lateral
+  do SEI que se repetem em centenas de páginas = ruído) + lead RARO de relacionados p/ vazios sem conteúdo;
+  anti-duplicata (pai já em cache não reentra) e agregação por pai (nº de citações). Wire: **`sei_sweep --seguir-pais`**
+  (`run_pais`) lê os pais detectados na mesma sessão única itkava, grava docs+ficha no cache (resumível via
+  `pais_feitos` no progress; bounded; crash-proof). Dry-run achou **7 pais de ALTA confiança** não-cacheados (DER
+  "Processo Principal", Termo de Credenciamento 007/2022 e 016/2023, Chamamento UTI NEONATAL, TAC). O pai conhecido do
+  IDESI (`080002/000821/2024`, Contrato 215/2024) o pipeline JÁ recuperou (está em cache) — a anti-dup o exclui
+  corretamente. Honesto: detecção = indício; a maioria dos 392 vazios é execução SEM peça e SEM conteúdo a minerar
+  (ganho real vem dos dockets que LERAM docs e citam o pai no corpo). 5 testes offline (`tests/test_sei_pais.py`).
 - **06-14 (storage SOMADO R2+B2 das fotos de fachada — guard de 10GB):** as fotos passaram de single-remote B2 para
   **R2+B2 SOMADOS** (10GB+10GB) — **cada foto em UM bucket só, sem duplicar** (NÃO é mirror). Novo
   **`compliance_agent/fachada_remotes.py`** (fonte única): lista ordenada [(r2,jorgefelippe),(b2,jfn-backup-jorge)] +
