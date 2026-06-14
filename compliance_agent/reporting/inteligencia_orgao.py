@@ -292,6 +292,7 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     ctx["concentracao_grupo"] = _concentracao_grupo_orgao(ug_cod)  # concentração oculta por grupo (cartel/conc. fictícia)
     ctx["painel_detectores"] = _painel_detectores_orgao(ug_cod)  # §1-I: visão unificada dos detectores (spec licitações)
     ctx["tac_orgao"] = _tac_orgao(ug_cod)  # §1-J: pagamento fora de contrato (TAC/indenização) + emergencial + worklist
+    ctx["anomalia_receita"] = _anomalia_receita_orgao(ug_cod)  # §1-K: cruzamento dump RF × fornecedores (anomalias)
     ctx["raciocinio"] = parecer_raciocinado_orgao(ctx)  # síntese de IA sobre os fatos (degrada honesto)
 
     md = render_md(ctx)
@@ -458,6 +459,39 @@ def _fatos_orgao(ctx: dict) -> str:
                  "spec a corroborar; o J1 (conluio) referencia a concentração-grupo já detalhada acima, sem "
                  f"duplicar. ({pd.get('n_descartados', 0)} afastado(s) pela exculpatória, "
                  f"{pd.get('n_nao_avaliaveis', 0)} INDISPONÍVEL — não somam ao indício.)")
+    ar = ctx.get("anomalia_receita") or {}
+    if ar.get("ok"):
+        cov = ar.get("cobertura") or {}
+        sf_flag = [r for r in (ar.get("sem_fins_lucrativos") or []) if not r.get("ressalva")]
+        rede = ar.get("rede_mesmo_orgao") or []
+        su = ar.get("socio_unico_alto_valor") or []
+        partes = []
+        if sf_flag:
+            t = sf_flag[0]
+            partes.append(f"{len(sf_flag)} entidade(s) SEM FINS LUCRATIVOS (associação/fundação/OS, sem perfil de "
+                          f"ensino/pesquisa) recebendo como fornecedor — maior: {(t['razao_social'] or '')[:30]} "
+                          f"(R$ {moeda(t['total'])})")
+        if rede:
+            t = rede[0]
+            partes.append(f"{len(rede)} administrador(es) compartilhando ≥2 fornecedores do MESMO órgão (rede/"
+                          f"concorrência fictícia) — ex.: {(t['nome_socio'] or '')[:26]} em "
+                          f"{t['n_fornecedores']} fornecedores")
+        if su:
+            partes.append(f"{len(su)} fornecedor(es) de alto valor com administrador ÚNICO no QSA (indício de "
+                          f"laranja/interposição) — ex.: {(su[0]['razao_social'] or '')[:30]}")
+        cad = ar.get("cadastro") or {}
+        if cad.get("ok") and cad.get("achados"):
+            partes.append(f"{len(cad['achados'])} fornecedor(es) com situação cadastral irregular na Receita "
+                          "(INAPTA/baixada)")
+        if partes:
+            L.append("Cruzamento com o dump da Receita Federal (anomalias nos fornecedores, cobertura "
+                     f"{cov.get('pct_empresas_min', 0):.0f}% no dump / {cov.get('pct_qsa', 0):.0f}% com QSA): "
+                     + "; ".join(partes) + ". Indício a corroborar com o objeto contratual/SEI; entes públicos e "
+                     "instituições legítimas de ensino/pesquisa NÃO são anomalia; CPF mascarado (LGPD).")
+        else:
+            L.append("Cruzamento com o dump da Receita Federal: nenhuma anomalia robusta (sem-fins não-educacional, "
+                     "rede de administradores, laranja sócio-único) entre os fornecedores cobertos pelo dump "
+                     f"(cobertura {cov.get('pct_empresas_min', 0):.0f}%). INDISPONÍVEL ≠ ausência para os não-cobertos.")
     return "\n".join("- " + x for x in L)
 
 
@@ -467,8 +501,10 @@ _SYS_RACIOCINIO_ORGAO = (
     "escreva uma ANÁLISE RACIOCINADA que CONECTE TODOS os achados disponíveis (concentração em fornecedor, "
     "pagamentos recorrentes idênticos, concentração geográfica, triagem de DUE DILIGENCE de fachada/laranja "
     "nos maiores fornecedores, RODÍZIO TEMPORAL de vencedores/cartel, processos SEI a priorizar, a "
-    "VERIFICAÇÃO DE REALIDADE do endereço das sedes e as SANÇÕES DO TCE-RJ ao órgão — fato já julgado pela Corte "
-    "de Contas, que pondera o risco institucional): o que chama atenção, COMO os sinais se REFORÇAM entre si "
+    "VERIFICAÇÃO DE REALIDADE do endereço das sedes, as SANÇÕES DO TCE-RJ ao órgão — fato já julgado pela Corte "
+    "de Contas, que pondera o risco institucional — e o CRUZAMENTO COM O DUMP DA RECEITA FEDERAL (entidades sem "
+    "fins lucrativos recebendo, redes de administradores compartilhados entre fornecedores do órgão, e fornecedores "
+    "de alto valor com sócio único = indício de laranja): o que chama atenção, COMO os sinais se REFORÇAM entre si "
     "(ex.: fornecedor dominante + rodízio + sede em endereço não confirmado = hipótese mais forte de "
     "direcionamento/cartel), que hipóteses de risco (captura, fracionamento, direcionamento, conluio, "
     "interposição/laranja) merecem apuração e POR QUÊ, e exatamente O QUE verificar (contrato, certame, SEI). "
@@ -786,6 +822,23 @@ def _tac_orgao(ug: str) -> dict:
         return {"ok": ok, "tac_ug": ug_m, "emergencial": emerg, "worklist": worklist}
     except Exception as exc:  # noqa: BLE001
         _log.warning("TAC/emergencial do órgão %s degradou (seção 1-J): %s", ug, exc)
+        return {"ok": False, "_nota": str(exc)[:160]}
+
+
+def _anomalia_receita_orgao(ug: str) -> dict:
+    """§1-K — CRUZAMENTO DUMP DA RECEITA FEDERAL × FORNECEDORES (anomalias determinísticas por UG).
+
+    Reusa a função PURA `reporting.anomalia_receita.anomalias_orgao`: cruza as OBs com o dump da Receita
+    (`empresas_min`/`socios_receita`/`socios_reverso`) e flagra: (1) sem-fins-lucrativos recebendo
+    (natureza '3xxx'), (2) rede/grupo — pessoas administrando ≥2 fornecedores do MESMO órgão + admin em
+    muitos CNPJs (veículo de aluguel), (3) laranja/sócio-único de alto valor. Degrada honesto: se o dump
+    não está ingerido, `ok=False` e a seção informa INDISPONÍVEL (≠ ausência de anomalia). Cadastral
+    (anomalia 4) NÃO roda no hot-path (rede): fica off (`checar_cadastro=False`)."""
+    try:
+        from compliance_agent.reporting.anomalia_receita import anomalias_orgao
+        return anomalias_orgao(str(ug))
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("Anomalias Receita do órgão %s degradou (seção 1-K): %s", ug, exc)
         return {"ok": False, "_nota": str(exc)[:160]}
 
 
@@ -1196,6 +1249,140 @@ def _secao_tac_md(add, ctx: dict) -> None:
         add("")
 
 
+def _secao_anomalia_receita_md(add, ctx: dict) -> None:
+    """Seção 1-K — CRUZAMENTO RECEITA FEDERAL × FORNECEDORES (anomalias determinísticas). Cruza as OBs com
+    o dump da Receita (`empresas_min`/`socios_receita`/`socios_reverso`): sem-fins recebendo, rede/grupo,
+    veículo de aluguel, laranja/sócio-único. Indício ≠ acusação; INDISPONÍVEL ≠ ausência."""
+    ar = ctx.get("anomalia_receita") or {}
+    add("## 1-K. CRUZAMENTO RECEITA FEDERAL — ANOMALIAS NOS FORNECEDORES")
+    add("")
+    add("> Cruza os pagamentos (OB) com o **dump da Receita Federal** (natureza jurídica em `empresas_min`; "
+        "quadro societário REAL em `socios_receita`; busca reversa em `socios_reverso`) para flagar padrões "
+        "**determinísticos** anômalos: **(1)** entidade **sem fins lucrativos** (associação/fundação/OS) "
+        "recebendo como fornecedor; **(2)** **rede/grupo** — a mesma pessoa administrando vários fornecedores "
+        "do órgão (concorrência fictícia) e administradores presentes em MUITOS CNPJs (veículo de aluguel); "
+        "**(3)** **laranja/sócio-único** de alto valor. **Indício ≠ acusação**; entes públicos e instituições "
+        "legítimas de ensino/pesquisa **não** são anomalia; **CPF de sócio mascarado (LGPD)**.")
+    add("")
+    if not ar.get("ok"):
+        _nota = ar.get("_nota") or "dump da Receita não ingerido nesta base"
+        add(f"_Cruzamento com a Receita indisponível nesta execução ({_nota}). Rode "
+            "`python -m tools.socios_dump_sweep` para ingerir o dump. **INDISPONÍVEL ≠ ausência de anomalia.**_")
+        add("")
+        return
+    cov = ar.get("cobertura") or {}
+    add(f"**Cobertura honesta:** dos **{cov.get('n_fornecedores_pj', 0)}** fornecedores PJ da UG, "
+        f"**{cov.get('n_no_empresas_min', 0)}** ({cov.get('pct_empresas_min', 0):.0f}%) constam no dump de "
+        f"empresas e **{cov.get('n_com_qsa', 0)}** ({cov.get('pct_qsa', 0):.0f}%) têm quadro societário (QSA) "
+        "ingerido. Os demais seguem **INDISPONÍVEL** (não 'limpos').")
+    add("")
+
+    # (1) sem fins lucrativos
+    sf = ar.get("sem_fins_lucrativos") or []
+    add("### (1) Entidades SEM FINS LUCRATIVOS recebendo como fornecedor")
+    add("")
+    if sf:
+        add("| # | Razão social | Natureza | Total recebido (R$) | Observação |")
+        add("|--:|---|---|--:|---|")
+        for i, r in enumerate(sf, 1):
+            obs = "ensino/pesquisa/estágio — provável legítimo (ressalva)" if r.get("ressalva") else "🟡 a apurar o objeto/credenciamento"
+            add(f"| {i} | {(r['razao_social'] or '—')[:42]} | {r.get('natureza_txt', '')} | "
+                f"{moeda(r['total'])} | {obs} |")
+        add("")
+        flag = [r for r in sf if not r.get("ressalva")]
+        if flag:
+            top = flag[0]
+            add(f"> 🟡 **Indício:** {len(flag)} entidade(s) sem fins lucrativos sem perfil claro de "
+                f"ensino/pesquisa recebem como fornecedor — a maior é **{(top['razao_social'] or '—')[:40]}** "
+                f"(R$ {moeda(top['total'])}). Associação/fundação/OS contratada para fornecer bens/serviços é "
+                "*red flag* de **terceirização via OS / contrato de gestão** a confiar o objeto, o credenciamento "
+                "e a prestação de contas (Lei 9.637/98; Lei 13.019/2014 — MROSC). Indício, não acusação.")
+        else:
+            add("> 🟢 As entidades sem fins lucrativos identificadas têm perfil de ensino/pesquisa/estágio "
+                "(ressalva) — recebimento provavelmente legítimo.")
+        add("")
+    else:
+        add("_Nenhum fornecedor com natureza jurídica sem fins lucrativos ('3xxx') entre os cobertos pelo dump._")
+        add("")
+
+    # (2) rede/grupo
+    rede = ar.get("rede_mesmo_orgao") or []
+    veic = ar.get("veiculos_aluguel") or []
+    add("### (2) Rede / grupo — administradores compartilhados")
+    add("")
+    if rede:
+        add("| # | Administrador (doc) | Nº fornecedores do órgão | Qualificações |")
+        add("|--:|---|--:|---|")
+        for i, r in enumerate(rede[:15], 1):
+            add(f"| {i} | {(r['nome_socio'] or '—')[:34]} ({r.get('doc_socio', '')}) | "
+                f"{r['n_fornecedores']} | {(r.get('qualificacoes') or '—')[:34]} |")
+        add("")
+        top = rede[0]
+        add(f"> 🟡 **Indício de grupo / concorrência fictícia:** **{len(rede)}** pessoa(s) administram **≥2** "
+            f"fornecedores do MESMO órgão — ex.: **{(top['nome_socio'] or '—')[:34]}** em "
+            f"**{top['n_fornecedores']}** fornecedores. Fornecedores aparentemente concorrentes sob a mesma "
+            "administração sugerem **concorrência simulada/fracionamento** (Art. 90 Lei 8.666; Art. 337-F CP; "
+            "Art. 36 Lei 12.529 — CADE), a corroborar nos certames (SEI/PNCP). **Indício ≠ prova.**")
+        add("")
+    else:
+        add("_Nenhuma pessoa administrando ≥2 fornecedores do órgão entre os cobertos pelo QSA._")
+        add("")
+    if veic:
+        add("**Administradores presentes em muitos CNPJs no Brasil (possível veículo de aluguel):**")
+        add("")
+        add("| # | Administrador (doc) | Nº de CNPJs (Brasil) |")
+        add("|--:|---|--:|")
+        for i, r in enumerate(veic[:12], 1):
+            add(f"| {i} | {(r['nome_socio'] or '—')[:38]} ({r.get('doc_socio', '')}) | {r['n_cnpjs_brasil']} |")
+        add("")
+        add("> ⚠ **Ressalva importante:** aparecer em dezenas/centenas de CNPJs é o padrão de **executivos de "
+            "grandes conglomerados legítimos** (ex.: diretores de instituições financeiras/holdings) — NÃO é, "
+            "por si, anomalia. É *red flag* apenas quando casado com indícios de fachada/laranja no fornecedor "
+            "específico. Listado para due diligence, não como acusação.")
+        add("")
+
+    # (3) laranja / sócio-único
+    su = ar.get("socio_unico_alto_valor") or []
+    add("### (3) Laranja / sócio-único de alto valor")
+    add("")
+    if su:
+        add("| # | Razão social | Total recebido (R$) | Único administrador (qualif.) |")
+        add("|--:|---|--:|---|")
+        for i, r in enumerate(su[:15], 1):
+            tag = " · sem-fins" if r.get("sem_fins") else ""
+            add(f"| {i} | {(r['razao_social'] or '—')[:38]}{tag} | {moeda(r['total'])} | "
+                f"{(r.get('socio_unico') or '—')[:24]} ({(r.get('qualificacao') or '—')[:16]}) |")
+        add("")
+        add("> 🟡 **Indício:** fornecedores de alto valor com **um único administrador** no QSA. Concentração "
+            "de gestão num só sócio em contratos vultosos é *red flag* de **interposição de pessoas (laranja)** "
+            "ou capacidade operacional incompatível — a confrontar com a estrutura real (funcionários, sede, "
+            "capacidade técnica). **Indício ≠ acusação**; muitas PMEs legítimas têm sócio único.")
+        add("")
+    else:
+        add("_Nenhum fornecedor de alto valor com administrador único entre os cobertos pelo QSA._")
+        add("")
+
+    # (4) situação cadastral (só se foi consultada)
+    cad = ar.get("cadastro") or {}
+    if cad.get("ok") and cad.get("achados"):
+        add("### (4) Situação cadastral externa (amostra)")
+        add("")
+        add("| CNPJ-raiz | Situação | Motivo | Data |")
+        add("|---|---|---|---|")
+        for r in cad["achados"]:
+            add(f"| {r['cnpj_basico']} | {r['situacao']} | {(r.get('descricao') or '—')[:30]} | {r.get('data_situacao', '')} |")
+        add("")
+        add("> 🔴 Fornecedor(es) com situação cadastral **irregular** (INAPTA/baixada/suspensa) na Receita — "
+            "incompatível com o recebimento de pagamento público; conferir a vigência contratual. Fonte: "
+            "minhareceita.org (amostra bounded; cache em `cadastro_externo`).")
+        add("")
+
+    add("_Ressalvas: indício ≠ acusação (presunção de legitimidade); INDISPONÍVEL ≠ 0 (cobertura do dump "
+        "informada acima); entes públicos (natureza '1xxx') e instituições legítimas de ensino/pesquisa não "
+        "são anomalia; CPF de sócio PF mascarado por LGPD._")
+    add("")
+
+
 def render_md(ctx: dict) -> str:
     p = ctx["pagamentos"]
     sigla, descr = _sigla_descr(ctx["nome"])
@@ -1350,6 +1537,8 @@ def render_md(ctx: dict) -> str:
     _secao_painel_detectores_md(add, ctx)
     # 1-J. Pagamento fora de contrato regular (TAC/indenização) + emergencial + worklist de co-suspeitos
     _secao_tac_md(add, ctx)
+    # 1-K. Cruzamento Receita Federal — anomalias (sem-fins / rede-grupo / veículo de aluguel / laranja)
+    _secao_anomalia_receita_md(add, ctx)
 
     # Tabelas de OBs por ano (pagamentos individuais a cada fornecedor)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
@@ -1766,6 +1955,115 @@ def _secao_tac_pdf(pdf, _t, ctx: dict) -> None:
             _fotos_fachada_suspeitos_pdf(pdf, _t, suspeitos)
 
 
+def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
+    """PDF — espelho da §1-K: cruzamento dump da Receita Federal × fornecedores (anomalias determinísticas)."""
+    ar = ctx.get("anomalia_receita") or {}
+    pdf.add_page(); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+    pdf.cell(0, 8, _t("Cruzamento Receita Federal - anomalias nos fornecedores"), ln=True)
+    pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+    _mc(pdf, 4.5, _t("Cruza os pagamentos (OB) com o dump da Receita Federal (natureza juridica; quadro societario "
+                     "real; busca reversa) para flagar: (1) entidade SEM FINS LUCRATIVOS recebendo como fornecedor; "
+                     "(2) rede/grupo - mesma pessoa administrando varios fornecedores do orgao + admin. em muitos CNPJs; "
+                     "(3) laranja/socio-unico de alto valor. Indicio != acusacao; entes publicos e instituicoes "
+                     "legitimas de ensino/pesquisa NAO sao anomalia; CPF de socio mascarado (LGPD)."))
+    if not ar.get("ok"):
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t("Cruzamento com a Receita indisponivel nesta execucao (dump nao ingerido). "
+                         "INDISPONIVEL != ausencia de anomalia."))
+        pdf.set_text_color(0, 0, 0); return
+    cov = ar.get("cobertura") or {}
+    pdf.ln(1)
+    _mc(pdf, 4.5, _t(f"Cobertura honesta: dos {cov.get('n_fornecedores_pj', 0)} fornecedores PJ da UG, "
+                     f"{cov.get('n_no_empresas_min', 0)} ({cov.get('pct_empresas_min', 0):.0f}%) constam no dump e "
+                     f"{cov.get('n_com_qsa', 0)} ({cov.get('pct_qsa', 0):.0f}%) tem QSA ingerido. Os demais seguem "
+                     "INDISPONIVEL (nao 'limpos')."))
+
+    # (1) sem fins lucrativos
+    sf = ar.get("sem_fins_lucrativos") or []
+    if sf:
+        pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
+        pdf.cell(0, 7, _t("(1) Entidades SEM FINS LUCRATIVOS recebendo como fornecedor"), ln=True)
+        _tab_header(pdf, [("Razao social", 96), ("Natureza", 34), ("Total (R$)", 32), ("Obs.", 28)])
+        pdf.set_font(pdf._fam, "", 7)
+        for r in sf[:15]:
+            obs = "ressalva" if r.get("ressalva") else "a apurar"
+            _tab_row(pdf, [(_t((r.get("razao_social") or "-")[:60]), 96, "L"),
+                           (_t((r.get("natureza_txt") or "-")[:20]), 34, "L"),
+                           (moeda(r.get("total", 0)), 32, "R"), (_t(obs), 28, "C")], h=4.6)
+        flag = [r for r in sf if not r.get("ressalva")]
+        pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(150, 90, 0)
+        if flag:
+            t = flag[0]
+            _mc(pdf, 4, _t(f"Indicio: {len(flag)} entidade(s) sem fins lucrativos sem perfil de ensino/pesquisa "
+                           f"recebem como fornecedor - maior: {(t.get('razao_social') or '-')[:40]} "
+                           f"(R$ {moeda(t.get('total', 0))}). OS/contrato de gestao exige confirmar objeto/credenciamento/"
+                           "prestacao de contas (Lei 9.637/98; Lei 13.019/2014). Indicio, nao acusacao."))
+        else:
+            _mc(pdf, 4, _t("As entidades sem fins lucrativos identificadas tem perfil de ensino/pesquisa/estagio "
+                           "(ressalva) - recebimento provavelmente legitimo."))
+        pdf.set_text_color(0, 0, 0)
+
+    # (2) rede / grupo
+    rede = ar.get("rede_mesmo_orgao") or []
+    if rede:
+        pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
+        pdf.cell(0, 7, _t("(2) Rede/grupo - administradores compartilhados (>=2 fornecedores do orgao)"), ln=True)
+        _tab_header(pdf, [("Administrador (doc)", 120), ("N fornec.", 22), ("Qualificacoes", 48)])
+        pdf.set_font(pdf._fam, "", 7)
+        for r in rede[:15]:
+            nome = f"{(r.get('nome_socio') or '-')[:42]} ({r.get('doc_socio', '')})"
+            _tab_row(pdf, [(_t(nome)[:74], 120, "L"), (str(r.get("n_fornecedores", "")), 22, "C"),
+                           (_t((r.get("qualificacoes") or "-")[:30]), 48, "L")], h=4.6)
+        t = rede[0]
+        pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(150, 90, 0)
+        _mc(pdf, 4, _t(f"Indicio de grupo/concorrencia ficticia: {len(rede)} pessoa(s) administram >=2 fornecedores "
+                       f"do MESMO orgao - ex.: {(t.get('nome_socio') or '-')[:34]} em {t.get('n_fornecedores')} "
+                       "fornecedores. Aparentes concorrentes sob a mesma administracao = red flag de concorrencia "
+                       "simulada (Art. 90 Lei 8.666; Art. 337-F CP; Art. 36 Lei 12.529-CADE). Indicio != prova."))
+        pdf.set_text_color(0, 0, 0)
+    veic = ar.get("veiculos_aluguel") or []
+    if veic:
+        pdf.ln(1); pdf.set_font(pdf._fam, "B", 8.5)
+        pdf.cell(0, 6, _t("Administradores em muitos CNPJs no Brasil (possivel veiculo de aluguel):"), ln=True)
+        _tab_header(pdf, [("Administrador (doc)", 130), ("N CNPJs (Brasil)", 40)])
+        pdf.set_font(pdf._fam, "", 7)
+        for r in veic[:12]:
+            nome = f"{(r.get('nome_socio') or '-')[:46]} ({r.get('doc_socio', '')})"
+            _tab_row(pdf, [(_t(nome)[:80], 130, "L"), (str(r.get("n_cnpjs_brasil", "")), 40, "C")], h=4.6)
+        pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4, _t("Ressalva: aparecer em dezenas/centenas de CNPJs e o padrao de executivos de grandes "
+                       "conglomerados legitimos - NAO e, por si, anomalia. Listado para due diligence, nao como acusacao."))
+        pdf.set_text_color(0, 0, 0)
+
+    # (3) laranja / socio-unico
+    su = ar.get("socio_unico_alto_valor") or []
+    if su:
+        pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
+        pdf.cell(0, 7, _t("(3) Laranja/socio-unico de alto valor"), ln=True)
+        _tab_header(pdf, [("Razao social", 104), ("Total (R$)", 34), ("Unico admin.", 52)])
+        pdf.set_font(pdf._fam, "", 7)
+        for r in su[:15]:
+            tag = " [sem-fins]" if r.get("sem_fins") else ""
+            _tab_row(pdf, [(_t((r.get("razao_social") or "-")[:48] + tag), 104, "L"),
+                           (moeda(r.get("total", 0)), 34, "R"),
+                           (_t((r.get("socio_unico") or "-")[:30]), 52, "L")], h=4.6)
+        pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(150, 90, 0)
+        _mc(pdf, 4, _t("Indicio: fornecedores de alto valor com um unico administrador no QSA. Gestao concentrada "
+                       "em contratos vultosos = red flag de interposicao (laranja) ou capacidade incompativel - "
+                       "confrontar com a estrutura real. Indicio != acusacao; muitas PMEs legitimas tem socio unico."))
+        pdf.set_text_color(0, 0, 0)
+
+    cad = ar.get("cadastro") or {}
+    if cad.get("ok") and cad.get("achados"):
+        pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
+        pdf.cell(0, 7, _t("(4) Situacao cadastral externa (amostra)"), ln=True)
+        _tab_header(pdf, [("CNPJ-raiz", 34), ("Situacao", 40), ("Motivo", 80), ("Data", 28)])
+        pdf.set_font(pdf._fam, "", 7)
+        for r in cad["achados"]:
+            _tab_row(pdf, [(r.get("cnpj_basico", ""), 34, "L"), (_t((r.get("situacao") or "")[:22]), 40, "L"),
+                           (_t((r.get("descricao") or "-")[:46]), 80, "L"), (r.get("data_situacao", ""), 28, "C")], h=4.6)
+
+
 def render_pdf(ctx: dict, destino: str) -> str:
     from fpdf import FPDF
     p = ctx["pagamentos"]
@@ -1905,6 +2203,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         _secao_concentracao_grupo_pdf(pdf, _t, ctx)
         _secao_painel_detectores_pdf(pdf, _t, ctx)
         _secao_tac_pdf(pdf, _t, ctx)  # §1-J: TAC/indenização + emergencial + worklist de co-suspeitos
+        _secao_anomalia_receita_pdf(pdf, _t, ctx)  # §1-K: cruzamento dump RF × fornecedores (anomalias)
 
         # OBs por ano
         for a in p["anos"]:

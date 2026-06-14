@@ -1547,6 +1547,44 @@ def _achados_orgao(ctx: dict) -> list[dict]:
                 obs += (f" **{len(susp)} desses são fachada-suspeitos** (alto TAC% + sede INDÍCIO/sem-Google) — "
                         "hipótese de interposição/laranja a apurar (indício, não acusação).")
             ach.append({"rf": "R5", "grav": grav, "obs": obs})
+    # Cruzamento com o dump da Receita Federal (anomalias nos fornecedores) — alimenta o grau do órgão.
+    ar = ctx.get("anomalia_receita") or {}
+    if ar.get("ok"):
+        sf_flag = [r for r in (ar.get("sem_fins_lucrativos") or []) if not r.get("ressalva")]
+        if sf_flag:
+            t = sf_flag[0]
+            grav = 3 if float(t.get("total") or 0) >= 50_000_000 else 2
+            ach.append({"rf": "R5", "grav": grav, "obs":
+                        f"**{len(sf_flag)}** entidade(s) **sem fins lucrativos** (associação/fundação/OS, sem "
+                        f"perfil de ensino/pesquisa) recebem como fornecedor — maior: **{(t.get('razao_social') or '—')[:40]}** "
+                        f"(R$ {moeda(float(t.get('total') or 0))}). Repasse a OS/entidade via contrato de gestão/parceria "
+                        "exige confirmar o objeto, o credenciamento e a prestação de contas (Lei 9.637/98; Lei 13.019/2014 — "
+                        "MROSC). Indício, não acusação."})
+        rede = ar.get("rede_mesmo_orgao") or []
+        rede_pf = [r for r in rede if not r.get("eh_pj")]
+        if rede_pf:
+            t = rede_pf[0]
+            ach.append({"rf": "R7", "grav": 3, "obs":
+                        f"**{len(rede_pf)}** administrador(es) compartilham **≥2 fornecedores do mesmo órgão** "
+                        f"(QSA da Receita) — ex.: **{(t.get('nome_socio') or '—')[:34]}** em **{t.get('n_fornecedores')}** "
+                        "fornecedores. Fornecedores aparentemente concorrentes sob a mesma administração indiciam "
+                        "**concorrência simulada/concentração oculta** (Art. 90 Lei 8.666; Art. 337-F CP; Art. 36 Lei "
+                        "12.529 — CADE) — corroborar os licitantes nos certames (SEI/PNCP)."})
+        su = ar.get("socio_unico_alto_valor") or []
+        su_priv = [r for r in su if not r.get("sem_fins")]
+        if su_priv:
+            t = su_priv[0]
+            ach.append({"rf": "DD/H-SOCIO-UNICO", "grav": 2, "obs":
+                        f"**{len(su_priv)}** fornecedor(es) de alto valor com **administrador único** no QSA — ex.: "
+                        f"**{(t.get('razao_social') or '—')[:40]}** (R$ {moeda(float(t.get('total') or 0))}). Gestão "
+                        "concentrada num só sócio em contratos vultosos é indício de **interposição (laranja)** ou "
+                        "capacidade operacional incompatível — confrontar com a estrutura real. Indício ≠ acusação."})
+        cad = ar.get("cadastro") or {}
+        if cad.get("ok") and cad.get("achados"):
+            ach.append({"rf": "DD/H-SITUACAO", "grav": 4, "obs":
+                        f"**{len(cad['achados'])}** fornecedor(es) com **situação cadastral irregular** na Receita "
+                        "(INAPTA/baixada/suspensa) — incompatível com o recebimento de pagamento público; conferir a "
+                        "vigência contratual (fonte: minhareceita.org)."})
     return ach
 
 
