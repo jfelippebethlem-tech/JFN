@@ -178,6 +178,155 @@ def tac_por_ug(ug_codigo: str, *, db_path=None) -> dict:
     return out
 
 
+# ───────────────────────── worklist por UG (fornecedores com maior TAC%) ─────────────────────────
+
+# Regex SQL (LIKE) equivalente ao _RX_TAC — para ranquear fornecedores POR UG sem trazer todas as linhas.
+# Casa "AJUSTE DE CONTAS", "INDENIZ...", e "RECONHEC... DÍVIDA/DIVIDA" (acento opcional). Usado só como
+# pré-filtro SQL barato; o veredito por linha continua sendo o _RX_TAC (fonte única da verdade).
+_SQL_TAC = (
+    "(observacao LIKE '%AJUSTE DE CONTAS%' OR observacao LIKE '%INDENIZ%' "
+    "OR (observacao LIKE '%RECONHEC%' AND observacao LIKE '%DIVIDA%') "
+    "OR (observacao LIKE '%RECONHEC%' AND observacao LIKE '%DÍVIDA%'))"
+)
+
+
+def worklist_tac_por_ug(ug_codigo: str, *, db_path=None, top_n: int = 12,
+                        min_total: float = 1_000_000.0, min_pct: float = float(_FAIXA_MIN)) -> dict:
+    """Lista os fornecedores de UMA UG com MAIOR % do valor pago via TAC/indenização (a "worklist" de
+    co-suspeitos), cruzando cada um com a verificação de SEDE (`verificacao_sede`) p/ marcar quem tem
+    indício de fachada (status INDICIO ou places_achou=0 — sem negócio no Google).
+
+    HONESTO: % é indício quantitativo de prática de contratação fora de licitação por UG, NÃO acusação
+    individual. INDISPONÍVEL (sem observação / sem verificação de sede) ≠ 0. Bounded por top_n.
+
+    Retorna {ok, ug_codigo, ug_nome, n_fornecedores, fornecedores:[{cnpj, nome, total, total_tac, pct,
+    n, n_tac, sede_status, sede_indicio, sem_google, sede_evidencia}]}.
+    """
+    ug = str(ug_codigo or "").strip()
+    out = {"ok": False, "ug_codigo": ug, "ug_nome": "", "n_fornecedores": 0, "fornecedores": []}
+    db = _resolver_db(db_path)
+    con = _ro_conn(db)
+    if not con or not ug:
+        return out
+    try:
+        try:
+            rows = con.execute(
+                "SELECT substr(favorecido_cpf,1,8) raiz, MAX(favorecido_cpf) cnpj, "
+                "MAX(favorecido_nome) nome, COUNT(*) n, ROUND(SUM(valor),2) total, "
+                "SUM(CASE WHEN " + _SQL_TAC + " THEN 1 ELSE 0 END) n_tac, "  # noqa: S608 (_SQL_TAC fixo)
+                "ROUND(SUM(CASE WHEN " + _SQL_TAC + " THEN valor ELSE 0 END),2) tac "  # noqa: S608
+                "FROM ordens_bancarias WHERE ug_codigo=? AND length(favorecido_cpf)=14 "
+                "GROUP BY raiz HAVING total >= ? ORDER BY tac DESC",
+                (ug, min_total)).fetchall()
+            rn = con.execute(
+                "SELECT ug_nome FROM ordens_bancarias WHERE ug_codigo=? AND ug_nome IS NOT NULL LIMIT 1",
+                (ug,)).fetchone()
+            out["ug_nome"] = (rn[0] if rn else "") or ""
+        except sqlite3.OperationalError:
+            return out
+        # candidatos: maior TAC% acima dos limiares (worklist de co-suspeitos)
+        cands = []
+        for r in rows:
+            total = float(r[4] or 0.0)
+            tac = float(r[6] or 0.0)
+            pct = (100.0 * tac / total) if total else 0.0
+            if tac <= 0 or pct < min_pct:
+                continue
+            cands.append({"cnpj": _digitos(r[1]), "nome": (r[2] or "—").strip(), "n": int(r[3] or 0),
+                          "total": round(total, 2), "n_tac": int(r[5] or 0), "total_tac": round(tac, 2),
+                          "pct": round(pct, 1)})
+        # ordena por VALOR em TAC (materialidade) — a worklist de co-suspeitos do dono é "alto TAC% +
+        # alto R$" (LEFE/AMC/VOOR…), não a cauda de 100% de valor pequeno. O pct é a manchete; o R$ pesa.
+        cands.sort(key=lambda c: (c["total_tac"], c["pct"]), reverse=True)
+        cands = cands[:max(1, top_n)]
+        # cruzamento com verificação de sede (1 query) — marca indício de fachada
+        if cands:
+            qs = ",".join("?" * len(cands))
+            sede: dict = {}
+            try:
+                for s in con.execute(
+                    f"SELECT cnpj, status, nivel, places_achou, evidencia FROM verificacao_sede "  # noqa: S608
+                    f"WHERE cnpj IN ({qs})", [c["cnpj"] for c in cands]):
+                    sede[s[0]] = {"status": (s[1] or "").upper(), "nivel": s[2],
+                                  "places_achou": s[3], "evidencia": (s[4] or "")[:140]}
+            except sqlite3.OperationalError:
+                sede = {}
+            for c in cands:
+                sv = sede.get(c["cnpj"])
+                if not sv:
+                    c["sede_status"] = "INDISPONIVEL"
+                    c["sede_indicio"] = False
+                    c["sem_google"] = None  # INDISPONÍVEL ≠ "tem Google"
+                    c["sede_evidencia"] = ""
+                else:
+                    c["sede_status"] = sv["status"] or "INDISPONIVEL"
+                    c["sem_google"] = (sv["places_achou"] == 0)
+                    c["sede_indicio"] = (sv["status"] == "INDICIO") or (sv["places_achou"] == 0)
+                    c["sede_evidencia"] = sv["evidencia"]
+    finally:
+        con.close()
+    out["fornecedores"] = cands
+    out["n_fornecedores"] = len(cands)
+    out["ok"] = bool(cands)
+    return out
+
+
+# ───────────────────────── emergencial / dispensa (red flag irmã do TAC) ─────────────────────────
+
+# Contratação emergencial / dispensa de licitação no texto livre da OB — red flag irmã do TAC (pedido do
+# dono: "emergenciais e tac são red flag e precisam ser avaliados"). Padrão de fuga ao dever de licitar.
+_RX_EMERG = re.compile(r"EMERGENC|DISPENSA", re.IGNORECASE)
+_SQL_EMERG = "(observacao LIKE '%EMERGENC%' OR observacao LIKE '%DISPENSA%')"
+
+
+def medir_emergencial(ug_codigo: str, *, db_path=None) -> dict:
+    """Conta as OBs de UMA UG cuja observação cita EMERGENCIAL / DISPENSA — red flag irmã do TAC.
+
+    Indício de contratação por dispensa/emergência (art. 75 IV/VIII Lei 14.133; art. 24 IV Lei 8.666),
+    que recorrente sugere fuga ao dever de licitar. HONESTO: % sobre o universo COM observação; sem
+    observação → INDISPONÍVEL (≠ 0).
+
+    Retorna {ok, ug_codigo, n, n_emerg, total, total_emerg, pct, cobertura}.
+    """
+    ug = str(ug_codigo or "").strip()
+    out = {"ok": False, "ug_codigo": ug, "n": 0, "n_emerg": 0, "total": 0.0, "total_emerg": 0.0,
+           "pct": 0.0, "cobertura": "INDISPONIVEL"}
+    db = _resolver_db(db_path)
+    con = _ro_conn(db)
+    if not con or not ug:
+        return out
+    try:
+        try:
+            r = con.execute(
+                "SELECT COUNT(*) n, ROUND(SUM(valor),2) total, "
+                "SUM(CASE WHEN " + _SQL_EMERG + " THEN 1 ELSE 0 END) n_emerg, "  # noqa: S608 (_SQL_EMERG fixo)
+                "ROUND(SUM(CASE WHEN " + _SQL_EMERG + " THEN valor ELSE 0 END),2) total_emerg, "  # noqa: S608
+                "SUM(CASE WHEN observacao IS NULL OR TRIM(observacao)='' THEN 1 ELSE 0 END) n_sem_obs "
+                "FROM ordens_bancarias WHERE ug_codigo=?", (ug,)).fetchone()
+        except sqlite3.OperationalError:
+            return out
+    finally:
+        con.close()
+    if not r:
+        return out
+    n = int(r[0] or 0)
+    total = float(r[1] or 0.0)
+    n_emerg = int(r[2] or 0)
+    total_emerg = float(r[3] or 0.0)
+    n_sem_obs = int(r[4] or 0)
+    pct = (100.0 * total_emerg / total) if total else 0.0
+    if n == 0:
+        cob = "INDISPONIVEL (sem pagamentos)"
+    elif n_sem_obs == n:
+        cob = "INDISPONIVEL (nenhuma OB com observação preenchida)"
+    elif n_sem_obs:
+        cob = f"verificado ({n - n_sem_obs}/{n} OBs com observação; {n_sem_obs} sem texto)"
+    else:
+        cob = f"verificado ({n} OBs)"
+    return {"ok": n_emerg > 0, "ug_codigo": ug, "n": n, "n_emerg": n_emerg, "total": round(total, 2),
+            "total_emerg": round(total_emerg, 2), "pct": round(pct, 1), "cobertura": cob}
+
+
 def _ugs_do_cnpj(cnpj: str, db: Path) -> list[tuple[str, str, float]]:
     """UGs pagadoras de um CNPJ (código, nome, total pago a ele por essa UG), maior→menor."""
     raiz = _digitos(cnpj)[:8]

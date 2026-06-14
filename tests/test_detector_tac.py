@@ -7,7 +7,8 @@ red_flag_tac). Cobrem a regex, o cálculo do %, a honestidade do INDISPONÍVEL e
 import sqlite3
 
 from compliance_agent.reporting.detector_tac import (
-    medir_tac, red_flag_tac, tac_por_cnpj, tac_por_ug, _RX_TAC, _severidade,
+    medir_emergencial, medir_tac, red_flag_tac, tac_por_cnpj, tac_por_ug,
+    worklist_tac_por_ug, _RX_TAC, _severidade,
 )
 
 
@@ -73,10 +74,14 @@ def test_severidade_faixas():
 # ───────────────────────── integração com DB tmp ─────────────────────────
 
 def _mkdb(path, linhas):
+    # favorecido_nome com DEFAULT NULL: inserts de 5 colunas (cpf,ug,ug_nome,valor,obs) seguem válidos;
+    # a worklist (que usa MAX(favorecido_nome)) lê NULL → "—", como no DB real quando o nome falta.
     con = sqlite3.connect(str(path))
     con.execute("CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, ug_codigo TEXT, "
-                "ug_nome TEXT, valor REAL, observacao TEXT)")
-    con.executemany("INSERT INTO ordens_bancarias VALUES (?,?,?,?,?)", linhas)
+                "ug_nome TEXT, valor REAL, observacao TEXT, favorecido_nome TEXT DEFAULT NULL)")
+    con.executemany(
+        "INSERT INTO ordens_bancarias (favorecido_cpf, ug_codigo, ug_nome, valor, observacao) "
+        "VALUES (?,?,?,?,?)", linhas)
     con.commit()
     con.close()
 
@@ -124,3 +129,56 @@ def test_red_flag_tac_dispara_e_nao_dispara(tmp_path):
 def test_red_flag_tac_db_ausente_degrada(tmp_path):
     # DB inexistente → não quebra, retorna None
     assert red_flag_tac("33333333000133", db_path=tmp_path / "nao_existe.db") is None
+
+
+# ───────────────────────── worklist por UG (nível órgão) ─────────────────────────
+
+def test_worklist_tac_por_ug_ranqueia_por_valor(tmp_path):
+    db = tmp_path / "t.db"
+    _mkdb(db, [
+        # fornecedor A: TAC alto e valor alto (deve liderar a worklist)
+        ("11111111000111", "294200", "FSERJ", 2_000_000.0, "TERMO DE AJUSTE DE CONTAS"),
+        ("11111111000111", "294200", "FSERJ", 1_000_000.0, "contrato regular"),
+        # fornecedor B: 100% TAC mas valor pequeno (abaixo do min_total → fora)
+        ("22222222000122", "294200", "FSERJ", 500_000.0, "INDENIZACAO"),
+        # fornecedor C: sem TAC (limpo → não entra)
+        ("33333333000133", "294200", "FSERJ", 5_000_000.0, "contrato 1/2024"),
+    ])
+    w = worklist_tac_por_ug("294200", db_path=db, min_total=1_000_000.0)
+    assert w["ok"] is True
+    assert w["ug_nome"] == "FSERJ"
+    cnpjs = [f["cnpj"] for f in w["fornecedores"]]
+    assert "11111111000111" in cnpjs           # alto valor + alto TAC entra
+    assert "33333333000133" not in cnpjs        # limpo não entra
+    a = next(f for f in w["fornecedores"] if f["cnpj"] == "11111111000111")
+    assert a["pct"] == round(100.0 * 2 / 3, 1)  # 2M de 3M
+    assert a["sede_status"] == "INDISPONIVEL"   # sem tabela verificacao_sede → honesto
+
+
+def test_worklist_tac_por_ug_db_ausente_degrada(tmp_path):
+    w = worklist_tac_por_ug("294200", db_path=tmp_path / "nao_existe.db")
+    assert w["ok"] is False and w["fornecedores"] == []
+
+
+# ───────────────────────── emergencial / dispensa ─────────────────────────
+
+def test_medir_emergencial(tmp_path):
+    db = tmp_path / "t.db"
+    _mkdb(db, [
+        ("11111111000111", "294200", "FSERJ", 100.0, "CONTRATACAO EMERGENCIAL"),
+        ("22222222000122", "294200", "FSERJ", 50.0, "DISPENSA DE LICITACAO"),
+        ("33333333000133", "294200", "FSERJ", 350.0, "contrato regular 1/2024"),
+    ])
+    e = medir_emergencial("294200", db_path=db)
+    assert e["ok"] is True
+    assert e["n_emerg"] == 2
+    assert e["total_emerg"] == 150.0
+    assert e["pct"] == 30.0  # 150 de 500
+
+
+def test_medir_emergencial_indisponivel_sem_obs(tmp_path):
+    db = tmp_path / "t.db"
+    _mkdb(db, [("11111111000111", "294200", "FSERJ", 100.0, None)])
+    e = medir_emergencial("294200", db_path=db)
+    assert e["n_emerg"] == 0
+    assert "INDISPONIVEL" in e["cobertura"]
