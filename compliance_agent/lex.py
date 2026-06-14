@@ -1514,6 +1514,39 @@ def _achados_orgao(ctx: dict) -> list[dict]:
     if n_zero >= 10:
         ach.append({"rf": "R10", "grav": 2, "obs": f"A UG tem **{n_zero}** OBs de valor zero/estorno — verificar regularizações/"
                     "anulações de liquidação (Lei 4.320/64 arts. 62-63; Decreto 93.872/86 art. 38) e seu motivo."})
+    # Pagamento FORA de contrato regular (TAC/indenização) + emergencial — achado sistêmico de órgão
+    # (achado FSERJ codificado). R5 = inexigibilidade/dispensa possivelmente indevida (fuga ao certame).
+    tj = ctx.get("tac_orgao") or {}
+    if tj.get("ok"):
+        ug_m = tj.get("tac_ug") or {}
+        emerg = tj.get("emergencial") or {}
+        wl = tj.get("worklist") or {}
+        pct = float(ug_m.get("pct") or 0)
+        tac_val = float(ug_m.get("total_tac") or 0)
+        susp = [f for f in (wl.get("fornecedores") or []) if f.get("sede_indicio")]
+        if pct >= 25 or tac_val >= 100_000_000:  # sistêmico relevante (faixa FSERJ)
+            grav = 4 if (pct >= 25 and tac_val >= 100_000_000) else 3
+        elif pct >= 10 and tac_val > 0:
+            grav = 2
+        else:
+            grav = 0
+        if grav:
+            obs = (f"A UG pagou **{pct:.1f}%** de R$ {moeda(float(ug_m.get('total') or 0))} **FORA de contrato "
+                   f"regular** — via TAC/indenização/reconhecimento de dívida (**R$ {moeda(tac_val)}** em "
+                   f"{ug_m.get('n_tac', 0)} OBs). Regularização *a posteriori* recorrente e vultosa é indício "
+                   "SISTÊMICO de contratação informal/emergencial perpetuada e **fuga ao dever de licitar**.")
+            if emerg.get("ok"):
+                obs += (f" Soma-se a red flag irmã: **{emerg.get('n_emerg', 0)} OBs** "
+                        f"(R$ {moeda(float(emerg.get('total_emerg') or 0))}) por **emergencial/dispensa**.")
+            wl_top = (wl.get("fornecedores") or [])[:4]
+            if wl_top:
+                obs += (" Worklist de co-suspeitos por TAC%: "
+                        + "; ".join(f"{(f.get('nome') or '—')[:24]} {f.get('pct', 0):.0f}%"
+                                    + (" (sede-fachada)" if f.get("sede_indicio") else "") for f in wl_top) + ".")
+            if susp:
+                obs += (f" **{len(susp)} desses são fachada-suspeitos** (alto TAC% + sede INDÍCIO/sem-Google) — "
+                        "hipótese de interposição/laranja a apurar (indício, não acusação).")
+            ach.append({"rf": "R5", "grav": grav, "obs": obs})
     return ach
 
 
