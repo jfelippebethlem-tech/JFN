@@ -529,18 +529,39 @@ def processar_respostas(con: sqlite3.Connection, *, state_db: Path | None = None
                         avancar_cursor: bool = True) -> list[dict]:
     """Lê as mensagens novas do dono, casa códigos pendentes e grava o veredito. Idempotente."""
     garantir_schema(con)
-    pend = {r["codigo"]: r["cnpj"] for r in
-            con.execute("SELECT codigo, cnpj FROM fachada_veredito WHERE status='pendente'")}
+    rows_pend = con.execute(
+        "SELECT codigo, cnpj, enviado_em FROM fachada_veredito WHERE status='pendente'").fetchall()
+    pend = {r["codigo"]: r["cnpj"] for r in rows_pend}
     if not pend:
         return []
     cnpjs_pend = set(pend.values())
+    # Para o 3º caminho (resposta SEM quote/código): pendentes do mais RECENTE p/ o mais antigo.
+    # O dono costuma responder em texto livre logo abaixo da foto que acabou de receber → casa no último enviado.
+    def _ts_env(s):
+        try:
+            return dt.datetime.fromisoformat(s).timestamp()
+        except Exception:
+            return 0.0
+    pend_por_recencia = sorted(((r["cnpj"], _ts_env(r["enviado_em"])) for r in rows_pend),
+                               key=lambda x: x[1], reverse=True)
     desde = _ler_cursor()
     msgs = mensagens_novas_telegram(desde, state_db)
     gravados: list[dict] = []
     maior_ts = desde
     for ts, texto in msgs:
         maior_ts = max(maior_ts, ts)
-        for cnpj, status, raw in interpretar(texto, pend, cnpjs_pend):
+        vereditos = interpretar(texto, pend, cnpjs_pend)
+        if not vereditos:
+            # 3º caminho: texto é veredito mas sem quote nem código → casa no pendente MAIS RECENTE
+            # (a foto que o dono acabou de ver). Heurística marcada no raw p/ auditabilidade.
+            st = classificar_resposta(_texto_resposta(texto) or texto or "")
+            if st:
+                alvo = next((cnpj for cnpj, _e in pend_por_recencia if cnpj in cnpjs_pend), None)
+                if alvo:
+                    raw = ("sem-quote(heuristica:mais-recente): "
+                           + ((_texto_resposta(texto) or texto or "")[:160]))
+                    vereditos = [(alvo, st, raw)]
+        for cnpj, status, raw in vereditos:
             cur = con.execute(
                 "UPDATE fachada_veredito SET status=?, veredito_em=?, veredito_raw=? "
                 "WHERE cnpj=? AND status='pendente'",
