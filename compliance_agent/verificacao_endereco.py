@@ -440,14 +440,19 @@ def _vlm_classificar(img: bytes, fonte: str, endereco: str = "") -> dict:
             "descricao": str(d.get("descricao", ""))[:200]}
 
 
-def classificar_local_por_imagem(lat: float, lon: float, endereco: str = "") -> dict:
+def classificar_local_por_imagem(lat: float, lon: float, endereco: str = "",
+                                 *, retornar_imagem: bool = False) -> dict:
     """Resolve um endereço por IMAGEM, priorizando o GRÁTIS e rente ao chão (que distingue casebre de prédio):
     **Mapillary** (token grátis) → **Street View** (Google, pago, capado a 9999/31d, fallback) → **satélite
     Esri** (grátis, só ENTORNO). Ordem parametrizável por `IMG_FONTE_ORDEM`. VLM classifica a fachada.
 
     Retorna {ok, status, nivel, classe, confianca, fonte, evidencia}. status: INDICIO|AFASTADO|INDISPONIVEL.
     HONESTO: o satélite usa coords no nível da rua (±~100m) → veredito do ENTORNO, não do lote exato → só
-    AFASTA, nunca acusa. Mapillary/Street View são rente ao chão → podem acusar casebre/baldio (confirmar in loco)."""
+    AFASTA, nunca acusa. Mapillary/Street View são rente ao chão → podem acusar casebre/baldio (confirmar in loco).
+
+    Se `retornar_imagem=True`, o dict ganha `_img_bytes` (bytes da imagem classificada, ou None) e
+    `_img_fonte` (`mapillary`/`streetview`/`esri`) — p/ o chamador SALVAR o print SEM re-buscar a fonte
+    (zero requisição/cota extra). Não altera nada do veredito; só anexa os bytes já baixados."""
     base = {"ok": False, "status": "INDISPONIVEL", "nivel": "—", "classe": "", "confianca": 0.0,
             "fonte": "", "evidencia": ""}
     if lat is None or lon is None:
@@ -473,11 +478,17 @@ def classificar_local_por_imagem(lat: float, lon: float, endereco: str = "") -> 
         img = _fetch_satelite_esri(lat, lon)
         if img is not None:
             fonte = "esri"
+    def _ret(d: dict) -> dict:
+        """Anexa os bytes da imagem já baixada (sem re-fetch) quando o chamador pediu — p/ salvar o print."""
+        if retornar_imagem:
+            d = {**d, "_img_bytes": img, "_img_fonte": fonte}
+        return d
+
     if img is None:
-        return {**base, "evidencia": "não foi possível obter imagem (Mapillary/Street View/satélite indisponível)"}
+        return _ret({**base, "evidencia": "não foi possível obter imagem (Mapillary/Street View/satélite indisponível)"})
     v = _vlm_classificar(img, fonte, endereco)
     if not v.get("ok"):
-        return {**base, "fonte": fonte, "evidencia": f"imagem obtida ({fonte}) mas VLM indisponível: {v.get('motivo', '')}"}
+        return _ret({**base, "fonte": fonte, "evidencia": f"imagem obtida ({fonte}) mas VLM indisponível: {v.get('motivo', '')}"})
     classe, conf, desc = v["classe"], v["confianca"], v.get("descricao", "")
     # PRECISO = imagem RENTE AO CHÃO (mira a fachada do lote: distingue casebre/barraco de prédio comercial).
     # Street View e Mapillary são rente ao chão → podem ACUSAR. Satélite é o entorno (±~100m) → só AFASTA.
@@ -494,26 +505,26 @@ def classificar_local_por_imagem(lat: float, lon: float, endereco: str = "") -> 
             _qualifica = ("edificação precária/casebre — incompatível com a operação de uma fornecedora do "
                           "Estado mesmo havendo construção" if _casebre
                           else "ausência de edificação compatível com operação")
-            return {"ok": True, "status": "INDICIO", "nivel": "ALTO" if conf >= 0.6 else "MEDIO",
+            return _ret({"ok": True, "status": "INDICIO", "nivel": "ALTO" if conf >= 0.6 else "MEDIO",
                     "classe": classe, "confianca": conf, "fonte": fonte_lbl,
                     "evidencia": (f"{fonte_lbl} (foto rente ao chão) classifica a sede como "
                                   f"**{classe.replace('_', ' ')}** (confiança {conf:.0%}): {desc}. "
                                   f"{_qualifica[0].upper() + _qualifica[1:]} é indício de fachada/inexistência "
-                                  "operacional — confirmar in loco.")}
-        return {**base, "ok": True, "status": "INDISPONIVEL", "classe": classe, "confianca": conf,
+                                  "operacional — confirmar in loco.")})
+        return _ret({**base, "ok": True, "status": "INDISPONIVEL", "classe": classe, "confianca": conf,
                 "fonte": fonte_lbl,
                 "evidencia": (f"O satélite do entorno SUGERE '{classe.replace('_', ' ')}', mas a coordenada é no "
                               "nível da rua (imprecisa p/ o lote) — NÃO conclusivo (satélite chega a confundir "
                               "prédio com construção precária). Confirmar por foto de rua (Mapillary/Street View) "
-                              "ou diligência in loco antes de qualquer conclusão.")}
+                              "ou diligência in loco antes de qualquer conclusão.")})
     if classe == "indeterminado":
-        return {**base, "ok": True, "fonte": fonte_lbl, "classe": classe, "confianca": conf,
-                "evidencia": f"Análise visual ({fonte_lbl}) inconclusiva: {desc}."}
+        return _ret({**base, "ok": True, "fonte": fonte_lbl, "classe": classe, "confianca": conf,
+                "evidencia": f"Análise visual ({fonte_lbl}) inconclusiva: {desc}."})
     # classes EDIFICADAS (casa/prédio/comercial/galpão) → AFASTAR é seguro (falso-negativo é aceitável; nunca acusa)
-    return {"ok": True, "status": "AFASTADO", "nivel": "BAIXO", "classe": classe, "confianca": conf,
+    return _ret({"ok": True, "status": "AFASTADO", "nivel": "BAIXO", "classe": classe, "confianca": conf,
             "fonte": fonte_lbl,
             "evidencia": (f"Análise visual ({fonte_lbl}) indica área edificada ({classe.replace('_', ' ')}, "
-                          f"confiança {conf:.0%}): {desc}. Compatível com sede real — sem indício visual de fachada.")}
+                          f"confiança {conf:.0%}): {desc}. Compatível com sede real — sem indício visual de fachada.")})
 
 
 def _classificar_visual(lat: float, lon: float) -> dict:
