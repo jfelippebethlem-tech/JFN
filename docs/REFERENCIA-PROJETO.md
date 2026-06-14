@@ -168,6 +168,15 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-14 cont.39 (cota: auditoria de herança + priorização do sweep):** sweep de sede no **teto da cota** geo/addr
+  (9999/9999, reseta **2026-07-14**); **12.619/14.424 = 87,5%** verificados. **Auditoria de herdabilidade dos 1.805
+  pendentes: 0 herdáveis** (nem prédio nem CEP — todos em locais únicos; bate com o log do sweep). Achado: os pendentes
+  são o **tail de alto valor** (média R$29,7M = 5× os verificados) pois o sweep ia menor→maior e a cota acabou antes.
+  **Wiring (pedido do dono):** `sede_google.e_ente_publico()` (heurística conservadora) + `_alvos` reordenado para
+  **PRIVADAS de alto valor primeiro** (ente público/concessionária por último — sede de fundo/secretaria não é sinal de
+  fachada); 1.697 privadas vs 108 públicas, nada excluído (`6f521ab`). **Condição física (obra/baldio/precária) NÃO é
+  capturada por nenhum sweep** — Google vê existência/residencial/negócio, não imagem; só `fachada_veredito` (5 linhas,
+  veredito categórico real/indício/pular, sem texto). Capacidade a construir: visão-LLM sobre Street View / veredito rico.
 - **06-13 cont.36 (loop de qualidade, isolamento de DB):** continuação do loop de melhoria com subagentes em
   background. **Unificação de resolução de DB:** `dossie/grafo_poder/lex_conflito` hardcodavam `data/compliance.db`
   e ignoravam `JFN_DB` (achado pelo smoke do Dossiê, que precisava de `monkeypatch.setattr` gambiarra) → agora
