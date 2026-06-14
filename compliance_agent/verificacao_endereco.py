@@ -225,10 +225,15 @@ _SV_QUOTA_JANELA = 31 * 86400  # janela rolante de 31 dias
 
 def _fontes_rua_ordenadas() -> list[str]:
     """Ordem das fontes RENTE AO CHÃO, parametrizável por env `IMG_FONTE_ORDEM` (csv).
-    Default `mapillary,streetview` = grátis primeiro; Street View (pago) só como fallback."""
-    ordem = [s.strip().lower() for s in os.environ.get("IMG_FONTE_ORDEM", "mapillary,streetview").split(",")
+
+    ⚠ MAPILLARY/ESRI APOSENTADOS (2026-06-14): cobertura ruim e fotos efêmeras; a fonte ATIVA de fachada
+    passou a ser o **Google Street View via Maps Embed API** (grátis/ilimitada, `tools/fachada_streetview_
+    sweep.py`). Aqui o default virou **só `streetview`** (Static, capado a 9999/31d — fallback p/ o caminho
+    `analisar_endereco(usar_imagem=True)`). Mapillary só entra se EXPLICITAMENTE pedido via `IMG_FONTE_ORDEM`
+    (mantido como hook, não no caminho ativo)."""
+    ordem = [s.strip().lower() for s in os.environ.get("IMG_FONTE_ORDEM", "streetview").split(",")
              if s.strip() in ("mapillary", "streetview")]
-    return ordem or ["mapillary", "streetview"]
+    return ordem or ["streetview"]
 
 
 def _streetview_max() -> int:
@@ -474,7 +479,9 @@ def classificar_local_por_imagem(lat: float, lon: float, endereco: str = "",
             img = _fetch_streetview_google(lat, lon, gkey)
             if img is not None:
                 fonte = "streetview"; break
-    if img is None:  # nenhuma fonte rente ao chão cobriu → satélite (só afasta área edificada)
+    # Satélite Esri APOSENTADO do caminho ATIVO (2026-06-14): só afasta o entorno e induzia alucinação do VLM
+    # ("barraco" no Banco do Brasil). Mantido como hook opt-in via env `USAR_SATELITE_ESRI=1` (não no default).
+    if img is None and os.environ.get("USAR_SATELITE_ESRI", "").strip() in ("1", "true", "True"):
         img = _fetch_satelite_esri(lat, lon)
         if img is not None:
             fonte = "esri"
