@@ -25,6 +25,10 @@ limpa_orfaos
 PRIO="nice -n 10 ionice -c2 -n6"
 say "início (best-effort baixa prio, bounded)"
 $PRIO timeout 1500 $PY -m tools.sei_sweep --max 20 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$?"
+# SEGUIR OS PROCESSOS-PAI de contratação detectados no cache (recupera a substância dos dockets de
+# execução/pagamento que vêm "vazios"). Mesmo slot/sessão única itkava, DEPOIS do sweep normal; bounded;
+# resumível (pais já lidos ficam em cache+progress). Lê poucos por slot (qualidade > volume na VM 2 vCPU).
+$PRIO timeout 900  $PY -m tools.sei_sweep --seguir-pais --max 8 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
 $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
 limpa_orfaos  # fecha SÓ os leftovers órfãos (não o server.py)
 say "fim"
