@@ -1212,6 +1212,71 @@ def _realidade_sede(cnpj: str) -> str:
     return f"- **Realidade da sede:** {t}" if t else ""
 
 
+# Caminho/remote do B2 onde o `tools.fachada_b2_sync` guarda a foto de fachada FLAGUEADA. Mesma config
+# (override por env p/ teste/portabilidade) — a foto NÃO fica na VM; é baixada on-demand p/ embutir no PDF.
+_RCLONE_BIN = os.environ.get("RCLONE_BIN") or str(Path.home() / ".local" / "bin" / "rclone")
+_FB2_REMOTE = os.environ.get("FACHADA_B2_REMOTE", "b2")
+_FB2_BUCKET = os.environ.get("FACHADA_B2_BUCKET", "jfn-backup-jorge")
+# rótulo honesto da fonte da imagem (visual_fonte do sweep) → legenda
+_FB2_TIMEOUT = float(os.environ.get("JFN_FACHADA_B2_TIMEOUT", "20"))
+
+
+def _foto_fachada_b2(cnpj: str) -> Optional[dict]:
+    """Busca, p/ um CNPJ FLAGUEADO com `visual_img_b2`, a foto da fachada guardada no B2 e devolve
+    {bytes, classe, fonte, objeto}. Bounded e degrada HONESTO: se a coluna estiver vazia, ou o rclone/B2
+    falhar, devolve None (o relatório nota INDISPONÍVEL, não quebra). A imagem NÃO é mantida na VM —
+    é lida via `rclone cat` p/ memória e descartada após embutir."""
+    cnpj = so_digitos(cnpj or "")
+    if not cnpj or not _DB.exists() or not Path(_RCLONE_BIN).exists():
+        return None
+    objeto = classe = fonte = None
+    try:
+        con = sqlite3.connect(str(_DB))
+        try:
+            row = con.execute(
+                "SELECT visual_img_b2, visual_classe, visual_fonte FROM verificacao_sede WHERE cnpj=?",
+                (cnpj,)).fetchone()
+        finally:
+            con.close()
+        if not row or not (row[0] or "").strip():
+            return None
+        objeto, classe, fonte = row[0].strip(), (row[1] or ""), (row[2] or "")
+    except Exception:  # noqa: BLE001
+        return None
+    import subprocess  # local: só quando há foto a buscar
+    destino = f"{_FB2_REMOTE}:{_FB2_BUCKET}/{objeto}"
+    try:
+        r = subprocess.run([_RCLONE_BIN, "cat", destino], capture_output=True,
+                           timeout=_FB2_TIMEOUT)
+        if r.returncode != 0 or not r.stdout:
+            return None
+        return {"bytes": r.stdout, "classe": classe, "fonte": fonte, "objeto": objeto}
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _fachada_b2_html(cnpj: str) -> str:
+    """HTML (figure com a foto em data-URI) da fachada guardada no B2, p/ embutir no relatório HTML→PDF.
+    Legenda HONESTA: classe visual + fonte da imagem de rua. Se não houver foto/falhar → '' (sem ruído;
+    o veredito textual de 'Realidade da sede' já cobre o caso)."""
+    import base64
+    import html as _h
+    d = _foto_fachada_b2(cnpj)
+    if not d:
+        return ""
+    img = d["bytes"]
+    mime = "image/png" if img[:4] == b"\x89PNG" else "image/jpeg"
+    b64 = base64.b64encode(img).decode("ascii")
+    classe = (d["classe"] or "").replace("_", " ") or "—"
+    fonte = d["fonte"] or "imagem de rua"
+    legenda = _h.escape(f"Classe visual: {classe} · imagem de rua, fonte {fonte}. "
+                        "Indício a confirmar in loco — não é prova de fachada.")
+    return (f'<figure style="margin:8px 0;text-align:center">'
+            f'<img src="data:{mime};base64,{b64}" '
+            f'style="max-width:48%;max-height:320px;border:1px solid #ccc;border-radius:4px"/>'
+            f'<figcaption class="nota" style="margin-top:4px">{legenda}</figcaption></figure>')
+
+
 def _beneficios_socios(cnpj: str) -> dict:
     """Cruzamento inteligente: benefícios sociais (laranja) dos sócios/admin deste fornecedor (degrada honesto)."""
     try:
@@ -2397,14 +2462,17 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         if _rs:
             campos.append(("Realidade da sede", _rs))  # a empresa é real? (cruzamento de endereço)
         rows = "".join(f"<tr><th>{esc(k)}</th><td>{esc(v)}</td></tr>" for k, v in campos)
-        secoes.append({"titulo": "1. Perfil cadastral", "html": f"<table>{rows}</table>"})
+        # foto da fachada guardada no B2 (FLAGUEADOS) — embutida on-demand, degrada honesto se indisponível
+        _foto = _fachada_b2_html(ctx.get("cnpj", ""))
+        secoes.append({"titulo": "1. Perfil cadastral", "html": f"<table>{rows}</table>" + _foto})
     else:
         end = (ctx.get("cruzamento") or {}).get("endereco", {}).get("endereco")
         _rs = _realidade_sede_texto(ctx.get("cnpj", ""))
+        _foto = _fachada_b2_html(ctx.get("cnpj", ""))
         secoes.append({"titulo": "1. Perfil cadastral",
                        "html": f"<p class='nota'>Perfil cadastral {esc(ctx.get('fonte_enriq'))} — dados financeiros abaixo são REAIS."
                                + (f" Endereço (sede): {esc(end)}." if end else "")
-                               + (f" Realidade da sede: {esc(_rs)}." if _rs else "") + "</p>"})
+                               + (f" Realidade da sede: {esc(_rs)}." if _rs else "") + "</p>" + _foto})
 
     # 2. Quadro societário (sócios/diretores)
     socios = (emp or {}).get("socios") or []
