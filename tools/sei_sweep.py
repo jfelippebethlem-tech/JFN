@@ -227,7 +227,7 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
     carregar_env()
     from compliance_agent.recursos import browser_lock_async, aguardar_load_async
     from compliance_agent.collectors.sei_cdp import _proxy_do_env
-    from tools.sei_reader import login, ler_processo, seguir_relacionados
+    from tools.sei_reader import login, ler_processo, seguir_relacionados, _ler_cracked, _montar_resultado_cracked
     from playwright.async_api import async_playwright
 
     prog = _carregar_prog()
@@ -288,6 +288,15 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                             if nd > 0:
                                 break
                             await asyncio.sleep(2)
+                        if nd == 0 and len(r.get("relacionados") or []) > 15:
+                            # CAIXA (busca caiu no inbox ~40; processo real tem rel 1–15, ver guard abaixo) →
+                            # tenta o método CRACKED, como ler()/ler_com_cadeia. Provado ao vivo: recupera
+                            # p.ex. 270042 ITERJ (normal=0/rel40 → cracked=10); fica 0 honesto em restrito.
+                            # Só na caixa p/ não gastar navegação extra nos vazios reais (rel<=15).
+                            dump = await _ler_cracked(pg, proc)
+                            if dump.get("documentos"):
+                                r = await _montar_resultado_cracked(pg, proc, dump, usar_cache=False)
+                                nd = len(r.get("documentos") or [])
                     except Exception as e:  # noqa: BLE001
                         _log(f"  [{i}/{len(fila)}] {proc} ERRO {type(e).__name__}: {str(e)[:60]}")
                         # se foi o BROWSER que caiu, as próximas leituras também falham → aborta a sessão limpa
@@ -357,7 +366,7 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
     carregar_env()
     from compliance_agent.recursos import browser_lock_async, aguardar_load_async
     from compliance_agent.collectors.sei_cdp import _proxy_do_env
-    from tools.sei_reader import login, ler_processo
+    from tools.sei_reader import login, ler_processo, _ler_cracked, _montar_resultado_cracked
     from tools.sei_pais import carregar_cache, detectar_pais, _norm
     from playwright.async_api import async_playwright
 
@@ -411,6 +420,14 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
                             if nd > 0:
                                 break
                             await asyncio.sleep(2)
+                        if nd == 0:
+                            # caminho normal caiu na caixa (rel=40/0 docs) → tenta o método CRACKED, como
+                            # ler()/ler_com_cadeia (provado ao vivo: recupera 270042 ITERJ onde o normal
+                            # dá 0; fica 0 honesto em restrito). NÃO substitui o normal — só recupera o 0.
+                            dump = await _ler_cracked(pg, proc)
+                            if dump.get("documentos"):
+                                r = await _montar_resultado_cracked(pg, proc, dump, usar_cache=False)
+                                nd = len(r.get("documentos") or [])
                     except Exception as e:  # noqa: BLE001
                         _log(f"  [pais {i}/{len(fila)}] {proc} ERRO {type(e).__name__}: {str(e)[:60]}")
                         if _browser_morto(e):
