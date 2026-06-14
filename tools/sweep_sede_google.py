@@ -130,7 +130,10 @@ def _suspeito(geo: dict | None, addr: dict | None, total_pago: float = 0.0) -> b
 
 
 def _alvos(con: sqlite3.Connection, limite: int) -> list[dict]:
-    """Fornecedores PJ com endereço, ainda NÃO verificados, ordenados por R$ recebido ASC (menor→maior)."""
+    """Fornecedores PJ com endereço, ainda NÃO verificados. Ordem: PRIVADAS primeiro (ente público/concessionária
+    por último — sede de fundo/secretaria não é sinal de fachada), depois por R$ recebido DESC (alto valor primeiro).
+    Assim a cota grátis escassa ataca as PJs privadas que mais importam à auditoria; nada é excluído, só reordenado."""
+    con.create_function("_publico", 1, lambda s: 1 if sg.e_ente_publico(s or "") else 0)
     lim = f" LIMIT {int(limite)}" if limite else ""
     sql = f"""
         SELECT ef.cnpj, ef.razao, ef.endereco, ef.municipio, ef.uf, ef.cep,
@@ -141,7 +144,7 @@ def _alvos(con: sqlite3.Connection, limite: int) -> list[dict]:
                ON ob.cnpj = ef.cnpj
         WHERE length(ef.cnpj)=14 AND ef.endereco IS NOT NULL AND ef.endereco != ''
           AND ef.cnpj NOT IN (SELECT cnpj FROM verificacao_sede)
-        ORDER BY total_recebido ASC{lim}
+        ORDER BY _publico(ef.razao) ASC, total_recebido DESC{lim}
     """
     return [dict(r) for r in con.execute(sql).fetchall()]
 

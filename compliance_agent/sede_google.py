@@ -46,6 +46,24 @@ def cep_de(cep: str) -> str:
     return d[:8] if len(d) >= 8 else ""
 
 
+# Marcadores fortes de ENTE PÚBLICO / autarquia / concessionária — para DEPRIORIZAR no sweep.
+# Sede de fundo municipal, secretaria ou concessionária NÃO é sinal de "fachada" (presunção de regularidade),
+# então as PJs PRIVADAS de alto valor vão primeiro na fila de cota (a cota grátis é escassa). Heurística por
+# razão social, CONSERVADORA: na dúvida NÃO marca como público, p/ não despriorizar uma privada por engano.
+_PUBLICO_RE = _re.compile(
+    r"\b(FUNDO|FUNDACAO|PREFEITURA|MUNICIPIO|SECRETARIA|GOVERNO|AUTARQUIA|"
+    r"CAMARA\s+MUNICIPAL|ASSEMBLEIA\s+LEGISLATIVA|TRIBUNAL|DEFENSORIA|MINISTERIO\s+PUBLICO|"
+    r"ESTADO\s+DO\s+RIO|DEPARTAMENTO\s+DE\s+ESTRADAS|"
+    r"LIGHT\s+SERVICOS|CEDAE|COMLURB|CONCESSIONARIA|CONCESSAO|CONCESSOES|ENEL|AGUAS\s+D[OE])\b",
+    _re.IGNORECASE)
+
+
+def e_ente_publico(razao: str) -> bool:
+    """True se a razão social parece ente público/autarquia/concessionária (heurística conservadora —
+    usada só para ORDENAR a fila do sweep, nunca para excluir; ente público fica por último na cota)."""
+    return bool(_PUBLICO_RE.search(razao or ""))
+
+
 def predio_key(endereco: str, cep: str) -> str:
     """Chave de PRÉDIO p/ dedup: logradouro + 1º número + CEP (ignora sala/apto/bloco). Mesmo prédio = 1
     requisição; todas as empresas nele herdam o resultado (economia de cota — pedido do dono)."""
