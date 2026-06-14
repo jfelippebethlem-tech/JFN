@@ -6,10 +6,13 @@ O render Street View e o upload são I/O (cobertos pelo teste AO VIVO no IDESI +
 from __future__ import annotations
 
 import io
+import sqlite3
+from collections import Counter
 
 from PIL import Image
 
-from tools.fachada_streetview_sweep import _validar, coerencia_foto_google
+import tools.fachada_streetview_sweep as svs
+from tools.fachada_streetview_sweep import _coord_precisa, _validar, coerencia_foto_google
 
 
 # ───────── coerência foto-vs-Google (pedido do dono: cruzar a foto com o negócio do Google) ─────────
@@ -54,6 +57,94 @@ def test_coerencia_indeterminado_classe_vazia_ou_ambigua():
 def test_coerencia_places_nome_vazio_nao_conta_como_negocio():
     """places_achou=1 mas nome vazio NÃO conta como negócio (dado incompleto) → não vira 'confirma'."""
     assert coerencia_foto_google("comercial_industrial", 1, "")[0] == "indeterminado"
+
+
+# ───────── FIX coord-precisa (o dono caçou: foto saía do LUGAR ERRADO em geo_tipo impreciso) ─────────
+
+class _FakeSG:
+    """Stub do sede_google: cota fixa + geocode pré-programado (sem rede)."""
+    def __init__(self, cota: int, resultado: dict | None):
+        self._cota = cota
+        self._resultado = resultado
+        self.chamou_geocode = 0
+
+    def cota_restante(self, api):  # noqa: ARG002
+        return self._cota
+
+    def geocodificar(self, endereco):  # noqa: ARG002
+        self.chamou_geocode += 1
+        self._cota -= 1
+        return self._resultado
+
+
+def _row(**kw):
+    base = {"cnpj": "11111111000111", "endereco": "RUA X, 100", "municipio": "RIO DE JANEIRO",
+            "uf": "RJ", "cep": "20000000", "geo_lat": -22.9, "geo_lon": -43.2, "geo_tipo": "ROOFTOP"}
+    base.update(kw)
+    return base
+
+
+def _db(tmp_path, row):
+    """DB temporário com 1 linha em verificacao_sede; aponta _DB do módulo p/ ele."""
+    p = tmp_path / "sv.db"
+    con = sqlite3.connect(str(p))
+    con.execute("CREATE TABLE verificacao_sede (cnpj TEXT, geo_lat REAL, geo_lon REAL, geo_tipo TEXT, "
+                "geo_municipio TEXT, visual_fonte TEXT, visual_em TEXT, coerencia_nota TEXT)")
+    con.execute("INSERT INTO verificacao_sede (cnpj, geo_lat, geo_lon, geo_tipo) VALUES (?,?,?,?)",
+                (row["cnpj"], row["geo_lat"], row["geo_lon"], row["geo_tipo"]))
+    con.commit()
+    con.close()
+    return p
+
+
+def test_coord_rooftop_usa_direto(tmp_path, monkeypatch):
+    """geo_tipo ROOFTOP → usa a coord guardada direto, SEM gastar geocoding."""
+    monkeypatch.setattr(svs, "_DB", _db(tmp_path, _row()))
+    sg = _FakeSG(cota=9999, resultado=None)
+    st = Counter()
+    r = _coord_precisa(_row(geo_tipo="ROOFTOP"), sg, st)
+    assert r["ok"] and r["lat"] == -22.9 and r["lon"] == -43.2
+    assert sg.chamou_geocode == 0 and st["rooftop_direto"] == 1
+
+
+def test_coord_impreciso_regeocoda_para_rooftop_atualiza_db(tmp_path, monkeypatch):
+    """geo_tipo impreciso + re-geocode volta ROOFTOP → usa a coord NOVA e ATUALIZA o banco (geo_tipo='ROOFTOP')."""
+    row = _row(geo_tipo="GEOMETRIC_CENTER", geo_lat=-21.8698, geo_lon=-43.3453)
+    dbp = _db(tmp_path, row)
+    monkeypatch.setattr(svs, "_DB", dbp)
+    sg = _FakeSG(cota=9999, resultado={"location_type": "ROOFTOP", "lat": -21.8692, "lon": -43.3187,
+                                       "formatted": "Rua Real, 100 - Juiz de Fora"})
+    st = Counter()
+    r = _coord_precisa(row, sg, st)
+    assert r["ok"] and r["regeocodou"] and r["lat"] == -21.8692 and r["lon"] == -43.3187
+    assert st["regeocode_rooftop"] == 1 and sg.chamou_geocode == 1
+    con = sqlite3.connect(str(dbp))
+    got = con.execute("SELECT geo_tipo, geo_lat, geo_lon FROM verificacao_sede WHERE cnpj=?",
+                      (row["cnpj"],)).fetchone()
+    con.close()
+    assert got == ("ROOFTOP", -21.8692, -43.3187)   # banco corrigido
+
+
+def test_coord_impreciso_continua_impreciso_pula(tmp_path, monkeypatch):
+    """re-geocode continua impreciso → NÃO renderiza (skip honesto, nunca foto de lugar errado)."""
+    row = _row(geo_tipo="APPROXIMATE")
+    monkeypatch.setattr(svs, "_DB", _db(tmp_path, row))
+    sg = _FakeSG(cota=9999, resultado={"location_type": "APPROXIMATE", "lat": -22.0, "lon": -43.0})
+    st = Counter()
+    r = _coord_precisa(row, sg, st)
+    assert not r["ok"] and r.get("skip_impreciso")
+    assert st["regeocode_ainda_impreciso"] == 1
+
+
+def test_coord_impreciso_sem_cota_adia(tmp_path, monkeypatch):
+    """Cota de geocoding esgotada → adia (não chama geocode, marca sem_cota, não renderiza)."""
+    row = _row(geo_tipo="RANGE_INTERPOLATED")
+    monkeypatch.setattr(svs, "_DB", _db(tmp_path, row))
+    sg = _FakeSG(cota=0, resultado={"location_type": "ROOFTOP", "lat": -1, "lon": -1})
+    st = Counter()
+    r = _coord_precisa(row, sg, st)
+    assert not r["ok"] and r.get("sem_cota")
+    assert sg.chamou_geocode == 0 and st["sem_cota"] == 1
 
 
 # ───────── validador de imagem (rejeita >60% branca = tela de erro/API-off) ─────────

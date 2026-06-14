@@ -66,6 +66,15 @@ _NICE = 10
 # Marcador da nova fonte (substitui o Mapillary/Esri) — usado p/ resumir (pula quem já foi).
 _FONTE_SV = "street_view_embed"
 
+# ⚠ FIX (06-14, o dono caçou): só geo_tipo ROOFTOP é PRECISO o bastante p/ renderizar a foto direto. Os demais
+# (APPROXIMATE/GEOMETRIC_CENTER/RANGE_INTERPOLATED) vêm de geocode IMPRECISO → a coord guardada pode estar a KM do
+# prédio real (IDESI: GEOMETRIC_CENTER ficava 2,8km fora) e a foto sairia do LUGAR ERRADO. Antes de renderizar um
+# alvo impreciso, RE-GEOCODIFICA o endereço completo; só renderiza se voltar ROOFTOP (senão pula honesto).
+_GEO_PRECISO = {"ROOFTOP"}
+_GEO_IMPRECISO = {"APPROXIMATE", "GEOMETRIC_CENTER", "RANGE_INTERPOLATED"}
+# Marcador de pulo honesto: endereço impreciso que NÃO re-geocodou p/ ROOFTOP → NUNCA foto de lugar errado.
+_FONTE_SEM_FOTO_IMPRECISO = "sem_foto_confiavel:endereco_impreciso"
+
 # Classes do VLM que indicam fachada/inexistência operacional (rente ao chão = pode ACUSAR).
 _CLASSE_INDICIO = {"terreno_baldio", "area_aberta_rural", "construcao_precaria_barraco"}
 _CLASSE_RESID = {"casa_residencial", "predio_residencial"}
@@ -146,8 +155,8 @@ def _alvos(con: sqlite3.Connection, status: str | None, limite: int, cnpj: str |
             where.append("status = ?")
             params.append(status)
     lim = f" LIMIT {int(limite)}" if limite else ""
-    sql = (f"SELECT cnpj, predio_key, razao, endereco, municipio, uf, geo_lat, geo_lon, total_recebido, "
-           f"status, places_achou, places_nome, places_endereco "
+    sql = (f"SELECT cnpj, predio_key, razao, endereco, municipio, uf, cep, geo_lat, geo_lon, geo_tipo, "
+           f"total_recebido, status, places_achou, places_nome, places_endereco "
            f"FROM verificacao_sede WHERE {' AND '.join(where)} "
            f"ORDER BY total_recebido DESC{lim}")
     return con.execute(sql, params).fetchall()
@@ -222,6 +231,107 @@ def _render_protegido(lat: float, lon: float, heading: float, out: Path,
         return res
     res.update(ok=True, motivo="render concluído")
     return res
+
+
+# ── FIX: garante coord PRECISA antes de renderizar (re-geocode de imprecisos) ──
+def _atualiza_geo_rooftop(cnpj: str, lat: float, lon: float, formatted: str) -> None:
+    """Persiste a coord nova ROOFTOP em verificacao_sede (geo_lat/lon/geo_tipo). Transação curta."""
+    con = sqlite3.connect(str(_DB), timeout=30)
+    try:
+        con.execute("PRAGMA busy_timeout=30000")
+        con.execute(
+            "UPDATE verificacao_sede SET geo_lat=?, geo_lon=?, geo_tipo='ROOFTOP', "
+            "geo_municipio=COALESCE(NULLIF(?, ''), geo_municipio) WHERE cnpj=?",
+            (float(lat), float(lon), formatted, cnpj))
+        con.commit()
+    finally:
+        con.close()
+
+
+def _coord_precisa(r: sqlite3.Row, sg, stats: Counter) -> dict:
+    """Devolve a coord a USAR p/ renderizar este alvo, garantindo precisão (o dono caçou o bug da foto de
+    lugar errado). Conta em `stats`. Retorna:
+      {ok:True, lat, lon}                  → renderiza nessa coord (ROOFTOP, original ou re-geocodada);
+      {ok:False, skip_impreciso:True, motivo} → endereço impreciso e NÃO virou ROOFTOP → marca/pula honesto;
+      {ok:False, sem_cota:True, motivo}    → cota de geocoding esgotada → adia (re-geocode no próximo ciclo).
+    """
+    geo_tipo = (r["geo_tipo"] or "").strip().upper()
+    if geo_tipo in _GEO_PRECISO:                       # 1) já é preciso → usa direto
+        stats["rooftop_direto"] += 1
+        return {"ok": True, "lat": r["geo_lat"], "lon": r["geo_lon"], "geo_tipo": geo_tipo}
+
+    # 2) impreciso (ou vazio) → RE-GEOCODE o endereço completo (reusa sede_google, quota-guarded)
+    if sg.cota_restante("geocoding") <= 0:
+        stats["sem_cota"] += 1
+        return {"ok": False, "sem_cota": True,
+                "motivo": "cota de Geocoding esgotada — adia o re-geocode p/ o próximo ciclo (resumível)"}
+    end_full = ", ".join(x for x in [r["endereco"], r["municipio"], r["uf"], (r["cep"] or "")] if x)
+    g = sg.geocodificar(end_full)                      # consome 1 cota geocoding
+    stats["regeocodou"] += 1
+    novo_tipo = ((g or {}).get("location_type") or "").strip().upper()
+    if g and novo_tipo in _GEO_PRECISO and g.get("lat") is not None:
+        _atualiza_geo_rooftop(r["cnpj"], g["lat"], g["lon"], g.get("formatted") or "")
+        stats["regeocode_rooftop"] += 1
+        return {"ok": True, "lat": g["lat"], "lon": g["lon"], "geo_tipo": "ROOFTOP", "regeocodou": True,
+                "antes": geo_tipo or "(vazio)"}
+    # continua impreciso → NUNCA renderiza foto de lugar errado
+    stats["regeocode_ainda_impreciso"] += 1
+    return {"ok": False, "skip_impreciso": True,
+            "motivo": f"re-geocode de '{end_full[:60]}' voltou {novo_tipo or '(sem resultado)'} "
+                      f"(era {geo_tipo or '(vazio)'}) — endereço impreciso, não renderiza foto de lugar errado"}
+
+
+def _marca_sem_foto_impreciso(cnpj: str, motivo: str) -> None:
+    """Marca o alvo impreciso (que não virou ROOFTOP) como pulado honesto: visual_fonte sentinela + nota.
+    NÃO grava imagem. Assim o sweep RESUME (não re-tenta render) mas re-tenta o re-geocode quando houver cota
+    nova (o filtro de alvos exclui só visual_fonte=_FONTE_SV, não este sentinela)."""
+    con = sqlite3.connect(str(_DB), timeout=30)
+    try:
+        con.execute("PRAGMA busy_timeout=30000")
+        con.execute(
+            "UPDATE verificacao_sede SET visual_fonte=?, visual_em=?, coerencia_nota=? WHERE cnpj=?",
+            (_FONTE_SEM_FOTO_IMPRECISO, dt.datetime.now().isoformat(timespec="seconds"),
+             "Sem foto de fachada confiável: " + motivo, cnpj))
+        con.commit()
+    finally:
+        con.close()
+
+
+def _limpar_rendidos_imprecisos(con: sqlite3.Connection) -> int:
+    """RE-FAZER os já-rendidos errados: alvos com geo_tipo impreciso que JÁ têm visual_img_b2 (foto do lugar
+    ERRADO). Limpa visual_* + coerencia + apaga o objeto do R2/B2 → re-processa com a coord certa no próximo
+    sweep. Devolve quantos limpou. (Idempotente: roda 1× ou quantas quiser; o IDESI já foi limpo à mão.)"""
+    con.row_factory = sqlite3.Row
+    rows = con.execute(
+        "SELECT cnpj, geo_tipo, visual_img_b2 FROM verificacao_sede "
+        "WHERE geo_tipo IN ('APPROXIMATE','GEOMETRIC_CENTER','RANGE_INTERPOLATED') "
+        "AND visual_img_b2 IS NOT NULL").fetchall()
+    if not rows:
+        print("[sv_sweep] limpeza: nenhum já-rendido impreciso a limpar.", flush=True)
+        return 0
+    n = 0
+    for r in rows:
+        loc = (r["visual_img_b2"] or "").strip()      # formato 'remote:bucket/objeto'
+        if loc:
+            try:
+                d = subprocess.run([_RCLONE, "delete", loc], capture_output=True, text=True, timeout=60)
+                if d.returncode == 0:
+                    print(f"  · R2/B2 apagado: {loc}", flush=True)
+                else:
+                    print(f"  ⚠ rclone delete falhou ({loc}): {d.stderr.strip()[:120]} — segue limpando o banco",
+                          flush=True)
+            except Exception as e:  # noqa: BLE001
+                print(f"  ⚠ erro rclone delete {loc}: {str(e)[:120]} — segue limpando o banco", flush=True)
+        con.execute(
+            "UPDATE verificacao_sede SET visual_classe=NULL, visual_conf=NULL, visual_fonte=NULL, "
+            "visual_em=NULL, visual_img_b2=NULL, visual_img_path=NULL, coerencia_google=NULL, "
+            "coerencia_nota=NULL WHERE cnpj=?", (r["cnpj"],))
+        con.commit()
+        n += 1
+        print(f"  ✓ limpo p/ re-render ({r['geo_tipo']}): {r['cnpj']}", flush=True)
+    print(f"[sv_sweep] limpeza: {n} já-rendido(s) impreciso(s) limpo(s) (banco + nuvem) — re-processa com a coord "
+          "certa no sweep.", flush=True)
+    return n
 
 
 # ── Validação: rejeita imagem >60% branca (tela de erro/API-off) ───────────────
@@ -381,6 +491,9 @@ def main() -> int:
     ap.add_argument("--branco-max", type=float, default=0.60, help="rejeita imagem com mais branco que isto")
     ap.add_argument("--so-coerencia", action="store_true",
                     help="NÃO renderiza: só (re)calcula coerencia_google p/ quem já tem foto SV (manutenção)")
+    ap.add_argument("--limpar-imprecisos", action="store_true",
+                    help="manutenção 1×: limpa as fotos já-rendidas de alvos com geo_tipo IMPRECISO (lugar errado) "
+                         "do banco E do R2/B2, p/ re-processar com a coord certa. NÃO renderiza.")
     a = ap.parse_args()
     _carregar_env()
 
@@ -391,6 +504,7 @@ def main() -> int:
         print(f"[sv_sweep] ⛔ rclone não encontrado em {_RCLONE} (defina RCLONE_BIN). Abortando.", flush=True)
         return 2
 
+    from compliance_agent import sede_google as sg  # noqa: E402
     from compliance_agent.verificacao_endereco import _vlm_classificar  # noqa: E402
 
     con = sqlite3.connect(str(_DB), timeout=30)
@@ -399,6 +513,14 @@ def main() -> int:
     _garante_colunas(con)
     status = a.status or None
     cnpj = (a.cnpj or "").strip() or None
+
+    # --limpar-imprecisos: manutenção 1× — apaga fotos do lugar errado (banco + nuvem) p/ re-processar.
+    if a.limpar_imprecisos:
+        try:
+            _limpar_rendidos_imprecisos(con)
+        finally:
+            con.close()
+        return 0
 
     # --so-coerencia: recalcula coerencia_google p/ quem já tem foto SV (sem render). Manutenção/backfill.
     if a.so_coerencia:
@@ -433,7 +555,8 @@ def main() -> int:
     limite_s = a.max_min * 60.0
     dist: Counter = Counter()
     coer_cnt: Counter = Counter()
-    feitos = subidos = sem_img = herdados_tot = 0
+    geo_stats: Counter = Counter()      # FIX: contabilidade de precisão de coord (rooftop/re-geocode/pulos)
+    feitos = subidos = sem_img = herdados_tot = pulos_impreciso = 0
     achados: list[str] = []
     vistos_predio: set[str] = set()
     sel = fr.SelecionadorRemote()
@@ -448,6 +571,32 @@ def main() -> int:
         feitos += 1
         end = ", ".join(x for x in [r["endereco"], r["municipio"], r["uf"]] if x)
 
+        # 0) COORD PRECISA (FIX do dono): só renderiza em coord ROOFTOP. Imprecisos re-geocodam o endereço
+        #    completo; se voltar ROOFTOP atualiza e usa, senão PULA honesto (nunca foto de lugar errado).
+        cp = _coord_precisa(r, sg, geo_stats)
+        if not cp.get("ok"):
+            if cp.get("sem_cota"):
+                # cota de geocoding esgotada → não dá p/ validar a coord deste impreciso; PULA o alvo (re-geocode
+                # no próximo ciclo). NÃO marca sentinela (p/ re-tentar quando a cota voltar) e NÃO para o run
+                # (alvos ROOFTOP adiante ainda renderizam normalmente — não precisam de geocoding).
+                pulos_impreciso += 1
+                print(f"  · {r['cnpj']} {r['razao'][:34]}: {cp.get('motivo')} — pula (re-geocode no próximo ciclo).",
+                      flush=True)
+                if a.pausa:
+                    time.sleep(a.pausa)
+                continue
+            # impreciso que não virou ROOFTOP → marca sentinela e pula (não renderiza, não conta como sem_img)
+            pulos_impreciso += 1
+            _marca_sem_foto_impreciso(r["cnpj"], cp.get("motivo", ""))
+            print(f"  ⨯ {r['cnpj']} {r['razao'][:34]}: {cp.get('motivo')}", flush=True)
+            if a.pausa:
+                time.sleep(a.pausa)
+            continue
+        if cp.get("regeocodou"):
+            print(f"  · {r['cnpj']} re-geocode {cp.get('antes')}→ROOFTOP "
+                  f"({cp['lat']:.5f},{cp['lon']:.5f}) — coord corrigida.", flush=True)
+        lat_use, lon_use = cp["lat"], cp["lon"]
+
         # 1) RENDER (subprocesso capeado) — UM por vez, gate antes
         cnpj_safe = re.sub(r"\D", "", str(r["cnpj"])) or "sem_cnpj"
         out = Path(tempfile.gettempdir()) / f"sv_render_{cnpj_safe}.jpg"
@@ -456,7 +605,7 @@ def main() -> int:
                 out.unlink()
             except OSError:
                 pass
-        rr = _render_protegido(r["geo_lat"], r["geo_lon"], 0.0, out, a.mem_min, a.load_teto)
+        rr = _render_protegido(lat_use, lon_use, 0.0, out, a.mem_min, a.load_teto)
         if rr.get("travou"):
             print(f"  ⚠ {rr.get('motivo')} ({rr.get('antes')} → {rr.get('depois')}) — ABORTA o run por segurança.",
                   flush=True)
@@ -531,7 +680,14 @@ def main() -> int:
 
     print(f"\n[sv_sweep] CONCLUÍDO {dt.datetime.now().isoformat(timespec='seconds')}: "
           f"{feitos} processado(s) · {subidos} foto(s) Street View na nuvem · {herdados_tot} herdado(s) por prédio · "
-          f"{sem_img} sem imagem/inválida · {time.time() - t0:.0f}s · {_snap()}", flush=True)
+          f"{sem_img} sem imagem/inválida · {pulos_impreciso} pulado(s) endereço-impreciso · "
+          f"{time.time() - t0:.0f}s · {_snap()}", flush=True)
+    print(f"[sv_sweep] coord-precisão: {geo_stats.get('rooftop_direto', 0)} ROOFTOP direto · "
+          f"{geo_stats.get('regeocodou', 0)} re-geocode(s) "
+          f"(→{geo_stats.get('regeocode_rooftop', 0)} ROOFTOP / "
+          f"{geo_stats.get('regeocode_ainda_impreciso', 0)} ainda-impreciso) · "
+          f"{geo_stats.get('sem_cota', 0)} sem cota geocoding · "
+          f"cota geocoding restante={sg.cota_restante('geocoding')}", flush=True)
     print(f"[sv_sweep] classes (VLM sobre Street View): {dict(dist)}", flush=True)
     print(f"[sv_sweep] coerência foto-vs-Google: {dict(coer_cnt)}", flush=True)
     if achados:
