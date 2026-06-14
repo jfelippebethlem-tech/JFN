@@ -801,8 +801,9 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     try:
         from compliance_agent.investigacao_dd import investigar
         p_inv = ctx.get("pagamentos") or {}
+        total_pago = p_inv.get("total_geral") or 0.0
         investigacao = investigar(cnpj, cadastral=None, pagamentos={
-            "total_pago": p_inv.get("total_geral") or 0.0,
+            "total_pago": total_pago,
             "primeira_data": _primeira_data_pag(p_inv),
         })
         for h in investigacao.get("hipoteses", []):
@@ -811,6 +812,22 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
                         else 3 if h["nivel"] == "ALTO" else 2)
                 ach_estrutural.append({"rf": f"DD/{h['codigo']}", "grav": grav,
                                        "obs": f"**{h['titulo']}.** {h['evidencia']}"})
+        # Pacote de sinais de fachada (TAC + sede/visual + cadastro + rede) + RACIOCÍNIO LLM (gemini/cerebras).
+        # Estende os INPUTS da §II-E sem criar produto novo: o detector TAC determinístico entra como achado
+        # (no grau) e o veredito raciocinado anexa-se à investigação. Async+bounded+degrada honesto.
+        try:
+            from compliance_agent import rede_fachada as rf
+            pacote = rf.pacote_sinais(cnpj, total_pago=total_pago,
+                                      cadastral=emp_cad if emp_cad else None)
+            investigacao["pacote_fachada"] = pacote
+            tac = pacote.get("tac") or {}
+            if tac.get("codigo") == "RF-TAC":  # red_flag_tac disparou → vira achado no grau
+                grav = 4 if tac.get("nivel") == "ALTO" else 3
+                ach_estrutural.append({"rf": "DD/RF-TAC", "grav": grav,
+                                       "obs": f"**{tac['titulo']}.** {tac['descricao']}"})
+            investigacao["veredito_fachada"] = rf.veredito_llm(pacote)
+        except Exception:  # noqa: BLE001 — pacote/LLM degradam honesto; a DD básica permanece
+            pass
     except Exception:
         investigacao = {}
 
@@ -939,6 +956,61 @@ def _secao_investigacao(add, inv: dict, cnpj: str = "") -> None:
     if cob:
         itens = "; ".join(f"{k.replace('_', ' ')}: {v}" for k, v in cob.items())
         add(f"> **Cobertura da investigação (honestidade):** {itens}.")
+        add("")
+    _secao_pacote_fachada(add, inv.get("pacote_fachada") or {}, inv.get("veredito_fachada") or {})
+
+
+def _secao_pacote_fachada(add, pac: dict, veredito: dict) -> None:
+    """Renderiza os sinais determinísticos do pacote de fachada (TAC com %/UG, sede/visual, REDE) e o
+    veredito raciocinado (gemini/cerebras). Tudo consta do parecer. Degrada honesto: bloco vazio = nada."""
+    if not pac:
+        return
+    # 1. RF-TAC (pagamento fora de contrato) — o achado central, com % e UG
+    tac = pac.get("tac") or {}
+    if tac.get("codigo") == "RF-TAC":
+        add(f"### {tac.get('grau', '🟡')} {tac['titulo']}")
+        add(f"- **Status:** {_BADGE_STATUS.get('CONFIRMADO', 'CONFIRMADO')}  ·  **Nível:** {tac.get('nivel', '—')}")
+        add(f"- **Constatação:** {tac['descricao']}")
+        add(f"- **Fonte:** Ordens bancárias (SIAFE — campo observação)  ·  **Base legal:** {tac['fundamento']}")
+        add("")
+    # 2. sede / visual
+    sede = pac.get("sede") or {}
+    if sede.get("cobertura", "").startswith("verificado"):
+        bits = []
+        if sede.get("sem_negocio_google"):
+            bits.append("sem negócio operante no Google na sede declarada")
+        if sede.get("residencial"):
+            bits.append("endereço classificado como residencial")
+        if sede.get("visual_suspeito"):
+            bits.append(f"imagem da sede: {sede.get('visual_classe')}")
+        if bits:
+            add(f"### Sinais de SEDE/FACHADA ({sede.get('status', '')})")
+            add(f"- **Constatação:** {'; '.join(bits)}. {(sede.get('evidencia') or '')[:200]}")
+            add("- **Fonte:** Google (Geocoding+Address Validation+Places) + inspeção visual de imagem.")
+            add("")
+    # 4. REDE — comando real + outros veículos do administrador
+    try:
+        from compliance_agent.rede_fachada import render_rede_md
+        linhas_rede = render_rede_md(pac.get("rede") or {})
+    except Exception:  # noqa: BLE001
+        linhas_rede = []
+    if linhas_rede:
+        add("### Rede de comando e veículos do administrador (QSA real — dump Receita)")
+        for ln in linhas_rede:
+            add(ln)
+        add("")
+    # veredito raciocinado (LLM)
+    if veredito.get("disponivel"):
+        add("### Veredito raciocinado (IA — gemini/cerebras) sobre os sinais")
+        add(f"> **{veredito.get('veredito', '—')}** (confiança {veredito.get('confianca', '—')}). "
+            f"{veredito.get('fundamentacao', '')}")
+        if veredito.get("base_legal"):
+            add(f"> **Base legal:** {veredito['base_legal']}")
+        add("> *Síntese de IA sobre sinais determinísticos — indício a apurar, não acusação.*")
+        add("")
+    elif veredito.get("motivo"):
+        add(f"> **Veredito raciocinado (IA):** {veredito['motivo']} — os sinais determinísticos acima "
+            "permanecem válidos por si (degradação honesta).")
         add("")
 
 

@@ -1033,7 +1033,33 @@ def _render_cruzamento(ctx: dict) -> str:
     for ind in (cz.get("indicios") or []):
         add(f"> 🟡 **Indício:** {ind}")
         add("")
+    _add_rede_fachada(add, ctx.get("cnpj") or cz.get("cnpj") or "")
     return "\n".join(L)
+
+
+def _add_rede_fachada(add, cnpj: str) -> None:
+    """Acrescenta o bloco de REDE (QSA REAL via dump Receita + outros veículos dos administradores —
+    socios_reverso). Surfacia o quadro de comando real (Presidente/Diretor) e veículos externos do
+    administrador (ex.: presidente IDESI → SIGNAL RIO). Degrada honesto (tabela ausente → nada)."""
+    if not so_digitos(cnpj):
+        return
+    try:
+        from compliance_agent.rede_fachada import render_rede_md, sinal_rede
+        rede = sinal_rede(cnpj)
+        linhas = render_rede_md(rede)
+    except Exception:  # noqa: BLE001
+        return
+    if not linhas:
+        return
+    add("### Rede de comando e veículos do administrador (QSA real — dump Receita)")
+    add("")
+    add("> Quadro societário REAL da Receita (inclui Presidente/Diretor de associação) e os OUTROS veículos "
+        "societários dos administradores no Brasil. Administrador que controla empresa inapta e mantém outros "
+        "CNPJs é vetor a apurar (interposição/sucessão). **Indício, nunca acusação.**")
+    add("")
+    for ln in linhas:
+        add(ln)
+    add("")
 
 
 # ───────────────────────────── render Markdown (11 seções) ─────────────────────────────
@@ -2228,6 +2254,18 @@ def _red_flags(ctx: dict) -> list[tuple]:
                 "indicar retrabalho de execução ou ajustes — vale conferir o motivo.",
                 "Boa prática de controle interno (CGE-RJ); rastreabilidade da execução (Lei 4.320/64).",
             ))
+    # RF-TAC — pagamento FORA de contrato regular (TAC/indenização/reconhecimento de dívida). Detector
+    # determinístico (regex em ordens_bancarias.observacao), por CNPJ + contexto sistêmico da UG pagadora.
+    cnpj_alvo = so_digitos(ctx.get("cnpj") or "")
+    if cnpj_alvo:
+        try:
+            from compliance_agent.reporting.detector_tac import red_flag_tac
+            rf_tac = red_flag_tac(cnpj_alvo)
+            if rf_tac:
+                out.append((rf_tac["titulo"], rf_tac["descricao"], rf_tac["fundamento"]))
+        except Exception:  # noqa: BLE001 — degrada honesto (DB/tabela ausente → sem RF-TAC)
+            pass
+
     # red flag de co-localização (fornecedores na mesma sede) — vindo do cruzamento
     coend = (ctx.get("cruzamento") or {}).get("coendereco") or []
     if coend:
