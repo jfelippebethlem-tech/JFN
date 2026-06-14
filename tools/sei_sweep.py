@@ -342,6 +342,111 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
          f"Progresso em {PROG.name}.")
 
 
+async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = True,
+                   so_alta: bool = False, cnpj: str | None = None):
+    """MODO 'SEGUIR PAIS' (recupera a substância dos dockets vazios/execução): detecta no cache os
+    PROCESSOS-PAI de CONTRATAÇÃO referenciados (regex SEI + janela de palavra-chave de contratação, com
+    denylist de boilerplate do menu lateral) que AINDA NÃO estão no cache, e os LÊ na mesma sessão única
+    itkava — gravando docs + ficha no mesmo cache. Resumível (o que já lê fica em cache e não re-enfileira);
+    bounded (o orquestrador embrulha em `timeout`); crash-proof (morte de browser = saída limpa).
+
+    Por que funciona: o docket de pagamento aponta "processo de contratação em andamento de nº SEI-..." no
+    CORPO de um despacho — é o pai que tem o contrato/parecer. Honesto: detecção é indício; refs do menu são
+    descartadas; nada é inventado."""
+    from compliance_agent.envfile import carregar_env
+    carregar_env()
+    from compliance_agent.recursos import browser_lock_async, aguardar_load_async
+    from compliance_agent.collectors.sei_cdp import _proxy_do_env
+    from tools.sei_reader import login, ler_processo
+    from tools.sei_pais import carregar_cache, detectar_pais, _norm
+    from playwright.async_api import async_playwright
+
+    cache = carregar_cache()
+    pais = detectar_pais(cache, incluir_relacionados=not so_alta)
+    if cnpj:  # foca nos pais citados por dockets do CNPJ alvo (pré-carrega o /relatorio dele)
+        cd = re.sub(r"\D", "", cnpj)
+        # origem é o docket que citou; cruza com as OBs do CNPJ
+        con = sqlite3.connect(str(DB))
+        seus = {r[0] for r in con.execute(
+            "SELECT DISTINCT numero_sei FROM ordens_bancarias WHERE "
+            "replace(replace(replace(favorecido_cpf,'.',''),'/',''),'-','')=?", (cd,)).fetchall()}
+        con.close()
+        pais = [p for p in pais if p["origem"] in seus] or pais  # se nada casar, não trava: usa todos
+    prog = _carregar_prog()
+    feitos = prog.get("pais_feitos") or {}
+    fila = [p for p in pais if _norm(p["pai"]) not in {_norm(k) for k in feitos
+            if (feitos[k].get("n_docs", 0) or 0) > 0}][:max_n]
+    if not fila:
+        _log("[pais] nada novo (todos os pais detectados já lidos/cacheados).")
+        return
+    _log(f"[pais] {len(fila)} processos-pai de contratação a ler (de {len(pais)} detectados); login único itkava…")
+
+    await aguardar_load_async(max_por_core=1.5, espera_max=120)
+    proxy = _proxy_do_env()
+    n_ok = n_zero = n_doc_total = 0
+    try:
+        async with browser_lock_async(espera_max=600), async_playwright() as pw:
+            b = await pw.chromium.launch(headless=True, args=["--no-sandbox", "--ignore-certificate-errors"],
+                                         **({"proxy": proxy} if proxy else {}))
+            ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR",
+                  user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                             "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36")
+            pg = await ctx.new_page()
+            try:
+                if not await login(pg, tentativas=tentativas_login):
+                    _log("[pais] ABORTADO: login itkava não venceu o WAF agora."); return
+                _log("[pais] login OK — lendo os pais…")
+                for i, p in enumerate(fila, 1):
+                    if _PARAR:
+                        _log("[pais] SIGTERM/timeout — encerrando LIMPO entre processos."); break
+                    if PAUSE.exists():
+                        _log("[pais] pausa detectada — encerrando limpo."); break
+                    proc = p["pai"]
+                    t0 = time.time()
+                    try:
+                        r, nd = {}, 0
+                        for _try in range(3):
+                            r = await ler_processo(pg, proc, usar_cache=False)
+                            nd = len(r.get("documentos") or [])
+                            if nd > 0:
+                                break
+                            await asyncio.sleep(2)
+                    except Exception as e:  # noqa: BLE001
+                        _log(f"  [pais {i}/{len(fila)}] {proc} ERRO {type(e).__name__}: {str(e)[:60]}")
+                        if _browser_morto(e):
+                            _log("  [pais] browser/pipe caiu — encerrando a sessão LIMPO. Sem crash."); break
+                        continue
+                    ficha_info = None
+                    if fazer_ficha and nd:
+                        try:
+                            ficha_info = await _ficha_e_storage(proc)
+                        except Exception:  # noqa: BLE001
+                            ficha_info = None
+                    feitos[proc] = {"n_docs": nd, "via": p["fonte"], "conf": p["confianca"],
+                                    "origem": p["origem"], "em": datetime.now().isoformat(timespec="seconds")}
+                    prog["pais_feitos"] = feitos
+                    _salvar_prog(prog)
+                    if nd:
+                        n_ok += 1; n_doc_total += nd
+                    else:
+                        n_zero += 1
+                    _fic = ""
+                    if ficha_info:
+                        a_, dp, mdl = ficha_info
+                        _fic = f" · ficha[{mdl}] {a_}→{dp}ch"
+                    _log(f"  [pais {i}/{len(fila)}] {proc} → {nd} docs{_fic} "
+                         f"({p['confianca']}/{p['fonte']}, ←{p['origem']}) {time.time()-t0:.0f}s")
+            finally:
+                try:
+                    await b.close()
+                except Exception as e:  # noqa: BLE001
+                    _log(f"  [pais] (encerramento do browser ignorado: {type(e).__name__})")
+    except Exception as e:  # noqa: BLE001 — CRASH-PROOF
+        _log(f"[pais] sessão de browser caiu ({type(e).__name__}: {str(e)[:80]}) — encerrando LIMPO. Cron repete.")
+        return
+    _log(f"[pais] FIM: {n_ok} pais com docs ({n_doc_total} docs), {n_zero} sem. Progresso em {PROG.name}.")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--max", type=int, default=30)
@@ -350,6 +455,11 @@ def main():
     ap.add_argument("--max-rel", type=int, default=3, help="máx. de relacionados a seguir por processo")
     ap.add_argument("--sem-ficha", action="store_true", help="NÃO extrair ficha/storage (só ler+cachear cru)")
     ap.add_argument("--cnpj", type=str, default=None, help="só os processos das OBs de um fornecedor (pré-carrega o /relatorio dele)")
+    ap.add_argument("--seguir-pais", action="store_true",
+                    help="MODO PAI: detecta no cache os processos-pai de CONTRATAÇÃO referenciados pelos "
+                         "dockets (execução/pagamento) e os lê — recupera a substância dos 'vazios'.")
+    ap.add_argument("--pais-so-alta", action="store_true",
+                    help="(com --seguir-pais) só os pais de ALTA confiança (conteúdo+keyword), ignora leads de relacionados")
     a = ap.parse_args()
     # encerramento gracioso por timeout/SIGTERM: o loop vê a flag e sai limpo (fecha o browser) — sem EPIPE.
     try:
@@ -359,8 +469,11 @@ def main():
     # BACKSTOP DE PROCESSO (regra do dono: o sweep NUNCA crasha): nada escapa como traceback não-tratado.
     # KeyboardInterrupt/SystemExit (BaseException) propagam normal; qualquer Exception vira log + saída limpa.
     try:
-        asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel,
-                        fazer_ficha=not a.sem_ficha, cnpj=a.cnpj))
+        if a.seguir_pais:
+            asyncio.run(run_pais(a.max, fazer_ficha=not a.sem_ficha, so_alta=a.pais_so_alta, cnpj=a.cnpj))
+        else:
+            asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel,
+                            fazer_ficha=not a.sem_ficha, cnpj=a.cnpj))
     except Exception as e:  # noqa: BLE001
         _log(f"ABORTADO por erro não previsto ({type(e).__name__}: {str(e)[:120]}) — saída limpa, sem crash. Cron repete.")
 
