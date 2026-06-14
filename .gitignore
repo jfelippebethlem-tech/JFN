@@ -119,3 +119,6 @@ data/flexvision_export/
 data/flexvision_cubos.*
 data/_*.json
 massare/data/
+
+# Receita CNPJ dump (dados pessoais — local apenas, LGPD)
+data/receita_dump/
