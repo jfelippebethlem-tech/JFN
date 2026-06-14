@@ -162,6 +162,100 @@ def _nome_por_cnpj(cnpj: str) -> str:
     return ""
 
 
+# ───────────────────────────── tabela-resumo de favorecidos (ACELERAÇÃO) ─────────────────────────────
+# `buscar_candidatos` fazia `lower(favorecido_nome) LIKE '%termo%'` + GROUP BY favorecido_cpf em
+# ordens_bancarias (~1,12M linhas) → full-scan ~6-18s por chamada (não indexável: substring+função).
+# Mas há só ~73.881 favorecidos DISTINTOS. `favorecido_resumo` é o GROUP BY pré-computado (74k linhas):
+# o MESMO LIKE roda ~15× mais rápido. nome_ns = nome sem espaços, minúsculo (pré-computado p/ o fallback
+# "engeprat"→"ENGE PRAT"). Idempotente; respeita JFN_DB/_resolver_db e busy_timeout (padrão fts.py).
+
+def _resolver_db_inteligencia(db_path=None) -> Path:
+    """DB efetivo p/ as escritas deste módulo. arg > JFN_DB > _DB (= JFN_DATA_DIR/compliance.db).
+    Alinha com _resolver_db de models.py mas honra o _DB local (derivado de JFN_DATA_DIR) como default."""
+    return Path(db_path or os.environ.get("JFN_DB") or _DB)
+
+
+def _favorecido_resumo_disponivel(con: sqlite3.Connection) -> bool:
+    """True se a tabela-resumo existe E não está vazia. Guard p/ cair no scan de OB se faltar/stale."""
+    try:
+        r = con.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='favorecido_resumo' LIMIT 1"
+        ).fetchone()
+        if not r:
+            return False
+        return (con.execute("SELECT 1 FROM favorecido_resumo LIMIT 1").fetchone()) is not None
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _norm_alnum(s: str) -> str:
+    """minúsculas, só [a-z0-9] (tira espaço/pontuação/acento-ascii). 'R. C. Vieira Eng.'→'rcviereng'-ish.
+    Casa o fallback com grafias variantes do MESMO CPF ('ENGE PRAT' vs 'engeprat'; 'R C VIEIRA' vs 'R.C.Vieira')."""
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower())
+
+
+def atualizar_favorecido_resumo(db_path=None) -> dict:
+    """(Re)constrói `favorecido_resumo` — o GROUP BY de ordens_bancarias por favorecido_cpf pré-computado.
+    Idempotente: DROP+CREATE+INSERT numa ÚNICA transação (a tabela nunca fica vazia/parcial p/ o leitor).
+    Respeita JFN_DB/_resolver_db e busy_timeout=30000 (espera o lock do sweep em vez de errar na hora).
+    Retorna {ok, linhas, db}.
+
+    PARIDADE com o scan de OB: o LIKE antigo casava se QUALQUER linha de OB do CPF batesse — mas o mesmo
+    CPF pode ter VÁRIAS grafias de nome (949/73881). Por isso guardamos:
+      - favorecido_nome: o nome de EXIBIÇÃO (MAX, como antes);
+      - nome_match: TODAS as grafias distintas (lower) concatenadas → haystack do LIKE primário;
+      - nome_ns: nome_match só-alfanumérico → haystack do fallback sem-espaço.
+    Assim `... LIKE '%termo%'` na tabela-resumo casa o MESMO conjunto que o scan linha-a-linha de OB."""
+    alvo = _resolver_db_inteligencia(db_path)
+    if not Path(alvo).exists():
+        return {"ok": False, "erro": "db_inexistente", "db": str(alvo)}
+    con = sqlite3.connect(str(alvo))
+    con.create_function("_norm_alnum", 1, _norm_alnum)
+    try:
+        con.execute("PRAGMA journal_mode=WAL")
+        con.execute("PRAGMA busy_timeout=30000")  # espera o lock do sweep (não erra na hora)
+        con.execute("BEGIN IMMEDIATE")
+        con.execute("DROP TABLE IF EXISTS favorecido_resumo")
+        con.execute(
+            "CREATE TABLE favorecido_resumo ("
+            " favorecido_cpf TEXT PRIMARY KEY,"
+            " favorecido_nome TEXT,"   # nome de exibição (MAX)
+            " n_obs INTEGER,"
+            " total_pago REAL,"
+            " nome_match TEXT,"        # todas as grafias distintas (lower) — haystack do LIKE primário
+            " nome_ns TEXT)"           # nome_match só-alfanumérico — haystack do fallback sem-espaço
+        )
+        # 1) métricas + nome de exibição, por CPF (rápido — agregado direto)
+        con.execute(
+            "INSERT INTO favorecido_resumo (favorecido_cpf, favorecido_nome, n_obs, total_pago, nome_match, nome_ns) "
+            "SELECT favorecido_cpf, MAX(favorecido_nome), COUNT(*), ROUND(SUM(valor),2), '', '' "
+            "FROM ordens_bancarias WHERE favorecido_cpf IS NOT NULL "
+            "GROUP BY favorecido_cpf"
+        )
+        # 2) haystack de grafias: GROUP_CONCAT das grafias DISTINTAS (lower) de cada CPF, com separador
+        #    ' | ' p/ um termo não casar "atravessando" duas grafias. nome_ns = versão só-alfanumérica.
+        for cpf, nm in con.execute(
+            "SELECT favorecido_cpf, GROUP_CONCAT(nome, ' | ') FROM "
+            "(SELECT DISTINCT favorecido_cpf, lower(favorecido_nome) nome FROM ordens_bancarias "
+            " WHERE favorecido_cpf IS NOT NULL AND favorecido_nome IS NOT NULL) "
+            "GROUP BY favorecido_cpf").fetchall():
+            con.execute(
+                "UPDATE favorecido_resumo SET nome_match=?, nome_ns=? WHERE favorecido_cpf=?",
+                (nm or "", _norm_alnum(nm or ""), cpf))
+        con.execute("CREATE INDEX IF NOT EXISTS ix_favres_nome ON favorecido_resumo (favorecido_nome)")
+        con.commit()
+        n = con.execute("SELECT COUNT(*) FROM favorecido_resumo").fetchone()[0]
+        return {"ok": True, "linhas": int(n or 0), "db": str(alvo)}
+    except Exception as exc:  # noqa: BLE001
+        try:
+            con.rollback()
+        except Exception:  # noqa: BLE001
+            pass
+        return {"ok": False, "erro": str(exc)[:200], "db": str(alvo)}
+    finally:
+        con.close()
+
+
 def buscar_candidatos(termo: str, limite: int = 8) -> list[dict]:
     """
     Resolve por CNPJ OU por nome (inclusive PARCIAL). Retorna lista de candidatos
@@ -202,16 +296,30 @@ def buscar_candidatos(termo: str, limite: int = 8) -> list[dict]:
                 "SELECT cnpj, razao_social FROM empresas WHERE lower(razao_social) LIKE ? LIMIT 50",
                 (f"%{alvo}%",)):
                 _add(r["cnpj"], r["razao_social"], "empresas_db")
-            # 3) nomes nas OBs (fonte mais rica) — agrega valor pago para rankear
-            for r in con.execute(
-                "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, COUNT(*) n, "
-                "ROUND(SUM(valor),2) total FROM ordens_bancarias "
-                "WHERE lower(favorecido_nome) LIKE ? AND favorecido_cpf IS NOT NULL "
-                "GROUP BY favorecido_cpf ORDER BY total DESC LIMIT 50",
-                (f"%{alvo}%",)):
-                _add(r["cnpj"], r["nome"], "obs")
+            # 3) nomes nas OBs (fonte mais rica) — agrega valor pago para rankear.
+            # ACELERAÇÃO: a tabela-resumo `favorecido_resumo` (74k linhas, GROUP BY pré-computado) substitui
+            # o scan de ordens_bancarias (1,12M) — mesmo LIKE, ~15× mais rápido. SÓ se ela existir e não
+            # estiver vazia; senão cai no caminho antigo (scan de OB) — se a tabela faltar/stale, nada quebra.
+            usa_resumo = _favorecido_resumo_disponivel(con)
+            if usa_resumo:
+                # match em nome_match (TODAS as grafias do CPF) p/ paridade com o scan linha-a-linha de OB
+                for r in con.execute(
+                    "SELECT favorecido_cpf cnpj, favorecido_nome nome, n_obs n, total_pago total "
+                    "FROM favorecido_resumo WHERE nome_match LIKE ? "
+                    "ORDER BY total_pago DESC LIMIT 50",
+                    (f"%{alvo}%",)):
+                    _add(r["cnpj"], r["nome"], "obs")
+            else:
+                for r in con.execute(
+                    "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, COUNT(*) n, "
+                    "ROUND(SUM(valor),2) total FROM ordens_bancarias "
+                    "WHERE lower(favorecido_nome) LIKE ? AND favorecido_cpf IS NOT NULL "
+                    "GROUP BY favorecido_cpf ORDER BY total DESC LIMIT 50",
+                    (f"%{alvo}%",)):
+                    _add(r["cnpj"], r["nome"], "obs")
             # fallback SEM-ESPAÇO: "engeprat" (junto) não casa "ENGE PRAT" no LIKE normal. Colapsa os espaços
-            # dos DOIS lados e tenta de novo — só quando nada foi achado (full-scan ~1-2s, aceitável no fallback).
+            # dos DOIS lados e tenta de novo — só quando nada foi achado. Com a tabela-resumo usa a coluna
+            # pré-computada `nome_ns` (já sem espaço/minúscula); senão REPLACE no scan de OB (~1-2s, fallback).
             if not cands:
                 alvo_ns = alvo.replace(" ", "")
                 if len(alvo_ns) >= 3:
@@ -219,17 +327,35 @@ def buscar_candidatos(termo: str, limite: int = 8) -> list[dict]:
                         "SELECT cnpj, razao_social FROM empresas "
                         "WHERE REPLACE(lower(razao_social), ' ', '') LIKE ? LIMIT 50", (f"%{alvo_ns}%",)):
                         _add(r["cnpj"], r["razao_social"], "empresas_db")
-                    for r in con.execute(
-                        "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, COUNT(*) n, "
-                        "ROUND(SUM(valor),2) total FROM ordens_bancarias "
-                        "WHERE REPLACE(lower(favorecido_nome), ' ', '') LIKE ? AND favorecido_cpf IS NOT NULL "
-                        "GROUP BY favorecido_cpf ORDER BY total DESC LIMIT 50", (f"%{alvo_ns}%",)):
-                        _add(r["cnpj"], r["nome"], "obs")
-            # preenche métricas de OB para todos os candidatos
+                    if usa_resumo:
+                        # nome_ns é só-alfanumérico (tira espaço E pontuação) → normaliza o termo igual
+                        for r in con.execute(
+                            "SELECT favorecido_cpf cnpj, favorecido_nome nome, n_obs n, total_pago total "
+                            "FROM favorecido_resumo WHERE nome_ns LIKE ? "
+                            "ORDER BY total_pago DESC LIMIT 50", (f"%{_norm_alnum(alvo)}%",)):
+                            _add(r["cnpj"], r["nome"], "obs")
+                    else:
+                        for r in con.execute(
+                            "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, COUNT(*) n, "
+                            "ROUND(SUM(valor),2) total FROM ordens_bancarias "
+                            "WHERE REPLACE(lower(favorecido_nome), ' ', '') LIKE ? AND favorecido_cpf IS NOT NULL "
+                            "GROUP BY favorecido_cpf ORDER BY total DESC LIMIT 50", (f"%{alvo_ns}%",)):
+                            _add(r["cnpj"], r["nome"], "obs")
+            # preenche métricas de OB para todos os candidatos. Com a tabela-resumo, n_obs/total_pago já estão
+            # pré-agregados por CNPJ (lookup por PK, instantâneo); senão soma no scan de OB (índice por cpf).
             for cnpj, c in cands.items():
-                r = con.execute(
-                    "SELECT COUNT(*) n, ROUND(SUM(valor),2) total FROM ordens_bancarias WHERE favorecido_cpf=?",
-                    (cnpj,)).fetchone()
+                if usa_resumo:
+                    r = con.execute(
+                        "SELECT n_obs n, total_pago total FROM favorecido_resumo WHERE favorecido_cpf=?",
+                        (cnpj,)).fetchone()
+                    if r is None:  # candidato veio só do registro/empresas (sem OB) — métricas zeradas
+                        c["n_obs"] = 0
+                        c["total_pago"] = 0.0
+                        continue
+                else:
+                    r = con.execute(
+                        "SELECT COUNT(*) n, ROUND(SUM(valor),2) total FROM ordens_bancarias WHERE favorecido_cpf=?",
+                        (cnpj,)).fetchone()
                 c["n_obs"] = int(r["n"] or 0)
                 c["total_pago"] = float(r["total"] or 0.0)
         except Exception:
