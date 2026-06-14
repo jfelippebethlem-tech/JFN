@@ -191,8 +191,14 @@ manuais quando expirarem (caem no nous até lá).
   contenção). Minha nota anterior de "índice em `favorecido_nome`" estava ERRADA — B-tree não cobre `LIKE '%termo%'`
   (substring + `lower()`). Fix correto: **tabela-resumo `favorecido_resumo`** — há só **73.881 favorecidos distintos**
   vs 1,12M OBs (15×), então o mesmo LIKE numa tabela de 74k linhas cai pra sub-segundo. Otimização de `buscar_candidatos`
-  (alto risco — é o resolver do `/relatorio`) delegada a subagente com FALLBACK seguro (usa a tabela só se existir;
-  senão cai no scan atual) + teste de paridade velho-vs-novo. EM ANDAMENTO.
+  (alto risco — é o resolver do `/relatorio`) com FALLBACK seguro (usa a tabela só se existir; senão cai no scan
+  atual). **FEITO:** `favorecido_resumo` (73.881 linhas; `favorecido_nome`=display, `nome_match`=todas as grafias
+  do CPF concatenadas, `nome_ns`=só-alfanumérico p/ o fallback sem-espaço — 949 CPFs têm >1 grafia); `buscar_candidatos`
+  → **7,4s → 0,04s** (~150×), paridade idêntica nos termos específicos (1 efeito-de-borda benigno do `LIMIT 50` em termo
+  genérico). Commits `f710c4e`+`a8c2223`. **Wiring (à prova de stale):** refresh no `siafe_runner.atualizar_diario`
+  (cron 05:00) + cron de fallback decoupled `45 5 * * *` (`tools/refresh_favorecido_resumo.sh`, auto-cria se faltar,
+  VM-safe). Refresh usa `BEGIN IMMEDIATE`+`busy_timeout` (robusto sob sweep; leitor vê snapshot até o commit). FTS:
+  triggers auto-sincronizam + `init_db` recria no boot. **Sweep pausado durante a obra (autorizado) e recomeçado ao fim.**
 - **06-13 cont.35 (comandos do Yoda):** comandos `/cmd` ficaram **tappáveis no `/lista`** (auto-link do Telegram);
   **fix do resolver `engeprat`** (`REPLACE(nome,' ','')` casa `'ENGE PRAT'`); skill **`/dossie`** + endpoint
   **`/api/dossie` async**; **queue tratado na SKILL.md** (não no system-prompt) — o Yoda descartava pedido novo
