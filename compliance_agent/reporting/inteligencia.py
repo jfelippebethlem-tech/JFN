@@ -1212,24 +1212,25 @@ def _realidade_sede(cnpj: str) -> str:
     return f"- **Realidade da sede:** {t}" if t else ""
 
 
-# Caminho/remote do B2 onde o `tools.fachada_b2_sync` guarda a foto de fachada FLAGUEADA. Mesma config
-# (override por env p/ teste/portabilidade) — a foto NÃO fica na VM; é baixada on-demand p/ embutir no PDF.
-_RCLONE_BIN = os.environ.get("RCLONE_BIN") or str(Path.home() / ".local" / "bin" / "rclone")
-_FB2_REMOTE = os.environ.get("FACHADA_B2_REMOTE", "b2")
-_FB2_BUCKET = os.environ.get("FACHADA_B2_BUCKET", "jfn-backup-jorge")
-# rótulo honesto da fonte da imagem (visual_fonte do sweep) → legenda
+# Storage SOMADO (R2 primário + B2 transbordo, cada foto em 1 bucket). A localização COMPLETA
+# ('remote:bucket/objeto') está em `verificacao_sede.visual_img_b2`; aqui só LEMOS do local EXATO gravado
+# (um `rclone cat`), sem failover/duplicação. A foto NÃO fica na VM — é baixada on-demand p/ embutir no PDF.
+from compliance_agent import fachada_remotes as _fr  # noqa: E402
+
+_RCLONE_BIN = _fr.rclone_bin()
 _FB2_TIMEOUT = float(os.environ.get("JFN_FACHADA_B2_TIMEOUT", "20"))
 
 
 def _foto_fachada_b2(cnpj: str) -> Optional[dict]:
-    """Busca, p/ um CNPJ FLAGUEADO com `visual_img_b2`, a foto da fachada guardada no B2 e devolve
-    {bytes, classe, fonte, objeto}. Bounded e degrada HONESTO: se a coluna estiver vazia, ou o rclone/B2
-    falhar, devolve None (o relatório nota INDISPONÍVEL, não quebra). A imagem NÃO é mantida na VM —
-    é lida via `rclone cat` p/ memória e descartada após embutir."""
+    """Busca, p/ um CNPJ FLAGUEADO com `visual_img_b2`, a foto da fachada guardada na nuvem e devolve
+    {bytes, classe, fonte, objeto}. Lê do `remote:bucket/objeto` EXATO gravado em `visual_img_b2` (R2 ou
+    B2 — cada foto vive em UM bucket só). Bounded e degrada HONESTO: se a coluna estiver vazia/legada
+    (sem remote:), ou o rclone falhar, devolve None (o relatório nota INDISPONÍVEL, não quebra). A imagem
+    NÃO é mantida na VM — é lida via `rclone cat` p/ memória e descartada após embutir."""
     cnpj = so_digitos(cnpj or "")
     if not cnpj or not _DB.exists() or not Path(_RCLONE_BIN).exists():
         return None
-    objeto = classe = fonte = None
+    loc = classe = fonte = None
     try:
         con = sqlite3.connect(str(_DB))
         try:
@@ -1240,11 +1241,15 @@ def _foto_fachada_b2(cnpj: str) -> Optional[dict]:
             con.close()
         if not row or not (row[0] or "").strip():
             return None
-        objeto, classe, fonte = row[0].strip(), (row[1] or ""), (row[2] or "")
+        loc, classe, fonte = row[0].strip(), (row[1] or ""), (row[2] or "")
     except Exception:  # noqa: BLE001
         return None
+    parsed = _fr.parse_localizacao(loc)  # ('remote','bucket','objeto') ou None p/ legado 'fachadas/x.jpg'
+    if not parsed:
+        return None  # localização incompleta/legada → degrada honesto (INDISPONÍVEL, não inventa)
+    remote, bucket, objeto = parsed
+    destino = f"{remote}:{bucket}/{objeto}"
     import subprocess  # local: só quando há foto a buscar
-    destino = f"{_FB2_REMOTE}:{_FB2_BUCKET}/{objeto}"
     try:
         r = subprocess.run([_RCLONE_BIN, "cat", destino], capture_output=True,
                            timeout=_FB2_TIMEOUT)

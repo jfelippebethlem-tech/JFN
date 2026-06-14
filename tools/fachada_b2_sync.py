@@ -1,25 +1,29 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""fachada_b2_sync — guarda a foto de fachada dos FLAGUEADOS no Backblaze B2 (sem peso na VM).
+"""fachada_b2_sync — guarda a foto de fachada dos FLAGUEADOS em R2+B2 SOMADOS (sem peso na VM).
 
-Hoje a foto de fachada é EFÊMERA (baixada, classificada por `fachada_visual_sweep` e descartada;
-`data/fachada_img/` fica vazio). O dono quer GUARDAR essas fotos no B2 (acesso da equipe, fora da
-VM) e USÁ-las nos relatórios. Este runner fecha a primeira metade:
+A foto de fachada é EFÊMERA (baixada, classificada por `fachada_visual_sweep` e descartada;
+`data/fachada_img/` fica vazio). O dono quer GUARDAR essas fotos na nuvem (acesso da equipe, fora da
+VM) e USÁ-las nos relatórios — usando **Cloudflare R2 + Backblaze B2 SÓ PARA SOMAR storage**
+(10GB+10GB), distribuindo as fotos. **NÃO é mirror/redundância: cada foto vive em UM bucket só.**
+⚠ O R2 tem teto rígido de 10GB — o sistema NUNCA pode estourá-lo (margem 9,5GB). A política está em
+`compliance_agent/fachada_remotes.py` (fonte única). Este runner fecha a metade de ESCRITA:
 
   Para cada CNPJ de `verificacao_sede` cujo `visual_classe` está numa das classes FLAGUEADAS
   (terreno_baldio / area_aberta_rural / construcao_precaria_barraco / casa_residencial /
-  predio_residencial) e que ainda NÃO tem objeto no B2 (`visual_img_b2` vazio):
+  predio_residencial) e que ainda NÃO tem foto na nuvem (`visual_img_b2` vazio):
     1. pega a imagem REUSANDO `verificacao_endereco.classificar_local_por_imagem(..., retornar_imagem=True)`
        — Mapillary (grátis) → satélite Esri (grátis); ZERO cota paga (Street View só se IMG_FONTE_ORDEM
        o incluir e houver cota; este runner NÃO o força);
-    2. grava num arquivo TEMPORÁRIO, faz `rclone copy` p/ `b2:<bucket>/fachadas/<cnpj>.<jpg|png>`,
-       e REMOVE o temp (o ponto é tirar peso da VM — nada de imagem permanente local);
-    3. grava o caminho do objeto na coluna NOVA `visual_img_b2` (ALTER TABLE idempotente).
+    2. ESCOLHE o remote via `fachada_remotes` (R2 primário sob o teto → transborda pro B2), grava num
+       arquivo TEMPORÁRIO, faz `rclone copyto` p/ `<remote>:<bucket>/fachadas/<cnpj>.<jpg|png>`, e
+       REMOVE o temp (o ponto é tirar peso da VM — nada de imagem permanente local);
+    3. grava a LOCALIZAÇÃO COMPLETA (`remote:bucket/objeto`) na coluna `visual_img_b2`.
 
 Maior `total_recebido` primeiro (o tail de alto valor importa mais). RESUMÍVEL: pula quem já tem
 `visual_img_b2`. VM-safe: `--limite`, `--max-min` time-bound, load-guard, pausa entre alvos. Honesto:
 se o fetch não devolver imagem, NÃO inventa — registra e segue (não marca `visual_img_b2`, reentra
-no próximo ciclo). Se o `rclone`/B2 falhar, loga e segue (resumível).
+no próximo ciclo). Se os dois buckets estiverem cheios, ou o `rclone` falhar, loga e segue (resumível).
 
 Uso:
   PYTHONPATH=. nice -n10 .venv/bin/python -m tools.fachada_b2_sync \\
@@ -44,11 +48,13 @@ sys.path.insert(0, str(_RAIZ))
 
 _DB = Path(os.environ.get("JFN_DB") or (_RAIZ / "data" / "compliance.db"))
 
-# Remote/bucket/prefixo do B2 (já configurado e testado pelo dono). Override por env, p/ teste/portabilidade.
-_RCLONE = os.environ.get("RCLONE_BIN") or str(Path.home() / ".local" / "bin" / "rclone")
-_B2_REMOTE = os.environ.get("FACHADA_B2_REMOTE", "b2")
-_B2_BUCKET = os.environ.get("FACHADA_B2_BUCKET", "jfn-backup-jorge")
-_B2_PREFIXO = os.environ.get("FACHADA_B2_PREFIXO", "fachadas")
+# Política de storage SOMADO (R2 primário + B2 transbordo, cada foto em 1 bucket, teto 9,5GB). Fonte única.
+from compliance_agent import fachada_remotes as fr  # noqa: E402
+
+_RCLONE = fr.rclone_bin()
+_PREFIXO = fr.PREFIXO
+# Onde mora o índice/metadado pequeno (_index.csv/_index.html): o remote PRIMÁRIO (R2), e SÓ ele.
+_INDEX_REMOTE, _INDEX_BUCKET = fr.INDEX_REMOTE, fr.INDEX_BUCKET
 
 # Classes FLAGUEADAS (mesma lista do pedido do dono e do _FLAG_PRINT do fachada_visual_sweep + residenciais).
 _FLAG = ("terreno_baldio", "area_aberta_rural", "construcao_precaria_barraco",
@@ -101,13 +107,15 @@ def _alvos(con: sqlite3.Connection, limite: int, cnpj: str | None) -> list[sqlit
     return con.execute(sql, params).fetchall()
 
 
-def _subir_b2(img: bytes, cnpj: str) -> tuple[str, int]:
-    """Grava a imagem num TEMP, `rclone copy` p/ o B2, REMOVE o temp. Devolve (caminho_objeto, bytes) ou
-    ('', 0) se falhar. NÃO deixa nada permanente na VM (o ponto é tirar peso)."""
+def _subir_foto(img: bytes, cnpj: str, remote_bucket: str) -> tuple[str, int]:
+    """Grava a imagem num TEMP, `rclone copyto` p/ `<remote_bucket>/fachadas/<cnpj>.<ext>`, REMOVE o
+    temp. Devolve (localizacao_completa 'remote:bucket/objeto', bytes) ou ('', 0) se falhar. NÃO deixa
+    nada permanente na VM (o ponto é tirar peso). O remote já foi escolhido por `fachada_remotes` (sob
+    o teto de 10GB) — aqui só SOBE para o destino indicado."""
     cnpj_safe = re.sub(r"\D", "", str(cnpj)) or "sem_cnpj"
     ext = "png" if img[:4] == b"\x89PNG" else "jpg"
-    objeto = f"{_B2_PREFIXO}/{cnpj_safe}.{ext}"
-    destino = f"{_B2_REMOTE}:{_B2_BUCKET}/{objeto}"
+    objeto = fr.objeto_de(cnpj_safe, ext)
+    destino = f"{remote_bucket}/{objeto}"  # remote_bucket = 'remote:bucket'
     tmp = None
     try:
         # delete=False p/ fechar o handle antes do rclone ler (Linux ok, mas é o padrão seguro/portável).
@@ -118,11 +126,12 @@ def _subir_b2(img: bytes, cnpj: str) -> tuple[str, int]:
         r = subprocess.run([_RCLONE, "copyto", tmp, destino],
                            capture_output=True, text=True, timeout=120)
         if r.returncode != 0:
-            print(f"  ⚠ rclone copyto falhou (rc={r.returncode}) p/ {cnpj}: {r.stderr.strip()[:160]}", flush=True)
+            print(f"  ⚠ rclone copyto falhou (rc={r.returncode}) p/ {cnpj} → {destino}: "
+                  f"{r.stderr.strip()[:160]}", flush=True)
             return "", 0
-        return objeto, len(img)
+        return destino, len(img)
     except Exception as e:  # noqa: BLE001
-        print(f"  ⚠ erro ao subir {cnpj} p/ B2: {str(e)[:160]}", flush=True)
+        print(f"  ⚠ erro ao subir {cnpj} → {destino}: {str(e)[:160]}", flush=True)
         return "", 0
     finally:
         if tmp:
@@ -132,13 +141,13 @@ def _subir_b2(img: bytes, cnpj: str) -> tuple[str, int]:
                 pass
 
 
-def _grava(cnpj: str, objeto: str) -> None:
-    """Transação CURTA: grava visual_img_b2 do CNPJ. Conexão própria + busy_timeout (sweep_sede grava no
-    MESMO DB) — espera o lock, não erra (lição §8)."""
+def _grava(cnpj: str, localizacao: str) -> None:
+    """Transação CURTA: grava visual_img_b2 do CNPJ com a LOCALIZAÇÃO COMPLETA ('remote:bucket/objeto').
+    Conexão própria + busy_timeout (sweep_sede grava no MESMO DB) — espera o lock, não erra (lição §8)."""
     con = sqlite3.connect(str(_DB), timeout=30)
     try:
         con.execute("PRAGMA busy_timeout=30000")
-        con.execute("UPDATE verificacao_sede SET visual_img_b2=? WHERE cnpj=?", (objeto, cnpj))
+        con.execute("UPDATE verificacao_sede SET visual_img_b2=? WHERE cnpj=?", (localizacao, cnpj))
         con.commit()
     finally:
         con.close()
@@ -172,6 +181,9 @@ def _coletar_index(con: sqlite3.Connection) -> list[dict]:
                 objeto = " ".join(str(ob["observacao"]).split())[:180]
         except Exception:  # noqa: BLE001
             pass
+        loc = (r["visual_img_b2"] or "").strip()  # 'remote:bucket/objeto' (localização completa)
+        parsed = fr.parse_localizacao(loc)
+        bucket = f"{parsed[0]}:{parsed[1]}" if parsed else ""  # 'remote:bucket' (onde a foto vive)
         out.append({
             "cnpj": cnpj,
             "razao_social": (r["razao"] or "").strip(),
@@ -181,19 +193,20 @@ def _coletar_index(con: sqlite3.Connection) -> list[dict]:
             "orgao": ug_nome,
             "valor_recebido": f"{(r['total_recebido'] or 0):.2f}",
             "objeto": objeto,
-            "arquivo": (r["visual_img_b2"] or "").strip(),
+            "bucket": bucket,
+            "arquivo": loc,
         })
     return out
 
 
 _INDEX_COLS = ["cnpj", "razao_social", "classe_visual", "fonte_imagem", "ug_codigo", "orgao",
-               "valor_recebido", "objeto", "arquivo"]
+               "valor_recebido", "objeto", "bucket", "arquivo"]
 
 
-def _subir_texto_b2(conteudo: str, objeto: str) -> bool:
-    """Grava `conteudo` num TEMP e `rclone copyto` p/ b2:<bucket>/<objeto>. Sem peso permanente na VM.
-    Devolve True/False (degrada honesto)."""
-    destino = f"{_B2_REMOTE}:{_B2_BUCKET}/{objeto}"
+def _subir_texto_index(conteudo: str, objeto: str) -> bool:
+    """Grava `conteudo` num TEMP e `rclone copyto` p/ o remote PRIMÁRIO (R2) <remote>:<bucket>/<objeto>.
+    O índice/manifesto é metadado pequeno e vive SÓ no R2. Sem peso permanente na VM. Degrada honesto."""
+    destino = f"{_INDEX_REMOTE}:{_INDEX_BUCKET}/{objeto}"
     tmp = None
     try:
         with tempfile.NamedTemporaryFile(prefix="fachada_index_", suffix=Path(objeto).suffix or ".txt",
@@ -238,22 +251,33 @@ def _index_html(linhas: list[dict]) -> str:
            ".n{font-size:11px;color:#666}</style>"
            "<h1>Fachadas-suspeitas guardadas no B2</h1>"
            "<p class='n'>Imagem de rua (Mapillary/Esri) de sedes com classe visual FLAGUEADA. "
-           "Indício a confirmar in loco — não é prova de fachada. Bucket privado; sem CPF (LGPD).</p>"
+           "Indício a confirmar in loco — não é prova de fachada. Buckets privados; sem CPF (LGPD). "
+           "Storage SOMADO: cada foto vive em UM bucket (R2 primário, B2 transbordo) — a coluna "
+           "<b>Bucket</b> diz onde cada uma está.</p>"
            "<table><tr><th>Foto</th><th>CNPJ</th><th>Razão social</th><th>Classe visual</th>"
-           "<th>Órgão / UG</th><th>Valor recebido (R$)</th><th>Objeto</th></tr>")
+           "<th>Órgão / UG</th><th>Valor recebido (R$)</th><th>Objeto</th><th>Bucket</th></tr>")
+    # O manifesto vive no R2; só dá p/ inlinar (src relativo) as fotos que estão no MESMO remote:bucket do índice.
+    indice_loc = f"{_INDEX_REMOTE}:{_INDEX_BUCKET}"
     body = []
     for ln in linhas:
-        foto = _h.escape(ln["arquivo"].split("/")[-1]) if ln["arquivo"] else ""
+        mesmo_bucket = (ln.get("bucket") == indice_loc)
+        nome = ln["objeto"].split("/")[-1] if ln["objeto"] else ""
+        if mesmo_bucket and nome:
+            foto_html = (f"<a href='{_h.escape(ln['objeto'])}'>"
+                         f"<img src='{_h.escape(nome)}' alt='foto'></a>")
+        else:
+            foto_html = "<span class='n'>(outro bucket)</span>"
         try:
             val = f"{float(ln['valor_recebido']):,.2f}"
         except (ValueError, TypeError):
             val = ln["valor_recebido"]
         body.append(
-            f"<tr><td><a href='{_h.escape(ln['arquivo'])}'><img src='{_h.escape(foto)}' alt='foto'></a></td>"
+            f"<tr><td>{foto_html}</td>"
             f"<td>{_h.escape(ln['cnpj'])}</td><td>{_h.escape(ln['razao_social'])}</td>"
             f"<td>{_h.escape(ln['classe_visual'].replace('_', ' '))}</td>"
             f"<td>{_h.escape((ln['ug_codigo'] + ' · ' + ln['orgao']).strip(' ·'))}</td>"
-            f"<td>{_h.escape(val)}</td><td>{_h.escape(ln['objeto'])}</td></tr>")
+            f"<td>{_h.escape(val)}</td><td>{_h.escape(ln['objeto'])}</td>"
+            f"<td>{_h.escape(ln.get('bucket', ''))}</td></tr>")
     return cab + "".join(body) + "</table>"
 
 
@@ -262,18 +286,19 @@ def _atualizar_index(con: sqlite3.Connection, com_html: bool = True) -> int:
     cada foto a cnpj/razão/classe/órgão/valor/objeto. Chamado ao fim de cada sync. Degrada honesto."""
     linhas = _coletar_index(con)
     if not linhas:
-        print("[fachada_b2] índice: nenhuma foto no B2 ainda — nada a indexar.", flush=True)
+        print("[fachada_b2] índice: nenhuma foto na nuvem ainda — nada a indexar.", flush=True)
         return 0
-    ok_csv = _subir_texto_b2(_index_csv(linhas), f"{_B2_PREFIXO}/_index.csv")
-    ok_html = _subir_texto_b2(_index_html(linhas), f"{_B2_PREFIXO}/_index.html") if com_html else False
+    ok_csv = _subir_texto_index(_index_csv(linhas), f"{_PREFIXO}/_index.csv")
+    ok_html = _subir_texto_index(_index_html(linhas), f"{_PREFIXO}/_index.html") if com_html else False
     print(f"[fachada_b2] índice atualizado: {len(linhas)} foto(s) → "
-          f"b2:{_B2_BUCKET}/{_B2_PREFIXO}/_index.csv{'+_index.html' if ok_html else ''} "
+          f"{_INDEX_REMOTE}:{_INDEX_BUCKET}/{_PREFIXO}/_index.csv{'+_index.html' if ok_html else ''} "
           f"(csv={'ok' if ok_csv else 'FALHOU'}).", flush=True)
     return len(linhas)
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Sync das fotos de fachada FLAGUEADAS p/ o Backblaze B2 (VM-safe).")
+    ap = argparse.ArgumentParser(
+        description="Sync das fotos de fachada FLAGUEADAS p/ R2+B2 SOMADOS (cada foto em 1 bucket, VM-safe).")
     ap.add_argument("--limite", type=int, default=0, help="máx. de alvos (0 = todos os pendentes)")
     ap.add_argument("--max-min", type=float, default=20.0, help="time-bound em minutos (default 20)")
     ap.add_argument("--pausa", type=float, default=0.3, help="pausa entre alvos (s)")
@@ -313,8 +338,9 @@ def main() -> int:
     alvos = _alvos(con, a.limite, (a.cnpj or "").strip() or None)
     con.close()
 
-    print(f"[fachada_b2] {len(alvos)} alvo(s) FLAGUEADO(s) sem foto no B2 "
-          f"(destino {_B2_REMOTE}:{_B2_BUCKET}/{_B2_PREFIXO}/, maior R$ primeiro). "
+    destinos = " → ".join(f"{rm}:{bk}" for rm, bk, _ in fr.REMOTES)
+    print(f"[fachada_b2] {len(alvos)} alvo(s) FLAGUEADO(s) sem foto na nuvem "
+          f"(R2 primário → B2 transbordo: {destinos}; cada foto em 1 bucket, maior R$ primeiro). "
           f"time-bound={a.max_min:.0f}min", flush=True)
     if not alvos:
         print("[fachada_b2] nada a fazer (todos já sincronizados). Atualizando o índice mesmo assim.", flush=True)
@@ -329,6 +355,8 @@ def main() -> int:
     limite_s = a.max_min * 60.0
     dist: Counter = Counter()
     feitos = subidos = bytes_tot = sem_img = 0
+    # Seletor de remote sob o teto de cada bucket: 1 `rclone size` por remote por run + acúmulo em RAM.
+    sel = fr.SelecionadorRemote()
 
     for r in alvos:
         if time.time() - t0 >= limite_s:
@@ -351,14 +379,21 @@ def main() -> int:
             if a.pausa:
                 time.sleep(a.pausa)
             continue
-        objeto, nb = _subir_b2(img, r["cnpj"])
-        if objeto:
-            _grava(r["cnpj"], objeto)
+        # ESCOLHE o bucket sob o teto (R2 primário → transbordo B2). None = os dois cheios → degrada honesto.
+        destino_rb = sel.escolher(len(img))
+        if not destino_rb:
+            print(f"[fachada_b2] ⛔ R2 e B2 sob o teto de capacidade — sem espaço p/ {r['cnpj']} "
+                  f"({len(img)/1024:.0f} KB). Parada limpa (não estoura o teto; resumível).", flush=True)
+            break
+        localizacao, nb = _subir_foto(img, r["cnpj"], destino_rb)
+        if localizacao:
+            sel.confirmar(localizacao, nb)  # contabiliza no run p/ a próxima escolha (não chama size de novo)
+            _grava(r["cnpj"], localizacao)
             subidos += 1
             bytes_tot += nb
             dist[res.get("_img_fonte") or "?"] += 1
             print(f"  ✓ {r['cnpj']} ({r['visual_classe']}, {res.get('_img_fonte')}) "
-                  f"R$ {r['total_recebido']:,.0f} · {r['razao'][:38]} → b2:{_B2_BUCKET}/{objeto} ({nb/1024:.0f} KB)",
+                  f"R$ {r['total_recebido']:,.0f} · {r['razao'][:38]} → {localizacao} ({nb/1024:.0f} KB)",
                   flush=True)
         if a.pausa:
             time.sleep(a.pausa)
