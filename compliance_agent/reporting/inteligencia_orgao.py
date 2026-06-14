@@ -29,7 +29,7 @@ from typing import Optional
 from compliance_agent import ugs
 from compliance_agent.reporting.inteligencia import (
     cabecalho_frescor,
-    _DB, _REPORTS, _hhi, _mc, _registrar_fonte, _render_parecer_pdf, _slug,
+    _DB, _REPORTS, _foto_fachada_b2, _hhi, _mc, _registrar_fonte, _render_parecer_pdf, _slug,
     _tab_header, _tab_row, fmt_cnpj, moeda, so_digitos,
 )
 
@@ -1648,6 +1648,67 @@ def _secao_painel_detectores_pdf(pdf, _t, ctx: dict) -> None:
     pdf.set_text_color(0, 0, 0)
 
 
+def _fotos_fachada_suspeitos_pdf(pdf, _t, suspeitos: list, limite: int = 6) -> int:
+    """Embute no PDF as fotos de fachada (guardadas no B2 pelo `tools.fachada_b2_sync`) dos co-suspeitos
+    da worklist §1-J que TÊM `verificacao_sede.visual_img_b2`. REUSA o helper `_foto_fachada_b2` de
+    `inteligencia` (baixa via `rclone cat`, bounded, degrada honesto — NÃO duplica a lógica de B2).
+    Legenda HONESTA: classe visual + fonte da imagem + fornecedor. Degrada honesto: se a foto faltar ou o
+    rclone/B2 falhar, simplesmente não embute aquele suspeito (não quebra o relatório). Devolve quantas
+    fotos embutiu. Cada foto vai num arquivo TEMP descartado em seguida (o FPDF lê de caminho)."""
+    import os as _os
+    import tempfile as _tmp
+    embutidas = 0
+    for s in suspeitos:
+        if embutidas >= limite:
+            break
+        cnpj = so_digitos(s.get("cnpj") or "")
+        if not cnpj:
+            continue
+        try:
+            d = _foto_fachada_b2(cnpj)
+        except Exception:  # noqa: BLE001
+            d = None
+        if not d or not d.get("bytes"):
+            continue
+        img = d["bytes"]
+        ext = "png" if img[:4] == b"\x89PNG" else "jpg"
+        tmp = None
+        try:
+            with _tmp.NamedTemporaryFile(prefix=f"fachada_org_{cnpj}_", suffix=f".{ext}", delete=False) as fh:
+                fh.write(img)
+                tmp = fh.name
+            if embutidas == 0:
+                pdf.ln(2); pdf.set_font(pdf._fam, "B", 9); pdf.set_text_color(150, 90, 0)
+                pdf.cell(0, 6, _t("Fotos das fachadas-suspeitas (imagem de rua guardada no B2)"), ln=True)
+                pdf.set_text_color(0, 0, 0)
+            # quebra de pagina se nao couber a imagem + legenda (~60mm)
+            if pdf.get_y() > pdf.h - 70:
+                pdf.add_page()
+            nome = (s.get("nome") or "-")[:40]
+            classe = (d.get("classe") or "").replace("_", " ") or "-"
+            fonte = d.get("fonte") or "imagem de rua"
+            pdf.set_font(pdf._fam, "B", 8)
+            _mc(pdf, 4.2, _t(f"{nome} ({fmt_cnpj(cnpj)})"))
+            try:
+                pdf.image(tmp, w=85)
+            except Exception:  # noqa: BLE001
+                continue
+            pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(110, 110, 110)
+            _mc(pdf, 3.6, _t(f"Classe visual: {classe} - imagem de rua, fonte {fonte}. "
+                             "Indicio a confirmar in loco - nao e prova de fachada."))
+            pdf.set_text_color(0, 0, 0)
+            embutidas += 1
+        except Exception:  # noqa: BLE001
+            continue
+        finally:
+            if tmp:
+                try:
+                    _os.unlink(tmp)
+                except OSError:
+                    pass
+    return embutidas
+
+
 def _secao_tac_pdf(pdf, _t, ctx: dict) -> None:
     """PDF — espelho da §1-J: pagamento fora de contrato regular (TAC/indenização) + emergencial + worklist."""
     tj = ctx.get("tac_orgao") or {}
@@ -1700,6 +1761,9 @@ def _secao_tac_pdf(pdf, _t, ctx: dict) -> None:
             _mc(pdf, 4, _t("A verificar: fornecedores acima concentram pagamento via TAC (fora de contrato regular). "
                            "Alto TAC% por si e indicio de contratacao fora de licitacao. INDISPONIVEL != afastado."))
         pdf.set_text_color(0, 0, 0)
+        # fotos das fachadas-suspeitas (B2) dos co-suspeitos com sede-indicio — reusa o helper de inteligencia
+        if suspeitos:
+            _fotos_fachada_suspeitos_pdf(pdf, _t, suspeitos)
 
 
 def render_pdf(ctx: dict, destino: str) -> str:

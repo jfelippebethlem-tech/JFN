@@ -168,6 +168,37 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-14 (fotos de fachada no /orgao + índice navegável no B2):** as **fotos de fachada das sedes FLAGUEADAS vivem no
+  Backblaze B2** (`b2:jfn-backup-jorge/fachadas/<cnpj>.jpg`); a **coluna `verificacao_sede.visual_img_b2` é a fonte de
+  verdade** (caminho do objeto). **/relatorio** e agora **/orgao** (§1-J, worklist de co-suspeitos por TAC) BAIXAM a foto
+  on-demand via `rclone cat` (helper `inteligencia._foto_fachada_b2`, reusado pelo `inteligencia_orgao`) e a embutem no
+  PDF com legenda honesta (classe visual + fonte; indício ≠ prova) — degrada honesto se faltar/rclone falhar. O sync
+  (`tools/fachada_b2_sync.py`) sobe a foto E mantém um **manifesto navegável** no bucket (`fachadas/_index.csv` +
+  `_index.html`: cnpj/razão/classe/órgão-UG/valor/objeto/arquivo, sem CPF — LGPD), atualizado a cada ciclo (`--so-index`
+  regenera só o índice). Provado: /orgao FSERJ (UG 294200) embute a foto do IDESI; `_index.csv` confirmado no bucket.
+- **06-14 (dump Sócios Receita + rede de fornecedores):** baixado dump CNPJ 2026-05 (Socios+Empresas+lookups, 1,9G em
+  `data/receita_dump/`, gitignored) — fonte: **Nextcloud `arquivos.receitafederal.gov.br` share `YggdBLfdninEJX9`**
+  via WebDAV (o host antigo `dadosabertos.rfb.gov.br`/SERPRO é **BLOQUEADO** desta VM, TCP 443 timeout). Novo
+  `tools/socios_dump_sweep.py` (streaming `unzip -p`, VM-safe, 38s p/ 27,6M linhas) → tabela **`socios_receita`**
+  (27.027 sócios, 12.302 dos 13.785 fornecedores nossos c/ QSA REAL — inclui Presidente/Diretor de associação, NÃO
+  descartados) + **`rede_socios_fornecedores`** (1.271 pessoas ligando ≥2 fornecedores nossos). `socios_fornecedor`
+  (API, 31.449) INTACTA. `tools/socios_reverso_grep.py` = busca reversa stream-grep p/ 1 alvo. **Reverso do presid.
+  IDESI FILIPE RAMOS PEREIRA (`***002167**`):** aparece em **2** CNPJs — IDESI (28470707, Presidente) + **SIGNAL RIO
+  LTDA (23645251, Sócio-Adm desde 02/2026, soc. empresária ltda — NÃO é fornecedor nosso)**.
+- **06-14 cont.40 (caso IDESI + playbook fachada de alto valor):** 1º caso completo do playbook de **fachada de OS de
+  alto valor** (capacidade visão-LLM que o cont.39 marcou "a construir" — agora existe). **IDESI**
+  (28.470.707/0001-80, assoc. privada, presid. FILIPE RAMOS PEREIRA): **R$508M da Fund. Saúde RJ (UG 294200, #3
+  favorecida), 40% via TAC (R$204M)**, **Receita INAPTA "inexistência de fato" desde 28/01/2026**, sem negócio no
+  Google, foto área rural, sede "Sala 207" MG c/ tel DDD 21 → veredito do dono = **fachada** (🔴 ABERTO; pendente: dump
+  QSA p/ rede do presidente + 23 SEI). Pipeline: `sede_google.py`/`sweep_sede_google.py` →
+  `verificacao_endereco.classificar_local_por_imagem`/`fachada_visual_sweep.py` (Mapillary→Esri + Gemini grátis, R$0)
+  → `doubt_sender_fachada.py`/`fachada_doubt.py` (`fachada_veredito`) → Receita por brasilapi/minhareceita/cnpj.ws →
+  OB/TAC → `sei_sweep.py`; rede reversa só via **dump Dados Abertos QSA (streaming, VM-safe)**. Fix:
+  `fachada_doubt.processar_respostas` tolera resposta Telegram **sem quote** (correlaciona ao pendente mais recente).
+  Cota: **Maps Embed grátis** (Playwright screenshot) vs Street View medido; cache+dedup por prédio mata ~90%; **não
+  girar API keys** (ToS). Encodado no vault: [[aprendizados/investigacao-fachada-os-alto-valor]],
+  [[casos/idesi-fundacao-saude-rj]], [[notas/sku-imagem-google-sem-cota]],
+  [[aprendizados/captura-passiva-telegram-sem-quote]].
 - **06-14 cont.39 (cota: auditoria de herança + priorização do sweep):** sweep de sede no **teto da cota** geo/addr
   (9999/9999, reseta **2026-07-14**); **12.619/14.424 = 87,5%** verificados. **Auditoria de herdabilidade dos 1.805
   pendentes: 0 herdáveis** (nem prédio nem CEP — todos em locais únicos; bate com o log do sweep). Achado: os pendentes
