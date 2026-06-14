@@ -129,9 +129,20 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
             _log(f"diário {ano}: correlação OB↔SEI → {corr.get('ordens_com_sei')} OBs com SEI ({corr.get('processos_sei_distintos')} processos)")
         except Exception as e:  # noqa: BLE001
             _log(f"diário {ano}: correlação SEI falhou: {type(e).__name__}: {str(e)[:60]}")
+        # RESUMO DE FAVORECIDOS: a tabela `favorecido_resumo` (GROUP BY de OB por favorecido_cpf, 74k linhas)
+        # acelera ~15× o resolver de fornecedor (buscar_candidatos). Reconstruída AQUI, após a ingestão
+        # incremental, p/ não ficar stale conforme novas OBs entram (refresh de menor acoplamento; o diário
+        # já roda no cron 05:00). Idempotente e best-effort — falha aqui NÃO derruba o diário.
+        resumo_fav = {}
+        try:
+            from compliance_agent.reporting.inteligencia import atualizar_favorecido_resumo
+            resumo_fav = atualizar_favorecido_resumo()
+            _log(f"diário {ano}: favorecido_resumo → {resumo_fav.get('linhas')} favorecidos")
+        except Exception as e:  # noqa: BLE001
+            _log(f"diário {ano}: favorecido_resumo falhou: {type(e).__name__}: {str(e)[:60]}")
         return {"ok": True, "exercicio": ano, "colhidas": res.get("n"),
                 "ingeridas": ing.get("ingeridas"), "total_tabela": ing.get("total_tabela"),
-                "verificador_dias": verif, "correlacao_sei": corr}
+                "verificador_dias": verif, "correlacao_sei": corr, "favorecido_resumo": resumo_fav}
     finally:
         _release()
 
