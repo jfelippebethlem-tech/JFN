@@ -291,6 +291,7 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     ctx["penalidades_tce"] = _penalidades_tce_orgao(ug_cod)  # sanções do TCE-RJ ao órgão (controle externo)
     ctx["concentracao_grupo"] = _concentracao_grupo_orgao(ug_cod)  # concentração oculta por grupo (cartel/conc. fictícia)
     ctx["painel_detectores"] = _painel_detectores_orgao(ug_cod)  # §1-I: visão unificada dos detectores (spec licitações)
+    ctx["tac_orgao"] = _tac_orgao(ug_cod)  # §1-J: pagamento fora de contrato (TAC/indenização) + emergencial + worklist
     ctx["raciocinio"] = parecer_raciocinado_orgao(ctx)  # síntese de IA sobre os fatos (degrada honesto)
 
     md = render_md(ctx)
@@ -421,6 +422,31 @@ def _fatos_orgao(ctx: dict) -> str:
                  f"concentrando {mm.get('share', 0):.1f}% do valor (R$ {moeda(mm.get('total', 0))}; "
                  f"ex.: {(mm.get('top_nome') or '—')[:30]}). Indício de diversidade fictícia/fracionamento a "
                  "corroborar com editais/licitantes (SEI/PNCP); QSA mascarado/INDISPONÍVEL ≠ afastado.")
+    tj = ctx.get("tac_orgao") or {}
+    if tj.get("ok"):
+        ug_m = tj.get("tac_ug") or {}
+        emerg = tj.get("emergencial") or {}
+        wl = tj.get("worklist") or {}
+        susp = [f for f in (wl.get("fornecedores") or []) if f.get("sede_indicio")]
+        frase = ("Pagamento FORA de contrato regular (TAC/indenização/reconhecimento de dívida) na UG: "
+                 f"{ug_m.get('pct', 0):.1f}% de R$ {moeda(ug_m.get('total', 0))} pagos "
+                 f"(R$ {moeda(ug_m.get('total_tac', 0))} em {ug_m.get('n_tac', 0)} OBs) — indício SISTÊMICO de "
+                 "contratação informal/emergencial perpetuada e fuga ao dever de licitar (off-contract spend; "
+                 "art. 59 par. único Lei 8.666; art. 149 Lei 14.133; art. 37 CF/88).")
+        if emerg.get("ok"):
+            frase += (f" Red flag irmã emergencial/dispensa: {emerg.get('n_emerg', 0)} OBs "
+                      f"(R$ {moeda(emerg.get('total_emerg', 0))}) citam EMERGENCIAL/DISPENSA.")
+        wl_top = (wl.get("fornecedores") or [])[:4]
+        if wl_top:
+            frase += (" Worklist de co-suspeitos por TAC%: "
+                      + "; ".join(f"{(f.get('nome') or '—')[:26]} {f.get('pct', 0):.0f}% "
+                                  f"(R$ {moeda(f.get('total_tac', 0))})"
+                                  + (" [sede-fachada]" if f.get("sede_indicio") else "")
+                                  for f in wl_top) + ".")
+        if susp:
+            frase += (f" {len(susp)} fornecedor(es) da worklist somam alto TAC% E sede com indício de fachada "
+                      "(INDÍCIO/sem-Google) — hipótese de fachada/interposição reforçada, a apurar (indício, não acusação).")
+        L.append(frase)
     pd = ctx.get("painel_detectores") or {}
     if pd.get("ok") and pd.get("confirmados"):
         # Painel CONSOLIDA os detectores do spec (§1-I); aqui só os CONFIRMADOS entram no raciocínio. Não
@@ -739,6 +765,28 @@ def _painel_detectores_orgao(ug: str) -> dict:
         "n_descartados": len(descartados),
         "n_nao_avaliaveis": len(nao_avaliaveis),
     }
+
+
+def _tac_orgao(ug: str) -> dict:
+    """§1-J — pagamento FORA de contrato regular (TAC/indenização) + emergencial/dispensa, NÍVEL ÓRGÃO.
+
+    Reúne (reusando `reporting.detector_tac`): (a) o % e R$ que a UG pagou via Termo de Ajuste de Contas /
+    indenização / reconhecimento de dívida (`tac_por_ug`); (b) a WORKLIST dos fornecedores da UG com maior
+    TAC% e R$, marcando os com sede INDÍCIO/sem-Google (`worklist_tac_por_ug`); (c) a red flag IRMÃ
+    emergencial/dispensa (`medir_emergencial`). É o achado FSERJ codificado como padrão de órgão. Bounded,
+    degrada honesto. HONESTO: indício de contratação fora de licitação, NÃO acusação individual."""
+    try:
+        from compliance_agent.reporting import detector_tac as dt
+        ug_m = dt.tac_por_ug(str(ug))
+        emerg = dt.medir_emergencial(str(ug))
+        worklist = dt.worklist_tac_por_ug(str(ug), top_n=12)
+        # dispara quando o TAC da UG é relevante (≥ faixa mínima e há valor) ou há worklist/emergencial
+        tac_relevante = (ug_m.get("pct", 0) >= dt._FAIXA_MIN) and (ug_m.get("total_tac", 0) > 0)
+        ok = bool(tac_relevante or worklist.get("ok") or emerg.get("ok"))
+        return {"ok": ok, "tac_ug": ug_m, "emergencial": emerg, "worklist": worklist}
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("TAC/emergencial do órgão %s degradou (seção 1-J): %s", ug, exc)
+        return {"ok": False, "_nota": str(exc)[:160]}
 
 
 # ───────────────────────────── render Markdown ─────────────────────────────
@@ -1075,6 +1123,79 @@ def _secao_painel_detectores_md(add, ctx: dict) -> None:
     add("")
 
 
+def _secao_tac_md(add, ctx: dict) -> None:
+    """Seção 1-J — pagamento FORA de contrato regular (TAC/indenização) + emergencial/dispensa, com a
+    WORKLIST dos fornecedores de maior TAC% (marcando sede INDÍCIO/sem-Google). Achado FSERJ como padrão."""
+    tj = ctx.get("tac_orgao") or {}
+    add("## 1-J. PAGAMENTO FORA DE CONTRATO REGULAR (TAC/INDENIZAÇÃO) + EMERGENCIAL")
+    add("")
+    add("> Quanto a UG pagou **FORA de contrato regular licitado** — via **Termo de Ajuste de Contas (TAC)**, "
+        "**indenização** ou **reconhecimento de dívida** (regularização *a posteriori*: art. 59 par. único Lei "
+        "8.666/93; art. 149 Lei 14.133/21) — e quanto saiu por **emergencial/dispensa**. Recorrente e vultoso, é "
+        "indício SISTÊMICO de **contratação informal/emergencial perpetuada e fuga ao dever de licitar** (art. 37 "
+        "CF/88). **Indício quantitativo da PRÁTICA do órgão, NÃO acusação individual**; INDISPONÍVEL (sem texto na "
+        "OB) ≠ 0%.")
+    add("")
+    if not tj.get("ok"):
+        _nota = tj.get("_nota") or "sem TAC/indenização nem emergencial relevante na observação das OBs desta UG"
+        add(f"_Sem padrão relevante de TAC/indenização ou emergencial para esta UG ({_nota}). "
+            "**INDISPONÍVEL ≠ ausência** — depende da observação preenchida na OB._")
+        add("")
+        return
+    ug_m = tj.get("tac_ug") or {}
+    emerg = tj.get("emergencial") or {}
+    wl = tj.get("worklist") or {}
+    # (a) TAC sistêmico da UG
+    add(f"**TAC/indenização (sistêmico da UG):** **{ug_m.get('pct', 0):.1f}%** de R$ {moeda(ug_m.get('total', 0))} "
+        f"pagos saíram fora de contrato regular — **R$ {moeda(ug_m.get('total_tac', 0))}** em "
+        f"{ug_m.get('n_tac', 0)} OB(s). _Cobertura: {ug_m.get('cobertura', '—')}._")
+    add("")
+    if ug_m.get("pct", 0) >= 25:
+        add(f"> 🔴 **Red flag (off-contract spend):** mais de um quarto do que a UG pagou ({ug_m.get('pct', 0):.0f}%) "
+            "saiu por TAC/indenização — apurar a existência de contrato, a causa da 'dívida' e a regularidade da "
+            "despesa (art. 59 par. único Lei 8.666; art. 149 Lei 14.133; art. 10 Lei 8.429/92).")
+        add("")
+    # (b) emergencial / dispensa (red flag irmã)
+    if emerg.get("ok"):
+        add(f"**Emergencial/dispensa (red flag irmã):** **{emerg.get('n_emerg', 0)}** OB(s) citam "
+            f"EMERGENCIAL/DISPENSA na observação — R$ {moeda(emerg.get('total_emerg', 0))} "
+            f"({emerg.get('pct', 0):.1f}% do valor com observação). Dispensa/emergência reiterada (art. 75 IV/VIII "
+            "Lei 14.133; art. 24 IV Lei 8.666) reforça a hipótese de fuga ao certame. _Indício a verificar._")
+        add("")
+    # (c) worklist dos fornecedores com maior TAC%
+    forn = wl.get("fornecedores") or []
+    if forn:
+        add(f"**Worklist — fornecedores da UG com maior pagamento via TAC/indenização** "
+            f"({wl.get('n_fornecedores', 0)} de maior materialidade):")
+        add("")
+        add("| # | Fornecedor (CNPJ) | TAC % | R$ via TAC | Total pago | Sede |")
+        add("|--:|---|--:|--:|--:|:--|")
+        for i, f in enumerate(forn, 1):
+            nome = f"{(f.get('nome') or '—')[:40]} ({fmt_cnpj(f['cnpj'])})" if f.get("cnpj") else (f.get("nome") or "—")[:40]
+            if f.get("sede_indicio"):
+                marca = ("🟡 sede INDÍCIO" + (" · sem Google" if f.get("sem_google") else "")
+                         if f.get("sede_status") == "INDICIO" else "🟡 sem Google")
+            elif f.get("sede_status") == "AFASTADO":
+                marca = "✔ sede real"
+            else:
+                marca = "… INDISPONÍVEL"
+            add(f"| {i} | {nome} | {f.get('pct', 0):.0f}% | {moeda(f.get('total_tac', 0))} | "
+                f"{moeda(f.get('total', 0))} | {marca} |")
+        add("")
+        suspeitos = [f for f in forn if f.get("sede_indicio")]
+        if suspeitos:
+            nomes = "; ".join(f"**{(s.get('nome') or '—')[:30]}** ({s.get('pct', 0):.0f}% TAC)" for s in suspeitos[:6])
+            add(f"> 🟡 **Co-suspeitos a priorizar:** {len(suspeitos)} fornecedor(es) da worklist têm **sede com "
+                f"indício de fachada** (INDÍCIO ou sem negócio no Google) ALÉM do alto TAC% — {nomes}. A combinação "
+                "**alto pagamento fora de contrato + sede-fachada** eleva a hipótese de empresa de fachada/"
+                "interposição; puxar o contrato, o processo SEI e a verificação de sede. **Indício ≠ acusação.**")
+        else:
+            add("> 🟡 **A verificar:** os fornecedores acima concentram pagamento via TAC/indenização (fora de "
+                "contrato regular). Nenhum, entre os verificados, tem sede com indício de fachada — mas o alto "
+                "TAC% por si é indício de contratação fora de licitação a apurar. **INDISPONÍVEL ≠ afastado.**")
+        add("")
+
+
 def render_md(ctx: dict) -> str:
     p = ctx["pagamentos"]
     sigla, descr = _sigla_descr(ctx["nome"])
@@ -1227,6 +1348,8 @@ def render_md(ctx: dict) -> str:
     _secao_concentracao_grupo_md(add, ctx)
     # 1-I. Painel de detectores (spec de licitações) — visão unificada dos ResultadoDetector (J1 + futuros)
     _secao_painel_detectores_md(add, ctx)
+    # 1-J. Pagamento fora de contrato regular (TAC/indenização) + emergencial + worklist de co-suspeitos
+    _secao_tac_md(add, ctx)
 
     # Tabelas de OBs por ano (pagamentos individuais a cada fornecedor)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
@@ -1525,6 +1648,60 @@ def _secao_painel_detectores_pdf(pdf, _t, ctx: dict) -> None:
     pdf.set_text_color(0, 0, 0)
 
 
+def _secao_tac_pdf(pdf, _t, ctx: dict) -> None:
+    """PDF — espelho da §1-J: pagamento fora de contrato regular (TAC/indenização) + emergencial + worklist."""
+    tj = ctx.get("tac_orgao") or {}
+    pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+    pdf.cell(0, 8, _t("Pagamento fora de contrato regular (TAC/indenizacao) + emergencial"), ln=True)
+    pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+    _mc(pdf, 4.5, _t("Quanto a UG pagou FORA de contrato regular licitado (Termo de Ajuste de Contas, indenizacao, "
+                     "reconhecimento de divida - art. 59 par. unico Lei 8.666; art. 149 Lei 14.133) e por "
+                     "emergencial/dispensa. Recorrente e vultoso = indicio sistemico de fuga ao dever de licitar "
+                     "(art. 37 CF/88). Indicio da PRATICA do orgao, NAO acusacao individual; INDISPONIVEL != 0."))
+    if not tj.get("ok"):
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t("Sem padrao relevante de TAC/indenizacao nem emergencial para esta UG (INDISPONIVEL != "
+                         "ausencia - depende da observacao da OB)."))
+        pdf.set_text_color(0, 0, 0); return
+    ug_m = tj.get("tac_ug") or {}; emerg = tj.get("emergencial") or {}; wl = tj.get("worklist") or {}
+    pdf.ln(1)
+    _mc(pdf, 4.5, _t(f"TAC/indenizacao (sistemico da UG): {ug_m.get('pct', 0):.1f}% de R$ {moeda(ug_m.get('total', 0))} "
+                     f"pagos fora de contrato regular - R$ {moeda(ug_m.get('total_tac', 0))} em "
+                     f"{ug_m.get('n_tac', 0)} OB(s). Cobertura: {ug_m.get('cobertura', '-')}."))
+    if emerg.get("ok"):
+        _mc(pdf, 4.5, _t(f"Emergencial/dispensa (red flag irma): {emerg.get('n_emerg', 0)} OB(s) citam EMERGENCIAL/"
+                         f"DISPENSA - R$ {moeda(emerg.get('total_emerg', 0))} ({emerg.get('pct', 0):.1f}% do valor "
+                         "com observacao). Dispensa/emergencia reiterada reforca a fuga ao certame."))
+    forn = wl.get("fornecedores") or []
+    if forn:
+        pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
+        pdf.cell(0, 7, _t(f"Worklist - fornecedores da UG com maior pagamento via TAC ({wl.get('n_fornecedores', 0)})"), ln=True)
+        _tab_header(pdf, [("Fornecedor (CNPJ)", 92), ("TAC %", 16), ("R$ via TAC", 34), ("Total (R$)", 34), ("Sede", 24)])
+        pdf.set_font(pdf._fam, "", 7)
+        for f in forn:
+            nome = f"{(f.get('nome') or '-')[:34]} ({fmt_cnpj(f['cnpj'])})" if f.get("cnpj") else (f.get("nome") or "-")[:34]
+            if f.get("sede_indicio"):
+                marca = "INDICIO" if f.get("sede_status") == "INDICIO" else "sem Google"
+            elif f.get("sede_status") == "AFASTADO":
+                marca = "real"
+            else:
+                marca = "INDISPON."
+            _tab_row(pdf, [(_t(nome)[:58], 92, "L"), (f"{f.get('pct', 0):.0f}%", 16, "R"),
+                           (moeda(f.get("total_tac", 0)), 34, "R"), (moeda(f.get("total", 0)), 34, "R"),
+                           (_t(marca), 24, "C")], h=4.6)
+        suspeitos = [f for f in forn if f.get("sede_indicio")]
+        pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(150, 90, 0)
+        if suspeitos:
+            nomes = "; ".join(f"{(s.get('nome') or '-')[:24]} ({s.get('pct', 0):.0f}% TAC)" for s in suspeitos[:5])
+            _mc(pdf, 4, _t(f"Co-suspeitos a priorizar: {len(suspeitos)} fornecedor(es) tem sede com indicio de "
+                           f"fachada ALEM do alto TAC% - {nomes}. Alto pagamento fora de contrato + sede-fachada "
+                           "eleva a hipotese de empresa de fachada/interposicao. Indicio != acusacao."))
+        else:
+            _mc(pdf, 4, _t("A verificar: fornecedores acima concentram pagamento via TAC (fora de contrato regular). "
+                           "Alto TAC% por si e indicio de contratacao fora de licitacao. INDISPONIVEL != afastado."))
+        pdf.set_text_color(0, 0, 0)
+
+
 def render_pdf(ctx: dict, destino: str) -> str:
     from fpdf import FPDF
     p = ctx["pagamentos"]
@@ -1663,6 +1840,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         _secao_tce_pdf(pdf, _t, ctx)
         _secao_concentracao_grupo_pdf(pdf, _t, ctx)
         _secao_painel_detectores_pdf(pdf, _t, ctx)
+        _secao_tac_pdf(pdf, _t, ctx)  # §1-J: TAC/indenização + emergencial + worklist de co-suspeitos
 
         # OBs por ano
         for a in p["anos"]:
