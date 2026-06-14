@@ -168,6 +168,18 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-14 (storage SOMADO R2+B2 das fotos de fachada — guard de 10GB):** as fotos passaram de single-remote B2 para
+  **R2+B2 SOMADOS** (10GB+10GB) — **cada foto em UM bucket só, sem duplicar** (NÃO é mirror). Novo
+  **`compliance_agent/fachada_remotes.py`** (fonte única): lista ordenada [(r2,jorgefelippe),(b2,jfn-backup-jorge)] +
+  teto por remote (env `FACHADA_R2_CAP_GB`/`FACHADA_B2_CAP_GB`, default **9,5GB** = margem sob o teto rígido de 10GB do
+  R2) + `SelecionadorRemote.escolher(tam)` que enche o **R2 (primário, egress zero)** e **transborda pro B2** no teto
+  (consulta `rclone size` 1×/remote/run + acumula bytes em RAM; ambos cheios → degrada honesto, não estoura).
+  `visual_img_b2` agora guarda a **localização COMPLETA** `remote:bucket/objeto`. `fachada_b2_sync.py` usa
+  `escolher_remote()` e grava o local completo; índice `_index.csv/_index.html` (com coluna Bucket) **só no R2**.
+  `inteligencia._foto_fachada_b2` lê do `remote:bucket` EXATO (sem failover). **Provado no PDF real:** /orgao FSERJ
+  (294200) + /relatorio IDESI embutem a foto do IDESI vinda do R2. **Guard provado:** `FACHADA_R2_CAP_GB=0.00001` → a
+  foto seguinte foi pro `b2:jfn-backup-jorge` e o helper a lê de lá. **Desduplicação:** cópia do B2 (foto+índice)
+  apagada, IDESI mantido no R2. 11 testes novos (`tests/test_fachada_remotes.py`). Commit `daef6ae`.
 - **06-14 (fotos de fachada no /orgao + índice navegável no B2):** as **fotos de fachada das sedes FLAGUEADAS vivem no
   Backblaze B2** (`b2:jfn-backup-jorge/fachadas/<cnpj>.jpg`); a **coluna `verificacao_sede.visual_img_b2` é a fonte de
   verdade** (caminho do objeto). **/relatorio** e agora **/orgao** (§1-J, worklist de co-suspeitos por TAC) BAIXAM a foto
