@@ -5,13 +5,14 @@
  */
 
 import { PrismaClient } from '@prisma/client'
-import { processarJob, enqueueJob, lembrar } from '../lib/hermes'
+import { processarJob, enqueueJob, lembrar, cicloAutonomo } from '../lib/hermes'
 
 const prisma = new PrismaClient()
 
 const INTERVAL_JOBS = 30_000       // verifica jobs a cada 30s
 const INTERVAL_SCAN = 2 * 60_000   // escaneia novos dados a cada 2min
 const INTERVAL_DAILY = 60 * 60_000 // resumo diário a cada 1h
+const INTERVAL_AUTONOMO = 45 * 60_000 // ciclo autônomo (capta estado + age) a cada 45min
 
 let lastScanDemandas: Date = new Date(0)
 let lastScanPosts: Date = new Date(0)
@@ -170,16 +171,30 @@ async function inicializar() {
 
 // ─── Entry point ────────────────────────────────────────────────────────────────
 
+// ─── Ciclo autônomo: capta o estado completo e decide UMA ação via catálogo ─────
+
+async function rodarCicloAutonomo() {
+  console.log('[Hermes] 🤖 Ciclo autônomo: captando estado e decidindo ação...')
+  try {
+    const resumo = await cicloAutonomo()
+    console.log(`[Hermes] ✓ ${resumo}`)
+  } catch (err) {
+    console.error('[Hermes] Erro no ciclo autônomo:', err)
+  }
+}
+
 async function main() {
   await inicializar()
 
   setInterval(processarJobsPendentes, INTERVAL_JOBS)
   setInterval(escanearNovosDados, INTERVAL_SCAN)
   setInterval(verificarResumoDiario, INTERVAL_DAILY)
+  setInterval(rodarCicloAutonomo, INTERVAL_AUTONOMO)
 
   // Executa imediatamente na inicialização
   await escanearNovosDados()
   setTimeout(processarJobsPendentes, 5000)
+  setTimeout(rodarCicloAutonomo, 120_000) // primeiro ciclo após 2min
 }
 
 main().catch((err) => {

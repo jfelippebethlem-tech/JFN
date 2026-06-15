@@ -4,17 +4,24 @@
  */
 import { syncAll, analisarTopPosts, analisarAudiencia, gerarRelatorioSemanal, gerarRankingCabos } from '../lib/bond'
 import { prisma } from '../lib/db'
+import { quemCobrar, recomputarStreaks } from '../lib/metricas'
+import { enfileirarBroadcast } from '../lib/whatsapp'
+import { sincronizarAdversarios } from '../lib/adversarios'
 
 const INTERVAL_SYNC      = 30 * 60_000           // sync a cada 30min
 const INTERVAL_ANALISE   = 60 * 60_000            // análise a cada 1h
 const INTERVAL_RELATORIO = 24 * 60 * 60_000       // relatório diário
 const INTERVAL_CHECKLIST = 30 * 60_000            // checklist 6h a cada 30min
+const INTERVAL_NOTIFICA  = 10 * 60_000            // avisar apoiadores de novos posts a cada 10min
+const INTERVAL_ADVERSARIO = 6 * 60 * 60_000       // sincronizar adversários a cada 6h
 
 console.log('🔗 Bond Agent iniciando...')
 console.log(`   Sync de posts: a cada 30min`)
 console.log(`   Análise IA: a cada 1h`)
+console.log(`   Notificar apoiadores (WhatsApp): a cada 10min`)
 console.log(`   Checklist 6h: a cada 30min`)
-console.log(`   Relatório semanal: diário`)
+console.log(`   Adversários: a cada 6h`)
+console.log(`   Relatório semanal + quem cobrar: diário`)
 console.log('─'.repeat(50))
 
 async function runSync() {
@@ -179,16 +186,77 @@ async function runRankingSemanal() {
   }
 }
 
+// Avisa apoiadores via WhatsApp quando há post novo (janela crítica das 2h)
+async function runNotificarNovosPosts() {
+  try {
+    const limite = new Date(Date.now() - 12 * 60 * 60 * 1000) // posts das últimas 12h
+    const novos = await prisma.bondPost.findMany({
+      where: { notificado: false, publicadoEm: { gte: limite }, perfil: { categoria: 'proprio' } },
+      orderBy: { publicadoEm: 'desc' },
+    })
+    for (const post of novos) {
+      const link = post.url ? `\n👉 ${post.url}` : ''
+      const resumo = (post.conteudo ?? '').slice(0, 100)
+      const msg = `🔔 Nova publicação no ${post.plataforma}!\n\n"${resumo}${resumo.length >= 100 ? '...' : ''}"${link}\n\n⏰ As primeiras 2 horas definem o alcance! Curta, comente e compartilhe AGORA. 💪`
+      const r = await enfileirarBroadcast(msg, 'notificacao', post.id)
+      await prisma.bondPost.update({ where: { id: post.id }, data: { notificado: true } })
+      console.log(`[Bond] 📱 Apoiadores notificados sobre post ${post.id}: ${r.enfileirados} mensagens`)
+    }
+  } catch (err) {
+    console.error('[Bond] Erro ao notificar novos posts:', err)
+  }
+}
+
+// Recalcula streaks e gera relatório diário "quem cobrar"
+async function runQuemCobrar() {
+  const hoje = new Date()
+  try {
+    await recomputarStreaks()
+    const alvos = await quemCobrar(3)
+    if (alvos.length === 0) return
+
+    const top = alvos.slice(0, 15).map((a, i) =>
+      `${i + 1}. ${a.nome}${a.telefone ? ` (${a.telefone})` : ''} — faltou em ${a.postsRecentesSemEngajar} post(s), consistência ${a.consistenciaPct}%`
+    ).join('\n')
+
+    await prisma.bondInsight.create({
+      data: {
+        titulo: `📋 Quem cobrar hoje — ${hoje.toLocaleDateString('pt-BR')}`,
+        descricao: `${alvos.length} apoiadores não engajaram nos posts recentes. Prioridade de cobrança:\n\n${top}`,
+        tipo: 'cobranca',
+        dados: JSON.stringify({ alvos: alvos.slice(0, 30) }),
+      },
+    })
+    console.log(`[Bond] ✓ Relatório "quem cobrar" gerado (${alvos.length} alvos)`)
+  } catch (err) {
+    console.error('[Bond] Erro no quem cobrar:', err)
+  }
+}
+
+async function runSincronizarAdversarios() {
+  try {
+    const r = await sincronizarAdversarios()
+    console.log(`[Bond] ✓ Adversários sincronizados: ${r.sincronizados}`)
+  } catch (err) {
+    console.error('[Bond] Erro ao sincronizar adversários:', err)
+  }
+}
+
 async function main() {
   await runSync()
   setTimeout(runAnalise, 10_000)
   setTimeout(runChecklistReports, 60_000)
+  setTimeout(runNotificarNovosPosts, 30_000)
+  setTimeout(runQuemCobrar, 90_000)
 
   setInterval(runSync, INTERVAL_SYNC)
   setInterval(runAnalise, INTERVAL_ANALISE)
   setInterval(runRelatorio, INTERVAL_RELATORIO)
   setInterval(runChecklistReports, INTERVAL_CHECKLIST)
   setInterval(runRankingSemanal, INTERVAL_RELATORIO)
+  setInterval(runNotificarNovosPosts, INTERVAL_NOTIFICA)
+  setInterval(runQuemCobrar, INTERVAL_RELATORIO)
+  setInterval(runSincronizarAdversarios, INTERVAL_ADVERSARIO)
 
   console.log('[Bond] ✓ Rodando. Próximo sync em 30min.\n')
 }

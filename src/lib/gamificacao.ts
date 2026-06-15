@@ -45,11 +45,18 @@ export function getBadges(p: {
   score: number
   plataformasVinculadas: string[]
   posicaoRanking?: number
+  streak?: number
 }): Badge[] {
   const badges: Badge[] = []
 
   if (p.score > 0) {
     badges.push({ id: 'primeiro_passo', emoji: '🌟', nome: 'Primeiro Passo', descricao: 'Primeiro engajamento registrado' })
+  }
+  if ((p.streak ?? 0) >= 3) {
+    badges.push({ id: 'streak3', emoji: '🔥', nome: 'Em Chamas', descricao: `Engajou em ${p.streak} posts seguidos` })
+  }
+  if ((p.streak ?? 0) >= 7) {
+    badges.push({ id: 'streak7', emoji: '⚡', nome: 'Imparável', descricao: `Sequência de ${p.streak} posts!` })
   }
   if (p.totalLikes >= 10) {
     badges.push({ id: 'fa_dedicado', emoji: '❤️', nome: 'Fã Dedicado', descricao: '10+ curtidas' })

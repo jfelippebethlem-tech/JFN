@@ -11,14 +11,16 @@
     "db:seed": "tsx prisma/seed.ts",
     "hermes": "tsx src/agent/hermes-worker.ts",
     "bond": "tsx src/agent/bond-worker.ts",
+    "whatsapp": "tsx src/agent/whatsapp-worker.ts",
     "test": "tsx src/tests/run.ts",
-    "launch": "concurrently --prefix-colors \"bgBlue.bold,bgMagenta.bold,bgGreen.bold\" --names \"🏛 APP,🪽 HERMES,🔗 BOND\" \"next dev\" \"tsx src/agent/hermes-worker.ts\" \"tsx src/agent/bond-worker.ts\"",
+    "launch": "concurrently --prefix-colors \"bgBlue.bold,bgMagenta.bold,bgGreen.bold,bgYellow.bold\" --names \"🏛 APP,🪽 HERMES,🔗 BOND,📱 WPP\" \"next dev\" \"tsx src/agent/hermes-worker.ts\" \"tsx src/agent/bond-worker.ts\" \"tsx src/agent/whatsapp-worker.ts\"",
     "postinstall": "prisma generate"
   },
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
     "@prisma/client": "^5.13.0",
     "@types/papaparse": "^5.5.2",
+    "@whiskeysockets/baileys": "^7.0.0-rc13",
     "clsx": "^2.1.1",
     "date-fns": "^3.6.0",
     "jose": "^5.2.4",
@@ -26,6 +28,8 @@
     "next": "14.2.3",
     "node-telegram-bot-api": "^0.66.0",
     "papaparse": "^5.5.3",
+    "pino": "^10.3.1",
+    "qrcode": "^1.5.4",
     "react": "^18",
     "react-dom": "^18",
     "tailwind-merge": "^2.3.0"
@@ -33,6 +37,7 @@
   "devDependencies": {
     "@types/node": "^20",
     "@types/node-telegram-bot-api": "^0.64.7",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^18",
     "@types/react-dom": "^18",
     "autoprefixer": "^10.0.1",

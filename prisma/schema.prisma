@@ -10,7 +10,7 @@ datasource db {
 model Pessoa {
   id           String   @id @default(cuid())
   nome         String
-  tipo         String   // "funcionario" | "apoiador" | "contato"
+  tipo         String   // "funcionario" | "apoiador" | "coordenador" | "contato"
   cargo        String?
   email        String?
   telefone     String?
@@ -20,11 +20,17 @@ model Pessoa {
   telegramUser String?
   ativo        Boolean  @default(true)
   observacoes  String?
+  // ── Métricas avançadas / gamificação ──
+  seguidores   Int      @default(0)  // nº de seguidores do apoiador (p/ Influencer Score)
+  streak       Int      @default(0)  // posts consecutivos em que engajou (sequência)
+  npsUltimo    Int?                  // última nota pNPS (0-10)
+  npsData      DateTime?             // data da última resposta pNPS
   criadoEm     DateTime @default(now())
   atualizadoEm DateTime @updatedAt
   posts        Post[]
   demandas     Demanda[]
   bondFas      BondFa[]
+  npsRespostas NpsResposta[]
 }
 
 model Post {
@@ -133,6 +139,7 @@ model BondPerfil {
   bio          String?
   fotoUrl      String?
   ativo        Boolean   @default(true)
+  categoria    String    @default("proprio") // "proprio" | "adversario"
   ultimaSync   DateTime?
   criadoEm    DateTime  @default(now())
   postagens    BondPost[]
@@ -157,6 +164,7 @@ model BondPost {
   publicadoEm   DateTime
   sincronizadoEm DateTime @default(now())
   fasJson        String?  // JSON array of {id,nome,username} who engaged
+  notificado     Boolean  @default(false) // já avisou apoiadores via WhatsApp?
   perfilId       String
   perfil         BondPerfil @relation(fields: [perfilId], references: [id])
 
@@ -239,4 +247,43 @@ model BondRascunho {
   agendadoPara DateTime?
   criadoEm    DateTime  @default(now())
   atualizadoEm DateTime  @updatedAt
+}
+
+// ── Fila de mensagens WhatsApp (enviadas pelo whatsapp-worker via Baileys, grátis) ──
+model WhatsappFila {
+  id           String    @id @default(cuid())
+  telefone     String    // número normalizado, ex: 5521999998888
+  mensagem     String
+  tipo         String    @default("notificacao") // "notificacao"|"cobranca"|"nps"|"conquista"|"broadcast"|"alerta"
+  status       String    @default("pendente")    // "pendente"|"enviado"|"erro"
+  erro         String?
+  pessoaId     String?   // apoiador destinatário, se houver
+  referencia   String?   // ex: postId relacionado
+  tentativas   Int       @default(0)
+  agendadoPara DateTime?
+  criadoEm    DateTime  @default(now())
+  enviadoEm    DateTime?
+}
+
+// ── Respostas pNPS dos apoiadores (Net Promoter Score político) ──
+model NpsResposta {
+  id        String   @id @default(cuid())
+  pessoaId  String
+  pessoa    Pessoa   @relation(fields: [pessoaId], references: [id])
+  nota      Int      // 0-10
+  categoria String   // "promotor" (9-10) | "passivo" (7-8) | "detrator" (0-6)
+  comentario String?
+  criadoEm DateTime @default(now())
+}
+
+// ── Registro de ações executadas pelo Hermes/sistema (auditoria p/ IA fraca) ──
+model AcaoLog {
+  id        String   @id @default(cuid())
+  acao      String   // nome da ação do catálogo
+  origem    String   @default("hermes") // "hermes" | "humano" | "sistema"
+  params    String?  // JSON dos parâmetros
+  resultado String?  // resumo do resultado
+  sucesso   Boolean  @default(true)
+  erro      String?
+  criadoEm DateTime @default(now())
 }

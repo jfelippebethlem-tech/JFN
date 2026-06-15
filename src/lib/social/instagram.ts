@@ -44,3 +44,13 @@ export async function getInstagramComments(mediaId: string) {
   const data = await res.json()
   return data.data ?? []
 }
+
+// Business Discovery: dados PÚBLICOS de outra conta Business (adversários).
+// Usa a própria conta IG como "lente" para consultar perfis públicos.
+export async function getInstagramBusinessDiscovery(meuIgId: string, username: string, limitPosts = 12) {
+  const sub = `business_discovery.username(${username}){followers_count,media_count,username,name,profile_picture_url,media.limit(${limitPosts}){id,caption,media_type,permalink,timestamp,like_count,comments_count}}`
+  const res = await fetch(igUrl(`/${meuIgId}`, `fields=${sub}`))
+  if (!res.ok) return null
+  const data = await res.json()
+  return data.business_discovery ?? null
+}

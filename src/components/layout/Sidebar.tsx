@@ -20,6 +20,8 @@ import {
   TrendingUp,
   UserCheck,
   ClipboardCheck,
+  MessageSquare,
+  Sparkles,
 } from 'lucide-react'
 import { useState } from 'react'
 import clsx from 'clsx'
@@ -29,6 +31,8 @@ const nav = [
   { href: '/pessoas', icon: Users, label: 'Pessoas' },
   { href: '/apoiadores', icon: UserCheck, label: 'Apoiadores' },
   { href: '/checklist', icon: ClipboardCheck, label: 'Checklist Posts' },
+  { href: '/inteligencia', icon: Sparkles, label: 'Inteligência' },
+  { href: '/whatsapp', icon: MessageSquare, label: 'WhatsApp' },
   { href: '/campanha', icon: TrendingUp, label: 'Campanha' },
   { href: '/bond', icon: Link2, label: 'Bond — Social' },
   { href: '/monitoramento', icon: Radio, label: 'Monitoramento' },

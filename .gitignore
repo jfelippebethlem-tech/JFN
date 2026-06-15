@@ -19,6 +19,9 @@ prisma/dev.db-wal
 *.db-shm
 *.db-wal
 
+# WhatsApp (Baileys) — credenciais da sessão, NUNCA commitar
+.whatsapp-auth/
+
 # typescript
 tsconfig.tsbuildinfo
 *.tsbuildinfo

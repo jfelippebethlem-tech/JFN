@@ -54,5 +54,22 @@ module.exports = {
       autorestart: true,
       watch: false,
     },
+    {
+      name: 'whatsapp-worker',
+      script: 'node_modules/.bin/tsx',
+      args: 'src/agent/whatsapp-worker.ts',
+      cwd: '/root/JFN',
+      instances: 1,
+      exec_mode: 'fork',
+      max_memory_restart: '400M',
+      env: {
+        NODE_ENV: 'production',
+      },
+      error_file: '/var/log/politimonitor/whatsapp-err.log',
+      out_file: '/var/log/politimonitor/whatsapp-out.log',
+      log_date_format: 'YYYY-MM-DD HH:mm:ss',
+      autorestart: true,
+      watch: false,
+    },
   ],
 }

@@ -350,6 +350,68 @@ export async function chatComHermes(
   return chatHermes(system, mensagem, historico)
 }
 
+// ─── Ciclo autônomo: Hermes capta o estado e age via catálogo de ações ──────────
+//
+// Pensado para um modelo FRACO: damos o estado resumido + uma lista curta e clara
+// de ações seguras, e pedimos UMA decisão em JSON estrito. Ações sensíveis viram
+// recomendação (não executam sozinhas — ver trava em executarAcao).
+
+export async function cicloAutonomo(): Promise<string> {
+  // import dinâmico evita qualquer ciclo de dependência
+  const { listarAcoes, executarAcao } = await import('./acoes')
+  const { captarEstadoCompleto } = await import('./estado')
+
+  const estado = await captarEstadoCompleto()
+  const acoesAuto = listarAcoes().filter(a => a.seguranca === 'auto')
+
+  const listaAcoes = acoesAuto
+    .map(a => `- ${a.nome}: ${a.descricao}${Object.keys(a.parametros).length ? ` | params: ${Object.keys(a.parametros).join(', ')}` : ''}`)
+    .join('\n')
+
+  const system = await buildSystemPrompt()
+  const resposta = await callAI(
+    [
+      { role: 'system', content: system },
+      {
+        role: 'user',
+        content: `Você é um agente autônomo. Olhe o ESTADO ATUAL e escolha UMA ação útil agora.
+
+ESTADO ATUAL (resumo):
+${JSON.stringify(estado, null, 2).slice(0, 3500)}
+
+AÇÕES DISPONÍVEIS (apenas estas, todas seguras):
+${listaAcoes}
+
+REGRAS:
+- Responda APENAS com um JSON válido, nada antes ou depois.
+- Formato: {"acao": "nome_da_acao", "params": {}, "motivo": "por que agora"}
+- Se nada for necessário neste momento, use {"acao": "nenhuma", "params": {}, "motivo": "..."}
+- Escolha algo que gere valor: se há alertas, investigue; se há cobranças pendentes, calcule; se faltam análises, analise.`,
+      },
+    ],
+    400
+  )
+
+  // Extrai JSON de forma defensiva (modelo fraco pode adicionar texto)
+  let decisao: { acao?: string; params?: object; motivo?: string } = {}
+  try {
+    const match = resposta.match(/\{[\s\S]*\}/)
+    if (match) decisao = JSON.parse(match[0])
+  } catch {
+    await lembrar('contexto', 'hermes_ultimo_ciclo', `JSON inválido: ${resposta.slice(0, 100)}`)
+    return `Decisão inválida: ${resposta.slice(0, 120)}`
+  }
+
+  if (!decisao.acao || decisao.acao === 'nenhuma') {
+    await lembrar('contexto', 'hermes_ultimo_ciclo', `Sem ação. Motivo: ${decisao.motivo ?? '—'}`)
+    return `Nenhuma ação tomada. ${decisao.motivo ?? ''}`
+  }
+
+  const r = await executarAcao(decisao.acao, decisao.params ?? {}, 'hermes')
+  await lembrar('contexto', 'hermes_ultimo_ciclo', `Ação: ${decisao.acao} | ${r.ok ? 'ok' : 'falhou'} | ${decisao.motivo ?? ''}`)
+  return `Ação "${decisao.acao}": ${r.ok ? 'executada' : (r.requerAprovacao ? 'recomendada (precisa aprovação)' : 'erro')}. Motivo: ${decisao.motivo ?? ''}`
+}
+
 // ─── Utilitários ────────────────────────────────────────────────────────────────
 
 function extrairTema(texto: string): string {
