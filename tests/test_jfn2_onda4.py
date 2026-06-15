@@ -34,7 +34,7 @@ def grafo_db(tmp_path, monkeypatch):
     con.close()
 
     from compliance_agent import grafo_poder
-    monkeypatch.setattr(grafo_poder, "_DB", db)
+    monkeypatch.setenv("JFN_DB", str(db))  # _resolver_db() lê JFN_DB em call-time (refactor cont.36)
     return grafo_poder
 
 
@@ -98,7 +98,7 @@ def test_dossie_agrega_e_score(monkeypatch, tmp_path):
     import sqlite3
     sqlite3.connect(str(db)).executescript(
         "CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, ug_codigo TEXT, ug_nome TEXT, valor REAL);")
-    monkeypatch.setattr(D, "_DB", db)
+    monkeypatch.setenv("JFN_DB", str(db))  # _resolver_db() lê JFN_DB em call-time (refactor cont.36)
 
     d = asyncio.run(D.dossie("11111111000111", gerar_pdf=False))
     assert d["ok"] is True
@@ -124,7 +124,7 @@ def test_dossie_fonte_indisponivel_nao_fabrica(monkeypatch, tmp_path):
     import sqlite3
     sqlite3.connect(str(db)).executescript(
         "CREATE TABLE ordens_bancarias (favorecido_cpf TEXT, ug_codigo TEXT, ug_nome TEXT, valor REAL);")
-    monkeypatch.setattr(D, "_DB", db)
+    monkeypatch.setenv("JFN_DB", str(db))  # _resolver_db() lê JFN_DB em call-time (refactor cont.36)
     monkeypatch.setattr("compliance_agent.lex_conflito.conflito",
                         lambda **k: {"rede": []})
     monkeypatch.setattr("compliance_agent.grafo_poder.vizinhanca",

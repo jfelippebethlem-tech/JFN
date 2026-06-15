@@ -47,13 +47,15 @@ def test_envfile_carrega_env():
 
 # ─── 2. free_llm: chave dinâmica + retry ──────────────────────────────────────
 
-def test_free_llm_chave_dinamica():
-    os.environ.pop("GROQ_API_KEY", None)
+def test_free_llm_chave_dinamica(monkeypatch):
     import compliance_agent.llm.free_llm as f
+    # _groq_key() faz fallback p/ a constante de import-time (capturada do .env real);
+    # neutralizar ambos p/ o teste ser determinístico. monkeypatch auto-restaura (isolamento).
+    monkeypatch.setattr(f, "GROQ_API_KEY", "")
+    monkeypatch.delenv("GROQ_API_KEY", raising=False)
     assert f.groq_available() is False
-    os.environ["GROQ_API_KEY"] = "gsk_teste"
+    monkeypatch.setenv("GROQ_API_KEY", "gsk_teste")
     assert f.groq_available() is True
-    os.environ.pop("GROQ_API_KEY", None)
 
 
 def test_free_llm_groq_tem_retry():

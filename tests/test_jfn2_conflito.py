@@ -37,7 +37,7 @@ def _db_sintetico(path):
 def test_conflito_via_socio(tmp_path, monkeypatch):
     db = tmp_path / "c.db"
     _db_sintetico(str(db))
-    monkeypatch.setattr(lc, "_DB", db)
+    monkeypatch.setenv("JFN_DB", str(db))  # _resolver_db() lê JFN_DB em call-time (refactor cont.36)
 
     r = lc.conflito()
     assert r["ok"] is True

@@ -9,7 +9,7 @@
 > doc (1 linha no §10). Detalhismo proporcional à complexidade; **testar tudo, nunca às cegas**; ao fim avaliar
 > storage/RAM/CPU. **Honestidade sempre:** indício≠acusação, INDISPONÍVEL≠0, nunca inventar número, CPF PF mascarado.
 
-Última atualização: 2026-06-13.
+Última atualização: 2026-06-14.
 
 ---
 
@@ -21,14 +21,16 @@ Telegram = maestro, aciona o JFN pela API `127.0.0.1:8000`). Padrão de saída: 
 **Regra-mãe: OB (Ordem Bancária) = verdade de pagamento**, nunca empenho.
 
 ## 2. ESTADO VIVO
-- **VM Linux GCP**, `~/JFN`. Branch **`feat/lista-limpa`** (não pushado; tudo commitado).
+- **VM Linux Ubuntu na Oracle Cloud (OCI), Ampere ARM (aarch64)** — instância `jfn-agent-2`, hostname `jfn-core`, user `ubuntu`, `~/JFN` = `/home/ubuntu/JFN` (substituiu a antiga server-1/GCP x86_64 no cutover 2026-06-14). Branch **`feat/lista-limpa`** (não pushado; tudo commitado).
 - **`jfn.service`** (user; `systemctl --user restart jfn.service`) → API `127.0.0.1:8000`. **`hermes-gateway.service`** =
   Yoda (`~/hermes-agent`). Ambos auto-start no boot.
 - **DB** `data/compliance.db` (1,2G): `ordens_bancarias` (OB 2019-2026, 1,12M, 77% c/ CNPJ; `favorecido_cpf`=CNPJ(14)/
   CPF(11)) + `ob_orcamentaria_siafe` (95k). **UG 133100=ITERJ** (`data/ug_canonico.json`). WAL via cron dom 03:00.
 - **SWEEPS = INDIVIDUAIS, escalonados no cron, 1 por vez (cont.25 — o "2-lane serial" foi REVERTIDO: lane contínuo
   segurava Chromium 24h e a sessão única itkava do SEI competia → leitura manual dava 0).** Calibrado à VM real
-  **(2 vCPU · 7,8GB · SEM swap)**: `nice -n10 ionice -c2 -n6` (best-effort = qualidade, progride sem starvar),
+  **(2 vCPU Neoverse-N1 ARM · 11,6GB RAM · 4GB swap `/swapfile`)** — o gargalo REAL é a **CPU (2 vCPU)**, não a RAM;
+  há folga de memória agora (a antiga server-1 era 7,8GB SEM swap — a lição do OOM nasceu lá), mas DuckDB+sweeps
+  concorrentes ainda saturam os 2 núcleos, então a regra "1 sweep por vez" permanece: `nice -n10 ionice -c2 -n6` (best-effort = qualidade, progride sem starvar),
   bounded (`timeout`), `load-guard ≥4`, single-pass (cron repete; sem `while true`). Scripts:
   **`tools/sweep_sei.sh`** (07/13/19h, itkava SOZINHO) · **`tools/sweep_dados.sh`** (10/16h, endereço+benefícios+
   fachada) · **`tools/cruzador.sh`** (23h, OB↔SEI + concentração-grupo, à noite sozinho) · base **SIAFE 05:00**
@@ -143,6 +145,22 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
   Skill nova `/dossie` + `/api/dossie` async+push (`_gerar_e_enviar_dossie`, como /relatorio; antes era síncrono).
 
 ## 9. PENDÊNCIAS DO DONO
+- **🔴 Pós-migração jfn-agent-2 (cont.41, 06-14) — ações que só o dono faz:**
+  1. **Relogar SEI + SIAFE** (renova o 2FA por +30 dias). O **SIAFE está com `SIAFE_USER`/`SIAFE_PASS` VAZIOS** no
+     `~/.hermes/.env` — preencher antes; depois o relogin é pelo Chrome `:9222` (`chrome-jfn.service`). SEI já tem
+     `SEI_USUARIO`/`SEI_SENHA` no `.env`.
+  2. **`GROQ_API_KEY` está revogada (401)** — gerar nova em console.groq.com e trocar no `.env` (opcional: Gemini×9 +
+     Cerebras + Mistral já cobrem os fallbacks; o Groq é só 1 dos 8).
+  3. **`gcloud auth login`** nesta VM se quiser acesso GCP (a auth da origem era metadata-GCE, não portável; projeto
+     `jfn-vps`). NÃO é necessário p/ o JFN.
+  4. **Reiniciar o Claude Code** nesta pasta p/ a sessão carregar `CLAUDE.md`/skills/`/graphify`/agent-skills/MCP
+     `gitnexus`/digest do Obsidian (a sessão da migração começou antes da config migrada existir).
+  5. **Validar o Yoda** ("onde você está rodando?" → deve dizer Oracle/ARM; e não ficar mudo quando o Gemini lotar,
+     graças ao fallback Cerebras consertado no cont.41).
+  6. **Truncamento >4096 (streaming):** decidir se quer que eu corrija o adaptador Telegram (mensagens longas do cron
+     cortam no caminho de streaming/edit; o envio normal já divide em partes).
+  7. **Linkar Obsidian + gitnexus no desktop:** vault em `~/vault` e repo nesta VM; sincronizar via Syncthing/Tailscale
+     (ou SSHFS/Git) e instalar `gitnexus` + MCP no Claude Code do desktop. (Me dizer Windows/Mac p/ os comandos exatos.)
 - **✅ Hermes ATUALIZADO (cont.20):** `~/hermes-agent` saltou de 11.416 commits atrás → `origin/main` v0.16.0
   (branch `jfn-updated-2026-06-12`, f3f2386), preservando os **4 commits locais** + as customizações do
   `gateway/run.py` (speaker marking + resposta vazia cortês) — todas reaplicadas LIMPO via 3-way (`git am`/`apply`).
@@ -168,6 +186,48 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-14 cont.42 (suíte 100% verde + fatos de HW corrigidos + ruff restaurado):** (1) **Hardware real auditado e
+  corrigido** no §2 e no `CLAUDE.md` — a VM `jfn-core` tem **11,6GB RAM + 4GB swap (`/swapfile` no fstab)**, NÃO
+  "7,8GB SEM swap" (isso era a antiga server-1; a memória SEMPRE-ON e os docs estavam stale). Gargalo real = **2 vCPU**,
+  então "1 sweep por vez" permanece, mas há folga de RAM. (2) **Os 7 testes "não-OK" do cont.41 CONSERTADOS** (suíte
+  agora **1111 passed / 3 skipped**, de 1104p/4f/3e): os 6 AttributeError eram `monkeypatch.setattr(mod,"_DB",db)` vs o
+  refactor cont.36 (que moveu `_DB` p/ local via `_resolver_db()`) → trocado por `monkeypatch.setenv("JFN_DB",...)`
+  (alinha à lição §8 de isolamento); o `test_free_llm_chave_dinamica` falhava pelo fallback de import-time da chave
+  GROQ do `.env` real → fix com `monkeypatch` (neutraliza constante + auto-restaura, era bug de isolamento). (3) **ruff
+  reinstalado no venv** (0.15.17; tinha sumido na reconstrução ARM) — quality-gate do `pyproject` de volta; lint limpo.
+- **06-14 cont.41 (⭐ MIGRAÇÃO + CUTOVER server-1→jfn-agent-2 + bateria de testes + Yoda):** todo o ecossistema
+  migrado de **server-1 (GCP, x86_64)** para **jfn-agent-2 (Oracle Cloud, Ampere ARM aarch64, hostname `jfn-core`,
+  user `ubuntu`)** via `rsync` sobre Tailscale (`ssh server-1`=100.72.107.116). **Sem duplicatas; venvs/node_modules/
+  __pycache__/*.so x86 NÃO copiados — reconstruídos com `uv` (wheels ARM)**; paths `/home/jfelippebethlem`→`/home/ubuntu`
+  reescritos (77 arquivos + symlinks). **Cutover:** server-1 DESLIGADA (timers/serviços/cron parados, linger off) mas
+  **não destruída** = fallback de dados se algum SQLite corromper (ver [[migracao-server1-para-jfn-agent2]]). **Bancos
+  íntegros** (`PRAGMA integrity_check`=ok em compliance.db/massare.db/state.db — a cópia em pleno voo não corrompeu).
+  **Git: mesmo commit `9e5c0d5`** (`feat/lista-limpa`) nas 2 VMs. **Boot:** systemd `--user`+linger sobe `chrome-jfn`
+  (CDP :9222, agora `/snap/bin/chromium` — não há Chrome p/ ARM), `jfn` (uvicorn :8000), `hermes-gateway` (Yoda) +
+  5 timers + 15 sweeps no cron; **guarda anti-idle** Oracle Always Free (`keepalive.timer` 7min + `tools/keepalive.sh`)
+  e **runbook** `docs/RUNBOOK-BOOT-E-ANTIIDLE.md`. **Storages B2 (`b2:jfn-backup-jorge`) + R2 (`r2:jorgefelippe/fachadas`)
+  validados rw** via rclone. **gcloud:** auth da origem era metadata-GCE (não portável) → precisa `gcloud auth login`
+  (projeto `jfn-vps`). **Testes (pedido do dono "testar tudo, prático"):** pytest **1104 passed / 3 skipped / 7 não-OK**
+  — **zero falha de arquitetura ARM**; os 7 são testes desatualizados vs refactor `JFN_DB` (`_DB` virou local) + 1
+  sensível à chave real no .env (bug de teste, não runtime). Relatórios REAIS gerados (MGS Clean risco MÉDIO score 69;
+  ITERJ parecer Lex VERMELHO; fonte=REAL). **Provedores IA:** Gemini **9/9 chaves vivas**, Cerebras/Mistral/HF/OpenRouter/
+  Nous OK; **Groq 401 (chave revogada)**. Skills/Obsidian/graphify(9389 nós)/gitnexus(MCP handshake OK) funcionando.
+  Dados confirmados acessíveis: Receita (27k QSA/114k reverso/74k empresas), SEI (1.222 JSONs em `data/sei_cache/`; ⚠
+  tabela `processos_sei` VAZIA — SEI vive só no cache de arquivos), Fachadas (7 PNGs no R2). **claude -p / Agent SDK
+  (cobrança 15/06): exposição ≈0** — verificação/detectores/pauta usam Gemini→Groq→Cerebras por HTTP, NÃO `claude -p`
+  (único `claude -p` é ponte de `_SANDBOX` isolada). **⭐ YODA consertado:** (a) dizia "rodando no GCP" — o gateway
+  subira ANTES da correção e tinha o `SOUL.md` antigo em cache → corrigidos SOUL.md/MEMORY(hermes)/REFERENCIA/user-prefs
+  + **restart** (agora diz Oracle/ARM); (b) **FALLBACK QUEBRADO (causa do "Yoda não tá legal"):** `config.yaml` tinha
+  `providers: {}` VAZIO → quando o Gemini estourava quota (429), o fallback p/ Cerebras falhava com *"unknown provider
+  'cerebras'"* e o Yoda respondia VAZIO; **registrados `cerebras`/`mistral`/`groq` no bloco `providers:`** (base_url+
+  key_env+default_model; backup `config.yaml.bak.pre-providers-fix`) — testado: os 3 resolvem; agora cai p/ Cerebras
+  (chave válida) quando o Gemini lota. **Pendência conhecida:** mensagens **>4096 chars** truncam no caminho de
+  **streaming** do adaptador Telegram (o `send()` normal já divide em partes; o streaming/edit não) — ex.: briefing do
+  cron 10:30 (4966 chars). Doc de **credenciais consolidado** (sem duplicar) enviado no **Telegram** + `~/CREDENCIAIS.md`
+  (chmod 600). `AMBIENTE.md`+`ambiente.json` atualizados p/ a infra nova. **⚠ AÇÕES DO DONO:** relogar **SEI+SIAFE**
+  (renova 2FA 30d; `SIAFE_USER`/`SIAFE_PASS` estão VAZIOS no `.env`) · gerar nova **GROQ_API_KEY** · `gcloud auth login`
+  se quiser GCP · **reiniciar o Claude Code** p/ carregar CLAUDE.md/skills/graphify/agent-skills/gitnexus-MCP/digest
+  (a sessão da migração começou antes da config existir).
 - **06-14 (itkava-nav destravado + fallback CRACKED no sweep):** o SEI sweep estava sendo SUFOCADO por um
   **`sei_supervisor.sh` ÓRFÃO** (lançado à mão, **sem `SWEEP_MAX_SECONDS`**) rodando em loop CONTÍNUO 24/7 —
   exatamente o lane contínuo REVERTIDO no cont.25 (§2) — monopolizando a sessão única itkava. Efeito concreto:
