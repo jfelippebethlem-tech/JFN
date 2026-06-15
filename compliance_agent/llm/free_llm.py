@@ -37,8 +37,18 @@ OPENROUTER_API_KEY  = os.environ.get("OPENROUTER_API_KEY", "")
 FREE_LLM_PREFER = os.environ.get("FREE_LLM_PREFER", "qwen").lower()
 
 # Qwen via OpenRouter (fallbacks possíveis)
-OPENROUTER_MODEL_FAST  = os.environ.get("OPENROUTER_FAST_MODEL", "qwen/qwen-2.5-72b-instruct:free")
-OPENROUTER_MODEL_SMART = os.environ.get("OPENROUTER_SMART_MODEL", "qwen/qwen-2.5-72b-instruct:free")
+OPENROUTER_MODEL_FAST  = os.environ.get("OPENROUTER_FAST_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+OPENROUTER_MODEL_SMART = os.environ.get("OPENROUTER_SMART_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
+
+
+def _forcar_free(model: str) -> str:
+    """GUARD anti-cobrança (regra do dono: SEMPRE `:free`). Qualquer modelo OpenRouter é forçado p/ a
+    variante `:free` — assim nunca chama a versão paga. Se a `:free` não existir, o OpenRouter dá 404
+    (NÃO cobra); se existir, é grátis. O router 'openrouter/free' (já grátis) passa direto."""
+    m = (model or "").strip()
+    if m == "openrouter/free" or m.endswith(":free"):
+        return m
+    return m.split(":", 1)[0] + ":free"
 
 # Modelos Groq (free tier) — usados em groq_chat_async e status_provedores.
 # Antes eram referenciados sem definição global (NameError). Configuráveis por env.
@@ -268,7 +278,7 @@ def openrouter_chat(prompt: str, system: str = "", smart: bool = False,
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
-    model = OPENROUTER_MODEL_SMART if smart else OPENROUTER_MODEL_FAST
+    model = _forcar_free(OPENROUTER_MODEL_SMART if smart else OPENROUTER_MODEL_FAST)
     return _openai_compat_chat_sync_retry(
         OPENROUTER_BASE,
         key,
@@ -291,7 +301,7 @@ async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = Fal
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
-    model = OPENROUTER_MODEL_SMART if smart else OPENROUTER_MODEL_FAST
+    model = _forcar_free(OPENROUTER_MODEL_SMART if smart else OPENROUTER_MODEL_FAST)
     return await _openai_compat_chat_retry(
         OPENROUTER_BASE,
         key,
