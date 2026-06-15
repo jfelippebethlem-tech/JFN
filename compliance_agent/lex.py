@@ -20,6 +20,8 @@ import re
 import time
 from pathlib import Path
 
+from fpdf.enums import XPos, YPos
+
 from compliance_agent.reporting.inteligencia import (
     _REPORTS, _mc, _registrar_fonte, _render_parecer_pdf, _slug, _termos_significativos,
     troca_controle_societaria, fmt_cnpj, moeda, so_digitos,
@@ -1407,20 +1409,20 @@ def render_pdf(ctx: dict, destino: str, analise: dict | None = None, md: str | N
         return s.encode("latin-1", "replace").decode("latin-1")
 
     pdf.set_fill_color(20, 30, 50); pdf.set_text_color(255, 255, 255); pdf.set_font(pdf._fam, "B", 15)
-    pdf.cell(0, 13, _t("PARECER JURÍDICO — AGENTE LEX"), fill=True, ln=True, align="C")
+    pdf.cell(0, 13, _t("PARECER JURÍDICO — AGENTE LEX"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.set_font(pdf._fam, "", 9); pdf.set_fill_color(45, 60, 90)
-    pdf.cell(0, 7, _t("Avaliação fático-jurídica · Direito Administrativo e Controle Externo (TCU/TCE-RJ)"), fill=True, ln=True, align="C")
-    pdf.cell(0, 7, _t(f"JFN Intelligence Engine  |  {ctx.get('data','')}"), fill=True, ln=True, align="C")
+    pdf.cell(0, 7, _t("Avaliação fático-jurídica · Direito Administrativo e Controle Externo (TCU/TCE-RJ)"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+    pdf.cell(0, 7, _t(f"JFN Intelligence Engine  |  {ctx.get('data','')}"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.ln(4)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "B", 14)
     _mc(pdf, 8, _t(ctx.get("nome", "")))
     _ident = f"CNPJ: {fmt_cnpj(ctx.get('cnpj',''))}" if so_digitos(ctx.get("cnpj", "")) else f"Unidade Gestora (UG): {ctx.get('ug','—')}"
-    pdf.set_font(pdf._fam, "", 10); pdf.cell(0, 6, _t(_ident), ln=True)
+    pdf.set_font(pdf._fam, "", 10); pdf.cell(0, 6, _t(_ident), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
     pdf.set_fill_color(*cor)
     pdf.set_text_color(0, 0, 0) if rotulo == "AMARELO" else pdf.set_text_color(255, 255, 255)
     pdf.set_font(pdf._fam, "B", 12)
-    pdf.cell(0, 9, _t(f"  GRAU DE ATENÇÃO: {rotulo}"), fill=True, ln=True)
+    pdf.cell(0, 9, _t(f"  GRAU DE ATENÇÃO: {rotulo}"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0); pdf.ln(3)
     corpo = md.split("---\n\n", 1)[-1]
     _render_parecer_pdf(pdf, _t, corpo)

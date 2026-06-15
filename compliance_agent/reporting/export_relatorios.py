@@ -99,24 +99,25 @@ def build_docx_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterabl
 def build_pdf_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterable[Alerta]) -> Path:
     try:
         from fpdf import FPDF
+        from fpdf.enums import XPos, YPos
     except Exception as e:
         raise RuntimeError("fpdf2 não está instalado. Instale com: pip install fpdf2") from e
 
     class Pdf(FPDF):
         def header(self):
             self.set_font("Arial", "B", 12)
-            self.cell(0, 10, "Relatorio de Auditoria — JFN", ln=True)
+            self.cell(0, 10, "Relatorio de Auditoria — JFN", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             self.ln(4)
 
     pdf = Pdf()
     pdf.set_auto_page_break(True, margin=15)
     pdf.add_page()
     pdf.set_font("Arial", "", 10)
-    pdf.cell(0, 8, f"Gerado em {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", ln=True)
+    pdf.cell(0, 8, f"Gerado em {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(4)
 
     pdf.set_font("Arial", "B", 10)
-    pdf.cell(0, 8, "Alertas", ln=True)
+    pdf.cell(0, 8, "Alertas", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Arial", "", 10)
     for a in alerts:
         txt = f"[{a.severidade}] {a.titulo} - {a.descricao or ''}"
@@ -124,7 +125,7 @@ def build_pdf_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterable
 
     pdf.ln(4)
     pdf.set_font("Arial", "B", 10)
-    pdf.cell(0, 8, "Ordens Bancarias", ln=True)
+    pdf.cell(0, 8, "Ordens Bancarias", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Arial", "", 9)
     for o in rows:
         txt = (

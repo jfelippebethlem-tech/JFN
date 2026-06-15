@@ -186,6 +186,13 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-15 cont.42b (future-proof do PDF — fim do `DeprecationWarning: ln`):** os 5 renderizadores de PDF
+  (`inteligencia`/`inteligencia_orgao`/`lex`/`dossie`/`export_relatorios`) usavam `pdf.cell(..., ln=True)`,
+  deprecado no fpdf2 (será removido) → **66 ocorrências** trocadas por `new_x=XPos.LMARGIN, new_y=YPos.NEXT`
+  (equivalência EXATA: todos eram `.cell` `ln=True`, zero `multi_cell`). Import de `XPos/YPos` **module-level**
+  nos 4 onde fpdf é obrigatório; **local** no `export_relatorios` (fpdf é opcional lá, via try/except). O **ruff
+  pegou 34 F821** (cells em funções helper sem o import) — por isso virou module-level. Verificado com os testes de
+  PDF rodando `-W error::DeprecationWarning:fpdf` (**24 passed, zero warning**; os PDFs renderizam). Lint limpo.
 - **06-14 cont.42 (suíte 100% verde + fatos de HW corrigidos + ruff restaurado):** (1) **Hardware real auditado e
   corrigido** no §2 e no `CLAUDE.md` — a VM `jfn-core` tem **11,6GB RAM + 4GB swap (`/swapfile` no fstab)**, NÃO
   "7,8GB SEM swap" (isso era a antiga server-1; a memória SEMPRE-ON e os docs estavam stale). Gargalo real = **2 vCPU**,

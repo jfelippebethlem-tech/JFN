@@ -14,6 +14,8 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
+from fpdf.enums import XPos, YPos
+
 from compliance_agent.database.models import _resolver_db
 
 _REPORTS = Path(__file__).resolve().parent.parent / "reports"
@@ -280,35 +282,35 @@ def _gerar_pdf(d: dict) -> str:
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 15)
-    pdf.cell(0, 9, "DOSSIE 360 - JFN", ln=True)
+    pdf.cell(0, 9, "DOSSIE 360 - JFN", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Helvetica", "", 10)
-    pdf.cell(0, 6, _ascii(f"Alvo: {nome}  |  CNPJ: {d['alvo']}"), ln=True)
-    pdf.cell(0, 6, _ascii(f"Gerado em: {d.get('gerado_em','')}"), ln=True)
+    pdf.cell(0, 6, _ascii(f"Alvo: {nome}  |  CNPJ: {d['alvo']}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 6, _ascii(f"Gerado em: {d.get('gerado_em','')}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
 
     pdf.set_font("Helvetica", "B", 12)
-    pdf.cell(0, 7, _ascii(f"Score de convergencia: {sc.get('score','-')} ({sc.get('faixa','-')})"), ln=True)
+    pdf.cell(0, 7, _ascii(f"Score de convergencia: {sc.get('score','-')} ({sc.get('faixa','-')})"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Helvetica", "", 9)
     for c in (sc.get("contribuicoes") or [])[:8]:
-        pdf.cell(0, 5, _ascii(f"  - {c['flag']}: +{c['contribuicao']}"), ln=True)
+        pdf.cell(0, 5, _ascii(f"  - {c['flag']}: +{c['contribuicao']}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
 
     ob = d.get("ob", {}) or {}
     pdf.set_font("Helvetica", "B", 11)
-    pdf.cell(0, 6, "Pagamentos (OB)", ln=True)
+    pdf.cell(0, 6, "Pagamentos (OB)", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Helvetica", "", 9)
     pdf.cell(0, 5, _ascii(f"Total pago: R$ {ob.get('total_ob',0):,.2f}  |  OBs: {ob.get('n_ob',0)}  |  "
-                          f"UGs: {ob.get('n_ugs',0)}  |  Concentracao top UG: {ob.get('concentracao_top_ug')}"), ln=True)
+                          f"UGs: {ob.get('n_ugs',0)}  |  Concentracao top UG: {ob.get('concentracao_top_ug')}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(1)
 
     conf = d.get("conflito", {}) or {}
     rede = d.get("rede", {}) or {}
     san = d.get("sancoes", {}) or {}
-    pdf.set_font("Helvetica", "B", 11); pdf.cell(0, 6, "Indicios", ln=True)
+    pdf.set_font("Helvetica", "B", 11); pdf.cell(0, 6, "Indicios", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Helvetica", "", 9)
-    pdf.cell(0, 5, _ascii(f"Conflito doador<->contrato: {conf.get('n','-')} vinculo(s)"), ln=True)
-    pdf.cell(0, 5, _ascii(f"Sancao CEIS/CNEP: {'SIM' if (san.get('sancionado') or san.get('sancoes')) else 'nao localizada'}"), ln=True)
-    pdf.cell(0, 5, _ascii(f"Rede de poder: {rede.get('n_nos','-')} nos / {rede.get('n_arestas','-')} arestas (2 saltos)"), ln=True)
+    pdf.cell(0, 5, _ascii(f"Conflito doador<->contrato: {conf.get('n','-')} vinculo(s)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 5, _ascii(f"Sancao CEIS/CNEP: {'SIM' if (san.get('sancionado') or san.get('sancoes')) else 'nao localizada'}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 5, _ascii(f"Rede de poder: {rede.get('n_nos','-')} nos / {rede.get('n_arestas','-')} arestas (2 saltos)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     pdf.ln(3)
     pdf.set_font("Helvetica", "I", 8)
