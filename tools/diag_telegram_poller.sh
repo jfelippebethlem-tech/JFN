@@ -6,7 +6,7 @@
 # Uso típico: feche o app/serviço suspeito (desktop, outro deploy) e rode isto. Se der LIMPO, era ele.
 # Fix garantido sem caçar: BotFather → /revoke → token novo no ~/.hermes/.env → restart do gateway.
 set -u
-cd /home/jfelippebethlem/JFN || exit 1
+cd /home/ubuntu/JFN || exit 1
 TK=$(grep -oE 'TELEGRAM_BOT_TOKEN=[^"'"'"' ]+' ~/.hermes/.env 2>/dev/null | head -1 | cut -d= -f2)
 [ -z "$TK" ] && { echo "sem TELEGRAM_BOT_TOKEN no ~/.hermes/.env"; exit 1; }
 

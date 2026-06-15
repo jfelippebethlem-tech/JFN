@@ -14,7 +14,7 @@ from pathlib import Path
 
 import httpx
 
-HERMES_ENV = Path("/home/jfelippebethlem/.hermes/.env")
+HERMES_ENV = Path("/home/ubuntu/.hermes/.env")
 
 
 def _key(name: str) -> str:
@@ -79,7 +79,7 @@ def main():
     conversa = extrair_conversa(jsonl)
     out = (f"SESSÃO JFN — {jsonl.stem}\n{'#'*70}\nRESUMO DO QUE FOI FEITO\n{'#'*70}\n\n{resumo}\n\n\n"
            f"{'#'*70}\nTRANSCRIÇÃO DA SESSÃO (mensagens; tool-outputs omitidos)\n{'#'*70}\n{conversa}\n")
-    dest = Path("/home/jfelippebethlem/JFN/data/sessao_jfn_2026-06-06.txt")
+    dest = Path("/home/ubuntu/JFN/data/sessao_jfn_2026-06-06.txt")
     dest.write_text(out, encoding="utf-8")
     print(f"txt gerado: {dest} ({dest.stat().st_size/1024:.0f} KB)")
 

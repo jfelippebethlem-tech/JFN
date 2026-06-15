@@ -39,7 +39,7 @@ chamando a **API do JFN** (barramento único). O JFN é o motor.
 ### Bloco B — Fonte única de verdade do ambiente
 - Criados **`AMBIENTE.md`** (narrativo) e **`ambiente.json`** (legível por máquina): VM, os 4 agentes,
   caminhos, portas, **workflow de boot** (serviços + timers) e o **barramento** (rotas da API do JFN).
-- Corrigido o system prompt do Yoda (`~/.hermes/config.yaml`): `c:/JFN/jfn` → `/home/jfelippebethlem/JFN`,
+- Corrigido o system prompt do Yoda (`~/.hermes/config.yaml`): `c:/JFN/jfn` → `/home/ubuntu/JFN`,
   + mapa de capacidades (qual rota chamar) + "não existe `web_search`".
 - Ponteiros para `AMBIENTE.md` em: `CLAUDE.md`, `README-AGENTES.md`, `~/.hermes/SOUL.md`, `massare/README.md`.
 - Memória do Yoda (`~/.hermes/memories/MEMORY.md` e `USER.md`) com as rotas, o fluxo de desambiguação e o

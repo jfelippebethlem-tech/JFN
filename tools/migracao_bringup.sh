@@ -21,9 +21,9 @@ echo "==================== JFN bring-up (destino) ===================="
 echo "USER=$USER  HOME=$HOME  modo=$([ $ATIVAR = 1 ] && echo GO-LIVE || echo 'setup+checks (sem ativar)')"
 
 echo; echo "── 0) Preflight de caminho ──"
-# units usam %h (portáveis); MAS venv-shebang e crontab têm caminho absoluto /home/jfelippebethlem.
-if [ "$HOME" != "/home/jfelippebethlem" ]; then
-  warn "HOME != /home/jfelippebethlem → o venv copiado e o crontab-backup têm paths absolutos antigos."
+# units usam %h (portáveis); MAS venv-shebang e crontab têm caminho absoluto /home/ubuntu.
+if [ "$HOME" != "/home/ubuntu" ]; then
+  warn "HOME != /home/ubuntu → o venv copiado e o crontab-backup têm paths absolutos antigos."
   warn "  → o passo do venv vai RECRIAR (resolve o shebang); o crontab você revisa antes do --ativar."
 else ok "mesmo HOME — paths absolutos batem"; fi
 

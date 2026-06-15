@@ -6,7 +6,7 @@
 
 ## Por quê
 Todo o ecossistema (Yoda/Hermes, JFN, Massare, coletor SIAFE) roda via **systemd `--user`** na VM, com
-caminhos absolutos Linux (`/home/jfelippebethlem/...`), `.venv`, Playwright/Chromium de Linux, e serviços de
+caminhos absolutos Linux (`/home/ubuntu/...`), `.venv`, Playwright/Chromium de Linux, e serviços de
 boot. A infra, os timers, a coordenação de sessão e a ponte Chrome CDP são específicos de Linux.
 
 ## Verdade do ambiente (sempre)

@@ -7,7 +7,7 @@
 # Detached/persistente: lançado pelo cron-minuto (respawn) + @reboot, nunca preso à sessão do Claude.
 # VM-safe: respeita load (não derruba a VM); a fonte OSM (Nominatim/Overpass) tem back-off próprio.
 # Pausa manual: criar data/.pause_endereco_sweep (encerra limpo e o supervisor aguarda).
-cd /home/jfelippebethlem/JFN || exit 1
+cd /home/ubuntu/JFN || exit 1
 LOG=data/endereco_supervisor.log
 LOTE="${ENDERECO_LOTE:-800}"
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }

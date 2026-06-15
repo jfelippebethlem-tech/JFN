@@ -3,7 +3,7 @@
 # econômico (cartel/diversidade fictícia). Roda SOZINHO à noite → sem sweep competindo → DuckDB seguro.
 # LEVE: nice/ionice idle, bounded.
 set -u
-cd /home/jfelippebethlem/JFN || exit 1
+cd /home/ubuntu/JFN || exit 1
 export PYTHONPATH=.
 PY=.venv/bin/python
 LOG=data/cruzador.log

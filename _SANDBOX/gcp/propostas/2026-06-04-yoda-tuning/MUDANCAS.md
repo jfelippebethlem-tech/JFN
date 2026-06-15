@@ -9,8 +9,8 @@ Todos os backups na VM seguem o padrão `<arquivo>.AAAAMMDD-HHMMSS.bak`.
 
 **O quê:** criado `/etc/systemd/system/yoda.service` rodando o gateway do Hermes 24h.
 - `User=jfelippebethlem`, `WorkingDirectory=~/hermes-agent`
-- `ExecStart=/home/jfelippebethlem/hermes-agent/venv/bin/python -m hermes_cli.main gateway run`
-- `Environment=HERMES_HOME=/home/jfelippebethlem/.hermes`, `PYTHONIOENCODING=utf-8`
+- `ExecStart=/home/ubuntu/hermes-agent/venv/bin/python -m hermes_cli.main gateway run`
+- `Environment=HERMES_HOME=/home/ubuntu/.hermes`, `PYTHONIOENCODING=utf-8`
 - `Restart=always`, `RestartSec=10`
 
 **Por quê:** objetivo da tarefa — Yoda no ar 24h, sobe no boot e se recupera de queda.

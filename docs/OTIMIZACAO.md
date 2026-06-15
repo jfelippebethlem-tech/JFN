@@ -103,7 +103,7 @@ tokens/CPU/latência**:
   ganhos de CPU/token mas exigem trabalho dedicado.
 
 ## 6. Como usar codegraph/graphify para racionalizar (sempre)
-- `projectPath="/home/jfelippebethlem/JFN"` nas chamadas codegraph.
+- `projectPath="/home/ubuntu/JFN"` nas chamadas codegraph.
 - Antes de remover símbolo: `codegraph_impact` + `codegraph_callers` (só remover se impacto = interno ao arquivo).
 - Exploração: `codegraph_explore "..."` (1 chamada ≈ Read do código relevante) **antes** de grep/read em massa — é
   o jeito de gastar **menos tokens** investigando. `graphify query "..."` p/ visão de grafo/dependências.

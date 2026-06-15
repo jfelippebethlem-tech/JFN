@@ -4,7 +4,7 @@
 # varridas nos últimos 7 dias. Educado (cache TTL + rate-limiter, sem geocode) e VM-safe (load guard).
 # Cron sugerido (escalonado, depois do endereço 10h): 0 16 * * * … fachada_sweep_rotativo.sh
 set -u
-cd /home/jfelippebethlem/JFN || exit 1
+cd /home/ubuntu/JFN || exit 1
 OUT=data/dd_sweep; mkdir -p "$OUT"
 [ -f data/.pause_fachada_sweep ] && { echo "pausado"; exit 0; }
 # guard de carga (não competir com SEI+endereço sob pressão)

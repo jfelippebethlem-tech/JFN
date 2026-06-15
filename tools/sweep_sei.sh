@@ -3,7 +3,7 @@
 # manual entre execuções). LEVE: nice/ionice idle (só CPU/IO ocioso), bounded por timeout, SINGLE-PASS
 # (o cron repete; NÃO é loop contínuo — esse era o lane ruim que segurava Chromium na memória 24h).
 set -u
-cd /home/jfelippebethlem/JFN || exit 1
+cd /home/ubuntu/JFN || exit 1
 export PYTHONPATH=.
 PY=.venv/bin/python
 LOG=data/sweep_sei.log

@@ -5,7 +5,7 @@
 # SERIALIZADO (nunca 2 pesados juntos), resumível (tabelas + cache + done-file da fachada), time-bounded (sai após
 # MAXH; relançar continua de onde parou). NÃO roda concorrente com cruzador/DuckDB.
 set -u
-cd /home/jfelippebethlem/JFN || { echo "cd falhou"; exit 1; }
+cd /home/ubuntu/JFN || { echo "cd falhou"; exit 1; }
 export PYTHONPATH=.
 PY=.venv/bin/python
 LOG=data/sweep_full.log
