@@ -33,15 +33,25 @@ _REPO = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("JFN_DATA_DIR", _REPO / "data")) / "sei_cache"
 CODE_FILE = DATA / ".mfa_code"
 
-# Código MFA típico = 4 a 8 dígitos. \b para não casar pedaços de números maiores (CNPJ, valores).
-_CODE_RE = re.compile(r"\b(\d{4,8})\b")
+# Código MFA = 4–8 chars alfanuméricos. O SIAFE-Rio usa token ALFANUMÉRICO (ex.: "8UvDWguB"); outros
+# sistemas usam só dígitos. \b para não casar pedaços de blocos maiores (CNPJ, valores).
+_CODE_RE = re.compile(r"\b([A-Za-z0-9]{4,8})\b")
 
 
 def extrair_codigo(texto: str) -> str | None:
-    """Extrai o código MFA (4–8 dígitos) do texto livre do dono, limpando quote/prefixo. None se não houver."""
+    """Extrai o código MFA do texto livre do dono, limpando quote/prefixo. None se não houver.
+
+    Aceita (a) código puramente NUMÉRICO 4–8 díg; (b) token ALFANUMÉRICO MISTO (≥1 letra E ≥1 dígito,
+    ex.: SIAFE "8UvDWguB"). Rejeita palavras comuns ("respondido", "obrigado") p/ não capturar lixo.
+    """
     t = _texto_resposta(texto or "")
-    m = _CODE_RE.search(t)
-    return m.group(1) if m else None
+    for m in _CODE_RE.finditer(t):
+        tok = m.group(1)
+        if tok.isdigit():
+            return tok
+        if any(c.isdigit() for c in tok) and any(c.isalpha() for c in tok):
+            return tok
+    return None
 
 
 def _ler_arquivo_codigo() -> str | None:
