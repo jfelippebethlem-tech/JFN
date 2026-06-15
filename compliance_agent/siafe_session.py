@@ -137,12 +137,30 @@ def check_session():
             b.close()
 
 
+def ensure_session(exercicio=2025):
+    """Garante sessão SIAFE válida SEM Claude Code: se expirada/ausente, faz login_with_mfa
+    (que pede o código no Telegram e captura a resposta do dono passivamente). Idempotente.
+    Retorna o status final. É o ponto de entrada AUTÔNOMO (cron/Yoda) para relogin."""
+    st = check_session()
+    if st.get("status") == "valida":
+        return {"status": "ok", "ja_logado": True}
+    return login_with_mfa(exercicio=exercicio)
+
+
 if __name__ == "__main__":
     import json
+
+    # CLI tem que carregar o .env (lição §8: rodando como módulo o ambiente não vem do jfn.service).
+    from compliance_agent.envfile import carregar_env
+    carregar_env()
+
     ex = 2025
     if "--exercicio" in sys.argv:
         ex = int(sys.argv[sys.argv.index("--exercicio") + 1])
     if "--check" in sys.argv:
         print(json.dumps(check_session(), ensure_ascii=False))
+    elif "--ensure" in sys.argv:
+        # autônomo: só re-loga (pedindo MFA no Telegram) se a sessão não estiver válida
+        print(json.dumps(ensure_session(exercicio=ex), ensure_ascii=False))
     else:
         print(json.dumps(login_with_mfa(exercicio=ex), ensure_ascii=False))
