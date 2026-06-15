@@ -188,6 +188,13 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-15 (⛔ OpenRouter BANIDO — custo):** o dono viu cobrança de centavos no OpenRouter (chamadas pagas em **02 e
+  06/06**, HISTÓRICAS — de antes da config `:free`-only atual). Diagnóstico: nenhum modelo pago hardcoded hoje
+  (`405b:free`=grátis; `gemma-2-9b-it:free`/`qwen:free`=descontinuados→404 SEM cobrança; só `agent.py` usa o router
+  `openrouter/free`). **Decisão do dono: nunca mais OpenRouter.** Key `sk-or-` REMOVIDA de TODOS os lugares: `~/JFN/.env`,
+  `~/polimonitor/.env`, `~/.hermes/.env`, e do `auth.json` do Yoda (pool+providers; backup `.bak-openrouter`). Serviços
+  reiniciados. Apps caem em **Gemini/nous/cerebras (grátis)**. ⚠️ **Regra: não readicionar OPENROUTER_API_KEY.** Se um dia
+  for reativar, SÓ com modelos `:free` confirmados no catálogo (`:free` inexistente = 404, não cobra; o risco é ID sem `:free`).
 - **06-15 cont.42e (⭐ SIAFE logado via MFA-Telegram + PolitiMonitor/Bond NO AR + relogin autônomo):** (1) **SIAFE
   LOGADO** — o fluxo MFA-via-Telegram funcionou end-to-end (dono respondeu o código no Telegram, captura passiva pegou,
   sessão salva 30d). **Bug achado e corrigido:** o token SIAFE é **ALFANUMÉRICO** (`8UvDWguB`) — o extrator só aceitava
