@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0"   stop-color="#3b82f6"/>
+      <stop offset="0.45" stop-color="#4f46e5"/>
+      <stop offset="1"   stop-color="#1e1b4b"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.62" cy="0.3" r="0.5">
+      <stop offset="0" stop-color="#fbbf24" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#fbbf24" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.98"/>
+      <stop offset="1" stop-color="#c7d2fe" stop-opacity="0.85"/>
+    </linearGradient>
+    <filter id="soft" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#0b1026" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- fundo squircle -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224" fill="url(#bg)"/>
+  <!-- brilho atrás do nó -->
+  <rect x="0" y="0" width="1024" height="1024" rx="224" ry="224" fill="url(#glow)"/>
+
+  <!-- barras (métricas crescentes) -->
+  <g filter="url(#soft)">
+    <rect x="300" y="600" width="78" height="120" rx="26" fill="url(#bar)"/>
+    <rect x="408" y="540" width="78" height="180" rx="26" fill="url(#bar)"/>
+    <rect x="516" y="470" width="78" height="250" rx="26" fill="url(#bar)"/>
+    <rect x="624" y="392" width="78" height="328" rx="26" fill="url(#bar)"/>
+  </g>
+
+  <!-- linha de pulso (batimento -> tendência de alta) -->
+  <path d="M 196 580 L 312 580 L 348 452 L 388 672 L 426 548 L 498 524 L 588 432 L 668 312"
+        fill="none" stroke="#fbbf24" stroke-width="26"
+        stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ondas de sinal (monitoramento ao vivo) -->
+  <g fill="none" stroke="#fbbf24" stroke-width="16" stroke-linecap="round">
+    <path d="M 712 268 A 64 64 0 0 1 712 356" opacity="0.85"/>
+    <path d="M 756 232 A 112 112 0 0 1 756 392" opacity="0.5"/>
+  </g>
+
+  <!-- nó luminoso no topo -->
+  <circle cx="668" cy="312" r="40" fill="#fbbf24"/>
+  <circle cx="668" cy="312" r="17" fill="#ffffff"/>
+</svg>
