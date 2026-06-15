@@ -186,6 +186,19 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-15 cont.42d (⭐ sweeps religados + credenciais recuperadas + MFA-Telegram):** (1) **Sweeps reativados**
+  (flags `.pause_*` removidas). (2) **Browser do Playwright consertado** — faltavam libs `libatk` na migração ARM
+  (`sudo apt install libatk1.0-0t64 libatk-bridge2.0-0t64`); sem isso TODO sweep de browser estava quebrado. (3) **⭐
+  SEI sweep CONSERTADO** — o "WAF intermitente" era **senha VAZIA**: o `.env` usa `SEI_USUARIO/SEI_SENHA` mas o código
+  lê `SEI_USER/SEI_PASS` → login falhava. Fix: `envfile.carregar_env()` espelha os nomes PT↔EN. Provado: login OK de
+  1ª + sweep lendo. (4) **⭐ `.env` da migração veio INCOMPLETO** — puxei do **server-1 (ainda ligado, Tailscale
+  100.72.107.116)** e mergeei **20 credenciais** que faltavam: `GOOGLE_MAPS_KEY` (validada com chamada real),
+  `SIAFE_USER/PASS`, `PORTAL_TRANSPARENCIA_KEY`, `MAPILLARY_TOKEN`, `TELEGRAM_CHAT_ID/OWNER_ID`, OpenSanctions, etc.
+  (merge só preenche vazias/faltando, backup `.env.bak.premerge-*`). Pente-fino confirmou: nada mais perdido (auth.json/
+  rclone completos; gcloud não tem chave portável, mas não é preciso). (5) **⭐ MFA-via-Telegram CODIFICADO**
+  (`compliance_agent/mfa_telegram.py`): login bate em MFA → envia pedido no Telegram → captura a resposta passiva do
+  `state.db` do Yoda (+ fallback `.mfa_code`) → extrai código 4-8 díg. Robusto, sem IA na hora; wired no
+  `siafe_session`. 8 testes; envio real validado. **Quota geocoding** fica no teto até reset **14/07** (decisão do dono).
 - **06-15 cont.42c (faxina de git pós-migração):** a árvore tinha **65 itens não-commitados** do cutover (o doc dizia
   "tudo commitado" — corrigido). Commitados: **path-rewrites** `server-1/GCP/jfelippebethlem`→`jfn-core/Oracle/ubuntu`
   (29 arq.: docs, `ambiente.json`, `tools/*.sh`, `_SANDBOX`; puro path, zero lógica) + deliverables anti-idle
