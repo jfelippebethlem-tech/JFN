@@ -122,3 +122,23 @@ massare/data/
 
 # Receita CNPJ dump (dados pessoais — local apenas, LGPD)
 data/receita_dump/
+
+# --- Higiene 2026-06-15: debris de runtime de sweeps/produto (regeneráveis) ---
+data/.pause_*
+data/*.lock
+data/.sweep_full_fachada_done
+data/.pos_sweep_feito
+data/.fachada_veredito_cursor
+data/*quota*.json
+data/beneficios_cache.json
+data/endereco_cache.json
+data/sancoes_cache.json
+data/crontab.backup.*
+data/crontab.novo
+data/scorecard.json
+data/scorecard.md
+data/dd_sweep/
+data/alerj/
+data/baseline_*/
+data/loop_*/
+data/pilot/

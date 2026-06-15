@@ -21,7 +21,7 @@ Telegram = maestro, aciona o JFN pela API `127.0.0.1:8000`). Padrão de saída: 
 **Regra-mãe: OB (Ordem Bancária) = verdade de pagamento**, nunca empenho.
 
 ## 2. ESTADO VIVO
-- **VM Linux Ubuntu na Oracle Cloud (OCI), Ampere ARM (aarch64)** — instância `jfn-agent-2`, hostname `jfn-core`, user `ubuntu`, `~/JFN` = `/home/ubuntu/JFN` (substituiu a antiga server-1/GCP x86_64 no cutover 2026-06-14). Branch **`feat/lista-limpa`** (não pushado; tudo commitado).
+- **VM Linux Ubuntu na Oracle Cloud (OCI), Ampere ARM (aarch64)** — instância `jfn-agent-2`, hostname `jfn-core`, user `ubuntu`, `~/JFN` = `/home/ubuntu/JFN` (substituiu a antiga server-1/GCP x86_64 no cutover 2026-06-14). Branch **`feat/lista-limpa`** (não pushado; **código/docs todos commitados** — restam só untracked de runtime: caches/quotas/`.pause_*`/`.lock`/crontab.backup + dirs de dado a triar).
 - **`jfn.service`** (user; `systemctl --user restart jfn.service`) → API `127.0.0.1:8000`. **`hermes-gateway.service`** =
   Yoda (`~/hermes-agent`). Ambos auto-start no boot.
 - **DB** `data/compliance.db` (1,2G): `ordens_bancarias` (OB 2019-2026, 1,12M, 77% c/ CNPJ; `favorecido_cpf`=CNPJ(14)/
@@ -186,6 +186,12 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-15 cont.42c (faxina de git pós-migração):** a árvore tinha **65 itens não-commitados** do cutover (o doc dizia
+  "tudo commitado" — corrigido). Commitados: **path-rewrites** `server-1/GCP/jfelippebethlem`→`jfn-core/Oracle/ubuntu`
+  (29 arq.: docs, `ambiente.json`, `tools/*.sh`, `_SANDBOX`; puro path, zero lógica) + deliverables anti-idle
+  (`RUNBOOK-BOOT-E-ANTIIDLE.md`, `keepalive.sh`) + 3 a versionar (`scorecard_hist.jsonl`, `.claude/skills/`, `AGENTS.md`).
+  **`.gitignore` ganhou bloco de runtime** (`.pause_*`/`*.lock`/`*quota*.json`/caches/`crontab.backup.*`/`dd_sweep`/
+  `alerj`/`baseline_*`/`loop_*`/`pilot`). `uv.lock` é stub vazio (pyproject sem `[dependencies]`) → NÃO versionado.
 - **06-15 cont.42b (future-proof do PDF — fim do `DeprecationWarning: ln`):** os 5 renderizadores de PDF
   (`inteligencia`/`inteligencia_orgao`/`lex`/`dossie`/`export_relatorios`) usavam `pdf.cell(..., ln=True)`,
   deprecado no fpdf2 (será removido) → **66 ocorrências** trocadas por `new_x=XPos.LMARGIN, new_y=YPos.NEXT`
