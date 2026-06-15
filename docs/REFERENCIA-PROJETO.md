@@ -19,6 +19,8 @@ o dono é **Deputado Estadual** no dever de fiscalizar/combater corrupção (bas
 **JFN** (relatórios/risco) · **Lex** (parecer jurídico) · **Massare** (mercado/previsão) · **Yoda/Hermes** (bot
 Telegram = maestro, aciona o JFN pela API `127.0.0.1:8000`). Padrão de saída: Kroll/Deloitte, grátis, honesto.
 **Regra-mãe: OB (Ordem Bancária) = verdade de pagamento**, nunca empenho.
+> **PolitiMonitor/Bond** (gestão de gabinete + redes sociais do deputado) é **projeto SEPARADO** com doc próprio
+> (`~/polimonitor/docs/REFERENCIA-BOND.md`, branch `claude/polimonitor-app-ZClUe`) — decisão de dividir o referência (06-15).
 
 ## 2. ESTADO VIVO
 - **VM Linux Ubuntu na Oracle Cloud (OCI), Ampere ARM (aarch64)** — instância `jfn-agent-2`, hostname `jfn-core`, user `ubuntu`, `~/JFN` = `/home/ubuntu/JFN` (substituiu a antiga server-1/GCP x86_64 no cutover 2026-06-14). Branch **`feat/lista-limpa`** (não pushado; **código/docs todos commitados** — restam só untracked de runtime: caches/quotas/`.pause_*`/`.lock`/crontab.backup + dirs de dado a triar).
@@ -186,6 +188,16 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-15 cont.42e (⭐ SIAFE logado via MFA-Telegram + PolitiMonitor/Bond NO AR + relogin autônomo):** (1) **SIAFE
+  LOGADO** — o fluxo MFA-via-Telegram funcionou end-to-end (dono respondeu o código no Telegram, captura passiva pegou,
+  sessão salva 30d). **Bug achado e corrigido:** o token SIAFE é **ALFANUMÉRICO** (`8UvDWguB`) — o extrator só aceitava
+  dígitos; agora aceita 4-8 alfanum (numérico OU misto). (2) **Relogin AUTÔNOMO** (`siafe_session --ensure`, sem Claude
+  Code): check_session → se expirada, login_with_mfa (pinga Telegram + captura). CLI carrega `.env` (lição §8). (3) **⭐
+  PolitiMonitor/Bond DEPLOYADO** (app Next.js do gabinete + redes) — worktree `~/polimonitor` (NÃO toca o JFN), 4
+  processos no **pm2** (app :3000 + bond/hermes/whatsapp workers), Prisma SQLite, build OK, Tailscale `100.123.89.59:3000`,
+  persistente (save+startup). Chaves Gemini/OpenRouter reusadas; Telegram VAZIO (anti-409). Fix nginx path. Doc próprio
+  `REFERENCIA-BOND.md`. Itens humanos (senha/identidade/QR/tokens) no Telegram do dono. **Yoda não precisa entender o MFA**
+  — só registra a msg, o código lê. (4) Sweeps verificados (chaves OK, cron ativo, 36 testes verdes).
 - **06-15 cont.42d (⭐ sweeps religados + credenciais recuperadas + MFA-Telegram):** (1) **Sweeps reativados**
   (flags `.pause_*` removidas). (2) **Browser do Playwright consertado** — faltavam libs `libatk` na migração ARM
   (`sudo apt install libatk1.0-0t64 libatk-bridge2.0-0t64`); sem isso TODO sweep de browser estava quebrado. (3) **⭐
