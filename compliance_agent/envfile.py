@@ -43,6 +43,24 @@ def _aplicar(caminho: Path) -> int:
     return n
 
 
+# Aliases de credencial: o .env pode usar os nomes PT (SEI_USUARIO/SEI_SENHA), mas
+# vários módulos leem os nomes EN (SEI_USER/SEI_PASS). Espelha um no outro (sem
+# sobrescrever) p/ não cair em senha VAZIA por descasamento (bug real pós-migração).
+_ALIASES = {
+    "SEI_USER": "SEI_USUARIO",
+    "SEI_PASS": "SEI_SENHA",
+}
+
+
+def _aplicar_aliases() -> None:
+    for canonico, alt in _ALIASES.items():
+        a, b = os.environ.get(canonico), os.environ.get(alt)
+        if a and not b:
+            os.environ[alt] = a
+        elif b and not a:
+            os.environ[canonico] = b
+
+
 def carregar_env(raiz: Path | None = None) -> list[str]:
     """
     Carrega `.env` e `.env.txt` da raiz do projeto para os.environ.
@@ -55,6 +73,7 @@ def carregar_env(raiz: Path | None = None) -> list[str]:
         if caminho.exists():
             _aplicar(caminho)
             lidos.append(nome)
+    _aplicar_aliases()
     return lidos
 
 
