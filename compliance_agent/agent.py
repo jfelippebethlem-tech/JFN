@@ -406,9 +406,12 @@ _ANTHROPIC_MODEL = "claude-opus-4-8"
 
 
 def _openrouter_model() -> str:
-    # "openrouter/free" é o roteador inteligente do OpenRouter: escolhe automaticamente
-    # um modelo gratuito que suporte tool calling — nunca retorna 404.
-    return os.environ.get("OPENROUTER_SMART_MODEL", "openrouter/free")
+    # GUARD anti-cobrança (regra do dono: SEMPRE `:free`). Qualquer modelo é forçado p/ `:free`.
+    # 'openrouter/free' (roteador gratuito que escolhe um free c/ tool calling) e qualquer ':free' passam.
+    m = os.environ.get("OPENROUTER_SMART_MODEL", "openrouter/free").strip()
+    if m == "openrouter/free" or m.endswith(":free"):
+        return m
+    return m.split(":", 1)[0] + ":free"
 
 
 def _detect_provider() -> tuple[str, str, str]:
