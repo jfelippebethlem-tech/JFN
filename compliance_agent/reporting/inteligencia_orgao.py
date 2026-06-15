@@ -26,6 +26,8 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
+from fpdf.enums import XPos, YPos
+
 from compliance_agent import ugs
 from compliance_agent.reporting.inteligencia import (
     cabecalho_frescor,
@@ -1622,7 +1624,7 @@ def _secao_dd_pdf(pdf, _t, ctx: dict) -> None:
     """PDF — triagem de DD (fachada/laranja) + rodízio/cartel + processos SEI (cruzamento central)."""
     dd = ctx.get("dd_orgao") or {}
     pdf.add_page(); pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 9, _t("Triagem de Due Diligence dos fornecedores (fachada/laranja/cartel)"), ln=True)
+    pdf.cell(0, 9, _t("Triagem de Due Diligence dos fornecedores (fachada/laranja/cartel)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
     _mc(pdf, 4.5, _t("Os maiores fornecedores PJ passam por due diligence (rede societária, situação cadastral, "
                      "capital x recebido, sócio único, endereço) e recebem grau de risco. Cruza-se o rodízio "
@@ -1637,14 +1639,14 @@ def _secao_dd_pdf(pdf, _t, ctx: dict) -> None:
     if rod and rod.get("indicio"):
         camps = ", ".join(f"{c['nome'][:22]} ({c['n_vitorias']}x)" for c in (rod.get("campeoes") or [])[:4])
         pdf.set_font(pdf._fam, "B", 10); pdf.set_text_color(150, 90, 0)
-        pdf.cell(0, 7, _t(f"Rodizio temporal de vencedores (bid rotation) - score {rod.get('score')}"), ln=True)
+        pdf.cell(0, 7, _t(f"Rodizio temporal de vencedores (bid rotation) - score {rod.get('score')}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
         _mc(pdf, 4.5, _t(f"Indício de cartel/conluio: {rod.get('n_campeoes')} fornecedores revezaram o 1o lugar "
                          f"em {rod.get('n_anos')} exercícios (dominância {rod.get('share_ring')}). Campeões: "
                          f"{camps}. OB expõe o vencedor, não os licitantes - corroborar no SEI/PNCP."))
         pdf.ln(1)
     ranking = dd.get("ranking") or []
-    pdf.set_font(pdf._fam, "B", 10); pdf.cell(0, 7, _t(f"Ranking de risco - {len(ranking)} maiores fornecedores PJ"), ln=True)
+    pdf.set_font(pdf._fam, "B", 10); pdf.cell(0, 7, _t(f"Ranking de risco - {len(ranking)} maiores fornecedores PJ"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     _tab_header(pdf, [("Grau", 12), ("Sc.", 12), ("Fornecedor", 96), ("Total (R$)", 34), ("Indícios", 22), ("SEI", 10)])
     pdf.set_font(pdf._fam, "", 7)
     for r in ranking:
@@ -1663,7 +1665,7 @@ def _secao_endereco_pdf(pdf, _t, ctx: dict) -> None:
     """PDF — realidade do endereço das sedes (as empresas são reais?)."""
     er = ctx.get("endereco_real") or {}
     pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 8, _t("Realidade do endereço das sedes (as empresas são reais?)"), ln=True)
+    pdf.cell(0, 8, _t("Realidade do endereço das sedes (as empresas são reais?)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
     if not er.get("ok"):
         pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
@@ -1690,7 +1692,7 @@ def _secao_beneficios_pdf(pdf, _t, ctx: dict) -> None:
     """PDF — benefícios sociais dos sócios/administradores (cruzamento de laranja)."""
     b = ctx.get("beneficios_socios") or {}
     pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 8, _t("Benefícios sociais dos sócios/administradores (indício de laranja)"), ln=True)
+    pdf.cell(0, 8, _t("Benefícios sociais dos sócios/administradores (indício de laranja)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
     if not b.get("ok"):
         pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
@@ -1722,7 +1724,7 @@ def _secao_tce_pdf(pdf, _t, ctx: dict) -> None:
     from compliance_agent.reporting import penalidades_tce_view as pv
     t = ctx.get("penalidades_tce") or {}
     pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 8, _t("Sanções do TCE-RJ ao órgão (controle externo)"), ln=True)
+    pdf.cell(0, 8, _t("Sanções do TCE-RJ ao órgão (controle externo)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
     if not t.get("ok") or not t.get("n_condenacoes"):
         pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
@@ -1755,7 +1757,7 @@ def _secao_concentracao_grupo_pdf(pdf, _t, ctx: dict) -> None:
     """PDF — concentração OCULTA por grupo econômico (cartel/concorrência fictícia)."""
     cg = ctx.get("concentracao_grupo") or {}
     pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 8, _t("Concentração oculta por grupo econômico (cartel/concorrência fictícia)"), ln=True)
+    pdf.cell(0, 8, _t("Concentração oculta por grupo econômico (cartel/concorrência fictícia)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
     _mc(pdf, 4.5, _t("Colapsa os fornecedores por grupo econômico (CNPJs ligados por sócio em comum). Muitos "
                      "CNPJs que parecem concorrentes mas são um grupo = diversidade fictícia (Art. 90 Lei 8.666; "
@@ -1795,7 +1797,7 @@ def _secao_painel_detectores_pdf(pdf, _t, ctx: dict) -> None:
     resumo honesto dos afastados/indisponíveis). Degrada honesto: INDISPONÍVEL não some."""
     pd = ctx.get("painel_detectores") or {}
     pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 8, _t("Painel de detectores (spec de licitações)"), ln=True)
+    pdf.cell(0, 8, _t("Painel de detectores (spec de licitações)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
     _mc(pdf, 4.5, _t("Visão unificada dos detectores no schema do spec (score com âncoras fixas; status "
                      "confirmado/descartado/nao_avaliavel; passo exculpatório adversarial). Hoje J1 (conluio/"
@@ -1868,7 +1870,7 @@ def _fotos_fachada_suspeitos_pdf(pdf, _t, suspeitos: list, limite: int = 6) -> i
                 tmp = fh.name
             if embutidas == 0:
                 pdf.ln(2); pdf.set_font(pdf._fam, "B", 9); pdf.set_text_color(150, 90, 0)
-                pdf.cell(0, 6, _t("Fotos das fachadas-suspeitas (imagem de rua guardada no B2)"), ln=True)
+                pdf.cell(0, 6, _t("Fotos das fachadas-suspeitas (imagem de rua guardada no B2)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
                 pdf.set_text_color(0, 0, 0)
             # quebra de pagina se nao couber a imagem + legenda (~60mm)
             if pdf.get_y() > pdf.h - 70:
@@ -1902,7 +1904,7 @@ def _secao_tac_pdf(pdf, _t, ctx: dict) -> None:
     """PDF — espelho da §1-J: pagamento fora de contrato regular (TAC/indenização) + emergencial + worklist."""
     tj = ctx.get("tac_orgao") or {}
     pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 8, _t("Pagamento fora de contrato regular (TAC/indenizacao) + emergencial"), ln=True)
+    pdf.cell(0, 8, _t("Pagamento fora de contrato regular (TAC/indenizacao) + emergencial"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
     _mc(pdf, 4.5, _t("Quanto a UG pagou FORA de contrato regular licitado (Termo de Ajuste de Contas, indenizacao, "
                      "reconhecimento de divida - art. 59 par. unico Lei 8.666; art. 149 Lei 14.133) e por "
@@ -1925,7 +1927,7 @@ def _secao_tac_pdf(pdf, _t, ctx: dict) -> None:
     forn = wl.get("fornecedores") or []
     if forn:
         pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
-        pdf.cell(0, 7, _t(f"Worklist - fornecedores da UG com maior pagamento via TAC ({wl.get('n_fornecedores', 0)})"), ln=True)
+        pdf.cell(0, 7, _t(f"Worklist - fornecedores da UG com maior pagamento via TAC ({wl.get('n_fornecedores', 0)})"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Fornecedor (CNPJ)", 92), ("TAC %", 16), ("R$ via TAC", 34), ("Total (R$)", 34), ("Sede", 24)])
         pdf.set_font(pdf._fam, "", 7)
         for f in forn:
@@ -1959,7 +1961,7 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
     """PDF — espelho da §1-K: cruzamento dump da Receita Federal × fornecedores (anomalias determinísticas)."""
     ar = ctx.get("anomalia_receita") or {}
     pdf.add_page(); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 8, _t("Cruzamento Receita Federal - anomalias nos fornecedores"), ln=True)
+    pdf.cell(0, 8, _t("Cruzamento Receita Federal - anomalias nos fornecedores"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
     _mc(pdf, 4.5, _t("Cruza os pagamentos (OB) com o dump da Receita Federal (natureza juridica; quadro societario "
                      "real; busca reversa) para flagar: (1) entidade SEM FINS LUCRATIVOS recebendo como fornecedor; "
@@ -1982,7 +1984,7 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
     sf = ar.get("sem_fins_lucrativos") or []
     if sf:
         pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
-        pdf.cell(0, 7, _t("(1) Entidades SEM FINS LUCRATIVOS recebendo como fornecedor"), ln=True)
+        pdf.cell(0, 7, _t("(1) Entidades SEM FINS LUCRATIVOS recebendo como fornecedor"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Razao social", 96), ("Natureza", 34), ("Total (R$)", 32), ("Obs.", 28)])
         pdf.set_font(pdf._fam, "", 7)
         for r in sf[:15]:
@@ -2007,7 +2009,7 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
     rede = ar.get("rede_mesmo_orgao") or []
     if rede:
         pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
-        pdf.cell(0, 7, _t("(2) Rede/grupo - administradores compartilhados (>=2 fornecedores do orgao)"), ln=True)
+        pdf.cell(0, 7, _t("(2) Rede/grupo - administradores compartilhados (>=2 fornecedores do orgao)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Administrador (doc)", 120), ("N fornec.", 22), ("Qualificacoes", 48)])
         pdf.set_font(pdf._fam, "", 7)
         for r in rede[:15]:
@@ -2024,7 +2026,7 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
     veic = ar.get("veiculos_aluguel") or []
     if veic:
         pdf.ln(1); pdf.set_font(pdf._fam, "B", 8.5)
-        pdf.cell(0, 6, _t("Administradores em muitos CNPJs no Brasil (possivel veiculo de aluguel):"), ln=True)
+        pdf.cell(0, 6, _t("Administradores em muitos CNPJs no Brasil (possivel veiculo de aluguel):"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Administrador (doc)", 130), ("N CNPJs (Brasil)", 40)])
         pdf.set_font(pdf._fam, "", 7)
         for r in veic[:12]:
@@ -2039,7 +2041,7 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
     su = ar.get("socio_unico_alto_valor") or []
     if su:
         pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
-        pdf.cell(0, 7, _t("(3) Laranja/socio-unico de alto valor"), ln=True)
+        pdf.cell(0, 7, _t("(3) Laranja/socio-unico de alto valor"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Razao social", 104), ("Total (R$)", 34), ("Unico admin.", 52)])
         pdf.set_font(pdf._fam, "", 7)
         for r in su[:15]:
@@ -2056,7 +2058,7 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
     cad = ar.get("cadastro") or {}
     if cad.get("ok") and cad.get("achados"):
         pdf.ln(1); pdf.set_font(pdf._fam, "B", 9)
-        pdf.cell(0, 7, _t("(4) Situacao cadastral externa (amostra)"), ln=True)
+        pdf.cell(0, 7, _t("(4) Situacao cadastral externa (amostra)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("CNPJ-raiz", 34), ("Situacao", 40), ("Motivo", 80), ("Data", 28)])
         pdf.set_font(pdf._fam, "", 7)
         for r in cad["achados"]:
@@ -2084,10 +2086,10 @@ def render_pdf(ctx: dict, destino: str) -> str:
 
     pdf.set_fill_color(20, 30, 50); pdf.set_text_color(255, 255, 255)
     pdf.set_font(pdf._fam, "B", 15)
-    pdf.cell(0, 13, _t("RELATÓRIO DE INTELIGÊNCIA DE ÓRGÃO"), fill=True, ln=True, align="C")
+    pdf.cell(0, 13, _t("RELATÓRIO DE INTELIGÊNCIA DE ÓRGÃO"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.set_font(pdf._fam, "", 9); pdf.set_fill_color(45, 60, 90)
-    pdf.cell(0, 7, _t("Execução de pagamentos · Concentração por fornecedor · Risco"), fill=True, ln=True, align="C")
-    pdf.cell(0, 7, _t(f"JFN Intelligence Engine  |  {ctx['data']}"), fill=True, ln=True, align="C")
+    pdf.cell(0, 7, _t("Execução de pagamentos · Concentração por fornecedor · Risco"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+    pdf.cell(0, 7, _t(f"JFN Intelligence Engine  |  {ctx['data']}"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.ln(4)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "B", 14)
     _mc(pdf, 8, _t(f"{ctx['nome']}  ·  UG {ctx['ug']}"))
@@ -2106,7 +2108,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
             pdf.set_text_color(255, 255, 255)
         pdf.set_font(pdf._fam, "B", 12)
         pdf.cell(0, 9, _t(f"  GRAU DE ATENÇÃO: {_risco['rotulo']}   ·   Score de risco do órgão: {_risco['score']}/100"),
-                 fill=True, ln=True)
+                 fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
         _mc(pdf, 4.5, _t(f"{_risco['just']}. O score é indício INTERNO de atenção (concentração + padrões ACFE), "
                          "NÃO uma acusação. Os red flags e a matriz P×I estão abaixo; o detalhe jurídico, no Parecer Lex anexo."))
@@ -2115,7 +2117,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
 
     if p["tem_dados"]:
         pdf.ln(3); pdf.set_font(pdf._fam, "B", 12)
-        pdf.cell(0, 8, _t("Pagamentos por exercício"), ln=True)
+        pdf.cell(0, 8, _t("Pagamentos por exercício"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Exercício", 36), ("Nº OBs", 26), ("Fornec.", 26), ("Valor pago (R$)", 62)])
         pdf.set_font(pdf._fam, "", 9)
         for a in p["anos"]:
@@ -2128,10 +2130,10 @@ def render_pdf(ctx: dict, destino: str) -> str:
 
         # Concentração por fornecedor
         pdf.add_page(); pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
-        pdf.cell(0, 9, _t("Concentração por fornecedor (HHI)"), ln=True)
+        pdf.cell(0, 9, _t("Concentração por fornecedor (HHI)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 9)
         pdf.cell(0, 6, _t(f"HHI {p['hhi'].get('indice')} — {p['hhi'].get('nivel')} "
-                          f"(maior fornecedor = {p['hhi'].get('top_share')}%)"), ln=True); pdf.ln(1)
+                          f"(maior fornecedor = {p['hhi'].get('top_share')}%)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT); pdf.ln(1)
         _tab_header(pdf, [("Fornecedor", 130), ("Valor (R$)", 36), ("%", 16)])
         pdf.set_font(pdf._fam, "", 8)
         tot = p["total_geral"] or 1
@@ -2144,7 +2146,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         geo = ctx.get("geo") or {}
         if geo.get("ok") and geo.get("cidades"):
             pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
-            pdf.cell(0, 8, _t("Concentração geográfica (sede dos fornecedores)"), ln=True)
+            pdf.cell(0, 8, _t("Concentração geográfica (sede dos fornecedores)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
             _mc(pdf, 4.5, _t(f"Em que cidades se sediam os fornecedores que o órgão paga (fração com endereço: "
                              f"{geo.get('cobertura_valor', 0)*100:.0f}% do valor). Concentração alta em cidade pequena/"
@@ -2161,7 +2163,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         _grupos = _recorrentes_identicos(p)
         if _grupos:
             pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
-            pdf.cell(0, 8, _t("Pagamentos recorrentes de valor idêntico"), ln=True)
+            pdf.cell(0, 8, _t("Pagamentos recorrentes de valor idêntico"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
             _mc(pdf, 4.5, _t("Mesmo valor exato pago várias vezes ao mesmo fornecedor — parcela fixa de "
                              "contrato continuado (legítimo) ou red flag ACFE (fracionamento/sem medição) a verificar."))
@@ -2175,7 +2177,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         # Red flags do controle externo + matriz P×I (síntese; detalhe e fundamentos no Parecer Lex anexo)
         _ach = _risco.get("achados") or []
         pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
-        pdf.cell(0, 8, _t("Red flags do controle externo (síntese · matriz P×I — TCU)"), ln=True)
+        pdf.cell(0, 8, _t("Red flags do controle externo (síntese · matriz P×I — TCU)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
         if _ach:
             from compliance_agent.lex import _RF
@@ -2209,12 +2211,12 @@ def render_pdf(ctx: dict, destino: str) -> str:
         for a in p["anos"]:
             b = p["por_ano"][a]
             pdf.add_page(); pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
-            pdf.cell(0, 9, _t(f"Pagamentos (OBs) — exercício {a}"), ln=True)
+            pdf.cell(0, 9, _t(f"Pagamentos (OBs) — exercício {a}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 9)
             _maiores = sorted(b["linhas"], key=lambda ln: -(ln.get("valor") or 0))[:12]
             _nota = f"{b['n']} OBs — Total: R$ {moeda(b['total'])}" + (
                 f"  ·  {len(_maiores)} maiores abaixo; lista completa na planilha XLSX" if b["n"] > len(_maiores) else "")
-            pdf.cell(0, 6, _t(_nota), ln=True); pdf.ln(1)
+            pdf.cell(0, 6, _t(_nota), new_x=XPos.LMARGIN, new_y=YPos.NEXT); pdf.ln(1)
             _tab_header(pdf, [("#", 9), ("Nº OB", 26), ("Data", 22), ("Fornecedor", 97), ("Valor (R$)", 36)])
             pdf.set_font(pdf._fam, "", 7)
             for i, ln in enumerate(_maiores, 1):
@@ -2227,11 +2229,11 @@ def render_pdf(ctx: dict, destino: str) -> str:
     # Parecer jurídico e de mérito
     pdf.add_page()
     pdf.set_font(pdf._fam, "B", 14); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 10, _t("Análise Jurídica e de Mérito — Parecer Preliminar do JFN"), ln=True)
+    pdf.cell(0, 10, _t("Análise Jurídica e de Mérito — Parecer Preliminar do JFN"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0)
     raciocinio = ctx.get("raciocinio")
     if raciocinio:
-        pdf.set_font(pdf._fam, "B", 11); pdf.cell(0, 7, _t("Análise raciocinada — cruzamento dos achados"), ln=True)
+        pdf.set_font(pdf._fam, "B", 11); pdf.cell(0, 7, _t("Análise raciocinada — cruzamento dos achados"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font(pdf._fam, "", 10)
         _render_parecer_pdf(pdf, _t, raciocinio)
         pdf.ln(2)

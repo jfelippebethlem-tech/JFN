@@ -37,6 +37,8 @@ from datetime import date
 from pathlib import Path
 from typing import Optional
 
+from fpdf.enums import XPos, YPos
+
 _ROOT = Path(__file__).resolve().parents[2]
 _DATA = Path(os.environ.get("JFN_DATA_DIR", _ROOT / "data"))
 _DB = _DATA / "compliance.db"
@@ -2978,20 +2980,20 @@ def render_pdf(ctx: dict, destino: str) -> str:
     # Capa
     pdf.set_fill_color(20, 30, 50); pdf.set_text_color(255, 255, 255)
     pdf.set_font(pdf._fam, "B", 16)
-    pdf.cell(0, 13, _t("RELATÓRIO DE INTELIGÊNCIA DE FORNECEDOR"), fill=True, ln=True, align="C")
+    pdf.cell(0, 13, _t("RELATÓRIO DE INTELIGÊNCIA DE FORNECEDOR"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.set_font(pdf._fam, "", 9); pdf.set_fill_color(45, 60, 90)
-    pdf.cell(0, 7, _t("Due Diligence de Integridade · Exposição Financeira · Risco & Compliance"), fill=True, ln=True, align="C")
-    pdf.cell(0, 7, _t(f"JFN Intelligence Engine  |  {ctx['data']}"), fill=True, ln=True, align="C")
+    pdf.cell(0, 7, _t("Due Diligence de Integridade · Exposição Financeira · Risco & Compliance"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+    pdf.cell(0, 7, _t(f"JFN Intelligence Engine  |  {ctx['data']}"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.ln(4)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "B", 14)
     _mc(pdf, 8, _t(ctx["nome"]))
     pdf.set_font(pdf._fam, "", 10)
-    pdf.cell(0, 6, _t(f"CNPJ: {ctx['cnpj_fmt']}"), ln=True)
+    pdf.cell(0, 6, _t(f"CNPJ: {ctx['cnpj_fmt']}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.ln(2)
     pdf.set_fill_color(*cor_risco)
     pdf.set_text_color(0, 0, 0) if ctx["risco"] == "MÉDIO" else pdf.set_text_color(255, 255, 255)
     pdf.set_font(pdf._fam, "B", 12)
-    pdf.cell(70, 9, _t(f"  RISCO: {ctx['risco']}   Score: {ctx['score']}/100"), fill=True, ln=True)
+    pdf.cell(70, 9, _t(f"  RISCO: {ctx['risco']}   Score: {ctx['score']}/100"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0); pdf.ln(3)
     pdf.set_font(pdf._fam, "", 9)
     _mc(pdf, 5, _t(_resumo_executivo(ctx)))
@@ -3004,7 +3006,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
     # Exposição por exercício
     if p["tem_dados"]:
         pdf.ln(4); pdf.set_font(pdf._fam, "B", 12)
-        pdf.cell(0, 8, _t("Exposição financeira — pagamentos por exercício"), ln=True)
+        pdf.cell(0, 8, _t("Exposição financeira — pagamentos por exercício"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Exercício", 40), ("Nº OBs", 30), ("Valor pago (R$)", 80)])
         pdf.set_font(pdf._fam, "", 9)
         for a in p["anos"]:
@@ -3019,12 +3021,12 @@ def render_pdf(ctx: dict, destino: str) -> str:
             b = p["por_ano"][a]
             pdf.add_page()
             pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
-            pdf.cell(0, 9, _t(f"Pagamentos (OBs) — exercício {a}"), ln=True)
+            pdf.cell(0, 9, _t(f"Pagamentos (OBs) — exercício {a}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 9)
             _maiores = sorted(b["linhas"], key=lambda ln: -(ln.get("valor") or 0))[:12]
             _nota = f"{b['n']} OBs — Total pago: R$ {moeda(b['total'])}" + (
                 f"  ·  {len(_maiores)} maiores abaixo; lista completa na planilha XLSX" if b["n"] > len(_maiores) else "")
-            pdf.cell(0, 6, _t(_nota), ln=True)
+            pdf.cell(0, 6, _t(_nota), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             pdf.ln(1)
             _tab_header(pdf, [("#", 10), ("Nº OB", 28), ("Data", 24), ("Órgão (UG)", 90), ("Valor (R$)", 36)])
             pdf.set_font(pdf._fam, "", 7)
@@ -3039,10 +3041,10 @@ def render_pdf(ctx: dict, destino: str) -> str:
     if p["tem_dados"]:
         pdf.add_page()
         pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
-        pdf.cell(0, 9, _t("Concentração por órgão (HHI)"), ln=True)
+        pdf.cell(0, 9, _t("Concentração por órgão (HHI)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 9)
         pdf.cell(0, 6, _t(f"HHI {p['hhi'].get('indice')} — concentração {p['hhi'].get('nivel')} "
-                          f"(maior órgão = {p['hhi'].get('top_share')}%)"), ln=True); pdf.ln(1)
+                          f"(maior órgão = {p['hhi'].get('top_share')}%)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT); pdf.ln(1)
         _tab_header(pdf, [("Órgão (UG)", 120), ("Valor pago (R$)", 40), ("%", 20)])
         pdf.set_font(pdf._fam, "", 8)
         tot = p["total_geral"] or 1
@@ -3054,7 +3056,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
     if c["n"]:
         pdf.add_page()
         pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
-        pdf.cell(0, 9, _t(f"Carteira de contratos (SIAFE) — {c['n']} contratos / R$ {moeda(c['total'])}"), ln=True)
+        pdf.cell(0, 9, _t(f"Carteira de contratos (SIAFE) — {c['n']} contratos / R$ {moeda(c['total'])}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_text_color(0, 0, 0)
         _tab_header(pdf, [("Nº", 22), ("Objeto", 78), ("Órgão", 38), ("Valor (R$)", 34)])
         pdf.set_font(pdf._fam, "", 7)
@@ -3065,14 +3067,14 @@ def render_pdf(ctx: dict, destino: str) -> str:
     # Sinais + red flags (texto)
     pdf.add_page()
     pdf.set_font(pdf._fam, "B", 13); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 9, _t("Sinais de risco e red flags"), ln=True)
+    pdf.cell(0, 9, _t("Sinais de risco e red flags"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 9)
     if ctx["enriq"].get("ok"):
         for s in (ctx["enriq"].get("sinais") or [])[:20]:
             _mc(pdf, 5, _t(f"[{s.get('nivel','')}] {s.get('descricao','')} {('- '+s.get('detalhe','')) if s.get('detalhe') else ''}"))
     else:
         _mc(pdf, 5, _t(f"Perfil/sinais corporativos: {ctx['fonte_enriq']} ({ctx['enriq'].get('_motivo','-')})."))
-    pdf.ln(2); pdf.set_font(pdf._fam, "B", 10); pdf.cell(0, 6, _t("Red flags:"), ln=True)
+    pdf.ln(2); pdf.set_font(pdf._fam, "B", 10); pdf.cell(0, 6, _t("Red flags:"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font(pdf._fam, "", 8)
     rf = _red_flags(ctx)
     if rf:
@@ -3086,11 +3088,11 @@ def render_pdf(ctx: dict, destino: str) -> str:
     # Parecer jurídico e de mérito (texto corrido) — o diferencial do JFN
     pdf.add_page()
     pdf.set_font(pdf._fam, "B", 14); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 10, _t("Análise Jurídica e de Mérito — Parecer Preliminar do JFN"), ln=True)
+    pdf.cell(0, 10, _t("Análise Jurídica e de Mérito — Parecer Preliminar do JFN"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0)
     raciocinio = ctx.get("raciocinio")
     if raciocinio:
-        pdf.set_font(pdf._fam, "B", 11); pdf.cell(0, 7, _t("Análise raciocinada — cruzamento dos achados"), ln=True)
+        pdf.set_font(pdf._fam, "B", 11); pdf.cell(0, 7, _t("Análise raciocinada — cruzamento dos achados"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font(pdf._fam, "", 10)
         _render_parecer_pdf(pdf, _t, raciocinio)
         pdf.ln(2)
