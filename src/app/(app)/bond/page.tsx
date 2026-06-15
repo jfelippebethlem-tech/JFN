@@ -15,7 +15,8 @@ type Perfil = { id: string; plataforma: string; handle: string; nomeCompleto?: s
 type Post = { id: string; plataforma: string; postId: string; conteudo: string; tipo: string; url?: string; imagemUrl?: string; likes: number; comentarios: number; compartilhos: number; alcance: number; engajamento: number; publicadoEm: string; perfil?: Perfil }
 type Fa = { id: string; plataforma: string; nome?: string; username?: string; totalLikes: number; totalComents: number; totalShares: number; ultimaInter?: string; pessoa?: { id: string; nome: string; tipo: string } | null }
 type RankingItem = { plataforma: string; externalId?: string; nome?: string | null; username?: string | null; score: number; totalLikes?: number; totalComents?: number; totalShares?: number; likes?: number; comments?: number; shares?: number; pessoa?: { id: string; nome: string; tipo: string } | null }
-type Comentario = { id: string; plataforma: string; postId: string; comentarioId: string; autor?: string | null; autorId?: string | null; texto: string; respondido: boolean; sugestaoIA?: string | null; respostaFinal?: string | null; criadoEm: string }
+type RankingCaboItem = { pessoaId: string; nome: string; tipo: string; cargo?: string | null; instagram?: string | null; twitter?: string | null; facebook?: string | null; plataformas: string[]; totalLikes: number; totalComents: number; totalShares: number; score: number }
+type Comentario = { id: string; plataforma: string; postId: string; comentarioId: string; autor?: string | null; autorId?: string | null; texto: string; respondido: boolean; sugestaoIA?: string | null; respostaFinal?: string | null; criadoEm: string; categoria?: string; isCabo?: boolean }
 type Insight = { id: string; titulo: string; descricao: string; tipo: string; plataforma?: string; lido: boolean; criadoEm: string }
 type Rascunho = { id: string; titulo?: string; texto: string; plataformas: string; hashtags?: string; status: string; criadoEm: string }
 type Msg = { role: 'user' | 'assistant'; content: string }
@@ -47,7 +48,8 @@ export default function BondPage() {
   const [posts, setPosts] = useState<Post[]>([])
   const [rankingGeral, setRankingGeral] = useState<RankingItem[]>([])
   const [rankingSemanal, setRankingSemanal] = useState<RankingItem[]>([])
-  const [rankingSubTab, setRankingSubTab] = useState<'geral'|'semanal'>('geral')
+  const [rankingCabos, setRankingCabos] = useState<RankingCaboItem[]>([])
+  const [rankingSubTab, setRankingSubTab] = useState<'cabos'|'geral'|'semanal'>('cabos')
   const [comentarios, setComentarios] = useState<Comentario[]>([])
   const [insights, setInsights] = useState<Insight[]>([])
   const [rascunhos, setRascunhos] = useState<Rascunho[]>([])
@@ -73,9 +75,10 @@ export default function BondPage() {
 
   async function load() {
     setLoading(true)
-    const [ov, p, rg, rs, coms, i, r] = await Promise.all([
+    const [ov, p, rc, rg, rs, coms, i, r] = await Promise.all([
       fetch('/api/bond').then(r => r.json()),
       fetch('/api/bond?tipo=posts').then(r => r.json()),
+      fetch('/api/bond?tipo=ranking_cabos').then(r => r.json()),
       fetch('/api/bond?tipo=ranking_geral').then(r => r.json()),
       fetch('/api/bond?tipo=ranking_semanal').then(r => r.json()),
       fetch('/api/bond?tipo=comentarios').then(r => r.json()),
@@ -84,6 +87,7 @@ export default function BondPage() {
     ])
     setOverview(ov)
     setPosts(Array.isArray(p) ? p : [])
+    setRankingCabos(Array.isArray(rc) ? rc : [])
     setRankingGeral(Array.isArray(rg) ? rg : [])
     setRankingSemanal(Array.isArray(rs) ? rs : [])
     setComentarios(Array.isArray(coms) ? coms : [])
@@ -458,24 +462,88 @@ export default function BondPage() {
           {/* RANKINGS */}
           {tab === 'rankings' && (
             <div className="space-y-4">
-              {/* Explicação pontuação */}
               <div className="flex items-center justify-between">
                 <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
-                  {(['geral', 'semanal'] as const).map(s => (
-                    <button key={s} onClick={() => setRankingSubTab(s)}
-                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${rankingSubTab === s ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-                      {s === 'geral' ? 'Geral (Acumulado)' : 'Esta Semana'}
+                  {([
+                    { id: 'cabos', label: '🏅 Apoiadores' },
+                    { id: 'geral', label: '🌐 Geral (Todos)' },
+                    { id: 'semanal', label: '📅 Esta Semana' },
+                  ] as const).map(s => (
+                    <button key={s.id} onClick={() => setRankingSubTab(s.id)}
+                      className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${rankingSubTab === s.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+                      {s.label}
                     </button>
                   ))}
                 </div>
-                <p className="text-xs text-gray-400">Pontos: curtida=1 · comentário=2 · compartilho=3</p>
+                <p className="text-xs text-gray-400">❤×1 · 💬×2 · 🔁×3</p>
               </div>
 
+              {/* RANKING CABOS ELEITORAIS */}
+              {rankingSubTab === 'cabos' && (
+                <div className="card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Trophy className="w-4 h-4 text-yellow-500" />
+                    <h2 className="font-semibold text-gray-900">Ranking de Apoiadores</h2>
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{rankingCabos.length} cadastrados</span>
+                  </div>
+                  {rankingCabos.length === 0 ? (
+                    <div className="text-center py-12">
+                      <Users className="w-10 h-10 text-gray-200 mx-auto mb-2" />
+                      <p className="text-gray-400 text-sm">Nenhum cabo cadastrado ainda.</p>
+                      <a href="/apoiadores" className="text-xs text-blue-500 hover:underline mt-1 inline-block">Ir para Apoiadores →</a>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="grid grid-cols-[28px_1fr_auto_auto] text-xs font-medium text-gray-400 uppercase px-3 pb-2 border-b border-gray-100">
+                        <span>#</span><span>Cabo</span><span>Redes</span><span className="text-right">❤ 💬 🔁 Pts</span>
+                      </div>
+                      {rankingCabos.map((item, i) => {
+                        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : null
+                        const handle = item.instagram ?? item.twitter ?? item.facebook ?? null
+                        return (
+                          <div key={item.pessoaId} className="grid grid-cols-[28px_1fr_auto_auto] items-center gap-3 px-3 py-3 hover:bg-gray-50 rounded-lg">
+                            <div className="flex justify-center">
+                              {medal ? <span className="text-base">{medal}</span> : <span className="text-xs text-gray-300">{i + 1}</span>}
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-medium text-gray-900">{item.nome}</p>
+                                <span className={`text-xs px-1.5 py-0.5 rounded-full font-medium ${item.tipo === 'coordenador' ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
+                                  {item.tipo === 'coordenador' ? 'Coord.' : 'Apoiador'}
+                                </span>
+                              </div>
+                              {(handle || item.cargo) && (
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  {handle && `@${handle}`}{handle && item.cargo && ' · '}{item.cargo}
+                                </p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-1">
+                              {item.plataformas.map(p => (
+                                <span key={p}>{PLAT_ICON[p]}</span>
+                              ))}
+                              {item.plataformas.length === 0 && <span className="text-xs text-gray-300">—</span>}
+                            </div>
+                            <div className="flex items-center gap-2 text-xs shrink-0">
+                              <span className="flex items-center gap-0.5 text-red-500"><Heart className="w-3 h-3" />{item.totalLikes}</span>
+                              <span className="flex items-center gap-0.5 text-blue-500"><MessageCircle className="w-3 h-3" />{item.totalComents}</span>
+                              <span className="flex items-center gap-0.5 text-green-500"><Share2 className="w-3 h-3" />{item.totalShares}</span>
+                              <span className={`font-bold px-2 py-0.5 rounded-full min-w-[36px] text-center ${item.score > 0 ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-400'}`}>{item.score}</span>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* RANKING GERAL */}
               {rankingSubTab === 'geral' && (
                 <div className="card">
                   <div className="flex items-center gap-2 mb-4">
                     <Trophy className="w-4 h-4 text-yellow-500" />
-                    <h2 className="font-semibold text-gray-900">Ranking Geral — Apoiadores Mais Ativos</h2>
+                    <h2 className="font-semibold text-gray-900">Ranking Geral — Todos os Apoiadores</h2>
                   </div>
                   {rankingGeral.length === 0 ? (
                     <div className="text-center py-12">
@@ -495,11 +563,12 @@ export default function BondPage() {
                 </div>
               )}
 
+              {/* RANKING SEMANAL */}
               {rankingSubTab === 'semanal' && (
                 <div className="card">
                   <div className="flex items-center gap-2 mb-4">
                     <TrendingUp className="w-4 h-4 text-green-500" />
-                    <h2 className="font-semibold text-gray-900">Ranking Semanal — Mais Ativos nos Últimos 7 Dias</h2>
+                    <h2 className="font-semibold text-gray-900">Ranking Semanal — Últimos 7 Dias</h2>
                   </div>
                   {rankingSemanal.length === 0 ? (
                     <div className="text-center py-12">
@@ -548,9 +617,22 @@ export default function BondPage() {
                     <div key={com.id} className="card p-4 border-l-4 border-sky-300">
                       {/* Cabeçalho do comentário */}
                       <div className="flex items-start justify-between gap-2 mb-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${PLAT_COLOR[com.plataforma]}`}>{com.plataforma}</span>
                           {com.autor && <span className="text-xs font-semibold text-gray-700">{com.autor}</span>}
+                          {com.isCabo && (
+                            <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium flex items-center gap-0.5">
+                              <Star className="w-2.5 h-2.5" />Cabo
+                            </span>
+                          )}
+                          {com.categoria && ({
+                            elogio: <span className="text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">😊 Elogio</span>,
+                            critica: <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">⚠️ Crítica</span>,
+                            pergunta: <span className="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">❓ Pergunta</span>,
+                            sugestao: <span className="text-xs bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full">💡 Sugestão</span>,
+                            spam: <span className="text-xs bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full">🚫 Spam</span>,
+                            neutro: null,
+                          }[com.categoria])}
                           <span className="text-xs text-gray-300">{formatDistanceToNow(new Date(com.criadoEm), { addSuffix: true, locale: ptBR })}</span>
                         </div>
                         <button onClick={() => handleRejeitar(com)} className="p-1 hover:bg-gray-100 rounded" title="Ignorar comentário">

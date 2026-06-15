@@ -17,6 +17,8 @@ import {
   Landmark,
   Brain,
   Link2,
+  TrendingUp,
+  UserCheck,
 } from 'lucide-react'
 import { useState } from 'react'
 import clsx from 'clsx'
@@ -24,13 +26,15 @@ import clsx from 'clsx'
 const nav = [
   { href: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { href: '/pessoas', icon: Users, label: 'Pessoas' },
+  { href: '/apoiadores', icon: UserCheck, label: 'Apoiadores' },
+  { href: '/campanha', icon: TrendingUp, label: 'Campanha' },
+  { href: '/bond', icon: Link2, label: 'Bond — Social' },
   { href: '/monitoramento', icon: Radio, label: 'Monitoramento' },
   { href: '/demandas', icon: FileText, label: 'Demandas' },
   { href: '/produtividade', icon: BarChart3, label: 'Produtividade' },
   { href: '/telegram', icon: Send, label: 'Telegram' },
   { href: '/ia', icon: Bot, label: 'Assistente IA' },
   { href: '/hermes', icon: Brain, label: 'Hermes Agent' },
-  { href: '/bond', icon: Link2, label: 'Bond — Social' },
   { href: '/configuracoes', icon: Settings, label: 'Configurações' },
 ]
 

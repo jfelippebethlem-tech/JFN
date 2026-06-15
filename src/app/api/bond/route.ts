@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db'
 import {
   syncAll, syncTwitter, syncFacebook, syncInstagram,
   gerarSugestaoConteudo, chatComBond, analisarTopPosts, analisarAudiencia,
-  gerarRankingGeral, gerarRankingSemanal,
+  gerarRankingGeral, gerarRankingSemanal, gerarRankingCabos,
   buscarComentariosPendentes, sugerirResposta, aprovarResposta, rejeitarComentario,
 } from '@/lib/bond'
 
@@ -39,6 +39,10 @@ export async function GET(req: NextRequest) {
 
   if (tipo === 'ranking_semanal') {
     return NextResponse.json(await gerarRankingSemanal())
+  }
+
+  if (tipo === 'ranking_cabos') {
+    return NextResponse.json(await gerarRankingCabos())
   }
 
   if (tipo === 'comentarios') {

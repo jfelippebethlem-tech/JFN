@@ -381,6 +381,56 @@ export async function gerarRankingGeral() {
     .slice(0, 50)
 }
 
+// Ranking exclusivo de Cabos Eleitorais e Coordenadores
+export async function gerarRankingCabos() {
+  const fas = await prisma.bondFa.findMany({
+    where: {
+      pessoa: {
+        tipo: { in: ['apoiador', 'coordenador'] },
+        ativo: true,
+      },
+    },
+    include: {
+      pessoa: { select: { id: true, nome: true, tipo: true, cargo: true, instagram: true, twitter: true, facebook: true } },
+    },
+  })
+
+  // Também inclui cabos sem BondFa vinculado para mostrar todos
+  const todosCabos = await prisma.pessoa.findMany({
+    where: { tipo: { in: ['apoiador', 'coordenador'] }, ativo: true },
+    include: {
+      bondFas: {
+        select: { id: true, plataforma: true, externalId: true, username: true, totalLikes: true, totalComents: true, totalShares: true },
+      },
+    },
+  })
+
+  return todosCabos.map(p => {
+    const totalLikes = p.bondFas.reduce((s, f) => s + f.totalLikes, 0)
+    const totalComents = p.bondFas.reduce((s, f) => s + f.totalComents, 0)
+    const totalShares = p.bondFas.reduce((s, f) => s + f.totalShares, 0)
+    const score = totalLikes + totalComents * 2 + totalShares * 3
+    const plataformas = Array.from(new Set(p.bondFas.map(f => f.plataforma)))
+
+    return {
+      pessoaId: p.id,
+      nome: p.nome,
+      tipo: p.tipo,
+      cargo: p.cargo,
+      instagram: p.instagram,
+      twitter: p.twitter,
+      facebook: p.facebook,
+      plataformas,
+      totalLikes,
+      totalComents,
+      totalShares,
+      score,
+      bondFas: p.bondFas,
+    }
+  })
+    .sort((a, b) => b.score - a.score)
+}
+
 export async function gerarRankingSemanal() {
   const umaSemanaAtras = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   const interacoes = await prisma.bondInteracao.findMany({
@@ -423,11 +473,51 @@ export async function gerarRankingSemanal() {
 
 // ── Comentários — resposta com aprendizado de estilo ──────────────────────────
 
+export type CategoriaComentario = 'elogio' | 'critica' | 'pergunta' | 'sugestao' | 'spam' | 'neutro'
+
+function categorizarComentario(texto: string): CategoriaComentario {
+  const t = texto.toLowerCase()
+  if (/parabén|ótimo|excelente|muito bom|incrível|sensacional|bravo|top|maravilhoso|perfeito|amei|adoro|gosto|orgulho|obrigad/.test(t)) return 'elogio'
+  if (/vergonha|lixo|horrível|péssimo|incompetente|mentira|ladrão|fora|cadê|cadê|cobrar|cobrado|burro|idiota|ridículo/.test(t)) return 'critica'
+  if (/\?|como|quando|onde|por que|qual|quem|pode me|gostaria de saber|me explica|me diz|me fala/.test(t)) return 'pergunta'
+  if (/sugestão|sugiro|seria bom|e se|poderiam|e se|deveriam|proposta|ideia|deveria/.test(t)) return 'sugestao'
+  if (/https?:\/\/|clique aqui|acesse|compre|promoção|desconto|ganhe|grátis/.test(t)) return 'spam'
+  return 'neutro'
+}
+
 export async function buscarComentariosPendentes() {
-  return prisma.bondComentario.findMany({
+  const comentarios = await prisma.bondComentario.findMany({
     where: { respondido: false },
     orderBy: { criadoEm: 'desc' },
     take: 50,
+  })
+
+  // Enriquece com categoria e flag de cabo eleitoral
+  const enriquecidos = await Promise.all(
+    comentarios.map(async com => {
+      const categoria = categorizarComentario(com.texto)
+
+      // Verifica se o autor é um cabo eleitoral
+      let isCabo = false
+      if (com.autorId) {
+        const fa = await prisma.bondFa.findFirst({
+          where: { plataforma: com.plataforma, externalId: com.autorId },
+          include: { pessoa: { select: { tipo: true } } },
+        })
+        isCabo = fa?.pessoa?.tipo === 'cabo_eleitoral' || fa?.pessoa?.tipo === 'coordenador'
+      }
+
+      return { ...com, categoria, isCabo }
+    })
+  )
+
+  // Prioridade: cabos primeiro, depois críticas (precisam de atenção), depois o resto
+  return enriquecidos.sort((a, b) => {
+    if (a.isCabo && !b.isCabo) return -1
+    if (!a.isCabo && b.isCabo) return 1
+    if (a.categoria === 'critica' && b.categoria !== 'critica') return -1
+    if (a.categoria !== 'critica' && b.categoria === 'critica') return 1
+    return new Date(b.criadoEm).getTime() - new Date(a.criadoEm).getTime()
   })
 }
 
@@ -437,35 +527,52 @@ export async function sugerirResposta(comentarioId: string, plataforma: string):
   })
   if (!comentario) return ''
 
-  const exemplos = await prisma.bondEstilo.findMany({
-    orderBy: { criadoEm: 'desc' },
-    take: 8,
-  })
+  const categoria = categorizarComentario(comentario.texto)
+
+  const [exemplos, topPosts, totalCabos] = await Promise.all([
+    prisma.bondEstilo.findMany({ orderBy: { criadoEm: 'desc' }, take: 8 }),
+    prisma.bondPost.findMany({ orderBy: { engajamento: 'desc' }, take: 3 }),
+    prisma.pessoa.count({ where: { tipo: { in: ['apoiador', 'coordenador'] }, ativo: true } }),
+  ])
 
   const estiloText = exemplos.length > 0
-    ? `EXEMPLOS DE RESPOSTAS JÁ APROVADAS PELO DEPUTADO (use como referência de tom e estilo):\n` +
-      exemplos.map((e, i) => `Exemplo ${i + 1}:\nComentário: "${e.comentario}"\nResposta do deputado: "${e.resposta}"`).join('\n---\n')
-    : `ESTILO PADRÃO (não há exemplos ainda): linguagem próxima, cordial, sem formalidades. Tom de quem conhece a pessoa.`
+    ? `EXEMPLOS DE RESPOSTAS JÁ APROVADAS PELO DEPUTADO:\n` +
+      exemplos.map((e, i) => `Exemplo ${i + 1}:\nComentário: "${e.comentario}"\nResposta: "${e.resposta}"`).join('\n---\n')
+    : `ESTILO: linguagem próxima, cordial, sem formalidades. Tom de quem conhece a pessoa.`
 
-  const sugestao = await bondAI(`Tarefa: escrever UMA resposta para o comentário abaixo, no estilo do deputado.
+  const contextoCampanha = topPosts.length > 0
+    ? `CONTEXTO DA CAMPANHA (posts mais recentes):\n` +
+      topPosts.map(p => `- ${p.conteudo.slice(0, 100)} (${p.likes} curtidas)`).join('\n')
+    : ''
+
+  const instrucaoCategoria = {
+    elogio: 'Tom: grato, caloroso, breve. Pode mencionar o nome. Máximo 2 frases.',
+    critica: 'Tom: empático, sem defensividade. Reconheça o ponto. Ofereça ajuda ou contato direto. Máximo 3 frases.',
+    pergunta: 'Responda diretamente e com utilidade. Se não souber o detalhe, direcione para canal adequado. Máximo 2 frases.',
+    sugestao: 'Agradeça a sugestão como algo valioso. Mostre que foi ouvido. Máximo 2 frases.',
+    spam: 'Não responda o conteúdo spam. Escreva algo neutro e cordial direcionando para o perfil oficial.',
+    neutro: 'Reconheça o comentário e dê continuidade natural. Máximo 2 frases.',
+  }[categoria]
+
+  const sugestao = await bondAI(`Tarefa: escrever UMA resposta para o comentário abaixo, no estilo do Dep. Jorge Felippe Neto.
+
+TIPO DE COMENTÁRIO DETECTADO: ${categoria.toUpperCase()}
+${instrucaoCategoria}
 
 COMENTÁRIO RECEBIDO:
 Autor: ${comentario.autor ?? 'Seguidor'}
 Plataforma: ${comentario.plataforma}
-Texto do comentário: "${comentario.texto}"
+Texto: "${comentario.texto}"
+
+${contextoCampanha}
 
 ${estiloText}
 
-REGRAS OBRIGATÓRIAS — siga todas sem exceção:
-1. Escreva APENAS o texto da resposta — sem aspas, sem "Resposta:", sem prefixo de qualquer tipo.
-2. Tom: cordial, humano, próximo. Como se fosse o próprio deputado digitando no celular.
-3. Tamanho: de 1 a 3 frases curtas. NUNCA mais que 3 frases.
-4. Se o comentário for elogio: agradeça com genuinidade e brevidade. Pode mencionar o nome do autor.
-5. Se o comentário for crítica ou reclamação: responda com empatia, sem defensividade, ofereça ajuda se fizer sentido.
-6. Se o comentário for pergunta: responda diretamente e de forma útil.
-7. Se o comentário for neutro: reconheça e dê continuidade natural.
-8. NÃO use "prezado", "estimado", "vossa excelência", "agradecemos", "informamos" ou qualquer linguagem formal/burocrática.
-9. Pode começar pelo primeiro nome do autor se disponível, ex: "Obrigado, João!" — mas só se soar natural.`, 150)
+REGRAS ABSOLUTAS:
+1. Escreva APENAS o texto da resposta — sem aspas, sem prefixo.
+2. Como se o deputado estivesse digitando no celular.
+3. NÃO use linguagem formal, burocrática ou parlamentar.
+4. NÃO invente fatos ou compromissos.`, 150)
 
   await prisma.bondComentario.update({
     where: { plataforma_comentarioId: { plataforma, comentarioId } },
