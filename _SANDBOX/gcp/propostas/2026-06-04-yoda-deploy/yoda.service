@@ -7,10 +7,10 @@ Wants=network-online.target
 Type=simple
 User=jfelippebethlem
 Group=jfelippebethlem
-WorkingDirectory=/home/jfelippebethlem/hermes-agent
-Environment=HERMES_HOME=/home/jfelippebethlem/.hermes
+WorkingDirectory=/home/ubuntu/hermes-agent
+Environment=HERMES_HOME=/home/ubuntu/.hermes
 Environment=PYTHONIOENCODING=utf-8
-ExecStart=/home/jfelippebethlem/hermes-agent/venv/bin/python -m hermes_cli.main gateway run
+ExecStart=/home/ubuntu/hermes-agent/venv/bin/python -m hermes_cli.main gateway run
 Restart=always
 RestartSec=10
 KillSignal=SIGTERM

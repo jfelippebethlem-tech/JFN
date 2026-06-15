@@ -10,7 +10,7 @@
 #   a linha do crontab é  * * * * * pgrep -f 'beneficios_superviso[r].sh' >/dev/null || nohup .../beneficios_supervisor.sh &
 # VM-safe: respeita load (não derruba a VM). O Portal tem rate-limit → --pausa entre CPFs resolvidos.
 # Pausa manual: criar data/.pause_beneficios_sweep (encerra limpo e o supervisor aguarda).
-cd /home/jfelippebethlem/JFN || exit 1
+cd /home/ubuntu/JFN || exit 1
 LOG=data/beneficios_supervisor.log
 LOTE="${BENEFICIOS_LOTE:-800}"
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }

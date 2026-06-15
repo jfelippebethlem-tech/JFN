@@ -315,7 +315,7 @@ A lente **Cético** domina Infra e define as pré-condições: qualidade de dado
 1. **Branch:** trabalhar a partir da `linux` (default da VM). Para mudanças grandes, criar `git checkout -b claude/<onda>-<item>` a partir de `linux` e abrir PR/cherry-pick.
 2. **Idempotência:** todo script deve poder rodar 2x sem efeito colateral (criar tabela com `IF NOT EXISTS`, checar se coluna existe antes de adicionar, cache com chave determinística).
 3. **Não tocar o schema das OBs.** Toda análise grava em tabelas novas (`ob_anomaly`, `enriquecimento_cache`, `fornecedor_canonico`).
-4. **Validação obrigatória** antes de commit: rodar `pytest` em `/home/jfelippebethlem/JFN/tests`, subir o server e bater no endpoint novo, conferir saída no Yoda.
+4. **Validação obrigatória** antes de commit: rodar `pytest` em `/home/ubuntu/JFN/tests`, subir o server e bater no endpoint novo, conferir saída no Yoda.
 5. **Commit só quando o Jorge pedir.** Mensagem termina com `Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>`.
 6. **Secrets fora do repo.** Nunca commitar `.env`; confirmar `.gitignore`.
 
@@ -367,7 +367,7 @@ A lente **Cético** domina Infra e define as pré-condições: qualidade de dado
 Repetir o padrão (branch → implementar idempotente → validar com pytest+endpoint+Yoda → commit sob pedido), seguindo a ordem das tabelas do §4. **Gatilho objetivo para liberar peças do Visionário do Yoda (Agent SDK, semantic-router, Letta):** o log de interação da Onda 1 mostrar ambiguidade real / estouro de janela / volume que justifique o esforço.
 
 ### Validação de cada entrega
-- `pytest /home/jfelippebethlem/JFN/tests`
+- `pytest /home/ubuntu/JFN/tests`
 - Subir o server e bater no endpoint afetado (`curl localhost:8000/...`)
 - Exercitar a skill correspondente no Yoda (Telegram)
 - Conferir rodapé forense (hash do dataset + commit + thresholds) em qualquer relatório gerado

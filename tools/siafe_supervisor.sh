@@ -3,7 +3,7 @@
 # Os sweeps morrem por crash do driver Playwright/chromium (emitErrorCloseNT) em runs longos; como são
 # RESUMÍVEIS (checkpoint UG:ano + sub-prefixo), basta relançar que continuam de onde pararam.
 # Para quando ambos logarem "SWEEP COMPLETO". Avisa no Telegram ao fim. Rodar via nohup (é bash, não trava).
-cd /home/jfelippebethlem/JFN || exit 1
+cd /home/ubuntu/JFN || exit 1
 LOG=data/siafe_supervisor.log
 say(){ echo "[$(date '+%F %T')] $*" >> "$LOG"; }
 done_sys(){ # $1=sistema → 0 se concluído (log diz SWEEP COMPLETO e processo não roda)
@@ -27,7 +27,7 @@ while true; do
     say "AMBOS os sweeps concluídos → rodando análise pós-sweep"
     # roda a ANÁLISE PÓS-SWEEP automática (VACUUM + análise + avisa no Telegram). Marcador evita rodar 2x.
     if [ ! -f data/.pos_sweep_feito ]; then
-      PYTHONPATH=. /home/jfelippebethlem/JFN/.venv/bin/python -m tools.pos_sweep_analise >> data/pos_sweep_analise.out 2>&1
+      PYTHONPATH=. /home/ubuntu/JFN/.venv/bin/python -m tools.pos_sweep_analise >> data/pos_sweep_analise.out 2>&1
       touch data/.pos_sweep_feito
       say "análise pós-sweep concluída (ver docs/ANALISE-POS-SWEEP-*.md)"
     fi

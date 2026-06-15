@@ -156,7 +156,7 @@ Windows que não existe na VM Linux) e o Yoda não sabia acionar o JFN.
      headless na porta 9222 (habilita coleta TFE/SIAFE ao vivo do JFN).
 2. **Fase 1 — fonte única de verdade do ambiente:** criados `AMBIENTE.md` + `ambiente.json` (VM GCP Ubuntu,
    4 agentes, workflow de boot, barramento). Corrigido o system prompt do Yoda (`~/.hermes/config.yaml`):
-   `c:/JFN/jfn` → `/home/jfelippebethlem/JFN`, + mapa de capacidades (rotas da API do JFN), + "não existe
+   `c:/JFN/jfn` → `/home/ubuntu/JFN`, + mapa de capacidades (rotas da API do JFN), + "não existe
    web_search". Ponteiros para `AMBIENTE.md` em CLAUDE.md, README-AGENTES.md, SOUL.md (Hermes) e massare/README.md.
 3. **Fase 2 — barramento de agentes no JFN (FastAPI :8000):**
    - `POST /api/relatorio/inteligencia` → "Relatório de Inteligência de Fornecedor" (due diligence de

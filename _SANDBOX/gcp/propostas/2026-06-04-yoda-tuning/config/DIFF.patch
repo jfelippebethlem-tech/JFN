@@ -1,5 +1,5 @@
---- /home/jfelippebethlem/JFN/_SANDBOX/gcp/propostas/2026-06-04-yoda-tuning/config/config.yaml.ATUAL-LIVE.snapshot	2026-06-04 07:47:14.465059410 +0000
-+++ /home/jfelippebethlem/JFN/_SANDBOX/gcp/propostas/2026-06-04-yoda-tuning/config/config.yaml.PROPOSTO	2026-06-04 07:47:38.034182669 +0000
+--- /home/ubuntu/JFN/_SANDBOX/gcp/propostas/2026-06-04-yoda-tuning/config/config.yaml.ATUAL-LIVE.snapshot	2026-06-04 07:47:14.465059410 +0000
++++ /home/ubuntu/JFN/_SANDBOX/gcp/propostas/2026-06-04-yoda-tuning/config/config.yaml.PROPOSTO	2026-06-04 07:47:38.034182669 +0000
 @@ -3,24 +3,46 @@
    provider: gemini
    base_url: https://generativelanguage.googleapis.com/v1beta

@@ -2,7 +2,7 @@
 
 > Objetivo: qualquer IA do ecossistema (mesmo modelo fraco) consegue **fazer o que o Claude faz** e
 > **achar onde está cada coisa**, sem reinventar. Passos explícitos e idempotentes (re-rodar é seguro).
-> Ambiente: VM Linux GCP, `/home/jfelippebethlem/JFN`. SEMPRE prefixar `PYTHONPATH=. .venv/bin/python`.
+> Ambiente: VM Linux GCP, `/home/ubuntu/JFN`. SEMPRE prefixar `PYTHONPATH=. .venv/bin/python`.
 > Ver também: [`AMBIENTE.md`](AMBIENTE.md), `CLAUDE.md`. Princípio: [[diretriz-workflows-para-ias]].
 
 ## ⭐ TL;DR (os comandos mais usados — copie e cole)

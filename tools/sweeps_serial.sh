@@ -8,7 +8,7 @@
 # data/.pause_{sei,endereco,beneficios,fachada}_sweep (individual).
 set -u
 LANE="${1:-all}"
-cd /home/jfelippebethlem/JFN || exit 1
+cd /home/ubuntu/JFN || exit 1
 export PYTHONPATH=.
 PY=.venv/bin/python
 LOG="data/sweeps_serial_${LANE}.log"

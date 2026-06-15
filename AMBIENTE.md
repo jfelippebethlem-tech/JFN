@@ -3,7 +3,7 @@
 > **Para qualquer IA/agente que abrir este arquivo:** isto descreve EXATAMENTE onde tudo roda e como
 > os agentes se falam. Companheiro de máquina: [`ambiente.json`](ambiente.json) (mesma info, legível por
 > script — use-o para não hardcodar caminhos). **Atualize os dois juntos quando a infra mudar.**
-> Última curadoria: **2026-06-06**.
+> Última curadoria: **2026-06-06**. **CUTOVER de infra: 2026-06-14** (server-1/GCP-x86 → jfn-agent-2/Oracle-ARM).
 
 ---
 
@@ -11,14 +11,21 @@
 
 | Item | Valor |
 |---|---|
-| Nuvem | Google Cloud (GCE) |
-| Instância | `server-1`, zona `southamerica-east1-b` |
-| SO | **Ubuntu 24.04 LTS** (Linux x86_64) |
-| Usuário | `jfelippebethlem` |
-| Home | `/home/jfelippebethlem` |
+| Nuvem | **Oracle Cloud Infrastructure (OCI)** — Ampere ARM |
+| Instância | `jfn-agent-2` (hostname `jfn-core`), Tailscale `100.123.89.59` |
+| SO | **Ubuntu 22.04.5 LTS** (Linux **aarch64 / ARM64**) |
+| Usuário | `ubuntu` |
+| Home | `/home/ubuntu` |
+
+> 🔄 **Cutover 2026-06-14:** esta VM substituiu a antiga `server-1` (GCP, x86_64, `southamerica-east1-b`,
+> Tailscale `100.72.107.116`), que foi **desligada** (serviços/timers/cron parados). Como o destino é **ARM**,
+> os ambientes Python/Node e binários foram **reconstruídos** (não copiados do x86). O `chrome-jfn` usa
+> **`/snap/bin/chromium`** (não há Google Chrome para ARM/Linux). Object storage = **Backblaze B2**
+> (`b2:jfn-backup-jorge`) + **Cloudflare R2** (`r2:jorgefelippe`) via `rclone`. O `gcloud` precisa de
+> **`gcloud auth login`** nesta VM (a auth antiga era do metadata-GCE, não portável); projeto default `jfn-vps`.
 
 ⚠️ **Caminhos `C:\...` em docs antigos (ex.: `C:\JFN\jfn`) são do desktop Windows legado e NÃO existem aqui.**
-Na VM, o JFN fica em **`/home/jfelippebethlem/JFN`** (ou `~/JFN`). Sempre use `Path` relativo / variável de
+Na VM, o JFN fica em **`/home/ubuntu/JFN`** (ou `~/JFN`). Sempre use `Path` relativo / variável de
 ambiente no código — nunca caminho fixo de SO.
 
 ---

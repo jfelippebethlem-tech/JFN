@@ -2,7 +2,7 @@
 # sweep_dados — GRUPO endereços + benefícios + fachada (DB/rede, sem sessão itkava). LEVE: nice/ionice idle,
 # bounded, SINGLE-PASS (cron repete). Escalonado FORA dos horários do SEI (sem overlap).
 set -u
-cd /home/jfelippebethlem/JFN || exit 1
+cd /home/ubuntu/JFN || exit 1
 export PYTHONPATH=.
 PY=.venv/bin/python
 LOG=data/sweep_dados.log

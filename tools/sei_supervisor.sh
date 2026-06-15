@@ -9,7 +9,7 @@
 # Pausa manual: criar data/.pause_sei_sweep (o sweep encerra limpo e o supervisor aguarda).
 # Fila vazia: quando o sweep loga "nada novo na fila", faz back-off longo (novos processos vão surgindo
 # conforme o SIAFE sweep avança e correlaciona OB↔SEI). Rodar via nohup (é bash, não trava a cota).
-cd /home/jfelippebethlem/JFN || exit 1
+cd /home/ubuntu/JFN || exit 1
 LOG=data/sei_supervisor.log
 OUT=data/sei_cache/sei_sweep_loop.out
 LOTE="${SEI_LOTE:-12}"

@@ -16,7 +16,7 @@
 *   **Problema:** Servidor ComfyUI não ativo, ambiente local sem GPU compatível (`hardware_check.py` veredicto "cloud"). Comfy Cloud exigiria assinatura paga para API.
 *   **Decisão:** Buscar alternativa gratuita e em sandbox.
 *   **Solução:** Stable Diffusion Text2Img via `diffusers` em Docker/CPU.
-*   **Resultado:** Imagem gerada com sucesso em `/home/jfelippebethlem/JFN/generated_image.png`. Commit e push para `feature/image-generation-outback-girl`.
+*   **Resultado:** Imagem gerada com sucesso em `/home/ubuntu/JFN/generated_image.png`. Commit e push para `feature/image-generation-outback-girl`.
 
 ---
 

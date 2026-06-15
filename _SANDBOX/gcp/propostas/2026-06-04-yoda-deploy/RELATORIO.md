@@ -149,11 +149,11 @@ bloco a partir de uma fonte confiável (não do texto colado).
 2. **Carregar o `.env` explicitamente** na unit, para tornar o acoplamento explícito e à prova de
    mudança de código:
    ```ini
-   EnvironmentFile=-/home/jfelippebethlem/.hermes/.env
+   EnvironmentFile=-/home/ubuntu/.hermes/.env
    ```
    (o `-` torna opcional; assim não quebra se o arquivo sumir).
 3. **Hardening systemd** (opcional, defesa em profundidade): `NoNewPrivileges=true`,
-   `ProtectSystem=strict`, `ReadWritePaths=/home/jfelippebethlem/.hermes`, `PrivateTmp=true`.
+   `ProtectSystem=strict`, `ReadWritePaths=/home/ubuntu/.hermes`, `PrivateTmp=true`.
 
 ### Resiliência a 503 do Gemini
 4. Subir `api_max_retries` de `1` para `2–3` **com backoff**, e/ou garantir que o rodízio troque de
@@ -183,5 +183,5 @@ bloco a partir de uma fonte confiável (não do texto colado).
 systemctl is-active yoda          # -> active
 systemctl is-enabled yoda         # -> enabled
 journalctl -u yoda -n 40 --no-pager
-python3 -c "import json;print(len(json.load(open('/home/jfelippebethlem/.hermes/auth.json'))['credential_pool']['gemini']))"  # -> 9
+python3 -c "import json;print(len(json.load(open('/home/ubuntu/.hermes/auth.json'))['credential_pool']['gemini']))"  # -> 9
 ```

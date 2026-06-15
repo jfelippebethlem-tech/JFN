@@ -1,34 +1,49 @@
 {
-  "_comment": "FONTE ÚNICA DE VERDADE do ambiente de execução do ecossistema Mestre Jorge. Lido por agentes/scripts para NÃO hardcodar caminhos. Atualize aqui quando a infra mudar. Gerado/curado em 2026-06-06.",
+  "_comment": "FONTE ÚNICA DE VERDADE do ambiente de execução do ecossistema Mestre Jorge. Lido por agentes/scripts para NÃO hardcodar caminhos. Atualize aqui quando a infra mudar. Curado em 2026-06-06; CUTOVER de infra em 2026-06-14 (server-1/GCP x86 -> jfn-agent-2/Oracle ARM).",
   "vm": {
-    "provider": "Google Cloud (GCE)",
-    "instance": "server-1",
-    "zone": "southamerica-east1-b",
-    "hostname": "server-1.southamerica-east1-b.c.jfn-vps.internal",
-    "os": "Ubuntu 24.04 LTS",
-    "kernel": "linux x86_64",
-    "user": "jfelippebethlem",
-    "home": "/home/jfelippebethlem",
+    "provider": "Oracle Cloud Infrastructure (OCI)",
+    "instance": "jfn-agent-2",
+    "tailscale_name": "jfn-agent-2",
+    "tailscale_ip": "100.123.89.59",
+    "zone": "OCI (Ampere ARM)",
+    "hostname": "jfn-core",
+    "os": "Ubuntu 22.04.5 LTS",
+    "kernel": "linux aarch64 (ARM64)",
+    "user": "ubuntu",
+    "home": "/home/ubuntu",
     "is_windows": false,
-    "note": "Ambiente de PRODUÇÃO é esta VM Linux. Caminhos C:\\ que aparecem em docs antigos são do desktop Windows legado e NÃO existem aqui."
+    "note": "Ambiente de PRODUÇÃO é esta VM Linux ARM (cutover 2026-06-14, substituiu a server-1 x86 do GCP, agora desligada). Caminhos C:\\ que aparecem em docs antigos são do desktop Windows legado e NÃO existem aqui. Como é ARM, venvs/binarios foram RECONSTRUÍDOS (não copiados do x86).",
+    "migracao": {
+      "origem": "server-1 (GCP, x86_64, southamerica-east1-b), Tailscale 100.72.107.116 — DESLIGADA após cutover",
+      "data": "2026-06-14",
+      "gcloud": "auth da origem era via metadata-GCE (não portável). Rodar 'gcloud auth login' nesta VM para acesso real. Projeto default: jfn-vps."
+    }
   },
   "paths": {
-    "jfn_root": "/home/jfelippebethlem/JFN",
-    "jfn_venv_python": "/home/jfelippebethlem/JFN/.venv/bin/python",
-    "jfn_data_dir": "/home/jfelippebethlem/JFN/data",
-    "jfn_compliance_db": "/home/jfelippebethlem/JFN/data/compliance.db",
-    "jfn_reports_dir": "/home/jfelippebethlem/JFN/reports",
-    "massare_db": "/home/jfelippebethlem/JFN/massare/data/massare.db",
-    "hermes_code": "/home/jfelippebethlem/hermes-agent",
-    "hermes_venv_python": "/home/jfelippebethlem/hermes-agent/venv/bin/python",
-    "hermes_home": "/home/jfelippebethlem/.hermes",
-    "yoda_config": "/home/jfelippebethlem/.hermes/config.yaml",
-    "yoda_memory_dir": "/home/jfelippebethlem/.hermes/memories",
-    "process_documentation": "/home/jfelippebethlem/JFN/hermes-yoda/process_documentation.md"
+    "jfn_root": "/home/ubuntu/JFN",
+    "jfn_venv_python": "/home/ubuntu/JFN/.venv/bin/python",
+    "jfn_data_dir": "/home/ubuntu/JFN/data",
+    "jfn_compliance_db": "/home/ubuntu/JFN/data/compliance.db",
+    "jfn_reports_dir": "/home/ubuntu/JFN/reports",
+    "massare_db": "/home/ubuntu/JFN/massare/data/massare.db",
+    "hermes_code": "/home/ubuntu/hermes-agent",
+    "hermes_venv_python": "/home/ubuntu/hermes-agent/.venv/bin/python",
+    "hermes_home": "/home/ubuntu/.hermes",
+    "yoda_config": "/home/ubuntu/.hermes/config.yaml",
+    "yoda_memory_dir": "/home/ubuntu/.hermes/memories",
+    "process_documentation": "/home/ubuntu/JFN/hermes-yoda/process_documentation.md",
+    "chrome_bin": "/snap/bin/chromium",
+    "chrome_user_data_dir": "/home/ubuntu/chrome-jfn",
+    "rclone_conf": "/home/ubuntu/.config/rclone/rclone.conf"
   },
   "ports": {
     "jfn_api": 8000,
     "chrome_cdp": 9222
+  },
+  "storage_nuvem": {
+    "_nota": "Object storage do ecossistema é Backblaze B2 + Cloudflare R2 (NÃO é GCS), acessado via rclone.",
+    "b2": { "remote": "b2:", "bucket": "jfn-backup-jorge", "tipo": "Backblaze B2", "status": "rw OK (2026-06-14)" },
+    "r2": { "remote": "r2:", "bucket": "jorgefelippe", "tipo": "Cloudflare R2 (S3)", "conteudo": "fachadas/", "status": "rw OK (2026-06-14)" }
   },
   "agents": {
     "yoda": {
@@ -41,7 +56,7 @@
     "jfn": {
       "papel": "Motor de auditoria/compliance do governo do RJ + barramento de agentes (API HTTP).",
       "service": "jfn.service (systemd --user)",
-      "entrypoint": "/home/jfelippebethlem/JFN/.venv/bin/python /home/jfelippebethlem/JFN/server.py --host 127.0.0.1 --port 8000",
+      "entrypoint": "/home/ubuntu/JFN/.venv/bin/python /home/ubuntu/JFN/server.py --host 127.0.0.1 --port 8000",
       "api_base": "http://127.0.0.1:8000",
       "endpoints_relatorio": [
         "POST /api/relatorio/inteligencia  (fornecedor; body {cnpj?|empresa?, anos?})",
@@ -53,7 +68,7 @@
     "massare": {
       "papel": "Agente de mercado: coleta e analisa preços/notícias e prevê cenários (curtíssimo/curto/médio/longo). Trabalha durante o pregão.",
       "modulo": "massare (dentro de ~/JFN, mesmo venv do JFN)",
-      "db": "/home/jfelippebethlem/JFN/massare/data/massare.db",
+      "db": "/home/ubuntu/JFN/massare/data/massare.db",
       "endpoints": [
         "GET  /api/massare/placar   (acurácia OOS + sentimento)",
         "GET  /api/massare/cenarios (último snapshot multi-horizonte)",
@@ -62,8 +77,8 @@
     },
     "hermes": {
       "papel": "Plataforma/runtime sobre a qual o Yoda roda (CLI/gateway). Não é um agente de tarefa separado.",
-      "code": "/home/jfelippebethlem/hermes-agent",
-      "state": "/home/jfelippebethlem/.hermes"
+      "code": "/home/ubuntu/hermes-agent",
+      "state": "/home/ubuntu/.hermes"
     }
   },
   "boot_workflow": {
