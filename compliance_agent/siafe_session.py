@@ -16,7 +16,6 @@ Uso:
 """
 import os
 import sys
-import time
 from pathlib import Path
 
 LOGIN_URL = "https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp"
@@ -62,16 +61,12 @@ def login_with_mfa(exercicio=2025, wait_code_s=300):
 
             # MFA?
             if pg.locator(ID_MFA).count():
-                print(f"[SIAFE] MFA solicitado — código enviado por email. Aguardando {CODE_FILE} ...", flush=True)
-                code = None
-                deadline = time.time() + wait_code_s
-                while time.time() < deadline:
-                    if CODE_FILE.exists():
-                        c = CODE_FILE.read_text(encoding="utf-8").strip()
-                        if c:
-                            code = c
-                            break
-                    time.sleep(3)
+                print("[SIAFE] MFA solicitado — pedindo o código ao Mestre Jorge no Telegram…", flush=True)
+                # Fluxo codificado (mfa_telegram): envia o pedido no Telegram e captura a resposta do dono
+                # passivamente do state.db do Yoda (+ fallback no arquivo .mfa_code). Import lazy p/ evitar
+                # custo/circular no load do módulo.
+                from compliance_agent.mfa_telegram import pedir_codigo_mfa
+                code = pedir_codigo_mfa("SIAFE", timeout_s=wait_code_s)
                 if not code:
                     return {"status": "timeout_mfa", "detail": f"sem código em {wait_code_s}s"}
                 pg.locator(ID_MFA).fill(code)
