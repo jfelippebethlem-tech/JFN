@@ -34,5 +34,7 @@ $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; sa
 $PRIO timeout 300  $PY -m tools.sei_depurar_db >> data/sei_depurar.log 2>&1; say "sei_depurar rc=$?"
 # CONSOLIDA cada árvore de processo num dossiê TXT (data/sei_trees/) + tabela sei_arvore — o que o Lex lê.
 $PRIO timeout 400  $PY -m tools.sei_arvore_build >> data/sei_arvore.log 2>&1; say "sei_arvore rc=$?"
+# MEMÓRIA cruzada de direcionamento por fornecedor (acumula; barato, sem LLM em massa; ente público zerado).
+$PRIO timeout 200  $PY -m tools.sei_direcionamento_varre >> data/sei_direc.log 2>&1; say "sei_direc rc=$?"
 limpa_orfaos  # fecha SÓ os leftovers órfãos (não o server.py)
 say "fim"
