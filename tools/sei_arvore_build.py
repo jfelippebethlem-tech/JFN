@@ -41,12 +41,46 @@ CREATE TABLE IF NOT EXISTS sei_arvore (
   n_obs         INTEGER,
   total_pago    REAL,
   fornecedores  TEXT,   -- JSON [{cnpj,nome,valor}]
+  lifecycle     TEXT,   -- 'encerrado_indicio' | 'ativo' | '' (CONSERVADOR — indício, não veredito)
+  ultima_ob     TEXT,   -- data do último pagamento (recência)
   txt_path      TEXT,
   atualizado_em TEXT DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS ix_sei_arvore_risco ON sei_arvore(nivel_risco);
 CREATE INDEX IF NOT EXISTS ix_sei_arvore_total ON sei_arvore(total_pago);
 """
+
+# Marcadores de ENCERRAMENTO nas peças/objeto/resumo da ficha (sinal forte, mas indício — não veredito).
+_FECHOU = ("termo de encerramento", "encerramento do processo", "arquivamento", "arquivad",
+           "processo concluíd", "processo concluid", "extinção do", "baixa do processo", "rescisão", "rescindid")
+# Marcadores de ATIVIDADE (mantém vivo): aditivo/prorrogação => contrato ainda corre.
+_VIVO = ("aditivo", "prorrog", "termo aditivo", "repactuaç")
+
+
+def _lifecycle(ficha: dict, obs: list[dict]) -> tuple[str, str]:
+    """CONSERVADOR (regra do dono 'não pode errar'): só 'encerrado_indicio' com marcador explícito de
+    encerramento E sem OB recente (≤18 meses) E sem marcador de aditivo/prorrogação. Caso contrário 'ativo'
+    (se há OB recente/aditivo) ou '' (desconhecido). É INDÍCIO/informacional — NUNCA decide skip sozinho."""
+    import datetime as _dt
+    blob = " ".join(str(ficha.get(k) or "") for k in ("objeto", "resumo", "analise")).lower()
+    for d in (ficha.get("documentos") or []):
+        if isinstance(d, dict):
+            blob += " " + str(d.get("tipo", "")).lower() + " " + str(d.get("ponto", "")).lower()
+    datas_ob = [str(o.get("data_pagamento") or "")[:10] for o in obs if o.get("data_pagamento")]
+    ultima = max(datas_ob) if datas_ob else ""
+    recente = False
+    if ultima:
+        try:
+            recente = (_dt.date.today() - _dt.date.fromisoformat(ultima)).days <= 548  # ~18 meses
+        except ValueError:
+            recente = False
+    tem_aditivo = any(m in blob for m in _VIVO)
+    fechou = any(m in blob for m in _FECHOU)
+    if recente or tem_aditivo:
+        return "ativo", ultima
+    if fechou:
+        return "encerrado_indicio", ultima
+    return "", ultima
 
 
 def _safe(numero: str) -> str:
@@ -121,10 +155,16 @@ def _digest_txt(numero: str, ficha: dict, rec: dict, obs: list[dict]) -> tuple[s
             L.append(f"  - {e['nome']} ({e['cnpj']}): {_moeda(e['valor'])}")
     else:
         L.append("\nPAGAMENTOS: nenhuma OB vinculada a este processo (INDISPONÍVEL ≠ 0).")
+    lifecycle, ultima_ob = _lifecycle(ficha, obs)
+    if lifecycle:
+        rotulo = {"encerrado_indicio": "INDÍCIO DE ENCERRADO (verificar — não sweepar à toa)",
+                  "ativo": "ATIVO (OB recente ou aditivo)"}.get(lifecycle, lifecycle)
+        L.insert(2, f"LIFECYCLE: {rotulo}" + (f" · última OB {ultima_ob}" if ultima_ob else ""))
     L.append(f"\n— fonte: ficha nous {rec.get('_ficha_modelo','')} · lido {rec.get('_cached_at','')} —")
     resumo = {"objeto": ficha.get("objeto") or "", "nivel_risco": ficha.get("nivel_risco") or "",
               "n_membros": len(cadeia or rel), "n_docs": len(docs), "n_obs": len(obs),
-              "total_pago": total, "fornecedores": list(fornec.values())}
+              "total_pago": total, "fornecedores": list(fornec.values()),
+              "lifecycle": lifecycle, "ultima_ob": ultima_ob}
     return "\n".join(L) + "\n", resumo
 
 
@@ -134,6 +174,12 @@ def construir(limite: int = 0) -> dict:
     con = sqlite3.connect(DB, timeout=30)
     con.execute("PRAGMA busy_timeout=30000")
     con.executescript(_DDL)
+    # migração aditiva: garante colunas novas em tabelas já existentes (idempotente)
+    cols = {r[1] for r in con.execute("PRAGMA table_info(sei_arvore)")}
+    for c in ("lifecycle TEXT", "ultima_ob TEXT"):
+        if c.split()[0] not in cols:
+            con.execute(f"ALTER TABLE sei_arvore ADD COLUMN {c}")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_sei_arvore_life ON sei_arvore(lifecycle)")
     cur = con.cursor()
     arquivos = [p for p in CACHE.glob("*.json")
                 if "checkpoint" not in p.name and "progress" not in p.name]
@@ -162,14 +208,15 @@ def construir(limite: int = 0) -> dict:
         path.write_text(txt, encoding="utf-8")
         cur.execute(
             """INSERT INTO sei_arvore
-               (numero_sei,objeto,nivel_risco,n_membros,n_docs,n_obs,total_pago,fornecedores,txt_path,atualizado_em)
-               VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))
+               (numero_sei,objeto,nivel_risco,n_membros,n_docs,n_obs,total_pago,fornecedores,lifecycle,ultima_ob,txt_path,atualizado_em)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
                ON CONFLICT(numero_sei) DO UPDATE SET objeto=excluded.objeto,nivel_risco=excluded.nivel_risco,
                  n_membros=excluded.n_membros,n_docs=excluded.n_docs,n_obs=excluded.n_obs,
-                 total_pago=excluded.total_pago,fornecedores=excluded.fornecedores,txt_path=excluded.txt_path,
-                 atualizado_em=datetime('now')""",
+                 total_pago=excluded.total_pago,fornecedores=excluded.fornecedores,lifecycle=excluded.lifecycle,
+                 ultima_ob=excluded.ultima_ob,txt_path=excluded.txt_path,atualizado_em=datetime('now')""",
             (numero, r["objeto"], r["nivel_risco"], r["n_membros"], r["n_docs"], r["n_obs"],
-             r["total_pago"], json.dumps(r["fornecedores"], ensure_ascii=False), str(path)))
+             r["total_pago"], json.dumps(r["fornecedores"], ensure_ascii=False),
+             r["lifecycle"], r["ultima_ob"], str(path)))
         feitos += 1
     con.commit()
     total_db = cur.execute("SELECT COUNT(*) FROM sei_arvore").fetchone()[0]
