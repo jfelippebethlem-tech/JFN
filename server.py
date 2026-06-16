@@ -13,6 +13,8 @@ No celular: http://<IP-DO-SEU-PC>:8000
 """
 
 import asyncio
+import hashlib
+import hmac
 import json
 import os
 import time
@@ -26,8 +28,14 @@ if TYPE_CHECKING:  # só p/ anotações (o import real é lazy dentro das rotas)
     from compliance_agent.hermes_goal import HermesGoalAgent
 
 import uvicorn
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, StreamingResponse
+from fastapi import FastAPI, Form, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import (
+    FileResponse,
+    HTMLResponse,
+    JSONResponse,
+    RedirectResponse,
+    StreamingResponse,
+)
 from fastapi.staticfiles import StaticFiles
 
 
@@ -225,6 +233,100 @@ output_dir.mkdir(exist_ok=True)
 
 app.mount("/screenshots", StaticFiles(directory="screenshots"), name="screenshots")
 app.mount("/output", StaticFiles(directory="output"), name="output")
+
+
+# ── login_jfn — gate de acesso ao dashboard (ISOLADO do Bond/:3000) ───────────────────────────────
+# Filosofia: o JFN expõe dados sensíveis de auditoria (CPF/casos). Quando o servidor é exposto à rede
+# (host 0.0.0.0 + Security List Oracle, igual ao Bond), TUDO passa a exigir login_jfn — EXCETO chamadas
+# de localhost (o Yoda chama 127.0.0.1:8000 internamente e NÃO pode quebrar). Cookie HMAC-assinado, sem deps.
+# `secure` é gated por env COOKIE_SECURE (lição do Bond: secure=true descarta o cookie em HTTP puro).
+_DASH_SENHA = os.environ.get("JFN_DASH_PASSWORD", "")
+_DASH_SECRET = (os.environ.get("JFN_DASH_SECRET") or _DASH_SENHA or "jfn-dev-secret").encode()
+_DASH_COOKIE = "jfn_session"
+_DASH_TTL = int(os.environ.get("JFN_DASH_TTL", str(30 * 24 * 3600)))  # 30 dias
+_DASH_COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").lower() in ("1", "true", "yes")
+_DASH_LOCAL = {"127.0.0.1", "::1", "localhost", None, ""}
+
+
+def _dash_token() -> str:
+    exp = str(int(time.time()) + _DASH_TTL)
+    sig = hmac.new(_DASH_SECRET, exp.encode(), hashlib.sha256).hexdigest()
+    return f"{exp}.{sig}"
+
+
+def _dash_token_ok(tok: str | None) -> bool:
+    if not tok or "." not in tok:
+        return False
+    exp, sig = tok.rsplit(".", 1)
+    good = hmac.new(_DASH_SECRET, exp.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, good):
+        return False
+    try:
+        return int(exp) > int(time.time())
+    except ValueError:
+        return False
+
+
+@app.middleware("http")
+async def _auth_jfn(request: Request, call_next):
+    # Sem senha configurada → gate DESLIGADO (modo dev/local, comportamento legado preservado).
+    if not _DASH_SENHA:
+        return await call_next(request)
+    cliente = request.client.host if request.client else ""
+    path = request.url.path
+    if (cliente in _DASH_LOCAL                      # Yoda interno (127.0.0.1) nunca é barrado
+            or path == "/login_jfn"
+            or path == "/favicon.ico"
+            or path.startswith("/static/login")):
+        return await call_next(request)
+    if _dash_token_ok(request.cookies.get(_DASH_COOKIE)):
+        return await call_next(request)
+    if path.startswith("/api/") or path.startswith("/ws"):
+        return JSONResponse({"erro": "não autenticado — faça login em /login_jfn"}, status_code=401)
+    return RedirectResponse("/login_jfn", status_code=303)
+
+
+_LOGIN_HTML = """<!doctype html><html lang=pt-br><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>JFN — Acesso</title>
+<style>*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;
+background:#0b1020;color:#e8edf7;font:16px/1.5 system-ui,Segoe UI,Roboto,sans-serif}
+.card{background:#141b30;border:1px solid #243049;border-radius:16px;padding:34px 30px;width:330px;
+box-shadow:0 18px 50px rgba(0,0,0,.45)}h1{margin:0 0 4px;font-size:21px;letter-spacing:.3px}
+p{margin:0 0 20px;color:#8a97b3;font-size:13px}input{width:100%;padding:12px 14px;border-radius:10px;
+border:1px solid #2a3650;background:#0d1424;color:#e8edf7;font-size:15px;margin-bottom:12px}
+button{width:100%;padding:12px;border:0;border-radius:10px;background:#3b82f6;color:#fff;font-size:15px;
+font-weight:600;cursor:pointer}button:hover{background:#2f6fe0}.err{color:#f87171;font-size:13px;
+margin:-4px 0 12px;min-height:18px}.foot{margin-top:16px;color:#5d6a87;font-size:11px;text-align:center}</style>
+</head><body><form class=card method=post action=/login_jfn>
+<h1>🔐 JFN</h1><p>Motor de auditoria/compliance — RJ</p>
+<div class=err>{{ERRO}}</div>
+<input type=password name=senha placeholder="Senha de acesso" autofocus autocomplete=current-password>
+<button type=submit>Entrar</button>
+<div class=foot>Acesso restrito · dados de auditoria (LGPD art. 7º,II/23)</div>
+</form></body></html>"""
+
+
+@app.get("/login_jfn", response_class=HTMLResponse)
+async def login_jfn_form(erro: int = 0):
+    msg = "Senha incorreta." if erro else ""
+    return HTMLResponse(_LOGIN_HTML.replace("{{ERRO}}", msg))
+
+
+@app.post("/login_jfn")
+async def login_jfn_post(senha: str = Form("")):
+    if _DASH_SENHA and hmac.compare_digest(senha, _DASH_SENHA):
+        resp = RedirectResponse("/", status_code=303)
+        resp.set_cookie(_DASH_COOKIE, _dash_token(), max_age=_DASH_TTL,
+                        httponly=True, samesite="lax", secure=_DASH_COOKIE_SECURE)
+        return resp
+    return RedirectResponse("/login_jfn?erro=1", status_code=303)
+
+
+@app.get("/logout_jfn")
+async def logout_jfn():
+    resp = RedirectResponse("/login_jfn", status_code=303)
+    resp.delete_cookie(_DASH_COOKIE)
+    return resp
 
 
 @app.get("/", response_class=HTMLResponse)
