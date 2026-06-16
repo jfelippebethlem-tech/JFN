@@ -30,5 +30,7 @@ $PRIO timeout 1500 $PY -m tools.sei_sweep --max 20 >> data/sei_cache/sei_sweep_l
 # resumível (pais já lidos ficam em cache+progress). Lê poucos por slot (qualidade > volume na VM 2 vCPU).
 $PRIO timeout 900  $PY -m tools.sei_sweep --seguir-pais --max 8 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
 $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
+# DEPURA as fichas do cache -> tabela sei_ficha (só info relevante, queryável/cruzável c/ OBs). Idempotente.
+$PRIO timeout 300  $PY -m tools.sei_depurar_db >> data/sei_depurar.log 2>&1; say "sei_depurar rc=$?"
 limpa_orfaos  # fecha SÓ os leftovers órfãos (não o server.py)
 say "fim"
