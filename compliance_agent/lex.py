@@ -867,13 +867,22 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     except Exception:
         investigacao = {}
 
+    # Direcionamento (Fase 4): parecer LLM ON-DEMAND já persistido (tools.sei_direcionamento_llm) — SURFACE,
+    # nunca dispara o LLM aqui (só leitura). Honesto: None se o fornecedor não está nos top-score avaliados.
+    direcionamento = None
+    try:
+        from tools.sei_direcionamento_llm import parecer_fornecedor
+        direcionamento = parecer_fornecedor(cnpj)
+    except Exception:  # noqa: BLE001 — surface é best-effort; ausência não derruba o parecer
+        direcionamento = None
+
     achados = _merge_achados(ach_dados + ach_doc + ach_tcerj + ach_cartel + ach_estrutural)
     emoji, rotulo, just = _grau(achados)
     exculpatorio = _exculpatorio(achados)
     destinatarios = _destinatarios(achados)
     return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
             "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj, "cartel": cartel,
-            "cruzado": cruzado, "investigacao": investigacao,
+            "cruzado": cruzado, "investigacao": investigacao, "direcionamento": direcionamento,
             "exculpatorio": exculpatorio, "destinatarios": destinatarios,
             "emoji": emoji, "rotulo": rotulo, "just": just}
 
@@ -935,6 +944,60 @@ def _analise_merito(ctx: dict, analise: dict) -> str:
 
 _BADGE_STATUS = {"CONFIRMADO": "🔴 CONFIRMADO", "INDICIO": "🟡 INDÍCIO",
                  "AFASTADO": "🟢 AFASTADO", "INDISPONIVEL": "⚪ INDISPONÍVEL"}
+
+
+def _secao_direcionamento(add, direc: dict | None) -> None:
+    """§II-F — DIRECIONAMENTO (parecer LLM on-demand sobre o dossiê consolidado das árvores do fornecedor).
+    SURFACE do veredito já computado (`tools.sei_direcionamento_llm`). Honesto: indício a verificar, nunca
+    acusação; só aparece p/ os top-score efetivamente avaliados (senão a seção é omitida)."""
+    if not direc or not (direc.get("grau") or direc.get("resumo")):
+        return
+    _badge = {"vermelho": "🔴 VERMELHO", "amarelo": "🟡 AMARELO", "verde": "🟢 VERDE",
+              "indeterminado": "⚪ INDETERMINADO", "indisponivel": "⚪ INDISPONÍVEL"}
+    grau = str(direc.get("grau") or "").lower()
+    add("## II-F. DIRECIONAMENTO DE LICITAÇÃO (cérebro on-demand — indício a verificar)")
+    add("")
+    add("*Avaliação raciocinada (LLM) sobre o **dossiê consolidado** das árvores SEI deste fornecedor: "
+        "exigências restritivas + cascata de desclassificações (Súmula TCU 263). Indício a apurar — "
+        "presunção de legitimidade dos atos administrativos, NUNCA acusação.*")
+    add("")
+    add(f"**Grau de direcionamento:** {_badge.get(grau, grau.upper() or '—')} · "
+        f"score de triagem {direc.get('score', 0)}/100"
+        + (f" · _{direc.get('modelo')}_" if direc.get("modelo") else "")
+        + (f" · avaliado {direc.get('avaliado_em')[:10]}" if direc.get("avaliado_em") else ""))
+    add("")
+    if direc.get("resumo"):
+        add(f"> {direc['resumo']}")
+        add("")
+    if direc.get("raciocinio"):
+        add(f"**Raciocínio:** {direc['raciocinio']}")
+        add("")
+    det = direc.get("detalhe") or {}
+    ex = det.get("exigencias_restritivas") or []
+    if ex:
+        add("**Exigências apontadas como restritivas:**")
+        for e in ex[:5]:
+            por = (e.get("por_que_restringe") or "")[:160]
+            jur = e.get("jurisprudencia") or "—"
+            add(f"- {por} _(juris.: {jur})_")
+            if e.get("trecho"):
+                add(f"  - trecho: “{(e.get('trecho') or '')[:140]}”")
+        add("")
+    casc = det.get("cascata") or []
+    if casc:
+        add("**Cascata de julgamento (indício):**")
+        add("")
+        add("| Licitante | Ordem preço | Situação | Motivo |")
+        add("|---|---:|---|---|")
+        for c in casc[:8]:
+            mot = (c.get("motivo") or "").replace("|", "/")[:60]
+            add(f"| {(c.get('licitante') or '?')[:30]} | {c.get('ordem_preco', '?')} | "
+                f"{c.get('situacao', '?')} | {mot} |")
+        add("")
+    if not det.get("dados_suficientes", True):
+        add("> ⚠ **Dados insuficientes** no dossiê para um juízo conclusivo — buscar o edital/ata da "
+            "licitação (processo de contratação, não o de execução). INDISPONÍVEL ≠ irregular.")
+        add("")
 
 
 def _secao_investigacao(add, inv: dict, cnpj: str = "") -> None:
@@ -1221,6 +1284,9 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     # II-E. Investigação de Due Diligence (fachada/laranja) — o Lex apresenta a investigação que conduziu.
     inv = analise.get("investigacao") or {}
     _secao_investigacao(add, inv, cnpj=so_digitos(ctx.get("cnpj", "")))
+
+    # II-F. Direcionamento de licitação (parecer LLM on-demand) — SURFACE do veredito dos top-score.
+    _secao_direcionamento(add, analise.get("direcionamento"))
 
     # III. Matriz de Achados + análise por red flag
     add("## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)")
