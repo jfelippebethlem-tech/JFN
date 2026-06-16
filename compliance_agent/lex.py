@@ -201,8 +201,42 @@ def _run_coro(factory):
     return asyncio.run(factory())
 
 
+def _dossie_sei(numero: str) -> dict | None:
+    """DOSSIÊ consolidado do processo (`data/sei_trees/` via tabela `sei_arvore`) — o que o sweep já
+    destilou (ficha+cadeia+pagamentos OB). Barato, sem WAF e MENOS TOKEN que a íntegra crua → preferido.
+    None se ainda não houver dossiê (cai p/ leitura ao vivo)."""
+    try:
+        import sqlite3
+        from compliance_agent.correlacao_sei import _DB
+        if not _DB.exists():
+            return None
+        con = sqlite3.connect(_DB)
+        con.execute("PRAGMA busy_timeout=10000")
+        try:
+            row = con.execute(
+                "SELECT txt_path, nivel_risco FROM sei_arvore "
+                "WHERE numero_sei = ? OR numero_sei LIKE '%'||?||'%' "
+                "ORDER BY length(numero_sei) LIMIT 1",
+                (numero.strip(), numero.strip())).fetchone()
+        finally:
+            con.close()
+        if not row or not row[0]:
+            return None
+        p = Path(row[0])
+        if not p.exists():
+            return None
+        return {"numero": numero, "texto": p.read_text(encoding="utf-8"),
+                "conteudo_documentos": [], "_fonte": "dossie_sei", "nivel_risco": row[1] or ""}
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _ler_integra_sei(numero: str) -> dict:
-    """Lê a íntegra de UM processo SEI (Chrome 9222 + OCR; fallback portal httpx). Cacheia 24h."""
+    """Íntegra de UM processo SEI. PREFERE o dossiê consolidado (sweep já destilou — barato/sem WAF/menos
+    token); só lê AO VIVO (Chrome 9222 + OCR; fallback portal) se ainda não houver dossiê. Cacheia 24h."""
+    _d = _dossie_sei(numero)
+    if _d:
+        return _d
     res = {}
     try:
         from compliance_agent.collectors import sei_cdp
