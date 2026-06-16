@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JFN — Painel de Controle</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#0b1020;color:#e8edf7;font:15px/1.55 system-ui,Segoe UI,Roboto,sans-serif}
+  header{display:flex;align-items:center;justify-content:space-between;padding:16px 26px;
+    background:#0d1424;border-bottom:1px solid #243049;position:sticky;top:0;z-index:9}
+  header h1{margin:0;font-size:18px;letter-spacing:.3px}
+  header .sub{color:#8a97b3;font-size:12px;margin-left:10px}
+  a.logout{color:#8a97b3;font-size:13px;text-decoration:none;border:1px solid #2a3650;padding:6px 12px;border-radius:8px}
+  a.logout:hover{color:#fff;border-color:#3b82f6}
+  main{max-width:1080px;margin:0 auto;padding:24px 20px;display:grid;gap:18px;
+    grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+  .card{background:#141b30;border:1px solid #243049;border-radius:14px;padding:20px 22px}
+  .card h2{margin:0 0 12px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .card h2 .dot{width:9px;height:9px;border-radius:50%;background:#3b82f6;display:inline-block}
+  .muted{color:#8a97b3;font-size:13px}
+  .kv{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid #1d2740;font-size:14px}
+  .kv:last-child{border-bottom:0}
+  .kv b{color:#cdd8ef;font-weight:600}
+  pre{white-space:pre-wrap;font:12px/1.5 ui-monospace,Menlo,monospace;color:#aeb9d6;margin:8px 0 0;max-height:140px;overflow:auto}
+  .btn{display:inline-block;border:0;border-radius:9px;padding:9px 14px;font-size:13px;font-weight:600;
+    cursor:pointer;color:#fff;margin:4px 6px 0 0}
+  .btn.red{background:#b9442f}.btn.red:hover{background:#9c3826}
+  .btn.green{background:#1f9d57}.btn.green:hover{background:#188047}
+  .btn.blue{background:#3b82f6;text-decoration:none}.btn.blue:hover{background:#2f6fe0}
+  .links a{display:inline-block;margin:4px 8px 4px 0;color:#fff;background:#22304e;padding:9px 14px;
+    border-radius:9px;text-decoration:none;font-size:13px}.links a:hover{background:#2c3f66}
+  .badge{font-size:11px;padding:2px 8px;border-radius:20px;font-weight:600}
+  .badge.on{background:#13351f;color:#5cd98a}.badge.off{background:#3a1414;color:#f08a8a}
+  .foot{grid-column:1/-1;color:#5d6a87;font-size:11px;text-align:center;padding-top:6px}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>🛰️ JFN — Painel de Controle</h1><span class="sub">auditoria/compliance · Estado do RJ</span></div>
+  <a class="logout" href="/logout_jfn">sair</a>
+</header>
+<main>
+
+  <!-- SWEEPS + admin -->
+  <section class="card">
+    <h2><span class="dot"></span> Sweeps <span id="sw-badge"></span></h2>
+    <div id="sw-body" class="muted">carregando…</div>
+    <pre id="sw-tail"></pre>
+    <div style="margin-top:10px">
+      <button class="btn red"   onclick="sweepAcao('pausar')">⏸ Pausar tudo</button>
+      <button class="btn green" onclick="sweepAcao('retomar')">▶ Retomar</button>
+      <button class="btn blue"  onclick="carregarSweeps()" style="background:#2a3650">↻ Atualizar</button>
+    </div>
+  </section>
+
+  <!-- MASSARE -->
+  <section class="card">
+    <h2><span class="dot" style="background:#22c55e"></span> Massare <span class="muted" style="font-size:11px">mercado/previsão</span></h2>
+    <div id="ms-body" class="muted">carregando…</div>
+  </section>
+
+  <!-- YODA -->
+  <section class="card">
+    <h2><span class="dot" style="background:#a855f7"></span> Yoda / Hermes</h2>
+    <div id="yo-body" class="muted">carregando…</div>
+    <div class="links" style="margin-top:10px"><a href="/hermes">Abrir Yoda →</a></div>
+  </section>
+
+  <!-- ACESSO RÁPIDO / Lex / produtos -->
+  <section class="card">
+    <h2><span class="dot" style="background:#eab308"></span> Auditoria · Lex · Produtos</h2>
+    <p class="muted">Relatórios de fornecedor/órgão (com parecer Lex), grafo de relações e busca.</p>
+    <div class="links">
+      <a href="/auditoria">📊 Painel de Auditoria</a>
+      <a href="/graph">🕸️ Grafo</a>
+      <a href="/hermes">🤖 Yoda</a>
+    </div>
+  </section>
+
+  <div class="foot">Acesso restrito · dados de auditoria (LGPD art. 7º,II/23) · isolado do PolitiMonitor/Bond</div>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmt = n => (n==null?'—':Number(n).toLocaleString('pt-BR'));
+const pct = x => (x==null?'—':(x*100).toFixed(1)+'%');
+
+async function carregarSweeps(){
+  try{
+    const r = await fetch('/api/sweeps/status'); const d = await r.json();
+    const pausado = d.pausado;
+    $('sw-badge').innerHTML = pausado
+      ? '<span class="badge off">pausado</span>'
+      : (d.sei?.rodando ? '<span class="badge on">rodando</span>' : '<span class="badge on">agendado (horário)</span>');
+    $('sw-body').innerHTML =
+      `<div class="kv"><span>SEI — processos lidos</span><b>${fmt(d.sei?.feitos)}</b></div>`+
+      `<div class="kv"><span>SIAFE 2 — OBs orçamentárias</span><b>${fmt(d.siafe?.ob_orcamentaria)}</b></div>`+
+      `<div class="kv"><span>Estado</span><b>${pausado?'pausado':'ativo'}</b></div>`;
+    $('sw-tail').textContent = d.sei?.ultima || '';
+  }catch(e){ $('sw-body').textContent = 'indisponível'; }
+}
+async function sweepAcao(acao){
+  if(acao==='pausar' && !confirm('Pausar TODOS os sweeps?')) return;
+  await fetch('/api/sweeps/'+acao, {method:'POST'});
+  setTimeout(carregarSweeps, 400);
+}
+async function carregarMassare(){
+  try{
+    const [p,g] = await Promise.all([fetch('/api/massare/placar'),fetch('/api/massare/regime')]);
+    const dp = await p.json(); const dg = await g.json();
+    const o = dp.placar?.overall||{}; const bo = dp.backtest_oos||{};
+    $('ms-body').innerHTML =
+      `<div class="kv"><span>Acerto (live)</span><b>${pct(o.hit_rate)} <span class="muted">(${fmt(o.hits)}/${fmt(o.n)})</span></b></div>`+
+      `<div class="kv"><span>Edge OOS</span><b>${bo.edge_medio!=null?(bo.edge_medio*100).toFixed(2)+' pp':'—'}</b></div>`+
+      `<div class="kv"><span>Pregões avaliados</span><b>${fmt(bo.n_pregoes_avaliados)}</b></div>`+
+      `<div class="kv"><span>Regime ^GSPC</span><b>${dg.regime?.rotulo_atual||'—'}</b></div>`;
+  }catch(e){ $('ms-body').textContent = 'indisponível'; }
+}
+async function carregarYoda(){
+  try{
+    const r = await fetch('/api/hermes/estado'); const d = await r.json();
+    $('yo-body').innerHTML =
+      `<div class="kv"><span>Missão</span><b style="max-width:60%;text-align:right">${d.missao||'—'}</b></div>`+
+      `<div class="kv"><span>OBs na base</span><b>${fmt(d.n_obs)}</b></div>`+
+      `<div class="kv"><span>Alertas</span><b>${fmt(d.n_alertas)}</b></div>`+
+      `<div class="kv"><span>LLM / Chrome</span><b>${d.llm_ok?'🟢':'🔴'} / ${d.chrome_9222?'🟢':'🔴'}</b></div>`;
+  }catch(e){ $('yo-body').textContent = 'indisponível'; }
+}
+carregarSweeps(); carregarMassare(); carregarYoda();
+setInterval(carregarSweeps, 30000);
+</script>
+</body>
+</html>

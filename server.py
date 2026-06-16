@@ -331,7 +331,13 @@ async def logout_jfn():
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    """Serve the professional compliance dashboard."""
+    """Hub do painel JFN (login_jfn): sweeps + admin, Massare, Yoda, atalhos p/ auditoria/Lex."""
+    return FileResponse("static/painel.html")
+
+
+@app.get("/auditoria", response_class=HTMLResponse)
+async def auditoria_ui():
+    """Painel de Auditoria Financeira (KPIs, alertas, OBs, favorecidos, /relatorio + Lex)."""
     return FileResponse("static/dashboard.html")
 
 
@@ -1227,6 +1233,25 @@ async def api_sweeps_status():
                          "sei": {"feitos": sei_feitos, "supervisor": sei_sup, "rodando": sei_run, "ultima": sei_tail},
                          "siafe": {"supervisor": sia_sup, "rodando": sia_run, "ob_orcamentaria": sia_total},
                          "pausado": pausado})
+
+
+@app.post("/api/sweeps/pausar")
+async def api_sweeps_pausar():
+    """Admin (painel): PAUSA os sweeps. Cria data/.pause_sweeps (tudo) e data/.pause_sei_sweep (corta o SEI
+    inclusive no meio de uma sessão — sei_sweep.py checa a flag mid-run). Os scripts do cron pulam enquanto existir."""
+    d = Path(__file__).resolve().parent / "data"
+    (d / ".pause_sweeps").touch()
+    (d / ".pause_sei_sweep").touch()
+    return JSONResponse({"ok": True, "pausado": True})
+
+
+@app.post("/api/sweeps/retomar")
+async def api_sweeps_retomar():
+    """Admin (painel): RETOMA os sweeps (remove as flags de pausa). O cron horário volta a rodar."""
+    d = Path(__file__).resolve().parent / "data"
+    for f in (".pause_sweeps", ".pause_sei_sweep"):
+        (d / f).unlink(missing_ok=True)
+    return JSONResponse({"ok": True, "pausado": False})
 
 
 @app.get("/api/ugs")
