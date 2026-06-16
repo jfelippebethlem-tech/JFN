@@ -36,6 +36,7 @@ CREATE TABLE IF NOT EXISTS sei_ficha (
   resumo          TEXT,
   analise         TEXT,
   nivel_risco     TEXT,
+  situacao        TEXT,   -- situação processual AUTORITATIVA (arquivado/concluido/em andamento/'') — read-time
   relevante       INTEGER,
   valores         TEXT,   -- JSON array
   cnpjs           TEXT,   -- JSON array
@@ -52,7 +53,7 @@ CREATE INDEX IF NOT EXISTS ix_sei_ficha_risco ON sei_ficha(nivel_risco);
 CREATE INDEX IF NOT EXISTS ix_sei_ficha_relevante ON sei_ficha(relevante);
 """
 
-_CAMPOS = ("objeto", "modalidade", "fundamento_legal", "resumo", "analise", "nivel_risco")
+_CAMPOS = ("objeto", "modalidade", "fundamento_legal", "resumo", "analise", "nivel_risco", "situacao")
 _LISTAS = ("valores", "cnpjs", "partes", "datas", "red_flags", "documentos")
 
 
@@ -60,6 +61,10 @@ def _conectar() -> sqlite3.Connection:
     con = sqlite3.connect(DB, timeout=30)
     con.execute("PRAGMA busy_timeout=30000")
     con.executescript(_DDL)
+    # migração aditiva: garante a coluna nova em tabelas já existentes (idempotente)
+    cols = {r[1] for r in con.execute("PRAGMA table_info(sei_ficha)")}
+    if "situacao" not in cols:
+        con.execute("ALTER TABLE sei_ficha ADD COLUMN situacao TEXT")
     return con
 
 
@@ -104,19 +109,20 @@ def depurar(stats_only: bool = False) -> dict:
         docs = ficha.get("documentos") or []
         cur.execute(
             """INSERT INTO sei_ficha
-               (numero_sei,objeto,modalidade,fundamento_legal,resumo,analise,nivel_risco,relevante,
+               (numero_sei,objeto,modalidade,fundamento_legal,resumo,analise,nivel_risco,situacao,relevante,
                 valores,cnpjs,partes,datas,red_flags,documentos,n_docs,fonte_modelo,cached_at,atualizado_em)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
                ON CONFLICT(numero_sei) DO UPDATE SET
                  objeto=excluded.objeto, modalidade=excluded.modalidade,
                  fundamento_legal=excluded.fundamento_legal, resumo=excluded.resumo,
-                 analise=excluded.analise, nivel_risco=excluded.nivel_risco, relevante=excluded.relevante,
+                 analise=excluded.analise, nivel_risco=excluded.nivel_risco, situacao=excluded.situacao,
+                 relevante=excluded.relevante,
                  valores=excluded.valores, cnpjs=excluded.cnpjs, partes=excluded.partes,
                  datas=excluded.datas, red_flags=excluded.red_flags, documentos=excluded.documentos,
                  n_docs=excluded.n_docs, fonte_modelo=excluded.fonte_modelo,
                  cached_at=excluded.cached_at, atualizado_em=datetime('now')""",
             (numero, vals["objeto"], vals["modalidade"], vals["fundamento_legal"], vals["resumo"],
-             vals["analise"], vals["nivel_risco"], 1 if ficha.get("relevante") else 0,
+             vals["analise"], vals["nivel_risco"], vals["situacao"], 1 if ficha.get("relevante") else 0,
              listas["valores"], listas["cnpjs"], listas["partes"], listas["datas"],
              listas["red_flags"], listas["documentos"], len(docs),
              rec.get("_ficha_modelo") or "", rec.get("_cached_at") or ""))

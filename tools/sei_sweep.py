@@ -154,6 +154,42 @@ def _fila(ug: str | None, limite: int, cnpj: str | None = None) -> list[tuple]:
     return rows
 
 
+def _arvores_encerradas() -> set[str]:
+    """Conjunto de processos com situação AUTORITATIVA de encerramento (`sei_arvore.encerrado=1`) — o gate
+    FIRME de skip da fase 'update diário'. O flag `encerrado` já embute as salvaguardas (autoritativo
+    arquivado/concluído + sem OB recente + sem aditivo + sem filho vigente, em sei_arvore_build); aqui
+    re-checamos a recência da última OB como cinto-e-suspensório contra build defasado. Honesto: na dúvida
+    (sem DB, sem tabela, sem coluna, erro) retorna VAZIO → não pula nada. Só é chamado em --diario."""
+    if not DB.exists():
+        return set()
+    con = sqlite3.connect(str(DB))
+    try:
+        if not con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sei_arvore'").fetchone():
+            return set()
+        cols = {r[1] for r in con.execute("PRAGMA table_info(sei_arvore)")}
+        if "encerrado" not in cols:
+            return set()
+        rows = con.execute(
+            "SELECT numero_sei, COALESCE(ultima_ob,'') FROM sei_arvore WHERE encerrado=1").fetchall()
+    except sqlite3.Error:
+        return set()
+    finally:
+        con.close()
+    hoje = datetime.now().date()
+    out: set[str] = set()
+    for numero, ult in rows:
+        if not numero:
+            continue
+        if ult:  # defesa extra: última OB recente (≤18m) → NÃO pula, mesmo marcado encerrado
+            try:
+                if (hoje - datetime.fromisoformat(ult[:10]).date()).days <= 548:
+                    continue
+            except ValueError:
+                pass
+        out.add(numero)
+    return out
+
+
 def _ja_lido_ok(proc: str) -> bool:
     """True só se o processo já foi lido COM SUCESSO (documentos>0) e fresco (<7d). Um cache de 0 docs
     é leitura intermitente que FALHOU — não pular, retentar (a abertura do SEI é flaky)."""
@@ -222,7 +258,7 @@ async def _ficha_e_storage(proc: str):
 
 async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
               seguir_arvore: bool = True, max_rel_arvore: int = 3, fazer_ficha: bool = True,
-              cnpj: str | None = None):
+              cnpj: str | None = None, diario: bool = False):
     from compliance_agent.envfile import carregar_env
     carregar_env()
     from compliance_agent.recursos import browser_lock_async, aguardar_load_async
@@ -234,11 +270,25 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
     # Unidades APRENDIDAS como fora do acesso do itkava (amostra suficiente, todas 0 docs) → pular o resto
     # delas (são INDISPONÍVEL por acesso, não vazias) em vez de tentar milhares fútilmente. Adaptativo.
     sem_acesso = _unidades_sem_acesso(prog)
+    # FASE UPDATE-DIÁRIO (regra do dono 'não pode errar'): só AQUI pulamos as árvores ENCERRADAS — gate
+    # firme da sei_arvore (situação autoritativa arquivado/concluído + sem OB recente + sem aditivo + sem
+    # filho vigente). NUNCA no drain inicial (diario=False), p/ não deixar processo por ler na 1ª passada.
+    encerradas: set[str] = set()
+    if diario:
+        try:
+            encerradas = _arvores_encerradas()  # gate firme + defesa extra de recência da última OB
+        except Exception as e:  # noqa: BLE001 — na dúvida não pula nada (conservador)
+            _log(f"[diario] não consegui carregar árvores encerradas ({type(e).__name__}) — não pulo nenhuma.")
+            encerradas = set()
+        if encerradas:
+            _log(f"[diario] {len(encerradas)} árvores ENCERRADAS (gate firme) serão puladas nesta passada diária.")
 
     def _pular(p: str) -> bool:
         if _ja_lido_ok(p):
             return True
         if _unidade(p) in sem_acesso:  # unidade inteira fora do acesso do itkava (INDISPONÍVEL)
+            return True
+        if diario and p in encerradas:  # SÓ no update-diário: árvore encerrada (gate firme corroborado)
             return True
         f = prog["feitos"].get(p)
         # já lido com docs, ou já tentado >=3x sem sucesso (processo vazio/restrito de verdade)
@@ -472,6 +522,9 @@ def main():
     ap.add_argument("--max-rel", type=int, default=3, help="máx. de relacionados a seguir por processo")
     ap.add_argument("--sem-ficha", action="store_true", help="NÃO extrair ficha/storage (só ler+cachear cru)")
     ap.add_argument("--cnpj", type=str, default=None, help="só os processos das OBs de um fornecedor (pré-carrega o /relatorio dele)")
+    ap.add_argument("--diario", action="store_true",
+                    help="FASE UPDATE-DIÁRIO: pula as árvores ENCERRADAS (gate firme da sei_arvore — situação "
+                         "autoritativa + sem OB recente/aditivo/filho vigente). NUNCA usar no drain inicial.")
     ap.add_argument("--seguir-pais", action="store_true",
                     help="MODO PAI: detecta no cache os processos-pai de CONTRATAÇÃO referenciados pelos "
                          "dockets (execução/pagamento) e os lê — recupera a substância dos 'vazios'.")
@@ -490,7 +543,7 @@ def main():
             asyncio.run(run_pais(a.max, fazer_ficha=not a.sem_ficha, so_alta=a.pais_so_alta, cnpj=a.cnpj))
         else:
             asyncio.run(run(a.max, a.ug, seguir_arvore=not a.sem_arvore, max_rel_arvore=a.max_rel,
-                            fazer_ficha=not a.sem_ficha, cnpj=a.cnpj))
+                            fazer_ficha=not a.sem_ficha, cnpj=a.cnpj, diario=a.diario))
     except Exception as e:  # noqa: BLE001
         _log(f"ABORTADO por erro não previsto ({type(e).__name__}: {str(e)[:120]}) — saída limpa, sem crash. Cron repete.")
 
