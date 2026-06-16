@@ -210,6 +210,10 @@ manuais quando expirarem (caem no nous até lá).
   (sweeps+admin pausar/retomar, Massare, Yoda, atalhos auditoria/Lex); auditoria antiga em `/auditoria`. Senha/secret em
   `.env` (`JFN_DASH_PASSWORD`/`_SECRET`), `COOKIE_SECURE` off (HTTP). **Tailscale já no ar** (`http://jfn-core:8000`);
   **público pende abrir 8000 na Security List Oracle** (ação do dono, igual ao 3000 do Bond). iptables 8000 persistido.
+  (7) **⭐ SEI depurado p/ o DB:** o sweep guardava a ficha SÓ em arquivo (`data/sei_cache/*.json`) e `processos_sei`
+  ficava VAZIA. Novo **`tools/sei_depurar_db.py`** carrega as fichas (objeto/valores/partes/red_flags/`analise`/
+  `nivel_risco`) na tabela **`sei_ficha`** (queryável/cruzável c/ OBs); idempotente, VM-safe, bloqueados contados à
+  parte. Wired no `sweep_sei.sh` (passo final). Backfill: **318 fichas** de 1290 arquivos (resto = bloqueado/restrito/vazio).
 - **06-15 cont.42e (⭐ SIAFE logado via MFA-Telegram + PolitiMonitor/Bond NO AR + relogin autônomo):** (1) **SIAFE
   LOGADO** — o fluxo MFA-via-Telegram funcionou end-to-end (dono respondeu o código no Telegram, captura passiva pegou,
   sessão salva 30d). **Bug achado e corrigido:** o token SIAFE é **ALFANUMÉRICO** (`8UvDWguB`) — o extrator só aceitava
