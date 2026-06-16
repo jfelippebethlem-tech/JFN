@@ -876,6 +876,15 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     except Exception:  # noqa: BLE001 — surface é best-effort; ausência não derruba o parecer
         direcionamento = None
 
+    # Pesquisa-internet (Fase 5): parecer já persistido (tools.lex_pesquisa_internet) — SURFACE só leitura,
+    # nunca dispara OSINT/LLM aqui. Honesto: None se o fornecedor ainda não foi pesquisado.
+    pesquisa = None
+    try:
+        from tools.lex_pesquisa_internet import parecer_pesquisa
+        pesquisa = parecer_pesquisa(cnpj)
+    except Exception:  # noqa: BLE001 — surface best-effort
+        pesquisa = None
+
     achados = _merge_achados(ach_dados + ach_doc + ach_tcerj + ach_cartel + ach_estrutural)
     emoji, rotulo, just = _grau(achados)
     exculpatorio = _exculpatorio(achados)
@@ -883,6 +892,7 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
             "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj, "cartel": cartel,
             "cruzado": cruzado, "investigacao": investigacao, "direcionamento": direcionamento,
+            "pesquisa": pesquisa,
             "exculpatorio": exculpatorio, "destinatarios": destinatarios,
             "emoji": emoji, "rotulo": rotulo, "just": just}
 
@@ -997,6 +1007,44 @@ def _secao_direcionamento(add, direc: dict | None) -> None:
     if not det.get("dados_suficientes", True):
         add("> ⚠ **Dados insuficientes** no dossiê para um juízo conclusivo — buscar o edital/ata da "
             "licitação (processo de contratação, não o de execução). INDISPONÍVEL ≠ irregular.")
+        add("")
+
+
+_VER_PESQ = {"resolvido": "🟢 RESOLVIDO", "agrava": "🔴 AGRAVA", "inconclusivo": "⚪ INCONCLUSIVO"}
+
+
+def _secao_pesquisa(add, pesq: dict | None) -> None:
+    """§II-G — PESQUISA-INTERNET (Fase 5): o Lex pesquisou as dúvidas (OSINT/web/DOERJ/mídia adversa),
+    aprendeu e re-ajustou a análise. SURFACE do que já foi computado (`tools.lex_pesquisa_internet`).
+    Honesto: indício a verificar, nunca acusação; INDISPONÍVEL ≠ irregular; cada 'agrava' cita a fonte."""
+    if not pesq or not (pesq.get("achados") or pesq.get("resumo")):
+        return
+    add("## II-G. PESQUISA-INTERNET — dúvidas, aprendizado e re-ajuste (indício a verificar)")
+    add("")
+    add("*O Lex pesquisou as dúvidas abertas na internet (busca web, notícias, Diário Oficial/Querido Diário, "
+        "mídia adversa) e re-ajustou a análise. Indício a apurar — presunção de legitimidade, NUNCA acusação; "
+        "ausência de registro NÃO é agravante.*")
+    add("")
+    cab = f"**{pesq.get('n_fontes', 0)} fonte(s)**"
+    if pesq.get("modelo"):
+        cab += f" · _{pesq['modelo']}_"
+    if pesq.get("avaliado_em"):
+        cab += f" · pesquisado {str(pesq['avaliado_em'])[:10]}"
+    add(cab)
+    add("")
+    if pesq.get("resumo"):
+        add(f"> {pesq['resumo']}")
+        add("")
+    for a in (pesq.get("achados") or [])[:8]:
+        ver = _VER_PESQ.get(str(a.get("veredito") or "").lower(), (a.get("veredito") or "—").upper())
+        add(f"- **{ver}** — {a.get('duvida','')}")
+        if a.get("nota"):
+            add(f"  - {a['nota']}")
+        for f in (a.get("fontes") or [])[:3]:
+            add(f"  - fonte: {f}")
+    add("")
+    if pesq.get("reajuste"):
+        add(f"**Re-ajuste da análise:** {pesq['reajuste']}")
         add("")
 
 
@@ -1287,6 +1335,9 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
 
     # II-F. Direcionamento de licitação (parecer LLM on-demand) — SURFACE do veredito dos top-score.
     _secao_direcionamento(add, analise.get("direcionamento"))
+
+    # II-G. Pesquisa-internet (Fase 5) — dúvidas pesquisadas, aprendizado e re-ajuste (SURFACE).
+    _secao_pesquisa(add, analise.get("pesquisa"))
 
     # III. Matriz de Achados + análise por red flag
     add("## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)")

@@ -39,5 +39,8 @@ $PRIO timeout 200  $PY -m tools.sei_direcionamento_varre >> data/sei_direc.log 2
 # DIRECIONAMENTO on-demand: o cérebro caro (gemini, tier PRODUTO) SÓ nos TOP-SCORE — poucos por slot, NÃO é
 # volume; cache de 30d faz a maioria dos slots não reavaliar nada. Surface no Lex/relatorio (§II-F). Bounded.
 $PRIO timeout 400  $PY -m tools.sei_direcionamento_llm --top 6 >> data/sei_direc.log 2>&1; say "sei_direc_llm rc=$?"
+# PESQUISA-INTERNET (Fase 5): o Lex pesquisa as dúvidas dos TOP-SCORE (OSINT/web/DOERJ/mídia adversa),
+# aprende (vault + DB lex_pesquisa) e re-ajusta a análise. Poucos por slot (rede + LLM produto); cache 30d.
+$PRIO timeout 600  $PY -m tools.lex_pesquisa_internet --top 3 >> data/lex_pesquisa.log 2>&1; say "lex_pesquisa rc=$?"
 limpa_orfaos  # fecha SÓ os leftovers órfãos (não o server.py)
 say "fim"
