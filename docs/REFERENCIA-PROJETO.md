@@ -34,7 +34,11 @@ Telegram = maestro, aciona o JFN pela API `127.0.0.1:8000`). Padrão de saída: 
   há folga de memória agora (a antiga server-1 era 7,8GB SEM swap — a lição do OOM nasceu lá), mas DuckDB+sweeps
   concorrentes ainda saturam os 2 núcleos, então a regra "1 sweep por vez" permanece: `nice -n10 ionice -c2 -n6` (best-effort = qualidade, progride sem starvar),
   bounded (`timeout`), `load-guard ≥4`, single-pass (cron repete; sem `while true`). Scripts:
-  **`tools/sweep_sei.sh`** (07/13/19h, itkava SOZINHO) · **`tools/sweep_dados.sh`** (10/16h, endereço+benefícios+
+  **`tools/sweep_sei.sh`** (**HORÁRIO `0 * * * *`** desde 06-16 — goal 24/7 até esgotar a fila **~21,5k** processos;
+  itkava SOZINHO; SEGURO e ≠ do lane contínuo revertido (cont.25) porque cada sessão é **bounded** + **pgrep-lock**
+  single-instance + **browser_lock** (nunca 2 browsers, serializa c/ SIAFE) + flag **`.pause_sei_sweep`** p/ leitura
+  manual. Cada processo lido vira **ficha de auditoria DETALHADA** via nous `stepfun:free` — agora c/ `analise`
+  raciocinada + `nivel_risco`) · **`tools/sweep_dados.sh`** (10/16h, endereço+benefícios+
   fachada) · **`tools/cruzador.sh`** (23h, OB↔SEI + concentração-grupo, à noite sozinho) · base **SIAFE 05:00**
   (`siafe_runner diario`) + backfill_enderecos 05:40. Pausas: `data/.pause_sweeps` (tudo) / `.pause_{sei,endereco,
   beneficios,fachada}_sweep`. SIAFE 1 = conta ALERJ-only (pende chave do dono). Backup crontab: `data/crontab.backup.*`.
@@ -188,6 +192,16 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-16 cont.43 (⭐ GOAL sweeps 24/7 + análise SEI detalhada + rclone destravado + vault por projeto):** (1) **SEI
+  sweep agora HORÁRIO** (`0 * * * *`, era 07/13/19h) — goal "rodar até esgotar a fila ~21,5k"; seguro pelos freios já
+  existentes (pgrep-lock + browser_lock + bound + `.pause_sei_sweep`), ≠ do lane contínuo revertido no cont.25. (2)
+  **Ficha de auditoria DETALHADA**: `tools/sei_ficha.py` ganhou `analise` (raciocínio 2-4 frases) + `nivel_risco`
+  (baixo/medio/alto, indicador interno — indício≠acusação), via nous `stepfun:free` (IA grátis, gemini fora do sweep).
+  (3) **rclone destravado** (symlink `~/.local/bin/rclone`→`/usr/bin/rclone` + `RCLONE_BIN` no `.env`): fachada Street
+  View saiu de `rc=2`→`rc=0`, sobe foto p/ R2, respeita free-tier (Geocoding esgotado até 14/07, usa só Street View).
+  (4) **Caso PVAX** aberto e **AFASTADO por veredito humano** (galpão real; VLM "barraco" = falso-positivo) — veredito
+  gravado em `fachada_veredito`+`verificacao_sede` p/ não re-flaggar; lição no vault. (5) **Vault por projeto**: campo
+  `projeto:` em 55 notas + links consertados (caso MUV, Bond, nota de migração criada).
 - **06-15 cont.42e (⭐ SIAFE logado via MFA-Telegram + PolitiMonitor/Bond NO AR + relogin autônomo):** (1) **SIAFE
   LOGADO** — o fluxo MFA-via-Telegram funcionou end-to-end (dono respondeu o código no Telegram, captura passiva pegou,
   sessão salva 30d). **Bug achado e corrigido:** o token SIAFE é **ALFANUMÉRICO** (`8UvDWguB`) — o extrator só aceitava

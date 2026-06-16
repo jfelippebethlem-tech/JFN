@@ -41,8 +41,11 @@ _SIST = ("Você é analista de auditoria de contratação pública (controle ext
          "INVENTARIE os DOCUMENTOS-CHAVE presentes (no MÍNIMO: edital, concorrência, termo de referência, "
          "contrato, parecer jurídico, ETP/DFD, pesquisa de preços, despachos, atas, aditivos, notas de empenho, "
          "ANEXOS instrutivos) e quaisquer OUTROS relevantes — cada um com seu ponto/trecho relevante. "
+         "Produza ainda uma ANÁLISE raciocinada de auditoria (campo 'analise', 2-4 frases: o que chama atenção, "
+         "por quê, e o que VERIFICAR) e um 'nivel_risco' (baixo/medio/alto). Ambos são INDICADORES INTERNOS: "
+         "indício ≠ acusação, vale a presunção de regularidade — aponte o que conferir, NUNCA acuse. "
          "REGRAS: (1) factual — NUNCA invente; campo sem dado no texto = \"\" ou []. "
-         "(2) CONCISO — 'resumo' no MÁXIMO 2 frases; cada 'ponto' 1 frase; sem repetir. "
+         "(2) 'resumo' no MÁXIMO 2 frases; 'analise' 2-4 frases; cada 'ponto' 1 frase; sem repetir. "
          "(3) Responda SOMENTE o objeto JSON (começa com { e termina com }), SEM texto antes/depois, SEM ```.")
 
 _CAMPOS = ('{"objeto": "o que se contrata (1 frase)", "modalidade": "pregão/dispensa/inexigibilidade/adesão a ata/... ou \\"\\"", '
@@ -52,6 +55,8 @@ _CAMPOS = ('{"objeto": "o que se contrata (1 frase)", "modalidade": "pregão/dis
            'pesquisa de preços|despacho|ata|aditivo|nota de empenho|anexo instrutivo|outro", '
            '"ponto": "ponto/trecho relevante p/ auditoria (1 frase)"}], '
            '"red_flags": ["indícios a verificar, se houver"], '
+           '"nivel_risco": "baixo|medio|alto", '
+           '"analise": "análise raciocinada p/ auditoria (2-4 frases): o que chama atenção, por quê, e o que verificar", '
            '"relevante": true, "resumo": "1-2 frases do que importa p/ auditoria"}')
 
 # FEW-SHOT: 1 exemplo input→ficha ideal "ensina" o modelo fraco (formato + profundidade esperada).
@@ -66,6 +71,8 @@ _EXEMPLO_FICHA = ('{"objeto": "Aquisição de cateter venoso central (insumo de 
                   '{"tipo": "parecer jurídico", "ponto": "opina pela legalidade da adesão à ata"}, '
                   '{"tipo": "ata de registro de preços", "ponto": "Pregão 045/2021 da Fundação Saúde, vigência e preços"}], '
                   '"red_flags": ["adesão a ata de outro órgão — verificar vantajosidade (art. 86 Lei 14.133)"], '
+                  '"nivel_risco": "baixo", '
+                  '"analise": "Adesão a ata de RP de outro órgão (carona) para insumo de saúde de baixo valor, com parecer opinando pela legalidade. Risco baixo, mas convém conferir a vantajosidade do preço da carona ante o mercado (art. 86 Lei 14.133) e a real necessidade da demanda do CBMERJ.", '
                   '"relevante": true, "resumo": "Adesão a ata de RP p/ cateter ao CBMERJ, R$ 17.156,00. Verificar vantajosidade da carona."}')
 
 
