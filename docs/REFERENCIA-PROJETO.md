@@ -151,6 +151,9 @@ cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid 
   Skill nova `/dossie` + `/api/dossie` async+push (`_gerar_e_enviar_dossie`, como /relatorio; antes era síncrono).
 
 ## 9. PENDÊNCIAS DO DONO
+- **🌐 Dashboard `login_jfn` público (cont.43):** abrir a porta **8000/TCP na Security List da Oracle** (console OCI,
+  igual fez p/ o 3000 do Bond) p/ acesso pela internet. **Tailscale já funciona** sem isso (`http://jfn-core:8000`).
+  Senha em `.env` `JFN_DASH_PASSWORD` (trocar se quiser). Recomendado depois: HTTPS (hoje é HTTP, como o Bond).
 - **🔴 Pós-migração jfn-agent-2 (cont.41, 06-14) — ações que só o dono faz:**
   1. **Relogar SEI + SIAFE** (renova o 2FA por +30 dias). O **SIAFE está com `SIAFE_USER`/`SIAFE_PASS` VAZIOS** no
      `~/.hermes/.env` — preencher antes; depois o relogin é pelo Chrome `:9222` (`chrome-jfn.service`). SEI já tem
@@ -201,7 +204,12 @@ manuais quando expirarem (caem no nous até lá).
   View saiu de `rc=2`→`rc=0`, sobe foto p/ R2, respeita free-tier (Geocoding esgotado até 14/07, usa só Street View).
   (4) **Caso PVAX** aberto e **AFASTADO por veredito humano** (galpão real; VLM "barraco" = falso-positivo) — veredito
   gravado em `fachada_veredito`+`verificacao_sede` p/ não re-flaggar; lição no vault. (5) **Vault por projeto**: campo
-  `projeto:` em 55 notas + links consertados (caso MUV, Bond, nota de migração criada).
+  `projeto:` em 55 notas + links consertados (caso MUV, Bond, nota de migração criada). (6) **⭐ Dashboard `login_jfn`**
+  (ISOLADO do Bond): middleware de auth no `server.py` (cookie HMAC; ISENTA localhost p/ o Yoda não quebrar; externo →
+  login). `jfn.service` agora `--host 0.0.0.0` (porta **8000**, ≠ 3000 do Bond). Hub `static/painel.html` em `/`
+  (sweeps+admin pausar/retomar, Massare, Yoda, atalhos auditoria/Lex); auditoria antiga em `/auditoria`. Senha/secret em
+  `.env` (`JFN_DASH_PASSWORD`/`_SECRET`), `COOKIE_SECURE` off (HTTP). **Tailscale já no ar** (`http://jfn-core:8000`);
+  **público pende abrir 8000 na Security List Oracle** (ação do dono, igual ao 3000 do Bond). iptables 8000 persistido.
 - **06-15 cont.42e (⭐ SIAFE logado via MFA-Telegram + PolitiMonitor/Bond NO AR + relogin autônomo):** (1) **SIAFE
   LOGADO** — o fluxo MFA-via-Telegram funcionou end-to-end (dono respondeu o código no Telegram, captura passiva pegou,
   sessão salva 30d). **Bug achado e corrigido:** o token SIAFE é **ALFANUMÉRICO** (`8UvDWguB`) — o extrator só aceitava
