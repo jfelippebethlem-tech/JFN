@@ -245,7 +245,7 @@ _DASH_SECRET = (os.environ.get("JFN_DASH_SECRET") or _DASH_SENHA or "jfn-dev-sec
 _DASH_COOKIE = "jfn_session"
 _DASH_TTL = int(os.environ.get("JFN_DASH_TTL", str(30 * 24 * 3600)))  # 30 dias
 _DASH_COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").lower() in ("1", "true", "yes")
-_DASH_LOCAL = {"127.0.0.1", "::1", "localhost", None, ""}
+_DASH_LOCAL = {"127.0.0.1", "::1", "localhost", "testclient", None, ""}  # "testclient" = TestClient in-process (testes/Yoda)
 
 
 def _dash_token() -> str:
