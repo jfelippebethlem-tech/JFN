@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS sei_arvore (
   fornecedores  TEXT,   -- JSON [{cnpj,nome,valor}]
   lifecycle     TEXT,   -- 'encerrado_indicio' | 'ativo' | '' (CONSERVADOR — indício, não veredito)
   ultima_ob     TEXT,   -- data do último pagamento (recência)
+  situacao      TEXT,   -- situação AUTORITATIVA da ficha (arquivado/concluido/em andamento/'') — read-time
+  encerrado     INTEGER DEFAULT 0,  -- gate FIRME de skip (1 só com sinal autoritativo + corroboração negativa)
   txt_path      TEXT,
   atualizado_em TEXT DEFAULT (datetime('now'))
 );
@@ -57,10 +59,42 @@ _FECHOU = ("termo de encerramento", "encerramento do processo", "arquivamento", 
 _VIVO = ("aditivo", "prorrog", "termo aditivo", "repactuaç")
 
 
-def _lifecycle(ficha: dict, obs: list[dict]) -> tuple[str, str]:
-    """CONSERVADOR (regra do dono 'não pode errar'): só 'encerrado_indicio' com marcador explícito de
-    encerramento E sem OB recente (≤18 meses) E sem marcador de aditivo/prorrogação. Caso contrário 'ativo'
-    (se há OB recente/aditivo) ou '' (desconhecido). É INDÍCIO/informacional — NUNCA decide skip sozinho."""
+def _norm_situacao(s: str) -> str:
+    """Normaliza a SITUAÇÃO AUTORITATIVA da ficha (capturada no read-time) p/
+    {'arquivado','concluido','em andamento',''}. Honesto: o que não casa vira '' (desconhecido)."""
+    t = (s or "").strip().lower()
+    if not t:
+        return ""
+    if "arquiv" in t:
+        return "arquivado"
+    if "conclu" in t or "encerr" in t:
+        return "concluido"
+    if "andamento" in t or "tramit" in t or "vigente" in t or "ativo" in t:
+        return "em andamento"
+    return ""
+
+
+def _filho_vigente(rec: dict) -> bool:
+    """SAFEGUARD pai-com-filho-vigente: True se QUALQUER filho da cadeia (relacionados lidos) tem marcador
+    de vigência (aditivo/prorrogação/repactuação) no texto/título. Um pai com filho ainda em curso NUNCA
+    pode ser tratado como encerrado (pai pode ter filhos encerrados E vigentes — regra do dono 'não errar')."""
+    for rel in (rec.get("cadeia") or []):
+        if not isinstance(rel, dict):
+            continue
+        blob = (str(rel.get("texto") or "") + " " + str(rel.get("titulo_rel") or "")
+                + " " + str(rel.get("titulo") or "")).lower()
+        if any(m in blob for m in _VIVO):
+            return True
+    return False
+
+
+def _lifecycle(ficha: dict, obs: list[dict], rec: dict | None = None) -> tuple[str, str, str, bool]:
+    """CONSERVADOR (regra do dono 'não pode errar'). Retorna (lifecycle, ultima_ob, situacao, encerrado):
+      • `situacao`: sinal AUTORITATIVO da ficha (read-time) normalizado — '' se não declarado.
+      • `lifecycle`: indício informacional — 'ativo' (OB recente/aditivo/situação em andamento),
+        'encerrado_indicio' (marcador de fecho no texto) ou '' (desconhecido).
+      • `encerrado`: flag FIRME p/ decidir skip — SÓ True com situação autoritativa arquivado/concluído E
+        sem OB recente (≤18m) E sem aditivo próprio E sem filho vigente na cadeia. Tudo o mais é False."""
     import datetime as _dt
     blob = " ".join(str(ficha.get(k) or "") for k in ("objeto", "resumo", "analise")).lower()
     for d in (ficha.get("documentos") or []):
@@ -76,11 +110,20 @@ def _lifecycle(ficha: dict, obs: list[dict]) -> tuple[str, str]:
             recente = False
     tem_aditivo = any(m in blob for m in _VIVO)
     fechou = any(m in blob for m in _FECHOU)
-    if recente or tem_aditivo:
-        return "ativo", ultima
-    if fechou:
-        return "encerrado_indicio", ultima
-    return "", ultima
+    situacao = _norm_situacao(ficha.get("situacao") or "")
+    filho_vivo = _filho_vigente(rec or {})
+    # lifecycle (indício): situação autoritativa em andamento, OB recente ou aditivo => ativo
+    if situacao == "em andamento" or recente or tem_aditivo or filho_vivo:
+        lifecycle = "ativo"
+    elif situacao in ("arquivado", "concluido") or fechou:
+        lifecycle = "encerrado_indicio"
+    else:
+        lifecycle = ""
+    # encerrado FIRME (gate de skip): exige o sinal AUTORITATIVO + corroboração negativa total.
+    encerrado = bool(
+        situacao in ("arquivado", "concluido")
+        and not recente and not tem_aditivo and not filho_vivo)
+    return lifecycle, ultima, situacao, encerrado
 
 
 def _safe(numero: str) -> str:
@@ -155,16 +198,20 @@ def _digest_txt(numero: str, ficha: dict, rec: dict, obs: list[dict]) -> tuple[s
             L.append(f"  - {e['nome']} ({e['cnpj']}): {_moeda(e['valor'])}")
     else:
         L.append("\nPAGAMENTOS: nenhuma OB vinculada a este processo (INDISPONÍVEL ≠ 0).")
-    lifecycle, ultima_ob = _lifecycle(ficha, obs)
-    if lifecycle:
+    lifecycle, ultima_ob, situacao, encerrado = _lifecycle(ficha, obs, rec)
+    if lifecycle or situacao:
         rotulo = {"encerrado_indicio": "INDÍCIO DE ENCERRADO (verificar — não sweepar à toa)",
-                  "ativo": "ATIVO (OB recente ou aditivo)"}.get(lifecycle, lifecycle)
-        L.insert(2, f"LIFECYCLE: {rotulo}" + (f" · última OB {ultima_ob}" if ultima_ob else ""))
+                  "ativo": "ATIVO (OB recente, aditivo, filho vigente ou situação em andamento)"}.get(lifecycle, lifecycle or "—")
+        extra = (f" · situação autoritativa: {situacao}" if situacao else "")
+        if encerrado:
+            extra += " · ENCERRADO (gate de skip: autoritativo + sem OB recente/aditivo/filho vigente)"
+        L.insert(2, f"LIFECYCLE: {rotulo}{extra}" + (f" · última OB {ultima_ob}" if ultima_ob else ""))
     L.append(f"\n— fonte: ficha nous {rec.get('_ficha_modelo','')} · lido {rec.get('_cached_at','')} —")
     resumo = {"objeto": ficha.get("objeto") or "", "nivel_risco": ficha.get("nivel_risco") or "",
               "n_membros": len(cadeia or rel), "n_docs": len(docs), "n_obs": len(obs),
               "total_pago": total, "fornecedores": list(fornec.values()),
-              "lifecycle": lifecycle, "ultima_ob": ultima_ob}
+              "lifecycle": lifecycle, "ultima_ob": ultima_ob,
+              "situacao": situacao, "encerrado": 1 if encerrado else 0}
     return "\n".join(L) + "\n", resumo
 
 
@@ -176,10 +223,11 @@ def construir(limite: int = 0) -> dict:
     con.executescript(_DDL)
     # migração aditiva: garante colunas novas em tabelas já existentes (idempotente)
     cols = {r[1] for r in con.execute("PRAGMA table_info(sei_arvore)")}
-    for c in ("lifecycle TEXT", "ultima_ob TEXT"):
+    for c in ("lifecycle TEXT", "ultima_ob TEXT", "situacao TEXT", "encerrado INTEGER DEFAULT 0"):
         if c.split()[0] not in cols:
             con.execute(f"ALTER TABLE sei_arvore ADD COLUMN {c}")
     con.execute("CREATE INDEX IF NOT EXISTS ix_sei_arvore_life ON sei_arvore(lifecycle)")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_sei_arvore_enc ON sei_arvore(encerrado)")
     cur = con.cursor()
     arquivos = [p for p in CACHE.glob("*.json")
                 if "checkpoint" not in p.name and "progress" not in p.name]
@@ -208,22 +256,48 @@ def construir(limite: int = 0) -> dict:
         path.write_text(txt, encoding="utf-8")
         cur.execute(
             """INSERT INTO sei_arvore
-               (numero_sei,objeto,nivel_risco,n_membros,n_docs,n_obs,total_pago,fornecedores,lifecycle,ultima_ob,txt_path,atualizado_em)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+               (numero_sei,objeto,nivel_risco,n_membros,n_docs,n_obs,total_pago,fornecedores,lifecycle,ultima_ob,situacao,encerrado,txt_path,atualizado_em)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
                ON CONFLICT(numero_sei) DO UPDATE SET objeto=excluded.objeto,nivel_risco=excluded.nivel_risco,
                  n_membros=excluded.n_membros,n_docs=excluded.n_docs,n_obs=excluded.n_obs,
                  total_pago=excluded.total_pago,fornecedores=excluded.fornecedores,lifecycle=excluded.lifecycle,
-                 ultima_ob=excluded.ultima_ob,txt_path=excluded.txt_path,atualizado_em=datetime('now')""",
+                 ultima_ob=excluded.ultima_ob,situacao=excluded.situacao,encerrado=excluded.encerrado,
+                 txt_path=excluded.txt_path,atualizado_em=datetime('now')""",
             (numero, r["objeto"], r["nivel_risco"], r["n_membros"], r["n_docs"], r["n_obs"],
              r["total_pago"], json.dumps(r["fornecedores"], ensure_ascii=False),
-             r["lifecycle"], r["ultima_ob"], str(path)))
+             r["lifecycle"], r["ultima_ob"], r["situacao"], r["encerrado"], str(path)))
         feitos += 1
     con.commit()
     total_db = cur.execute("SELECT COUNT(*) FROM sei_arvore").fetchone()[0]
     com_ob = cur.execute("SELECT COUNT(*) FROM sei_arvore WHERE n_obs>0").fetchone()[0]
+    encerr = cur.execute("SELECT COUNT(*) FROM sei_arvore WHERE encerrado=1").fetchone()[0]
     con.close()
     return {"arquivos": len(arquivos), "dossies": feitos, "pulados": pulados,
-            "no_db": total_db, "com_pagamento": com_ob}
+            "no_db": total_db, "com_pagamento": com_ob, "encerrados": encerr}
+
+
+def arvores_encerradas(db_path: Path | str | None = None) -> set[str]:
+    """Conjunto dos nº SEI com `encerrado=1` na tabela `sei_arvore` — o GATE FIRME de skip do sweep diário.
+    São processos com situação AUTORITATIVA arquivado/concluído, sem OB recente, sem aditivo e sem filho
+    vigente (a corroboração já foi exigida no build). Vale só na fase 'update diário', NUNCA no drain inicial.
+    Honesto: se a tabela não existe (base nova), retorna conjunto VAZIO (não pula nada)."""
+    dbp = Path(db_path) if db_path else DB
+    if not dbp.exists():
+        return set()
+    con = sqlite3.connect(str(dbp), timeout=30)
+    con.execute("PRAGMA busy_timeout=30000")
+    try:
+        if not con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='sei_arvore'").fetchone():
+            return set()
+        cols = {r[1] for r in con.execute("PRAGMA table_info(sei_arvore)")}
+        if "encerrado" not in cols:
+            return set()
+        return {r[0] for r in con.execute(
+            "SELECT numero_sei FROM sei_arvore WHERE encerrado=1 AND numero_sei IS NOT NULL")}
+    except sqlite3.Error:
+        return set()
+    finally:
+        con.close()
 
 
 def main() -> int:
@@ -232,7 +306,7 @@ def main() -> int:
     a = ap.parse_args()
     r = construir(limite=a.limite)
     print(f"[sei_arvore] arquivos={r['arquivos']} · dossiês={r['dossies']} · pulados={r['pulados']} · "
-          f"no_db={r['no_db']} · com_pagamento_OB={r['com_pagamento']}")
+          f"no_db={r['no_db']} · com_pagamento_OB={r['com_pagamento']} · encerrados(gate skip)={r['encerrados']}")
     return 0
 
 
