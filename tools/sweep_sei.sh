@@ -36,5 +36,8 @@ $PRIO timeout 300  $PY -m tools.sei_depurar_db >> data/sei_depurar.log 2>&1; say
 $PRIO timeout 400  $PY -m tools.sei_arvore_build >> data/sei_arvore.log 2>&1; say "sei_arvore rc=$?"
 # MEMÓRIA cruzada de direcionamento por fornecedor (acumula; barato, sem LLM em massa; ente público zerado).
 $PRIO timeout 200  $PY -m tools.sei_direcionamento_varre >> data/sei_direc.log 2>&1; say "sei_direc rc=$?"
+# DIRECIONAMENTO on-demand: o cérebro caro (gemini, tier PRODUTO) SÓ nos TOP-SCORE — poucos por slot, NÃO é
+# volume; cache de 30d faz a maioria dos slots não reavaliar nada. Surface no Lex/relatorio (§II-F). Bounded.
+$PRIO timeout 400  $PY -m tools.sei_direcionamento_llm --top 6 >> data/sei_direc.log 2>&1; say "sei_direc_llm rc=$?"
 limpa_orfaos  # fecha SÓ os leftovers órfãos (não o server.py)
 say "fim"
