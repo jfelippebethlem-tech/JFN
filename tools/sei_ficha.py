@@ -97,6 +97,10 @@ def _carregar_env_completo():
 # timeout upstream, NÃO o servidor caindo). 3500 cobre o essencial (objeto/valores/partes estão no começo).
 _MAX_TXT = int(os.environ.get("SEI_FICHA_MAX_TXT", "3500"))
 
+# Teto de tokens da RESPOSTA dos modelos de raciocínio (stepfun/cerebras): precisa caber o `reasoning`
+# (em volume) + o JSON final. 4000 era curto e cortava o JSON ("JSON inválido"); 8000 dá folga. Env-tunável.
+_MAX_TOKENS = int(os.environ.get("SEI_FICHA_MAX_TOKENS", "8000"))
+
 
 def _prompt(texto: str) -> list[dict]:
     # ENSINAR (few-shot): mostra 1 par TEXTO→FICHA ideal antes de pedir o real. Vira o jogo p/ modelo fraco.
@@ -169,12 +173,14 @@ async def _chamar_nous(texto: str, model: str) -> str:
         raise RuntimeError("sem access_token nous (auth.json)")
     async with httpx.AsyncClient(timeout=200) as c:  # nous é lento; "lento tá ok" se a qualidade segura
         # PARAMETRIZAR: stepfun/nemotron são modelos de RACIOCÍNIO — gastam tokens no campo `reasoning`
-        # ANTES do `content`. max_tokens ALTO (4000) p/ caber raciocínio + JSON; cap baixo deixa content=null
-        # (finish_reason 'length'). top_p conservador, temperatura baixa (extração factual).
+        # ANTES do `content`. max_tokens ALTO p/ caber raciocínio + JSON; cap baixo deixa content=null
+        # (finish_reason 'length') → "JSON inválido". 4000 era curto p/ processos complexos (o raciocínio
+        # estourava o teto antes do JSON, ~76% de falha no cluster denso); 8000 dá folga p/ raciocínio+JSON
+        # (comprovado: caso que falhava passou a parsear). top_p conservador, temperatura baixa (factual).
         r = await c.post(f"{base}/chat/completions",
                          headers={"Authorization": f"Bearer {tok}"},
                          json={"model": model, "messages": _prompt(texto), "temperature": 0.1,
-                               "max_tokens": 4000, "top_p": 0.9})
+                               "max_tokens": _MAX_TOKENS, "top_p": 0.9})
         if r.status_code == 401:
             raise RuntimeError("401 token nous expirado (rode `hermes` p/ re-auth)")
         r.raise_for_status()
@@ -198,7 +204,7 @@ async def _chamar_cerebras(texto: str) -> str:
         r = await c.post(f"{base}/chat/completions",
                          headers={"Authorization": f"Bearer {key}"},
                          json={"model": CEREBRAS_MODEL, "messages": _prompt(texto), "temperature": 0.1,
-                               "max_tokens": 4000, "top_p": 0.9})
+                               "max_tokens": _MAX_TOKENS, "top_p": 0.9})
         r.raise_for_status()
         msg = (r.json().get("choices") or [{}])[0].get("message", {}) or {}
         return msg.get("content") or msg.get("reasoning") or ""
