@@ -261,7 +261,7 @@ def _gravar_vault(res: dict) -> str:
     L = ["---", "tipo: aprendizado", "fonte: lex_pesquisa_internet", f"cnpj: '{res['cnpj']}'",
          "ai-first: true", "honesto: indício a verificar, não acusação", "---", "",
          f"# Pesquisa-internet — {res.get('nome') or res['cnpj']}", "",
-         f"> Indício a verificar (presunção de legitimidade), nunca acusação. INDISPONÍVEL ≠ irregular.", "",
+         "> Indício a verificar (presunção de legitimidade), nunca acusação. INDISPONÍVEL ≠ irregular.", "",
          f"**Resumo:** {res.get('resumo') or '—'}", "",
          f"**Re-ajuste da análise:** {res.get('reajuste') or '—'}", "", "## Dúvidas pesquisadas"]
     for a in (res.get("achados") or []):
