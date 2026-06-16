@@ -78,6 +78,26 @@
     </div>
   </section>
 
+  <!-- AÇÕES diretas (usar: Lex/relatório, órgão, Massare) -->
+  <section class="card" style="grid-column:1/-1">
+    <h2><span class="dot" style="background:#ef4444"></span> Ações</h2>
+    <div style="display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+      <div>
+        <div class="muted" style="margin-bottom:6px">Relatório de fornecedor (+ Lex)</div>
+        <div style="display:flex;gap:6px"><input id="ac-emp" placeholder="nome ou CNPJ" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #2a3650;background:#0d1424;color:#e8edf7"><button class="btn red" onclick="acao('relatorio')">Gerar</button></div>
+      </div>
+      <div>
+        <div class="muted" style="margin-bottom:6px">Relatório de órgão (+ Lex)</div>
+        <div style="display:flex;gap:6px"><input id="ac-org" placeholder="órgão ou UG (ex: 133100)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #2a3650;background:#0d1424;color:#e8edf7"><button class="btn red" onclick="acao('orgao')">Gerar</button></div>
+      </div>
+      <div>
+        <div class="muted" style="margin-bottom:6px">Massare — previsão</div>
+        <div style="display:flex;gap:6px"><input id="ac-ms" placeholder="ativo (ex: prata, ^BVSP)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #2a3650;background:#0d1424;color:#e8edf7"><button class="btn red" onclick="acao('massare')">Prever</button></div>
+      </div>
+    </div>
+    <pre id="ac-out" style="margin-top:12px;display:none"></pre>
+  </section>
+
   <div class="foot">Acesso restrito · dados de auditoria (LGPD art. 7º,II/23) · isolado do PolitiMonitor/Bond</div>
 </main>
 
@@ -126,6 +146,24 @@ async function carregarYoda(){
       `<div class="kv"><span>Alertas</span><b>${fmt(d.n_alertas)}</b></div>`+
       `<div class="kv"><span>LLM / Chrome</span><b>${d.llm_ok?'🟢':'🔴'} / ${d.chrome_9222?'🟢':'🔴'}</b></div>`;
   }catch(e){ $('yo-body').textContent = 'indisponível'; }
+}
+async function acao(tipo){
+  const out = $('ac-out'); out.style.display='block';
+  let url, body, val;
+  if(tipo==='relatorio'){ val=$('ac-emp').value.trim(); if(!val)return; url='/api/relatorio/inteligencia'; body={empresa:val}; }
+  if(tipo==='orgao'){ val=$('ac-org').value.trim(); if(!val)return; url='/api/relatorio/orgao'; body={orgao:val}; }
+  if(tipo==='massare'){ val=$('ac-ms').value.trim()||'^BVSP'; url='/api/massare/prever'; body={symbol:val}; }
+  out.textContent = `⏳ processando "${val}"… (pode levar até ~1 min)`;
+  try{
+    const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const d = await r.json();
+    if(d.ambiguo){ out.textContent = `❓ ambíguo: ${d.pergunta}\ncandidatos: ${(d.candidatos||[]).map(c=>c.nome||c).join(' · ')}`; return; }
+    if(tipo==='massare'){ const p=d.previsao||{}, a=d.atual||{}; const seta=p.direction==='up'?'⬆️ alta':p.direction==='down'?'⬇️ baixa':'➡️ lateral'; out.textContent = `📈 ${d.symbol||p.symbol||val} — ${seta} ${p.prob!=null?'('+(p.prob*100).toFixed(0)+'%)':''} · horizonte ${p.horizon||5}d · preço ${a.preco??'?'}${a.var_pct!=null?' ('+a.var_pct+'%)':''} · regime: ${p.regime_atual||'?'}`; return; }
+    // relatorio / orgao
+    const pdf = d.path_pdf || d.path_lex || d.path_xlsx;
+    const linha = [d.empresa||d.orgao||val, d.risco?('risco '+d.risco):'', d.grau_lex?('Lex '+d.grau_lex):'', d.score!=null?('score '+d.score):''].filter(Boolean).join(' · ');
+    out.innerHTML = `✅ ${linha}\n${(d.resumo||'').slice(0,500)}` + (pdf?`\n\n📄 <a href="/${pdf.replace(/^\//,'')}" target="_blank" style="color:#7ab8ff">abrir PDF</a> (também empurrado no Telegram)`:'');
+  }catch(e){ out.textContent = '⚠ erro: '+e; }
 }
 carregarSweeps(); carregarMassare(); carregarYoda();
 setInterval(carregarSweeps, 30000);
