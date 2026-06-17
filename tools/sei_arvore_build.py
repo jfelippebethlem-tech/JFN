@@ -177,7 +177,8 @@ def _digest_txt(numero: str, ficha: dict, rec: dict, obs: list[dict]) -> tuple[s
         for m in membros:
             if not isinstance(m, dict):
                 continue
-            tit = (m.get("titulo_rel") or m.get("titulo") or "").splitlines()[0].strip()[:80]
+            _tit_raw = (m.get("titulo_rel") or m.get("titulo") or "").strip()
+            tit = _tit_raw.splitlines()[0][:80] if _tit_raw else ""  # "".splitlines()==[] → guarda contra IndexError
             bruto = m.get("texto") or m.get("id_procedimento") or ""
             achou = _re_sei.search(bruto or "")           # evita despejar o menu lateral do SEI
             ref = achou.group(0) if achou else (m.get("id_procedimento") or "ref?")
