@@ -130,3 +130,17 @@ def test_arvores_encerradas_sem_coluna_nao_pula_nada(tmp_path):
     con.execute("CREATE TABLE sei_arvore (numero_sei TEXT PRIMARY KEY)")  # base antiga sem `encerrado`
     con.commit(); con.close()
     assert ab.arvores_encerradas(db) == set()
+
+
+# ───────────────────────── _digest_txt: regressão título vazio (IndexError) ─────────────────────────
+def test_digest_txt_membro_cadeia_titulo_vazio_nao_crasha():
+    """REGRESSÃO: membro da cadeia com título vazio fazia '' .splitlines()[0] estourar IndexError
+    (quebrou o sei_arvore_build no run de 2026-06-17). Agora degrada p/ título vazio, sem crash."""
+    ficha = {"objeto": "x", "documentos": []}
+    rec = {"cadeia": [
+        {"titulo_rel": "", "titulo": "", "texto": "SEI-330003/002534/2024 algo"},  # título vazio
+        {"titulo_rel": None, "texto": ""},                                          # tudo None/vazio
+    ]}
+    txt, resumo = ab._digest_txt("SEI-1/2024", ficha, rec, [])
+    assert "DOSSIÊ DE PROCESSO SEI" in txt
+    assert resumo["n_membros"] == 2
