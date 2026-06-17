@@ -217,6 +217,11 @@ async def pesquisar(cnpj: str, *, gerar=None, osint_fn=None, gravar_vault: bool 
         except Exception as e:  # noqa: BLE001 — LLM indisponível: honesto, não fabrica
             dados = {"resumo": f"LLM indisponível ({str(e)[:50]}) — pesquisa coletada, análise não realizada.",
                      "achados": [], "reajuste": ""}
+        # Guard: chamada OK mas JSON não-parseável/vazio → NÃO descartar o OSINT em silêncio (honestidade:
+        # antes ficava resumo='' e achados=[], indistinguível de "sem nada"; agora sinaliza p/ reprocessar).
+        if not (dados.get("resumo") or "").strip():
+            dados["resumo"] = ("Análise não consolidada (LLM retornou resposta não-parseável); "
+                               f"{len(osint.get('fontes') or [])} fonte(s) OSINT coletada(s) — reprocessar.")
         res = {"cnpj": cnpj, "nome": nome, "duvidas": duvidas,
                "achados": dados.get("achados") or [], "resumo": dados.get("resumo") or "",
                "reajuste": dados.get("reajuste") or "", "fontes": osint.get("fontes") or [],
@@ -247,9 +252,9 @@ def _persistir(con: sqlite3.Connection, res: dict, vault_path: str, modelo: str 
 
 
 def _gravar_vault(res: dict) -> str:
-    """Grava/atualiza a nota de aprendizado no vault (~/vault/aprendizados/) — memória de longo prazo,
-    AI-first. Honesto: degrada silencioso se o vault não existir (retorna '')."""
-    base = VAULT / "aprendizados"
+    """Grava/atualiza a nota de aprendizado no vault (~/vault/aprendizados/pesquisa-internet/) — memória de
+    longo prazo, AI-first, AGRUPADA numa subpasta. Honesto: degrada silencioso se o vault não existir ('')."""
+    base = VAULT / "aprendizados" / "pesquisa-internet"
     try:
         if not VAULT.exists():
             return ""
