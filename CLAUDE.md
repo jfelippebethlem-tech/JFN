@@ -35,5 +35,5 @@ branch **`feat/lista-limpa`** · VM Linux Oracle Cloud ARM (`jfn-core`, 2 vCPU �
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence (uso sob demanda)
-JFN indexado (MCP `gitnexus_*` + CLI `npx gitnexus`). **Antes de editar um símbolo:** `gitnexus_impact({target, direction:'upstream'})` (reportar blast radius; parar em HIGH/CRITICAL). **Antes de commitar:** `gitnexus_detect_changes()`. Renomear → `gitnexus_rename` (não find-replace). Explorar → `gitnexus_query`/`gitnexus_context`. Detalhe nas skills `.claude/skills/gitnexus/*/SKILL.md`. Índice stale → `npx gitnexus analyze`.
+JFN indexado (MCP `gitnexus_*` + CLI `npx gitnexus`). **Antes de editar um símbolo:** `gitnexus_impact({target, direction:'''upstream'''})` (blast radius; parar em HIGH/CRITICAL). **Antes de commitar:** `gitnexus_detect_changes()`. Renomear → `gitnexus_rename`. Explorar → `gitnexus_query`/`gitnexus_context`. Detalhe nas skills `.claude/skills/gitnexus/*`. Stale → `npx gitnexus analyze`.
 <!-- gitnexus:end -->
