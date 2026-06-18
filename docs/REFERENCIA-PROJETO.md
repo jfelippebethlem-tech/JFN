@@ -195,6 +195,16 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-18 cont.44 (auditoria do ECOSSISTEMA + fixes commitados):** workflows de auditoria (8 subsistemas + sweeps/dados
+  + Hermes + Claude Code) → **53 bugs/10 graves** mapeados ([[auditoria-ecossistema-2026-06-18]] no vault). 🔴 **2 segredos
+  vazados** (token @BondCampanhaBot no MEMORY.md do Yoda; GitHub PAT nos JSON do gitnexus) — limpos dos arquivos; **DONO
+  rotacionar** (BotFather + GitHub). Fixes JFN commitados+pushados (5): **lex** coerência do passo exculpatório + dosimetria
+  calibrada (não projeta multa grave em parecer amarelo) + mediums (motivo do destinatário derivado dos RFs; objeto não pega
+  "R$68" de liquidação; R12 calibra serviço contínuo); **cruzamento** SUM só OB>0, recorrentes por CNPJ, length=14;
+  **massare** target_date UTC + ramo morto do placar; **sei_refichar** idempotência por `_ficha_schema` (parava re-ficha
+  eterna). Sweeps/dados = **maduros e VM-safe**, SQLite-write+DuckDB-read já é o padrão (não migrar); falta backup off-box
+  da compliance.db. Hermes: `environment_hint` desdriftado (Qwen→gemini real). Smoke verde (API /api/lista 200, server.py
+  importa, pm2 6/6, testes lex 9/9 massare 7/7 cruz 4/4). Backlog restante no vault.
 - **06-16 cont.43 (⭐ GOAL sweeps 24/7 + análise SEI detalhada + rclone destravado + vault por projeto):** (1) **SEI
   sweep agora HORÁRIO** (`0 * * * *`, era 07/13/19h) — goal "rodar até esgotar a fila ~21,5k"; seguro pelos freios já
   existentes (pgrep-lock + browser_lock + bound + `.pause_sei_sweep`), ≠ do lane contínuo revertido no cont.25. (2)
