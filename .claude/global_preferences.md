@@ -28,19 +28,11 @@ Isso é uma preferência permanente do usuário. Não é opcional. Aplica-se sem
 
 ---
 
-## 3. METODOLOGIA FINANCEIRA — ORÇAMENTO PÚBLICO BRASILEIRO
+## 3. METODOLOGIA FINANCEIRA — ORÇAMENTO PÚBLICO (sob demanda)
 
-**Empenho ≠ Liquidação ≠ Pagamento. Sempre.**
-
-```
-EMPENHO → LIQUIDAÇÃO → ORDEM BANCÁRIA (OB) / PAGAMENTO
-```
-
-- Empenho: reserva de dotação orçamentária (pode ser cancelado)
-- Liquidação: ateste de entrega de bens/serviços
-- OB (Ordem Bancária): pagamento efetivo, irreversível — o dado definitivo
-- Nunca apresentar valores de empenho como "total pago"
-- Empenhos: sempre "valor bruto — pode incluir cancelamentos/anulações"
+> Regra **específica de investigação/fiscalização**, não sempre-on (poupa tokens em sessões que não são de orçamento). O detalhe completo vive em `~/JFN/CLAUDE.md` (REGRAS ABSOLUTAS #2) e `~/JFN/docs/CLAUDE-REFERENCIA-COMPLETA.md`, carregados em sessões JFN.
+>
+> **Gatilho obrigatório:** em QUALQUER análise de gasto público, abrir essa referência ANTES de citar valores. Regra de ouro: **Empenho ≠ Liquidação ≠ OB (pagamento)** — só a Ordem Bancária é "pago"; empenho é valor bruto que pode ser cancelado. Nunca apresentar empenho como "total pago".
 
 ---
 
