@@ -859,17 +859,23 @@ def _recorrentes_identicos(p: dict, min_rep: int = 4, min_valor: float = 50_000.
     Sinaliza parcelas fixas de contrato continuado (legítimo) e possível fracionamento (a verificar)."""
     if not p.get("tem_dados"):
         return []
-    contagem: dict = defaultdict(lambda: {"n": 0, "total": 0.0, "cnpj": ""})
+    # chaveia por (cnpj, valor) — o CNPJ é a identidade canônica. Chavear pelo nome funde
+    # homônimos e quebra o mesmo fornecedor por variação de caixa/acentuação. O nome serve só p/ exibir.
+    contagem: dict = defaultdict(lambda: {"n": 0, "total": 0.0, "favorecido": ""})
     for a in p["anos"]:
         for ln in p["por_ano"][a]["linhas"]:
             v = round(ln.get("valor") or 0.0, 2)
             if v < min_valor:
                 continue
-            g = contagem[(ln["favorecido"], v)]
+            cnpj = (ln.get("cnpj") or "").strip()
+            # sem CNPJ não há identidade canônica confiável: cai p/ o nome como chave de exibição
+            chave = (cnpj or f"nome::{ln['favorecido']}", v)
+            g = contagem[chave]
             g["n"] += 1
             g["total"] += v
-            g["cnpj"] = ln.get("cnpj", "") or g["cnpj"]
-    grupos = [{"favorecido": k[0], "valor": k[1], "n": g["n"], "total": g["total"], "cnpj": g["cnpj"]}
+            g["favorecido"] = ln.get("favorecido") or g["favorecido"]  # nome só p/ exibição
+    grupos = [{"favorecido": g["favorecido"], "valor": k[1], "n": g["n"], "total": g["total"],
+               "cnpj": k[0] if not str(k[0]).startswith("nome::") else ""}
               for k, g in contagem.items() if g["n"] >= min_rep]
     grupos.sort(key=lambda x: -x["total"])
     return grupos

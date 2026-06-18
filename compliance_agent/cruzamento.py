@@ -43,6 +43,9 @@ def obs_e_sei(cnpj: str) -> dict:
     """Pegada nas OBs do SIAFE + processos SEI de um CNPJ.
 
     {n_obs, total_pago, sei_processos: [str], n_sei}
+
+    total_pago = total recebido do Estado (TODAS as UGs), só OBs de valor > 0.
+    Não confundir com o pago por uma UG específica (as seções 1/1-D/1-K filtram por UG).
     """
     cnpj = _so_digitos(cnpj)
     out = {"n_obs": 0, "total_pago": 0.0, "sei_processos": [], "n_sei": 0}
@@ -50,8 +53,11 @@ def obs_e_sei(cnpj: str) -> dict:
         return out
     con = sqlite3.connect(_DB)
     try:
+        # total_pago = total recebido do Estado (TODAS as UGs); só valores positivos
+        # (exclui estornos/anulações de sinal negativo). Não filtra por UG aqui de propósito.
         row = con.execute(
-            "SELECT COUNT(*), COALESCE(SUM(valor),0) FROM ordens_bancarias WHERE favorecido_cpf=?",
+            "SELECT COUNT(*), COALESCE(SUM(CASE WHEN valor>0 THEN valor ELSE 0 END),0) "
+            "FROM ordens_bancarias WHERE favorecido_cpf=?",
             (cnpj,)).fetchone()
         out["n_obs"], out["total_pago"] = int(row[0] or 0), float(row[1] or 0.0)
 
@@ -129,6 +135,9 @@ def fornecedores_no_mesmo_endereco(endereco_norm: str, cnpj_excluir: str = "") -
     Independe de sócio em comum — pega 'empresas no mesmo imóvel' que a rede societária não veria.
     Dois+ fornecedores recebendo do Estado na MESMA sede é red flag forte (fachada/laranja/
     direcionamento — art. 337-F CP). Retorna [{cnpj, razao, n_obs, total_pago, n_sei}].
+
+    total_pago de cada empresa = total recebido do Estado (TODAS as UGs), só OBs > 0 —
+    não é o pago por uma UG específica. Rotular assim ao exibir.
     """
     endereco_norm = (endereco_norm or "").strip()
     if not endereco_norm or len(endereco_norm) < 12 or not os.path.exists(_DB):
@@ -256,6 +265,9 @@ def clusters_mesmo_endereco(min_forn: int = 2, limite: int = 50, so_com_obs: boo
 
     {ok, n_clusters, clusters:[{endereco, municipio, uf, n_fornecedores, total_pago, empresas:[{cnpj,razao,
      n_obs,total_pago}]}], _nota}
+
+    total_pago (do cluster e de cada empresa) = total recebido do Estado (TODAS as UGs),
+    só OBs > 0 — somatório vindo de obs_e_sei(). Rotular assim ao exibir.
     """
     out = {"ok": False, "n_clusters": 0, "clusters": [], "_nota": ""}
     if not os.path.exists(_DB):
@@ -344,7 +356,8 @@ def cidades_de_orgao(ug: str | None = None, anos: list[int] | None = None, limit
                        COUNT(*) AS n_obs
                 FROM ordens_bancarias ob
                 JOIN endereco_fornecedor ef ON ef.cnpj = ob.favorecido_cpf
-                {filtro} AND ef.municipio IS NOT NULL AND ef.municipio!=''
+                {filtro} AND length(ob.favorecido_cpf)=14 AND length(ef.cnpj)=14
+                  AND ef.municipio IS NOT NULL AND ef.municipio!=''
                 GROUP BY ef.municipio, ef.uf
                 ORDER BY total_pago DESC""", params).fetchall()
     finally:
