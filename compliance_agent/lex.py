@@ -329,6 +329,29 @@ def _trecho(txt: str, gatilhos, janela: int = 340) -> str:
     return ("…" if ini > 0 else "") + ex + ("…" if fim < len(txt) else "")
 
 
+# Termos que evidenciam OBJETO de bem/serviço (vs. um trecho monetário de despacho de execução).
+_OBJ_BEM_SERVICO_KW = (
+    "serviço", "servico", "serviços", "servicos", "fornecimento", "aquisição", "aquisicao", "contratação",
+    "contratacao", "prestação", "prestacao", "locação", "locacao", "manutenção", "manutencao", "obra", "execução",
+    "execucao", "material", "equipamento", "consultoria", "limpeza", "vigilância", "vigilancia", "transporte",
+    "construção", "construcao", "reforma", "elaboração", "elaboracao", "implantação", "implantacao", "suporte",
+    "licença", "licenca", "software", "mão de obra", "mao de obra",
+)
+# Trecho que é só VALOR/quantia (ex.: "no valor de R$68.000,00") — não é objeto contratual.
+_OBJ_VALOR_RE = re.compile(r"^\s*(no\s+valor\s+de\s+)?r?\$?\s*[\d.,]+\s*$", re.I)
+
+
+def _objeto_valido(cand: str) -> bool:
+    """True se `cand` parece um OBJETO de bem/serviço (não um valor monetário/trecho de despacho de execução)."""
+    c = (cand or "").strip()
+    if len(c) < 12:
+        return False
+    low = c.lower()
+    if _OBJ_VALOR_RE.match(low) or low.startswith("no valor de") or "valor de r$" in low[:18]:
+        return False
+    return any(k in low for k in _OBJ_BEM_SERVICO_KW)
+
+
 def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
     """Red flags a partir do TEXTO REAL do processo. Retorna (achados, resumo)."""
     txt = _texto_integra(integra)
@@ -336,10 +359,23 @@ def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
     achados: list[dict] = []
     modal = _modalidade(low)
 
+    # Objeto contratual. Preferir o objeto ESTRUTURADO (dossiê/TCE-RJ) quando o leitor já o trouxe — é o objeto
+    # do contrato, não um trecho de despacho. Só cair na heurística de regex se não houver estruturado.
     objeto = ""
-    m = re.search(r"objeto[:\s]+([A-Z0-9À-Ú][^\n.;]{15,180})", txt, re.I)
-    if m:
-        objeto = m.group(1).strip()
+    obj_estrut = (integra.get("objeto") or "").strip()
+    if _objeto_valido(obj_estrut):
+        objeto = obj_estrut[:180]
+    else:
+        # Documentos de execução (liquidação/empenho) trazem "Objeto: <valor R$…>" no corpo do despacho — NÃO é o
+        # objeto contratual. Quando o texto é de liquidação/empenho, só aceitar a captura se contiver termo de
+        # bem/serviço (não um valor monetário). Caso geral: 1ª ocorrência de 'objeto:' já basta.
+        _exec = any(g in low for g in ("liquidação de despesa", "liquidacao de despesa", "nota de empenho",
+                                       "nota de liquidação", "nota de liquidacao"))
+        for m in re.finditer(r"objeto[:\s]+([A-Z0-9À-Ú][^\n.;]{15,180})", txt, re.I):
+            cand = m.group(1).strip()
+            if not _exec or _objeto_valido(cand):
+                objeto = cand
+                break
 
     if txt.strip():
         # R5 — contratação direta sem prova robusta de exclusividade/singularidade
@@ -573,6 +609,10 @@ def _detectar(ctx: dict) -> list[dict]:
     achados = []
     if not p.get("tem_dados"):
         return achados
+    # Serviço CONTÍNUO (limpeza/vigilância/mão de obra): a escalada de faturamento é, em regra, legítima
+    # (renovações/aditivos de contrato plurianual). Calibra o R12 (crescimento) como o R2 já trata o fracionamento.
+    emp = (ctx.get("enriq", {}).get("dados") or {}).get("empresa") or {}
+    continuo = _eh_servico_continuo([emp.get("cnae_principal"), emp.get("atividade"), ctx.get("nome")])
     hhi = p.get("hhi", {})
     top = hhi.get("top_share", 0) or 0
     org_top = next(iter(p.get("por_orgao_geral", {})), "—")
@@ -587,9 +627,17 @@ def _detectar(ctx: dict) -> list[dict]:
         t0 = p["por_ano"][anos[0]]["total"] or 0
         t1 = p["por_ano"][anos[-1]]["total"] or 0
         if t0 > 0 and t1 > t0 * 3:
-            achados.append({"rf": "R12", "grav": 3,
-                            "obs": f"Crescimento abrupto dos pagamentos de R$ {moeda(t0)} ({anos[0]}) para "
-                                   f"R$ {moeda(t1)} ({anos[-1]}) — {((t1-t0)/t0*100):+.0f}%."})
+            pct = (t1 - t0) / t0 * 100
+            if continuo:  # serviço contínuo: escalada legítima a justificar — sem rotular 'fachada' nem grav alto
+                achados.append({"rf": "R12", "grav": 2,
+                                "obs": f"**Escalada de faturamento a justificar:** pagamentos de R$ {moeda(t0)} "
+                                       f"({anos[0]}) para R$ {moeda(t1)} ({anos[-1]}) — {pct:+.0f}%. Em serviço contínuo, "
+                                       "crescimento por renovação/aditivo de contrato plurianual é comum — verificar o "
+                                       "lastro contratual (aditivos/postos de trabalho), sem presumir planejamento de fachada."})
+            else:
+                achados.append({"rf": "R12", "grav": 3,
+                                "obs": f"Crescimento abrupto dos pagamentos de R$ {moeda(t0)} ({anos[0]}) para "
+                                       f"R$ {moeda(t1)} ({anos[-1]}) — {pct:+.0f}%."})
     zeros = sum(1 for a in anos for ln in p["por_ano"][a]["linhas"] if ln["valor"] == 0)
     if zeros >= 3:
         achados.append({"rf": "R10", "grav": 2,
@@ -683,11 +731,23 @@ def _exculpatorio(achados: list) -> list[dict]:
 # ── Destinatário recomendado por TIPO/família de achado (enquadramento do playbook) ──────────────
 # conluio/cartel → MP + CADE · débito/cautelar → TCE-RJ/TCU · improbidade/penal → MP · PAR anticorrupção → CGU/CGE.
 _DESTINATARIO_FAMILIA = {
-    # família → (rótulo do destinatário, base/motivo)
+    # família → (rótulo do destinatário, base/motivo). O 'motivo' da família 'improbidade' é DERIVADO dos RFs
+    # efetivamente presentes (não cita crime que não disparou) — ver _MOTIVO_IMPROBIDADE_RF e _destinatarios.
     "conluio":     ("MP-RJ + CADE", "conluio/cartel (bid rigging) — atuação simultânea (art. 36 Lei 12.529; art. 337-F CP)"),
     "debito":      ("TCE-RJ / TCU", "débito/medida cautelar — dano ao erário/sobrepreço/liquidação (jurisdição de contas)"),
-    "improbidade": ("MP-RJ", "improbidade/penal — fracionamento, dispensa indevida, direcionamento (Lei 8.429; CP arts. 337-E ss.)"),
+    "improbidade": ("MP-RJ", "improbidade/penal (Lei 8.429; CP arts. 337-E ss.)"),
     "par":         ("CGU / CGE-RJ", "PAR anticorrupção — fachada/laranja/idoneidade (Lei 12.846; controle interno)"),
+}
+# Descritor curto por RF para compor o 'motivo' da família 'improbidade' a partir dos achados REAIS (honesto:
+# não imputar fracionamento/dispensa/direcionamento se o RF correspondente não disparou). Usa o rótulo de _RF.
+_MOTIVO_IMPROBIDADE_RF = {
+    "R2": "fracionamento",
+    "R5": "dispensa/inexigibilidade indevida",
+    "R6": "sucessão/interposição de pessoas (troca de controle)",
+    "R7": "direcionamento/restrição à competitividade",
+    "R11": "qualificação técnica frágil / empresa de fachada",
+    "R12": "planejamento deficiente / escalada de faturamento a justificar",
+    "DD": "fachada/laranja",
 }
 # RF → famílias de destinatário (um achado pode disparar mais de uma família).
 _RF_DESTINATARIO = {
@@ -712,16 +772,30 @@ def _destinatarios(achados: list) -> list[dict]:
     Cartel COM sócio em comum reforça 'conluio'. Degrada honesto: sem achado → lista vazia (presunção
     de regularidade, sem encaminhamento)."""
     fams: list[str] = []
+    rfs_por_fam: dict[str, list[str]] = {}
     try:
         for a in achados or []:
-            for f in _RF_DESTINATARIO.get(_fam_exculpatorio(a.get("rf", "")), ()):
+            rf = _fam_exculpatorio(a.get("rf", ""))
+            for f in _RF_DESTINATARIO.get(rf, ()):
                 if f not in fams:
                     fams.append(f)
+                if rf not in rfs_por_fam.setdefault(f, []):
+                    rfs_por_fam[f].append(rf)
     except Exception:
         fams = []
+        rfs_por_fam = {}
     out = []
     for f in fams:
         rotulo, motivo = _DESTINATARIO_FAMILIA.get(f, (f, ""))
+        if f == "improbidade":  # motivo DERIVADO dos RFs presentes (honesto: não cita crime que não disparou)
+            descr = [d for rf in rfs_por_fam.get(f, []) if (d := _MOTIVO_IMPROBIDADE_RF.get(rf))]
+            if descr:
+                # de-dup preservando ordem
+                vistos: list[str] = []
+                for d in descr:
+                    if d not in vistos:
+                        vistos.append(d)
+                motivo = f"improbidade/penal — {'; '.join(vistos)} (Lei 8.429; CP arts. 337-E ss.)"
         out.append({"familia": f, "destinatario": rotulo, "motivo": motivo})
     return out
 
