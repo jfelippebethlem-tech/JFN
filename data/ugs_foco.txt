@@ -2,4 +2,5 @@
 # Formato: <codigo_ug>  # nome livre. Linhas iniciadas por # são ignoradas.
 180100  # SEEDUC — Secretaria de Estado de Educacao
 570100  # SEGOV — Secretaria de Estado de Governo
-# Fundo Soberano do ERJ: UG não encontrada em ordens_bancarias por nome (verificar no SIAFE-Rio).
+# FUNSERJ (Fundo Soberano do Estado do RJ): SEM dados na base — UG não capturada no SIAFE-Rio ainda
+# (depende de liberar a chave SIAFE p/ todas as UGs). Quando o código entrar na cobertura, adicionar aqui.
