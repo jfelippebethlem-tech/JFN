@@ -766,6 +766,33 @@ _RF_DESTINATARIO = {
 }
 
 
+# ── Triagem do ELEMENTO SUBJETIVO (ilegalidade × improbidade) — doutrina §5.1 ──────────────────
+# Improbidade = ilegalidade QUALIFICADA pelo dolo (Garcia & Pacheco; Medina Osório). Pós-Lei
+# 14.230/2021: não há improbidade culposa; exige-se dolo específico; art. 10 exige dano efetivo
+# comprovado; art. 11 é rol taxativo. O Lex SÓ aponta indício a apurar — NUNCA afirma dolo. Default =
+# irregularidade/erro de gestão (controle de contas/TCE-RJ); só sobe a 'dolo a apurar' quando há SINAL
+# de elemento subjetivo desonesto (fachada/laranja/cartel/interposição). NUNCA superdimensiona.
+_DOLO_RF = {"R11"}
+_DOLO_OBS = ("sócio em comum", "socio em comum", "sócios em comum", "irmã", "laranja", "fachada",
+             "interposi", "nominee", "cartel", "conluio", "compartilh", "mesma sede", "co-endereço",
+             "coendereço", "co-endereco", "testa de ferro")
+
+
+def _elemento_subjetivo(a: dict) -> tuple[str, str]:
+    """Classifica o achado por elemento subjetivo (triagem ilegalidade×improbidade). Conservador:
+    só 'dolo a apurar' com sinal desonesto; senão é controle de contas (não improbidade)."""
+    rf = a.get("rf", "") or ""
+    obs = (a.get("obs") or "").lower()
+    dolo = rf in _DOLO_RF or rf.startswith("DD") or rf == "FRAUDE" or any(t in obs for t in _DOLO_OBS)
+    if dolo:
+        return ("dolo a apurar",
+                "há sinal de elemento subjetivo (fachada/laranja/cartel/interposição) — SE confirmados o dolo e "
+                "(quando exigível) o dano efetivo, pode tocar improbidade (Lei 8.429 pós-14.230). Apurar antes de afirmar.")
+    return ("irregularidade / erro de gestão",
+            "sem sinal de dolo → **controle de contas (TCE-RJ), NÃO improbidade**. Improbidade pressupõe elemento "
+            "subjetivo desonesto (dolo específico; não há forma culposa pós-Lei 14.230/2021).")
+
+
 def _destinatarios(achados: list) -> list[dict]:
     """Destinatário(s) recomendado(s) derivado(s) das FAMÍLIAS dos achados presentes (sem duplicar).
 
@@ -1538,6 +1565,38 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     else:
         add("> Sem indícios a submeter ao passo exculpatório — presunção de regularidade mantida.")
     add("")
+
+    # IV-B-bis. Triagem ilegalidade × improbidade (elemento subjetivo) — doutrina §5.1 / Lei 14.230/2021.
+    # Conservador: separa o que é controle de contas (a maioria) do que TOCA improbidade (só com sinal de dolo).
+    if achados:
+        add("### Triagem: ilegalidade × improbidade (elemento subjetivo)")
+        add("")
+        add("*Doutrina (Garcia & Pacheco Alves; Medina Osório): **ilegalidade é o gênero; improbidade é a espécie "
+            "qualificada pelo DOLO**. Pós-Lei 14.230/2021 não há improbidade culposa; o art. 10 exige **dano efetivo "
+            "comprovado** (não in re ipsa); o art. 11 é rol taxativo. O Lex aponta INDÍCIO a apurar — não afirma dolo.*")
+        add("")
+        add("| Indício | Elemento subjetivo (triagem) | Encaminhamento doutrinário |")
+        add("|---|---|---|")
+        _n_dolo = 0
+        for a in achados:
+            rf = a.get("rf", "")
+            nome = _RF.get(rf, (rf, ""))[0]
+            classe, _ = _elemento_subjetivo(a)
+            if classe.startswith("dolo"):
+                _n_dolo += 1
+                enc = "improbidade (MP-RJ) — *a apurar dolo + dano efetivo*"
+            else:
+                enc = "**controle de contas (TCE-RJ)** — não improbidade"
+            add(f"| {rf} {nome} | {classe} | {enc} |")
+        add("")
+        if _n_dolo == 0:
+            add("> **Nenhum indício com sinal de dolo.** Pela cláusula-mãe e pela Lei 14.230/2021, o conjunto é "
+                "**ilegalidade/irregularidade a apurar em controle de contas (TCE-RJ)** — NÃO improbidade. "
+                "Presunção de legitimidade; a dúvida sobre a economicidade favorece o gestor.")
+        else:
+            add(f"> {_n_dolo} indício(s) com **sinal de elemento subjetivo** (apurar dolo + dano antes de cogitar "
+                "improbidade); os demais são controle de contas. Indício ≠ acusação.")
+        add("")
 
     # IV-C. Proposta preliminar de sanção administrativa (dosimetria — lex_sancoes)
     # CALIBRAGEM (auditoria 2026-06-18): a dosimetria só incide sobre achados cuja
