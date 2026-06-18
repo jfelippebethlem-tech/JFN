@@ -1,0 +1,5 @@
+# UGs sob FOCO/teste — o sweep SEI mira os processos destas (por valor) a cada ciclo.
+# Formato: <codigo_ug>  # nome livre. Linhas iniciadas por # são ignoradas.
+180100  # SEEDUC — Secretaria de Estado de Educacao
+570100  # SEGOV — Secretaria de Estado de Governo
+# Fundo Soberano do ERJ: UG não encontrada em ordens_bancarias por nome (verificar no SIAFE-Rio).

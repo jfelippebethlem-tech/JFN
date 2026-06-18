@@ -25,6 +25,14 @@ limpa_orfaos
 PRIO="nice -n 10 ionice -c2 -n6"
 say "início (best-effort baixa prio, bounded)"
 $PRIO timeout 1500 $PY -m tools.sei_sweep --max 20 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$?"
+# FOCO: UGs sob teste/observação (data/ugs_foco.txt) — lê os processos SEI dessas UGs por valor.
+# Mesma sessão única itkava (sequencial, DEPOIS do sweep geral); bounded; resumível.
+if [ -f data/ugs_foco.txt ]; then
+  while read -r ugcod _resto; do
+    case "$ugcod" in ''|\#*) continue;; esac
+    $PRIO timeout 700 $PY -m tools.sei_sweep --ug "$ugcod" --max 6 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_foco ug=$ugcod rc=$?"
+  done < data/ugs_foco.txt
+fi
 # SEGUIR OS PROCESSOS-PAI de contratação detectados no cache (recupera a substância dos dockets de
 # execução/pagamento que vêm "vazios"). Mesmo slot/sessão única itkava, DEPOIS do sweep normal; bounded;
 # resumível (pais já lidos ficam em cache+progress). Lê poucos por slot (qualidade > volume na VM 2 vCPU).
@@ -45,5 +53,10 @@ $PRIO timeout 400  $PY -m tools.sei_direcionamento_llm --top 6 >> data/sei_direc
 # PESQUISA-INTERNET (Fase 5): o Lex pesquisa as dúvidas dos TOP-SCORE (OSINT/web/DOERJ/mídia adversa),
 # aprende (vault + DB lex_pesquisa) e re-ajusta a análise. Poucos por slot (rede + LLM produto); cache 30d.
 $PRIO timeout 600  $PY -m tools.lex_pesquisa_internet --top 3 >> data/lex_pesquisa.log 2>&1; say "lex_pesquisa rc=$?"
+# EXECUÇÃO DO CONTRATO (Gemini): o Lex avalia se a entrega foi comprovada e COERENTE com o objeto/
+# quantidade (prestação de contas, fiscalização/relatório fotográfico, plausibilidade física). Poucos/slot.
+$PRIO timeout 600  $PY -m tools.lex_execucao --top 4 >> data/lex_execucao.log 2>&1; say "lex_execucao rc=$?"
+# FEEDBACK Lex/JFN → Claude Code (determinístico, sem LLM): consolida dificuldades/ideias do ciclo na nota do vault.
+$PRIO timeout 120  env PYTHONPATH=. $PY -m tools.lex_feedback --auto >> data/lex_feedback.log 2>&1; say "lex_feedback rc=$?"
 limpa_orfaos  # fecha SÓ os leftovers órfãos (não o server.py)
 say "fim"
