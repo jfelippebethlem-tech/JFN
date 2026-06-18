@@ -1120,6 +1120,41 @@ async def api_lista():
     return JSONResponse({"ok": True, "texto": texto})
 
 
+@app.get("/api/route")
+async def api_route(q: str = ""):
+    """Triagem DETERMINÍSTICA pedido→capacidade (sem LLM): pontua cada capacidade do capabilities.yaml
+    pela sobreposição de palavras com quando_usar/descricao/id e devolve o melhor + candidatos. Complementa
+    o roteador por skills (gen_skills) — o Yoda resolve a rota por regra antes de cogitar o modelo, reduzindo
+    erro de tool-use/curl inventado. GET /api/route?q=<pedido>."""
+    try:
+        import re as _re
+        from compliance_agent.skilltree import SKILLTREE
+
+        def _toks(s: str) -> set:
+            return {t for t in _re.split(r"[^0-9a-zà-ú]+", (s or "").lower()) if len(t) > 2}
+
+        qt = _toks(q)
+        if not qt:
+            return JSONResponse({"ok": False, "erro": "parametro q vazio"}, status_code=400)
+        ranked = []
+        for cid, c in SKILLTREE.capacidades.items():
+            quando = _toks(c.get("quando_usar")) | _toks(c.get("exemplo"))
+            corpo = _toks(c.get("descricao")) | _toks(cid) | _toks(c.get("dominio"))
+            score = 2 * len(qt & quando) + len(qt & corpo)
+            if score:
+                ranked.append((score, c))
+        ranked.sort(key=lambda x: -x[0])
+
+        def _slim(c: dict) -> dict:
+            return {k: c.get(k) for k in ("id", "agente", "dominio", "tipo", "metodo", "rota", "status", "descricao")}
+
+        top = [_slim(c) for _, c in ranked[:3]]
+        return JSONResponse({"ok": True, "q": q, "match": top[0] if top else None,
+                             "candidatos": top, "n_avaliadas": len(SKILLTREE.capacidades)})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(e)[:120]}, status_code=500)
+
+
 @app.get("/api/cruzamento")
 async def api_cruzamento(cnpj: str):
     """Cruzamento sócio × OB (SIAFE) × processo SEI × endereço de um fornecedor (Onda 4+).
