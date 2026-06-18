@@ -46,13 +46,15 @@ def atual(registrar: bool = True, janela: str = "2d") -> dict:
                       for b in blocos}
     todo_texto = " ".join(texto_por_tema.values()).lower() + " " + " ".join(texto_por_tema.keys())
 
+    # placar OOS por símbolo vem do BACKTEST (backtest.por_simbolo, abaixo). O scoreboard logado
+    # em learning é agregado (overall/by_horizon/by_model), não indexado por símbolo, e as previsões
+    # registradas tendem a estar PENDENTES — por isso não serve como fonte de acerto por ativo aqui.
     placar = {}
     try:
         from massare import learning
         learning.init()
-        placar = {r.get("symbol"): r for r in (learning.scoreboard() or [])} if isinstance(learning.scoreboard(), list) else {}
     except Exception:  # noqa: BLE001
-        placar = {}
+        pass
 
     teses = []
     for nar in _NARRATIVAS:

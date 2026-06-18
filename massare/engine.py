@@ -193,6 +193,9 @@ def predict_today(symbol, horizon=5, lookback=126):
     conf = min(0.95, 0.5 + abs(score))
     # honestidade: edge OOS = quanto o ensemble supera o palpite ingênuo NESTE ativo/horizonte.
     # edge ≤ 0 => sem skill demonstrado aqui (a previsão deve ser lida com ceticismo).
+    # NOTA: `ensemble_oos_hit_rate` abaixo é MÉTRICA HISTÓRICA DO MOTOR (acerto do walk_forward,
+    # backtest deste ativo/horizonte) — serve para PONDERAR/qualificar o sinal de hoje. NÃO é o
+    # PLACAR do produto: o placar real (OOS, cobrado contra o realizado) vem de learning.scoreboard().
     hr_oos = wf.get("ensemble_hit_rate")
     base_naive = wf.get("base_naive_rate")
     edge = round(hr_oos - base_naive, 4) if (hr_oos is not None and base_naive is not None) else None
