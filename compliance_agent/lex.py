@@ -1439,7 +1439,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     add("## IV-D. DEFESA CONTRA SI MESMO — PASSO EXCULPATÓRIO")
     add("")
     add("*Para cada indício, a **explicação inocente mais plausível** e se os dados a refutam. Achado cuja "
-        "defesa **não é refutada** sobrevive à própria defesa apenas como **monitoramento** — não representação "
+        "defesa **não é refutada** pelos dados fica apenas como **monitoramento** — não representação "
         "(presunção de legitimidade; a dúvida sobre a economicidade favorece o gestor).*")
     add("")
     if exculpatorio:
@@ -1449,29 +1449,46 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
             nome = _RF.get(e.get("rf"), (e.get("rf"), ""))[0]
             defesa = (e.get("defesa") or "").replace("|", "/")
             defesa = (defesa[:120] + "…") if len(defesa) > 120 else defesa
-            refuta = "**Sim** — sobrevive" if not e.get("sobrevive") else "Não — defesa de pé"
+            refuta = "**Sim** — defesa afastada" if not e.get("sobrevive") else "Não — defesa plausível"
             enc = "monitoramento" if e.get("sobrevive") else "representação"
             add(f"| {e.get('rf')} {nome} | {defesa} | {refuta} | **{enc}** |")
         add("")
         _monit = [e for e in exculpatorio if e.get("sobrevive")]
         if _monit:
-            add(f"> **{len(_monit)} indício(s)** não sobreviveram à própria defesa (a explicação inocente é "
-                "plausível e não foi afastada pelos dados) e foram **rebaixados a monitoramento**, não representação. "
+            add(f"> **{len(_monit)} indício(s)** tiveram a explicação inocente considerada **plausível** (não "
+                "refutada pelos dados) e foram **rebaixados a monitoramento**, não representação. "
                 "Isso preserva a credibilidade do parecer: indício ≠ acusação.")
         else:
-            add("> Todos os indícios **sobrevivem** ao passo exculpatório (convergência/cruzamento confirmatório "
-                "refuta a explicação inocente) — sustentam encaminhamento, não mero monitoramento.")
+            add("> Em todos os indícios os **dados refutam** a explicação inocente (convergência/cruzamento "
+                "confirmatório) — sustentam encaminhamento, não mero monitoramento.")
     else:
         add("> Sem indícios a submeter ao passo exculpatório — presunção de regularidade mantida.")
     add("")
 
     # IV-C. Proposta preliminar de sanção administrativa (dosimetria — lex_sancoes)
+    # CALIBRAGEM (auditoria 2026-06-18): a dosimetria só incide sobre achados cuja
+    # defesa foi REFUTADA pelos dados (representação). Achados rebaixados a
+    # monitoramento (explicação inocente plausível) NÃO entram na base de sanção —
+    # senão um parecer 🟡 de indícios fracos projeta multa grave (ex.: R$27 mi sem
+    # dolo nem dano efetivo), violando indício≠acusação e a doutrina (sanção exige
+    # convergência + materialidade/dolo, não indício estatístico isolado).
     try:
         from compliance_agent import lex_sancoes
-        _valor_sancao = (ctx.get("pagamentos") or {}).get("total_geral") or 0
-        _prop_sancao = lex_sancoes.sugerir_sancoes(achados, valor_contrato=_valor_sancao, regime="14133")
-        add(lex_sancoes.parecer_sancionatorio_md(_prop_sancao))
-        add("")
+        _monit_rfs = {e.get("rf") for e in (exculpatorio or []) if e.get("sobrevive")}
+        _achados_sancao = [a for a in achados if a.get("rf") not in _monit_rfs]
+        if _achados_sancao:
+            _valor_sancao = (ctx.get("pagamentos") or {}).get("total_geral") or 0
+            _prop_sancao = lex_sancoes.sugerir_sancoes(_achados_sancao, valor_contrato=_valor_sancao, regime="14133")
+            add(lex_sancoes.parecer_sancionatorio_md(_prop_sancao))
+            add("")
+        else:
+            add("## IV-C. Proposta preliminar de sanção administrativa")
+            add("")
+            add("> **Não se propõe sanção nesta fase.** Todos os indícios tiveram a explicação inocente "
+                "considerada **plausível** (passo exculpatório) e permanecem como **monitoramento**, não "
+                "representação. Sanção administrativa pressupõe achado com defesa **afastada pelos dados** e, "
+                "para multa, **dano efetivo mensurado** ou **dolo indiciado** — ausentes aqui. Indício ≠ acusação.")
+            add("")
     except Exception:
         pass
 
