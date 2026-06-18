@@ -142,3 +142,6 @@ data/alerj/
 data/baseline_*/
 data/loop_*/
 data/pilot/
+.gitnexus
+data/sei_trees/
+uv.lock
