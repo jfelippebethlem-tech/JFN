@@ -17,6 +17,7 @@ Dois mecanismos, ambos persistentes em SQLite (massare.db):
    o registro estruturado e versionável de lições do ecossistema.
 """
 import time
+from datetime import datetime, timedelta
 
 from massare import store
 
@@ -67,9 +68,10 @@ def record_forecast(symbol, direction, horizon_days, prob, rationale, model="mas
             asof = r[0] if r else time.strftime("%Y-%m-%d", time.gmtime())
         base = _close_on_or_before(con, symbol, asof)
         base_close = base[1] if base else None
-        # target_date = asof + horizon (dias corridos; grade usa último pregão <= target)
-        tt = time.mktime(time.strptime(asof, "%Y-%m-%d")) + horizon_days * 86400
-        target = time.strftime("%Y-%m-%d", time.localtime(tt))
+        # target_date = asof + horizon (dias corridos; grade usa último pregão <= target).
+        # Aritmética de calendário em UTC puro (datetime), sem TZ local — evita deslocar o alvo
+        # ±1 dia conforme o fuso/horário de verão da máquina que registrou a previsão.
+        target = (datetime.strptime(asof, "%Y-%m-%d") + timedelta(days=horizon_days)).strftime("%Y-%m-%d")
         con.execute(
             """INSERT INTO forecasts(created_at,asof_date,symbol,horizon_days,direction,prob,
                rationale,model,target_date,base_close) VALUES(?,?,?,?,?,?,?,?,?,?)""",
