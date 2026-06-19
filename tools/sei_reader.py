@@ -251,6 +251,26 @@ async def _conteudo_doc(pg, doc: dict) -> dict | None:
     se vier vazio, segue INDISPONÍVEL (não inventa). Degrada honesto: 1 doc que falha não derruba a
     leitura (retorna ``None``).
     """
+    # 1) DETECTA SCAN ANTES do innerText: o visualizador do SEI mostra uma casca >50 chars mesmo p/ PDF-imagem,
+    # então o gatilho antigo (innerText<=50) NUNCA OCR'ava scan. Baixa os bytes pela sessão; se PDF/imagem → OCR.
+    try:
+        from compliance_agent.sei.ocr_docs import ocr_documento  # import LAZY
+        resp = await pg.context.request.get(doc["url"], timeout=40000)
+        if resp.ok:
+            ct = (resp.headers.get("content-type") or "").lower()
+            url_l = (doc.get("url") or "").lower()
+            tipo = "pdf" if ("pdf" in ct or url_l.endswith(".pdf")) else (
+                "imagem" if (ct.startswith("image/") or url_l.endswith(
+                    (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".gif"))) else None)
+            if tipo:
+                body = await resp.body()
+                loop = asyncio.get_event_loop()
+                txt_ocr = await loop.run_in_executor(None, lambda: ocr_documento(body, tipo=tipo))
+                if txt_ocr and len(txt_ocr.strip()) > 20:
+                    return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr, "via": "ocr"}
+    except Exception:
+        pass
+    # 2) doc HTML nativo (editor): navega e lê o innerText
     try:
         await pg.goto(doc["url"], wait_until="domcontentloaded", timeout=20000)
         await pg.wait_for_timeout(900)
@@ -259,32 +279,6 @@ async def _conteudo_doc(pg, doc: dict) -> dict | None:
         return None
     if t and len(t) > 50:
         return {"doc": (doc.get("texto") or "")[:80], "conteudo": t}
-    # innerText vazio/curto → provável SCAN → download dos bytes + OCR (degrada honesto).
-    try:
-        from compliance_agent.sei.ocr_docs import ocr_documento  # import LAZY (só neste ramo)
-
-        resp = await pg.context.request.get(doc["url"])
-        if not resp.ok:
-            return None
-        ct = (resp.headers.get("content-type") or "").lower()
-        url_l = (doc.get("url") or "").lower()
-        if "pdf" in ct or url_l.endswith(".pdf"):
-            tipo = "pdf"
-        elif ct.startswith("image/") or url_l.endswith(
-            (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".gif")
-        ):
-            tipo = "imagem"
-        else:
-            return None
-        body = await resp.body()
-        loop = asyncio.get_event_loop()
-        txt_ocr = await loop.run_in_executor(
-            None, lambda: ocr_documento(body, tipo=tipo)
-        )
-        if txt_ocr:
-            return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr, "via": "ocr"}
-    except Exception:
-        return None
     return None
 
 
@@ -377,9 +371,10 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
            "relacionados": dump.get("relacionados", []), "cadeado": dump.get("cadeado", False),
            "n_docs_restritos": dump.get("n_docs_restritos", 0), "texto": dump["texto"],
            "captcha_resolvido": False, "_login": {"ok": True, "via": "sei_reader/itkava"}}
-    # conteúdo dos primeiros documentos
+    # conteúdo dos documentos (TODOS, bounded a 40 p/ não estourar; OCR de scan via _conteudo_doc)
+    _max_docs = int(os.environ.get("SEI_MAX_DOCS", "40"))
     docs_txt = []
-    for doc in dump["documentos"][:8]:
+    for doc in dump["documentos"][:_max_docs]:
         c = await _conteudo_doc(pg, doc)
         if c:
             docs_txt.append(c)
