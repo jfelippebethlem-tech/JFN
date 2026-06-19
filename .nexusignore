@@ -1,0 +1,25 @@
+# --- Configs / internos ---
+.obsidian/
+.git/
+.gitnexus/
+.nexus/
+
+# --- Logs / cache / temporários ---
+**/*.log
+**/cache/
+**/.cache/
+**/__pycache__/
+**/parse-cache/
+**/parsedfile-cache/
+
+# --- Binários / mídia / dumps (zero valor textual) ---
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+*.mp4
+*.mov
+*.zip
+*.duckdb
+*.sqlite

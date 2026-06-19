@@ -4,6 +4,8 @@
 > Conhecimento jurídico/orçamentário completo = [CLAUDE-REFERENCIA-COMPLETA.md](CLAUDE-REFERENCIA-COMPLETA.md).
 > Os demais são **referência por tema** (consultar sob demanda). Sessões/handoffs datados → [`historico/`](historico/).
 > Regra de leveza: **não ler tudo** — abrir só o doc do tema em questão.
+> **Como X funciona no código** (caminho/callers/símbolos) → `gitnexus_query("X")` / `gitnexus_context({name})`
+> (não está nestes docs — o GitNexus indexa o código). Fatos de dados (DB/UG/SIAFE/SEI) → CLAUDE-REFERENCIA-COMPLETA.md.
 
 ## 🎯 Canônicos (começar aqui)
 | Doc | Para quê |
