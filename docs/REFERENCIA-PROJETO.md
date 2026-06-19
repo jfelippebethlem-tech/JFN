@@ -65,6 +65,26 @@ Diário), §11-B análise raciocinada + **§II-E investigação fachada/laranja*
 GDELT, providers (registry/sanctions/ownership/leaks/links/gazettes/eleitoral — `compliance_agent/providers/`).
 **Infra:** pyproject (ruff/pytest), golden numbers, scorecard, pre-commit lint.
 
+### Ecossistema / roteamento — mecânica (movido do `CLAUDE.md` enxuto)
+> Inline no `CLAUDE.md` ficou só o fato roteador útil (Yoda→API `127.0.0.1:8000`; produtos resolvem por nome/CNPJ/UG)
+> + nomes de SÍMBOLO. Caminho/callers de qualquer símbolo: `gitnexus_context({name})` / `gitnexus_query("X")`.
+
+- **Caminhos CANÔNICOS dos símbolos** (corrige drift de `reporting/…` solto): motores de produto vivem sob
+  `compliance_agent/` e `compliance_agent/reporting/` — `compliance_agent/lex.py`,
+  `compliance_agent/correlacao_sei.py`, `compliance_agent/ugs.py`, `compliance_agent/reporting/inteligencia.py`
+  (fornecedor), `compliance_agent/reporting/inteligencia_orgao.py` (órgão). API: `server.py` (raiz, `jfn.service`).
+- **Maestro:** **Yoda** (Telegram, `~/hermes-agent`, `hermes-gateway.service`) aciona o JFN pela **API
+  `127.0.0.1:8000`** (`server.py`, `jfn.service`). O roteamento real de cada `/cmd` é a `SKILL.md` em
+  `~/.hermes/skills/yoda-commands/<cmd>` (dá `curl` no JFN), NÃO o system-prompt (`config.yaml` = reforço fraco).
+- **Capacidades = fonte única `capabilities.yaml`** (na raiz) → exposta em **`GET /api/lista`** (Yoda monta o
+  `/lista` curado a partir daí). Detalhe das capacidades em `docs/CAPACIDADES.md` / `docs/MODELO-ESTRATEGIA.md`.
+- **Fluxo assíncrono Telegram:** `/relatorio`, `/orgao`, `/dossie` são tarefas INDEPENDENTES e ASSÍNCRONAS — o
+  endpoint dispara, gera em background e EMPURRA os documentos (md+pdf+xlsx [+ parecer Lex]) no Telegram
+  (`_gerar_e_enviar_*`). "Já em processamento" vale só para o MESMO alvo (bug do queue de 06-13, §10).
+- **Resolução de alvo:** produtos resolvem por **nome parcial, CNPJ ou UG**; nome casa com
+  `REPLACE(nome,' ','')` (`LIKE %termo%` não casa espaço). Ambíguo → `{ambiguo:true, pergunta, candidatos}`.
+- **Lista de produtos** detalhada acima (§4) e em `docs/CAPACIDADES.md`.
+
 ## 5. ROADMAP (priorizado)
 **P0:** proveniência/INDISPONÍVEL padronizada (modelo `providers/base.Resultado`) · resolução de entidade (Splink,
 CNPJ-raiz) → destrava grafo/concentração + matriz+filial · score anomalia ensemble (PyOD) · DuckDB.

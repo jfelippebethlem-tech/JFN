@@ -251,6 +251,26 @@ EMPENHO (NE) → LIQUIDAÇÃO → PAGAMENTO (OB)
 > resolvido pelo **código** da UG, não pelo texto da OB. Para regerar o mapa:
 > `python -m compliance_agent.ugs --reconstruir`.
 
+### FATOS DE DADOS — DB / colunas / SEI sweep (espelho do `CLAUDE.md` enxuto)
+
+> Movido do `CLAUDE.md` (FATOS-CHAVE) para não duplicar a cada turno. Invariantes sempre-on que
+> ficaram inline: **DB principal = `data/compliance.db`** e **ITERJ = UG `133100`** (TFE).
+
+- **DB `data/compliance.db` — tabela `ordens_bancarias`** (OB = pagamento, 2019–2026): ~**1,12M** linhas,
+  **77% com CNPJ**. Coluna-chave **`favorecido_cpf`** = identificador do favorecido: **CNPJ (14 dígitos)** ou
+  **CPF (11 dígitos)** no mesmo campo. CPF de sócio/PF mascarado em qualquer saída (LGPD).
+- **Dupla numeração de UG** (detalhe em "UGs Relevantes" acima): dados abertos **TFE** (que alimentam
+  `compliance.db`) usam 6 dígitos (ex.: `133100`); **SIAFE-Rio 2** usa numeração própria. Órgão resolve pelo
+  **código** da UG (`compliance_agent/ugs.py` + `data/ug_canonico.json`), nunca pelo texto da OB. **ITERJ = `133100`** (TFE) / `270042` (SIAFE).
+- **SIAFE-Rio 2 — WAF/exercícios:** o WAF bloqueia IP não-gov (acesso só por login real; detalhe de automação
+  em "MOTOR DE RELATÓRIOS"/`docs/SIAFE-RIO2-GUIA-AUTOMACAO.md`). Rotina diária `siafe_runner diario`
+  (cron 05:00, incremental) + backfill por sweep. Códigos de exercício: **2024=`3`, 2025=`2`, 2026=`1`**
+  (mapa completo `{2027:"0",2026:"1",2025:"2",2024:"3",2023:"4"}`).
+- **SEI sweep:** `tools/sei_sweep.py` + `sei_supervisor.sh` (resumível, **login itkava**) varre processos SEI;
+  a **ficha** `tools/sei_ficha.py` (modelo **nous**) inventaria os documentos de cada processo
+  (edital / contrato / parecer) e levanta red flags. Correlação OB↔SEI: `compliance_agent/correlacao_sei.py`
+  (casa `numero_ob`+UG, preenche `ordens_bancarias.numero_sei`; é o insumo do Lex).
+
 ---
 
 ## PADRÃO DE RELATÓRIO DE INTELIGÊNCIA
