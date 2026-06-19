@@ -47,6 +47,29 @@ _COLS_SIAFE = [
 ]
 
 
+def _norm_label(s: str) -> str:
+    """Normaliza um rótulo de coluna do grid (minúsculo, sem acento/pontuação) p/ casar header×coluna."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", str(s or "")).encode("ascii", "ignore").decode()
+    return "".join(ch for ch in s.lower() if ch.isalnum())
+
+
+# rótulo (normalizado) do header AO VIVO -> coluna da base. Cobre SIAFE 2 (23 col) E SIAFE 1 (19 col,
+# SEM Tipo de OB/NL/Processo e em ordem diferente). Casamento por LABEL evita o desalinhamento posicional.
+_LABEL2COL = {
+    "numero": "numero_ob", "ugemitente": "ug_emitente", "ugpagadora": "ug_pagadora",
+    "dataemissao": "data_emissao", "status": "status", "tipo": "tipo", "finalidade": "finalidade",
+    "tipodeob": "tipo_ob", "tipoob": "tipo_ob", "nl": "nl", "notadeliquidacao": "nl",
+    "credor": "credor", "nomedocredor": "nome_credor", "ugliquidante": "ug_liquidante",
+    "valor": "valor", "datadecompetencia": "competencia", "competencia": "competencia",
+    "statusdeenvio": "status_envio", "guiadevolucao": "gd", "gd": "gd", "processo": "processo",
+    "re": "re", "pd": "pd", "tipoderegularizacao": "tipo_regularizacao",
+    "qtdimpressoes": "qtd_impressoes", "qtddeimpressoes": "qtd_impressoes",
+    "assinaturadigital": "assinatura_digital", "vinculacaodepagamento": "vinculacao_pagamento",
+    "vinculacao": "vinculacao_pagamento",
+}
+
+
 def _money_br(s) -> float:
     """'32.087.593,78' -> 32087593.78. Vazio/—/inválido -> 0.0."""
     s = (str(s) or "").strip().replace(".", "").replace(",", ".")
@@ -80,12 +103,22 @@ def ingerir(exercicio: int, header: list, linhas: list) -> dict:
         campos = _COLS_SIAFE + ["exercicio", "coletado_em"]
         sql = (f"INSERT OR REPLACE INTO ob_orcamentaria_siafe ({','.join(campos)}) "
                f"VALUES ({','.join('?' * len(campos))})")
+        # mapeia coluna-de-índice pelo HEADER ao vivo (corrige SIAFE 1×2); fallback posicional se o header
+        # não vier reconhecível (anti-regressão).
+        col_por_idx = {}
+        if header:
+            for i, h in enumerate(header):
+                col = _LABEL2COL.get(_norm_label(h))
+                if col:
+                    col_por_idx[i] = col
+        usar_header = len(col_por_idx) >= 4
         n = 0
         for r in linhas:
-            vals = []
-            for i, c in enumerate(_COLS_SIAFE):
-                v = r[i] if i < len(r) else ""
-                vals.append(_money_br(v) if c == "valor" else v)
+            if usar_header:
+                rowmap = {col_por_idx[i]: r[i] for i in col_por_idx if i < len(r)}
+                vals = [(_money_br(rowmap.get(c, "")) if c == "valor" else rowmap.get(c, "")) for c in _COLS_SIAFE]
+            else:
+                vals = [(_money_br(r[i]) if c == "valor" else (r[i] if i < len(r) else "")) for i, c in enumerate(_COLS_SIAFE)]
             vals += [int(exercicio) if exercicio else None, agora]
             con.execute(sql, vals)
             n += 1
