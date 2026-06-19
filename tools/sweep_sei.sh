@@ -24,7 +24,7 @@ limpa_orfaos
 # PRIORIDADE = qualidade: best-effort de baixa prioridade (progride sempre, sem starvar como o ionice idle).
 PRIO="nice -n 10 ionice -c2 -n6"
 say "início (best-effort baixa prio, bounded)"
-$PRIO timeout 1500 $PY -m tools.sei_sweep --max 20 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$?"
+$PRIO timeout 1500 $PY -m tools.sei_sweep --max 30 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_sweep rc=$?"
 # FOCO: UGs sob teste/observação (data/ugs_foco.txt) — lê os processos SEI dessas UGs por valor.
 # Mesma sessão única itkava (sequencial, DEPOIS do sweep geral); bounded; resumível.
 if [ -f data/ugs_foco.txt ]; then
@@ -36,7 +36,7 @@ fi
 # SEGUIR OS PROCESSOS-PAI de contratação detectados no cache (recupera a substância dos dockets de
 # execução/pagamento que vêm "vazios"). Mesmo slot/sessão única itkava, DEPOIS do sweep normal; bounded;
 # resumível (pais já lidos ficam em cache+progress). Lê poucos por slot (qualidade > volume na VM 2 vCPU).
-$PRIO timeout 900  $PY -m tools.sei_sweep --seguir-pais --max 8 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
+$PRIO timeout 900  $PY -m tools.sei_sweep --seguir-pais --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1; say "sei_pais rc=$?"
 $PRIO timeout 600  $PY -m tools.sei_cpf_sweep >> data/sei_cpf_sweep.log 2>&1; say "sei_cpf rc=$?"
 # RE-FICHA bounded: re-extrai a ficha de quem ainda NÃO tem o campo `situacao` (idempotente — pula quem já
 # tem). Auto-cura a cobertura ao longo dos dias quando o nous tem janelas boas (sem pendência manual). Bounded.
