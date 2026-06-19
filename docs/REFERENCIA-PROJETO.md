@@ -594,6 +594,10 @@ manuais quando expirarem (caem no nous até lá).
 - **Anterior:** SIAFE 1+2 sweeps supervisionados + correlação OB↔SEI↔CNPJ; JFN 2.0 (12 ondas); Yoda/Hermes na VM.
 
 ## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md e tasks/todo.md")
+> **⏯️ 2026-06-19 — Iniciativa otimização token+memória (Jedi):** handoff completo em
+> `~/vault/aprendizados/sessao-2026-06-19-otimizacao-token-memoria.md`. PENDENTE: gitnexus reindex+embeddings
+> (background guardado), graphify vault+JFN, suíte pytest (não rodou — sweep ativo), validar `aprendizado_cruzado`
+> não-vazio após o sweep persistir veredito. Commits JFN `b4afaba`/`cca6fc4`/`99a95cb` (pushed).
 > **Estado vivo da cont.20 em `tasks/todo.md`** (CPF engine completa, SEI CPF sweep, suíte 8→2, relatórios
 > Fase 1/2/3). **2 itens travados que dependem do DONO** (não-autônomos): **(1) Yoda** — poller externo em outra
 > máquina (rode `bash tools/diag_telegram_poller.sh` p/ confirmar; fix: BotFather `/revoke` → token novo no
