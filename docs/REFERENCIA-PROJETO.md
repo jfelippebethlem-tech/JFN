@@ -110,6 +110,7 @@ hipótese vira achado `DD/*` (entra no grau) + seção **II-E** dedicada no pare
 cobertura honesta). Degrada honesto (try/except). Best-practices: TCU; OECD Bid Rigging 2025; ACFE; corroboração ≥2.
 
 ## 8. LIÇÕES DURAS (não repetir)
+- **🧾 OB/SIAFE×duplicidade (2026-06-19, caso ITERJ→MGS):** (1) **OB sempre do SIAFE direto** (`ob_orcamentaria_siafe`), nunca o espelho TFE — o TFE subcontava e escondia OBs (vault `fonte-ob-sempre-siafe-nunca-tfe`). (2) Grid do **SIAFE 1 = 19 col** (sem Tipo OB/NL/Processo, ordem ≠ SIAFE 2 23 col) → `ingerir()` foi corrigido p/ mapear por **LABEL do header** (`_LABEL2COL`), não posição fixa (vinha credor='133100', valor=0). (3) **Duplicidade de contrato contínuo = lente de COMPETÊNCIA, não valor** (tarifa flat → valor igual é esperado); guards: lag (nunca negativo), dez lag-0, split=mesmo RE, reajuste-complemento, **renovação Nov-Nov ≠ ano civil**; só a **NF** fecha → `compliance_agent/duplicidade_competencia.py` + vault `duplicidade-ob-competencia-vs-valor`. (4) **SEI doc primário:** ler EM-SESSÃO (abrir o processo antes; goto direto cai no login/2FA); `_conteudo_doc` só OCR'a scan se innerText ≤50 → anexos NF não OCR'd (gargalo a corrigir).
 - **⛔ V2 (2026-06-08):** LLM síncrono no hot-path + mudar o que funcionava = regressão. Gerar o **artefato real cedo**
   como baseline; perfeição = perfeiçoar o existente.
 - **Auto-pkill / auto-pgrep:** `pkill -f "x"` (ou `pgrep -f "x" && kill`) com o padrão "x" no PRÓPRIO comando se
