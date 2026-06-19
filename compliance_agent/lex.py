@@ -1149,6 +1149,28 @@ def _secao_pesquisa(add, pesq: dict | None) -> None:
         add("")
 
 
+def _secao_padroes_ligados(add, cruzado: str) -> None:
+    """§II-G.1 — APRENDIZADO CRUZADO: padrões já apurados em fornecedores LIGADOS (mesmos sócios/veículos).
+    SURFACE do bloco já computado (`tools.lex_aprendizado_cruzado`), persistido em lex_pesquisa.cruzado — sem
+    recomputar e SEM 2ª chamada LLM. Honesto: indício a VERIFICAR por associação societária, NUNCA culpa por
+    associação; presunção de legitimidade; INDISPONÍVEL ≠ irregular."""
+    cruzado = (cruzado or "").strip()
+    if not cruzado:
+        return
+    add("## II-G.1. APRENDIZADO CRUZADO — fornecedores ligados (mesmos sócios/veículos)")
+    add("")
+    add("*Inteligência progressiva cross-fornecedor: o que já foi apurado em empresas IRMÃS (vínculo "
+        "societário — mesmos sócios/administradores/veículos) é trazido como CONTEXTO para corroborar ou "
+        "CONTRASTAR a análise. **Indício a verificar por associação, nunca culpa por associação;** presunção "
+        "de legitimidade; INDISPONÍVEL ≠ irregular.*")
+    add("")
+    for ln in cruzado.splitlines():
+        ln = ln.rstrip()
+        if ln:
+            add(ln if ln.lstrip().startswith("-") else f"- {ln}")
+    add("")
+
+
 def _secao_investigacao(add, inv: dict, cnpj: str = "") -> None:
     """Renderiza a seção II-E — a investigação de fachada/laranja que o Lex conduziu (motor investigacao_dd).
 
@@ -1439,6 +1461,9 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
 
     # II-G. Pesquisa-internet (Fase 5) — dúvidas pesquisadas, aprendizado e re-ajuste (SURFACE).
     _secao_pesquisa(add, analise.get("pesquisa"))
+
+    # II-G.1. Aprendizado cruzado — padrões em fornecedores ligados (mesmos sócios/veículos), SURFACE.
+    _secao_padroes_ligados(add, (analise.get("pesquisa") or {}).get("cruzado") or "")
 
     # III. Matriz de Achados + análise por red flag
     add("## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)")

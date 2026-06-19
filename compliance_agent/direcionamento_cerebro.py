@@ -96,8 +96,14 @@ def _trechos_relevantes(texto: str, keywords: tuple, budget: int, janela: int = 
 def _montar_user(edital_txt: str, ata_txt: str, contexto: dict | None) -> str:
     ed = _trechos_relevantes(edital_txt, _KW_EDITAL, 11000)
     at = _trechos_relevantes(ata_txt, _KW_ATA, 12000)   # a ata é o mais importante (cascata)
-    ctx = json.dumps(contexto or {}, ensure_ascii=False)[:400]
-    return (f"CONTEXTO: {ctx}\n\n=== EDITAL (trechos relevantes) ===\n{ed or '(não fornecido)'}\n\n"
+    ctx_d = dict(contexto or {})
+    # 'padroes_ligados' (aprendizado cross-fornecedor) sai do JSON truncado e vira SEÇÃO própria, p/ não
+    # ser cortado pelos 400 chars. Anti-viés: contexto p/ corroborar/contrastar, JAMAIS culpa por associação.
+    padroes = str(ctx_d.pop("padroes_ligados", "") or "").strip()
+    ctx = json.dumps(ctx_d, ensure_ascii=False)[:400]
+    sec_pad = (f"=== PADRÕES EM FORNECEDORES LIGADOS (mesmos sócios/veículos) — corrobore/contraste, NÃO "
+               f"copie; presunção de legitimidade ===\n{padroes[:1200]}\n\n" if padroes else "")
+    return (f"CONTEXTO: {ctx}\n\n{sec_pad}=== EDITAL (trechos relevantes) ===\n{ed or '(não fornecido)'}\n\n"
             f"=== ATA DE JULGAMENTO (trechos relevantes) ===\n{at or '(não fornecida)'}\n\n"
             f"Avalie o direcionamento e responda SOMENTE com este JSON:\n{_SCHEMA}")
 

@@ -89,6 +89,21 @@ async def avaliar_fornecedor(cnpj: str, nome: str, arvores: list[str], *, gerar=
                 "ressalva": "INDISPONÍVEL ≠ irregular — rodar o sweep/sei_arvore_build antes."}
     contexto = {"fornecedor": nome, "cnpj": cnpj, "n_arvores": len(arvores),
                 "nota": "texto = DOSSIÊ consolidado das árvores SEI do fornecedor (não o edital cru)"}
+    # ELO CROSS-FORNECEDOR: padrões já aprendidos de fornecedores LIGADOS (mesmos sócios/veículos), via SQL
+    # puro sobre vereditos persistidos — custo LLM 0 (reusa o MESMO cérebro gemini, sem 2ª chamada). Honesto:
+    # '' em erro/sem-irmão. Anti-viés: o cérebro o trata como contexto a corroborar/contrastar, não culpa.
+    try:
+        from tools.lex_aprendizado_cruzado import aprendizado_cruzado
+        _c2 = con or _conectar()
+        try:
+            padroes = aprendizado_cruzado(cnpj, _c2)
+        finally:
+            if con is None:
+                _c2.close()
+        if padroes:
+            contexto["padroes_ligados"] = padroes
+    except Exception:  # noqa: BLE001
+        pass
     return await avaliar_direcionamento(edital_txt=texto, contexto=contexto, gerar=gerar)
 
 
