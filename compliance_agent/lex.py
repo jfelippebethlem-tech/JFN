@@ -1230,6 +1230,52 @@ def _secao_investigacao(add, inv: dict, cnpj: str = "") -> None:
     _secao_pacote_fachada(add, inv.get("pacote_fachada") or {}, inv.get("veredito_fachada") or {})
 
 
+def _secao_auditoria_contrato(add, aud: dict) -> None:
+    """Renderiza a seção II-E.2 — AUDITORIA DE CONTRATO CONTÍNUO (bateria T01–T22, motor auditoria_contrato).
+
+    Mesma estética da II-E (fachada). Cada teste vira um achado com status/nível/evidência/fonte/base legal;
+    fecha com a cobertura honesta do gate T22. Indício ≠ acusação; INDISPONÍVEL ≠ irregular; OB = pagamento."""
+    if not aud or not isinstance(aud, dict) or not aud.get("achados"):
+        return
+    add("## II-E.2. AUDITORIA DE CONTRATO CONTÍNUO — execução financeira e repactuação")
+    add("")
+    add("*Bateria determinística T01–T22 sobre a execução do contrato (OBs SIAFE + retenções OCR + série de "
+        "reajustes/CCT + glosas + planilha/contrato quando houver). **REGRA DE OURO:** só a OB Contabilizado é "
+        "pagamento (empenho ≠ liquidação ≠ OB). **Honesto:** indício merece apuração, nunca acusação; "
+        "**INDISPONÍVEL ≠ irregular** (presunção de legitimidade); materialidade ≤ R$ 0,02 ignorada.*")
+    add("")
+    grau = aud.get("grau", "🟢")
+    cab = aud.get("contrato") or ""
+    add(f"**Grau da auditoria:** {grau} · score {aud.get('score', 0)}/100 · "
+        f"{aud.get('n_confirmados', 0)} confirmado(s), {aud.get('n_indicios', 0)} indício(s), "
+        f"{aud.get('n_indisponivel', 0)} INDISPONÍVEL"
+        f"{f' · contrato {cab}' if cab else ''}.")
+    add("")
+    add(aud.get("resumo", ""))
+    add("")
+    # Apresenta primeiro os achados acionáveis (CONFIRMADO/INDÍCIO); os INDISPONÍVEL agrupam no fim (honestidade).
+    acion = [a for a in aud["achados"] if a.get("status") in ("CONFIRMADO", "INDICIO")]
+    afast = [a for a in aud["achados"] if a.get("status") == "AFASTADO"]
+    indisp = [a for a in aud["achados"] if a.get("status") == "INDISPONIVEL"]
+    for h in acion + afast:
+        badge = _BADGE_STATUS.get(h.get("status", ""), h.get("status", ""))
+        add(f"### {h.get('codigo', '')} — {h.get('titulo', '')}")
+        add(f"- **Status:** {badge}  ·  **Nível:** {h.get('nivel', '—')}")
+        add(f"- **Constatação:** {h.get('evidencia', '')}")
+        add(f"- **Fonte:** {h.get('fonte', '—')}  ·  **Base legal:** {h.get('base_legal', '—')}")
+        add("")
+    if indisp:
+        add("### Testes INDISPONÍVEL (sem dado-fonte ou critério — não geram achado)")
+        for h in indisp:
+            add(f"- **{h.get('codigo', '')}** — {h.get('titulo', '')}: {h.get('evidencia', '')}")
+        add("")
+    cob = aud.get("cobertura") or {}
+    if cob:
+        itens = "; ".join(f"{k}: {v}" for k, v in cob.items())
+        add(f"> **Cobertura da auditoria (gate T22 — honestidade epistêmica):** {itens}.")
+        add("")
+
+
 def _secao_pacote_fachada(add, pac: dict, veredito: dict) -> None:
     """Renderiza os sinais determinísticos do pacote de fachada (TAC com %/UG, sede/visual, REDE) e o
     veredito raciocinado (gemini/cerebras). Tudo consta do parecer. Degrada honesto: bloco vazio = nada."""
@@ -1455,6 +1501,9 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     # II-E. Investigação de Due Diligence (fachada/laranja) — o Lex apresenta a investigação que conduziu.
     inv = analise.get("investigacao") or {}
     _secao_investigacao(add, inv, cnpj=so_digitos(ctx.get("cnpj", "")))
+
+    # II-E.2. Auditoria de contrato contínuo (bateria T01–T22) — só renderiza se houver acervo de contrato.
+    _secao_auditoria_contrato(add, analise.get("auditoria_contrato") or {})
 
     # II-F. Direcionamento de licitação (parecer LLM on-demand) — SURFACE do veredito dos top-score.
     _secao_direcionamento(add, analise.get("direcionamento"))
