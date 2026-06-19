@@ -74,6 +74,14 @@ def _conectar() -> sqlite3.Connection:
     con = sqlite3.connect(DB, timeout=30)
     con.execute("PRAGMA busy_timeout=30000")
     con.executescript(_DDL)
+    # migração aditiva idempotente (padrão _COLS_LLM): coluna do aprendizado cruzado p/ SURFACE sem recomputar
+    try:
+        cols = {r[1] for r in con.execute("PRAGMA table_info(lex_pesquisa)")}
+        if "cruzado" not in cols:
+            con.execute("ALTER TABLE lex_pesquisa ADD COLUMN cruzado TEXT")
+            con.commit()
+    except sqlite3.OperationalError:
+        pass
     return con
 
 
@@ -184,11 +192,53 @@ async def coletar_osint(nome: str, cnpj: str) -> dict:
     return {"evidencia": evidencia, "fontes": fontes_d, "blocos": blocos, "erros": erros}
 
 
-def _montar_user(nome: str, cnpj: str, duvidas: list[str], osint: dict) -> str:
+def _aprendizado_previo(cnpj: str, con: sqlite3.Connection) -> str:
+    """ELO PROGRESSIVO (auditoria 2026-06-17): relê o aprendizado JÁ persistido deste fornecedor
+    (lex_pesquisa) p/ ALIMENTAR o raciocínio — antes era escrito no vault/DB e nunca relido. Bounded;
+    honesto se não há ('')."""
+    try:
+        if not con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='lex_pesquisa'").fetchone():
+            return ""
+        cd = _norm_cnpj(cnpj)
+        row = con.execute(
+            "SELECT resumo, reajuste, achados, em FROM lex_pesquisa WHERE "
+            "replace(replace(replace(fornecedor_cnpj,'.',''),'/',''),'-','')=?", (cd,)).fetchone()
+    except sqlite3.Error:
+        return ""
+    if not row:
+        return ""
+    resumo, reajuste, achados_j, em = row
+    if not ((resumo or "").strip() or (reajuste or "").strip()):
+        return ""
+    ach = "; ".join(str(a) for a in _json_list(achados_j))[:600]
+    blk = [f"(pesquisa anterior em {em or '?'})"]
+    if (resumo or "").strip():
+        blk.append(f"resumo: {resumo.strip()[:800]}")
+    if ach:
+        blk.append(f"achados: {ach}")
+    if (reajuste or "").strip():
+        blk.append(f"re-ajuste anterior: {reajuste.strip()[:400]}")
+    return "\n".join(blk)
+
+
+def _montar_user(nome: str, cnpj: str, duvidas: list[str], osint: dict, previo: str = "",
+                 cruzado: str = "") -> str:
     dv = "\n".join(f"  {i+1}. {d}" for i, d in enumerate(duvidas)) or "  (sem dúvidas registradas)"
+    prev = (f"=== APRENDIZADO PRÉVIO (releia e CONSTRUA sobre ele; NÃO repita o já concluído) ===\n{previo}\n\n"
+            if previo else "")
+    # Aprendizado cruzado: o que já se sabe de fornecedores LIGADOS (mesmos sócios/veículos). Anti-viés:
+    # serve p/ corroborar/contrastar, JAMAIS p/ presumir culpa por associação (presunção de legitimidade).
+    cruz = (f"=== PADRÕES EM FORNECEDORES LIGADOS (mesmos sócios/veículos) — corrobore/contraste, NÃO copie; "
+            f"presunção de legitimidade ===\n{cruzado}\n\n" if (cruzado or "").strip() else "")
+    # respeita o teto de evidência: o bloco cruzado entra no budget _MAX_EVID junto com o OSINT
+    evid = (osint.get("evidencia") or "(nada coletado)")
+    if cruz:
+        folga = max(0, _MAX_EVID - len(cruz))
+        evid = evid[:folga] if folga else "(omitido por limite)"
     return (f"FORNECEDOR: {nome or '?'} · CNPJ {cnpj}\n\n=== DÚVIDAS ABERTAS ===\n{dv}\n\n"
-            f"=== EVIDÊNCIAS COLETADAS (OSINT) ===\n{osint.get('evidencia') or '(nada coletado)'}\n\n"
-            f"Avalie cada dúvida à luz das evidências e responda SOMENTE com este JSON:\n{_SCHEMA}")
+            f"{prev}{cruz}=== EVIDÊNCIAS COLETADAS (OSINT) ===\n{evid}\n\n"
+            f"Avalie cada dúvida à luz das evidências e do aprendizado prévio (e dos padrões em fornecedores "
+            f"ligados, como contexto — não como prova) e responda SOMENTE com este JSON:\n{_SCHEMA}")
 
 
 async def _gerar_default(messages: list[dict]) -> str:
@@ -207,9 +257,17 @@ async def pesquisar(cnpj: str, *, gerar=None, osint_fn=None, gravar_vault: bool 
             return {"cnpj": cnpj, "nome": nome, "status": "sem_duvidas",
                     "resumo": "Sem dúvidas abertas registradas p/ este fornecedor (nada a pesquisar)."}
         osint = await (osint_fn or coletar_osint)(nome, cnpj)
+        previo = _aprendizado_previo(cnpj, _con)
+        # ELO CROSS-FORNECEDOR: o que já se aprendeu de fornecedores LIGADOS (mesmos sócios/veículos).
+        # Best-effort, custo LLM 0, honesto ('' em erro). Anti-viés tratado no _montar_user.
+        try:
+            from tools.lex_aprendizado_cruzado import aprendizado_cruzado
+            cruzado = aprendizado_cruzado(cnpj, _con)
+        except Exception:  # noqa: BLE001
+            cruzado = ""
         gerar = gerar or _gerar_default
         messages = [{"role": "system", "content": _SYS},
-                    {"role": "user", "content": _montar_user(nome, cnpj, duvidas, osint)}]
+                    {"role": "user", "content": _montar_user(nome, cnpj, duvidas, osint, previo, cruzado)}]
         from compliance_agent.direcionamento_cerebro import _parse_json
         try:
             raw = await gerar(messages)
@@ -226,6 +284,7 @@ async def pesquisar(cnpj: str, *, gerar=None, osint_fn=None, gravar_vault: bool 
                "achados": dados.get("achados") or [], "resumo": dados.get("resumo") or "",
                "reajuste": dados.get("reajuste") or "", "fontes": osint.get("fontes") or [],
                "n_fontes": len(osint.get("fontes") or []), "erros_osint": osint.get("erros") or [],
+               "cruzado": cruzado or "",
                "ressalva": "presunção de legitimidade; indício a apurar, não acusação"}
         vault_path = _gravar_vault(res) if gravar_vault else ""
         _persistir(_con, res, vault_path)
@@ -237,17 +296,33 @@ async def pesquisar(cnpj: str, *, gerar=None, osint_fn=None, gravar_vault: bool 
 
 
 def _persistir(con: sqlite3.Connection, res: dict, vault_path: str, modelo: str = "gemini") -> None:
-    con.execute(
-        """INSERT INTO lex_pesquisa
-           (fornecedor_cnpj,fornecedor_nome,duvidas,achados,resumo,reajuste,n_fontes,modelo,vault_path,em)
-           VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))
-           ON CONFLICT(fornecedor_cnpj) DO UPDATE SET fornecedor_nome=excluded.fornecedor_nome,
-             duvidas=excluded.duvidas,achados=excluded.achados,resumo=excluded.resumo,
-             reajuste=excluded.reajuste,n_fontes=excluded.n_fontes,modelo=excluded.modelo,
-             vault_path=excluded.vault_path,em=datetime('now')""",
-        (res["cnpj"], res.get("nome") or "", json.dumps(res.get("duvidas") or [], ensure_ascii=False),
-         json.dumps(res.get("achados") or [], ensure_ascii=False), res.get("resumo") or "",
-         res.get("reajuste") or "", res.get("n_fontes") or 0, modelo, vault_path))
+    # 'cruzado' surface-only: a coluna pode não existir em bancos antigos → grava best-effort sem quebrar.
+    tem_cruzado = "cruzado" in {r[1] for r in con.execute("PRAGMA table_info(lex_pesquisa)")}
+    if tem_cruzado:
+        con.execute(
+            """INSERT INTO lex_pesquisa
+               (fornecedor_cnpj,fornecedor_nome,duvidas,achados,resumo,reajuste,n_fontes,modelo,vault_path,cruzado,em)
+               VALUES (?,?,?,?,?,?,?,?,?,?,datetime('now'))
+               ON CONFLICT(fornecedor_cnpj) DO UPDATE SET fornecedor_nome=excluded.fornecedor_nome,
+                 duvidas=excluded.duvidas,achados=excluded.achados,resumo=excluded.resumo,
+                 reajuste=excluded.reajuste,n_fontes=excluded.n_fontes,modelo=excluded.modelo,
+                 vault_path=excluded.vault_path,cruzado=excluded.cruzado,em=datetime('now')""",
+            (res["cnpj"], res.get("nome") or "", json.dumps(res.get("duvidas") or [], ensure_ascii=False),
+             json.dumps(res.get("achados") or [], ensure_ascii=False), res.get("resumo") or "",
+             res.get("reajuste") or "", res.get("n_fontes") or 0, modelo, vault_path,
+             res.get("cruzado") or ""))
+    else:
+        con.execute(
+            """INSERT INTO lex_pesquisa
+               (fornecedor_cnpj,fornecedor_nome,duvidas,achados,resumo,reajuste,n_fontes,modelo,vault_path,em)
+               VALUES (?,?,?,?,?,?,?,?,?,datetime('now'))
+               ON CONFLICT(fornecedor_cnpj) DO UPDATE SET fornecedor_nome=excluded.fornecedor_nome,
+                 duvidas=excluded.duvidas,achados=excluded.achados,resumo=excluded.resumo,
+                 reajuste=excluded.reajuste,n_fontes=excluded.n_fontes,modelo=excluded.modelo,
+                 vault_path=excluded.vault_path,em=datetime('now')""",
+            (res["cnpj"], res.get("nome") or "", json.dumps(res.get("duvidas") or [], ensure_ascii=False),
+             json.dumps(res.get("achados") or [], ensure_ascii=False), res.get("resumo") or "",
+             res.get("reajuste") or "", res.get("n_fontes") or 0, modelo, vault_path))
     con.commit()
 
 
@@ -295,9 +370,11 @@ def parecer_pesquisa(cnpj: str) -> dict | None:
     try:
         if not con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='lex_pesquisa'").fetchone():
             return None
+        tem_cruzado = "cruzado" in {r[1] for r in con.execute("PRAGMA table_info(lex_pesquisa)")}
+        sel_cruz = ", cruzado" if tem_cruzado else ""
         row = con.execute(
-            "SELECT fornecedor_nome, duvidas, achados, resumo, reajuste, n_fontes, modelo, vault_path, em "
-            "FROM lex_pesquisa WHERE replace(replace(replace(fornecedor_cnpj,'.',''),'/',''),'-','')=?",
+            "SELECT fornecedor_nome, duvidas, achados, resumo, reajuste, n_fontes, modelo, vault_path, em"
+            f"{sel_cruz} FROM lex_pesquisa WHERE replace(replace(replace(fornecedor_cnpj,'.',''),'/',''),'-','')=?",
             (cd,)).fetchone()
     except sqlite3.Error:
         return None
@@ -307,7 +384,8 @@ def parecer_pesquisa(cnpj: str) -> dict | None:
         return None
     return {"nome": row[0], "duvidas": _json_list(row[1]), "achados": _json_list(row[2]),
             "resumo": row[3] or "", "reajuste": row[4] or "", "n_fontes": row[5] or 0,
-            "modelo": row[6] or "", "vault_path": row[7] or "", "avaliado_em": row[8] or ""}
+            "modelo": row[6] or "", "vault_path": row[7] or "", "avaliado_em": row[8] or "",
+            "cruzado": (row[9] if len(row) > 9 else "") or ""}
 
 
 def _top_cnpjs(con: sqlite3.Connection, top_n: int, min_score: int) -> list[str]:
