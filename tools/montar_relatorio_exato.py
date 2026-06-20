@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 """RELATÓRIO FORENSE EXATO — Contrato 005/2021 ITERJ × MGS. Veredito 100% de fonte primária
 (planilha de custos + NF/atestado + ledger SIAFE + CCTs). Render Kroll → PDF → Yoda."""
-import asyncio, json, sys, re
+import asyncio
+import sys
+import re
 from datetime import datetime
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

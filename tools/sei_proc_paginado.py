@@ -6,7 +6,11 @@ Depois dá OCR SÓ nos docs-alvo (planilha/proposta/edital/NF/medição). GUARDA
 
 Uso: SEI_OCR_DOCS=4 .venv/bin/python tools/sei_proc_paginado.py "330020/000762/2021" "planilha|proposta|composi|custo|encargo|edital|nota fiscal|medi..o"
 """
-import os, sys, re, json, asyncio
+import os
+import sys
+import re
+import json
+import asyncio
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR
@@ -77,7 +81,7 @@ async def main():
                 print(f"  página {pagina}: +{len(novos)} docs (total {len(todos)})", flush=True)
                 zero = zero + 1 if not novos else 0
                 if zero >= 3:
-                    print(f"  [fim: 3 páginas sem docs novos]", flush=True); break
+                    print("  [fim: 3 páginas sem docs novos]", flush=True); break
                 if not await clicar_proxima(pg, pagina * 10):
                     print(f"  [fim: sem 'Próxima' na página {pagina}]", flush=True); break
                 await pg.wait_for_timeout(2600)
