@@ -37,15 +37,17 @@ async def docs_da_pagina(pg):
 
 
 async def clicar_proxima(pg, offset):
-    """Pagina via a função JS do SEI navegar('<offset>') — offset fixo = nº_página*10 (receita validada)."""
-    for fr in pg.frames:
-        try:
-            tem = await fr.evaluate(r"""()=>!![...document.querySelectorAll('a')].find(a=>/pr[óo]xim/i.test(a.innerText||'')&&/navegar/.test(a.href||''))""")
-            if tem:
-                await fr.evaluate("(o)=>{ if(typeof navegar==='function') navegar(o); }", str(offset))
-                return True
-        except Exception:
-            pass
+    """Pagina via navegar('<offset>') do SEI, com RETRY (o frame de resultados re-renderiza e perde
+    a função navegar momentaneamente — flakiness que travava a paginação na pág. 5)."""
+    for tentativa in range(4):
+        for fr in pg.frames:
+            try:
+                if await fr.evaluate("()=>typeof navegar==='function'"):
+                    await fr.evaluate("(o)=>{ try{ navegar(o); }catch(e){} }", str(offset))
+                    return True
+            except Exception:
+                pass
+        await pg.wait_for_timeout(1500)  # espera o frame re-renderizar e tenta de novo
     return False
 
 
@@ -83,8 +85,8 @@ async def main():
                 if zero >= 3:
                     print("  [fim: 3 páginas sem docs novos]", flush=True); break
                 if not await clicar_proxima(pg, pagina * 10):
-                    print(f"  [fim: sem 'Próxima' na página {pagina}]", flush=True); break
-                await pg.wait_for_timeout(2600)
+                    print(f"  [fim: frame de resultados sem navegar() na página {pagina}]", flush=True); break
+                await pg.wait_for_timeout(3600)
             docs = list(todos.values())
             print(f"\n=== TOTAL {len(docs)} documentos no processo {PROC} ===", flush=True)
             for i, x in enumerate(docs):
@@ -115,4 +117,5 @@ async def main():
     G.cleanup_orphans()
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
