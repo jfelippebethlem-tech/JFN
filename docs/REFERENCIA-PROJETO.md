@@ -216,6 +216,7 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-20 (auditoria EXATA ITERJ×MGS 005/2021 — fechada):** veredito 100% fonte primária — **Estado deve à MGS R$ 56.044,28** (35.014,96 retroativo Mar-Jun/25 sólido + 21.029,32 glosa cautelar devida); **sem pagamento a maior** (reconc. anual = 12 meses; OBs gêmeas = catch-up); **reajustes corretos** (CCTs SEAC-RJ 9,91/6,01/6,20/7,50 + piso 1.730,75 confirmados na **planilha de custos** obtida via paginação). Relatório `reports/relatorio_exato_iterj_mgs_005_2021_2026-06-20.pdf` → Yoda. **Pipeline:** `tools/vm_guard.py` (VM travou 3×: órfãos+OCR em massa+grep-bomba; preflight+cleanup ppid==1), `tools/sei_proc_paginado.py` (ler SEI COMPLETO = paginar navegar(offset); ler() para em 10 docs), store `.txt` + índice [[iterj-mgs-indice-sei]]. Lições: [[auditoria-sei-completa-pipeline]]. **PENDÊNCIA:** foldar paginação no `_extrair_de_todos_frames` do core (alto blast radius — gitnexus_impact); liberar acesso SEI p/ unidades antigas.
 - **06-18 cont.44 (auditoria do ECOSSISTEMA + fixes commitados):** workflows de auditoria (8 subsistemas + sweeps/dados
   + Hermes + Claude Code) → **53 bugs/10 graves** mapeados ([[auditoria-ecossistema-2026-06-18]] no vault). 🔴 **2 segredos
   vazados** (token @BondCampanhaBot no MEMORY.md do Yoda; GitHub PAT nos JSON do gitnexus) — limpos dos arquivos; **DONO
