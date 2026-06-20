@@ -29,6 +29,7 @@ Ver [[casos/iterj-mgs-clean-pagamentos]] e [[aprendizados/duplicidade-ob-compete
 """
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 
 # Reusa o detector determinístico de duplicidade já validado no caso (T07).
@@ -136,7 +137,17 @@ def _t01_3way(d) -> dict:
               f"OB órfã, pagamento sem liquidação rastreável: {', '.join(str(o.get('numero_ob')) for o in orfas[:6])}.")
         return _hip("T01-3WAY", "Three-way match (NL→RE→PD→OB)", "INDICIO", "alto", ev,
                     "SIAFE — ob_orcamentaria_siafe", "Lei 4.320/1964 arts. 58/63/64; LC 101/2000", _PESO["alta"])
-    ev = (f"Cadeia íntegra: as {len(contab)} OBs Contabilizado têm elo (nl/re/pd), nenhuma órfã. "
+    # honestidade: NÃO afirmar 3-way completo onde a NL é nula (SIAFE 1 não expõe NL no grid) — é só 2-way RE↔PD.
+    sem_nl = [o for o in contab if not (o.get("nl") or "").strip()]
+    elo3 = len(contab) - len(sem_nl)
+    if sem_nl:
+        ev = (f"{elo3}/{len(contab)} OBs com cadeia 3-way completa (NL→RE→PD→OB); "
+              f"{len(sem_nl)} apenas com RE↔PD (**2-way; NL INDISPONÍVEL** — SIAFE 1 não expõe). "
+              f"Nenhuma OB órfã. {len(repetidos)} par(es) RE/PD em 2+ OBs (split/retroativo — cruza T07). "
+              f"Integridade 3-way NÃO afirmável onde falta a liquidação.")
+        return _hip("T01-3WAY", "Three-way match (NL→RE→PD→OB)", "AFASTADO", "—", ev,
+                    "SIAFE — ob_orcamentaria_siafe", "Lei 4.320/1964 arts. 58/63/64; LC 101/2000", _PESO["alta"])
+    ev = (f"Cadeia 3-way íntegra: as {len(contab)} OBs Contabilizado têm NL→RE→PD, nenhuma órfã. "
           f"{len(repetidos)} par(es) RE/PD aparecem em 2+ OBs — esperado em split/retroativo; "
           f"confirmar lastro distinto pela NL/NF (cruza T07).")
     return _hip("T01-3WAY", "Three-way match (NL→RE→PD→OB)", "AFASTADO", "—", ev,
@@ -520,11 +531,60 @@ def _t21_conta_vinculada(d) -> dict:
 
 # T22 é o GATE — executado dentro de auditar_contrato (não é um achado isolado, mas registra cobertura).
 
+def _t23_auto_aritmetica(d) -> dict:
+    """T23 — Auto-aritmética do relatório derivado: recalcula cada '(N× R$X)' e flagra N×X ≠ total declarado.
+    Pega erros do tipo '4× R$118.441,47 = R$586.950,02' (na verdade 5 parcelas). Achado real no caso MGS."""
+    txt = d.get("relatorio_texto") or ""
+    if not txt:
+        return _indisp("T23-AUTO-ARITMETICA", "Auto-aritmética do relatório derivado",
+                       "texto do relatório derivado (relatorio_texto)", "ISSAI 4000; GAO Yellow Book", _PESO["alta"])
+    erros = []
+    for m in re.finditer(r"R\$\s*([\d.]+,\d{2})\s*\(\s*(\d+)\s*[x×]\s*R\$\s*([\d.]+,\d{2})", txt):
+        total, n, unit = _money(m.group(1)), int(m.group(2)), _money(m.group(3))
+        if abs(n * unit - total) > 1.0:
+            erros.append(f"'{m.group(2)}× R$ {m.group(3)}' declarado R$ {m.group(1)}, mas {n}×={n*unit:,.2f} (Δ {n*unit-total:+,.2f})")
+    if erros:
+        ev = ("Erro(s) aritmético(s) no relatório derivado (o N× não fecha com o total declarado): "
+              + " | ".join(erros[:4]) + ". Contamina as totalizações 'devido' que dependem dessas linhas.")
+        return _hip("T23-AUTO-ARITMETICA", "Auto-aritmética do relatório derivado", "CONFIRMADO", "alto", ev,
+                    "Relatório do órgão (recálculo independente)", "ISSAI 4000 (subject matter); GAO Yellow Book", _PESO["alta"])
+    return _hip("T23-AUTO-ARITMETICA", "Auto-aritmética do relatório derivado", "AFASTADO", "—",
+                "Todas as linhas 'N× R$X' do relatório fecham com o total declarado.",
+                "Relatório do órgão (recálculo)", "ISSAI 4000", _PESO["alta"])
+
+
+def _t24_bruto_liquido(d) -> dict:
+    """T24 — Valor-âncora 'glosado/pago' do relatório que NÃO existe em nenhuma OB líquida (vício bruto×líquido).
+    Pega o crédito-fantasma de R$21k: 113.184,14 é bruto de NF, não pagamento. Achado real no caso MGS."""
+    txt = d.get("relatorio_texto") or ""
+    obs = d.get("obs") or []
+    if not txt or not obs:
+        return _indisp("T24-BRUTO-LIQUIDO", "Valor-âncora bruto sem lastro em OB",
+                       "relatorio_texto + OBs", "Lei 4.320/64 art. 63; ISSAI 4000", _PESO["media"])
+    vals_ob = {round(_money(o.get("valor")), 2) for o in _contabilizadas(obs)}
+    glosados = set()
+    for m in re.finditer(r"glosad\w*", txt, re.I):
+        seg = txt[max(0, m.start() - 90):m.end() + 90]
+        for v in re.findall(r"R\$\s*([\d.]+,\d{2})", seg):
+            if _money(v) > 50000:
+                glosados.add(round(_money(v), 2))
+    fantasma = [v for v in glosados if not any(abs(v - o) < 0.02 for o in vals_ob)]
+    if fantasma:
+        ev = (f"Valor(es) tratado(s) como 'glosado/pago' SEM lastro em nenhuma OB líquida: "
+              f"{', '.join(f'R$ {v:,.2f}' for v in fantasma[:4])}. É valor BRUTO de NF (não pagamento) — "
+              f"vício bruto×líquido que infla o saldo/crédito apurado pelo órgão.")
+        return _hip("T24-BRUTO-LIQUIDO", "Valor-âncora bruto sem lastro em OB", "INDICIO", "alto", ev,
+                    "Relatório do órgão × ob_orcamentaria_siafe", "Lei 4.320/64 art. 63; ISSAI 4000", _PESO["alta"])
+    return _hip("T24-BRUTO-LIQUIDO", "Valor-âncora bruto sem lastro em OB", "AFASTADO", "—",
+                "Valores 'glosados' do relatório têm lastro em OB líquida (ou não há contexto de glosa).",
+                "Relatório do órgão × OBs", "Lei 4.320/64 art. 63", _PESO["media"])
+
+
 _TESTES = [
     _t01_3way, _t02_status_pago, _t03_reconcilia, _t04_reajuste_cct, _t05_database, _t06_interregno,
     _t07_duplicidade, _t08_gap, _t09_inss, _t10_ir, _t11_identidade, _t12_glosa, _t13_trabalhista,
     _t14_piso, _t15_grupo_a, _t16_regime, _t17_lucro, _t18_beneficio, _t19_preclusao, _t20_garantia,
-    _t21_conta_vinculada,
+    _t21_conta_vinculada, _t23_auto_aritmetica, _t24_bruto_liquido,
 ]
 
 
