@@ -39,11 +39,12 @@ _RATE_LIMIT_SECS = 20            # min entre chamadas ao OpenRouter
 _alertas_processados: set[int] = set()
 _ultima_chamada: float = 0.0
 
-# Modelos OpenRouter como segundo plano — todos :free compartilham a mesma cota.
-_HERMES_MODELO_PRINCIPAL = "nousresearch/hermes-3-llama-3.1-405b:free"
+# Modelos OpenRouter — APENAS :free (regra do dono, anti-cobrança). São último
+# recurso atrás de Qwen/Groq/Cerebras/Gemini; o OpenRouter free anda rate-limited,
+# por isso vem por último. Atualizado 2026-06-21 (Nous-405B:free ficou sem endpoints).
+_HERMES_MODELO_PRINCIPAL = "meta-llama/llama-3.3-70b-instruct:free"
 _HERMES_MODELOS_FALLBACK = [
-    "google/gemma-2-27b-it:free",
-    "google/gemma-2-9b-it:free",
+    "deepseek/deepseek-r1:free",
     "mistralai/mistral-7b-instruct:free",
 ]
 
@@ -97,9 +98,30 @@ async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS)
             _ultima_chamada = time.time()
             return resultado
         except Exception as e:
-            console.print(f"[dim]Hermes: Groq falhou ({e}), tentando OpenRouter…[/dim]")
+            console.print(f"[dim]Hermes: Groq falhou ({e}), tentando Cerebras…[/dim]")
 
-    # ── 3. OpenRouter cascade (:free — fallback) ────────────────────────────────
+    # ── 2b. Cerebras (rede de segurança JFN: rápido e com saldo — CLAUDE.md) ─────
+    try:
+        from compliance_agent.llm.free_llm import cerebras_available, cerebras_chat_async
+        if cerebras_available():
+            resultado = await cerebras_chat_async(prompt, system=system, smart=True,
+                                                  max_tokens=max_tokens)
+            _ultima_chamada = time.time()
+            return resultado
+    except Exception as e:
+        console.print(f"[dim]Hermes: Cerebras falhou ({e}), tentando Gemini…[/dim]")
+
+    # ── 2c. Gemini (qualidade, free-tier) ───────────────────────────────────────
+    try:
+        from compliance_agent.llm.free_llm import gemini_chat_async
+        resultado = await gemini_chat_async(prompt, system=system, smart=True,
+                                            max_tokens=max_tokens)
+        _ultima_chamada = time.time()
+        return resultado
+    except Exception as e:
+        console.print(f"[dim]Hermes: Gemini falhou ({e}), tentando OpenRouter :free…[/dim]")
+
+    # ── 3. OpenRouter cascade (APENAS :free — fallback, regra do dono) ───────────
 
     key = _openrouter_key()
     if key:
