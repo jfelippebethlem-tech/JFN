@@ -84,9 +84,10 @@ def _verdicts_dos_casos(max_casos: int = 12) -> str:
     return "VEREDITOS DE CASOS (verdade de campo):\n" + "\n".join(linhas)
 
 
-async def auto_melhorar(session=None) -> dict:
+async def auto_melhorar(session=None, episodio: str = "") -> dict:
     """Passe de meta-cognição: confronta hipóteses/recomendações do Hermes com os veredittos reais,
-    extrai erros de MÉTODO recorrentes e grava auto-correções (categoria `metodo`)."""
+    extrai erros de MÉTODO recorrentes e grava auto-correções (categoria `metodo`).
+    `episodio`: texto de um trabalho recém-concluído (ex.: uma perícia) a ser criticado em foco."""
     from compliance_agent.llm.memoria import lembrar, aprender, _session
     from compliance_agent.llm.hermes_agent import _hermes
 
@@ -97,6 +98,7 @@ async def auto_melhorar(session=None) -> dict:
         esquemas = lembrar("esquema", session=s)[:6]
         metodos_atuais = lembrar("metodo", session=s)[:20]
         verdicts = _verdicts_dos_casos()
+        bloco_ep = f"\nTRABALHO RECÉM-CONCLUÍDO A CRITICAR (episódio em foco):\n{episodio[:5000]}\n" if episodio else ""
 
         track = "\n".join(f"- HIPÓTESE: {h['valor'][:200]}" for h in hipoteses) or "(sem hipóteses registradas)"
         esq = "\n".join(f"- ESQUEMA: {e['valor'][:200]}" for e in esquemas)
@@ -113,9 +115,11 @@ async def auto_melhorar(session=None) -> dict:
         prompt = (
             f"REGRAS DE MÉTODO JÁ VIGENTES (não repetir):\n{regras}\n\n"
             f"OUTPUTS DO PRÓPRIO HERMES:\n{track}\n{esq}\n\n"
-            f"{verdicts}\n\n"
-            "Quais erros de MÉTODO o Hermes deve corrigir para a próxima auditoria? Máximo 5. "
-            "Se o método está sólido e não há correção nova honesta, retorne lista vazia."
+            f"{verdicts}\n"
+            f"{bloco_ep}\n"
+            "Quais erros de MÉTODO o Hermes deve corrigir para a próxima auditoria? "
+            + ("Foque no episódio em foco acima — o que se aprende sobre o MÉTODO ao revisá-lo. " if episodio else "")
+            + "Máximo 5. Se o método está sólido e não há correção nova honesta, retorne lista vazia."
         )
         novas = []
         try:
