@@ -415,6 +415,17 @@ async def responder_hermes(pergunta: str, contexto_db: str, session) -> str:
             h["valor"][:150] for h in hipoteses[:4]
         )
 
+    # RAG — "segundo cérebro": trechos relevantes de normas (Lei 14.133, sanções, métodos
+    # de fraude) + vault, recuperados por embeddings Cohere. Aditivo e à prova de falha.
+    bloco_rag = ""
+    try:
+        from tools.hermes_rag import contexto as _rag_contexto
+        rag = _rag_contexto(pergunta, k=6)
+        if rag:
+            bloco_rag = "\nBASE TÉCNICA CONSULTÁVEL (RAG — normas + conhecimento acumulado):\n" + rag + "\n"
+    except Exception:
+        bloco_rag = ""
+
     prompt = (
         f"{contexto_db}\n\n"
         f"{contexto_mem}\n"
@@ -422,6 +433,7 @@ async def responder_hermes(pergunta: str, contexto_db: str, session) -> str:
         f"{bloco_hipoteses}\n\n"
         f"{base_legal}\n\n"
         f"{jurisprudencia}\n\n"
+        f"{bloco_rag}\n"
         f"PERGUNTA DO JORGE: {pergunta}\n\n"
         "Responda com rigor analítico e dados concretos."
     )
