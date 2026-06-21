@@ -478,7 +478,17 @@ def analise_discursiva(achados: list[dict], gerar=None) -> list[dict]:
         f'   TRECHO: "{(a.get("trecho") or "")[:600]}"'
         for j, (_i, a) in enumerate(com)
     )
-    prompt = ('Analise cada indicio abaixo. Responda SOMENTE JSON: lista de '
+    # MÉTODO PERICIAL COMPARTILHADO — Lex aprende as mesmas lições do Hermes (memória `metodo`).
+    metodo = ""
+    try:
+        from compliance_agent.llm.memoria import lembrar
+        regras = lembrar("metodo")[:8]
+        if regras:
+            metodo = ("MÉTODO PERICIAL (aplique):\n"
+                      + "\n".join(f"- {r['valor'][:180]}" for r in regras) + "\n\n")
+    except Exception:
+        metodo = ""
+    prompt = (metodo + 'Analise cada indicio abaixo. Responda SOMENTE JSON: lista de '
               '{"i":<indice>,"analise":"2 a 4 frases citando o trecho e explicando o mecanismo"}.\n\n' + itens)
     try:
         d = _json_lex(gerar(prompt, _SYS_DISCURSIVO))
