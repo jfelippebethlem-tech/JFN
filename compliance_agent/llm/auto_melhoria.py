@@ -39,6 +39,14 @@ METODOS_FUNDACIONAIS = [
     ("verificar-contagem-antes-de-relatar",
      "Antes de relatar totais do SIAFE, conferir a CONTAGEM esperada (ex.: 55 OBs ITERJ×MGS); a base perde "
      "linhas — reingerir do cache se vier abaixo do esperado. Por quê: um laudo quase saiu com 35 OBs."),
+    ("relacionados-verificar-favorecido",
+     "Os processos RELACIONADOS de um processo de pagamento NÃO são todos do mesmo fornecedor. Verificar o "
+     "favorecido/CNPJ de CADA relacionado antes de tratá-lo como do mesmo contrato. Por quê: os relacionados do "
+     "pagamento MGS incluíam Mobiliza (veículos) e obras do BNDES — dois falsos positivos."),
+    ("laudo-precisa-conclusao-e-memoria",
+     "Todo laudo/perícia deve ter CONCLUSÃO explícita (bottom-line) + MEMÓRIA DE CÁLCULO (cada conta mostrada: "
+     "tarifa, reajuste, cobertura, refutações). Tabela sem conclusão não é perícia. Por quê: o 1º laudo foi "
+     "devolvido por 'não ter conclusão alguma'."),
 ]
 
 
