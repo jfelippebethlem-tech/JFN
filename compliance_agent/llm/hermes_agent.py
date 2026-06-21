@@ -57,9 +57,13 @@ HERMES_MAX_TOKENS = int(os.environ.get("HERMES_MAX_TOKENS", "8000"))
 async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS) -> str:
     """
     Cascata de LLMs em ordem de confiabilidade:
-      1. Qwen (prioritário — evita 429 recorrente do Groq)
-      2. Groq llama-3.3-70b   — 100 req/min grátis, chave no .env
-      3. Hermes/Nemotron/Ring/HY3/Step via provedores configurados
+      1. Groq llama-3.3-70b   — 100 req/min grátis, chave no .env
+      2. Cerebras / 2c. Gemini — rede de segurança JFN (CLAUDE.md)
+      3. OpenRouter :free (inclui Qwen) — fallback final (regra do dono)
+
+    (Qwen-primeiro foi REMOVIDO: dependia de chave OpenRouter ausente no JFN →
+    1ª tentativa sempre falhava e gastava ciclo. Qwen :free segue alcançável no
+    passo 3.)
 
     max_tokens é repassado a TODOS os provedores — antes o Groq (caminho
     primário) ignorava o limite e truncava em 1024 tokens, encolhendo o
@@ -81,16 +85,7 @@ async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS)
         groq_chat_async,
     )
 
-    # ── 1. Qwen (prioritário — evita 429 recorrente do Groq) ──────────────────
-    try:
-        from compliance_agent.llm.free_llm import qwen_chat_async
-        resultado = await qwen_chat_async(prompt, system=system)
-        _ultima_chamada = time.time()
-        return resultado
-    except Exception as e:
-        console.print(f"[dim]Hermes: Qwen falhou ({e}), tentando Groq…[/dim]")
-
-    # ── 2. Groq ─────────────────────────────────────────────────────────────────
+    # ── 1. Groq (primário — Qwen-OpenRouter foi demovido p/ o passo 3) ──────────
     if groq_available():
         try:
             resultado = await groq_chat_async(prompt, system=system, smart=True,
@@ -148,8 +143,8 @@ async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS)
                 continue
 
     raise RuntimeError(
-        "Hermes indisponível: Qwen, Groq e todos os modelos OpenRouter :free falharam. "
-        "Verifique chaves/roteamento no código."
+        "Hermes indisponível: Groq, Cerebras, Gemini e todos os modelos OpenRouter :free "
+        "(incl. Qwen) falharam. Verifique chaves/roteamento no código."
     )
 
 
