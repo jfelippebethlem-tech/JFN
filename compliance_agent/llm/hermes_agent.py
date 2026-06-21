@@ -692,6 +692,18 @@ async def loop_hermes_continuo():
                     )
                     await enviar_mensagem(msg)
 
+                # ── Auto-melhoria (meta-cognição): logo após a síntese semanal ──
+                try:
+                    from compliance_agent.llm.auto_melhoria import seed_metodos, auto_melhorar
+                    seed_metodos(session)
+                    am = await auto_melhorar(session)
+                    if am.get("novas_auto_correcoes"):
+                        await enviar_mensagem(
+                            "🧠 *Hermes — auto-melhoria:* novas regras de método: "
+                            + ", ".join(am["novas_auto_correcoes"][:5]))
+                except Exception as _e:
+                    console.print(f"[yellow]Hermes auto-melhoria: {_e}[/yellow]")
+
         except asyncio.CancelledError:
             raise
         except Exception as e:

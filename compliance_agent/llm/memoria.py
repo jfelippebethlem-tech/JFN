@@ -173,7 +173,7 @@ def contexto_para_prompt(session=None, max_itens: int = 25) -> str:
         itens = (
             s.query(MemoriaAprendizado)
             .filter(MemoriaAprendizado.categoria.in_(
-                ["contexto_admin", "padrao_fraude", "licao"]))
+                ["metodo", "contexto_admin", "padrao_fraude", "licao"]))
             .order_by(MemoriaAprendizado.confianca.desc(),
                       MemoriaAprendizado.n_observacoes.desc())
             .limit(max_itens)
