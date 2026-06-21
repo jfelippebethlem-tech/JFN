@@ -28,13 +28,19 @@ secoes.append({"titulo": "1. Sumário executivo e veredito", "html":
     f"contrato <b>005/2021</b> (limpeza/conservação), competências <b>Dez/2021–Mar/2026</b>: "
     f"<b>{N} OBs</b>, <b>R$ {brl(TOTAL)}</b> (liquidação; empenho ≠ OB).</p>"
     f"<p><b>Gatilho.</b> Meses com 2 OBs e um aparente “+1 mês” em 2023 levantaram a hipótese de pagamento em duplicidade.</p>"
-    f"<p><b>Veredito.</b> <b>Duplicidade NÃO evidenciada.</b> Os descasamentos de competência são explicados, "
-    f"com base documental, por: <b>retroativos de repactuação</b> (CCT/dissídio); <b>ciclo de renovação "
-    f"Nov-a-Nov</b> (não ano civil); <b>glosas</b> (Nov/25–Fev/26); <b>splits de desembolso</b> (mesmo empenho) e "
-    f"<b>lag de pagamento</b> (nunca antecipado). Fonte primária (SIAFE + Despacho de Liquidação): <b>1 NL por "
-    f"competência</b>, e as OBs gêmeas de 10/2025 têm <b>NLs distintas</b>. Nenhuma OB estornada. "
-    f"A própria contabilidade do ITERJ reconciliou o contrato e apurou <b>crédito de R$ 56.044,28 a favor da MGS</b>, "
-    f"encaminhando à <b>Auditoria Interna (AUDIN)</b>. Presunção de legitimidade; indício ≠ acusação.</p>"})
+    f"<p><b>Veredito (perícia independente — não se apoia na contabilidade do órgão).</b> "
+    f"<b>Duplicidade NÃO evidenciada; pagamentos consistentes com o contrato e seus reajustes.</b> "
+    f"As <b>{N} OBs cobrem os 52 meses</b> do contrato (Dez/2021–Mar/2026): cada mês de serviço foi pago "
+    f"<b>uma vez</b>, na tarifa vigente. As 7 competências com 2 OBs pareiam com meses-vizinhos de rótulo ausente "
+    f"(recuperação/má-rotulação de competência), além de 2 <b>splits</b> sob o mesmo empenho (RE) e complementos "
+    f"de reajuste — não pagamento em dobro. <b>Nenhuma OB estornada;</b> lag de emissão nunca negativo.</p>"
+    f"<p><b>Reajustes verificados na fonte primária</b> (registro de Reajustes do SIAFE-Rio, proc. 762/2021), "
+    f"reconstruídos <b>ao centavo</b> pela regra do apostilamento (Δ mensal × 9) — ver §4.</p>"
+    f"<p><b>Sobre o saldo de R$ 56.044,28 alegado pela ASSCONT/ITERJ:</b> documento <b>derivado</b> (parte "
+    f"interessada) — <b>esta perícia o REFUTA</b> como dívida líquida: contém erro aritmético "
+    f"(<i>“4 × 118.441,47”</i> em vez de 5 parcelas) e crédito-fantasma por confusão <b>bruto×líquido</b>. "
+    f"Eventual crédito remanescente seria apenas o <b>retroativo de repactuação</b> (disputa de valor), não dano "
+    f"ao erário nem pagamento a maior. Presunção de legitimidade; indício ≠ acusação.</p>"})
 
 secoes.append({"titulo": "2. Pagamentos por exercício (SIAFE direto — fonte primária)", "html":
     tab(["Exercício", "Sistema", "OBs", "Valor pago (R$)"],
@@ -58,21 +64,30 @@ secoes.append({"titulo": "4. Reajustes contratuais — verificação na fonte pr
     "<p>Os índices de reajuste foram <b>confirmados no registro oficial de Reajustes do contrato no SIAFE-Rio</b> "
     "(íntegra do proc. 330020/000762/2021), <b>afastando</b> a dúvida sobre o índice de 2023 (havia hipótese de "
     "6,34% pela CCT SEAC publicada; o vinculante é o <b>reajuste apostilado</b>):</p>"
-    + tab(["Reajuste", "Data-base", "Indexador", "Valor do reajuste (R$)", "Publicação"],
-        [["01", "27/07/2022", "<b>9,91%</b>", "70.715,52", "02/08/2022"],
-         ["02", "31/07/2023", "<b>6,01%</b>", "51.407,19", "02/08/2023"],
-         ["03", "01/03/2024", "<b>6,20%</b>", "51.292,80", "12/06/2024"]])
-    + "<p class='nota'>A ASSCONT aplicou <b>6,01%</b> em 2023 — <b>correto</b>. Correção de premissa: a "
-      "<b>data-base era JULHO</b> em 2022 e 2023 (não março); migrou para março apenas no reajuste 03/2024. "
-      "O retroativo Mar–Jun citado refere-se ao ciclo de 2024/2025.</p>"})
+    + tab(["Reajuste", "Data-base", "Índice CCT", "Valor apostilado (R$)", "Δ mensal (÷9)", "Tarifa bruta resultante (R$)"],
+        [["base", "—", "—", "—", "—", "90.419,34"],
+         ["01", "27/07/2022", "9,91%", "70.715,52", "7.857,28", "<b>98.276,62</b>"],
+         ["02", "31/07/2023", "6,01%", "51.407,19", "5.711,91", "<b>103.988,53</b>"],
+         ["03", "01/03/2024", "6,20%", "51.292,80", "5.699,20", "<b>109.687,73</b>"]])
+    + "<p class='nota'><b>Prova ao centavo:</b> os valores apostilados oficiais, pela regra <b>Δ mensal = valor ÷ 9</b>, "
+      "reconstroem a tarifa bruta contratual <b>exatamente</b> (90.419,34 → 98.276,62 → 103.988,53 → 109.687,73). "
+      "<b>Achado favorável ao Estado:</b> o índice CCT (9,91/6,01/6,20%) incide só sobre a <b>mão-de-obra</b>; "
+      "o aumento <b>efetivo na tarifa cheia</b> foi menor (<b>8,69 / 5,81 / 5,48%</b>) — repactuação componente-a-"
+      "componente (IN 05/2017), <b>não</b> CCT% sobre o valor inteiro. A ASSCONT aplicou 6,01% em 2023 — correto. "
+      "Correção de premissa: a <b>data-base era JULHO</b> (2022-23), migrou para março só em 2024.</p>"})
 
-secoes.append({"titulo": "5. Reconciliação institucional (ASSCONT/ITERJ → AUDIN)", "html":
-    "<p>A Assessoria Contábil do ITERJ produziu um <b>Relatório de Créditos e Débitos</b> do contrato 005/2021 "
-    "(2021 → glosa de Fev/2026). Evolução do custo mensal por CCT: R$ 90.419,34 → 98.276,62 → 103.988,53 → "
-    "109.687,73 → <b>R$ 118.441,47</b>. Apurou <b>crédito de R$ 56.044,28 a favor da MGS</b> (retroativo da "
-    "repactuação 2025 + diferença das NFs glosadas). A DIRAF encaminhou os pagamentos à <b>Auditoria Interna "
-    "(AUDIN)</b>. <b>Documento DERIVADO</b> (a contabilidade do próprio órgão) — ponderado, não tratado como prova "
-    "final; relevante por ser admissão institucional de glosas e de saldo credor ao fornecedor.</p>"})
+secoes.append({"titulo": "5. Crítica ao Relatório da ASSCONT/ITERJ (alegação de saldo R$ 56.044,28) — REFUTADA", "html":
+    "<p>A Assessoria Contábil do ITERJ (Relatório de Créditos e Débitos, parte <b>interessada</b>) alega "
+    "<b>crédito de R$ 56.044,28 a favor da MGS</b>. <b>Esta perícia independente NÃO acolhe esse valor</b> — o "
+    "documento é <b>derivado</b> e contém erros materiais:</p>"
+    + tab(["Componente da alegação", "Crítica da perícia", "Efeito"],
+        [["R$ 35.014,96 — retroativo repactuação 2025", "Plausível, mas é <b>disputa de repactuação</b> (valor), não pagamento a maior nem dano", "a apurar (gross)"],
+         ["“4 × R$ 118.441,47 = 586.950,02”", "<b>Erro aritmético</b>: são <b>5</b> parcelas (R$ 473.765,88) — superestima a base", "<b>refutado</b>"],
+         ["R$ 21.029,32 — “diferença de NF glosada”", "<b>Crédito-fantasma</b>: confunde <b>bruto×líquido</b> (retenção ~9% não é glosa)", "<b>refutado</b>"]])
+    + "<p class='nota'>Conclusão da perícia: <b>não há saldo líquido de R$ 56.044,28 comprovado</b>. O único crédito "
+      "plausível (retroativo de repactuação) é matéria de <b>disputa de valor</b>, em aberto — não dano ao erário, "
+      "não pagamento em duplicidade. A reconciliação primária (§2–§4) é a base do veredito; a peça da ASSCONT é "
+      "tratada como <b>alegação a testar</b>, e foi refutada nos pontos acima.</p>"})
 
 # 5. Detalhamento das OBs por exercício (OBRIGATÓRIO no padrão — OBs por ano)
 det = ""
@@ -86,24 +101,25 @@ secoes.append({"titulo": "6. Detalhamento das Ordens Bancárias por exercício",
 
 ctx = {
     "classificacao": "CONFIDENCIAL — USO INTERNO (controle externo)",
-    "titulo": "Relatório de Inteligência — ITERJ × MGS Clean (verificação de duplicidade)",
-    "subtitulo": "Contrato 005/2021 · OBs 2021–2026 · SIAFE direto + árvore SEI (itkava) · veredito documentado",
+    "titulo": "Perícia Contábil Independente — ITERJ × MGS Clean (Contrato 005/2021)",
+    "subtitulo": "Verificação de duplicidade e de aderência pago×devido · OBs 2021–2026 (SIAFE direto) · reajustes na fonte primária · ASSCONT refutada",
     "data": datetime.now().strftime("%d/%m/%Y"),
     "analista": "JFN — Núcleo de Fiscalização (automatizado)",
     "metodologia": "OB=liquidação · competência/NL/RE/PD · fonte primária (SIAFE+SEI) ponderada vs. derivada · padrão Kroll/Deloitte",
     "score": 18, "faixa": "BAIXO",
-    "top_flags": ["Duplicidade NÃO evidenciada (NLs distintas por competência)",
-                  "Reajustes confirmados na fonte primária (9,91/6,01/6,20%) — ASSCONT correta",
-                  "Reconciliação do órgão: crédito R$ 56.044,28 à MGS (sob AUDIN)",
-                  "Resíduo confirmatório: 3 NFs de 2022-23 (processos a localizar)"],
+    "top_flags": ["Duplicidade NÃO evidenciada — 55 OBs cobrem os 52 meses (cada mês pago 1×)",
+                  "Reajustes provados ao centavo (apostilado Δ×9); efetivo 8,69/5,81/5,48% — sem inflar",
+                  "Saldo R$ 56.044,28 da ASSCONT REFUTADO (erro aritmético + bruto×líquido)",
+                  "Resíduo confirmatório: 3 NFs de 2022-23 (não altera veredito)"],
     "secoes": secoes,
     "proveniencia": [
         {"dado": "OBs/NL/RE/PD ITERJ→MGS", "estado": "REAL", "fonte": "SIAFE-Rio direto (raspagem itkava/CDP)", "data": "19/06/2026"},
         {"dado": "NL por competência; reconciliação; glosas", "estado": "REAL", "fonte": "Árvore SEI 330005/* (itkava)", "data": "19/06/2026"},
     ],
-    "ressalva": ("Duplicidade não evidenciada, com forte base documental. Documento de reconciliação é derivado "
-                 "(órgão interessado), ponderado. NFs 2024-2026 obtidas em texto via íntegra; 3 NFs de 2022-2023 "
-                 "(05/2022, 09/2023, 11/2023) não inspecionadas — confirmatório, não altera o veredito. Indício ≠ acusação."),
+    "ressalva": ("Perícia independente: veredito assenta na reconciliação primária (SIAFE + registro de reajustes), "
+                 "NÃO na peça da ASSCONT (parte interessada), que foi refutada. Reajustes provados ao centavo. "
+                 "Comparação pago(líquido)×devido(bruto) é macro-consistente; tie centavo-exato exige as OBs de "
+                 "retenção. 3 NFs de 2022-23 não inspecionadas — confirmatório, não altera o veredito. Indício ≠ acusação."),
 }
 nome = f"relatorio_iterj_mgs_final_{datetime.now().date()}"
 destino = str(REPO / "reports" / f"{nome}.pdf")
@@ -117,16 +133,16 @@ if "--no-send" in sys.argv:
 def key(n):
     m = re.search(rf"^{n}=(.+)$", ENV.read_text(), re.M); return m.group(1).strip().strip('"').strip("'") if m else ""
 tok, chat = key("TELEGRAM_BOT_TOKEN"), key("TELEGRAM_CHAT_ID"); base = f"https://api.telegram.org/bot{tok}"
-msg = ("📑 *ITERJ × MGS Clean — Relatório FINAL (duplicidade)* — PDF\n"
-       "Contrato 005/2021 · SIAFE direto + árvore SEI (itkava)\n\n"
-       "• Veredito: *duplicidade NÃO evidenciada* (documentado)\n"
-       "• Descasamentos = retroativo de repactuação + ciclo Nov-Nov + glosas + splits\n"
-       "• *Primária:* 1 NL por competência; gêmeas 10/2025 com NLs distintas\n"
-       "• Reconciliação do ITERJ: *crédito R$ 56.044,28 à MGS*; sob *AUDIN*\n"
-       "• Ressalva honesta: imagem da NF não OCR'd (gargalo de tooling)\n"
+msg = ("📑 *ITERJ × MGS Clean — PERÍCIA CONTÁBIL INDEPENDENTE* — PDF\n"
+       "Contrato 005/2021 · 55 OBs · R$ 5.038.369,24 (SIAFE direto)\n\n"
+       "• *Duplicidade NÃO evidenciada*: 55 OBs cobrem os *52 meses* (cada mês pago 1×); gêmeas = recuperação de mês vizinho + splits (mesmo RE)\n"
+       "• *Reajustes provados ao centavo* (apostilado Δ×9): 90.419→98.276→103.988→109.687; efetivo 8,69/5,81/5,48% (CCT só na mão-de-obra) — *sem inflar*\n"
+       "• *Saldo R$ 56.044,28 da ASSCONT REFUTADO* (erro aritmético + crédito-fantasma bruto×líquido) — não confiamos na peça do órgão\n"
+       "• *Sem dano ao erário; sem pagamento a maior*\n"
+       "• Resíduo confirmatório: 3 NFs de 2022-23 (não altera o veredito)\n"
        "• Rating 🟢 BAIXO · indício ≠ acusação")
 print("msg:", httpx.post(f"{base}/sendMessage", data={"chat_id": chat, "text": msg, "parse_mode": "Markdown"}, timeout=30).json().get("ok"))
 with open(destino, "rb") as f:
-    print("pdf:", httpx.post(f"{base}/sendDocument", data={"chat_id": chat, "caption": "ITERJ×MGS — Relatório final (duplicidade afastada, documentado)"},
-          files={"document": ("relatorio_iterj_mgs_final.pdf", f, "application/pdf")}, timeout=60).json().get("ok"))
+    print("pdf:", httpx.post(f"{base}/sendDocument", data={"chat_id": chat, "caption": "ITERJ×MGS — Perícia contábil independente (duplicidade afastada; ASSCONT refutada)"},
+          files={"document": ("pericia_iterj_mgs_independente.pdf", f, "application/pdf")}, timeout=60).json().get("ok"))
 con.close()
