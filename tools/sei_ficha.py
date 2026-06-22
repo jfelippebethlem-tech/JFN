@@ -64,6 +64,8 @@ _SIST = ("Você é analista de auditoria de contratação pública (controle ext
          "for o regime): dispensa/inexigibilidade (arts. 74/75) bem fundamentada?, presença de ETP/DFD/TR/"
          "parecer jurídico/pesquisa de preços, habilitação, publicidade e prazos; cite o ARTIGO no achado. "
          "Cada perícia: 'achados' (lista curta), 'verificar' (o que conferir), 'conclusao' (1-2 frases). "
+         "Anote em 'duvidas' as DÚVIDAS ABERTAS da perícia — o que NÃO foi possível determinar e POR QUÊ "
+         "(dado ausente no trecho, fonte externa necessária): elas alimentam o aprendizado contínuo. "
          "Sem dado no texto = [] / \"\". "
          "REGRAS: (1) factual — NUNCA invente; campo sem dado no texto = \"\" ou []. "
          "(2) 'resumo' no MÁXIMO 2 frases; 'analise' 2-4 frases; cada 'ponto' 1 frase; sem repetir. "
@@ -81,6 +83,7 @@ _CAMPOS = ('{"objeto": "o que se contrata (1 frase)", "modalidade": "pregão/dis
            '"analise": "análise raciocinada p/ auditoria (2-4 frases): o que chama atenção, por quê, e o que verificar", '
            '"pericia_contabil": {"achados": ["indício contábil a verificar"], "verificar": ["o que conferir (NF/planilha de custos/OB paga)"], "conclusao": "1-2 frases (empenho≠liquidação≠OB; OB=pago; INDISPONÍVEL≠0)"}, '
            '"pericia_juridica": {"achados": ["vício/indício + artigo (Lei 14.133/2021 ou 8.666/93)"], "verificar": ["o que conferir no processo"], "conclusao": "1-2 frases (presunção de regularidade)"}, '
+           '"duvidas": ["dúvida aberta da perícia: o que não deu p/ determinar e por quê"], '
            '"relevante": true, "resumo": "1-2 frases do que importa p/ auditoria"}')
 
 # FEW-SHOT: 1 exemplo input→ficha ideal "ensina" o modelo fraco (formato + profundidade esperada).
@@ -100,6 +103,7 @@ _EXEMPLO_FICHA = ('{"objeto": "Aquisição de cateter venoso central (insumo de 
                   '"analise": "Adesão a ata de RP de outro órgão (carona) para insumo de saúde de baixo valor, com parecer opinando pela legalidade. Risco baixo, mas convém conferir a vantajosidade do preço da carona ante o mercado (art. 86 Lei 14.133) e a real necessidade da demanda do CBMERJ.", '
                   '"pericia_contabil": {"achados": ["valor estimado R$ 17.156,00 sem planilha de custos/pesquisa de preços no trecho — base do preço não demonstrada"], "verificar": ["pesquisa de preços que lastreou o estimado", "se houve empenho/liquidação/OB (despesa executada) ou apenas estimativa"], "conclusao": "Baixo valor; não há evidência de PAGAMENTO (OB) no trecho — é estimativa, não despesa liquidada. Conferir a pesquisa de preços que sustenta o R$ 17.156,00."}, '
                   '"pericia_juridica": {"achados": ["adesão a ata de RP de outro órgão (carona) — exige demonstração de vantajosidade (art. 86, Lei 14.133/2021)"], "verificar": ["justificativa de vantajosidade da adesão", "anuência do órgão gerenciador e respeito ao limite de caronas"], "conclusao": "Carona admissível, porém condicionada à vantajosidade do art. 86; parecer opina pela legalidade. Conferir a fundamentação da vantajosidade."}, '
+                  '"duvidas": ["o trecho não traz o valor efetivamente PAGO (OB) nem a pesquisa de preços que lastreia o estimado — execução financeira e vantajosidade ficam em aberto"], '
                   '"relevante": true, "resumo": "Adesão a ata de RP p/ cateter ao CBMERJ, R$ 17.156,00. Verificar vantajosidade da carona."}')
 
 
@@ -124,12 +128,35 @@ _MAX_TXT = int(os.environ.get("SEI_FICHA_MAX_TXT", "4500"))
 _MAX_TOKENS = int(os.environ.get("SEI_FICHA_MAX_TOKENS", "8000"))
 
 
+# Loop de aprendizado: as lições de perícia (memoria 'metodo', chave 'pericia:*') geradas pelo
+# tools/pericia_aprendizado.py são REINJETADAS aqui. Best-effort + cacheado por processo (não pesa no
+# volume; cada run de cron reimporta o módulo → pega as lições mais recentes). Falha = perícia segue sem.
+_APREND_CACHE: str | None = None
+
+
+def _aprendizados_pericia() -> str:
+    global _APREND_CACHE
+    if _APREND_CACHE is not None:
+        return _APREND_CACHE
+    txt = ""
+    try:
+        from compliance_agent.llm.memoria import lembrar
+        regras = lembrar("metodo", chave="pericia", min_confianca=0.0)
+        if regras:
+            txt = ("\n\nLIÇÕES DE PERÍCIA ACUMULADAS (aplique — vêm de dúvidas/erros de perícias passadas):\n"
+                   + "\n".join(f"- {(r.get('valor') or '')[:240]}" for r in regras[:10]))
+    except Exception:
+        txt = ""
+    _APREND_CACHE = txt
+    return txt
+
+
 def _prompt(texto: str) -> list[dict]:
     # ENSINAR (few-shot): mostra 1 par TEXTO→FICHA ideal antes de pedir o real. Vira o jogo p/ modelo fraco.
     p = (f"Formato da FICHA (JSON):\n{_CAMPOS}\n\n"
          f"=== EXEMPLO ===\nTEXTO:\n{_EXEMPLO_TXT}\nFICHA:\n{_EXEMPLO_FICHA}\n\n"
          f"=== AGORA (mesmo formato) ===\nTEXTO:\n{(texto or '')[:_MAX_TXT]}\nFICHA:")
-    return [{"role": "system", "content": _SIST}, {"role": "user", "content": p}]
+    return [{"role": "system", "content": _SIST + _aprendizados_pericia()}, {"role": "user", "content": p}]
 
 
 _AUTH = Path.home() / ".hermes" / "auth.json"
