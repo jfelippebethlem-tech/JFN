@@ -23,7 +23,9 @@ except Exception:
 from tools.sei_ficha import STEPFUN, _refresh_nous_se_preciso, conteudo_real, extrair_ficha
 
 CACHE = _ROOT / "data" / "sei_cache"
-CAMPO_NOVO = "situacao"  # marcador do schema atual (Fase lifecycle); se a ficha não tem, re-extrai
+# marcador do schema atual (versão da ficha). v2 = "pericia": ficha agora inclui perícia contábil+jurídica.
+# Bumpar este valor faz o re-fichador re-extrair TODO o acervo com o schema novo (auto-cura via cron, bounded).
+CAMPO_NOVO = "pericia"
 
 
 def _precisa(d: dict, forca: bool) -> bool:
@@ -69,10 +71,10 @@ async def main():
         d["_ficha_schema"] = CAMPO_NOVO
         Path(caminho).write_text(json.dumps(d, ensure_ascii=False), encoding="utf-8")
         feitos += 1
-        # CAMPO_NOVO pode ser lista (ex.: 'documentos') ou string (ex.: 'situacao'): logar robusto ao tipo.
-        v = f.get(CAMPO_NOVO)
-        info = f"{len(v)} itens" if isinstance(v, list) else (v or "—")
-        print(f"  [{feitos}] {Path(caminho).name} → {CAMPO_NOVO}={info} ({time.time()-t0:.0f}s)", flush=True)
+        # reporta presença da perícia (o schema v2) + a situação, robusto ao tipo.
+        tem_per = "perícia✓" if isinstance(f.get("pericia_contabil"), dict) else "perícia—"
+        sit = f.get("situacao") or "—"
+        print(f"  [{feitos}] {Path(caminho).name} → {tem_per} situacao={sit} ({time.time()-t0:.0f}s)", flush=True)
     print(f"FIM re-ficha: {feitos} refichados, {pulados} já no schema novo, {erros} erros.", flush=True)
 
 

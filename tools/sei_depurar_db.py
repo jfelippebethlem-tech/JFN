@@ -44,6 +44,8 @@ CREATE TABLE IF NOT EXISTS sei_ficha (
   datas           TEXT,   -- JSON array
   red_flags       TEXT,   -- JSON array
   documentos      TEXT,   -- JSON array [{tipo,ponto}]
+  pericia_contabil TEXT,  -- JSON {achados[],verificar[],conclusao} — perícia contábil de triagem (sweep)
+  pericia_juridica TEXT,  -- JSON {achados[],verificar[],conclusao} — perícia jurídica de triagem (sweep)
   n_docs          INTEGER,
   fonte_modelo    TEXT,
   cached_at       TEXT,
@@ -65,6 +67,9 @@ def _conectar() -> sqlite3.Connection:
     cols = {r[1] for r in con.execute("PRAGMA table_info(sei_ficha)")}
     if "situacao" not in cols:
         con.execute("ALTER TABLE sei_ficha ADD COLUMN situacao TEXT")
+    for _c in ("pericia_contabil", "pericia_juridica"):
+        if _c not in cols:
+            con.execute(f"ALTER TABLE sei_ficha ADD COLUMN {_c} TEXT")
     return con
 
 
@@ -104,14 +109,24 @@ def depurar(stats_only: bool = False) -> dict:
         numero = _numero(rec, ficha, p.name)
         if not numero:
             continue
-        vals = {c: (ficha.get(c) or "") for c in _CAMPOS}
+        def _scalar(v):  # o modelo às vezes devolve lista/dict onde se espera string → coage (SQLite não binda list/dict)
+            if isinstance(v, list):
+                return "; ".join(str(x) for x in v if x not in (None, ""))
+            if isinstance(v, dict):
+                return json.dumps(v, ensure_ascii=False)
+            return v if v is not None else ""
+        vals = {c: _scalar(ficha.get(c)) for c in _CAMPOS}
         listas = {c: json.dumps(ficha.get(c) or [], ensure_ascii=False) for c in _LISTAS}
         docs = ficha.get("documentos") or []
+        # perícias = objetos {achados[],verificar[],conclusao}; persiste como JSON ("" se ausente)
+        per_c = json.dumps(ficha.get("pericia_contabil"), ensure_ascii=False) if isinstance(ficha.get("pericia_contabil"), dict) else ""
+        per_j = json.dumps(ficha.get("pericia_juridica"), ensure_ascii=False) if isinstance(ficha.get("pericia_juridica"), dict) else ""
         cur.execute(
             """INSERT INTO sei_ficha
                (numero_sei,objeto,modalidade,fundamento_legal,resumo,analise,nivel_risco,situacao,relevante,
-                valores,cnpjs,partes,datas,red_flags,documentos,n_docs,fonte_modelo,cached_at,atualizado_em)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
+                valores,cnpjs,partes,datas,red_flags,documentos,pericia_contabil,pericia_juridica,
+                n_docs,fonte_modelo,cached_at,atualizado_em)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,datetime('now'))
                ON CONFLICT(numero_sei) DO UPDATE SET
                  objeto=excluded.objeto, modalidade=excluded.modalidade,
                  fundamento_legal=excluded.fundamento_legal, resumo=excluded.resumo,
@@ -119,12 +134,13 @@ def depurar(stats_only: bool = False) -> dict:
                  relevante=excluded.relevante,
                  valores=excluded.valores, cnpjs=excluded.cnpjs, partes=excluded.partes,
                  datas=excluded.datas, red_flags=excluded.red_flags, documentos=excluded.documentos,
+                 pericia_contabil=excluded.pericia_contabil, pericia_juridica=excluded.pericia_juridica,
                  n_docs=excluded.n_docs, fonte_modelo=excluded.fonte_modelo,
                  cached_at=excluded.cached_at, atualizado_em=datetime('now')""",
             (numero, vals["objeto"], vals["modalidade"], vals["fundamento_legal"], vals["resumo"],
              vals["analise"], vals["nivel_risco"], vals["situacao"], 1 if ficha.get("relevante") else 0,
              listas["valores"], listas["cnpjs"], listas["partes"], listas["datas"],
-             listas["red_flags"], listas["documentos"], len(docs),
+             listas["red_flags"], listas["documentos"], per_c, per_j, len(docs),
              rec.get("_ficha_modelo") or "", rec.get("_cached_at") or ""))
         gravados += 1
     if not stats_only:
