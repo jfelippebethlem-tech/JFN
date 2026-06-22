@@ -14,7 +14,13 @@ Modo COMPARA: roda a MESMA extração com um modelo BARATO (grátis-ish) e um ME
   • A FICHA é ÍNDICE/TRIAGEM, NUNCA a análise final. Os PRODUTOS (/relatorio, /orgao, parecer Lex e
     qualquer ANÁLISE do conteúdo SEI) usam IA FORTE (gemini, via `direcionamento_cerebro.gerar_gemini`/
     `gerar_sync`) — ex.: `lex.analise_discursiva`. NÃO ligar a ficha do stepfun no parecer como análise.
-  • Regra: stepfun = coletar/indexar (volume, grátis); gemini = analisar/entregar (qualidade impecável).
+  • PERÍCIA NA FICHA (`pericia_contabil`/`pericia_juridica`): a ficha agora carrega uma PERÍCIA DE TRIAGEM
+    contábil + jurídica em TODO processo (pedido do dono: "perícia em todos os processos sweepados"). É
+    INDICADOR INTERNO de triagem (indício≠acusação, presunção de regularidade) — NÃO a perícia definitiva:
+    a perícia AUTORITATIVA continua sendo a camada gemini dos produtos (Lex/relatório). O sweep dá a 1ª
+    passada forense em 100% dos processos; o gemini aprofunda os relevantes. NÃO surfar a perícia do
+    stepfun como parecer final.
+  • Regra: stepfun = coletar/indexar/triar (volume, grátis); gemini = analisar/entregar (qualidade impecável).
 
 Uso:
     PYTHONPATH=. .venv/bin/python -m tools.sei_ficha --comparar --n 10
@@ -48,6 +54,17 @@ _SIST = ("Você é analista de auditoria de contratação pública (controle ext
          "termo de encerramento/conclusão, despacho de arquivamento, ou andamento que diga o estado: use "
          "'arquivado', 'concluido' ou 'em andamento'. Se o texto NÃO declarar o estado, deixe \"\" (NUNCA "
          "deduza encerramento por ausência de movimentação — só sinal explícito). "
+         "PERÍCIA (SEMPRE as DUAS — indicadores internos de TRIAGEM, indício ≠ acusação, presunção de "
+         "regularidade; aponte o que VERIFICAR, NUNCA acuse): "
+         "(A) 'pericia_contabil' — confronte valores e execução financeira: empenho ≠ liquidação ≠ OB (só a "
+         "Ordem Bancária é PAGAMENTO; NUNCA trate empenho como 'pago'); aponte indícios de sobrepreço, "
+         "fracionamento de despesa, duplicidade por competência, aditivo além do limite legal, reajuste/"
+         "repactuação indevidos; INDISPONÍVEL ≠ 0 (dado ausente ≠ valor zero). "
+         "(B) 'pericia_juridica' — adequação da modalidade e do fundamento à Lei 14.133/2021 (ou 8.666/93 se "
+         "for o regime): dispensa/inexigibilidade (arts. 74/75) bem fundamentada?, presença de ETP/DFD/TR/"
+         "parecer jurídico/pesquisa de preços, habilitação, publicidade e prazos; cite o ARTIGO no achado. "
+         "Cada perícia: 'achados' (lista curta), 'verificar' (o que conferir), 'conclusao' (1-2 frases). "
+         "Sem dado no texto = [] / \"\". "
          "REGRAS: (1) factual — NUNCA invente; campo sem dado no texto = \"\" ou []. "
          "(2) 'resumo' no MÁXIMO 2 frases; 'analise' 2-4 frases; cada 'ponto' 1 frase; sem repetir. "
          "(3) Responda SOMENTE o objeto JSON (começa com { e termina com }), SEM texto antes/depois, SEM ```.")
@@ -62,6 +79,8 @@ _CAMPOS = ('{"objeto": "o que se contrata (1 frase)", "modalidade": "pregão/dis
            '"nivel_risco": "baixo|medio|alto", '
            '"situacao": "arquivado|concluido|em andamento|\\"\\" (SÓ se o texto declarar explicitamente; senão \\"\\")", '
            '"analise": "análise raciocinada p/ auditoria (2-4 frases): o que chama atenção, por quê, e o que verificar", '
+           '"pericia_contabil": {"achados": ["indício contábil a verificar"], "verificar": ["o que conferir (NF/planilha de custos/OB paga)"], "conclusao": "1-2 frases (empenho≠liquidação≠OB; OB=pago; INDISPONÍVEL≠0)"}, '
+           '"pericia_juridica": {"achados": ["vício/indício + artigo (Lei 14.133/2021 ou 8.666/93)"], "verificar": ["o que conferir no processo"], "conclusao": "1-2 frases (presunção de regularidade)"}, '
            '"relevante": true, "resumo": "1-2 frases do que importa p/ auditoria"}')
 
 # FEW-SHOT: 1 exemplo input→ficha ideal "ensina" o modelo fraco (formato + profundidade esperada).
@@ -79,6 +98,8 @@ _EXEMPLO_FICHA = ('{"objeto": "Aquisição de cateter venoso central (insumo de 
                   '"nivel_risco": "baixo", '
                   '"situacao": "", '
                   '"analise": "Adesão a ata de RP de outro órgão (carona) para insumo de saúde de baixo valor, com parecer opinando pela legalidade. Risco baixo, mas convém conferir a vantajosidade do preço da carona ante o mercado (art. 86 Lei 14.133) e a real necessidade da demanda do CBMERJ.", '
+                  '"pericia_contabil": {"achados": ["valor estimado R$ 17.156,00 sem planilha de custos/pesquisa de preços no trecho — base do preço não demonstrada"], "verificar": ["pesquisa de preços que lastreou o estimado", "se houve empenho/liquidação/OB (despesa executada) ou apenas estimativa"], "conclusao": "Baixo valor; não há evidência de PAGAMENTO (OB) no trecho — é estimativa, não despesa liquidada. Conferir a pesquisa de preços que sustenta o R$ 17.156,00."}, '
+                  '"pericia_juridica": {"achados": ["adesão a ata de RP de outro órgão (carona) — exige demonstração de vantajosidade (art. 86, Lei 14.133/2021)"], "verificar": ["justificativa de vantajosidade da adesão", "anuência do órgão gerenciador e respeito ao limite de caronas"], "conclusao": "Carona admissível, porém condicionada à vantajosidade do art. 86; parecer opina pela legalidade. Conferir a fundamentação da vantajosidade."}, '
                   '"relevante": true, "resumo": "Adesão a ata de RP p/ cateter ao CBMERJ, R$ 17.156,00. Verificar vantajosidade da carona."}')
 
 
@@ -94,8 +115,9 @@ def _carregar_env_completo():
 
 
 # Tamanho do trecho enviado ao LLM. Payloads grandes (>~5k) fazem o GATEWAY do nous cortar (502/503 =
-# timeout upstream, NÃO o servidor caindo). 3500 cobre o essencial (objeto/valores/partes estão no começo).
-_MAX_TXT = int(os.environ.get("SEI_FICHA_MAX_TXT", "3500"))
+# timeout upstream, NÃO o servidor caindo). 4500 fica ABAIXO do teto e dá mais lastro p/ a perícia
+# contábil/jurídica (valores, fundamento e execução nem sempre estão só no começo do docket).
+_MAX_TXT = int(os.environ.get("SEI_FICHA_MAX_TXT", "4500"))
 
 # Teto de tokens da RESPOSTA dos modelos de raciocínio (stepfun/cerebras): precisa caber o `reasoning`
 # (em volume) + o JSON final. 4000 era curto e cortava o JSON ("JSON inválido"); 8000 dá folga. Env-tunável.
