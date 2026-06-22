@@ -89,10 +89,12 @@ def _meses_ano(y):
     if y == 2026: return [f"2026-{m:02d}" for m in (1, 2, 3)]
     return [f"{y}-{m:02d}" for m in range(1, 13)]
 _pago_ano = {ex: s for ex, n, s in rows}
-_devido = []  # (ano, meses, bruto_devido, pago_liquido)
+_RET = 0.09045  # retenção medida na fonte: 1 − (OB 99.766,61 ÷ CCT24 109.687,73) = 9,05% (INSS+IRRF)
+# Admin quita o BRUTO (líquido à empresa + retenção ao fisco). Pago bruto = OB líquido ÷ (1−retenção).
+_devido = []  # (ano, meses, bruto_devido, bruto_pago)
 for _y in (2021, 2022, 2023, 2024, 2025, 2026):
     _ms = _meses_ano(_y); _b = sum(_tarifa(m) for m in _ms)
-    _devido.append((_y, len(_ms), _b, _pago_ano.get(_y, 0.0)))
+    _devido.append((_y, len(_ms), _b, _pago_ano.get(_y, 0.0) / (1 - _RET)))
 _tot_bruto = sum(d[2] for d in _devido)
 _tot_pago = sum(d[3] for d in _devido)
 
@@ -130,8 +132,15 @@ secoes.append({"titulo": "3. MEMÓRIA DE CÁLCULO — pago × devido", "html":
     + tab(["Evento", "Índice CCT", "Valor apostilado (R$)", "Δ mensal = ÷9 (R$)", "Tarifa bruta (R$)"],
           [[a, b, c, d, f"<b>{e}</b>"] for a, b, c, d, e in _apost])
     + "<p class='nota'>O índice CCT incide só sobre a mão-de-obra → o aumento <b>efetivo na tarifa cheia</b> é menor "
-      "(8,69% / 5,81% / 5,48%): repactuação componente-a-componente (IN 05/2017), não % flat. Em 2025 a tarifa "
-      "evolui para R$ 118.441,47 (CCT25).</p>"
+      "(8,69% / 5,81% / 5,48%): repactuação componente-a-componente, não % flat. Em 2025 a tarifa evolui para "
+      "R$ 118.441,47 (CCT25).</p>"
+    + "<p class='nota'><b>FONTES de cada número (rastreabilidade):</b><br>"
+      "• <b>Base R$ 90.419,34</b> = valor pactuado <b>R$ 1.085.032,09 ÷ 12</b> — contrato 005/2021 (íntegra SEI-330020/000762/2021, peça Relatório/GERAF).<br>"
+      "• <b>Progressão bruta por CCT</b> (90.419,34→98.276,62→103.988,53→109.687,73→118.441,47) — peça do processo “A evolução do custo mensal foi…”.<br>"
+      "• <b>1º reajuste 9,91% (CCT 2022)</b> formalizado no <b>documento SEI 37.621.800</b> (Convenção Coletiva de Trabalho que formaliza a repactuação).<br>"
+      "• <b>Índices e data-base oficiais</b> (9,91% — 27/07/2022 · 6,01% — 31/07/2023 · 6,20% — 01/03/2024) — Registro de Reajustes do contrato no <b>SIAFE-Rio</b>.<br>"
+      "• <b>Cláusula 8.2.3</b>: índice de preços dos insumos = <b>IGP-M/IBGE</b> (índice pactuado); a mão-de-obra segue a <b>CCT/dissídio</b> — daí a repactuação ser componente-a-componente (efetivo &lt; % do dissídio).<br>"
+      "• <b>Renovação Nov-a-Nov</b> (21/11→19/11); data-base migrou de julho (2022-23) p/ março (2024+).</p>"
     + f"<p><b>3.2. Cobertura dos 52 meses do contrato</b> (Dez/2021 a Mar/2026). Cada mês de serviço deve ser pago "
       f"uma vez. As {N} OBs distribuem-se assim:</p>"
     + tab(["Item", "Qtd.", "Detalhe"],
@@ -146,19 +155,27 @@ secoes.append({"titulo": "3. MEMÓRIA DE CÁLCULO — pago × devido", "html":
       f"de rótulo ausente (competência mal-digitada — pagamento de mês em atraso), descontados {len(_splits)} split(s) "
       f"(mesmo RE) e {len(_compl)} complemento(s) de reajuste. Resultado: <b>cada um dos {len(_contrato)} meses do "
       f"contrato foi pago exatamente uma vez</b>, à tarifa vigente. <b>Pago = devido.</b> Nenhuma OB estornada.</p>"
-    + "<p><b>3.3. Bruto DEVIDO por ano (NF-face) × líquido PAGO (OB)</b> — o teste direto de \"recebeu certo?\":</p>"
-    + tab(["Exercício", "Meses", "Tarifa bruta vigente (R$)", "BRUTO devido (R$)", "LÍQUIDO pago — OB (R$)", "Gap"],
-          [[d[0], d[1], "R$ "+brl(_tarifa(_meses_ano(d[0])[-1])), "R$ "+brl(d[2]), "R$ "+brl(d[3]),
-            (f"{(1-d[3]/d[2])*100:.1f}%" if d[2] else "—")] for d in _devido]
-          + [["<b>TOTAL</b>", f"<b>{sum(d[1] for d in _devido)}</b>", "", f"<b>R$ {brl(_tot_bruto)}</b>",
-              f"<b>R$ {brl(_tot_pago)}</b>", f"<b>{(1-_tot_pago/_tot_bruto)*100:.1f}%</b>"]])
-    + f"<p class='nota'><b>Leitura:</b> o BRUTO devido (NF-face) em 2021–2026 é <b>R$ {brl(_tot_bruto)}</b>; o "
-      f"LÍQUIDO pago (OB) é <b>R$ {brl(_tot_pago)}</b>. O gap total de <b>{(1-_tot_pago/_tot_bruto)*100:.1f}%</b> "
-      f"(R$ {brl(_tot_bruto-_tot_pago)}) corresponde à <b>retenção tributária na fonte (INSS + IRRF ≈ 9%)</b> — que o "
-      f"Estado recolhe por conta da empresa — somada à <b>glosa</b> de 2025/26. Ou seja, <b>líquido ≈ bruto × 0,91</b>: "
-      f"a MGS <b>recebeu o correto</b>, sem subpagamento nem pagamento a maior. <i>Obs.: o desvio por ano isolado é "
-      f"ruído de competência (mês prestado num ano, pago no seguinte — ex.: Dez/2021 pago em Jan/2022); o total é o "
-      f"número robusto.</i></p>"})
+    + "<p><b>3.3. Recebeu o BRUTO devido? — prova por Nota Fiscal (sem aproximação)</b></p>"
+    + "<p class='nota'><b>Ponte bruto↔líquido provada ao centavo:</b> nos meses com NF e OB no mesmo valor "
+      "(ago–dez/2024, jan/fev e jun/2025), a NF bruta é <b>R$ 109.687,73</b> e a OB líquida <b>R$ 99.766,61</b> → "
+      "retenção <b>9,04% exata</b> (INSS+IRRF, recolhida pelo Estado por conta da empresa). A Administração "
+      "<b>quita o BRUTO</b>: líquido à empresa + retenção ao fisco.</p>"
+    + tab(["Período (competência)", "Tarifa BRUTA devida (R$)", "Fonte", "BRUTO pago (prova)", "Status"],
+          [["Dez/2021 → ~Jun/2022", "90.419,34", "Contrato (1.085.032,09 ÷ 12)", "OB confirma pagto", "⚠ NF a inspecionar"],
+           ["~Jul/2022 → ~Jul/2023", "98.276,62", "CCT 2022 (doc SEI 37.621.800)", "OB confirma pagto", "⚠ NF a inspecionar"],
+           ["~Ago/2023 → Jun/2024", "103.988,53", "CCT 2023 (registro SIAFE)", "NF 3408/3739/3902/4150 = 103.988,53", "✅ NF-provado (2024)"],
+           ["Jul/2024 → ~Out/2025", "109.687,73", "CCT 2024 (registro SIAFE)", "NF 4689…6319 e 6776/7365/9368 = 109.687,73", "✅ NF-provado"],
+           ["Nov/2025 → Dez/2025", "118.441,47 (CCT25)", "CCT 2025 — face", "NF 12415/12849 = 113.184,14 (GLOSADO)", "✅ NF-provado (com glosa)"],
+           ["Jan/2026 → Mar/2026", "111.435,93", "4º Termo Aditivo", "NF 1125/1506 = 111.435,93", "✅ NF-provado"]])
+    + "<p class='nota'><b>Veredito em BRUTO, com a honestidade que uma perícia exige:</b><br>"
+      "• <b>Exercícios 2024, 2025 e 2026 (onde a NF foi inspecionada):</b> a face BRUTA da NF é <b>idêntica</b> à "
+      "tarifa contratual devida, ao centavo (109.687,73; e 113.184,14 já glosada). A OB líquida = NF × (1−9,04%). "
+      "→ <b>a MGS recebeu EXATAMENTE o bruto devido</b> (a glosa de 2025/26 é redução feita pelo Estado, não "
+      "subpagamento indevido à empresa).<br>"
+      "• <b>Exercícios 2021–2023:</b> as OBs comprovam o pagamento e a sequência de valores acompanha a tarifa "
+      "contratual, MAS a <b>face bruta das NFs desses anos ainda NÃO foi inspecionada</b> (processos de pagamento "
+      "2022-2023 na unidade 330020, a localizar). Em respeito ao rigor pericial, <b>NÃO afirmo certeza ao centavo "
+      "para 2021-2023</b> — é o único ponto em aberto. <b>INDISPONÍVEL ≠ irregular.</b></p>"})
 
 secoes.append({"titulo": "4. Verificação de duplicidade — primário vs. derivado", "html":
     tab(["Causa do descasamento de competência", "Evidência", "Tipo"],
@@ -202,16 +219,20 @@ secoes.append({"titulo": "7. CONCLUSÃO", "html":
     f"correspondem aos <b>{len(_contrato)} meses</b> do contrato (Dez/2021–Mar/2026): cada mês foi pago uma única "
     f"vez, à tarifa vigente. As competências com 2 OBs são recuperação de mês em atraso (rótulo mal-digitado), "
     f"splits sob o mesmo empenho e complementos de reajuste — não desembolso em dobro (§3.2). Nenhuma OB estornada.</p>"
-    f"<p><b>2. Os reajustes estão corretos</b>, provados <b>ao centavo</b> contra o registro oficial de Reajustes "
-    f"(SIAFE-Rio) pela regra do apostilamento Δ÷9 (§3.1). O índice CCT incide só na mão-de-obra (efetivo menor na "
-    f"tarifa cheia) — a contratada <b>não inflou</b> o reajuste.</p>"
-    f"<p><b>3. O saldo de R$ 56.044,28 alegado pela ASSCONT é REFUTADO</b> (erro aritmético “4×” em vez de 5 "
-    f"parcelas + crédito-fantasma por confusão bruto×líquido, §5). Não há dívida líquida comprovada do Estado.</p>"
-    f"<p><b>4. Não há dano ao erário nem pagamento a maior.</b> Eventual resíduo limita-se ao <b>retroativo de "
-    f"repactuação</b> (disputa de valor, em aberto), de natureza distinta de irregularidade.</p>"
-    f"<p style='margin-top:10px'><b>VEREDITO: 🟢 CONFORME</b> — duplicidade não evidenciada; pagamentos aderentes ao "
-    f"contrato e seus reajustes; saldo do órgão refutado. Presunção de legitimidade; indício ≠ acusação; "
-    f"INDISPONÍVEL ≠ irregular. Ressalva confirmatória: 3 NFs de 2022-2023 a inspecionar (não altera o veredito).</p>"})
+    f"<p><b>2. Os reajustes estão corretos</b>, provados <b>ao centavo</b>: os valores apostilados do registro de "
+    f"Reajustes (SIAFE-Rio) reconstroem a tarifa bruta (Δ÷9) e a <b>face bruta das NFs de 2024-2026 é idêntica à "
+    f"tarifa contratual</b> (109.687,73; 113.184,14 já glosada). Reajuste = repactuação componente-a-componente "
+    f"(CCT na mão-de-obra via doc SEI 37.621.800; IGP-M nos insumos, cláusula 8.2.3) — a contratada <b>não inflou</b>.</p>"
+    f"<p><b>3. RECEBEU O BRUTO DEVIDO?</b> A Administração quita o BRUTO (líquido à empresa + retenção de 9,04% ao "
+    f"fisco). <b>SIM nos exercícios com NF inspecionada (2024, 2025, 2026): a face bruta da NF = tarifa devida, ao "
+    f"centavo.</b> Para <b>2021-2023</b>, as OBs comprovam o pagamento e os valores acompanham a tarifa, mas a face "
+    f"bruta das NFs ainda não foi inspecionada → <b>certeza ao centavo PENDENTE</b> desses 3 exercícios (§3.3).</p>"
+    f"<p><b>4. Saldo R$ 56.044,28 da ASSCONT: REFUTADO</b> (erro aritmético “4×” + crédito-fantasma bruto×líquido, "
+    f"§5). Não há dano ao erário nem pagamento a maior. A glosa de 2025/26 é redução feita pelo Estado (disputa de "
+    f"valor), não subpagamento à empresa.</p>"
+    f"<p style='margin-top:10px'><b>VEREDITO: 🟢 CONFORME (com 1 ponto em aberto, declarado).</b> Sem duplicidade; "
+    f"reajustes corretos; bruto pago = bruto devido onde há NF (2024-2026); saldo do órgão refutado. "
+    f"<b>Único item pendente p/ certeza integral: inspeção das NFs de 2021-2023.</b> Indício ≠ acusação; INDISPONÍVEL ≠ irregular.</p>"})
 
 ctx = {
     "classificacao": "CONFIDENCIAL — USO INTERNO (controle externo)",
@@ -247,15 +268,16 @@ if "--no-send" in sys.argv:
 def key(n):
     m = re.search(rf"^{n}=(.+)$", ENV.read_text(), re.M); return m.group(1).strip().strip('"').strip("'") if m else ""
 tok, chat = key("TELEGRAM_BOT_TOKEN"), key("TELEGRAM_CHAT_ID"); base = f"https://api.telegram.org/bot{tok}"
-msg = ("📑 *PERÍCIA CONTÁBIL INDEPENDENTE — ITERJ × MGS Clean* (REFEITA, com memória de cálculo)\n"
+msg = ("📑 *PERÍCIA CONTÁBIL — ITERJ × MGS Clean* (refeita, em BRUTO, com fontes e memória de cálculo)\n"
        f"Contrato 005/2021 · {N} OBs · R$ {brl(TOTAL)} (SIAFE direto)\n\n"
-       "*CONCLUSÃO — 🟢 CONFORME:*\n"
-       "1) *Sem duplicidade*: as 55 OBs cobrem os *52 meses* do contrato — cada mês pago 1× (gêmeas = recuperação de mês atrasado + splits + complemento; §3.2).\n"
-       "2) *Reajustes corretos, provados ao centavo* (apostilado Δ÷9: 90.419→98.276→103.988→109.687); CCT só na mão-de-obra → efetivo 8,69/5,81/5,48% (§3.1) — sem inflar.\n"
-       "3) *Saldo R$ 56.044,28 da ASSCONT REFUTADO* (erro aritmético + crédito-fantasma bruto×líquido; §5).\n"
-       "4) *Sem dano ao erário, sem pagamento a maior.* Resíduo = só disputa de repactuação (valor).\n\n"
-       "📎 PDF com memória de cálculo completa (apostilamento, cobertura dos 52 meses, refutação ASSCONT, detalhe das 55 OBs).\n"
-       "_Resíduo confirmatório: 3 NFs de 2022-23 (não altera o veredito). Indício ≠ acusação._")
+       "*RECEBEU O BRUTO DEVIDO?*\n"
+       "✅ *2024, 2025, 2026 (NF inspecionada): SIM, ao centavo* — a face BRUTA da NF = tarifa contratual "
+       "(109.687,73; 113.184,14 já glosada). OB líquida = NF − 9,04% retenção (Estado quita o bruto: líquido à empresa + imposto ao fisco).\n"
+       "⚠️ *2021-2023: certeza ao centavo PENDENTE* — as OBs comprovam o pagamento e seguem a tarifa, mas a face bruta das NFs desses anos ainda não foi inspecionada (processos na unid. 330020, a localizar). Não afirmo certeza onde não inspecionei.\n\n"
+       "*Reajustes (fontes):* base 90.419,34 = contrato 1.085.032,09÷12 · CCT 2022 9,91% = doc SEI 37.621.800 · CCT23 6,01% / CCT24 6,20% (registro SIAFE) · cláusula 8.2.3 IGP-M nos insumos + CCT na mão-de-obra.\n"
+       "*Saldo R$ 56.044,28 da ASSCONT: REFUTADO* (erro aritmético + bruto×líquido).\n"
+       "*Sem dano ao erário, sem pagamento a maior.*\n\n"
+       "📎 PDF com memória de cálculo (apostilamento, prova por NF, cobertura 52 meses, refutação ASSCONT, 55 OBs).")
 print("msg:", httpx.post(f"{base}/sendMessage", data={"chat_id": chat, "text": msg, "parse_mode": "Markdown"}, timeout=30).json().get("ok"))
 with open(destino, "rb") as f:
     print("pdf:", httpx.post(f"{base}/sendDocument", data={"chat_id": chat, "caption": "ITERJ×MGS — Perícia contábil independente (duplicidade afastada; ASSCONT refutada)"},
