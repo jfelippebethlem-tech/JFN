@@ -531,3 +531,39 @@ real (pg.evaluate dispatchEvent change/blur) OU mudar o select por teclado (focu
 depois re-listar inputs ate o in_value_rtfFilter aparecer. So entao o type_filter funciona.
 ALTERNATIVA mais robusta (recomendada se isso resistir): abandonar o browser e ir de PPR HTTP
 replay (har2requests/mitmproxy capturando o POST do filtro uma vez) — vide secao 5/6.
+
+================================================================================
+7. SESSAO 2026-06-22 — PROCESSO SEI DE 2022PD00914 (SIAFE-1 LEGADO): ERRO INTERNO NA ROTA DE PD
+================================================================================
+ALVO: numero do Processo SEI do PD 2022PD00914, que (provado antes) NAO esta em grid
+algum (OB nem PD) — so no detalhe NL/Documento Habil. Fonte = SIAFE-1 LEGADO
+(www5.fazenda.rj.gov.br/SiafeRio), que tem 2021/2022/2023 (siafe2 so tem 2024-2026).
+PROBE UNICO (tools/siafe1_pd_detalhe_probe.py, 1 login, VM-guarded, foreground):
+  - Login OK (ex=2022, workspace=True), landing em apoioSiplag/apoioComunicaMain.jsp.
+  - Rota de menu Execucao > Execucao Financeira > "Acompanhamento de Execucao de PD"
+    (click por LABEL) -> "Ocorreu um erro interno" do servidor (tabela tplSip:pnlErroInterno).
+    Sem linha do PD, sem botao view.
+>>> INSIGHT CHAVE (nao re-martelar): o SIAFE-1 LEGADO roda framework LOGUS/SIPLAG
+    (ids 'tplSip:', path '/SiafeRio/logus/'), NAO Oracle ADF. TODO o guia secoes 3-8
+    (pt1:/disclosureAnchor/sdtFilter) e do SIAFE-2 e NAO se aplica ao menu do legado.
+    Por isso o click por label de menu estilo ADF erra/da erro interno.
+FATO QUE AJUDA: o sweep de OB do SIAFE-1 (siafe_ob_orcamentaria/siafe_sweep_full_1.json)
+    JA FUNCIONA no legado (2021/2022/2023 ingeridos, milhares de linhas) — entao a tela
+    OB tem caminho mapeado; falta mapear a tela "Acompanhamento de PD" do LEGADO.
+PROXIMO PASSO HONESTO (ordem): (a) ANTES de qualquer browser, verificar se o Processo ja
+    esta na base ingerida (coluna processo dos OBs/PDs do SIAFE-1); (b) so se faltar, fazer
+    1 probe de DESCOBERTA do menu real Logus/Siplag do SIAFE-1 (listar os <a>/ids do menu
+    pos-login), nunca chutar seletor ADF. SIAFE = sessao unica: pausar SEI sweep antes.
+
+VEREDITO (2026-06-22, re-sweep PROVADO — NAO re-tentar re-sweep p/ Processo):
+  Hipotese testada: o gap de Processo em 2021-2023 (so 2 de 87 UGs tem) seria coluna nao
+  capturada pelo sweep em massa. FALSO. Re-sweep da UG 297100/2022 pela tela OB Orcamentaria
+  no LEGADO (comando: JFN_SIAFE_LOGIN_URL=www5 ... --exercicio 2022 --por-ug 297100):
+  login OK, nav OK, ingeriu 1000 OBs — porem 0 COM PROCESSO. O alvo 2022OB00896 (IVB,
+  Julio Cesar de Farias Barbosa, R$978,86) continua processo='' (so RE=2022RE00038, NL='').
+  CONCLUSAO: o numero do Processo SEI esta EM BRANCO NA FONTE no grid OB do legado p/ a
+  maioria das UGs 2021-2023 (so a 010100/ALERJ preenche). Re-sweep NAO recupera. O dado, se
+  existir, so esta no Documento Habil (detalhe), cuja rota de menu no legado da erro interno.
+  => Perseguir o Processo legado por OB e BECO SEM SAIDA (branco na fonte + nav de detalhe
+  quebrada + ROI baixo). Caminho certo p/ ligar OB<->SEI em 2021-2023 = pelo lado do SEI
+  (sei_arvore/contratos), nao pelo grid do SIAFE-1. SIAFE-2 (2024-2026) ja tem 89-96%.
