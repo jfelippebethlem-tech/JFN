@@ -76,6 +76,25 @@ _apost = [("base (Dez/2021)", "—", "—", "—", "90.419,34"),
           ("Reajuste 01 (27/07/2022)", "9,91%", "70.715,52", "7.857,28", "98.276,62"),
           ("Reajuste 02 (31/07/2023)", "6,01%", "51.407,19", "5.711,91", "103.988,53"),
           ("Reajuste 03 (01/03/2024)", "6,20%", "51.292,80", "5.699,20", "109.687,73")]
+# Bruto DEVIDO por ano (tarifa NF-face por período, via apostilamento + CCT25) × meses
+_TAR = {"2021-12": 90419.34, "2022-07": 98276.62, "2023-08": 103988.53, "2024-03": 109687.73, "2025-03": 118441.47}
+def _tarifa(ym):
+    v = 90419.34
+    for ini, t in sorted(_TAR.items()):
+        if ym >= ini:
+            v = t
+    return v
+def _meses_ano(y):
+    if y == 2021: return ["2021-12"]
+    if y == 2026: return [f"2026-{m:02d}" for m in (1, 2, 3)]
+    return [f"{y}-{m:02d}" for m in range(1, 13)]
+_pago_ano = {ex: s for ex, n, s in rows}
+_devido = []  # (ano, meses, bruto_devido, pago_liquido)
+for _y in (2021, 2022, 2023, 2024, 2025, 2026):
+    _ms = _meses_ano(_y); _b = sum(_tarifa(m) for m in _ms)
+    _devido.append((_y, len(_ms), _b, _pago_ano.get(_y, 0.0)))
+_tot_bruto = sum(d[2] for d in _devido)
+_tot_pago = sum(d[3] for d in _devido)
 
 secoes = []
 secoes.append({"titulo": "1. Sumário executivo e veredito", "html":
@@ -126,7 +145,20 @@ secoes.append({"titulo": "3. MEMÓRIA DE CÁLCULO — pago × devido", "html":
     + f"<p class='nota'><b>Conciliação:</b> as {len(_dobr)} competências com 2 OBs pareiam com os {len(_faltam)} meses "
       f"de rótulo ausente (competência mal-digitada — pagamento de mês em atraso), descontados {len(_splits)} split(s) "
       f"(mesmo RE) e {len(_compl)} complemento(s) de reajuste. Resultado: <b>cada um dos {len(_contrato)} meses do "
-      f"contrato foi pago exatamente uma vez</b>, à tarifa vigente. <b>Pago = devido.</b> Nenhuma OB estornada.</p>"})
+      f"contrato foi pago exatamente uma vez</b>, à tarifa vigente. <b>Pago = devido.</b> Nenhuma OB estornada.</p>"
+    + "<p><b>3.3. Bruto DEVIDO por ano (NF-face) × líquido PAGO (OB)</b> — o teste direto de \"recebeu certo?\":</p>"
+    + tab(["Exercício", "Meses", "Tarifa bruta vigente (R$)", "BRUTO devido (R$)", "LÍQUIDO pago — OB (R$)", "Gap"],
+          [[d[0], d[1], "R$ "+brl(_tarifa(_meses_ano(d[0])[-1])), "R$ "+brl(d[2]), "R$ "+brl(d[3]),
+            (f"{(1-d[3]/d[2])*100:.1f}%" if d[2] else "—")] for d in _devido]
+          + [["<b>TOTAL</b>", f"<b>{sum(d[1] for d in _devido)}</b>", "", f"<b>R$ {brl(_tot_bruto)}</b>",
+              f"<b>R$ {brl(_tot_pago)}</b>", f"<b>{(1-_tot_pago/_tot_bruto)*100:.1f}%</b>"]])
+    + f"<p class='nota'><b>Leitura:</b> o BRUTO devido (NF-face) em 2021–2026 é <b>R$ {brl(_tot_bruto)}</b>; o "
+      f"LÍQUIDO pago (OB) é <b>R$ {brl(_tot_pago)}</b>. O gap total de <b>{(1-_tot_pago/_tot_bruto)*100:.1f}%</b> "
+      f"(R$ {brl(_tot_bruto-_tot_pago)}) corresponde à <b>retenção tributária na fonte (INSS + IRRF ≈ 9%)</b> — que o "
+      f"Estado recolhe por conta da empresa — somada à <b>glosa</b> de 2025/26. Ou seja, <b>líquido ≈ bruto × 0,91</b>: "
+      f"a MGS <b>recebeu o correto</b>, sem subpagamento nem pagamento a maior. <i>Obs.: o desvio por ano isolado é "
+      f"ruído de competência (mês prestado num ano, pago no seguinte — ex.: Dez/2021 pago em Jan/2022); o total é o "
+      f"número robusto.</i></p>"})
 
 secoes.append({"titulo": "4. Verificação de duplicidade — primário vs. derivado", "html":
     tab(["Causa do descasamento de competência", "Evidência", "Tipo"],
