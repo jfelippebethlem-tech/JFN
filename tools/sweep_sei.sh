@@ -58,6 +58,10 @@ $PRIO timeout 600  $PY -m tools.lex_pesquisa_internet --top 3 >> data/lex_pesqui
 # EXECUÇÃO DO CONTRATO (Gemini): o Lex avalia se a entrega foi comprovada e COERENTE com o objeto/
 # quantidade (prestação de contas, fiscalização/relatório fotográfico, plausibilidade física). Poucos/slot.
 $PRIO timeout 600  $PY -m tools.lex_execucao --top 4 >> data/lex_execucao.log 2>&1; say "lex_execucao rc=$?"
+# APRENDIZADO PROGRESSIVO DA PERÍCIA: agrega dúvidas/lacunas recorrentes das perícias do sweep → surfa os
+# TÓPICOS p/ nós (lex_feedback → nota do vault) + promove a regras de método (memoria 'metodo:pericia:*')
+# que o sei_ficha reinjeta no prompt da próxima perícia. Núcleo determinístico; síntese de regra = best-effort.
+$PRIO timeout 200  env PYTHONPATH=. $PY -m tools.pericia_aprendizado >> data/pericia_aprendizado.log 2>&1; say "pericia_aprend rc=$?"
 # FEEDBACK Lex/JFN → Claude Code (determinístico, sem LLM): consolida dificuldades/ideias do ciclo na nota do vault.
 $PRIO timeout 120  env PYTHONPATH=. $PY -m tools.lex_feedback --auto >> data/lex_feedback.log 2>&1; say "lex_feedback rc=$?"
 limpa_orfaos  # fecha SÓ os leftovers órfãos (não o server.py)
