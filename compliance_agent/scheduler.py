@@ -452,7 +452,7 @@ async def loop_relatorio(hora_execucao: int = HORA_RELATORIO):
 
 # ─── Ciclo completo de relatório (8:00) ───────────────────────────────────────
 
-async def rodar_ciclo_relatorio_diario():
+async def rodar_ciclo_relatorio_diario(args=None):
     """
     Ciclo completo de análise e relatório — chamado às 08:00.
     Coleta DOERJ, SIAFE2, roda todas as análises, gera PDF e envia ao Telegram.
