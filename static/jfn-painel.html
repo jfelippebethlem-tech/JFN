@@ -159,6 +159,7 @@ const TABS = [
   {id:'alertas',ic:'🚨', tl:'Alertas', render:renderAlertas},
   {id:'siafe',  ic:'💰', tl:'SIAFE',   render:renderSiafe},
   {id:'sweeps', ic:'🛰️', tl:'Sweeps',  render:renderSweeps},
+  {id:'validar',ic:'🏢', tl:'Validar', render:renderValidar},
   {id:'mais',   ic:'⋯',  tl:'Mais',    render:renderMais},
 ];
 let atual='geral';
@@ -269,6 +270,44 @@ async function sweep(acao){
   if(acao==='pausar' && !confirm('Pausar TODOS os sweeps?')) return;
   await J('/api/sweeps/'+acao,{method:'POST'});
   setTimeout(()=>ir('sweeps'),500);
+}
+
+// ── Validador de fachada (revisão humana 1-a-1) ──
+let _valLista=[], _valIdx=0;
+async function renderValidar(){
+  const d=await J('/api/fachada/revisar?limite=200');
+  _valLista=(d&&d.fachadas)||[]; _valIdx=0;
+  return sec('var(--rose)','Validador de fachada')+
+    `<div class="muted" style="font-size:13px;margin:-6px 0 12px">${_valLista.length} fachada(s) flagrada(s) p/ revisar. Veja o Street View, decida, e a base atualiza.</div>`+
+    `<div id="val-card">${_valCard()}</div>`;
+}
+function _valCard(){
+  if(_valIdx>=_valLista.length) return card('<div class="muted">✅ Tudo revisado nesta sessão. Recarregue a aba p/ buscar mais.</div>');
+  const f=_valLista[_valIdx];
+  const maps=(f.geo_lat&&f.geo_lon)?`https://www.google.com/maps/@${f.geo_lat},${f.geo_lon},19z`:`https://www.google.com/maps/search/${encodeURIComponent((f.endereco||'')+', '+(f.municipio||''))}`;
+  const sv=(f.geo_lat&&f.geo_lon)?`https://www.google.com/maps?layer=c&cbll=${f.geo_lat},${f.geo_lon}`:maps;
+  const motivo=f.nivel==='SEM_GOOGLE'?'Sem marcação no Google':f.nivel==='FECHADO_GOOGLE'?'Fechado permanentemente no Google':'Revisar fachada';
+  return card(
+    `<div class="dim">${_valIdx+1} de ${_valLista.length}</div>
+     <div style="font-weight:700;font-size:16px;margin:4px 0">${f.razao||f.cnpj}</div>
+     <div class="kv"><span class="k">Motivo do flag</span><b style="color:var(--rose)">${motivo}</b></div>
+     <div class="kv"><span class="k">Recebido do Estado</span><b>${fmtR(f.total_recebido)}</b></div>
+     <div class="kv"><span class="k">Endereço</span><b class="right" style="max-width:60%">${f.endereco||'—'}, ${f.municipio||''}/${f.uf||''}</b></div>
+     <div class="kv"><span class="k">CNPJ</span><b>${f.cnpj}</b></div>
+     <div class="btns"><a class="btn ghost" href="${sv}" target="_blank">🛰️ Street View</a><a class="btn ghost" href="${maps}" target="_blank">🗺️ Maps</a></div>
+     <input id="val-nota" placeholder="nota p/ o Claude (opcional)" style="margin-top:10px">
+     <div class="btns" style="margin-top:8px">
+       <button class="btn red" onclick="validar('suspeito')">🔴 Suspeito</button>
+       <button class="btn green" onclick="validar('ok')">🟢 Legítima</button>
+       <button class="btn ghost" onclick="validar('mais_info')">❓ Mais info</button>
+     </div>`);
+}
+async function validar(v){
+  const f=_valLista[_valIdx]; if(!f) return;
+  const nota=($('val-nota')||{}).value||'';
+  await J('/api/fachada/veredito',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cnpj:f.cnpj,veredito:v,nota})});
+  _valIdx++;
+  const el=$('val-card'); if(el) el.innerHTML=_valCard();
 }
 
 async function renderMais(){

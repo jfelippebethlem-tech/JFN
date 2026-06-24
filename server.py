@@ -1779,6 +1779,58 @@ async def api_compliance_reports_limpar(payload: Optional[dict] = None):
     return JSONResponse(content={"ok": True, "apagados": apagados})
 
 
+@app.get("/api/fachada/revisar")
+async def api_fachada_revisar(limite: int = 50):
+    """Lista fachadas FLAGRADAS ainda sem veredito humano, p/ o validador do painel (revisão 1-a-1).
+    Maior valor primeiro. Inclui motivo do flag, endereço e coordenada (link Street View no front)."""
+    import sqlite3 as _sq
+    DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "compliance.db")
+    try:
+        con = _sq.connect(f"file:{DB}?mode=ro", uri=True); con.row_factory = _sq.Row
+        vetados = {r[0] for r in con.execute("SELECT cnpj FROM fachada_veredito WHERE status IN ('real','pular','fachada','indicio')")}
+        rows = con.execute(
+            "SELECT cnpj, razao, endereco, municipio, uf, total_recebido, nivel, evidencia, geo_lat, geo_lon, "
+            "places_status, visual_classe FROM verificacao_sede "
+            "WHERE nivel IN ('SEM_GOOGLE','FECHADO_GOOGLE','REVISAR_FACHADA') "
+            "ORDER BY total_recebido DESC LIMIT ?", (max(1, min(int(limite), 500)),)).fetchall()
+        con.close()
+        out = [dict(r) for r in rows if r["cnpj"] not in vetados]
+        return JSONResponse(content={"ok": True, "total": len(out), "fachadas": out})
+    except Exception as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)})
+
+
+@app.post("/api/fachada/veredito")
+async def api_fachada_veredito(payload: Optional[dict] = None):
+    """Salva o veredito HUMANO do validador. Body: {cnpj, veredito: suspeito|ok|mais_info, nota?}.
+    suspeito→fachada (mantém INDICIO); ok→real (volta AFASTADO); mais_info→pular (fica pendente)."""
+    import sqlite3 as _sq, datetime as _dt
+    p = payload or {}
+    cnpj = str(p.get("cnpj") or "").strip()
+    ver = str(p.get("veredito") or "").strip().lower()
+    nota = str(p.get("nota") or "")[:480]
+    mapa = {"suspeito": ("fachada", "INDICIO"), "ok": ("real", "AFASTADO"), "mais_info": ("pular", None)}
+    if not cnpj or ver not in mapa:
+        return JSONResponse(content={"ok": False, "erro": "cnpj e veredito (suspeito|ok|mais_info) obrigatórios"})
+    status_vd, novo_status = mapa[ver]
+    DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "compliance.db")
+    try:
+        con = _sq.connect(DB, timeout=30); con.execute("PRAGMA busy_timeout=30000")
+        row = con.execute("SELECT razao, endereco, total_recebido FROM verificacao_sede WHERE cnpj=?", (cnpj,)).fetchone()
+        razao, endereco, tr = (row or ("", "", 0))
+        con.execute(
+            "INSERT INTO fachada_veredito (cnpj, razao, endereco, total_recebido, status, veredito_raw, veredito_em) "
+            "VALUES (?,?,?,?,?,?,?) ON CONFLICT(cnpj) DO UPDATE SET status=excluded.status, "
+            "veredito_raw=excluded.veredito_raw, veredito_em=excluded.veredito_em",
+            (cnpj, razao, endereco, tr, status_vd, nota, _dt.datetime.now().isoformat(timespec="seconds")))
+        if novo_status:
+            con.execute("UPDATE verificacao_sede SET status=? WHERE cnpj=?", (novo_status, cnpj))
+        con.commit(); con.close()
+        return JSONResponse(content={"ok": True, "cnpj": cnpj, "veredito": status_vd})
+    except Exception as e:
+        return JSONResponse(content={"ok": False, "erro": str(e)})
+
+
 @app.get("/reports/{filename}")
 async def serve_report(filename: str):
     """Serve a report file (PDF or JSON) from the reports/ directory."""
