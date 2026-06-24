@@ -341,6 +341,12 @@ async def auditoria_ui():
     return FileResponse("static/dashboard.html")
 
 
+@app.get("/painel", response_class=HTMLResponse)
+async def painel_fiscalizacao():
+    """Painel de fiscalização unificado (leve, Tailwind): visão geral, auditoria/alertas, SIAFE, sweeps, cartel, Massare."""
+    return FileResponse("static/jfn-painel.html")
+
+
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_ui():
     """Serve the legacy chat UI."""
