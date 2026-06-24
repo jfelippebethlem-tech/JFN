@@ -99,8 +99,9 @@ def _alvos(con: sqlite3.Connection, status: str | None, limite: int) -> list[sql
 def _salva_print(cnpj: str, res: dict) -> str:
     """Salva o print da imagem classificada p/ casos FLAGUEADOS em data/fachada_img/<cnpj>.<ext>. REUSA os
     bytes que o classificador devolveu (`_img_bytes`, sem re-fetch → zero requisição/cota extra). Só salva as
-    classes em `_FLAG_PRINT` (poupa disco). Devolve o caminho relativo salvo, ou '' (não salvou)."""
-    if (res.get("classe") or "") not in _FLAG_PRINT:
+    classes em `_FLAG_PRINT` (poupa disco) — salvo se `FACHADA_SAVE_ALL=1` (guarda a foto de TODOS,
+    p/ auditar cada 'ok'). Devolve o caminho relativo salvo, ou '' (não salvou)."""
+    if os.environ.get("FACHADA_SAVE_ALL") not in ("1", "true", "True") and (res.get("classe") or "") not in _FLAG_PRINT:
         return ""
     img = res.get("_img_bytes")
     if not img:
