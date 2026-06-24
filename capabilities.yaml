@@ -178,7 +178,7 @@ capacidades:
   - {id: skills_validate, agente: yoda, dominio: sistema, tipo: cli, comando: "telegram /skills_validate", status: PRONTO,
      descricao: "Valida schema + checa que toda rota PRONTO existe no server.py (admin)", quando_usar: "antes de sync/reload, sanidade do contrato",
      args: {}, retorno: "lista de problemas (vazia = valido)"}
-  - {id: bond_captura, agente: bond, dominio: coleta, tipo: cli, comando: "desktop: telegram /capturar (poller) ou captura_nodriver.py", status: EXPERIMENTAL,
+  - {id: bond_captura, agente: bond, dominio: coleta, tipo: cli, comando: "desktop: telegram /capturar (poller) ou captura_nodriver.py", status: "ONDA 0",
      descricao: "Captura HUMANA de curtidores do Instagram (so mouse+screenshot, depura fora do IG via Gemini)", quando_usar: "ver quem curtiu posts do IG / leaderboard de engajamento do gabinete; SO no desktop residencial, NUNCA na VM (= ban)",
      args: {alvo: "perfil IG alvo", motor: "nodriver|cdp"}, retorno: "screenshots -> likers.json -> /curtidores no PolitiMonitor"}
 

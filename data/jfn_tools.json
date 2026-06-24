@@ -1638,7 +1638,8 @@
     }
   ],
   "futuras_desabilitadas": [
-    "trace"
+    "trace",
+    "bond_captura"
   ],
   "politica_modelo": {
     "roteamento_chat": {
