@@ -171,7 +171,12 @@ async function ir(id){
   atual=id; montarTabs();
   const v=$('view'); v.innerHTML='<div class="skel">Carregando…</div>';
   const t=TABS.find(x=>x.id===id);
-  v.innerHTML = `<div class="fade">${await t.render()}</div>`;
+  try{
+    const html=await t.render();
+    v.innerHTML=`<div class="fade">${html}</div>`;
+  }catch(e){
+    v.innerHTML=card('<div class="warn">⚠ Falha ao carregar esta aba: '+String(e)+'</div>');
+  }
 }
 
 const barras = (itens)=>{ // itens: [{lab,val,pctw,cor?}]
@@ -266,7 +271,7 @@ async function sweep(acao){
 }
 
 async function renderMais(){
-  const [c,y]=await Promise.all([J('/api/cartel'),J('/api/hermes/estado')]);
+  const [c,y,reps]=await Promise.all([J('/api/cartel'),J('/api/hermes/estado'),J('/api/compliance/reports')]);
   const d=(c.dados||[]).slice(0,8);
   const cartel = d.length? d.map(u=>card(
      `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
@@ -275,12 +280,18 @@ async function renderMais(){
         <div class="right"><div style="font-weight:750;color:${u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':'#fff'}">${u.top_share}%</div><div class="dim">${fmtR(u.total)}</div></div>
       </div>`)).join('') : card('<div class="muted">Sem dados de concentração.</div>');
 
+  const pdfs=((reps&&reps.length?reps:[])||[]).filter(x=>x.type==='pdf').slice(0,12);
+  const repsHtml = pdfs.length
+    ? `<div class="lnks">`+pdfs.map(f=>`<a class="lnk" href="${f.url}" target="_blank"><span class="ic">📄</span><div><div class="t">${f.name}</div></div><span class="ar">→</span></a>`).join('')+`</div>`
+    : card('<div class="muted">Nenhum relatório gerado ainda.</div>');
+
   return sec('var(--purple)','Cartel & concentração')+`<div class="grid">${cartel}</div>`+
    `<div style="height:18px"></div>`+sec('var(--purple)','Yoda / Hermes')+
    card(`<div class="kv"><span class="k">Missão</span><b class="right" style="max-width:62%">${y.missao||'—'}</b></div>
          <div class="kv"><span class="k">OBs na base</span><b>${fmtN(y.n_obs)}</b></div>
          <div class="kv"><span class="k">Alertas</span><b>${fmtN(y.n_alertas)}</b></div>
          <div class="kv"><span class="k">LLM / Chrome</span><b>${y.llm_ok?'🟢':'🔴'} / ${y.chrome_9222?'🟢':'🔴'}</b></div>`)+
+   `<div style="height:18px"></div>`+sec('var(--blue)','Relatórios gerados')+repsHtml+`<div style="height:18px"></div>`+
    `<div style="height:18px"></div>`+sec('var(--amber)','Ações & atalhos')+
    `<div class="lnks">
       <a class="lnk" href="/auditoria"><span class="ic">📊</span><div><div class="t">Painel de Auditoria</div><div class="d">KPIs, OBs, favorecidos (clássico)</div></div><span class="ar">→</span></a>
@@ -301,13 +312,34 @@ async function acao(tipo){
   if(tipo==='relatorio'){ val=$('ac-emp').value.trim(); if(!val)return; url='/api/relatorio/inteligencia'; body={empresa:val}; }
   if(tipo==='orgao'){ val=$('ac-org').value.trim(); if(!val)return; url='/api/relatorio/orgao'; body={orgao:val}; }
   out.textContent=`⏳ processando "${val}"… (até ~1 min)`;
+  const t0 = Date.now()/1000;  // mtime é epoch em segundos
+  const antes = new Set(((await J('/api/compliance/reports'))||[]).filter(x=>x.type==='pdf').map(x=>x.name));
   const d=await J(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   if(d.erro){ out.textContent='⚠ erro: '+d.erro; return; }
   if(d.ambiguo){ out.textContent=`❓ ambíguo: ${d.pergunta}\ncandidatos: ${(d.candidatos||[]).map(c=>c.nome||c).join(' · ')}`; return; }
-  if(d.status==='gerando' || (d.msg && d.path_pdf==null && d.resumo==null)){ out.textContent=(d.msg||'⏳ Gerando relatório…').replace(/\*/g,''); return; }
+  if(d.status==='gerando' || (d.msg && d.path_pdf==null && d.resumo==null)){
+    out.textContent=(d.msg||'⏳ Gerando relatório…').replace(/\*/g,'');
+    return pollarPdf(out, val, t0, antes);
+  }
   const pdf=d.path_pdf||d.path_lex||d.path_xlsx;
   const linha=[d.empresa||d.orgao||val, d.risco?('risco '+d.risco):'', d.grau_lex?('Lex '+d.grau_lex):'', d.score!=null?('score '+d.score):''].filter(Boolean).join(' · ');
   out.innerHTML=`✅ ${linha}\n${(d.resumo||'').slice(0,500)}`+(pdf?`\n\n📄 <a href="/${pdf.replace(/^\//,'')}" target="_blank" style="color:#7ab8ff">abrir PDF</a> (também no Telegram)`:'');
+}
+async function pollarPdf(out, termo, t0, antes){
+  const slug=(termo||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,12);
+  for(let i=0;i<36;i++){                       // ~3 min (36 × 5s)
+    await new Promise(r=>setTimeout(r,5000));
+    const pdfs=((await J('/api/compliance/reports'))||[]).filter(x=>x.type==='pdf');
+    let novos=pdfs.filter(x=>x.mtime && x.mtime>t0);     // preferido: mtime
+    if(!novos.length) novos=pdfs.filter(x=>!antes.has(x.name)); // fallback: diff de nomes
+    const alvo=novos.find(x=>slug && x.name.toLowerCase().includes(slug))||novos[0];
+    if(alvo){
+      out.innerHTML='✅ relatório pronto: '+alvo.name+
+        '\n\n📄 <a href="'+alvo.url+'" target="_blank" style="color:#7ab8ff">abrir PDF</a> (também no Telegram)';
+      return;
+    }
+  }
+  out.textContent='⏳ Ainda gerando — confira no Telegram ou na seção Relatórios.';
 }
 
 (async()=>{

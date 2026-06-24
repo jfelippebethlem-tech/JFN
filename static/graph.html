@@ -197,10 +197,11 @@
       position: absolute;
       right: 0; top: 0; bottom: 0;
       width: 300px;
+      max-width: 90%;          /* nunca toma a página inteira em telas estreitas */
       background: #1e293b;
       border-left: 1px solid #334155;
       padding: 16px;
-      transform: translateX(100%);
+      transform: translateX(110%);  /* 110% garante esconder por completo incl. borda */
       transition: transform 0.3s ease;
       overflow-y: auto;
       z-index: 50;
@@ -212,7 +213,10 @@
       position: absolute; top: 12px; right: 12px;
       background: #334155; border: none; border-radius: 4px;
       color: #94a3b8; padding: 4px 8px; cursor: pointer; font-size: 0.8rem;
+      width: auto;            /* override global button{width:100%} so X não estica/sobrepõe o título */
+      line-height: 1; z-index: 2;
     }
+    #detail-panel h3 { padding-right: 32px; }  /* reserva espaço p/ o botão X */
     #detail-panel .dp-close:hover { background: #475569; }
 
     .dp-field { margin-bottom: 10px; }
@@ -399,9 +403,17 @@ function resetZoom() {
 }
 
 // ── Data loading ──────────────────────────────────────────────────────────────
-async function loadGraph() {
-  document.getElementById('loading').style.display = 'flex';
-  document.getElementById('error-msg').style.display = 'none';
+let _isLoading = false;   // guarda anti-reentrância (evita fetches sobrepostos)
+
+async function loadGraph(opts = {}) {
+  if (_isLoading) return;            // já há um carregamento em curso
+  _isLoading = true;
+  const silent = opts.silent === true;   // auto-refresh não mostra spinner full-screen
+
+  if (!silent) {
+    document.getElementById('loading').style.display = 'flex';
+    document.getElementById('error-msg').style.display = 'none';
+  }
 
   try {
     const resp = await fetch('/api/compliance/graph');
@@ -433,11 +445,13 @@ async function loadGraph() {
     updateStats(allNodes, allLinks);
     renderGraph(allNodes, allLinks);
     document.getElementById('loading').style.display = 'none';
-    resetZoom();
+    if (!silent) resetZoom();   // não re-centraliza/zoom no auto-refresh (preserva o estado do usuário)
 
   } catch (err) {
     console.error('Failed to load graph:', err);
-    showError();
+    if (!silent) showError();   // refresh silencioso não derruba o grafo atual por falha de rede
+  } finally {
+    _isLoading = false;
   }
 }
 
@@ -725,6 +739,18 @@ document.getElementById('btn-export').addEventListener('click', () => {
 
 // ── Initialize ────────────────────────────────────────────────────────────────
 loadGraph();
+
+// ── Auto-refresh ──────────────────────────────────────────────────────────────
+// Re-busca /api/compliance/graph periodicamente. Guardas: pula se a aba está
+// oculta, se já há um load em curso, ou se o usuário está com um nó selecionado
+// (para não destruir o foco/realce de investigação no meio da análise).
+const AUTO_REFRESH_MS = 30000;   // 30s
+setInterval(() => {
+  if (document.hidden) return;        // aba em segundo plano → não desperdiça fetch
+  if (_isLoading) return;             // load já em curso
+  if (selectedNode) return;           // usuário com nó selecionado → preserva contexto
+  loadGraph({ silent: true });        // sem spinner, sem reset de zoom
+}, AUTO_REFRESH_MS);
 </script>
 </body>
 </html>
