@@ -17,6 +17,7 @@ import hashlib
 import hmac
 import json
 import os
+import secrets
 import time
 import argparse
 from contextlib import asynccontextmanager
@@ -241,7 +242,9 @@ app.mount("/output", StaticFiles(directory="output"), name="output")
 # de localhost (o Yoda chama 127.0.0.1:8000 internamente e NÃO pode quebrar). Cookie HMAC-assinado, sem deps.
 # `secure` é gated por env COOKIE_SECURE (lição do Bond: secure=true descarta o cookie em HTTP puro).
 _DASH_SENHA = os.environ.get("JFN_DASH_PASSWORD", "")
-_DASH_SECRET = (os.environ.get("JFN_DASH_SECRET") or _DASH_SENHA or "jfn-dev-secret").encode()
+# Sem JFN_DASH_SECRET/JFN_DASH_PASSWORD, gera secret ALEATÓRIO por processo (não mais o literal
+# "jfn-dev-secret", que tornava o cookie de sessão forjável por quem conhecesse o default).
+_DASH_SECRET = (os.environ.get("JFN_DASH_SECRET") or _DASH_SENHA or secrets.token_hex(32)).encode()
 _DASH_COOKIE = "jfn_session"
 _DASH_TTL = int(os.environ.get("JFN_DASH_TTL", str(30 * 24 * 3600)))  # 30 dias
 _DASH_COOKIE_SECURE = os.environ.get("COOKIE_SECURE", "").lower() in ("1", "true", "yes")
