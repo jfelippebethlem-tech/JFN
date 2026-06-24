@@ -1,110 +1,268 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+<!doctype html>
+<html lang="pt-br">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>JFN — Painel de Fiscalização</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<style>body{font-family:ui-sans-serif,system-ui,sans-serif} .nav-on{background:#2563eb;color:#fff} .card{background:#fff;border:1px solid #e5e7eb;border-radius:.75rem}</style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>JFN — Painel</title>
+<style>
+  :root{
+    --bg:#0b1020; --bg2:#0d1424; --card:#141c33; --card2:#0f1730;
+    --bd:#243049; --bd2:#1d2740;
+    --tx:#eef2fb; --mut:#8a97b3; --dim:#5d6a87;
+    --blue:#3b82f6; --green:#22c55e; --amber:#eab308; --rose:#f43f5e; --purple:#a855f7;
+    --r:16px;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0}
+  body{
+    background:
+      radial-gradient(900px 480px at 100% -8%, rgba(59,130,246,.10), transparent 60%),
+      radial-gradient(760px 420px at -10% 0%, rgba(168,85,247,.08), transparent 55%),
+      var(--bg);
+    color:var(--tx); font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    min-height:100dvh; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  .wrap{max-width:720px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+
+  /* Header */
+  header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
+    padding:14px 18px calc(14px) 18px;background:rgba(13,20,36,.72);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--bd2)}
+  header .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.2px}
+  header .brand .lg{font-size:19px}
+  header .brand small{display:block;color:var(--mut);font-size:11px;font-weight:500;letter-spacing:.2px;margin-top:1px}
+  header .sair{color:var(--mut);font-size:13px;text-decoration:none;border:1px solid var(--bd);
+    padding:7px 13px;border-radius:10px;transition:.15s}
+  header .sair:active,header .sair:hover{color:#fff;border-color:var(--blue);background:rgba(59,130,246,.1)}
+
+  /* Content */
+  main{flex:1;padding:18px 16px 104px}
+  h2.sec{margin:2px 0 14px;font-size:13px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;
+    color:var(--mut);display:flex;align-items:center;gap:9px}
+  h2.sec .dot{width:8px;height:8px;border-radius:50%;box-shadow:0 0 12px currentColor}
+
+  .grid{display:grid;gap:12px;min-width:0}
+  .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--bd);
+    border-radius:var(--r);padding:16px 17px;min-width:0;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 24px -18px #000}
+  .kpi .v{font-size:18px;font-weight:750;letter-spacing:-.3px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kpi .l{color:var(--mut);font-size:12px;margin-top:5px}
+  .kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd2);font-size:14px}
+  .kv:first-child{padding-top:2px}.kv:last-child{border-bottom:0;padding-bottom:2px}
+  .kv .k{color:var(--mut)}.kv b{font-weight:650;color:#fff}
+  .muted{color:var(--mut)} .dim{color:var(--dim);font-size:12px}
+  .right{text-align:right}
+
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  thead th{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.4px;text-align:right;padding:0 0 8px;font-weight:600}
+  thead th:first-child{text-align:left}
+  tbody td{padding:9px 0;border-bottom:1px solid var(--bd2);text-align:right}
+  tbody td:first-child{text-align:left;color:var(--mut)}
+  tbody tr:last-child td{border-bottom:0}
+
+  .pill{font-size:11px;font-weight:650;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .pill.on{background:rgba(34,197,94,.15);color:#5cd98a}
+  .pill.off{background:rgba(244,63,94,.15);color:#fb8aa0}
+  .sev{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-radius:7px;flex:0 0 auto}
+  .sev.alta{background:rgba(244,63,94,.16);color:#fb8aa0}
+  .sev.media{background:rgba(234,179,8,.16);color:#f3cf6a}
+  .sev.baixa{background:rgba(138,151,179,.16);color:#aeb9d6}
+
+  pre{white-space:pre-wrap;word-break:break-word;font:12px/1.5 ui-monospace,Menlo,monospace;color:#aeb9d6;margin:0;
+    background:#0a1124;border:1px solid var(--bd2);border-radius:11px;padding:11px 12px;max-height:150px;overflow:auto}
+
+  .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
+  .btn{flex:1;min-width:96px;border:0;border-radius:11px;padding:11px 12px;font-size:13px;font-weight:650;
+    cursor:pointer;color:#fff;transition:.12s;display:flex;align-items:center;justify-content:center;gap:6px}
+  .btn:active{transform:scale(.97)}
+  .btn.red{background:#b9442f}.btn.green{background:#1f9d57}
+  .btn.ghost{background:#1b2440;border:1px solid var(--bd)}
+  .lnks{display:flex;flex-direction:column;gap:9px}
+  .lnk{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--tx);
+    background:#10182f;border:1px solid var(--bd);border-radius:12px;padding:13px 14px;transition:.12s}
+  .lnk:active{transform:scale(.99)} .lnk:hover{border-color:var(--blue)}
+  .lnk .ic{font-size:18px;width:24px;text-align:center} .lnk .ar{margin-left:auto;color:var(--dim)}
+  .lnk .t{font-weight:600} .lnk .d{color:var(--mut);font-size:12px;margin-top:1px}
+
+  input{width:100%;padding:11px 12px;border-radius:11px;border:1px solid var(--bd);background:#0a1124;color:var(--tx);font-size:14px}
+  input::placeholder{color:var(--dim)}
+  label.fld{display:block;color:var(--mut);font-size:12px;margin:0 0 6px}
+
+  .skel{color:var(--dim);font-size:13px;padding:6px 0}
+
+  /* Bottom tab bar */
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
+    background:rgba(11,16,32,.86);backdrop-filter:blur(16px);border-top:1px solid var(--bd2);
+    padding:6px 6px calc(6px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto}
+  nav.tabs button{flex:1;background:none;border:0;color:var(--dim);cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px 5px;font:inherit;transition:.12s;border-radius:12px}
+  nav.tabs button .ti{font-size:20px;line-height:1}
+  nav.tabs button .tl{font-size:10.5px;font-weight:600;letter-spacing:.2px}
+  nav.tabs button.on{color:#fff}
+  nav.tabs button.on .ti{filter:drop-shadow(0 0 9px var(--blue))}
+  nav.tabs button.on .tl{color:var(--blue)}
+  nav.tabs button:active{transform:scale(.92)}
+
+  .fade{animation:f .22s ease}@keyframes f{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+</style>
 </head>
-<body class="bg-slate-50 text-slate-800">
-<div class="flex flex-col md:flex-row min-h-screen">
-  <!-- Sidebar (lateral no desktop, barra horizontal rolável no celular) -->
-  <aside class="w-full md:w-60 bg-slate-900 text-slate-300 flex flex-col md:shrink-0">
-    <div class="px-5 py-4 text-white font-bold text-lg flex items-center gap-2">🛰️ JFN</div>
-    <nav id="nav" class="flex md:flex-col md:flex-1 gap-1 px-2 pb-2 md:pb-0 text-sm overflow-x-auto"></nav>
-    <div class="hidden md:block px-4 py-3 text-xs text-slate-500" id="rodape">—</div>
-  </aside>
-  <!-- Main -->
-  <main class="flex-1 p-6 max-w-6xl">
-    <div class="flex items-center justify-between mb-5">
-      <h1 id="titulo" class="text-2xl font-bold text-slate-900">Visão Geral</h1>
-      <button onclick="carregar()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700">↻ Atualizar</button>
-    </div>
-    <div id="conteudo" class="space-y-4"></div>
-  </main>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><span class="lg">🛰️</span><div>JFN<small id="hsub">auditoria · Estado do RJ</small></div></div>
+    <a class="sair" href="/logout_jfn">Sair</a>
+  </header>
+  <main id="view"><div class="skel">Carregando…</div></main>
+  <nav class="tabs" id="tabs"></nav>
 </div>
 
 <script>
-const fmtN = n => (n??0).toLocaleString('pt-BR')
-const fmtR = v => 'R$ ' + (v??0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
-const card = (h) => `<div class="card p-4">${h}</div>`
-const kpi = (v,l,cor='text-slate-900') => `<div class="card p-4"><div class="text-2xl font-bold ${cor}">${v}</div><div class="text-xs text-slate-500">${l}</div></div>`
-async function J(ep){ try{ const r=await fetch(ep); return await r.json() }catch(e){ return {erro:String(e)} } }
+const $ = (id)=>document.getElementById(id);
+const fmtN = n => (n==null?'—':Number(n).toLocaleString('pt-BR'));
+const fmtR = v => 'R$ '+(v==null?'0,00':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));
+const fmtRc = v => { v=Number(v||0); const a=Math.abs(v);
+  if(a>=1e9) return 'R$ '+(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1})+' bi';
+  if(a>=1e6) return 'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';
+  if(a>=1e3) return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil';
+  return fmtR(v); };
+const pct = x => (x==null?'—':(x*100).toFixed(1)+'%');
+async function J(ep,opt){ try{ const r=await fetch(ep,opt); return await r.json(); }catch(e){ return {erro:String(e)}; } }
+const card = (h)=>`<div class="card">${h}</div>`;
+const kpi = (v,l,cor)=>`<div class="card kpi"><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div><div class="l">${l}</div></div>`;
+const sec = (dot,t)=>`<h2 class="sec"><span class="dot" style="color:${dot};background:${dot}"></span>${t}</h2>`;
 
-const SECOES = [
-  { id:'geral', nome:'Visão Geral', icon:'📊', render: renderGeral },
-  { id:'auditoria', nome:'Auditoria / Alertas', icon:'🚨', render: renderAuditoria },
-  { id:'siafe', nome:'SIAFE (OBs)', icon:'💰', render: renderSiafe },
-  { id:'sweeps', nome:'Sweeps SEI/SIAFE', icon:'🛰️', render: renderSweeps },
-  { id:'cartel', nome:'Cartel & Concentração', icon:'🕸️', render: renderCartel },
-  { id:'links', nome:'Mais (grafo, casos…)', icon:'🔗', render: renderLinks },
-]
-let atual = 'geral'
+const TABS = [
+  {id:'geral',  ic:'📊', tl:'Geral',   render:renderGeral},
+  {id:'alertas',ic:'🚨', tl:'Alertas', render:renderAlertas},
+  {id:'siafe',  ic:'💰', tl:'SIAFE',   render:renderSiafe},
+  {id:'sweeps', ic:'🛰️', tl:'Sweeps',  render:renderSweeps},
+  {id:'mais',   ic:'⋯',  tl:'Mais',    render:renderMais},
+];
+let atual='geral';
 
-function montarNav(){
-  document.getElementById('nav').innerHTML = SECOES.map(s=>
-    `<a href="#" onclick="ir('${s.id}');return false" class="whitespace-nowrap shrink-0 px-3 py-2 rounded-lg ${s.id===atual?'nav-on':'hover:bg-slate-800'}">${s.icon} ${s.nome}</a>`).join('')
+function montarTabs(){
+  $('tabs').innerHTML = TABS.map(t=>
+    `<button class="${t.id===atual?'on':''}" onclick="ir('${t.id}')"><span class="ti">${t.ic}</span><span class="tl">${t.tl}</span></button>`).join('');
 }
-function ir(id){ atual=id; montarNav(); carregar() }
-async function carregar(){
-  const s = SECOES.find(x=>x.id===atual)
-  document.getElementById('titulo').textContent = s.nome
-  document.getElementById('conteudo').innerHTML = '<div class="text-slate-400 text-sm py-8">Carregando…</div>'
-  document.getElementById('conteudo').innerHTML = await s.render()
+async function ir(id){
+  atual=id; montarTabs();
+  const v=$('view'); v.innerHTML='<div class="skel">Carregando…</div>';
+  const t=TABS.find(x=>x.id===id);
+  v.innerHTML = `<div class="fade">${await t.render()}</div>`;
 }
 
 async function renderGeral(){
-  const [st, p] = await Promise.all([J('/status'), J('/api/compliance/painel')])
-  const a = p.alertas||{}, o = p.obs||{}
-  return `<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-    ${kpi(fmtN(o.total), 'Ordens Bancárias')}
-    ${kpi(fmtR(o.valor_total), 'Valor total fiscalizado')}
-    ${kpi(a.total??0, 'Alertas ativos', a.alta?'text-rose-600':'text-slate-900')}
-    ${kpi(st.logged_in?'🟢 online':'🔴 off', 'SIAFE · exerc. '+(st.exercicio||'—'))}
+  const [st,p]=await Promise.all([J('/status'),J('/api/compliance/painel')]);
+  const a=p.alertas||{}, o=p.obs||{};
+  return sec('var(--blue)','Visão geral')+
+  `<div class="grid g2">
+    ${kpi(fmtN(o.total),'Ordens Bancárias')}
+    ${kpi(fmtRc(o.valor_total),'Valor fiscalizado')}
+    ${kpi(fmtN(a.total??0),'Alertas ativos', (a.alta? 'var(--rose)':'#fff'))}
+    ${kpi(st.logged_in?'🟢':'🔴','SIAFE · '+(st.exercicio||'—'))}
   </div>
-  ${card(`<div class="text-xs font-semibold text-slate-500 uppercase mb-1">Atualizado</div>${p.atualizado||'—'} · última coleta: ${p.ultima_coleta||'—'}`)}`
-}
-async function renderAuditoria(){
-  const p = await J('/api/compliance/painel')
-  const lst = p.lista_alertas||[]
-  if(!lst.length) return card('Sem alertas no momento. 🟢')
-  const cor = s => s==='alta'?'bg-rose-100 text-rose-700':s==='media'?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-600'
-  return lst.map(al=>card(`<div class="flex items-start gap-3">
-    <span class="text-[10px] px-2 py-0.5 rounded-full ${cor(al.severidade)} uppercase shrink-0">${al.severidade}</span>
-    <div><div class="font-semibold text-slate-900">${al.titulo||al.tipo}</div>
-    <div class="text-sm text-slate-600">${al.descricao||''}</div></div></div>`)).join('')
-}
-async function renderSiafe(){
-  const s = await J('/api/siafe/stats')
-  if(!s.ok) return card('SIAFE indisponível.')
-  const linhas = (s.por_ano||[]).filter(x=>x.valor>0).map(x=>
-    `<tr class="border-b border-slate-100"><td class="py-1.5">${x.exercicio}</td><td class="text-right">${fmtN(x.n)}</td><td class="text-right">${fmtR(x.valor)}</td></tr>`).join('')
-  return `<div class="grid grid-cols-2 gap-3 mb-3">${kpi(fmtN(s.total),'OBs ingeridas')}${kpi(fmtR(s.valor_total),'Valor total')}</div>
-  ${card(`<table class="w-full text-sm"><thead><tr class="text-slate-400 text-xs uppercase border-b border-slate-200"><th class="text-left py-1">Exercício</th><th class="text-right">OBs</th><th class="text-right">Valor</th></tr></thead><tbody>${linhas}</tbody></table>`)}`
-}
-async function renderSweeps(){
-  const s = await J('/api/sweeps/status')
-  return card(`<pre class="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed">${(s.texto||'sem dados').replace(/\*\*/g,'')}</pre>`)
-}
-async function renderCartel(){
-  const c = await J('/api/cartel')
-  const d = c.dados||[]
-  if(!d.length) return card('Sem dados de concentração.')
-  return d.slice(0,15).map(u=>card(`<div class="flex items-center justify-between gap-3">
-    <div class="min-w-0"><div class="font-semibold text-slate-900 truncate">${u.ug_nome} <span class="text-xs text-slate-400">(${u.ug})</span></div>
-    <div class="text-sm text-slate-600 truncate">${u.n_fornecedores} fornecedores · top: ${u.top_fornecedor}</div></div>
-    <div class="text-right shrink-0"><div class="font-bold ${u.top_share>=90?'text-rose-600':u.top_share>=70?'text-amber-600':'text-slate-700'}">${u.top_share}%</div>
-    <div class="text-xs text-slate-400">${fmtR(u.total)}</div></div></div>`)).join('')
-}
-async function renderLinks(){
-  return `<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
-    ${['/auditoria|Auditoria (clássico)','/|Hub / Painel de controle','/graph|Grafo de fraude','/hermes|Hermes / Yoda','/chat|Chat','/capacidades|Capacidades']
-      .map(x=>{const[u,n]=x.split('|');return `<a href="${u}" class="card p-4 block hover:border-blue-400"><div class="font-semibold text-slate-900">${n}</div><div class="text-xs text-slate-400">${u}</div></a>`}).join('')}
-  </div>`
+  <div style="height:12px"></div>
+  ${card(`<div class="kv"><span class="k">Última atualização</span><b>${p.atualizado||'—'}</b></div>
+          <div class="kv"><span class="k">Última coleta</span><b>${p.ultima_coleta||'—'}</b></div>`)}`;
 }
 
-;(async()=>{ montarNav(); carregar(); const st=await J('/status'); document.getElementById('rodape').textContent = st.username?('SIAFE '+st.username.slice(0,4)+'… · '+(st.exercicio||'')):'—' })()
+async function renderAlertas(){
+  const p=await J('/api/compliance/painel');
+  const lst=p.lista_alertas||[];
+  if(!lst.length) return sec('var(--green)','Auditoria')+card('<div class="muted">Sem alertas no momento. 🟢</div>');
+  return sec('var(--rose)','Auditoria · alertas')+
+    `<div class="grid">`+lst.map(al=>card(
+      `<div style="display:flex;gap:11px;align-items:flex-start">
+         <span class="sev ${al.severidade||'baixa'}">${al.severidade||'—'}</span>
+         <div><div style="font-weight:650">${al.titulo||al.tipo||'Alerta'}</div>
+         ${al.descricao?`<div class="muted" style="font-size:13px;margin-top:3px">${al.descricao}</div>`:''}</div>
+       </div>`)).join('')+`</div>`;
+}
+
+async function renderSiafe(){
+  const s=await J('/api/siafe/stats');
+  if(!s.ok) return sec('var(--amber)','SIAFE')+card('<div class="muted">SIAFE indisponível.</div>');
+  const linhas=(s.por_ano||[]).filter(x=>x.valor>0)
+    .map(x=>`<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join('');
+  return sec('var(--amber)','SIAFE · ordens bancárias')+
+   `<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas')}${kpi(fmtRc(s.valor_total),'Valor total')}</div>
+    <div style="height:12px"></div>
+    ${card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`)}`;
+}
+
+async function renderSweeps(){
+  const d=await J('/api/sweeps/status');
+  const pausado=d.pausado;
+  const badge=pausado?'<span class="pill off">pausado</span>'
+    :(d.sei?.rodando?'<span class="pill on">rodando</span>':'<span class="pill on">agendado</span>');
+  return sec('var(--blue)','Sweeps SEI / SIAFE')+
+   card(`<div class="kv"><span class="k">Estado ${badge}</span><b>${pausado?'pausado':'ativo'}</b></div>
+         <div class="kv"><span class="k">SEI — processos lidos</span><b>${fmtN(d.sei?.feitos)}</b></div>
+         <div class="kv"><span class="k">SIAFE 2 — OBs orçamentárias</span><b>${fmtN(d.siafe?.ob_orcamentaria)}</b></div>`)+
+   (d.sei?.ultima?`<div style="height:12px"></div><pre>${(d.sei.ultima||'').replace(/\*\*/g,'')}</pre>`:'')+
+   `<div class="btns">
+      <button class="btn red" onclick="sweep('pausar')">⏸ Pausar</button>
+      <button class="btn green" onclick="sweep('retomar')">▶ Retomar</button>
+      <button class="btn ghost" onclick="ir('sweeps')">↻ Atualizar</button>
+    </div>`;
+}
+async function sweep(acao){
+  if(acao==='pausar' && !confirm('Pausar TODOS os sweeps?')) return;
+  await J('/api/sweeps/'+acao,{method:'POST'});
+  setTimeout(()=>ir('sweeps'),500);
+}
+
+async function renderMais(){
+  const [c,y]=await Promise.all([J('/api/cartel'),J('/api/hermes/estado')]);
+  const d=(c.dados||[]).slice(0,8);
+  const cartel = d.length? d.map(u=>card(
+     `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+        <div style="min-width:0"><div style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.ug_nome} <span class="dim">(${u.ug})</span></div>
+        <div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.n_fornecedores} fornec. · top: ${u.top_fornecedor||'—'}</div></div>
+        <div class="right"><div style="font-weight:750;color:${u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':'#fff'}">${u.top_share}%</div><div class="dim">${fmtR(u.total)}</div></div>
+      </div>`)).join('') : card('<div class="muted">Sem dados de concentração.</div>');
+
+  return sec('var(--purple)','Cartel & concentração')+`<div class="grid">${cartel}</div>`+
+   `<div style="height:18px"></div>`+sec('var(--purple)','Yoda / Hermes')+
+   card(`<div class="kv"><span class="k">Missão</span><b class="right" style="max-width:62%">${y.missao||'—'}</b></div>
+         <div class="kv"><span class="k">OBs na base</span><b>${fmtN(y.n_obs)}</b></div>
+         <div class="kv"><span class="k">Alertas</span><b>${fmtN(y.n_alertas)}</b></div>
+         <div class="kv"><span class="k">LLM / Chrome</span><b>${y.llm_ok?'🟢':'🔴'} / ${y.chrome_9222?'🟢':'🔴'}</b></div>`)+
+   `<div style="height:18px"></div>`+sec('var(--amber)','Ações & atalhos')+
+   `<div class="lnks">
+      <a class="lnk" href="/auditoria"><span class="ic">📊</span><div><div class="t">Painel de Auditoria</div><div class="d">KPIs, OBs, favorecidos (clássico)</div></div><span class="ar">→</span></a>
+      <a class="lnk" href="/graph"><span class="ic">🕸️</span><div><div class="t">Grafo de fraude</div><div class="d">relações entre entes</div></div><span class="ar">→</span></a>
+      <a class="lnk" href="/hermes"><span class="ic">🤖</span><div><div class="t">Yoda / Hermes</div><div class="d">chat e relatórios</div></div><span class="ar">→</span></a>
+    </div>
+    <div style="height:18px"></div>
+    ${card(`<label class="fld">Relatório de fornecedor (+ Lex)</label>
+      <div style="display:flex;gap:8px"><input id="ac-emp" placeholder="nome ou CNPJ"><button class="btn red" style="flex:0 0 auto;min-width:84px" onclick="acao('relatorio')">Gerar</button></div>
+      <div style="height:11px"></div>
+      <label class="fld">Relatório de órgão (+ Lex)</label>
+      <div style="display:flex;gap:8px"><input id="ac-org" placeholder="órgão ou UG (ex: 133100)"><button class="btn red" style="flex:0 0 auto;min-width:84px" onclick="acao('orgao')">Gerar</button></div>
+      <pre id="ac-out" style="margin-top:13px;display:none"></pre>`)}`;
+}
+async function acao(tipo){
+  const out=$('ac-out'); out.style.display='block';
+  let url,body,val;
+  if(tipo==='relatorio'){ val=$('ac-emp').value.trim(); if(!val)return; url='/api/relatorio/inteligencia'; body={empresa:val}; }
+  if(tipo==='orgao'){ val=$('ac-org').value.trim(); if(!val)return; url='/api/relatorio/orgao'; body={orgao:val}; }
+  out.textContent=`⏳ processando "${val}"… (até ~1 min)`;
+  const d=await J(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  if(d.erro){ out.textContent='⚠ erro: '+d.erro; return; }
+  if(d.ambiguo){ out.textContent=`❓ ambíguo: ${d.pergunta}\ncandidatos: ${(d.candidatos||[]).map(c=>c.nome||c).join(' · ')}`; return; }
+  if(d.status==='gerando' || (d.msg && d.path_pdf==null && d.resumo==null)){ out.textContent=(d.msg||'⏳ Gerando relatório…').replace(/\*/g,''); return; }
+  const pdf=d.path_pdf||d.path_lex||d.path_xlsx;
+  const linha=[d.empresa||d.orgao||val, d.risco?('risco '+d.risco):'', d.grau_lex?('Lex '+d.grau_lex):'', d.score!=null?('score '+d.score):''].filter(Boolean).join(' · ');
+  out.innerHTML=`✅ ${linha}\n${(d.resumo||'').slice(0,500)}`+(pdf?`\n\n📄 <a href="/${pdf.replace(/^\//,'')}" target="_blank" style="color:#7ab8ff">abrir PDF</a> (também no Telegram)`:'');
+}
+
+(async()=>{
+  montarTabs();
+  await ir('geral');
+  const st=await J('/status');
+  if(st.username) $('hsub').textContent = 'SIAFE '+st.username.slice(0,4)+'… · exerc. '+(st.exercicio||'—');
+})();
 </script>
 </body>
 </html>
