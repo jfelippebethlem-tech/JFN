@@ -1723,9 +1723,11 @@ async def api_compliance_reports():
             return JSONResponse(content=[])
         files = []
         for f in sorted(reports_dir.glob("*.pdf"), key=lambda x: x.stat().st_mtime, reverse=True):
-            files.append({"name": f.name, "type": "pdf", "size": f.stat().st_size, "url": f"/reports/{f.name}"})
+            stt = f.stat()
+            files.append({"name": f.name, "type": "pdf", "size": stt.st_size, "mtime": stt.st_mtime, "url": f"/reports/{f.name}"})
         for f in sorted(reports_dir.glob("*.json"), key=lambda x: x.stat().st_mtime, reverse=True):
-            files.append({"name": f.name, "type": "json", "size": f.stat().st_size, "url": f"/reports/{f.name}"})
+            stt = f.stat()
+            files.append({"name": f.name, "type": "json", "size": stt.st_size, "mtime": stt.st_mtime, "url": f"/reports/{f.name}"})
         return JSONResponse(content=files)
     except Exception as e:
         return JSONResponse(content={"error": str(e)}, status_code=500)
