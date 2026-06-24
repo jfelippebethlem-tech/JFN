@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JFN — Painel de Fiscalização</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>body{font-family:ui-sans-serif,system-ui,sans-serif} .nav-on{background:#2563eb;color:#fff} .card{background:#fff;border:1px solid #e5e7eb;border-radius:.75rem}</style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+<div class="flex min-h-screen">
+  <!-- Sidebar -->
+  <aside class="w-60 bg-slate-900 text-slate-300 flex flex-col shrink-0">
+    <div class="px-5 py-4 text-white font-bold text-lg flex items-center gap-2">🛰️ JFN</div>
+    <nav id="nav" class="flex-1 px-2 space-y-1 text-sm"></nav>
+    <div class="px-4 py-3 text-xs text-slate-500" id="rodape">—</div>
+  </aside>
+  <!-- Main -->
+  <main class="flex-1 p-6 max-w-6xl">
+    <div class="flex items-center justify-between mb-5">
+      <h1 id="titulo" class="text-2xl font-bold text-slate-900">Visão Geral</h1>
+      <button onclick="carregar()" class="text-xs px-3 py-1.5 rounded-lg bg-slate-900 text-white hover:bg-slate-700">↻ Atualizar</button>
+    </div>
+    <div id="conteudo" class="space-y-4"></div>
+  </main>
+</div>
+
+<script>
+const fmtN = n => (n??0).toLocaleString('pt-BR')
+const fmtR = v => 'R$ ' + (v??0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})
+const card = (h) => `<div class="card p-4">${h}</div>`
+const kpi = (v,l,cor='text-slate-900') => `<div class="card p-4"><div class="text-2xl font-bold ${cor}">${v}</div><div class="text-xs text-slate-500">${l}</div></div>`
+async function J(ep){ try{ const r=await fetch(ep); return await r.json() }catch(e){ return {erro:String(e)} } }
+
+const SECOES = [
+  { id:'geral', nome:'Visão Geral', icon:'📊', render: renderGeral },
+  { id:'auditoria', nome:'Auditoria / Alertas', icon:'🚨', render: renderAuditoria },
+  { id:'siafe', nome:'SIAFE (OBs)', icon:'💰', render: renderSiafe },
+  { id:'sweeps', nome:'Sweeps SEI/SIAFE', icon:'🛰️', render: renderSweeps },
+  { id:'cartel', nome:'Cartel & Concentração', icon:'🕸️', render: renderCartel },
+  { id:'massare', nome:'Massare (mercado)', icon:'📈', render: renderMassare },
+  { id:'links', nome:'Mais (grafo, casos…)', icon:'🔗', render: renderLinks },
+]
+let atual = 'geral'
+
+function montarNav(){
+  document.getElementById('nav').innerHTML = SECOES.map(s=>
+    `<a href="#" onclick="ir('${s.id}');return false" class="block px-3 py-2 rounded-lg ${s.id===atual?'nav-on':'hover:bg-slate-800'}">${s.icon} ${s.nome}</a>`).join('')
+}
+function ir(id){ atual=id; montarNav(); carregar() }
+async function carregar(){
+  const s = SECOES.find(x=>x.id===atual)
+  document.getElementById('titulo').textContent = s.nome
+  document.getElementById('conteudo').innerHTML = '<div class="text-slate-400 text-sm py-8">Carregando…</div>'
+  document.getElementById('conteudo').innerHTML = await s.render()
+}
+
+async function renderGeral(){
+  const [st, p] = await Promise.all([J('/status'), J('/api/compliance/painel')])
+  const a = p.alertas||{}, o = p.obs||{}
+  return `<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    ${kpi(fmtN(o.total), 'Ordens Bancárias')}
+    ${kpi(fmtR(o.valor_total), 'Valor total fiscalizado')}
+    ${kpi(a.total??0, 'Alertas ativos', a.alta?'text-rose-600':'text-slate-900')}
+    ${kpi(st.logged_in?'🟢 online':'🔴 off', 'SIAFE · exerc. '+(st.exercicio||'—'))}
+  </div>
+  ${card(`<div class="text-xs font-semibold text-slate-500 uppercase mb-1">Atualizado</div>${p.atualizado||'—'} · última coleta: ${p.ultima_coleta||'—'}`)}`
+}
+async function renderAuditoria(){
+  const p = await J('/api/compliance/painel')
+  const lst = p.lista_alertas||[]
+  if(!lst.length) return card('Sem alertas no momento. 🟢')
+  const cor = s => s==='alta'?'bg-rose-100 text-rose-700':s==='media'?'bg-amber-100 text-amber-700':'bg-slate-100 text-slate-600'
+  return lst.map(al=>card(`<div class="flex items-start gap-3">
+    <span class="text-[10px] px-2 py-0.5 rounded-full ${cor(al.severidade)} uppercase shrink-0">${al.severidade}</span>
+    <div><div class="font-semibold text-slate-900">${al.titulo||al.tipo}</div>
+    <div class="text-sm text-slate-600">${al.descricao||''}</div></div></div>`)).join('')
+}
+async function renderSiafe(){
+  const s = await J('/api/siafe/stats')
+  if(!s.ok) return card('SIAFE indisponível.')
+  const linhas = (s.por_ano||[]).filter(x=>x.valor>0).map(x=>
+    `<tr class="border-b border-slate-100"><td class="py-1.5">${x.exercicio}</td><td class="text-right">${fmtN(x.n)}</td><td class="text-right">${fmtR(x.valor)}</td></tr>`).join('')
+  return `<div class="grid grid-cols-2 gap-3 mb-3">${kpi(fmtN(s.total),'OBs ingeridas')}${kpi(fmtR(s.valor_total),'Valor total')}</div>
+  ${card(`<table class="w-full text-sm"><thead><tr class="text-slate-400 text-xs uppercase border-b border-slate-200"><th class="text-left py-1">Exercício</th><th class="text-right">OBs</th><th class="text-right">Valor</th></tr></thead><tbody>${linhas}</tbody></table>`)}`
+}
+async function renderSweeps(){
+  const s = await J('/api/sweeps/status')
+  return card(`<pre class="whitespace-pre-wrap text-sm text-slate-700 leading-relaxed">${(s.texto||'sem dados').replace(/\*\*/g,'')}</pre>`)
+}
+async function renderCartel(){
+  const c = await J('/api/cartel')
+  const d = c.dados||[]
+  if(!d.length) return card('Sem dados de concentração.')
+  return d.slice(0,15).map(u=>card(`<div class="flex items-center justify-between gap-3">
+    <div class="min-w-0"><div class="font-semibold text-slate-900 truncate">${u.ug_nome} <span class="text-xs text-slate-400">(${u.ug})</span></div>
+    <div class="text-sm text-slate-600 truncate">${u.n_fornecedores} fornecedores · top: ${u.top_fornecedor}</div></div>
+    <div class="text-right shrink-0"><div class="font-bold ${u.top_share>=90?'text-rose-600':u.top_share>=70?'text-amber-600':'text-slate-700'}">${u.top_share}%</div>
+    <div class="text-xs text-slate-400">${fmtR(u.total)}</div></div></div>`)).join('')
+}
+async function renderMassare(){
+  const m = await J('/api/massare/placar')
+  if(!m.ok) return card('Massare indisponível.')
+  const pl = m.placar?.overall||{}, bt = m.backtest_oos||{}
+  return `<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    ${kpi(((pl.hit_rate||0)*100).toFixed(1)+'%','Acerto (n='+(pl.n||0)+')', pl.hit_rate>0.5?'text-green-600':'text-rose-600')}
+    ${kpi(((bt.hit_rate_oos||0)*100).toFixed(1)+'%','Acerto OOS')}
+    ${kpi(((bt.edge_medio||0)*100).toFixed(2)+'%','Edge médio', bt.edge_medio>0?'text-green-600':'text-rose-600')}
+    ${kpi(fmtN(bt.n_pregoes_avaliados),'Pregões avaliados')}</div>`
+}
+async function renderLinks(){
+  return `<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+    ${['/auditoria|Auditoria (clássico)','/|Hub / Painel de controle','/graph|Grafo de fraude','/hermes|Hermes / Yoda','/chat|Chat','/capacidades|Capacidades']
+      .map(x=>{const[u,n]=x.split('|');return `<a href="${u}" class="card p-4 block hover:border-blue-400"><div class="font-semibold text-slate-900">${n}</div><div class="text-xs text-slate-400">${u}</div></a>`}).join('')}
+  </div>`
+}
+
+;(async()=>{ montarNav(); carregar(); const st=await J('/status'); document.getElementById('rodape').textContent = st.username?('SIAFE '+st.username.slice(0,4)+'… · '+(st.exercicio||'')):'—' })()
+</script>
+</body>
+</html>
