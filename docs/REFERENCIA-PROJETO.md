@@ -216,6 +216,7 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **06-24 (Yoda + fachadas + update Hermes + painel):** (1) `compliance.db` "malformed" no `/api/coendereco/clusters` era **conexão viva stale do jfn.service**, não corrupção (integrity_check ok na cópia) → **restart resolveu**; backup raw em `data/backups/`. (2) Yoda "não usa funções" = (a) ↑DB + (b) fallback **cerebras** quebrava (`reasoning_content unsupported`) → adotado fix do **upstream #45655** ao atualizar o Hermes. (3) **`~/hermes-agent` atualizado** (git merge limpo) + **auto-update noturno** `hermes-update.timer` 04:00 BRT (`update-hermes-safe.sh`, auto-revert); regra: patch local só commitado, nunca em arquivo quente do upstream. (4) **Mapillary DESLIGADO** (.env) — diretriz do dono; fachada agora vetada por cadastro: `tools/fachada_vet_progressivo.py` cruza Receita/QSA+CEIS/CNEP+OpenSanctions → dos 250 "ok" de maior valor, **22 REABRIR_FORTE** (BAIXADA/INAPTA/FALIDO/sancionado), **7 reabertos** na base viva (AFASTADO→INDÍCIO); relatório `reports/fachada_vetagem_2026-06-24.md`. (5) **`/painel` reformado** (responsivo desktop, 8 KPIs, alertas, barras de concentração, callout coleta-SIAFE), verificado por browser. Detalhe: [[sessao-2026-06-24-yoda-fachadas-hermes-update]] no vault.
 - **06-22 (SEI perícia em TODOS + SIAFE-1 veredito + SEI sweep religado):** ficha do sweep elevada a **PERÍCIA contábil+jurídica de triagem** em 100% dos processos (`tools/sei_ficha.py` prompt/schema/few-shot; **stepfun:free**, isolamento mantido, honestidade empenho≠liquidação≠OB · indício≠acusação · INDISPONÍVEL≠0; `sei_depurar_db.py` +2 colunas JSON + coerção robusta de escalar—corrige bind de lista; `sei_refichar.py` schema-bump v2='pericia' → backfilla os 1.353 do acervo via cron bounded). Testado end-to-end (art. 75,VIII Lei 14.133 citado pelo modelo). **SIAFE-1:** Processo SEI de 2021-23 está **EM BRANCO na fonte** — re-sweep 297100/2022 provou (1.000 OBs, 0 c/processo) → beco sem saída (`docs/SIAFE-EVOLUCAO-TENTATIVAS.txt` §7). **SEI sweep RELIGADO** (pausa stale de 20/06, ~43h parado).
 - **06-20 (auditoria EXATA ITERJ×MGS 005/2021 — fechada):** veredito 100% fonte primária — **Estado deve à MGS R$ 56.044,28** (35.014,96 retroativo Mar-Jun/25 sólido + 21.029,32 glosa cautelar devida); **sem pagamento a maior** (reconc. anual = 12 meses; OBs gêmeas = catch-up); **reajustes corretos** (CCTs SEAC-RJ 9,91/6,01/6,20/7,50 + piso 1.730,75 confirmados na **planilha de custos** obtida via paginação). Relatório `reports/relatorio_exato_iterj_mgs_005_2021_2026-06-20.pdf` → Yoda. **Pipeline:** `tools/vm_guard.py` (VM travou 3×: órfãos+OCR em massa+grep-bomba; preflight+cleanup ppid==1), `tools/sei_proc_paginado.py` (ler SEI COMPLETO = paginar navegar(offset); ler() para em 10 docs), store `.txt` + índice [[iterj-mgs-indice-sei]]. Lições: [[auditoria-sei-completa-pipeline]]. **PENDÊNCIA:** foldar paginação no `_extrair_de_todos_frames` do core (alto blast radius — gitnexus_impact); liberar acesso SEI p/ unidades antigas.
 - **06-18 cont.44 (auditoria do ECOSSISTEMA + fixes commitados):** workflows de auditoria (8 subsistemas + sweeps/dados
@@ -597,6 +598,15 @@ manuais quando expirarem (caem no nous até lá).
 - **Anterior:** SIAFE 1+2 sweeps supervisionados + correlação OB↔SEI↔CNPJ; JFN 2.0 (12 ondas); Yoda/Hermes na VM.
 
 ## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md e tasks/todo.md")
+> **⏯️ 2026-06-24 — Manutenção ecossistema (Yoda/fachadas/Hermes/painel):** handoff em
+> `~/vault/aprendizados/sessao-2026-06-24-yoda-fachadas-hermes-update.md`. FEITO: (1) `compliance.db` "malformed"
+> era conexão viva do `jfn.service` → restart resolveu (arquivo íntegro; backup em `data/backups/`); (2) bug do
+> fallback `cerebras` do Yoda corrigido adotando fix do upstream (#45655) — `~/hermes-agent` ATUALIZADO + timer
+> `hermes-update.timer` 04:00 BRT (auto-update noturno c/ auto-revert via `update-hermes-safe.sh`); (3) **Mapillary
+> DESLIGADO** (`.env`, diretriz do dono); (4) fachadas vetadas por cadastro/sanções (`tools/fachada_vet_progressivo.py`)
+> → 15 "ok" reabertos (AFASTADO→INDÍCIO), relatório `reports/fachada_vetagem_2026-06-24.md`; (5) `/painel` reformado
+> (responsivo+denso+chart). Endpoints user-facing: 12/12 HTTP 200. PENDENTE: revisar os 161 REVISAR da vetagem (humano).
+>
 > **⏯️ 2026-06-19 — Iniciativa otimização token+memória (Jedi):** handoff completo em
 > `~/vault/aprendizados/sessao-2026-06-19-otimizacao-token-memoria.md`. PENDENTE: gitnexus reindex+embeddings
 > (background guardado), graphify vault+JFN, suíte pytest (não rodou — sweep ativo), validar `aprendizado_cruzado`
