@@ -8,12 +8,12 @@
 <style>body{font-family:ui-sans-serif,system-ui,sans-serif} .nav-on{background:#2563eb;color:#fff} .card{background:#fff;border:1px solid #e5e7eb;border-radius:.75rem}</style>
 </head>
 <body class="bg-slate-50 text-slate-800">
-<div class="flex min-h-screen">
-  <!-- Sidebar -->
-  <aside class="w-60 bg-slate-900 text-slate-300 flex flex-col shrink-0">
+<div class="flex flex-col md:flex-row min-h-screen">
+  <!-- Sidebar (lateral no desktop, barra horizontal rolável no celular) -->
+  <aside class="w-full md:w-60 bg-slate-900 text-slate-300 flex flex-col md:shrink-0">
     <div class="px-5 py-4 text-white font-bold text-lg flex items-center gap-2">🛰️ JFN</div>
-    <nav id="nav" class="flex-1 px-2 space-y-1 text-sm"></nav>
-    <div class="px-4 py-3 text-xs text-slate-500" id="rodape">—</div>
+    <nav id="nav" class="flex md:flex-col md:flex-1 gap-1 px-2 pb-2 md:pb-0 text-sm overflow-x-auto"></nav>
+    <div class="hidden md:block px-4 py-3 text-xs text-slate-500" id="rodape">—</div>
   </aside>
   <!-- Main -->
   <main class="flex-1 p-6 max-w-6xl">
@@ -38,14 +38,13 @@ const SECOES = [
   { id:'siafe', nome:'SIAFE (OBs)', icon:'💰', render: renderSiafe },
   { id:'sweeps', nome:'Sweeps SEI/SIAFE', icon:'🛰️', render: renderSweeps },
   { id:'cartel', nome:'Cartel & Concentração', icon:'🕸️', render: renderCartel },
-  { id:'massare', nome:'Massare (mercado)', icon:'📈', render: renderMassare },
   { id:'links', nome:'Mais (grafo, casos…)', icon:'🔗', render: renderLinks },
 ]
 let atual = 'geral'
 
 function montarNav(){
   document.getElementById('nav').innerHTML = SECOES.map(s=>
-    `<a href="#" onclick="ir('${s.id}');return false" class="block px-3 py-2 rounded-lg ${s.id===atual?'nav-on':'hover:bg-slate-800'}">${s.icon} ${s.nome}</a>`).join('')
+    `<a href="#" onclick="ir('${s.id}');return false" class="whitespace-nowrap shrink-0 px-3 py-2 rounded-lg ${s.id===atual?'nav-on':'hover:bg-slate-800'}">${s.icon} ${s.nome}</a>`).join('')
 }
 function ir(id){ atual=id; montarNav(); carregar() }
 async function carregar(){
@@ -97,16 +96,6 @@ async function renderCartel(){
     <div class="text-sm text-slate-600 truncate">${u.n_fornecedores} fornecedores · top: ${u.top_fornecedor}</div></div>
     <div class="text-right shrink-0"><div class="font-bold ${u.top_share>=90?'text-rose-600':u.top_share>=70?'text-amber-600':'text-slate-700'}">${u.top_share}%</div>
     <div class="text-xs text-slate-400">${fmtR(u.total)}</div></div></div>`)).join('')
-}
-async function renderMassare(){
-  const m = await J('/api/massare/placar')
-  if(!m.ok) return card('Massare indisponível.')
-  const pl = m.placar?.overall||{}, bt = m.backtest_oos||{}
-  return `<div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
-    ${kpi(((pl.hit_rate||0)*100).toFixed(1)+'%','Acerto (n='+(pl.n||0)+')', pl.hit_rate>0.5?'text-green-600':'text-rose-600')}
-    ${kpi(((bt.hit_rate_oos||0)*100).toFixed(1)+'%','Acerto OOS')}
-    ${kpi(((bt.edge_medio||0)*100).toFixed(2)+'%','Edge médio', bt.edge_medio>0?'text-green-600':'text-rose-600')}
-    ${kpi(fmtN(bt.n_pregoes_avaliados),'Pregões avaliados')}</div>`
 }
 async function renderLinks(){
   return `<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">

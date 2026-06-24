@@ -54,12 +54,6 @@
     </div>
   </section>
 
-  <!-- MASSARE -->
-  <section class="card">
-    <h2><span class="dot" style="background:#22c55e"></span> Massare <span class="muted" style="font-size:11px">mercado/previsão</span></h2>
-    <div id="ms-body" class="muted">carregando…</div>
-  </section>
-
   <!-- YODA -->
   <section class="card">
     <h2><span class="dot" style="background:#a855f7"></span> Yoda / Hermes</h2>
@@ -78,7 +72,7 @@
     </div>
   </section>
 
-  <!-- AÇÕES diretas (usar: Lex/relatório, órgão, Massare) -->
+  <!-- AÇÕES diretas (usar: Lex/relatório, órgão) -->
   <section class="card" style="grid-column:1/-1">
     <h2><span class="dot" style="background:#ef4444"></span> Ações</h2>
     <div style="display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
@@ -89,10 +83,6 @@
       <div>
         <div class="muted" style="margin-bottom:6px">Relatório de órgão (+ Lex)</div>
         <div style="display:flex;gap:6px"><input id="ac-org" placeholder="órgão ou UG (ex: 133100)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #2a3650;background:#0d1424;color:#e8edf7"><button class="btn red" onclick="acao('orgao')">Gerar</button></div>
-      </div>
-      <div>
-        <div class="muted" style="margin-bottom:6px">Massare — previsão</div>
-        <div style="display:flex;gap:6px"><input id="ac-ms" placeholder="ativo (ex: prata, ^BVSP)" style="flex:1;padding:8px 10px;border-radius:8px;border:1px solid #2a3650;background:#0d1424;color:#e8edf7"><button class="btn red" onclick="acao('massare')">Prever</button></div>
       </div>
     </div>
     <pre id="ac-out" style="margin-top:12px;display:none"></pre>
@@ -125,18 +115,6 @@ async function sweepAcao(acao){
   await fetch('/api/sweeps/'+acao, {method:'POST'});
   setTimeout(carregarSweeps, 400);
 }
-async function carregarMassare(){
-  try{
-    const [p,g] = await Promise.all([fetch('/api/massare/placar'),fetch('/api/massare/regime')]);
-    const dp = await p.json(); const dg = await g.json();
-    const o = dp.placar?.overall||{}; const bo = dp.backtest_oos||{};
-    $('ms-body').innerHTML =
-      `<div class="kv"><span>Acerto (live)</span><b>${pct(o.hit_rate)} <span class="muted">(${fmt(o.hits)}/${fmt(o.n)})</span></b></div>`+
-      `<div class="kv"><span>Edge OOS</span><b>${bo.edge_medio!=null?(bo.edge_medio*100).toFixed(2)+' pp':'—'}</b></div>`+
-      `<div class="kv"><span>Pregões avaliados</span><b>${fmt(bo.n_pregoes_avaliados)}</b></div>`+
-      `<div class="kv"><span>Regime ^GSPC</span><b>${dg.regime?.rotulo_atual||'—'}</b></div>`;
-  }catch(e){ $('ms-body').textContent = 'indisponível'; }
-}
 async function carregarYoda(){
   try{
     const r = await fetch('/api/hermes/estado'); const d = await r.json();
@@ -152,20 +130,18 @@ async function acao(tipo){
   let url, body, val;
   if(tipo==='relatorio'){ val=$('ac-emp').value.trim(); if(!val)return; url='/api/relatorio/inteligencia'; body={empresa:val}; }
   if(tipo==='orgao'){ val=$('ac-org').value.trim(); if(!val)return; url='/api/relatorio/orgao'; body={orgao:val}; }
-  if(tipo==='massare'){ val=$('ac-ms').value.trim()||'^BVSP'; url='/api/massare/prever'; body={symbol:val}; }
   out.textContent = `⏳ processando "${val}"… (pode levar até ~1 min)`;
   try{
     const r = await fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
     const d = await r.json();
     if(d.ambiguo){ out.textContent = `❓ ambíguo: ${d.pergunta}\ncandidatos: ${(d.candidatos||[]).map(c=>c.nome||c).join(' · ')}`; return; }
-    if(tipo==='massare'){ const p=d.previsao||{}, a=d.atual||{}; const seta=p.direction==='up'?'⬆️ alta':p.direction==='down'?'⬇️ baixa':'➡️ lateral'; out.textContent = `📈 ${d.symbol||p.symbol||val} — ${seta} ${p.prob!=null?'('+(p.prob*100).toFixed(0)+'%)':''} · horizonte ${p.horizon||5}d · preço ${a.preco??'?'}${a.var_pct!=null?' ('+a.var_pct+'%)':''} · regime: ${p.regime_atual||'?'}`; return; }
     // relatorio / orgao
     const pdf = d.path_pdf || d.path_lex || d.path_xlsx;
     const linha = [d.empresa||d.orgao||val, d.risco?('risco '+d.risco):'', d.grau_lex?('Lex '+d.grau_lex):'', d.score!=null?('score '+d.score):''].filter(Boolean).join(' · ');
     out.innerHTML = `✅ ${linha}\n${(d.resumo||'').slice(0,500)}` + (pdf?`\n\n📄 <a href="/${pdf.replace(/^\//,'')}" target="_blank" style="color:#7ab8ff">abrir PDF</a> (também empurrado no Telegram)`:'');
   }catch(e){ out.textContent = '⚠ erro: '+e; }
 }
-carregarSweeps(); carregarMassare(); carregarYoda();
+carregarSweeps(); carregarYoda();
 setInterval(carregarSweeps, 30000);
 </script>
 </body>

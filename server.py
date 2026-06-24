@@ -318,7 +318,7 @@ async def login_jfn_form(erro: int = 0):
 @app.post("/login_jfn")
 async def login_jfn_post(senha: str = Form("")):
     if _DASH_SENHA and hmac.compare_digest(senha, _DASH_SENHA):
-        resp = RedirectResponse("/", status_code=303)
+        resp = RedirectResponse("/painel", status_code=303)
         resp.set_cookie(_DASH_COOKIE, _dash_token(), max_age=_DASH_TTL,
                         httponly=True, samesite="lax", secure=_DASH_COOKIE_SECURE)
         return resp
@@ -346,7 +346,7 @@ async def auditoria_ui():
 
 @app.get("/painel", response_class=HTMLResponse)
 async def painel_fiscalizacao():
-    """Painel de fiscalização unificado (leve, Tailwind): visão geral, auditoria/alertas, SIAFE, sweeps, cartel, Massare."""
+    """Painel de fiscalização unificado (leve, Tailwind): visão geral, auditoria/alertas, SIAFE, sweeps, cartel."""
     return FileResponse("static/jfn-painel.html")
 
 
