@@ -37,10 +37,33 @@ def _money(s):
         return 0.0
 
 
+def _resources():
+    return httpx.get(CKAN, headers=UA, timeout=40, verify=False).json()["result"].get("resources", [])
+
+
+def anos_disponiveis():
+    """Anos com CSV publicado no CKAN (ordenado). O dataset é anual: 2026 só aparece após o SIAFE 2 (D+1)."""
+    import re
+    anos = set()
+    for r in _resources():
+        if (r.get("format") or "").upper() == "CSV":
+            m = re.search(r"(20\d\d)", r.get("name") or "")
+            if m:
+                anos.add(int(m.group(1)))
+    return sorted(anos)
+
+
+def latest_ano():
+    """Ano mais recente DISPONÍVEL na fonte (resolve o sweep p/ nunca falhar num ano futuro)."""
+    a = anos_disponiveis()
+    if not a:
+        raise RuntimeError("CKAN sem nenhum CSV de despesa")
+    return a[-1]
+
+
 def resource_url(ano):
     """URL do CSV do ano a partir do CKAN (pega o último recurso que casa o ano)."""
-    d = httpx.get(CKAN, headers=UA, timeout=40, verify=False).json()["result"]
-    cand = [r for r in d.get("resources", []) if str(ano) in (r.get("name") or "") and (r.get("format") or "").upper() == "CSV"]
+    cand = [r for r in _resources() if str(ano) in (r.get("name") or "") and (r.get("format") or "").upper() == "CSV"]
     if not cand:
         raise RuntimeError(f"sem CSV para {ano}")
     return cand[-1]["url"]
@@ -114,9 +137,21 @@ def ingest_db(ano):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--ano", type=int, default=2025)
+    ap.add_argument("--latest", action="store_true", help="usa o ano mais recente DISPONÍVEL no CKAN (auto-atualiza)")
     ap.add_argument("--orgao", default="")
     ap.add_argument("--ingest", action="store_true")
     a = ap.parse_args()
+    # --latest: mira o ano mais novo publicado (o dataset TFE é anual e sai D+1 após o SIAFE 2;
+    # assim o sweep nunca falha num ano futuro e sempre pega o dado mais recente).
+    if a.latest:
+        a.ano = latest_ano()
+        print(f"[TFE] ano mais recente disponível = {a.ano} (de {anos_disponiveis()})")
+    # Degradação graciosa: ano ainda não publicado NÃO é erro — avisa e sai 0 p/ não derrubar o serviço.
+    try:
+        resource_url(a.ano)
+    except RuntimeError as e:
+        print(f"⚠ TFE: {e} (ano ainda não publicado na fonte aberta) — pulando, sem falha.")
+        return
     if a.ingest:
         n, pago = ingest_db(a.ano)
         print(f"despesa_execucao {a.ano}: {n:,} linhas | PAGO TOTAL R$ {pago:,.2f}")

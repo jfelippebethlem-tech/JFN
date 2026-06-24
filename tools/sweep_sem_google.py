@@ -19,8 +19,8 @@ REGRAS_FECHADO_OPTIN = True  # FECHADO_GOOGLE ruidoso (match errado) — fora do
 REGRAS = [
     ("SEM_GOOGLE", "places_achou=0",
      "Google Places NÃO encontrou negócio no endereço (sem marcação no Google) — recebeu do Estado. Indício de fachada, não acusação."),
-    ("FECHADO_GOOGLE", "UPPER(COALESCE(places_status,'')) LIKE 'CLOSED%'",
-     "Google Places marca o estabelecimento como FECHADO — mas recebeu do Estado. Indício, não acusação."),
+    ("FECHADO_GOOGLE", "UPPER(COALESCE(places_status,''))='CLOSED_PERMANENTLY'",
+     "Google Places marca o estabelecimento como FECHADO PERMANENTEMENTE — mas recebeu do Estado. Indício, não acusação."),
 ]
 
 
@@ -36,12 +36,17 @@ def main():
     con.execute("PRAGMA busy_timeout=30000")
     # exclusões: vereditos HUMANOS de legítima (real/pular) — ex.: PVAX (galpão real)
     vetado = {r[0] for r in con.execute("SELECT cnpj FROM fachada_veredito WHERE status IN ('real','pular')")}
+    # bancos/federais óbvios que o e_ente_publico não pega (ex.: Caixa, BB) — não são fachada
+    BANCO_FED = ("CAIXA ECONOMICA", "BANCO DO BRASIL", "BNDES", "PETROBRAS", "CORREIOS", "ELETROBRAS")
+    def _excluir(razao):
+        r = (razao or "").upper()
+        return e_ente_publico(razao or "") or any(b in r for b in BANCO_FED)
     total = 0
     for nivel, cond, ev in REGRAS:
         base = (f"FROM verificacao_sede WHERE ({cond}) AND COALESCE(total_recebido,0) > 0 AND status='AFASTADO'")
         cands = con.execute(f"SELECT cnpj, razao, total_recebido {base}").fetchall()
         # filtra ente público + veredito humano (em Python, heurística de razão)
-        alvos = [r for r in cands if r[0] not in vetado and not e_ente_publico(r[1] or "")]
+        alvos = [r for r in cands if r[0] not in vetado and not _excluir(r[1] or "")]
         excl = len(cands) - len(alvos)
         val = sum(r[2] or 0 for r in alvos)
         print(f"[{nivel}] {len(alvos)} empresas · R$ {val:,.2f} (excluídos {excl}: ente público/veredito-humano)" + (" (dry)" if a.dry else ""))
