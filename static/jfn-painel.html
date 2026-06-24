@@ -104,6 +104,29 @@
   nav.tabs button:active{transform:scale(.92)}
 
   .fade{animation:f .22s ease}@keyframes f{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+  /* Callout de alerta operacional (ex.: coleta SIAFE com erro) */
+  .warn{display:flex;gap:10px;align-items:center;background:rgba(234,179,8,.10);border:1px solid rgba(234,179,8,.35);
+    border-radius:12px;padding:11px 13px;color:#f3cf6a;font-size:13px;margin-bottom:12px}
+  .warn b{color:#ffe08a}
+  /* mini-barras SVG inline (sem libs) */
+  .bars{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+  .bar{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;font-size:13px}
+  .bar .lab{color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .bar .track{height:9px;background:#0a1124;border-radius:6px;overflow:hidden;border:1px solid var(--bd2)}
+  .bar .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--blue),var(--purple))}
+  .bar .val{color:#fff;font-weight:650;white-space:nowrap}
+
+  /* Desktop: preenche a tela em vez de coluna estreita com vazio */
+  @media (min-width:760px){
+    .wrap{max-width:1080px}
+    nav.tabs{max-width:1080px}
+    main{padding:24px 28px 112px}
+    .g2{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .grid:not(.g2){grid-template-columns:repeat(2,minmax(0,1fr))}
+    .kpi .v{font-size:22px}
+    .span2{grid-column:1 / -1}
+  }
 </style>
 </head>
 <body>
@@ -151,19 +174,49 @@ async function ir(id){
   v.innerHTML = `<div class="fade">${await t.render()}</div>`;
 }
 
+const barras = (itens)=>{ // itens: [{lab,val,pctw,cor?}]
+  return `<div class="bars">`+itens.map(i=>
+    `<div class="bar"><span class="lab">${i.lab}</span>
+       <span class="track"><span class="fill" style="width:${Math.max(3,Math.min(100,i.pctw))}%${i.cor?`;background:${i.cor}`:''}"></span></span>
+       <span class="val">${i.val}</span></div>`).join('')+`</div>`;
+};
+
 async function renderGeral(){
-  const [st,p]=await Promise.all([J('/status'),J('/api/compliance/painel')]);
+  const [st,p,c]=await Promise.all([J('/status'),J('/api/compliance/painel'),J('/api/cartel')]);
   const a=p.alertas||{}, o=p.obs||{};
-  return sec('var(--blue)','Visão geral')+
-  `<div class="grid g2">
+  const coletaErro = /erro/i.test(p.ultima_coleta||'');
+  const lst=(p.lista_alertas||[]).slice(0,3);
+  const cart=(c.dados||[]).slice(0,5);
+  const maxShare = Math.max(1, ...cart.map(u=>u.top_share||0));
+  let html = sec('var(--blue)','Visão geral');
+  if(coletaErro) html += `<div class="warn">⚠ <span>Última coleta SIAFE falhou — <b>${p.ultima_coleta}</b>. Dados podem estar defasados.</span></div>`;
+  html += `<div class="grid g2">
     ${kpi(fmtN(o.total),'Ordens Bancárias')}
     ${kpi(fmtRc(o.valor_total),'Valor fiscalizado')}
     ${kpi(fmtN(a.total??0),'Alertas ativos', (a.alta? 'var(--rose)':'#fff'))}
-    ${kpi(st.logged_in?'🟢':'🔴','SIAFE · '+(st.exercicio||'—'))}
-  </div>
-  <div style="height:12px"></div>
-  ${card(`<div class="kv"><span class="k">Última atualização</span><b>${p.atualizado||'—'}</b></div>
-          <div class="kv"><span class="k">Última coleta</span><b>${p.ultima_coleta||'—'}</b></div>`)}`;
+    ${kpi(st.logged_in?'🟢 ok':'🔴 off','SIAFE · '+(st.exercicio||'—'))}
+    ${kpi(fmtN(a.alta??0),'🔴 Alta', 'var(--rose)')}
+    ${kpi(fmtN(a.media??0),'🟡 Média', 'var(--amber)')}
+    ${kpi(fmtRc(o.valor_hoje??0),'Pago hoje')}
+    ${kpi(fmtN(o.hoje??0),'OBs hoje')}
+  </div>`;
+  if(lst.length){
+    html += `<div style="height:16px"></div>`+sec('var(--rose)','Alertas recentes')+
+      `<div class="grid">`+lst.map(al=>card(
+        `<div style="display:flex;gap:11px;align-items:flex-start">
+           <span class="sev ${al.severidade||'baixa'}">${al.severidade||'—'}</span>
+           <div><div style="font-weight:650">${al.titulo||al.tipo||'Alerta'}</div></div>
+         </div>`)).join('')+`</div>`;
+  }
+  if(cart.length){
+    html += `<div style="height:16px"></div>`+sec('var(--purple)','Maior concentração de fornecedor (top share por UG)')+
+      card(barras(cart.map(u=>({lab:`${(u.ug_nome||u.ug||'').slice(0,22)}`, val:`${u.top_share}%`,
+        pctw:(u.top_share/maxShare)*100, cor:u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':null}))));
+  }
+  html += `<div style="height:16px"></div>`+
+    card(`<div class="kv"><span class="k">Última atualização</span><b>${p.atualizado||'—'}</b></div>
+          <div class="kv"><span class="k">Última coleta</span><b style="${coletaErro?'color:#f3cf6a':''}">${p.ultima_coleta||'—'}</b></div>`);
+  return html;
 }
 
 async function renderAlertas(){
