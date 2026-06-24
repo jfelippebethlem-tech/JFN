@@ -1733,6 +1733,24 @@ async def api_compliance_reports():
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
+@app.post("/api/compliance/reports/limpar")
+async def api_compliance_reports_limpar(payload: Optional[dict] = None):
+    """Apaga relatórios EFÊMEROS gerados pela sessão web (chamado no page-leave via sendBeacon)
+    para não acumular relatórios duplicados na VM. Segurança: só apaga basenames DENTRO de reports/."""
+    nomes = (payload or {}).get("nomes") or []
+    reports_dir = Path("reports").resolve()
+    apagados = []
+    for nome in nomes:
+        fp = Path("reports") / Path(str(nome)).name  # basename — evita path traversal
+        try:
+            if fp.resolve().is_relative_to(reports_dir) and fp.exists():
+                fp.unlink()
+                apagados.append(fp.name)
+        except Exception:
+            pass
+    return JSONResponse(content={"ok": True, "apagados": apagados})
+
+
 @app.get("/reports/{filename}")
 async def serve_report(filename: str):
     """Serve a report file (PDF or JSON) from the reports/ directory."""
