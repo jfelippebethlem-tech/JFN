@@ -162,6 +162,7 @@ const TABS = [
   {id:'mais',   ic:'⋯',  tl:'Mais',    render:renderMais},
 ];
 let atual='geral';
+const sessaoReports = new Set();   // relatórios gerados nesta sessão → apagados ao sair (efêmeros)
 
 function montarTabs(){
   $('tabs').innerHTML = TABS.map(t=>
@@ -304,13 +305,29 @@ async function renderMais(){
       <div style="height:11px"></div>
       <label class="fld">Relatório de órgão (+ Lex)</label>
       <div style="display:flex;gap:8px"><input id="ac-org" placeholder="órgão ou UG (ex: 133100)"><button class="btn red" style="flex:0 0 auto;min-width:84px" onclick="acao('orgao')">Gerar</button></div>
+      <div style="height:11px"></div>
+      <label class="fld">Dossiê 360 (cadastro+sanções+OB+rede)</label>
+      <div style="display:flex;gap:8px"><input id="ac-dos" placeholder="nome ou CNPJ do alvo"><button class="btn red" style="flex:0 0 auto;min-width:84px" onclick="acao('dossie')">Gerar</button></div>
+      <div style="height:11px"></div>
+      <label class="fld">Cruzamento (sócios × OB × SEI × endereço)</label>
+      <div style="display:flex;gap:8px"><input id="ac-cruz" placeholder="CNPJ (14 dígitos)"><button class="btn ghost" style="flex:0 0 auto;min-width:84px" onclick="acao('cruzamento')">Ver</button></div>
       <pre id="ac-out" style="margin-top:13px;display:none"></pre>`)}`;
 }
 async function acao(tipo){
   const out=$('ac-out'); out.style.display='block';
   let url,body,val;
+  if(tipo==='cruzamento'){ // GET síncrono → mostra inline (não gera PDF)
+    val=$('ac-cruz').value.replace(/\D/g,''); if(val.length!==14){out.textContent='⚠ informe um CNPJ de 14 dígitos.';return;}
+    out.textContent='⏳ cruzando…';
+    const r=await J('/api/cruzamento?cnpj='+val);
+    if(r.erro||r._nota){out.textContent='⚠ '+(r.erro||r._nota);return;}
+    const co=(r.coendereco||[]).length, ind=(r.indicios||[]).length;
+    out.textContent=`✅ ${r.razao||val}\nco-endereço: ${co} empresa(s) · indícios: ${ind}\nOB/SEI: ${JSON.stringify(r.obs_sei||{}).slice(0,200)}`;
+    return;
+  }
   if(tipo==='relatorio'){ val=$('ac-emp').value.trim(); if(!val)return; url='/api/relatorio/inteligencia'; body={empresa:val}; }
   if(tipo==='orgao'){ val=$('ac-org').value.trim(); if(!val)return; url='/api/relatorio/orgao'; body={orgao:val}; }
+  if(tipo==='dossie'){ val=$('ac-dos').value.trim(); if(!val)return; url='/api/dossie'; body={alvo:val}; }
   out.textContent=`⏳ processando "${val}"… (até ~1 min)`;
   const t0 = Date.now()/1000;  // mtime é epoch em segundos
   const antes = new Set(((await J('/api/compliance/reports'))||[]).filter(x=>x.type==='pdf').map(x=>x.name));
@@ -334,13 +351,24 @@ async function pollarPdf(out, termo, t0, antes){
     if(!novos.length) novos=pdfs.filter(x=>!antes.has(x.name)); // fallback: diff de nomes
     const alvo=novos.find(x=>slug && x.name.toLowerCase().includes(slug))||novos[0];
     if(alvo){
+      sessaoReports.add(alvo.name);   // efêmero: apaga ao sair da página
       out.innerHTML='✅ relatório pronto: '+alvo.name+
-        '\n\n📄 <a href="'+alvo.url+'" target="_blank" style="color:#7ab8ff">abrir PDF</a> (também no Telegram)';
+        '\n\n📄 <a href="'+alvo.url+'" target="_blank" style="color:#7ab8ff">abrir PDF</a> (também no Telegram · apaga ao sair)';
       return;
     }
   }
   out.textContent='⏳ Ainda gerando — confira no Telegram ou na seção Relatórios.';
 }
+
+// Relatórios EFÊMEROS: o que a sessão gerar é apagado ao sair da página (não acumula duplicados na VM).
+function limparEfemeros(){
+  if(!sessaoReports.size) return;
+  const body = JSON.stringify({nomes:[...sessaoReports]});
+  try{ navigator.sendBeacon('/api/compliance/reports/limpar', new Blob([body],{type:'application/json'})); }
+  catch(e){ fetch('/api/compliance/reports/limpar',{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true}); }
+}
+window.addEventListener('pagehide', limparEfemeros);
+window.addEventListener('beforeunload', limparEfemeros);
 
 (async()=>{
   montarTabs();
