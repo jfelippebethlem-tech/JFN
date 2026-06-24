@@ -334,8 +334,8 @@ async def logout_jfn():
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    """Hub do painel JFN (login_jfn): sweeps + admin, Massare, Yoda, atalhos p/ auditoria/Lex."""
-    return FileResponse("static/painel.html")
+    """Painel JFN unificado (mobile-first, dark): visão geral, alertas, SIAFE, sweeps + atalhos. Antigo hub em static/painel.html (aposentado)."""
+    return FileResponse("static/jfn-painel.html")
 
 
 @app.get("/auditoria", response_class=HTMLResponse)
