@@ -244,7 +244,8 @@ async def _login(pg, exercicio: int):
     # marcadores de sucesso: sumiu o campo de senha do login E/OU apareceu o menu do workspace
     tem_senha_login = await pg.evaluate("""()=>!!document.getElementById('loginBox:itxSenhaAtual::content')""")
     tem_workspace = await pg.evaluate("""()=>[...document.querySelectorAll('a.xyo')].some(e=>(e.innerText||'').trim()==='Execução')||/workspace/.test(location.href)""")
-    print(f"   [login] url={pg.url} | senha_login={tem_senha_login} workspace={tem_workspace} | body[:140]={body[:140].replace(chr(10),' ')!r}", flush=True)
+    # Não logar o corpo da página pós-login (higiene: evita despejar conteúdo sensível em stdout/log).
+    print(f"   [login] url={pg.url} | senha_login={tem_senha_login} workspace={tem_workspace}", flush=True)
     if any(k in bl for k in ("token", "código de verificação", "autenticação de dois")):
         return {"ok": False, "erro": "mfa", "detail": "SIAFE pediu MFA — fornecer o código."}
     if tem_workspace or not tem_senha_login:
