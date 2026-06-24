@@ -1600,21 +1600,49 @@ async def api_relatorio_30d():
 
 @app.get("/api/compliance/graph")
 async def api_compliance_graph():
-    """
-    Return graph data from GrafoRelacionamentos.exportar_json().
-    Initializes compliance DB and builds the relationship graph.
-    """
-    try:
-        from compliance_agent.database.models import get_session, init_db
-        from compliance_agent.graph import GrafoRelacionamentos
+    return await _grafo_rede_completa()
 
-        init_db()
-        session = get_session()
-        grafo = GrafoRelacionamentos(session)
-        grafo.construir()
-        data = grafo.exportar_json()
-        session.close()
-        return JSONResponse(content=data)
+
+async def _grafo_rede_completa(limite: int = 120):
+    """Rede de relacionamento COMPLETA (não só MGS): top-N fornecedores por valor pago ↔ órgãos (UGs),
+    a partir de ordens_bancarias. Fornecedor vira severidade='alta' se for INDICIO em verificacao_sede.
+    Formato D3 que o graph.html consome: {nodes:[{id,label,tipo,...}], links:[{source,target,...}]}."""
+    import sqlite3 as _sq
+    import re as _re
+    DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "compliance.db")
+    try:
+        con = _sq.connect(f"file:{DB}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        n_forn = max(10, min(int(limite), 400))
+        # 1 scan: top fornecedores por valor
+        forn = con.execute(
+            "SELECT favorecido_nome nome, MAX(favorecido_cpf) doc, SUM(valor) v, COUNT(*) n "
+            "FROM ordens_bancarias WHERE favorecido_nome IS NOT NULL AND favorecido_nome!='' "
+            "GROUP BY favorecido_nome ORDER BY v DESC LIMIT ?", (n_forn,)).fetchall()
+        top_nomes = [f["nome"] for f in forn]
+        susp = {r[0] for r in con.execute("SELECT cnpj FROM verificacao_sede WHERE status='INDICIO'")}
+        nodes, links, orgaos, fid_de = [], [], {}, {}
+        for f in forn:
+            fid = "empresa:" + ((f["doc"] or f["nome"]) or "?")[:24]
+            fid_de[f["nome"]] = fid
+            cnpj = _re.sub(r"\D", "", f["doc"] or "")
+            nodes.append({"id": fid, "label": (f["nome"] or "")[:40], "tipo": "empresa",
+                          "valor": float(f["v"] or 0), "n_obs": f["n"],
+                          "severidade": "alta" if cnpj in susp else ""})
+        # 1 scan filtrado: arestas fornecedor→órgão (só dos top), agregadas
+        ph = ",".join("?" * len(top_nomes))
+        if top_nomes:
+            for u in con.execute(
+                f"SELECT favorecido_nome nome, ug_nome org, SUM(valor) v FROM ordens_bancarias "
+                f"WHERE favorecido_nome IN ({ph}) AND ug_nome IS NOT NULL AND ug_nome!='' "
+                f"GROUP BY favorecido_nome, ug_nome", top_nomes).fetchall():
+                oid = "orgao:" + (u["org"] or "?")[:34]
+                if oid not in orgaos:
+                    orgaos[oid] = {"id": oid, "label": (u["org"] or "?")[:36], "tipo": "orgao"}
+                links.append({"source": fid_de.get(u["nome"]), "target": oid, "tipo": "pagamento", "valor": float(u["v"] or 0)})
+        con.close()
+        nodes.extend(orgaos.values())
+        return JSONResponse(content={"nodes": nodes, "links": links})
     except Exception as e:
         return JSONResponse(content={"nodes": [], "links": [], "error": str(e)})
 
