@@ -420,7 +420,7 @@ async def responder_hermes(pergunta: str, contexto_db: str, session) -> str:
     bloco_rag = ""
     try:
         from tools.hermes_rag import contexto as _rag_contexto
-        rag = _rag_contexto(pergunta, k=6)
+        rag = _rag_contexto(pergunta, k=10)  # pool largo; tiers (full+índice) cabem no mesmo teto de chars
         if rag:
             bloco_rag = "\nBASE TÉCNICA CONSULTÁVEL (RAG — normas + conhecimento acumulado):\n" + rag + "\n"
     except Exception:
