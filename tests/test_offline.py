@@ -144,15 +144,21 @@ def test_hermes_openrouter_fallback_quando_groq_falha():
             raise RuntimeError("Retryable status 429 from openrouter")
         return '{"ok": true}'  # primeiro fallback responde
 
-    async def _qwen_off(*a, **k):
-        raise RuntimeError("qwen off (teste do fallback OpenRouter)")  # Qwen é 1º; desliga p/ testar groq→OR
+    async def _off(*a, **k):
+        raise RuntimeError("provedor desligado no teste (isola o ramo groq→OpenRouter)")
 
     orig_groq = fl.groq_chat_async
     orig_key_groq = fl._groq_key
     orig_retry = fl._openai_compat_chat_retry
     orig_key_or = fl._openrouter_key
     orig_qwen = fl.qwen_chat_async
-    fl.qwen_chat_async = _qwen_off
+    orig_cerebras = fl.cerebras_chat_async
+    orig_gemini = fl.gemini_chat_async
+    # Cadeia real do _hermes: groq → cerebras → gemini → OpenRouter. Cerebras tem chave
+    # nesta VM e interceptava o fallback; desligar os do meio p/ exercitar groq→OpenRouter.
+    fl.qwen_chat_async = _off
+    fl.cerebras_chat_async = _off
+    fl.gemini_chat_async = _off
     fl.groq_chat_async = fake_groq_fail
     fl._groq_key = lambda: "gsk_fake"
     fl._openai_compat_chat_retry = fake_retry
@@ -170,6 +176,8 @@ def test_hermes_openrouter_fallback_quando_groq_falha():
         fl._openai_compat_chat_retry = orig_retry
         fl._openrouter_key = orig_key_or
         fl.qwen_chat_async = orig_qwen
+        fl.cerebras_chat_async = orig_cerebras
+        fl.gemini_chat_async = orig_gemini
 
 
 # ─── 4. Bootstrap do Hermes (LLM simulado) ────────────────────────────────────
