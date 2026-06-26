@@ -126,15 +126,37 @@ def consultar(pergunta: str, k: int = 6) -> list[dict]:
     return [{"score": float(scores[i]), "fonte": regs[i]["fonte"], "texto": regs[i]["texto"]} for i in idx]
 
 
-def contexto(pergunta: str, k: int = 6, max_chars: int = 4000) -> str:
-    """String pronta p/ injetar no prompt do Hermes (trechos + fonte)."""
+def contexto(pergunta: str, k: int = 10, max_chars: int = 4000, *,
+             k_full: int = 4, piso: float = 0.28, snippet_chars: int = 180) -> str:
+    """String pronta p/ injetar no prompt do Hermes — progressive disclosure (tiers).
+
+    Retrieval é local (custo zero); o gasto real é char no prompt. Então: pool largo
+    (k) → gate de relevância (piso de score, corta ruído) → tier FULL (top k_full, texto
+    completo) + tier ÍNDICE (cauda relevante vira snippet barato). Mesmo teto (max_chars):
+    o full leva o grosso, o índice estende a cobertura por pouco. Nugget do claude-mem.
+    """
     hits = consultar(pergunta, k)
+    if not hits:
+        return ""
+    fortes = [h for h in hits if h["score"] >= piso] or hits[:1]  # nunca vazio se há hit
+    full, indice = fortes[:k_full], fortes[k_full:]
+    full_budget = int(max_chars * 0.75)  # o grosso vai p/ o texto completo; o resto p/ o índice
     partes, total = [], 0
-    for h in hits:
+    for h in full:
         bloco = f"[FONTE: {h['fonte']} · score {h['score']:.2f}]\n{h['texto']}"
-        if total + len(bloco) > max_chars:
+        if partes and total + len(bloco) > full_budget:
             break
         partes.append(bloco); total += len(bloco)
+    linhas = []
+    for h in indice:
+        snip = " ".join(h["texto"][:snippet_chars].split())
+        linha = f"• [{h['fonte']} · {h['score']:.2f}] {snip}…"
+        if total + len(linha) > max_chars:
+            break
+        linhas.append(linha); total += len(linha)
+    if linhas:
+        partes.append("OUTROS TRECHOS RELEVANTES (índice; aprofunde se a pergunta exigir):\n"
+                      + "\n".join(linhas))
     return "\n\n---\n\n".join(partes)
 
 
