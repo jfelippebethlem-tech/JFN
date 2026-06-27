@@ -430,6 +430,8 @@ _EXTRA = {
     "zai":         (os.environ.get("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4"), "glm-4.5-flash", ["ZAI_API_KEY", "ZHIPU_API_KEY"], "ZAI_MODEL"),
     "siliconflow": ("https://api.siliconflow.com/v1",       "Qwen/Qwen3-8B",               ["SILICONFLOW_API_KEY"],          "SILICONFLOW_MODEL"),
     "cohere":      ("https://api.cohere.ai/compatibility/v1", "command-r-08-2024",         ["COHERE_API_KEY"],               "COHERE_MODEL"),
+    # BazaarLink: gateway com modelos PAGOS no catálogo → fixar 'auto:free' (só roteia grátis). NUNCA outro modelo.
+    "bazaarlink":  ("https://bazaarlink.ai/api/v1",           "auto:free",                  ["BAZAARLINK_API_KEY"],           "BAZAARLINK_MODEL"),
 }
 
 # Guard-rail de CUSTO (§4.1): provedores que COBRAM acima do free → cap mensal de requisições
@@ -445,6 +447,7 @@ _MONTH_CAP = {
     "cohere":        1000,   # trial free rate-limited
     "cloudflare":    1500,   # 10k neurons/dia (≈ conservador p/ 70B)
     "github_models": 3000,   # rate-limit baixo
+    "bazaarlink":    3000,   # 150 req/dia free (auto:free)
 }
 _MONTH_CAP = {k: int(os.environ.get(f"CAP_{k.upper()}", v)) for k, v in _MONTH_CAP.items()}
 _MONTH_CAP = {k: v for k, v in _MONTH_CAP.items() if v > 0}
@@ -491,7 +494,10 @@ def extra_available(name: str) -> bool:
 
 def _extra_cfg(name: str):
     base, dmodel, keys, menv = _EXTRA[name]
-    return base, _envk(*keys), os.environ.get(menv, dmodel)
+    model = os.environ.get(menv, dmodel)
+    if name == "bazaarlink" and not model.endswith(":free") and model != "auto:free":
+        model = "auto:free"  # guard anti-cobrança: catálogo tem modelos PAGOS; só roteia grátis
+    return base, _envk(*keys), model
 
 def extra_chat(name: str, prompt: str, system: str = "", max_tokens: int = 1024) -> str:
     base, key, model = _extra_cfg(name)
@@ -708,7 +714,7 @@ def _get_provider_order() -> list[str]:
     # (fallback forte); ollama (local) só se instalado; depois groq/openrouter.
     # cloudflare/github_models/extras por ÚLTIMO: free com cap/rate-limit baixo → rede de segurança, não p/ volume
     all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare", "github_models",
-                     "sambanova", "nvidia", "zai", "siliconflow", "cohere"]
+                     "sambanova", "nvidia", "zai", "siliconflow", "cohere", "bazaarlink"]
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]
