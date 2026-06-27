@@ -436,6 +436,8 @@ _EXTRA = {
     "wisdomgate":  ("https://wisdom-gate.juheapi.com/v1",     "deepseek-r1",                ["WISDOMGATE_API_KEY"],           "WISDOMGATE_MODEL"),
     # OfoxAI: OpenRouter-style com modelos PAGOS no catálogo → fixar ':free' (guard força :free). Nunca pago.
     "ofox":        ("https://api.ofox.ai/v1",                 "z-ai/glm-4.7-flash:free",    ["OFOX_API_KEY"],                 "OFOX_MODEL"),
+    # Routeway: OpenRouter-style; catálogo tem pagos → guard força ':free' (llama-3.3-70b-instruct:free).
+    "routeway":    ("https://api.routeway.ai/v1",             "llama-3.3-70b-instruct:free", ["ROUTEWAY_API_KEY"],            "ROUTEWAY_MODEL"),
 }
 
 # Guard-rail de CUSTO (§4.1): provedores que COBRAM acima do free → cap mensal de requisições
@@ -454,6 +456,7 @@ _MONTH_CAP = {
     "bazaarlink":    3000,   # 150 req/dia free (auto:free)
     "wisdomgate":    3000,   # sandbox grátis (cap conservador)
     "ofox":          3000,   # gateway :free
+    "routeway":      3000,   # gateway :free
 }
 _MONTH_CAP = {k: int(os.environ.get(f"CAP_{k.upper()}", v)) for k, v in _MONTH_CAP.items()}
 _MONTH_CAP = {k: v for k, v in _MONTH_CAP.items() if v > 0}
@@ -505,6 +508,8 @@ def _extra_cfg(name: str):
         model = "auto:free"  # guard anti-cobrança: catálogo tem modelos PAGOS; só roteia grátis
     if name == "ofox" and not model.endswith(":free"):
         model = "z-ai/glm-4.7-flash:free"  # guard anti-cobrança: só modelos :free
+    if name == "routeway" and not model.endswith(":free"):
+        model = "llama-3.3-70b-instruct:free"  # guard anti-cobrança: só :free
     return base, _envk(*keys), model
 
 def extra_chat(name: str, prompt: str, system: str = "", max_tokens: int = 1024) -> str:
@@ -722,7 +727,7 @@ def _get_provider_order() -> list[str]:
     # (fallback forte); ollama (local) só se instalado; depois groq/openrouter.
     # cloudflare/github_models/extras por ÚLTIMO: free com cap/rate-limit baixo → rede de segurança, não p/ volume
     all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare", "github_models",
-                     "sambanova", "nvidia", "zai", "siliconflow", "cohere", "bazaarlink", "wisdomgate", "ofox"]
+                     "sambanova", "nvidia", "zai", "siliconflow", "cohere", "bazaarlink", "wisdomgate", "ofox", "routeway"]
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]
