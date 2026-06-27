@@ -387,6 +387,31 @@ async def cloudflare_chat_async(prompt: str, system: str = "", smart: bool = Fal
     return await _openai_compat_chat_retry(_cloudflare_base(), key, CLOUDFLARE_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
 
 
+# ── GitHub Models (OpenAI-compat) — ÚLTIMO recurso (free, rate-limit baixo) ────
+# PAT com permissão "Models". Llama 70B no pool; DeepSeek-R1 (deepseek/deepseek-r1) disponível
+# p/ raciocínio sob demanda via GITHUB_MODELS_MODEL. Free → rede de segurança, não p/ volume.
+GITHUB_MODELS_BASE = "https://models.github.ai/inference"
+GITHUB_MODELS_MODEL = os.environ.get("GITHUB_MODELS_MODEL", "meta/llama-3.3-70b-instruct")
+
+def _github_models_key() -> str:
+    return os.environ.get("GITHUB_MODELS_TOKEN", "")
+
+def github_models_available() -> bool:
+    return bool(_github_models_key())
+
+def github_models_chat(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
+    key = _github_models_key()
+    if not key:
+        raise RuntimeError("GITHUB_MODELS_TOKEN não configurado.")
+    return _openai_compat_chat_sync_retry(GITHUB_MODELS_BASE, key, GITHUB_MODELS_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+
+async def github_models_chat_async(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
+    key = _github_models_key()
+    if not key:
+        raise RuntimeError("GITHUB_MODELS_TOKEN não configurado.")
+    return await _openai_compat_chat_retry(GITHUB_MODELS_BASE, key, GITHUB_MODELS_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+
+
 # ── Gemini no pool (rotação do pool de chaves do JFN via direcionamento_cerebro) ──
 # Qualidade alta: entra no pool free_llm para REDUNDÂNCIA (todas as IAs têm gemini também).
 # Import local p/ evitar import circular.
@@ -513,6 +538,8 @@ def best_free_chat(
                 resp = openrouter_chat(prompt, system=system, smart=smart)
             elif provider == "cloudflare" and cloudflare_available():
                 resp = cloudflare_chat(prompt, system=system, smart=smart)
+            elif provider == "github_models" and github_models_available():
+                resp = github_models_chat(prompt, system=system, smart=smart)
             if resp is not None:
                 _limpar_cooldown(provider)   # voltou a responder → reabilita
                 return resp
@@ -558,6 +585,8 @@ async def best_free_chat_async(
                 resp = await openrouter_chat_async(prompt, system=system, smart=smart)
             elif provider == "cloudflare" and cloudflare_available():
                 resp = await cloudflare_chat_async(prompt, system=system, smart=smart)
+            elif provider == "github_models" and github_models_available():
+                resp = await github_models_chat_async(prompt, system=system, smart=smart)
             if resp is not None:
                 _limpar_cooldown(provider)
                 return resp
@@ -575,8 +604,8 @@ def _get_provider_order() -> list[str]:
     """Returns provider priority list based on FREE_LLM_PREFER."""
     # Cerebras 1º (ultrarrápido/grátis, ideal p/ volume do sweep); GEMINI no pool p/ redundância+qualidade
     # (fallback forte); ollama (local) só se instalado; depois groq/openrouter.
-    # cloudflare por ÚLTIMO: free 10k neurons/dia → rede de segurança, não p/ volume
-    all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare"]
+    # cloudflare/github_models por ÚLTIMO: free com cap/rate-limit baixo → rede de segurança, não p/ volume
+    all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare", "github_models"]
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]
