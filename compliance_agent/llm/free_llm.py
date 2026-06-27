@@ -432,6 +432,8 @@ _EXTRA = {
     "cohere":      ("https://api.cohere.ai/compatibility/v1", "command-r-08-2024",         ["COHERE_API_KEY"],               "COHERE_MODEL"),
     # BazaarLink: gateway com modelos PAGOS no catálogo → fixar 'auto:free' (só roteia grátis). NUNCA outro modelo.
     "bazaarlink":  ("https://bazaarlink.ai/api/v1",           "auto:free",                  ["BAZAARLINK_API_KEY"],           "BAZAARLINK_MODEL"),
+    # Wisdom Gate: sandbox grátis (one-api) — SEM cartão do dono (billing é da conta deles). DeepSeek-R1 default.
+    "wisdomgate":  ("https://wisdom-gate.juheapi.com/v1",     "deepseek-r1",                ["WISDOMGATE_API_KEY"],           "WISDOMGATE_MODEL"),
 }
 
 # Guard-rail de CUSTO (§4.1): provedores que COBRAM acima do free → cap mensal de requisições
@@ -448,6 +450,7 @@ _MONTH_CAP = {
     "cloudflare":    1500,   # 10k neurons/dia (≈ conservador p/ 70B)
     "github_models": 3000,   # rate-limit baixo
     "bazaarlink":    3000,   # 150 req/dia free (auto:free)
+    "wisdomgate":    3000,   # sandbox grátis (cap conservador)
 }
 _MONTH_CAP = {k: int(os.environ.get(f"CAP_{k.upper()}", v)) for k, v in _MONTH_CAP.items()}
 _MONTH_CAP = {k: v for k, v in _MONTH_CAP.items() if v > 0}
@@ -714,7 +717,7 @@ def _get_provider_order() -> list[str]:
     # (fallback forte); ollama (local) só se instalado; depois groq/openrouter.
     # cloudflare/github_models/extras por ÚLTIMO: free com cap/rate-limit baixo → rede de segurança, não p/ volume
     all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare", "github_models",
-                     "sambanova", "nvidia", "zai", "siliconflow", "cohere", "bazaarlink"]
+                     "sambanova", "nvidia", "zai", "siliconflow", "cohere", "bazaarlink", "wisdomgate"]
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]
