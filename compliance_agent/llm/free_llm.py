@@ -412,6 +412,45 @@ async def github_models_chat_async(prompt: str, system: str = "", smart: bool = 
     return await _openai_compat_chat_retry(GITHUB_MODELS_BASE, key, GITHUB_MODELS_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
 
 
+# ── Provedores diretos extras (free permanente) — ÚLTIMO recurso, data-driven ──
+# OpenAI-compat. Ativam SÓ quando a chave existe no .env (senão são pulados). Override de modelo por *_MODEL.
+# (base_url, modelo_default, [envs_da_chave], env_do_modelo)
+_EXTRA = {
+    "sambanova":   ("https://api.sambanova.ai/v1",          "Meta-Llama-3.3-70B-Instruct", ["SAMBANOVA_API_KEY"],            "SAMBANOVA_MODEL"),
+    "nvidia":      ("https://integrate.api.nvidia.com/v1",  "meta/llama-3.3-70b-instruct", ["NVIDIA_API_KEY", "NVIDIA_NIM_API_KEY"], "NVIDIA_MODEL"),
+    "zai":         (os.environ.get("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4"), "glm-4.5-flash", ["ZAI_API_KEY", "ZHIPU_API_KEY"], "ZAI_MODEL"),
+    "siliconflow": ("https://api.siliconflow.com/v1",       "Qwen/Qwen3-8B",               ["SILICONFLOW_API_KEY"],          "SILICONFLOW_MODEL"),
+    "cohere":      ("https://api.cohere.ai/compatibility/v1", "command-r-08-2024",         ["COHERE_API_KEY"],               "COHERE_MODEL"),
+}
+
+def _envk(*names: str) -> str:
+    for n in names:
+        v = os.environ.get(n, "")
+        if v:
+            return v
+    return ""
+
+def extra_available(name: str) -> bool:
+    spec = _EXTRA.get(name)
+    return bool(spec and _envk(*spec[2]))
+
+def _extra_cfg(name: str):
+    base, dmodel, keys, menv = _EXTRA[name]
+    return base, _envk(*keys), os.environ.get(menv, dmodel)
+
+def extra_chat(name: str, prompt: str, system: str = "", max_tokens: int = 1024) -> str:
+    base, key, model = _extra_cfg(name)
+    if not key:
+        raise RuntimeError(f"{name}: chave ausente")
+    return _openai_compat_chat_sync_retry(base, key, model, _cf_msgs(prompt, system), max_tokens=max_tokens)
+
+async def extra_chat_async(name: str, prompt: str, system: str = "", max_tokens: int = 1024) -> str:
+    base, key, model = _extra_cfg(name)
+    if not key:
+        raise RuntimeError(f"{name}: chave ausente")
+    return await _openai_compat_chat_retry(base, key, model, _cf_msgs(prompt, system), max_tokens=max_tokens)
+
+
 # ── Gemini no pool (rotação do pool de chaves do JFN via direcionamento_cerebro) ──
 # Qualidade alta: entra no pool free_llm para REDUNDÂNCIA (todas as IAs têm gemini também).
 # Import local p/ evitar import circular.
@@ -540,6 +579,8 @@ def best_free_chat(
                 resp = cloudflare_chat(prompt, system=system, smart=smart)
             elif provider == "github_models" and github_models_available():
                 resp = github_models_chat(prompt, system=system, smart=smart)
+            elif provider in _EXTRA and extra_available(provider):
+                resp = extra_chat(provider, prompt, system=system)
             if resp is not None:
                 _limpar_cooldown(provider)   # voltou a responder → reabilita
                 return resp
@@ -587,6 +628,8 @@ async def best_free_chat_async(
                 resp = await cloudflare_chat_async(prompt, system=system, smart=smart)
             elif provider == "github_models" and github_models_available():
                 resp = await github_models_chat_async(prompt, system=system, smart=smart)
+            elif provider in _EXTRA and extra_available(provider):
+                resp = await extra_chat_async(provider, prompt, system=system)
             if resp is not None:
                 _limpar_cooldown(provider)
                 return resp
@@ -604,8 +647,9 @@ def _get_provider_order() -> list[str]:
     """Returns provider priority list based on FREE_LLM_PREFER."""
     # Cerebras 1º (ultrarrápido/grátis, ideal p/ volume do sweep); GEMINI no pool p/ redundância+qualidade
     # (fallback forte); ollama (local) só se instalado; depois groq/openrouter.
-    # cloudflare/github_models por ÚLTIMO: free com cap/rate-limit baixo → rede de segurança, não p/ volume
-    all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare", "github_models"]
+    # cloudflare/github_models/extras por ÚLTIMO: free com cap/rate-limit baixo → rede de segurança, não p/ volume
+    all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare", "github_models",
+                     "sambanova", "nvidia", "zai", "siliconflow", "cohere"]
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]
