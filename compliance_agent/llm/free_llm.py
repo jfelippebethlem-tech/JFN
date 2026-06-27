@@ -364,7 +364,7 @@ def _cloudflare_creds() -> tuple[str, str]:
 
 def cloudflare_available() -> bool:
     k, a = _cloudflare_creds()
-    return bool(k and a)
+    return bool(k and a and _cap_ok("cloudflare"))
 
 def _cloudflare_base() -> str:
     _, acc = _cloudflare_creds()
@@ -379,13 +379,17 @@ def cloudflare_chat(prompt: str, system: str = "", smart: bool = False, max_toke
     key, acc = _cloudflare_creds()
     if not (key and acc):
         raise RuntimeError("CLOUDFLARE_API_KEY/ACCOUNT_ID não configurados.")
-    return _openai_compat_chat_sync_retry(_cloudflare_base(), key, CLOUDFLARE_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    r = _openai_compat_chat_sync_retry(_cloudflare_base(), key, CLOUDFLARE_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    _cap_inc("cloudflare")
+    return r
 
 async def cloudflare_chat_async(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
     key, acc = _cloudflare_creds()
     if not (key and acc):
         raise RuntimeError("CLOUDFLARE_API_KEY/ACCOUNT_ID não configurados.")
-    return await _openai_compat_chat_retry(_cloudflare_base(), key, CLOUDFLARE_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    r = await _openai_compat_chat_retry(_cloudflare_base(), key, CLOUDFLARE_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    _cap_inc("cloudflare")
+    return r
 
 
 # ── GitHub Models (OpenAI-compat) — ÚLTIMO recurso (free, rate-limit baixo) ────
@@ -398,19 +402,23 @@ def _github_models_key() -> str:
     return os.environ.get("GITHUB_MODELS_TOKEN", "")
 
 def github_models_available() -> bool:
-    return bool(_github_models_key())
+    return bool(_github_models_key() and _cap_ok("github_models"))
 
 def github_models_chat(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
     key = _github_models_key()
     if not key:
         raise RuntimeError("GITHUB_MODELS_TOKEN não configurado.")
-    return _openai_compat_chat_sync_retry(GITHUB_MODELS_BASE, key, GITHUB_MODELS_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    r = _openai_compat_chat_sync_retry(GITHUB_MODELS_BASE, key, GITHUB_MODELS_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    _cap_inc("github_models")
+    return r
 
 async def github_models_chat_async(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
     key = _github_models_key()
     if not key:
         raise RuntimeError("GITHUB_MODELS_TOKEN não configurado.")
-    return await _openai_compat_chat_retry(GITHUB_MODELS_BASE, key, GITHUB_MODELS_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    r = await _openai_compat_chat_retry(GITHUB_MODELS_BASE, key, GITHUB_MODELS_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    _cap_inc("github_models")
+    return r
 
 
 # ── Provedores diretos extras (free permanente) — ÚLTIMO recurso, data-driven ──
@@ -428,7 +436,20 @@ _EXTRA = {
 # Guard-rail de CUSTO (§4.1): provedores que COBRAM acima do free → cap mensal de requisições
 # server-side (conservador, bem abaixo do teto free). Ao atingir, o provedor é PULADO no mês.
 # Scaleway: 1M tokens/mês free → ~800 req (margem). Persistido em data/.llm_month_cap.json.
-_MONTH_CAP = {"scaleway": 800}
+# Cap mensal por provedor (req/mês), tunado ao free de cada um — guarda zero-cobrança + respeita o limite free.
+# Override por env CAP_<PROVEDOR> (ex.: CAP_SCALEWAY=1200). 0/negativo = sem cap.
+_MONTH_CAP = {
+    "scaleway":      800,    # 1M tokens/mês free
+    "sambanova":     600,    # ~20 req/dia
+    "nvidia":        1500,   # créditos free + cota diária
+    "zai":           5000,   # GLM-Flash generoso
+    "siliconflow":   5000,   # modelos free sem limite rígido
+    "cohere":        1000,   # trial free rate-limited
+    "cloudflare":    1500,   # 10k neurons/dia (≈ conservador p/ 70B)
+    "github_models": 3000,   # rate-limit baixo
+}
+_MONTH_CAP = {k: int(os.environ.get(f"CAP_{k.upper()}", v)) for k, v in _MONTH_CAP.items()}
+_MONTH_CAP = {k: v for k, v in _MONTH_CAP.items() if v > 0}
 _CAP_FILE = pathlib.Path("/home/ubuntu/JFN/data/.llm_month_cap.json")
 
 def _mes_atual() -> str:
