@@ -116,20 +116,28 @@ async def _groq_gerar(messages: list[dict]) -> str:
 async def _gerar_default(messages: list[dict]) -> str:
     """LLM padrão: tenta Gemini; se cair (chave/limite/erro), cai para o Hermes/Groq (pedido do dono).
     Honesto: se NENHUM responder, propaga o erro (o cérebro reporta 'indisponível', não fabrica)."""
+    # cooldown por TIPO de erro (mesma lógica do free_llm.best_free_chat — não re-bater provedor morto)
+    from compliance_agent.llm.free_llm import _em_cooldown, _marcar_cooldown, _limpar_cooldown
     erros = []
-    if _gemini_keys():
+    if _gemini_keys() and not _em_cooldown("gemini"):
         try:
             r = await gerar_gemini(messages)
             if r and r.strip():
+                _limpar_cooldown("gemini")
                 return r
             erros.append("gemini: vazio")
         except Exception as e:  # noqa: BLE001
+            _marcar_cooldown("gemini", e)
             erros.append(f"gemini: {str(e)[:50]}")
-    try:
-        return await _groq_gerar(messages)  # Hermes usa Groq/OpenRouter
-    except Exception as e:  # noqa: BLE001
-        erros.append(f"groq: {str(e)[:50]}")
-        raise RuntimeError("nenhum LLM respondeu — " + " | ".join(erros))
+    if not _em_cooldown("groq"):
+        try:
+            r = await _groq_gerar(messages)  # Hermes usa Groq/OpenRouter
+            _limpar_cooldown("groq")
+            return r
+        except Exception as e:  # noqa: BLE001
+            _marcar_cooldown("groq", e)
+            erros.append(f"groq: {str(e)[:50]}")
+    raise RuntimeError("nenhum LLM respondeu (ou em cooldown) — " + " | ".join(erros) or "todos em cooldown")
 
 
 import threading as _threading
@@ -185,6 +193,13 @@ def _gemini_keys() -> list:
     """POOL de chaves Gemini deduplicado: GEMINI_API_KEYS (pool) + GEMINI_API_KEY do JFN, MAIS o pool
     VÁLIDO do Yoda em ~/.hermes/.env (as do JFN/.env podem estar esgotadas/erradas). POR QUÊ: o motor com
     1 chave morta dava 429 e derrubava TODO recurso-LLM (parecer/direção)."""
+    import os
+    # KILL-SWITCH (pedido do dono 2026-06-25): GEMINI_DISABLED desliga o Gemini em TODO o JFN num ponto só
+    # — pool free_llm (gemini_available), Yoda (_gerar_default), hermes 2c (gerar_gemini) caem p/
+    # Cerebras/Groq/OpenRouter:free. Motivo: chaves AI Studio com billing ativo cobravam fora do free tier.
+    # Reverter: tirar GEMINI_DISABLED do .env — as chaves seguem preservadas (tarefa "repor billing Gemini").
+    if os.environ.get("GEMINI_DISABLED", "").strip().lower() in ("1", "true", "yes", "on"):
+        return []
     global _GEMINI_KEYS_CACHE
     if _GEMINI_KEYS_CACHE is not None:
         return _GEMINI_KEYS_CACHE
