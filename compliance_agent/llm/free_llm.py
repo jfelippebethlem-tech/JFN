@@ -430,16 +430,14 @@ _EXTRA = {
     "zai":         (os.environ.get("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4"), "glm-4.5-flash", ["ZAI_API_KEY", "ZHIPU_API_KEY"], "ZAI_MODEL"),
     "siliconflow": ("https://api.siliconflow.com/v1",       "Qwen/Qwen3-8B",               ["SILICONFLOW_API_KEY"],          "SILICONFLOW_MODEL"),
     "cohere":      ("https://api.cohere.ai/compatibility/v1", "command-r-08-2024",         ["COHERE_API_KEY"],               "COHERE_MODEL"),
-    "scaleway":    ("https://api.scaleway.ai/v1",             "llama-3.3-70b-instruct",     ["SCALEWAY_API_KEY"],             "SCALEWAY_MODEL"),
 }
 
 # Guard-rail de CUSTO (§4.1): provedores que COBRAM acima do free → cap mensal de requisições
 # server-side (conservador, bem abaixo do teto free). Ao atingir, o provedor é PULADO no mês.
-# Scaleway: 1M tokens/mês free → ~800 req (margem). Persistido em data/.llm_month_cap.json.
+# Persistido em data/.llm_month_cap.json (reset automático por mês).
 # Cap mensal por provedor (req/mês), tunado ao free de cada um — guarda zero-cobrança + respeita o limite free.
-# Override por env CAP_<PROVEDOR> (ex.: CAP_SCALEWAY=1200). 0/negativo = sem cap.
+# Override por env CAP_<PROVEDOR> (ex.: CAP_COHERE=2000). 0/negativo = sem cap.
 _MONTH_CAP = {
-    "scaleway":      800,    # 1M tokens/mês free
     "sambanova":     600,    # ~20 req/dia
     "nvidia":        1500,   # créditos free + cota diária
     "zai":           5000,   # GLM-Flash generoso
@@ -710,7 +708,7 @@ def _get_provider_order() -> list[str]:
     # (fallback forte); ollama (local) só se instalado; depois groq/openrouter.
     # cloudflare/github_models/extras por ÚLTIMO: free com cap/rate-limit baixo → rede de segurança, não p/ volume
     all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare", "github_models",
-                     "sambanova", "nvidia", "zai", "siliconflow", "cohere", "scaleway"]
+                     "sambanova", "nvidia", "zai", "siliconflow", "cohere"]
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]
