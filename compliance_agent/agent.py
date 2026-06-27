@@ -542,15 +542,24 @@ async def _llm_request(
     Se receber 429 (rate limit), espera 3s e tenta de novo.
     Se ainda 429, usa o provedor fallback (ex: OpenRouter quando Groq está lotado).
     """
+    # cooldown (reuso do free_llm): se o primário falhou há pouco e há fallback, vai direto pro fallback
+    from compliance_agent.llm.free_llm import _em_cooldown, _marcar_cooldown, _limpar_cooldown
+    if _em_cooldown(provider) and fallback and fallback[0]:
+        fb_provider, fb_key, fb_model = fallback
+        console.print(f"[yellow]↩ {provider} em cooldown — fallback direto: {fb_provider} ({fb_model})[/yellow]")
+        return await _call_one(fb_provider, fb_key, fb_model, messages, tools, max_tokens)
     for attempt in range(2):
         try:
-            return await _call_one(provider, api_key, model, messages, tools, max_tokens)
+            r = await _call_one(provider, api_key, model, messages, tools, max_tokens)
+            _limpar_cooldown(provider)
+            return r
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 429:
                 if attempt == 0:
                     console.print(f"[yellow]⏳ {provider} está no limite de taxa — aguardando 10s...[/yellow]")
                     await asyncio.sleep(10)
                     continue
+                _marcar_cooldown(provider, e)   # 429 persistente → cooldown (não re-bater)
                 # Depois de 2 tentativas, tenta fallback
                 if fallback and fallback[0]:
                     fb_provider, fb_key, fb_model = fallback
@@ -562,6 +571,7 @@ async def _llm_request(
                     "  Se usa Groq → adicione OPENROUTER_API_KEY no .env\n"
                     "  Se usa OpenRouter → adicione GROQ_API_KEY no .env"
                 ) from e
+            _marcar_cooldown(provider, e)
             raise
 
 
