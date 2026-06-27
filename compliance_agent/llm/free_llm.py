@@ -401,6 +401,47 @@ async def qwen_chat_async(prompt: str, system: str = "", smart: bool = False,
 
 # ── Interface unificada (escolhe o melhor disponível) ─────────────────────────
 
+# ── Cooldown + classificação de erro (aprendido do LiteLLM router) ────────────
+# Tira do pool, por N s, o provedor que acabou de falhar — evita gastar o 1º slot
+# num provedor morto/limitado (429) a cada request. Memória EM PROCESSO (vale dentro
+# de um lote do sweep; reinício zera). Curto p/ transitório, longo p/ chave ruim.
+_COOLDOWN: dict[str, float] = {}      # provider -> deadline (monotonic)
+_COOLDOWN_MOTIVO: dict[str, str] = {}
+
+def _classificar_erro(exc: Exception) -> tuple[str, float]:
+    """(motivo, segundos_de_cooldown) por TIPO de erro — em vez de tratar tudo igual."""
+    status = getattr(getattr(exc, "response", None), "status_code", None)
+    s = (str(exc) or "").lower()
+    if status == 429 or "429" in s or "rate limit" in s or "quota" in s or "too many requests" in s:
+        return ("rate-limit", 45.0)
+    if status in (401, 403) or "unauthor" in s or "invalid api key" in s or "invalid_api_key" in s \
+            or "forbidden" in s or "permission" in s:
+        return ("auth", 1800.0)          # chave ruim/sem permissão → pula 30min (retry é inútil)
+    if "timeout" in s or "timed out" in s or "connect" in s or "connection" in s:
+        return ("timeout", 20.0)
+    if status in (500, 502, 503, 504) or "server error" in s or "overload" in s or "503" in s:
+        return ("server", 30.0)
+    return ("erro", 15.0)
+
+def _em_cooldown(provider: str) -> bool:
+    return _COOLDOWN.get(provider, 0.0) > time.monotonic()
+
+def _marcar_cooldown(provider: str, exc: Exception) -> tuple[str, float]:
+    motivo, dur = _classificar_erro(exc)
+    _COOLDOWN[provider] = time.monotonic() + dur
+    _COOLDOWN_MOTIVO[provider] = motivo
+    return motivo, dur
+
+def _limpar_cooldown(provider: str) -> None:
+    _COOLDOWN.pop(provider, None)
+    _COOLDOWN_MOTIVO.pop(provider, None)
+
+def cooldowns_ativos() -> dict[str, str]:
+    """Diagnóstico: {provedor: 'motivo (Ns)'} dos que estão em cooldown agora."""
+    now = time.monotonic()
+    return {p: f"{_COOLDOWN_MOTIVO.get(p,'?')} ({t-now:.0f}s)" for p, t in _COOLDOWN.items() if t > now}
+
+
 def best_free_chat(
     prompt: str,
     system: str = "",
@@ -422,19 +463,26 @@ def best_free_chat(
 
     last_error: Exception | None = None
     for provider in order:
+        if _em_cooldown(provider):      # provedor que falhou há pouco → pula (não gasta slot)
+            continue
         try:
+            resp = None
             if provider == "cerebras" and cerebras_available():
-                return cerebras_chat(prompt, system=system, smart=smart)
+                resp = cerebras_chat(prompt, system=system, smart=smart)
             elif provider == "gemini" and gemini_available():
-                return gemini_chat(prompt, system=system, smart=smart)
+                resp = gemini_chat(prompt, system=system, smart=smart)
             elif provider == "ollama" and _ollama.is_available():
-                return _ollama.chat(prompt, system=system)
+                resp = _ollama.chat(prompt, system=system)
             elif provider == "groq" and groq_available():
-                return groq_chat(prompt, system=system, smart=smart)
+                resp = groq_chat(prompt, system=system, smart=smart)
             elif provider == "openrouter" and openrouter_available():
-                return openrouter_chat(prompt, system=system, smart=smart)
+                resp = openrouter_chat(prompt, system=system, smart=smart)
+            if resp is not None:
+                _limpar_cooldown(provider)   # voltou a responder → reabilita
+                return resp
         except Exception as e:
             last_error = e
+            _marcar_cooldown(provider, e)     # cooldown por TIPO de erro
             continue
 
     if fallback:
@@ -458,19 +506,26 @@ async def best_free_chat_async(
 
     last_error: Exception | None = None
     for provider in order:
+        if _em_cooldown(provider):      # provedor que falhou há pouco → pula
+            continue
         try:
+            resp = None
             if provider == "cerebras" and cerebras_available():
-                return await cerebras_chat_async(prompt, system=system, smart=smart)
+                resp = await cerebras_chat_async(prompt, system=system, smart=smart)
             elif provider == "gemini" and gemini_available():
-                return await gemini_chat_async(prompt, system=system, smart=smart)
+                resp = await gemini_chat_async(prompt, system=system, smart=smart)
             elif provider == "ollama" and _ollama.is_available():
-                return _ollama.chat(prompt, system=system)
+                resp = _ollama.chat(prompt, system=system)
             elif provider == "groq" and groq_available():
-                return await groq_chat_async(prompt, system=system, smart=smart)
+                resp = await groq_chat_async(prompt, system=system, smart=smart)
             elif provider == "openrouter" and openrouter_available():
-                return await openrouter_chat_async(prompt, system=system, smart=smart)
+                resp = await openrouter_chat_async(prompt, system=system, smart=smart)
+            if resp is not None:
+                _limpar_cooldown(provider)
+                return resp
         except Exception as e:
             last_error = e
+            _marcar_cooldown(provider, e)
             continue
 
     if fallback:
