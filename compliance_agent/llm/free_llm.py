@@ -23,6 +23,7 @@ Configure as chaves no .env:
 import asyncio
 import json
 import os
+import pathlib
 import random
 import re
 import time
@@ -421,7 +422,42 @@ _EXTRA = {
     "zai":         (os.environ.get("ZAI_BASE_URL", "https://api.z.ai/api/paas/v4"), "glm-4.5-flash", ["ZAI_API_KEY", "ZHIPU_API_KEY"], "ZAI_MODEL"),
     "siliconflow": ("https://api.siliconflow.com/v1",       "Qwen/Qwen3-8B",               ["SILICONFLOW_API_KEY"],          "SILICONFLOW_MODEL"),
     "cohere":      ("https://api.cohere.ai/compatibility/v1", "command-r-08-2024",         ["COHERE_API_KEY"],               "COHERE_MODEL"),
+    "scaleway":    ("https://api.scaleway.ai/v1",             "llama-3.3-70b-instruct",     ["SCALEWAY_API_KEY"],             "SCALEWAY_MODEL"),
 }
+
+# Guard-rail de CUSTO (§4.1): provedores que COBRAM acima do free → cap mensal de requisições
+# server-side (conservador, bem abaixo do teto free). Ao atingir, o provedor é PULADO no mês.
+# Scaleway: 1M tokens/mês free → ~800 req (margem). Persistido em data/.llm_month_cap.json.
+_MONTH_CAP = {"scaleway": 800}
+_CAP_FILE = pathlib.Path("/home/ubuntu/JFN/data/.llm_month_cap.json")
+
+def _mes_atual() -> str:
+    from datetime import datetime, timezone
+    return datetime.now(timezone.utc).strftime("%Y%m")
+
+def _cap_load() -> dict:
+    try:
+        return json.loads(_CAP_FILE.read_text())
+    except Exception:
+        return {}
+
+def _cap_count(name: str) -> int:
+    return int((_cap_load().get(_mes_atual()) or {}).get(name, 0))
+
+def _cap_inc(name: str) -> None:
+    if name not in _MONTH_CAP:
+        return
+    d = _cap_load(); m = _mes_atual()
+    d = {m: d.get(m, {})}  # só o mês corrente (limpa meses velhos)
+    d[m][name] = d[m].get(name, 0) + 1
+    try:
+        _CAP_FILE.write_text(json.dumps(d))
+    except Exception:
+        pass
+
+def _cap_ok(name: str) -> bool:
+    cap = _MONTH_CAP.get(name)
+    return cap is None or _cap_count(name) < cap
 
 def _envk(*names: str) -> str:
     for n in names:
@@ -432,7 +468,7 @@ def _envk(*names: str) -> str:
 
 def extra_available(name: str) -> bool:
     spec = _EXTRA.get(name)
-    return bool(spec and _envk(*spec[2]))
+    return bool(spec and _envk(*spec[2]) and _cap_ok(name))  # cap mensal (§4.1) impede cobrança
 
 def _extra_cfg(name: str):
     base, dmodel, keys, menv = _EXTRA[name]
@@ -442,13 +478,17 @@ def extra_chat(name: str, prompt: str, system: str = "", max_tokens: int = 1024)
     base, key, model = _extra_cfg(name)
     if not key:
         raise RuntimeError(f"{name}: chave ausente")
-    return _openai_compat_chat_sync_retry(base, key, model, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    r = _openai_compat_chat_sync_retry(base, key, model, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    _cap_inc(name)  # conta p/ o cap mensal (provedores que cobram acima do free)
+    return r
 
 async def extra_chat_async(name: str, prompt: str, system: str = "", max_tokens: int = 1024) -> str:
     base, key, model = _extra_cfg(name)
     if not key:
         raise RuntimeError(f"{name}: chave ausente")
-    return await _openai_compat_chat_retry(base, key, model, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    r = await _openai_compat_chat_retry(base, key, model, _cf_msgs(prompt, system), max_tokens=max_tokens)
+    _cap_inc(name)
+    return r
 
 
 # ── Gemini no pool (rotação do pool de chaves do JFN via direcionamento_cerebro) ──
@@ -649,7 +689,7 @@ def _get_provider_order() -> list[str]:
     # (fallback forte); ollama (local) só se instalado; depois groq/openrouter.
     # cloudflare/github_models/extras por ÚLTIMO: free com cap/rate-limit baixo → rede de segurança, não p/ volume
     all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare", "github_models",
-                     "sambanova", "nvidia", "zai", "siliconflow", "cohere"]
+                     "sambanova", "nvidia", "zai", "siliconflow", "cohere", "scaleway"]
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]
