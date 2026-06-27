@@ -353,6 +353,40 @@ async def cerebras_chat_async(prompt: str, system: str = "", smart: bool = False
         CEREBRAS_BASE, key, model, _cerebras_msgs(prompt, system), max_tokens=max(max_tokens, 2048))
 
 
+# ── Cloudflare Workers AI (OpenAI-compat) — ÚLTIMO recurso no pool ─────────────
+# Free: 10k Neurons/dia (reseta 00:00 UTC). Acima disso SÓ cobra no plano Workers Paid;
+# no plano Free, trava (não cobra). 70B gasta rápido → rede de segurança, NÃO p/ volume.
+CLOUDFLARE_MODEL = os.environ.get("CLOUDFLARE_MODEL", "@cf/meta/llama-3.3-70b-instruct-fp8-fast")
+
+def _cloudflare_creds() -> tuple[str, str]:
+    return os.environ.get("CLOUDFLARE_API_KEY", ""), os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")
+
+def cloudflare_available() -> bool:
+    k, a = _cloudflare_creds()
+    return bool(k and a)
+
+def _cloudflare_base() -> str:
+    _, acc = _cloudflare_creds()
+    return f"https://api.cloudflare.com/client/v4/accounts/{acc}/ai/v1"
+
+def _cf_msgs(prompt: str, system: str) -> list:
+    m = [{"role": "system", "content": system}] if system else []
+    m.append({"role": "user", "content": prompt})
+    return m
+
+def cloudflare_chat(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
+    key, acc = _cloudflare_creds()
+    if not (key and acc):
+        raise RuntimeError("CLOUDFLARE_API_KEY/ACCOUNT_ID não configurados.")
+    return _openai_compat_chat_sync_retry(_cloudflare_base(), key, CLOUDFLARE_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+
+async def cloudflare_chat_async(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
+    key, acc = _cloudflare_creds()
+    if not (key and acc):
+        raise RuntimeError("CLOUDFLARE_API_KEY/ACCOUNT_ID não configurados.")
+    return await _openai_compat_chat_retry(_cloudflare_base(), key, CLOUDFLARE_MODEL, _cf_msgs(prompt, system), max_tokens=max_tokens)
+
+
 # ── Gemini no pool (rotação do pool de chaves do JFN via direcionamento_cerebro) ──
 # Qualidade alta: entra no pool free_llm para REDUNDÂNCIA (todas as IAs têm gemini também).
 # Import local p/ evitar import circular.
@@ -477,6 +511,8 @@ def best_free_chat(
                 resp = groq_chat(prompt, system=system, smart=smart)
             elif provider == "openrouter" and openrouter_available():
                 resp = openrouter_chat(prompt, system=system, smart=smart)
+            elif provider == "cloudflare" and cloudflare_available():
+                resp = cloudflare_chat(prompt, system=system, smart=smart)
             if resp is not None:
                 _limpar_cooldown(provider)   # voltou a responder → reabilita
                 return resp
@@ -520,6 +556,8 @@ async def best_free_chat_async(
                 resp = await groq_chat_async(prompt, system=system, smart=smart)
             elif provider == "openrouter" and openrouter_available():
                 resp = await openrouter_chat_async(prompt, system=system, smart=smart)
+            elif provider == "cloudflare" and cloudflare_available():
+                resp = await cloudflare_chat_async(prompt, system=system, smart=smart)
             if resp is not None:
                 _limpar_cooldown(provider)
                 return resp
@@ -537,7 +575,8 @@ def _get_provider_order() -> list[str]:
     """Returns provider priority list based on FREE_LLM_PREFER."""
     # Cerebras 1º (ultrarrápido/grátis, ideal p/ volume do sweep); GEMINI no pool p/ redundância+qualidade
     # (fallback forte); ollama (local) só se instalado; depois groq/openrouter.
-    all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter"]
+    # cloudflare por ÚLTIMO: free 10k neurons/dia → rede de segurança, não p/ volume
+    all_providers = ["cerebras", "gemini", "ollama", "groq", "openrouter", "cloudflare"]
     prefer = FREE_LLM_PREFER.strip().lower()
     if prefer in all_providers:
         return [prefer] + [p for p in all_providers if p != prefer]
