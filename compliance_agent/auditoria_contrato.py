@@ -157,13 +157,13 @@ def _t01_3way(d) -> dict:
 def _t02_status_pago(d) -> dict:
     """T02 — Saneamento de status: OB Anulado/Excluído computada como paga."""
     nao_pagas = [o for o in d["obs"]
-                 if str(o.get("status", "")).strip().lower() in ("anulado", "excluído", "excluido")]
+                 if str(o.get("status", "")).strip().lower() in ("anulado", "excluído", "excluido", "não contabilizado", "nao contabilizado")]
     soma_nao_paga = sum(_money(o.get("valor")) for o in nao_pagas)
     relatorio_total = d.get("relatorio_total_pago")     # total que a fonte derivada alega pago
     pago_verdadeiro = sum(_money(o.get("valor")) for o in _contabilizadas(d["obs"]))
     detalhe = "; ".join(f"OB {o.get('numero_ob')} {o.get('status')} {_moeda(_money(o.get('valor')))}" for o in nao_pagas)
-    if relatorio_total is not None and abs(relatorio_total - pago_verdadeiro) > soma_nao_paga - TOL_CENTAVOS \
-            and soma_nao_paga > TOL_CENTAVOS:
+    if relatorio_total is not None and soma_nao_paga > TOL_CENTAVOS \
+            and abs(abs(relatorio_total - pago_verdadeiro) - soma_nao_paga) <= TOL_CENTAVOS:
         ev = (f"Fonte derivada alega pago {_moeda(relatorio_total)}; pago verdadeiro (só Contabilizado) = "
               f"{_moeda(pago_verdadeiro)}. Diferença compatível com {_moeda(soma_nao_paga)} de OB não-paga "
               f"computada indevidamente ({detalhe}).")
@@ -410,13 +410,13 @@ def _t13_trabalhista(d) -> dict:
                        "Súmula 331/IV-V TST; STF ADC 16 / Tema 1.118", _PESO["alta"])
     comprov = d.get("comprovantes_trabalhistas")   # {competencia: bool} ou None (acervo não introspeccionado)
     if comprov is None:
-        ev = ("Em DEMO, cada OB liberada deveria estar condicionada à prova de quitação trabalhista do mês anterior "
-              "(folha, GFIP/eSocial/DCTFWeb, guias FGTS/INSS, VT/VR). O acervo SEI ainda não foi introspeccionado por "
-              "competência. NESTE teste a ausência sistemática = INDÍCIO de falha de fiscalização (inversão do ônus, "
-              "Súmula 331/V) — não 'INDISPONÍVEL neutro'. Verificar presença por competência no SEI.")
-        return _hip("T13-COMPROV-TRABALHISTA", "Quitação trabalhista do mês anterior", "INDICIO", "alto", ev,
-                    "Docs SEI (a introspeccionar) + OBs",
-                    "Súmula 331/IV-V TST; STF ADC 16 / Tema 1.118; Lei 14.133/2021 art. 121 §2º-§3º", _PESO["alta"])
+        # Acervo ainda NÃO introspeccionado por competência → INDISPONÍVEL (não conta no score). Antes retornava
+        # INDÍCIO 'alto' UNIVERSAL (comprov nunca é populado pelo sweep → None sempre) → disparava em ~100% dos
+        # fornecedores e inflava score→🔴 fabricado (workflow jedi-audit 2026-06-28, conf 0.9). O ônus da Súmula
+        # 331/V só pesa quando a introspecção REVELA faltantes (ramo abaixo), não pela mera falta de introspecção.
+        return _indisp("T13-COMPROV-TRABALHISTA", "Quitação trabalhista do mês anterior",
+                       "o acervo SEI introspeccionado por competência (comprovantes de quitação)",
+                       "Súmula 331/IV-V TST; STF ADC 16 / Tema 1.118", _PESO["alta"])
     faltantes = [c for c, ok in comprov.items() if not ok]
     if faltantes:
         ev = f"OB(s) paga(s) sem comprovante de quitação trabalhista do mês anterior juntado: {faltantes[:8]}. Falha de fiscalização."
@@ -627,8 +627,11 @@ def auditar_contrato(dados: dict) -> dict:
     indicios = [a for a in achados if a["status"] == "INDICIO"]
     indisp = [a for a in achados if a["status"] == "INDISPONIVEL"]
     score = min(100, sum(a["peso"] for a in achados if a["status"] in ("CONFIRMADO", "INDICIO")))
-    # grau: ≥1 CONFIRMADO forte OU score alto → 🔴; ≥2 indícios OU score médio → 🟡; senão 🟢
-    if confirmados and score >= 30:
+    # grau: 🔴 SÓ com FATO CONFIRMADO (proven). score≥25 cobre um único CONFIRMADO grave (peso 25 — corrige
+    #   o caso em que 1 confirmado forte ficava 🟡). NÃO fabricar 🔴 por convergência de INDÍCIOS: muitos são
+    #   absence-driven (T13/T04-sem-planilha) e geravam 331 🔴 sem nenhum confirmado, incl. MGS-limpo (workflow
+    #   jedi-audit 2026-06-28). indício≠acusação · presunção de regularidade. 🟡 = a apurar; 🟢 = limpo.
+    if confirmados and score >= 25:
         grau = "🔴"
     elif score >= 30 or len(indicios) >= 2:
         grau = "🟡"
