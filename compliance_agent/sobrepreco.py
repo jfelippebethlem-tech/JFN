@@ -45,12 +45,24 @@ async def _coletar_precos(codigo: int, servico: bool, max_paginas: int) -> list[
     return precos
 
 
-def _classificar(pct: float) -> str:
-    """Faixa do indício de sobrepreço (sobre o desvio % vs mediana)."""
+# Calibração (honestidade — indício≠acusação): NÃO se aponta sobrepreço sem base estatística.
+_MIN_AMOSTRA = 5      # abaixo disso a "mediana" é ruído (1-4 preços) → referência fraca, sem indício
+_IQR_DISPERSAO = 3.0  # p75/p25 ≥ 3 ⇒ referência heterogênea (especificação/região) → desvio pode ser ruído
+
+
+def _classificar(pct: float, n_amostra: int = 999, iqr_ratio: float | None = None) -> str:
+    """Faixa do indício de sobrepreço (sobre o desvio % vs mediana), com guardas anti-falso-positivo:
+    amostra insuficiente e dispersão alta na referência NÃO geram acusação de sobrepreço."""
     if pct is None:
         return "—"
+    if n_amostra < _MIN_AMOSTRA:
+        return f"referência fraca (n={n_amostra} < {_MIN_AMOSTRA}) — sem base p/ indício de sobrepreço"
     if pct <= 0:
         return "no/abaixo do referencial"
+    # dispersão alta na referência: preços do "mesmo" item variam muito (especificação/quantidade/região
+    # heterogêneas) — um desvio moderado cai no ruído; só desvio extremo (>+50%) sobrevive como indício.
+    if iqr_ratio is not None and iqr_ratio >= _IQR_DISPERSAO and pct < 50:
+        return "dispersão alta na referência (itens heterogêneos) — indício FRACO, verificar especificação"
     if pct < 15:
         return "dentro da faixa usual (até +15%)"
     if pct < 30:
@@ -74,13 +86,18 @@ async def sobrepreco(codigo_catmat: int, valor_pago: Optional[float] = None,
         }
     mediana = statistics.median(precos)
     quantis = statistics.quantiles(precos, n=4) if len(precos) >= 4 else [mediana, mediana, mediana]
+    p25, p75 = quantis[0], quantis[2]
+    # razão interquartílica como medida de dispersão da referência (robusta a outliers); None se p25<=0.
+    iqr_ratio = round(p75 / p25, 2) if p25 and p25 > 0 else None
     pct = None
     if valor_pago and mediana > 0:
         pct = round((float(valor_pago) - mediana) / mediana * 100, 1)
     return {
         "ok": True, "codigo": codigo_catmat, "servico": servico, "n_amostra": len(precos),
-        "mediana_ref": round(mediana, 2), "p25": round(quantis[0], 2), "p75": round(quantis[2], 2),
-        "valor_pago": valor_pago, "pct": pct, "classificacao": _classificar(pct),
+        "mediana_ref": round(mediana, 2), "p25": round(p25, 2), "p75": round(p75, 2),
+        "iqr_ratio": iqr_ratio, "amostra_suficiente": len(precos) >= _MIN_AMOSTRA,
+        "valor_pago": valor_pago, "pct": pct,
+        "classificacao": _classificar(pct, n_amostra=len(precos), iqr_ratio=iqr_ratio),
         "fonte": "Compras Dados Abertos (pesquisa de preço por CATMAT/CATSER)",
         "_nota": "Indício a verificar (especificação/quantidade/região podem justificar diferença), nunca acusação.",
     }
