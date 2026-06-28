@@ -74,6 +74,30 @@ _REGRAS: list[tuple[str, re.Pattern, str, str]] = [
                 r"vedad\w*\s+(?:outr|equivalent|similar)|nao sera aceit\w*\s+(?:outr|equivalent|similar))"),
      "Exigência de marca/modelo específico sem admitir equivalente/similar restringe a competição a um produto.",
      "art. 41 da Lei 14.133/2021 (vedação à preferência de marca, salvo justificativa) / art. 37 CF impessoalidade"),
+    # vínculo empregatício PRÉVIO do profissional (custo antes da execução — Súmula TCU 272). Exige um verbo de
+    # exigência/comprovação OU a amarração a "na data da proposta / quadro permanente / CTPS"; NÃO dispara na
+    # cláusula-padrão de contrato "não configura/constitui vínculo empregatício" (falso-positivo real do CBMERJ).
+    ("vinculo_previo",
+     re.compile(r"(?:exig\w+|comprov\w+|possu\w+|dever[áa]\s+(?:comprovar|possuir|ter|manter)|"
+                r"registr\w+\s+(?:no|do)\s+quadro)\b[^.]{0,80}?v[íi]nculo\s+empregat\w+"
+                r"|v[íi]nculo\s+empregat\w+[^.]{0,80}?(?:na data (?:da proposta|da licita|de apresenta)|"
+                r"quadro permanente|carteira de trabalho|ctps|comprovad\w*\s+por ctps)"),
+     "Exigir vínculo empregatício do profissional já na habilitação (custo de equipe antes da execução) "
+     "restringe a competição: o vínculo só pode ser exigido na assinatura do contrato.",
+     "Súmula TCU 272 (vedado exigir custo não necessário antes da execução) / art. 67 da Lei 14.133/2021"),
+    # amostra / prova de conceito (POC) de TODOS antes do julgamento (custo prévio indevido — lógica da Súmula 272).
+    # NÃO dispara em cláusula de sanção ("deixar de apresentar amostra") nem em "amostragem" de fiscalização
+    # (falsos-positivos reais do edital de credenciamento do CBMERJ): pede a amarração a "de todos / antes da
+    # habilitação / previamente ao julgamento".
+    ("amostra_previa",
+     re.compile(r"(?:amostra|prova de conceito|prova-conceito)\b[^.]{0,80}?"
+                r"(?:de todos|todos os (?:licitant|particip|proponent)|antes da (?:habilita|fase)|"
+                r"previamente ao julgamento|antecipad)"
+                r"|(?:de todos|todos os (?:licitant|particip|proponent))[^.]{0,60}?"
+                r"(?:amostra|prova de conceito)"),
+     "Exigir amostra/prova de conceito de todos os licitantes antes do julgamento impõe custo prévio "
+     "desnecessário e tende a restringir a competição (a amostra deve ser só do provisoriamente classificado).",
+     "Súmula TCU 272 (custo não necessário antes da execução) / jurisprudência TCU sobre amostra do 1º colocado"),
     # certificação/certificado exigido
     ("certificacao",
      re.compile(r"\bcertifica(?:c|ç)(?:ao|oes)\b|\bcertificad[oa]s?\b"),
@@ -127,7 +151,8 @@ _MARC_EDITAL_N = tuple(_sem_acento(k) for k in _MARC_EDITAL)  # versão normaliz
 # Tipos GENÉRICOS (marcadores ambíguos: "Modelo", "certificação de regularidade", "exclusivamente",
 # "garantia") que só são CLÁUSULA quando aparecem em CONTEXTO de habilitação/edital — caso contrário
 # disparam em prosa de resumo/contrato (falso-positivo). Os FORTES dispensam contexto (são específicos).
-_TIPOS_GENERICOS = {"marca_modelo", "certificacao", "prazo_local_quantitativo", "capital_garantia_alto"}
+_TIPOS_GENERICOS = {"marca_modelo", "certificacao", "prazo_local_quantitativo", "capital_garantia_alto",
+                    "vinculo_previo", "amostra_previa"}
 _JANELA_CTX = 400  # chars ao redor do match onde procuramos um marcador de edital
 
 

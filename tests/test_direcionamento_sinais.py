@@ -36,6 +36,33 @@ def test_clausula_vedacao_somatorio_verbatim():
     assert "marca_modelo" in tipos and "visita_obrigatoria" in tipos
 
 
+def test_vinculo_previo_e_amostra_de_todos_sumula_272():
+    # custo prévio indevido (Súmula TCU 272): vínculo empregatício na proposta + amostra de todos antes do julgamento.
+    edital = (
+        "EDITAL DE PREGÃO ELETRÔNICO. TERMO DE REFERÊNCIA. QUALIFICAÇÃO TÉCNICA e HABILITAÇÃO. "
+        "O profissional deverá possuir vínculo empregatício comprovado por CTPS com a licitante na data "
+        "da apresentação da proposta. Será exigida amostra de todos os licitantes antes da fase de habilitação."
+    )
+    tipos = {c["tipo"] for c in DS.extrair_clausulas_restritivas(edital)}
+    assert "vinculo_previo" in tipos
+    assert "amostra_previa" in tipos
+    bases = {c["tipo"]: c["base"] for c in DS.extrair_clausulas_restritivas(edital)}
+    assert "272" in bases["vinculo_previo"] and "272" in bases["amostra_previa"]  # Súmula TCU 272 citada
+
+
+def test_vinculo_e_amostra_falso_positivo_credenciamento_cbmerj():
+    # falsos-positivos REAIS do edital de credenciamento do CBMERJ (270003): boilerplate contratual de vínculo
+    # e cláusula de sanção / amostragem de fiscalização não são exigência restritiva.
+    boiler = (
+        "EDITAL. HABILITAÇÃO. O presente Contrato não configura vínculo empregatício entre os trabalhadores "
+        "ou sócios do CREDENCIADO e o CREDENCIANTE. Constitui infração deixar de apresentar amostra. "
+        "Mensalmente os fiscais escolherão aleatoriamente uma amostragem de pacientes."
+    )
+    tipos = {c["tipo"] for c in DS.extrair_clausulas_restritivas(boiler)}
+    assert "vinculo_previo" not in tipos
+    assert "amostra_previa" not in tipos
+
+
 def test_cascata_mesmo_motivo():
     inab = DS.extrair_inabilitacoes(_ATA)
     assert inab["n_inabilitadas"] == 3
