@@ -1450,7 +1450,7 @@ def render_md(ctx: dict) -> str:
             f"Órgão superior: {alias.get('orgao_superior','—')}. Nas Ordens Bancárias os pagamentos podem "
             f"aparecer rotulados pelo nome do órgão superior — aqui são atribuídos pela UG.")
         add("")
-    add(f"**Data:** {ctx['data']}  |  **Analista:** JFN Intelligence Engine  |  **Fonte:** SIAFE/TFE-RJ (OBs — pagamento)")
+    add(f"**Data:** {ctx['data']}  |  **Analista:** JFN Intelligence Engine  |  **Fonte:** TFE-RJ (espelho de OBs, D-1 — magnitude movimentada; pagamento auditado = SIAFE)")
     add("")
     add("---")
     add("")
