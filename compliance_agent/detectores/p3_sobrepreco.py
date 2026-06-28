@@ -11,6 +11,14 @@ aqui só ADAPTAMOS ao schema fixo (spec §1.4), convertendo a MAGNITUDE do desvi
     • razão ≥ 3.0                                     → 'medio'  (anomalia clara; exige confirmação)
     • razão ≥ 2.0 (piso do detector reusado)          → 'fraco'  (compatível mas com explicações inocentes comuns)
 
+  COERÊNCIA DE SINAIS (anti-outlier): `razao_max_min` (max/min) é frágil — um ÚNICO preço-outlier quase-zero
+  (erro de unidade/digitação no MENOR preço) infla a razão para dezenas/centenas× e produz 'forte' FALSO, mesmo
+  quando o maior preço mal supera a mediana (i.e., sem sobrepreço real). O sinal ROBUSTO é o desvio do MAIOR preço
+  vs MEDIANA (`sobrepreco_pct_vs_mediana`), insensível a outlier baixo — alinhado à metodologia de preço de
+  referência por mediana (IN SEGES/ME 65/2021, art. 6º, que afasta extremos). Por isso 'forte'/'medio' EXIGEM que
+  o sinal robusto corrobore (mediana ≥ +100% p/ forte, ≥ +50% p/ medio); razão alta SEM desvio robusto → rebaixa
+  p/ 'fraco' (indício de outlier baixo, não de sobrepreço — a exculpatória trata como erro de cadastro).
+
 HONESTIDADE JFN (regra dura do spec P3): "Item inovador SEM referência → marcar 'sem_referencial', NÃO pontuar
 sobrepreço sem base." Aqui: amostras insuficientes (`sobrepreco_interno` exige ≥ min_amostras p/ comparar) ⇒
 `nao_avaliavel` honesto (campo ausente ≠ 0), e o detector NÃO inventa desvio. FALSOS POSITIVOS do spec: urgência
@@ -23,12 +31,20 @@ from __future__ import annotations
 from compliance_agent.detectores.base import Detector, ResultadoDetector, ancora
 
 
-def _nivel_por_razao(razao: float) -> str:
-    if razao >= 4.0:
-        return "forte"
-    if razao >= 3.0:
-        return "medio"
-    return "fraco"  # >= 2.0 (piso do sobrepreco_interno)
+def _nivel_por_razao(razao: float, pct_vs_mediana: float | None = None) -> str:
+    """Nível por magnitude da razão max/min, EXIGINDO coerência do sinal robusto (desvio vs mediana).
+
+    `pct_vs_mediana` ausente (None) ⇒ comportamento legado (só razão); presente ⇒ gate anti-outlier:
+    'forte'/'medio' só se o maior preço também desviar da MEDIANA (robusto a outlier baixo). Razão alta
+    sem desvio robusto = outlier no menor preço (erro de unidade), não sobrepreço → rebaixa p/ 'fraco'."""
+    bruto = "forte" if razao >= 4.0 else "medio" if razao >= 3.0 else "fraco"  # >= 2.0 (piso do sobrepreco_interno)
+    if pct_vs_mediana is None:
+        return bruto
+    if bruto == "forte" and pct_vs_mediana < 100.0:
+        return "medio" if pct_vs_mediana >= 50.0 else "fraco"
+    if bruto == "medio" and pct_vs_mediana < 50.0:
+        return "fraco"
+    return bruto
 
 
 class P3Sobrepreco(Detector):
@@ -91,7 +107,8 @@ class P3Sobrepreco(Detector):
         # achado principal = maior razão max/min (já vem ordenado desc por sobrepreco_interno)
         top = achados[0]
         razao = float(top.get("razao_max_min") or 0.0)
-        nivel = _nivel_por_razao(razao)
+        pct_med = top.get("sobrepreco_pct_vs_mediana")
+        nivel = _nivel_por_razao(razao, None if pct_med is None else float(pct_med))
         res.score = ancora(nivel)
         res.status = "confirmado"
         res.motivo_refutacao = f"sobrepreço interno: item custou {razao}× entre órgãos → âncora {nivel}"
