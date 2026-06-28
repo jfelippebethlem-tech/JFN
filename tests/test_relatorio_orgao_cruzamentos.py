@@ -58,3 +58,25 @@ def test_endereco_real_orgao_estrutura():
     for k in ("ok", "n_forn", "n_verificados", "afastado", "indicio", "indisponivel", "indicios"):
         assert k in er
     assert er["afastado"] + er["indicio"] + er["indisponivel"] == er["n_verificados"]
+
+
+# ───────── 2º eixo do scoring: quadrante de persecução (achado × punição) ─────────
+
+def test_quadrante_persecucao_honesto_sem_indicio():
+    """HONESTO: 🟢 (sem achado) ou ranking sem códigos não rende quadrante — nada a perseguir."""
+    base = {"cnpj": "00000000000191", "score": 80, "total_pago": 1_000_000.0}
+    assert IO._quadrante_persecucao({**base, "grau": "🟢", "codigos": ["H-CARTEL"]}) == {"mostra": False}
+    assert IO._quadrante_persecucao({**base, "grau": "🔴", "codigos": []}) == {"mostra": False}
+
+
+def test_quadrante_persecucao_com_indicio():
+    """Fornecedor com indício (grau ≠ 🟢) + código → pluga priorizacao (2º eixo): quadrante + punição."""
+    r = {"grau": "🔴", "codigos": ["H-CARTEL"], "cnpj": "00000000000191",
+         "score": 80, "total_pago": 5_000_000.0}
+    qp = IO._quadrante_persecucao(r)
+    assert qp["mostra"] is True
+    # quadrante = "{achado}-{punicao}" com eixos alto/baixo (manual, 2 eixos)
+    assert qp["quadrante"] in ("alto-alto", "alto-baixo", "baixo-alto", "baixo-baixo")
+    assert qp["rotulo"] and isinstance(qp["rotulo"], str)
+    assert 0.0 <= qp["risco_punicao"] <= 100.0
+    assert "competencia" in qp
