@@ -50,6 +50,21 @@ def test_vinculo_previo_e_amostra_de_todos_sumula_272():
     assert "272" in bases["vinculo_previo"] and "272" in bases["amostra_previa"]  # Súmula TCU 272 citada
 
 
+def test_vinculo_e_amostra_nao_escalam_para_vermelho():
+    # garantia do fix: ambas são NÃO-FORTE — sozinhas mantêm grau amarelo, nunca sobem para vermelho
+    # (vermelho exige restritiva FORTE + cascata). Sem ata/cascata, só essas duas cláusulas → amarelo.
+    edital = (
+        "EDITAL DE PREGÃO ELETRÔNICO. TERMO DE REFERÊNCIA. QUALIFICAÇÃO TÉCNICA e HABILITAÇÃO. "
+        "O profissional deverá possuir vínculo empregatício comprovado por CTPS com a licitante na data "
+        "da apresentação da proposta. Será exigida amostra de todos os licitantes antes da fase de habilitação. "
+    ) * 8
+    assert "vinculo_previo" not in DS._FORTE and "amostra_previa" not in DS._FORTE
+    out = DS.analisar_direcionamento_det(edital)
+    assert out["grau_det"] == "amarelo"
+    assert out["dados_suficientes"] is True
+    assert sum(1 for c in out["clausulas"] if c["tipo"] in DS._FORTE) == 0
+
+
 def test_vinculo_e_amostra_falso_positivo_credenciamento_cbmerj():
     # falsos-positivos REAIS do edital de credenciamento do CBMERJ (270003): boilerplate contratual de vínculo
     # e cláusula de sanção / amostragem de fiscalização não são exigência restritiva.
