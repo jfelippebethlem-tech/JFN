@@ -105,11 +105,17 @@ _REGRAS: list[tuple[str, re.Pattern, str, str]] = [
      "Exigência de capital social/patrimônio/garantia mínimos elevados pode restringir a participação de "
      "empresas economicamente capazes mas de menor porte.",
      "art. 69 da Lei 14.133/2021 (até 10% do valor estimado; vedado o excesso) / art. 37 CF"),
-    # 'exclusivamente' / 'exclusivo' como marcador genérico de restrição
-    ("prazo_local_quantitativo",
-     re.compile(r"\bexclusivamente\b|\bcom exclusividade\b"),
-     "Termo de exclusividade pode indicar exigência que limita a competição a um fornecedor/condição.",
-     "art. 37, XXI CF impessoalidade / Lei 14.133/2021 (vedação a cláusula restritiva)"),
+    # exclusividade ATADA a fornecedor/marca/produto (restritividade real) — NÃO o advérbio "exclusivamente"
+    # solto (que aparece em prosa administrativa: "em relação exclusivamente a", "faltas justificadas
+    # exclusivamente"). Calibrado em dado real (falso-positivo em despacho/processo disciplinar do CBMERJ).
+    ("marca_modelo",
+     re.compile(r"\b(?:exclusivamente|com exclusividade|de forma exclusiva|exclusiv[oa])\b[^.]{0,50}?"
+                r"\b(?:marca|modelo|fabricante|fornecedor|distribuidor|representante|revend\w+|"
+                r"produto|origem|proced[êe]nc\w+)\b"
+                r"|\b(?:fornecimento|distribui\w+|representa\w+|comercializa\w+|venda)\s+exclusiv"),
+     "Exigência de fornecimento/marca/fornecedor exclusivo limita a competição a um único agente, sem "
+     "previsão de 'ou equivalente/similar'.",
+     "Súmula TCU 270 (marca só com 'ou similar') / art. 37, XXI CF impessoalidade"),
 ]
 
 # Marcadores de que o texto realmente é edital/habilitação (evita disparar em ementa/contrato/menu do SEI).
