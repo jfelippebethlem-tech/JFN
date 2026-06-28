@@ -1021,6 +1021,21 @@ def _secao_contratos_fornecedor_md(add, ctx: dict) -> None:
         con.close()
 
 
+def _quadrante_persecucao(r: dict) -> dict:
+    """SEGUNDO eixo do scoring (manual): risco de PUNIÇÃO × risco de ACHADO → quadrante de persecução.
+    Reusa `compliance_agent.priorizacao` sobre uma linha do ranking de DD (que já traz codigo/total_pago/
+    score/cnpj). HONESTO: só para fornecedor com indício (grau ≠ 🟢) — sem achado não há o que perseguir, e
+    materialidade isolada não justifica um quadrante. Para 🟢 devolve {'mostra': False}."""
+    if r.get("grau") == "🟢" or not (r.get("codigos") or []):
+        return {"mostra": False}
+    from compliance_agent import priorizacao as _pz
+    achados = [{"codigo": c, "cnpj": r.get("cnpj")} for c in (r.get("codigos") or [])]
+    rp = _pz.risco_punicao(achados, total_pago=r.get("total_pago"))
+    q = _pz.quadrante(risco_achado=r.get("score") or 0, risco_punicao=rp["score"])
+    return {"mostra": True, "quadrante": q, "rotulo": _pz.rotulo_quadrante(q),
+            "risco_punicao": rp["score"], "competencia": rp["competencia"].get("nota", "")}
+
+
 def _secao_dd_md(add, ctx: dict) -> None:
     """Seção 1-D — triagem de DD (fachada/laranja) dos maiores fornecedores + rodízio temporal (cartel) +
     processos SEI a priorizar. É o cruzamento central de inteligência do relatório de órgão."""
@@ -1055,14 +1070,24 @@ def _secao_dd_md(add, ctx: dict) -> None:
     alvos = dd.get("alvos_prioritarios") or []
     add(f"### Ranking de risco dos {len(ranking)} maiores fornecedores PJ")
     add("")
-    add("| # | Grau | Score | Fornecedor | Total pago (R$) | Indícios (hipóteses) | Proc. SEI |")
-    add("|--:|:--:|--:|---|--:|---|--:|")
+    add("| # | Grau | Score | Fornecedor | Total pago (R$) | Indícios (hipóteses) | Quadrante de persecução | Proc. SEI |")
+    add("|--:|:--:|--:|---|--:|---|:--|--:|")
     for i, r in enumerate(ranking, 1):
         cods = ", ".join(c.replace("H-", "") for c in (r.get("codigos") or [])) or "—"
         forn = f"{r['nome'][:42]} ({fmt_cnpj(r['cnpj'])})" if r.get("cnpj") else r["nome"][:42]
+        qp = _quadrante_persecucao(r)
+        qcel = f"`{qp['quadrante']}` — punição {qp['risco_punicao']:.0f}/100" if qp["mostra"] else "—"
         add(f"| {i} | {r['grau']} | {r['score']} | {forn} | {moeda(r['total_pago'])} | {cods} "
-            f"| {len(r.get('processos_sei') or [])} |")
+            f"| {qcel} | {len(r.get('processos_sei') or [])} |")
     add("")
+    # legenda do 2º eixo (manual, seção "Scoring (2 eixos)"): risco de ACHADO × risco de PUNIÇÃO
+    if any(_quadrante_persecucao(r)["mostra"] for r in ranking):
+        add("> **Quadrante de persecução** (2º eixo do scoring): cruza o *risco de achado* (Score acima — "
+            "probabilidade de o indício ser real) com o *risco de punição* (viabilidade de responsabilização: "
+            "materialidade do valor + tipificação legal da hipótese + autoria identificável + competência). "
+            "`alto-alto` = **prioritário** (provável e punível, atacar primeiro); `baixo-alto` = aprofundar a "
+            "apuração (punível se confirmado); `alto-baixo` = inteligência de padrão (monitorar). Indício ≠ acusação.")
+        add("")
     if alvos:
         a0 = alvos[0]
         cods0 = ", ".join(c.replace("H-", "") for c in (a0.get("codigos") or [])) or "—"
@@ -1797,12 +1822,16 @@ def _secao_dd_pdf(pdf, _t, ctx: dict) -> None:
         pdf.ln(1)
     ranking = dd.get("ranking") or []
     pdf.set_font(pdf._fam, "B", 10); pdf.cell(0, 7, _t(f"Ranking de risco - {len(ranking)} maiores fornecedores PJ"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-    _tab_header(pdf, [("Grau", 12), ("Sc.", 12), ("Fornecedor", 96), ("Total (R$)", 34), ("Indícios", 22), ("SEI", 10)])
+    _tab_header(pdf, [("Grau", 12), ("Sc.", 10), ("Fornecedor", 70), ("Total (R$)", 30), ("Indícios", 20),
+                      ("Persecução", 34), ("SEI", 10)])
     pdf.set_font(pdf._fam, "", 7)
     for r in ranking:
         cods = ", ".join(c.replace("H-", "") for c in (r.get("codigos") or [])) or "-"
-        _tab_row(pdf, [(_t(r["grau"]), 12, "C"), (str(r["score"]), 12, "R"), (_t(r["nome"])[:60], 96, "L"),
-                       (moeda(r["total_pago"]), 34, "R"), (_t(cods)[:14], 22, "L"),
+        qp = _quadrante_persecucao(r)
+        qcel = f"{qp['quadrante']} {qp['risco_punicao']:.0f}" if qp["mostra"] else "-"
+        _tab_row(pdf, [(_t(r["grau"]), 12, "C"), (str(r["score"]), 10, "R"), (_t(r["nome"])[:44], 70, "L"),
+                       (moeda(r["total_pago"]), 30, "R"), (_t(cods)[:13], 20, "L"),
+                       (_t(qcel), 34, "L"),
                        (str(len(r.get("processos_sei") or [])), 10, "R")], h=4.6)
     procs = dd.get("processos_prioritarios") or []
     if procs:
