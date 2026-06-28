@@ -924,6 +924,97 @@ def _secao_sei_risco_md(add, ctx: dict) -> None:
     add("")
 
 
+# status de contrato (TCE-RJ Dados Abertos) → vigente (ativo) vs encerrado/arquivado
+_ST_ATIVO = ("ativo", "em aberto", "aguard", "aprova", "altera", "edi")
+_ST_ARQUIV = ("encerrad", "cancelad", "rescind", "extint", "conclu")
+
+
+def _classe_contrato(status: str) -> tuple[str, str]:
+    s = (status or "").strip().lower()
+    if any(k in s for k in _ST_ARQUIV):
+        return ("⚪ ARQUIVADO", "arquivado")
+    if any(k in s for k in _ST_ATIVO):
+        return ("🟢 ATIVO", "ativo")
+    return ("· —", "indef")
+
+
+def _secao_contratos_fornecedor_md(add, ctx: dict) -> None:
+    """CONTRATOS POR FORNECEDOR — para os maiores fornecedores PJ pagos pela UG, lista os contratos (TCE-RJ
+    Dados Abertos `contratos_tcerj`) ATIVOS × ARQUIVADOS, com objeto, processo, vigência, critério de julgamento,
+    valor CONTRATADO × valor efetivamente PAGO pela UG. Responde 'que contratos o órgão tem, quais ativos/
+    arquivados, qual o objeto, quanto pagou'. Indício/checagem documental, não acusação."""
+    import sqlite3
+    ug = str(ctx.get("ug") or "")
+    add("## 1-L. CONTRATOS POR FORNECEDOR (ATIVOS × ARQUIVADOS · OBJETO · CONTRATADO × PAGO)")
+    add("")
+    add("> Para cada maior fornecedor PJ pago por esta UG, os **contratos registrados no TCE-RJ (Dados Abertos)** — "
+        "**vigentes (ativos)** e **encerrados/arquivados** — com **objeto**, processo, vigência, critério de "
+        "julgamento e **valor contratado**. Confronta-se com o **pago pela UG** (espelho TFE — magnitude movimentada). "
+        "Contrato registrado em **unidade diversa** desta UG é marcado (◇) — é a carteira do fornecedor, contexto. "
+        "**Checagem documental, não acusação** (presunção de legitimidade; só a NF/medição fecha valor).")
+    add("")
+    if not ug:
+        add("_UG não resolvida — **INDISPONÍVEL**._"); add(""); return
+    con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
+    try:
+        forns = con.execute(
+            "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, ROUND(SUM(valor),2) pago, COUNT(*) n "
+            "FROM ordens_bancarias WHERE ug_codigo=? AND length(favorecido_cpf)=14 AND valor>0 "
+            "GROUP BY favorecido_cpf ORDER BY SUM(valor) DESC LIMIT 15", (ug,)).fetchall()
+        nome_ug = (ctx.get("nome") or "").lower()
+        algum = False
+        sem_contrato: list[str] = []
+        for f in forns:
+            contratos = con.execute(
+                "SELECT objeto, processo, ano_processo, valor_contrato, valor_pago, status, vig_inicio, vig_fim, "
+                "criterio_julgamento, unidade FROM contratos_tcerj WHERE cnpj=? "
+                "ORDER BY (CASE WHEN lower(status) LIKE 'ativo%' OR lower(status) LIKE 'em aberto%' THEN 0 ELSE 1 END), "
+                "valor_contrato DESC", (f["cnpj"],)).fetchall()
+            if not contratos:
+                sem_contrato.append(f"{(f['nome'] or '')[:34]} (R$ {moeda(f['pago'])})")
+                continue
+            algum = True
+            n_at = sum(1 for c in contratos if _classe_contrato(c["status"])[1] == "ativo")
+            n_ar = sum(1 for c in contratos if _classe_contrato(c["status"])[1] == "arquivado")
+            cnpj_fmt = f["cnpj"]
+            add(f"### {(f['nome'] or '—').strip()} — CNPJ {cnpj_fmt}")
+            add(f"**Pago por esta UG:** R$ {moeda(f['pago'])} em {f['n']} OBs · "
+                f"**Contratos TCE-RJ:** {len(contratos)} ({n_at} ativo(s), {n_ar} arquivado(s)).")
+            add("")
+            add("| Situação | Objeto | Processo | Vigência | Critério | Contratado (R$) | Pago no contrato (R$) |")
+            add("|:--|:--|:--|:--:|:--:|--:|--:|")
+            for c in contratos[:12]:
+                badge = _classe_contrato(c["status"])[0]
+                obj = (c["objeto"] or "—").strip().replace("|", "/").replace("\n", " ")[:90]
+                proc = (c["processo"] or "—").replace("|", "/")
+                uni = (c["unidade"] or "").strip().lower()
+                marca = " ◇" if (uni and uni not in nome_ug and nome_ug not in uni) else ""
+                vig = f"{(c['vig_inicio'] or '?')}→{(c['vig_fim'] or '?')}"
+                crit = (c["criterio_julgamento"] or "—")[:18]
+                vc = moeda(c["valor_contrato"]) if c["valor_contrato"] else "—"
+                vp = moeda(c["valor_pago"]) if c["valor_pago"] else "n/d"
+                add(f"| {badge}{marca} | {obj} | {proc} | {vig} | {crit} | {vc} | {vp} |")
+            add("")
+            if len(contratos) > 12:
+                add(f"> _(+{len(contratos) - 12} contrato(s) deste fornecedor omitido(s) — ver xlsx)._"); add("")
+        if not algum:
+            add("_Nenhum dos maiores fornecedores desta UG tem contrato no `contratos_tcerj` (cobertura TCE-RJ "
+                "parcial, ou repasses intragovernamentais sem contrato) — **INDISPONÍVEL ≠ ausência de contrato.**_")
+            add("")
+        if sem_contrato:
+            add(f"> **Sem contrato no TCE-RJ (entre os maiores pagos):** {'; '.join(sem_contrato[:10])}. "
+                "Pode ser repasse intragovernamental, contrato não coletado (cobertura parcial) ou execução "
+                "fora de contrato — **a apurar, INDISPONÍVEL ≠ 0**.")
+            add("")
+        add("> **Vigência ativa com pagamento, ou objeto divergente da finalidade da UG, ou critério não "
+            "competitivo (dispensa/inexigibilidade) → priorizar leitura do processo. Indício, não prova.**")
+        add("")
+    except Exception as e:  # noqa: BLE001 — degrada honesto
+        add(f"_Seção de contratos indisponível nesta execução ({str(e)[:70]}) — **INDISPONÍVEL**._"); add("")
+    finally:
+        con.close()
+
+
 def _secao_dd_md(add, ctx: dict) -> None:
     """Seção 1-D — triagem de DD (fachada/laranja) dos maiores fornecedores + rodízio temporal (cartel) +
     processos SEI a priorizar. É o cruzamento central de inteligência do relatório de órgão."""
@@ -1578,6 +1669,8 @@ def render_md(ctx: dict) -> str:
     _secao_dd_md(add, ctx)
     # 1-D.1. Processos SEI de risco já triados × OB paga pela UG (sintetiza a perícia documental no /orgao)
     _secao_sei_risco_md(add, ctx)
+    # 1-L. Contratos por fornecedor (ativos × arquivados, objeto, contratado × pago) — TCE-RJ Dados Abertos
+    _secao_contratos_fornecedor_md(add, ctx)
     # 1-E. Verificação de realidade do endereço das sedes (as empresas são reais?)
     _secao_endereco_md(add, ctx)
     # 1-F. Benefícios sociais dos sócios/administradores (cruzamento de laranja — testa-de-ferro)
