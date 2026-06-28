@@ -75,6 +75,17 @@ def _gravar(c, res: dict):
          json.dumps(res["achados"], ensure_ascii=False), time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())))
 
 
+# Credores NÃO-contratuais (repasse intra-governo / folha / previdência / precatório): NÃO recebem a bateria
+# T01-T22 (são transferência, não contrato de fornecimento) — antes caíam na perícia e geravam grau ruidoso.
+_NAO_CONTRATUAL = ("FOLHA DE PAGAMENTO", "RIOPREV", "INATIVO", "PENSIONISTA", "INSS", "TESOURO DO ESTADO",
+                   "FUNDO UNICO DE PREVID", "FUNDO ÚNICO DE PREVID", "PRECATORIO", "PRECATÓRIO",
+                   "AUXILIO ALIMENTA", "AUXÍLIO ALIMENTA", "PECUNIA", "PECÚNIA", "ESTADO DO RIO DE JANEIRO")
+
+
+def _eh_nao_contratual(nome: str) -> bool:
+    return any(p in (nome or "").upper() for p in _NAO_CONTRATUAL)
+
+
 def sweep(min_obs: int = 6, limit: int | None = None, ugs: list[str] | None = None) -> dict:
     c = _conn()
     filtro_ug = ""
@@ -82,9 +93,11 @@ def sweep(min_obs: int = 6, limit: int | None = None, ugs: list[str] | None = No
     if ugs:
         filtro_ug = f" AND ug_emitente IN ({','.join('?' * len(ugs))})"
         params = list(ugs)
+    # só OB efetivamente paga (status contabilizado) — exclui anulada/excluída/não-contab que inflavam o ranking
     pares = c.execute(f"""SELECT credor,ug_emitente,COUNT(*) n FROM ob_orcamentaria_siafe
-        WHERE credor IS NOT NULL AND credor!=''{filtro_ug} GROUP BY credor,ug_emitente HAVING n>=?
-        ORDER BY SUM(valor) DESC""", (*params, min_obs)).fetchall()
+        WHERE credor IS NOT NULL AND credor!='' AND lower(status) LIKE 'contabiliz%'{filtro_ug}
+        GROUP BY credor,ug_emitente HAVING n>=? ORDER BY SUM(valor) DESC""", (*params, min_obs)).fetchall()
+    pares = [r for r in pares if not _eh_nao_contratual(r["credor"])]  # repasse/folha/precatório fora da bateria
     if limit:
         pares = pares[:limit]
     n = 0; graus = {"🔴": 0, "🟡": 0, "🟢": 0}

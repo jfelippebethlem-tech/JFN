@@ -137,6 +137,35 @@ async def _gerar_default(messages: list[dict]) -> str:
         except Exception as e:  # noqa: BLE001
             _marcar_cooldown("groq", e)
             erros.append(f"groq: {str(e)[:50]}")
+    # FALLBACK aditivo (pedido do dono): groq → cerebras → nvidia → resto do _EXTRA. Só roda quando
+    # gemini+groq falham/cooldown — o caminho de sucesso atual fica intacto. O cap mensal (§4.1) protege
+    # os provedores _EXTRA de cobrança (extra_available já checa cap + chave).
+    try:
+        from compliance_agent.llm.free_llm import (
+            cerebras_available, cerebras_chat_async, extra_available, extra_chat_async, _EXTRA,
+        )
+        sys_txt = " ".join(m["content"] for m in messages if m.get("role") == "system")
+        usr_txt = "\n".join(m["content"] for m in messages if m.get("role") != "system")
+        provedores = []
+        if cerebras_available():
+            provedores.append(("cerebras", lambda: cerebras_chat_async(usr_txt, sys_txt, smart=True, max_tokens=2000)))
+        for prov in (["nvidia"] + [p for p in _EXTRA if p != "nvidia"]):
+            if extra_available(prov):
+                provedores.append((prov, lambda p=prov: extra_chat_async(p, usr_txt, sys_txt, max_tokens=2000)))
+        for nome, chamada in provedores:
+            if _em_cooldown(nome):
+                continue
+            try:
+                r = await chamada()
+                if r and r.strip():
+                    _limpar_cooldown(nome)
+                    return r
+                erros.append(f"{nome}: vazio")
+            except Exception as e:  # noqa: BLE001
+                _marcar_cooldown(nome, e)
+                erros.append(f"{nome}: {str(e)[:50]}")
+    except Exception as e:  # noqa: BLE001 — import/setup do fallback falhou: cai no raise honesto
+        erros.append(f"fallback-extra indisponível: {str(e)[:50]}")
     raise RuntimeError("nenhum LLM respondeu (ou em cooldown) — " + " | ".join(erros) or "todos em cooldown")
 
 
