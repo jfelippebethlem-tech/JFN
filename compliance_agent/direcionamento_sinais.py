@@ -348,3 +348,24 @@ def analisar_direcionamento_det(texto: str) -> dict:
         "ressalva": "presunção de legitimidade; indício a apurar, não acusação",
         "fonte": "direcionamento_sinais (determinístico/offline)",
     }
+
+
+# Carona / adesão a Ata de Registro de Preços e referências de certame — vetor SUTIL de restritividade
+# (adesão sem vantajosidade comprovada; ARP de outro órgão; item trocado por "mesma marca" pós-registro).
+# A maior parte do gasto do FUNESBOM passa por adesão a ARP/PE: o despacho/publicação cita o PE/ARP-lastro,
+# não o edital. Mapear o certame permite PRIORIZAR qual edital/ata coletar para a perícia de direcionamento.
+_RE_ARP = re.compile(r"Ata de Registro de Pre[çc]os\s*n[°ºo]*\s*([\d./-]+)", re.I)
+_RE_PE = re.compile(r"\b(?:PE|Preg[ãa]o Eletr[ôo]nico)\s*n?[°ºo]*\s*([\d./-]+)", re.I)
+_RE_ADESAO = re.compile(r"ades[ãa]o", re.I)
+
+
+def extrair_certames(texto: str) -> dict:
+    """Extrai as referências de certame subjacente — Pregão (PE) e Ata de Registro de Preços (ARP) — e sinaliza
+    ADESÃO/CARONA no texto (edital/despacho/publicação). Mapeia 'qual certame lastreia este pagamento', para
+    priorizar a coleta do edital/ata na perícia de direcionamento. Determinístico, offline.
+    Retorna {pregoes:[nº], atas_rp:[nº], adesao:bool, n_refs}. Honesto: lista vazia ≠ ausência de certame."""
+    t = texto or ""
+    pregoes = sorted({m.strip(" ./-") for m in _RE_PE.findall(t)})
+    atas = sorted({m.strip(" ./-") for m in _RE_ARP.findall(t)})
+    return {"pregoes": pregoes, "atas_rp": atas, "adesao": bool(_RE_ADESAO.search(t)),
+            "n_refs": len(pregoes) + len(atas)}
