@@ -69,15 +69,19 @@ _SIST = ("Você é analista de auditoria de contratação pública (controle ext
          "Sem dado no texto = [] / \"\". "
          "REGRAS: (1) factual — NUNCA invente; campo sem dado no texto = \"\" ou []. "
          "(2) 'resumo' no MÁXIMO 2 frases; 'analise' 2-4 frases; cada 'ponto' 1 frase; sem repetir. "
-         "(3) Responda SOMENTE o objeto JSON (começa com { e termina com }), SEM texto antes/depois, SEM ```.")
+         "(3) RASTREABILIDADE (essencial p/ o laudo): o texto vem rotulado por linhas '=== DOCUMENTO: <título/nº> ==='. "
+         "Em CADA documento registre 'doc_ref' (o título/nº de origem, copiado do cabeçalho) e 'trecho' = CITAÇÃO "
+         "VERBATIM copiada LITERAL do texto (entre aspas, NUNCA parafraseada). Em CADA red_flag, PREFIXE a fonte no "
+         "formato [Doc: <ref> — \"trecho literal\"]. Sem citação literal possível = trecho \"\". "
+         "(4) Responda SOMENTE o objeto JSON (começa com { e termina com }), SEM texto antes/depois, SEM ```.")
 
 _CAMPOS = ('{"objeto": "o que se contrata (1 frase)", "modalidade": "pregão/dispensa/inexigibilidade/adesão a ata/... ou \\"\\"", '
            '"fundamento_legal": "artigo/lei citados ou \\"\\"", "valores": ["R$ ..."], "cnpjs": ["..."], '
            '"partes": ["órgãos/empresas"], "datas": ["..."], '
            '"documentos": [{"tipo": "edital|concorrência|termo de referência|contrato|parecer jurídico|ETP|DFD|'
            'pesquisa de preços|despacho|ata|aditivo|nota de empenho|anexo instrutivo|outro", '
-           '"ponto": "ponto/trecho relevante p/ auditoria (1 frase)"}], '
-           '"red_flags": ["indícios a verificar, se houver"], '
+           '"ponto": "ponto relevante p/ auditoria (1 frase)", "doc_ref": "título/nº do DOCUMENTO de origem (do cabeçalho === DOCUMENTO: ... ===)", "trecho": "CITAÇÃO VERBATIM copiada LITERAL do documento entre aspas (NÃO parafraseie)"}], '
+           '"red_flags": ["indício a verificar PREFIXADO pela fonte: [Doc: titulo/nº — \\"trecho verbatim\\"] o indício"], '
            '"nivel_risco": "baixo|medio|alto", '
            '"situacao": "arquivado|concluido|em andamento|\\"\\" (SÓ se o texto declarar explicitamente; senão \\"\\")", '
            '"analise": "análise raciocinada p/ auditoria (2-4 frases): o que chama atenção, por quê, e o que verificar", '
@@ -87,17 +91,19 @@ _CAMPOS = ('{"objeto": "o que se contrata (1 frase)", "modalidade": "pregão/dis
            '"relevante": true, "resumo": "1-2 frases do que importa p/ auditoria"}')
 
 # FEW-SHOT: 1 exemplo input→ficha ideal "ensina" o modelo fraco (formato + profundidade esperada).
-_EXEMPLO_TXT = ("Trata-se de adesão à ata de registro de preços do Pregão Eletrônico 045/2021 da Fundação Saúde "
-                "do ERJ para aquisição de cateter venoso central, demanda da Diretoria-Geral de Saúde do CBMERJ, "
-                "valor estimado R$ 17.156,00. Fornecedor: MEDLINE COMERCIAL LTDA, CNPJ 12.345.678/0001-90.")
+_EXEMPLO_TXT = ("=== DOCUMENTO: Termo de Referência (doc 0012345) ===\n"
+                "Adesão à ata de registro de preços do Pregão Eletrônico 045/2021 da Fundação Saúde do ERJ para "
+                "aquisição de cateter venoso central, demanda da Diretoria-Geral de Saúde do CBMERJ, valor estimado "
+                "R$ 17.156,00. Fornecedor: MEDLINE COMERCIAL LTDA, CNPJ 12.345.678/0001-90.\n\n"
+                "=== DOCUMENTO: Parecer Jurídico (doc 0012346) ===\n"
+                "Opina pela legalidade da adesão à ata do Pregão 045/2021.")
 _EXEMPLO_FICHA = ('{"objeto": "Aquisição de cateter venoso central (insumo de saúde) p/ a Diretoria-Geral de Saúde do CBMERJ", '
                   '"modalidade": "adesão a ata de registro de preços (Pregão 045/2021)", "fundamento_legal": "", '
                   '"valores": ["R$ 17.156,00"], "cnpjs": ["12.345.678/0001-90"], '
                   '"partes": ["CBMERJ", "Fundação Saúde do ERJ", "MEDLINE COMERCIAL LTDA"], "datas": [], '
-                  '"documentos": [{"tipo": "termo de referência", "ponto": "especifica cateter venoso central, qtd e marca"}, '
-                  '{"tipo": "parecer jurídico", "ponto": "opina pela legalidade da adesão à ata"}, '
-                  '{"tipo": "ata de registro de preços", "ponto": "Pregão 045/2021 da Fundação Saúde, vigência e preços"}], '
-                  '"red_flags": ["adesão a ata de outro órgão — verificar vantajosidade (art. 86 Lei 14.133)"], '
+                  '"documentos": [{"tipo": "termo de referência", "ponto": "especifica cateter venoso central, qtd e marca", "doc_ref": "Termo de Referência (doc 0012345)", "trecho": "aquisição de cateter venoso central... valor estimado R$ 17.156,00"}, '
+                  '{"tipo": "parecer jurídico", "ponto": "opina pela legalidade da adesão à ata", "doc_ref": "Parecer Jurídico (doc 0012346)", "trecho": "Opina pela legalidade da adesão à ata do Pregão 045/2021"}], '
+                  '"red_flags": ["[Doc: Termo de Referência (doc 0012345) — \\"Adesão à ata de registro de preços do Pregão Eletrônico 045/2021 da Fundação Saúde\\"] adesão a ata de outro órgão — verificar vantajosidade (art. 86 Lei 14.133)"], '
                   '"nivel_risco": "baixo", '
                   '"situacao": "", '
                   '"analise": "Adesão a ata de RP de outro órgão (carona) para insumo de saúde de baixo valor, com parecer opinando pela legalidade. Risco baixo, mas convém conferir a vantajosidade do preço da carona ante o mercado (art. 86 Lei 14.133) e a real necessidade da demanda do CBMERJ.", '
@@ -144,7 +150,7 @@ def _aprendizados_pericia() -> str:
         regras = lembrar("metodo", chave="pericia", min_confianca=0.0)
         if regras:
             txt = ("\n\nLIÇÕES DE PERÍCIA ACUMULADAS (aplique — vêm de dúvidas/erros de perícias passadas):\n"
-                   + "\n".join(f"- {(r.get('valor') or '')[:240]}" for r in regras[:10]))
+                   + "\n".join(f"- {(r.get('valor') or '')[:240]}" for r in regras[:16]))
     except Exception:
         txt = ""
     _APREND_CACHE = txt
@@ -327,7 +333,8 @@ def conteudo_real(d: dict) -> str:
     for c in (d.get("conteudo_documentos") or []):
         t = c.get("conteudo") if isinstance(c, dict) else str(c)
         if t and len(t) > 40:
-            partes.append(t)
+            ref = (c.get("doc") or "").strip() if isinstance(c, dict) else ""
+            partes.append(f"=== DOCUMENTO: {ref} ===\n{t}" if ref else t)
     for rel in (d.get("cadeia") or []):  # docs dos relacionados (a árvore)
         if rel.get("texto") and len(rel["texto"]) > 40:
             partes.append("[RELACIONADO] " + rel["texto"])
