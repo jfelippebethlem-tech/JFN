@@ -725,7 +725,7 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
             "total_pago": c["total_pago"], "n_obs": c["n_obs"],
         } for i, c in enumerate(candidatos)]
         linhas = [f"{o['n']}) {o['nome']} — CNPJ {o['cnpj_fmt']}"
-                  + (f" — R$ {moeda(o['total_pago'])} pagos em {o['n_obs']} OBs" if o["n_obs"] else " — sem OBs na base")
+                  + (f" — R$ {moeda(o['total_pago'])} movimentados em {o['n_obs']} OBs (bruto TFE)" if o["n_obs"] else " — sem OBs na base")
                   for o in opcoes]
         pergunta = (f"Encontrei {len(opcoes)} empresas para \"{termo}\". Qual delas, Mestre Jorge?\n"
                     + "\n".join(linhas)
