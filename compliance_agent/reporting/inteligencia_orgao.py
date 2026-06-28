@@ -249,7 +249,8 @@ def consultar_orgao(ug: str, anos: Optional[list[int]] = None) -> dict:
 # ───────────────────────────── montagem ─────────────────────────────
 
 def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
-           anos: Optional[list[int]] = None, salvar: bool = True, so_resolver: bool = False) -> dict:
+           anos: Optional[list[int]] = None, salvar: bool = True, so_resolver: bool = False,
+           retornar_ctx: bool = False) -> dict:
     termo = (ug or orgao or "").strip()
     cands = buscar_orgaos(termo)
     if not cands:
@@ -318,20 +319,25 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
 
     # PARECER LEX DE ÓRGÃO — o /orgao "pensa" como o /relatorio (3º documento, com grau 🟢🟡🔴).
     path_lex = ""
+    path_lex_md = ""
     grau_lex = ""
     if salvar:
         try:
             from compliance_agent import lex
             _lex = lex.gerar_orgao(ctx, salvar=True)
             path_lex = _lex.get("path_lex_pdf", "") or ""
+            path_lex_md = _lex.get("path_lex_md", "") or ""
             grau_lex = _lex.get("grau", "") or ""
         except Exception as exc:  # noqa: BLE001
             ctx["_lex_erro"] = str(exc)[:160]
 
-    return {"ok": True, "ug": ug_cod, "orgao": nome, "resumo": _resumo(ctx),
-            "path_md": path_md, "path_pdf": path_pdf, "path_xlsx": path_xlsx,
-            "path_lex": path_lex, "grau_lex": grau_lex,
-            "fonte": "REAL" if pagamentos["tem_dados"] else "SEM_DADOS"}
+    out = {"ok": True, "ug": ug_cod, "orgao": nome, "resumo": _resumo(ctx),
+           "path_md": path_md, "path_pdf": path_pdf, "path_xlsx": path_xlsx,
+           "path_lex": path_lex, "path_lex_md": path_lex_md, "grau_lex": grau_lex,
+           "fonte": "REAL" if pagamentos["tem_dados"] else "SEM_DADOS"}
+    if retornar_ctx:  # consumido pelo relatório consolidado (reporting/consolidado.py) — sem re-coletar
+        out["_ctx"] = ctx
+    return out
 
 
 def gerar(orgao: Optional[str] = None, ug: Optional[str] = None, anos: Optional[list[int]] = None) -> dict:
