@@ -324,7 +324,11 @@ async def avaliar_direcionamento(edital_txt: str = "", ata_txt: str = "", *, con
     """Avalia indícios de direcionamento (LLM sobre edital+ata). `gerar`: callable async(messages)->str
     (default Groq; injete um fake no teste). Retorna o JSON do schema + `presinais` + proveniência."""
     sig = presinais(ata_txt)
-    base = {"presinais": sig, "fonte": "direcionamento_cerebro"}
+    # ADITIVO: camada DETERMINÍSTICA (regex/keyword, SEM LLM) — surge MESMO com a IA offline (Gemini
+    # desligado, §4.1). Reaproveita a doutrina (cláusulas restritivas + cascata) sobre edital+ata.
+    from compliance_agent.direcionamento_sinais import analisar_direcionamento_det
+    sinais_det = analisar_direcionamento_det(((edital_txt or "") + "\n\n" + (ata_txt or "")).strip())
+    base = {"presinais": sig, "sinais_deterministicos": sinais_det, "fonte": "direcionamento_cerebro"}
     # dados suficientes = tem ATA (cascata) OU o texto realmente PARECE um edital de licitação (marcadores
     # de habilitação/qualificação). Evita "analisar" menu do SEI ou contrato de execução como se fosse edital.
     ed_low = (edital_txt or "").lower()
