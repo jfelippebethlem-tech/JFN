@@ -996,6 +996,27 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     except Exception:  # noqa: BLE001 — surface best-effort
         pesquisa = None
 
+    # Onda motor — AUDITORIA DE CONTRATO CONTÍNUO (bateria T01–T22 de auditoria_contrato, via pericia_sweep.periciar).
+    # Determinística, OBs SIAFE (ob_orcamentaria_siafe), SEM LLM. Só p/ serviço contínuo com acervo SIAFE; audita a
+    # UG MAIS MATERIAL (maior volume contabilizado) — a seção II-E.2 é por-contrato (o /orgao cobre o por-UG).
+    # Degrada honesto: sem OB SIAFE → dict vazio → o renderer omite a seção. NÃO entra no _grau do Lex (grau próprio).
+    aud_contrato: dict = {}
+    if cnpj and _eh_servico_continuo([emp_cad.get("cnae_principal"), emp_cad.get("atividade"), ctx.get("nome")]):
+        try:
+            from compliance_agent.pericia_sweep import periciar, _conn, _eh_nao_contratual
+            cc = _conn()
+            try:
+                ug_row = cc.execute(
+                    "SELECT ug_emitente ug, SUM(valor) tot FROM ob_orcamentaria_siafe "
+                    "WHERE credor=? AND lower(status) LIKE 'contabiliz%' "
+                    "GROUP BY ug_emitente ORDER BY tot DESC LIMIT 1", (cnpj,)).fetchone()
+                if ug_row and ug_row["ug"] and not _eh_nao_contratual(ctx.get("nome") or ""):
+                    aud_contrato = periciar(cnpj, ug_row["ug"], cc)
+            finally:
+                cc.close()
+        except Exception:  # noqa: BLE001 — motor degrada honesto; ausência não derruba o parecer
+            aud_contrato = {}
+
     achados = _merge_achados(ach_dados + ach_doc + ach_tcerj + ach_cartel + ach_estrutural)
     emoji, rotulo, just = _grau(achados)
     exculpatorio = _exculpatorio(achados)
@@ -1003,7 +1024,7 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
     return {"cnpj": cnpj, "sei": sei, "leituras": leituras, "achados": achados,
             "tem_leitura_doc": bool(ach_doc), "tcerj": resumo_tcerj, "cartel": cartel,
             "cruzado": cruzado, "investigacao": investigacao, "direcionamento": direcionamento,
-            "pesquisa": pesquisa,
+            "pesquisa": pesquisa, "auditoria_contrato": aud_contrato,
             "exculpatorio": exculpatorio, "destinatarios": destinatarios,
             "emoji": emoji, "rotulo": rotulo, "just": just}
 
