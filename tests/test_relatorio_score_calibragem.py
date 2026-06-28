@@ -87,6 +87,31 @@ def test_anomalias_indisponivel_nao_afeta():
     assert _score(anomalias={"ok": False, "n_obs": 0, "n_anomalas": 0})["score"] == 0
 
 
+# ──────────────────── natureza sem-fins (§1, dump local) — calibração conservadora ────────────────────
+
+def _nsf(ressalva: bool) -> dict:
+    return {"ok": True, "sem_fins": True, "ressalva": ressalva,
+            "natureza_txt": "Associação privada", "natureza_cod": "3999"}
+
+
+def test_natureza_sem_fins_sem_ressalva_eleva_conservador():
+    """OS/associação/fundação ('3xxx') recebendo como fornecedor comum, SEM token de ensino/pesquisa →
+    indício conservador que eleva o score (a partir de BAIXO 0)."""
+    cal = _score(natureza_sem_fins=_nsf(ressalva=False))
+    assert 6 <= cal["score"] <= 10
+    assert any("natureza" in x and "MROSC" in x for x in cal["sinais"])
+
+
+def test_natureza_sem_fins_com_ressalva_nao_pune():
+    """COM ressalva (CIEE/FGV/ensino/pesquisa/estágio) NÃO eleva — recebimento provavelmente legítimo."""
+    assert _score(natureza_sem_fins=_nsf(ressalva=True))["score"] == 0
+
+
+def test_natureza_sem_fins_ausente_ou_indisponivel_nao_afeta():
+    assert _score(natureza_sem_fins=None)["score"] == 0
+    assert _score(natureza_sem_fins={"ok": False, "sem_fins": False})["score"] == 0
+
+
 # ───────────────────────────── prosa ALTO vira número ALTO (cenário do QA) ─────────────────────────────
 
 def test_cenario_qa_mesma_sede_mais_anomalias_chega_alto():
