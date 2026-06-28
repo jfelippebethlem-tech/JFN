@@ -699,7 +699,8 @@ async def _enriquecer(cnpj: str) -> dict:
 # ───────────────────────────── montagem do relatório ─────────────────────────────
 
 async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
-                 anos: Optional[list[int]] = None, salvar: bool = True, so_resolver: bool = False) -> dict:
+                 anos: Optional[list[int]] = None, salvar: bool = True, so_resolver: bool = False,
+                 retornar_ctx: bool = False) -> dict:
     """Monta o relatório de inteligência. Retorna dict (ver docstring do módulo).
     so_resolver=True: só RESOLVE (rápido) e devolve {ok,_resolvido,empresa,cnpj} ou {ambiguo}/{erro}, SEM gerar
     — o endpoint usa p/ tratar a ambiguidade SÍNCRONA (o Yoda roteia a resposta) antes de gerar em background."""
@@ -836,24 +837,29 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
 
     # 3º documento: PARECER do agente Lex (avaliação jurídica/tomada de contas)
     path_lex = ""
+    path_lex_md = ""
     grau_lex = None
     if salvar:
         try:
             from compliance_agent import lex
             lexout = lex.gerar(contexto)
             path_lex = lexout.get("path_lex_pdf", "")
+            path_lex_md = lexout.get("path_lex_md", "")
             grau_lex = lexout.get("grau")
         except Exception as exc:  # noqa: BLE001
             contexto["_lex_erro"] = str(exc)[:160]
 
-    return {
+    out = {
         "ok": True, "cnpj": cnpj_d, "cnpj_fmt": fmt_cnpj(cnpj_d), "empresa": nome,
         "risco": risco, "score": score,
         "resumo": _resumo_executivo(contexto),
         "path_md": path_md, "path_pdf": path_pdf, "path_xlsx": path_xlsx,
-        "path_lex": path_lex, "grau_lex": grau_lex,
+        "path_lex": path_lex, "path_lex_md": path_lex_md, "grau_lex": grau_lex,
         "fonte": fonte_global, "fonte_enriq": contexto["fonte_enriq"],
     }
+    if retornar_ctx:  # consumido pelo relatório consolidado (reporting/consolidado.py) — sem re-coletar
+        out["_ctx"] = contexto
+    return out
 
 
 def gerar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
