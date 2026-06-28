@@ -107,6 +107,43 @@ def processos_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
         con.close()
 
 
+def execucao_de_fornecedor(cnpj: str, limite: int = 200) -> list[dict]:
+    """Cruza os processos SEI pagos do fornecedor (via OBs) com a perícia de EXECUÇÃO (lex_execucao):
+    surfacing dos contratos pagos cuja entrega/execução NÃO foi comprovada nos autos. Indício, não prova."""
+    if not _DB.exists():
+        return []
+    cnpj = re.sub(r"\D", "", cnpj or "")
+    con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(
+            "SELECT o.numero_sei, COUNT(*) n_obs, ROUND(SUM(o.valor),2) total, "
+            "l.execucao_comprovada AS exec, l.nota_risco AS nota, l.resumo "
+            "FROM ordens_bancarias o LEFT JOIN lex_execucao l ON l.numero_sei=o.numero_sei "
+            "WHERE o.favorecido_cpf=? AND o.numero_sei IS NOT NULL AND o.numero_sei!='' "
+            "GROUP BY o.numero_sei ORDER BY total DESC LIMIT ?", (cnpj, limite)).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        con.close()
+
+
+def processos_risco_de_orgao(ug: str, limite: int = 30) -> list[dict]:
+    """Processos SEI de RISCO (sei_ficha nivel_risco alto/médio) PAGOS por uma UG, com OB total. Insumo do /orgao:
+    prioriza a apuração por onde o dinheiro andou. Trata o split de acento em nivel_risco (medio/médio)."""
+    if not _DB.exists():
+        return []
+    con = sqlite3.connect(_DB); con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(
+            "SELECT f.numero_sei, f.nivel_risco, f.objeto, f.red_flags, COUNT(*) n_obs, ROUND(SUM(o.valor),2) total "
+            "FROM sei_ficha f JOIN ordens_bancarias o ON o.numero_sei=f.numero_sei "
+            "WHERE o.ug_codigo=? AND o.numero_sei IS NOT NULL AND o.numero_sei!='' "
+            "AND lower(f.nivel_risco) IN ('alto','medio','médio') "
+            "GROUP BY f.numero_sei ORDER BY total DESC LIMIT ?", (str(ug), limite)).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        con.close()
+
+
 if __name__ == "__main__":
     import json
     print(json.dumps(correlacionar(), ensure_ascii=False, indent=1))

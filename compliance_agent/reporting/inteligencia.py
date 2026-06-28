@@ -1421,6 +1421,53 @@ def _rodizio_fornecedor(cnpj: str, max_ugs: int = 3) -> dict:
         return out
 
 
+def _render_execucao(ctx: dict) -> str:
+    """Seção 1-G — execução contratual (prova de entrega): cruza OB paga × perícia SEI (lex_execucao).
+    Surfacing dos contratos pagos sem execução comprovada nos autos. Indício, não prova; INDISPONÍVEL ≠ irregular."""
+    def _brl(v):
+        return f"{(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    L: list[str] = []
+    add = L.append
+    add("## 1-G. EXECUÇÃO CONTRATUAL — PROVA DE ENTREGA (OB PAGA × PERÍCIA SEI)")
+    add("")
+    add("> Cruza os **processos pagos** (Ordem Bancária) deste fornecedor com a **perícia de execução** "
+        "(lex_execucao): há prova de entrega/fiscalização nos autos? Pagar sem execução comprovada é *red flag* "
+        "(Lei 4.320/64 art. 63 — a liquidação exige a comprovação; Lei 14.133/2021 arts. 117/140). "
+        "**Indício, não prova** — INDISPONÍVEL ≠ irregular (pode faltar só no recorte coletado).")
+    add("")
+    try:
+        from compliance_agent import correlacao_sei
+        itens = correlacao_sei.execucao_de_fornecedor(ctx.get("cnpj", ""))
+    except Exception as e:  # noqa: BLE001
+        add(f"_Cruzamento de execução indisponível nesta execução ({str(e)[:60]}) — **INDISPONÍVEL**._")
+        add("")
+        return "\n".join(L)
+    suspeitos = [x for x in itens if (x.get("exec") in ("nao", "parcial", "indeterminado")) and (x.get("total") or 0) > 0]
+    periciados = [x for x in itens if x.get("exec")]
+    if not suspeitos:
+        if periciados:
+            add(f"Dos **{len(periciados)}** processo(s) pago(s) com perícia de execução disponível, **nenhum** com "
+                "execução não-comprovada — execução **aparentemente regular** nos autos periciados (demais: INDISPONÍVEL).")
+        else:
+            add("_Nenhum processo SEI deste fornecedor foi periciado quanto à execução ainda — **INDISPONÍVEL** "
+                "(a perícia documental SEI roda por sweep; este fornecedor pode não ter sido alcançado)._")
+        add("")
+        return "\n".join(L)
+    tot = sum(x.get("total") or 0 for x in suspeitos)
+    add(f"🟡 **Indício:** **{len(suspeitos)}** processo(s) pago(s) — **R$ {_brl(tot)}** — sem execução comprovada nos autos:")
+    add("")
+    add("| Processo SEI | OBs | Pago (R$) | Execução | Nota | Resumo da perícia |")
+    add("|---|---:|---:|:--:|:--:|---|")
+    for x in sorted(suspeitos, key=lambda x: -(x.get("total") or 0))[:20]:
+        res = (x.get("resumo") or "")[:90].replace("|", "/")
+        add(f"| {x.get('numero_sei')} | {x.get('n_obs')} | {_brl(x.get('total'))} | {x.get('exec')} | {x.get('nota')}/10 | {res} |")
+    add("")
+    add("> 🟡 **Indício a apurar:** exigir do gestor a prova de entrega/fiscalização (atesto, NF, medição, relatório "
+        "fotográfico) dos processos acima antes de novo pagamento. **Indício, não prova.**")
+    add("")
+    return "\n".join(L)
+
+
 def _render_rodizio_fornecedor(ctx: dict) -> str:
     """Seção 1-E — rodízio de vencedores (bid rotation/cartel) do fornecedor. Dado + leitura + conclusão honesta."""
     rod = ctx.get("rodizio_forn")
@@ -1755,6 +1802,9 @@ def render_md(ctx: dict) -> str:
 
     # 1-F. Conflito de pessoal — sócio/administrador (CPF resolvido) na folha do Estado
     add(_render_conflito_pessoal(ctx))
+
+    # 1-G. Execução contratual (prova de entrega) — OB paga × perícia SEI (lex_execucao). Surfacing de pago-sem-execução.
+    add(_render_execucao(ctx))
 
     # 3. Pagamentos (OBs) por ano — TABELA POR ANO (requisito do Mestre Jorge)
     add("## 2. PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO")
