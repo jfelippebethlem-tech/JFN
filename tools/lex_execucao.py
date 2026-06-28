@@ -48,7 +48,18 @@ _SYS = (
     "(3) Nunca invente documento ou fato que não esteja na lista. (4) Foque a COERÊNCIA FÍSICA entre o objeto/"
     "quantidade contratado e a evidência: quantidades grandes exigem evidência condizente (medição, recebimento "
     "detalhado, múltiplos registros) — uma única foto/atesto genérico NÃO comprova entrega de grande volume "
-    "(ex.: 100.000 livros não cabem numa caixa). Responda SOMENTE o objeto JSON do schema, sem texto fora."
+    "(ex.: 100.000 livros não cabem numa caixa). "
+    "(5) CALIBRE A NOTA (0-10) PELO RISCO REAL, não pela completude da captura: reserve 7-10 APENAS para "
+    "incoerência física (volume×evidência) OU achado material PRESENTE nos documentos (e-mail pessoal/@gmail "
+    "em ato oficial, valor redondo/incompatível, documento contraditório, fornecedor sancionado); a mera "
+    "AUSÊNCIA de NF/atesto/medição/OB NÃO justifica nota ≥7. "
+    "(6) ÁRVORE RASA = NÃO PERICIÁVEL: se os documentos são poucos e só de abertura/encerramento (nota de "
+    "empenho, recibo de envio ao TCE-RJ, despacho de encaminhamento) SEM a fase de execução, então a árvore "
+    "não foi coletada — responda execucao_comprovada='indeterminado', coerencia='indeterminado', nota ≤4 e "
+    "registre em 'duvidas' que a árvore de contratação precisa ser re-coletada (captura incompleta ≠ irregularidade). "
+    "(7) CONTRATO RECENTE: empenho de poucas semanas não pode ter documentos de execução pós-entrega; não "
+    "trate ausência por recência como risco. "
+    "Responda SOMENTE o objeto JSON do schema, sem texto fora."
 )
 _SCHEMA = (
     '{"execucao_comprovada":"sim|parcial|nao|indeterminado",'
@@ -96,6 +107,23 @@ def _parse_json(txt: str) -> dict | None:
         return None
 
 
+_REGRAS_CACHE: list[str] | None = None
+
+
+def _regras_calibracao() -> str:
+    """Reinjeta as lições de perícia aprendidas (memoria 'metodo', chave 'pericia:*') — as MESMAS que o
+    sei_ficha já injeta — para o scorer de execução também aprender a calibrar. Best-effort (cacheado)."""
+    global _REGRAS_CACHE
+    if _REGRAS_CACHE is None:
+        try:
+            from compliance_agent.llm.memoria import lembrar
+            regras = lembrar("metodo", chave="pericia", min_confianca=0.0) or []
+            _REGRAS_CACHE = [(r.get("valor") or "")[:240] for r in regras[:16] if r.get("valor")]
+        except Exception:
+            _REGRAS_CACHE = []
+    return "\n".join(f"- {x}" for x in _REGRAS_CACHE) or "(sem lições registradas)"
+
+
 def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valores: str,
                      documentos: list[dict], red_flags: list, gerar) -> dict | None:
     fl = _flags(documentos)
@@ -106,7 +134,10 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
         f"RED FLAGS já anotadas: {red_flags or '[]'}\n"
         f"PRESENÇA DETECTADA (1=sim): {fl}\n\n"
         f"DOCUMENTOS DO PROCESSO ({len(documentos)}):\n{docs_txt or '(nenhum doc inventariado)'}\n\n"
+        f"LIÇÕES DE CALIBRAÇÃO DA PERÍCIA (aplique antes de pontuar):\n{_regras_calibracao()}\n\n"
         f"Avalie se a execução do contrato está comprovada e coerente com o objeto/quantidade. "
+        f"Se a árvore é rasa (poucos docs, só empenho/envio-TCE/despacho, sem fase de execução), é captura "
+        f"incompleta → 'indeterminado' e nota ≤4, NÃO risco alto. "
         f"Dê atenção à fiscalização/relatório fotográfico e à plausibilidade física da entrega. "
         f"Responda SOMENTE o JSON: {_SCHEMA}"
     )
@@ -118,7 +149,7 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
     r = _parse_json(txt) or {}
     nota = r.get("nota_risco_execucao")
     try:
-        nota = int(nota)
+        nota = max(0, min(10, int(nota)))  # clamp 0-10: o LLM às vezes devolve fora de faixa/negativo
     except Exception:
         nota = None
     con.execute(
