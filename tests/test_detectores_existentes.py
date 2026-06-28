@@ -24,6 +24,7 @@ from compliance_agent.detectores import (
     score_processo,
 )
 from compliance_agent.detectores.base import STATUS_VALIDOS
+from compliance_agent.detectores.p3_sobrepreco import _nivel_por_razao
 
 
 def _valido(r: ResultadoDetector) -> None:
@@ -128,6 +129,30 @@ def test_p3_ancora_por_magnitude(razao, esperado):
     assert r.score == ANCORAS[esperado]
     assert r.evidencia and "papel a4" in r.evidencia[0]["trecho"]
     assert r.valores["razao_max_min"] == razao
+
+
+def test_p3_outlier_baixo_rebaixado_por_coerencia():
+    """Razão alta SÓ por outlier quase-zero no MENOR preço (mediana mal supera o max) → rebaixa p/ 'fraco'.
+    É o gate anti-outlier: razão 50× mas +5% vs mediana = erro de cadastro no min, não sobrepreço real."""
+    achado = _achado_sobrepreco(50.0)            # razão bruta = 'forte'
+    achado[0]["sobrepreco_pct_vs_mediana"] = 5.0  # mas o max mal desvia da mediana (sinal robusto fraco)
+    r = P3Sobrepreco().avaliar({"processo": "item-x", "achados": achado})
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.score == ANCORAS["fraco"]           # NÃO 'forte': sem desvio robusto = outlier, não sobrepreço
+
+
+@pytest.mark.parametrize("razao,pct,esperado", [
+    (4.5, 150.0, "forte"),   # razão forte + desvio robusto forte → forte
+    (4.5, 60.0, "medio"),    # razão forte mas mediana só +60% → rebaixa p/ medio
+    (4.5, 10.0, "fraco"),    # razão forte sem desvio robusto → rebaixa p/ fraco (outlier baixo)
+    (3.2, 60.0, "medio"),    # razão medio + mediana +60% → medio
+    (3.2, 10.0, "fraco"),    # razão medio sem desvio robusto → fraco
+    (2.1, 0.0, "fraco"),     # piso: razão fraca sempre fraco
+    (4.5, None, "forte"),    # pct ausente = comportamento legado (só razão)
+])
+def test_p3_nivel_coerencia_sinais(razao, pct, esperado):
+    assert _nivel_por_razao(razao, pct) == esperado
 
 
 def test_p3_nao_avaliavel_sem_registros():
