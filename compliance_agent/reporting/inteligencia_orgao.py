@@ -881,6 +881,49 @@ def _recorrentes_identicos(p: dict, min_rep: int = 4, min_valor: float = 50_000.
     return grupos
 
 
+def _secao_sei_risco_md(add, ctx: dict) -> None:
+    """Seção 1-E (órgão) — processos SEI já triados de RISCO (sei_ficha) × OB paga pela UG. Indício, não prova."""
+    def _brl(v):
+        return f"{(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    add("## 1-D.1. PROCESSOS SEI DE RISCO PAGOS PELA UG (PERÍCIA DOCUMENTAL × OB)")
+    add("")
+    add("> Cruza os **processos SEI já triados** (perícia documental — `sei_ficha`) com os **pagamentos (OB)** desta "
+        "UG: processos de **risco alto/médio** que efetivamente receberam recursos — prioriza a apuração por onde o "
+        "dinheiro andou. **Indício, não prova** — risco interno de triagem; presunção de regularidade.")
+    add("")
+    try:
+        from compliance_agent import correlacao_sei
+        itens = correlacao_sei.processos_risco_de_orgao(ctx.get("ug", ""))
+    except Exception as e:  # noqa: BLE001
+        add(f"_Cruzamento SEI×OB indisponível nesta execução ({str(e)[:60]}) — **INDISPONÍVEL**._")
+        add("")
+        return
+    if not itens:
+        add("_Nenhum processo SEI de risco (alto/médio) com OB paga localizado para esta UG — **INDISPONÍVEL** "
+            "(a perícia documental SEI roda por sweep; pode não ter alcançado processos desta UG)._")
+        add("")
+        return
+    import json as _json
+    tot = sum(x.get("total") or 0 for x in itens)
+    add(f"🟡 **{len(itens)}** processo(s) de risco com pagamento — **R$ {_brl(tot)}**:")
+    add("")
+    add("| Processo SEI | Risco | Pago (R$) | OBs | Objeto | 1ª red flag |")
+    add("|---|:--:|---:|---:|---|---|")
+    for x in itens[:20]:
+        try:
+            rf = _json.loads(x.get("red_flags") or "[]")
+        except Exception:
+            rf = []
+        flag = (str(rf[0]) if rf else "")[:60].replace("|", "/")
+        obj = (x.get("objeto") or "")[:45].replace("|", "/")
+        risco = (x.get("nivel_risco") or "").replace("médio", "medio")
+        emoji = "🔴" if risco == "alto" else "🟡"
+        add(f"| {x.get('numero_sei')} | {emoji} {risco} | {_brl(x.get('total'))} | {x.get('n_obs')} | {obj} | {flag} |")
+    add("")
+    add("> 🟡 **Indício a apurar:** priorizar a leitura integral dos autos acima (maior risco × maior pagamento). **Indício, não prova.**")
+    add("")
+
+
 def _secao_dd_md(add, ctx: dict) -> None:
     """Seção 1-D — triagem de DD (fachada/laranja) dos maiores fornecedores + rodízio temporal (cartel) +
     processos SEI a priorizar. É o cruzamento central de inteligência do relatório de órgão."""
@@ -1533,6 +1576,8 @@ def render_md(ctx: dict) -> str:
 
     # 1-D. Triagem de Due Diligence (fachada/laranja) + rodízio temporal (cartel) — o coração da inteligência
     _secao_dd_md(add, ctx)
+    # 1-D.1. Processos SEI de risco já triados × OB paga pela UG (sintetiza a perícia documental no /orgao)
+    _secao_sei_risco_md(add, ctx)
     # 1-E. Verificação de realidade do endereço das sedes (as empresas são reais?)
     _secao_endereco_md(add, ctx)
     # 1-F. Benefícios sociais dos sócios/administradores (cruzamento de laranja — testa-de-ferro)
