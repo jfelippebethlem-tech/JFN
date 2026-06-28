@@ -44,3 +44,33 @@ def test_pago_muito_acima_do_contratado_pesa():
     p = _pag(300e6, {2024: 300e6}, top_share=10)
     cal = _recalibrar_risco(p, rede=[], contratado_tcerj=100e6, score_ext=0, risco_ext="BAIXO")
     assert any("≫" in s or "pago" in s for s in cal["sinais"]) and cal["score"] >= 25
+
+
+def test_convergencia_doador_sede_indicio_soma_15(): # backlog #16
+    """Convergência §1-D×sede: doador eleitoral (rede) CUJA sede é, ela própria, indício de fachada
+    (verificacao_sede=INDICIO) soma +15 sobre os +20 da rede. Indício ≠ acusação."""
+    p = _pag(1e6, {2024: 1e6}, top_share=10)
+    base = _recalibrar_risco(p, rede=[{"x": 1}], contratado_tcerj=0, score_ext=0, risco_ext="BAIXO")
+    conv = _recalibrar_risco(p, rede=[{"x": 1}], contratado_tcerj=0, score_ext=0, risco_ext="BAIXO",
+                             sede_status="INDICIO")
+    assert conv["score"] == base["score"] + 15
+    assert any("convergência" in s and "337-F" in s for s in conv["sinais"])
+
+
+def test_convergencia_so_quando_ha_rede():
+    """Sede INDICIO sem rede (não é doador↔contrato) NÃO soma — a regra só vale quando AMBOS tocam o mesmo CNPJ."""
+    p = _pag(1e6, {2024: 1e6}, top_share=10)
+    cal = _recalibrar_risco(p, rede=[], contratado_tcerj=0, score_ext=0, risco_ext="BAIXO", sede_status="INDICIO")
+    assert cal["score"] == 0
+    assert not any("convergência" in s for s in cal["sinais"])
+
+
+def test_convergencia_indisponivel_ou_afastado_nao_soma():
+    """INDISPONÍVEL ('') ≠ INDICIO; AFASTADO (sede confirmada) não é indício → nenhum dos dois soma."""
+    p = _pag(1e6, {2024: 1e6}, top_share=10)
+    base = _recalibrar_risco(p, rede=[{"x": 1}], contratado_tcerj=0, score_ext=0, risco_ext="BAIXO")
+    for st in ("", "AFASTADO"):
+        cal = _recalibrar_risco(p, rede=[{"x": 1}], contratado_tcerj=0, score_ext=0, risco_ext="BAIXO",
+                                sede_status=st)
+        assert cal["score"] == base["score"]
+        assert not any("convergência" in s for s in cal["sinais"])

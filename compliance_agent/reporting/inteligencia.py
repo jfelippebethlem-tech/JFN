@@ -532,7 +532,9 @@ def _crescimento(pagamentos: dict) -> float:
 
 def _recalibrar_risco(pagamentos: dict, rede: list, contratado_tcerj: float,
                       score_ext: int, risco_ext: str,
-                      coendereco: Optional[list] = None, anomalias: Optional[dict] = None) -> dict:
+                      coendereco: Optional[list] = None, anomalias: Optional[dict] = None,
+                      natureza_sem_fins: Optional[dict] = None,
+                      sede_status: Optional[str] = None) -> dict:
     """Risco JFN = MAIOR entre o score externo e o score interno por sinais REAIS do relatório.
     Corrige o caso em que o enriquecedor externo devolve 0 mas há indícios (conflito, pago≫contratado,
     crescimento atípico, concentração, magnitude, rede mesma-sede §1-B, anomalias PyOD §8-C).
@@ -544,6 +546,13 @@ def _recalibrar_risco(pagamentos: dict, rede: list, contratado_tcerj: float,
     s = 0
     if rede:
         s += 20; sinais.append("conflito doador↔contrato (sócio/empresa doou e é fornecedor)")
+        # CONVERGÊNCIA (backlog #16): doador eleitoral CUJA sede é, ela própria, indício de fachada
+        # (`verificacao_sede`=INDICIO) é sinal forte — relação política + empresa-fantasma no MESMO
+        # fornecedor (art. 337-F CP; art. 11 Lei 8.429/92; Lei 9.504/97). Peso conservador; só soma quando
+        # AMBOS os indícios tocam o MESMO CNPJ. Indício a verificar, nunca acusação.
+        if (sede_status or "").upper() == "INDICIO":
+            s += 15; sinais.append("convergência §1-D×sede: doador eleitoral com sede indício de fachada "
+                                   "(art. 337-F CP; art. 11 Lei 8.429/92; Lei 9.504/97)")
     if contratado_tcerj and total > contratado_tcerj * 1.5:
         s += 25; sinais.append(f"pago (R$ {moeda(total)}) ≫ contratado registrado (R$ {moeda(contratado_tcerj)}) — {total/contratado_tcerj:.1f}×")
     elif contratado_tcerj and total > contratado_tcerj * 1.2:
@@ -585,6 +594,20 @@ def _recalibrar_risco(pagamentos: dict, rede: list, contratado_tcerj: float,
             s += 10; sinais.append(f"anomalias §8-C: {frac*100:.0f}% das OBs com score alto de anomalia ({an['n_anomalas']}/{an['n_obs']})")
         elif (an.get("n_anomalas") or 0) >= 1:
             s += 4; sinais.append(f"anomalias §8-C: {an['n_anomalas']} OB(s) com score alto de anomalia")
+
+    # Natureza SEM FINS LUCRATIVOS (§1, dump local): OS/associação/fundação recebendo como fornecedor comum
+    # (Lei 9.637/98; Lei 13.019/2014 — MROSC) é indício a confirmar (objeto/credenciamento/prestação de
+    # contas). Peso CONSERVADOR e escalonado por valor; SÓ quando NÃO há ressalva de ensino/pesquisa/estágio
+    # (nunca punir CIEE/FGV). Indício ≠ acusação.
+    nsf = natureza_sem_fins or {}
+    if nsf.get("sem_fins") and not nsf.get("ressalva"):
+        nat_txt = nsf.get("natureza_txt") or "sem fins lucrativos"
+        if total >= 50e6:
+            s += 10; sinais.append(f"natureza §1: {nat_txt} ('3xxx') recebendo como fornecedor comum (Lei 9.637/98; Lei 13.019/2014 — MROSC)")
+        elif total >= 5e6:
+            s += 8; sinais.append(f"natureza §1: {nat_txt} ('3xxx') recebendo como fornecedor comum (Lei 9.637/98; Lei 13.019/2014 — MROSC)")
+        else:
+            s += 6; sinais.append(f"natureza §1: {nat_txt} ('3xxx') recebendo como fornecedor comum (Lei 9.637/98; Lei 13.019/2014 — MROSC)")
 
     interno = min(100, s)
     final = max(int(score_ext or 0), interno)
@@ -778,12 +801,25 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
         anomalias = await asyncio.to_thread(_anomalias_fornecedor, cnpj_d)
     except Exception:  # noqa: BLE001
         anomalias = {"ok": False, "n_obs": 0, "n_anomalas": 0, "itens": []}
+    # Natureza sem-fins (§1) — ANCORADA NO DUMP LOCAL (`empresas_min`); funciona mesmo com enriquecimento
+    # RFB INDISPONÍVEL. Computada 1× aqui (consulta local barata) p/ entrar no score E ser reusada no render.
+    try:
+        natureza_sem_fins = await asyncio.to_thread(_natureza_sem_fins, cnpj_d)
+    except Exception:  # noqa: BLE001
+        natureza_sem_fins = {"ok": False, "sem_fins": False}
     coend_score = (cruz or {}).get("coendereco") or []  # rede mesma-sede §1-B
+    # Status de sede JÁ cacheado (leitura local barata, SEM Google on-demand — §4.1) p/ o score cruzar
+    # 'sede = indício de fachada' × 'doador eleitoral' (convergência §1-D×sede, backlog #16).
+    try:
+        sede_status = await asyncio.to_thread(_sede_status_cacheado, cnpj_d)
+    except Exception:  # noqa: BLE001
+        sede_status = ""
 
     # RISCO recalibrado (externo + sinais internos reais) — corrige "BAIXO 0" com indícios. Inclui rede
     # mesma-sede §1-B e anomalias §8-C (peso conservador) p/ o NÚMERO refletir a prosa, não inflar.
     cal = _recalibrar_risco(pagamentos, rede, contratado_tcerj, enriq.get("score", 0), enriq.get("risco", "—"),
-                            coendereco=coend_score, anomalias=anomalias)
+                            coendereco=coend_score, anomalias=anomalias,
+                            natureza_sem_fins=natureza_sem_fins, sede_status=sede_status)
     risco, score = cal["risco"], cal["score"]
 
     fonte_global = "REAL" if pagamentos["tem_dados"] else "SEM_DADOS_OB"
@@ -793,6 +829,7 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
         "pagamentos": pagamentos, "contratos": contratos, "cardinalidade": cardinalidade, "enriq": enriq,
         "fonte_enriq": enriq.get("_fonte", "INDISPONIVEL"),
         "cruzamento": cruz, "conflito_rede": rede, "anomalias": anomalias,
+        "natureza_sem_fins": natureza_sem_fins,
         "tcerj_itens": tcerj_itens, "contratado_tcerj": contratado_tcerj,
         "calibragem": cal,
     }
@@ -1220,6 +1257,27 @@ def _realidade_sede(cnpj: str) -> str:
     return f"- **Realidade da sede:** {t}" if t else ""
 
 
+def _sede_status_cacheado(cnpj: str) -> str:
+    """Status JÁ gravado em `verificacao_sede` (AFASTADO/INDICIO/INDISPONIVEL/'') — leitura local barata,
+    SEM acionar Google on-demand (a §4.1 manda nunca disparar API paga no caminho de score). Usado p/
+    o score cruzar 'sede = indício de fachada' com 'doador eleitoral' (convergência, backlog #16). Honesto:
+    '' = sem linha = INDISPONÍVEL ≠ inexistência."""
+    cnpj = so_digitos(cnpj or "")
+    if not cnpj or not _DB.exists():
+        return ""
+    try:
+        con = sqlite3.connect(str(_DB))
+        try:
+            vs = con.execute("SELECT status FROM verificacao_sede WHERE cnpj=?", (cnpj,)).fetchone()
+        except sqlite3.OperationalError:
+            return ""
+        finally:
+            con.close()
+    except Exception:  # noqa: BLE001
+        return ""
+    return ((vs[0] or "").upper() if vs else "")
+
+
 # Storage SOMADO (R2 primário + B2 transbordo, cada foto em 1 bucket). A localização COMPLETA
 # ('remote:bucket/objeto') está em `verificacao_sede.visual_img_b2`; aqui só LEMOS do local EXATO gravado
 # (um `rclone cat`), sem failover/duplicação. A foto NÃO fica na VM — é baixada on-demand p/ embutir no PDF.
@@ -1620,6 +1678,43 @@ def _anomalias_fornecedor(cnpj: str, limiar: float = 0.70, limite: int = 10) -> 
         return out
 
 
+def _natureza_sem_fins(cnpj: str) -> dict:
+    """Natureza jurídica SEM FINS LUCRATIVOS ('3xxx') do fornecedor, ANCORADA NO DUMP LOCAL da Receita
+    (`empresas_min`) — funciona mesmo com o enriquecimento RFB INDISPONÍVEL (essa é a vantagem: o dump é
+    local). Espelha o modelo de `_anomalias_fornecedor`/`anomalia_receita._sem_fins_lucrativos`, reusando
+    `_NATUREZA_3`/`_ressalva_nome`/`_TOKENS_RESSALVA` (não duplica o mapa). Calibração conservadora idêntica
+    à do órgão: '3xxx' COM token de ensino/pesquisa/estágio → `ressalva=True` (CIEE/FGV; não é red flag);
+    SEM ressalva → indício 🟡 (OS/associação/fundação como fornecedor comum). Read-only; degrada honesto."""
+    from compliance_agent.reporting.anomalia_receita import _NATUREZA_3, _ressalva_nome  # noqa: F401
+    cnpj = so_digitos(cnpj)
+    out = {"ok": False, "sem_fins": False}
+    if len(cnpj) != 8 and len(cnpj) != 14:
+        return out
+    try:
+        con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+        try:
+            row = con.execute(
+                "SELECT razao_social, natureza_cod FROM empresas_min WHERE cnpj_basico = substr(?,1,8)",
+                (cnpj,)).fetchone()
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        out["_nota"] = str(exc)[:160]
+        return out
+    if not row:
+        return out
+    razao, nat = row[0], (row[1] or "")
+    out["ok"] = True
+    if not str(nat).startswith("3"):
+        return out
+    ressalva = _ressalva_nome(razao or "")
+    out.update(
+        sem_fins=True, natureza_cod=nat, natureza_txt=_NATUREZA_3.get(nat, f"Natureza {nat}"),
+        razao=razao, ressalva=ressalva,
+    )
+    return out
+
+
 def _render_anomalias(ctx: dict) -> str:
     """Seção 8-C — anomalias nas OBs do fornecedor (modelo de detecção). Dado + leitura + conclusão honesta."""
     import json as _json
@@ -1790,6 +1885,20 @@ def render_md(ctx: dict) -> str:
     _cr = _capital_recebido_md(emp, p)
     if _cr:
         add(_cr)
+    # Natureza SEM FINS LUCRATIVOS ('3xxx') ANCORADA NO DUMP LOCAL (`empresas_min`) — surge mesmo com o
+    # enriquecimento RFB INDISPONÍVEL (o dump é local). Indício ≠ acusação; ressalva p/ ensino/pesquisa/estágio.
+    _nsf = ctx.get("natureza_sem_fins") or {}
+    if _nsf.get("sem_fins"):
+        _nat = _nsf.get("natureza_txt") or "sem fins lucrativos"
+        add("")
+        if _nsf.get("ressalva"):
+            add(f"- **Natureza jurídica (dump RF):** {_nat} (cód. {_nsf.get('natureza_cod','—')}) — entidade de "
+                "ensino/pesquisa/estágio; recebimento provavelmente **legítimo** (ressalva).")
+        else:
+            add(f"- 🟡 **Natureza jurídica (dump RF):** {_nat} (cód. {_nsf.get('natureza_cod','—')}) — "
+                "**organização social/associação/fundação recebendo como fornecedor comum** (Lei 9.637/98; "
+                "Lei 13.019/2014 — MROSC). Confirmar objeto, credenciamento e prestação de contas. "
+                "**Indício ≠ acusação.**")
     add("")
 
     # 1-B. Cruzamento sócio × OB (SIAFE) × processo SEI × endereço
