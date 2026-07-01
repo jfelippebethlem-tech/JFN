@@ -265,6 +265,41 @@ def test_parametro_legal_nao_afrouxa():
         P.definir_override("aditivo_limite_frac", 0.10)  # abaixo da lei → recusa
 
 
+# ── Adaptador banco → Dossiê (pula se SQLAlchemy ausente) ────────────────────
+
+def _tem_sqlalchemy() -> bool:
+    try:
+        import sqlalchemy  # noqa: F401
+        from compliance_agent.database import models  # noqa: F401
+        return True
+    except Exception:
+        return False
+
+
+def test_adaptador_db_end_to_end():
+    if not _tem_sqlalchemy():
+        return  # ambiente sem ORM: teste não aplicável, conta como pass
+    from datetime import date as _date
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from compliance_agent.database.models import Base, Empresa, Contrato
+    from compliance_agent.nucleo.adaptador_db import periciar_contrato
+
+    eng = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(eng)
+    s = sessionmaker(bind=eng)()
+    emp = Empresa(cnpj="11222333000181", razao_social="XPTO LTDA",
+                  data_abertura=_date(2024, 2, 1), capital_social=5000, situacao="ATIVA")
+    s.add(emp); s.flush()
+    ctr = Contrato(numero="CT-1", objeto="reforma predial", empresa_id=emp.id,
+                   orgao_contrat="ORG", modalidade="dispensa", valor_total=8_000_000,
+                   data_assinatura=_date(2024, 5, 20), fonte="pncp")
+    s.add(ctr); s.commit()
+    laudo = periciar_contrato(s, ctr.id)
+    assert laudo is not None
+    assert "IND-EMP-01" in {a.indicador_id for a in laudo.veredito.achados}
+
+
 def _run_sem_pytest():
     """Executa os testes sem pytest (fallback), reportando no stdout."""
     import types
