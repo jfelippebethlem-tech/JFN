@@ -56,7 +56,42 @@ def _conectar() -> sqlite3.Connection:
     con.execute("CREATE INDEX IF NOT EXISTS ix_pericias_cat ON pericias(categoria)")
     con.execute("CREATE INDEX IF NOT EXISTS ix_pericias_cnpj ON pericias(cnpj)")
     con.execute("CREATE INDEX IF NOT EXISTS ix_pericias_ref ON pericias(referencia)")
+    try:  # migração: dossiê serializado (p/ promover perícia a caso-ouro)
+        con.execute("ALTER TABLE pericias ADD COLUMN dossie TEXT")
+    except sqlite3.OperationalError:
+        pass  # coluna já existe
     return con
+
+
+def _dossie_kwargs(dossie) -> dict:
+    """
+    Serializa o Dossie para os kwargs que o reconstroem (mesmo formato dos
+    casos-ouro embutidos): datas → ISO, campos vazios descartados.
+    """
+    from dataclasses import asdict
+
+    def _limpo(d: dict) -> dict:
+        saida = {}
+        for k, v in d.items():
+            if v in (None, "", [], {}, False):
+                continue
+            if hasattr(v, "isoformat"):
+                v = v.isoformat()
+            if isinstance(v, list):
+                v = [{kk: (vv.isoformat() if hasattr(vv, "isoformat") else vv)
+                      for kk, vv in i.items()} if isinstance(i, dict) else i
+                     for i in v]
+            saida[k] = v
+        return saida
+
+    kwargs = {"contratacao": _limpo(asdict(dossie.contratacao)),
+              "fornecedor": _limpo(asdict(dossie.fornecedor))}
+    if dossie.historico_orgao_fornecedor:
+        kwargs["historico"] = [_limpo(asdict(h))
+                               for h in dossie.historico_orgao_fornecedor]
+    if dossie.referencia_categoria:
+        kwargs["referencia_categoria"] = dict(dossie.referencia_categoria)
+    return kwargs
 
 
 def registrar_laudo(laudo, referencia: str = "") -> int:
@@ -73,21 +108,42 @@ def registrar_laudo(laudo, referencia: str = "") -> int:
          "severidade": a.severidade}
         for a in laudo.veredito.achados
     ]
+    try:
+        dossie_json = json.dumps(_dossie_kwargs(laudo.dossie), ensure_ascii=False)
+    except Exception:
+        dossie_json = None
     con = _conectar()
     try:
         cur = con.execute(
             "INSERT INTO pericias (referencia, quando, categoria, orgao, cnpj, valor,"
-            " risco_score, classificacao, achados) VALUES (?,?,?,?,?,?,?,?,?)",
+            " risco_score, classificacao, achados, dossie) VALUES (?,?,?,?,?,?,?,?,?,?)",
             (referencia or c.identificador,
              datetime.now(timezone.utc).isoformat(timespec="seconds"),
              c.categoria or "", c.orgao or "", f.cnpj or "",
              c.valor, laudo.veredito.risco_score, laudo.veredito.classificacao,
-             json.dumps(achados, ensure_ascii=False)),
+             json.dumps(achados, ensure_ascii=False), dossie_json),
         )
         con.commit()
         return int(cur.lastrowid)
     finally:
         con.close()
+
+
+def obter_pericia(referencia: str) -> dict | None:
+    """Última perícia da referência: dossiê, achados e veredito (p/ promoção)."""
+    con = _conectar()
+    try:
+        row = con.execute(
+            "SELECT dossie, achados, veredito_perito, classificacao, valor "
+            "FROM pericias WHERE referencia = ? ORDER BY id DESC LIMIT 1",
+            (referencia,)).fetchone()
+    finally:
+        con.close()
+    if row is None:
+        return None
+    return {"dossie": json.loads(row[0]) if row[0] else None,
+            "achados": json.loads(row[1] or "[]"),
+            "veredito": row[2], "classificacao": row[3], "valor": row[4]}
 
 
 def tem_pericia(referencia: str) -> bool:
