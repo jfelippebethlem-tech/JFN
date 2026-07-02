@@ -52,6 +52,28 @@ reproduzível. O laudo é oponível num ofício ao TCE-RJ ou requerimento de CPI
 | `avaliacao.py` | **Conjunto-ouro** de casos rotulados — a "suíte de testes" da perícia. Mede F1/precisão/cobertura. |
 | `autoaprimoramento.py` | **Loop de autoaprimoramento**: propõe calibrações, testa no conjunto-ouro, mantém só o que melhora, reverte o resto; tudo em diário auditável. |
 | `ciclo.py` | Comando único do ciclo: `python -m compliance_agent.nucleo.ciclo` (perícia em lote → avalia → aprimora → relata). |
+| `telegram_nucleo.py` | Interface Telegram (Yoda) do Núcleo: comandos determinísticos + roteador de linguagem natural POR REGRAS (sem LLM). Plugado em `notifications/telegram.py`. |
+
+## Operação pelo Telegram (Yoda)
+
+O bot entende comandos e português coloquial — **sem depender de IA** para os
+fluxos periciais (a IA fraca só responde o que não casar com nenhuma regra):
+
+| Você manda | O bot faz |
+|---|---|
+| `/pericia 19.088.605/0001-04` (ou "pericia a MGS Clean") | Perícia na hora das 3 maiores OBs do fornecedor, laudo com base legal |
+| `2024OB01234` (só o número) | Perícia direta da OB |
+| `/veredito 2024OB01234 confirmado` (ou "2024OB01234 procede") | Feedback do perito → alimenta a calibração |
+| "2024OB01234 era falso alarme" | Veredito descartado |
+| `/placar` (ou "quanto aprendeu?") | F1 no conjunto-ouro + estado da memória |
+| `/ciclo_nucleo` (ou "roda o ciclo") | Loop de autoaprimoramento agora |
+| `/fornecedor CNPJ` (ou "histórico do CNPJ…") | Perfil de reincidência aprendido |
+| `/parametros` | Limiares vigentes (🔒 legais, 🔧 calibráveis) |
+| `/evolucao` | Diário: o que o sistema mudou em si mesmo |
+
+Toda perícia disparada pelo Telegram entra na memória automaticamente, e todo
+veredito respondido pelo celular fecha o ciclo de aprendizado — **fiscalizar
+pelo celular é o que treina o sistema**.
 
 ## O ciclo de inteligência progressiva
 

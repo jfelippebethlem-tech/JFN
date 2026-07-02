@@ -336,6 +336,14 @@ _AJUDA = (
     "  /dados [TERMO] — consulta dados abertos do RJ (despesas, contratos, etc.)\n\n"
     "*Base jurídica:*\n"
     "  /lei TERMO — busca lei, acórdão ou princípio (TCE-RJ, TCU, Planalto)\n\n"
+    "*🧠 Núcleo de perícia (inteligência progressiva):*\n"
+    "  /pericia CNPJ|OB|NOME — perícia na hora, com laudo e base legal\n"
+    "  /veredito REF confirmado|descartado — seu feedback ENSINA o sistema\n"
+    "  /placar — quão inteligente está (conjunto-ouro + memória)\n"
+    "  /ciclo\\_nucleo — roda o loop de autoaprimoramento agora\n"
+    "  /fornecedor CNPJ — perfil de reincidência aprendido\n"
+    "  /parametros — limiares vigentes (🔒 legais, 🔧 calibráveis)\n"
+    "  /evolucao — diário: o que o sistema mudou em si mesmo\n\n"
     "*Hermes 405B (análise profunda):*\n"
     "  /hermes PERGUNTA — análise sênior com raciocínio profundo\n"
     "  /missao DESCRIÇÃO — define a missão autônoma (estilo /goal)\n"
@@ -1089,6 +1097,45 @@ async def processar_comando(texto: str, chat_id: str) -> None:
                 chat_id=chat_id,
             )
 
+    # ── Núcleo de perícia (inteligência progressiva) ──────────────────────
+    elif cmd == "/pericia":
+        from compliance_agent.nucleo import telegram_nucleo as tn
+        await enviar_mensagem("🔬 Periciando...", chat_id=chat_id)
+        await enviar_mensagem(await asyncio.to_thread(tn.cmd_pericia, args),
+                              chat_id=chat_id)
+
+    elif cmd == "/veredito":
+        from compliance_agent.nucleo import telegram_nucleo as tn
+        await enviar_mensagem(await asyncio.to_thread(tn.cmd_veredito, args),
+                              chat_id=chat_id)
+
+    elif cmd == "/placar":
+        from compliance_agent.nucleo import telegram_nucleo as tn
+        await enviar_mensagem(await asyncio.to_thread(tn.cmd_placar),
+                              chat_id=chat_id)
+
+    elif cmd == "/ciclo_nucleo":
+        from compliance_agent.nucleo import telegram_nucleo as tn
+        await enviar_mensagem("🔁 Rodando ciclo de autoaprimoramento "
+                              "(perícia em lote + calibração)...", chat_id=chat_id)
+        await enviar_mensagem(await asyncio.to_thread(tn.cmd_ciclo_nucleo),
+                              chat_id=chat_id)
+
+    elif cmd == "/fornecedor":
+        from compliance_agent.nucleo import telegram_nucleo as tn
+        await enviar_mensagem(await asyncio.to_thread(tn.cmd_fornecedor, args),
+                              chat_id=chat_id)
+
+    elif cmd == "/parametros":
+        from compliance_agent.nucleo import telegram_nucleo as tn
+        await enviar_mensagem(await asyncio.to_thread(tn.cmd_parametros),
+                              chat_id=chat_id)
+
+    elif cmd == "/evolucao":
+        from compliance_agent.nucleo import telegram_nucleo as tn
+        await enviar_mensagem(await asyncio.to_thread(tn.cmd_evolucao),
+                              chat_id=chat_id)
+
     elif cmd.startswith("/"):
         await enviar_mensagem(
             f"Comando desconhecido: `{cmd}`\nDigite /ajuda para ver os comandos.",
@@ -1096,9 +1143,16 @@ async def processar_comando(texto: str, chat_id: str) -> None:
         )
 
     else:
-        # Texto livre = conversa com o agente em linguagem natural
-        resposta = await _conversar_com_agente(texto)
-        await enviar_mensagem(resposta, chat_id=chat_id)
+        # Texto livre: primeiro o roteador DETERMINÍSTICO do núcleo (sem LLM)
+        # — cobre os pedidos comuns com 100% de previsibilidade; só o que não
+        # casar cai na conversa com o LLM fraco.
+        from compliance_agent.nucleo import telegram_nucleo as tn
+        rota = tn.interpretar_texto_livre(texto)
+        if rota is not None:
+            await processar_comando(f"{rota[0]} {rota[1]}".strip(), chat_id)
+        else:
+            resposta = await _conversar_com_agente(texto)
+            await enviar_mensagem(resposta, chat_id=chat_id)
 
 
 async def loop_comandos():
