@@ -9,6 +9,8 @@ systemctl --user enable --now chrome-jfn.service massare-market.timer
 
 - `chrome-jfn.service` — ponte Chrome headless CDP na porta 9222 (coleta TFE/SIAFE ao vivo do JFN).
 - `massare-market.service` + `.timer` — Massare no pregão (dias úteis 12:50–21:00 UTC = 09:50–18:00 BRT, a cada 15min).
+- `jfn-nucleo-ciclo.service` — oneshot: ciclo de inteligência progressiva (`compliance_agent.nucleo.ciclo`) — pericia OBs novas, alimenta a memória pericial e roda o loop de autoaprimoramento com freio no conjunto-ouro.
+- `jfn-nucleo-ciclo.timer` — dispara o ciclo diariamente às 06:30 UTC (antes do resumo do dia).
 
 Já existentes (não versionados aqui, criados anteriormente): `jfn.service`, `hermes-gateway.service`,
 `jfn-tfe.timer`, `jfn-tfe-ob.timer`, `jfn-ronda.timer`, `massare-daily.timer`. Ver `../../AMBIENTE.md`.
