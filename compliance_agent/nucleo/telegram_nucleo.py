@@ -44,10 +44,13 @@ def _fmt_laudo(laudo, referencia: str = "") -> str:
     v = laudo.veredito
     c = laudo.dossie.contratacao
     emoji = _EMOJI.get(v.classificacao, "⚪")
+    # confiança só faz sentido quando algo disparou ("confiança 0%" num laudo
+    # limpo lê como se a perícia não valesse nada)
+    conf = f" | confiança {v.confianca:.0%}" if v.achados else ""
     linhas = [
         f"{emoji} *PERÍCIA — {referencia or c.identificador or 'sem ref.'}*",
         f"Risco: *{v.risco_score:.0f}/100 ({v.classificacao.upper()})* "
-        f"— TCU P{v.probabilidade}×I{v.impacto} | confiança {v.confianca:.0%}",
+        f"— TCU P{v.probabilidade}×I{v.impacto}{conf}",
     ]
     if c.valor:
         linhas.append(f"Valor: {_brl(c.valor)}")
@@ -61,7 +64,7 @@ def _fmt_laudo(laudo, referencia: str = "") -> str:
                           f"  {a.observado} | limite: {a.limite}")
         if len(v.achados) > 6:
             linhas.append(f"… e mais {len(v.achados) - 6} achados.")
-    if v.resumo:
+    if v.resumo and v.achados:  # sem achados o ✅ acima já disse tudo
         linhas.append(f"\n_{v.resumo}_")
     ref_fonte = laudo.fontes.get("referencia_categoria", "")
     if ref_fonte:
@@ -87,7 +90,6 @@ def cmd_pericia(args: str) -> str:
     try:
         from compliance_agent.database.models import OrdemBancaria
         from compliance_agent.nucleo.adaptador_db import periciar_ob
-        from compliance_agent.nucleo import memoria_pericial
 
         session = _sessao()
         try:
@@ -117,8 +119,8 @@ def cmd_pericia(args: str) -> str:
             blocos = []
             for ob in obs:
                 ref = ob.numero_ob or f"ob:{ob.id}"
+                # periciar_ob já registra na memória (usar_memoria=True)
                 laudo = periciar_ob(session, ob)
-                memoria_pericial.registrar_laudo(laudo, referencia=ref)
                 blocos.append(_fmt_laudo(laudo, referencia=ref))
             extra = ""
             if len(obs) > 1:

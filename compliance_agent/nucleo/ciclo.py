@@ -56,8 +56,8 @@ def _periciar_base(session, limite: int = 200) -> dict:
             ref = ob.numero_ob or f"ob:{ob.id}"
             if ref in ja:
                 continue
+            # periciar_ob já registra na memória (usar_memoria=True)
             laudo = periciar_ob(session, ob)
-            memoria_pericial.registrar_laudo(laudo, referencia=ref)
             novos += 1
             if laudo.veredito.achados:
                 com_achados += 1

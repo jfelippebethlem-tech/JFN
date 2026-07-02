@@ -12,11 +12,22 @@ IA fraca simulada. Rodável offline, só stdlib + o pacote.
 
 from __future__ import annotations
 
+import os
 import sys
+import tempfile
 from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+# Isola o estado de runtime do Núcleo (memória pericial etc.) — sem isto os
+# testes do adaptador escreveriam em data/nucleo_memoria.db de produção.
+_TMP = Path(tempfile.mkdtemp(prefix="nucleo_int_"))
+os.environ["NUCLEO_MEMORIA_DB"] = str(_TMP / "mem.db")
+os.environ["NUCLEO_EVOLUCAO_FILE"] = str(_TMP / "evo.json")
+os.environ["NUCLEO_PARAMS_FILE"] = str(_TMP / "params.json")
+os.environ["NUCLEO_FEEDBACK_FILE"] = str(_TMP / "fb.json")
+os.environ["NUCLEO_CASOS_OURO"] = str(_TMP / "ouro.json")
 
 from compliance_agent.nucleo import parametros as P
 from compliance_agent.nucleo.dossie import (
@@ -26,6 +37,21 @@ from compliance_agent.nucleo.extracao_robusta import Campo, extrair
 from compliance_agent.nucleo.indicadores import avaliar_todos
 from compliance_agent.nucleo.nucleo import periciar
 from compliance_agent.nucleo.scoring import pontuar
+
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _repina_env(monkeypatch, tmp_path):
+    # Na coleta o pytest importa TODOS os arquivos de teste da suíte, e o
+    # último a setar os.environ vence — repina a cada teste. Aqui nenhum teste
+    # depende de memória persistida entre testes, então cada um ganha um
+    # diretório zerado (tmp_path) e não polui os vizinhos.
+    monkeypatch.setenv("NUCLEO_MEMORIA_DB", str(tmp_path / "mem.db"))
+    monkeypatch.setenv("NUCLEO_EVOLUCAO_FILE", str(tmp_path / "evo.json"))
+    monkeypatch.setenv("NUCLEO_PARAMS_FILE", str(tmp_path / "params.json"))
+    monkeypatch.setenv("NUCLEO_FEEDBACK_FILE", str(tmp_path / "fb.json"))
+    monkeypatch.setenv("NUCLEO_CASOS_OURO", str(tmp_path / "ouro.json"))
 
 
 # ── Validadores determinísticos ──────────────────────────────────────────────
@@ -298,6 +324,91 @@ def test_adaptador_db_end_to_end():
     laudo = periciar_contrato(s, ctr.id)
     assert laudo is not None
     assert "IND-EMP-01" in {a.indicador_id for a in laudo.veredito.achados}
+
+
+def _sessao_ob_memoria():
+    """Sessão in-memory com OBs cuja categoria real vive em tipo_ob (dado TFE)."""
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from compliance_agent.database.models import Base
+    eng = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(eng)
+    return sessionmaker(bind=eng)()
+
+
+def test_periciar_ob_categoria_vem_do_tipo_ob():
+    """No dado TFE real, `categoria` guarda o marcador de fonte ('tfe_ob') e a
+    categoria de verdade vive em `tipo_ob` — o adaptador precisa saber disso."""
+    if not _tem_sqlalchemy():
+        return
+    from compliance_agent.database.models import OrdemBancaria
+    from compliance_agent.nucleo.adaptador_db import periciar_ob
+
+    s = _sessao_ob_memoria()
+    ob = OrdemBancaria(numero_ob="2026OB00001", data_emissao=date(2026, 5, 1),
+                       ug_codigo="133100", favorecido_cpf="11222333000181",
+                       valor=126.0, tipo_ob="Diárias / Viagens a serviço",
+                       categoria="tfe_ob")
+    s.add(ob); s.commit()
+    laudo = periciar_ob(s, ob)
+    assert laudo.dossie.contratacao.categoria == "diárias"
+
+    ob2 = OrdemBancaria(numero_ob="2026OB00002", data_emissao=date(2026, 5, 1),
+                        ug_codigo="133100", favorecido_cpf="11222333000181",
+                        valor=500.0, tipo_ob="Outros / a classificar",
+                        categoria="tfe_ob")
+    s.add(ob2); s.commit()
+    # "Outros" não é categoria — não pode contaminar a referência aprendida.
+    assert periciar_ob(s, ob2).dossie.contratacao.categoria == ""
+
+
+def test_periciar_ob_alimenta_e_consome_memoria():
+    """A inteligência progressiva tem de valer no fluxo REAL (Yoda/ciclo):
+    perícias de OB alimentam a memória e a referência aprendida dispara a
+    superfaturada seguinte — sem ninguém informar preço de mercado."""
+    if not _tem_sqlalchemy():
+        return
+    from compliance_agent.database.models import OrdemBancaria
+    from compliance_agent.nucleo import memoria_pericial
+    from compliance_agent.nucleo.adaptador_db import periciar_ob
+
+    s = _sessao_ob_memoria()
+    for i, v in enumerate([1_000_000, 1_100_000, 950_000, 1_050_000,
+                           1_020_000, 980_000]):
+        ob = OrdemBancaria(numero_ob=f"2026OB1000{i}", data_emissao=date(2026, 3, 1),
+                           ug_codigo="290100", ug_nome="SES-RJ",
+                           favorecido_cpf="11222333000181", valor=v,
+                           tipo_ob="Saúde", categoria="tfe_ob")
+        s.add(ob); s.commit()
+        periciar_ob(s, ob)
+
+    perfil = memoria_pericial.perfil_fornecedor("11222333000181")
+    assert perfil.total_pericias == 6          # registrou sem dupla contagem
+
+    suspeita = OrdemBancaria(numero_ob="2026OB19999", data_emissao=date(2026, 4, 1),
+                             ug_codigo="290100", ug_nome="SES-RJ",
+                             favorecido_cpf="11222333000181", valor=5_000_000,
+                             tipo_ob="Saúde", categoria="tfe_ob")
+    s.add(suspeita); s.commit()
+    laudo = periciar_ob(s, suspeita)
+    assert "IND-SUP-01" in {a.indicador_id for a in laudo.veredito.achados}
+    assert "memória pericial" in laudo.fontes.get("referencia_categoria", "")
+
+
+def test_periciar_ob_identificador_sem_numero():
+    """OB sem numero_ob ganha identificador estável 'ob:<id>' (dedup do ciclo)."""
+    if not _tem_sqlalchemy():
+        return
+    from compliance_agent.database.models import OrdemBancaria
+    from compliance_agent.nucleo.adaptador_db import periciar_ob
+
+    s = _sessao_ob_memoria()
+    ob = OrdemBancaria(numero_ob=None, data_emissao=date(2026, 5, 1),
+                       ug_codigo="133100", favorecido_cpf="11222333000181",
+                       valor=1000.0, tipo_ob="Saúde", categoria="tfe_ob")
+    s.add(ob); s.commit()
+    laudo = periciar_ob(s, ob)
+    assert laudo.dossie.contratacao.identificador == f"ob:{ob.id}"
 
 
 def _run_sem_pytest():
