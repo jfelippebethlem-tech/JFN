@@ -279,6 +279,43 @@ def cmd_promover(args: str) -> str:
         return f"❌ Erro ao promover: {exc}"
 
 
+# ── /fases ───────────────────────────────────────────────────────────────────
+
+def cmd_fases(args: str) -> str:
+    """
+    `/fases <processo SEI>` — linha do tempo das fases da contratação e
+    LACUNAS do processo, direto do arquivo compacto em disco (grátis; ver
+    docs/PLAYBOOK-SEI.md). Sem browser, sem IA.
+    """
+    import json as _json
+    import os as _os
+    from pathlib import Path as _Path
+    proc = (args or "").strip()
+    if not proc:
+        return "Use: `/fases 330020/000762/2021`"
+    raiz = _Path(_os.environ.get("SEI_ARQUIVO_DIR")
+                 or _Path(__file__).resolve().parents[2] / "data" / "sei_arquivo")
+    tag = re.sub(r"[^0-9]", "_", proc)
+    mpath = raiz / tag / "manifest.json"
+    if not mpath.exists():
+        return (f"Processo `{proc}` não arquivado ainda.\n"
+                "Baixe e arquive: `tools/sei_integra_completa.py` + "
+                "`tools/sei_arquivar.py` (ver docs/PLAYBOOK-SEI.md).")
+    m = _json.loads(mpath.read_text(encoding="utf-8"))
+    linhas = [f"🗂 *PROCESSO {m['processo']}* — modalidade "
+              f"{m['modalidade'] or '?'} · {len(m['docs'])} docs · "
+              f"{m['fotos_total']} fotos de medição"]
+    linhas.append("Fases: " + " · ".join(
+        f"{f}={n}" for f, n in m["linha_do_tempo"].items() if n))
+    for l in m.get("lacunas", []):
+        icone = "🔴" if l["gravidade"] == "critica" else "🟡"
+        linhas.append(f"{icone} Lacuna ({l['gravidade']}): {l['falta']}")
+    if not m.get("lacunas"):
+        linhas.append("✅ Sem lacunas de fase para a modalidade.")
+    linhas.append("\nDetalhe: `tools/sei_consultar.py \"" + proc + "\"`")
+    return "\n".join(linhas)
+
+
 # ── /placar ──────────────────────────────────────────────────────────────────
 
 def cmd_placar() -> str:
@@ -436,6 +473,12 @@ def interpretar_texto_livre(texto: str) -> tuple[str, str] | None:
     t = _norm(texto)
     cnpj = _CNPJ_RE.search(texto)
     ob = _OB_RE.search(texto)
+
+    # fases/lacunas de processo SEI arquivado: "fases do 330020/000762/2021"
+    if "fase" in t or "lacuna" in t:
+        m = re.search(r"(\d{6}/\d{6}/\d{4})", texto)
+        if m:
+            return ("/fases", m.group(1))
 
     # promoção a caso-ouro: "promove/promover <ref>"
     if "promov" in t:

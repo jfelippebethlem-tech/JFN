@@ -220,6 +220,37 @@ def test_pericia_cai_para_contratos_sem_ob(monkeypatch):
     assert "IND-EMP-01" in r or "recém-aberta" in r.lower()
 
 
+def test_nl_fases_de_processo():
+    rota = tn.interpretar_texto_livre("quais as fases do 330020/000762/2021?")
+    assert rota == ("/fases", "330020/000762/2021")
+    rota = tn.interpretar_texto_livre("mostra as lacunas do processo 270003/002373/2024")
+    assert rota == ("/fases", "270003/002373/2024")
+
+
+def test_cmd_fases_le_arquivo_sei(monkeypatch, tmp_path):
+    """/fases PROC → resumo do arquivo compacto (fases+lacunas), sem browser."""
+    import json
+    d = tmp_path / "330020_000762_2021"
+    d.mkdir()
+    (d / "manifest.json").write_text(json.dumps({
+        "processo": "330020/000762/2021", "modalidade": "licitacao",
+        "docs": [{"i": 0, "titulo": "Edital 1", "fase": "selecao",
+                  "tipo": "edital", "fotos": []},
+                 {"i": 1, "titulo": "Nota Fiscal 7", "fase": "despesa",
+                  "tipo": "nota_fiscal", "fotos": []}],
+        "linha_do_tempo": {"selecao": 1, "despesa": 1},
+        "lacunas": [{"falta": "Evidência de execução apesar de haver pagamento",
+                     "gravidade": "critica"}],
+        "fotos_total": 0}, ensure_ascii=False), encoding="utf-8")
+    monkeypatch.setenv("SEI_ARQUIVO_DIR", str(tmp_path))
+
+    r = tn.cmd_fases("330020/000762/2021")
+    assert "selecao=1" in r and "despesa=1" in r
+    assert "🔴" in r and "execução" in r          # lacuna crítica destacada
+    r2 = tn.cmd_fases("999999/999999/9999")
+    assert "não arquivado" in r2.lower()
+
+
 def test_formatacao_laudo_telegram():
     from compliance_agent.nucleo.nucleo import periciar
     laudo = periciar(
