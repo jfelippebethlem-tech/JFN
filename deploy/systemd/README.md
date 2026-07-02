@@ -10,16 +10,18 @@ de qualquer sessão do Claude.
 | `jfn.service` | Sobe `server.py` (porta 8000), reinicia se cair (`Restart=always`). |
 | `jfn-ronda.service` | Oneshot: executa `tools/ronda.py` (checa serviço + alertas, loga, notifica). |
 | `jfn-ronda.timer` | Dispara a ronda a cada 10 min (`OnUnitActiveSec=10min`). |
+| `jfn-nucleo-ciclo.service` | Oneshot: ciclo de inteligência progressiva (`compliance_agent.nucleo.ciclo`) — pericia OBs novas, alimenta a memória e roda o loop de autoaprimoramento com freio no conjunto-ouro. |
+| `jfn-nucleo-ciclo.timer` | Dispara o ciclo diariamente às 06:30 UTC (antes do resumo do dia). |
 
 ## Instalar numa VM nova
 ```bash
 cd ~/JFN
 ./start_linux.sh --setup            # venv + deps + chromium
 mkdir -p ~/.config/systemd/user
-cp deploy/systemd/jfn*.service deploy/systemd/jfn-ronda.timer ~/.config/systemd/user/
+cp deploy/systemd/jfn*.service deploy/systemd/jfn*.timer ~/.config/systemd/user/
 sudo loginctl enable-linger "$USER" # sobrevive a logout/reboot
 systemctl --user daemon-reload
-systemctl --user enable --now jfn.service jfn-ronda.timer
+systemctl --user enable --now jfn.service jfn-ronda.timer jfn-nucleo-ciclo.timer
 ```
 
 ## Operar
