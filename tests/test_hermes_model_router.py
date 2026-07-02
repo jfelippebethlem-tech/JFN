@@ -23,10 +23,11 @@ def test_forcar_pesado():
     assert escolher_modelo("oi", forcar_pesado=True) == PESADO
 
 
-def test_bulk_repetitivo_usa_groq_gemma_free():
-    """Bulk/lote → Groq+Gemma (free, instantâneo; avaliação jun/2026). Nous = fallback do bulk."""
+def test_bulk_repetitivo_usa_groq_free():
+    """Bulk/lote → Groq instantâneo free (gemma2-9b-it DESCONTINUADO pelo Groq
+    em 2026-06; sucessor llama-3.1-8b-instant). Nous = fallback do bulk."""
     from tools.hermes_model_router import escolher_modelo, BULK, BULK_FALLBACK
-    assert BULK == ("groq", "gemma2-9b-it")
+    assert BULK == ("groq", "llama-3.1-8b-instant")
     assert BULK_FALLBACK[0] == "nous"
     assert escolher_modelo("classifique esta noticia", tarefa="bulk") == BULK
     assert escolher_modelo("extraia campos", tarefa="lote") == BULK
