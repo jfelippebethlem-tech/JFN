@@ -1,0 +1,11 @@
+[Unit]
+Description=JFN — agenda o ciclo de inteligência progressiva (diário, 06:30 UTC)
+
+[Timer]
+OnCalendar=*-*-* 06:30:00
+AccuracySec=5min
+Persistent=true
+Unit=jfn-nucleo-ciclo.service
+
+[Install]
+WantedBy=timers.target

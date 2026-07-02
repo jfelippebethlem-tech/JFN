@@ -28,6 +28,13 @@ data/*.db
 data/*.db-wal
 data/*.db-shm
 
+# Núcleo de Inteligência Progressiva: estado de runtime (calibração/aprendizado),
+# não código-fonte. Overrides, feedback, memória e diário são gerados no uso.
+data/nucleo_parametros.json
+data/nucleo_feedback.json
+data/nucleo_evolucao.json
+data/nucleo_casos_ouro.json
+
 # Diagnósticos: enviar só .json e .html (estrutura), ignorar screenshots pesados
 data/diagnostics/*.png
 

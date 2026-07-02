@@ -1,0 +1,11 @@
+[Unit]
+Description=JFN — ciclo de inteligência progressiva (pericia, aprende, autoaprimora)
+After=jfn.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+Environment=JFN_DATA_DIR=%h/JFN/data
+ExecStart=%h/JFN/.venv/bin/python -m compliance_agent.nucleo.ciclo
+# O ciclo é idempotente: só pericia OBs ainda não vistas e o loop de
+# calibração reverte tudo que não melhorar o placar do conjunto-ouro.
