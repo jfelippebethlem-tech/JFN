@@ -29,14 +29,42 @@ from compliance_agent.nucleo.autoaprimoramento import executar_loop, historico_e
 from compliance_agent.nucleo.avaliacao import avaliar_sistema
 
 
+def _obs_alvo(session, limite: int):
+    """
+    Duas miras, na ordem: (1) OBs de favorecidos SANCIONADOS (CEIS/CNEP local)
+    — alto rendimento, qualquer valor relevante; (2) maiores OBs da base.
+    Só as maiores re-encontraria sempre transferências estruturais.
+    """
+    from sqlalchemy import text
+    from compliance_agent.database.models import OrdemBancaria
+
+    metade = max(1, limite // 2)
+    try:
+        docs = [d for (d,) in session.execute(text(
+            "SELECT DISTINCT cpf_cnpj FROM sancoes_federais")).fetchall()]
+    except Exception:
+        docs = []
+    if docs:
+        yield from (session.query(OrdemBancaria)
+                    .filter(OrdemBancaria.favorecido_cpf.in_(docs),
+                            OrdemBancaria.valor.isnot(None),
+                            OrdemBancaria.valor >= 10_000)
+                    .order_by(OrdemBancaria.valor.desc())
+                    .limit(metade * 3))
+    yield from (session.query(OrdemBancaria)
+                .filter(OrdemBancaria.valor.isnot(None),
+                        OrdemBancaria.valor >= 100_000)
+                .order_by(OrdemBancaria.valor.desc())
+                .limit(limite * 3))
+
+
 def _periciar_base(session, limite: int = 200) -> dict:
     """
-    Varre as maiores OBs ainda não periciadas e alimenta a memória.
-    Retorna contadores. Falha de banco não derruba o ciclo.
+    Varre OBs ainda não periciadas (sancionados primeiro, depois as maiores)
+    e alimenta a memória. Retorna contadores. Falha de banco não derruba o ciclo.
     """
     novos = com_achados = 0
     try:
-        from compliance_agent.database.models import OrdemBancaria
         from compliance_agent.nucleo.adaptador_db import periciar_ob
         from compliance_agent.nucleo.memoria_pericial import _conectar
 
@@ -47,15 +75,11 @@ def _periciar_base(session, limite: int = 200) -> dict:
         finally:
             con.close()
 
-        q = (session.query(OrdemBancaria)
-             .filter(OrdemBancaria.valor.isnot(None),
-                     OrdemBancaria.valor >= 100_000)
-             .order_by(OrdemBancaria.valor.desc())
-             .limit(limite * 3))
-        for ob in q:
+        for ob in _obs_alvo(session, limite):
             ref = f"ob:{ob.id}"  # numero_ob NÃO é único entre UGs
             if ref in ja:
                 continue
+            ja.add(ref)  # as duas miras podem trazer a mesma OB
             # periciar_ob já registra na memória (usar_memoria=True)
             laudo = periciar_ob(session, ob)
             novos += 1

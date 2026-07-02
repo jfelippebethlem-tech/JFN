@@ -446,6 +446,34 @@ def test_doacoes_do_fornecedor_filtra_no_sql():
     assert len(_doacoes_do_fornecedor(s, "11222333000181")) == 2
 
 
+def test_ciclo_mira_favorecidos_sancionados():
+    """A varredura do ciclo não pode olhar só as maiores OBs de todos os
+    tempos: OB de favorecido SANCIONADO entra na mira mesmo abaixo do corte."""
+    if not _tem_sqlalchemy():
+        return
+    from sqlalchemy import text
+    from compliance_agent.database.models import OrdemBancaria
+    from compliance_agent.nucleo.ciclo import _periciar_base
+
+    s = _sessao_ob_memoria()
+    s.execute(text(
+        "CREATE TABLE sancoes_federais (cadastro TEXT, cpf_cnpj TEXT, nome TEXT,"
+        " categoria TEXT, data_inicio TEXT, data_fim TEXT, orgao TEXT, uf TEXT,"
+        " processo TEXT, fundamentacao TEXT)"))
+    s.execute(text(
+        "INSERT INTO sancoes_federais VALUES ('CEIS','11222333000181','X LTDA',"
+        "'Suspensão','2025-01-01','2027-01-01','TCU','DF','','')"))
+    # OB pequena (ficaria fora do top por valor) de favorecido sancionado
+    s.add(OrdemBancaria(numero_ob="2026OB00009", data_emissao=date(2026, 5, 1),
+                        ug_codigo="290100", favorecido_cpf="11222333000181",
+                        favorecido_nome="X LTDA", valor=120_000.0,
+                        tipo_ob="Saúde", categoria="tfe_ob"))
+    s.commit()
+    r = _periciar_base(s, limite=5)
+    assert r["pericias_novas"] >= 1
+    assert r["com_achados"] >= 1
+
+
 def test_valores_de_achado_em_formato_brasileiro():
     """Padrão da casa: R$ com milhar '.' e decimal ',' — nunca formato US."""
     from compliance_agent.nucleo.indicadores import _r
