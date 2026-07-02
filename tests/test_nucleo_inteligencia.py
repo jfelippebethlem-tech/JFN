@@ -419,6 +419,34 @@ def test_doacoes_do_fornecedor_filtra_no_sql():
     assert {d["valor"] for d in doacoes} == {50_000.0, 20_000.0}
 
 
+def test_valores_de_achado_em_formato_brasileiro():
+    """Padrão da casa: R$ com milhar '.' e decimal ',' — nunca formato US."""
+    from compliance_agent.nucleo.indicadores import _r
+    assert _r(117_772.5) == "R$ 117.772,50"
+    assert _r(1_000_000) == "R$ 1.000.000,00"
+    assert _r(None) == "—"
+
+
+def test_periciar_ob_quid_pro_quo_sem_cadastro_de_empresa():
+    """Na base real só 1 empresa está cadastrada — as doações têm de ser
+    buscadas pelo CNPJ do favorecido mesmo sem linha na tabela empresas."""
+    if not _tem_sqlalchemy():
+        return
+    from compliance_agent.database.models import DoacaoEleitoral, OrdemBancaria
+    from compliance_agent.nucleo.adaptador_db import periciar_ob
+
+    s = _sessao_ob_memoria()
+    s.add(DoacaoEleitoral(cpf_cnpj_doador="11222333000181", valor=1_000.0,
+                          data_doacao=date(2024, 8, 15), nome_candidato="FULANO"))
+    ob = OrdemBancaria(numero_ob="2025OB77777", data_emissao=date(2025, 5, 1),
+                       ug_codigo="290100", favorecido_cpf="11222333000181",
+                       favorecido_nome="GRAFICA QPQ LTDA", valor=200_000.0,
+                       tipo_ob="Saúde", categoria="tfe_ob")
+    s.add(ob); s.commit()
+    laudo = periciar_ob(s, ob)   # empresa NÃO cadastrada em `empresas`
+    assert "IND-QPQ-01" in {a.indicador_id for a in laudo.veredito.achados}
+
+
 def test_periciar_ob_identificador_sem_numero():
     """OB sem numero_ob ganha identificador estável 'ob:<id>' (dedup do ciclo)."""
     if not _tem_sqlalchemy():

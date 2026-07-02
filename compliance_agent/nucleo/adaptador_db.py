@@ -208,6 +208,10 @@ def periciar_ob(session, ob) -> Laudo:
     if not fornecedor.cnpj and len(cnpj) == 14:
         fornecedor.cnpj = cnpj
         fornecedor.nome = getattr(ob, "favorecido_nome", "") or ""
+    # doações valem pelo CNPJ do favorecido mesmo sem cadastro em `empresas`
+    # (na base real quase nenhum favorecido tem linha lá)
+    if fornecedor.cnpj and not fornecedor.doacoes_eleitorais:
+        fornecedor.doacoes_eleitorais = _doacoes_do_fornecedor(session, fornecedor.cnpj)
     contratacao = Contratacao(
         identificador=(getattr(ob, "numero_ob", "") or f"ob:{getattr(ob, 'id', '')}"),
         objeto=getattr(ob, "observacao", "") or "",
