@@ -1,0 +1,7 @@
+[Unit]
+Description=JFN — refresh semanal CEIS/CNEP (sancoes_federais)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+ExecStart=%h/JFN/.venv/bin/python tools/ingerir_ceis_cnep.py

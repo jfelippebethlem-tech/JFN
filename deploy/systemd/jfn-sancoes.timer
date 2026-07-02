@@ -1,0 +1,9 @@
+[Unit]
+Description=JFN — CEIS/CNEP semanal (domingo 05:40, antes do ciclo do Núcleo)
+
+[Timer]
+OnCalendar=Sun 05:40
+Persistent=true
+
+[Install]
+WantedBy=timers.target

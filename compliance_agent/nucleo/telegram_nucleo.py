@@ -124,8 +124,12 @@ def cmd_pericia(args: str) -> str:
                        .filter(OrdemBancaria.favorecido_nome.ilike(f"%{alvo}%"))
                        .order_by(OrdemBancaria.valor.desc()).limit(3).all())
             if not obs:
+                # sem OB coletada → tenta CONTRATOS (fornecedor só no PNCP)
+                resp = _pericia_contratos(session, alvo, digitos)
+                if resp:
+                    return resp
                 return (f"Nada encontrado para `{alvo}`.\n"
-                        "Aceito CNPJ, nº de OB ou parte do nome do fornecedor.")
+                        "Aceito CNPJ, nº de OB, nome do fornecedor ou contrato.")
             blocos = []
             for ob in obs:
                 # periciar_ob já registra na memória (usar_memoria=True);
@@ -143,6 +147,40 @@ def cmd_pericia(args: str) -> str:
             session.close()
     except Exception as exc:  # noqa: BLE001
         return f"❌ Erro na perícia: {exc}"
+
+
+def _pericia_contratos(session, alvo: str, digitos: str) -> str | None:
+    """Fallback do /pericia: fornecedor sem OB → pericia os CONTRATOS (PNCP).
+    Retorna None se também não houver contrato."""
+    try:
+        from compliance_agent.database.models import Contrato, Empresa
+        from compliance_agent.nucleo.adaptador_db import periciar_contrato
+
+        q = session.query(Contrato).join(Empresa, Contrato.empresa_id == Empresa.id)
+        if len(digitos) == 14:
+            q = q.filter(Empresa.cnpj == digitos)
+        elif len(alvo) >= 4 and not digitos:
+            q = q.filter(Empresa.razao_social.ilike(f"%{alvo}%"))
+        else:
+            return None
+        contratos = (q.order_by(Contrato.valor_total.desc()).limit(3).all())
+        if not contratos:
+            return None
+        blocos = []
+        for ct in contratos:
+            laudo = periciar_contrato(session, ct.id)
+            if laudo is None:
+                continue
+            blocos.append(_fmt_laudo(
+                laudo, referencia=f"ct:{ct.id}",
+                titulo_humano=f"Contrato {ct.numero or ct.id}",
+                contexto=f"{ct.orgao_contrat or '?'} · sem OB coletada"))
+        if not blocos:
+            return None
+        aviso = "_(sem OB coletada — periciando contratos/PNCP)_\n\n"
+        return aviso + "\n\n———\n\n".join(blocos)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 # ── /veredito ────────────────────────────────────────────────────────────────
@@ -189,6 +227,56 @@ def cmd_veredito(args: str) -> str:
         return f"❌ {exc}"
     except Exception as exc:  # noqa: BLE001
         return f"❌ Erro ao registrar veredito: {exc}"
+
+
+# ── /promover ────────────────────────────────────────────────────────────────
+
+def cmd_promover(args: str) -> str:
+    """
+    `/promover <ref>` — promove uma perícia CONFIRMADA a caso-ouro: a régua
+    de avaliação (F1) passa a cobrar que o sistema sempre pegue este padrão.
+    Salvaguardas: exige veredito 'confirmado' do perito, achados não vazios,
+    dossiê registrado e id inédito no conjunto-ouro.
+    """
+    ref = (args or "").strip()
+    if not ref:
+        return "Use: `/promover <referência>` (ex.: `/promover ob:4451813`)"
+    try:
+        from compliance_agent.nucleo import memoria_pericial
+        from compliance_agent.nucleo.avaliacao import (
+            CasoOuro, adicionar_caso_ouro, avaliar_sistema, carregar_casos,
+        )
+        p = memoria_pericial.obter_pericia(ref)
+        if p is None:
+            return f"Nenhuma perícia com referência `{ref}` na memória."
+        if (p.get("veredito") or "").lower() != "confirmado":
+            return (f"`{ref}` ainda não foi CONFIRMADA pelo perito.\n"
+                    f"Primeiro: `/veredito {ref} confirmado` — só perícia "
+                    "confirmada vira caso-ouro (salvaguarda).")
+        achados = [a.get("indicador_id") for a in p.get("achados") or []]
+        achados = [a for a in achados if a]
+        if not achados:
+            return (f"`{ref}` não teve nenhum indicador disparado — perícia "
+                    "limpa não vira caso-ouro (nada a cobrar da régua).")
+        if not p.get("dossie"):
+            return (f"`{ref}` foi registrada sem dossiê serializado (perícia "
+                    "antiga). Rode `/pericia` de novo e repita o /promover.")
+        caso_id = f"ouro_{re.sub(r'[^0-9A-Za-z]+', '_', ref)}"
+        if any(c.id == caso_id for c in carregar_casos()):
+            return f"`{ref}` já está no conjunto-ouro (`{caso_id}`)."
+        adicionar_caso_ouro(CasoOuro(
+            id=caso_id,
+            descricao=f"Caso real confirmado pelo perito (ref {ref})",
+            dossie=p["dossie"],
+            deve_disparar=achados,
+        ))
+        placar = avaliar_sistema()
+        return (f"🏅 `{ref}` promovida a caso-ouro (`{caso_id}`).\n"
+                f"A régua agora cobra: {', '.join(achados)}.\n"
+                f"Placar do conjunto-ouro: F1 {placar.f1_global:.2f} "
+                f"({len(carregar_casos())} casos).")
+    except Exception as exc:  # noqa: BLE001
+        return f"❌ Erro ao promover: {exc}"
 
 
 # ── /placar ──────────────────────────────────────────────────────────────────
@@ -349,10 +437,19 @@ def interpretar_texto_livre(texto: str) -> tuple[str, str] | None:
     cnpj = _CNPJ_RE.search(texto)
     ob = _OB_RE.search(texto)
 
+    # promoção a caso-ouro: "promove/promover <ref>"
+    if "promov" in t:
+        m = re.search(r"(ob:\d+|ct:\d+)", t)
+        ref = (m and m.group(1)) or (ob and ob.group(1)) or ""
+        if ref:
+            return ("/promover", ref)
+
     # veredito: "confirmado"/"procede"/"descarta" + referência
     if any(k in t for k in ("confirmad", "procede", "descartad", "improcede",
                             "falso alarme", "inconclusiv")):
-        ref = (ob and ob.group(1)) or (cnpj and cnpj.group(0)) or ""
+        m_ref = re.search(r"(ob:\d+|ct:\d+)", t)
+        ref = ((m_ref and m_ref.group(1)) or (ob and ob.group(1))
+               or (cnpj and cnpj.group(0)) or "")
         if ref:
             if any(k in t for k in ("descartad", "improcede", "falso alarme")):
                 return ("/veredito", f"{ref} descartado")

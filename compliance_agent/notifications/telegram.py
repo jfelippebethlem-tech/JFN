@@ -339,6 +339,7 @@ _AJUDA = (
     "*🧠 Núcleo de perícia (inteligência progressiva):*\n"
     "  /pericia CNPJ|OB|NOME — perícia na hora, com laudo e base legal\n"
     "  /veredito REF confirmado|descartado — seu feedback ENSINA o sistema\n"
+    "  /promover REF — perícia confirmada vira caso-ouro (a régua evolui)\n"
     "  /placar — quão inteligente está (conjunto-ouro + memória)\n"
     "  /ciclo\\_nucleo — roda o loop de autoaprimoramento agora\n"
     "  /fornecedor CNPJ — perfil de reincidência aprendido\n"
@@ -1107,6 +1108,11 @@ async def processar_comando(texto: str, chat_id: str) -> None:
     elif cmd == "/veredito":
         from compliance_agent.nucleo import telegram_nucleo as tn
         await enviar_mensagem(await asyncio.to_thread(tn.cmd_veredito, args),
+                              chat_id=chat_id)
+
+    elif cmd == "/promover":
+        from compliance_agent.nucleo import telegram_nucleo as tn
+        await enviar_mensagem(await asyncio.to_thread(tn.cmd_promover, args),
                               chat_id=chat_id)
 
     elif cmd == "/placar":

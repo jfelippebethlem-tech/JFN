@@ -167,6 +167,7 @@ def periciar_contrato(session, contrato_id: int) -> Laudo | None:
     empresa = (session.query(Empresa).get(c.empresa_id)
                if getattr(c, "empresa_id", None) else None)
     contratacao = _contratacao_de_contrato(c)
+    contratacao.identificador = f"ct:{c.id}"  # único (numero pode repetir)
     contratacao.categoria = _categoria(contratacao.objeto)
     fornecedor = _fornecedor_de_empresa(empresa, session)
     if fornecedor.cnpj and not fornecedor.sancionado:
@@ -177,6 +178,7 @@ def periciar_contrato(session, contrato_id: int) -> Laudo | None:
         fornecedor=fornecedor,
         historico=_historico_orgao_fornecedor(session, c),
         referencia_categoria=_referencia_categoria(session, contratacao.categoria),
+        usar_memoria=True,
     )
 
 

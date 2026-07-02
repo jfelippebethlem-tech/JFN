@@ -153,6 +153,73 @@ def test_fluxo_pericia_veredito_fecha_ciclo():
     assert any(p.confirmados >= 1 for p in aprendizado.precisao_por_indicador())
 
 
+def test_promover_pericia_confirmada_a_caso_ouro():
+    """Fluxo: pericia com achado → /veredito confirmado → /promover vira
+    caso-ouro (a régua evolui). Salvaguardas: sem veredito confirmado ou sem
+    achados → recusa; promover 2× → recusa."""
+    from compliance_agent.nucleo.nucleo import periciar
+    from compliance_agent.nucleo.avaliacao import avaliar_sistema, carregar_casos
+
+    periciar(
+        contratacao={"identificador": "ob:777", "valor": 2_000_000,
+                     "data": "2024-05-01"},
+        fornecedor={"cnpj": "11222333000181", "data_abertura": "2024-03-01",
+                    "capital_social": 100},
+        usar_memoria=True,
+    )
+    # salvaguarda 1: ainda sem veredito do perito → recusa
+    r = tn.cmd_promover("ob:777")
+    assert "confirmad" in r.lower() and "🏅" not in r
+
+    tn.cmd_veredito("ob:777 confirmado")
+    n_antes = len(carregar_casos())
+    r = tn.cmd_promover("ob:777")
+    assert "🏅" in r
+    assert len(carregar_casos()) == n_antes + 1
+    assert avaliar_sistema().f1_global == 1.0   # caso promovido já passa
+
+    # salvaguarda 2: duplicata → recusa
+    r = tn.cmd_promover("ob:777")
+    assert "🏅" not in r
+
+    # salvaguarda 3: perícia limpa (sem achados) não vira caso-ouro
+    periciar(contratacao={"identificador": "ob:778", "valor": 1_000,
+                          "data": "2024-05-01"},
+             fornecedor={"cnpj": "11222333000181", "data_abertura": "2000-01-01",
+                         "capital_social": 1_000_000},
+             usar_memoria=True)
+    tn.cmd_veredito("ob:778 confirmado")
+    assert "🏅" not in tn.cmd_promover("ob:778")
+
+
+def test_pericia_cai_para_contratos_sem_ob(monkeypatch):
+    """Fornecedor sem OB coletada (só PNCP/contrato direto) → /pericia acha o
+    CONTRATO e pericia mesmo assim (pendência do handoff §8)."""
+    from datetime import date as _date
+    from sqlalchemy import create_engine
+    from sqlalchemy.orm import sessionmaker
+    from compliance_agent.database.models import Base, Contrato, Empresa
+
+    eng = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(eng)
+    fabrica = sessionmaker(bind=eng)
+    s = fabrica()
+    emp = Empresa(cnpj="55666777000188", razao_social="SOMENTE PNCP LTDA",
+                  data_abertura=_date(2024, 2, 1), capital_social=5000,
+                  situacao="ATIVA")
+    s.add(emp); s.flush()
+    s.add(Contrato(numero="CT-9", objeto="reforma predial", empresa_id=emp.id,
+                   orgao_contrat="ORG", modalidade="dispensa",
+                   valor_total=8_000_000, data_assinatura=_date(2024, 5, 20),
+                   fonte="pncp"))
+    s.commit(); s.close()
+
+    monkeypatch.setattr(tn, "_sessao", lambda: fabrica())
+    r = tn.cmd_pericia("55.666.777/0001-88")
+    assert "PERÍCIA" in r and "CT-9" in r
+    assert "IND-EMP-01" in r or "recém-aberta" in r.lower()
+
+
 def test_formatacao_laudo_telegram():
     from compliance_agent.nucleo.nucleo import periciar
     laudo = periciar(
