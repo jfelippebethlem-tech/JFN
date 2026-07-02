@@ -78,15 +78,25 @@ async def main():
                     doc.new_page().insert_textbox(fitz.Rect(40, 40, 555, 800), rest[:6500], fontsize=8); rest = rest[6500:]
                 doc.save(str(fp)); doc.close(); return True
 
+            manifest = []
             for i, x in enumerate(docs):
                 fp = outdir / f"{i:03d}.pdf"
+                ok = False
                 try:
                     if await asyncio.wait_for(baixa_um(x, fp), timeout=30):
-                        paths.append(fp)
+                        paths.append(fp); ok = True
                 except Exception as e:
                     print(f"  doc {i} pulado: {str(e)[:35]}", flush=True)
+                manifest.append({"i": i, "arquivo": fp.name, "titulo": x.get("t") or "",
+                                 "contexto": x.get("pai") or "", "url": x.get("u") or "",
+                                 "ok": ok})
                 if i % 15 == 0:
                     print(f"  {i}/{len(docs)} ({len(paths)} ok)", flush=True)
+            # manifest com os TÍTULOS da árvore: é ele que permite classificar a
+            # fase de cada documento depois (tools/sei_arquivar.py)
+            import json as _json
+            (outdir / "manifest.json").write_text(
+                _json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
             # junta
             out = fitz.open()
             sep = fitz.open(); spg = sep.new_page(); spg.insert_text((60, 120), f"ÍNTEGRA — PROCESSO SEI-{PROC} ({len(paths)} documentos)", fontsize=14); out.insert_pdf(sep); sep.close()
@@ -98,7 +108,10 @@ async def main():
                 except Exception: pass
             full = Path(f"data/sei_cache/INTEGRA_{TAG}.pdf"); out.save(str(full), deflate=True, garbage=4)
             sz = full.stat().st_size; print(f"ÍNTEGRA: {len(paths)} docs, {out.page_count} págs, {sz/1024/1024:.1f}MB", flush=True)
-            # envia (divide se >45MB)
+            # envia (divide se >45MB); SEI_SEM_TG=1 → só baixa/arquiva, sem Telegram
+            if os.environ.get("SEI_SEM_TG") == "1":
+                print("TG: pulado (SEI_SEM_TG=1)", flush=True)
+                return
             LIM = 45 * 1024 * 1024
             if sz <= LIM:
                 print("TG:", envia(str(full), f"📚 ÍNTEGRA COMPLETA — Processo SEI-{PROC} ({len(paths)} docs, {out.page_count} págs)"), flush=True)
