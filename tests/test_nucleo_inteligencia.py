@@ -395,6 +395,30 @@ def test_periciar_ob_alimenta_e_consome_memoria():
     assert "memória pericial" in laudo.fontes.get("referencia_categoria", "")
 
 
+def test_doacoes_do_fornecedor_filtra_no_sql():
+    """Com 542 mil doações na base real, filtrar em Python depois de um
+    limit(500) cego = indicador de quid pro quo morto. O filtro tem de ser SQL."""
+    if not _tem_sqlalchemy():
+        return
+    from compliance_agent.database.models import DoacaoEleitoral
+    from compliance_agent.nucleo.adaptador_db import _doacoes_do_fornecedor
+
+    s = _sessao_ob_memoria()
+    # 600 doações de terceiros ANTES da doação que interessa
+    for i in range(600):
+        s.add(DoacaoEleitoral(cpf_cnpj_doador=f"99{i:09d}", valor=100.0,
+                              data_doacao=date(2024, 8, 1), nome_candidato="X"))
+    s.add(DoacaoEleitoral(cpf_cnpj_doador="11222333000181", valor=50_000.0,
+                          data_doacao=date(2024, 8, 15), nome_candidato="FULANO"))
+    # filial da mesma raiz também conta
+    s.add(DoacaoEleitoral(cpf_cnpj_doador="11222333000262", valor=20_000.0,
+                          data_doacao=date(2024, 9, 1), nome_candidato="FULANO"))
+    s.commit()
+    doacoes = _doacoes_do_fornecedor(s, "11222333000181")
+    assert len(doacoes) == 2
+    assert {d["valor"] for d in doacoes} == {50_000.0, 20_000.0}
+
+
 def test_periciar_ob_identificador_sem_numero():
     """OB sem numero_ob ganha identificador estável 'ob:<id>' (dedup do ciclo)."""
     if not _tem_sqlalchemy():

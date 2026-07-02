@@ -60,9 +60,11 @@ def _doacoes_do_fornecedor(session, cnpj: str) -> list[dict]:
         return []
     saida: list[dict] = []
     try:
-        q = (session.query(DoacaoEleitoral)
-             .filter(DoacaoEleitoral.cpf_cnpj_doador.isnot(None)))
         raiz = cnpj[:8]
+        # O filtro por raiz PRECISA ser SQL: com 500 mil+ doações na base, um
+        # limit() cego antes do filtro nunca alcança o doador procurado.
+        q = (session.query(DoacaoEleitoral)
+             .filter(DoacaoEleitoral.cpf_cnpj_doador.like(f"{raiz}%")))
         for d in q.limit(500):
             doc = _digits(d.cpf_cnpj_doador)
             if doc == cnpj or (len(doc) >= 8 and doc[:8] == raiz):
