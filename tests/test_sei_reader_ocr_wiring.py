@@ -31,7 +31,7 @@ class _FakeRequest:
         self._resp = resp
         self.chamadas = []
 
-    async def get(self, url):
+    async def get(self, url, **kwargs):  # o reader passa timeout=...
         self.chamadas.append(url)
         return self._resp
 
@@ -64,7 +64,8 @@ def test_innertext_vazio_dispara_ocr_e_marca_via(monkeypatch):
     def fake_ocr(_body, *, tipo=None, lang="por"):
         chamou["ocr"] += 1
         assert tipo == "pdf"
-        return "TEXTO OCR"
+        # >20 chars: o reader descarta OCR curto demais (guard anti-lixo)
+        return "TEXTO OCR do documento digitalizado de teste"
 
     # patch no MÓDULO de onde o import lazy puxa a função.
     import compliance_agent.sei.ocr_docs as ocr_mod
@@ -93,7 +94,9 @@ def test_texto_html_normal_nao_chama_ocr(monkeypatch):
     monkeypatch.setattr(ocr_mod, "ocr_documento", fake_ocr)
 
     texto_html = "x" * 500  # > 50 chars → caminho nativo que já funciona
-    pg = _FakePage(inner_text=texto_html)
+    # content-type de doc nativo do editor: a sonda de scan vê text/html e NÃO OCR'a
+    pg = _FakePage(inner_text=texto_html,
+                   resp=_FakeResponse(content_type="text/html; charset=iso-8859-1"))
     doc = {"url": "https://sei/doc/html", "texto": "Despacho"}
 
     res = asyncio.run(sei_reader._conteudo_doc(pg, doc))
@@ -102,7 +105,9 @@ def test_texto_html_normal_nao_chama_ocr(monkeypatch):
     assert chamou["ocr"] == 0, "OCR NÃO deveria ser chamado quando há texto HTML nativo"
     assert res["conteudo"] == texto_html
     assert "via" not in res
-    assert pg.context.request.chamadas == [], "não deveria baixar bytes no caminho nativo"
+    # a sonda de scan SEMPRE espia o content-type primeiro (o SEI mostra casca
+    # >50 chars até para PDF-imagem) — 1 GET é esperado; OCR é que não pode rodar
+    assert pg.context.request.chamadas == ["https://sei/doc/html"]
 
 
 if __name__ == "__main__":
