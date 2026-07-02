@@ -67,7 +67,10 @@ def _doacoes_do_fornecedor(session, cnpj: str) -> list[dict]:
              .filter(DoacaoEleitoral.cpf_cnpj_doador.like(f"{raiz}%")))
         for d in q.limit(500):
             doc = _digits(d.cpf_cnpj_doador)
-            if doc == cnpj or (len(doc) >= 8 and doc[:8] == raiz):
+            # só a PRÓPRIA empresa ou filial (14 dígitos, mesma raiz) — CPF com
+            # prefixo coincidente NÃO é a empresa doando (raiz 00000000 do BB
+            # casava com CPFs 000.000.0xx-xx e gerava quid pro quo fantasma)
+            if doc == cnpj or (len(doc) == 14 and doc[:8] == raiz):
                 saida.append({"valor": d.valor, "data": d.data_doacao,
                               "candidato": d.nome_candidato})
     except Exception:

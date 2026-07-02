@@ -438,6 +438,13 @@ def test_doacoes_do_fornecedor_filtra_no_sql():
     assert len(doacoes) == 2
     assert {d["valor"] for d in doacoes} == {50_000.0, 20_000.0}
 
+    # CPF (11 dígitos) com o MESMO prefixo da raiz NÃO é a empresa doando —
+    # caso real: raiz 00000000 do Banco do Brasil casava com CPFs 000.000.0xx
+    s.add(DoacaoEleitoral(cpf_cnpj_doador="11222333044", valor=999.0,
+                          data_doacao=date(2024, 8, 1), nome_candidato="Z"))
+    s.commit()
+    assert len(_doacoes_do_fornecedor(s, "11222333000181")) == 2
+
 
 def test_valores_de_achado_em_formato_brasileiro():
     """Padrão da casa: R$ com milhar '.' e decimal ',' — nunca formato US."""
