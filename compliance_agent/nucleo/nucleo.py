@@ -109,6 +109,7 @@ def periciar(
     referencia_categoria: dict[str, float] | None = None,
     documento_edital: str | None = None,
     llm_fn: LLMFn | None = None,
+    usar_memoria: bool = False,
 ) -> Laudo:
     """
     Executa a perícia completa sobre uma contratação.
@@ -117,6 +118,9 @@ def periciar(
     - ``documento_edital`` + ``llm_fn``: se passados, a IA fraca preenche os campos
       faltantes do edital, com extração robusta e validada.
     - Se ``llm_fn`` for None, a perícia roda 100% sem IA sobre os dados estruturados.
+    - ``usar_memoria=True`` liga a inteligência progressiva: a referência de preço
+      vem das perícias anteriores (se não for informada) e este laudo é registrado
+      na memória ao final — cada perícia deixa o sistema mais calibrado.
     """
     avisos_extracao: list[str] = []
     fontes: dict[str, str] = {}
@@ -152,20 +156,37 @@ def periciar(
             f.cnpj = d["cnpj_vencedor"]
         fontes["extracao_llm"] = f"{res.tentativas} chamada(s) à IA fraca"
 
-    # 3. Monta e valida o dossiê.
+    # 3. Monta e valida o dossiê. Sem referência explícita, a memória pericial
+    #    fornece a referência aprendida com as perícias anteriores.
+    ref = referencia_categoria or {}
+    if usar_memoria and not ref and c.categoria:
+        from compliance_agent.nucleo import memoria_pericial
+        ref = memoria_pericial.obter_referencia(c.categoria, c.orgao)
+        if ref:
+            fontes["referencia_categoria"] = (
+                f"memória pericial (n={int(ref.get('n', 0))} perícias)")
     hist = [h if isinstance(h, Contratacao) else Contratacao(**h)
             for h in (historico or [])]
     dossie = Dossie(
         contratacao=c, fornecedor=f, historico_orgao_fornecedor=hist,
-        referencia_categoria=referencia_categoria or {},
+        referencia_categoria=ref,
     )
 
     # 4. Perícia determinística.
     achados: list[Achado] = avaliar_todos(dossie)
     veredito: Veredito = pontuar(achados, valor_contrato=c.valor)
 
-    return Laudo(veredito=veredito, dossie=dossie,
-                 extracao_avisos=avisos_extracao, fontes=fontes)
+    laudo = Laudo(veredito=veredito, dossie=dossie,
+                  extracao_avisos=avisos_extracao, fontes=fontes)
+
+    # 5. Aprende: registra a perícia na memória (inteligência progressiva).
+    if usar_memoria:
+        from compliance_agent.nucleo import memoria_pericial
+        try:
+            memoria_pericial.registrar_laudo(laudo, referencia=c.identificador)
+        except Exception:
+            pass  # memória indisponível nunca derruba a perícia
+    return laudo
 
 
 def diagnostico_parametros() -> str:
