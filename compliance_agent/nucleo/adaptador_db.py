@@ -174,10 +174,28 @@ def periciar_contrato(session, contrato_id: int) -> Laudo | None:
     )
 
 
+_MARCADORES_FONTE = {"tfe_ob", "siafe_ob"}
+
+
+def _categoria_de_ob(ob) -> str:
+    """
+    No dado TFE real, ``categoria`` guarda o marcador de FONTE ('tfe_ob') e a
+    categoria de verdade vive em ``tipo_ob`` ('Saúde', 'Obras / Infraestrutura').
+    'Outros' não é categoria — não pode virar referência de preço aprendida.
+    """
+    bruto = (getattr(ob, "categoria", "") or "").strip()
+    if not bruto or bruto.lower() in _MARCADORES_FONTE:
+        bruto = (getattr(ob, "tipo_ob", "") or "").strip()
+    cat = bruto.lower().split(" / ")[0].split()[0] if bruto else ""
+    return "" if cat in {"outros", "outras"} else cat
+
+
 def periciar_ob(session, ob) -> Laudo:
     """
     Perícia de uma Ordem Bancária (pagamento). Sem edital/propostas, mas cobre
     empresa recém-aberta, sancionamento, quid pro quo e valor colado ao teto.
+    Usa a memória pericial: consome a referência de preço aprendida e registra
+    este laudo (inteligência progressiva no fluxo real — Yoda e ciclo).
     """
     from compliance_agent.database.models import Empresa
     cnpj = _digits(getattr(ob, "favorecido_cpf", ""))
@@ -189,15 +207,16 @@ def periciar_ob(session, ob) -> Laudo:
         fornecedor.cnpj = cnpj
         fornecedor.nome = getattr(ob, "favorecido_nome", "") or ""
     contratacao = Contratacao(
-        identificador=getattr(ob, "numero_ob", "") or "",
+        identificador=(getattr(ob, "numero_ob", "") or f"ob:{getattr(ob, 'id', '')}"),
         objeto=getattr(ob, "observacao", "") or "",
         orgao=getattr(ob, "ug_nome", "") or "",
         valor=getattr(ob, "valor", None),
         data=getattr(ob, "data_emissao", None) or getattr(ob, "data_pagamento", None),
-        categoria=getattr(ob, "categoria", "") or "",
+        categoria=_categoria_de_ob(ob),
         fonte="tfe_ob",
     )
-    return periciar(contratacao=contratacao, fornecedor=fornecedor)
+    return periciar(contratacao=contratacao, fornecedor=fornecedor,
+                    usar_memoria=True)
 
 
 def periciar_top_obs(session, limite: int = 100,
