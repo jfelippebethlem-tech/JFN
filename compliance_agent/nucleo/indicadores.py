@@ -59,7 +59,10 @@ class Indicador:
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _r(v: float | None) -> str:
-    return f"R$ {v:,.2f}" if v is not None else "—"
+    if v is None:
+        return "—"
+    # padrão brasileiro: milhar '.' e decimal ','
+    return "R$ " + f"{v:,.2f}".replace(",", "\0").replace(".", ",").replace("\0", ".")
 
 
 def _achado(ind: "Indicador", confianca: float, observado: str, limite: str,
