@@ -45,8 +45,61 @@ reproduzível. O laudo é oponível num ofício ao TCE-RJ ou requerimento de CPI
 | `indicadores.py` | Os `como_detectar` viram **funções puras** que devolvem um `Achado` citado (valor observado, limite aplicado, base legal, confiança). |
 | `scoring.py` | Agrega achados na **matriz TCU Probabilidade×Impacto** → rating defensável. |
 | `extracao_robusta.py` | Extração confiável com modelo fraco: schema estrito + reparo de JSON + **votação por autoconsistência** + validação. |
-| `aprendizado.py` | **Inteligência progressiva**: registra feedback do perito, mede precisão por indicador e sugere calibração de parâmetros. |
-| `nucleo.py` | Orquestrador: `periciar(...) → Laudo` (com `.texto()` e `.para_dict()`). |
+| `aprendizado.py` | Registra feedback do perito, mede precisão por indicador e sugere calibração de parâmetros. |
+| `nucleo.py` | Orquestrador: `periciar(...) → Laudo` (com `.texto()` e `.para_dict()`). Com `usar_memoria=True`, cada perícia consome e alimenta a memória. |
+| `adaptador_db.py` | Liga o Núcleo à base real (models SQLAlchemy): `periciar_contrato`, `periciar_ob`, `periciar_top_obs`. |
+| `memoria_pericial.py` | **Memória de casos** (SQLite): referência de preço aprendida, perfil de reincidência por CNPJ, lastro do feedback. |
+| `avaliacao.py` | **Conjunto-ouro** de casos rotulados — a "suíte de testes" da perícia. Mede F1/precisão/cobertura. |
+| `autoaprimoramento.py` | **Loop de autoaprimoramento**: propõe calibrações, testa no conjunto-ouro, mantém só o que melhora, reverte o resto; tudo em diário auditável. |
+| `ciclo.py` | Comando único do ciclo: `python -m compliance_agent.nucleo.ciclo` (perícia em lote → avalia → aprimora → relata). |
+
+## O ciclo de inteligência progressiva
+
+O sistema aprende a cada perícia e melhora em loop, com prova — o mesmo método
+de um bom engenheiro (hipótese → teste → mantém se melhorar, reverte se piorar):
+
+```
+ perícias diárias ──► memória pericial ──► referências de preço cada vez melhores
+        │                    │
+        │            veredito do perito (confirmado/descartado)
+        │                    │
+        ▼                    ▼
+  conjunto-ouro ◄── casos confirmados viram casos-ouro (a régua também evolui)
+        │
+        ▼
+  loop de autoaprimoramento: testa calibrações → F1 subiu? mantém : reverte
+        │
+        ▼
+  diário de evolução (data/nucleo_evolucao.json) — 100% auditável
+```
+
+Garantias do loop (provadas em `tests/test_nucleo_autoaprimoramento.py`):
+
+1. **Segurança** — com placar perfeito, o loop reverte tudo que tenta; nunca
+   "se otimiza" para pior, e parâmetros de fonte legal jamais são tocados.
+2. **Aprendizado real** — um caso confirmado que o sistema perdia faz o loop
+   encontrar sozinho a calibração que o captura, sem criar falso alarme novo.
+3. **Progressão** — após ~6 perícias de uma categoria, a referência de preço
+   aprendida já faz o indicador de superfaturamento disparar sozinho, sem
+   ninguém informar a mediana de mercado.
+
+Operação:
+
+```bash
+python -m compliance_agent.nucleo.ciclo            # roda um ciclo completo
+python -m compliance_agent.nucleo.ciclo --status   # placar e estado da memória
+```
+
+Feedback do perito (fecha o ciclo):
+
+```python
+from compliance_agent.nucleo import memoria_pericial
+memoria_pericial.registrar_veredito("OB 2024NE00123", "confirmado")
+# → propaga para o feedback por indicador e vira lastro da próxima calibração
+```
+
+Sugestão de agendamento na VM (padrão dos timers já existentes): um
+`jfn-nucleo-ciclo.timer` diário chamando `python -m compliance_agent.nucleo.ciclo`.
 
 ## Uso
 
