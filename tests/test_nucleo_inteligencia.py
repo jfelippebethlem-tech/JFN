@@ -447,6 +447,48 @@ def test_periciar_ob_quid_pro_quo_sem_cadastro_de_empresa():
     assert "IND-QPQ-01" in {a.indicador_id for a in laudo.veredito.achados}
 
 
+def test_periciar_ob_enriquece_on_demand():
+    """/pericia interativo: empresa fora da tabela → enriquece na hora (fake da
+    BrasilAPI) e os indicadores cadastrais passam a ter insumo. Em lote
+    (enriquecer=False, default) NÃO chama a API."""
+    if not _tem_sqlalchemy():
+        return
+    from compliance_agent.database.models import Empresa, OrdemBancaria
+    from compliance_agent.nucleo import adaptador_db
+
+    chamadas = []
+
+    async def fake_enriquecer(session, ob):
+        chamadas.append(ob.favorecido_cpf)
+        session.add(Empresa(cnpj="11222333000181", razao_social="NOVA LTDA",
+                            data_abertura=date(2026, 3, 1), capital_social=100.0,
+                            situacao="ATIVA"))
+        session.commit()
+        return {}
+
+    import compliance_agent.enrichers.cnpj_enricher as enr
+    orig = enr.enriquecer_ob_cnpj
+    enr.enriquecer_ob_cnpj = fake_enriquecer
+    try:
+        s = _sessao_ob_memoria()
+        ob = OrdemBancaria(numero_ob="2026OB55555", data_emissao=date(2026, 5, 1),
+                           ug_codigo="290100", favorecido_cpf="11222333000181",
+                           favorecido_nome="NOVA LTDA", valor=2_000_000.0,
+                           tipo_ob="Saúde", categoria="tfe_ob")
+        s.add(ob); s.commit()
+
+        laudo = adaptador_db.periciar_ob(s, ob)          # lote: não enriquece
+        assert chamadas == []
+        assert "IND-EMP-01" not in {a.indicador_id for a in laudo.veredito.achados}
+
+        laudo = adaptador_db.periciar_ob(s, ob, enriquecer=True)
+        assert chamadas == ["11222333000181"]
+        # empresa recém-aberta (2 meses) com capital ínfimo → indicadores disparam
+        assert "IND-EMP-01" in {a.indicador_id for a in laudo.veredito.achados}
+    finally:
+        enr.enriquecer_ob_cnpj = orig
+
+
 def test_periciar_ob_identificador_sem_numero():
     """OB sem numero_ob ganha identificador estável 'ob:<id>' (dedup do ciclo)."""
     if not _tem_sqlalchemy():

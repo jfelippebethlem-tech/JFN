@@ -93,7 +93,16 @@ async def enriquecer_ob_cnpj(session, ob) -> dict:
     empresa.uf              = (data.get("uf") or "")[:2]
     empresa.cep             = re.sub(r"\D", "", str(data.get("cep") or ""))[:8]
     empresa.atividade_princ = str(data.get("cnae_fiscal_descricao") or data.get("atividade_principal", [{}])[0].get("text","") or "")[:200]
-    empresa.updated_at      = datetime.utcnow()
+    try:  # capital vem numérico na BrasilAPI e string na ReceitaWS ("1.000,00")
+        cap = data.get("capital_social")
+        if isinstance(cap, str):
+            cap = cap.replace(".", "").replace(",", ".")
+        empresa.capital_social = float(cap) if cap not in (None, "") else None
+    except (TypeError, ValueError):
+        pass
+    empresa.porte        = str(data.get("porte") or "")[:50]
+    empresa.natureza_jur = str(data.get("natureza_juridica") or "")[:100]
+    empresa.updated_at   = datetime.utcnow()
 
     # Sócios (quadro societário)
     qsa = data.get("qsa") or data.get("socios") or []
@@ -162,22 +171,38 @@ async def enriquecer_ob_cnpj(session, ob) -> dict:
     return {"empresa": empresa.razao_social, "situacao": situacao, "flags": flags}
 
 
-async def enriquecer_obs_do_dia(session, target_date: date = None) -> list[dict]:
+async def enriquecer_obs_do_dia(session, target_date: date = None,
+                                cap: int = 60) -> list[dict]:
     """
-    Enriquece todas as OBs do dia com dados de CNPJ.
-    Retorna lista de flags de risco detectados.
+    Enriquece OBs recentes cujo favorecido ainda NÃO está em `empresas`.
+
+    Não filtra por ``data_emissao == hoje``: a coleta TFE tem lag de semanas,
+    então "as OBs de hoje" é um conjunto quase sempre VAZIO (foi por isso que
+    a tabela `empresas` ficou meses com 1 linha). Pega as maiores OBs recentes
+    sem cadastro, limitado a ``cap`` favorecidos por rodada (gentileza com a
+    BrasilAPI, que é grátis).
     """
-    from compliance_agent.database.models import OrdemBancaria, Alerta
+    from compliance_agent.database.models import Empresa, OrdemBancaria, Alerta
 
     target_date = target_date or date.today()
-    obs = (
+    ja_cadastrados = {c for (c,) in session.query(Empresa.cnpj).all()}
+    q = (
         session.query(OrdemBancaria)
-        .filter(
-            OrdemBancaria.data_emissao == target_date,
-            OrdemBancaria.favorecido_cpf.isnot(None),
-        )
-        .all()
+        .filter(OrdemBancaria.favorecido_cpf.isnot(None),
+                OrdemBancaria.valor.isnot(None))
+        .order_by(OrdemBancaria.data_emissao.desc(),
+                  OrdemBancaria.valor.desc())
+        .limit(5000)
     )
+    obs, vistos = [], set()
+    for ob in q:
+        cnpj = re.sub(r"\D", "", str(ob.favorecido_cpf or ""))
+        if len(cnpj) != 14 or cnpj in ja_cadastrados or cnpj in vistos:
+            continue
+        vistos.add(cnpj)
+        obs.append(ob)
+        if len(obs) >= cap:
+            break
 
     todos_flags = []
     for ob in obs:

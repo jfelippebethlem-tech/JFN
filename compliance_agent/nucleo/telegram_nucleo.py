@@ -119,8 +119,9 @@ def cmd_pericia(args: str) -> str:
             blocos = []
             for ob in obs:
                 ref = ob.numero_ob or f"ob:{ob.id}"
-                # periciar_ob já registra na memória (usar_memoria=True)
-                laudo = periciar_ob(session, ob)
+                # periciar_ob já registra na memória (usar_memoria=True);
+                # interativo → enriquece cadastro na hora se faltar
+                laudo = periciar_ob(session, ob, enriquecer=True)
                 blocos.append(_fmt_laudo(laudo, referencia=ref))
             extra = ""
             if len(obs) > 1:
