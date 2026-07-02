@@ -45,6 +45,20 @@ from compliance_agent.nucleo.avaliacao import (
 )
 from compliance_agent.nucleo.nucleo import periciar
 
+import pytest
+
+
+@pytest.fixture(autouse=True)
+def _repina_env(monkeypatch):
+    # Na coleta o pytest importa TODOS os arquivos de teste da suíte, e o
+    # último a setar os.environ vence — repina para o _TMP DESTE módulo a
+    # cada teste, para não dividir mem.db com as outras suítes do Núcleo.
+    monkeypatch.setenv("NUCLEO_MEMORIA_DB", str(_TMP / "mem.db"))
+    monkeypatch.setenv("NUCLEO_EVOLUCAO_FILE", str(_TMP / "evo.json"))
+    monkeypatch.setenv("NUCLEO_PARAMS_FILE", str(_TMP / "params.json"))
+    monkeypatch.setenv("NUCLEO_FEEDBACK_FILE", str(_TMP / "fb.json"))
+    monkeypatch.setenv("NUCLEO_CASOS_OURO", str(_TMP / "ouro.json"))
+
 
 def _limpar_estado():
     for f in ("params.json", "fb.json", "ouro.json", "evo.json"):
