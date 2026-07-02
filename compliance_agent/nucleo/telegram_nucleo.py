@@ -316,6 +316,42 @@ def cmd_fases(args: str) -> str:
     return "\n".join(linhas)
 
 
+# ── /fantasma ─────────────────────────────────────────────────────────────────
+
+def cmd_fantasma(args: str) -> str:
+    """
+    `/fantasma <CNPJ>` — triagem de empresa fantasma/fachada por sinais
+    objetivos cruzados (situação, capital, endereço-ninho, sanção…). Indício,
+    não acusação. Determinístico, sem IA.
+    """
+    alvo = re.sub(r"\D", "", (args or ""))
+    if len(alvo) != 14:
+        return "Use: `/fantasma 19.088.605/0001-04` (CNPJ, 14 dígitos)"
+    try:
+        from compliance_agent.empresa_fantasma import avaliar_cnpj
+        session = _sessao()
+        try:
+            r = avaliar_cnpj(session, alvo)
+        finally:
+            session.close()
+        if r is None:
+            return f"CNPJ `{alvo}` sem dados cadastrais na base."
+        emoji = {"alto": "🔴", "medio": "🟡", "baixo": "🟢"}[r["classificacao"]]
+        linhas = [f"{emoji} *FANTASMA? — {r['razao_social'] or alvo}*",
+                  f"Score de fachada: *{r['score']}/100 ({r['classificacao'].upper()})*"]
+        if r["sinais"]:
+            linhas.append("\n*Sinais:*")
+            for s in r["sinais"]:
+                linhas.append(f"• {s['id']} — {s['detalhe']}")
+        else:
+            linhas.append("\n✅ Nenhum sinal de fachada.")
+        linhas.append("\n_Triagem por indícios cruzados — verificar in loco / "
+                      "foto de fachada antes de concluir._")
+        return "\n".join(linhas)
+    except Exception as exc:  # noqa: BLE001
+        return f"❌ Erro: {exc}"
+
+
 # ── /placar ──────────────────────────────────────────────────────────────────
 
 def cmd_placar() -> str:
