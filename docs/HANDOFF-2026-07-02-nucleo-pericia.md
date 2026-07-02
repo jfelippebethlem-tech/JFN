@@ -201,6 +201,14 @@ Correções aplicadas ao integrar na VM (commits `c9ee249`…):
 até existir enriquecimento cadastral (Receita/QSA, CEIS/CNEP). `empresas_min` (74,5 mil)
 só tem razão social + natureza jurídica.
 
+> **RESOLVIDO em 2026-07-02** (sessão seguinte, commits `4347367`…): cadastro RFB via
+> BrasilAPI (backfill top-200 + on-demand no /pericia + enricher diário consertado),
+> CEIS/CNEP local (24,7 mil sanções, refresh semanal `jfn-sancoes.timer`), IND-SIT-01
+> (situação cadastral), identificador único `ob:<id>`/`ct:<id>`, `/promover` (caso-ouro),
+> /pericia cai p/ contratos, QPQ real (filtro SQL + sem falso-positivo de CPF-prefixo),
+> varredura do ciclo mira sancionados. Achados reais da 1ª varredura: IDEAS R$ 57,5M e
+> ITPLAN R$ 8,7M pagos com sanção impeditiva vigente.
+
 ## 10. Referências
 
 - `compliance_agent/nucleo/LEIAME.md` — referência técnica linha a linha de cada peça.
