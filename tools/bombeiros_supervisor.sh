@@ -25,6 +25,11 @@ while true; do
   # 2) ficha -> tabela ; 3) dossiê/árvore ; 4) Lex pericia (novas fichas) ; 5) camada Claude
   timeout 300 $PY -m tools.sei_depurar_db   >> data/sei_depurar.log 2>&1; say "depurar rc=$?"
   timeout 400 $PY -m tools.sei_arvore_build >> data/sei_arvore.log  2>&1; say "arvore rc=$?"
+  # 3b) atualiza o CORPUS de íntegra+OCR (cache-only, SEM browser) → alimenta direcionamento IRM/bombeiros
+  timeout 300 $PY -m tools.bombeiros_integra_supervisor >> data/bombeiros_integra.log 2>&1; say "integra rc=$?"
+  # 3c) ARQUIVO compacto: integra->txt+fotos de medicao+fases (cache-only, SEM browser)
+  #     consulta depois: tools/sei_consultar.py - ver docs/PLAYBOOK-SEI.md
+  timeout 400 $PY tools/sei_arquivar.py --pendentes >> data/sei_arquivar.log 2>&1; say "arquivar rc=$?"
   timeout 600 $PY -m tools.lex_bombeiros --max 20 >> data/bombeiros_lex.out 2>&1; say "lex rc=$?"
   # 5b) acha a LICITAÇÃO (pregão/edital) nos docs coletados e a enfileira (família 270xxx) → destrava
   #     direcionamento (ata) + sobrepreço (TR/itens) ao coletar o edital no próximo lote.

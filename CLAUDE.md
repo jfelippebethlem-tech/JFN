@@ -31,14 +31,14 @@ branch **`feat/lista-limpa`** · VM Linux Oracle Cloud ARM (`jfn-core`, 2 vCPU �
 
 ## FATOS-CHAVE (invariantes sempre-on; resto sob demanda)
 - **DB principal = `data/compliance.db`** (`ordens_bancarias`=OB TFE; `ob_orcamentaria_siafe`=OB SIAFE rica c/ NL/RE/PD/processo). **ITERJ = UG `133100`**.
-- 🧭 **NÃO REINVENTAR (gatilhos; detalhe no vault):** (1) **OB/pagamento → SEMPRE SIAFE direto, nunca o espelho TFE** (`siafe_ob_orcamentaria --por-ug`/`coletar_obs_sessao`); (2) **relatório/dossiê = produto da casa** `reporting/inteligencia.py` + `render_html`/`html_to_pdf` (Kroll, PDF) — nunca .txt à mão; (3) **duplicidade de contrato contínuo = lente de COMPETÊNCIA** (não valor): `compliance_agent/duplicidade_competencia.py` (guards: lag, dez lag-0, split=mesmo RE, reajuste-complemento, renovação ≠ ano civil) — só a NF fecha. Notas: `~/vault/codigo/relatorio-pipeline.md` · `~/vault/aprendizados/{fonte-ob-sempre-siafe-nunca-tfe,duplicidade-ob-competencia-vs-valor}.md` · `~/vault/casos/iterj-mgs-clean-pagamentos.md`.
+- 🧭 **NÃO REINVENTAR (gatilhos; detalhe no vault):** (1) **OB/pagamento → SEMPRE SIAFE direto, nunca o espelho TFE** (`siafe_ob_orcamentaria --por-ug`/`coletar_obs_sessao`); (2) **relatório/dossiê = produto da casa** `reporting/inteligencia.py` + `render_html`/`html_to_pdf` (Kroll, PDF) — nunca .txt à mão; (3) **processo SEI = ARQUIVO primeiro** — `tools/sei_consultar.py` (texto+fases+fotos de medição em `data/sei_arquivo/`, grátis) antes de browser/IA; caminho único `docs/PLAYBOOK-SEI.md`; (4) **duplicidade de contrato contínuo = lente de COMPETÊNCIA** (não valor): `compliance_agent/duplicidade_competencia.py` (guards: lag, dez lag-0, split=mesmo RE, reajuste-complemento, renovação ≠ ano civil) — só a NF fecha. Notas: `~/vault/codigo/relatorio-pipeline.md` · `~/vault/aprendizados/{fonte-ob-sempre-siafe-nunca-tfe,duplicidade-ob-competencia-vs-valor}.md` · `~/vault/casos/iterj-mgs-clean-pagamentos.md`.
 - Fatos de dados (DB schema/colunas · dupla numeração de UG · SIAFE-Rio 2/WAF · SEI sweep) → `docs/INDEX.md` /
   `docs/CLAUDE-REFERENCIA-COMPLETA.md` (§"FATOS DE DADOS" e §"UGs Relevantes") sob demanda. Símbolos no código → `gitnexus_context({name})`.
 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **JFN** (19550 symbols, 27552 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **JFN** (19607 symbols, 30346 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
