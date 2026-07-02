@@ -39,19 +39,28 @@ def _brl(v: float | None) -> str:
     return f"R$ {s}"
 
 
-def _fmt_laudo(laudo, referencia: str = "") -> str:
-    """Laudo → mensagem Telegram compacta (Markdown), com base legal."""
+def _fmt_laudo(laudo, referencia: str = "", titulo_humano: str = "",
+               contexto: str = "") -> str:
+    """Laudo → mensagem Telegram compacta (Markdown), com base legal.
+
+    ``referencia`` é a chave ÚNICA (ob:<id>) usada no /veredito; o nº de OB
+    humano vai em ``titulo_humano`` (não é único entre UGs). ``contexto`` =
+    favorecido/UG, para o perito saber de quem é o laudo.
+    """
     v = laudo.veredito
     c = laudo.dossie.contratacao
     emoji = _EMOJI.get(v.classificacao, "⚪")
+    titulo = titulo_humano or referencia or c.identificador or "sem ref."
     # confiança só faz sentido quando algo disparou ("confiança 0%" num laudo
     # limpo lê como se a perícia não valesse nada)
     conf = f" | confiança {v.confianca:.0%}" if v.achados else ""
     linhas = [
-        f"{emoji} *PERÍCIA — {referencia or c.identificador or 'sem ref.'}*",
+        f"{emoji} *PERÍCIA — {titulo}*",
         f"Risco: *{v.risco_score:.0f}/100 ({v.classificacao.upper()})* "
         f"— TCU P{v.probabilidade}×I{v.impacto}{conf}",
     ]
+    if contexto:
+        linhas.append(contexto)
     if c.valor:
         linhas.append(f"Valor: {_brl(c.valor)}")
     if not v.achados:
@@ -106,9 +115,10 @@ def cmd_pericia(args: str) -> str:
                            .filter(OrdemBancaria.favorecido_cpf == alvo)
                            .order_by(OrdemBancaria.valor.desc())
                            .limit(3).all())
-            if not obs:  # nº de OB exato
+            if not obs:  # nº de OB exato (NÃO é único: cada UG numera as suas)
                 obs = (session.query(OrdemBancaria)
-                       .filter(OrdemBancaria.numero_ob == alvo).all())
+                       .filter(OrdemBancaria.numero_ob == alvo)
+                       .order_by(OrdemBancaria.valor.desc()).limit(3).all())
             if not obs and len(alvo) >= 4 and not digitos:  # nome
                 obs = (session.query(OrdemBancaria)
                        .filter(OrdemBancaria.favorecido_nome.ilike(f"%{alvo}%"))
@@ -118,11 +128,13 @@ def cmd_pericia(args: str) -> str:
                         "Aceito CNPJ, nº de OB ou parte do nome do fornecedor.")
             blocos = []
             for ob in obs:
-                ref = ob.numero_ob or f"ob:{ob.id}"
                 # periciar_ob já registra na memória (usar_memoria=True);
                 # interativo → enriquece cadastro na hora se faltar
                 laudo = periciar_ob(session, ob, enriquecer=True)
-                blocos.append(_fmt_laudo(laudo, referencia=ref))
+                blocos.append(_fmt_laudo(laudo, referencia=f"ob:{ob.id}",
+                                         titulo_humano=ob.numero_ob or "",
+                                         contexto=f"{ob.favorecido_nome or '?'}"
+                                                  f" · UG {ob.ug_codigo or '?'}"))
             extra = ""
             if len(obs) > 1:
                 extra = f"_(3 maiores OBs de {obs[0].favorecido_nome})_\n\n"
@@ -145,6 +157,27 @@ def cmd_veredito(args: str) -> str:
     try:
         from compliance_agent.nucleo import memoria_pericial
         n = memoria_pericial.registrar_veredito(ref, decisao)
+        if n == 0 and re.fullmatch(r"\d{4}OB\d+", ref, re.IGNORECASE):
+            # perito digitou o nº humano da OB — resolve p/ ob:<id> (o nº não é
+            # único entre UGs; se houver mais de uma perícia, pede a exata)
+            try:
+                from compliance_agent.database.models import OrdemBancaria
+                session = _sessao()
+                try:
+                    ids = [f"ob:{i}" for (i,) in session.query(OrdemBancaria.id)
+                           .filter(OrdemBancaria.numero_ob == ref).all()]
+                finally:
+                    session.close()
+                na_memoria = [r for r in ids if memoria_pericial.tem_pericia(r)]
+                if len(na_memoria) == 1:
+                    n = memoria_pericial.registrar_veredito(na_memoria[0], decisao)
+                    ref = na_memoria[0]
+                elif len(na_memoria) > 1:
+                    return (f"`{ref}` é ambíguo (o nº de OB se repete entre UGs). "
+                            "Periciadas: " + ", ".join(f"`{r}`" for r in na_memoria)
+                            + f"\nUse: `/veredito ob:<id> {decisao}`")
+            except Exception:  # noqa: BLE001
+                pass
         if n == 0:
             return (f"Nenhuma perícia com referência `{ref}` na memória.\n"
                     "Rode `/pericia` primeiro — o laudo entra na memória "

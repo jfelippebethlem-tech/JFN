@@ -90,6 +90,16 @@ def registrar_laudo(laudo, referencia: str = "") -> int:
         con.close()
 
 
+def tem_pericia(referencia: str) -> bool:
+    """True se há laudo registrado com esta referência (sem efeito colateral)."""
+    con = _conectar()
+    try:
+        return con.execute("SELECT 1 FROM pericias WHERE referencia = ? LIMIT 1",
+                           (referencia,)).fetchone() is not None
+    finally:
+        con.close()
+
+
 def registrar_veredito(referencia: str, veredito: str) -> int:
     """
     Liga a decisão do perito (confirmado|descartado|inconclusivo) às perícias

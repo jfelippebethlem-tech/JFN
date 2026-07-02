@@ -167,6 +167,26 @@ def test_sancionado_dispara_alta_confianca():
     assert san is not None and san.confianca >= 0.9
 
 
+def test_situacao_cadastral_irregular_dispara():
+    """Pagamento a empresa BAIXADA/INAPTA/SUSPENSA na Receita → IND-SIT-01.
+    ATIVA (ou sem dado) não dispara."""
+    for situacao in ("BAIXADA", "INAPTA", "SUSPENSA"):
+        d = Dossie(
+            contratacao=Contratacao(identificador="OB-1", valor=1_000_000,
+                                    data="2026-05-01"),
+            fornecedor=Fornecedor(cnpj="11222333000181", nome="X LTDA",
+                                  situacao=situacao),
+        )
+        assert "IND-SIT-01" in {a.indicador_id for a in avaliar_todos(d)}, situacao
+    for situacao in ("ATIVA", ""):
+        d = Dossie(
+            contratacao=Contratacao(identificador="OB-1", valor=1_000_000,
+                                    data="2026-05-01"),
+            fornecedor=Fornecedor(cnpj="11222333000181", situacao=situacao),
+        )
+        assert "IND-SIT-01" not in {a.indicador_id for a in avaliar_todos(d)}
+
+
 def test_dossie_limpo_nao_dispara_nada():
     d = Dossie(
         contratacao=Contratacao(valor=80_000, data=date(2024, 1, 1),
@@ -487,6 +507,77 @@ def test_periciar_ob_enriquece_on_demand():
         assert "IND-EMP-01" in {a.indicador_id for a in laudo.veredito.achados}
     finally:
         enr.enriquecer_ob_cnpj = orig
+
+
+def test_periciar_ob_detecta_sancao_vigente():
+    """Favorecido no CEIS/CNEP local com sanção VIGENTE na data do pagamento
+    → IND-SAN-01. Sanção que começa depois do pagamento não macula (honestidade)."""
+    if not _tem_sqlalchemy():
+        return
+    from sqlalchemy import text
+    from compliance_agent.database.models import OrdemBancaria
+    from compliance_agent.nucleo.adaptador_db import periciar_ob
+
+    s = _sessao_ob_memoria()
+    s.execute(text(
+        "CREATE TABLE sancoes_federais (cadastro TEXT, cpf_cnpj TEXT, nome TEXT,"
+        " categoria TEXT, data_inicio TEXT, data_fim TEXT, orgao TEXT, uf TEXT,"
+        " processo TEXT, fundamentacao TEXT)"))
+    s.execute(text(
+        "INSERT INTO sancoes_federais VALUES ('CEIS','11222333000181','X LTDA',"
+        "'Impedimento de contratar','2025-01-01','2027-01-01','TCE','RJ','','')"))
+    s.commit()
+
+    ob = OrdemBancaria(numero_ob="2026OB88888", data_emissao=date(2026, 5, 1),
+                       ug_codigo="290100", favorecido_cpf="11222333000181",
+                       favorecido_nome="X LTDA", valor=100_000.0,
+                       tipo_ob="Saúde", categoria="tfe_ob")
+    s.add(ob); s.commit()
+    laudo = periciar_ob(s, ob)
+    assert "IND-SAN-01" in {a.indicador_id for a in laudo.veredito.achados}
+
+    # pagamento ANTERIOR ao início da sanção → não dispara
+    ob2 = OrdemBancaria(numero_ob="2024OB88887", data_emissao=date(2024, 6, 1),
+                        ug_codigo="290100", favorecido_cpf="11222333000181",
+                        favorecido_nome="X LTDA", valor=100_000.0,
+                        tipo_ob="Saúde", categoria="tfe_ob")
+    s.add(ob2); s.commit()
+    laudo2 = periciar_ob(s, ob2)
+    assert "IND-SAN-01" not in {a.indicador_id for a in laudo2.veredito.achados}
+
+    # 'Multa' (CNEP) não impede contratar → não dispara (honestidade)
+    s.execute(text(
+        "INSERT INTO sancoes_federais VALUES ('CNEP','99888777000166','Y SA',"
+        "'Multa','2025-01-01',NULL,'CGU','DF','','')"))
+    s.commit()
+    ob3 = OrdemBancaria(numero_ob="2026OB88886", data_emissao=date(2026, 5, 1),
+                        ug_codigo="290100", favorecido_cpf="99888777000166",
+                        favorecido_nome="Y SA", valor=100_000.0,
+                        tipo_ob="Saúde", categoria="tfe_ob")
+    s.add(ob3); s.commit()
+    laudo3 = periciar_ob(s, ob3)
+    assert "IND-SAN-01" not in {a.indicador_id for a in laudo3.veredito.achados}
+
+
+def test_periciar_ob_identificador_unico_global():
+    """numero_ob NÃO é único (cada UG numera as suas) — o identificador da
+    memória/veredito tem de ser 'ob:<id>' SEMPRE, senão OBs de UGs diferentes
+    colidem no dedup do ciclo e no /veredito."""
+    if not _tem_sqlalchemy():
+        return
+    from compliance_agent.database.models import OrdemBancaria
+    from compliance_agent.nucleo.adaptador_db import periciar_ob
+
+    s = _sessao_ob_memoria()
+    ob_a = OrdemBancaria(numero_ob="2026OB04750", data_emissao=date(2026, 4, 9),
+                         ug_codigo="296100", favorecido_cpf="24006302000488",
+                         valor=15_683_746.44, tipo_ob="Saúde", categoria="tfe_ob")
+    ob_b = OrdemBancaria(numero_ob="2026OB04750", data_emissao=date(2026, 4, 2),
+                         ug_codigo="166100", favorecido_cpf="33267267000107",
+                         valor=153_812.98, tipo_ob="Obras", categoria="tfe_ob")
+    s.add_all([ob_a, ob_b]); s.commit()
+    ids = {periciar_ob(s, o).dossie.contratacao.identificador for o in (ob_a, ob_b)}
+    assert ids == {f"ob:{ob_a.id}", f"ob:{ob_b.id}"}
 
 
 def test_periciar_ob_identificador_sem_numero():

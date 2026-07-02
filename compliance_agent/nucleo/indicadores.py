@@ -236,6 +236,26 @@ def _empresa_sancionada(d: Dossie) -> Achado | None:
     return None
 
 
+_SITUACOES_IRREGULARES = ("BAIXAD", "INAPT", "SUSPENS", "NULA")
+
+
+def _situacao_cadastral_irregular(d: Dossie) -> Achado | None:
+    f = d.fornecedor
+    sit = (f.situacao or "").upper()
+    if any(s in sit for s in _SITUACOES_IRREGULARES):
+        return _POR_ID["IND-SIT-01"]._mk(
+            confianca=0.9,
+            observado=(f"Fornecedor {f.nome or f.cnpj} consta HOJE como "
+                       f"'{sit}' no cadastro da Receita Federal — verificar a "
+                       "situação vigente na data do pagamento."),
+            limite=("Liquidação de despesa exige credor regular "
+                    "(arts. 62-63, Lei 4.320/64); CNPJ baixado/inapto não "
+                    "emite nota fiscal válida."),
+            params=[],
+        )
+    return None
+
+
 def _quid_pro_quo(d: Dossie) -> Achado | None:
     c, f = d.contratacao, d.fornecedor
     if not f.doacoes_eleitorais or not c.data or not c.valor:
@@ -332,6 +352,11 @@ INDICADORES: list[Indicador] = [
         "Fornecedor sancionado (CEIS/CNEP) contratado", "alta",
         ["Lei 14.133/2021, art. 156"],
         _empresa_sancionada)),
+    _com_mk(Indicador(
+        "IND-SIT-01", "empresa_recente_grande_contrato",
+        "Pagamento a empresa com situação cadastral irregular", "alta",
+        ["Lei 4.320/64, arts. 62-63", "IN RFB 2.119/2022"],
+        _situacao_cadastral_irregular)),
     _com_mk(Indicador(
         "IND-QPQ-01", "doacao_contrato_reciproco",
         "Doação eleitoral seguida de contrato (quid pro quo)", "alta",

@@ -103,6 +103,7 @@ async def enriquecer_ob_cnpj(session, ob) -> dict:
     empresa.porte        = str(data.get("porte") or "")[:50]
     empresa.natureza_jur = str(data.get("natureza_juridica") or "")[:100]
     empresa.updated_at   = datetime.utcnow()
+    session.flush()  # garante empresa.id ANTES dos sócios (senão NOT NULL em empresa_socios)
 
     # Sócios (quadro societário)
     qsa = data.get("qsa") or data.get("socios") or []
