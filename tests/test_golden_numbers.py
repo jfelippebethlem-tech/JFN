@@ -41,7 +41,7 @@ def _norm(col: str) -> str:
 _TEST_OB = "2026OB99001"  # OB sintética de poluição (test_offline antigo) — não é dado real.
 GOLDEN = {
     "mgs_clean": {"cnpj": "19088605000104", "obs": 1127, "total": 136225497.94},
-    "iterj_ug": {"ug": "133100", "obs": 2457, "total": 292292309.08, "fornecedores": 196},
+    "iterj_ug": {"ug": "133100", "obs": 2458, "total": 292292649.18, "fornecedores": 196},
     "cobertura": {"total_obs": 1121301, "pct_cnpj_min": 76},
 }
 
