@@ -1,0 +1,9 @@
+[Unit]
+Description=JFN — íntegras SEI da fila, diário 03:30 (madrugada, VM ociosa)
+
+[Timer]
+OnCalendar=*-*-* 03:30
+Persistent=true
+
+[Install]
+WantedBy=timers.target

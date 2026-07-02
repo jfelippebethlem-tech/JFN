@@ -1,0 +1,8 @@
+[Unit]
+Description=JFN — drena a fila de íntegras SEI (baixa+arquiva N processos)
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/JFN
+Environment=PYTHONPATH=%h/JFN
+ExecStart=%h/JFN/.venv/bin/python tools/sei_integra_fila.py --max 6
