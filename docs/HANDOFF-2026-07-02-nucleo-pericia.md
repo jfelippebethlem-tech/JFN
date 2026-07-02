@@ -173,13 +173,35 @@ e6ad820  feat(nucleo): ciclo de inteligência progressiva — aprende a cada per
 | Memória progressiva (referência de preço, perfil de reincidência) | ✅ |
 | Loop de autoaprimoramento com freio de segurança (conjunto-ouro) | ✅ |
 | Operação via Telegram sem depender de LLM nos fluxos periciais | ✅ |
-| Agendamento diário (systemd timer) | ✅ (arquivos prontos; **instalação na VM real ainda não confirmada** — depende de acesso à VM) |
+| Agendamento diário (systemd timer) | ✅ instalado e ativo na VM em 2026-07-01 (`jfn-nucleo-ciclo.timer`, diário 06:30) |
 | Conjunto-ouro alimentado só com casos sintéticos + o que o perito confirmar em produção | ⚠️ Só 8 casos embutidos hoje; cresce com uso real via `/veredito` |
 | Mineração de red flags novas (`descobrir_red_flags`) | ✅ implementado; ainda não testado contra volume real de perícias confirmadas |
 | Ligação do `/pericia` a fornecedores sem OB ainda coletada (só via PNCP/contrato direto) | 🔲 não coberto — hoje `/pericia` só busca em `OrdemBancaria` |
 | Promoção automática de perícia confirmada a caso-ouro (hoje é manual via `adicionar_caso_ouro`) | 🔲 pendente — decisão deliberada de expor isso ao perito ou automatizar com salvaguarda |
 
-## 9. Referências
+## 9. Adendo pós-merge (2026-07-01, sessão de ativação)
+
+Correções aplicadas ao integrar na VM (commits `c9ee249`…):
+
+- **Isolamento de teste**: as 3 suítes dividiam o `mem.db` (o último import na coleta
+  do pytest vencia o `os.environ`) — fixtures autouse repinam por módulo/teste. 53/53.
+- **Categoria real da OB**: no dado TFE, `categoria` guarda o marcador de fonte
+  (`'tfe_ob'`, 1,12M linhas) e a categoria de verdade vive em `tipo_ob` — o adaptador
+  agora usa `tipo_ob` normalizado e descarta `Outros`.
+- **Inteligência progressiva no fluxo real**: `periciar_ob` passou a `usar_memoria=True`
+  (consome referência aprendida E registra); callers pararam de registrar por fora.
+- **Quid pro quo estava morto**: `_doacoes_do_fornecedor` fazia `limit(500)` ANTES do
+  filtro (542 mil doações) e o enriquecimento só rodava para empresa cadastrada em
+  `empresas` (que tem **1 linha**). Corrigido: filtro SQL por raiz + busca por CNPJ do
+  favorecido. Prova real: OB 2023OB01363 (Studio Bras) subiu para 🔴 60/100 ALTO.
+- **Formato BR** nos valores dos achados (`R$ 117.772,50`, não `R$ 117,772.50`).
+
+**Limite de dado conhecido**: `empresas` tem 1 linha e não há tabela de sanções no
+`compliance.db` — IND de empresa recém-aberta/capital/sanção não têm insumo em produção
+até existir enriquecimento cadastral (Receita/QSA, CEIS/CNEP). `empresas_min` (74,5 mil)
+só tem razão social + natureza jurídica.
+
+## 10. Referências
 
 - `compliance_agent/nucleo/LEIAME.md` — referência técnica linha a linha de cada peça.
 - `docs/HANDOFF-2026-06-06-completo.md` — estado do ecossistema (JFN/Massare/Yoda/Hermes)
