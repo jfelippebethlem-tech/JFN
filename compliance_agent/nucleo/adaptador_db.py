@@ -192,18 +192,38 @@ def _categoria_de_ob(ob) -> str:
     return "" if cat in {"outros", "outras"} else cat
 
 
-def periciar_ob(session, ob) -> Laudo:
+def _enriquecer_na_hora(session, ob) -> None:
+    """
+    Busca o cadastro do favorecido na BrasilAPI e grava em `empresas`
+    (reusa o cnpj_enricher). Fail-open: rede fora/timeout → perícia segue
+    sem cadastro, como antes. Só para uso INTERATIVO (1–3 CNPJs) — nunca
+    ligar no ciclo em lote, que faria centenas de chamadas numa API grátis.
+    """
+    import asyncio
+    try:
+        import compliance_agent.enrichers.cnpj_enricher as enr
+        asyncio.run(asyncio.wait_for(enr.enriquecer_ob_cnpj(session, ob), 25))
+    except Exception:
+        pass
+
+
+def periciar_ob(session, ob, enriquecer: bool = False) -> Laudo:
     """
     Perícia de uma Ordem Bancária (pagamento). Sem edital/propostas, mas cobre
     empresa recém-aberta, sancionamento, quid pro quo e valor colado ao teto.
     Usa a memória pericial: consome a referência de preço aprendida e registra
     este laudo (inteligência progressiva no fluxo real — Yoda e ciclo).
+    Com ``enriquecer=True`` (fluxo interativo), favorecido sem cadastro é
+    buscado na hora na Receita (BrasilAPI) antes de periciar.
     """
     from compliance_agent.database.models import Empresa
     cnpj = _digits(getattr(ob, "favorecido_cpf", ""))
     empresa = None
     if len(cnpj) == 14:
         empresa = session.query(Empresa).filter(Empresa.cnpj == cnpj).first()
+        if empresa is None and enriquecer:
+            _enriquecer_na_hora(session, ob)
+            empresa = session.query(Empresa).filter(Empresa.cnpj == cnpj).first()
     fornecedor = _fornecedor_de_empresa(empresa, session)
     if not fornecedor.cnpj and len(cnpj) == 14:
         fornecedor.cnpj = cnpj
