@@ -168,9 +168,13 @@ def periciar_contrato(session, contrato_id: int) -> Laudo | None:
                if getattr(c, "empresa_id", None) else None)
     contratacao = _contratacao_de_contrato(c)
     contratacao.categoria = _categoria(contratacao.objeto)
+    fornecedor = _fornecedor_de_empresa(empresa, session)
+    if fornecedor.cnpj and not fornecedor.sancionado:
+        fornecedor.sancionado = _tem_sancao_vigente(
+            session, fornecedor.cnpj, contratacao.data)
     return periciar(
         contratacao=contratacao,
-        fornecedor=_fornecedor_de_empresa(empresa, session),
+        fornecedor=fornecedor,
         historico=_historico_orgao_fornecedor(session, c),
         referencia_categoria=_referencia_categoria(session, contratacao.categoria),
     )
@@ -190,6 +194,34 @@ def _categoria_de_ob(ob) -> str:
         bruto = (getattr(ob, "tipo_ob", "") or "").strip()
     cat = bruto.lower().split(" / ")[0].split()[0] if bruto else ""
     return "" if cat in {"outros", "outras"} else cat
+
+
+def _tem_sancao_vigente(session, doc: str, ref=None) -> bool:
+    """
+    True se o CPF/CNPJ consta em `sancoes_federais` (CEIS/CNEP local, ver
+    tools/ingerir_ceis_cnep.py) com sanção IMPEDITIVA (impedimento, suspensão,
+    inidoneidade, proibição) VIGENTE na data de referência (data do
+    pagamento/contratação). 'Multa' do CNEP não impede contratar — não conta
+    (indício honesto). Sanção iniciada depois da referência não macula o ato.
+    Tabela ausente/erro → False (fail-open).
+    """
+    if not doc:
+        return False
+    ref_iso = (ref.isoformat() if hasattr(ref, "isoformat") else str(ref or "")) \
+        or __import__("datetime").date.today().isoformat()
+    try:
+        from sqlalchemy import text
+        row = session.execute(text(
+            "SELECT 1 FROM sancoes_federais WHERE cpf_cnpj = :doc "
+            "AND (data_inicio IS NULL OR data_inicio <= :ref) "
+            "AND (data_fim IS NULL OR data_fim >= :ref) "
+            "AND (lower(categoria) LIKE '%imped%' OR lower(categoria) LIKE '%suspens%' "
+            " OR lower(categoria) LIKE '%inid%' OR lower(categoria) LIKE '%proib%' "
+            " OR lower(categoria) LIKE '%declara%') LIMIT 1"),
+            {"doc": doc, "ref": ref_iso}).fetchone()
+        return row is not None
+    except Exception:
+        return False
 
 
 def _enriquecer_na_hora(session, ob) -> None:
@@ -232,8 +264,15 @@ def periciar_ob(session, ob, enriquecer: bool = False) -> Laudo:
     # (na base real quase nenhum favorecido tem linha lá)
     if fornecedor.cnpj and not fornecedor.doacoes_eleitorais:
         fornecedor.doacoes_eleitorais = _doacoes_do_fornecedor(session, fornecedor.cnpj)
+    data_ref = (getattr(ob, "data_emissao", None)
+                or getattr(ob, "data_pagamento", None))
+    if not fornecedor.sancionado:
+        fornecedor.sancionado = _tem_sancao_vigente(session, cnpj, data_ref)
     contratacao = Contratacao(
-        identificador=(getattr(ob, "numero_ob", "") or f"ob:{getattr(ob, 'id', '')}"),
+        # SEMPRE ob:<id>: numero_ob NÃO é único (cada UG numera as suas OBs) —
+        # com numero_ob como chave, OBs de UGs diferentes colidiam na memória
+        # pericial, no dedup do ciclo e no /veredito.
+        identificador=f"ob:{getattr(ob, 'id', '')}",
         objeto=getattr(ob, "observacao", "") or "",
         orgao=getattr(ob, "ug_nome", "") or "",
         valor=getattr(ob, "valor", None),

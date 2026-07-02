@@ -53,7 +53,7 @@ def _periciar_base(session, limite: int = 200) -> dict:
              .order_by(OrdemBancaria.valor.desc())
              .limit(limite * 3))
         for ob in q:
-            ref = ob.numero_ob or f"ob:{ob.id}"
+            ref = f"ob:{ob.id}"  # numero_ob NÃO é único entre UGs
             if ref in ja:
                 continue
             # periciar_ob já registra na memória (usar_memoria=True)
