@@ -383,6 +383,12 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     res["cnpjs"] = sorted(set(re.findall(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}", tot)))
     res["valores"] = sorted(set(re.findall(r"R\$\s*[\d.,]+", tot)))
     res["_cached_at"] = datetime.now().isoformat()
+    # CAIXA (0 docs + rel>=15 = inbox da unidade; leitura que FALHOU, não processo vazio) → NÃO gravar
+    # cache (envenenava a memória: consumidor via "0 docs"=vazio por 24h — INDISPONÍVEL ≠ 0) e marcar
+    # p/ o caller. Fix constância 2026-07-03; ver vault/aprendizados/sei-leitura-itkava.
+    if not res["documentos"] and len(res["relacionados"]) >= 15:
+        res["indisponivel"] = True
+        return res
     try:
         cache_file.write_text(_json.dumps(res, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
         res["_cache_path"] = str(cache_file)
