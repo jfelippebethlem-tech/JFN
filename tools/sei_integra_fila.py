@@ -41,6 +41,14 @@ def _proc_limpo(sei: str) -> str:
     return f"{m.group(1)}/{m.group(2)}/{m.group(3)}" if m else ""
 
 
+def _arquivado_ok(dir_arq: Path) -> bool:
+    """True só se o arquivo tem CONTEÚDO real (>=1 texto/*.txt). Um STUB (manifest.json docs=0 de
+    download que falhou) NÃO conta — senão a fila pula pra sempre e o processo nunca é baixado
+    ('uns salvos, outros não'). Fix 2026-07-03; ver vault/aprendizados/sei-leitura-itkava."""
+    txt = dir_arq / "texto"
+    return txt.is_dir() and any(txt.glob("*.txt"))
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--max", type=int, default=int(os.environ.get("INTEGRA_FILA_MAX", "2")))
@@ -60,8 +68,8 @@ def main() -> int:
         if not proc:
             continue
         tag = proc.replace("/", "_")
-        if (ARQUIVO / tag / "manifest.json").exists():
-            continue                      # já arquivado — resumível
+        if _arquivado_ok(ARQUIVO / tag):
+            continue                      # já arquivado COM conteúdo — resumível
         alvos.append(proc)
         if len(alvos) >= args.max:
             break
