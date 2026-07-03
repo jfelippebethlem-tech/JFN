@@ -190,6 +190,48 @@ def _arvores_encerradas() -> set[str]:
     return out
 
 
+def _iso(d: str) -> str:
+    """Normaliza data p/ ISO YYYY-MM-DD. Aceita ISO (TFE) e dd/mm/yyyy (SIAFE). '' se não reconhecer."""
+    d = (d or "").strip()
+    if re.match(r"\d{4}-\d{2}-\d{2}", d):
+        return d[:10]
+    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", d)
+    return f"{m.group(3)}-{m.group(2)}-{m.group(1)}" if m else ""
+
+
+def _ultima_ob_por_processo() -> dict:
+    """Data (ISO) da OB MAIS RECENTE de cada processo SEI, cruzando as DUAS fontes (TFE + SIAFE 1/2).
+    FRESCOR POR OB (pedido do dono 2026-07-03): uma OB nova = o processo SEI andou (novo pagamento/etapa)
+    → tem de ser re-lido, senão a perícia roda com pagamentos/docs INCOMPLETOS. Honesto: sem DB → {}."""
+    if not DB.exists():
+        return {}
+    out: dict[str, str] = {}
+    con = sqlite3.connect(str(DB))
+    try:
+        # TFE (ordens_bancarias): datas já ISO
+        for proc, dt in con.execute(
+            "SELECT numero_sei, MAX(COALESCE(data_pagamento, data_emissao)) FROM ordens_bancarias "
+            "WHERE numero_sei LIKE 'SEI-%/%/20%' GROUP BY numero_sei"):
+            if proc and dt:
+                out[proc] = max(out.get(proc, ""), dt[:10])
+        # SIAFE (ob_orcamentaria_siafe): data dd/mm/yyyy → reduz em Python (não ordena lexicalmente)
+        for proc, dt in con.execute(
+            "SELECT processo, data_emissao FROM ob_orcamentaria_siafe WHERE processo LIKE 'SEI-%/%/20%'"):
+            iso = _iso(dt)
+            if proc and iso:
+                out[proc] = max(out.get(proc, ""), iso)
+    except sqlite3.Error:
+        pass
+    finally:
+        con.close()
+    return out
+
+
+def _ob_desatualizada(ult_ob_iso: str, lido_em: str) -> bool:
+    """True se há OB (ISO) mais NOVA que a última leitura (checkpoint 'em') → processo andou → re-ler."""
+    return bool(ult_ob_iso and lido_em and ult_ob_iso > lido_em[:10])
+
+
 def _falha_recente(f: dict | None, horas: float = 4.0) -> bool:
     """COOLOFF de janela (fix constância 2026-07-03): última tentativa FALHOU (0 docs) há menos de `horas`
     → não re-tentar na MESMA janela de WAF. Sem isto, as 3 tentativas caem numa única hora ruim e o
@@ -282,6 +324,12 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
     # Unidades APRENDIDAS como fora do acesso do itkava (amostra suficiente, todas 0 docs) → pular o resto
     # delas (são INDISPONÍVEL por acesso, não vazias) em vez de tentar milhares fútilmente. Adaptativo.
     sem_acesso = _unidades_sem_acesso(prog)
+    # FRESCOR POR OB: última OB (TFE+SIAFE) de cada processo → re-ler o que ANDOU desde a leitura.
+    ob_recente = _ultima_ob_por_processo()
+    _n_stale = sum(1 for p, f in prog["feitos"].items()
+                   if f.get("n_docs", 0) and _ob_desatualizada(ob_recente.get(p, ""), f.get("em", "")))
+    if _n_stale:
+        _log(f"[frescor] {_n_stale} processos já lidos têm OB mais nova que a leitura → serão re-lidos.")
     # FASE UPDATE-DIÁRIO (regra do dono 'não pode errar'): só AQUI pulamos as árvores ENCERRADAS — gate
     # firme da sei_arvore (situação autoritativa arquivado/concluído + sem OB recente + sem aditivo + sem
     # filho vigente). NUNCA no drain inicial (diario=False), p/ não deixar processo por ler na 1ª passada.
@@ -305,6 +353,11 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         f = prog["feitos"].get(p)
         if _falha_recente(f):  # cooloff: falha há <4h espera a PRÓXIMA janela de WAF (não queima tentativa)
             return True
+        # FRESCOR POR OB: OB mais nova que a última leitura → processo andou → NÃO pular (re-ler p/ perícia
+        # completa). Vem depois do cooloff (não martela na mesma janela) e do sem_acesso. Auto-limita: ao
+        # re-ler, 'em' vira agora() > data da OB → não re-dispara.
+        if f and f.get("n_docs", 0) and _ob_desatualizada(ob_recente.get(p, ""), f.get("em", "")):
+            return False
         # já lido com docs, ou já tentado >=3x sem sucesso (processo vazio/restrito de verdade)
         return bool(f and (f.get("n_docs", 0) > 0 or f.get("tentativas", 1) >= 3))
 
