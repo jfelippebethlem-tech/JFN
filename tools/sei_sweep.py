@@ -190,6 +190,18 @@ def _arvores_encerradas() -> set[str]:
     return out
 
 
+def _falha_recente(f: dict | None, horas: float = 4.0) -> bool:
+    """COOLOFF de janela (fix constância 2026-07-03): última tentativa FALHOU (0 docs) há menos de `horas`
+    → não re-tentar na MESMA janela de WAF. Sem isto, as 3 tentativas caem numa única hora ruim e o
+    processo estaciona injustamente (caso 120228: 3 tentativas em 55min de 28/06 → preso 5 dias)."""
+    if not f or (f.get("n_docs", 0) or 0) > 0 or not f.get("em"):
+        return False
+    try:
+        return (datetime.now() - datetime.fromisoformat(f["em"])).total_seconds() < horas * 3600
+    except (ValueError, TypeError):
+        return False
+
+
 def _ja_lido_ok(proc: str) -> bool:
     """True só se o processo já foi lido COM SUCESSO (documentos>0) e fresco (<7d). Um cache de 0 docs
     é leitura intermitente que FALHOU — não pular, retentar (a abertura do SEI é flaky)."""
@@ -291,6 +303,8 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
         if diario and p in encerradas:  # SÓ no update-diário: árvore encerrada (gate firme corroborado)
             return True
         f = prog["feitos"].get(p)
+        if _falha_recente(f):  # cooloff: falha há <4h espera a PRÓXIMA janela de WAF (não queima tentativa)
+            return True
         # já lido com docs, ou já tentado >=3x sem sucesso (processo vazio/restrito de verdade)
         return bool(f and (f.get("n_docs", 0) > 0 or f.get("tentativas", 1) >= 3))
 
