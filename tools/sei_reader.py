@@ -295,8 +295,11 @@ async def _montar_resultado_cracked(pg, proc: str, dump: dict, usar_cache: bool 
            "cadeado": dump.get("cadeado", False), "n_docs_restritos": dump.get("n_docs_restritos", 0),
            "arvore_carregou": dump.get("arvore_carregou"), "texto": dump.get("texto", ""),
            "captcha_resolvido": False, "_login": {"ok": True, "via": "sei_reader/itkava+cracked"}}
+    # Mesmo bound do caminho normal (SEI_MAX_DOCS=40): o antigo [:8] deixava os anexos
+    # de NF (que vêm tarde na árvore) fora do OCR — gargalo corrigido. OCR de scan via _conteudo_doc.
+    _max_docs = int(os.environ.get("SEI_MAX_DOCS", "40"))
     docs_txt = []
-    for doc in dump.get("documentos", [])[:8]:
+    for doc in dump.get("documentos", [])[:_max_docs]:
         c = await _conteudo_doc(pg, doc)
         if c:
             docs_txt.append(c)
