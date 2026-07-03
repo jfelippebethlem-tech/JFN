@@ -44,6 +44,17 @@ def _proc_limpo(sei: str) -> str:
     return f"{m.group(1)}/{m.group(2)}/{m.group(3)}" if m else ""
 
 
+def _ja_rodando() -> bool:
+    """Single-instance: já há OUTRA sei_integra_fila viva? Evita 2 browsers (o timer 03:30 --max 6 +
+    o cron --geral podem sobrepor; sei_integra_completa não tem browser_lock). Honesto: erro → False."""
+    try:
+        out = subprocess.run(["pgrep", "-f", "sei_integra_fila.py"],
+                             capture_output=True, text=True).stdout.split()
+        return any(p.isdigit() and int(p) != os.getpid() for p in out)
+    except OSError:
+        return False
+
+
 def _sweep_no_browser() -> bool:
     """Há um sweep segurando o browser AGORA? (sei_integra_completa NÃO usa browser_lock → nunca 2 browsers)."""
     try:
@@ -116,6 +127,10 @@ def main() -> int:
     ap.add_argument("--segundos", type=int, default=int(os.environ.get("INTEGRA_FILA_SEGUNDOS", "0")),
                     help="orçamento de tempo (passe bounded); 0 = usa --max")
     args = ap.parse_args()
+
+    if _ja_rodando():  # NUNCA 2 browsers: outra instância (timer 03:30 vs cron) já baixa → sai limpo
+        _log("outra sei_integra_fila já em execução — saindo (single-instance, evita 2 browsers)")
+        return 0
 
     # candidatos ordenados (não arquivados). Fonte: geral (todo o SEI) ou a fila json (bombeiros).
     if args.geral:
