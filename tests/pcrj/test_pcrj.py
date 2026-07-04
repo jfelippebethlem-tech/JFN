@@ -145,6 +145,30 @@ class TestRelatorioGabinete:
         assert "Andreia Domingos" in ctx["secoes"][0]["html"]      # aparece na seção de vínculos
         assert "cessão/requisição" in ctx["secoes"][0]["html"]     # Requisitado → cessão
 
+    def test_agregado_por_parlamentar_titular_e_legislatura(self, tmp_path):
+        from compliance_agent.pcrj import db as _db
+        from compliance_agent.pcrj import relatorio_gabinete as rg
+        p = tmp_path / "g2.db"
+        _db.inicializar(p)
+        con = _db.conectar(p)
+        con.execute("INSERT INTO pcrj_gabinetes(gabinete_num,vereador,vereador_norm,titular,"
+                    "suplente,coletado_em) VALUES (11,'Jorge Fellipe (suplente)','JORGE FELLIPE',"
+                    "'Felipe Michel','Jorge Fellipe','x')")
+        # um nomeado da legislatura atual e um de ingresso anterior (atribuição incerta)
+        con.execute("INSERT INTO pcrj_camara_servidores(nome,nome_norm,cargo,lotacao,gabinete_num,"
+                    "tipo_lotacao,ano_ingresso,doc_num,coletado_em) VALUES "
+                    "('Novo Assessor','NOVO ASSESSOR','ASSESSOR','Gab',11,'gabinete_parlamentar',2025,'1','x')")
+        con.execute("INSERT INTO pcrj_camara_servidores(nome,nome_norm,cargo,lotacao,gabinete_num,"
+                    "tipo_lotacao,ano_ingresso,doc_num,coletado_em) VALUES "
+                    "('Antigo Assessor','ANTIGO ASSESSOR','ASSESSOR','Gab',11,'gabinete_parlamentar',2015,'2','x')")
+        con.commit(); con.close()
+        ctx = rg.montar_ctx_completo(db_path=p)
+        sec = [s for s in ctx["secoes"] if s["titulo"].startswith("Felipe Michel")]
+        assert sec, "seção deve ser titulada pelo TITULAR (Felipe Michel), não pelo nº"
+        html = sec[0]["html"]
+        assert "Suplente em exercício" in html and "Jorge Fellipe" in html
+        assert "anterior*" in html   # o ingresso 2015 é marcado como atribuição histórica incerta
+
 
 class TestPipeline:
     def test_etapas_conhecidas(self):

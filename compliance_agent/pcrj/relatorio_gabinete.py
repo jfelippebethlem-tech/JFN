@@ -59,16 +59,29 @@ def _tabela_vinculos_gab(vincs: list[dict]) -> str:
             + "".join(linhas) + "</table>")
 
 
+_LEGISLATURA_ATUAL = 2025  # posse dos eleitos em 2024
+
+
 def _tabela_listagem(con, gab: int) -> str:
     rows = con.execute(
         """SELECT DISTINCT nome, cargo, simbolo, vinculo, ano_ingresso, data1, data2
-           FROM pcrj_camara_servidores WHERE gabinete_num=? ORDER BY nome""", (gab,)).fetchall()
-    linhas = [f"<tr><td>{_e(r['nome'])}</td><td>{_e(r['cargo'])}</td><td>{_e(r['simbolo'])}</td>"
-              f"<td>{_e(r['vinculo'])}</td><td>{_e(r['data1'])}</td><td>{_e(r['data2'])}</td></tr>"
-              for r in rows]
+           FROM pcrj_camara_servidores WHERE gabinete_num=? ORDER BY ano_ingresso DESC, nome""",
+        (gab,)).fetchall()
+    linhas = []
+    for r in rows:
+        atual = (r["ano_ingresso"] or 0) >= _LEGISLATURA_ATUAL
+        leg = ("atual" if atual
+               else "<span style='color:#b26a00'>anterior*</span>")
+        linhas.append(
+            f"<tr><td>{_e(r['nome'])}</td><td>{_e(r['cargo'])}</td><td>{_e(r['simbolo'])}</td>"
+            f"<td>{_e(r['vinculo'])}</td><td>{_e(r['data1'])}</td>"
+            f"<td style='text-align:right'>{_e(r['ano_ingresso'])}</td><td>{leg}</td></tr>")
     return ("<table><tr><th>Nome</th><th>Cargo</th><th>Símbolo</th><th>Vínculo</th>"
-            "<th>Data do ato</th><th>Data publicação/exercício</th></tr>"
-            + "".join(linhas) + "</table>")
+            "<th>Data do ato</th><th>Ingresso</th><th>Legislatura</th></tr>"
+            + "".join(linhas) + "</table>"
+            "<p class='nota'>* ingresso anterior a 2025: o número do gabinete pertenceu a "
+            "vereador(es) de legislatura(s) anterior(es); a atribuição ao parlamentar atual é "
+            "apenas indicativa (a fonte pública só publica o mapa vigente).</p>")
 
 
 def _candidaturas_gab(con, gab: int) -> str:
@@ -121,10 +134,13 @@ def _indice_geral(con) -> str:
     return "".join(partes) or "<p class='nota'>Sem vínculos.</p>"
 
 
-def _secoes_por_gabinete(con) -> list[dict]:
-    """Uma seção por gabinete parlamentar (TODOS), na ordem do nº — pesquisável por vereador."""
+def _secoes_por_parlamentar(con) -> list[dict]:
+    """Uma seção por PARLAMENTAR (ordenado pelo titular) — pesquisável por vereador.
+    Título pelo vereador titular; suplente em exercício explicitado; contagem separando
+    a legislatura atual (atribuição segura) das anteriores (atribuição histórica incerta)."""
     gabs = con.execute(
-        "SELECT gabinete_num, vereador FROM pcrj_gabinetes ORDER BY gabinete_num").fetchall()
+        "SELECT gabinete_num, titular, suplente FROM pcrj_gabinetes "
+        "ORDER BY titular, gabinete_num").fetchall()
     secoes = []
     for g in gabs:
         gab = g["gabinete_num"]
@@ -133,12 +149,18 @@ def _secoes_por_gabinete(con) -> list[dict]:
             (gab,)).fetchone()["n"]
         if not total:
             continue
+        atual = con.execute(
+            "SELECT COUNT(DISTINCT nome_norm) n FROM pcrj_camara_servidores "
+            "WHERE gabinete_num=? AND ano_ingresso>=?", (gab, _LEGISLATURA_ATUAL)).fetchone()["n"]
         vincs = _vinculos_do_gabinete(con, gab)
-        corpo = (f"<p><b>{len(vincs)}</b> de {total} nomeados com indício de vínculo na Prefeitura."
-                 "</p>" + _tabela_vinculos_gab(vincs)
-                 + _candidaturas_gab(con, gab)
+        titulo = f"{g['titular'] or 'Gabinete'} — Gabinete {gab:02d}"
+        sup = (f"<p><b>Suplente em exercício:</b> {_e(g['suplente'])}.</p>" if g["suplente"] else "")
+        corpo = (sup + f"<p>{total} nomeados no gabinete ({atual} na legislatura atual · "
+                 f"{total - atual} de ingresso anterior). <b>{len(vincs)}</b> com indício de "
+                 "vínculo na Prefeitura.</p>"
+                 + _tabela_vinculos_gab(vincs) + _candidaturas_gab(con, gab)
                  + "<p class='nota'>Listagem completa do gabinete:</p>" + _tabela_listagem(con, gab))
-        secoes.append({"titulo": f"Gabinete {gab:02d} — {g['vereador']}", "html": corpo})
+        secoes.append({"titulo": titulo, "html": corpo})
     return secoes
 
 
@@ -175,17 +197,29 @@ def montar_ctx_completo(db_path=None) -> dict:
         n_vinc = con.execute(
             "SELECT COUNT(DISTINCT nome_norm) n FROM pcrj_vinculo_cruzado "
             "WHERE confianca='indicio_nome_unico'").fetchone()["n"]
-        intro = {"titulo": "Como usar", "html":
-                 "<p>Documento <b>pesquisável</b> (Ctrl+F): busque o nome do vereador para ir ao "
-                 "gabinete (ex.: 'Pedro Duarte', 'Carlo Caiado'). Cada gabinete traz os nomeados que "
-                 "estão/estiveram na Prefeitura e a listagem completa. Ao final, a estrutura "
-                 "administrativa da Câmara. Sem CPF, o vínculo é <b>indício</b>; 'Requisitado'/'à "
-                 "disposição' = cessão (vínculo único), não acúmulo.</p>"}
-        secoes = [intro] + _secoes_por_gabinete(con) + [_secao_admin(con)]
+        n_atual = con.execute(
+            "SELECT COUNT(DISTINCT nome_norm) n FROM pcrj_camara_servidores "
+            "WHERE ano_ingresso>=?", (_LEGISLATURA_ATUAL,)).fetchone()["n"]
+        intro = {"titulo": "Como usar e cobertura", "html":
+                 "<p>Documento <b>pesquisável</b> (Ctrl+F): busque o nome do vereador (ex.: "
+                 "'Pedro Duarte', 'Carlo Caiado'). <b>Agregado por parlamentar</b> (titular; "
+                 "suplente em exercício explicitado). Cada seção traz os nomeados com vínculo na "
+                 "Prefeitura, as candidaturas eleitorais e a listagem completa.</p>"
+                 "<p><b>Atribuição histórica (limitação):</b> a fonte pública só publica o mapa "
+                 f"<b>atual</b> de gabinetes. Só há atribuição segura ao parlamentar para o "
+                 f"ingresso na legislatura atual (≥{_LEGISLATURA_ATUAL}); nomeados de ingresso "
+                 "anterior aparecem sob o número do gabinete, mas pertenceram a vereador(es) de "
+                 "legislatura(s) anterior(es) (marcados 'anterior*').</p>"
+                 "<p><b>Cobertura das bases:</b> Câmara = quadro vigente (relação de servidores; "
+                 "os 3.053 ex-servidores de livre nomeação que já saíram não têm gabinete "
+                 "publicado, logo não são atribuíveis). Prefeitura = competências-amostra "
+                 "(gestão atual + 06/2021–06/2025); vínculo por nome é <b>indício</b>, não prova; "
+                 "'Requisitado'/'à disposição' = cessão (vínculo único), não acúmulo.</p>"}
+        secoes = [intro] + _secoes_por_parlamentar(con) + [_secao_admin(con)]
         return {
             "classificacao": "CONFIDENCIAL — CONTROLE EXTERNO",
-            "titulo": "Câmara Municipal do Rio — nomeados por gabinete e vínculos na Prefeitura",
-            "subtitulo": f"{n_gab} gabinetes · pesquisável por vereador — Módulo PCRJ",
+            "titulo": "Câmara Municipal do Rio — nomeados por parlamentar e vínculos na Prefeitura",
+            "subtitulo": f"{n_gab} gabinetes · {n_atual} nomeados na legislatura atual · por parlamentar — Módulo PCRJ",
             "metodologia": "Cruzamento nominal Câmara×Prefeitura (indício; verificar por CPF)",
             "score": n_vinc, "faixa": "ALTO",
             "top_flags": [f"{n_gab} gabinetes", f"{n_vinc} vínculos Prefeitura"],
