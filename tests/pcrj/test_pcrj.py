@@ -271,6 +271,19 @@ class TestMovimentacoes:
         assert any("no ano da nomeação" in f for f in fl)                          # Rio 2024
 
 
+class TestOSPanorama:
+    def test_parse_nome_rdp(self):
+        from compliance_agent.pcrj import os_panorama as op
+        os_, uni, comp, ano, mes = op._parse_nome(
+            "https://x/SMS-SPDM-RDP-HOSPITAL-PEDRO-II-Janeiro2026.pdf")
+        assert os_ == "SPDM" and ano == 2026 and mes == 1
+        assert "HOSPITAL" in uni.upper() and comp == "Janeiro/2026"
+
+    def test_reais(self):
+        from compliance_agent.pcrj import os_panorama as op
+        assert op._reais(725554.29) == "R$ 725.554,29"
+
+
 class TestPipeline:
     def test_etapas_conhecidas(self):
         from compliance_agent.pcrj import pipeline

@@ -37,6 +37,7 @@ Saídas: `data/pcrj.db` (banco dedicado) + `reports/pcrj_camara_cruzamento_<data
 | `alternancia.py` | 5 gabinetes com alternância titular/suplente (posse 02/01/2025) + 🚩 flag de continuidade |
 | `movimentacoes.py` | trajetórias Câmara⇄Prefeitura⇄candidatura nos dois sentidos, com datas (gabinete→pref, pref→gabinete, candidato antes/depois, multi-gabinete) |
 | `dossie_completo.py` | **documento ÚNICO** (Partes A-E) com todos os cruzamentos |
+| `os_panorama.py` | panorama AGREGADO das Organizações Sociais (RDP da CODESP — despesa/headcount por OS; **sem nomes**, não cruza nominal). Banco separado `data/pcrj_os.db` |
 | `tools/pcrj_finalizar.py` | finalizador autônomo (sem LLM): espera o sweep all-RJ, gera o dossiê e envia pelo Yoda |
 | `db.py` / `nomes.py` | banco `pcrj.db` + normalização de nomes |
 
