@@ -170,6 +170,41 @@ class TestRelatorioGabinete:
         assert "anterior*" in html   # o ingresso 2015 é marcado como atribuição histórica incerta
 
 
+class TestPericia:
+    def _pessoa(self, cam_ato, posts):
+        from datetime import date
+        def d(s):
+            return date(*map(int, s.split("-"))) if s else None
+        return {"nome": "X", "cam_ato": d(cam_ato),
+                "postos": [{"adm": d(a), "exo": d(e)} for a, e in posts]}
+
+    def test_direcao_prefeitura_antes(self):
+        from compliance_agent.pcrj import pericia
+        # prefeitura começou 2020, câmara 2025 → estava na prefeitura ANTES
+        p = self._pessoa("2025-02-01", [("2020-05-06", "2024-12-31")])
+        assert pericia._direcao(p) == "pref_antes"
+
+    def test_direcao_camara_antes(self):
+        from compliance_agent.pcrj import pericia
+        # câmara 2015, prefeitura 2020 → estava na câmara ANTES
+        p = self._pessoa("2015-08-05", [("2020-05-06", None)])
+        assert pericia._direcao(p) == "camara_antes"
+
+    def test_concomitante_com_hoje_fixo(self):
+        from datetime import date
+        from compliance_agent.pcrj import pericia
+        pericia._HOJE = date(2026, 7, 1)
+        try:
+            # prefeitura ativa (sem exoneração) desde 2010, câmara desde 2025 → concomitante
+            p = self._pessoa("2025-01-01", [("2010-01-13", None)])
+            assert pericia._concomitante(p) is True
+            # prefeitura encerrada em 2023, câmara em 2025 → NÃO concomitante
+            p2 = self._pessoa("2025-01-01", [("2020-01-01", "2023-01-01")])
+            assert pericia._concomitante(p2) is False
+        finally:
+            pericia._HOJE = None
+
+
 class TestPipeline:
     def test_etapas_conhecidas(self):
         from compliance_agent.pcrj import pipeline

@@ -34,7 +34,8 @@ from compliance_agent.pcrj.pcrj_remuneracao import Sessao, competencia_mais_rece
 COMPETENCIAS_HISTORICO = [(6, 2024), (6, 2021)]
 
 
-def _pessoas_camara(con, gabinete: int | None, limite: int | None) -> list[dict]:
+def _pessoas_camara(con, gabinete: int | None, limite: int | None,
+                    somente_novos: bool = False) -> list[dict]:
     q = ("SELECT nome_norm, MIN(nome) nome, "
          "GROUP_CONCAT(DISTINCT gabinete_num) gabs, "
          "GROUP_CONCAT(DISTINCT cargo) cargos "
@@ -43,6 +44,8 @@ def _pessoas_camara(con, gabinete: int | None, limite: int | None) -> list[dict]
     if gabinete is not None:
         q += "AND gabinete_num=? "
         args.append(gabinete)
+    if somente_novos:                    # nunca consultados na Prefeitura (runs incrementais)
+        q += ("AND nome_norm NOT IN (SELECT DISTINCT nome_norm FROM pcrj_prefeitura_consulta) ")
     q += "GROUP BY nome_norm ORDER BY nome_norm"
     if limite:
         q += f" LIMIT {int(limite)}"
@@ -77,7 +80,8 @@ def _classificar(res: dict) -> str:
 
 def cruzar(competencias: list[tuple[int, int]] | None = None, gabinete: int | None = None,
            limite: int | None = None, workers: int = 3, db_path=None,
-           incluir_recente: bool = True, pausa: float = 0.4) -> dict:
+           incluir_recente: bool = True, pausa: float = 0.4,
+           somente_novos: bool = False) -> dict:
     """Executa o cruzamento e grava consultas + vínculos. Retorna resumo com contagens."""
     if competencias is None:
         competencias = list(COMPETENCIAS_HISTORICO)
@@ -85,7 +89,7 @@ def cruzar(competencias: list[tuple[int, int]] | None = None, gabinete: int | No
             competencias = [competencia_mais_recente()] + competencias
     _db.inicializar(db_path)
     con = _db.conectar(db_path)
-    pessoas = _pessoas_camara(con, gabinete, limite)
+    pessoas = _pessoas_camara(con, gabinete, limite, somente_novos=somente_novos)
     agora = datetime.now(timezone.utc).isoformat()
 
     sessoes = [Sessao(pausa=pausa) for _ in range(workers)]
