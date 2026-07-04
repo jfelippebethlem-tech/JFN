@@ -13,7 +13,11 @@ Import:
   from tools.hermes_rag import consultar; consultar("pergunta", k=6) -> list[dict]
 """
 from __future__ import annotations
-import json, os, re, sys, glob
+import json
+import os
+import re
+import sys
+import glob
 from pathlib import Path
 
 REPO = Path("/home/ubuntu/JFN")
@@ -43,7 +47,8 @@ def _key() -> str:
 
 def _embed(textos: list[str], input_type: str) -> list[list[float]]:
     """Cohere embed em lotes de 96. Throttle + retry no 429 (chave trial tem limite/min)."""
-    import httpx, time
+    import httpx
+    import time
     key = _key()
     out: list[list[float]] = []
     total = (len(textos) + 95) // 96
@@ -85,13 +90,40 @@ def _chunk(texto: str, alvo: int = 1100, overlap: int = 150) -> list[str]:
     return [c for c in chunks if len(c) > 60]
 
 
-def build() -> None:
-    import numpy as np
-    RAGDIR.mkdir(parents=True, exist_ok=True)
+HASH = RAGDIR / "corpus_hash.txt"
+
+
+def _arquivos_corpus() -> list[str]:
     arquivos: list[str] = []
     for padrao in FONTES:
         arquivos.extend(glob.glob(padrao, recursive=True))
-    arquivos = sorted(set(arquivos))
+    return sorted(set(arquivos))
+
+
+def corpus_hash() -> str:
+    """Impressão digital barata do corpus (caminho+mtime+tamanho) — detecta mudança sem ler conteúdo."""
+    import hashlib
+    h = hashlib.sha256()
+    for fp in _arquivos_corpus():
+        try:
+            st = os.stat(fp)
+            h.update(f"{fp}|{int(st.st_mtime)}|{st.st_size}\n".encode())
+        except OSError:
+            continue
+    return h.hexdigest()
+
+
+def corpus_mudou() -> bool:
+    """True se o corpus mudou desde a última build (ou se nunca houve build)."""
+    if not EMB.exists() or not HASH.exists():
+        return True
+    return HASH.read_text().strip() != corpus_hash()
+
+
+def build() -> None:
+    import numpy as np
+    RAGDIR.mkdir(parents=True, exist_ok=True)
+    arquivos = _arquivos_corpus()
     registros = []
     for fp in arquivos:
         try:
@@ -109,7 +141,17 @@ def build() -> None:
     with open(CHUNKS, "w", encoding="utf-8") as f:
         for r in registros:
             f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    HASH.write_text(corpus_hash())
     print(f"OK: {arr.shape[0]} vetores ({arr.shape[1]}d) → {EMB}")
+
+
+def build_se_mudou() -> bool:
+    """Reindexa só se o corpus mudou. Retorna True se rebuildou (p/ o ciclo diário)."""
+    if not corpus_mudou():
+        print("RAG em dia — corpus não mudou desde a última build.")
+        return False
+    build()
+    return True
 
 
 def consultar(pergunta: str, k: int = 6) -> list[dict]:
@@ -163,7 +205,7 @@ def contexto(pergunta: str, k: int = 10, max_chars: int = 4000, *,
 if __name__ == "__main__":
     cmd = sys.argv[1] if len(sys.argv) > 1 else "build"
     if cmd == "build":
-        build()
+        build_se_mudou() if "--se-mudou" in sys.argv else build()
     elif cmd == "query":
         for h in consultar(" ".join(sys.argv[2:]) or "o que é repactuação?", k=6):
             print(f"\n[{h['score']:.3f}] {h['fonte']}\n{h['texto'][:400]}…")
