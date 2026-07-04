@@ -49,7 +49,8 @@ def _coletar(con) -> dict[str, dict]:
         if not p:
             p = {"nome": nome, "gabinetes": "", "cargos": "",
                  "acumulo": False, "acumulo_evid": [], "distante": False,
-                 "candidato": False, "evid": [], "municipios": set()}
+                 "candidato": False, "evid": [], "municipios": set(),
+                 "benef_n": 0, "benef_rio": False, "benef_tipos": set()}
             pessoas[nn] = p
         if nome and not p["nome"]:
             p["nome"] = nome
@@ -81,6 +82,30 @@ def _coletar(con) -> dict[str, dict]:
             p = pessoas[r["nome_norm"]]
             p["municipios"].add((r["municipio"] or "").upper())
             p["candidato"] = True
+
+    # s_beneficio — Bolsa Família/BPC (banco dedicado pcrj_benef.db). Só conta se o nome bate
+    # com 1 PESSOA ÚNICA (por fragmento de CPF); homônimo (≥3 pessoas) é ruído, descartado.
+    import sqlite3
+    benef_db = _db.DB_PATH.parent / "pcrj_benef.db"
+    if benef_db.exists():
+        bc = sqlite3.connect(str(benef_db)); bc.row_factory = sqlite3.Row
+        try:
+            agg: dict[str, dict] = {}
+            for r in bc.execute(
+                "SELECT nome_norm, nome, beneficio, municipio, cpf_frag FROM pcrj_beneficio"):
+                a = agg.setdefault(r["nome_norm"],
+                                   {"nome": r["nome"], "frags": set(), "rio": False, "tipos": set()})
+                a["frags"].add(r["cpf_frag"] or "?")
+                a["tipos"].add(r["beneficio"])
+                if (r["municipio"] or "") == RIO:
+                    a["rio"] = True
+            for nn, a in agg.items():
+                p = _p(nn, a["nome"])
+                p["benef_n"] = len(a["frags"])
+                p["benef_rio"] = a["rio"]
+                p["benef_tipos"] = a["tipos"]
+        finally:
+            bc.close()
     return pessoas
 
 
@@ -99,6 +124,17 @@ def _score(p: dict) -> tuple[int, list[str], bool]:
     if p["candidato"] and not homonimo:
         score += 2
         sinais.append("candidato em outra cidade enquanto vinculado")
+    # benefício assistencial — só o subconjunto DEFENSÁVEL (1 pessoa única); homônimo não pontua
+    bn = p.get("benef_n", 0)
+    tipos = "/".join(sorted(p.get("benef_tipos") or []))
+    if bn == 1 and p.get("benef_rio"):
+        score += 5
+        sinais.append(f"🔴 recebe {tipos} no Rio (1 pessoa única) — renda assistencial incompatível com a folha")
+    elif bn == 1:
+        score += 2
+        sinais.append(f"recebe {tipos} (1 pessoa única, fora do Rio)")
+    elif bn >= 3:
+        sinais.append(f"benefício {tipos}: nome em {bn} pessoas — homônimo, descartado")
     if homonimo:
         sinais.append(f"⚠ homônimo provável (nome em {len(p['municipios'])} cidades) — desambiguar por CPF")
     return score, sinais, homonimo

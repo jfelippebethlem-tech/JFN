@@ -1,0 +1,176 @@
+# -*- coding: utf-8 -*-
+"""Cruza os nomeados (Câmara/Prefeitura) com BENEFICIÁRIOS de Bolsa Família / BPC.
+
+Fonte PÚBLICA e legal: dados abertos do Portal da Transparência (download por mês, sem
+API key). Servidor/comissionado recebendo benefício assistencial é 🔴 indício de irregularidade.
+
+⚠️ HONESTIDADE (o achado de 1ª corrida): cruzar por NOME contra um arquivo NACIONAL de ~20mi
+de beneficiários é DOMINADO POR HOMÔNIMO — um nome comum bate com dezenas de pessoas distintas.
+Por isso capturamos o FRAGMENTO DE CPF MASCARADO (6 dígitos do meio, públicos) e contamos
+PESSOAS DISTINTAS por nome. Sinal defensável = nome que bate com **1 pessoa única** (n_pessoas=1),
+melhor ainda se o benefício é no **Rio**. Mesmo assim é indício: sem o CPF completo do servidor
+(só por requisição) não se prova que é a MESMA pessoa. Nunca usa base vazada.
+
+VM-safe: baixa 1 zip → filtra em STREAMING → apaga o zip. Grava em banco DEDICADO
+(`pcrj_benef.db`) — não disputa lock com o sweep que escreve no pcrj.db.
+"""
+from __future__ import annotations
+
+import csv
+import io
+import os
+import re
+import sqlite3
+import zipfile
+from datetime import datetime
+from pathlib import Path
+
+from compliance_agent.pcrj import db as _db
+from compliance_agent.pcrj.nomes import normalizar
+
+_URLS = {
+    "Bolsa Família": "https://portaldatransparencia.gov.br/download-de-dados/novo-bolsa-familia/{ym}",
+    "BPC": "https://portaldatransparencia.gov.br/download-de-dados/bpc/{ym}",
+}
+_TMP = Path("/tmp/claude-1001/-home-ubuntu/b0a66c33-983b-415a-990a-72696e7566c0/scratchpad")
+BENEF_DB = _db.DB_PATH.parent / "pcrj_benef.db"
+RIO = "RIO DE JANEIRO"
+
+_SCHEMA = """
+CREATE TABLE IF NOT EXISTS pcrj_beneficio (
+    nome_norm   TEXT NOT NULL,
+    nome        TEXT,
+    beneficio   TEXT NOT NULL,   -- Bolsa Família | BPC
+    municipio   TEXT,
+    uf          TEXT,
+    valor       TEXT,
+    cpf_frag    TEXT,            -- 6 dígitos do meio do CPF mascarado (desambiguador público)
+    competencia TEXT,
+    coletado_em TEXT,
+    PRIMARY KEY (nome_norm, beneficio, cpf_frag, municipio, competencia)
+);
+CREATE INDEX IF NOT EXISTS ix_benef_nome ON pcrj_beneficio(nome_norm);
+"""
+
+
+def _find(header: list[str], nomes: list[str]) -> int:
+    up = [c.strip().upper().strip('"') for c in header]
+    for alvo in nomes:
+        if alvo in up:
+            return up.index(alvo)
+    return -1
+
+
+def _baixar(url: str, dest: Path) -> bool:
+    import httpx
+    try:
+        with httpx.stream("GET", url, follow_redirects=True, timeout=120) as r:
+            r.raise_for_status()
+            with open(dest, "wb") as f:
+                for chunk in r.iter_bytes(1 << 20):
+                    f.write(chunk)
+        return dest.exists() and dest.stat().st_size > 1000
+    except Exception as e:  # noqa: BLE001
+        print(f"  download falhou: {e}", flush=True)
+        return False
+
+
+def _filtrar_zip(path: Path, beneficio: str, alvo: dict[str, str], ym: str) -> list[tuple]:
+    """Stream do CSV; devolve (nome_norm, nome, beneficio, municipio, uf, valor, cpf_frag, ym)
+    para linhas cujo NOME ∈ alvo. cpf_frag = os dígitos visíveis do CPF mascarado."""
+    achados: list[tuple] = []
+    with zipfile.ZipFile(path) as z:
+        for nm in z.namelist():
+            if not nm.lower().endswith(".csv"):
+                continue
+            with z.open(nm) as f:
+                tw = io.TextIOWrapper(f, encoding="latin-1", errors="replace")
+                rd = csv.reader(tw, delimiter=";")
+                header = next(rd, None)
+                if not header:
+                    continue
+                i_nome = _find(header, ["NOME FAVORECIDO", "NOME BENEFICIÁRIO",
+                                        "NOME DO BENEFICIÁRIO", "NOME"])
+                i_mun = _find(header, ["NOME MUNICÍPIO", "NOME MUNICIPIO", "MUNICÍPIO"])
+                i_uf = _find(header, ["UF", "SIGLA UF"])
+                i_val = _find(header, ["VALOR PARCELA", "VALOR DO BENEFÍCIO",
+                                       "VALOR DA PARCELA", "VALOR"])
+                i_cpf = _find(header, ["CPF FAVORECIDO", "CPF DO BENEFICIÁRIO",
+                                       "CPF DO FAVORECIDO", "CPF"])
+                if i_nome < 0:
+                    continue
+                for row in rd:
+                    if i_nome >= len(row):
+                        continue
+                    nn = normalizar((row[i_nome] or "").strip('"'))
+                    if nn not in alvo:
+                        continue
+                    g = lambda i: row[i].strip('"') if 0 <= i < len(row) else ""  # noqa: E731
+                    cpf_frag = "".join(re.findall(r"\d", g(i_cpf)))[:9]
+                    achados.append((nn, alvo[nn], beneficio, g(i_mun).upper(), g(i_uf),
+                                    g(i_val), cpf_frag, ym))
+    return achados
+
+
+def coletar(ym: str = "202605") -> dict:
+    con = _db.conectar()
+    alvo = {r["nome_norm"]: r["nome"] for r in con.execute(
+        "SELECT DISTINCT nome_norm, nome FROM pcrj_camara_servidores")}
+    con.close()
+
+    _TMP.mkdir(parents=True, exist_ok=True)
+    todos: list[tuple] = []
+    resumo: dict = {"competencia": ym, "por_beneficio": {}}
+    for beneficio, tmpl in _URLS.items():
+        dest = _TMP / f"benef_{beneficio.split()[0].lower()}_{ym}.zip"
+        print(f"[benef] baixando {beneficio} {ym}…", flush=True)
+        if not _baixar(tmpl.format(ym=ym), dest):
+            resumo["por_beneficio"][beneficio] = "download falhou"
+            continue
+        print(f"[benef] filtrando {beneficio} ({dest.stat().st_size // (1<<20)}MB)…", flush=True)
+        achados = _filtrar_zip(dest, beneficio, alvo, ym)
+        todos.extend(achados)
+        resumo["por_beneficio"][beneficio] = len(achados)
+        try:
+            os.remove(dest)
+        except OSError:
+            pass
+        print(f"[benef] {beneficio}: {len(achados)} linhas brutas", flush=True)
+
+    agora = datetime.now().isoformat(timespec="seconds")
+    con = sqlite3.connect(str(BENEF_DB), timeout=60)
+    con.execute("PRAGMA journal_mode=WAL")
+    con.execute("DROP TABLE IF EXISTS pcrj_beneficio")  # full-refresh + corrige drift de schema
+    con.executescript(_SCHEMA)
+    con.executemany(
+        "INSERT OR IGNORE INTO pcrj_beneficio "
+        "(nome_norm, nome, beneficio, municipio, uf, valor, cpf_frag, competencia, coletado_em) "
+        "VALUES (?,?,?,?,?,?,?,?,?)",
+        [(*t, agora) for t in todos])
+    con.commit()
+
+    # ── estatística HONESTA: separa sinal de ruído ────────────────────────────
+    # pessoas distintas por nome (por fragmento de CPF) — homônimo = muitos fragmentos
+    por_nome: dict[str, set] = {}
+    em_rio: set[str] = set()
+    for nn, _nome, _ben, mun, _uf, _val, frag, _ym in todos:
+        por_nome.setdefault(nn, set()).add(frag or "?")
+        if mun == RIO:
+            em_rio.add(nn)
+    unicos = {nn for nn, frags in por_nome.items() if len(frags) == 1}
+    unicos_rio = unicos & em_rio
+    resumo.update({
+        "nomes_com_algum_match": len(por_nome),
+        "provavel_homonimo (≥3 pessoas p/ o nome)": sum(1 for f in por_nome.values() if len(f) >= 3),
+        "candidatos_defensaveis (1 pessoa única)": len(unicos),
+        "candidatos_defensaveis_no_rio": len(unicos_rio),
+    })
+    con.close()
+    return resumo
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    print(json.dumps(coletar(sys.argv[1] if len(sys.argv) > 1 else "202605"),
+                     ensure_ascii=False, indent=1))
