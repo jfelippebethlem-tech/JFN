@@ -32,6 +32,12 @@ Saídas: `data/pcrj.db` (banco dedicado) + `reports/pcrj_camara_cruzamento_<data
 | `tse_candidatos.py` | cruza os nomeados com candidaturas do TSE (**somente estado do RJ, 92 municípios**) |
 | `relatorio.py` | produto Kroll geral (pdf/xlsx/html) |
 | `relatorio_gabinete.py` | PDF **pesquisável por gabinete/vereador**: `gerar_completo()` (todos + estrutura administrativa) ou `gerar(<nº>)` (um gabinete) |
+| `pericia.py` | perícia de vínculos: direção temporal, datas entrada/saída, concomitância, domicílio outra cidade, comissionados-candidatos |
+| `comissionados_candidatos.py` | cruzamento INVERSO: candidatos do TSE (RJ) que são comissionados (ESPECIAL/DAS/DAI) na Prefeitura 2021+ |
+| `alternancia.py` | 5 gabinetes com alternância titular/suplente (posse 02/01/2025) + 🚩 flag de continuidade |
+| `movimentacoes.py` | trajetórias Câmara⇄Prefeitura⇄candidatura nos dois sentidos, com datas (gabinete→pref, pref→gabinete, candidato antes/depois, multi-gabinete) |
+| `dossie_completo.py` | **documento ÚNICO** (Partes A-E) com todos os cruzamentos |
+| `tools/pcrj_finalizar.py` | finalizador autônomo (sem LLM): espera o sweep all-RJ, gera o dossiê e envia pelo Yoda |
 | `db.py` / `nomes.py` | banco `pcrj.db` + normalização de nomes |
 
 ## Fontes de dados (públicas)
