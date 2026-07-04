@@ -14,7 +14,7 @@ from compliance_agent.pcrj import db as _db
 _CAB = ["#", "Nome", "Gabinete(s)", "Cargo Câmara", "Score", "Faixa",
         "Acúmulo Câmara∩Prefeitura", "Benefício (BF/BPC)", "Domicílio distante",
         "Candidato outra cidade", "Homônimo?", "Indícios (texto)",
-        "Próximo passo (CPI)", "Status apuração"]
+        "Como confirmar", "Status apuração"]
 
 
 def _flags(sinais: str) -> dict:
@@ -49,8 +49,8 @@ def gerar(db_path=None) -> dict:
         c.font = hdr_font
         c.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
 
-    passo = ("Requisição CPI: CPF+endereço (Receita/RH) · ponto/frequência · eSocial/CAGED · "
-             "consulta manual TJRJ/TRT1 por nome")
+    passo = ("Confirmar: identidade (CPF/endereço) no RH · ponto/frequência · vínculo em outro "
+             "emprego · processos TJRJ/TRT1 por nome (manual)")
     for i, r in enumerate(rows, 1):
         f = _flags(r["sinais"])
         ws.append([i, r["nome"], r["gabinetes"], r["cargos_camara"], r["score"], r["faixa"],
