@@ -123,6 +123,29 @@ class TestRelatorioEleitoral:
         assert ctx["secoes"][0]["titulo"] == "Principais achados"
 
 
+class TestRelatorioGabinete:
+    def test_ctx_gabinete_lista_e_vinculo(self, tmp_path):
+        from compliance_agent.pcrj import db as _db
+        from compliance_agent.pcrj import relatorio_gabinete as rg
+        p = tmp_path / "g.db"
+        _db.inicializar(p)
+        con = _db.conectar(p)
+        con.execute("INSERT INTO pcrj_gabinetes(gabinete_num,vereador,vereador_norm,coletado_em) "
+                    "VALUES (32,'Pedro Duarte','PEDRO DUARTE','x')")
+        con.execute("INSERT INTO pcrj_camara_servidores(nome,nome_norm,cargo,lotacao,gabinete_num,"
+                    "tipo_lotacao,ano_ingresso,doc_num,vinculo,coletado_em) VALUES "
+                    "('Andreia Domingos','ANDREIA DOMINGOS','AUX','Gab',32,'gabinete_parlamentar',2026,'1','Requisitados sem Cargo','x')")
+        con.execute("INSERT INTO pcrj_vinculo_cruzado(nome_norm,nome_camara,gabinetes,cargos_camara,"
+                    "cargo_pcrj,orgao_pcrj,confianca,observacao,gerado_em) VALUES "
+                    "('ANDREIA DOMINGOS','Andreia Domingos','Gab 32','AUX','PROFESSOR II','E/CRE',"
+                    "'indicio_nome_unico','admissao=06/05/2002 exoneracao= matricula=1','x')")
+        con.commit(); con.close()
+        ctx = rg.montar_ctx(32, db_path=p)
+        assert "Pedro Duarte" in ctx["titulo"]
+        assert "Andreia Domingos" in ctx["secoes"][0]["html"]      # aparece na seção de vínculos
+        assert "cessão/requisição" in ctx["secoes"][0]["html"]     # Requisitado → cessão
+
+
 class TestPipeline:
     def test_etapas_conhecidas(self):
         from compliance_agent.pcrj import pipeline

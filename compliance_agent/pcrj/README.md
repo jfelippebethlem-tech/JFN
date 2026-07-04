@@ -30,7 +30,8 @@ Saídas: `data/pcrj.db` (banco dedicado) + `reports/pcrj_camara_cruzamento_<data
 | `pcrj_remuneracao.py` | consulta a remuneração da Prefeitura por POST puro (JSF, sem browser) |
 | `cruzamento.py` | match direcional Câmara→Prefeitura por nome, com níveis de confiança |
 | `tse_candidatos.py` | cruza os nomeados com candidaturas do TSE (**somente estado do RJ, 92 municípios**) |
-| `relatorio.py` | produto Kroll (pdf/xlsx/html) |
+| `relatorio.py` | produto Kroll geral (pdf/xlsx/html) |
+| `relatorio_gabinete.py` | PDF **pesquisável por gabinete/vereador**: `gerar_completo()` (todos + estrutura administrativa) ou `gerar(<nº>)` (um gabinete) |
 | `db.py` / `nomes.py` | banco `pcrj.db` + normalização de nomes |
 
 ## Fontes de dados (públicas)
