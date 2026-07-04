@@ -68,3 +68,30 @@ Saídas: `data/pcrj.db` (banco dedicado) + `reports/pcrj_camara_cruzamento_<data
 Acumulação remunerada de cargos é vedada salvo exceções (CF art. 37, XVI/XVII). O sinal mais
 forte é vínculo **efetivo/carreira** no Executivo (Guarda Municipal, professor) concomitante a
 posto comissionado na Câmara — a apurar por CPF no RH, jamais afirmado aqui.
+
+## Funil OSINT legal → funcionário fantasma (2026-07-04)
+
+Fontes de **escala** públicas destilam os 2.244 nomes → alvos prioritários; só neles se gasta
+requisição de CPI / consulta manual. Módulos:
+
+- `resolvedor_municipio.py` — município de vínculo por nome (TSE domicílio + QSA); `pcrj_municipio_vinculo`.
+- `beneficio_pcrj.py` — cruza **Bolsa Família + BPC** (Portal da Transparência, dados abertos,
+  streaming VM-safe). Banco **dedicado** `pcrj_benef.db` (não disputa lock com o sweep).
+  Desambiguação por **fragmento de CPF mascarado**: match por nome → só "1 pessoa única no Rio" vira sinal.
+- `fantasma_servidor.py` — detector: acúmulo Câmara∩Prefeitura + domicílio distante + candidato
+  fora + benefício. Sinais **booleanos** (não somar por linha → não inflar homônimo). `pcrj_fantasma_servidor`.
+- `dossie_prioritarios.py` — Kroll PDF dos alvos "forte" + próximos passos que PROVAM (CPI).
+
+### Régua absoluta (segurança do processo)
+
+**CPF completo e endereço atual por nome NÃO são fonte pública** — só base vazada/broker →
+**prova ilícita (CPP art. 157) que anula a CPI**. Nunca usar/reconstruir. *Comparar* fragmento de
+CPF (público) para desambiguar = ok; *reconstruir* o CPF completo = proibido. O CPF/endereço dos
+alvos obtém-se por **requisição da CPI** (CF art. 58 §3º), não por OSINT.
+
+### Fontes verificadas (não re-testar)
+
+- **DataJud/CNJ** não busca por nome (só metadados de processo).
+- **Filiação nominal do TSE** retirada dos dados abertos (LGPD) — só perfil agregado.
+- **Receita CNPJ** migrou p/ Nextcloud SERPRO (download direto morreu → downloader mantido).
+- Tribunais (TJRJ/TRT1) por nome = CAPTCHA → consulta manual só nos prioritários.
