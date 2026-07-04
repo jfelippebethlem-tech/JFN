@@ -70,6 +70,18 @@ def _coletar(con) -> dict:
             "por_conf": por_conf, "vinculos": vinculos, "cand": cand}
 
 
+_RE_OBS = __import__("re").compile(r"admissao=(\S*)\s+exoneracao=(\S*)\s+matricula=(\S*)")
+
+
+def _datas_pcrj(v: dict) -> tuple[str, str, str]:
+    """(admissão, exoneração, matrícula) extraídas da observação do vínculo."""
+    m = _RE_OBS.search(v.get("observacao") or "")
+    if not m:
+        return "", "", ""
+    exo = m.group(2)
+    return m.group(1), (exo if exo and exo != "None" else "—"), m.group(3)
+
+
 def _ativo(v: dict) -> bool:
     """Sem data de exoneração na observação = vínculo Executivo ainda ATIVO (mais grave)."""
     return "exoneracao= " in (v.get("observacao") or "") or "exoneracao=None" in (v.get("observacao") or "")
@@ -88,18 +100,18 @@ def _tabela_vinculos(vinculos: list[dict], apenas_unico: bool) -> str:
         cessao = _cessao_provavel(v)
         marca = ('<span class="flag" style="background:#e8f0e8;color:#2e7d32">CESSÃO/REQUISIÇÃO</span>'
                  if cessao else ('<span class="flag">EFETIVO/CARREIRA</span>' if efet else ""))
+        adm, exo, mat = _datas_pcrj(v)
         linhas.append(
             f"<tr><td>{_e(v['nome_camara'])} {marca}</td>"
             f"<td>{_e(v['gabinetes'])}</td>"
             f"<td>{_e((v.get('cargos_camara') or '')[:40])}</td>"
-            f"<td>{_e(v['cargo_pcrj'])}</td>"
-            f"<td>{_e(v['orgao_pcrj'])}</td>"
-            f"<td>{_e(v['observacao'])}</td></tr>")
+            f"<td>{_e(v['cargo_pcrj'])} @ {_e(v['orgao_pcrj'])}</td>"
+            f"<td>{_e(adm)}</td><td>{_e(exo)}</td><td>{_e(mat)}</td></tr>")
     if not linhas:
         return "<p class='nota'>Nenhum registro nesta categoria.</p>"
     return ("<table><tr><th>Nome (Câmara)</th><th>Gabinete / Vereador</th>"
-            "<th>Cargo Câmara</th><th>Cargo Prefeitura</th><th>Órgão Prefeitura</th>"
-            "<th>Admissão / Exoneração · matrícula · líquido</th></tr>"
+            "<th>Cargo Câmara</th><th>Cargo/Órgão Prefeitura</th>"
+            "<th>Admissão PCRJ</th><th>Exoneração PCRJ</th><th>Matrícula</th></tr>"
             + "".join(linhas) + "</table>")
 
 
@@ -170,7 +182,9 @@ def _tabela_candidaturas(con) -> str:
                (SELECT COUNT(*) FROM pcrj_vinculo_cruzado vc
                  WHERE vc.nome_norm=tc.nome_norm AND vc.confianca='indicio_nome_unico') tambem_pref,
                (SELECT GROUP_CONCAT(DISTINCT s.gabinete_num) FROM pcrj_camara_servidores s
-                 WHERE s.nome_norm=tc.nome_norm) gabs
+                 WHERE s.nome_norm=tc.nome_norm) gabs,
+               (SELECT MIN(s.ano_ingresso) FROM pcrj_camara_servidores s
+                 WHERE s.nome_norm=tc.nome_norm) ingresso
         FROM tse_candidatura tc
         ORDER BY tambem_pref DESC, tc.outra_cidade DESC, n_munic ASC, tc.nome_tse, tc.ano DESC
         """).fetchall()
@@ -186,14 +200,18 @@ def _tabela_candidaturas(con) -> str:
             sinais.append('<span class="flag">TAMBÉM PREFEITURA</span>')
         if r["outra_cidade"]:
             sinais.append('<span class="flag">OUTRA CIDADE</span>')
+        if r["ingresso"] and r["ano"] < r["ingresso"]:
+            sinais.append('<span class="flag" style="background:#fff3e0;color:#e65100">'
+                          'ANTERIOR À NOMEAÇÃO</span>')
         if homon:
             sinais.append('<span class="flag" style="background:#eee;color:#777">homônimo provável</span>')
         linhas.append(
-            f"<tr><td>{_e(r['nome_tse'])}</td><td>{_e(camara)}</td>"
+            f"<tr><td>{_e(r['nome_tse'])}</td><td>{_e(camara)} (ingresso {r['ingresso'] or '?'})</td>"
             f"<td>{_e(r['cargo'])} — {_e(r['municipio'])} ({r['ano']}, {_e(r['partido'])})</td>"
             f"<td>{' '.join(sinais)}</td></tr>")
-    return ("<table><tr><th>Nome (TSE)</th><th>Vínculo Câmara</th>"
-            "<th>Candidatura</th><th>Sinais</th></tr>" + "".join(linhas) + "</table>")
+    return ("<table><tr><th>Nome (TSE)</th><th>Vínculo Câmara (ano de ingresso)</th>"
+            "<th>Candidatura (cargo — cidade, ano, partido)</th><th>Sinais</th></tr>"
+            + "".join(linhas) + "</table>")
 
 
 def _tabela_orgaos(con) -> str:
@@ -220,7 +238,8 @@ def exportar_xlsx(destino: str, db_path=None) -> str:
         ws = wb.active
         ws.title = "Duplo vínculo"
         cab = ["Nome (Câmara)", "Gabinete/Vereador", "Cargo Câmara", "Cargo Prefeitura",
-               "Órgão Prefeitura", "Confiança", "Classificação", "Efetivo/carreira", "Observação"]
+               "Órgão Prefeitura", "Admissão PCRJ", "Exoneração PCRJ", "Matrícula",
+               "Confiança", "Classificação", "Efetivo/carreira"]
         ws.append(cab)
         for c in ws[1]:
             c.font = Font(bold=True, color="FFFFFF")
@@ -230,12 +249,14 @@ def exportar_xlsx(destino: str, db_path=None) -> str:
                        FROM pcrj_camara_servidores s WHERE s.nome_norm=vc.nome_norm) vinculo_camara
                    FROM pcrj_vinculo_cruzado vc ORDER BY vc.confianca, vc.nome_camara"""):
             classe = "cessão/requisição" if _cessao_provavel(dict(v)) else "candidato a acúmulo"
+            adm, exo, mat = _datas_pcrj(dict(v))
             ws.append([v["nome_camara"], v["gabinetes"], v["cargos_camara"], v["cargo_pcrj"],
-                       v["orgao_pcrj"], v["confianca"], classe,
-                       "SIM" if _vinculo_efetivo(v["cargo_pcrj"]) else "", v["observacao"]])
+                       v["orgao_pcrj"], adm, exo, mat, v["confianca"], classe,
+                       "SIM" if _vinculo_efetivo(v["cargo_pcrj"]) else ""])
         ws3 = wb.create_sheet("Candidaturas TSE")
         ws3.append(["Nome (TSE)", "Cargo", "Município", "Ano", "Partido",
-                    "Outra cidade", "Também Prefeitura", "Homônimo provável"])
+                    "Outra cidade", "Também Prefeitura", "Anterior à nomeação",
+                    "Homônimo provável"])
         for c in ws3[1]:
             c.font = Font(bold=True, color="FFFFFF")
             c.fill = PatternFill("solid", fgColor="1F4E79")
@@ -245,10 +266,13 @@ def exportar_xlsx(destino: str, db_path=None) -> str:
                    (SELECT COUNT(DISTINCT t2.municipio) FROM tse_candidatura t2
                      WHERE t2.nome_norm=tc.nome_norm) n_munic,
                    (SELECT COUNT(*) FROM pcrj_vinculo_cruzado vc
-                     WHERE vc.nome_norm=tc.nome_norm AND vc.confianca='indicio_nome_unico') pref
+                     WHERE vc.nome_norm=tc.nome_norm AND vc.confianca='indicio_nome_unico') pref,
+                   (SELECT MIN(s.ano_ingresso) FROM pcrj_camara_servidores s
+                     WHERE s.nome_norm=tc.nome_norm) ingresso
                 FROM tse_candidatura tc ORDER BY pref DESC, tc.outra_cidade DESC, tc.nome_tse"""):
                 ws3.append([t["nome_tse"], t["cargo"], t["municipio"], t["ano"], t["partido"],
                             "SIM" if t["outra_cidade"] else "", "SIM" if t["pref"] else "",
+                            "SIM" if (t["ingresso"] and t["ano"] < t["ingresso"]) else "",
                             "SIM" if t["n_munic"] >= 3 else ""])
         except Exception:
             pass
