@@ -83,3 +83,9 @@ data/sei_cache/debug_*.txt
 data/sei_cache/ERRO_*.png
 data/tfe_cache/fornecedor_ob*.zip
 data/tfe_cache/fornecedor_ob*.csv
+
+# it-campo (desktop) - artefatos locais
+data/rag/
+data/*.log
+data/*.err
+data/*_learning.json
