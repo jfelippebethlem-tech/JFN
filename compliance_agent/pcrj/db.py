@@ -71,6 +71,22 @@ CREATE TABLE IF NOT EXISTS tse_candidatura (
 );
 CREATE INDEX IF NOT EXISTS ix_tse_nomenorm ON tse_candidatura(nome_norm);
 
+CREATE TABLE IF NOT EXISTS pcrj_comissionado_candidato (
+    nome_norm     TEXT NOT NULL,
+    nome_pcrj     TEXT,
+    cargo_pcrj    TEXT,             -- cargo na Prefeitura (comissionado: ESPECIAL/DAS/DAI)
+    orgao_pcrj    TEXT,
+    admissao      TEXT,
+    exoneracao    TEXT,
+    matricula     TEXT,
+    cand_cidade   TEXT,             -- município da candidatura (TSE)
+    cand_ano      INTEGER,
+    cand_cargo    TEXT,
+    coletado_em   TEXT,
+    PRIMARY KEY (nome_norm, orgao_pcrj, cargo_pcrj, admissao)
+);
+CREATE INDEX IF NOT EXISTS ix_comcand_nome ON pcrj_comissionado_candidato(nome_norm);
+
 CREATE TABLE IF NOT EXISTS pcrj_vinculo_cruzado (
     nome_norm     TEXT NOT NULL,
     nome_camara   TEXT,
