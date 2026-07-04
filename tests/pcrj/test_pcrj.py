@@ -271,6 +271,17 @@ class TestMovimentacoes:
         assert any("no ano da nomeação" in f for f in fl)                          # Rio 2024
 
 
+class TestCandidatosNominais:
+    def test_cand_txt_antes_depois_outra_cidade(self):
+        from compliance_agent.pcrj import candidatos_nominais as cn
+        antes = cn._cand_txt({"cargo": "VEREADOR", "cidade": "NITEROI", "ano": 2020,
+                              "partido": "PT", "outra": 1, "ref": 2024})
+        assert "antes da nomeação" in antes and "OUTRA CIDADE" in antes and "Niteroi" in antes
+        depois = cn._cand_txt({"cargo": "VEREADOR", "cidade": "RIO DE JANEIRO", "ano": 2024,
+                               "partido": "", "outra": 0, "ref": 2022})
+        assert "depois da nomeação" in depois
+
+
 class TestOSPanorama:
     def test_parse_nome_rdp(self):
         from compliance_agent.pcrj import os_panorama as op

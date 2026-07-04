@@ -50,11 +50,12 @@ async def _main() -> None:
     con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     con.close()
 
-    # 3) regenera o DOSSIÊ ÚNICO COMPLETO (todos os cruzamentos) + relatórios auxiliares
-    from compliance_agent.pcrj import dossie_completo, relatorio
+    # 3) regenera o DOSSIÊ ÚNICO + a lista NOME A NOME de candidatos + relatórios auxiliares
+    from compliance_agent.pcrj import candidatos_nominais, dossie_completo, relatorio
     res_p = await dossie_completo.gerar()
+    res_c = await candidatos_nominais.gerar()
     await relatorio.gerar()
-    print(f"[finalizar] dossiê: {res_p}", flush=True)
+    print(f"[finalizar] dossiê: {res_p} | nominais: {res_c}", flush=True)
 
     # 4) contagem do achado principal p/ a legenda
     con = sqlite3.connect(str(_db.DB_PATH), timeout=60)
@@ -74,7 +75,12 @@ async def _main() -> None:
            "linha do tempo ano a ano, por parlamentar, e alternância titular/suplente com flag de "
            "continuidade.")
     r = await enviar_arquivo(res_p["pdf"], caption=cap)
-    print(f"[finalizar] Yoda enviado: {r.get('ok')} {r.get('error','')}", flush=True)
+    print(f"[finalizar] Yoda dossiê: {r.get('ok')} {r.get('error','')}", flush=True)
+    cap2 = (f"PCRJ — NOME A NOME (final): {res_c['total']} vinculados à Câmara/Prefeitura que já "
+            "foram candidatos em qualquer eleição (TSE-RJ 2012-2024), com todas as candidaturas "
+            "(cidade/ano/cargo, antes/depois da nomeação). OSs não entram (RDP agregados, sem nomes).")
+    r2 = await enviar_arquivo(res_c["pdf"], caption=cap2)
+    print(f"[finalizar] Yoda nominais: {r2.get('ok')} {r2.get('error','')}", flush=True)
     print("[finalizar] FIM", flush=True)
 
 
