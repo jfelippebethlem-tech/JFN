@@ -34,8 +34,10 @@ CREATE INDEX IF NOT EXISTS ix_camara_gab ON pcrj_camara_servidores(gabinete_num)
 
 CREATE TABLE IF NOT EXISTS pcrj_gabinetes (
     gabinete_num  INTEGER PRIMARY KEY,
-    vereador      TEXT,
+    vereador      TEXT,              -- efetivo (suplente em exercício, senão titular) — retrocompat
     vereador_norm TEXT,
+    titular       TEXT,              -- vereador titular do gabinete (legislatura atual)
+    suplente      TEXT,              -- suplente em exercício, se houver
     coletado_em   TEXT
 );
 

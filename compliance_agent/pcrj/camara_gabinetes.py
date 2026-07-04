@@ -49,21 +49,24 @@ def coletar(db_path=None, url: str = _URL) -> dict:
             # pula cabeçalho / linhas sem número de gabinete ou sem vereador
             if gab is None or not vereador or vereador.lower() == "nan":
                 continue
+            titular = vereador.rstrip("*").strip()
             suplente = str(row.get(3) or "").strip()
-            if suplente and suplente.lower() != "nan":
+            suplente = suplente if (suplente and suplente.lower() != "nan") else ""
+            if suplente:
                 vereador_efetivo = suplente          # suplente em exercício assume o gabinete
-                obs = f"titular {vereador.rstrip('*')}; suplente em exercício"
+                rotulo = f"{suplente} (suplente em exercício; titular {titular})"
             else:
-                vereador_efetivo = vereador.rstrip("*")
-                obs = None
+                vereador_efetivo = titular
+                rotulo = titular
             con.execute(
-                """INSERT INTO pcrj_gabinetes (gabinete_num,vereador,vereador_norm,coletado_em)
-                   VALUES (?,?,?,?)
+                """INSERT INTO pcrj_gabinetes
+                     (gabinete_num,vereador,vereador_norm,titular,suplente,coletado_em)
+                   VALUES (?,?,?,?,?,?)
                    ON CONFLICT(gabinete_num) DO UPDATE SET
                      vereador=excluded.vereador, vereador_norm=excluded.vereador_norm,
+                     titular=excluded.titular, suplente=excluded.suplente,
                      coletado_em=excluded.coletado_em""",
-                (gab, vereador_efetivo + (f" ({obs})" if obs else ""),
-                 normalizar(vereador_efetivo), agora),
+                (gab, rotulo, normalizar(vereador_efetivo), titular, suplente, agora),
             )
             n += 1
         con.commit()
