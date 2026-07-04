@@ -61,11 +61,12 @@ def _secao_gabinete(con, gab: int) -> dict:
         f"posse dos suplentes em <b>02/01/2025</b>.</p>"
         f"<p><b>Nomeados sob o suplente {_e(suplente)}</b> (ato ≥ 02/01/2025) — "
         f"{len(sob_suplente)}:</p>" + _tab(sob_suplente)
-        + f"<p class='nota'>Nomeados de período anterior (legislatura passada — vereador "
-        f"diverso; atribuição ao gabinete atual é apenas indicativa) — {len(anteriores)}:</p>"
+        + f"<p><span class='flag'>🚩 CONTINUIDADE</span> <b>Mantiveram-se no gabinete através da "
+        f"transição</b> (nomeados antes de 02/01/2025 e ainda presentes — sobreviveram à troca "
+        f"titular→suplente; sinal de vínculo persistente) — <b>{len(anteriores)}</b>:</p>"
         + _tab(anteriores))
     return {"titulo": f"Gabinete {gab:02d} — {titular} (eleito) / {suplente} (suplente em exercício)",
-            "html": html}
+            "html": html, "_continuidade": len(anteriores)}
 
 
 def montar_ctx(db_path=None) -> dict:

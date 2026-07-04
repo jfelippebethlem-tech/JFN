@@ -233,7 +233,7 @@ class TestAlternancia:
         assert "Jorge Fellipe" in sec["titulo"] and "Felipe Michel" in sec["titulo"]
         # 'Novo' (2025) sob suplente; 'Antigo' (2022) período anterior
         assert "sob o suplente Jorge Fellipe</b> (ato ≥ 02/01/2025) — 1" in sec["html"]
-        assert "período anterior" in sec["html"] and "— 1:" in sec["html"]
+        assert "CONTINUIDADE" in sec["html"] and sec["_continuidade"] == 1  # 'Antigo' (2022) manteve-se
 
 
 class TestPipeline:
