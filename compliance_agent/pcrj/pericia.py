@@ -140,6 +140,39 @@ def _tabela_geo(pessoas: list[dict]) -> str:
             + "".join(linhas) + "</table>")
 
 
+def _tabela_comissionados_cand(con) -> tuple[str, int]:
+    """Comissionados da Prefeitura (2021+) que já foram candidatos (cruzamento inverso)."""
+    try:
+        rows = con.execute("""
+            SELECT nome_pcrj, cargo_pcrj, orgao_pcrj, admissao, exoneracao,
+                   cand_cidade, cand_ano, cand_cargo,
+                   (SELECT COUNT(DISTINCT c2.cand_cidade) FROM pcrj_comissionado_candidato c2
+                     WHERE c2.nome_norm=c.nome_norm) n_cid
+            FROM pcrj_comissionado_candidato c
+            GROUP BY nome_norm, orgao_pcrj, cargo_pcrj
+            ORDER BY nome_pcrj, admissao""").fetchall()
+    except Exception:
+        return "<p class='nota'>Cruzamento inverso ainda não coletado.</p>", 0
+    if not rows:
+        return "<p class='nota'>Nenhum comissionado-candidato identificado no escopo coletado.</p>", 0
+    linhas, pessoas = [], set()
+    for r in rows:
+        pessoas.add(r["nome_pcrj"])
+        homon = " <span class='flag' style='background:#eee;color:#777'>homônimo provável</span>" \
+            if r["n_cid"] and r["n_cid"] >= 3 else ""
+        fora = " <span class='flag'>OUTRA CIDADE</span>" if (r["cand_cidade"] or "").upper() \
+            not in ("RIO DE JANEIRO", "") else ""
+        linhas.append(
+            f"<tr><td>{_e(r['nome_pcrj'])}{homon}</td>"
+            f"<td>{_e(r['cargo_pcrj'])} @ {_e(r['orgao_pcrj'])}</td>"
+            f"<td>entrada {_e(r['admissao'])}, saída {_e(r['exoneracao'] or '—')}</td>"
+            f"<td>{_e((r['cand_cargo'] or '').lower())} — {_e((r['cand_cidade'] or '').title())} "
+            f"({r['cand_ano']}){fora}</td></tr>")
+    tab = ("<table><tr><th>Nome (Prefeitura)</th><th>Cargo comissionado/Órgão</th>"
+           "<th>Entrada/Saída</th><th>Candidatura anterior</th></tr>" + "".join(linhas) + "</table>")
+    return tab, len(pessoas)
+
+
 def montar_ctx(db_path=None) -> dict:
     con = _db.conectar(db_path)
     try:
@@ -149,6 +182,7 @@ def montar_ctx(db_path=None) -> dict:
         concom = [p for p in pessoas if _concomitante(p)]
         geo = [p for p in pessoas if any(c["outra_cidade"] for c in p["candidaturas"])]
         total = len(pessoas)
+        tab_com, n_com = _tabela_comissionados_cand(con)
 
         sumario = (
             f"<table>"
@@ -162,6 +196,8 @@ def montar_ctx(db_path=None) -> dict:
             f"<td style='text-align:right'>{len(concom)}</td></tr>"
             f"<tr><td>Na Prefeitura E candidato/domicílio em <b>outra cidade</b></td>"
             f"<td style='text-align:right'>{len(geo)}</td></tr>"
+            f"<tr><td><b>Comissionados da Prefeitura (2021+) que já foram candidatos</b> (inverso)</td>"
+            f"<td style='text-align:right'><b>{n_com}</b></td></tr>"
             f"</table>")
 
         secoes = [
@@ -174,7 +210,11 @@ def montar_ctx(db_path=None) -> dict:
              "html": _tabela(concom)},
             {"titulo": f"V. Na Prefeitura E candidato/domicílio em outra cidade ({len(geo)})",
              "html": _tabela_geo(geo)},
-            {"titulo": "VI. Cobertura e limitações (honestidade)", "html":
+            {"titulo": f"VI. Comissionados da Prefeitura (2021+) que já foram candidatos ({n_com})",
+             "html": ("<p>Cruzamento inverso: candidatos do TSE (município do Rio) que ocupam/"
+                      "ocuparam <b>cargo comissionado</b> (ESPECIAL/DAS/DAI) na Prefeitura a partir "
+                      "de 2021. Efetivos e aposentados fora do escopo.</p>" + tab_com)},
+            {"titulo": "VII. Cobertura e limitações (honestidade)", "html":
              "<p>Sem CPF em nenhuma base pública → casamento por <b>nome</b> é indício, não prova "
              "(homônimo possível; nome em ≥3 municípios sinalizado). Direção pela ordem das datas "
              "(ato na Câmara × admissão na Prefeitura). 'Domicílio em outra cidade' = município da "
