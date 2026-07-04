@@ -35,6 +35,11 @@ def _vinculos_do_gabinete(con, gab: int) -> list[dict]:
            WHERE vc.confianca='indicio_nome_unico' ORDER BY vc.nome_camara""", (gab,))]
 
 
+def _n_pessoas(vincs: list[dict]) -> int:
+    """Pessoas DISTINTAS (uma pessoa pode ter >1 posto/competência na Prefeitura)."""
+    return len({v["nome_norm"] for v in vincs})
+
+
 def _situacao(v: dict) -> str:
     if _cessao_provavel(v):
         return "cessão/requisição (vínculo único)"
@@ -125,12 +130,16 @@ def _indice_geral(con) -> str:
     partes = []
     for row in gabs:
         vincs = _vinculos_do_gabinete(con, row["gabinete_num"])
-        nomes = "; ".join(
-            f"{_e(v['nome_camara'])} → {_e(v['cargo_pcrj'])} ({_situacao(v).split('(')[0].strip()})"
-            for v in vincs)
+        vistos, nomes = set(), []
+        for v in vincs:                       # 1 entrada por pessoa (dedup de múltiplos postos)
+            if v["nome_norm"] in vistos:
+                continue
+            vistos.add(v["nome_norm"])
+            nomes.append(f"{_e(v['nome_camara'])} → {_e(v['cargo_pcrj'])} "
+                         f"({_situacao(v).split('(')[0].strip()})")
         partes.append(
             f"<p><b>Gabinete {row['gabinete_num']:02d} — {_e(row['vereador'])}</b> "
-            f"({row['n']}): {nomes}</p>")
+            f"({row['n']}): {'; '.join(nomes)}</p>")
     return "".join(partes) or "<p class='nota'>Sem vínculos.</p>"
 
 
@@ -156,8 +165,8 @@ def _secoes_por_parlamentar(con) -> list[dict]:
         titulo = f"{g['titular'] or 'Gabinete'} — Gabinete {gab:02d}"
         sup = (f"<p><b>Suplente em exercício:</b> {_e(g['suplente'])}.</p>" if g["suplente"] else "")
         corpo = (sup + f"<p>{total} nomeados no gabinete ({atual} na legislatura atual · "
-                 f"{total - atual} de ingresso anterior). <b>{len(vincs)}</b> com indício de "
-                 "vínculo na Prefeitura.</p>"
+                 f"{total - atual} de ingresso anterior). <b>{_n_pessoas(vincs)}</b> pessoa(s) com "
+                 "indício de vínculo na Prefeitura (uma pode ter tido mais de um posto).</p>"
                  + _tabela_vinculos_gab(vincs) + _candidaturas_gab(con, gab)
                  + "<p class='nota'>Listagem completa do gabinete:</p>" + _tabela_listagem(con, gab))
         secoes.append({"titulo": titulo, "html": corpo})
@@ -257,7 +266,7 @@ def montar_ctx(gab: int, db_path=None) -> dict:
         vincs = _vinculos_do_gabinete(con, gab)
         secoes = [
             {"titulo": f"1. Gabinete {gab:02d} — {vereador}: nomeados que estão/estiveram na Prefeitura do Rio",
-             "html": (f"<p>{len(vincs)} de {total} nomeados do gabinete têm indício de vínculo na "
+             "html": (f"<p>{_n_pessoas(vincs)} de {total} nomeados do gabinete têm indício de vínculo na "
                       f"Prefeitura (por nome; sem CPF é indício, não prova). "
                       f"'Requisitado'/'à disposição' = cessão (vínculo único), não acúmulo.</p>"
                       + _tabela_vinculos_gab(vincs) + _candidaturas_gab(con, gab))},
@@ -271,8 +280,9 @@ def montar_ctx(gab: int, db_path=None) -> dict:
             "titulo": f"Gabinete {gab:02d} — Vereador {vereador}",
             "subtitulo": "Nomeados do gabinete e vínculos na Prefeitura do Rio — Módulo PCRJ",
             "metodologia": "Cruzamento nominal Câmara×Prefeitura (indício; verificar por CPF)",
-            "score": len(vincs), "faixa": "ALTO" if len(vincs) >= 3 else "MÉDIO" if vincs else "BAIXO",
-            "top_flags": [f"{total} nomeados", f"{len(vincs)} na Prefeitura"],
+            "score": _n_pessoas(vincs),
+            "faixa": "ALTO" if _n_pessoas(vincs) >= 3 else "MÉDIO" if vincs else "BAIXO",
+            "top_flags": [f"{total} nomeados", f"{_n_pessoas(vincs)} pessoas na Prefeitura"],
             "secoes": secoes,
             "proveniencia": [
                 {"dado": "Servidores Câmara", "estado": "REAL",
