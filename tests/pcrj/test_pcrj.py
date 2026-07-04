@@ -236,6 +236,41 @@ class TestAlternancia:
         assert "CONTINUIDADE" in sec["html"] and sec["_continuidade"] == 1  # 'Antigo' (2022) manteve-se
 
 
+class TestMovimentacoes:
+    def _pz(self, ato_gab, posts, cands=None, ato_qq=None):
+        from datetime import date
+        def d(s):
+            return date(*map(int, s.split("-"))) if s else None
+        return {"nome": "X", "ato_gab": d(ato_gab), "ato_qq": d(ato_qq or ato_gab), "gabs": [11],
+                "gab_label": "Gab 11", "nome_norm": "X",
+                "postos": [{"cargo": "ESPECIAL", "orgao": "SMS", "adm": d(a), "exo": d(e)}
+                           for a, e in posts],
+                "cands": cands or []}
+
+    def test_gabinete_para_prefeitura(self):
+        from compliance_agent.pcrj import movimentacoes as mv
+        # ato no gabinete 2023, admissão PCRJ 2024 → saiu do gabinete p/ Prefeitura
+        pz = self._pz("2023-10-01", [("2024-04-08", "2025-01-24")])
+        assert mv._gab_para_pref(pz) is not None
+        assert mv._pref_para_gab(pz) is None
+
+    def test_prefeitura_para_gabinete(self):
+        from compliance_agent.pcrj import movimentacoes as mv
+        # admissão PCRJ 2020 anterior ao ato no gabinete 2025 → Prefeitura→gabinete
+        pz = self._pz("2025-02-01", [("2020-05-06", None)])
+        assert mv._pref_para_gab(pz) is not None
+        assert mv._gab_para_pref(pz) is None
+
+    def test_candidato_antes_depois(self):
+        from compliance_agent.pcrj import movimentacoes as mv
+        pz = self._pz("2024-01-01", [], cands=[
+            {"municipio": "NITEROI", "cargo": "VEREADOR", "ano": 2020, "outra_cidade": 1},
+            {"municipio": "RIO DE JANEIRO", "cargo": "VEREADOR", "ano": 2024, "outra_cidade": 0}])
+        fl = mv._cand_flags(pz)
+        assert any("antes da nomeação" in f and "outra cidade" in f for f in fl)  # Niterói 2020
+        assert any("no ano da nomeação" in f for f in fl)                          # Rio 2024
+
+
 class TestPipeline:
     def test_etapas_conhecidas(self):
         from compliance_agent.pcrj import pipeline

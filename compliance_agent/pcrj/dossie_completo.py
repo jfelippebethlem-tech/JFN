@@ -15,7 +15,7 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-from compliance_agent.pcrj import alternancia, pericia
+from compliance_agent.pcrj import alternancia, movimentacoes, pericia
 from compliance_agent.pcrj import db as _db
 from compliance_agent.pcrj import relatorio_gabinete as rg
 
@@ -48,6 +48,7 @@ def _linha_do_tempo(con) -> str:
 def montar_ctx(db_path=None) -> dict:
     ctx_p = pericia.montar_ctx(db_path)
     ctx_a = alternancia.montar_ctx(db_path)
+    ctx_m = movimentacoes.montar_ctx(db_path)
     con = _db.conectar(db_path)
     try:
         secoes_parlamentar = rg._secoes_por_parlamentar(con)
@@ -71,6 +72,11 @@ def montar_ctx(db_path=None) -> dict:
                            "suplentes assumiram em 02/01/2025. 🚩 CONTINUIDADE = quem se manteve "
                            "no gabinete através da transição (sinal de vínculo persistente).</p>"})
     secoes += ctx_a["secoes"][1:]   # pula o 'Contexto e método' (já resumido acima)
+    secoes.append({"titulo": "PARTE E — Movimentações (trajetórias nos dois sentidos, com datas)",
+                   "html": "<p>Quem saiu de gabinete de vereador e foi à Prefeitura (com quem/quando), "
+                           "Prefeitura→gabinete, candidatos antes/depois da nomeação, e quem passou "
+                           "por 2+ gabinetes (suplente↔titular = parlamentares distintos).</p>"})
+    secoes += ctx_m["secoes"]
 
     total = ctx_p["score"]
     return {
