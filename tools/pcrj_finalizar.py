@@ -50,12 +50,11 @@ async def _main() -> None:
     con.execute("PRAGMA wal_checkpoint(TRUNCATE)")
     con.close()
 
-    # 3) regenera perícia + relatórios (determinístico)
-    from compliance_agent.pcrj import pericia, relatorio, relatorio_gabinete as rg
-    res_p = await pericia.gerar()
+    # 3) regenera o DOSSIÊ ÚNICO COMPLETO (todos os cruzamentos) + relatórios auxiliares
+    from compliance_agent.pcrj import dossie_completo, relatorio
+    res_p = await dossie_completo.gerar()
     await relatorio.gerar()
-    await rg.gerar_completo()
-    print(f"[finalizar] perícia: {res_p}", flush=True)
+    print(f"[finalizar] dossiê: {res_p}", flush=True)
 
     # 4) contagem do achado principal p/ a legenda
     con = sqlite3.connect(str(_db.DB_PATH), timeout=60)
@@ -69,9 +68,11 @@ async def _main() -> None:
     from compliance_agent.envfile import carregar_env
     carregar_env()
     from compliance_agent.notifications.telegram import enviar_arquivo
-    cap = (f"PCRJ — PERÍCIA COMPLETA (all-RJ). Cruzamento inverso concluído: {n} comissionados "
-           "da Prefeitura (2021+) que já foram candidatos em todo o RJ. Inclui direção temporal "
-           "Prefeitura↔Câmara, datas de entrada/saída, concomitância e domicílio em outra cidade.")
+    cap = (f"PCRJ — DOSSIÊ ÚNICO E COMPLETO (all-RJ). {n} comissionados da Prefeitura (2021+) que "
+           "já foram candidatos em todo o RJ. Um só documento: direção temporal Prefeitura↔Câmara, "
+           "datas de entrada/saída (exonerado ou não), concomitância, domicílio em outra cidade, "
+           "linha do tempo ano a ano, por parlamentar, e alternância titular/suplente com flag de "
+           "continuidade.")
     r = await enviar_arquivo(res_p["pdf"], caption=cap)
     print(f"[finalizar] Yoda enviado: {r.get('ok')} {r.get('error','')}", flush=True)
     print("[finalizar] FIM", flush=True)
