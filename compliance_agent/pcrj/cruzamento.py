@@ -137,6 +137,11 @@ def cruzar(competencias: list[tuple[int, int]] | None = None, gabinete: int | No
             if feitos % 50 == 0:
                 con.commit()
                 print(f"  ...{feitos}/{len(pessoas)} consultados", flush=True)
+        # Reconciliação (runs suplementares): quem tem match em QUALQUER competência não pode
+        # seguir também como 'nao_encontrado'/'indisponivel' de outro run (dupla contagem).
+        con.execute("""DELETE FROM pcrj_prefeitura_consulta
+                       WHERE encontrado=0 AND nome_norm IN
+                         (SELECT DISTINCT nome_norm FROM pcrj_prefeitura_consulta WHERE encontrado=1)""")
         con.commit()
     finally:
         con.close()

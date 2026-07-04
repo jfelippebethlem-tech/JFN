@@ -13,7 +13,12 @@ from datetime import datetime
 from pathlib import Path
 
 from compliance_agent.pcrj import db as _db
-from compliance_agent.pcrj.relatorio import _ativo, _cessao_provavel, _vinculo_efetivo
+from compliance_agent.pcrj.relatorio import (
+    _ativo,
+    _cessao_provavel,
+    _datas_pcrj,
+    _vinculo_efetivo,
+)
 
 
 def _e(x) -> str:
@@ -42,26 +47,58 @@ def _tabela_vinculos_gab(vincs: list[dict]) -> str:
     linhas = []
     for v in vincs:
         efet = ' <span class="flag">EFETIVO/CARREIRA</span>' if _vinculo_efetivo(v.get("cargo_pcrj")) else ""
+        adm, exo, mat = _datas_pcrj(v)
         linhas.append(
             f"<tr><td>{_e(v['nome_camara'])}{efet}</td>"
             f"<td>{_e(v.get('cargos_camara'))}</td>"
             f"<td>{_e(v['cargo_pcrj'])} @ {_e(v['orgao_pcrj'])}</td>"
-            f"<td>{_e(_situacao(v))}</td>"
-            f"<td>{_e(v['observacao'])}</td></tr>")
+            f"<td>{_e(adm)}</td><td>{_e(exo)}</td>"
+            f"<td>{_e(_situacao(v))}</td><td>{_e(mat)}</td></tr>")
     return ("<table><tr><th>Nome</th><th>Cargo na Câmara</th><th>Cargo/Órgão na Prefeitura</th>"
-            "<th>Situação</th><th>Admissão/Exoneração · matrícula · líquido</th></tr>"
+            "<th>Admissão PCRJ</th><th>Exoneração PCRJ</th><th>Situação</th><th>Matrícula</th></tr>"
             + "".join(linhas) + "</table>")
 
 
 def _tabela_listagem(con, gab: int) -> str:
     rows = con.execute(
-        """SELECT DISTINCT nome, cargo, simbolo, vinculo, ano_ingresso, lotacao
+        """SELECT DISTINCT nome, cargo, simbolo, vinculo, ano_ingresso, data1, data2
            FROM pcrj_camara_servidores WHERE gabinete_num=? ORDER BY nome""", (gab,)).fetchall()
     linhas = [f"<tr><td>{_e(r['nome'])}</td><td>{_e(r['cargo'])}</td><td>{_e(r['simbolo'])}</td>"
-              f"<td>{_e(r['vinculo'])}</td><td style='text-align:right'>{_e(r['ano_ingresso'])}</td></tr>"
+              f"<td>{_e(r['vinculo'])}</td><td>{_e(r['data1'])}</td><td>{_e(r['data2'])}</td></tr>"
               for r in rows]
     return ("<table><tr><th>Nome</th><th>Cargo</th><th>Símbolo</th><th>Vínculo</th>"
-            "<th>Ano ingresso</th></tr>" + "".join(linhas) + "</table>")
+            "<th>Data do ato</th><th>Data publicação/exercício</th></tr>"
+            + "".join(linhas) + "</table>")
+
+
+def _candidaturas_gab(con, gab: int) -> str:
+    """Candidaturas eleitorais dos nomeados DESTE gabinete (cidade, ano, partido; flag anterior)."""
+    rows = con.execute("""
+        SELECT tc.nome_tse, tc.cargo, tc.municipio, tc.ano, tc.partido, tc.outra_cidade,
+               (SELECT MIN(s2.ano_ingresso) FROM pcrj_camara_servidores s2
+                 WHERE s2.nome_norm=tc.nome_norm) ingresso,
+               (SELECT COUNT(DISTINCT t2.municipio) FROM tse_candidatura t2
+                 WHERE t2.nome_norm=tc.nome_norm) n_munic
+        FROM tse_candidatura tc
+        WHERE tc.nome_norm IN (SELECT nome_norm FROM pcrj_camara_servidores WHERE gabinete_num=?)
+        ORDER BY tc.nome_tse, tc.ano DESC""", (gab,)).fetchall()
+    if not rows:
+        return ""
+    linhas = []
+    for r in rows:
+        s = []
+        if r["outra_cidade"]:
+            s.append('<span class="flag">OUTRA CIDADE</span>')
+        if r["ingresso"] and r["ano"] < r["ingresso"]:
+            s.append('<span class="flag" style="background:#fff3e0;color:#e65100">ANTERIOR À NOMEAÇÃO</span>')
+        if r["n_munic"] >= 3:
+            s.append('<span class="flag" style="background:#eee;color:#777">homônimo provável</span>')
+        linhas.append(f"<tr><td>{_e(r['nome_tse'])}</td>"
+                      f"<td>{_e(r['cargo'])} — {_e(r['municipio'])} ({r['ano']}, {_e(r['partido'])})</td>"
+                      f"<td>{' '.join(s)}</td></tr>")
+    return ("<p class='nota'>Candidaturas eleitorais (TSE/RJ) de nomeados deste gabinete:</p>"
+            "<table><tr><th>Nome (TSE)</th><th>Candidatura</th><th>Sinais</th></tr>"
+            + "".join(linhas) + "</table>")
 
 
 def _indice_geral(con) -> str:
@@ -99,6 +136,7 @@ def _secoes_por_gabinete(con) -> list[dict]:
         vincs = _vinculos_do_gabinete(con, gab)
         corpo = (f"<p><b>{len(vincs)}</b> de {total} nomeados com indício de vínculo na Prefeitura."
                  "</p>" + _tabela_vinculos_gab(vincs)
+                 + _candidaturas_gab(con, gab)
                  + "<p class='nota'>Listagem completa do gabinete:</p>" + _tabela_listagem(con, gab))
         secoes.append({"titulo": f"Gabinete {gab:02d} — {g['vereador']}", "html": corpo})
     return secoes
@@ -188,7 +226,7 @@ def montar_ctx(gab: int, db_path=None) -> dict:
              "html": (f"<p>{len(vincs)} de {total} nomeados do gabinete têm indício de vínculo na "
                       f"Prefeitura (por nome; sem CPF é indício, não prova). "
                       f"'Requisitado'/'à disposição' = cessão (vínculo único), não acúmulo.</p>"
-                      + _tabela_vinculos_gab(vincs))},
+                      + _tabela_vinculos_gab(vincs) + _candidaturas_gab(con, gab))},
             {"titulo": f"2. Listagem completa do gabinete {gab:02d} ({total} nomeados)",
              "html": _tabela_listagem(con, gab)},
             {"titulo": "3. Índice por gabinete/vereador (nomeados com vínculo na Prefeitura)",
