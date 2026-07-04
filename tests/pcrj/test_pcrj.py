@@ -205,6 +205,37 @@ class TestPericia:
             pericia._HOJE = None
 
 
+class TestAlternancia:
+    def test_data_parse_e_posse(self):
+        from datetime import date
+        from compliance_agent.pcrj import alternancia
+        assert alternancia._d("02/01/2025") == date(2025, 1, 2)
+        assert alternancia._d("") is None
+        assert alternancia._POSSE_SUPLENTES == date(2025, 1, 2)
+        assert set(alternancia.GABINETES_ALTERNANCIA) == {6, 11, 20, 41, 44}
+
+    def test_split_por_periodo(self, tmp_path):
+        from compliance_agent.pcrj import alternancia
+        from compliance_agent.pcrj import db as _db
+        p = tmp_path / "a.db"
+        _db.inicializar(p)
+        con = _db.conectar(p)
+        con.execute("INSERT INTO pcrj_gabinetes(gabinete_num,titular,suplente,coletado_em) "
+                    "VALUES (11,'Felipe Michel','Jorge Fellipe','x')")
+        con.execute("INSERT INTO pcrj_camara_servidores(nome,nome_norm,cargo,lotacao,gabinete_num,"
+                    "tipo_lotacao,ano_ingresso,data1,doc_num,coletado_em) VALUES "
+                    "('Novo','NOVO','ASSESSOR','Gab',11,'gabinete_parlamentar',2025,'01/03/2025','1','x')")
+        con.execute("INSERT INTO pcrj_camara_servidores(nome,nome_norm,cargo,lotacao,gabinete_num,"
+                    "tipo_lotacao,ano_ingresso,data1,doc_num,coletado_em) VALUES "
+                    "('Antigo','ANTIGO','ASSESSOR','Gab',11,'gabinete_parlamentar',2022,'01/06/2022','2','x')")
+        con.commit(); con.close()
+        sec = alternancia._secao_gabinete(alternancia._db.conectar(p), 11)
+        assert "Jorge Fellipe" in sec["titulo"] and "Felipe Michel" in sec["titulo"]
+        # 'Novo' (2025) sob suplente; 'Antigo' (2022) período anterior
+        assert "sob o suplente Jorge Fellipe</b> (ato ≥ 02/01/2025) — 1" in sec["html"]
+        assert "período anterior" in sec["html"] and "— 1:" in sec["html"]
+
+
 class TestPipeline:
     def test_etapas_conhecidas(self):
         from compliance_agent.pcrj import pipeline
