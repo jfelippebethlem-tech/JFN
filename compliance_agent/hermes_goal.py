@@ -26,7 +26,7 @@ import platform
 import re
 import shutil
 import subprocess
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -300,7 +300,7 @@ class HermesGoalAgent:
         if item:
             item.valor = texto
             item.fonte = "usuario"
-            item.ultima_vez = _dt.utcnow()
+            item.ultima_vez = _dt.now(timezone.utc).replace(tzinfo=None)
             item.n_observacoes = (item.n_observacoes or 0) + 1
         else:
             self.session.add(MemoriaAprendizado(
@@ -802,7 +802,7 @@ class HermesGoalAgent:
             "titulo": titulo,
             "objetivo": self.missao_atual() or titulo,
             "status": "running",
-            "started_at": datetime.utcnow().isoformat(),
+            "started_at": datetime.now(timezone.utc).replace(tzinfo=None).isoformat(),
             "finished_at": None,
             "resultado": None,
             "erro": None,
@@ -812,7 +812,7 @@ class HermesGoalAgent:
         try:
             resultado = await self.trabalhar(max_passos_por_ciclo=max_passos_por_ciclo, max_ciclos=max_ciclos, on_step=on_step)
             payload["status"] = "concluida"
-            payload["finished_at"] = datetime.utcnow().isoformat()
+            payload["finished_at"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
             payload["resultado"] = {
                 "ok": bool(resultado.get("ok")),
                 "n_passos": int(resultado.get("n_passos") or 0),
@@ -823,7 +823,7 @@ class HermesGoalAgent:
             return payload["resultado"]
         except Exception as e:
             payload["status"] = "erro"
-            payload["finished_at"] = datetime.utcnow().isoformat()
+            payload["finished_at"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
             payload["erro"] = f"{type(e).__name__}: {e}"
             return {"ok": False, "erro": payload["erro"]}
         finally:
@@ -903,7 +903,7 @@ async def _executar_missao_persistida(missao_id: int, objetivo: str, titulo: str
             row = session.get(MissaoAuditoria, missao_id)
             if row:
                 row.status = "executando"
-                row.started_at = datetime.utcnow()
+                row.started_at = datetime.now(timezone.utc).replace(tzinfo=None)
                 session.commit()
 
             agente = HermesGoalAgent(session=session, objetivo=objetivo)
@@ -914,7 +914,7 @@ async def _executar_missao_persistida(missao_id: int, objetivo: str, titulo: str
                 row.status = "erro" if resultado.get("ok") is False else "concluida"
                 row.resultado = json.dumps(resultado, ensure_ascii=False)[:4000]
                 row.erro = resultado.get("erro")
-                row.finished_at = datetime.utcnow()
+                row.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
                 session.commit()
         except Exception as e:
             try:
@@ -922,7 +922,7 @@ async def _executar_missao_persistida(missao_id: int, objetivo: str, titulo: str
                 if row:
                     row.status = "erro"
                     row.erro = f"{type(e).__name__}: {e}"
-                    row.finished_at = datetime.utcnow()
+                    row.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
                     session.commit()
             except Exception:
                 pass
@@ -1147,7 +1147,7 @@ async def _loop_auditor_24h(objetivo: str):
             console.print(f"[cyan]🔁 Auditor 24h — ciclo {st['ciclos']+1}[/cyan]")
             res = await _ciclo_auditor_completo(session, objetivo)
             st["ciclos"] += 1
-            st["ultimo_ciclo_em"] = datetime.utcnow().isoformat()
+            st["ultimo_ciclo_em"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
             st["ultimo_resumo"] = res.get("resumo", "")
             st["ultimo_erro"] = None
             console.print(f"[green]✓ Ciclo {st['ciclos']}: {st['ultimo_resumo'][:150]}[/green]")
@@ -1162,7 +1162,7 @@ async def _loop_auditor_24h(objetivo: str):
         if not st["ativo"]:
             break
         st["proximo_ciclo_em"] = (
-            datetime.utcnow() + timedelta(seconds=st["intervalo_seg"])
+            datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(seconds=st["intervalo_seg"])
         ).isoformat()
         # Espera em fatias para responder rápido ao desligamento
         restante = st["intervalo_seg"]
@@ -1200,7 +1200,7 @@ def iniciar_auditor_24h(objetivo: str = "", intervalo_seg: Optional[int] = None)
 
     st["ativo"] = True
     st["objetivo"] = obj
-    st["iniciado_em"] = datetime.utcnow().isoformat()
+    st["iniciado_em"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
     st["ciclos"] = 0
     st["ultimo_erro"] = None
 
