@@ -196,7 +196,7 @@ def coletar_mensal(anos: list[int] | None = None,
             return nn, info, achados
 
         con = _db.conectar(db_path)
-        reg = 0
+        reg = feitos = 0
         try:
             with ThreadPoolExecutor(max_workers=workers) as ex:
                 for nn, info, achados in ex.map(tarefa, enumerate(itens)):
@@ -210,6 +210,9 @@ def coletar_mensal(anos: list[int] | None = None,
                              row.get("admissao"), row.get("exoneracao"), row.get("matricula"),
                              info["cidade"], info["ano"], info["cargo"], agora))
                         reg += 1
+                    feitos += 1
+                    if feitos % 300 == 0:      # commit incremental: não segura o lock a competência inteira
+                        con.commit()
             con.commit()
         finally:
             con.close()
