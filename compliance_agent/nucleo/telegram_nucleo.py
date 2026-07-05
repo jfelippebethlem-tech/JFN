@@ -57,7 +57,7 @@ def _fmt_laudo(laudo, referencia: str = "", titulo_humano: str = "",
     linhas = [
         f"{emoji} *PERÍCIA — {titulo}*",
         f"Risco: *{v.risco_score:.0f}/100 ({v.classificacao.upper()})* "
-        f"— TCU P{v.probabilidade}×I{v.impacto}{conf}",
+        f"— matriz TCU: probabilidade {v.probabilidade}/5, impacto {v.impacto}/5{conf}",
     ]
     if contexto:
         linhas.append(contexto)
