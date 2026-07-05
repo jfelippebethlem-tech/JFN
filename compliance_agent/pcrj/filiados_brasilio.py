@@ -110,6 +110,77 @@ def coletar(uf: str = "RJ", pausa: float = 0.5, db_path=None, max_paginas: int =
     return {"paginas": pag, "lidos": n_lidos, "casados": n_casados}
 
 
+def coletar_arquivo(caminho: str, uf: str = "RJ", db_path=None) -> dict:
+    """Ingere de um ARQUIVO LOCAL (CSV ou CSV.gz) baixado do Brasil.IO — sem API/token.
+    Use quando o dono baixar 'BAIXAR DADOS COMPLETOS EM CSV' (via login Google do próprio dono).
+    Streama linha a linha (arquivo é grande), filtra UF=RJ e casa por nome com os alvos."""
+    import csv
+    import gzip
+    import io as _io
+    from pathlib import Path
+    p = Path(caminho)
+    if not p.exists():
+        return {"erro": f"arquivo não encontrado: {caminho}"}
+    _db.inicializar(db_path)
+    con = _db.conectar(db_path)
+    alvos = _alvos(con)
+    agora = datetime.now(timezone.utc).isoformat()
+
+    def _abrir():
+        raw = gzip.open(p, "rb") if p.suffix == ".gz" else open(p, "rb")
+        return _io.TextIOWrapper(raw, encoding="utf-8", newline="")
+
+    n_lidos = n_casados = 0
+    try:
+        fh = _abrir()
+        # detecta delimitador (Brasil.IO usa ',' por padrão)
+        amostra = fh.read(4096); fh.seek(0)
+        delim = ";" if amostra.count(";") > amostra.count(",") else ","
+        leitor = csv.DictReader(fh, delimiter=delim)
+        cols = {c.lower(): c for c in (leitor.fieldnames or [])}
+
+        def col(chaves):
+            for k in chaves:
+                if k in cols:
+                    return cols[k]
+            return None
+        c_nome = col(_C_NOME); c_mun = col(_C_MUNIC); c_part = col(_C_PART)
+        c_tit = col(_C_TITULO); c_data = col(_C_DATA); c_sit = col(_C_SIT)
+        c_uf = col(("uf", "sigla_uf"))
+        if not c_nome:
+            return {"erro": f"coluna de nome não encontrada; colunas={leitor.fieldnames}"}
+        for row in leitor:
+            n_lidos += 1
+            if c_uf and (row.get(c_uf) or "").strip().upper() not in (uf, ""):
+                continue
+            nn = normalizar(row.get(c_nome, ""))
+            if not nn or nn not in alvos:
+                continue
+            con.execute(
+                """INSERT OR REPLACE INTO pcrj_filiado
+                   (nome_norm,nome,municipio,uf,partido,titulo,data_filiacao,
+                    situacao,fonte,coletado_em) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                (nn, (row.get(c_nome) or "").strip(),
+                 (row.get(c_mun) or "").strip().upper() if c_mun else "", uf,
+                 (row.get(c_part) or "").strip() if c_part else "",
+                 (row.get(c_tit) or "").strip() if c_tit else "",
+                 (row.get(c_data) or "").strip() if c_data else "",
+                 (row.get(c_sit) or "").strip() if c_sit else "",
+                 "brasilio-arquivo", agora))
+            n_casados += 1
+            if n_lidos % 500000 == 0:
+                con.commit()
+                print(f"  {n_lidos} linhas lidas, {n_casados} casados", flush=True)
+        con.commit()
+    finally:
+        con.close()
+    return {"arquivo": str(p), "lidos": n_lidos, "casados": n_casados}
+
+
 if __name__ == "__main__":
     import json
-    print(json.dumps(coletar(), ensure_ascii=False, indent=1))
+    import sys
+    if len(sys.argv) > 1:                 # caminho de arquivo local
+        print(json.dumps(coletar_arquivo(sys.argv[1]), ensure_ascii=False, indent=1))
+    else:
+        print(json.dumps(coletar(), ensure_ascii=False, indent=1))
