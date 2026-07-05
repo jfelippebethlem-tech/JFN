@@ -220,3 +220,11 @@ Ex.: MGS CLEAN agora 2021–2026 (R$ 136.225.497,94; não há OB em 2019/2020).
   sintéticos** (select_option/dispatchEvent/clique de blur disparam ZERO requisições) — por isso o filtro rico
   não automatiza por Playwright (headless OU headed). Caminhos p/ varredura completa por UG: replay HTTP do
   request de filtro (capturar 1 cURL no Chrome) ou Computer Use (mouse/teclado reais). Documentado.
+### Feedback do Mestre Jorge sobre o Site - Wed Jun 24 17:34:33 -03 2026
+
+- **Estado Geral:** 'Muito ruim', 'tudo quebrado'.
+- **Campos:** Mal organizados, sem espaço adequado.
+- **Layout:** 'Traibes laterais' consomem grande parte do espaço.
+- **Gráfico de TIA:** Apenas 'MGS' aparece, outros não são gerados.
+
+/usr/bin/bash: line 3: agent-browser: command not found
