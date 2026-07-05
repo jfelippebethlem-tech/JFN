@@ -17,6 +17,7 @@ import io
 import re
 import sqlite3
 import sys
+import urllib.error
 import urllib.request
 import zipfile
 from datetime import date, datetime, timedelta
@@ -85,13 +86,28 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default=None, help="AAAAMMDD (default: ontem)")
     args = ap.parse_args()
-    dia = args.data or (date.today() - timedelta(days=1)).strftime("%Y%m%d")
+    # CGU publica o snapshot com atraso irregular; objeto ausente no CDN
+    # devolve 403 AccessDenied. Sem --data, recua até 7 dias até achar.
+    if args.data:
+        dias = [args.data]
+    else:
+        dias = [(date.today() - timedelta(days=n)).strftime("%Y%m%d")
+                for n in range(1, 8)]
 
     regs: list[dict] = []
-    for cad in ("ceis", "cnep"):
-        r = _baixar(cad, dia)
-        print(f"{cad.upper()} {dia}: {len(r)} sanções", flush=True)
-        regs.extend(r)
+    for dia in dias:
+        try:
+            for cad in ("ceis", "cnep"):
+                r = _baixar(cad, dia)
+                print(f"{cad.upper()} {dia}: {len(r)} sanções", flush=True)
+                regs.extend(r)
+        except urllib.error.HTTPError as e:
+            if e.code in (403, 404) and not args.data:
+                print(f"{dia}: indisponível ({e.code}), recuando um dia", flush=True)
+                regs = []
+                continue
+            raise
+        break
     if not regs:
         print("nada baixado — abortando sem tocar na tabela", flush=True)
         return 1
