@@ -23,6 +23,16 @@ from compliance_agent.pcrj import db as _db
 
 RIO = "RIO DE JANEIRO"
 
+# Região Metropolitana do RJ — domicílio aqui = COMMUTE normal p/ trabalhar no Rio (não é indício).
+# Só domicílio FORA desta cinta conta como "mora longe" (e ainda assim indício fraco: domicílio
+# eleitoral ≠ residência — a pessoa pode votar na cidade natal e morar no Rio).
+_METRO_RJ = {
+    "RIO DE JANEIRO", "NITERÓI", "SÃO GONÇALO", "DUQUE DE CAXIAS", "NOVA IGUAÇU",
+    "SÃO JOÃO DE MERITI", "BELFORD ROXO", "NILÓPOLIS", "MESQUITA", "QUEIMADOS",
+    "JAPERI", "MAGÉ", "ITABORAÍ", "MARICÁ", "TANGUÁ", "GUAPIMIRIM", "SEROPÉDICA",
+    "ITAGUAÍ", "PARACAMBI", "CACHOEIRAS DE MACACU", "RIO BONITO",
+}
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS pcrj_fantasma_servidor (
     nome_norm     TEXT PRIMARY KEY,
@@ -51,7 +61,7 @@ def _coletar(con) -> dict[str, dict]:
                  "acumulo": False, "acumulo_evid": [], "distante": False,
                  "candidato": False, "evid": [], "municipios": set(),
                  "benef_n": 0, "benef_rio": False, "benef_tipos": set(),
-                 "eleito_fora": "", "origem_fora": ""}
+                 "eleito_fora": "", "origem_fora": "", "filiado_fora": ""}
             pessoas[nn] = p
         if nome and not p["nome"]:
             p["nome"] = nome
@@ -91,6 +101,16 @@ def _coletar(con) -> dict[str, dict]:
         p = _p(r["nome_norm"], r["nome_tse"])
         p["municipios"].add((r["municipio"] or "").upper())
         p["eleito_fora"] = f"{r['cargo']} em {r['municipio']} ({r['ano']})"
+
+    # s_filiado_fora — FILIAÇÃO partidária (Wayback TSE) com domicílio eleitoral fora do Rio.
+    # Cobre MUITO mais gente que candidatura (não precisa ter sido candidato). Domicílio = onde vota.
+    for r in con.execute(
+        "SELECT nome_norm, nome, municipio, partido FROM pcrj_filiado "
+        "WHERE municipio<>'' AND municipio<>'RIO DE JANEIRO'"):
+        # todo filiado na tabela já foi casado com servidor/candidato no ingest → é alvo legítimo
+        p = _p(r["nome_norm"], r["nome"])
+        p["municipios"].add((r["municipio"] or "").upper())
+        p["filiado_fora"] = f"{r['municipio']} ({r['partido']})"
 
     # s_origem_fora — origem eleitoral fora do RJ pelo TÍTULO (dígitos 9-10) ou naturalidade.
     # Corroboração de "base longe do Rio"; conservador (só afirma quando EXCLUI RJ).
@@ -155,6 +175,15 @@ def _score(p: dict) -> tuple[int, list[str], bool]:
     if p.get("origem_fora") and not homonimo:
         score += 1
         sinais.append(f"origem fora do RJ ({p['origem_fora']})")
+    # domicílio eleitoral (filiação) fora da Região Metropolitana = mora longe (não é commute).
+    # Cidade metropolitana (Baixada/Niterói/SG) é deslocamento normal → NÃO pontua, só contexto.
+    ff = p.get("filiado_fora") or ""
+    ff_mun = ff.split(" (")[0].strip().upper()
+    if ff and ff_mun and ff_mun not in _METRO_RJ and not homonimo:
+        score += 2
+        sinais.append(f"domicílio eleitoral em {ff} (fora da região metropolitana)")
+    elif ff:
+        sinais.append(f"filiado em {ff}")   # contexto (metropolitana = commute normal)
     # benefício assistencial — só o subconjunto DEFENSÁVEL (1 pessoa única); homônimo não pontua
     bn = p.get("benef_n", 0)
     tipos = "/".join(sorted(p.get("benef_tipos") or []))

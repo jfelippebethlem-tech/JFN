@@ -110,6 +110,90 @@ def coletar(uf: str = "RJ", pausa: float = 0.5, db_path=None, max_paginas: int =
     return {"paginas": pag, "lidos": n_lidos, "casados": n_casados}
 
 
+_WB_CDX = ("http://web.archive.org/cdx/search/cdx?url=agencia.tse.jus.br/estatistica/"
+           "sead/eleitorado/filiados/uf/&matchType=prefix&output=json"
+           "&filter=statuscode:200&filter=original:.*filiados_.*_{uf}.zip&collapse=urlkey")
+_WB_CDX_P = ("http://web.archive.org/cdx/search/cdx?url=agencia.tse.jus.br/estatistica/"
+             "sead/eleitorado/filiados/uf/filiados_{p}_{uf}.zip&output=json"
+             "&filter=statuscode:200&filter=mimetype:application/zip")
+# colunas do CSV do TSE (arquivo arquivado no Wayback, ~2018)
+_WB_NOME = "NOME DO FILIADO"
+_WB_MUN = "NOME DO MUNICIPIO"
+_WB_PART = "SIGLA DO PARTIDO"
+_WB_TIT = "NUMERO DA INSCRICAO"
+_WB_DATA = "DATA DA FILIACAO"
+_WB_SIT = "SITUACAO DO REGISTRO"
+_WB_UF = "UF"
+
+
+def coletar_wayback(uf: str = "RJ", pausa: float = 1.0, db_path=None) -> dict:
+    """Ingere filiados dos ZIPs do TSE ARQUIVADOS no Wayback Machine (agencia.tse.jus.br,
+    removidos pelo TSE em 2021). GRÁTIS, sem Google, sem token. Dado ~2018 (domicílio eleitoral
+    é estável → serve de ORIGEM). Um zip por partido; pega o snapshot 200 mais recente de cada."""
+    import csv
+    import io as _io
+    import zipfile
+    uf = uf.lower()
+    _db.inicializar(db_path)
+    con = _db.conectar(db_path)
+    alvos = _alvos(con)
+    sess = requests.Session()
+    sess.headers.update({"User-Agent": "JFN-Compliance/1.0"})
+    agora = datetime.now(timezone.utc).isoformat()
+
+    # lista de partidos arquivados
+    try:
+        rows = sess.get(_WB_CDX.format(uf=uf), timeout=120).json()[1:]
+    except Exception as e:  # noqa: BLE001
+        return {"erro": f"CDX falhou: {str(e)[:100]}"}
+    partidos = sorted({r[2].split("filiados_")[1].rsplit(f"_{uf}", 1)[0]
+                       for r in rows if "filiados_" in r[2]})
+    n_lidos = n_casados = feitos = 0
+    try:
+        for p in partidos:
+            try:
+                snaps = sess.get(_WB_CDX_P.format(p=p, uf=uf), timeout=90).json()[1:]
+                if not snaps:
+                    continue
+                ts = snaps[-1][1]          # snapshot 200 mais recente
+                orig = snaps[-1][2]
+                url = f"http://web.archive.org/web/{ts}id_/{orig}"
+                blob = sess.get(url, timeout=180).content
+                zf = zipfile.ZipFile(_io.BytesIO(blob))
+                csvname = next((n for n in zf.namelist()
+                                if n.lower().endswith(".csv") and "sub_jud" not in n.lower()), None)
+                if not csvname:
+                    continue
+                with zf.open(csvname) as fh:
+                    rd = csv.DictReader(_io.TextIOWrapper(fh, encoding="latin-1", newline=""),
+                                        delimiter=";")
+                    for row in rd:
+                        n_lidos += 1
+                        nn = normalizar(row.get(_WB_NOME, ""))
+                        if not nn or nn not in alvos:
+                            continue
+                        con.execute(
+                            """INSERT OR REPLACE INTO pcrj_filiado
+                               (nome_norm,nome,municipio,uf,partido,titulo,data_filiacao,
+                                situacao,fonte,coletado_em) VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                            (nn, (row.get(_WB_NOME) or "").strip(),
+                             (row.get(_WB_MUN) or "").strip().upper(), uf.upper(),
+                             (row.get(_WB_PART) or "").strip(), (row.get(_WB_TIT) or "").strip(),
+                             (row.get(_WB_DATA) or "").strip(), (row.get(_WB_SIT) or "").strip(),
+                             "wayback-tse-2018", agora))
+                        n_casados += 1
+                con.commit()
+                feitos += 1
+                print(f"  [{p}] ok · acumulado {n_casados} casados / {n_lidos} lidos", flush=True)
+            except Exception as e:  # noqa: BLE001
+                print(f"  [{p}] erro: {str(e)[:80]}", flush=True)
+            time.sleep(pausa)
+    finally:
+        con.close()
+    return {"partidos": len(partidos), "processados": feitos,
+            "lidos": n_lidos, "casados": n_casados}
+
+
 def coletar_arquivo(caminho: str, uf: str = "RJ", db_path=None) -> dict:
     """Ingere de um ARQUIVO LOCAL (CSV ou CSV.gz) baixado do Brasil.IO — sem API/token.
     Use quando o dono baixar 'BAIXAR DADOS COMPLETOS EM CSV' (via login Google do próprio dono).
@@ -180,7 +264,9 @@ def coletar_arquivo(caminho: str, uf: str = "RJ", db_path=None) -> dict:
 if __name__ == "__main__":
     import json
     import sys
-    if len(sys.argv) > 1:                 # caminho de arquivo local
+    if "--wayback" in sys.argv:           # ZIPs do TSE arquivados no Wayback (grátis, sem Google)
+        print(json.dumps(coletar_wayback(), ensure_ascii=False, indent=1))
+    elif len(sys.argv) > 1:               # caminho de arquivo local
         print(json.dumps(coletar_arquivo(sys.argv[1]), ensure_ascii=False, indent=1))
     else:
         print(json.dumps(coletar(), ensure_ascii=False, indent=1))
