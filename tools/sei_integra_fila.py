@@ -50,7 +50,18 @@ def _ja_rodando() -> bool:
     try:
         out = subprocess.run(["pgrep", "-f", "sei_integra_fila.py"],
                              capture_output=True, text=True).stdout.split()
-        return any(p.isdigit() and int(p) != os.getpid() for p in out)
+        for p in out:
+            if not p.isdigit() or int(p) == os.getpid():
+                continue
+            # só conta PYTHON de verdade: wrapper sh -c/bash do cron carrega o nome do
+            # script na cmdline e auto-casava no pgrep -f (no-op falso; visto 2026-07-05)
+            try:
+                exe = os.path.basename(os.path.realpath(f"/proc/{p}/exe"))
+            except OSError:
+                continue
+            if exe.startswith("python"):
+                return True
+        return False
     except OSError:
         return False
 
