@@ -17,7 +17,7 @@ Tudo persiste na tabela memoria_aprendizado (SQLite).
 """
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from compliance_agent.database.models import MemoriaAprendizado, get_session
@@ -110,7 +110,7 @@ def aprender(
         if item:
             item.n_observacoes += 1
             item.confianca = min(1.0, (item.confianca or 0.5) + delta_confianca)
-            item.ultima_vez = datetime.utcnow()
+            item.ultima_vez = datetime.now(timezone.utc).replace(tzinfo=None)
             # Atualiza valor se o novo for mais longo (mais informação)
             if valor and len(valor) > len(item.valor or ""):
                 item.valor = valor
@@ -336,7 +336,7 @@ def registrar_entidade(nome: str, info: dict, session=None):
                 perfil[k] = list(set(perfil.get(k, []) + v))
             else:
                 perfil[k] = v
-        perfil["ultima_atualizacao"] = datetime.utcnow().isoformat()
+        perfil["ultima_atualizacao"] = datetime.now(timezone.utc).replace(tzinfo=None).isoformat()
         aprender("entidade", nome, json.dumps(perfil, ensure_ascii=False),
                  fonte="regra", session=s)
     finally:

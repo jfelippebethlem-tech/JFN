@@ -164,10 +164,10 @@ def periciar_contrato(session, contrato_id: int) -> Laudo | None:
         from compliance_agent.database.models import Contrato, Empresa
     except Exception:
         return None
-    c = session.query(Contrato).get(contrato_id)
+    c = session.get(Contrato, contrato_id)
     if c is None:
         return None
-    empresa = (session.query(Empresa).get(c.empresa_id)
+    empresa = (session.get(Empresa, c.empresa_id)
                if getattr(c, "empresa_id", None) else None)
     contratacao = _contratacao_de_contrato(c)
     contratacao.identificador = f"ct:{c.id}"  # único (numero pode repetir)
