@@ -544,9 +544,6 @@ async def _bootstrap_hermes(session) -> None:
     )
     from compliance_agent.notifications.telegram import enviar_mensagem
 
-    # Não refaz o bootstrap se já foi feito nessa execução
-    ja_feito = [m for m in [None] if False]  # marcador simples abaixo
-
     garantir_contexto_inicial(session)
     contexto_mem = contexto_para_prompt(session, max_itens=30)
 
