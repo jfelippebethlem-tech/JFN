@@ -118,6 +118,56 @@ def _fila_geral() -> list[dict]:
     return out
 
 
+def _fila_reler_por_ob(max_reler: int = 10) -> list[str]:
+    """FRESCOR POR OB: processo JÁ ARQUIVADO que ganhou OB nova (SIAFE ou TFE) DEPOIS do
+    arquivo = o processo andou → re-ler, senão a perícia roda incompleta (regra do dono).
+    Retorna nº SEI-UUUUUU/NNNNNN/AAAA dos mais expostos (valor desc), bounded."""
+    if not DB.exists() or not ARQUIVO.is_dir():
+        return []
+    import sqlite3
+    from datetime import datetime
+    ultima_ob: dict[str, str] = {}   # proc limpo -> última data de OB (ISO)
+    con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True)
+    try:
+        con.execute("PRAGMA busy_timeout=15000")
+        # SIAFE (fonte rica; data dd/mm/aaaa) + TFE espelho (ISO) — vale o MAX das duas
+        for proc, d in con.execute(
+                "SELECT processo, MAX(substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)"
+                "||'-'||substr(data_emissao,1,2)) FROM ob_orcamentaria_siafe "
+                "WHERE processo LIKE '%______/______/20%' AND length(data_emissao)=10 "
+                "GROUP BY processo"):
+            p = _proc_limpo(proc)
+            if p and d:
+                ultima_ob[p] = max(ultima_ob.get(p, ""), d)
+        for proc, d in con.execute(
+                "SELECT numero_sei, MAX(data_emissao) FROM ordens_bancarias "
+                "WHERE numero_sei LIKE 'SEI-%/%/20%' GROUP BY numero_sei"):
+            p = _proc_limpo(proc)
+            if p and d:
+                ultima_ob[p] = max(ultima_ob.get(p, ""), str(d)[:10])
+        valores = _valor_por_processo()
+    except sqlite3.Error:
+        return []
+    finally:
+        con.close()
+    out: list[tuple[float, str]] = []
+    for dir_arq in ARQUIVO.iterdir():
+        if not dir_arq.is_dir() or not _arquivado_ok(dir_arq):
+            continue
+        proc = dir_arq.name.replace("_", "/")
+        d_ob = ultima_ob.get(proc)
+        if not d_ob:
+            continue
+        try:
+            mtime = max(f.stat().st_mtime for f in (dir_arq / "texto").glob("*.txt"))
+        except ValueError:
+            continue
+        if d_ob > datetime.fromtimestamp(mtime).strftime("%Y-%m-%d"):
+            out.append((valores.get(f"SEI-{proc}", 0) or 0, f"SEI-{proc}"))
+    out.sort(key=lambda t: -t[0])
+    return [sei for _, sei in out[:max_reler]]
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--max", type=int, default=int(os.environ.get("INTEGRA_FILA_MAX", "2")))
@@ -133,9 +183,12 @@ def main() -> int:
         return 0
 
     # candidatos ordenados (não arquivados). Fonte: geral (todo o SEI) ou a fila json (bombeiros).
+    reler: list[str] = []
     if args.geral:
-        candidatos = [c["sei"] for c in _fila_geral()]
-        _log(f"fonte=GERAL: {len(candidatos)} processos com cdp bom ainda não arquivados")
+        novos = [c["sei"] for c in _fila_geral()]
+        reler = _fila_reler_por_ob()          # frescor: OB nova em processo já arquivado → re-ler
+        candidatos = novos + reler
+        _log(f"fonte=GERAL: {len(novos)} não arquivados + {len(reler)} re-ler (OB nova pós-arquivo)")
     else:
         fila_path = Path(args.fila)
         if not fila_path.exists():
@@ -150,8 +203,8 @@ def main() -> int:
         proc = _proc_limpo(sei)
         if not proc:
             continue
-        if _arquivado_ok(ARQUIVO / proc.replace("/", "_")):
-            continue                      # já arquivado COM conteúdo — resumível
+        if _arquivado_ok(ARQUIVO / proc.replace("/", "_")) and f"SEI-{proc}" not in reler:
+            continue                      # já arquivado COM conteúdo — resumível (exceto re-ler por OB)
         alvos.append(proc)
         if not args.segundos and len(alvos) >= args.max:
             break                         # sem orçamento de tempo → corta em --max (comportamento antigo)

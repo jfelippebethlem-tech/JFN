@@ -31,6 +31,22 @@ URL = os.environ.get("SEI_LOGIN_URL") or \
 U, P, ORG = os.environ.get("SEI_USER", "itkava"), os.environ.get("SEI_PASS", ""), os.environ.get("SEI_ORGAO", "iterj")
 
 
+async def _ate(pg, cond, max_ms: int = 6000, passo: int = 250) -> bool:
+    """Espera EVENT-BASED com teto: retorna assim que ``cond()`` (async) vira True.
+    Teto = o sleep fixo antigo → pior caso idêntico, caso típico segundos mais rápido
+    (lição scrapling 2026-06: o ganho real é trocar wait_for_timeout por condição)."""
+    gasto = 0
+    while gasto < max_ms:
+        try:
+            if await cond():
+                return True
+        except Exception:
+            pass
+        await pg.wait_for_timeout(passo)
+        gasto += passo
+    return False
+
+
 async def _goto_retry(pg, url, n=8):
     for _ in range(n):
         try:
@@ -38,6 +54,23 @@ async def _goto_retry(pg, url, n=8):
         except Exception:
             await pg.wait_for_timeout(2500)
     return None
+
+
+async def _sair_do_login(pg) -> bool:
+    return "login.php" not in (pg.url or "")
+
+
+async def _tem_campo_protocolo(pg) -> bool:
+    return bool(await pg.evaluate(
+        """()=>!!document.querySelector('#txtProtocoloPesquisa,input[name="txtProtocoloPesquisa"]')"""))
+
+
+async def _tem_resultado_ou_arvore(pg) -> bool:
+    """Pós-submit da pesquisa: True quando a lista de resultados OU a árvore (ifrArvore) já pintou."""
+    if any("arvore" in (fr.url or "").lower() or fr.name == "ifrArvore" for fr in pg.frames):
+        return True
+    return bool(await pg.evaluate(
+        r"""()=>!!document.querySelector('a[href*="procedimento_trabalhar"],#tblResultado,table.resultado,#conteudo table')"""))
 
 
 async def login(pg, tentativas=40) -> bool:
@@ -57,7 +90,7 @@ async def login(pg, tentativas=40) -> bool:
         if cand:
             await pg.select_option('#selOrgao', value=cand[0]["v"])
         await pg.evaluate(r"""()=>{const b=[...document.querySelectorAll('button,input[type=submit],a')].find(e=>/acessar|entrar|logar/i.test((e.value||e.innerText||'').trim()));if(b)b.click();}""")
-        await pg.wait_for_timeout(6000)
+        await _ate(pg, lambda: _sair_do_login(pg), 6000)
         if "login.php" not in pg.url:
             return True
         await pg.wait_for_timeout(1500)
@@ -132,8 +165,8 @@ async def _ler_cracked(pg, proc: str) -> dict:
     proto = re.sub(r"(?i)^sei[-\s]*", "", (proc or "").strip())  # SEM prefixo 'SEI-'
     # 1) abre a Pesquisa interna (clique REAL preserva a sessão)
     await pg.evaluate(r"""()=>{const e=[...document.querySelectorAll('a')].find(a=>/^pesquisa$/i.test((a.innerText||'').trim())||/protocolo_pesquisar\b/i.test(a.href||a.getAttribute('onclick')||''));if(e)e.click();}""")
-    await pg.wait_for_timeout(5000)
-    if not await pg.evaluate("""()=>!!document.querySelector('#txtProtocoloPesquisa,input[name="txtProtocoloPesquisa"]')"""):
+    await _ate(pg, lambda: _tem_campo_protocolo(pg), 5000)
+    if not await _tem_campo_protocolo(pg):
         return {"documentos": [], "relacionados": [], "via": "cracked", "erro_cracked": "campo de pesquisa não apareceu"}
     # 2) protocolo SEM prefixo
     try:
@@ -332,8 +365,8 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
             pass
     # navega p/ a Pesquisa AVANÇADA (menu "Pesquisa") — clique REAL preserva a sessão
     await pg.evaluate(r"""()=>{const e=[...document.querySelectorAll('a')].find(a=>/^pesquisa$/i.test((a.innerText||'').trim())||/protocolo_pesquisar\b/i.test(a.href||a.getAttribute('onclick')||''));if(e)e.click();}""")
-    await pg.wait_for_timeout(5000)
-    tem_avancada = await pg.evaluate("""()=>!!document.querySelector('#txtProtocoloPesquisa,input[name="txtProtocoloPesquisa"]')""")
+    await _ate(pg, lambda: _tem_campo_protocolo(pg), 5000)
+    tem_avancada = await _tem_campo_protocolo(pg)
     if tem_avancada:
         # protocolo EXATO: fill; se o ADF não aceitar, keyboard.type (keystrokes reais)
         try: await pg.fill('#txtProtocoloPesquisa', proc)
@@ -366,7 +399,7 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
         await pg.evaluate(r"""(n)=>{const i=document.querySelector('#txtPesquisaRapida');if(i){i.value=n;const f=document.getElementById('frmProtocoloPesquisaRapida');if(f)f.submit();}}""", proc)
     try: await pg.wait_for_load_state("networkidle", timeout=15000)
     except Exception: pass
-    await pg.wait_for_timeout(4000)
+    await _ate(pg, lambda: _tem_resultado_ou_arvore(pg), 4000)
     await _abrir_primeiro_resultado(pg)
     await pg.wait_for_timeout(3000)
     dump = await _extrair_de_todos_frames(pg)

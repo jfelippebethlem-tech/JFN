@@ -46,3 +46,11 @@ as preserva em `fotos/` justamente para conferir se o serviço foi feito.
 - ❌ Reinventar parsing/leitura de PDF: `sei_consultar.py` já entrega texto.
 - ❌ Carregar PDF/íntegra inteira no contexto: use `--grep`/`--fase`/`--doc`.
 - ❌ Rodar OCR fora do `sei_arquivar.py` (ele já decide quando OCR é preciso).
+
+## Melhorias 2026-07-05 (event-based + frescor)
+- `sei_reader.py` usa **espera por condição com teto** (`_ate()`): pós-login, abertura da
+  Pesquisa e pós-submit retornam assim que a página/árvore pinta (teto = sleep fixo antigo →
+  pior caso idêntico, caso típico 5–15s mais rápido por processo).
+- `sei_integra_fila.py --geral` agora re-enfileira processo **já arquivado que ganhou OB nova**
+  (SIAFE ou TFE) depois do arquivo (`_fila_reler_por_ob`, bounded 10/rodada, valor desc) —
+  OB nova = processo andou → re-ler, senão a perícia roda incompleta.
