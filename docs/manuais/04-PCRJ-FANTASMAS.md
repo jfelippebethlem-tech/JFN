@@ -37,6 +37,7 @@ Dossiê: `reports/pcrj_alvos_prioritarios_<data>.pdf` (enviado ao Yoda).
 - `tse_candidatura` — candidaturas (situacao = APTO/INAPTO; **não** tem resultado de eleição)
 
 ## De qual cidade a pessoa é (origem geográfica) — 2026-07-05
+- **Filiação partidária (Wayback TSE 2018)**: `filiados_brasilio.py --wayback` → tabela `pcrj_filiado` (nome+município+partido+título). 764 pessoas casadas, 286 com domicílio fora do Rio. Cobre quem NUNCA foi candidato. Sinal só pontua se cidade distante (fora da região metropolitana).
 Sinais de origem, do mais forte ao mais fraco (todos indício, nunca prova):
 - **Domicílio eleitoral** = `NM_UE` (município onde foi candidato; por lei mora lá). Já usado em `s_distante`.
 - **Título de eleitor** → UF de alistamento (dígitos 9-10). `origem.py::uf_do_titulo`. Disponível em
