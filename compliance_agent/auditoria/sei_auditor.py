@@ -54,8 +54,13 @@ def env(chave, default=None):
     return default
 
 
-LOGIN_URL = env("SEI_LOGIN_URL",
-                "https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI&infra_url=L3NlaS8=")
+# URL de login SEMPRE com os DOIS params obrigatorios. Sem 'sigla_sistema=SEI' o SEI mostra
+# "Sistema '/ERJ' invalido" e o form nem carrega (login falha). Validado 2026-07-05.
+_LOGIN_CERTA = "https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI"
+LOGIN_URL = env("SEI_LOGIN_URL", _LOGIN_CERTA)
+# forca a URL certa mesmo se o .env vier incompleto/errado (nunca logar sem os 2 params)
+if ("sigla_orgao_sistema=" not in LOGIN_URL) or ("sigla_sistema=" not in LOGIN_URL):
+    LOGIN_URL = _LOGIN_CERTA
 
 
 def log(msg):
