@@ -119,7 +119,16 @@ async def _ckan_get(action: str, params: dict, base: str = CKAN_BASE) -> dict:
     except Exception as e:
         http_erro = f"{type(e).__name__}: {e}"
 
-    # 2) Fallback via Chrome (passa WAF)
+    # 2) Fallback stealth via Scrapling (rapido, passa WAF SEM Chrome)
+    try:
+        from compliance_agent.collectors._scrapling_fetch import get_json
+        data = get_json(_monta_url(base, action, params))
+        if isinstance(data, dict) and data.get("success"):
+            return {"ok": True, "result": data.get("result"), "_via": "scrapling"}
+    except Exception:
+        pass
+
+    # 3) Fallback via Chrome (ultimo recurso, passa WAF)
     via = await _fetch_via_chrome(_monta_url(base, action, params))
     if via.get("ok"):
         data = via["json"]
