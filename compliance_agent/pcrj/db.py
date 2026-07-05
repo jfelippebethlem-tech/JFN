@@ -74,6 +74,21 @@ CREATE TABLE IF NOT EXISTS tse_candidatura (
 );
 CREATE INDEX IF NOT EXISTS ix_tse_nomenorm ON tse_candidatura(nome_norm);
 
+CREATE TABLE IF NOT EXISTS pcrj_filiado (
+    nome_norm     TEXT NOT NULL,    -- nome normalizado do filiado casado com servidor/candidato
+    nome          TEXT,             -- nome verbatim do filiado
+    municipio     TEXT,             -- município do domicílio eleitoral (cidade de origem!)
+    uf            TEXT,
+    partido       TEXT,
+    titulo        TEXT,             -- nº de inscrição (título) — dígitos 9-10 = UF de alistamento
+    data_filiacao TEXT,
+    situacao      TEXT,
+    fonte         TEXT,             -- brasilio | ...
+    coletado_em   TEXT,
+    PRIMARY KEY (nome_norm, partido, municipio)
+);
+CREATE INDEX IF NOT EXISTS ix_filiado_nomenorm ON pcrj_filiado(nome_norm);
+
 CREATE TABLE IF NOT EXISTS pcrj_comissionado_candidato (
     nome_norm     TEXT NOT NULL,
     nome_pcrj     TEXT,
