@@ -66,6 +66,9 @@ CREATE TABLE IF NOT EXISTS tse_candidatura (
     partido       TEXT,
     situacao      TEXT,
     outra_cidade  INTEGER,          -- 1 se município ≠ RIO DE JANEIRO
+    uf_nascimento TEXT,             -- SG_UF_NASCIMENTO (naturalidade; '' se redigido/LGPD)
+    resultado     TEXT,             -- DS_SIT_TOT_TURNO (ELEITO POR QP/MÉDIA/QP, SUPLENTE, NÃO ELEITO…)
+    eleito        INTEGER,          -- 1 se DS_SIT_TOT_TURNO indica ELEITO (não suplente)
     coletado_em   TEXT,
     PRIMARY KEY (nome_norm, ano, cargo, municipio, partido)
 );
@@ -119,6 +122,13 @@ def inicializar(db_path: Path | str | None = None) -> None:
     con = conectar(db_path)
     try:
         con.executescript(_SCHEMA)
+        # migrações idempotentes (colunas novas em tabela pré-existente)
+        cols = {r[1] for r in con.execute("PRAGMA table_info(tse_candidatura)")}
+        for nome, ddl in (("uf_nascimento", "TEXT"), ("resultado", "TEXT"),
+                          ("eleito", "INTEGER"), ("municipio_nascimento", "TEXT"),
+                          ("uf_alistamento", "TEXT")):
+            if nome not in cols:
+                con.execute(f"ALTER TABLE tse_candidatura ADD COLUMN {nome} {ddl}")
         con.commit()
     finally:
         con.close()

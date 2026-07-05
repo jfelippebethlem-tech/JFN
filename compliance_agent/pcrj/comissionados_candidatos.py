@@ -136,5 +136,93 @@ def coletar(anos: list[int] | None = None, apenas_municipio: str | None = "RIO D
             "registros": n_reg, "municipio": apenas_municipio}
 
 
+def competencias_mensais(ini_mes: int = 1, ini_ano: int = 2021,
+                         fim: tuple[int, int] | None = None) -> list[tuple[int, int]]:
+    """Todas as competências (mês,ano) de ini→fim (default: até a mais recente com dados)."""
+    from compliance_agent.pcrj.cruzamento import competencia_mais_recente
+    fm, fa = fim or competencia_mais_recente()
+    out = []
+    m, a = ini_mes, ini_ano
+    while (a, m) <= (fa, fm):
+        out.append((m, a))
+        m += 1
+        if m > 12:
+            m, a = 1, a + 1
+    return out
+
+
+def coletar_mensal(anos: list[int] | None = None,
+                   apenas_municipio: str | None = "RIO DE JANEIRO",
+                   ini: tuple[int, int] = (1, 2021), workers: int = 2,
+                   pausa: float = 0.4, db_path=None) -> dict:
+    """Varre a folha da Prefeitura MÊS A MÊS (2021→hoje) atrás de candidatos que viraram
+    comissionados. RESUMÍVEL: um checkpoint (data/pcrj_comiss_mensal.done) guarda as
+    competências já concluídas — reiniciar retoma de onde parou. Throttle seguro (workers=2,
+    pausa=0.4 = 0 bloqueios). Loop competência-externo p/ o checkpoint fazer sentido."""
+    import json
+    from pathlib import Path
+
+    from compliance_agent.pcrj import db as _db2
+    anos = anos or ANOS_MUNICIPAIS
+    _db.inicializar(db_path)
+    ckpt = (Path(db_path).parent if db_path else _db2.DB_PATH.parent) / "pcrj_comiss_mensal.done"
+    feitas = set()
+    if ckpt.exists():
+        feitas = {tuple(x) for x in json.loads(ckpt.read_text() or "[]")}
+    print("Baixando candidatos do TSE (RJ)…", flush=True)
+    cands = _candidatos(anos, apenas_municipio)
+    itens = list(cands.items())
+    todas = [c for c in competencias_mensais(*ini) if tuple(c) not in feitas]
+    print(f"{len(cands)} candidatos × {len(todas)} competências pendentes "
+          f"({len(feitas)} já feitas)", flush=True)
+
+    sessoes = [Sessao(pausa=pausa) for _ in range(workers)]
+    agora = datetime.now(timezone.utc).isoformat()
+    total_reg = 0
+    for (mes, ano) in todas:
+        def tarefa(i_item, mm=mes, aa=ano):
+            i, (nn, info) = i_item
+            sess = sessoes[i % workers]
+            achados = {}
+            for row in sess.consultar_nome(info["nome"], mm, aa) or []:
+                if normalizar(row.get("nome", "")) != nn:
+                    continue
+                if not _RE_COMISSIONADO.search(row.get("cargo", "")):
+                    continue
+                adm_ano = _ano(row.get("admissao", ""))
+                if not adm_ano or adm_ano < _ADM_MIN:
+                    continue
+                achados[row.get("matricula", "?")] = row
+            return nn, info, achados
+
+        con = _db.conectar(db_path)
+        reg = 0
+        try:
+            with ThreadPoolExecutor(max_workers=workers) as ex:
+                for nn, info, achados in ex.map(tarefa, enumerate(itens)):
+                    for _mat, row in achados.items():
+                        con.execute(
+                            """INSERT OR REPLACE INTO pcrj_comissionado_candidato
+                               (nome_norm,nome_pcrj,cargo_pcrj,orgao_pcrj,admissao,exoneracao,
+                                matricula,cand_cidade,cand_ano,cand_cargo,coletado_em)
+                               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                            (nn, row.get("nome"), row.get("cargo"), row.get("lotacao"),
+                             row.get("admissao"), row.get("exoneracao"), row.get("matricula"),
+                             info["cidade"], info["ano"], info["cargo"], agora))
+                        reg += 1
+            con.commit()
+        finally:
+            con.close()
+        total_reg += reg
+        feitas.add((mes, ano))
+        ckpt.write_text(json.dumps([list(c) for c in sorted(feitas)]))
+        print(f"  {mes:02d}/{ano}: {reg} registros (total {total_reg})", flush=True)
+    return {"competencias": len(todas), "registros": total_reg}
+
+
 if __name__ == "__main__":
-    print(coletar())
+    import sys
+    if "--mensal" in sys.argv:
+        print(coletar_mensal())
+    else:
+        print(coletar())

@@ -50,7 +50,8 @@ def _coletar(con) -> dict[str, dict]:
             p = {"nome": nome, "gabinetes": "", "cargos": "",
                  "acumulo": False, "acumulo_evid": [], "distante": False,
                  "candidato": False, "evid": [], "municipios": set(),
-                 "benef_n": 0, "benef_rio": False, "benef_tipos": set()}
+                 "benef_n": 0, "benef_rio": False, "benef_tipos": set(),
+                 "eleito_fora": "", "origem_fora": ""}
             pessoas[nn] = p
         if nome and not p["nome"]:
             p["nome"] = nome
@@ -82,6 +83,28 @@ def _coletar(con) -> dict[str, dict]:
             p = pessoas[r["nome_norm"]]
             p["municipios"].add((r["municipio"] or "").upper())
             p["candidato"] = True
+
+    # s_eleito_fora — ELEITO (não suplente) em outra cidade = mandato fora do Rio (forte)
+    for r in con.execute(
+        "SELECT nome_norm, nome_tse, municipio, cargo, ano FROM tse_candidatura "
+        "WHERE outra_cidade=1 AND eleito=1"):
+        p = _p(r["nome_norm"], r["nome_tse"])
+        p["municipios"].add((r["municipio"] or "").upper())
+        p["eleito_fora"] = f"{r['cargo']} em {r['municipio']} ({r['ano']})"
+
+    # s_origem_fora — origem eleitoral fora do RJ pelo TÍTULO (dígitos 9-10) ou naturalidade.
+    # Corroboração de "base longe do Rio"; conservador (só afirma quando EXCLUI RJ).
+    for r in con.execute(
+        "SELECT nome_norm, nome_tse, uf_alistamento, uf_nascimento FROM tse_candidatura"):
+        if r["nome_norm"] not in pessoas:
+            continue
+        p = pessoas[r["nome_norm"]]
+        alist = (r["uf_alistamento"] or "").strip().upper()
+        nasc = (r["uf_nascimento"] or "").strip().upper()
+        if alist and alist != "RJ":
+            p["origem_fora"] = f"título alistado em {alist}"
+        elif nasc and nasc not in ("RJ", "") and not p.get("origem_fora"):
+            p["origem_fora"] = f"naturalidade {nasc}"
 
     # s_beneficio — Bolsa Família/BPC (banco dedicado pcrj_benef.db). Só conta se o nome bate
     # com 1 PESSOA ÚNICA (por fragmento de CPF); homônimo (≥3 pessoas) é ruído, descartado.
@@ -124,6 +147,14 @@ def _score(p: dict) -> tuple[int, list[str], bool]:
     if p["candidato"] and not homonimo:
         score += 2
         sinais.append("candidato em outra cidade enquanto vinculado")
+    # eleito (mandato) em outra cidade — mais forte que só candidatar-se
+    if p.get("eleito_fora") and not homonimo:
+        score += 3
+        sinais.append(f"🔴 ELEITO em outra cidade ({p['eleito_fora']}) — mandato fora do Rio")
+    # origem eleitoral/naturalidade fora do RJ (título dígitos 9-10 / naturalidade) — corroboração
+    if p.get("origem_fora") and not homonimo:
+        score += 1
+        sinais.append(f"origem fora do RJ ({p['origem_fora']})")
     # benefício assistencial — só o subconjunto DEFENSÁVEL (1 pessoa única); homônimo não pontua
     bn = p.get("benef_n", 0)
     tipos = "/".join(sorted(p.get("benef_tipos") or []))
