@@ -40,10 +40,19 @@ _alertas_processados: set[int] = set()
 _ultima_chamada: float = 0.0
 
 # Modelos OpenRouter — APENAS :free (regra do dono, anti-cobrança). São último
-# recurso atrás de Qwen/Groq/Cerebras/Gemini; o OpenRouter free anda rate-limited,
-# por isso vem por último. Atualizado 2026-06-21 (Nous-405B:free ficou sem endpoints).
-_HERMES_MODELO_PRINCIPAL = "meta-llama/llama-3.3-70b-instruct:free"
+# recurso atrás de Groq/Cerebras/Gemini; o OpenRouter free anda rate-limited,
+# por isso vem por último. Atualizado 2026-07-04.
+#
+# Uncensored PRIMEIRO (steerable, sem alinhamento pesado — pedido do dono):
+#   1. Hermes-3 405B  — o próprio "Hermes", 131k ctx, o mais capaz.
+#   2. Dolphin/Venice 24B — uncensored clássico, 32k ctx.
+# ATENÇÃO: ambos rodam no provider Venice e COMPARTILHAM o teto :free (429 juntos).
+# Por isso mantemos llama-3.3-70b + deepseek como rede NÃO-Venice quando os dois
+# uncensored estiverem rate-limited — assim a cascata sempre devolve algo.
+_HERMES_MODELO_PRINCIPAL = "nousresearch/hermes-3-llama-3.1-405b:free"
 _HERMES_MODELOS_FALLBACK = [
+    "cognitivecomputations/dolphin-mistral-24b-venice-edition:free",
+    "meta-llama/llama-3.3-70b-instruct:free",
     "deepseek/deepseek-r1:free",
     "mistralai/mistral-7b-instruct:free",
 ]
@@ -85,7 +94,37 @@ async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS)
         groq_chat_async,
     )
 
-    # ── 1. Groq (primário — Qwen-OpenRouter foi demovido p/ o passo 3) ──────────
+    key = _openrouter_key()
+
+    async def _tentar_openrouter_uncensored():
+        """Cascata OpenRouter :free uncensored. Retorna texto, ou None (sem chave / todos 429)."""
+        if not key:
+            return None
+        messages = []
+        if system:
+            messages.append({"role": "system", "content": system})
+        messages.append({"role": "user", "content": prompt})
+        for model in [_HERMES_MODELO_PRINCIPAL] + _HERMES_MODELOS_FALLBACK:
+            try:
+                out = await _openai_compat_chat_retry(
+                    OPENROUTER_BASE, key, model, messages,
+                    max_tokens=max_tokens, extra_headers=OPENROUTER_HEADERS, max_retries=1)
+                if model != _HERMES_MODELO_PRINCIPAL:
+                    console.print(f"[dim]Hermes: usando {model.split('/')[-1]} (fallback uncensored)[/dim]")
+                return out
+            except Exception:
+                await asyncio.sleep(2)
+        return None
+
+    # ── 0. Uncensored :free PRIMEIRO (pedido do dono: "uncensored sempre"). Se todos
+    #      rate-limitarem (429), cai p/ Groq/Cerebras. Desligável: HERMES_UNCENSORED_FIRST=0.
+    if os.environ.get("HERMES_UNCENSORED_FIRST", "1") != "0":
+        _unc = await _tentar_openrouter_uncensored()
+        if _unc:
+            _ultima_chamada = time.time()
+            return _unc
+
+    # ── 1. Groq (fallback rápido quando o uncensored :free rate-limita) ──────────
     if groq_available():
         try:
             resultado = await groq_chat_async(prompt, system=system, smart=True,
@@ -116,31 +155,12 @@ async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS)
     except Exception as e:
         console.print(f"[dim]Hermes: Gemini falhou ({e}), tentando OpenRouter :free…[/dim]")
 
-    # ── 3. OpenRouter cascade (APENAS :free — fallback, regra do dono) ───────────
-
-    key = _openrouter_key()
-    if key:
-        messages = []
-        if system:
-            messages.append({"role": "system", "content": system})
-        messages.append({"role": "user", "content": prompt})
-
-        for model in [_HERMES_MODELO_PRINCIPAL] + _HERMES_MODELOS_FALLBACK:
-            try:
-                resultado = await _openai_compat_chat_retry(
-                    OPENROUTER_BASE, key, model, messages,
-                    max_tokens=max_tokens,
-                    extra_headers=OPENROUTER_HEADERS,
-                    max_retries=1,
-                )
-                _ultima_chamada = time.time()
-                label = model.split("/")[-1]
-                if model != _HERMES_MODELO_PRINCIPAL:
-                    console.print(f"[dim]Hermes: usando {label} (fallback OpenRouter)[/dim]")
-                return resultado
-            except Exception:
-                await asyncio.sleep(2)
-                continue
+    # ── 3. OpenRouter uncensored :free — retry final (se o passo 0 rate-limitou e
+    #      Groq/Cerebras/Gemini também caíram) ────────────────────────────────────
+    _unc = await _tentar_openrouter_uncensored()
+    if _unc:
+        _ultima_chamada = time.time()
+        return _unc
 
     raise RuntimeError(
         "Hermes indisponível: Groq, Cerebras, Gemini e todos os modelos OpenRouter :free "
@@ -633,7 +653,10 @@ async def loop_hermes_continuo():
         )
         return
 
-    console.print("[green]🧠 Hermes-3 405B ativo — aprendendo continuamente.[/green]")
+    console.print(
+        "[green]🧠 Hermes ativo — uncensored :free primeiro "
+        "(Hermes-3 405B → Dolphin/Venice), Groq/Cerebras de fallback — "
+        "aprendendo continuamente.[/green]")
     init_db()
 
     _sintese_feita_na_semana: set[str] = set()

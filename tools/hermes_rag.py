@@ -31,7 +31,8 @@ COHERE = "https://api.cohere.com/v2/embed"
 FONTES = [
     str(REPO / "docs/lex_base/*.txt"),
     str(REPO / "docs/lex_base/*.md"),
-    str(REPO / "docs/*.md"),
+    str(REPO / "docs/*.md"),                      # inclui docs/vereditos_pericia.md (ledger de vereditos)
+    str(REPO / "data/pericia_*comparativo*.md"),  # auditoria-ouro curada (Hermes×Lex) — evita re-acusar refutado
     "/home/ubuntu/vault/**/*.md",
 ]
 

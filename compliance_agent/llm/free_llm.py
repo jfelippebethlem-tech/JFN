@@ -41,6 +41,16 @@ FREE_LLM_PREFER = os.environ.get("FREE_LLM_PREFER", "qwen").lower()
 OPENROUTER_MODEL_FAST  = os.environ.get("OPENROUTER_FAST_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
 OPENROUTER_MODEL_SMART = os.environ.get("OPENROUTER_SMART_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
 
+# Modelo de CÓDIGO (uncensored, p/ o Hermes codar). Qwen3-Coder = SOTA aberto em código,
+# 1M de contexto, alinhamento leve (pouco recusa). APENAS :free (regra do dono). Fallbacks
+# não-Venice p/ quando o primário rate-limitar. Env: OPENROUTER_CODER_MODEL.
+OPENROUTER_MODEL_CODER = os.environ.get("OPENROUTER_CODER_MODEL", "qwen/qwen3-coder:free")
+OPENROUTER_CODER_FALLBACK = [
+    "qwen/qwen3-next-80b-a3b-instruct:free",
+    "cohere/north-mini-code:free",
+    "deepseek/deepseek-r1:free",
+]
+
 
 def _forcar_free(model: str) -> str:
     """GUARD anti-cobrança (regra do dono: SEMPRE `:free`). Qualquer modelo OpenRouter é forçado p/ a
@@ -311,6 +321,60 @@ async def openrouter_chat_async(prompt: str, system: str = "", smart: bool = Fal
         max_tokens=max_tokens,
         extra_headers=OPENROUTER_HEADERS,
     )
+
+
+# Coder LOCAL abliterated (100% uncensored — abliteração remove a recusa no peso).
+# Roda no Ollama da VM; é a 1ª opção do coder (offline, $0, sem rate-limit). Env:
+# OLLAMA_CODER_MODEL / OLLAMA_URL. keep_alive curto p/ não segurar RAM na VM frágil.
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_CODER_MODEL = os.environ.get("OLLAMA_CODER_MODEL", "huihui_ai/qwen2.5-coder-abliterate:7b")
+
+
+async def _ollama_coder_async(messages: list, max_tokens: int) -> "str | None":
+    """Tenta o coder abliterated local. Retorna None se o Ollama/modelo não estiver disponível
+    (para a cascata cair p/ a API sem quebrar)."""
+    try:
+        async with httpx.AsyncClient(timeout=180) as cli:
+            r = await cli.post(f"{OLLAMA_URL}/api/chat", json={
+                "model": OLLAMA_CODER_MODEL, "messages": messages, "stream": False,
+                "keep_alive": "30s",
+                "options": {"num_predict": max_tokens, "num_thread": 2},
+            })
+            if r.status_code != 200:
+                return None
+            return (r.json().get("message", {}).get("content") or "").strip() or None
+    except Exception:
+        return None
+
+
+async def coder_chat_async(prompt: str, system: str = "", max_tokens: int = 4096) -> str:
+    """Caminho de CÓDIGO do Hermes — LOCAL abliterated (100% uncensored) primeiro; se
+    indisponível, Qwen3-Coder :free (1M ctx) + fallbacks não-Venice. Levanta se tudo falhar."""
+    messages = []
+    if system:
+        messages.append({"role": "system", "content": system})
+    messages.append({"role": "user", "content": prompt})
+
+    # 1. Local abliterated (100% uncensored, offline, $0)
+    local = await _ollama_coder_async(messages, max_tokens)
+    if local:
+        return local
+
+    # 2. API OpenRouter :free (fallback)
+    key = _openrouter_key()
+    if not key:
+        raise RuntimeError("Coder local indisponível e OPENROUTER_API_KEY não configurada.")
+    ultimo_erro = None
+    for model in [OPENROUTER_MODEL_CODER] + OPENROUTER_CODER_FALLBACK:
+        try:
+            return await _openai_compat_chat_retry(
+                OPENROUTER_BASE, key, _forcar_free(model), messages,
+                max_tokens=max_tokens, extra_headers=OPENROUTER_HEADERS, max_retries=1,
+            )
+        except Exception as e:
+            ultimo_erro = e
+            await asyncio.sleep(2)
+    raise RuntimeError(f"coder_chat_async: todos os modelos :free falharam ({ultimo_erro}).")
 
 
 # ── Cerebras (gpt-oss-120b / zai-glm-4.7) — OpenAI-compat, inferência ULTRARRÁPIDA (~0,04s) ──
