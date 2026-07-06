@@ -160,3 +160,4 @@ data/rag/
 data/*.bak_memoria_*
 data/compliance.db.bak*
 data/sei_arquivo/
+tests/golden/snapshot_vazio.db
