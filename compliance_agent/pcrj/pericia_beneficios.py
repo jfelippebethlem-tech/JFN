@@ -128,38 +128,42 @@ def analisar() -> dict:
     #   2) FRAGMENTO DE CPF: identidade da pessoa = (nome, cpf_frag) unificada entre TODOS os
     #      programas (BPC+BF+Auxílio Brasil+Emergencial). Se, no Rio, o nome tem UM único fragmento,
     #      o beneficiário é uma pessoa só; se tem vários, é homônimo mesmo dentro do Rio → fora.
-    raw = b.execute("SELECT nome_norm, nome, beneficio, competencia, cpf_frag, municipio, valor "
-                    "FROM pcrj_beneficio").fetchall()
-
-    def _rio(m):
-        return "RIO DE JANEIRO" in (m or "").upper()
-
-    # por nome: fragmentos vistos no Rio; por (nome,frag): trajetória entre programas
+    # Agregação no SQL (7,3M linhas → ~300k grupos): trava 1 (município=Rio) no WHERE; por
+    # (nome,frag,programa,ano) traz min/max competência e nº de meses. Uma 2ª query dá os meses
+    # DISTINTOS por (nome,frag,ano) — a contagem anual da pessoa entre todos os programas.
     frags_rio: dict[str, set] = {}
     pessoa: dict[tuple, dict] = {}
     nome_de: dict[str, str] = {}
-    for r in raw:
+    for r in b.execute(
+            "SELECT nome_norm, cpf_frag, beneficio, substr(competencia,1,4) AS ano, "
+            "COUNT(DISTINCT competencia) AS n, MIN(competencia) AS cmin, MAX(competencia) AS cmax, "
+            "MAX(nome) AS nome FROM pcrj_beneficio WHERE municipio='RIO DE JANEIRO' "
+            "GROUP BY nome_norm, cpf_frag, beneficio, ano"):
         nn = r["nome_norm"]
-        nome_de.setdefault(nn, r["nome"] or nn.title())
-        if not _rio(r["municipio"]):
-            continue                              # trava 1: fora do Rio não conta
         frag = r["cpf_frag"] or "?"
+        nome_de.setdefault(nn, r["nome"] or nn.title())
         frags_rio.setdefault(nn, set()).add(frag)
-        e = pessoa.setdefault((nn, frag), {"prog": {}, "comps": set(), "por_ano": {}, "valor": ""})
-        e["prog"].setdefault(r["beneficio"], set()).add(r["competencia"])
-        e["comps"].add(r["competencia"])
-        e["por_ano"].setdefault(r["competencia"][:4], set()).add(r["competencia"])
-        if r["valor"]:
-            e["valor"] = r["valor"]
+        e = pessoa.setdefault((nn, frag), {"prog": {}, "por_ano": {}, "cmin": r["cmin"], "cmax": r["cmax"]})
+        pr = e["prog"].setdefault(r["beneficio"], {"cmin": r["cmin"], "cmax": r["cmax"], "n": 0})
+        pr["cmin"] = min(pr["cmin"], r["cmin"]); pr["cmax"] = max(pr["cmax"], r["cmax"]); pr["n"] += r["n"]
+        e["cmin"] = min(e["cmin"], r["cmin"]); e["cmax"] = max(e["cmax"], r["cmax"])
+    for r in b.execute(
+            "SELECT nome_norm, cpf_frag, substr(competencia,1,4) AS ano, "
+            "COUNT(DISTINCT competencia) AS n FROM pcrj_beneficio WHERE municipio='RIO DE JANEIRO' "
+            "GROUP BY nome_norm, cpf_frag, substr(competencia,1,4)"):
+        e = pessoa.get((r["nome_norm"], r["cpf_frag"] or "?"))
+        if e is not None:
+            e["por_ano"][r["ano"]] = r["n"]
 
-    registros, homonimos, fora_rio = [], 0, 0
+    # nomes do alvo com benefício mas NENHUM no município do Rio (informativo) — 1 varredura leve
+    fora_rio = b.execute(
+        "SELECT COUNT(*) FROM (SELECT nome_norm FROM pcrj_beneficio GROUP BY nome_norm "
+        "HAVING MAX(municipio='RIO DE JANEIRO')=0)").fetchone()[0]
+
+    registros, homonimos = [], 0
     gab_cache: dict[int, str] = {}
-    nomes_com_benef = set(nome_de)
-    for nn in nomes_com_benef:
+    for nn in set(nome_de):
         fr = frags_rio.get(nn)
-        if not fr:                    # tinha benefício, mas nenhum no município do Rio
-            fora_rio += 1
-            continue
         if len(fr) != 1:              # homônimo dentro do próprio Rio (fragmentos distintos) → fora
             homonimos += 1
             continue
@@ -188,16 +192,14 @@ def analisar() -> dict:
                               (info["gab"],)).fetchone()
                 gab_cache[info["gab"]] = (g["titular"] if g else "") or ""
             titular = gab_cache[info["gab"]]
-        comps_ord = sorted(e["comps"])
         topo = _orgao_topo({"orgao": info["orgao"]})
         if titular and topo.lower().startswith("gabinete"):
             topo = f"{topo} — {titular}"
         # trajetória por programa: "BPC (mai/23→abr/24), Bolsa Família (mai/24→mai/26)"
         progs = []
-        for ben, cs in sorted(e["prog"].items(), key=lambda kv: min(kv[1])):
-            cs = sorted(cs)
-            progs.append({"ben": ben, "desde": _comp_legivel(cs[0]), "ate": _comp_legivel(cs[-1]),
-                          "n": len(cs)})
+        for ben, pr in sorted(e["prog"].items(), key=lambda kv: kv[1]["cmin"]):
+            progs.append({"ben": ben, "desde": _comp_legivel(pr["cmin"]),
+                          "ate": _comp_legivel(pr["cmax"]), "n": pr["n"]})
         registros.append({
             "nome": nome_de[nn], "nome_norm": nn, "cpf_frag": frag,
             "poder": info["poder"], "orgao": info["orgao"], "cargo": info["cargo"],
@@ -205,10 +207,10 @@ def analisar() -> dict:
             "partido": _partido_de(p, nn),
             "programas": progs,
             "beneficios_str": ", ".join(pr["ben"] for pr in progs),
-            "desde": _comp_legivel(comps_ord[0]), "ate": _comp_legivel(comps_ord[-1]),
-            "n_meses": len(e["comps"]),
-            "por_ano": {a: len(e["por_ano"].get(a, set())) for a in anos},
-            "ainda_recebe": (comps_ord[-1] == ultima),
+            "desde": _comp_legivel(e["cmin"]), "ate": _comp_legivel(e["cmax"]),
+            "n_meses": sum(e["por_ano"].values()),
+            "por_ano": {a: e["por_ano"].get(a, 0) for a in anos},
+            "ainda_recebe": (e["cmax"] == ultima),
             "rio": True, "certeza": certeza, "n_serv": n_serv,
             "ativo": ativo, "situacao": "ativo/nomeado" if ativo else "aposent./pensão",
             "_orgao_topo": topo,
@@ -246,9 +248,13 @@ def analisar() -> dict:
     registros.sort(key=lambda x: (_ordem.get(x["certeza"], 9), not x["ainda_recebe"],
                                   -x["n_meses"], x["nome"]))
 
-    # agrupa o eixo A por órgão
+    # A tabela detalhada por órgão traz só a CERTEZA ALTA (núcleo defensável); a MÉDIA — nome comum
+    # com mais de um servidor homônimo, ou fragmento de CPF ausente — vai resumida (contagens), para
+    # o documento não inchar com dezenas de milhares de linhas de baixa atribuição.
     por_orgao: dict[str, list] = {}
     for r in registros:
+        if r["certeza"] != "ALTA":
+            continue
         por_orgao.setdefault(r["_orgao_topo"], []).append(r)
     grupos = sorted(por_orgao.items(), key=lambda kv: (-len(kv[1]), kv[0]))
 
@@ -302,7 +308,8 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
 
   <div class="kpis">
     <div class="kpi"><div class="n">{{ total }}</div><div class="l">nomeados com benefício no Rio (dedup.)</div></div>
-    <div class="kpi"><div class="n">{{ n_alta }}</div><div class="l">certeza ALTA (1 pessoa, 1 servidor)</div></div>
+    <div class="kpi"><div class="n">{{ n_alta }}</div><div class="l">certeza ALTA (1 pessoa, 1 servidor) — detalhados</div></div>
+    <div class="kpi"><div class="n">{{ n_media }}</div><div class="l">certeza MÉDIA (nome comum/CPF ausente)</div></div>
     <div class="kpi"><div class="n">{{ n_ainda }}</div><div class="l">ainda recebendo em {{ ultima }}</div></div>
     <div class="kpi"><div class="n">{{ n_bpc }}</div><div class="l">BPC/LOAS</div></div>
     <div class="kpi"><div class="n">{{ n_bf }}</div><div class="l">Bolsa Família</div></div>
@@ -314,9 +321,13 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   <h2>1. Nomeados recebendo benefício assistencial durante a nomeação — por órgão</h2>
   <p class="nota">Identidade da pessoa unificada por (nome + fragmento de CPF) entre <b>todos</b> os
   programas, restrita a benefício pago <b>no município do Rio</b> (afasta o homônimo de outro
-  estado). <b>Certeza ALTA</b> = um único beneficiário e um único servidor com o nome; <b>MÉDIA</b>
-  = beneficiário único, mas há mais de um servidor homônimo (qual deles é incerto). As colunas de
-  ano contam meses com benefício; a coluna Programas traz a trajetória com datas.</p>
+  estado). A tabela detalha os <b>{{ n_alta }}</b> casos de <b>certeza ALTA</b> (um único
+  beneficiário e um único servidor com o nome, CPF legível); os <b>{{ n_media }}</b> de certeza
+  MÉDIA (nome comum com mais de um servidor homônimo, ou fragmento de CPF ausente) entram só nas
+  contagens — atribuição individual incerta. As colunas de ano contam meses com benefício; a coluna
+  Programas traz a trajetória com datas. <b>Observação:</b> o Auxílio Emergencial (2020–2021) teve
+  elegibilidade ampla na pandemia (inclusive trabalhadores informais de baixa renda), então recebê-lo
+  é sinal mais fraco que BPC/Bolsa Família/Auxílio Brasil, cuja renda exigida é incompatível com cargo.</p>
   {% for orgao, regs in grupos %}
   <h3>{{ orgao }} — {{ regs|length }} nomeado(s)</h3>
   <table>
