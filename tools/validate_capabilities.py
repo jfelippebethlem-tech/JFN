@@ -25,11 +25,15 @@ _STATUS_RE = re.compile(r"^(PRONTO|ONDA \d+)$")
 
 
 def _rotas_no_server() -> set[str]:
-    """Extrai os paths registrados em server.py (@app.get/post/.../"...")."""
+    """Extrai os paths registrados no app: server.py (@app.*) + rotas/*.py (@router.*, split 2026-07-06)."""
     if not _SERVER.exists():
         return set()
-    txt = _SERVER.read_text(encoding="utf-8")
-    return set(re.findall(r'@app\.(?:get|post|put|delete|patch)\(\s*["\']([^"\']+)["\']', txt))
+    fontes = [_SERVER] + sorted((_REPO / "rotas").glob("*.py"))
+    rotas: set[str] = set()
+    for f in fontes:
+        txt = f.read_text(encoding="utf-8")
+        rotas |= set(re.findall(r'@(?:app|router)\.(?:get|post|put|delete|patch)\(\s*["\']([^"\']+)["\']', txt))
+    return rotas
 
 
 def validar() -> list[str]:
