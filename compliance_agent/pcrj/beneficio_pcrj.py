@@ -112,11 +112,25 @@ def _filtrar_zip(path: Path, beneficio: str, alvo: dict[str, str], ym: str) -> l
     return achados
 
 
-def coletar(ym: str = "202605") -> dict:
+def _alvo_nomeados() -> dict[str, str]:
+    """Nomeados a cruzar = Câmara + Prefeitura (ambos os poderes que o dono fiscaliza).
+    Chave = nome_norm; valor = nome legível. Prefeitura não guarda o nome cru em coluna
+    própria consistente, então normalizamos o nome_norm de volta a Title Case p/ exibição."""
     con = _db.conectar()
-    alvo = {r["nome_norm"]: r["nome"] for r in con.execute(
-        "SELECT DISTINCT nome_norm, nome FROM pcrj_camara_servidores")}
+    alvo: dict[str, str] = {}
+    for r in con.execute("SELECT DISTINCT nome_norm, nome FROM pcrj_camara_servidores"):
+        if r["nome_norm"]:
+            alvo[r["nome_norm"]] = r["nome"]
+    for r in con.execute(
+            "SELECT DISTINCT nome_norm, COALESCE(nome_pcrj, nome_norm) AS nome "
+            "FROM pcrj_prefeitura_consulta WHERE encontrado=1"):
+        alvo.setdefault(r["nome_norm"], (r["nome"] or r["nome_norm"]).title())
     con.close()
+    return alvo
+
+
+def coletar(ym: str = "202605") -> dict:
+    alvo = _alvo_nomeados()
 
     _TMP.mkdir(parents=True, exist_ok=True)
     todos: list[tuple] = []
@@ -140,8 +154,11 @@ def coletar(ym: str = "202605") -> dict:
     agora = datetime.now().isoformat(timespec="seconds")
     con = sqlite3.connect(str(BENEF_DB), timeout=60)
     con.execute("PRAGMA journal_mode=WAL")
-    con.execute("DROP TABLE IF EXISTS pcrj_beneficio")  # full-refresh + corrige drift de schema
     con.executescript(_SCHEMA)
+    # ACUMULA por competência — o dono quer a SÉRIE ("recebia DURANTE a nomeação? de quando a
+    # quando?"), então cada mês coletado soma ao banco. Re-rodar o mesmo mês é idempotente:
+    # limpa e regrava só aquela competência (o DROP antigo full-refresh matava o histórico).
+    con.execute("DELETE FROM pcrj_beneficio WHERE competencia=?", (ym,))
     con.executemany(
         "INSERT OR IGNORE INTO pcrj_beneficio "
         "(nome_norm, nome, beneficio, municipio, uf, valor, cpf_frag, competencia, coletado_em) "
