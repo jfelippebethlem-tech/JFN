@@ -1,0 +1,65 @@
+[] (fase: indefinida · tipo: vazio)
+
+Número da Nota
+PREFEITURA DA CIDADE DO RIO DE JANEIRO 00000058
+
+SECRETARIA MUNICIPAL DE FAZENDA Data e Hora de Emissão
+
+A 01/11/2023 08:24:49
+NOTA FISCAL DE SERVIÇOS ELETRÔNICA - NFS-e Código de Verificação
+
+- NOTA CARIOCA - JEPM-RUKH
+PRESTADOR DE SERVIÇOS
+CPFYCNPU: 35.208.086/0001-27 Inscrição Municipal: 1.208,.637-7 Inscrição Estadual: --=
+Nome/Razão Social: MOBILIZA FOR RENT LTDA
+Nome Fantasia: MOBILIZA For Rent Ltda. Tel.: +5521994841018
+Endereço: AVN JULIO DE SA BIERRENBACH (ALM) 65, BLC 004 SAL 0408 - JACAREPAGUA - CEP: 22775-028
+Município: RIO DE JANEIRO UF: RJ E-mail: FISCALGFACESCONTABIL.COM.BR
+TOMADOR DE SERVIÇOS
+CPF/CNPJ: 40.173.726/0001-40 Inscrição Municipal: --== Inscrição Estadual: -===
+Nome/Razão Social: INSTITUTO DE TERRAS E CARTOGRAFIA DO ESTADO DO RIO DE JANEIRO
+Endereço: RUA REGENTE FEIJÓ 07, 3º, 4º E 5º ANDARES - CENTRO - CEP: 20060-060 Tel.: 2123327232
+Município: RIO DE JANEIRO UF: RJ E-mail: contabilidadeDiterj.rj.gov.br
+
+DISCRIMINAÇÃO DOS SERVIÇOS
+SERVIÇOS DE MÃO DE OBRA - CONTRATO Nº 011/2021
+PERÍODO : OUTUBRO 2023
+
+Redução de Base de cálculo IN 971/209 - ART. 124
+Valor Base conforme IN 971/2009 ( ART. 122-ART 124 ).
+Valor Vale Refeições - R$ 8.820,00
+
+valor do INSS à recolher 11% - R$ 5.873,56
+
+Desconto de 4,8% do IR - Conforme IN 2.145/2023.
+
+FAVORECIDO : MOBILIZA FOR RENT LTDA.
+CNPJ: 35.208.086/0001-27
+
+BANCO BRADESCO
+AG: 135
+c/c : 19026-8
+
+Retenção de COFINS Retenção de CSLL Retenção de INSS Retenção de IRPJ Retenção de PIS Outras Retenções
+R$ 0,00 R$ 0,00 R$ 5.873,56 R$ 0,00 R$ 0,00 R$ 0,00
+
+VALOR DA NOTA = R$ 62.216,01
+
+Serviço Prestado
+
+03.04.06 - locação, sublocação ou arrendamento de condutos em geral
+
+Deduções (R$) Desconto Incond. (R$) |Base de Cálculo (R$) | Alíquota (%) Valor do I3S (R$) Crédito p/ IPTU (R$)
+0,00 0,00 62.216,01 5,00% 3.110,80) 0,00
+
+OUTRAS INFORMAÇÕES
+
+- Esta NFS-e foi emitida com respaldo na Lei nº 5.098 de 15/10/2009 e no Decreto nº 32.250 de 11/05/2010
+
+- PROCON-RJ: Av. Rio Branco nº 25, 5º andar, tel 151: waw.procon.rj.gov.br
+
+- Data de vencimento do ISS desta NFS-e: 05/12/2023.
+
+- Esta NFS-e não gera crédito para abatimento no IPTU.
+
+- Valor Líquido a Pagar: R$ 56.342,45

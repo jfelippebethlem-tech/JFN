@@ -1,0 +1,27 @@
+[] (fase: indefinida · tipo: vazio)
+
+BANCO DO BRASIL S/A - Pagamento de Empenhos - 160100 / SEDEC
+Detalhamento de Empenho - 25/09/2025
+ 
+Dados do Beneficiário (Cedente/Emissor do título/Emissor da guia)
+Inscrição CPF/CNPJ: CG3802646
+Beneficiário: ANGLOCO LIMITED
+Banco: 001
+Agência: 2234-9
+Conta Corrente: BCO AUTENT
+ 
+ 
+Dados do Empenho (Da Ordem Bancária)
+Número do empenho: 2025NE00548
+Programa de Trabalho: 06.182. 0496. 5760 - Apoio a Projetos e Atividades da Defesa Civil
+Número da OB: 2025OB02966
+Situação atual: 01-PAGA
+Valor do pagamento: R$ 95.260,00
+Órgão Emissor: 160100 - SEDEC
+Agência de Débito: 2234
+Conta de Débito: 0000000114944
+ 
+ 
+Dados da Autenticação (Ordem Bancária)
+Credor: 00000000436992 - Banco Do Brasil S/a
+Data do Débito Bancário: 23/09/2025

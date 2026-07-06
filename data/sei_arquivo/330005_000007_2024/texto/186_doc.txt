@@ -1,0 +1,46 @@
+[] (fase: indefinida · tipo: vazio)
+
+FGTS - FUNDO DE GARANTIA DO TEMPO DE SERVIÇO
+RELATÓRIO ANALÍTICO DA GRF
+DATA:
+PÁG :
+GFIP - SEFIP
+HORA:
+28/02/2024
+16:51:23
+001/001
+8.40 (23/08/2022)
+---------------------------------------------------------------------------------------------------------------------------
+INSCRIÇÃO:
+EMPRESA:
+CÓD REC:
+FPAS:
+MGS CLEAN SOLUCOES E SERVICOS                                                             
+COMPETÊNCIA: 02/2024
+SIMPLES:
+515
+1
+150
+19.088.605/0001-04
+---------------------------------------------------------------------------------------------------------------------------
+QTDE TRABALHADORES
+DEPÓSITO
+REMUNERAÇÃO
+ENCARGOS FGTS
+CONTRIB SOCIAL
+ENCARGOS CONTRIB SOC
+TOTAL A RECOLHER
+FGTS - 8%
+26
+45.886,56
+3.670,92
+0,00
+0,00
+0,00
+3.670,92
+---------------------------------------------------------------------------------------------------------------------------
+VALIDADE DO CÁLCULO:
+07/03/2024
+até
+A(S) GRF(S), PARA FINS DE QUITAÇÃO, SERÁ(ÃO) IMPRESSA(S) SOMENTE APÓS TRANSMISSÃO DO ARQUIVO VALIDADO PELO CONECTIVIDADE SOCIAL.
+RELATÓRIO PARA SIMPLES CONFERÊNCIA, NÃO É VÁLIDO PARA QUITAÇÃO.

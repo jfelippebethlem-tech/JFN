@@ -1,0 +1,90 @@
+[Programação de Desembolso - PD] (fase: despesa · tipo: programacao_desembolso)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Encerrado até Julho 
+Identificação
+UG Liquidante
+Documento
+Emissão
+650100 - SEHIS
+2024PD00991
+02-09-2024
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+650100 - SEHIS
+237 - 6898 - 0000000027 
+- CONTA ÚNICA
+Favorecido
+Domicílio Bancário 
+Destino
+00394460010880 - MINISTÉRIO DA FAZENDA
+237 - 6898 - BCO AUTENT
+Valor por Extenso
+Valor
+Q u a t r o c e n t o s e s e s s e n t a e d o i s m i l e q u a t r o c e n t o s e s e t e n t a e o i t o r e a i s e u m c e n t a v o
+462.478,01
+Detalhamento
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS
+Banco Pagador
+237 - BANCO BRADESCO S/A
+Credor da Retenção
+MINISTÉRIO DA FAZENDA
+Competência
+02/2024
+Processo
+SEI-490001/001070/2024
+I t e n s
+Número da NE
+2024NE00266 - 650100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+23902149000161 - Abre Construções Ltda
+Número da NL
+2024NL00472 - 650100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Obras e Instalações
+Sub-item da Despesa
+07 - EXECUÇAO DE OBRAS POR CONTRATO
+Operação Patrimonial
+3693 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Número da NE
+650100.2024NE00266
+Credor
+23902149000161
+Valor
+462.478,01
+Observação
+N F .  50 0 8 9 - 1 2 ª me d ição, referente ao período 01/0 7 à 3 0 / 0 7 / 2 0 2 4 - C o n t r a t o n º 0 0 2 / 2 0 2 3 - r e f e r e n t e à E l a b o r a ç ã o d e 
+Projeto Executivo e Execução de Obras para Construção do Conjunto Habitacional de Interesse Social com 440 Unidades 
+Habitacionais na Av. Itaóca n° 2.226, Bairro: Bonsucesso (Complexo do Alemão), município do Rio de Janeiro/RJ.
+ 
+______________________________________________________
+640257-7 - Fabio Paravidino da Silva
+Subsecretário Executivo
+Emitido/contabilizado por MARIA ALINE ALVES OLIVEIRA em 02-09-2024 às 13:
+5 2 .
+Impresso por MARIA ALINE ALVES OLIVEIRA em 02-09-2024 às 13:52.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

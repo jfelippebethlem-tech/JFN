@@ -1,0 +1,122 @@
+[Nota de Empenho Original - NE] (fase: despesa · tipo: nota_empenho)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NE08587
+23/10/25
+Credor
+10497795000149 - Fundo Municipal De Saude De Nova Iguacu
+Valor
+28.000.000,00 (Vinte e oito milhões de reais)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+NÃO SUJEITO
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/002901/2025
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+28.000.000,00
+Cronograma
+Outubro
+28.000.000,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+55.000.000,00 Pré-Empenhado
+0,00 Bloqueado
+0,00
+28.000.000,00
+27.000.000,00
+Observação
+Resolução SES nº 3842 de 21 de agosto de 2025, publicada no dia 25 de agosto de 2025 que altera a Resolução SES n.º 3617 de 21 de fevereiro de 2025, publicado no dia 24/02/2025, para o apoio financeiro do 
+Hospital Geral de Nova Iguaçu - HGNI, (CNES 2798662), para ano de 2025, com o objetivo de promover a melhoria da qualidade e resolubilidade do atendimento regional da média e alta complexidade aos 
+usuários do Sistema Único de Saúde  SUS. Conforme solicitação e autorização (117309781). Competência de OUTUBRO/2025
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+INCENTIVO FINANCEIRO
+1
+UN
+28.000.000,00
+28.000.000,00
+Descrição
+Resolução SES nº 3842 de 21 de agosto de 2025, publicada no dia 25 de agosto de 2025 que altera a Resolução SES n.º 3617 de 21 de fevereiro de 2025, publicado no dia 24/02/2025, 
+para o apoio financeiro do Hospital Geral de Nova Iguaçu - HGNI, (CNES 2798662), para ano de 2025, com o objetivo de promover a melhoria da qualidade e resolubilidade do 
+atendimento regional da média e alta complexidade aos usuários do Sistema Único de Saúde  SUS. Conforme solicitação e autorização (117309781). Competência de OUTUBRO/2025 
+NAD4824
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VANDERLEIA DE LIMA em 23/10/25 às 15:24.
+Impresso por VANDERLEIA DE LIMA em 23/10/25 às 15:24.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

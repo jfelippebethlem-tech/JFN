@@ -1,0 +1,131 @@
+[] (fase: indefinida · tipo: vazio)
+
+10/10/2024 08:16
+Contratação
+https://www.compras.rj.gov.br/mercatto/aplicacao/asp/Contrato/Exibe_Contrato_Print.asp?valor=118557
+1/2
+Contratação 2024008293 (Em Aprovação)
+Unidade Compradora:
+166100 - FUNESBOM - FUNDO ESPECIAL DO CORPO DE BOMBEIROS
+Tipo de Aquisição:
+Compra Direta / Outras Compras
+Número da Aquisição:
+SEI-270003/002373/2024
+Tipo de Contratação:
+Serviços de Saúde
+Número da Contratação:
+Não definido
+Data de Vigência:
+Não definido
+Gestores Responsáveis:
+Barbara Domingos Maria
+BRUNO VINICIUS MARQUES
+Camila Rodrigues Pereira
+EDILSON SANTOS DE SOUZA
+FLAVIA CRUZ DO NASCIMENTO
+JULIO CESAR CHAVES
+MARCIO ANDRE DUARTE DA FONSECA
+RAFAEL BENVINDO FREITAS
+RENATO ROCHA FILIPE
+ 
+ 
+Situação:
+Em Aprovação
+Empresa Contratada:
+ONCOMED CLÍNICA ONCOLÓGICA LTDA.
+CNPJ: 00.541.798/0001-89
+Rua Ministro Otávio Kelly, 157, IcaraíNiterói, Rio de Janeiro
+CEP: 24220-300
+OBSERVAÇÃO
+Contrato nº 170/2024 CRED 01/24, credenciamento de clínica oncológica especializada em quimioterapia para os usuários do Sistema de 
+Saúde do Corpo de Bombeiros Militar do Estado do Rio de Janeiro (CBMERJ), de acordo com os critérios e condições estabelecidas no 
+Edital e Termo de Referência do Processo SEI-270060/000438/2024.
+PROCESSOS VINCULADOS
+Processo
+Unidade Gestora
+Data de Criação
+Data de Modificação
+Situação
+SEI-270003/002373/2024
+166100 - FUNESBOM - FUNDO ESPECIAL DO CORPO DE BOMBEIROS
+08/10/2024
+Compra Finalizada
+ITENS
+SERVICOS - SERVICO DE SAUDE - SERVICOS MEDICOS - SERVICO MEDICO-HOSPITALAR
+SERVICO MEDICO-HOSPITALAR,DESCRIÇÃO: CONTRATACAO DE CLINICA ONCOLOGICA ESPECIALIZADA EM QUIMIOTERAPIA
+Código do Item: 0719.001.0071 (ID - 137096)
+Observação: 1 UN SERVIÇO = 12 MESES
+Unidade
+Valor Unitário
+Elemento de Despesa
+Sub-elemento de Despesa
+ 
+UN
+6.250.000,000000
+33903900
+33903975
+Quantidade Original
+Quantidade Alterada
+Quantidade Programada
+Quantidade Recebida
+Saldo a Programar
+Saldo Atual
+Percentual Alterado
+1
+0
+1
+0
+0
+1
+0 %
+PROGRAMAÇÃO DE ENTREGA
+
+10/10/2024 08:16
+Contratação
+https://www.compras.rj.gov.br/mercatto/aplicacao/asp/Contrato/Exibe_Contrato_Print.asp?valor=118557
+2/2
+Entrega 1
+Data: 04/10/2024
+Descrição
+Quantidade Programada
+Quantidade Recebida
+Situação
+SERVICO MEDICO-HOSPITALAR,DESCRIÇÃO: CONTRATACAO DE CLINICA ONCOLOGICA
+ESPECIALIZADA EM QUIMIOTERAPIA
+Código do Item: 0719.001.0071 (ID - 137096)
+1
+Não recebido
+PARECER JURÍDICO
+Não existem Pareceres Jurídicos para esta Contratação.
+NOTA DE AUTORIZAÇÃO DE DESPESA
+Chave SIGA
+Empenho
+Liquidações
+Pagamentos
+Data de Emissão
+Usuário Emissor
+Situação
+Consistência
+20240082930001-80
+Não possui
+Não possui
+Não possui
+09/10/2024
+MARCIO ANDRE
+DUARTE DA FONSECA
+Aprovado
+Termo de Contrato
+Não existem Termos de Contrato nesta Contratação.
+WORKFLOW DE APROVAÇÃO
+Aprovador
+ Pendente
+ Aprovado
+ Rejeitado
+ P/Aprovação
+ 
+Data/Hora
+(0) ALINE DE OLIVEIRA NASCIMENTO
+ 
+10/10/202407:49
+ 
+Imprimir

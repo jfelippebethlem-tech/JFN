@@ -1,0 +1,75 @@
+[] (fase: indefinida · tipo: vazio)
+
+Data:
+15/03/2024
+Secretaria de Atenção Especializada da Saúde (SAES)
+Ficha de Estabelecimento Identificação
+Estabelecimento de Saúde
+Departamento de Regulação Assistência e Controle (DRAC)
+CNES
+Cadastro Nacional de
+Coordenação-Geral de Gestão de Sistemas de Informações em Saúde (CGSI)
+Ministério da Saúde (MS)
+Dependência:
+ENTIDADES EMPRESARIAIS
+ONCOMED
+Tipo de Estabelecimento:
+Natureza jurídica:
+CENTRAL DE ABASTECIMENTO
+MINISTRO OCTAVIO KELLY
+Logradouro:
+Telefone:
+UF:
+Número:
+Município:
+Gestão:
+Nome Empresarial:
+Nome Fantasia:
+3297454
+Subtipo:
+ICARAI
+CNES:
+Horário de Funcionamento:
+330330  -  NITEROI
+(21) 2715-2517
+Complemento:
+24220-300
+--
+RJ
+Bairro:
+ONCOMED CLINICA ONCOLOGICA LTDA
+--
+157
+CEP:
+Reg de Saúde:
+CNPJ:
+--
+INDIVIDUAL
+00.541.798/0001-89
+MUNICIPAL
+06/10/2004
+Cadastrado em:
+Atualização na base local:
+01/03/2024
+Última atualização Nacional:
+10/03/2024
+ARISTOTELES BARROS FREIRE
+Diretor Clínico/Gerente/Administrador:
+Dia semana
+Horário
+08:00 às 21:00
+SEGUNDA-FEIRA
+08:00 às 21:00
+TERÇA-FEIRA
+08:00 às 21:00
+QUARTA-FEIRA
+08:00 às 21:00
+QUINTA-FEIRA
+08:00 às 20:00
+SEXTA-FEIRA
+Data desativação:
+--
+--
+Motivo desativação:
+Esta é uma cópia impressa do documento oficial. As informações oficiais atualizadas estão disponíveis no site do CNES (http://cnes.datasus.gov.br).
+Pag. 1 de 1

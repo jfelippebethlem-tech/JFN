@@ -1,0 +1,98 @@
+[Relação de Ordens Bancárias Externas 2025OB16215-FMS SÃO GONÇALO REG] (fase: despesa · tipo: ordem_bancaria)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 50
+Encerrado até Agosto
+Identificação
+UG Emitente
+Documento
+Emissão
+296100 - FES
+2025OB16215
+29/09/25
+UG Liquidante
+UG Pagadora
+296100 - FES
+296100 - FES
+Valor por Extenso
+Valor
+Cinco milhões e setecentos mil de reais
+5.700.000,00
+Tipo de Regularização
+OB já encaminhada ao banco
+Detalhamento
+Nota Liquidação
+2025NL07987
+Nota de Empenho
+2025NE07999
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Origem
+237 - 6898 - 0000027200 - CONTA D
+Domicílio Bancário Destino
+237 - 0543 - 0000000582360
+Competência
+06/2025
+Processo
+SEI-080001/011330/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da despesa 
+empenhada e liquidada no 
+Exercício Atual
+99 - Sem consumo de 
+Limite de Saque
+5.700.000,00
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE07999 CONFORME PROCESSO Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 
+19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover a melhoria da qualidade e resolubilidade do atendimento aos 
+usuários do SUS, competência de JUNHO/2025, conforme solicitação (114877067). São Gonçalo - Hospital do Câncer e do Coração - HCCOR. 
+REGULARIZAÇÃO DA COMPETÊNCIA, PAGO PELA 2025OB14866.
+Programação de Desembolso
+Documento
+2025PD17011
+Emissão
+29/09/25
+Data de 
+Programação
+29/09/25
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCAS LIBERATO ANDRE em 03/10/25 às 13:24.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 03/10/25 às 13:27.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

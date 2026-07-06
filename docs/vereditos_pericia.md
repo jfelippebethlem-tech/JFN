@@ -1,0 +1,1466 @@
+# Vereditos da perícia (memória de auditoria-ouro do Hermes)
+
+> Gerado por `tools/vereditos_para_rag.py`. **Regra:** antes de acusar uma entidade, consulte se ela JÁ foi periciada abaixo. Entidade na seção 'JÁ JULGADAS SEM ACHADO' foi **refutada** — NÃO re-acuse; INDISPONÍVEL ≠ irregular.
+
+## JÁ JULGADAS SEM ACHADO (refutadas — 957)
+
+- **CONDOMINIO DO EDIFICIO LUIZ DE CAMOES** (`31443302000168`, UG 210100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **W P SISTEMAS REPROGRAFICOS E IMPRESSAO LTDA** (`03951766000140`, UG 223200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **INOVA INFRAESTRUTURA LTDA** (`11099079000176`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Mega Engenharia Ltda** (`39109806000158`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Dentalex Odonto Cirurgica Ltda Epp** (`33116856000186`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CONSTRUTORA SERGIO PORTO LTDA ME** (`22476982000125`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Dentsul Comercio De Mat. Ondt. Ltda** (`06150220000188`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Baxter Hospitalar Ltda** (`49351786001071`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Rodrigo Octavio De Britto Nobre** (`02823758720`, UG 256100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Telemar Norte Leste S/A - Em Recuperação Judicial** (`33000118000179`, UG 246300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Julio Cesar De Araujo Chaves** (`07126400705`, UG 256100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Sharlene Leal Lima** (`08959698741`, UG 256100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Darci Da Silva Junior** (`03436727741`, UG 256100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Sandro Correa Giglio** (`02875971727`, UG 256100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **THIAGO VALLINOTE FIRMINO** (`08998004674`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CLINICA VETERINARIA RICARDO LTDA** (`06276996000149`, UG 290100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Dell Computadores do Brasil Ltda** (`72381189001001`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **BELMIX CONSTRUTORA LTDA** (`13025832000104`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Santa Luzia Engenharia e Construções Ltda** (`01868396000156`, UG 133100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Empresa Fluminense de Serviços Eireli** (`17309157000104`, UG 197100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **C.W.R. CONSTRUCOES REFORMAS E COMERCIO LTDA** (`07681401000101`, UG 197100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CAULE & SEIVA ALIMENTACAO LTDA** (`17033316000182`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CONSORCIO CAMPISTA I** (`44512863000113`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Construsan Servicos Industriais** (`28955565000141`, UG 660100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **DATEC SERVICOSTECNICOS LTDA** (`44056883000127`, UG 197100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Construtora Entre Os Rios Ltda** (`30307631000119`, UG 197100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **OLÍMPICA COMÉRCIO E SERVIÇOS ALIMENTÍCIOS LTDA** (`02905041000152`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS LTDA** (`31954621000138`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Enex Construcoes Ltda** (`03647469000105`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **VEIN CONCEPTS EIRELLI EPP** (`29325190000107`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CLARO S.A.** (`40432544006269`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Empresa Bras.de Engenharia E Com.s/a Ebec** (`17162280000137`, UG 290100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **KROY ENGENHARIA EIRELI** (`02911547000174`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **OBDI LOCACAO DE VEICULOS LTDA** (`09546840000129`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **GEO AMBIENTAL EMPREENDIMENTOS LTDA** (`18463305000103`, UG 133100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **SGP IND. E COM. COLCHOARIA EIRELI** (`11377867000187`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **LÍDER TÁXI AÉREO S/A - AIR BRASIL** (`17162579001830`, UG 210600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **TERRATEK TECNOLOGIA LTDA** (`04686610000141`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **BREF GESTAO EMPRESARIAL LTDA** (`20839900000134`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Ampla Energia E Servicos S.a.** (`33050071000158`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Assoc Carioca De Prest De Serv Art Culturais** (`08827841000189`, UG 133100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ZANELI SERVICOS ELETRICOS LTDA** (`19742327000167`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ZURIEL DE IGUAÇU COMERCIO REPRES. LTDA** (`24593578000167`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ÔNIX SERVIÇOS LTDA** (`03638457000114`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **INTERIMAGEM FLEET BRASIL EIRELI** (`17296388000112`, UG 210700) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Associacao Niteroiense De Def Fisicos-andef** (`27763754000150`, UG 200100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Instituto Nacional Do Seguro Social** (`29979036021903`, UG 210600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CENTRO DE OLHOS AV SETE DE SETEMBRO LTDA** (`39256128000156`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Empresa Brasileira De Correios E Telegrafos** (`34028316000294`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Cs & Cs Comercio E Servicos Eireli** (`01165267000100`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Governo Do Acre** (`04034484000140`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Fed. Emp.de Transp.de Pas.do E.rj-fetranspor** (`33747288000111`, UG 137200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Digitro Tecnologia S.A.** (`83472803000176`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **B7 EMPREENDIMENTOS LTDA** (`17298685000105`, UG 020100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **QUICKBUM E COMMERCE EIRELI** (`30323616000164`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Thiago Dos Santos Palinha** (`11969104724`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CONCRETO BELFORD ROXO EIRELI** (`20812599000175`, UG 197100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Demerson da Silva Brum** (`03203583720`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Halex E Istar Ind. Farmaceutica Ltda.** (`01571702000198`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **MEDIMAC COMÉRCIO DE ARTIGOS MÉDICOS LTDA** (`03596923000146`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Light Servicos De Eletricidade S/a** (`60444437000146`, UG 173100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Ieda Costa Dias** (`00564997790`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **EDUARDO ONORATO DE FREITAS** (`08069618728`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **TRIBUNAL REGIONAL DO TRABALHO DA 1ª REGIÃO** (`RF0004771`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **NUTRIMED SERV. MED. EM NUT. PARENTAL E ENTERAL LTDA** (`01226416000195`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Companhia Estadual De Aguas E Esgotos Cedae** (`33352394000104`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **WEBDECOR COMERCIO E SERVIÇOS EIRELI** (`13177806000100`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **3º BPM** (`CG0006479`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Henrique de Lima Pires Salgado** (`08449110700`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **DANIELE DA SILVA BATISTA DE ARAUJO** (`11316951782`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **MICHAEL ALVES SALES** (`07976548794`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **JR Decorações e Comércio em Geral LTDA ME** (`25054102000110`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **BRAXTER HOSPITALAR LTDA** (`46440212000190`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Tecnogera Loc E Transf.de Energia Ltda** (`08100057000174`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Mariana da Conceição Rodrigues** (`10860133796`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Green Card S/a-refeicoes Com E Servicos** (`92559830000171`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Banco Do Brasil S/a** (`00000000000191`, UG 090100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **4º BPM** (`CG0006480`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Companhia Estadual De Aguas E Esgotos Cedae** (`33352394000104`, UG 210600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **LUMINUS ELETRICIDADE GERADORES E SERVICOS EIRELI** (`01773012000111`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Leonardo da Silveira** (`07538102710`, UG 110100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Luana Pinheiro Ribeiro Bernardo** (`11107798795`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Bernado da Silva Campos** (`49200070787`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Global 233 Comercial Ltda-me** (`07476343000176`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Telemar Norte Leste S/A - Em Recuperação Judicial** (`33000118000179`, UG 137200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Disk Med Padua Distrib. De Medicamentos Ltda.** (`04216957000120`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Camila Costa da Silva** (`05932970758`, UG 290100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Energywork Com.ser.eletro-eletronico Ltd** (`73305484000150`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **THIAGO AZEVEDO FERREIRA DE SOUZA** (`13988060720`, UG 290100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **M4 IMP. E COM. DE MAT. MED. HOSP. LTDA** (`09082697000161`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **FATTO CONSULTORIA E SISTEMAS LTDA** (`02434797000160`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **HEXAGON DISTRIBUIÇÃO E LOGISTICA DE PRODUTOS MEDICOS EIRELI** (`36257530000167`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Prefeitura Municipal De Sao Sebastiao Do Alto** (`28645786000113`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Ecia America Servicos E Construcoes S/a** (`13025862000110`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **BRS SP SUPRIMENTOS CORPORATIVOS S/A** (`03746938000143`, UG 254100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Roberta De Souza Lopes** (`09667208737`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ENINCENDIO SISTEMA DE PROTECAO E COMBATE LTDA** (`13077907000109`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Danillo Rodrigues da Silva** (`92286682100`, UG 133100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ELVIS ALVES DE OLIVEIRA** (`07288078744`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **MARCIA DE SOUZA MARTINS** (`44282834749`, UG 223200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Municipio De Barra Do Pirai** (`28576080000147`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Coop. Eletr Rural Cachoeiras-itaborai Ltda.** (`27707397000102`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Prefeitura Municipal De Guapimirim** (`39547500000183`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **HELSON GUSMÃO DE OLIVEIRA** (`85441384700`, UG 020100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **LEONIDIA CRISTINA CRUZ** (`08603704708`, UG 290100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Paulo Passos Silva Filho** (`84862580734`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Biosintese Hospitalar Ltda** (`01086229000153`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **OI S.A. - EM RECUPERACAO JUDICIAL** (`76535764033157`, UG 213600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Cs & Cs Comercio E Servicos Eireli** (`01165267000100`, UG 220100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **MARCOS ANTONIO LEANDRO DA SILVA** (`60448261715`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Douglas Da Silva Moraes Do Nascimento** (`10953623726`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Letícia Thereza Souza de Carvalho** (`15928769784`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Secretaria Municipal De Fazenda** (`29468014000116`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **André Bernardo da Silva** (`12973310792`, UG 290100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Alexander De Carvalho Maia** (`12321253770`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **MARITIMO DE NITEROI POSTO DE COMBUSTIVEL LTDA** (`09425092000126`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **THIAGO SANTOS FÉLIX** (`12530374775`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **FRANCIEL GOMES** (`07779344770`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CARLOS HENRIQUE JENNE JUNIOR** (`08665153721`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **SAULO VITAL DA CONCEIÇÃO** (`08795718702`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ESTHER ASSÁ ELLIS** (`RP0014683`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ALLAN BRAGA LOUGON** (`08132385799`, UG 200100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Companhia Estadual De Aguas E Esgotos Cedae** (`33352394000104`, UG 254100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Jem Comercio E Servico De Telec. E Info. Ltda** (`03056608000126`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Prolagos S/a-conc Serv.pub.agua/esgoto** (`02382073000110`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Lucio Flavio Correia Alves** (`08470459783`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Antonio Ismar Dique Turco** (`00093954743`, UG 223200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **FELLIPE DE OLIVEIRA PINTO** (`10239763742`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ALEXANDRE BATISTA DA SILVA** (`05174188786`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Jose Paes Leme Da Motta** (`62767194715`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **MARJORYE MANDERGAN JACOMELLI PINTO** (`05815110779`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **FLAVIO DIAS WANDERLEY VALENTE** (`03133778714`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **LETÍCIA FRANCISCO DE OLIVEIRA** (`13916675737`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Isabela de Morais Freitas de Souza** (`14883768759`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **EDIELSON GOMES PIMENTEL** (`05198724793`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **FERNANDA CRISTINA FIRMINO LINS** (`11451047703`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Felipe Da Conceicao Da Silva** (`12449737774`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **MÁRIO SÉRGIO DA COSTA** (`74099388700`, UG 200100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ADRIANA MACHADO DA SILVA** (`09308467700`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **PEDRO HENRIQUE ROCHA VALLE** (`11640576770`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Prolagos S/a-conc Serv.pub.agua/esgoto** (`02382073000110`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Edson Da Silva Moura** (`86395270753`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **JOSÉ CARLOS SANTOS DE SOUZA** (`00159275717`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Banco Bradesco S.a.** (`60746948000112`, UG 246300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **FLAVIA LUCIA MONTEIRO** (`02476494739`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Sergio Manoel Neves Thadeu** (`01224966716`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Claro S.a.** (`40432544000147`, UG 263200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Fatima Regina Moura De Azevedo** (`75836289700`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Rubens Tojeiro Da Rocha** (`32910231704`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **OI MOVEL S.A - EM RECUPERAÇÃO JUDICIAL** (`05423963000111`, UG 263200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CRISTAL TERCEIRIZACAO DE SERVICOS LTDA** (`21958344000188`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Jozaine Novato Braz** (`03276043793`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **VICTOR HUGO DO NASCIMENTO RIBEIRO** (`14501638745`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Edvaldo Tirre Ribeiro** (`43470076715`, UG 223200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **FORTALEZA AMBIENTAL GERENCIAMENTO DE RESIDUOS LTDA** (`31736796000250`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Prefeitura Municipal De Niteroi** (`28521748000159`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **AGUAS DO RIO 4 SPE S.A** (`42644220000106`, UG 154300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Light Servicos De Eletricidade S/a** (`60444437000146`, UG 123425) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **IOLANDA COELHO DE OLIVEIRA** (`02245721721`, UG 010100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Universidade Federal Do Rj-ufrj** (`33663683000116`, UG 010100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **HADDAD RENT A CAR LOCADORA LTDA.** (`00104659000198`, UG 500100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Condominio Do Edificio Darke** (`29409760000139`, UG 043500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Light Servicos De Eletricidade S/a** (`60444437000146`, UG 043500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Lucia Damiana De Souza Barbosa** (`02604789701`, UG 060100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Soluti - Solucoes Em Negocios Inteligentes S/A** (`09461647000195`, UG 106100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **PRODERJ-CENTRO DE TECNOL.DE INF.COMUN. ERJ** (`403200`, UG 213600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Tribunal de Justiça do Estado de Sergipe** (`13166970000103`, UG 540100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Terminal Garagem Menezes Cortes S/a** (`02664042000152`, UG 500100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **PAGTOS. PROFESSORES** (`CG0005341`, UG 090100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ISABELLA RIBEIRO CORREA** (`12875135732`, UG 640100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Celmo Ribeiro Leal** (`71380914787`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Light Servicos De Eletricidade S/a** (`60444437000146`, UG 154300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Licia Azeredo Mattesco** (`11691856738`, UG 600100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **DES SERVICOS EM ELEVADORES LTDA** (`31650389000144`, UG 010100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **JORGE DOS SANTOS COELHO 797286347-49** (`33021067000161`, UG 600100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **THAIZ PEREIRA DO NASCIMENTO** (`11240795726`, UG 600100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **LUIZ GUSTAVO S. DE OLIVEIRA** (`11154613704`, UG 640100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ALEXANDRE GOULART GALVÃO** (`68756283768`, UG 640100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Beatriz da Silva Nobrega** (`13631425775`, UG 430100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Douglas Aguiar Andrade** (`07826659779`, UG 430100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Marcelo Ribeiro** (`01891265741`, UG 640100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **DYLMAR FIQUEIREDO GOMES NETTO** (`16570858726`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **KEITY CORBANI FERRAZ** (`49938673015`, UG 640100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Karina Martins Alves** (`18042575750`, UG 430100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Renato Ramos Marotta** (`01037793706`, UG 600100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **PEDRO RIBEIRO MAGALHÃES** (`50568310187`, UG 640100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **PALOMA GALDINO DA COSTA** (`08687045719`, UG 600100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **PAOLO CASTEX MORAIS MAIA** (`08355692764`, UG 600100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **NATASHA DRIUSSO DE SOUZA** (`14476486762`, UG 640100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **JAIR FARIAS DA SILVA** (`09503531756`, UG 600100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **AIMÉE WEISS FERNANDES** (`44387131888`, UG 640100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ANTÔNIO LINS DA SILVA** (`31769888420`, UG 590100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CT SUCADP nº 12.1.204** (`CG0012842`, UG 370200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CONSORCIO SAO JOSE HM** (`46480432000148`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Jesus Landeira Fernandez** (`74719076734`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **VETORSEG VIGILÂNCIA PATRIMONIAL LTDA - ME** (`18981763000126`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Maria Alice Zarur Coelho** (`95913092791`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **TICKET SOLUCOES HDFGT S/A** (`03506307000157`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Paulo Emilio Valadao De Miranda** (`36907880725`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **2016.04931-0** (`PP1604931`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Philips Medical Systems Ltda.** (`58295213000178`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **A. C. F. DA SILVA LTDA-ME** (`10555527000136`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Francisco Jose Barcellos Sampaio** (`42516560753`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Agnes Marie Sa Figueiredo** (`51728427720`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Carlos Alberto Manssour Fraga** (`79216560720`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **MARCO ANTONIO CHAER DO NASCIMENTO** (`10349510768`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Ricardo Gattass** (`27724085749`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **REED EXHIBITIONS LIMITED** (`CG0014241`, UG 430100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Universidade Federal Rural Do Rj** (`29427465000105`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **White Martins Gases Industriais Ltda** (`35820448001299`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Empresa Bras.de Engenharia E Com.s/a Ebec** (`17162280000137`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Cesar Leopoldo Camacho Manco** (`29026695772`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Julio Scharfstein** (`23808497734`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Eduardo Faerstein** (`41268466700`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Tecnogera Loc E Transf.de Energia Ltda** (`08100057000174`, UG 297100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Lucia Maria B. P. Das Neves** (`37594346734`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Rentalmac Elevadores E Maquinas Ltda** (`04218345000177`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **SECRETARIA DE ESTADO DE POLÍCIA CIVIL** (`260400`, UG 500100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **VCE PROJETOS, CONSTRUCOES E SERVICOS LTDA** (`16738053000144`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **PRODERJ-CENTRO DE TECNOL.DE INF.COMUN. ERJ** (`403200`, UG 500100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Antonio Jose Teixeira Guerra** (`25988697704`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Laborpec Rio Comercial Ltda** (`05354801000179`, UG 297100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **C. F. EMBALAGENS PLÁSTICAS EIRELI** (`23829669000196`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Sandra Maria Viegas Da Silva** (`94044147787`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **PRESTYMEDICK COMERCIO E REPRESENTAÇÃO COMERCIAL DE MATERIAIS MÉDICOS HOSPITALARES LTDA** (`13898227000148`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **SOBERANA COMERCIO E SERVIÇOS EIRELI** (`31172252000121`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Bmr Medical Ltda** (`07213544000180`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Liex-rio Industria E Comercio Ltda.** (`40274268000136`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Michelle Plubins Bulkool** (`04269718765`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Abifina-assoc.bras.ind. Quim. Biotecn.e Espec** (`56090970000180`, UG 297100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Rene Justen** (`47656409734`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ENINCENDIO SISTEMA DE PROTECAO E COMBATE LTDA** (`13077907000109`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **LEOPOLDO DE JESUS COUTINHO CAMPOS DE OLIVEIRA** (`08126360747`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **HERMES CIPRIANO DE OLIVEIRA** (`96612592672`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Solamaris Do Rio Fornec.de Frutas E Leg. Ltda** (`40326381000118`, UG 297100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Leticia Taveira Telles** (`11413091733`, UG 430100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **LUCIMARA CRUZ LYRIO BARBOSA** (`10083679740`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **AFONSO RANGEL GARCEZ DE AZEVEDO** (`13203375702`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **DISTRIBUIDORA DE HORTIGRANJEIROS CENTRAL-EIRELI** (`31565703000190`, UG 297100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **NCD COMERCIAL E SERVICOS LTDA** (`00562195000163`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **AFINET SOLUÇÕES EM TECNOLOGIA DA INFORMAÇÃO LTDA -ME** (`04310997000137`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Ailton Azevedo Da Silva** (`77467434715`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **DANIELLE CRISTINA OLIVEIRA ROCHA** (`10927308770`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Elizabeth Agostinho Cordeiro** (`74200054787`, UG 430100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **João de Melo Carrilho** (`11650166729`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **WAGNER LUCIO DE OLIVEIRA** (`09897927735`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Guilherme Cesar de Almeida** (`12498363793`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **JEFERSON VARGAS DO ROSARIO** (`17761756708`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **FABRICIO GOMES DA SILVA** (`15001517770`, UG 430100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ATHOS RIO PRODUTOS MEDICOS HOSPITALARES EIRELI** (`31912939000156`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Companhia Estadual De Aguas E Esgotos Cedae** (`33352394000104`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ALINE BLAESER COELHO** (`03311242700`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **THAIS COUTO CIDADE** (`10444450769`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ROBSON SILVA DE LIMA** (`10568733703`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ANTONIO CARLOS DE SÁ** (`64874931715`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **LUIZ CLAUDIO D'ALMEIDA GOMES** (`80318169720`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **RITA APARECIDA PEREIRA DA SILVA** (`77308395715`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Fmadca Da Crianca E Do Adolescente** (`14414144000107`, UG 370200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **It2b Tecnologia E Servicos Ltda.** (`04392420000200`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Hospinova Distribuidora de Produtos Hospitalares Ltda** (`12499494000260`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **INTELIGENCIA ARTIFICIAL TECNOLOGIA E REFRIGERACAO LTDA** (`01579387000145`, UG 213600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **GRAT.CONC.CEJUR-PGE** (`CG0000122`, UG 090100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Ilagos Diagnosticos Por Imagem Ltda** (`07291841000144`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **ABC FARMACEUTICO LTDA** (`52967925000100`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Guarailha Distribuidora De Alimentos Ltda - Epp** (`10910334000156`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **PORTAL TRANSPORTE COM. DE RESÍDUOS E LOC. DE EQUIP. LTDA EPP** (`18770328000152`, UG 010100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **PORTAL TRANSPORTE COM. DE RESÍDUOS E LOC. DE EQUIP. LTDA EPP** (`18770328000152`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Taxas Judiciárias** (`CG0009759`, UG 096100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Sao Paulo Tribunal De Justica** (`51174001000193`, UG 096100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Sermacol Comercio E Servicos Ltda** (`29912565000127`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **CS BRASIL FROTAS S.A.** (`27595780000116`, UG 210600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **MUNICIPIO DE RIO DE JANEIRO** (`42498733000148`, UG 140100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Prefeitura Municipal De Niteroi** (`28521748000159`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **AGUAS DA IMPERATRIZ S A** (`39523638000142`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **RAFAEL AGUIAR MAGALHÃES** (`09355736746`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Evaldo de Lima Beda** (`38675269749`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **VIBRA ENERGIA S.A** (`34274233000102`, UG 120200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Light Servicos De Eletricidade S/a** (`60444437000146`, UG 200900) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Telemar Norte Leste S/a** (`33000118000330`, UG 200900) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **PRODERJ-CENTRO DE TECNOL.DE INF.COMUN. ERJ** (`403200`, UG 317200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **OI MOVEL S.A - EM RECUPERAÇÃO JUDICIAL** (`05423963000111`, UG 200900) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **Claro S.a.** (`40432544000147`, UG 437100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 23 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 090100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MULTSERV - SEGURANCA E VIGILANCIA PATRIMONIAL LTDA** (`04689445000181`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MCA MULTIPLOS SERVICOS LTDA** (`45226717000194`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Peca Oil Distribuidora Ltda-epp** (`34043125000110`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **GBG COMERCIO DE PNEUS E SERVICOS LTDA** (`05247910000359`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **TRIVALE INSTITUICAO DE PAGAMENTO LTDA** (`00604122000197`, UG 400100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **BLOQUEIO JUDICIAL** (`CG0008510`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **GILDA FATIMA DE OLIVEIRA SILVA** (`76901726791`, UG 043500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Marcelo Costa Lemos** (`00608614793`, UG 020100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **JOSE EDUARDO DE CARVALHO PINTO FILHO** (`06223245866`, UG 020100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RPAM SERVICOS E EQUIPAMENTOS LTDA** (`40982676000142`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PESOS E MEDIDAS DO RJ** (`053100`, UG 140100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **TALENTO CONSULTORIA EMPRESARIAL S/S LTDA** (`05670255000185`, UG 140100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RIOPREV/INATIVOS** (`CG0006026`, UG 123499) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **K2 TELECOM E MULTIMIDIA LIMITADA** (`07426946000163`, UG 110100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **3corp technology infraestrutura de telecom ltda** (`04238297000189`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PRODERJ-CENTRO DE TECNOL.DE INF.COMUN. ERJ** (`403200`, UG 043500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Danielle Christian Ribeiro Barros** (`04480787755`, UG 150100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fagner André De Oliveira** (`09438630740`, UG 150100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **HADDAD RENT A CAR LOCADORA LTDA.** (`00104659000198`, UG 297100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **OBDI LOCACAO DE VEICULOS LTDA** (`09546840000129`, UG 140100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SECRETARIA MUNICIPAL DE EDUCAÇÃO** (`06074604000169`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Carlos Alberto Arruda Rodrigues Junior** (`17241101790`, UG 430100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Instituto Nacional De Seguro Social.** (`29979036000140`, UG 135300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CONQUISTA VIGILANCIA E SEGURANCA PATRIMONIAL LTDA** (`11804114000100`, UG 170100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **HOSPITAIS INTEGRADOS DA GAVEA S/A** (`31635857000969`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **IPAMV-INSTITUTO DE PREVIDENCIA E ASSISTENCIA DOS SERVID** (`27741750000170`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **David Santos** (`30225804875`, UG 216500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INTELIGENCIA ARTIFICIAL TECNOLOGIA E REFRIGERACAO LTDA** (`01579387000145`, UG 300100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AMBIS CONTROLE DE PRAGAS E SERVIÇOS LTDA** (`34406351000119`, UG 140100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DADY ILHA SOLUCOES INTEGRADAS LTDA.** (`08540992000151`, UG 300100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Julio Cesar Pereira Pitanga** (`06978226726`, UG 096100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDÊNCIA DOS SERVIDORES DO MUNICÍPIO DE NILÓPOLIS** (`04939180000122`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **São José Previdência** (`05774805000106`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FORTALEZA AMBIENTAL GERENCIAMENTO DE RESIDUOS LTDA** (`31736796000179`, UG 135300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Instituto de Previdência Social dos Servidores Municipais de Barueri** (`08434600000170`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **TJ - Folha de Pagamento de Inativos** (`CG0009727`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FORD MOTOR COMPANY BRASIL LTDA** (`03470727004118`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **5000001-67.2022.4.02.9333** (`PR2293001`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Construtora Medeiros Carvalho Almeida Ltda** (`30458749000148`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Riopar Participações S.A.** (`16727386000178`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Arvvo Tecnologia, Consultoria e Serviços Ltda** (`25359140000181`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03504-0** (`PP1803504`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **OPENTEC Computação & Sistemas Ltda.** (`01290314000139`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INDUSTRIA E COMERCIO APOLO EIRELI** (`29644432000117`, UG 130100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **TORINO INFORMÁTICA LTDA.** (`03619767000515`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **BOLSAS DE AUXÍLIOS** (`CG0006052`, UG 406100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FARO CONSTRUÇÕES, LOCAÇÕES E CONSULTORIA LTDA** (`05236333000138`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Crater construções ltda** (`00615133000172`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CONSORCIO VIEIRA II MARAMBAIA** (`47611676000185`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03505-8** (`PP1803505`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **maqmóveis Indústria e Comércio de Móveis LTDA** (`54826367000430`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Rio Shop Serviços Eireli** (`73833360000148`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Grupo Arco-iris De Conscientizacao Homossexua** (`97468433000108`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2004.01048-1** (`PP0401048`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Sind.das Emp.de Trans.de Pass.b.mansa E V.red** (`29055993000180`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **GT SOLUCOES EM COMERCIO E SERVICOS LTDA** (`18517845000114`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ce Hilario Ribeiro** (`00631909000148`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **B&B MED SERVICOS MEDICOS LTDA** (`33467486000121`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Nilopolis** (`29138286000158`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INTELIGENCIA ARTIFICIAL TECNOLOGIA E REFRIGERACAO EIRELI** (`01579387000145`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ce Prof Francisca J S Menezes** (`00746871000159`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Belford Roxo** (`39485438000142`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.03291-8** (`PP1703291`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PERNAMBUCO MOTOS LTDA** (`10144013002050`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.03221-7** (`PP1703221`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FXS ENGENHARIA LTDA** (`21255678000195`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Bolsa Auxílio de Residentes Jurídicos - DPGE** (`CG0009702`, UG 110100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 043500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Mbm Seguradora S/a** (`87883807000106`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ANGEL'S SERVIÇOS TERCEIRIZADOS LTDA** (`02339689000109`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **TREND ENERGY SOLUCOES INDUSTRIAIS LTDA** (`31898500000116`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Mongeral Previdencia Privada** (`33608308000173`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ESTAGIARIOS - PGE** (`CG0000100`, UG 090100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **JB SERVICOS MEDICOS LTDA** (`40667861000142`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **JML CONSULTORIA FINANCEIRA & ENGENHARIA LTDA** (`20721029000170`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03398-5** (`PP1803398`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **COLI TRANSPORTES E SERVICOS LTDA-ME** (`10571692000181`, UG 197100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AMBIENTAL RB COMÉRCIO E SERVIÇOS LTDA** (`23331841000187`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Alvaro Luiz Gayoso De Azeredo Coutinho** (`63638029700`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **HORIZONTE 16 LOCADORA DE VEÍCULOS LTDA-EPP** (`21921129000102`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PEDREIRA PRONTA ENTREGA LTDA** (`28890663000148`, UG 650100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **QUALITY SOLUCOES EM RECURSOS HUMANOS LTDA** (`47714185000160`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03594-5** (`PP1803594`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **NTSEC SOLUCOES EM TELEINFORMATICA LTDA** (`09137728000134`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.02855-4** (`PP1702855`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Munic. De Bom Jesus De Itabapoana** (`28812972000108`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DOTTORI MED LTDA** (`37464521000100`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03157-5** (`PP1803157`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Webtrip Agencia de Viagens e Turismo Ltda** (`07340993000190`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Companhia Estadual De Aguas E Esgotos Cedae** (`33352394000104`, UG 210700) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03384-5** (`PP1803384`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03598-8** (`PP1803598`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03424-8** (`PP1803424`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ECOLAV SERVIÇOS TÉCNICOS DE LAVANDERIA LTDA-ME** (`05823740000141`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ANGEL'S SERVIÇOS TECNICOS EIRELI** (`68565530000110`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PRO-IMAGEM - CLINICA MEDICA E DE DIAGNOSTICO POR IMAGEM LTDA** (`17686003000123`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.02962-3** (`PP1702962`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ABADE FRANCO CONSTRUCAO CIVIL EIRELI** (`09005255000111`, UG 197100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Cintia Monteiro De Barros** (`07321833755`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Icr Ind. E Com. De Prod.bioterios Ltda** (`00844903000159`, UG 130100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MEDEIROS & MEDEIROS CIVIL E MONTAGEM LTDA** (`04609892000183`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03397-7** (`PP1803397`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PRODERJ-CENTRO DE TECNOL.DE INF.COMUN. ERJ** (`403200`, UG 246300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AJURDY DISTRIBUIDORA DE PRODUTOS LTDA** (`09102265000175`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MULTIPLY SERVICOS DE MANUTENCAO LTDA** (`04312370000115`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03399-3** (`PP1803399`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SOLUTIS TECNOLOGIAS LTDA** (`12023465000570`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prócer Tecnologia Eireli** (`23035184000120`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.02911-9** (`PP1702911`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INFRACORP COMERCIO E SERVIÇO EIRELLI ME.** (`19518708000167`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AMO SERVIÇOS GERAIS LTDA** (`17298685000105`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 254100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MINISTERIO DA ECONOMIA** (`00394460018512`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CONS.CONCREMAT/JDS** (`CS0000090`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.03337-0** (`PP1703337`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2019.02928-0** (`PP1902928`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Associacao Niteroiense De Def Fisicos-andef** (`27763754000150`, UG 010100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03593-7** (`PP1803593`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03408-6** (`PP1803408`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ANGEL'S SERVIÇOS TERCEIRIZADOS LTDA** (`02339689000109`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Mage** (`29138351000145`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03392-6** (`PP1803392`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MULTIPLY SERVICOS DE MANUTENCAO LTDA** (`04312370000115`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **IMPAR SERVICOS HOSPITALARES S/A** (`60884855001630`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CCN ADMINISTRAÇÃO E LOCAÇÃO DE BENS LTDA** (`09012731000121`, UG 213600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LOCCUS DO BRASIL LTDA** (`05094718000108`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.02950-0** (`PP1702950`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CIAP TERRAPLANAGEM EIRELI** (`27402904000108`, UG 130100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2019.04921-4** (`PP1904921`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **OMG EMPREENDIMENTOS** (`59526366000141`, UG 134100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ESPOLIO CLARA DA SILVA COSTA** (`RP0020572`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2023.00903-5** (`PP2300903`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Green Card S/a-refeicoes Com E Servicos** (`92559830000171`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2019.03579-5** (`PP1903579`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03180-0** (`PP1803180`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fábio Antônio Muller Mariano** (`07830751706`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03396-9** (`PP1803396`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ESPECIALY TERCEIRIZACAO - EIRELI** (`20522050000146`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2021.05630-3** (`PP2105630`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2020.06850-2** (`PP2006850`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Persona Vigilancia E Seguranca Ltda** (`10542117000150`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Carlos Eduardo De Rezende** (`67620965734`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Faculdades Catolicas** (`33555921000170`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Eco 805 Comercio E Serv. De Equip. Ltda** (`39548763000107`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Simplicius Coleta E Rem. De Residuos Ltda-me** (`11937243000177`, UG 250100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.03340-0** (`PP1703340`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ABBOTT LABORATORIOS DO BRASIL LTDA** (`56998701003301`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Casa De Saude Nossa Senhora Do Carmo Ltda.** (`33756768000149`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2019.03646-5** (`PP1903646`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Mongeral Previdencia Privada** (`33608308000173`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03451-5** (`PP1803451`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03243-1** (`PP1803243`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **TEC-NEW PROJETOS E SERVICOS TECNICOS EM GERAL LTDA** (`25059611000136`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Mun. De Campos Dos Goytacases** (`29247475000401`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Serv. Federal De Proces.de Dados-serpro** (`33683111000107`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.02918-6** (`PP1702918`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03113-3** (`PP1803113`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2020.04646-0** (`PP2004646`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Henrique Rego Monteiro da Hora** (`01857552750`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Hunter Cientifica Com. Serv. Ltda** (`00304559000105`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Medtronic Comercial Ltda** (`01772798000152`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03600-3** (`PP1803600`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **OI MOVEL S.A - EM RECUPERAÇÃO JUDICIAL** (`05423963000111`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03227-0** (`PP1803227`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Egberto Gaspar De Moura** (`61173371753`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **White Martins Gases Indust Do Nordeste S/a** (`24380578002041`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03111-7** (`PP1803111`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **D.w.l. Comercio E Servicos Informatica Ltda** (`13347993000114`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Volpharma Distribuidora de Produtos Hospitalares e Farmacêuticos Ltda** (`14665928000108`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LG IT TECNOLOGIA E COMUNICAÇÕES EIRELI** (`07860896000128`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Paulo Mascarello Bisch** (`34485309720`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDENCIA DOS SERVIDORES DO ESTADO DO ESPIRITO SANTO** (`29986312000106`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Olaf Malm** (`80865356734`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Magali Christe Cammarota** (`83239502704`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PATRICIA TORRES BOZZA VIOLA** (`97464406753`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2016.04926-4** (`PP1604926`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Paulo Roberto De Souza Mendes** (`29832675715`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03220-2** (`PP1803220`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Vigília Brasil Serviços LTDA** (`06038700000151`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Georgia Correa Atella** (`00024301779`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Sm Solucoes Para Gestao Da Inf. Ltda-me** (`08855871000107`, UG 136200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2019.06047-1** (`PP1906047`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA ECONOMIA** (`00394460010880`, UG 620100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **VOLT MATERIAIS ELETRICOS EIRELI - ME** (`26507653000155`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.02870-8** (`PP1702870`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03232-6** (`PP1803232`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Agrovet Sul Serviços E Comercio De Prod.agrop** (`08563964000150`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Baxter Hospitalar Ltda** (`49351786001071`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2019.03100-5** (`PP1903100`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Benefícios de Caráter Indenizatório - Decreto Estadual 41.505 de 06 out 2008.** (`CG0009645`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DM COMERCIO DE NEGOCIOS EIRELI** (`13030356000110`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Atila Pantaleao Silva Freire** (`63853574734`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Estagiário de pós-graduação do TCE/RJ** (`CG3802569`, UG 026100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2021.04996-0** (`PP2104996`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDÊNCIA SOCIAL DO MUNICÍPIO DE ANGRA DOS REIS - - ANGRAPREV** (`10590600000100`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AMAZON EXPLORERS MANAUS LIMITADA** (`04389953000144`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Convem Mineracao Ltda.** (`29225976000144`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **KITFIRE TEC. EM SISTEMA DE INCENDIO LTDA-EPP** (`16104867000127`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Almy Junior Cordeiro De Carvalho** (`87980584791`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **D3jf Empreendimentos Comerciais Ltda** (`10921809000100`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ORL CONSTRUTORA LTDA ME** (`06995446000180`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **REAL JG FACILITIES S/A** (`08247960000162`, UG 106100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LÍDER TÁXI AÉREO S/A - AIR BRASIL** (`17162579001830`, UG 060100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Jose Alexandre M. Pereira** (`00352008717`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **NIKON INSTRUMENTS** (`CG0003535`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2023.09277-3** (`PP2309277`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.03341-8** (`PP1703341`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **BIOSTOCK DIAGNOSTICOS COMERCIO, IMPORTACAO, EXPORTACAO E DISTRIBUICAO DE MATERIAIS MEDICOS LTDA** (`16434877000201`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2019.04396-8** (`PP1904396`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03394-2** (`PP1803394`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.02865-1** (`PP1702865`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ebec Locacao De Veiculos S/a** (`08155169000122`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Caixa Economica Federal** (`00360305000104`, UG 135300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE BENEFÍCIOS E ASSISTÊNCIA AOS SERVIDORES MUNICIPAIS DE CABO FRIO** (`27759281000117`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03233-4** (`PP1803233`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **IMPETUS SERVICOS E COMERCIO DE OBRAS EM GERAL EIRELI** (`29014253000104`, UG 210700) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LEMAN MEDICAMENTOS E CIA LTDA** (`40600760000154`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Paulo Antonio De Souza Mourao** (`53984633815`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2020.01742-8** (`PP2001742`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Energisa Nova Friburgo-distrib.de Energia S.a** (`33249046000106`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2022.09105-6** (`PP2209105`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Itaborai** (`28741080000155`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ctesa Construcoes Ltda.** (`68703701000120`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ana Luiza Coelho Netto** (`55349595768`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Condominio Via Office** (`10538293000119`, UG 540100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Roco Producoes Artisticas E Culturais Ltda** (`11411242000194`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **GREEN4T SOLUÇÕES TI LTDA.** (`03698620000134`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA.** (`00801512000157`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2020.04738-6** (`PP2004738`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2019.06305-5** (`PP1906305`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ce Antonio Goncalves** (`00762545000135`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Paulo Sérgio Ramirez Diniz** (`57239177734`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Claudio Landim** (`82573859720`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ampla Energia E Servicos S.a.** (`33050071000158`, UG 135300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FJS FORNECIMENTO DE ALIMENTOS EIRELI** (`35824741000171`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Marcos Dajczer** (`52776638787`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Celina Miraglia Herrera De Figueiredo** (`62870971753`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Gilberto Kac** (`91203341768`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2021.07336-4** (`PP2107336`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Mikhail Vladimir Solodov** (`05263940726`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **KRATUS TECNOLOGIA COMERCIO E SERVICOS LTDA** (`33780199000177`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Paulo Roberto Ribeiro Costa** (`31174213787`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **TOYOSERRA VEÍCULOS LTDA** (`32565848000235`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Hermano Frid Neto** (`59759747715`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INDEN./RESTITUIÇÕES** (`CG0000040`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Marlene Benchimol** (`26179199787`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **STRATA ENGENHARIA LTDA.** (`38743357000132`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CF CORP SERVICOS LTDA** (`05947195000103`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FAST DECOR PISOS CARPETES E DRYWALL LTDA** (`11440967000100`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Angela Maria Cavalcanti Da Rocha** (`29835739749`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SECRETARIA DE ESTADO DE EDUCACAO** (`180100`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Health-care Com.mat.med.cir.hospitalar Ltda** (`40382970000113`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FERNANCAR MECÂNICA E ELÉTRICA LTDA** (`29444575000185`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Riopar Participações S.A.** (`16727386000178`, UG 254100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Elisa Maria Da Conceicao Pereira Reis** (`10356860744`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ronaldo Vainfas** (`52850684791`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Claro S.a.** (`40432544000147`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ampla Energia E Servicos S.a.** (`33050071000158`, UG 200100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Dan Marchesin** (`09832459753`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2020.01673-1** (`PP2001673`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **JNRF MODELO PEÇAS E ACESSÓRIOS DE MOTOS LTDA ME** (`03176671000104`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Csx Comercial Eireli - Epp** (`13828262000190`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PREST.SERV.-CECIERJ** (`CG0004244`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Libex Servicos E Locacoes Ltda** (`12594912000118`, UG 210700) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ampla Energia E Servicos S.a.** (`33050071000158`, UG 210700) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ONCO PROD DISTRIBUIDORA DE PRODUTOS HOSPITALARES E ONCOLÓGICOS LTDA** (`04307650000305`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDENCIA DO MUNICIPIO DE SAO GONCALO (SG-PREVI)** (`32538167000105`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **OFICINA VISCONDE DO CRUZEIRO LTDA** (`36079002000165`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MHS INDUSTRIA DE MOVEIS LTDA** (`10433858000101`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **UNICAR LOCAÇÕES E COMÉRCIO DE VEÍCULOS LTDA** (`34059209000142`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MARIA HELENA DA SILVA** (`RP0020598`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ATP ENGENHARIA LTDA** (`35467604000127`, UG 137200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Silvio de Cassio Costa Telles** (`02585036707`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ELV EMPRESA LOCADORA DE VEÍCULOS EIRELE EPP** (`08974048000102`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Instituto Nacional Do Seguro Social** (`29979036021903`, UG 500100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Geset Comercio Assist.tec.e Loc.maq.dup.ltda** (`03914523000131`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Gilvan Azevedo Festas Ltda-me** (`08549296000106`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MASTER PRODUÇÕES PROMOÇÕES E PUBLICIDADE LTDA** (`09814909000158`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **X-SOUND PEÇAS E ACESSÓRIOS AUTOMOTIVOS LTDA** (`07179380000112`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2021.01405-8** (`PP2101405`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ACANTO AUTO CENTER LTDA** (`26060156000151`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fatima Regina Cecchetto** (`80481825720`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **IGM2 METROLOGIA E MANUTENCAO LTDA** (`24982785000103`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Departamento De Policia Rod. Federal** (`00394494010441`, UG 310100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Adeb Line Comercio De Prod. Medicos Ltda Me** (`04624285000192`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Inst.neg.pub.br-est.pes.adm.pub.-inp-ltda.** (`10498974000281`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Eletrobras Termonuclear S.a.** (`42540211000167`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **OBDI MOTORS DO BRASIL EIRELI** (`05515258000144`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Clinica De Medicina Nuclear Villela Da Pedras** (`33205964000125`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2019.03656-2** (`PP1903656`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Kioto Ambiental Ltda** (`09423108000161`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **GMQ FACILITES CONSULTORIA HOSPITALARES LTDA** (`13585608000177`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SGA VEICULOS E PECAS S.A.** (`36152916000104`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Programa Desenvolve Mulher - Renda Melhor - Muzema** (`CG0013165`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Kanaro Artigos De Cama Mesa E Banho Ltda** (`02812282000157`, UG 210700) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Andrea Carla De Souza Goes** (`01065545738`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **TCPARK VIX ESTACIONAMENTO LTDA** (`24806289000360`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SIEMENS HEALTHCARE DIAGNÓSTICOS LTDA** (`01449930000351`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **VIRTUS COMERCIO DE MOVEIS LTDA** (`40614310000110`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SR ENGENHARIA EIRELI** (`33543232000145`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aguas De Nova Friburgo Ltda** (`03119806000191`, UG 210700) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Accord Farmaceutica Ltda** (`64171697000146`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2020.01622-7** (`PP2001622`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FM COMÉRCIO E SERVIÇOS DE MECÂNICA EM GERAL LTDA** (`36527355000180`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Riopar Participações S.A.** (`16727386000178`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Jessica Da Silva Ferreira De Melo** (`14362133712`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MULTIFARMA COMERCIO E REPRESENTACOES LTDA** (`21681325000157`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CARLOS ALEXANDRE ANDRADE DO CARMO** (`09666322730`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FABIO SOUZA DOS SANTOS** (`07843907700`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **TCPARK VIX ESTACIONAMENTO LTDA** (`24806289000107`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2021.05812-8** (`PP2105812`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SG TECNOLOGIA CLINICA LTDA** (`61485900001132`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Phelipe Cyrne Mattos Silva** (`05569066756`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ELISANDRA CARINA AMENDOLA PORTO** (`CG3802751`, UG 133100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **K.C.R.S. COMERCIO DE EQUIPAMENTOS LTDA** (`21971041000103`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DELL COMPUTADORES DO BRASIL LTDA** (`72381189001354`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **EVERSON ANTÔNIO DA SILVA** (`12268723798`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **237 6897 -7674-0-Reumatologia** (`CG0014125`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Dentemed Equip. Odontologicos Ltda Me** (`07897039000100`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PRO XT LTDA** (`46377731000151`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2017.03362-0** (`PP1703362`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **M A G SANTOS MOTORES PECAS E SERVICOS** (`22638730000155`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RIO+ SANEAMENTO BL3 S.A** (`42292007000174`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **GARAGEM SERRANA LANTERNAGEM E PINTURA LTDA** (`31975736000109`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2018.03764-6** (`PP1803764`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **OFICINA VIANA LTDA** (`42713714000197`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Resende** (`29178233000160`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PELMASTER LTDA** (`32477067000108`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ce Jose Bonifacio** (`01385829000112`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Banco Bradesco S.a.** (`60746948000112`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LEDPRO EVENTOS LTDA** (`37018865000195`, UG 216500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AGUAS DO RIO 4 SPE S.A** (`42644220000106`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Imprensa Oficial Do Estado Do Rio De Janeiro** (`28542017000190`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ENGE-WALL CONSTRUÇÕES LTDA.** (`01418115000163`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ALEXANDRE PIRES DE LIMA SALGADO** (`08411428745`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MARALU SERVIÇOS AUTOMOTIVOS LTDA** (`35460382000110`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PE & RJ COMERCIO E REPRESENTACOES LTDA** (`47378532000120`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Telemar Norte Leste S/A - Em Recuperação Judicial** (`33000118000179`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **BIOTRONIK COMERCIAL MEDICA LTDA** (`50595271000105`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FURLAN EMPREENDIMENTO E SERVIÇOS LTDA** (`39726824000189`, UG 133100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Cristiano Bento Nepomuceno** (`09297088732`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Energisa Nova Friburgo-distrib.de Energia S.a** (`33249046000106`, UG 210700) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AVANTE BRASIL COMERCIO EIRELI-ME** (`22706161000138`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Dell Computadores Do Brasil Ltda** (`72381189000110`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FORÇA AMBIENTAL LTDA** (`20217115000140`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RCOM SERVICOS E COMERCIO LTDA** (`37532648000119`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2020.02876-4** (`PP2002876`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **OI S.A. - EM RECUPERACAO JUDICIAL** (`76535764000143`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ANDRADE SOLUCOES EM BENS E SERVICOS LTDA** (`48855116000139`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **HADDAD RENT A CAR LOCADORA LTDA.** (`00104659000198`, UG 213600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MOBILOC ALUGUEL DE EQUIPAMENTOS HOSPITALARES LTDA** (`28709073000176`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PROVIDE HOSPITALAR LTDA** (`43573889000109`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ione Da Silva Dias Comercio De Moveis-me** (`07850384000180`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Webtrip Agencia de Viagens e Turismo Ltda** (`07340993000190`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **HADDAD RENT A CAR LOCADORA LTDA.** (`00104659000198`, UG 590100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **M & M COMERCIO DE DECORACOES E REFORMAS LTDA** (`35942127000104`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SGA VEICULOS E PECAS S.A.** (`36152916000457`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ce Governador Roberto Silveira** (`01406010000194`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **F P L GARCIA COMERCIO E SERVICOS** (`13073140000131`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ATIVA LICITACOES EMPREENDIMENTOS COMERCIAIS LTDA** (`27748454000100`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Do Colegio Estadual Jardim Meriti** (`00623449000106`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ciep 029 Josue De Castro** (`01180792000196`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ce Profa Alzira Dos Santos Da Silva** (`01439039000172`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ee Sao Francisco De Assis** (`01507353000145`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ee Vilar Dos Teles** (`01238315000134`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MAIS MOBI SERVICOS LTDA** (`57929012000112`, UG 137200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SEMPRE NOVO REPARACAO AUTOMOTIVA LTDA** (`12894842000113`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ISABELLY TEIXEIRA DE MATOS** (`13818698740`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **JC CONEX RIO SOLUCOES COMERCIAIS E SERVICOS LTDA** (`39433274000100`, UG 210700) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **House Med Prod.farmac. E Hospit. Ltda Me** (`01012073000166`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **HAROLDO DOS SANTOS SILVA ESTEVAM 16604779726** (`40378806000132`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CLARO S.A.** (`40432544006269`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Daniel Rodrigues da Silva** (`10015962776`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **BIOTRONIK COMERCIAL MEDICA LTDA** (`50595271000105`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Instituto Prev.serv.silva Jardim** (`07902163000109`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Rafael Dos Santos Fernandes De Souza** (`05842500701`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INNOVA AIR SERVIÇOS TÉCNICOS EIRELI** (`13411926000111`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Washington Luiz Sanadrez Teixeira** (`91984491768`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Condominio Do Edificio Marques Do Herval** (`29416765000199`, UG 154100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **São Geraldo Higienização e Nutrição Ltda.** (`11083162000157`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **NTSEC SOLUCOES EM TELEINFORMATICA LTDA** (`09137728000134`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **NOVA LÓGICA DISTRIBUIDORA DE PRODUTOS LOTÉRICOS LTDA** (`30775304000191`, UG 203100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ECOLD CLIMATIZAÇÃO E SERVIÇOS DE ENGENHARIA LTDA** (`24988359000187`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DISTRIBUIDORA DE MEDICAMENTOS SANTE LTDA** (`58229293000163`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FUNDO DE PREVIDENCIA SOCIAL DO MUNICIPIO DE PIRAI** (`13560304000155`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Teresopolis Shop. Center Empreendimentos Ltda** (`00333108000104`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Dimaster Comercio De Produtos Hospitalares** (`02520829000140`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **UNIVERSIDADE FEDERAL DO RIO DE JANEIRO** (`33663683000620`, UG 020100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ciep 307 Djanira** (`01107453000184`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LG DE MARICA COMERCIO E SERVICOS EM GERAL LTDA** (`50342580000254`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2021.07686-0** (`PP2107686`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Universidade Federal Do Rj-ufrj** (`33663683000116`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Belford Roxo** (`39485438000142`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ITA MED PRODUTOS MEDICOS HOSPITALARES LTDA** (`41554303000133`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2023.00065-8** (`PP2300065`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Inst.de Prev.serv.mun.de Nova Iguacu-previni** (`03450083000109`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FLIS TRANSPORTADORA LTDA** (`51927567000149`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RJMULTISERV COMÉRCIO E SERVIÇOS EIRELI-EPP** (`23211605000127`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Instituto De Seguridade Social De Marica** (`39511530000130`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ELIENE DE ANDRADE BORGES** (`07285505714`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **NAVI INTERPRISE COMERCIO DE MERCADORIAS EM GERAL LTDA** (`15005881000100`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ALRANTECH Importações e Comércio LTDA.** (`39486087000194`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **KARILIA COMERCIO DE PAPEIS EIRELI** (`38344029000163`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **D'FÉLIX DISTRIBUIDORA DE PRODUTOS LOTÉRICOS LTDA** (`11870529000182`, UG 203100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Work Brasil Comércio Serviços & Representações Ltda.** (`46796654000174`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MINDMED HOSPITALAR LTDA** (`46440212000190`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude - Petrópolis** (`11129492000136`, UG 650100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Natividade** (`28920304000196`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CRISTIANE DA SILVA BAHIA** (`03266813707`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Paraiba Do Sul** (`29138385000130`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Hawai 2010 Comercial Ltda.** (`11472955000168`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PARCO COMERCIO E SERVIÇOS LTDA** (`05214053000129`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Itaborai** (`28741080000155`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Claro S.a.** (`40432544000147`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Karoline Ferreira Viana** (`11034969722`, UG 660100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDENCIA SOCIAL DOS SERVIDORES PUBLICOS DO MUNICIPIO DE VILA VELHA (ES)- IPVV** (`07238345000127`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DENISE MAIA DONOLA** (`69940746504`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Diego Vicente de Melo Camargo** (`09573812711`, UG 660100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ADESTACK AUTOADESIVOS E LAMINADOS LTDA** (`34021009000109`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AVANTE BRASIL COMERCIO EIRELI-ME** (`22706161000138`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Costa Camargo Com.de Prods. Hospitalares Ltda** (`36325157000215`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ALPHA LIMP SERVICOS HOSPITALARES EIRELI** (`17285236000114`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Air Liquide Brasil Ltda** (`00331788000623`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Mariana Alexandre Almeida** (`09462395764`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Inst.de Prev.serv.mun.de Nova Iguacu-previni** (`03450083000109`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aguas de Niteroi S/A** (`02150336000166`, UG 210700) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DISK LIFE COMERCIO DE PRODUTOS CIRURGICOS LTDA** (`04614288000145`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CAMEPEL COMERCIO DE PAPEIS LTDA** (`18631695000175`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Adriano Moura da Fonseca Pinto** (`03559900751`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Felipe Leal da Silva** (`05272812719`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ronaldo Pereira Nunes Junior** (`13099705721`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Diogo Queiroz Souza Da Silva** (`09669711754`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SAO PAULO PREVIDENCIA - SPPREV** (`09041213000136`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RIOFORTE VIGILÂNCIA E SEGURANÇA PRIVADA LTDA EPP** (`17324127000169`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Jéssica Christófori Degli Esposte Dantas** (`11710371714`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2019.03873-5** (`PP1903873`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LARISSA SENRA FARIAS** (`16063661735`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CHL PRODUTOS MÉDICOS HOSPITALARES LTDA** (`32441650000169`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SERVICOS AUTOMOTIVOS DOIS IRMAOS EIRELI** (`38263113000152`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LIDISTON PEREIRA DA SILVA** (`35295384004`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Sinal Vital Com.de Produtos Med.e Servs.ltda-EPP** (`07270468000145`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Hewlett-packard Brasil Ltda** (`61797924000155`, UG 106100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **NTSEC SOLUCOES EM TELEINFORMATICA LTDA** (`09137728000134`, UG 213600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fernando Melo De Carvalho** (`03306599794`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Associacao Bras. De Emp. Est. De Proces. Rj** (`77639433000116`, UG 403200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ERICK MONTEIRO DO NASCIMENTO** (`12833269730`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **WILSON FERNANDO DA CONCEIÇÃO GOMES** (`11353847705`, UG 130100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ibg Ind.bras.de Gases Ltda** (`67423152000178`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **COMERCIAL CIRURGICA RIOCLARENSE LTDA** (`67729178000734`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **BRUNO LEAL MALHEIROS** (`03254137701`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ulisses Schnaider** (`03537025602`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FOZ PREVIDÊNCIA - FOZPREV** (`08322648000196`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Laborpec Rio Comercial Ltda** (`05354801000179`, UG 404500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ROSANA MENESES BACELLAR** (`09086464700`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AUTO TRUCK PNEUS, PECAS, ACESSORIOS E SERVICOS - LTDA** (`19507906000125`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Alexandre Valle Cardoso** (`01486095704`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Beatriz Grego Guimaraes Do Nascimento Reis** (`09871736770`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **VINÍCIUS PEREIRA DOS SANTOS** (`10265789737`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ANTONIO MAILSON DE CASTRO** (`16920586738`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CRISTIANE DAVI OLIVEIRA** (`99317931715`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **BIOLINE FIOS CIRURGICOS LTDA** (`37844479000233`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ce Senador Sa Tinoco** (`00774568000160`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ce Rubens Farrulla** (`00637627000158`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ce Vera Cruz** (`00761424000179`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aae Ee Prof Sandra Maria Dos Santos E Sousa** (`00866981000154`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDÊNCIA DO MUNICÍPIO DE FORTALEZA** (`07354939000101`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Thiago Salim Ramos Castanheira** (`09490152706`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ADEMIR MORAES AFFONSO JUNIOR** (`05144678785`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ambiental Servicos Especializados Ltda-me** (`01026441000125`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AUXILIO FUNERAL** (`CG0000003`, UG 130100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SULMEDIC COMÉRCIO DE MEDICAMENTOS LTDA** (`09944371000368`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **EPAC - ESTRUTURADORA DE PROJETOS CONCESSOES E PARCERIAS LTDA** (`07487303000391`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FUNDO DE PREVIDENCIA SOCIAL DO MUNICIPIO DE ALEM PARAIBA - RPPS** (`13536718000149`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Renata Vianna Soares Magnus** (`05526112713`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **W P SISTEMAS REPROGRAFICOS E IMPRESSAO LTDA** (`03951766000140`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Petropolis** (`29138344000143`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Julio Cesar Machado Martins** (`12124686780`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PACIFICA ADMINISTRADORA DE IMOVESI LTDA.** (`29740164000137`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **TAIS ANTONIA PEREIRA DOS SANTOS WAGNER** (`08172189710`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Niteroi** (`28521748000159`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Biolife Comercio De Mat.hospitalar Ltda** (`06748657000118`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RENYLAB - QUIMICA E FARMACEUTICA LTDA** (`00562583000144`, UG 294200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Carlos Eduardo Martins** (`04127274719`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LB COMERCIO DE PLACAS LETREIROS E LETRAS LTDA** (`55664881000137`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Aguas De Nova Friburgo Ltda** (`03119806000191`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Coopataxi C DE C E T DOS M A T DO MR Janeiro Ltda** (`30921357000173`, UG 203100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Alex Sandro Pedrosa Grillo** (`77720415604`, UG 130100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fernanda Duarte_lopes Lucas Da Silva** (`98290274734`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Simone Da Cunha Tourinho Barros** (`04481601701`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **NORTESUL TRANSPORTES E SERVIÇOS EIRELI** (`03085134000140`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AGUAS DO RIO 1 SPE S.A** (`42310775000103`, UG 254100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **WILLIAM SAPUCAIA FERNANDES** (`09998240743`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Serv. Autonomo De Agua E Esgoto De Tres Rios** (`39754247000139`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **PRISCILA MULULO MADELA** (`09327265777`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **QUALITY LUX COMERCIO E INDUSTRIA DE MATERIAIS ELETRICOS E ILUMINACAO EIRELI** (`28780007000192`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Carlos Magno De Lemos** (`07871723758`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CLAUDIA REGINA DA COSTA SOUZA** (`90781929768`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Joelson Rangel Gomes** (`47223243791`, UG 053100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ronaldo Silveira Motta** (`56144997768`, UG 053100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Andre Luis Dantas Ferreira** (`55686176515`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **IARALI GUEDES DO NASCIMENTO** (`03414595770`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ana Cecilia Da Gloria Martins** (`14982090769`, UG 660100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Henrique Oliveira Vianna** (`95398260715`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FUNDO MUNICIPAL DE APOSENTADORIAS E PENSOES DOS SERVIDORES PUBLICOS DO MUNICIPIO DE PATY DO ALFERES** (`13233438000161`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Joao Marcello Branco Da Souza** (`05324928704`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ANA CAROLINA BRAZ LIMA** (`10249556723`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FRANCISCO EMILIO RAMUNDO FILHO** (`16651805797`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **GR COMERCIO LTDA** (`17451234000158`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Sione Celia Souza Dias de Oliveira** (`69453012491`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **G&E SERVIÇOS TERCEIRIZADOS LTDA** (`08744139000151`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Wellington Gonçalves Moraes** (`11789084709`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **VINÍCIUS CARVALHO PAZ** (`07189771735`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ISABELLA CORREA PEREIRA e Outros** (`RP0006429`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Paulo Jose Monteiro** (`72318546720`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **luciana sapha silveira** (`87361590772`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ELOISA LEMOS FOCHI BECK LARSEN** (`89228340720`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Claudio Barbosa Andrade** (`04771118744`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ERICK DE LIMA LEITE** (`11165765705`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Juliana Maciel De Aguiar** (`03936908737`, UG 404400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fernanda Camara Torres Sodre** (`07009703710`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Zelo Com E Distr De Prod Hospitalares Ltda** (`13042708000157`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **TIAGO MARTINS CARDOSO DE SOUZA** (`14542166708`, UG 130100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **JFIRE TECNOLOGIA E SISTEMAS CONTRA INCÊNDIO LTDA** (`41923311000100`, UG 254100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Valeria De Souza Kubis** (`84652632720`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Allan Tornowisk** (`01641181796`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fabio Raposo Freitas** (`05562142775`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ALINE FERREIRA DE MATTOS** (`09184478799`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LIZANDRO MALVESTITI DE ALMEIDA** (`11084513730`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **REINALDO SEVERO DE SOUZA** (`81530676720`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MAGNO ROCHA** (`48251070791`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **BQ VONTAE ARQUITETURA E ENGENHARIA EIRELI** (`35766894000100`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **A&G PROMOCAO DE EVENTOS** (`30846061000135`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Marcelo Da Costa Miranda** (`07687326709`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Marcos Simoes De Souza Ribeiro** (`61554499704`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **VRM COMERCIO E SERVICOS LTDA** (`31868626000148`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Adelmo Defanti Junior** (`00727568701`, UG 136200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Pmh Produtos Médicos Hospitalares Ltda** (`00740696000192`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Sidney Borges De Souza** (`00911329757`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FERNANDA CLARA DE OLIVEIRA DA SILVA** (`12458156797`, UG 130100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Cirlene Da Silva Fernandes** (`08353233746`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ZENILDO DE OLIVEIRA CAVALCANTE** (`97353248734`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **F A FERRARI DE SOUZA** (`14945616000140`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Alcidea Schuenck Guilande** (`01882917766`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **THOMAS VITOR CAVALCANTI JARDIM** (`10630119732`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Andrea Rita Vitalina Da Silva** (`03379847780`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDÊNCIA DOS FUNCIONÁRIOS PÚBLICOS MUNICIPAIS DE GUARULHOS** (`52373396000116`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Luiz Carlos Pimentel Aguiar** (`94901864734`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ALEXANDRE KOCHEM MAGALHÃES** (`16060186718`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DANIEL TAVARES LAMASSA** (`14022682701`, UG 640100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Tiago Gonçalves Veras Gomes** (`08913853710`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDÊNCIA DOS SERVIDORES DO MUNICÍPIO DE NILÓPOLIS** (`04939180000122`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Carlos Eduardo da Silva Santos** (`18178983702`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ANDRE LUIZ GONCALVES NOVO** (`07730956756`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fernando Antonio Paes De Andrade Albuquerque** (`01790434718`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Michael Da Costa Pereira** (`05252753717`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Roberto Neves Ferreira** (`48478385720`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fellipe da Silva Santos** (`13164754760`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DISTRIBUIDORA GUIMARAES E SOUZA LTDA** (`20280437000133`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Rosangela De Sousa Nunes Seixas** (`26586037700`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Escritorio Central De Arrec.distribuicao-ecad** (`00474973000162`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Jair Da Silva Lacerda** (`00045316716`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **THAMARA HELLOAR SOUZA MENEZES** (`02727022506`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **SHEILA CRISTINA AVELINA CHAVES** (`00440611709`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Bruno De Castro Chagas** (`08717410754`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **M. E M. Refrig.p/autos Ltda** (`04121203000197`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **HANNA FERREIRA KWITKO** (`00219684030`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Marciene da Silva Casado de Seixas** (`68911467715`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DOUGLAS DE LIMA SANTOS** (`15911425718`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ANDERSON GONÇALVES DO NASCIMENTO** (`09817213706`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MÔNICA LUTTERBACH** (`98773836753`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ANTONIO CARLOS DE SOUZA COSTA** (`01499334796`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Luciano Lucas Muller** (`43467881653`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Paulo Cesar Lima De Azevedo** (`73439240797`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Pedro Elcio Oliveira Lugon** (`82862010782`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **GISELE MARIA RODRIGUES ROCHA** (`93608128700`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ana Fernanda Batista Coelho Alves** (`03227157764`, UG 650100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **KAROLINE DA SILVA MENDEZ** (`72657022120`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Valéria Consuelo Leite Cordeiro** (`07907383765`, UG 650100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ELLAN LUSTOSA GODOY** (`93761120753`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AGUAS DO RIO 1 SPE S.A** (`42310775000103`, UG 135300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FABIO PINTO DE PONTES** (`04435351757`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Gabriel Macedo Frota dos Santos** (`11685818773`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Claro S.a.** (`40432544000147`, UG 404310) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ROGER SOARES DE OLIVEIRA** (`11165698765`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fernanda Lojo Cabral Colaço** (`14205843755`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **VINICIUS DE SOUZA PEREIRA** (`13427137708`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fundacao Amazonprev** (`04986163000146`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CLAUDIA DOS SANTOS TEIXEIRA** (`02587518784`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ricardo José Barone Moraes** (`09205261793`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Biohosp Produtos Hospitalares Ltda.** (`18269125000187`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Sandra Regina da Silva Rodrigues** (`05193268730`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDÊNCIA DE PARAÍBA DO SUL** (`00708056000103`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **IGUÁ RIO DE JANEIRO S.A** (`42353180000216`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Alex Lemos de Carmo** (`04791369718`, UG 133100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ronaldo Souza Magalhaes** (`99455692791`, UG 136200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Luiz Eduardo Matias Mota** (`10478496745`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Renato Francisco da silva Araujo** (`09355921721`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RAFAELLE DOS SANTOS FATA VIEIRA** (`10621731714`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Gustavo Lima de Almeida** (`15469817725`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DAP MATERIAIS DE CONSTRUCAO LTDA** (`37160129000177`, UG 036100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ROLLISON BATALHA BATISTA** (`10527412740`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MINISTERIO DA ECONOMIA** (`00394460005887`, UG 404100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Rafael Pacheco Machado Santos** (`01410206793`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Reginaldo Ferreira De Cerqueira** (`82626995720`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Anita Araujo Vieira Ribeiro** (`19918825723`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DETRAN** (`CG0004456`, UG 210700) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Marco Barroso Martins** (`04528869705`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ana Elisa De Almeida Silva** (`05432097761`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Flavio Marcio De Azevedo** (`08466654763`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **EDVAL FRANCISCO DA SILVA JÚNIOR** (`09452623705`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Daniele Felizardo Alves dos Reis** (`10321936701`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RAFHAEL DÃNYEL MACIEL RANGEL DA SILVA** (`18655384771`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Reinaldo Barbosa Alves** (`31380310725`, UG 044100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **GUILHERME WALTER SILVA DE LEMOS** (`08328953773`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2016.04952-3** (`PP1604952`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LEANDRO DA SILVA MACIEL** (`05642496700`, UG 570100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Rafael Sales Cruz** (`09085542731`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Danrlei Braga Gomes** (`16611617744`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **AUTARQUIA MUNICIPAL DE PREVIDENCIASOCIAL DOS SERVIDORES PÚBLICOS DO MUICÍPIO DE CAMBÉ** (`20237599000199`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Marcos Vinicius Pereira Maia** (`08040676789`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DAVID ERTHAL HERMANO CALDAS** (`05479980742`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDÊNCIA DE SANTO ANDRÉ** (`57602096000185`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CARLOS NEI DA SILVA REIS** (`11484742770`, UG 660100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fabrício Tito Camaz** (`05701464709`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MARCUS PAULO RODRIGUES LEITE** (`06944742748`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fundacao De Prev Complementar Do Erj- Rjprev** (`17713878000177`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ricardo Dos Santos Silva** (`04129899724`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Andre Luis Goncalves Barbosa** (`07944408784`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RAFAEL VELOSO DE OLIVEIRA** (`11755010770`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Jéssica Lais de Oliveira Lameu** (`14917177774`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ALAN SALDANHA FONSECA** (`10825041732`, UG 263100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **ISADORA COSTA GUALBERTO ROSALINO** (`15283239713`, UG 530100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **LIDIANE CANDIDA QUEIRIDO FERRAZ** (`08469904744`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MARCOS BRAZ MESQUITA** (`10873797760`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Joyce dos Santos Portella Maranga** (`14228735797`, UG 650100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **DIGISEC CERTIFICACAO DIGITAL LTDA.** (`18799897000120`, UG 404340) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MARC PRINT GRÁFICA E EDITORA LTDA ME** (`15292830000107`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CAMILLE COSTA MORAES** (`12425517782`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RENAN PINTO ALVES** (`11831013762`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Ines Dos Santos Da Silva** (`47982357768`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDÊNCIA DE SANTO ANDRÉ** (`57602096000185`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Robson Paes da Silva** (`04109819741`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **José Amaro Mansur Soares** (`01284433757`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **RICARDO DE MIRANDA WAGNER** (`10774259701`, UG 243200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CHL PRODUTOS MÉDICOS HOSPITALARES LTDA** (`32441650000169`, UG 266500) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **BIANCA GIACOMELLI** (`07447707775`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **JUDITH ALMEIDA DE MELLO** (`09480917700`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MARCIA HELENA DE CARVALHO MOREIRA** (`01665761741`, UG 296100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Thiago dos Santos de Miranda Azevedo** (`06075424709`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Maurice Castro Dos Santos** (`01756548757`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDÊNCIA DOS SERVIDORES DO ESTADO DE SERGIPE** (`08042552000174`, UG 123404) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CLAUDIO MARCIO DANTAS PEREIRA** (`01235641740`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **JONATHAN DE JESUS** (`11095056719`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **CAROLINA DA SILVA PEREIRA** (`11208896776`, UG 180100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Fabio Nogueira Sant'anna** (`26914067848`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **2019.06021-8** (`PP1906021`, UG 370300) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Marcos Alexandre Da Silva** (`56599900615`, UG 130100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Clecius Silva De Souza** (`08291065705`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Municipio De Barra Do Pirai** (`28576080000147`, UG 261100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Joaquim Gomes Manso Sobrinho** (`01618704737`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Andre Luiz Barros Delfino** (`04627914750`, UG 100100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Itaguai** (`29138302000102`, UG 166100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Companhia Distr. De Gas Do Rj - Ceg** (`33938119000240`, UG 260400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **MARISA DUARTE RODRIGUES** (`49633708753`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Samira Pirola Santos Mantilha** (`09589729746`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FLAVIO LIMA DOS SANTOS** (`13128135711`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Renata Vittoretti Leite** (`30292878826`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **FELIPE OLIVEIRA VILELA** (`07785676720`, UG 136200) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Gabrielly Damasceno Araujo** (`18265691700`, UG 490100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE PREVIDENCIA SOCIAL DO MUNICIPIO DE BETIM - IPREMB** (`07842278000155`, UG 123400) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Duas Barras** (`28564177000130`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Cambuci** (`29111085000167`, UG 404600) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 19 INDISPONÍVEL.
+- **56.364,78** (`010100`, UG 010100) — 🟢 score 0: 0 confirmado(s), 0 indício(s), 20 INDISPONÍVEL.
+
+## COM INDÍCIO/CONFIRMADO A APURAR (500)
+
+- **MGS CLEAN SOLUCOES E SERVICOS LTDA** (`19088605000104`, UG 166100) — 🟡 score 80: 0 confirmado(s), 4 indício(s), 18 INDISPONÍVEL.
+- **Consorcio Bairro Malvinas** (`48148698000113`, UG 197100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 20 INDISPONÍVEL.
+- **Techbiz Forense Digital Ltda.** (`05757597000218`, UG 256100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 20 INDISPONÍVEL.
+- **Cleber Torres De Oliviera** (`00396609740`, UG 256100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 20 INDISPONÍVEL.
+- **Agevap** (`05422000000101`, UG 246300) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 20 INDISPONÍVEL.
+- **Comissaria Aerea Rio De Janeiro Ltda** (`42454330000105`, UG 250100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 20 INDISPONÍVEL.
+- **SELETA DE SALADAS LTDA** (`26906424000103`, UG 250100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 20 INDISPONÍVEL.
+- **Serpen - Serv. E Proj. De Eng. Ltda** (`29979853000107`, UG 243200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 20 INDISPONÍVEL.
+- **EKO AMBIENTAL SERVIÇOS E EMPREENDIMENTOS LTDA-ME** (`05983816000104`, UG 250100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 20 INDISPONÍVEL.
+- **AMAZON SERVICOS E CONSTRUCOES LTDA** (`24980538000178`, UG 210700) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 20 INDISPONÍVEL.
+- **ER Comércio de Serviços Automotivos Eirelli - ME** (`10374498000106`, UG 250100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 20 INDISPONÍVEL.
+- **Instituto Nacional Do Seguro Social** (`29979036021903`, UG 227100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 20 INDISPONÍVEL.
+- **RIOPREV/INATIVOS** (`CG0006026`, UG 123404) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDACAO SAUDE DO ESTADO DO RIO DE JANEIRO** (`294200`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 180100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **RIOPREV/PENSIONISTA** (`CG0006025`, UG 123404) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 261100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 260400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **RIOPREV/INATIVOS** (`CG0006026`, UG 123400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Duque De Caxias** (`11128809000110`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 404400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDO UNICO DE PREVIDENCIA DO ESTADO DO RJ.** (`123400`, UG 180100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Nova Iguacu** (`10497795000149`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **TESOURO DO ESTADO DO RIO DE JANEIRO** (`999900`, UG 123404) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **I.D.E.A.S - INSTITUTO DESENVOLVIMENTO ENSINO E ASSISTENCIA A SAUDE** (`24006302000488`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **RIOPREV/PENSIONISTA** (`CG0006025`, UG 123400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDO UNICO DE PREVIDENCIA DO ESTADO DO RJ.** (`123400`, UG 260400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **SCALLE CONSTRUCOES, REFORMAS E INSTALACOES LTDA** (`19024253000123`, UG 404400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Sao Goncalo** (`11884903000107`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude Da Cidade Do Rj** (`11715094000100`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Tuise Representacao Comercial Ltda** (`10190061000112`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA.** (`00801512000157`, UG 180100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CONSORCIO MUV SAO GONCALO** (`48479530000190`, UG 660100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **UERJ-AC/SERVS DE PF** (`CG0004484`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **UERJ-AC/SERVS DE PF** (`CG0004484`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CONSORCIO VIEIRA BOM RETIRO** (`49298100000135`, UG 660100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Mage** (`12133004000127`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ECO RIO COMÉRCIO E SERVIÇOS LTDA** (`14625837000130`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **RECURSOS PROGRAMA** (`CG0003585`, UG 180100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDO UNICO DE PREVIDENCIA DO ESTADO DO RJ.** (`123400`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Belford Roxo** (`11868019000170`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude Pmvr Sms** (`39563911000162`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE DESENVOLVIMENTO PARA EDUCAÇÃO, SAÚDE E INTEGRAÇÃO SOCIAL - IDESI** (`28470707000180`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **BRAVO ASSESSORIA E SERVIÇOS EMPRESARIAIS EIRELI** (`07231868000141`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ASSOCIAÇÃO LAR SÃO FRANCISCO DE ASSIS NA PROVIDENCIA DE DEUS** (`53221255004995`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude - Petrópolis** (`11129492000136`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CONSTRUTORA LYTORANEA S A - EM RECUPERACAO JUDICIAL** (`07792269000105`, UG 660100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo De Saude Do Municipio De Mesquita** (`06083453000105`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **UERJ-AC/BOLSISTAS** (`CG0004122`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CONSERV IGUAÇU PRESTAÇÃO DE SERVIÇOS DE LIMPEZA LTDA** (`09588780000107`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Itaborai** (`11865033000110`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude - Barra Mansa** (`36507127000149`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Nilopolis** (`11390042000100`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Angra Dos Reis** (`39157029000117`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MAIS CLEAN AMBIENTAL E CONSULTORIA LTDA** (`07726017000170`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Appa Servicos Temporarios E Efetivos Ltda** (`05969071000110`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Abre Construções Ltda** (`23902149000161`, UG 650100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Cabo Frio** (`12292556000188`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO D'OR DE GESTÃO DE SAÚDE PÚBLICA** (`08850962000222`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ASSOCIAÇÃO DE PROTEÇÃO A MATERNIDADE E A INFANCIA DE MUTUIPE** (`14812333000120`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **4ID MEDICOS ASSOCIADOS EIRELI** (`20476731000115`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Restaurante Nova Rodovia 2007 Ltda** (`09077954000177`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Itaperuna** (`39215827000158`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MCE INTERMEDIAÇÕES E NEGÓCIOS LTDA** (`25320876000146`, UG 203100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDO DO PLANO PREVIDENCIARIO DO ERJ** (`123499`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 404400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Paracambi** (`09206510000194`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Jesban Servicos De Construcao Ltda** (`00218105000111`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Ampla Energia E Servicos S.a.** (`33050071000158`, UG 180100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Queimados** (`13807681000146`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **SALUS SERVICOS MEDICOS E DIAGNOSTICOS LTDA** (`29012839000121`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **M.i. Montreal Informatica S.a** (`42563692000126`, UG 263100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Diagnostico Sudeste Equip.medicos E Serv.ltda** (`09493758000183`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **GUERREIROS SERVICOS MEDICOS LTDA** (`38541115000166`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Comercial Milano Brasil Ltda** (`01920177000179`, UG 404400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PREMIOS M. CHANCES** (`CG0006037`, UG 203100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Araruama** (`11885839000170`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Barra Do Pirai** (`01606604000149`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **SINGULAR GESTÃO DE SERVIÇOS LTDA.** (`05951758000129`, UG 180100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 160100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Munic.de Saude/sus Munic.de Resende** (`11800731000138`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Hospinova Distribuidora de Produtos Hospitalares Ltda** (`12499494000260`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MORAES E SOEIRO SERVICOS MEDICOS LTDA** (`27926166000190`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Rio De Janeiro Sec.de Estado Da Defesa Civil** (`28176998000441`, UG 166100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude - Três Rios** (`11405835000148`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **HB MULTISERVIÇOS LTDA** (`00768165000108`, UG 180100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CS BRASIL FROTAS S.A.** (`27595780000116`, UG 570100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **LOCASEM SERVICOS DE LIMPEZA, MANUTENCAO E ALIMENTACAO LTDA** (`17820990000107`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ASSOCIACAO PARA SERVICOS DE ATENDIMENTO SOCIAL** (`13417794000135`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Japeri** (`11294684000106`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MEDKA DISTRIBUIDORA HOSPITALAR LTDA** (`36958637000132`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **LIFECARE - GESTAO, ASSISTENCIA E EDUCACAO EM SAUDE LTDA** (`12239739000130`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Rio Bonito** (`12116187000172`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MAX CLEAN LAVANDERIA INDUSTRIAL E COMERCIAL LTDA-EPP** (`11668311000140`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 570100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Comercial Milano Brasil Ltda** (`01920177000179`, UG 266500) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **EXTREME DIGITAL CONSULTORIA E REPRESENTACOES LTDA.** (`14139773000168`, UG 260400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CONSÓRCIO MERCORIO** (`CG0013075`, UG 263100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **UERJ-AC/SIDES** (`CG0000932`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **SGHN - HIGIENIZACAO TEXTIL E NUTRICAO HOSPITALAR LTDA** (`11083162000157`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **VIBRA ENERGIA S.A** (`34274233000102`, UG 261100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **GPC SOLUÇÕES EM SAUDE LTDA.** (`44167538000160`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CONSTRUTORA AXIAL LTDA** (`33267267000107`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ASSOCIACAO DE PAIS E AMIGOS DOS EXCEPCIONAIS / APAE-RIO** (`33734922000181`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MPE ENGENHARIA E SERVICOS S/A** (`04743858000105`, UG 530100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 243200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **QUATTUOR ESTRUTURAS E SERVICOS DE ENGENHARIA LTDA** (`28747577000180`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Omega Construtora E Servicos Ltda.** (`12647362000158`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CENTRO MEDICO DOM WALMOR LTDA** (`22449467000156`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **INSTITUIÇÃO ADVENTISTA ESTE BRAS. DE PREV. E ASS. A SAUDE** (`73696718000219`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **RTG GROUP GESTAO EM SAUDE LTDA** (`21018774000110`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PRIME CONSULT E ASSESSORIA EMPRESARIAL LTDA** (`05340639000130`, UG 570100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MASP SOLUCOES E SAUDE LTDA** (`45809206000103`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude Sto.antonio De Padua** (`04249257000132`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CN GLOBAL PARTICIPAÇÃO E SERVIÇOS LTDA** (`30587992000166`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **C.W.R. CONSTRUCOES REFORMAS E COMERCIO LTDA** (`07681401000101`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PREMIOS INSTANTANEA** (`CG0006036`, UG 203100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **RM SCAN SERVICOS MEDICOS LTDA** (`26550803000103`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Guapimirim** (`12468947000100`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ESTAGIARIO/BOLSISTA** (`CG0000002`, UG 404500) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Aperibe** (`02934539000143`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Instituto Nacional De Seguro Social.** (`29979036000140`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude - São Fidelis** (`11835031000189`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **HYPNOS E MORPHEU SERVICOS MEDICOS ASSOCIADOS LTDA** (`39660454000124`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Caixa Economica Federal** (`00360305019808`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **RTC ENGENHARIA LTDA** (`00822501000153`, UG 243200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MEDVIVA SERVIÇOS MÉDICOS LTDA** (`42221720000127`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Atac-Fire Segurança Contra Incendio Ltda.** (`01229958000111`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Duc Gas Equip.de Soldas Ltda-epp** (`36461952000150`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Miracema** (`36285484000100`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Folha de Pagamentos - SAMU** (`CG0012703`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS LTDA** (`31954621000138`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **KONICA MINOLTA HEALTHCARE DO BRASIL INDUSTRIA DE EQUIPAMENTOS MEDICOS LTDA** (`71256283000185`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **VLS SURGICAL EQUIPAMENTOS MEDICOS LTDA** (`19107585000171`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **RYC GARRA PATRIMONIAL LTDA** (`20848184000151`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **BIOLLOGUS SOLUCOES AMBIENTAIS EIRELI** (`24862673000119`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Natividade** (`12396542000104`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Folha de Pagamento SUVISA** (`CG0012675`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 100100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **A. C. F. DA SILVA LTDA-ME** (`10555527000136`, UG 490100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **INTELIGENCIA ARTIFICIAL TECNOLOGIA E REFRIGERACAO LTDA** (`01579387000145`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Sistema De Emergencia Movel De Brasilia Ltda** (`37142932000189`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Ferlim Servicos Tecnicos Ltda** (`42116376000106`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Biometrix Diagnostica Ltda** (`06145976000139`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **AUXILIO ALIMENTAÇÃO** (`CG0006035`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Cns Nacional De Servicos Limitada** (`33285255000105`, UG 404400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **UERJ-AC/AJUDA CUSTO** (`CG0004498`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MEGA MIX RIO COMERCIO E SERVIÇOS LTDA** (`26081370000194`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **HUMANI SAÚDE LTDA** (`12478252000100`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Promovendo Comercio E Represent. De Mat.hosp.** (`11637221000191`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **WF REFRIGERACAO LTDA** (`08081559000103`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Green Card S/a-refeicoes Com E Servicos** (`92559830000171`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude Rio Das Flores** (`11120153000199`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundo Municipal De Saude De Rio Claro** (`11171092000199`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **AGILE CORP SERVIÇOS ESPECIALIZADOS LTDA.** (`00801512000157`, UG 266500) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Procare Comercio De Prod. Hospitalares Ltda** (`05050260000195`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FSW PRODUTOS PARA SAÚDE LTDA** (`07706250000190`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDO MUNICIPAL DE SAÚDE DE BOM JARDIM** (`11867889000125`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **SOLUTIONS WORD COMERCIO E SERVICOS EIRELI** (`28413325000115`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Supplex Comercio E Servicos Ltda - Me** (`18809570000192`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CONQUISTA VIGILANCIA E SEGURANCA PATRIMONIAL LTDA** (`11804114000100`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDO UNICO DE PREVIDENCIA DO ESTADO DO RJ.** (`123400`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Ctesa Construcoes Ltda.** (`68703701000120`, UG 650100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **J R G DISTRIBUIDORA DE MEDICAMENTOS HOSPITALARES LTDA** (`04380569000180`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Best Vigilancia E Seguranca Ltda** (`05234289000127`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **TAPEVAS SOLUCOES INTEGRADAS LTDA** (`17695001000109`, UG 404400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Dynatest Engenharia Ltda** (`32116154000130`, UG 044100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MC ALIMENTAÇÃO E SERVIÇOS LTDA** (`11205159000835`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **UNIQUE DISTRIBUIDORA DE MEDICAMENTOS - EIRELI** (`23864942000113`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 540100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Ipe Engenharia Ltda.** (`00487626000174`, UG 044100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PRIME CONSULT E ASSESSORIA EMPRESARIAL LTDA** (`05340639000130`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDO UNICO DE PREVIDENCIA DO ESTADO DO RJ.** (`123400`, UG 243200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ARGAL CONSTRUTORA LTDA** (`26512631000183`, UG 166100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Wm World Medical Importacao E Exportacao Ltda** (`03179994000143`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **JRF Manutenção e Serviços LTDA** (`24977781000137`, UG 137200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **STERIMED CEDRAL SERVICOS DE ESTERILIZACAO LTDA** (`08428051000120`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Cei Com Exp E Imp De Mat Medicos Ltda** (`40175705000164`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Distribuicao De Medicamentos_pamed Ltda** (`02424344000153`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **UNIQUE DISTRIBUIDORA DE MEDICAMENTOS - EIRELI** (`23864942000113`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **BIOMEGA MEDICINA DIAGNOSTICA LTDA** (`28966389000143`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Banco Bradesco S.a.** (`60746948000112`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **UERJ-AC/ESTAGIARIOS** (`CG0000934`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **M4 IMP. E COM. DE MAT. MED. HOSP. LTDA** (`09082697000161`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINDMED HOSPITALAR LTDA** (`46440212000190`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Utn Unidade De Tratamento Nefrolog E Serv Ltd** (`00086616000127`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Target medicamentos e Produtos Hospitalares Ltda** (`52969017000155`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **POLICLINICA GAMIM LTDA** (`11109123000181`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Air Liquide Brasil Ltda** (`00331788000623`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Halex E Istar Ind. Farmaceutica Ltda.** (`01571702000198`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **NOVA LINEA COMÉRCIO DE PRODUTOS FARMACEUTICOS EIRELI** (`32350180000128`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Renal - Tec. Ind. Com. Serv. Ltda** (`29341468000121`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 650100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CRISTALIA PRODUTOS QUÍMICOS FARMACÊUTICOS LTDA** (`44734671002286`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Emsimem Manutencao E Conservacao Ltda** (`05805527000107`, UG 137200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **H. STRATTNER E CIA LTDA** (`33250713000758`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PHILIPS MEDICAL SYSTEMS LTDA** (`58295213002383`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Elfa Medicamentos Ltda** (`09053134000145`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Hospinova Distribuidora de Produtos Hospitalares Ltda** (`12499494000260`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PLANO DE BENEFICIOS RJPREV CD** (`48307566000197`, UG 260400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PRONATEC PROFISSIONAL** (`CG0009858`, UG 404400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Construsan Servicos Industriais** (`28955565000141`, UG 044100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PLANETA DE ITABORAI LTDA** (`04776151000197`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **NOVO SABOR DE NILOPOLIS LTDA** (`27274618000104`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CLARO S.A.** (`40432544006269`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **EVERY TI TECNOLOGIA & INOVAÇÃO LTDA** (`08925028000141`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Distribuicao De Medicamentos_pamed Ltda** (`02424344000153`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS ORIGEM BB** (`CG0005000`, UG 260400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **LAPA TERCEIRIZACOES E PLANEJAMENTO LTDA - EM RECUPERACAO JUDICIAL EM RECUPERACAO JUDICIAL** (`09060537000111`, UG 261100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FJS FORNECIMENTO DE ALIMENTOS EIRELI** (`35824741000171`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 243200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Eco Empr. De Cons. E Org. Sist.edit. Ltda.** (`39185269000125`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Air Liquide Brasil Ltda** (`00331788000623`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **REDE SOL FUEL DISTRIBUIDORA S/A** (`02913444001620`, UG 261100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **DISTRIBUIDORA DE MEDICAMENTOS SANTE LTDA** (`58229293000163`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Auto Suture Do Brasil Ltda** (`01645409000390`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **VYTTRA DIAGNOSTICOS IMPORTACAO E EXPORTACAO S.A.** (`00904728001209`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ROMA LAVANDERIA E SERVICOS TECNICOS LTDA** (`00196850000107`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Patologia Clinica Dr. Saleme Ltda** (`30818280000100`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **EFATA COMERCIO & SERVIÇOS EIRELI** (`10992676000162`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **NUTRIMED SERV. MED. EM NUT. PARENTAL E ENTERAL LTDA** (`01226416000195`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **IDS MEDICAL IMPORTAÇÃO, DISTRIBUIÇÃO E SERVIÇO EIRELI** (`32416864000185`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 530100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Instituto Nacional De Seguro Social.** (`29979036000140`, UG 570100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **TEC-INFORMATION SOLUCOES EM INFORMATICA LTDA** (`29355060000109`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **KITFIRE TEC. EM SISTEMA DE INCENDIO LTDA-EPP** (`16104867000127`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **TRIVALE INSTITUICAO DE PAGAMENTO LTDA** (`00604122000197`, UG 570100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **LABOR MED APARELHAGEM DE PRECISAO LTDA** (`32150633000415`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PLANO DE BENEFICIOS RJPREV CD** (`48307566000197`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FOLHA PAGTO INTERNO** (`CG0006004`, UG 254100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CENTRO DE DEFESA DOS DIREITOS DA CRIANÇA E DO ADOLESCENTE** (`10832372000138`, UG 490100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **SHOPPING DO FERRO EIRELI** (`17893578000117`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Medtronic Comercial Ltda** (`01772798000667`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Light Servicos De Eletricidade S/a** (`60444437000146`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 263100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Target medicamentos e Produtos Hospitalares Ltda** (`52969017000155`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PERNAMBUCO MOTOS LTDA** (`10144013002050`, UG 266500) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **IMAGEM HEALTHCARE SOLUTIONS LTDA** (`59269654000168`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Talentch - Tecnologia Ltda** (`15773416000110`, UG 044100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Rodocon Construcoes Rodoviarias Ltda** (`30090575000103`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Riosolidario Obra Social Do Rio De Janeiro** (`00517666000111`, UG 203100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Webtrip Agencia de Viagens e Turismo Ltda** (`07340993000190`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **GOLDEN SERVIÇOS E INTERMEDIAÇÕES DE NEGOCIOS LTDA** (`09185341000153`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **E.G FALCÃO & CIA LTDA** (`11078495000198`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Hydra Engenharia E Saneamento Ltda** (`10547330000155`, UG 650100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **TRIVALE INSTITUICAO DE PAGAMENTO LTDA** (`00604122000197`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **G.f. Labor Com. E Representacao Ltda** (`02184266000167`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Instituto Nacional De Seguro Social.** (`29979036000140`, UG 180100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 203100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDO UNICO DE PREVIDENCIA DO ESTADO DO RJ.** (`123400`, UG 404600) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **DBV COMERCIO IMPORTACAO E EXPORTACAO DO BRASIL LTDA** (`17771867000143`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CM HOSPITALAR S.A.** (`12420164001714`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **SERVIOESTE SOLUCOES AMBIENTAIS LTDA** (`03392348000917`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ESSENCIAL RIO DISTRIBUIDORA DE PRODUTOS MEDICOS E HOSPITALARES LTDA** (`24875483000136`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE OFTALMOLOGIA DO RIO DE JANEIRO LTDA** (`17045613000148`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Banco Do Brasil S/a** (`00000000000191`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO BENEFICENTE FLEMING** (`03416183000119`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **LDCAR FORTE COMERCIO & MANUTENCAO DE EDIFICACOES EM GERAL LTDA** (`19574688000141`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fgf Com Servs Esteriliz Oxido De Etileno Ltda** (`01805305000133`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDO DO PLANO PREVIDENCIARIO DO ERJ** (`123499`, UG 404600) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Betel do Brasil Serviços, Distribuição e Importação LTDA** (`24099485000180`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **VIBEMED COMERCIO E REPRESENTAÇÃO LTDA** (`26714491000126`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **INSTITUTO DE CIDADANIA E PROJETOS SOCIAIS - ICPS** (`37010740000119`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PRONATEC ALUNO** (`CG0009857`, UG 404400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ONCOVIT Distribuidora de Medicamentos Ltda.** (`10586940000320`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **R MORAES AGENCIA DE TURISMO LTDA** (`06955770000174`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDO DO PLANO PREVIDENCIARIO DO ERJ** (`123499`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Sermacol Comercio E Servicos Ltda** (`29912565000127`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Digitro Tecnologia S.A.** (`83472803000176`, UG 260400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ALUTECH TECNOLOGIA E LOCACOES S.A** (`41742532000181`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MTM SERVICOS DE INFORMATICA LTDA** (`07622836000177`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **J R G DISTRIBUIDORA DE MEDICAMENTOS HOSPITALARES LTDA** (`04380569000180`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 260400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MS DELAZARI MOVEIS LTDA** (`51420822000162`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **INNOVA AIR SERVIÇOS TÉCNICOS EIRELI** (`13411926000111`, UG 260400) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Centro De Integr.emp.escola Do Estado Do R.j.** (`33661745000150`, UG 133100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **REAL JG FACILITIES EIRELI** (`08247960000162`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Ampla Energia E Servicos S.a.** (`33050071000158`, UG 166100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **LABOR MED APARELHAGEM DE PRECISAO LTDA** (`32150633000415`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Especifarma Com.de Medic. E Prod.hosp. Ltda** (`00085822000112`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Medical Suture Com. Mat. Hospitalar Ltda.** (`02376490000150`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Elekta Med.sys.com.pres.serv.rad.rad.rad.ltda** (`09528196000166`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ESSENCIAL SERVIÇOS COMÉRCIO E MANUTENÇÃO LTDA** (`05646315000124`, UG 044100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **LEMAN MEDICAMENTOS E CIA LTDA** (`40600760000154`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **TOVA COMERCIO DE PNEUS LTDA** (`10509207000301`, UG 261100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Light Servicos De Eletricidade S/a** (`60444437000146`, UG 404600) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 404600) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA ECONOMIA** (`00394460010880`, UG 130100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Comercial Cardu Eireli** (`10466232000193`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **H. Strattner E Cia Ltda** (`33250713000243`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **AMO SERVICOS GERAIS LTDA** (`28051196000162`, UG 266500) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **AIRPHOENIX SERVIÇOS INTERNACIONAIS** (`04254554000176`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **NTSEC SOLUCOES EM TELEINFORMATICA LTDA** (`09137728000134`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **THORACOM DISTRIBUIDORA E IMPORTADORA DE MATERIAL MEDICO-HOSPITALAR LTDA** (`28790652000196`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Webtrip Agencia de Viagens e Turismo Ltda** (`07340993000190`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Webtrip Agencia de Viagens e Turismo Ltda** (`07340993000190`, UG 570100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Banco Do Brasil S/a** (`00000000000191`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MEAT NIT COMERCIO E SERVIÇOS LTDA (SMART SERVICE)** (`24345734000170`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **ES AGENCIA DE VIAGENS E TURISMO LTDA** (`34632840000199`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Aguas de Niteroi S/A** (`02150336000166`, UG 166100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Senfio Solucoes Tecnologicas Eireli** (`11518191000102`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Alfa Med Sistemas Medicos Ltda** (`11405384000149`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fundacao De Prev Complementar Do Erj- Rjprev** (`17713878000177`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **REDE SOL FUEL DISTRIBUIDORA S/A** (`02913444001620`, UG 266500) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Guarailha Distribuidora De Alimentos Ltda - Epp** (`10910334000156`, UG 266500) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **BRASIL MED IMPORTACAO E EXPORTACAO LTDA** (`31282018000157`, UG 294200) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Fourlab Materiais Hospitalares Eireli** (`27391609000195`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FUNDO UNICO DE PREVIDENCIA DO ESTADO DO RJ.** (`123400`, UG 530100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **REFORÇO DE GENEROS ALIMENTICIOS LTDA** (`03318817000109`, UG 266500) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Drogafonte Ltda** (`08778201000126`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **LEMAN MEDICAMENTOS E CIA LTDA** (`40600760000154`, UG 296100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **237 6897 -6500-5-FAOC - Projetos** (`CG0013954`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **FORTE FENIX COMERCIO E SERVICOS LTDA** (`18530856000134`, UG 266500) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Comercial Cirurgica Rioclarense Ltda** (`67729178000220`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **JOSE REIS DA SILVA PRESTAÇÃO DE SERVIÇOS ME** (`08014907000111`, UG 261100) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **PAES DO LEO PRODUTOS ALIMENTÍCIOS LTDA** (`05304682000140`, UG 266500) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **CREMER SA** (`82641325002161`, UG 404340) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **Eliane Correia Rocha Do Carmo Instalacoes** (`05158285000107`, UG 404310) — 🟡 score 65: 0 confirmado(s), 3 indício(s), 19 INDISPONÍVEL.
+- **MGS CLEAN SOLUCOES E SERVICOS LTDA** (`19088605000104`, UG 036100) — 🟡 score 55: 0 confirmado(s), 3 indício(s), 18 INDISPONÍVEL.
+- **MGS CLEAN SOLUCOES E SERVICOS LTDA** (`19088605000104`, UG 133100) — 🟡 score 55: 0 confirmado(s), 3 indício(s), 18 INDISPONÍVEL.
+- **MGS CLEAN SOLUCOES E SERVICOS LTDA** (`19088605000104`, UG 261100) — 🟡 score 55: 0 confirmado(s), 3 indício(s), 18 INDISPONÍVEL.
+- **CONSTRUVERDE CONSTRUÇÕES E SERVIÇOS EIRELI** (`20360878000145`, UG 197100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Fabricio Macedo Silva** (`12006515705`, UG 256100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Susana Daniela P.p.dos Santos** (`07284054743`, UG 256100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MAJU PET SHOP E VETERINARIA LTDA** (`30713948000155`, UG 290100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **SOMAR INDUSTRIA COMERCIO E SERVICOS LTDA** (`37349262000176`, UG 243200) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Companhia Estadual De Aguas E Esgotos Cedae** (`33352394000104`, UG 200900) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Inovara Consultoria E Assessoria Ltda.** (`13706342000173`, UG 243200) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **SOBERANA COMERCIO E SERVIÇOS EIRELI** (`31172252000121`, UG 570100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **VENTISOL DA AMAZÔNIA INDUSTRIA DE APARELHOS ELETRICOS LTDA** (`17417928000179`, UG 260400) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **RENATO MORGADO PRODUÇÕES LTDA-ME** (`05879792000130`, UG 404310) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **IPQ TECNOLOGIA LTDA** (`07047183000140`, UG 140100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 135300) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 110100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **NRTT - SOLUÇÕES E SERVIÇOS LTDA** (`36366620000196`, UG 261100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **FAETEC/SERVS de PF** (`CG0014326`, UG 404400) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **Gratificação de incentivo ao aperfeiçoamento e produtividade** (`CG0014482`, UG 404310) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **UERJ - Auxílio Saúde** (`CG0013865`, UG 404310) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **Construtora Augusto Velloso S.a.** (`60853934000106`, UG 650100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **Tribunal de Justiça do Estado do Rio de Janeiro - CNPJ - 28.538.734/0001-48** (`RP0002641`, UG 403200) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **FOLHA DE PAGAMENTOS** (`CG0004700`, UG 123425) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **LLR MEDICOS ASSOCIADOS LTDA** (`30926266000120`, UG 294200) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De S.joao De Meriti** (`29138336000105`, UG 570100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **OI S.A. - EM RECUPERACAO JUDICIAL** (`76535764000143`, UG 403200) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **INOVA MEDIC SERVICOS ESPECIALIZADOS EM SAUDE LTDA.** (`10562003000687`, UG 296100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **SANTOS E COSTA ENGENHARIA LTDA** (`33157408000120`, UG 133100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **Prefeitura Municipal De Valenca** (`29076130000190`, UG 570100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **Comissaria Aerea Rio De Janeiro Ltda** (`42454330000105`, UG 210700) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **PROPEG COMUNICAÇÃO S/A** (`05428409000712`, UG 390200) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **Gigante Recem Nascido Ind Com E Repr Ltda** (`62413869000115`, UG 294200) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **STRATURA ASFALTOS S/A.** (`59128553003605`, UG 044100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **EVERY TI TECNOLOGIA & INOVAÇÃO LTDA** (`08925028000141`, UG 261100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **Hospital Central Aristarcho Pessoa (HCAP) Administrativo** (`CG0014179`, UG 166100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **EVERY TI TECNOLOGIA & INOVAÇÃO LTDA** (`08925028000141`, UG 290100) — 🟡 score 50: 0 confirmado(s), 2 indício(s), 19 INDISPONÍVEL.
+- **VITAL MESTRES CONSTRUÇÃO E MANUT.PREDIAL** (`27113682000103`, UG 197100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **CONSORCIO NOVA INFRA ITABORAI** (`22981144000109`, UG 197100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Consorcio Sondotecnica Cobrape-ch2m (scc)** (`17310993000109`, UG 240200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Engefloor Pavimentações e Construções LTDA** (`22228623000159`, UG 197100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Decision Team Ltda Epp** (`16858835000117`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Csx Comercial Eireli - Epp** (`13828262000190`, UG 210700) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Comercio Import E Export 3 Irmaos Ltda** (`34149906000194`, UG 246300) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **FUNDO DO PLANO PREVIDENCIARIO DO ERJ** (`123499`, UG 243100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Fundacao De Prev Complementar Do Erj- Rjprev** (`17713878000177`, UG 243100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **PLURAL ENGENHARIA LTDA - ME** (`20958711000180`, UG 044100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Straick Centro De Trein. E Informatica Ltda** (`36084895000137`, UG 133100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Digitro Tecnologia S.A.** (`83472803000176`, UG 256100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Fernando Da Silva Veloso** (`76310108700`, UG 256100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **SUDESTE BRASIL COOPERATIVA DE TRANSPORTES** (`21445959000100`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Dt Engenharia De Empreend.ltda(flotflux)** (`04771487000167`, UG 246300) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **TERRASA ENGENHARIA LTDA** (`11553360000137`, UG 044100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Light Servicos De Eletricidade S/a** (`60444437000146`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **AGUAS DO RIO 4 SPE S.A** (`42644220000106`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Bem Nutritiva Comercio De Alimentos Ltda** (`04133045000195`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Comercial Milano Brasil Ltda** (`01920177000179`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **VIBRA ENERGIA S.A** (`34274233000102`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MINISTERIO DA FAZENDA** (`00394460005887`, UG 123422) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **FUNDO DO PLANO PREVIDENCIARIO DO ERJ** (`123499`, UG 100100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **COELHO E MACHADO COMERCIAL E DISTRIB. LTDA-ME** (`23027027000173`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **PROCEC ENGENHARIA S.A.** (`00346071000140`, UG 197100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Cetest Rio S/a** (`39128525000142`, UG 110100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Aguas de Niteroi S/A** (`02150336000166`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Sodexo Pass Do Brasil Servs E Comercio S.a.** (`69034668000156`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Foco Asn 2010 Servicos Gerais Ltda - Me** (`12136913000119`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Construtora Sumare Ltda** (`33150830000154`, UG 044100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Alpha 3 Engenharia E Saneamento Ltda** (`04912212000104`, UG 197100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Vox Distribuidora E Comercio De Mat. Ltda** (`11165617000183`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Ecoplan Engenharia Ltda** (`92930643000152`, UG 044100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **TIME MULTISSERVICOS LTDA** (`34036212000140`, UG 044100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **ATRIA SERVICOS TERCEIRIZADOS LTDA** (`11430698000100`, UG 246300) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **HOSPINOVA DISTRIB. PRODUTOS HOSPITALARES LTDA** (`12499494000180`, UG 296100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Akron Controle Profissional De Pragas Ltda-me** (`03022087000196`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Departamento De Policia Rod. Federal** (`00394494010441`, UG 263200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Logica Tecnologia Ltda.** (`03817776000197`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Centro De Integr.emp.escola Do Estado Do R.j.** (`33661745000150`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **FUNDACAO SANTA CABRINI** (`254100`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Prosolution Cons E Sistemas Informat Ltda.** (`07273558000190`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Transmec Diesel Com.pecas E Mecanica Ltda** (`40405037000114`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **FUNDO DA POLICIA MILITAR DO ERJ** (`266500`, UG 044100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **TRIVALE INSTITUICAO DE PAGAMENTO LTDA** (`00604122000197`, UG 246300) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Grupo Hospitalar Do Rio De Janeiro Ltda** (`31925548000176`, UG 227100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **TAPEVAS SOLUCAO INTEGRADA LTDA** (`11428597000196`, UG 200100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **FLEX ASSESSORIA E ZELADORIA LTDA** (`00952800000102`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **AGUAS DO RIO 4 SPE S.A** (`42644220000106`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **TOUT VENDE COMÉRCIO E SERVIÇOS LTDA** (`39418155000188`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **CLÁUDIA GOMES DE SOUZA DISTRIBUIDORA - ME** (`08717511000130`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Caixa Economica Federal** (`00360305019808`, UG 227100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Companhia Estadual De Aguas E Esgotos Cedae** (`33352394000104`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MINISTÉRIO DA ECONOMIA** (`00394460010880`, UG 263200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Santronic Industria E Comercio Ltda** (`58426628000133`, UG 266500) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Formaset Industrial Ltda** (`35957760000176`, UG 203100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Light Servicos De Eletricidade S/a** (`60444437000146`, UG 210100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Lisandra Jacomini Sist. E Automacao (renifer)** (`01679630000105`, UG 256100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Cetest Rio S/a** (`39128525000142`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Sodexo Pass Do Brasil Servs E Comercio S.a.** (`69034668000156`, UG 227100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **RIO MAIS ASSESSORIA EMPRESARIAL LTDA** (`61404865000108`, UG 263100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Fundacao Apoio Pesq. Cient. E Tec. Da Ufrrj** (`01606606000138`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **FUNDACAO SANTA CABRINI** (`254100`, UG 256100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **COMP DE DESENV RODOV E TERMINAIS DO EST DO RJ** (`317100`, UG 100100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **OI S.A. - EM RECUPERACAO JUDICIAL** (`76535764000143`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Centro Int De Est E Prog De Des Sust-cieds** (`02680126000180`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MINISTÉRIO DA FAZENDA** (`00394460010880`, UG 290100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Energisa Nova Friburgo-distrib.de Energia S.a** (`33249046000106`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **ARQUIVO CONTEMPORÂNEO TECNOLOGIA EM DOCUMENTAÇÃO EIRELI EPP** (`06063313000175`, UG 246300) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **SICAFLA COMERCIO DE PRODUTOS FARMACEUTICOS EIRELI** (`03828079000131`, UG 266500) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Nova Analitica Importacao E Exportacao Ltda** (`67774679000147`, UG 260400) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **TRIVALE INSTITUICAO DE PAGAMENTO LTDA** (`00604122000197`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **TECNOMED SERVIÇOS TECNICOS DE EQUIP BIOMÉDICOS LTDA.** (`11922238000190`, UG 266500) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Cotacao Comercio Representacao Imp.e Exp.ltda** (`58950775000108`, UG 266500) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Clinica Oftalmologica Ricardo Reis Ltda** (`04592953000147`, UG 166100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Empresa Brasileira De Correios E Telegrafos** (`34028316000294`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Rio de janeiro medicina laboratorial Eireli-me** (`18274996000199`, UG 266500) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **CS BRASIL FROTAS LTDA** (`27595780000116`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **TRIVALE INSTITUICAO DE PAGAMENTO LTDA** (`00604122000197`, UG 197100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **HORIZONTE 16 LOCADORA DE VEÍCULOS LTDA-EPP** (`21921129000102`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Condominio Do Edificio Conde Pereira Carneiro** (`29421062000159`, UG 227100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Erick de Paula Godinho** (`13059388792`, UG 254100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **INSTITUTO ESTADUAL DE ENGENH. E ARQUITETURA** (`243100`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **OI S.A. - EM RECUPERACAO JUDICIAL** (`76535764000143`, UG 246300) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **PRODERJ-CENTRO DE TECNOL.DE INF.COMUN. ERJ** (`403200`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Light Servicos De Eletricidade S/a** (`60444437000146`, UG 227100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **CEPHEID BRASIL IMP. EXP. E COM. DE PROD. DE DIAGNÓSTICOS LTDA** (`18628083000204`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **ESTAG.MEDIO/SUPER.** (`CG0004658`, UG 227100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **BEATRIZ BARBOSA FERREIRA 09076601771** (`13989468000100`, UG 210700) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Mariana Rodrigues Alves Ferreira** (`14980708765`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **BÁRBARA DE SOUSA CASSIANO** (`04138701702`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MMX RIO SOLUÇÕES AMBIENTAIS LTDA** (`14108596000152`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Rb Participacoes S/a** (`10369706000189`, UG 227100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **INSTITUTO NAC. DE QUALIF. E CAPACITACAO-INQC** (`20120933000120`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Light Servicos De Eletricidade S/a** (`60444437000146`, UG 197100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Serv. Federal De Proces.de Dados-serpro** (`33683111000107`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **FERNANDA SPITZ DIAS** (`12326930738`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **INSTITUTO DE PESOS E MEDIDAS DO RJ** (`053100`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **CS BRASIL FROTAS S.A.** (`27595780000116`, UG 227100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Marcos Paulo Dos Santos** (`07098190721`, UG 263100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Netware Telecomunicações e Informática Ltda Me** (`23141051000139`, UG 223200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MARIO LUIZ SILVA DE OLIVEIRA** (`12027178708`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Alterdata Tecnologia Em Informatica Ltda** (`36462778000160`, UG 227100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MAYARA LINS TEIXEIRA** (`14633006703`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Mirian Nunes Botelho** (`05626605770`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **FRAMOT BAZAR E UTILIDADES LTDA** (`07093083000150`, UG 263200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Mirtes Lopes Bandeira** (`73383716791`, UG 210700) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **DEISE DELFINO DE OLIVEIRA** (`09800752706`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **CAUÊ BIELSCHOWSKY** (`03381549731`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **DÉBORA YAMANE FURQUIM CAMPOS** (`29702672848`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MARCO LUIZ COELHO NETTO** (`51227657749`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Servico Autonomo De Agua E Esgoto Saae** (`32504706000187`, UG 246300) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MARIANA SANTOS BARBOSA KLEM DE MELLO** (`09920916757`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **GABRIEL LANDIM ALEIXO** (`15818326721`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **EDUARDO IDELFONSO LARDOSA** (`87973529772`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **AUTOPEL AUTOMAÇÃO COMERCIAL E INFORMÁTICA LTDA** (`06698091000590`, UG 137200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **JOÃO PEDRO MOTTA LEAL** (`08235064790`, UG 640100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **TRIBUNAL DE JUSTICA** (`030100`, UG 370200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Amilcar Tanuri** (`70695300725`, UG 404100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Big Blue Services Ltda** (`40340416000173`, UG 403200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Software Ag Brasil Informatica E Serv. Ltda** (`07594862000139`, UG 403200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **APARECIDA REGINA CASSAROTTI - EIRELI** (`02102125001391`, UG 250100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Shimadzu Do Brasil Comercio Ltda** (`58752460000237`, UG 404500) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Techne Engenharia E Sistemas Ltda** (`50737766000121`, UG 403200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Patricia Dias Fernandes** (`83728830763`, UG 404100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Empresa Brasileira De Correios E Telegrafos** (`34028316000294`, UG 570100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Kanaro Artigos De Cama Mesa E Banho Ltda** (`02812282000157`, UG 404340) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Inteligencia de Negocios, Sistemas e Informática** (`06984836000154`, UG 403200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **CONFIANCE SERV. TEC. ESPECIALIZADOS LTDA** (`02177542000160`, UG 403200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Instituto Nacional De Seguro Social.** (`29979036000140`, UG 404400) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MARCELO CUPELLO DA SILVA** (`11723197742`, UG 243200) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **Nildo Machado Coelho Filho** (`10029245702`, UG 570100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MARCOS VINICIUS ALVES RIBEIRO** (`12452352730`, UG 570100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **MARCO PAULO FREIRE DE AZEVEDO** (`13058456760`, UG 570100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **AGUAS DO RIO 1 SPE S.A** (`42310775000103`, UG 166100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **AGUAS DO RIO 4 SPE S.A** (`42644220000106`, UG 424100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.
+- **TRIVALE INSTITUICAO DE PAGAMENTO LTDA** (`00604122000197`, UG 261100) — 🟡 score 40: 0 confirmado(s), 2 indício(s), 21 INDISPONÍVEL.

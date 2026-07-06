@@ -1,0 +1,113 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Identificação
+Unidade Gestora
+Documento
+Emissão
+133100 - INST. DE TERRAS E CARTOGR. DO EST. RJ (CNPJ: 40.173.726/0001-40)
+2025NE00027
+01/01/25
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Valor
+109.687,73 (Cento e nove mil e seiscentos e oitenta e sete reais e setenta e três centavos)
+Classificação
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+53310 - Instituto de Terras e Cartografia do Estado do Rio de Janeiro
+Programa de trabalho
+21.122. 0002. 2016 - Manut  Ativid  Operacionais / Administrativas
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2021006943007603
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+00 - Pregão Presencial Emb. Legal
+Lei n 14.133/2021, A
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI 330020/0007
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Serviços de Terceiros - Pessoa Jurídica
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+109.687,73
+Cronograma
+Janeiro
+109.687,73
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+237.942,21 Pré-Empenhado
+0,00 Bloqueado
+0,00
+109.687,73
+128.254,48
+Observação
+MLEAN SOLUÇÕES E SERVIÇOS LTDA - Serviço de Limpeza, Higiene, Conservação, Copeiragem, Recepção e Portaria, deste ITERJ,   Contrato nº 
+005/2021 - Reajuste Contratual - Repactuação - visando atender as necessidades deste ITERJ, do orçamento em vigor.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+JAN/2025
+1
+UNI
+109.687,73
+109.687,73
+Descrição
+MLEAN SOLUÇÕES E SERVIÇOS LTDA - Serviço de Limpeza, Higiene, Conservação, Copeiragem, Recepção e Portaria, deste ITERJ,  
+Contrato nº 005/2021 - Reajuste Contratual - Repactuação - visando atender as necessidades deste ITERJ, do orçamento em vigor.
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 06/02/25 às 12:
+0 1 .
+Impresso por IVONETE JOSE MARIA SABINO em 06/02/25 às 12:06.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

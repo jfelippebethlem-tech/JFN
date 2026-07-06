@@ -1,0 +1,532 @@
+[Documentos diversos DIV. LIQ] (fase: indefinida · tipo: outro)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Fevereiro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NL01662
+26/03/25
+Valor Bruto
+Valor Líquido
+2.027,35
+2.027,35
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE01968
+Credor
+11174211000167 - Fundo Munic.de Saude De Sao Sebastiao Do Alto
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/001211/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+2.027,35
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2025NE0196 8
+080001/001211/2024
+12/2024
+24/03/2025
+2.027,35
+Total Documentos Comprobatórios
+2.027,35
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2025NE01968 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos 
+referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência 
+Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os 
+diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).SÃO 
+SEBASTIÃO  DO ALTO 
+Emitido/contabilizado por CONCEIÇÃO MARIA VIEIRA DE VASCONCELOS DOGLIO em 
+2 6 / 0 3 / 2 5 à s 1 7 : 2 0 .
+Impresso por CONCEIÇÃO MARIA VIEIRA DE VASCONCELOS DOGLIO em 26/03/25 às 17:20.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Fevereiro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NL01663
+26/03/25
+Valor Bruto
+Valor Líquido
+3.949,40
+3.949,40
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE01972
+Credor
+02911953000137 - Fundo Municipal De Saude De Sapucaia
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/001211/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+3.949,40
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2025NE0197 2
+080001/001211/2024
+12/2024
+24/03/2025
+3.949,40
+Total Documentos Comprobatórios
+3.949,40
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2025NE01972 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos 
+referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência 
+Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os 
+diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).SAPUCAIA
+Emitido/contabilizado por CONCEIÇÃO MARIA VIEIRA DE VASCONCELOS DOGLIO em 
+2 6 / 0 3 / 2 5 à s 1 7 : 2 3 .
+Impresso por CONCEIÇÃO MARIA VIEIRA DE VASCONCELOS DOGLIO em 26/03/25 às 17:23.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Fevereiro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NL01665
+26/03/25
+Valor Bruto
+Valor Líquido
+18.948,63
+18.948,63
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE01975
+Credor
+12361936000127 - Fundo Municipal De Saude De Saquarema
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/001211/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+18.948,63
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2025NE0197 5
+080001/001211/2024
+12/2024
+24/03/2025
+18.948,63
+Total Documentos Comprobatórios
+18.948,63
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2025NE01975 CONFORME PROCESSO SEI-080001/001211/2024.Transferência de recursos 
+referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência 
+Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os 
+diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).SAQUAREMA 
+Emitido/contabilizado por CONCEIÇÃO MARIA VIEIRA DE VASCONCELOS DOGLIO em 
+2 6 / 0 3 / 2 5 à s 1 7 : 2 6 .
+Impresso por CONCEIÇÃO MARIA VIEIRA DE VASCONCELOS DOGLIO em 26/03/25 às 17:26.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Fevereiro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NL01666
+26/03/25
+Valor Bruto
+Valor Líquido
+22.064,51
+22.064,51
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE01923
+Credor
+01606604000149 - Fundo Municipal De Saude De Barra Do Pirai
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/001211/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+22.064,51
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2025NE0192 3
+080001/001211/2024
+12/2024
+24/03/2025
+22.064,51
+Total Documentos Comprobatórios
+22.064,51
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2025NE01923 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos 
+referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência 
+Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os 
+diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  Barra do 
+P i r a í
+Emitido/contabilizado por CONCEIÇÃO MARIA VIEIRA DE VASCONCELOS DOGLIO em 
+2 6 / 0 3 / 2 5 à s 1 7 : 2 9 .
+Impresso por CONCEIÇÃO MARIA VIEIRA DE VASCONCELOS DOGLIO em 26/03/25 às 17:29.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Fevereiro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NL01669
+26/03/25
+Valor Bruto
+Valor Líquido
+2.723,93
+2.723,93
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE01918
+Credor
+06810909000191 - Fundo Municipal De Saude De Areal
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/001211/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+2.723,93
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2024NE0191 8
+SEI-080001/001211/24
+12/2024
+24/03/2025
+2.723,93
+Total Documentos Comprobatórios
+2.723,93
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2024NE01918 CONFORME PROCESSO Transferência de recursos referente a Contrapartida 
+Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído 
+pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios 
+citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  Areal
+Emitido/contabilizado por CRISTIANE ANTUNES em 26/03/25 às 18:07.
+Impresso por CRISTIANE ANTUNES em 26/03/25 às 18:07.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

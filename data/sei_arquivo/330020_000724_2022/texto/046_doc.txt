@@ -1,0 +1,15 @@
+[] (fase: indefinida · tipo: vazio)
+
+[Despacho de Encaminhamento de Processo]
+SEI/ERJ - 43604809 - Despacho de Encaminhamento de Processo
+ Governo do Estado do Rio de Janeiro
+ Instituto de Terras e Cartografia do Estado do Rio de Janeiro
+ Presid&ecirc;ncia
+ @tratamento_destinatario@ @cargo_destinatario@,
+ Inserir texto do despacho
+ Rio de Janeiro, 02 de dezembro de 2022
+ Refer&ecirc;ncia: Processo n&ordm; SEI-330020/000724/2022
+ SEI n&ordm; 43604809
+ Rua Regente Feij&oacute;, 7 - 5&ordm; andar, , Rio de Janeiro/RJ, CEP 20060-060
+Telefone: 2123327244
+ Criado por itsmsr , verso 1 por itsmsr em 02/12/2022 09:26:30.

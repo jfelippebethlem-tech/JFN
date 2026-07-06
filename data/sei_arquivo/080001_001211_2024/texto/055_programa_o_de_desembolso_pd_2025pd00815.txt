@@ -1,0 +1,92 @@
+[Programação de Desembolso - PD 2025PD00815 Iguaba Grande out-24] (fase: despesa · tipo: programacao_desembolso)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD00815
+08/01/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+03581920000139 - Fundo Municipal De Saude De Iguaba Grande
+237 - 6772 - 0000000370
+Valor por Extenso
+Valor
+Seis mil e quinze reais e oitenta e oito centavos
+6.015,88
+Detalhamento
+Nota Liquidação
+2024NL10687
+Tipo de Despesa
+Nota de Empenho
+2024NE10448
+Credor
+03581920000139 - Fundo Municipal De Saude De Iguaba Grande
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6772 - 0000000370
+Competência
+10/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+6413 - Pagamento 
+de RP Processado
+99 - Sem consumo 
+de Limite de Saque
+6.015,88
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2024NE10448 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Outubro/2024, conforme solicitação (90507693 e 
+90549017). NAD 38 - IGUABA GRANDE
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por GABRIELA PEREIRA ESMERALDO em 08/01/25 às 11:
+4 6 .
+Impresso por GABRIELA PEREIRA ESMERALDO em 08/01/25 às 11:46.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

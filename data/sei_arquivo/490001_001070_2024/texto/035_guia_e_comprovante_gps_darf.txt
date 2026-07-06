@@ -1,0 +1,382 @@
+[Guia e comprovante GPS/DARF] (fase: indefinida · tipo: outro)
+
+MINISTÉRIO DA ECONOMIA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+Recibo de Entrega da Declaração de Débitos e Créditos Tributários Federais Previdenciários - DCTFWeb
+CNPJ/CPF 23.902.149/0001-61
+Nome ABRE CONSTRUCOES LTDA
+Período de apuração 07/2024
+Declaração Retificadora Sim
+Identificação da apuração de débitos 27088699049 / eSocial
+Totalização dos tributos apurados no período
+Tributos
+Débitos Apurados
+Saldo a Pagar
+Contribuição Previdenciária Segurados
+R$ 7.372,70
+R$ 0,00
+Contribuição Previdenciária Patronal
+R$ 16.689,74
+R$ 0,00
+Contribuição para Outras Entidades e Fundos
+R$ 4.349,95
+R$ 0,00
+IRRF
+R$ 5.144,04
+R$ 5.144,04
+COFINS
+R$ 0,00
+R$ 0,00
+PIS
+R$ 0,00
+R$ 0,00
+CSRF
+R$ 0,00
+R$ 0,00
+COSIRF
+R$ 0,00
+R$ 0,00
+TOTAL
+R$ 33.556,43
+R$ 5.144,04
+O presente Recibo de Entrega da DCTFWeb contém a transcrição da Ficha Resumo da referida declaração, que constitui
+confissão de dívida, de forma irretratável, dos tributos declarados. Fica o declarante ciente de que os tributos declarados na
+DCTFWeb e não pagos serão enviados para inscrição em Dívida Ativa da União, conforme o disposto no parágrafo 2º do artigo 5º
+do Decreto-Lei nº 2.124, de 13 de junho de 1984, combinado com a Portaria MF nº 118, de 28 de junho de 1984, estando o
+declarante sujeito ainda a:
+1) Sobre os tributos não pagos ou não recolhidos nos prazos legais incidirão multa e juros de mora, nos termos do art. 61 da Lei
+nº 9.430, de 27 de dezembro de 1996, combinado com o art. 35 da Lei nº 8.212, de 24 de julho de 1991;
+2) inclusão no Cadastro Informativo de Créditos não Quitados do Setor Público Federal (CADIN), impedindo operações de crédito
+com recursos públicos, a concessão de incentivos fiscais e financeiros e a celebração de convênios e similares que envolvam
+desembolso de recursos públicos e respectivos aditamentos (Lei nº 10.522, de 19 de julho de 2002);
+3) encaminhamento ao Ministério Público Federal de Representação Fiscal para Fins Penais nos casos que, em tese, tenha
+ocorrido crime contra a ordem tributária ou contra a previdência social, por deixar de recolher, no prazo legal, valor de tributo ou
+de contribuição social, descontado ou cobrado, na qualidade de sujeito passivo de obrigação e que deveria recolher aos cofres
+públicos (Lei nº 8.137, de 27 de dezembro de 1990 e Código Penal).
+No caso de falta de apresentação ou de apresentação de declaração com incorreções ou omissões, o contribuinte ficará sujeito às
+multas previstas no artigo 32-A da Lei nº 8.212, de 1991, e no art. 7º da Lei nº 10.426, de 24 de abril de 2002.
+Não surtirão efeitos as retificações de informações prestadas na DCTFWeb que pretendam excluir ou reduzir débitos:
+enviados para inscrição em Dívida Ativa da União, sejam eles saldos a pagar ou valores apurados em procedimento de
+auditoria interna;
+incluídos em parcelamento deferido;
+que tenham sido objeto de declaração de compensação não passível de retificação ou cancelamento.
+Também não surtirão efeitos as retificações de débitos de tributos em relação aos quais o sujeito passivo tenha sido objeto de
+procedimento fiscal e/ou nos casos em que a apresentação da declaração ocorra após o prazo decadencial.
+Dados do Representante da Pessoa Jurídica
+Nome ANDERSON OLIVEIRA DOS SANTOS BARBOSA
+CPF 111.977.337-79
+Telefone 3764-6343
+Recibo de Entrega da DCTFWeb
+DCTFWeb recebida via Internet pelo Agente Receptor SERPRO em 30/07/2024 13:01:45
+Nº do recibo de entrega 0000050000250851688
+DCTFWeb transmitida com assinatura de certificado digital por 28.458.214/0001-25
+
+MINISTÉRIO DA ECONOMIA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO RESUMO DE DÉBITOS - DCTFWeb
+Nome do Contribuinte
+ABRE CONSTRUCOES LTDA
+CNPJ
+23.902.149/0001-61
+Período de Apuração
+07/2024
+Número do Recibo
+0000050000250851688
+Data/Hora da Transmissão
+30/07/2024 13:01:45
+Identificação da Apuração 
+de Débitos
+27088699049 / eSocial
+Grupo: CONTRIBUIÇÃO PREVIDENCIÁRIA SEGURADOS
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1082-01 CP SEGURADOS - EMPREGADOS/AVULSO
+07/2024
+7.062,06
+7.062,06
+0,00
+1099-01 CP SEGURADOS - CONTRIBUINTES INDIVIDUAIS - 11%
+07/2024
+310,64
+310,64
+0,00
+Grupo: CONTRIBUIÇÃO PREVIDENCIÁRIA PATRONAL
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1138-01 CP PATRONAL - EMPREGADOS/AVULSOS
+07/2024
+14.999,95
+14.999,95
+0,00
+1138-04 CP PATRONAL - CONTRIBUINTES INDIVIDUAIS
+07/2024
+564,80
+564,80
+0,00
+1646-01 CP PATRONAL - GILRAT AJUSTADO
+07/2024
+1.124,99
+1.124,99
+0,00
+Grupo: CONTRIBUIÇÃO PARA OUTRAS ENTIDADES E FUNDOS
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1170-01 CP TERCEIROS - SALÁRIO EDUCAÇÃO
+07/2024
+1.874,99
+1.874,99
+0,00
+1176-01 CP TERCEIROS - INCRA
+07/2024
+149,99
+149,99
+0,00
+1181-01 CP TERCEIROS - SENAI
+07/2024
+749,99
+749,99
+0,00
+1184-01 CP TERCEIROS - SESI
+07/2024
+1.124,99
+1.124,99
+0,00
+1200-01 CP TERCEIROS - SEBRAE
+07/2024
+449,99
+449,99
+0,00
+Grupo: IRRF
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+0561-07 IRRF - RD TRB ASSAL PAÍS/AUS NO EXT A SERV PAÍS
+07/2024
+5.144,04
+0,00 5.144,04
+
+MINISTÉRIO DA ECONOMIA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO DA DECLARAÇÃO COMPLETA - DCTFWeb
+Nome do Contribuinte ABRE CONSTRUCOES LTDA
+CNPJ 23.902.149/0001-61
+Período apuração 07/2024
+Número do Recibo 50000250851688
+Data/Hora da
+Transmissão 30/07/2024 13:01:45
+Identificação da
+Apuração de Débitos 27088699049 / eSocial
+Dados Iniciais
+Classificação Tributária 99-Pessoas Jurídicas em Geral
+Número do Recibo da Declaração Retificada 50000250850032
+Missão Diplomática ou Repartição Consular 0 - Sem acordo
+Ausência de Fatos Geradores Não
+Endereço
+Logradouro MARIA JOSE TOLEDO
+Número 237
+Complemento -
+Bairro/Distrito CARMARI
+Município NOVA IGUACU
+UF RJ
+CEP 26022145
+Telefone 2139009347
+Correio Eletrônico DIRETORIA@ABRECONSTRUCOES.COM.BR
+Dados do Representante do Contribuinte e do Responsável pelo Preenchimento
+Representante ANDERSON OLIVEIRA DOS SANTOS 
+BARBOSA
+CPF 11197733779
+Telefone 37646343
+Correio Eletrônico -
+Responsável pelo
+Preenchimento -
+CPF -
+CRC -
+UF -
+Telefone -
+Correio Eletrônico -
+Débito Apurado e Crédito Vinculado
+Código da Receita 1082-01
+Descrição CP SEGURADOS - EMPREGADOS/AVULSO
+Período Apuração
+Débito 07/2024
+Débito Apurado 7.062,06
+Créditos Compensação: 7.000,02
+Deduções Salário Família: 62,04
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 32321.18674.300724.1.3.15-0610
+Tipo DComp
+Valor 7.000,02
+Débito Apurado e Crédito Vinculado
+Código da Receita 1170-01
+Descrição CP TERCEIROS - SALÁRIO EDUCAÇÃO
+Período Apuração
+Débito 07/2024
+Débito Apurado 1.874,99
+Créditos Compensação: 1.874,99
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 32321.18674.300724.1.3.15-0610
+Tipo DComp
+Valor 1.874,99
+
+Débito Apurado e Crédito Vinculado
+Código da Receita 1181-01
+Descrição CP TERCEIROS - SENAI
+Período Apuração
+Débito 07/2024
+Débito Apurado 749,99
+Créditos Compensação: 749,99
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 32321.18674.300724.1.3.15-0610
+Tipo DComp
+Valor 749,99
+Débito Apurado e Crédito Vinculado
+Código da Receita 1184-01
+Descrição CP TERCEIROS - SESI
+Período Apuração
+Débito 07/2024
+Débito Apurado 1.124,99
+Créditos Compensação: 1.124,99
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 32321.18674.300724.1.3.15-0610
+Tipo DComp
+Valor 1.124,99
+Débito Apurado e Crédito Vinculado
+Código da Receita 1176-01
+Descrição CP TERCEIROS - INCRA
+Período Apuração
+Débito 07/2024
+Débito Apurado 149,99
+Créditos Compensação: 149,99
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 32321.18674.300724.1.3.15-0610
+Tipo DComp
+Valor 149,99
+Débito Apurado e Crédito Vinculado
+Código da Receita 1200-01
+Descrição CP TERCEIROS - SEBRAE
+Período Apuração
+Débito 07/2024
+Débito Apurado 449,99
+Créditos Compensação: 449,99
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 32321.18674.300724.1.3.15-0610
+Tipo DComp
+Valor 449,99
+Débito Apurado e Crédito Vinculado
+Código da Receita 1646-01
+Descrição CP PATRONAL - GILRAT AJUSTADO
+Período Apuração
+Débito 07/2024
+Débito Apurado 1.124,99
+Créditos Compensação: 1.124,99
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 32321.18674.300724.1.3.15-0610
+Tipo DComp
+Valor 1.124,99
+
+Débito Apurado e Crédito Vinculado
+Código da Receita 1138-01
+Descrição CP PATRONAL - EMPREGADOS/AVULSOS
+Período Apuração
+Débito 07/2024
+Débito Apurado 14.999,95
+Créditos Compensação: 14.999,95
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 32321.18674.300724.1.3.15-0610
+Tipo DComp
+Valor 14.999,95
+Débito Apurado e Crédito Vinculado
+Código da Receita 1138-04
+Descrição CP PATRONAL - CONTRIBUINTES INDIVIDUAIS
+Período Apuração
+Débito 07/2024
+Débito Apurado 564,80
+Créditos Compensação: 564,80
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 32321.18674.300724.1.3.15-0610
+Tipo DComp
+Valor 564,80
+Débito Apurado e Crédito Vinculado
+Código da Receita 1099-01
+Descrição CP SEGURADOS - CONTRIBUINTES INDIVIDUAIS - 11%
+Período Apuração
+Débito 07/2024
+Débito Apurado 310,64
+Créditos Compensação: 310,64
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 32321.18674.300724.1.3.15-0610
+Tipo DComp
+Valor 310,64
+Débito Apurado e Crédito Vinculado
+Código da Receita 0561-07
+Descrição IRRF - RD TRB ASSAL PAÍS/AUS NO EXT A SERV PAÍS
+Período Apuração
+Débito 07/2024
+Débito Apurado 5.144,04
+Saldo a Pagar 5.144,04
+
+MINISTÉRIO DA ECONOMIA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO RESUMO DE CRÉDITOS - DCTFWeb
+Nome do Contribuinte
+ABRE CONSTRUCOES LTDA
+CNPJ
+23.902.149/0001-61
+Período de Apuração
+07/2024
+Número do Recibo
+0000050000250851688
+Data/Hora da Transmissão
+30/07/2024 13:01:45
+Identificação da Apuração 
+de Débitos
+27088699049 / eSocial
+Descrição
+Valor Informado/Importado
+Valor Vinculado a Débito
+Saldo disponível
+Salário Família
+62,04
+62,04
+0,00
+Compensação
+28.350,35
+28.350,35
+0,00

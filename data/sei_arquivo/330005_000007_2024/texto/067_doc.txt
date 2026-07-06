@@ -1,0 +1,239 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Encerrado até Setembro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2024PD00958
+02/10/24
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+133100 - ITERJ
+237 - 6898 - 0000000027 
+- CONTA ÚNICA
+Favorecido
+Domicílio Bancário 
+Destino
+00394460010880 - MINISTÉRIO DA FAZENDA
+237 - 6898 - BCO AUTENT
+Valor por Extenso
+Valor
+O i t e n t a  e  o i t o  m i l  e  n o v e c e n t o s  e  q u a r e n t a  e  c i n c o  r e a i s  e  s e t e n t a  e  n o v e  c e n t a v o s
+88.945,79
+Detalhamento
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS
+Credor da Retenção
+MINISTÉRIO DA FAZENDA
+Competência
+09/2024
+Processo
+8/2024
+I t e n s
+Número da NE
+2024NE00453 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+12647362000158 - Omega Construtora E Servicos Ltda.
+Número da NL
+2024NL00440 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+18 - MANUTENÇÃO E CONSERVAÇÃO DE BENS IMOVEIS E OPERAÇOES DE SISTEMA
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Número da NE
+133100.2024NE00453
+Credor
+12647362000158
+Valor
+18.475,73
+Número da NE
+2024NE00453 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+12647362000158 - Omega Construtora E Servicos Ltda.
+Número da NL
+2024NL00441 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+18 - MANUTENÇÃO E CONSERVAÇÃO DE BENS IMOVEIS E OPERAÇOES DE SISTEMA
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Número da NE
+133100.2024NE00453
+Emitido/contabilizado por PRISCILA LOURES LEITE em 02/10/24 às 18:04.
+Impresso por WALDEMIR DAVILA PEIXOTO em 04/11/24 às 11:16.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/3
+
+Credor
+12647362000158
+Valor
+3.046,23
+Número da NE
+2024NE00453 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+12647362000158 - Omega Construtora E Servicos Ltda.
+Número da NL
+2024NL00442 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+18 - MANUTENÇÃO E CONSERVAÇÃO DE BENS IMOVEIS E OPERAÇOES DE SISTEMA
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Número da NE
+133100.2024NE00453
+Credor
+12647362000158
+Valor
+56.695,27
+Número da NE
+2024NE00477 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2024NL00457 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Número da NE
+133100.2024NE00477
+Credor
+35208086000127
+Valor
+6.072,45
+Número da NE
+2024NE00478 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2024NL00456 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Número da NE
+133100.2024NE00478
+Credor
+19088605000104
+Valor
+4.656,11
+Emitido/contabilizado por PRISCILA LOURES LEITE em 02/10/24 às 18:04.
+Impresso por WALDEMIR DAVILA PEIXOTO em 04/11/24 às 11:16.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/3
+
+Observação
+RETENÇÃO DE INSS EMPRESAS OUTUBRO
+Emitido/contabilizado por PRISCILA LOURES LEITE em 02/10/24 às 18:04.
+Impresso por WALDEMIR DAVILA PEIXOTO em 04/11/24 às 11:16.
+SIAFE-Rio / SEFAZ-RJ
+Página 3/3

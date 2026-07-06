@@ -1,0 +1,48 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Detalhamento da Conta Contábil
+Encerrado até Agosto
+Dados Gerais
+Unidade Gestora
+216400 - FUSPRJ
+Conta Contábil
+111111917 - BANCO DO BRASIL S/A
+Mês
+Setembro
+Conta Corrente
+Saldo Anterior
+Débito
+Crédito
+Saldo Atual
+001.      2234.       110876.2.7.13.224.1.000085
+0,00
+935.660,00
+0,00
+935.660,00
+001.      2234.       11202X.2.7.13.224.1.000097
+0,00
+8.105.020,00
+0,00
+8.105.020,00
+001.      2234.       112038.2.7.13.224.1.000097
+0,00
+3.130.260,00
+0,00
+3.130.260,00
+001.      2234.0000000114944.1.7.13.224.1.000101
+0,00
+7.608.260,00
+7.513.000,00
+95.260,00
+001.      2234.0000000114944.2.7.13.224.1.000101
+0,00
+7.513.000,00
+0,00
+7.513.000,00
+TOTAL
+19.779.200,00
+ 
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 19/09/25 às 15:45.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

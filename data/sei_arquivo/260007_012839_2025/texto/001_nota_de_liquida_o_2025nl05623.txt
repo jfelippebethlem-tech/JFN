@@ -1,0 +1,104 @@
+[Nota de Liquidação - 2025NL05623] (fase: despesa · tipo: nota_liquidacao)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO (CNPJ: 33.540.014/0017-14)
+2025NL05623
+07/10/25
+Valor Bruto
+Valor Líquido
+14.262,30
+14.262,30
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE01441
+Credor
+02903687000109 - First Med. Produtos Medicos Ltda
+Natureza
+339030 - Material de Consumo
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4866 - Apoio a HUPE e PPC/UERJ para a realização de proced...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+600 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Go...
+Fonte RJ
+225 - Transferências Fundo a Fundo do SUS - Bloco de Manutenção
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (600.225)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+751020 - OPMES - Hemodinâmica
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+25039217 - Aquisição de material de OPMES 
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2025000409000252
+Processo
+SEI-260008/010102/2023
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Material de Consumo
+06 - MATERIAL LABORATORIAL 
+/MATERIAL HOSPITALAR
+172 - Reconhecimento da obrigação e 
+ingresso no almoxarifado
+14.262,30
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Nota Fiscal
+2164/1
+260007/012839/2025
+09/2025
+18/09/2025
+14.262,30
+Total Documentos Comprobatórios
+14.262,30
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2164/1 CONFORME PROCESSO SEI-260007/012839/2025 PARA AQUISIÇÃO DE 690 UNIDADES DE 
+Fio guia, tipo: cateterismo, revestimento: politetrafluretileno; PE 302/2024; DANFE CERTIFICADA; EMPRESA OPTANTE 
+PELO SIMPLES NACIONAL
+E m i t i d o / c o n t a b i l i z a d o p o r R a u l P i n h e i r o d a S i l v a e m 0 7 / 1 0 / 2 5 à s 0 9 : 1 6 .
+Impresso por Raul Pinheiro da Silva em 07/10/25 às 09:16.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

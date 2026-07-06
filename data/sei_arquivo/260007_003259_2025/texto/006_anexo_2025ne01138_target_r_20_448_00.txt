@@ -1,0 +1,116 @@
+[Anexo 2025NE01138 TARGET R$ 20.448,00] (fase: despesa · tipo: nota_empenho)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Fevereiro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO (CNPJ: 33.540.014/0017-14)
+2025NE01138
+17/03/25
+Credor
+52969017000155 - Target medicamentos e Produtos Hospitalares Ltda
+Valor
+20.448,00 (Vinte mil e quatrocentos e quarenta e oito reais)
+Classificação
+Natureza
+339030 - Material de Consumo
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4866 - Apoio a HUPE e PPC/UERJ para a realização de proced...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+600 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Go...
+Fonte RJ
+225 - Transferências Fundo a Fundo do SUS - Bloco de Manutenção
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (600.225)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+752020 - SERVICO DE FARMACIA
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+24037386 - Aquisição de Medicamentos para o Serviço de Farmácia do HUPE.
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2024007652000563
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+09 - Pregão 
+Eletrônico
+Emb. Legal
+Inciso XXI do art. 37 da CF/ Art. 2º da Lei 
+14.133/21.
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-
+260007/009419/2024
+UF
+Rio de Janeiro
+Município
+São João de Meriti
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Material de Consumo
+07 - MEDICAMENTOS EM GERAL
+20.448,00
+Cronograma
+Março
+20.448,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+2.721.942,81 Pré-Empenhado
+0,00 Bloqueado
+0,00
+20.448,00
+2.701.494,81
+Observação
+Acetilcisteina 600 mg / 5 g Envelope...; MFE: 95522931; PE 242/2024; parcela 4; UGR 752020; contrato 24037386.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+XXXXX
+1
+UN
+20.448,00
+20.448,00
+Descrição
+XXXXX
+Emitido/contabilizado por JANSEM CAETANO NASCIMENTO em 18/03/25 às 12:
+0 7 .
+Impresso por JANSEM CAETANO NASCIMENTO em 18/03/25 às 12:08.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

@@ -1,0 +1,108 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 12
+Encerrado até Maio 
+Identificação
+UG Emitente
+Documento
+Emissão
+133100 - ITERJ
+2024OB00398
+10-06-2024
+UG Liquidante
+UG Pagadora
+133100 - ITERJ
+133100 - ITERJ
+Valor por Extenso
+Valor
+N o v e n t a  e  q u a t r o  m i l  e  q u i n h e n t o s  e  v i n t e  e  s e t e  r e a i s  e  s e s s e n t a  e  c i n c o  c e n t a v o s
+94.527,65
+Detalhamento
+Nota Liquidação
+2024NL00210
+Nota de Empenho
+2024NE00219
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Domicílio Bancário Origem
+237 - 6898 - 0000000027 - CONTA ÚNICA
+Domicílio Bancário Destino
+237 - 1075 - 869368
+Competência
+05/2024
+Processo
+330005/000007/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da 
+Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Serviços de Terceiros 
+- Pessoa Jurídica
+12 - SERVIÇOS DE 
+ASSEIO E HIGIENE
+3722 - Pagamento da despesa 
+empenhada e liquidada no Exercício 
+Atual Consumindo Limite de Saque
+86 - FORNECEDORES
+94.527,65
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  4150 CONFORME PROCESSO Prestação de serviços de Limpeza, Higiene, Conservação, 
+Copeiragem, Recepção e Portaria do Instituto de Terras.
+Registro de Envio
+UG Emitente
+133100
+Emissão
+10-06-2024
+Documento
+2024RE00098
+Data de Envio
+10-06-2024
+Status de Envio
+Processado e Pago
+Data de retorno
+14-06-2024
+Tipo de Pagamento
+Normal
+Retorno
+Ordem bancária 
+paga e liberada com 
+sucesso.
+Programação de Desembolso
+Documento
+2024PD00522
+Emissão
+06-06-2024
+Data de 
+Programação
+10-06-2024
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 10-06-2024 às 9:
+3 1 .
+Impresso por IVONETE JOSE MARIA SABINO em 25-06-2024 às 13:49.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

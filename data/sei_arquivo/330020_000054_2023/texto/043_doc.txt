@@ -1,0 +1,133 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Número do 
+Documento
+D a t a  d e  
+Emissão
+133100 - ITERJ
+2023NL00632
+08/11/23
+V a l o r  B r u t o
+V a l o r  L í q u i d o
+153.873,90
+140.614,39
+T i p o  d e  A l t e r a ç ã o
+Documento 
+A l t e r a d o
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2023NE00538
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+53310 - Instituto de Terras e Cartografia do Estado do Rio de Janeiro                   I
+Programa de trabalho
+21.122. 0002. 2016 - Manut  Ativid  Operacionais / Administrativas
+Id. uso
+0 - Não destinado à contrapartida
+Ano Fonte
+1 - Recursos do Exercício Corrente
+Fonte STN
+500 - Recursos não Vinculados de Impostos
+Fonte
+100 - Ordinários Provenientes de Impostos
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+22000047 - Prestação de Serviços de Locação de Veículos com Motoristas.
+Programa de Financiamento 
+Externo/Interno
+0 - Indefinido
+Chave SIGA
+2021007583003364
+Processo
+SEI 330020/54/2023
+Itens
+Tipo Patrimonial
+Sub-item da Despesa
+Operação 
+Patrimonial
+Classificação 
+Complementar
+Valor
+Serviços de Terceiros - Pessoa Jurídica
+13 - LOCAÇÃO DE VEICULOS, 
+FRETES E CARRETOS/PEDAGIOS
+194 - 
+Reconhecimento 
+da obrigação 
+153.873,90
+Retenção
+Tipo
+Credor
+Valor
+IRRF TERCEIROS - 144
+999900 - TESOURO ESTADUAL
+7.385,95
+INSS SERVIÇOS DE TERCEIROS - 17
+00394460010880 - MINISTÉRIO DA FAZENDA
+5.873,56
+Emitente
+Usuário
+PRISCILA LOURES LEITE
+ 
+Emitido/contabilizado por PRISCILA LOURES LEITE em 08/11/23 às 14:47.
+Impresso por PRISCILA LOURES LEITE em 08/11/23 às 14:48.
+Siafe-Rio / SEFAZ-RJ
+Página 1/2
+
+Total Retenção (-)
+13.259,51
+Documentos Fiscais
+Tipo
+Número
+Processo
+Competência
+D a t a
+Valor
+DUPLICATA/FATURA
+58
+54/2023
+11/2023
+01/11/2023
+153.873,90
+Total Documentos Fiscais
+153.873,90
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  58 CONFORME PROCESSO Prestação de Serviço de locação de veículos com 
+motoristas, visando atender as necessidades deste ITERJ/OUTUBRO-2023
+Emitente
+Usuário
+PRISCILA LOURES LEITE
+ 
+Emitido/contabilizado por PRISCILA LOURES LEITE em 08/11/23 às 14:47.
+Impresso por PRISCILA LOURES LEITE em 08/11/23 às 14:48.
+Siafe-Rio / SEFAZ-RJ
+Página 2/2

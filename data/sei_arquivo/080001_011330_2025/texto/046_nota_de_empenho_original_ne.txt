@@ -1,0 +1,598 @@
+[Nota de Empenho Original - NE] (fase: despesa · tipo: nota_empenho)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NE07729
+19/09/25
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Valor
+5.700.000,00 (Cinco milhões e setecentos mil de reais)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/011330/2025
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS 
+- MUNICÍPIOS
+5.700.000,00
+Cronograma
+Setembro
+5.700.000,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+64.379.682,40 Pré-Empenhado
+0,00 Bloqueado
+0,00
+5.700.000,00
+58.679.682,40
+Observação
+Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover 
+a melhoria da qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, conforme solicitação (114304138). Hospital do câncer e 
+do Coração - HCCOR 
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+INCENTIVO FINANCEIRO
+1
+UN
+5.700.000,00
+5.700.000,00
+Descrição
+Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover a melhoria da 
+qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, conforme solicitação (114304138). Hospital do câncer e do Coração- HCCOR NAD4331
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VANDERLEIA DE LIMA em 19/09/25 às 14:04.
+Impresso por VANDERLEIA DE LIMA em 19/09/25 às 14:04.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NE07731
+19/09/25
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Valor
+5.000.000,00 (Cinco milhões de reais)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/011330/2025
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS 
+- MUNICÍPIOS
+5.000.000,00
+Cronograma
+Setembro
+5.000.000,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+58.679.682,40 Pré-Empenhado
+0,00 Bloqueado
+0,00
+5.000.000,00
+53.679.682,40
+Observação
+Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover 
+a melhoria da qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, conforme solicitação (114304138). Hospital Municipal 
+de Retaguarda
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+INCENTIVO FINANCEIRO
+1
+UN
+5.000.000,00
+5.000.000,00
+Descrição
+Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover a melhoria da 
+qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, conforme solicitação (114304138). Hospital Municipal de Retaguarda NAD4331
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VANDERLEIA DE LIMA em 19/09/25 às 14:08.
+Impresso por VANDERLEIA DE LIMA em 19/09/25 às 14:08.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NE07732
+19/09/25
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Valor
+5.250.000,00 (Cinco milhões e duzentos e cinquenta mil de reais)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/011330/2025
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS 
+- MUNICÍPIOS
+5.250.000,00
+Cronograma
+Setembro
+5.250.000,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+53.679.682,40 Pré-Empenhado
+0,00 Bloqueado
+0,00
+5.250.000,00
+48.429.682,40
+Observação
+Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover 
+a melhoria da qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, conforme solicitação (114304138). Pronto Socorro 
+Central Dr. Armando Gomes de Sá Couto
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+INCENTIVO FINANCEIRO
+1
+UN
+5.250.000,00
+5.250.000,00
+Descrição
+Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover a melhoria da 
+qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, conforme solicitação (114304138). Pronto Socorro Central Dr. Armando Gomes de Sá 
+Couto NAD4331
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VANDERLEIA DE LIMA em 19/09/25 às 14:11.
+Impresso por VANDERLEIA DE LIMA em 19/09/25 às 14:12.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NE07733
+19/09/25
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Valor
+1.750.000,00 (Hum milhão e setecentos e cinquenta mil de reais)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/011330/2025
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS 
+- MUNICÍPIOS
+1.750.000,00
+Cronograma
+Setembro
+1.750.000,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+48.429.682,40 Pré-Empenhado
+0,00 Bloqueado
+0,00
+1.750.000,00
+46.679.682,40
+Observação
+Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover 
+a melhoria da qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, conforme solicitação (114304138). Hospital Infantil 
+Darcy Souza Vargas 
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+INCENTIVO FINANCEIRO
+1
+UN
+1.750.000,00
+1.750.000,00
+Descrição
+Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover a melhoria da 
+qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, conforme solicitação (114304138). Hospital Infantil Darcy Souza Vargas NAD4331
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VANDERLEIA DE LIMA em 19/09/25 às 14:15.
+Impresso por VANDERLEIA DE LIMA em 19/09/25 às 14:15.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NE07734
+19/09/25
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Valor
+2.200.000,00 (Dois milhões e duzentos mil de reais)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/011330/2025
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS 
+- MUNICÍPIOS
+2.200.000,00
+Cronograma
+Setembro
+2.200.000,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+46.679.682,40 Pré-Empenhado
+0,00 Bloqueado
+0,00
+2.200.000,00
+44.479.682,40
+Observação
+Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover 
+a melhoria da qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, conforme solicitação (114304138). Centro de Imagem e 
+Especialidades de São Gonçalo
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+INCENTIVO FINANCEIRO
+1
+UN
+2.200.000,00
+2.200.000,00
+Descrição
+Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover a melhoria da 
+qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, conforme solicitação (114304138). Centro de Imagem e Especialidades de São Gonçalo 
+NAD4331
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VANDERLEIA DE LIMA em 19/09/25 às 14:18.
+Impresso por VANDERLEIA DE LIMA em 19/09/25 às 14:18.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

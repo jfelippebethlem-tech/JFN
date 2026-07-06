@@ -1,0 +1,112 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária de Retenção
+TIPO 13
+Encerrado até Junho 
+Identificação
+UG Emitente
+Documento
+Emissão
+133100 - ITERJ
+2024OB00430
+19/06/24
+UG Liquidante
+UG Pagadora
+133100 - ITERJ
+133100 - ITERJ
+Valor por Extenso
+Valor
+Quatro mil e novecentos e noventa e um reais e quarenta e cinco centavos
+4.991,45
+Tipo de Regularização
+Pagamento GRE
+Detalhamento
+Tipo de Retenção
+IRRF TERCEIROS
+Credor da Retenção
+TESOURO DO ESTADO DO RIO DE JANEIRO
+Competência
+05/2024
+Domicílio Bancário Origem
+237 - 6898 - 0000000027
+Domicílio Bancário Destino
+237 - 6898 - 0000000027
+Processo
+7/2024
+I t e n s
+Número da NE
+2024NE00219 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2024NL00210 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+4.991,45
+Pagamentos
+Tipo de Pagamento
+GRE
+UG Beneficiária
+999900
+UG Pagadora
+133100
+Código do Recolhimento
+770032
+Data Competência
+30/06/2024
+Número de Referência
+Valor Principal
+4.991,45
+Valor Juros/Encargos
+Valor Outras Deduções
+Data de vencimento da GRE
+12/06/2025
+Número da GRE
+000000834923
+Data da GRE
+17/06/2024
+Código de Autenticação
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  4150 CONFORME PROCESSO Prestação de serviços de Limpeza, Higiene, Conservação, 
+Copeiragem, Recepção e Portaria do Instituto de Terras.
+Programação de Desembolso
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 19/06/24 às 09:59.
+Impresso por WALDEMIR DAVILA PEIXOTO em 16/07/24 às 10:50.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/2
+
+Documento
+2024PD00551
+Emissão
+17/06/24
+Data de 
+Programação
+19/06/24
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 19/06/24 às 09:59.
+Impresso por WALDEMIR DAVILA PEIXOTO em 16/07/24 às 10:50.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/2

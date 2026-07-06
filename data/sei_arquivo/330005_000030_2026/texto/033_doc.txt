@@ -1,0 +1,21 @@
+[] (fase: indefinida · tipo: vazio)
+
+Ato:
+Contrato
+Número do Ato:
+005/2021
+Processo Administrativo:
+SEI-000762/2021
+Identificador:
+345369
+Objeto:
+PRESTAÇÃO DE SERVIÇOS DE LIMPEZA, HIGIENE, CONSERVAÇÃO, COPEIRAGEM, RECPÇÃO E PORTARIA.
+11/02/2026 12:20
+Recibo de Entrega do Ato Jurídico ao TCE-RJ
+Orgão: ITERJ-INST TERRAS E CARTOGRAFIAS ESTADO
+Ato Retificado desde 11/02/2026 12:24. A operação de inserção de dados do Ato Jurídico foi registrada sob o Protocolo n.º 414240-2/2026. Operação realizada pelo usuário:
+001.008.597-12
+11/02/2026, 12:21
+Ato
+https://www.tcerj.tc.br/sigfis-atosjuridicos/site/admin/contratos/consulta
+1/1

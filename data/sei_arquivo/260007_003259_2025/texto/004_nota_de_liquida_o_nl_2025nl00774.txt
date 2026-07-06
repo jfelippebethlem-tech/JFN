@@ -1,0 +1,108 @@
+[Nota de Liquidação - NL 2025NL00774] (fase: despesa · tipo: nota_liquidacao)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Fevereiro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO (CNPJ: 33.540.014/0017-14)
+2025NL00774
+26/03/25
+Valor Bruto
+Valor Líquido
+20.448,00
+20.202,62
+Tipo de Alteração
+Documento Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE01138
+Credor
+52969017000155 - Target medicamentos e Produtos Hospitalares Ltda
+Natureza
+339030 - Material de Consumo
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4866 - Apoio a HUPE e PPC/UERJ para a realização de proced...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+600 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Go...
+Fonte RJ
+225 - Transferências Fundo a Fundo do SUS - Bloco de Manutenção
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (600.225)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+752020 - SERVICO DE FARMACIA
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+24037386 - Aquisição de Medicamentos para o Serviço de Farmácia do HUPE.
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2024007652000563
+Processo
+SEI-260007/009419/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Material de Consumo
+07 - MEDICAMENTOS EM GERAL
+172 - Reconhecimento da obrigação e ingresso no almoxarifado
+20.448,00
+Retenção
+Classificação da Retenção
+Base de Cálculo
+Valor
+0,00
+245,38
+Total Retenção (-)
+245,38
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Nota Fiscal
+3344/3349
+SEI-260007/3259/25
+03/2025
+20/03/2025
+20.448,00
+Total Documentos Comprobatórios
+20.448,00
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  3344/3349 CONFORME PROCESSO DE DESPESA COM AQUISIÇÃO DE MEDICAMENTOS : Acetilcisteina 600 mg / 5 g Envelope...; MFE: 
+95522931; PE 242/2024; parcela 4; UGR 752020; contrato 24037386.
+Emitido/contabilizado por WANDERLEA DA SILVA PAULA em 26/03/25 às 15:18.
+Impresso por WANDERLEA DA SILVA PAULA em 26/03/25 às 15:18.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

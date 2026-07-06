@@ -1,0 +1,1051 @@
+{
+ "processo": "330020/000762/2021",
+ "gerado_em": "2026-07-02T05:27:06+00:00",
+ "origem": "/home/ubuntu/JFN/data/sei_cache/integra_330020_000762_2021",
+ "modalidade": "",
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/000_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1371,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 6016,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/003_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1929,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/004_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1854,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/005_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 2044,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/006_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/007_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Termo de Cancelamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/008_termo_de_cancelamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Anexo NE - 2025NE00669",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/009_anexo_ne_2025ne00669.txt",
+   "chars": 3681,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/010_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Publicação do 4º Termo Aditivo",
+   "fase": "execucao",
+   "tipo": "aditivo",
+   "texto": "texto/011_publica_o_do_4_termo_aditivo.txt",
+   "chars": 9877,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/012_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Anexo Quarto Termo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/013_anexo_quarto_termo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": [
+    "fotos/013_p01.jpg",
+    "fotos/013_p02.jpg",
+    "fotos/013_p03.jpg"
+   ]
+  },
+  {
+   "i": 14,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/014_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/015_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "Parecer 64",
+   "fase": "controle",
+   "tipo": "parecer",
+   "texto": "texto/016_parecer_64.txt",
+   "chars": 124,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/017_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/018_anexo.txt",
+   "chars": 13595,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/019_anexo.txt",
+   "chars": 13531,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "Minuta",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/020_minuta.txt",
+   "chars": 4513,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "Atestado de Realização de Serviços",
+   "fase": "execucao",
+   "tipo": "aceite",
+   "texto": "texto/021_atestado_de_realiza_o_de_servi_os.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/022_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/023_anexo.txt",
+   "chars": 3330,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "Declaração de Disponibilidade Orçamentária",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/024_declara_o_de_disponibilidade_or_ament_ri.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/025_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/026_anexo.txt",
+   "chars": 427,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 27,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/027_anexo.txt",
+   "chars": 2407,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 28,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/028_anexo.txt",
+   "chars": 3963,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 29,
+   "titulo": "E-mail",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/029_e_mail.txt",
+   "chars": 1695,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 30,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/030_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 31,
+   "titulo": "Apólice",
+   "fase": "contratacao",
+   "tipo": "garantia",
+   "texto": "texto/031_ap_lice.txt",
+   "chars": 49099,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 32,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/032_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 33,
+   "titulo": "Publicação 3 Termo Aditivo ao",
+   "fase": "execucao",
+   "tipo": "aditivo",
+   "texto": "texto/033_publica_o_3_termo_aditivo_ao.txt",
+   "chars": 6009,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 34,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/034_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 35,
+   "titulo": "Termo de Cancelamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/035_termo_de_cancelamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 36,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/036_anexo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": [
+    "fotos/036_p01.jpg",
+    "fotos/036_p02.jpg",
+    "fotos/036_p03.jpg"
+   ]
+  },
+  {
+   "i": 37,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/037_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 38,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/038_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 39,
+   "titulo": "Parecer 53",
+   "fase": "controle",
+   "tipo": "parecer",
+   "texto": "texto/039_parecer_53.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 40,
+   "titulo": "Cotação 02",
+   "fase": "planejamento",
+   "tipo": "pesquisa_precos",
+   "texto": "texto/040_cota_o_02.txt",
+   "chars": 2779,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 41,
+   "titulo": "E-mail -",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/041_e_mail.txt",
+   "chars": 844,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 42,
+   "titulo": "Ofício",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/042_of_cio.txt",
+   "chars": 1260,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 43,
+   "titulo": "E-mail",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/043_e_mail.txt",
+   "chars": 1628,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 44,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/044_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 1128,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 45,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/045_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 46,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/046_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 47,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/047_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 48,
+   "titulo": "Registro SIGFIS -",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/048_registro_sigfis.txt",
+   "chars": 627,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 49,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/049_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 50,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/050_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 51,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/051_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 52,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/052_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 53,
+   "titulo": "Parecer 108",
+   "fase": "controle",
+   "tipo": "parecer",
+   "texto": "texto/053_parecer_108.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 54,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/054_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 55,
+   "titulo": "Atestado de Realização de Serviços",
+   "fase": "execucao",
+   "tipo": "aceite",
+   "texto": "texto/055_atestado_de_realiza_o_de_servi_os.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 56,
+   "titulo": "Consulta",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/056_consulta.txt",
+   "chars": 549,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 57,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/057_anexo.txt",
+   "chars": 35121,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 58,
+   "titulo": "Consulta",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/058_consulta.txt",
+   "chars": 1061,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 59,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/059_anexo.txt",
+   "chars": 1604,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 60,
+   "titulo": "Carta",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/060_carta.txt",
+   "chars": 1201,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 61,
+   "titulo": "E-mail",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/061_e_mail.txt",
+   "chars": 943,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 62,
+   "titulo": "E-mail",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/062_e_mail.txt",
+   "chars": 1092,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 63,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/063_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 64,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/064_doc.txt",
+   "chars": 917,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 65,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/065_doc.txt",
+   "chars": 1156,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 66,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/066_doc.txt",
+   "chars": 1569,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 67,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/067_doc.txt",
+   "chars": 1360,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 68,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/068_doc.txt",
+   "chars": 627,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 69,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/069_doc.txt",
+   "chars": 1263,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 70,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/070_doc.txt",
+   "chars": 2037,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 71,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/071_doc.txt",
+   "chars": 1525,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 72,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/072_doc.txt",
+   "chars": 48997,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 73,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/073_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": [
+    "fotos/073_p01.jpg",
+    "fotos/073_p02.jpg",
+    "fotos/073_p03.jpg"
+   ]
+  },
+  {
+   "i": 74,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/074_doc.txt",
+   "chars": 3230,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 75,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/075_doc.txt",
+   "chars": 1317,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 76,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/076_doc.txt",
+   "chars": 1976,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 77,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/077_doc.txt",
+   "chars": 14886,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 78,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/078_doc.txt",
+   "chars": 1499,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 79,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/079_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": [
+    "fotos/079_p01.jpg",
+    "fotos/079_p02.jpg",
+    "fotos/079_p03.jpg"
+   ]
+  },
+  {
+   "i": 80,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/080_doc.txt",
+   "chars": 1286,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 81,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/081_doc.txt",
+   "chars": 2081,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 82,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/082_doc.txt",
+   "chars": 1349,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 83,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/083_doc.txt",
+   "chars": 17463,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 84,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/084_doc.txt",
+   "chars": 2064,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 85,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/085_doc.txt",
+   "chars": 1622,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 86,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/086_doc.txt",
+   "chars": 549,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 87,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/087_doc.txt",
+   "chars": 35121,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 88,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/088_doc.txt",
+   "chars": 1061,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 90,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/090_doc.txt",
+   "chars": 11608,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 91,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/091_doc.txt",
+   "chars": 1493,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 93,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/093_doc.txt",
+   "chars": 1573,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 94,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/094_doc.txt",
+   "chars": 2310,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 95,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/095_doc.txt",
+   "chars": 1926,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 96,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/096_doc.txt",
+   "chars": 3002,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 97,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/097_doc.txt",
+   "chars": 41670,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 99,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/099_doc.txt",
+   "chars": 2941,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 100,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/100_doc.txt",
+   "chars": 1201,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 101,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/101_doc.txt",
+   "chars": 943,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 102,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/102_doc.txt",
+   "chars": 1092,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 103,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/103_doc.txt",
+   "chars": 1376,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
+ "linha_do_tempo": {
+  "planejamento": 1,
+  "selecao": 0,
+  "contratacao": 1,
+  "execucao": 4,
+  "despesa": 1,
+  "controle": 3,
+  "tramitacao": 33,
+  "indefinida": 58
+ },
+ "lacunas": [
+  {
+   "falta": "Seleção (edital, julgamento, homologação)",
+   "gravidade": "alta"
+  }
+ ],
+ "fotos_total": 12
+}

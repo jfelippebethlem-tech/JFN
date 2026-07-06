@@ -1,0 +1,115 @@
+[] (fase: indefinida · tipo: vazio)
+
+Comprovante de pagamento de boleto
+Dados da conta debitada / Pagador Final
+Agência/conta: 1185/74826-4
+CPF/CNPJ: 19.088.605/0001-04 Empresa: MGS CLEAN SOLUCOES E SERVICOS 
+Dados do pagamento
+Identificação no meu comprovante: VT_ITERJ                                                    
+23793 36908 90000 122193 90000 629205 1 12160000154000  
+ Beneficiário:
+ MAIS MOBI
+ CPF/CNPJ do beneficiário:
+ Data de vencimento:
+ Razão Social:  MAIS MOBI
+ 57.929.012/0001-12
+ 26/09/2025
+ Valor do boleto (R$);
+ 1.540,00
+ (-) Desconto (R$):
+ 0,00
+ (+)Mora/Multa (R$):
+ 0,00
+ Pagador:
+ CPF/CNPJ do pagador:
+ (=) Valor do pagamento (R$):
+  MGS CLEAN SOLUCOES E SERVICOS LTDA                
+ 19.088.605/0001-04
+ 1.540,00
+ Data de pagamento:
+ 28/08/2025
+Autenticação mecânica
+ Pagamento realizado em espécie:
+ 64A2AF570E42C419F30284B39F7663CE4C9925BE                        
+ Não
+Operação efetuada em 28/08/2025  às 14:40:05 via Sispag, CTRL 004217564028057.
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+1
+
+Pague com
+pix
+y Banee C
+bradesco
+mais mobi
+
+mais-mobi
+Comprador
+mais-mobi
+
+Agência/conta: 1185 / 74826-4
+Nome da empresa:
+MGS CLEAN COMERCIO E SERVICOS
+CNPJ: 19.088.605/0001-04
+Conta: Conta em operação
+Tipo: Todos
+Período: de 28/08/2025 até  28/08/2025
+Status: Efetuados
+Nome do favorecido
+CPF/CNPJ
+Tipo de pagamento
+Referência da empresa
+Data de pagamento
+Valor do pagamento (R$)
+Status
+ANGELICA COSTA SOARES
+-
+Conta corrente
+VT_ITERJ
+28/08/2025
+220,00
+Visualizar
+CAROLINE MOREIRA DA FONSECA
+-
+Conta corrente
+VT_ITERJ
+28/08/2025
+220,00
+Visualizar
+GLEICIANE DE ALCANTARA SILVA
+-
+Conta corrente
+VT_ITERJ
+28/08/2025
+220,00
+Visualizar
+JONATHAN CAPOSSI DA SILVA LEITAO
+-
+Conta corrente
+VT_ITERJ
+28/08/2025
+220,00
+Visualizar
+LARISSA GOMES DE SOUZA
+-
+Conta corrente
+VT_ITERJ
+28/08/2025
+220,00
+Visualizar
+MARIA LUIZA ALMEIDA GUIMARAES
+-
+Conta corrente
+VT_ITERJ
+28/08/2025
+220,00
+Visualizar
+1.320,00
+ 
+Dúvidas, sugestões e reclamações, se necessário, utilize o SAC ltaú 0800 728 0728, todos os dias, 24h, ou o Fale Conosco (www.itau.com.br). Se desejar a reavaliação da solução apresentada após utilizar esses canais, recorra 
+à Ouvidoria Corporativa ltaú 0800 570 0011, dias úteis, das 9 às 18h, Caixa Postal nº 67.600, CEP 03162-971. Deficientes auditivos ou de fala 0800 722 1722, disponível 24hs todos os dias. 
+Dados da conta
+Resultado da busca
+Páginas: 1 - 1
+Total:

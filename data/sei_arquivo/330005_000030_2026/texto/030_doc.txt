@@ -1,0 +1,512 @@
+[] (fase: indefinida · tipo: vazio)
+
+Comprovante de pagamento - DARF
+agente arrecadador: CNC:341 Banco Itaú S/A
+         código de barras: 858300021812 346403852606 190716260150 491562641997 
+valor total: R$ 218.134,64
+autenticação: 9876432345678854001           
+MODELO APROVADO PELO ADE CONJUNTO CODAC/COTEC Nº1, DE 31/10/2011.
+operação efetuada via Itaú Empresas na Internet: Sispag, CTRL: 008765432345740
+autenticação digital Itaú: 
+0D6DF0G098456SFG8E987SAFGH985SASA7654327
+transação efetuada em 19/01/2026  às 16:10:15h via Sispag na internet.
+identificação no extrato: DEZ 2025
+Dados da conta debitada
+nome: MGS CLEAN SOLUCOES E SERVICOS 
+agência e conta: 1185 / 0074826-4
+CNPJ: 19.088.605/0001-04
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+1
+data do pagamento: 19/01/2026
+número do documento: 07.16.26015.4915626-4
+
+Documento de Arrecadação
+de Receitas Federais
+19.088.605/0001-04
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+Período de Apuração
+Data de Vencimento
+Número do Documento
+07.16.26015.4915626-4
+Pagar este documento até
+19/01/2026
+Observações
+Nº Recibo Declaração: 50000430207126
+Valor Total do Documento
+218.134,64
+CNPJ
+Razão Social
+Dezembro/2025
+19/01/2026
+Código
+Principal
+Denominação
+Total
+Multa
+Juros
+Composição do Documento de Arrecadação
+0561
+IRRF - RENDIMENTO DO TRABALHO ASSALARIADO
+218.134,64
+218.134,64
+07 IRRF - RD TRB ASSAL PAÍS/AUS NO EXT A SERV PAÍS
+PA:12/2025 Vencimento:19/01/2026
+Totais
+218.134,64
+218.134,64
+SENDA (Versão:5.2.9)
+15/01/2026 22:59:35
+1 1
+Página:
+/
+85830002181 2
+34640385260 6
+19071626015 0
+49156264199 7
+AUTENTICAÇÃO MECÂNICA
+Documento de Arrecadação de Receitas Federais
+85830002181 2
+34640385260 6
+19071626015 0
+19.088.605/0001-04
+Número:
+07.16.26015.4915626-4
+Pagar até:
+19/01/2026
+Valor:
+218.134,64
+49156264199 7
+CNPJ:
+Pague com o PIX
+
+Comprovante de pagamento - DARF
+agente arrecadador: CNC:341 Banco Itaú S/A
+código de barras: 85800000011 07000385260 20071626014 99423027630
+data do pagamento: 19/01/2026
+número do documento: 07.16.26014.9942302-7
+valor total: R$ 1.107,00
+autenticação: 9337118500000260119           
+MODELO APROVADO PELO ADE CONJUNTO CODAC/COTEC Nº1, DE 31/10/2011.
+operação efetuada via Itaú Empresas na Internet: Sispag, CTRL: 002026011908870
+autenticação digital Itaú:
+02F23FD1928E98AE6D6FB94A8CFCFFB2DFFD9167                        
+transação efetuada em 19/01/2026  às 16:00:12h via Sispag na internet.
+identificação no extrato: GUIA RETENCOES IRPJ E CSRF                                  
+Dados da conta debitada
+nome: MGS CLEAN SOLUCOES E SERVICOS 
+agência e conta: 1185 / 0074826-4
+CNPJ: 19.088.605/0001-04
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+1
+
+Receita Federal
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO DA DECLARAÇÃO COMPLETA - DCTFWeb
+Nome do Contribuinte MGS CLEAN SOLUCOES E SERVICOS 
+LTDA
+CNPJ 19.088.605/0001-04
+Período apuração 12/2025
+Número do Recibo 50000430207126
+Data/Hora da
+Transmissão 15/01/2026 22:58:30
+Identificação da
+Apuração de Débitos
+37151466642 / eSocial
+135903466 / Reinf CP
+135915346 / Reinf RET
+Dados Iniciais
+Classificação Tributária 99-Pessoas Jurídicas em Geral
+Número do Recibo da Declaração Retificada 50000427397721
+Missão Diplomática ou Repartição Consular 0 - Sem acordo
+Ausência de Fatos Geradores Não
+Endereço
+Logradouro DAS AMERICAS
+Número 03434
+Complemento BLC 2 SAL 506
+Bairro/Distrito BARRA DA TIJUCA
+Município RIO DE JANEIRO
+UF RJ
+CEP 22640102
+Telefone 2134892238
+Correio Eletrônico CONTATO@MGSCLEAN.NET
+Dados do Representante do Contribuinte e do Responsável pelo Preenchimento
+Representante EDUARDO DA SILVA AZEVEDO
+CPF 01312777745
+Telefone 00000000
+Correio Eletrônico -
+Responsável pelo
+Preenchimento -
+CPF -
+CRC -
+UF -
+Telefone -
+Correio Eletrônico -
+Débito Apurado e Crédito Vinculado
+Código da Receita 1082-01
+Descrição CP SEGURADOS - EMPREGADOS/AVULSO
+Período Apuração
+Débito 12/2025
+Débito Apurado 936.799,31
+Deduções
+Salário Família: 80.504,65
+Salário Maternidade: 27.134,29
+Retenção Lei 9711/98: 829.160,37
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 1138-01
+Descrição CP PATRONAL - EMPREGADOS/AVULSOS
+Período Apuração
+Débito 12/2025
+Débito Apurado 564.348,23
+Deduções Retenção Lei 9711/98: 564.348,23
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 1646-01
+Descrição CP PATRONAL - GILRAT AJUSTADO
+Período Apuração
+Débito 12/2025
+Débito Apurado 321.004,22
+Deduções Retenção Lei 9711/98: 321.004,22
+Saldo a Pagar 0,00
+
+Débito Apurado e Crédito Vinculado
+Código da Receita 2991-01
+Descrição CP PATRONAL- CPRB - ART. 8º DA LEI 12.546/2011
+Período Apuração
+Débito 12/2025
+Débito Apurado 396.866,56
+Deduções Retenção Lei 9711/98: 396.866,56
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 1170-01
+Descrição CP TERCEIROS - SALÁRIO EDUCAÇÃO
+Período Apuração
+Débito 12/2025
+Débito Apurado 284.578,21
+Deduções Retenção Lei 9711/98: 284.578,21
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 1176-01
+Descrição CP TERCEIROS - INCRA
+Período Apuração
+Débito 12/2025
+Débito Apurado 22.766,25
+Deduções Retenção Lei 9711/98: 22.766,25
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 1191-01
+Descrição CP TERCEIROS - SENAC
+Período Apuração
+Débito 12/2025
+Débito Apurado 113.831,28
+Deduções Retenção Lei 9711/98: 113.831,28
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 1196-01
+Descrição CP TERCEIROS - SESC
+Período Apuração
+Débito 12/2025
+Débito Apurado 170.746,92
+Deduções Retenção Lei 9711/98: 170.746,92
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 1200-01
+Descrição CP TERCEIROS - SEBRAE
+Período Apuração
+Débito 12/2025
+Débito Apurado 68.298,77
+Deduções Retenção Lei 9711/98: 68.298,77
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 0561-07
+Descrição IRRF - RD TRB ASSAL PAÍS/AUS NO EXT A SERV PAÍS
+Período Apuração
+Débito 12/2025
+Débito Apurado 218.134,64
+Saldo a Pagar 218.134,64
+Débito Apurado e Crédito Vinculado
+Código da Receita 1708-06
+Descrição IRRF - REMUNER SERV PRESTADOS POR PJ
+Período Apuração
+Débito 12/2025
+Débito Apurado 270,00
+Saldo a Pagar 270,00
+
+Débito Apurado e Crédito Vinculado
+Código da Receita 5952-07
+Descrição RET DE CONTRIBUICOES PAGT PJ A PJ DE DIR PRIV
+Período Apuração
+Débito 12/2025
+Débito Apurado 837,00
+Saldo a Pagar 837,00
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+Recibo de Entrega da Declaração de Débitos e Créditos Tributários Federais - DCTFWeb
+CNPJ/CPF 19.088.605/0001-04
+Nome MGS CLEAN SOLUCOES E SERVICOS LTDA
+Período de apuração 12/2025
+Declaração Retificadora Sim
+Identificação da apuração de débitos
+37151466642 / eSocial
+135903466 / Reinf CP
+135915346 / Reinf RET
+Totalização dos tributos apurados no período
+Tributos
+Débitos Apurados
+Saldo a Pagar
+Contribuição Previdenciária Segurados
+R$ 936.799,31
+R$ 0,00
+Contribuição Previdenciária Patronal
+R$ 1.282.219,01
+R$ 0,00
+Contribuição para Outras Entidades e Fundos
+R$ 660.221,43
+R$ 0,00
+Contribuições Diversas
+R$ 0,00
+R$ 0,00
+COFINS
+R$ 0,00
+R$ 0,00
+COSIRF
+R$ 0,00
+R$ 0,00
+CPSS
+R$ 0,00
+R$ 0,00
+CSLL
+R$ 0,00
+R$ 0,00
+CSRF
+R$ 837,00
+R$ 837,00
+IOF
+R$ 0,00
+R$ 0,00
+IPI
+R$ 0,00
+R$ 0,00
+IRPJ
+R$ 0,00
+R$ 0,00
+IRRF
+R$ 218.404,64
+R$ 218.404,64
+PIS
+R$ 0,00
+R$ 0,00
+RET/Pagamento Unificado
+R$ 0,00
+R$ 0,00
+TOTAL
+R$ 3.098.481,39
+R$ 219.241,64
+O presente Recibo de Entrega da DCTFWeb contém a transcrição da Ficha Resumo da referida declaração, que constitui
+confissão de dívida, de forma irretratável, dos tributos declarados. Fica o declarante ciente de que os tributos declarados na
+DCTFWeb e não pagos serão enviados para inscrição em Dívida Ativa da União, conforme o disposto no parágrafo 2º do artigo 5º
+do Decreto-Lei nº 2.124, de 13 de junho de 1984, combinado com a Portaria MF nº 118, de 28 de junho de 1984, estando o
+declarante sujeito ainda a:
+1) Sobre os tributos não pagos ou não recolhidos nos prazos legais incidirão multa e juros de mora, nos termos do art. 61 da Lei
+nº 9.430, de 27 de dezembro de 1996, combinado com o art. 35 da Lei nº 8.212, de 24 de julho de 1991;
+2) inclusão no Cadastro Informativo de Créditos não Quitados do Setor Público Federal (CADIN), impedindo operações de crédito
+com recursos públicos, a concessão de incentivos fiscais e financeiros e a celebração de convênios e similares que envolvam
+desembolso de recursos públicos e respectivos aditamentos (Lei nº 10.522, de 19 de julho de 2002);
+3) encaminhamento ao Ministério Público Federal de Representação Fiscal para Fins Penais nos casos que, em tese, tenha
+ocorrido crime contra a ordem tributária ou contra a previdência social, por deixar de recolher, no prazo legal, valor de tributo ou
+de contribuição social, descontado ou cobrado, na qualidade de sujeito passivo de obrigação e que deveria recolher aos cofres
+públicos (Lei nº 8.137, de 27 de dezembro de 1990 e Código Penal).
+No caso de falta de apresentação ou de apresentação de declaração com incorreções ou omissões, o contribuinte ficará sujeito às
+multas previstas no artigo 32-A da Lei nº 8.212, de 1991, e no art. 7º da Lei nº 10.426, de 24 de abril de 2002.
+Não surtirão efeitos as retificações de informações prestadas na DCTFWeb que pretendam excluir ou reduzir débitos:
+enviados para inscrição em Dívida Ativa da União, sejam eles saldos a pagar ou valores apurados em procedimento de
+auditoria interna;
+incluídos em parcelamento deferido;
+que tenham sido objeto de declaração de compensação não passível de retificação ou cancelamento.
+Também não surtirão efeitos as retificações de débitos de tributos em relação aos quais o sujeito passivo tenha sido objeto de
+procedimento fiscal e/ou nos casos em que a apresentação da declaração ocorra após o prazo decadencial.
+Dados do Representante da Pessoa Jurídica
+Nome EDUARDO DA SILVA AZEVEDO
+CPF 013.127.777-45
+Telefone -
+
+Recibo de Entrega da DCTFWeb
+DCTFWeb recebida via Internet pelo Agente Receptor SERPRO em 15/01/2026 22:58:30
+Nº do recibo de entrega 0000050000430207126
+DCTFWeb transmitida com assinatura de certificado digital por 19.088.605/0001-04
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO RESUMO DE CRÉDITOS - DCTFWeb
+Nome do Contribuinte
+MGS CLEAN SOLUCOES E SERVICOS 
+LTDA
+CNPJ
+19.088.605/0001-04
+Período de Apuração
+12/2025
+Número do Recibo
+0000050000430207126
+Data/Hora da Transmissão
+15/01/2026 22:58:30
+Identificação da Apuração 
+de Débitos
+37151466642 / eSocial
+135903466 / Reinf CP
+135915346 / Reinf RET
+Descrição
+Valor Informado/Importado
+Valor Vinculado a Débito
+Saldo disponível
+Retenção Lei 9711/98 ou 
+adiantamento de retenção
+3.219.045,86
+2.771.600,81
+447.445,05
+Salário Família
+80.504,65
+80.504,65
+0,00
+Salário Maternidade
+27.134,29
+27.134,29
+0,00
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO RESUMO DE DÉBITOS - DCTFWeb
+Nome do Contribuinte
+MGS CLEAN SOLUCOES E SERVICOS 
+LTDA
+CNPJ
+19.088.605/0001-04
+Período de Apuração
+12/2025
+Número do Recibo
+0000050000430207126
+Data/Hora da Transmissão
+15/01/2026 22:58:30
+Identificação da Apuração 
+de Débitos
+37151466642 / eSocial
+135903466 / Reinf CP
+135915346 / Reinf RET
+Grupo: CONTRIBUIÇÃO PREVIDENCIÁRIA SEGURADOS
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1082-01 CP SEGURADOS - EMPREGADOS/AVULSO
+12/2025
+936.799,31 936.799,31
+0,00
+Grupo: CONTRIBUIÇÃO PREVIDENCIÁRIA PATRONAL
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1138-01 CP PATRONAL - EMPREGADOS/AVULSOS
+12/2025
+564.348,23 564.348,23
+0,00
+1646-01 CP PATRONAL - GILRAT AJUSTADO
+12/2025
+321.004,22 321.004,22
+0,00
+Grupo: CONTRIBUIÇÕES SOCIAIS
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+2991-01 CP PATRONAL- CPRB - ART. 8º DA LEI 12.546/2011
+12/2025
+396.866,56 396.866,56
+0,00
+Grupo: CONTRIBUIÇÃO PARA OUTRAS ENTIDADES E FUNDOS
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1170-01 CP TERCEIROS - SALÁRIO EDUCAÇÃO
+12/2025
+284.578,21 284.578,21
+0,00
+1176-01 CP TERCEIROS - INCRA
+12/2025
+22.766,25
+22.766,25
+0,00
+1191-01 CP TERCEIROS - SENAC
+12/2025
+113.831,28 113.831,28
+0,00
+1196-01 CP TERCEIROS - SESC
+12/2025
+170.746,92 170.746,92
+0,00
+1200-01 CP TERCEIROS - SEBRAE
+12/2025
+68.298,77
+68.298,77
+0,00
+Grupo: IRRF
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+0561-07 IRRF - RD TRB ASSAL PAÍS/AUS NO EXT A SERV PAÍS
+12/2025
+218.134,64
+0,00 218.134,64
+1708-06 IRRF - REMUNER SERV PRESTADOS POR PJ
+12/2025
+270,00
+0,00
+270,00
+Grupo: CSRF
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+5952-07 RET DE CONTRIBUICOES PAGT PJ A PJ DE DIR PRIV
+12/2025
+837,00
+0,00
+837,00

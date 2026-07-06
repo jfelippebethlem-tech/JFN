@@ -1,0 +1,562 @@
+[Relação de Ordens Bancárias Externas 2025OB09615] (fase: despesa · tipo: ordem_bancaria)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 31
+Encerrado até Maio 
+Identificação
+UG Emitente
+Documento
+Emissão
+296100 - FES
+2025OB09615
+23/06/25
+UG Liquidante
+UG Pagadora
+296100 - FES
+296100 - FES
+Valor por Extenso
+Valor
+Cinco milhões e setecentos mil de reais
+5.700.000,00
+Detalhamento
+Nota Liquidação
+2025NL04348
+Nota de Empenho
+2025NE04557
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Origem
+001 - 2234 - 0000095699 - CONTA D
+Domicílio Bancário Destino
+237 - 0543 - 0000000582360
+Competência
+01/2025
+Processo
+SEI-080001/011330/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+4177 - Pagamento da despesa 
+empenhada e liquidada no 
+Exercício Atual
+99 - Sem consumo de 
+Limite de Saque
+5.700.000,00
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE04557 CONFORME PROCESSO Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 
+19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover a melhoria da qualidade e resolubilidade do atendimento aos 
+usuários do SUS, competência de Janeiro/2025, conforme solicitação (102760505). HOSP.DO CANCER E DO CORAÇÃO - HCCOR
+Registro de Envio
+UG Emitente
+296100
+Emissão
+23/06/25
+Documento
+2025RE02191
+Data de Envio
+23/06/25
+Status de Envio
+Processado e Pago
+Data de retorno
+28/06/25
+Tipo de Pagamento
+Normal
+Retorno
+Ordem bancária 
+paga e liberada com 
+sucesso.
+Programação de Desembolso
+Documento
+2025PD10499
+Emissão
+23/06/25
+Data de 
+Programação
+23/06/25
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCAS LIBERATO ANDRE em 23/06/25 às 11:55.
+Impresso por CAIO PIMENTEL MAXIMO em 01/07/25 às 15:53.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 31
+Encerrado até Maio 
+Identificação
+UG Emitente
+Documento
+Emissão
+296100 - FES
+2025OB09614
+23/06/25
+UG Liquidante
+UG Pagadora
+296100 - FES
+296100 - FES
+Valor por Extenso
+Valor
+Dois milhões e duzentos mil de reais
+2.200.000,00
+Detalhamento
+Nota Liquidação
+2025NL04347
+Nota de Empenho
+2025NE04556
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Origem
+001 - 2234 - 0000095699 - CONTA D
+Domicílio Bancário Destino
+237 - 0543 - 0000000582360
+Competência
+01/2025
+Processo
+SEI-080001/011330/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+4177 - Pagamento da despesa 
+empenhada e liquidada no 
+Exercício Atual
+99 - Sem consumo de 
+Limite de Saque
+2.200.000,00
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE04556 CONFORME PROCESSO Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 
+19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover a melhoria da qualidade e resolubilidade do atendimento aos 
+usuários do SUS, competência de Janeiro/2025, conforme solicitação (102760505). CENTRO DE IMAGEM E ESPECIALIDADES DE SÃO GONÇALO
+Registro de Envio
+UG Emitente
+296100
+Emissão
+23/06/25
+Documento
+2025RE02191
+Data de Envio
+23/06/25
+Status de Envio
+Processado e Pago
+Data de retorno
+28/06/25
+Tipo de Pagamento
+Normal
+Retorno
+Ordem bancária 
+paga e liberada com 
+sucesso.
+Programação de Desembolso
+Documento
+2025PD10493
+Emissão
+23/06/25
+Data de 
+Programação
+23/06/25
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCAS LIBERATO ANDRE em 23/06/25 às 11:55.
+Impresso por CAIO PIMENTEL MAXIMO em 01/07/25 às 15:53.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 31
+Encerrado até Maio 
+Identificação
+UG Emitente
+Documento
+Emissão
+296100 - FES
+2025OB09613
+23/06/25
+UG Liquidante
+UG Pagadora
+296100 - FES
+296100 - FES
+Valor por Extenso
+Valor
+Hum milhão e setecentos e cinquenta mil de reais
+1.750.000,00
+Detalhamento
+Nota Liquidação
+2025NL04346
+Nota de Empenho
+2025NE04555
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Origem
+001 - 2234 - 0000095699 - CONTA D
+Domicílio Bancário Destino
+237 - 0543 - 0000000582360
+Competência
+01/2025
+Processo
+SEI-080001/011330/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+4177 - Pagamento da despesa 
+empenhada e liquidada no 
+Exercício Atual
+99 - Sem consumo de 
+Limite de Saque
+1.750.000,00
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE04555 CONFORME PROCESSO Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 
+19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover a melhoria da qualidade e resolubilidade do atendimento aos 
+usuários do SUS, competência de Janeiro/2025, conforme solicitação (102760505). HOSP.INFANTIL DARCY SOUZA VARGAS.
+Registro de Envio
+UG Emitente
+296100
+Emissão
+23/06/25
+Documento
+2025RE02191
+Data de Envio
+23/06/25
+Status de Envio
+Processado e Pago
+Data de retorno
+28/06/25
+Tipo de Pagamento
+Normal
+Retorno
+Ordem bancária 
+paga e liberada com 
+sucesso.
+Programação de Desembolso
+Documento
+2025PD10490
+Emissão
+23/06/25
+Data de 
+Programação
+23/06/25
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCAS LIBERATO ANDRE em 23/06/25 às 11:54.
+Impresso por CAIO PIMENTEL MAXIMO em 01/07/25 às 15:53.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 31
+Encerrado até Maio 
+Identificação
+UG Emitente
+Documento
+Emissão
+296100 - FES
+2025OB09612
+23/06/25
+UG Liquidante
+UG Pagadora
+296100 - FES
+296100 - FES
+Valor por Extenso
+Valor
+Cinco milhões e duzentos e cinquenta mil de reais
+5.250.000,00
+Detalhamento
+Nota Liquidação
+2025NL04345
+Nota de Empenho
+2025NE04554
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Origem
+001 - 2234 - 0000095699 - CONTA D
+Domicílio Bancário Destino
+237 - 0543 - 0000000582360
+Competência
+01/2025
+Processo
+SEI-080001/011330/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da despesa 
+empenhada e liquidada no 
+Exercício Atual
+99 - Sem consumo de 
+Limite de Saque
+5.250.000,00
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE04554 CONFORME PROCESSO Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 
+19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover a melhoria da qualidade e resolubilidade do atendimento aos 
+usuários do SUS, competência de Janeiro/2025, conforme solicitação (102760505). PRONTO SOCORRO CENTRAL DR.ARMANDO GOMES DE SÁ COUTO
+Registro de Envio
+UG Emitente
+296100
+Emissão
+23/06/25
+Documento
+2025RE02191
+Data de Envio
+23/06/25
+Status de Envio
+Processado e Pago
+Data de retorno
+28/06/25
+Tipo de Pagamento
+Normal
+Retorno
+Ordem bancária 
+paga e liberada com 
+sucesso.
+Programação de Desembolso
+Documento
+2025PD10489
+Emissão
+23/06/25
+Data de 
+Programação
+23/06/25
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCAS LIBERATO ANDRE em 23/06/25 às 11:54.
+Impresso por CAIO PIMENTEL MAXIMO em 01/07/25 às 15:53.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 31
+Encerrado até Maio 
+Identificação
+UG Emitente
+Documento
+Emissão
+296100 - FES
+2025OB09611
+23/06/25
+UG Liquidante
+UG Pagadora
+296100 - FES
+296100 - FES
+Valor por Extenso
+Valor
+Cinco milhões de reais
+5.000.000,00
+Detalhamento
+Nota Liquidação
+2025NL04344
+Nota de Empenho
+2025NE04553
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Origem
+001 - 2234 - 0000095699 - CONTA D
+Domicílio Bancário Destino
+237 - 0543 - 0000000582360
+Competência
+01/2025
+Processo
+SEI-080001/011330/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+4177 - Pagamento da despesa 
+empenhada e liquidada no 
+Exercício Atual
+99 - Sem consumo de 
+Limite de Saque
+5.000.000,00
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE04553 CONFORME PROCESSO Resolução SES Nº 3645 de 16 de maio de 2025, publicada no D.O. de 
+19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo de promover a melhoria da qualidade e resolubilidade do atendimento aos 
+usuários do SUS, competência de Janeiro/2025, conforme solicitação (102760505). HOSP.MUN.DE RETARGUADA.
+Registro de Envio
+UG Emitente
+296100
+Emissão
+23/06/25
+Documento
+2025RE02191
+Data de Envio
+23/06/25
+Status de Envio
+Processado e Pago
+Data de retorno
+28/06/25
+Tipo de Pagamento
+Normal
+Retorno
+Ordem bancária 
+paga e liberada com 
+sucesso.
+Programação de Desembolso
+Documento
+2025PD10488
+Emissão
+23/06/25
+Data de 
+Programação
+23/06/25
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCAS LIBERATO ANDRE em 23/06/25 às 11:54.
+Impresso por CAIO PIMENTEL MAXIMO em 01/07/25 às 15:53.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

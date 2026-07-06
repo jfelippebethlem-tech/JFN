@@ -1,0 +1,100 @@
+{
+ "processo": "260007/012839/2025",
+ "gerado_em": "2026-07-06T08:15:21+00:00",
+ "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_012839_2025",
+ "modalidade": "",
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Nota de Liquidação - 2025NL05623",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_nota_de_liquida_o_2025nl05623.txt",
+   "chars": 2446,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Solicitação de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/002_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Nota Fiscal - NF 2164",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/003_nota_fiscal_nf_2164.txt",
+   "chars": 5250,
+   "ocr": true,
+   "fotos": [
+    "fotos/003_p01.jpg",
+    "fotos/003_p02.jpg"
+   ]
+  },
+  {
+   "i": 4,
+   "titulo": "Nota de Empenho Reforço - NE 2025NE05441",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/004_nota_de_empenho_refor_o_ne_2025ne05441.txt",
+   "chars": 2670,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Nota de Empenho Original - NE 2025NE01441",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/005_nota_de_empenho_original_ne_2025ne01441.txt",
+   "chars": 2410,
+   "ocr": true,
+   "fotos": []
+  }
+ ],
+ "linha_do_tempo": {
+  "planejamento": 0,
+  "selecao": 0,
+  "contratacao": 0,
+  "execucao": 0,
+  "despesa": 6,
+  "controle": 0,
+  "tramitacao": 0,
+  "indefinida": 0
+ },
+ "lacunas": [
+  {
+   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Seleção (edital, julgamento, homologação)",
+   "gravidade": "alta"
+  },
+  {
+   "falta": "Contrato/ata formalizados",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
+  }
+ ],
+ "fotos_total": 2
+}

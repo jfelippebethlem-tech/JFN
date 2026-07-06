@@ -1,0 +1,541 @@
+[] (fase: indefinida · tipo: vazio)
+
+30
+
+horas
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF/CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: ADAILTON LOPES PEREIRA
+CPF / CNPJ do recebedor: 00.060.557/2307-72
+instituição: CAIXA ECONOMICA FEDERAL
+agência/conta: 4064/737494567.2
+tipo de conta: Conta Poupanca
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+C2BFO0A10DE427EA37B44665DEC25E8S9BC6F4549
+ID da transação:
+E60701190202311071818DY5UPUF76EJ
+controle:
+000028311235197
+transação efetuada em 07/11/2023 às 15:18:31 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e litanas) ou 0800 7701 685(demais
+h lades). ões, 1 tas; OL VIVOS
+
+es e cancelamentos: SAC 0800 728 N798 94 harac mar dio
+
+
+30
+
+horas
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF/CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: ALEX LIMA ABREU
+chave: 58194339120
+CPF / CNPJ do recebedor: ***.943.397-*+
+instituição: BCO SANTANDER (BRASIL) S A
+gados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+8292699843C5F9B33B2D22C375ESCGEFAGES4ADTA
+ID da transação:
+E60701190202311071819DY5NPPNZZEL
+controle:
+000028311233261
+transação efetuada em 07/11/2023 às 15:19:58 via Sispag.
+
+Em caso de dúvidas. de posse do comprava espia aan
+
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: ALEXANDRE MACIEIRA DE MEDEIROS
+CPF / CNPJ do recebedor: 00.000.278/9537-86
+instituição: BCO SANTANDER (BRASIL) S A
+agência/conta: 4350/1090407-7
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: Vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+66B131D4F1ADFE459D7CE9BIDCB83B90E965888D
+ID da transação:
+E60701190202311071819DY5X77RDW9P
+controle:
+000028311231475
+transação efetuada em 07/11/2023 às 15:19:17 via Sispag.
+
+ate seu u gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+ONA TIB NOR SA hnrao nar dia antala Cannera una tai com hriemprasasSe não ficar satisfeito com
+
+
+Horas
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208,086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: ANDERSON DA SILVA BELLO JUNIOR
+CPE / CNPJ do recebedor: ***+361546-*
+instituição: ITAU UNIBANCO S A
+agência/conta: 5006/22708-5
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+81242723BACB27315360AE01EDFE501045E4CB60
+iD da transação:
+E60701190202311071820DY5W53XN9HB
+controle:
+000028311235543
+transação efetuada em 07/11/2023 às 15:20:45 via Sispag.
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: ANTONIO VIEIRA JUSTINO MATOS
+CPE / CNPJ do recebedor: **"":749121-*
+instituição: ITAU UNIBANCO S A
+agência/conta: 0847/99026-4
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+34D365102BF23AA3CC896991DD7C7BB6ABBFE1F2
+ID da transação:
+E60701190202311071821DY5Q0OASL85M
+controle:
+000028311235691
+transação efetuada em 07/11/2023 às 15:21:23 via Sispag.
+
+e do comprovante, contate seu ger:
+
+e regiões metropolitanas) ou 0800 7701685(demais
+
+30
+
+Horas
+
+dados do pagador
+
+nome do pagador:
+CPF / CNPJ do pagador
+agência/conta
+
+dados do recebedor
+nome do recebedor.
+CPF / CNPJ do recebedor.
+instituição
+agência/conta
+tipo de conta
+
+dados da transação
+valor:
+data da transferência
+tipo de pagamento
+
+Comprovante de Transferência
+
+: MOBILIZA FOR RENT LTDA
+: 35.208.086/0001-27
+:3212/28192 -1
+
+: DIOGO MARQUES VIEIRA
+DOG
+
+“ITAU UNIBANCO S A
+
+: 1246/60824-2
+
+: Conta Corrente
+
+: R$ 490,00
+: 07/11/2023
+: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante
+
+: vale alimentacao
+
+identificação no extrato:
+
+autenticação no comprovante:
+BCA2ZD46DB896D4D55C475945198696183ECBE65F
+ID da transação:
+E60701190202311071822DY55B8P94YD
+controle:
+
+000028311235954
+transação efetuada em 07/11/2023 às 15:22:03 via Sispag.
+
+
+30
+
+Horas
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF/CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: IVAN MOREIRA FILHO
+chave: +5521983470672
+CPF / CNPJ do recebedor: ****"467469-+*
+instituição: BANCO INTER
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+BB3E08810E987B284D39E5C723155F6DA3750287
+ID da transação:
+E60701190202311071822DY5XX621EN8
+controle:
+000028311235880
+transação efetuada em 07/11/2023 às 15:22:42 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+
+30
+
+Horas
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: IZEQUIAS CHAVES MARINHO MACHAD
+CPF/CNPJ do recebedor: ***"*210102.*+
+instituição: ITAU UNIBANCO S A
+agência/conta: 6102/07930-5
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERÊNCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+003C4AEA4F25A8B3E81088553078194B60957D5E
+ID da transação:
+E60701190202311071824DY5I00OJGKON
+controle:
+000028311231106
+transação efetuada em 07/11/2023 às 15:24:04 via Sispag.
+
+Em raso de dúvidas da nneco do emnmrrnvanta mantata ca moronto meto Vota] ET E DT O e
+
+
+horas
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF/CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: JORGE LUIZ DE CARVALHO
+CPF/CNPJ do recebedor: **""*590025-*+
+instituição: ITAU UNIBANCO S A
+agência/conta: 0358/32054-7
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+mensagem ao recebedor:
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+896CE7FFAGE46A9734AD3FBF01C7EIBB8FASDF32
+
+ID da transação:
+E60701190202311071824DY5CEP6UDOZ
+
+controle:
+
+900028311233988
+
+transação efetuada em 07/11/2023 às 15:24:39 via Sispag.
+
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebador
+nome do recebedor: JOSE ANTONIO DA SILVA MENDES
+CPF / CNPJ do recebedor: *****146420-*
+instituição: ITAU UNIBANCO S A
+agência/conta: 7205/10548-4
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+C88F5EBA632CDCDFF41DB491A1639EA140432F27
+ID da transação:
+E60701190202311071825DY57NLLOMOG
+controle:
+000028311237173
+transação efetuada em 07/11/2023 às 15:25:17 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+jnmalidadaos Danlamanãao infarmantas à namaolamantina: CAP Nnenn 798 N9984 94 harao nar dia mala Cranacme nana tar anm hriamnracacãºa não firar eaticfaita com
+
+ioras
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: MARCELO DE ALMEIDA MARQUES
+chave: 96335483734
+CPE / CNPJ do recebedor: ***,354,837-**
+instituição: ITAU UNIBANCO S A
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+1E05D27E0ABCD78F793A8227683E8BC4B9248C5C
+ID da transação;
+E60701190202311071825DY5CZCOF2PR
+controle:
+000028311236029
+transação efetuada em 07/11/2023 às 15:25:57 via Sispag.
+
+mama] mm ANNA GORE (nomitaio o roniães patrenalitanacã mir NRAN TT RAB Aomaie
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: NELSON PINHEIRO DOS SANTOS
+CPF / CNPJ do recebedor: 00.074.010/3797-15
+instituição: BCO BRADESCO S A
+agência/conta: 0129/0157806-5
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+mensagem ao recebedor:
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+AE113B9FF163F473BCCD95663799F280E10CD7AD
+
+ID da transação:
+E60701190202311071826DY5SUG8831U
+
+controle;
+
+000028311231383
+
+transação efetuada em 07/11/2023 às 15:26:39 via Sispag.
+
+
+30
+
+Horas
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: PAULO GILBERTO PEREIRA DE LIMA
+CPF / CNPJ do recebedor: 00.076.663/7527-15
+instituição: BCO BRADESCO S A
+agência/conta: 1186/0015665-5
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+D866A77AABFE26392D8B0025E03A9CC140EDF119
+ID da transação:
+E60701190202311071827DY5RHAIN95S
+controle:
+000028311237264
+transação efetuada em 07/11/2023 às 15:27:16 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) cu 0800 7701685(demais
+
+imras
+
+Comprovante de Transferência
+
+dacdos do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+“dados do recebedor
+nome do recebedor: RODRIGO GOMES DE QUEIROZ OLIVE
+CPF/CNPJ do recebedor: 00.008.547/2137-16
+instituição: BCO SANTANDER (BRASIL) S A
+agência/conta: 3140/2000661.1
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+E712C97DF4DE29A0DE315821572710CE346F1239
+ID da transação:
+E60701190202311071936DY50L7UW2H3
+controle:
+000028311232063
+transação efetuada em 07/11/2023 às 16:36:50 via Sispag.
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: SERGIO OLIVEIRA DE AGUIAR
+chave: 07188050708
+CPF / CNPJ do recebedor: **"*.880.507**
+instituição: CAIXA ECONOMICA FEDERAL
+dados da transação
+valor: R$ 490,00
+data da transferência: 07/11/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: vale alimentacao
+identificação no extrato:
+
+autenticação no comprovante:
+576DGEA6GBF05576FFF8B2E2C30669F588FE66958
+ID da transação:
+E60701190202311071828DY52DSHUESI
+controle:
+000028311234756
+transação efetuada em 07/11/2023 às 15:28:14 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701585(demais

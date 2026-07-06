@@ -1,0 +1,833 @@
+[] (fase: indefinida · tipo: vazio)
+
+03/09/2025, 09:48 Vo Pedido de abertura de crédito de Importação (IC)
+
+; Pedido de abertura de crédito de importação (IC)
+Rio de Janeiro, 01 de agosto de 2025
+
+Ao :
+BANCO DO BRASIL S.A.
+sr. Gerente, | =
+
+- ABERTURA DE CRÉDITO DOCUMENTÁRIO PARA IMPORTAÇÃO DE MERCADORIAS -
+
+Solicitamos-lhe promover a abertura no exterior de um crédito documentário irrevogável
+para importação de mercadorias, de conformidade com as Regras e Usos Uniformes
+Relativos aos Créditos Documentários, revisão de 2007, publicação nº 600 da Câmara
+Internacional de Comércio, bem como com as Regras Uniformes para Reembolsos
+Bancários, amparados em créditos documentários, de 2008, publicação nº 725 da Câmara
+Intemacional de Comércio, que declaramos conhecer, e de acordo, igualmente, com as
+condições constantes do presente pedido.
+
+Banco avisador
+
+: Barclays Bank PLC
+
+* Moeda [or
+
+| BRL 22.000.000,00
+
+É Tolerância valor o | Percentual de Tolerância
+É Não : : É
+
+É Tolerância quantidade | Percentual de Tolerância
+
++ Não - -b -
+
+i Banco negociador
+É Barclays Bank PLC
+
+é Tomador : nois
+
+é SECRETARIA DE ESTADO DE DEFESA CIVIL- RJ
+
+|: Agência da conta para débito Conta para débito
+
+i 2234 * Rega
+
+É Autorização da utilização do limite de crédito (Cheque Especial)
+
+E
+“indo
+
+| Autorização para realização de lançamentos parciais e de parcelas vencidas
+
+ENão cos no “o : :
+
+: Endereço do Tomador
+É PRACA DA REPUBLICA 45
+
+Bairro do Tomador É Cidade do Tomador $ UF do Tomador
+I cENTRO | RIO DE JANEIRO ER
+| Beneficiário
+É ANGLOCO LIMITED
+
+pridtmnmmiloeto me
+
+' é Endereço do Beneficiário
+" E STATION ROAD, BATLEY
+
+pá 4 | Cidade do Beneficiário | País do Beneficiário
+— EWEST YORKSHIRE E inglaterra
+. red do agente a ser deduzida do crédito | Local de embarque
+“* À Não há PORTO DA INGLATERRA
+Prazo ou data prevista para embarque
+é 339 DIAS DA EMISS?O ,
+Mod. 0.70.225-8 - Fev/2021 - SISBB 21050 - bb.com.br - pvb Pág. 1/10
+htips:/Mww45.bb.com.br/fme/frmifw0702258 2.jsp 19
+
+Scanned with
+
+Dc
+
+03/09/2025, 09:48 : Pedido de abertura da crédito de importação (IC)
+
+Pedido de abertura de crédito de importação (IC)
+
+| Local e data de vencimento do crédito
+
+INGLATERRA - 360 DIAS DA EMISSÃO
+
+| Embarques parciais Transbordos
+Permitidos Permitidos
+Por pagamento ,
+| À vista
+Local de descarga . País de origem da mercadoria
+: PORTO RIO DE JANEIRO b Inglaterra
+
+E NCM, Destaque de NCM e Mercadoria
+
+: 8705.30.00
+
+É Descrição da Mercadoria:
+
+É LIGHT AUTO SEARCH AND LIGHT RESCUE (ABSL) VEHICLE ”
+
+É Mercadoria conforme roms so
+É Fatura proforma nº P/10001
+É Saque(s) emitidos pelo beneficiário com vencimento em
+
+Mod. 0.70.225-8 - Fev/2021 - SISBB 21050 -bb.com.br - pvb Pág. 2/10
+Pedido « de abertura de crédito de importação (IC)
+
+Documentos a serem exigidos do beneficiário
+Documentos de embarque "o :
+Cópia de conhecimento marítimo limpo a bordo”
+f Número de originais  - TT . Número de cópias
+É Í 1
+E Condições de emissão dos documentos de embarque
+
+| Fatura Comercial
+
+DAP - Originais mais cinco cópias
+
+Frete
+
+Pago —— |
+hitpstwww45.bb.com.br/fmetrm/fw0702258 2.)sp 2
+
+Scanned with
+
+Dc
+
+
+03/09/2025, 09:48 no . Pedido de abertura de crédito de importação (IC)
+
+Outros documentos...
+
+; É COMMERCIAL INVOICE IN 4 COPIES :
+
+“É PACKING LIST IN ORIGINAL PLUS ONE COPY
+INSURANCE CERTIFICATE (COPY) '
+BENEFICIARY'S DECLARATION THAT, ORIGINALS AND corY oF REQUIRED
+DOCTISWE
+WERE REMITTED TO FREIGHT FOWARDER MAURY PEREIRA
+GUILHERME - ADDRESS AVENIDA REPUBLICA DO LIBANO, 2341, SALA 310,
+
+SETOR OESTE, 74115- 080 GOIÂNIA, Go, BRASIL. RR
+4 .
+
+Os documentos deverão ser apresentados até dias da data dee emissão dos
+* E documentos de embarque, mas dentro do prazo de validade do crédito.
+Condições especiais |.
+VALOR SERA CONVERTIDO EM LIBRAS ESTERLINAS DE ACORDO COMA
+
+“ficontRatacaO
+: | DO CÂMBIO cre
+; é PAGAMENTO CONTRA APRESENTA??20 DO TERMO DE RECEBIMENTO.
+! é DEFINITIVO DA
+| MERCADORIA PELO TOMADOR
+| |
+E
+
+E Despesas e comissões intemas Ea 5 Despesas é e comissões externas (se houver)
+
+é houver) devem correr rr N à devem correr".
+
+É Por conta do beneficiário o “ & Por conta do beneficiário *
+
+Confirmação do crédito
+
+- E Não autorizar a confirmação mo Von :
+Banco Confirmador (se houver) * ' o
+
+HPNERCTE | SIGREREREO | tome | semana |:
+
+. E Prêmio de seguro: pagamento a cargo , “4 Seguradora
+É Do Beneficiário À É DO BENEFICIÁRIO.
+
+Mod. o. 70. 225-. 8 - Fev/2021 - SISBB 21050 - bb.com.br - pvb ' Pág. 3/10
+. * Pedido de abertura de crédito de importação (IC)
+
+1. Declaramo-nos cientes de que esse Banco e seus correspondentes não assumirão
+4 qualquer responsabilidade quanto:
+
+y a) à correção, validade ou legitimidade de qualquer documento mencionado na página 01
+Í deste;
+
+b) à espécie, quantidade, qualidade ou entrega de mercadorias que tais documentos
+digam representar;
+
+.c) às consequências de qualquer engano, atraso ou omissão na transmissão da
+! correspondência, inclusive telegráfica;
+
+d) ao extravio de documentos, ,
+
+2. Declaramo-nos, também, cientes de que pode esse Banco exigir de nós depósito prévio
+em moeda nacional, em conta vinculada ao crédito, em montante a ser estabelecido pelo
+Banco, suficiente para a liquidação do crédito, e pelo presente nos obrigamos a não
+utilizar, para qualquer fim, o depósito que venha a ser constituído com esse propósito,
+enquanto não for integralmente liquidado o crédito objeto deste pedido.
+
+https:/Awww45.bb.com.br/fme/frm/fw0702258. 2isp . 30
+
+Scanned with
+
+Dc
+
+
+03/09/2025, 09:48 Pedido de abertura de crédito de importação (IC)
+
+3. Uma vez liquidado o crédito a que se refere este pedido e resgatados todos os nossos
+compromissos dele decorrentes, a garantia de remanescente, se -houver, inclusive
+eventual saldo na conta vinculada ao crédito poderá ser retida por esse Banco para
+aplicação no pagamento de outras dívidas por que respondamos, junto a qualquer uma de
+suas agências. .
+4. Sempre que não exigida a integralização prévia do depósito 'em moeda nacional em
+conta vinculada ao crédito, obrigamo-nos a contratar seguro no País, em favor do Banco,
+da mercadoria a ser importada ou, quando admitida a realização do seguro no exterior,
+autorizamos a inclusão no crédito, de cláusula exigindo a emissão da respectiva apólice
+em favor do Banco — válido o seguro, em ambas as hipóteses, por 60 dias após a |
+descarga da mercadoria no local de destino, cobrindo todos os riscos de perdas ou danos
+físicos provenientes de qualquer causa (nos termos da INSTITUTE CARGO CLAUSES —
+Au Risks), sem restrição de percentagem (exceto nos casos de franquia dedutível
+obrigatória) e estendido para incluir greves, comoções civis e guerra (esta exceto quando
+a mercadoria for transportada por via terrestre, fluvial ou lacustre), na forma do
+INSTITUTE STRIKES RIOTS AND CIVIL COMMOTIONS CLAUSES, com cláusula de
+transbordo, ficando ainda estabelecido que:
+a) se as mercadorias, por qualquer circunstância, não forem por nós recebidas, obrigamo-
+nos a fazer o pagamento de que trata o item 8, que poderá ser exigido pelo Banco, a seu
+critério, antes e independentemente do recébimento do valor do seguro; ..-
+b) se não ocorrer a retirada dos documentos de importação até o vencimento do seguro da
+mercadoria, autorizamos expressamente o Banco a promover a renovação do seguro, em
+companhia de sua livre escolha, cobrindo todos os riscos a que esteja sujeita, sendo a
+respectiva apólice emitida em favor do Banco;
+c) se assim indicado na página 01, fica o Banco expressamente autorizado a pagar, em
+nosso nome e por nossa conta, o valor do prêmio do seguro contratado junto à companhia
+seguradora indicada na página 01. Esse valor será por nós reembolsado ao Banco, até a
+liquidação do contrato de câmbio, acrescido de juros correspondente à taxa estabelecida
+pelo Banco para a operação, contados da data do pagamento, pelo Banco, do valor do
+
+- prêmio do seguro, até a data do seu reembolso por nós;
+d) se o pagamento do prêmio do seguro ficar a nosso cargo, obrigamo.n nos a comprová-lo
+perante o Banco, imediatamente após efetivado. Na falta de comprovação do pagamento
+
+- do prêmio em tempo hábil, fica o Banco autorizado a levar a débito de nossa conta o valor
+total financiado desta operação.
+5. Declaramo-nos cientes de que o Banco se exime de toda e qualquer responsabilidade
+pelos prejuízos porventura decorrentes de sinistro não coberto totalmente pelo seguro da
+mercadoria.
+Mod. 0.70.225-8 - Fev/2021 - SISBB 21050 - bb.com.br - pvb o Pág. 4/10
+
+Pedido de abertura de crédito de importação (IC)
+
+6. Nos casos de mercadoria sujeita a licenciamento não automático anteriormente ao
+desembaraço aduaneiro, comprometemo-nos a obter a Licença de Importação (L |) junto
+ao órgão competente.
+
+7. Correrão por nossa conta todas as despesas do Banco e de seus correspondentes no
+exterior, inclusive aquelas que, embora a cargo do beneficiário, não venham a ser por ele
+satisfeitas, Tais encargos são devidos mesmo na hipótese de o crédito não vir a ser
+utilizado, parcial ou totalmente, no exterior e fica o Banco, desde já, autorizado a efetuar
+em nossa conta os débitos necessários.
+
+8. Comprometemo-nos, ainda: |
+
+a) a celebrar com o Banco operação de câmbio da importância necessária à liquidação do
+crédito objeto do presente pedido de abertura, convertidos em moeda nacional à taxa de
+câmbio de venda praticada pelo Banco, nas seguintes oportunidades:
+
+1) crédito documentário à vista, sem financiamento - no ato do recebimento do aviso de
+negociação do crédito no exterior por esse Banco, independente do recebimento dos
+documentos; -
+
+1) crédito documentário à vista, com financiamento de banqueiro e a prazo (financiamento
+do exportador) - dois dias úteis antes do vencimento de cada obrigação no exterior.
+
+hitps:/Mww45 bb.com brifme/frm/fw0702258 2)sp . 49
+
+: Scamedwith
+EB camscanner:|
+
+03/09/2025, 09:48 ; Pedido de abertura de crédito de importação (IC) .
+5) a pagar ao Banco, até a data máxima admitida na legislação cambial para liquidação da
+
+- operação de venda de câmbio vinculada ao crédito objeto do presente pedido de abertura,
+
+. O contravalor em moeda nacional à taxa de câmbio de venda praticada pelo Banco, bem
+como o importe referente às demais despesas, comissões e encargos incidentes sobre a
+
+operação, haja ou não a mercadoria chegado ao local de destino. A
+
+9. Conferimos ao Banco mandato irrevogável para celebrar, caso não compareçamos para
+
+fazê-lo na época própria, a operação de venda de câmbio referida no item 8, com poderes
+
+bastantes para assinar o contrato de câmbio pelo punho de seus funcionários e em nosso
+nome, assim como os demais documentos eventualmente necessários à cabal execução
+
+: deste mandato. .
+
+: 10. Ocorrendo a hipótese de o Banco, por força da legislação cambial e das publicações
+internacionais vinculadas à operação, vir a liquidar a operação sem a entrega dos recursos
+por nós compromissada, ficamos cientes de que, por. ter. havido inadimplemento
+
+- contratual, ao Banco é assegurado o direito de exigir, a qualquer tempo, inclusive pela via
+judicial, o retorno de seus capitais, acrescido dos acessórios e demais despesas
+incidentes sobre a operação, a partir da data da liquidação da operação de câmbio, sobre
+o contravalor em moeda nacional da operação, sobre os acessórios e sobre as demais
+despesas, serão exigidos, nos termos da resolução 4.882, de 23 de dezembro de 2020, do
+conselho monetário nacional:
+
+a) juros remuneratórios correspondentes a 150% da taxa média dos “certificados de
+depósitos interbancários - CDI, calculados com base na taxa equivalente diária (ano de
+
+* 252 dias úteis);
+
+b) juros moratórios de 1% (um por cento) ao mês, ou fração, incidentes sobre o valor
+. inadimplido;
+c) multa de 2% (dois por “cento), “calculada + e exigida nos pagamentos parciais, sobre os
+
+“valores amortizados, e na liquidação final, sobre o saldo devedor da dívida.
+
+PARÁGRAFO PRIMEIRO - para fins do disposto neste contrato, entende-se por dias uteis,
+todos os dias, exceto sábados, domingos e feriados bancários nacionais e, por CDI, ataxa
+média anual dos certificados de depósitos | interbancários, : divulgada pela central de
+liquidação financeira de títulos (Cetip).
+
+Mod. 0.70.225-8 - Fev/2021 - SISBB 21050 - bb.com.br - pvb. - - " Pág. 5/10
+: : Pedido de abertura de crédito de importação (IC)
+
+- PARÁGRAFO SEGUNDO - os juros remuneratórios e os juros moratórios previstos nas
+alíneas *a” e "b” retro serão calculados, por dia de atraso, e exigidos nos pagamentos
+. parciais e na. liquidação da dívida, juntamente com as amortizações de principal,
+
+* proporcionalmente aos seus valores nominais.
+PARÁGRAFO TERCEIRO - sem prejuízo dos encargos anteriormente previstos, O devedor
+responderá por prejuízos a que sua mora der causa, nos termos do artigo 395 do código
+- civil, inclusive despesas de cobrança e honorários advocatícios quando devidos.
+11. Declaramo-nos cientes de que o Banco exercerá sobre as mercadorias importadas,
+bem como sobre os documentos que as representam e que lhe serão remetidos pelos
+seus correspondentes no exterior, o direito de retenção que lhe é assegurado pelos artigos
+664 e 681 do Código Civil Brasileiro e mais leis em vigor, até ser reembolsado
+integralmente do principal, juros; comissões e despesas de crédito, ficando também o
+Banco, desde já, investido, por nós de poderes plenos e especiais, de forma irrevogável,
+para, se lhe convier, promover o desembaraço alfandegário das mercadorias, podendo
+. Tecorrer ao órgão governamental competente no sentido de figurar como consignatário
+financiador da importação e, vencido o prazo a que se refere o item 8, independentemente
+" de consulta,. aviso ou interpelação judicial ou extrajudicial, vendê-las pública ou
+particularmente, pelo preço de mercado ou pelo melhor preço que for encontrado ou delas
+dispor de qualquer forma que julgar conveniente, a fim de se pagar dos desembolsos
+feitos, inclusive das despesas com o desembaraço e venda da mercadoria, prestando
+-. contas devidas e nos reclamando, por ação própria, eventual diferença ainda devida ao
+*. Banco.
+12. Ocorrendo saldo no crédito vincendo, e desde que concordemos, nós e o beneficiário,
+
+https:/Awrww45.bb.com brifmc/frm/fw0702258 2.jsp . E)
+
+: Scamedwith
+EB camscanner:|
+
+03/09/2025, 09:48 - ”* Pedido de abertura de crédito de importação (IC)
+com a sua não utilização, ou na hipótese 'dé o crédito tornar-se vencido, sem utilização
+pelo beneficiário, fica o Banco, desde já autorizado por nós a promover o cancelamento
+devido, bem como a levar a nossa conta, se for O caso, o valor em moeda nacional do
+saldo remanescente do depósito que tenha sido constituído conforme o item 2 retro. Para
+tanto, fica o Banco investido de plenos pôderes para assinar, pelo punho de funcionários
+de seu quadro e em nosso nome, os novos instrumentos - inclusive contrato de câmbio -
+” necessários a esses cancelamentos, too j
+“43. Ocorrendo alterações nas condições do crédito'a que se refere este pedido,
+” assumimos o compromisso irrevogável e irretratável de honrar' os saques e/ou
+documentos apresentados de acordo com as condições originais do crédito:
+; a) antes da chegada do aviso da alteração às mãos do banqueiro no exterior; ou
+: b) no caso de a emenda não ser aceita pelas demais partes interessadas. ,
+
+“ 44. Tratando-se de crédito transferível, responsabilizamo-nos: por todos os ônus ou
+prejuízos decorrentes da não regularização da LJ se mercadoria sujeita, no tratamento
+administrativo no DECEX, tempestivamente, na hipótese de o crédito vir a ser utilizado
+
+: mediante apresentação de faturas de um segundo beneficiário, caracterizando assim a
+' alteração de exportador.
+
+: 15. AUTORIZAÇÃO PARA péBiio EM CONTA POR PRAZO INDETERMINADO -
+: Autorizamos o BANCO DO BRASIL S.A. a utilizar o saldo da conta de depósito acima
+indicada, por prazo indeterminado, para amortização ou u liquidação da dívida resultante
+i deste instrumento. '
+
+É PARÁGRAFO PRIMEIRO - Declaramo-nos cientes de que poderemos indicar outra conta
+de depósito mantida junto ao BANCO DO BRASIL S.A. para a realização de débitos
+decorrentes deste instrumento por meio de anais de atendimento disponibilizados pelo
+BANCO DO BRASIL S.A. . :
+
+PARÁGRAFO SEGUNDO - A presente autorização não se estende à utilização dos limites
+de crédito disponíveis na referida conta, se houver."
+
+PARÁGRAFO TERCEIRO - Não autorizamos o BANCO DO BRASIL S.A. a realizar
+débitos, totais ou parciais, em datas posteriores ao vencimento das parcelas deste
+instrumento.
+
+“Mod. 0.70.225-8 - Fev/2021 - SISBB 21050 - bb.com.br - pvb | o Pág. 6/10
+' o Pedido de abertura de crédito de importação (IC)
+
+PARÁGRAFO QUARTO - Declaramo-nos cientes de que poderemos alterar as condições
+
+“para a realização de débitos em conta decorrentes deste instrumento, indicadas na
+
+presente cláusula, bem assim que poderemos cancelar a respectiva autorização de débito,
+
+por meio de canais de atendimento disponibilizados pelo BANCO DO BRASIL S.A., sem
+* que isso caracterize novação ou acarrete a necessidade de formalização de aditivo
+
+contratual.
+
+16. Declaramo-nos cientes de que o Swift de abertura da carta de crédito constituirá o
+* comprovante de aceitação deste pedido, por parte desse Banco, bem como da
+
+correspondente prestação do respectivo serviço, caso aceito o pedido.
+
+17. Este instrumento possui 03 (três páginas) e deve ser impresso em 02 (duas) vias.
+
+* Mod. 0.70.225-8 - Fevi2021 - SISBB 21050 - bb.com.br - pyb Pág. 7/10
+Pedido de abertura de crédito de importação (IC)
+
+' Fábio BRAZ Pereira
+Testemunhas fr jade EM MAJOR QOCI08
+o er RG: 44130 « CBMERJ
+
+, ER A y ê Setas , UNCIONAL 4341649-7
+CPR Mod ms qst-os CPF:4M.q32,427 -27
+
+Tomador
+
+https:/Mww45.bb.com.brifmo/trmyVfw0702258, 2.jsp 69
+
+
+: 03/09/2025, 09:48 . adido de abertura de ctg ação (IC)
+. ' Ria ad
+Carimbo/ássinatura reste +
+
+| o Ao “Loovando b TS Pnaveilen Comep
+
+qm
+
+. Carimbo/assinatura GlBu docjas - Rh: N, FALO
+
+O BANCO coloca à disposição do(s) clientes(s), os seguintes telefones:
+Central de Atendimento - 4004.0001* ou 0800.729.0001;
+Serviço de Atendimento ao Consumidor upa dúvida, sugestão, elogio,
+reclamação, suspensão ou cancelamento) - 0800.729.0722; .
+
+Para Deficientes Auditivos ou de Fala - 0800.729.0088; . “o
+Ouvidoria BB (demandas não solucionadas no atendimento habitual) - 0800.729.5678.
+bb.com.br/ouvidoria, Suporte Técnico Pessoa Física: 0800. 129 0200, Suporte Técnico
+PJ: 0800 729 0500
+
+* Custos de ligações locais e impostos serão cobrados conforme o Estado de origem. No
+caso de ligação via celular, custos da ligação mais impostos conforme a operadora.
+
+Mod. 0.70.225-8 - Fev/2021 - SISBB 21050 - bb.com.br - Pub, O. Pág. 8/10
+Ajuda . o a
+Forma de preenchimento do Formulário
+
+| “ Local e data: Local e data da abertura do crédito no Brasil.” , |
+Banco avisador: Nome do Banco que avisa o exportador sobre a chegada do IC.
+Moeda: Informe o simbolo da moeda do crédito. ,
+Valor: Informe o valor do crédito.
+Tolerância valor: Informe se haverá tolerância, para mais ou para menos, no total do
+embarque em relação ao valor total da carta de crédito.
+Tolerância Quantidade: Informe se haverá tolerância, para mais ou para menos, na
+quantidade total do embarque em relação à quantidade total da carta de crédito. =
+Percentual de Tolerância: Informe se haverá tolerância, para mais ou para menos, na
+quantidade total do embarque em relação à quantidade total da carta de crédito e/ou em
+relação ao valor total da carta de crédito. O primeiro campo refere-se à Variação positiva
+(para mais) e o segundo à variação negativa (para menos).
+Banco negociador: Banqueiro que recebe os documentos “do exportador e efetua
+. conferência. N
+Tomador: Nome do solicitante do crédito. '
+Agência da conta para débito: número do prefixo da agência do Banco do, Brasil
+detentora da conta indicada para débito das despesas.
+Conta para débito: número da conta na agência do Banco do Brasil para débito das
+despesas como comissões, tarifas, tributos, valor do crédito no vencimento, etc.
+Autorização da utilização do limite de crédito (Cheque Especial): Informe se o limite
+* de crédito do cheque especial estabelecido na conta indicada, se houver, poderá ser
+, utilizado para débitos decorrentes deste instrumento.
+
+- Autorização para realização de lançamentos parciais e de parcelas vencidas: Informe
+se a conta indicada poderá ser debitada parcialmente ou após o vencimento dos débitos
+decorrentes deste instrumento, o
+Endereço do Tomador: informe o endereço do Tomador do crédito.
+
+Bairro do Tomador: informe o bairro do endereço do tomador.
+Cidade'do Tomador: Informe a cidade do endereço do tomador,
+. UF do Tomador: selecione a UF do endereço do tomador.
+, Beneficiário: informe o nome do exportador/beneficiário do crédito no exterior.
+Endereço do Beneficiário: Informe o endereço do exportador/beneficiário.
+“Cidade do Beneficiário: informe a cidade do endereço do beneficiário.
+“ País do Beneficiário: Selecione o país do beneficiário. .
+Comissão do agente a ser deduzida do crédito:
+Selecione nos campos abaixo se há ou não comissão de agente e a forma de pagamento
+“da comissão, se houver.
+
+https: ww4S.bb.com.brifmelfrm/fw0702258. 2.jsp 79
+
+
+0309/2025, 09:48 ' Pedido de abertura de crédito de Importação (IC)
+Transferida ao Exterior - Selecione esta opção quando houver comissão de agente e o
+repasse do valor ao agente ficar a cargo do exportador.
+Retida no país - Informe o nome do agente, o banco onde o agente possui conta no Brasil,
+o número da conta e da agência. Quando houver comissão de agente e esta for deduzida
+do crédito e paga ao agente no Brasil, quando da liquidação.
+Não há - Selecione esta opção quando não há comissão de agente negociada para o
+crédito.
+
+" Local de embarque: Informe o nome do local de embarque da mercadoria: nome do
+Porto, Aeroporto ou cidade e a localização., | Exemplo 1: porto X, cidade Y, país Z; ou
+Exemplo 2: qualquer porto no país Z; etc. “o,
+
+Prazo ou data prevista p/ embarque: informe o prazo, ou a data máxima para (o)
+exportador efetuar o embarque. '
+
+Local e data de vencimento do crédito: Local de vencimento do crédito: país ou cidade
+onde está localizado o banqueiro negociador dos documentos. Data de vencimento do
+
+“ crédito: data máxima para embarque somada ao prazo para entrega dos documentos ao
+banqueiro negociador.
+
+Embarques parciais: Selecione se embarques parciais são permitidos ou não.
+Transbordos: Selecione se transbordos são permitidos ou não. - God
+
+Mod. 0.70.225-8 - Fev/2021 - SISBB 21050 - bb. com. nbr - - pvb Pág. 9/10
+Ajuda o o :
+Forma de preenchimento do Formulário “ar
+
+chegada dos documentos do exterior) por aceite: (pagamento a prazo e depende de aceite
+. dos saques pelo banqueiro emitente do crédito. Por Negociação: o banqueiro negociador
+desconta o saque no exterior. Pagamento Misto: parte do pagamento é feito à vista e parte
+à prazo. Pagamento a Prazo: pagamento efetuado em determinado. prazo após [e)
+embarque das mercadorias.
+Local de descarga: informe. o local de chegada da mercadoria. Exemplo: porto ou
+aeroporto, cidade e país. |
+País de origem da mercadoria: informe o país de origem da mercadoria. nn
+NCM, Destaque de NCM e Mercadoria: informe o código NCM da mercadoria. ...
+. Descrição da Mercadoria: Descrever a mercadoria da forma como deve aparecer na
+carta de crédito e na Fatura Comercial.
+Mercadoria conforme: selecionar se a descrição da mercadoria será conforme a Licença
+- de Importação ou conforme Fatura Proforma e informar o número do documento.
+* Saque(s) emitidos pelo beneficiário com vencimento em: Preencha a(s) data(s) de
+vencimento do(s) Saque(s) se exigido(s) pelo beneficiário. São obrigatórios somente
+
+Número de originais: informe a quantidade de documentos originais a serem recebidos.
+Número de cópias: informe o número de cópias de documentos a serem recebidos.
+Condições de emissão do documento de embarque: Selecionar a condição de emissão
+do documento de embarque: Se à ordem de quem o documento de embarque deve estar
+consignado ou se em nome de quem o documento de embarque deve ser emitido.” .
+Fatura Comercial: Selecionar o Incoterm de acordo com o meio de transporte para
+constar na Fatura Comercial, ;
+Frete: Selecionar a forma de pagamento do frete, conforme Incoterm negociado para a
+operação.
+Outros documentos: Indicar outros documentos, caso sejam necessários para o tipo de
+mercadoria, tais como Certificado de Origem, Certificado Fitossanitário, para serem
+incluídos no campo 46 da mensagem SWIFT MT 700.
+Os documentos deverão ser apresentados até ,.... dias da data de emissão «dos
+documentos de embarque, mas dentro do prazo de validade do crédito. .
+
+- Informar o prazo em dias para o beneficiário apresentar os documentos ao banqueiro
+negociador. Observe que este prazo compõe o prazo de validade do crédito.
+Condições especiais: Informar as condições especiais que devem ser atendidas pelo
+
+Por pagamento: Selecionar a forma de pagamento: à vista: (o pagamento ocorre na
+quando a forma de pagamento for "Por Aceite”. . . :
+Documentos de embarque: Selecionar o tipo de documento de embarque.
+
+https:iyww4s.bb.com.br/fmefrm/fw0702258 2./sp as
+
+: Scamedwith
+EB camscanner:|
+
+0309/2025, 09:48 Pedido da abertura de crédito de Importação (IC)
+
+exportador em relação ao crédito. Ex.: o embarque deve ser efetuado em navio de
+: bandeira brasileira. As condições especiais serão incluídas no campo 47 da mensagem
+| SWIFT MT 700.
+Despesas e comissões internas (se houver) devem correr; Selecionar o responsável
+| pelas despesas e comissões internas.
+Despesas e comissões externas (se houver) devem correr: Selecionar o responsável
+pelas despesas e comissões externas.
+Confirmação do crédito: Selecionar se o crédito deverá ser confirmado somente se
+requerido pelo beneficiário, ou não confirmado ou confirmado mesmo que não requerido
+pelo beneficiário.
+Banco Confirmador: Informe o banco que dará sua confirmação na carta de crédito, se
+houver.
+Prêmio de seguro: pagamento a cargo: Selecionar se o seguro será contrato pelo Banco,
+pelo importador ou pelo exportador.
+Seguradora: Informar o nome da companhia seguradora.
+
+Mod. 0.70.225-8 - Fev/2021 - SISBB 21050 - bb.com.br - pvb Pág. 10/10
+
+99
+
+https:/Awww45,bb.com.br/fme/frmvfw0702258 2.jsp
+
+
+Report Header
+
+Message Identifier
+
+Application: Alliance Message Management
+Report type: . . Message Preparation - Message Details Report
+i Operator: F6881314
+: Alliance Server Instance: SAA AMERICA PRD.
+| Date - Time: 2025/09/01 11:15:24
+! Message
+Start of Message
+!
+|
+
+Message Preparation Alliance Message Management - Message Modification
+
+, Application: a E . o o
+| Unique Message -* |BARCGB22XXX 700 20250813-1112 (suffix 25090123681340)
+: Identifier: R - : a . Vo
+Message Header
+Swift Input fin.700 - FINMT700- Issue ofa
+: Documentary Credit
+FIN o
+Sender
+Unit. SBO
+Sender Logical Terminal: BRASBRRJB
+Type: Institution
+Institution: BRASBRRJSBO
+Receiver o
+Type: Institution o
+Institution: BARCGB22XXX
+Address Expansion eo
+Institution: BARCLAYS BANK PLC
+Branch: (ALL U.K. OFFICES)
+City: LONDON
+Country: GB
+Options
+Priority: Normal
+Monitoring: None
+User PDE: No
+MUR: Fo881314
+Message Text
+F27: Sequence of Total
+Number: 1/
+Total: 1
+F40A: Form of Documentary Credit
+IRREVOCABLE
+
+F20: Documentary Credit Number:
+20250813-1112
+F31C: Date of Issue
+
+Scanned with
+
+Dc
+
+F40E: Applicable Rules
+
+Applicable Rules: UCPURR LATEST VERSION
+F31D: Date and Place of Expiry
+Date:
+Place: 360 DAYS OF ISSUE, ENGLAND º
+
+F50: Applicant
+SECRETARIA DE ESTADO DE DEFESA “
+CIVIL — SEDEC a
+CNPJ: 28.176.998/0001-07
+ADDRESS: SEE FIELD 47A
+F59: Beneficiary
+Name and Address: ANGLOCO LIMITED
+STATION ROAD, BATLEY, WEST
+YORKSHIRE, ENGLAND WF17 STA
+F32B: Currency Code, | Amount.
+
+Currency: BRL Siro “>! BRAZILIAN REAL
+Amount: 22000000,00 422.000.000,00%
+F41A: Available With ...: By... - Identifier Code = Code
+Identifier Code: BARCGB22 BARCLAYS BANK PLC
+(ALL U.K. OFFICES)' .
+. LONDON GB
+Code: Co CS BY PAYMENT AA
+F43P: Partial' Shipments .
+ALLOWED
+F43T: Transhipment
+ALLOWED
+
+F44E: Port of Loading/Airport of Departure
+ENGLAND PORT
+
+F44F: Port of Discharge/Airport of Destination ”
+RIO DE JANEIRO PORT, BRAZIL
+
+F44D: Shipment Period
+339 DAYS OF ISSUE
+
+F45A: Description of Goods and/or Services
+NCM 8705.30.00
+
+LIGHT AUTO SEARCH AND LIGHT RESCUE (ABSL) VEHICLE.
+AS PER PROFORMA INVOICE NUMBER P110001 DATED 250731.
+
+INCOTERM DAP.
+
+F46A: Documents Required
++ ONE COPY OF CLEAN ON BOARD OCEAN BILL OF LADING, ISSUED TO
+THE ORDER OF APPLICANT, MARKED FREIGHT PAID AND FREIGHT
+AMOUNT, THE NUMBER OF THIS CREDIT, NOTIFY APPLICANT.
+
++ COMMERCIAL INVOICE IN FOUR COPIES, SHOWING;
+
+- DESCRIPTION OF GOODS;
+
+- À DECLARATION THAT GOODS, QUANTITIES AND UNITARY PRICES ARE
+IN ACCORDANCE WITH THE PROFORMA INVOICE MENTIONED HEREIN;
+
+«- INCOTERM DAP.
+
++ PACKING LIST IN ONE ORIGINAL PLUS ONE COPY.
+
+| Scamedwith |
+EB camscanner:|
+
++ INSURANCE CERTIFICATE IN ONE COPY.
++ BENEFICIARY'S DECLARATION THAT ORIGINALS AND COPY OF REQUIRED
+DOCUMENTS WERE REMITTED TO FREIGHT FOWARDER MAURY PEREIRA
+GUILHERME - ADDRESS AVENIDA REPUBLICA DO LIBANO, 2341, SALA 310,
+SETOR OESTE, 74115-030 GOIANIA, GO, BRASIL,
+
+F47A: Additional Conditions,
+CONT OF FIELD 50:
+ADDRESS: PRACA DA REPUBLICA, 45, CENTRO, RIO DE JANEIRO, Rj,
+BRASIL - CEP 20.211-350
+
+e mrravo a reco ta rata aa mam
+
++ A HANDLING CHARGE OF USD 50,00 WILL BE DEDUCTED FROM THE
+PROCEEDS OF EACH PRESENTATION OF DISCREPANT DOCUMENTS. THE
+DISCREPANCY HAS TO BE REFERRED TO THE APPLICANT FOR ACCEPTANCE,
+NOTWITHSTANDING ANY INSTRUCTIONS ON THE CONTRARY, THIS CHARGE
+SHALL BE FOR THE ACCOUNT OF THE BENEFICIARY.
+
++ IF THE DOCUMENTS HAVE BEEN LOST IN TRANSIT, THE PAYMENT WILL
+BE EFFECTED ONLY AGAINST PRESENTATION OF A NEW SET OF DOCUMENTS.
++ NEGOTIATION OF DOCUMENTS IS RESTRICTED TO THE BANK INDICATED
+IN FIELD 41A OF THIS L/C.
+
++ IF PARTIAL SHIPMENTS ARE EFFECTED, BENEFICIARY MUST PRESENT A
+STATEMENT THAT THE BALANCE WILL OR WILL NOT BE UTILIZED. IN THE
+LATER CASE, THE CANCELLED AMOUNT MUST BE ENDORSED ON THE REVERSE
+OF THE ORIGINAL OF THIS CREDIT.
+
+,
+
++ UPON PRESENTATION OF DOCUMENTS IN COMPLIANCE WITH THE TERMS OF
+THIS CREDIT, PLEASE SEND A SWIFT ADVICE TO BANCO DO BRASIL S.A.,
+GECEX SAO PAULO, THROUGH BRASBRRUSBO, INFORMING SHIPMENT DATE
+AND NUMBER OF THE SHIPPING DOCUMENT, AMOUNT OF SHIPPED GOODS AS
+WELL AS FEES CHARGED, IF ANY, INVOICE NUMBER, AND CONFIRMING
+DOCUMENTS IN GOOD ORDER.
+
++ PROVIDED THAT ALL TERMS AND CONDITIONS OF THIS CREDIT ARE
+- COMPLIED WITH, WE WILL AUTHORIZE YOU TO CLAIM REIMBURSEMENT TO
+i BRASDEFF (EUR) FIVE BANKING DAYS AFTER RECEIPT OF DOCUMENTS AT
+OUR COUNTERS.
++ REIMBURSEMENTS UNDER THIS CREDIT ARE SUBJECT TO THE UNIFORM
+* RULES ICC PUBLICATION NR. 725.
+
++ THIS CREDIT IS ISSUED SUBJECT TO THE UNIFORM CUSTOMS AND
+PRACTICES FOR DOCUMENTARY CREDITS (ICC PUBLICATION NR. 600).
+
++ PAYMENT CONDITIONS: AFTER RECEIPT OF DOCUMENTS,
+
+IN OUR COUNTERS, IN COMPLIANCE WITH THE TERMS OF THIS CREDIT AND
+AFTER PRESENTATION OF 'TERMO DE ACEITE E RECEBIMENTO
+
+DEFINITIVO DA MERCADORIA! (TERM OF ACCEPTANCE AND DEFINITIVE
+RECEIPT OF THE GOODS) ISSUED BY APPLICANT WE WILL AUTHORIZE YOU
+TO CLAIM REIMBURSEMENT TO BRASDEFF ON THE 5STH BRAZILIAN WORKING
+DAY.
+
++ TERMO DE ACEITE E RECEBIMENTO DEFINITIVO DA MERCADORIA!" (TERM
+OF ACCEPTANCE AND DEFINITIVE RECEIPT OF THE GOODS) ISSUED BY
+
+| Scamedwith |
+EB camscanner:|
+
+APPLICANT.
+
++ AS PER ACCORDING BETWEEN APPLICANT AND BENEFICIARY, ALL OUR
+CHARGES FOR THIS LC WILL BE PAID BY THE BENEFICIARY. SO PLS
+CREDIT OUR ACCOUNT WITH BANCO DO BRASIL SA - FRANKFURT (SWIFT
+CODE: BRASDEFF) FOR EUR XXXXXXXXX UNDER REF, XXXXXXXXXXX UNDER
+ADVICE TO US, IMMEDIATELY AFTER THE ISSUANCE OF THIS LETTER
+OF CREDIT. IN CASE OF NON-PAYMENT, THESE EXPENSES WILL BE
+DEDUCTED FROM THE AMOUNT TO BE SENT TO THE EXPORTER.,
+F49G: Special Payment Conditions for Beneficiary
+THE VALUE OF THE LETTER WILL BE BRL 22,000,000.00, CONVERTED
+INTO euros AT THE TIME OF CONTRACTING THE PREVIOUS EXCHANGE RATE.
+F71D: Charges
+ALL BANKING CHARGES ARE FOR THE
+BENEFICIARY'S ACCOUNT.
+F48: Period for Presentation in Days
+
+Days: 21 .
+Narrative: “ /DAYS AFTER SHIPMENT DATE
+F49: Confirmation Instructions
+WITHOUT
+F53A: Reimbursing Bank - Party Identifier - Identifier Code
+Identifier Code: BRASDEFF |. . BANCO DO BRASIL S.A.
+
+FRANKFURT BRANCH
+
+FRANKFURT AM MAIN DE
+F78: Instructions to the Paying/Accepting/Negotiating Bank
+SEND THE DOCUMENTS BY SPECIAL COURIER IN TWO CONSECUTIVE MAILS
+TO: BANCO DO BRASIL SA - CENTRO EMPRESARIAL SAO PAULO/CENESP -
+GECEX SP AV. MARIA COELHO AGUIAR, 215 - BLOCO B - SETIMO ANDAR -
+JARDIM SAO LUIS, SAO PAULO - SP, CEP 05805-000. .
+
+GDC: 20250813000001112.
+F72Z: Sender to Receiver Information
+PLEASE ACKNOWLEDGE RECEIPT AND
+
+Report Footer
+
+Number of Entities: 1
+End of report
+
+. INFORM US ADVICE DATE BY SWIFT.
+* Network Data '
+Network: SWIFT
+End of Message .

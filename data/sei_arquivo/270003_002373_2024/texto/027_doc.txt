@@ -1,0 +1,104 @@
+[] (fase: indefinida · tipo: vazio)
+
+ Requisição  Definição de Processos  Exibição de Processos
+ PROCESSO DE COMPRA - SEI-270003/002373/2024
+ DADOS GERAIS DO PROCESSO DE COMPRA
+GOVERNO DO ESTADO DO RIO DE JANEIRO
+Av. Erasmo Braga, 118
+Centro - RIO DE JANEIRO - Rio de Janeiro
+CEP: 20020-000
+C.N.P.J: 15.829.998/0001 09
+Unidade: 166100 - FUNESBOM - FUNDO ESPECIAL DO CORPO DE
+BOMBEIROS
+Data de Criação: 08/10/2024 13:24:37
+Criador: DANIEL ANGELO TAVARES DA ROCHA FILIPPO
+Tipo do Processo: PES
+Regime Jurídico: Lei 14.133/2021
+Critério de Julgamento: Menor Preço
+Contrato por Tempo de Serviço: Não
+Status: Aguard. Autorização
+Pesquisa de Preços: 08345/2024
+Anexos da Pesquisa de Preços: 
+Termo de Justificativa:
+Valor Total do Processo: 6.250.000,00
+Tipo de Aquisição: Inexigibilidade - 14.133/2021
+Objeto do Processo: Credenciamento de clínica oncológica.
+Enquadramento Legal: Lei nº 14.133/2021, Art. 74º, IV
+Razão do Pedido: Despacho de Encaminhamento de Processo 84925865
+ 
+ Requisição - PES 0173/2024
+ 
+Anexos:
+
+Item
+Vl. Cotado
+Vl.Ref.
+Metodologia
+de Cálculo
+Quantidade
+1 - SERVICO MEDICO-HOSPITALAR,DESCRIÇÃO: CONTRATACAO
+DE CLINICA ONCOLOGICA ESPECIALIZADA EM QUIMIOTERAPIA
+Código do Item: 0719.001.0071 (ID - 137096)
+Observação:1 UN SERVIÇO = 12 MESES
+R$ 6250000,0000
+(Inexigibilidade -
+14.133/2021)
+Pesquisa de Preços
+--------
+1 UN
+ ONCOMED CLÍNICA ONCOLÓGICA LTDA.(00.541.798/0001-89)
+Justificativa:  Conforme os autos do processo.
+Exibir Local de Entrega
+ACOMPANHAMENTO DO PROCESSO
+Requisição 
+Pesquisa de Preço 
+WORKFLOW DE APROVAÇÃO
+Aprovador
+ 
+ Pendente
+ Aprovado
+ Rejeitado
+ P/Aprovação
+ 
+Data/Hora
+ ALINE DE OLIVEIRA NASCIMENTO
+ 
+08/10/2024 14:56
+ 
+CÉLULA DE CRÉDITO
+CÉLULA de CRÉDITO:
+162674/1501230000000/3390/0/3300000
+Unidade:
+166100 - FUNDO ESPECIAL DO CORPO DE BOMBEIROS
+Código da Gestão:
+00001
+Unidade Orcamentária:
+16610 - 16610
+PTRES:
+162674
+Programa de Trabalho:
+10302049626740000 - OPERACIONALIZAÇÃO DO SISTEMA DE SAÚDE INTERNO
+Fonte de Recurso:
+1501230000000 - OUTROS RECURSOS NÃO VINCULADOS
+Natureza de Despesa:
+3390 - APLICAÇÕES DIRETAS
+Indicador de Uso:
+0 - Não destinado à contrapartida
+Área Geográfica:
+3300000 - ESTADO
+Ano:
+2024 - R$ 6.250.000,00  
+
+ Retornar
+ 
+ Imprimir
+ 
+ Refazer Pesquisa
+ 
+ Cancelar
+ 
+ Mapa de Preço
+08/10/2024, 15:35
+Sistema Integrado de Gestão de Aquisição
+https://www.compras.rj.gov.br/mercatto/aplicacao/asp/seg/sistema.asp
+1/1

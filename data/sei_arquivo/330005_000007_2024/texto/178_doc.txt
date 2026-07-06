@@ -1,0 +1,116 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Março 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+133100 - INST. DE TERRAS E CARTOGR. DO EST. RJ (CNPJ: 40.173.726/0001-40)
+2024NE00174
+30/04/24
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Valor
+103.988,53 (Cento e três mil e novecentos e oitenta e oito reais e cinquenta e três centavos)
+Classificação
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+53310 - Instituto de Terras e Cartografia do Estado do Rio de Janeiro
+Programa de trabalho
+21.631. 0502. 2710 - Regularização Fundiária de Interesse Social
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+759 - Recursos Vinculados a Fundos
+Fonte RJ
+150 - Recursos Vinculados a Fundos - FEHIS - Tesouro
+Tipo de Detalhamento de Fonte
+1 - CADASTRO
+Detalhamento de Fonte
+004792 - CIDADES INTEGRADAS - (759.150)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+133100 - INST. DE TERRAS E CARTOGR. DO EST. RJ
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2021006943005903
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+00 - Pregão 
+Presencial
+Emb. Legal
+LEI 10520/02 8666/93
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI 330020/0007
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Serviços de Terceiros - Pessoa Jurídica
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+103.988,53
+Cronograma
+Abril
+103.988,53
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+7.733.333,33 Pré-Empenhado
+0,00 Bloqueado
+0,00
+103.988,53
+7.629.344,80
+Observação
+C o n t r a t o  n º  0 0 5 / 2 0 2 1 ,  f i r m a d o  e n t r e  o  I n s t i t u t o  d e  T e r r a s  e  C a r t o g r a f i a  d o  E s t a d o  d o  R i o  d e  J a n e i r o  -  I T E R J  e  a  
+empresa MGS Clean Soluções e Serviços Ltda, referente ao mês de ABRIL/2024
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+Prestação de serviços de Limpeza, Higiene, Conservação, 
+Copeiragem, Recepção e Portaria do Instituto de Terras.
+1
+UN
+103.988,53
+103.988,53
+Descrição
+Prestação de serviços de Limpeza, Higiene, Conservação, Copeiragem, Recepção e Portaria do Instituto de Terras.
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 06/05/24 às 11:
+4 3 .
+Impresso por IVONETE JOSE MARIA SABINO em 06/05/24 às 11:43.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

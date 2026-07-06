@@ -1,0 +1,99 @@
+{
+ "processo": "260007/019558/2024",
+ "gerado_em": "2026-07-06T07:27:32+00:00",
+ "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_019558_2024",
+ "modalidade": "",
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Comprovante 2024OB13748",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/000_comprovante_2024ob13748.txt",
+   "chars": 2300,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Nota de Liquidação - NL 8045",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/002_nota_de_liquida_o_nl_8045.txt",
+   "chars": 2331,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/003_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Anexo 2024NE07491 F.A.M. R$ 10.830,00",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/004_anexo_2024ne07491_f_a_m_r_10_830_00.txt",
+   "chars": 2424,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Nota Fiscal - NF 37 F.A.M. R$ 10.830,00",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/005_nota_fiscal_nf_37_f_a_m_r_10_830_00.txt",
+   "chars": 1954,
+   "ocr": true,
+   "fotos": [
+    "fotos/005_p01.jpg"
+   ]
+  }
+ ],
+ "linha_do_tempo": {
+  "planejamento": 0,
+  "selecao": 0,
+  "contratacao": 0,
+  "execucao": 0,
+  "despesa": 5,
+  "controle": 0,
+  "tramitacao": 1,
+  "indefinida": 0
+ },
+ "lacunas": [
+  {
+   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Seleção (edital, julgamento, homologação)",
+   "gravidade": "alta"
+  },
+  {
+   "falta": "Contrato/ata formalizados",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
+  }
+ ],
+ "fotos_total": 1
+}

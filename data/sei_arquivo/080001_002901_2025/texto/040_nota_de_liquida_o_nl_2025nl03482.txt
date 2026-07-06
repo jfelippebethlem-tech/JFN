@@ -1,0 +1,107 @@
+[Nota de Liquidação - NL 2025NL03482] (fase: despesa · tipo: nota_liquidacao)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Abril 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NL03482
+16/05/25
+Valor Bruto
+Valor Líquido
+23.000.000,00
+23.000.000,00
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE03705
+Credor
+10497795000149 - Fundo Municipal De Saude De Nova Iguacu
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/002901/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+23.000.000,00
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2025NE0370 5
+SEI-080001/002901/25
+05/2025
+15/05/2025
+23.000.000,00
+Total Documentos Comprobatórios
+23.000.000,00
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2025NE03705 CONFORME PROCESSO Resolução SES n.º 3617 de 21 de fevereiro de 2025, 
+publicado no dia 24/02/2025, para o apoio financeiro do Hospital Geral de Nova Iguaçu - HGNI, (CNES 2798662), para 
+ano de 2025, com o objetivo de promover a melhoria da qualidade e resolubilidade do atendimento regional da média e 
+alta complexidade aos usuários do Sistema Único de Saúde  SUS. Conforme solicitação e autorização (100143959). 
+Competência de JUNHO/2025.
+Emitido/contabilizado por CARLA COPOLILO AMATO em 16/05/25 às 12:29.
+Impresso por CARLA COPOLILO AMATO em 16/05/25 às 12:29.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

@@ -1,0 +1,53 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Relação de Ordens Bancárias Externas
+Unidade Gestora
+- 133100- ITERJ
+Banco - BANCO BRADESCO 5/A
+Ag.
+- secretaria da fazenda urb.do de janeiro
+rj
+C/C -0000000027- ERJ TESOURO ESTADO CONTA UNICA
+Gestão: 00003
+Total R$ 205.805,78 (duzentos e cinco mil e oitocentos e cinco reais e setenta e oito centavos)
+Autorizo o banco a efetuar os pagamentos acima relacionados, excetuando as Ordens Bancárias anuladas, em destaque neste relatório, ou em documentos anexos.
+é
+BRADESCO
+RRESP O NO Ë N C IA
+30 DEZ. ZüZS
+RECEBIDA
+AS. 6S3S5
+SECRJAMÁ DE ÁÏUDA URI
+OS
+Tipo
+CNPJ/CPF
+Favorecido
+Banco
+Ag.
+C/C
+Valor
+20250B00901
+12
+19085605000104
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+237
+1075
+869388
+102.90289
+20250B00902
+12
+19088505000104
+MGS CLEAN SOLUCOES E SERVICOS LTOA
+237
+1075
+869368
+102.90289
+2025RE00232
+Emissão: 30/12/25
+(1
+3
+/
+é
+IZ:
+Página 1/1

@@ -1,0 +1,94 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Julho 
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2025PD00553
+19/08/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+133100 - ITERJ
+2025OB00514 - 
+21/08/25
+237 - 6898 - 0000000027 
+- CONTA ÚNICA
+Favorecido
+Domicílio Bancário 
+Destino
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+237 - 1075 - 869368
+Valor por Extenso
+Valor
+C e n t o  e  s e t e  m i l  e  s e i s c e n t o s  e  d e z o i t o  r e a i s  e  s e t e n t a  e  d o i s  c e n t a v o s
+107.618,72
+Detalhamento
+Nota Liquidação
+2025NL00325
+Tipo de Despesa
+Nota de Empenho
+2025NE00370
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Domicílio Bancário Destino
+237 - 1075 - 869368
+Competência
+07/2025
+Processo
+18/2025
+I t e n s
+T i p o  
+Patrimonial
+Sub-item da 
+Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Serviços de 
+Terceiros - Pessoa 
+Jurídica
+12 - SERVIÇOS 
+DE ASSEIO E 
+HIGIENE
+3722 - Pagamento da despesa 
+empenhada e liquidada no 
+Exercício Atual Consumindo 
+Limite de Saque
+86 - 
+FORNECEDORES
+107.618,72
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  10014 CONFORME PROCESSO despesa relativo a Serviço de Limpeza, Higiene, 
+Conservação, Copeiragem, Recepção e Portaria, deste ITERJ, referente ao período JULHO/2025
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 19/08/25 às 15:
+2 6 .
+Impresso por IVONETE JOSE MARIA SABINO em 21/08/25 às 10:57.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

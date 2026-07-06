@@ -1,0 +1,109 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 33
+Encerrado até Agosto
+Identificação
+UG Emitente
+Documento
+Emissão
+160100 - SEDEC
+2025OB02962
+23/09/25
+UG Liquidante
+UG Pagadora
+160100 - SEDEC
+166100 - FUNESBOM
+Valor por Extenso
+Valor
+C i n c o  m i l h õ e s  e  t r e z e n t o s  e  c i n q u e n t a  e  u m  m i l  e  s e s s e n t a  r e a i s
+5.351.060,00
+Detalhamento
+Nota Liquidação
+2025NL00967
+Nota de Empenho
+2025NE00574
+Credor
+CG3802646 - ANGLOCO LIMITED
+Natureza
+449052 - Equipamentos e Material Permanente
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+753 - Recursos provenientes de taxas e contribuições
+Fonte RJ
+232 - Recursos Provenientes de Taxas e Contribuições - Diretamente Arrec...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (753.232)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+25041468 - CTT 035/2025 aquisição de viaturas do tipo AUTO BUSCA E SALVA...
+Domicílio Bancário Origem
+001 - 2234 - 069345 - CONTA D
+Domicílio Bancário Destino
+001 - 2234 - BCO AUTENT
+Competência
+09/2025
+Processo
+270006/012128/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da 
+Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Bens Móveis -  
+Equipamentos e 
+Material Permanente
+29 - VEICULOS DE 
+TRAÇÃO MECANICA 
+A CADASTRAR
+6392 - Pagamentos Orçamentários 
+com recursos de outra UG 
+(Pagamentos Descentralizados)
+99 - Sem consumo de 
+Limite de Saque
+5.351.060,00
+Observação
+Registro de Envio
+UG Emitente
+166100
+Emissão
+23/09/25
+Documento
+2025RE01196
+Data de Envio
+23/09/25
+Status de Envio
+Processado e Pago
+Data de retorno
+25/09/25
+Tipo de Pagamento
+Normal
+Retorno
+Ordem bancária 
+paga e liberada com 
+sucesso.
+Programação de Desembolso
+Documento
+2025PD03503
+Emissão
+23/09/25
+Data de 
+Programação
+23/09/25
+Emitido/contabilizado por MIGUEL DOUGLAS LUGON DA COSTA em 23/09/25 às 
+1 4 : 4 8 .
+Impresso por MIGUEL DOUGLAS LUGON DA COSTA em 29/09/25 às 10:11.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

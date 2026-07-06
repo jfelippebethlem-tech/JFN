@@ -1,0 +1,128 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+160100 - SECRETARIA DE ESTADO DE DEFESA CIVIL E CORPO DE BOMBE... (CNPJ: 28.176.998/0001-
+07)
+2025NE00844
+02/10/25
+Credor
+CG3802646 - ANGLOCO LIMITED
+Tipo de Empenho
+NE Original
+Valor
+1.446.060,00 (Hum milhão e quatrocentos e quarenta e seis mil e sessenta reais)
+Reforço
+2025NE00574
+Classificação
+Natureza
+449052 - Equipamentos e Material Permanente
+Unidade Orçamentária
+16610 - Fundo Especial do Corpo de Bombeiros
+Programa de trabalho
+06.182. 0496. 7991 - Ampliação da Frota do CBMERJ
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+753 - Recursos provenientes de taxas e contribuições
+Fonte RJ
+232 - Recursos Provenientes de Taxas e Contribuições - Diretamente Arrec...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (753.232)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+25041468 - CTT 035/2025 aquisição de viaturas do tipo AUTO BUSCA E SALVA...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2025004930000800
+Detalhamento
+Mod. 
+Empenho
+Global
+Mod. Licitação
+09 - Pregão Eletrônico
+Emb. Legal
+Art1LF,10520/02.
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-
+270006/012128/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Bens Móveis -  Equipamentos e 
+Material Permanente
+29 - VEICULOS DE TRAÇÃO MECANICA A 
+CADASTRAR
+1.446.060,00
+Cronograma
+Outubro
+1.446.060,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+1.446.060,00 Pré-Empenhado
+0,00 Bloqueado
+0,00
+1.446.060,00
+0,00
+Observação
+AQ. DE 10 UNIDS. DE VIATURAS TIPO ABSL - SC - ATA Nº 066/2024 / CTT N° 35/2025 - 12/06/2025 Á 11/06/2026.SEI-270006/012128/2024.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+VEICULO COMBATE A INCENDIO E SALVAMENTO
+0,66
+UN
+2.200.000,00
+1.446.060,00
+Descrição
+VEICULO COMBATE A INCENDIO E SALVAMENTO,CLASSIFICACAO: CAMINHAO, MOTOR: 4 CILINDROS, TIPO CABINE: DUPLA, 
+TRACAO: 4 X 2, CAPACIDADE PASSAGEIROS: 5 PASSAGEIROS, COMBUSTIVEL: DIESEL, CAPACIDADE CARGA: 7 T, POTENCIA 
+MOTOR: 150 ~ 200, CAPACIDADE TANQUE: 350 L, CAPACIDADE BOMBA: 40 LPM A 100 BAR, TRANSMISSAO: MANUAL, 
+COMPRIMENTO VEICULO: 6,5 M ~ 7 M, NUMERO EIXOS: 2, LARGURA COMPARTIMENTO: CONFORME NBR 14096:2016, ANO 
+FABRICACAO: 0 KM, MATERIAL TANQUE: POLIESTER REFORCADO DE FIBRA DE VIDRO, COR: VERMELHA, ALTURA 
+COMPARTIMENTO: CONFORME NBR 14096:2016, PROFUNDIDADE COMPARTIMENTO: CONFORME NBR 14096:2016, FORMA 
+FORNECIMENTO: UNIDADE Código do Item: 2360.002.0016 (ID - 171031)
+Emitido/contabilizado por NATALI SILVA CAMPOS CARDOZO em 02/10/25 às 15:
+4 9 .
+Impresso por NATALI SILVA CAMPOS CARDOZO em 02/10/25 às 15:50.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

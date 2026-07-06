@@ -1,0 +1,118 @@
+[Nota de Empenho Reforço - NE 2025NE03440 AIR_LIQUIDE 007_3790_24] (fase: despesa · tipo: nota_empenho)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Maio 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO (CNPJ: 33.540.014/0017-14)
+2025NE03440
+24/06/25
+Credor
+00331788000623 - Air Liquide Brasil Ltda
+Tipo de Empenho
+NE Original
+Valor
+29.415,25 (Vinte e nove mil e quatrocentos e quinze reais e vinte e cinco centavos)
+Reforço
+2025NE01048
+Classificação
+Natureza
+339030 - Material de Consumo
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4866 - Apoio a HUPE e PPC/UERJ para a realização de proced...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+600 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Go...
+Fonte RJ
+225 - Transferências Fundo a Fundo do SUS - Bloco de Manutenção
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (600.225)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+722110 - POLICLINICA PIQUET CARNEIRO
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+24038347 - CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA PRESTAÇÃO DE SERVIÇ...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2024009485001700
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+09 - Pregão Eletrônico Emb. Legal
+Lei nº 14.133/2021 art. 28 inc. I
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-260007/003790/2024 UF
+Rio de Janeiro
+Município
+Belford Roxo
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Material de Consumo
+28 - MATERIAL QUÍMICO
+29.415,25
+Cronograma
+Junho
+29.415,25
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+317.739,02 Pré-Empenhado
+0,00 Bloqueado
+0,00
+29.415,25
+288.323,77
+Observação
+Gases medicinais, PE 341/24, 5ª PARCELA, UGR 722110 (7000), Ct. SIAFE 24038347.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+Gases Medicinais
+1
+UN
+29.415,25
+29.415,25
+Descrição
+-
+ 
+______________________________________________________
+33.685-9 - Gulnar Azevedo e Silva
+REITORA
+E m i t i d o / c o n t a b i l i z a d o p o r D a n i e l M a c e l l i M o n t e i r o e m 2 4 / 0 6 / 2 5 à s 1 5 : 3 9 .
+Impresso por Daniel Macelli Monteiro em 24/06/25 às 15:39.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

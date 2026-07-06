@@ -1,0 +1,541 @@
+[Programação de Desembolso - PD IAFAB] (fase: despesa · tipo: programacao_desembolso)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD00786
+08/01/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+07900983000161 - Fundo Municipal De Saude Varre-sai
+237 - 6896 - 0000003301
+Valor por Extenso
+Valor
+Dois mil e trezentos e oitenta e três reais e trinta e três centavos
+2.383,33
+Detalhamento
+Nota Liquidação
+2024NL10691
+Tipo de Despesa
+Nota de Empenho
+2024NE10537
+Credor
+07900983000161 - Fundo Municipal De Saude Varre-sai
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6896 - 0000003301
+Competência
+10/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+6413 - Pagamento 
+de RP Processado
+99 - Sem consumo 
+de Limite de Saque
+2.383,33
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2024NE10537 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de OUTUBRO/2024, conforme solicitação (90507693 e 
+90549017). NAD 38 - VARRE-SAI
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:34.
+Impresso por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:34.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD00788
+08/01/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+07900983000161 - Fundo Municipal De Saude Varre-sai
+237 - 6896 - 0000003301
+Valor por Extenso
+Valor
+Dois mil e trezentos e oitenta e três reais e trinta e três centavos
+2.383,33
+Detalhamento
+Nota Liquidação
+2024NL10691
+Tipo de Despesa
+Nota de Empenho
+2024NE10537
+Credor
+07900983000161 - Fundo Municipal De Saude Varre-sai
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6896 - 0000003301
+Competência
+11/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+6413 - Pagamento 
+de RP Processado
+99 - Sem consumo 
+de Limite de Saque
+2.383,33
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2024NE10537 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de NOVEMBRO/2024, conforme solicitação (90507693 e 
+90549017). NAD 38 - VARRE-SAI
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:36.
+Impresso por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:36.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD00794
+08/01/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11216262000104 - Fundo Municipal De Saude De Vassouras
+237 - 1632 - 0000154075
+Valor por Extenso
+Valor
+Sete mil e oitocentos e quarenta reais e quarenta centavos
+7.840,40
+Detalhamento
+Nota Liquidação
+2024NL10737
+Tipo de Despesa
+Nota de Empenho
+2024NE10538
+Credor
+11216262000104 - Fundo Municipal De Saude De Vassouras
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1632 - 0000154075
+Competência
+10/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+6413 - Pagamento 
+de RP Processado
+99 - Sem consumo 
+de Limite de Saque
+7.840,40
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2024NE10538  CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de OUTUBRO/2024, 
+conforme solicitação (90507693 e 90549017).  NAD 38 - VASSOURAS
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:38.
+Impresso por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:38.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD00798
+08/01/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11216262000104 - Fundo Municipal De Saude De Vassouras
+237 - 1632 - 0000154075
+Valor por Extenso
+Valor
+Sete mil e oitocentos e quarenta reais e quarenta centavos
+7.840,40
+Detalhamento
+Nota Liquidação
+2024NL10737
+Tipo de Despesa
+Nota de Empenho
+2024NE10538
+Credor
+11216262000104 - Fundo Municipal De Saude De Vassouras
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1632 - 0000154075
+Competência
+11/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+6413 - Pagamento 
+de RP Processado
+99 - Sem consumo 
+de Limite de Saque
+7.840,40
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2024NE10538  CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de NOVEMBRO/2024, 
+conforme solicitação (90507693 e 90549017).  NAD 38 - VASSOURAS
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:39.
+Impresso por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:39.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD00807
+08/01/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+39563911000162 - Fundo Municipal De Saude Pmvr Sms
+237 - 1592 - 0000037796
+Valor por Extenso
+Valor
+Cinquenta e oito mil e quinze reais e cinco centavos
+58.015,05
+Detalhamento
+Nota Liquidação
+2024NL10685
+Tipo de Despesa
+Nota de Empenho
+2024NE10539
+Credor
+39563911000162 - Fundo Municipal De Saude Pmvr Sms
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1592 - 0000037796
+Competência
+10/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+6413 - Pagamento 
+de RP Processado
+99 - Sem consumo 
+de Limite de Saque
+58.015,05
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2024NE10539 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de OUTUBRO/2024, conforme solicitação (90507693 e 
+90549017). NAD 38 - VOLTA REDONDA
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:42.
+Impresso por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:42.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD00809
+08/01/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+39563911000162 - Fundo Municipal De Saude Pmvr Sms
+237 - 1592 - 0000037796
+Valor por Extenso
+Valor
+Cinquenta e oito mil e quinze reais e cinco centavos
+58.015,05
+Detalhamento
+Nota Liquidação
+2024NL10685
+Tipo de Despesa
+Nota de Empenho
+2024NE10539
+Credor
+39563911000162 - Fundo Municipal De Saude Pmvr Sms
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1592 - 0000037796
+Competência
+11/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+6413 - Pagamento 
+de RP Processado
+99 - Sem consumo 
+de Limite de Saque
+58.015,05
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2024NE10539 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de NOVEMBRO/2024, conforme solicitação (90507693 e 
+90549017). NAD 38 - VOLTA REDONDA
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:43.
+Impresso por CAIO PIMENTEL MAXIMO em 08/01/25 às 11:43.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

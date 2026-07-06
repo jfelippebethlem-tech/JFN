@@ -1,0 +1,89 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Encerrado até Maio 
+Identificação
+UG Liquidante
+Número do 
+Documento
+Data de Emissão
+133100 - ITERJ
+2023PD00530
+11/07/23
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+133100 - ITERJ
+237 - 6898 - 0000000027 - 
+Conta Unica
+Favorecido
+Domicílio Bancário 
+Destino
+00394460010880 - MINISTÉRIO DA FAZENDA
+237 - 6898 - BCO AUTENT
+Valor por Extenso
+Valor
+Quatro mil e oitocentos e trinta reais e sessenta e oito centavos
+4.830,68
+Detalhamento
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS
+Credor da Retenção
+MINISTÉRIO DA FAZENDA
+Domicílio Bancário Destino
+237 - 6898 - BCO AUTENT
+Competência
+07/2023
+Processo
+SEI 330020/51/2023
+Itens
+Número da NE
+2023NE00381
+Ano Fonte
+2 - Recursos de Exercícios Anteriores
+Fonte STN
+501 - Outros Recursos não Vinculados
+Fonte
+145 - Recursos da Concessão de Serviço Público de Abastecimento de Água e Esgotamento Sanitário - Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2023NL00335
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 11/07/23 às 16:36.
+Impresso por IVONETE JOSE MARIA SABINO em 11/07/23 às 16:36.
+Siafe-Rio / SEFAZ-RJ
+Página 1/2
+
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Consumindo Limite de Saque
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2023
+Número da NE
+133100.2023NE00381
+Credor
+35208086000127
+Valor
+4.830,68
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  45 CONFORME PROCESSO Prestação de Serviço de Locação de Veículos com Motorista - foram executados de acordo com as especificações contratuais 
+pactuadas entre as partes, relativo ao mês de JUNHO/2023
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 11/07/23 às 16:36.
+Impresso por IVONETE JOSE MARIA SABINO em 11/07/23 às 16:36.
+Siafe-Rio / SEFAZ-RJ
+Página 2/2

@@ -1,0 +1,123 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Março
+Identificação
+Unidade Gestora
+Documento
+Emissão
+166100 - FUNDO ESPECIAL DO CORPO DE BOMBEIROS (CNPJ: 28.176.998/0004-41)
+2026NE00929
+04/05/26
+Credor
+00541798000189 - Oncomed Clinica Oncologica Ltda
+Valor
+527.947,47 (Quinhentos e vinte e sete mil e novecentos e quarenta e sete reais e quarenta e sete centavos)
+Classificação
+Nota de Reserva
+2026NR00551
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+16610 - Fundo Especial do Corpo de Bombeiros
+Programa de trabalho
+10.302. 0496. 2674 - Operacionalização do Sistema de Saúde Interno do CB...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+2 - Recursos de Exercícios Anteriores
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+230 - Outros Recursos não Vinculados - Recursos Próprios
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (501.230)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+24037751 - CTT 170/2024 credenciamento de clínica oncológica especializa...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2024008293001160
+Detalhamento
+Mod. 
+Empenho
+Global
+Mod. Licitação
+06 - Inexigibilidade
+Emb. Legal
+Lei nº 14.133/2021, Art. 74º, IV
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-
+270003/003368/2025
+UF
+Rio de Janeiro
+Município
+Niterói
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Serviços de Terceiros - Pessoa 
+Jurídica
+75 - SERVIÇOS DE ASSISTENCIA A SAUDE
+527.947,47
+Cronograma
+Maio
+527.947,47
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+11.727.885,55 Valor NE
+Saldo após NE
+69.918.620,59 Pré-Empenhado
+527.947,47 Bloqueado
+0,00
+527.947,47
+81.118.558,67
+Observação
+1º T.A. PRESTAÇÃO DE SERVIÇOs DE QUIMIOTERAPIA- REGIÃO METROPOLITANA DO RJ. CTT 170/2024. VIGÊNCIA: 08/10/2025 A 
+07/10/2026.SEI-270003/003368/2025
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+SERVIÇOS DE ASSISTÊNCIA A SAÚDE
+1
+UN
+527.947,47
+527.947,47
+Descrição
+1º T.A. PRESTAÇÃO DE SERVIÇOs DE QUIMIOTERAPIA- REGIÃO METROPOLITANA DO RJ. CTT 170/2024
+Tipificação
+A despesa é pré-existente, contínua e essencial? Sim
+Justificativa: A DESPESA ATENDE AOS REQUISITOS DE PRÉ-EXISTÊNCIA, CONTINUIDADE E ESSENCIALIDADE  QUE SE CARACTERIZAM POR:SEM 
+REALIZÁ-LA HAVERÁ PRECARIEDADE OU IMINENTE PREJUÍZO À SOBREVIVÊNCIA DO MESMO E À COLETIVIDADE EM GERAL.
+Emitido/contabilizado por NATALI SILVA CAMPOS CARDOZO em 05/05/26 às 16:
+3 1 .
+Impresso por NATALI SILVA CAMPOS CARDOZO em 05/05/26 às 16:31.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

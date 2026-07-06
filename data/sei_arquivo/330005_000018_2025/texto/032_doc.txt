@@ -1,0 +1,704 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Encerrado até Outubro
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2025PD00814
+25/11/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+133100 - ITERJ
+237 - 6898 - 0000000027 - 
+CONTA ÚNICA
+Favorecido
+Domicílio Bancário Destino
+999900 - TESOURO DO ESTADO DO RIO DE JANEIRO
+237 - 6898 - 0000000027
+Valor por Extenso
+Valor
+Oitocentos e sete mil e quatrocentos e cinquenta e um reais e setenta e um centavos
+807.451,71
+Tipo de Regularização
+Pagamento GRE
+Detalhamento
+Tipo de Retenção
+IRRF TERCEIROS
+Credor da Retenção
+TESOURO DO ESTADO DO RIO DE JANEIRO
+Competência
+11/2025
+Processo
+2025
+I t e n s
+Número da NE
+2025NE00521 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Recursos não Vinculados - Concessão Serviços de Água e Esgo...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+42644220000106 - AGUAS DO RIO 4 SPE S.A
+Número da NL
+2025NL00465 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+50 - TAXAS DE ÁGUA E ESGOTO
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00521
+Credor
+42644220000106
+Valor
+171,56
+Número da NE
+2025NE00524 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Recursos não Vinculados - Concessão Serviços de Água e Esgo...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+40432544006269 - CLARO S.A.
+Número da NL
+2025NL00483 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica
+Sub-item da Despesa
+13 - COMUNICAÇÃO DE DADOS E REDES EM GERAL DE TIC
+Operação Patrimonial
+7988 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00524
+Credor
+40432544006269
+Emitido/contabilizado por PRISCILA LOURES LEITE em 25/11/25 às 16:01.
+Impresso por WALDEMIR DAVILA PEIXOTO em 25/11/25 às 16:58.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/6
+
+Valor
+132,00
+Número da NE
+2025NE00525 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Recursos não Vinculados - Concessão Serviços de Água e Esgo...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+28542017000190 - Imprensa Oficial Do Estado Do Rio De Janeiro
+Número da NL
+2025NL00480 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+07 - SERVIÇOS DE IMPRESSAO E ENCADERNAÇAO
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00525
+Credor
+28542017000190
+Valor
+422,45
+Número da NE
+2025NE00551 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+00078531000105 - MTECH LOCAÇÕES E SERVIÇOS LTDA
+Número da NL
+2025NL00492 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+18 - MANUTENÇÃO E CONSERVAÇÃO DE BENS IMOVEIS E OPERAÇOES DE SISTEMA
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00551
+Credor
+00078531000105
+Valor
+2.199,92
+Número da NE
+2025NE00554 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+31954621000138 - LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS  LTDA
+Número da NL
+2025NL00461 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00554
+Credor
+31954621000138
+Valor
+9.920,06
+Número da NE
+2025NE00556 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Emitido/contabilizado por PRISCILA LOURES LEITE em 25/11/25 às 16:01.
+Impresso por WALDEMIR DAVILA PEIXOTO em 25/11/25 às 16:58.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/6
+
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2025NL00472 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00556
+Credor
+19088605000104
+Valor
+5.685,19
+Número da NE
+2025NE00558 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2025NL00469 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00558
+Credor
+35208086000127
+Valor
+1.842,44
+Número da NE
+2025NE00564 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+31954621000138 - LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS  LTDA
+Número da NL
+2025NL00478 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00564
+Credor
+31954621000138
+Valor
+8.274,55
+Número da NE
+2025NE00565 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+31954621000138 - LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS  LTDA
+Emitido/contabilizado por PRISCILA LOURES LEITE em 25/11/25 às 16:01.
+Impresso por WALDEMIR DAVILA PEIXOTO em 25/11/25 às 16:58.
+SIAFE-Rio / SEFAZ-RJ
+Página 3/6
+
+Número da NL
+2025NL00481 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00565
+Credor
+31954621000138
+Valor
+8.210,78
+Número da NE
+2025NE00566 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+31954621000138 - LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS  LTDA
+Número da NL
+2025NL00482 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00566
+Credor
+31954621000138
+Valor
+9.920,06
+Número da NE
+2025NE00567 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2025NL00493 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00567
+Credor
+19088605000104
+Valor
+5.685,19
+Número da NE
+2025NE00573 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+08540992000151 - DADY ILHA SOLUCOES INTEGRADAS LTDA.
+Número da NL
+2025NL00476 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica
+Emitido/contabilizado por PRISCILA LOURES LEITE em 25/11/25 às 16:01.
+Impresso por WALDEMIR DAVILA PEIXOTO em 25/11/25 às 16:58.
+SIAFE-Rio / SEFAZ-RJ
+Página 4/6
+
+Sub-item da Despesa
+04 - Locação de equipamentos de TIC - impressoras
+Operação Patrimonial
+7988 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00573
+Credor
+08540992000151
+Valor
+298,05
+Número da NE
+2025NE00574 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+00078531000105 - MTECH LOCAÇÕES E SERVIÇOS LTDA
+Número da NL
+2025NL00479 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+18 - MANUTENÇÃO E CONSERVAÇÃO DE BENS IMOVEIS E OPERAÇOES DE SISTEMA
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00574
+Credor
+00078531000105
+Valor
+2.199,92
+Número da NE
+2025NE00586 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+761 - Recursos vinculados ao Fundo de Combate e Erradicação da Pobreza
+Fonte RJ
+122 - Recursos Vinculados ao FECP - Adicional do ICMS
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+03314057000153 - Enge Prat Engenharia E Serviços Ltda.
+Número da NL
+2025NL00494 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+61 - SERVIÇOS DE TOPOGRAFIA/ LEVANTAMENTOS DE PLANIMETRICOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00586
+Credor
+03314057000153
+Valor
+371.200,00
+Número da NE
+2025NE00587 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+07152789000145 - Real Mix Com. E Adm. De Vendas Eireli - Epp
+Número da NL
+2025NL00490 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Bens Móveis -  Equipamentos e Material Permanente
+Sub-item da Despesa
+22 - MAQUINAS E EQUIPAMENTOS AGRICOLAS E RODOVIARIOS A CADASTRAR
+Operação Patrimonial
+9318 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Emitido/contabilizado por PRISCILA LOURES LEITE em 25/11/25 às 16:01.
+Impresso por WALDEMIR DAVILA PEIXOTO em 25/11/25 às 16:58.
+SIAFE-Rio / SEFAZ-RJ
+Página 5/6
+
+Número da NE
+133100.2025NE00587
+Credor
+07152789000145
+Valor
+1.784,32
+Número da NE
+2025NE00588 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+761 - Recursos vinculados ao Fundo de Combate e Erradicação da Pobreza
+Fonte RJ
+122 - Recursos Vinculados ao FECP - Adicional do ICMS
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+31954621000138 - LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS  LTDA
+Número da NL
+2025NL00499 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00588
+Credor
+31954621000138
+Valor
+8.305,22
+Número da NE
+2025NE00589 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+761 - Recursos vinculados ao Fundo de Combate e Erradicação da Pobreza
+Fonte RJ
+122 - Recursos Vinculados ao FECP - Adicional do ICMS
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+03314057000153 - Enge Prat Engenharia E Serviços Ltda.
+Número da NL
+2025NL00501 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+61 - SERVIÇOS DE TOPOGRAFIA/ LEVANTAMENTOS DE PLANIMETRICOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00589
+Credor
+03314057000153
+Valor
+371.200,00
+Pagamentos
+Tipo de Pagamento
+GRE
+UG Beneficiária
+999900
+UG Pagadora
+133100
+Código do Recolhimento
+770032
+Data Competência
+28/11/2025
+Número de Referência
+Valor Principal
+807.451,71
+Valor Juros/Encargos
+Valor Outras Deduções
+Data de vencimento da GRE
+20/11/2026
+Número da GRE
+000001052608
+Data da GRE
+25/11/2025
+Código de Autenticação
+Observação
+retenção de tributo IRRF das empresas prestadores de serviços, NOVEMBRO
+Emitido/contabilizado por PRISCILA LOURES LEITE em 25/11/25 às 16:01.
+Impresso por WALDEMIR DAVILA PEIXOTO em 25/11/25 às 16:58.
+SIAFE-Rio / SEFAZ-RJ
+Página 6/6

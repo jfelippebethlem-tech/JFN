@@ -1,0 +1,107 @@
+[Comprovante 2025OB13010] (fase: despesa · tipo: ordem_bancaria)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 31
+Encerrado até Setembro
+Identificação
+UG Emitente
+Documento
+Emissão
+404340 - HUPE
+2025OB13010
+21-07-2025
+UG Liquidante
+UG Pagadora
+404340 - HUPE
+296100 - FES
+Valor por Extenso
+Valor
+Nove mil e trinta e cinco reais e sessenta e três centavos
+9.035,63
+Detalhamento
+Nota Liquidação
+2025NL03338
+Nota de Empenho
+2025NE01048
+Credor
+00331788000623 - Air Liquide Brasil Ltda
+Natureza
+339030 - Material de Consumo
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+600 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Go...
+Fonte RJ
+225 - Transferências Fundo a Fundo do SUS - Bloco de Manutenção
+Detalhamento de Fonte
+000000 - Sem detalhamento - (600.225)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+24038347 - CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA PRESTAÇÃO DE SERVIÇ...
+Domicílio Bancário Origem
+104 - 0199 - 0006006250214 - CONTA D
+Domicílio Bancário Destino
+001 - 1912 - 5306000 - CADASTRADO EM 08/2022 CONTRATO 22001175
+Competência
+04/2025
+Processo
+SEI-260007/006043/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Vinculação de Pagamento
+Classificação 
+Complementar
+Valor
+Material de Consumo
+28 - MATERIAL QUÍMICO
+5398 - Pagamentos Orçamentários com recursos de outra UG 
+(Pagamentos Descentralizados)
+99 - Sem consumo de Limite de 
+Saque
+9.035,63
+Observação
+PROGRAMAÇÃO DE PAGAMENTO REFERENTE À(S) NF(S)   516845, 517142, 517179, 517755, 518010, 518545, 518819, 519465, 520082, 520292, ATESTADO POR DOIS SERVIDORES,  CONFORME PROCESSO SEI-
+260007/006043/2025 de aquisição de Gases medicinais para o HUPE. Danfes validadas na Sefaz.
+Registro de Envio
+UG Emitente
+296100
+Emissão
+21-07-2025
+Documento
+2025RE02499
+Data de Envio
+21-07-2025
+Status de Envio
+Processado e Pago
+Data de retorno
+23-07-2025
+Tipo de Pagamento
+Normal
+Retorno
+Ordem bancária 
+paga e liberada com 
+sucesso.
+Programação de Desembolso
+Documento
+2025PD14257
+Emissão
+14-07-2025
+Data de 
+Programação
+21-07-2025
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCAS LIBERATO ANDRE em 21-07-2025 às 12:41.
+Impresso por GUSTAVO DA SILVA PEREIRA em 12-10-2025 às 12:02.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

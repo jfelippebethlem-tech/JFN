@@ -1,0 +1,59 @@
+[] (fase: indefinida · tipo: vazio)
+
+espaçamento
+Governo do Estado do Rio de Janeiro
+Relação de Ordens Bancárias Externas
+2025RE00056
+Unidade Gestora - 216400 - FUSPRJ
+Emissão: 23/09/25
+Unidade Gestora emitente das OBs - 160100 - SEDEC
+Banco - BANCO DO BRASIL S/A   Ag. - s.publico r.janeiro
+Gestão: 00001
+OB
+Tipo CNPJ/CPF
+Favorecido
+C/C Origem
+Banco
+Ag.
+C/C
+Valor
+2025OB02964
+33
+00000000436992
+Banco Do Brasil S/a
+11202X
+001
+2234
+BANCO
+8.105.020,00
+2025OB02965
+33
+00000000436992
+Banco Do Brasil S/a
+110876
+001
+2234
+BANCO
+935.660,00
+2025OB02966
+33
+00000000436992
+Banco Do Brasil S/a
+0000000114944
+001
+2234
+BANCO
+95.260,00
+2025OB02967
+33
+00000000436992
+Banco Do Brasil S/a
+0000000114944
+001
+2234
+BANCO
+7.513.000,00
+ 
+Total R$ 16.648.940,00 (dezesseis milhões e seiscentos e quarenta e oito mil e novecentos e quarenta reais)
+Autorizo o banco a efetuar os pagamentos acima relacionados, excetuando as Ordens Bancárias anuladas, em destaque neste relatório, ou em documentos anexos.
+Página 1/1

@@ -1,0 +1,295 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Encerrado até Março 
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2025PD00284
+08/05/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+133100 - ITERJ
+237 - 6898 - 0000000027 
+- CONTA ÚNICA
+Favorecido
+Domicílio Bancário 
+Destino
+999900 - TESOURO DO ESTADO DO RIO DE JANEIRO
+237 - 6898 - 0000000027
+Valor por Extenso
+Valor
+D e z  m i l  e  s e t e c e n t o s  e  t r i n t a  e  u m  r e a i s  e  c i n q u e n t a  c e n t a v o s
+10.731,50
+Tipo de Regularização
+Pagamento GRE
+Detalhamento
+Tipo de Retenção
+IRRF TERCEIROS
+Credor da Retenção
+TESOURO DO ESTADO DO RIO DE JANEIRO
+Competência
+05/2025
+Processo
+2025
+I t e n s
+Número da NE
+2025NE00076 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+759 - Recursos Vinculados a Fundos
+Fonte RJ
+150 - Recursos Vinculados a Fundos - FEHIS - Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+42644220000106 - AGUAS DO RIO 4 SPE S.A
+Número da NL
+2025NL00143 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+50 - TAXAS DE ÁGUA E ESGOTO
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00076
+Credor
+42644220000106
+Valor
+108,58
+Número da NE
+2025NE00169 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+759 - Recursos Vinculados a Fundos
+Fonte RJ
+150 - Recursos Vinculados a Fundos - FEHIS - Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+33157408000120 - SANTOS E COSTA ENGENHARIA LTDA
+Número da NL
+2025NL00142 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+61 - SERVIÇOS DE TOPOGRAFIA/ LEVANTAMENTOS DE PLANIMETRICOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Emitido/contabilizado por PRISCILA LOURES LEITE em 08/05/25 às 16:54.
+Impresso por WALDEMIR DAVILA PEIXOTO em 09/05/25 às 15:06.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/3
+
+Número da NE
+133100.2025NE00169
+Credor
+33157408000120
+Valor
+3.033,10
+Número da NE
+2025NE00172 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+759 - Recursos Vinculados a Fundos
+Fonte RJ
+150 - Recursos Vinculados a Fundos - FEHIS - Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+08540992000151 - DADY ILHA SOLUCOES INTEGRADAS LTDA.
+Número da NL
+2025NL00144 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica
+Sub-item da Despesa
+04 - Locação de equipamentos de TIC - impressoras
+Operação Patrimonial
+7988 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00172
+Credor
+08540992000151
+Valor
+283,71
+Número da NE
+2025NE00175 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+759 - Recursos Vinculados a Fundos
+Fonte RJ
+150 - Recursos Vinculados a Fundos - FEHIS - Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2025NL00148 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00175
+Credor
+35208086000127
+Valor
+1.909,82
+Número da NE
+2025NE00177 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+759 - Recursos Vinculados a Fundos
+Fonte RJ
+150 - Recursos Vinculados a Fundos - FEHIS - Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2025NL00149 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00177
+Credor
+19088605000104
+Valor
+5.265,01
+Número da NE
+2025NE00178 - 133100
+Emitido/contabilizado por PRISCILA LOURES LEITE em 08/05/25 às 16:54.
+Impresso por WALDEMIR DAVILA PEIXOTO em 09/05/25 às 15:06.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/3
+
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+40432544006269 - CLARO S.A.
+Número da NL
+2025NL00151 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica
+Sub-item da Despesa
+13 - COMUNICAÇÃO DE DADOS E REDES EM GERAL DE TIC
+Operação Patrimonial
+7988 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00178
+Credor
+40432544006269
+Valor
+131,28
+Pagamentos
+Tipo de Pagamento
+GRE
+UG Beneficiária
+999900
+UG Pagadora
+133100
+Código do Recolhimento
+770032
+Data Competência
+31/05/2025
+Número de Referência
+Valor Principal
+10.731,50
+Valor Juros/Encargos
+Valor Outras Deduções
+Data de vencimento da GRE
+04/05/2026
+Número da GRE
+000000969639
+Data da GRE
+08/05/2025
+Código de Autenticação
+Observação
+DESPESA COM A RETENÇÃO DAS EMPRESAS PRESTADORES DE SERVIÇOS
+Emitido/contabilizado por PRISCILA LOURES LEITE em 08/05/25 às 16:54.
+Impresso por WALDEMIR DAVILA PEIXOTO em 09/05/25 às 15:06.
+SIAFE-Rio / SEFAZ-RJ
+Página 3/3

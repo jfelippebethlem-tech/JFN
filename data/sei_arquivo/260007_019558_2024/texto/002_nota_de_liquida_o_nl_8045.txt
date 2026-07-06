@@ -1,0 +1,100 @@
+[Nota de Liquidação - NL 8045] (fase: despesa · tipo: nota_liquidacao)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Novembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO (CNPJ: 33.540.014/0017-14)
+2024NL08045
+23/12/24
+Valor Bruto
+Valor Líquido
+10.830,00
+10.830,00
+Tipo de Alteração
+Documento Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2024NE00464
+Credor
+39742173000110 - F.A.M SERVICOS E REPRESENTACOES LTDA
+Natureza
+339030 - Material de Consumo
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0442. 2682 - Apoio ao Hospital Universitário Pedro Ernesto
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+752020 - SERVICO DE FARMACIA
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+23005193 - Aquisição de medicamento (TAUROLIDINA) para o Serviço de Farm...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2023010787000107
+Processo
+260008/011908/2023
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Material de Consumo
+07 - MEDICAMENTOS EM GERAL
+172 - Reconhecimento da obrigação e ingresso no almoxarifado
+10.830,00
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Nota Fiscal
+37
+260007/019558/2024
+12/2024
+17/12/2024
+10.830,00
+Total Documentos Comprobatórios
+10.830,00
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  37 CONFORME PROCESSO 260007/019558/2024 ref. a aquisição de medicamentos, Taurolidina 1% + Uroquinase 25000 UI + Citrato 4% 
+Amp. 5 ml., 3ª PARCELA.
+Emitido/contabilizado por EDSON FERREIRA DA SILVA em 23/12/24 às 16:51.
+Impresso por EDSON FERREIRA DA SILVA em 23/12/24 às 16:51.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

@@ -1,0 +1,2161 @@
+[Nota de Empenho Original - NE] (fase: despesa · tipo: nota_empenho)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08263
+23/10/24
+Credor
+11308894000106 - Fundo Municipal De Saude De Macae
+Valor
+109.085,60 (Cento e nove mil e oitenta e cinco reais e sessenta centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+109.085,60
+Cronograma
+Outubro
+109.085,60
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+760.600,08 Pré-Empenhado
+0,00 Bloqueado
+0,00
+109.085,60
+651.514,48
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387). Macaé
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+109.085,60
+109.085,60
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387). Macaé. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:32.
+Impresso por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:32.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08264
+23/10/24
+Credor
+11274201000101 - Fundo Munic.de Saude Do Munic.de Teresopolis
+Valor
+77.602,46 (Setenta e sete mil e seiscentos e dois reais e quarenta e seis centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+77.602,46
+Cronograma
+Outubro
+77.602,46
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+651.514,48 Pré-Empenhado
+0,00 Bloqueado
+0,00
+77.602,46
+573.912,02
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387).TERESÓPOLIS- 
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+77.602,46
+77.602,46
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387).TERESÓPOLIS- NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VALDEZ FERREIRA SOARES em 23/10/24 às 16:34.
+Impresso por VALDEZ FERREIRA SOARES em 23/10/24 às 16:34.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08265
+23/10/24
+Credor
+11504310000160 - Fundo Municipal De Saude De Macuco
+Valor
+2.391,06 (Dois mil e trezentos e noventa e um reais e seis centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+2.391,06
+Cronograma
+Outubro
+2.391,06
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+573.912,02 Pré-Empenhado
+0,00 Bloqueado
+0,00
+2.391,06
+571.520,96
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387). Macuco
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+2.391,06
+2.391,06
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387). Macuco. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:34.
+Impresso por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:35.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08266
+23/10/24
+Credor
+12133004000127 - Fundo Municipal De Saude De Mage
+Valor
+104.155,18 (Cento e quatro mil e cento e cinquenta e cinco reais e dezoito centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+104.155,18
+Cronograma
+Outubro
+104.155,18
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+571.520,96 Pré-Empenhado
+0,00 Bloqueado
+0,00
+104.155,18
+467.365,78
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387). Magé
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+104.155,18
+104.155,18
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387). Magé. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:38.
+Impresso por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:39.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08267
+23/10/24
+Credor
+12995547000153 - Fundo Municipal De Saude De Trajano De Moraes
+Valor
+4.604,60 (Quatro mil e seiscentos e quatro reais e sessenta centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4.604,60
+Cronograma
+Outubro
+4.604,60
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+467.365,78 Pré-Empenhado
+0,00 Bloqueado
+0,00
+4.604,60
+462.761,18
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387).TRAJANO DE MORAES.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+4.604,60
+4.604,60
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387).TRAJANO DE MORAES. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VALDEZ FERREIRA SOARES em 23/10/24 às 16:38.
+Impresso por VALDEZ FERREIRA SOARES em 23/10/24 às 16:39.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08268
+23/10/24
+Credor
+12349225000137 - Fundo Municipal De Saude De Mangaratiba
+Valor
+18.898,90 (Dezoito mil e oitocentos e noventa e oito reais e noventa centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+18.898,90
+Cronograma
+Outubro
+18.898,90
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+462.761,18 Pré-Empenhado
+0,00 Bloqueado
+0,00
+18.898,90
+443.862,28
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387). Mangaratiba
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+18.898,90
+18.898,90
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387). Mangaratiba. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:42.
+Impresso por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:42.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08269
+23/10/24
+Credor
+04311955000110 - Fundo Municipal De Saude - Marica
+Valor
+68.512,98 (Sessenta e oito mil e quinhentos e doze reais e noventa e oito centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+68.512,98
+Cronograma
+Outubro
+68.512,98
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+443.862,28 Pré-Empenhado
+0,00 Bloqueado
+0,00
+68.512,98
+375.349,30
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387). Maricá
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+68.512,98
+68.512,98
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387). Maricá. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:44.
+Impresso por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:45.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08270
+23/10/24
+Credor
+11405835000148 - Fundo Municipal De Saude - Três Rios
+Valor
+34.766,70 (Trinta e quatro mil e setecentos e sessenta e seis reais e setenta centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+34.766,70
+Cronograma
+Outubro
+34.766,70
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+375.349,30 Pré-Empenhado
+0,00 Bloqueado
+0,00
+34.766,70
+340.582,60
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387).TRÊS RIOS..
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+34.766,70
+34.766,70
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387).TRÊS RIOS.. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VALDEZ FERREIRA SOARES em 23/10/24 às 16:46.
+Impresso por VALDEZ FERREIRA SOARES em 23/10/24 às 16:46.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08271
+23/10/24
+Credor
+12014954000132 - Fundo Municipal De Saude De Mendes
+Valor
+7.910,96 (Sete mil e novecentos e dez reais e noventa e seis centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+7.910,96
+Cronograma
+Outubro
+7.910,96
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+340.582,60 Pré-Empenhado
+0,00 Bloqueado
+0,00
+7.910,96
+332.671,64
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387). Mendes
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+7.910,96
+7.910,96
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387). Mendes. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:47.
+Impresso por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:47.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08272
+23/10/24
+Credor
+11934211000118 - Pms - Sms Fundo Municipal De Saude - Valenca
+Valor
+32.522,28 (Trinta e dois mil e quinhentos e vinte e dois reais e vinte e oito centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+32.522,28
+Cronograma
+Outubro
+32.522,28
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+332.671,64 Pré-Empenhado
+0,00 Bloqueado
+0,00
+32.522,28
+300.149,36
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387).VALENÇA..
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+32.522,28
+32.522,28
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387).VALENÇA.. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VALDEZ FERREIRA SOARES em 23/10/24 às 16:48.
+Impresso por VALDEZ FERREIRA SOARES em 23/10/24 às 16:48.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08273
+23/10/24
+Credor
+06083453000105 - Fundo De Saude Do Municipio De Mesquita
+Valor
+80.773,80 (Oitenta mil e setecentos e setenta e três reais e oitenta centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+80.773,80
+Cronograma
+Outubro
+80.773,80
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+300.149,36 Pré-Empenhado
+0,00 Bloqueado
+0,00
+80.773,80
+219.375,56
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387). Mesquita
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+80.773,80
+80.773,80
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387). Mesquita. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:49.
+Impresso por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:49.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08274
+23/10/24
+Credor
+07900983000161 - Fundo Municipal De Saude Varre-sai
+Valor
+4.766,66 (Quatro mil e setecentos e sessenta e seis reais e sessenta e seis centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4.766,66
+Cronograma
+Outubro
+4.766,66
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+219.375,56 Pré-Empenhado
+0,00 Bloqueado
+0,00
+4.766,66
+214.608,90
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387).VARRE -SAI.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+4.766,66
+4.766,66
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387).VARRE -SAI. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VALDEZ FERREIRA SOARES em 23/10/24 às 16:51.
+Impresso por VALDEZ FERREIRA SOARES em 23/10/24 às 16:51.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08275
+23/10/24
+Credor
+12240308000193 - Fundo Municipal De Saude De Miguel Pereira
+Valor
+10.993,06 (Dez mil e novecentos e noventa e três reais e seis centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+10.993,06
+Cronograma
+Outubro
+10.993,06
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+214.608,90 Pré-Empenhado
+0,00 Bloqueado
+0,00
+10.993,06
+203.615,84
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387). Miguel Pereira
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+10.993,06
+10.993,06
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387). Miguel Pereira. NAD 4778
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:51.
+Impresso por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:51.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08276
+23/10/24
+Credor
+11216262000104 - Fundo Municipal De Saude De Vassouras
+Valor
+15.680,80 (Quinze mil e seiscentos e oitenta reais e oitenta centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+15.680,80
+Cronograma
+Outubro
+15.680,80
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+203.615,84 Pré-Empenhado
+0,00 Bloqueado
+0,00
+15.680,80
+187.935,04
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387).VASSOURAS
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+15.680,80
+15.680,80
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387).VASSOURAS. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VALDEZ FERREIRA SOARES em 23/10/24 às 16:54.
+Impresso por VALDEZ FERREIRA SOARES em 23/10/24 às 16:54.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08277
+23/10/24
+Credor
+36285484000100 - Fundo Municipal De Saude De Miracema
+Valor
+11.548,96 (Onze mil e quinhentos e quarenta e oito reais e noventa e seis centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+ NÃO SUJEITO
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+11.548,96
+Cronograma
+Outubro
+11.548,96
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+187.935,04 Pré-Empenhado
+0,00 Bloqueado
+0,00
+11.548,96
+176.386,08
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387). MIRACEMA
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO
+1
+UN
+11.548,96
+11.548,96
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387). NAD.4776- MIRACEMA
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 16:58.
+Impresso por VALDEZ FERREIRA SOARES em 23/10/24 às 17:06.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08278
+23/10/24
+Credor
+39563911000162 - Fundo Municipal De Saude Pmvr Sms
+Valor
+116.030,10 (Cento e dezesseis mil e trinta reais e dez centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+116.030,10
+Cronograma
+Outubro
+116.030,10
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+176.386,08 Pré-Empenhado
+0,00 Bloqueado
+0,00
+116.030,10
+60.355,98
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387).VOLTA REDONDA.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+116.030,10
+116.030,10
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387).VOLTA REDONDA. NAD 4776
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VALDEZ FERREIRA SOARES em 23/10/24 às 16:58.
+Impresso por VALDEZ FERREIRA SOARES em 23/10/24 às 16:58.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08279
+23/10/24
+Credor
+12396542000104 - Fundo Municipal De Saude De Natividade
+Valor
+6.547,56 (Seis mil e quinhentos e quarenta e sete reais e cinquenta e seis centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+ NÃO SUJEITO
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+6.547,56
+Cronograma
+Outubro
+6.547,56
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+60.355,98 Pré-Empenhado
+0,00 Bloqueado
+0,00
+6.547,56
+53.808,42
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, 
+instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de 
+AGOSTO E SETEMBRO/2024, conforme solicitação (86037387). NATIVIDADE
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO
+1
+UN
+6.547,56
+6.547,56
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de AGOSTO E SETEMBRO/2024, 
+conforme solicitação (86037387). NAD.4776- NATIVIDADE
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 17:01.
+Impresso por TAYNÃ ALESSANDRA F. DE ALENCAR ROSA SIMÕES  em 23/10/24 às 17:02.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Setembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE08283
+23/10/24
+Credor
+10497795000149 - Fundo Municipal De Saude De Nova Iguacu
+Valor
+400.000,00 (Quatrocentos mil reais)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 2742 - Apoio às UPAS 24 Horas Municipalizadas
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+não sujeito
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/000744/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS 
+- MUNICÍPIOS
+400.000,00
+Cronograma
+Outubro
+400.000,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+16.800.000,00 Pré-Empenhado
+0,00 Bloqueado
+0,00
+400.000,00
+16.400.000,00
+Observação
+Resolução SES Nº 3262 de 27 de Fevereiro de 2024, DOERJ de 28/02/2024. Transferência de recursos financeiros do Fundo Estadual de Saúde aos respectivos 
+Fundos Municipais de Saúde, referente à contrapartida estadual para custeio das seguintes Unidades de Pronto Atendimento 24 Horas municipais. (AGOSTO/2024), 
+conforme solicitação (86034916). NOVA IGUAÇU- (COMENDADOR SOARES) 
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+REPASSE FINANCEIRO.
+1
+UN
+400.000,00
+400.000,00
+Descrição
+Resolução SES Nº 3262 de 27 de Fevereiro de 2024, DOERJ de 28/02/2024. Transferência de recursos financeiros do Fundo Estadual de Saúde aos respectivos Fundos Municipais 
+de Saúde, referente à contrapartida estadual para custeio das seguintes Unidades de Pronto Atendimento 24 Horas municipais. (AGOSTO/2024), conforme solicitação (86034916). 
+NOVA IGUAÇU- (COMENDADOR SOARES) -NAD.4778
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por VALDEZ FERREIRA SOARES em 23/10/24 às 18:16.
+Impresso por VALDEZ FERREIRA SOARES em 24/10/24 às 11:22.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

@@ -1,0 +1,531 @@
+[Nota de Liquidação - NL] (fase: despesa · tipo: nota_liquidacao)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NL07525
+19/09/25
+Valor Bruto
+Valor Líquido
+5.700.000,00
+5.700.000,00
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE07729
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/011330/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+5.700.000,00
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2025NE0772 9
+SEI-080001/011330/25
+05/2025
+19/09/2025
+5.700.000,00
+Total Documentos Comprobatórios
+5.700.000,00
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2025NE07729 CONFORME PROCESSO SEI-080001/011330/2025 - Resolução SES Nº 3645 de 16 
+de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo 
+de promover a melhoria da qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, 
+conforme solicitação (114304138). Hospital do câncer e do Coração - HCCOR 
+Emitido/contabilizado por Anastácia  Andrade Santos  de Farias em 19/09/25 
+à s 1 5 : 2 3 .
+Impresso por Anastácia  Andrade Santos  de Farias em 19/09/25 às 15:23.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NL07527
+19/09/25
+Valor Bruto
+Valor Líquido
+5.000.000,00
+5.000.000,00
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE07731
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/011330/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+5.000.000,00
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2025NE0773 1
+SEI-080001/011330/25
+05/2025
+19/09/2025
+5.000.000,00
+Total Documentos Comprobatórios
+5.000.000,00
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2025NE07731 CONFORME PROCESSO SEI-080001/011330/2025 - Resolução SES Nº 3645 de 16 
+de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo 
+de promover a melhoria da qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, 
+conforme solicitação (114304138). Hospital Municipal de Retaguarda
+Emitido/contabilizado por Anastácia  Andrade Santos  de Farias em 19/09/25 
+à s 1 5 : 2 5 .
+Impresso por Anastácia  Andrade Santos  de Farias em 19/09/25 às 15:26.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NL07528
+19/09/25
+Valor Bruto
+Valor Líquido
+5.250.000,00
+5.250.000,00
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE07732
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/011330/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+5.250.000,00
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2025NE0773 2
+SEI-080001/011330/25
+05/2025
+19/09/2025
+5.250.000,00
+Total Documentos Comprobatórios
+5.250.000,00
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2025NE07732 CONFORME PROCESSO SEI-080001/011330/2025 - Resolução SES Nº 3645 de 16 
+de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo 
+de promover a melhoria da qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, 
+conforme solicitação (114304138). Pronto Socorro Central Dr. Armando Gomes de Sá Couto
+Emitido/contabilizado por Anastácia  Andrade Santos  de Farias em 19/09/25 
+à s 1 5 : 2 8 .
+Impresso por Anastácia  Andrade Santos  de Farias em 19/09/25 às 15:28.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NL07530
+19/09/25
+Valor Bruto
+Valor Líquido
+1.750.000,00
+1.750.000,00
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE07733
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/011330/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+1.750.000,00
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2025NE0773 3
+SEI-080001/011330/25
+05/2025
+19/09/2025
+1.750.000,00
+Total Documentos Comprobatórios
+1.750.000,00
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2025NE07733 CONFORME PROCESSO SEI-080001/011330/2025 - Resolução SES Nº 3645 de 16 
+de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo 
+de promover a melhoria da qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, 
+c o n f o r m e s o l i c i t a ç ã o ( 1 1 4 3 0 4 1 3 8 ) . H o s p i t a l I n f a n t i l D a r c y S o u z a V a r g a s 
+Emitido/contabilizado por Anastácia  Andrade Santos  de Farias em 19/09/25 
+à s 1 5 : 3 1 .
+Impresso por Anastácia  Andrade Santos  de Farias em 19/09/25 às 15:31.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NL07532
+19/09/25
+Valor Bruto
+Valor Líquido
+2.200.000,00
+2.200.000,00
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE07734
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4857 - Apoio às Unidades de Saúde Municipais
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/011330/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+2.200.000,00
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2025NE0773 4
+SEI-080001/011330/25
+05/2025
+19/09/2025
+2.200.000,00
+Total Documentos Comprobatórios
+2.200.000,00
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2025NE07734 CONFORME PROCESSO SEI-080001/011330/2025 - Resolução SES Nº 3645 de 16 
+de maio de 2025, publicada no D.O. de 19/05/2025, para o Apoio Financeiro ao município de São Gonçalo com o objetivo 
+de promover a melhoria da qualidade e resolubilidade do atendimento aos usuários do SUS, competência de MAIO/2025, 
+conforme solicitação (114304138). Centro de Imagem e Especialidades de São Gonçalo
+Emitido/contabilizado por Anastácia  Andrade Santos  de Farias em 19/09/25 
+à s 1 5 : 3 5 .
+Impresso por Anastácia  Andrade Santos  de Farias em 19/09/25 às 15:35.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

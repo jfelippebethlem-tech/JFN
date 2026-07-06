@@ -1,0 +1,95 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2026PD00258
+06-04-2026
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+133100 - ITERJ
+2026OB00225 - 08-
+04-2026
+237 - 6898 - 0000000027 
+- CONTA ÚNICA
+Favorecido
+Domicílio Bancário 
+Destino
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+237 - 1075 - 869368
+Valor por Extenso
+Valor
+C e m  m i l  e  s e i s c e n t o s  e  t r e z e  r e a i s  e  d e z o i t o  c e n t a v o s
+100.613,18
+Detalhamento
+Nota Liquidação
+2026NL00150
+Tipo de Despesa
+Nota de Empenho
+2026NE00117
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Domicílio Bancário Destino
+237 - 1075 - 869368
+Competência
+03/2026
+Processo
+30/2026
+I t e n s
+Tipo Patrimonial Sub-item da 
+Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Serviços de Terceiros 
+- Pessoa Jurídica
+12 - SERVIÇOS 
+DE ASSEIO E 
+HIGIENE
+3722 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício Atual 
+Consumindo Limite de 
+Saque
+86 - FORNECEDORES
+100.613,18
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  1506 CONFORME PROCESSO I  No uso da competência Delegada através da Portaria SEI 
+ITERJ Nº 247 de 01/07/2021, AUTORIZO a emissão das Notas de Autorização de Despesas  NAD, bem como a emissão da Nota 
+E m p e n h o ,  n o  v a l o r  e s t i m a d o  d e  R $  1 1 1 . 4 3 5 , 9 3  ( c e n t o  e  o n z e  m i l ,   q u a t r o c e n t o s  e  t r i n t a  e  c i n c o  r e a i s  e  n o v e n t a  e  t r ê s  
+centavos) - em favor da empresa MGS CLEAN SOLUÇÕES E SERVIÇOS LTDA, relativo a Serviço de Limpeza, Higiene, 
+Conservação, Copeiragem, Recepção e Portaria, deste ITERJ, referente ao período  FEVEREIRO/2026, conforme Termos do 
+Contrato nº 005/2021, visando atender as necessidades deste ITERJ, do orçamento em vigor.
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 06-04-2026 às 12:
+0 6 .
+Impresso por IVONETE JOSE MARIA SABINO em 09-04-2026 às 14:12.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

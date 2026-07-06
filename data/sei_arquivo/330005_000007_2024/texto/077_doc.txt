@@ -1,0 +1,103 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 12
+Encerrado até Agosto 
+Identificação
+UG Emitente
+Documento
+Emissão
+133100 - ITERJ
+2024OB00773
+07-10-2024
+UG Liquidante
+UG Pagadora
+133100 - ITERJ
+133100 - ITERJ
+Valor por Extenso
+Valor
+Noventa e nove mil e setecentos e sessenta e seis reais e sessenta e um centavos
+99.766,61
+Detalhamento
+Nota Liquidação
+2024NL00456
+Nota de Empenho
+2024NE00478
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Detalhamento de Fonte
+000000 - Sem detalhamento - (501.145)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Domicílio Bancário Origem
+237 - 6898 - 0000000027 - CONTA ÚNICA
+Domicílio Bancário Destino
+237 - 1075 - 869368
+Competência
+09/2024
+Processo
+I t e n s
+Tipo Patrimonial
+Sub-item da 
+Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Serviços de Terceiros 
+- Pessoa Jurídica
+12 - SERVIÇOS DE 
+ASSEIO E HIGIENE
+3722 - Pagamento da despesa 
+empenhada e liquidada no Exercício 
+Atual Consumindo Limite de Saque
+86 - FORNECEDORES
+99.766,61
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  5217 CONFORME PROCESSO despesa relativo a Serviço de Limpeza, Higiene, Conservação, Copeiragem, 
+Recepção e Portaria, deste ITERJ, referente ao período SETEMBRO/2024
+Registro de Envio
+UG Emitente
+133100
+Emissão
+07-10-2024
+Documento
+2024RE00180
+Data de Envio
+Status de Envio
+Aguardando Envio
+Data de retorno
+Tipo de Pagamento
+Normal
+Retorno
+-
+Programação de Desembolso
+Documento
+2024PD00959
+Emissão
+03-10-2024
+Data de 
+Programação
+07-10-2024
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 07-10-2024 às 9:
+4 6 .
+Impresso por IVONETE JOSE MARIA SABINO em 07-10-2024 às 10:25.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

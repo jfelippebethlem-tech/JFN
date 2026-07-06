@@ -1,0 +1,32 @@
+{
+ "processo": "120228/000263/2023",
+ "gerado_em": "2026-07-06T06:32:49+00:00",
+ "origem": "/home/ubuntu/JFN/data/sei_cache/integra_120228_000263_2023",
+ "modalidade": "",
+ "docs": [],
+ "linha_do_tempo": {
+  "planejamento": 0,
+  "selecao": 0,
+  "contratacao": 0,
+  "execucao": 0,
+  "despesa": 0,
+  "controle": 0,
+  "tramitacao": 0,
+  "indefinida": 0
+ },
+ "lacunas": [
+  {
+   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Seleção (edital, julgamento, homologação)",
+   "gravidade": "alta"
+  },
+  {
+   "falta": "Contrato/ata formalizados",
+   "gravidade": "media"
+  }
+ ],
+ "fotos_total": 0
+}

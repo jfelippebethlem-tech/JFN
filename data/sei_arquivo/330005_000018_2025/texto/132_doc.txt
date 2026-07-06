@@ -1,0 +1,181 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2025PD00046
+06/02/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+133100 - ITERJ
+237 - 6898 - 0000000027 
+- CONTA ÚNICA
+Favorecido
+Domicílio Bancário 
+Destino
+999900 - TESOURO DO ESTADO DO RIO DE JANEIRO
+237 - 6898 - 0000000027
+Valor por Extenso
+Valor
+Cinco mil e quinhentos e noventa e um reais e oitenta e nove centavos
+5.591,89
+Tipo de Regularização
+Pagamento GRE
+Detalhamento
+Tipo de Retenção
+IRRF TERCEIROS
+Credor da Retenção
+TESOURO DO ESTADO DO RIO DE JANEIRO
+Competência
+02/2025
+Processo
+2025
+I t e n s
+Número da NE
+2025NE00010 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+28542017000190 - Imprensa Oficial Do Estado Do Rio De Janeiro
+Número da NL
+2025NL00014 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+07 - SERVIÇOS DE IMPRESSAO E ENCADERNAÇAO
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00010
+Credor
+28542017000190
+Valor
+43,17
+Número da NE
+2025NE00025 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+08540992000151 - DADY ILHA SOLUCOES INTEGRADAS LTDA.
+Número da NL
+2025NL00021 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica
+Sub-item da Despesa
+04 - Locação de equipamentos de TIC - impressoras
+Operação Patrimonial
+7988 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Emitido/contabilizado por PRISCILA LOURES LEITE em 06/02/25 às 15:09.
+Impresso por WALDEMIR DAVILA PEIXOTO em 11/02/25 às 11:48.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/2
+
+Número da NE
+133100.2025NE00025
+Credor
+08540992000151
+Valor
+283,71
+Número da NE
+2025NE00027 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2025NL00017 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00027
+Credor
+19088605000104
+Valor
+5.265,01
+Pagamentos
+Tipo de Pagamento
+GRE
+UG Beneficiária
+999900
+UG Pagadora
+133100
+Código do Recolhimento
+770032
+Data Competência
+28/02/2025
+Número de Referência
+Valor Principal
+5.591,89
+Valor Juros/Encargos
+Valor Outras Deduções
+Data de vencimento da GRE
+02/02/2026
+Número da GRE
+000000934232
+Data da GRE
+06/02/2025
+Código de Autenticação
+Observação
+REGISTRO DA RETENÇÃO DE IR DAS EMPRESAS
+Emitido/contabilizado por PRISCILA LOURES LEITE em 06/02/25 às 15:09.
+Impresso por WALDEMIR DAVILA PEIXOTO em 11/02/25 às 11:48.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/2

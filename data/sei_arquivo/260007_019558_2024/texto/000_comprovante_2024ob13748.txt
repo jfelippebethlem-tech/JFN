@@ -1,0 +1,108 @@
+[Comprovante 2024OB13748] (fase: despesa · tipo: ordem_bancaria)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 50
+Encerrado até Mês 14
+Identificação
+UG Emitente
+Documento
+Emissão
+404340 - HUPE
+2024OB13748
+27-12-2024
+UG Liquidante
+UG Pagadora
+404340 - HUPE
+296100 - FES
+Valor por Extenso
+Valor
+D e z m i l e o i t o c e n t o s e t r i n t a r e a i s
+10.830,00
+Detalhamento
+Nota Liquidação
+2024NL08045
+Nota de Empenho
+2024NE00464
+Credor
+39742173000110 - F.A.M SERVICOS E REPRESENTACOES LTDA
+Natureza
+339030 - Material de Consumo
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+23005193 - Aquisição de medicamento (TAUROLIDINA) para o Serviço de Farm...
+Domicílio Bancário Origem
+237 - 6898 - 0000027200 - CONTA D
+Domicílio Bancário Destino
+033 - 1792 - 130016644
+Competência
+12/2024
+Processo
+SEI-260007/019558/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Vinculação de Pagamento
+Classificação 
+Complementar
+Valor
+Material de Consumo
+07 - MEDICAMENTOS EM 
+GERAL
+5398 - Pagamentos Orçamentários com recursos de outra UG (Pagamentos 
+Descentralizados)
+99 - Sem consumo de Limite de 
+Saque
+10.830,00
+Observação
+PROGRAMAÇÃO DE PÁGAMENTO DO (S)  DOCUMENTO (S)  37 CONFORME AQUISIÇÃO DE MEDICAMENTO HISPITALAR ( AQUISIÇÃO DE TAUROLIDINA 1% + UROQUINASE 2500 UI + CITRATO 4% AMP. 5ML 
+), PARA O HUPE. 
+Registro de Envio
+UG Emitente
+296100
+Emissão
+27-12-2024
+Documento
+2024RE03922
+Data de Envio
+27-12-2024
+Status de Envio
+Processado e Pago
+Data de retorno
+10-01-2025
+Tipo de Pagamento
+Normal
+Retorno
+Ordem bancária 
+paga e liberada com 
+sucesso.
+Programação de Desembolso
+Documento
+2024PD14801
+Emissão
+26-12-2024
+Data de 
+Programação
+27-12-2024
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por ADRIANO INAGAKI DE ANDRADE em 27-12-2024 às 14:23.
+Impresso por GUSTAVO DA SILVA PEREIRA em 21-10-2025 às 14:32.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

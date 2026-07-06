@@ -1,0 +1,56 @@
+[] (fase: indefinida · tipo: vazio)
+
+17/11/22, 16:02
+Buscar Atas de Registro de Preço
+https://www.compras.rj.gov.br/AtaRegistroPreco/buscar.action
+1/2
+Compras Públicas 
+Sistema Integrado de Gestão de Aquisições
+Nenhum resultado foi encontrado.
+×
+Pesquisar Atas de Registro de Preço
+Data: 17/11/2022   	Hora Consulta: 16:00
+Por Dados da Ata
+Status:
+Unidade:
+Número da Ata:
+Critério de Julgamento:
+Validade:
+Data Início Validade:
+Data Fim Validade:
+Por Dados do Fornecedor
+Nome/Razão Social:
+Válida
+Selecione
+Digite o número da ata
+Selecione
+__/__/____
+__/__/____
+Digite o nome do fornecedor
+
+(https://www.compras.rj.gov.br/suportelogistico/)
+
+17/11/22, 16:02
+Buscar Atas de Registro de Preço
+https://www.compras.rj.gov.br/AtaRegistroPreco/buscar.action
+2/2
+CPF/CNPJ
+Por Item
+Tipo:
+Família:
+Classe:
+Artigo:
+Tipo de Pesquisa:
+Termo do Item:
+ ADICIONAR LINHA
+  Itens sustentáveis
+
+Digite o CPF/CNPJ do fornecedor
+2 - SERVICOS
+46 - SERVICOS DE LIMPEZA, ASSEIO E CONSERVACAO PREDIAL
+714 - SERVICOS DE FAXINAS E AFINS
+1 - LIMPEZA PREDIAL
+Código ID
+99065
+
+(https://www.compras.rj.gov.br/suportelogistico/)

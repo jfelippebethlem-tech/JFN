@@ -1,0 +1,213 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Aplicação e Resgate
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio ... (CNPJ: )
+2025NA00085
+18/09/25
+Tipo de Documento
+Estorno
+Aplicação
+Não
+Valor por Extenso
+Valor
+O i t o  m i l h õ e s  e  c e n t o  e  c i n c o  m i l  e  v i n t e  r e a i s
+8.105.020,00
+ 
+Detalhamento
+Dados bancários
+Domicílio Bancário
+Fonte
+Convênio
+Origem
+001 - 2234 - 11202X
+Destino
+001 - 2234 - 11202X
+Classificação
+Tipo Patrimonial
+Aplicações Financeiras de Liquidez Imediata
+Item Patrimonial
+3452 - FUNDOS DE INVESTIMENTOS DE RENDA FIXA 
+Operação Patrimonial
+9280 - Resgate - Fonte de Recursos
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+713 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Fonte RJ
+224 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Tipo de Detalhamento de Fonte
+1 - CADASTRO
+Detalhamento de Fonte
+000097 - REDUÇÃO DE MORTES VIOLENTAS INTENCIONAIS 2023 - (713.224)
+ 
+Observação
+ 
+Emitido/contabilizado por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 14:49.
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 14:50.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Aplicação e Resgate
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio ... (CNPJ: )
+2025NA00087
+18/09/25
+Tipo de Documento
+Estorno
+Aplicação
+Não
+Valor por Extenso
+Valor
+N o v e c e n t o s  e  t r i n t a  e  c i n c o  m i l  e  s e i s c e n t o s  e  s e s s e n t a  r e a i s
+935.660,00
+ 
+Detalhamento
+Dados bancários
+Domicílio Bancário
+Fonte
+Convênio
+Origem
+001 - 2234 - 110876
+Destino
+001 - 2234 - 110876
+Classificação
+Tipo Patrimonial
+Aplicações Financeiras de Liquidez Imediata
+Item Patrimonial
+3452 - FUNDOS DE INVESTIMENTOS DE RENDA FIXA 
+Operação Patrimonial
+9280 - Resgate - Fonte de Recursos
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+713 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Fonte RJ
+224 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Tipo de Detalhamento de Fonte
+1 - CADASTRO
+Detalhamento de Fonte
+000085 - FORTALECIMENTO DAS INSTITUIÇÕES DE SEGURANÇA PÚBLICA E DEFESA S...
+ 
+Observação
+ 
+Emitido/contabilizado por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 14:54.
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 14:54.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Aplicação e Resgate
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio ... (CNPJ: )
+2025NA00088
+18/09/25
+Tipo de Documento
+Estorno
+Aplicação
+Não
+Valor por Extenso
+Valor
+S e t e  m i l h õ e s  e  q u i n h e n t o s  e  t r e z e  m i l  d e  r e a i s
+7.513.000,00
+ 
+Detalhamento
+Dados bancários
+Domicílio Bancário
+Fonte
+Convênio
+Origem
+001 - 2234 - 0000000114944
+Destino
+001 - 2234 - 0000000114944
+Classificação
+Tipo Patrimonial
+Aplicações Financeiras de Liquidez Imediata
+Item Patrimonial
+3452 - FUNDOS DE INVESTIMENTOS DE RENDA FIXA 
+Operação Patrimonial
+9280 - Resgate - Fonte de Recursos
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+713 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Fonte RJ
+224 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Tipo de Detalhamento de Fonte
+1 - CADASTRO
+Detalhamento de Fonte
+000101 - REDUÇÃO DE MORTES VIOLENTAS INTENCIONAIS 2024 - (713.224)
+ 
+Observação
+ 
+Emitido/contabilizado por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 14:56.
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 14:57.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Aplicação e Resgate
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio ... (CNPJ: )
+2025NA00093
+19/09/25
+Tipo de Documento
+Estorno
+Aplicação
+Não
+Valor por Extenso
+Valor
+Noventa e cinco mil e duzentos e sessenta reais
+95.260,00
+ 
+Detalhamento
+Dados bancários
+Domicílio Bancário
+Fonte
+Convênio
+Origem
+001 - 2234 - 0000000114944
+Destino
+001 - 2234 - 0000000114944
+Classificação
+Tipo Patrimonial
+Aplicações Financeiras de Liquidez Imediata
+Item Patrimonial
+3452 - FUNDOS DE INVESTIMENTOS DE RENDA FIXA 
+Operação Patrimonial
+9280 - Resgate - Fonte de Recursos
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+713 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Fonte RJ
+224 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Tipo de Detalhamento de Fonte
+1 - CADASTRO
+Detalhamento de Fonte
+000101 - REDUÇÃO DE MORTES VIOLENTAS INTENCIONAIS 2024 - (713.224)
+ 
+Observação
+ 
+Emitido/contabilizado por RENAN DE MATTOS RODRIGUES LOPES em 19/09/25 às 15:38.
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 19/09/25 às 15:38.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

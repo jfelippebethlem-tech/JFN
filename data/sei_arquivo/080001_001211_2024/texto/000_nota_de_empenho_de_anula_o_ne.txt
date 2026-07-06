@@ -1,0 +1,121 @@
+[Nota de Empenho de Anulação - NE] (fase: despesa · tipo: nota_empenho)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Novembro
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2025NE11638
+30/12/25
+Credor
+22959877000147 - FUNDO MUNICIPAL DE SAUDE DE PARAIBA DO SUL - RJ
+Tipo de Empenho NE Original
+Valor
+9.410,56 (Nove mil e quatrocentos e dez reais e cinquenta e seis centavos)
+Anulação
+2025NE01976
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+NÃO SUJEITO.
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-
+080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+9.410,56
+Cronograma
+Dezembro
+9.410,56
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+28,71 Pré-Empenhado
+0,00 Bloqueado
+0,00
+9.410,56
+9.439,27
+Observação
+Anulação total da 2025NE01976 por duplicidade.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+Anulação
+1
+UN
+9.410,56
+9.410,56
+Descrição
+Anulação total da 2025NE01976 por duplicidade.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LETÍCIA DE OLIVEIRA SILVA em 09/01/26 às 18:09.
+Impresso por VANDA ESTEVES NAZIAZENO em 12/01/26 às 12:12.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

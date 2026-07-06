@@ -1,0 +1,151 @@
+[] (fase: indefinida · tipo: vazio)
+
+DANFSe v1.0
+Documento Auxiliar da NFS-e
+Prefeitura da Cidade do Rio de
+Janeiro
+SMF / Receita Rio
+Chave de Acesso da NFS-e
+33045572219088605000104000000000112526021802990405
+A autenticidade desta NFS-e pode ser verificada
+pela leitura deste código QR ou pela consulta da
+chave de acesso no portal nacional da NFS-e
+Número da NFS-e
+1125
+Competência da NFS-e
+12/02/2026
+Data e Hora da emissão da NFS-e
+12/02/2026 16:20:15
+Número da DPS
+279
+Série da DPS
+70000
+Data e Hora da emissão da DPS
+12/02/2026 16:20:15
+EMITENTE DA NFS-e
+Prestador do Serviço
+CNPJ / CPF / NIF
+19.088.605/0001-04
+Inscrição Municipal
+-
+Telefone
+(21) 3489-2238
+Nome / Nome Empresarial
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+E-mail
+CONTATO@MGSCLEAN.NET
+Endereço
+DAS AMERICAS, 03434, BARRA DA TIJUCA
+Município
+Rio de Janeiro - RJ
+CEP
+22640-102
+Simples Nacional na Data de Competência
+Não optante
+Regime de Apuração Tributária pelo SN
+-
+TOMADOR DO SERVIÇO
+CNPJ / CPF / NIF
+40.173.726/0001-40
+Inscrição Municipal
+-
+Telefone
+-
+Nome / Nome Empresarial
+INST DE TERRAS E CARTOGRAFIA DO EST DO RJ
+E-mail
+-
+Endereço
+REGENTE FEIJO, 7, CENTRO
+Município
+Rio de Janeiro - RJ
+CEP
+20060-060
+INTERMEDIÁRIO DO SERVIÇO NÃO IDENTIFICADO NA NFS-e
+SERVIÇO PRESTADO
+Código de Tributação Nacional
+17.05.01 - Fornecimento de mão-de-
+obra, mesmo em caráter
+temporário,...
+Código de Tributação Municipal
+001 - Fornecimento de mão-de-obra.
+Local da Prestação
+Rio de Janeiro - RJ
+País da Prestação
+-
+Descrição do Serviço
+PRESTACAO DE SERVICOS DE LIMPEZA, HIGIENE, CONSERVACAO, COPEIRAGEM, RECEPCAO E PORTARIA. DE ACORDO COM OS TERMOS DO
+CONTRATO N
+005/2021 3 TERMO ADITIVO. PERIODO DE 01/01/2026 A 31/01/2026. CONFORME MEDICAO APRESENTADA. BANCO BRADESCO (237) - AG: 1075 -
+C/C: 86936-8 CONFORME INSTRUCAO NORMATIVA-RFB N 2110/2022 DE 01/11/2022 - DEDUÇÃO INSS VALE ALIMENTAÇÃO E VALE TRANSPORTE
+R$ 5.137,56.
+TRIBUTAÇÃO MUNICIPAL
+Tributação do ISSQN
+Operação Tributável
+País Resultado da Prestação do Serviço
+-
+Município de Incidência do ISSQN
+Rio de Janeiro - RJ
+Regime Especial de Tributação
+Nenhum
+Tipo de Imunidade
+-
+Suspensão da Exigibilidade do ISSQN
+Não
+Número Processo Suspensão
+-
+Benefício Municipal
+-
+Valor do Serviço
+R$ 118.441,47
+Desconto Incondicionado
+-
+Total Deduções/Reduções
+-
+Cálculo do BM
+-
+BC ISSQN
+R$ 118.441,47
+Alíquota Aplicada
+5,00%
+Retenção do ISSQN
+Não Retido
+ISSQN Apurado
+R$ 5.922,07
+TRIBUTAÇÃO FEDERAL
+IRRF
+R$ 5.685,19
+Contribuição Previdenciária - Retida
+R$ 5.137,56
+Contribuições Sociais - Retidas
+-
+Descrição Contrib. Sociais - Retidas
+-
+PIS - Débito Apuração Própria
+-
+COFINS - Débito Apuração Própria
+-
+VALOR TOTAL DA NFS-E
+Valor do Serviço
+R$ 118.441,47
+Desconto Condicionado
+-
+Desconto Incondicionado
+-
+ISSQN Retido
+-
+Total das Retenções Federais
+R$ 10.822,75
+PIS/COFINS - Débito Apur. Própria
+-
+Valor Líquido da NFS-e
+R$ 107.618,72
+TOTAIS APROXIMADOS DOS TRIBUTOS
+Federais
+0,00 %
+Estaduais
+0,00 %
+Municipais
+0,00 %
+INFORMAÇÕES COMPLEMENTARES
+NBS: 118031000

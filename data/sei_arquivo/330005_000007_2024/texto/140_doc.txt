@@ -1,0 +1,220 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Encerrado até Junho 
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2024PD00249
+08/03/24
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+133100 - ITERJ
+2024OB00177 - 
+13/03/24
+237 - 6898 - 0000000027 
+- CONTA ÚNICA
+Favorecido
+Domicílio Bancário 
+Destino
+999900 - TESOURO DO ESTADO DO RIO DE JANEIRO
+237 - 6898 - 0000000027
+Valor por Extenso
+Valor
+S e t e  m i l  e  s e t e c e n t o s  e  c i n q u e n t a  e  q u a t r o  r e a i s  e  s e t e n t a  e  n o v e  c e n t a v o s
+7.754,79
+Tipo de Regularização
+Pagamento GRE
+Detalhamento
+Tipo de Retenção
+IRRF TERCEIROS
+Credor da Retenção
+TESOURO DO ESTADO DO RIO DE JANEIRO
+Competência
+03/2024
+Processo
+SEI-330020/000123/2024
+I t e n s
+Número da NE
+2024NE00074 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+07622836000177 - MTM SERVICOS DE INFORMATICA LTDA
+Número da NL
+2024NL00061 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica
+Sub-item da Despesa
+11 - SUPORTE DE INFRAESTRUTURA DE TIC
+Operação Patrimonial
+7988 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Número da NE
+133100.2024NE00074
+Credor
+07622836000177
+Valor
+964,04
+Número da NE
+2024NE00075 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2024NL00059 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Emitido/contabilizado por PRISCILA LOURES LEITE em 08/03/24 às 16:44.
+Impresso por WALDEMIR DAVILA PEIXOTO em 16/07/24 às 10:02.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/2
+
+Número da NE
+133100.2024NE00075
+Credor
+35208086000127
+Valor
+1.781,90
+Número da NE
+2024NE00076 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2024NL00065 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Número da NE
+133100.2024NE00076
+Credor
+19088605000104
+Valor
+4.991,45
+Número da NE
+2024NE00082 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+03746938000143 - BRS SP SUPRIMENTOS CORPORATIVOS S/A
+Número da NL
+2024NL00064 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+01 - SERVIÇOS DE OPERAÇÃO DE ALMOXARIFADO VIRTUAL
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Número da NE
+133100.2024NE00082
+Credor
+03746938000143
+Valor
+17,40
+Pagamentos
+Tipo de Pagamento
+GRE
+UG Beneficiária
+999900
+UG Pagadora
+133100
+Código do Recolhimento
+770032
+Data Competência
+31/03/2024
+Número de Referência
+Valor Principal
+7.754,79
+Valor Juros/Encargos
+Valor Outras Deduções
+Data de vencimento da GRE
+03/03/2025
+Número da GRE
+000000794986
+Data da GRE
+08/03/2024
+Código de Autenticação
+Observação
+RETENÇÃO DE IR EMPRESAS PRESTADORES DE SERVIÇOS
+Emitido/contabilizado por PRISCILA LOURES LEITE em 08/03/24 às 16:44.
+Impresso por WALDEMIR DAVILA PEIXOTO em 16/07/24 às 10:02.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/2

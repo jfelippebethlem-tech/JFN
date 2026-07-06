@@ -1,0 +1,131 @@
+[Nota de Empenho Reforço - NE 2024NE06874] (fase: despesa · tipo: nota_empenho)
+
+S)
+
+Governo do Estado do Rio de Janeiro
+
+Nota de Empenho
+
+Encerrado até Outubro
+
+identificação
+
+Unidade Gestora
+
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO (CNPJ: 33.540.014/0017-14)
+Credor 04380569000180 - JR G DISTRIBUIDORA DE MEDICAMENTOS HOSPITALARES LTDA
+Valor 16.930,80 (Dezesseis mil e novecentos e trinta reais e oitenta centavos)
+
+Documento Emissão
+2024NE06874 711/24
+
+(Classificação
+
+Natureza
+
+Unidade Orçamentária
+Programa de trabalho
+
+Id, uso
+
+Identificador Exercício Fonte
+Fonte
+
+Fonte RJ
+
+Tipo de Detalhamento de Fonte
+Detalhamento de Fonte
+
+Tipo de Área Geográfica
+
+Área Geográfica
+
+Plano Interno
+
+Unidade Gestora Responsável
+LME
+
+Convênio de Receita
+Convênio de Despesa
+Contrato
+
+Programa de Financiamento E...
+
+Chave SIGA
+
+Detalhamento
+
+Tipo de Empenho |NE Original
+Reforço 2024NE00966
+339030 - Material de Consumo
+
+29610 - Fundo Estadual de Saúde
+
+10.302. 0508. 4866 - Apoio a HUPE e PPC/UERJ para a realização de proced...
+
+O - Não destinado à contrapartida
+1 - Recursos do Exercício Corrente
+
+600 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Go...
+
+225 - Transferências Fundo a Fundo do SUS - Bloco de Manutenção
+O - Sem Detalhamento
+
+000000 - Sem detalhamento - (600.225)
+
+2- ESTADO
+
+3300000 - ESTADO
+
+00000000000 - Plano Interno nao identificado
+751010 - OPMES - GERAL
+
+03 - Manutenção, atividades e projetos finalísticos
+000000 - Convênio não identificado
+
+000000 - Convênio não identificado
+
+24000400 - Material de OPMES (cola cirúrgica)
+
+O - Indefinido
+
+2024000961000486
+
+Mod. Empenho Estimativo Mod. Licitação 09 - Pregão Eletrônico Emb. Legal 10520/02
+Origem 1 - Origem nacional Data Entrega Local Entrega
+
+Processo SEI- UF Espírito Santo Município Serra
+260008/011576/2023
+
+Itens
+
+Tipo Patrimonial Sub-item da Despesa Classificação Complementar Valor
+
+Material de Consumo 06 - MATERIAL LABORATORIAL /MATERIAL 16.930,80
+HOSPITALAR
+
+"Cronograma
+
+Novembro ms To TT
+
+(Saldo Dotação
+
+Créd. Disp. Indisponível antes NE 0,00| Valor NE Saldo após NE
+361.545,45] Pré-Empenhado 0,00 |Bloqueado 0,00 16.930,80 344.614,65
+
+Observação
+Cola cirúrgica (SEI 68527019); PE 10/2024; UGR 751010; contrato 24000400.
+
+Produtos |
+Produto Quantidade Und. Fornec. Preço Unitário Preço Total
+XXXXX 1 UN 16.930,80 16.930,80
+Descrição XXXXX
+
+Emitido/contabilizado por CYNTHIA CABRERA DA COSTA MARTINS em 27/11/24 às
+16:42.
+
+Impresso por CYNTHIA CABRERA DA COSTA MARTINS em 27/11/24 às 16:42.
+
+EisiarE-Rio? SIAFE-Rio / SEFAZ-RJ
+
+Ea Página 1/1

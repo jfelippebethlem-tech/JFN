@@ -1,0 +1,90 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2024PD00184
+21-02-2024
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+999900 - TESOURO ESTADUAL
+237 - 6898 - 0000000027 - 
+CONTA ÚNICA
+Favorecido
+Domicílio Bancário Destino
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS EIRELI
+237 - 1075 - 869368
+Valor por Extenso
+Valor
+Noventa e quatro mil e quatrocentos e setenta e oito reais e sessenta e quatro centavos
+94.478,64
+Detalhamento
+Nota Liquidação
+2024NL00026
+Tipo de Despesa
+Nota de Empenho
+2024NE00043
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS EIRELI
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Domicílio Bancário Destino
+237 - 1075 - 869368
+Competência
+01/2024
+Processo
+330005/000007/2024
+I t e n s
+T i p o  
+Patrimonial
+Sub-item da 
+Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Serviços de 
+Terceiros - Pessoa 
+Jurídica
+12 - SERVIÇOS 
+DE ASSEIO E 
+HIGIENE
+3722 - Pagamento da despesa 
+empenhada e liquidada no 
+Exercício Atual Consumindo 
+Limite de Saque
+0 - Liberação 
+automática de Limite 
+de Saque
+94.478,64
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  3408 CONFORME PROCESSO complemento do empenho de verba relativo Prestação de serviços de Limpeza, 
+Higiene, Conservação, Copeiragem, Recepção e Portaria do Instituto de Terras. JAN  2024                                                                                        
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 21-02-2024 às 13:
+5 7 .
+Impresso por IVONETE JOSE MARIA SABINO em 21-02-2024 às 14:06.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

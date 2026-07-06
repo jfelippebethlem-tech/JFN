@@ -1,0 +1,205 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária de Retenção
+TIPO 13
+Encerrado até Julho 
+Identificação
+UG Emitente
+Documento
+Emissão
+133100 - ITERJ
+2024OB00625
+12/08/24
+UG Liquidante
+UG Pagadora
+133100 - ITERJ
+133100 - ITERJ
+Valor por Extenso
+Valor
+T r e z e n t o s  e  o i t e n t a  e  s e i s  m i l  e  c e n t o  e  n o v e n t a  e  o i t o  r e a i s  e  n o v e  c e n t a v o s
+386.198,09
+Tipo de Regularização
+Pagamento GRE
+Detalhamento
+Tipo de Retenção
+IRRF TERCEIROS
+Credor da Retenção
+TESOURO DO ESTADO DO RIO DE JANEIRO
+Competência
+07/2024
+Domicílio Bancário Origem
+237 - 6898 - 0000000027
+Domicílio Bancário Destino
+237 - 6898 - 0000000027
+Processo
+SEI 150012/000143/2024
+I t e n s
+Número da NE
+2024NE00350 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+03314057000153 - Enge Prat Engenharia E Serviços Ltda.
+Número da NL
+2024NL00354 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+61 - SERVIÇOS DE TOPOGRAFIA/ LEVANTAMENTOS DE PLANIMETRICOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+371.200,00
+Número da NE
+2024NE00351 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2024NL00355 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+5.265,01
+Número da NE
+2024NE00355 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Emitido/contabilizado por PRISCILA LOURES LEITE em 12/08/24 às 13:50.
+Impresso por WALDEMIR DAVILA PEIXOTO em 14/08/24 às 09:51.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/2
+
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+08540992000151 - DADY ILHA SOLUCOES INTEGRADAS LTDA.
+Número da NL
+2024NL00356 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica
+Sub-item da Despesa
+04 - Locação de equipamentos de TIC - impressoras
+Operação Patrimonial
+7988 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+273,43
+Número da NE
+2024NE00365 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+31954621000138 - LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS  LTDA
+Número da NL
+2024NL00362 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+9.459,65
+Pagamentos
+Tipo de Pagamento
+GRE
+UG Beneficiária
+999900
+UG Pagadora
+133100
+Código do Recolhimento
+770032
+Data Competência
+31/08/2024
+Número de Referência
+Valor Principal
+386.198,09
+Valor Juros/Encargos
+Valor Outras Deduções
+Data de vencimento da GRE
+04/08/2025
+Número da GRE
+000000854918
+Data da GRE
+08/08/2024
+Código de Autenticação
+Observação
+RETENÇÃO DE IR EMPRESAS
+Programação de Desembolso
+Documento
+2024PD00786
+Emissão
+08/08/24
+Data de Programação 12/08/24
+Emitido/contabilizado por PRISCILA LOURES LEITE em 12/08/24 às 13:50.
+Impresso por WALDEMIR DAVILA PEIXOTO em 14/08/24 às 09:51.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/2

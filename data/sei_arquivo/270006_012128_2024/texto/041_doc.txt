@@ -1,0 +1,102 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária de Transferência
+TIPO 50
+Encerrado até Agosto
+Identificação
+UG Emitente
+Documento
+Emissão
+166100 - FUNESBOM
+2025OB11761
+05/09/25
+UG Favorecida
+UG Pagadora
+166100 - FUNESBOM
+166100 - FUNESBOM
+Valor por Extenso
+Valor
+C i n c o  m i l h õ e s  e  t r e z e n t o s  e  c i n q u e n t a  e  u m  m i l  e  s e s s e n t a  r e a i s
+5.351.060,00
+Detalhamento
+Competência
+06/2025
+Processo
+SEI-270006/005886/2024
+Dados da transferência
+Domicílio
+Fonte
+Tipo de 
+Detalhamento de 
+Fonte
+Detalhamento de 
+Fonte
+Convênio
+Origem
+237 - 6898 - 
+0000000426 - 
+CONTA D
+753 - Recursos 
+provenientes de 
+taxas e 
+contribuições
+0 - Sem Detalhamento
+000000 - Sem 
+detalhamento - 
+(753.232)
+000000 - Convênio 
+não identificado
+Destino
+001 - 2234 - 
+069345
+753 - Recursos 
+provenientes de 
+taxas e 
+contribuições
+0 - Sem Detalhamento
+000000 - Sem 
+detalhamento - 
+(753.232)
+000000 - Convênio 
+não identificado
+I t e n s
+Tipo Patrimonial
+Item Patrimonial
+Operação Patrimonial
+Valor
+Transferência Financeira entre UG's e na 
+Própria UG
+4429 - TRANSFERÊNCIA FINANCEIRA
+4074 - Transferência financeira entre Contas 
+Bancarias - Na UG
+5.351.060,00
+Observação
+Registro de Envio
+UG Emitente
+166100
+Emissão
+05/09/25
+Documento
+2025RE01119
+Data de Envio
+05/09/25
+Status de Envio
+Enviado ao Banco
+Data de retorno
+Tipo de Pagamento Normal
+Retorno
+-
+Programação de Desembolso
+Documento
+2025PD12037
+Emissão
+05/09/25
+Data de 
+Programação
+05/09/25
+Emitido/contabilizado por MIGUEL DOUGLAS LUGON DA COSTA em 05/09/25 às 
+1 1 : 4 2 .
+Impresso por MIGUEL DOUGLAS LUGON DA COSTA em 15/09/25 às 16:05.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

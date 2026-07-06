@@ -1,0 +1,82 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Encerrado até Mês 14 
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2024PD01236
+23/12/24
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+133100 - ITERJ
+2024OB01017 - 27/12/24
+237 - 6898 - 0000000027 - 
+CONTA ÚNICA
+Favorecido
+Domicílio Bancário Destino
+00394460010880 - MINISTÉRIO DA FAZENDA
+237 - 6898 - BCO AUTENT
+Valor por Extenso
+Valor
+Quatro mil e seiscentos e cinquenta e seis reais e onze centavos
+4.656,11
+Detalhamento
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS
+Credor da Retenção
+MINISTÉRIO DA FAZENDA
+Competência
+12/2024
+Processo
+7/2024
+I t e n s
+Número da NE
+2024NE00501 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2024NL00640 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de 
+Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Número da NE
+133100.2024NE00501
+Credor
+19088605000104
+Valor
+4.656,11
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  6319 CONFORME PROCESSO despesa com Serviço de Limpeza, Higiene, Conservação, Copeiragem, Recepção 
+e Portaria referente ao mês de DEZEMBRO/2024
+Emitido/contabilizado por PRISCILA LOURES LEITE em 23/12/24 às 17:24.
+Impresso por Daiane Pereira de Souza em 18/02/25 às 14:03.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

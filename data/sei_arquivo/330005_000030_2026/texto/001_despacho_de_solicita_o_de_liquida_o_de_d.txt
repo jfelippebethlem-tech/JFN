@@ -1,0 +1,2 @@
+[Despacho de Solicitação de Liquidação de Despesa] (fase: despesa · tipo: nota_liquidacao)
+

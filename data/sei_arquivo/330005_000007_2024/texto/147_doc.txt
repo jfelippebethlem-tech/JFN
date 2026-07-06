@@ -1,0 +1,90 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Maio 
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2024PD00660
+03/07/24
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+133100 - ITERJ
+2024OB00508 - 05/07/24
+237 - 6898 - 0000000027 - 
+CONTA ÚNICA
+Favorecido
+Domicílio Bancário Destino
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+237 - 1075 - 869368
+Valor por Extenso
+Valor
+Noventa e nove mil e setecentos e sessenta e seis reais e sessenta e um centavos
+99.766,61
+Detalhamento
+Nota Liquidação
+2024NL00279
+Tipo de Despesa
+Nota de Empenho
+2024NE00270
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Domicílio Bancário Destino
+237 - 1075 - 869368
+Competência
+06/2024
+Processo
+SEI 330020/0007/24
+I t e n s
+T i p o  
+Patrimonial
+Sub-item da 
+Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Serviços de 
+Terceiros - Pessoa 
+Jurídica
+12 - SERVIÇOS 
+DE ASSEIO E 
+HIGIENE
+3722 - Pagamento da despesa 
+empenhada e liquidada no 
+Exercício Atual Consumindo 
+Limite de Saque
+86 - 
+FORNECEDORES
+99.766,61
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  4409 CONFORME PROCESSO despesa com Serviço de Limpeza, Higiene, Conservação, Copeiragem, Recepção 
+e Portaria, , visando atender as necessidades deste ITERJ - período JUNHO/2024, conforme Termos do Contrato nº 005/2021
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 03/07/24 às 15:42.
+Impresso por WALDEMIR DAVILA PEIXOTO em 09/07/24 às 15:20.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

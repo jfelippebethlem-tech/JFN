@@ -1,0 +1,2 @@
+[Nota Fiscal - NF 16821] (fase: despesa · tipo: nota_fiscal)
+

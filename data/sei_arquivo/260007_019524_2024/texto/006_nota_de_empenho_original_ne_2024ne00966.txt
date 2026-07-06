@@ -1,0 +1,156 @@
+[Nota de Empenho Original - NE 2024NE00966] (fase: despesa · tipo: nota_empenho)
+
+Identificação
+
+Unidade Gestora
+
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO (CNPJ: 33.540.014/0017-14)
+
+Governo do Estado do Rio de Janeiro
+
+Nota de Empenho
+
+Credor 04380569000180 - JR G DISTRIBUIDORA DE MEDICAMENTOS HOSPITALARES LTDA
+Valor 376,24 (Trezentos e setenta e seis reais e vinte e quatro centavos)
+
+“Classificação
+
+Natureza
+
+Unidade Orçamentária
+Programa de trabalho
+
+Id, uso
+
+Identificador Exercício Fonte
+Fonte
+
+Fonte RJ
+
+Tipo de Detalhamento de Fonte
+Detalhamento de Fonte
+
+Tipo de Área Geográfica
+
+Área Geográfica
+
+Plano Interno
+
+Unidade Gestora Responsável
+LME
+
+Convênio de Receita
+Convênio de Despesa
+
+Contrato
+
+Programa de Financiamento E...
+
+Chave SIGA
+
+'Detalhamento
+
+Mod. Empenho Estimativo Mod. Licitação 09 - Pregão Eletrônico Emb. Legal 10520/02
+Data Entrega ocal Entrega
+
+ur Espírito Santo Município Serra
+
+Origem 1 - Origem nacional
+
+Processo SEI-
+260008/011576/2023
+
+Itens
+Tipo Patrimonial
+
+Material de Consumo
+
+r
+Cronograma
+
+Março
+'Saldo Dotação
+
+Créd. Disp. Indisponível antes NE 0,00
+1.185.505,78
+
+Pré-Empenhado 0,00 |Bloqueado 0,00
+
+Observação
+
+339030 - Material de Consumo
+
+29610 - Fundo Estadual de Saúde
+
+10.302. 0508. 4866 - Apoio a HUPE e PPC/UERYJ para a realização de proced...
+O - Não destinado à contrapartida
+
+1 - Recursos do Exercício Corrente
+
+600 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Go...
+225 - Transferências Fundo a Fundo do SUS - Bloco de Manutenção
+
+O - Sem Detalhamento
+
+000000 - Sem detalhamento - (600.225)
+
+2 - ESTADO
+
+3300000 - ESTADO
+
+00000000000 - Plano Interno nao identificado
+
+751010 - OPMES - GERAL
+
+03 - Manutenção, atividades e projetos finalísticos
+
+000000 - Convênio não identificado
+
+000000 - Convênio não identificado
+
+24000400 - Material de OPMES (cola cirúrgica)
+
+O - Indefinido
+
+2024000961000106
+
+Sub-item da Despesa
+
+06 - MATERIAL LABORATORIAL /MATERIAL
+HOSPITALAR
+
+E RR
+
+Valor NE Saldo após NE
+376,24] 1.185.129,54
+
+Cola cirúrgica (SEI 68527019); PE 10/2024; 1º Empenho; UGR 751010; Contrato 24000400.
+
+Produtos
+
+Produto
+
+XXXXX
+
+Descrição XXXXX
+
+Emitido/contabilizado por ANTONIO MARCIANO DE SOUZA em 19/03/24 às 12:
+
+20.
+
+CE sIATE-Rie? SIAFE-Rio / SEFAZ-RJ
+
+Quantidade Und. Fornec. Preço Unitário
+
+1 UN
+
+Encerrado até Janeiro
+
+Documento Emissão
+2024NE00966 18/03/24
+
+Classificação Complementar
+
+Preço Total
+
+Impresso por ANTONIO MARCIANO DE SOUZA em 19/03/24 às 12:21.

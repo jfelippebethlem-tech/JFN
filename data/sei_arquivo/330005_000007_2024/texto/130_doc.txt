@@ -1,0 +1,100 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária de Retenção
+TIPO 13
+Encerrado até Junho 
+Identificação
+UG Emitente
+Documento
+Emissão
+133100 - ITERJ
+2024OB00530
+15/07/24
+UG Liquidante
+UG Pagadora
+133100 - ITERJ
+133100 - ITERJ
+Valor por Extenso
+Valor
+Qu a t ro m i l  e  q u a t ro ce n t os e sessenta e nove reais e  q u a r e n t a  e  t r ê s  c e n t a v o s
+4.469,43
+Detalhamento
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS
+Credor da Retenção
+MINISTÉRIO DA FAZENDA
+Competência
+05/2024
+Domicílio Bancário Origem
+237 - 6898 - 0000000027
+Domicílio Bancário Destino
+237 - 6898 - BCO AUTENT
+Processo
+7/2024
+I t e n s
+Número da NE
+2024NE00219 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2024NL00210 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+4.469,43
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  4150 CONFORME PROCESSO Prestação de serviços de Limpeza, Higiene, Conservação, 
+Copeiragem, Recepção e Portaria do Instituto de Terras.
+Registro de Envio
+UG Emitente
+133100
+Emissão
+15/07/24
+Documento
+2024RE00124
+Data de Envio
+15/07/24
+Status de Envio
+Processado e Pago
+Data de retorno
+17/07/24
+Tipo de 
+Pagamento
+Normal
+Retorno
+Ordem bancária paga e liberada com sucesso.
+Programação de Desembolso
+Documento
+2024PD00509
+Emissão
+03/06/24
+Data de 
+Programação
+15/07/24
+Emitido/contabilizado por PRISCILA LOURES LEITE em 15/07/24 às 12:56.
+Impresso por WALDEMIR DAVILA PEIXOTO em 17/07/24 às 15:31.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

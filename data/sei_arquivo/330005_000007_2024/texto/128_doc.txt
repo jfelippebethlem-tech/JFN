@@ -1,0 +1,119 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Junho 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+133100 - INST. DE TERRAS E CARTOGR. DO EST. RJ (CNPJ: 40.173.726/0001-40)
+2024NE00351
+31/07/24
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Valor
+109.687,73 (Cento e nove mil e seiscentos e oitenta e sete reais e setenta e três centavos)
+Classificação
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+53310 - Instituto de Terras e Cartografia do Estado do Rio de Janeiro
+Programa de trabalho
+21.631. 0502. 2710 - Regularização Fundiária de Interesse Social
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2021006943006524
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+00 - Pregão 
+Presencial
+Emb. Legal
+lei 14.133/21
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI 
+330020/000740/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Serviços de Terceiros - Pessoa Jurídica
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+109.687,73
+Cronograma
+Julho
+109.687,73
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+3.493.183,30 Valor NE
+Saldo após NE
+2.219.928,47 Pré-Empenhado
+0,00 Bloqueado
+0,00
+109.687,73
+5.603.424,04
+Observação
+CLEAN SOLUÇÕES E SERVIÇOS LTDA - Serviço de Limpeza, Higiene, Conservação, Copeiragem, Recepção e Portaria, deste ITERJ,  referente ao 3º 
+Termo de Apostilamento do Contrato nº 005/2021 - Reajuste Contratual - Repactuação - visando atender as necessidades deste ITERJ, do orçamento em 
+vigor.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+XXXXX
+1
+UN
+109.687,73
+109.687,73
+Descrição
+CLEAN SOLUÇÕES E SERVIÇOS LTDA - Serviço de Limpeza, Higiene, Conservação, Copeiragem, Recepção e Portaria, deste ITERJ,  
+referente ao 3º Termo de Apostilamento do Contrato nº 005/2021 - Reajuste Contratual - Repactuação - visando atender as 
+necessidades deste ITERJ, do orçamento em vigor.
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 05/08/24 às 17:
+1 3 .
+Impresso por IVONETE JOSE MARIA SABINO em 05/08/24 às 17:13.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

@@ -1,0 +1,75 @@
+[] (fase: indefinida · tipo: vazio)
+
+Data:
+27/10/2023
+Secretaria de Atenção Especializada da Saúde (SAES)
+Ficha de Estabelecimento Identificação
+Estabelecimento de Saúde
+Departamento de Regulação Assistência e Controle (DRAC)
+CNES
+Cadastro Nacional de
+Coordenação-Geral de Gestão de Sistemas de Informações em Saúde (CGSI)
+Ministério da Saúde (MS)
+Dependência:
+ENTIDADES EMPRESARIAIS
+ONCOMED
+Tipo de Estabelecimento:
+Natureza jurídica:
+CLINICA/CENTRO DE ESPECIALIDADE
+RUA PAULINO FERNANDES
+Logradouro:
+Telefone:
+UF:
+Número:
+Município:
+Gestão:
+Nome Empresarial:
+Nome Fantasia:
+2271176
+Subtipo:
+BOTAFOGO
+CNES:
+Horário de Funcionamento:
+330455  -  RIO DE JANEIRO
+(21) 2715-2517
+Complemento:
+22270-050
+--
+RJ
+Bairro:
+ONCOMED CLINICA ONCOLOGICA LTDA
+OUTROS
+68
+CEP:
+Reg de Saúde:
+CNPJ:
+--
+INDIVIDUAL
+00.541.798/0002-60
+MUNICIPAL
+06/05/2004
+Cadastrado em:
+Atualização na base local:
+19/10/2023
+Última atualização Nacional:
+26/10/2023
+ARISTOTELES BARROS FREIRE
+Diretor Clínico/Gerente/Administrador:
+Dia semana
+Horário
+09:00 às 19:00
+SEGUNDA-FEIRA
+09:00 às 19:00
+TERÇA-FEIRA
+09:00 às 19:00
+QUARTA-FEIRA
+09:00 às 18:00
+SEXTA-FEIRA
+09:00 às 19:00
+QUINTA-FEIRA
+Data desativação:
+--
+--
+Motivo desativação:
+Esta é uma cópia impressa do documento oficial. As informações oficiais atualizadas estão disponíveis no site do CNES (http://cnes.datasus.gov.br).
+Pag. 1 de 1

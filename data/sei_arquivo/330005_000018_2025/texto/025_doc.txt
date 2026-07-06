@@ -1,0 +1,123 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Novembro
+Identificação
+Unidade Gestora
+Documento
+Emissão
+133100 - INST. DE TERRAS E CARTOGR. DO EST. RJ (CNPJ: 40.173.726/0001-40)
+2025NE00669
+26/12/25
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Valor
+226.368,28 (Duzentos e vinte e seis mil e trezentos e sessenta e oito reais e vinte e oito centavos)
+Classificação
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+53310 - Instituto de Terras e Cartografia do Estado do Rio de Janeiro
+Programa de trabalho
+21.631. 0502. 2710 - Regularização Fundiária de Interesse Social
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2021006943009667
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+00 - Pregão 
+Presencial
+Emb. Legal
+Lei n 14.133/2021, A
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI 330020/0007
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Serviços de Terceiros - Pessoa Jurídica
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+226.368,28
+Cronograma
+Dezembro
+226.368,28
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+15.811.917,53 Pré-Empenhado
+0,00 Bloqueado
+0,00
+226.368,28
+15.585.549,25
+Observação
+No uso da competência Delegada através da Portaria SEI ITERJ Nº 247 de 01/07/2021, AUTORIZO a emissão das Notas de Autorização de Despesas  NAD, 
+bem como a emissão da Nota Empenho, no valor estimado de R$ 226.368,28 (duzentos e vinte e seis mil, trezentos e sessenta e oito reais e vinte e oito  
+centavos) - em favor da empresa MGS CLEAN SOLUÇÕES E SERVIÇOS LTDA, relativo a Serviço de Limpeza, Higiene, Conservação, Copeiragem, 
+Recepção e Portaria, deste ITERJ, referente ao período NOVEMBRO/2025 e DEZEMBRO/2025, conforme Termos do Contrato nº 005/2021, visando atender 
+as necessidades deste ITERJ, do orçamento em vigor
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+XXXXX
+1
+UN
+226.368,28
+226.368,28
+Descrição
+No uso da competência Delegada através da Portaria SEI ITERJ Nº 247 de 01/07/2021, AUTORIZO a emissão das Notas de 
+Autorização de Despesas  NAD, bem como a emissão da Nota Empenho, no valor estimado de R$ 226.368,28 (duzentos e vinte e seis 
+mil, trezentos e sessenta e oito reais e vinte e oito  centavos) - em favor da empresa MGS CLEAN SOLUÇÕES E SERVIÇOS LTDA, 
+relativo a Serviço de Limpeza, Higiene, Conservação, Copeiragem, Recepção e Portaria, deste ITERJ, referente ao período 
+NOVEMBRO/2025 e DEZEMBRO/2025, conforme Termos do Contrato nº 005/2021, visando atender as necessidades deste ITERJ, do 
+orçamento em vigor
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 26/12/25 às 14:
+2 2 .
+Impresso por IVONETE JOSE MARIA SABINO em 29/12/25 às 08:41.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

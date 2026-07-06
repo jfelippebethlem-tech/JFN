@@ -1,0 +1,30 @@
+[] (fase: indefinida · tipo: vazio)
+
+Sistema de Cadastramento Unificado de Fornecedores - SICAF
+Declaração
+Declaramos para os fins exigidos na legislação, conforme documentação registrada no SICAF, que a situação do
+fornecedor no momento é a seguinte:
+Dados do Fornecedor
+País:
+Reino Unido
+Identificador:
+GB01958909
+Nome da Empresa:
+ANGLOCO LIMITED
+Situação do Fornecedor: Credenciado
+Data de Vencimento do Cadastro: 01/02/2023
+Ocorrências e Impedimentos
+Ocorrência:
+Nada Consta
+Impedimento de Licitar:
+Nada Consta
+Níveis cadastrados:
+Fornecedor possui alguma pendência no Nível de Cadastramento indicado. Verifique mais informações sobre pendências
+nas funcionalidades de consulta.
+I - Credenciamento
+Emitido em: 26/05/2025 15:49
+de
+CPF: 131.XXX.XXX-01      Nome: PEDRO IVO TAVARES DA ROCHA FILIPPO
+1
+1
+Ass: ____________________________________________________________________________________________

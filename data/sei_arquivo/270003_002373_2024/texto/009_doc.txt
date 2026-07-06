@@ -1,0 +1,107 @@
+[] (fase: indefinida · tipo: vazio)
+
+NAD - NOTA DE AUTORIZAÇÃO DE DESPESA
+BLOCO 1 - DADOS DE IDENTIFICAÇÃO
+Nº Contratação:
+2024008293
+NAD Nº:
+0003
+Dígito Verificador:
+60
+Data:
+09/04/2025
+Nº do Processo:
+SEI-270003/002373/2024
+BLOCO 2 - DADOS DO ÓRGÃO
+Unidade Gestora:
+166100 - FUNDO ESPECIAL DO CORPO DE BOMBEIROS
+Especificação do Evento:
+400092 - Reforço de Empenho
+Empenho Original:
+00449      
+Prog. de Trabalho:
+10302049626740000 - OPERACIONALIZAÇÃO DO SISTEMA DE SAÚDE IN
+PT Resumido:
+162674
+Unid. Orçamentária:
+16610 - 16610
+Fonte de Recurso:
+1501230000000 - OUTROS RECURSOS NÃO VINCULADOS
+Modalidade:
+3390 - APLICAÇÕES DIRETAS
+Identificador de Uso:
+0 - Não destinado à contrapartida
+Área Geográfica:
+3300000 - ESTADO
+Emenda
+Parlamentar: 00000000000 - Sem Emenda Parlamentar
+BLOCO 3 - DADOS DE IDENTIFICAÇÃO DO FAVORECIDO
+Código:
+1
+1-CNPJ | 2 - CPF | 3 - Insc.Genérica | 4-UG
+Número:
+00541798000189
+Nome:
+ONCOMED CLÍNICA ONCOLÓGICA LTDA.
+Endereço:
+Rua Ministro Otávio Kelly, 157 -  - Icaraí
+Cidade:
+Niterói
+Estado:
+Rio de Janeiro
+CEP:
+24.220-300
+BLOCO 4 - DADOS PARA EMISSÃO DE EMPENHO / ANULAÇÃO / REFORÇO / ESTORNO
+Espécie: 5-Global
+Origem do Material: 1-ORIG.NAC
+Valor:
+947.345,22
+Descrição da Despesa:
+PRESTAÇÃO DE SERVIÇOS DE QUIMIOTERAPIA - CONTRATO Nº 170/2024 -  VIG: PNCP 10/10/2024 A 09/10/2025 - CRED 01/2024 - SEI-
+270003/002373/2024.                                                                                                               
+Elemento de Despesa:
+33903900 - OUTROS SERVIÇOS DE TERCEIROS - PESSOA JURÍDI
+Sub Elemento de Despesa:
+33903975 - SERVIÇOS DE ASSISTÊNCIA A SAÚDE
+947.345,2200
+BLOCO 5 - CRONOGRAMA DE DESEMBOLSO
+Jan: 0,0000
+Fev: 0,00
+Mar: 0,0000
+Abr: 947.345,2200
+Mai: 0,0000
+Jun: 0,0000
+Jul:
+0,0000
+Ago: 0,0000
+Set: 0,0000
+Out: 0,0000
+Nov: 0,0000
+Dez: 0,0000
+BLOCO 6 - DADOS DA LICITAÇÃO  / CONTRATAÇÃO DIRETA
+Tipo:
+6 - Inexigibilidade
+Data Licitação / Contratação Direta:
+04/10/2024
+Enquadramento Legal:
+Lei nº 14.133/2021, Art. 74º, IV
+Local de Entrega:
+CONFORME CONTRATO                            
+Data da Entrega:
+08/05/2025
+Observação:
+BLOCO 7 - APROVAÇÃO
+Nome Emissor:
+ID/Matrícula Emissor:
+Data Emissão:
+Nome Aprovador:
+ALINE DE OLIVEIRA NASCIMENTO
+ID/Matrícula Aprovador:
+000613908
+Data Aprovação:
+10/04/2025
+Imprimir
+11/04/2025, 15:38
+NAD
+https://www.compras.rj.gov.br/mercatto/Aplicacao/ASP/Contrato/Impressao_NAD.asp?valor=505169&funcao=Exibe&contratacao=118557
+1/1

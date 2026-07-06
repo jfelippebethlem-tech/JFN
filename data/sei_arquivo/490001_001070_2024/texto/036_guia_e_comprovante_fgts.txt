@@ -1,0 +1,101 @@
+[Guia e Comprovante FGTS] (fase: indefinida · tipo: outro)
+
+CPF/CNPJ do Empregador
+23.902.149
+Nome/Razão Social do Empregador
+ABRE CONSTRUCOES LTDA
+Núm. de Pág.
+1
+Identificador
+0124073020298861-3
+Tag
+23902149 07/2024 MENSAL
+ Pagar este documento até
+Observações
+20/08/2024
+ Valor a recolher
+6.088,21
+GFD - Guia do FGTS Digital
+às 21:59:59 (Brasília)
+Composição do Documento
+Competência
+Quantidade
+Trabalhadores
+FGTS Mensal
+FGTS Rescisório
+Indenização Compensatória
+Encargos FGTS
+Total
+6.088,21
+0,00
+6.088,21
+0,00
+0,00
+07/2024
+25
+6.088,21
+0,00
+0,00
+6.088,21
+Total Geral:
+0,00
+Data de geração da Guia: 30/07/2024 às 09:10:09 - Página 1/1
+O detalhamento da guia pode ser consultado através do endereço https://fgtsdigital.sistema.gov.br
+00020101021226900014br.gov.bcb.pix2568pix-qrcode.caixa.gov.br/api/v2/cobv/166849a6e7134755a10d174c30137cc35204000053039865802BR5923CAIXA ECONOMICA FEDERAL6008Brasilia62070503***630424E9
+PIX Copia e Cola:
+pix-qrcode.caixa.gov.br/api/v2/cobv/166849a6e7134755a10d174c30137cc3
+Payload Location:
+
+Demais telefones
+consulte o site
+Fale Conosco
+Ouvidoria
+0800 727 9933
+Atendimento de segunda a sexta-feira, das 8h às 18h, exceto feriados.
+Cancelamentos, Reclamações e
+Informações. Atendimento 24 horas, 7 dias
+por semana.
+Deficiente Auditivo ou de Fala
+0800 722 0099
+Alô Bradesco
+0800 704 8383
+SAC - Serviço de
+Apoio ao Cliente
+Banco Bradesco S.A.
+Instituição origem:
+conta-corrente
+Debitado da:
+9b250190e2a540edb62169b95a223b63
+transacao.lbl_txid
+E60746948202408011903I65361TYLe4
+Identificador:
+BRADESCO NET EMPRESA
+Mídia:
+R$ 6.088,21
+Valor:
+Dados da
+Transferência/Pagamento
+9999000537000360305
+Conta:
+647
+Agência:
+c75e4ec6-9881-4240-a2f3-3672b7fe56c1
+Chave:
+CAIXA ECONOMICA FEDERAL
+Instituição destino:
+00.360.305/0001-04
+CPF/CNPJ:
+CAIXA ECONOMICA FEDERAL
+Nome:
+Dados de quem
+recebeu
+ABRE INVEST LTDA | CNPJ: 023.902.149/0001-61
+Empresa:
+Agência: 6536 | Conta: 0019426-3 | Tipo: Conta-Corrente
+Conta de débito:
+Comprovante de Transação Bancária
+PIX
+Data da operação: 01/08/2024 - 19h24
+N° de controle: 910048110618895171 | 
+ 1918513
+Documento:
