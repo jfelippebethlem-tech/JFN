@@ -610,6 +610,17 @@ manuais quando expirarem (caem no nous até lá).
 - **Anterior:** SIAFE 1+2 sweeps supervisionados + correlação OB↔SEI↔CNPJ; JFN 2.0 (12 ondas); Yoda/Hermes na VM.
 
 ## 11. ⏯️ RETOMADA (sessão nova: "continue pelo docs/REFERENCIA-PROJETO.md e tasks/todo.md")
+> **⏯️ 2026-07-06 — Maratona de aprimoramento (debug + consolidação agêntica + god-files zerados):** checkpoint
+> completo em `~/vault/aprendizados/sessao-2026-07-06-checkpoint.md`. FEITO: (1) debug do ecossistema (proveniência
+> LLM real, fallback Markdown do Telegram, gateway restart→exit 0); (2) consolidação agêntica 4 passos (fonte única
+> `capabilities.yaml`→menu, `/api/agenda`, goal agent no catálogo, `docs/ARQUITETURA-AGENTICA.md`); (3) **dívida
+> god-files ZERADA** — `lex.py`/`server.py`/`inteligencia.py` splitados com 4 redes de snapshot (técnica em
+> `~/vault/aprendizados/snapshot-refactor-motor.md`). **Git:** tudo em `seguranca/ssrf-captcha` = `feat/lista-limpa`
+> (fast-forward, ambas em `aace554` no remoto); hermes-agent `de1964e37` local (fork, sem push upstream).
+> **Tailscale Funnel JA LIVE** (`https://jfn-core.tailbbe6c9.ts.net`). PENDENTE acionavel: **246 `except: pass`
+> mudos** (curar por arquivo c/ `logging.debug` — piores: siafe_ob_orcamentaria 14, sei_cdp 12, hermes_goal 11,
+> scheduler 11). Depende do dono: chave SIAFE-1, CSV nome/cpf, Backblaze B2, Syncthing device, billing Gemini.
+>
 > **⏯️ 2026-06-24 — Manutenção ecossistema (Yoda/fachadas/Hermes/painel):** handoff em
 > `~/vault/aprendizados/sessao-2026-06-24-yoda-fachadas-hermes-update.md`. FEITO: (1) `compliance.db` "malformed"
 > era conexão viva do `jfn.service` → restart resolveu (arquivo íntegro; backup em `data/backups/`); (2) bug do
