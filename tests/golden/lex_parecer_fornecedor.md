@@ -38,7 +38,7 @@ Nenhum indício de fachada/laranja identificado nas hipóteses verificáveis (n�
 
 > **Cobertura da investigação (honestidade):** endereco residencial: INDISPONIVEL (endereço não ingerido); geocode: INDISPONIVEL; coendereco: verificado (nenhum); capital: INDISPONIVEL; recencia: verificado; situacao cadastral: verificado; porte: INDISPONIVEL; pep: INDISPONIVEL (sem chave PORTAL_TRANSPARENCIA_KEY); beneficio social: INDISPONIVEL (sem chave PORTAL_TRANSPARENCIA_KEY).
 
-> **Veredito raciocinado (IA):** LLM desligado no snapshot — os sinais determinísticos acima permanecem válidos por si (degradação honesta).
+> **Veredito raciocinado (IA):** veredito LLM desligado (JFN_VEREDITO_LLM_DISABLED) — os sinais determinísticos acima permanecem válidos por si (degradação honesta).
 
 ## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)
 

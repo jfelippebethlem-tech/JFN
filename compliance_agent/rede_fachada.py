@@ -377,6 +377,11 @@ def veredito_llm(pac: dict, *, gerar=None, timeout: float = 45.0) -> dict:
     Bounded(timeout) + degrada honesto: LLM caído/sem JSON → {disponivel:False, motivo:…}. `gerar` injetável p/ teste.
     """
     import json
+    import os
+    # Kill-switch (guard-rail: TODO ponto de LLM tem flag própria — era o único sem uma; pego pelo
+    # snapshot do Lex, que flakeava por esta chamada viva). Degrada honesto, mesmo caminho do LLM caído.
+    if os.environ.get("JFN_VEREDITO_LLM_DISABLED", "").strip().lower() in ("1", "true", "yes", "on"):
+        return {"disponivel": False, "motivo": "veredito LLM desligado (JFN_VEREDITO_LLM_DISABLED)"}
     resumo = _resumo_pacote_p_llm(pac)
     prompt = ("Sinais deterministicos ja apurados sobre o fornecedor CNPJ "
               f"{pac.get('cnpj', '')} (recebeu {_moeda(pac.get('total_pago', 0))} do Estado):\n\n"

@@ -30,15 +30,9 @@ GOLDEN = REPO / "tests" / "golden"
 GOLDEN.mkdir(parents=True, exist_ok=True)
 os.environ["JFN_DB"] = str(GOLDEN / "snapshot_vazio.db")
 
-import compliance_agent.lex as lex  # noqa: E402
+os.environ["JFN_VEREDITO_LLM_DISABLED"] = "1"  # flag oficial (2026-07-06) — sem LLM vivo no snapshot
 
-# O veredito de fachada chama LLM VIVO dentro de _analise (rede_fachada.veredito_llm, sem flag de env)
-# → não-determinístico e gasta cota. No snapshot, degrada honesto (mesmo caminho do LLM caído).
-try:
-    from compliance_agent import rede_fachada as _rf
-    _rf.veredito_llm = lambda pacote: {"disponivel": False, "motivo": "LLM desligado no snapshot"}
-except Exception:
-    pass
+import compliance_agent.lex as lex  # noqa: E402
 
 
 def _ctx_fornecedor() -> dict:

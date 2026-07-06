@@ -54,7 +54,7 @@ Mestre Jorge (Telegram)
 
 1. **VM 2 vCPU**: 1 job pesado por vez (cron escalonado); pausa via `data/.pause_<sweep>` (aparece no /api/agenda).
 2. **LLM com kill-switch**: `GEMINI_DISABLED` corta Gemini em tudo; cadeia cai p/ cerebras/groq/extra.
-   Todo ponto novo de LLM precisa de flag própria (pendência conhecida: `rede_fachada.veredito_llm`).
+   Todo ponto de LLM tem flag própria (`JFN_LEX_DISCURSIVO`, `JFN_VEREDITO_LLM_DISABLED`, …) — regra dura.
 3. **Honestidade**: indício ≠ acusação · INDISPONÍVEL ≠ 0 · proveniência real do modelo gravada
    (`direcionamento_cerebro.ultimo_provedor`).
 4. **Hot files do upstream** (hermes-agent): patch mínimo, commitado, preferir fix upstream; unit systemd
