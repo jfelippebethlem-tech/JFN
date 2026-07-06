@@ -14,6 +14,8 @@ from __future__ import annotations
 import csv
 import io
 import re
+import sqlite3
+import time
 import zipfile
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
@@ -195,27 +197,35 @@ def coletar_mensal(anos: list[int] | None = None,
                 achados[row.get("matricula", "?")] = row
             return nn, info, achados
 
-        con = _db.conectar(db_path)
-        reg = feitos = 0
-        try:
-            with ThreadPoolExecutor(max_workers=workers) as ex:
-                for nn, info, achados in ex.map(tarefa, enumerate(itens)):
-                    for _mat, row in achados.items():
-                        con.execute(
-                            """INSERT OR REPLACE INTO pcrj_comissionado_candidato
-                               (nome_norm,nome_pcrj,cargo_pcrj,orgao_pcrj,admissao,exoneracao,
-                                matricula,cand_cidade,cand_ano,cand_cargo,coletado_em)
-                               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
-                            (nn, row.get("nome"), row.get("cargo"), row.get("lotacao"),
-                             row.get("admissao"), row.get("exoneracao"), row.get("matricula"),
-                             info["cidade"], info["ano"], info["cargo"], agora))
-                        reg += 1
-                    feitos += 1
-                    if feitos % 300 == 0:      # commit incremental: não segura o lock a competência inteira
-                        con.commit()
-            con.commit()
-        finally:
-            con.close()
+        # FASE 1 (lenta, HTTP): coleta TUDO sem tocar no DB (não segura lock durante os ~13 min)
+        linhas = []
+        with ThreadPoolExecutor(max_workers=workers) as ex:
+            for nn, info, achados in ex.map(tarefa, enumerate(itens)):
+                for _mat, row in achados.items():
+                    linhas.append((nn, row.get("nome"), row.get("cargo"), row.get("lotacao"),
+                                   row.get("admissao"), row.get("exoneracao"), row.get("matricula"),
+                                   info["cidade"], info["ano"], info["cargo"], agora))
+        # FASE 2 (rápida): escreve numa transação CURTA, com retry se o banco estiver ocupado
+        reg = 0
+        for tentativa in range(6):
+            try:
+                con = _db.conectar(db_path)
+                try:
+                    con.executemany(
+                        """INSERT OR REPLACE INTO pcrj_comissionado_candidato
+                           (nome_norm,nome_pcrj,cargo_pcrj,orgao_pcrj,admissao,exoneracao,
+                            matricula,cand_cidade,cand_ano,cand_cargo,coletado_em)
+                           VALUES (?,?,?,?,?,?,?,?,?,?,?)""", linhas)
+                    con.commit()
+                    reg = len(linhas)
+                finally:
+                    con.close()
+                break
+            except sqlite3.OperationalError as e:
+                if "locked" in str(e).lower() and tentativa < 5:
+                    time.sleep(10 * (tentativa + 1))   # backoff; NÃO marca a competência como feita
+                    continue
+                raise
         total_reg += reg
         feitas.add((mes, ano))
         ckpt.write_text(json.dumps([list(c) for c in sorted(feitas)]))
