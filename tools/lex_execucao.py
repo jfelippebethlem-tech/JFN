@@ -152,6 +152,12 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
         nota = max(0, min(10, int(nota)))  # clamp 0-10: o LLM às vezes devolve fora de faixa/negativo
     except Exception:
         nota = None
+    r["nota_risco_execucao"] = nota  # verdict devolvido carrega a nota CLAMPADA (o log lia a crua, ex. 75)
+    try:
+        from compliance_agent import direcionamento_cerebro as _dc
+        modelo = _dc.ultimo_provedor or "desconhecido"
+    except Exception:
+        modelo = "desconhecido"
     con.execute(
         """INSERT INTO lex_execucao (numero_sei,objeto,tem_prestacao_contas,tem_fiscalizacao,
             tem_relatorio_fotografico,tem_atesto_recebimento,tem_nota_fiscal,tem_medicao,
@@ -169,7 +175,7 @@ def avaliar_processo(con: sqlite3.Connection, numero_sei: str, objeto: str, valo
          r.get("execucao_comprovada"), r.get("coerencia_objeto_evidencia"), nota,
          json.dumps(r.get("indicios") or [], ensure_ascii=False),
          json.dumps(r.get("duvidas") or [], ensure_ascii=False),
-         r.get("resumo"), "gemini", _agora()),
+         r.get("resumo"), modelo, _agora()),
     )
     con.commit()
     # Execução frágil/duvidosa → registra no canal de feedback (surface p/ o Claude Code + relatório).
@@ -243,7 +249,7 @@ def main() -> None:
         if not alvos:
             print("nada a avaliar (todas as fichas com docs já avaliadas; use --reavaliar).")
             return
-        print(f"avaliando execução de {len(alvos)} processo(s) via Gemini…")
+        print(f"avaliando execução de {len(alvos)} processo(s) via cadeia LLM (gemini→groq→cerebras→extra)…")
         for ns, obj, val, dl, rfl in alvos:
             res = avaliar_processo(con, ns, obj, val, dl, rfl, gerar_sync)
             if res:
