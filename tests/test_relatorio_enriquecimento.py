@@ -21,7 +21,7 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-from compliance_agent.reporting import inteligencia as I  # noqa: E402
+from compliance_agent.reporting import intel_dados as I  # noqa: E402 — split 2026-07-06: _enriquecer/_ENRIQUECE_* migraram
 from relatorio_riscos.collectors import cache as _cache  # noqa: E402
 
 CNPJ = "19088605000104"
