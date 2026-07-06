@@ -53,22 +53,28 @@ def analisar() -> dict:
     ultima = comps[-1] if comps else None
     anos = sorted({c[:4] for c in comps})
 
-    # benefícios no Rio, indexados por (nome_norm, frag) -> trajetória por programa
+    # benefícios no Rio, agregados no SQL por (nome,frag,programa,ano) — evita carregar 7,3M linhas.
     ben: dict[tuple, dict] = {}
     frags_por_nome: dict[str, set] = {}
-    for r in b.execute("SELECT nome_norm, beneficio, competencia, cpf_frag, municipio, valor "
-                        "FROM pcrj_beneficio"):
-        if "RIO DE JANEIRO" not in (r["municipio"] or "").upper():
-            continue
+    for r in b.execute(
+            "SELECT nome_norm, cpf_frag, beneficio, substr(competencia,1,4) AS ano, "
+            "COUNT(DISTINCT competencia) AS n, MIN(competencia) AS cmin, MAX(competencia) AS cmax "
+            "FROM pcrj_beneficio WHERE municipio='RIO DE JANEIRO' "
+            "GROUP BY nome_norm, cpf_frag, beneficio, ano"):
         nn = r["nome_norm"]
         frag = (r["cpf_frag"] or "")[:6] or "?"
         frags_por_nome.setdefault(nn, set()).add(frag)
-        e = ben.setdefault((nn, frag), {"prog": {}, "comps": set(), "por_ano": {}, "valor": ""})
-        e["prog"].setdefault(r["beneficio"], set()).add(r["competencia"])
-        e["comps"].add(r["competencia"])
-        e["por_ano"].setdefault(r["competencia"][:4], set()).add(r["competencia"])
-        if r["valor"]:
-            e["valor"] = r["valor"]
+        e = ben.setdefault((nn, frag), {"prog": {}, "por_ano": {}, "cmin": r["cmin"], "cmax": r["cmax"]})
+        pr = e["prog"].setdefault(r["beneficio"], {"cmin": r["cmin"], "cmax": r["cmax"], "n": 0})
+        pr["cmin"] = min(pr["cmin"], r["cmin"]); pr["cmax"] = max(pr["cmax"], r["cmax"]); pr["n"] += r["n"]
+        e["cmin"] = min(e["cmin"], r["cmin"]); e["cmax"] = max(e["cmax"], r["cmax"])
+    for r in b.execute(
+            "SELECT nome_norm, cpf_frag, substr(competencia,1,4) AS ano, "
+            "COUNT(DISTINCT competencia) AS n FROM pcrj_beneficio WHERE municipio='RIO DE JANEIRO' "
+            "GROUP BY nome_norm, cpf_frag, substr(competencia,1,4)"):
+        e = ben.get((r["nome_norm"], (r["cpf_frag"] or "")[:6] or "?"))
+        if e is not None:
+            e["por_ano"][r["ano"]] = r["n"]
     b.close()
 
     # sócios de fornecedores (com CPF mascarado)
@@ -95,21 +101,19 @@ def analisar() -> dict:
         else:
             continue                       # vários beneficiários homônimos e nenhum casa o CPF → fora
         e = ben[(nn, frag)]
-        cs = sorted(e["comps"])
         progs = []
-        for prog, css in sorted(e["prog"].items(), key=lambda kv: min(kv[1])):
-            css = sorted(css)
-            progs.append({"ben": prog, "desde": _comp_legivel(css[0]),
-                          "ate": _comp_legivel(css[-1]), "n": len(css)})
+        for prog, pr in sorted(e["prog"].items(), key=lambda kv: kv[1]["cmin"]):
+            progs.append({"ben": prog, "desde": _comp_legivel(pr["cmin"]),
+                          "ate": _comp_legivel(pr["cmax"]), "n": pr["n"]})
         registros.append({
             "socio": s["socio_nome"] or nn.title(),
             "empresa": s["razao"] or "", "cnpj": _fmt_cnpj(s["cnpj"]),
             "qualificacao": s["qualificacao"] or "",
             "cpf_frag": frag, "certeza": certeza,
             "programas": progs, "beneficios_str": ", ".join(p["ben"] for p in progs),
-            "desde": _comp_legivel(cs[0]), "ate": _comp_legivel(cs[-1]),
-            "por_ano": {a: len(e["por_ano"].get(a, set())) for a in anos},
-            "ainda_recebe": (cs[-1] == ultima),
+            "desde": _comp_legivel(e["cmin"]), "ate": _comp_legivel(e["cmax"]),
+            "por_ano": {a: e["por_ano"].get(a, 0) for a in anos},
+            "ainda_recebe": (e["cmax"] == ultima),
         })
 
     # dedup por (sócio, empresa) e ordena por certeza
