@@ -4,9 +4,10 @@
 Eixos do relatório:
   A) Nomeados recebendo Bolsa Família / BPC DURANTE a nomeação — organizado POR ÓRGÃO, com a série
      temporal (de quando até quando, e quantos meses em cada ano) e a filiação partidária em coluna.
-  B) Sinal de FANTASMA de gabinete — comissionado (Livre Nomeação) cujo ingresso atravessa a virada
-     de legislatura (antes de 01/2025 e ainda lotado no mesmo gabinete): sobreviveu à troca de
-     titular, o padrão clássico de "servidor que não serve a um mandato, só recebe".
+  B) Gabinete sob SUPLÊNCIA — nomeado que ingressou ANTES da posse do suplente e segue no gabinete:
+     equipe do titular que o suplente (que deveria montar a própria) não trocou. Sinal de que o
+     titular ainda comanda parte do gabinete que não é mais dele. Livre nomeação = sinal forte;
+     requisitado = servidor administrativo que persiste entre mandatos (padrão distinto).
 
 Fontes: folha PCRJ/CMRJ (nomeados vigentes) · arquivos mensais do Portal da Transparência
 (Bolsa Família/BPC) · filiação partidária (foto pública TSE 2018). Cruzamento por nome normalizado,
@@ -14,7 +15,8 @@ desambiguado pelo fragmento público de CPF. Relatório sem marca institucional.
 
 Honesto: indício, nunca acusação. Sem CPF completo não se prova identidade; a filiação é de 2018
 (cobertura parcial); o histórico dia-a-dia de titular/suplente não é público em fonte estruturada
-(só atos de licença no Diário Oficial) — por isso o eixo B usa a virada de legislatura como proxy.
+(só atos de licença no Diário Oficial) — por isso o eixo B parte das suplências VIGENTES na tabela
+oficial de gabinetes e aponta o comissionado que ingressou antes da posse do suplente.
 """
 from __future__ import annotations
 
@@ -28,10 +30,15 @@ from compliance_agent.pcrj.orgaos_siglas import decodificar  # noqa: F401 (usado
 BENEF_DB = _db.DB_PATH.parent / "pcrj_benef.db"
 _REPORTS = Path(__file__).resolve().parents[2] / "reports"
 
-# Legislatura vigente da Câmara começou em 01/01/2025. Comissionado lotado em gabinete cujo
-# ingresso é anterior a isto atravessou a posse dos titulares eleitos em 2024 (proxy de fantasma).
-_LEGISLATURA_YM = "202501"
+_LEGISLATURA_YM = "202501"  # início da legislatura 2025–2028 (referência p/ ingresso)
 _VINCULO_COMISSIONADO = ("livre nomeação", "livre nomeacao", "requisitado")
+
+# Data de POSSE do suplente por gabinete ('AAAAMM'), curada do Diário Oficial/CMRJ. Os gabinetes
+# hoje sob suplência (6, 11, 20, 41, 44) tiveram o titular indo ao Executivo NO INÍCIO do mandato,
+# com o suplente empossado em jan/2025 (CMRJ, "Suplentes tomam posse"). Comissionado ingressado
+# antes disso e ainda nomeado = equipe do titular que o suplente não trocou. Ampliar com as
+# licenças MID-mandato (titular que se afasta no meio do período) exige varrer o DOM da CMRJ.
+_POSSE_SUPLENTE = {6: "202501", 11: "202501", 20: "202501", 41: "202501", 44: "202501"}
 
 _MESES = ["", "jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"]
 
@@ -216,32 +223,40 @@ def analisar() -> dict:
             "_orgao_topo": topo,
         })
 
-    # ── EIXO B: fantasma de gabinete (comissionado que atravessa a legislatura) ──────────
-    fantasmas = []
-    for r in p.execute(
-            "SELECT nome, nome_norm, cargo, vinculo, data1, gabinete_num, lotacao "
-            "FROM pcrj_camara_servidores WHERE gabinete_num IS NOT NULL"):
-        vinc = (r["vinculo"] or "").lower()
-        if not any(v in vinc for v in _VINCULO_COMISSIONADO):
-            continue
-        iy = _ingresso_ym(r["data1"])
-        if not iy or iy >= _LEGISLATURA_YM:
-            continue  # entrou já na legislatura atual — sem sinal
-        tit = gab_cache.get(r["gabinete_num"])
-        if tit is None:
-            g = p.execute("SELECT titular FROM pcrj_gabinetes WHERE gabinete_num=?",
-                          (r["gabinete_num"],)).fetchone()
-            tit = (g["titular"] if g else "") or ""
-            gab_cache[r["gabinete_num"]] = tit
-        eh_livre = "livre" in vinc  # livre nomeação = comissionado puro (sinal mais forte)
-        fantasmas.append({
-            "nome": r["nome"], "cargo": r["cargo"] or "", "ingresso": r["data1"] or "",
-            "vinculo": r["vinculo"] or "", "eh_livre": eh_livre,
-            "gabinete": r["lotacao"] or f"Gabinete {r['gabinete_num']}",
-            "titular_atual": tit, "partido": _partido_de(p, r["nome_norm"]),
+    # ── EIXO B: gabinete sob SUPLÊNCIA — equipe do titular sobrevivente ────────────────────
+    # Sinal correto (correção 2026-07-06): quando o titular se licencia e o SUPLENTE assume, o
+    # suplente deveria montar a própria equipe. Comissionado que ingressou ANTES da posse do
+    # suplente e continua nomeado sob ele = pessoa do titular que o suplente não trocou — indício
+    # de que o titular segue mandando em parte do gabinete que não é mais dele. (NÃO confundir com
+    # reeleição/manutenção de equipe, que é normal — era o erro do proxy anterior.)
+    # Requer a DATA DE POSSE do suplente (Diário Oficial da CMRJ). Mapa curado abaixo; sem a data,
+    # o gabinete é listado mas sem apontar sobreviventes (honesto: não inventa).
+    fantasmas, gabs_suplencia = [], []
+    for g in p.execute("SELECT gabinete_num, titular, suplente FROM pcrj_gabinetes "
+                       "WHERE suplente IS NOT NULL AND suplente<>''"):
+        posse = _POSSE_SUPLENTE.get(g["gabinete_num"])   # 'AAAAMM' ou None
+        sobreviventes = []
+        for r in p.execute(
+                "SELECT nome, nome_norm, cargo, vinculo, data1 FROM pcrj_camara_servidores "
+                "WHERE gabinete_num=?", (g["gabinete_num"],)):
+            if not any(v in (r["vinculo"] or "").lower() for v in _VINCULO_COMISSIONADO):
+                continue
+            iy = _ingresso_ym(r["data1"])
+            if posse and iy and iy < posse:   # ingressou ANTES da posse do suplente → sobrevivente
+                vinc = r["vinculo"] or ""
+                sobreviventes.append({
+                    "nome": r["nome"], "cargo": r["cargo"] or "", "ingresso": r["data1"] or "",
+                    "vinculo": vinc, "eh_livre": "livre" in vinc.lower(),
+                    "partido": _partido_de(p, r["nome_norm"]),
+                })
+        gabs_suplencia.append({
+            "gabinete": g["gabinete_num"], "titular": g["titular"] or "",
+            "suplente": g["suplente"] or "",
+            "posse": _comp_legivel(posse) if posse else "(posse não confirmada)",
+            "sobreviventes": sorted(sobreviventes, key=lambda x: x["ingresso"]),
         })
-    # livre nomeação primeiro (sinal forte), depois por titular e ingresso
-    fantasmas.sort(key=lambda x: (not x["eh_livre"], x["titular_atual"], x["ingresso"]))
+        fantasmas.extend([{**s, "titular_atual": g["titular"] or "", "suplente": g["suplente"] or "",
+                           "gabinete": f"Gabinete {g['gabinete_num']}"} for s in sobreviventes])
 
     b.close(); p.close()
     _ordem = {"ALTA": 0, "MÉDIA": 1}
@@ -265,7 +280,7 @@ def analisar() -> dict:
         "competencias": comps, "anos": anos, "ultima": ultima,
         "registros": registros, "grupos": grupos,
         "homonimos": homonimos, "fora_rio": fora_rio,
-        "fantasmas": fantasmas,
+        "fantasmas": fantasmas, "gabs_suplencia": gabs_suplencia,
         "n_alta": sum(1 for x in registros if x["certeza"] == "ALTA"),
         "n_media": sum(1 for x in registros if x["certeza"] == "MÉDIA"),
         "n_bpc": sum(1 for x in registros if _tem(x, "BPC")),
@@ -315,7 +330,8 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
     <div class="kpi"><div class="n">{{ n_bf }}</div><div class="l">Bolsa Família</div></div>
     <div class="kpi"><div class="n">{{ n_ab }}</div><div class="l">Auxílio Brasil</div></div>
     <div class="kpi"><div class="n">{{ n_ae }}</div><div class="l">Auxílio Emergencial</div></div>
-    <div class="kpi"><div class="n">{{ n_fantasmas }}</div><div class="l">fantasmas de gabinete (proxy)</div></div>
+    <div class="kpi"><div class="n">{{ n_suplencia }}</div><div class="l">gabinetes sob suplência</div></div>
+    <div class="kpi"><div class="n">{{ n_fantasmas }}</div><div class="l">sobreviventes do titular sob suplente</div></div>
   </div>
 
   <h2>1. Nomeados recebendo benefício assistencial durante a nomeação — por órgão</h2>
@@ -346,20 +362,35 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   </table>
   {% endfor %}
 
-  <h2>2. Sinal de fantasma de gabinete (Câmara) — comissionado que atravessou a virada de legislatura</h2>
-  <p class="nota">Comissionados (livre nomeação / requisitados) lotados em gabinete cujo ingresso é
-  anterior a 01/2025 — ou seja, permaneceram apesar da posse dos titulares eleitos em 2024. É o
-  padrão de "servidor que não serve a um mandato específico". Não é prova: o histórico exato de
-  quando cada titular/suplente esteve no exercício só consta dos atos de licença no Diário Oficial
-  (não estruturado); aqui usa-se a troca de legislatura como marco verificável.</p>
+  <h2>2. Gabinetes sob suplência — equipe do titular sobrevivente sob o suplente</h2>
+  <p class="nota">Quando o titular se licencia e o <b>suplente</b> assume, o suplente deveria formar a
+  própria equipe. Comissionado que ingressou <b>antes da posse do suplente</b> e permanece nomeado
+  sob ele é pessoa do titular que o suplente não trocou — indício de que o titular ainda comanda
+  parte de um gabinete que não é mais dele. (Não confundir com manutenção de equipe por reeleição,
+  que é normal.) Confirmar exige a <b>data de posse do suplente</b> (Diário Oficial da CMRJ).</p>
+  {% for g in gabs_suplencia %}
+  <h3>Gabinete Nº {{ g.gabinete }} — titular {{ g.titular }} · suplente em exercício {{ g.suplente }} (posse {{ g.posse }})</h3>
+  {% if g.sobreviventes %}
   <table>
-    <tr><th>#</th><th>Nome</th><th>Gabinete (titular atual)</th><th>Cargo</th><th>Vínculo</th><th>Partido</th><th>Ingresso (anterior a 2025)</th></tr>
-    {% for f in fantasmas %}
-    <tr><td>{{ loop.index }}</td><td>{{ f.nome }}</td><td>{{ f.gabinete }} — {{ f.titular_atual }}</td>
-        <td>{{ f.cargo }}</td><td>{% if f.eh_livre %}<span class="tag sim">livre nomeação</span>{% else %}{{ f.vinculo }}{% endif %}</td>
-        <td><span class="part">{{ f.partido }}</span></td><td>{{ f.ingresso }}</td></tr>
+    <tr><th>#</th><th>Nomeado (ingressou antes da posse do suplente)</th><th>Vínculo</th><th>Cargo</th><th>Partido</th><th>Ingresso</th></tr>
+    {% for s in g.sobreviventes %}
+    <tr><td>{{ loop.index }}</td><td>{{ s.nome }}</td>
+        <td>{% if s.eh_livre %}<span class="tag sim">livre nomeação</span>{% else %}{{ s.vinculo }}{% endif %}</td>
+        <td>{{ s.cargo }}</td><td><span class="part">{{ s.partido }}</span></td><td>{{ s.ingresso }}</td></tr>
     {% endfor %}
   </table>
+  <p class="nota"><b>Leitura:</b> "livre nomeação" ingressado antes da posse do suplente é o sinal
+  forte (equipe POLÍTICA do titular mantida). "Requisitado" é servidor administrativo cedido, que
+  costuma persistir através de mandatos independentemente do ocupante — padrão distinto, atenção
+  menor.</p>
+  {% else %}
+  <p class="nota">Nenhum nomeado ingressado antes da posse do suplente — neste caso o titular foi ao
+  Executivo no início do mandato e o suplente montou a própria equipe (sem sobrevivente).</p>
+  {% endif %}
+  {% endfor %}
+  <p class="nota">Cobertura atual: apenas as suplências <b>vigentes</b> constam da tabela oficial de
+  gabinetes. As suplências encerradas ou iniciadas no meio do mandato (titular que se licencia e
+  depois retorna) exigem varredura do Diário Oficial da CMRJ — recomendável para fechar o quadro.</p>
 
   <h2>3. Método, cobertura e ressalvas</h2>
   <p><b>Cruzamento e deduplicação de homônimos.</b> Nomes normalizados dos nomeados/servidores
@@ -382,10 +413,10 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   administrativa (Gabinete do Prefeito, Comlurb, Secretaria de Educação/Saúde/Obras etc.). Inclui
   efetivos, comissionados, cedidos e — quando a folha assim indica — aposentados/pensionistas.</p>
   <p><b>Ressalvas.</b> A filiação partidária é a foto pública de 2018 (cobertura parcial — "—" =
-  não consta na base de 2018). O eixo de fantasmas usa a virada de legislatura (01/2025) como proxy
-  verificável, na ausência do histórico estruturado de titular/suplente (que só existe nos atos de
-  licença do Diário Oficial). Apuração formal compete aos órgãos de controle e ao Ministério
-  Público.</p>
+  não consta na base de 2018). O eixo de suplência parte da tabela oficial de gabinetes (suplências
+  vigentes) e da data de posse do suplente (Diário Oficial da CMRJ); a cobertura de suplências
+  encerradas ou iniciadas no meio do mandato exige varredura do Diário Oficial. Apuração formal
+  compete aos órgãos de controle e ao Ministério Público.</p>
 
   <footer>Peça de subsídio à apuração — indícios, não acusação; presunção de legitimidade dos atos
   administrativos preservada. Fonte pública oficial. CPF de terceiros mascarado (LGPD).</footer>
@@ -403,8 +434,9 @@ def render(dados: dict) -> str:
         anos=dados["anos"], total=len(dados["registros"]), n_ainda=dados["n_ainda"],
         n_alta=dados["n_alta"], n_media=dados["n_media"],
         n_bpc=dados["n_bpc"], n_bf=dados["n_bf"], n_ab=dados["n_ab"], n_ae=dados["n_ae"],
-        n_fantasmas=len(dados["fantasmas"]), homonimos=dados["homonimos"], fora_rio=dados["fora_rio"],
-        grupos=dados["grupos"], fantasmas=dados["fantasmas"],
+        n_fantasmas=len(dados["fantasmas"]), n_suplencia=len(dados["gabs_suplencia"]),
+        homonimos=dados["homonimos"], fora_rio=dados["fora_rio"],
+        grupos=dados["grupos"], gabs_suplencia=dados["gabs_suplencia"],
     )
 
 
