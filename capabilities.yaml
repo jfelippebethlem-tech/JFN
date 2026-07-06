@@ -59,6 +59,15 @@ capacidades:
      args: {texto: "texto do edital/contrato (extrair_itens); registros[] p/ sobrepreco_interno"}, retorno: "extrair_itens -> [{descricao,quantidade,unidade,preco_unitario,preco_total,fonte}]; sobrepreco_interno -> [{item,n,min,max,mediana,razao_max_min,mais_caro,mais_barato,sobrepreco_pct_vs_mediana}]", nota: "preco unitario e FATO extraido do texto; dispersao e INDICIO, nunca prova."}
   - {id: missao_autonoma, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/hermes/missao, status: PRONTO,
      descricao: "Auditoria autonoma aberta (loop hermes_goal CANONICO)", quando_usar: "pedido complexo/aberto", exemplo: "audite os pagamentos suspeitos do ITERJ em 2024", args: {missao: obrigatorio}, retorno: "{missao_id}"}
+  - {id: missao_estado, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/hermes/estado, status: PRONTO,
+     descricao: "Estado do auditor autonomo: missao atual, Chrome 9222, LLM ok, contagens e aprendizados recentes.",
+     quando_usar: "'qual a missao', 'como esta o hermes/auditor', antes de trabalhar/parar", args: {}, retorno: "{missao,chrome_9222,llm_ok,n_obs,n_alertas,aprendizados}"}
+  - {id: missao_trabalhar, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/hermes/trabalhar, status: PRONTO,
+     descricao: "Dispara o ciclo de trabalho da missao atual (roda em background ate concluir; bounded por passos/ciclos). SO quando o Mestre pedir explicitamente; para com missao_parar.",
+     quando_usar: "'trabalha na missao', 'continua a auditoria' (pedido EXPLICITO do dono)", args: {}, retorno: "{ok,status}"}
+  - {id: missao_parar, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/hermes/parar, status: PRONTO,
+     descricao: "Para o ciclo de trabalho autonomo em andamento e drena a fila de missoes.",
+     quando_usar: "'para/pare a missao', 'cancela a auditoria autonoma'", args: {}, retorno: "{ok}"}
   # ---- GRAFO / DOSSIE ----
   - {id: grafo_poder, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/grafo, status: PRONTO,
      descricao: "Grafo unico: socios+servidores+doacoes+contratos+nomeacoes", quando_usar: "'quem esta ligado a X', 'a N saltos do deputado Y com contrato'",
@@ -160,6 +169,9 @@ capacidades:
      args: {limite: "int=15"}, retorno: "{massare_licoes,lex_base,hermes}"}
   - {id: status_jfn, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: /status, status: PRONTO,
      descricao: "JFN vivo? healthcheck", quando_usar: "diagnostico", args: {}, retorno: "{ok,uptime}"}
+  - {id: agenda_jobs, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: /api/agenda, status: PRONTO,
+     descricao: "Observabilidade central do metabolismo: timers systemd (proxima/ultima/resultado) + sweeps do cron (frescor pelo mtime do log) + flags de pausa, num relatorio Telegram-friendly. Deterministico, leitura-so.",
+     quando_usar: "'como estao os jobs/sweeps/agenda', 'o que roda quando', 'algum job falhou/parado'", args: {}, retorno: "{ok,texto}"}
   - {id: trace, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: "/api/trace/{correlation_id}", status: "ONDA 0",
      descricao: "Rastreia pedido ponta-a-ponta", quando_usar: "debug", args: {correlation_id: obrigatorio}, retorno: "{etapas[]}"}
   # ---- SKILLTREE (Onda 1: o registro se autodescreve; mutacoes so admin) ----
@@ -213,3 +225,45 @@ fontes_gratuitas:
   gdelt:      "https://api.gdeltproject.org/api/v2/doc/doc  +  BigQuery gdelt-bq.gdeltv2  (noticia/tom/GKG; MCP BigQuery)"
   finnhub:    "https://finnhub.io/docs/api  (news+sentiment+calendario economico; free tier, chave gratis)"
   sinapi_emop_bps: "SINAPI(obras) / EMOP-RJ(obras estaduais) / Banco de Precos em Saude — referencia p/ sobrepreco"
+
+# ---- MENU do /lista no Telegram (fonte ÚNICA; o adapter carrega o derivado ~/.hermes/jfn_menu.json) ----
+# Regra: mexeu aqui → rodar tools/gen_capabilities_md.py (pre-commit já roda). O adapter tem fallback
+# hardcoded só p/ o caso do JSON ausente/corrompido — a verdade é ESTA seção.
+menu_lista:
+  texto: |
+    🧭 **JFN — o que você precisa, Mestre Jorge?**
+
+    🏢 **Relatório de fornecedor** — tudo que uma empresa recebeu do Estado, com rede e risco.
+    🏛️ **Relatório de órgão** — quanto uma secretaria/UG pagou, e a quem.
+    🔎 **Investigar** — cartel, rede de sócios e se a empresa está sancionada.
+    📈 **Mercado & previsão** — cenários e previsões do Massare.
+    📚 **Ver todas as funções** — o catálogo completo.
+
+    *Toque numa opção ou fale comigo em linguagem natural.*
+  teclado:
+    - [["🏢 Relatório de fornecedor", "menu:forn"]]
+    - [["🏛️ Relatório de órgão", "menu:orgao"]]
+    - [["🔎 Investigar (cartel/rede)", "menu:invest"]]
+    - [["📈 Mercado & previsão", "menu:mercado"]]
+    - [["📚 Ver todas as funções", "menu:all"]]
+  dicas:
+    forn: |
+      🏢 **Relatório de fornecedor**
+      Tudo que uma empresa recebeu do Estado, com rede de sócios e nível de risco (PDF + planilha + parecer jurídico Lex).
+
+      Me diga o nome ou o CNPJ — ex.: *due diligence da MGS Clean*.
+    orgao: |
+      🏛️ **Relatório de órgão**
+      Quanto uma secretaria/UG pagou, a quem, com concentração e parecer Lex do órgão.
+
+      Ex.: *quanto o ITERJ pagou em 2024*. Não sabe o código? Use /ug para achar o órgão.
+    invest: |
+      🔎 **Investigar**
+      Cartel/conluio entre fornecedores, rede de poder (sócios e doações de campanha) e se a empresa está sancionada (CEIS/CNEP).
+
+      Ex.: *tem cartel na UG 133100?* · *quem está ligado à empresa X*.
+    mercado: |
+      📈 **Mercado & previsão (Massare)**
+      Como está o mercado agora e previsões com placar honesto (acerto fora da amostra).
+
+      Ex.: *dólar e bolsa hoje* · *o Ibovespa sobe semana que vem?*
