@@ -7,11 +7,18 @@ respostas formatadas por template. A IA fraca só entra (opcionalmente) como
 última camada de interpretação de texto livre, e mesmo assim traduzindo para
 UM destes comandos (nunca respondendo por conta própria sobre perícia).
 
+⚠️ O bot de comandos de notifications/telegram.py está DESATIVADO em produção
+(ver aviso no topo daquele arquivo) — estes handlers só respondem se aquele
+polling for religado com token próprio.
+
 Comandos expostos (plugados em notifications/telegram.py):
 
     /pericia <CNPJ | nº OB | nome>   — perícia completa na hora, com laudo
     /veredito <ref> confirmado|descartado|inconclusivo
                                      — feedback do perito (fecha o ciclo)
+    /promover <ref>                  — promove perícia confirmada a caso-ouro
+    /fases <nº SEI>                  — fases de contratação do arquivo SEI
+    /fantasma <CNPJ>                 — sinais de empresa fantasma (8 sinais)
     /placar                          — placar do conjunto-ouro + memória
     /ciclo_nucleo                    — roda o ciclo de autoaprimoramento
     /fornecedor <CNPJ>               — perfil de reincidência aprendido

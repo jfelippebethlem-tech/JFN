@@ -1,8 +1,17 @@
 """
 Telegram notification + remote command bot for the compliance system.
 
+⚠️ ESTADO REAL (2026-07-06): só a metade OUTBOUND está VIVA em produção —
+`enviar_mensagem` / `enviar_arquivo` / `enviar_resumo_diario` / `enviar_alerta_urgente`,
+usadas por server.py (_enviar_docs_telegram), scheduler.py e hermes_goal.py.
+O bot de COMANDOS (`loop_comandos`/`processar_comando` e tudo abaixo) está DESATIVADO:
+o antigo `yoda.service` foi desligado em 2026-06-06 (AMBIENTE.md) por disputar o mesmo
+TELEGRAM_BOT_TOKEN com o `hermes-gateway.service` — o Yoda vivo do Telegram é o gateway
+(hermes-agent/plugins/platforms/telegram/adapter.py + capabilities.yaml → API :8000).
+NÃO reativar este polling sem um segundo bot/token.
+
 Sends daily summaries, urgent alerts, and report files via Telegram Bot API.
-Also listens for commands from the phone:
+Also listens for commands from the phone (legado, ver aviso acima):
     /status   — situação atual do sistema
     /obs      — últimas OBs coletadas
     /agora    — dispara ciclo de coleta imediatamente
@@ -82,7 +91,16 @@ async def enviar_mensagem(
                     "parse_mode": parse_mode,
                 },
             )
-            return resp.json()
+            data = resp.json()
+            # Nome/título com _ * [ cru quebra o Markdown v1 e a mensagem SOMIA em silêncio.
+            # Fallback: reenvia como texto puro (conteúdo > formatação).
+            if not data.get("ok") and parse_mode and "parse" in str(data.get("description", "")).lower():
+                resp = await client.post(
+                    f"{base}/sendMessage",
+                    json={"chat_id": target, "text": texto},
+                )
+                data = resp.json()
+            return data
     except httpx.TimeoutException:
         return {"ok": False, "error": "timeout"}
     except Exception as exc:
