@@ -28,10 +28,21 @@ from pathlib import Path
 from compliance_agent.pcrj import db as _db
 from compliance_agent.pcrj.nomes import normalizar
 
-_URLS = {
-    "Bolsa Família": "https://portaldatransparencia.gov.br/download-de-dados/novo-bolsa-familia/{ym}",
-    "BPC": "https://portaldatransparencia.gov.br/download-de-dados/bpc/{ym}",
-}
+# Cada programa tem sua JANELA de vigência (competência ym = 'AAAAMM'). Fora dela o arquivo não
+# existe — não adianta baixar. Portal da Transparência (download-de-dados segue 302 p/ o zip).
+_BENEFICIOS = [
+    {"nome": "BPC", "url": "https://portaldatransparencia.gov.br/download-de-dados/bpc/{ym}",
+     "de": "200001", "ate": "999912"},
+    {"nome": "Bolsa Família",
+     "url": "https://portaldatransparencia.gov.br/download-de-dados/novo-bolsa-familia/{ym}",
+     "de": "202303", "ate": "999912"},           # Novo Bolsa Família: mar/2023 em diante
+    {"nome": "Auxílio Brasil",
+     "url": "https://portaldatransparencia.gov.br/download-de-dados/auxilio-brasil/{ym}",
+     "de": "202111", "ate": "202302"},           # substituiu o BF: nov/2021 a fev/2023
+    {"nome": "Auxílio Emergencial",
+     "url": "https://portaldatransparencia.gov.br/download-de-dados/auxilio-emergencial/{ym}",
+     "de": "202004", "ate": "202110"},           # pandemia: abr/2020 a out/2021
+]
 _TMP = Path("/tmp/claude-1001/-home-ubuntu/b0a66c33-983b-415a-990a-72696e7566c0/scratchpad")
 BENEF_DB = _db.DB_PATH.parent / "pcrj_benef.db"
 RIO = "RIO DE JANEIRO"
@@ -89,14 +100,18 @@ def _filtrar_zip(path: Path, beneficio: str, alvo: dict[str, str], ym: str) -> l
                 header = next(rd, None)
                 if not header:
                     continue
-                i_nome = _find(header, ["NOME FAVORECIDO", "NOME BENEFICIÁRIO",
+                # nome do beneficiário: Emergencial usa "NOME BENEFICIARIO"/"NOME"; BF/BPC/Brasil "NOME FAVORECIDO"
+                i_nome = _find(header, ["NOME FAVORECIDO", "NOME BENEFICIÁRIO", "NOME BENEFICIARIO",
                                         "NOME DO BENEFICIÁRIO", "NOME"])
-                i_mun = _find(header, ["NOME MUNICÍPIO", "NOME MUNICIPIO", "MUNICÍPIO"])
+                i_mun = _find(header, ["NOME MUNICÍPIO", "NOME MUNICIPIO", "MUNICÍPIO", "MUNICIPIO"])
                 i_uf = _find(header, ["UF", "SIGLA UF"])
-                i_val = _find(header, ["VALOR PARCELA", "VALOR DO BENEFÍCIO",
-                                       "VALOR DA PARCELA", "VALOR"])
-                i_cpf = _find(header, ["CPF FAVORECIDO", "CPF DO BENEFICIÁRIO",
+                i_val = _find(header, ["VALOR PARCELA", "VALOR DO BENEFÍCIO", "VALOR BENEFÍCIO",
+                                       "VALOR BENEFICIO", "VALOR DA PARCELA", "VALOR"])
+                i_cpf = _find(header, ["CPF FAVORECIDO", "CPF DO BENEFICIÁRIO", "CPF BENEFICIARIO",
                                        "CPF DO FAVORECIDO", "CPF"])
+                if i_nome < 0:  # layout novo/desconhecido — mostra o cabeçalho p/ ajuste (não silencia)
+                    print(f"  [aviso] {beneficio} {ym}: coluna de NOME não achada em {nm}. "
+                          f"Cabeçalho: {[c.strip(chr(34)) for c in header][:14]}", flush=True)
                 if i_nome < 0:
                     continue
                 for row in rd:
@@ -113,18 +128,25 @@ def _filtrar_zip(path: Path, beneficio: str, alvo: dict[str, str], ym: str) -> l
 
 
 def _alvo_nomeados() -> dict[str, str]:
-    """Nomeados a cruzar = Câmara + Prefeitura (ambos os poderes que o dono fiscaliza).
-    Chave = nome_norm; valor = nome legível. Prefeitura não guarda o nome cru em coluna
-    própria consistente, então normalizamos o nome_norm de volta a Title Case p/ exibição."""
+    """Nomeados a cruzar = Câmara (quadro completo) + Prefeitura (folha COMPLETA, ~200k
+    servidores de pcrj_folha_pref: efetivos, comissionados, cedidos e aposentados/pensionistas).
+    Chave = nome_norm; valor = nome legível. A folha da Prefeitura entrou em bloco via
+    contrachequedoc (folha_pref.py); antes só havia o recorte de acúmulo (câmara×prefeitura)."""
     con = _db.conectar()
     alvo: dict[str, str] = {}
     for r in con.execute("SELECT DISTINCT nome_norm, nome FROM pcrj_camara_servidores"):
         if r["nome_norm"]:
             alvo[r["nome_norm"]] = r["nome"]
-    for r in con.execute(
-            "SELECT DISTINCT nome_norm, COALESCE(nome_pcrj, nome_norm) AS nome "
-            "FROM pcrj_prefeitura_consulta WHERE encontrado=1"):
-        alvo.setdefault(r["nome_norm"], (r["nome"] or r["nome_norm"]).title())
+    # folha da Prefeitura (todas as competências carregadas — união de quem já foi servidor)
+    try:
+        for r in con.execute("SELECT DISTINCT nome_norm, nome FROM pcrj_folha_pref"):
+            if r["nome_norm"]:
+                alvo.setdefault(r["nome_norm"], r["nome"] or r["nome_norm"].title())
+    except Exception:  # tabela ainda não existe (folha não coletada) — degrada p/ o acúmulo antigo
+        for r in con.execute(
+                "SELECT DISTINCT nome_norm, COALESCE(nome_pcrj, nome_norm) AS nome "
+                "FROM pcrj_prefeitura_consulta WHERE encontrado=1"):
+            alvo.setdefault(r["nome_norm"], (r["nome"] or r["nome_norm"]).title())
     con.close()
     return alvo
 
@@ -135,10 +157,13 @@ def coletar(ym: str = "202605") -> dict:
     _TMP.mkdir(parents=True, exist_ok=True)
     todos: list[tuple] = []
     resumo: dict = {"competencia": ym, "por_beneficio": {}}
-    for beneficio, tmpl in _URLS.items():
+    for spec in _BENEFICIOS:
+        beneficio = spec["nome"]
+        if not (spec["de"] <= ym <= spec["ate"]):
+            continue  # programa não vigente nesta competência
         dest = _TMP / f"benef_{beneficio.split()[0].lower()}_{ym}.zip"
         print(f"[benef] baixando {beneficio} {ym}…", flush=True)
-        if not _baixar(tmpl.format(ym=ym), dest):
+        if not _baixar(spec["url"].format(ym=ym), dest):
             resumo["por_beneficio"][beneficio] = "download falhou"
             continue
         print(f"[benef] filtrando {beneficio} ({dest.stat().st_size // (1<<20)}MB)…", flush=True)
