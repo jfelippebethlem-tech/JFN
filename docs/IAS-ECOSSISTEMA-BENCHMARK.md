@@ -7,14 +7,19 @@
 
 ## 1. Quem executa (apurado em `~/.hermes/config.yaml` + `auth.json`)
 
+> **⚠️ Atualização 2026-06-25:** o **Gemini está DESLIGADO** em todo o ecossistema (`GEMINI_DISABLED=1`
+> no `JFN/.env` — billing cobrava fora do free tier; ver `~/vault` e memória `gemini-desligado-billing`).
+> Onde a tabela diz "gemini", quem responde hoje é a cadeia **cerebras → groq → nvidia → openrouter:free**
+> (14 elos, ver `~/.hermes/config.yaml`). Reverter só quando o billing for reposto.
+
 | Papel no ecossistema | Modelo | Provider | Força relativa | Onde atua |
 |---|---|---|---|---|
 | **Baseline (referência)** | **Claude Opus 4.8** / Claude Code | Anthropic | ★★★★★ | arquitetura, código, parecer, planejamento (eu) |
-| Yoda — default/conversa | **gemini-2.5-flash** | gemini | ★★★☆☆ | roteamento Telegram, resposta ao Jorge |
-| Visão / OCR | gemini-2.5-flash (tools de imagem) | gemini | ★★★☆☆ | captcha SEI, PDFs/scan DOERJ/SIAFE |
+| Yoda — default/conversa | ~~gemini-2.5-flash~~ → cadeia cerebras/groq | cerebras/groq | ★★★☆☆ | roteamento Telegram, resposta ao Jorge |
+| Visão / OCR | ~~gemini-2.5-flash~~ → OCR local (tesseract/fitz) | local | ★★☆☆☆ | captcha SEI, PDFs/scan DOERJ/SIAFE |
 | Principal (código/raciocínio, citado no config) | **Qwen 3.6** | (pool) | ★★★☆☆ | código, compliance, geral |
-| Fallback 1 | stepfun/step-3.7-flash:free | nous | ★★☆☆☆ | quando o principal falha |
-| Fallback 2 | inclusionai/ring-2.6-1t:free | nous | ★★☆☆☆ | idem |
+| Sweep SEI (volume) | stepfun/step-3.7-flash:free | nous | ★★☆☆☆ | triagem em volume (ÚNICA IA do sweep) |
+| Fallback 2 | inclusionai/ring-2.6-1t:free | nous | ★★☆☆☆ | quando o principal falha |
 | Fallback 3 | tencent/hy3-preview:free | nous | ★★☆☆☆ | idem |
 
 ## 2. Como escrever para a IA fraca (regras de ouro — aplicar em TODA skill/doc)

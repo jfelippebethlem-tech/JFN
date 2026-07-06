@@ -17,7 +17,10 @@
 | Doc | Para quê |
 |---|---|
 | [CAPACIDADES.md](CAPACIDADES.md) · [COMANDOS.md](COMANDOS.md) | O que o sistema faz / comandos do Yoda. |
-| [PLAYBOOK-EXECUTOR.md](PLAYBOOK-EXECUTOR.md) | Como executar tarefas (passos idempotentes p/ IAs). |
+| [PLAYBOOK-EXECUTOR.md](PLAYBOOK-EXECUTOR.md) · [PLAYBOOK-SEI.md](PLAYBOOK-SEI.md) | Como executar tarefas (passos idempotentes) / caminho único do SEI. |
+| [RUNBOOK-BOOT-E-ANTIIDLE.md](RUNBOOK-BOOT-E-ANTIIDLE.md) | Boot da VM + guarda anti-idle (Oracle Always Free). |
+| [METODOLOGIA-EMPRESA-FANTASMA.md](METODOLOGIA-EMPRESA-FANTASMA.md) | Método /fantasma (8 sinais determinísticos). |
+| [MASSARE-SUBMODULO.md](MASSARE-SUBMODULO.md) · [MIMO-CONTEXT.md](MIMO-CONTEXT.md) · [MANUAL-FISCALIZACAO-MIMO-2026-06-28.md](MANUAL-FISCALIZACAO-MIMO-2026-06-28.md) | Submódulo Massare / contexto e manual p/ o MiMo. |
 | [PREFERENCIAS-MESTRE-JORGE.md](PREFERENCIAS-MESTRE-JORGE.md) | Preferências do dono. |
 | [STORAGE.md](STORAGE.md) · [OTIMIZACAO.md](OTIMIZACAO.md) · [JFN-PIPELINE-OBS.md](JFN-PIPELINE-OBS.md) | Storage, otimização, pipeline de OBs. |
 | [BRANCHES-POR-SO.md](BRANCHES-POR-SO.md) · [YODA-MULTIUSUARIO.md](YODA-MULTIUSUARIO.md) · [MODELO-ESTRATEGIA.md](MODELO-ESTRATEGIA.md) | Branches por SO, multiusuário do Yoda, estratégia. |
@@ -46,7 +49,9 @@
 | Doc | Para quê |
 |---|---|
 | [DIRECIONAMENTO-CEREBRO-SPEC.md](DIRECIONAMENTO-CEREBRO-SPEC.md) | Spec do motor de raciocínio de direcionamento/fraude. |
+| [BENCHMARKS.md](BENCHMARKS.md) | **Índice único de TODOS os benchmarks** (IA e produto) — começar por aqui. |
 | [IAS-ECOSSISTEMA-BENCHMARK.md](IAS-ECOSSISTEMA-BENCHMARK.md) · [IAS-FRACAS-GUIA.md](IAS-FRACAS-GUIA.md) | Benchmark de modelos + guia p/ IAs fracas. |
+| [vereditos_pericia.md](vereditos_pericia.md) | **GERADO** por `tools/vereditos_para_rag.py` (ledger de vereditos p/ o RAG) — não editar à mão. |
 
 ## 📈 Avaliações & evolução (contexto, baixa frequência)
 | Doc | Para quê |
@@ -54,9 +59,10 @@
 | [AVALIACAO-BR-ACC.md](AVALIACAO-BR-ACC.md) | Avaliação do br-acc (resolução de entidade). |
 | [ECOSSISTEMA-EVOLUCAO.md](ECOSSISTEMA-EVOLUCAO.md) · [FLEXVISION-EVOLUCAO.md](FLEXVISION-EVOLUCAO.md) | Evolução do ecossistema. |
 | [EXTREME-DIGITAL-ACHADO-E-PROXIMO-PASSO.md](EXTREME-DIGITAL-ACHADO-E-PROXIMO-PASSO.md) · [APRENDIZADOS-SESSAO-2026-06-07.md](APRENDIZADOS-SESSAO-2026-06-07.md) | Achado pontual + aprendizados. |
+| [SEI-EVOLUCAO-TENTATIVAS.txt](SEI-EVOLUCAO-TENTATIVAS.txt) · [SIAFE-EVOLUCAO-TENTATIVAS.txt](SIAFE-EVOLUCAO-TENTATIVAS.txt) | Diário de tentativas SEI/SIAFE (o que já foi tentado — ler antes de reinventar). |
 
 ## 🗄️ Histórico ([`historico/`](historico/))
-Handoffs e relatos de sessão datados (05–09/06) — **superados** pelo REFERENCIA-PROJETO; mantidos só como histórico
-(o git já guarda o detalhe). 20 docs: `HANDOFF-*`, `SESSAO-*`, `RESUMO-*`, `ANALISE-POS-SWEEP-*`, `LOOP-MELHORIA-*`,
+Handoffs e relatos de sessão datados — **superados** pelo REFERENCIA-PROJETO; mantidos só como histórico
+(o git já guarda o detalhe). 22 docs: `HANDOFF-*`, `SESSAO-*`, `RESUMO-*`, `ANALISE-POS-SWEEP-*`, `LOOP-MELHORIA-*`,
 `PLANO-BENCHMARKS-*`, `REAVALIACAO-*`, `PROXIMA-SESSAO`, `JFN-2.0-IMPLEMENTACAO`, `AVALIACAO-WORKFLOW-SESSAO-IAS`,
-`ECOSSISTEMA-ANALISE-*`.
+`ECOSSISTEMA-ANALISE-*`, `RELATORIO-ECOSSISTEMA-*`.
