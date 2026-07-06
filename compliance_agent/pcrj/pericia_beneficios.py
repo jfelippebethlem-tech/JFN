@@ -102,12 +102,16 @@ def _orgaos_do_nome(con, nome_norm: str) -> dict:
         orgs = sorted({_orgao_limpo(r["orgao"]) for r in prefs if r["orgao"]})
         pref_org = " ; ".join(orgs) if orgs else "(órgão não informado)"
         tipo = prefs[0]["tipo_folha"] or ""
+        comps = sorted({r["competencia"] for r in prefs})
+        d["folha_desde"], d["folha_ate"] = comps[0], comps[-1]  # tenure aprox. (faixa na folha)
         if d["poder"]:
             d["poder"] = "Câmara + Prefeitura"
             d["orgao"] = f"{d['orgao']} | {pref_org}"
         else:
             d.update(poder="Prefeitura", orgao=pref_org)
         d["tipo_folha"] = tipo
+    else:
+        d["folha_desde"] = d["folha_ate"] = ""
     if not d["poder"]:
         d["poder"] = "(poder não identificado)"
     return d
@@ -127,6 +131,10 @@ def analisar() -> dict:
     comps = [r[0] for r in b.execute("SELECT DISTINCT competencia FROM pcrj_beneficio ORDER BY 1")]
     ultima = comps[-1] if comps else None
     anos = sorted({c[:4] for c in comps})
+    try:  # última competência da folha carregada — quem aparece nela ainda está ativo (tenure)
+        ultima_folha = p.execute("SELECT MAX(competencia) FROM pcrj_folha_pref").fetchone()[0] or ""
+    except Exception:
+        ultima_folha = ""
 
     # DEDUPLICAÇÃO DE HOMÔNIMOS (certeza). Todo nome aqui já é servidor/nomeado (o filtro do
     # coletor usa o alvo). O risco é o beneficiário homônimo de OUTRO estado. Duas travas:
@@ -135,39 +143,31 @@ def analisar() -> dict:
     #   2) FRAGMENTO DE CPF: identidade da pessoa = (nome, cpf_frag) unificada entre TODOS os
     #      programas (BPC+BF+Auxílio Brasil+Emergencial). Se, no Rio, o nome tem UM único fragmento,
     #      o beneficiário é uma pessoa só; se tem vários, é homônimo mesmo dentro do Rio → fora.
-    # Agregação no SQL (7,3M linhas → ~300k grupos): trava 1 (município=Rio) no WHERE; por
-    # (nome,frag,programa,ano) traz min/max competência e nº de meses. Uma 2ª query dá os meses
-    # DISTINTOS por (nome,frag,ano) — a contagem anual da pessoa entre todos os programas.
+    # Carga no NÍVEL DE MÊS (cursor, memória-segura): por (nome,frag) o conjunto de competências de
+    # cada programa. Isso é o que permite o cruzamento EXATO benefício×vínculo (só conta benefício
+    # recebido DURANTE a nomeação — evita a injustiça de flagrar quem recebeu entre empregos).
     frags_rio: dict[str, set] = {}
     pessoa: dict[tuple, dict] = {}
-    nome_de: dict[str, str] = {}
-    for r in b.execute(
-            "SELECT nome_norm, cpf_frag, beneficio, substr(competencia,1,4) AS ano, "
-            "COUNT(DISTINCT competencia) AS n, MIN(competencia) AS cmin, MAX(competencia) AS cmax, "
-            "MAX(nome) AS nome FROM pcrj_beneficio WHERE municipio='RIO DE JANEIRO' "
-            "GROUP BY nome_norm, cpf_frag, beneficio, ano"):
-        nn = r["nome_norm"]
-        frag = r["cpf_frag"] or "?"
-        nome_de.setdefault(nn, r["nome"] or nn.title())
-        frags_rio.setdefault(nn, set()).add(frag)
-        e = pessoa.setdefault((nn, frag), {"prog": {}, "por_ano": {}, "cmin": r["cmin"], "cmax": r["cmax"]})
-        pr = e["prog"].setdefault(r["beneficio"], {"cmin": r["cmin"], "cmax": r["cmax"], "n": 0})
-        pr["cmin"] = min(pr["cmin"], r["cmin"]); pr["cmax"] = max(pr["cmax"], r["cmax"]); pr["n"] += r["n"]
-        e["cmin"] = min(e["cmin"], r["cmin"]); e["cmax"] = max(e["cmax"], r["cmax"])
-    for r in b.execute(
-            "SELECT nome_norm, cpf_frag, substr(competencia,1,4) AS ano, "
-            "COUNT(DISTINCT competencia) AS n FROM pcrj_beneficio WHERE municipio='RIO DE JANEIRO' "
-            "GROUP BY nome_norm, cpf_frag, substr(competencia,1,4)"):
-        e = pessoa.get((r["nome_norm"], r["cpf_frag"] or "?"))
-        if e is not None:
-            e["por_ano"][r["ano"]] = r["n"]
+    cur = b.execute("SELECT nome_norm, cpf_frag, beneficio, competencia FROM pcrj_beneficio "
+                    "WHERE municipio='RIO DE JANEIRO'")
+    while True:
+        lote = cur.fetchmany(50000)
+        if not lote:
+            break
+        for nn, frag, ben, comp in lote:
+            frag = frag or "?"
+            frags_rio.setdefault(nn, set()).add(frag)
+            pessoa.setdefault((nn, frag), {}).setdefault(ben, set()).add(comp)
+    nome_de = {r[0]: (r[1] or r[0].title()) for r in b.execute(
+        "SELECT nome_norm, MAX(nome) FROM pcrj_beneficio WHERE municipio='RIO DE JANEIRO' "
+        "GROUP BY nome_norm")}
 
     # nomes do alvo com benefício mas NENHUM no município do Rio (informativo) — 1 varredura leve
     fora_rio = b.execute(
         "SELECT COUNT(*) FROM (SELECT nome_norm FROM pcrj_beneficio GROUP BY nome_norm "
         "HAVING MAX(municipio='RIO DE JANEIRO')=0)").fetchone()[0]
 
-    registros, homonimos = [], 0
+    registros, homonimos, fora_vinculo = [], 0, 0
     gab_cache: dict[int, str] = {}
     for nn in set(nome_de):
         fr = frags_rio.get(nn)
@@ -175,10 +175,36 @@ def analisar() -> dict:
             homonimos += 1
             continue
         frag = next(iter(fr))
-        e = pessoa[(nn, frag)]
+        prog_meses = pessoa[(nn, frag)]   # {beneficio: set(competências)}
         info = _orgaos_do_nome(p, nn)
         if info["poder"] == "(poder não identificado)":
             continue  # nome do alvo que é só sócio de fornecedor (não servidor) → outro relatório
+
+        # ── FAIRNESS: janelas de VÍNCULO PÚBLICO e só benefício recebido DENTRO delas ──────────
+        # Câmara: do ingresso (data1) até hoje (está no quadro atual = ativo). Prefeitura: faixa de
+        # presença na folha (se sai antes da última folha, o vínculo terminou ali). Benefício fora de
+        # toda janela = pessoa estava ENTRE empregos → NÃO é irregularidade (não flagra).
+        janelas, vinculos = [], []
+        iy = _ingresso_ym(info["ingresso"])
+        if em_camara_ing := info["poder"].startswith("Câmara"):
+            lo = iy or "200001"
+            janelas.append((lo, ultima))
+            vinculos.append(f"Câmara: {info['ingresso'] or _comp_legivel(lo)}→atual")
+        if info["folha_desde"]:
+            pref_ativo = (not ultima_folha) or (info["folha_ate"] >= ultima_folha)
+            hi = ultima if pref_ativo else info["folha_ate"]
+            janelas.append((info["folha_desde"], hi))
+            vinculos.append(f"Prefeitura: {_comp_legivel(info['folha_desde'])}→"
+                            f"{'atual' if pref_ativo else _comp_legivel(info['folha_ate'])}")
+        # filtra os meses de cada programa às janelas de vínculo
+        prog_ok = {}
+        for ben, meses in prog_meses.items():
+            dentro = {m for m in meses if any(lo <= m <= hi for lo, hi in janelas)}
+            if dentro:
+                prog_ok[ben] = dentro
+        if not prog_ok:              # recebeu só FORA de qualquer vínculo → não flagra (fairness)
+            fora_vinculo += 1
+            continue
         # nº de identidades de servidor com esse nome (matrículas na folha + presença na Câmara):
         # 1 => atribuição limpa; >1 => há mais de um servidor homônimo, atribuição incerta.
         try:
@@ -186,11 +212,10 @@ def analisar() -> dict:
                               (nn,)).fetchone()[0]
         except Exception:
             n_mat = 0
-        em_camara = info["poder"].startswith("Câmara")
-        n_serv = max(n_mat, 0) + (1 if (em_camara and n_mat == 0) else 0)
+        n_serv = max(n_mat, 0) + (1 if (em_camara_ing and n_mat == 0) else 0)
         # ALTA exige: um único servidor com o nome E um fragmento de CPF legível (não vazio).
         certeza = "ALTA" if (n_serv <= 1 and frag != "?") else "MÉDIA"
-        ativo = eh_ativo(info["tipo_folha"]) if info["tipo_folha"] else em_camara
+        ativo = eh_ativo(info["tipo_folha"]) if info["tipo_folha"] else em_camara_ing
 
         titular = ""
         if info["gab"] is not None:
@@ -202,11 +227,17 @@ def analisar() -> dict:
         topo = _orgao_topo({"orgao": info["orgao"]})
         if titular and topo.lower().startswith("gabinete"):
             topo = f"{topo} — {titular}"
-        # trajetória por programa: "BPC (mai/23→abr/24), Bolsa Família (mai/24→mai/26)"
-        progs = []
-        for ben, pr in sorted(e["prog"].items(), key=lambda kv: kv[1]["cmin"]):
-            progs.append({"ben": ben, "desde": _comp_legivel(pr["cmin"]),
-                          "ate": _comp_legivel(pr["cmax"]), "n": pr["n"]})
+        # trajetória por programa — SÓ os meses DENTRO do vínculo (prog_ok)
+        progs, todos_meses, por_ano = [], set(), {}
+        for ben, meses in sorted(prog_ok.items(), key=lambda kv: min(kv[1])):
+            ms = sorted(meses)
+            progs.append({"ben": ben, "desde": _comp_legivel(ms[0]), "ate": _comp_legivel(ms[-1]),
+                          "n": len(ms)})
+            todos_meses |= meses
+            for m in meses:
+                por_ano[m[:4]] = por_ano.get(m[:4], set())
+                por_ano[m[:4]].add(m)
+        cmin, cmax = min(todos_meses), max(todos_meses)
         registros.append({
             "nome": nome_de[nn], "nome_norm": nn, "cpf_frag": frag,
             "poder": info["poder"], "orgao": info["orgao"], "cargo": info["cargo"],
@@ -214,12 +245,16 @@ def analisar() -> dict:
             "partido": _partido_de(p, nn),
             "programas": progs,
             "beneficios_str": ", ".join(pr["ben"] for pr in progs),
-            "desde": _comp_legivel(e["cmin"]), "ate": _comp_legivel(e["cmax"]),
-            "n_meses": sum(e["por_ano"].values()),
-            "por_ano": {a: e["por_ano"].get(a, 0) for a in anos},
-            "ainda_recebe": (e["cmax"] == ultima),
+            "desde": _comp_legivel(cmin), "ate": _comp_legivel(cmax),
+            "n_meses": len(todos_meses),
+            "por_ano": {a: len(por_ano.get(a, set())) for a in anos},
+            "ainda_recebe": (cmax == ultima),
             "rio": True, "certeza": certeza, "n_serv": n_serv,
             "ativo": ativo, "situacao": "ativo/nomeado" if ativo else "aposent./pensão",
+            # vínculos COERENTES (cada um com sua janela); benefício acima já é só o recebido nelas.
+            "vinculos": " · ".join(vinculos),
+            "nomeacao": info["ingresso"] or (_comp_legivel(info["folha_desde"]) if info["folha_desde"] else ""),
+            "exoneracao": vinculos[0].split("→")[-1] if vinculos else "",
             "_orgao_topo": topo,
         })
 
@@ -279,7 +314,7 @@ def analisar() -> dict:
     return {
         "competencias": comps, "anos": anos, "ultima": ultima,
         "registros": registros, "grupos": grupos,
-        "homonimos": homonimos, "fora_rio": fora_rio,
+        "homonimos": homonimos, "fora_rio": fora_rio, "fora_vinculo": fora_vinculo,
         "fantasmas": fantasmas, "gabs_suplencia": gabs_suplencia,
         "n_alta": sum(1 for x in registros if x["certeza"] == "ALTA"),
         "n_media": sum(1 for x in registros if x["certeza"] == "MÉDIA"),
