@@ -65,9 +65,16 @@ def _partido_de(con, nome_norm: str) -> str:
     return r["partido"] if r["situacao"] == "REGULAR" else f"{r['partido']} (cancel.)"
 
 
+def _orgao_limpo(orgao_decod: str) -> str:
+    """'Comlurb (COMLURB/...)' -> 'Comlurb'; agrupa pelo órgão de topo, sem a sigla interna."""
+    return (orgao_decod or "").split(" (")[0].strip() or "(órgão não informado)"
+
+
 def _orgaos_do_nome(con, nome_norm: str) -> dict:
-    """(poder, orgao_legivel, cargo, ingresso, gabinete_num, vinculo) do nomeado."""
-    d = {"poder": "", "orgao": "", "cargo": "", "ingresso": "", "gab": None, "vinculo": ""}
+    """(poder, orgao_legivel, cargo, ingresso, gabinete_num, vinculo) do nomeado.
+    Prefeitura vem da folha COMPLETA (pcrj_folha_pref); Câmara da relação de servidores."""
+    d = {"poder": "", "orgao": "", "cargo": "", "ingresso": "", "gab": None,
+         "vinculo": "", "tipo_folha": ""}
     cam = con.execute(
         "SELECT lotacao, cargo, data1, gabinete_num, vinculo FROM pcrj_camara_servidores "
         "WHERE nome_norm=? LIMIT 1", (nome_norm,)).fetchone()
@@ -75,17 +82,24 @@ def _orgaos_do_nome(con, nome_norm: str) -> dict:
         d.update(poder="Câmara Municipal", orgao=cam["lotacao"] or "(lotação não informada)",
                  cargo=cam["cargo"] or "", ingresso=cam["data1"] or "",
                  gab=cam["gabinete_num"], vinculo=cam["vinculo"] or "")
-    prefs = con.execute(
-        "SELECT orgao, cargo FROM pcrj_prefeitura_consulta WHERE nome_norm=? AND encontrado=1",
-        (nome_norm,)).fetchall()
+    # Prefeitura: folha completa. Pega o registro mais recente; agrega os órgãos distintos da pessoa.
+    prefs = []
+    try:
+        prefs = con.execute(
+            "SELECT orgao, tipo_folha, competencia FROM pcrj_folha_pref WHERE nome_norm=? "
+            "ORDER BY competencia DESC", (nome_norm,)).fetchall()
+    except Exception:
+        prefs = []
     if prefs:
-        orgs = sorted({decodificar(r["orgao"]) for r in prefs if r["orgao"]})
+        orgs = sorted({_orgao_limpo(r["orgao"]) for r in prefs if r["orgao"]})
         pref_org = " ; ".join(orgs) if orgs else "(órgão não informado)"
+        tipo = prefs[0]["tipo_folha"] or ""
         if d["poder"]:
             d["poder"] = "Câmara + Prefeitura"
             d["orgao"] = f"{d['orgao']} | {pref_org}"
         else:
-            d.update(poder="Prefeitura", orgao=pref_org, cargo=prefs[0]["cargo"] or "")
+            d.update(poder="Prefeitura", orgao=pref_org)
+        d["tipo_folha"] = tipo
     if not d["poder"]:
         d["poder"] = "(poder não identificado)"
     return d
