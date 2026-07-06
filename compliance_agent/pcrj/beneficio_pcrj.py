@@ -117,10 +117,16 @@ def _filtrar_zip(path: Path, beneficio: str, alvo: dict[str, str], ym: str) -> l
                 for row in rd:
                     if i_nome >= len(row):
                         continue
+                    g = lambda i: row[i].strip('"') if 0 <= i < len(row) else ""  # noqa: E731
+                    # TRAVA DE UF (escala + certeza): servidor municipal do Rio recebe no estado do
+                    # Rio. Guardar só UF=RJ corta o país inteiro (Auxílio Emergencial nacional tem
+                    # dezenas de milhões de linhas → estouraria a base e a RAM da VM) e já elimina o
+                    # homônimo de outro estado. O recorte fino (município do Rio) é aplicado na análise.
+                    if i_uf >= 0 and g(i_uf).strip().upper() not in ("RJ", "RIO DE JANEIRO"):
+                        continue
                     nn = normalizar((row[i_nome] or "").strip('"'))
                     if nn not in alvo:
                         continue
-                    g = lambda i: row[i].strip('"') if 0 <= i < len(row) else ""  # noqa: E731
                     cpf_frag = "".join(re.findall(r"\d", g(i_cpf)))[:9]
                     achados.append((nn, alvo[nn], beneficio, g(i_mun).upper(), g(i_uf),
                                     g(i_val), cpf_frag, ym))
