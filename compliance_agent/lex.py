@@ -565,7 +565,9 @@ def _analisar_contratos_tcerj(itens: list[dict]) -> tuple[list, dict]:
     # Lei 14.133). NÃO é fracionamento: várias OBs de um mesmo contrato (parcelas mensais/medição/pagamento parcial),
     # nem atuar em vários órgãos, nem a pluralidade de contratos de serviço contínuo. Agrupa por (ano, UG, ramo).
     from collections import defaultdict
-    _TETO_DISP = 59906.02  # dispensa por valor — art. 75, II, Lei 14.133 (serviços/compras), valor de referência
+    # dispensa por valor — art. 75, II, Lei 14.133 (serviços/compras). Reajustado por decreto anual:
+    # override sem tocar código via LEX_TETO_DISPENSA no .env (valor de referência 2024/2025 = 59.906,02).
+    _TETO_DISP = float(os.environ.get("LEX_TETO_DISPENSA", "") or 59906.02)
     grupos = defaultdict(list)
     for c in diretas:
         grupos[(c.get("ano_processo"), (c.get("unidade") or "")[:40], _ramo_objeto(c.get("objeto")))].append(c)
@@ -648,7 +650,7 @@ def _detectar(ctx: dict) -> list[dict]:
                 achados.append({"rf": "R12", "grav": 3,
                                 "obs": f"Crescimento abrupto dos pagamentos de R$ {moeda(t0)} ({anos[0]}) para "
                                        f"R$ {moeda(t1)} ({anos[-1]}) — {pct:+.0f}%."})
-    zeros = sum(1 for a in anos for ln in p["por_ano"][a]["linhas"] if ln["valor"] == 0)
+    zeros = sum(1 for a in anos for ln in p["por_ano"][a]["linhas"] if ln.get("valor") == 0)
     if zeros >= 3:
         achados.append({"rf": "R10", "grav": 2,
                         "obs": f"{zeros} ordens bancárias de valor R$ 0,00 (estornos/regularizações) — verificar a regularidade da liquidação."})

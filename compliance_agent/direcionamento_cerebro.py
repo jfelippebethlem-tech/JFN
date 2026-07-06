@@ -125,10 +125,14 @@ async def _groq_gerar(messages: list[dict]) -> str:
     return await _groq(messages, max_tokens=2000, temperature=0.1)
 
 
+ultimo_provedor: str = ""  # provedor que respondeu a ÚLTIMA chamada — proveniência real p/ quem persiste 'modelo'
+
+
 async def _gerar_default(messages: list[dict]) -> str:
     """LLM padrão: tenta Gemini; se cair (chave/limite/erro), cai para o Hermes/Groq (pedido do dono).
     Honesto: se NENHUM responder, propaga o erro (o cérebro reporta 'indisponível', não fabrica)."""
     # cooldown por TIPO de erro (mesma lógica do free_llm.best_free_chat — não re-bater provedor morto)
+    global ultimo_provedor
     from compliance_agent.llm.free_llm import _em_cooldown, _marcar_cooldown, _limpar_cooldown
     erros = []
     if _gemini_keys() and not _em_cooldown("gemini"):
@@ -136,6 +140,7 @@ async def _gerar_default(messages: list[dict]) -> str:
             r = await gerar_gemini(messages)
             if r and r.strip():
                 _limpar_cooldown("gemini")
+                ultimo_provedor = "gemini"
                 return r
             erros.append("gemini: vazio")
         except Exception as e:  # noqa: BLE001
@@ -145,6 +150,7 @@ async def _gerar_default(messages: list[dict]) -> str:
         try:
             r = await _groq_gerar(messages)  # Hermes usa Groq/OpenRouter
             _limpar_cooldown("groq")
+            ultimo_provedor = "groq"
             return r
         except Exception as e:  # noqa: BLE001
             _marcar_cooldown("groq", e)
@@ -171,6 +177,7 @@ async def _gerar_default(messages: list[dict]) -> str:
                 r = await chamada()
                 if r and r.strip():
                     _limpar_cooldown(nome)
+                    ultimo_provedor = nome
                     return r
                 erros.append(f"{nome}: vazio")
             except Exception as e:  # noqa: BLE001

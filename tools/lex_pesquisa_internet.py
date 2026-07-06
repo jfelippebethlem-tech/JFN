@@ -287,7 +287,12 @@ async def pesquisar(cnpj: str, *, gerar=None, osint_fn=None, gravar_vault: bool 
                "cruzado": cruzado or "",
                "ressalva": "presunção de legitimidade; indício a apurar, não acusação"}
         vault_path = _gravar_vault(res) if gravar_vault else ""
-        _persistir(_con, res, vault_path)
+        try:
+            from compliance_agent import direcionamento_cerebro as _dc
+            _modelo = _dc.ultimo_provedor or "desconhecido"
+        except Exception:
+            _modelo = "desconhecido"
+        _persistir(_con, res, vault_path, modelo=_modelo)
         res["vault_path"] = vault_path
         return res
     finally:
@@ -295,7 +300,7 @@ async def pesquisar(cnpj: str, *, gerar=None, osint_fn=None, gravar_vault: bool 
             _con.close()
 
 
-def _persistir(con: sqlite3.Connection, res: dict, vault_path: str, modelo: str = "gemini") -> None:
+def _persistir(con: sqlite3.Connection, res: dict, vault_path: str, modelo: str = "desconhecido") -> None:
     # 'cruzado' surface-only: a coluna pode não existir em bancos antigos → grava best-effort sem quebrar.
     tem_cruzado = "cruzado" in {r[1] for r in con.execute("PRAGMA table_info(lex_pesquisa)")}
     if tem_cruzado:

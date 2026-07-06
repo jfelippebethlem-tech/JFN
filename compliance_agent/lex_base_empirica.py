@@ -83,6 +83,8 @@ def fatos_cobertura_sei(con) -> list[tuple]:
     tot = con.execute("SELECT COUNT(*) FROM ordens_bancarias").fetchone()[0]
     comsei = con.execute("SELECT COUNT(*) FROM ordens_bancarias WHERE TRIM(COALESCE(numero_sei,''))!=''").fetchone()[0]
     siafe = con.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe WHERE TRIM(COALESCE(processo,''))!=''").fetchone()[0]
+    if not tot:
+        return []  # base vazia: degradar honesto (sem fato) em vez de ZeroDivisionError virar "ERRO" silencioso
     return [("cobertura_ob_sei",
              f"OB↔SEI: {comsei:,}/{tot:,} OBs do TFE com nº SEI ({comsei/tot*100:.2f}%) + {siafe} OBs do SIAFE "
              f"carregam processo na tabela rica. Cobertura limitada pela varredura SIAFE (WAF restringe a VM). "
@@ -93,6 +95,8 @@ def fatos_volume(con) -> list[tuple]:
     r = con.execute("""SELECT COUNT(*), COUNT(DISTINCT ug_codigo), COUNT(DISTINCT favorecido_cpf),
                        MIN(exercicio), MAX(exercicio) FROM ordens_bancarias WHERE exercicio IS NOT NULL""").fetchone()
     p90 = _percentil(con, "ordens_bancarias", "valor", 0.90, "WHERE valor>0")
+    if not r[0] or p90 is None:
+        return []  # base vazia: sem fato (evita format de None)
     return [("base_volume",
              f"Base: {r[0]:,} OBs (chave única numero_ob+ug+exercício), {r[1]} UGs, {r[2]:,} fornecedores, "
              f"exercícios {r[3]}–{r[4]}. p90 do valor de OB ≈ R$ {p90:,.2f}.", 0.95, r[0])]
