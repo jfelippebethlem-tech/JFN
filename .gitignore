@@ -155,3 +155,8 @@ uv.lock
 data/backups/
 data/fachada_img/
 data/rag/
+
+# backups de banco (nunca versionar — estouram o limite do GitHub)
+data/*.bak_memoria_*
+data/compliance.db.bak*
+data/sei_arquivo/
