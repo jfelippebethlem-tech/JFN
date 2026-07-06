@@ -58,6 +58,7 @@ def eh_ativo(tipo_folha: str | None) -> bool:
 def coletar(ym: str = "202605") -> dict:
     _db.inicializar()
     con = _db.conectar()
+    con.execute("PRAGMA busy_timeout=180000")  # cede ao cron mensal que também escreve no pcrj.db
     con.executescript(_SCHEMA)
     agora = datetime.now(timezone.utc).isoformat(timespec="seconds")
 

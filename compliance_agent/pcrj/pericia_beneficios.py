@@ -22,7 +22,8 @@ from datetime import datetime
 from pathlib import Path
 
 from compliance_agent.pcrj import db as _db
-from compliance_agent.pcrj.orgaos_siglas import decodificar
+from compliance_agent.pcrj.folha_pref import eh_ativo
+from compliance_agent.pcrj.orgaos_siglas import decodificar  # noqa: F401 (usado via _orgaos_do_nome)
 
 BENEF_DB = _db.DB_PATH.parent / "pcrj_benef.db"
 _REPORTS = Path(__file__).resolve().parents[2] / "reports"
@@ -120,30 +121,64 @@ def analisar() -> dict:
     ultima = comps[-1] if comps else None
     anos = sorted({c[:4] for c in comps})
 
-    # todas as (nome, benefício, competência, cpf_frag, município) das pessoas que batem
-    raw = b.execute("SELECT nome_norm, nome, beneficio, competencia, cpf_frag, municipio "
+    # DEDUPLICAÇÃO DE HOMÔNIMOS (certeza). Todo nome aqui já é servidor/nomeado (o filtro do
+    # coletor usa o alvo). O risco é o beneficiário homônimo de OUTRO estado. Duas travas:
+    #   1) MUNICÍPIO: só conta benefício pago no RIO DE JANEIRO (servidor do Rio recebe no Rio) —
+    #      elimina o homônimo nacional (a maioria das 287k linhas brutas).
+    #   2) FRAGMENTO DE CPF: identidade da pessoa = (nome, cpf_frag) unificada entre TODOS os
+    #      programas (BPC+BF+Auxílio Brasil+Emergencial). Se, no Rio, o nome tem UM único fragmento,
+    #      o beneficiário é uma pessoa só; se tem vários, é homônimo mesmo dentro do Rio → fora.
+    raw = b.execute("SELECT nome_norm, nome, beneficio, competencia, cpf_frag, municipio, valor "
                     "FROM pcrj_beneficio").fetchall()
-    # agrega em memória por (nome, benefício)
-    agg: dict[tuple, dict] = {}
-    for r in raw:
-        k = (r["nome_norm"], r["beneficio"])
-        e = agg.setdefault(k, {"nome": r["nome"], "frags": set(), "comps": set(),
-                               "rio": False, "por_ano": {}})
-        e["frags"].add(r["cpf_frag"] or "?")
-        e["comps"].add(r["competencia"])
-        e["por_ano"][r["competencia"][:4]] = e["por_ano"].get(r["competencia"][:4], set())
-        e["por_ano"][r["competencia"][:4]].add(r["competencia"])
-        if (r["municipio"] or "").upper().find("RIO DE JANEIRO") >= 0:
-            e["rio"] = True
 
-    registros, homonimos = [], 0
+    def _rio(m):
+        return "RIO DE JANEIRO" in (m or "").upper()
+
+    # por nome: fragmentos vistos no Rio; por (nome,frag): trajetória entre programas
+    frags_rio: dict[str, set] = {}
+    pessoa: dict[tuple, dict] = {}
+    nome_de: dict[str, str] = {}
+    for r in raw:
+        nn = r["nome_norm"]
+        nome_de.setdefault(nn, r["nome"] or nn.title())
+        if not _rio(r["municipio"]):
+            continue                              # trava 1: fora do Rio não conta
+        frag = r["cpf_frag"] or "?"
+        frags_rio.setdefault(nn, set()).add(frag)
+        e = pessoa.setdefault((nn, frag), {"prog": {}, "comps": set(), "por_ano": {}, "valor": ""})
+        e["prog"].setdefault(r["beneficio"], set()).add(r["competencia"])
+        e["comps"].add(r["competencia"])
+        e["por_ano"].setdefault(r["competencia"][:4], set()).add(r["competencia"])
+        if r["valor"]:
+            e["valor"] = r["valor"]
+
+    registros, homonimos, fora_rio = [], 0, 0
     gab_cache: dict[int, str] = {}
-    for (nome_norm, beneficio), e in agg.items():
-        if len(e["frags"]) != 1:
+    nomes_com_benef = set(nome_de)
+    for nn in nomes_com_benef:
+        fr = frags_rio.get(nn)
+        if not fr:                    # tinha benefício, mas nenhum no município do Rio
+            fora_rio += 1
+            continue
+        if len(fr) != 1:              # homônimo dentro do próprio Rio (fragmentos distintos) → fora
             homonimos += 1
             continue
-        info = _orgaos_do_nome(p, nome_norm)
-        # nome do titular do gabinete (retrato atual) — enriquece a lotação da Câmara
+        frag = next(iter(fr))
+        e = pessoa[(nn, frag)]
+        info = _orgaos_do_nome(p, nn)
+        # nº de identidades de servidor com esse nome (matrículas na folha + presença na Câmara):
+        # 1 => atribuição limpa; >1 => há mais de um servidor homônimo, atribuição incerta.
+        try:
+            n_mat = p.execute("SELECT COUNT(DISTINCT matricula) FROM pcrj_folha_pref WHERE nome_norm=?",
+                              (nn,)).fetchone()[0]
+        except Exception:
+            n_mat = 0
+        em_camara = info["poder"].startswith("Câmara")
+        n_serv = max(n_mat, 0) + (1 if (em_camara and n_mat == 0) else 0)
+        # ALTA exige: um único servidor com o nome E um fragmento de CPF legível (não vazio).
+        certeza = "ALTA" if (n_serv <= 1 and frag != "?") else "MÉDIA"
+        ativo = eh_ativo(info["tipo_folha"]) if info["tipo_folha"] else em_camara
+
         titular = ""
         if info["gab"] is not None:
             if info["gab"] not in gab_cache:
@@ -152,23 +187,28 @@ def analisar() -> dict:
                 gab_cache[info["gab"]] = (g["titular"] if g else "") or ""
             titular = gab_cache[info["gab"]]
         comps_ord = sorted(e["comps"])
-        # título do grupo por órgão: gabinete da Câmara ganha o nome do vereador titular
         topo = _orgao_topo({"orgao": info["orgao"]})
         if titular and topo.lower().startswith("gabinete"):
             topo = f"{topo} — {titular}"
+        # trajetória por programa: "BPC (mai/23→abr/24), Bolsa Família (mai/24→mai/26)"
+        progs = []
+        for ben, cs in sorted(e["prog"].items(), key=lambda kv: min(kv[1])):
+            cs = sorted(cs)
+            progs.append({"ben": ben, "desde": _comp_legivel(cs[0]), "ate": _comp_legivel(cs[-1]),
+                          "n": len(cs)})
         registros.append({
-            "nome": e["nome"] or nome_norm.title(),
-            "nome_norm": nome_norm,
+            "nome": nome_de[nn], "nome_norm": nn, "cpf_frag": frag,
             "poder": info["poder"], "orgao": info["orgao"], "cargo": info["cargo"],
-            "vinculo": info["vinculo"], "ingresso": info["ingresso"],
-            "gab_titular": titular,
-            "partido": _partido_de(p, nome_norm),
-            "beneficio": beneficio,
+            "vinculo": info["vinculo"], "ingresso": info["ingresso"], "gab_titular": titular,
+            "partido": _partido_de(p, nn),
+            "programas": progs,
+            "beneficios_str": ", ".join(pr["ben"] for pr in progs),
             "desde": _comp_legivel(comps_ord[0]), "ate": _comp_legivel(comps_ord[-1]),
             "n_meses": len(e["comps"]),
             "por_ano": {a: len(e["por_ano"].get(a, set())) for a in anos},
             "ainda_recebe": (comps_ord[-1] == ultima),
-            "rio": e["rio"],
+            "rio": True, "certeza": certeza, "n_serv": n_serv,
+            "ativo": ativo, "situacao": "ativo/nomeado" if ativo else "aposent./pensão",
             "_orgao_topo": topo,
         })
 
@@ -200,7 +240,9 @@ def analisar() -> dict:
     fantasmas.sort(key=lambda x: (not x["eh_livre"], x["titular_atual"], x["ingresso"]))
 
     b.close(); p.close()
-    registros.sort(key=lambda x: (not x["ainda_recebe"], not x["rio"], -x["n_meses"], x["nome"]))
+    _ordem = {"ALTA": 0, "MÉDIA": 1}
+    registros.sort(key=lambda x: (_ordem.get(x["certeza"], 9), not x["ainda_recebe"],
+                                  -x["n_meses"], x["nome"]))
 
     # agrupa o eixo A por órgão
     por_orgao: dict[str, list] = {}
@@ -208,13 +250,20 @@ def analisar() -> dict:
         por_orgao.setdefault(r["_orgao_topo"], []).append(r)
     grupos = sorted(por_orgao.items(), key=lambda kv: (-len(kv[1]), kv[0]))
 
+    def _tem(reg, sub):
+        return any(sub in pr["ben"] for pr in reg["programas"])
+
     return {
         "competencias": comps, "anos": anos, "ultima": ultima,
-        "registros": registros, "grupos": grupos, "homonimos": homonimos,
+        "registros": registros, "grupos": grupos,
+        "homonimos": homonimos, "fora_rio": fora_rio,
         "fantasmas": fantasmas,
-        "n_bpc": sum(1 for x in registros if x["beneficio"] == "BPC"),
-        "n_bf": sum(1 for x in registros if x["beneficio"].startswith("Bolsa")),
-        "n_rio": sum(1 for x in registros if x["rio"]),
+        "n_alta": sum(1 for x in registros if x["certeza"] == "ALTA"),
+        "n_media": sum(1 for x in registros if x["certeza"] == "MÉDIA"),
+        "n_bpc": sum(1 for x in registros if _tem(x, "BPC")),
+        "n_bf": sum(1 for x in registros if _tem(x, "Bolsa")),
+        "n_ab": sum(1 for x in registros if _tem(x, "Brasil")),
+        "n_ae": sum(1 for x in registros if _tem(x, "Emergencial")),
         "n_ainda": sum(1 for x in registros if x["ainda_recebe"]),
     }
 
@@ -250,30 +299,36 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   </div>
 
   <div class="kpis">
-    <div class="kpi"><div class="n">{{ total }}</div><div class="l">nomeados com indício defensável</div></div>
+    <div class="kpi"><div class="n">{{ total }}</div><div class="l">nomeados com benefício no Rio (dedup.)</div></div>
+    <div class="kpi"><div class="n">{{ n_alta }}</div><div class="l">certeza ALTA (1 pessoa, 1 servidor)</div></div>
     <div class="kpi"><div class="n">{{ n_ainda }}</div><div class="l">ainda recebendo em {{ ultima }}</div></div>
     <div class="kpi"><div class="n">{{ n_bpc }}</div><div class="l">BPC/LOAS</div></div>
     <div class="kpi"><div class="n">{{ n_bf }}</div><div class="l">Bolsa Família</div></div>
-    <div class="kpi"><div class="n">{{ n_rio }}</div><div class="l">benefício no Rio</div></div>
+    <div class="kpi"><div class="n">{{ n_ab }}</div><div class="l">Auxílio Brasil</div></div>
+    <div class="kpi"><div class="n">{{ n_ae }}</div><div class="l">Auxílio Emergencial</div></div>
     <div class="kpi"><div class="n">{{ n_fantasmas }}</div><div class="l">fantasmas de gabinete (proxy)</div></div>
   </div>
 
   <h2>1. Nomeados recebendo benefício assistencial durante a nomeação — por órgão</h2>
-  <p class="nota">Ordenado por nº de nomeados. Colunas de ano mostram quantos meses a pessoa
-  recebeu o benefício naquele ano (dentro do período coberto). Filiação em coluna própria.</p>
+  <p class="nota">Identidade da pessoa unificada por (nome + fragmento de CPF) entre <b>todos</b> os
+  programas, restrita a benefício pago <b>no município do Rio</b> (afasta o homônimo de outro
+  estado). <b>Certeza ALTA</b> = um único beneficiário e um único servidor com o nome; <b>MÉDIA</b>
+  = beneficiário único, mas há mais de um servidor homônimo (qual deles é incerto). As colunas de
+  ano contam meses com benefício; a coluna Programas traz a trajetória com datas.</p>
   {% for orgao, regs in grupos %}
   <h3>{{ orgao }} — {{ regs|length }} nomeado(s)</h3>
   <table>
-    <tr><th>Nome</th><th>Poder</th><th>Cargo</th><th>Titular do gab.</th><th>Partido</th>
-        <th>Ingresso</th><th>Benefício</th>{% for a in anos %}<th>{{ a }}</th>{% endfor %}
-        <th>De</th><th>Até</th><th>Ainda?</th><th>Rio</th></tr>
+    <tr><th>Nome</th><th>Certeza</th><th>CPF (frag.)</th><th>Poder</th><th>Situação</th><th>Cargo</th><th>Titular do gab.</th>
+        <th>Partido</th><th>Ingresso</th><th>Programas (trajetória)</th>{% for a in anos %}<th>{{ a }}</th>{% endfor %}
+        <th>Ainda?</th></tr>
     {% for r in regs %}
-    <tr><td>{{ r.nome }}</td><td>{{ r.poder }}</td><td>{{ r.cargo }}</td><td>{{ r.gab_titular }}</td>
-        <td><span class="part">{{ r.partido }}</span></td><td>{{ r.ingresso }}</td><td>{{ r.beneficio }}</td>
+    <tr><td>{{ r.nome }}</td>
+        <td><span class="tag {% if r.certeza=='ALTA' %}sim{% else %}rio{% endif %}">{{ r.certeza }}</span></td>
+        <td>…{{ r.cpf_frag }}…</td><td>{{ r.poder }}</td><td>{{ r.situacao }}</td><td>{{ r.cargo }}</td><td>{{ r.gab_titular }}</td>
+        <td><span class="part">{{ r.partido }}</span></td><td>{{ r.ingresso }}</td>
+        <td>{% for pr in r.programas %}{{ pr.ben }} ({{ pr.desde }}→{{ pr.ate }}, {{ pr.n }}m){% if not loop.last %}; {% endif %}{% endfor %}</td>
         {% for a in anos %}<td style="text-align:center">{{ r.por_ano[a] or '·' }}</td>{% endfor %}
-        <td>{{ r.desde }}</td><td>{{ r.ate }}</td>
-        <td>{% if r.ainda_recebe %}<span class="tag sim">SIM</span>{% else %}não{% endif %}</td>
-        <td>{% if r.rio %}<span class="tag rio">Rio</span>{% endif %}</td></tr>
+        <td>{% if r.ainda_recebe %}<span class="tag sim">SIM</span>{% else %}não{% endif %}</td></tr>
     {% endfor %}
   </table>
   {% endfor %}
@@ -294,19 +349,25 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   </table>
 
   <h2>3. Método, cobertura e ressalvas</h2>
-  <p><b>Cruzamento.</b> Por nome normalizado contra os arquivos mensais oficiais de Bolsa Família e
-  BPC, competência a competência; captura do fragmento público de CPF do arquivo para separar
-  pessoas distintas por nome — <b>só entram nomes que correspondem a exatamente uma pessoa</b>
-  (afastados {{ homonimos }} por homonímia). Sem o CPF completo do servidor, é <b>indício
-  qualificado</b> para apuração, não acusação. Benefício assistencial pressupõe baixa renda (BPC:
-  renda per capita &lt; ¼ do salário mínimo; Bolsa Família: linha de pobreza), em tensão com cargo
-  remunerado.</p>
-  <p><b>Cobertura por poder.</b> A Câmara Municipal entra com o quadro completo de nomeados
-  (fonte: relação oficial de servidores). A Prefeitura NÃO possui lista pública em bloco de
-  comissionados — sua folha só é consultável nome a nome; por isso a coluna "Prefeitura" reflete
-  o subconjunto de <b>acúmulo de vínculo</b> (nomeado da Câmara que também consta na folha da
-  Prefeitura), com o órgão decodificado (Gabinete do Prefeito, Comlurb, Secretarias etc.). Não é,
-  portanto, um retrato exaustivo de toda a Prefeitura — é o recorte cruzável com a base atual.</p>
+  <p><b>Cruzamento e deduplicação de homônimos.</b> Nomes normalizados dos nomeados/servidores
+  contra os arquivos mensais oficiais dos quatro programas — BPC, Bolsa Família, Auxílio Brasil e
+  Auxílio Emergencial — competência a competência. Duas travas de identidade dão a certeza: (1) só
+  conta benefício pago <b>no município do Rio de Janeiro</b> — um servidor municipal do Rio recebe
+  no Rio, o que elimina o beneficiário homônimo de outro estado (a origem do grosso das centenas de
+  milhares de linhas brutas); (2) a pessoa é identificada por <b>(nome + fragmento público de CPF)</b>
+  unificada entre <b>todos</b> os programas — se, no Rio, o nome tem um único fragmento, o
+  beneficiário é uma pessoa só (afastados {{ homonimos }} nomes por terem fragmentos distintos no
+  próprio Rio, e {{ fora_rio }} por só terem benefício fora do município). <b>Certeza ALTA</b> exige
+  ainda um único servidor com o nome; <b>MÉDIA</b> quando há mais de um servidor homônimo. Sem o CPF
+  completo do servidor (não público, LGPD), a atribuição final é <b>indício qualificado</b>, não
+  acusação — mas a dupla trava torna o homônimo residual improvável. Benefício assistencial
+  pressupõe baixa renda (BPC: renda per capita &lt; ¼ do salário mínimo; Bolsa Família/Brasil: linha
+  de pobreza), em tensão com cargo remunerado.</p>
+  <p><b>Cobertura por poder.</b> Câmara Municipal: quadro completo de nomeados (relação oficial de
+  servidores). Prefeitura: <b>folha completa</b> (~200 mil servidores/mês, todos os órgãos), obtida
+  em bloco do repositório oficial de remuneração; o órgão vem decodificado da sigla da unidade
+  administrativa (Gabinete do Prefeito, Comlurb, Secretaria de Educação/Saúde/Obras etc.). Inclui
+  efetivos, comissionados, cedidos e — quando a folha assim indica — aposentados/pensionistas.</p>
   <p><b>Ressalvas.</b> A filiação partidária é a foto pública de 2018 (cobertura parcial — "—" =
   não consta na base de 2018). O eixo de fantasmas usa a virada de legislatura (01/2025) como proxy
   verificável, na ausência do histórico estruturado de titular/suplente (que só existe nos atos de
@@ -327,8 +388,9 @@ def render(dados: dict) -> str:
         data=datetime.now().strftime("%d/%m/%Y"),
         periodo=periodo, ultima=_comp_legivel(dados["ultima"]) if dados["ultima"] else "—",
         anos=dados["anos"], total=len(dados["registros"]), n_ainda=dados["n_ainda"],
-        n_bpc=dados["n_bpc"], n_bf=dados["n_bf"], n_rio=dados["n_rio"],
-        n_fantasmas=len(dados["fantasmas"]), homonimos=dados["homonimos"],
+        n_alta=dados["n_alta"], n_media=dados["n_media"],
+        n_bpc=dados["n_bpc"], n_bf=dados["n_bf"], n_ab=dados["n_ab"], n_ae=dados["n_ae"],
+        n_fantasmas=len(dados["fantasmas"]), homonimos=dados["homonimos"], fora_rio=dados["fora_rio"],
         grupos=dados["grupos"], fantasmas=dados["fantasmas"],
     )
 
