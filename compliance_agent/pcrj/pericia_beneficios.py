@@ -166,6 +166,8 @@ def analisar() -> dict:
         frag = next(iter(fr))
         e = pessoa[(nn, frag)]
         info = _orgaos_do_nome(p, nn)
+        if info["poder"] == "(poder não identificado)":
+            continue  # nome do alvo que é só sócio de fornecedor (não servidor) → outro relatório
         # nº de identidades de servidor com esse nome (matrículas na folha + presença na Câmara):
         # 1 => atribuição limpa; >1 => há mais de um servidor homônimo, atribuição incerta.
         try:
