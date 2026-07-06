@@ -11,6 +11,9 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `cruzamento` | jfn | http | `/api/cruzamento` | PRONTO | 'cruze os dados da empresa X' |
 | `listar_ugs` | jfn | http | `/api/ugs` | PRONTO | '/ug', 'quais os codigos/nomes dos orgaos/UGs', 'listar UGs', 'qual o codigo da SEEDUC', 'que orgaos existem', ANTES de pedir o /orgao quando nao se sabe o codigo |
 | `missao_autonoma` | jfn | http | `/api/hermes/missao` | PRONTO | pedido complexo/aberto |
+| `missao_estado` | jfn | http | `/api/hermes/estado` | PRONTO | 'qual a missao', 'como esta o hermes/auditor', antes de trabalhar/parar |
+| `missao_parar` | jfn | http | `/api/hermes/parar` | PRONTO | 'para/pare a missao', 'cancela a auditoria autonoma' |
+| `missao_trabalhar` | jfn | http | `/api/hermes/trabalhar` | PRONTO | 'trabalha na missao', 'continua a auditoria' (pedido EXPLICITO do dono) |
 | `relacoes` | jfn | cli | `compliance_agent.relacoes "<CNPJ | nome do socio | UG>"` | PRONTO | 'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo |
 | `relatorio_inteligencia` | jfn | http | `/api/relatorio/inteligencia` | PRONTO | relatorio/auditoria/due diligence de empresa, CNPJ |
 | `relatorio_orgao` | jfn | http | `/api/relatorio/orgao` | PRONTO | auditoria de orgao/UG/secretaria |
@@ -54,6 +57,7 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `massare_teses` | massare | http | `/api/massare/teses` | PRONTO | 'quais as teses agora', 'o que move o mercado' |
 | `radar_status` | jfn | http | `/api/radar/status` | PRONTO | 'o que voce monitora', 'teve alerta hoje' |
 | `vigiar` | jfn | http | `/api/radar/vigiar` | PRONTO | '/vigiar <cnpj|ug|nome>' |
+| `agenda_jobs` | jfn | http | `/api/agenda` | PRONTO | 'como estao os jobs/sweeps/agenda', 'o que roda quando', 'algum job falhou/parado' |
 | `memoria` | jfn | http | `/api/memoria` | PRONTO | 'o que voce aprendeu', consolidar memoria |
 | `skill_detalhe` | yoda | cli | `telegram /skill <id>` | PRONTO | 'como funciona a skill X', detalhe de uma capacidade |
 | `skills` | yoda | cli | `telegram /skills [filtro]` | PRONTO | 'o que voce sabe fazer', 'quais skills', 'capacidades' |

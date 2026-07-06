@@ -19,6 +19,7 @@ _REPO = Path(__file__).resolve().parent.parent
 _YAML = _REPO / "capabilities.yaml"
 _MD = _REPO / "docs" / "CAPACIDADES.md"
 _PROMPT = _REPO / "data" / "yoda_capabilities_prompt.txt"
+_MENU_JSON = Path.home() / ".hermes" / "jfn_menu.json"  # consumido pelo adapter do Telegram (/lista)
 
 
 def gerar() -> dict:
@@ -60,7 +61,20 @@ def gerar() -> dict:
         plinhas.append(f"- {c['id']}({args}) {chamada} — {c.get('quando_usar', '')}")
     _PROMPT.write_text("\n".join(plinhas) + "\n", encoding="utf-8")
 
-    return {"md": str(_MD), "prompt": str(_PROMPT),
+    # 3) menu do /lista (fonte única: seção menu_lista do YAML) → JSON que o adapter carrega em call-time.
+    #    Best-effort: se a seção não existir, não emite (o adapter cai no fallback hardcoded).
+    menu = doc.get("menu_lista") or {}
+    menu_path = ""
+    if menu.get("texto") and menu.get("teclado"):
+        import json
+        _MENU_JSON.parent.mkdir(parents=True, exist_ok=True)
+        _MENU_JSON.write_text(json.dumps(
+            {"texto": menu["texto"].strip(), "teclado": menu["teclado"],
+             "dicas": {k: v.strip() for k, v in (menu.get("dicas") or {}).items()}},
+            ensure_ascii=False, indent=1), encoding="utf-8")
+        menu_path = str(_MENU_JSON)
+
+    return {"md": str(_MD), "prompt": str(_PROMPT), "menu": menu_path,
             "prontas": sum(1 for c in caps if c.get("status") == "PRONTO"), "total": len(caps)}
 
 

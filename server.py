@@ -2187,6 +2187,19 @@ async def api_memoria(limite: int = 15):
 
 
 # ---- Skilltree via HTTP (Onda 13, parte JFN — o comando /skills do Yoda chama estas rotas) ----
+@app.get("/api/agenda")
+async def api_agenda():
+    """Observabilidade central: timers systemd + crons + pausas num relatório só (determinístico, leitura-só).
+    Consolidação agêntica 2026-07-06 — o Yoda responde 'como estão os jobs?' sem vasculhar ~20 logs."""
+    try:
+        from compliance_agent import agenda_jobs
+        import asyncio
+        texto = await asyncio.to_thread(agenda_jobs.render)  # subprocessos systemctl fora do event loop
+        return JSONResponse(content={"ok": True, "texto": texto})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @app.get("/api/skills")
 async def api_skills(filtro: str = ""):
     """Skilltree (capacidades) agrupada por domínio — texto p/ o /skills do Telegram."""

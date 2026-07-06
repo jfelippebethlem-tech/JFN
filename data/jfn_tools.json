@@ -443,6 +443,72 @@
     {
       "type": "function",
       "function": {
+        "name": "missao_estado",
+        "description": "Estado do auditor autonomo: missao atual, Chrome 9222, LLM ok, contagens e aprendizados recentes. — usar quando: 'qual a missao', 'como esta o hermes/auditor', antes de trabalhar/parar — chamar: GET /api/hermes/estado (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/hermes/estado",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "missao_trabalhar",
+        "description": "Dispara o ciclo de trabalho da missao atual (roda em background ate concluir; bounded por passos/ciclos). SO quando o Mestre pedir explicitamente; para com missao_parar. — usar quando: 'trabalha na missao', 'continua a auditoria' (pedido EXPLICITO do dono) — chamar: POST /api/hermes/trabalhar (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/hermes/trabalhar",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "missao_parar",
+        "description": "Para o ciclo de trabalho autonomo em andamento e drena a fila de missoes. — usar quando: 'para/pare a missao', 'cancela a auditoria autonoma' — chamar: POST /api/hermes/parar (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/hermes/parar",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "grafo_poder",
         "description": "Grafo unico: socios+servidores+doacoes+contratos+nomeacoes — usar quando: 'quem esta ligado a X', 'a N saltos do deputado Y com contrato' — chamar: GET /api/grafo (base http://127.0.0.1:8000)",
         "parameters": {
@@ -1508,6 +1574,28 @@
         "dominio": "sistema",
         "tipo": "http",
         "rota": "/status",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "agenda_jobs",
+        "description": "Observabilidade central do metabolismo: timers systemd (proxima/ultima/resultado) + sweeps do cron (frescor pelo mtime do log) + flags de pausa, num relatorio Telegram-friendly. Deterministico, leitura-so. — usar quando: 'como estao os jobs/sweeps/agenda', 'o que roda quando', 'algum job falhou/parado' — chamar: GET /api/agenda (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "sistema",
+        "tipo": "http",
+        "rota": "/api/agenda",
         "comando": null,
         "metodo": "GET",
         "status": "PRONTO",

@@ -14,6 +14,9 @@ COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a 
 - relacoes(alvo,limite) [cli: compliance_agent.relacoes "<CNPJ | nome do socio | UG>"] — 'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo
 - sobrepreco_interno(texto) [cli: compliance_agent.precos_extract] — 'esse item esta caro comparado a outros orgaos?', dispersao de preco unitario do mesmo produto sem precisar de CATMAT/mercado, complemento interno ao /sobrepreco
 - missao_autonoma(missao) [POST /api/hermes/missao] — pedido complexo/aberto
+- missao_estado() [GET /api/hermes/estado] — 'qual a missao', 'como esta o hermes/auditor', antes de trabalhar/parar
+- missao_trabalhar() [POST /api/hermes/trabalhar] — 'trabalha na missao', 'continua a auditoria' (pedido EXPLICITO do dono)
+- missao_parar() [POST /api/hermes/parar] — 'para/pare a missao', 'cancela a auditoria autonoma'
 - grafo_poder(alvo,saltos,so_contrato) [GET /api/grafo] — 'quem esta ligado a X', 'a N saltos do deputado Y com contrato'
 - dossie(alvo) [POST /api/dossie] — 'monte um dossie sobre X'
 - grafo_ftm(alvo,saltos) [GET /api/grafo/ftm] — 'exporte a rede de X p/ FtM/Aleph'
@@ -52,6 +55,7 @@ COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a 
 - cruzador() [cli: bash tools/cruzador.sh] — rotina automatica noturna; acionar a mao so p/ recruzar apos coleta grande
 - memoria(limite) [GET /api/memoria] — 'o que voce aprendeu', consolidar memoria
 - status_jfn() [GET /status] — diagnostico
+- agenda_jobs() [GET /api/agenda] — 'como estao os jobs/sweeps/agenda', 'o que roda quando', 'algum job falhou/parado'
 - skills(filtro) [cli: telegram /skills [filtro]] — 'o que voce sabe fazer', 'quais skills', 'capacidades'
 - skill_detalhe(id) [cli: telegram /skill <id>] — 'como funciona a skill X', detalhe de uma capacidade
 - skills_reload() [cli: telegram /skills_reload] — apos editar o YAML na VM

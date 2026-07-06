@@ -11,6 +11,7 @@
 | Doc | Para quê |
 |---|---|
 | [REFERENCIA-PROJETO.md](REFERENCIA-PROJETO.md) | Estado vivo + roadmap + lições + retomada (1 linha/sessão no §10). |
+| [ARQUITETURA-AGENTICA.md](ARQUITETURA-AGENTICA.md) | **Organograma do sistema agêntico em 1 página** (Yoda→API→metabolismo→aprendizado + fontes únicas + guard-rails). |
 | [CLAUDE-REFERENCIA-COMPLETA.md](CLAUDE-REFERENCIA-COMPLETA.md) | Jurídico/orçamentário completo (modalidades, ilícitos, CEIS/CNEP, P×I, SIAFE, UGs). |
 
 ## ⚙️ Operação & capacidades
