@@ -42,6 +42,9 @@ _BENEFICIOS = [
     {"nome": "Auxílio Emergencial",
      "url": "https://portaldatransparencia.gov.br/download-de-dados/auxilio-emergencial/{ym}",
      "de": "202004", "ate": "202110"},           # pandemia: abr/2020 a out/2021
+    {"nome": "Gás do Povo",                        # (ex-Auxílio Gás) — só há download do relançamento
+     "url": "https://portaldatransparencia.gov.br/download-de-dados/gas-do-povo/{ym}",
+     "de": "202512", "ate": "999912"},           # dez/2025 em diante (meses sem pagamento vêm vazios)
 ]
 _TMP = Path("/tmp/claude-1001/-home-ubuntu/b0a66c33-983b-415a-990a-72696e7566c0/scratchpad")
 BENEF_DB = _db.DB_PATH.parent / "pcrj_benef.db"
@@ -153,6 +156,21 @@ def _alvo_nomeados() -> dict[str, str]:
                 "SELECT DISTINCT nome_norm, COALESCE(nome_pcrj, nome_norm) AS nome "
                 "FROM pcrj_prefeitura_consulta WHERE encontrado=1"):
             alvo.setdefault(r["nome_norm"], (r["nome"] or r["nome_norm"]).title())
+    # SÓCIOS de empresas fornecedoras do Estado/Prefeitura (QSA Receita) — para detectar dono de
+    # fornecedor recebendo benefício assistencial. Banco separado (compliance.db); leitura best-effort.
+    try:
+        cc = _db.sqlite3.connect(f"file:{_db.DB_PATH.parent / 'compliance.db'}?mode=ro", uri=True)
+        for tab, col in (("socios_receita", "nome_norm"), ("socios_fornecedor", "socio_nome_norm")):
+            try:
+                for (nn, nome) in cc.execute(
+                        f"SELECT DISTINCT {col}, {col.replace('_norm','')} FROM {tab} WHERE {col}<>''"):
+                    if nn:
+                        alvo.setdefault(nn, nome or nn.title())
+            except Exception:
+                continue
+        cc.close()
+    except Exception:
+        pass
     con.close()
     return alvo
 
