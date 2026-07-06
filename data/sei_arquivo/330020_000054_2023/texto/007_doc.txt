@@ -1,0 +1,194 @@
+[] (fase: indefinida · tipo: vazio)
+
+8 Comprovante de Transação Bancária
+
+, FGTS
+u Data da operação: 05/01/2024 - 17h57
+bradesco Nº de controle: 244.772.139.236.608.642 | Autenticação bancária: 098.662.833
+net empresa
+
+Conta de débito: Agência: 135 | Conta: 19026-8 | Tipo: Conta-Corrente
+
+Empresa: MOBILIZA FOR RENT LTDA | CNPJ: 035.208.086/0001-27
+
+Código de barras: 85830000035-1 96300179240-2 10768405083-1 52080860001-6
+Empresa/Órgão: FGTS/GRF SITOMADOR
+Identif. empresa: 352080860001
+CNPJ/CEI: 35.208.086/0001-27
+Cod. convênio: 0179
+Competência: 12/2023
+Data de validade: 07/01/2024
+Data de débito: 05/01/2024
+Valor do pagamento: R$ 3.596,30
+
+Atransação acima foi realizada por meio do Bradesco Net Empresa.
+
+O lançamento consta no extrato de Conta-Corrente do cliente MOBILIZA FOR RENT LTDA » junto à Agência 135, da data de pagamento.
+Esse documento serve como comprovante de pagamento. Portanto, ele deverá ser guardado juntamente com a guia que originou o
+pagamento, para apresentação ao(s) Órgão(s) fiscalizados, quando solicitado.
+
+Autenticação
+
+CaquRMSU 7M2AbHEX IM22b396 LE4PzAJT VBg6*BDD LuMOyDO? 2BKLSWmX Fhpbeayz
+AYIKATHK 10?7gl2zg 5kAMafjP GBOSgGÊL PohDYICH wgndsQjg xhrf2mpp XxB4velA
+fpPk68Py 2VXuZdEm DEPTBFLr wBflU4Rg COQÍL?mn gr2WAQDE 00500524 00560096
+
+SAC -Serviço de Alô Bradesco Deficiente Auditivo ou de Fala — Cancelamentos, Reclamações e Demais telefones
+Apoio ao Cliente 0800 704 8383 0800 722 0099 Informações. Atendimento 24 horas, 7 dias consulte o site
+por semana. Fale Conosco
+
+Ouvidoria 0800 727 9933 Atendimento de segunda a sexta-feira, das 8h às 18h, exceto feriados.
+
+
+GRE - GUIA DE RECOLHIMENTO DO FGTS
+GERADA EM 04/01/2024 - 17:40:08
+
+FGTS
+
+FEMDO GE BARMUTIA DO TEMPO DE SERVICO
+GFIP — SEFIP 8.40
+
+D1-RAZÃO SOCIAL/NOME
+
+MOBILIZA FOR RENT LIDA
+
+02-DDD/TELEFONE
+
+(0021)22155441
+
+03-FPAS
+
+515
+
+04-SIMPLES
+
+05-REMUNERAÇÃO
+
+44.953,86
+
+06-QTDE TRABALHADORES
+
+19
+
+07-ALÍQUOTA FGTS
+
+8
+
+08-CÓD RECOLHIMENTO
+
+115
+
+09-1D RECOLHIMENTO
+
+017980-9
+
+10-INSCRIÇÃO/TIPO( 8 )
+
+35.208.086/0001-27
+
+11-COMPETÊNCIA
+
+12/2023
+
+12-DATA DE VALIDADE
+
+07/01/2024
+
+13-DEPÓSITO + CONTRIB SOCIAL
+
+14-ENCARGOS
+
+15-TOTAL A RECOLHER
+
+3.596,30 0,00 3.596,30
+
+**VALOR FGTS A RECOLHER ATÉ O DIA 07/01/2024%%
+
+858300000351 963001792402 107684050831 520808600016
+
+AUTENTICAÇÃO MECÂNICA
+
+GRF —- GUIA DE RECOLHIMENTO DO FGTS
+GERADA EM 04/01/2024 — 17:40:08
+
+FUMOD GE BASUNTE, DO TEMPS DE SERVO
+
+GFIP - SEFIP 8.40
+
+OI-RAZÃO SOCIAL/NOME
+
+MOBILIZA FOR RENT LIDA
+
+02-DDD/ TELEFONE
+
+(0021)22155441
+
+03-FPAS
+
+515
+
+04-SIMPLES
+
+,
+[05-REMUNERAÇÃO |
+I
+
+44.953,86
+
+06-OTDE TRABALHADORES
+
+19
+
+07-ALÉQUOIA FGTS
+
+8
+
+08-CÓD RECOLHIMENTO
+
+115
+
+09-ID RECOLHIMENTO
+
+017980-9
+
+10-INSCRIÇÃO/TIPO( 8 )
+
+35.208.086/0001-27
+
+11-COMPETÊNCIA
+
+12/2023
+
+12-DATA DE VALIDADE
+
+07/01/2024
+
+13-DEPÓSITO + CONTRIB SOCIAL
+
+3.596,30
+
+14-ENÇARGOS
+
+0,00
+
+15-TOTAL A RECOLHER
+
+3.596,30
+
+**VALOR FGTS A RECOLHER ATÉ O DIA 07/01/2024**
+
+858300000351
+
+263001792402
+
+107684050831
+
+520808600016
+
+|
+
+MI AO
+
+|
+
+AUTENTICAÇÃO MECÂNICA

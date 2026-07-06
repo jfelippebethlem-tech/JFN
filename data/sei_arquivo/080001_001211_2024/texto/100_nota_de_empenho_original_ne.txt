@@ -1,0 +1,121 @@
+[Nota de Empenho Original - NE] (fase: despesa · tipo: nota_empenho)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Novembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NE10138
+27-12-2024
+Credor
+10435993000188 - Fundo Munic.de Saude De Sao Joao Meriti
+Valor
+301.158,84 (Trezentos e um mil e cento e cinquenta e oito reais e oitenta e quatro centavos)
+Classificação
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+07 - Não Aplicável
+Emb. Legal
+NÃO SUJEITO.
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-080001/001211/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Transferências a Municípios
+01 - CONTRIBUIÇÕES - TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+301.158,84
+Cronograma
+Dezembro
+301.158,84
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+2.810.977,99 Pré-Empenhado
+0,00 Bloqueado
+0,00
+301.158,84
+2.509.819,15
+Observação
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 
+04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Outubro, Novembro e Dezembro/2024, referente ao município de São João de Meriti. 
+Conforme solicitação (86037387).  NAD 5870
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+TRANSFERÊNCIA FUNDO A FUNDO.
+1
+UN
+301.158,84
+301.158,84
+Descrição
+Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela 
+Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Outubro, Novembro e 
+Dezembro/2024, referente ao município de São João de Meriti. Conforme solicitação (86037387).  NAD 5870
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Raphael Marcos Itabaiana Borges Leal em 27-12-2024 às 16:59.
+Impresso por Raphael Marcos Itabaiana Borges Leal em 27-12-2024 às 17:00.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

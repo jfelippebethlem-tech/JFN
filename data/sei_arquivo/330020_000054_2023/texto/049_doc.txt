@@ -1,0 +1,617 @@
+[] (fase: indefinida · tipo: vazio)
+
+horas
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF/CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 32142/28192 -1
+tados do recebedor
+nome do recebedor: ADAIJLTON LOPES PEREIRA
+CPF / CNPJ do recebedor: 00.060.557/2307-72
+instituição: CAIXA ECONOMICA FEDERAL
+agência/conta: 4064/737494567-2 -
+tipo de conta: Conta Poupanca
+dados da transação
+valor: R$ 1.267,89
+data da transferência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: pag salario ref a se
+identificação no extrato:
+
+autenticação no comprovante:
+S5B4EBF87CAGEA4B068F32ACB31AD6AEB927BOBDE
+ID da transação:
+E60701190202310061447DY5YSRNQXFH
+controle:
+000028279231978
+transação efetuada em 06/10/2023 às 11:47:43 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www .itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+
+horas
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 4
+dados do rscebedor
+nome do recebecior: ALEX LIMA ABREU
+chave: 58194339120
+CPF / CNPJ do recebedor: ***,943.391 =
+instituição: BCO SANTANDER (BRASIL) S A
+dados da transação
+valor: R$ 1.392,89
+data da transierência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: pag salario ref a se
+identificação no extrato:
+
+auionticação no comprovante:
+48FDC57D74D882C732C6F2937DF0E2FB92C5B8C3
+ID dia transação:
+E50701190202310061448DY5GAVDE2L!
+controle:
+000028279231253
+transação efetuada em 06/10/2023 às 11:48:53 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais o
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: Wwww.itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+
+horas
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: ALEXANDRE MACIEIRA DE MEDEIROS
+CPF/CNPJ do recebedor: 09.000.278/9537-86
+instituição: BCO SANTANDER (BRASIL) S A
+agência/conta: 4350/1090407-7
+tipo de conta: Conta Corrente
+tados da transação
+valor: R$ 1.392,89
+caia da transferência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identiiicação no comprovante: pag salario ref sete
+identificação no extrato:
+
+autenticação no comprovante:
+ABO002AC4EFAZESADABEBZESFACF24D38146E6CFE
+iD cia transação:
+E60701190202310061450DY56TKZQB3P
+controle:
+C00023279232663
+transação efetuada em 06/10/2023 às 11:50:11 via Sispag. -
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regibes metropolitanas) ou 0800 7701685(demais o
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: ANDERSON DA SILVA BELLO JUNIOR
+CPF/CNPJ do recebedor: *"*"""361546-"*
+instituição: ITAU UNIBANCO S A
+agência/conta: 5006/22708-5
+tipo de conta: Conta Corrente
+tados da transação
+valor: R$ 1.392,89
+data da transferência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: pag salario ref a se
+identificação no extrato:
+
+autenticação no comprovante:
+8733CBFEF451713FOBCE67556E3FICBABE9C4AOS
+iD da transação:
+ES0701190202310061451DY50SHA4IICI
+controla:
+200028279232114
+transação efetuada em 06/10/2023 às 11:51:24 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/gmpresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+home do recebedor: ANTONIO VIEIRA JUSTINO MATOS
+CPF/CNPJ do recebedor: "*"":749124.*+
+instituição: ITAU UNIBANCO S A
+agência/conta: 0847/99026-4
+tipo de conta: Conta Corrente
+tados da transação
+valor: R$ 1.392,89
+data da transferência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: pag salario ref a se
+identificação no extrato:
+
+autenticação no comprovante:
+40DICFEF138ED39CFFEEBB9E19CBB93F67D90AEF
+ID qa transação:
+E60701190202310061452DY5TITCMAIV
+controle:
+000028279235390
+transação efetuada em 06/10/2023 às 11:52:27 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais Ds
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+e solução, contate a Ouvidoria; 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+
+
+horas
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.088/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: DANILO ROCHA DE SOUSA
+CPF/CNPJ do recebedor: ***"*335506-**
+instituição: ITAU UNIBANCO S A
+agência/conta: 6133/83639-2
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 1.392,89
+data da transferência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: pag salario ref a se
+identificação no extrato:
+
+autenticação no comprovante:
+S67463DAFF37E5A452E17B4AT8EB6597C797ED3O
+IE da transação:
+E60701190202310061453DY5JNO6DXTA
+controls:
+000028279231016
+transação efetuada em 06/10/2023 às 11:53:48 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais o
+localidades). Reclamações, informações e cancelamentos: SÃC 0800 728 0728, 24 horas por dia ouFale Conosco: www .itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+
+dados do pagador
+nome do pagador
+CPF / CNPJ do pagador:
+agência/conta
+dados do recebedor
+
+nome do recebedor: DIOGO MARQUES VIEIRA
+
+Comprovante de Transferência
+
+: MOBILIZA FOR RENT LTDA
+
+: 35.208.086/0001-27
+:3212/28192 1
+
+CPE / CNPJ do recebedor: ***"*092567 ++
+
+instituição
+agência/conta
+
+“ITAU UNIBANCO S A
+:1246/60824-2
+
+tipo de conta: Conta Corrente
+
+Gados da transação
+
+valor: R$ 1.452,71
+data da transferência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+mensagem ao recebedor.:
+
+identificação no comprovante
+
+: pag salario ref a se
+
+identificação no extrato:
+
+autenticação no comprovante:
+SA2ZC58B5277F9F873BE5128BFAC639D7795CDE4C
+
+ID da transação:
+
+E60701190202310061454DY5C5FO43A8
+
+coniroie:
+000028279231398
+transação efetuada em 06/10/:
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701 685(demais o
+e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+0011, em dias úteis, das 9h às 18h. Deficiente auditivolfala: 0800 722 1722
+
+localidades). Reclamações, informações
+a solução, contate a Ouvidoria: 0800 570
+
+2023 às 11:54:59 via Sispag.
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF/CNPJ do pagador: 35.208.088/0001-27
+agência/conta: 3212/28192 - 1
+
+dados do recebedor
+
+nome do recebedor: [VAN MOREIRA FILHO
+
+chave: +5521983470672
+CPF / CNPJ do recebedor: **""*467469-**
+instituição: BANCO INTER
+Cacos da transação
+valor: R$ 1.000,22
+data da transferência: 06/10/2023
+tipo de pagamentio: PIX TRANSFERENCIA
+mensagem ao recebedor:
+identificação no comprovante: pag salario ref a se
+identificação no extrato: .
+
+autenticação no comprovante:
+2C8FC6218A0D84869C622B1FF4BOBBDAB473BEAC
+iD da transação:
+E60701190202310061455DY5SU7EEGOYA
+controia:
+000028279235776
+transação efetuada em 05/10/2023 às 11:55:54 via Sispag.
+
+“Em caso ce dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais o
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.Itau.com.br/ermpresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h, Deficiente auditivo/fala: 0800 722 1722
+
+
+dados do pagador
+
+Comprovante de Transferência
+
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF/CNPJ do Pagador: 35.208.086/0001-27
+
+agência/conta
+
+dados do recebedor
+nome do recebedor:
+CPF/CNPJ do recebedor
+instituição:
+agência/conta
+tipo de conta
+
+dados da transação
+valor:
+data da transferência
+tipo de pagamento
+
+:8212/28192 1
+
+“IZEQUIAS CHAVE
+= *eteo A 4 09 4%
+“ITAU UNIBANCO S A
+: 6102/07930-5
+
+: Conta Corrente
+
+S MARINHO MACHAD
+
+: R$ 958,62
+: 06/10/2023
+: PIX TRANSFERENCIA
+
+Mensagem ao recebedor:
+
+identificação no comprovante
+
+: pag ref salario de s
+
+identificação no extrato:
+
+autenticação no comprovante:
+AOFI011722C5AC497AE7B2239F66F 18F233243BC
+
+iD da transação:
+
+ES070119020231 D061457DY50646375Q
+
+controle;
+000028279233840
+fransação efetuada em 06/10/
+
+Em caso de dúvidas, de
+localidades), Reclamação
+a solução, contate a Ouvidori:
+
+es, informações
+
+Posse do comprovante, contate seu
+
+a: 0800 570 0011, em dias úteis,
+
+2023 às 11:57:27 via Sispag.
+
+gerente ou a Central no 40901685 (capitais e res
+AC 0800 728 0728, 24 horas por dia ouFale Conosco: www,
+fala: 0800 722 1722
+
+giões metro;
+€ cancelamentos: S )
+das 9h às 18h. Deficiente auditivo
+
+politanas) ou 0800 7701685(demais .
+«itau.com.br/empresasSe não ficar satisfeito com
+
+Comprovante de Transferência
+
+cados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 4
+dados do recebedor
+nome do recebedor: JORGE LUIZ DE CARVALHO
+CPF/CNPJ do recebedor: *="""590025.**
+instituição: ITAU UNIBANCO S A
+agência/conta: 0358/32054-7
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 1.392,89
+data da transferência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: pag salario ref a se
+identificação no extrato:
+
+autenticação no comprovante:
+20D43421D56528D0F881184C903833D02DBAF0F1
+ID da transação:
+E60701190202310061458DY5RMO9WMIPO
+controle:
+000028279236772
+transação eietuada em 06/10/2023 às 11:58:54 via Sispag.
+
+Em caso de dúvidas, de pesse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais o
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia oufale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivolfala: 0800 722 1722
+
+
+Comprovante de Transferência
+
+dados co pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: JOSE ANTONIO DA SILVA MENDES
+CPF/CNPJ do recebedor: ****":446420-+*
+instituição: ITAU UNIBANCO 5 A
+agência/conta: 7205/10548-4
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 1,392,89
+data da transferência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem &o recebedor:
+
+identificação no comprovante: pag salario ref a se
+identificação no extrato:
+
+autenticação no comprovante:
+FOFE0C77B5ED27592EEAFDF1895E661AE380C89D
+iD da transação:
+E60701190202310061459DY525Y35200
+controle:
+0900028279238537
+transação efetuada em 06/10/2023 às 11:59:54 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais Co
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: wwyw.itau.com.briempresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+
+Comprovante de Transferência
+
+dados do pagador
+
+nome do pagador: MOBILIZA FOR RENT LTDA
+
+CPF/CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+
+nome do recebedor: LEONAM CARNEIRO DE ASSIS
+
+chave: 16970417794
+CPF / CNPJ do recebedor: ***,704.177.**
+instituição: NU PAGAMENTOS - IP
+dados da transação
+valor: R$ 601,14
+data da transferência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+mensagem ao recebedor:
+identificação no comprovante: pag salario ref a se
+identificação no extrato:
+autenticação no comprovante:
+B3AB4A7BBCAE422F97252DC20A8A22D3F6F24F1A
+ID da transação:
+E60701150202310061500DY5JT6DXM6K
+controle:
+$00028278231080
+
+transação efetuada em 06/10/2023 às 12:01:00 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais o
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+
+Comprovante de Transferência
+
+úados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor -
+nome do recebedor: NELSON PINHEIRO DOS SANTOS
+CPF / CNPJ do recebedor: 00.074.010/3797-15
+instituição: BCO BRADESCO S A
+agência/conta: 0129/0157806-5
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 1.392,89
+data da transferência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: pag salario ref a se
+identificação no extrato:
+
+autenticação no comprovante:
+528602D905877292DC456FAD62E175A021F3FC82
+D ca transação:
+E60701190202310061502DY5IXAVVZN3
+controie:
+000028279233173
+transação efetuada em 06/10/2023 às 12:02:09 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+
+tados do pagador
+
+Comprovante de Transferência
+
+nome do pagador: MOBILIZA FOR RENT LTDA
+
+CPF / CNPJ do pagador: 35.208.086/0001-27
+
+agência/conta: 3212/28192 - 1
+
+dados do recebedor
+
+nome do recebedor: NILTON DE OLIVEIRA FILHO
+CPF / CNPJ do recebedor: 00.003.630/2237-61
+instituição: CAIXA ECONOMICA FEDERAL
+agência/conta: 3406/0011430-5
+
+tipo de conta: Con
+dados da transação
+
+ta Poupanca
+
+valor: R$ 142,71
+
+Cata da transferência: 06/1
+
+tipo de pagamento: PIX
+mensagem ao recebedor:
+identificação no comprovante:
+identificação no extrato:
+
+autenticação no comprovante:
+
+0/2023
+TRANSFERENCIA
+
+767C5CC2FDC835A8D2BD9AS3EDOD2537882EC51E
+
+ID da transação:
+
+=60701190202310061502DY5IGMMHP9
+
+controle:
+000028279231313
+
+iransação efetuada em 06/10/2023 às 12:02:52 via Sispag.
+
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+
+localidades). Reclamações, informações e canc
+a solução, contate a Ouvidoria: 0800 570 0011,
+
+elamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: wuwnw.itau.com.br/empresasSe não ficar satisfeito com
+
+em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+
+30
+
+Rioras
+
+Comprovante de Transferência
+
+dados do pagador
+nome do pagador: MOBILIZA FOR RENT LTDA -
+CPF / CNPJ do pagador: 35.208.086/0001-27
+agência/conta: 3212/28192 - 1
+dados do recebedor
+nome do recebedor: PATRICK LUCIO DA SILVA REIS
+CPF / CNPJ do recebedor: 00.016.454/1537-62
+instituição: BCO SANTANDER (BRASIL) S À
+agência/conta: 3226/1087982-6
+tipo de conta: Conta Corrente
+dados da transação
+valor: R$ 1,392,89
+data da transferência: 06/10/2023
+tipo de pagamento: PIX TRANSFERENCIA
+
+mensagem ao recebedor:
+
+identificação no comprovante: pag salario ref a se
+identificação no extrato:
+
+autenticação no comprovante:
+E29094F281BD071E5B27C223F18DAB647548D279
+ID da transação:
+E60701190202310061503DY5RHOE46VL
+controle:
+000028279234936
+transação efetuada em 06/10/2023 às 12:03:52 via Sispag.
+
+Em casa de dívidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701885(demais o
+localidades), Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722

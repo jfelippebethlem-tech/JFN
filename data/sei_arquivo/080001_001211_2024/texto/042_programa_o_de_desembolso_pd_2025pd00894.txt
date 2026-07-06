@@ -1,0 +1,91 @@
+[Programação de Desembolso - PD 2025PD00894 Rio Claro out 24] (fase: despesa · tipo: programacao_desembolso)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD00894
+08/01/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11171092000199 - Fundo Municipal De Saude De Rio Claro
+237 - 6815 - 0000004405
+Valor por Extenso
+Valor
+Quatro mil e quatorze reais e sessenta e dois centavos
+4.014,62
+Detalhamento
+Nota Liquidação
+2024NL10743
+Tipo de Despesa
+Nota de Empenho
+2024NE10508
+Credor
+11171092000199 - Fundo Municipal De Saude De Rio Claro
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6815 - 0000004405
+Competência
+10/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - MUNICÍPIOS
+6413 - Pagamento 
+de RP Processado
+99 - Sem consumo 
+de Limite de Saque
+4.014,62
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  RES SES 3292 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Outubro/2024, conforme solicitação (90507693 e 
+90549017). NAD 38 - RIO CLARO
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 08/01/25 às 12:18.
+Impresso por KLAULS DA COSTA RIBEIRO em 08/01/25 às 12:18.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

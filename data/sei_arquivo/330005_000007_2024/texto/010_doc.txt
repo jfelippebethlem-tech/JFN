@@ -1,0 +1,440 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária de Retenção
+TIPO 13
+Encerrado até Mês 14 
+Identificação
+UG Emitente
+Documento
+Emissão
+133100 - ITERJ
+2024OB01009
+20/12/24
+UG Liquidante
+UG Pagadora
+133100 - ITERJ
+133100 - ITERJ
+Valor por Extenso
+Valor
+Vinte e sete mil e seiscentos reais e um centavo
+27.600,01
+Tipo de Regularização
+Pagamento GRE
+Detalhamento
+Tipo de Retenção
+IRRF TERCEIROS
+Credor da Retenção
+TESOURO DO ESTADO DO RIO DE JANEIRO
+Competência
+12/2024
+Domicílio Bancário Origem
+237 - 6898 - 0000000027
+Domicílio Bancário Destino
+237 - 6898 - 0000000027
+Processo
+2024
+I t e n s
+Número da NE
+2024NE00437 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+76535764000143 - OI S.A. - EM RECUPERACAO JUDICIAL
+Número da NL
+2024NL00607 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica
+Sub-item da Despesa
+13 - COMUNICAÇÃO DE DADOS E REDES EM GERAL DE TIC
+Operação Patrimonial
+7988 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+162,16
+Número da NE
+2024NE00437 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+76535764000143 - OI S.A. - EM RECUPERACAO JUDICIAL
+Número da NL
+2024NL00608 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Tecnologia da Informação e Comunicação - Pessoa Jurídica
+Sub-item da Despesa
+13 - COMUNICAÇÃO DE DADOS E REDES EM GERAL DE TIC
+Operação Patrimonial
+7988 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+162,16
+Número da NE
+2024NE00475 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Emitido/contabilizado por PRISCILA LOURES LEITE em 20/12/24 às 12:58.
+Impresso por Daiane Pereira de Souza em 18/02/25 às 10:46.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/4
+
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+42644220000106 - AGUAS DO RIO 4 SPE S.A
+Número da NL
+2024NL00576 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+50 - TAXAS DE ÁGUA E ESGOTO
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+103,64
+Número da NE
+2024NE00488 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2024NL00578 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+756,36
+Número da NE
+2024NE00488 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2024NL00579 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+1.099,89
+Número da NE
+2024NE00501 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2024NL00577 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Emitido/contabilizado por PRISCILA LOURES LEITE em 20/12/24 às 12:58.
+Impresso por Daiane Pereira de Souza em 18/02/25 às 10:46.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/4
+
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+5.265,01
+Número da NE
+2024NE00502 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+31954621000138 - LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS  LTDA
+Número da NL
+2024NL00600 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+34 - CONSERVAÇAO DE PARQUES E JARDINS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+7.083,99
+Número da NE
+2024NE00572 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+33267267000107 - CONSTRUTORA AXIAL LTDA
+Número da NL
+2024NL00569 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+18 - MANUTENÇÃO E CONSERVAÇÃO DE BENS IMOVEIS E OPERAÇOES DE SISTEMA
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+4.081,97
+Número da NE
+2024NE00601 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+33267267000107 - CONSTRUTORA AXIAL LTDA
+Número da NL
+2024NL00588 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+18 - MANUTENÇÃO E CONSERVAÇÃO DE BENS IMOVEIS E OPERAÇOES DE SISTEMA
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+8.390,40
+Número da NE
+2024NE00607 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+10992676000162 - EFATA COMERCIO & SERVIÇOS EIRELI
+Emitido/contabilizado por PRISCILA LOURES LEITE em 20/12/24 às 12:58.
+Impresso por Daiane Pereira de Souza em 18/02/25 às 10:46.
+SIAFE-Rio / SEFAZ-RJ
+Página 3/4
+
+Número da NL
+2024NL00585 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+27 - DESPESAS COM FINS TEC., EDUCATIVOS, CULTURAIS E SOCIAIS
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+400,77
+Número da NE
+2024NE00608 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+28542017000190 - Imprensa Oficial Do Estado Do Rio De Janeiro
+Número da NL
+2024NL00602 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+07 - SERVIÇOS DE IMPRESSAO E ENCADERNAÇAO
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+93,66
+Pagamentos
+Tipo de Pagamento
+GRE
+UG Beneficiária
+999900
+UG Pagadora
+133100
+Código do Recolhimento
+770032
+Data Competência
+30/12/2024
+Número de Referência
+Valor Principal
+27.600,01
+Valor Juros/Encargos
+Valor Outras Deduções
+Data de vencimento da GRE
+15/12/2025
+Número da GRE
+000000912292
+Data da GRE
+18/12/2024
+Código de Autenticação
+Observação
+RETENÇÃO DE IR DAS EMPRESAS
+Programação de Desembolso
+Documento
+2024PD01218
+Emissão
+18/12/24
+Data de Programação
+20/12/24
+Emitido/contabilizado por PRISCILA LOURES LEITE em 20/12/24 às 12:58.
+Impresso por Daiane Pereira de Souza em 18/02/25 às 10:46.
+SIAFE-Rio / SEFAZ-RJ
+Página 4/4

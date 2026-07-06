@@ -1,0 +1,110 @@
+[Nota de Liquidação - NL 2024NL07912] (fase: despesa · tipo: nota_liquidacao)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Novembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO (CNPJ: 33.540.014/0017-14)
+2024NL07912
+20/12/24
+Valor Bruto
+Valor Líquido
+13.000,00
+12.844,00
+Tipo de Alteração
+Documento Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2024NE07120
+Credor
+13123772000243 - VERTICAL RJ SOLUCOES PARA SAUDE LTDA
+Natureza
+339030 - Material de Consumo
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4866 - Apoio a HUPE e PPC/UERJ para a realização de proced...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+600 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Go...
+Fonte RJ
+225 - Transferências Fundo a Fundo do SUS - Bloco de Manutenção
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (600.225)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+750600 - DIVISAO DE NUTRICAO
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+24038663 - AQUISIÇÃO DE DIETAS ENTERAIS PEDIÁTRICAS, ETC PARA A DIVISÃO ...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2024009847000150
+Processo
+SEI-260007/013391/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Material de Consumo
+20 - PRODUTOS ALIMENTÍCIOS 
+E BEBIDAS
+172 - Reconhecimento da obrigação e 
+ingresso no almoxarifado
+13.000,00
+Retenção
+Classificação da Retenção
+Base de Cálculo
+Valor
+0,00
+156,00
+Total Retenção (-)
+156,00
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Nota Fiscal
+31974
+260007/019377/2024
+12/2024
+17/12/2024
+13.000,00
+Total Documentos Comprobatórios
+13.000,00
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  31974 CONFORME PROCESSO de aquisição de fórmula líquida pra nutrição enteral hipercalórica pra o HUPE.
+Emitido/contabilizado por Pollyanna Banelli Fernandes Nef em 20/12/24 às 
+1 1 : 0 7 .
+Impresso por Pollyanna Banelli Fernandes Nef em 24/12/24 às 14:31.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

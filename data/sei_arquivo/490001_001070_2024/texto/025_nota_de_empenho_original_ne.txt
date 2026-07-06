@@ -1,0 +1,154 @@
+[Nota de Empenho Original - NE] (fase: despesa · tipo: nota_empenho)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Junho 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+650100 - Secretaria de Estado de Habitação De Interesse Social (CNPJ: 49.479.435
+/0001-50)
+2024NE00324
+24/07/24
+Credor
+23902149000161 - Abre Construções Ltda
+Tipo de Empenho
+NE Original
+Valor
+8.700.000,00 (Oito milhões e setecentos mil de reais)
+Reforço
+2024NE00266
+Classificação
+Natureza
+449051 - Obras e Instalações
+Unidade Orçamentária
+65010 - SECRETARIA DE ESTADO DE HABITAÇÃO DE INTERESSE SOCIAL
+Programa de trabalho
+16.482. 0502. 1847 - Planejamento, Desenvolvimento e Execução de Obras e...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Tipo de Detalhamento de Fonte
+1 - CADASTRO
+Detalhamento de Fonte
+007526 - ACOMPANHAMENTO DA EXECUÇÃO DO PACTO RJ - (501.145)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+650100 - Secretaria de Estado de Habitação De Interesse Social
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+23001870 - CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA ELABORAÇÃO DE PROJE...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2023004108001341
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+04 - Concorrência
+Emb. Legal
+Lei 8.666/1993 Art.22 - I - Concorrência nº
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-
+170026/000495/2022
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Obras e Instalações
+07 - EXECUÇAO DE OBRAS POR 
+CONTRATO
+8.700.000,00
+Cronograma
+Julho
+8.700.000,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+8.700.000,00 Pré-Empenhado
+0,00 Bloqueado
+0,00
+8.700.000,00
+0,00
+Observação
+Reserva Orçamentaria  nº 266/2024,Reforço do Empenho das Medições dos Serviços Executados nos meses de Julho e 
+Agosto de 2024, referente à Elaboração de Projeto Executivo e Execução de Obras para Construção do Conjunto 
+Habitacional de Interesse Social com 440 Unidades Habitacionais na Av. Itaóca n° 2.226, Bairro: Bonsucesso (Complexo 
+do Alemão), município do Rio de Janeiro/RJ, de acordo com o pactuado no Contrato nº 002/2023, Siafe-Rio nº 23001870.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+Abre Construções Ltda
+1
+UN
+8.700.000,00
+8.700.000,00
+ 
+______________________________________________________
+640257-7 - Fabio Paravidino da Silva
+Subsecretário Executivo
+Emitido/contabilizado por REGINALDO SILVA DE ALMEIDA em 24/07/24 às 17:
+0 5 .
+Impresso por REGINALDO SILVA DE ALMEIDA em 24/07/24 às 17:12.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/2
+
+Identificação
+Unidade Gestora
+Documento
+Emissão
+650100 - Secretaria de Estado de Habitação De Interesse Social (CNPJ: 49.479.435
+/0001-50)
+2024NE00324
+24/07/24
+Credor
+23902149000161 - Abre Construções Ltda
+Tipo de Empenho
+NE Original
+Valor
+8.700.000,00 (Oito milhões e setecentos mil de reais)
+Reforço
+2024NE00266
+Descrição
+Obras para Construção do Conjunto Habitacional de Interesse Social com 440 Unidades Habitacionais na Av. Itaóca n° 2.226, Bairro: 
+Bonsucesso (Complexo do Alemão), município do Rio de Janeiro/RJ
+ 
+______________________________________________________
+640257-7 - Fabio Paravidino da Silva
+Subsecretário Executivo
+Emitido/contabilizado por REGINALDO SILVA DE ALMEIDA em 24/07/24 às 17:
+0 5 .
+Impresso por REGINALDO SILVA DE ALMEIDA em 24/07/24 às 17:12.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/2

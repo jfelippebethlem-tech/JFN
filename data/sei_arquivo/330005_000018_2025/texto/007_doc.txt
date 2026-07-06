@@ -1,0 +1,284 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Encerrado até Novembro
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2025PD01003
+29/12/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+133100 - ITERJ
+2025OB00908 - 30/12/25
+237 - 6898 - 0000000027 - 
+CONTA ÚNICA
+Favorecido
+Domicílio Bancário Destino
+00394460010880 - MINISTÉRIO DA FAZENDA
+237 - 6898 - CODBARRAS
+Valor por Extenso
+Valor
+Vinte e sete mil e trinta e um reais e oitenta e sete centavos
+27.031,87
+Detalhamento
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS
+Credor da Retenção
+MINISTÉRIO DA FAZENDA
+Competência
+12/2025
+Processo
+2025
+I t e n s
+Número da NE
+2025NE00605 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2025NL00556 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00605
+Credor
+35208086000127
+Valor
+5.922,81
+Número da NE
+2025NE00625 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+00078531000105 - MTECH LOCAÇÕES E SERVIÇOS LTDA
+Número da NL
+2025NL00557 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+18 - MANUTENÇÃO E CONSERVAÇÃO DE BENS IMOVEIS E OPERAÇOES DE SISTEMA
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00625
+Credor
+00078531000105
+Valor
+971,63
+Emitido/contabilizado por PRISCILA LOURES LEITE em 29/12/25 às 16:30.
+Impresso por WALDEMIR DAVILA PEIXOTO em 13/01/26 às 11:03.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/3
+
+Número da NE
+2025NE00626 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2025NL00577 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00626
+Credor
+35208086000127
+Valor
+6.375,77
+Número da NE
+2025NE00639 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+31954621000138 - LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS  LTDA
+Número da NL
+2025NL00597 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00639
+Credor
+31954621000138
+Valor
+4.064,84
+Número da NE
+2025NE00669 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2025NL00622 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00669
+Credor
+19088605000104
+Valor
+4.848,41
+Número da NE
+2025NE00669 - 133100
+Emitido/contabilizado por PRISCILA LOURES LEITE em 29/12/25 às 16:30.
+Impresso por WALDEMIR DAVILA PEIXOTO em 13/01/26 às 11:03.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/3
+
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2025NL00623 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00669
+Credor
+19088605000104
+Valor
+4.848,41
+Pagamentos
+Código de Barras
+Código de Autenticação
+Valor
+85800000270-7 31870385260-6 19071625363-3 78700700513-0
+6388820026091250507202100
+27.031,87
+Total
+27.031,87
+Observação
+REGISTRO DAS RTENÇÕES DE INSS DAS EMPRESAS NO MÊS DEZ/2025
+Emitido/contabilizado por PRISCILA LOURES LEITE em 29/12/25 às 16:30.
+Impresso por WALDEMIR DAVILA PEIXOTO em 13/01/26 às 11:03.
+SIAFE-Rio / SEFAZ-RJ
+Página 3/3

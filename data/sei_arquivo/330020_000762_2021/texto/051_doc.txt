@@ -1,0 +1,266 @@
+[] (fase: indefinida · tipo: vazio)
+
+CHECKLIST: PRORROGAÇÃO CONTRATUAL 
+ 
+ 
+ 
+A prorrogação contratual consiste na alteração do prazo original de vigência, fixando-se um período de 
+tempo mais longo para a execução das obrigações contempladas no contrato. 
+Muito embora se reconheça de forma ampla a possibilidade de modificação do contrato administrativo, 
+a alteração contratual não deve configurar a regra geral na praxe administrativa. A Administração, ao 
+revés, deve planejar os seus contratos adequadamente, realizando estudos prévios consistentes, 
+destacadamente no que se refere à elaboração de projetos básicos. 
+Além do art. 57 da Lei n.º 8.666/93, devem ser observados os Enunciados n.º 09, 29 e 32 da PGE. Os 
+procedimentos de pesquisa de mercado fixados no Decreto estadual n.º 46.642/2019 (fase preparatória 
+das contratações) também são aplicáveis a fase preparatória da prorrogação contratual (Parecer 
+SES/SJ/AJ DT 18/2019). O Decreto estadual n.º 45.600/2016 (fiscalização de contratos) é aplicável no 
+que for compatível com o novo Decreto estadual n.º 46.642/2019 (art. 42). 
+Os procedimentos para prorrogação dos contratos por escopo se diferenciam em parte dos serviços 
+contínuos na forma dos itens 11, 13 e 15. 
+Caso haja alteração contratual qualitativa ou quantitativa concomitante a prorrogação, recomenda-se a 
+aplicação do checklist correspondente. 
+A aplicação do checklist não dispensa a análise acurada de todos os documentos do processo. 
+  
+ 
+ 
+Processo nº:  SEI-330020/000762/2021 
+ 
+CONDIÇÕES A SEREM VERIFICADAS 
+SIM / NÃO / 
+NÃO 
+SE 
+APLICA 
+Fls. do 
+PA 
+1. A solicitação contém a assinatura e ID funcional do(s) servidor(es) responsável(is) pelo 
+procedimento? (art. 19, §1º da Lei estadual nº 5.427/09) 
+SIM 
+86435294 
+2. Consta nos autos do processo extrato da publicação na Imprensa oficial do contrato e de 
+eventuais termos aditivos precedentes (art. 61, parágrafo único, Lei 8.666/93), 
+demonstrando que o contrato está em vigor? (Enunciado n. 09 – PGE) 
+SIM 
+76628877 
+3. Há previsão da prorrogação contratual no edital e no contrato? (Enunciado n. 09 – PGE) 
+SIM 
+25549600 
+22034094 
+4. A solicitação de prorrogação foi enviada pelo gestor do contrato à autoridade competente 
+dentro de prazo razoável? (art. 12, inciso XII e XV, do Decreto estadual n.º 45.600/2016) 
+*Caso tenha sido enviada em prazo inferior a 60 dias do término do prazo do contrato, 
+recomendar que para os futuros contratos seja observado o referido dispositivo legal. 
+* É competência do gestor do contrato a instrução do processo com todos os documentos 
+exigidos para a efetivação da prorrogação contratual (art. 12, inciso XII, do Decreto 
+estadual n.º 45.600/2016) 
+SIM 
+86435294 
+5. O processo está instruído com a certificação pelo fiscal do contrato ou da comissão de
+fiscalização de que a contratada vem executando o contrato satisfatoriamente? (Parecer
+e Parecer SES/SJ/AJ DT 15 e 18/2019) 
+*A ausência de manifestação atestando a regularidade e satisfatoriedade da execução 
+contratual vicia o processo da prorrogação e induz à responsabilidade por omissão. 
+(Parecer SES/SJ/AJ DT 15 e 18/2019) 
+SIM 
+86435294 
+6.A prorrogação do prazo contratual foi justificada por escrito, definindo as hipóteses legais 
+autorizativas? (art. 57, §§ 1º e 2º da Lei n.º 8.666/93) 
+*No caso de dispensa de licitação em razão de emergência ou calamidade pública é vedada 
+a prorrogação, nos termos do art. 24, inciso IV da Lei nº 8.666/93 e Enunciado nº 20 da 
+PGE. 
+SIM 
+86435294
+
+7.Se for o caso de impedimento do cumprimento do prazo pela contratada, o gestor do 
+contrato instruiu o processo com manifestação conclusiva e dados que comprovem tal 
+impedimento? (art. 12, XV do Decreto estadual n.º 45.600/2016) 
+*Caso a prorrogação decorra de fato imputável a contratada, o administrador deve avaliar 
+a possibilidade de rescisão do contrato ou a manutenção do ajuste com a imposição de 
+penalidades contratuais e legais. ( Promoção nº 04/2018-FMBM/PG-15 e Parecer Conjunto 
+RAN/BBF n° 02/2015 -ASJUR/SEOBRAS) 
+NÃO SE 
+APLICA 
+ 
+8.Há autorização para a prorrogação pela autoridade competente, nos termos do art. 57, 
+§2º da Lei nº 8.666/93? 
+SIM 
+86744766 
+9.Existe cláusula expressa no contrato prevendo a possibilidade de prorrogação contratual? 
+(Enunciado nº 9 da PGE) 
+*não se aplica aos contratos por escopo 
+**Em caso de suspensão de execução contratual observar a prorrogação automática (art. 
+79, § 5º da Lei nº 8.666/93) 
+SIM 
+25549600 
+10. O processo foi instruído com a manifestação da contratada demonstrando interesse 
+na prorrogação do prazo de vigência do contrato? (art. 12, inciso XII, alínea “b” e “c” do 
+Decreto estadual n.º 45.600/2016) 
+SIM 
+86431600 
+11. A manifestação do gestor ou da autoridade competente certifica a vantajosidade da 
+prorrogação contratual de forma fundamentada e com base em prévia pesquisa de 
+mercado? (art. 12, inciso XII, “d” do Decreto estadual n.º 45.600/2016 e Enunciado n. 09 
+- PGE). 
+* A realização da pesquisa de mercado visa constatar se o preço e as demais condições 
+contratuais ainda se mostram compatíveis com o mercado; 
+* Se for o caso, deve ser apresentada justificativa robusta para a não realização de 
+pesquisa de mercado, devendo a pesquisa ser realizada inclusive se houve contratação 
+direta, nestes casos, deverá atentar para os requisitos de cada hipótese legal de dispensa. 
+**A vantajosidade deve ser aferida também por meio de coleta de informações e dados que 
+possam demonstrar que a prorrogação constitui alternativa melhor do que uma nova 
+contratação. (Parecer SES/SJ/AJ DT 18/2019) 
+*** Em caso de contrato por escopo, estando ele próximo a ser atingido e também perto do
+fim do prazo contratual, a realização da pesquisa de mercado será cabível quando houver
+indícios de ausência de vantajosidade ou economicidade no aditamento (vistos ao Parecer
+nº 33/2017 – RAT/PG-15) 
+****É dispensada a realização de pesquisa de mercado naqueles casos em que o fato
+gerador permissivo da concessão do reajuste tiver origem em ajustes conferidos por lei ou 
+por acordo, convenção ou dissídio de trabalho, presumindo-se a vantajosidade econômica
+da prorrogação da contratação. (Parecer nº 100/2019-JCV/PG-2) 
+SIM 
+86431600 
+86432883 
+86433627 
+12.A pesquisa de mercado observou o procedimento previsto nos arts. 20 e seguintes do 
+Decreto estadual 46.642/2019? (Parecer SES/SJ/AJ DT 18/2019) 
+* Aplicar o tópico “Pesquisa de Mercado” do Checklist de Fase Preparatória. 
+SIM 
+86432841 
+13.No caso de prorrogação de contratos por escopo foram observados os requisitos do art. 
+57, §1º da Lei nº 8.666/93? (Parecer nº 028/HGA/PG-15/2018) 
+NÃO SE 
+APLICA 
+ 
+14.Caso tenha havido alteração do valor do contrato, houve suplementação da garantia? 
+(art. 56, § 1º da Lei nº 8.666/93 e Parecer nº 020/HGA/PG-15/2018) 
+* Em contratos por escopo, o valor da garantia prestada em razão da celebração de Termo 
+Aditivo continuará a ser calculado com base no valor global do contrato, exceto quando, 
+pela natureza do objeto, for possível aferir com exatidão o montante que ainda falta a 
+executar. (Parecer nº 114/2019-JCV/PG-2) 
+NÃO SE 
+APLICA 
+ 
+15. Caso a garantia tenha sido celebrada em instrumento apartado ao contrato, o respectivo 
+prazo também foi alterado? (Parecer n.º 06/HGA/PG-02/2019) 
+NÃO SE 
+APLICA 
+ 
+16. Consta novo cronograma de execução e o cronograma físico-financeiro? 
+NÃO SE 
+APLICA 
+ 
+17. Há autorização de ordenador de despesa previsto no art. 82 da Lei n° 287/79, ou com 
+delegação destes poderes? 
+SIM 
+86744766 
+18. Se a despesa não se encerrar no próprio exercício financeiro, atestou-se a 
+compatibilidade com o Plano Plurianual? 
+SIM 
+86636873 
+19.Houve planejamento financeiro-orçamentário com efetivação da reserva orçamentária? 
+SIM 
+86636873
+
+20.A contratada foi consultada, caso antes não tenha se manifestado, a respeito da sua 
+intenção em pleitear ou renunciar o reajuste expressamente? (Enunciado nº 9 PGE) 
+SIM 
+86431600 
+21. Em sendo concedido o reajuste, foi acostada aos autos planilha atualizada dos custos 
+unitários? 
+*Não é suficiente o registro apenas do valor mensal atualizado. (: Promoção nº 02/2019- 
+GAV/PG-15 inserta no Parecer nº 001/2019 – VMC/DIJUR/DETRAN-RJ) 
+NÃO SE 
+APLICA 
+ 
+22.Caso a contratada não tenha renunciado expressamente ao reajuste, foi contemplado, no 
+exame da vantajosidade, o cálculo do reajuste ou a projeção do seu impacto, caso o índice 
+aplicável não tenha sido, ainda, divulgado? (Enunciado nº 9 PGE) 
+NÃO SE 
+APLICA 
+ 
+23.Há comprovação de manutenção das condições de habilitação da contratação inicial 
+(certidões atualizadas), nos termos do Enunciado nº 29 da PGE? 
+*Dispensa da apresentação de certidões negativas pela contratada em processo de 
+Recuperação Judicial.1 
+**Requisitos para prorrogação de contratos de empresas com processo de falência em 
+curso.2 
+***Recuperação judicial e verificação de penalidade de impedimento para contratar com 
+a Administração Pública.3 
+****É viável a prorrogação de contrato por escopo com empresa inidônea.4 
+SIM 
+86747846 
+24. O prazo foi fixado observando os limites fixados no respectivo inciso do art. 57 da Lei 
+n. 8.666/93? 
+SIM 
+86748969 
+25. Foi observada a exigência de que o prazo de prorrogação do contrato se dê por período
+igual ou inferior ao da contratação inicial? (Enunciado n. 09 da PGE e Parecer n° 07/05 –
+FAG) 
+*A fixação do prazo da prorrogação deve ser atribuída pelo setor técnico, levando-se em 
+conta o prazo para o cumprimento do objeto, bem como o tempo necessário para o 
+recebimento provisório e definitivo e o pagamento da contratada. ( Parecer nº 43/DAMFA- 
+PG-15/2017) 
+SIM 
+86748969 
+26.Se for o caso, a prorrogação excepcional prevista no art. 57, §4º da Lei nº 8.666/93 
+observou o Enunciado nº 32 da PGE? 
+*serviços contínuos 
+*autorização pela maior autoridade do órgão 
+*limite máximo de 12 meses 
+*justificativa específica para a prorrogação excepcional 
+*análise da adequação do preço, com aplicação analógica do inciso II, do art. 57 da Lei 
+n.º 8.666/93 
+**A excepcionalidade, que é uma exigência para esse tipo de prorrogação, é matéria de 
+índole discricionária do administrador. (: Promoção nº 4/2014-APCBCA /PG-15) 
+***Dada a imprevisibilidade da situação que enseja a prorrogação do prazo nestas 
+circunstâncias, não é indispensável que o edital e/ou o contrato tenham previsto tal 
+hipótese. (: Promoção nº 4/2014-APCBCA /PG-15) 
+NÃO SE 
+APLICA 
+ 
+ 
+ 
+ 
+1 No caso de a contratada se encontrar em processo de Recuperação Judicial, é dispensada a apresentação de certidões negativas de falência e 
+recuperação judicial (Parecer Conjunto RAN/BBF nº 02/2015) e, no caso de decisão judicial em vigor isentando a exigência de certidões 
+negativas, as demais certidões também não deverão ser exigidas. (Parecer nº 84/2019-JCV/PG-2/ Ver art. 52, II, da Lei n° 11.101/2005) 
+2 A anotação de distribuição de um requerimento de falência apenas figurará como óbice à prorrogação do contrato caso, comprovadamente, 
+esta demanda revele capacidade para desequilibrar as finanças da Contratada a ponto de lhe inviabilizar a aptidão para responder pelos encargos 
+financeiros e econômicos decorrentes do contrato. A celebração do termo aditivo deve ser precedida de avaliação pela origem quanto ao potencial 
+impacto desta demanda sobre a vida financeira da empresa, estando consignada nos autos a avaliação sob os aspectos da economicidade e 
+eficiência, a respeito da vantajosidade da decisão de se promover a prorrogação do prazo. (Parecer nº 05/2014-RCG/PG-15) 
+ 
+3 No caso de empresas em recuperação judicial recomenda-se seja realizada a prévia verificação se a empresa não possui penalidade de 
+impedimento para contratar com a Administração Pública, de modo a impossibilitar a prorrogação pretendida. (Parecer nº 001/2019- 
+VMC/DIJUR/DETRAN-RJ) 
+4 Nos contratos por escopo, a critério do gestor, é possível celebrar a prorrogação do certame com empresa declarada inidônea no curso do 
+contrato, com a estrita finalidade de conclusão do objeto contratual, quando constatado que tal medida se mostre a mais razoável à luz dos 
+princípios da eficiência, da economicidade e da moralidade. O mesmo entendimento não pode ser aplicado para contratos de serviços contínuos, 
+em que a prorrogação do prazo acaba por renovar a própria obrigação contratual, assemelhando-se a uma nova contratação. (Parecer Conjunto 
+RAN/BBF n° 02/2015 -ASJUR/SEOBRAS)
+
+AGENTE RESPONSÁVEL 
+Data: 
+Assinatura: 
+Matrícula: 
+27. Foi acostado ao processo certificação pelo setor competente de que estão sendo 
+mantidas as demais cláusulas do contrato e assegurada a manutenção do equilíbrio 
+econômico-financeiro, nos termos do art. 57 da Lei nº 8.666/93? 
+SIM 
+86748969 
+28.O termo aditivo atende à minuta-padrão da PGE de prorrogação, atentando-se para a 
+versão com ou sem renúncia ao reajuste? (Pareceres n° 16/2017/APCBCA/PG-15 e 
+007/HGA/PG-15/2018) 
+SIM 
+86748969 
+29. Há assinatura e ID funcional do servidor responsável pela elaboração da minuta, e do 
+(s) servidor (es) responsáveis por todas as alterações efetuadas em relação à minuta-padrão, 
+ainda que não substanciais? (art. 19, §1º da Lei estadual nº 5.427/09) 
+SIM 
+86748969 
+30. Se o processo administrativo tiver chegado à Assessoria Jurídica com menos de 30 
+(trinta) dias de antecedência ao fim da vigência do respectivo contrato, recomenda-se que 
+nos próximos contratos seja o gestor alertado quanto à necessidade do envio do processo 
+obedecendo esse prazo mínimo para que proceda a uma análise jurídica profícua e adequada. 
+(Parecer SES/SJ/AJ DT 15/2019) 
+NÃO SE 
+APLICA

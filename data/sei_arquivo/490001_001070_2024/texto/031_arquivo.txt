@@ -1,0 +1,1007 @@
+[Arquivo] (fase: indefinida · tipo: outro)
+
+00233
+ABRE CONSTRUCOES LTDA
+Empresa :
+End. :
+Ref.:
+(
+R MARIA JOSE TOLEDO, 237
+)
+01/07/2024
+31/07/2024
+a
+Dpto :
+Página : 00001
+Código
+Nome
+Ref.
+Sal. Contratual
+Adicionais
+Descontos
+Líquido
+TODOS
+Recibo
+FOLHA DE PAGAMENTO
+23.902.149/0001-61
+CNPJ/CEI:
+000012
+EDNALDO MARCULINO DOS SANTOS
+2.118,60
+012
+0000
+03/11/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :MEIO OFICIAL DE OBRAS
+Atestado de 11/07/2024 até 25/07/2024 (110:00)
+Benefício a partir 26/07/2024 (036:40)
+Salario Base
+706,20
+073:20
+001
+Dias De Atestado
+1.059,30
+015,00
+222
+Vale Transporte
+7,06
+604
+Adiantamento
+847,44
+606
+Contribuição Assistêncial
+17,66
+617
+INSS Folha
+52,96
+903
+***************
+____/____/______
+1.765,50
+925,12
+840,38
+Base INSS: 706,20  (Aliq.: 7,5%)
+Base FGTS:  1.765,50 (Valor: 141,24)
+Base IRRF Folha:  1.200,70
+000014
+JOSE CAETANO DA SILVA NETO
+2.010,80
+014
+0014
+24/04/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+1
+Função :SERVENTE
+Salario Base
+2.010,80
+220:00
+001
+Reembolso VT
+57,74
+689
+Vale Transporte
+20,11
+604
+Adiantamento
+804,32
+606
+Contribuição Assistêncial
+50,27
+617
+INSS Folha
+159,79
+903
+***************
+____/____/______
+2.010,80
+1.092,23
+918,57
+Base INSS: 2.010,80  (Aliq.: 7,9465%)
+Base FGTS:  2.010,80 (Valor: 160,86)
+Base IRRF Folha:  1.446,00
+000015
+MARCELO AUGUSTO DE OLIVEIRA 
+2.118,60
+015
+0015
+05/07/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+1
+Função :PORTEIRO
+Salario Base
+2.118,60
+220:00
+001
+Vale Transporte
+21,19
+604
+Adiantamento
+847,44
+606
+Contribuição Assistêncial
+52,97
+617
+INSS Folha
+169,49
+903
+***************
+____/____/______
+2.118,60
+1.091,09
+1.027,51
+Base INSS: 2.118,60  (Aliq.: 8%)
+Base FGTS:  2.118,60 (Valor: 169,48)
+Base IRRF Folha:  1.553,80
+000018
+EDMILSON VIEIRA DE OLIVEIRA
+4.628,80
+018
+0018
+07/07/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+1
+Função :ENCARREGADO DE OBRAS
+Salario Base
+4.628,80
+220:00
+001
+Vale Transporte
+46,29
+604
+Adiantamento
+1.851,52
+606
+INSS Folha
+466,84
+903
+IRRF Folha
+251,63
+914
+***************
+____/____/______
+4.628,80
+2.616,28
+2.012,52
+Base INSS: 4.628,80  (Aliq.: 10,0855%)
+Base FGTS:  4.628,80 (Valor: 370,30)
+Base IRRF Folha:  4.064,00
+
+00233
+ABRE CONSTRUCOES LTDA
+Empresa :
+End. :
+Ref.:
+(
+R MARIA JOSE TOLEDO, 237
+)
+01/07/2024
+31/07/2024
+a
+Dpto :
+Página : 00002
+Código
+Nome
+Ref.
+Sal. Contratual
+Adicionais
+Descontos
+Líquido
+TODOS
+Recibo
+FOLHA DE PAGAMENTO
+23.902.149/0001-61
+CNPJ/CEI:
+000019
+BRUNA ROCHA CERQUEIRA
+5.434,00
+019
+0019
+11/07/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+1
+1
+Função :Supervisor administrativo
+Salario Base
+5.434,00
+220:00
+001
+Vale Transporte
+54,34
+604
+Adiantamento
+2.173,60
+606
+Contribuição Assistêncial
+135,85
+617
+INSS Folha
+579,57
+903
+IRRF Folha
+443,03
+914
+***************
+____/____/______
+5.434,00
+3.386,39
+2.047,61
+Base INSS: 5.434,00  (Aliq.: 10,6656%)
+Base FGTS:  5.434,00 (Valor: 434,72)
+Base IRRF Folha:  4.869,20
+000022
+ELIENE DE JESUS SILVA
+1.520,20
+022
+0022
+11/09/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+3
+1
+Função :AUXILIAR DE SERVIÇOS GE
+Salario Base
+1.520,20
+220:00
+001
+Salario Familia
+62,04
+001,00
+599
+Vale Transporte
+15,20
+604
+Adiantamento
+608,08
+606
+Contribuição Assistêncial
+38,01
+617
+INSS Folha
+115,63
+903
+***************
+____/____/______
+1.582,24
+776,92
+805,32
+Base INSS: 1.520,20  (Aliq.: 7,6062%)
+Base FGTS:  1.520,20 (Valor: 121,61)
+Base IRRF Folha:  951,43
+000023
+RODRIGO CARLOS DA SILVA 
+5.378,90
+023
+0023
+12/09/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :ENCARREGADO ADMINISTR
+Salario Base
+5.378,90
+220:00
+001
+Vale Transporte
+53,79
+604
+Adiantamento
+2.151,56
+606
+INSS Folha
+571,86
+903
+IRRF Folha
+427,88
+914
+***************
+____/____/______
+5.378,90
+3.205,09
+2.173,81
+Base INSS: 5.378,90  (Aliq.: 10,6315%)
+Base FGTS:  5.378,90 (Valor: 430,31)
+Base IRRF Folha:  4.814,10
+000037
+JOSE CARLOS DE OLIVEIRA
+2.118,60
+037
+0037
+02/10/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+1
+Função :PORTEIRO
+Salario Base
+2.118,60
+220:00
+001
+Vale Transporte
+21,19
+604
+Adiantamento
+847,44
+606
+Contribuição Assistêncial
+52,97
+617
+INSS Folha
+169,49
+903
+***************
+____/____/______
+2.118,60
+1.091,09
+1.027,51
+Base INSS: 2.118,60  (Aliq.: 8%)
+Base FGTS:  2.118,60 (Valor: 169,48)
+Base IRRF Folha:  1.553,80
+
+00233
+ABRE CONSTRUCOES LTDA
+Empresa :
+End. :
+Ref.:
+(
+R MARIA JOSE TOLEDO, 237
+)
+01/07/2024
+31/07/2024
+a
+Dpto :
+Página : 00003
+Código
+Nome
+Ref.
+Sal. Contratual
+Adicionais
+Descontos
+Líquido
+TODOS
+Recibo
+FOLHA DE PAGAMENTO
+23.902.149/0001-61
+CNPJ/CEI:
+000039
+ALAN LUIZ DE MORAES ALUYZA
+3.291,20
+039
+0039
+24/10/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :Almoxarife
+Salario Base
+3.291,20
+220:00
+001
+Vale Transporte
+32,91
+604
+Adiantamento
+1.316,48
+606
+Contribuição Assistêncial
+82,28
+617
+INSS Folha
+293,76
+903
+IRRF Folha
+35,04
+914
+***************
+____/____/______
+3.291,20
+1.760,47
+1.530,73
+Base INSS: 3.291,20  (Aliq.: 8,9256%)
+Base FGTS:  3.291,20 (Valor: 263,29)
+Base IRRF Folha:  2.726,40
+000040
+SEBASTIAO FERNANDO DE ALMEIDA
+4.702,50
+040
+0040
+24/10/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :ENCARREGADO DE OBRAS
+Salario Base
+4.702,50
+220:00
+001
+Vale Transporte
+47,03
+604
+Adiantamento
+1.881,00
+606
+Contribuição Assistêncial
+117,56
+617
+INSS Folha
+477,16
+903
+IRRF Folha
+268,21
+914
+***************
+____/____/______
+4.702,50
+2.790,96
+1.911,54
+Base INSS: 4.702,50  (Aliq.: 10,1469%)
+Base FGTS:  4.702,50 (Valor: 376,20)
+Base IRRF Folha:  4.137,70
+000048
+JEOVAH BATISTA CARDOSO
+2.780,80
+048
+0048
+01/12/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :PEDREIRO
+Salario Base
+2.780,80
+220:00
+001
+Adiantamento
+1.112,32
+606
+Contribuição Assistêncial
+69,52
+617
+INSS Folha
+232,51
+903
+***************
+____/____/______
+2.780,80
+1.414,35
+1.366,45
+Base INSS: 2.780,80  (Aliq.: 8,3612%)
+Base FGTS:  2.780,80 (Valor: 222,46)
+Base IRRF Folha:  2.216,00
+000049
+MATHEUS OCTAVIO SILVA
+2.547,23
+049
+0049
+06/12/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :AUXILIAR ADMINISTRATIVO
+Salario Base
+2.547,23
+220:00
+001
+Vale Transporte
+25,47
+604
+Adiantamento
+1.018,89
+606
+Contribuição Assistêncial
+63,68
+617
+INSS Folha
+208,07
+903
+***************
+____/____/______
+2.547,23
+1.316,11
+1.231,12
+Base INSS: 2.547,23  (Aliq.: 8,1684%)
+Base FGTS:  2.547,23 (Valor: 203,77)
+Base IRRF Folha:  1.982,43
+
+00233
+ABRE CONSTRUCOES LTDA
+Empresa :
+End. :
+Ref.:
+(
+R MARIA JOSE TOLEDO, 237
+)
+01/07/2024
+31/07/2024
+a
+Dpto :
+Página : 00004
+Código
+Nome
+Ref.
+Sal. Contratual
+Adicionais
+Descontos
+Líquido
+TODOS
+Recibo
+FOLHA DE PAGAMENTO
+23.902.149/0001-61
+CNPJ/CEI:
+000051
+MARCIO FIRMINO DA SILVA
+2.118,60
+051
+0051
+20/12/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :AUX. DE PORTARIA DE OBR
+Salario Base
+2.118,60
+220:00
+001
+Vale Transporte
+21,19
+604
+Adiantamento
+847,44
+606
+Contribuição Assistêncial
+52,97
+617
+INSS Folha
+169,49
+903
+***************
+____/____/______
+2.118,60
+1.091,09
+1.027,51
+Base INSS: 2.118,60  (Aliq.: 8%)
+Base FGTS:  2.118,60 (Valor: 169,48)
+Base IRRF Folha:  1.553,80
+000052
+BRUNO SOARES
+2.318,80
+052
+0052
+05/01/2024
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+2
+2
+Função :AUX DE ALMOXARIFADO
+Salario Base
+2.318,80
+220:00
+001
+Vale Transporte
+23,19
+604
+Adiantamento
+927,52
+606
+Contribuição Assistêncial
+57,97
+617
+INSS Folha
+187,51
+903
+***************
+____/____/______
+2.318,80
+1.196,19
+1.122,61
+Base INSS: 2.318,80  (Aliq.: 8,0865%)
+Base FGTS:  2.318,80 (Valor: 185,50)
+Base IRRF Folha:  1.754,00
+000053
+ADELSON DE BRITO LIMA
+8.569,00
+053
+0053
+08/01/2024
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :MESTRE DE OBRAS
+Salario Base
+8.569,00
+220:00
+001
+Vale Transporte
+85,69
+604
+Adiantamento
+3.427,60
+606
+Contribuição Assistêncial
+158,90
+617
+INSS Folha
+908,85
+903
+IRRF Folha
+1.305,16
+914
+***************
+____/____/______
+8.569,00
+5.886,20
+2.682,80
+Base INSS: 7.786,02  (Aliq.: 11,6728%)
+Base FGTS:  8.569,00 (Valor: 685,52)
+Base IRRF Folha:  8.004,20
+000056
+ALEXANDRE PEREIRA DA SILVA
+3.961,02
+056
+0056
+31/01/2024
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+1
+1
+Função :Almoxarife
+Salario Base
+3.961,02
+220:00
+001
+Vale Transporte
+39,61
+604
+Adiantamento
+1.584,41
+606
+INSS Folha
+374,14
+903
+IRRF Folha
+127,99
+914
+***************
+____/____/______
+3.961,02
+2.126,15
+1.834,87
+Base INSS: 3.961,02  (Aliq.: 9,4455%)
+Base FGTS:  3.961,02 (Valor: 316,88)
+Base IRRF Folha:  3.396,22
+
+00233
+ABRE CONSTRUCOES LTDA
+Empresa :
+End. :
+Ref.:
+(
+R MARIA JOSE TOLEDO, 237
+)
+01/07/2024
+31/07/2024
+a
+Dpto :
+Página : 00005
+Código
+Nome
+Ref.
+Sal. Contratual
+Adicionais
+Descontos
+Líquido
+TODOS
+Recibo
+FOLHA DE PAGAMENTO
+23.902.149/0001-61
+CNPJ/CEI:
+000062
+UBIRAJARA DE OLIVEIRA VON ROND
+4.702,50
+062
+0062
+26/03/2024
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+1
+1
+Função :ENCARREGADO DE OBRAS
+Salario Base
+4.702,50
+220:00
+001
+Vale Transporte
+47,03
+604
+Adiantamento
+1.881,00
+606
+Contribuição Assistêncial
+117,56
+617
+INSS Folha
+477,16
+903
+IRRF Folha
+268,21
+914
+***************
+____/____/______
+4.702,50
+2.790,96
+1.911,54
+Base INSS: 4.702,50  (Aliq.: 10,1469%)
+Base FGTS:  4.702,50 (Valor: 376,20)
+Base IRRF Folha:  4.137,70
+000063
+ELIAS ROCHA FILHO
+4.702,50
+063
+0063
+01/04/2024
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :ENCARREGADO ADMINISTR
+Salario Base
+4.702,50
+220:00
+001
+Vale Transporte
+47,03
+604
+Adiantamento
+1.881,00
+606
+Contribuição Assistêncial
+117,56
+617
+INSS Folha
+477,16
+903
+IRRF Folha
+268,21
+914
+***************
+____/____/______
+4.702,50
+2.790,96
+1.911,54
+Base INSS: 4.702,50  (Aliq.: 10,1469%)
+Base FGTS:  4.702,50 (Valor: 376,20)
+Base IRRF Folha:  4.137,70
+000064
+DEBORA OLIVEIRA DE SOUSA
+3.344,00
+064
+0064
+08/05/2024
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :ASSISTENTE DE ENGENHA
+Salario Base
+3.344,00
+220:00
+001
+Vale Transporte
+33,44
+604
+Adiantamento
+1.337,60
+606
+INSS Folha
+300,09
+903
+IRRF Folha
+39,00
+914
+***************
+____/____/______
+3.344,00
+1.710,13
+1.633,87
+Base INSS: 3.344,00  (Aliq.: 8,9739%)
+Base FGTS:  3.344,00 (Valor: 267,52)
+Base IRRF Folha:  2.779,20
+000065
+CAMILA GONCALVES NARCIZO
+2.547,23
+065
+0065
+18/06/2024
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :AUXILIAR ADMINISTRATIVO
+Salario Base
+2.547,23
+220:00
+001
+Reembolso VT
+57,74
+689
+Vale Transporte
+25,47
+604
+Adiantamento
+1.018,89
+606
+Contribuição Assistêncial
+63,68
+617
+INSS Folha
+208,07
+903
+***************
+____/____/______
+2.547,23
+1.373,85
+1.173,38
+Base INSS: 2.547,23  (Aliq.: 8,1684%)
+Base FGTS:  2.547,23 (Valor: 203,77)
+Base IRRF Folha:  1.982,43
+
+00233
+ABRE CONSTRUCOES LTDA
+Empresa :
+End. :
+Ref.:
+(
+R MARIA JOSE TOLEDO, 237
+)
+01/07/2024
+31/07/2024
+a
+Dpto :
+Página : 00006
+Código
+Nome
+Ref.
+Sal. Contratual
+Adicionais
+Descontos
+Líquido
+TODOS
+Recibo
+FOLHA DE PAGAMENTO
+23.902.149/0001-61
+CNPJ/CEI:
+000068
+VINICIUS CARVALHO GALVAO
+2.780,80
+068
+0068
+26/06/2024
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+3
+3
+Função :PEDREIRO
+Salario Base
+2.780,80
+220:00
+001
+Vale Transporte
+27,81
+604
+Adiantamento
+1.112,32
+606
+Contribuição Assistêncial
+69,52
+617
+INSS Folha
+232,51
+903
+***************
+____/____/______
+2.780,80
+1.442,16
+1.338,64
+Base INSS: 2.780,80  (Aliq.: 8,3612%)
+Base FGTS:  2.780,80 (Valor: 222,46)
+Base IRRF Folha:  2.212,03
+*********************
+*********************
+Resumo da folha
+Total Geral da Folha
+( - )  Total de Descontos
+( = ) Total Líquido
+*********************
+Informações adicionais
+Total Funcionários
+Total INSS
+Total FGTS
+Total IRRF
+73.403,62
+Total Cotas Sal. Família
+41.873,79
+31.529,83
+21
+1
+6.832,11
+5.867,25
+3.434,36

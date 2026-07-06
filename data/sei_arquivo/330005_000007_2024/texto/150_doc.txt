@@ -1,0 +1,178 @@
+[] (fase: indefinida · tipo: vazio)
+
+EGTS Detalhe da Guia a Ser Emitida
+
+Digital
+Empregador: 19.088.605 Nome Empregador: MGS CLEAN SOLUCOES E SERVICOS LTDA Qtd. Trabalhadores: 25 Origem: Gestão de Guias
+Vencimento da Guia: 20/06/2024 Número da Guia:  19754815651965-6  Emitida por: 19.088.605/0001-04 - MGS CLEAN Data Emissão: 10/06/2024 14:49:26 (Brasilia)
+Relação de Trabalhadores
+Estabelecimento: 19.088.605/0001-04 Tomador: 40.173.726/0001-40
+apuatão Rea Nome Trabalhador Matrícuta CPF Categoria Vencimento Tipo Depósito Remuneração valor ros Juros M dual. Multa Total
+05/2024 ADRIANA PEREIRA BASTOS 632 068.548.557-99 101 20/06/2024 Mensal 1.610,00 128,80 0,00 0,00 0,00 1.610,00 |
+[05/2024 ANA PAULA DE OLIVEIRA AGUIAR 986 1 .059.878.677-54 101 20/08/2024 Mensal [1.610,00 128,80 0,00 0,00 0,00 1.610,00
+05/2024 BARBARA PRYSCILA RAMOS 1391 170.915.047-55 101 20/06/2024 Mensal 1.610,00 128,80 0,00 0,00 0,00 1.810,00
+[05/2024 CAROLINE MOREIRA DA FONSECA 11862 5.158.224.177-52 101 20/06/2024 Mensal TT 1.709,65 136,77 0,00 0,00 0,00 1.709,65
+05/2024 DEBORA TOLEDO RAMOS 633 128.719.677-25 101 20/06/2024 Mensal 4.109,88 328,79 0,00 0,00 0,00 4.109,88 |
+[05/2024 ELISANGELA DA PAZ TEIXEIRA 53113 )/104.343.787-80 101 20/06/2024 Mensal 10 1.709,65 136,77 0,00 0,00 0,00 1.709,65
+05/2024 FERNANDO DA SILVA 840 597.566.917-00 101 20/06/2024 Mensal 1.783,92 142,71 0,00 0,00 0,00 1.783,92 |
+[ 05/2024 GIOVANNA MENDONÇA DE CARVALHO D 1372 B 210.074.737-11 101 20/06/2024 Mensal 5 L 1.783,92 142,71 0,00 0,00 0,00 1.783,92
+05/2024 GLEICIANE DE ALCANTARA SILVA 12 062.257.465-52 101 20/06/2024 Mensal 1.610,00 128,80 0,00 0,00 0,00 1.610,00 |
+[05/2024 HELENA RIBEIRO DOS SANTOS : 629 7 .002.479.707-35 101 20/06/2024 Mensal 30 1.610,00" 128,80 0,00 0,00 0,00 1.610,00
+05/2024 JONATHAN CAPOSSI DA SILVA LEITAO 1864 120.642.097-94 101 20/06/2024 Mensal 1.610,00 128,80 0,00 0,00 0,00 1.610,00 |
+[05/2024 JORGE GOMES DE BARCELOS 2565 1 617.158.917-91 1017 20/06/2024 Mensal | J[ 201065 160,85 0,00 0,00 0,00 2.010,65
+05/2024 LARISSA GOMES DE SOUZA 1410 458.822.178-73 101 20/06/2024 Mensal 1.610,00 128,80 0,00 0,00 0,00 1.610,00
+[05/2024 LAVINIA EMANUELLE SOUZA DE LIMA T 2656 7 '210.663.747-08 101 20/06/2024 Mensal J[ 4.109,88 328,79 0,00 0,00 0,00 4.109,88
+05/2024 LUCAS JOSE DA SILVA MARTINS 962 159.669.487-47 101 20/06/2024 Mensal 1.709,65 136,77 0,00 0,00 0,00 1 709,65]
+[05/2024 LUCI CRISTINA TAVARES DA SILVA Tess ).125.598.027-32 101 20/06/2024 Mensal JU 505,33 40,43 0,00 0,00 0,00 505,33
+05/2024 LUCIANA LEAL RANGEL MELO 1865 077.802.397-48 101 20/06/2024 Mensal 2.010,65 160,85 0,00 0,00 0,00 2.010,65]
+[05/2024 LYSIA LACERDA PEREIRA 7/1680 T/113.263.967-06 101) 20/06/2024] Mensal” T[ 1.709,65 136,77 0,00 0,00 0,00) 1.709,65
+05/2024 MARGARETE NADER DA SILVA 635 739.056.407-59 101 20/06/2024 Mensal 1.610,00 128,80 0,00 0,00 0,00 1.610,00
+[05/2024 MARIA EDUARDA PIMENTEL LIAL T1er6 /155.466.577-90 101 20/06/2024 Mensal) J[ 1.610,00 128,80 0,00 0,00 0,00 1.610,00
+05/2024 MARIA LUIZA ALMEIDA GUIMARAES 3107 178.948.297-65 101 20/06/2024 Mensal 1.783,92 142,71 0,00 0,00 0,00 1.783,92
+[0512024 MICAELA DE MELO LIMA 2244 ).152.581.687-00 101 20/06/2024 Mensal JC 4.109,88 328,79 0,00 0,00 0,00 4.109,88
+05/2024 PAMELA CABRAL BARBOSA 1604 126.719.367-02 101 20/06/2024 Mensal 1.783,92 142,71 0,00 0,00 0,00 1.783,92 |
+[05/2024 PAULA PEDRAZZI NUNES 72614 5/132.331.867-46 101 20/06/2024 Mensal J[ 1.610,00 128,80 0,00 0,00 0,00 1.610,00
+05/2024 PAULO RENATO MOREIRA 831 047.736.607-40 191 20/06/2024 Mensal 2.010,65 160,85 0,00 0,00 0,00 2.010,65!
+Total do Tomador 40.173.726/0001-40 48.941,20 3.915,27 0,00 0,00 0,00 48.941,20
+Totat do Estabelecimento 19.088.605/0001-04 48.941,20 3.915,27 0,00 0,00 0,00 48.941,20
+
+Total da Guia 48.941,20 3.915,27 0,00 0,00 0,00 48.941,20
+
+Todos os valores exibidos estão expressos em reais (R$) Relatório Emitido em; 19/06/2024 14:49:26 (Brasília). Página 1 de 5
+
+EGTS Detalhe da Guia a Ser Em
+
+Digital
+Empregador: 19.088.605 Nome Empregador: — MGS CLEAN SOLUCOES E SERVICOS LTDA Qtd, Trabalhadores: 25 Origem: Gestão de Guias
+Vencimento da Guia: 20/08/2024 Número da Guia: 19754815651965-6  Emitida por: 19.088.605/0001-04 - MGS CLEAN Data Emissão: 10/08/2024 14:49:26 (Brasilia)
+
+Relação de Categorias
+
+Estabelecimento: * 19.088.605/0001-04
+
+[ Comp. Apuração Categoria Qtd. Trabalhadores das Remuneração FGTS Mensal na Guia Fers Rescisório na ind Compensatória Juros Atualiz Monetária Multa Total
+05/2024 101 25 48.941,20 3.915,27 0,00 0,00 0,00 0,00 0,00 48.941,20
+Total da Guia 48.941,20 3.915,27 0,00 0,00 0,00 0,00 0,00 48.941,20
+
+Dascrição das categorias:
+
+401 - Empregado
+
+ral, inclusive o empregado público da administração direta ou Indireta contratado pela CLT
+102- Empregado - Trabalhador rural por pequeno prazo da Lel 41.718/2008.
+Empregado « Aprendiz
+Empregado - Doméstico
+105- Empregado - Contrato a termo firmado nos termos da Lei 9,6011998
+105. Trabalhador temporário - Contrato nos termos da Lei 6019/1974
+107 - Empregado - Contrato de trabalho Verde e Amarelo - sem acardo para antacipação mensal da multa rescisória do FGTS
+108 - Ermpragada - Contrato do trabalho Vordo o Amarela » com acorda para antocipação mensal da multa rescisória do FGTS
+411 - Empregado « Contrato de trabalho Intormitento
+204 - Trabalhador avulso portuário
+202 Trabalhador avulso não portuário
+304 - Servidor público titular de cargo efetivo, magistrado, ministro de Tribunal de Contas, consetheiro de Tribunal da Contas a membro do Ministério Pu
+302. Servidor público ocupante de cargo exclusivo am comissão
+tivo
+B04- Servidor público exarcanta ds mandato eletivo, Inclusive com exarcício de cargo em comissão,
+305 - Servidor pública Indicado para conselho ou órgão dellbarativo, na condição de representante do governo, órgão ou entidade da administração pública
+esvidor público contratado por tempo determinado, sujeito a regime administrativo especial definido em lei própria
+
+309 - Agente público - Outros
+310 - Servidor público avantual
+
+311 - Múnistros, juizos, procuradoras, promotores ou oficlals de Justiça à disposição da Justiça Eleitoral
+
+312- Auxllar local
+
+401 - Dirigente Sindical = informação prestada polo sindicato
+
+410- Trabalhador e cio em outro órgáoljuia auxiliar « Informação prestada pelo cessionárioidestino.
+
+701 « Contribuinte individual - Autônomo em geral, exceto se enquadrado em uma das demais entegorias de contribuinte individual
+711 - Contribuinte individual - Transportador autônomo de passageiros
+
+?12- Contribuinte individual - Transportador autônomo de carga
+
+721 Contribu
+
+728 - Contribuinte Individual » Empresário, sócio e membro de conselho de administração ou fiscal
+794 - Gontrlbulnte 'ogperada que presta serviços por Intermédio de cooperativa de trabalho
+
+fransportodor cooperado que presta serviços pos intermédio de cooperative
+aoperado filiado a cooperativa de produção
+
+jo trabalho
+
+jstrado classista temporário da Justiça do Trabalho ou da Justiça Elaltora) que seja aposentada de qualquer regime previdanciário
+Individual - Associado eleito para direção de cooparativa, associação ou entidade de classe de qualquer natureza ou finalidade, bam como o síndico ou administrados eleito para axarcar atividade da direção condominial, desce que racabam remuneração
+771 « Contrlbulnta Individual « Membro de conselho tutelar, nos tarmos da Le) 8.069/1980.
+
+784 = Ministro de confissão religiosa ou membro de vida consagrada, de congregação ou de ardem retiglosa
+
+904 - Estagiário
+
+d02- Médico residente
+
+303- Bolsista, nos termos da Lei 8 954/1994
+
+J04 - Participante do curso de formação, como atapa da concurso público, sem vínculo de amprego/astatutário
+
+305- Atiota não profissional em formação que racaba bolsa
+
+Todos os valores exibidos estão expressos em reais (R$) Relatório Emitido em: 10/06/2024 14:49:26. Página 2 de 5
+
+G EGTS Detalhe da Guia a Ser Emitida
+
+Digital
+Empregador: 19.088.605 Nome Empregador: — MGS CLEAN SOLUCOES E SERVICOS LTDA Qtd, Trabalhadores: 25 Origem: Gestão de Guias
+Vencimento da Guia: 20/08/2024 Número da Guia: 19754815651965-6  Emitida por: 19.088.605/0001-04 - MGS CLEAN Data Emissão: 10/08/2024 14:49:26 (Brasilia)
+
+Relação de Estabelecimentos
+
+Estabelecimento: *19.088.605/0001-04
+
+T Comp [DD ——— DT Qu Base Remuneração” FGTS mensal” FGTS Resclsório — Ind. Compensatória Afualiz em
+Apuração em PO de valor Trabalhadores Total na guia, na Guia na Guia Juros — monetária Multa Total
+05/2024 1-FGTS mensal 25 48.941,20 3.915,27 0 0 0,00 0,00 0,00 48.941,20
+
+Total da Guia 48.941,20 3.915,27 0,00 0,00 0,00 0,00 0,00 48.941,20
+
+Todos os valores exibidos estão expressos em reais (R$) Retatório Emitido em: 10/06/2024 14:49:26. Página 3 de 5
+
+Detalhe da Guia a Ser Emitida
+
+Q ros
+
+Digital
+Nome Empregador: MGS CLEAN SOLUCOES E SERVICOS LTDA Qtd. Trabalhadores: 25 Origem: Gestão de Guias
+
+Empregador: 19.088.605
+Número da Guia: 19754815651965-6 Emitida por: 19.088.605/0001-04 - MGS CLEAN Data Emissão: 10/06/2024 14:49:26 (Brasília)
+
+Vencimento da Guia: 20/06/2024
+
+Relação de Tipos de Valor
+Estabelecimento: 19.088.605/0001-04 Ê
+05/2024 101 25 48.941,20 3.915,27 000. 0,00 0,00 0,00 0,00 48.941,20
+Total da Guia 48.941,20 3.915,27 0,00 0,00 0,00 0,00 0,00 48.941,20
+Retatório Emitido em: 10/06/2024 14:49:26. Página 4 de 5
+
+Todos os valores exibidos estão expressos em reais (R$)
+
+G EGTS Detalhe da Guia a Ser Emitida
+
+Digital
+Empregador: 19.088.605 Nome Empregador: — MGS CLEAN SOLUCOES E SERVICOS LTDA Qtd, Trabalhadores: 25 Origem: Gestão de Guias
+Vencimento da Guia: 20/08/2024 Número da Guia: 19754815651965-6  Emitida por: — 19.088.605/0001-04 - MGS CLEAN Data Emissão: 10/08/2024 14:49:26 (Brasilia)
+
+Relação de Tomadores de Serviço
+
+Tomador: 40.173.726/000140
+
+tl]. as r———— WWW
+[ Comp. Apuração Qtd. Trabalhadores Base Remuneração Total FGTS Mensal na Guia Fers Roscisório na Ind. Compensatória na Guia Juros Atualiz. Monetária Multa Total
+DA tt mem
+
+05/2024 25 48.941,20 3.915,27 0,00 0,00 0,00 0,00 0,00 48.941,20
+Total do Tomador 40.173.726/0001-40 48.941,20 3.915,27 0,00 0,00 0,00 0,00 0,00 48.941,20
+
+Todos os valores exibidos estão expressos em reais (R$) Relatório Emitido em: 10/06/2024 14:49:26 (Brasília). Página 5 de 5

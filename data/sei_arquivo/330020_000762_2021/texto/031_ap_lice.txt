@@ -1,0 +1,968 @@
+[Apólice] (fase: contratacao · tipo: garantia)
+
+Ao INS. DE TERRAS E CARTOGRAFIA DO EST. RIO DE JANEIRO
+A Berkley International do Brasil Seguros S/A tem a satisfação em tê-lo como Segurado. Segue em anexo  a 
+apólice de Seguro Garantia nº 014142024000207750198032, emitida em conformidade com a  MP nº
+2.200-2/2001 
+que instituiu a Infra-estrutura de Chaves Públicas Brasileira, ICP - Brasil, a qual garante a autenticidade, 
+a integridade e a validade de documentos em forma eletrônica, das aplicações de suporte e das aplicações 
+habilitadas que utilizem certificados digitais. 
+Isto significa que a apólice digital, que V. Sas agora recebe, tem a mesma validade jurídica da apólice
+impressa, todavia com as vantagens e segurança das transações eletrônicas certificadas digitalmente.
+Além da segurança do processo de certificação digital, a autenticidade deste documento poderá ser verificada 
+através de nosso site www.berkley.com.br , e confirmada após 7 (sete) dias úteis da emissão da 
+apólice/endosso, através do site www.susep.gov.br utilizando o nº 014142024000207750198032000000.
+Atenciosamente
+BERKLEY INTERNATIONAL DO BRASIL SEGUROS SA - 01414
+TÍTULO: APÓLICE SEGURO GARANTIA Nº014142024000207750198032 - ENDOSSO 0000000
+Documento eletrônico digitalmente assinado por:
+Documento eletrônico assinado digitalmente conforme MP nº 2.200-2/2001, que instituiu a infra-estrutura de Chaves Públicas Brasileiras -
+ICP - Brasil por: Signatários(as):
+LEANDRO EZEQUIEL GARCIA OKITA Nº de Série  do Certificado: 7E0E23111059C6C6 Data e Hora Atual Nov 11 2024  4:31PM
+FRANK BOZIC JUNIOR Nº de Série  do Certificado: 7E0E240115464BC8 Data e Hora Atual Nov 11 2024  4:31PM
+O PRESIDENTE DA REPÚBLICA, no uso da atribuição que lhe oferece o art. 62 da Constituição, adota a seguinte Medida Provisória,
+com força de lei:
+Art 1º - Fica instituída a Infra-Estrutura de Chaves Públicas Brasileiras - ICP Brasil, para garantir a autenticidade, a integridade e a validade 
+jurídica de documentos em forma eletrônica, das aplicações de suporte e das aplicações habilitadas que utilizem certificados digitais, bem
+como a realização de transações eletrônicas seguras.
+Nº Apólice: 014142024000207750198032 - ENDOSSO 0000000
+Controle Interno: 2085584
+Data da publicação: Nov 11 2024  4:31PM
+Publicado por: Seguradora BERKLEY INTERNATIONAL DO BRASIL SEGUROS SA - 01414
+
+Apólice - Via Segurado
+Proposta
+Dt. Emissão
+Filial
+Apolice
+Endosso
+Ramo
+Grupo
+Modalidade
+DADOS DO SEGURADO
+CNPJ
+INS. DE TERRAS E CARTOGRAFIA DO EST. RIO DE JANEIRO
+40.173.726/0001-40
+Nome Social
+Endereço
+Número
+Complemento
+AVENIDA MARECHAL CÂMARA
+160 - 4 ANDA
+CEP
+Bairro
+Cidade
+UF
+20020-080
+CENTRO
+RJ
+RIO DE JANEIRO
+DADOS DO TOMADOR
+Nome
+CNPJ
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+19.088.605/0001-04
+Nome Social
+Endereço
+Complemento
+Número
+AV DAS AMERICAS 3434 BLC 2 SAL 506 - BARRA DA TIJUCA
+SALA 318
+0
+CEP
+Bairro
+Cidade
+UF
+22640-102
+BARRA DA TIJUCA
+RIO DE JANEIRO
+RJ
+A BERKLEY INTERNATIONAL DO BRASIL SEGUROS SA - 01414, a seguir denominada "SEGURADORA", tendo em vista as declarações constantes
+da proposta de seguro mencionada, que lhe foi apresentada pelo "TOMADOR" acima identificado, proposta esta que, servindo de base para a
+emissão da presente Apólice, fica fazendo parte integrante deste contrato, obriga-se a indenizar o "SEGURADO" de acordo com as Condições
+Gerais, Especiais e Particulares anexas e que fazem parte integrante da presente apólice, as reparações pecuniárias decorrentes dos riscos do
+seguro, tudo de acordo com as condições gerais, especiais e particulares anexas.
+GARANTIAS:
+TOTAL DA IMPORTÂNCIA SEGURADA: R$ 62.922,38 (SESSENTA E DOIS MIL E NOVECENTOS E VINTE E DOIS REAIS E TRINTA E OITO
+CENTAVOS).
+VIGÊNCIA: DAS 24:00H DO DIA 20 DE NOVEMBRO DE 2024 AS 24:00H DO DIA 20 DE FEVEREIRO DE 2026.
+Ficam fazendo parte integrante e inseparável da presente apólice, os seguintes ANEXOS que ora ratificamos:
+1) Demonstrativo de Prêmio;
+2) Condições Particulares;
+3) Condições Especiais;
+4) Condições Gerais;
+OBSERVAÇÕES:
+PROCESSOS SUSEP Nº 15414.637926/2022-84 e 15414.637925/2022-30;
+Após sete dias úteis da emissão deste documento, poderá ser verificado se a apólice ou endosso foi corretamente
+registrado no site da SUSEP - www.susep.gov.br;
+- DDG Berkley: 0800-7700797.
+SUSEP - Superintendência de Seguros Privados - Autarquia Federal responsável pela fiscalização, normatização e controle dos mercados de
+seguro, previdência complementar aberta, capitalização, resseguro e corretagem de seguros - site www.susep.gov.br - Atendimento gratuito ao
+público Susep 0800-021-8484
+Nome
+CONDIÇÕES DE MODALIDADE
+MODALIDADES
+LIMITES
+INICIO VIGÊNCIA
+FIM VIGÊNCIA
+7519-Executante Prestador Serviços / Obrigações Trabalhistas e Previdenciá
+R$ 62.922,38
+20/11/2024
+20/02/2026
+CORRETOR
+Nome
+202032282 - STORM BUSINESS CONSULTORIA EM SEGUROS LTDA- EPP
+Nome Social
+Seguradora: BERKLEY INTERNATIONAL DO BRASIL SEGUROS SA - 01414
+Endereço:
+Av  Presidente Juscelino Kubitschek, 1455 15 andar  - São P
+CNPJ:
+07.021.544/0001-89
+Para falar com a Ouvidoria Berkley ligue para: 0800-797-3444
+ou envie um e_mail para: ouvidoria@berkley.com.br
+SAC:
+0800-777-3123
+Documento eletrônico assinado digitalmente conforme MP nº 2.200-2/2001, que institui a infra-estrutura de Chaves Públicas Brasileira - ICP - Brasil por Signatário
+LEANDRO EZEQUIEL GARCIA OKITA Nº de Série  do Certificado: 7E0E23111059C6C6 Data e Hora Atual Nov 11 2024  4:31PM
+FRANK BOZIC JUNIOR Nº de Série  do Certificado: 7E0E240115464BC8 Data e Hora Atual Nov 11 2024  4:31PM
+O PRESIDENTE DA REPÚBLICA, no uso de atribuição que lhe oferece o art. 62 da Constituição, adota a seguinte Medida Provisória, com força de lei: Art 1º -
+Fica instituída a Infra-Estrutura de Chaves Públicas Brasileiras - ICP Brasil, para garantir a autenticidade, a integridade e a validade jurídica de documentos em
+forma eletrônica, das aplicações de suporte e das aplicações habilitadas que utilizem certificados digitais, bem como a realização de transações eletrônicas
+seguras.
+
+CONDIÇÕES PARTICULARES
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+A BERKLEY INTERNATIONAL DO BRASIL SEGUROS SA - 01414, inscrita no CNPJ sob o nº de 07.021.544/0001-89, com sede à Av
+Presidente Juscelino Kubitschek, 1455 15 andar , São Paulo, SP, através desta Apólice de Seguro Garantia, garante ao SEGURADO: INS.
+DE TERRAS E CARTOGRAFIA DO EST. RIO DE JANEIRO, inscrito no CNPJ/CPF sob o nº 40.173.726/0001-40, com sede à AVENIDA
+Marechal Câmara, 160 - 4 ANDA - Centro, Rio de Janeiro, RJ as obrigações do TOMADOR: MGS CLEAN SOLUCOES E SERVICOS LTDA,
+inscrito no CNPJ sob o nº 19.088.605/0001-04, com sede à AV DAS AMERICAS 3434 BLC 2 SAL 506 - BARRA DA TIJUCA 0, SALA 318,
+BARRA DA TIJUCA, Rio de Janeiro, RJ até o valor de R$ 62.922,38 SESSENTA E DOIS MIL E NOVECENTOS E VINTE E DOIS REAIS E
+TRINTA E OITO CENTAVOS, na modalidade abaixo descrita.
+Modalidade - Executante Prestador Serviços / Obrigações Trabalhistas e Previdenciárias
+Importância Segurada - R$ 62.922,38
+Vigência -  das 24:00h do dia 20 de Novembro de 2024 as 24:00h do dia 20 de Fevereiro de 2026
+OBJETO:
+ESTE CONTRATO DE SEGURO GARANTE A INDENIZAÇÃO, ATÉ O VALOR DA GARANTIA FIXADO NA APÓLICE, PELOS PREJUÍZOS
+DECORRENTES DO INADIMPLEMENTO DAS OBRIGAÇÕES ASSUMIDAS PELO TOMADOR NA MINUTA DO CONTRATO PRINCIPAL,
+ORIUNDO DO PROCESSO Nº SEI-330020/000762/2021 E EDITAL Nº 005/2021, QUE TEM POR OBJETO A PRESTAÇÃO DE SERVIÇOS DE
+DE LIMPEZA, HIGIENE, CONSERVAÇÃO, COPEIRAGEM RECEPÇÃO E PORTARIA, CONFORME CONTRATO Nº 005/2021 E TERCEIRO
+TERMO ADITIVO  DESCRITO NA CLÁUSULA DO OBJETO DO CONTRATO FIRMADO ENTRE O TOMADOR E SEGURADO, E COBERTO POR
+ESTÁ APÓLICE. A VIGÊNCIA DESTA GARANTIA NA MODALIDADE PRESTADOR DE SERVIÇOS É DE 20/11/2024 A 20/02/2026, COM
+IMPORTÂNCIA SEGURADA DE R$ 62.922,38.
+1. COBERTURA ADICIONAL:
+ EM COMPLEMENTO À GARANTIA DESCRITA ACIMA, ESTÁ APÓLICE CONTEMPLA TAMBÉM COBERTURA ADICIONAL DE OBRIGAÇÃO
+TRABALHISTA E PREVIDENCIÁRIA, GARANTINDO O REEMBOLSO DOS PREJUÍZOS COMPROVADAMENTE SOFRIDOS EM RELAÇÃO ÀS
+OBRIGAÇÕES DE NATUREZA TRABALHISTA E PREVIDENCIÁRIA DE RESPONSABILIDADE DO TOMADOR ORIUNDAS DO CONTRATO
+PRINCIPAL NAS QUAIS HAJA CONDENAÇÃO JUDICIAL DO TOMADOR AO PAGAMENTO E O SEGURADO SEJA CONDENADO
+SUBSIDIARIAMENTE E QUE OS VALORES TENHAM SIDO PAGOS POR ESTE, EM DECORRÊNCIA DE SENTENÇA CONDENATÓRIAS
+TRANSITADA EM JULGADO, BEM COMO DO TRÂNSITO EM JULGADO DOS CÁLCULOS HOMOLOGADOS OU AINDA NAS HIPÓTESES DE
+ACORDO ENTRE AS PARTES COM PRÉVIA ANUÊNCIA DA SEGURADORA  E CONSEQUENTEMENTE HOMOLOGAÇÃO DO PODER
+JUDICIÁRIO.
+2. VIGÊNCIA
+ A VIGÊNCIA DESTA GARANTIA ADICIONAL TRABALHISTA E PREVIDENCIARIA É DE 20/11/2024 A 20/02/2026, SENDO QUE AS
+CONDIÇÕES ESPECIAIS RELATIVAS A ESTA COBERTURA FAZEM PARTE INTEGRANTES E INSEPARÁVEIS DESTA GARANTIA.
+3. DISPOSIÇÕES GERAIS
+ 3.1 A MODALIDADE E A IMPORTÂNCIA SEGURADA ACIMA, DISPOSTAS NAS CONDIÇÕES DE MODALIDADE, CONTEMPLAM AS
+COBERTURAS ADICIONAIS DESCRITAS ABAIXO:
+ 3.2 LIMITE MÁXIMO DE INDENIZAÇÃO PARA COBERTURA DE PRESTADOR DE SERVIÇOS: ATÉ 100% DO VALOR DA IMPORTÂNCIA
+
+CONDIÇÕES PARTICULARES
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+SEGURADA  DISPOSTAS NAS CONDIÇÕES DE MODALIDADE.
+ 3.3 LIMITE MÁXIMO DE INDENIZAÇÃO PARA COBERTURA ADICIONAL TRABALHISTA E PREVIDENCIÁRIA: ATÉ 100% DO VALOR DA
+IMPORTÂNCIA SEGURADA  DISPOSTAS NAS CONDIÇÕES DE MODALIDADE.
+ 3.4 LIMITE MÁXIMO DE INDENIZAÇÃO GLOBAL, CONTEMPLANDO TODAS AS COBERTURAS DA APÓLICE: R$ 62.922,38.
+RIO DE JANEIRO, 11 DE NOVEMBRO DE 2024
+
+OBJETO DA GARANTIA - ANEXO
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+014142024000207750198032
+0000000
+30079
+11/11/2024
+2-RIO DE JANEIRO
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+CONTINUAÇÃO DO OBJETO
+1. EXCLUSÕES:
+1.1 A presente apólice, de riscos declarados, assegura o cumprimento das obrigações diretas do tomador perante o
+segurado, especificamente descritas no objeto desta apólice, de acordo com a modalidade de seguro-garantia indicada na
+mesma, não assegurando o pagamento de quaisquer danos acordados, indenizações a terceiros, danos ambientais, lucros
+cessantes, despesas de contenção de sinistro ou despesas de salvamento, não assegurando, ainda, riscos referentes a
+outros ramos ou modalidades de seguro, incluindo mas não se limitando (engenharia, responsabilidade civil, furto e
+roubo, transporte, saúde, vida e etc.), obrigações quanto ao pagamento de tributos, obrigações trabalhistas de qualquer
+natureza, de seguridade social, quebra de sigilo e confidencialidade em conformidade com a legislação nacional aplicável
+ao seguro-garantia.
+1.2. Ao aceitar este documento o Segurado concorda que esta Seguradora não terá responsabilidade de indenizar
+reclamação quanto à cobertura desta garantia, se for constatado qualquer indício de sinistro ou inadimplemento
+contratual que tenha origem anterior à data de emissão do presente instrumento e que não tenha sido previamente
+informado pelo Segurado à Seguradora.
+1.3. Fica estabelecido que, especificamente para fins indenitários, não estarão cobertos pela presente apólice de seguro
+garantia
+quaisquer
+prejuízos
+e/ou
+demais
+penalidades
+decorrentes
+de
+atos
+ou
+fatos
+violadores
+de
+normas
+de
+anticorrupção que tenham sido provocados pelo segurado ou seu representante, seja isoladamente, seja em concurso com
+o tomador ou seu representante.
+1.4 Esta apólice não poderá ser utilizada como complemento ou endosso de apólice anteriormente fornecida por esta
+seguradora referente ao mesmo edital e/ou contrato objeto deste seguro.
+
+CONDIÇÕES ESPECIAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+1. OBJETO:
+1.1. Este contrato de seguro garante a indenização, até o valor da garantia fixado na apólice, pelos prejuízos decorrentes do
+inadimplemento das obrigações assumidas pelo tomador no contrato principal, para construção, fornecimento ou prestação de
+serviços.
+1.2. Encontram-se também garantidos por este contrato de seguro os valores das multas e indenizações devidas à
+Administração Pública, tendo em vista o disposto na Lei de Licitações e Contratos Administrativos vigente.
+1.3. Poderá ainda ser contratada, com verba específica independente, a Cobertura Adicional de Ações Trabalhistas e
+Previdenciárias.
+2. DEFINIÇÕES:
+Define-se, para efeito desta modalidade, além das definições constantes do art. 6° da Lei de Licitações e Contratos
+Administrativos vigente.
+I – Prejuízo: perda pecuniária comprovada, excedente aos valores originários previstos para a execução do objeto do contrato
+principal, causada pelo inadimplemento do tomador, excluindo-se qualquer prejuízo decorrente de outro ramo de seguro, tais
+como responsabilidade civil, lucros cessantes.
+3. VIGÊNCIA:
+3.1. A vigência da apólice será fixada de acordo com as seguintes regras:
+I – coincidindo com o prazo de vigência do contrato administrativo pertinente à execução de obras, serviços e/ou compras;
+II – por períodos renováveis, no caso de concessões e permissões do serviço público.
+3.2. As renovações, a que se refere o inciso II do item 3.1., não se presumem, serão precedidas de notificação escrita da
+seguradora ao segurado e ao tomador, com antecedência de até noventa dias da data do término de vigência da apólice em
+vigor, declarando seu explícito interesse na manutenção da garantia.
+4. EXPECTATIVA, RECLAMAÇÃO E CARACTERIZAÇÃO DO SINISTRO:
+4.1. Expectativa: tão logo realizada a abertura do processo administrativo para apurar possível inadimplência
+do tomador, este deverá ser imediatamente notificado pelo segurado, indicando claramente os itens não
+cumpridos e concedendo-lhe prazo para regularização da inadimplência apontada, remetendo cópia da
+notificação para a seguradora, com o fito de comunicar e registrar a Expectativa de Sinistro.
+4.2. Reclamação: a Expectativa de Sinistro será convertida em Reclamação, mediante comunicação pelo
+segurado à seguradora, da finalização dos procedimentos administrativos que comprovem o inadimplemento
+do tomador, data em que restará oficializada a Reclamação do Sinistro.
+4.2.1. Para a Reclamação do Sinistro será necessária a apresentação dos seguintes documentos, sem prejuízo
+do disposto nas Condições Gerais:
+a) Cópia do contrato principal ou do documento em que constam as obrigações assumidas pelo tomador, seus
+anexos e aditivos se houver, devidamente assinados pelo segurado e pelo tomador;
+b) Cópia do processo administrativo que documentou a inadimplência do tomador;
+c) Cópias de atas, notificações, contra notificações, documentos, correspondências, inclusive e-mails, trocados
+entre o segurado e o tomador, relacionados à inadimplência do tomador;
+d) Planilha, relatório e/ou correspondências informando da existência de valores retidos;
+e) Planilha, relatório e/ou correspondências informando os valores dos prejuízos sofridos;
+4.2.2. A não formalização da Reclamação do Sinistro tornará sem efeito a Expectativa do Sinistro;
+
+CONDIÇÕES ESPECIAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+4.3. Caracterização: quando a seguradora tiver recebido todos os documentos listados no item 4.2.1. e, após análise, ficar
+comprovada a inadimplência do tomador em relação às obrigações cobertas pela apólice, o sinistro ficará caracterizado,
+devendo a seguradora emitir o relatório final de regulação;
+5. DISPOSIÇÕES GERAIS:
+5.1. Esta apólice é emitida de acordo com as condições da Circular da SUSEP nº 662/22 e fica expressamente estabelecido
+que para todos os fins e efeitos de direito, a regulação do sinistro observará o disposto nas Condições Gerais e Especiais da
+presente Apólice.
+5.2. Esta apólice não poderá ser utilizada como complemento ou endosso de apólice anteriormente fornecida por esta
+seguradora referente ao mesmo edital e/ou contrato objeto deste seguro.
+6. RATIFICAÇÃO:
+Ratificam-se integralmente as disposições das Condições Gerais que não tenham sido alteradas pelas presentes Condições
+Especiais.
+COBERTURA ADICIONAL I – AÇÕES TRABALHISTAS E PREVIDENCIÁRIAS
+1. OBJETO:
+1.1. Esta cobertura adicional tem por objeto garantir exclusivamente ao segurado, até o limite máximo de indenização, o
+reembolso dos prejuízos comprovadamente sofridos em relação às obrigações de natureza trabalhista e previdenciária de
+responsabilidade do tomador oriundas do contrato principal, nas quais haja condenação judicial do tomador ao pagamento e o
+segurado seja condenado subsidiariamente ou solidariamente e que os valores tenham sido pagos por este, em decorrência
+de sentença condenatória transitada em julgado, bem como do trânsito em julgado dos cálculos homologados ou ainda nas
+hipóteses de acordo entre as partes com prévia anuência da seguradora e consequente homologação do Poder Judiciário.
+1.2. No que diz respeito à subsidiariedade, a responsabilidade do segurado será referente à relação trabalhista e/ou
+previdenciária entre o autor/reclamante da demanda trabalhista e o tomador, oriundas do contrato principal objeto desta
+garantia, ocorridas dentro do período de vigência da apólice. Consequentemente, a responsabilidade da seguradora será
+relativa ao período de vigência da apólice e que o débito trabalhista seja decorrente unicamente do lapso temporal garantido.
+2. DEFINIÇÕES:
+Definem-se, para efeito desta cobertura adicional:
+2.1. Autor/Reclamante: aquele que propõe na justiça trabalhista uma reclamatória e esta seja oriunda do contrato principal,
+firmado entre tomador e segurado, o qual é objeto da apólice em questão.
+2.2. Limite Máximo de Indenização: valor máximo que a seguradora se responsabilizará perante o segurado em função do
+pagamento de indenização, por cobertura contratada.
+2.3. Obrigações Previdenciárias: são aquelas especificadas pelas Leis nº 8.212/91 e todas as suas alterações posteriores no
+que couber, bem como em leis esparsas, as quais dispõem sobre o recolhimento das contribuições devidas a cada categoria
+de empregado, observando-se as datas e percentuais.
+2.4. Obrigações Trabalhistas: entende-se por obrigações trabalhistas as decorrentes do pagamento da contraprestação devida
+ao empregado pelo seu labor dispensado ao tomador, bem como de seus encargos, sendo a remuneração a que tem direito e
+todos seus reflexos, conforme determina a legislação em vigor.
+2.5. Responsabilidade Subsidiária: é aquela que recai sobre garantias que somente são exigidas quando a principal é
+
+CONDIÇÕES ESPECIAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+insuficiente, ou seja, inadimplente o real empregador - prestador de serviços, aqui denominado tomador, e esgotadas as
+tentativas de executá-lo, pode-se exigir do segurado o cumprimento das obrigações do réu/tomador, desde que o segurado
+tenha participado da relação processual e conste do título executivo judicial.
+3. EXPECTATIVA, RECLAMAÇÃO E CARACTERIZAÇÃO DO SINISTRO:
+3.1. Expectativa: quando o segurado receber citação(ões) judicial(ais) para apresentar defesa trabalhista e/ou
+previdenciária,
+cujo
+autor/reclamante
+reivindique
+crédito
+de
+natureza
+remuneratória
+ou
+direito
+de
+responsabilidade do tomador, deverá comunicar à seguradora, tão logo seja citado, enviando cópia(s) da(s)
+referida(s) citação(ões) e de todo(s) documento(s) juntado(s) aos autos tanto pelo autor/ reclamante como
+pelo réu/tomador.
+3.1.1. Caso ocorra o item 3.1. acima e reste pendente o trânsito em julgado da sentença, o segurado terá seus
+direitos preservados até decisão definitiva.
+3.1.2. Estão cobertas por esta garantia somente as ações trabalhistas distribuídas na Justiça do Trabalho.
+3.2. Reclamação: a Expectativa de Sinistro será convertida em Reclamação, mediante comunicação do
+segurado à seguradora, quando transitada em julgado a ação, com o pagamento dos valores constantes na
+condenação do segurado.
+3.2.1. Para a Reclamação do Sinistro será necessária a apresentação dos seguintes documentos, sem prejuízo
+do disposto nas Condições Gerais:
+a) comprovante(s) de pagamento dos valores citados no item 3.2. desta Cobertura Adicional;
+b) certidão(ões) de trânsito em julgado das sentenças proferidas e com os valores homologados;
+c) acordo devidamente homologado pelo Poder Judiciário, se houver.
+d) guias de recolhimento do Fundo de Garantia por Tempo de Serviço – FGTS;
+e) guias de recolhimento do INSS dos empregados que trabalharam nos serviços contratados;
+f) documentos comprobatórios de que o autor/reclamante trabalhou para o réu/tomador no contrato principal.
+dentro do período de vigência da apólice.
+3.3. A Reclamação de Sinistros amparada pela presente cobertura poderá ser realizada durante o prazo prescricional, nos
+termos o art. 7º, inciso XXIX da Constituição da República, no que se refere ao Direito do Trabalho.
+3.4. A não formalização da Reclamação do Sinistro tornará sem efeito a Expectativa do Sinistro;
+3.5. Caracterização: recebida a notificação, devidamente acompanhada dos documentos citados no item 3.2.1., a Seguradora
+deverá concluir o processo de regulação de sinistro e emitir o relatório final de regulação de sinistro.
+4. ACORDOS:
+4.1. Nas hipóteses, e no momento, em que o segurado tenha intenção de realizar acordos nas ações judiciais
+cobertas por esta cobertura, o mesmo deverá enviar uma memória de cálculo simples das verbas pleiteadas
+pelo autor, juntamente com uma estimativa do valor a ser acordado.
+4.2. A seguradora, após receber os documentos constantes no item 4.1. e fizer sua análise da situação
+fático-jurídica, enviará ao segurado em até 20 (vinte) dias da data do recebimento, sua aceitação ao valor
+proposto, ou apresentará um valor máximo alternativo ou ainda, manifestar-se-á se enviará preposto para
+audiência, cuja data será devidamente comunicada pelo segurado em tempo hábil.
+4.3. Acordos decorrentes das reclamatórias trabalhistas e/ou previdenciárias poderão ser realizados, desde
+que cumpridos os requisitos dos itens 4.1. e 4.2.
+
+CONDIÇÕES ESPECIAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+5. INDENIZAÇÃO:
+Caracterizado o sinistro na forma descrita no item 3.5., a seguradora indenizará o segurado, por meio de reembolso, até o
+limite máximo de indenização estabelecido na apólice.
+6. PERDA DE DIREITO:
+Além das perdas de direito descritas nas Condições Gerais, o segurado perderá o direito à indenização na ocorrência de uma
+ou mais das seguintes hipóteses:
+I – não cumprimento por parte do segurado das exigências descritas na Cláusula 3 desta Cobertura Adicional.
+II – quando o segurado deixar de apresentar defesa ou perder prazo para interposição de recurso ou for considerado revel
+nos
+termos do artigo 844, parágrafo único da Consolidação de Leis do Trabalho ou confessar.
+III – se o segurado firmar acordo sem a prévia anuência da seguradora ou este não for homologado pelo Poder Judiciário.
+IV – nos casos de condenações do tomador e/ou segurado no que se refere a dano moral e/ou dano material, assédio moral
+ou sexual decorrentes de responsabilidade civil do tomador e/ou do segurado e indenizações por acidente de trabalho.
+7. RATIFICAÇÃO:
+Ratificam-se integralmente as disposições das Condições Gerais que não tenham sido alteradas pela presente Condição
+Especial.
+
+CONDIÇÕES GERAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+1. OBJETIVO DO SEGURO
+1.1. O Seguro Garantia destina-se a garantir o objeto principal, respeitadas as condições e limites
+estabelecidos no contrato de seguro, contra o risco de inadimplemento, pelo Tomador, das obrigações
+garantidas.
+1.2. Pelo contrato de Seguro Garantia, a Seguradora obriga-se, respeitadas as condições e limites
+estabelecidos no contrato de seguro, ao pagamento da indenização, securitária na forma definida pela
+modalidade da Apólice.
+1.3. O Seguro Garantia é um contrato vinculado ao objeto principal, devendo respeitar as suas
+características, dispositivos e legislação específica, respeitadas as condições e limites estabelecidos
+no contrato de seguro.
+2. DISPOSIÇÕES
+2.1 A aceitação do seguro estará sujeita à análise do risco.
+2.2. O registro do produto é automático e não representa aprovação ou recomendação por parte da
+Susep;
+2.3. O Segurado poderá consultar a situação cadastral do corretor de seguros e da sociedade
+Seguradora no sítio eletrônico www.susep.gov.br.
+2.4. Mediante a contratação deste seguro, o Tomador e o Segurado aceitam as cláusulas limitativas
+que se encontram no texto destas Condições Contratuais.
+3. DEFINIÇÕES
+Aplicam-se a esse seguro, as seguintes definições:
+I - modalidade: conjunto de cláusulas que estabelecem as disposições específicas do Seguro Garantia
+de acordo com as características, dispositivos e legislação da obrigação garantida;
+II - objeto principal: relação jurídica, contratual, editalícia, processual ou de qualquer outra natureza,
+geradora de obrigações e direitos entre Segurado e Tomador, independentemente da denominação
+utilizada;
+III - obrigação garantida: obrigação assumida pelo Tomador junto ao Segurado no objeto principal e
+garantida pela apólice de Seguro Garantia. A obrigação garantida pode se limitar a fases, etapas, ou
+entregas parciais do objeto principal, conforme definido no próprio;
+IV - Segurado: credor das obrigações assumidas pelo Tomador no objeto principal;
+V - Seguro Garantia: seguro que tem por objetivo garantir o fiel cumprimento das obrigações
+garantidas;
+VI - Seguro Garantia: Segurado - Setor Público: Seguro Garantia cujo objeto principal está sujeito ao
+regime jurídico de direito público;
+VII - Seguro Garantia: Segurado - Setor Privado: Seguro Garantia cujo objeto principal está sujeito ao
+regime jurídico de direito privado;
+VIII - Apólice: documento, assinado pela Seguradora, que representa formalmente o contrato de
+Seguro Garantia;
+IX - Endosso: instrumento formal, assinado pela Seguradora, que introduz modificações na apólice de
+Seguro Garantia, mediante solicitação e anuência expressa das partes;
+X - Sinistro: comprovada inadimplência do Tomador em relação à obrigação garantida;
+XI – Expectativa de Sinistro: fato ou ato que indique a possibilidade de caracterização do sinistro e o
+
+CONDIÇÕES GERAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+início dos trâmites e/ou verificação de critérios para comprovação da inadimplência, especificado nas
+condições especiais das modalidades em que couber sua aplicabilidade.
+XII - Tomador: devedor das obrigações estabelecidas no objeto principal perante o Segurado; e
+XIII - Valor da garantia: valor máximo garantido pela apólice.
+XIV - Prêmio: importância devida pelo Tomador à Seguradora, em função da cobertura do seguro, e
+que deverá constar da apólice ou endosso.
+XV - Processo de Regulação de Sinistro: procedimento pelo qual a Seguradora constatará ou não a
+procedência da reclamação de sinistro, bem como a apuração dos prejuízos cobertos pela apólice.
+XVI - Proposta de Seguro: instrumento formal de pedido de emissão de apólice de seguro, firmado
+nos termos da legislação em vigor.
+XVII – Relatório Final de Regulação: documento emitido pela Seguradora no qual se transmite o
+posicionamento acerca da caracterização ou não do sinistro reclamado, bem como os possíveis
+valores a serem indenizados.
+4. ACEITAÇÃO:
+4.1. A contratação e/ ou qualquer alteração do contrato de seguro somente poderá ser feita mediante
+proposta assinada pelo proponente, ou seu representante ou por seu corretor de seguros habilitado. A
+proposta escrita deverá conter os elementos essenciais ao exame e aceitação do risco.
+4.2. A Seguradora fornecerá, obrigatoriamente, ao proponente, protocolo que identifique a proposta
+por ela recepcionada, com a indicação da data e da hora de seu recebimento.
+4.3. A Seguradora terá o prazo de 15 (quinze) dias para se manifestar sobre a aceitação ou não da
+proposta, contados da data de seu recebimento, seja para seguros novos ou renovações, bem como
+para alterações que impliquem modificação do risco, não sendo cabível a aceitação tácita do risco.
+4.4. Caso o proponente do seguro seja pessoa física, a solicitação de documentos complementares,
+para análise e aceitação do risco, ou da alteração proposta, poderá ser feita apenas uma vez, durante
+o prazo previsto no item 4.3.
+4.5 Se o proponente for pessoa jurídica, a solicitação de documentos complementares poderá ocorrer
+mais de uma vez, durante o prazo previsto no item 4.3., desde que a Seguradora indique os
+fundamentos do pedido de novos elementos, para avaliação da proposta ou taxação do risco.
+4.6 No caso de solicitação de documentos complementares, para análise e aceitação do risco, ou da
+alteração proposta, o prazo de 15 (quinze) dias previsto no item 4.3. ficará suspenso, voltando a
+correr a partir da data em que se der a entrega da documentação.
+4.7 No caso de não aceitação da proposta, a Seguradora comunicará o fato, por escrito, ao
+proponente, especificando os motivos da recusa.
+4.8 A emissão e o envio da apólice dentro do prazo acima substitui a manifestação expressa de
+aceitação da proposta pela Seguradora.
+4.9. Caso a aceitação da proposta dependa de contratação ou alteração de resseguro facultativo, o
+prazo aludido no item 4.3. será suspenso até que o ressegurador se manifeste formalmente,
+comunicando a Seguradora, por escrito, ao proponente, tal eventualidade, ressaltando a consequente
+inexistência de cobertura enquanto perdurar a suspensão.
+4.10. A emissão da apólice ou do endosso será feita em até 15 (quinze) dias, a partir da data de
+aceitação da proposta. Na utilização de meios remotos na emissão de documentos contratuais, será
+garantida a possibilidade de impressão ou download do documento pelo cliente
+
+CONDIÇÕES GERAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+5. VALOR DA GARANTIA
+5.1 O valor da garantia especificado na apólice é o valor máximo nominal por ela garantido.
+5.2 O valor da garantia deve ser definido pelo Segurado em consonância com a obrigação garantida e
+sua legislação específica.
+5.3 A obrigação garantida pode se limitar a fases, etapas, ou entregas parciais do objeto principal,
+conforme definido no próprio.
+6. ALTERAÇÃO E ATUALIZAÇÃO
+6.1 A apólice somente poderá ser alterada mediante pedido do Segurado ou com sua expressa
+concordância.
+6.2 Quando efetuadas alterações no objeto principal em virtude das quais se faça necessária
+modificação da apólice, esta:
+I - deverá acompanhar tais alterações, caso tenham sido previamente estipuladas no objeto principal,
+em sua legislação específica ou no documento que serviu de base para a aceitação do risco pela
+Seguradora; ou
+II - poderá acompanhar tais alterações, em situações não abrangidas pelo inciso I deste item, desde
+que haja o respectivo aceite pela Seguradora.
+6.3 A não comunicação, ou comunicação em desacordo com os critérios estabelecidos nas condições
+contratuais do seguro sobre as alterações do objeto principal poderá gerar perda de direito na forma
+da legislação aplicável.
+6.4 O índice e a periodicidade de atualização dos valores da apólice, quando aplicáveis, deverão ser
+os mesmos definidos no objeto principal ou em sua legislação específica.
+6.4.1 A atualização dos valores da apólice poderá ocorrer automaticamente, sem manifestação
+expressa do Segurado ou do tomador, desde que prevista no objeto principal ou em sua legislação
+específica.
+7. PAGAMENTO DE PRÊMIO
+7.1 O tomador é responsável pelo pagamento do prêmio de seguro.
+7.2 A apólice continuará em vigor mesmo quando o tomador não houver pago o prêmio nas datas
+convencionadas.
+7.3 O tomador também será responsável pelo pagamento de eventual prêmio adicional decorrente de
+alterações na apólice, nos termos da Cláusula 6.2, ou da atualização dos valores da apólice, nos
+termos da Cláusula 6.3 das Condições Gerais.
+8. ATUALIZAÇÃO MONETÁRIA DAS OBRIGAÇÕES PECUNIÁRIAS, JUROS E MORA
+8.1. Exceção ao índice e periodicidades de atualização dos valores da apólice – Importância Segurada
+e Prêmio, que são oriundos da Obrigação Garantida e deverão ser os mesmos definidos no objeto
+principal ou em sua legislação específica nos termos da cláusula 5, demais índices e atualizações
+decorrentes do contrato de seguro seguirão as regras a seguir definidas.
+8.2 Os valores devidos a título obrigações pecuniárias estão sujeitos a atualização monetária pela
+variação positiva do IPC-A-IBGE (índice de preços ao consumidor amplo – do instituto brasileiro de
+estatística) a partir da data em que se tornarem exigíveis.
+8.2.2 A atualização monetária será calculada com base no último índice publicado antes da data de
+
+CONDIÇÕES GERAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+exigibilidade da obrigação pecuniária, e aquele publicado imediatamente anterior a data efetiva do
+pagamento.
+8.2.3 No caso de extinção do índice pactuado, será utilizado o IGP-M-IBGE (índice de geral de preços
+de mercado – do instituto brasileiro de estatística) como índice substituto para atualização das
+obrigações pecuniárias.
+8.3 No caso de não cumprimento dos prazos previstos, além da atualização monetária, serão devidos
+juros de 0,033% ao dia, limitado a 12% (doze por cento) ao ano, contados partir do primeiro dia
+posterior ao término do prazo fixado para a liquidação da obrigação pecuniária.
+9. ÂMBITO GEOGRÁFICO:
+Considera-se como âmbito geográfico das coberturas/modalidades todo o território nacional, salvo
+disposição em contrário, que deverá constar nestas condições contratuais.
+10. PRAZO DE VIGÊNCIA DA APÓLICE:
+10.1 Caso a vigência da apólice seja inferior à vigência da obrigação garantida, nos termos do art. 7º
+da Circular 662/2022, a Seguradora deve assegurar a manutenção da cobertura enquanto houver
+risco a ser coberto, desde que a renovação seja previamente solicitada pelo Tomador, aceita pelo
+Segurado e Seguradora.
+10.2. O Segurado poderá, a qualquer tempo, se opor à manutenção da cobertura, mediante expressa
+manifestação.
+10.3. O tomador não poderá se opor à manutenção da cobertura, exceto se ocorrer a substituição da
+apólice por outra garantia aceita pelo segurado.
+10.4. A Seguradora deve assegurar que os procedimentos e a efetivação da manutenção da cobertura
+e/ou da renovação da apólice ocorram antes do término de vigência da apólice, estando previsto nas
+Condições Especiais, quando aplicável.
+10.5. A Seguradora deverá comunicar ao segurado e ao tomador a proximidade do término de
+vigência da apólice, com antecedência mínima de 90 (noventa) dias antes desta data.
+11. CONTRATAÇÃO
+A forma de contratação do Seguro Garantia é a risco absoluto, forma de contratação na qual a
+Seguradora responde integralmente pelo valor do sinistro, limitado ao valor da garantia, não se
+aplicando, em qualquer hipótese, cláusula de rateio.
+12. EXPECTATIVA DE SINISTRO
+12.1.
+A
+Expectativa
+do
+Sinistro
+será
+especificada
+para
+cada
+modalidade
+nas
+Condições
+Particulares/Especiais, quando couberem.
+12.2. A Seguradora descreverá nas Condições Particulares/Especiais os documentos mínimos que
+deverão ser apresentados para a efetivação da Expectativa de Sinistro.
+12.3. Com base em dúvida fundada e justificável, a Seguradora poderá solicitar documentação e/ou
+informação complementar.
+12.4 Ocorrido o sinistro durante a vigência da apólice, sua caracterização e comunicação deverão
+respeitar os prazos prescricionais aplicados ao contrato de seguro.
+12.5. A comunicação de aviso expectativa de sinistro, deverá ocorrer pelo seguinte endereço
+
+CONDIÇÕES GERAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+eletrônico(e-mail) e/ou número de telefone:
+- sinistro.garantia@berkley.com.br;
+12.6. O Segurado deverá comunicar a Seguradora, tão logo saiba, de qualquer ato ou fato que indique
+a inadimplência do Tomador e neste sentido, a possibilidade de caracterização do sinistro,
+apresentando os elementos necessários que demonstrem descumprimento do objeto principal. A não
+comunicação da Expectativa de Sinistro, ou sua não comunicação de acordo com os critérios
+estabelecidos nas condições contratuais do seguro, acarretará a perda de direito ao Segurado caso
+configure agravamento do risco e impeça a Seguradora de adotar as medidas dos incisos II e III do
+artigo 29 da Circular SUSEP n. 662/22
+13. CARACTERIZAÇÃO DE SINISTRO
+13.1. O sinistro estará caracterizado quando comprovada a inadimplência do Tomador em
+relação à obrigação garantida.
+13.2. A caracterização do sinistro, nos termos do caput, pode se dar de maneira imediata, pela
+ocorrência da inadimplência, ou pode requerer a realização de trâmites e/ou verificação de
+critérios para sua comprovação, de acordo com os termos do objeto principal ou de sua
+legislação específica.
+13.3. Os trâmites e critérios para comprovação da inadimplência, nos termos da cláusula
+acima, fazem parte das regras do objeto principal e são de responsabilidade do Segurado, não
+tendo a Seguradora ingerência sobre esse processo, salvo disposição em contrário no objeto
+principal ou em sua legislação específica. A comprovação da inadimplência mencionada nesta
+cláusula não se confundirá com a regulação de sinistro realizada pela Seguradora em
+conjuntos com as partes
+13.4. Sob pena de perder o direito a indenização, a comunicação do sinistro deverá ser
+encaminhada pelo Segurado à Seguradora, logo após o conhecimento de sua caracterização,
+de acordo com os critérios e contendo os documentos definidos nas condições contratuais do
+seguro, para que seja iniciado o processo de regulação pela Seguradora.
+13.5. A conclusão da regulação do sinistro acontecerá no prazo de 30 dias contados a partir da
+entrega de todos os documentos básicos previstos nas condições Especiais e Particulares de
+cada modalidade contratada.
+13.6. No caso de solicitação de documentação complementar, na forma prevista, o prazo será
+suspenso, voltando a correr a partir do dia útil subsequente àquele em que forem atendidas as
+exigências.
+13.7 Caso a Seguradora conclua pela não caracterização do sinistro, comunicará formalmente
+ao Segurado, por escrito, sua negativa de indenização, apresentando, conjuntamente, as razões
+que embasaram sua conclusão de forma detalhada, sendo certo e ajustado que a não
+formalização
+no
+prazo
+definido
+por
+essas
+Condições
+Contratuais
+não
+acarretará
+reconhecimento automático de cobertura.
+14. CONCORRÊNCIA DE APÓLICES
+
+CONDIÇÕES GERAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+14.1 É vedada a utilização de mais de um Seguro Garantia para cobrir a mesma obrigação do objeto
+principal, salvo no caso de apólices complementares.
+14.2. No caso de existirem duas ou mais formas de garantia distintas, cobrindo cada uma delas o
+objeto deste seguro, em benefício do mesmo Segurado ou beneficiário, a Seguradora responderá, de
+forma proporcional ao risco assumido, com os demais participantes, relativamente ao prejuízo comum.
+15. SUB-ROGAÇÃO
+15.1 Paga a indenização ou iniciado o cumprimento das obrigações inadimplidas pelo tomador, a
+Seguradora sub-rogar-se-á nos direitos e privilégios do Segurado contra o Tomador, ou contra
+terceiros cujos atos ou fatos tenham dado causa ao sinistro.
+15.2 É ineficaz qualquer ato do segurado que diminua ou extinga, em prejuízo do segurador, os
+direitos a que se refere este item.
+16.INDENIZAÇÃO
+16.1. Caracterizado o sinistro, a Seguradora cumprirá a obrigação descrita na apólice ao segurado ou
+o beneficiário, até o limite máximo de garantia, segundo uma das formas abaixo, conforme for
+acordado entre as partes:
+I – pagamento em dinheiro dos prejuízos, multas e/ou demais valores devidos pelo Tomador e
+garantidos pela apólice em decorrência da inadimplência da obrigação garantida; e/ou
+II – execução da obrigação garantida, de forma a dar continuidade e concluí-la sob a sua integral
+responsabilidade, nos mesmos termos e condições estabelecidos no objeto principal ou conforme
+acordado entre Segurado e Seguradora.
+16.1.1. Na hipótese da alínea II acima, a escolha da pessoa, física ou jurídica, para dar continuidade e
+concluir a obrigação garantida ocorrerá mediante acordo entre Segurado e Seguradora, respeitados os
+termos do objeto principal ou de sua legislação específica.
+16.2. Do prazo para o cumprimento da obrigação:
+16.2.1. O pagamento da indenização ou o início da realização do objeto principal deverá ocorrer
+dentro do prazo máximo de 30 (trinta) dias, contados da data de recebimento do último documento
+solicitado durante o processo de regulação do sinistro, salvo quando outro prazo estiver acordado nos
+termos do objeto principal ou sua legislação específica e estabelecido na apólice do seguro.
+16.2.2. Na hipótese de solicitação de documentos, o prazo de 30 (trinta) dias, ou aquele estabelecido
+contratualmente, será suspenso, voltando a correr a partir do dia útil subsequente àquele em que
+forem completamente atendidas as exigências.
+16.2.3. No caso de decisão judicial ou decisão arbitral, que suspenda os efeitos de reclamação da
+apólice, o prazo de 30 (trinta) dias será suspenso, voltando a correr a partir do primeiro dia útil
+subsequente a revogação da decisão.
+16.3. No caso de extinção do objeto principal, por conta da ocorrência de sinistro, os eventuais saldos
+de créditos do Tomador apurados junto ao Segurado, no âmbito do objeto principal, serão utilizados
+para amortização do valor da indenização, sem prejuízo de seu pagamento no prazo devido.
+16.3.1.Caso a indenização já tenha sido quitada ou caso a Seguradora já tenha dado início ao
+processo de execução da obrigação garantida quando da conclusão da apuração dos saldos de
+créditos do Tomador junto ao Segurado no objeto principal, o Segurado fica obrigado a devolver à
+
+CONDIÇÕES GERAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+seguradora o valor excedente recebido.
+17. EXTINÇÃO DA GARANTIA
+O Seguro Garantia será extinto na ocorrência de um dos seguintes eventos, o que ocorrer primeiro:
+I – quando as obrigações garantidas forem definitivamente concluídas e houver manifestação
+expressa do Segurado neste sentido;
+II – quando o Segurado e a Seguradora expressamente acordarem;
+III – quando o pagamento da indenização ao Segurado ou beneficiário atingir o valor da garantia;
+IV – quando o objeto principal for extinto; ou
+V – quando do término de vigência da apólice.
+18. RESCISÃO CONTRATUAL
+18.1 Na hipótese de rescisão a pedido do segurado, a sociedade Seguradora poderá reter, no
+máximo, além dos emolumentos, o prêmio calculado de acordo com a seguinte tabela de prazo curto:
+Relação a Ser Aplicada......................................................Relação a Ser Aplicada 
+Sobre a Vigência Original...........% Do Prêmio..................Sobre a Vigência Original............% Do Prêmio 
+Para a Obtenção de ..........................................................Para a Obtenção de 
+Prazo em Dias...................................................................Prazo em Dias
+15  /365..........................................13 ...................................195 /365.......................................73
+30  /365..........................................20 ...................................210 /365 ......................................75
+45  /365..........................................27 ...................................225 /365 ......................................78
+60 /365..........................................30 ...................................240 /365.......................................80
+75 /365..........................................37 ...................................255 /365 ......................................83
+90 /365..........................................40 ...................................270 /365.......................................85
+105 /365........................................46....................................285 /365 ......................................88
+120 /365........................................50....................................300 /365 ......................................90
+135 /365........................................56....................................315 /365 ......................................93
+150 /365........................................60 ...................................330 /365 ......................................95
+165 /365 .......................................66....................................345 /365.......................................98
+180 /365........................................70....................................365 /365......................................100
+18.2 Para prazos não previstos na tabela, deverá ser utilizado percentual correspondente ao prazo
+imediatamente inferior.
+19. FRANQUIA/POS/CARÊNCIA
+É permitido o estabelecimento de franquias, participações obrigatórias do Segurado - POS e/ou prazo
+de carência mediante expressa anuência do Segurado, conforme especificado nas Condições
+Particulares/Condições Especiais.
+20. PRESCRIÇÃO
+Os prazos prescricionais são aqueles determinados pela lei.
+
+CONDIÇÕES GERAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+21. PERDA DE DIREITOS:
+O Segurado perderá o direito à indenização na ocorrência de uma ou mais das seguintes
+hipóteses:
+I – Casos fortuitos ou de força maior, nos termos do Código Civil Brasileiro;
+II
+–
+Descumprimento
+das
+obrigações
+do
+Tomador
+decorrente
+de
+atos
+ou
+fatos
+de
+responsabilidade do segurado;
+III – Alteração das obrigações contratuais garantidas por esta apólice, que tenham sido
+acordadas entre segurado e Tomador, sem prévia anuência da seguradora;
+IV – Atos ilícitos dolosos ou por culpa grave equiparável ao dolo praticados pelo Segurado,
+pelo beneficiário ou pelo representante, de um ou de outro;
+V – O Segurado não cumprir integralmente quaisquer obrigações previstas no contrato de
+seguro;
+VI – Se o Segurado ou seu representante legal fizer declarações inexatas ou omitir de má-fé
+circunstâncias de seu conhecimento que configurem agravação de risco de inadimplência do
+Tomador ou que possam influenciar na aceitação da proposta;
+VII – Se o Segurado agravar intencionalmente o risco.
+VIII -Inadimplência de obrigações garantidas decorrente de atos ou fatos de responsabilidade
+do segurado que tenham contribuído de forma determinante para ocorrência do sinistro; ou
+IX - Inadimplência de obrigações do objeto principal que não sejam de responsabilidade do
+Tomador.
+22. FORO:
+As questões judiciais entre seguradora e segurado serão processadas no foro do domicílio deste.
+
+OBSERVAÇÕES GERAIS
+Filial
+Apolice
+Endosso
+Proposta
+Dt. Emissão
+2-RIO DE JANEIRO
+014142024000207750198032
+0000000
+30079
+11/11/2024
+Grupo
+Ramo
+Modalidade
+RISCOS FINANCEIROS
+SEGURO GARANTIA - SETOR PÚBLICO
+Executante Prestador Serviços / Obrigações Tra
+O número dos processos administrativos de registro junto à Susep dos planos de seguro vinculados ao
+documento, bem como a informação de que as condições dos mesmos poderão ser consultadas no sítio
+eletrônico www.susep.gov.br, a partir destes números, quando aplicável;
+O link da plataforma digital oficial para registro de reclamações dos consumidores dos mercados
+supervisionados é (www.consumidor.gov.br).

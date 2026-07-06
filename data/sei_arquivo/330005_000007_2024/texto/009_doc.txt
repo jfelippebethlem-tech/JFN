@@ -1,0 +1,164 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária de Retenção
+TIPO 13
+Encerrado até Mês 14 
+Identificação
+UG Emitente
+Documento
+Emissão
+133100 - ITERJ
+2024OB01008
+20/12/24
+UG Liquidante
+UG Pagadora
+133100 - ITERJ
+133100 - ITERJ
+Valor por Extenso
+Valor
+Treze mil e oitocentos e oito reais e oitenta e quatro centavos
+13.808,84
+Detalhamento
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS
+Credor da Retenção
+MINISTÉRIO DA FAZENDA
+Competência
+12/2024
+Domicílio Bancário Origem
+237 - 6898 - 0000000027
+Domicílio Bancário Destino
+237 - 6898 - BCO AUTENT
+Processo
+7/2024
+I t e n s
+Número da NE
+2024NE00488 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2024NL00578 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+5.905,90
+Número da NE
+2024NE00501 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2024NL00577 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+4.656,11
+Número da NE
+2024NE00502 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Emitido/contabilizado por PRISCILA LOURES LEITE em 20/12/24 às 12:57.
+Impresso por Daiane Pereira de Souza em 18/02/25 às 10:47.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/2
+
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+31954621000138 - LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS  LTDA
+Número da NL
+2024NL00600 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+34 - CONSERVAÇAO DE PARQUES E JARDINS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+3.246,83
+Observação
+RETENÇÃO DE INSS EMPRESAS
+Registro de Envio
+UG Emitente
+133100
+Emissão
+20/12/24
+Documento
+2024RE00236
+Data de Envio
+20/12/24
+Status de Envio
+Processado e Pago
+Data de retorno
+27/12/24
+Tipo de Pagamento Normal
+Retorno
+Ordem bancária paga e liberada com sucesso.
+Programação de Desembolso
+Documento
+2024PD01217
+Emissão
+18/12/24
+Data de Programação 20/12/24
+Emitido/contabilizado por PRISCILA LOURES LEITE em 20/12/24 às 12:57.
+Impresso por Daiane Pereira de Souza em 18/02/25 às 10:47.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/2

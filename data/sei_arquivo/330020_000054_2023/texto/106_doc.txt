@@ -1,0 +1,126 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 12
+Encerrado até Junho 
+Identificação
+UG Emitente
+Número do 
+Documento
+Data de Emissão
+133100 - ITERJ
+2023OB00489
+18-07-2023
+UG Liquidante
+Domicílio Bancário Origem
+133100 - ITERJ
+237 - 6898 - 0000000027 - ERJ 
+TESOURO ESTADO CONTA UNICA  
+(Conta Unica)  - Conta Unica
+Favorecido
+Domicílio Bancário Destino
+35208086000127 - Mobiliza For Rent Ltda
+237 - 0135 - 190268
+Valor por Extenso
+Valor
+Sessenta e seis mil e quatrocentos e oitenta e oito reais e quarenta centavos
+66.488,40
+Detalhamento
+Nota Liquidação
+2023NL00361
+Tipo de Despesa
+Nota de Empenho
+2023NE00381
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Id. uso
+0 - Não destinado à contrapartida
+Ano Fonte
+2 - Recursos de Exercícios Anteriores
+Fonte STN
+501 - Outros Recursos não Vinculados
+Fonte
+145 - Recursos da Concessão de Serviço Público de Abastecimento de Água e 
+Esgotamento Sanitário - Tesouro
+Detalhamento de Fonte
+000000 - SEM DETALHAMENTO
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+22000047 - Prestação de Serviços de Locação de Veículos com Motoristas.
+Domicílio Bancário Destino
+237 - 0135 - 190268
+Competência
+06/2023
+Processo
+SEI 330020/54/2023
+Itens
+Tipo Patrimonial
+Sub-item da Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Serviços de Terceiros - 
+Pessoa Jurídica
+13 - LOCAÇÃO DE 
+VEICULOS, FRETES E 
+CARRETOS/PEDAGIOS
+3722 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual Consumindo 
+Limite de Saque
+0 - Liberação 
+automática de 
+Limite de Saque
+66.488,40
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  46 CONFORME PROCESSO Despesa com a repactuação do contrato nº 011/2021, período de 
+Junho/2022 a Maio/2023 por força da convenção coletiva
+Informações Adicionais
+Registro de Envio
+Status de Envio
+Processado e Pago
+Tipo de Pagamento
+Normal
+Número do Documento
+2023RE10319
+UG Emitente
+999900
+Data de Emissão
+18-07-2023
+Data de Envio
+18-07-2023
+Emitido/contabilizado por Camila do Nascimento Sousa em 18-07-2023 às 9:21.
+Impresso por IVONETE JOSE MARIA SABINO em 31-07-2023 às 9:54.
+Siafe-Rio / SEFAZ-RJ
+Página 1/2
+
+Data de retorno
+22-07-2023
+Retorno
+Ordem bancária paga e liberada com sucesso.
+Status
+Processado
+Ativo
+Sim
+Programação de Desembolso
+Número do Documento
+2023PD00563
+Data de Emissão
+14-07-2023
+Data de Programação
+18-07-2023
+Emitido/contabilizado por Camila do Nascimento Sousa em 18-07-2023 às 9:21.
+Impresso por IVONETE JOSE MARIA SABINO em 31-07-2023 às 9:54.
+Siafe-Rio / SEFAZ-RJ
+Página 2/2

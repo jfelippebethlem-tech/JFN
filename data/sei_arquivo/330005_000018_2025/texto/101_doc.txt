@@ -1,0 +1,508 @@
+[] (fase: indefinida · tipo: vazio)
+
+Agência/conta: 1185 / 74826-4
+Nome da empresa:
+MGS CLEAN COMERCIO E SERVICOS
+CNPJ: 19.088.605/0001-04
+Conta: Conta em operação
+Tipo: Todos
+Período: de 31/12/2024 até 31/12/2024
+Status: Efetuados
+Nome do favorecido
+CPF/CNPJ
+Tipo de pagamento
+Referência da empresa
+Data de pagamento
+Valor do pagamento (R$)
+Status
+ADRIANA PEREIRA BASTOS
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+ANA PAULA DE OLIVEIRA AGUIAR
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+ANGELICA COSTA SOARES
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+BARBARA PRYSCILA RAMOS
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+CAROLINE MOREIRA DA FONSECA
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+DEBORA TOLEDO RAMOS
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+FERNANDO DA SILVA
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+GIOVANNA MENDONÇA DE CARVALHO
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+GLEICIANE DE ALCANTARA SILVA
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+HELENA RIBEIRO DOS SANTOS
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+JONATHAN CAPOSSI DA SIVA LEITÃO
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+JORGE GOMES DE BARCELOS
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+LARISSA GOMES DE SOUZA
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+LAVINIA EMANUELLE SOUZA DE LIMA
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+LUCAS JOSE DA SILVA MARTINS
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+MARGARETE NADER DA SILVA
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+MARIA EDUARDA PIMENTEL LIAL 
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+MARIA LUIZA ALMEIDA GUIMARAES 
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+MICAELA DE MELO LIMA 
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+PAMELA CABRAL BARBOSA
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+PAULA PEDRAZZI
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+PAULO RENATO MOREIRA 
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+NATHALIA DAS NEVES SANT ANA 
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+DAIENE DE JESUS FLORENCIO 
+-
+Conta corrente
+VA_ITERJ
+31/12/2024
+493,50
+Visualizar
+11.844,00
+Dúvidas, sugestões e reclamações, se necessário, utilize o SAC ltaú 0800 728 0728, todos os dias, 24h, ou o Fale Conosco (www.itau.com.br). Se desejar a reavaliação da solução apresentada após utilizar esses canais, recorra à Ouvidoria 
+Corporativa ltaú 0800 570 0011, dias úteis, das 9 às 18h, Caixa Postal nº 67.600, CEP 03162-971. Deficientes auditivos ou de fala 0800 722 1722, disponível 24hs todos os dias. 
+Total:
+Dados da conta
+Resultado da busca
+
+li 
+Comprovante de pagamento de boleto 
+Dados da conta debitada / Pagador Final 
+Agência/conta: 1185/7 4826-4 
+Dados do pagamento 
+CPF/CNPJ: 19.088.605/0001-04 Empresa: MGS CLEAN SOLUCOES E SERVICOS 
+Identificação no meu comprovante: VT _ITERJ 
+l!l 1taú Unibanco SA
+34191 09057 66704 622936 82833 440009 6 99730000130000 
+Beneficiário: 
+RIOPAR PART SA 
+CPF/CNPJ do beneficiário: 
+Data de vencimento: 
+Razão Social: RIOPAR PART SA 
+16. 727 .386/0001-78
+26/01/2025 
+Valor do boleto (R$); 
+1.680,00 
+(-) Desconto (R$): 
+0,00 
+Pagador: 
+CPF/CNPJ do pagador: 
+MGS CLEAN SOLUCOES E SERVICOS 
+19.088.605/0001-04 
+Autenticação mecânica 
+75C397F30855A5291F9CB6A54CF0955939482801 
+(+)Mora/Multa (R$): 
+0,00 
+(=) Valor do pagamento (R$): 
+1.680,00 
+Data de pagamento: 
+27/12/2024 
+Pagamento realizado em espécie: 
+Não 
+Operação efetuada em 27/12/2024 às 21 :45:09 via Sispag, CTRL 007017353467097. 
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais 
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com 
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+
+riocardt+ 
+Requisição e Recibo de 
+1 ííEl E--i 
+Vale-Transporte Eletrônico 
+Rua da Assembléia, 10/39ª andar 
+Número do pedido: 84421128 
+Centro - Rio de Janeiro - RJ - CEP: 20011-901 
+Telefone: (21) 2127-4000 
+Data do pedido: 27/12/2024 
+CNPJ: 16.727.386/0001-78 
+Tipo do pedido: Digitação 
+Nome ou Razão Social do Comprador (Pagador) 
+CPF/CNPJ 
+MGS CLEAN SOLUCOES E SERVICOS LTDA 
+19.088.605/0001-04 
+Endereço Principal 
+Número 
+Complemento 
+AVENIDA DAS AMERICAS 
+3434 
+BLOCO 2 SALA 208 
+Bairro 
+CEP 
+Cidade 
+UF 
+Barra da Tijuca 
+22640-102 
+RIO DE JANEIRO 
+RJ 
+Para cumprimento do disposto nas Leis 7418 e 7619, solicitamos à RioCard a emissão dos vale-transporte eletrônicos totalizados abaixo. 
+Qtd. de cargas 
+Qtd. cartões a emitir 
+8 
+o 
+(-) Valor da bolsa de crédito 
+R$ 0,00 
+( =) Saldo a pagar 
+R$ 1.680,00 
+Valor das cargas 
+R$ 1.680,00 
+Tributos (inclusos na tarifa) 
+**************** 
+( +) Tarifa de Entrega 
+R$ 0,00 
+(=) Valor do documento 
+R$ 1.680,00 
+Valor da corretagem ou connssão: zero. 
+(Art. 18, § 2º, da Instrução Normativa RFB nº 1.234, de 11/01/2012) 
+----------------------------------------------------------
+Autenticação Mecânica 
+l!I Banco ltaú S.A.
+1 Vencimento 
+26/01/2025 
+Pagador 
+MGS CLEAN SOLUCOES E SERVICOS LTDA - CPF/CNPJ: 19.088.605/0001-04 
+Recibo do Pagador 
+Valor do documento 
+R$ 1.680,00 
+Beneficiário 
+RIOPAR PARTICIPAÇÕES S/A 
+Endereço Beneficiário / Sacador Avalista 
+RUA DA ASSEMBLéIA, 10/39º ANDAR - CENTRO - RIO DE JANEIRO/RJ - CEP: 20011-901 
+Agência/Cód. Beneficiário 
+I
+Nosso Número
+Nº Documento I
+CNPJ 
+2938/28334-4 
+109/00566704-6 
+2293828-6 
+16.727.386/0001-78 
+----------------------------------------------------------j 
+l!I Banco Itaú S.A. 1 341-7 1
+34191.09057 66704.622936 82833.440009 6 99730000130000 
+Local de pagamento 
+Vencimento 
+Até o vencimento, pague preferencialmente no Itaú. Após o vencimento, pague somente no Itaú. 
+26/01/2025 
+Beneficiário 
+Agência/Cód. 
+RIOPAR PARTICIPAÇÕES S/A 
+Beneficiário 
+2938/28334-4 
+Data do 
+Nº do 
+Espécie 
+Aceite 
+Data de processamento 
+Nosso Número 
+documento 
+documento 
+doe. 
+N 
+27/12/2024 
+109/00566704-6 
+27/12/2024 
+2293828-6 
+DM 
+Uso do Banco 
+Carteira 
+Espécie 
+Quantidade 
+Valor 
+Valor do Documento 
+109 
+R$ 
+R$ 1.680,00 
+Instruções (Todas as informações deste boleto são de exclusiva responsabilidade do beneficiário) 
+(-) Descontos 
+**************** 
+Sr. Caixa, não receber após a data do vencimento. 
+(-) Outras deduções 
+**************** 
+Operação sem desconto. 
+(+) Mora/multa 
+Para maiores informações ligar para (21) 2127-4000. 
+**************** 
+( +) Outros acréscimos 
+**************** 
+(=) Valor cobrado 
+**************** 
+Pagador: MGS CLEAN SOLUCOES E SERVICOS LTDA - CPF/CNPJ: 19.088.605/0001-04 
+Endereço: AVENIDA DAS AMERICAS, 3434/BLOCO 2 SALA 208 - Barra da Tijuca - RIO DE JANEIRO/RJ - CEP: 22640-102 
+Sacador/Avalista: RIOPAR PARTICIPAÇÕES S/A - CNPJ: 16.727.386/0001-78 
+Ficha de Compensação 
+Pague com + pi 
+Autenticação Mecânica
+
+27/12/2024, 11 :39 
+D 
+Q ' 
+, 
+Tudo i! nda f!'lelMor 
+Relatório de Resumo do Pedido 
+Tipo do Pedido 
+Digitação 
+Bolsa de Crédito 
+0,00 
+Quantidade de Cartões Solicitados 
+o 
+Número do Pedido 
+84421128 
+r,/alor das Cargas 
+1.680,00 
+Quantidade de Cargas 
+8 
+Identificação 
+Matrícula 
+Nome 
+237 
+ADRIANA PEREIRA BASTOS 
+656 
+ANA PAULA DE OLIVEIRA AGUIAR 
+1019 
+BARBARA PRYSCILA RAMOS 
+233 
+HELENA RIBEIRO DOS SANTOS 
+637 
+LUCAS JOSE DA SILVA MARTINS 
+255 
+MARGARETE NADER DA SILVA 
+2950 
+PAULA PEDRAZZI NUNES 
+235 
+PAULO RENATO MOREIRA 
+• Emitido em 27/12/2024, às 11: 38
+Relatório do Pedido - Impressão 
+
+ Comprador 
+MGS CLEAN SOLUCOES E SERVICOS LTDA 
+- CNPJ 19.088.605/0001-04
+Data do pedido 
+Data da liberação 
+27/12/2024 
+30/12/2024 
+rrarifa de Entrega 
+r,/alor Pago 
+0,00 
+Data de pagamento 
+Valor do Boleto 
+1.680,00 
+0,00 
+Status do Pedido 
+guardando pagamento 
+CPF 
+Numero do Cartão 
+Valor da Carga 
+068. 548. 557-99
+01.04.14728323-1 
+059.878.677-54 
+01.04.08456605-1 
+170.915.047-55 
+01.04.13674262-9 
+002.479.707-35 
+01.04.12748752-2 
+159.669.487-47 
+01.04.13524003-4 
+739.056.407-59 
+01.04.14719534-9 
+132.331.867-46 
+01.04.14775671-5 
+047. 736.607-40
+01.04.13738966-3 
+210,00 
+210,00 
+210,00 
+210,00 
+210,00 
+210,00 
+210,00 
+210,00 
+https://www.cartaoriocard.com .br/vt2/comprador/pedidos/l mpressaoPedido.do?nrPed ido=84421128 
+1/1
+
+Agência/conta: 1185 / 74826-4
+Nome da empresa:
+MGS CLEAN COMERCIO E SERVICOS
+CNPJ: 19.088.605/0001-04
+Conta: Conta em operação
+Tipo: Todos
+Período: de 27/12/2024 até 27/12/2024
+Status: Efetuados
+Nome do favorecido
+CPF/CNPJ
+Tipo de pagamento
+Referência da empresa
+Data de pagamento
+Valor do pagamento (R$)
+Status
+ANGELICA COSTA SOARES
+-
+Conta corrente
+VT_ITERJ
+27/12/2024
+210,00
+Visualizar
+CAROLINE MOREIRA DA FONSECA
+-
+Conta corrente
+VT_ITERJ
+27/12/2024
+210,00
+Visualizar
+GLEICIANE DE ALCANTARA SILVA
+-
+Conta corrente
+VT_ITERJ
+27/12/2024
+210,00
+Visualizar
+JONATHAN CAPOSSI DA SIVA LEITÃO
+-
+Conta corrente
+VT_ITERJ
+27/12/2024
+210,00
+Visualizar
+LARISSA GOMES DE SOUZA
+-
+Conta corrente
+VT_ITERJ
+27/12/2024
+210,00
+Visualizar
+MARIA LUIZA ALMEIDA GUIMARAES 
+-
+Conta corrente
+VT_ITERJ
+27/12/2024
+210,00
+Visualizar
+1.260,00
+Dúvidas, sugestões e reclamações, se necessário, utilize o SAC ltaú 0800 728 0728, todos os dias, 24h, ou o Fale Conosco (www.itau.com.br). Se desejar a reavaliação da solução apresentada após utilizar esses canais, recorra à Ouvidoria 
+Corporativa ltaú 0800 570 0011, dias úteis, das 9 às 18h, Caixa Postal nº 67.600, CEP 03162-971. Deficientes auditivos ou de fala 0800 722 1722, disponível 24hs todos os dias. 
+Dados da conta
+Resultado da busca
+Total:

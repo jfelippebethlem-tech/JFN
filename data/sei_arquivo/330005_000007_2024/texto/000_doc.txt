@@ -1,0 +1,45 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+
+Relação de Ordens Bancárias Externas
+
+Unidade Gestora - 133100 - ITERJ
+
+Banco - BANCO BRADESCO S/A Ag. - secretaria da fazenda urb.rio de janeiro rj C/C - 000000027 - ERJ TESOURO ESTADO CONTA UNICA
+Gestão: 00003
+
+2024RE00239
+Emissão: 27/12/24
+
+OB Tipo CNPJ/CPF Favorecido Banco Ag. C/C
+p2noBo! 1016; 13 60746946000112 Banco Bradesco S.a. 237 6898 BANCO 9.612,5
+2024080107 13 — 60746948000112 Banca Bradesco S.a. 237 6898 BANCO E 56:113]
+0240801018 13 — 60746948000112 Banco Bradesco S.a. 237 6898 BANCO 42.672,54
+20240801019 13  60746948000112 Banco Bradesco S.a. 237 6808 BANCO 100,00
+20240801020 13 — 60746948000112 Banco Bradesco S.a. 237 6898 BANCO 280,00
+20240B01021 13 — 60746948000112 Banco Bradesco S.a. 23 6898 BANCO 96.450,88
+2024080122 13 60746948000112 Banco Bradesco S.a. 237 6898 BANCO 6.26
+
+Total R$ 203.778,30 (duzentos e três mil e setecentos e setenta e oito reais e trinta centavos)
+Autorizo o banco a efetuar os pagamentos acima relacionadbs) excetuando as Ordens Bancárias anuladas, em destaque neste relatório, ou em documentos anexos.
+
+COMANEXO
+
+BRADESCO
+CORRESPONDÊNCIA
+
+27 DEZ qm
+
+RECEBIDA
+AG. 6898-5
+! SECRETARIA DE FAZENDA URJ
+
+on da Silva Claudino
+Presidente do ITERJ
+1D:5086525-0
+
+ção e Finany
+ID: 0568905-8 a
+
+Página 1/1

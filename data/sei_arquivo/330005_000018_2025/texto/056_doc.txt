@@ -1,0 +1,159 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Encerrado até Agosto
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2025PD00646
+16/09/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+133100 - ITERJ
+2025OB00598 - 
+16/09/25
+237 - 6898 - 0000000027 
+- CONTA ÚNICA
+Favorecido
+Domicílio Bancário 
+Destino
+00394460010880 - MINISTÉRIO DA FAZENDA
+237 - 6898 - BCO AUTENT
+Valor por Extenso
+Valor
+D e z e s s e i s  m i l  e  q u a t r o c e n t o s  e  d o i s  r e a i s  e  v i n t e  e  o i t o  c e n t a v o s
+16.402,28
+Detalhamento
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS
+Credor da Retenção
+MINISTÉRIO DA FAZENDA
+Competência
+08/2025
+Processo
+2025
+I t e n s
+Número da NE
+2025NE00370 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2025NL00325 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00370
+Credor
+19088605000104
+Valor
+5.137,56
+Número da NE
+2025NE00371 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2025NL00343 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00371
+Credor
+35208086000127
+Valor
+6.718,02
+Emitido/contabilizado por PRISCILA LOURES LEITE em 16/09/25 às 13:58.
+Impresso por WALDEMIR DAVILA PEIXOTO em 23/09/25 às 16:22.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/2
+
+Número da NE
+2025NE00377 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+759 - Recursos Vinculados a Fundos
+Fonte RJ
+150 - Recursos Vinculados a Fundos - FEHIS - Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+31954621000138 - LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS  LTDA
+Número da NL
+2025NL00330 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2025
+Número da NE
+133100.2025NE00377
+Credor
+31954621000138
+Valor
+4.546,70
+Observação
+REGISTRO DOS RECOLHIMENTOS DE INSS DAS  EMPRESAS
+Emitido/contabilizado por PRISCILA LOURES LEITE em 16/09/25 às 13:58.
+Impresso por WALDEMIR DAVILA PEIXOTO em 23/09/25 às 16:22.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/2

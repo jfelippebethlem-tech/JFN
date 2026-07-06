@@ -1,0 +1,606 @@
+{
+ "processo": "330020/000724/2022",
+ "gerado_em": "2026-07-02T05:06:22+00:00",
+ "origem": "/home/ubuntu/JFN/data/sei_cache/integra_330020_000724_2022",
+ "modalidade": "",
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/000_doc.txt",
+   "chars": 2243,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/001_doc.txt",
+   "chars": 2035,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/002_doc.txt",
+   "chars": 1901,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/003_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/004_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/005_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/006_doc.txt",
+   "chars": 18412,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/007_doc.txt",
+   "chars": 82,
+   "ocr": false,
+   "fotos": [
+    "fotos/007_p01.jpg"
+   ]
+  },
+  {
+   "i": 8,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/008_doc.txt",
+   "chars": 296,
+   "ocr": true,
+   "fotos": [
+    "fotos/008_p01.jpg"
+   ]
+  },
+  {
+   "i": 9,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/009_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/010_doc.txt",
+   "chars": 1093,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/011_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/012_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/013_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/014_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/015_doc.txt",
+   "chars": 3510,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/016_doc.txt",
+   "chars": 5759,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/017_doc.txt",
+   "chars": 33939,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/018_doc.txt",
+   "chars": 2317,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/019_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/020_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/021_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/022_doc.txt",
+   "chars": 23592,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/023_doc.txt",
+   "chars": 161,
+   "ocr": true,
+   "fotos": [
+    "fotos/023_p01.jpg"
+   ]
+  },
+  {
+   "i": 24,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/024_doc.txt",
+   "chars": 2070,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/025_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/026_doc.txt",
+   "chars": 975,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 27,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/027_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 28,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/028_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 29,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/029_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 30,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/030_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 31,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/031_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 32,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/032_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 33,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/033_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 34,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/034_doc.txt",
+   "chars": 22675,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 35,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/035_doc.txt",
+   "chars": 808,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 36,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/036_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 37,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/037_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 38,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/038_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 39,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/039_doc.txt",
+   "chars": 13697,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 40,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/040_doc.txt",
+   "chars": 939,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 41,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/041_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 42,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/042_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 43,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/043_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 44,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/044_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 45,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/045_doc.txt",
+   "chars": 1276,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 46,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/046_doc.txt",
+   "chars": 582,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 47,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/047_doc.txt",
+   "chars": 57885,
+   "ocr": false,
+   "fotos": [
+    "fotos/047_p04.jpg",
+    "fotos/047_p05.jpg"
+   ]
+  },
+  {
+   "i": 48,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/048_doc.txt",
+   "chars": 2383,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 49,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/049_doc.txt",
+   "chars": 314,
+   "ocr": true,
+   "fotos": [
+    "fotos/049_p01.jpg"
+   ]
+  },
+  {
+   "i": 50,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/050_doc.txt",
+   "chars": 741,
+   "ocr": true,
+   "fotos": [
+    "fotos/050_p01.jpg"
+   ]
+  },
+  {
+   "i": 51,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/051_doc.txt",
+   "chars": 4595,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 52,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/052_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 53,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/053_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 54,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/054_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 55,
+   "titulo": "",
+   "fase": "indefinida",
+   "tipo": "vazio",
+   "texto": "texto/055_doc.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
+ "linha_do_tempo": {
+  "planejamento": 0,
+  "selecao": 0,
+  "contratacao": 0,
+  "execucao": 0,
+  "despesa": 0,
+  "controle": 0,
+  "tramitacao": 0,
+  "indefinida": 56
+ },
+ "lacunas": [
+  {
+   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Seleção (edital, julgamento, homologação)",
+   "gravidade": "alta"
+  },
+  {
+   "falta": "Contrato/ata formalizados",
+   "gravidade": "media"
+  }
+ ],
+ "fotos_total": 7
+}

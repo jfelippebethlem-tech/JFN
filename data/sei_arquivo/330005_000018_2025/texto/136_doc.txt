@@ -1,0 +1,112 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Identificação
+Unidade Gestora
+Documento
+Emissão
+133100 - INST. DE TERRAS E CARTOGR. DO EST. RJ (CNPJ: 40.173.726/0001-40)
+2025NL00017
+06/02/25
+Valor Bruto
+Valor Líquido
+109.687,73
+99.766,61
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE00027
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+53310 - Instituto de Terras e Cartografia do Estado do Rio de Janeiro
+Programa de trabalho
+21.122. 0002. 2016 - Manut  Ativid  Operacionais / Administrativas
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2021006943007603
+Processo
+18/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da 
+Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Serviços de Terceiros - Pessoa Jurídica
+12 - SERVIÇOS DE 
+ASSEIO E HIGIENE
+194 - Reconhecimento da obrigação 
+109.687,73
+Retenção
+Classificação da Retenção
+Base de Cálculo
+Valor
+0,00
+4.656,11
+0,00
+5.265,01
+Total Retenção (-)
+9.921,12
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Nota Fiscal
+6776
+18/2025
+01/2025
+02/02/2025
+109.687,73
+Total Documentos Comprobatórios
+109.687,73
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  6776 CONFORME PROCESSO despesa com Serviço de Limpeza, Higiene, Conservação, 
+Copeiragem, Recepção e Portaria, deste ITERJ,   Contrato nº 005/2021 
+Emitido/contabilizado por PRISCILA LOURES LEITE em 06/02/25 às 13:45.
+Impresso por WALDEMIR DAVILA PEIXOTO em 06/02/25 às 14:41.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

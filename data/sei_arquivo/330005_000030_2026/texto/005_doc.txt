@@ -1,0 +1,247 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Encerrado até Fevereiro
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2026PD00288
+10/04/26
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+133100 - ITERJ
+237 - 6898 - 0000000027 
+- CONTA ÚNICA
+Favorecido
+Domicílio Bancário 
+Destino
+00394460010880 - MINISTÉRIO DA FAZENDA
+237 - 6898 - CODBARRAS
+Valor por Extenso
+Valor
+V i n t e  e  d o i s  m i l  e  t r e z e n t o s  e  q u a r e n t a  e  s e t e  r e a i s  e  d e z e s s e t e  c e n t a v o s
+22.347,17
+Detalhamento
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS
+Credor da Retenção
+MINISTÉRIO DA FAZENDA
+Competência
+03/2026
+Processo
+03/2026
+I t e n s
+Número da NE
+2026NE00080 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2026NL00084 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2026
+Número da NE
+133100.2026NE00080
+Credor
+19088605000104
+Valor
+4.752,26
+Número da NE
+2026NE00084 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2026NL00100 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2026
+Número da NE
+133100.2026NE00084
+Emitido/contabilizado por PRISCILA LOURES LEITE em 10/04/26 às 15:53.
+Impresso por WALDEMIR DAVILA PEIXOTO em 13/04/26 às 14:17.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/3
+
+Credor
+35208086000127
+Valor
+6.024,13
+Número da NE
+2026NE00084 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Número da NL
+2026NL00101 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2026
+Número da NE
+133100.2026NE00084
+Credor
+35208086000127
+Valor
+6.146,59
+Número da NE
+2026NE00085 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+00078531000105 - MTECH LOCAÇÕES E SERVIÇOS LTDA
+Número da NL
+2026NL00095 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+18 - MANUTENÇÃO E CONSERVAÇÃO DE BENS IMOVEIS E OPERAÇOES DE SISTEMA
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2026
+Número da NE
+133100.2026NE00085
+Credor
+00078531000105
+Valor
+971,63
+Número da NE
+2026NE00086 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+31954621000138 - LOCTECH LOCAÇÃO DE MÁQUINAS E EQUIPAMENTOS  LTDA
+Número da NL
+2026NL00103 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+13 - LOCAÇÃO DE VEICULOS, FRETES E CARRETOS/PEDAGIOS
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2026
+Número da NE
+133100.2026NE00086
+Credor
+31954621000138
+Valor
+4.452,56
+Emitido/contabilizado por PRISCILA LOURES LEITE em 10/04/26 às 15:53.
+Impresso por WALDEMIR DAVILA PEIXOTO em 13/04/26 às 14:17.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/3
+
+Pagamentos
+Código de Barras
+Código de Autenticação
+Valor
+85830000223-0 47170385261-7 10071626100-2 64603209337-0
+22.347,17
+Total
+22.347,17
+Observação
+retenção de INSS das empresas prestadoras de serviços, Março/2026
+Emitido/contabilizado por PRISCILA LOURES LEITE em 10/04/26 às 15:53.
+Impresso por WALDEMIR DAVILA PEIXOTO em 13/04/26 às 14:17.
+SIAFE-Rio / SEFAZ-RJ
+Página 3/3

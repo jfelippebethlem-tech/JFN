@@ -1,0 +1,120 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+160100 - SECRETARIA DE ESTADO DE DEFESA CIVIL E CORPO DE BOMBE... (CNPJ: 28.176.998
+/0001-07)
+2025NE00845
+02/10/25
+Credor
+CG3802646 - ANGLOCO LIMITED
+Valor
+5.153.940,00 (Cinco milhões e cento e cinquenta e três mil e novecentos e quarenta reais)
+Classificação
+Natureza
+449052 - Equipamentos e Material Permanente
+Unidade Orçamentária
+26670 - Fundo Estadual de Segurança Pública do Estado do Rio de Janeiro ...
+Programa de trabalho
+06.182. 0496. 5760 - Apoio a Projetos e Atividades da Defesa Civil
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+713 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Fonte RJ
+224 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Tipo de Detalhamento de Fonte
+1 - CADASTRO
+Detalhamento de Fonte
+000104 - EIXO REDUÇÃO DE MORTES VIOLENTAS INTENCIONAIS (RMVI) - 2025 (C/...
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio de Janeiro 
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+25041468 - CTT 035/2025 aquisição de viaturas do tipo AUTO BUSCA E SALVA...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2025004930000909
+Detalhamento
+Mod. Empenho
+Global
+Mod. Licitação
+09 - Pregão Eletrônico Emb. Legal
+Art1LF,10520/02.
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-
+270006/012128/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Bens Móveis -  Equipamentos e Material 
+Permanente
+29 - VEICULOS DE TRAÇÃO MECANICA A 
+CADASTRAR
+5.153.940,00
+Cronograma
+Outubro
+5.153.940,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+5.489.454,57 Pré-Empenhado
+0,00 Bloqueado
+0,00
+5.153.940,00
+335.514,57
+Observação
+AQ. DE 10 UNIDS. DE VIATURAS TIPO ABSL - SC - ATA Nº 066/2024 / CTT N° 35/2025 - 12/06/2025 Á 11/06/2026. ANO DO 
+REPASSE: 2025 EIXO: REDUÇÃO DE MORTES VIOLENTAS INTENCIONAIS (RMVI) SEI-270006/012128/2024. Local de entrega: 
+Almoxarifado Geral do CBMERJ.Sito a Av.Bartolomeu de Gusmão 850, São Cristovao, Rio de Janeiro - RJ
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+AQ. DE 10 UNIDS. DE VIATURAS TIPO ABSL - SC - ATA Nº 
+066/2024 
+2,34
+UN
+2.200.000,00
+5.153.940,00
+Descrição
+AQ. DE 10 UNIDS. DE VIATURAS TIPO ABSL - SC - ATA Nº 066/2024 / CTT N° 35/2025 - 12/06/2025 Á 11/06/2026. ANO DO 
+REPASSE: 2025 EIXO: REDUÇÃO DE MORTES VIOLENTAS INTENCIONAIS (RMVI) DETALHAMENTO DA FT: 104  
+Emitido/contabilizado por Marcio Andre Duarte da Fonseca em 02/10/25 às 
+1 5 : 4 6 .
+Impresso por Marcio Andre Duarte da Fonseca em 02/10/25 às 15:46.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

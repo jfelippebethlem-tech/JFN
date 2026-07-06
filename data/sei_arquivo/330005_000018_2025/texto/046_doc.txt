@@ -1,0 +1,93 @@
+[] (fase: indefinida · tipo: vazio)
+
+Comprovante de pagamento QR Code
+dados da conta debitada:
+nome do pagador: MGS CLEAN SOLUCOES E SERVICOS     
+CPF / CNPJ do pagador: 19.088.605/0001-04
+instituição: 341
+agência/conta: 1185 / 00748264   
+tipo de conta: Conta Corrente  
+dados do recebedor:
+nome do recebedor: CEF MATRIZ
+CPF / CNPJ do recebedor: *****305000-**
+chave: c75e4ec6-9881-4240-a 743-3672b7fe561 
+instituição: CAIXA ECONOMICA FEDERAL
+dados da transação:
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+1
+CPF / CNPJ do devedor: 19.088.605/0001-04
+          nome do devedor: MGS CLEAN SOLUCOES E SERVICOS 
+ tipo da transação: PIX QR CODE
+autenticação do comprovante: 
+C158A91C98A1C5A19C8A15A9C81A9AC81998411
+ID da transação:
+E189A198151981Y98151A87A41A998199
+controle:
+009918796519586
+Pagamento efetuado e 20/10/2025  às 12:30:05 via Sispag.
+desconto: 0,00 
+ juros: 0,00 
+multa: 0,00
+abatimento: 0,00
+data de vencimento: 20/10/2025 
+data de validade: 20/10/2025 
+valor final: 4.165,17
+valor da transação: 4.165,17 
+mensagem do recebedor:
+identificação no extrato:
+identificador do QR Code: c158a1c9a81c65a19816518461598
+valor do documento: 4.165,17
+
+CPF/CNPJ do Empregador
+Nome/Razão Social do Empregador
+Núm. de Pág.
+Identificador
+98198710623657-1
+Tag
+FGTS - 09/2025 - ITERJ 
+ Valor a recolher
+4.165,17
+GFD - Guia do FGTS Digital
+Composição do Documento
+Competência
+Quantidade
+Trabalhadores
+FGTS Mensal
+FGTS Rescisório
+Indenização
+Compensatória
+Encargos FGTS
+Total
+4.165,17
+0,00
+4.165,17
+0,00
+0,00
+09/2025
+24
+4.165,17
+0,00
+0,00
+0,00
+4.165,17
+Data de geração da Guia: 15/10/2025 às 14:11:35 - Página 1/ 1
+O detalhamento da guia pode ser consultado através do endereço https://fgtsdigital.sistema.gov.br
+PIX Copia e Cola:
+00020101021226900014br.gov.bcb.pix2568pix-qrcode.caixa.gov.br/api/v2/cobv/a24ac254ad9d4f9f8cc8d15bb0f4211152040000538877811BR5923CAIXA ECONOMICA FEDERAL6008Brasilia62070503***6304DAB0
+Payload Location:
+pix-qrcode.caixa.gov.br/api/v3/cobv/a24af254ad9d4f9f8cc8d15bb0f42112
+19.088.605 
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+1
+Total Geral:
+Total da Guia:
+4.165,17
+Não há informações de recolhimentos do Consignado
+Informações de recolhimentos do Consignado
+Observações
+.
+ Pagar este documento até
+20/10/2025
+às 21:59:59 (Brasília)

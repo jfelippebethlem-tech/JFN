@@ -1,0 +1,9 @@
+[] (fase: indefinida · tipo: vazio)
+
+tp://sei.rj.gov.br/sei/controlador_externo.php?acao=documento_conferir&id_orgao_acesso_externo=6 , informando o c&oacute;digo verificador
+84516684 e o c&oacute;digo CRC 5C78A2A2 .
+ Refer&ecirc;ncia: Processo n&ordm; SEI-270003/002373/2024
+ SEI n&ordm; 84516684
+ Pra&ccedil;a da Rep&uacute;blica, 45, - Bairro Centro, Rio de Janeiro/RJ, CEP 20211-350
+Telefone: - http://www.defesacivil.rj.gov.br/
+ Criado por 34005 , verso 4 por 34053 em 02/10/2024 16:31:04.

@@ -1,0 +1,106 @@
+[] (fase: indefinida · tipo: vazio)
+
+NAD - NOTA DE AUTORIZAÇÃO DE DESPESA
+BLOCO 1 - DADOS DE IDENTIFICAÇÃO
+Nº Contratação:
+2024008293
+NAD Nº:
+0011
+Dígito Verificador:
+60
+Data:
+04/05/2026
+Nº do Processo:
+SEI-270003/002373/2024
+BLOCO 2 - DADOS DO ÓRGÃO
+Unidade Gestora:
+166100 - FUNDO ESPECIAL DO CORPO DE BOMBEIROS
+Especificação do Evento:
+400091 - Empenho de Despesa
+Prog. de Trabalho:
+10302049626740000 - OPERACIONALIZAÇÃO DO SISTEMA DE SAÚDE INT
+PT Resumido:
+162674
+Unid. Orçamentária:
+16610 - FUNDO ESPECIAL DO CORPO DE BOMBEIROS
+Fonte de Recurso:
+2501230000000 - OUTROS RECURSOS NÃO VINCULADOS
+Modalidade:
+3390 - APLICAÇÕES DIRETAS
+Identificador de Uso:
+0 - Não destinado à contrapartida
+Área Geográfica:
+3300000 - ESTADO
+Emenda
+Parlamentar: 00000000000 - Sem Emenda Parlamentar
+Nota de
+Reserva:
+2026NR00551 - 2026NR00551
+Justificativa:
+ATENDER DEMANDA DO CBMERJ.
+BLOCO 3 - DADOS DE IDENTIFICAÇÃO DO FAVORECIDO
+Código:
+1
+1-CNPJ | 2 - CPF | 3 - Insc.Genérica | 4-UG
+Número:
+00541798000189
+Nome:
+ONCOMED CLÍNICA ONCOLÓGICA LTDA.
+Endereço:
+Rua Ministro Otávio Kelly, 157 -  - Icaraí
+Cidade:
+Niterói
+Estado:
+Rio de Janeiro
+CEP:
+24.220-300
+BLOCO 4 - DADOS PARA EMISSÃO DE EMPENHO / ANULAÇÃO / REFORÇO / ESTORNO
+Espécie: 5-Global
+Origem do Material: 1-ORIG.NAC
+Valor:
+527.947,47
+Descrição da Despesa:
+1º T.A. PRESTAÇÃO DE SERVIÇOs DE QUIMIOTERAPIA- REGIÃO METROPOLITANA DO RJ. CTT 170/2024. VIGÊNCIA: 08/10/2025 A 
+07/10/2026.                                                                                                                              
+Elemento de Despesa:
+33903900 - OUTROS SERVIÇOS DE TERCEIROS - PESSOA JURÍDI
+Sub Elemento de Despesa:
+33903975 - SERVIÇOS DE ASSISTÊNCIA A SAÚDE
+527.947,4700
+BLOCO 5 - CRONOGRAMA DE DESEMBOLSO
+Jan: 0,0000
+Fev: 0,00
+Mar: 0,0000
+Abr: 0,0000
+Mai: 527.947,4700
+Jun: 0,0000
+Jul:
+0,0000
+Ago: 0,0000
+Set: 0,0000
+Out: 0,0000
+Nov: 0,0000
+Dez: 0,0000
+BLOCO 6 - DADOS DA LICITAÇÃO  / CONTRATAÇÃO DIRETA
+Tipo:
+6 - Inexigibilidade
+Data Licitação / Contratação Direta:
+08/10/2024
+Enquadramento Legal:
+Lei nº 14.133/2021, Art. 74º, IV
+Local de Entrega:
+Conforme contrato                            
+Data da Entrega:
+03/06/2026
+Observação:
+BLOCO 7 - APROVAÇÃO
+Nome Emissor:
+ID/Matrícula Emissor:
+Data Emissão:
+Nome Aprovador:
+ALINE DE OLIVEIRA NASCIMENTO
+ID/Matrícula Aprovador:
+000613908
+Data Aprovação:
+05/05/2026
+Imprimir

@@ -1,0 +1,142 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Fevereiro
+Identificação
+Unidade Gestora
+Documento
+Emissão
+133100 - INST. DE TERRAS E CARTOGR. DO EST. RJ (CNPJ: 40.173.726/0001-40)
+2026NE00117
+31/03/26
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Valor
+111.435,93 (Cento e onze mil e quatrocentos e trinta e cinco reais e noventa e três centavos)
+Classificação
+Nota de Reserva
+2026NR00049
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+53310 - Instituto de Terras e Cartografia do Estado do Rio de Janeiro
+Programa de trabalho
+21.122. 0002. 2016 - Manut  Ativid  Operacionais / Administrativas
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2021006943009937
+Detalhamento
+Mod. 
+Empenho
+Estimativo
+Mod. Licitação
+00 - Pregão Presencial Emb. Legal
+lei 10433
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI 330020/00
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Serviços de Terceiros - Pessoa 
+Jurídica
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+111.435,93
+Cronograma
+Março
+111.435,93
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+1.853.082,53 Valor NE
+Saldo após NE
+2.258.557,94 Pré-Empenhado
+111.435,93 Bloqueado
+0,00
+111.435,93
+4.000.204,54
+Observação
+I  No uso da competência Delegada através da Portaria SEI ITERJ Nº 247 de 01/07/2021, AUTORIZO a emissão das Notas 
+de Autorização de Despesas  NAD, bem como a emissão da Nota Empenho, no valor estimado de R$ 111.435,93 (cento e 
+onze mil,  quatrocentos e trinta e cinco reais e noventa e três centavos) - em favor da empresa MGS CLEAN SOLUÇÕES E 
+SERVIÇOS LTDA, relativo a Serviço de Limpeza, Higiene, Conservação, Copeiragem, Recepção e Portaria, deste ITERJ, 
+referente ao período  FEVEREIRO/2026, conforme Termos do Contrato nº 005/2021, visando atender as necessidades deste 
+ITERJ, do orçamento em vigor.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+XXXXX
+1
+UN
+111.435,93
+111.435,93
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 31/03/26 às 19:
+4 3 .
+Impresso por IVONETE JOSE MARIA SABINO em 31/03/26 às 19:43.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/2
+
+Identificação
+Unidade Gestora
+Documento
+Emissão
+133100 - INST. DE TERRAS E CARTOGR. DO EST. RJ (CNPJ: 40.173.726/0001-40)
+2026NE00117
+31/03/26
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Valor
+111.435,93 (Cento e onze mil e quatrocentos e trinta e cinco reais e noventa e três centavos)
+Descrição
+I  No uso da competência Delegada através da Portaria SEI ITERJ Nº 247 de 01/07/2021, AUTORIZO a emissão das Notas de Autorização 
+de Despesas  NAD, bem como a emissão da Nota Empenho, no valor estimado de R$ 111.435,93 (cento e onze mil,  quatrocentos e trinta e 
+cinco reais e noventa e três centavos) - em favor da empresa MGS CLEAN SOLUÇÕES E SERVIÇOS LTDA, relativo a Serviço de Limpeza, 
+Higiene, Conservação, Copeiragem, Recepção e Portaria, deste ITERJ, referente ao período  FEVEREIRO/2026, conforme Termos do 
+Contrato nº 005/2021, visando atender as necessidades deste ITERJ, do orçamento em vigor. 
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 31/03/26 às 19:
+4 3 .
+Impresso por IVONETE JOSE MARIA SABINO em 31/03/26 às 19:43.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/2

@@ -1,0 +1,637 @@
+[Nota de Liquidação - NL Diversas] (fase: despesa · tipo: nota_liquidacao)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Novembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NL10004
+20/12/24
+Valor Bruto
+Valor Líquido
+81.018,18
+81.018,18
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2024NE09847
+Credor
+11399442000179 - Fundo Municipal De Saude De Nova Friburgo
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/001211/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+81.018,18
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2024NE0984 7
+SEI-080001/001211/24
+11/2024
+20/12/2024
+81.018,18
+Total Documentos Comprobatórios
+81.018,18
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2024NE09847 CONFORME PROCESSO Transferência de recursos referente a Contrapartida 
+Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído 
+pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios 
+citados na Resolução, competência de Outubro e Novembro/2024, conforme solicitação (89924501) (89942918). NAD 5717 - 
+Nova Friburgo
+Emitido/contabilizado por CARLA COPOLILO AMATO em 20/12/24 às 12:26.
+Impresso por CARLA COPOLILO AMATO em 20/12/24 às 12:26.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Novembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NL10006
+20/12/24
+Valor Bruto
+Valor Líquido
+65.138,24
+65.138,24
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2024NE09849
+Credor
+13807681000146 - Fundo Municipal De Saude De Queimados
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/001211/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+65.138,24
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2024NE0984 9
+SEI-080001/001211/24
+11/2024
+20/12/2024
+65.138,24
+Total Documentos Comprobatórios
+65.138,24
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2024NE09849 CONFORME PROCESSO Transferência de recursos referente a Contrapartida 
+Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído 
+pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios 
+citados na Resolução, competência de Outubro e Novembro/2024, conforme solicitação (89924501) (89942918). NAD 5717 - 
+Queimados
+Emitido/contabilizado por CARLA COPOLILO AMATO em 20/12/24 às 12:29.
+Impresso por CARLA COPOLILO AMATO em 20/12/24 às 12:29.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Novembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NL10001
+20/12/24
+Valor Bruto
+Valor Líquido
+56.270,00
+56.270,00
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2024NE09844
+Credor
+11885839000170 - Fundo Municipal De Saude De Araruama
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/001211/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+56.270,00
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2024NE0984 4
+SEI-080001/001211/24
+11/2024
+20/12/2024
+56.270,00
+Total Documentos Comprobatórios
+56.270,00
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2024NE09844 CONFORME PROCESSO Transferência de recursos referente a Contrapartida 
+Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído 
+pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios 
+citados na Resolução, competência de Outubro e Novembro/2024, conforme solicitação (89924501) (89942918). NAD 5717 - 
+Araruama
+Emitido/contabilizado por CARLA COPOLILO AMATO em 20/12/24 às 12:20.
+Impresso por CARLA COPOLILO AMATO em 20/12/24 às 12:20.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Novembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NL10003
+20/12/24
+Valor Bruto
+Valor Líquido
+104.155,18
+104.155,18
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2024NE09845
+Credor
+12133004000127 - Fundo Municipal De Saude De Mage
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/001211/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+104.155,18
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2024NE0984 5
+SEI-080001/001211/24
+11/2024
+20/12/2024
+104.155,18
+Total Documentos Comprobatórios
+104.155,18
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2024NE09845 CONFORME PROCESSO Transferência de recursos referente a Contrapartida 
+Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído 
+pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios 
+citados na Resolução, competência de Outubro e Novembro/2024, conforme solicitação (89924501) (89942918). NAD 5717 - 
+Magé
+Emitido/contabilizado por CARLA COPOLILO AMATO em 20/12/24 às 12:23.
+Impresso por CARLA COPOLILO AMATO em 20/12/24 às 12:23.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Novembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NL10007
+20/12/24
+Valor Bruto
+Valor Líquido
+461.056,58
+461.056,58
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2024NE09851
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/001211/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+461.056,58
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2024NE0985 1
+SEI-080001/001211/24
+11/2024
+20/12/2024
+461.056,58
+Total Documentos Comprobatórios
+461.056,58
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2024NE09851 CONFORME PROCESSO Transferência de recursos referente a Contrapartida 
+Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído 
+pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios 
+citados na Resolução, competência de Outubro e Novembro/2024, conforme solicitação (89924501) (89942918). NAD 5717 - 
+São Gonçalo
+Emitido/contabilizado por CARLA COPOLILO AMATO em 20/12/24 às 12:36.
+Impresso por CARLA COPOLILO AMATO em 20/12/24 às 12:36.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Novembro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES (CNPJ: 35.949.791/0001-85)
+2024NL10008
+20/12/24
+Valor Bruto
+Valor Líquido
+17.010,94
+17.010,94
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2024NE09852
+Credor
+11835031000189 - Fundo Municipal De Saude - São Fidelis
+Natureza
+334041 - Contribuições
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.303. 0508. 2714 - Assistência Farmacêutica Básica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+107 - Recursos não Vinculados de Impostos - Transferência Constitucionai...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.107)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+Não Definido
+Processo
+SEI-080001/001211/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4176 - Reconhecimento da Obrigação
+17.010,94
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Outros
+2024NE0985 2
+SEI-080001/001211/24
+11/2024
+20/12/2024
+17.010,94
+Total Documentos Comprobatórios
+17.010,94
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  2024NE09852 CONFORME PROCESSO Transferência de recursos referente a Contrapartida 
+Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído 
+pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios 
+citados na Resolução, competência de Outubro e Novembro/2024, conforme solicitação (89924501) (89942918). NAD 5717 - 
+S ã o F i d é l i s
+Emitido/contabilizado por CARLA COPOLILO AMATO em 20/12/24 às 12:38.
+Impresso por CARLA COPOLILO AMATO em 20/12/24 às 12:39.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

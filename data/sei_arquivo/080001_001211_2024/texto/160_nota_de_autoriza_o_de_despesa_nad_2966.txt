@@ -1,0 +1,8 @@
+[Nota de Autorização de Despesa - NAD 2966] (fase: despesa · tipo: autorizacao_despesa)
+
+ferir&id_orgao_acesso_externo=6 , informando o c&oacute;digo verificador 77562896 e o c&oacute;digo CRC 824DEB9A .
+ Refer&ecirc;ncia: Processo n&ordm; SEI-080001/001211/2024
+ SEI n&ordm; 77562896
+ Rua M&eacute;xico 128, - Bairro Centro, Rio de Janeiro/RJ, CEP 20031-142
+Telefone: - www.saude.rj.gov.br
+ Criado por raphael.leal , verso 4 por raphael.leal em 25/06/2024 17:17:19.

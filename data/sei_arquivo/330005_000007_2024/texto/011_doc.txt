@@ -1,0 +1,116 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Retenção
+Encerrado até Mês 14 
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2024PD01045
+04/11/24
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+133100 - ITERJ
+2024OB00843 - 
+06/11/24
+237 - 6898 - 0000000027 
+- CONTA ÚNICA
+Favorecido
+Domicílio Bancário 
+Destino
+999900 - TESOURO DO ESTADO DO RIO DE JANEIRO
+237 - 6898 - 0000000027
+Valor por Extenso
+Valor
+Cinco mil e duzentos e sessenta e cinco reais e um centavo
+5.265,01
+Tipo de Regularização
+Pagamento GRE
+Detalhamento
+Tipo de Retenção
+IRRF TERCEIROS
+Credor da Retenção
+TESOURO DO ESTADO DO RIO DE JANEIRO
+Competência
+10/2024
+Processo
+1000/2024
+I t e n s
+Número da NE
+2024NE00501 - 133100
+Identificador Exercício 
+Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2024NL00518 - 133100
+Tipo de Retenção
+IRRF TERCEIROS - 144
+Credor da Retenção
+999900 - TESOURO ESTADUAL
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+5229 - OB GRE - Pagamento da despesa empenhada e liquidada no Exercício ...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Número da NE
+133100.2024NE00501
+Credor
+19088605000104
+Valor
+5.265,01
+Pagamentos
+Tipo de Pagamento
+GRE
+UG Beneficiária
+999900
+UG Pagadora
+133100
+Código do Recolhimento
+770032
+Data Competência
+29/11/2024
+Número de Referência
+Valor Principal
+5.265,01
+Valor Juros/Encargos
+Valor Outras Deduções
+Data de vencimento da 
+GRE
+30/10/2025
+Número da GRE
+000000891671
+Data da GRE
+04/11/2024
+Código de Autenticação
+Emitido/contabilizado por PRISCILA LOURES LEITE em 04/11/24 às 22:24.
+Impresso por Daiane Pereira de Souza em 18/02/25 às 10:19.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/2
+
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  5555 CONFORME PROCESSO MLEAN SOLUÇÕES E SERVIÇOS LTDA - Serviço de Limpeza, 
+Higiene, Conservação, Copeiragem, Recepção e Portaria, deste ITERJ,   Contrato nº 005/2021 - Reajuste Contratual - 
+Repactuação - visando atender as necessidades deste ITERJ, do orçamento em vigor.
+Emitido/contabilizado por PRISCILA LOURES LEITE em 04/11/24 às 22:24.
+Impresso por Daiane Pereira de Souza em 18/02/25 às 10:19.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/2

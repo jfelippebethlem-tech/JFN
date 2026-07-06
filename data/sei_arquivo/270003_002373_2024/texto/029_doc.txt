@@ -1,0 +1,85 @@
+[] (fase: indefinida · tipo: vazio)
+
+ PES 0173/2024 
+ Requisição  Definição de Processos  Requisição de Compra
+ Requisição DE ITEM - PES 0173/2024
+ DADOS GERAIS DA REQUISIÇÃO
+GOVERNO DO ESTADO DO RIO DE JANEIRO
+Av. Erasmo Braga, 118
+Centro - RIO DE JANEIRO - Rio de Janeiro
+CEP: 20020-000
+C.N.P.J: 15.829.998/0001 09
+Observação: Credenciamento de clínica oncológica especializada
+em quimioterapia para os usuários do Sistema de Saúde do Corpo
+de Bombeiros Militar do Estado do Rio de Janeiro (CBMERJ), de
+acordo com os critérios e condições estabelecidas no Edital e Termo
+de Referência do Processo nº SEI-270060/000438/2024, com
+fundamentação legal art. 64, da Lei Federal nº 4.320/64, e no
+Decreto Estadual nº 44.857/2014
+Data: 08/10/2024
+Status: Em Processo
+Justificativa: Conforme solicitado
+Unidade Compradora:  166100 - FUNESBOM - FUNDO ESPECIAL
+DO CORPO DE BOMBEIROS
+Tipo: Menor Preço
+Contrato por Tempo de Serviço: Não
+Valor Total Previsto: R$ 6.250.000,00
+Elaborado Por: LUPERCIA BRAGA DE OLIVEIRA
+Fone/Fax: 33994093
+E-mail: dgaf.creq@gmail.com
+Arquivos Anexados: 
+ 33 SERVICO DE SAUDE - 0719 SERVICOS MEDICOS
+ Item
+Valor Unitário
+Quantidade
+ 
+ 
+1 - SERVICO MEDICO-HOSPITALAR,DESCRIÇÃO: CONTRATACAO DE
+CLINICA ONCOLOGICA ESPECIALIZADA EM QUIMIOTERAPIA
+Código do Item: 0719.001.0071 (ID - 137096)
+        R$ 6.250.000,0000
+1 UN
+ 
+        Local Entrega:  CONFORME TERMO DE REFERÊNCIA EM ARQUIVOS ANEXADOS
+        Observação:  1 UN SERVIÇO = 12 MESES
+WORKFLOW DE APROVAÇÃO
+Aprovador
+ 
+ Pendente
+ Aprovado
+ Rejeitado
+ P/Aprovação
+ 
+Data/Hora  
+ DANIEL ANGELO TAVARES DA ROCHA FILIPPO  
+08/10/2024 13:21
+ 
+OBSERVAÇÃO DA REQUISIÇÃO
+Credenciamento de clínica oncológica especializada em quimioterapia para os usuários do Sistema de Saúde do Corpo de Bombeiros Militar do 
+Estado do Rio de Janeiro (CBMERJ), de acordo com os critérios e condições estabelecidas no Edital e Termo de Referência do Processo nº SEI-
+270060/000438/2024, com fundamentação legal art. 64, da Lei Federal nº 4.320/64, e no Decreto Estadual nº 44.857/2014
+P R O C E S S O 
+Processo
+Unidade Compradora
+Dt. Criação
+Responsável
+Status
+  SEI-270003/002373/2024
+166100 - FUNESBOM -
+FUNDO ESPECIAL DO CORPO
+DE BOMBEIROS
+08/10/2024
+DANIEL ANGELO
+TAVARES DA ROCHA
+FILIPPO
+Aguardando Planejamento
+
+ Retornar
+ 
+ Imprimir
+ 
+ Fechar
+08/10/2024, 13:47
+Sistema Integrado de Gestão de Aquisição
+https://www.compras.rj.gov.br/mercatto/aplicacao/asp/seg/sistema.asp
+1/1

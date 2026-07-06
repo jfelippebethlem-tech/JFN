@@ -1,0 +1,36 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Relação de Ordens Bancárias Externas 2024RE00159
+Unidade Gestora - 133100 - ITERJ Emissão: 06/09/24
+Banco - BANCO BRADESCO S/A Ag. - secretaria da fazenda urb.rio de janeiro rj C/C - 0000000027 - ERJ TESOURO ESTADO CONTA UNICA
+
+Gestão: 00003
+
+oB Tipo CNPJ/CPF Favorecido Banco Ag. Cic Valor
+20240B00680 12 35208086000127 Mobiliza For Rent Ltda 237 01935 190268 56.523,43
+20240800681 12 | 35208086000127 Mobiliza For Rent Ltda 237 0135 190268 90.558,00
+20240B00682 12  08540992000151 DADY ILHA SOLUCOES INTEGRADAS LTDA. 237 0435 0004481879 5.626,83
+20240B00683 12 19088605000104 MGS CLEAN SOLUCOES E SERVICOS LTDA 237 1075 — B69368 99.766,61
+20240800884 42  31787637000101 ITAMED COMERCIO E ARQUITETURA LTDA 237 DBB6 242268 17.438,66
+
+Total R$ 269.913,53 (duzentos e sessenta e nove mil e novecentos e treze reais e cinquenta e três centavos)
+Autorizo o banco a efetuar os pagamentos acima relacionados, excetuando as Ordens Bancárias anuladas, em destaque neste relatório, ou em documentos anexos.
+
+SEM ANEXC
+
+09 SET 20x
+
+RECEBIDA 4
+-6898.5
+SECRETARIA DE FAZERDA gp:
+
+robson da Silva Claudino
+Presidente do ITERJ
+1D:5086525-0
+
+Waldemir D'Ávila Peixcio
+Direior de Adminisltação e Finanças
+ID: 0568905-8
+
+Página 1/1

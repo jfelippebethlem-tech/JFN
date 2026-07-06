@@ -1,0 +1,135 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Novembro 
+Identificação
+Unidade Gestora
+Número do 
+Documento
+Data de Emissão
+133100 - ITERJ
+2023NL00733
+11-12-2023
+Valor Bruto
+Valor Líquido
+53.992,87
+46.432,19
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2023NE00689
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+53310 - Instituto de Terras e Cartografia do Estado do Rio de Janeiro                   I
+Programa de trabalho
+21.631. 0459. 2710 - Regularização Fundiária de Interesse Social
+Id. uso
+0 - Não destinado à contrapartida
+Ano Fonte
+1 - Recursos do Exercício Corrente
+Fonte STN
+759 - Recursos Vinculados a Fundos
+Fonte
+150 - Fundo Estadual de Habitação de Interesse Social - FEHIS
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - SEM DETALHAMENTO
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+22000047 - Prestação de Serviços de Locação de Veículos com Motoristas.
+Programa de Financiamento 
+Externo/Interno
+0 - Indefinido
+Chave SIGA
+2021007583004345
+Processo
+SEI 330020/54/2023
+Itens
+Tipo Patrimonial
+Sub-item da Despesa
+Operação 
+Patrimonial
+Classificação 
+Complementar
+Valor
+Serviços de Terceiros - Pessoa 
+Jurídica
+13 - LOCAÇÃO DE VEICULOS, 
+FRETES E 
+CARRETOS/PEDAGIOS
+194 - 
+Reconhecimento 
+da obrigação 
+53.992,87
+Retenção
+Tipo
+Credor
+Valor
+INSS SERVIÇOS DE TERCEIROS - 17
+00394460010880 - MINISTÉRIO DA FAZENDA
+4.969,02
+IRRF TERCEIROS - 144
+999900 - TESOURO ESTADUAL
+2.591,66
+Emitente
+Usuário
+PRISCILA LOURES LEITE
+ 
+Emitido/contabilizado por PRISCILA LOURES LEITE em 11-12-2023 às 17:45.
+Impresso por IVONETE JOSE MARIA SABINO em 15-12-2023 às 16:09.
+Siafe-Rio / SEFAZ-RJ
+Página 1/2
+
+Total Retenção (-)
+7.560,68
+Documentos Fiscais
+Tipo
+Número
+Processo
+Competência
+D a t a
+Valor
+NOTA FISCAL
+7 5
+54/2023
+11/2023
+01/12/2023
+53.992,87
+Total Documentos Fiscais
+53.992,87
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  75 CONFORME PROCESSO despesa com  Contrato nº 011/2021, firmado entre o Instituto de 
+Terras e Cartografia do Estado do Rio de Janeiro - ITERJ e a empresa Mobiliza For Rent Ltda ¿ Prestação de Serviço de Locação de 
+Veículos com Motorista
+Emitente
+Usuário
+PRISCILA LOURES LEITE
+ 
+Emitido/contabilizado por PRISCILA LOURES LEITE em 11-12-2023 às 17:45.
+Impresso por IVONETE JOSE MARIA SABINO em 15-12-2023 às 16:09.
+Siafe-Rio / SEFAZ-RJ
+Página 2/2

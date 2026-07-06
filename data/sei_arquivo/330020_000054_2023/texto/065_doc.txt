@@ -1,0 +1,778 @@
+[] (fase: indefinida · tipo: vazio)
+
+01703
+MOBILIZA FOR RENT LTDA
+Empresa :
+End. :
+Ref.:
+(
+RUA REGENT FEIJO
+)
+01/08/2023
+31/08/2023
+a
+Dpto :
+Página : 00001
+Código
+Nome
+Ref.
+Sal. Contratual
+Adicionais
+Descontos
+Líquido
+INST DE TERRAS E CARTOGRAFIA DO E
+Recibo
+FOLHA DE PAGAMENTO
+40173726000140
+CNPJ/CEI:
+000020
+ADAILTON LOPES PEREIRA
+1.621,96
+006
+0000
+01/08/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+Vale despesas placa RKL-6B84 - 3/4
+125,00
+607
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+363,87
+1.258,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000016
+ALEX LIMA ABREU
+1.621,96
+002
+0000
+01/07/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+1
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+Desconto de Multa de Trânsito
+195,23
+626
+***************
+____/____/______
+1.621,96
+434,10
+1.187,86
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000012
+ALEXANDRE MACIEIRA DE MEDEIRO
+1.621,96
+014
+0000
+25/04/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+238,87
+1.383,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000021
+ANDERSON DA SILVA BELLO JUNIOR
+1.621,96
+018
+0000
+01/08/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+238,87
+1.383,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000013
+ANTONIO VIEIRA JUSTINO MATOS
+1.621,96
+015
+0000
+25/04/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+238,87
+1.383,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+
+01703
+MOBILIZA FOR RENT LTDA
+Empresa :
+End. :
+Ref.:
+(
+RUA REGENT FEIJO
+)
+01/08/2023
+31/08/2023
+a
+Dpto :
+Página : 00002
+Código
+Nome
+Ref.
+Sal. Contratual
+Adicionais
+Descontos
+Líquido
+INST DE TERRAS E CARTOGRAFIA DO E
+Recibo
+FOLHA DE PAGAMENTO
+40173726000140
+CNPJ/CEI:
+000015
+BRUNO CESARIO COUTO BARROS
+1.621,96
+001
+0000
+01/06/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+238,87
+1.383,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000009
+DANILO ROCHA DE SOUSA
+1.621,96
+013
+0000
+23/03/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+1
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+238,87
+1.383,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000042
+DIOGO MARQUES VIEIRA
+1.621,96
+042
+0000
+02/05/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+1
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Salário Família
+59,82
+001,00
+599
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.681,78
+238,87
+1.442,91
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000036
+IZEQUIAS CHAVES MARINHO MACHA
+1.621,96
+132
+0000
+02/12/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+Vale Multa Parc 1/6
+217,34
+607
+INSS Folha
+126,17
+903
+Desconto de Multa de Trânsito Parc 02/0
+216,93
+626
+***************
+____/____/______
+1.621,96
+673,14
+948,82
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+
+01703
+MOBILIZA FOR RENT LTDA
+Empresa :
+End. :
+Ref.:
+(
+RUA REGENT FEIJO
+)
+01/08/2023
+31/08/2023
+a
+Dpto :
+Página : 00003
+Código
+Nome
+Ref.
+Sal. Contratual
+Adicionais
+Descontos
+Líquido
+INST DE TERRAS E CARTOGRAFIA DO E
+Recibo
+FOLHA DE PAGAMENTO
+40173726000140
+CNPJ/CEI:
+000005
+JORGE LUIZ DE CARVALHO 
+1.621,96
+009
+0000
+21/02/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+1
+0
+Função :Motorista
+Férias de 03/07/2023 até 01/08/2023 Dia(s) 1 (007:20)
+Salário Base
+1.567,89
+212:40
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+122,39
+903
+***************
+____/____/______
+1.567,89
+235,09
+1.332,80
+Base INSS: 1.567,89  (Aliq.: 7,7921%)
+Base FGTS:  1.567,89 (Valor: 125,43)
+Base IRRF Folha:  1.039,89
+000007
+JOSE ANTONIO DA SILVA MENDES
+1.621,96
+012
+0000
+09/03/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+1
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+238,87
+1.383,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000017
+NELSON PINHEIRO DOS SANTOS
+1.621,96
+003
+0000
+12/07/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+1
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+238,87
+1.383,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000003
+NILTON DE OLIVEIRA FILHO
+1.621,96
+011
+0000
+25/02/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+1
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+238,87
+1.383,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000041
+PATRICK LUCIO DA SILVA REIS 
+1.621,96
+137
+0000
+04/05/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+238,87
+1.383,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+
+01703
+MOBILIZA FOR RENT LTDA
+Empresa :
+End. :
+Ref.:
+(
+RUA REGENT FEIJO
+)
+01/08/2023
+31/08/2023
+a
+Dpto :
+Página : 00004
+Código
+Nome
+Ref.
+Sal. Contratual
+Adicionais
+Descontos
+Líquido
+INST DE TERRAS E CARTOGRAFIA DO E
+Recibo
+FOLHA DE PAGAMENTO
+40173726000140
+CNPJ/CEI:
+000006
+PAULO GILBERTO PEREIRA DE LIMA
+1.621,96
+010
+0000
+23/02/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :Motorista
+Férias de 01/08/2023 até 30/08/2023 Dia(s) 30 (220:00)
+***************
+____/____/______
+0,00
+0,00
+0,00
+Base INSS: 0,00  (Aliq.: 0%)
+Base FGTS:  0,00 (Valor: 0,00)
+000046
+SERGIO OLIVEIRA DE AGUIAR 
+1.621,96
+046
+0000
+26/07/2023
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :MOTORISTA DE UTILITARIO
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+238,87
+1.383,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000014
+WANDERSON PAIXAO DO NASCIMEN
+1.621,96
+017
+0000
+02/05/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+1
+1
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Salário Família
+59,82
+001,00
+599
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+Pensão Alimentícia
+299,16
+920
+***************
+____/____/______
+1.681,78
+538,03
+1.143,75
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  794,80
+000029
+WILLIAN HENRIQUE COELHO CAMAR
+1.621,96
+025
+0000
+25/08/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+1
+1
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Salário Família
+59,82
+001,00
+599
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.681,78
+238,87
+1.442,91
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+000019
+WLADIMIR DOS REIS GOMES
+1.621,96
+005
+0000
+12/07/2022
+Admissão :
+Folha. :
+Livro:
+Dep IR :
+Dep SF :
+0
+0
+Função :Motorista
+Salário Base
+1.621,96
+220:00
+001
+Desc Vale Refeição
+112,70
+600
+INSS Folha
+126,17
+903
+***************
+____/____/______
+1.621,96
+238,87
+1.383,09
+Base INSS: 1.621,96  (Aliq.: 7,7788%)
+Base FGTS:  1.621,96 (Valor: 129,75)
+Base IRRF Folha:  1.093,96
+
+01703
+MOBILIZA FOR RENT LTDA
+Empresa :
+End. :
+Ref.:
+(
+RUA REGENT FEIJO
+)
+01/08/2023
+31/08/2023
+a
+Dpto :
+Página : 00005
+Código
+Nome
+Ref.
+Sal. Contratual
+Adicionais
+Descontos
+Líquido
+INST DE TERRAS E CARTOGRAFIA DO E
+Recibo
+FOLHA DE PAGAMENTO
+40173726000140
+CNPJ/CEI:
+*********************
+*********************
+Resumo da folha
+Total Geral da Folha
+( - )  Total de Descontos
+( = ) Total Líquido
+*********************
+Informações adicionais
+Total Funcionários
+Total INSS
+Total FGTS
+Total IRRF
+29.320,67
+Total Cotas Sal. Família
+5.349,54
+23.971,13
+19
+3
+2.267,28
+2.331,18
+0,00

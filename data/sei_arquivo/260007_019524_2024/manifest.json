@@ -1,0 +1,109 @@
+{
+ "processo": "260007/019524/2024",
+ "gerado_em": "2026-07-06T07:37:46+00:00",
+ "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_019524_2024",
+ "modalidade": "",
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Termo de Encerramento de Processo",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/000_termo_de_encerramento_de_processo.txt",
+   "chars": 1356,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Nota de Liquidação - NL 2024NL08087",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/002_nota_de_liquida_o_nl_2024nl08087.txt",
+   "chars": 2432,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Despacho de Solicitação de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/003_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Nota Fiscal - NF 16821",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/004_nota_fiscal_nf_16821.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": [
+    "fotos/004_p01.jpg"
+   ]
+  },
+  {
+   "i": 5,
+   "titulo": "Nota de Empenho Reforço - NE 2024NE06874",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/005_nota_de_empenho_refor_o_ne_2024ne06874.txt",
+   "chars": 2466,
+   "ocr": true,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Nota de Empenho Original - NE 2024NE00966",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/006_nota_de_empenho_original_ne_2024ne00966.txt",
+   "chars": 2371,
+   "ocr": true,
+   "fotos": []
+  }
+ ],
+ "linha_do_tempo": {
+  "planejamento": 0,
+  "selecao": 0,
+  "contratacao": 0,
+  "execucao": 0,
+  "despesa": 6,
+  "controle": 0,
+  "tramitacao": 1,
+  "indefinida": 0
+ },
+ "lacunas": [
+  {
+   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Seleção (edital, julgamento, homologação)",
+   "gravidade": "alta"
+  },
+  {
+   "falta": "Contrato/ata formalizados",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
+  }
+ ],
+ "fotos_total": 1
+}

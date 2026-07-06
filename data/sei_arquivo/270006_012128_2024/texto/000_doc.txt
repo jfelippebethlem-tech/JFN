@@ -1,0 +1,187 @@
+[] (fase: indefinida · tipo: vazio)
+
+Notification (Information) of Original sent to SWIFT (ACK)
+       Priority/Delivery        : Normal
+       Message Input Reference  : 1930 251002BRASBRRJBSBO5202330124
+     --------------------------- Message Header -------------------------
+       Swift Input  : FIN 700 Issue of a Documentary Credit
+       Sender   : BRASBRRJSBO
+                  BANCO DO BRASIL S.A.
+                  (GECEX SAO PAULO I)
+                  SAO PAULO BR
+       Receiver : BARCGB22XXX
+                  BARCLAYS BANK PLC
+                  (ALL U.K. OFFICES)
+                  LONDON GB
+       MUR : CART/ IMPO
+     --------------------------- Message Text ---------------------------
+        27: Sequence of Total
+            1/1
+       40A: Form of Documentary Credit
+            IRREVOCABLE
+        20: Documentary Credit Number
+            07141763630
+       31C: Date of Issue
+            251002
+       40E: Applicable Rules
+            UCPURR LATEST VERSION
+       31D: Date and Place of Expiry
+            260927ENGLAND UK
+        50: Applicant
+            SECRETARIA DE ESTADO DE DEFESA
+            CIVIL - SEDEC/RJ
+            CNPJ: 28.176.998/0001-07
+            ADDRESS: SEE FIELD 47A
+        59: Beneficiary - Name & Address
+            ANGLOCO LIMITED
+            STATION ROAD, BATLEY, WEST
+            YORKSHIRE, ENGLAND WF17 5TA
+       32B: Currency Code, Amount
+            Currency       : EUR (EURO)
+            Amount         :             #3.490.124,59#
+       41A: Available With...By... - FI BIC
+            BARCGB22
+            BARCLAYS BANK PLC
+            (ALL U.K. OFFICES)
+            LONDON  GB
+            BY PAYMENT
+       43P: Partial Shipments
+            ALLOWED
+       43T: Transhipment
+            ALLOWED
+       44E: Port of Loading/Airport of Dep.
+            ENGLAND UK PORT
+       44F: Port of Discharge/Airport of Dest
+            RIO DE JANEIRO PORT, BRAZIL
+       44C: Latest Date of Shipment
+            260906
+       45A: Description of Goods and/or Services
+            NCM 8705.30.00
+            .
+            LIGHT AUTO SEARCH AND LIGHT RESCUE (ABSL) VEHICLE.
+            .
+            AS PER PROFORMA INVOICE NUMBER PI10001 DATED 250731.
+            .
+            INCOTERM DAP.
+       46A: Documents Required
+            + ONE COPY OF CLEAN ON BOARD OCEAN BILL OF LADING, ISSUED TO
+            THE ORDER OF APPLICANT, MARKED FREIGHT PAID AND FREIGHT
+            AMOUNT, THE NUMBER OF THIS CREDIT, NOTIFY APPLICANT.
+            .
+            + COMMERCIAL INVOICE IN FOUR COPIES, SHOWING:
+            . DESCRIPTION OF GOODS;
+            . A DECLARATION THAT GOODS, QUANTITIES AND UNITARY PRICES ARE
+            IN ACCORDANCE WITH THE PROFORMA INVOICE MENTIONED HEREIN;
+            . INCOTERM DAP.
+            .
+            + PACKING LIST IN ONE ORIGINAL PLUS ONE COPY.
+            .
+            + INSURANCE CERTIFICATE IN ONE COPY.
+            .
+            + BENEFICIARY'S DECLARATION THAT ORIGINALS AND COPY OF REQUIRED
+            DOCUMENTS WERE REMITTED TO FREIGHT FOWARDER MAURY PEREIRA
+            GUILHERME - ADDRESS AVENIDA REPUBLICA DO LIBANO, 2341, SALA 310,
+            SETOR OESTE, 74115-030 GOIANIA, GO, BRASIL.
+       47A: Additional Conditions
+            CONT OF FIELD 50:
+            ADDRESS: PRACA DA REPUBLICA, 45, CENTRO, RIO DE JANEIRO, RJ,
+Popup de Impressão
+https://intranet10.bb.com.br/gdc/APPS/jsp/popupImprimir.jsp
+1 of 3
+03/10/2025, 14:03
+
+BRASIL - CEP 20.211-350
+            .
+            + A HANDLING CHARGE OF USD 50,00 (EQUIV EUR) WILL BE DEDUCTED
+            FROM THE PROCEEDS OF EACH PRESENTATION OF DISCREPANT DOCUMENTS.
+            THE DISCREPANCY HAS TO BE REFERRED TO THE APPLICANT FOR
+            ACCEPTANCE. NOTWITHSTANDING ANY INSTRUCTIONS ON THE CONTRARY,
+            THIS CHARGE SHALL BE FOR THE ACCOUNT OF THE BENEFICIARY.
+            .
+            + IF THE DOCUMENTS HAVE BEEN LOST IN TRANSIT, THE PAYMENT WILL
+            BE EFFECTED ONLY AGAINST PRESENTATION OF A NEW SET OF DOCUMENTS.
+            .
+            + NEGOTIATION OF DOCUMENTS IS RESTRICTED TO THE BANK INDICATED
+            IN FIELD 41A OF THIS L/C.
+            .
+            + IF PARTIAL SHIPMENTS ARE EFFECTED, BENEFICIARY MUST PRESENT A
+            STATEMENT THAT THE BALANCE WILL OR WILL NOT BE UTILIZED. IN THE
+            LATER CASE, THE CANCELLED AMOUNT MUST BE ENDORSED ON THE REVERSE
+            OF THE ORIGINAL OF THIS CREDIT.
+            .
+            + UPON PRESENTATION OF DOCUMENTS IN COMPLIANCE WITH THE TERMS OF
+            THIS CREDIT, PLEASE SEND A SWIFT ADVICE TO BANCO DO BRASIL S.A.,
+            GECEX SAO PAULO, THROUGH BRASBRRJSBO, INFORMING SHIPMENT DATE
+            AND NUMBER OF THE SHIPPING DOCUMENT, AMOUNT OF SHIPPED GOODS AS
+            WELL AS FEES CHARGED, IF ANY, INVOICE NUMBER, AND CONFIRMING
+            DOCUMENTS IN GOOD ORDER.
+            .
+            + PROVIDED THAT ALL TERMS AND CONDITIONS OF THIS CREDIT ARE
+            COMPLIED WITH, WE WILL AUTHORIZE YOU TO CLAIM REIMBURSEMENT TO
+            BRASDEFF (EUR) FIVE BANKING DAYS AFTER RECEIPT OF DOCUMENTS AT
+            OUR COUNTERS.
+            .
+            + REIMBURSEMENTS UNDER THIS CREDIT ARE SUBJECT TO THE UNIFORM
+            RULES ICC PUBLICATION NR. 725.
+            .
+            + THIS CREDIT IS ISSUED SUBJECT TO THE UNIFORM CUSTOMS AND
+            PRACTICES FOR DOCUMENTARY CREDITS (ICC PUBLICATION NR. 600).
+            .
+            + PAYMENT CONDITIONS: AFTER RECEIPT OF DOCUMENTS, IN OUR
+            COUNTERS, IN COMPLIANCE WITH THE TERMS OF THIS CREDIT AND
+            AFTER PRESENTATION OF 'TERMO DE ACEITE E RECEBIMENTO
+            DEFINITIVO DA MERCADORIA' (TERM OF ACCEPTANCE AND DEFINITIVE
+            RECEIPT OF THE GOODS) ISSUED BY APPLICANT WE WILL AUTHORIZE YOU
+            TO CLAIM REIMBURSEMENT TO BRASDEFF ON THE 5TH BRAZILIAN WORKING
+            DAY.
+            .
+            + TERMO DE ACEITE E RECEBIMENTO DEFINITIVO DA MERCADORIA' (TERM
+            OF ACCEPTANCE AND DEFINITIVE RECEIPT OF THE GOODS) ISSUED BY
+            APPLICANT.
+            .
+            + AS AGREED BETWEEN THE APPLICANT AND THE BENEFICIARY, ALL OUR
+            CHARGES FOR THIS LC WILL BE PAID BY THE BENEFICIARY. THEREFORE,
+            PLEASE CREDIT OUR ACCOUNT AT BANCO DO BRASIL SA - FRANKFURT BR.
+            (SWIFT CODE:BRASDEFF) WITH THE AMOUNT OF EUR 31.431,12 UNDER
+            REF. 07141763630, UPON NOTIFICATION TO US IMMEDIATELY AFTER THE
+            ISSUANCE OF THIS LETTER OF CREDIT.
+            .
+            + IN THE EVENT OF NON-PAYMENT, WE RESERVE THE RIGHT TO DEDUCT
+            THE EXPENSES FROM THE AMOUNT TO BE SENT TO THE EXPORTER,
+            INCLUDING INTEREST FOR THE PERIOD THEY REMAIN OPEN.
+       49G: Special Payment Conditions for Beneficiary
+            THE VALUE OF THE LETTER WILL BE BRL 22,000,000.00, CONVERTED
+            INTO EURO AT THE TIME OF CONTRACTING THE PREVIOUS EXCHANGE RATE.
+       71D: Charges
+            ALL BANKING CHARGES ARE FOR THE
+            BENEFICIARY'S ACCOUNT.
+        48: Period for Presentation in Days
+            21/DAYS AFTER SHIPMENT DATE
+        49: Confirmation Instructions
+            WITHOUT
+       53A: Reimbursing Bank - FI BIC
+            BRASDEFF
+            BANCO DO BRASIL S.A. FRANKFURT BRANCH
+            FRANKFURT AM MAIN  DE
+        78: Instr to Payg/Accptg/Negotg Bank
+            SEND THE DOCUMENTS BY SPECIAL COURIER IN TWO CONSECUTIVE MAILS
+            TO: BANCO DO BRASIL SA - CENTRO EMPRESARIAL SAO PAULO/CENESP -
+            GECEX SP AV. MARIA COELHO AGUIAR, 215 - BLOCO B - SETIMO ANDAR -
+            JARDIM SAO LUIS, SAO PAULO - SP, CEP 05805-000.
+            .
+            GDC: 20250813000001112.
+       72Z: Sender to Receiver Information
+            PLEASE ACKNOWLEDGE RECEIPT AND
+            INFORM US ADVICE DATE BY SWIFT.
+     --------------------------- Message Trailer ------------------------
+       {CHK:1F91FB4A18BB}
+Popup de Impressão
+https://intranet10.bb.com.br/gdc/APPS/jsp/popupImprimir.jsp
+2 of 3
+03/10/2025, 14:03
+
+PKI Signature: MAC-Equivalent
+Popup de Impressão
+https://intranet10.bb.com.br/gdc/APPS/jsp/popupImprimir.jsp
+3 of 3
+03/10/2025, 14:03

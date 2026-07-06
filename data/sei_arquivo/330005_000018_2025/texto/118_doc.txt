@@ -1,0 +1,180 @@
+[] (fase: indefinida · tipo: vazio)
+
+EGTS Detalhe da Guia a Ser Emitida
+
+Digital
+Empregador: 19.088.605 Nome Empregador: MGS CLEAN SOLUCOES E SERVICOS LTDA Qtd. Trabalhadores FGTS: 24 Origem: Gestão de Guias
+Vencimento da Guia: 20/03/2025 Total Parcelado: 0,00 Total da Guia (FGTS): 3.874,84
+Número da Guia: 19815661965478-3 Data Emissão: 17/03/2025 14:43:45 (Brasília) Emitida por: 19.088.605/0001-04 - MGS CLEAN
+Relação de Trabalhadores
+Estabelecimento:  19.088.605/0001-04 Tomador:  40.173.726/0001-40 ,
+Comp. Comp. " Nome Trabalhador Matrícula CPF Categoria Vencimento Tipo Depósito Remunerado Valor FGTS Juros Atualiz. Muita Total
+Apuração Referência Total na Guia Monetária
+02/2025 ADRIANA PEREIRA BASTOS 000632 06854855799 101 20/03/2025 Mensal 1.610,00 128,80 0,00 0,00 0,00 128,80 |
+[02/2025 ANA PAULA DE OLIVEIRA AGUIAR * 000986 1 05987867754 1017 20/03/2025” Mensal” TT 1.610,00) 128,80 0,00 0,00” 0,00) 128,80
+02/2025 ANGELICA COSTA SOARES 003000 21370573790 101. 20/03/2025 Mensal 1.709,63 136,77 09,00 0,00 0,00 136,77 |
+[02/2025 BARBARA PRYSCILA RAMOS * 001391 1.17091504755 101 20/03/2025 Mensal” J[ 1.610,00 128,80 0,00 0,00 0,00 128,80
+02/2025 CAROLINE MOREIRA DA FONSECA 001862 15822417752 101 20/03/2025 Mensal 1.709,63 136,77 0,00 0,00 0,00 138,77]
+[02/2025 DAIENE DE JESUS FLORENCIO 7 003556 /15925914775 101. 20/03/2025 Mensal T[ 2.010,63 160,85 0,00 0,00 0,00 160,85
+02/2025 DEBORA TOLEDO RAMOS 000633 12871967725 101. 20/03/2025 Mensal 4.109,88 328,79 0,00 0,00. 0,00 328,79
+[02/2025 FERNANDO DA SILVA * 000840 ) 59756691700 101) 20/03/2025 Mensal” J[ 1.783,88 142,71 0,00 0,00 0,00 142,71
+02/2025 GIOVANNA MENDONÇA DE CARVALHO 001372 21007473711 101 20/03/2025 Mensal 178388 142,71 0,00 000 0,00 142,71
+[02/2025 GLEICIANE DE ALCANTARA SILVA 000012 7] 06225746552 101) 20/03/2025] Mensal) J[ 1.610,00 128,80 09,00 0,00 0,00 128,80
+02/2025 HELENA RIBEIRO DOS SANTOS 000629 00247970735 101 20/03/2025 Mensal 1.610,00 128,80 0,00 0,00 0,00 128,80]
+[02/2025 JONATHAN CAPOSSI DA SILVA LEITAO T 001864 7/12064209794 101. 20/03/2025 Mensal. J[ 1.610,00. 128,80 0,00 0,00 0,00 128,80
+02/2025 JORGE GOMES DE BARCELOS 002565 61715891791 101 20/03/2025 Mensal 2.010,63 160,85 9,00 000 0,00 160,85]
+[02/2025 LARISSA GOMES DE SOUZA 1 001410 1 45882217873 101. 20/03/2025 Mensal J[ 1.610,00 128,80 0,00 0,00 0,00 128,80
+02/2025 LAVINIA EMANUELLE SOUZA DE LIMA 002656 21066374708 101. 20/03/2025 Mensal 4.109,88 328,79 0,00 0,00 0,00 328,79
+[02/2025 LUCAS JOSE DA SILVA MARTINS 000962 7 15966948747 101. 20/03/2025 Mensal JU 1.709,63 136,77 0,00 0,00 0,00 136,77
+02/2025 MARGARETE NADER DA SILVA 000635 73905640759 101 20/03/2025 Mensal 1.610,00 128,80 09,00 0,00 0,00 12880 |
+[02/2025 MARIA EDUARDA PIMENTEL LIAL * 001676 7,15546657790 101) 20/03/2025 Mensal) TT 1.610,00) 128,80 0,00 0,00" 0,00 128,80
+02/2025 MARIA LUIZA ALMEIDA GUIMARAES 003107 17894829765 101 20/03/2025 Mensal 1.783,88 142,71 0,00 0,00 0,00 142,71 |
+[02/2025 MICAELA DE MELO LIMA 1 002244 /15258168700 101. 20/03/2025 Mensal JU 4.109,88 328,79 0,00 0,00 0,00 328,79
+02/2025 NATHALIA DAS NEVES SANT ANA 004710 15771788740 101 20/03/2025 Mensal 1.709,63 136,77 0,00 0,00 0,00 136,77
+[02/2025 PAMELA CABRAL BARBOSA 7 001604 )/12671936702 101) 20/03/2025 Mensal. J[ 1.783,88. 142,71 0,00 0,00 0,00 142,71
+02/2025 PAULA PEDRAZZI NUNES 002614 13233186746 101. 20/03/2025 Mensal 1.610,00 128,80 9,00 0,00 0,00 128,80
+T 02/2025 PAULO RENATO MOREIRA ” 000631 “04773660740 101 20/03/2025 Mensal "2.010,63 160,85 0,00 0,00 0,00 160,85
+Totat do Tomador 40.173.726/0001-40 48.435,50 3.874,84 0,00 0,00 0,00 3.874,84
+Total do Estabelecimento 19.088.605/0001-04 48.435,50 3.874,84 0,00 0,00 0,00 3.874,84
+
+Total da Guia 48.435,50 3.874,84 0,00 0,00 0,00 3.874,84
+
+Todos os valores exibidos estão expressos em reais (R$) Relatório Emitido em; 17/03/2025 14:43:45 (Brasília). Página 1 de 5
+
+EGTS Detalhe da Guia a Ser Em
+
+Digital
+Empregador: 19.088.605 Nome Empregador: MGS CLEAN SOLUCOES E SERVICOS LTDA Qtd. Trabalhadores FGTS: 24 Origem: Gestão de Guias
+Vencimento da G 20/03/2025 Total Parcelado: 0,00 Total da Guia (FGTS) 3.874,84
+Número da Gui 19815661965478-3 17/03/2025 14:43:45 (Brasília) Emitida por: 19.088.605/0001-04 - MGS CLEAN
+Relação de Categorias
+Estabelecimento: 19.088.605/0001-04
+[ Comp. Apuração Categoria Qtd. Trabalhadores Base Remiineração FGTS Mensat na Guia FGTS Rescioóro na” | nd Compeneatéria Juros Atualiz Monetária Multa Total
+02/2025 101 24 48.435,50 3.874,84 0,00 0,00 0,00 0,00 0,00 3.874,84
+Total da Guia 48.435,50 3.874,84 0,00 0,00 0,00 0,00 0,00 3.874,84
+
+Descrição das categorias:
+
+404 - Empregado - Geral, inctusive o empregado público da administração direta ou Indireta contratado pela CLT
+102- Empregado - Trabalhador rural por pequeno prazo da Lei 41.718/2008
+103. Empregado - Aprendiz
+104 - Empragado - Doméstico
+405 « Empragada » Contrato a tarmo firmada nos termos da Lal 9,6011998
+196 - Trabalhador temporário » Contrato nos termos da Lel 6019/1974
+487 - Empregado - Contrato de trahatho Verso e Amarela - Gem acorcio para antecipação mensal da multa rescisória do FGTS
+108 - Empregado - Contrate de trabalho Verdo o Amarelo - com acordo para antecipação mensal da multa rescisória do FGTS
+41 - Empregado - Contrnto de trabalho intermitenta
+201 - Trabalhador avulso portuário
+202- Trabalhador avuleo não portuário
+309 - Bevidor público titular de cargo efetivo, magistrado, ministro da Tribunal da Contas, conselheiro de Tribunal de Contas a membro do Ministério Público
+382. Servidor pública ocupanto da carga exclusivo em comissão
+393 - Exercente de mandato eletivo
+34 - Servidor público argo em comissão.
+ô h de representante do governo,
+to a ragimo administrativo especial definido om
+
+jão ou ontidado da administração pública
+Própria
+
+309- Agente púbíica - Outros
+310 Servidor público eventual
+341 = Ministro, Juss, procuradores, promotores ou olias de Justiça à disposição da Justiça Eleitoral
+
+401 - Dirigente Sindical - informação prestada polo sindicato
+
+410 - Trabalhador cadidoiexarcício em outro drgâo(juiz auxiliar - Informação prastata palo cossionárioidestino
+
+TOA - Contribulnta Individual - Autônomo em garal, exceto sa enquadrado em una das damais categorias de contribuinte Inclividual
+744 » Contribuinte individual » Transportador autônoma de passageiros
+
+742 - Contribuinte Indlvidual Transportador autênomo de carga
+
+mpresário, sócio e membro de conselho de administração ou fiscal
+perado qua presta serviços por Intermédio da cooperativa de trabalho
+
+portador cooperado qua presta sarviços por intermédio de cooperativa dis trabalho
+
+prado fillado a caoparativa ea produção
+
+Individual » Microompreondodor individual
+
+754 - Contribuinte Individual = Magistrado claselsta temporário da Justiça do Trabalho ou da Justiça Eleitoral que seja aposentada de qualquer regime previdenciário
+
+764 - Contribuinte individual - Associado eleito para direção de cooperativa, associação ou entisiade de classe de qualquer natureza ou finalidade, bem como o síndico ou administrador eleito para exercer atividade de direção condominial, desde que recebam remuneração
+
+771 - Gontribuinto individual - Membro de conselho tutelar, nos termos da Lei 8.089/1990.
+781 - Ministro da confissão rolíglosa ou membro da vida consagrado, da congregação ou da ordem religiosa
+B04- Estagiário.
+
+902 - Médico residlante
+903- Bolsista, nos termos da Lel 8.958/1994
+
+904 « Partlolpante de curso dle formação, como etapa de concurso público, sem vinculo de empregofastatutário
+905 Aficta não profissional em formação que receba bolsa
+
+Todos os valores exibidos estão expressos em reais (R$) Relatório Emitido em: 17/03/2025 14:43:45. Página 2 de 5
+
+G EGTS Detalhe da Guia a Ser Emitida
+
+Digital
+MGS CLEAN SOLUCOES E SERVICOS LTDA Qtd. Trabalhadores FGTS: 24 Origem: Gestão de Guias
+
+Empregador: 19.088.605 Nome Empregador:
+Total Parcelado: 0,00 Total da Guia (FGTS): 3.874,84
+
+Vencimento da Guia: 20/03/2025
+
+Número da Guia: 19815661965478-3 Data Emissão; 17/03/2025 14:43:45 (Brasília) Emitida por: 19.088.605/0001-04 - MGS CLEAN
+
+Relação de Tomadores de Serviço
+
+Tomador: 40.173.726/0001-40
+- FGTS Rescisóricii ——
+Comp. Apuração Qtd, Trabalhadores Base Remuneração Total FGTS Mensal na Guia Guia Ind, Compensatória na Guia Juros Atualiz. Monetária Multa Total
+TTIITITT]WJ TE
+0,00 0,00 0,00 0,00 0,00 3.874,84
+
+02/2025 24 48.435,50 3.874,84
+
+Total do Tomador 40.173.726/0001-40 48.435,50 3.874,84 0,00 0,00 0,00 0,00 0,00 3.874,84
+
+Todos os valores exibidos estão expressos em reais (R$) Relatório Emitido em: 17/03/2025 14:43:45 (Brasília). Página 3 de 5
+
+Detalhe da Guia a Ser Emitida
+
+GQ ros
+
+Digital
+Qtd. Trabalhadores FGTS: 24 Origem: Gestão de Guias
+
+Empregador: 19.088.605 Nome Empregador: | MGS CLEAN SOLUCOES E SERVICOS LTDA
+Vencimento da Guia: 20/03/2025 Total Parcelado: 0,00 Total da Guia (FGTS): 3.874,84
+Número da Guia; 19815661965478-3 Data Emissão; 17/03/2025 14:43:45 (Brasília) Emitida por: 19.088.605/0001-04 - MGS CLEAN
+Relação de Tipos de Valor
+Estabeleciment; 19.088.605/0001-04 º o -
+Comp Apuração Caiegoria CMI Irado Bei Reminerção Eua Of STS Reseissné rá — te: Component Mt 89
+02/2025 101 24 48.435,50 3.874,84 0,00 0,00 0,00 0,00 0,00 3.874,84
+Total da Guia 48.435,50 3.874,84 0,00 0,00 0,00 0,00 0,00 3.874,84
+Retatório Emitido em: 17/03/2025 14:43:45. Página 4 de 5
+
+Todos os valores exibidos estão expressos em reais (R$)
+
+G EGTS Detalhe da Guia a Ser Emitida
+
+Digital
+
+Empregador: 19.088.605 Nome Empregador: — MGS CLEAN SOLUCOES E SERVICOS LTDA Qtd. Trabalhadores FGTS: | 24 Origem: Gestão de Guias
+
+Vencimento da Guia: 20/03/2025 Total Parcelado: 0,00 Total da Guia (FGTS): 3.874,84
+
+Número da Guia: 19815661965478-3 Data Emissão; 17/03/2025 14:43:45 (Brasília) Emitida por: 19.088.605/0001-04 - MGS CLEAN
+
+Relação de Estabelecimentos
+
+Estabelecimento: 19.088.605/0001-04
+pidado = pum | - e m— e,
+em, Tipo deva rare “ts Reúnoração FGTS imenaa TT FGTS Rosani "tn Compensa os att Ta Ta
+02/2025 11- FGTS mensal 24 48.435,50 3.874,84 0,00 0,00 0,00 0,00 0,00 3.874,84
+Total da Guia 48.435,50 3.874,84 0,00 0,00 0,00 0,00 0,00 3.874,84
+
+Todos os valores exibidos estão expressos em reais (R$) Retatório Emitido em: 17/03/2025 14:43:45. Página 5 de 5

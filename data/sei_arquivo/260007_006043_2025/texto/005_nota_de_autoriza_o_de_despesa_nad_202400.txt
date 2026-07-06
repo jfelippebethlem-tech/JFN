@@ -1,0 +1,116 @@
+[Nota de Autorização de Despesa - NAD 2024009485 0017 AIR_LIQUIDE 007_3790_2] (fase: despesa · tipo: autorizacao_despesa)
+
+NAD - NOTA DE AUTORIZAÇÃO DE DESPESA
+BLOCO 1 - DADOS DE IDENTIFICAÇÃO
+Nº Contratação:
+2024009485
+NAD Nº:
+0017
+Dígito Verificador:
+00
+Data:
+24/06/2025
+Nº do Processo:
+SEI-260007/003790/2024
+BLOCO 2 - DADOS DO ÓRGÃO
+Unidade Gestora:
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO
+Especificação do Evento:
+400092 - Reforço de Empenho
+Empenho Original:
+01048     
+Prog. de Trabalho:
+10302050848660000 - APOIO A HUPE E PPC/UERJ PARA A REALIZAÇÃO D
+PT Resumido:
+294866
+Unid. Orçamentária:
+29610 - FUNDO ESTADUAL DE SAÚDE
+Fonte de Recurso:
+1600225000000 - TRANSFERÊNCIAS FUNDO A FUNDO DE RECURSOS DO
+Modalidade:
+3390 - APLICAÇÕES DIRETAS
+Identificador de Uso:
+0 - Não destinado à contrapartida
+Área Geográfica:
+3300000 - ESTADO
+Emenda
+Parlamentar: 00000000000 - Sem Emenda Parlamentar
+Justificativa:
+alteração de ptres
+BLOCO 3 - DADOS DE IDENTIFICAÇÃO DO FAVORECIDO
+Código:
+1
+1-CNPJ | 2 - CPF | 3 - Insc.Genérica | 4-UG
+Número:
+00331788000623
+Nome:
+AIR LIQUIDE BRASIL LTDA (FILIAL)
+Endereço:
+ESTRADA DA BOA ESPERANÇA, 650 -  -
+Cidade:
+BELFORD  ROXO
+Estado:
+Rio de Janeiro
+CEP:
+26.110-100
+BLOCO 4 - DADOS PARA EMISSÃO DE EMPENHO / ANULAÇÃO / REFORÇO / ESTORNO
+Espécie: 3-Estimativo
+Origem do Material:
+1-ORIG.NAC
+Valor:
+29.415,25
+Descrição da Despesa:
+Gases medicinais, PE 341/24, 5ª PARCELA, UGR 722110 (7000), Ct. SIAFE 24038347.                                                                                                                              
+Elemento de Despesa:
+33903000 - MATERIAL DE CONSUMO
+Sub Elemento de Despesa:
+33903028 - MATERIAL QUÍMICO
+29.415,2500
+BLOCO 5 - CRONOGRAMA DE DESEMBOLSO
+Jan:
+0,0000
+Fev:
+0,00
+Mar:
+0,0000
+Abr:
+0,0000
+Mai:
+0,0000
+Jun:
+29.415,2500
+Jul:
+0,0000
+Ago:
+0,0000
+Set:
+0,0000
+Out:
+0,0000
+Nov:
+0,0000
+Dez:
+0,0000
+BLOCO 6 - DADOS DA LICITAÇÃO  / CONTRATAÇÃO DIRETA
+Tipo:
+9 - Pregão Eletrônico
+Data Licitação / Contratação Direta:
+13/11/2024
+Enquadramento Legal:
+Inciso XXI do art. 37 da CF/ Art. 2º da Lei 14.133/21.
+Local de Entrega:
+PPC                                         
+Data da Entrega:
+24/06/2025
+Observação:
+BLOCO 7 - APROVAÇÃO
+Nome Emissor:
+ID/Matrícula Emissor:
+Data Emissão:
+Nome Aprovador:
+Flávio Antônio de Sá Ribeiro
+ID/Matrícula Aprovador:
+00446675-7
+Data Aprovação:
+24/06/2025
+Imprimir

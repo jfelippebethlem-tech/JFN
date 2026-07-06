@@ -1,0 +1,92 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Março 
+Identificação
+UG Liquidante
+Documento
+Emissão
+133100 - ITERJ
+2025PD00287
+09/05/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário 
+Origem
+133100 - ITERJ
+237 - 6898 - 0000000027 
+- CONTA ÚNICA
+Favorecido
+Domicílio Bancário 
+Destino
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+237 - 1075 - 869368
+Valor por Extenso
+Valor
+Noventa e nove mil e setecentos e sessenta e seis reais e sessenta e dois centavos
+99.766,62
+Detalhamento
+Nota Liquidação
+2025NL00149
+Tipo de Despesa
+Nota de Empenho
+2025NE00177
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+759 - Recursos Vinculados a Fundos
+Fonte RJ
+150 - Recursos Vinculados a Fundos - FEHIS - Tesouro
+Detalhamento de Fonte
+000000 - Sem detalhamento - (759.150)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Domicílio Bancário Destino
+237 - 1075 - 869368
+Competência
+04/2025
+Processo
+SEI-330005/000018/2025
+I t e n s
+T i p o  
+Patrimonial
+Sub-item da 
+Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Serviços de 
+Terceiros - Pessoa 
+Jurídica
+12 - SERVIÇOS 
+DE ASSEIO E 
+HIGIENE
+3722 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício Atual 
+Consumindo Limite de Saque
+86 - FORNECEDORES
+99.766,62
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  8241 CONFORME PROCESSO despesa relativo a Serviço de Limpeza, Higiene, 
+Conservação, Copeiragem, Recepção e Portaria, deste ITERJ, referente ao período ABRIL/2025, conforme Termos do 
+Contrato nº 005/2021
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 09/05/25 às 10:
+4 1 .
+Impresso por IVONETE JOSE MARIA SABINO em 09/05/25 às 10:56.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

@@ -1,0 +1,52 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Relação de Ordens Bancárias Externas
+Unidade Gestora
+- 133100- ITERJ
+Banco - BANCO BRADESCO S/A
+Ag.
+- secretaria da fazenda urb.rio de janeiro rj
+C/C -0000000027- ERJ TESOURO ESTADO CONTA UNICA
+Gestão: 00003
+Total R$ 176.672,27 (cento e setenta e seis mil e seiscentos e setenta e dois reais e vinte e sete centavos)
+Autorizo o banco a efetuar os pagamentos acima relacionados, excetuando as Ordens Bancárias anuladas, em destaque neste relatório, ou em documentos anexos.
+(7
+/
+E4144/
+Página 1/1
+OB
+Tipo
+CNPJ/CPF
+Favorecido
+Banco
+Ag.
+C/C
+Valor
+20250800907
+13
+00394460010880
+MINISTÉRIO DA FAZENDA
+237
+6898
+CODBARRAS
+45877,61
+20250800908
+13
+00394460010880
+MINISTÉRIO DA FAZENDA
+237
+6898
+CODBARRAS
+27.031.87
+20250800909
+13
+00394460010880
+MINISTÉRIO DA FAZENDA
+237
+6898
+c0DRARRAS
+103.762,79
+2025RE00235
+Emissão: 30/12/25
+ZDO5-

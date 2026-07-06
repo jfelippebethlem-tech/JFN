@@ -1,0 +1,26 @@
+[] (fase: indefinida · tipo: vazio)
+
+a
+
+Govemo do Estado do Rio de Janeiro
+Relação de Ordens Bancárias Externas 2024RE00236
+Unidade Gestora - 133100 - ITERJ
+
+Emissão: 20/12/24
+Banco - BANCO BRADESCO S/A Ag. - secretaria da fazenda urb.rio de janeiro rj C/C - 0000000027 - ER! TESOURO ESTADO CONTA UNICA
+
+Gestão: 00003
+
+oB Tipo CNPJ/CPF Favorecido Banco Ag. CIC Valor
+20240B01007 13 — 60746948000112 Banca Bradesco S.a. 237 6898 BANCO 3.923,71
+20240B01008 13 — 60746948000112 Banca Bradesco Sa. 237 6898 BANCO 13.808,84
+
+Total R$ 17.732,55 (dezessete mil e setecentos e trinta e dois reais e cinquenta e cinco centavos)
+Autorizo o banco a efetuar os pagamentos acima relacionados, excetuando as Ordens Bancárias anuladas, em destaque neste relatório, ou em documentos anexos.
+
+88
+Seo
+
+oa
+
+Página 1/1

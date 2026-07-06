@@ -1,0 +1,143 @@
+[Nota de Empenho Original - NE 2025NE01441] (fase: despesa · tipo: nota_empenho)
+
+Identificação
+
+Governo do Estado do Rio de Janeiro
+
+Nota de Empenho
+
+Encerrado até Fevereiro
+
+Unidade Gestora Documento Emissão
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO (CNPJ: 33.540.014/0017-14) 2025NE01441 25/03/25
+
+Credor 02903687000109 - First Med. Produtos Medicos Ltda
+Valor 5.146,83 (Cinco mil e cento e quarenta e seis reais e oitenta e três centavos)
+
+“Classificação
+
+Natureza
+
+Unidade Orçamentária
+Programa de trabalho
+
+Id, uso
+
+Identificador Exercício Fonte
+Fonte
+
+Fonte RJ
+
+Tipo de Detalhamento de Fonte
+Detalhamento de Fonte
+
+Tipo de Área Geográfica
+
+Área Geográfica
+
+Emenda Parlamentar
+
+Unidade Gestora Responsável
+LME
+
+Convênio de Receita
+Convênio de Despesa
+
+Contrato
+
+Programa de Financiamento E...
+
+Chave SIGA
+'Detalhamento
+
+Mod. Empenho Estimativo
+
+Processo SEI-
+
+260008/010102/202
+
+3
+Itens
+
+Tipo Patrimonial
+
+339030 - Material de Consumo
+29610 - Fundo Estadual de Saúde
+
+10.302. 0508. 4866 - Apoio a HUPE e PPC/UERYJ para a realização de proced...
+
+O - Não destinado à contrapartida
+1 - Recursos do Exercício Corrente
+
+800 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Go...
+
+225 - Transferências Fundo a Fundo do SUS - Bloco de Manutenção
+O - Sem Detalhamento
+
+000000 - Sem detalhamento - (600.225)
+
+2 - ESTADO
+
+3300000 - ESTADO
+
+00000000000
+
+751020 - OPMES - Hemodinâmica
+
+03 - Manutenção, atividades e projetos finalísticos
+000000 - Convênio não identificado
+
+000000 - Convênio não identificado
+
+25039217 - Aquisição de material de OPMES
+
+O - Indefinido
+
+2025000409000252
+
+Mod. Licitação 09 - Pregão Eletrônico |Emb. Legal Inciso XXI do art. 37 da CF/ Art. 2º da Lei
+14.133/21.
+
+Origem 1- Origem nacional |Data Entrega Local Entrega
+
+Ur Rio de Janeiro Município Rio de Janeiro
+
+em da Despesa Classificação Complementar
+
+Material de Consumo
+
+06 - MATERIAL LABORATORIAL /MATERIAL
+HOSPITALAR
+
+Cronograma
+
+Março E RR
+
+Saldo Dotação
+
+Créd - Indisponível antes NE 0,00]Valor NE Saldo após NE
+10.189,03 | Pré-Empenhado 0,00 ]Bloqueado 0,00 5.146,83 5.042,20
+
+Observação
+
+Fio guia, tipo: cateterismo, revestimento: politetrafluretileno (MFE SEI 91999747); PE 302/2024; UGR 751020;
+
+Contrato 25039217.
+Produtos
+
+Produto
+
+Quantidade Und. Fornec. Preço Unitário
+
+XXXXX
+Descrição XXXXX
+
+Emitido/contabilizado por ANTONIO MARCIANO DE SOUZA em 25/03/25 às 23:
+
+EE sIATE-Rie? SIAFE-Rio / SEFAZ-RJ
+
+1 UN
+
+Preço Total
+
+Impresso por ANTONIO MARCIANO DE SOUZA em 25/03/25 às 23:07.

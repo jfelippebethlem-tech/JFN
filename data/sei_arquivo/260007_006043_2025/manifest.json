@@ -1,0 +1,147 @@
+{
+ "processo": "260007/006043/2025",
+ "gerado_em": "2026-07-06T07:43:59+00:00",
+ "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_006043_2025",
+ "modalidade": "",
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Comprovante 2025OB13010",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/000_comprovante_2025ob13010.txt",
+   "chars": 2428,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Nota de Liquidação - NL 2025NL03338",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/002_nota_de_liquida_o_nl_2025nl03338.txt",
+   "chars": 3206,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/003_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Nota de Empenho Reforço - NE 2025NE03440 AIR_LIQUIDE 007_3790_24",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/004_nota_de_empenho_refor_o_ne_2025ne03440_a.txt",
+   "chars": 2540,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Nota de Autorização de Despesa - NAD 2024009485 0017 AIR_LIQUIDE 007_3790_2",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/005_nota_de_autoriza_o_de_despesa_nad_202400.txt",
+   "chars": 2239,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/006_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/007_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Atestado de Recebimento de Materiais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/008_atestado_de_recebimento_de_materiais.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Documento",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/009_documento.txt",
+   "chars": 4869,
+   "ocr": true,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Nota Fiscal - NF",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/010_nota_fiscal_nf.txt",
+   "chars": 71819,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
+ "linha_do_tempo": {
+  "planejamento": 0,
+  "selecao": 0,
+  "contratacao": 0,
+  "execucao": 0,
+  "despesa": 6,
+  "controle": 0,
+  "tramitacao": 3,
+  "indefinida": 2
+ },
+ "lacunas": [
+  {
+   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Seleção (edital, julgamento, homologação)",
+   "gravidade": "alta"
+  },
+  {
+   "falta": "Contrato/ata formalizados",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
+  }
+ ],
+ "fotos_total": 0
+}

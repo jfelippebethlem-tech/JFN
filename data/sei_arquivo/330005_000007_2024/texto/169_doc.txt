@@ -1,0 +1,113 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Abril 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+133100 - INST. DE TERRAS E CARTOGR. DO EST. RJ (CNPJ: 40.173.726/0001-40)
+2024NL00210
+03/06/24
+Valor Bruto
+Valor Líquido
+103.988,53
+94.527,65
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2024NE00219
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+53310 - Instituto de Terras e Cartografia do Estado do Rio de Janeiro
+Programa de trabalho
+21.631. 0502. 2710 - Regularização Fundiária de Interesse Social
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2021006943006074
+Processo
+7/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da 
+Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Serviços de Terceiros - Pessoa Jurídica
+12 - SERVIÇOS DE 
+ASSEIO E HIGIENE
+194 - Reconhecimento da obrigação 
+103.988,53
+Retenção
+Classificação da Retenção
+Base de Cálculo
+Valor
+0,00
+4.469,43
+0,00
+4.991,45
+Total Retenção (-)
+9.460,88
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Nota Fiscal
+4150
+7/2024
+05/2024
+03/06/2024
+103.988,53
+Total Documentos Comprobatórios
+103.988,53
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  4150 CONFORME PROCESSO Prestação de serviços de Limpeza, Higiene, Conservação, Copeiragem, Recepção 
+e Portaria do Instituto de Terras.
+Emitido/contabilizado por PRISCILA LOURES LEITE em 03/06/24 às 18:09.
+Impresso por WALDEMIR DAVILA PEIXOTO em 04/06/24 às 09:47.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

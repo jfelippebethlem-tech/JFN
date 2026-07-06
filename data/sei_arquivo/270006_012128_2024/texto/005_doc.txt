@@ -1,0 +1,103 @@
+[] (fase: indefinida · tipo: vazio)
+
+NAD - NOTA DE AUTORIZAÇÃO DE DESPESA
+BLOCO 1 - DADOS DE IDENTIFICAÇÃO
+Nº Contratação:
+2025004930
+NAD Nº:
+0009
+Dígito Verificador:
+09
+Data:
+02/10/2025
+Nº do Processo:
+SEI-270006/012128/2024
+BLOCO 2 - DADOS DO ÓRGÃO
+Unidade Gestora:
+160100 - Sec Est Def Civil e Corpo Bomb Militar
+Especificação do Evento:
+400091 - Empenho de Despesa
+Prog. de Trabalho:
+06182049657600000 - APOIO A PROJETOS E ATIVIDADES DA DEFESA CIV
+PT Resumido:
+265760
+Unid. Orçamentária:
+26670 - FUNDO ESTADUAL DE SEGURANÇA PÚBLICA DO ESTADO
+Fonte de Recurso:
+1713224000104 - TRANSFERÊNCIAS FUNDO A FUNDO DE RECURSOS DO
+Modalidade:
+4490 - APLICAÇÕES DIRETAS
+Identificador de Uso:
+0 - Não destinado à contrapartida
+Área Geográfica:
+3300000 - ESTADO
+Emenda
+Parlamentar: 00000000000 - Sem Emenda Parlamentar
+Justificativa:
+ATENDER AS NECESSIDADES DA SEDEC
+BLOCO 3 - DADOS DE IDENTIFICAÇÃO DO FAVORECIDO
+Banco:
+Não definido
+Agência:
+Conta Corrente:
+Código:
+3
+1-CNPJ | 2 - CPF | 3 - Insc.Genérica | 4-UG
+Número:
+CG3802646     
+Nome:
+Endereço:
+Não Definido ou Endereço não cadastrado.
+Cidade:
+Não Definido
+Estado:
+Não Definido
+CEP:
+Não Definido
+BLOCO 4 - DADOS PARA EMISSÃO DE EMPENHO / ANULAÇÃO
+Espécie: 5-Global
+Origem do Material: 1-ORIG.NAC
+Valor:
+5.153.940,00
+Descrição da Despesa:
+AQ. DE 10 UNIDS. DE VIATURAS TIPO ABSL - SC - ATA Nº 066/2024 / CTT N° 35/2025 - 12/06/2025 Á 11/06/2026. ANO DO REPASSE: 2025 
+EIXO: REDUÇÃO DE MORTES VIOLENTAS INTENCIONAIS (RMVI) DETALHAMENTO DA FT: 104                                              
+Elemento de Despesa:
+44905200 - EQUIPAMENTOS E MATERIAL PERMANENTE
+Sub Elemento de Despesa:
+44905229 - VEÍCULOS E TRAÇÃO MECÂNICA
+5.153.940,0000
+BLOCO 5 - CRONOGRAMA DE DESEMBOLSO
+Jan: 0,0000
+Fev: 0,00
+Mar: 0,0000
+Abr: 0,0000
+Mai: 0,0000
+Jun: 0,0000
+Jul:
+0,0000
+Ago: 0,0000
+Set: 0,0000
+Out: 5.153.940,0000
+Nov: 0,0000
+Dez: 0,0000
+BLOCO 6 - DADOS DA LICITAÇÃO
+Tipo:
+9 - Pregão Eletrônico
+Data Licitação:
+03/06/2025
+Referência Legal:
+Art1LF,10520/02.    
+Local de Entrega:
+Av.Bartolomeu de Gusmão 850, São Cristovao   
+Data da Entrega:
+31/03/2026
+Observação:
+Almoxarifado Geral do CBMERJ.Sito a Av.Bartolomeu de Gusmão 850, São Cristovao, Rio de Janeiro - RJ
+BLOCO 7 - AUTENTICAÇÃO
+Data Emissor:
+Data Ordenador:
+Ratificação:
+Matricula Ratificador:
+Data Ratificador:
+Imprimir

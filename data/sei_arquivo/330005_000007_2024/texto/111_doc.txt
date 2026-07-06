@@ -1,0 +1,975 @@
+[] (fase: indefinida · tipo: vazio)
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO RESUMO DE DÉBITOS - DCTFWeb
+Nome do Contribuinte
+MGS CLEAN SOLUCOES E SERVICOS 
+LTDA
+CNPJ
+19.088.605/0001-04
+Período de Apuração
+07/2024
+Número do Recibo
+0000050000257421469
+Data/Hora da Transmissão
+21/08/2024 08:45:46
+Identificação da Apuração 
+de Débitos
+83098963 / Reinf CP
+27494851292 / eSocial
+Grupo: CONTRIBUIÇÃO PREVIDENCIÁRIA SEGURADOS
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1082-01 CP SEGURADOS - EMPREGADOS/AVULSO
+07/2024
+330.701,53 330.701,53
+0,00
+Grupo: CONTRIBUIÇÃO PREVIDENCIÁRIA PATRONAL
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1138-01 CP PATRONAL - EMPREGADOS/AVULSOS
+07/2024
+95.232,20
+95.232,20
+0,00
+1646-01 CP PATRONAL - GILRAT AJUSTADO
+07/2024
+111.396,00 111.396,00
+0,00
+Grupo: CONTRIBUIÇÃO PREVIDENCIÁRIA PATRONAL CPRB
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+2991-01 CP PATRONAL- CPRB - ART. 8º DA LEI 12.546/2011
+07/2024
+115.110,09 115.110,09
+0,00
+Grupo: CONTRIBUIÇÃO PARA OUTRAS ENTIDADES E FUNDOS
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1170-01 CP TERCEIROS - SALÁRIO EDUCAÇÃO
+07/2024
+97.255,11
+97.255,11
+0,00
+1176-01 CP TERCEIROS - INCRA
+07/2024
+7.780,40
+7.780,40
+0,00
+1191-01 CP TERCEIROS - SENAC
+07/2024
+38.902,04
+38.902,04
+0,00
+1196-01 CP TERCEIROS - SESC
+07/2024
+58.353,06
+58.353,06
+0,00
+1200-01 CP TERCEIROS - SEBRAE
+07/2024
+23.341,22
+23.341,22
+0,00
+Grupo: IRRF
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+0561-07 IRRF - RD TRB ASSAL PAÍS/AUS NO EXT A SERV PAÍS
+07/2024
+71.483,51
+71.483,51
+0,00
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO RESUMO DE CRÉDITOS - DCTFWeb
+Nome do Contribuinte
+MGS CLEAN SOLUCOES E SERVICOS 
+LTDA
+CNPJ
+19.088.605/0001-04
+Período de Apuração
+07/2024
+Número do Recibo
+0000050000257421469
+Data/Hora da Transmissão
+21/08/2024 08:45:46
+Identificação da Apuração 
+de Débitos
+83098963 / Reinf CP
+27494851292 / eSocial
+Descrição
+Valor Informado/Importado
+Valor Vinculado a Débito
+Saldo disponível
+Compensação
+378.369,38
+378.369,38
+0,00
+Salário Maternidade
+4.040,05
+4.040,05
+0,00
+Retenção Lei 9711/98 ou 
+adiantamento de retenção
+554.078,34
+554.078,34
+0,00
+Salário Família
+13.067,39
+13.067,39
+0,00
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO DA DECLARAÇÃO COMPLETA - DCTFWeb
+Nome do Contribuinte MGS CLEAN SOLUCOES E SERVICOS 
+LTDA
+CNPJ 19.088.605/0001-04
+Período apuração 07/2024
+Número do Recibo 50000257421469
+Data/Hora da
+Transmissão 21/08/2024 08:45:46
+Identificação da
+Apuração de Débitos
+83098963 / Reinf CP
+27494851292 / eSocial
+Dados Iniciais
+Classificação Tributária 99-Pessoas Jurídicas em Geral
+Número do Recibo da Declaração Retificada 50000257315557
+Missão Diplomática ou Repartição Consular 0 - Sem acordo
+Ausência de Fatos Geradores Não
+Endereço
+Logradouro DAS AMERICAS
+Número 03434
+Complemento BLC 2 SAL 506
+Bairro/Distrito BARRA DA TIJUCA
+Município RIO DE JANEIRO
+UF RJ
+CEP 22640102
+Telefone 2134892238
+Correio Eletrônico CONTATO@MGSCLEAN.NET
+Dados do Representante do Contribuinte e do Responsável pelo Preenchimento
+Representante MAYKON RODRIGUES
+CPF 00447336070
+Telefone 00000000
+Correio Eletrônico -
+Responsável pelo
+Preenchimento -
+CPF -
+CRC -
+UF -
+Telefone -
+Correio Eletrônico -
+Débito Apurado e Crédito Vinculado
+Código da Receita 1082-01
+Descrição CP SEGURADOS - EMPREGADOS/AVULSO
+Período Apuração
+Débito 07/2024
+Débito Apurado 330.701,53
+Deduções
+Salário Família: 13.067,39
+Salário Maternidade: 4.040,05
+Retenção Lei 9711/98: 313.594,09
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 1138-01
+Descrição CP PATRONAL - EMPREGADOS/AVULSOS
+Período Apuração
+Débito 07/2024
+Débito Apurado 95.232,20
+Deduções Retenção Lei 9711/98: 95.232,20
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 1646-01
+Descrição CP PATRONAL - GILRAT AJUSTADO
+Período Apuração
+Débito 07/2024
+Débito Apurado 111.396,00
+Deduções Retenção Lei 9711/98: 111.396,00
+Saldo a Pagar 0,00
+
+Débito Apurado e Crédito Vinculado
+Código da Receita 2991-01
+Descrição CP PATRONAL- CPRB - ART. 8º DA LEI 12.546/2011
+Período Apuração
+Débito 07/2024
+Débito Apurado 115.110,09
+Créditos Compensação: 81.254,04
+Deduções Retenção Lei 9711/98: 33.856,05
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 09025.03461.210824.1.3.02-2800
+Tipo DComp
+Valor 81.254,04
+Débito Apurado e Crédito Vinculado
+Código da Receita 1170-01
+Descrição CP TERCEIROS - SALÁRIO EDUCAÇÃO
+Período Apuração
+Débito 07/2024
+Débito Apurado 97.255,11
+Créditos Compensação: 97.255,11
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 09025.03461.210824.1.3.02-2800
+Tipo DComp
+Valor 97.255,11
+Débito Apurado e Crédito Vinculado
+Código da Receita 1191-01
+Descrição CP TERCEIROS - SENAC
+Período Apuração
+Débito 07/2024
+Débito Apurado 38.902,04
+Créditos Compensação: 38.902,04
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 09025.03461.210824.1.3.02-2800
+Tipo DComp
+Valor 38.902,04
+Débito Apurado e Crédito Vinculado
+Código da Receita 1196-01
+Descrição CP TERCEIROS - SESC
+Período Apuração
+Débito 07/2024
+Débito Apurado 58.353,06
+Créditos Compensação: 58.353,06
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 09025.03461.210824.1.3.02-2800
+Tipo DComp
+Valor 58.353,06
+Débito Apurado e Crédito Vinculado
+Código da Receita 1176-01
+Descrição CP TERCEIROS - INCRA
+Período Apuração
+Débito 07/2024
+Débito Apurado 7.780,40
+Créditos Compensação: 7.780,40
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 09025.03461.210824.1.3.02-2800
+Tipo DComp
+Valor 7.780,40
+
+Débito Apurado e Crédito Vinculado
+Código da Receita 1200-01
+Descrição CP TERCEIROS - SEBRAE
+Período Apuração
+Débito 07/2024
+Débito Apurado 23.341,22
+Créditos Compensação: 23.341,22
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 09025.03461.210824.1.3.02-2800
+Tipo DComp
+Valor 23.341,22
+Débito Apurado e Crédito Vinculado
+Código da Receita 0561-07
+Descrição IRRF - RD TRB ASSAL PAÍS/AUS NO EXT A SERV PAÍS
+Período Apuração
+Débito 07/2024
+Débito Apurado 71.483,51
+Créditos Compensação: 71.483,51
+Saldo a Pagar 0,00
+Compensações
+Número do Processo 17195.88431.210824.1.3.02-6618
+Tipo DComp
+Valor 71.483,51
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+Recibo de Entrega da Declaração de Débitos e Créditos Tributários Federais Previdenciários - DCTFWeb
+CNPJ/CPF 19.088.605/0001-04
+Nome MGS CLEAN SOLUCOES E SERVICOS LTDA
+Período de apuração 07/2024
+Declaração Retificadora Sim
+Identificação da apuração de débitos 83098963 / Reinf CP
+27494851292 / eSocial
+Totalização dos tributos apurados no período
+Tributos
+Débitos Apurados
+Saldo a Pagar
+Contribuição Previdenciária Segurados
+R$ 330.701,53
+R$ 0,00
+Contribuição Previdenciária Patronal
+R$ 321.738,29
+R$ 0,00
+Contribuição para Outras Entidades e Fundos
+R$ 225.631,83
+R$ 0,00
+IRRF
+R$ 71.483,51
+R$ 0,00
+COFINS
+R$ 0,00
+R$ 0,00
+PIS
+R$ 0,00
+R$ 0,00
+CSRF
+R$ 0,00
+R$ 0,00
+COSIRF
+R$ 0,00
+R$ 0,00
+TOTAL
+R$ 949.555,16
+R$ 0,00
+O presente Recibo de Entrega da DCTFWeb contém a transcrição da Ficha Resumo da referida declaração, que constitui
+confissão de dívida, de forma irretratável, dos tributos declarados. Fica o declarante ciente de que os tributos declarados na
+DCTFWeb e não pagos serão enviados para inscrição em Dívida Ativa da União, conforme o disposto no parágrafo 2º do artigo 5º
+do Decreto-Lei nº 2.124, de 13 de junho de 1984, combinado com a Portaria MF nº 118, de 28 de junho de 1984, estando o
+declarante sujeito ainda a:
+1) Sobre os tributos não pagos ou não recolhidos nos prazos legais incidirão multa e juros de mora, nos termos do art. 61 da Lei
+nº 9.430, de 27 de dezembro de 1996, combinado com o art. 35 da Lei nº 8.212, de 24 de julho de 1991;
+2) inclusão no Cadastro Informativo de Créditos não Quitados do Setor Público Federal (CADIN), impedindo operações de crédito
+com recursos públicos, a concessão de incentivos fiscais e financeiros e a celebração de convênios e similares que envolvam
+desembolso de recursos públicos e respectivos aditamentos (Lei nº 10.522, de 19 de julho de 2002);
+3) encaminhamento ao Ministério Público Federal de Representação Fiscal para Fins Penais nos casos que, em tese, tenha
+ocorrido crime contra a ordem tributária ou contra a previdência social, por deixar de recolher, no prazo legal, valor de tributo ou
+de contribuição social, descontado ou cobrado, na qualidade de sujeito passivo de obrigação e que deveria recolher aos cofres
+públicos (Lei nº 8.137, de 27 de dezembro de 1990 e Código Penal).
+No caso de falta de apresentação ou de apresentação de declaração com incorreções ou omissões, o contribuinte ficará sujeito às
+multas previstas no artigo 32-A da Lei nº 8.212, de 1991, e no art. 7º da Lei nº 10.426, de 24 de abril de 2002.
+Não surtirão efeitos as retificações de informações prestadas na DCTFWeb que pretendam excluir ou reduzir débitos:
+enviados para inscrição em Dívida Ativa da União, sejam eles saldos a pagar ou valores apurados em procedimento de
+auditoria interna;
+incluídos em parcelamento deferido;
+que tenham sido objeto de declaração de compensação não passível de retificação ou cancelamento.
+Também não surtirão efeitos as retificações de débitos de tributos em relação aos quais o sujeito passivo tenha sido objeto de
+procedimento fiscal e/ou nos casos em que a apresentação da declaração ocorra após o prazo decadencial.
+Dados do Representante da Pessoa Jurídica
+Nome MAYKON RODRIGUES
+CPF 004.473.360-70
+Telefone -
+Recibo de Entrega da DCTFWeb
+DCTFWeb recebida via Internet pelo Agente Receptor SERPRO em 21/08/2024 08:45:46
+Nº do recibo de entrega 0000050000257421469
+DCTFWeb transmitida com assinatura de certificado digital por 19.088.605/0001-04
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+17195.88431.210824.1.3.02-6618
+DADOS INICIAIS
+Nome Empresarial
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+Data de Criação
+21/08/2024
+Data de Transmissão
+21/08/2024
+Tipo de Documento
+Declaração de Compensação
+Tipo de Crédito
+Saldo Negativo de IRPJ
+PER/DCOMP Retificador
+Não
+Crédito Oriundo de Ação Judicial
+Não
+Qualificação do Contribuinte
+Outra Qualificação
+Pessoa Jurídica Extinta por Liquidação Voluntária
+Não
+Não
+Não é permitido indicar crédito que tiver por fundamento a alegação de inconstitucionalidade de lei, exceto nos casos em
+que a lei:
+1) Tenha sido declarada inconstitucional pelo Supremo Tribunal Federal em ação direta de inconstitucionalidade ou em ação
+declaratória de constitucionalidade;
+2) Tenha tido sua execução suspensa pelo Senado Federal;
+3) Tenha sido julgada inconstitucional em sentença judicial transitada em julgado a favor do contribuinte; ou
+4)  Seja  objeto  de  súmula  vinculante  aprovada  pelo  Supremo  Tribunal  Federal  nos  termos  do  art.  103-A  da  Constituição
+Federal.
+O  crédito  que  você  deseja  identificar  tem  por  fundamento  a  alegação  de  inconstitucionalidade  de  lei  que  não  esteja
+contemplada  nas  exceções  acima  apontadas?
+1
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+17195.88431.210824.1.3.02-6618
+DADOS DO RESPONSÁVEL DA PESSOA JURÍDICA
+Dados do Responsável da Pessoa Jurídica Perante a RFB
+Nome
+MAYKON RODRIGUES
+CPF
+004.473.360-70
+Dados do Responsável pelo Preenchimento
+Nome
+LARA FERREIRA NEVES REINISCH
+CPF
+112.103.127-78
+2
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+17195.88431.210824.1.3.02-6618
+CRÉDITO SALDO NEGATIVO DE IRPJ
+Informado em Processo Administrativo anterior
+Não
+Informado em Outro PER/DCOMP
+Sim
+Nº do PER/DCOMP Inicial
+28642.88569.260724.1.3.02-0719
+Crédito de Sucedida
+Não
+Forma de Tributação do Lucro
+Lucro Real
+Forma de Apuração
+Trimestral
+Período de Apuração
+2º Trimestre/2024
+Data Inicial do Período
+01/04/2024
+Data Final do Período
+30/06/2024
+Valor do Saldo Negativo
+1.038.969,26
+Selic Acumulada
+1,91%
+Crédito Atualizado
+190.161,67
+Total dos débitos desta DCOMP
+Saldo do Crédito Original
+116.222,41
+Total do Crédito Original Utilizado nesta DCOMP
+70.375,24
+71.719,41
+186.597,65
+Crédito Original na Data da Entrega
+Total das Parcelas de Composição do Crédito
+0,00
+Imposto Devido
+0,00
+3
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+17195.88431.210824.1.3.02-6618
+001. Débito IRRF
+CNPJ do Detentor do Débito
+19.088.605/0001-04
+Débito de Sucedida
+Não
+Código da Receita/Denominação
+0561-07 - IRRF - Rendimento do Trabalho Assalariado no
+País/Ausente no Exterior a Serviço do País
+Grupo de Tributo
+IRRF - Imposto de Renda Retido na Fonte
+Débito Controlado em Processo
+Não
+Período de Apuração
+Julho de 2024
+Periodicidade
+Mensal
+Data de Vencimento do Tributo/Quota
+20/08/2024
+Número do Recibo de Transmissão DCTFWeb
+Data de Transmissão DCTFWeb
+Categoria DCTFWeb
+Indicativo de organismo estrangeiro DCTFWeb
+050000257315557
+Não
+Geral
+20/08/2024
+Período Apuração DCTFWeb
+Periodicidade DCTFWeb
+Mensal
+07/2024
+Principal
+71.483,51
+Multa
+235,90
+Juros
+0,00
+Total
+71.719,41
+71.719,41
+TOTAL
+4
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+09025.03461.210824.1.3.02-2800
+DADOS INICIAIS
+Nome Empresarial
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+Data de Criação
+21/08/2024
+Data de Transmissão
+21/08/2024
+Tipo de Documento
+Declaração de Compensação
+Tipo de Crédito
+Saldo Negativo de IRPJ
+PER/DCOMP Retificador
+Não
+Crédito Oriundo de Ação Judicial
+Não
+Qualificação do Contribuinte
+Outra Qualificação
+Pessoa Jurídica Extinta por Liquidação Voluntária
+Não
+Não
+Não é permitido indicar crédito que tiver por fundamento a alegação de inconstitucionalidade de lei, exceto nos casos em
+que a lei:
+1) Tenha sido declarada inconstitucional pelo Supremo Tribunal Federal em ação direta de inconstitucionalidade ou em ação
+declaratória de constitucionalidade;
+2) Tenha tido sua execução suspensa pelo Senado Federal;
+3) Tenha sido julgada inconstitucional em sentença judicial transitada em julgado a favor do contribuinte; ou
+4)  Seja  objeto  de  súmula  vinculante  aprovada  pelo  Supremo  Tribunal  Federal  nos  termos  do  art.  103-A  da  Constituição
+Federal.
+O  crédito  que  você  deseja  identificar  tem  por  fundamento  a  alegação  de  inconstitucionalidade  de  lei  que  não  esteja
+contemplada  nas  exceções  acima  apontadas?
+1
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+09025.03461.210824.1.3.02-2800
+DADOS DO RESPONSÁVEL DA PESSOA JURÍDICA
+Dados do Responsável da Pessoa Jurídica Perante a RFB
+Nome
+MAYKON RODRIGUES
+CPF
+004.473.360-70
+Dados do Responsável pelo Preenchimento
+Nome
+LARA FERREIRA NEVES REINISCH
+CPF
+112.103.127-78
+2
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+09025.03461.210824.1.3.02-2800
+CRÉDITO SALDO NEGATIVO DE IRPJ
+Informado em Processo Administrativo anterior
+Não
+Informado em Outro PER/DCOMP
+Sim
+Nº do PER/DCOMP Inicial
+28642.88569.260724.1.3.02-0719
+Crédito de Sucedida
+Não
+Forma de Tributação do Lucro
+Lucro Real
+Forma de Apuração
+Trimestral
+Período de Apuração
+2º Trimestre/2024
+Data Inicial do Período
+01/04/2024
+Data Final do Período
+30/06/2024
+Valor do Saldo Negativo
+1.038.969,26
+Selic Acumulada
+1,91%
+Crédito Atualizado
+498.060,28
+Total dos débitos desta DCOMP
+Saldo do Crédito Original
+186.597,65
+Total do Crédito Original Utilizado nesta DCOMP
+302.127,97
+307.898,61
+488.725,62
+Crédito Original na Data da Entrega
+Total das Parcelas de Composição do Crédito
+0,00
+Imposto Devido
+0,00
+3
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+09025.03461.210824.1.3.02-2800
+001. Débito CP Patronal
+CNPJ do Detentor do Débito
+19.088.605/0001-04
+Débito de Sucedida
+Não
+Código da Receita/Denominação
+2991-01
+Grupo de Tributo
+CP Patronal
+Débito Controlado em Processo
+Não
+Período de Apuração
+Julho de 2024
+Periodicidade
+Mensal
+Data de Vencimento do Tributo/Quota
+20/08/2024
+Número do Recibo de Transmissão DCTFWeb
+Data de Transmissão DCTFWeb
+Categoria DCTFWeb
+Indicativo de organismo estrangeiro DCTFWeb
+050000257315557
+Não
+Geral
+20/08/2024
+Período Apuração DCTFWeb
+Periodicidade DCTFWeb
+Mensal
+07/2024
+Principal
+81.254,04
+Multa
+268,14
+Juros
+0,00
+Total
+81.522,18
+002. Débito CP Terceiros
+CNPJ do Detentor do Débito
+19.088.605/0001-04
+Débito de Sucedida
+Não
+Código da Receita/Denominação
+1170-01 - CP TERCEIROS - SALÁRIO EDUCAÇÃO
+Grupo de Tributo
+CP Terceiros
+Débito Controlado em Processo
+Não
+Período de Apuração
+Julho de 2024
+Periodicidade
+Mensal
+Data de Vencimento do Tributo/Quota
+20/08/2024
+4
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+09025.03461.210824.1.3.02-2800
+Número do Recibo de Transmissão DCTFWeb
+Data de Transmissão DCTFWeb
+Categoria DCTFWeb
+Indicativo de organismo estrangeiro DCTFWeb
+050000257315557
+Não
+Geral
+20/08/2024
+Período Apuração DCTFWeb
+Periodicidade DCTFWeb
+Mensal
+07/2024
+Principal
+97.255,11
+Multa
+320,94
+Juros
+0,00
+Total
+97.576,05
+003. Débito CP Terceiros
+CNPJ do Detentor do Débito
+19.088.605/0001-04
+Débito de Sucedida
+Não
+Código da Receita/Denominação
+1176-01 - CP TERCEIROS - INCRA
+Grupo de Tributo
+CP Terceiros
+Débito Controlado em Processo
+Não
+Período de Apuração
+Julho de 2024
+Periodicidade
+Mensal
+Data de Vencimento do Tributo/Quota
+20/08/2024
+Número do Recibo de Transmissão DCTFWeb
+Data de Transmissão DCTFWeb
+Categoria DCTFWeb
+Indicativo de organismo estrangeiro DCTFWeb
+050000257315557
+Não
+Geral
+20/08/2024
+Período Apuração DCTFWeb
+Periodicidade DCTFWeb
+Mensal
+07/2024
+Principal
+7.780,40
+Multa
+25,68
+Juros
+0,00
+Total
+7.806,08
+5
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+09025.03461.210824.1.3.02-2800
+004. Débito CP Terceiros
+CNPJ do Detentor do Débito
+19.088.605/0001-04
+Débito de Sucedida
+Não
+Código da Receita/Denominação
+1191-01 - CP TERCEIROS - SENAC
+Grupo de Tributo
+CP Terceiros
+Débito Controlado em Processo
+Não
+Período de Apuração
+Julho de 2024
+Periodicidade
+Mensal
+Data de Vencimento do Tributo/Quota
+20/08/2024
+Número do Recibo de Transmissão DCTFWeb
+Data de Transmissão DCTFWeb
+Categoria DCTFWeb
+Indicativo de organismo estrangeiro DCTFWeb
+050000257315557
+Não
+Geral
+20/08/2024
+Período Apuração DCTFWeb
+Periodicidade DCTFWeb
+Mensal
+07/2024
+Principal
+38.902,04
+Multa
+128,38
+Juros
+0,00
+Total
+39.030,42
+005. Débito CP Terceiros
+CNPJ do Detentor do Débito
+19.088.605/0001-04
+Débito de Sucedida
+Não
+Código da Receita/Denominação
+1196-01 - CP TERCEIROS - SESC
+Grupo de Tributo
+CP Terceiros
+Débito Controlado em Processo
+Não
+Período de Apuração
+Julho de 2024
+Periodicidade
+Mensal
+Data de Vencimento do Tributo/Quota
+20/08/2024
+6
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+09025.03461.210824.1.3.02-2800
+Número do Recibo de Transmissão DCTFWeb
+Data de Transmissão DCTFWeb
+Categoria DCTFWeb
+Indicativo de organismo estrangeiro DCTFWeb
+050000257315557
+Não
+Geral
+20/08/2024
+Período Apuração DCTFWeb
+Periodicidade DCTFWeb
+Mensal
+07/2024
+Principal
+58.353,06
+Multa
+192,57
+Juros
+0,00
+Total
+58.545,63
+006. Débito CP Terceiros
+CNPJ do Detentor do Débito
+19.088.605/0001-04
+Débito de Sucedida
+Não
+Código da Receita/Denominação
+1200-01 - CP TERCEIROS - SEBRAE
+Grupo de Tributo
+CP Terceiros
+Débito Controlado em Processo
+Não
+Período de Apuração
+Julho de 2024
+Periodicidade
+Mensal
+Data de Vencimento do Tributo/Quota
+20/08/2024
+Número do Recibo de Transmissão DCTFWeb
+Data de Transmissão DCTFWeb
+Categoria DCTFWeb
+Indicativo de organismo estrangeiro DCTFWeb
+050000257315557
+Não
+Geral
+20/08/2024
+Período Apuração DCTFWeb
+Periodicidade DCTFWeb
+Mensal
+07/2024
+Principal
+23.341,22
+Multa
+77,03
+Juros
+0,00
+Total
+23.418,25
+7
+
+Receita Federal do Brasil
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+PERDCOMP  8.2
+CNPJ 19.088.605/0001-04
+09025.03461.210824.1.3.02-2800
+307.898,61
+TOTAL
+8
+
+Documento recebido via 
+Internet pelo Agente 
+Receptor SERPRO 
+em 21/08/2024 às 08:40:04
+1695704827
+17.19.58.84.31
+Versão: 8.20
+VALOR
+IRRF
+71.719,41
+RECIBO DE ENTREGA DA 
+DECLARAÇÃO DE COMPENSAÇÃO
+RECEITA FEDERAL DO BRASIL
+PER/DCOMP WEB
+DADOS DO DECLARANTE
+CNPJ: 19.088.605/0001-04
+Nome Empresarial: MGS CLEAN SOLUCOES E SERVICOS LTDA
+DADOS DA DECLARAÇÃO DE COMPENSAÇÃO
+Tipo de Documento: Original
+Data de Transmissão: 21/08/2024
+Número de Controle: 17.19.58.84.31
+Número da Declaração: 17195.88431.210824.1.3.02-6618
+DADOS DO CRÉDITO
+Tipo de Crédito: Saldo Negativo de IRPJ
+Oriundo de Ação Judicial: Não
+Número do PER/DCOMP com Demonstrativo do Crédito: 28642.88569.260724.1.3.02-0719
+Crédito de Sucedida: Não
+Valor Utilizado nesta Declaração de Compensação: 70.375,24
+DADOS DOS DÉBITOS COMPENSADOS *
+* inclusive multa de mora e juros, quando informados.
+Fica o contribuinte cientificado de que a Declaração de Compensação apresentada à Secretaria da Receita Federal do Brasil constitui confissão 
+de dívida e instrumento hábil e suficiente para a exigência dos débitos indevidamente compensados, nos termos do §6º do art. 74 da Lei nº 
+9.430, de 1996.
+DADOS DO REPRESENTANTE DA PESSOA JURÍDICA
+Nome: MAYKON RODRIGUES
+CPF: 004.473.360-70
+Telefone:
+Celular:
+Correio Eletrônico:
+O contribuinte pode acompanhar o processamento deste PER/DCOMP no e-CAC, no sítio da Receita Federal, no endereço receita.economia.gov.br, 
+na opção Restituição e Compensação, item Consulta Processamento PER/DCOMP.
+
+Documento recebido via 
+Internet pelo Agente 
+Receptor SERPRO 
+em 21/08/2024 às 08:36:54
+2790811577
+09.02.50.34.61
+Versão: 8.20
+VALOR
+CP TERCEIROS
+226.376,43
+CP PATRONAL
+81.522,18
+RECIBO DE ENTREGA DA 
+DECLARAÇÃO DE COMPENSAÇÃO
+RECEITA FEDERAL DO BRASIL
+PER/DCOMP WEB
+DADOS DO DECLARANTE
+CNPJ: 19.088.605/0001-04
+Nome Empresarial: MGS CLEAN SOLUCOES E SERVICOS LTDA
+DADOS DA DECLARAÇÃO DE COMPENSAÇÃO
+Tipo de Documento: Original
+Data de Transmissão: 21/08/2024
+Número de Controle: 09.02.50.34.61
+Número da Declaração: 09025.03461.210824.1.3.02-2800
+DADOS DO CRÉDITO
+Tipo de Crédito: Saldo Negativo de IRPJ
+Oriundo de Ação Judicial: Não
+Número do PER/DCOMP com Demonstrativo do Crédito: 28642.88569.260724.1.3.02-0719
+Crédito de Sucedida: Não
+Valor Utilizado nesta Declaração de Compensação: 302.127,97
+DADOS DOS DÉBITOS COMPENSADOS *
+* inclusive multa de mora e juros, quando informados.
+Fica o contribuinte cientificado de que a Declaração de Compensação apresentada à Secretaria da Receita Federal do Brasil constitui confissão 
+de dívida e instrumento hábil e suficiente para a exigência dos débitos indevidamente compensados, nos termos do §6º do art. 74 da Lei nº 
+9.430, de 1996.
+DADOS DO REPRESENTANTE DA PESSOA JURÍDICA
+Nome: MAYKON RODRIGUES
+CPF: 004.473.360-70
+Telefone:
+Celular:
+Correio Eletrônico:
+O contribuinte pode acompanhar o processamento deste PER/DCOMP no e-CAC, no sítio da Receita Federal, no endereço receita.economia.gov.br, 
+na opção Restituição e Compensação, item Consulta Processamento PER/DCOMP.

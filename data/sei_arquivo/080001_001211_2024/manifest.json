@@ -1,0 +1,1937 @@
+{
+ "processo": "080001/001211/2024",
+ "gerado_em": "2026-07-06T07:59:10+00:00",
+ "origem": "/home/ubuntu/JFN/data/sei_cache/integra_080001_001211_2024",
+ "modalidade": "",
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Nota de Empenho de Anulação - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/000_nota_de_empenho_de_anula_o_ne.txt",
+   "chars": 2442,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/001_nota_de_empenho_original_ne.txt",
+   "chars": 3089,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Relação de Ordens Bancárias Externas OBS COMPETENCIA DEZ/2025",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/002_rela_o_de_ordens_banc_rias_externas_obs.txt",
+   "chars": 207474,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/003_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Programação de Desembolso - PD 81 PDS PROCESSO IAFAB 080001 001211 2024",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/004_programa_o_de_desembolso_pd_81_pds_proce.txt",
+   "chars": 189133,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/005_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Nota de Liquidação - NL 2025NL01695",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/006_nota_de_liquida_o_nl_2025nl01695.txt",
+   "chars": 2491,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Documentos diversos DIV. LIQ",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/007_documentos_diversos_div_liq.txt",
+   "chars": 12845,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Documentos diversos DIV. LIQ.",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/008_documentos_diversos_div_liq.txt",
+   "chars": 63152,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Documentos diversos LIQ.",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/009_documentos_diversos_liq.txt",
+   "chars": 63134,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Documentos diversos LIQ.",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/010_documentos_diversos_liq.txt",
+   "chars": 63181,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/011_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/012_nota_de_empenho_original_ne.txt",
+   "chars": 251146,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Nota de Autorização de Despesa - NAD 1266",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/013_nota_de_autoriza_o_de_despesa_nad_1266.txt",
+   "chars": 286,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Despacho de Solicitação de Análise da NAD",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/014_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "Relação de Ordens Bancárias Externas de 2025",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/015_rela_o_de_ordens_banc_rias_externas_de_2.txt",
+   "chars": 409457,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "Relação de Ordens Bancárias Externas de 2024",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/016_rela_o_de_ordens_banc_rias_externas_de_2.txt",
+   "chars": 1461853,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/017_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Programação de Desembolso - PD 2025PD02178 N Iguaçu dez 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/018_programa_o_de_desembolso_pd_2025pd02178.txt",
+   "chars": 2324,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Termo de Cancelamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/019_termo_de_cancelamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/020_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "Nota de Liquidação - NL",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/021_nota_de_liquida_o_nl.txt",
+   "chars": 2579,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/022_nota_de_empenho_original_ne.txt",
+   "chars": 3082,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "Nota de Autorização de Despesa - NAD 214",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/023_nota_de_autoriza_o_de_despesa_nad_214.txt",
+   "chars": 299,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/024_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "Programação de Desembolso - PD 2025PD01870",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/025_programa_o_de_desembolso_pd_2025pd01870.txt",
+   "chars": 2324,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/026_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 27,
+   "titulo": "Nota de Liquidação - NL 11009",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/027_nota_de_liquida_o_nl_11009.txt",
+   "chars": 2594,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 28,
+   "titulo": "Programação de Desembolso - PD - Três Rios - Out/24 e Nov/24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/028_programa_o_de_desembolso_pd_tr_s_rios_ou.txt",
+   "chars": 4583,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 29,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/029_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 30,
+   "titulo": "Programação de Desembolso - PD 2025PD00868 Quatis out 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/030_programa_o_de_desembolso_pd_2025pd00868.txt",
+   "chars": 2248,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 31,
+   "titulo": "Programação de Desembolso - PD 2025PD00862 Porto real  nov 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/031_programa_o_de_desembolso_pd_2025pd00862.txt",
+   "chars": 2274,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 32,
+   "titulo": "Programação de Desembolso - PD 2025PD00860 Porto real out 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/032_programa_o_de_desembolso_pd_2025pd00860.txt",
+   "chars": 2273,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 33,
+   "titulo": "Programação de Desembolso - PD 2025PD00853  Porciuncula nov 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/033_programa_o_de_desembolso_pd_2025pd00853.txt",
+   "chars": 2268,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 34,
+   "titulo": "Programação de Desembolso - PD 2025PD00844  Porciuncula out 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/034_programa_o_de_desembolso_pd_2025pd00844.txt",
+   "chars": 2267,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 35,
+   "titulo": "Programação de Desembolso - PD 2025PD00781  Rio Preto nov 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/035_programa_o_de_desembolso_pd_2025pd00781.txt",
+   "chars": 2317,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 36,
+   "titulo": "Programação de Desembolso - PD 2025PD00774 Rio Preto out 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/036_programa_o_de_desembolso_pd_2025pd00774.txt",
+   "chars": 2316,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 37,
+   "titulo": "Programação de Desembolso - PD 2025PD00766 Aperibe out 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/037_programa_o_de_desembolso_pd_2025pd00766.txt",
+   "chars": 2285,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 38,
+   "titulo": "Programação de Desembolso - PD 2025PD00761 Aperibe nov 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/038_programa_o_de_desembolso_pd_2025pd00761.txt",
+   "chars": 2286,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 39,
+   "titulo": "Programação de Desembolso - PD 2025PD00758 Angra out 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/039_programa_o_de_desembolso_pd_2025pd00758.txt",
+   "chars": 2306,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 40,
+   "titulo": "Programação de Desembolso - PD 2025PD00690 Belford Roxo out 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/040_programa_o_de_desembolso_pd_2025pd00690.txt",
+   "chars": 2308,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 41,
+   "titulo": "Programação de Desembolso - PD 2025PD00896 Rio Claro nov 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/041_programa_o_de_desembolso_pd_2025pd00896.txt",
+   "chars": 2256,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 42,
+   "titulo": "Programação de Desembolso - PD 2025PD00894 Rio Claro out 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/042_programa_o_de_desembolso_pd_2025pd00894.txt",
+   "chars": 2255,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 43,
+   "titulo": "Programação de Desembolso - PD 2025PD00893 Rio Bonito nov 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/043_programa_o_de_desembolso_pd_2025pd00893.txt",
+   "chars": 2277,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 44,
+   "titulo": "Programação de Desembolso - PD 2025PD00892 Rio Bonito out 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/044_programa_o_de_desembolso_pd_2025pd00892.txt",
+   "chars": 2276,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 45,
+   "titulo": "Programação de Desembolso - PD 2025PD00886 Resende nov 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/045_programa_o_de_desembolso_pd_2025pd00886.txt",
+   "chars": 2279,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 46,
+   "titulo": "Programação de Desembolso - PD 2025PD00883 Resende out 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/046_programa_o_de_desembolso_pd_2025pd00883.txt",
+   "chars": 2278,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 47,
+   "titulo": "Programação de Desembolso - PD 2025PD00876 Quissama nov 24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/047_programa_o_de_desembolso_pd_2025pd00876.txt",
+   "chars": 2270,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 48,
+   "titulo": "Programação de Desembolso - PD 2025PD00806",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/048_programa_o_de_desembolso_pd_2025pd00806.txt",
+   "chars": 2313,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 49,
+   "titulo": "Programação de Desembolso - PD 2025PD00799",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/049_programa_o_de_desembolso_pd_2025pd00799.txt",
+   "chars": 2312,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 50,
+   "titulo": "Programação de Desembolso - PD 2025PD00841 Italva Nov-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/050_programa_o_de_desembolso_pd_2025pd00841.txt",
+   "chars": 2272,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 51,
+   "titulo": "Programação de Desembolso - PD 2025PD00829 Italva out-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/051_programa_o_de_desembolso_pd_2025pd00829.txt",
+   "chars": 2271,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 52,
+   "titulo": "Programação de Desembolso - PD 2025PD00829 Itaguaí Nov-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/052_programa_o_de_desembolso_pd_2025pd00829.txt",
+   "chars": 2287,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 53,
+   "titulo": "Programação de Desembolso - PD 2025PD00827 Itaguaí out-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/053_programa_o_de_desembolso_pd_2025pd00827.txt",
+   "chars": 2286,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 54,
+   "titulo": "Programação de Desembolso - PD 2025PD00818 Iguaba Grande Nov-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/054_programa_o_de_desembolso_pd_2025pd00818.txt",
+   "chars": 2271,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 55,
+   "titulo": "Programação de Desembolso - PD 2025PD00815 Iguaba Grande out-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/055_programa_o_de_desembolso_pd_2025pd00815.txt",
+   "chars": 2270,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 56,
+   "titulo": "Programação de Desembolso - PD 2025PD00811 Guapimirim nov-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/056_programa_o_de_desembolso_pd_2025pd00811.txt",
+   "chars": 2261,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 57,
+   "titulo": "Programação de Desembolso - PD 2025PD00808 Guapimirim out-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/057_programa_o_de_desembolso_pd_2025pd00808.txt",
+   "chars": 2260,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 58,
+   "titulo": "Programação de Desembolso - PD 2025PD00802 Frontin Nov-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/058_programa_o_de_desembolso_pd_2025pd00802.txt",
+   "chars": 2283,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 59,
+   "titulo": "Programação de Desembolso - PD 2025PD00797 Frontin out-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/059_programa_o_de_desembolso_pd_2025pd00797.txt",
+   "chars": 2282,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 60,
+   "titulo": "Programação de Desembolso - PD 2025PD00737",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/060_programa_o_de_desembolso_pd_2025pd00737.txt",
+   "chars": 2289,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 61,
+   "titulo": "Programação de Desembolso - PD 2025PD00729",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/061_programa_o_de_desembolso_pd_2025pd00729.txt",
+   "chars": 2303,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 62,
+   "titulo": "Programação de Desembolso - PD",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/062_programa_o_de_desembolso_pd.txt",
+   "chars": 4573,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 63,
+   "titulo": "Programação de Desembolso - PD 2025PD00718",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/063_programa_o_de_desembolso_pd_2025pd00718.txt",
+   "chars": 2302,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 64,
+   "titulo": "Programação de Desembolso - PD 2025PD00699",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/064_programa_o_de_desembolso_pd_2025pd00699.txt",
+   "chars": 2337,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 65,
+   "titulo": "Programação de Desembolso - PD IAFAB",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/065_programa_o_de_desembolso_pd_iafab.txt",
+   "chars": 13569,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 66,
+   "titulo": "Programação de Desembolso - PD 2025PD00694",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/066_programa_o_de_desembolso_pd_2025pd00694.txt",
+   "chars": 2337,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 67,
+   "titulo": "Programação de Desembolso - PD",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/067_programa_o_de_desembolso_pd.txt",
+   "chars": 4653,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 68,
+   "titulo": "Programação de Desembolso - PD SÃO JOSE DE UBA OUT E NOV",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/068_programa_o_de_desembolso_pd_s_o_jose_de.txt",
+   "chars": 4601,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 69,
+   "titulo": "Programação de Desembolso - PD RIO DAS FLORES OUT E NOV",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/069_programa_o_de_desembolso_pd_rio_das_flor.txt",
+   "chars": 4539,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 70,
+   "titulo": "Programação de Desembolso - PD 2025PD00756 - SEROPÉDICA - NOVEMBRO",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/070_programa_o_de_desembolso_pd_2025pd00756.txt",
+   "chars": 2305,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 71,
+   "titulo": "Programação de Desembolso - PD 2025PD00753 - SEROPÉDICA -OUTUBRO",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/071_programa_o_de_desembolso_pd_2025pd00753.txt",
+   "chars": 2305,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 72,
+   "titulo": "Programação de Desembolso - PD 2025PD00744 - SAQUAREMA - NOVEMBRO",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/072_programa_o_de_desembolso_pd_2025pd00744.txt",
+   "chars": 2304,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 73,
+   "titulo": "Programação de Desembolso - PD 2025PD00738 - SAQUAREMA - OUTUBRO",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/073_programa_o_de_desembolso_pd_2025pd00738.txt",
+   "chars": 2303,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 74,
+   "titulo": "Programação de Desembolso - PD 2025PD00734 - SAPUCAIA - NOVEMBRO",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/074_programa_o_de_desembolso_pd_2025pd00734.txt",
+   "chars": 2289,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 75,
+   "titulo": "Programação de Desembolso - PD 2025PD00779-MENDES NOV",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/075_programa_o_de_desembolso_pd_2025pd00779.txt",
+   "chars": 2268,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 76,
+   "titulo": "Programação de Desembolso - PD 2025PD00775-MENDES OUT",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/076_programa_o_de_desembolso_pd_2025pd00775.txt",
+   "chars": 2265,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 77,
+   "titulo": "Programação de Desembolso - PD 2025PD00772- MANGARATIBA NOV",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/077_programa_o_de_desembolso_pd_2025pd00772.txt",
+   "chars": 2314,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 78,
+   "titulo": "Programação de Desembolso - PD 2025PD00770 - MANGARATIBA OUT",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/078_programa_o_de_desembolso_pd_2025pd00770.txt",
+   "chars": 2312,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 79,
+   "titulo": "Programação de Desembolso - PD 2025PD00760- MARICÁ- OUT",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/079_programa_o_de_desembolso_pd_2025pd00760.txt",
+   "chars": 2302,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 80,
+   "titulo": "Programação de Desembolso - PD 2025PD00723 - SÃO SEBASTIÃO DO ALTO - NOVEMB",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/080_programa_o_de_desembolso_pd_2025pd00723.txt",
+   "chars": 2302,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 81,
+   "titulo": "Programação de Desembolso - PD 2025PD00719 - SÃO SEBASTIÃO DO ALTO - OUTUBR",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/081_programa_o_de_desembolso_pd_2025pd00719.txt",
+   "chars": 2301,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 82,
+   "titulo": "Programação de Desembolso - PD 2025PD00703 - SÃO PEDRO DA ALDEIA -NOVEMBRO",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/082_programa_o_de_desembolso_pd_2025pd00703.txt",
+   "chars": 2308,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 83,
+   "titulo": "Programação de Desembolso - PD 2025PD00698 -SÃO PEDRO DA ALDEIA - OUTUBRO",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/083_programa_o_de_desembolso_pd_2025pd00698.txt",
+   "chars": 2307,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 84,
+   "titulo": "Programação de Desembolso - PD 2025PD00769 Duas Barras nov-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/084_programa_o_de_desembolso_pd_2025pd00769.txt",
+   "chars": 2294,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 85,
+   "titulo": "Programação de Desembolso - PD 2025PD00783",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/085_programa_o_de_desembolso_pd_2025pd00783.txt",
+   "chars": 2293,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 86,
+   "titulo": "Programação de Desembolso - PD IAFAB",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/086_programa_o_de_desembolso_pd_iafab.txt",
+   "chars": 31663,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 87,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/087_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 88,
+   "titulo": "Nota de Liquidação - NL DIVERSAS",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/088_nota_de_liquida_o_nl_diversas.txt",
+   "chars": 5049,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 89,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/089_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 90,
+   "titulo": "Nota de Liquidação - NL DIVERSAS",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/090_nota_de_liquida_o_nl_diversas.txt",
+   "chars": 23069,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 91,
+   "titulo": "Nota de Autorização de Despesa - NAD 64",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/091_nota_de_autoriza_o_de_despesa_nad_64.txt",
+   "chars": 198,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 92,
+   "titulo": "Despacho de Solicitação de Análise da NAD",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/092_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 93,
+   "titulo": "Programação de Desembolso - PD 2025PD00121 - BARRA MANSA - DEZ",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/093_programa_o_de_desembolso_pd_2025pd00121.txt",
+   "chars": 2292,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 94,
+   "titulo": "Programação de Desembolso - PD 2024PD19691 - RIO DE JANEIRO -DEZ",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/094_programa_o_de_desembolso_pd_2024pd19691.txt",
+   "chars": 1929,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 95,
+   "titulo": "Programação de Desembolso - PD 2025PD00065 - SÃO JOÃO DE MERITI - DEZ",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/095_programa_o_de_desembolso_pd_2025pd00065.txt",
+   "chars": 2316,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 96,
+   "titulo": "Programação de Desembolso - PD 2025PD00056 - MESQUITA - DEZ",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/096_programa_o_de_desembolso_pd_2025pd00056.txt",
+   "chars": 2245,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 97,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/097_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 98,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/098_nota_de_empenho_original_ne.txt",
+   "chars": 252833,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 99,
+   "titulo": "Programação de Desembolso - PD 2025PD00053 - NILOPOLIS - DEZ",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/099_programa_o_de_desembolso_pd_2025pd00053.txt",
+   "chars": 2189,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 100,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/100_nota_de_empenho_original_ne.txt",
+   "chars": 3284,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 101,
+   "titulo": "Nota de Autorização de Despesa - NAD 5870",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/101_nota_de_autoriza_o_de_despesa_nad_5870.txt",
+   "chars": 348,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 102,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/102_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 103,
+   "titulo": "Programação de Desembolso - PD 2024PD20336 FMS BARRA MANSA",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/103_programa_o_de_desembolso_pd_2024pd20336.txt",
+   "chars": 2357,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 104,
+   "titulo": "Programação de Desembolso - PD 2024PD20334 FMS BARRA MANSA",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/104_programa_o_de_desembolso_pd_2024pd20334.txt",
+   "chars": 2356,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 105,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/105_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 106,
+   "titulo": "Nota de Liquidação - NL 10166",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/106_nota_de_liquida_o_nl_10166.txt",
+   "chars": 2587,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 107,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/107_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 108,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/108_nota_de_empenho_original_ne.txt",
+   "chars": 3264,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 109,
+   "titulo": "Nota de Autorização de Despesa - NAD 5818",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/109_nota_de_autoriza_o_de_despesa_nad_5818.txt",
+   "chars": 312,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 110,
+   "titulo": "Programação de Desembolso - PD 2024PD19719 FMS QUEIMADOS NOV-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/110_programa_o_de_desembolso_pd_2024pd19719.txt",
+   "chars": 2383,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 111,
+   "titulo": "Programação de Desembolso - PD 2024PD19717 FMS QUEIMADOS OUT-24",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/111_programa_o_de_desembolso_pd_2024pd19717.txt",
+   "chars": 2382,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 112,
+   "titulo": "Programação de Desembolso - PD 2024PD19712 FMS N.FRIBURGO",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/112_programa_o_de_desembolso_pd_2024pd19712.txt",
+   "chars": 2338,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 113,
+   "titulo": "Programação de Desembolso - PD 2024PD19710 FMS N.FRIBURGO",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/113_programa_o_de_desembolso_pd_2024pd19710.txt",
+   "chars": 2337,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 114,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/114_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 115,
+   "titulo": "Nota de Liquidação - NL Diversas",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/115_nota_de_liquida_o_nl_diversas.txt",
+   "chars": 15385,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 116,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/116_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 117,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/117_nota_de_empenho_original_ne.txt",
+   "chars": 18998,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 118,
+   "titulo": "Nota de Autorização de Despesa - NAD 5717",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/118_nota_de_autoriza_o_de_despesa_nad_5717.txt",
+   "chars": 222,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 119,
+   "titulo": "Despacho de Solicitação de Análise da NAD",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/119_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 120,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/120_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 121,
+   "titulo": "Programação de Desembolso - PD - Paracambi",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/121_programa_o_de_desembolso_pd_paracambi.txt",
+   "chars": 4695,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 122,
+   "titulo": "Programação de Desembolso - PD - Itaboraí",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/122_programa_o_de_desembolso_pd_itabora.txt",
+   "chars": 4717,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 123,
+   "titulo": "Programação de Desembolso - PD - Nilópolis",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/123_programa_o_de_desembolso_pd_nil_polis.txt",
+   "chars": 4671,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 124,
+   "titulo": "Programação de Desembolso - PD - Mesquita",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/124_programa_o_de_desembolso_pd_mesquita.txt",
+   "chars": 4713,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 125,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/125_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 126,
+   "titulo": "Nota de Liquidação - NL 9818/9817/9816",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/126_nota_de_liquida_o_nl_9818_9817_9816.txt",
+   "chars": 7662,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 127,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/127_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 128,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/128_nota_de_empenho_original_ne.txt",
+   "chars": 9519,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 129,
+   "titulo": "Nota de Autorização de Despesa - NAD 5620",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/129_nota_de_autoriza_o_de_despesa_nad_5620.txt",
+   "chars": 207,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 130,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/130_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 131,
+   "titulo": "Nota de Liquidação - NL DIVERSOS",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/131_nota_de_liquida_o_nl_diversos.txt",
+   "chars": 237567,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 132,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/132_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 133,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/133_nota_de_empenho_original_ne.txt",
+   "chars": 3196,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 134,
+   "titulo": "Nota de Empenho de Anulação Parcial - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/134_nota_de_empenho_de_anula_o_parcial_ne.txt",
+   "chars": 2733,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 135,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/135_nota_de_empenho_original_ne.txt",
+   "chars": 56364,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 136,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/136_nota_de_empenho_original_ne.txt",
+   "chars": 78404,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 137,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/137_nota_de_empenho_original_ne.txt",
+   "chars": 78894,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 138,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/138_nota_de_empenho_original_ne.txt",
+   "chars": 78894,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 139,
+   "titulo": "Nota de Autorização de Despesa - NAD 4810",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/139_nota_de_autoriza_o_de_despesa_nad_4810.txt",
+   "chars": 309,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 140,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/140_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 141,
+   "titulo": "Programação de Desembolso - PD",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/141_programa_o_de_desembolso_pd.txt",
+   "chars": 1249651,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 142,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/142_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 143,
+   "titulo": "Nota de Liquidação - NL 92 NL'S",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/143_nota_de_liquida_o_nl_92_nl_s.txt",
+   "chars": 234933,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 144,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/144_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 145,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/145_nota_de_empenho_original_ne.txt",
+   "chars": 288668,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 146,
+   "titulo": "Nota de Autorização de Despesa - NAD 3482",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/146_nota_de_autoriza_o_de_despesa_nad_3482.txt",
+   "chars": 261,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 147,
+   "titulo": "Nota de Autorização de Despesa - NAD 3481",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/147_nota_de_autoriza_o_de_despesa_nad_3481.txt",
+   "chars": 340,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 148,
+   "titulo": "Nota de Autorização de Despesa - NAD 3479",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/148_nota_de_autoriza_o_de_despesa_nad_3479.txt",
+   "chars": 187,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 149,
+   "titulo": "Nota de Autorização de Despesa - NAD 3478",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/149_nota_de_autoriza_o_de_despesa_nad_3478.txt",
+   "chars": 245,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 150,
+   "titulo": "Programação de Desembolso - PD",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/150_programa_o_de_desembolso_pd.txt",
+   "chars": 244636,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 151,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/151_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 152,
+   "titulo": "Nota de Liquidação - NL",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/152_nota_de_liquida_o_nl.txt",
+   "chars": 52351,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 153,
+   "titulo": "Despacho",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/153_despacho.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 154,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/154_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 155,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/155_nota_de_empenho_original_ne.txt",
+   "chars": 64617,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 156,
+   "titulo": "Nota de Autorização de Despesa - NAD 3186",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/156_nota_de_autoriza_o_de_despesa_nad_3186.txt",
+   "chars": 236,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 157,
+   "titulo": "Despacho de Solicitação de Análise da NAD",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/157_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 158,
+   "titulo": "Despacho de Solicitação de Análise da NAD",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/158_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 159,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/159_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 160,
+   "titulo": "Nota de Autorização de Despesa - NAD 2966",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/160_nota_de_autoriza_o_de_despesa_nad_2966.txt",
+   "chars": 377,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 161,
+   "titulo": "Despacho de Solicitação de Análise da NAD",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/161_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 162,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/162_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 163,
+   "titulo": "Programação de Desembolso - PD 2024PD08300 Maio Teresopolis",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/163_programa_o_de_desembolso_pd_2024pd08300.txt",
+   "chars": 2440,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 164,
+   "titulo": "Programação de Desembolso - PD 2024PD08299 Abril Teresopolis",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/164_programa_o_de_desembolso_pd_2024pd08299.txt",
+   "chars": 2441,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 165,
+   "titulo": "Programação de Desembolso - PD 2024PD08298 Mar Teresopolis",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/165_programa_o_de_desembolso_pd_2024pd08298.txt",
+   "chars": 2441,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 166,
+   "titulo": "Programação de Desembolso - PD 2024PD08297 Fev Teresolpolis",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/166_programa_o_de_desembolso_pd_2024pd08297.txt",
+   "chars": 2445,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 167,
+   "titulo": "Programação de Desembolso - PD 2024PD08296 Jan Teresopolis",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/167_programa_o_de_desembolso_pd_2024pd08296.txt",
+   "chars": 2443,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 168,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/168_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 169,
+   "titulo": "Nota de Liquidação - NL 3872",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/169_nota_de_liquida_o_nl_3872.txt",
+   "chars": 2670,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 170,
+   "titulo": "Anexo D.O. de 08.04.2024",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/170_anexo_d_o_de_08_04_2024.txt",
+   "chars": 51572,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 171,
+   "titulo": "Resolução - NI 3292",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/171_resolu_o_ni_3292.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 172,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/172_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 173,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/173_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 174,
+   "titulo": "Minuta de Resolução",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/174_minuta_de_resolu_o.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 175,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/175_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 869,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 176,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/176_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 177,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/177_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 178,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/178_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 179,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/179_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 180,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/180_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 181,
+   "titulo": "Anexo Delib. 8182 emenda carmim",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/181_anexo_delib_8182_emenda_carmim.txt",
+   "chars": 534,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 182,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/182_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 183,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/183_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 184,
+   "titulo": "Anexo Delib. 8182 1ª Republicação",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/184_anexo_delib_8182_1_republica_o.txt",
+   "chars": 19082,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 185,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/185_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 186,
+   "titulo": "Anexo Delib. 8182",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/186_anexo_delib_8182.txt",
+   "chars": 19057,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 187,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/187_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 188,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/188_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 189,
+   "titulo": "Form. Inclus Pauta nas reuniões Téc. e Ord. CIB-RJ",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/189_form_inclus_pauta_nas_reuni_es_t_c_e_ord.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
+ "linha_do_tempo": {
+  "planejamento": 0,
+  "selecao": 0,
+  "contratacao": 0,
+  "execucao": 0,
+  "despesa": 144,
+  "controle": 0,
+  "tramitacao": 32,
+  "indefinida": 14
+ },
+ "lacunas": [
+  {
+   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Seleção (edital, julgamento, homologação)",
+   "gravidade": "alta"
+  },
+  {
+   "falta": "Contrato/ata formalizados",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
+  }
+ ],
+ "fotos_total": 0
+}

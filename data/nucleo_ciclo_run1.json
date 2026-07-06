@@ -1,0 +1,59 @@
+{
+  "varredura": {
+    "pericias_novas": 200,
+    "com_achados": 0
+  },
+  "placar": {
+    "f1_inicial": 1.0,
+    "f1_final": 1.0,
+    "falsos_alarmes": 0,
+    "cobertura": 1.0
+  },
+  "calibracoes_mantidas": [],
+  "calibracoes_revertidas": 25,
+  "red_flags_propostas": [],
+  "memoria": {
+    "total_pericias": 200,
+    "com_achados": 0,
+    "confirmadas_pelo_perito": 0,
+    "categorias_mais_periciadas": [
+      {
+        "categoria": "transporte",
+        "n": 37
+      },
+      {
+        "categoria": "saúde",
+        "n": 35
+      },
+      {
+        "categoria": "educação",
+        "n": 12
+      },
+      {
+        "categoria": "tributos",
+        "n": 8
+      },
+      {
+        "categoria": "transferência",
+        "n": 7
+      },
+      {
+        "categoria": "judicial",
+        "n": 1
+      },
+      {
+        "categoria": "locação",
+        "n": 1
+      },
+      {
+        "categoria": "pessoal",
+        "n": 1
+      },
+      {
+        "categoria": "utilidades",
+        "n": 1
+      }
+    ]
+  },
+  "precisao_indicadores": []
+}

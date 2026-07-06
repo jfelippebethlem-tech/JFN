@@ -1,0 +1,120 @@
+{
+ "processo": "260007/003259/2025",
+ "gerado_em": "2026-07-06T07:26:12+00:00",
+ "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_003259_2025",
+ "modalidade": "",
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Nota de Liquidação - NL 2025NL00930 ALTERAÇÃO CREDOR",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_nota_de_liquida_o_nl_2025nl00930_altera.txt",
+   "chars": 2157,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/003_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Nota de Liquidação - NL 2025NL00774",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_nota_de_liquida_o_nl_2025nl00774.txt",
+   "chars": 2486,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/005_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Anexo 2025NE01138 TARGET R$ 20.448,00",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/006_anexo_2025ne01138_target_r_20_448_00.txt",
+   "chars": 2405,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Nota Fiscal - NF 3344 e 3349 TARGET R$ 20.448,00",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/007_nota_fiscal_nf_3344_e_3349_target_r_20_4.txt",
+   "chars": 5794,
+   "ocr": true,
+   "fotos": [
+    "fotos/007_p01.jpg",
+    "fotos/007_p02.jpg"
+   ]
+  }
+ ],
+ "linha_do_tempo": {
+  "planejamento": 0,
+  "selecao": 0,
+  "contratacao": 0,
+  "execucao": 0,
+  "despesa": 6,
+  "controle": 0,
+  "tramitacao": 2,
+  "indefinida": 0
+ },
+ "lacunas": [
+  {
+   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Seleção (edital, julgamento, homologação)",
+   "gravidade": "alta"
+  },
+  {
+   "falta": "Contrato/ata formalizados",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
+  }
+ ],
+ "fotos_total": 2
+}

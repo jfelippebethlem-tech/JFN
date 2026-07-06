@@ -1,0 +1,126 @@
+[Nota de Empenho Reforço - NE 2025NE05441] (fase: despesa · tipo: nota_empenho)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO (CNPJ: 33.540.014/0017-14)
+2025NE05441
+23/09/25
+Credor
+02903687000109 - First Med. Produtos Medicos Ltda
+Tipo de Empenho
+NE Original
+Valor
+14.262,30 (Quatorze mil e duzentos e sessenta e dois reais e trinta centavos)
+Reforço
+2025NE01441
+Classificação
+Natureza
+339030 - Material de Consumo
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4866 - Apoio a HUPE e PPC/UERJ para a realização de proced...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+600 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Go...
+Fonte RJ
+225 - Transferências Fundo a Fundo do SUS - Bloco de Manutenção
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (600.225)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+751020 - OPMES - Hemodinâmica
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+25039217 - Aquisição de material de OPMES 
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2025000409000612
+Detalhamento
+Mod. Empenho
+Estimativo
+Mod. Licitação
+09 - Pregão Eletrônico
+Emb. Legal
+Inciso XXI do art. 37 da CF/ Art. 2º da Lei 
+14.133/21.
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-
+260008/010102/202
+3
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Material de Consumo
+06 - MATERIAL LABORATORIAL /MATERIAL 
+HOSPITALAR
+14.262,30
+Cronograma
+Setembro
+14.262,30
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+21.790,30 Pré-Empenhado
+0,00 Bloqueado
+0,00
+14.262,30
+7.528,00
+Observação
+F i o g u i a , t i p o : c a t e t e r i s m o , r e v e s t i m e n t o : p o l i t e t r a f l u r e t i l e n o ( M F E S E I 9 1 9 9 9 7 4 7 ) ; P E 3 0 2 / 2 0 2 4 ; U G R 7 5 1 0 2 0 ; 
+Contrato 25039217.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+XXXXX
+1
+UN
+14.262,30
+14.262,30
+Descrição
+XXXXX
+ 
+______________________________________________________
+37111-2 - Daniela Maria Rodrigues Ramos
+Diretora de Administração Financeira
+Emitido/contabilizado por JANSEM CAETANO NASCIMENTO em 23/09/25 às 11:
+2 1 .
+Impresso por JANSEM CAETANO NASCIMENTO em 23/09/25 às 11:21.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

@@ -1,0 +1,626 @@
+[] (fase: indefinida · tipo: vazio)
+
+RECEITA FEDERAL DO BRASIL RECIBO DE ENTREGA DA
+DECLARAÇÃO DE COMPENSAÇÃO
+
+PER/DCOMP WEB
+
+DADOS DO DECLARANTE
+
+CNPJ: 35.208.086/0001-27
+Nome Empresarial: MOBILIZA FOR RENT LIDA
+
+DADOS DA DECLARAÇÃO DE COMPENSAÇÃO
+Tipo de Documento: Original ”
+Data de Transmissão: 19/10/2023
+Número de Controle: 23.57.55.19.44
+Número da Declaração: 23575.51944.191023.1.3.16-0106
+
+DADOS DO CRÉDITO
+
+Tipo de Crédito: Contribuição Previdenciária Indevida ou a Maior
+Oriundo de Ação Judicial: Não
+
+Crédito de Sucedida: Não
+
+Competência: 02/2022
+
+Recolhimento Efetuado em Matrícula CEI (PJ): Não
+
+Valor Utilizado nesta Declaração de Compensação: 17.179,78
+
+DADOS DOS DÉBITOS COMPENSADOS *
+
+VALOR
+CP; TERCEIROS 5.071,86
+CP PATRONAL 15.511,24
+
+* inclusive multa de mora e juros, quando informados.
+
+Fica o contribuinte cientificado de que a Declaração de Compensação apresentada à Secretaria da Receita Federal do Brasil constitui confissão
+de dívida e instrumento hábil e suficiente para a exigência dos débitos indevidamente compensados, nos termos do 86º do art. 74 da Leinº
+9.430, de 1996.
+
+DADOS DO REPRESENTANTE DA PESSOA JURÍDICA
+
+Nome: MARCELO GUIMARAES VIEIRA -
+CPF: 939.593.387-91
+
+Telefone:
+
+Celular:
+
+Correio Eletrônico:
+
+Documento recebido via
+Internet pelo Agente
+Receptor SERPRO
+em 19/10/2023 às 12:48:29
+
+993326498
+Versão: 8.20
+
+23.57.55.19.44
+
+O contribuinte pode acompanhar o processamento deste PER/DCOMP no e-CAC, no sítio da Receita Federal, no endereço receita.economia.gov.br,
+na opção Restituição e Compensação, item Consulta Processamento PER/DCOMP.
+
+Receita Federal do Brasil
+
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO PERDCOMP 8.2
+CNPJ 35.208.086/0001-27
+DADOS INICIAIS
+
+23575.51944.191023.1.3.16-0106
+
+Nome Empresarial MOBILIZA FOR RENT LTDA
+Data de Criação 19/10/2023
+Data de Transmissão 19/10/2023
+
+Tipo de Documento
+Tipo de Crédito
+
+Declaração de Compensação
+Contribuição Previdenciária Indevida ou a Maior
+
+PER/DCOMP Retificador Não
+
+Crédito Oriundo de Ação Judicial Não -
+Qualificação do Contribuinte Outra Qualificação
+
+Pessoa Jurídica Extinta por Liquidação Voluntária Não
+
+Não é permitido indicar crédito que tiver por fundamento a alegação de inconstitucionalidade de lei, exceto nos casos em
+que a lei:
+
+1) Tenha sido declarada inconstitucional pelo Supremo Tribunal Federal em ação direta de inconstitucionalidade ou em ação
+declaratória de constitucionalidade;
+
+2) Tenha tido sua execução suspensa pelo Senado Federal;
+
+3) Tenha sido julgada inconstitucional em sentença judicial transitada em julgado a favor do contribuinte; ou
+
+4) Seja objeto de súmula vinculante aprovada pelo Supremo Tribunal Federal nos termos do art. 103-A da Constituição
+Federal.
+
+O crédito que você deseja identificar tem por fundamento a alegação de inconstitucionalidade de lei que não esteja
+contemplada nas exceções acima apontadas?
+
+Não
+
+Receita Federal do Brasil
+
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO PERDCOMP 8.2
+
+CNPJ 35.208.086/0001-27 23575.51944.191023.1.3.16-0106
+DADOS DO RESPONSÁVEL DA PESSOA JURÍDICA
+
+Dados do Responsável da Pessoa Jurídica Perante a RFB
+
+Nome MARCELO GUIMARAES VIEIRA
+crr 939.593.387-91
+
+Dados do Responsável pelo Preenchimento
+
+Nome MARCELO GUIMARAES VIEIRA
+crF 939.593.387-91
+
+Receita Federal do Brasil
+
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO PERDCOMP 8.2
+GNPJ 35.208.086/0001-27 23575.51944.191023.1.3.16-0106
+CONTRIBUIÇÃO PREVIDENCIÁRIA INDEVIDA OU A MAIOR
+informado em Processo Administrativo Anterior Não
+Informado em Outro PER/DCOMP Não
+Crédito de Sucedida Não
+CNPJ do Detentor do Crédito 35.208.086/0001-27
+Competência Fevereiro de 2022 |
+Recolhimento Efetuado em Matrícula CEI Não
+Selic Acumulada 19,81%
+Valor Disponível para Restituição Apurado no 658.748,79
+Documento Inicial
+Valor Original do Crédito Utilizado em 0,00
+Compensações em GFIP
+Valor Original do Crédito Disponível 658.748,79
+Crédito Original na Data da Entrega 658.748,79 .
+Crédito Atualizado 789.246,93
+Total dos Débitos deste Documento 20.583,10
+Toial do Crédito Original utilizado neste Documento 17.179,78
+GPs
+0001. Código do Pagamento 2119 - Empresas em Geral - CNPJ - Pagamento exclusivo para
+Outras Entidades (SESC, SESI, SENAI, etc.)
+Competência Fevereiro de 2022
+Identificador do Detentor do Crédito 35.208.086/0001-27
+Data da Arrecadação 18/03/2022 .
+Valor do INSS 0,00
+Valor de Outras Entidades 658.748,79
+Valor de ATM, Multa e Juros 0,00
+Valor Total da GPS 658.748,79
+
+Wa Na
+
+VALOR TOTAL DAS GPS 658.748,79
+
+Receita Federal do Brasil
+
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO PERDCOMP 8.2
+
+CNPJ 35.208.086/0001-27 . 23575.51944.191023.1.3.16-0106
+001. Débito CP Patronal
+
+CNPJ do Detentor do Débito 35.208.086/0001-27
+Débito de Sucedida Não
+
+Grupo de Tributo CP Patronal
+
+Código da Receita/Denominação 1138-01 - CP PATRONAL - EMPREGADOS/AVULSOS
+Débito Controlado em Processo Não
+
+Período de Apuração Setembro de 2023
+Periodicidade Mensal
+
+Data de Vencimento do Tributo/Quota 20/10/2023
+
+Número do Recibo de Transmissão DCTFWeb 050000169256085
+
+Data de Transmissão DCTFWeb 11/10/2028
+
+Categoria DCTFWeb Geral
+
+Indicativo de organismo estrangeiro DCTFWeb Não
+
+Periodicidade DCTFWeb Mensal
+
+Período Apuração DCTFWeb 09/2023
+
+Principal 12.287,86
+Multa .0,00
+Juros 0,00
+Total 12.287,86
+002. Débito CP Patronal
+
+CNPJ do Detentor do Débito 35,.208.086/0001-27
+Débito de Sucedida Não
+
+Grupo de Tributo CP Patronal
+
+Código da Receita/Denominação +138-04 - CP PATRONAL - CONTRIBUINTES INDIVIDUAIS
+Débito Controlado em Processo Não
+
+Período de Apuração Setembro de 2023
+Periodicidade Mensal
+
+Data de Vencimento do Tributo/Quota 20/10/2023
+
+Receita Federal do Brasil
+
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+
+CNPJ 35.208.086/0001-27
+
+Número do Recibo de Transmissão DCTFWeb
+Data de Transmissão DCTFWeb
+
+Categoria DCTFWeb
+
+indicativo de organismo estrangeiro DCTFWeb
+Periodicidade DCTF Web
+
+Período Apuração DCTFWeb
+
+Principal
+
+Muita
+
+Juros
+
+Total
+
+003. Débito CP Patronal
+
+CNPJ do Detentor do Débito
+
+Débito de Sucedida
+
+Grupo de Tributo
+
+Código da Receita/Denominação
+
+Débito Controlado em Processo
+
+Período de Apuração
+
+Periodicidade
+
+Data de Vencimento do Tributo/Quota
+Número do Recibo de Transmissão DCTFWeb
+Data de Transmissão DCTFWeb
+
+Categoria DCTFWeb
+
+indicativo de organismo estrangeiro DCTFWeb
+Periodicidade DCTEWeb
+
+Período Apuração DCTFWeb
+
+Principal
+
+Multa
+
+Juros
+
+Total
+
+23575.51944.191023.1.3.16-0106
+
+050000169256085
+11/10/2023
+Geral
+Não
+Mensal
+09/2023
+600,00
+0,00
+0,00
+600,00
+
+35.208.086/0001-27
+Não
+CP Patronal
+1646-01 - CP PATRONAL - GILRAT AJUSTADO
+Não
+Setembro de 2023
+Mensal
+20/10/2023
+050000169256085
+11/10/2028
+Geral
+Não
+Mensal
+09/2023
+2.623,38
+0,00
+-0,00
+2.623,38
+
+PERDCOMP 8.2
+
+Receita Federal do Brasil
+
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO PERDCOMP 8.2
+CNPJ 35.208.086/0001-27 23575.51944.191023.1.3.16-0106
+094, Débito CP Terceiros
+
+CNPJ do Detentor do Débito 35.208.086/0001-27
+
+Débito de Sucedida Não
+
+Grupo de Tributo CP Terceiros .
+
+Código da Receita/Denominação 1170-01 - CP TERCEIROS - SALÁRIO EDUCAÇÃO
+Débito Controlado em Processo Não
+
+Período de Apuração Setembro de 2023
+
+Periodicidade Mensal
+
+Data de Vencimento do Tributo/Quota 20/10/2023
+
+Número do Recibo de Transmissão DCTFWeb 050000169256085
+
+Data de Transmissão DCTFWeb 11/10/2023 -
+Categoria DCTFWeb Geral
+
+Indicativo de organismo estrangeiro DCTFWeb Não
+
+Periodicidade DCTFWeb Mensal
+
+Período Apuração DCTFWeb 09/2023
+
+Principal 2.186,15
+
+Multa 0,00
+
+Juros 0,00
+
+Total 2.186,15
+
+005. Débito CP Terceiros
+
+CNPJ do Detentor do Débito 35.208.086/0001-27
+
+Débito de Sucedida Não
+
+Grupo de Tributo CP Terceiros
+
+Código da Receita/Denominação 1176-01 - CP TERCEIROS - INCRA
+
+Débito Controlado em Processo Não
+
+Período de Apuração Setembro de 2023
+
+Periodicidade Mensal
+
+Data de Vencimento do Tributo/Quota 20/10/2023 -
+
+Receita Federal do Brasil
+
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO PERDCOMP 8.2
+
+CNPJ 35.208.086/0001-27
+
+Número do Recibo de Transmissão DCTFWeb
+Data de Transmissão DCTFWeb
+
+Categoria DCTFWeb
+
+indicativo de organismo estrangeiro DCTEWeb
+Periodicidade DCTF Web
+
+Período Apuração DCTFWeb
+
+Principal
+
+Muita
+
+Juros
+
+Totai
+
+D06. Débito CP Terceiros
+
+CNPJ do Detentor do Débito
+
+Débito de Sucedida
+
+Grupo de Tributo
+
+Código da Receita/Denominação
+
+Débito Controlado em Processo
+
+Período de Apuração
+
+Periodicidade
+
+Data de Vencimento do Tributo/Quota
+Número do Recibo de Transmissão DCTEWeb
+Daia de Transmissão DCTFWeb
+
+Categoria DCTFWeb
+
+indicativo de organismo estrangeiro DCTEWeb
+Periodicidade DCTFWeb
+
+Período Apuração DCTFWeb
+
+Principal
+
+Muita
+
+Juros
+
+Total
+
+23575.51944.191023.1.3.16-0106
+050000169256085
+11/10/2023
+Geral
+Não
+Mensal -
+09/2023
+174,89
+0,00
+0,00
+174,89
+
+35.208.086/0001-27
+Não
+CP Terceiros
+1191-01 - CP TERCEIROS - SENAC
+Não É
+Setembro de 2023
+Mensal
+20/10/2028
+050000169256085
+11/10/2023
+Geral -
+Não
+Mensal
+09/2023
+874,46
+0,00
+0,00
+874,46
+
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO
+
+Receita Federal do Brasil
+
+- PERDCOMP 8.2
+
+CNPJ 35.208.086/0001-27
+
+007. Débito CP Terceiros
+
+CNPJ do Detentor do Débito
+
+Débito de Sucedida
+
+Grupo de Tributo
+
+Código da Receita/Denominação
+
+Débito Controlado em Processo
+
+Período de Apuração
+
+Periodicidade
+
+Data de Vencimento do Tributo/Quota
+Número do Recibo de Transmissão DCTFWeb
+Data de Transmissão DCTFWeb
+
+Categoria DCTFWeb
+
+Indicativo de organismo estrangeiro DCTFWeb
+Periodicidade DCTFWeb
+
+Período Apuração DCTFWeb
+
+Principal
+
+Multa
+
+Juros
+
+Totai
+
+23575.51944.191023.1.3.16-0106
+
+35.208.086/0001-27
+Não
+CP Terceiros
+1196-01 - CP TERCEIROS - SESC
+Não
+Setembro de 2023
+Mensal
+20/10/2023
+050000169256085
+11/10/2023
+Geral
+Não
+Mensal
+09/2023
+1.311,69 ”
+0,00
+0,00
+1.311,69
+
+008. Débito CP Terceiros
+
+CNPJ do Detentor do Débito
+
+Débito de Sucedida
+
+Grupo de Tributo
+
+Código da Receita/Denominação
+Débito Controlado em Processo
+Período de Apuração
+
+Periodicidade
+
+Data de Vencimento do Tributo/Quota
+
+35.208.086/0001-27
+
+Não
+
+CP Terceiros
+
+1200-01 - CP TERCEIROS - SEBRAE
+Não
+
+Setembro de 2023 .
+
+Mensal
+
+20/10/2023
+
+Receita Federal do Brasil
+
+PEDIDO DE RESTITUIÇÃO, RESSARCIMENTO OU REEMBOLSO E DECLARAÇÃO DE COMPENSAÇÃO PERDCOMP 8.2
+CNPJ 35.208.086/0001-27 23575.51944.1910283.1.3.16-0106
+Número do Recibo de Transmissão DCTEWeb 050000169256085
+
+Data de Transmissão DCTFWeb 11/10/2023
+
+Categoria DCTFWeb Geral
+
+Indicativo de organismo estrangeiro DCTFWeb Não
+
+Periodicidade DCTFWeb Mensal
+
+Período Apuração DCTFWeb 09/2023
+
+Principal 524,67
+
+Multa 0,00
+
+Juros 0,00
+
+Total 524,67 ”
+
+cassia mamar tina am aa mm
+
+TOTAL 20.583,10
+
+. Documento de Arrecadação
+Receita Federal de Receitas Federais
+
+CNPJ Razão Social
+35.208.086/0001-27) |MOBILIZA FOR RENT LTDA
+Período de Apuração [= >or40/2023) de Vencimento Número do Documento P: este documento até
+Setembro/2023 [= >or40/2023) 07.16.23286.6199768-5 no
+(Observações Ê
+Nº Recibo Declaração: 50000169256085
+Composição do Documento de Arrecadação
+Código Denominação Principal
+0561 IRRF - RENDIMENTO DO TRABALHO ASSALARIADO 2.176,93 2.176,93
+07 IRRF - RD TRB ASSAL PAÍS/AUS NO EXT A SERV PAÍS
+PA:09/2023 Vencimento:20/10/2023
+1138 CONTRIB PREVIDENCIÁRIA EMPRESA/EMPREGADOR 12.287,88 12.287,86
+61 CP PATRONAL - EMPREGADOS/AVULSOS
+PA:09/2023 Vencimento:20/10/2023
+1138 CONTRIB PREVIDENCIÁRIA EMPRESA/EMPREGADOR 806,00 00,80
+04 CP PATRONAL - CONTRIBUINTES INDIVIDUAIS
+PA:09/2023 Vencimento:20/10/2023
+1179 CP TERCEIROS - SALÁRIO EDUCAÇÃO 2.186,15 2.186,15
+91 CP TERCEIROS - SALÁRIO EDUCAÇÃO
+PA:09/2023 Vencimento:20/10/2023
+1176 CP TERCEIROS - INCRA 174,89 174,89
+01 CP TERCEIROS - INCRA
+PA:09/26023 Vencimento:20/10/2023
+1191 CP TERCEIROS - SENAC 874,46 874,46
+01 CP TERCEIROS - SENAC
+PA:09/2023 Vencimento:20/10/2023
+1196 CP TERCEIROS - SESC 1.311,69 1.311,69
+61 CP TERCEIROS - SESC
+PA:09/2023 Vencimento:20/10/2023
+1206 CP TERCEIROS - SEBRAE 524,67 524,67
+61 CP TERCEIROS - SEBRAE
+PA:09/2023 Vencimento:20/10/2023
+1646 CONTRIB PREV RISCO AMBIENTAL /APOSENT ESPECIAL 2.623,38 2.623,38
+01 CP PATRONAL - GILRAT AJUSTADO
+PA:09/2023 Vencimento:20/10/2023
+Totais 22.760,03 22.760,03
+Ao SENDA (Versão:5.1.7) Página: 1/1 13/10/2023 13:49:06)
+85860000227 9 6003038523220  930716232862 | 61997685707 2 AUTENTICAÇÃO MECÂNICA
+
+Documento de Arrecadação de Receitas Federais
+[[85860000227 9 | 9 [,60030385232 O | | 93071623286 2 [ 61997685707 2 CNPJ: 35.208.086/0001-27
+
+Número: 07.16.23286.6199768-5
+Pagar até: 20/10/2023
+Valor: 22.760,03

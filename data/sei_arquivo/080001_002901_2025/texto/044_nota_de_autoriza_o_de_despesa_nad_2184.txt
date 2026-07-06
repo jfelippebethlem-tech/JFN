@@ -1,0 +1,8 @@
+[Nota de Autorização de Despesa - NAD 2184] (fase: despesa · tipo: autorizacao_despesa)
+
+cesso_externo=6 , informando o c&oacute;digo verificador 100146660 e o c&oacute;digo CRC 8732F6D1 .
+ Refer&ecirc;ncia: Processo n&ordm; SEI-080001/002901/2025
+ SEI n&ordm; 100146660
+ Rua M&eacute;xico 128, - Bairro Centro, Rio de Janeiro/RJ, CEP 20031-142
+Telefone: - www.saude.rj.gov.br
+ Criado por vanda.esteves , verso 3 por vanda.esteves em 15/05/2025 13:01:04.

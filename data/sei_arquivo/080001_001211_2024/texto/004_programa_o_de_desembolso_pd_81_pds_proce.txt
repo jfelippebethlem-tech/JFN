@@ -1,0 +1,7735 @@
+[Programação de Desembolso - PD 81 PDS PROCESSO IAFAB 080001 001211 2024] (fase: despesa · tipo: programacao_desembolso)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05220
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12292556000188 - Fundo Municipal De Saude De Cabo Frio
+237 - 0588 - 0000687006
+Valor por Extenso
+Valor
+Quarenta e seis mil e setecentos e vinte reais e oitenta e nove centavos
+46.720,89
+Detalhamento
+Nota Liquidação
+2025NL01630
+Tipo de Despesa
+Nota de Empenho
+2025NE01930
+Credor
+12292556000188 - Fundo Municipal De Saude De Cabo Frio
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0588 - 0000687006
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+46.720,89
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NL01930 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  Cabo 
+Frio
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Danielle de Souza Marques em 27/03/25 às 15:
+3 1 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:39.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05218
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+237 - 0543 - 0001443534
+Valor por Extenso
+Valor
+Duzentos e trinta mil e quinhentos e vinte e oito reais e vinte e nove centavos
+230.528,29
+Detalhamento
+Nota Liquidação
+2025NL01649
+Tipo de Despesa
+Nota de Empenho
+2025NE01952
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0543 - 0001443534
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+230.528,29
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01952 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). SÃO GONÇALO
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Danielle de Souza Marques em 27/03/25 às 15:
+2 9 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:39.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05216
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+10476365000140 - Fundo Municipal De Saude De Itatiaia
+237 - 6778 - 0000000230
+Valor por Extenso
+Valor
+Sete mil e quinhentos e sessenta reais e onze centavos
+7.560,11
+Detalhamento
+Nota Liquidação
+2025NL01629
+Tipo de Despesa
+Nota de Empenho
+2025NE01927
+Credor
+10476365000140 - Fundo Municipal De Saude De Itatiaia
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6778 - 0000000230
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+7.560,11
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01927 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, COMPETÊNCIA: DEZEMBRO/24, conforme solicitação (96168140). NAD 
+1266
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MIRIAN AVELINO CALDAS BARBOSA em 27/03/25 às 15:
+2 4 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05215
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+02934539000143 - Fundo Municipal De Saude De Aperibe
+237 - 6753 - 0000010103
+Valor por Extenso
+Valor
+Dois mil e quinhentos e quarenta e sete reais e setenta e oito centavos
+2.547,78
+Detalhamento
+Nota Liquidação
+2025NL01627
+Tipo de Despesa
+Nota de Empenho
+2025NE01916
+Credor
+02934539000143 - Fundo Municipal De Saude De Aperibe
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6753 - 0000010103
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+2.547,78
+Observação
+PAGAMENTO  DO (S)  DOCUMENTO (S)  2025NE01916 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Aperibé
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KELI CRISTINA REIS BARROA TOMAZ em 27/03/25 às 
+1 5 : 2 3 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05214
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11384874000106 - Fundo Mun. De Saude De Campos Dos Goytacazes
+237 - 0065 - 241180
+Valor por Extenso
+Valor
+Cento e sete mil e oitocentos e cinquenta e três reais e noventa e cinco centavos
+107.853,95
+Detalhamento
+Nota Liquidação
+2025NL01628
+Tipo de Despesa
+Nota de Empenho
+2025NE01937
+Credor
+11384874000106 - Fundo Mun. De Saude De Campos Dos Goytacazes
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0065 - 241180
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+107.853,95
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NL01937 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Campos dos Goytacazes
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Suzi Gianne Bezerra da Silva em 27/03/25 às 15:
+2 3 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05213
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+04311955000110 - Fundo Municipal De Saude - Marica
+237 - 2143 - 0000201200
+Valor por Extenso
+Valor
+Trinta e quatro mil e duzentos e cinquenta e seis reais e quarenta e nove centavos
+34.256,49
+Detalhamento
+Nota Liquidação
+2025NL01651
+Tipo de Despesa
+Nota de Empenho
+2025NE01954
+Credor
+04311955000110 - Fundo Municipal De Saude - Marica
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2143 - 0000201200
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+34.256,49
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01954 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  NAD 
+1266
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Danielle de Souza Marques em 27/03/25 às 15:
+2 2 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05212
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+04249257000132 - Fundo Municipal De Saude Sto.antonio De Padua
+237 - 2047 - 0000152293
+Valor por Extenso
+Valor
+Nove mil e vinte e seis reais e setenta e nove centavos
+9.026,79
+Detalhamento
+Nota Liquidação
+2025NL01637
+Tipo de Despesa
+Nota de Empenho
+2025NE01944
+Credor
+04249257000132 - Fundo Municipal De Saude Sto.antonio De Padua
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2047 - 0000152293
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+9.026,79
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01945 CONFORME PROCESSO SEI-080001/001211/2024 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, COMPETÊNCIA: DEZEMBRO/24, 
+conforme solicitação (96168140).STO.ANTONIO DE PADUA.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MIRIAN AVELINO CALDAS BARBOSA em 27/03/25 às 15:
+2 1 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05211
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11389542000114 - Fms De Sao Francisco De Itabapoana
+237 - 0960 - 0000104000
+Valor por Extenso
+Valor
+Dez mil e trezentos e sessenta e três reais e sessenta centavos
+10.363,60
+Detalhamento
+Nota Liquidação
+2025NL01642
+Tipo de Despesa
+Nota de Empenho
+2025NE01950
+Credor
+11389542000114 - Fms De Sao Francisco De Itabapoana
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0960 - 0000104000
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+10.363,60
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01953 CONFORME PROCESSO SEI-080001/001211/2024 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).S.FRANCISCO DE ITABAPOANA
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 27/03/25 às 15:20.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05210
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11183882000194 - Fundo Municipal De Saude - Santa Maria Madalena
+237 - 6769 - 00353361
+Valor por Extenso
+Valor
+Dois mil e trezentos e trinta e quatro reais e cinquenta e oito centavos
+2.334,58
+Detalhamento
+Nota Liquidação
+2025NL01633
+Tipo de Despesa
+Nota de Empenho
+2025NE01941
+Credor
+11183882000194 - Fundo Municipal De Saude - Santa Maria Madalena
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6769 - 00353361
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+2.334,58
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01942 CONFORME PROCESSO SEI-080001/001211/2024 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, COMPETÊNCIA: DEZEMBRO/24, 
+conforme solicitação (96168140).STA MARIA MADALENA.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MIRIAN AVELINO CALDAS BARBOSA em 27/03/25 às 15:
+1 8 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05209
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11835031000189 - Fundo Municipal De Saude - São Fidelis
+237 - 6895 - 0000009032
+Valor por Extenso
+Valor
+Oito mil e quinhentos e cinco reais e quarenta e sete centavos
+8.505,47
+Detalhamento
+Nota Liquidação
+2025NL01639
+Tipo de Despesa
+Nota de Empenho
+2025NE01947
+Credor
+11835031000189 - Fundo Municipal De Saude - São Fidelis
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6895 - 0000009032
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+8.505,47
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01945 CONFORME PROCESSO SEI-080001/001211/2024 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).SÃO FIDELIS
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 27/03/25 às 15:17.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05208
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12349225000137 - Fundo Municipal De Saude De Mangaratiba
+237 - 0886 - 0000109916
+Valor por Extenso
+Valor
+Nove mil e quatrocentos e quarenta e nove reais e quarenta e cinco centavos
+9.449,45
+Detalhamento
+Nota Liquidação
+2025NL01647
+Tipo de Despesa
+Nota de Empenho
+2025NE01951
+Credor
+12349225000137 - Fundo Municipal De Saude De Mangaratiba
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0886 - 0000109916
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da Despesa Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+9.449,45
+Observação
+PAGAMENTO Transferência de recursos referente a Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de 
+Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios 
+citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  NAD1266
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Danielle de Souza Marques em 27/03/25 às 15:
+1 7 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05207
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+02341441000182 - Fundo Municipal De Saude De Rio Das Ostras
+237 - 0883 - 0000302317
+Valor por Extenso
+Valor
+Trinta e dois mil e dezoito reais e vinte e três centavos
+32.018,23
+Detalhamento
+Nota Liquidação
+2025NL01631
+Tipo de Despesa
+Nota de Empenho
+2025NE01939
+Credor
+02341441000182 - Fundo Municipal De Saude De Rio Das Ostras
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0883 - 0000302317
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+32.018,23
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01939 CONFORME PROCESSO SEI-080001/001211/2024 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, COMPETÊNCIA: DEZEMBRO/24, 
+conforme solicitação (96168140). RIO DAS OSTRAS.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MIRIAN AVELINO CALDAS BARBOSA em 27/03/25 às 15:
+1 6 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05206
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12133004000127 - Fundo Municipal De Saude De Mage
+237 - 1546 - 0000429309
+Valor por Extenso
+Valor
+Cinquenta e dois mil e setenta e sete reais e cinquenta e nove centavos
+52.077,59
+Detalhamento
+Nota Liquidação
+2025NL01645
+Tipo de Despesa
+Nota de Empenho
+2025NE01949
+Credor
+12133004000127 - Fundo Municipal De Saude De Mage
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1546 - 0000429309
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+52.077,59
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01949 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140). NAD 
+1266
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Danielle de Souza Marques em 27/03/25 às 15:
+1 4 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05205
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11504310000160 - Fundo Municipal De Saude De Macuco
+237 - 2038 - 904597
+Valor por Extenso
+Valor
+Hum mil e cento e noventa e cinco reais e cinquenta e três centavos
+1.195,53
+Detalhamento
+Nota Liquidação
+2025NL01641
+Tipo de Despesa
+Nota de Empenho
+2025NE01946
+Credor
+11504310000160 - Fundo Municipal De Saude De Macuco
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2038 - 904597
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+1.195,53
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01946 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, COMPETÊNCIA: DEZEMBRO/24, conforme solicitação (96168140).  NAD 
+1266
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MIRIAN AVELINO CALDAS BARBOSA em 27/03/25 às 15:
+1 2 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05204
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11308894000106 - Fundo Municipal De Saude De Macae
+237 - 6890 - 0000000850
+Valor por Extenso
+Valor
+Cinquenta e quatro mil e quinhentos e quarenta e dois reais e oitenta centavos
+54.542,80
+Detalhamento
+Nota Liquidação
+2025NL01638
+Tipo de Despesa
+Nota de Empenho
+2025NE01940
+Credor
+11308894000106 - Fundo Municipal De Saude De Macae
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6890 - 0000000850
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+54.542,80
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01940 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, COMPETÊNCIA: DEZEMBRO/24, conforme solicitação (96168140). NAD 
+1266
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MIRIAN AVELINO CALDAS BARBOSA em 27/03/25 às 15:
+1 0 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05203
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11461379000153 - Fundo Municipal De Saude De Laje Do Muriae
+237 - 6780 - 0000006262
+Valor por Extenso
+Valor
+Hum mil e setecentos e trinta e dois reais e sessenta e oito centavos
+1.732,68
+Detalhamento
+Nota Liquidação
+2025NL01635
+Tipo de Despesa
+Nota de Empenho
+2025NE01936
+Credor
+11461379000153 - Fundo Municipal De Saude De Laje Do Muriae
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6780 - 0000006262
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+1.732,68
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01936 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, COMPETÊNCIA: DEZEMBRO/24, conforme solicitação (96168140).  NAD 
+1266
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MIRIAN AVELINO CALDAS BARBOSA em 27/03/25 às 15:
+0 8 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05202
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11294684000106 - Fundo Municipal De Saude De Japeri
+237 - 2362 - 104329
+Valor por Extenso
+Valor
+Vinte e dois mil e seiscentos e noventa e nove reais e setenta e três centavos
+22.699,73
+Detalhamento
+Nota Liquidação
+2025NL01632
+Tipo de Despesa
+Nota de Empenho
+2025NE01933
+Credor
+11294684000106 - Fundo Municipal De Saude De Japeri
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2362 - 104329
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+22.699,73
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01933 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, COMPETÊNCIA: DEZEMBRO/24, conforme solicitação (96168140).  NAD 
+1266
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MIRIAN AVELINO CALDAS BARBOSA em 27/03/25 às 15:
+0 5 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05201
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11959800000150 - Fundo Mun.de Saude De Bom Jesus Do Itabapoana
+237 - 0998 - 0000197530
+Valor por Extenso
+Valor
+Sete mil e oitocentos e oitenta e dois reais e noventa centavos
+7.882,90
+Detalhamento
+Nota Liquidação
+2025NL01640
+Tipo de Despesa
+Nota de Empenho
+2025NE01928
+Credor
+11959800000150 - Fundo Mun.de Saude De Bom Jesus Do Itabapoana
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0998 - 0000197530
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+7.882,90
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01928 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, COMPETÊNCIA: DEZEMBRO/24, conforme solicitação (96168140).  Bom 
+Jesus do Itabapoana
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MIRIAN AVELINO CALDAS BARBOSA em 27/03/25 às 15:
+0 1 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05200
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+08772020000192 - Fundo Munic.de Saude De Casimo De Abreu
+237 - 6764 - 0000010120
+Valor por Extenso
+Valor
+Nove mil e trezentos e oitenta e nove reais e dez centavos
+9.389,10
+Detalhamento
+Nota Liquidação
+2025NL01652
+Tipo de Despesa
+Nota de Empenho
+2025NE01956
+Credor
+08772020000192 - Fundo Munic.de Saude De Casimo De Abreu
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6764 - 0000010120
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+9.389,10
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01956 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Casimiro de Abreu
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Danielle de Souza Marques em 27/03/25 às 14:
+5 7 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05199
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11762815000124 - Fundo Municipal De Saude De Carmo
+237 - 6763 - 0000004022
+Valor por Extenso
+Valor
+Quatro mil e noventa e três reais e noventa e dois centavos
+4.093,92
+Detalhamento
+Nota Liquidação
+2025NL01650
+Tipo de Despesa
+Nota de Empenho
+2025NE01953
+Credor
+11762815000124 - Fundo Municipal De Saude De Carmo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6763 - 0000004022
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+4.093,92
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01953 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  Carmo
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Danielle de Souza Marques em 27/03/25 às 14:
+5 4 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05198
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+13891753000186 - Fundo Municipal De Saude De Cambuci
+237 - 6758 - 0000004340
+Valor por Extenso
+Valor
+Três mil e trezentos e cinquenta e nove reais e quarenta e dois centavos
+3.359,42
+Detalhamento
+Nota Liquidação
+2025NL01648
+Tipo de Despesa
+Nota de Empenho
+2025NE01934
+Credor
+13891753000186 - Fundo Municipal De Saude De Cambuci
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6758 - 0000004340
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+3.359,42
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01934 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Cambuci
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Danielle de Souza Marques em 27/03/25 às 14:
+5 2 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05197
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+13817576000198 - Fundo Munic.de Saude De Cachoeiras De Macacu
+237 - 2050 - 0000254908
+Valor por Extenso
+Valor
+Doze mil e quinhentos e vinte e quatro reais e onze centavos
+12.524,11
+Detalhamento
+Nota Liquidação
+2025NL01646
+Tipo de Despesa
+Nota de Empenho
+2025NE01931
+Credor
+13817576000198 - Fundo Munic.de Saude De Cachoeiras De Macacu
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2050 - 0000254908
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+12.524,11
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01931 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Cachoeiras de Macacu
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Danielle de Souza Marques em 27/03/25 às 14:
+5 0 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05196
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+28561041002209 - Fundo Municipal De Saude De Bom Jardim.
+237 - 6757 - 0000009512
+Valor por Extenso
+Valor
+Cinco mil e novecentos e quarenta e seis reais e sessenta e três centavos
+5.946,63
+Detalhamento
+Nota Liquidação
+2025NL01695
+Tipo de Despesa
+Nota de Empenho
+2025NE01926
+Credor
+28561041002209 - Fundo Municipal De Saude De Bom Jardim.
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6757 - 0000009512
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+5.946,63
+Observação
+PAGAMENTO  DO (S)  DOCUMENTO (S)  2025NE01926 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  Bom 
+Jardim
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KELI CRISTINA REIS BARROA TOMAZ em 27/03/25 às 
+1 4 : 4 9 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05195
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+06810909000191 - Fundo Municipal De Saude De Areal
+237 - 6756 - 0000008915
+Valor por Extenso
+Valor
+Dois mil e setecentos e vinte e três reais e noventa e três centavos
+2.723,93
+Detalhamento
+Nota Liquidação
+2025NL01669
+Tipo de Despesa
+Nota de Empenho
+2025NE01918
+Credor
+06810909000191 - Fundo Municipal De Saude De Areal
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6756 - 0000008915
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+2.723,93
+Observação
+PAGAMENTO  DO (S)  DOCUMENTO (S)  2024NE01918 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  Areal
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KELI CRISTINA REIS BARROA TOMAZ em 27/03/25 às 
+1 4 : 4 6 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05194
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11144705000107 - Fundo Municipal De Saude De Arraial Do Cabo
+237 - 6894 - 0000008877
+Valor por Extenso
+Valor
+Seis mil e quatrocentos e quarenta e nove reais e dezesseis centavos
+6.449,16
+Detalhamento
+Nota Liquidação
+2025NL01644
+Tipo de Despesa
+Nota de Empenho
+2025NE01921
+Credor
+11144705000107 - Fundo Municipal De Saude De Arraial Do Cabo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6894 - 0000008877
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+6.449,16
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01921 CONFORME PROCESSO SEI-080001/001211/2024 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).  Arraial do Cabo
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Danielle de Souza Marques em 27/03/25 às 14:
+4 6 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05193
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12246631000174 - Fundo Municipal De Saude De Tangua
+237 - 6856 - 0000033006
+Valor por Extenso
+Valor
+Sete mil e quatrocentos e trinta e três reais e sessenta e dois centavos
+7.433,62
+Detalhamento
+Nota Liquidação
+2025NL01600
+Tipo de Despesa
+Nota de Empenho
+2025NE01983
+Credor
+12246631000174 - Fundo Municipal De Saude De Tangua
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6856 - 0000033006
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+7.433,62
+Observação
+PAGAMENTO  DO (S)  DOCUMENTO (S)  2025NE01983 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). TANGUÁ
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MIRIAN AVELINO CALDAS BARBOSA em 27/03/25 às 14:
+4 6 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05192
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12440744000106 - Fundo Munic.de Saude De S.j.do Rio Preto
+237 - 6820 - 0000007870
+Valor por Extenso
+Valor
+Quatro mil e setecentos e vinte e dois reais e vinte e cinco centavos
+4.722,25
+Detalhamento
+Nota Liquidação
+2025NL01660
+Tipo de Despesa
+Nota de Empenho
+2025NE01961
+Credor
+12440744000106 - Fundo Munic.de Saude De S.j.do Rio Preto
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6820 - 0000007870
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+4.722,25
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01961 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).S.JOSE DO V. RIO PRETO 
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 14:
+4 6 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05191
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+01606604000149 - Fundo Municipal De Saude De Barra Do Pirai
+237 - 0555 - 0000411868
+Valor por Extenso
+Valor
+Vinte e dois mil e sessenta e quatro reais e cinquenta e um centavos
+22.064,51
+Detalhamento
+Nota Liquidação
+2025NL01666
+Tipo de Despesa
+Nota de Empenho
+2025NE01923
+Credor
+01606604000149 - Fundo Municipal De Saude De Barra Do Pirai
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0555 - 0000411868
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+22.064,51
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01923 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).  Barra do Piraí
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KELI CRISTINA REIS BARROA TOMAZ em 27/03/25 às 
+1 4 : 4 3 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05190
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12361936000127 - Fundo Municipal De Saude De Saquarema
+237 - 2122 - 0000192856
+Valor por Extenso
+Valor
+Dezoito mil e novecentos e quarenta e oito reais e sessenta e três centavos
+18.948,63
+Detalhamento
+Nota Liquidação
+2025NL01665
+Tipo de Despesa
+Nota de Empenho
+2025NE01975
+Credor
+12361936000127 - Fundo Municipal De Saude De Saquarema
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2122 - 0000192856
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+18.948,63
+Observação
+PAGAMENTO  DO (S)  DOCUMENTO (S)  2025NE01975 CONFORME PROCESSO SEI-080001/001211/2024.Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).SAQUAREMA 
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KELI CRISTINA REIS BARROA TOMAZ em 27/03/25 às 
+1 4 : 4 1 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05189
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+02911953000137 - Fundo Municipal De Saude De Sapucaia
+237 - 6836 - 0000006629
+Valor por Extenso
+Valor
+Três mil e novecentos e quarenta e nove reais e quarenta centavos
+3.949,40
+Detalhamento
+Nota Liquidação
+2025NL01663
+Tipo de Despesa
+Nota de Empenho
+2025NE01972
+Credor
+02911953000137 - Fundo Municipal De Saude De Sapucaia
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6836 - 0000006629
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+3.949,40
+Observação
+PAGAMENTO  DO (S)  DOCUMENTO (S)  2025NE01972 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).SAPUCAIA
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KELI CRISTINA REIS BARROA TOMAZ em 27/03/25 às 
+1 4 : 3 9 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05188
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12598712000133 - Fundo Municipal De Saude De Sao Jose De Uba
+237 - 0587 - 1317318
+Valor por Extenso
+Valor
+Hum mil e quinhentos e oitenta e um reais e dois centavos
+1.581,02
+Detalhamento
+Nota Liquidação
+2025NL01659
+Tipo de Despesa
+Nota de Empenho
+2025NE01958
+Credor
+12598712000133 - Fundo Municipal De Saude De Sao Jose De Uba
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0587 - 1317318
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+1.581,02
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01958 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).SÃO JOSÉ DE UBA.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 14:
+3 7 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05187
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11174211000167 - Fundo Munic.de Saude De Sao Sebastiao Do Alto
+237 - 1888 - 404152
+Valor por Extenso
+Valor
+Dois mil e vinte e sete reais e trinta e cinco centavos
+2.027,35
+Detalhamento
+Nota Liquidação
+2025NL01662
+Tipo de Despesa
+Nota de Empenho
+2025NE01968
+Credor
+11174211000167 - Fundo Munic.de Saude De Sao Sebastiao Do Alto
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1888 - 404152
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+2.027,35
+Observação
+PAGMENTO  DO (S)  DOCUMENTO (S)  2025NE01968 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).SÃO SEBASTIÃO  DO ALTO 
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KELI CRISTINA REIS BARROA TOMAZ em 27/03/25 às 
+1 4 : 3 6 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05186
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+04182700000103 - Fundo Municipal De Saude - São Pedro da Aldeia
+237 - 1899 - 0000215201
+Valor por Extenso
+Valor
+Vinte e dois mil e duzentos e um reais e quinze centavos
+22.201,15
+Detalhamento
+Nota Liquidação
+2025NL01661
+Tipo de Despesa
+Nota de Empenho
+2025NE01964
+Credor
+04182700000103 - Fundo Municipal De Saude - São Pedro da Aldeia
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1899 - 0000215201
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+22.201,15
+Observação
+ PAGAMENTO  DO (S)  DOCUMENTO (S)  2025NE01964 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).SÃO.PEDRO DA ALDEIA
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KELI CRISTINA REIS BARROA TOMAZ em 27/03/25 às 
+1 4 : 3 4 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05185
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+39157029000117 - Fundo Municipal De Saude De Angra Dos Reis
+237 - 0459 - 0000927775
+Valor por Extenso
+Valor
+Quarenta e três mil e trezentos e quatro reais e trinta e um centavos
+43.304,31
+Detalhamento
+Nota Liquidação
+2025NL01658
+Tipo de Despesa
+Nota de Empenho
+2025NE01915
+Credor
+39157029000117 - Fundo Municipal De Saude De Angra Dos Reis
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0459 - 0000927775
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+43.304,31
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01915 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  Angra 
+dos Reis
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 14:
+3 4 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05182
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+03716759000163 - Fundo Municipal De Saude De Cordeiro
+237 - 1888 - 0000102105
+Valor por Extenso
+Valor
+Quatro mil e seiscentos e cinquenta e nove reais e vinte e oito centavos
+4.659,28
+Detalhamento
+Nota Liquidação
+2025NL01657
+Tipo de Despesa
+Nota de Empenho
+2025NE01963
+Credor
+03716759000163 - Fundo Municipal De Saude De Cordeiro
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1888 - 0000102105
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+4.659,28
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01963 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Cordeiro
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 14:
+2 6 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05181
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11740547000140 - Fundo Municipal De Saude De Silva Jardim
+237 - 6845 - 0000007765
+Valor por Extenso
+Valor
+Quatro mil e oitocentos e dezesseis reais e cinquenta centavos
+4.816,50
+Detalhamento
+Nota Liquidação
+2025NL01594
+Tipo de Despesa
+Nota de Empenho
+2025NE01979
+Credor
+11740547000140 - Fundo Municipal De Saude De Silva Jardim
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6845 - 0000007765
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+4.816,50
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01979 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). SILVA JARDIM 
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MARCIA LEMOS DA SILVA em 27/03/25 às 14:17.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05180
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+08640219000167 - Fundo Mun. De Saude De Conceicao De Macabu
+237 - 6769 - 0000022969
+Valor por Extenso
+Valor
+Quatro mil e novecentos e trinta e cinco reais e noventa e cinco centavos
+4.935,95
+Detalhamento
+Nota Liquidação
+2025NL01656
+Tipo de Despesa
+Nota de Empenho
+2025NE01962
+Credor
+08640219000167 - Fundo Mun. De Saude De Conceicao De Macabu
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6769 - 0000022969
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+4.935,95
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01962 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Conceição de Macabu
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 14:
+1 6 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05179
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+13034389000138 - Fundo Municipal De Saude De Duas Barras
+237 - 6757 - 0000000800392
+Valor por Extenso
+Valor
+Dois mil e quatrocentos e oitenta e nove reais e noventa e três centavos
+2.489,93
+Detalhamento
+Nota Liquidação
+2025NL01595
+Tipo de Despesa
+Nota de Empenho
+2025NE01965
+Credor
+13034389000138 - Fundo Municipal De Saude De Duas Barras
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6757 - 0000000800392
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+2.489,93
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01965 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  Duas 
+Barras
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MARCIA LEMOS DA SILVA em 27/03/25 às 14:12.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05178
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11120153000199 - Fundo Municipal De Saude Rio Das Flores
+237 - 1547 - 0001302353
+Valor por Extenso
+Valor
+Dois mil e onze reais e cinquenta e três centavos
+2.011,53
+Detalhamento
+Nota Liquidação
+2025NL01626
+Tipo de Despesa
+Nota de Empenho
+2025NE01935
+Credor
+11120153000199 - Fundo Municipal De Saude Rio Das Flores
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1547 - 0001302353
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+2.011,53
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01930 CONFORME PROCESSO SEI-080001/001211/2024 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). RIO DAS FLORES
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCIANA CURCIO DA SILVA em 27/03/25 às 14:11.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05177
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11868019000170 - Fundo Municipal De Saude De Belford Roxo
+237 - 2284 - 0000080004
+Valor por Extenso
+Valor
+Cento e dez mil e seiscentos e noventa e seis reais e trinta centavos
+110.696,30
+Detalhamento
+Nota Liquidação
+2025NL01625
+Tipo de Despesa
+Nota de Empenho
+2025NE01924
+Credor
+11868019000170 - Fundo Municipal De Saude De Belford Roxo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2284 - 0000080004
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+110.696,30
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01924  CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). Belford Roxo
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCIANA CURCIO DA SILVA em 27/03/25 às 14:09.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05176
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12396542000104 - Fundo Municipal De Saude De Natividade
+237 - 0587 - 2505487
+Valor por Extenso
+Valor
+Três mil e duzentos e setenta e três reais e setenta e oito centavos
+3.273,78
+Detalhamento
+Nota Liquidação
+2025NL01602
+Tipo de Despesa
+Nota de Empenho
+2025NE01966
+Credor
+12396542000104 - Fundo Municipal De Saude De Natividade
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0587 - 2505487
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+3.273,78
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01966 CONFORME PROCESSO ransferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140). NAD 
+1266. NATIVIDADE.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MARCIA LEMOS DA SILVA em 27/03/25 às 14:07.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05175
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+39215827000158 - Fundo Municipal De Saude De Itaperuna
+237 - 0587 - 0000785059
+Valor por Extenso
+Valor
+Vinte e um mil e novecentos e trinta e cinco reais e dez centavos
+21.935,10
+Detalhamento
+Nota Liquidação
+2025NL01624
+Tipo de Despesa
+Nota de Empenho
+2025NE01925
+Credor
+39215827000158 - Fundo Municipal De Saude De Itaperuna
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0587 - 0000785059
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+21.935,10
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01925 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140). 
+ITAPERUNA-NAD 1266
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCIANA CURCIO DA SILVA em 27/03/25 às 14:07.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05174
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11171092000199 - Fundo Municipal De Saude De Rio Claro
+237 - 6815 - 0000004405
+Valor por Extenso
+Valor
+Quatro mil e quatorze reais e sessenta e dois centavos
+4.014,62
+Detalhamento
+Nota Liquidação
+2025NL01623
+Tipo de Despesa
+Nota de Empenho
+2025NE01932
+Credor
+11171092000199 - Fundo Municipal De Saude De Rio Claro
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6815 - 0000004405
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+4.014,62
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01932 CONFORME PROCESSO SEI-080001/001211/2024 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).  RIO CLARO - 
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCIANA CURCIO DA SILVA em 27/03/25 às 14:04.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05173
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11128809000110 - Fundo Municipal De Saude De Duque De Caxias
+237 - 2814 - 708615
+Valor por Extenso
+Valor
+Cento e noventa e cinco mil e quatrocentos e quatorze reais e quinze centavos
+195.414,15
+Detalhamento
+Nota Liquidação
+2025NL01601
+Tipo de Despesa
+Nota de Empenho
+2025NE01967
+Credor
+11128809000110 - Fundo Municipal De Saude De Duque De Caxias
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2814 - 708615
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+195.414,15
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01967 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  Duque 
+de Caxias
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MARCIA LEMOS DA SILVA em 27/03/25 às 14:03.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05172
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11297536000137 - Fundo Municipal De Saude De Paty Do Alferes
+237 - 6793 - 0000004260
+Valor por Extenso
+Valor
+Seis mil e dezesseis reais e sessenta e dois centavos
+6.016,62
+Detalhamento
+Nota Liquidação
+2025NL01622
+Tipo de Despesa
+Nota de Empenho
+2025NE02022
+Credor
+11297536000137 - Fundo Municipal De Saude De Paty Do Alferes
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6793 - 0000004260
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+6.016,62
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE02022 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  NAD 
+1266. PATY DOS ALFERERES
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCIANA CURCIO DA SILVA em 27/03/25 às 14:00.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05169
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11800731000138 - Fundo Munic.de Saude/sus Munic.de Resende
+237 - 0539 - 0005916127
+Valor por Extenso
+Valor
+Vinte e sete mil e novecentos e nove reais e noventa e seis centavos
+27.909,96
+Detalhamento
+Nota Liquidação
+2025NL01593
+Tipo de Despesa
+Nota de Empenho
+2025NE02034
+Credor
+11800731000138 - Fundo Munic.de Saude/sus Munic.de Resende
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0539 - 0005916127
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+27.909,96
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE02034 CONFORME PROCESSO SEI-080001/001211/24 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024. 
+RESENDE.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 27/03/25 às 13:54.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05167
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+13813107000109 - Fundo Municipal De Saude De Seropedica
+237 - 6650 - 0000004812
+Valor por Extenso
+Valor
+Dezessete mil e setecentos e setenta e nove reais e vinte e quatro centavos
+17.779,24
+Detalhamento
+Nota Liquidação
+2025NL01590
+Tipo de Despesa
+Nota de Empenho
+2025NE01978
+Credor
+13813107000109 - Fundo Municipal De Saude De Seropedica
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6650 - 0000004812
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+17.779,24
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01978 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). SEROPÉDICA
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 27/03/25 às 13:52.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05166
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11216262000104 - Fundo Municipal De Saude De Vassouras
+237 - 1632 - 0000154075
+Valor por Extenso
+Valor
+Sete mil e oitocentos e quarenta reais e quarenta centavos
+7.840,40
+Detalhamento
+Nota Liquidação
+2025NL01599
+Tipo de Despesa
+Nota de Empenho
+2025NE01989
+Credor
+11216262000104 - Fundo Municipal De Saude De Vassouras
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1632 - 0000154075
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+7.840,40
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01989 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).
+VASSOURAS
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MARCIA LEMOS DA SILVA em 27/03/25 às 13:52.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05165
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11813986000135 - Fundo Munic.de Saude De Comend.levy Gasparia
+237 - 6766 - 0000008303
+Valor por Extenso
+Valor
+Hum mil e novecentos e quinze reais e doze centavos
+1.915,12
+Detalhamento
+Nota Liquidação
+2025NL01655
+Tipo de Despesa
+Nota de Empenho
+2025NE01959
+Credor
+11813986000135 - Fundo Munic.de Saude De Comend.levy Gasparia
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6766 - 0000008303
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+1.915,12
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01959 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Comendador Levy Gasparian
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 13:
+5 1 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05163
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11892333000199 - Fundo Municipal De Saude De Quissama
+237 - 6809 - 0000004731
+Valor por Extenso
+Valor
+Cinco mil e duzentos e quarenta e oito reais e setenta e cinco centavos
+5.248,75
+Detalhamento
+Nota Liquidação
+2025NL01591
+Tipo de Despesa
+Nota de Empenho
+2025NE02032
+Credor
+11892333000199 - Fundo Municipal De Saude De Quissama
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6809 - 0000004731
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+5.248,75
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE02032 CONFORME PROCESSO SEI-080001/001211/24 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024. 
+QUISSAMA.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 27/03/25 às 13:50.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05162
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+13807681000146 - Fundo Municipal De Saude De Queimados
+237 - 2089 - 0000599085
+Valor por Extenso
+Valor
+Trinta e dois mil e quinhentos e sessenta e nove reais e doze centavos
+32.569,12
+Detalhamento
+Nota Liquidação
+2025NL01588
+Tipo de Despesa
+Nota de Empenho
+2025NE02030
+Credor
+13807681000146 - Fundo Municipal De Saude De Queimados
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2089 - 0000599085
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+32.569,12
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE02030 CONFORME PROCESSO SEI-080001/001211/24 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024. 
+QUEIMADOS.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 27/03/25 às 13:49.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05161
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+13828365000150 - Fundo Municipal De Saude De Sumidouro
+237 - 0540 - 0001279289
+Valor por Extenso
+Valor
+Três mil e trezentos e oitenta e quatro reais e noventa e oito centavos
+3.384,98
+Detalhamento
+Nota Liquidação
+2025NL01597
+Tipo de Despesa
+Nota de Empenho
+2025NE01982
+Credor
+13828365000150 - Fundo Municipal De Saude De Sumidouro
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0540 - 0001279289
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+3.384,98
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01982 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). SUMIDOURO
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MARCIA LEMOS DA SILVA em 27/03/25 às 13:48.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05160
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+04543783000100 - Fundo Municipal De Saude De Sao Joao Da Barra
+237 - 6585 - 0000010006
+Valor por Extenso
+Valor
+Sete mil e oitocentos e vinte e dois reais e dez centavos
+7.822,10
+Detalhamento
+Nota Liquidação
+2025NL01654
+Tipo de Despesa
+Nota de Empenho
+2025NE01955
+Credor
+04543783000100 - Fundo Municipal De Saude De Sao Joao Da Barra
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6585 - 0000010006
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+7.822,10
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01955 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140).S.JOÃO DA BARRA
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 13:
+4 7 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05159
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+16559032000161 - Fundo Municipal De Saude De Quatis
+237 - 6800 - 0000004049
+Valor por Extenso
+Valor
+Três mil e noventa e oito reais e setenta e sete centavos
+3.098,77
+Detalhamento
+Nota Liquidação
+2025NL01587
+Tipo de Despesa
+Nota de Empenho
+2025NE02029
+Credor
+16559032000161 - Fundo Municipal De Saude De Quatis
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6800 - 0000004049
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+3.098,77
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE02029 CONFORME PROCESSO SEI-080001/001211/24 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024. QUATIS.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 27/03/25 às 13:47.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05157
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11405835000148 - Fundo Municipal De Saude - Três Rios
+237 - 0556 - 0000695963
+Valor por Extenso
+Valor
+Dezessete mil e trezentos e oitenta e três reais e trinta e cinco centavos
+17.383,35
+Detalhamento
+Nota Liquidação
+2025NL01611
+Tipo de Despesa
+Nota de Empenho
+2025NE01986
+Credor
+11405835000148 - Fundo Municipal De Saude - Três Rios
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0556 - 0000695963
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+17.383,35
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01986 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). TRÊS RIOS
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Suzi Gianne Bezerra da Silva em 27/03/25 às 13:
+4 5 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05156
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11885839000170 - Fundo Municipal De Saude De Araruama
+237 - 1882 - 0000275964
+Valor por Extenso
+Valor
+Vinte e oito mil e cento e trinta e cinco reais
+28.135,00
+Detalhamento
+Nota Liquidação
+2025NL01653
+Tipo de Despesa
+Nota de Empenho
+2025NE01917
+Credor
+11885839000170 - Fundo Municipal De Saude De Araruama
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1882 - 0000275964
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+28.135,00
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01917 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Araruama
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 13:
+4 5 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05155
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12107049000127 - Fundo Municipal De Saude De Porto Real
+237 - 1002 - 0000306657
+Valor por Extenso
+Valor
+Quatro mil e cento e oitenta e dois reais e sessenta e quatro centavos
+4.182,64
+Detalhamento
+Nota Liquidação
+2025NL01585
+Tipo de Despesa
+Nota de Empenho
+2025NE02028
+Credor
+12107049000127 - Fundo Municipal De Saude De Porto Real
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1002 - 0000306657
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+4.182,64
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE02028 CONFORME PROCESSO SEI-080001/001211/24 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024. PORTO 
+REAL.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 27/03/25 às 13:43.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05154
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11399442000179 - Fundo Municipal De Saude De Nova Friburgo
+237 - 0540 - 0001279254
+Valor por Extenso
+Valor
+Quarenta mil e quinhentos e nove reais e nove centavos
+40.509,09
+Detalhamento
+Nota Liquidação
+2025NL01610
+Tipo de Despesa
+Nota de Empenho
+2025NE01973
+Credor
+11399442000179 - Fundo Municipal De Saude De Nova Friburgo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0540 - 0001279254
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+40.509,09
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01973 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140). NAD 
+1266. Nova Friburgo
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Suzi Gianne Bezerra da Silva em 27/03/25 às 13:
+4 2 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05153
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12097798000110 - Fundo Municipal De Saude De Porciuncula
+237 - 6799 - 0000007692
+Valor por Extenso
+Valor
+Quatro mil e oitenta e três reais e cinquenta e dois centavos
+4.083,52
+Detalhamento
+Nota Liquidação
+2025NL01584
+Tipo de Despesa
+Nota de Empenho
+2025NE02027
+Credor
+12097798000110 - Fundo Municipal De Saude De Porciuncula
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6799 - 0000007692
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+4.083,52
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE02027 CONFORME PROCESSO SEI-080001/001211/24 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024. 
+PORCIUNCULA.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 27/03/25 às 13:41.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05152
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+36285484000100 - Fundo Municipal De Saude De Miracema
+237 - 6789 - 0000009881
+Valor por Extenso
+Valor
+Cinco mil e setecentos e setenta e quatro reais e quarenta e oito centavos
+5.774,48
+Detalhamento
+Nota Liquidação
+2025NL01598
+Tipo de Despesa
+Nota de Empenho
+2025NE01960
+Credor
+36285484000100 - Fundo Municipal De Saude De Miracema
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6789 - 0000009881
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+5.774,48
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01960 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140). NAD 
+1266. MIRACEMA
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MARCIA LEMOS DA SILVA em 27/03/25 às 13:41.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05150
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11389387000136 - Fundo Municipal De Saude De Cardoso Moreira
+237 - 0863 - 0000140716
+Valor por Extenso
+Valor
+Dois mil e setecentos e setenta e oito reais e trinta e dois centavos
+2.778,32
+Detalhamento
+Nota Liquidação
+2025NL01609
+Tipo de Despesa
+Nota de Empenho
+2025NE01948
+Credor
+11389387000136 - Fundo Municipal De Saude De Cardoso Moreira
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0863 - 0000140716
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+2.778,32
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01948 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Cardoso Moreira
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Suzi Gianne Bezerra da Silva em 27/03/25 às 13:
+3 8 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05149
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+01648573000199 - Fundo Municipal De Saude De Pinheiral
+237 - 6797 - 0000000965
+Valor por Extenso
+Valor
+Cinco mil e trezentos e quarenta e cinco reais e sessenta e cinco centavos
+5.345,65
+Detalhamento
+Nota Liquidação
+2025NL01583
+Tipo de Despesa
+Nota de Empenho
+2025NE02026
+Credor
+01648573000199 - Fundo Municipal De Saude De Pinheiral
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6797 - 0000000965
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+5.345,65
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE02026 CONFORME PROCESSO SEI-080001/001211/24 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024. 
+PINHEIRAL.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 27/03/25 às 13:37.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05148
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+03581920000139 - Fundo Municipal De Saude De Iguaba Grande
+237 - 6772 - 0000000370
+Valor por Extenso
+Valor
+Seis mil e quinze reais e oitenta e oito centavos
+6.015,88
+Detalhamento
+Nota Liquidação
+2025NL01608
+Tipo de Despesa
+Nota de Empenho
+2025NE01971
+Credor
+03581920000139 - Fundo Municipal De Saude De Iguaba Grande
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6772 - 0000000370
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+6.015,88
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01971 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  Iguaba 
+Grande
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Suzi Gianne Bezerra da Silva em 27/03/25 às 13:
+3 6 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05147
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11129492000136 - Fundo Municipal De Saude - Petrópolis
+237 - 0401 - 3050190
+Valor por Extenso
+Valor
+Sessenta e seis mil e novecentos e sessenta e dois reais e setenta e nove centavos
+66.962,79
+Detalhamento
+Nota Liquidação
+2025NL01582
+Tipo de Despesa
+Nota de Empenho
+2025NE02024
+Credor
+11129492000136 - Fundo Municipal De Saude - Petrópolis
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0401 - 3050190
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+66.962,79
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE02024 CONFORME PROCESSO SEI-080001/001211/24 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024. 
+PETROPOLIS.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 27/03/25 às 13:36.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05146
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+03576656000145 - Fundo Municipal De Saude De Cantagalo
+237 - 2038 - 0000117889
+Valor por Extenso
+Valor
+Quatro mil e trezentos e sessenta e quatro reais e setenta e cinco centavos
+4.364,75
+Detalhamento
+Nota Liquidação
+2025NL01621
+Tipo de Despesa
+Nota de Empenho
+2025NE01942
+Credor
+03576656000145 - Fundo Municipal De Saude De Cantagalo
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2038 - 0000117889
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+4.364,75
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01942 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Cantagalo
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 27/03/25 às 13:34.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05145
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11962794000190 - Fundo Municipal De Saude De Armac. Dos Buzios
+237 - 1057 - 0000261548
+Valor por Extenso
+Valor
+Oito mil e seiscentos e treze reais e cinco centavos
+8.613,05
+Detalhamento
+Nota Liquidação
+2025NL01596
+Tipo de Despesa
+Nota de Empenho
+2025NE01920
+Credor
+11962794000190 - Fundo Municipal De Saude De Armac. Dos Buzios
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1057 - 0000261548
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+8.613,05
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01920 CONFORME PROCESSO SEI-080001/001211/24 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024.  
+Armação dos Búzios.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por MARCIA LEMOS DA SILVA em 27/03/25 às 13:35.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05144
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12240308000193 - Fundo Municipal De Saude De Miguel Pereira
+237 - 1394 - 0000146013
+Valor por Extenso
+Valor
+Cinco mil e quatrocentos e noventa e seis reais e cinquenta e três centavos
+5.496,53
+Detalhamento
+Nota Liquidação
+2025NL01592
+Tipo de Despesa
+Nota de Empenho
+2025NE01957
+Credor
+12240308000193 - Fundo Municipal De Saude De Miguel Pereira
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1394 - 0000146013
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+5.496,53
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01957 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  NAD 
+1266. Miguel Pereira
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 27/03/25 às 13:34.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05143
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12995547000153 - Fundo Municipal De Saude De Trajano De Moraes
+237 - 6769 - 01303791
+Valor por Extenso
+Valor
+Dois mil e trezentos e dois reais e trinta centavos
+2.302,30
+Detalhamento
+Nota Liquidação
+2025NL01607
+Tipo de Despesa
+Nota de Empenho
+2025NE01985
+Credor
+12995547000153 - Fundo Municipal De Saude De Trajano De Moraes
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6769 - 01303791
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+2.302,30
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01985  CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). TRAJANO DE MORAES
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Suzi Gianne Bezerra da Silva em 27/03/25 às 13:
+3 4 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05142
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12116187000172 - Fundo Municipal De Saude De Rio Bonito
+237 - 2055 - 0000140201
+Valor por Extenso
+Valor
+Doze mil e setecentos e noventa e dois reais e setenta e um centavos
+12.792,71
+Detalhamento
+Nota Liquidação
+2025NL01620
+Tipo de Despesa
+Nota de Empenho
+2025NE01929
+Credor
+12116187000172 - Fundo Municipal De Saude De Rio Bonito
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2055 - 0000140201
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+12.792,71
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01929 CONFORME PROCESSO SEI-080001/001211/2024 - Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). RIO BONITO
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 27/03/25 às 13:33.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05141
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+14999490000196 - Fundo Municipal De Saude De Itaocara
+237 - 2090 - 0000107921
+Valor por Extenso
+Valor
+Quatro mil e novecentos e trinta e sete reais e vinte e três centavos
+4.937,23
+Detalhamento
+Nota Liquidação
+2025NL01619
+Tipo de Despesa
+Nota de Empenho
+2025NE01922
+Credor
+14999490000196 - Fundo Municipal De Saude De Itaocara
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2090 - 0000107921
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+4.937,23
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01922 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140). 
+ITAOCARA-NAD 1266
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 27/03/25 às 13:32.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05140
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11855524000180 - Funco Municipal De Saude De Itaguai
+237 - 1310 - 0000150487
+Valor por Extenso
+Valor
+Vinte e oito mil e duzentos e sessenta e seis reais e cinquenta e quatro centavos
+28.266,54
+Detalhamento
+Nota Liquidação
+2025NL01612
+Tipo de Despesa
+Nota de Empenho
+2025NE01974
+Credor
+11855524000180 - Funco Municipal De Saude De Itaguai
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1310 - 0000150487
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+28.266,54
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01974 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  Itaguaí 
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por KLAULS DA COSTA RIBEIRO em 27/03/25 às 13:32.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05139
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11249035000185 - Fundo Munic.de Saude De Niteroi/cgr Metro.ii
+237 - 0309 - 0002029944
+Valor por Extenso
+Valor
+Cento e seis mil e novecentos e noventa e seis reais e sessenta e sete centavos
+106.996,67
+Detalhamento
+Nota Liquidação
+2025NL01606
+Tipo de Despesa
+Nota de Empenho
+2025NE01970
+Credor
+11249035000185 - Fundo Munic.de Saude De Niteroi/cgr Metro.ii
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0309 - 0002029944
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+106.996,67
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01970 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140). NAD 
+1266. NITEROI - METRO II
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Suzi Gianne Bezerra da Silva em 27/03/25 às 13:
+3 2 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05138
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+07900983000161 - Fundo Municipal De Saude Varre-sai
+237 - 6896 - 0000003301
+Valor por Extenso
+Valor
+Dois mil e trezentos e oitenta e três reais e trinta e três centavos
+2.383,33
+Detalhamento
+Nota Liquidação
+2025NL01618
+Tipo de Despesa
+Nota de Empenho
+2025NE01988
+Credor
+07900983000161 - Fundo Municipal De Saude Varre-sai
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 6896 - 0000003301
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+2.383,33
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01988 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). VARRE-SAI
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 27/03/25 às 13:31.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05137
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12468947000100 - Fundo Municipal De Saude De Guapimirim
+237 - 0855 - 0000260592
+Valor por Extenso
+Valor
+Treze mil e cento e doze reais e dois centavos
+13.112,02
+Detalhamento
+Nota Liquidação
+2025NL01605
+Tipo de Despesa
+Nota de Empenho
+2025NE01969
+Credor
+12468947000100 - Fundo Municipal De Saude De Guapimirim
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0855 - 0000260592
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+13.112,02
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01969 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Guapimirim
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Suzi Gianne Bezerra da Silva em 27/03/25 às 13:
+3 0 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05136
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+12640342000155 - Fundo Municipal De Saude De Paraty
+237 - 1645 - 0000179396
+Valor por Extenso
+Valor
+Nove mil e trezentos e cinquenta e dois reais e quarenta e dois centavos
+9.352,42
+Detalhamento
+Nota Liquidação
+2025NL01617
+Tipo de Despesa
+Nota de Empenho
+2025NE02020
+Credor
+12640342000155 - Fundo Municipal De Saude De Paraty
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1645 - 0000179396
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+9.352,42
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE02020 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  NAD 
+1266. PARATY
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 27/03/25 às 13:30.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05135
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+10411707000144 - Fundo Municipal De Saude De Italva
+237 - 0863 - 0000159867
+Valor por Extenso
+Valor
+Três mil e duzentos e noventa e quatro reais e oitenta e cinco centavos
+3.294,85
+Detalhamento
+Nota Liquidação
+2025NL01616
+Tipo de Despesa
+Nota de Empenho
+2025NE01919
+Credor
+10411707000144 - Fundo Municipal De Saude De Italva
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 0863 - 0000159867
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+3.294,85
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01919 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+ITALVA.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 27/03/25 às 13:29.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05134
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11274201000101 - Fundo Munic.de Saude Do Munic.de Teresopolis
+237 - 2801 - 0000178764
+Valor por Extenso
+Valor
+Trinta e oito mil e oitocentos e um reais e vinte e três centavos
+38.801,23
+Detalhamento
+Nota Liquidação
+2025NL01604
+Tipo de Despesa
+Nota de Empenho
+2025NE01984
+Credor
+11274201000101 - Fundo Munic.de Saude Do Munic.de Teresopolis
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2801 - 0000178764
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+38.801,23
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01984 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). TERESÓPOLIS
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Suzi Gianne Bezerra da Silva em 27/03/25 às 13:
+2 8 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05132
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+11934211000118 - Pms - Sms Fundo Municipal De Saude - Valenca
+237 - 1547 - 0000280690
+Valor por Extenso
+Valor
+Dezesseis mil e duzentos e sessenta e um reais e quatorze centavos
+16.261,14
+Detalhamento
+Nota Liquidação
+2025NL01615
+Tipo de Despesa
+Nota de Empenho
+2025NE01987
+Credor
+11934211000118 - Pms - Sms Fundo Municipal De Saude - Valenca
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1547 - 0000280690
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+16.261,14
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01987 CONFORME PROCESSO SEI-080001/001211/2024. Transferência de recursos referente a 
+Contrapartida Estadual para os FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 
+3292 de 04/04/2024, DOERJ de 08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, 
+conforme solicitação (96168140). VALENÇA 
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 27/03/25 às 13:27.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05131
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+22959877000147 - FUNDO MUNICIPAL DE SAUDE DE PARAIBA DO SUL - RJ
+237 - 2054 - 66729
+Valor por Extenso
+Valor
+Nove mil e quatrocentos e dez reais e cinquenta e seis centavos
+9.410,56
+Detalhamento
+Nota Liquidação
+2025NL01614
+Tipo de Despesa
+Nota de Empenho
+2025NE02017
+Credor
+22959877000147 - FUNDO MUNICIPAL DE SAUDE DE PARAIBA DO SUL - RJ
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 2054 - 66729
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+9.410,56
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE02017 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  NAD 
+1266. PARAIBA DO SUL.
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 27/03/25 às 13:26.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05130
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+39563911000162 - Fundo Municipal De Saude Pmvr Sms
+237 - 1592 - 0000037796
+Valor por Extenso
+Valor
+Cinquenta e oito mil e quinze reais e cinco centavos
+58.015,05
+Detalhamento
+Nota Liquidação
+2025NL01603
+Tipo de Despesa
+Nota de Empenho
+2025NE01990
+Credor
+39563911000162 - Fundo Municipal De Saude Pmvr Sms
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1592 - 0000037796
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+58.015,05
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01990 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).VOLTA 
+REDONDA
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por Suzi Gianne Bezerra da Silva em 27/03/25 às 13:
+2 6 .
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Fevereiro 
+Identificação
+UG Liquidante
+Documento
+Emissão
+296100 - FES
+2025PD05129
+27/03/25
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+296100 - FES
+237 - 6898 - 0000027200 - 
+CONTA D
+Favorecido
+Domicílio Bancário Destino
+08361606000164 - Fundo Municipal De Saude De Carapebus
+237 - 1545 - 1667009
+Valor por Extenso
+Valor
+Três mil e quatrocentos e sessenta e três reais e noventa e seis centavos
+3.463,96
+Detalhamento
+Nota Liquidação
+2025NL01613
+Tipo de Despesa
+Nota de Empenho
+2025NE01945
+Credor
+08361606000164 - Fundo Municipal De Saude De Carapebus
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Destino
+237 - 1545 - 1667009
+Competência
+12/2024
+Processo
+SEI-080001/001211/2024
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da 
+Despesa
+Operação 
+Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual
+99 - Sem consumo 
+de Limite de Saque
+3.463,96
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)  2025NE01945 CONFORME PROCESSO Transferência de recursos referente a Contrapartida Estadual para os 
+FMS dos municípios correspondentes ao Componente Básico de Assistência Farmacêutica, instituído pela Resolução SES nº 3292 de 04/04/2024, DOERJ de 
+08/04/2024, cujo os favorecidos são os diversos municípios citados na Resolução, competência de Dezembro/2024, conforme solicitação (96168140).  
+Carapebus
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por CAIO PIMENTEL MAXIMO em 27/03/25 às 13:25.
+Impresso por ADRIANO INAGAKI DE ANDRADE em 27/03/25 às 15:40.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

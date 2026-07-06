@@ -1,0 +1,111 @@
+[Anexo 471] (fase: indefinida · tipo: anexo)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Junho 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+650100 - Secretaria de Estado de Habitação De Interesse Social (CNPJ: 49.479.435/0001-50)
+2024NL00471
+07/08/24
+Valor Bruto
+Valor Líquido
+1.349.057,82
+1.349.057,82
+Tipo de Alteração
+Documento Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2024NE00207
+Credor
+23902149000161 - Abre Construções Ltda
+Natureza
+449051 - Obras e Instalações
+Unidade Orçamentária
+65010 - SECRETARIA DE ESTADO DE HABITAÇÃO DE INTERESSE SOCIAL
+Programa de trabalho
+16.482. 0502. 1847 - Planejamento, Desenvolvimento e Execução de Obras e...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+2 - Recursos de Exercícios Anteriores
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Tipo de Detalhamento de Fonte
+1 - CADASTRO
+Detalhamento de Fonte
+007526 - ACOMPANHAMENTO DA EXECUÇÃO DO PACTO RJ - (501.145)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+650100 - Secretaria de Estado de Habitação De Interesse Social
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+23001870 - CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA ELABORAÇÃO DE PROJE...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2023004108000810
+Processo
+SEI-490001/001070/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Obras e Instalações
+07 - EXECUÇAO DE OBRAS 
+POR CONTRATO
+996 - Reconhecimento da obrigação e 
+incorporação do ativo - Com inscrição 
+imediata
+IG.IG0011516
+1.349.057,82
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Nota Fiscal
+50089
+SEI-490001/001070/24
+02/2024
+02/08/2024
+1.349.057,82
+Total Documentos Comprobatórios
+1.349.057,82
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  50089 CONFORME PROCESSO Reserva Orçamentária nº 169/2024 - Empenho das Medições dos Serviços 
+Executados nos meses de Abril, Maio e Junho de 2024, referente à Elaboração de Projeto Executivo e Execução de Obras para Construção do Conjunto 
+Habitacional de Interesse Social com 440 Unidades Habitacionais na Av. Itaóca n° 2.226, Bairro: Bonsucesso (Complexo do Alemão), município do Rio de 
+Janeiro/RJ, de acordo com o pactuado no Contrato nº 002/2023, Siafe-Rio nº 23001870. 12ª medição, referente ao período 01/07 à 30/07/2024, do Contrato 
+nº 002/2023, celebrado junto à ABRE CONSTRUTORA LTDA, no valor de R$ 12.012.415,85 (doze milhões. doze mil, quatrocentos e quinze reais e oitenta e 
+cinco centavos), que trata da ELABORAÇÃO DE PROJETO EXECUTIVO E EXECUÇÃO DE OBRAS PARA CONSTRUÇÃO DE CONJUNTO 
+HABITACIONAL DE INTERESSE SOCIAL COM 440 UNIDADES HABITACIONAIS NA AV. ITAÓCA N° 2.226, BAIRRO: BONSUCESSO (COMPLEXO DO 
+ALEMÃO), MUNICÍPIO DO RIO DE JANEIRO/RJ iss pago
+Emitido/contabilizado por ANA CAROLINE DA SILVA ALVES em 07/08/24 às 15:
+1 2 .
+Impresso por ANA CAROLINE DA SILVA ALVES em 07/08/24 às 15:17.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

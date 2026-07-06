@@ -1,0 +1,144 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Maio 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+160100 - SECRETARIA DE ESTADO DE DEFESA CIVIL E CORPO DE BOMBE... (CNPJ: 28.176.998
+/0001-07)
+2025NE00549
+09/07/25
+Credor
+CG3802646 - ANGLOCO LIMITED
+Valor
+935.660,00 (Novecentos e trinta e cinco mil e seiscentos e sessenta reais)
+Classificação
+Natureza
+449052 - Equipamentos e Material Permanente
+Unidade Orçamentária
+26670 - Fundo Estadual de Segurança Pública do Estado do Rio de Janeiro ...
+Programa de trabalho
+06.182. 0496. 5760 - Apoio a Projetos e Atividades da Defesa Civil
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+2 - Recursos de Exercícios Anteriores
+Fonte
+713 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Fonte RJ
+224 - Transferências Fundo a Fundo de Recursos do Fundo de Segurança Púb...
+Tipo de Detalhamento de Fonte
+1 - CADASTRO
+Detalhamento de Fonte
+000085 - FORTALECIMENTO DAS INSTITUIÇÕES DE SEGURANÇA PÚBLICA E DEFESA S...
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio de Janeiro 
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+25041468 - CTT 035/2025 aquisição de viaturas do tipo AUTO BUSCA E SALVA...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2025004930000260
+Detalhamento
+Mod. Empenho
+Global
+Mod. Licitação
+09 - Pregão Eletrônico
+Emb. Legal
+LEI N° 8.666/93
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-
+270006/012128/2024
+UF
+Rio de Janeiro
+Município
+Rio de Janeiro
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Bens Móveis -  Equipamentos e Material 
+Permanente
+29 - VEICULOS DE TRAÇÃO MECANICA A 
+CADASTRAR
+935.660,00
+Cronograma
+Julho
+935.660,00
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+935.676,61 Pré-Empenhado
+0,00 Bloqueado
+0,00
+935.660,00
+16,61
+Observação
+AQ. DE 10 UNIDS. DE VIATURAS TIPO ABSL - SC ATA Nº 066/2024 / CTT N° 35/2025.SEI-270006/012128/2024.Local de 
+entrega: ALMOXARIFADO GERAL DO CBMERJ  CSM Endereço: Av. Bartolomeu Gusmão nº 850 - São Cristóvão/RJ. As entregas 
+deverão ser agendadas através do Tel.: (21) 99320-7407 E-mail: almoxcsm@cbmerj.rj.gov.br.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+VEICULO COMBATE A INCENDIO E SALVAMENTO,
+CLASSIFICACAO
+0,43
+UN
+2.200.000,00
+935.660,00
+Emitido/contabilizado por NATALI SILVA CAMPOS CARDOZO em 10/07/25 às 14:
+2 7 .
+Impresso por NATALI SILVA CAMPOS CARDOZO em 10/07/25 às 14:27.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/2
+
+Identificação
+Unidade Gestora
+Documento
+Emissão
+160100 - SECRETARIA DE ESTADO DE DEFESA CIVIL E CORPO DE BOMBE... (CNPJ: 28.176.998
+/0001-07)
+2025NE00549
+09/07/25
+Credor
+CG3802646 - ANGLOCO LIMITED
+Valor
+935.660,00 (Novecentos e trinta e cinco mil e seiscentos e sessenta reais)
+Descrição
+VEICULO COMBATE A INCENDIO E SALVAMENTO,CLASSIFICACAO: CAMINHAO, MOTOR: 4 CILINDROS, TIPO CABINE: DUPLA, 
+TRACAO: 4 X 2, CAPACIDADE PASSAGEIROS: 5 PASSAGEIROS, COMBUSTIVEL: DIESEL, CAPACIDADE CARGA: 7 T, POTENCIA 
+MOTOR: 150 ~ 200, CAPACIDADE TANQUE: 350 L, CAPACIDADE BOMBA: 40 LPM A 100 BAR, TRANSMISSAO: MANUAL, 
+COMPRIMENTO VEICULO: 6,5 M ~ 7 M, NUMERO EIXOS: 2, LARGURA COMPARTIMENTO: CONFORME NBR 14096:2016, ANO 
+FABRICACAO: 0 KM, MATERIAL TANQUE: POLIESTER REFORCADO DE FIBRA DE VIDRO, COR: VERMELHA, ALTURA 
+COMPARTIMENTO: CONFORME NBR 14096:2016, PROFUNDIDADE COMPARTIMENTO: CONFORME NBR 14096:2016, FORMA 
+FORNECIMENTO: UNIDADE Código do Item: 2360.002.0016 (ID - 171031)
+Emitido/contabilizado por NATALI SILVA CAMPOS CARDOZO em 10/07/25 às 14:
+2 7 .
+Impresso por NATALI SILVA CAMPOS CARDOZO em 10/07/25 às 14:27.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/2

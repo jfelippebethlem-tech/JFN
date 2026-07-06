@@ -1,0 +1,634 @@
+[
+ {
+  "categoria": "contexto_admin",
+  "chave": "limite_dispensa_obras",
+  "valor": "Lei 14.133/21 art. 75 I: dispensa de licitação para obras/serviços de engenharia até R$ 119.812,02 (atualizado). Fracionamento para fugir disso é ilegal.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "limite_dispensa_compras",
+  "valor": "Lei 14.133/21 art. 75 II: dispensa para compras e outros serviços até R$ 59.906,02. Múltiplas compras ao mesmo fornecedor somando acima disso = fracionamento.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "limite_convite_antigo",
+  "valor": "Lei 8.666/93 (ainda aplicável a contratos antigos): convite até R$ 176.000 para obras, R$ 80.000 para compras.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "vedacao_sancionada",
+  "valor": "Empresa no CEIS/CNEP não pode receber pagamento público. Lei 8.666/93 art. 87 e Lei 14.133/21 art. 156.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "processo_sei_obrigatorio",
+  "valor": "Todo pagamento estadual do RJ deve ter processo SEI associado. OB sem processo é indício de pagamento irregular.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "ug_principais_rj",
+  "valor": "UGs comuns no RJ: 300100 (SEFAZ), 200100 (Casa Civil). Pagamentos concentrados numa UG para um único favorecido merecem atenção.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "rajada_fim_mes",
+  "valor": "Concentração de OBs nos últimos 3 dias úteis do mês ou exercício pode indicar execução orçamentária forçada para não perder verba (empenho de fim de ano).",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "valor_redondo",
+  "valor": "Valores exatos e redondos (R$ 100.000,00) são raros em contratos legítimos. Costumam indicar estimativa sem cotação real ou direcionamento.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "nepotismo",
+  "valor": "Súmula Vinculante 13 do STF veda nomeação de parentes até 3º grau. Cruzar sobrenomes de nomeados com servidores/políticos do mesmo órgão.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "improbidade_dolo_especifico",
+  "valor": "Improbidade pós Lei 14.230/2021: exige DOLO ESPECÍFICO (art. 1º §2º — vontade livre e consciente de alcançar o resultado ilícito); o mero exercício da função sem ato doloso com fim ilícito AFASTA a improbidade (§3º). Acabou a modalidade culposa do art. 10. Apontar SEMPRE como indício, nunca afirmar dolo.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "improbidade_dano_efetivo",
+  "valor": "Fim do dano presumido: STJ REsp 1.929.685 (1ª Turma) — condenação pelo art. 10 da Lei 8.429 exige PROVA de dano EFETIVO ao erário; aplica-se a fatos anteriores à reforma se o processo ainda está pendente (Tema 1199/STF).",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "anatomia_achado",
+  "valor": "Achado de auditoria (TCU/ISSAI/CGU) = CRITÉRIO (o que deveria ser) × CONDIÇÃO (o que é) → CAUSA (razão do desvio) → EFEITO (consequência), sustentado por EVIDÊNCIA e fechado com CONCLUSÃO + RECOMENDAÇÃO. É o molde de todo parecer do Lex.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "nota_tecnica_cge",
+  "valor": "Modelo CGE-RJ (Decreto 47.408/2020): a saída é uma NOTA TÉCNICA 'COM Achado' (há indício) ou 'SEM Achado' (presunção de regularidade). PLANAT/RANAT = Resolução CGE 70/2020. Controle interno = Decreto 46.873/2019; integridade = Decreto 46.745/2019.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "tcerj_dados_abertos",
+  "valor": "dados.tcerj.tc.br (API pública) traz contratos/compras diretas do Estado com o nº do processo SEI e o EnquadramentoLegal das dispensas — fonte oficial que CONTORNA o WAF do sei.rj.gov.br. Usar p/ objeto, critério e contrato-vs-pago por CNPJ.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "contexto_admin",
+  "chave": "crimes_contratacao",
+  "valor": "Crimes: peculato (CP 312), concussão (316), corrupção passiva (317)/ativa (333) — reclusão 2-12 anos; crimes licitatórios na Lei 14.133 (CP arts. 337-E a 337-P: contratação direta indevida, frustração do caráter competitivo etc.). Improbidade ≠ crime ≠ ilícito administrativo — separar as esferas.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "humano"
+ },
+ {
+  "categoria": "empirico",
+  "chave": "base_volume",
+  "valor": "Base: 1,121,302 OBs (chave única numero_ob+ug+exercício), 152 UGs, 73,881 fornecedores, exercícios 2019–2026. p90 do valor de OB ≈ R$ 148,358.32.",
+  "confianca": 0.95,
+  "n_obs": 1121302,
+  "fonte": "empirico"
+ },
+ {
+  "categoria": "empirico",
+  "chave": "cobertura_ob_sei",
+  "valor": "OB↔SEI: 1,527/1,121,303 OBs do TFE com nº SEI (0.14%) + 2267 OBs do SIAFE carregam processo na tabela rica. Cobertura limitada pela varredura SIAFE (WAF restringe a VM). O Lex deve declarar essa limitação ao opinar sobre processos não lidos.",
+  "confianca": 0.9,
+  "n_obs": 1121303,
+  "fonte": "empirico"
+ },
+ {
+  "categoria": "empirico",
+  "chave": "anomalia_threshold",
+  "valor": "Score de anomalia (ensemble PyOD): p95=0.725, p99=0.926 sobre 1,088,550 OBs. Acima de p99 = OB estatisticamente atípica a priorizar em diligência.",
+  "confianca": 0.8,
+  "n_obs": 1088550,
+  "fonte": "empirico"
+ },
+ {
+  "categoria": "empirico",
+  "chave": "concentracao_ug_top1",
+  "valor": "15 UG(s) com 1 fornecedor concentrando >=60% do valor pago (red flag ACFE). Maiores: UG 460100=100%; UG 450100=100%; UG 326400=100%; UG 120200=100%; UG 016200=100%; UG 226200=100%; UG 226100=100%; UG 316100=100%.",
+  "confianca": 0.7,
+  "n_obs": 15,
+  "fonte": "empirico"
+ },
+ {
+  "categoria": "empirico",
+  "chave": "fornecedores_ubiquos",
+  "valor": "282 fornecedores atuam em >=10 UGs (ubíquos — ex.: utilities/bancos). Co-ocorrência entre ubíquos NÃO é indício de cartel; o sinal é entre fornecedores NÃO-ubíquos que dividem um conjunto estreito de órgãos.",
+  "confianca": 0.7,
+  "n_obs": 282,
+  "fonte": "empirico"
+ },
+ {
+  "categoria": "entidade",
+  "chave": "FOO LTDA",
+  "valor": "{\"suspeito\": true, \"total\": 1000, \"ultima_atualizacao\": \"2026-06-07T23:44:30.183962\"}",
+  "confianca": 1.0,
+  "n_obs": 14,
+  "fonte": "regra"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "primario-sobre-derivado",
+  "valor": "Documento de parte interessada (ex.: relatório contábil do próprio órgão / ASSCONT) é ALEGAÇÃO a testar, nunca prova final. Refutar/confirmar com fonte primária (SIAFE, registro de reajustes, NF). Por quê: a ASSCONT superdimensionou um saldo de R$ 56k com erro aritmético + crédito-fantasma.",
+  "confianca": 1.0,
+  "n_obs": 7,
+  "fonte": "auto_melhoria_seed"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "bruto-vs-liquido",
+  "valor": "Pagamento líquido (OB) ≠ valor bruto da NF. Retenção (~9% INSS+IRRF) NÃO é glosa. Nunca tratar a diferença bruto×líquido como crédito/débito. Por quê: gerou crédito-fantasma de ~R$ 21k.",
+  "confianca": 1.0,
+  "n_obs": 7,
+  "fonte": "auto_melhoria_seed"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "reajuste-componente-nao-flat",
+  "valor": "Reajuste de contrato de mão-de-obra é repactuação COMPONENTE-A-COMPONENTE (IN 05/2017: CCT na mão-de-obra + IPCA nos insumos), não % flat sobre o total. O índice CCT (ex.: 9,91%) incide só na mão-de-obra → efetivo na tarifa cheia é menor (≈8,7%). Validar por % flat dá falso desvio.",
+  "confianca": 1.0,
+  "n_obs": 7,
+  "fonte": "auto_melhoria_seed"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "empenho-liquidacao-ob",
+  "valor": "Empenho ≠ Liquidação ≠ OB. Só a Ordem Bancária é pagamento. Nunca citar empenho como total pago.",
+  "confianca": 1.0,
+  "n_obs": 7,
+  "fonte": "auto_melhoria_seed"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "duplicidade-por-competencia",
+  "valor": "Duplicidade de contrato contínuo checa-se por COMPETÊNCIA, não por valor; split = mesmo RE; valores iguais NÃO provam duplicidade (tarifa flat); só a NF fecha. Contar meses do contrato vs nº de OBs.",
+  "confianca": 1.0,
+  "n_obs": 7,
+  "fonte": "auto_melhoria_seed"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "sei-busca-por-interessado",
+  "valor": "Para enumerar processos de um fornecedor no SEI, buscar por INTERESSADO; CNPJ+full-text é largo demais (pega quem só MENCIONA o CNPJ). Por quê: uma busca por CNPJ trouxe a Mobiliza como se fosse a MGS.",
+  "confianca": 1.0,
+  "n_obs": 7,
+  "fonte": "auto_melhoria_seed"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "verificar-contagem-antes-de-relatar",
+  "valor": "Antes de relatar totais do SIAFE, conferir a CONTAGEM esperada (ex.: 55 OBs ITERJ×MGS); a base perde linhas — reingerir do cache se vier abaixo do esperado. Por quê: um laudo quase saiu com 35 OBs.",
+  "confianca": 1.0,
+  "n_obs": 7,
+  "fonte": "auto_melhoria_seed"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:pagamento-execu-o-financeira-ob",
+  "valor": "PERÍCIA — lacuna recorrente em 'pagamento / execução financeira (OB)' (112 casos recentes): quando o trecho do SEI não trouxer esse dado, declare INDISPONÍVEL (≠ 0), aponte a FONTE a cruzar e o que VERIFICAR; nunca conclua por ausência (presunção de regularidade).",
+  "confianca": 1.0,
+  "n_obs": 66,
+  "fonte": "pericia_aprendizado"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:parecer-jur-dico-habilita-o-regularidade",
+  "valor": "PERÍCIA — lacuna recorrente em 'parecer jurídico / habilitação / regularidade' (105 casos recentes): quando o trecho do SEI não trouxer esse dado, declare INDISPONÍVEL (≠ 0), aponte a FONTE a cruzar e o que VERIFICAR; nunca conclua por ausência (presunção de regularidade).",
+  "confianca": 1.0,
+  "n_obs": 66,
+  "fonte": "pericia_aprendizado"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:pesquisa-de-pre-os-planilha-de-custos",
+  "valor": "PERÍCIA — lacuna recorrente em 'pesquisa de preços / planilha de custos' (106 casos recentes): quando o trecho do SEI não trouxer esse dado, declare INDISPONÍVEL (≠ 0), aponte a FONTE a cruzar e o que VERIFICAR; nunca conclua por ausência (presunção de regularidade).",
+  "confianca": 1.0,
+  "n_obs": 66,
+  "fonte": "pericia_aprendizado"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:modalidade-fundamento-legal",
+  "valor": "PERÍCIA — lacuna recorrente em 'modalidade / fundamento legal' (107 casos recentes): quando o trecho do SEI não trouxer esse dado, declare INDISPONÍVEL (≠ 0), aponte a FONTE a cruzar e o que VERIFICAR; nunca conclua por ausência (presunção de regularidade).",
+  "confianca": 1.0,
+  "n_obs": 66,
+  "fonte": "pericia_aprendizado"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:termo-de-refer-ncia-etp-dfd",
+  "valor": "PERÍCIA — lacuna recorrente em 'termo de referência / ETP / DFD' (102 casos recentes): quando o trecho do SEI não trouxer esse dado, declare INDISPONÍVEL (≠ 0), aponte a FONTE a cruzar e o que VERIFICAR; nunca conclua por ausência (presunção de regularidade).",
+  "confianca": 1.0,
+  "n_obs": 66,
+  "fonte": "pericia_aprendizado"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:presuncao-regularidade",
+  "valor": "Avalie a regularidade e habilitação com base nos pareceres jurídicos e documentos do processo, respeitando a presunção de regularidade até prova em contrário.",
+  "confianca": 1.0,
+  "n_obs": 5,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:confirma-ob",
+  "valor": "Confirme o pagamento apenas pela Ordem Bancária (OB) ou comprovante de crédito, distinguindo-o de empenho e liquidação.",
+  "confianca": 1.0,
+  "n_obs": 12,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:entrega-execu-o-do-objeto-fiscaliza-o",
+  "valor": "PERÍCIA — lacuna recorrente em 'entrega / execução do objeto / fiscalização' (114 casos recentes): quando o trecho do SEI não trouxer esse dado, declare INDISPONÍVEL (≠ 0), aponte a FONTE a cruzar e o que VERIFICAR; nunca conclua por ausência (presunção de regularidade).",
+  "confianca": 1.0,
+  "n_obs": 60,
+  "fonte": "pericia_aprendizado"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:pagamento-ob",
+  "valor": "Confira se a Ordem Bancária (OB) foi devidamente emitida e liquidada para configurar pagamento, distinguindo-a de empenhos e liquidações.",
+  "confianca": 1.0,
+  "n_obs": 20,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:confirmar-ob",
+  "valor": "Sempre confirmar a Ordem Bancária (OB) como único comprovante de pagamento efetivo, distinguindo-a de empenho e liquidação.",
+  "confianca": 1.0,
+  "n_obs": 6,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:confirmar-pagamento-ob",
+  "valor": "Confirme a efetivação do pagamento buscando a Ordem Bancária (OB) ou comprovante bancário, diferenciando-o de empenho e liquidação.",
+  "confianca": 1.0,
+  "n_obs": 5,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:fundamento-legal",
+  "valor": "Verifique se a modalidade de contratação e o respectivo fundamento legal estão claramente explicitados e em conformidade com a legislação vigente.",
+  "confianca": 1.0,
+  "n_obs": 6,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:verificar-ob-pagamento",
+  "valor": "Para a execução financeira, confirme a Ordem Bancária (OB) como único comprovante de pagamento efetivo, distinguindo-a de empenho e liquidação.",
+  "confianca": 0.9500000000000001,
+  "n_obs": 4,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:conformidade-legal",
+  "valor": "Avalie a conformidade legal do processo (modalidade, pareceres, habilitação), afastando a presunção de regularidade apenas com evidências concretas.",
+  "confianca": 0.9500000000000001,
+  "n_obs": 4,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:parecer-juridico",
+  "valor": "Verifique a existência e conformidade do parecer jurídico, atestando a regularidade formal e legal do ato, antes de prosseguir com a análise do mérito.",
+  "confianca": 0.9500000000000001,
+  "n_obs": 4,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:achado-presente-sobre-ausente",
+  "valor": "Pontue ALTO o achado material PRESENTE (e-mail @gmail pessoal em ato oficial, valor redondo, NEs múltiplas mesmo objeto, sócio sancionado/rede), não a mera ausência de um documento no trecho. Presente e material > faltante.",
+  "confianca": 0.92,
+  "n_obs": 1,
+  "fonte": "claude_pericia_calibracao_bombeiros"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:duplicidade-atas-nes-mesmo-objeto",
+  "valor": "DUAS+ atas/NEs p/ o MESMO objeto+modalidade+vigência sem justificativa de lotes = duplicidade/fracionamento PRESENTE → ELEVE (≥7) mesmo com execução indeterminada; confirme comparando lotes/quantitativos. Ex.: PE-022 atas 0005+0006; Hércules 2 NEs.",
+  "confianca": 0.92,
+  "n_obs": 1,
+  "fonte": "claude_gabarito_bombeiros_lote2"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:importacao-direta-estrangeira-sem-exclusividade",
+  "valor": "Importação direta / fornecedor estrangeiro ÚNICO (carta de crédito, proforma invoice) SEM licitação ou inexigibilidade por exclusividade comprovada = ALTO. Vigie risco cambial e descasamento valor-carta×valor-contrato. Ex.: ANGLOCO EUR 3,49M × R$77M-TCE.",
+  "confianca": 0.92,
+  "n_obs": 1,
+  "fonte": "claude_gabarito_bombeiros_lote2"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:email-pessoal-em-ato-oficial",
+  "valor": "E-mail PESSOAL (@gmail etc.) de gestor/agente em ato oficial (designação de gestor de ata, comunicação de contrato) = falha de formalidade/rastreabilidade PRESENTE → registre como indício material, NÃO rebaixe. Padrão sistêmico FUNESBOM (empenhocpeo@, barbarajustim@).",
+  "confianca": 0.92,
+  "n_obs": 1,
+  "fonte": "claude_gabarito_bombeiros_lote2"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:aditivo-reajuste-vig-ncia",
+  "valor": "PERÍCIA — lacuna recorrente em 'aditivo / reajuste / vigência' (10 casos recentes): quando o trecho do SEI não trouxer esse dado, declare INDISPONÍVEL (≠ 0), aponte a FONTE a cruzar e o que VERIFICAR; nunca conclua por ausência (presunção de regularidade).",
+  "confianca": 0.8999999999999999,
+  "n_obs": 5,
+  "fonte": "pericia_aprendizado"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:regularidade-juridica",
+  "valor": "Analise a existência e a conformidade do parecer jurídico e dos documentos de habilitação para atestar a regularidade do processo.",
+  "confianca": 0.8,
+  "n_obs": 3,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "relacionados-verificar-favorecido",
+  "valor": "Os processos RELACIONADOS de um processo de pagamento NÃO são todos do mesmo fornecedor. Verificar o favorecido/CNPJ de CADA relacionado antes de tratá-lo como do mesmo contrato. Por quê: os relacionados do pagamento MGS incluíam Mobiliza (veículos) e obras do BNDES — dois falsos positivos.",
+  "confianca": 0.7,
+  "n_obs": 2,
+  "fonte": "auto_melhoria_seed"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "laudo-precisa-conclusao-e-memoria",
+  "valor": "Todo laudo/perícia deve ter CONCLUSÃO explícita (bottom-line) + MEMÓRIA DE CÁLCULO (cada conta mostrada: tarifa, reajuste, cobertura, refutações). Tabela sem conclusão não é perícia. Por quê: o 1º laudo foi devolvido por 'não ter conclusão alguma'.",
+  "confianca": 0.7,
+  "n_obs": 2,
+  "fonte": "auto_melhoria_seed"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:verificar-ob",
+  "valor": "Confirme o pagamento apenas pela Ordem Bancária (OB), distinguindo-a de empenho e liquidação.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:confirma-pagamento-ob",
+  "valor": "Para comprovar o pagamento, identifique a Ordem Bancária (OB) ou comprovante de crédito, distinguindo-o claramente de empenho e liquidação.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:valida-fundamento-legal",
+  "valor": "Avalie a conformidade legal e a robustez da fundamentação do processo, verificando a adequação da modalidade, pareceres jurídicos, pesquisa de preços e documentos de planejamento (ETP/TR/DFD).",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:legalidade-regularidade",
+  "valor": "Cite o fundamento legal exato para cada ato e avalie a regularidade documental, distinguindo indício de acusação e respeitando a presunção de regularidade.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:planejamento-custos",
+  "valor": "Analise a completude dos documentos de planejamento (TR, ETP, DFD) e a conformidade da pesquisa de preços, justificando a economicidade.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:execucao-fiscalizacao",
+  "valor": "Comprove a efetiva entrega ou execução do objeto e a regularidade da fiscalização, confrontando-os com o planejado e contratado.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:conformidade-documental",
+  "valor": "Examine a completude e a coerência dos documentos de planejamento (TR, ETP, DFD), pareceres jurídicos e habilitação do contratado, buscando conformidade legal.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:confirmar-ob-pagamento",
+  "valor": "Confirme a Ordem Bancária (OB) como único comprovante de pagamento efetivo, distinguindo-a de empenho e liquidação.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:avaliar-pesquisa-precos",
+  "valor": "Avalie a adequação da pesquisa de preços e da planilha de custos, verificando a metodologia e a justificativa dos valores propostos.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:comprovacao-pagamento",
+  "valor": "Para comprovar pagamento, identifique a Ordem Bancária (OB); empenho e liquidação são etapas prévias, não pagamento efetivo.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:planejamento-execucao",
+  "valor": "Verifique a adequação do planejamento (pesquisa de preços, TR/ETP/DFD) e da execução (entrega, fiscalização) aos objetivos e normas.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:analise-precos",
+  "valor": "Avalie a pesquisa de preços e a planilha de custos com rigor, verificando a conformidade com a legislação e a razoabilidade de mercado.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:modalidade-legal",
+  "valor": "Identifique a modalidade de licitação ou o fundamento legal da contratação, assegurando a sua adequação ao objeto e aos limites legais.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:arvore-rasa-nao-periciavel",
+  "valor": "Árvore RASA (poucos docs, só nota de empenho/recibo de envio ao TCE/despacho, sem a fase de execução) = captura INCOMPLETA, não irregularidade. Classifique INDETERMINADO e peça re-coleta da árvore; nunca nota alta por ausência num trecho raso.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "claude_pericia_calibracao_bombeiros"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:pagamento-efetivo",
+  "valor": "Confirme o pagamento efetivo pela Ordem Bancária (OB), distinguindo-o do empenho e da liquidação, e avalie a completude do ciclo de despesa.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:confirma-ob-pagamento",
+  "valor": "Na análise da execução financeira, confirme a Ordem Bancária (OB) como único comprovante de pagamento efetivo, diferenciando-a de empenho e liquidação.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:analisar-precos-custos",
+  "valor": "Analise a pesquisa de preços e a planilha de custos com foco na economicidade e na justificativa dos valores apresentados.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:avaliar-regularidade-juridica",
+  "valor": "Baseie a avaliação de regularidade e habilitação nos pareceres jurídicos e documentos, mantendo a presunção de regularidade até prova cabal em contrário.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:regularidade-parecer",
+  "valor": "Verifique se o parecer jurídico atesta a regularidade formal e legal do ato, não se limitando a opinar sobre a conveniência ou oportunidade.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "metodo",
+  "chave": "pericia:fundamento-modalidade",
+  "valor": "Identifique claramente a modalidade de licitação ou o fundamento legal para a contratação direta, relacionando-o à fase processual correspondente.",
+  "confianca": 0.65,
+  "n_obs": 2,
+  "fonte": "pericia_aprendizado_llm"
+ },
+ {
+  "categoria": "missao",
+  "chave": "atual",
+  "valor": "Identificar irregularidades em OBs de obras e serviços de engenharia.",
+  "confianca": 1.0,
+  "n_obs": 34,
+  "fonte": "usuario"
+ },
+ {
+  "categoria": "padrao_fraude",
+  "chave": "frac_x",
+  "valor": "Empresa X fraciona",
+  "confianca": 1.0,
+  "n_obs": 32,
+  "fonte": "regra"
+ },
+ {
+  "categoria": "pesquisa",
+  "chave": "pesquisa_superfaturamento_14133",
+  "valor": "Lei 14.133/21 art. 6º LVII define superfaturamento (sobremedição, execução defeituosa, alterações de quantitativos/preços que favorecem o contratado) — base legal direta p/ 'jogo de planilha' e aditivos abusivos. Responsabilização exige dano ao erário + sobrepreço/superfaturamento demonstrado.",
+  "confianca": 0.9,
+  "n_obs": 1,
+  "fonte": "pesquisa"
+ },
+ {
+  "categoria": "pesquisa",
+  "chave": "pesquisa_cartel_dempster",
+  "valor": "Detecção de conluio/cartel: agregar múltiplos red flags num escore probatório único via Teoria Dempster-Shafer (Revista da CGU, Souza & Louzada/UFES, 2020, DOI 10.36428/revistadacgu.v12i21.174). Mapeia no princípio do Lex: score = indício interno agregado, nunca acusação.",
+  "confianca": 0.85,
+  "n_obs": 1,
+  "fonte": "pesquisa"
+ },
+ {
+  "categoria": "pesquisa",
+  "chave": "pesquisa_cartel_metrica_codevasf",
+  "valor": "Caso real TCU/Codevasf: empresa de fachada (Del) + líder (Engefort) + 27 empresas de cobertura; INDICADOR QUANTITATIVO de cartel = queda do desconto médio de 24,5% para 5,2% após formação do conluio. Desconto médio baixo/decrescente em certames de um conjunto de licitantes = sinal de bid rigging.",
+  "confianca": 0.85,
+  "n_obs": 1,
+  "fonte": "pesquisa"
+ },
+ {
+  "categoria": "pesquisa",
+  "chave": "pesquisa_fracionamento_tcu",
+  "valor": "Fracionamento (TCU/Zênite): múltiplas contratações do mesmo objeto fugindo da modalidade. Base: art. 75 §1º Lei 14.133/21 + art. 337-E CP. Red flag = soma de dispensas do mesmo objeto/órgão/exercício > teto.",
+  "confianca": 0.85,
+  "n_obs": 1,
+  "fonte": "pesquisa"
+ },
+ {
+  "categoria": "pesquisa",
+  "chave": "pesquisa_benford",
+  "valor": "Lei de Benford (desvio do 1º dígito) aplicada a compras públicas brasileiras (FGV) é red flag de sobrepreço/manipulação de valores. Útil sobre valores de OB/empenho por UG/fornecedor — desvio significativo prioriza diligência.",
+  "confianca": 0.8,
+  "n_obs": 1,
+  "fonte": "pesquisa"
+ },
+ {
+  "categoria": "pesquisa",
+  "chave": "pesquisa_robo_alice",
+  "valor": "Robô 'Alice' (CGU/TCU) varre DOU/Comprasnet com red flags operacionais em produção (publicado pela Revista Síntese TCE-RJ) — referência de automação de triagem que o JFN espelha.",
+  "confianca": 0.7,
+  "n_obs": 1,
+  "fonte": "pesquisa"
+ }
+]

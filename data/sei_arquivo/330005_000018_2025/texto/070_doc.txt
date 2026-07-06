@@ -1,0 +1,314 @@
+[] (fase: indefinida · tipo: vazio)
+
+Comprovante de pagamento QR Code
+dados da conta debitada:
+nome do pagador: MGS CLEAN COMERCIO E SERVICOS 
+CPF / CNPJ do pagador: 19.088.605/0001-04
+instituição: 341
+agência/conta: 1185 / 00748264   
+tipo de conta: Conta Corrente   
+dados do recebedor:
+nome do recebedor: RIOPAR PARTICIPACOES S A      
+CPF / CNPJ do recebedor: *****386000-**
+chave: 89136a0e-ac6c-4082-89a9-89e288c787bb
+instituição: ITAU UNIBANCO S A
+dados da transação:
+tipo da transação: PIX QR CODE
+nome do devedor: MGS CLEAN SOLUCOES E SERVICOS
+CPF / CNPJ do devedor: 19.088.605/0001-04
+data e hora da expiração: 25/06/2025 às 23:59:59
+valor do documento: 1.600,00
+desconto: 0,00
+abatimento: 0,00
+juros: 0,00
+multa: 0,00
+                          valor final: 1.600,00
+            valor da transação: 1.600,00 
+ mensagem do recebedor:
+ identificação no extrato:
+ identificador do QR Code: BL29380028334109000000006474220     
+autenticação do comprovante:
+ABF69D32EEA00C9D6BEB2DA98A3E743BD72D4E37
+ID da transação:
+E60701190202505291348DY5TBV06EV2   
+controle:
+005028136222342
+Pagamento efetuado em 29/05/2025 às 18:13:53 via Sispag.
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+1
+
+Requisição e Recibo de 
+Vale-Transporte Eletrônico
+Rua da Assembléia, 10/39ª andar 
+Centro - Rio de Janeiro - RJ - CEP: 20011-901 
+Telefone: (21) 2127-4000 
+CNPJ: 16.727.386/0001-78
+Número do pedido: 86560230 
+Data do pedido: 26/05/2025 
+Tipo do pedido: Digitação 
+Nome ou Razão Social do Comprador (Pagador) 
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+CPF/CNPJ 
+19.088.605/0001-04
+Endereço Principal 
+AVENIDA DAS AMERICAS
+Número 
+3434
+Complemento 
+BLOCO 2 SALA 208
+Bairro 
+Barra da Tijuca
+CEP 
+22640-102
+Cidade 
+RIO DE JANEIRO
+UF 
+RJ
+Para cumprimento do disposto nas Leis 7418 e 7619, solicitamos à RioCard a emissão dos vale-transporte eletrônicos totalizados abaixo.
+Qtd. de cargas 
+8
+Qtd. cartões a emitir 
+0
+Valor das cargas 
+R$ 1.600,00
+(+) Tarifa de Entrega 
+R$ 0,00
+(-) Valor da bolsa de crédito 
+R$ 0,00
+(=) Saldo a pagar 
+R$ 1.600,00
+Tributos (inclusos na tarifa) 
+****************
+(=) Valor do documento 
+R$ 1.600,00
+Valor da corretagem ou comissão: zero. 
+(Art. 18, § 2º, da Instrução Normativa RFB nº 1.234, de 11/01/2012)
+Autenticação Mecânica
+Recibo do Pagador
+ Banco Itaú S.A.
+Vencimento 
+25/06/2025
+Valor do documento 
+R$ 1.600,00
+Pagador 
+MGS CLEAN SOLUCOES E SERVICOS LTDA - CPF/CNPJ: 19.088.605/0001-04
+Beneficiário 
+RIOPAR PARTICIPAÇÕES S/A
+Endereço Beneficiário / Sacador Avalista 
+RUA DA ASSEMBLéIA, 10/39º ANDAR - CENTRO - RIO DE JANEIRO/RJ - CEP: 20011-901
+Agência/Cód. Beneficiário 
+2938/28334-4
+Nosso Número 
+109/00647422-0
+Nº Documento 
+4293828-2
+CNPJ 
+16.727.386/0001-78
+ Banco Itaú S.A. | 341-7 |
+34191.09065 47422.042938 82833.440009 8 11230000158000
+Local de pagamento 
+Até o vencimento, pague preferencialmente no Itaú. Após o vencimento, pague somente no Itaú.
+Vencimento 
+25/06/2025
+Beneficiário 
+RIOPAR PARTICIPAÇÕES S/A
+Agência/Cód. 
+Beneficiário 
+2938/28334-4
+Data do 
+documento 
+26/05/2025
+Nº do 
+documento 
+4293828-2
+Espécie 
+doc. 
+DM
+Aceite 
+N
+Data de processamento 
+26/05/2025
+Nosso Número 
+109/00647422-0
+Uso do Banco 
+Carteira 
+109
+Espécie 
+R$
+Quantidade 
+Valor 
+Valor do Documento 
+R$ 1.600,00
+(-) Descontos 
+****************
+(-) Outras deduções 
+****************
+(+) Mora/multa 
+****************
+(+) Outros acréscimos 
+****************
+Instruções (Todas as informações deste boleto são de exclusiva responsabilidade do beneficiário) 
+Sr. Caixa, não receber após a data do vencimento. 
+Operação sem desconto. 
+Para maiores informações ligar para (21) 2127-4000.
+(=) Valor cobrado 
+****************
+Pagador: MGS CLEAN SOLUCOES E SERVICOS LTDA - CPF/CNPJ: 19.088.605/0001-04 
+Endereço: AVENIDA DAS AMERICAS, 3434/BLOCO 2 SALA 208 - Barra da Tijuca - RIO DE JANEIRO/RJ - CEP: 22640-102 
+Sacador/Avalista: RIOPAR PARTICIPAÇÕES S/A - CNPJ: 16.727.386/0001-78 
+Ficha de Compensação
+Autenticação Mecânica
+34191.09065 47422.042938 82833.440009 8 11230000158000
+
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+- CNPJ 19.088.605/0001-04
+• Emitido em 26/05/2025, às 17:12
+Relatório de Resumo do Pedido
+Número do Pedido
+86560230
+Tipo do Pedido
+Digitação
+Data do pedido
+26/05/2025
+Data de pagamento
+Data da liberação
+29/05/2025
+Valor das Cargas 
+1.600,00
+Bolsa de Crédito
+0,00
+Tarifa de Entrega
+0,00
+Valor do Boleto 
+1.600,00
+Valor Pago
+0,00
+Quantidade de Cargas
+8
+Quantidade de Cartões Solicitados
+0
+Status do Pedido
+Aguardando pagamento
+Identificação
+Matrícula
+Nome
+CPF
+Nùmero do Cartão
+Valor da Carga
+237
+ADRIANA PEREIRA BASTOS
+068.548.557-99
+01.04.14728323-1
+200,00
+656
+ANA PAULA DE OLIVEIRA AGUIAR
+059.878.677-54
+01.04.08456605-1
+200,00
+1019
+BARBARA PRYSCILA RAMOS
+170.915.047-55
+01.04.13674262-9
+200,00
+233
+HELENA RIBEIRO DOS SANTOS
+002.479.707-35
+01.04.12748752-2
+200,00
+637
+LUCAS JOSE DA SILVA MARTINS
+159.669.487-47
+01.04.13524003-4
+200,00
+255
+MARGARETE NADER DA SILVA
+739.056.407-59
+01.04.14719534-9
+200,00
+2950
+PAULA PEDRAZZI NUNES
+132.331.867-46
+01.04.14775671-5
+200,00
+235
+PAULO RENATO MOREIRA
+047.736.607-40
+01.04.13738966-3
+200,00
+26/05/2025, 17:13
+Relatório do Pedido - Impressão
+https://www.cartaoriocard.com.br/vt2/comprador/pedidos/ImpressaoPedido.do?nrPedido=86560230
+1/1
+
+Agência/conta: 1185 / 74826-4
+Nome da empresa:
+MGS CLEAN COMERCIO E SERVICOS
+CNPJ: 19.088.605/0001-04
+Conta: Conta em operação
+Tipo: Todos
+Período: de 29/05/2025 até 29/05/2025
+Status: Efetuados
+Nome do favorecido
+CPF/CNPJ
+Tipo de pagamento
+Referência da empresa
+Data de pagamento
+Valor do pagamento (R$)
+Status
+ANGELICA COSTA SOARES
+-
+Conta corrente
+VT_ITERJ
+29/05/2025
+200,00
+Visualizar
+CAROLINE MOREIRA DA FONSECA
+-
+Conta corrente
+VT_ITERJ
+29/05/2025
+200,00
+Visualizar
+GLEICIANE DE ALCANTARA SILVA
+-
+Conta corrente
+VT_ITERJ
+29/05/2025
+200,00
+Visualizar
+JONATHAN CAPOSSI DA SIVA LEITÃO
+-
+Conta corrente
+VT_ITERJ
+29/05/2025
+200,00
+Visualizar
+LARISSA GOMES DE SOUZA
+-
+Conta corrente
+VT_ITERJ
+29/05/2025
+200,00
+Visualizar
+MAURICIO SILVA DE OLIVEIRA
+-
+Conta corrente
+VT_ITERJ
+29/05/2025
+200,00
+Visualizar
+MARIA LUIZA ALMEIDA GUIMARAES 
+-
+Conta corrente
+VT_ITERJ
+29/05/2025
+200,00
+Visualizar
+1.400,00
+Dúvidas, sugestões e reclamações, se necessário, utilize o SAC ltaú 0800 728 0728, todos os dias, 24h, ou o Fale Conosco (www.itau.com.br). Se desejar a reavaliação da solução apresentada após utilizar esses canais, recorra à Ouvidoria 
+Corporativa ltaú 0800 570 0011, dias úteis, das 9 às 18h, Caixa Postal nº 67.600, CEP 03162-971. Deficientes auditivos ou de fala 0800 722 1722, disponível 24hs todos os dias. 
+Dados da conta
+Resultado da busca
+Total:

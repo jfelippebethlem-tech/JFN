@@ -1,0 +1,472 @@
+[] (fase: indefinida · tipo: vazio)
+
+agente arrecadador:
+valor total:
+autenticação:
+MODELO APROVADO PELO ADE CONJUNTO CODAC/COTEC Nº1, DE 31/10/2011.
+operação efetuada via Itaú Empresas na Internet: 
+autenticação digital Itaú:
+transação efetuada em 
+/202   às 
+:
+:
+h via Sispag na internet.
+identificação no extrato: 
+nome:
+agência e conta:
+CNPJ:
+Em caso de dúvidas, de posse do comprovante, contate seu gerente ou a Central no 40901685 (capitais e regiões metropolitanas) ou 0800 7701685(demais
+localidades). Reclamações, informações e cancelamentos: SAC 0800 728 0728, 24 horas por dia ouFale Conosco: www.itau.com.br/empresasSe não ficar satisfeito com
+a solução, contate a Ouvidoria: 0800 570 0011, em dias úteis, das 9h às 18h. Deficiente auditivo/fala: 0800 722 1722
+1
+código de barras:
+número do documento:
+data do pagamento:
+
+Documento de Arrecadação
+de Receitas Federais
+19.088.605/0001-04
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+Período de Apuração
+Data de Vencimento
+Número do Documento
+07.16.24296.9408363-6
+Pagar este documento até
+22/10/2024
+Observações
+Nº Recibo Declaração: 50000274051100
+Valor Total do Documento
+552.820,08
+CNPJ
+Razão Social
+Setembro/2024
+18/10/2024
+Código
+Principal
+Denominação
+Total
+Multa
+Juros
+Composição do Documento de Arrecadação
+1646
+CONTRIB PREV RISCO AMBIENTAL/APOSENT ESPECIAL
+9.667,50
+63,80
+9.731,30
+01 CP PATRONAL - GILRAT AJUSTADO
+PA:09/2024 Vencimento:18/10/2024
+2991
+CP PATRONAL- CPRB - ART. 8º DA LEI 12.546/201
+146.859,80
+969,27
+147.829,07
+01 CP PATRONAL- CPRB - ART. 8º DA LEI 12.546/2011
+PA:09/2024 Vencimento:18/10/2024
+1170
+CP TERCEIROS - SALÁRIO EDUCAÇÃO
+136.157,73
+898,64
+137.056,37
+01 CP TERCEIROS - SALÁRIO EDUCAÇÃO
+PA:09/2024 Vencimento:18/10/2024
+1176
+CP TERCEIROS - INCRA
+10.892,61
+71,89
+10.964,50
+01 CP TERCEIROS - INCRA
+PA:09/2024 Vencimento:18/10/2024
+1191
+CP TERCEIROS - SENAC
+54.463,09
+359,45
+54.822,54
+01 CP TERCEIROS - SENAC
+PA:09/2024 Vencimento:18/10/2024
+1196
+CP TERCEIROS - SESC
+81.694,64
+539,18
+82.233,82
+01 CP TERCEIROS - SESC
+PA:09/2024 Vencimento:18/10/2024
+1200
+CP TERCEIROS - SEBRAE
+32.677,85
+215,67
+32.893,52
+01 CP TERCEIROS - SEBRAE
+PA:09/2024 Vencimento:18/10/2024
+0561
+IRRF - RENDIMENTO DO TRABALHO ASSALARIADO
+76.782,20
+506,76
+77.288,96
+07 IRRF - RD TRB ASSAL PAÍS/AUS NO EXT A SERV PAÍS
+PA:09/2024 Vencimento:18/10/2024
+Totais
+549.195,42
+3.624,66
+552.820,08
+SENDA (Versão:5.2.0)
+22/10/2024 10:28:40
+1 1
+Página:
+/
+85800005528 2
+20080385242 0
+96071624296 7
+94083636308 2
+AUTENTICAÇÃO MECÂNICA
+Documento de Arrecadação de Receitas Federais
+85800005528 2
+20080385242 0
+96071624296 7
+19.088.605/0001-04
+Número:
+07.16.24296.9408363-6
+Pagar até:
+22/10/2024
+Valor:
+552.820,08
+94083636308 2
+CNPJ:
+Pague com o PIX
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO DA DECLARAÇÃO COMPLETA - DCTFWeb
+Nome do Contribuinte MGS CLEAN SOLUCOES E SERVICOS 
+LTDA
+CNPJ 19.088.605/0001-04
+Período apuração 09/2024
+Número do Recibo 50000274051100
+Data/Hora da
+Transmissão 22/10/2024 10:23:06
+Identificação da
+Apuração de Débitos
+88796460 / Reinf CP
+28512805766 / eSocial
+Dados Iniciais
+Classificação Tributária 99-Pessoas Jurídicas em Geral
+Número do Recibo da Declaração Retificada 50000274048449
+Missão Diplomática ou Repartição Consular 0 - Sem acordo
+Ausência de Fatos Geradores Não
+Endereço
+Logradouro DAS AMERICAS
+Número 03434
+Complemento BLC 2 SAL 506
+Bairro/Distrito BARRA DA TIJUCA
+Município RIO DE JANEIRO
+UF RJ
+CEP 22640102
+Telefone 2134892238
+Correio Eletrônico CONTATO@MGSCLEAN.NET
+Dados do Representante do Contribuinte e do Responsável pelo Preenchimento
+Representante MAYKON RODRIGUES
+CPF 00447336070
+Telefone 00000000
+Correio Eletrônico -
+Responsável pelo
+Preenchimento -
+CPF -
+CRC -
+UF -
+Telefone -
+Correio Eletrônico -
+Débito Apurado e Crédito Vinculado
+Código da Receita 2991-01
+Descrição CP PATRONAL- CPRB - ART. 8º DA LEI 12.546/2011
+Período Apuração
+Débito 09/2024
+Débito Apurado 146.859,80
+Saldo a Pagar 146.859,80
+Débito Apurado e Crédito Vinculado
+Código da Receita 1170-01
+Descrição CP TERCEIROS - SALÁRIO EDUCAÇÃO
+Período Apuração
+Débito 09/2024
+Débito Apurado 136.157,73
+Saldo a Pagar 136.157,73
+Débito Apurado e Crédito Vinculado
+Código da Receita 1191-01
+Descrição CP TERCEIROS - SENAC
+Período Apuração
+Débito 09/2024
+Débito Apurado 54.463,09
+Saldo a Pagar 54.463,09
+Débito Apurado e Crédito Vinculado
+Código da Receita 1196-01
+Descrição CP TERCEIROS - SESC
+Período Apuração
+Débito 09/2024
+Débito Apurado 81.694,64
+Saldo a Pagar 81.694,64
+
+Débito Apurado e Crédito Vinculado
+Código da Receita 1176-01
+Descrição CP TERCEIROS - INCRA
+Período Apuração
+Débito 09/2024
+Débito Apurado 10.892,61
+Saldo a Pagar 10.892,61
+Débito Apurado e Crédito Vinculado
+Código da Receita 1200-01
+Descrição CP TERCEIROS - SEBRAE
+Período Apuração
+Débito 09/2024
+Débito Apurado 32.677,85
+Saldo a Pagar 32.677,85
+Débito Apurado e Crédito Vinculado
+Código da Receita 1646-01
+Descrição CP PATRONAL - GILRAT AJUSTADO
+Período Apuração
+Débito 09/2024
+Débito Apurado 155.955,07
+Deduções Retenção Lei 9711/98: 146.287,57
+Saldo a Pagar 9.667,50
+Débito Apurado e Crédito Vinculado
+Código da Receita 1138-01
+Descrição CP PATRONAL - EMPREGADOS/AVULSOS
+Período Apuração
+Débito 09/2024
+Débito Apurado 106.529,81
+Deduções Retenção Lei 9711/98: 106.529,81
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 1082-01
+Descrição CP SEGURADOS - EMPREGADOS/AVULSO
+Período Apuração
+Débito 09/2024
+Débito Apurado 455.297,61
+Deduções
+Salário Família: 27.380,31
+Salário Maternidade: 12.547,92
+Retenção Lei 9711/98: 415.369,38
+Saldo a Pagar 0,00
+Débito Apurado e Crédito Vinculado
+Código da Receita 0561-07
+Descrição IRRF - RD TRB ASSAL PAÍS/AUS NO EXT A SERV PAÍS
+Período Apuração
+Débito 09/2024
+Débito Apurado 76.782,20
+Saldo a Pagar 76.782,20
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+Recibo de Entrega da Declaração de Débitos e Créditos Tributários Federais Previdenciários - DCTFWeb
+CNPJ/CPF 19.088.605/0001-04
+Nome MGS CLEAN SOLUCOES E SERVICOS LTDA
+Período de apuração 09/2024
+Declaração Retificadora Sim
+Identificação da apuração de débitos 88796460 / Reinf CP
+28512805766 / eSocial
+Totalização dos tributos apurados no período
+Tributos
+Débitos Apurados
+Saldo a Pagar
+Contribuição Previdenciária Segurados
+R$ 455.297,61
+R$ 0,00
+Contribuição Previdenciária Patronal
+R$ 409.344,68
+R$ 156.527,30
+Contribuição para Outras Entidades e Fundos
+R$ 315.885,92
+R$ 315.885,92
+IRRF
+R$ 76.782,20
+R$ 76.782,20
+COFINS
+R$ 0,00
+R$ 0,00
+PIS
+R$ 0,00
+R$ 0,00
+CSRF
+R$ 0,00
+R$ 0,00
+COSIRF
+R$ 0,00
+R$ 0,00
+TOTAL
+R$ 1.257.310,41
+R$ 549.195,42
+O presente Recibo de Entrega da DCTFWeb contém a transcrição da Ficha Resumo da referida declaração, que constitui
+confissão de dívida, de forma irretratável, dos tributos declarados. Fica o declarante ciente de que os tributos declarados na
+DCTFWeb e não pagos serão enviados para inscrição em Dívida Ativa da União, conforme o disposto no parágrafo 2º do artigo 5º
+do Decreto-Lei nº 2.124, de 13 de junho de 1984, combinado com a Portaria MF nº 118, de 28 de junho de 1984, estando o
+declarante sujeito ainda a:
+1) Sobre os tributos não pagos ou não recolhidos nos prazos legais incidirão multa e juros de mora, nos termos do art. 61 da Lei
+nº 9.430, de 27 de dezembro de 1996, combinado com o art. 35 da Lei nº 8.212, de 24 de julho de 1991;
+2) inclusão no Cadastro Informativo de Créditos não Quitados do Setor Público Federal (CADIN), impedindo operações de crédito
+com recursos públicos, a concessão de incentivos fiscais e financeiros e a celebração de convênios e similares que envolvam
+desembolso de recursos públicos e respectivos aditamentos (Lei nº 10.522, de 19 de julho de 2002);
+3) encaminhamento ao Ministério Público Federal de Representação Fiscal para Fins Penais nos casos que, em tese, tenha
+ocorrido crime contra a ordem tributária ou contra a previdência social, por deixar de recolher, no prazo legal, valor de tributo ou
+de contribuição social, descontado ou cobrado, na qualidade de sujeito passivo de obrigação e que deveria recolher aos cofres
+públicos (Lei nº 8.137, de 27 de dezembro de 1990 e Código Penal).
+No caso de falta de apresentação ou de apresentação de declaração com incorreções ou omissões, o contribuinte ficará sujeito às
+multas previstas no artigo 32-A da Lei nº 8.212, de 1991, e no art. 7º da Lei nº 10.426, de 24 de abril de 2002.
+Não surtirão efeitos as retificações de informações prestadas na DCTFWeb que pretendam excluir ou reduzir débitos:
+enviados para inscrição em Dívida Ativa da União, sejam eles saldos a pagar ou valores apurados em procedimento de
+auditoria interna;
+incluídos em parcelamento deferido;
+que tenham sido objeto de declaração de compensação não passível de retificação ou cancelamento.
+Também não surtirão efeitos as retificações de débitos de tributos em relação aos quais o sujeito passivo tenha sido objeto de
+procedimento fiscal e/ou nos casos em que a apresentação da declaração ocorra após o prazo decadencial.
+Dados do Representante da Pessoa Jurídica
+Nome MAYKON RODRIGUES
+CPF 004.473.360-70
+Telefone -
+Recibo de Entrega da DCTFWeb
+DCTFWeb recebida via Internet pelo Agente Receptor SERPRO em 22/10/2024 10:23:06
+Nº do recibo de entrega 0000050000274051100
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO RESUMO DE CRÉDITOS - DCTFWeb
+Nome do Contribuinte
+MGS CLEAN SOLUCOES E SERVICOS 
+LTDA
+CNPJ
+19.088.605/0001-04
+Período de Apuração
+09/2024
+Número do Recibo
+0000050000274051100
+Data/Hora da Transmissão
+22/10/2024 10:23:06
+Identificação da Apuração 
+de Débitos
+88796460 / Reinf CP
+28512805766 / eSocial
+Descrição
+Valor Informado/Importado
+Valor Vinculado a Débito
+Saldo disponível
+Retenção Lei 9711/98 ou 
+adiantamento de retenção
+668.186,76
+668.186,76
+0,00
+Salário Família
+27.380,31
+27.380,31
+0,00
+Salário Maternidade
+12.547,92
+12.547,92
+0,00
+
+MINISTÉRIO DA FAZENDA
+SECRETARIA ESPECIAL DA RECEITA FEDERAL DO BRASIL
+RELATÓRIO RESUMO DE DÉBITOS - DCTFWeb
+Nome do Contribuinte
+MGS CLEAN SOLUCOES E SERVICOS 
+LTDA
+CNPJ
+19.088.605/0001-04
+Período de Apuração
+09/2024
+Número do Recibo
+0000050000274051100
+Data/Hora da Transmissão
+22/10/2024 10:23:06
+Identificação da Apuração 
+de Débitos
+88796460 / Reinf CP
+28512805766 / eSocial
+Grupo: CONTRIBUIÇÃO PREVIDENCIÁRIA SEGURADOS
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1082-01 CP SEGURADOS - EMPREGADOS/AVULSO
+09/2024
+455.297,61 455.297,61
+0,00
+Grupo: CONTRIBUIÇÃO PREVIDENCIÁRIA PATRONAL
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1138-01 CP PATRONAL - EMPREGADOS/AVULSOS
+09/2024
+106.529,81 106.529,81
+0,00
+1646-01 CP PATRONAL - GILRAT AJUSTADO
+09/2024
+155.955,07 146.287,57 9.667,50
+Grupo: CONTRIBUIÇÃO PREVIDENCIÁRIA PATRONAL CPRB
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+2991-01 CP PATRONAL- CPRB - ART. 8º DA LEI 12.546/2011
+09/2024
+146.859,80
+0,00 146.859,80
+Grupo: CONTRIBUIÇÃO PARA OUTRAS ENTIDADES E FUNDOS
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+1170-01 CP TERCEIROS - SALÁRIO EDUCAÇÃO
+09/2024
+136.157,73
+0,00 136.157,73
+1176-01 CP TERCEIROS - INCRA
+09/2024
+10.892,61
+0,00
+10.892,61
+1191-01 CP TERCEIROS - SENAC
+09/2024
+54.463,09
+0,00
+54.463,09
+1196-01 CP TERCEIROS - SESC
+09/2024
+81.694,64
+0,00
+81.694,64
+1200-01 CP TERCEIROS - SEBRAE
+09/2024
+32.677,85
+0,00
+32.677,85
+Grupo: IRRF
+Código
+Descrição
+PA Débito
+Valor
+Original
+Créditos
+Vinculados
+Saldo
+Devedor
+0561-07 IRRF - RD TRB ASSAL PAÍS/AUS NO EXT A SERV PAÍS
+09/2024
+76.782,20
+0,00 76.782,20

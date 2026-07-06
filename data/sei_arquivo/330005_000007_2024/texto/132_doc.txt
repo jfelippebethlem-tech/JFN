@@ -1,0 +1,98 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária de Retenção
+TIPO 13
+Encerrado até Junho 
+Identificação
+UG Emitente
+Documento
+Emissão
+133100 - ITERJ
+2024OB00307
+08/05/24
+UG Liquidante
+UG Pagadora
+133100 - ITERJ
+133100 - ITERJ
+Valor por Extenso
+Valor
+Q u a t r o  m i l  e  q u a t r o c e n t o s  e  c i n q u e n t a  e  d o i s  r e a i s  e  s e t e n t a  e  n o v e  c e n t a v o s
+4.452,79
+Detalhamento
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS
+Credor da Retenção
+MINISTÉRIO DA FAZENDA
+Competência
+03/2024
+Domicílio Bancário Origem
+237 - 6898 - 0000000027
+Domicílio Bancário Destino
+237 - 6898 - BCO AUTENT
+Processo
+SEI 330020/0007
+I t e n s
+Número da NE
+2024NE00126 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+759 - Recursos Vinculados a Fundos
+Fonte RJ
+150 - Recursos Vinculados a Fundos - FEHIS - Tesouro
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2024NL00114 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+4.452,79
+Observação
+Registro de Envio
+UG Emitente
+133100
+Emissão
+08/05/24
+Documento
+2024RE00080
+Data de Envio
+08/05/24
+Status de Envio
+Processado e Pago
+Data de retorno
+13/05/24
+Tipo de 
+Pagamento
+Normal
+Retorno
+Ordem bancária paga e liberada com sucesso.
+Programação de Desembolso
+Documento
+2024PD00345
+Emissão
+09/04/24
+Data de 
+Programação
+08/05/24
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 08/05/24 às 10:20.
+Impresso por WALDEMIR DAVILA PEIXOTO em 16/07/24 às 11:02.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

@@ -1,0 +1,123 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 12
+Encerrado até Mês 14 
+Identificação
+UG Emitente
+Número do 
+Documento
+Data de Emissão
+133100 - ITERJ
+2023OB01085
+27/12/23
+UG Liquidante
+Domicílio Bancário Origem
+133100 - ITERJ
+237 - 6898 - 0000000027 - ERJ 
+TESOURO ESTADO CONTA UNICA  
+(CONTA ÚNICA)  - CONTA ÚNICA
+Favorecido
+Domicílio Bancário Destino
+35208086000127 - Mobiliza For Rent Ltda
+237 - 0135 - 190268
+Valor por Extenso
+Valor
+D e z o i t o  m i l  e  q u a r e n t a  e  d o i s  r e a i s  e  v i n t e  e  s e t e  c e n t a v o s
+18.042,27
+Detalhamento
+Nota Liquidação
+2023NL00781
+Tipo de Despesa
+Nota de Empenho
+2023NE00776
+Credor
+35208086000127 - Mobiliza For Rent Ltda
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Id. uso
+0 - Não destinado à contrapartida
+Ano Fonte
+1 - Recursos do Exercício Corrente
+Fonte STN
+501 - Outros Recursos não Vinculados
+Fonte
+101 - Ordinários Não Provenientes de Impostos
+Detalhamento de Fonte
+000000 - Sem detalhamento
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+22000047 - Prestação de Serviços de Locação de Veículos com Motoristas.
+Domicílio Bancário Destino
+237 - 0135 - 190268
+Competência
+12/2023
+Processo
+SEI 330020/0008
+Itens
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Serviços de Terceiros - 
+Pessoa Jurídica
+13 - LOCAÇÃO DE 
+VEICULOS, FRETES E 
+CARRETOS/PEDAGIOS
+3722 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício 
+Atual Consumindo 
+Limite de Saque
+0 - LIBERAÇÃO 
+AUTOMÁTICA DE 
+LIMITE DE SAQUE
+18.042,27
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  649 CONFORME PROCESSO Prestação de Serviço de locação de veículos com 
+motoristas, visando atender as necessidades deste ITERJ
+Informações Adicionais
+Registro de Envio
+Status de Envio
+Processado e Pago
+Tipo de Pagamento
+Normal
+Número do Documento
+2023RE18821
+UG Emitente
+999900
+Data de Emissão
+27/12/23
+Emitido/contabilizado por Tamiris Leguizamon Mourão em 27/12/23 às 11:20.
+Impresso por Daiane Pereira de Souza em 23/09/24 às 10:57.
+Siafe-Rio / SEFAZ-RJ
+Página 1/2
+
+Data de Envio
+27/12/23
+Data de retorno
+04/01/24
+Retorno
+Ordem bancária paga e liberada com sucesso.
+Status
+Processado
+Ativo
+Sim
+Programação de Desembolso
+Número do Documento
+2023PD01284
+Data de Emissão
+26/12/23
+Data de Programação
+27/12/23
+Emitido/contabilizado por Tamiris Leguizamon Mourão em 27/12/23 às 11:20.
+Impresso por Daiane Pereira de Souza em 23/09/24 às 10:57.
+Siafe-Rio / SEFAZ-RJ
+Página 2/2

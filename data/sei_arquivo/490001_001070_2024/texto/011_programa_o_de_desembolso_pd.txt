@@ -1,0 +1,96 @@
+[Programação de Desembolso - PD] (fase: despesa · tipo: programacao_desembolso)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso Orçamentária
+Encerrado até Junho 
+Identificação
+UG Liquidante
+Documento
+Emissão
+650100 - SEHIS
+2024PD00861
+07/08/24
+UG Pagadora
+Ordem Bancária
+Domicílio Bancário Origem
+650100 - SEHIS
+237 - 6898 - 0000000027 - 
+CONTA ÚNICA
+Favorecido
+Domicílio Bancário Destino
+23902149000161 - Abre Construções Ltda
+237 - 6536 - 00194263
+Valor por Extenso
+Valor
+Dez milhões e quarenta e nove mil e quinhentos e vinte e três reais e cinquenta e oito centavos
+10.049.523,58
+Detalhamento
+Nota Liquidação
+2024NL00472
+Tipo de Despesa
+Nota de Empenho
+2024NE00266
+Credor
+23902149000161 - Abre Construções Ltda
+Natureza
+449051 - Obras e Instalações
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+145 - Outros Rec não Vinc - Concessão Serviços de Água e Esgoto-Tesouro
+Detalhamento de Fonte
+007526 - ACOMPANHAMENTO DA EXECUÇÃO DO PACTO RJ - (501.145)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+23001870 - CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA ELABORAÇÃO DE PROJE...
+Domicílio Bancário Destino
+237 - 6536 - 00194263
+Competência
+02/2024
+Processo
+SEI-490001/001070/2024
+I t e n s
+Tipo Patrimonial Sub-item da 
+Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Obras e Instalações
+07 - EXECUÇAO 
+DE OBRAS POR 
+CONTRATO
+3693 - Pagamento da 
+despesa empenhada e 
+liquidada no Exercício Atual 
+Consumindo Limite de 
+Saque
+86 - FORNECEDORES
+10.049.523,58
+Observação
+PROGRAMAÇÃO DE DESEMBOLSO DO (S)  DOCUMENTO (S)  50089 CONFORME PROCESSO Reserva 191/2024, Empenho das Medições dos Serviços 
+Executados nos meses de Maio e Junho de 2024, referente à Elaboração de Projeto Executivo e Execução de Obras para Construção do Conjunto 
+Habitacional de Interesse Social com 440 Unidades Habitacionais na Av. Itaóca n° 2.226, Bairro: Bonsucesso (Complexo do Alemão), município do Rio de 
+Janeiro/RJ, de acordo com o pactuado no Contrato nº 002/2023, Siafe-Rio nº 23001870.12ª medição, referente ao período 01/07 à 30/07/2024, do Contrato nº 
+002/2023, celebrado junto à ABRE CONSTRUTORA LTDA, no valor de R$ 12.012.415,85 (doze milhões. doze mil, quatrocentos e quinze reais e oitenta e 
+cinco centavos), que trata da ELABORAÇÃO DE PROJETO EXECUTIVO E EXECUÇÃO DE OBRAS PARA CONSTRUÇÃO DE CONJUNTO 
+HABITACIONAL DE INTERESSE SOCIAL COM 440 UNIDADES HABITACIONAIS NA AV. ITAÓCA N° 2.226, BAIRRO: BONSUCESSO (COMPLEXO DO 
+ALEMÃO), MUNICÍPIO DO RIO DE JANEIRO/RJ. ISS PAGO
+ 
+______________________________________________________
+640257-7 - Fabio Paravidino da Silva
+Subsecretário Executivo
+Emitido/contabilizado por REGINALDO SILVA DE ALMEIDA em 07/08/24 às 15:
+3 4 .
+Impresso por REGINALDO SILVA DE ALMEIDA em 07/08/24 às 15:39.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

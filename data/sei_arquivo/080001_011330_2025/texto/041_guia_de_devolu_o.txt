@@ -1,0 +1,63 @@
+[Guia de Devolução] (fase: indefinida · tipo: outro)
+
+Governo do Estado do Rio de Janeiro
+Guia Devolução
+Encerrado até Agosto
+Identificação
+UG Emitente
+Documento
+Emissão
+296100 - FUNDO ESTADUAL DE SAUDE - FES
+2025GD00631
+29/09/25
+UG Liquidante
+Domicílio Bancário Retorno
+Valor
+296100 - FES
+237 - 6898 - 0000027200 - CONTA 
+D
+5.700.000,00
+Detalhamento
+Ordem Bancária
+2025OB14866
+Domicílio Bancário da OB
+237 - 6898 - 0000027200 - Indice Constitucional 12% Saude (CONTA D) 
+Nota Liquidação
+2025NL07987
+Tipo de Despesa
+Nota de Empenho
+2025NE07999
+Credor
+11884903000107 - Fundo Municipal De Saude De Sao Goncalo
+Processo
+SEI-080001/011330/2025
+Valor da OB
+5.700.000,00
+I t e n s
+T i p o 
+Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da despesa 
+empenhada e liquidada no 
+Exercício Atual
+99 - Sem consumo 
+de Limite de Saque
+5.700.000,00
+Observação
+Guia de devolução gerada para correção na competência.
+espaçamento
+Emitido/contabilizado por LUCAS LIBERATO ANDRE em 03/10/25 às 13:15.
+Impresso por LUCAS LIBERATO ANDRE em 03/10/25 às 13:16.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

@@ -1,0 +1,139 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Identificação
+Unidade Gestora
+Número do 
+Documento
+Data de Emissão
+133100 - ITERJ
+2023NE00038
+01/01/23
+Credor
+Valor
+35208086000127 - Mobiliza For Rent Ltda
+240.000,00 (Duzentos e quarenta mil 
+reais)
+Tipo de Empenho
+NE Original
+Classificação
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+53310 - Instituto de Terras e Cartografia do Estado do Rio de Janeiro                   I
+Programa de trabalho
+21.631. 0459. 2710 - Regularização Fundiária de Interesse Social
+Id. uso
+0 - Não destinado à contrapartida
+Ano Fonte
+1 - Recursos do Exercício Corrente
+Fonte STN
+501 - Outros Recursos não Vinculados
+Fonte
+101 - Ordinários Não Provenientes de Impostos
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Plano Interno
+00000000000 - Plano Interno nao identificado
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+22000047 - Prestação de Serviços de Locação de Veículos com Motoristas.
+Programa de Financiamento 
+Externo/Interno
+0 - Indefinido
+Chave SIGA
+2021007583002473
+Detalhamento
+Modalidade do 
+empenho
+Estimativo Modalidade de 
+Licitação
+09 - Pregão 
+Eletrônico
+Embasamento Legal
+LEI 10520/02 
+8666/93
+Origem de Material
+1 - Origem nacional Data de Entrega
+Local de Entrega
+Processo
+SEI 330020/00868/21 U F
+Rio de Janeiro Município
+Rio de Janeiro
+Itens
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Serviços de Terceiros - 
+Pessoa Jurídica
+13 - LOCAÇÃO DE VEICULOS, FRETES E 
+CARRETOS/PEDAGIOS
+240.000,00
+Cronograma
+Janeiro
+240.000,00
+Saldo Dotação
+Crédito disponível Antes NE
+Crédito indisponível Antes NE
+Valor do Empenho
+Saldo Após 
+Empenho
+1.011.690,78
+0,00
+0,00
+771.690,78
+Observação
+EMPENHO DE VERBAS COM PRESTAÇÃO DE SERVIÇO DE LOCAÇÃO DE VEICULOS COM MOTORISTA.   2023
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 02/02/23 às 17:09.
+Impresso por IVONETE JOSE MARIA SABINO em 06/02/23 às 16:18.
+Siafe-Rio / SEFAZ-RJ
+Página 1/2
+
+Identificação
+Unidade Gestora
+Número do 
+Documento
+Data de Emissão
+133100 - ITERJ
+2023NE00038
+01/01/23
+Credor
+Valor
+35208086000127 - Mobiliza For Rent Ltda
+240.000,00 (Duzentos e quarenta mil 
+reais)
+Tipo de Empenho
+NE Original
+.
+1
+UN
+240.000,00
+240.000,00
+Descrição
+: 
+EMPENHO DE VERBAS COM PRESTAÇÃO DE SERVIÇO DE LOCAÇÃO DE VEICULOS COM MOTORISTA.   2023
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 02/02/23 às 17:09.
+Impresso por IVONETE JOSE MARIA SABINO em 06/02/23 às 16:18.
+Siafe-Rio / SEFAZ-RJ
+Página 2/2

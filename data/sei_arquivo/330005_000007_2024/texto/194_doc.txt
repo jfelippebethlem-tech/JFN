@@ -1,0 +1,70 @@
+[] (fase: indefinida · tipo: vazio)
+
+Número da Nota
+
+PREFEITURA DA CIDADE DO RIO DE JANEIRO 00002549
+SECRETARIA MUNICIPAL DE FAZENDA Data e Hora de Emissão
+
+A 01/03/2024 05:41:01
+NOTA FISCAL DE SERVIÇOS ELETRÔNICA - NFS-e Código de Verificação
+
+- NOTA CARIOCA - YPHP-MRIE
+PRESTADOR DE SERVIÇOS
+CPF/CNPJ: 19.088.605/0001-04 | Inscrição Municipal: 1.200.221-1 Inscrição Estadual: -==
+Nome/Razão Social: MGS CLEAN SOLUCOES E SERVICOS LTDA
+fa Nome Fantasia: MGS CLEAN Tel.: 34892238
+MOS CLEAN Endereço: AVN DAS AMERICAS 3434, BLC 2 SAL 506 - BARRA DA TIJUCA - CEP: 22640-102
+“ “o Município: RIO DE JANEIRO UF: RJ E-mail: contato (bmgselean.net
+TOMADOR DE SERVIÇOS
+CPF/CNPJ: 40.173.726/0001-40 Inscrição Municipal: --== Inscrição Estadual: -===
+Nome/Razão Social: INSTITUTO DE TERRAS E CARTOGRAFIA DO ESTADO DO RIO DE JANEIRO
+Endereço: RUA REGENTE FEIJÓ 07, 3º, 4º E 5º ANDARES - CENTRO - CEP: 20060-060 Tel.: 2123327232
+Município: RIO DE JANEIRO UF: RJ E-mail: contabilidadeDiterj.rj.gov.br
+
+DISCRIMINAÇÃO DOS SERVIÇOS
+PRESTAÇÃO DE SERVIÇOS DE LIMPE ZA, HIGIENE, CONSERVAÇÃO, COPEIRAGEM, RE CEPÇÃO E PORTARI A. DE
+ACORDO COM OS TERMOS DO CONTRATO N º 005 /2021.
+PERIODO DE 01/02/2024 A 29/02/2024.
+
+CONFORME MEDIÇÃO APRESENTADA.
+DADOS PARA PAGAMENTO;
+
+BANCO BRADESCO (237)
+
+AG: 1075
+
+C/C: 86936-8
+
+PRESTAÇÃO DE SERVIÇOS COM UTILIZAÇÃO DE MATERI AIS E EQUIPAMENTOS.
+CUSTO DO VALE TRANSPORTE: R$ 10.268,75
+
+CUSTO DO VALE ALIMENTAÇÃO: R$ 12.937,50
+
+CUSTO TOTAL: R$ 23.201,25
+
+CONFORME ART. 122 S lo - II E ART. 124 DA INSTRUÇÃO NORMATIVA - RFB N º 971 DE 13/11/2009: BASE
+DE CÁLCULO DA RETENÇÃODE INSS: 11% x 50% (R$ 103.988,53 - R$ 23.201,25)
+VALOR DA RETENÇÃO DO INSS: R$ 4.443,30
+
+Retenção de COFINS Retenção de CSLL Retenção de INSS Retenção de IRPJ Retenção de PIS Outras Retenções
+R$ 0,00 R$ 0,00 R$4443,30 R$4.99145 R$ 0,00 R$ 0,00
+
+VALOR DA NOTA = R$ 103.988,53
+
+Serviço Prestado
+17.05.01 - fornecimento de mão-de-obra
+
+Deduções (R$) Desconto Incond. (R$) |Base de Cálculo (R$) | Alíquota (%) Valor do I3S (R$) Crédito p/ IPTU (R$)
+
+0,00 0,00 103.988,53 5,00% 5.199,42 0,00
+OUTRAS INFORMAÇÕES
+
+- Esta NFS-e foi emitida com respaldo na Lei nº 5.098 de 15/10/2009 e no Decreto nº 32.250 de 11/05/2010
+
+- PROCON-RJ: Av. Rio Branco nº 25, 5º andar, tel 151: waw.procon.rj.gov.br
+
+- Data de vencimento do ISS desta NFS-e: 03/04/2024.
+
+- Esta NFS-e não gera crédito para abatimento no IPTU.
+
+- Valor Líquido a Pagar: R$ 94.553,78

@@ -1,0 +1,61 @@
+[Anexo] (fase: indefinida · tipo: anexo)
+
+Documento de Arrecadação
+de Receitas Federais
+49.479.435/0001-50
+SECRETARIA DE ESTADO DE HABITACAO DE INTERESSE SOC
+Período de Apuração
+Data de Vencimento
+Número do Documento
+07.16.24246.6622855-1
+Pagar este documento até
+20/09/2024
+Observações
+Nº Recibo Declaração: 50000260060395
+Valor Total do Documento
+462.478,01
+CNPJ
+Razão Social
+Agosto/2024
+20/09/2024
+Código
+Principal
+Denominação
+Total
+Multa
+Juros
+Composição do Documento de Arrecadação
+1162
+CP PATRONAL - RETENÇÃO LEI 9.711/98
+462.478,01
+462.478,01
+01 CP PATRONAL - RETENÇÃO LEI 9.711/98
+PA:08/2024 Vencimento:20/09/2024
+CNPJ Prestador:23.902.149/0001-61
+Totais
+462.478,01
+462.478,01
+SENDA (Versão:5.2.0)
+02/09/2024 13:09:51
+1 1
+Página:
+/
+85830004624 6
+78010385242 8
+64071624246 7
+66228551820 6
+AUTENTICAÇÃO MECÂNICA
+Documento de Arrecadação de Receitas Federais
+85830004624 6
+78010385242 8
+64071624246 7
+49.479.435/0001-50
+Número:
+07.16.24246.6622855-1
+Pagar até:
+20/09/2024
+Valor:
+462.478,01
+66228551820 6
+CNPJ:
+Pague com o PIX

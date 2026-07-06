@@ -1,0 +1,173 @@
+[] (fase: indefinida · tipo: vazio)
+
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+ Agência: 0787
+ Conta Corrente: 13-001455-3
+Pagamento com codigo de barras > 2ª via de comprovante
+Codigo de Barras: 
+Empresa:
+CNPJ:
+Data de Validade: 
+Competencia: 
+Valor Recolhido: 
+Data de Pagamento:
+Data da Transacao: 
+Hora da Transacao: 
+Canal: 
+Autenticacao: 
+Convenio de 
+Arrecadacao:
+Documento pago dentro das condicoes definidas no oficio DIFUG/GEPAS 135/2003
+Pagamento efetuado com base nas informacoes do codigo de barras.
+Guarde este recibo junto com o documento original para eventual comprovacao do pagamento.
+Central de Atendimento Santander Empresarial
+4004-2125 (Regiões Metropolitanas)
+0800 726 2125 (Demais Localidades)
+0800 723 5007 (Pessoas com deficiência auditiva ou de
+fala)
+SAC - Atendimento 24h por dia, todos os dias.
+0800 762 7777
+0800 771 0401 (Pessoas com deficiência auditiva ou de
+fala)
+Ouvidoria - Das 9h às 18h, de segunda a sexta-feira,
+exceto feriado.
+0800 726 0322
+0800 771 0301 (Pessoas com deficiência auditiva ou de
+fala)
+         COMPROVANTE DE PAGAMENTO RECOLHIMENTO - FGTS GRF 
+85800000036-4  70920180240-4 30768618081-6 90886050001-5 
+FGTS GRF CONVENIO 180
+19.088.605/0001-04
+07/03/2024
+02/2024
+R$ 3.670,92
+07/03/2024
+07/03/2024
+13:32:25
+INTERNET BANKING
+67914912856168418949267
+00336915000950018014
+
+858000000364  709201802404  307686180816  908860500015
+858000000364  709201802404  307686180816  908860500015
+GRF - GUIA DE RECOLHIMENTO DO FGTS
+GFIP - SEFIP
+GERADA EM
+01-RAZÃO SOCIAL/NOME
+MGS CLEAN SOLUCOES E SERVICOS 
+08-CÓD RECOLHIMENTO
+02-DDD/TELEFONE
+09-ID RECOLHIMENTO
+(0021)22465798
+018080-1
+10-INSCRIÇÃO/TIPO( 8 )
+19.088.605/0001-04
+03-FPAS
+07-ALÍQUOTA FGTS
+04-SIMPLES
+06-QTDE TRABALHADORES
+515
+8
+1
+26
+11-COMPETÊNCIA
+12-DATA DE VALIDADE
+02/2024
+07/03/2024
+05-REMUNERAÇÃO
+13-DEPÓSITO + CONTRIB SOCIAL
+45.886,56
+3.670,92
+14-ENCARGOS
+0,00
+15-TOTAL A RECOLHER
+3.670,92
+**VALOR FGTS A RECOLHER ATÉ O DIA 07/03/2024**
+AUTENTICAÇÃO MECÂNICA
+150
+GRF - GUIA DE RECOLHIMENTO DO FGTS
+GERADA EM
+GFIP - SEFIP
+08-CÓD RECOLHIMENTO
+01-RAZÃO SOCIAL/NOME
+MGS CLEAN SOLUCOES E SERVICOS 
+03-FPAS
+515
+150
+04-SIMPLES
+1
+09-ID RECOLHIMENTO
+018080-1
+05-REMUNERAÇÃO
+45.886,56
+10-INSCRIÇÃO/TIPO
+19.088.605/0001-04
+06-QTDE TRABALHADORES
+26
+11-COMPETÊNCIA
+02/2024
+02-DDD/TELEFONE
+(0021)22465798
+07-ALÍQUOTA FGTS
+8
+12-DATA DE VALIDADE
+07/03/2024
+15-TOTAL A RECOLHER
+3.670,92
+14-ENCARGOS
+0,00
+CONTRIB SOCIAL
+13-DEPÓSITO +
+3.670,92
+**VALOR FGTS A RECOLHER ATÉ O DIA 07/03/2024**
+AUTENTICAÇÃO MECÂNICA
+( 8 )
+8.40
+8.40
+28/02/2024 - 16:51:23
+28/02/2024 - 16:51:23
+
+FGTS - FUNDO DE GARANTIA DO TEMPO DE SERVIÇO
+RELATÓRIO ANALÍTICO DA GRF
+DATA:
+PÁG :
+GFIP - SEFIP
+HORA:
+28/02/2024
+16:51:23
+001/001
+8.40 (23/08/2022)
+---------------------------------------------------------------------------------------------------------------------------
+INSCRIÇÃO:
+EMPRESA:
+CÓD REC:
+FPAS:
+MGS CLEAN SOLUCOES E SERVICOS                                                             
+COMPETÊNCIA: 02/2024
+SIMPLES:
+515
+1
+150
+19.088.605/0001-04
+---------------------------------------------------------------------------------------------------------------------------
+QTDE TRABALHADORES
+DEPÓSITO
+REMUNERAÇÃO
+ENCARGOS FGTS
+CONTRIB SOCIAL
+ENCARGOS CONTRIB SOC
+TOTAL A RECOLHER
+FGTS - 8%
+26
+45.886,56
+3.670,92
+0,00
+0,00
+0,00
+3.670,92
+---------------------------------------------------------------------------------------------------------------------------
+VALIDADE DO CÁLCULO:
+07/03/2024
+até
+A(S) GRF(S), PARA FINS DE QUITAÇÃO, SERÁ(ÃO) IMPRESSA(S) SOMENTE APÓS TRANSMISSÃO DO ARQUIVO VALIDADO PELO CONECTIVIDADE SOCIAL.
+RELATÓRIO PARA SIMPLES CONFERÊNCIA, NÃO É VÁLIDO PARA QUITAÇÃO.

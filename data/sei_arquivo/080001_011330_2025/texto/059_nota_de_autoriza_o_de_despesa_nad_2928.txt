@@ -1,0 +1,9 @@
+[Nota de Autorização de Despesa - NAD 2928] (fase: despesa · tipo: autorizacao_despesa)
+
+er conferida no site http://sei.rj.gov.br/sei/controlador_externo.php?acao=documento_conferir&id_orgao_acesso_externo=6 , informando o
+c&oacute;digo verificador 104654149 e o c&oacute;digo CRC D54AF08D .
+ Refer&ecirc;ncia: Processo n&ordm; SEI-080001/011330/2025
+ SEI n&ordm; 104654149
+ Rua M&eacute;xico 128, - Bairro Centro, Rio de Janeiro/RJ, CEP 20031-142
+Telefone: - www.saude.rj.gov.br
+ Criado por vanda.esteves , verso 3 por vanda.esteves em 15/07/2025 16:12:05.

@@ -1,0 +1,116 @@
+[Relação de Ordens Bancárias Externas 2025OB17287] (fase: despesa · tipo: ordem_bancaria)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 50
+Encerrado até Outubro
+Identificação
+UG Emitente
+Documento
+Emissão
+296100 - FES
+2025OB17287
+24/10/25
+UG Liquidante
+UG Pagadora
+296100 - FES
+296100 - FES
+Valor por Extenso
+Valor
+V i n t e  e  o i t o  m i l h õ e s  d e  r e a i s
+28.000.000,00
+Detalhamento
+Nota Liquidação
+2025NL08592
+Nota de Empenho
+2025NE08587
+Credor
+10497795000149 - Fundo Municipal De Saude De Nova Iguacu
+Natureza
+334041 - Contribuições
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+00000000 - SEM CONTRATO
+Domicílio Bancário Origem
+237 - 6898 - 0000027200 - CONTA D
+Domicílio Bancário Destino
+237 - 6536 - 1899929
+Competência
+10/2025
+Processo
+SEI-080001/002901/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Transferências a 
+Municípios
+01 - CONTRIBUIÇÕES - 
+TRANSFERENCIAS 
+INTEROFSS - 
+MUNICÍPIOS
+4177 - Pagamento da despesa 
+empenhada e liquidada no 
+Exercício Atual
+99 - Sem consumo de 
+Limite de Saque
+28.000.000,00
+Observação
+PAGAMENTO DO (S)  DOCUMENTO (S)   CONFORME PROCESSO Resolução SES nº 3842 de 21 de agosto de 2025, publicada no dia 
+25 de agosto de 2025 que altera a Resolução SES n.º 3617 de 21 de fevereiro de 2025, publicado no dia 24/02/2025, 
+para o apoio financeiro do Hospital Geral de Nova Iguaçu - HGNI, (CNES 2798662), para ano de 2025, com o objetivo de 
+promover a melhoria da qualidade e resolubilidade do atendimento regional da média e alta complexidade aos usuários 
+do Sistema Único de Saúde  SUS. Conforme solicitação e autorização (117309781). Competência de OUTUBRO/2025
+Registro de Envio
+UG Emitente
+296100
+Emissão
+24/10/25
+Documento
+2025RE03632
+Data de Envio
+24/10/25
+Status de Envio
+Processado e Pago
+Data de retorno
+28/10/25
+Tipo de Pagamento
+Normal
+Retorno
+Ordem bancária 
+paga e liberada com 
+sucesso.
+Programação de Desembolso
+Documento
+2025PD18033
+Emissão
+23/10/25
+Data de 
+Programação
+23/10/25
+ 
+______________________________________________________
+10126341 - WARD DE SOUZA GUSMÃO JUNIOR
+Subsecretário do Fundo Estadual de Saúde
+Emitido/contabilizado por LUCAS LIBERATO ANDRE em 24/10/25 às 09:39.
+Impresso por Danielle de Souza Marques em 10/12/25 às 10:46.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

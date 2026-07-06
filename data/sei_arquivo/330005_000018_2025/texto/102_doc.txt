@@ -1,0 +1,262 @@
+[] (fase: indefinida · tipo: vazio)
+
+Agência/conta: 1185 / 74826-4
+Nome da empresa:
+MGS CLEAN COMERCIO E SERVICOS
+CNPJ: 19.088.605/0001-04
+Conta: Conta em operação
+Tipo: Todos
+Período: de 29/11/2024 até 29/11/2024
+Status: Efetuados
+Nome do favorecido
+CPF/CNPJ
+Tipo de pagamento
+Referência da empresa
+Data de pagamento
+Valor do pagamento (R$)
+Status
+ADRIANA PEREIRA BASTOS
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+ANA PAULA DE OLIVEIRA AGUIAR
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+ANGELICA COSTA SOARES
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+BARBARA PRYSCILA RAMOS
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+CAROLINE MOREIRA DA FONSECA
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+DEBORA TOLEDO RAMOS
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+FERNANDO DA SILVA
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+GIOVANNA MENDONÇA DE CARVALHO
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+GLEICIANE DE ALCANTARA SILVA
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+HELENA RIBEIRO DOS SANTOS
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+JONATHAN CAPOSSI DA SIVA LEITÃO
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+JORGE GOMES DE BARCELOS
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+LARISSA GOMES DE SOUZA
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+LAVINIA EMANUELLE SOUZA DE LIMA
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+LUCAS JOSE DA SILVA MARTINS
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+LUIZA BRAGA MOREIRA DE SOUZA
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+MARGARETE NADER DA SILVA
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+MARIA EDUARDA PIMENTEL LIAL 
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+MARIA LUIZA ALMEIDA GUIMARAES 
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+MICAELA DE MELO LIMA 
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+PAMELA CABRAL BARBOSA
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+PAULA PEDRAZZI
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+PAULO RENATO MOREIRA 
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+NATHALIA DAS NEVES SANT ANA 
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+DAIENE DE JESUS FLORENCIO 
+-
+Conta corrente
+VA_ITERJ
+29/11/2024
+493,50
+Visualizar
+12.337,50
+Dúvidas, sugestões e reclamações, se necessário, utilize o SAC ltaú 0800 728 0728, todos os dias, 24h, ou o Fale Conosco (www.itau.com.br). Se desejar a reavaliação da solução apresentada após utilizar esses canais, recorra à Ouvidoria 
+Corporativa ltaú 0800 570 0011, dias úteis, das 9 às 18h, Caixa Postal nº 67.600, CEP 03162-971. Deficientes auditivos ou de fala 0800 722 1722, disponível 24hs todos os dias. 
+Total:
+Dados da conta
+Resultado da busca
+
+Agência/conta: 1185 / 74826-4
+Nome da empresa:
+MGS CLEAN COMERCIO E SERVICOS
+CNPJ: 19.088.605/0001-04
+Conta: Conta em operação
+Tipo: Todos
+Período: de 28/11/2024 até 28/11/2024
+Status: Efetuados
+Nome do favorecido
+CPF/CNPJ
+Tipo de pagamento
+Referência da empresa
+Data de pagamento
+Valor do pagamento (R$)
+Status
+ANGELICA COSTA SOARES
+-
+Conta corrente
+VT_ITERJ
+28/11/2024
+210,00
+Visualizar
+CAROLINE MOREIRA DA FONSECA
+-
+Conta corrente
+VT_ITERJ
+28/11/2024
+210,00
+Visualizar
+GLEICIANE DE ALCANTARA SILVA
+-
+Conta corrente
+VT_ITERJ
+28/11/2024
+210,00
+Visualizar
+JONATHAN CAPOSSI DA SIVA LEITÃO
+-
+Conta corrente
+VT_ITERJ
+28/11/2024
+210,00
+Visualizar
+LARISSA GOMES DE SOUZA
+-
+Conta corrente
+VT_ITERJ
+28/11/2024
+210,00
+Visualizar
+MARIA LUIZA ALMEIDA GUIMARAES 
+-
+Conta corrente
+VT_ITERJ
+28/11/2024
+210,00
+Visualizar
+1.260,00
+Dúvidas, sugestões e reclamações, se necessário, utilize o SAC ltaú 0800 728 0728, todos os dias, 24h, ou o Fale Conosco (www.itau.com.br). Se desejar a reavaliação da solução apresentada após utilizar esses canais, recorra à Ouvidoria 
+Corporativa ltaú 0800 570 0011, dias úteis, das 9 às 18h, Caixa Postal nº 67.600, CEP 03162-971. Deficientes auditivos ou de fala 0800 722 1722, disponível 24hs todos os dias. 
+Dados da conta
+Resultado da busca
+Total:

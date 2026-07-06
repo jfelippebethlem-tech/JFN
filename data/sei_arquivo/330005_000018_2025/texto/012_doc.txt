@@ -1,0 +1,108 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária Orçamentária
+TIPO 12
+Encerrado até Novembro
+Identificação
+UG Emitente
+Documento
+Emissão
+133100 - ITERJ
+2025OB00754
+25/11/25
+UG Liquidante
+UG Pagadora
+133100 - ITERJ
+133100 - ITERJ
+Valor por Extenso
+Valor
+Cento e sete mil e seiscentos e dezoito reais e setenta e dois centavos
+107.618,72
+Detalhamento
+Nota Liquidação
+2025NL00493
+Nota de Empenho
+2025NE00567
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Detalhamento de Fonte
+000000 - Sem detalhamento - (500.100)
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Domicílio Bancário Origem
+237 - 6898 - 0000000027 - CONTA ÚNICA
+Domicílio Bancário Destino
+237 - 1075 - 869368
+Competência
+10/2025
+Processo
+SEI 330020/00018/2025
+I t e n s
+Tipo Patrimonial
+Sub-item da 
+Despesa
+Operação Patrimonial
+Vinculação de 
+Pagamento
+Classificação 
+Complementar
+Valor
+Serviços de Terceiros - 
+Pessoa Jurídica
+12 - SERVIÇOS DE 
+ASSEIO E HIGIENE
+3722 - Pagamento da despesa 
+empenhada e liquidada no Exercício 
+Atual Consumindo Limite de Saque
+86 - FORNECEDORES
+107.618,72
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  11123 CONFORME PROCESSO DESPESA relativo a Serviço de Limpeza, Higiene, Conservação, Copeiragem, 
+Recepção e Portaria, deste ITERJ, referente ao período SETEMBRO/2025, conforme Termos do Contrato nº 005/2021, visando atender as necessidades 
+deste ITERJ
+Registro de Envio
+UG Emitente
+133100
+Emissão
+25/11/25
+Documento
+2025RE00202
+Data de Envio
+25/11/25
+Status de Envio
+Processado e Pago
+Data de retorno
+29/11/25
+Tipo de Pagamento
+Normal
+Retorno
+Ordem bancária 
+paga e liberada com 
+sucesso.
+Programação de Desembolso
+Documento
+2025PD00809
+Emissão
+19/11/25
+Data de 
+Programação
+25/11/25
+Emitido/contabilizado por IVONETE JOSE MARIA SABINO em 25/11/25 às 10:03.
+Impresso por WALDEMIR DAVILA PEIXOTO em 30/12/25 às 15:37.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

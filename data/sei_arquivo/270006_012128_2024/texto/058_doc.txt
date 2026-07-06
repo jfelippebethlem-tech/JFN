@@ -1,0 +1,139 @@
+[] (fase: indefinida · tipo: vazio)
+
+Contratação 2025004930 (Em Aprovação)
+Unidade Compradora:
+166100 - FUNESBOM - FUNDO ESPECIAL DO CORPO DE BOMBEIROS
+Tipo de Aquisição:
+Solicitação de Compra
+Número da Aquisição:
+SEI-270006/012128/2024
+Tipo de Contratação:
+Material
+Número da Contratação:
+035/2025
+Data de Vigência:
+12/06/2025 a 11/06/2026
+Gestores Responsáveis:
+Barbara Domingos Maria
+BRUNO VINICIUS MARQUES
+EDILSON SANTOS DE SOUZA
+FLALDIMIR MENDES DA SILVA
+JULIO CESAR CHAVES
+LUIS CARLOS DE MELO CASTRO
+MARCIO ANDRE DUARTE DA FONSECA
+RENATO ROCHA FILIPE
+ 
+ 
+Situação:
+Em Aprovação
+Empresa Contratada:
+ANGLOCO LIMITED
+CPF: 00.000.000/0005-23
+CEP: Não definido
+OBSERVAÇÃO
+O objeto do presente Contrato é a aquisição de viaturas do tipo AUTO BUSCA E SALVAMENTO LEVE (ABSL).
+PROCESSOS VINCULADOS
+Processo
+Unidade Gestora
+Data de Criação
+Data de Modificação
+Situação
+SEI-
+270006/012128/2024
+166100 - FUNESBOM - FUNDO ESPECIAL DO CORPO DE
+BOMBEIROS
+20/06/2024
+03/07/2025
+Liberado
+ITENS
+MATERIAL - VEICULOS - VEICULOS ESPECIAIS - VEICULO COMBATE A INCENDIO E SALVAMENTO
+VEICULO COMBATE A INCENDIO E SALVAMENTO,CLASSIFICACAO: CAMINHAO, MOTOR: 4 CILINDROS, TIPO CABINE: DUPLA, TRACAO: 4 X 2,
+CAPACIDADE PASSAGEIROS: 5 PASSAGEIROS, COMBUSTIVEL: DIESEL, CAPACIDADE CARGA: 7 T, POTENCIA MOTOR: 150 ~ 200, CAPACIDADE
+TANQUE: 350 L, CAPACIDADE BOMBA: 40 LPM A 100 BAR, TRANSMISSAO: MANUAL, COMPRIMENTO VEICULO: 6,5 M ~ 7 M, NUMERO EIXOS: 2,
+LARGURA COMPARTIMENTO: CONFORME NBR 14096:2016, ANO FABRICACAO: 0 KM, MATERIAL TANQUE: POLIESTER REFORCADO DE FIBRA DE
+VIDRO, COR: VERMELHA, ALTURA COMPARTIMENTO: CONFORME NBR 14096:2016, PROFUNDIDADE COMPARTIMENTO: CONFORME NBR 14096:2016,
+FORMA FORNECIMENTO: UNIDADE
+Código do Item: 2360.002.0016 (ID - 171031)
+Unidade
+Valor Unitário
+Elemento de Despesa
+Sub-elemento de Despesa
+ 
+UN
+2.200.000,000000
+44905200
+44905229
+Quantidade
+Original
+Quantidade
+Alterada
+Quantidade
+Programada
+Quantidade
+Recebida
+Saldo a
+Programar
+Saldo
+Atual
+Percentual
+Alterado
+35
+0
+35
+0
+0
+35
+0 %
+PROGRAMAÇÃO DE ENTREGA
+Entrega 1
+Data:
+12/06/2025
+Hora:
+08:00 até 17:00
+Local da Entrega:
+Almoxarifado Geral do CBMERJ.Sito a Av.Bartolomeu de Gusmão 850, São Cristovao, Rio de Janeiro - RJ
+Descrição
+Quantidade Programada
+Quantidade Recebida
+Situação
+VEICULO COMBATE A INCENDIO E SALVAMENTO,CLASSIFICACAO: CAMINHAO,
+MOTOR: 4 CILINDROS, TIPO CABINE: DUPLA, TRACAO: 4 X 2, CAPACIDADE
+PASSAGEIROS: 5 PASSAGEIROS, COMBUSTIVEL: DIESEL, CAPACIDADE CARGA:
+7 T, POTENCIA MOTOR: 150 ~ 200, CAPACIDADE TANQUE: 350 L, CAPACIDADE
+BOMBA: 40 LPM A 100 BAR, TRANSMISSAO: MANUAL, COMPRIMENTO VEICULO:
+6,5 M ~ 7 M, NUMERO EIXOS: 2, LARGURA COMPARTIMENTO: CONFORME NBR
+14096:2016, ANO FABRICACAO: 0 KM, MATERIAL TANQUE: POLIESTER
+REFORCADO DE FIBRA DE VIDRO, COR: VERMELHA, ALTURA COMPARTIMENTO:
+CONFORME NBR 14096:2016, PROFUNDIDADE COMPARTIMENTO: CONFORME
+NBR 14096:2016, FORMA FORNECIMENTO: UNIDADE
+Código do Item: 2360.002.0016 (ID - 171031)
+35
+Não recebido
+PARECER JURÍDICO
+Não existem Pareceres Jurídicos para esta Contratação.
+NOTA DE AUTORIZAÇÃO DE DESPESA
+Nenhuma Nota de Autorização de Despesa foi emitida para esta Contratação
+Termo de Contrato
+Não existem Termos de Contrato nesta Contratação.
+WORKFLOW DE APROVAÇÃO
+Aprovador
+ Pendente
+ Aprovado
+ Rejeitado
+ P/Aprovação
+ 
+Data/Hora
+03/07/2025, 16:00
+Contratação
+https://www.compras.rj.gov.br/mercatto/aplicacao/asp/Contrato/Exibe_Contrato_Print.asp?valor=125950
+1/2
+
+(0) Leonardo Tupan Laversveiler Gomes
+ 
+03/07/202515:59
+ 
+Imprimir
+03/07/2025, 16:00
+Contratação
+https://www.compras.rj.gov.br/mercatto/aplicacao/asp/Contrato/Exibe_Contrato_Print.asp?valor=125950
+2/2

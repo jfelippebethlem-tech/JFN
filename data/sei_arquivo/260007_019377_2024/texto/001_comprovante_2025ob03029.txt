@@ -1,0 +1,31 @@
+[Comprovante 2025OB03029] (fase: despesa · tipo: ordem_bancaria)
+
+BANCO DO BRASIL S/A - Pagamento de Empenhos - 404340 / HUPE
+Detalhamento de Empenho - 19/02/2025
+ 
+Dados do Beneficiário (Cedente/Emissor do título/Emissor da guia)
+Inscrição CPF/CNPJ: 42498675000152
+Beneficiário: SECRETARIA DE ESTADO DE FAZENDA - SEFAZ
+Banco: 001
+Agência: 2234-s
+Conta Corrente: CODBARRAS
+ 
+ 
+Dados do Empenho (Da Ordem Bancária)
+Número do empenho: 
+Programa de Trabalho: 
+Número da OB: 2025OB03029
+Situação atual: 01-PAGA
+Valor do pagamento: R$ 156,00
+Observação: PROGRAMAÇÃO DE PAGAMENTO REFERENTE AO IRRF NF 31974 CONFORME PROCESSO de aquisição de fórmula 
+líquida pra nutrição enteral hipercalórica pra o HUPE.
+Órgão Emissor: 404340 - HUPE
+Agência de Débito: 2234
+Conta de Débito: 105171
+ 
+ 
+Dados da Autenticação (Código de barras)
+Código de barras: 89800000001-0 56000001001-0 10171250312-3 07112975967-7
+Valor Líquido: R$ 156,00
+Data do Débito Bancário: 17/02/2025
+Autenticação: 4684829DD776904D

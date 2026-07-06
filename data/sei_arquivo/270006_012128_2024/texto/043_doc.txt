@@ -1,0 +1,69 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Programação de Desembolso de Transferência
+Encerrado até Julho
+Identificação
+UG Emitente
+Documento
+Emissão
+166100 - FUNESBOM
+2025PD12037
+05/09/25
+UG Favorecida
+Ordem Bancária
+Domicílio Bancário 
+Origem
+166100 - FUNESBOM
+237 - 6898 - 0000000426 
+- CONTA D
+Favorecido
+Domicílio Bancário 
+Destino
+28176998000441 - FUNESBOM
+001 - 2234 - 069345
+Valor por Extenso
+Valor
+C i n c o  m i l h õ e s  e  t r e z e n t o s  e  c i n q u e n t a  e  u m  m i l  e  s e s s e n t a  r e a i s
+5.351.060,00
+Detalhamento
+Competência
+06/2025
+Processo
+SEI-270006/005886/2024
+Dados da transferência
+Domicílio
+Fonte
+Convênio
+Origem
+237 - 6898 - 0000000426 - CONTA D
+753 - Recursos 
+provenientes de taxas e 
+contribuições
+000000 - Convênio não 
+identificado
+Destino
+001 - 2234 - 069345
+753 - Recursos 
+provenientes de taxas e 
+contribuições
+000000 - Convênio não 
+identificado
+I t e n s
+Tipo Patrimonial
+Item Patrimonial
+Operação Patrimonial
+Valor
+Transferência Financeira entre UG's 
+e na Própria UG
+4429 - TRANSFERÊNCIA 
+FINANCEIRA
+4074 - Transferência financeira entre Contas 
+Bancarias - Na UG
+5.351.060,00
+Observação
+Emitido/contabilizado por MIGUEL DOUGLAS LUGON DA COSTA em 05/09/25 às 
+1 1 : 3 7 .
+Impresso por MIGUEL DOUGLAS LUGON DA COSTA em 05/09/25 às 11:37.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

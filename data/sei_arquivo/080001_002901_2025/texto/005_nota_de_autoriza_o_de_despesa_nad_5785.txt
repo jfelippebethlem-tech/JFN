@@ -1,0 +1,9 @@
+[Nota de Autorização de Despesa - NAD 5785] (fase: despesa · tipo: autorizacao_despesa)
+
+conferida no site http://sei.rj.gov.br/sei/controlador_externo.php?acao=documento_conferir&id_orgao_acesso_externo=6 , informando o
+c&oacute;digo verificador 121524650 e o c&oacute;digo CRC 474A5BE3 .
+ Refer&ecirc;ncia: Processo n&ordm; SEI-080001/002901/2025
+ SEI n&ordm; 121524650
+ Rua M&eacute;xico 128, - Bairro Centro, Rio de Janeiro/RJ, CEP 20031-142
+Telefone: - www.saude.rj.gov.br
+ Criado por driely.alves , verso 3 por driely.alves em 22/12/2025 12:11:57.

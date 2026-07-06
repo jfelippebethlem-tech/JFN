@@ -1,0 +1,26 @@
+[] (fase: indefinida · tipo: vazio)
+
+[Termo de Cancelamento de Documento]
+SEI/ERJ - 135234980 - Termo de Cancelamento de Documento
+ Governo do Estado do Rio de Janeiro
+ Secretaria de Estado de Pol&iacute;cia Militar
+ Gabinete do Comando Geral
+ TERMO DE CANCELAMENTO DO DOCUMENTO SEI ( SEI-350021/034988/2026 )
+ Para todos os efeitos, o documento abaixo especificado n&atilde;o possui validade pelas raz&otilde;es a seguir apresentadas.
+ N&uacute;mero SEI do Documento
+ 135232218
+ Tipo do documento
+ Anexo
+ Raz&atilde;o da Invalida&ccedil;&atilde;o
+ Por haver incorre&ccedil;&atilde;o no documento
+ ( X ) Indisponibilizar conte&uacute;do do documento para consulta.
+ Rio de Janeiro, 26 junho de 2026
+ Documento assinado eletronicamente por Maria Cristina da Silva Matos , Primeiro Sargento , em 26/06/2026, &agrave;s 18:43, conforme
+hor&aacute;rio oficial de Bras&iacute;lia, com fundamento nos art. 28&ordm; e 29&ordm; do Decreto n&ordm; 48.209, de 19 de setembro de
+2022 e no art. 4&ordm; do Decreto n&ordm; 48.013, de 04 de abril de 2022 .
+ A autenticidade deste documento pode ser conferida no site
+http://sei.rj.gov.br/sei/controlador_externo.php?acao=documento_conferir&id_orgao_acesso_externo=6 , informando o c&oacute;digo verificador
+135234980 e o c&oacute;digo CRC B0FBB224 .
+ Refer&ecirc;ncia: Processo n&ordm; SEI-350021/034988/2026
+ SEI n&ordm; 135234980
+ Criado por maria.matos , verso 2 por maria.matos em 26/06/2026 18:42:55.

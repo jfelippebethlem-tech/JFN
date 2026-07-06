@@ -1,0 +1,492 @@
+{
+ "processo": "490001/001070/2024",
+ "gerado_em": "2026-07-06T07:49:33+00:00",
+ "origem": "/home/ubuntu/JFN/data/sei_cache/integra_490001_001070_2024",
+ "modalidade": "",
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/000_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/001_anexo.txt",
+   "chars": 1212,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1159,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Pagamentos",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/003_pagamentos.txt",
+   "chars": 11866,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Programação de Desembolso - PD",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/004_programa_o_de_desembolso_pd.txt",
+   "chars": 2335,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/005_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/006_anexo.txt",
+   "chars": 988,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/007_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Guia",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/008_guia.txt",
+   "chars": 2414,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Programação de Desembolso - PD",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/009_programa_o_de_desembolso_pd.txt",
+   "chars": 2116,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Programação de Desembolso - PD",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/010_programa_o_de_desembolso_pd.txt",
+   "chars": 2932,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Programação de Desembolso - PD",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/011_programa_o_de_desembolso_pd.txt",
+   "chars": 2911,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/012_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Anexo 472",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/013_anexo_472.txt",
+   "chars": 3588,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Anexo 471",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/014_anexo_471.txt",
+   "chars": 3316,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "Despacho de Solicitação de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/015_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/016_nota_de_empenho_original_ne.txt",
+   "chars": 3874,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/017_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/018_anexo.txt",
+   "chars": 2530,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/019_anexo.txt",
+   "chars": 2917,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/020_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "Publicação",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/021_publica_o.txt",
+   "chars": 10762,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/022_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/023_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "Ordem de Serviço",
+   "fase": "contratacao",
+   "tipo": "ordem_inicio",
+   "texto": "texto/024_ordem_de_servi_o.txt",
+   "chars": 1245,
+   "ocr": true,
+   "fotos": [
+    "fotos/024_p01.jpg"
+   ]
+  },
+  {
+   "i": 25,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/025_nota_de_empenho_original_ne.txt",
+   "chars": 3781,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "Contrato",
+   "fase": "contratacao",
+   "tipo": "contrato",
+   "texto": "texto/026_contrato.txt",
+   "chars": 22046,
+   "ocr": false,
+   "fotos": [
+    "fotos/026_p01.jpg",
+    "fotos/026_p02.jpg",
+    "fotos/026_p03.jpg",
+    "fotos/026_p04.jpg",
+    "fotos/026_p05.jpg",
+    "fotos/026_p06.jpg",
+    "fotos/026_p07.jpg",
+    "fotos/026_p08.jpg",
+    "fotos/026_p09.jpg",
+    "fotos/026_p10.jpg",
+    "fotos/026_p11.jpg",
+    "fotos/026_p12.jpg",
+    "fotos/026_p13.jpg",
+    "fotos/026_p14.jpg",
+    "fotos/026_p15.jpg",
+    "fotos/026_p16.jpg",
+    "fotos/026_p17.jpg",
+    "fotos/026_p18.jpg",
+    "fotos/026_p19.jpg",
+    "fotos/026_p21.jpg",
+    "fotos/026_p22.jpg",
+    "fotos/026_p23.jpg",
+    "fotos/026_p24.jpg",
+    "fotos/026_p26.jpg",
+    "fotos/026_p27.jpg",
+    "fotos/026_p28.jpg",
+    "fotos/026_p30.jpg",
+    "fotos/026_p31.jpg",
+    "fotos/026_p32.jpg"
+   ]
+  },
+  {
+   "i": 27,
+   "titulo": "Anotação",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/027_anota_o.txt",
+   "chars": 2550,
+   "ocr": true,
+   "fotos": [
+    "fotos/027_p01.jpg"
+   ]
+  },
+  {
+   "i": 28,
+   "titulo": "Licenciamento Ambiental",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/028_licenciamento_ambiental.txt",
+   "chars": 903,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 29,
+   "titulo": "Alvará",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/029_alvar.txt",
+   "chars": 9549,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 30,
+   "titulo": "Folha de Ponto Individual/Folha de Frequência",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/030_folha_de_ponto_individual_folha_de_frequ.txt",
+   "chars": 22375,
+   "ocr": true,
+   "fotos": [
+    "fotos/030_p01.jpg",
+    "fotos/030_p02.jpg",
+    "fotos/030_p03.jpg",
+    "fotos/030_p04.jpg",
+    "fotos/030_p05.jpg",
+    "fotos/030_p06.jpg",
+    "fotos/030_p07.jpg",
+    "fotos/030_p08.jpg",
+    "fotos/030_p09.jpg",
+    "fotos/030_p10.jpg",
+    "fotos/030_p11.jpg",
+    "fotos/030_p12.jpg",
+    "fotos/030_p13.jpg",
+    "fotos/030_p14.jpg",
+    "fotos/030_p15.jpg",
+    "fotos/030_p16.jpg",
+    "fotos/030_p17.jpg",
+    "fotos/030_p18.jpg",
+    "fotos/030_p19.jpg",
+    "fotos/030_p20.jpg",
+    "fotos/030_p21.jpg",
+    "fotos/030_p22.jpg",
+    "fotos/030_p23.jpg",
+    "fotos/030_p24.jpg"
+   ]
+  },
+  {
+   "i": 31,
+   "titulo": "Arquivo",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/031_arquivo.txt",
+   "chars": 11275,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 32,
+   "titulo": "Relação",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/032_rela_o.txt",
+   "chars": 1602,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 33,
+   "titulo": "Relatório",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/033_relat_rio.txt",
+   "chars": 11328,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 34,
+   "titulo": "Relação",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/034_rela_o.txt",
+   "chars": 10194,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 35,
+   "titulo": "Guia e comprovante GPS/DARF",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/035_guia_e_comprovante_gps_darf.txt",
+   "chars": 9751,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 36,
+   "titulo": "Guia e Comprovante FGTS",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/036_guia_e_comprovante_fgts.txt",
+   "chars": 2012,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 37,
+   "titulo": "Certidões Neg. de Débitos Trabalhistas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/037_certid_es_neg_de_d_bitos_trabalhistas.txt",
+   "chars": 3421,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 38,
+   "titulo": "Certidão da Procuradoria da Dívida Ativa (PGE)",
+   "fase": "controle",
+   "tipo": "parecer",
+   "texto": "texto/038_certid_o_da_procuradoria_da_d_vida_ativa.txt",
+   "chars": 1394,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 39,
+   "titulo": "Certidões Neg. de Débitos Estaduais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/039_certid_es_neg_de_d_bitos_estaduais.txt",
+   "chars": 2155,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
+ "linha_do_tempo": {
+  "planejamento": 0,
+  "selecao": 0,
+  "contratacao": 2,
+  "execucao": 0,
+  "despesa": 8,
+  "controle": 1,
+  "tramitacao": 8,
+  "indefinida": 21
+ },
+ "lacunas": [
+  {
+   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
+   "gravidade": "media"
+  },
+  {
+   "falta": "Seleção (edital, julgamento, homologação)",
+   "gravidade": "alta"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
+  }
+ ],
+ "fotos_total": 55
+}

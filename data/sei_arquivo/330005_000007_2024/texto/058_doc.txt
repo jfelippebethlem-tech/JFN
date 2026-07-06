@@ -1,0 +1,101 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Ordem Bancária de Retenção
+TIPO 13
+Encerrado até Setembro 
+Identificação
+UG Emitente
+Documento
+Emissão
+133100 - ITERJ
+2024OB00786
+14/10/24
+UG Liquidante
+UG Pagadora
+133100 - ITERJ
+133100 - ITERJ
+Valor por Extenso
+Valor
+Q u a t r o  m i l  e  s e i s c e n t o s  e  c i n q u e n t a  e  s e i s  r e a i s  e  o n z e  c e n t a v o s
+4.656,11
+Detalhamento
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS
+Credor da Retenção
+MINISTÉRIO DA FAZENDA
+Competência
+08/2024
+Domicílio Bancário Origem
+237 - 6898 - 0000000027
+Domicílio Bancário Destino
+237 - 6898 - BCO AUTENT
+Processo
+8/2024
+I t e n s
+Número da NE
+2024NE00408 - 133100
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+500 - Recursos não Vinculados de Impostos
+Fonte RJ
+100 - Recursos não Vinculados de Impostos - Ordinários Provenientes de I...
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Número da NL
+2024NL00405 - 133100
+Tipo de Retenção
+INSS SERVIÇOS DE TERCEIROS - 17
+Credor da Retenção
+00394460010880 - MINISTÉRIO DA FAZENDA
+Tipo Patrimonial
+Serviços de Terceiros - Pessoa Jurídica
+Sub-item da Despesa
+12 - SERVIÇOS DE ASSEIO E HIGIENE
+Operação Patrimonial
+3722 - Pagamento da despesa empenhada e liquidada no Exercício Atual Con...
+Vinculação de Pagamento
+93 - Obrigações Patronais, Tributárias e Contributivas
+Ano
+2024
+Valor
+4.656,11
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  4857 CONFORME PROCESSO CLEAN SOLUÇÕES E SERVIÇOS LTDA - Serviço de Limpeza, 
+Higiene, Conservação, Copeiragem, Recepção e Portaria, deste ITERJ,   Contrato nº 005/2021 - Reajuste Contratual - 
+Repactuação - visando atender as necessidades deste ITERJ, do orçamento em vigor. agosto/2024
+Registro de Envio
+UG Emitente
+133100
+Emissão
+14/10/24
+Documento
+2024RE00186
+Data de Envio
+14/10/24
+Status de Envio
+Processado e Pago
+Data de retorno
+16/10/24
+Tipo de 
+Pagamento
+Normal
+Retorno
+Ordem bancária paga e liberada com sucesso.
+Programação de Desembolso
+Documento
+2024PD00854
+Emissão
+04/09/24
+Data de 
+Programação
+14/10/24
+Emitido/contabilizado por PRISCILA LOURES LEITE em 14/10/24 às 12:28.
+Impresso por Daiane Pereira de Souza em 05/11/24 às 15:27.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

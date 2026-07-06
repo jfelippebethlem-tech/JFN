@@ -1,0 +1,112 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Empenho
+Encerrado até Janeiro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+166100 - FUNDO ESPECIAL DO CORPO DE BOMBEIROS (CNPJ: 28.176.998/0004-41)
+2025NE00449
+17/03/25
+Credor
+00541798000189 - Oncomed Clinica Oncologica Ltda
+Valor
+1.349.188,74 (Hum milhão e trezentos e quarenta e nove mil e cento e oitenta e oito reais e setenta e quatro centavos)
+Classificação
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+16610 - Fundo Especial do Corpo de Bombeiros
+Programa de trabalho
+10.302. 0496. 2674 - Operacionalização do Sistema de Saúde Interno do CB...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+501 - Outros Recursos não Vinculados
+Fonte RJ
+230 - Outros Recursos não Vinculados - Recursos Próprios
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (501.230)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+24037751 - CTT 170/2024 credenciamento de clínica oncológica especializa...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2024008293000270
+Detalhamento
+Mod. Empenho
+Global
+Mod. Licitação
+06 - Inexigibilidade
+Emb. Legal
+Lei nº 14.133/2021, Art. 74º, IV
+Origem
+1 - Origem nacional
+Data Entrega
+Local Entrega
+Processo
+SEI-270003/002373/2024 UF
+Rio de Janeiro
+Município
+Niterói
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Classificação Complementar
+Valor
+Serviços de Terceiros - Pessoa Jurídica
+75 - SERVIÇOS DE ASSISTENCIA A SAUDE
+1.349.188,74
+Cronograma
+Março
+1.349.188,74
+Saldo Dotação
+Créd. Disp.
+Indisponível antes NE
+0,00 Valor NE
+Saldo após NE
+37.737.782,43 Pré-Empenhado
+0,00 Bloqueado
+0,00
+1.349.188,74
+36.388.593,69
+Observação
+PRESTAÇÃO DE SERVIÇOs DE QUIMIOTERAPIA - CONTRATO Nº 170/2024 SEI-270003/002373/2024.
+Produtos
+Produto
+Quantidade
+Und. Fornec.
+Preço Unitário
+Preço Total
+SERVIÇO DE QUIMIOTERAPIA
+1
+UN
+1.349.188,74
+1.349.188,74
+Descrição
+PRESTAÇÃO DE SERVIÇOs DE QUIMIOTERAPIA - CONTRATO Nº 170/2024
+Emitido/contabilizado por LUIS CARLOS DE MELO CASTRO em 17/03/25 às 14:
+4 5 .
+Impresso por LUIS CARLOS DE MELO CASTRO em 17/03/25 às 14:46.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

@@ -1,0 +1,116 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Fevereiro 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+133100 - INST. DE TERRAS E CARTOGR. DO EST. RJ (CNPJ: 40.173.726/0001-40)
+2025NL00074
+20/03/25
+Valor Bruto
+Valor Líquido
+109.687,73
+99.766,61
+Tipo de Alteração
+Documento 
+Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE00094
+Credor
+19088605000104 - MGS CLEAN SOLUCOES E SERVICOS LTDA
+Natureza
+339039 - Outros Serviços de Terceiros - Pessoa Jurídica
+Unidade Orçamentária
+53310 - Instituto de Terras e Cartografia do Estado do Rio de Janeiro
+Programa de trabalho
+21.631. 0502. 8040 - Registro da Memória Histórica da Luta pela Terra e ...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+759 - Recursos Vinculados a Fundos
+Fonte RJ
+150 - Recursos Vinculados a Fundos - FEHIS - Tesouro
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (759.150)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+000000 - UG não identificada
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+21002812 - Prestação de serviços de Limpeza, Higiene, Conservação, Copei...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2021006943008036
+Processo
+I t e n s
+Tipo Patrimonial
+Sub-item da 
+Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Serviços de Terceiros - Pessoa Jurídica
+12 - SERVIÇOS 
+DE ASSEIO E 
+HIGIENE
+194 - Reconhecimento da obrigação 
+109.687,73
+Retenção
+Classificação da Retenção
+Base de Cálculo
+Valor
+0,00
+4.656,11
+0,00
+5.265,01
+Total Retenção (-)
+9.921,12
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Nota Fiscal
+7365
+18/2025
+02/2025
+12/03/2025
+109.687,73
+Total Documentos Comprobatórios
+109.687,73
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  7365 CONFORME PROCESSO Prestação de Serviço de Limpeza, Higienização, Conservação, 
+C o p e i r a g e m ,  R e c e p ç ã o  e  P o r t a r i a  p a r a  e s t e  I T E R J ,  r e f e r e n t e  a o  C o n t r a t o  n º  0 0 5 / 2 0 2 1 ,  f i r m a d o  e n t r e  o  I n s t i t u t o  d e  
+Terras e Cartografia do Estado do Rio de Janeiro - ITERJ e a empresa MGS Clean Soluções e Serviços Ltda, relativo a 
+Serviço de Limpeza, Higiene, Conservação, Copeiragem, Recepção e Portaria, deste ITERJ, relativo ao mês de 
+FEVEREIRO/2025, foram executados de acordo com as especificações contratuais pactuadas entre as partes.
+Emitido/contabilizado por PRISCILA LOURES LEITE em 20/03/25 às 19:48.
+Impresso por WALDEMIR DAVILA PEIXOTO em 21/03/25 às 10:30.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

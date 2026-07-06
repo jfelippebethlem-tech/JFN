@@ -1,0 +1,171 @@
+[Nota de Liquidação - NL 2025NL03338] (fase: despesa · tipo: nota_liquidacao)
+
+Governo do Estado do Rio de Janeiro
+Nota de Liquidação
+Encerrado até Maio 
+Identificação
+Unidade Gestora
+Documento
+Emissão
+404340 - HOSPITAL UNIVERSITARIO PEDRO ERNESTO (CNPJ: 33.540.014/0017-14)
+2025NL03338
+09/07/25
+Valor Bruto
+Valor Líquido
+9.144,16
+9.035,63
+Tipo de Alteração
+Documento Alterado
+Status Complementar
+Passivo reconhecido e Liquidado
+Detalhamento
+Tipo de Contabilização
+Reconhecer o passivo e liquidar
+Nota de Empenho
+2025NE01048
+Credor
+00331788000623 - Air Liquide Brasil Ltda
+Natureza
+339030 - Material de Consumo
+Unidade Orçamentária
+29610 - Fundo Estadual de Saúde
+Programa de trabalho
+10.302. 0508. 4866 - Apoio a HUPE e PPC/UERJ para a realização de proced...
+Id. uso
+0 - Não destinado à contrapartida
+Identificador Exercício Fonte
+1 - Recursos do Exercício Corrente
+Fonte
+600 - Transferências Fundo a Fundo de Recursos do SUS provenientes do Go...
+Fonte RJ
+225 - Transferências Fundo a Fundo do SUS - Bloco de Manutenção
+Tipo de Detalhamento de Fonte
+0 - Sem Detalhamento
+Detalhamento de Fonte
+000000 - Sem detalhamento - (600.225)
+Tipo de Área Geográfica
+2 - ESTADO
+Área Geográfica
+3300000 - ESTADO
+Emenda Parlamentar
+00000000000
+Unidade Gestora Responsável
+722110 - POLICLINICA PIQUET CARNEIRO
+LME
+03 - Manutenção, atividades e projetos finalísticos
+Convênio de Receita
+000000 - Convênio não identificado
+Convênio de Despesa
+000000 - Convênio não identificado
+Contrato
+24038347 - CONTRATAÇÃO DE EMPRESA ESPECIALIZADA PARA PRESTAÇÃO DE SERVIÇ...
+Programa de Financiamento E...
+0 - Indefinido
+Chave SIGA
+2024009485000900
+Processo
+SEI-260007/003790/2024
+I t e n s
+Tipo Patrimonial
+Sub-item da Despesa
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Material de Consumo
+28 - MATERIAL QUÍMICO
+172 - Reconhecimento da obrigação e 
+ingresso no almoxarifado
+9.144,16
+Retenção
+Classificação da Retenção
+Base de Cálculo
+Valor
+0,00
+108,53
+Total Retenção (-)
+0,00
+108,53
+Documentos Comprobatórios
+Tipo
+Número
+Processo
+Competência
+Data
+Valor
+Nota Fiscal
+516845
+260007/006043/2025
+04/2025
+01/04/2025
+705,20
+Nota Fiscal
+517142
+260007/006043/2025
+04/2025
+03/04/2025
+353,60
+Nota Fiscal
+517179
+260007/006043/2025
+04/2025
+03/04/2025
+1.150,50
+Nota Fiscal
+517755
+260007/006043/2025
+04/2025
+08/04/2025
+707,20
+Nota Fiscal
+518010
+260007/006043/2025
+04/2025
+10/04/2025
+1.237,60
+Nota Fiscal
+518545
+260007/006043/2025
+04/2025
+15/04/2025
+1.237,60
+Nota Fiscal
+518819
+260007/006043/2025
+04/2025
+17/04/2025
+2.338,06
+Nota Fiscal
+519465
+260007/006043/2025
+04/2025
+24/04/2025
+618,80
+Nota Fiscal
+520082
+260007/006043/2025
+04/2025
+29/04/2025
+618,80
+Emitido/contabilizado por MARCELLA RODRIGUES MONTES em 09/07/25 às 17:
+0 0 .
+Impresso por MARCELLA RODRIGUES MONTES em 09/07/25 às 17:00.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/2
+
+Nota Fiscal
+520292
+260007/006043/2025
+04/2025
+30/04/2025
+176,80
+Total Documentos Comprobatórios
+9.144,16
+Observação
+LIQUIDAÇÃO DO (S)  DOCUMENTO (S)  516845, 517142, 517179, 517755, 518010, 518545, 518819, 519465, 520082, 520292 CONFORME PROCESSO 
+de aquisição de Gases medicinais para o HUPE. Danfes validadas na Sefaz.
+Emitido/contabilizado por MARCELLA RODRIGUES MONTES em 09/07/25 às 17:
+0 0 .
+Impresso por MARCELLA RODRIGUES MONTES em 09/07/25 às 17:00.
+SIAFE-Rio / SEFAZ-RJ
+Página 2/2

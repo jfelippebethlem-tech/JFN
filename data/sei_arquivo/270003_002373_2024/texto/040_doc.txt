@@ -1,0 +1,42 @@
+[] (fase: indefinida · tipo: vazio)
+
+Consulta Consolidada de Pessoa Jurídica
+Este relatório tem por objetivo apresentar os resultados consolidados de consultas eletrônicas realizadas 
+diretamente nos bancos de dados dos respectivos cadastros. A responsabilidade pela veracidade do 
+resultado da consulta é do Órgão gestor de cada cadastro consultado. A informação relativa à razão social 
+da Pessoa Jurídica é extraída do Cadastro Nacional da Pessoa Jurídica, mantido pela Receita Federal do 
+Brasil.
+24/09/2024 14:53:52
+Consulta realizada em: 
+Informações da Pessoa Jurídica:
+Razão Social: ONCOMED CLINICA ONCOLOGICA LTDA
+CNPJ: 00.541.798/0002-60
+Resultados da Consulta Eletrônica:
+Órgão Gestor: TCU
+Cadastro: Licitantes Inidôneos
+Resultado da consulta: Nada Consta
+Para acessar a certidão original no portal do órgão gestor, clique 
+.
+AQUI
+Órgão Gestor: CNJ
+Cadastro: CNIA - Cadastro Nacional de Condenações Cíveis por Ato de Improbidade Administrativa 
+e Inelegibilidade
+Resultado da consulta: Nada Consta
+Para acessar a certidão original no portal do órgão gestor, clique 
+.
+AQUI
+Órgão Gestor: Portal da Transparência
+Cadastro: Cadastro Nacional de Empresas Inidôneas e Suspensas
+Resultado da consulta: Nada Consta
+Para acessar a certidão original no portal do órgão gestor, clique 
+.
+AQUI
+Órgão Gestor: Portal da Transparência
+Cadastro: CNEP - Cadastro Nacional de Empresas Punidas
+Resultado da consulta: Nada Consta
+Para acessar a certidão original no portal do órgão gestor, clique 
+.
+AQUI
+Obs: A consulta consolidada de pessoa jurídica visa atender aos princípios de simplificação e racionalização 
+de serviços públicos digitais. Fundamento legal: Lei nº 12.965, de 23 de abril de 2014, Lei nº 13.460, de 26 
+de junho de 2017, Lei nº 13.726, de 8 de outubro de 2018, Decreto nº 8.638 de 15, de janeiro de 2016.

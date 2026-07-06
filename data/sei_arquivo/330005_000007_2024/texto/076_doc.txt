@@ -1,0 +1,24 @@
+[] (fase: indefinida · tipo: vazio)
+
+Govermo do Estado do Rio de Janeiro
+Relação de Ordens Bancárias Externas 2024RE00186
+Unidade Gestora - 133100 - ITERJ Emissão: 14/10/24
+Banco - BANCO BRADESCO S/A Ag. - secretaria da fazenda urb.rio de janeiro rj C/C - 0000000027 - ERJ TESOURO ESTADO CONTA UNICA
+
+Gestão: 00003
+
+oB Tipo CNPJ/CPF Favorecido Banco Ag. C/C Valor
+20240800786 13 60746948000112 Banco Bradesco S.a. 237 6898 BANCO 4.656,11
+20240800787 13 60746948000112 Banca Bradesco S.a. 237 6898 BANCO 5.750,23
+20240B00788 13 60746948000112 Banca Bradesco S.a. 237 6898 BANCO 45.795,56
+
+20240800789 13 60746948000112 Banca Bradesco S.a. 237 6898 BANCO 4.335,67
+
+Total R$ 60.537,57 (sessenta mil e quinhentos e trinta e sete reais e cinquenta e sete centavos)
+Autorizo o banco a efetuar os pagamentos acima relacionados, excetuando as Ordens Bancárias anuladas, em destaque neste relatório, ou em documentos anexos,
+
+"Robson da Silva Claudino
+residente do ITERJ
+:5086525-0
+
+Página 1/1

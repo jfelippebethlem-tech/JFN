@@ -1,0 +1,391 @@
+[] (fase: indefinida · tipo: vazio)
+
+Governo do Estado do Rio de Janeiro
+Nota Patrimonial
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio ... (CNPJ: )
+2025NP000217
+18/09/25
+Detalhamento
+UG Favorecida
+Processo
+SEI-270006/012128/2024
+I t e n s
+Tipo Patrimonial
+Item Patrimonial
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Aplicações Financeiras de 
+Liquidez Imediata
+3452 - FUNDOS DE INVESTIMENTOS 
+DE RENDA FIXA 
+9281 - Reclassificação de Saldo para 
+fins de inclusão da Fonte de Recursos
+1.7.13.224.0.000000.001.    
+2234.       11202X
+8.105.020,00
+Aplicações Financeiras de 
+Liquidez Imediata
+3452 - FUNDOS DE INVESTIMENTOS 
+DE RENDA FIXA 
+9281 - Reclassificação de Saldo para 
+fins de inclusão da Fonte de Recursos
+1.7.13.224.0.000000.001.    
+2234.       110876
+935.660,00
+Aplicações Financeiras de 
+Liquidez Imediata
+3452 - FUNDOS DE INVESTIMENTOS 
+DE RENDA FIXA 
+9281 - Reclassificação de Saldo para 
+fins de inclusão da Fonte de Recursos
+1.7.13.224.0.000000.001.    
+2234.0000000114944
+7.513.000,00
+Total
+16.553.680,00
+Observação
+ 
+Emitido/contabilizado por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 13:26.
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 13:26.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota Patrimonial
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio ... (CNPJ: )
+2025NP000218
+18/09/25
+Detalhamento
+UG Favorecida
+Processo
+SEI-270006/012128/2024
+I t e n s
+Tipo Patrimonial
+Item Patrimonial
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Aplicações Financeiras de 
+Liquidez Imediata
+3452 - FUNDOS DE INVESTIMENTOS 
+DE RENDA FIXA 
+9281 - Reclassificação de Saldo para 
+fins de inclusão da Fonte de Recursos
+1.7.13.224.1.000085.001.    
+2234.       110876
+935.660,00
+Aplicações Financeiras de 
+Liquidez Imediata
+3452 - FUNDOS DE INVESTIMENTOS 
+DE RENDA FIXA 
+9281 - Reclassificação de Saldo para 
+fins de inclusão da Fonte de Recursos
+1.7.13.224.1.000097.001.    
+2234.       11202X
+8.105.020,00
+Aplicações Financeiras de 
+Liquidez Imediata
+3452 - FUNDOS DE INVESTIMENTOS 
+DE RENDA FIXA 
+9281 - Reclassificação de Saldo para 
+fins de inclusão da Fonte de Recursos
+1.7.13.224.1.000101.001.    
+2234.0000000114944
+7.513.000,00
+Total
+16.553.680,00
+Observação
+ 
+Emitido/contabilizado por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 13:30.
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 13:30.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota Patrimonial
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio ... (CNPJ: )
+2025NP000219
+18/09/25
+Detalhamento
+UG Favorecida
+Processo
+SEI-270006/012128/2024
+I t e n s
+Tipo Patrimonial
+Item Patrimonial
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Outros Procedimentos 
+Patrimoniais
+6378 - CLASSIFICAÇÃO DAS 
+FONTES DE RECURSO
+9289 - Reclassificação de Fonte na 
+Conta Banco
+1.7.13.224.1.000097.001.    
+2234.       11202X
+8.105.020,00
+Outros Procedimentos 
+Patrimoniais
+6378 - CLASSIFICAÇÃO DAS 
+FONTES DE RECURSO
+9289 - Reclassificação de Fonte na 
+Conta Banco
+1.7.13.224.1.000085.001.    
+2234.       110876
+935.660,00
+Outros Procedimentos 
+Patrimoniais
+6378 - CLASSIFICAÇÃO DAS 
+FONTES DE RECURSO
+9289 - Reclassificação de Fonte na 
+Conta Banco
+1.7.13.224.1.000101.001.    
+2234.0000000114944
+7.513.000,00
+Total
+16.553.680,00
+Observação
+ 
+Emitido/contabilizado por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 15:03.
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 15:03.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota Patrimonial
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio ... (CNPJ: )
+2025NP000222
+18/09/25
+Detalhamento
+UG Favorecida
+Processo
+SEI-270006/012128/2024
+I t e n s
+Tipo Patrimonial
+Item Patrimonial
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Outros Procedimentos 
+Patrimoniais
+6378 - CLASSIFICAÇÃO DAS 
+FONTES DE RECURSO
+9289 - Reclassificação de Fonte na 
+Conta Banco
+1.7.13.224.0.000000.001.    
+2234.       11202X
+8.105.020,00
+Outros Procedimentos 
+Patrimoniais
+6378 - CLASSIFICAÇÃO DAS 
+FONTES DE RECURSO
+9289 - Reclassificação de Fonte na 
+Conta Banco
+1.7.13.224.0.000000.001.    
+2234.       110876
+935.660,00
+Outros Procedimentos 
+Patrimoniais
+6378 - CLASSIFICAÇÃO DAS 
+FONTES DE RECURSO
+9289 - Reclassificação de Fonte na 
+Conta Banco
+1.7.13.224.0.000000.001.    
+2234.0000000114944
+7.513.000,00
+Total
+16.553.680,00
+Observação
+ 
+Emitido/contabilizado por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 15:08.
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 15:08.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota Patrimonial
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio ... (CNPJ: )
+2025NP000227
+18/09/25
+Detalhamento
+UG Favorecida
+Processo
+SEI-270006/012128/2024
+I t e n s
+Tipo Patrimonial
+Item Patrimonial
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Outros Procedimentos 
+Patrimoniais
+5687 - REMANEJAMENTO DE 
+DISPONIBILIDADE
+5705 - Acertos de Disponibilidade 
+por Fonte (Baixa)
+1.7.13.224.0.000000.001.    
+2234.       11202X
+8.105.020,00
+Outros Procedimentos 
+Patrimoniais
+5687 - REMANEJAMENTO DE 
+DISPONIBILIDADE
+5706 - Acertos de Disponibilidade 
+por Fonte (Ingresso)
+2.7.13.224.1.000097.001.    
+2234.       11202X
+8.105.020,00
+Outros Procedimentos 
+Patrimoniais
+5687 - REMANEJAMENTO DE 
+DISPONIBILIDADE
+5705 - Acertos de Disponibilidade 
+por Fonte (Baixa)
+1.7.13.224.0.000000.001.    
+2234.       110876
+935.660,00
+Outros Procedimentos 
+Patrimoniais
+5687 - REMANEJAMENTO DE 
+DISPONIBILIDADE
+5706 - Acertos de Disponibilidade 
+por Fonte (Ingresso)
+2.7.13.224.1.000085.001.    
+2234.       110876
+935.660,00
+Outros Procedimentos 
+Patrimoniais
+5687 - REMANEJAMENTO DE 
+DISPONIBILIDADE
+5705 - Acertos de Disponibilidade 
+por Fonte (Baixa)
+1.7.13.224.0.000000.001.    
+2234.0000000114944
+7.513.000,00
+Outros Procedimentos 
+Patrimoniais
+5687 - REMANEJAMENTO DE 
+DISPONIBILIDADE
+5706 - Acertos de Disponibilidade 
+por Fonte (Ingresso)
+2.7.13.224.1.000101.001.    
+2234.0000000114944
+7.513.000,00
+Total
+33.107.360,00
+Observação
+ 
+Emitido/contabilizado por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 17:30.
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 18/09/25 às 17:30.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota Patrimonial
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio ... (CNPJ: )
+2025NP000228
+19/09/25
+Detalhamento
+UG Favorecida
+Processo
+SEI-270006/012128/2024
+I t e n s
+Tipo Patrimonial
+Item Patrimonial
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Aplicações Financeiras de 
+Liquidez Imediata
+3452 - FUNDOS DE INVESTIMENTOS 
+DE RENDA FIXA 
+9281 - Reclassificação de Saldo para 
+fins de inclusão da Fonte de Recursos
+1.7.13.224.0.000000.001.    
+2234.0000000114944
+95.260,00
+Total
+95.260,00
+Observação
+ 
+Emitido/contabilizado por RENAN DE MATTOS RODRIGUES LOPES em 19/09/25 às 15:19.
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 19/09/25 às 15:34.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1
+
+Governo do Estado do Rio de Janeiro
+Nota Patrimonial
+Encerrado até Agosto
+Identificação
+Unidade Gestora
+Documento
+Emissão
+216400 - Fundo Estadual de Segurança Pública do Estado do Rio ... (CNPJ: )
+2025NP000229
+19/09/25
+Detalhamento
+UG Favorecida
+Processo
+SEI-270006/012128/2024
+I t e n s
+Tipo Patrimonial
+Item Patrimonial
+Operação Patrimonial
+Classificação 
+Complementar
+Valor
+Aplicações Financeiras de 
+Liquidez Imediata
+3452 - FUNDOS DE INVESTIMENTOS 
+DE RENDA FIXA 
+9281 - Reclassificação de Saldo para 
+fins de inclusão da Fonte de Recursos
+1.7.13.224.1.000101.001.    
+2234.0000000114944
+95.260,00
+Total
+95.260,00
+Observação
+ 
+Emitido/contabilizado por RENAN DE MATTOS RODRIGUES LOPES em 19/09/25 às 15:33.
+Impresso por RENAN DE MATTOS RODRIGUES LOPES em 19/09/25 às 15:33.
+SIAFE-Rio / SEFAZ-RJ
+Página 1/1

@@ -1,0 +1,26 @@
+[Comprovante 2024OB13683] (fase: despesa · tipo: ordem_bancaria)
+
+BANCO ITAU SA - Pagamento de Empenhos - 404340 / HUPE
+Detalhamento de Empenho - 06/01/2025
+ 
+Dados do Beneficiário (Cedente/Emissor do título/Emissor da guia)
+Inscrição CPF/CNPJ: 13123772000243
+Beneficiário: VERTICAL RJ SOLUCOES PARA SAUDE LTDA
+Banco: 341
+Agência: 1528-s
+Conta Corrente: 610262
+ 
+ 
+Dados do Empenho (Da Ordem Bancária)
+Número do empenho: 2024NE07120
+Programa de Trabalho: 10.302. 0508. 4866 - Apoio a HUPE e PPC/UERJ para a realização de procedimento especializado
+Número da OB: 2024OB13683
+Situação atual: 01-PAGA
+Data do Pagamento: 27/12/2024
+Valor do pagamento: R$ 12.844,00
+Observação: PROGRAMAÇÃO DE PAGAMENTO REFERENTE À(S) NF(S) 31974 , ATESTADO POR DOIS SERVIDORES, CONFORME 
+PROCESSO de aquisição de fórmula líquida pra nutrição enteral hipercalórica pra o HUPE.
+Órgão Emissor: 404340 - HUPE
+Agência de Débito: 0199
+Conta de Débito: 0006006250214
+Autenticação: null

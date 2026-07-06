@@ -1,0 +1,672 @@
+[] (fase: indefinida · tipo: vazio)
+
+Empregador: 
+19.088.605
+Vencimento da Guia: 
+19/11/2024
+Número da Guia: 
+19995284568742-1
+Nome Empregador: 
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+Data Emissão:
+ 11/11/2024 14:17:11 (Brasília) Emitida por: 
+19.088.605/0001-04 - MGS CLEAN
+Qtd. Trabalhadores FGTS:
+ 24 Origem: Gestão de Guias
+Total Parcelado:
+0,00
+Total da Guia (FGTS):
+3.853,13
+Relação de Trabalhadores
+Estabelecimento:
+ 19.088.605/0001-04
+Tomador:
+ 40.173.726/0001-40
+Comp.
+Apuração
+Comp.
+Referência Nome Trabalhador
+Matrícula
+CPF
+Categoria
+Vencimento
+Tipo Depósito
+Base
+Remuneração
+Total
+Valor FGTS
+na Guia
+Juros
+Atualiz.
+Monetária
+Multa
+Total
+10/2024
+ADRIANA PEREIRA BASTOS
+000632
+06854855799
+101
+19/11/2024
+Mensal
+1.610,00
+128,80
+0,00
+0,00
+0,00
+128,80
+10/2024
+ANA PAULA DE OLIVEIRA AGUIAR
+000986
+05987867754
+101
+19/11/2024
+Mensal
+1.610,00
+128,80
+0,00
+0,00
+0,00
+128,80
+10/2024
+ANGELICA COSTA SOARES
+003000
+21370573790
+101
+19/11/2024
+Mensal
+1.709,63
+136,77
+0,00
+0,00
+0,00
+136,77
+10/2024
+BARBARA PRYSCILA RAMOS
+001391
+17091504755
+101
+19/11/2024
+Mensal
+1.610,00
+128,80
+0,00
+0,00
+0,00
+128,80
+10/2024
+CAROLINE MOREIRA DA FONSECA
+001862
+15822417752
+101
+19/11/2024
+Mensal
+1.709,63
+136,77
+0,00
+0,00
+0,00
+136,77
+10/2024
+DEBORA TOLEDO RAMOS
+000633
+12871967725
+101
+19/11/2024
+Mensal
+4.109,88
+328,79
+0,00
+0,00
+0,00
+328,79
+10/2024
+FERNANDO DA SILVA
+000840
+59756691700
+101
+19/11/2024
+Mensal
+1.783,88
+142,71
+0,00
+0,00
+0,00
+142,71
+10/2024
+GIOVANNA MENDONÇA DE CARVALHO
+001372
+21007473711
+101
+19/11/2024
+Mensal
+1.783,88
+142,71
+0,00
+0,00
+0,00
+142,71
+10/2024
+GLEICIANE DE ALCANTARA SILVA
+000012
+06225746552
+101
+19/11/2024
+Mensal
+1.610,00
+128,80
+0,00
+0,00
+0,00
+128,80
+10/2024
+HELENA RIBEIRO DOS SANTOS
+000629
+00247970735
+101
+19/11/2024
+Mensal
+1.610,00
+128,80
+0,00
+0,00
+0,00
+128,80
+10/2024
+JONATHAN CAPOSSI DA SILVA LEITAO
+001864
+12064209794
+101
+19/11/2024
+Mensal
+1.610,00
+128,80
+0,00
+0,00
+0,00
+128,80
+10/2024
+JORGE GOMES DE BARCELOS
+002565
+61715891791
+101
+19/11/2024
+Mensal
+2.010,63
+160,85
+0,00
+0,00
+0,00
+160,85
+10/2024
+LARISSA GOMES DE SOUZA
+001410
+45882217873
+101
+19/11/2024
+Mensal
+1.610,00
+128,80
+0,00
+0,00
+0,00
+128,80
+10/2024
+LAVINIA EMANUELLE SOUZA DE LIMA
+002656
+21066374708
+101
+19/11/2024
+Mensal
+4.109,88
+328,79
+0,00
+0,00
+0,00
+328,79
+10/2024
+LUCAS JOSE DA SILVA MARTINS
+000962
+15966948747
+101
+19/11/2024
+Mensal
+1.709,63
+136,77
+0,00
+0,00
+0,00
+136,77
+10/2024
+LUIZA BRAGA MOREIRA DE SOUZA
+003491
+18044734724
+101
+19/11/2024
+Mensal
+2.010,63
+160,85
+0,00
+0,00
+0,00
+160,85
+10/2024
+MARGARETE NADER DA SILVA
+001680
+11326396706
+101
+19/11/2024
+Mensal
+1.610,00
+128,80
+0,00
+0,00
+0,00
+128,80
+10/2024
+MARIA EDUARDA PIMENTEL LIAL
+000635
+73905640759
+101
+19/11/2024
+Mensal
+1.610,00
+128,80
+0,00
+0,00
+0,00
+128,80
+10/2024
+MARIA LUIZA ALMEIDA GUIMARAES
+001676
+15546657790
+101
+19/11/2024
+Mensal
+1.783,88
+142,71
+0,00
+0,00
+0,00
+142,71
+10/2024
+MICAELA DE MELO LIMA
+003107
+17894829765
+101
+19/11/2024
+Mensal
+4.109,88
+328,79
+0,00
+0,00
+0,00
+328,79
+10/2024
+NATHALIA DAS NEVES SANT ANA
+002244
+15258168700
+101
+19/11/2024
+Mensal
+1.438,25
+115,06
+0,00
+0,00
+0,00
+115,06
+10/2024
+PAMELA CABRAL BARBOSA
+001604
+12671936702
+101
+19/11/2024
+Mensal
+1.783,88
+142,71
+0,00
+0,00
+0,00
+142,71
+10/2024
+PAULA PEDRAZZI NUNES
+002614
+13233186746
+101
+19/11/2024
+Mensal
+1.610,00
+128,80
+0,00
+0,00
+0,00
+128,80
+10/2024
+PAULO RENATO MOREIRA
+000631
+04773660740
+101
+19/11/2024
+Mensal
+2.010,63
+160,85
+0,00
+0,00
+0,00
+160,85
+Total do Tomador
+ 
+40.173.726/0001-40
+ 
+48.164,19 
+3.853,13
+ 
+0,00
+ 
+0,00
+ 
+0,00  3.853,13
+Total do Estabelecimento
+ 
+19.088.605/0001-04
+ 
+48.164,19 
+3.853,13
+ 
+0,00
+ 
+0,00
+ 
+0,00  3.853,13
+ 
+Total da Guia
+ 
+48.164,19 
+3.853,13
+ 
+0,00
+ 
+0,00
+ 
+0,00  3.853,13
+Detalhe da Guia a Ser Emitida
+Todos os valores exibidos estão expressos em reais (R$)
+Relatório Emitido em: 11/11/2024 14:17:11 (Brasília).
+Página 1 de 5
+
+Empregador: 
+19.088.605
+Vencimento da Guia: 
+19/11/2024
+Número da Guia: 
+19995284568742-1
+Nome Empregador: 
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+Data Emissão:
+ 11/11/2024 14:17:11 (Brasília) Emitida por: 
+19.088.605/0001-04 - MGS CLEAN
+Qtd. Trabalhadores FGTS:
+ 24 Origem: Gestão de Guias
+Total Parcelado:
+0,00
+Total da Guia (FGTS):
+3.853,13
+Relação de Categorias
+Estabelecimento:
+ 19.088.605/0001-04
+Comp. Apuração
+Categoria
+Qtd. Trabalhadores
+Base Remuneração
+Total
+FGTS Mensal na Guia
+FGTS Rescisório na
+Guia
+Ind. Compensatória
+na Guia
+Juros
+Atualiz. Monetária
+Multa
+Total
+10/2024
+101
+24
+48.164,19
+3.853,13
+0,00
+0,00
+0,00
+0,00
+0,00
+3.853,13
+Total da Guia
+48.164,19
+3.853,13
+0,00
+0,00
+0,00
+0,00
+0,00
+3.853,13
+Descrição das categorias:
+101 - Empregado - Geral, inclusive o empregado público da administração direta ou indireta contratado pela CLT
+102 - Empregado - Trabalhador rural por pequeno prazo da Lei 11.718/2008
+103 - Empregado - Aprendiz
+104 - Empregado - Doméstico
+105 - Empregado - Contrato a termo firmado nos termos da Lei 9.601/1998
+106 - Trabalhador temporário - Contrato nos termos da Lei 6.019/1974
+107 - Empregado - Contrato de trabalho Verde e Amarelo - sem acordo para antecipação mensal da multa rescisória do FGTS
+108 - Empregado - Contrato de trabalho Verde e Amarelo - com acordo para antecipação mensal da multa rescisória do FGTS
+111 - Empregado - Contrato de trabalho intermitente
+201 - Trabalhador avulso portuário
+202 - Trabalhador avulso não portuário
+301 - Servidor público titular de cargo efetivo, magistrado, ministro de Tribunal de Contas, conselheiro de Tribunal de Contas e membro do Ministério Público
+302 - Servidor público ocupante de cargo exclusivo em comissão
+303 - Exercente de mandato eletivo
+304 - Servidor público exercente de mandato eletivo, inclusive com exercício de cargo em comissão
+305 - Servidor público indicado para conselho ou órgão deliberativo, na condição de representante do governo, órgão ou entidade da administração pública
+306 - Servidor público contratado por tempo determinado, sujeito a regime administrativo especial definido em lei própria
+307 - Militar
+308 - Conscrito
+309 - Agente público - Outros
+310 - Servidor público eventual
+311 - Ministros, juízes, procuradores, promotores ou oficiais de justiça à disposição da Justiça Eleitoral
+312 - Auxiliar local
+401 - Dirigente Sindical - informação prestada pelo sindicato
+410 - Trabalhador cedido/exercício em outro órgão/juiz auxiliar - Informação prestada pelo cessionário/destino
+701 - Contribuinte individual - Autônomo em geral, exceto se enquadrado em uma das demais categorias de contribuinte individual
+711 - Contribuinte individual - Transportador autônomo de passageiros
+712 - Contribuinte individual - Transportador autônomo de carga
+721 - Contribuinte individual - Diretor não empregado, com FGTS
+722 - Contribuinte individual - Diretor não empregado, sem FGTS
+723 - Contribuinte individual - Empresário, sócio e membro de conselho de administração ou fiscal
+731 - Contribuinte individual - Cooperado que presta serviços por intermédio de cooperativa de trabalho
+734 - Contribuinte individual - Transportador cooperado que presta serviços por intermédio de cooperativa de trabalho
+738 - Contribuinte individual - Cooperado filiado a cooperativa de produção
+741 - Contribuinte individual - Microempreendedor individual
+751 - Contribuinte individual - Magistrado classista temporário da Justiça do Trabalho ou da Justiça Eleitoral que seja aposentado de qualquer regime previdenciário
+761 - Contribuinte individual - Associado eleito para direção de cooperativa, associação ou entidade de classe de qualquer natureza ou finalidade, bem como o síndico ou administrador eleito para exercer atividade de direção condominial, desde que recebam remuneração
+771 - Contribuinte individual - Membro de conselho tutelar, nos termos da Lei 8.069/1990
+781 - Ministro de confissão religiosa ou membro de vida consagrada, de congregação ou de ordem religiosa
+901 - Estagiário
+902 - Médico residente
+903 - Bolsista, nos termos da Lei 8.958/1994
+904 - Participante de curso de formação, como etapa de concurso público, sem vínculo de emprego/estatutário
+905 - Atleta não profissional em formação que receba bolsa
+Detalhe da Guia a Ser Emitida
+Todos os valores exibidos estão expressos em reais (R$)
+Relatório Emitido em: 11/11/2024 14:17:11.
+Página 2 de 5
+
+Empregador: 
+19.088.605
+Vencimento da Guia: 
+19/11/2024
+Número da Guia: 
+19995284568742-1
+Nome Empregador: 
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+Data Emissão:
+ 11/11/2024 14:17:11 (Brasília) Emitida por: 
+19.088.605/0001-04 - MGS CLEAN
+Qtd. Trabalhadores FGTS:
+ 24 Origem: Gestão de Guias
+Total Parcelado:
+0,00
+Total da Guia (FGTS):
+3.853,13
+Relação de Tomadores de Serviço
+Tomador:
+ 40.173.726/0001-40
+Comp. Apuração
+Qtd. Trabalhadores
+Base Remuneração Total
+FGTS Mensal na Guia
+FGTS Rescisório na
+Guia
+Ind. Compensatória na Guia
+Juros Atualiz. Monetária
+Multa
+Total
+10/2024
+24
+48.164,19
+3.853,13
+0,00
+0,00
+0,00
+0,00
+0,00
+3.853,13
+Total do Tomador
+40.173.726/0001-40
+48.164,19
+3.853,13
+0,00
+0,00
+0,00
+0,00
+0,00
+3.853,13
+Detalhe da Guia a Ser Emitida
+Todos os valores exibidos estão expressos em reais (R$)
+Relatório Emitido em: 11/11/2024 14:17:11 (Brasília).
+Página 3 de 5
+
+Empregador: 
+19.088.605
+Vencimento da Guia: 
+19/11/2024
+Número da Guia: 
+19995284568742-1
+Nome Empregador: 
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+Data Emissão:
+ 11/11/2024 14:17:11 (Brasília) Emitida por: 
+19.088.605/0001-04 - MGS CLEAN
+Qtd. Trabalhadores FGTS:
+ 24 Origem: Gestão de Guias
+Total Parcelado:
+0,00
+Total da Guia (FGTS):
+3.853,13
+Relação de Tipos de Valor
+Estabelecimento:
+ 19.088.605/0001-04
+Comp. Apuração
+Categoria
+Qtd. Trabalhadores
+Base Remuneração
+Total
+FGTS Mensal na Guia
+FGTS Rescisório na
+Guia
+Ind. Compensatória
+na Guia
+Juros
+Atualiz. Monetária
+Multa
+Total
+10/2024
+101
+24
+48.164,19
+3.853,13
+0,00
+0,00
+0,00
+0,00
+0,00
+3.853,13
+Total da Guia
+48.164,19
+3.853,13
+0,00
+0,00
+0,00
+0,00
+0,00
+3.853,13
+Detalhe da Guia a Ser Emitida
+Todos os valores exibidos estão expressos em reais (R$)
+Relatório Emitido em: 11/11/2024 14:17:11.
+Página 4 de 5
+
+Empregador: 
+19.088.605
+Vencimento da Guia: 
+19/11/2024
+Número da Guia: 
+19995284568742-1
+Nome Empregador: 
+MGS CLEAN SOLUCOES E SERVICOS LTDA
+Data Emissão:
+ 11/11/2024 14:17:11 (Brasília) Emitida por: 
+19.088.605/0001-04 - MGS CLEAN
+Qtd. Trabalhadores FGTS:
+ 24 Origem: Gestão de Guias
+Total Parcelado:
+0,00
+Total da Guia (FGTS):
+3.853,13
+Relação de Estabelecimentos
+Estabelecimento:
+ 19.088.605/0001-04
+Comp.
+Apuração
+Tipo de valor
+Qtd.
+Trabalhadores
+Base Remuneração
+Total
+FGTS mensal
+na guia
+FGTS Rescisório
+na Guia
+Ind. Compensatória
+na Guia Juros
+Atualiz.
+Monetária
+Multa
+Total
+10/2024
+11 - FGTS mensal
+24
+48.164,19
+3.853,13
+0,00
+0,00 0,00
+0,00
+0,00
+3.853,13
+Total da Guia
+48.164,19
+3.853,13
+0,00
+0,00 0,00
+0,00
+0,00
+3.853,13
+Detalhe da Guia a Ser Emitida
+Todos os valores exibidos estão expressos em reais (R$)
+Relatório Emitido em: 11/11/2024 14:17:11.
+Página 5 de 5
