@@ -319,7 +319,7 @@ def _html_consolidado(titulo: str, subtitulo: str, data: str, grau: str,
         <div><b>Grau de atenção (LEX):</b> {_esc(grau_n)} — risco de ACHADO, não de punição.<br>
         Indícios a verificar; presunção de legitimidade dos atos administrativos.</div>
       </div>
-      <div class="meta">Emitido em {_esc(data)} · Analista: JFN Intelligence Engine ·
+      <div class="meta">Emitido em {_esc(data)} · Analista: Controle Externo (automatizado) ·
         Metodologia: due diligence Nível II + red flags TCU/TCE-RJ + auditoria de contrato (T01-T22)</div>
       <div class="indice">
         <h3>Índice — relatório consolidado por capítulos</h3>
@@ -329,7 +329,7 @@ def _html_consolidado(titulo: str, subtitulo: str, data: str, grau: str,
     corpo = _md_to_html(corpo_md)
     return (f"<!doctype html><html lang='pt-BR'><head><meta charset='utf-8'><style>{_CSS}</style></head>"
             f"<body>{capa}{corpo}"
-            f"<footer>JFN · Inteligência fiscal RJ — relatório consolidado (Hermes · JFN · Lex). "
+            f"<footer>Inteligência fiscal RJ — relatório consolidado. "
             f"Peça de diligência: indícios, nunca acusação; presunção de legitimidade. "
             f"INDISPONÍVEL ≠ 0; nenhum dado indisponível foi fabricado.</footer></body></html>")
 
@@ -474,14 +474,14 @@ def _assemblar(*, tipo: str, titulo: str, subtitulo: str, data: str, grau: str, 
     capitulos = [
         {"rotulo": "CAPÍTULO I — HERMES",
          "desc": "análise multi-IA de fraude" + ("" if hermes_ok else " (INDISPONÍVEL nesta geração)")},
-        {"rotulo": "CAPÍTULO II — JFN",
+        {"rotulo": "CAPÍTULO II — INTELIGÊNCIA",
          "desc": "inteligência: dados, concentração, due diligence, contratos por fornecedor, tabela de pagamentos"},
         {"rotulo": "CAPÍTULO III — LEX",
          "desc": "parecer jurídico: red flags R1-R12, auditoria de contrato T01-T22, sanções, grau"},
     ]
     # capítulo II/III recebem o título de capítulo no topo; o md do módulo entra como subseções. O 1º '# '
     # do módulo (seu próprio título) é DEMOVIDO para não duplicar o banner de capítulo (collisão de H1).
-    jfn_cap = ("# CAPÍTULO II — JFN\n\n*Inteligência de execução · concentração · due diligence · "
+    jfn_cap = ("# CAPÍTULO II — INTELIGÊNCIA\n\n*Inteligência de execução · concentração · due diligence · "
                "contratos · pagamentos*\n\n" + (_demover_titulo(jfn_md) or "> **INDISPONÍVEL** — capítulo JFN não gerado."))
     lex_cap = ("# CAPÍTULO III — LEX\n\n*Parecer jurídico · red flags R1-R12 · auditoria de contrato "
                "T01-T22 · sanções · grau*\n\n" + (_demover_titulo(lex_md) or "> **INDISPONÍVEL** — parecer LEX não gerado."))

@@ -3,7 +3,7 @@
 
 *Due Diligence de Integridade · Exposição Financeira · Risco & Compliance*
 
-**CNPJ:** 11.222.333/0001-81  |  **Data:** 2026-07-06  |  **Analista:** JFN Intelligence Engine
+**CNPJ:** 11.222.333/0001-81  |  **Data:** 2026-07-06  |  **Analista:** Controle Externo (automatizado)
 **Metodologia:** due diligence de integridade (padrão Kroll/Deloitte) · matriz de risco TCU P×I · OB = pagamento (fonte de verdade)
 **Classificação de fonte:** OBs/Contratos = **REAL** (SIAFE/TFE) · Perfil/Sanções/Rede = **INDISPONIVEL**
 
@@ -155,7 +155,7 @@ Escala P (probabilidade) × I (impacto), 1–9 cada. Faixas: Baixo 1–9 | Médi
 
 _Sem OBs pontuadas pelo modelo para este fornecedor — **INDISPONÍVEL**._
 
-## 9. ANÁLISE JURÍDICA E DE MÉRITO — PARECER PRELIMINAR DO JFN
+## 9. ANÁLISE JURÍDICA E DE MÉRITO — PARECER PRELIMINAR
 
 ### Análise de mérito
 
@@ -191,7 +191,7 @@ O rating de risco corporativo apurado (**MÉDIO**, score 42/100) reforça a nece
 
 **Curto prazo (30–90 dias):** abrir os processos SEI dos maiores pagamentos; checar aditivos (>25%).
 
-**Estrutural:** monitoramento contínuo via JFN (timers TFE/OB) e atualização trimestral deste relatório.
+**Estrutural:** monitoramento contínuo automatizado (timers TFE/OB) e atualização trimestral deste relatório.
 
 ## 11. REFERÊNCIAS E FONTES
 
@@ -199,7 +199,7 @@ O rating de risco corporativo apurado (**MÉDIO**, score 42/100) reforça a nece
 - **Perfil/sanções/rede:** Receita Federal, PNCP, CEIS/CNEP/CEPIM (via `relatorio_riscos`).
 - **Normas:** Lei 14.133/2021; Lei 8.666/93; Lei 4.320/64; CF/88 Art. 37; metodologia TCU P×I; ACFE Report to the Nations 2024.
 
-_Relatório gerado automaticamente pelo JFN Intelligence Engine em 2026-07-06. Não substitui análise jurídica especializada._
+_Relatório gerado automaticamente em 2026-07-06. Não substitui análise jurídica especializada._
 
 
 ===RESUMO-EXECUTIVO===

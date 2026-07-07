@@ -72,7 +72,7 @@ _TEMPLATE = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
   </table>{% endif %}
 
   <p class="nota">{{ ressalva }}</p>
-  <footer>JFN · Inteligência fiscal RJ — peça de diligência (indícios, nunca acusação; presunção de
+  <footer>Inteligência fiscal RJ — peça de diligência (indícios, nunca acusação; presunção de
   legitimidade). Hash de integridade SHA-256: {{ hash }}</footer>
 </body></html>"""
 
@@ -89,7 +89,7 @@ def render_html(ctx: dict) -> str:
         "titulo": ctx.get("titulo", "Relatório de Inteligência"),
         "subtitulo": ctx.get("subtitulo", ""),
         "data": ctx.get("data") or datetime.now().strftime("%d/%m/%Y"),
-        "analista": ctx.get("analista", "JFN (automatizado)"),
+        "analista": ctx.get("analista", "Controle Externo (automatizado)"),
         "metodologia": ctx.get("metodologia", "Due diligence Nível II + red flags TCU/TCE-RJ"),
         "score": ctx.get("score", 0), "faixa": faixa,
         "cor_faixa": _FAIXA_COR.get(faixa, "#777"),

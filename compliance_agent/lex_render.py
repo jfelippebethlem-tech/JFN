@@ -201,7 +201,7 @@ def _secao_investigacao(add, inv: dict, cnpj: str = "") -> None:
     verificado e o que ficou INDISPONÍVEL) — indício merece apuração, nunca acusação; INDISPONÍVEL ≠ risco zero."""
     add("## II-E. INVESTIGAÇÃO DE DUE DILIGENCE — empresa de fachada / laranja")
     add("")
-    add("*Bateria de hipóteses investigativas (cadastro Receita + base JFN/OBs + OSINT). Base legal: controle "
+    add("*Bateria de hipóteses investigativas (cadastro Receita + base de OBs + OSINT). Base legal: controle "
         "externo e fiscalização (CF art. 70-71; LGPD art. 7º,II e 23). **Honesto:** indício merece apuração, "
         "nunca acusação; **INDISPONÍVEL ≠ ausência de risco**; CPF de pessoa física mascarado (LGPD).*")
     add("")
@@ -381,7 +381,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     add("")
     add("*Tomada de contas preliminar — Direito Administrativo e Controle Externo (TCU/TCE-RJ)*")
     add("")
-    add(f"**CNPJ:** {fmt_cnpj(cnpj)}  |  **Data:** {ctx.get('data','')}  |  **Analista:** Agente Lex (JFN)")
+    add(f"**CNPJ:** {fmt_cnpj(cnpj)}  |  **Data:** {ctx.get('data','')}  |  **Analista:** Agente Lex")
     classif = "COM Achado" if achados else "SEM Achado"
     add(f"**Classificação (modelo CGE-RJ — Decreto 47.408/2020):** Nota Técnica **{classif}**.")
     add(f"**Grau de atenção:** {emoji} **{rotulo}** — {just}.")
@@ -776,7 +776,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
         "Judiciário. 4. Conclusões limitadas aos dados/documentos analisados; lacunas geram **diligência**, não condenação. "
         "5. A leitura automática do SEI extrai texto público; trechos podem faltar por OCR/restrição — sempre confirmar na fonte.")
     add("")
-    add(f"_Parecer gerado automaticamente pelo Agente Lex (JFN) em {ctx.get('data','')}. "
+    add(f"_Parecer gerado automaticamente pelo Agente Lex em {ctx.get('data','')}. "
         "Base jurídica: docs/LEX-BASE-JURIDICA.md + docs/PESQUISA-DIREITO-ADMIN-DOUTRINA-RJ.md "
         "(doutrina, improbidade pós-14.230, controle e RJ — CERJ arts. 122-123). Não substitui parecer jurídico formal._")
     return "\n".join(L)

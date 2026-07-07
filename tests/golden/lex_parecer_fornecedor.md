@@ -3,7 +3,7 @@
 
 *Tomada de contas preliminar — Direito Administrativo e Controle Externo (TCU/TCE-RJ)*
 
-**CNPJ:** 11.222.333/0001-81  |  **Data:** 2026-07-06  |  **Analista:** Agente Lex (JFN)
+**CNPJ:** 11.222.333/0001-81  |  **Data:** 2026-07-06  |  **Analista:** Agente Lex
 **Classificação (modelo CGE-RJ — Decreto 47.408/2020):** Nota Técnica **SEM Achado**.
 **Grau de atenção:** 🟢 **VERDE** — sem indícios relevantes nos dados disponíveis — presunção de regularidade mantida.
 
@@ -28,7 +28,7 @@
 
 ## II-E. INVESTIGAÇÃO DE DUE DILIGENCE — empresa de fachada / laranja
 
-*Bateria de hipóteses investigativas (cadastro Receita + base JFN/OBs + OSINT). Base legal: controle externo e fiscalização (CF art. 70-71; LGPD art. 7º,II e 23). **Honesto:** indício merece apuração, nunca acusação; **INDISPONÍVEL ≠ ausência de risco**; CPF de pessoa física mascarado (LGPD).*
+*Bateria de hipóteses investigativas (cadastro Receita + base de OBs + OSINT). Base legal: controle externo e fiscalização (CF art. 70-71; LGPD art. 7º,II e 23). **Honesto:** indício merece apuração, nunca acusação; **INDISPONÍVEL ≠ ausência de risco**; CPF de pessoa física mascarado (LGPD).*
 
 **Grau da investigação:** 🟢 · score 0/100 · 0 fato(s) confirmado(s), 0 indício(s) a apurar.
 
@@ -99,4 +99,4 @@ Em síntese, não há indícios relevantes nos dados disponíveis. Reitere-se qu
 
 > 1. Os apontamentos são **INDÍCIOS**, sujeitos a contraditório e ampla defesa. 2. Vigora a **presunção de legitimidade** dos atos administrativos (dúvida sobre economicidade favorece o gestor — TCE-RJ, Proc. 101.922-9/12). 3. Lex **não afirma crime, improbidade ou dolo** — competência do TCE-RJ, MP-RJ e Judiciário. 4. Conclusões limitadas aos dados/documentos analisados; lacunas geram **diligência**, não condenação. 5. A leitura automática do SEI extrai texto público; trechos podem faltar por OCR/restrição — sempre confirmar na fonte.
 
-_Parecer gerado automaticamente pelo Agente Lex (JFN) em 2026-07-06. Base jurídica: docs/LEX-BASE-JURIDICA.md + docs/PESQUISA-DIREITO-ADMIN-DOUTRINA-RJ.md (doutrina, improbidade pós-14.230, controle e RJ — CERJ arts. 122-123). Não substitui parecer jurídico formal._
+_Parecer gerado automaticamente pelo Agente Lex em 2026-07-06. Base jurídica: docs/LEX-BASE-JURIDICA.md + docs/PESQUISA-DIREITO-ADMIN-DOUTRINA-RJ.md (doutrina, improbidade pós-14.230, controle e RJ — CERJ arts. 122-123). Não substitui parecer jurídico formal._
