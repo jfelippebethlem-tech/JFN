@@ -251,7 +251,7 @@ async function renderSiafe(){
 }
 
 async function renderSweeps(){
-  const d=await J('/api/sweeps/status');
+  const [d,slo]=await Promise.all([J('/api/sweeps/status'),J('/api/pipelines').catch(()=>null)]);
   const pausado=d.pausado;
   const badge=pausado?'<span class="pill off">pausado</span>'
     :(d.sei?.rodando?'<span class="pill on">rodando</span>':'<span class="pill on">agendado</span>');
@@ -260,6 +260,10 @@ async function renderSweeps(){
          <div class="kv"><span class="k">SEI — processos lidos</span><b>${fmtN(d.sei?.feitos)}</b></div>
          <div class="kv"><span class="k">SIAFE 2 — OBs orçamentárias</span><b>${fmtN(d.siafe?.ob_orcamentaria)}</b></div>`)+
    (d.sei?.ultima?`<div style="height:12px"></div><pre>${(d.sei.ultima||'').replace(/\*\*/g,'')}</pre>`:'')+
+   (slo&&slo.ok?`<div style="height:12px"></div>`+sec(slo.ruins.length?'var(--red)':'var(--green)','SLO de frescor — '+(slo.ruins.length?slo.ruins.length+' etapa(s) STALE':slo.total+'/'+slo.total+' frescos'))+
+     card(`<table><thead><tr><th>Etapa</th><th>Grupo</th><th>Idade</th><th>SLO</th></tr></thead><tbody>${
+       slo.itens.map(i=>`<tr><td>${{ok:'✅',pausado:'⏸',stale:'🔴',ausente:'⚠️'}[i.status]||'❔'} ${i.nome}</td><td class="muted">${i.grupo}</td><td>${i.idade_h==null?'—':i.idade_h+'h'}</td><td class="muted">${i.slo_h}h</td></tr>`).join('')
+     }</tbody></table>`):'')+
    `<div class="btns">
       <button class="btn red" onclick="sweep('pausar')">⏸ Pausar</button>
       <button class="btn green" onclick="sweep('retomar')">▶ Retomar</button>

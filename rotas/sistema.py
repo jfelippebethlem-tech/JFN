@@ -269,6 +269,19 @@ async def api_agenda():
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
 
 
+@router.get("/api/pipelines")
+async def api_pipelines():
+    """SLO de frescor por etapa (config/pipelines.yaml) — a agenda vê o GATILHO, aqui vemos o OUTPUT."""
+    try:
+        import asyncio
+        from tools.pipelines_slo import checar
+        itens = await asyncio.to_thread(checar)
+        ruins = [i["nome"] for i in itens if i["status"] in ("stale", "ausente")]
+        return JSONResponse(content={"ok": True, "total": len(itens), "ruins": ruins, "itens": itens})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
 @router.get("/api/skills")
 async def api_skills(filtro: str = ""):
     """Skilltree (capacidades) agrupada por domínio — texto p/ o /skills do Telegram."""

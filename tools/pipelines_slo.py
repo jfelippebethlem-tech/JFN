@@ -63,6 +63,37 @@ def _estado_prev() -> dict:
         return {}
 
 
+VAULT_INCIDENTES = Path.home() / "vault/diario/incidentes-pipelines.md"
+_FRONTMATTER = """---
+tipo: diario
+projeto: ecossistema
+tags: [diario, jfn, observabilidade, incidente]
+resumo: log rolante dos incidentes de SLO (stale/recuperação) detectados por tools/pipelines_slo.py — o second brain lembra dos próprios incidentes.
+---
+
+# 🩺 Incidentes de pipeline (SLO de frescor)
+
+> Escrito automaticamente pelo monitor horário. Padrão recorrente aqui = lição → promover a
+> [[aprendizados/auditoria-sei-completa-pipeline]] ou nota própria (reescrever > empilhar).
+
+"""
+
+
+def _incidente_vault(eventos: list[str]) -> None:
+    """Second brain lembra dos próprios incidentes (best-effort; nunca derruba o alerta)."""
+    try:
+        import re
+        stamp = time.strftime("%Y-%m-%d %H:%M")
+        linhas = "".join(f"- **{stamp}** — {re.sub(r'<[^>]+>', '', e)}\n" for e in eventos)
+        if not VAULT_INCIDENTES.exists():
+            VAULT_INCIDENTES.write_text(_FRONTMATTER + linhas)
+        else:
+            with VAULT_INCIDENTES.open("a") as f:
+                f.write(linhas)
+    except Exception as e:  # noqa: BLE001
+        print(f"[slo] vault indisponível ({type(e).__name__}: {e}) — incidente só no Telegram/log")
+
+
 def main() -> int:
     res = checar()
     ruins = [r for r in res if r["status"] in ("stale", "ausente")]
@@ -84,6 +115,7 @@ def main() -> int:
         if eventos:
             from tools.ronda import notificar
             notificar("🩺 <b>SLO de pipelines</b>\n" + "\n".join(eventos))
+            _incidente_vault(eventos)
         ESTADO.write_text(json.dumps({r["nome"]: r["status"] for r in res}, ensure_ascii=False))
 
     return 1 if ruins else 0
