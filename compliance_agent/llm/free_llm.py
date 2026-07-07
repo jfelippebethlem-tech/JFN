@@ -685,6 +685,29 @@ def cooldowns_ativos() -> dict[str, str]:
     return {p: f"{_COOLDOWN_MOTIVO.get(p,'?')} ({t-now:.0f}s)" for p, t in _COOLDOWN.items() if t > now}
 
 
+_TRACE_DB = pathlib.Path(__file__).resolve().parents[2] / "data" / "llm_trace.db"
+
+
+def _trace(provider: str, ok: bool, ms: int, erro: str = "") -> None:
+    """Telemetria LOCAL mínima da cadeia (só metadados — nunca prompt/resposta; sigilo por design).
+
+    Veredito Langfuse 2026-07-07: self-host (Postgres+ClickHouse+Redis+S3) inviável na VM 2vCPU;
+    cloud grátis mandaria conteúdo de investigação p/ terceiro → cherry-pick do conceito, local.
+    Consulta: sqlite3 data/llm_trace.db 'SELECT provedor, ok, COUNT(*), AVG(ms) FROM llm_trace GROUP BY 1,2'.
+    """
+    import sqlite3
+    try:
+        con = sqlite3.connect(_TRACE_DB, timeout=2)
+        con.execute("CREATE TABLE IF NOT EXISTS llm_trace("
+                    "ts TEXT DEFAULT (datetime('now')), provedor TEXT, ok INT, ms INT, erro TEXT)")
+        con.execute("INSERT INTO llm_trace(provedor, ok, ms, erro) VALUES(?,?,?,?)",
+                    (provider, int(ok), ms, erro[:200]))
+        con.commit()
+        con.close()
+    except (sqlite3.Error, OSError):
+        pass  # telemetria NUNCA derruba a cadeia
+
+
 def best_free_chat(
     prompt: str,
     system: str = "",
@@ -708,6 +731,7 @@ def best_free_chat(
     for provider in order:
         if _em_cooldown(provider):      # provedor que falhou há pouco → pula (não gasta slot)
             continue
+        _ini = time.monotonic()
         try:
             resp = None
             if provider == "cerebras" and cerebras_available():
@@ -726,11 +750,15 @@ def best_free_chat(
                 resp = github_models_chat(prompt, system=system, smart=smart)
             elif provider in _EXTRA and extra_available(provider):
                 resp = extra_chat(provider, prompt, system=system)
-            if resp is not None:
+            if resp is not None and str(resp).strip():
                 _limpar_cooldown(provider)   # voltou a responder → reabilita
+                _trace(provider, True, int((time.monotonic() - _ini) * 1000))
                 return resp
+            if resp is not None:  # "" = contrato de erro do local.chat — NÃO é resposta; segue a cadeia
+                _trace(provider, False, int((time.monotonic() - _ini) * 1000), "resposta vazia")
         except Exception as e:
             last_error = e
+            _trace(provider, False, int((time.monotonic() - _ini) * 1000), f"{type(e).__name__}: {e}")
             _marcar_cooldown(provider, e)     # cooldown por TIPO de erro
             continue
 
@@ -757,6 +785,7 @@ async def best_free_chat_async(
     for provider in order:
         if _em_cooldown(provider):      # provedor que falhou há pouco → pula
             continue
+        _ini = time.monotonic()
         try:
             resp = None
             if provider == "cerebras" and cerebras_available():
@@ -775,11 +804,15 @@ async def best_free_chat_async(
                 resp = await github_models_chat_async(prompt, system=system, smart=smart)
             elif provider in _EXTRA and extra_available(provider):
                 resp = await extra_chat_async(provider, prompt, system=system)
-            if resp is not None:
+            if resp is not None and str(resp).strip():
                 _limpar_cooldown(provider)
+                _trace(provider, True, int((time.monotonic() - _ini) * 1000))
                 return resp
+            if resp is not None:  # "" = contrato de erro do local.chat — NÃO é resposta; segue a cadeia
+                _trace(provider, False, int((time.monotonic() - _ini) * 1000), "resposta vazia")
         except Exception as e:
             last_error = e
+            _trace(provider, False, int((time.monotonic() - _ini) * 1000), f"{type(e).__name__}: {e}")
             _marcar_cooldown(provider, e)
             continue
 

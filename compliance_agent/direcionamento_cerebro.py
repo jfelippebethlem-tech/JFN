@@ -250,7 +250,14 @@ def _gemini_keys() -> list:
     # — pool free_llm (gemini_available), Yoda (_gerar_default), hermes 2c (gerar_gemini) caem p/
     # Cerebras/Groq/OpenRouter:free. Motivo: chaves AI Studio com billing ativo cobravam fora do free tier.
     # Reverter: tirar GEMINI_DISABLED do .env — as chaves seguem preservadas (tarefa "repor billing Gemini").
-    if os.environ.get("GEMINI_DISABLED", "").strip().lower() in ("1", "true", "yes", "on"):
+    # FURO corrigido 2026-07-07: processo standalone sem `set -a; . .env` não tinha a flag no os.environ,
+    # mas achava as CHAVES nos arquivos → bypass do kill-switch (cobrança). A flag agora é lida dos MESMOS
+    # arquivos onde as chaves são buscadas.
+    from pathlib import Path
+    _flag = (os.environ.get("GEMINI_DISABLED", "")
+             or _ler_env_file(Path(__file__).resolve().parents[1] / ".env").get("GEMINI_DISABLED", "")
+             or _ler_env_file(Path.home() / ".hermes" / ".env").get("GEMINI_DISABLED", ""))
+    if _flag.strip().lower() in ("1", "true", "yes", "on"):
         return []
     global _GEMINI_KEYS_CACHE
     if _GEMINI_KEYS_CACHE is not None:

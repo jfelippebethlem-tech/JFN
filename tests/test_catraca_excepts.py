@@ -20,8 +20,8 @@ def _contar() -> int:
     ).stdout.splitlines()
     total = 0
     for rel in arquivos:
-        if rel.startswith("massare"):
-            continue
+        if rel.startswith("massare") or rel == "tests/test_catraca_excepts.py":
+            continue  # massare tem catraca própria; este arquivo cita a string 4× (auto-referência)
         try:
             total += (REPO / rel).read_text(encoding="utf-8", errors="ignore").count("except Exception")
         except OSError:
