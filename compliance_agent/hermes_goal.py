@@ -21,6 +21,7 @@ reinícios — o agente retoma de onde parou.
 
 import asyncio
 import json
+import logging
 import os
 import platform
 import re
@@ -32,6 +33,8 @@ from typing import Optional
 
 from compliance_agent.llm.memoria import aprender, contexto_para_prompt
 from rich.console import Console
+
+logger = logging.getLogger(__name__)
 
 console = Console()
 
@@ -139,8 +142,8 @@ async def _garantir_chrome() -> dict:
             await asyncio.sleep(2)
             if await chrome_disponivel():
                 return {"ok": True, "via": "chrome-jfn.service"}
-    except Exception:  # noqa: BLE001 — sem systemd (ex.: Windows/dev): cai no fallback
-        pass
+    except Exception as exc:  # noqa: BLE001 — sem systemd (ex.: Windows/dev): cai no fallback
+        logger.debug("start do chrome-jfn.service via systemctl falhou, caindo no fallback abrir_chrome_debug: %s", exc)
     return await abrir_chrome_debug()
 
 
@@ -216,8 +219,8 @@ async def navegar_e_ler(url: str = "", clicar_texto: str = "") -> dict:
     finally:
         try:
             await p.stop()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("falha ao encerrar o Playwright após navegar_e_ler: %s", exc)
 
 
 # ─── O agente guiado por missão ───────────────────────────────────────────────
@@ -423,8 +426,8 @@ class HermesGoalAgent:
                 if data_str:
                     try:
                         alvo = date.fromisoformat(data_str)
-                    except ValueError:
-                        pass
+                    except ValueError as exc:
+                        logger.debug("data inválida em ler_doerj (%r), usando hoje: %s", data_str, exc)
                 pubs = await col.coletar_data(alvo)
                 return {
                     "ok": True,
@@ -924,8 +927,8 @@ async def _executar_missao_persistida(missao_id: int, objetivo: str, titulo: str
                     row.erro = f"{type(e).__name__}: {e}"
                     row.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
                     session.commit()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("falha ao registrar erro da missão %s em MissaoAuditoria: %s", missao_id, exc)
         finally:
             session.close()
 
@@ -965,8 +968,8 @@ def criar_missao_paralela(objetivo: str, titulo: str = "", prioridade: str = "me
         )
         _mission_tasks.add(task)
         task.add_done_callback(_mission_tasks.discard)
-    except RuntimeError:
-        pass  # sem event loop (chamada síncrona) — execução fica adiada
+    except RuntimeError as exc:
+        logger.debug("sem event loop: missão %s fica pendente no banco sem disparo em background: %s", missao_id, exc)
 
     return dados
 
@@ -1107,8 +1110,8 @@ async def _ciclo_auditor_completo(session, objetivo: str, on_step=None) -> dict:
         n_alertas = gerar_alertas(session)
         if isinstance(n_alertas, int):
             resumo_partes.append(f"{n_alertas} alertas")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao gerar alertas de compliance no ciclo do auditor 24h: %s", exc)
 
     # 5) Hermes reflete sobre os alertas novos
     try:
@@ -1118,8 +1121,8 @@ async def _ciclo_auditor_completo(session, objetivo: str, on_step=None) -> dict:
             prio = refl.get("prioridade_investigacao", "")
             if prio:
                 resumo_partes.append(f"Prioridade: {prio[:120]}")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha na reflexão do Hermes sobre alertas novos (aprender_com_alertas_novos): %s", exc)
 
     return {"ok": True, "resumo": " | ".join(resumo_partes)}
 
@@ -1138,8 +1141,8 @@ async def _loop_auditor_24h(objetivo: str):
             "e aprender padrões — em ciclos contínuos, sem parar.\n"
             f"Intervalo entre ciclos: {st['intervalo_seg']//60} min."
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao enviar aviso Telegram de auditor 24h ligado: %s", exc)
 
     while st["ativo"]:
         session = get_session()
@@ -1195,8 +1198,8 @@ def iniciar_auditor_24h(objetivo: str = "", intervalo_seg: Optional[int] = None)
             HermesGoalAgent(session=s).definir_missao(obj)
         finally:
             s.close()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao persistir a missão do auditor 24h como missão atual: %s", exc)
 
     st["ativo"] = True
     st["objetivo"] = obj
@@ -1228,8 +1231,8 @@ def parar_auditor_24h() -> dict:
         loop.create_task(enviar_mensagem(
             f"🔴 *Auditor 24h DESLIGADO*\nCiclos executados: {st['ciclos']}."
         ))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao enviar aviso Telegram de auditor 24h desligado: %s", exc)
     return {"ok": True, **status_auditor_24h()}
 
 
@@ -1268,8 +1271,8 @@ async def loop_hermes_goal():
                             f"Passos: {resultado.get('n_passos',0)}\n"
                             f"{resumo[:400]}"
                         )
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.warning("falha ao enviar avanço da missão por Telegram: %s", exc)
             else:
                 console.print("[dim]Hermes Goal: nenhuma missão definida. Use /missao no Telegram ou o painel.[/dim]")
         except asyncio.CancelledError:
