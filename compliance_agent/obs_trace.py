@@ -16,6 +16,7 @@ Para anotar etapas internas a partir de qualquer handler:
 """
 from __future__ import annotations
 
+import logging
 import json
 import time
 import uuid
@@ -24,6 +25,9 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
 _TRACE_DIR = _REPO / "logs" / "trace"
+
+
+logger = logging.getLogger(__name__)
 
 
 def _arquivo_do_dia() -> Path:
@@ -36,8 +40,8 @@ def _append(registro: dict) -> None:
     try:
         with open(_arquivo_do_dia(), "a", encoding="utf-8") as f:
             f.write(json.dumps(registro, ensure_ascii=False) + "\n")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("trace não gravado: %s", exc)
 
 
 def trace_evento(request, etapa: str, dados: dict | None = None) -> None:
@@ -79,8 +83,8 @@ def register_trace(app) -> None:
         cid = request.headers.get("X-Correlation-Id") or uuid.uuid4().hex
         try:
             request.state.correlation_id = cid
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("correlation_id não anexado ao request: %s", exc)
         t0 = time.time()
         status = 500
         try:

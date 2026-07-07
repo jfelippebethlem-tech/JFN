@@ -15,6 +15,7 @@ administrativos; NUNCA afirma crime/improbidade/dolo (compete ao TCE-RJ/MP-RJ/Ju
 """
 from __future__ import annotations
 
+import logging
 import os
 import time
 
@@ -52,6 +53,9 @@ from compliance_agent.lex_render import (  # noqa: F401
 from compliance_agent.lex_orgao import (  # noqa: F401
     _achados_orgao, _ob_zero_da_ug, _parecer_orgao_md, gerar_orgao,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def _sei_do_fornecedor(cnpj: str) -> list[dict]:
@@ -195,8 +199,8 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
                 ach_estrutural.append({"rf": "DD/RF-TAC", "grav": grav,
                                        "obs": f"**{tac['titulo']}.** {tac['descricao']}"})
             investigacao["veredito_fachada"] = rf.veredito_llm(pacote)
-        except Exception:  # noqa: BLE001 — pacote/LLM degradam honesto; a DD básica permanece
-            pass
+        except Exception as exc:  # noqa: BLE001 — pacote/LLM degradam honesto; a DD básica permanece
+            logger.warning("veredito de fachada (LLM) indisponível — parecer segue só com a DD básica: %s", exc)
     except Exception:
         investigacao = {}
 
@@ -260,8 +264,8 @@ def gerar(ctx: dict, salvar: bool = True, ler_sei: bool | None = None) -> dict:
     if os.environ.get("JFN_LEX_DISCURSIVO", "1") == "1" and any(a.get("trecho") for a in analise.get("achados", [])):
         try:
             analise["achados"] = analise_discursiva(analise["achados"])
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("análise discursiva (LLM) caiu — achados ficam só com a obs determinística: %s", exc)
     n_lidos = sum(1 for l in analise["leituras"] if l.get("lido"))
     out = {"ok": True, "grau": analise["rotulo"], "n_indicios": len(analise["achados"]),
            "n_sei": len(analise["sei"]), "n_sei_lidos": n_lidos, "path_lex_pdf": "", "path_lex_md": ""}

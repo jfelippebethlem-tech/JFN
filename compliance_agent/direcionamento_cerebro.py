@@ -15,6 +15,7 @@ o TRECHO que o sustenta. Sem ata/sem dado → grau verde + 'dados insuficientes'
 """
 from __future__ import annotations
 
+import logging
 import json
 import re
 
@@ -53,6 +54,9 @@ _SCHEMA = (
     '"vencedor":{"nome":"","ordem_preco_original":0,"subiu_apos_quedas":0},'
     '"dados_suficientes":true,"ressalva":"presunção de legitimidade; indício a apurar, não acusação"}'
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 def presinais(ata_txt: str) -> dict:
@@ -229,8 +233,8 @@ def _ler_env_file(caminho) -> dict:
                 continue
             k, v = ln.split("=", 1)
             d[k.strip()] = v.strip().strip('"').strip("'")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug(".env ilegível (segue com ambiente atual): %s", exc)
     return d
 
 
@@ -386,8 +390,8 @@ def _parse_json(raw: str):
         s = re.sub(r"\s*```$", "", s)
     try:
         return json.loads(s)
-    except (json.JSONDecodeError, ValueError):
-        pass
+    except (json.JSONDecodeError, ValueError) as exc:
+        logger.debug("resposta do LLM não é JSON válido: %s", exc)
     m = re.search(r"\{.*\}", s, re.DOTALL)
     if not m:
         return None

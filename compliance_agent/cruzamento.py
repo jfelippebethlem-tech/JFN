@@ -20,6 +20,7 @@ Uso:
 """
 from __future__ import annotations
 
+import logging
 import asyncio
 import os
 import re
@@ -31,6 +32,9 @@ _DB = os.environ.get("JFN_DB", os.path.join(_BASE, "data", "compliance.db"))
 
 # quantos relacionados (sócio comum) enriquecer com endereço via rede (limite p/ rate-limit BrasilAPI)
 _MAX_LOOKUP = int(os.environ.get("JFN_CRUZ_MAX_LOOKUP", "8"))
+
+
+logger = logging.getLogger(__name__)
 
 
 def _so_digitos(s: str) -> str:
@@ -78,8 +82,8 @@ def obs_e_sei(cnpj: str) -> dict:
                         p = p.strip()
                         if p:
                             seis.add(p)
-        except sqlite3.OperationalError:
-            pass
+        except sqlite3.OperationalError as exc:
+            logger.warning("query de processos SEI do cruzamento falhou (vínculos podem sumir): %s", exc)
         out["sei_processos"] = sorted(seis)
         out["n_sei"] = len(seis)
     finally:
@@ -121,8 +125,8 @@ async def _garantir_enderecos(cnpjs: list[str]) -> dict:
                             rs._gravar_endereco(con, c, d, agora)
                             con.commit()
                             res[c] = rs.endereco_de(c)
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("endereço de %s não enriquecido: %s", c, exc)
                     await asyncio.sleep(0.4)
         finally:
             con.close()
