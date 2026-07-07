@@ -19,9 +19,12 @@ Roda dentro do loop contínuo do scheduler, em paralelo ao monitoramento.
 
 import asyncio
 import json
+import logging
 from datetime import date, timedelta
 
 from rich.console import Console
+
+logger = logging.getLogger(__name__)
 
 console = Console()
 
@@ -130,8 +133,8 @@ def _tarefa_template(nome: str, cnpj: str, motivo: str) -> str:
         from compliance_agent.knowledge.jurisprudencia import contexto_jurisprudencial_para_prompt
         base += contexto_legal_para_prompt() + "\n\n"
         base += contexto_jurisprudencial_para_prompt() + "\n\n"
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("base legal/jurisprudência indisponível no prompt de investigação: %s", exc)
     base += (
         "Ao final, responda em 1 parágrafo: há indícios de irregularidade? Quais? "
         "Que nível de risco (baixo/médio/alto)? Cite os dispositivos legais e acórdãos aplicáveis."
@@ -164,8 +167,8 @@ async def investigar_alvo(alvo: dict, session) -> dict:
         resultado["conclusao_agente"] = conclusao or ""
         try:
             agente._session.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("falha ao fechar sessão do ComplianceAgent: %s", exc)
     except Exception as e:
         resultado["conclusao_agente"] = f"(agente indisponível: {e})"
 
@@ -199,8 +202,8 @@ async def investigar_alvo(alvo: dict, session) -> dict:
         aprender("entidade_investigada", nome,
                  resultado["conclusao_agente"][:500] or "investigado",
                  fonte="orquestrador", session=session)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao salvar investigação de '%s' na memória: %s", nome, exc)
 
     # 5. Alerta se grave
     if resultado["risco"] == "alto":
@@ -243,8 +246,8 @@ async def _alertar_investigacao(alvo: dict, resultado: dict, session):
             f"Termos de risco: {', '.join(riscos) or '—'}\n"
             f"_{resultado['conclusao_agente'][:300]}_"
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao enviar alerta Telegram da investigação de '%s': %s", nome, exc)
 
 
 # ─── Loop autônomo 24/7 ───────────────────────────────────────────────────────
@@ -290,8 +293,8 @@ async def loop_investigador_autonomo():
                             if recomendado.lower() in (c.get("nome") or "").lower():
                                 alvo = c
                                 break
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("Hermes indisponível para recomendar alvo, usando 1º candidato: %s", exc)
 
                 if not alvo:
                     console.print("[dim]Orquestrador: nada novo para investigar agora.[/dim]")

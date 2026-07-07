@@ -14,9 +14,12 @@ Uso:
     python -m compliance_agent.siafe_session --login [--exercicio 2025]   # login+MFA, salva sessão
     python -m compliance_agent.siafe_session --check                      # sessão salva ainda vale?
 """
+import logging
 import os
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 LOGIN_URL = "https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp"
 _REPO = Path(__file__).resolve().parent.parent
@@ -54,8 +57,8 @@ def login_with_mfa(exercicio=2025, wait_code_s=300):
                 sel = pg.locator("select").first
                 if sel.count():
                     sel.select_option(label=str(exercicio))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("SIAFE: seleção do exercício falhou (segue com o padrão): %s", exc)
             pg.keyboard.press("Enter")
             pg.wait_for_timeout(6000)
 
@@ -74,16 +77,16 @@ def login_with_mfa(exercicio=2025, wait_code_s=300):
                 try:
                     if pg.locator(ID_TRUST).count():
                         pg.locator(ID_TRUST).check()
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("SIAFE MFA: falha ao marcar 'dispensar por 30 dias' (MFA voltará a ser pedido): %s", exc)
                 # submete clicando o "Ok" DO FORM DE MFA (frmTokenMfa) — Enter não basta no ADF
                 clicked = False
                 try:
                     mfa_ok = pg.locator('[id^="loginBox:frmTokenMfa"]').get_by_text("Ok", exact=True)
                     if mfa_ok.count():
                         mfa_ok.first.click(); clicked = True
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("SIAFE MFA: clique no 'Ok' primário falhou, tentando fallback: %s", exc)
                 if not clicked:
                     for sel in ['[id*="frmTokenMfa"] a', '[id*="frmTokenMfa"] button', '[id*="frmTokenMfa"] [role=button]']:
                         try:
@@ -92,8 +95,8 @@ def login_with_mfa(exercicio=2025, wait_code_s=300):
                                 el = loc.nth(i)
                                 if (el.inner_text() or "").strip().lower() in ("ok", "confirmar", "enviar"):
                                     el.click(); clicked = True; break
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.debug("SIAFE MFA: seletor fallback %s falhou: %s", sel, exc)
                         if clicked:
                             break
                 if not clicked:
