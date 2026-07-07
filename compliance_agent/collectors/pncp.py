@@ -18,7 +18,11 @@ import re
 from datetime import date, timedelta
 from typing import Optional
 
+import logging
+
 import httpx
+
+logger = logging.getLogger(__name__)
 
 PNCP_BASE = "https://pncp.gov.br/api/pncp/v1"
 # API de CONSULTA (publica, sem login) — Onda 2. Difere da de gestao (api/pncp/v1).
@@ -54,8 +58,8 @@ async def _get_pncp(endpoint: str, params: dict) -> Optional[dict]:
                                  headers={"User-Agent": "JFN-Compliance/1.0"})
             if r.status_code == 200:
                 return r.json()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("PNCP %s indisponível (None pode ser falso 'sem contrato'): %s", endpoint, exc)
     return None
 
 
@@ -67,8 +71,8 @@ async def _get_consulta(endpoint: str, params: dict) -> Optional[dict]:
                                  headers={"User-Agent": "JFN-Compliance/2.0"})
             if r.status_code == 200:
                 return r.json()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("PNCP %s indisponível (None pode ser falso 'sem contrato'): %s", endpoint, exc)
     return None
 
 
@@ -234,8 +238,8 @@ def _texto_de_docx(blob: bytes) -> str:
         if "word/document.xml" in z.namelist():
             xml = z.read("word/document.xml").decode("utf-8", "ignore")
             return re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", xml))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("docx do PNCP ilegível (segue sem texto do edital): %s", exc)
     return ""
 
 

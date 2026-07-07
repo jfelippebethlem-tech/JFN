@@ -6,10 +6,13 @@ parecer_md(ctx) sem análise pronta importa lex._analise tardiamente (evita cicl
 """
 from __future__ import annotations
 
+import logging
 import os
 from pathlib import Path
 
 from fpdf.enums import XPos, YPos
+
+logger = logging.getLogger(__name__)
 
 from compliance_agent.reporting.inteligencia import (
     _mc, _registrar_fonte, _render_parecer_pdf, fmt_cnpj, moeda, so_digitos,
@@ -32,8 +35,8 @@ def _analise_merito(ctx: dict, analise: dict) -> str:
         _emp = contexto_empirico_md(ctx.get("cnpj"))
         if _emp:
             L.append(_emp)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("contexto empírico do Lex indisponível p/ %s (seção some do parecer): %s", ctx.get("cnpj"), exc)
     natureza = ("prestadora de **serviços contínuos** (limpeza/conservação/vigilância/mão de obra)"
                 if continuo else "fornecedora do Estado")
     L.append(
@@ -622,8 +625,8 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
         _sinais = _lif.sinais_do_contexto(ctx, analise)
         add(_lif.parecer_indicadores_md(_lif.triagem(_sinais)))
         add("")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("triagem de indicadores de fraude falhou (seção III-C some do parecer): %s", exc)
 
     # IV-B. Análise de mérito (parecer raciocinado)
     add("## IV-B. ANÁLISE DE MÉRITO")
@@ -717,8 +720,8 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
                 "representação. Sanção administrativa pressupõe achado com defesa **afastada pelos dados** e, "
                 "para multa, **dano efetivo mensurado** ou **dolo indiciado** — ausentes aqui. Indício ≠ acusação.")
             add("")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("seção IV-C (sanção) falhou e some do parecer: %s", exc)
 
     # V. Conclusão
     add("## V. CONCLUSÃO — GRAU DE ATENÇÃO")

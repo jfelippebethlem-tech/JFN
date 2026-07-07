@@ -10,8 +10,11 @@ contraditório; presunção de legitimidade dos atos administrativos).
 """
 from __future__ import annotations
 
+import logging
 import re
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
 from pathlib import Path
 
 _OUT = Path(__file__).resolve().parent.parent / "reports"
@@ -47,8 +50,8 @@ def _contexto(base: str) -> dict:
                     f"Pagamentos (Ordens Bancárias) ao CNPJ {cnpj}: R$ {ob['total_ob']:,.2f} em "
                     f"{ob.get('n_ob', 0)} OBs, concentração na principal UG de "
                     f"{round((ob.get('concentracao_top_ug') or 0) * 100)}%.")
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("resumo de OBs do CNPJ %s indisponível (linha some da minuta): %s", cnpj, exc)
         try:
             from compliance_agent.lex_conflito import conflito
             c = conflito(cnpj=cnpj, limite=5)
@@ -56,8 +59,8 @@ def _contexto(base: str) -> dict:
                 ctx["linhas"].append(
                     f"Indício de conflito doador↔contrato: {len(c['rede'])} vínculo(s) entre doações "
                     f"eleitorais (TSE) e o fornecedor/sócios (a verificar).")
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("conflito doador-contrato do CNPJ %s indisponível (indício some da minuta): %s", cnpj, exc)
     if not ctx["linhas"]:
         ctx["linhas"].append(str(base))
     return ctx
@@ -114,8 +117,8 @@ def _precedente(tipo: str) -> str:
         if res:
             r = res[0]
             return f"{r.get('titulo', '')[:160]} ({r.get('fonte', 'LexML/TCE')})."
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("jurisprudência LexML indisponível (usa fundamentação padrão): %s", exc)
     return ("Lei 14.133/2021 (arts. 5º, 9º, 18, 74-75, 125-126); Lei 8.666/93 (arts. 89-96); "
             "jurisprudência TCU/TCE-RJ sobre direcionamento e sobrepreço (consultar acórdão específico).")
 

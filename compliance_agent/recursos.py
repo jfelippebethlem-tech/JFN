@@ -17,10 +17,13 @@ velhos demais) são quebrados automaticamente.
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import time
 from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _REPO = Path(__file__).resolve().parent.parent
 _LOCK = _REPO / "data" / "browser.lock"
@@ -61,8 +64,8 @@ def _boot_time() -> float:
         for linha in Path("/proc/stat").read_text(encoding="utf-8").splitlines():
             if linha.startswith("btime "):
                 return float(linha.split()[1])
-    except (OSError, ValueError, IndexError):
-        pass
+    except (OSError, ValueError, IndexError) as exc:
+        logger.debug("btime ilegível em /proc/stat: %s", exc)
     return 0.0
 
 
@@ -92,8 +95,8 @@ def _tentar_adquirir(idade_max: float) -> bool:
         if _lock_obsoleto(idade_max):
             try:
                 _LOCK.unlink()
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.debug("lock obsoleto não removido: %s", exc)
             return _tentar_adquirir(idade_max)
         return False
 
@@ -103,8 +106,8 @@ def _liberar() -> None:
         txt = _LOCK.read_text(encoding="utf-8").strip().split(":")
         if int(txt[0]) == os.getpid():  # só o dono remove
             _LOCK.unlink()
-    except (OSError, ValueError, IndexError):
-        pass
+    except (OSError, ValueError, IndexError) as exc:
+        logger.debug("liberação do browser_lock falhou: %s", exc)
 
 
 @contextmanager

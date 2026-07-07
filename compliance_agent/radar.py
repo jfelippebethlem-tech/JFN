@@ -11,7 +11,10 @@ Tudo grátis (PNCP público). Watchlist e alertas persistidos em SQLite (radar_w
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
+
+logger = logging.getLogger(__name__)
 from datetime import datetime
 from pathlib import Path
 
@@ -109,8 +112,8 @@ def _avisar_telegram(texto: str) -> None:
     try:
         from compliance_agent.notifications.telegram import enviar_mensagem
         enviar_mensagem(texto)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("alerta do radar não entregue no Telegram: %s", exc)
 
 
 async def ciclo(max_por_alvo: int = 5, avisar: bool = True) -> dict:
@@ -149,8 +152,8 @@ async def ciclo(max_por_alvo: int = 5, avisar: bool = True) -> dict:
                             _avisar_telegram(
                                 f"🛰️ *RADAR* — alvo `{alvo}`\nEdital ABERTO com indício de restrição "
                                 f"({rfs}). Encerra: {c.get('data_encerramento')}\n{c.get('link') or ref}")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("varredura PNCP do alvo %s falhou (sem alerta pode ser falso): %s", alvo, exc)
         # (2) Anomalias em OB do CNPJ vigiado
         if tipo == "cnpj":
             try:
@@ -161,8 +164,8 @@ async def ciclo(max_por_alvo: int = 5, avisar: bool = True) -> dict:
                     if _registrar_alerta(alvo, tipo, "OB anômala (score alto)", ref, "media"):
                         novos.append({"alvo": alvo, "ref": ref, "motivo": "OB anômala",
                                       "valor": r.get("valor"), "score": r.get("score")})
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("anomalias de OB do alvo %s falharam (sem alerta pode ser falso): %s", alvo, exc)
     return {"ok": True, "novos_alertas": novos, "n": len(novos),
             "_nota": "Vigilância preventiva; indício para apuração, nunca acusação."}
 
