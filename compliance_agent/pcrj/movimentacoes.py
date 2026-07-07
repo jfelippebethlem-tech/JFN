@@ -25,8 +25,12 @@ def _e(x) -> str:
 
 
 def _d(s: str | None) -> date | None:
-    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", (s or "").strip())
-    return date(int(m.group(3)), int(m.group(2)), int(m.group(1))) if m else None
+    s = (s or "").strip()
+    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", s)
+    if m:
+        return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)
+    return date(int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
 
 
 def _postos_pref(observacao: str) -> tuple[date | None, date | None, str]:
@@ -41,9 +45,11 @@ def _pessoas(con) -> list[dict]:
     """Agrega, por pessoa vinculada: gabinete+data do ato, postos PCRJ (datas), candidaturas."""
     base = con.execute("""
         SELECT vc.nome_norm, MIN(vc.nome_camara) nome,
-          (SELECT MIN(s.data1) FROM pcrj_camara_servidores s
-            WHERE s.nome_norm=vc.nome_norm AND s.gabinete_num IS NOT NULL) ato_gab,
-          (SELECT MIN(s.data1) FROM pcrj_camara_servidores s WHERE s.nome_norm=vc.nome_norm) ato_qq,
+          (SELECT MIN(substr(s.data1,7,4)||'-'||substr(s.data1,4,2)||'-'||substr(s.data1,1,2)) FROM pcrj_camara_servidores s
+            WHERE s.nome_norm=vc.nome_norm AND s.gabinete_num IS NOT NULL
+              AND s.data1 LIKE '__/__/____') ato_gab,
+          (SELECT MIN(substr(s.data1,7,4)||'-'||substr(s.data1,4,2)||'-'||substr(s.data1,1,2)) FROM pcrj_camara_servidores s
+            WHERE s.nome_norm=vc.nome_norm AND s.data1 LIKE '__/__/____') ato_qq,
           (SELECT GROUP_CONCAT(DISTINCT s.gabinete_num) FROM pcrj_camara_servidores s
             WHERE s.nome_norm=vc.nome_norm AND s.gabinete_num IS NOT NULL) gabs
         FROM pcrj_vinculo_cruzado vc WHERE vc.confianca='indicio_nome_unico'
@@ -167,7 +173,9 @@ def _tab_multigab(con) -> tuple[str, int]:
     for r in rows:
         det = con.execute(
             "SELECT gabinete_num, data1, cargo FROM pcrj_camara_servidores "
-            "WHERE nome_norm=? AND gabinete_num IS NOT NULL ORDER BY data1", (r["nome_norm"],)).fetchall()
+            "WHERE nome_norm=? AND gabinete_num IS NOT NULL "
+            "ORDER BY CASE WHEN data1 LIKE '__/__/____' THEN substr(data1,7,4)||substr(data1,4,2)||substr(data1,1,2) ELSE '99999999' END",
+            (r["nome_norm"],)).fetchall()
         seq = " → ".join(f"Gab {x['gabinete_num']} ({ver.get(x['gabinete_num'],'?')}, {x['data1']})"
                          for x in det)
         linhas.append(f"<tr><td>{_e(r['nome'])}</td><td>{r['ng']}</td><td>{_e(seq)}</td></tr>")

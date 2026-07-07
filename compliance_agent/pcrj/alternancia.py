@@ -39,7 +39,10 @@ def _secao_gabinete(con, gab: int) -> dict:
     suplente = g["suplente"] if g else ""
     servidores = con.execute(
         """SELECT DISTINCT nome, cargo, simbolo, vinculo, data1, ano_ingresso
-           FROM pcrj_camara_servidores WHERE gabinete_num=? ORDER BY data1, nome""", (gab,)).fetchall()
+           FROM pcrj_camara_servidores WHERE gabinete_num=?
+           ORDER BY CASE WHEN data1 LIKE '__/__/____'
+                    THEN substr(data1,7,4)||substr(data1,4,2)||substr(data1,1,2)
+                    ELSE '99999999' END, nome""", (gab,)).fetchall()
     sob_suplente, anteriores = [], []
     for s in servidores:
         dt = _d(s["data1"])

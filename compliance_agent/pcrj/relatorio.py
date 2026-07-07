@@ -55,7 +55,12 @@ def _coletar(con) -> dict:
     vinculos = [dict(r) for r in con.execute(
         """SELECT vc.*,
                   (SELECT GROUP_CONCAT(DISTINCT s.vinculo)
-                   FROM pcrj_camara_servidores s WHERE s.nome_norm=vc.nome_norm) vinculo_camara
+                   FROM pcrj_camara_servidores s WHERE s.nome_norm=vc.nome_norm) vinculo_camara,
+                  (SELECT MIN(s.ano_ingresso) FROM pcrj_camara_servidores s
+                    WHERE s.nome_norm=vc.nome_norm) ingresso_camara,
+                  (SELECT MIN(substr(s.data1,7,4)||'-'||substr(s.data1,4,2)||'-'||substr(s.data1,1,2))
+                    FROM pcrj_camara_servidores s
+                    WHERE s.nome_norm=vc.nome_norm AND s.data1 LIKE '__/__/____') ato_camara
            FROM pcrj_vinculo_cruzado vc ORDER BY vc.confianca, vc.nome_camara""")]
     # Métricas eleitorais (guardadas — a tabela pode não existir se a coleta TSE não rodou).
     cand = {"pessoas": 0, "outra_cidade": 0, "tripla": 0}
@@ -91,31 +96,57 @@ def _ativo(v: dict) -> bool:
     return "exoneracao= " in (v.get("observacao") or "") or "exoneracao=None" in (v.get("observacao") or "")
 
 
-def _tabela_vinculos(vinculos: list[dict], apenas_unico: bool) -> str:
+def _tabela_vinculos(vinculos: list[dict], apenas_unico: bool, limite: int | None = None) -> str:
     conf = "indicio_nome_unico" if apenas_unico else "homonimo_ambiguo"
     sel = [v for v in vinculos if v["confianca"] == conf]
     # Ordena por FORÇA: candidato-a-acúmulo real (NÃO cessão) primeiro, depois efetivo/carreira,
     # depois vínculo ainda ativo, depois nome. Cessões descem (vínculo único, menor concern).
     sel.sort(key=lambda v: (_cessao_provavel(v), not _vinculo_efetivo(v.get("cargo_pcrj")),
                             not _ativo(v), v.get("nome_camara") or ""))
-    linhas = []
+    # agrupa por PESSOA (nome_norm): variações de cargo/matrícula viram postos da mesma linha
+    grupos: dict[str, list[dict]] = {}
+    ordem: list[str] = []
     for v in sel:
-        efet = _vinculo_efetivo(v.get("cargo_pcrj"))
-        cessao = _cessao_provavel(v)
+        k = v["nome_norm"]
+        if k not in grupos:
+            grupos[k] = []
+            ordem.append(k)
+        grupos[k].append(v)
+    if limite is not None:
+        ordem = ordem[:limite]
+    linhas = []
+    for k in ordem:
+        vs = grupos[k]
+        v0 = vs[0]
+        efet = any(_vinculo_efetivo(v.get("cargo_pcrj")) for v in vs)
+        cessao = all(_cessao_provavel(v) for v in vs)
         marca = ('<span class="flag" style="background:#e8f0e8;color:#2e7d32">CESSÃO/REQUISIÇÃO</span>'
                  if cessao else ('<span class="flag">EFETIVO/CARREIRA</span>' if efet else ""))
-        adm, exo, mat = _datas_pcrj(v)
+        vistos = set()
+        postos = []
+        for v in vs:
+            adm, exo, mat = _datas_pcrj(v)
+            chave = (mat or adm, v.get("orgao_pcrj"))
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            postos.append(f"{_e(v['cargo_pcrj'])} @ {_e(v['orgao_pcrj'])}"
+                          f"<br><span class='nota'>adm {_e(adm or '—')} · exo {_e(exo or '—')}"
+                          f" · mat {_e(mat or '—')}</span>")
+        ato = v0.get("ato_camara") or ""
+        ato_fmt = f"{ato[8:10]}/{ato[5:7]}/{ato[0:4]}" if len(ato) == 10 else "—"
+        desde = f"{v0.get('ingresso_camara') or '?'}<br><span class='nota'>ato {ato_fmt}</span>"
         linhas.append(
-            f"<tr><td>{_e(v['nome_camara'])} {marca}</td>"
-            f"<td>{_e(v['gabinetes'])}</td>"
-            f"<td>{_e((v.get('cargos_camara') or '')[:40])}</td>"
-            f"<td>{_e(v['cargo_pcrj'])} @ {_e(v['orgao_pcrj'])}</td>"
-            f"<td>{_e(adm)}</td><td>{_e(exo)}</td><td>{_e(mat)}</td></tr>")
+            f"<tr><td>{_e(v0['nome_camara'])} {marca}</td>"
+            f"<td>{_e(v0['gabinetes'])}</td>"
+            f"<td>{_e((v0.get('cargos_camara') or '')[:40])}</td>"
+            f"<td>{desde}</td>"
+            f"<td>{'<hr style=margin:2px>'.join(postos)}</td></tr>")
     if not linhas:
         return "<p class='nota'>Nenhum registro nesta categoria.</p>"
     return ("<table><tr><th>Nome (Câmara)</th><th>Gabinete / Vereador</th>"
-            "<th>Cargo Câmara</th><th>Cargo/Órgão Prefeitura</th>"
-            "<th>Admissão PCRJ</th><th>Exoneração PCRJ</th><th>Matrícula</th></tr>"
+            "<th>Cargo Câmara</th><th>Câmara desde</th>"
+            "<th>Posto(s) na Prefeitura (admissão · exoneração · matrícula)</th></tr>"
             + "".join(linhas) + "</table>")
 
 
@@ -241,20 +272,23 @@ def exportar_xlsx(destino: str, db_path=None) -> str:
         wb = Workbook()
         ws = wb.active
         ws.title = "Duplo vínculo"
-        cab = ["Nome (Câmara)", "Gabinete/Vereador", "Cargo Câmara", "Cargo Prefeitura",
-               "Órgão Prefeitura", "Admissão PCRJ", "Exoneração PCRJ", "Matrícula",
-               "Confiança", "Classificação", "Efetivo/carreira"]
+        cab = ["Nome (Câmara)", "Gabinete/Vereador", "Cargo Câmara", "Câmara desde (ano)",
+               "Cargo Prefeitura", "Órgão Prefeitura", "Admissão PCRJ", "Exoneração PCRJ",
+               "Matrícula", "Confiança", "Classificação", "Efetivo/carreira"]
         ws.append(cab)
         for c in ws[1]:
             c.font = Font(bold=True, color="FFFFFF")
             c.fill = PatternFill("solid", fgColor="1F4E79")
         for v in con.execute(
                 """SELECT vc.*, (SELECT GROUP_CONCAT(DISTINCT s.vinculo)
-                       FROM pcrj_camara_servidores s WHERE s.nome_norm=vc.nome_norm) vinculo_camara
+                       FROM pcrj_camara_servidores s WHERE s.nome_norm=vc.nome_norm) vinculo_camara,
+                       (SELECT MIN(s.ano_ingresso) FROM pcrj_camara_servidores s
+                         WHERE s.nome_norm=vc.nome_norm) ingresso_camara
                    FROM pcrj_vinculo_cruzado vc ORDER BY vc.confianca, vc.nome_camara"""):
             classe = "cessão/requisição" if _cessao_provavel(dict(v)) else "candidato a acúmulo"
             adm, exo, mat = _datas_pcrj(dict(v))
-            ws.append([v["nome_camara"], v["gabinetes"], v["cargos_camara"], v["cargo_pcrj"],
+            ws.append([v["nome_camara"], v["gabinetes"], v["cargos_camara"],
+                       v["ingresso_camara"], v["cargo_pcrj"],
                        v["orgao_pcrj"], adm, exo, mat, v["confianca"], classe,
                        "SIM" if _vinculo_efetivo(v["cargo_pcrj"]) else ""])
         ws3 = wb.create_sheet("Candidaturas TSE")
@@ -299,20 +333,36 @@ def montar_ctx(db_path=None) -> dict:
         nao = d["por_conf"].get("nao_encontrado", 0)
         indisp = d["por_conf"].get("indisponivel", 0)
         unicos_v = [v for v in d["vinculos"] if v["confianca"] == "indicio_nome_unico"]
-        cessoes = sum(1 for v in unicos_v if _cessao_provavel(v))
-        # Candidatos a acúmulo REAL = duplo vínculo que NÃO é cessão/requisição (dois postos distintos).
-        candidatos = [v for v in unicos_v if not _cessao_provavel(v)]
-        efetivos = sum(1 for v in candidatos if _vinculo_efetivo(v.get("cargo_pcrj")))
-        # Concomitância entre os CANDIDATOS: vínculo no Executivo ainda ATIVO (sem exoneração) →
-        # duplo vínculo CONCORRENTE agora (quadro da Câmara é atual). Sinal mais forte.
-        concomitantes = sum(1 for v in candidatos if _ativo(v))
-        n_cand = len(candidatos)
+        # unidade = PESSOA (nome_norm), nunca linha: variações de cargo/matrícula não inflam contagem
+        pessoas: dict[str, list[dict]] = {}
+        for v in unicos_v:
+            pessoas.setdefault(v["nome_norm"], []).append(v)
+        # pessoa é "cessão" só se TODOS os postos são cessão; senão é candidata a acúmulo real
+        cessoes = sum(1 for vs in pessoas.values() if all(_cessao_provavel(v) for v in vs))
+        candidatos_p = [vs for vs in pessoas.values() if not all(_cessao_provavel(v) for v in vs)]
+        efetivos = sum(1 for vs in candidatos_p if any(_vinculo_efetivo(v.get("cargo_pcrj")) for v in vs))
+        # Concomitância: algum vínculo no Executivo ainda ATIVO (sem exoneração na consulta) →
+        # duplo vínculo CONCORRENTE agora (quadro da Câmara é o roster atual). Sinal mais forte.
+        concomitantes = sum(1 for vs in candidatos_p if any(_ativo(v) for v in vs))
+        n_cand = len(candidatos_p)
         # Índice de convergência (indicador interno, NÃO punição): concentra nos candidatos reais.
         score = min(100, n_cand * 1 + concomitantes * 2 + efetivos * 3)
         faixa = "ALTO" if concomitantes >= 20 or efetivos >= 15 else (
                 "MÉDIO" if n_cand >= 10 else "BAIXO")
 
+        janela_cam = con.execute(
+            "SELECT MAX(substr(coletado_em,1,10)) FROM pcrj_camara_servidores").fetchone()[0] or "?"
+        janela_pref = con.execute(
+            "SELECT MAX(substr(consultado_em,1,10)) FROM pcrj_prefeitura_consulta").fetchone()[0] or "?"
+        nota_temporal = (
+            f"<p class='nota'><b>Janela temporal:</b> Câmara = relação ATUAL de servidores "
+            f"(dados abertos, coletada em {janela_cam}; quem já saiu não consta). Prefeitura = consulta ao "
+            f"contracheque em {janela_pref}; <b>ATIVO</b> = sem exoneração <i>nessa consulta</i>. "
+            f"Contagens por PESSOA (nome único), não por linha de cargo/matrícula. "
+            f"Datas comparadas cronologicamente. Nome idêntico sem CPF = indício, não prova.</p>")
+
         sumario = (
+            nota_temporal +
             f"<table>"
             f"<tr><td>Servidores da Câmara analisados (nomes distintos)</td>"
             f"<td style='text-align:right'><b>{d['tot_camara']:,}</b></td></tr>"
@@ -395,7 +445,9 @@ def montar_ctx(db_path=None) -> dict:
             {"titulo": "2. Indícios de duplo vínculo Câmara × Prefeitura (nome único)",
              "html": _tabela_vinculos(d["vinculos"], apenas_unico=True)},
             {"titulo": "3. Homônimos ambíguos (a verificar por CPF — não isoláveis)",
-             "html": _tabela_vinculos(d["vinculos"], apenas_unico=False)},
+             "html": ("<p class='nota'>Amostra dos primeiros 80 nomes no PDF; a íntegra "
+                      "está na planilha (xlsx) que acompanha este relatório.</p>"
+                      + _tabela_vinculos(d["vinculos"], apenas_unico=False, limite=80))},
             {"titulo": "4. Concentração por órgão da Prefeitura",
              "html": _tabela_orgaos(con)},
             {"titulo": "5. Nomeados que foram candidatos em eleições (TSE) — "
