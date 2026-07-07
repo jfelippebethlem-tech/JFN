@@ -77,8 +77,8 @@ def _conn() -> sqlite3.Connection:
     con = sqlite3.connect(str(_resolver_db()), timeout=30)
     try:
         con.execute("PRAGMA busy_timeout=30000")
-    except sqlite3.Error:
-        pass
+    except sqlite3.Error as exc:
+        _log.debug("busy_timeout não aplicado: %s", exc)
     return con
 
 
@@ -316,8 +316,8 @@ def _situacao_cadastral(con: sqlite3.Connection, alvos: list[str], limite: int =
                     (cb, sit, desc, dt, "minhareceita.org", datetime.utcnow().isoformat(timespec="seconds")),
                 )
                 con.commit()
-            except sqlite3.Error:
-                pass
+            except sqlite3.Error as exc:
+                _log.warning("cache de situação cadastral não gravado p/ %s (re-consulta sempre): %s", cb, exc)
         if sit and sit not in ("ATIVA", ""):
             achados.append({"cnpj_basico": cb, "situacao": sit, "descricao": desc, "data_situacao": dt})
     return {"ok": True, "achados": achados, "n_consultados": n_consultados}

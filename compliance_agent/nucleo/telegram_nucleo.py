@@ -31,12 +31,17 @@ NUNCA levantam exceção — devolvem sempre texto pronto para o Telegram.
 
 from __future__ import annotations
 
+import logging
+
 import re
 import unicodedata
 
 # ── Formatação ───────────────────────────────────────────────────────────────
 
 _EMOJI = {"crítico": "🔴", "alto": "🔴", "médio": "🟡", "baixo": "🟢"}
+
+
+logger = logging.getLogger(__name__)
 
 
 def _brl(v: float | None) -> str:
@@ -221,8 +226,8 @@ def cmd_veredito(args: str) -> str:
                     return (f"`{ref}` é ambíguo (o nº de OB se repete entre UGs). "
                             "Periciadas: " + ", ".join(f"`{r}`" for r in na_memoria)
                             + f"\nUse: `/veredito ob:<id> {decisao}`")
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("veredito %r não registrado na memória pericial: %s", ref, exc)
         if n == 0:
             return (f"Nenhuma perícia com referência `{ref}` na memória.\n"
                     "Rode `/pericia` primeiro — o laudo entra na memória "
@@ -396,8 +401,8 @@ def cmd_ciclo_nucleo() -> str:
         session = None
         try:
             session = _sessao()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("sessão de DB indisponível p/ o ciclo (roda degradado): %s", exc)
         rel = rodar_ciclo(session)
         if session is not None:
             session.close()

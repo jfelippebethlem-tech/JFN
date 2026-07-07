@@ -3,6 +3,7 @@
 Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
 from __future__ import annotations
 
+import logging
 import asyncio
 import os
 from pathlib import Path
@@ -10,6 +11,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, JSONResponse
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 
@@ -27,8 +31,8 @@ def _pausar_sweeps_para_relatorio() -> None:
         # colchete no padrão evita casar o próprio comando (lição do auto-pkill); mata por padrão seguro
         subprocess.run(["pkill", "-f", "tools[.]sei_sweep"], check=False)
         subprocess.run(["pkill", "-f", "siafe[_]sweep_full"], check=False)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("não pausou os sweeps antes do relatório (competem pela CPU): %s", exc)
 
 
 def _retomar_sweeps_se_ocioso() -> None:
@@ -37,8 +41,8 @@ def _retomar_sweeps_se_ocioso() -> None:
     try:
         for f in _SWEEP_PAUSE_FLAGS:
             Path(f).unlink(missing_ok=True)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("não despausou os sweeps (ficam parados até remover flag manualmente): %s", exc)
 
 
 async def _enviar_docs_telegram(result: dict, titulo: str) -> None:

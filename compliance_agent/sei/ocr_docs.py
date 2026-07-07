@@ -169,8 +169,8 @@ def _texto_nativo_pdf(dados: bytes) -> tuple[str, int]:
             n = doc.page_count
             partes = [doc.load_page(i).get_text() or "" for i in range(n)]
         return "\n".join(partes), n
-    except ImportError:
-        pass
+    except ImportError as exc:
+        log.warning("PyMuPDF (fitz) ausente — extração de texto PDF degrada silenciosamente: %s", exc)
     except Exception as exc:
         log.warning("ocr_documento: fitz falhou ao ler PDF (%s) — tentando pdfminer", exc)
 
@@ -209,8 +209,8 @@ def _render_paginas_pdf(dados: bytes, max_paginas: int):
                 pix = doc.load_page(i).get_pixmap(dpi=200)
                 imagens.append(Image.frombytes("RGB", (pix.width, pix.height), pix.samples))
         return imagens
-    except ImportError:
-        pass
+    except ImportError as exc:
+        log.warning("PyMuPDF (fitz) ausente — rasterização p/ OCR degrada silenciosamente: %s", exc)
     except Exception as exc:
         log.warning("ocr_documento: render via fitz falhou (%s) — tentando poppler", exc)
 

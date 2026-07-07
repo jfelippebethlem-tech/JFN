@@ -3,6 +3,7 @@
 Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
 from __future__ import annotations
 
+import logging
 import asyncio
 import os
 from pathlib import Path
@@ -10,6 +11,9 @@ from typing import Optional
 
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, JSONResponse
+
+logger = logging.getLogger(__name__)
+
 
 router = APIRouter()
 
@@ -246,8 +250,8 @@ async def api_painel():
             try:
                 from compliance_agent.llm.memoria import lembrar
                 licoes = [m["valor"][:200] for m in lembrar("licao", session=s)[:8]]
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("lições da memória indisponíveis p/ a investigação: %s", exc)
 
             return JSONResponse(content={
                 "atualizado": str(hoje),
@@ -558,8 +562,8 @@ async def api_compliance_reports_limpar(payload: Optional[dict] = None):
             if fp.resolve().is_relative_to(reports_dir) and fp.exists():
                 fp.unlink()
                 apagados.append(fp.name)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("não apagou %s: %s", fp.name, exc)
     return JSONResponse(content={"ok": True, "apagados": apagados})
 
 
