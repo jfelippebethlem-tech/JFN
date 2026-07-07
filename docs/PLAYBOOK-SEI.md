@@ -47,6 +47,15 @@ as preserva em `fotos/` justamente para conferir se o serviço foi feito.
 - ❌ Carregar PDF/íntegra inteira no contexto: use `--grep`/`--fase`/`--doc`.
 - ❌ Rodar OCR fora do `sei_arquivar.py` (ele já decide quando OCR é preciso).
 
+## Lanes de coleta (quem lança o sweep — NUNCA 2 lançadores)
+- **Lane geral = SÓ o cron `*/30 tools/sweep_sei.sh`** (bounded, single-pass). É ele quem roda o
+  pipeline completo: sweep → pais → cpf → refichar → depurar → árvore → direcionamento → lex → aprendizado.
+- **`tools/sei_supervisor.sh` = DEPRECADO** (lane contínuo revertido no cont.25). Um resquício dele ficou
+  vivo na memória de 09-06 a 07-07/2026 monopolizando o mutex (`pgrep tools.sei_sweep`) e starvando o
+  downstream do cron de dia. NÃO relançar; se precisar de vazão extra, aumentar `--max` do cron.
+- **`tools/bombeiros_supervisor.sh`** = lane dedicado FUNESBOM (deliberado, downstream próprio); espera o
+  mutex do sweep geral e serializa browser via `browser_lock`.
+
 ## Melhorias 2026-07-05 (event-based + frescor)
 - `sei_reader.py` usa **espera por condição com teto** (`_ate()`): pós-login, abertura da
   Pesquisa e pós-submit retornam assim que a página/árvore pinta (teto = sleep fixo antigo →

@@ -1,4 +1,8 @@
 #!/bin/bash
+# ⛔ DEPRECADO (2026-07-07): lane contínuo revertido no cont.25 — o cron */30 tools/sweep_sei.sh é o ÚNICO
+# lançador do sweep geral (bounded + pipeline completo). Este loop monopoliza o mutex e starva o downstream.
+# NÃO relançar (ver docs/PLAYBOOK-SEI.md §Lanes). Mantido só como referência histórica.
+echo "sei_supervisor DEPRECADO — use o cron */30 tools/sweep_sei.sh (ver docs/PLAYBOOK-SEI.md)"; exit 1
 # sei_supervisor — mantém o SEI sweep VIVO (aos poucos, resumível), análogo ao siafe_supervisor.
 # O sei_sweep lê processo a processo (~50s/proc + ficha) e pode morrer por crash do Chromium em runs
 # longos; como é RESUMÍVEL (checkpoint data/sei_cache/sei_sweep_progress.json: "feitos"), basta relançar
