@@ -17,11 +17,15 @@ Uso:
 """
 from __future__ import annotations
 
+import logging
 import re
 import sqlite3
 import unicodedata
 
 from compliance_agent.database.models import _resolver_db
+
+
+logger = logging.getLogger(__name__)
 
 
 def _digits(s) -> str:
@@ -94,8 +98,8 @@ def _ugs_sei_por_empresa(con, cnpjs: set[str], max_ug: int = 8, max_sei: int = 1
             u["total"] += float(tot or 0); u["n_ob"] += int(n or 0)
             if sei and str(sei).strip():
                 out[d]["_sei"][str(sei).strip()] = out[d]["_sei"].get(str(sei).strip(), 0) + int(n or 0)
-    except sqlite3.Error:
-        pass
+    except sqlite3.Error as exc:
+        logger.warning("query TFE do conflito doador-contrato falhou (vínculo pode sumir mudo): %s", exc)
 
     # (2) SIAFE — credor guarda o CNPJ; ug_pagadora/ug_emitente + processo (=SEI de origem)
     try:
@@ -112,8 +116,8 @@ def _ugs_sei_por_empresa(con, cnpjs: set[str], max_ug: int = 8, max_sei: int = 1
             u["total"] += float(tot or 0); u["n_ob"] += int(n or 0)
             if proc and str(proc).strip():
                 out[d]["_sei"][str(proc).strip()] = out[d]["_sei"].get(str(proc).strip(), 0) + int(n or 0)
-    except sqlite3.Error:
-        pass
+    except sqlite3.Error as exc:
+        logger.warning("query SIAFE do conflito doador-contrato falhou (vínculo pode sumir mudo): %s", exc)
 
     # consolida: top UGs por valor, top SEIs por nº de OBs
     res: dict[str, dict] = {}
