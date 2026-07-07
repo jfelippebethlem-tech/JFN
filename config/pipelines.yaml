@@ -1,0 +1,117 @@
+# pipelines.yaml — INVENTÁRIO CANÔNICO dos pipelines do ecossistema + SLO de frescor por etapa.
+# Consumido por tools/pipelines_slo.py (cron horário). Complementa o /api/agenda: a agenda mostra
+# QUANDO os gatilhos disparam; aqui vigiamos SE cada etapa PRODUZIU output (mtime do log-sentinela).
+# Lição de origem (2026-07-07): o sei_supervisor órfão starvou o downstream por 28 dias com a agenda
+# toda verde — frescor de OUTPUT é o sinal que pega starvation/lock/loop silencioso.
+#
+# Campos: nome · arquivo (sentinela; relativo a ~/JFN salvo se absoluto) · max_stale_h (SLO) ·
+# grupo · pausa (flag que legitima silêncio) · nota (contexto p/ quem debuga o alerta).
+
+pipelines:
+  # ---- BASE (dados-fonte, diários) ----
+  - nome: siafe-runner
+    arquivo: data/siafe_runner_cron.log
+    max_stale_h: 30
+    grupo: base
+    nota: coleta SIAFE diária 05:00 (cron)
+
+  - nome: folha-orquestrador
+    arquivo: data/folha_orquestrador_cron.log
+    max_stale_h: 30
+    grupo: base
+    nota: folhas Câmara/Prefeitura 06:00 (cron)
+
+  - nome: manutencao-diaria
+    arquivo: data/manutencao_diaria_cron.log
+    max_stale_h: 30
+    grupo: base
+    nota: wal_checkpoint + ANALYZE 04:10 (cron)
+
+  - nome: backup-compliance
+    arquivo: data/backup_compliance_cron.log
+    max_stale_h: 192
+    grupo: base
+    nota: backup semanal dom 03:50 (cron)
+
+  # ---- PIPELINE SEI (downstream do cron */30 sweep_sei.sh — vítimas da starvation de 07-07) ----
+  - nome: sei-depurar
+    arquivo: data/sei_depurar.log
+    max_stale_h: 12
+    grupo: sei
+    pausa: data/.pause_sei_sweep
+    nota: ficha->tabela; roda em TODO ciclo completo do cron (e no lane bombeiros)
+
+  - nome: sei-direcionamento
+    arquivo: data/sei_direc.log
+    max_stale_h: 24
+    grupo: sei
+    pausa: data/.pause_sei_sweep
+    nota: memória de direcionamento + LLM top-score (fim do ciclo do cron)
+
+  - nome: lex-pesquisa-internet
+    arquivo: data/lex_pesquisa.log
+    max_stale_h: 24
+    grupo: sei
+    pausa: data/.pause_sei_sweep
+    nota: fase 5 (OSINT dos top-score) — só roda se o ciclo do cron chega ao fim
+
+  - nome: lex-execucao
+    arquivo: data/lex_execucao.log
+    max_stale_h: 24
+    grupo: sei
+    pausa: data/.pause_sei_sweep
+    nota: avaliação de execução contratual (fim do ciclo)
+
+  - nome: pericia-aprendizado
+    arquivo: data/pericia_aprendizado.log
+    max_stale_h: 24
+    grupo: sei
+    pausa: data/.pause_sei_sweep
+    nota: loop de aprendizado progressivo da perícia (fim do ciclo)
+
+  - nome: sei-integra-fila
+    arquivo: data/sei_integra_fila.log
+    max_stale_h: 30
+    grupo: sei
+    nota: íntegras noturnas 04:00 + timer 03:30
+
+  - nome: pericia-sweep
+    arquivo: data/pericia_sweep_cron.log
+    max_stale_h: 30
+    grupo: sei
+    nota: perícia diária 06:30 (cron)
+
+  # ---- LANE BOMBEIROS (FUNESBOM, supervisor contínuo dedicado) ----
+  - nome: bombeiros-lane
+    arquivo: data/bombeiros_supervisor.log
+    max_stale_h: 6
+    grupo: bombeiros
+    pausa: data/.pause_bombeiros
+    nota: supervisor contínuo (lote ~1h + back-off 20min); 6h parado = morreu
+
+  # ---- POLIMONITOR ----
+  - nome: likers-import
+    arquivo: /home/ubuntu/polimonitor/data/likers_import_cron.log
+    max_stale_h: 72
+    grupo: polimonitor
+    nota: guard de mtime só escreve com dado novo; desktop offline = silêncio legítimo (por isso 72h)
+
+  - nome: posts-index
+    arquivo: /home/ubuntu/polimonitor/data/posts_index_cron.log
+    max_stale_h: 30
+    grupo: polimonitor
+    nota: reindex p/ coletor do desktop, 04:40-09:40 (cron)
+
+  # ---- ENRIQUECIMENTO ----
+  - nome: sweep-dados
+    arquivo: data/sweep_dados.log
+    max_stale_h: 30
+    grupo: enriquecimento
+    pausa: data/.pause_sweeps
+    nota: benefícios/fachada 10:00 e 16:00 (cron)
+
+  - nome: refresh-favorecido
+    arquivo: data/refresh_favres.log
+    max_stale_h: 30
+    grupo: enriquecimento
+    nota: resumo de favorecidos 05:45 (cron)
