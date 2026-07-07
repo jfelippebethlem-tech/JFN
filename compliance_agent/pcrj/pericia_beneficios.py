@@ -85,7 +85,9 @@ def _orgaos_do_nome(con, nome_norm: str) -> dict:
          "vinculo": "", "tipo_folha": ""}
     cam = con.execute(
         "SELECT lotacao, cargo, data1, gabinete_num, vinculo FROM pcrj_camara_servidores "
-        "WHERE nome_norm=? LIMIT 1", (nome_norm,)).fetchone()
+        "WHERE nome_norm=? ORDER BY CASE WHEN data1 LIKE '__/__/____' "
+        "THEN substr(data1,7,4)||substr(data1,4,2)||substr(data1,1,2) ELSE '99999999' END "
+        "LIMIT 1", (nome_norm,)).fetchone()
     if cam:
         d.update(poder="Câmara Municipal", orgao=cam["lotacao"] or "(lotação não informada)",
                  cargo=cam["cargo"] or "", ingresso=cam["data1"] or "",
@@ -311,8 +313,31 @@ def analisar() -> dict:
     def _tem(reg, sub):
         return any(sub in pr["ben"] for pr in reg["programas"])
 
+    # cobertura real das fontes (para a nota de janelas temporais do relatório)
+    try:
+        fol = [r[0] for r in p.execute("SELECT DISTINCT competencia FROM pcrj_folha_pref ORDER BY 1")]
+    except Exception:
+        fol = []
+    def _faixas(ms):
+        out, ini, ant = [], None, None
+        for m in ms:
+            if ini is None:
+                ini = ant = m
+                continue
+            prox = f"{int(ant[:4])+1}01" if ant[4:6] == "12" else f"{ant[:4]}{int(ant[4:6])+1:02d}"
+            if m != prox:
+                out.append((ini, ant))
+                ini = m
+            ant = m
+        if ini:
+            out.append((ini, ant))
+        return out
+    cobertura_folha = "; ".join(f"{_comp_legivel(a)}→{_comp_legivel(b)}" for a, b in _faixas(fol)) or "—"
+    cobertura_benef = f"{_comp_legivel(comps[0])}→{_comp_legivel(comps[-1])}" if comps else "—"
+
     return {
         "competencias": comps, "anos": anos, "ultima": ultima,
+        "cobertura_folha": cobertura_folha, "cobertura_benef": cobertura_benef,
         "registros": registros, "grupos": grupos,
         "homonimos": homonimos, "fora_rio": fora_rio, "fora_vinculo": fora_vinculo,
         "fantasmas": fantasmas, "gabs_suplencia": gabs_suplencia,
@@ -447,6 +472,12 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   em bloco do repositório oficial de remuneração; o órgão vem decodificado da sigla da unidade
   administrativa (Gabinete do Prefeito, Comlurb, Secretaria de Educação/Saúde/Obras etc.). Inclui
   efetivos, comissionados, cedidos e — quando a folha assim indica — aposentados/pensionistas.</p>
+  <p><b>Janelas temporais (regra de justiça).</b> Benefício só conta se recebido <b>durante</b> uma
+  janela de vínculo público: Câmara = do ato de ingresso (registro mais antigo) até hoje (a relação
+  oficial é o quadro ATUAL — quem saiu não consta); Prefeitura = faixa de presença na folha
+  ({{ cobertura_folha }}); benefício recebido fora de toda janela (pessoa entre empregos) <b>não é
+  flagrado</b>. Vínculo anterior ao início da cobertura da folha não gera flag (limite conservador
+  da fonte). Benefícios: {{ cobertura_benef }}.</p>
   <p><b>Ressalvas.</b> A filiação partidária é a foto pública de 2018 (cobertura parcial — "—" =
   não consta na base de 2018). O eixo de suplência parte da tabela oficial de gabinetes (suplências
   vigentes) e da data de posse do suplente (Diário Oficial da CMRJ); a cobertura de suplências
@@ -472,6 +503,8 @@ def render(dados: dict) -> str:
         n_fantasmas=len(dados["fantasmas"]), n_suplencia=len(dados["gabs_suplencia"]),
         homonimos=dados["homonimos"], fora_rio=dados["fora_rio"],
         grupos=dados["grupos"], gabs_suplencia=dados["gabs_suplencia"],
+        cobertura_folha=dados.get("cobertura_folha", "—"),
+        cobertura_benef=dados.get("cobertura_benef", "—"),
     )
 
 
