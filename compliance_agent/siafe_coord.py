@@ -17,6 +17,7 @@ Yoda deve, ao receber mensagens do Jorge, escrever o flag (instruções na memó
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import time
@@ -29,6 +30,9 @@ _FLAG = _REPO / "data" / "sei_cache" / "siafe_coord.json"
 CHAT_ID = "45338178"
 
 
+logger = logging.getLogger(__name__)
+
+
 def _token() -> str:
     # token do bot: ~/.hermes/.env (Yoda) ou .env do JFN
     for env in (Path.home() / ".hermes" / ".env", _REPO / ".env"):
@@ -36,8 +40,8 @@ def _token() -> str:
             for ln in env.read_text(encoding="utf-8-sig").splitlines():
                 if ln.strip().startswith("TELEGRAM_BOT_TOKEN="):
                     return ln.split("=", 1)[1].strip().strip('"').strip("'")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("%s sem token legível: %s", env, exc)
     return os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
 
 
@@ -91,8 +95,8 @@ def aguardar_liberacao(motivo: str, timeout_total_s: int = 6 * 3600, poll_s: int
     # marca que estamos aguardando o Jorge
     try:
         set_status("ocupado", motivo)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("set_status('ocupado') falhou: %s", exc)
     while True:
         try:
             agora = _t.time()

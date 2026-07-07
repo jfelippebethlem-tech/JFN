@@ -17,6 +17,7 @@ O Hermes roda em paralelo, continuamente, como um parceiro sênior que:
 Taxa de uso: 1 ciclo a cada 30 min — respeita limite gratuito do OpenRouter.
 """
 
+import logging
 import asyncio
 import json
 import os
@@ -61,6 +62,9 @@ _HERMES_MODELOS_FALLBACK = [
 # Teto de tokens para o "pensamento" do Hermes. O auditor precisa raciocinar
 # longamente — não truncar. Configurável por env (HERMES_MAX_TOKENS).
 HERMES_MAX_TOKENS = int(os.environ.get("HERMES_MAX_TOKENS", "8000"))
+
+
+logger = logging.getLogger(__name__)
 
 
 async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS) -> str:
@@ -553,13 +557,13 @@ async def _bootstrap_hermes(session) -> None:
         try:
             from compliance_agent.knowledge.base_legal import contexto_legal_para_prompt
             base_legal = contexto_legal_para_prompt()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("base legal indisponível p/ o prompt do Hermes: %s", exc)
         try:
             from compliance_agent.knowledge.jurisprudencia import contexto_jurisprudencial_para_prompt
             jurisp = contexto_jurisprudencial_para_prompt()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("jurisprudência indisponível p/ o prompt do Hermes: %s", exc)
 
         prompt = (
             f"BASE LEGAL DISPONÍVEL:\n{base_legal}\n\n"

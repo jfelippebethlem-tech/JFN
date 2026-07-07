@@ -18,6 +18,7 @@ indício ≠ acusação. Cruzamento de empresas no MESMO endereço fica em `cruz
 """
 from __future__ import annotations
 
+import logging
 import json
 import os
 import re
@@ -37,6 +38,9 @@ _TIPO_COMERCIAL = {"commercial", "retail", "industrial", "office", "warehouse", 
 
 _cache: dict | None = None
 _ult_nominatim = [0.0]
+
+
+logger = logging.getLogger(__name__)
 
 
 def em_backoff() -> float:
@@ -76,8 +80,8 @@ def _salva_cache() -> None:
     try:
         _CACHE_FILE.parent.mkdir(exist_ok=True)
         _CACHE_FILE.write_text(json.dumps(_cache, ensure_ascii=False), "utf-8")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("cache de geocoding não gravado (re-consulta sempre): %s", exc)
 
 
 def _cep_fmt(cep: str | None) -> str:
@@ -260,8 +264,8 @@ def _streetview_consome_cota() -> bool:
     try:
         _SV_QUOTA_FILE.parent.mkdir(exist_ok=True)
         _SV_QUOTA_FILE.write_text(json.dumps(st), "utf-8")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("contador de cota Street View NÃO persistiu (guarda de custo furada): %s", exc)
     return True
 
 

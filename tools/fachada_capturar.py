@@ -19,6 +19,7 @@ fantasma (quando pedir a foto): compliance_agent/empresa_fantasma.py.
 """
 from __future__ import annotations
 
+import logging
 import argparse
 import asyncio
 import json
@@ -34,6 +35,9 @@ OUT = RAIZ / "data" / "fachadas"
 
 _SEM_COBERTURA = ("no imagery here", "sem imagens", "nao temos imagens",
                   "no imagery for", "sorry, we have no imagery")
+
+
+logger = logging.getLogger(__name__)
 
 
 def _norm(s: str) -> str:
@@ -68,8 +72,8 @@ def _geocodificar(endereco: str) -> tuple[float, float] | None:
         d = r.json()
         if d:
             return float(d[0]["lat"]), float(d[0]["lon"])
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("geocoding OSM falhou (sem-coordenada pode ser falso): %s", exc)
     return None
 
 
@@ -83,8 +87,8 @@ def _endereco_do_cnpj(cnpj: str) -> tuple[str, str]:
         con.close()
         if row:
             return row[0] or "", row[1] or ""
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("endereço do CNPJ %s ilegível no DB: %s", cnpj, exc)
     return "", ""
 
 

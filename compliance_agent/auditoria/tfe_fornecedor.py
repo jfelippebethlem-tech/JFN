@@ -16,6 +16,7 @@ Pre-requisito: um Chrome aberto com --remote-debugging-port=9222
 Saida: tabela por mes + por orgao + total; salva bruto em data/sei_cache/.
 ATENCAO: valor = EMPENHADO (comprometido), nao necessariamente pago.
 """
+import logging
 import sys
 import os
 import json
@@ -32,6 +33,9 @@ import websocket  # websocket-client
 
 CDP = "http://127.0.0.1:9222"
 FORM = "https://tfe.fazenda.rj.gov.br/tfe/web/fornecedor"
+
+
+logger = logging.getLogger(__name__)
 
 
 def _tab(substr="tfe.fazenda"):
@@ -82,7 +86,7 @@ class Page:
 
     def renew(self):
         try: self.ws.close()
-        except Exception: pass
+        except Exception as exc: logger.debug("ws.close no renew falhou: %s", exc)
         time.sleep(1)
         t = _tab(); self.ws = websocket.create_connection(t["webSocketDebuggerUrl"], timeout=30, suppress_origin=True); self.i = 0
 

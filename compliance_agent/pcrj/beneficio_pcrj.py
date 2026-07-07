@@ -16,6 +16,7 @@ VM-safe: baixa 1 zip → filtra em STREAMING → apaga o zip. Grava em banco DED
 """
 from __future__ import annotations
 
+import logging
 import csv
 import io
 import os
@@ -65,6 +66,9 @@ CREATE TABLE IF NOT EXISTS pcrj_beneficio (
 );
 CREATE INDEX IF NOT EXISTS ix_benef_nome ON pcrj_beneficio(nome_norm);
 """
+
+
+logger = logging.getLogger(__name__)
 
 
 def _find(header: list[str], nomes: list[str]) -> int:
@@ -169,8 +173,8 @@ def _alvo_nomeados() -> dict[str, str]:
             except Exception:
                 continue
         cc.close()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("carga de alvos da Câmara falhou (cruzamento pode sair incompleto): %s", exc)
     con.close()
     return alvo
 
@@ -196,8 +200,8 @@ def coletar(ym: str = "202605") -> dict:
         resumo["por_beneficio"][beneficio] = len(achados)
         try:
             os.remove(dest)
-        except OSError:
-            pass
+        except OSError as exc:
+            logger.debug("tmp %s não removido: %s", dest, exc)
         print(f"[benef] {beneficio}: {len(achados)} linhas brutas", flush=True)
 
     agora = datetime.now().isoformat(timespec="seconds")
