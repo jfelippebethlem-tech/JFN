@@ -17,9 +17,12 @@ Uso: PYTHONPATH=. .venv/bin/python -m tools.flexvision_cdp <subcomando> [codigo]
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _REPO = Path(__file__).resolve().parent.parent
 _STATE = _REPO / "data" / "sei_cache" / "flexvision_state.json"
@@ -42,8 +45,8 @@ def _emit_sinal(sinal: str, detalhe: str = "") -> None:
         _SINAL.parent.mkdir(parents=True, exist_ok=True)
         _SINAL.write_text(json.dumps({"sinal": sinal, "detalhe": detalhe}, ensure_ascii=False),
                           encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao gravar sinal %s em %s: %s", sinal, _SINAL, exc)
     print(f"SINAL={sinal}" + (f" | {detalhe}" if detalhe else ""), flush=True)
 
 
@@ -105,8 +108,8 @@ async def _pos_login_dialogos(pg, timeout_s: int = 16):
         await sim.first.wait_for(state="visible", timeout=timeout_s * 1000)
         await sim.first.click()
         print("  take-over: 'Sim' clicado (assumiu a sessão única)", flush=True)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("diálogo 'Sim' de take-over não apareceu: %s", exc)
     await pg.wait_for_timeout(3500)
     for _ in range(5):
         agiu = await pg.evaluate(r"""()=>{const vis=el=>{const r=el.getBoundingClientRect();const s=getComputedStyle(el);return r.width>0&&r.height>0&&s.visibility!=='hidden';};
@@ -136,8 +139,8 @@ async def cmd_login():
                 if "flexvision" in (old.url or "").lower():
                     try:
                         await old.close()
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("falha ao fechar aba FV antiga %s: %s", old.url, exc)
         pg = await ctx.new_page()
         await pg.goto(FV, wait_until="domcontentloaded", timeout=45000)
         await pg.wait_for_timeout(3500)
@@ -209,8 +212,8 @@ async def cmd_code(codigo: str):
             ci = await pg.query_selector("xpath=//*[contains(@class,'v-window')][contains(.,'Multifator') or contains(.,'Código') or contains(.,'Dispensar')]//input[@type='password']")
             if ci:
                 await ci.click(); await ci.fill(""); await ci.type(codigo.strip(), delay=40)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("reforço de digitação do código MFA falhou: %s", exc)
         await pg.wait_for_timeout(300)
         # clicar Ok via JS DENTRO da janela do MFA (overlay aria-live intercepta clique normal)
         await pg.evaluate(r"""()=>{const W=[...document.querySelectorAll('.v-window')].find(w=>/multifator|código|dispensar/i.test(w.innerText||''));
@@ -219,8 +222,8 @@ async def cmd_code(codigo: str):
         await pg.wait_for_timeout(6000)
         try:
             await pg.wait_for_load_state("networkidle", timeout=12000)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("espera por networkidle pós-código expirou: %s", exc)
         est2 = await _estado(pg)
         print("STATE pós-código:", est2, "| url:", pg.url)
         if est2 == "dentro":
@@ -228,8 +231,8 @@ async def cmd_code(codigo: str):
             print("✅ LOGADO. Sessão salva em", _STATE)
             try:
                 await pg.screenshot(path="/tmp/flexvision_dentro.png", full_page=True)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("screenshot de confirmação falhou: %s", exc)
         else:
             body = (await pg.inner_text("body")) or ""
             print("código não passou (talvez expirado/errado). body[:300]:", repr(body[:300]))
@@ -259,8 +262,8 @@ async def _digitar_codigo_e_ok(pg, codigo: str) -> None:
         ci = await pg.query_selector("xpath=//*[contains(@class,'v-window')][contains(.,'Multifator') or contains(.,'Código') or contains(.,'Dispensar')]//input[@type='password']")
         if ci:
             await ci.click(); await ci.fill(""); await ci.type(codigo.strip(), delay=40)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao digitar código MFA na janela: %s", exc)
     await pg.evaluate(r"""()=>{const W=[...document.querySelectorAll('.v-window')].find(w=>/multifator|código|dispensar/i.test(w.innerText||''));
         if(!W)return; const c=W.querySelector('input[type=checkbox]'); if(c&&!c.checked)c.click();}""")
     await pg.wait_for_timeout(250)
@@ -296,7 +299,7 @@ async def cmd_auto(timeout_s: int = 240):
             for old in list(c.pages):
                 if "flexvision" in (old.url or "").lower():
                     try: await old.close()
-                    except Exception: pass
+                    except Exception as exc: logger.debug("auto: falha ao fechar aba FV antiga: %s", exc)
         pg = await ctx.new_page()
         await pg.goto(FV, wait_until="domcontentloaded", timeout=45000)
         await pg.wait_for_timeout(3500)

@@ -9,6 +9,7 @@ Invariante: indícios para apuração; presunção de legitimidade; CPF mascarad
 """
 from __future__ import annotations
 
+import logging
 import re
 import sqlite3
 from datetime import datetime
@@ -17,6 +18,8 @@ from pathlib import Path
 from fpdf.enums import XPos, YPos
 
 from compliance_agent.database.models import _resolver_db
+
+logger = logging.getLogger(__name__)
 
 _REPORTS = Path(__file__).resolve().parent.parent / "reports"
 
@@ -71,8 +74,8 @@ def _red_flags_estruturais(cnpj: str, cadastro: dict) -> list[dict]:
                 out.append({"flag": "cnae_objeto_incompativel",
                             "obs": f"CNAE/atividade (“{cnae[:60]}”) sem aderência ao objeto contratado "
                                    f"(ex.: “{objs[0][:60]}…”) — possível empresa de prateleira/fachada."})
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("red flag CNAE×objeto (TCE-RJ) falhou p/ CNPJ %s: %s", cnpj, exc)
     # Troca de controle societário posterior a receita pública (socios data_entrada × OBs antes).
     try:
         socios = cad.get("socios") or []
@@ -98,8 +101,8 @@ def _red_flags_estruturais(cnpj: str, cadastro: dict) -> list[dict]:
                 out.append({"flag": "troca_controle_pos_receita",
                             "obs": f"Ingresso no QSA em {recente} posterior a R$ {tot_antes:,.2f} já pagos "
                                    f"({n_antes} OBs, {share:.0f}%) — sucessão/interposição a verificar."})
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("red flag troca de controle×OB falhou p/ CNPJ %s: %s", cnpj, exc)
     return out
 
 
@@ -135,31 +138,31 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
         from compliance_agent.enrich.opensanctions import checar
         d["opensanctions"] = checar(cnpj)
         sancionado = sancionado or bool(d["opensanctions"].get("sancionado"))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("seção OpenSanctions do dossiê indisponível p/ CNPJ %s: %s", cnpj, exc)
 
     # 2c) OCCRP Aleph (follow-the-money cross-jurisdição) — Onda 12 (API, key-gated, honesto)
     try:
         from compliance_agent.enrich.aleph import buscar as _aleph
         d["aleph"] = _aleph(cnpj)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("seção OCCRP Aleph do dossiê indisponível p/ CNPJ %s: %s", cnpj, exc)
 
     # 2d) Mídia adversa (fontes abertas, KEYLESS via GDELT) — DD §9
     try:
         from compliance_agent.enrich.midia_adversa import varrer as _midia
         nome_alvo = (d.get("cadastro") or {}).get("razao_social") or alvo
         d["midia_adversa"] = _midia(nome_alvo, cnpj)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("seção mídia adversa (GDELT) do dossiê indisponível p/ CNPJ %s: %s", cnpj, exc)
 
     # 2e) Pistas de investigação hospedada (Max Intel/OSINT-Brazuca/RedeCNPJ…) — deep-links MANUAIS
     try:
         from compliance_agent.providers import lookup as _plookup
         nome_alvo = (d.get("cadastro") or {}).get("razao_social") or alvo
         d["links_investigacao"] = (_plookup("links", nome=nome_alvo, cnpj=cnpj).dados or {}).get("links", [])
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("links de investigação hospedada indisponíveis p/ CNPJ %s: %s", cnpj, exc)
 
     # 3) OB / contratos (dado interno)
     d["ob"] = _resumo_ob(cnpj)

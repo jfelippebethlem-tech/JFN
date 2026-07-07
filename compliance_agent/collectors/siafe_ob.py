@@ -27,12 +27,15 @@ Uso (standalone):
 
 import asyncio
 import json
+import logging
 import re
 from datetime import date, datetime
 
 from compliance_agent.database.models import (
     OrdemBancaria, SessaoAuditoria, get_session, init_db
 )
+
+logger = logging.getLogger(__name__)
 
 CDP_URL = "http://127.0.0.1:9222"
 
@@ -78,8 +81,8 @@ _JS_READ_OB_TABLE = r"""
 async def _adf_wait(pg, timeout: int = 12000):
     try:
         await pg.wait_for_load_state("domcontentloaded", timeout=timeout)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("ADF wait: load_state não completou (segue com sleep fixo): %s", exc)
     await asyncio.sleep(1.5)
 
 
@@ -214,8 +217,8 @@ async def _navigate_to_ob(page) -> bool:
             if "login" in cur or "autenticacao" in cur or await _esta_na_tela_login(page):
                 if not await _fazer_login(page):
                     return False
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("SIAFE2: falha ao navegar para a home (%s): %s", _SIAFE_HOME, exc)
 
     # Navega para a seção de Execução Financeira se ainda não está lá
     if "execucaofinanceira" not in page.url.lower() and "ordembancaria" not in page.url.lower():
@@ -230,8 +233,8 @@ async def _navigate_to_ob(page) -> bool:
                 await page.goto(_SIAFE_FINANCEIRA, wait_until="domcontentloaded", timeout=20000)
                 await asyncio.sleep(3)
                 await _dismiss_dialogs(page)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("SIAFE2: falha ao navegar para Execução Financeira: %s", exc)
 
     if "ordembancariaorcamentaria" in page.url.lower():
         return True
@@ -239,8 +242,8 @@ async def _navigate_to_ob(page) -> bool:
     # Aguarda o menu ADF carregar (a.xgg pode demorar)
     try:
         await page.wait_for_selector("a.xgg", timeout=10000)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("SIAFE2: menu ADF (a.xgg) não apareceu no timeout: %s", exc)
     await asyncio.sleep(2)
 
     # Tenta clicar em 'OB Orçamentária' — busca progressivamente mais ampla
@@ -386,8 +389,8 @@ async def collect_ob_day(target_date: date | None = None, max_rows: int = 1000) 
     finally:
         try:
             await p.stop()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Playwright stop falhou na coleta de OB: %s", exc)
 
     return summary
 
@@ -723,8 +726,8 @@ async def collect_ob_details(page, ob_numbers: list[str]) -> dict[str, dict]:
             try:
                 await page.evaluate(_JS_CLICK_RETORNAR)
                 await _adf_wait(page, 8000)
-            except Exception:
-                pass
+            except Exception as exc2:
+                logger.debug("OB %s: clique em Retornar de recuperação falhou: %s", numero, exc2)
 
     return results
 
@@ -883,12 +886,12 @@ async def run_daily_collection(
     finally:
         try:
             await p.stop()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Playwright stop falhou na coleta diária: %s", exc)
         try:
             session.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Fechamento da sessão de banco falhou na coleta diária: %s", exc)
 
     sessao = SessaoAuditoria(
         data_sessao=target_date,

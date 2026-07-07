@@ -65,11 +65,14 @@ Cube "Documento - OB" (code 000079): OB cadastro data available in FlexVision
 """
 
 import asyncio
+import logging
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
 from playwright.async_api import async_playwright, Page, Browser, BrowserContext
+
+logger = logging.getLogger(__name__)
 
 
 SIAFE_BASE      = "https://siafe2.fazenda.rj.gov.br/Siafe"
@@ -261,8 +264,8 @@ class SIAFEBrowser:
         path = self.screenshots_dir / f"{name}_{ts}.png"
         try:
             await self._page.screenshot(path=str(path), full_page=True)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("screenshot '%s' falhou: %s", name, exc)
         return str(path)
 
     # ── SIAFE2 Login ─────────────────────────────────────────────────────────
@@ -314,8 +317,8 @@ class SIAFEBrowser:
                     except Exception:
                         await el.select_option(value=cliente)
                 break
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("login: falha ao selecionar cliente '%s' via %s: %s", cliente, sel, exc)
 
         # ── Exercício (dropdown) ──────────────────────────────────────────────
         year = exercicio or str(datetime.now().year)
@@ -328,11 +331,11 @@ class SIAFEBrowser:
                     except Exception:
                         try:
                             await el.select_option(value=year)
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.warning("login: exercício '%s' não selecionado (label e value falharam): %s", year, exc)
                 break
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("login: sondagem do seletor de exercício %s falhou: %s", sel, exc)
 
         await self.screenshot("02_credentials_filled")
 
@@ -481,16 +484,16 @@ class SIAFEBrowser:
                         await sel.select_option(label=ug)
                     except Exception:
                         await sel.select_option(value=ug)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("search_ob: falha ao selecionar UG '%s' em tplSip:selUg — busca seguirá sem filtro de UG: %s", ug, exc)
 
         if numero:
             try:
                 inp = await self._page.query_selector("#tplSip\\:iTxtCad\\:\\:content")
                 if inp:
                     await inp.fill(numero)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("search_ob: falha ao preencher número da OB '%s' em tplSip:iTxtCad: %s", numero, exc)
 
         # Fill date fields by label proximity (IDs not yet confirmed)
         if data_ini or data_fim:
@@ -900,8 +903,8 @@ class SIAFEBrowser:
                 r = await inp.bounding_box()
                 if r and r["width"] > 0:
                     labels_and_inputs.append({"el": inp, "ph": ph.lower(), "cls": cls})
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("search_execucao_ob: input ignorado ao coletar filtros FlexVision: %s", exc)
 
         def _fill_by_hint(hints: list[str], value: str) -> bool:
             """Fill first input whose placeholder or nearby label matches a hint."""
@@ -1051,16 +1054,16 @@ class SIAFEBrowser:
         """Wait for Vaadin JS rendering to settle."""
         try:
             await self._page.wait_for_load_state("networkidle", timeout=int(seconds * 1000 + 2000))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("_vaadin_settle: networkidle não atingido no FlexVision: %s", exc)
         await asyncio.sleep(max(0.5, seconds * 0.5))
 
     async def _adf_wait(self, timeout: int = 12000):
         """Wait for Oracle ADF page load."""
         try:
             await self._page.wait_for_load_state("networkidle", timeout=timeout)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("_adf_wait: networkidle não atingido na tela ADF/SIAFE2: %s", exc)
         await asyncio.sleep(1.5)
 
     async def _find(self, selectors: list[str], timeout: int = 3000):
@@ -1082,8 +1085,8 @@ class SIAFEBrowser:
                     t = await el.inner_text()
                     if t.strip():
                         return t.strip()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("_adf_error_text: sondagem do seletor de erro %s falhou: %s", sel, exc)
         return ""
 
     async def _count_grid_rows(self) -> int:
