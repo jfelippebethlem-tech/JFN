@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import sys
 import time
 from datetime import datetime, timezone
@@ -34,14 +35,17 @@ def _ano_corrente() -> int:
     return datetime.now(timezone.utc).year
 
 
+logger = logging.getLogger(__name__)
+
+
 def _log(m: str):
     line = f"[{int(time.time())}] {m}"
     print(line, flush=True)
     try:
         with open(_LOG, "a", encoding="utf-8") as f:
             f.write(line + "\n")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("não gravou no log %s: %s", _LOG, exc)
 
 
 def lock_status() -> dict:
@@ -72,8 +76,8 @@ def _acquire(quem: str) -> bool:
 def _release():
     try:
         _LOCK.unlink(missing_ok=True)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("release do lock falhou: %s", exc)
 
 
 def refresh_lock(quem: str | None = None) -> None:
@@ -87,8 +91,8 @@ def refresh_lock(quem: str | None = None) -> None:
         if quem:
             d["quem"] = quem
         _LOCK.write_text(json.dumps(d, ensure_ascii=False))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("heartbeat do lock não atualizado (lock pode parecer órfão e ser roubado): %s", exc)
 
 
 async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> dict:

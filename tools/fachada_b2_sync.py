@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import logging
 import os
 import re
 import sqlite3
@@ -59,6 +60,9 @@ _INDEX_REMOTE, _INDEX_BUCKET = fr.INDEX_REMOTE, fr.INDEX_BUCKET
 # Classes FLAGUEADAS (mesma lista do pedido do dono e do _FLAG_PRINT do fachada_visual_sweep + residenciais).
 _FLAG = ("terreno_baldio", "area_aberta_rural", "construcao_precaria_barraco",
          "casa_residencial", "predio_residencial")
+
+
+logger = logging.getLogger(__name__)
 
 
 def _carregar_env() -> None:
@@ -137,8 +141,8 @@ def _subir_foto(img: bytes, cnpj: str, remote_bucket: str) -> tuple[str, int]:
         if tmp:
             try:
                 os.unlink(tmp)  # tira o peso: nada permanente na VM
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.debug("tmp %s não removido: %s", tmp, exc)
 
 
 def _grava(cnpj: str, localizacao: str) -> None:
@@ -179,8 +183,8 @@ def _coletar_index(con: sqlite3.Connection) -> list[dict]:
                 "AND observacao <> '' ORDER BY LENGTH(observacao) DESC LIMIT 1", (cnpj,)).fetchone()
             if ob:
                 objeto = " ".join(str(ob["observacao"]).split())[:180]
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("observação de %s indisponível p/ o índice: %s", cnpj, exc)
         loc = (r["visual_img_b2"] or "").strip()  # 'remote:bucket/objeto' (localização completa)
         parsed = fr.parse_localizacao(loc)
         bucket = f"{parsed[0]}:{parsed[1]}" if parsed else ""  # 'remote:bucket' (onde a foto vive)
@@ -225,8 +229,8 @@ def _subir_texto_index(conteudo: str, objeto: str) -> bool:
         if tmp:
             try:
                 os.unlink(tmp)
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.debug("tmp %s não removido: %s", tmp, exc)
 
 
 def _index_csv(linhas: list[dict]) -> str:

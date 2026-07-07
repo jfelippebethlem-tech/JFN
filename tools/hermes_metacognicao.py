@@ -25,6 +25,7 @@ Uso:
 from __future__ import annotations
 
 import json
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -37,6 +38,9 @@ MANTER_BACKUPS = 7
 
 
 # ─── 5. Backup / restore da memória (sqlite → JSONL no vault) ─────────────────
+
+logger = logging.getLogger(__name__)
+
 
 def backup_memoria() -> dict:
     """Exporta memoria_aprendizado (compliance.db) + pericias (nucleo_memoria.db) p/ JSONL.
@@ -120,8 +124,8 @@ def _resumo_do_dia() -> str:
             partes.append("ALERTAS DAS ÚLTIMAS 24H:")
             partes += [f"- [{r['severidade']}] {r['titulo']}: {(r['descricao'] or '')[:180]}"
                        for r in rows]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("alertas 24h indisponíveis p/ a reflexão (seção some do prompt): %s", exc)
     try:
         con = sqlite3.connect(str(REPO / "data/nucleo_memoria.db"), timeout=30)
         con.row_factory = sqlite3.Row
@@ -135,8 +139,8 @@ def _resumo_do_dia() -> str:
             partes += [f"- {r['categoria']}/{r['orgao']}: R$ {r['valor']} risco={r['risco_score']} "
                        f"({r['classificacao']}) veredito={r['veredito_perito'] or 'pendente'}"
                        for r in rows]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("perícias 24h indisponíveis p/ a reflexão (seção some do prompt): %s", exc)
     return "\n".join(partes)
 
 
@@ -197,8 +201,8 @@ async def run() -> dict:
             await enviar_mensagem(
                 "🧠 *Hermes — meta-cognição diária:* novas regras de método: "
                 + ", ".join(res["auto_melhoria"][:5]))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("resumo da meta-cognição não entregue no Telegram: %s", exc)
     return res
 
 

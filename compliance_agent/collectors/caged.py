@@ -226,8 +226,8 @@ async def cruzar_folhas_multiplas(session) -> list[dict]:
         logger.error(f"Erro em cruzar_folhas_multiplas: {exc}")
         try:
             session.rollback()
-        except Exception:
-            pass
+        except Exception as rb_exc:
+            logger.debug("rollback falhou: %s", rb_exc)
 
     return suspeitos
 
@@ -308,8 +308,8 @@ async def verificar_clt_publico(session) -> list[dict]:
         logger.error(f"Erro em verificar_clt_publico: {exc}")
         try:
             session.rollback()
-        except Exception:
-            pass
+        except Exception as rb_exc:
+            logger.debug("rollback falhou: %s", rb_exc)
 
     return suspeitos
 
@@ -463,7 +463,7 @@ async def baixar_folha_orgao_externo(orgao: str, session) -> int:
         logger.error(f"Erro ao baixar folha {orgao}: {exc}")
         try:
             session.rollback()
-        except Exception:
-            pass
+        except Exception as rb_exc:
+            logger.debug("rollback falhou: %s", rb_exc)
 
     return count
