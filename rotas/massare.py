@@ -4,12 +4,15 @@ Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, JSONResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -84,8 +87,8 @@ async def api_massare_regime(symbol: str = "^GSPC"):
         sym = market.resolver_symbol((symbol or "^GSPC").strip())
         try:
             market._refresh_precos([sym])
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("refresh de preços de %s falhou (usa dado em disco): %s", sym, exc)
         return JSONResponse(content={"ok": True, "symbol": sym, "regime": ml.regime_hmm(sym)})
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
@@ -148,8 +151,8 @@ async def api_massare_prever(payload: Optional[dict] = None):
         symbol = market.resolver_symbol(termo)  # prata→SI=F, ouro→GC=F, etc.
         try:
             market._refresh_precos([symbol])  # garante dados mesmo fora do núcleo diário (ex.: prata)
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("refresh de preços de %s falhou (usa dado em disco): %s", symbol, exc)
         # motor 4-regimes+drift (edge OOS do universo ≥0); cai p/ o ensemble global se faltar dado
         p = engine_regime4.predict_today(symbol, horizon=horizon) or engine.predict_today(symbol, horizon=horizon)
         if not p:
@@ -163,8 +166,8 @@ async def api_massare_prever(payload: Optional[dict] = None):
             if df is not None and len(df) >= 2:
                 ult, ant = float(df["close"].iloc[-1]), float(df["close"].iloc[-2])
                 atual = {"preco": round(ult, 2), "var_pct": round((ult / ant - 1) * 100, 2) if ant else None}
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("estado atual de %s indisponível (segue só previsão): %s", symbol, exc)
         return JSONResponse({"ok": True, "ativo": market.NOMES.get(symbol, termo), "symbol": symbol,
                              "atual": atual, "previsao": p})
     except Exception as exc:  # noqa: BLE001

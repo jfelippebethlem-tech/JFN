@@ -9,7 +9,7 @@ Regra: a dívida só pode CAIR. Curou handlers? ABAIXE o teto no commit.
 Precisa de um `pass` legítimo novo? Logue (`logger.debug`) em vez de calar,
 ou justifique no commit por que o teto subiu.
 
-Curas: 643fa4e (75), be49d46 (45), ccf7ce2 (59) — teto inicial 245 em 2026-07-07.
+Curas: 643fa4e (75), be49d46 (45), ccf7ce2 (59), 4ª leva (14) — teto 231 em 2026-07-07.
 """
 import ast
 from pathlib import Path
@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # Fora da catraca: experimental/debug (baixo valor) e infra.
 SKIP = ("_SANDBOX", "tools/debug", ".venv", "tests", ".stversions", "__pycache__", "node_modules")
 
-TETO_MUDOS_PRODUCAO = 245  # 2026-07-07 — só abaixar (ou subir com justificativa no commit)
+TETO_MUDOS_PRODUCAO = 231  # 2026-07-07 — só abaixar (ou subir com justificativa no commit)
 
 
 def _mudos(py: Path) -> list[int]:

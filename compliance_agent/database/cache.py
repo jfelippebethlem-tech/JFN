@@ -6,10 +6,13 @@ allowing expensive API calls to be cached and reused across runs.
 """
 
 import json
+import logging
 import sqlite3
 import time
 from pathlib import Path
 from typing import Any, Optional
+
+logger = logging.getLogger(__name__)
 
 CACHE_DB_PATH = Path("data/api_cache.db")
 
@@ -68,8 +71,8 @@ def set(key: str, value: Any, ttl_hours: float = 24):
         )
         conn.commit()
         conn.close()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao gravar cache %s (API cara será re-chamada): %s", key, exc)
 
 
 def delete(key: str):
@@ -79,8 +82,8 @@ def delete(key: str):
         conn.execute("DELETE FROM cache WHERE key = ?", (key,))
         conn.commit()
         conn.close()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("falha ao remover chave %s do cache: %s", key, exc)
 
 
 def purge_expired():
@@ -90,8 +93,8 @@ def purge_expired():
         conn.execute("DELETE FROM cache WHERE expires_at <= ?", (time.time(),))
         conn.commit()
         conn.close()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("falha ao expurgar cache expirado: %s", exc)
 
 
 def stats() -> dict:
