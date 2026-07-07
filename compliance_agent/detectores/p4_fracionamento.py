@@ -119,15 +119,27 @@ def clusterizar(contratacoes: list[dict], limiar_sim: float = 0.8) -> list[list[
         if ra != rb:
             pai[rb] = ra
 
+    # pré-computa normalização e grupo explícito UMA vez (era recalculado por PAR — O(n²) normalizações;
+    # num sweep de ~600 contratações isso dominava o custo). Comportamento idêntico.
+    grupos_expl = [_grupo_objeto(c) for c in contratacoes]
+    normados = [_norm_objeto(c.get("objeto", "")) for c in contratacoes]
+
     for i in range(n):
-        gi = _grupo_objeto(contratacoes[i])
+        gi = grupos_expl[i]
         for j in range(i + 1, n):
-            gj = _grupo_objeto(contratacoes[j])
+            gj = grupos_expl[j]
             if gi and gj:
                 if gi == gj:
                     union(i, j)
             else:
-                if _similar(contratacoes[i].get("objeto", ""), contratacoes[j].get("objeto", "")) >= limiar_sim:
+                na, nb = normados[i], normados[j]
+                if not na or not nb:
+                    continue
+                # poda EXATA: quick_ratio/real_quick_ratio são upper bounds do ratio (difflib) —
+                # se o teto já fica abaixo do limiar, o ratio caro nunca alcançaria. Zero mudança de resultado.
+                sm = difflib.SequenceMatcher(None, na, nb)
+                if (sm.real_quick_ratio() >= limiar_sim and sm.quick_ratio() >= limiar_sim
+                        and sm.ratio() >= limiar_sim):
                     union(i, j)
 
     grupos: dict[int, list[int]] = {}
@@ -265,6 +277,9 @@ class P4Fracionamento(Detector):
             "exercicio": exercicio,
             "tipo_objeto": tipo_obj,
             "limite_dispensa_vigente": limite,
+            # rastreabilidade probatória (§7.4): QUAIS processos compõem o cluster achado — permite a
+            # consumidores (ex.: sweep em lote) auditar/remover o cluster e citar os autos na evidência.
+            "processos_cluster": [str(c.get("processo")) for c in disp if c.get("processo")][:50],
         }
 
         if limite is None:
