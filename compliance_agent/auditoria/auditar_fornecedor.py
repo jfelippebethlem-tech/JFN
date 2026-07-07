@@ -21,6 +21,7 @@ veja PASSO-A-PASSO.md (precisa de login SIAFE) e o módulo siafe_contratos.py.
 
 Regras: só LEITURA, ritmo humano (pausas), nunca expõe segredos.
 """
+import logging
 import sys
 import os
 import re
@@ -43,6 +44,9 @@ REPORTS = os.path.join(_ROOT, "reports")
 
 # ── CDP mínimo (sem dependências pesadas) ─────────────────────────────────────
 import websocket  # websocket-client
+
+
+logger = logging.getLogger(__name__)
 
 
 def _http(path, method="GET"):
@@ -105,8 +109,8 @@ class Aba:
     def renew(self):
         try:
             self.ws.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("ws.close no renew falhou: %s", exc)
         time.sleep(1)
         t = _tab_tfe()
         self.ws = websocket.create_connection(t["webSocketDebuggerUrl"], timeout=30, suppress_origin=True); self.i = 0

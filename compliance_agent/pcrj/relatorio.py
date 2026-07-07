@@ -9,6 +9,7 @@ XVI/XVII) — a apurar por CPF/RH, nunca afirmado aqui.
 """
 from __future__ import annotations
 
+import logging
 import html as _html
 from datetime import datetime, timezone
 
@@ -18,6 +19,9 @@ from compliance_agent.pcrj import db as _db
 _EFETIVO = ("GUARDA MUNICIPAL", "PROFESSOR", "MEDICO", "MÉDICO", "ENFERMEIR",
             "AGENTE DE ADMINISTRA", "AUXILIAR DE ENFERM", "FISCAL", "ANALISTA",
             "TECNICO", "TÉCNICO", "ASSISTENTE SOCIAL", "PROCURADOR", "AUDITOR")
+
+
+logger = logging.getLogger(__name__)
 
 
 def _e(x) -> str:
@@ -64,8 +68,8 @@ def _coletar(con) -> dict:
             """SELECT COUNT(DISTINCT tc.nome_norm) n FROM tse_candidatura tc
                WHERE EXISTS(SELECT 1 FROM pcrj_vinculo_cruzado vc
                     WHERE vc.nome_norm=tc.nome_norm AND vc.confianca='indicio_nome_unico')""").fetchone()["n"]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("métrica 'tripla' indisponível (sai zerada no relatório): %s", exc)
     return {"tot_camara": tot_camara, "tot_gab": tot_gab, "consultados": consultados,
             "por_conf": por_conf, "vinculos": vinculos, "cand": cand}
 
@@ -274,8 +278,8 @@ def exportar_xlsx(destino: str, db_path=None) -> str:
                             "SIM" if t["outra_cidade"] else "", "SIM" if t["pref"] else "",
                             "SIM" if (t["ingresso"] and t["ano"] < t["ingresso"]) else "",
                             "SIM" if t["n_munic"] >= 3 else ""])
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("aba de candidaturas do xlsx falhou (sai incompleta): %s", exc)
         ws2 = wb.create_sheet("Gabinetes")
         ws2.append(["Gabinete", "Vereador"])
         for g in con.execute("SELECT gabinete_num, vereador FROM pcrj_gabinetes ORDER BY gabinete_num"):

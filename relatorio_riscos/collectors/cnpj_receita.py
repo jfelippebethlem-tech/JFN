@@ -115,8 +115,8 @@ async def _buscar_brasilapi(cnpj_limpo: str, client: httpx.AsyncClient) -> Optio
         capital = 0.0
         try:
             capital = float(data.get("capital_social") or 0)
-        except (TypeError, ValueError):
-            pass
+        except (TypeError, ValueError) as exc:
+            logger.debug("capital_social ilegível: %s", exc)
 
         simples = False
         mei = False
@@ -166,8 +166,8 @@ async def _buscar_receitaws(cnpj_limpo: str, client: httpx.AsyncClient) -> Optio
         try:
             capital_str = (data.get("capital_social") or "0").replace(".", "").replace(",", ".")
             capital = float(capital_str)
-        except (TypeError, ValueError):
-            pass
+        except (TypeError, ValueError) as exc:
+            logger.debug("capital_social ilegível: %s", exc)
 
         return {
             "ok": True,

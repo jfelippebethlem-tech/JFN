@@ -23,6 +23,7 @@ ponto aproximado da rua (±100m); o veredito é do HUMANO, não do modelo.
 """
 from __future__ import annotations
 
+import logging
 import datetime as dt
 import hashlib
 import json as _json
@@ -59,6 +60,9 @@ CREATE TABLE IF NOT EXISTS fachada_veredito (
   veredito_raw   TEXT
 );
 """
+
+
+logger = logging.getLogger(__name__)
 
 
 def conectar(db: Path | str | None = None) -> sqlite3.Connection:
@@ -223,8 +227,8 @@ def _geocode_consome_cota() -> bool:
     try:
         _GEO_QUOTA_FILE.parent.mkdir(exist_ok=True)
         _GEO_QUOTA_FILE.write_text(_json.dumps(st), "utf-8")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("contador de cota de geocoding NÃO persistiu (guarda de custo furada): %s", exc)
     return True
 
 
@@ -499,8 +503,8 @@ def _grava_cursor(ts: float) -> None:
     try:
         _CURSOR.parent.mkdir(parents=True, exist_ok=True)
         _CURSOR.write_text(f"{ts:.6f}")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("cursor não gravado (próxima rodada reprocessa desde o anterior): %s", exc)
 
 
 def mensagens_novas_telegram(desde_ts: float, state_db: Path | None = None) -> list[tuple[float, str]]:
