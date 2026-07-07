@@ -16,6 +16,7 @@ Uso:
 import argparse
 import asyncio
 import json
+import logging
 import os
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -33,6 +34,7 @@ from compliance_agent.notifications.telegram import (
 from compliance_agent.reports.pdf import gerar_relatorio_diario
 
 console = Console()
+logger = logging.getLogger(__name__)
 
 REPORT_DIR = Path("reports")
 REPORT_DIR.mkdir(exist_ok=True)
@@ -104,8 +106,8 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                         f"Lei 14.133/2021 art. 14, I veda contratação de empresa punida."
                     ),
                 })
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Verificação CEIS/CNEP falhou para OB %s (%s): %s", ob.numero_ob, ob.favorecido_nome, exc)
 
     # 2. CNPJ — situação cadastral
     if len(cpf_cnpj) == 14:
@@ -141,10 +143,10 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                                 f"TCU Acórdão 6.100/2022 elenca empresa nova como indício de fachada."
                             ),
                         })
-                except Exception:
-                    pass
-        except Exception:
-            pass
+                except Exception as exc:
+                    logger.debug("Data de abertura inválida no CNPJ %s (OB %s): %s", cpf_cnpj, ob.numero_ob, exc)
+        except Exception as exc:
+            logger.debug("Consulta de CNPJ %s indisponível para OB %s: %s", cpf_cnpj, ob.numero_ob, exc)
 
     # 3. Fracionamento — múltiplas OBs para o mesmo favorecido no mesmo dia
     if ob.favorecido_nome:
@@ -172,8 +174,8 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                         f"Lei 14.133/2021 art. 75; TCU Acórdão 1.793/2011-Plenário."
                     ),
                 })
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Checagem de fracionamento falhou para %s (OB %s): %s", ob.favorecido_nome, ob.numero_ob, exc)
 
     # 4. OB sem processo SEI e valor alto
     if not ob.numero_processo and ob.valor and ob.valor > 50_000:
@@ -204,8 +206,8 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                         f"Lei 14.133/2021 art. 94 §1º; TCU Acórdão 5.782/2023."
                     ),
                 })
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Consulta PNCP indisponível para OB %s (processo %s): %s", ob.numero_ob, ob.numero_processo, exc)
 
     # 6. Valor redondo suspeito (> R$50k e múltiplo exato de R$10k)
     if ob.valor and ob.valor >= 50_000 and ob.valor % 10_000 == 0:
@@ -234,8 +236,8 @@ async def _analisar_ob_rapida(ob, session) -> list[dict]:
                     desc += "\n" + fund
                 if jurisp:
                     desc += "\n" + jurisp
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Fundamentação jurídica indisponível para alerta '%s': %s", a["titulo"][:80], exc)
             session.add(Alerta(
                 tipo=a["tipo"],
                 severidade=a["severidade"],
@@ -597,8 +599,8 @@ async def rodar_ciclo_relatorio_diario(args=None):
                 res = await analisar_processo_sei(ob.numero_processo, session)
                 if res and not res.get("erro"):
                     n_sei += 1
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Análise do processo SEI %s (OB %s) falhou: %s", ob.numero_processo, ob.numero_ob, exc)
         console.print(f"    {n_sei} processo(s) SEI analisado(s).")
     except Exception as e:
         console.print(f"    [yellow]SEI: {e}[/yellow]")
@@ -759,8 +761,8 @@ async def loop_atualizacao_juridica():
                                         session=session,
                                     )
                                     novos += 1
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.debug("Busca de jurisprudência indisponível para o tema '%s': %s", tema, exc)
                 finally:
                     session.close()
 
@@ -806,8 +808,8 @@ async def _loop_resiliente(nome: str, coro_factory):
                 await enviar_mensagem(
                     f"⚠️ Loop *{nome}* teve um erro e vai reiniciar:\n`{str(e)[:200]}`"
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("Aviso Telegram de queda do loop '%s' não enviado: %s", nome, exc)
             await asyncio.sleep(30)
 
 
@@ -823,8 +825,8 @@ async def _ping_inicio():
             "• Relatório completo às 08:00\n"
             "Comandos: /ajuda — /lei TERMO — /hermes — /esquemas"
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("Ping de inicialização no Telegram não enviado: %s", exc)
 
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
@@ -847,8 +849,8 @@ if __name__ == "__main__":
             init_db()
             try:
                 garantir_contexto_inicial()
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("Falha ao garantir contexto inicial da memória (Hermes): %s", exc)
             await _ping_inicio()
             await asyncio.gather(
                 _loop_resiliente("hermes",       loop_hermes_continuo),    # 1º: bootstrap

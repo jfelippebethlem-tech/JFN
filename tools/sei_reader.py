@@ -17,6 +17,7 @@ Uso: python tools/sei_reader.py "SEI-070002/008633/2022"
 """
 from __future__ import annotations
 import asyncio
+import logging
 import os
 import re
 import sys
@@ -25,6 +26,8 @@ _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO))
 from compliance_agent.envfile import carregar_env
 carregar_env()
+
+logger = logging.getLogger(__name__)
 
 URL = os.environ.get("SEI_LOGIN_URL") or \
     "https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI&infra_url=L3NlaS8="
@@ -40,8 +43,8 @@ async def _ate(pg, cond, max_ms: int = 6000, passo: int = 250) -> bool:
         try:
             if await cond():
                 return True
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("sondagem da condição de espera falhou: %s", exc)
         await pg.wait_for_timeout(passo)
         gasto += passo
     return False
@@ -84,7 +87,7 @@ async def login(pg, tentativas=40) -> bool:
             await pg.wait_for_timeout(2000); continue
         await pg.fill('input[name="txtUsuario"]', U)
         try: await pg.fill('#pwdSenha', P)
-        except Exception: pass
+        except Exception as exc: logger.debug("fill do #pwdSenha falhou (fallback via evaluate): %s", exc)
         await pg.evaluate(r"""(p)=>{document.querySelectorAll('#pwdSenha,input[name=\"pwdSenha\"]').forEach(e=>e.value=p);}""", P)
         cand = [o for o in form["opts"] if re.search(r"\biterj\b|terras", o["t"], re.I)]
         if cand:
@@ -171,13 +174,13 @@ async def _ler_cracked(pg, proc: str) -> dict:
     # 2) protocolo SEM prefixo
     try:
         await pg.fill('#txtProtocoloPesquisa', proto)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("fill do #txtProtocoloPesquisa (cracked) falhou, tentando keyboard.type: %s", exc)
     if not await pg.evaluate("""()=>{const e=document.querySelector('#txtProtocoloPesquisa');return e?e.value:''}"""):
         try:
             await pg.click('#txtProtocoloPesquisa'); await pg.keyboard.type(proto, delay=40)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("não preencheu o protocolo %s no #txtProtocoloPesquisa (cracked): %s", proto, exc)
     # 3) radio 'Processos' (não 'Documentos') + ☑ 'Considerar Documentos' + 'Restringir ao Órgão' DESMARCADO
     await pg.evaluate(r"""()=>{
       const txt=el=>((el&&el.parentElement?el.parentElement.innerText:'')||'').toLowerCase();
@@ -205,27 +208,27 @@ async def _ler_cracked(pg, proc: str) -> dict:
     if os.environ.get("SEI_DEBUG_SHOT"):
         try:
             await pg.screenshot(path=os.environ["SEI_DEBUG_SHOT"].replace(".png", "_form.png"), full_page=True)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("screenshot de debug do formulário (SEI_DEBUG_SHOT) falhou: %s", exc)
     # 4) clicar 'Pesquisar' UMA vez + esperar a NAVEGAÇÃO (sem duplo-submit, sem _abrir_primeiro_resultado)
     try:
         async with pg.expect_navigation(wait_until="domcontentloaded", timeout=25000):
             await pg.evaluate(r"""()=>{const b=document.querySelector('#sbmPesquisar')||[...document.querySelectorAll('button,input[type=submit],input[type=button]')].find(e=>/pesquisar/i.test(e.value||e.innerText||''));if(b)b.click();}""")
-    except Exception:
+    except Exception as exc:
         # navegação pode não disparar como 'navigation' (frameset) — segue p/ a espera ativa da árvore
-        pass
+        logger.debug("expect_navigation após Pesquisar (cracked) não disparou: %s", exc)
     try:
         await pg.wait_for_load_state("networkidle", timeout=15000)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("networkidle após Pesquisar (cracked) estourou o timeout: %s", exc)
     # 5) espera ATIVA o ifrArvore antes de extrair
     achou_arvore = await _esperar_arvore(pg)
     await pg.wait_for_timeout(1500)
     if os.environ.get("SEI_DEBUG_SHOT"):
         try:
             await pg.screenshot(path=os.environ["SEI_DEBUG_SHOT"], full_page=True)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("screenshot de debug (SEI_DEBUG_SHOT) falhou: %s", exc)
     dump = await _extrair_de_todos_frames(pg)
     dump["via"] = "cracked"
     dump["url"] = pg.url
@@ -253,8 +256,8 @@ async def seguir_relacionados(pg, proc_url: str, relacionados: list, max_rel: in
             await pg.goto(url, wait_until="domcontentloaded", timeout=25000)
             try:
                 await pg.wait_for_load_state("networkidle", timeout=15000)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("networkidle no relacionado %s estourou o timeout: %s", pid, exc)
             for _ in range(8):  # espera ATIVA a árvore (ifrArvore) carregar
                 await pg.wait_for_timeout(1500)
                 if any("arvore" in (fr.url or "").lower() for fr in pg.frames):
@@ -301,8 +304,8 @@ async def _conteudo_doc(pg, doc: dict) -> dict | None:
                 txt_ocr = await loop.run_in_executor(None, lambda: ocr_documento(body, tipo=tipo))
                 if txt_ocr and len(txt_ocr.strip()) > 20:
                     return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr, "via": "ocr"}
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("download/OCR do doc %r falhou: %s", (doc.get("texto") or doc.get("url") or "")[:80], exc)
     # 2) doc HTML nativo (editor): navega e lê o innerText
     try:
         await pg.goto(doc["url"], wait_until="domcontentloaded", timeout=20000)
@@ -344,8 +347,8 @@ async def _montar_resultado_cracked(pg, proc: str, dump: dict, usar_cache: bool 
     try:
         cache_file.write_text(_json.dumps(res, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
         res["_cache_path"] = str(cache_file)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("gravação do cache %s (cracked) falhou: %s", cache_file, exc)
     return res
 
 
@@ -361,8 +364,8 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
             c = _json.loads(cache_file.read_text(encoding="utf-8"))
             if c.get("_cached_at") and (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < 86400:
                 c["_de_cache"] = True; return c
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("leitura do cache %s falhou, seguindo p/ leitura viva: %s", cache_file, exc)
     # navega p/ a Pesquisa AVANÇADA (menu "Pesquisa") — clique REAL preserva a sessão
     await pg.evaluate(r"""()=>{const e=[...document.querySelectorAll('a')].find(a=>/^pesquisa$/i.test((a.innerText||'').trim())||/protocolo_pesquisar\b/i.test(a.href||a.getAttribute('onclick')||''));if(e)e.click();}""")
     await _ate(pg, lambda: _tem_campo_protocolo(pg), 5000)
@@ -370,11 +373,12 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     if tem_avancada:
         # protocolo EXATO: fill; se o ADF não aceitar, keyboard.type (keystrokes reais)
         try: await pg.fill('#txtProtocoloPesquisa', proc)
-        except Exception: pass
+        except Exception as exc: logger.debug("fill do #txtProtocoloPesquisa falhou, tentando keyboard.type: %s", exc)
         if not await pg.evaluate("""()=>{const e=document.querySelector('#txtProtocoloPesquisa');return e?e.value:''}"""):
             try:
                 await pg.click('#txtProtocoloPesquisa'); await pg.keyboard.type(proc, delay=40)
-            except Exception: pass
+            except Exception as exc:
+                logger.warning("não preencheu o protocolo %s no #txtProtocoloPesquisa: %s", proc, exc)
         # avançada vem com "Restringir ao Órgão da Unidade" MARCADO → desmarcar p/ busca global (lição 2026-06-12).
         await pg.evaluate(r"""()=>{document.querySelectorAll('input[type=checkbox]').forEach(c=>{const l=((c.id||'')+' '+(c.name||'')+' '+(c.parentElement?(c.parentElement.innerText||''):'')).toLowerCase();if(/restring|unidade\s+do\s+[óo]rg|[óo]rg[ãa]o\s+da\s+unidade/.test(l)&&c.checked){try{c.click();}catch(e){}}});}""")
         # SUBMIT robusto: o clique-por-texto às vezes não dispara o form do SEI. Tenta botão por id/valor,
@@ -393,12 +397,12 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
         }""")
         try:
             await pg.click('#txtProtocoloPesquisa'); await pg.keyboard.press('Enter')
-        except Exception: pass
+        except Exception as exc: logger.debug("Enter no #txtProtocoloPesquisa (submit extra) falhou: %s", exc)
     else:
         # fallback: pesquisa rápida (escopo da unidade)
         await pg.evaluate(r"""(n)=>{const i=document.querySelector('#txtPesquisaRapida');if(i){i.value=n;const f=document.getElementById('frmProtocoloPesquisaRapida');if(f)f.submit();}}""", proc)
     try: await pg.wait_for_load_state("networkidle", timeout=15000)
-    except Exception: pass
+    except Exception as exc: logger.debug("networkidle após submit da pesquisa estourou o timeout: %s", exc)
     await _ate(pg, lambda: _tem_resultado_ou_arvore(pg), 4000)
     await _abrir_primeiro_resultado(pg)
     await pg.wait_for_timeout(3000)
@@ -428,8 +432,8 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     try:
         cache_file.write_text(_json.dumps(res, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
         res["_cache_path"] = str(cache_file)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("gravação do cache %s falhou: %s", cache_file, exc)
     return res
 
 
@@ -461,8 +465,8 @@ async def ler(numero: str, usar_cache: bool = True, tentativas_login: int = 30,
             if c.get("_cached_at") and (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < 86400:
                 c["_de_cache"] = True
                 return c
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("leitura do cache %s falhou, seguindo p/ leitura viva: %s", cache_file, exc)
     if not P:
         return {"numero": numero, "erro": "INDISPONÍVEL: SEI_PASS vazio (.env)", "texto": "", "conteudo_documentos": []}
     try:

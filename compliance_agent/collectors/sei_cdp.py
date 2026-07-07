@@ -21,11 +21,14 @@ Uso (standalone):
 
 import asyncio
 import json
+import logging
 import os
 import re
 from datetime import datetime
 from pathlib import Path
 from typing import Optional, Callable
+
+logger = logging.getLogger(__name__)
 
 CDP_URL = "http://127.0.0.1:9222"
 SEI_PESQUISA = (
@@ -114,8 +117,8 @@ async def login_sei_interno(page) -> dict:
         await page.evaluate(_JS_CLICA_LOGIN)
         try:
             await page.wait_for_load_state("domcontentloaded", timeout=30000)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("SEI login: wait_for_load_state após clique não concluiu: %s", exc)
         await asyncio.sleep(1.5)
         txt = (await page.inner_text("body")).lower()
         if any(m in txt for m in ("senha inválida", "senha invalida", "usuário ou senha", "usuario ou senha",
@@ -370,8 +373,8 @@ async def _resolver_captcha_ocr(page) -> bool:
     await page.evaluate(_JS_CLICA_PESQUISAR)
     try:
         await page.wait_for_load_state("domcontentloaded", timeout=20000)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("SEI captcha: wait_for_load_state após reenvio não concluiu: %s", exc)
     await asyncio.sleep(1.5)
     return True
 
@@ -410,8 +413,8 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
         await page.evaluate(_JS_CLICA_PESQUISAR)
         try:
             await page.wait_for_load_state("domcontentloaded", timeout=30000)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("SEI busca %s: wait_for_load_state após pesquisar não concluiu: %s", numero, exc)
         await asyncio.sleep(1.5)
 
         txt = await page.inner_text("body")
@@ -427,8 +430,8 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
             Path("data/tmp").mkdir(parents=True, exist_ok=True)
             Path("data/tmp/sei_last_search.html").write_text(await page.content(), encoding="utf-8")
             Path("data/tmp/sei_last_search.txt").write_text(txt, encoding="utf-8")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("SEI busca %s: falha ao gravar dump em data/tmp: %s", numero, exc)
 
         return {
             "ok": True,
@@ -442,8 +445,8 @@ async def submit_sei_search(numero: str, *, max_attempts: int = MAX_TENTATIVAS_C
         try:
             if p:
                 await p.stop()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("SEI busca: falha ao encerrar playwright: %s", exc)
 
 
 # ── Leitura completa do processo (árvore + documentos) ────────────────────────
@@ -481,8 +484,8 @@ async def ler_processo_sei_via_chrome(
                 if delta.total_seconds() < 86400:
                     cached["_de_cache"] = True
                     return cached
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("SEI %s: cache %s ilegível, refazendo leitura: %s", numero, cache_file.name, exc)
 
     async def _notificar(msg: str):
         if avisar:
@@ -490,8 +493,8 @@ async def ler_processo_sei_via_chrome(
                 r = avisar(msg)
                 if asyncio.iscoroutine(r):
                     await r
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("SEI %s: callback de notificação falhou: %s", numero, exc)
 
     if not await _chrome_disponivel():
         return {
@@ -595,8 +598,8 @@ async def ler_processo_sei_via_chrome(
                 json.dumps(resultado, ensure_ascii=False, indent=2, default=str),
                 encoding="utf-8",
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("SEI %s: falha ao gravar cache %s: %s", numero, cache_file, exc)
 
         return resultado
 
@@ -606,8 +609,8 @@ async def ler_processo_sei_via_chrome(
     finally:
         try:
             await p.stop()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("SEI %s: falha ao encerrar playwright: %s", numero, exc)
 
 
 def _proxy_do_env() -> dict | None:
@@ -655,8 +658,8 @@ async def ler_processo_sei_launch(
             ).total_seconds() < 86400:
                 cached["_de_cache"] = True
                 return cached
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("SEI %s: cache %s ilegível, refazendo leitura: %s", numero, cache_file.name, exc)
 
     from playwright.async_api import async_playwright
     p = await async_playwright().start()
@@ -725,8 +728,8 @@ async def ler_processo_sei_launch(
         resultado["_cached_at"] = datetime.now().isoformat()
         try:
             cache_file.write_text(json.dumps(resultado, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("SEI %s: falha ao gravar cache %s: %s", numero, cache_file, exc)
         return resultado
     except Exception as e:
         resultado["erro"] = f"{type(e).__name__}: {e}"
@@ -734,8 +737,8 @@ async def ler_processo_sei_launch(
     finally:
         try:
             await p.stop()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("SEI %s: falha ao encerrar playwright: %s", numero, exc)
 
 
 async def _abrir_primeiro_resultado(page) -> bool:

@@ -23,10 +23,13 @@ data/diagnostics/ e em data/doerj_learning.json para refino futuro.
 import asyncio
 import base64
 import json
+import logging
 import re
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Optional
+
+logger = logging.getLogger(__name__)
 
 CDP_URL = "http://127.0.0.1:9222"
 IOERJ = "http://www.ioerj.com.br"
@@ -161,8 +164,8 @@ def _load_learning() -> dict:
     try:
         if _LEARN_FILE.exists():
             return json.loads(_LEARN_FILE.read_text(encoding="utf-8"))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao ler doerj_learning.json (%s): %s", _LEARN_FILE, exc)
     return {"edicoes_por_data": {}, "errors": []}
 
 
@@ -172,8 +175,8 @@ def _save_learning(state: dict):
         _LEARN_FILE.write_text(
             json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao gravar doerj_learning.json (%s): %s", _LEARN_FILE, exc)
 
 
 # ── JavaScript injetado no Chrome ────────────────────────────────────────────
@@ -311,9 +314,9 @@ class DOERJCollector:
         finally:
             if page:
                 try: await page.close()
-                except Exception: pass
+                except Exception as exc: logger.debug("falha ao fechar página da edição %s: %s", data, exc)
             try: await p.stop()
-            except Exception: pass
+            except Exception as exc: logger.debug("falha ao parar playwright na coleta de %s: %s", data, exc)
 
         if erros:
             print(f"[DOERJ] Avisos em {data}: {erros}")
@@ -349,12 +352,12 @@ class DOERJCollector:
                                                   edicao=edicao, titulo=titulo)
             print(f"[DOERJ] coletar_edicao_url: {len(pubs)} atos de {url_edicao[:60]}")
             try: await page.close()
-            except Exception: pass
+            except Exception as exc: logger.debug("falha ao fechar página de %s: %s", url_edicao[:80], exc)
         except Exception as e:
             print(f"[DOERJ] Erro em coletar_edicao_url: {e}")
         finally:
             try: await p.stop()
-            except Exception: pass
+            except Exception as exc: logger.debug("falha ao parar playwright em coletar_edicao_url %s: %s", url_edicao[:80], exc)
 
         if self._session and pubs:
             self._salvar_publicacoes(pubs)
@@ -413,8 +416,8 @@ class DOERJCollector:
                         dump2 = await page.evaluate(_JS_EXTRACT)
                         if len(dump2.get("text", "")) > len(texto):
                             texto = dump2["text"]
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("falha ao navegar para iframe %s da edição de %s: %s", abs_src[:80], data, exc)
 
         self._salvar_diagnostico(data, {**dump, "text_head": texto[:1500], "url_edicao": url})
 
@@ -508,8 +511,8 @@ class DOERJCollector:
                 "links":     dump.get("links", [])[:80],
                 "text_head": dump.get("text_head") or dump.get("text", "")[:1500],
             }, ensure_ascii=False, indent=2), encoding="utf-8")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("falha ao gravar diagnóstico da edição de %s: %s", data, exc)
 
     def _registrar_erros(self, data: date, erros: list[str]):
         self._state.setdefault("errors", []).append({
@@ -576,8 +579,8 @@ if __name__ == "__main__":
         if arg:
             try:
                 alvo = date.fromisoformat(arg)
-            except ValueError:
-                pass
+            except ValueError as exc:
+                logger.warning("data inválida no argumento %r, usando hoje: %s", arg, exc)
         pubs = asyncio.run(c.coletar_data(alvo))
         print(f"DOERJ {alvo}: {len(pubs)} publicações")
         for p in pubs[:5]:

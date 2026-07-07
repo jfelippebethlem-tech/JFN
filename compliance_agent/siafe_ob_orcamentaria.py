@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import os
 import re
 import sys
@@ -27,6 +28,8 @@ from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO))
+
+logger = logging.getLogger(__name__)
 
 # SIAFE 2.0 por padrão; aponte JFN_SIAFE_LOGIN_URL p/ o SIAFE 1 (www5.fazenda.rj.gov.br/SiafeRio,
 # anos 2016–2023) — mesmo login/nav ADF. Sessões independentes → pode rodar 1 e 2 em paralelo.
@@ -164,8 +167,8 @@ async def _login(pg, exercicio: int):
     from compliance_agent.envfile import carregar_env
     try:
         carregar_env()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("falha ao carregar .env antes do login SIAFE: %s", exc)
     # Credenciais POR SISTEMA (opcional): SIAFE1_USER/PASS (www5) e SIAFE2_USER/PASS (siafe2) têm
     # precedência sobre SIAFE_USER/PASS. Permite plugar uma conta SIAFE 1 com acesso GLOBAL (todas as UGs)
     # sem mexer na credencial do SIAFE 2. Cai no SIAFE_USER/PASS quando a específica não existe.
@@ -207,8 +210,8 @@ async def _login(pg, exercicio: int):
         # o login prosseguindo. Tolerar (o fluxo abaixo espera/verifica o estado).
         try:
             await pg.evaluate("""()=>{const b=document.getElementById('loginBox:btnConfirmar');if(b)b.click();}""")
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("clique JS de fallback no botão de login (loginBox:btnConfirmar) falhou: %s", exc)
     await pg.wait_for_timeout(4000)
     # EXERCÍCIO BLOQUEADO para esta conta? (ex.: "O SIAFE-Rio 2023 está bloqueado...")
     body0 = ((await pg.inner_text("body")) or "")
@@ -252,8 +255,8 @@ async def _login(pg, exercicio: int):
         return {"ok": True, "url": pg.url}
     try:
         await pg.screenshot(path=str(_REPO / "data/sei_cache/ERRO_login.png"))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("screenshot de erro de login (ERRO_login.png) falhou: %s", exc)
     return {"ok": False, "erro": "login_falhou", "url": pg.url, "body": body[:300]}
 
 
@@ -263,8 +266,8 @@ async def _shot(pg, nome):
         return
     try:
         await pg.screenshot(path=f"/tmp/siafe_nav_{nome}.png")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("screenshot de debug siafe_nav_%s falhou: %s", nome, exc)
 
 
 async def _contar_linhas(pg) -> int:
@@ -433,8 +436,8 @@ def _ckpt_load(exercicio: int) -> tuple[set, list, list]:
                 if m:
                     vistos.add(m.group(0))
             return vistos, linhas, d.get("header", [])
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("checkpoint de OBs (exercício %s) ausente ou ilegível em %s: %s", exercicio, _CKPT, exc)
     return set(), [], []
 
 
@@ -443,8 +446,8 @@ def _ckpt_save(exercicio: int, header: list, linhas: list):
         _CKPT.parent.mkdir(parents=True, exist_ok=True)
         _CKPT.write_text(json.dumps({"exercicio": exercicio, "header": header, "linhas": linhas},
                                     ensure_ascii=False), encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao salvar checkpoint de OBs (exercício %s) em %s: %s", exercicio, _CKPT, exc)
 
 
 async def coletar(exercicio=2025, maxn=300, headless=True, vistos=None, linhas=None) -> dict:
@@ -475,14 +478,14 @@ async def coletar(exercicio=2025, maxn=300, headless=True, vistos=None, linhas=N
             if not nav.get("ok"):
                 try:
                     await pg.screenshot(path=str(_REPO / "data/sei_cache/ERRO_nav_ob_orc.png"))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.debug("screenshot de erro de navegação (ERRO_nav_ob_orc.png) falhou: %s", exc)
                 return {"ok": False, "etapa": "navegacao", "detail": "tabela tblOBOrcamentaria não apareceu",
                         "itens_submenu": nav.get("itens_submenu")}
             try:
                 await ctx.storage_state(path=str(_STATE))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("falha ao salvar storage_state da sessão SIAFE em %s: %s", _STATE, exc)
             # remove o teto de 1000 registros/consulta antes de varrer (docs/SIAFE-RIO2-GUIA-AUTOMACAO.md §5)
             lim = await _remover_limite(pg)
             _log("limite 1000: " + {"marcado": "removido via chkRemoveLimit", "ja_marcado": "já removido",
@@ -583,8 +586,8 @@ async def _filtrar(pg, prop, op, valor) -> dict:
             e = pg.get_by_text(t, exact=True).first
             if await e.is_visible(timeout=800):
                 await e.click(); await adf.wait()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("popup '%s' não encontrado/fechado antes do filtro: %s", t, exc)
     if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
         await _click_real(pg, _F_DISC); await adf.wait()
     if await pg.locator(f'[id="{_F_PROP}"]').count() == 0:
@@ -610,8 +613,8 @@ def _ckpt_marca(ex, pref) -> None:
     feitos = _ckpt_prefixos(ex); feitos.add(pref)
     try:
         _FILTRO_CKPT(ex).write_text(json.dumps(sorted(feitos)))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao gravar checkpoint de prefixo %s (exercício %s): %s", pref, ex, exc)
 
 
 async def _sweep_sessao(exercicio, prefixos, maxn, headless, _log) -> dict:
@@ -637,8 +640,8 @@ async def _sweep_sessao(exercicio, prefixos, maxn, headless, _log) -> dict:
                 return {"ok": False, "etapa": "navegacao"}
             try:
                 await ctx.storage_state(path=str(_STATE))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("falha ao salvar storage_state da sessão SIAFE em %s: %s", _STATE, exc)
             adf = AdfSync(pg); await adf.boot()
             for pref in pend:
                 try:
@@ -731,8 +734,8 @@ async def _set_valor(pg, sel, valor):
         if (await v.input_value()).strip() != str(valor):
             await v.fill(""); await pg.wait_for_timeout(150)
             await pg.keyboard.type(str(valor), delay=90)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("verificação do valor '%s' no campo de filtro falhou: %s", valor, exc)
     # COMMIT do valor: dispara o valueChange via o CLIENTE ADF (FUNCIONA no SIAFE 1 — campo sem autoSubmit —
     # e no SIAFE 2). Sem isso, no SIAFE 1 o filtro não aplica. Tab fica como reforço (SIAFE 2).
     try:
@@ -746,8 +749,8 @@ async def _set_valor(pg, sel, valor):
                           if(typeof AdfValueChangeEvent!=='undefined') new AdfValueChangeEvent(c, '', val).queue(true); }
                }catch(e){}}""",
             [sel, str(valor)])
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("commit ADF do valor '%s' no filtro (%s) falhou — filtro pode não aplicar no SIAFE 1: %s", valor, sel, exc)
     await pg.keyboard.press("Tab")
 
 
@@ -792,8 +795,8 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
             def _save_ckpt():
                 try:
                     ckp.write_text(_json.dumps({"done": sorted(done), "capped": sorted(capped)}, ensure_ascii=False))
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("falha ao gravar checkpoint da UG %s (exercício %s) em %s: %s", ug, exercicio, ckp, exc)
 
             try:
                 from compliance_agent import siafe_runner as _sr
