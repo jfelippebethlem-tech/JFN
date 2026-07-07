@@ -5,11 +5,14 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Request
+
+logger = logging.getLogger(__name__)
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:  # anotação apenas; import real é lazy nos handlers
@@ -61,8 +64,8 @@ async def api_hermes_definir_missao(payload: dict):
         try:
             import asyncio
             asyncio.create_task(mission_queue.enqueue({"tipo": "missao", "texto": texto}))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("missão definida mas não enfileirada (fica só no banco, não executa já): %s", exc)
         return JSONResponse({"ok": True, "missao": texto, "queue_size": mission_queue.qsize()})
     finally:
         s.close()
@@ -231,8 +234,8 @@ async def api_hermes_parar(payload: Optional[dict] = None):
                     break
             while not mission_queue.empty():
                 mission_queue.dequeue_nowait()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("limpeza da fila de missões interrompida: %s", exc)
         HermesGoalAgent(session=s).limpar_missao()
         return JSONResponse({"ok": True, "status": "parado"})
     except Exception as e:

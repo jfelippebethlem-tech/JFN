@@ -6,6 +6,7 @@ for simple tasks to reduce API costs.
 """
 
 import json
+import logging
 import os
 from datetime import datetime
 from pathlib import Path
@@ -16,6 +17,8 @@ from compliance_agent.llm.local import (
     extract_entities,
     is_available as _check_ollama,
 )
+
+logger = logging.getLogger(__name__)
 
 MONTHLY_TOKEN_LIMIT = int(os.environ.get("MONTHLY_TOKEN_LIMIT", "500000"))
 
@@ -46,8 +49,8 @@ class LLMRouter:
             try:
                 self._budget_data = json.loads(BUDGET_FILE.read_text(encoding="utf-8"))
                 return self._budget_data
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("budget de tokens ilegível em %s (recomeça zerado — contagem do mês se perde): %s", BUDGET_FILE, exc)
         self._budget_data = {}
         return self._budget_data
 
@@ -60,8 +63,8 @@ class LLMRouter:
                 json.dumps(self._budget_data, ensure_ascii=False, indent=2),
                 encoding="utf-8",
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("falha ao gravar budget de tokens em %s (uso do mês não persiste): %s", BUDGET_FILE, exc)
 
     def record_claude_usage(self, input_tokens: int, output_tokens: int):
         """Record Claude API token usage for the current month."""
@@ -141,8 +144,8 @@ class LLMRouter:
             for cat in categories:
                 if cat.lower() in r:
                     return cat
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("classificação via free LLM falhou (usando categoria padrão %s): %s", categories[0], exc)
         return categories[0]
 
     def summarize(self, text: str, max_words: int = 100) -> str:

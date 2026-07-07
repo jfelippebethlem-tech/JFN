@@ -15,6 +15,7 @@ detectado, retorna status 'mfa' para a IA pedir o código ao Mestre Jorge.
 
 Uso: python -m compliance_agent.siafe_login [--exercicio 2025]
 """
+import logging
 import os
 import sys
 
@@ -22,13 +23,16 @@ LOGIN_URL = "https://siafe2.fazenda.rj.gov.br/Siafe/faces/login.jsp"
 EXERCICIOS = {2027: "0", 2026: "1", 2025: "2", 2024: "3", 2023: "4"}
 
 
+logger = logging.getLogger(__name__)
+
+
 def _creds():
     # garante que o .env esteja carregado (o CLI `python -m` não passa pelo loader do server.py)
     try:
         from compliance_agent.envfile import carregar_env
         carregar_env()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("carregar_env falhou (segue com o ambiente atual): %s", exc)
     u = (os.environ.get("SIAFE_USER") or "").strip()
     p = (os.environ.get("SIAFE_PASS") or "").strip()
     placeholder = (not u or not p or u.upper().startswith("SEU_") or p.upper().startswith("SUA_"))
@@ -74,8 +78,8 @@ def login(exercicio=2025, headless=True, timeout_ms=45000):
                     sel = selects.nth(selects.count() - 1)  # exercício é o último
                 if sel.count():
                     sel.first.select_option(label=str(exercicio))
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.warning("não selecionou exercício %s no login SIAFE (consulta pode sair do exercício errado): %s", exercicio, exc)
             pg.keyboard.press("Enter")
             pg.wait_for_timeout(6000)
 
@@ -94,8 +98,8 @@ def login(exercicio=2025, headless=True, timeout_ms=45000):
                             btn = pg.get_by_text(lbl, exact=True)
                             if btn.count():
                                 btn.first.click(); pg.wait_for_timeout(3500); clicou = True; break
-                        except Exception:
-                            pass
+                        except Exception as exc:
+                            logger.debug("botão %r do diálogo de sessão não clicável: %s", lbl, exc)
                     if not clicou:
                         break
                 else:
