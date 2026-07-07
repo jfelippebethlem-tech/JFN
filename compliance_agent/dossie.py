@@ -285,7 +285,7 @@ def _gerar_pdf(d: dict) -> str:
     pdf.set_auto_page_break(auto=True, margin=15)
     pdf.add_page()
     pdf.set_font("Helvetica", "B", 15)
-    pdf.cell(0, 9, "DOSSIE 360 - JFN", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 9, "DOSSIE 360", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_font("Helvetica", "", 10)
     pdf.cell(0, 6, _ascii(f"Alvo: {nome}  |  CNPJ: {d['alvo']}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.cell(0, 6, _ascii(f"Gerado em: {d.get('gerado_em','')}"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)

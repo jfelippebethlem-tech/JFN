@@ -752,7 +752,7 @@ def render_md(ctx: dict) -> str:
     add("")
     add("*Due Diligence de Integridade · Exposição Financeira · Risco & Compliance*")
     add("")
-    add(f"**CNPJ:** {ctx['cnpj_fmt']}  |  **Data:** {ctx['data']}  |  **Analista:** JFN Intelligence Engine")
+    add(f"**CNPJ:** {ctx['cnpj_fmt']}  |  **Data:** {ctx['data']}  |  **Analista:** Controle Externo (automatizado)")
     add("**Metodologia:** due diligence de integridade (padrão Kroll/Deloitte) · matriz de risco TCU P×I · OB = pagamento (fonte de verdade)")
     add(f"**Classificação de fonte:** OBs/Contratos = **REAL** (SIAFE/TFE) · Perfil/Sanções/Rede = **{ctx['fonte_enriq']}**")
     add("")
@@ -1051,7 +1051,7 @@ def render_md(ctx: dict) -> str:
     add(_render_anomalias(ctx))
 
     # 9. Análise jurídica e de mérito — o PARECER escrito do JFN
-    add("## 9. ANÁLISE JURÍDICA E DE MÉRITO — PARECER PRELIMINAR DO JFN")
+    add("## 9. ANÁLISE JURÍDICA E DE MÉRITO — PARECER PRELIMINAR")
     add("")
     raciocinio = ctx.get("raciocinio")
     if raciocinio:
@@ -1074,7 +1074,7 @@ def render_md(ctx: dict) -> str:
     add("")
     add("**Curto prazo (30–90 dias):** abrir os processos SEI dos maiores pagamentos; checar aditivos (>25%).")
     add("")
-    add("**Estrutural:** monitoramento contínuo via JFN (timers TFE/OB) e atualização trimestral deste relatório.")
+    add("**Estrutural:** monitoramento contínuo automatizado (timers TFE/OB) e atualização trimestral deste relatório.")
     add("")
 
     # 11. Referências
@@ -1084,7 +1084,7 @@ def render_md(ctx: dict) -> str:
     add("- **Perfil/sanções/rede:** Receita Federal, PNCP, CEIS/CNEP/CEPIM (via `relatorio_riscos`).")
     add("- **Normas:** Lei 14.133/2021; Lei 8.666/93; Lei 4.320/64; CF/88 Art. 37; metodologia TCU P×I; ACFE Report to the Nations 2024.")
     add("")
-    add(f"_Relatório gerado automaticamente pelo JFN Intelligence Engine em {ctx['data']}. "
+    add(f"_Relatório gerado automaticamente em {ctx['data']}. "
         "Não substitui análise jurídica especializada._")
     add("")
     return "\n".join(L)

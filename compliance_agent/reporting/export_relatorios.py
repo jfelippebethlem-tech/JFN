@@ -48,7 +48,7 @@ def _fmt_currency(value) -> str:
 
 def build_txt_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterable[Alerta]) -> Path:
     with path.open("w", encoding="utf-8") as f:
-        f.write("Relatorio de Auditoria — JFN\n")
+        f.write("Relatorio de Auditoria — Controle Externo\n")
         f.write(f"Gerado em {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
         f.write(f"Total OBs: {sum(1 for _ in rows)}\n\n")
         f.write("== Alertas ==\n")
@@ -74,7 +74,7 @@ def build_docx_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterabl
         ) from e
 
     doc = Document()
-    doc.add_heading("Relatório de Auditoria — JFN", 0)
+    doc.add_heading("Relatório de Auditoria — Controle Externo", 0)
     doc.add_paragraph(f"Gerado em {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     doc.add_paragraph(f"Total OBs: {sum(1 for _ in rows)}")
 
@@ -106,7 +106,7 @@ def build_pdf_report(path: Path, rows: Iterable[OrdemBancaria], alerts: Iterable
     class Pdf(FPDF):
         def header(self):
             self.set_font("Arial", "B", 12)
-            self.cell(0, 10, "Relatorio de Auditoria — JFN", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            self.cell(0, 10, "Relatorio de Auditoria — Controle Externo", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
             self.ln(4)
 
     pdf = Pdf()

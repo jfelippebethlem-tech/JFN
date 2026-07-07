@@ -597,7 +597,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
     pdf.cell(0, 13, _t("RELATÓRIO DE INTELIGÊNCIA DE FORNECEDOR"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.set_font(pdf._fam, "", 9); pdf.set_fill_color(45, 60, 90)
     pdf.cell(0, 7, _t("Due Diligence de Integridade · Exposição Financeira · Risco & Compliance"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
-    pdf.cell(0, 7, _t(f"JFN Intelligence Engine  |  {ctx['data']}"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+    pdf.cell(0, 7, _t(f"Controle Externo (automatizado)  |  {ctx['data']}"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.ln(4)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "B", 14)
     _mc(pdf, 8, _t(ctx["nome"]))
@@ -702,7 +702,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
     # Parecer jurídico e de mérito (texto corrido) — o diferencial do JFN
     pdf.add_page()
     pdf.set_font(pdf._fam, "B", 14); pdf.set_text_color(20, 30, 50)
-    pdf.cell(0, 10, _t("Análise Jurídica e de Mérito — Parecer Preliminar do JFN"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.cell(0, 10, _t("Análise Jurídica e de Mérito — Parecer Preliminar"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_text_color(0, 0, 0)
     raciocinio = ctx.get("raciocinio")
     if raciocinio:
@@ -713,7 +713,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
     _render_parecer_pdf(pdf, _t, parecer_fornecedor(ctx))
 
     pdf.ln(3); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(120, 120, 120)
-    _mc(pdf, 4, _t("Gerado automaticamente pelo JFN Intelligence Engine. Não substitui análise jurídica especializada."))
+    _mc(pdf, 4, _t("Gerado automaticamente. Não substitui análise jurídica especializada."))
 
     Path(destino).parent.mkdir(parents=True, exist_ok=True)
     pdf.output(destino)

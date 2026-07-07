@@ -1572,7 +1572,7 @@ def render_md(ctx: dict) -> str:
             f"Órgão superior: {alias.get('orgao_superior','—')}. Nas Ordens Bancárias os pagamentos podem "
             f"aparecer rotulados pelo nome do órgão superior — aqui são atribuídos pela UG.")
         add("")
-    add(f"**Data:** {ctx['data']}  |  **Analista:** JFN Intelligence Engine  |  **Fonte:** TFE-RJ (espelho de OBs, D-1 — magnitude movimentada; pagamento auditado = SIAFE)")
+    add(f"**Data:** {ctx['data']}  |  **Analista:** Controle Externo (automatizado)  |  **Fonte:** TFE-RJ (espelho de OBs, D-1 — magnitude movimentada; pagamento auditado = SIAFE)")
     add("")
     add("---")
     add("")
@@ -1746,7 +1746,7 @@ def render_md(ctx: dict) -> str:
         add("")
 
     # Parecer escrito do JFN
-    add("## 3. ANÁLISE JURÍDICA E DE MÉRITO — PARECER PRELIMINAR DO JFN")
+    add("## 3. ANÁLISE JURÍDICA E DE MÉRITO — PARECER PRELIMINAR")
     add("")
     raciocinio = ctx.get("raciocinio")
     if raciocinio:
@@ -1772,7 +1772,7 @@ def render_md(ctx: dict) -> str:
         "sanções **TCE-RJ** (`penalidades_tcerj`) por mapa curado órgão↔UG.")
     add("- **Normas:** Lei 14.133/2021; Lei 8.666/93; CF/88 Art. 37; metodologia TCU; ACFE Report to the Nations.")
     add("")
-    add(f"_Gerado pelo JFN Intelligence Engine em {ctx['data']}. Não substitui análise jurídica especializada._")
+    add(f"_Gerado automaticamente em {ctx['data']}. Não substitui análise jurídica especializada._")
     add("")
     return "\n".join(L)
 
@@ -2268,7 +2268,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
     pdf.cell(0, 13, _t("RELATÓRIO DE INTELIGÊNCIA DE ÓRGÃO"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.set_font(pdf._fam, "", 9); pdf.set_fill_color(45, 60, 90)
     pdf.cell(0, 7, _t("Execução de pagamentos · Concentração por fornecedor · Risco"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
-    pdf.cell(0, 7, _t(f"JFN Intelligence Engine  |  {ctx['data']}"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+    pdf.cell(0, 7, _t(f"Controle Externo (automatizado)  |  {ctx['data']}"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.ln(4)
     pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "B", 14)
     _mc(pdf, 8, _t(f"{ctx['nome']}  ·  UG {ctx['ug']}"))
@@ -2419,7 +2419,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
     _render_parecer_pdf(pdf, _t, parecer_orgao(ctx))
 
     pdf.ln(3); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(120, 120, 120)
-    _mc(pdf, 4, _t("Gerado pelo JFN Intelligence Engine. Não substitui análise jurídica especializada."))
+    _mc(pdf, 4, _t("Gerado automaticamente. Não substitui análise jurídica especializada."))
 
     Path(destino).parent.mkdir(parents=True, exist_ok=True)
     pdf.output(destino)
