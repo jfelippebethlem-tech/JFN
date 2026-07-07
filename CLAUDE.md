@@ -1,7 +1,7 @@
 # CLAUDE.md — JFN (ENXUTO · injetado a cada turno)
 
 **JFN** = motor de auditoria/compliance do Estado do RJ (TCE-RJ/controle externo). Owner: jfelippebethlem-tech ·
-branch **`feat/lista-limpa`** · VM Linux Oracle Cloud ARM (`jfn-core`, 2 vCPU · 11,6GB · 4GB swap), `~/JFN`.
+branch **`seguranca/ssrf-captcha`** · VM Linux Oracle Cloud ARM (`jfn-core`, 2 vCPU · 11,6GB · 4GB swap), `~/JFN`.
 
 > **Detalhe vive fora daqui** (leveza — não duplicar): hub **`docs/REFERENCIA-PROJETO.md`** (estado/roadmap/lições/§10
 > log/§11 retomada — *"continue pelo docs/REFERENCIA-PROJETO.md"*) · jurídico/orçamentário completo
