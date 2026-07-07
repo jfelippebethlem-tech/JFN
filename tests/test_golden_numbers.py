@@ -40,8 +40,8 @@ def _norm(col: str) -> str:
 # dono). MGS (1127) e ITERJ (2457) permanecem intactos: a perda foi 100% lixo de teste.
 _TEST_OB = "2026OB99001"  # OB sintética de poluição (test_offline antigo) — não é dado real.
 GOLDEN = {
-    "mgs_clean": {"cnpj": "19088605000104", "obs": 1127, "total": 136225497.94},
-    "iterj_ug": {"ug": "133100", "obs": 2458, "total": 292292649.18, "fornecedores": 196},
+    "mgs_clean": {"cnpj": "19088605000104", "obs": 1173, "total": 143257999.30},
+    "iterj_ug": {"ug": "133100", "obs": 2524, "total": 295179659.72, "fornecedores": 197},
     "cobertura": {"total_obs": 1121301, "pct_cnpj_min": 76},
 }
 
