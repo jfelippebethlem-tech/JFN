@@ -102,6 +102,13 @@ pipelines:
     grupo: polimonitor
     nota: reindex p/ coletor do desktop, 04:40-09:40 (cron)
 
+  # ---- SECOND BRAIN ----
+  - nome: hermes-rag
+    arquivo: data/rag/corpus_hash.txt
+    max_stale_h: 30
+    grupo: second-brain
+    nota: verificação/rebuild incremental (metacognição 06:50 + cron 13:07); mtime marca a checagem
+
   # ---- ENRIQUECIMENTO ----
   - nome: sweep-dados
     arquivo: data/sweep_dados.log

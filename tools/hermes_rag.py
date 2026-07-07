@@ -121,7 +121,24 @@ def corpus_mudou() -> bool:
     return HASH.read_text().strip() != corpus_hash()
 
 
+def _cache_anterior() -> dict:
+    """hash(texto do chunk) -> vetor do build anterior (reuso incremental; chave trial = 1.000 calls/mês)."""
+    import hashlib
+    import numpy as np
+    if not (EMB.exists() and CHUNKS.exists()):
+        return {}
+    try:
+        arr = np.load(EMB)
+        regs = [json.loads(l) for l in open(CHUNKS, encoding="utf-8")]
+        if len(regs) != arr.shape[0]:
+            return {}
+        return {hashlib.sha256(r["texto"].encode()).hexdigest(): arr[i] for i, r in enumerate(regs)}
+    except Exception:
+        return {}
+
+
 def build() -> None:
+    import hashlib
     import numpy as np
     RAGDIR.mkdir(parents=True, exist_ok=True)
     arquivos = _arquivos_corpus()
@@ -134,10 +151,18 @@ def build() -> None:
         fonte = fp.replace("/home/ubuntu/", "~/")
         for j, ch in enumerate(_chunk(txt)):
             registros.append({"fonte": fonte, "i": j, "texto": ch})
-    print(f"{len(arquivos)} arquivos → {len(registros)} chunks. Embeddando (Cohere)…", flush=True)
-    vecs = _embed([r["texto"] for r in registros], "search_document")
-    arr = np.asarray(vecs, dtype="float32")
-    arr /= (np.linalg.norm(arr, axis=1, keepdims=True) + 1e-9)  # normaliza p/ cosine = dot
+    cache = _cache_anterior()
+    novos = [r for r in registros
+             if hashlib.sha256(r["texto"].encode()).hexdigest() not in cache]
+    print(f"{len(arquivos)} arquivos → {len(registros)} chunks "
+          f"({len(novos)} novos p/ embeddar, {len(registros) - len(novos)} do cache)…", flush=True)
+    vecs_novos = iter(_embed([r["texto"] for r in novos], "search_document")) if novos else iter(())
+    linhas = []
+    for r in registros:
+        h = hashlib.sha256(r["texto"].encode()).hexdigest()
+        linhas.append(cache[h] if h in cache else np.asarray(next(vecs_novos), dtype="float32"))
+    arr = np.asarray(linhas, dtype="float32")
+    arr /= (np.linalg.norm(arr, axis=1, keepdims=True) + 1e-9)  # normaliza p/ cosine = dot (idempotente p/ linhas do cache)
     np.save(EMB, arr)
     with open(CHUNKS, "w", encoding="utf-8") as f:
         for r in registros:
@@ -150,6 +175,8 @@ def build_se_mudou() -> bool:
     """Reindexa só se o corpus mudou. Retorna True se rebuildou (p/ o ciclo diário)."""
     if not corpus_mudou():
         print("RAG em dia — corpus não mudou desde a última build.")
+        if HASH.exists():
+            os.utime(HASH)  # marca a VERIFICAÇÃO (sentinela p/ o SLO de frescor), conteúdo intacto
         return False
     build()
     return True
