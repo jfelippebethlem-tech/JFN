@@ -14,6 +14,7 @@ No celular: http://<IP-DO-SEU-PC>:8000
 
 import asyncio
 import hashlib
+import logging
 import hmac
 import json
 import os
@@ -39,6 +40,8 @@ from fastapi.responses import (
 )
 from fastapi.staticfiles import StaticFiles
 
+logger = logging.getLogger(__name__)
+
 
 # ── Load .env ─────────────────────────────────────────────────────────────────
 
@@ -48,8 +51,8 @@ def _load_env():
         from compliance_agent.envfile import carregar_env
         carregar_env()
         return
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("carregar_env indisponível, usando fallback .env: %s", exc)
     env_path = Path(__file__).parent / ".env"
     if not env_path.exists():
         return
@@ -188,8 +191,8 @@ async def lifespan(app: FastAPI):
             print(f"[warmup] aquecimento falhou (não-fatal): {exc.__class__.__name__}")
     try:
         asyncio.create_task(_warmup_relatorio())
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("warmup do motor de relatório não agendado: %s", exc)
 
     # Guard de idle: encerra o Chromium ocioso após N min (§6, evita o leak de browser 24h numa VM sem swap).
     global _browser_reaper_task
@@ -207,8 +210,8 @@ async def lifespan(app: FastAPI):
         _browser_reaper_task.cancel()
         try:
             await _browser_reaper_task
-        except (asyncio.CancelledError, Exception):  # noqa: BLE001 — shutdown, best-effort
-            pass
+        except (asyncio.CancelledError, Exception) as exc:  # noqa: BLE001 — shutdown, best-effort
+            logger.debug("browser reaper encerrado no shutdown: %s", exc)
 
     if _agent:
         try:
@@ -827,8 +830,8 @@ class StreamingCallbacks:
     async def send(self, msg_type: str, content: str):
         try:
             await self.ws.send_text(json.dumps({"type": msg_type, "content": content}))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("falha ao enviar %s no WebSocket /ws: %s", msg_type, exc)
 
 
 @app.websocket("/ws")
@@ -916,13 +919,13 @@ async def websocket_chat(ws: WebSocket):
 
                 await ws.send_text(json.dumps({"type": "response", "content": response}))
 
-    except WebSocketDisconnect:
-        pass
+    except WebSocketDisconnect as exc:
+        logger.debug("cliente desconectou do WebSocket /ws: %s", exc)
     except Exception as e:
         try:
             await ws.send_text(json.dumps({"type": "error", "content": str(e)}))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("falha ao enviar erro no WebSocket /ws já fechado: %s", exc)
 
 
 def parse_args():

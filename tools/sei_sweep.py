@@ -21,12 +21,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import logging
 import re
 import signal
 import sqlite3
 import time
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 REPO = Path(__file__).resolve().parent.parent
 DB = REPO / "data" / "compliance.db"
@@ -79,8 +82,8 @@ def _carregar_prog() -> dict:
     if PROG.exists():
         try:
             return json.loads(PROG.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("checkpoint %s ilegível — sweep recomeça do zero: %s", PROG.name, exc)
     return {"feitos": {}}  # proc -> {n_docs, em}
 
 
@@ -100,8 +103,8 @@ def _unidades_legiveis() -> set[str]:
                 m = re.search(r"cdp_SEI_(\d{6})_", cf.name)
                 if m:
                     uni.add(m.group(1))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("cache %s ilegível ao mapear unidades: %s", cf.name, exc)
     return uni
 
 
@@ -184,8 +187,8 @@ def _arvores_encerradas() -> set[str]:
             try:
                 if (hoje - datetime.fromisoformat(ult[:10]).date()).days <= 548:
                     continue
-            except ValueError:
-                pass
+            except ValueError as exc:
+                logger.debug("ultima_ob de %s não parseia (%r): %s", numero, ult, exc)
         out.add(numero)
     return out
 
@@ -220,8 +223,8 @@ def _ultima_ob_por_processo() -> dict:
             iso = _iso(dt)
             if proc and iso:
                 out[proc] = max(out.get(proc, ""), iso)
-    except sqlite3.Error:
-        pass
+    except sqlite3.Error as exc:
+        logger.warning("query de última OB por processo falhou — frescor por OB incompleto: %s", exc)
     finally:
         con.close()
     return out
@@ -254,8 +257,8 @@ def _ja_lido_ok(proc: str) -> bool:
         c = json.loads(cf.read_text(encoding="utf-8"))
         if len(c.get("documentos") or []) > 0 and c.get("_cached_at"):
             return (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < 7 * 86400
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("cache de %s ilegível em _ja_lido_ok — vai re-ler: %s", proc, exc)
     return False
 
 
@@ -267,8 +270,8 @@ def _salvar_cadeia_no_cache(proc: str, cadeia: list):
         d["cadeia"] = cadeia
         d["_cached_at"] = datetime.now().isoformat()
         cf.write_text(json.dumps(d, ensure_ascii=False, indent=1, default=str), encoding="utf-8")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao gravar cadeia no cache de %s — árvore perdida: %s", proc, exc)
 
 
 async def _ficha_e_storage(proc: str):
@@ -601,8 +604,8 @@ def main():
     # encerramento gracioso por timeout/SIGTERM: o loop vê a flag e sai limpo (fecha o browser) — sem EPIPE.
     try:
         signal.signal(signal.SIGTERM, _pedir_parada)
-    except (ValueError, OSError):  # noqa: BLE001 — em thread non-main signal não pode ser registrado; ignora
-        pass
+    except (ValueError, OSError) as exc:  # noqa: BLE001 — em thread non-main signal não pode ser registrado; ignora
+        logger.debug("SIGTERM não registrado (thread non-main): %s", exc)
     # BACKSTOP DE PROCESSO (regra do dono: o sweep NUNCA crasha): nada escapa como traceback não-tratado.
     # KeyboardInterrupt/SystemExit (BaseException) propagam normal; qualquer Exception vira log + saída limpa.
     try:
