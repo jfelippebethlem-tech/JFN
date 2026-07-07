@@ -25,9 +25,12 @@ em `avaliar_perfil` (testável offline, tests/test_empresa_fantasma.py).
 """
 from __future__ import annotations
 
+import logging
 import re
 import unicodedata
 from datetime import date, datetime
+
+logger = logging.getLogger(__name__)
 
 RISCOS = ("baixo", "medio", "alto")
 
@@ -194,8 +197,8 @@ def perfil_do_cnpj(session, cnpj: str) -> dict | None:
             "FROM ordens_bancarias WHERE favorecido_cpf=:c"), {"c": cnpj}).fetchone()
         if r:
             p.update(total_recebido=r[0], primeira_ob=r[1], objeto_pago=r[2] or "")
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("consulta de OBs falhou p/ CNPJ %s (total_recebido/1ª OB sem dado): %s", cnpj, exc)
     # endereço + quantas empresas no mesmo endereço normalizado
     try:
         e = session.execute(text(
@@ -208,8 +211,8 @@ def perfil_do_cnpj(session, cnpj: str) -> dict | None:
                     "SELECT COUNT(DISTINCT cnpj) FROM endereco_fornecedor "
                     "WHERE endereco_norm=:e"), {"e": e[1]}).fetchone()
                 p["empresas_no_endereco"] = n[0] if n else 1
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("consulta de endereço/co-localizados falhou p/ CNPJ %s: %s", cnpj, exc)
     # nº de sócios
     try:
         emp_id = session.execute(text("SELECT id FROM empresas WHERE cnpj=:c"),
@@ -219,14 +222,14 @@ def perfil_do_cnpj(session, cnpj: str) -> dict | None:
                 "SELECT COUNT(*) FROM empresa_socios WHERE empresa_id=:i"),
                 {"i": emp_id[0]}).fetchone()
             p["n_socios"] = n[0] if n else None
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("consulta de nº de sócios falhou p/ CNPJ %s: %s", cnpj, exc)
     # sanção vigente (reusa a lógica do Núcleo)
     try:
         from compliance_agent.nucleo.adaptador_db import _tem_sancao_vigente
         p["sancionada"] = _tem_sancao_vigente(session, cnpj, date.today())
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("checagem de sanção CEIS/CNEP falhou p/ CNPJ %s (sinal 'sancionada' mudo): %s", cnpj, exc)
     return p
 
 

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 import sqlite3
@@ -16,6 +17,8 @@ from pathlib import Path
 from typing import Optional
 
 from compliance_agent.reporting.intel_base import _DATA, _DB, _REGISTRY, fmt_cnpj, moeda, so_digitos, _slug
+
+logger = logging.getLogger(__name__)
 
 _ENRIQUECE_TIMEOUT = float(os.environ.get("JFN_RELATORIO_ENRIQUECE_TIMEOUT", "90"))
 
@@ -53,8 +56,8 @@ def _nome_por_cnpj(cnpj: str) -> str:
                 (cnpj,)).fetchone()
             if r and r[0]:
                 return r[0]
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("Consulta de nome p/ CNPJ %s falhou no compliance.db: %s", cnpj, exc)
         finally:
             con.close()
     return ""
@@ -140,8 +143,8 @@ def atualizar_favorecido_resumo(db_path=None) -> dict:
     except Exception as exc:  # noqa: BLE001
         try:
             con.rollback()
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc2:  # noqa: BLE001
+            logger.debug("rollback de favorecido_resumo falhou: %s", exc2)
         return {"ok": False, "erro": str(exc)[:200], "db": str(alvo)}
     finally:
         con.close()
@@ -249,8 +252,8 @@ def buscar_candidatos(termo: str, limite: int = 8) -> list[dict]:
                         (cnpj,)).fetchone()
                 c["n_obs"] = int(r["n"] or 0)
                 c["total_pago"] = float(r["total"] or 0.0)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("falha ao consultar métricas de OB dos candidatos (n_obs/total podem sair zerados): %s", exc)
         finally:
             con.close()
 
@@ -555,8 +558,8 @@ def _enriquece_cache_get(cnpj: str) -> Optional[dict]:
         if isinstance(res, dict) and res.get("ok"):
             res["_fonte"] = "CACHE"  # REAL, porém servido do cache (transparência)
             return res
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("cache de enriquecimento ilegível p/ %s (segue sem cache): %s", cnpj, exc)
     return None
 
 
@@ -567,8 +570,8 @@ def _enriquece_cache_set(cnpj: str, res: dict) -> None:
     try:
         from relatorio_riscos.collectors import cache as _cache
         _cache.set(_ENRIQUECE_CACHE_PREFIXO, res, so_digitos(cnpj), ttl=_ENRIQUECE_CACHE_TTL)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("falha ao gravar cache de enriquecimento de %s (todo relatório re-busca): %s", cnpj, exc)
 
 
 async def _enriquecer(cnpj: str) -> dict:

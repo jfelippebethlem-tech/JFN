@@ -269,8 +269,8 @@ async def buscar_terceirizados_transparencia(session, competencia: str) -> int:
         logger.error(f"Erro geral buscar_terceirizados_transparencia: {exc}")
         try:
             session.rollback()
-        except Exception:
-            pass
+        except Exception as rb_exc:
+            logger.debug("Rollback falhou em buscar_terceirizados_transparencia: %s", rb_exc)
 
     if count == 0:
         logger.warning(
@@ -436,8 +436,8 @@ async def buscar_bolsistas_faperj(session, ano: int) -> int:
         logger.error(f"Erro geral buscar_bolsistas_faperj: {exc}")
         try:
             session.rollback()
-        except Exception:
-            pass
+        except Exception as rb_exc:
+            logger.debug("Rollback falhou em buscar_bolsistas_faperj: %s", rb_exc)
 
     if count == 0:
         logger.warning(
@@ -601,8 +601,8 @@ async def buscar_estagiarios(session, competencia: str) -> int:
         logger.error(f"Erro geral buscar_estagiarios: {exc}")
         try:
             session.rollback()
-        except Exception:
-            pass
+        except Exception as rb_exc:
+            logger.debug("Rollback falhou em buscar_estagiarios: %s", rb_exc)
 
     if count == 0:
         logger.warning(
@@ -756,8 +756,8 @@ def detectar_cpf_duplicado_entre_fontes(session, competencia: str) -> list[dict]
         logger.error(f"Erro em detectar_cpf_duplicado_entre_fontes: {exc}")
         try:
             session.rollback()
-        except Exception:
-            pass
+        except Exception as rb_exc:
+            logger.debug("Rollback falhou em detectar_cpf_duplicado_entre_fontes: %s", rb_exc)
 
     return resultados
 
@@ -820,8 +820,8 @@ async def verificar_mei_e_clt(session, cpfs: list[str] | None = None) -> list[di
                             item = data[0] if isinstance(data, list) else data
                             orgao_fed = str(item.get("orgao", {}).get("nome", "Federal") if isinstance(item.get("orgao"), dict) else "Federal")
                             achados.append(f"Folha federal: {orgao_fed}")
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("Falha ao consultar folha federal (Portal da Transparência) para CPF %s: %s", cpf, exc)
 
             if achados:
                 nome = pessoa.nome if pessoa else cpf
@@ -1096,7 +1096,7 @@ def cruzar_com_folha_principal(session, competencia: str) -> list[dict]:
         logger.error(f"Erro em cruzar_com_folha_principal: {exc}")
         try:
             session.rollback()
-        except Exception:
-            pass
+        except Exception as rb_exc:
+            logger.debug("Rollback falhou em cruzar_com_folha_principal: %s", rb_exc)
 
     return suspeitos

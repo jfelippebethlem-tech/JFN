@@ -21,6 +21,7 @@ CLI (teste do envio + captura, sem login):
 """
 from __future__ import annotations
 
+import logging
 import os
 import re
 import time
@@ -28,6 +29,8 @@ from pathlib import Path
 
 from compliance_agent.fachada_doubt import _texto_resposta, mensagens_novas_telegram
 from compliance_agent.siafe_coord import notificar
+
+logger = logging.getLogger(__name__)
 
 _REPO = Path(__file__).resolve().parent.parent
 DATA = Path(os.environ.get("JFN_DATA_DIR", _REPO / "data")) / "sei_cache"
@@ -60,8 +63,8 @@ def _ler_arquivo_codigo() -> str | None:
         if CODE_FILE.exists():
             c = (CODE_FILE.read_text(encoding="utf-8") or "").strip()
             return extrair_codigo(c) or (c if c.isdigit() and 4 <= len(c) <= 8 else None)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("MFA: falha ao ler o arquivo .mfa_code (fallback manual indisponível): %s", exc)
     return None
 
 
@@ -78,8 +81,8 @@ def pedir_codigo_mfa(sistema: str = "SIAFE", timeout_s: int = 300, poll_s: int =
     try:
         if CODE_FILE.exists():
             CODE_FILE.unlink()  # descarta código velho — só vale o desta rodada
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("MFA: não removeu .mfa_code antigo: %s", exc)
 
     desde = _agora()
     notificar(
@@ -104,12 +107,12 @@ def pedir_codigo_mfa(sistema: str = "SIAFE", timeout_s: int = 300, poll_s: int =
                 if cod:
                     try:
                         CODE_FILE.write_text(cod, encoding="utf-8")
-                    except Exception:
-                        pass
+                    except Exception as exc:
+                        logger.debug("MFA: não gravou .mfa_code (auditoria): %s", exc)
                     notificar(f"✅ Código recebido — autenticando no {sistema}.")
                     return cod
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.warning("MFA: captura passiva do Telegram falhou (resta o fallback .mfa_code): %s", exc)
         if _agora() >= prox_ping:
             notificar(f"⏳ Ainda aguardo o código do {sistema} (4–8 dígitos).")
             prox_ping = _agora() + 90

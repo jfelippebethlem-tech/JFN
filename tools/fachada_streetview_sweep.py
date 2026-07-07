@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
+import logging
 import os
 import re
 import sqlite3
@@ -45,6 +46,8 @@ import tempfile
 import time
 from collections import Counter
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 _RAIZ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(_RAIZ))
@@ -111,8 +114,8 @@ def _mem_livre_mb() -> int:
         for ln in Path("/proc/meminfo").read_text().splitlines():
             if ln.startswith("MemAvailable:"):
                 return int(ln.split()[1]) // 1024
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("falha ao ler /proc/meminfo (mem livre desconhecida): %s", exc)
     return -1
 
 
@@ -398,8 +401,8 @@ def _subir_foto(img: bytes, cnpj: str, sel: "fr.SelecionadorRemote") -> tuple[st
         if tmp:
             try:
                 os.unlink(tmp)
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.debug("falha ao remover temp %s (cnpj %s): %s", tmp, cnpj, exc)
 
 
 # ── 4) Coerência foto-vs-Google (avaliada por regra sobre a classe do VLM) ─────
@@ -603,8 +606,8 @@ def main() -> int:
         if out.exists():
             try:
                 out.unlink()
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.debug("falha ao remover render antigo %s (cnpj %s): %s", out, r["cnpj"], exc)
         rr = _render_protegido(lat_use, lon_use, 0.0, out, a.mem_min, a.load_teto)
         if rr.get("travou"):
             print(f"  ⚠ {rr.get('motivo')} ({rr.get('antes')} → {rr.get('depois')}) — ABORTA o run por segurança.",
@@ -625,8 +628,8 @@ def main() -> int:
                   "— reentra (não marcado).", flush=True)
             try:
                 out.unlink()
-            except OSError:
-                pass
+            except OSError as exc:
+                logger.debug("falha ao remover imagem inválida %s (cnpj %s): %s", out, r["cnpj"], exc)
             if a.pausa:
                 time.sleep(a.pausa)
             continue
@@ -636,8 +639,8 @@ def main() -> int:
         img_b2, nb = _subir_foto(img, r["cnpj"], sel)
         try:
             out.unlink()  # nada permanente na VM
-        except OSError:
-            pass
+        except OSError as exc:
+            logger.debug("falha ao remover render local %s (cnpj %s): %s", out, r["cnpj"], exc)
         if not img_b2:
             # ou os buckets estão cheios, ou rclone falhou. Se cheios, para (degrada honesto).
             if sel.escolher(len(img)) is None:

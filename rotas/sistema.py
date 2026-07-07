@@ -5,12 +5,15 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Optional
 
 from fastapi import APIRouter, Request
 from fastapi.responses import FileResponse, JSONResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -153,14 +156,14 @@ async def api_sweeps_status():
     sei_feitos = 0
     try:
         sei_feitos = len(json.loads((base / "data/sei_cache/sei_sweep_progress.json").read_text()).get("feitos", {}))
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("sweeps/status: falha lendo sei_sweep_progress.json (feitos=0 pode ser falso): %s", exc)
     sei_tail = ""
     try:
         _ls = [ln for ln in (base / "data/sei_cache/sei_sweep_loop.out").read_text().splitlines() if ln.strip()]
         sei_tail = _ls[-1][:170] if _ls else ""
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("sweeps/status: sem tail de sei_sweep_loop.out: %s", exc)
     sei_sup, sei_run = _alive("sei_supervisor.sh"), _alive("tools[.]sei_sweep")
     sia_sup, sia_run = _alive("siafe_supervisor.sh"), _alive("siafe[_]sweep_full")
     pausado = (base / "data/.pause_sei_sweep").exists() or (base / "data/.pause_sweep_2").exists()
@@ -171,16 +174,16 @@ async def api_sweeps_status():
         _c = sqlite3.connect(base / "data/compliance.db")
         sia_total = _c.execute("SELECT COUNT(*) FROM ob_orcamentaria_siafe").fetchone()[0]
         _c.close()
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("sweeps/status: falha contando ob_orcamentaria_siafe (total=0 pode ser falso): %s", exc)
 
     # SIAFE 2: detecta varredura COMPLETA (o supervisor encerra ao concluir; não é "parado/quebrado")
     sia_completo = False
     try:
         _sl = [ln for ln in (base / "data/siafe_sweep_full_2.log").read_text().splitlines() if ln.strip()][-3:]
         sia_completo = any("SWEEP COMPLETO" in ln for ln in _sl)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("sweeps/status: sem leitura de siafe_sweep_full_2.log: %s", exc)
 
     def _ic(ok):
         return "🟢" if ok else "🔴"

@@ -12,12 +12,15 @@ respondendo ao comando /investigar no Telegram.
 """
 
 import asyncio
+import logging
 import re
 from datetime import date
 from typing import Optional
 
 import httpx
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger(__name__)
 
 _HEADERS = {
     "User-Agent": (
@@ -58,8 +61,8 @@ async def buscar_ddg(termo: str, max_resultados: int = 8) -> list[dict]:
                     "url": a.get("href", ""),
                     "trecho": snippet.get_text(strip=True) if snippet else "",
                 })
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Falha na busca DuckDuckGo por '%s' (resultado vazio pode ser erro, não ausência): %s", termo, exc)
     return resultados
 
 
@@ -86,8 +89,8 @@ async def buscar_noticias(termo: str, max_resultados: int = 6) -> list[dict]:
                      "data": n.get("date", "")}
                     for n in data.get("results", [])[:max_resultados]
                 ]
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("DuckDuckGo News indisponível para '%s' (usando fallback HTML): %s", termo, exc)
     # Fallback: busca HTML com palavra "notícia"
     return await buscar_ddg(f"{termo} notícia", max_resultados)
 
@@ -107,8 +110,8 @@ async def consultar_cnpj(cnpj: str) -> Optional[dict]:
             )
             if r.status_code == 200:
                 return r.json()
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("Falha ao consultar CNPJ %s na BrasilAPI: %s", cnpj_limpo, exc)
     return None
 
 
@@ -214,8 +217,8 @@ async def _resumir_dossie(dossie: dict) -> str:
             return await groq_chat_async(prompt, system=system, smart=True)
         if openrouter_available():
             return await openrouter_chat_async(prompt, system=system, smart=True)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("LLM indisponível para resumo do dossiê de '%s' (usando fallback sem LLM): %s", dossie.get("alvo", ""), exc)
     # Fallback sem LLM
     if dossie["riscos_detectados"]:
         return ("⚠️ Termos de risco encontrados: "
@@ -318,8 +321,8 @@ async def investigar_obs_alto_valor(session, target_date: date = None,
                 "riscos_web": dossie["riscos_detectados"],
                 "investigado_em": [target_date.isoformat()],
             }, session=session)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Falha ao registrar entidade '%s' na memória (best-effort): %s", nome, exc)
 
     session.commit()
     return alertas

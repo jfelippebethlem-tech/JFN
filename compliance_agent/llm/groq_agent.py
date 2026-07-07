@@ -17,12 +17,15 @@ Este módulo usa o Groq LLM para três coisas:
 
 import asyncio
 import json
+import logging
 import os
 import re
 from datetime import date
 from pathlib import Path
 
 import httpx
+
+logger = logging.getLogger(__name__)
 
 GROQ_API_KEY = os.environ.get(
     "GROQ_API_KEY",
@@ -41,8 +44,8 @@ def _load_memory() -> dict:
     if MEMORY_FILE.exists():
         try:
             return json.loads(MEMORY_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("memória groq ilegível, recriando do zero: %s", exc)
     return {"selectors": {}, "patterns": [], "failures": []}
 
 
@@ -289,8 +292,8 @@ async def _execute_nav_action(page, action: dict) -> dict:
         await asyncio.sleep(3)
         try:
             await page.wait_for_load_state("networkidle", timeout=8000)
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("networkidle não atingido na ação wait: %s", exc)
         return {"success": True, "msg": "waited"}
 
     if act in ("done", "error", "read"):
@@ -319,8 +322,8 @@ async def _execute_nav_action(page, action: dict) -> dict:
             await asyncio.sleep(2)
             try:
                 await page.wait_for_load_state("networkidle", timeout=8000)
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("networkidle não atingido após click: %s", exc)
             await asyncio.sleep(1)
             return {"success": True, "msg": result}
         return {"success": False, "msg": f"elemento não encontrado: {sel} / {text}"}
@@ -369,8 +372,8 @@ def _build_analysis_system() -> str:
         from compliance_agent.knowledge.jurisprudencia import contexto_jurisprudencial_para_prompt
         base += contexto_legal_para_prompt() + "\n\n"
         base += contexto_jurisprudencial_para_prompt() + "\n\n"
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("base legal/jurisprudência indisponível no prompt de análise de OBs: %s", exc)
     base += (
         "Ao descrever cada alerta, CITE o dispositivo legal e/ou acórdão aplicável.\n\n"
         "Responda com JSON:\n"
@@ -474,8 +477,8 @@ def _build_doerj_system() -> str:
     try:
         from compliance_agent.knowledge.base_legal import contexto_legal_para_prompt
         base += contexto_legal_para_prompt() + "\n\n"
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("base legal indisponível no prompt de análise do DOERJ: %s", exc)
     base += (
         "Ao descrever cada alerta, CITE o dispositivo legal ou acórdão aplicável.\n\n"
         "Responda com JSON:\n"
@@ -653,8 +656,8 @@ async def rodar_analise_groq(session) -> list[dict]:
                             "flags": [alerta.get("tipo", "")],
                             "n_alertas": 1,
                         }, session=session)
-                except Exception:
-                    pass
+                except Exception as exc:
+                    logger.warning("falha ao registrar aprendizado do alerta na memória: %s", exc)
     else:
         resultado_obs = {"resumo_geral": "Sem OBs coletadas hoje."}
 

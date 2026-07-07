@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
 import re
 import sqlite3
@@ -26,6 +27,9 @@ from compliance_agent.reporting.intel_md import (
     _FONTES_DEJAVU, _capital_recebido_md, _fachada_b2_html, _realidade_sede_texto, _rodizio_fornecedor,
 )
 
+logger = logging.getLogger(__name__)
+
+
 def _registrar_fonte(pdf) -> tuple[str, bool]:
     """Registra DejaVu (Unicode) se disponível. Retorna (familia, eh_unicode).
     Italico mapeia para o regular (DejaVuSans nao tem oblique no pacote core)."""
@@ -37,8 +41,8 @@ def _registrar_fonte(pdf) -> tuple[str, bool]:
             pdf.add_font("DejaVu", "I", reg)
             pdf.add_font("DejaVu", "BI", bold)
             return "DejaVu", True
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("Fonte DejaVu não registrada (fallback Helvetica): %s", exc)
     return "Helvetica", False
 
 
@@ -235,8 +239,8 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         osint.append("<li>OpenSanctions (PEP/sanções intl.): INDISPONÍVEL (sem chave grátis)</li>"
                      if o.get("sancionado") is None else
                      f"<li>OpenSanctions: sanção={esc(o.get('sancionado'))} · PEP={esc(o.get('pep'))}</li>")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("OpenSanctions falhou p/ CNPJ %s — item omitido da seção 4: %s", cnpj, exc)
     try:
         from compliance_agent.enrich.aleph import buscar as _aleph
         al = _aleph(cnpj)
@@ -245,8 +249,8 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         else:
             tops = "; ".join(f"{esc(m.get('nome'))} ({esc(m.get('schema'))})" for m in al["matches"][:3])
             osint.append(f"<li>OCCRP Aleph: <b>{esc(al.get('total'))} registro(s)</b> — {tops} <span class='nota'>(indício a confirmar na fonte)</span></li>")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("OCCRP Aleph falhou p/ CNPJ %s — item omitido da seção 4: %s", cnpj, exc)
     gz = ctx.get("gazetas") or {}
     if gz.get("total"):
         muns = "; ".join(dict.fromkeys(
@@ -277,8 +281,8 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
             ma_html = ("<p class='nota'>Nenhuma matéria com termos de risco localizada em fontes abertas (GDELT)"
                        + (f" — {esc(nota)}" if "INDISPONÍVEL" in nota else " na janela analisada") + ".</p>")
         secoes.append({"titulo": "4-C. Mídia adversa (fontes abertas — OSINT)", "html": ma_html})
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Seção 4-C (mídia adversa) omitida p/ CNPJ %s: %s", cnpj, exc)
 
     # 4-D. Pistas de investigação hospedada (Max Intel, OSINT-Brazuca, RedeCNPJ…) — deep-links MANUAIS
     try:
@@ -292,8 +296,8 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                            "html": "<p class='nota'>Agregadores e fontes hospedadas grátis (você pesquisa; o JFN só "
                                    "monta o link já preenchido com o alvo). Aprofundamento de DD — não são dados coletados.</p>"
                                    f"<ul>{li}</ul>"})
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Seção 4-D (pistas OSINT hospedado) omitida p/ CNPJ %s: %s", cnpj, exc)
 
     # 5. Pagamentos — TABELA CRUZADA Órgão (UG) × Ano (pedido do dono: por ano, dividido por órgão)
     if p["tem_dados"]:
@@ -445,8 +449,8 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                            "html": f"<p class='nota'>1º dígito dos valores de OB (n={d1['n']}). MAD de Nigrini = <b>{d1['mad']}</b> "
                                    f"→ <b>{d1['faixa_nigrini']}</b>. {'Conforme = sem sinal de fracionamento/fabricação.' if 'CONFORM' in d1['faixa_nigrini'].upper() or 'conformidade' in d1['faixa_nigrini'] else 'NÃO conformidade pede verificação (fracionamento/valores fabricados).'} "
                                    f"{'(amostra pequena — pouco confiável)' if not bf['suficiente'] else ''}</p>"})
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Seção 9 (Lei de Benford) omitida p/ CNPJ %s: %s", cnpj, exc)
 
         # 9-B. Anomalias nas OBs (modelo de detecção) — paridade com o MD §8-C
         _an = _anomalias_fornecedor(cnpj)

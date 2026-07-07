@@ -27,10 +27,13 @@ ou direto:
 
 import asyncio
 import json
+import logging
 import os
 import sys
 from datetime import datetime
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 if sys.platform == "win32":
     os.system("")  # habilita ANSI no CMD
@@ -149,8 +152,8 @@ _JS_TABLE = r"""
 async def _wait(pg, ms=8000):
     try:
         await pg.wait_for_load_state("networkidle", timeout=ms)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("networkidle não atingido em %sms: %s", ms, exc)
     await asyncio.sleep(2)
 
 
@@ -270,14 +273,14 @@ async def _capturar(pg, nome_arquivo: str, dump: dict):
         print(f"  {R}(não salvou HTML: {e}){RST}")
     try:
         await pg.screenshot(path=str(base.with_suffix(".png")), full_page=True)
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("não salvou screenshot %s.png: %s", base, exc)
     try:
         base.with_suffix(".json").write_text(
             json.dumps(dump, ensure_ascii=False, indent=2), encoding="utf-8"
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("não salvou dump JSON %s.json: %s", base, exc)
     print(f"  {G}✓ Salvo: {base}.html / .png / .json{RST}")
 
 
@@ -535,8 +538,8 @@ async def main():
     finally:
         try:
             await ioerj_page.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("falha ao fechar página IOERJ: %s", exc)
 
     # ── 3. SEI-RJ (pesquisa pública de processos) ────────────────────────────
     print(f"\n{BOLD}{Y}[3/3] Lendo a pesquisa pública do SEI-RJ (sem 403 no Chrome)...{RST}")
@@ -570,8 +573,8 @@ async def main():
     finally:
         try:
             await sei_page.close()
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("falha ao fechar página SEI: %s", exc)
 
     await p.stop()
 
