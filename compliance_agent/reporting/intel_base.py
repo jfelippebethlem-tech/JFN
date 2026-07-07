@@ -4,6 +4,7 @@ Comportamento idêntico; rede de segurança: tools/inteligencia_snapshot_check.p
 """
 from __future__ import annotations
 
+import logging
 import asyncio
 import json
 import os
@@ -29,6 +30,9 @@ _REPORTS = _ROOT / "reports"
 
 
 _REGISTRY = _DATA / "empresas_target.json"
+
+
+logger = logging.getLogger(__name__)
 
 
 def cabecalho_frescor() -> str:
@@ -65,10 +69,10 @@ def _prune_reports():
             try:
                 if f.is_file() and f.stat().st_mtime < corte:
                     f.unlink()
-            except Exception:
-                pass
-    except Exception:
-        pass
+            except Exception as exc:
+                logger.debug("janitor não removeu %s: %s", f.name, exc)
+    except Exception as exc:
+        logger.debug("janitor de reports interrompido: %s", exc)
 
 
 def so_digitos(s: str) -> str:

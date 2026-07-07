@@ -17,6 +17,7 @@ Formato do número SEI-RJ: E-XX/XXXXXX/YYYY ou SEI-XXXXXX/YYYY
 
 import asyncio
 import json
+import logging
 import re
 from datetime import datetime
 from pathlib import Path
@@ -44,6 +45,9 @@ _HEADERS = {
     "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
     "Referer": SEI_BASE,
 }
+
+
+logger = logging.getLogger(__name__)
 
 
 def _bloqueado_por_captcha(resultado: dict) -> bool:
@@ -97,8 +101,8 @@ async def buscar_processo(numero_sei: str, usar_cache: bool = True) -> dict:
                 delta = datetime.now() - datetime.fromisoformat(cached["_cached_at"])
                 if delta.total_seconds() < 86400:
                     return cached
-        except Exception:
-            pass
+        except Exception as exc:
+            logger.debug("cache do SEI portal ilegível (re-busca ao vivo): %s", exc)
 
     async with httpx.AsyncClient(
         timeout=45, follow_redirects=True, headers=_HEADERS
@@ -126,8 +130,8 @@ async def buscar_processo(numero_sei: str, usar_cache: bool = True) -> dict:
             json.dumps(resultado, ensure_ascii=False, indent=2, default=str),
             encoding="utf-8",
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.warning("falha ao gravar cache do SEI portal (toda consulta re-busca): %s", exc)
 
     return resultado
 

@@ -45,8 +45,8 @@ def _carregar_env() -> None:
     try:
         from dotenv import load_dotenv
         load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / ".env", override=False)
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        _log.debug("dotenv não carregado (segue com ambiente atual): %s", exc)
 
 
 # ───────────────────────────── CAPÍTULO I — HERMES ─────────────────────────────
@@ -453,8 +453,8 @@ def _fatos_fornecedor(ctx: dict) -> str:
                 txt = f(ctx)
                 if txt and txt.strip():
                     return txt
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("seção %s do consolidado falhou (some do relatório): %s", fn, exc)
     from compliance_agent.reporting.inteligencia import moeda
     p = ctx.get("pagamentos") or {}
     nome = ctx.get("nome", "—")

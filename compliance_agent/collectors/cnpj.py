@@ -5,6 +5,7 @@ Retorna dados da empresa + sócios da Receita Federal.
 
 import asyncio
 import json
+import logging
 import re
 from datetime import date
 from typing import Optional, TYPE_CHECKING
@@ -17,6 +18,9 @@ if TYPE_CHECKING:  # só p/ anotação (o import real é lazy dentro da função
 
 BRASILAPI_URL = "https://brasilapi.com.br/api/cnpj/v1/{cnpj}"
 _HEADERS = {"User-Agent": "JFN-Compliance-Agent/1.0 (transparencia publica)"}
+
+
+logger = logging.getLogger(__name__)
 
 
 def _clean_cnpj(cnpj: str) -> str:
@@ -126,8 +130,8 @@ def salvar_empresa(dados: dict, session) -> "Empresa":
         da = dados.get("data_abertura", "")
         if da:
             empresa.data_abertura = date.fromisoformat(da[:10])
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("data_abertura ilegível (%r): %s", da, exc)
 
     session.flush()
 
@@ -147,8 +151,8 @@ def salvar_empresa(dados: dict, session) -> "Empresa":
             try:
                 if s.get("data_entrada"):
                     socio_db.data_entrada = date.fromisoformat(s["data_entrada"][:10])
-            except Exception:
-                pass
+            except Exception as exc:
+                logger.debug("data_entrada de sócio ilegível: %s", exc)
             session.add(socio_db)
 
             # Se CPF de 11 dígitos, tenta vincular à Pessoa

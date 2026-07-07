@@ -23,11 +23,15 @@ Uso:
 from __future__ import annotations
 
 import re
+import logging
 import statistics
 from typing import Iterable, Iterator
 
 from compliance_agent.nucleo.dossie import Contratacao, Dossie, Fornecedor
 from compliance_agent.nucleo.nucleo import Laudo, periciar
+
+
+logger = logging.getLogger(__name__)
 
 
 def _digits(v) -> str:
@@ -119,8 +123,8 @@ def _referencia_categoria(session, categoria: str) -> dict[str, float]:
     ref = {"mediana": statistics.median(valores)}
     try:
         ref["desvio_padrao"] = statistics.pstdev(valores)
-    except statistics.StatisticsError:
-        pass
+    except statistics.StatisticsError as exc:
+        logger.debug("desvio-padrão indisponível (segue só mediana): %s", exc)
     return ref
 
 
@@ -240,8 +244,8 @@ def _enriquecer_na_hora(session, ob) -> None:
     try:
         import compliance_agent.enrichers.cnpj_enricher as enr
         asyncio.run(asyncio.wait_for(enr.enriquecer_ob_cnpj(session, ob), 25))
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.debug("enriquecimento de CNPJ da OB pulado (best-effort): %s", exc)
 
 
 def periciar_ob(session, ob, enriquecer: bool = False) -> Laudo:
