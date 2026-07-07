@@ -25,8 +25,12 @@ def _hoje() -> date:
 
 
 def _d(s: str | None) -> date | None:
-    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", (s or "").strip())
-    return date(int(m.group(3)), int(m.group(2)), int(m.group(1))) if m else None
+    s = (s or "").strip()
+    m = re.match(r"(\d{2})/(\d{2})/(\d{4})", s)
+    if m:
+        return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
+    m = re.match(r"(\d{4})-(\d{2})-(\d{2})", s)
+    return date(int(m.group(1)), int(m.group(2)), int(m.group(3))) if m else None
 
 
 def _posts_pref(observacao: str) -> tuple[date | None, date | None]:
@@ -42,7 +46,9 @@ def _pessoas(con) -> list[dict]:
     """Agrega por pessoa: dados da Câmara + lista de postos na Prefeitura + candidaturas."""
     base = con.execute("""
         SELECT vc.nome_norm, MIN(vc.nome_camara) nome,
-               (SELECT MIN(s.data1) FROM pcrj_camara_servidores s WHERE s.nome_norm=vc.nome_norm) ato,
+               (SELECT MIN(substr(s.data1,7,4)||'-'||substr(s.data1,4,2)||'-'||substr(s.data1,1,2))
+                  FROM pcrj_camara_servidores s
+                  WHERE s.nome_norm=vc.nome_norm AND s.data1 LIKE '__/__/____') ato,
                (SELECT MIN(s.ano_ingresso) FROM pcrj_camara_servidores s WHERE s.nome_norm=vc.nome_norm) ingr,
                (SELECT GROUP_CONCAT(DISTINCT s.gabinete_num) FROM pcrj_camara_servidores s
                  WHERE s.nome_norm=vc.nome_norm AND s.gabinete_num IS NOT NULL) gabs,
@@ -200,8 +206,21 @@ def montar_ctx(db_path=None) -> dict:
             f"<td style='text-align:right'><b>{n_com}</b></td></tr>"
             f"</table>")
 
+        janela = con.execute(
+            "SELECT MAX(substr(coletado_em,1,10)) FROM pcrj_camara_servidores").fetchone()[0] or "?"
+        consulta = con.execute(
+            "SELECT MAX(substr(consultado_em,1,10)) FROM pcrj_prefeitura_consulta").fetchone()[0] or "?"
+        nota_temporal = (
+            f"<p class='nota'><b>Janela temporal e premissas (leia antes das tabelas):</b> "
+            f"lado Câmara = <b>relação atual de servidores</b> do portal de dados abertos (coletada em {janela}); "
+            f"quem já saiu da Câmara não consta — logo, constar da lista foi tratado como vínculo vigente. "
+            f"Lado Prefeitura = consulta ao contracheque em {consulta}; <b>ativo</b> significa sem data de "
+            f"exoneração <i>nessa consulta</i>, não em data posterior. Datas da Câmara: data do ATO de ingresso "
+            f"(fallback: 1º de janeiro do ano de ingresso, marcado como aproximação). Direção temporal comparada "
+            f"por datas reais (ordem cronológica), nunca por texto. Nome idêntico sem CPF = indício, não prova.</p>")
+
         secoes = [
-            {"titulo": "I. Sumário da perícia", "html": sumario},
+            {"titulo": "I. Sumário da perícia", "html": nota_temporal + sumario},
             {"titulo": f"II. Prefeitura → Câmara: estavam na Prefeitura ANTES ({len(pref_antes)})",
              "html": _tabela(pref_antes)},
             {"titulo": f"III. Câmara → Prefeitura: estavam na Câmara ANTES ({len(camara_antes)})",
