@@ -56,7 +56,7 @@ JUIZ = ("Gemini-2.5-Flash-Lite", GEMINI, K_GEM, "gemini-2.5-flash-lite")  # juiz
 
 CTX_YODA = ("Você é o Yoda, maestro do JFN. Ferramentas REAIS = rotas HTTP em 127.0.0.1:8000: "
             "POST /api/relatorio/inteligencia {empresa|cnpj}; POST /api/relatorio/orgao {orgao|ug}; "
-            "GET /api/anomalias; GET /api/cartel; GET/POST /api/massare/*. "
+            "GET /api/anomalias; GET /api/cartel. "
             "NÃO invente ferramenta (web_search NÃO existe). Princípio: indício, nunca acusação.")
 
 

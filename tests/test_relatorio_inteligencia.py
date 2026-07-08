@@ -178,7 +178,7 @@ def test_orgao_montar_gera_md_pdf_com_parecer():
     assert res["ok"] is True and res["ug"] == "133100"
     md = Path(res["path_md"]).read_text(encoding="utf-8")
     assert "RELATÓRIO DE INTELIGÊNCIA — ITERJ" in md
-    assert "PARECER PRELIMINAR DO JFN" in md
+    assert "PARECER PRELIMINAR" in md  # branding ac5f451: sem "DO JFN" nos entregáveis
     assert "PAGAMENTOS (ORDENS BANCÁRIAS) POR ANO" in md
     if res["path_pdf"]:
         assert Path(res["path_pdf"]).stat().st_size > 1000

@@ -50,7 +50,6 @@ ambiente no código — nunca caminho fixo de SO.
 │   ├─ Auditoria/Compliance RJ  (OBs, contratos, red flags)             │
 │   ├─ /api/relatorio/inteligencia   → relatório due-diligence          │
 │   ├─ /api/hermes/missao            → auditoria autônoma (texto livre)  │
-│   └─ /api/massare/*                → MASSARE (mercado/predição)        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -60,8 +59,8 @@ ambiente no código — nunca caminho fixo de SO.
   pedido do Jorge para o agente certo e responde no Telegram.
 - **JFN** — o motor de auditoria/compliance do RJ **e** o barramento HTTP por onde o Yoda aciona tudo.
   Servidor FastAPI em `127.0.0.1:8000` (`jfn.service`). Código em `~/JFN`, venv `~/JFN/.venv`.
-- **Massare** — agente de **mercado**: coleta/analisa preços e notícias e prevê cenários
-  (curtíssimo/curto/médio/longo). É um **módulo dentro de `~/JFN`** (mesmo venv), exposto pela API do JFN.
+- **Massare** — agente de mercado: **SAIU DA VM em 2026-07-07** (pedido do dono). Vive só no GitHub
+  (`jfelippebethlem-tech/Massare`, sessões cloud). Não há rota `/api/massare/*` nem timers dele aqui.
 
 ---
 
@@ -79,8 +78,6 @@ Mecanismo: **systemd `--user`** com `linger=yes` → sobe no boot da VM mesmo se
 | `jfn-tfe.timer` | 08:00 diário | Coleta TFE Despesa (espelho D-1 do SIAFE, dados abertos RJ) |
 | `jfn-tfe-ob.timer` | Seg 09:00 | Base completa de OBs 2023–2026 (download + ingestão) |
 | `jfn-ronda.timer` | a cada 10 min | Ronda: saúde do serviço + alertas |
-| `massare-daily.timer` | 07:30 | Massare: ciclo diário (registra a previsão **oficial** do dia) |
-| `massare-market.timer` | 12:50→21:00, dias úteis | Massare: cenários multi-horizonte **ao vivo** durante o pregão (09:50→18:00 BRT) |
 
 > ⛔ **`yoda.service` (nível de SISTEMA) foi DESABILITADO em 2026-06-06.** Era um duplicado que brigava
 > com o `hermes-gateway.service` pelo mesmo bot do Telegram (causava loop de FAILURE/restart). **Não reativar.**
@@ -112,15 +109,10 @@ curl -s -X POST http://127.0.0.1:8000/api/relatorio/orgao \
 curl -s -X POST http://127.0.0.1:8000/api/hermes/missao \
      -H 'Content-Type: application/json' -d '{"missao":"investigar contratos do fornecedor X"}'
 
-# Mercado (Massare):
-curl -s http://127.0.0.1:8000/api/massare/placar      # acurácia + sentimento
-curl -s http://127.0.0.1:8000/api/massare/cenarios    # último snapshot multi-horizonte
-curl -s -X POST http://127.0.0.1:8000/api/massare/prever -d '{"symbol":"^BVSP","horizon":5}'
 ```
 
 Roteamento (intenção → agente):
 - "relatório / auditoria / fornecedor / CNPJ / SIAFE / OB / due diligence" → **JFN** (`/api/relatorio/inteligencia`).
-- "mercado / câmbio / bolsa / ação / dólar / previsão / cenário" → **Massare** (`/api/massare/*`).
 - Pedido de auditoria aberto/complexo → **`/api/hermes/missao`**.
 - Conversa geral / código / texto → o **próprio Yoda** (Hermes).
 
@@ -140,7 +132,6 @@ journalctl --user -u hermes-gateway -n 50 --no-pager
 
 # Rodar coisas do JFN à mão (sempre com o venv do JFN)
 cd ~/JFN && .venv/bin/python -m compliance_agent.auditoria.auditar_fornecedor 19.088.605/0001-04 2025 2026
-cd ~/JFN && .venv/bin/python -m massare.daily --json
 ```
 
 **Regra de ouro do JFN:** Empenho ≠ Pagamento. A Ordem Bancária (OB) é o dado definitivo de pagamento.

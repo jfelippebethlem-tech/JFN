@@ -178,9 +178,9 @@ class SkillTree:
         return "\n".join(linhas)
 
     _DOM_EMOJI = {"auditoria": "🏢", "inteligencia": "🔎", "juridico": "⚖️",
-                  "mercado": "📈", "sistema": "⚙️", "outros": "▪️"}
+                  "sistema": "⚙️", "outros": "▪️"}
     _DOM_TITULO = {"auditoria": "AUDITORIA & RELATÓRIOS", "inteligencia": "INTELIGÊNCIA / OSINT",
-                   "juridico": "JURÍDICO (Lex) / SEI", "mercado": "MERCADO (Massare)", "sistema": "SISTEMA"}
+                   "juridico": "JURÍDICO (Lex) / SEI", "sistema": "SISTEMA"}
 
     # /lista = MENU CURADO, em linguagem natural — só o essencial que o Mestre Jorge de fato usa.
     # O catálogo COMPLETO (todas as capacidades) fica no /skills. Itens inexistentes são omitidos.
@@ -201,16 +201,6 @@ class SkillTree:
             ("grafo_poder", "Rede de poder (quem liga a quem)", "quem está ligado à empresa X"),
             ("consultar_empresa", "Cadastro + sócios de um CNPJ", "dados da empresa 19.088.605/0001-04"),
             ("consultar_idoneidade", "A empresa está sancionada? (CEIS/CNEP)", "a empresa X está sancionada?"),
-        ]),
-        ("📈", "Mercado & Previsão (Massare)", [
-            ("massare_cenarios", "Como está o mercado agora", "dólar/bolsa/ouro hoje"),
-            ("massare_prever", "Previsão direcional de um ativo", "o Ibovespa sobe semana que vem?"),
-            ("massare_regime", "Regime/clima do mercado (bull/bear/estresse)", "estamos em bull ou bear?"),
-            ("massare_teses", "Teses de mercado (narrativa → ativos)", "quais as teses de mercado hoje?"),
-            ("massare_fundamentos", "Fundamentos de um ativo", "fundamentos da Petrobras?"),
-            ("massare_carteira", "Minha carteira valorizada", "como está minha carteira?"),
-            ("massare_calendario", "Agenda econômica (próximos eventos)", "o que tem na agenda econômica?"),
-            ("massare_placar", "O Massare acerta? (track record OOS)", "qual o placar das previsões?"),
         ]),
         ("🛰️", "Coleta & Base", [
             ("siafe_status", "Status da coleta / cobertura da base", "quantas OBs já coletamos?"),

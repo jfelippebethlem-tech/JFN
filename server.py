@@ -937,9 +937,9 @@ def parse_args():
 
 
 # ── Split 2026-07-06: rotas por domínio (ver rotas/*.py; rede de segurança em tests/test_server_snapshot.py) ──
-from rotas import hermes as _r_hermes, produtos as _r_produtos, massare as _r_massare,     sistema as _r_sistema, investigacao as _r_investigacao  # noqa: E402
+from rotas import hermes as _r_hermes, produtos as _r_produtos, sistema as _r_sistema, investigacao as _r_investigacao  # noqa: E402
 
-for _r in (_r_hermes, _r_produtos, _r_massare, _r_sistema, _r_investigacao):
+for _r in (_r_hermes, _r_produtos, _r_sistema, _r_investigacao):
     app.include_router(_r.router)
 
 

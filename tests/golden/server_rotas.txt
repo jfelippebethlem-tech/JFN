@@ -2,7 +2,6 @@ DELETE /api/hermes/missao -> api_hermes_limpar_missao
 GET / -> index
 GET /api/agenda -> api_agenda
 GET /api/anomalias -> api_anomalias
-GET /api/briefing/dados -> api_briefing_dados
 GET /api/cartel -> api_cartel
 GET /api/coendereco/clusters -> api_coendereco_clusters
 GET /api/compliance/alerts -> api_compliance_alerts
@@ -30,18 +29,10 @@ GET /api/idoneidade -> api_idoneidade
 GET /api/leaks -> api_leaks
 GET /api/links -> api_links
 GET /api/lista -> api_lista
-GET /api/massare/calendario -> api_massare_calendario
-GET /api/massare/carteira -> api_massare_carteira
-GET /api/massare/cenarios -> api_massare_cenarios
-GET /api/massare/focus -> api_massare_focus
-GET /api/massare/fundamentos -> api_massare_fundamentos
-GET /api/massare/noticias -> api_massare_noticias
-GET /api/massare/placar -> api_massare_placar
-GET /api/massare/regime -> api_massare_regime
-GET /api/massare/teses -> api_massare_teses
 GET /api/memoria -> api_memoria
 GET /api/orgao/cidades -> api_orgao_cidades
 GET /api/ownership -> api_ownership
+GET /api/pipelines -> api_pipelines
 GET /api/pncp -> api_pncp
 GET /api/radar/status -> api_radar_status
 GET /api/rodizio -> api_rodizio
@@ -87,7 +78,6 @@ POST /api/hermes/parar -> api_hermes_parar
 POST /api/hermes/relatorio -> api_hermes_relatorio
 POST /api/hermes/trabalhar -> api_hermes_trabalhar
 POST /api/mandato/minuta -> api_mandato_minuta
-POST /api/massare/prever -> api_massare_prever
 POST /api/radar/ciclo -> api_radar_ciclo
 POST /api/radar/vigiar -> api_radar_vigiar
 POST /api/relatorio/inteligencia -> api_relatorio_inteligencia

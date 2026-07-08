@@ -117,31 +117,6 @@ capacidades:
   - {id: instrumento_mandato, agente: lex, dominio: juridico, tipo: http, metodo: POST, rota: /api/mandato/minuta, status: PRONTO,
      descricao: "Minuta: requerimento(ALERJ)/representacao(TCE)/noticia de fato(MP)/post", quando_usar: "'faca um requerimento sobre esse contrato'",
      args: {tipo: "requerimento|representacao|noticia_fato|post", base: "cnpj/ug/processo/id parecer"}, retorno: "{path_docx,texto}", nota: "diligencia/representacao, nunca condenacao"}
-  # ---- MERCADO (Massare) ----
-  - {id: massare_cenarios, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/cenarios, status: PRONTO,
-     descricao: "Snapshot multi-horizonte + regime + tom de noticias(Onda 8)", quando_usar: "'como esta o mercado', 'dolar/bolsa/ouro hoje'", args: {}, retorno: "{horizontes,regime_atual,tom_noticias}"}
-  - {id: consultar_noticias, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/massare/noticias, status: PRONTO,
-     descricao: "Noticias/midia sobre um tema/pessoa/empresa via GDELT (sem chave; tom/cobertura). NAO e web search generica", quando_usar: "'noticias sobre X', 'saiu algo na midia sobre X', 'aparicoes/repercussao recente de X' — quando NAO houver web_search, esta e a fonte de midia disponivel", exemplo: "noticias sobre Jorge Felippe Neto",
-     args: {tema: "string (pessoa/empresa/assunto)", janela: "ex.: 2d/7d (opcional)"}, retorno: "{ok,artigos[],tom} | {ok:false,erro}"}
-  - {id: massare_regime, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/regime, status: PRONTO,
-     descricao: "Regime/clima de mercado via HMM (calmo-alta/bull, calmo-baixa/bear, estresse-alta-vol) de um ativo", quando_usar: "'qual o regime/clima do mercado?', 'estamos em bull ou bear?', 'o S&P esta em estresse?'", exemplo: "qual o regime atual do Ibovespa? e do bitcoin?",
-     args: {symbol: "NOME (ibovespa, sp500, bitcoin, ouro...) OU simbolo; default ^GSPC"}, retorno: "{symbol,regime:{regime_atual,rotulo_atual,regimes[]}}"}
-  - {id: massare_placar, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/placar, status: PRONTO,
-     descricao: "Acuracia OOS + Sharpe liquido + DSR(Onda 9)", quando_usar: "'o Massare acerta?'", args: {}, retorno: "{hit_rate_oos,sharpe_liquido,dsr}"}
-  - {id: massare_prever, agente: massare, dominio: mercado, tipo: http, metodo: POST, rota: /api/massare/prever, status: PRONTO,
-     descricao: "Previsao direcional + estado ATUAL de um ativo (walk-forward; honesto: edge_oos/tem_skill)", quando_usar: "'como esta a prata/ouro hoje?', 'previsao do Ibovespa', 'BTC vai subir?', perspectivas de um ativo", exemplo: "como a prata esta hoje e a previsao?",
-     args: {symbol: "NOME (prata, ouro, bitcoin, ibovespa, dolar, petroleo, cobre...) OU simbolo; resolve sozinho", horizon: "int=5"}, retorno: "{ativo,symbol,atual:{preco,var_pct},previsao:{direction,prob,edge_oos,tem_skill}}"}
-  - {id: massare_teses, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/teses, status: PRONTO,
-     descricao: "Teses de mercado: narrativa->ativos->direcao, com acerto OOS por narrativa", quando_usar: "'quais as teses agora', 'o que move o mercado'",
-     args: {}, retorno: "{teses[{narrativa,ativos,direcao,horizonte,conf,racional,fontes,acerto_oos}]}"}
-  - {id: massare_focus, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/focus, status: PRONTO,
-     descricao: "Boletim Focus (BCB/Olinda): Selic/IPCA/PIB/cambio + variacao semanal", quando_usar: "'o que o mercado espera de juros/inflacao'", args: {}, retorno: "{selic,ipca,pib,cambio,asof}", fonte: "olinda.bcb.gov.br Expectativas (python-bcb)"}
-  - {id: massare_fundamentos, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/fundamentos, status: PRONTO,
-     descricao: "Fundamentos de acao BR (P/L,DY,ROE,balancos CVM)", quando_usar: "'fundamentos da PETR4'", args: {ticker: obrigatorio}, retorno: "{preco,pl,dy,roe,balanco}", fonte: "brapi.dev"}
-  - {id: massare_calendario, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/calendario, status: PRONTO,
-     descricao: "Agenda macro (US/BR/China): CPI/NFP/FOMC/COPOM/PMI China, previsto vs anterior", quando_usar: "'agenda da semana', 'tem dado importante hoje?'", args: {dias: "int=7"}, retorno: "{eventos[]}", fonte: "Finnhub /calendar/economic (free tier) + FRED (sem chave)"}
-  - {id: massare_carteira, agente: massare, dominio: mercado, tipo: http, metodo: GET, rota: /api/massare/carteira, status: PRONTO,
-     descricao: "Modo carteira MANUAL: holdings em data/carteira.json x macro/regime/teses (sem broker)", quando_usar: "'como esta minha carteira'", args: {}, retorno: "{posicoes,alertas,leitura_macro}", fonte: "dados gratis (Yahoo/Stooq/brapi/websocket cripto)"}
   # ---- RADAR ----
   - {id: vigiar, agente: jfn, dominio: radar, tipo: http, metodo: POST, rota: /api/radar/vigiar, status: PRONTO,
      descricao: "Adiciona alvo a watchlist; alerta no Telegram em evento (PNCP/DOERJ/SIAFE/GDELT)", quando_usar: "'/vigiar <cnpj|ug|nome>'", args: {alvo: obrigatorio, tipo: "cnpj|ug|nome|objeto"}, retorno: "{watchlist}"}
@@ -166,7 +141,7 @@ capacidades:
      quando_usar: "rotina automatica noturna; acionar a mao so p/ recruzar apos coleta grande", args: {}, retorno: "data/cruzador.log (correlacoes OB<->SEI + UGs com indicio de concentracao-grupo)", nota: "saida operacional em log; os indicios viram consulta via concentracao_grupo / cartel. Indicio != acusacao."}
   - {id: memoria, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: /api/memoria, status: PRONTO,
      descricao: "Memoria consolidada do ecossistema (licoes Massare + base Lex + Hermes)", quando_usar: "'o que voce aprendeu', consolidar memoria",
-     args: {limite: "int=15"}, retorno: "{massare_licoes,lex_base,hermes}"}
+     args: {limite: "int=15"}, retorno: "{lex_base,hermes}"}
   - {id: status_jfn, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: /status, status: PRONTO,
      descricao: "JFN vivo? healthcheck", quando_usar: "diagnostico", args: {}, retorno: "{ok,uptime}"}
   - {id: agenda_jobs, agente: jfn, dominio: sistema, tipo: http, metodo: GET, rota: /api/agenda, status: PRONTO,
@@ -244,7 +219,6 @@ menu_lista:
     - [["🏢 Relatório de fornecedor", "menu:forn"]]
     - [["🏛️ Relatório de órgão", "menu:orgao"]]
     - [["🔎 Investigar (cartel/rede)", "menu:invest"]]
-    - [["📈 Mercado & previsão", "menu:mercado"]]
     - [["📚 Ver todas as funções", "menu:all"]]
   dicas:
     forn: |
@@ -262,8 +236,3 @@ menu_lista:
       Cartel/conluio entre fornecedores, rede de poder (sócios e doações de campanha) e se a empresa está sancionada (CEIS/CNEP).
 
       Ex.: *tem cartel na UG 133100?* · *quem está ligado à empresa X*.
-    mercado: |
-      📈 **Mercado & previsão (Massare)**
-      Como está o mercado agora e previsões com placar honesto (acerto fora da amostra).
-
-      Ex.: *dólar e bolsa hoje* · *o Ibovespa sobe semana que vem?*
