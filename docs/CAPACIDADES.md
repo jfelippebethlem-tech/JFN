@@ -33,7 +33,6 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `consultar_idoneidade` | lex | http | `/api/idoneidade` | PRONTO | 'a empresa X esta sancionada?', PEP |
 | `consultar_leaks` | jfn | http | `/api/leaks` | PRONTO | 'aparece nos Panama/Pandora Papers?' |
 | `consultar_links` | jfn | http | `/api/links` | PRONTO | 'onde mais pesquisar sobre X', aprofundar DD |
-| `consultar_noticias` | jfn | http | `/api/massare/noticias` | PRONTO | 'noticias sobre X', 'saiu algo na midia sobre X', 'aparicoes/repercussao recente de X' — quando NAO houver web_search, esta e a fonte de midia disponivel |
 | `consultar_ownership` | jfn | http | `/api/ownership` | PRONTO | vinculo societario cross-jurisdicao |
 | `doador_contrato_qsa` | lex | http | `/api/doador_contrato` | PRONTO | 'algum socio do fornecedor X financiou campanha?', conflito doador-fornecedor pela via QSA |
 | `dossie` | jfn | http | `/api/dossie` | PRONTO | 'monte um dossie sobre X' |
@@ -46,15 +45,6 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `instrumento_mandato` | lex | http | `/api/mandato/minuta` | PRONTO | 'faca um requerimento sobre esse contrato' |
 | `ler_processo_sei` | lex | cli | `tools.sei_reader "<NUMERO>"` | PRONTO | ler/analisar um processo SEI especifico. FORMATO do numero: 'SEI-UUUUUU/NNNNNN/AAAA' (ex.: SEI-070002/008633/2022) ou 'E-NN/NNN/AAAA' (ex.: E-12/345/2026) — unidade/sequencial/ano. Aceita com ou sem o prefixo SEI-. |
 | `parecer_juridico` | lex | cli | `compliance_agent.lex "<empresa|cnpj>"` | PRONTO | 'tem direcionamento?', parecer |
-| `massare_calendario` | massare | http | `/api/massare/calendario` | PRONTO | 'agenda da semana', 'tem dado importante hoje?' |
-| `massare_carteira` | massare | http | `/api/massare/carteira` | PRONTO | 'como esta minha carteira' |
-| `massare_cenarios` | massare | http | `/api/massare/cenarios` | PRONTO | 'como esta o mercado', 'dolar/bolsa/ouro hoje' |
-| `massare_focus` | massare | http | `/api/massare/focus` | PRONTO | 'o que o mercado espera de juros/inflacao' |
-| `massare_fundamentos` | massare | http | `/api/massare/fundamentos` | PRONTO | 'fundamentos da PETR4' |
-| `massare_placar` | massare | http | `/api/massare/placar` | PRONTO | 'o Massare acerta?' |
-| `massare_prever` | massare | http | `/api/massare/prever` | PRONTO | 'como esta a prata/ouro hoje?', 'previsao do Ibovespa', 'BTC vai subir?', perspectivas de um ativo |
-| `massare_regime` | massare | http | `/api/massare/regime` | PRONTO | 'qual o regime/clima do mercado?', 'estamos em bull ou bear?', 'o S&P esta em estresse?' |
-| `massare_teses` | massare | http | `/api/massare/teses` | PRONTO | 'quais as teses agora', 'o que move o mercado' |
 | `radar_status` | jfn | http | `/api/radar/status` | PRONTO | 'o que voce monitora', 'teve alerta hoje' |
 | `vigiar` | jfn | http | `/api/radar/vigiar` | PRONTO | '/vigiar <cnpj|ug|nome>' |
 | `agenda_jobs` | jfn | http | `/api/agenda` | PRONTO | 'como estao os jobs/sweeps/agenda', 'o que roda quando', 'algum job falhou/parado' |

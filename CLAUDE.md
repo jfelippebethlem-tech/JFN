@@ -18,7 +18,7 @@ branch **`seguranca/ssrf-captcha`** · VM Linux Oracle Cloud ARM (`jfn-core`, 2 
 ## ECOSSISTEMA
 **Yoda** (Telegram, maestro) → aciona o JFN pela **API `127.0.0.1:8000`** (`server.py`). **Produtos** (md+pdf+xlsx):
 `/relatorio` fornecedor (`inteligencia`) + **Lex** (`lex`, 🟢🟡🔴) · `/orgao` (`inteligencia_orgao`) + Lex de órgão ·
-**Dossiê** · **Massare**. Resolvem por **nome/CNPJ/UG** (ambíguo → `{ambiguo,pergunta,candidatos}`); `/relatorio`,
+**Dossiê**. (Massare saiu da VM 2026-07-07 — vive só no GitHub.) Resolvem por **nome/CNPJ/UG** (ambíguo → `{ambiguo,pergunta,candidatos}`); `/relatorio`,
 `/orgao`, `/dossie` são ASSÍNCRONOS (empurram os docs no Telegram).
 > Caminho/callers de QUALQUER símbolo (`inteligencia`/`inteligencia_orgao`/`lex`/`correlacao_sei`/`ugs`) →
 > `gitnexus_context({name})`. Mecânica do barramento (capabilities.yaml→`/api/lista`, fluxo assíncrono Telegram,

@@ -1,4 +1,0 @@
-[submodule "massare"]
-	path = massare
-	url = https://github.com/jfelippebethlem-tech/Massare.git
-	branch = master

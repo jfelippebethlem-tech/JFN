@@ -117,6 +117,7 @@ def test_hermes_groq_first():
     fl.groq_chat_async = fake_groq
     fl._groq_key = lambda: "gsk_fake"
     h._ultima_chamada = 0.0
+    os.environ["HERMES_UNCENSORED_FIRST"] = "0"  # passo 0 chama OpenRouter REAL — desligar p/ teste ser offline
     try:
         result = asyncio.run(h._hermes("sys", "prompt", max_tokens=10))
         assert result == "resposta-groq"
@@ -125,6 +126,7 @@ def test_hermes_groq_first():
         fl.groq_chat_async = orig_groq
         fl._groq_key = orig_key
         fl.qwen_chat_async = orig_qwen
+        os.environ.pop("HERMES_UNCENSORED_FIRST", None)
 
 
 def test_hermes_openrouter_fallback_quando_groq_falha():
@@ -560,6 +562,7 @@ def test_hermes_max_tokens_repassado_ao_groq():
     fl.groq_chat_async = fake_groq
     fl._groq_key = lambda: "gsk_fake"
     h._ultima_chamada = 0.0
+    os.environ["HERMES_UNCENSORED_FIRST"] = "0"  # passo 0 chama OpenRouter REAL — desligar p/ teste ser offline
     try:
         asyncio.run(h._hermes("sys", "prompt", max_tokens=7777))
         assert capturado.get("max_tokens") == 7777, \
@@ -568,6 +571,7 @@ def test_hermes_max_tokens_repassado_ao_groq():
         fl.groq_chat_async = orig_groq
         fl._groq_key = orig_key
         fl.qwen_chat_async = orig_qwen
+        os.environ.pop("HERMES_UNCENSORED_FIRST", None)
 
 
 # ─── Runner standalone (sem pytest) ───────────────────────────────────────────

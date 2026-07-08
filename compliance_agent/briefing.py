@@ -4,8 +4,8 @@ Dados confiáveis para a rotina "BOM DIA DO MESTRE JORGE" — para o Yoda PARAR 
 
 Fontes robustas (sem chave, JSON/RSS):
   - **Clima** (Barra da Tijuca/RJ): API Open-Meteo (gratuita, sem chave).
-  - **Mercado** (dólar, Ibovespa, ouro, petróleo WTI): preços reais do Massare (`massare/data/massare.db`),
-    com valor + variação do dia.
+  - **Mercado** (dólar, Ibovespa, ouro, petróleo WTI): Yahoo Finance chart API (gratuita, sem chave),
+    com valor + variação do dia. (Era o massare.db até 2026-07-07 — Massare saiu da VM.)
   - **Notícias** (5 Brasil + 5 Rio): Google News RSS.
 
 Endpoint: `GET /api/briefing/dados` -> {clima, mercado, noticias}. O Yoda chama 1 vez e só formata + acrescenta
@@ -15,7 +15,6 @@ from __future__ import annotations
 
 import json
 import re
-import sqlite3
 import urllib.parse
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -25,7 +24,6 @@ from pathlib import Path
 _MAX_IDADE_DIAS = 12  # notícia mais velha que isto é descartada (mata evergreen/2018 dos feeds)
 
 _REPO = Path(__file__).resolve().parent.parent
-_MASSARE_DB = _REPO / "massare" / "data" / "massare.db"
 
 # Barra da Tijuca, RJ
 _LAT, _LON = -23.01, -43.31
@@ -72,25 +70,24 @@ def clima_barra() -> dict:
 
 
 def _preco(symbol: str) -> tuple:
-    """(close_atual, var_pct) do símbolo na base do Massare. (None, None) se faltar."""
-    if not _MASSARE_DB.exists():
-        return None, None
+    """(preco_atual, var_pct) do símbolo via Yahoo chart API (sem chave). (None, None) se faltar."""
     try:
-        con = sqlite3.connect(str(_MASSARE_DB))
-        rows = con.execute("SELECT close FROM prices WHERE symbol=? ORDER BY date DESC LIMIT 2", (symbol,)).fetchall()
-        con.close()
-        if not rows:
+        url = (f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.parse.quote(symbol)}"
+               "?range=1d&interval=1d")
+        meta = json.loads(_http(url))["chart"]["result"][0]["meta"]
+        atual = meta.get("regularMarketPrice")
+        prev = meta.get("chartPreviousClose") or meta.get("previousClose")
+        if atual is None:
             return None, None
-        atual = rows[0][0]
-        if len(rows) > 1 and rows[1][0]:
-            return atual, round((atual - rows[1][0]) / rows[1][0] * 100, 2)
+        if prev:
+            return atual, round((atual - prev) / prev * 100, 2)
         return atual, None
     except Exception:
         return None, None
 
 
 def mercado() -> dict:
-    """Dólar, Ibovespa, ouro e petróleo WTI com valor + variação do dia (fonte: Massare)."""
+    """Dólar, Ibovespa, ouro e petróleo WTI com valor + variação do dia (fonte: Yahoo Finance)."""
     defs = [
         ("dolar", "USDBRL=X", "Dólar comercial", "R$ {:.4f}", "https://www.infomoney.com.br/cotacoes/dolar-comercial/"),
         ("bovespa", "^BVSP", "Ibovespa", "{:,.0f} pts", "https://www.infomoney.com.br/cotacoes/b3/indice/ibovespa/"),

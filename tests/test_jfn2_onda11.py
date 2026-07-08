@@ -7,14 +7,14 @@ def test_memoria_consolida_fontes():
     from compliance_agent.memoria import consolidar
     r = consolidar(5)
     assert r["ok"] is True
-    assert "massare_licoes" in r and "lex_base" in r and "hermes" in r
+    assert "lex_base" in r and "hermes" in r
     assert isinstance(r["_fontes"], list)
 
 
 def test_memoria_honesta_fonte_ausente(monkeypatch):
     """Fonte indisponível vira nota, nunca quebra nem fabrica."""
     import sys
-    monkeypatch.setitem(sys.modules, "massare.learning", None)
+    monkeypatch.setitem(sys.modules, "compliance_agent.lex_base_empirica", None)
     from compliance_agent.memoria import consolidar
     r = consolidar()
     assert r["ok"] is True  # não quebra
