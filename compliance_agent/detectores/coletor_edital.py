@@ -265,6 +265,77 @@ def _extrair_exigencias(linhas: list[tuple[str, str]], valor_estimado: float | N
     return exigencias
 
 
+# ── catálogo de cláusulas restritivas (E7) — chaves canônicas espelham restritividade_licitacoes.md §2 e os
+#    TIPO-01…10 da base jurisprudencial. (tipo_canonico, categoria, regex_gatilho). CÓDIGO, não prompt: o regex
+#    marca a cláusula; o teste finalístico (E7) decide a gravidade. Ordem: específico antes de genérico.
+_CATALOGO_CLAUSULAS: list[tuple[str, str, "re.Pattern[str]"]] = [
+    ("atestado_identico", "tecnica",
+     re.compile(r"atestad[oa].*(?:id[êe]ntic|exatamente o mesmo|vedad[oa].*somat[óo]rio)", re.IGNORECASE)),
+    ("atestado_quantitativo", "tecnica",
+     re.compile(r"atestad[oa].*(?:quantitativo|no m[íi]nimo|percentual|\d+\s*%)", re.IGNORECASE)),
+    ("visita_tecnica", "tecnica",
+     re.compile(r"(?:visita|vistoria)\s+t[ée]cnica.*(?:obrigat[óo]ri|condi[çc][ãa]o (?:de|para).*habilita)"
+                r"|(?:obrigat[óo]ri).*(?:visita|vistoria)\s+t[ée]cnica", re.IGNORECASE)),
+    ("vinculo_profissional", "tecnica",
+     re.compile(r"(?:v[íi]nculo\s+empregat[íi]cio|carteira\s+de\s+trabalho|ctps|quadro\s+permanente)"
+                r".*(?:profissional|respons[áa]vel\s+t[ée]cnico)"
+                r"|(?:profissional|respons[áa]vel\s+t[ée]cnico).*(?:v[íi]nculo\s+empregat[íi]cio|ctps)", re.IGNORECASE)),
+    ("capital_patrimonio", "economica",
+     re.compile(r"(?:capital\s+social|patrim[ôo]nio\s+l[íi]quido)\s+(?:m[íi]nimo|integralizado|de|equivalente)", re.IGNORECASE)),
+    ("indices_contabeis", "economica",
+     re.compile(r"(?:[íi]ndice|liquidez|endividamento|solv[êe]ncia).*(?:maior|superior|igual|≥|>=|\d[.,]\d)", re.IGNORECASE)),
+    ("garantia_proposta", "economica",
+     re.compile(r"garantia\s+(?:de\s+)?(?:proposta|participa[çc][ãa]o)", re.IGNORECASE)),
+    ("recorte_geografico", "geografico",
+     re.compile(r"(?:sede|filial|domic[íi]lio|escrit[óo]rio|representa[çc][ãa]o|assist[êe]ncia\s+t[ée]cnica)"
+                r".*(?:no\s+munic[íi]pio|neste\s+munic[íi]pio|no\s+estado|na\s+regi[ãa]o|local|da\s+sede\s+do\s+[óo]rg)", re.IGNORECASE)),
+    ("recorte_temporal", "temporal",
+     re.compile(r"(?:prazo\s+de\s+entrega|entrega).*(?:imediat|\b(?:24|48|72)\s*(?:h|horas)\b|\b[1-5]\s*dias\b)", re.IGNORECASE)),
+    ("marca_dirigida", "marca",
+     re.compile(r"(?:marca|modelo|fabricante)\s*[:\-]?\s*[A-Z0-9][\w\-]{2,}", re.IGNORECASE)),
+    ("amostra_poc", "amostra",
+     re.compile(r"(?:amostra|prova\s+de\s+conceito).*(?:todos\s+os\s+licitantes|antes\s+d[ao]\s+(?:habilita|julgamento))", re.IGNORECASE)),
+    ("pontuacao_dirigida", "pontuacao",
+     re.compile(r"pontua[çc][ãa]o.*(?:t[ée]cnica|muito\s+satisfat[óo]ri|crit[ée]rio\s+subjetiv)", re.IGNORECASE)),
+]
+_RX_OU_EQUIVALENTE = re.compile(r"ou\s+(?:similar|equivalente|de\s+melhor\s+qualidade)", re.IGNORECASE)
+_RX_DECLARACAO_SUBST = re.compile(r"declara[çc][ãa]o.*(?:conhecimento|disponibilidade|compromisso|pleno)", re.IGNORECASE)
+_RX_JUSTIFICATIVA = re.compile(r"(?:justificativ|motiva[çc][ãa]o|em\s+raz[ãa]o\s+d|devido\s+[àa])", re.IGNORECASE)
+
+
+def _extrair_clausulas_restritivas(linhas: list[tuple[str, str]], valor_estimado: float | None) -> list[dict]:
+    """Lista COMPLETA de cláusulas restritivas do edital (E7), cada uma normalizada em `tipo`+`categoria`, com
+    proveniência e flags do teste finalístico (`tem_ou_equivalente`, `tem_declaracao_substitutiva`,
+    `justificativa_autos`) e parâmetro numérico (`valor`/`pct`) quando o texto trouxer. Determinístico — o regex
+    marca a cláusula; a gravidade é decidida no E7. Uma linha casa no máx. UMA cláusula (a 1ª do catálogo)."""
+    clausulas: list[dict] = []
+    for ln, fonte in linhas:
+        for tipo, categoria, rx in _CATALOGO_CLAUSULAS:
+            if not rx.search(ln):
+                continue
+            low = ln.lower()
+            c: dict[str, Any] = {
+                "tipo": tipo,
+                "categoria": categoria,
+                "texto": ln[:200],
+                "prov": _prov(fonte, ln),
+                "tem_ou_equivalente": bool(_RX_OU_EQUIVALENTE.search(low)),
+                "tem_declaracao_substitutiva": bool(_RX_DECLARACAO_SUBST.search(low)),
+                "justificativa_autos": bool(_RX_JUSTIFICATIVA.search(low)),
+            }
+            valor = _valor_reais(ln)
+            pct = _pct(ln)
+            if valor is None and pct is not None and valor_estimado:
+                valor = round(pct * valor_estimado, 2)  # "X% do valor estimado" → absoluto (base real)
+            if valor is not None:
+                c["valor"] = valor
+            if pct is not None:
+                c["pct"] = pct
+            clausulas.append(c)
+            break  # 1ª cláusula do catálogo vence nesta linha (evita dupla contagem)
+    return clausulas
+
+
 # lotes / itens
 _RX_LOTE = re.compile(r"^\s*(?:lote|grupo)\s*[:nº#]*\s*(\d+)", re.IGNORECASE)
 _RX_CATMAT = re.compile(r"\b(?:catmat|catser|classe)\s*[:nº#]*\s*(\d{3,})", re.IGNORECASE)
@@ -406,6 +477,12 @@ def montar_ctx_de_sei(leitura: dict, *, usar_llm: bool = False, gerar: Callable[
         ctx["exigencias_habilitacao"] = exig
         prov["exigencias_habilitacao"] = [e["prov"] for e in exig]
 
+    # cláusulas restritivas — catálogo completo com categoria (E7)
+    clausulas = _extrair_clausulas_restritivas(linhas, valor_estimado)
+    if clausulas:
+        ctx["clausulas_edital"] = clausulas
+        prov["clausulas_edital"] = [c["prov"] for c in clausulas]
+
     # lotes / itens (E3)
     lotes = _extrair_lotes(linhas)
     if lotes:
@@ -436,8 +513,10 @@ def _resumo_ctx(ctx: dict) -> dict:
         "data_abertura": ctx.get("data_abertura"),
         "valor_estimado": ctx.get("valor_estimado"),
         "n_exigencias": len(ctx.get("exigencias_habilitacao") or []),
+        "n_clausulas": len(ctx.get("clausulas_edital") or []),
         "n_lotes": len(ctx.get("lotes") or []),
         "tem_propostas": bool(ctx.get("propostas")),
+        "tem_decisoes": bool(ctx.get("decisoes")),
         "campos_extraidos": sorted(k for k in ctx if not k.startswith("_") and k != "processo"),
     }
 
@@ -468,10 +547,19 @@ async def analisar_processo_sei(numero: str, *, usar_llm: bool = False, ler_fn: 
 
     ctx = montar_ctx_de_sei(leitura, usar_llm=usar_llm)
 
+    # ata de julgamento → decisões/propostas/resultado (destrava J4/J7 e o cruzamento cláusula↔resultado do E1/E7)
+    from compliance_agent.detectores.coletor_ata import montar_ctx_julgamento  # import LAZY (evita ciclo)
+    ctx_julg = montar_ctx_julgamento(leitura, usar_llm=usar_llm)
+    for k in ("decisoes", "propostas", "resultado"):
+        if ctx_julg.get(k):
+            ctx[k] = ctx_julg[k]
+            ctx.setdefault("_proveniencia", {})[k] = ctx_julg.get("_proveniencia", {}).get(k)
+
     resultados = []
     resultados.extend(rodar_edital(ctx["processo"], contexto=ctx))
     resultados.extend(rodar_planejamento(ctx["processo"], contexto=ctx))
-    if ctx.get("propostas"):  # julgamento só com a lista de propostas (gap PNCP — honesto)
+    # julgamento roda com a lista de propostas OU com as decisões da ata (quando a ata está no SEI, o gap PNCP some)
+    if ctx.get("propostas") or ctx.get("decisoes"):
         resultados.extend(rodar_julgamento(ctx["processo"], contexto=ctx))
 
     dicts = [r.to_dict() for r in resultados]

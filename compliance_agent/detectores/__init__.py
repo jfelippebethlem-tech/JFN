@@ -38,6 +38,7 @@ from compliance_agent.detectores.e3_lote_pacote import E3LotePacote
 from compliance_agent.detectores.e4_visita_tecnica import E4VisitaTecnica
 from compliance_agent.detectores.e5_edital_iterado import E5EditalIterado
 from compliance_agent.detectores.e6_pontuacao_dirigida import E6PontuacaoDirigida
+from compliance_agent.detectores.e7_clausula_restritiva import E7ClausulaRestritiva
 from compliance_agent.detectores.j1_cartel import J1Cartel
 from compliance_agent.detectores.j2_propostas_cobertura import J2PropostasCobertura
 from compliance_agent.detectores.j3_desconto_anomalo import J3DescontoAnomalo
@@ -76,6 +77,7 @@ REGISTRO: dict[str, Detector] = {
         E4VisitaTecnica(),     # fase de edital — visita técnica obrigatória como filtro
         E5EditalIterado(),     # fase de edital — republicações dirigidas (edital iterado)
         E6PontuacaoDirigida(),  # fase de edital — pontuação técnica dirigida (técnica e preço)
+        E7ClausulaRestritiva(),  # fase de edital — cláusula-a-cláusula finalística + efeito combinado (jurisprudência)
         P1EspecificacaoDirigida(),  # fase de planejamento — especificação dirigida/marca disfarçada
         P2CotacoesCombinadas(),     # fase de planejamento — cotações combinadas/orçamentos de fachada
         P5EmergenciaFabricada(),    # fase de planejamento — emergência fabricada (dispensa art. 75 VIII)
@@ -109,6 +111,7 @@ PESOS_DETECTOR: dict[str, float] = {
     "E4": PESOS_FAMILIA["desenho_certame"],
     "E5": PESOS_FAMILIA["desenho_certame"],
     "E6": PESOS_FAMILIA["desenho_certame"],
+    "E7": PESOS_FAMILIA["desenho_certame"],
     "P1": PESOS_FAMILIA["desenho_certame"],
     "P2": PESOS_FAMILIA["preco"],
     "P5": PESOS_FAMILIA["desenho_certame"],
@@ -173,13 +176,14 @@ def rodar_edital(processo: str, *, contexto: dict | None = None, exculpatoria: b
       E1 → {exigencias_habilitacao[], valor_estimado, quantitativos, editais_analogos[], resultado{licitantes,inabilitados}, objeto_critico?}
       E2 → {data_publicacao, data_abertura, modalidade, criterio?, feriados?, no_pncp?, versoes[]}
       E3 → {lotes[{itens[{descricao,catmat|catser|classe}]}], catmat_por_item?, justificativa_nao_parcelamento, resultado}
+      E7 → {clausulas_edital[{tipo,categoria,texto,pct?,valor?,tem_ou_equivalente?,tem_declaracao_substitutiva?,justificativa_autos?}], valor_estimado?, resultado{licitantes,inabilitados}, objeto_critico?}
     `gerar` (callable) alimenta as rubricas LLM-opcionais; ausente → partes subjetivas degradam para nao_avaliavel."""
     ctx: dict[str, Any] = {"processo": str(processo)}
     if contexto:
         ctx.update(contexto)
     if gerar is not None and "gerar" not in ctx:
         ctx["gerar"] = gerar
-    dets = [d for d in REGISTRO.values() if d.id in ("E1", "E2", "E3", "E4", "E5", "E6")]
+    dets = [d for d in REGISTRO.values() if d.id in ("E1", "E2", "E3", "E4", "E5", "E6", "E7")]
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 
@@ -281,6 +285,7 @@ __all__ = [
     "E4VisitaTecnica",
     "E5EditalIterado",
     "E6PontuacaoDirigida",
+    "E7ClausulaRestritiva",
     "P1EspecificacaoDirigida",
     "P2CotacoesCombinadas",
     "P5EmergenciaFabricada",
