@@ -182,6 +182,50 @@ def test_clausula_garantia_converte_pct_para_valor():
     assert gar["valor"] == round(0.03 * 2_000_000.00, 2)
 
 
+def test_clausula_so_de_documento_de_edital_nao_de_nota_fiscal():
+    """Precisão (regressão de dado real): a coluna 'MARCA' de uma NOTA FISCAL não é cláusula de edital. Cláusula
+    só é extraída de documentos de edital/planejamento (via sei.fases.classificar), nunca de NF/OB/despacho."""
+    leitura = {
+        "numero": "SEI-260007/010935/2024", "texto": "",
+        "documentos": [{"url": "u"}],
+        "conteudo_documentos": [
+            {"doc": "Nota Fiscal Eletrônica 12345",
+             "conteudo": "QUANTIDADE ESPÉCIE MARCA NUMERAÇÃO PESO BRUTO PESO LÍQUIDO\nMarca dos Volumes"},
+        ],
+    }
+    ctx = montar_ctx_de_sei(leitura, usar_llm=False)
+    assert "clausulas_edital" not in ctx  # NF não gera cláusula (era falso positivo 'marca_dirigida')
+
+
+def test_falsos_positivos_reais_vetados_no_edital():
+    """Regressão dos falsos positivos vistos no arquivo real, agora DENTRO de um doc de edital: 'Certidão Modelo
+    Especial', 'Insolvência Civil', e a localização do próprio órgão não devem virar cláusula restritiva."""
+    edital = """
+EDITAL DE PREGÃO 99/2024
+Certidão Modelo Especial de distribuição cível.
+NADA CONSTA com referência à Insolvência Civil (Artigos 748 e seguintes da Lei 5.869).
+O Serviço de Atendimento Móvel de Urgência (SAMU), Regional Centro Sul, com sede no Município de Três Rios (RJ).
+"""
+    leitura = {"numero": "SEI-1", "texto": "",
+               "documentos": [{"url": "u"}],
+               "conteudo_documentos": [{"doc": "Edital de Pregão 99/2024", "conteudo": edital}]}
+    ctx = montar_ctx_de_sei(leitura, usar_llm=False)
+    tipos = {c["tipo"] for c in ctx.get("clausulas_edital", [])}
+    assert "marca_dirigida" not in tipos       # 'Certidão Modelo Especial' vetada
+    assert "indices_contabeis" not in tipos     # 'Insolvência Civil' (não é solvência-índice) vetada
+    assert "recorte_geografico" not in tipos     # sede do ÓRGÃO (SAMU), não exigência ao licitante
+
+
+def test_recorte_geografico_exige_obrigacao_ao_licitante():
+    """Verdadeiro positivo: exigência ao LICITANTE de sede local é cláusula restritiva."""
+    edital = "A licitante deverá possuir sede ou filial no Município para assistência técnica local."
+    leitura = {"numero": "SEI-2", "texto": "",
+               "documentos": [{"url": "u"}],
+               "conteudo_documentos": [{"doc": "Edital de Concorrência 10/2024", "conteudo": edital}]}
+    ctx = montar_ctx_de_sei(leitura, usar_llm=False)
+    assert "recorte_geografico" in {c["tipo"] for c in ctx.get("clausulas_edital", [])}
+
+
 def test_edital_limpo_sem_clausulas_restritivas():
     """Edital sem gatilhos restritivos → clausulas_edital fica FORA do ctx (campo ausente ≠ 0)."""
     leitura = {"numero": "SEI-2", "texto": "Pregão menor preço, ampla concorrência.",

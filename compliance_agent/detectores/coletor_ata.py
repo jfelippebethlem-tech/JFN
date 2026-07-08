@@ -41,10 +41,11 @@ _RX_MOTIVO = re.compile(
     r"(?:por(?:que)?|em\s+raz[ãa]o\s+d[eo]|motivos?[:\s]|deixou\s+de|n[ãa]o\s+apresentou|"
     r"aus[êe]ncia\s+de|face\s+[àa]|tendo\s+em\s+vista)\s+(.+)$",
     re.IGNORECASE)
-# marcadores de que uma fonte é uma ata/sessão de julgamento (fallback quando o título não classifica)
+# marcadores FORTES de que uma fonte é uma ata/sessão de julgamento (fallback quando o título não classifica).
+# NÃO usa 'habilitad'/'inabilitad' isolado — essas palavras aparecem no próprio edital e gerariam falso positivo.
 _RX_ATA_MARCADOR = re.compile(
-    r"ata\s+d[ae]\s+(?:sess|julgamento)|sess[ãa]o\s+p[úu]blica|julgamento\s+das?\s+propostas?|"
-    r"mapa\s+de\s+lances|inabilitad|habilitad",
+    r"ata\s+d[ae]\s+(?:sess|julgamento)|sess[ãa]o\s+p[úu]blica\s+(?:de|do|para)|"
+    r"julgamento\s+das?\s+propostas?|mapa\s+de\s+lances|resultado\s+d[ao]\s+julgamento",
     re.IGNORECASE)
 
 
