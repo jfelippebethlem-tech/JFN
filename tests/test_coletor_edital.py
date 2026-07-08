@@ -131,6 +131,65 @@ def test_montar_ctx_campo_ausente_fica_fora_do_ctx():
     assert "lotes" not in ctx
 
 
+# ───────────────────────────── (a2) cláusulas restritivas (E7) ─────────────────────────────
+_EDITAL_RESTRITIVO = """
+EDITAL DE CONCORRÊNCIA Nº 07/2024
+Valor estimado da contratação: R$ 2.000.000,00
+
+DA HABILITAÇÃO E QUALIFICAÇÃO
+Atestado de capacidade técnica comprovando execução de no mínimo 80% do quantitativo licitado.
+Patrimônio líquido mínimo equivalente a 15% do valor estimado.
+Garantia de participação na licitação no valor de 3% do valor estimado.
+A licitante deverá possuir sede ou filial no Município, para pronta assistência técnica local.
+Visita técnica obrigatória, como condição de habilitação, a ser realizada pelo responsável técnico.
+Os equipamentos deverão ser da marca ThermoKing modelo TK-500.
+"""
+
+
+def _leitura_restritiva(numero: str = "SEI-330020/000762/2021") -> dict:
+    return {
+        "numero": numero,
+        "texto": "Processo de licitação — Concorrência 07/2024.",
+        "documentos": [{"texto": "Edital 07/2024", "url": "https://sei/doc/9"}],
+        "conteudo_documentos": [{"doc": "Edital de Concorrência 07/2024", "conteudo": _EDITAL_RESTRITIVO}],
+    }
+
+
+def test_montar_ctx_extrai_clausulas_restritivas_com_categoria():
+    ctx = montar_ctx_de_sei(_leitura_restritiva(), usar_llm=False)
+    clausulas = ctx["clausulas_edital"]
+    tipos = {c["tipo"] for c in clausulas}
+    # categorias distintas presentes (técnica, econômica, geográfica, marca)
+    assert {"recorte_geografico", "visita_tecnica", "marca_dirigida"}.issubset(tipos)
+    assert {"capital_patrimonio", "garantia_proposta"} & tipos
+    categorias = {c["categoria"] for c in clausulas}
+    assert {"geografico", "marca", "tecnica"}.issubset(categorias)
+    # proveniência por cláusula
+    for c in clausulas:
+        assert c["prov"]["doc"] and c["prov"]["trecho"]
+
+
+def test_clausula_marca_sem_ou_equivalente_flag():
+    ctx = montar_ctx_de_sei(_leitura_restritiva(), usar_llm=False)
+    marca = next(c for c in ctx["clausulas_edital"] if c["tipo"] == "marca_dirigida")
+    assert marca["tem_ou_equivalente"] is False  # "marca X modelo Y" sem "ou equivalente" → gatilho negativo
+
+
+def test_clausula_garantia_converte_pct_para_valor():
+    ctx = montar_ctx_de_sei(_leitura_restritiva(), usar_llm=False)
+    gar = next(c for c in ctx["clausulas_edital"] if c["tipo"] == "garantia_proposta")
+    assert gar["pct"] == 0.03
+    assert gar["valor"] == round(0.03 * 2_000_000.00, 2)
+
+
+def test_edital_limpo_sem_clausulas_restritivas():
+    """Edital sem gatilhos restritivos → clausulas_edital fica FORA do ctx (campo ausente ≠ 0)."""
+    leitura = {"numero": "SEI-2", "texto": "Pregão menor preço, ampla concorrência.",
+               "documentos": [{"url": "u"}], "conteudo_documentos": []}
+    ctx = montar_ctx_de_sei(leitura, usar_llm=False)
+    assert "clausulas_edital" not in ctx
+
+
 # ───────────────────────────── (b) analisar_processo_sei — roda o pipeline ─────────────────────────────
 def test_analisar_roda_detectores_e_retorna_resultados():
     out = asyncio.run(analisar_processo_sei("SEI-510001/000876/2024", ler_fn=_ler_mock_ok("SEI-510001/000876/2024")))
@@ -169,6 +228,44 @@ def test_analisar_e1_confirma_capital_acima_do_teto():
     out = asyncio.run(analisar_processo_sei("SEI-510001/000876/2024", ler_fn=_ler_mock_ok("SEI-510001/000876/2024")))
     e1 = next(r for r in out["resultados"] if r["detector"] == "E1")
     assert e1["status"] == "confirmado"
+
+
+def test_end_to_end_edital_mais_ata_destrava_julgamento_e_e7():
+    """Edital restritivo + ata de julgamento no MESMO processo: o coletor_ata popula `resultado`/`decisoes` →
+    E1 sai de nao_avaliavel (ganha o resultado), E7 confirma cláusula, e o julgamento (J7) PASSA a rodar
+    (antes o gate exigia `propostas`) e encontra o par divergente."""
+    ata = """
+ATA DE SESSÃO DE JULGAMENTO — CONCORRÊNCIA 07/2024
+A empresa ALFA LTDA, CNPJ 11.111.111/0001-11, foi INABILITADA por certidão de regularidade fiscal vencida.
+A empresa BETA LTDA, CNPJ 22.222.222/0001-22, com a mesma certidão vencida, teve prazo para saneamento
+(diligência), sendo HABILITADA e declarada VENCEDORA, proposta R$ 1.900.000,00.
+"""
+    leitura = {
+        "numero": "SEI-330020/000762/2021",
+        "texto": "Processo de licitação — Concorrência 07/2024.",
+        "documentos": [{"url": "u1"}, {"url": "u2"}],
+        "conteudo_documentos": [
+            {"doc": "Edital de Concorrência 07/2024", "conteudo": _EDITAL_RESTRITIVO},
+            {"doc": "Ata de Sessão de Julgamento 07/2024", "conteudo": ata},
+        ],
+    }
+
+    async def _ler(_n):
+        return leitura
+
+    out = asyncio.run(analisar_processo_sei("SEI-330020/000762/2021", ler_fn=_ler))
+    assert out["status"] == "OK"
+    por_id = {r["detector"]: r for r in out["resultados"]}
+
+    # E1 ganhou o `resultado` da ata → não fica mais nao_avaliavel (PL 15% > 10% + resultado corrobora)
+    assert por_id["E1"]["status"] == "confirmado"
+    # E7 confirma cláusula restritiva com fundamentação
+    assert por_id["E7"]["status"] == "confirmado"
+    assert por_id["E7"]["valores"].get("fundamentacao_juridica")
+    # o julgamento PASSOU a rodar (J7 presente) e o pareamento objetivo achou o par divergente
+    assert "J7" in por_id
+    assert por_id["J7"]["valores"].get("n_pares_divergentes", 0) >= 1
+    assert out["ctx_resumo"]["tem_decisoes"] is True
 
 
 def test_sync_wrapper_funciona():
