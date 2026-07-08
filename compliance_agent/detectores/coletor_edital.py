@@ -40,6 +40,7 @@ from compliance_agent.detectores import (
     rodar_julgamento,
     rodar_planejamento,
 )
+from compliance_agent.sei.fases import classificar
 
 # ───────────────────────────── normalização de números/datas ─────────────────────────────
 _MESES = {
@@ -146,6 +147,23 @@ def _linhas_com_contexto(fontes: list[dict]) -> list[tuple[str, str]]:
             if ln:
                 out.append((ln, f["fonte"]))
     return out
+
+
+def _fontes_de_edital(leitura: dict) -> list[dict]:
+    """Fontes de texto que são EDITAL ou PLANEJAMENTO (TR/ETP/DFD/pesquisa de preços), via `sei.fases.classificar`.
+    As cláusulas de habilitação vivem AQUI — extrair cláusula de NF/OB/despacho gera falso positivo (ex.: a coluna
+    'MARCA' de uma nota fiscal, 'patrimônio líquido' de um balanço). Precisão > cobertura: sem doc de edital
+    identificável, a lista é vazia (o E7 então fica nao_avaliavel — campo ausente ≠ 0)."""
+    fontes: list[dict] = []
+    for cd in leitura.get("conteudo_documentos") or []:
+        doc = str(cd.get("doc") or "").strip()
+        conteudo = (cd.get("conteudo") or "").strip()
+        if not conteudo:
+            continue
+        fase, tipo = classificar(doc)
+        if (fase == "selecao" and tipo in ("edital", "proposta")) or fase == "planejamento":
+            fontes.append({"fonte": f"documento '{doc}' ({fase}/{tipo})", "texto": conteudo})
+    return fontes
 
 
 def _prov(fonte: str, trecho: str) -> dict:
@@ -283,16 +301,24 @@ _CATALOGO_CLAUSULAS: list[tuple[str, str, "re.Pattern[str]"]] = [
     ("capital_patrimonio", "economica",
      re.compile(r"(?:capital\s+social|patrim[ôo]nio\s+l[íi]quido)\s+(?:m[íi]nimo|integralizado|de|equivalente)", re.IGNORECASE)),
     ("indices_contabeis", "economica",
-     re.compile(r"(?:[íi]ndice|liquidez|endividamento|solv[êe]ncia).*(?:maior|superior|igual|≥|>=|\d[.,]\d)", re.IGNORECASE)),
+     re.compile(r"\b(?:[íi]ndice(?:\s+de)?|liquidez(?:\s+(?:geral|corrente|seca))?|grau\s+de\s+endividamento|"
+                r"solv[êe]ncia\s+geral)\b.{0,40}?(?:maior|superior|igual|m[íi]nim|≥|>=|\d[.,]\d)", re.IGNORECASE)),
     ("garantia_proposta", "economica",
      re.compile(r"garantia\s+(?:de\s+)?(?:proposta|participa[çc][ãa]o)", re.IGNORECASE)),
     ("recorte_geografico", "geografico",
-     re.compile(r"(?:sede|filial|domic[íi]lio|escrit[óo]rio|representa[çc][ãa]o|assist[êe]ncia\s+t[ée]cnica)"
-                r".*(?:no\s+munic[íi]pio|neste\s+munic[íi]pio|no\s+estado|na\s+regi[ãa]o|local|da\s+sede\s+do\s+[óo]rg)", re.IGNORECASE)),
+     # exige SUJEITO (licitante/empresa) + OBRIGAÇÃO + sede/domicílio + recorte territorial na MESMA cláusula —
+     # não casa descrição da localização do próprio órgão ("SAMU ... com sede no Município de X").
+     re.compile(r"(?:licitante|empresa|proponente|contratad[ao]|interessad)\w*.{0,60}?"
+                r"(?:dever[áa]|obrigat[óo]ri|exig|possuir|manter|comprovar|apresentar|estar\s+sediad|ter\s+sede|dispor).{0,60}?"
+                r"(?:sede|filial|domic[íi]lio|escrit[óo]rio|representa[çc][ãa]o|base\s+operacional).{0,60}?"
+                r"(?:no\s+munic[íi]pio|neste\s+munic[íi]pio|no\s+estado|na\s+regi[ãa]o|local)", re.IGNORECASE | re.DOTALL)),
     ("recorte_temporal", "temporal",
      re.compile(r"(?:prazo\s+de\s+entrega|entrega).*(?:imediat|\b(?:24|48|72)\s*(?:h|horas)\b|\b[1-5]\s*dias\b)", re.IGNORECASE)),
     ("marca_dirigida", "marca",
-     re.compile(r"(?:marca|modelo|fabricante)\s*[:\-]?\s*[A-Z0-9][\w\-]{2,}", re.IGNORECASE)),
+     # 'marca'/'fabricante' + token de marca, OU 'modelo' + token COM DÍGITO (nº de modelo) — evita "Modelo Especial"
+     # (certidão), "modelo de declaração/proposta". Excludentes abaixo vetam contexto de certidão/formulário.
+     re.compile(r"\b(?:marca|fabricante)\b\s*[:\-]?\s*[A-Za-z][\w\-]{2,}"
+                r"|\bmodelo\b\s*[:\-]?\s*[A-Za-z]*\d[\w\-]*", re.IGNORECASE)),
     ("amostra_poc", "amostra",
      re.compile(r"(?:amostra|prova\s+de\s+conceito).*(?:todos\s+os\s+licitantes|antes\s+d[ao]\s+(?:habilita|julgamento))", re.IGNORECASE)),
     ("pontuacao_dirigida", "pontuacao",
@@ -301,6 +327,14 @@ _CATALOGO_CLAUSULAS: list[tuple[str, str, "re.Pattern[str]"]] = [
 _RX_OU_EQUIVALENTE = re.compile(r"ou\s+(?:similar|equivalente|de\s+melhor\s+qualidade)", re.IGNORECASE)
 _RX_DECLARACAO_SUBST = re.compile(r"declara[çc][ãa]o.*(?:conhecimento|disponibilidade|compromisso|pleno)", re.IGNORECASE)
 _RX_JUSTIFICATIVA = re.compile(r"(?:justificativ|motiva[çc][ãa]o|em\s+raz[ãa]o\s+d|devido\s+[àa])", re.IGNORECASE)
+
+# VETOS de contexto (falso positivo): a linha casa o gatilho mas o entorno mostra que não é cláusula restritiva.
+_EXCLUDENTES: dict[str, "re.Pattern[str]"] = {
+    "marca_dirigida": re.compile(
+        r"certid|declara[çc]|modelo\s+especial|modelo\s+[úu]nico|modelo\s+de\b|formul[áa]rio|requerimento|"
+        r"marca\s+(?:temporal|d['´]?\s?[áa]gua|registrada)|folha\s+\d|anexo", re.IGNORECASE),
+    "indices_contabeis": re.compile(r"insolv|certid|nada\s+consta|fal[êe]ncia|recupera[çc][ãa]o\s+judicial", re.IGNORECASE),
+}
 
 
 def _extrair_clausulas_restritivas(linhas: list[tuple[str, str]], valor_estimado: float | None) -> list[dict]:
@@ -313,6 +347,9 @@ def _extrair_clausulas_restritivas(linhas: list[tuple[str, str]], valor_estimado
         for tipo, categoria, rx in _CATALOGO_CLAUSULAS:
             if not rx.search(ln):
                 continue
+            veto = _EXCLUDENTES.get(tipo)
+            if veto is not None and veto.search(ln):
+                continue  # gatilho num contexto que não é cláusula restritiva (certidão/formulário/insolvência)
             low = ln.lower()
             c: dict[str, Any] = {
                 "tipo": tipo,
@@ -477,8 +514,9 @@ def montar_ctx_de_sei(leitura: dict, *, usar_llm: bool = False, gerar: Callable[
         ctx["exigencias_habilitacao"] = exig
         prov["exigencias_habilitacao"] = [e["prov"] for e in exig]
 
-    # cláusulas restritivas — catálogo completo com categoria (E7)
-    clausulas = _extrair_clausulas_restritivas(linhas, valor_estimado)
+    # cláusulas restritivas — SÓ dos documentos de edital/planejamento (precisão: não varre NF/OB/despacho)
+    linhas_edital = _linhas_com_contexto(_fontes_de_edital(leitura))
+    clausulas = _extrair_clausulas_restritivas(linhas_edital, valor_estimado)
     if clausulas:
         ctx["clausulas_edital"] = clausulas
         prov["clausulas_edital"] = [c["prov"] for c in clausulas]
