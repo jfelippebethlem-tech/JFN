@@ -149,11 +149,24 @@ def _linhas_com_contexto(fontes: list[dict]) -> list[tuple[str, str]]:
     return out
 
 
+# marcadores FORTES de que um CONTEÚDO é edital/TR/ETP (seções e identificadores que NF/OB/empenho não têm).
+# Necessário porque no SEI real o título do doc costuma ser o NÚMERO do documento (ex.: "121656966"), não o
+# nome — então `classificar(titulo)` cai em 'indefinida' e não basta filtrar por título (perda de sensibilidade).
+_RX_EDITAL_CONTEUDO = re.compile(
+    r"da\s+habilita[çc][ãa]o|qualifica[çc][ãa]o\s+t[ée]cnic|qualifica[çc][ãa]o\s+econ[ôo]mic"
+    r"|termo\s+de\s+refer[êe]ncia|estudo\s+t[ée]cnico\s+preliminar|projeto\s+b[áa]sico"
+    r"|edital\s+de\s+(?:preg|concorr|licita|tomada|concurso)"
+    r"|(?:preg[ãa]o|concorr[êe]ncia|tomada\s+de\s+pre[çc]os)\s+(?:eletr[ôo]nico\s+)?n[ºo\.]"
+    r"|condi[çc][õo]es\s+de\s+(?:habilita|participa[çc])|crit[ée]rio\s+de\s+julgamento",
+    re.IGNORECASE)
+
+
 def _fontes_de_edital(leitura: dict) -> list[dict]:
-    """Fontes de texto que são EDITAL ou PLANEJAMENTO (TR/ETP/DFD/pesquisa de preços), via `sei.fases.classificar`.
-    As cláusulas de habilitação vivem AQUI — extrair cláusula de NF/OB/despacho gera falso positivo (ex.: a coluna
-    'MARCA' de uma nota fiscal, 'patrimônio líquido' de um balanço). Precisão > cobertura: sem doc de edital
-    identificável, a lista é vazia (o E7 então fica nao_avaliavel — campo ausente ≠ 0)."""
+    """Fontes de texto que são EDITAL ou PLANEJAMENTO (TR/ETP/DFD/pesquisa de preços). Um doc entra se o TÍTULO
+    classifica como edital/planejamento (via `sei.fases.classificar`) OU se o CONTEÚDO tem marcador forte de
+    edital/TR (`_RX_EDITAL_CONTEUDO`) — no SEI real o título é o NÚMERO do doc, então o conteúdo é o sinal
+    confiável. Cláusula de habilitação vive AQUI; extrair de NF/OB/despacho gera falso positivo (a coluna 'MARCA'
+    de uma NF, 'patrimônio líquido' de um balanço). Sem doc de edital identificável → vazio (E7 nao_avaliavel)."""
     fontes: list[dict] = []
     for cd in leitura.get("conteudo_documentos") or []:
         doc = str(cd.get("doc") or "").strip()
@@ -161,8 +174,10 @@ def _fontes_de_edital(leitura: dict) -> list[dict]:
         if not conteudo:
             continue
         fase, tipo = classificar(doc)
-        if (fase == "selecao" and tipo in ("edital", "proposta")) or fase == "planejamento":
-            fontes.append({"fonte": f"documento '{doc}' ({fase}/{tipo})", "texto": conteudo})
+        por_titulo = (fase == "selecao" and tipo in ("edital", "proposta")) or fase == "planejamento"
+        if por_titulo or _RX_EDITAL_CONTEUDO.search(conteudo):
+            marca = f"{fase}/{tipo}" if por_titulo else "conteúdo=edital/TR"
+            fontes.append({"fonte": f"documento '{doc}' ({marca})", "texto": conteudo})
     return fontes
 
 

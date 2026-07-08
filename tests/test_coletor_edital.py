@@ -216,6 +216,24 @@ O Serviço de Atendimento Móvel de Urgência (SAMU), Regional Centro Sul, com s
     assert "recorte_geografico" not in tipos     # sede do ÓRGÃO (SAMU), não exigência ao licitante
 
 
+def test_edital_por_conteudo_quando_titulo_e_numero():
+    """Regressão de dado real: no SEI o título do doc costuma ser o NÚMERO ('121656966'), não o nome. A cláusula
+    deve ser detectada pelo CONTEÚDO (marcador de edital/TR), não só pelo título classificável."""
+    edital = ("DA HABILITAÇÃO\nQualificação técnica: atestado de capacidade técnica.\n"
+              "A licitante deverá possuir sede ou filial no Município para assistência técnica local.")
+    ob = ("Governo do Estado do Rio de Janeiro\nOrdem Bancária de Retenção TIPO 13\n"
+          "Credor da Retenção MINISTÉRIO DA FAZENDA\nProcesso SEI-510001/000163/2026")
+    leitura = {"numero": "SEI-510001/000114/2025", "texto": "",
+               "documentos": [{"url": "u"}],
+               "conteudo_documentos": [{"doc": "121656966", "conteudo": edital},
+                                       {"doc": "126651703", "conteudo": ob}]}
+    ctx = montar_ctx_de_sei(leitura, usar_llm=False)
+    # a cláusula veio do doc-edital (título numérico), reconhecido pelo conteúdo; a OB não gerou nada
+    assert "recorte_geografico" in {c["tipo"] for c in ctx.get("clausulas_edital", [])}
+    provs = " ".join(c["prov"]["doc"] for c in ctx["clausulas_edital"])
+    assert "126651703" not in provs  # nenhuma cláusula originada da Ordem Bancária
+
+
 def test_recorte_geografico_exige_obrigacao_ao_licitante():
     """Verdadeiro positivo: exigência ao LICITANTE de sede local é cláusula restritiva."""
     edital = "A licitante deverá possuir sede ou filial no Município para assistência técnica local."
