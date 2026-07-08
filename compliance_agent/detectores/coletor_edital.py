@@ -305,7 +305,11 @@ _CATALOGO_CLAUSULAS: list[tuple[str, str, "re.Pattern[str]"]] = [
     ("atestado_identico", "tecnica",
      re.compile(r"atestad[oa].*(?:id[êe]ntic|exatamente o mesmo|vedad[oa].*somat[óo]rio)", re.IGNORECASE)),
     ("atestado_quantitativo", "tecnica",
-     re.compile(r"atestad[oa].*(?:quantitativo|no m[íi]nimo|percentual|\d+\s*%)", re.IGNORECASE)),
+     # exige contexto de CAPACIDADE/ACERVO/QUALIFICAÇÃO técnica (não "nota fiscal atestada por 2 fiscais")
+     re.compile(r"atestad[oa].{0,60}(?:capacidade\s+t[ée]cnic|acervo\s+t[ée]cnic|qualifica[çc][ãa]o\s+t[ée]cnic|aptid[ãa]o)"
+                r".{0,80}(?:quantitativo|no\s+m[íi]nimo|percentual|\d+\s*%|parcela)"
+                r"|(?:capacidade\s+t[ée]cnic|acervo\s+t[ée]cnic).{0,60}(?:quantitativo|no\s+m[íi]nimo|\d+\s*%)",
+                re.IGNORECASE | re.DOTALL)),
     ("visita_tecnica", "tecnica",
      re.compile(r"(?:visita|vistoria)\s+t[ée]cnica.*(?:obrigat[óo]ri|condi[çc][ãa]o (?:de|para).*habilita)"
                 r"|(?:obrigat[óo]ri).*(?:visita|vistoria)\s+t[ée]cnica", re.IGNORECASE)),
@@ -328,12 +332,18 @@ _CATALOGO_CLAUSULAS: list[tuple[str, str, "re.Pattern[str]"]] = [
                 r"(?:sede|filial|domic[íi]lio|escrit[óo]rio|representa[çc][ãa]o|base\s+operacional).{0,60}?"
                 r"(?:no\s+munic[íi]pio|neste\s+munic[íi]pio|no\s+estado|na\s+regi[ãa]o|local)", re.IGNORECASE | re.DOTALL)),
     ("recorte_temporal", "temporal",
-     re.compile(r"(?:prazo\s+de\s+entrega|entrega).*(?:imediat|\b(?:24|48|72)\s*(?:h|horas)\b|\b[1-5]\s*dias\b)", re.IGNORECASE)),
+     # prazo de entrega com deadline EXPLÍCITO e curto (não "entrega imediata", que é lícito e comum)
+     re.compile(r"prazo\s+de\s+entrega.{0,40}(?:\b(?:24|48|72)\s*(?:h|horas)\b|\b[1-5]\s*dias\b)"
+                r"|entrega.{0,15}(?:24|48|72)\s*horas", re.IGNORECASE)),
     ("marca_dirigida", "marca",
-     # 'marca'/'fabricante' + token de marca, OU 'modelo' + token COM DÍGITO (nº de modelo) — evita "Modelo Especial"
-     # (certidão), "modelo de declaração/proposta". Excludentes abaixo vetam contexto de certidão/formulário.
-     re.compile(r"\b(?:marca|fabricante)\b\s*[:\-]?\s*[A-Za-z][\w\-]{2,}"
-                r"|\bmodelo\b\s*[:\-]?\s*[A-Za-z]*\d[\w\-]*", re.IGNORECASE)),
+     # SÓ direcionamento REAL: imperativo/exclusividade exigindo uma marca ("deverá ser da marca X", "somente
+     # marca Y", "exige-se marca Z"), OU marca com vedação de similar. NÃO casa descrição do objeto ("veículo
+     # marca FORD"), coluna de NF ("Marca dos Volumes"), equipamento p/ manutenção ("modelo 504 marca BAUSCH"),
+     # nem "modelo <nº>" (medida de pneu/série). Precisão > cobertura (indício ≠ acusação).
+     re.compile(r"(?:dever[áa]|dever[ãa]o|exclusivamente|somente|apenas|obrigat[óo]ri\w*|exig\w*|exigid[oa])"
+                r"\s+(?:ser\s+)?(?:d[aeo]s?\s+)?\b(?:marca|fabricante|modelo)\b\s*[:\-]?\s*[A-Za-z][\w\-]{2,}"
+                r"|\b(?:marca|fabricante)\b\s+[A-Za-z][\w\-]{2,}.{0,40}(?:vedad|proibid|n[ãa]o\s+ser[áa]\s+aceit).{0,25}(?:similar|equivalente)",
+                re.IGNORECASE)),
     ("amostra_poc", "amostra",
      re.compile(r"(?:amostra|prova\s+de\s+conceito).*(?:todos\s+os\s+licitantes|antes\s+d[ao]\s+(?:habilita|julgamento))", re.IGNORECASE)),
     ("pontuacao_dirigida", "pontuacao",
