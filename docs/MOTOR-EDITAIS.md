@@ -77,6 +77,25 @@ não-confirmado como definitivo.
 **Resultado:** E7 com **0 falso positivo** em 634 processos/editais reais. Verdadeiro-positivo provado no
 end-to-end sintético (E1/E7/J7 disparam em edital+ata dirigidos, `tests/test_coletor_edital.py`).
 
+## 6.1 Reader do SEI — 0 docs (debug 2026-07-08)
+
+Sweep voltava ~93% "0 docs". Investigação isolada (screenshot) revelou **dois problemas distintos**, sem
+relação com acesso/WAF (itkava é interno; login = só `fill(usuário)+fill(senha)`):
+
+1. **Radio 'Documentos' em vez de 'Processos'** (CORRIGIDO, `3fedc83`): o `_ler_cracked` selecionava o radio
+   por `parentElement.innerText` do fieldset 'Pesquisar', que contém as DUAS palavras → nunca marcava
+   'Processos' → busca por nº de processo rodava em modo Documentos → caía na caixa da unidade. Fix: seleciona
+   pelo `r.labels` (label próprio) + clique no `<label>` exato 'Processos'. Verificado por screenshot.
+2. **Busca por Nº SEI retorna 0 resultados** p/ alguns processos (mesmo com Processos marcado): a apurar — pode
+   ser número stale na `ordens_bancarias`, processo mesclado/movido, ou formato do protocolo. Investigar **sem
+   estrangular o login**: re-login rápido em massa throttla o SSO (erro "login itkava não autenticou"); o sweep
+   canônico loga **1×** e itera `ler_processo` (por isso não sofre) — replicar esse padrão no debug (login único
+   + loop), nunca `ler()` por processo em rajada.
+
+> Regra operacional: para pausar TODOS os sweeps ao depurar o browser, setar `data/.pause_sweeps`,
+> `data/.pause_sei_sweep` **e** `data/.pause_bombeiros` (o bombeiros tem flag própria) + `.pause_sede_sweep`,
+> `.pause_fachada_streetview_sweep`. O `browser_lock` serializa (nunca 2 browsers) — 0-docs não é contenção.
+
 ## 7. Invariantes de honestidade
 
 indício ≠ acusação · `INDISPONÍVEL`/`nao_avaliavel` ≠ 0 · nunca inventar número · presunção de regularidade ·
