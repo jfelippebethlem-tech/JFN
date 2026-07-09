@@ -151,6 +151,38 @@ async def _esperar_arvore(pg, voltas: int = 16) -> bool:
     return False
 
 
+async def _abrir_por_quicksearch(pg, proc: str) -> dict:
+    """Abre o processo pela PESQUISA RÁPIDA do topo (``#txtPesquisaRapida``) com o número COMPLETO (com 'SEI-').
+    É o modo canônico de abrir um processo por número no SEI — a busca AVANÇADA por 'Nº SEI' às vezes retorna 0
+    resultados (cai na caixa da unidade). Espera ativa o ``ifrArvore`` e extrai de todos os frames. 3ª tentativa
+    (após normal e cracked); degrada honesto (dump vazio se a caixa não existir ou nada abrir). Fix 2026-07-09."""
+    numero = proc if re.match(r"(?i)^sei-", (proc or "")) else "SEI-" + re.sub(r"(?i)^sei[-\s]*", "", (proc or ""))
+    try:
+        preencheu = await pg.evaluate(r"""(n)=>{
+          const i=document.querySelector('#txtPesquisaRapida,input[name="txtPesquisaRapida"]');
+          if(!i) return false;
+          i.value=n; i.focus();
+          const f=document.getElementById('frmProtocoloPesquisaRapida')||i.form; if(f){/* submete no Enter */}
+          return true;
+        }""", numero)
+        if not preencheu:
+            return {"documentos": []}
+        await pg.keyboard.press("Enter")
+    except Exception as exc:
+        logger.debug("quick-search: preencher/Enter falhou p/ %s: %s", numero, exc)
+        return {"documentos": []}
+    try:
+        await pg.wait_for_load_state("networkidle", timeout=12000)
+    except Exception as exc:
+        logger.debug("quick-search: networkidle estourou p/ %s: %s", numero, exc)
+    await _esperar_arvore(pg)
+    await pg.wait_for_timeout(1200)
+    dump = await _extrair_de_todos_frames(pg)
+    dump["via"] = "quicksearch"
+    dump["url"] = pg.url
+    return dump
+
+
 async def _ler_cracked(pg, proc: str) -> dict:
     """CAMINHO SEPARADO (anti-regressão) p/ processo de OUTRA unidade que o itkava VÊ mas a busca
     'normal' do ITERJ não abre (ex.: consórcios Vieira/MUV na 510001). NÃO toca em ``ler_processo``.
@@ -517,6 +549,14 @@ async def ler(numero: str, usar_cache: bool = True, tentativas_login: int = 30,
                             res = await _montar_resultado_cracked(pg, numero, dump, usar_cache)
                     except Exception as e:  # noqa: BLE001
                         res.setdefault("_cracked_erro", str(e)[:120])
+                # 3ª tentativa: PESQUISA RÁPIDA do topo (a avançada por 'Nº SEI' às vezes retorna 0 → caixa)
+                if not res.get("documentos"):
+                    try:
+                        dump = await _abrir_por_quicksearch(pg, numero)
+                        if dump.get("documentos"):
+                            res = await _montar_resultado_cracked(pg, numero, dump, usar_cache)
+                    except Exception as e:  # noqa: BLE001
+                        res.setdefault("_quicksearch_erro", str(e)[:120])
                 return res
             finally:
                 await b.close()
