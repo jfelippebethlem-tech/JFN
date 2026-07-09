@@ -86,17 +86,18 @@ relação com acesso/WAF (itkava é interno; login = só `fill(usuário)+fill(se
    por `parentElement.innerText` do fieldset 'Pesquisar', que contém as DUAS palavras → nunca marcava
    'Processos' → busca por nº de processo rodava em modo Documentos → caía na caixa da unidade. Fix: seleciona
    pelo `r.labels` (label próprio) + clique no `<label>` exato 'Processos'. Verificado por screenshot.
-2. **Falha SISTÊMICA da busca (EM ABERTO, prioridade):** após o login (que funciona — o cron mostra "login OK"
-   repetidamente), TODA busca por processo cai na página **"Controle de Processos" (caixa da unidade), 0
-   resultados** — nas 3 tentativas (normal `ler_processo`, `_ler_cracked`, `_abrir_por_quicksearch`), para
-   ~todos os processos, **inclusive um que sabidamente existe** (controle 080001/021636/2024, com docs
-   cacheados) e **inclusive no cron** (reads de 23:32–23:59 vieram todos 0). Ou seja, não é login, não é acesso,
-   não é o radio (já corrigido) — é a busca/abertura do processo que parou de funcionar (provável mudança do
-   SEI-RJ ou do escopo da conta itkava). **Próximo passo:** inspeção live do DOM da busca atual do SEI (como um
-   humano abre um processo por número hoje) — com **login único** (o `ler()`/sweep loga OK; scripts custom
-   precisam do UA Windows/Chrome no contexto, senão `chrome-error`), sem `ler()` em rajada.
-3. **Não é throttle de login** (eu achei que era; errado): o cron loga OK sempre. Meus scripts custom falhavam
-   por faltar o **user-agent Windows/Chrome** no `new_context` (obrigatório — sem ele = `chrome-error`).
+2. **Falha SISTÊMICA (RESOLVIDA na raiz, `4b0f265`) — a árvore ABRE; era a EXTRAÇÃO.** ~93% dos processos
+   davam 0 docs. Dump dos âncoras do `ifrArvore` provou: no SEI-RJ atual o **nó-DOCUMENTO** vem como
+   `href=...acao=arvore_visualizar&acao_origem=procedimento_visualizar&id_procedimento=..&id_documento=..`. O
+   extrator (`_JS_LE_ARVORE_E_TEXTO`, sei_cdp.py) só casava `documento_visualizar|...` → 0 docs; **pior**, o
+   check de 'relacionado' (`procedimento_visualizar`) casava esses nós (por `acao_origem`) → os DOCUMENTOS
+   viravam 'relacionados'. **Fix:** documento = `id_documento` + `acao=arvore_visualizar`; DOC checado ANTES de
+   relacionado; relacionado exige `acao=procedimento_*` (não `acao_origem`) sem `id_documento`. **Verificado ao
+   vivo:** controle 080001/021636/2024 → **18 documentos** (era 0), 1 relacionado (o edital-pai). Conteúdo:
+   `_url_conteudo_doc` converte `arvore_visualizar`→`documento_visualizar` (o conteúdo é servido por essa ação).
+3. **Não era login/acesso/WAF/throttle** (achei que era; errado): o cron loga OK sempre. Meus scripts custom
+   falhavam por faltar o **user-agent Windows/Chrome** no `new_context` (obrigatório — sem ele = `chrome-error`);
+   nunca fazer `ler()` em rajada — login único + iterar (padrão do sweep).
 
 > Regra operacional: para pausar TODOS os sweeps ao depurar o browser, setar `data/.pause_sweeps`,
 > `data/.pause_sei_sweep` **e** `data/.pause_bombeiros` (o bombeiros tem flag própria) + `.pause_sede_sweep`,
