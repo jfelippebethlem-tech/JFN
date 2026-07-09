@@ -321,6 +321,16 @@ async def seguir_relacionados(pg, proc_url: str, relacionados: list, max_rel: in
     return cadeia
 
 
+def _url_conteudo_doc(url: str) -> str:
+    """URL de CONTEÚDO do documento a partir do href do NÓ da árvore. No SEI-RJ atual o nó vem como
+    ``acao=arvore_visualizar&acao_origem=procedimento_visualizar&...&id_documento=..`` — mas o CONTEÚDO é
+    servido por ``acao=documento_visualizar``. Sem `id_documento`/`arvore_visualizar` devolve a url como está."""
+    if "acao=arvore_visualizar" in url and "id_documento=" in url:
+        u = url.replace("acao=arvore_visualizar", "acao=documento_visualizar")
+        return u.replace("acao_origem=procedimento_visualizar", "acao_origem=arvore_visualizar")
+    return url
+
+
 async def _conteudo_doc(pg, doc: dict) -> dict | None:
     """Extrai o conteúdo de UM documento do SEI.
 
@@ -332,14 +342,17 @@ async def _conteudo_doc(pg, doc: dict) -> dict | None:
     se vier vazio, segue INDISPONÍVEL (não inventa). Degrada honesto: 1 doc que falha não derruba a
     leitura (retorna ``None``).
     """
+    # URL de CONTEÚDO: no SEI-RJ atual o nó da árvore vem como acao=arvore_visualizar; o conteúdo é servido por
+    # acao=documento_visualizar. Sem essa conversão, request.get/goto abriam a ÁRVORE (não o doc) → 0 conteúdo.
+    url_c = _url_conteudo_doc(doc.get("url") or "")
     # 1) DETECTA SCAN ANTES do innerText: o visualizador do SEI mostra uma casca >50 chars mesmo p/ PDF-imagem,
     # então o gatilho antigo (innerText<=50) NUNCA OCR'ava scan. Baixa os bytes pela sessão; se PDF/imagem → OCR.
     try:
         from compliance_agent.sei.ocr_docs import ocr_documento  # import LAZY
-        resp = await pg.context.request.get(doc["url"], timeout=40000)
+        resp = await pg.context.request.get(url_c, timeout=40000)
         if resp.ok:
             ct = (resp.headers.get("content-type") or "").lower()
-            url_l = (doc.get("url") or "").lower()
+            url_l = url_c.lower()
             tipo = "pdf" if ("pdf" in ct or url_l.endswith(".pdf")) else (
                 "imagem" if (ct.startswith("image/") or url_l.endswith(
                     (".png", ".jpg", ".jpeg", ".tif", ".tiff", ".bmp", ".webp", ".gif"))) else None)
@@ -351,9 +364,9 @@ async def _conteudo_doc(pg, doc: dict) -> dict | None:
                     return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr, "via": "ocr"}
     except Exception as exc:
         logger.warning("download/OCR do doc %r falhou: %s", (doc.get("texto") or doc.get("url") or "")[:80], exc)
-    # 2) doc HTML nativo (editor): navega e lê o innerText
+    # 2) doc HTML nativo (editor): navega até a URL de CONTEÚDO e lê o innerText
     try:
-        await pg.goto(doc["url"], wait_until="domcontentloaded", timeout=20000)
+        await pg.goto(url_c, wait_until="domcontentloaded", timeout=20000)
         await pg.wait_for_timeout(900)
         t = await pg.evaluate("()=>document.body?document.body.innerText.slice(0,6000):''")
     except Exception:
