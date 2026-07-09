@@ -2,5 +2,6 @@
 # Formato: <codigo_ug>  # nome livre. Linhas iniciadas por # são ignoradas.
 180100  # SEEDUC — Secretaria de Estado de Educacao
 570100  # SEGOV — Secretaria de Estado de Governo
+660100  # Sec. das Cidades — MUV São Gonçalo/Grupo Vieira (editais dos ~10 CNPJs, ex. SEI-510001/000571/2024)
 # FUNSERJ (Fundo Soberano do Estado do RJ): SEM dados na base — UG não capturada no SIAFE-Rio ainda
 # (depende de liberar a chave SIAFE p/ todas as UGs). Quando o código entrar na cobertura, adicionar aqui.
