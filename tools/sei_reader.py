@@ -184,11 +184,24 @@ async def _ler_cracked(pg, proc: str) -> dict:
     # 3) radio 'Processos' (não 'Documentos') + ☑ 'Considerar Documentos' + 'Restringir ao Órgão' DESMARCADO
     await pg.evaluate(r"""()=>{
       const txt=el=>((el&&el.parentElement?el.parentElement.innerText:'')||'').toLowerCase();
-      // radio: seleciona o de 'Processos' (e NÃO o de 'Documentos')
+      // radio 'Processos' (não 'Documentos'): usa o LABEL PRÓPRIO do radio (r.labels), NÃO o innerText do pai —
+      // o fieldset 'Pesquisar' contém as DUAS palavras, então o filtro por innerText do pai nunca marcava
+      // 'Processos' e a busca rodava em modo 'Documentos' → caía na caixa da unidade (0 docs). Fix 2026-07-08.
+      const labelDe=r=>{
+        if(r.labels&&r.labels.length) return [...r.labels].map(l=>(l.innerText||'').trim()).join(' ');
+        const s=r.nextElementSibling; if(s&&/label/i.test(s.tagName||'')) return (s.innerText||'').trim();
+        if(r.nextSibling&&r.nextSibling.nodeType===3) return (r.nextSibling.textContent||'').trim();
+        return '';
+      };
       for(const r of document.querySelectorAll('input[type=radio]')){
-        const l=(txt(r)+' '+(r.value||'')).toLowerCase();
-        if(/process/.test(l) && !/documento/.test(l)){ try{r.checked=true; r.click();}catch(e){} }
+        const lab=labelDe(r).toLowerCase(); const idv=((r.id||'')+' '+(r.value||'')).toLowerCase();
+        if((/\bprocessos?\b/.test(lab)||/processo/.test(idv)) && !(/\bdocumentos?\b/.test(lab)||/documento/.test(idv))){
+          try{r.checked=true; r.click();}catch(e){}
+        }
       }
+      // reforço: clicar o LABEL cujo texto é EXATAMENTE 'Processos' (toggla o radio via for=)
+      const lp=[...document.querySelectorAll('label')].find(l=>/^\s*processos?\s*$/i.test((l.innerText||'')));
+      if(lp){ try{lp.click();}catch(e){} }
       // checkboxes
       for(const c of document.querySelectorAll('input[type=checkbox]')){
         const l=((c.id||'')+' '+(c.name||'')+' '+txt(c)).toLowerCase();
