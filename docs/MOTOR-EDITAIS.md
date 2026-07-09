@@ -86,11 +86,17 @@ relação com acesso/WAF (itkava é interno; login = só `fill(usuário)+fill(se
    por `parentElement.innerText` do fieldset 'Pesquisar', que contém as DUAS palavras → nunca marcava
    'Processos' → busca por nº de processo rodava em modo Documentos → caía na caixa da unidade. Fix: seleciona
    pelo `r.labels` (label próprio) + clique no `<label>` exato 'Processos'. Verificado por screenshot.
-2. **Busca por Nº SEI retorna 0 resultados** p/ alguns processos (mesmo com Processos marcado): a apurar — pode
-   ser número stale na `ordens_bancarias`, processo mesclado/movido, ou formato do protocolo. Investigar **sem
-   estrangular o login**: re-login rápido em massa throttla o SSO (erro "login itkava não autenticou"); o sweep
-   canônico loga **1×** e itera `ler_processo` (por isso não sofre) — replicar esse padrão no debug (login único
-   + loop), nunca `ler()` por processo em rajada.
+2. **Falha SISTÊMICA da busca (EM ABERTO, prioridade):** após o login (que funciona — o cron mostra "login OK"
+   repetidamente), TODA busca por processo cai na página **"Controle de Processos" (caixa da unidade), 0
+   resultados** — nas 3 tentativas (normal `ler_processo`, `_ler_cracked`, `_abrir_por_quicksearch`), para
+   ~todos os processos, **inclusive um que sabidamente existe** (controle 080001/021636/2024, com docs
+   cacheados) e **inclusive no cron** (reads de 23:32–23:59 vieram todos 0). Ou seja, não é login, não é acesso,
+   não é o radio (já corrigido) — é a busca/abertura do processo que parou de funcionar (provável mudança do
+   SEI-RJ ou do escopo da conta itkava). **Próximo passo:** inspeção live do DOM da busca atual do SEI (como um
+   humano abre um processo por número hoje) — com **login único** (o `ler()`/sweep loga OK; scripts custom
+   precisam do UA Windows/Chrome no contexto, senão `chrome-error`), sem `ler()` em rajada.
+3. **Não é throttle de login** (eu achei que era; errado): o cron loga OK sempre. Meus scripts custom falhavam
+   por faltar o **user-agent Windows/Chrome** no `new_context` (obrigatório — sem ele = `chrome-error`).
 
 > Regra operacional: para pausar TODOS os sweeps ao depurar o browser, setar `data/.pause_sweeps`,
 > `data/.pause_sei_sweep` **e** `data/.pause_bombeiros` (o bombeiros tem flag própria) + `.pause_sede_sweep`,
