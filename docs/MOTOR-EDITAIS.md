@@ -94,7 +94,8 @@ relação com acesso/WAF (itkava é interno; login = só `fill(usuário)+fill(se
    viravam 'relacionados'. **Fix:** documento = `id_documento` + `acao=arvore_visualizar`; DOC checado ANTES de
    relacionado; relacionado exige `acao=procedimento_*` (não `acao_origem`) sem `id_documento`. **Verificado ao
    vivo:** controle 080001/021636/2024 → **18 documentos** (era 0), 1 relacionado (o edital-pai). Conteúdo:
-   `_url_conteudo_doc` converte `arvore_visualizar`→`documento_visualizar` (o conteúdo é servido por essa ação).
+   `_url_conteudo_doc` converte `arvore_visualizar`→`documento_visualizar` (o conteúdo é servido por essa ação)
+   → **18/18 documentos com conteúdo lido** (pipeline SEI 100% restaurado: lista + conteúdo).
 3. **Não era login/acesso/WAF/throttle** (achei que era; errado): o cron loga OK sempre. Meus scripts custom
    falhavam por faltar o **user-agent Windows/Chrome** no `new_context` (obrigatório — sem ele = `chrome-error`);
    nunca fazer `ler()` em rajada — login único + iterar (padrão do sweep).
