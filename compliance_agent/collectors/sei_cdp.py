@@ -225,17 +225,25 @@ _JS_LE_ARVORE_E_TEXTO = r"""
         const texto = (a.textContent || '').trim();
         if (!texto) continue;
         const titleAttr = (a.getAttribute('title') || a.getAttribute('aria-label') || '').trim();
-        if (/procedimento_visualizar|procedimento_trabalhar/i.test(href)) {
-            relacionados.push({texto: texto.slice(0, 80), titulo: titleAttr.slice(0, 160), url: href});
-            continue;
-        }
-        if (/documento_visualizar|exibir_documento|md_doc|acessar_documento/i.test(href)) {
+        // DOCUMENTO do processo (SEI-RJ atual): nó da árvore com id_documento —
+        //   href = ...acao=arvore_visualizar&acao_origem=procedimento_visualizar&id_procedimento=..&id_documento=..
+        //   Checar DOC ANTES de relacionado: o nó-documento tem acao_origem=procedimento_visualizar e o check
+        //   antigo (procedimento_visualizar) o classificava como 'relacionado' → 0 docs (regressão do SEI). Fix 2026-07-09.
+        const ehDoc = /[?&]id_documento=\d/i.test(href)
+            && /acao=(arvore_visualizar|documento_visualizar|exibir_documento|md_doc|acessar_documento)/i.test(href);
+        if (ehDoc) {
             const pai = a.closest('li, tr, .infraArvoreNo, div');
             let textoPai = pai ? (pai.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 120) : '';
             const tipo = titleAttr || textoPai || texto;
             docs.push({texto: texto.slice(0, 120), titulo: tipo.slice(0, 160),
                        title_attr: titleAttr.slice(0, 160), url: href,
                        restrito: _cadeado(pai)});  // cadeado no nó do documento
+            continue;
+        }
+        // processo RELACIONADO: ação PRINCIPAL procedimento_visualizar/trabalhar, SEM id_documento
+        //   (não confundir com acao_origem=procedimento_visualizar dos nós-documento da árvore).
+        if (/acao=(procedimento_visualizar|procedimento_trabalhar)/i.test(href) && !/[?&]id_documento=/i.test(href)) {
+            relacionados.push({texto: texto.slice(0, 80), titulo: titleAttr.slice(0, 160), url: href});
         }
     }
     const corpo = document.body ? document.body.innerText : '';
