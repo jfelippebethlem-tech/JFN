@@ -4,7 +4,10 @@
 Guardado (vm_guard). Uso:
   SEI_OCR_DOCS=12 .venv/bin/python tools/sei_docs_to_telegram.py "330020/000762/2021" "termo|planilha|parecer|cota|proposta|anexo"
 """
-import os, sys, re, json, asyncio
+import os
+import sys
+import re
+import asyncio
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR

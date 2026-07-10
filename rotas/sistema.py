@@ -3,32 +3,36 @@
 Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
+# Raiz do repo (~/JFN). No server.py original `Path(__file__).parent` ERA a raiz; após o split
+# p/ rotas/ (2026-07-06) virou rotas/ e todos os caminhos data/ quebraram em silêncio
+# (log da coleta SIAFE, cwd do runner, compliance.db do /siafe/stats, progress do /sweeps/status,
+# flags do /sweeps/pausar). Fix 2026-07-10: base única na raiz real.
+RAIZ = Path(__file__).resolve().parent.parent
+
 def _siafe_spawn(args: list, quem: str):
     """Dispara a coleta SIAFE como subprocesso (não bloqueia a request); respeita o lockfile de sessão única."""
     import subprocess
     import sys as _sys
-    from pathlib import Path as _P
     from compliance_agent import siafe_runner
     st = siafe_runner.lock_status()
     if st.get("locked"):
         return {"ok": False, "erro": "ocupado", "detail": "Já há uma coleta SIAFE em andamento.", "lock": st}
-    log = open(_P(__file__).parent / "data" / f"siafe_{quem}.log", "a")
+    log = open(RAIZ / "data" / f"siafe_{quem}.log", "a")
     subprocess.Popen([_sys.executable, "-m", "compliance_agent.siafe_runner", *args],
-                     cwd=str(_P(__file__).parent), stdout=log, stderr=log, start_new_session=True)
+                     cwd=str(RAIZ), stdout=log, stderr=log, start_new_session=True)
     return {"ok": True, "iniciado": True, "comando": quem, "detail": "Coleta SIAFE iniciada em background."}
 
 
@@ -38,7 +42,7 @@ async def api_siafe_stats():
     try:
         import sqlite3
         from pathlib import Path as _P
-        db = _P(os.environ.get("JFN_DATA_DIR", _P(__file__).parent / "data")) / "compliance.db"
+        db = _P(os.environ.get("JFN_DATA_DIR", RAIZ / "data")) / "compliance.db"
         con = sqlite3.connect(str(db))
         try:
             tem = con.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='ob_orcamentaria_siafe'").fetchone()
@@ -144,7 +148,7 @@ async def api_sweeps_status():
     """Status dos SWEEPS (coleta contínua): SEI (lê processos SEI das OBs) + SIAFE 2 (OB Orçamentária).
     Para o Yoda responder 'como está o sweep' sem se perder — texto pronto p/ Telegram."""
     import subprocess
-    base = Path(__file__).resolve().parent
+    base = RAIZ
 
     def _alive(pat: str) -> bool:
         try:
@@ -217,7 +221,7 @@ async def api_sweeps_status():
 async def api_sweeps_pausar():
     """Admin (painel): PAUSA os sweeps. Cria data/.pause_sweeps (tudo) e data/.pause_sei_sweep (corta o SEI
     inclusive no meio de uma sessão — sei_sweep.py checa a flag mid-run). Os scripts do cron pulam enquanto existir."""
-    d = Path(__file__).resolve().parent / "data"
+    d = RAIZ / "data"
     (d / ".pause_sweeps").touch()
     (d / ".pause_sei_sweep").touch()
     return JSONResponse({"ok": True, "pausado": True})
@@ -226,7 +230,7 @@ async def api_sweeps_pausar():
 @router.post("/api/sweeps/retomar")
 async def api_sweeps_retomar():
     """Admin (painel): RETOMA os sweeps (remove as flags de pausa). O cron horário volta a rodar."""
-    d = Path(__file__).resolve().parent / "data"
+    d = RAIZ / "data"
     for f in (".pause_sweeps", ".pause_sei_sweep"):
         (d / f).unlink(missing_ok=True)
     return JSONResponse({"ok": True, "pausado": False})

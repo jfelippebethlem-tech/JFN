@@ -4,13 +4,17 @@
 junta num PDF único e ENVIA ao Telegram (divide em partes <45MB). SEM OCR (mais leve). Guardado.
 Uso: .venv/bin/python tools/sei_integra_completa.py "330020/000762/2021"
 """
-import os, sys, re, asyncio
+import os
+import sys
+import re
+import asyncio
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR
 from tools import vm_guard as G
 from playwright.async_api import async_playwright
-import httpx, fitz
+import httpx
+import fitz
 
 PROC = sys.argv[1]
 TAG = re.sub(r"[^0-9]", "_", PROC)

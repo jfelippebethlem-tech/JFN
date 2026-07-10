@@ -167,6 +167,16 @@ async def _extrair_de_todos_frames(pg) -> dict:
             "texto": "\n\n".join(textos)[:20000]}
 
 
+def _grava_cache_atomico(cache_file, res: dict) -> None:
+    """Grava o cdp_*.json ATÔMICO (tmp+rename por PID). write_text direto deixava JSON RASGADO
+    quando o processo era morto por timeout no meio do write (o refichar flagrou 'JSON inválido'
+    em caches de 06/22-jun). Fix 2026-07-10."""
+    import json as _json
+    tmp = cache_file.with_name(f"{cache_file.name}.{os.getpid()}.tmp")
+    tmp.write_text(_json.dumps(res, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+    tmp.replace(cache_file)
+
+
 def _dec_sei(body: bytes) -> str:
     """Decodifica resposta do SEI: tenta UTF-8 estrito; se estourar, latin-1 (o SEI mistura os dois)."""
     try:
@@ -605,7 +615,7 @@ async def _montar_resultado_cracked(pg, proc: str, dump: dict, usar_cache: bool 
     res["valores"] = sorted(set(re.findall(r"R\$\s*[\d.,]+", tot)))
     res["_cached_at"] = datetime.now().isoformat()
     try:
-        cache_file.write_text(_json.dumps(res, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        _grava_cache_atomico(cache_file, res)
         res["_cache_path"] = str(cache_file)
     except Exception as exc:
         logger.warning("gravação do cache %s (cracked) falhou: %s", cache_file, exc)
@@ -692,7 +702,7 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
         res["indisponivel"] = True
         return res
     try:
-        cache_file.write_text(_json.dumps(res, ensure_ascii=False, indent=2, default=str), encoding="utf-8")
+        _grava_cache_atomico(cache_file, res)
         res["_cache_path"] = str(cache_file)
     except Exception as exc:
         logger.warning("gravação do cache %s falhou: %s", cache_file, exc)
