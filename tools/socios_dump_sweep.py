@@ -201,8 +201,14 @@ def materializar_rede(con: sqlite3.Connection | None = None) -> None:
     own = con is None
     if con is None:
         con = _conectar()
-    con.execute("DROP VIEW IF EXISTS rede_socios_fornecedores")
-    con.execute("DROP TABLE IF EXISTS rede_socios_fornecedores")
+    # o objeto pode existir como VIEW ou TABLE (estados históricos do DB);
+    # DROP do tipo errado é OperationalError no SQLite — tentar ambos
+    for _stmt in ("DROP VIEW IF EXISTS rede_socios_fornecedores",
+                  "DROP TABLE IF EXISTS rede_socios_fornecedores"):
+        try:
+            con.execute(_stmt)
+        except sqlite3.OperationalError:
+            pass
     con.execute("DROP TABLE IF EXISTS _receb_raiz")
     con.execute("DROP TABLE IF EXISTS _pessoa_raiz")
     # total recebido por raiz (das nossas OB) — materializado p/ join eficiente (sem LIKE correlato)
