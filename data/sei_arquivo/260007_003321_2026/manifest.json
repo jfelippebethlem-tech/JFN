@@ -1,293 +1,18 @@
 {
  "processo": "260007/003321/2026",
- "gerado_em": "2026-07-08T07:38:57+00:00",
+ "gerado_em": "2026-07-06T07:28:55+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_003321_2026",
- "modalidade": "licitacao",
- "docs": [
-  {
-   "i": 0,
-   "titulo": "Despacho de Formalização de Liquidação de Despesa",
-   "fase": "despesa",
-   "tipo": "nota_liquidacao",
-   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 1,
-   "titulo": "Despacho de Encaminhamento de Processo",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
-   "chars": 1614,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 2,
-   "titulo": "Relatório",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/002_relat_rio.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 3,
-   "titulo": "Despacho de Encaminhamento de Processo",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/003_despacho_de_encaminhamento_de_processo.txt",
-   "chars": 1364,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 4,
-   "titulo": "Checklist",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/004_checklist.txt",
-   "chars": 1350,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 5,
-   "titulo": "Despacho de Encaminhamento de Processo",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/005_despacho_de_encaminhamento_de_processo.txt",
-   "chars": 1516,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 6,
-   "titulo": "Anexo SIGFIS E-TCE",
-   "fase": "controle",
-   "tipo": "orgao_controle",
-   "texto": "texto/006_anexo_sigfis_e_tce.txt",
-   "chars": 615,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 7,
-   "titulo": "Despacho de Encaminhamento de Processo",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/007_despacho_de_encaminhamento_de_processo.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 8,
-   "titulo": "Despacho de Encaminhamento de Processo",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/008_despacho_de_encaminhamento_de_processo.txt",
-   "chars": 1542,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 9,
-   "titulo": "Nota de Empenho Original - NE ESPECIFARMA",
-   "fase": "despesa",
-   "tipo": "nota_empenho",
-   "texto": "texto/009_nota_de_empenho_original_ne_especifarma.txt",
-   "chars": 2484,
-   "ocr": true,
-   "fotos": []
-  },
-  {
-   "i": 10,
-   "titulo": "Nota de Autorização de Despesa - NAD ESPECIFARMA",
-   "fase": "despesa",
-   "tipo": "autorizacao_despesa",
-   "texto": "texto/010_nota_de_autoriza_o_de_despesa_nad_especi.txt",
-   "chars": 2319,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 11,
-   "titulo": "Anexo PUBLICAÇÃO PNCP - NOTA DE EMPENHO",
-   "fase": "despesa",
-   "tipo": "nota_empenho",
-   "texto": "texto/011_anexo_publica_o_pncp_nota_de_empenho.txt",
-   "chars": 1881,
-   "ocr": true,
-   "fotos": [
-    "fotos/011_p01.jpg"
-   ]
-  },
-  {
-   "i": 12,
-   "titulo": "Anexo PUBLICAÇÃO PNCP - EDITAL - CONTRATOS/EMPENHOS",
-   "fase": "selecao",
-   "tipo": "edital",
-   "texto": "texto/012_anexo_publica_o_pncp_edital_contratos_em.txt",
-   "chars": 2583,
-   "ocr": true,
-   "fotos": [
-    "fotos/012_p01.jpg"
-   ]
-  },
-  {
-   "i": 13,
-   "titulo": "Despacho de Encaminhamento de Processo",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/013_despacho_de_encaminhamento_de_processo.txt",
-   "chars": 1791,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 14,
-   "titulo": "Correspondência Interna - NA 166",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/014_correspond_ncia_interna_na_166.txt",
-   "chars": 1855,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 15,
-   "titulo": "Processo",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/015_processo.txt",
-   "chars": 1682,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 16,
-   "titulo": "Requisição",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/016_requisi_o.txt",
-   "chars": 1866,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 17,
-   "titulo": "Registro",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/017_registro.txt",
-   "chars": 1840,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 18,
-   "titulo": "Consulta",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/018_consulta.txt",
-   "chars": 957,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 19,
-   "titulo": "Declaração",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/019_declara_o.txt",
-   "chars": 1999,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 20,
-   "titulo": "Certidões Neg. de Débitos Trabalhistas",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/020_certid_es_neg_de_d_bitos_trabalhistas.txt",
-   "chars": 1835,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 21,
-   "titulo": "Certidões Negativas do FGTS",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/021_certid_es_negativas_do_fgts.txt",
-   "chars": 1052,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 22,
-   "titulo": "Certidões Neg. de Débitos Federais",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/022_certid_es_neg_de_d_bitos_federais.txt",
-   "chars": 1994,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 23,
-   "titulo": "CNPJ",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/023_cnpj.txt",
-   "chars": 2537,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 24,
-   "titulo": "Publicação",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/024_publica_o.txt",
-   "chars": 1986,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 25,
-   "titulo": "Publicação",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/025_publica_o.txt",
-   "chars": 24571,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 26,
-   "titulo": "Ata",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/026_ata.txt",
-   "chars": 29313,
-   "ocr": false,
-   "fotos": []
-  }
- ],
+ "modalidade": "",
+ "docs": [],
  "linha_do_tempo": {
   "planejamento": 0,
-  "selecao": 1,
+  "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 4,
-  "controle": 1,
-  "tramitacao": 6,
-  "indefinida": 15
+  "despesa": 0,
+  "controle": 0,
+  "tramitacao": 0,
+  "indefinida": 0
  },
  "lacunas": [
   {
@@ -295,13 +20,13 @@
    "gravidade": "media"
   },
   {
-   "falta": "Contrato/ata formalizados",
-   "gravidade": "media"
+   "falta": "Seleção (edital, julgamento, homologação)",
+   "gravidade": "alta"
   },
   {
-   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
-   "gravidade": "critica"
+   "falta": "Contrato/ata formalizados",
+   "gravidade": "media"
   }
  ],
- "fotos_total": 2
+ "fotos_total": 0
 }

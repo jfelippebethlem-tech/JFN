@@ -161,3 +161,7 @@ data/*.bak_memoria_*
 data/compliance.db.bak*
 data/sei_arquivo/
 tests/golden/snapshot_vazio.db
+data/contasrio/
+data/emendas_checkpoint.json
+data/fisc_coletar_tudo.log
+data/.coleta.lock

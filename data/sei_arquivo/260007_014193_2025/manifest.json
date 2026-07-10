@@ -1,88 +1,15 @@
 {
  "processo": "260007/014193/2025",
- "gerado_em": "2026-07-08T07:12:49+00:00",
+ "gerado_em": "2026-07-06T07:14:44+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_014193_2025",
  "modalidade": "",
- "docs": [
-  {
-   "i": 0,
-   "titulo": "Despacho de Formalização de Liquidação de Despesa",
-   "fase": "despesa",
-   "tipo": "nota_liquidacao",
-   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 1,
-   "titulo": "Nota de Liquidação - NL",
-   "fase": "despesa",
-   "tipo": "nota_liquidacao",
-   "texto": "texto/001_nota_de_liquida_o_nl.txt",
-   "chars": 2371,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 2,
-   "titulo": "Despacho de Solicitação de Liquidação de Despesa",
-   "fase": "despesa",
-   "tipo": "nota_liquidacao",
-   "texto": "texto/002_despacho_de_solicita_o_de_liquida_o_de_d.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 3,
-   "titulo": "Nota Fiscal - NF 246589 - VENDA",
-   "fase": "despesa",
-   "tipo": "nota_fiscal",
-   "texto": "texto/003_nota_fiscal_nf_246589_venda.txt",
-   "chars": 2816,
-   "ocr": true,
-   "fotos": [
-    "fotos/003_p01.jpg"
-   ]
-  },
-  {
-   "i": 4,
-   "titulo": "Nota de Empenho Reforço - NE 2025NE06187",
-   "fase": "despesa",
-   "tipo": "nota_empenho",
-   "texto": "texto/004_nota_de_empenho_refor_o_ne_2025ne06187.txt",
-   "chars": 2531,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 5,
-   "titulo": "Nota de Empenho Reforço - NE 2025NE05991",
-   "fase": "despesa",
-   "tipo": "nota_empenho",
-   "texto": "texto/005_nota_de_empenho_refor_o_ne_2025ne05991.txt",
-   "chars": 2542,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 6,
-   "titulo": "Nota de Empenho Original - NE 2025NE04914",
-   "fase": "despesa",
-   "tipo": "nota_empenho",
-   "texto": "texto/006_nota_de_empenho_original_ne_2025ne04914.txt",
-   "chars": 2527,
-   "ocr": true,
-   "fotos": []
-  }
- ],
+ "docs": [],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 7,
+  "despesa": 0,
   "controle": 0,
   "tramitacao": 0,
   "indefinida": 0
@@ -99,11 +26,7 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
-  },
-  {
-   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
-   "gravidade": "critica"
   }
  ],
- "fotos_total": 1
+ "fotos_total": 0
 }

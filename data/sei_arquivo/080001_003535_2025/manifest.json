@@ -1,219 +1,18 @@
 {
  "processo": "080001/003535/2025",
- "gerado_em": "2026-07-08T07:36:56+00:00",
+ "gerado_em": "2026-07-06T07:24:05+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_080001_003535_2025",
  "modalidade": "",
- "docs": [
-  {
-   "i": 0,
-   "titulo": "Relação de Ordens Bancárias Externas - Dez.25",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/000_rela_o_de_ordens_banc_rias_externas_dez.txt",
-   "chars": 75267,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 1,
-   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/001_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
-   "chars": 1550,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 2,
-   "titulo": "Programação de Desembolso - PD - Dez/25",
-   "fase": "despesa",
-   "tipo": "programacao_desembolso",
-   "texto": "texto/002_programa_o_de_desembolso_pd_dez_25.txt",
-   "chars": 68620,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 3,
-   "titulo": "Despacho de Formalização de Liquidação de Despesa",
-   "fase": "despesa",
-   "tipo": "nota_liquidacao",
-   "texto": "texto/003_despacho_de_formaliza_o_de_liquida_o_de.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 4,
-   "titulo": "Documentos diversos DIVERSAS LIQ.",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/004_documentos_diversos_diversas_liq.txt",
-   "chars": 67850,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 5,
-   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/005_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 6,
-   "titulo": "Programação de Desembolso - PD",
-   "fase": "despesa",
-   "tipo": "programacao_desembolso",
-   "texto": "texto/006_programa_o_de_desembolso_pd.txt",
-   "chars": 73541,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 7,
-   "titulo": "Despacho de Formalização de Liquidação de Despesa",
-   "fase": "despesa",
-   "tipo": "nota_liquidacao",
-   "texto": "texto/007_despacho_de_formaliza_o_de_liquida_o_de.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 8,
-   "titulo": "Documentos diversos DIVERSAS LIQUIDAÇÕES",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/008_documentos_diversos_diversas_liquida_es.txt",
-   "chars": 81438,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 9,
-   "titulo": "Despacho de Encaminhamento de Processo",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/009_despacho_de_encaminhamento_de_processo.txt",
-   "chars": 788,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 10,
-   "titulo": "Nota de Empenho Original - NE",
-   "fase": "despesa",
-   "tipo": "nota_empenho",
-   "texto": "texto/010_nota_de_empenho_original_ne.txt",
-   "chars": 98591,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 11,
-   "titulo": "Nota de Autorização de Despesa - NAD 5836",
-   "fase": "despesa",
-   "tipo": "autorizacao_despesa",
-   "texto": "texto/011_nota_de_autoriza_o_de_despesa_nad_5836.txt",
-   "chars": 180,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 12,
-   "titulo": "Despacho de Solicitação de Análise da NAD",
-   "fase": "despesa",
-   "tipo": "autorizacao_despesa",
-   "texto": "texto/012_despacho_de_solicita_o_de_an_lise_da_nad.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 13,
-   "titulo": "Relação de Ordens Bancárias Externas - Set/25",
-   "fase": "indefinida",
-   "tipo": "outro",
-   "texto": "texto/013_rela_o_de_ordens_banc_rias_externas_set.txt",
-   "chars": 79787,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 14,
-   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/014_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 15,
-   "titulo": "Programação de Desembolso - PD - Set/25",
-   "fase": "despesa",
-   "tipo": "programacao_desembolso",
-   "texto": "texto/015_programa_o_de_desembolso_pd_set_25.txt",
-   "chars": 73301,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 16,
-   "titulo": "Despacho de Formalização de Liquidação de Despesa",
-   "fase": "despesa",
-   "tipo": "nota_liquidacao",
-   "texto": "texto/016_despacho_de_formaliza_o_de_liquida_o_de.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 17,
-   "titulo": "Nota de Liquidação - NL",
-   "fase": "despesa",
-   "tipo": "nota_liquidacao",
-   "texto": "texto/017_nota_de_liquida_o_nl.txt",
-   "chars": 80615,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 18,
-   "titulo": "Despacho de Encaminhamento de Processo",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/018_despacho_de_encaminhamento_de_processo.txt",
-   "chars": 314,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 19,
-   "titulo": "Nota de Empenho Original - NE",
-   "fase": "despesa",
-   "tipo": "nota_empenho",
-   "texto": "texto/019_nota_de_empenho_original_ne.txt",
-   "chars": 98507,
-   "ocr": false,
-   "fotos": []
-  }
- ],
+ "docs": [],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 11,
+  "despesa": 0,
   "controle": 0,
-  "tramitacao": 5,
-  "indefinida": 4
+  "tramitacao": 0,
+  "indefinida": 0
  },
  "lacunas": [
   {
@@ -227,10 +26,6 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
-  },
-  {
-   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
-   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

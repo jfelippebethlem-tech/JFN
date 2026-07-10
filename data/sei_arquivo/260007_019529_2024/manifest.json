@@ -1,118 +1,18 @@
 {
  "processo": "260007/019529/2024",
- "gerado_em": "2026-07-08T08:37:59+00:00",
+ "gerado_em": "2026-07-06T07:45:44+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_019529_2024",
  "modalidade": "",
- "docs": [
-  {
-   "i": 0,
-   "titulo": "Comprovante 2024OB13747",
-   "fase": "despesa",
-   "tipo": "ordem_bancaria",
-   "texto": "texto/000_comprovante_2024ob13747.txt",
-   "chars": 2445,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 1,
-   "titulo": "Comprovante 2025OB05690",
-   "fase": "despesa",
-   "tipo": "ordem_bancaria",
-   "texto": "texto/001_comprovante_2025ob05690.txt",
-   "chars": 663,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 2,
-   "titulo": "Despacho de Formalização de Liquidação de Despesa",
-   "fase": "despesa",
-   "tipo": "nota_liquidacao",
-   "texto": "texto/002_despacho_de_formaliza_o_de_liquida_o_de.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 3,
-   "titulo": "Nota de Liquidação - NL 2024NL08052",
-   "fase": "despesa",
-   "tipo": "nota_liquidacao",
-   "texto": "texto/003_nota_de_liquida_o_nl_2024nl08052.txt",
-   "chars": 2728,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 4,
-   "titulo": "Despacho de Encaminhamento de Processo",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/004_despacho_de_encaminhamento_de_processo.txt",
-   "chars": 0,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 5,
-   "titulo": "Anexo NF 20088 - LABORMED",
-   "fase": "indefinida",
-   "tipo": "anexo",
-   "texto": "texto/005_anexo_nf_20088_labormed.txt",
-   "chars": 6403,
-   "ocr": true,
-   "fotos": [
-    "fotos/005_p01.jpg",
-    "fotos/005_p02.jpg"
-   ]
-  },
-  {
-   "i": 6,
-   "titulo": "Anexo NF 20087 - LABORMED",
-   "fase": "indefinida",
-   "tipo": "anexo",
-   "texto": "texto/006_anexo_nf_20087_labormed.txt",
-   "chars": 6514,
-   "ocr": true,
-   "fotos": [
-    "fotos/006_p01.jpg",
-    "fotos/006_p02.jpg"
-   ]
-  },
-  {
-   "i": 7,
-   "titulo": "Anexo NF 20089 - LABORMED",
-   "fase": "indefinida",
-   "tipo": "anexo",
-   "texto": "texto/007_anexo_nf_20089_labormed.txt",
-   "chars": 6548,
-   "ocr": true,
-   "fotos": [
-    "fotos/007_p01.jpg",
-    "fotos/007_p02.jpg"
-   ]
-  },
-  {
-   "i": 8,
-   "titulo": "Nota de Empenho Original - NE 2024NE07313",
-   "fase": "despesa",
-   "tipo": "nota_empenho",
-   "texto": "texto/008_nota_de_empenho_original_ne_2024ne07313.txt",
-   "chars": 2502,
-   "ocr": true,
-   "fotos": []
-  }
- ],
+ "docs": [],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 5,
+  "despesa": 0,
   "controle": 0,
-  "tramitacao": 1,
-  "indefinida": 3
+  "tramitacao": 0,
+  "indefinida": 0
  },
  "lacunas": [
   {
@@ -126,11 +26,7 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
-  },
-  {
-   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
-   "gravidade": "critica"
   }
  ],
- "fotos_total": 6
+ "fotos_total": 0
 }

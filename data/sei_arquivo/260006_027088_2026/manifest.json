@@ -1,40 +1,9 @@
 {
  "processo": "260006/027088/2026",
- "gerado_em": "2026-07-08T07:44:57+00:00",
+ "gerado_em": "2026-07-06T07:09:30+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260006_027088_2026",
  "modalidade": "",
- "docs": [
-  {
-   "i": 0,
-   "titulo": "Despacho",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/000_despacho.txt",
-   "chars": 1461,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 1,
-   "titulo": "Despacho",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/001_despacho.txt",
-   "chars": 1861,
-   "ocr": false,
-   "fotos": []
-  },
-  {
-   "i": 2,
-   "titulo": "Despacho de Encaminhamento de Processo",
-   "fase": "tramitacao",
-   "tipo": "despacho",
-   "texto": "texto/002_despacho_de_encaminhamento_de_processo.txt",
-   "chars": 1493,
-   "ocr": false,
-   "fotos": []
-  }
- ],
+ "docs": [],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
@@ -42,7 +11,7 @@
   "execucao": 0,
   "despesa": 0,
   "controle": 0,
-  "tramitacao": 3,
+  "tramitacao": 0,
   "indefinida": 0
  },
  "lacunas": [
