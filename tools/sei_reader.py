@@ -592,7 +592,6 @@ async def _montar_resultado_cracked(pg, proc: str, dump: dict, usar_cache: bool 
     """Monta o resultado canônico (mesmo formato de ``ler_processo``) a partir do dump CRACKED:
     extrai o conteúdo dos primeiros docs, regex de cnpjs/valores e grava ``cdp_*.json``. Honesto:
     propaga ``cadeado``/``n_docs_restritos`` (docs restritos do processo) sem inventar conteúdo."""
-    import json as _json
     from datetime import datetime
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
     cache_file = CACHE_DIR / f"cdp_{re.sub(r'[^0-9A-Za-z]', '_', proc)}.json"
