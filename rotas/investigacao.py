@@ -4,18 +4,21 @@ Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
 from __future__ import annotations
 
 import logging
-import asyncio
-import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
+
+# Raiz do repo (~/JFN) — após o split de server.py p/ rotas/ (2026-07-06), os caminhos por
+# __file__ apontavam p/ rotas/data (inexistente) e grafo/fachada-revisar/fachada-veredito
+# quebraram em silêncio. Fix 2026-07-10 (mesmo fix do rotas/sistema.py).
+RAIZ = Path(__file__).resolve().parent.parent
 
 async def _grafo_rede_completa(limite: int = 120):
     """Rede de relacionamento COMPLETA (não só MGS): top-N fornecedores por valor pago ↔ órgãos (UGs),
@@ -23,7 +26,7 @@ async def _grafo_rede_completa(limite: int = 120):
     Formato D3 que o graph.html consome: {nodes:[{id,label,tipo,...}], links:[{source,target,...}]}."""
     import sqlite3 as _sq
     import re as _re
-    DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "compliance.db")
+    DB = str(RAIZ / "data" / "compliance.db")
     try:
         con = _sq.connect(f"file:{DB}?mode=ro", uri=True)
         con.row_factory = _sq.Row
@@ -572,7 +575,7 @@ async def api_fachada_revisar(limite: int = 50):
     """Lista fachadas FLAGRADAS ainda sem veredito humano, p/ o validador do painel (revisão 1-a-1).
     Maior valor primeiro. Inclui motivo do flag, endereço e coordenada (link Street View no front)."""
     import sqlite3 as _sq
-    DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "compliance.db")
+    DB = str(RAIZ / "data" / "compliance.db")
     try:
         con = _sq.connect(f"file:{DB}?mode=ro", uri=True); con.row_factory = _sq.Row
         vetados = {r[0] for r in con.execute("SELECT cnpj FROM fachada_veredito WHERE status IN ('real','pular','fachada','indicio')")}
@@ -592,7 +595,8 @@ async def api_fachada_revisar(limite: int = 50):
 async def api_fachada_veredito(payload: Optional[dict] = None):
     """Salva o veredito HUMANO do validador. Body: {cnpj, veredito: suspeito|ok|mais_info, nota?}.
     suspeito→fachada (mantém INDICIO); ok→real (volta AFASTADO); mais_info→pular (fica pendente)."""
-    import sqlite3 as _sq, datetime as _dt
+    import sqlite3 as _sq
+    import datetime as _dt
     p = payload or {}
     cnpj = str(p.get("cnpj") or "").strip()
     ver = str(p.get("veredito") or "").strip().lower()
@@ -601,7 +605,7 @@ async def api_fachada_veredito(payload: Optional[dict] = None):
     if not cnpj or ver not in mapa:
         return JSONResponse(content={"ok": False, "erro": "cnpj e veredito (suspeito|ok|mais_info) obrigatórios"})
     status_vd, novo_status = mapa[ver]
-    DB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "compliance.db")
+    DB = str(RAIZ / "data" / "compliance.db")
     try:
         con = _sq.connect(DB, timeout=30); con.execute("PRAGMA busy_timeout=30000")
         row = con.execute("SELECT razao, endereco, total_recebido FROM verificacao_sede WHERE cnpj=?", (cnpj,)).fetchone()
