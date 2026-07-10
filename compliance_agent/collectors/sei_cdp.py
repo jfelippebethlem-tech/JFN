@@ -242,7 +242,12 @@ _JS_LE_ARVORE_E_TEXTO = r"""
         }
         // processo RELACIONADO: ação PRINCIPAL procedimento_visualizar/trabalhar, SEM id_documento
         //   (não confundir com acao_origem=procedimento_visualizar dos nós-documento da árvore).
-        if (/acao=(procedimento_visualizar|procedimento_trabalhar)/i.test(href) && !/[?&]id_documento=/i.test(href)) {
+        //   EXCLUI os links do MENU/ITKAVA: 'Controle de Processos' (acao_origem=procedimento_controlar) e a
+        //   Pesquisa Rápida (protocolo_pesquisa_rapida/procedimento_pesquisar) — são a FILA de processos abertos
+        //   da unidade, não relacionados do processo. Sem isso, seguir_relacionados/ler_com_cadeia perseguiam a
+        //   fila do menu (dezenas de processos alheios) e o contrato/aditivo real nunca era alcançado. Fix 2026-07-09.
+        if (/acao=(procedimento_visualizar|procedimento_trabalhar)/i.test(href) && !/[?&]id_documento=/i.test(href)
+            && !/acao_origem=(procedimento_controlar|protocolo_pesquisa_rapida|procedimento_pesquisar)/i.test(href)) {
             relacionados.push({texto: texto.slice(0, 80), titulo: titleAttr.slice(0, 160), url: href});
         }
     }

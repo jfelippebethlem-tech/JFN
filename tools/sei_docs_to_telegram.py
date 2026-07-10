@@ -9,7 +9,6 @@ from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR
 from tools import vm_guard as G
-from tools.sei_proc_paginado import docs_da_pagina, clicar_proxima
 from playwright.async_api import async_playwright
 import httpx
 
@@ -49,17 +48,13 @@ async def main():
         try:
             if not await SR.login(pg, tentativas=25): print("LOGIN FALHOU"); return
             print("login OK", flush=True)
-            try: await SR._ler_cracked(pg, PROC)
-            except Exception as e: print("crk", str(e)[:40], flush=True)
-            await pg.wait_for_timeout(2000)
-            todos = {}; zero = 0
-            for p in range(1, MAX_PAG + 1):
-                d = await docs_da_pagina(pg); nv = {u: v for u, v in d.items() if u not in todos}; todos.update(d)
-                zero = zero + 1 if not nv else 0
-                if zero >= 3: break
-                if not await clicar_proxima(pg, p * 10): break
-                await pg.wait_for_timeout(3200)
-            docs = list(todos.values())
+            # enumeração via primitivo novo (abre processo + expande pastas lazy-load). Substitui a
+            # paginação de busca que retornava 0 na árvore. Ver tools/sei_reader.arvore_do_fonte.
+            fr = await SR.abrir_processo(pg, PROC)
+            if not fr:
+                print("SEM ÁRVORE"); return
+            docs = [{"t": d.get("titulo") or d.get("texto") or "", "u": d.get("url") or "", "pai": ""}
+                    for d in await SR.arvore_do_fonte(pg) if d.get("url")]
             alvo = [x for x in docs if re.search(KW, (x["t"] + " " + x["pai"]), re.I) and not re.search(r"despacho de encaminhamento|cancelamento|e-mail|of[íi]cio|registro siaf", x["t"], re.I)]
             print(f"TOTAL {len(docs)} docs; {len(alvo)} alvos p/ baixar+enviar", flush=True)
             from compliance_agent.sei.ocr_docs import ocr_documento
@@ -68,7 +63,7 @@ async def main():
             for x in alvo:
                 if feitos >= MAXN: print(f"[limite {MAXN}; restam {len(alvo)-feitos}]", flush=True); break
                 try:
-                    resp = await ctx.request.get(x["u"], timeout=45000); body = await resp.body()
+                    resp = await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=45000); body = await resp.body()
                     ct = (resp.headers.get("content-type") or "").lower()
                     titulo = re.sub(r"[^0-9A-Za-zçãõéêíóáÁ -]", "", x["t"])[:45].strip() or "doc"
                     nome = re.sub(r"[^0-9A-Za-z]", "_", titulo)[:40]
@@ -85,7 +80,7 @@ async def main():
                         # doc NATIVO (HTML): renderiza a página do documento em PDF e envia
                         try:
                             dp = await ctx.new_page()
-                            await dp.goto(x["u"], wait_until="networkidle", timeout=40000)
+                            await dp.goto(SR._url_conteudo_doc(x["u"]), wait_until="networkidle", timeout=40000)
                             await dp.wait_for_timeout(1500)
                             fp = outdir / f"{feitos:02d}_{nome}.pdf"
                             await dp.pdf(path=str(fp), format="A4", print_background=True)
@@ -94,7 +89,7 @@ async def main():
                             txt = await SR._conteudo_doc(pg, x) if False else ""
                             t2 = ""
                             try:
-                                t2 = (await (await ctx.request.get(x["u"], timeout=30000)).text())
+                                t2 = (await (await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=30000)).text())
                             except Exception:
                                 pass
                             (outdir / f"{feitos:02d}_{nome}.txt").write_text(re.sub(r"<[^>]+>", " ", t2)[:8000])

@@ -69,25 +69,13 @@ async def main():
             if not await SR.login(pg, tentativas=25):
                 print("LOGIN FALHOU"); return
             print("login OK", flush=True)
-            try:
-                await SR._ler_cracked(pg, PROC)
-            except Exception as e:
-                print("cracked:", str(e)[:50], flush=True)
-            await pg.wait_for_timeout(2000)
-            todos = {}
-            zero = 0
-            for pagina in range(1, MAX_PAG + 1):
-                d = await docs_da_pagina(pg)
-                novos = {u: v for u, v in d.items() if u not in todos}
-                todos.update(d)
-                print(f"  página {pagina}: +{len(novos)} docs (total {len(todos)})", flush=True)
-                zero = zero + 1 if not novos else 0
-                if zero >= 3:
-                    print("  [fim: 3 páginas sem docs novos]", flush=True); break
-                if not await clicar_proxima(pg, pagina * 10):
-                    print(f"  [fim: frame de resultados sem navegar() na página {pagina}]", flush=True); break
-                await pg.wait_for_timeout(3600)
-            docs = list(todos.values())
+            # ENUMERAÇÃO via primitivo novo (abre processo + expande pastas lazy-load pelo loader nativo).
+            # Substitui docs_da_pagina/clicar_proxima (paginação de BUSCA) que retornava 0 na árvore.
+            fr = await SR.abrir_processo(pg, PROC)
+            if not fr:
+                print("SEM ÁRVORE (processo não abriu)"); return
+            docs = [{"t": d.get("titulo") or d.get("texto") or "", "u": d.get("url") or "", "pai": ""}
+                    for d in await SR.arvore_do_fonte(pg) if d.get("url")]
             print(f"\n=== TOTAL {len(docs)} documentos no processo {PROC} ===", flush=True)
             for i, x in enumerate(docs):
                 print(f"  [{i:3}] {(x['t'] or x['pai'][:55])}", flush=True)
@@ -100,7 +88,7 @@ async def main():
                 if feitos >= MAX_OCR:
                     print(f"  [stop OCR: limite {MAX_OCR}; restam {len(alvo)-feitos} alvos]", flush=True); break
                 try:  # NÃO chamar cleanup_orphans aqui: mataria o próprio browser em uso!
-                    resp = await ctx.request.get(x["u"], timeout=45000)
+                    resp = await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=45000)
                     body = await resp.body()
                     ct = (resp.headers.get("content-type") or "").lower()
                     tipo = "pdf" if "pdf" in ct else ("image" if "image" in ct else "pdf")

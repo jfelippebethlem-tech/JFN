@@ -22,6 +22,7 @@ import argparse
 import asyncio
 import json
 import logging
+import os
 import re
 import signal
 import sqlite3
@@ -89,7 +90,20 @@ def _carregar_prog() -> dict:
 
 def _salvar_prog(p: dict):
     PROG.parent.mkdir(parents=True, exist_ok=True)
-    PROG.write_text(json.dumps(p, ensure_ascii=False, indent=1), encoding="utf-8")
+    # MERGE-ON-SAVE + write ATÔMICO (fix 2026-07-10): instâncias sobrepostas (cron chains) faziam
+    # load-modify-save do arquivo INTEIRO — a última a salvar apagava os feitos das outras (274
+    # leituras de 07-09/10 sumiram assim), e um read no meio de um write parcial caía no
+    # "ilegível → recomeça do zero". Merge: o nosso (mais novo) prevalece; o do disco completa.
+    try:
+        no_disco = json.loads(PROG.read_text(encoding="utf-8")).get("feitos", {})
+    except Exception:
+        no_disco = {}
+    fe = p.setdefault("feitos", {})
+    for k, v in no_disco.items():
+        fe.setdefault(k, v)
+    tmp = PROG.with_name(f"{PROG.name}.{os.getpid()}.tmp")
+    tmp.write_text(json.dumps(p, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(PROG)
 
 
 def _unidades_legiveis() -> set[str]:
@@ -408,11 +422,12 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                             if nd > 0:
                                 break
                             await asyncio.sleep(2)
-                        if nd == 0 and len(r.get("relacionados") or []) > 15:
-                            # CAIXA (busca caiu no inbox ~40; processo real tem rel 1–15, ver guard abaixo) →
+                        if nd == 0 and (r.get("indisponivel") or len(r.get("relacionados") or []) > 15):
+                            # CAIXA/leitura falha (indisponivel=árvore não abriu; rel>15=inbox legado) →
                             # tenta o método CRACKED, como ler()/ler_com_cadeia. Provado ao vivo: recupera
                             # p.ex. 270042 ITERJ (normal=0/rel40 → cracked=10); fica 0 honesto em restrito.
-                            # Só na caixa p/ não gastar navegação extra nos vazios reais (rel<=15).
+                            # 2026-07-10: o filtro do menu (sei_cdp) zerou o rel~40 da caixa → o gatilho
+                            # passa a ser o flag indisponivel do ler_processo (arvore_vista=False).
                             dump = await _ler_cracked(pg, proc)
                             if dump.get("documentos"):
                                 r = await _montar_resultado_cracked(pg, proc, dump, usar_cache=False)
