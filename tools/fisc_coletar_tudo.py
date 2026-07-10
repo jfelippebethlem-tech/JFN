@@ -94,10 +94,15 @@ async def main():
 
         if "emendas" not in pular:
             r = camara.listar_deputados_rj()
-            if not r["verificado"]:
-                _log(f"INDISPONÍVEL roster: {r['motivo']}")
-                sys.exit(2)
-            _log(f"[1/4] roster: {camara.gravar_roster(con, r['deputados'])} deputados")
+            if r["verificado"]:
+                _log(f"[1/4] roster: {camara.gravar_roster(con, r['deputados'])} deputados")
+            else:
+                # roster é só refresh; se já houver roster no DB, a coleta segue
+                n_roster = con.execute("select count(*) from deputados_federais_rj").fetchone()[0]
+                if n_roster == 0:
+                    _log(f"INDISPONÍVEL roster e DB vazio: {r['motivo']}")
+                    sys.exit(2)
+                _log(f"[1/4] roster: refresh falhou ({r['motivo']}) — usando {n_roster} já no DB")
             for ano in anos:
                 res = coletor.coletar_ano(con, ano, pausa=args.pausa)
                 _log(f"  emendas {ano}: {res}")
