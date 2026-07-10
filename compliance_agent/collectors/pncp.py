@@ -439,3 +439,108 @@ async def monitorar_licitacoes_rj() -> list[dict]:
         await asyncio.sleep(0.5)
 
     return todas
+
+
+# ---------------------------------------------------------------------------
+# Municipal Rio (PCRJ) — contratos por CNPJ do órgão + contratações por IBGE
+# ---------------------------------------------------------------------------
+
+MUNICIPIO_RIO_IBGE = "3304557"
+CNPJ_PCRJ = "42498733000148"   # MUNICIPIO DE RIO DE JANEIRO (esfera M)
+
+
+async def _consulta_retry(endpoint: str, params: dict, tentativas: int = 3) -> Optional[dict]:
+    """_get_consulta com retry/backoff — o PNCP devolve timeout transitório sob volume."""
+    for i in range(tentativas):
+        j = await _get_consulta(endpoint, params)
+        if j is not None:
+            return j
+        if i < tentativas - 1:
+            await asyncio.sleep(20 * (i + 1))
+    return None
+
+
+def _simplificar_contrato_pcrj(it: dict) -> dict:
+    """Mapeia /contratos (consulta v1) → shape da tabela pcrj_contratos."""
+    org = it.get("orgaoEntidade") or {}
+    uni = it.get("unidadeOrgao") or {}
+    return {
+        "numero_controle_pncp": it.get("numeroControlePNCP") or it.get("numeroControlePncpCompra"),
+        "ano": it.get("anoContrato"),
+        "orgao_cnpj": org.get("cnpj"),
+        "orgao_nome": org.get("razaoSocial"),
+        "unidade": uni.get("nomeUnidade"),
+        "fornecedor_documento": it.get("niFornecedor"),
+        "fornecedor_nome": it.get("nomeRazaoSocialFornecedor"),
+        "tipo": (it.get("tipoContrato") or {}).get("nome"),
+        "objeto": it.get("objetoContrato"),
+        "valor_inicial": it.get("valorInicial"),
+        "valor_global": it.get("valorGlobal"),
+        "data_assinatura": it.get("dataAssinatura"),
+        "vigencia_ini": it.get("dataVigenciaInicio"),
+        "vigencia_fim": it.get("dataVigenciaFim"),
+        "num_aditivos": it.get("numeroRetificacao") or 0,
+        "fonte": "pncp",
+    }
+
+
+async def coletar_contratos_pcrj(data_ini: str, data_fim: str,
+                                 cnpj_orgao: str = CNPJ_PCRJ) -> dict:
+    """Contratos/empenhos do órgão municipal (datas AAAAMMDD).
+
+    HONESTIDADE: se a 1ª página falhar, retorna verificado=False (INDISPONÍVEL ≠ 0).
+    """
+    itens: list[dict] = []
+    pagina = 1
+    while True:
+        j = await _consulta_retry("/contratos", {
+            "dataInicial": data_ini, "dataFinal": data_fim,
+            "cnpjOrgao": cnpj_orgao, "pagina": pagina, "tamanhoPagina": 50})
+        if j is None:
+            if pagina == 1:
+                return {"verificado": False, "itens": [], "motivo": "PNCP /contratos indisponível"}
+            break  # páginas já coletadas valem; total pode estar incompleto
+        data = j.get("data") or []
+        itens.extend(_simplificar_contrato_pcrj(it) for it in data)
+        if pagina >= (j.get("totalPaginas") or 1) or not data:
+            break
+        pagina += 1
+        await asyncio.sleep(0.3)
+    return {"verificado": True, "itens": itens, "motivo": None}
+
+
+async def coletar_contratacoes_municipio_rio(data_ini: str, data_fim: str,
+                                             modalidades: Optional[list[int]] = None) -> dict:
+    """Contratações publicadas do MUNICÍPIO do Rio (uf=RJ + codigoMunicipioIbge).
+
+    POR QUE por IBGE: descobre TODOS os órgãos municipais (secretarias, COMLURB,
+    RioSaúde etc.) sem lista manual de CNPJs.
+    """
+    itens: list[dict] = []
+    vistos: set[str] = set()
+    falhas_pag1 = 0
+    for mod in (modalidades or MODALIDADES_PADRAO):
+        pagina = 1
+        while True:
+            j = await _consulta_retry("/contratacoes/publicacao", {
+                "dataInicial": data_ini, "dataFinal": data_fim, "uf": "RJ",
+                "codigoMunicipioIbge": MUNICIPIO_RIO_IBGE,
+                "codigoModalidadeContratacao": mod,
+                "pagina": pagina, "tamanhoPagina": 50})
+            if j is None:
+                if pagina == 1:
+                    falhas_pag1 += 1
+                break
+            data = j.get("data") or []
+            for it in data:
+                cid = it.get("numeroControlePNCP")
+                if cid and cid not in vistos:
+                    vistos.add(cid)
+                    itens.append(_simplificar_contratacao(it))
+            if pagina >= (j.get("totalPaginas") or 1) or not data:
+                break
+            pagina += 1
+            await asyncio.sleep(0.3)
+    if falhas_pag1 == len(modalidades or MODALIDADES_PADRAO):
+        return {"verificado": False, "itens": [], "motivo": "PNCP /contratacoes indisponível"}
+    return {"verificado": True, "itens": itens, "motivo": None}
