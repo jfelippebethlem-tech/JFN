@@ -1,17 +1,110 @@
 {
  "processo": "260007/019503/2024",
- "gerado_em": "2026-07-06T08:01:25+00:00",
+ "gerado_em": "2026-07-08T08:39:23+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_019503_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Termo de Encerramento de Processo",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/000_termo_de_encerramento_de_processo.txt",
+   "chars": 1405,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1446,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Comprovante 2025OB05714",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_comprovante_2025ob05714.txt",
+   "chars": 661,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Comprovante 2024OB13746",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/003_comprovante_2024ob13746.txt",
+   "chars": 839,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Nota de Liquidação - NL 2024NL08034",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/005_nota_de_liquida_o_nl_2024nl08034.txt",
+   "chars": 2390,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/006_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Anexo 2024NE07169 ESTÉVIA R$ 300,00",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/007_anexo_2024ne07169_est_via_r_300_00.txt",
+   "chars": 2330,
+   "ocr": true,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Nota Fiscal - NF 8210 ESTÉVIA R$ 300,00",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/008_nota_fiscal_nf_8210_est_via_r_300_00.txt",
+   "chars": 2859,
+   "ocr": true,
+   "fotos": [
+    "fotos/008_p01.jpg"
+   ]
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 6,
   "controle": 0,
-  "tramitacao": 0,
+  "tramitacao": 3,
   "indefinida": 0
  },
  "lacunas": [
@@ -26,7 +119,11 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 1
 }

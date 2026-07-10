@@ -1,17 +1,1308 @@
 {
  "processo": "260007/000225/2025",
- "gerado_em": "2026-07-06T07:17:06+00:00",
+ "gerado_em": "2026-07-08T07:19:14+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_000225_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Anexo 2025NL08042",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_anexo_2025nl08042.txt",
+   "chars": 2326,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/003_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Anexo 2025NL07971",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_anexo_2025nl07971.txt",
+   "chars": 2318,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/005_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Nota de Empenho Reforço - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/006_nota_de_empenho_refor_o_ne.txt",
+   "chars": 4996,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/007_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/008_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Anexo 2025NL07805  a  07827",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/009_anexo_2025nl07805_a_07827.txt",
+   "chars": 48923,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Anexo 2025NL07830 a 07855",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/010_anexo_2025nl07830_a_07855.txt",
+   "chars": 48887,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/011_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Nota de Empenho Reforço - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/012_nota_de_empenho_refor_o_ne.txt",
+   "chars": 5036,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/013_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 557,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Nota de Empenho Reforço - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/014_nota_de_empenho_refor_o_ne.txt",
+   "chars": 108041,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/015_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/016_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "Termo de Cancelamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/017_termo_de_cancelamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/018_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Termo de Cancelamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/019_termo_de_cancelamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/020_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/021_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "Anexo 2025NL07230",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/022_anexo_2025nl07230.txt",
+   "chars": 2348,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/023_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/024_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "Anexo 2025NL06962",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/025_anexo_2025nl06962.txt",
+   "chars": 2311,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "Anexo 2025NL06961",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/026_anexo_2025nl06961.txt",
+   "chars": 2311,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 27,
+   "titulo": "Anexo 2025NL06960",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/027_anexo_2025nl06960.txt",
+   "chars": 2311,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 28,
+   "titulo": "Anexo 2025NL06958",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/028_anexo_2025nl06958.txt",
+   "chars": 2311,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 29,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/029_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 30,
+   "titulo": "Anexo 2025NL06674",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/030_anexo_2025nl06674.txt",
+   "chars": 2322,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 31,
+   "titulo": "Anexo 2025NL06673",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/031_anexo_2025nl06673.txt",
+   "chars": 2332,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 32,
+   "titulo": "Anexo 2025NL06672",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/032_anexo_2025nl06672.txt",
+   "chars": 2330,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 33,
+   "titulo": "Anexo 2025NL06670",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/033_anexo_2025nl06670.txt",
+   "chars": 2351,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 34,
+   "titulo": "Anexo 2025NL06668",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/034_anexo_2025nl06668.txt",
+   "chars": 2324,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 35,
+   "titulo": "Anexo 2025NL06666",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/035_anexo_2025nl06666.txt",
+   "chars": 2336,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 36,
+   "titulo": "Anexo 2025NL06665",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/036_anexo_2025nl06665.txt",
+   "chars": 2338,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 37,
+   "titulo": "Anexo 2025NL06664",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/037_anexo_2025nl06664.txt",
+   "chars": 2316,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 38,
+   "titulo": "Anexo 2025NL06662",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/038_anexo_2025nl06662.txt",
+   "chars": 2315,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 39,
+   "titulo": "Anexo 2025NL06660",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/039_anexo_2025nl06660.txt",
+   "chars": 2314,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 40,
+   "titulo": "Nota de Empenho Reforço - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/040_nota_de_empenho_refor_o_ne.txt",
+   "chars": 67609,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 41,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/041_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 42,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/042_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 43,
+   "titulo": "Nota de Liquidação - NL",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/043_nota_de_liquida_o_nl.txt",
+   "chars": 6980,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 44,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/044_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 45,
+   "titulo": "Nota de Empenho Reforço - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/045_nota_de_empenho_refor_o_ne.txt",
+   "chars": 8048,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 46,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/046_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 47,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/047_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 48,
+   "titulo": "Anexo 2025NL05838  a  05860",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/048_anexo_2025nl05838_a_05860.txt",
+   "chars": 27968,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 49,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/049_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 50,
+   "titulo": "Anexo 2025NL05842",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/050_anexo_2025nl05842.txt",
+   "chars": 2322,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 51,
+   "titulo": "Anexo 2025NL05839",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/051_anexo_2025nl05839.txt",
+   "chars": 2328,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 52,
+   "titulo": "Anexo 2025NL05836",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/052_anexo_2025nl05836.txt",
+   "chars": 2314,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 53,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/053_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 54,
+   "titulo": "Nota de Empenho Reforço - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/054_nota_de_empenho_refor_o_ne.txt",
+   "chars": 67529,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 55,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/055_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 56,
+   "titulo": "Comprovante 2025OB14349",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/056_comprovante_2025ob14349.txt",
+   "chars": 2339,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 57,
+   "titulo": "Comprovante 2025OB11319",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/057_comprovante_2025ob11319.txt",
+   "chars": 2337,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 58,
+   "titulo": "Comprovante 2025OB15608",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/058_comprovante_2025ob15608.txt",
+   "chars": 2348,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 59,
+   "titulo": "Comprovante 2025OB15628",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/059_comprovante_2025ob15628.txt",
+   "chars": 2326,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 60,
+   "titulo": "Comprovante 2025OB11293",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/060_comprovante_2025ob11293.txt",
+   "chars": 2340,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 61,
+   "titulo": "Comprovante 2025OB13599",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/061_comprovante_2025ob13599.txt",
+   "chars": 2339,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 62,
+   "titulo": "Comprovante 2025OB11291",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/062_comprovante_2025ob11291.txt",
+   "chars": 2331,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 63,
+   "titulo": "Comprovante 2025OB14355",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/063_comprovante_2025ob14355.txt",
+   "chars": 2388,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 64,
+   "titulo": "Comprovante 2025OB11290",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/064_comprovante_2025ob11290.txt",
+   "chars": 2367,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 65,
+   "titulo": "Comprovante 2025OB14354",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/065_comprovante_2025ob14354.txt",
+   "chars": 2335,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 66,
+   "titulo": "Comprovante 2025OB13598",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/066_comprovante_2025ob13598.txt",
+   "chars": 2331,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 67,
+   "titulo": "Comprovante 2025OB15626",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/067_comprovante_2025ob15626.txt",
+   "chars": 2350,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 68,
+   "titulo": "Comprovante 2025OB13597",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/068_comprovante_2025ob13597.txt",
+   "chars": 2344,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 69,
+   "titulo": "Comprovante 2025OB15625",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/069_comprovante_2025ob15625.txt",
+   "chars": 2341,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 70,
+   "titulo": "Comprovante 2025OB13590",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/070_comprovante_2025ob13590.txt",
+   "chars": 2336,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 71,
+   "titulo": "Comprovante 2025OB11284",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/071_comprovante_2025ob11284.txt",
+   "chars": 2332,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 72,
+   "titulo": "Comprovante 2025OB11282",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/072_comprovante_2025ob11282.txt",
+   "chars": 2349,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 73,
+   "titulo": "Comprovante 2025OB13588",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/073_comprovante_2025ob13588.txt",
+   "chars": 2342,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 74,
+   "titulo": "Comprovante 2025OB15621",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/074_comprovante_2025ob15621.txt",
+   "chars": 2345,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 75,
+   "titulo": "Comprovante 2025OB14352",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/075_comprovante_2025ob14352.txt",
+   "chars": 2339,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 76,
+   "titulo": "Comprovante 2025OB13586",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/076_comprovante_2025ob13586.txt",
+   "chars": 2344,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 77,
+   "titulo": "Comprovante 2025OB15620",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/077_comprovante_2025ob15620.txt",
+   "chars": 2369,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 78,
+   "titulo": "Comprovante 2025OB14351",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/078_comprovante_2025ob14351.txt",
+   "chars": 2363,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 79,
+   "titulo": "Comprovante 2025OB11280",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/079_comprovante_2025ob11280.txt",
+   "chars": 2367,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 80,
+   "titulo": "Comprovante 2025OB14343",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/080_comprovante_2025ob14343.txt",
+   "chars": 2345,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 81,
+   "titulo": "Comprovante 2025OB14341",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/081_comprovante_2025ob14341.txt",
+   "chars": 2372,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 82,
+   "titulo": "Comprovante 2025OB15610",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/082_comprovante_2025ob15610.txt",
+   "chars": 2361,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 83,
+   "titulo": "Comprovante 2025OB11288",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/083_comprovante_2025ob11288.txt",
+   "chars": 2348,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 84,
+   "titulo": "Comprovante 2025OB14348",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/084_comprovante_2025ob14348.txt",
+   "chars": 2356,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 85,
+   "titulo": "Comprovante 2025OB13589",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/085_comprovante_2025ob13589.txt",
+   "chars": 2373,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 86,
+   "titulo": "Comprovante 2025OB11300",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/086_comprovante_2025ob11300.txt",
+   "chars": 2344,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 87,
+   "titulo": "Comprovante 2025OB11142",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/087_comprovante_2025ob11142.txt",
+   "chars": 2329,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 88,
+   "titulo": "Comprovante 2025OB15615",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/088_comprovante_2025ob15615.txt",
+   "chars": 2341,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 89,
+   "titulo": "Comprovante 2025OB11299",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/089_comprovante_2025ob11299.txt",
+   "chars": 2329,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 90,
+   "titulo": "Comprovante 2025OB11292",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/090_comprovante_2025ob11292.txt",
+   "chars": 2327,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 91,
+   "titulo": "Comprovante 2025OB14347",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/091_comprovante_2025ob14347.txt",
+   "chars": 2346,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 92,
+   "titulo": "Comprovante 2025OB14340",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/092_comprovante_2025ob14340.txt",
+   "chars": 2350,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 93,
+   "titulo": "Comprovante 2025OB13582",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/093_comprovante_2025ob13582.txt",
+   "chars": 2356,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 94,
+   "titulo": "Comprovante 2025OB11283",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/094_comprovante_2025ob11283.txt",
+   "chars": 2342,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 95,
+   "titulo": "Comprovante 2025OB15609",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/095_comprovante_2025ob15609.txt",
+   "chars": 2357,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 96,
+   "titulo": "Comprovante 2025OB14338",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/096_comprovante_2025ob14338.txt",
+   "chars": 2347,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 97,
+   "titulo": "Comprovante 2025OB15607",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/097_comprovante_2025ob15607.txt",
+   "chars": 2346,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 98,
+   "titulo": "Comprovante 2025OB15071",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/098_comprovante_2025ob15071.txt",
+   "chars": 2340,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 99,
+   "titulo": "Comprovante 2025OB13581",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/099_comprovante_2025ob13581.txt",
+   "chars": 2347,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 100,
+   "titulo": "Comprovante 2025OB11321",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/100_comprovante_2025ob11321.txt",
+   "chars": 2337,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 101,
+   "titulo": "Comprovante 2025OB13587",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/101_comprovante_2025ob13587.txt",
+   "chars": 2355,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 102,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/102_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 103,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/103_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 104,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/104_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 105,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/105_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 106,
+   "titulo": "Nota de Liquidação - NL",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/106_nota_de_liquida_o_nl.txt",
+   "chars": 2325,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 107,
+   "titulo": "Nota de Liquidação - NL",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/107_nota_de_liquida_o_nl.txt",
+   "chars": 2325,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 108,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/108_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 109,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/109_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 110,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/110_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 111,
+   "titulo": "Anexo 2025NL04323",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/111_anexo_2025nl04323.txt",
+   "chars": 2324,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 112,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/112_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 113,
+   "titulo": "Anexo 2025NL04308",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/113_anexo_2025nl04308.txt",
+   "chars": 2320,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 114,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/114_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 115,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/115_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 116,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/116_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 117,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/117_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 118,
+   "titulo": "Anexo 2025NL04195  a  2025NL04215",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/118_anexo_2025nl04195_a_2025nl04215.txt",
+   "chars": 48946,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 119,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/119_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 120,
+   "titulo": "Anexo 2025NL03530",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/120_anexo_2025nl03530.txt",
+   "chars": 2324,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 121,
+   "titulo": "Anexo 2025NL03528",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/121_anexo_2025nl03528.txt",
+   "chars": 2319,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 122,
+   "titulo": "Anexo 2025NL03526",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/122_anexo_2025nl03526.txt",
+   "chars": 2319,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 123,
+   "titulo": "Anexo 2025NL03525",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/123_anexo_2025nl03525.txt",
+   "chars": 2345,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 124,
+   "titulo": "Anexo 2025NL03524",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/124_anexo_2025nl03524.txt",
+   "chars": 2329,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 125,
+   "titulo": "Anexo 2025NL03523",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/125_anexo_2025nl03523.txt",
+   "chars": 2318,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 126,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/126_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 127,
+   "titulo": "Nota de Empenho Reforço - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/127_nota_de_empenho_refor_o_ne.txt",
+   "chars": 52990,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 128,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/128_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 100,
   "controle": 0,
-  "tramitacao": 0,
+  "tramitacao": 29,
   "indefinida": 0
  },
  "lacunas": [
@@ -26,6 +1317,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

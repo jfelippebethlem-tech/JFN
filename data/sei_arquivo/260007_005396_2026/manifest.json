@@ -1,17 +1,38 @@
 {
  "processo": "260007/005396/2026",
- "gerado_em": "2026-07-06T07:14:22+00:00",
+ "gerado_em": "2026-07-08T07:11:25+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_005396_2026",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1791,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 1,
   "controle": 0,
-  "tramitacao": 0,
+  "tramitacao": 1,
   "indefinida": 0
  },
  "lacunas": [
@@ -26,6 +47,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

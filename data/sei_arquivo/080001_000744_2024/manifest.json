@@ -1,18 +1,369 @@
 {
  "processo": "080001/000744/2024",
- "gerado_em": "2026-07-06T07:08:46+00:00",
+ "gerado_em": "2026-07-08T07:07:04+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_080001_000744_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Programação de Desembolso - PD 2025PD04651 ITAPERUNA",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/000_programa_o_de_desembolso_pd_2025pd04651.txt",
+   "chars": 2321,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Programação de Desembolso - PD 2025PD04650 Iguaba Grande",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/001_programa_o_de_desembolso_pd_2025pd04650.txt",
+   "chars": 2331,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Programação de Desembolso - PD 2025PD04648 VOLTA REDONDA",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/002_programa_o_de_desembolso_pd_2025pd04648.txt",
+   "chars": 2339,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Programação de Desembolso - PD 2025PD04640 Duque de Caxias IV",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/003_programa_o_de_desembolso_pd_2025pd04640.txt",
+   "chars": 2327,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Programação de Desembolso - PD 2025PD04670- DUQUE DE CAXIAS III 12 2024",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/004_programa_o_de_desembolso_pd_2025pd04670.txt",
+   "chars": 2306,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Programação de Desembolso - PD 2025PD04655- PETROPOLIS CASCATINHA 12 2024",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/005_programa_o_de_desembolso_pd_2025pd04655.txt",
+   "chars": 2305,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Programação de Desembolso - PD 2025PD04660- TERESOPOLIS 12 2024",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/006_programa_o_de_desembolso_pd_2025pd04660.txt",
+   "chars": 2324,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Programação de Desembolso - PD 2025PD04663- TRES RIOS 12 2024",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/007_programa_o_de_desembolso_pd_2025pd04663.txt",
+   "chars": 2305,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Programação de Desembolso - PD 2025PD04666- MACAE 12 2024",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/008_programa_o_de_desembolso_pd_2025pd04666.txt",
+   "chars": 2293,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Programação de Desembolso - PD 2025PD04667- CABO FRIO 12 2024",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/009_programa_o_de_desembolso_pd_2025pd04667.txt",
+   "chars": 2288,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Correspondência Interna - NA 5301",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/010_correspond_ncia_interna_na_5301.txt",
+   "chars": 1710,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Correspondência Interna - NA 158",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/011_correspond_ncia_interna_na_158.txt",
+   "chars": 1639,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/012_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1511,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Correspondência Interna - NA 1354",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/013_correspond_ncia_interna_na_1354.txt",
+   "chars": 2167,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/014_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1524,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/016_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Informação",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/018_informa_o.txt",
+   "chars": 1275,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Correspondência Interna - NA 157",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/019_correspond_ncia_interna_na_157.txt",
+   "chars": 1647,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/020_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "Correspondência Interna - NA 5690",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/021_correspond_ncia_interna_na_5690.txt",
+   "chars": 1683,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "Correspondência Interna - NA 1426",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/022_correspond_ncia_interna_na_1426.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "Correspondência Interna - NA 2996",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/023_correspond_ncia_interna_na_2996.txt",
+   "chars": 1612,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "Correspondência Interna - NI 01",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/024_correspond_ncia_interna_ni_01.txt",
+   "chars": 1701,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/025_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1462,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "Correspondência Interna - NA 2605",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/026_correspond_ncia_interna_na_2605.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 27,
+   "titulo": "Despacho",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/027_despacho.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 28,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/028_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 1543,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 29,
+   "titulo": "Despacho",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/029_despacho.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 30,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/030_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1571,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 31,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/031_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1900,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 32,
+   "titulo": "Anexo 06",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/032_anexo_06.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 33,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/033_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1419,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 34,
+   "titulo": "Anexo 05",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/034_anexo_05.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 35,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/035_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1797,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 36,
+   "titulo": "Despacho",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/036_despacho.txt",
+   "chars": 1713,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 10,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 13,
+  "indefinida": 12
  },
  "lacunas": [
   {
@@ -26,6 +377,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

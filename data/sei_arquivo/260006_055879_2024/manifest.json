@@ -1,18 +1,228 @@
 {
  "processo": "260006/055879/2024",
- "gerado_em": "2026-07-06T07:39:46+00:00",
+ "gerado_em": "2026-07-08T08:24:31+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260006_055879_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Termo de Encerramento de Processo",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/000_termo_de_encerramento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1313,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Comprovante 2025OB00431",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_comprovante_2025ob00431.txt",
+   "chars": 911,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/003_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Nota de Liquidação - NL 2024NL07440",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_nota_de_liquida_o_nl_2024nl07440.txt",
+   "chars": 2240,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/005_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Anexo 2024NE06460 SYMPLICIUS 27084_22",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/006_anexo_2024ne06460_symplicius_27084_22.txt",
+   "chars": 2502,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Anexo NAD 2023004310 0012 SYMPLICIUS 27084_22",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/007_anexo_nad_2023004310_0012_symplicius_270.txt",
+   "chars": 2088,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/008_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Relatório",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/009_relat_rio.txt",
+   "chars": 736,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/010_anexo.txt",
+   "chars": 8709,
+   "ocr": true,
+   "fotos": [
+    "fotos/010_p01.jpg",
+    "fotos/010_p02.jpg",
+    "fotos/010_p03.jpg",
+    "fotos/010_p04.jpg",
+    "fotos/010_p05.jpg",
+    "fotos/010_p06.jpg"
+   ]
+  },
+  {
+   "i": 11,
+   "titulo": "Declaração",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/011_declara_o.txt",
+   "chars": 2766,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/012_anexo.txt",
+   "chars": 932,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Certidões Negativa de Débitos em Dívida Ativa",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/013_certid_es_negativa_de_d_bitos_em_d_vida.txt",
+   "chars": 1421,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Certidões Neg. de Débitos Trabalhistas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/014_certid_es_neg_de_d_bitos_trabalhistas.txt",
+   "chars": 1813,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "Certidões Neg. de Débitos Federais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/015_certid_es_neg_de_d_bitos_federais.txt",
+   "chars": 2183,
+   "ocr": true,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "Certidões Neg. de Débitos Estaduais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/016_certid_es_neg_de_d_bitos_estaduais.txt",
+   "chars": 2281,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "Certidões Neg. de Débitos Municipais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/017_certid_es_neg_de_d_bitos_municipais.txt",
+   "chars": 1439,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Certidão Negativa de Falência ou Concordata",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/018_certid_o_negativa_de_fal_ncia_ou_concord.txt",
+   "chars": 2846,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Nota Fiscal - NF",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/019_nota_fiscal_nf.txt",
+   "chars": 2641,
+   "ocr": true,
+   "fotos": [
+    "fotos/019_p01.jpg"
+   ]
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 6,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 4,
+  "indefinida": 10
  },
  "lacunas": [
   {
@@ -26,7 +236,11 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 7
 }

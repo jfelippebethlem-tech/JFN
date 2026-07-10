@@ -1,18 +1,122 @@
 {
  "processo": "260007/019201/2024",
- "gerado_em": "2026-07-06T07:38:30+00:00",
+ "gerado_em": "2026-07-08T08:19:17+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_019201_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Termo de Encerramento de Processo",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/000_termo_de_encerramento_de_processo.txt",
+   "chars": 1422,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1311,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Comprovante 2025OB03353",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_comprovante_2025ob03353.txt",
+   "chars": 1001,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Comprovante 2025OB00852",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/003_comprovante_2025ob00852.txt",
+   "chars": 1115,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Nota de Liquidação - NL 8081",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/005_nota_de_liquida_o_nl_8081.txt",
+   "chars": 2588,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/006_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Anexo 2024NE07078- MSB_NE_",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/007_anexo_2024ne07078_msb_ne.txt",
+   "chars": 2475,
+   "ocr": true,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Anexo CARTA DE CORREÇÃO 14410 MSB",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/008_anexo_carta_de_corre_o_14410_msb.txt",
+   "chars": 1379,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Anexo NF 14410 MSB",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/009_anexo_nf_14410_msb.txt",
+   "chars": 3820,
+   "ocr": true,
+   "fotos": [
+    "fotos/009_p01.jpg",
+    "fotos/009_p02.jpg"
+   ]
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 5,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 3,
+  "indefinida": 2
  },
  "lacunas": [
   {
@@ -26,7 +130,11 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 2
 }

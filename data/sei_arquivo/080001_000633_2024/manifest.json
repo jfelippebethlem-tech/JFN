@@ -1,18 +1,821 @@
 {
  "processo": "080001/000633/2024",
- "gerado_em": "2026-07-06T07:18:43+00:00",
+ "gerado_em": "2026-07-08T07:26:23+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_080001_000633_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Termo de Encerramento de Processo",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/000_termo_de_encerramento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Relação de Ordens Bancárias Externas 2025OB01115 66",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/001_rela_o_de_ordens_banc_rias_externas_2025.txt",
+   "chars": 2419,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Relação de Ordens Bancárias Externas 2025OB01114",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_rela_o_de_ordens_banc_rias_externas_2025.txt",
+   "chars": 2417,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Relação de Ordens Bancárias Externas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/003_rela_o_de_ordens_banc_rias_externas.txt",
+   "chars": 2502,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Programação de Desembolso - PD 2025PD00890",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/004_programa_o_de_desembolso_pd_2025pd00890.txt",
+   "chars": 2226,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Programação de Desembolso - PD 2025PD00882",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/005_programa_o_de_desembolso_pd_2025pd00882.txt",
+   "chars": 2224,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/006_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Nota de Liquidação - NL diversas",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/007_nota_de_liquida_o_nl_diversas.txt",
+   "chars": 5112,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/008_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/009_nota_de_empenho_original_ne.txt",
+   "chars": 6171,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Nota de Autorização de Despesa - NAD 52",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/010_nota_de_autoriza_o_de_despesa_nad_52.txt",
+   "chars": 238,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Termo de Cancelamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/011_termo_de_cancelamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Nota de Autorização de Despesa - NAD 48",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/012_nota_de_autoriza_o_de_despesa_nad_48.txt",
+   "chars": 240,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Despacho de Solicitação de Análise da NAD",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/013_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/014_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "Programação de Desembolso - PD 2024PD19250-HGNI 11 2024",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/015_programa_o_de_desembolso_pd_2024pd19250.txt",
+   "chars": 2316,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/016_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "Nota de Liquidação - NL 09812",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/017_nota_de_liquida_o_nl_09812.txt",
+   "chars": 2559,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/018_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/019_nota_de_empenho_original_ne.txt",
+   "chars": 3090,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "Nota de Autorização de Despesa - NAD 5605",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/020_nota_de_autoriza_o_de_despesa_nad_5605.txt",
+   "chars": 255,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/021_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "Relação de Ordens Bancárias Externas 2024OB17791",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/022_rela_o_de_ordens_banc_rias_externas_2024.txt",
+   "chars": 2536,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/023_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "Programação de Desembolso - PD 2024PD18515",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/024_programa_o_de_desembolso_pd_2024pd18515.txt",
+   "chars": 2339,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/025_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "Nota de Liquidação - NL",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/026_nota_de_liquida_o_nl.txt",
+   "chars": 2559,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 27,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/027_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 28,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/028_nota_de_empenho_original_ne.txt",
+   "chars": 3110,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 29,
+   "titulo": "Nota de Autorização de Despesa - NAD 5405",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/029_nota_de_autoriza_o_de_despesa_nad_5405.txt",
+   "chars": 263,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 30,
+   "titulo": "Relação de Ordens Bancárias Externas 2024OB14717",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/030_rela_o_de_ordens_banc_rias_externas_2024.txt",
+   "chars": 2534,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 31,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/031_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 32,
+   "titulo": "Programação de Desembolso - PD 2024PD15578",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/032_programa_o_de_desembolso_pd_2024pd15578.txt",
+   "chars": 2355,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 33,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/033_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 34,
+   "titulo": "Nota de Liquidação - NL 07509",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/034_nota_de_liquida_o_nl_07509.txt",
+   "chars": 2609,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 35,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/035_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 36,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/036_nota_de_empenho_original_ne.txt",
+   "chars": 3085,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 37,
+   "titulo": "Nota de Autorização de Despesa - NAD 4158",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/037_nota_de_autoriza_o_de_despesa_nad_4158.txt",
+   "chars": 193,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 38,
+   "titulo": "Despacho de Solicitação de Análise da NAD",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/038_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 39,
+   "titulo": "Relação de Ordens Bancárias Externas 2024OB11048",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/039_rela_o_de_ordens_banc_rias_externas_2024.txt",
+   "chars": 2507,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 40,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/040_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 41,
+   "titulo": "Programação de Desembolso - PD 2024PD09301 NIG",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/041_programa_o_de_desembolso_pd_2024pd09301.txt",
+   "chars": 2318,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 42,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/042_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 43,
+   "titulo": "Nota de Liquidação - NL 2024NL04400",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/043_nota_de_liquida_o_nl_2024nl04400.txt",
+   "chars": 2555,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 44,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/044_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 45,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/045_nota_de_empenho_original_ne.txt",
+   "chars": 3094,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 46,
+   "titulo": "Nota de Autorização de Despesa - NAD 2907",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/046_nota_de_autoriza_o_de_despesa_nad_2907.txt",
+   "chars": 251,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 47,
+   "titulo": "Despacho de Solicitação de Análise da NAD",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/047_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 48,
+   "titulo": "Relação de Ordens Bancárias Externas 2024OB07641",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/048_rela_o_de_ordens_banc_rias_externas_2024.txt",
+   "chars": 2564,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 49,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/049_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 50,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/050_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 51,
+   "titulo": "Programação de Desembolso - PD 2024PD06796",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/051_programa_o_de_desembolso_pd_2024pd06796.txt",
+   "chars": 2283,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 52,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/052_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 53,
+   "titulo": "Nota de Liquidação - NL",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/053_nota_de_liquida_o_nl.txt",
+   "chars": 2546,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 54,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/054_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 55,
+   "titulo": "Nota de Empenho Original - NE",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/055_nota_de_empenho_original_ne.txt",
+   "chars": 3043,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 56,
+   "titulo": "Nota de Autorização de Despesa - NAD 2105",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/056_nota_de_autoriza_o_de_despesa_nad_2105.txt",
+   "chars": 226,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 57,
+   "titulo": "Despacho de Solicitação de Análise da NAD",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/057_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 58,
+   "titulo": "Relação de Ordens Bancárias Externas 2024OB04712 - Jan/24",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/058_rela_o_de_ordens_banc_rias_externas_2024.txt",
+   "chars": 2485,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 59,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/059_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 60,
+   "titulo": "Despacho de Solicitação de Análise da NAD",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/060_despacho_de_solicita_o_de_an_lise_da_nad.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 61,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/061_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 62,
+   "titulo": "Ofício OFICIO_nº_168_2024_Resolucao_3269_2024_HGNI",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/062_of_cio_oficio_n_168_2024_resolucao_3269.txt",
+   "chars": 1197,
+   "ocr": true,
+   "fotos": [
+    "fotos/062_p01.jpg"
+   ]
+  },
+  {
+   "i": 63,
+   "titulo": "E-mail",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/063_e_mail.txt",
+   "chars": 763,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 64,
+   "titulo": "Ofício - NI 209/2024",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/064_of_cio_ni_209_2024.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 65,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/065_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 66,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/066_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 67,
+   "titulo": "Despacho de Publicação",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/067_despacho_de_publica_o.txt",
+   "chars": 1223,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 68,
+   "titulo": "Anexo D.O. de 08.03.2024",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/068_anexo_d_o_de_08_03_2024.txt",
+   "chars": 27391,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 69,
+   "titulo": "Resolução - NI 3269",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/069_resolu_o_ni_3269.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 70,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/070_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 71,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/071_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 72,
+   "titulo": "Parecer 136",
+   "fase": "controle",
+   "tipo": "parecer",
+   "texto": "texto/072_parecer_136.txt",
+   "chars": 608,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 73,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/073_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 74,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/074_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 75,
+   "titulo": "Minuta de Resolução",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/075_minuta_de_resolu_o.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 76,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/076_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 77,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/077_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 78,
+   "titulo": "Anexo Delib. 8447",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/078_anexo_delib_8447.txt",
+   "chars": 5346,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 79,
+   "titulo": "Despacho de Encaminhamento de Documento",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/079_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
-  "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "despesa": 44,
+  "controle": 1,
+  "tramitacao": 29,
+  "indefinida": 6
  },
  "lacunas": [
   {
@@ -26,7 +829,11 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 1
 }

@@ -1,18 +1,185 @@
 {
  "processo": "260007/018686/2024",
- "gerado_em": "2026-07-06T07:35:28+00:00",
+ "gerado_em": "2026-07-08T08:13:57+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_018686_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/000_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1312,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Comprovante 2025OB00836",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/001_comprovante_2025ob00836.txt",
+   "chars": 2300,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/002_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Nota de Liquidação - NL 2024NL08082",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/003_nota_de_liquida_o_nl_2024nl08082.txt",
+   "chars": 2489,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Despacho de Solicitação de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Nota Fiscal - NF 2063 - Arlene Coelho do Nascimento",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/005_nota_fiscal_nf_2063_arlene_coelho_do_nas.txt",
+   "chars": 3187,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Nota Fiscal - NF 2062 - Antonia Cleide da Silva Lima",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/006_nota_fiscal_nf_2062_antonia_cleide_da_si.txt",
+   "chars": 3214,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Nota Fiscal - NF 2056 - Maria Julia Pedroza Silvas",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/007_nota_fiscal_nf_2056_maria_julia_pedroza.txt",
+   "chars": 3374,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Comunicado de Uso - Arlene coelho do nascimento",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/008_comunicado_de_uso_arlene_coelho_do_nasci.txt",
+   "chars": 2403,
+   "ocr": true,
+   "fotos": [
+    "fotos/008_p01.jpg",
+    "fotos/008_p02.jpg"
+   ]
+  },
+  {
+   "i": 9,
+   "titulo": "Comunicado de Uso -Antonia Cleide da Silva Lima",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/009_comunicado_de_uso_antonia_cleide_da_silv.txt",
+   "chars": 2284,
+   "ocr": true,
+   "fotos": [
+    "fotos/009_p01.jpg",
+    "fotos/009_p02.jpg"
+   ]
+  },
+  {
+   "i": 10,
+   "titulo": "Comunicado de Uso - Maria Julia Pedroza Silvapdf",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/010_comunicado_de_uso_maria_julia_pedroza_si.txt",
+   "chars": 2622,
+   "ocr": true,
+   "fotos": [
+    "fotos/010_p01.jpg",
+    "fotos/010_p02.jpg"
+   ]
+  },
+  {
+   "i": 11,
+   "titulo": "Nota Fiscal - NFs Consig + CCe",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/011_nota_fiscal_nfs_consig_cce.txt",
+   "chars": 2444,
+   "ocr": false,
+   "fotos": [
+    "fotos/011_p01.jpg",
+    "fotos/011_p02.jpg",
+    "fotos/011_p04.jpg",
+    "fotos/011_p06.jpg",
+    "fotos/011_p07.jpg",
+    "fotos/011_p08.jpg",
+    "fotos/011_p09.jpg",
+    "fotos/011_p10.jpg",
+    "fotos/011_p11.jpg",
+    "fotos/011_p12.jpg",
+    "fotos/011_p13.jpg",
+    "fotos/011_p14.jpg",
+    "fotos/011_p15.jpg",
+    "fotos/011_p16.jpg",
+    "fotos/011_p17.jpg",
+    "fotos/011_p18.jpg"
+   ]
+  },
+  {
+   "i": 12,
+   "titulo": "Nota de Empenho Reforço - 2024NE05635",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/012_nota_de_empenho_refor_o_2024ne05635.txt",
+   "chars": 2441,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Nota de Empenho Original - 2024NE01486",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/013_nota_de_empenho_original_2024ne01486.txt",
+   "chars": 2343,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 10,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 1,
+  "indefinida": 3
  },
  "lacunas": [
   {
@@ -26,7 +193,11 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 22
 }

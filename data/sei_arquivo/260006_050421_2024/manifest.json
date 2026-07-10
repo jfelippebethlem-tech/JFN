@@ -1,18 +1,227 @@
 {
  "processo": "260006/050421/2024",
- "gerado_em": "2026-07-06T07:19:28+00:00",
+ "gerado_em": "2026-07-08T07:31:52+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260006_050421_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Termo de Encerramento de Processo",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/000_termo_de_encerramento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Comprovante 2025OB05261",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_comprovante_2025ob05261.txt",
+   "chars": 704,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Comprovante 2024OB12466",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/003_comprovante_2024ob12466.txt",
+   "chars": 643,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Comprovante 2024OB11416",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/004_comprovante_2024ob11416.txt",
+   "chars": 714,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Comprovante 2024OB11417",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/005_comprovante_2024ob11417.txt",
+   "chars": 714,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Anexo GuiaPagamento DARF",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/006_anexo_guiapagamento_darf.txt",
+   "chars": 968,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/007_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/008_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/009_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Nota de Liquidação - NL 06611",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/010_nota_de_liquida_o_nl_06611.txt",
+   "chars": 2231,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Nota de Liquidação - NL 06610",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/011_nota_de_liquida_o_nl_06610.txt",
+   "chars": 2337,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Despacho",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/012_despacho.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Nota de Empenho Original - NE 603/24",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/013_nota_de_empenho_original_ne_603_24.txt",
+   "chars": 2448,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Despacho",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/014_despacho.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/015_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "Atestado de Realização de Serviços",
+   "fase": "execucao",
+   "tipo": "aceite",
+   "texto": "texto/016_atestado_de_realiza_o_de_servi_os.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "Declaração",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/017_declara_o.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Planilha",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/018_planilha.txt",
+   "chars": 12312,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Documentos diversos",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/019_documentos_diversos.txt",
+   "chars": 909,
+   "ocr": false,
+   "fotos": [
+    "fotos/019_p02.jpg",
+    "fotos/019_p03.jpg",
+    "fotos/019_p04.jpg",
+    "fotos/019_p05.jpg",
+    "fotos/019_p06.jpg",
+    "fotos/019_p07.jpg",
+    "fotos/019_p08.jpg"
+   ]
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
-  "execucao": 0,
-  "despesa": 0,
+  "execucao": 1,
+  "despesa": 8,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 7,
+  "indefinida": 4
  },
  "lacunas": [
   {
@@ -28,5 +237,5 @@
    "gravidade": "media"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 7
 }

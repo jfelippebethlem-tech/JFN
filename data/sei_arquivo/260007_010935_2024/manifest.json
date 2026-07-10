@@ -1,17 +1,110 @@
 {
  "processo": "260007/010935/2024",
- "gerado_em": "2026-07-06T07:20:54+00:00",
+ "gerado_em": "2026-07-08T07:33:55+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_010935_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Termo de Encerramento de Processo",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/000_termo_de_encerramento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1311,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Comprovante 2025OB00968",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_comprovante_2025ob00968.txt",
+   "chars": 1044,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Comprovante 2024OB08487",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/003_comprovante_2024ob08487.txt",
+   "chars": 1013,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Nota de Liquidação - NL 03504",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/005_nota_de_liquida_o_nl_03504.txt",
+   "chars": 2490,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/006_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Anexo 2024NE03462 NOVA LINEA R$ 504,00",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/007_anexo_2024ne03462_nova_linea_r_504_00.txt",
+   "chars": 2443,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Nota Fiscal - NF 59757 NOVA LÍNEA R$ 504,00",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/008_nota_fiscal_nf_59757_nova_l_nea_r_504_00.txt",
+   "chars": 3370,
+   "ocr": true,
+   "fotos": [
+    "fotos/008_p01.jpg"
+   ]
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 6,
   "controle": 0,
-  "tramitacao": 0,
+  "tramitacao": 3,
   "indefinida": 0
  },
  "lacunas": [
@@ -26,7 +119,11 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 1
 }

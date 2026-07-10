@@ -1,18 +1,159 @@
 {
  "processo": "260006/055722/2024",
- "gerado_em": "2026-07-06T07:40:08+00:00",
+ "gerado_em": "2026-07-08T08:25:59+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260006_055722_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Termo de Encerramento de Processo",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/000_termo_de_encerramento_de_processo.txt",
+   "chars": 1416,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 1313,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Comprovante 2025OB00758",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_comprovante_2025ob00758.txt",
+   "chars": 2419,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Comprovante 2025OB02363",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/003_comprovante_2025ob02363.txt",
+   "chars": 985,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Nota de Liquidação - NL 2024NL07244",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/005_nota_de_liquida_o_nl_2024nl07244.txt",
+   "chars": 2566,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/006_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Anexo 2024NE06243 ATLAS 17328_21",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/007_anexo_2024ne06243_atlas_17328_21.txt",
+   "chars": 2511,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Anexo NAD 2021006146 0024 ATLAS 17328_21",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/008_anexo_nad_2021006146_0024_atlas_17328_21.txt",
+   "chars": 2189,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/009_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Atestado de Realização de Serviços",
+   "fase": "execucao",
+   "tipo": "aceite",
+   "texto": "texto/010_atestado_de_realiza_o_de_servi_os.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/011_anexo.txt",
+   "chars": 7185,
+   "ocr": false,
+   "fotos": [
+    "fotos/011_p01.jpg",
+    "fotos/011_p02.jpg",
+    "fotos/011_p03.jpg",
+    "fotos/011_p04.jpg",
+    "fotos/011_p08.jpg",
+    "fotos/011_p09.jpg",
+    "fotos/011_p10.jpg"
+   ]
+  },
+  {
+   "i": 12,
+   "titulo": "Nota Fiscal - NF 451360",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/012_nota_fiscal_nf_451360.txt",
+   "chars": 2035,
+   "ocr": true,
+   "fotos": [
+    "fotos/012_p01.jpg"
+   ]
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
-  "execucao": 0,
-  "despesa": 0,
+  "execucao": 1,
+  "despesa": 7,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 4,
+  "indefinida": 1
  },
  "lacunas": [
   {
@@ -28,5 +169,5 @@
    "gravidade": "media"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 8
 }

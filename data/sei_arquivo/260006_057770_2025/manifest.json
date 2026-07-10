@@ -1,18 +1,195 @@
 {
  "processo": "260006/057770/2025",
- "gerado_em": "2026-07-06T07:42:26+00:00",
+ "gerado_em": "2026-07-08T08:35:44+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260006_057770_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Nota de Liquidação - NL 6830",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_nota_de_liquida_o_nl_6830.txt",
+   "chars": 2321,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Solicitação de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/002_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Nota de Empenho Reforço - NE 2025NE06682 3RFARMA 27084_22",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/003_nota_de_empenho_refor_o_ne_2025ne06682_3.txt",
+   "chars": 2554,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Nota de Autorização de Despesa - NAD 2023004311 0017 3R FARMA 27084_22",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/004_nota_de_autoriza_o_de_despesa_nad_202300.txt",
+   "chars": 2177,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/005_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Certificado de Regularidade do FGTS – CRF",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/006_certificado_de_regularidade_do_fgts_crf.txt",
+   "chars": 1023,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Certidões Neg. de Débitos Trabalhistas",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/007_certid_es_neg_de_d_bitos_trabalhistas.txt",
+   "chars": 1751,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Certidões Neg. de Débitos Federais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/008_certid_es_neg_de_d_bitos_federais.txt",
+   "chars": 1634,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Certidões Neg. de Débitos Estaduais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/009_certid_es_neg_de_d_bitos_estaduais.txt",
+   "chars": 2410,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Certidões Neg. de Débitos Municipais",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/010_certid_es_neg_de_d_bitos_municipais.txt",
+   "chars": 1634,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Certidão",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/011_certid_o.txt",
+   "chars": 4380,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/012_anexo.txt",
+   "chars": 807,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Anexo",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/013_anexo.txt",
+   "chars": 684,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Ordem de Serviço",
+   "fase": "contratacao",
+   "tipo": "ordem_inicio",
+   "texto": "texto/014_ordem_de_servi_o.txt",
+   "chars": 1207,
+   "ocr": true,
+   "fotos": [
+    "fotos/014_p01.jpg"
+   ]
+  },
+  {
+   "i": 15,
+   "titulo": "Nota Fiscal - NF",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/015_nota_fiscal_nf.txt",
+   "chars": 2167,
+   "ocr": true,
+   "fotos": [
+    "fotos/015_p01.jpg"
+   ]
+  },
+  {
+   "i": 16,
+   "titulo": "Nota Fiscal - NF 507",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/016_nota_fiscal_nf_507.txt",
+   "chars": 2104,
+   "ocr": true,
+   "fotos": [
+    "fotos/016_p01.jpg"
+   ]
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
-  "contratacao": 0,
+  "contratacao": 1,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 7,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 1,
+  "indefinida": 8
  },
  "lacunas": [
   {
@@ -24,9 +201,9 @@
    "gravidade": "alta"
   },
   {
-   "falta": "Contrato/ata formalizados",
-   "gravidade": "media"
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 3
 }

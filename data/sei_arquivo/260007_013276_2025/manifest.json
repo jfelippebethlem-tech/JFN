@@ -1,17 +1,70 @@
 {
  "processo": "260007/013276/2025",
- "gerado_em": "2026-07-06T07:33:52+00:00",
+ "gerado_em": "2026-07-08T07:57:19+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_013276_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/000_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Nota de Liquidação - NL 2025NL05606",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_nota_de_liquida_o_nl_2025nl05606.txt",
+   "chars": 2305,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Encaminhamento de Processo",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_encaminhamento_de_processo.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Anexo 2025NE04083 MEDKA R$ 230,58",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/003_anexo_2025ne04083_medka_r_230_58.txt",
+   "chars": 2572,
+   "ocr": true,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Nota Fiscal - NF 21793 MEDKA R$ 230,58",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/004_nota_fiscal_nf_21793_medka_r_230_58.txt",
+   "chars": 2686,
+   "ocr": true,
+   "fotos": [
+    "fotos/004_p01.jpg"
+   ]
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 4,
   "controle": 0,
-  "tramitacao": 0,
+  "tramitacao": 1,
   "indefinida": 0
  },
  "lacunas": [
@@ -26,7 +79,11 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 1
 }
