@@ -69,30 +69,32 @@ async def main():
     ap.add_argument("--fim", default=hoje.strftime("%Y%m%d"))
     args = ap.parse_args()
 
-    con = edb.conectar()
-    gastos_db.init_schema(con)
+    from compliance_agent.coleta_lock import coleta_lock
+    with coleta_lock():          # serializa com os demais coletores do compliance.db
+        con = edb.conectar()
+        gastos_db.init_schema(con)
 
-    rc = await pncp.coletar_contratos_pcrj(args.ini, args.fim)
-    if not rc["verificado"]:
-        print(f"contratos INDISPONÍVEL: {rc['motivo']}")
-        sys.exit(2)
-    print(f"contratos PCRJ: {gravar_contratos(con, rc['itens'])} gravados", flush=True)
+        rc = await pncp.coletar_contratos_pcrj(args.ini, args.fim)
+        if not rc["verificado"]:
+            print(f"contratos INDISPONÍVEL: {rc['motivo']}")
+            sys.exit(2)
+        print(f"contratos PCRJ: {gravar_contratos(con, rc['itens'])} gravados", flush=True)
 
-    rl = await pncp.coletar_contratacoes_municipio_rio(args.ini, args.fim)
-    if not rl["verificado"]:
-        print(f"licitações INDISPONÍVEL: {rl['motivo']}")
-        sys.exit(2)
-    print(f"licitações município Rio: {gravar_licitacoes(con, rl['itens'])} gravadas", flush=True)
+        rl = await pncp.coletar_contratacoes_municipio_rio(args.ini, args.fim)
+        if not rl["verificado"]:
+            print(f"licitações INDISPONÍVEL: {rl['motivo']}")
+            sys.exit(2)
+        print(f"licitações município Rio: {gravar_licitacoes(con, rl['itens'])} gravadas", flush=True)
 
-    # órgãos municipais descobertos nas licitações (COMLURB, RioSaúde, secretarias
-    # com CNPJ próprio…) → contratos de cada um, sem lista manual
-    outros = [r[0] for r in con.execute(
-        "select distinct orgao_cnpj from pcrj_licitacoes "
-        "where orgao_cnpj is not null and orgao_cnpj != ?", (pncp.CNPJ_PCRJ,))]
-    for cnpj in outros:
-        rc2 = await pncp.coletar_contratos_pcrj(args.ini, args.fim, cnpj_orgao=cnpj)
-        if rc2["verificado"] and rc2["itens"]:
-            print(f"contratos {cnpj}: {gravar_contratos(con, rc2['itens'])}", flush=True)
+        # órgãos municipais descobertos nas licitações (COMLURB, RioSaúde, secretarias
+        # com CNPJ próprio…) → contratos de cada um, sem lista manual
+        outros = [r[0] for r in con.execute(
+            "select distinct orgao_cnpj from pcrj_licitacoes "
+            "where orgao_cnpj is not null and orgao_cnpj != ?", (pncp.CNPJ_PCRJ,))]
+        for cnpj in outros:
+            rc2 = await pncp.coletar_contratos_pcrj(args.ini, args.fim, cnpj_orgao=cnpj)
+            if rc2["verificado"] and rc2["itens"]:
+                print(f"contratos {cnpj}: {gravar_contratos(con, rc2['itens'])}", flush=True)
 
 
 if __name__ == "__main__":

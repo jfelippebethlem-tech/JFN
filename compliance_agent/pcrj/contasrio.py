@@ -140,18 +140,91 @@ def carregar_empenhos_csv(con, caminho: Path | str, arquivo_origem: str) -> int:
     return n
 
 
-def coletar_exercicios(con, anos: list[int]) -> dict:
-    """Baixa e carrega Open_Data_Empenhos dos anos pedidos (streaming, 1 por vez)."""
+def _data_iso(s: str | None) -> str | None:
+    """'28/04/2022' → '2022-04-28' (os CSVs usam dd/mm/aaaa; PNCP usa ISO —
+    normalizar aqui mantém pcrj_contratos homogêneo p/ os detectores)."""
+    s = (s or "").strip()
+    if not s or "/" not in s:
+        return s or None
+    d, m, a = (s.split("/") + ["", "", ""])[:3]
+    return f"{a}-{m.zfill(2)}-{d.zfill(2)}" if a else None
+
+
+def carregar_contratos_csv(con, caminho: Path | str, arquivo_origem: str) -> int:
+    """Open_Data_Contratos → pcrj_contratos (chave sintética, fonte='contasrio').
+
+    POR QUE chave sintética: o CSV não tem numeroControlePNCP; a PK natural é
+    (ano, órgão, nº do instrumento). Prefixo 'contasrio:' evita colidir com as
+    linhas vindas do PNCP (que preenchem 2024+)."""
+    with open(caminho, "rb") as fb:
+        amostra = fb.read(1 << 20)
+    try:
+        amostra.decode("utf-8")
+        enc = "utf-8-sig"
+    except UnicodeDecodeError:
+        enc = "latin-1"
+    n = 0
+    with open(caminho, encoding=enc, newline="") as fh:
+        for row in csv.DictReader(fh, delimiter=";" if ";" in amostra.decode(enc, "replace")[:200] else ","):
+            ano = (row.get("Ano instrumento") or "").strip()
+            nr = (row.get("Nr instrumento") or "").strip()
+            orgao = (row.get("Órgão executor") or "").strip()  # é o CÓDIGO do órgão
+            if not (ano and nr):
+                continue
+            doc = re.sub(r"\D", "", row.get("Código favorecido") or "")
+            if len(doc) == 14:
+                pass
+            elif 0 < len(doc) < 14 and (row.get("Espécie") or ""):
+                doc = doc.zfill(14) if len(doc) >= 8 else doc
+            acrescimo = parse_brl(row.get("Valor do acréscimo ou redução"))
+            reg = {
+                "numero_controle_pncp": f"contasrio:{ano}:{orgao}:{nr}",
+                "ano": int(ano) if ano.isdigit() else None,
+                "orgao_cnpj": None,
+                "orgao_nome": (row.get("Descrição do órgão executor") or "").strip(),
+                "unidade": (row.get("Descrição da unidade orçamentária executora") or "").strip(),
+                "fornecedor_documento": doc,
+                "fornecedor_nome": (row.get("Favorecido") or "").strip(),
+                "tipo": (row.get("Espécie") or "").strip(),
+                "objeto": (row.get("Objeto") or "").strip(),
+                "valor_inicial": parse_brl(row.get("Valor inicial do instrumento")),
+                "valor_global": parse_brl(row.get("Valor atualizado do instrumento")),
+                "data_assinatura": _data_iso(row.get("Data da assinatura")),
+                "vigencia_ini": _data_iso(row.get("Data início previsto")),
+                "vigencia_fim": _data_iso(row.get("Data fim previsto")),
+                "num_aditivos": 1 if abs(acrescimo) > 0.005 else 0,
+                "fonte": "contasrio",
+            }
+            cols = list(reg)
+            sets = ",".join(f"{c}=excluded.{c}" for c in cols if c != "numero_controle_pncp")
+            con.execute(
+                f"INSERT INTO pcrj_contratos ({','.join(cols)}) "
+                f"VALUES ({','.join(':' + c for c in cols)}) "
+                f"ON CONFLICT(numero_controle_pncp) DO UPDATE SET {sets}", reg)
+            n += 1
+    con.commit()
+    return n
+
+
+_FAMILIAS = {"Empenhos": carregar_empenhos_csv, "Contratos": carregar_contratos_csv}
+
+
+def coletar_exercicios(con, anos: list[int], familias: tuple[str, ...] = ("Empenhos",)) -> dict:
+    """Baixa e carrega as famílias pedidas (Empenhos→pcrj_despesa, Contratos→
+    pcrj_contratos) dos anos indicados. Streaming, 1 arquivo por vez (VM-safe)."""
     inv = descobrir_arquivos()
     if not inv["verificado"]:
         return inv
-    disponiveis = {a["ano"]: a for a in inv["arquivos"] if a["familia"] == "Empenhos"}
-    resultado = {}
-    for ano in anos:
-        if ano not in disponiveis:
-            resultado[ano] = "INDISPONÍVEL (sem arquivo aberto — fonte cobre 2008–2023)"
-            continue
-        destino = DIR_ARQUIVOS / f"Open_Data_Empenhos_{ano}.csv"
-        baixar(disponiveis[ano]["url"], destino)
-        resultado[ano] = carregar_empenhos_csv(con, destino, destino.name)
+    resultado: dict = {}
+    for fam in familias:
+        disp = {a["ano"]: a for a in inv["arquivos"] if a["familia"] == fam}
+        carregar = _FAMILIAS[fam]
+        for ano in anos:
+            chave = f"{fam}_{ano}"
+            if ano not in disp:
+                resultado[chave] = "INDISPONÍVEL (sem arquivo aberto — fonte cobre 2008–2023)"
+                continue
+            destino = DIR_ARQUIVOS / f"Open_Data_{fam}_{ano}.csv"
+            baixar(disp[ano]["url"], destino)
+            resultado[chave] = carregar(con, destino, destino.name)
     return {"verificado": True, "resultado": resultado, "motivo": None}

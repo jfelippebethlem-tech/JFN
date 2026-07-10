@@ -30,3 +30,22 @@ def test_parse_linha_credor_vs_orgao():
     assert contasrio._normaliza_doc(pf).startswith("***")     # CPF mascarado
     org = {"Tipo de favorecido": "ORGAO", "Código do favorecido": "1000"}
     assert contasrio._e_credor_externo(org) is False
+
+
+def test_carregar_contratos_csv(tmp_path):
+    con = edb.conectar(tmp_path / "t.db")
+    gastos_db.init_schema(con)
+    fix = Path(__file__).parent / "fixtures" / "contasrio_contratos_amostra.csv"
+    n = contasrio.carregar_contratos_csv(con, fix, arquivo_origem="Open_Data_Contratos_2022.csv")
+    assert n > 0
+    row = con.execute("""select numero_controle_pncp, fornecedor_documento, valor_inicial,
+                         data_assinatura, fonte from pcrj_contratos limit 1""").fetchone()
+    assert row["numero_controle_pncp"].startswith("contasrio:2022:")
+    assert row["fonte"] == "contasrio"
+    # data normalizada p/ ISO (detector D7 espera aaaa-mm-dd)
+    assert row["data_assinatura"] is None or row["data_assinatura"][4] == "-"
+
+
+def test_data_iso():
+    assert contasrio._data_iso("28/04/2022") == "2022-04-28"
+    assert contasrio._data_iso("") is None
