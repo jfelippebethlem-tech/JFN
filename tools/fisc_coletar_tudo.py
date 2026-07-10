@@ -5,12 +5,17 @@ Roda TUDO em ordem, sob o lock de coleta (1 escritor por vez → nunca 'database
 is locked'), com checkpoint retomável em cada etapa. VM-safe: httpx puro, PNCP
 por semestre, ContasRio em streaming.
 
-Uso: .venv/bin/python tools/fisc_coletar_tudo.py [--desde 2021] [--pausa 0.9]
-Etapas (pule com --pular emendas,favorecidos,pcrj_csv,pncp):
+Uso: .venv/bin/python tools/fisc_coletar_tudo.py [--desde 2021] [--pausa 0.9] [--incremental]
+Etapas (pule com --pular emendas,pix,favorecidos,pcrj_csv,pncp):
   1. roster Câmara + emendas <desde>..ano-atual (recortes RJ)
-  2. favorecidos finais das emendas
-  3. ContasRio: despesa por credor + contratos <desde>..2023 (limite da fonte)
-  4. PNCP: contratos + licitações municipais, por semestre, 2023→hoje
+  2. planos das emendas PIX (Transferegov, UF=RJ)
+  3. favorecidos finais das emendas
+  4. ContasRio: despesa por credor + contratos <desde>..2023 (limite da fonte)
+  5. PNCP: contratos + licitações municipais, por semestre, 2023→hoje
+
+--incremental (p/ timer semanal): só o ano corrente nas emendas (reseta o
+checkpoint do ano p/ pegar emendas novas), PIX completo (barato), favorecidos
+pendentes, PNCP só o semestre corrente; pula ContasRio (fonte para em 2023).
 """
 import argparse
 import asyncio
@@ -25,7 +30,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from compliance_agent.coleta_lock import coleta_lock  # noqa: E402
 from compliance_agent.collectors import pncp  # noqa: E402
-from compliance_agent.emendas import camara, coletor, favorecidos  # noqa: E402
+from compliance_agent.emendas import camara, coletor, favorecidos, transferegov  # noqa: E402
 from compliance_agent.emendas import db as edb  # noqa: E402
 from compliance_agent.pcrj import contasrio, gastos_db  # noqa: E402
 
@@ -82,10 +87,22 @@ async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--desde", type=int, default=2021)
     ap.add_argument("--pausa", type=float, default=0.9)
-    ap.add_argument("--pular", default="", help="csv: emendas,favorecidos,pcrj_csv,pncp")
+    ap.add_argument("--incremental", action="store_true")
+    ap.add_argument("--pular", default="", help="csv: emendas,pix,favorecidos,pcrj_csv,pncp")
     args = ap.parse_args()
     pular = {p.strip() for p in args.pular.split(",") if p.strip()}
-    anos = list(range(args.desde, date.today().year + 1))
+    ano_atual = date.today().year
+    if args.incremental:
+        anos = [ano_atual]
+        pular.add("pcrj_csv")            # fonte CGM para em 2023 — nada novo p/ puxar
+        # o checkpoint marca o ano como concluído; p/ pegar emendas NOVAS do ano
+        # corrente, reanda o ano do zero (upsert só atualiza/insere)
+        ck = coletor._ckpt_load()
+        if str(ano_atual) in ck:
+            del ck[str(ano_atual)]
+            coletor._ckpt_save(ck)
+    else:
+        anos = list(range(args.desde, ano_atual + 1))
 
     with coleta_lock():          # 1 escritor por vez — fim do 'database is locked'
         con = edb.conectar()
@@ -95,30 +112,35 @@ async def main():
         if "emendas" not in pular:
             r = camara.listar_deputados_rj()
             if r["verificado"]:
-                _log(f"[1/4] roster: {camara.gravar_roster(con, r['deputados'])} deputados")
+                _log(f"[1/5] roster: {camara.gravar_roster(con, r['deputados'])} deputados")
             else:
                 # roster é só refresh; se já houver roster no DB, a coleta segue
                 n_roster = con.execute("select count(*) from deputados_federais_rj").fetchone()[0]
                 if n_roster == 0:
                     _log(f"INDISPONÍVEL roster e DB vazio: {r['motivo']}")
                     sys.exit(2)
-                _log(f"[1/4] roster: refresh falhou ({r['motivo']}) — usando {n_roster} já no DB")
+                _log(f"[1/5] roster: refresh falhou ({r['motivo']}) — usando {n_roster} já no DB")
             for ano in anos:
                 res = coletor.coletar_ano(con, ano, pausa=args.pausa)
                 _log(f"  emendas {ano}: {res}")
 
+        if "pix" not in pular:
+            rpix = transferegov.coletar_planos_rj(con)
+            _log(f"[2/5] emendas PIX (Transferegov): {rpix}")
+
         if "favorecidos" not in pular:
             rf = favorecidos.coletar_favorecidos(con, pausa=args.pausa)
-            _log(f"[2/4] favorecidos: {rf}")
+            _log(f"[3/5] favorecidos: {rf}")
 
         if "pcrj_csv" not in pular:
             anos_csv = [a for a in anos if a <= CONTASRIO_ULTIMO_ANO]
             rc = contasrio.coletar_exercicios(con, anos_csv, familias=("Empenhos", "Contratos"))
-            _log(f"[3/4] ContasRio: {rc.get('resultado', rc)}")
+            _log(f"[4/5] ContasRio: {rc.get('resultado', rc)}")
 
         if "pncp" not in pular:
-            _log("[4/4] PNCP municipal por semestre…")
-            await _pncp(con, args.desde)
+            _log("[5/5] PNCP municipal por semestre…")
+            desde_pncp = ano_atual if args.incremental else args.desde
+            await _pncp(con, desde_pncp)
 
     _log("coleta 2021→hoje concluída.")
 

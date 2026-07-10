@@ -466,6 +466,7 @@ def _simplificar_contrato_pcrj(it: dict) -> dict:
     uni = it.get("unidadeOrgao") or {}
     return {
         "numero_controle_pncp": it.get("numeroControlePNCP") or it.get("numeroControlePncpCompra"),
+        "numero_compra": it.get("numeroControlePncpCompra"),
         "ano": it.get("anoContrato"),
         "orgao_cnpj": org.get("cnpj"),
         "orgao_nome": org.get("razaoSocial"),

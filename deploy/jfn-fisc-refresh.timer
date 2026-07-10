@@ -1,0 +1,10 @@
+[Unit]
+Description=Refresh semanal da fiscalização emendas/PCRJ (segunda 05:40, fora dos sweeps)
+
+[Timer]
+OnCalendar=Mon *-*-* 05:40:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

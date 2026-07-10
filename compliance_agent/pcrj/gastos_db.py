@@ -37,4 +37,9 @@ DDL = [
 def init_schema(con: sqlite3.Connection) -> None:
     for ddl in DDL:
         con.execute(ddl)
+    # migração aditiva: link do contrato/empenho → COMPRA de origem no PNCP
+    # (permite checar a modalidade de origem — ata × dispensa — no detector D7)
+    cols = {r[1] for r in con.execute("PRAGMA table_info(pcrj_contratos)")}
+    if "numero_compra" not in cols:
+        con.execute("ALTER TABLE pcrj_contratos ADD COLUMN numero_compra TEXT")
     con.commit()
