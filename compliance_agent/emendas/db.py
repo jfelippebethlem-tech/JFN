@@ -46,7 +46,9 @@ DDL = [
 
 def conectar(db_path: Path | str | None = None) -> sqlite3.Connection:
     p = Path(db_path) if db_path else _DB_PADRAO
-    con = sqlite3.connect(str(p), timeout=30)
+    # timeout 60s = busy_timeout: coletas longas não podem morrer por escritor
+    # concorrente eventual (jfn.service, sweeps) — mas coletores NOSSOS rodam seriais
+    con = sqlite3.connect(str(p), timeout=60)
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA journal_mode=WAL")
     return con
