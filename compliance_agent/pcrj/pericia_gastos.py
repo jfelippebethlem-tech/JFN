@@ -176,6 +176,10 @@ def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[di
         folha_norm = _folha_padrao()    # 12M linhas → só carrega se precisar
     achados = []
     for r in rows:
+        # guard anti-homônimo: nome com <3 tokens (JOAO SILVA) gera ruído em massa
+        # na folha de ~200k servidores — só nome completo entra no match
+        if len((r["nome_norm"] or "").split()) < 3:
+            continue
         hit = folha_norm.get(r["nome_norm"])
         if not hit:
             continue

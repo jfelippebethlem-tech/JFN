@@ -68,8 +68,8 @@ def test_d9_socio_na_folha(con_semeado):
                    values (2023,'SMS','11222333000181','ACME','339039','100',
                            500000,500000,500000,'x.csv')""")
     con.execute("""insert into socios_receita (cnpj_basico, nome_socio, nome_norm, doc_socio)
-                   values ('11222333','CARLOS PEREIRA','CARLOS PEREIRA','***111222**')""")
-    folha = {"CARLOS PEREIRA": {"orgao": "SMS", "cargo": "ASSESSOR"}}
+                   values ('11222333','CARLOS PEREIRA DIAS','CARLOS PEREIRA DIAS','***111222**')""")
+    folha = {"CARLOS PEREIRA DIAS": {"orgao": "SMS", "cargo": "ASSESSOR"}}
     achados = pericia_gastos.d9_socio_na_folha(con, folha_norm=folha)
     assert len(achados) == 1
     a = achados[0]
