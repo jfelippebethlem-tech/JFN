@@ -9,7 +9,6 @@ from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR
 from tools import vm_guard as G
-from tools.sei_proc_paginado import docs_da_pagina, clicar_proxima
 from playwright.async_api import async_playwright
 import httpx, fitz
 
@@ -45,22 +44,22 @@ async def main():
         try:
             if not await SR.login(pg, tentativas=25): print("LOGIN FALHOU"); return
             print("login OK", flush=True)
-            try: await SR._ler_cracked(pg, PROC)
-            except Exception: pass
-            await pg.wait_for_timeout(2000)
-            todos = {}; zero = 0
-            for p in range(1, MAX_PAG + 1):
-                d = await docs_da_pagina(pg); nv = {u: v for u, v in d.items() if u not in todos}; todos.update(d)
-                zero = zero + 1 if not nv else 0
-                if zero >= 3: break
-                if not await clicar_proxima(pg, p * 10): break
-                await pg.wait_for_timeout(3200)
-            docs = list(todos.values())
+            # ENUMERAÇÃO via primitivo novo (arvore_do_fonte): abre o processo (retry) e expande TODAS as
+            # pastas lazy-load pelo loader nativo do SEI. Substitui docs_da_pagina/clicar_proxima (paginação
+            # de BUSCA, que retornava 0 na árvore). Provado 2026-07-10: túnel 460001/000779/2023 = 658 docs.
+            fr = await SR.abrir_processo(pg, PROC)
+            if not fr:
+                print("SEM ÁRVORE (processo não abriu)"); return
+            arv = await SR.arvore_do_fonte(pg)
+            # formato p/ o resto do script: {t: titulo, u: url, pai: ''}
+            docs = [{"t": d.get("titulo") or d.get("texto") or "", "u": d.get("url") or "", "pai": ""}
+                    for d in arv if d.get("url")]
             print(f"baixando {len(docs)} docs…", flush=True)
             paths = []
 
             async def baixa_um(x, fp):
-                resp = await ctx.request.get(x["u"], timeout=25000); body = await resp.body()
+                # o url é o nó da árvore (arvore_visualizar); o conteúdo é servido por documento_visualizar
+                resp = await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=25000); body = await resp.body()
                 ct = (resp.headers.get("content-type") or "").lower()
                 if "pdf" in ct or body[:5] == b"%PDF-":
                     fp.write_bytes(body); return True

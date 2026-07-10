@@ -28,9 +28,38 @@ Grava `data/sei_cache/integra_<TAG>/NNN.pdf` + `manifest.json` (títulos da árv
 .venv/bin/python tools/sei_arquivar.py --pendentes     # tudo que falta (o sweep já faz)
 ```
 
-## 3. Leitura pontual sem íntegra (browser)
-`sei_reader.ler()` → paginação `tools/sei_proc_paginado.py` (a árvore pagina de
-10 em 10 — `ler()` sozinho só vê a 1ª página!). Sessão: `tools/sei_session.py`.
+## 3. Leitura pontual sem íntegra (browser)  ⭐ REESCRITO 2026-07-10
+`sei_reader.ler("SEI-XX:")` — login itkava/ITERJ + abre + extrai a árvore COMPLETA e o texto.
+Sessão: `tools/sei_session.py`.
+
+### Como a árvore do SEI funciona (a raiz de anos de "só 5 docs")
+A árvore (`ifrArvore`) é **paginada em PASTAS por faixa de data** e **lazy-load**: só a última
+pasta auto-abre — por isso `ler()` via só ~5 de N docs. As pastas carregam por um **POST
+`procedimento_paginar`** (form `hdnArvore`/`hdnPastaAtual`/`hdnProtocolos`); GET/goto voltam 200+0 bytes.
+O DOM é virtualizado (renderiza ~10 nós de 73) e `Nos[]`/`Pastas[]` NÃO são globais p/ `evaluate`.
+
+### A solução (já no código, herdada por ler()/ler_com_cadeia/sweep, SEM mudar caller)
+`tools/sei_reader.py`:
+- **`abrir_processo(pg, proc)`** — abre com retry (o 1º submit às vezes é comido), detecta a árvore por
+  CONTEÚDO (`infraArvoreNo` no HTML do frame), não por nome. Retorna o frame ou None.
+- **`arvore_do_fonte(pg)`** — AUTORIDADE da árvore. Chama **`_expandir_pastas_e_ler`**, que aciona o
+  **loader NATIVO do SEI no browser** (`abrirFecharPasta(id)` p/ cada pasta), espera os "Aguarde..."
+  sumirem e lê as âncoras `a[id_documento]` já materializadas. 100% na sessão itkava, sem forjar request.
+- **`_parse_nos_arvore(html)`** — tokenizador ciente de strings p/ `new infraArvoreNo(...)` (fallback).
+- **`_conteudo_doc`** — corpo do doc: drilla no IFRAME interno (descarta a casca do menu "AGENERSA…");
+  PDF/scan → `_url_conteudo_doc` (arvore_visualizar→documento_visualizar) + OCR.
+- Relacionados agora excluem a fila do menu (`procedimento_controlar`) → só processos REAIS.
+- **0 docs SEM árvore aberta = leitura FALHA (caiu na caixa da unidade), não processo vazio** —
+  `ler_processo` marca `indisponivel` (sinal `arvore_vista`; a heurística antiga `rel>=15` morreu
+  junto com o lixo do menu que ela media — fix 2026-07-10). Consumidor honesto NÃO cacheia esse 0.
+**PROVADO 2026-07-10:** túnel `SEI-460001/000779/2023` = **5 → 658 documentos** (árvore inteira,
+contrato 033/2023 + 1º Termo Aditivo de valor/RERRA + aditivo de prazo + todas as medições).
+
+### Íntegra / envio (já sobre o primitivo)
+`tools/sei_integra_completa.py "PROC"` (PDF único → Telegram; `SEI_SEM_TG=1` só arquiva) ·
+`tools/sei_proc_paginado.py "PROC" "kw"` (lista + OCR dos alvos) ·
+`tools/sei_docs_to_telegram.py "PROC" "kw"` — TODOS enumeram via `abrir_processo`+`arvore_do_fonte`.
+As antigas `docs_da_pagina`/`clicar_proxima` (paginação de BUSCA) estão **aposentadas** (davam 0 na árvore).
 
 ## Fases da contratação = CÓDIGO, não memória
 `compliance_agent/sei/fases.py` (testes: `tests/test_sei_fases.py`):

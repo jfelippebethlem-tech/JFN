@@ -115,6 +115,11 @@ async def _extrair_de_todos_frames(pg) -> dict:
     from compliance_agent.collectors.sei_cdp import _JS_LE_ARVORE_E_TEXTO
     docs, rel, textos = {}, {}, []
     cadeado = False
+    # Assinatura do FRAMESET DO MENU do SEI (barra lateral do itkava): 2+ itens de menu no innerText.
+    # Sem esse guard, o `texto` do processo vinha poluído com "GOVERNO DO ESTADO… Base de Conhecimento Blocos…"
+    # (a casca do menu), não o conteúdo do processo/doc. Fix 2026-07-09.
+    _MENU_SIG = ("Base de Conhecimento", "Controle de Processos", "Pontos de Controle",
+                 "Processos Sobrestados", "Acompanhamento Especial")
     for fr in pg.frames:
         try:
             d = await fr.evaluate(_JS_LE_ARVORE_E_TEXTO)
@@ -127,12 +132,194 @@ async def _extrair_de_todos_frames(pg) -> dict:
             if r.get("url"):
                 rel[r["url"]] = r
         cadeado = cadeado or bool(d.get("cadeado"))  # cadeado de acesso restrito em qualquer frame
-        if d.get("texto") and len(d["texto"]) > 80:
-            textos.append(d["texto"])
+        txt = d.get("texto") or ""
+        eh_menu = sum(s in txt for s in _MENU_SIG) >= 2  # frameset do menu → não é conteúdo do processo
+        if txt and len(txt) > 80 and not eh_menu:
+            textos.append(txt)
+    # arvore_vista = algum frame tem a árvore de documentos (infraArvoreNo) — é O sinal de "processo
+    # ABERTO de fato". Sem ele, 0 docs = leitura que caiu na CAIXA/desktop, não processo vazio.
+    # Necessário desde o filtro do menu no sei_cdp (2026-07-09): a caixa deixou de vir com rel~40,
+    # então a heurística rel>=15 dos consumidores ficou cega p/ a caixa. Fix 2026-07-10.
+    arvore_vista = False
+    for fr in pg.frames:
+        try:
+            if "infraArvoreNo" in await fr.content():
+                arvore_vista = True
+                break
+        except Exception:
+            continue
+    # AUTORIDADE: completa com os nós do HTML-FONTE da árvore (o DOM é virtualizado e subconta —
+    # ver arvore_do_fonte). Merge por id_documento: o fonte traz TODOS; o DOM fica como fallback.
+    if arvore_vista:
+        try:
+            def _idd(u):
+                m = re.search(r"id_documento=(\d+)", u or ""); return m.group(1) if m else u
+            vistos = {_idd(u) for u in docs}
+            for doc in await arvore_do_fonte(pg):
+                if _idd(doc["url"]) not in vistos:
+                    docs[doc["url"]] = doc
+        except Exception as exc:
+            logger.debug("merge arvore_do_fonte falhou (segue só com DOM): %s", exc)
     docs_l = list(docs.values())
     return {"documentos": docs_l, "relacionados": list(rel.values()), "cadeado": cadeado,
             "n_docs_restritos": sum(1 for d in docs_l if d.get("restrito")),
+            "arvore_vista": arvore_vista,
             "texto": "\n\n".join(textos)[:20000]}
+
+
+def _dec_sei(body: bytes) -> str:
+    """Decodifica resposta do SEI: tenta UTF-8 estrito; se estourar, latin-1 (o SEI mistura os dois)."""
+    try:
+        return body.decode("utf-8")
+    except UnicodeDecodeError:
+        return body.decode("latin-1", "replace")
+
+
+def _parse_nos_arvore(html: str) -> list[dict]:
+    """Parseia TODOS os ``new infraArvoreNo(tipo,id,pai,url,alvo,titulo,titulo2,icone,...)`` de um HTML
+    da árvore/pasta do SEI. Tokenizador ciente de strings (args podem ser ``null`` e títulos podem ter
+    aspas escapadas — o regex simples só casava nós 100% string, 5 de 73). Retorna docs no formato do
+    extractor de DOM ({texto,titulo,url,restrito}) só dos nós tipo DOCUMENTO."""
+    docs = []
+    for m in re.finditer(r'new\s+infraArvoreNo\(', html):
+        i = m.end(); depth = 1; args = []; cur = ""; instr = False; esc = False
+        while i < len(html) and depth > 0 and len(args) < 16:
+            ch = html[i]
+            if instr:
+                if esc: esc = False
+                elif ch == "\\": esc = True
+                elif ch == '"': instr = False
+                cur += ch
+            else:
+                if ch == '"': instr = True; cur += ch
+                elif ch == '(': depth += 1; cur += ch
+                elif ch == ')':
+                    depth -= 1
+                    if depth == 0: args.append(cur.strip()); break
+                    cur += ch
+                elif ch == ',' and depth == 1: args.append(cur.strip()); cur = ""
+                else: cur += ch
+            i += 1
+        def _unq(s):
+            s = (s or "").strip()
+            return s[1:-1].replace('\\"', '"').replace("\\/", "/") if s.startswith('"') else None
+        if len(args) < 7:
+            continue
+        tipo = (_unq(args[0]) or "").upper()
+        url = _unq(args[3]) or ""
+        titulo = _unq(args[6]) or _unq(args[5]) or ""
+        icones = " ".join(a for a in args[7:11] if a and a != "null")
+        if tipo != "DOCUMENTO" or "id_documento=" not in url:
+            continue
+        full = url if url.startswith("http") else ("https://sei.rj.gov.br/sei/" + url.lstrip("/"))
+        docs.append({"texto": titulo[:120], "titulo": titulo[:160], "url": full,
+                     "restrito": bool(re.search(r"cadeado|restrit|sigilo", icones, re.I))})
+    return docs
+
+
+async def arvore_do_fonte(pg) -> list[dict]:
+    """AUTORIDADE da árvore (fix 2026-07-09), 100% HTTP pela MESMA sessão itkava — zero DOM, zero timing.
+
+    Por que: o DOM da árvore é VIRTUALIZADO (renderiza ~10 nós de 73) e as PASTAS são LAZY-LOAD — o HTML
+    inicial só traz docs fora de pasta + placeholders AGUARDE (provado no túnel SEI-460001/000779/2023:
+    DOM=10 âncoras, fonte=73 nós, 34 pastas fechadas; ``Nos[]`` é INACESSÍVEL ao evaluate). Raspar DOM ou
+    parsear só o HTML inicial SUBCONTA docs — era a causa-raiz do "5 docs de 34" e do sweep flaky.
+
+    Como: (1) HTML VIVO do frame da árvore via ``fr.content()`` (sessão autenticada, ``infra_hash`` fresco —
+    um GET novo pode re-renderizar/expirar o hash) → parseia os nós soltos; (2) as pastas lazy-load são
+    expandidas pelo LOADER NATIVO do SEI no browser (``_expandir_pastas_e_ler``; replicar o POST
+    ``procedimento_paginar`` às cegas é frágil) e lidas do DOM materializado. Dedup por id_documento.
+    Devolve docs no formato do extractor de DOM p/ merge transparente."""
+    for fr in pg.frames:
+        # detecta o frame da árvore por CONTEÚDO (tem 'infraArvoreNo') — nome/URL do frame variam
+        try:
+            html = await fr.content()
+        except Exception:
+            continue
+        if "infraArvoreNo" not in html:
+            continue
+        docs = {d["url"]: d for d in _parse_nos_arvore(html)}
+        n_pastas = len(re.findall(r"Pastas\[\d+\]\['link'\]", html))
+        if n_pastas:
+            # A árvore é PAGINADA em PASTAS lazy-load. A carga é um POST (procedimento_paginar) que só
+            # monta com os hidden hdnArvore/hdnPastaAtual/hdnProtocolos — replicar o POST às cegas é
+            # frágil. O robusto é usar o LOADER NATIVO do SEI no browser (abrirFecharPasta), que dispara
+            # o XHR correto (provado 2026-07-09: DOM 10→35 âncoras), esperar os 'Aguarde...' resolverem e
+            # ler as âncoras já materializadas no DOM. Fica 100% na sessão itkava, sem forjar requisição.
+            got = await _expandir_pastas_e_ler(fr)
+            for d in got:
+                docs.setdefault(d["url"], d)
+        if docs:
+            def _idd(x):
+                mm = re.search(r"id_documento=(\d+)", x); return mm.group(1) if mm else x
+            uniq = {}
+            for d in docs.values():
+                uniq.setdefault(_idd(d["url"]), d)
+            return list(uniq.values())
+    return []
+
+
+_JS_EXPANDE_PASTAS = r"""async () => {
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  // ids de pasta: dos hidden Pastas[] (fonte) ou dos onclick abrirFecharPasta
+  let ids = [];
+  try { const m = document.documentElement.innerHTML.match(/Pastas\[(\d+)\]\['link'\]/g) || [];
+        ids = [...new Set(m.map(s => 'PASTA' + s.match(/\d+/)[0]))]; } catch (e) {}
+  if (!ids.length) document.querySelectorAll("[onclick*='abrirFecharPasta']").forEach(el => {
+      const mm = (el.getAttribute('onclick') || '').match(/abrirFecharPasta\('([^']+)'\)/); if (mm) ids.push(mm[1]); });
+  ids = [...new Set(ids)].sort((a, b) => (+a.slice(5)) - (+b.slice(5)));
+  let chamou = 0;
+  for (const id of ids) {
+    try {
+      if (typeof abrirFecharPasta === 'function') { abrirFecharPasta(id); chamou++; }
+      else if (typeof objArvore !== 'undefined' && objArvore.processarNoJuncao) { objArvore.processarNoJuncao(id.substring(5)); chamou++; }
+    } catch (e) {}
+    await sleep(150);
+    for (let i = 0; i < 40; i++) { if (!document.body.innerText.includes('Aguarde...')) break; await sleep(300); }
+  }
+  const out = [];
+  for (const a of document.querySelectorAll('a[href*="id_documento="]')) {
+    const t = (a.textContent || a.title || '').trim();
+    if (t) out.push({ t: t.slice(0, 160), u: a.href });
+  }
+  return { chamou, docs: out };
+}"""
+
+
+async def _expandir_pastas_e_ler(fr) -> list[dict]:
+    """Aciona o loader nativo do SEI (``abrirFecharPasta``) em cada pasta da árvore, espera os
+    placeholders 'Aguarde...' resolverem e devolve os documentos já materializados no DOM.
+    Formato de doc idêntico ao extractor ({texto,titulo,url,restrito})."""
+    try:
+        res = await fr.evaluate(_JS_EXPANDE_PASTAS)
+    except Exception as exc:
+        logger.debug("_expandir_pastas_e_ler: evaluate falhou: %s", exc)
+        return []
+    docs = []
+    for a in (res or {}).get("docs", []):
+        docs.append({"texto": (a.get("t") or "")[:120], "titulo": (a.get("t") or "")[:160],
+                     "url": a.get("u") or "", "restrito": False})
+    logger.debug("_expandir_pastas_e_ler: chamou=%s docs=%s", (res or {}).get("chamou"), len(docs))
+    return docs
+
+
+async def abrir_processo(pg, proc: str, tentativas: int = 4):
+    """Abre o processo e GARANTE a árvore viva — com retry (o 1º submit às vezes é comido pelo ADF;
+    provado ao vivo 2026-07-09: tent 0 falha, tent 1–2 abrem). Detecta a árvore por CONTEÚDO
+    (``infraArvoreNo`` no HTML do frame), não por nome/URL. Retorna o frame da árvore ou None."""
+    for _ in range(tentativas):
+        try:
+            await _ler_cracked(pg, proc)
+        except Exception as exc:
+            logger.debug("abrir_processo: cracked falhou p/ %s: %s", proc, exc)
+        await pg.wait_for_timeout(1500)
+        for fr in pg.frames:
+            try:
+                if "infraArvoreNo" in await fr.content():
+                    return fr
+            except Exception:
+                continue
+    return None
 
 
 async def _esperar_arvore(pg, voltas: int = 16) -> bool:
@@ -364,15 +551,30 @@ async def _conteudo_doc(pg, doc: dict) -> dict | None:
                     return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr, "via": "ocr"}
     except Exception as exc:
         logger.warning("download/OCR do doc %r falhou: %s", (doc.get("texto") or doc.get("url") or "")[:80], exc)
-    # 2) doc HTML nativo (editor): navega até a URL de CONTEÚDO e lê o innerText
+    # 2) doc HTML nativo (editor): navega e lê o corpo do IFRAME INTERNO (não o frameset do menu).
+    # O doc do SEI abre num visualizador com iframes aninhados; ler o document.body da PÁGINA pegava a
+    # CASCA do menu ("GOVERNO DO ESTADO… AGENERSA AGERIO…", ~893 chars iguais p/ todo doc). Fix 2026-07-10:
+    # varrer TODOS os frames, descartar a casca do menu (assinatura) e ficar com o maior innerText real.
     try:
         await pg.goto(url_c, wait_until="domcontentloaded", timeout=20000)
-        await pg.wait_for_timeout(900)
-        t = await pg.evaluate("()=>document.body?document.body.innerText.slice(0,6000):''")
+        await pg.wait_for_timeout(1100)
     except Exception:
         return None
-    if t and len(t) > 50:
-        return {"doc": (doc.get("texto") or "")[:80], "conteudo": t}
+    _MENU = ("AGENERSA AGERIO", "Base de Conhecimento", "Controle de Processos")
+    best = ""
+    for fr in pg.frames:
+        try:
+            t = await fr.evaluate("()=>document.body?document.body.innerText:''")
+        except Exception:
+            continue
+        t = t or ""
+        if any(s in t for s in _MENU):  # frameset do menu → não é o doc
+            continue
+        if len(t) > len(best):
+            best = t
+    best = best[:8000]
+    if best and len(best.strip()) > 50:
+        return {"doc": (doc.get("texto") or "")[:80], "conteudo": best}
     return None
 
 
@@ -481,10 +683,12 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     res["cnpjs"] = sorted(set(re.findall(r"\d{2}\.?\d{3}\.?\d{3}/?\d{4}-?\d{2}", tot)))
     res["valores"] = sorted(set(re.findall(r"R\$\s*[\d.,]+", tot)))
     res["_cached_at"] = datetime.now().isoformat()
-    # CAIXA (0 docs + rel>=15 = inbox da unidade; leitura que FALHOU, não processo vazio) → NÃO gravar
+    # CAIXA/leitura FALHA (0 docs + inbox da unidade OU nenhuma árvore aberta) → NÃO gravar
     # cache (envenenava a memória: consumidor via "0 docs"=vazio por 24h — INDISPONÍVEL ≠ 0) e marcar
     # p/ o caller. Fix constância 2026-07-03; ver vault/aprendizados/sei-leitura-itkava.
-    if not res["documentos"] and len(res["relacionados"]) >= 15:
+    # 2026-07-10: o filtro do menu (sei_cdp) zerou o rel~40 da caixa → rel>=15 ficou cego; o sinal
+    # direto agora é arvore_vista=False (nenhum frame com infraArvoreNo = processo NÃO abriu).
+    if not res["documentos"] and (len(res["relacionados"]) >= 15 or not dump.get("arvore_vista")):
         res["indisponivel"] = True
         return res
     try:
