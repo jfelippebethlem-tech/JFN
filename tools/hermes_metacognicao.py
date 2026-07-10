@@ -146,6 +146,45 @@ def _resumo_do_dia() -> str:
 
 # ─── Ciclo completo ────────────────────────────────────────────────────────────
 
+async def _avaliar_hipoteses_vault() -> list[str]:
+    """Avalia cada hipótese ABERTA de ~/vault/hipoteses/ e regrava o bloco `cerebro:agente` dela.
+    Cético e honesto: não acusa, não inventa fato — só pesa a evidência escrita na própria nota e
+    aponta o teste decisivo mais barato. O texto humano fora do bloco nunca é tocado."""
+    import re as _re
+    from compliance_agent.llm.hermes_agent import _hermes
+    hdir = Path("/home/ubuntu/vault/hipoteses")
+    if not hdir.exists():
+        return []
+    system = (
+        "Você é o avaliador CÉTICO de hipóteses de uma auditoria de controle externo (Estado do RJ). "
+        "Regras duras: indício ≠ acusação; presunção de regularidade; NUNCA invente fato, número ou fonte "
+        "— use SÓ o que está na nota. Responda em português, 3-5 linhas de texto corrido: (1) a evidência "
+        "listada sustenta a confiança declarada? (2) qual dos testes decisivos é o MAIS BARATO e deve rodar "
+        "primeiro? (3) o que refutaria a hipótese mais rápido?")
+    avaliadas = []
+    for f in sorted(hdir.glob("*.md")):
+        if f.name.startswith("_"):
+            continue
+        txt = f.read_text(encoding="utf-8", errors="replace")
+        if "status: aberta" not in txt[:400]:
+            continue
+        # corpo SEM o bloco gerado anterior (não retro-alimentar a própria avaliação)
+        corpo = _re.sub(r"<!-- cerebro:agente:inicio -->.*?<!-- cerebro:agente:fim -->", "", txt, flags=_re.S)
+        r = (await _hermes(system, corpo[:6000]) or "").strip()
+        if not r:
+            continue
+        bloco = (f"<!-- cerebro:agente:inicio -->\n_{datetime.now().strftime('%Y-%m-%d')} · Hermes (cadeia grátis):_\n"
+                 f"{r[:1200]}\n<!-- cerebro:agente:fim -->")
+        f.write_text(_re.sub(r"<!-- cerebro:agente:inicio -->.*?<!-- cerebro:agente:fim -->",
+                             lambda _m: bloco, txt, flags=_re.S), encoding="utf-8")
+        avaliadas.append(f.stem)
+    if avaliadas:
+        with (Path("/home/ubuntu/vault") / "log.md").open("a", encoding="utf-8") as lg:
+            lg.write(f"- {datetime.now().strftime('%Y-%m-%d %H:%M')} metacognicao | "
+                     f"avaliou {len(avaliadas)} hipóteses: {', '.join(avaliadas)}\n")
+    return avaliadas
+
+
 async def run() -> dict:
     res: dict = {"quando": datetime.now().isoformat(timespec="seconds")}
 
@@ -178,6 +217,13 @@ async def run() -> dict:
         res["total_metodos"] = am.get("total_metodos")
     except Exception as e:  # noqa: BLE001
         res["auto_melhoria_erro"] = str(e)[:150]
+
+    # 3½. hipóteses do vault — avaliação cética do agente (bloco gerado; Claude cura na sessão).
+    # Fecha o loop do órgão: DB → vault (cerebro_sync 06:25) → AGENTE (aqui) → decisão volta ao vault.
+    try:
+        res["hipoteses"] = await _avaliar_hipoteses_vault()
+    except Exception as e:  # noqa: BLE001
+        res["hipoteses_erro"] = str(e)[:150]
 
     # 4. RAG — reindexa só se o corpus mudou (vereditos novos entram)
     try:
