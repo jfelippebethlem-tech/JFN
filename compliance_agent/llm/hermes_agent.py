@@ -110,8 +110,9 @@ async def _hermes(system: str, prompt: str, max_tokens: int = HERMES_MAX_TOKENS)
         messages.append({"role": "user", "content": prompt})
         for model in [_HERMES_MODELO_PRINCIPAL] + _HERMES_MODELOS_FALLBACK:
             try:
+                from compliance_agent.llm.free_llm import _forcar_free
                 out = await _openai_compat_chat_retry(
-                    OPENROUTER_BASE, key, model, messages,
+                    OPENROUTER_BASE, key, _forcar_free(model), messages,
                     max_tokens=max_tokens, extra_headers=OPENROUTER_HEADERS, max_retries=1)
                 if model != _HERMES_MODELO_PRINCIPAL:
                     console.print(f"[dim]Hermes: usando {model.split('/')[-1]} (fallback uncensored)[/dim]")

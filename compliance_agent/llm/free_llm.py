@@ -34,8 +34,9 @@ import httpx
 
 GROQ_API_KEY        = os.environ.get("GROQ_API_KEY", "")
 OPENROUTER_API_KEY  = os.environ.get("OPENROUTER_API_KEY", "")
-# Preferência explícita para usar Qwen antes de Groq, evitando 429.
-FREE_LLM_PREFER = os.environ.get("FREE_LLM_PREFER", "qwen").lower()
+# Preferência explícita de provedor 1º da cascata (nome de _get_provider_order). O default
+# antigo "qwen" não existia na lista → era config morta; vazio = ordem padrão (cerebras 1º).
+FREE_LLM_PREFER = os.environ.get("FREE_LLM_PREFER", "").lower()
 
 # Qwen via OpenRouter (fallbacks possíveis)
 OPENROUTER_MODEL_FAST  = os.environ.get("OPENROUTER_FAST_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
@@ -613,7 +614,10 @@ def _gemini_msgs(prompt: str, system: str) -> list:
 
 async def gemini_chat_async(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:
     from compliance_agent.direcionamento_cerebro import gerar_gemini
-    return await gerar_gemini(_gemini_msgs(prompt, system))
+    # max_tokens propagado (antes era descartado: Hermes pedia 8000 e o default 4096 truncava o
+    # raciocínio longo quando a cascata caía no Gemini). `smart` segue sem efeito aqui (modelo é
+    # escolhido pela cascata interna do gerar_gemini).
+    return await gerar_gemini(_gemini_msgs(prompt, system), max_tokens=max(max_tokens, 1024))
 
 
 def gemini_chat(prompt: str, system: str = "", smart: bool = False, max_tokens: int = 1024) -> str:

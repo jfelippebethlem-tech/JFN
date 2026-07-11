@@ -283,7 +283,8 @@ def _gemini_keys() -> list:
 _GEMINI_RR = 0
 
 
-async def gerar_gemini(messages: list[dict], model: str | None = None) -> str:
+async def gerar_gemini(messages: list[dict], model: str | None = None,
+                       max_tokens: int | None = None) -> str:
     """Gemini robusto: ROTAÇÃO do pool de chaves (round-robin) × MODELOS em cascata (buckets de RPM
     distintos no free tier) × backoff. Adapta messages OpenAI→Gemini (system → systemInstruction)."""
     global _GEMINI_RR
@@ -300,7 +301,7 @@ async def gerar_gemini(messages: list[dict], model: str | None = None) -> str:
     sys_txt = "\n".join(m["content"] for m in messages if m["role"] == "system")
     user_txt = "\n".join(m["content"] for m in messages if m["role"] != "system")
     body: dict = {"contents": [{"role": "user", "parts": [{"text": user_txt}]}],
-                  "generationConfig": {"temperature": 0.1, "maxOutputTokens": 4096,
+                  "generationConfig": {"temperature": 0.1, "maxOutputTokens": max_tokens or 4096,
                                        "responseMimeType": "application/json"}}
     if sys_txt:
         body["systemInstruction"] = {"parts": [{"text": sys_txt}]}

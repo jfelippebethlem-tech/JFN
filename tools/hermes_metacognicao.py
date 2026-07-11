@@ -198,6 +198,16 @@ async def run() -> dict:
     except Exception as e:  # noqa: BLE001
         res["higiene_erro"] = str(e)[:150]
 
+    # 1½. base empírica do Lex (determinística, só SQL — roda mesmo com o pool LLM saturado).
+    # Era o único produtor de memoria_aprendizado fonte='empirico' e não tinha agendamento.
+    try:
+        from compliance_agent.lex_base_empirica import aprender as aprender_empirico
+        emp = aprender_empirico()
+        res["base_empirica"] = (f"{len(emp.get('aprendizados', []))} fato(s), memória={emp.get('total_memoria')}"
+                                if emp.get("ok") else emp.get("erro"))
+    except Exception as e:  # noqa: BLE001
+        res["base_empirica_erro"] = str(e)[:150]
+
     # 2. reflexão sobre o dia real
     try:
         from compliance_agent.llm.memoria import refletir_com_hermes
@@ -238,15 +248,20 @@ async def run() -> dict:
     except Exception as e:  # noqa: BLE001
         res["backup_erro"] = str(e)[:150]
 
-    # aviso no Telegram SÓ se aprendeu regra de método nova (silencioso no dia-a-dia)
-    if res.get("auto_melhoria"):
+    # aviso no Telegram: se aprendeu regra nova OU se algum passo degradou (antes o no-op era mudo
+    # e dias de pool saturado passavam despercebidos — lição 2026-07-11)
+    erros = sorted(k for k in res if k.endswith("_erro"))
+    if res.get("auto_melhoria") or erros:
         try:
             from compliance_agent.envfile import carregar_env
             carregar_env()
             from compliance_agent.notifications.telegram import enviar_mensagem
-            await enviar_mensagem(
-                "🧠 *Hermes — meta-cognição diária:* novas regras de método: "
-                + ", ".join(res["auto_melhoria"][:5]))
+            partes = []
+            if res.get("auto_melhoria"):
+                partes.append("novas regras de método: " + ", ".join(res["auto_melhoria"][:5]))
+            if erros:
+                partes.append("⚠️ passos degradados: " + "; ".join(f"{k}={res[k]}" for k in erros)[:400])
+            await enviar_mensagem("🧠 *Hermes — meta-cognição diária:* " + " · ".join(partes))
         except Exception as exc:
             logger.warning("resumo da meta-cognição não entregue no Telegram: %s", exc)
     return res

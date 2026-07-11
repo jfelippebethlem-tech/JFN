@@ -43,7 +43,7 @@ def _key() -> str:
             m = re.search(r"^COHERE_API_KEY=(.+)$", env.read_text(), re.M)
             if m:
                 return m.group(1).strip().strip('"').strip("'")
-    raise SystemExit("COHERE_API_KEY ausente (~/.hermes/.env)")
+    raise RuntimeError("COHERE_API_KEY ausente (~/.hermes/.env)")
 
 
 def _embed(textos: list[str], input_type: str) -> list[list[float]]:
@@ -67,7 +67,7 @@ def _embed(textos: list[str], input_type: str) -> list[list[float]]:
             out.extend(r.json()["embeddings"]["float"])
             break
         else:
-            raise SystemExit("Cohere 429 persistente — tente de novo mais tarde (limite da chave trial).")
+            raise RuntimeError("Cohere 429 persistente — tente de novo mais tarde (limite da chave trial).")
         if total > 1:
             time.sleep(7)  # respeita o rate-limit/min da chave trial
     return out
@@ -182,14 +182,37 @@ def build_se_mudou() -> bool:
     return True
 
 
+_IDX_CACHE: dict = {"mtime": None, "arr": None, "regs": None}
+_QEMB_CACHE: dict = {}  # pergunta → vetor: repetição não paga round-trip na Cohere (chave trial)
+_QEMB_MAX = 256
+
+
+def _indice():
+    """Índice em memória, invalidado por mtime — np.load de 17MB + parse de 5MB de jsonl POR
+    CONSULTA era desperdício direto de CPU/IO na VM de 2 vCPU."""
+    import numpy as np
+    if not EMB.exists():
+        raise RuntimeError("Índice ausente — rode: python tools/hermes_rag.py build")
+    mt = (EMB.stat().st_mtime_ns, CHUNKS.stat().st_mtime_ns)
+    if _IDX_CACHE["mtime"] != mt:
+        _IDX_CACHE["arr"] = np.load(EMB)
+        _IDX_CACHE["regs"] = [json.loads(l) for l in open(CHUNKS, encoding="utf-8")]
+        _IDX_CACHE["mtime"] = mt
+    return _IDX_CACHE["arr"], _IDX_CACHE["regs"]
+
+
 def consultar(pergunta: str, k: int = 6) -> list[dict]:
     """Retorna os k trechos mais relevantes do corpus p/ a pergunta (com fonte e score)."""
     import numpy as np
-    if not EMB.exists():
-        raise SystemExit("Índice ausente — rode: python tools/hermes_rag.py build")
-    arr = np.load(EMB)
-    regs = [json.loads(l) for l in open(CHUNKS, encoding="utf-8")]
-    q = np.asarray(_embed([pergunta], "search_query")[0], dtype="float32")
+    arr, regs = _indice()
+    if pergunta in _QEMB_CACHE:
+        vet = _QEMB_CACHE[pergunta]
+    else:
+        vet = _embed([pergunta], "search_query")[0]
+        if len(_QEMB_CACHE) >= _QEMB_MAX:
+            _QEMB_CACHE.pop(next(iter(_QEMB_CACHE)))
+        _QEMB_CACHE[pergunta] = vet
+    q = np.asarray(vet, dtype="float32")
     q /= (np.linalg.norm(q) + 1e-9)
     scores = arr @ q
     idx = np.argsort(-scores)[:k]
