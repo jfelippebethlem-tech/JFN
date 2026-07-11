@@ -1,0 +1,10 @@
+[Unit]
+Description=Dispara o SEI sweep noturno às 22:00 (preenche a janela ociosa até 05:00)
+
+[Timer]
+OnCalendar=*-*-* 22:00:00
+Persistent=false
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target
