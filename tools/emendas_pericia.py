@@ -17,7 +17,7 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 from compliance_agent.emendas import db as edb  # noqa: E402
 from compliance_agent.emendas import pericia  # noqa: E402
-from compliance_agent.reporting.pericia_fisc import ctx_de_achados  # noqa: E402
+from compliance_agent.reporting.pericia_fisc_rico import ctx_de_achados_rico as ctx_de_achados  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 
