@@ -108,7 +108,7 @@ def render_parecer_ctx(parecer: dict) -> dict:
     for f in parecer["fundamentacao"]:
         fund_html += (f"<p><b>{_h.escape(f['dimensao'])}</b> — {_h.escape(f['fatos'])}<br>"
                       f"<i>Norma:</i> {_h.escape(f['norma'])} · <i>Enxame:</i> "
-                      f"{_h.escape(str(f['veredito']))} ({f['score']}/10)"
+                      f"{_h.escape(str(f.get('veredito_enxame') or f.get('veredito')))} ({f.get('score', '?')}/10)"
                       + (f"<br><i>Jurisprudência:</i> {_h.escape(f['jurisprudencia'][:300])}" if f.get('jurisprudencia') else "")
                       + "</p>")
     faixa = {"indício de irregularidade": "ALTO", "diligência": "MÉDIO", "regular": "BAIXO"}[parecer["conclusao"]]
