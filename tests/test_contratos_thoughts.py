@@ -16,6 +16,27 @@ def test_t_aditivo_so_prazo_nao_dispara():
     assert T.t_aditivo(d) == []
 
 
+def test_t_aditivo_prorrogacao_com_valor_nao_e_art125():
+    # revisão à mão: prorrogação de 12 meses grava valorAcrescido = valor do período,
+    # mas NÃO é acréscimo do art. 125 (é art. 107)
+    d = {"contrato": {"valor_inicial": 51000000, "objeto": "gêneros alimentícios"},
+         "aditivos": [{"valor_acrescido": 51000000, "objeto": "Prorrogação do prazo contratual por mais 12 meses"}]}
+    assert T.t_aditivo(d) == []
+
+
+def test_t_aditivo_sem_acrescimo_de_valor_nao_conta():
+    d = {"contrato": {"valor_inicial": 100000, "objeto": "x"},
+         "aditivos": [{"valor_acrescido": 40000, "objeto": "Alteração quantitativa, sem acréscimo de valor"}]}
+    assert T.t_aditivo(d) == []
+
+
+def test_t_prorrogacao_sucessiva():
+    d = {"aditivos": [{"objeto": "Prorrogação do prazo por 12 meses"},
+                      {"objeto": "Prorrogação do prazo por mais 12 meses"}]}
+    a = T.t_prorrogacao(d)
+    assert a and a[0]["dimensao"] == "prorrogacao"
+
+
 def test_t_execucao_nao_avaliavel():
     # pcrj_despesa não liga pagamento a contrato → não emite achado (ausente ≠ 0)
     d = {"contrato": {"valor_global": 100000},

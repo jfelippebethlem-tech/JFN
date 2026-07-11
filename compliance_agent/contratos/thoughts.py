@@ -17,6 +17,23 @@ SOBREPRECO_MIN_N = 3           # referência só vale com base de mercado sufici
 PRORROGACAO_MIN_EXERC = 3
 
 _RX_REFORMA = re.compile(r"reforma|edif[íi]cio|equipamento", re.IGNORECASE)
+_RX_PRORROGA = re.compile(r"prorroga|prazo\s+contratual|repactua", re.IGNORECASE)
+_RX_SEM_ACRESCIMO = re.compile(r"sem\s+acr[ée]scimo\s+de\s+valor", re.IGNORECASE)
+
+
+def _e_acrescimo_de_valor(aditivo: dict) -> bool:
+    """Distingue acréscimo de VALOR (art. 125) de prorrogação de PRAZO (art. 107).
+
+    O PNCP grava o valor do período renovado em valorAcrescido mesmo numa
+    prorrogação — o que NÃO é o acréscimo do art. 125. O campo qualif_acrescimo
+    vem '1' para quase tudo (inútil); o objeto é o discriminador confiável
+    (revisão à mão 2026-07-11: contrato AVANTY, +R$ 51mi era renovação de 12 meses)."""
+    obj = aditivo.get("objeto") or ""
+    if _RX_SEM_ACRESCIMO.search(obj):
+        return False                       # o próprio texto nega o acréscimo
+    if _RX_PRORROGA.search(obj):
+        return False                       # prorrogação de prazo = art. 107, não 125
+    return (aditivo.get("valor_acrescido") or 0) > 0
 
 
 def _brl(v) -> str:
@@ -34,9 +51,11 @@ def t_aditivo(d: dict) -> list[dict]:
     vi = c.get("valor_inicial") or 0
     if vi <= 0:
         return []
-    soma = sum((a.get("valor_acrescido") or 0) for a in d.get("aditivos", []))
+    # só acréscimo de VALOR/escopo entra no art. 125; prorrogação de prazo NÃO
+    soma = sum((a.get("valor_acrescido") or 0) for a in d.get("aditivos", [])
+               if _e_acrescimo_de_valor(a))
     if soma <= 0:
-        return []                                  # só prazo/reajuste → não é acréscimo de valor
+        return []                                  # só prazo/reajuste → não é acréscimo do art. 125
     ratio = soma / vi
     objetos = " ".join((a.get("objeto") or "") for a in d.get("aditivos", []))
     limite = ADITIVO_REFORMA if _RX_REFORMA.search(objetos + " " + (c.get("objeto") or "")) else ADITIVO_LIMITE
@@ -52,15 +71,22 @@ def t_aditivo(d: dict) -> list[dict]:
 
 
 def t_prorrogacao(d: dict) -> list[dict]:
-    """Serviço contínuo prorrogado além do razoável (histórico de exercícios no dossiê)."""
+    """Prorrogação SUCESSIVA — ≥2 termos de prazo no mesmo contrato, ou histórico
+    de exercícios. Uma renovação isolada é normal; a repetição é que acende a luz
+    (art. 107 — teste de economicidade a cada prorrogação)."""
+    prorrogacoes = [a for a in d.get("aditivos", []) if _RX_PRORROGA.search(a.get("objeto") or "")]
     hist = d.get("historico_exercicios") or []
-    if len(hist) < PRORROGACAO_MIN_EXERC:
+    n = max(len(prorrogacoes), len(hist))
+    if n < 2 and len(hist) < PRORROGACAO_MIN_EXERC:
         return []
+    detalhe = (f"{len(hist)} exercícios ({', '.join(map(str, hist))})" if hist
+               else f"{len(prorrogacoes)} termos de prorrogação de prazo")
+    risco = min(7, 4 + n)
     return [_achado(
-        "prorrogacao", 6,
-        f"Mesmo fornecedor/objeto mantido por {len(hist)} exercícios ({', '.join(map(str, hist))}) — "
-        f"prorrogação sucessiva; verificar teste de economicidade (art. 107).",
-        "Lei 14.133/2021, art. 106/107", {"exercicios": hist})]
+        "prorrogacao", risco,
+        f"Prorrogação sucessiva do mesmo contrato: {detalhe}. Verificar teste de "
+        f"economicidade e vantajosidade a cada prorrogação (art. 107).",
+        "Lei 14.133/2021, art. 106/107", {"n_prorrogacoes": n})]
 
 
 def t_execucao_financeira(d: dict) -> list[dict]:
