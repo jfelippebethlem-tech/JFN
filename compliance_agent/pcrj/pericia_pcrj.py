@@ -67,6 +67,20 @@ def _agrupar(regs, so_alta=True):
     return sorted(por.items(), key=lambda kv: (-len(kv[1]), kv[0]))
 
 
+def _secao_media(regs, anos, papel: str) -> str:
+    """Certeza MÉDIA em seção própria (indício mais fraco — não some, mas não se mistura com a ALTA).
+    Diretriz 2026-07-11: o relatório carrega TODAS as informações; a força de cada indício fica explícita."""
+    media = [r for r in regs if r["certeza"] == "MÉDIA"]
+    if not media:
+        return "<p class='nota'>Sem casos de certeza MÉDIA no recorte.</p>"
+    partes = ["<p class='nota'>⚠️ <b>Certeza MÉDIA</b> — indício mais fraco que a seção principal: pode haver "
+              "homônimo, CPF parcial ou janela de vínculo imprecisa. Requer conferência antes de qualquer juízo. "
+              f"São {len(media)} {papel}(s).</p>"]
+    for org, grp in _agrupar(media, so_alta=False):
+        partes.append(f"<h3>{org} — {len(grp)} {papel}(s) [MÉDIA]</h3>{_tabela_regs(grp, anos)}")
+    return "".join(partes)
+
+
 # ── template comum (neutro) ───────────────────────────────────────────────────────────
 _CSS = """
   @page { size: A4 landscape; margin: 12mm 10mm; }
@@ -177,6 +191,9 @@ def gerar_camara(dados=None) -> str:
     corpo.append("<h2>4. Servidores da Câmara que recebem benefício em OUTRA cidade (moram fora do Rio)</h2>")
     corpo.append(_secao_fora_rio(camara, fora))
 
+    corpo.append("<h2>5. Anexo — casos de certeza MÉDIA (indício mais fraco, a conferir)</h2>")
+    corpo.append(_secao_media(camara, anos, "nomeado"))
+
     kpis = [(len(alta), "nomeados da Câmara (certeza ALTA)"), (len(convergencia), "convergência com a Prefeitura"),
             (len(d["gabs_suplencia"]), "gabinetes sob suplência"),
             (sum(1 for r in camara if r["nome_norm"] in fora), "recebem fora do Rio")]
@@ -201,6 +218,8 @@ def gerar_prefeitura(dados=None) -> str:
         corpo.append(f"<h3>{org} — {len(regs)} servidor(es)</h3>{_tabela_regs(regs, anos)}")
     corpo.append("<h2>2. Servidores da Prefeitura que recebem benefício em OUTRA cidade (moram fora do Rio)</h2>")
     corpo.append(_secao_fora_rio(prefeitura, fora))
+    corpo.append("<h2>3. Anexo — casos de certeza MÉDIA (indício mais fraco, a conferir)</h2>")
+    corpo.append(_secao_media(prefeitura, anos, "servidor"))
     kpis = [(len(alta), "servidores da Prefeitura (certeza ALTA)"),
             (len(prefeitura), "total no Rio (ALTA+MÉDIA)"),
             (sum(1 for r in prefeitura if r["nome_norm"] in fora), "recebem fora do Rio")]
