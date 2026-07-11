@@ -59,6 +59,12 @@ def _dossie_txt(d: dict, *, com_sumula: bool = False, com_beneficiario: bool = F
     if com_beneficiario:
         linhas.append(f"VENCEDOR: {d.get('vencedor_doc') or 'n/d'} | "
                       f"SINAIS CRUZADOS: {', '.join(d.get('sinais_beneficiario') or []) or 'nenhum'}")
+    # contexto opcional, comum a qualquer superfície (editais/contratos): fundamentação
+    # via RAG e memória de vereditos anteriores (não re-acusar o refutado)
+    if d.get("rag_ctx"):
+        linhas.append(f"FUNDAMENTAÇÃO (RAG): {d['rag_ctx']}")
+    if d.get("memoria_ctx"):
+        linhas.append(str(d["memoria_ctx"]))
     return "\n".join(linhas)
 
 
