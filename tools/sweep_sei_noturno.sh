@@ -40,13 +40,13 @@ while : ; do
   if outro_sweep_browser; then say "já há sweep de browser rodando — espero 90s (lock preserva a sessão única)"; [ $DRY -eq 1 ] && { [ $iter -ge $MAX_ITER_DRY ] && break; }; sleep 90; continue; fi
 
   if [ $DRY -eq 1 ]; then
-    say "DRY-RUN: rodaria agora → nice -n15 timeout 1200 sei_sweep --max 16 (guards OK: ${guard#*|})"
+    say "DRY-RUN: rodaria agora → nice-n15 timeout 1500 sei_sweep --max 12 (guards OK: ${guard#*|})"
     [ $iter -ge $MAX_ITER_DRY ] && { say "dry-run: $MAX_ITER_DRY iterações OK — fim"; break; }
     sleep 2; continue
   fi
 
   say "rodando sei_sweep (guards OK: ${guard#*|})"
-  nice -n 15 ionice -c3 timeout 1200 $PY -m tools.sei_sweep --max 16 >> data/sei_cache/sei_sweep_loop.out 2>&1
+  nice -n 15 ionice -c3 timeout 1500 $PY -m tools.sei_sweep --max 12 >> data/sei_cache/sei_sweep_loop.out 2>&1
   say "sei_sweep rc=$?"
   sleep 15   # respiro entre sessões (deixa a VM e o itkava respirarem)
 done
