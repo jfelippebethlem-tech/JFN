@@ -116,11 +116,12 @@ def cmd_pericia(args: str) -> str:
         try:
             digitos = re.sub(r"\D", "", alvo)
             obs = []
-            if len(digitos) == 14:  # CNPJ → maiores OBs do fornecedor
+            if len(digitos) == 14:  # CNPJ → maiores OBs do fornecedor (raiz ANCORADA: pega filiais
+                # sem casar a raiz no meio de outro documento — armazenamento é 14 dígitos crus)
                 obs = (session.query(OrdemBancaria)
                        .filter(OrdemBancaria.favorecido_cpf.isnot(None))
                        .filter(OrdemBancaria.favorecido_cpf.like(
-                           f"%{digitos[:8]}%"))
+                           f"{digitos[:8]}%"))
                        .order_by(OrdemBancaria.valor.desc()).limit(3).all())
                 if not obs:  # tolerância a máscara no banco
                     obs = (session.query(OrdemBancaria)
@@ -191,7 +192,8 @@ def _pericia_contratos(session, alvo: str, digitos: str) -> str | None:
             return None
         aviso = "_(sem OB coletada — periciando contratos/PNCP)_\n\n"
         return aviso + "\n\n———\n\n".join(blocos)
-    except Exception:  # noqa: BLE001
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("fallback de contratos da perícia falhou (responderá 'nada encontrado'): %s", exc)
         return None
 
 

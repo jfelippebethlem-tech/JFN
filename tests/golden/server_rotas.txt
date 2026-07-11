@@ -78,6 +78,7 @@ POST /api/hermes/parar -> api_hermes_parar
 POST /api/hermes/relatorio -> api_hermes_relatorio
 POST /api/hermes/trabalhar -> api_hermes_trabalhar
 POST /api/mandato/minuta -> api_mandato_minuta
+POST /api/nucleo/comando -> api_nucleo_comando
 POST /api/radar/ciclo -> api_radar_ciclo
 POST /api/radar/vigiar -> api_radar_vigiar
 POST /api/relatorio/inteligencia -> api_relatorio_inteligencia
