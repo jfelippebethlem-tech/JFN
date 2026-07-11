@@ -20,6 +20,14 @@ def test_empate_pende_pro_refutador(monkeypatch):
     assert r["score_final"] <= 4   # desempate cético
 
 
+def test_refutador_gate_rebaixa(monkeypatch):
+    # maioria enviesada vota alto, mas o refutador defende (voto 2) → score cai
+    monkeypatch.setattr(orq, "LENTES", [("a", _lente(9)), ("b", _lente(9)), ("c", _lente(8)),
+                                        ("refutador", _lente(2)), ("e", _lente(9))])
+    r = orq.avaliar({"clausula": {}, "objeto": "x"})
+    assert r["score_final"] <= 3 and r["veredito"] != "direcionamento"
+
+
 def test_voto_invalido_nao_conta(monkeypatch):
     def _quebrado(dossie, gerar=None):
         return {"voto": None, "justificativa": "parse falhou", "citacao": ""}

@@ -38,22 +38,35 @@ def _parse(resp: str) -> dict:
         return {"voto": None, "justificativa": "JSON malformado", "citacao": ""}
 
 
-def _dossie_txt(d: dict) -> str:
+def _dossie_txt(d: dict, *, com_sumula: bool = False, com_beneficiario: bool = False) -> str:
+    """Dossiê NEUTRO por padrão — não entrega o veredito de raridade pronto (evita
+    o LLM ancorar na moldura e votar alto em tudo). Cada lente recebe só o que a
+    sua pergunta precisa; a súmula vai só para a lente de jurisprudência, os
+    sinais do vencedor só para a lente de beneficiário."""
     c = d.get("clausula", {})
     irmaos = d.get("irmaos_sem_clausula") or []
-    return (
-        f"OBJETO: {d.get('objeto', '')}\n"
-        f"CLÁUSULA EM ANÁLISE (subtipo {c.get('subtipo')}): {c.get('texto', '')}\n"
-        f"RARIDADE NO GRUPO: {c.get('raridade')} (fração dos editais de MESMO objeto que NÃO a exigem)\n"
-        f"SÚMULA/DISPOSITIVO: {c.get('sumula') or 'n/d'}\n"
-        f"EDITAIS IRMÃOS que NÃO exigem isso (amostra): {' | '.join(irmaos[:3]) or 'n/d'}\n"
-        f"VENCEDOR: {d.get('vencedor_doc') or 'n/d'} | SINAIS: {', '.join(d.get('sinais_beneficiario') or []) or 'nenhum'}")
+    n = len(irmaos)
+    linhas = [
+        f"OBJETO DA LICITAÇÃO: {d.get('objeto', '')}",
+        f"EXIGÊNCIA DO EDITAL EM ANÁLISE: {c.get('texto', '')}",
+        (f"OBSERVAÇÃO FACTUAL: entre os editais que compram este MESMO objeto, "
+         f"{n} deles NÃO fazem esta exigência." if n else
+         "OBSERVAÇÃO: não há editais-irmãos comparáveis."),
+    ]
+    if com_sumula and c.get("sumula"):
+        linhas.append(f"JURISPRUDÊNCIA POTENCIALMENTE APLICÁVEL: {c['sumula']} "
+                      f"(verifique se a exigência de fato reproduz a restrição vedada).")
+    if com_beneficiario:
+        linhas.append(f"VENCEDOR: {d.get('vencedor_doc') or 'n/d'} | "
+                      f"SINAIS CRUZADOS: {', '.join(d.get('sinais_beneficiario') or []) or 'nenhum'}")
+    return "\n".join(linhas)
 
 
-def _lente(pergunta: str):
+def _lente(pergunta: str, *, com_sumula: bool = False, com_beneficiario: bool = False):
     def fn(dossie: dict, gerar=None) -> dict:
         g = gerar or gerar_sync
-        prompt = f"{_dossie_txt(dossie)}\n\nAVALIE: {pergunta}"
+        prompt = (f"{_dossie_txt(dossie, com_sumula=com_sumula, com_beneficiario=com_beneficiario)}"
+                  f"\n\nTAREFA: {pergunta}")
         # 2 tentativas: o provedor free-tier às vezes devolve vazio/timeout;
         # só declara indisponível se ambas falharem (INDISPONÍVEL ≠ 0).
         ultimo = ""
@@ -69,23 +82,37 @@ def _lente(pergunta: str):
     return fn
 
 
+# TETOS LEGAIS que uma exigência PODE atingir sem ser irregular (dados às lentes
+# que julgam mérito, p/ não marcarem como direcionamento o que a lei permite):
+_TETOS_LEGAIS = (
+    "REFERÊNCIAS DE LEGALIDADE (uma exigência DENTRO destes limites é LÍCITA, não "
+    "direcionamento): capital social ou patrimônio líquido até 10% do valor estimado "
+    "(Súmula TCU 275); atestado de capacidade técnica com quantitativo até ~50% do "
+    "licitado (praxe aceita); índices contábeis são admitidos SE justificados no processo "
+    "(Súmula TCU 289); marca é admitida se seguida de 'ou equivalente/similar' (Súmula 270).")
+
 lente_proporcionalidade = _lente(
-    "A exigência é PERTINENTE e PROPORCIONAL ao objeto (teste finalístico, art. 37/67)? "
-    "Se for praxe defensável do setor, voto baixo; se restringe sem necessidade técnica, voto alto.")
+    "A exigência é pertinente e proporcional ao objeto? Vote BAIXO (0-3) se é praxe "
+    "defensável ou está dentro do limite legal; ALTO (7-10) só se restringe sem "
+    "necessidade técnica real para ESTE objeto. " + _TETOS_LEGAIS)
 
 lente_jurisprudencia = _lente(
-    "A exigência casa com o padrão vedado pela súmula/dispositivo citado? "
-    "Voto alto se a cláusula reproduz a restrição que a jurisprudência condena.")
+    "A exigência REPRODUZ a restrição que a jurisprudência veda, ou está dentro do que "
+    "ela permite? Vote ALTO só se ultrapassa o limite da súmula; se está no limite ou "
+    "abaixo, vote BAIXO. " + _TETOS_LEGAIS, com_sumula=True)
 
 lente_competicao = _lente(
-    "Quantos fornecedores essa exigência tende a EXCLUIR para este objeto? "
-    "Considere que os editais irmãos do mesmo objeto NÃO a fazem. Mais exclusão → voto mais alto.")
+    "Quantos fornecedores esta exigência tende a EXCLUIR para este objeto? Vote pela "
+    "magnitude da exclusão INJUSTIFICADA (exigência comum do setor exclui pouco → voto baixo). "
+    + _TETOS_LEGAIS)
 
 lente_refutador = _lente(
-    "TENTE DERRUBAR a hipótese de direcionamento: existe justificativa técnica LEGÍTIMA "
-    "para esta exigência neste objeto? Seja cético contra a acusação. "
-    "Só vote ALTO se, mesmo tentando, você NÃO achar justificativa legítima.")
+    "Seu papel é DEFENDER a legalidade da exigência (advogado do edital). Encontre a "
+    "justificativa técnica ou legal que a torna legítima para ESTE objeto. Vote BAIXO "
+    "(0-3) se você CONSEGUE defendê-la (então NÃO é direcionamento); vote ALTO (8-10) "
+    "só se, mesmo se esforçando, não há defesa possível. " + _TETOS_LEGAIS)
 
 lente_beneficiario = _lente(
-    "O vencedor e os SINAIS listados (favorecido de emenda, doador, fantasma, rede societária) "
-    "reforçam que a cláusula rara beneficiou um alvo específico? Sem sinais, voto baixo.")
+    "Os SINAIS cruzados do vencedor reforçam que a exigência beneficiou um alvo específico? "
+    "Sem sinais concretos, vote BAIXO (0-2) — ausência de sinal não é indício.",
+    com_beneficiario=True)
