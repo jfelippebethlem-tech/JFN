@@ -5,8 +5,8 @@ Extraído de lex.py (split 2026-07-06); comportamento idêntico (snapshot-tested
 """
 from __future__ import annotations
 
-from compliance_agent.reporting.inteligencia import _REPORTS, _slug, fmt_cnpj, moeda
-from compliance_agent.lex_redflags import _RF, _anatomia, _grau
+from compliance_agent.reporting.inteligencia import _REPORTS, _slug, moeda
+from compliance_agent.lex_redflags import _RF, _grau
 from compliance_agent.lex_render import render_pdf
 
 # ─────────────────────── PARECER LEX DE ÓRGÃO (UG) ───────────────────────
@@ -15,7 +15,11 @@ from compliance_agent.lex_render import render_pdf
 # fundamentos do controle externo, grau 🟢🟡🔴 e encaminhamento. Honesto: indícios a verificar, nunca acusação.
 
 def _ob_zero_da_ug(ug: str) -> int:
-    """Quantas OBs de valor <=0 (estornos/regularizações/OB R$ 0,00) a UG tem — insumo do R10."""
+    """Quantas OBs de valor <=0 (estornos/regularizações/OB R$ 0,00) a UG tem — insumo do R10.
+
+    Fonte deliberada: espelho TFE (ordens_bancarias), NÃO o SIAFE. A regra "OB = SIAFE" vale para
+    VALOR pago; aqui é CONTAGEM de estornos, e o TFE cobre ~1,1M OBs vs ~137k da varredura SIAFE
+    (WAF limita a VM) — usar o SIAFE subcontaria. Revisitar se a cobertura SIAFE alcançar o TFE."""
     try:
         import sqlite3
 

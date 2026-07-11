@@ -11,6 +11,14 @@ COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a 
 - sobrepreco(codigo,valor,servico) [GET /api/sobrepreco] — 'esta caro?', superfaturamento, R4
 - cruzamento(cnpj) [GET /api/cruzamento] — 'cruze os dados da empresa X'
 - concentracao_grupo(ug) [cli: compliance_agent.grafo_cartel --vizinhanca <CNPJ>] — 'ha concentracao escondida por grupo na UG X?', 'esses concorrentes sao na verdade o mesmo grupo?', cartel oculto / concorrencia simulada numa UG
+- emendas_coletar(anos,pausa) [cli: tools/emendas_coletar.py [--anos 2019 ... 2026]] — 'atualizar emendas', 'coletar emendas do deputado X / destino Y'
+- emendas_pericia(telegram,sem_pdf) [cli: tools/emendas_pericia.py [--telegram] [--sem-pdf]] — 'pericia/analise das emendas', 'quais emendas suspeitas'
+- nucleo_pericia(comando,args,texto) [POST /api/nucleo/comando] — 'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'e fantasma?'
+- pcrj_gastos_coletar(ini,fim) [cli: tools/pcrj_gastos_coletar.py [--ini AAAAMMDD --fim AAAAMMDD]] — 'atualizar gastos/contratos da prefeitura do Rio'
+- pcrj_pericia_gastos(telegram,sem_pdf) [cli: tools/pcrj_pericia_gastos.py [--telegram] [--sem-pdf]] — 'pericia dos gastos da prefeitura', 'fracionamento na PCRJ'
+- editais_corpus(limite) [cli: tools/editais_corpus.py [--limite N]] — 'atualizar editais', 'baixar editais da prefeitura'
+- editais_direcionamento(clausulas,clusters,max-candidatas,limiar-raridade) [cli: tools/editais_direcionamento.py [--clausulas] [--clusters] [--max-candidatas N]] — 'ha direcionamento nos editais?', 'compare os editais de X', 'quais exigencias reduzem competitividade'
+- contratos_parecer(max-contratos,telegram,sem-pdf) [cli: tools/contratos_parecer.py [--max-contratos N] [--telegram]] — 'analise/parecer dos contratos', 'esse contrato tem aditivo/sobrepreco irregular?', 'como um tribunal de contas'
 - relacoes(alvo,limite) [cli: compliance_agent.relacoes "<CNPJ | nome do socio | UG>"] — 'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo
 - sobrepreco_interno(texto) [cli: compliance_agent.precos_extract] — 'esse item esta caro comparado a outros orgaos?', dispersao de preco unitario do mesmo produto sem precisar de CATMAT/mercado, complemento interno ao /sobrepreco
 - missao_autonoma(missao) [POST /api/hermes/missao] — pedido complexo/aberto

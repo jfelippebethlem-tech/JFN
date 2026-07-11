@@ -59,7 +59,8 @@ def _empresas_com_ob(con) -> dict[str, dict]:
                 e = emp.setdefault(d, {"n_ob": 0, "total": 0.0})
                 e["n_ob"] += n or 0
                 e["total"] += float(tot or 0)
-        except sqlite3.Error:
+        except sqlite3.Error as exc:
+            logger.warning("fonte %s do conflito falhou (vínculos podem sumir mudos): %s", campo, exc)
             continue
     return emp
 

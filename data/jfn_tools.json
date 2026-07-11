@@ -354,6 +354,281 @@
     {
       "type": "function",
       "function": {
+        "name": "emendas_coletar",
+        "description": "Coleta emendas parlamentares federais (Portal da Transparencia) nos 2 recortes RJ: autor = deputado federal RJ (legs 56/57, roster Camara) OU destino = municipio do RJ. Empenhado/liquidado/pago SEPARADOS; checkpoint retomavel; PIX via Transferegov (emendas.transferegov). Grava emendas/emenda_favorecidos/emendas_pix_planos. — usar quando: 'atualizar emendas', 'coletar emendas do deputado X / destino Y' — chamar (cli): tools/emendas_coletar.py [--anos 2019 ... 2026]",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "anos": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "list[int] opcional (default 2019-2026)"
+            },
+            "pausa": {
+              "type": "string",
+              "description": "float opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "tools/emendas_coletar.py [--anos 2019 ... 2026]",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "emendas_pericia",
+        "description": "Pericia deterministica de emendas D1-D6 (PIX impedida, concentracao autor->destino, favorecido sancionado, fachada, retroalimentacao doador-socio, empenho sem execucao) -> PDF Kroll + XLSX + alertas. Indicio != acusacao; cobertura declarada por detector. — usar quando: 'pericia/analise das emendas', 'quais emendas suspeitas' — chamar (cli): tools/emendas_pericia.py [--telegram] [--sem-pdf]",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "telegram": {
+              "type": "string",
+              "description": "flag"
+            },
+            "sem_pdf": {
+              "type": "string",
+              "description": "flag"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "tools/emendas_pericia.py [--telegram] [--sem-pdf]",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": [
+          "path_pdf",
+          "path_xlsx"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "nucleo_pericia",
+        "description": "Nucleo de pericia INTERATIVO (inteligencia progressiva): pericia na hora de OB/CNPJ/contrato, veredito humano que fecha o ciclo de aprendizado, placar de acerto, fantasma (8 sinais), fases de contratacao, promover hipotese. Comandos: /pericia /veredito /placar /fantasma /fases /promover /ciclo_nucleo /fornecedor /parametros /evolucao. — usar quando: 'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'e fantasma?' — chamar: POST /api/nucleo/comando (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "comando": {
+              "type": "string",
+              "description": "string ex.: /pericia (ou omitir e mandar texto)"
+            },
+            "args": {
+              "type": "string",
+              "description": "string alvo (CNPJ/OB/ref)"
+            },
+            "texto": {
+              "type": "string",
+              "description": "string livre (roteador deterministico)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/nucleo/comando",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "pcrj_gastos_coletar",
+        "description": "Contratos/empenhos + licitacoes do MUNICIPIO do Rio via PNCP (descobre orgaos municipais pelo IBGE 3304557); despesa por credor historica 2008-2023 via ContasRio/Open_Data_Empenhos (pcrj.contasrio.coletar_exercicios). Grava pcrj_contratos/pcrj_licitacoes/pcrj_despesa. — usar quando: 'atualizar gastos/contratos da prefeitura do Rio' — chamar (cli): tools/pcrj_gastos_coletar.py [--ini AAAAMMDD --fim AAAAMMDD]",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "ini": {
+              "type": "string",
+              "description": "AAAAMMDD"
+            },
+            "fim": {
+              "type": "string",
+              "description": "AAAAMMDD"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "tools/pcrj_gastos_coletar.py [--ini AAAAMMDD --fim AAAAMMDD]",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "pcrj_pericia_gastos",
+        "description": "Pericia deterministica de gastos PCRJ D7-D10 (fracionamento janela 90d abaixo do teto de dispensa, credor recem-aberto, socio de credor na folha municipal [homonimo sinalizado], rede societaria entre fornecedores + aditivos > art. 125) -> PDF Kroll + XLSX + alertas. — usar quando: 'pericia dos gastos da prefeitura', 'fracionamento na PCRJ' — chamar (cli): tools/pcrj_pericia_gastos.py [--telegram] [--sem-pdf]",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "telegram": {
+              "type": "string",
+              "description": "flag"
+            },
+            "sem_pdf": {
+              "type": "string",
+              "description": "flag"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "tools/pcrj_pericia_gastos.py [--telegram] [--sem-pdf]",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": [
+          "path_pdf",
+          "path_xlsx"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "editais_corpus",
+        "description": "Baixa o corpus de editais municipais do Rio (texto do edital + itens via PNCP) p/ a analise de direcionamento. Degrada honesto: sem documento acessivel -> documento_disponivel=0. — usar quando: 'atualizar editais', 'baixar editais da prefeitura' — chamar (cli): tools/editais_corpus.py [--limite N]",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "limite": {
+              "type": "integer",
+              "description": "int opcional"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "tools/editais_corpus.py [--limite N]",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "editais_direcionamento",
+        "description": "ENXAME de avaliacao de direcionamento: compara editais de OBJETO SEMELHANTE clausula-a-clausula (agrupamento semantico Cohere, pois CATMAT vem ~0% na PCRJ), acha a exigencia de habilitacao que SO um edital do grupo impoe (peer-diff = raridade x forca E7/sumula) e sobe as candidatas p/ 5 agentes-lente free-tier (proporcionalidade, jurisprudencia, competicao, refutador adversarial, beneficiario) com desempate pro-refutador. Direcionamento = anomalia RELATIVA ao grupo. Indicio != acusacao. — usar quando: 'ha direcionamento nos editais?', 'compare os editais de X', 'quais exigencias reduzem competitividade' — chamar (cli): tools/editais_direcionamento.py [--clausulas] [--clusters] [--max-candidatas N]",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "clausulas": {
+              "type": "string",
+              "description": "flag (re-extrai)"
+            },
+            "clusters": {
+              "type": "string",
+              "description": "flag (re-agrupa, usa Cohere)"
+            },
+            "max-candidatas": {
+              "type": "integer",
+              "description": "int"
+            },
+            "limiar-raridade": {
+              "type": "string",
+              "description": "float 0-1"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "tools/editais_direcionamento.py [--clausulas] [--clusters] [--max-candidatas N]",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": [
+          "path_pdf",
+          "path_xlsx"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "contratos_parecer",
+        "description": "CAMARA de contratos estilo Tribunal de Contas (nao-monolito): dossie compartilhado por contrato (contrato+aditivos PNCP termos+pagamentos+itens+sinais) que 6 pensamentos determinsticos cruzam (aditivo art.125, prorrogacao art.106/107, execucao financeira art.63, sobrepreco/jogo de planilha via peer+Painel de Precos compras.gov.br, Lex R2-R12, sinais do fornecedor), depois a camara (enxame free-tier + RAG jurisprudencia + MEMORIA que nao re-acusa refutado) emite PARECER TC: relatorio/fundamentacao/conclusao/voto. Aprende: veredito -> memoria_aprendizado -> auto_melhoria. Indicio != acusacao. — usar quando: 'analise/parecer dos contratos', 'esse contrato tem aditivo/sobrepreco irregular?', 'como um tribunal de contas' — chamar (cli): tools/contratos_parecer.py [--max-contratos N] [--telegram]",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "max-contratos": {
+              "type": "integer",
+              "description": "int"
+            },
+            "telegram": {
+              "type": "string",
+              "description": "flag"
+            },
+            "sem-pdf": {
+              "type": "string",
+              "description": "flag"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "tools/contratos_parecer.py [--max-contratos N] [--telegram]",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": [
+          "path_pdf",
+          "path_xlsx"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "relacoes",
         "description": "Mapa de RELACOES de um alvo: socio<->empresa (QSA), empresa<->empresa por socio OU endereco em comum (dedup por raiz; indicio de grupo economico/concorrencia ficticia), empresa<->orgao (UGs que pagaram; UG em comum = vinculo mais forte). Resolve sozinho: 14dig=empresa, 6dig=UG, senao=nome de socio. — usar quando: 'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo — chamar (cli): compliance_agent.relacoes \"<CNPJ | nome do socio | UG>\"",
         "parameters": {

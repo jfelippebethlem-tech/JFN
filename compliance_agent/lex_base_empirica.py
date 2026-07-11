@@ -14,11 +14,19 @@ da mediana da UG é INDÍCIO a verificar, jamais acusação. Liga-se a [[lex_san
 """
 from __future__ import annotations
 
+import bisect
 import json
 import sqlite3
+import time
 from pathlib import Path
 
 _DB = Path(__file__).resolve().parent.parent / "data" / "compliance.db"
+
+# Denominador do percentil de exposição (totais por fornecedor, ordenados). O GROUP BY
+# global sobre 1,1M de OBs custava 2 full-scans POR PARECER e o resultado quase não muda
+# no dia — cache por TTL; bisect responde qualquer alvo sem nova varredura.
+_EXPO_TTL = 6 * 3600
+_EXPO_CACHE: dict = {"ts": 0.0, "totais": []}
 
 
 def _con():
@@ -148,12 +156,16 @@ def posicao_fornecedor(cnpj: str) -> dict:
                            FROM ordens_bancarias WHERE favorecido_cpf=?""", (cpf,)).fetchone()
         if not r or not r[0]:
             return {"cnpj": cpf, "tem_dados": False}
-        # percentil de exposição entre todos os fornecedores
+        # percentil de exposição entre todos os fornecedores (lista cacheada + bisect)
         total = r[1]
-        acima = con.execute("""SELECT COUNT(*) FROM (
-            SELECT favorecido_cpf, SUM(valor) v FROM ordens_bancarias WHERE favorecido_cpf IS NOT NULL
-            GROUP BY favorecido_cpf HAVING v < ?)""", (total,)).fetchone()[0]
-        ntot = con.execute("SELECT COUNT(DISTINCT favorecido_cpf) FROM ordens_bancarias WHERE favorecido_cpf IS NOT NULL").fetchone()[0]
+        if time.time() - _EXPO_CACHE["ts"] >= _EXPO_TTL or not _EXPO_CACHE["totais"]:
+            _EXPO_CACHE["totais"] = sorted(v for (v,) in con.execute(
+                "SELECT SUM(valor) FROM ordens_bancarias WHERE favorecido_cpf IS NOT NULL "
+                "GROUP BY favorecido_cpf") if v is not None)
+            _EXPO_CACHE["ts"] = time.time()
+        totais = _EXPO_CACHE["totais"]
+        acima = bisect.bisect_left(totais, total)
+        ntot = len(totais)
         pct = (acima / ntot * 100) if ntot else 0
         return {"cnpj": cpf, "tem_dados": True, "n_obs": r[0], "total_pago": total,
                 "n_ugs": r[2], "percentil_exposicao": round(pct, 1)}
@@ -179,6 +191,21 @@ def contexto_empirico_md(cnpj: str | None = None) -> str:
             L.append(f"> **Posição do alvo:** R$ {pos['total_pago']:,.2f} pagos em {pos['n_obs']} OBs / "
                      f"{pos['n_ugs']} UG(s) — percentil {pos['percentil_exposicao']}% de exposição entre os fornecedores do Estado.")
     return "\n".join(L)
+
+
+def stats() -> dict:
+    """Resumo da base aprendida — consumido por compliance_agent.memoria.consolidar."""
+    if not _DB.exists():
+        return {"ok": False, "erro": "compliance.db ausente"}
+    con = _con()
+    try:
+        n, ult = con.execute("SELECT COUNT(*), MAX(ultima_vez) FROM memoria_aprendizado "
+                             "WHERE categoria='empirico'").fetchone()
+        return {"ok": True, "fatos_empiricos": n or 0, "ultima_atualizacao": ult}
+    except sqlite3.Error as e:
+        return {"ok": False, "erro": str(e)[:120]}
+    finally:
+        con.close()
 
 
 if __name__ == "__main__":

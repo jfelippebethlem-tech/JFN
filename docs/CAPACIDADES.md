@@ -8,12 +8,20 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `cartel` | jfn | http | `/api/cartel` | PRONTO | conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?' |
 | `concentracao_grupo` | jfn | cli | `compliance_agent.grafo_cartel --vizinhanca <CNPJ>` | PRONTO | 'ha concentracao escondida por grupo na UG X?', 'esses concorrentes sao na verdade o mesmo grupo?', cartel oculto / concorrencia simulada numa UG |
 | `conflito_doador_contrato` | lex | http | `/api/conflito` | PRONTO | 'quem me doou ganhou contrato', conflito de interesse |
+| `contratos_parecer` | jfn | cli | `tools/contratos_parecer.py [--max-contratos N] [--telegram]` | PRONTO | 'analise/parecer dos contratos', 'esse contrato tem aditivo/sobrepreco irregular?', 'como um tribunal de contas' |
 | `cruzamento` | jfn | http | `/api/cruzamento` | PRONTO | 'cruze os dados da empresa X' |
+| `editais_corpus` | jfn | cli | `tools/editais_corpus.py [--limite N]` | PRONTO | 'atualizar editais', 'baixar editais da prefeitura' |
+| `editais_direcionamento` | jfn | cli | `tools/editais_direcionamento.py [--clausulas] [--clusters] [--max-candidatas N]` | PRONTO | 'ha direcionamento nos editais?', 'compare os editais de X', 'quais exigencias reduzem competitividade' |
+| `emendas_coletar` | jfn | cli | `tools/emendas_coletar.py [--anos 2019 ... 2026]` | PRONTO | 'atualizar emendas', 'coletar emendas do deputado X / destino Y' |
+| `emendas_pericia` | jfn | cli | `tools/emendas_pericia.py [--telegram] [--sem-pdf]` | PRONTO | 'pericia/analise das emendas', 'quais emendas suspeitas' |
 | `listar_ugs` | jfn | http | `/api/ugs` | PRONTO | '/ug', 'quais os codigos/nomes dos orgaos/UGs', 'listar UGs', 'qual o codigo da SEEDUC', 'que orgaos existem', ANTES de pedir o /orgao quando nao se sabe o codigo |
 | `missao_autonoma` | jfn | http | `/api/hermes/missao` | PRONTO | pedido complexo/aberto |
 | `missao_estado` | jfn | http | `/api/hermes/estado` | PRONTO | 'qual a missao', 'como esta o hermes/auditor', antes de trabalhar/parar |
 | `missao_parar` | jfn | http | `/api/hermes/parar` | PRONTO | 'para/pare a missao', 'cancela a auditoria autonoma' |
 | `missao_trabalhar` | jfn | http | `/api/hermes/trabalhar` | PRONTO | 'trabalha na missao', 'continua a auditoria' (pedido EXPLICITO do dono) |
+| `nucleo_pericia` | jfn | http | `/api/nucleo/comando` | PRONTO | 'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'e fantasma?' |
+| `pcrj_gastos_coletar` | jfn | cli | `tools/pcrj_gastos_coletar.py [--ini AAAAMMDD --fim AAAAMMDD]` | PRONTO | 'atualizar gastos/contratos da prefeitura do Rio' |
+| `pcrj_pericia_gastos` | jfn | cli | `tools/pcrj_pericia_gastos.py [--telegram] [--sem-pdf]` | PRONTO | 'pericia dos gastos da prefeitura', 'fracionamento na PCRJ' |
 | `relacoes` | jfn | cli | `compliance_agent.relacoes "<CNPJ | nome do socio | UG>"` | PRONTO | 'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo |
 | `relatorio_inteligencia` | jfn | http | `/api/relatorio/inteligencia` | PRONTO | relatorio/auditoria/due diligence de empresa, CNPJ |
 | `relatorio_orgao` | jfn | http | `/api/relatorio/orgao` | PRONTO | auditoria de orgao/UG/secretaria |

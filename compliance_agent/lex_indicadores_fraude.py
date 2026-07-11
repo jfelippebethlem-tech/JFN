@@ -57,7 +57,7 @@ INDICADORES: list[Indicador] = [
               ["contratacao_direta_indevida", "projeto_magico"], 2, "R5",
               "Conferir o enquadramento legal (Lei 14.133 arts. 74-75) e a justificativa."),
     Indicador("VALOR_PROX_LIMITE", "Valor estimado muito próximo ao limite da modalidade adotada",
-              "interna", "licitacao", ["fracionamento", "projeto_magico"], 2, "R9",
+              "interna", "licitacao", ["fracionamento", "projeto_magico"], 2, "R2",
               "Comparar o estimado com o teto da modalidade; buscar objetos semelhantes no exercício."),
     Indicador("EDITAL_RESTRITIVO", "Edital/TR com indícios de direcionamento ou cláusulas restritivas",
               "interna", "licitacao", ["edital_restritivo", "projeto_magico"], 3, "R7",
@@ -89,7 +89,7 @@ INDICADORES: list[Indicador] = [
               "—", "conjunto", ["cartel", "conluio"], 3, "R8",
               "Mesma cesta de licitantes co-ocorrendo; cruzar sócios/endereços (laranjas)."),
     Indicador("FRACIONAMENTO_SERIE", "Múltiplas contratações de objeto semelhante no exercício, "
-              "somando acima do limite da modalidade", "—", "conjunto", ["fracionamento"], 3, "R9",
+              "somando acima do limite da modalidade", "—", "conjunto", ["fracionamento"], 3, "R2",
               "Somar contratações do mesmo objeto/órgão no ano vs. teto (Lei 14.133 art. 75 §1º)."),
     # — quantitativos (deep-research 2026-06-07: FGV/Benford, TCU-Codevasf, CGU/Dempster-Shafer) —
     Indicador("BENFORD_DESVIO", "Desvio da Lei de Benford no 1º dígito dos valores (OB/empenho por UG/fornecedor)",
@@ -175,7 +175,7 @@ def sinais_do_contexto(ctx: dict, analise: dict | None = None) -> dict:
     rfs = {str(a.get("rf", "")).upper() for a in (analise or {}).get("achados", [])}
     if any(r.startswith("R7") for r in rfs):
         sinais["edital_restritivo"] = True
-    if any(r.startswith("R9") for r in rfs):
+    if any(r.startswith("R2") for r in rfs):  # R2 = fracionamento (R9 é aditivo — mapeava errado)
         sinais["fracionamento"] = True
     if any(r.startswith("R8") for r in rfs):
         sinais["coincidencia_participantes"] = True
