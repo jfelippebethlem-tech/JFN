@@ -4,7 +4,7 @@
 # --- dos processos SEI das OBs de cada um, via itkava (não só PNCP). Por valor, resumível.
 180100  # SEEDUC — Educação (139k OB)
 210700  # SEEDUC — Educação (unidade 2)
-294200  # FSERJ — Saúde / Fundação Saúde (80k OB)
+294200  # FUNDAÇÃO SAÚDE do ERJ (80k OB) — ATENÇÃO: sigla "FSERJ" aqui = Fundação Saúde, NÃO o Fundo Soberano (226300)
 296100  # FES — Saúde / Fundo Estadual de Saúde (71k OB)
 200900  # SEFAZ — Fazenda (10k OB)
 200100  # SEFAZ — Fazenda (unidade 2)
@@ -12,8 +12,12 @@
 140100  # SECC — Casa Civil / Governo (10k OB)
 570100  # SEGOV — Secretaria de Estado de Governo
 263100  # DETRAN — Departamento de Trânsito do RJ (27k OB, 199 processos SEI — dono confirmou acesso 2026-07-11)
-123400  # FUNSERJ — Fundo Único de Previdência do ERJ (8k OB, 165 processos SEI)
-123404  # FUNSERJ — Fundo Único de Previdência ERJ / Executivo
+123400  # RIOPREVIDÊNCIA — Fundo ÚNICO de PREVIDÊNCIA do ERJ (8k OB, 165 proc SEI) — NÃO é o Fundo Soberano
+123404  # RIOPREVIDÊNCIA — Fundo Único de Previdência ERJ / Executivo
+226300  # FSERJ — FUNDO SOBERANO do Estado do RJ (acesso SIAFE OK; 0 OB na base — COLETAR via siafe_sweep_ugs)
 660100  # Sec. das Cidades — MUV São Gonçalo/Grupo Vieira (editais dos ~10 CNPJs, ex. SEI-510001/000571/2024)
-# CORREÇÃO 2026-07-11 (dono): FUNSERJ (123400) e DETRAN (263100) TÊM acesso via SIAFE e já estão na
-# base (OBs coletadas) — a nota anterior de "sem dados" estava errada. Ambos adicionados ao foco acima.
+# CORREÇÕES 2026-07-11 (dono): (1) Fundo ÚNICO de Previdência (RIOPREVIDÊNCIA, 123400) ≠ Fundo SOBERANO
+# (FSERJ, 226300) — são fundos DIFERENTES; eu havia confundido. (2) DETRAN=263100 e RIOPREV têm SIAFE e já
+# estão na base. (3) Fundo Soberano (226300) tem acesso SIAFE mas ainda SEM OB coletada → coletar.
+# ÍNDICE AUTORITATIVO de UGs (código+nome, muda com o tempo) = data/ug_index_siafe.json (596 UGs, refresh
+# via tools/siafe_ug_index.py). O ugs.py deriva só das UGs já coletadas — INCOMPLETO por construção.
