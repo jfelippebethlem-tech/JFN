@@ -423,7 +423,7 @@
       "type": "function",
       "function": {
         "name": "nucleo_pericia",
-        "description": "Nucleo de pericia INTERATIVO (inteligencia progressiva): pericia na hora de OB/CNPJ/contrato, veredito humano que fecha o ciclo de aprendizado, placar de acerto, fantasma (8 sinais), fases de contratacao, promover hipotese. Comandos: /pericia /veredito /placar /fantasma /fases /promover /ciclo_nucleo /fornecedor /parametros /evolucao. — usar quando: 'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'e fantasma?' — chamar: POST /api/nucleo/comando (base http://127.0.0.1:8000)",
+        "description": "Nucleo de pericia INTERATIVO (inteligencia progressiva): pericia na hora de OB/CNPJ/contrato, veredito humano que fecha o ciclo de aprendizado, placar de acerto, fantasma (8 sinais), fases de contratacao, promover hipotese. Comandos: /pericia /veredito /placar /fantasma /fases /promover /ciclo_nucleo /fornecedor /parametros /evolucao. — usar quando: 'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'essa empresa e fantasma/laranja?', 'fantasma cnpj X', 'fases da contratacao' — chamar: POST /api/nucleo/comando (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {

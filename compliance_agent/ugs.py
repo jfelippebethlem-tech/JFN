@@ -37,6 +37,11 @@ _MAPA = _DATA / "ug_canonico.json"
 # Chave = código de UG (string). Valor = nome canônico já amigável.
 OVERRIDES = {
     "133100": "ITERJ — Instituto de Terras e Cartografia do ERJ",
+    # Os 3 fundos que se confundem (vault ug-index-siafe-fundos) + DETRAN (nome SIAFE = "Trânsito"):
+    # nome canônico carrega a SIGLA que o humano digita, senão o resolvedor não acha.
+    "226300": "FSERJ — Fundo Soberano do Estado do Rio de Janeiro",
+    "123400": "RIOPREVIDÊNCIA — Fundo Único de Previdência do Estado do RJ",
+    "263100": "DETRAN-RJ — Departamento de Trânsito do Estado do Rio de Janeiro",
 }
 
 # Aliases conhecidos entre sistemas de numeração de UG (informativo).

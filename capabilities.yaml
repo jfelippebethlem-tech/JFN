@@ -59,7 +59,7 @@ capacidades:
      args: {telegram: "flag", sem_pdf: "flag"}, retorno: "reports/emendas_rj_pericia_<data>.pdf + xlsx", enviar_telegram: [path_pdf, path_xlsx]}
   - {id: nucleo_pericia, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/nucleo/comando, status: PRONTO,
      descricao: "Nucleo de pericia INTERATIVO (inteligencia progressiva): pericia na hora de OB/CNPJ/contrato, veredito humano que fecha o ciclo de aprendizado, placar de acerto, fantasma (8 sinais), fases de contratacao, promover hipotese. Comandos: /pericia /veredito /placar /fantasma /fases /promover /ciclo_nucleo /fornecedor /parametros /evolucao.",
-     quando_usar: "'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'e fantasma?'", exemplo: "pericia a MGS Clean",
+     quando_usar: "'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'essa empresa e fantasma/laranja?', 'fantasma cnpj X', 'fases da contratacao'", exemplo: "pericia a MGS Clean / fantasma 19088605000104",
      args: {comando: "string ex.: /pericia (ou omitir e mandar texto)", args: "string alvo (CNPJ/OB/ref)", texto: "string livre (roteador deterministico)"},
      retorno: "{ok, comando, resposta(markdown)}"}
   - {id: pcrj_gastos_coletar, agente: jfn, dominio: auditoria, tipo: cli, comando: "tools/pcrj_gastos_coletar.py [--ini AAAAMMDD --fim AAAAMMDD]", status: PRONTO,

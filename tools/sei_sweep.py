@@ -306,7 +306,7 @@ async def _ficha_e_storage(proc: str):
         # extrair_ficha já retenta 502/503 transientes. Se falhar, retorna None → fica p/ a próxima passada
         # (sweep resumível: não marca como feito, retenta depois). Vamos aos poucos.
         f = await extrair_ficha(cont, STEPFUN, provider="nous")
-        modelo = "stepfun:free"
+        modelo = STEPFUN  # id real do catálogo (o rótulo antigo "stepfun:free" não existe mais — 404)
         if f.get("_erro"):
             return None
         d["ficha"] = f

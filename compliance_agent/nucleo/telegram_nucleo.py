@@ -305,6 +305,10 @@ def cmd_fases(args: str) -> str:
     import os as _os
     from pathlib import Path as _Path
     proc = (args or "").strip()
+    so_dig = re.sub(r"\D", "", proc)
+    if len(so_dig) == 14 and "/" not in proc:  # mandaram CNPJ — fases é por PROCESSO SEI
+        return ("Fases são por *processo SEI* (ex.: `/fases 330020/000762/2021`), não por CNPJ.\n"
+                "Para o fornecedor use `/pericia " + so_dig + "` ou `/fantasma " + so_dig + "`.")
     if not proc:
         return "Use: `/fases 330020/000762/2021`"
     raiz = _Path(_os.environ.get("SEI_ARQUIVO_DIR")
@@ -529,6 +533,8 @@ def interpretar_texto_livre(texto: str) -> tuple[str, str] | None:
         m = re.search(r"(\d{6}/\d{6}/\d{4})", texto)
         if m:
             return ("/fases", m.group(1))
+        if cnpj:  # humano manda CNPJ p/ "fases" → o handler orienta (processo SEI, não CNPJ)
+            return ("/fases", cnpj.group(0))
 
     # promoção a caso-ouro: "promove/promover <ref>"
     if "promov" in t:
@@ -549,6 +555,10 @@ def interpretar_texto_livre(texto: str) -> tuple[str, str] | None:
             if "inconclusiv" in t:
                 return ("/veredito", f"{ref} inconclusivo")
             return ("/veredito", f"{ref} confirmado")
+
+    # fantasma/laranja: "é fantasma?", "essa empresa é laranja/fachada?" + CNPJ
+    if cnpj and any(k in t for k in ("fantasma", "laranja", "fachada")):
+        return ("/fantasma", cnpj.group(0))
 
     # perícia: "pericia/audita/analisa/investiga <alvo>"
     if any(k in t for k in ("perici", "audita", "analisa", "fiscaliza")):

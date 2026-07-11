@@ -87,6 +87,23 @@ def _todas_ugs(con) -> list[dict]:
         out.append({"ug": cod, "nome": ugs.nome_canonico(cod, "") or (r["ug_nome"] or f"UG {cod}"),
                     "total_pago": float(r["total"] or 0.0), "n_obs": int(r["n"] or 0),
                     "n_forn": int(r["forn"] or 0), "_raw": r["ug_nome"] or ""})
+    # Funde o índice SIAFE autoritativo (data/ug_index_siafe.json): 444/596 UGs não existem no
+    # espelho TFE e eram INVISÍVEIS ao resolvedor (ex.: Fundo Soberano 226300 — achado 2026-07-11).
+    # O nome curto do índice ("DETRAN-RJ", "FSERJ") entra no _raw p/ casar a sigla que o humano digita.
+    try:
+        idx = json.loads((_DB.parent / "ug_index_siafe.json").read_text(encoding="utf-8")).get("ugs") or {}
+    except (OSError, ValueError):
+        idx = {}
+    por_cod = {u["ug"]: u for u in out}
+    for cod, curto in idx.items():
+        cod = str(cod).strip()
+        u = por_cod.get(cod)
+        if u is not None:
+            if curto and curto.lower() not in u["_raw"].lower():
+                u["_raw"] += f" {curto}"
+        else:
+            out.append({"ug": cod, "nome": ugs.nome_canonico(cod, "") or curto or f"UG {cod}",
+                        "total_pago": 0.0, "n_obs": 0, "n_forn": 0, "_raw": curto or ""})
     return out
 
 

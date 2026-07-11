@@ -144,6 +144,20 @@ async def montar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
     termo = (cnpj or empresa or "").strip()
     candidatos = buscar_candidatos(termo)
     if not candidatos:
+        # o humano confunde empresa×órgão ("relatório da fundação saúde") — se o termo casa uma UG,
+        # devolve a pista p/ o Yoda oferecer o produto certo em vez de um beco sem saída
+        try:
+            import sqlite3 as _sq
+            from compliance_agent.reporting.inteligencia_orgao import buscar_orgaos
+            orgs = [o for o in buscar_orgaos(termo) if o.get("_match") == "exato"]
+        except (ImportError, _sq.Error, OSError, ValueError):  # pista aditiva; sem ela, mensagem padrão
+            orgs = []
+        if orgs:
+            return {"ok": False, "erro": f"Não encontrei EMPRESA para {termo!r}, mas encontrei ÓRGÃO/UG: "
+                                         + "; ".join(f"{o['nome']} (UG {o['ug']})" for o in orgs[:3])
+                                         + ". Se for esse o alvo, peça o relatório de ÓRGÃO (/orgao).",
+                    "empresa": termo,
+                    "sugestao_orgao": [{"ug": o["ug"], "nome": o["nome"]} for o in orgs[:3]]}
         return {"ok": False, "erro": f"Não encontrei nenhuma empresa para {termo!r}. "
                                      f"Tente outro nome (parcial serve) ou o CNPJ.", "empresa": termo}
 

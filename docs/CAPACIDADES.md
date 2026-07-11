@@ -19,7 +19,7 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `missao_estado` | jfn | http | `/api/hermes/estado` | PRONTO | 'qual a missao', 'como esta o hermes/auditor', antes de trabalhar/parar |
 | `missao_parar` | jfn | http | `/api/hermes/parar` | PRONTO | 'para/pare a missao', 'cancela a auditoria autonoma' |
 | `missao_trabalhar` | jfn | http | `/api/hermes/trabalhar` | PRONTO | 'trabalha na missao', 'continua a auditoria' (pedido EXPLICITO do dono) |
-| `nucleo_pericia` | jfn | http | `/api/nucleo/comando` | PRONTO | 'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'e fantasma?' |
+| `nucleo_pericia` | jfn | http | `/api/nucleo/comando` | PRONTO | 'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'essa empresa e fantasma/laranja?', 'fantasma cnpj X', 'fases da contratacao' |
 | `pcrj_gastos_coletar` | jfn | cli | `tools/pcrj_gastos_coletar.py [--ini AAAAMMDD --fim AAAAMMDD]` | PRONTO | 'atualizar gastos/contratos da prefeitura do Rio' |
 | `pcrj_pericia_gastos` | jfn | cli | `tools/pcrj_pericia_gastos.py [--telegram] [--sem-pdf]` | PRONTO | 'pericia dos gastos da prefeitura', 'fracionamento na PCRJ' |
 | `relacoes` | jfn | cli | `compliance_agent.relacoes "<CNPJ | nome do socio | UG>"` | PRONTO | 'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo |

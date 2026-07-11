@@ -54,8 +54,17 @@ async def _enviar_docs_telegram(result: dict, titulo: str) -> None:
         await _tg.enviar_mensagem(f"⚠️ {titulo}: gerado, mas sem arquivos para enviar.")
         return
     cap = (f"📄 {titulo}\n{result.get('resumo') or ''}")[:1024]
+    falhas = []
     for i, p in enumerate(paths):
-        await _tg.enviar_arquivo(p, caption=(cap if i == 0 else ""))
+        r = await _tg.enviar_arquivo(p, caption=(cap if i == 0 else ""))
+        if not (r or {}).get("ok"):
+            # entrega muda era o pior modo de falha: o humano fica esperando um PDF que nunca chega
+            logger.warning("entrega Telegram FALHOU p/ %s: %s", p, str(r)[:200])
+            falhas.append(Path(p).name)
+    if falhas:
+        await _tg.enviar_mensagem(
+            f"⚠️ {titulo}: gerado, mas {len(falhas)} arquivo(s) não subiram no Telegram "
+            f"({', '.join(falhas[:3])}). Estão em ~/JFN/reports/.")
 
 
 async def _gerar_e_enviar_fornecedor(cnpj, empresa, anos, key) -> None:
