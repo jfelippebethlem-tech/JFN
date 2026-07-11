@@ -118,6 +118,7 @@ async def main():
     ap.add_argument("--max-candidatas", type=int, default=120)
     ap.add_argument("--limiar-raridade", type=float, default=0.7)
     ap.add_argument("--sem-pdf", action="store_true")
+    ap.add_argument("--telegram", action="store_true")
     args = ap.parse_args()
 
     con = ed.conectar()
@@ -163,6 +164,13 @@ async def main():
             saidas.append(Path(pdf))
         else:
             print(f"vm_guard: {msg} — PDF adiado")
+
+    if args.telegram and saidas:
+        from compliance_agent.notifications.telegram import enviar_arquivo
+        n_dir = sum(1 for a in achados if a["risco"] >= 7)
+        for s in saidas:
+            await enviar_arquivo(str(s), caption=f"Direcionamento de editais PCRJ — {hoje} "
+                                                 f"({n_dir} com veredito de direcionamento)")
 
     # casos fortes → vault
     for a in achados:
