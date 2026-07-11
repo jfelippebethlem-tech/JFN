@@ -320,7 +320,11 @@ _CATALOGO_CLAUSULAS: list[tuple[str, str, "re.Pattern[str]"]] = [
     ("capital_patrimonio", "economica",
      re.compile(r"(?:capital\s+social|patrim[ôo]nio\s+l[íi]quido)\s+(?:m[íi]nimo|integralizado|de|equivalente)", re.IGNORECASE)),
     ("indices_contabeis", "economica",
-     re.compile(r"\b(?:[íi]ndice(?:\s+de)?|liquidez(?:\s+(?:geral|corrente|seca))?|grau\s+de\s+endividamento|"
+     # "índice" SÓ quando seguido de um termo CONTÁBIL (liquidez/solvência/endividamento/imobilização/capital
+     # circulante) — senão "Índice Acidez/Iodo/Saponificação" de especificação de produto virava falso positivo.
+     re.compile(r"\b(?:[íi]ndice(?:\s+de)?\s+(?:liquidez|solv[êe]ncia|endividamento|imobiliza\w+|"
+                r"capital\s+circulante|corrente|geral|seca)"
+                r"|liquidez(?:\s+(?:geral|corrente|seca))?|grau\s+de\s+endividamento|"
                 r"solv[êe]ncia\s+geral)\b.{0,40}?(?:maior|superior|igual|m[íi]nim|≥|>=|\d[.,]\d)", re.IGNORECASE)),
     ("garantia_proposta", "economica",
      re.compile(r"garantia\s+(?:de\s+)?(?:proposta|participa[çc][ãa]o)", re.IGNORECASE)),
@@ -358,7 +362,11 @@ _EXCLUDENTES: dict[str, "re.Pattern[str]"] = {
     "marca_dirigida": re.compile(
         r"certid|declara[çc]|modelo\s+especial|modelo\s+[úu]nico|modelo\s+de\b|formul[áa]rio|requerimento|"
         r"marca\s+(?:temporal|d['´]?\s?[áa]gua|registrada)|folha\s+\d|anexo", re.IGNORECASE),
-    "indices_contabeis": re.compile(r"insolv|certid|nada\s+consta|fal[êe]ncia|recupera[çc][ãa]o\s+judicial", re.IGNORECASE),
+    "indices_contabeis": re.compile(
+        r"insolv|certid|nada\s+consta|fal[êe]ncia|recupera[çc][ãa]o\s+judicial|"
+        # especificação de produto (químico/físico) que casa "índice" mas não é índice contábil de habilitação:
+        r"acidez|iodo|saponifica|refra[çc][ãa]o|viscosidade|granulometr|umidade|teor\s|densidade|pureza|"
+        r"per[óo]xido|refrat[óo]metr|ph\b|brix", re.IGNORECASE),
 }
 
 

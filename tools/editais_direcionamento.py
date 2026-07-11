@@ -24,7 +24,6 @@ load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 from compliance_agent.editais import agrupar, clausulas, peer_diff  # noqa: E402
 from compliance_agent.editais import db as ed  # noqa: E402
 from compliance_agent.enxame import orquestrador  # noqa: E402
-from compliance_agent.reporting.pericia_fisc import ctx_de_achados  # noqa: E402
 
 REPO = Path(__file__).resolve().parent.parent
 
@@ -120,20 +119,25 @@ async def main():
     ap.add_argument("--max-candidatas", type=int, default=120)
     ap.add_argument("--limiar-raridade", type=float, default=0.7)
     ap.add_argument("--sem-pdf", action="store_true")
+    ap.add_argument("--so-relatorio", action="store_true",
+                    help="só (re)gera o PDF/XLSX dos vereditos JÁ avaliados — não re-roda o enxame (sem custo LLM)")
     ap.add_argument("--telegram", action="store_true")
     args = ap.parse_args()
 
     con = ed.conectar()
     ed.init_schema(con)
-    if args.clausulas:
-        print(f"cláusulas extraídas: {extrair_todas_clausulas(con)}", flush=True)
-    if args.clusters:
-        print(f"clusters: {agrupar.construir_clusters(con)}", flush=True)
-
-    achados = avaliar_clusters(con, args.max_candidatas, args.limiar_raridade)
-    achados.sort(key=lambda a: -a["risco"])
-    print(f"candidatas avaliadas: {len(achados)} | direcionamento (≥7): "
-          f"{sum(1 for a in achados if a['risco'] >= 7)}", flush=True)
+    if args.so_relatorio:
+        achados = []  # o montador lê direto de clausula_veredito; não precisa re-avaliar
+        print("modo --so-relatorio: regenerando do que já está em clausula_veredito", flush=True)
+    else:
+        if args.clausulas:
+            print(f"cláusulas extraídas: {extrair_todas_clausulas(con)}", flush=True)
+        if args.clusters:
+            print(f"clusters: {agrupar.construir_clusters(con)}", flush=True)
+        achados = avaliar_clusters(con, args.max_candidatas, args.limiar_raridade)
+        achados.sort(key=lambda a: -a["risco"])
+        print(f"candidatas avaliadas: {len(achados)} | direcionamento (≥7): "
+              f"{sum(1 for a in achados if a['risco'] >= 7)}", flush=True)
 
     hoje = datetime.now().date()
     fontes = [{"dado": "Editais (texto+itens)", "estado": "REAL", "fonte": "PNCP baixar_documentos",
@@ -142,21 +146,29 @@ async def main():
                "data": hoje.isoformat()},
               {"dado": "Classificação de cláusula", "estado": "REAL",
                "fonte": "E7 + jurisprudência + enxame free-tier", "data": hoje.isoformat()}]
-    resultado = {"achados": achados, "cobertura": {"edital_direcionamento": f"ok: {len(achados)}"}}
-    ctx = ctx_de_achados("Direcionamento de Editais — Prefeitura do Rio",
-                         "Comparação cláusula-a-cláusula entre editais de objeto semelhante · "
-                         "peer-diff + enxame de 5 lentes", resultado, fontes)
+    # Montador JURÍDICO dedicado (ficha completa por achado, sem truncar) — lê os vereditos
+    # persistidos em clausula_veredito e enriquece com órgão/processo/cláusula íntegra/súmulas.
+    # (o ctx_de_achados genérico achatava tudo numa tabela título+descrição — ver relatorio_direcionamento.py)
+    from compliance_agent.reporting.relatorio_direcionamento import montar_ctx as montar_ctx_dir
+    ctx = montar_ctx_dir(con)
+    ctx["proveniencia"] = fontes
+    ctx["rotulo_score"] = "Gravidade do achado de maior escore"
+    # XLSX de apoio: exporta a lista COMPLETA de vereditos do banco (não só os achados desta rodada),
+    # para o anexo do PDF ter respaldo consultável — inclui os descartados e a cauda.
     saidas = []
     try:
         import pandas as pd
+        rows_db = con.execute(
+            "SELECT numero_controle_pncp, cluster_id, raridade, forca_e7, sumula, score_final, veredito, votos_json "
+            "FROM clausula_veredito ORDER BY score_final DESC").fetchall()
         xlsx = REPO / "reports" / f"editais_direcionamento_{hoje}.xlsx"
-        pd.DataFrame([{**a, "evidencias": json.dumps(a["evidencias"], ensure_ascii=False, default=str)}
-                      for a in achados]).to_excel(xlsx, index=False)
+        pd.DataFrame([dict(r) for r in rows_db]).to_excel(xlsx, index=False)
         saidas.append(xlsx)
     except Exception as e:
         print(f"xlsx INDISPONÍVEL: {e}")
 
-    if not args.sem_pdf and achados:
+    tem_vereditos = bool(con.execute("SELECT 1 FROM clausula_veredito LIMIT 1").fetchone())
+    if not args.sem_pdf and tem_vereditos:
         from tools.vm_guard import cleanup_orphans, wait_until_safe
         cleanup_orphans()
         ok, msg = wait_until_safe()
@@ -169,10 +181,10 @@ async def main():
 
     if args.telegram and saidas:
         from compliance_agent.notifications.telegram import enviar_arquivo
-        n_dir = sum(1 for a in achados if a["risco"] >= 7)
+        n_dir = ctx.get("_dados", {}).get("quentes", sum(1 for a in achados if a.get("risco", 0) >= 7))
         for s in saidas:
-            await enviar_arquivo(str(s), caption=f"Direcionamento de editais PCRJ — {hoje} "
-                                                 f"({n_dir} com veredito de direcionamento)")
+            await enviar_arquivo(str(s), caption=f"Fiscalização de direcionamento em editais — {hoje} "
+                                                 f"({n_dir} achados de direcionamento; ficha jurídica por achado)")
 
     # casos fortes → vault
     for a in achados:
