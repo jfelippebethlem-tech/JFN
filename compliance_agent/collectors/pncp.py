@@ -545,3 +545,55 @@ async def coletar_contratacoes_municipio_rio(data_ini: str, data_fim: str,
     if falhas_pag1 == len(modalidades or MODALIDADES_PADRAO):
         return {"verificado": False, "itens": [], "motivo": "PNCP /contratacoes indisponível"}
     return {"verificado": True, "itens": itens, "motivo": None}
+
+
+# ---------------------------------------------------------------------------
+# Termos aditivos (api/pncp/v1) — o valor/prazo que o aditivo mudou
+# ---------------------------------------------------------------------------
+
+def _parse_termo(t: dict) -> dict:
+    return {
+        "sequencial_termo": t.get("sequencialTermoContrato"),
+        "numero_termo": t.get("numeroTermoContrato"),
+        "objeto": t.get("objetoTermoContrato"),
+        "valor_acrescido": t.get("valorAcrescido"),
+        "valor_global": t.get("valorGlobal"),
+        "prazo_aditado_dias": t.get("prazoAditadoDias"),
+        "vigencia_fim": t.get("dataVigenciaFim"),
+        "qualif_acrescimo": t.get("qualificacaoAcrescimoSupressao"),
+        "qualif_vigencia": t.get("qualificacaoVigencia"),
+        "qualif_reajuste": t.get("qualificacaoReajuste"),
+        "fundamento_legal": t.get("fundamentoLegal"),
+    }
+
+
+async def termos_contrato(cnpj: str, ano, seq) -> list[dict]:
+    """Termos aditivos de um contrato (api/pncp/v1; 200=lista, 204=sem termos)."""
+    try:
+        async with httpx.AsyncClient(timeout=30) as c:
+            r = await c.get(f"{PNCP_BASE}/orgaos/{cnpj}/contratos/{ano}/{seq}/termos",
+                            headers={"User-Agent": "JFN-Compliance/2.0"})
+            if r.status_code != 200:
+                return []
+            return [_parse_termo(t) for t in (r.json() or [])]
+    except Exception:
+        return []
+
+
+async def coletar_aditivos(con, numero_controle_pncp: str) -> int:
+    """'CNPJ-2-SEQ/ANO' → grava termos em contrato_aditivo. Idempotente."""
+    pr = _parse_id_pncp(numero_controle_pncp)
+    if not pr:
+        return 0
+    cnpj, ano, seq = pr
+    termos = await termos_contrato(cnpj, ano, seq)
+    for row in termos:
+        con.execute(
+            """INSERT OR IGNORE INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
+                 numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
+                 vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal)
+               VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
+                 :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,:fundamento_legal)""",
+            {**row, "ncp": numero_controle_pncp})
+    con.commit()
+    return len(termos)
