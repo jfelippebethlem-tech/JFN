@@ -12,6 +12,8 @@ import re
 ADITIVO_LIMITE = 0.25          # art. 125 — acréscimo de valor
 ADITIVO_REFORMA = 0.50         # 50% só reforma de edifício/equipamento
 SOBREPRECO_RATIO = 1.3         # >30% acima da referência = candidato
+SOBREPRECO_RATIO_MAX = 8.0     # acima disso = quase sempre CATMAT errado/unidade divergente, NÃO sobrepreço real
+SOBREPRECO_MIN_N = 3           # referência só vale com base de mercado suficiente
 PRORROGACAO_MIN_EXERC = 3
 
 _RX_REFORMA = re.compile(r"reforma|edif[íi]cio|equipamento", re.IGNORECASE)
@@ -62,19 +64,13 @@ def t_prorrogacao(d: dict) -> list[dict]:
 
 
 def t_execucao_financeira(d: dict) -> list[dict]:
-    """Pago acima do valor global do contrato (empenho/liquidação/pago sempre separados)."""
-    c = d.get("contrato", {})
-    p = d.get("pagamentos", {})
-    vg = c.get("valor_global") or 0
-    pago = p.get("pago") or 0
-    if vg > 0 and pago > vg:
-        return [_achado(
-            "execucao_financeira", 7,
-            f"Pago ao credor (R$ {_brl(pago)}) acima do valor global do contrato (R$ {_brl(vg)}). "
-            f"Empenhado R$ {_brl(p.get('empenhado'))}; liquidado R$ {_brl(p.get('liquidado'))}; "
-            f"pago R$ {_brl(pago)}. Verificar liquidação regular (art. 63).",
-            "Lei 14.133/2021, art. 63",
-            {"pago": pago, "valor_global": vg})]
+    """NÃO AVALIÁVEL com a base atual (honestidade: ausente ≠ 0).
+
+    `pcrj_despesa.pago` é a soma de TODOS os pagamentos do fornecedor no período —
+    não liga a ESTE contrato (não há vínculo NL/empenho→contrato na base municipal).
+    Comparar o total do fornecedor com o valor de um contrato gera falso-positivo
+    sistemático (revisão à mão 2026-07-11). Fica para o Spec 3 (SEI liga empenho→
+    contrato→medição). Até lá, esta dimensão não emite achado."""
     return []
 
 
@@ -91,8 +87,12 @@ def t_sobrepreco(d: dict, ref_fn=None) -> list[dict]:
         ref = ref_fn(desc)
         if not ref or not ref.get("disponivel") or not ref.get("mediana"):
             continue
+        if (ref.get("n") or 0) < SOBREPRECO_MIN_N:
+            continue                                   # base de mercado insuficiente
         ratio = vu / ref["mediana"]
-        if ratio <= SOBREPRECO_RATIO:
+        # descarta os dois lados suspeitos: ≤1.3× é normal; >8× é quase sempre CATMAT
+        # errado ou unidade divergente (caixa×unidade) — não é sobrepreço real (revisão à mão)
+        if ratio <= SOBREPRECO_RATIO or ratio > SOBREPRECO_RATIO_MAX:
             continue
         risco = min(9, 5 + int(ratio))
         achados.append(_achado(

@@ -16,11 +16,11 @@ def test_t_aditivo_so_prazo_nao_dispara():
     assert T.t_aditivo(d) == []
 
 
-def test_t_execucao_pago_acima():
+def test_t_execucao_nao_avaliavel():
+    # pcrj_despesa não liga pagamento a contrato → não emite achado (ausente ≠ 0)
     d = {"contrato": {"valor_global": 100000},
          "pagamentos": {"pago": 150000, "empenhado": 150000, "liquidado": 150000}}
-    a = T.t_execucao_financeira(d)
-    assert a and a[0]["risco"] >= 6
+    assert T.t_execucao_financeira(d) == []
 
 
 def test_t_sobrepreco_peer():
@@ -28,6 +28,17 @@ def test_t_sobrepreco_peer():
     a = T.t_sobrepreco(d, ref_fn=lambda desc: {"disponivel": True, "mediana": 10.0, "n": 5})
     assert a and a[0]["risco"] >= 6
     assert a[0]["proveniencia"]["ratio"] >= 3.0
+
+
+def test_t_sobrepreco_ratio_absurdo_descartado():
+    # 800× = CATMAT errado, não sobrepreço → não marca
+    d = {"itens": [{"descricao": "endonuclease", "valor_unitario": 1600.0}], "contrato": {}}
+    assert T.t_sobrepreco(d, ref_fn=lambda desc: {"disponivel": True, "mediana": 1.94, "n": 50}) == []
+
+
+def test_t_sobrepreco_base_insuficiente():
+    d = {"itens": [{"descricao": "x", "valor_unitario": 30.0}], "contrato": {}}
+    assert T.t_sobrepreco(d, ref_fn=lambda desc: {"disponivel": True, "mediana": 10.0, "n": 1}) == []
 
 
 def test_t_sobrepreco_sem_ref_nao_marca():
