@@ -11,7 +11,9 @@
 243200  # INEA — Ambiente (16k OB)
 140100  # SECC — Casa Civil / Governo (10k OB)
 570100  # SEGOV — Secretaria de Estado de Governo
-# DETRAN: sem OB na base (autarquia c/ orçamento próprio — não capturado no SIAFE central; lacuna anotada)
+263100  # DETRAN — Departamento de Trânsito do RJ (27k OB, 199 processos SEI — dono confirmou acesso 2026-07-11)
+123400  # FUNSERJ — Fundo Único de Previdência do ERJ (8k OB, 165 processos SEI)
+123404  # FUNSERJ — Fundo Único de Previdência ERJ / Executivo
 660100  # Sec. das Cidades — MUV São Gonçalo/Grupo Vieira (editais dos ~10 CNPJs, ex. SEI-510001/000571/2024)
-# FUNSERJ (Fundo Soberano do Estado do RJ): SEM dados na base — UG não capturada no SIAFE-Rio ainda
-# (depende de liberar a chave SIAFE p/ todas as UGs). Quando o código entrar na cobertura, adicionar aqui.
+# CORREÇÃO 2026-07-11 (dono): FUNSERJ (123400) e DETRAN (263100) TÊM acesso via SIAFE e já estão na
+# base (OBs coletadas) — a nota anterior de "sem dados" estava errada. Ambos adicionados ao foco acima.
