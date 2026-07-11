@@ -19,7 +19,10 @@ _CKPT = _REPO / "data" / "sei_cache" / "siafe_sweep_ugs_ckpt.json"
 _LOG = _REPO / "data" / "siafe_sweep_ugs.log"
 
 # UGs prioritárias (códigos do dropdown selUg do SIAFE-Rio2). Casa Civil resolvida ao vivo.
-ALVOS = {"030100": "TJ (TJRJ)", "290100": "SES", "180100": "SEEDUC"}
+ALVOS = {"030100": "TJ (TJRJ)", "290100": "SES", "180100": "SEEDUC",
+         "226300": "FSERJ — FUNDO SOBERANO do ERJ (sem OB na base; coletar — dono 2026-07-11)",
+         "263100": "DETRAN-RJ", "294200": "FUNDAÇÃO SAÚDE", "296100": "FES",
+         "243200": "INEA", "200900": "SEFAZ", "570100": "SEGOV", "140100": "Casa Civil"}
 ANOS = [2026, 2025, 2024]   # SIAFE 2.0 (2016–2023 = SIAFE 1, fase futura)
 
 
