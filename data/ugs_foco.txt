@@ -1,7 +1,17 @@
 # UGs sob FOCO/teste — o sweep SEI mira os processos destas (por valor) a cada ciclo.
 # Formato: <codigo_ug>  # nome livre. Linhas iniciadas por # são ignoradas.
-180100  # SEEDUC — Secretaria de Estado de Educacao
+# --- OS SEIS ÓRGÃOS DO GOVERNO DO ESTADO (pedido do dono 2026-07-11): ler as ÁRVORES
+# --- dos processos SEI das OBs de cada um, via itkava (não só PNCP). Por valor, resumível.
+180100  # SEEDUC — Educação (139k OB)
+210700  # SEEDUC — Educação (unidade 2)
+294200  # FSERJ — Saúde / Fundação Saúde (80k OB)
+296100  # FES — Saúde / Fundo Estadual de Saúde (71k OB)
+200900  # SEFAZ — Fazenda (10k OB)
+200100  # SEFAZ — Fazenda (unidade 2)
+243200  # INEA — Ambiente (16k OB)
+140100  # SECC — Casa Civil / Governo (10k OB)
 570100  # SEGOV — Secretaria de Estado de Governo
+# DETRAN: sem OB na base (autarquia c/ orçamento próprio — não capturado no SIAFE central; lacuna anotada)
 660100  # Sec. das Cidades — MUV São Gonçalo/Grupo Vieira (editais dos ~10 CNPJs, ex. SEI-510001/000571/2024)
 # FUNSERJ (Fundo Soberano do Estado do RJ): SEM dados na base — UG não capturada no SIAFE-Rio ainda
 # (depende de liberar a chave SIAFE p/ todas as UGs). Quando o código entrar na cobertura, adicionar aqui.
