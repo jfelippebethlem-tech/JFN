@@ -695,8 +695,6 @@ class SIAFEBrowser:
         await self._vaadin_settle(3)
         await self.screenshot("05_fv_initial")
 
-        body = await self._page.inner_text("body")
-
         # FlexVision login page has input[type=text] + input[type=password]
         user_inp = await self._page.query_selector("input[type='text']")
         pass_inp = await self._page.query_selector("input[type='password']")

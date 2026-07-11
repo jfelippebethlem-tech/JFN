@@ -4,7 +4,11 @@
 nº do Processo SEI (que NÃO está no grid de 19 colunas, mas EXISTE no detalhe — dono confirmou).
 Robusto: captura traceback + screenshot em CADA passo; grava json mesmo em falha. NUNCA culpar acesso/WAF.
 Salva data/sei_cache/siafe1_ob_detalhe.json + screenshots. VM-guarded."""
-import asyncio, json, os, sys, traceback
+import asyncio
+import json
+import os
+import sys
+import traceback
 from pathlib import Path
 os.environ["JFN_SIAFE_LOGIN_URL"] = "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

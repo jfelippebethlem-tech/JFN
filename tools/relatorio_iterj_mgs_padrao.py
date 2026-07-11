@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """Relatório ITERJ→MGS no PADRÃO da casa (Kroll/Deloitte) via render_html+html_to_pdf.
 Fonte: SIAFE DIRETO (ob_orcamentaria_siafe). Gera PDF em reports/ e dumpa manifesto de números p/ verificação."""
-import asyncio, json, sqlite3, sys
+import asyncio
+import json
+import sqlite3
+import sys
 from collections import Counter
 from datetime import datetime
 from pathlib import Path

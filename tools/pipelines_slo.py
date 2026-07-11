@@ -13,7 +13,6 @@ Cron: horário (7 * * * *). Debounce por estado em data/pipelines_slo_estado.jso
 from __future__ import annotations
 
 import json
-import os
 import sys
 import time
 from pathlib import Path

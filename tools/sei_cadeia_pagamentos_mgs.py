@@ -4,7 +4,10 @@
 o nº SEI + as Notas Fiscais (competência/valor) — para achar os pagamentos de 2022-2023 e suas NFs.
 Usa sei_reader.ler_com_cadeia (abre cada relacionado na MESMA sessão). VM-guarded.
 Uso: sei_cadeia_pagamentos_mgs.py [330005/000007/2024]"""
-import asyncio, json, sys, re
+import asyncio
+import json
+import sys
+import re
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))
 from tools.vm_guard import preflight, cleanup_orphans

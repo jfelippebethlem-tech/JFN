@@ -16,11 +16,14 @@ select = ["E4", "E7", "E9", "F", "W6"]
 #   E701/E702 = múltiplos statements numa linha (terso, intencional)
 #   E741       = nome de variável ambíguo (l, I) em código legado
 #   F541       = será limpo no ratchet, mas não é bug
-ignore = ["E701", "E702", "E741"]
+#   E402       = import após bootstrap (load_dotenv/sys.path em CLI; fachada de re-export no lex) — deliberado
+#   E731       = lambda nomeada (terso, mesmo espírito do E701)
+ignore = ["E701", "E702", "E741", "E402", "E731"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["F401", "F811", "E402"]  # fixtures/imports condicionais em teste
 "__init__.py" = ["F401"]               # re-exports
+"tools/debug/*" = ["F841"]             # sonda: atribuições documentam o que foi testado no browser
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

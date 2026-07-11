@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """Corrige a ingestão SIAFE 1 (2022/2023 ITERJ, mapeando pelo HEADER real) e monta o relatório
 consolidado ITERJ->MGS 2022-2026 (SIAFE 1+2), deduplicado, e envia ao Yoda."""
-import json, re, sqlite3, time
+import json
+import re
+import sqlite3
+import time
 from pathlib import Path
 import httpx
 

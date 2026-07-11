@@ -5,7 +5,10 @@ execução orçamentária, concentração/redes (dados), perícia documental Lex
 lex_execucao + leitura própria dos casos prioritários), integridade do ecossistema, matriz de risco P×I,
 recomendações, proveniência. Honestidade: indício≠acusação · INDISPONÍVEL≠0 · empenho≠liquidação≠OB.
 Uso: .venv/bin/python tools/relatorio_bombeiros.py [--enviar]"""
-import sqlite3, json, asyncio, sys, pathlib, datetime
+import sqlite3
+import json
+import asyncio
+import sys
 from compliance_agent.reporting.render_html import render_html, html_to_pdf
 
 DB = "/home/ubuntu/JFN/data/compliance.db"
@@ -244,7 +247,8 @@ def main():
     asyncio.run(html_to_pdf(html, dest))
     print("PDF:", dest)
     if "--enviar" in sys.argv:
-        import os, httpx
+        import os
+        import httpx
         from compliance_agent.envfile import carregar_env
         carregar_env()
         tok=os.environ["TELEGRAM_BOT_TOKEN"]; chat=os.environ.get("TELEGRAM_CHAT_ID")

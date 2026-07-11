@@ -156,7 +156,6 @@ async def buscar_tcu(termo: str, max_resultados: int = 5) -> list[dict]:
     Busca na API pública de Jurisprudência Selecionada do TCU.
     Retorna lista de {numero, tipo, ementa, link}.
     """
-    url = "https://pesquisa.apps.tcu.gov.br/redireciona/acordao-completo/"
     # API de busca textual do TCU
     api_url = "https://pesquisa.apps.tcu.gov.br/resultado/acordao-completo"
     params = {

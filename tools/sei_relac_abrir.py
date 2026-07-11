@@ -3,7 +3,10 @@
 """Abre o processo (cracked), pega os URLs dos RELACIONADOS e abre CADA UM lendo o nº SEI do cabeçalho
 (span/título 'Processo SEI-...'). Acha os processos de pagamento 2022/2023. VM-guarded.
 Uso: sei_relac_abrir.py 330005/000007/2024"""
-import asyncio, json, sys, re
+import asyncio
+import json
+import sys
+import re
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))
 from tools.vm_guard import preflight, cleanup_orphans

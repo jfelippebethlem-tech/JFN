@@ -6,18 +6,16 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
-import os
-from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter
 
 logger = logging.getLogger(__name__)
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:  # anotação apenas; import real é lazy nos handlers
     from compliance_agent.hermes_goal import HermesGoalAgent
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 router = APIRouter()
 

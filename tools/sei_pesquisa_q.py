@@ -3,7 +3,10 @@
 """SEI Pesquisa avançada (campo `q` = Texto para Pesquisa, busca CONTEÚDO dos documentos).
 Roda vários termos numa só sessão e lista os processos achados — p/ achar o processo da
 contratação do contrato 005/2021 (MGS Clean) que guarda a planilha de custos."""
-import asyncio, sys, re, json
+import asyncio
+import sys
+import re
+import json
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR
 

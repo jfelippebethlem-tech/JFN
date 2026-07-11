@@ -2,7 +2,10 @@
 """Triagem pericial determinística dos contratos do FUNESBOM (CBMERJ) 2024+.
 Não emite veredito de sobrepreço/direcionamento (exige corpus SEI). Prioriza p/ a fase documental.
 Honestidade: indício != acusação; INDISPONÍVEL != 0."""
-import sqlite3, re, collections, json
+import sqlite3
+import re
+import collections
+import json
 con = sqlite3.connect("file:/home/ubuntu/JFN/data/compliance.db?mode=ro", uri=True, timeout=30)
 c = con.cursor()
 UNI = "FUNESBOM - FUNDO ESPECIAL DO CORPO DE BOMBEIROS"
@@ -26,12 +29,12 @@ for nome, base, n, tot in c.execute("""SELECT nome_socio,cnpjs_basicos,n_fornece
         redes.setdefault(b.strip(), []).append((nome, n, tot))
 
 # --- contratos licitados 2024+ ---
-contr = c.execute(f"""SELECT processo,sei_norm,ano_processo,data_contratacao,valor_contrato,
+contr = c.execute("""SELECT processo,sei_norm,ano_processo,data_contratacao,valor_contrato,
     criterio_julgamento,fornecedor,cnpj,objeto,valor_empenhado,valor_liquidado,valor_pago,vig_inicio,vig_fim
     FROM contratos_tcerj WHERE unidade=? AND CAST(ano_processo AS INT)>=2024 AND valor_contrato>0""",(UNI,)).fetchall()
 
 # --- compras diretas (dispensa/inexigibilidade) 2024+ ---
-diretas = c.execute(f"""SELECT processo,sei_norm,ano_processo,valor,objeto,enquadramento_legal,fornecedor
+diretas = c.execute("""SELECT processo,sei_norm,ano_processo,valor,objeto,enquadramento_legal,fornecedor
     FROM compras_diretas_tcerj WHERE unidade=? AND CAST(ano_processo AS INT)>=2024 AND valor>0""",(UNI,)).fetchall()
 
 def cnpj_base(x): return re.sub(r"\D","",x or "")[:8]

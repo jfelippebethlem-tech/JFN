@@ -117,7 +117,7 @@ def matriz_risco(an):
     if an["redondos"]:
         R.append(("R04", f"{len(an['redondos'])} OB(s) com valor redondo (múltiplo de R$10k) — padrão atípico", 4, 5))
     # aditivos em contratos
-    aditiv = sum(1 for c in [] )  # contratos sem coluna aditivos confiável aqui
+    # contratos sem coluna de aditivos confiável aqui — sem regra R de aditivo por ora
     if an["n_ct"] and an["total_ct"] > 50_000_000:
         R.append(("R05", "Exposição contratual elevada com o Estado (>R$50mi) — dependência de receita pública", 3, 6))
     if not R:

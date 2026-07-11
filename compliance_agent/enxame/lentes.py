@@ -34,7 +34,7 @@ def _parse(resp: str) -> dict:
             v = max(0, min(10, v))
         return {"voto": v, "justificativa": str(j.get("justificativa", ""))[:500],
                 "citacao": str(j.get("citacao", ""))[:200]}
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         return {"voto": None, "justificativa": "JSON malformado", "citacao": ""}
 
 

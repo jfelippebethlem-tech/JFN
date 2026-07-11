@@ -28,16 +28,11 @@ from __future__ import annotations
 
 import asyncio
 import json
-import os
-import re
-import sqlite3
 import sys
-from collections import OrderedDict, defaultdict
 from datetime import date
 from pathlib import Path
 from typing import Optional
 
-from fpdf.enums import XPos, YPos
 
 
 
@@ -356,7 +351,6 @@ def gerar(cnpj: Optional[str] = None, empresa: Optional[str] = None,
 # Storage SOMADO (R2 primário + B2 transbordo, cada foto em 1 bucket). A localização COMPLETA
 # ('remote:bucket/objeto') está em `verificacao_sede.visual_img_b2`; aqui só LEMOS do local EXATO gravado
 # (um `rclone cat`), sem failover/duplicação. A foto NÃO fica na VM — é baixada on-demand p/ embutir no PDF.
-from compliance_agent import fachada_remotes as _fr  # noqa: E402
 
 
 

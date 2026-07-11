@@ -4,7 +4,9 @@
 Wrapper de compliance_agent.llm.auto_melhoria. Uso: hermes_auto_melhoria.py {seed|run}.
 - seed: semeia as auto-correções fundacionais (categoria `metodo`).
 - run : semeia + roda a crítica metacognitiva (confronta outputs do Hermes com veredittos)."""
-import sys, json, asyncio
+import sys
+import json
+import asyncio
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from compliance_agent.llm.auto_melhoria import seed_metodos, auto_melhorar

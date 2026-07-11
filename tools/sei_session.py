@@ -14,7 +14,9 @@ Uso:
   python tools/sei_session.py aquecer --force   # força novo login
 """
 from __future__ import annotations
-import asyncio, json, sys
+import asyncio
+import json
+import sys
 from pathlib import Path
 
 _REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(_REPO))

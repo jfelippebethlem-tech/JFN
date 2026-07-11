@@ -2,7 +2,8 @@
 """Lex SÓ nos contratos do FUNESBOM (não no corpus inteiro): pericía execução das fichas bombeiros
 (SEI-2700%) com docs e ainda não avaliadas, em ordem de nº de docs. Reusa avaliar_processo canônico.
 Sem Gemini (GEMINI_DISABLED=1 → cadeia free). Honestidade: indício≠acusação; INDISPONÍVEL≠irregular."""
-import argparse, json
+import argparse
+import json
 import tools.lex_execucao as L
 from compliance_agent.direcionamento_cerebro import gerar_sync
 

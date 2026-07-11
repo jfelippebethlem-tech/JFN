@@ -9,7 +9,7 @@ Regra: a dívida só pode CAIR. Curou handlers? ABAIXE o teto no commit.
 Precisa de um `pass` legítimo novo? Logue (`logger.debug`) em vez de calar,
 ou justifique no commit por que o teto subiu.
 
-Curas: 6 levas até 280aa62 (250) + 8ª (24) — teto 150 em 2026-07-07; restante = utilitários one-shot e ≤2 esparsos.
+Curas: 6 levas até 280aa62 (250) + 8ª (24) + 9ª 2026-07-11 (5: vault-nota/cerebro_sync/rede) — teto 147.
 """
 import ast
 from pathlib import Path
@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # Fora da catraca: experimental/debug (baixo valor) e infra.
 SKIP = ("_SANDBOX", "tools/debug", ".venv", "tests", ".stversions", "__pycache__", "node_modules")
 
-TETO_MUDOS_PRODUCAO = 150  # 2026-07-07 — só abaixar (ou subir com justificativa no commit)
+TETO_MUDOS_PRODUCAO = 147  # 2026-07-11 — só abaixar (ou subir com justificativa no commit)
 
 
 def _mudos(py: Path) -> list[int]:

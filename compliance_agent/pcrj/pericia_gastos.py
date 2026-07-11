@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from datetime import date, datetime
 
 logger = logging.getLogger(__name__)
@@ -105,7 +104,7 @@ def _consulta_minhareceita(cnpj: str) -> dict | None:
         r = httpx.get(f"https://minhareceita.org/{cnpj}", timeout=30)
         if r.status_code == 200:
             return r.json()
-    except Exception as e:
+    except (httpx.HTTPError, ValueError) as e:
         logger.warning("d8: minhareceita INDISPONÍVEL p/ %s: %s", cnpj, e)
     return None
 

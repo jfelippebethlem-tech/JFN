@@ -38,7 +38,7 @@ def descobrir_arquivos() -> dict:
         r = httpx.get(_PAG_DADOS_ABERTOS, headers=_UA, timeout=60)
         r.raise_for_status()
         html = r.content.decode("latin-1", errors="replace")
-    except Exception as e:
+    except httpx.HTTPError as e:
         return {"verificado": False, "arquivos": [], "motivo": f"riotransparente: {e}"}
     arquivos = []
     for m in re.finditer(r'href="([^"]*arquivos/Open_Data_([A-Za-z_]+?)_(\d{4})\.csv)"', html):

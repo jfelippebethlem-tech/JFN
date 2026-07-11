@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Diagnóstico do estado do SEI pós-login: workspace? 2FA? login? E uma busca de teste."""
-import asyncio, sys
+import asyncio
+import sys
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR
 

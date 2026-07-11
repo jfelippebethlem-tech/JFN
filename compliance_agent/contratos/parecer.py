@@ -133,7 +133,6 @@ def gravar_e_aprender(con, parecer: dict) -> None:
          json.dumps(parecer["dimensoes"], ensure_ascii=False),
          json.dumps(parecer, ensure_ascii=False, default=str)))
     con.commit()
-    forn = ""
     for f in parecer.get("fundamentacao", []):
         memoria.registrar_veredito(con, f"contrato_{f['dimensao']}",
                                    parecer["relatorio"].get("fornecedor", "")[:60],

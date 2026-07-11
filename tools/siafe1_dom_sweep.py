@@ -4,7 +4,11 @@
 robusto até carregar), e dumpa TODO o DOM relevante (tag/id/classe/texto/title/href/onclick) de cada tela.
 Depois clica sistematicamente nos elementos de toolbar/menu e re-dumpa, pra mapear o caminho do Processo.
 Salva data/sei_cache/siafe1_dom_*.json + screenshots. NUNCA culpar acesso. VM-guarded."""
-import asyncio, json, os, sys, traceback
+import asyncio
+import json
+import os
+import sys
+import traceback
 from pathlib import Path
 os.environ["JFN_SIAFE_LOGIN_URL"] = "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

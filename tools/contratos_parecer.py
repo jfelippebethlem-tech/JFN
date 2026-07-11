@@ -8,7 +8,6 @@ Uso: tools/contratos_parecer.py [--max-contratos N] [--sem-pdf] [--telegram]
 """
 import argparse
 import asyncio
-import json
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -123,8 +122,8 @@ def main():
                     f"# Parecer — Contrato {p['numero_controle_pncp']}\n\n"
                     f"**Conclusão:** {p['conclusao']} · **Voto:** {p['voto']}\n\n"
                     f"Dimensões: {', '.join(p['dimensoes'])}\n", encoding="utf-8")
-            except Exception:
-                pass
+            except OSError as e:
+                print(f"  nota do vault não gravada: {e}", file=sys.stderr)
 
     for s in saidas:
         print("saída:", s)

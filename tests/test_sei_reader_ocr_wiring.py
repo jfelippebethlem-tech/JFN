@@ -57,6 +57,11 @@ class _FakePage:
     async def evaluate(self, _js):
         return self._inner_text
 
+    @property
+    def frames(self):
+        # o reader varre pg.frames (fix dos iframes 2026-07-10); o fake expõe a si mesmo como frame único
+        return [self]
+
 
 def test_innertext_vazio_dispara_ocr_e_marca_via(monkeypatch):
     chamou = {"ocr": 0}

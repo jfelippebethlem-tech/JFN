@@ -10,14 +10,14 @@ flagueado, a COMPRA de origem de cada empenho no PNCP (numeroControlePncpCompra
   Pregão/Concorrência (ata, SRP)      → indício DERRUBADO (compra licitada)
 
 Atualiza alertas.status: 'confirmado' | 'descartado' | 'novo' (sem dado).
-Uso: .venv/bin/python tools/pcrj_d7_verificar.py [--desde 20240101]
+Uso: .venv/bin/python tools/pcrj_d7_verificar.py
 Só LÊ o compliance.db fora do lock (updates de status são curtos).
 """
 import argparse
 import asyncio
 import json
 import sys
-from datetime import date, datetime
+from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -52,10 +52,7 @@ async def _modalidade_da_compra(numero_compra: str, cache: dict) -> tuple[int | 
 
 
 async def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--desde", default="20240101")
-    args = ap.parse_args()
-    d_ini = datetime.strptime(args.desde, "%Y%m%d").date()
+    argparse.ArgumentParser().parse_args()
 
     con = edb.conectar()
     alertas = con.execute(

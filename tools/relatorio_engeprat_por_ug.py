@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Engeprat — perícia por UG (cada UG = um órgão; código+denominação) → PDF (chromium) → Yoda."""
-import re, sqlite3, subprocess, sys
+import re
+import sqlite3
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

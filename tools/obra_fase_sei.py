@@ -9,7 +9,10 @@ Honestidade: se os autos NÃO evidenciam avanço físico (só liquidação/empen
 
 Uso: python -m tools.obra_fase_sei [--limite N]
 """
-import argparse, json, os, sqlite3
+import argparse
+import json
+import os
+import sqlite3
 from compliance_agent.llm import free_llm
 
 DB = os.environ.get("JFN_DB") or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "compliance.db")

@@ -10,13 +10,11 @@ import logging
 import os
 import re
 import sqlite3
-import time
 from collections import OrderedDict, defaultdict
-from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
-from compliance_agent.reporting.intel_base import _DATA, _DB, _REGISTRY, fmt_cnpj, moeda, so_digitos, _slug
+from compliance_agent.reporting.intel_base import _DB, _REGISTRY, moeda, so_digitos
 
 logger = logging.getLogger(__name__)
 

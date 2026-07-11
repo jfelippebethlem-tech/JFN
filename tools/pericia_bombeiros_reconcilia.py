@@ -6,7 +6,9 @@
 - detecta CAPTURA-RASA (dossiê não bate com o objeto do contrato → re-coletar árvore de contratação);
 - registra divergência Lex×Claude p/ revisão humana.
 Honestidade: indício != acusação; INDISPONÍVEL != 0. Determinístico (sem LLM)."""
-import sqlite3, json, re
+import sqlite3
+import json
+import re
 
 DB = "/home/ubuntu/JFN/data/compliance.db"
 FILA = "/home/ubuntu/JFN/data/bombeiros_sei_fila.json"
@@ -83,7 +85,7 @@ def main():
         #    desembolso/concessionária; ou administrativo plano-de-contingência/encaminhamento), não a
         #    árvore de contratação → indeterminado, re-coletar. (gabarito: Enge Prat desembolso R$505;
         #    ImagemVida "Plano de Contingência" p/ credenciamento.)
-        oc = (obj_contrato or "").upper(); of = (obj_ficha or "").upper()
+        of = (obj_ficha or "").upper()
         capt_blob = of + " " + (fresumo or "").upper()
         ROTINA_RH = ("ARQUIVAMENTO", "NOMEA", "REINTEGRA")
         ROTINA_NCONTRAT = ("PROGRAMAÇÃO DE DESEMBOLSO", "PROGRAMACAO DE DESEMBOLSO", "PAGAMENTO DE DESPESAS COM CONCESSION",
@@ -96,7 +98,6 @@ def main():
             claude_risco = None  # indeterminado: não periciável com este dossiê
 
         # 4) ELEVAÇÃO por sinal estrutural real (rede de sócio / dispensa-emerg + alto valor / valor redondo)
-        base = re.sub(r"\D", "", (meta.get("orig") or ""))[:8]
         score = meta.get("score", 0)
         sinal = [f for f in flags if any(t in f for t in ("rede_socio", "EMERGENCIA", "domina_nicho", "pago>contrato"))]
         if claude_risco is not None and sinal and not legit_mono and (meta.get("valor") or 0) >= 1_000_000:

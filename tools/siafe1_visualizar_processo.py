@@ -2,7 +2,11 @@
 """SIAFE-1: recupera o Processo SEI via caminho CONFIRMADO — selecionar linha do grid OB → clicar
 'Visualizar' (link x12k) → detalhe da OB com o campo Processo. UM login só (não martelar; SIAFE-1 throttla
 por burst → ~1 nav limpo por cooldown). Grava data/sei_cache/siafe1_visualizar.json + screenshot."""
-import asyncio,json,os,sys,traceback
+import asyncio
+import json
+import os
+import sys
+import traceback
 from pathlib import Path
 os.environ["JFN_SIAFE_LOGIN_URL"]="https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"
 REPO=Path("/home/ubuntu/JFN");sys.path.insert(0,str(REPO))

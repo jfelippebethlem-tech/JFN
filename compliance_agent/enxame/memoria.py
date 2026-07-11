@@ -8,6 +8,8 @@ só normas). O loop llm/auto_melhoria consome essa memória semanalmente.
 """
 from __future__ import annotations
 
+import sqlite3
+
 
 def registrar_veredito(con, categoria: str, chave: str, veredito: str, score: int) -> None:
     """UPSERT por (categoria, chave); incrementa n_observacoes, guarda o último veredito."""
@@ -34,7 +36,7 @@ def contexto_memoria(con, categoria: str, chave: str) -> str:
         row = con.execute(
             "select valor, n_observacoes from memoria_aprendizado where categoria=? and chave=?",
             (categoria, chave)).fetchone()
-    except Exception:
+    except sqlite3.Error:
         return ""
     if not row or not row[0]:
         return ""

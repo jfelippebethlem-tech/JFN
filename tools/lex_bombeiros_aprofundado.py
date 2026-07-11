@@ -10,7 +10,12 @@ Custo (§4.1): NVIDIA NIM, guardado pelo cap mensal de `nvidia` (_cap_ok/_cap_in
 
 Uso: cd ~/JFN && PYTHONPATH=. .venv/bin/python -m tools.lex_bombeiros_aprofundado [--top N]
 """
-import os, sqlite3, json, time, argparse, httpx
+import os
+import sqlite3
+import json
+import time
+import argparse
+import httpx
 from pathlib import Path
 import tools.lex_execucao as L  # reusa _SYS, _SCHEMA, _flags, _parse_json, _regras_calibracao, _agora
 from compliance_agent.llm.free_llm import _cap_ok, _cap_inc, _envk

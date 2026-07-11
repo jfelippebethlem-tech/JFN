@@ -3,7 +3,10 @@
 """AUDITORIA FORENSE INTEGRAL — Contrato 005/2021 ITERJ × MGS. Cálculo PRÓPRIO (não ASSCONT):
 modelo de custo derivado do contrato+planilha+CCT, reconciliação mês a mês de CADA OB, conformidade
 ano a ano (dissídio/lag/retroativo), memória de cálculo. Render Kroll → PDF → Yoda."""
-import asyncio, sqlite3, re, sys
+import asyncio
+import sqlite3
+import re
+import sys
 from datetime import datetime
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

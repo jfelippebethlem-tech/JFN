@@ -278,7 +278,7 @@ def grafico_superfaturamentos(dados: list[dict]) -> Path:
 
     fig, ax = plt.subplots(figsize=(12, 7))
 
-    scatter = ax.scatter(
+    ax.scatter(
         medianas, valores,
         c=colors,
         s=[min(200, r * 60) for r in ratios],

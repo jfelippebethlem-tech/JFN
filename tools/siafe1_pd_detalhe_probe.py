@@ -4,7 +4,11 @@
 quick-search+scrape (voltou vazio); aqui seleciono a linha + btnView com CLIQUE REAL (§6)
 e leio o painel de detalhe. Reusa M._login + M._click_real (validados). VM-guarded, foreground.
 Saída: data/sei_cache/siafe1_pd_detalhe_probe.json — Processo se achar, OU mapa do DOM p/ fechar."""
-import asyncio, json, os, sys, traceback
+import asyncio
+import json
+import os
+import sys
+import traceback
 from pathlib import Path
 
 os.environ["JFN_SIAFE_LOGIN_URL"] = "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"

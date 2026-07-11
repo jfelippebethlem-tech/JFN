@@ -6,7 +6,10 @@ porque as OBs dos bombeiros não trazem nº SEI. Bounded + resumível: relançar
 
 Uso:  PYTHONPATH=. .venv/bin/python -m tools.sei_bombeiros_sweep --max 12
 Sem Gemini (GEMINI_DISABLED=1 global; ficha usa stepfun:free/nous). Honestidade: indício != acusação."""
-import asyncio, argparse, json, pathlib
+import asyncio
+import argparse
+import json
+import pathlib
 import tools.sei_sweep as S
 
 FILA = pathlib.Path("data/bombeiros_sei_fila.json")

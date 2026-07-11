@@ -27,7 +27,7 @@ def _get(path: str, params: dict) -> dict | None:
     try:
         r = httpx.get(f"{BASE}{path}", params=params, headers=_UA, timeout=_TIMEOUT)
         return r.json() if r.status_code == 200 else None
-    except Exception:
+    except (httpx.HTTPError, ValueError):
         return None
 
 

@@ -11,7 +11,7 @@ import subprocess
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-BASELINE = 1404  # medido 2026-07-07 (sem massare/, que tem catraca própria no repo dele)
+BASELINE = 1392  # medido 2026-07-11 (curadoria: httpx/sqlite/PWError específicos; antes 1404)
 
 
 def _contar() -> int:

@@ -4,7 +4,7 @@
 proc SEI-330020/000762/2021, doc SEI 130341565, p.11-13). Verifica independentemente o
 crédito R$56.044,28. Saída .txt (sem PDF pesado). Decimal p/ centavos exatos."""
 import sqlite3
-from decimal import Decimal as D, ROUND_HALF_UP
+from decimal import Decimal as D
 from datetime import date
 from pathlib import Path
 

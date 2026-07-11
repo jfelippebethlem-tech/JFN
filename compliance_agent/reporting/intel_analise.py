@@ -4,19 +4,11 @@ Comportamento idêntico; rede de segurança: tools/inteligencia_snapshot_check.p
 """
 from __future__ import annotations
 
-import asyncio
-import json
-import os
 import re
 import sqlite3
-import time
-from collections import OrderedDict, defaultdict
-from datetime import date, datetime
-from pathlib import Path
-from typing import Optional
 
-from compliance_agent.reporting.intel_base import _DB, fmt_cnpj, moeda, so_digitos
-from compliance_agent.reporting.intel_dados import _crescimento, _hhi
+from compliance_agent.reporting.intel_base import _DB, moeda, so_digitos
+from compliance_agent.reporting.intel_dados import _crescimento
 from compliance_agent.reporting.intel_base import _num_brl
 
 _NOTA_CARDINALIDADE = (

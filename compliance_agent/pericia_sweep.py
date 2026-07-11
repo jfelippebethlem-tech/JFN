@@ -13,7 +13,9 @@ Uso:
   python -m compliance_agent.pericia_sweep --cnpj 19088605000104 --ug 133100  # uma perícia
 """
 from __future__ import annotations
-import json, sqlite3, time
+import json
+import sqlite3
+import time
 from pathlib import Path
 
 REPO = Path("/home/ubuntu/JFN")

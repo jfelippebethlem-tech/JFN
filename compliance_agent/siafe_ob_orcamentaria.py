@@ -527,7 +527,6 @@ async def coletar_resiliente(exercicio=2025, maxn=100000, max_tentativas=24,
     # antes de logar (e derrubar o Jorge), se ele marcou 'ocupado', pergunta e aguarda liberar
     if siafe_coord and coordenar and siafe_coord.get_status() == "ocupado":
         await _esperar("preciso iniciar a varredura, mas o flag está 'ocupado'")
-    ultimo = len(linhas)
     for tentativa in range(1, max_tentativas + 1):
         try:
             res = await coletar(exercicio, maxn, headless=headless, vistos=vistos, linhas=linhas)

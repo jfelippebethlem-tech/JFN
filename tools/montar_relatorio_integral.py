@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Monta o RELATÓRIO FORENSE INTEGRAL (markdown dos agentes + anexos autoritativos do código) → PDF → Yoda."""
-import asyncio, re, sys
+import asyncio
+import re
+import sys
 from datetime import datetime
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

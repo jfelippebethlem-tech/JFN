@@ -8,7 +8,11 @@ GUARDADO p/ não travar a VM (2 vCPU, já travou 3x): vm_guard.preflight + clean
 limitado; FOREGROUND serial. Uso:
     SEI_MAX_DOCS=120 .venv/bin/python tools/sei_arvore_completa.py "330020/000762/2021" "planilha|proposta|edital|composi|custo|encargo|nota fiscal|NF|contrato|termo de refer"
 """
-import os, sys, re, json, asyncio
+import os
+import sys
+import re
+import json
+import asyncio
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR

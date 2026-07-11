@@ -3,7 +3,10 @@
 """Descobre as funções de SIAFE 1 (www5) > Execução > Execução Financeira p/ localizar
 'Nota de Liquidação' / 'Documento Hábil' / NF (o NL não está no grid de OB do SIAFE 1).
 Salva data/sei_cache/siafe1_execfin_funcoes.json. VM-guarded (preflight + cleanup)."""
-import asyncio, json, os, sys
+import asyncio
+import json
+import os
+import sys
 from pathlib import Path
 
 os.environ["JFN_SIAFE_LOGIN_URL"] = "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"

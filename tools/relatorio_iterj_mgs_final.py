@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 """Relatório FINAL ITERJ→MGS (padrão casa) com veredito documentado (SEI primário + reconciliação derivada).
 Gera PDF e envia ao Yoda."""
-import asyncio, json, re, sqlite3, sys
-from collections import Counter
+import asyncio
+import json
+import re
+import sqlite3
+import sys
 from datetime import datetime
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

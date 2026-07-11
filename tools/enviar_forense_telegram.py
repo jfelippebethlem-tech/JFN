@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Renderiza a síntese forense (markdown) em PDF padrão casa e envia ao Yoda com resumo das 4 respostas."""
-import asyncio, re, sys
+import asyncio
+import re
+import sys
 from datetime import datetime
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

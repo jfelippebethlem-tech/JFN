@@ -4,9 +4,10 @@
 (#sbmPesquisar UMA vez + expect_navigation). Lista os processos onde o termo aparece — usado p/
 enumerar os processos de pagamento/execução da MGS no ITERJ (ciclos 2022-2023, unidade 330020/330005).
 VM-guarded. Uso: sei_busca_mgs.py "MGS CLEAN" [--docs]   (--docs = Considerar Documentos)."""
-import asyncio, json, sys
+import asyncio
+import json
+import sys
 sys.path.insert(0, "/home/ubuntu/JFN")
-from tools import sei_reader as SR
 from tools.vm_guard import preflight, cleanup_orphans
 
 import re

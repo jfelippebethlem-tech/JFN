@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """Descobre TODAS as funções do SIAFE 1 (www5/SiafeRio): loga, varre o DOM do menu ADF, expande cada
 módulo e mapeia os itens (funções). Salva a árvore de navegação em data/sei_cache/siafe1_funcoes.json."""
-import asyncio, json, os, sys
+import asyncio
+import json
+import os
+import sys
 from pathlib import Path
 os.environ["JFN_SIAFE_LOGIN_URL"] = "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"
 sys.path.insert(0, "/home/ubuntu/JFN")

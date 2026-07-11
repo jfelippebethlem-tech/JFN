@@ -13,7 +13,12 @@ Receita/QSA, CEIS/CNEP, OpenSanctions) + semântica do endereço — e decide:
 Honestidade: REABRIR_FORTE é INDÍCIO, não acusação. Lê o work.db (read-only); NÃO escreve no DB vivo.
 Saída: JSON + markdown ranqueado por valor.
 """
-import json, sqlite3, sys, time, urllib.request, urllib.parse
+import json
+import sqlite3
+import sys
+import time
+import urllib.request
+import urllib.parse
 from pathlib import Path
 
 WORK = "/home/ubuntu/JFN/data/backups/compliance.work.db"
@@ -105,8 +110,8 @@ def main():
     by = {"REABRIR_FORTE": [], "REVISAR": [], "FALSO_POSITIVO": []}
     for v in res: by[v["verdito"]].append(v)
     L = [f"# Vetagem progressiva de fachadas — {len(res)} candidatos (2026-06-24)\n",
-         f"Fontes cruzadas por caso: VLM (Street View) + Receita/QSA + CEIS/CNEP + OpenSanctions + semântica de endereço.",
-         f"**Indício ≠ acusação.**\n",
+         "Fontes cruzadas por caso: VLM (Street View) + Receita/QSA + CEIS/CNEP + OpenSanctions + semântica de endereço.",
+         "**Indício ≠ acusação.**\n",
          f"- 🔴 REABRIR_FORTE: {len(by['REABRIR_FORTE'])}",
          f"- 🟡 REVISAR: {len(by['REVISAR'])}",
          f"- 🟢 FALSO_POSITIVO (VLM errou): {len(by['FALSO_POSITIVO'])}\n"]

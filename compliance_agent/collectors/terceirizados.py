@@ -984,7 +984,6 @@ def cruzar_com_folha_principal(session, competencia: str) -> list[dict]:
                 continue
 
             fontes_set = {r.fonte for r in registros}
-            vinculos_set = {(r.vinculo or "").lower() for r in registros}
 
             # Rule 1: servidor efetivo/comissionado AND terceirizado
             fontes_folha = fontes_set & {"transparencia_rj", "siafe"}

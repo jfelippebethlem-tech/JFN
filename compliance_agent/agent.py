@@ -648,7 +648,6 @@ async def _anthropic_request(
             for b in tool_calls_raw
         ]
 
-    stop_reason = data.get("stop_reason", "end_turn")
     finish_reason = "tool_calls" if tool_calls_raw else "stop"
 
     return {

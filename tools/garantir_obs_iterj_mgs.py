@@ -7,7 +7,10 @@ e é chamado pelo gerador do laudo. Exit 0 sempre que terminar com >=ESPERADO.
 
 Uso: python tools/garantir_obs_iterj_mgs.py [--force]
 """
-import json, sqlite3, sys, time
+import json
+import sqlite3
+import sys
+import time
 from pathlib import Path
 
 REPO = Path("/home/ubuntu/JFN")

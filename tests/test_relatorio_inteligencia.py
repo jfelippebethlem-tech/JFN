@@ -20,8 +20,13 @@ _ROOT = Path(__file__).resolve().parents[1]
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
-# enriquecimento (rede) desligado: validamos só o que é determinístico (compliance.db)
+# enriquecimento (rede) desligado: validamos só o que é determinístico (compliance.db).
+# Lex idem — sem SEI (budget de 120s estoura o timeout do pytest) e sem LLM (cascata saturada
+# pendura em retry) — mesmos flags do test_lex_snapshot.
 os.environ.setdefault("JFN_RELATORIO_ENRIQUECE_TIMEOUT", "0.01")
+os.environ.setdefault("JFN_LEX_LER_SEI", "0")
+os.environ.setdefault("JFN_LEX_DISCURSIVO", "0")
+os.environ.setdefault("JFN_VEREDITO_LLM_DISABLED", "1")
 
 from compliance_agent.reporting import inteligencia as I  # noqa: E402
 from compliance_agent import ugs  # noqa: E402

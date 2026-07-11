@@ -27,7 +27,7 @@ Uso típico no sistema real:
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 from compliance_agent.nucleo import parametros as P
 from compliance_agent.nucleo.dossie import Contratacao, Dossie, Fornecedor

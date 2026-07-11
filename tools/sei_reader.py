@@ -22,6 +22,8 @@ import os
 import re
 import sys
 from pathlib import Path
+
+from playwright.async_api import Error as PWError
 _REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO))
 from compliance_agent.envfile import carregar_env
@@ -54,7 +56,7 @@ async def _goto_retry(pg, url, n=8):
     for _ in range(n):
         try:
             r = await pg.goto(url, wait_until="domcontentloaded", timeout=20000); return r.status if r else None
-        except Exception:
+        except PWError:
             await pg.wait_for_timeout(2500)
     return None
 
@@ -123,7 +125,7 @@ async def _extrair_de_todos_frames(pg) -> dict:
     for fr in pg.frames:
         try:
             d = await fr.evaluate(_JS_LE_ARVORE_E_TEXTO)
-        except Exception:
+        except PWError:
             continue
         for doc in d.get("documentos", []):
             if doc.get("url"):
@@ -146,7 +148,7 @@ async def _extrair_de_todos_frames(pg) -> dict:
             if "infraArvoreNo" in await fr.content():
                 arvore_vista = True
                 break
-        except Exception:
+        except PWError:
             continue
     # AUTORIDADE: completa com os nós do HTML-FONTE da árvore (o DOM é virtualizado e subconta —
     # ver arvore_do_fonte). Merge por id_documento: o fonte traz TODOS; o DOM fica como fallback.
@@ -244,7 +246,7 @@ async def arvore_do_fonte(pg) -> list[dict]:
         # detecta o frame da árvore por CONTEÚDO (tem 'infraArvoreNo') — nome/URL do frame variam
         try:
             html = await fr.content()
-        except Exception:
+        except PWError:
             continue
         if "infraArvoreNo" not in html:
             continue
@@ -302,7 +304,7 @@ async def _expandir_pastas_e_ler(fr) -> list[dict]:
     Formato de doc idêntico ao extractor ({texto,titulo,url,restrito})."""
     try:
         res = await fr.evaluate(_JS_EXPANDE_PASTAS)
-    except Exception as exc:
+    except PWError as exc:
         logger.debug("_expandir_pastas_e_ler: evaluate falhou: %s", exc)
         return []
     docs = []
@@ -327,7 +329,7 @@ async def abrir_processo(pg, proc: str, tentativas: int = 4):
             try:
                 if "infraArvoreNo" in await fr.content():
                     return fr
-            except Exception:
+            except PWError:
                 continue
     return None
 
@@ -365,12 +367,12 @@ async def _abrir_por_quicksearch(pg, proc: str) -> dict:
         if not preencheu:
             return {"documentos": []}
         await pg.keyboard.press("Enter")
-    except Exception as exc:
+    except PWError as exc:
         logger.debug("quick-search: preencher/Enter falhou p/ %s: %s", numero, exc)
         return {"documentos": []}
     try:
         await pg.wait_for_load_state("networkidle", timeout=12000)
-    except Exception as exc:
+    except PWError as exc:
         logger.debug("quick-search: networkidle estourou p/ %s: %s", numero, exc)
     await _esperar_arvore(pg)
     await pg.wait_for_timeout(1200)
@@ -403,12 +405,12 @@ async def _ler_cracked(pg, proc: str) -> dict:
     # 2) protocolo SEM prefixo
     try:
         await pg.fill('#txtProtocoloPesquisa', proto)
-    except Exception as exc:
+    except PWError as exc:
         logger.debug("fill do #txtProtocoloPesquisa (cracked) falhou, tentando keyboard.type: %s", exc)
     if not await pg.evaluate("""()=>{const e=document.querySelector('#txtProtocoloPesquisa');return e?e.value:''}"""):
         try:
             await pg.click('#txtProtocoloPesquisa'); await pg.keyboard.type(proto, delay=40)
-        except Exception as exc:
+        except PWError as exc:
             logger.warning("não preencheu o protocolo %s no #txtProtocoloPesquisa (cracked): %s", proto, exc)
     # 3) radio 'Processos' (não 'Documentos') + ☑ 'Considerar Documentos' + 'Restringir ao Órgão' DESMARCADO
     await pg.evaluate(r"""()=>{
@@ -450,18 +452,18 @@ async def _ler_cracked(pg, proc: str) -> dict:
     if os.environ.get("SEI_DEBUG_SHOT"):
         try:
             await pg.screenshot(path=os.environ["SEI_DEBUG_SHOT"].replace(".png", "_form.png"), full_page=True)
-        except Exception as exc:
+        except PWError as exc:
             logger.debug("screenshot de debug do formulário (SEI_DEBUG_SHOT) falhou: %s", exc)
     # 4) clicar 'Pesquisar' UMA vez + esperar a NAVEGAÇÃO (sem duplo-submit, sem _abrir_primeiro_resultado)
     try:
         async with pg.expect_navigation(wait_until="domcontentloaded", timeout=25000):
             await pg.evaluate(r"""()=>{const b=document.querySelector('#sbmPesquisar')||[...document.querySelectorAll('button,input[type=submit],input[type=button]')].find(e=>/pesquisar/i.test(e.value||e.innerText||''));if(b)b.click();}""")
-    except Exception as exc:
+    except PWError as exc:
         # navegação pode não disparar como 'navigation' (frameset) — segue p/ a espera ativa da árvore
         logger.debug("expect_navigation após Pesquisar (cracked) não disparou: %s", exc)
     try:
         await pg.wait_for_load_state("networkidle", timeout=15000)
-    except Exception as exc:
+    except PWError as exc:
         logger.debug("networkidle após Pesquisar (cracked) estourou o timeout: %s", exc)
     # 5) espera ATIVA o ifrArvore antes de extrair
     achou_arvore = await _esperar_arvore(pg)
@@ -469,7 +471,7 @@ async def _ler_cracked(pg, proc: str) -> dict:
     if os.environ.get("SEI_DEBUG_SHOT"):
         try:
             await pg.screenshot(path=os.environ["SEI_DEBUG_SHOT"], full_page=True)
-        except Exception as exc:
+        except PWError as exc:
             logger.debug("screenshot de debug (SEI_DEBUG_SHOT) falhou: %s", exc)
     dump = await _extrair_de_todos_frames(pg)
     dump["via"] = "cracked"
@@ -498,7 +500,7 @@ async def seguir_relacionados(pg, proc_url: str, relacionados: list, max_rel: in
             await pg.goto(url, wait_until="domcontentloaded", timeout=25000)
             try:
                 await pg.wait_for_load_state("networkidle", timeout=15000)
-            except Exception as exc:
+            except PWError as exc:
                 logger.debug("networkidle no relacionado %s estourou o timeout: %s", pid, exc)
             for _ in range(8):  # espera ATIVA a árvore (ifrArvore) carregar
                 await pg.wait_for_timeout(1500)
@@ -568,14 +570,14 @@ async def _conteudo_doc(pg, doc: dict) -> dict | None:
     try:
         await pg.goto(url_c, wait_until="domcontentloaded", timeout=20000)
         await pg.wait_for_timeout(1100)
-    except Exception:
+    except PWError:
         return None
     _MENU = ("AGENERSA AGERIO", "Base de Conhecimento", "Controle de Processos")
     best = ""
     for fr in pg.frames:
         try:
             t = await fr.evaluate("()=>document.body?document.body.innerText:''")
-        except Exception:
+        except PWError:
             continue
         t = t or ""
         if any(s in t for s in _MENU):  # frameset do menu → não é o doc
@@ -616,7 +618,7 @@ async def _montar_resultado_cracked(pg, proc: str, dump: dict, usar_cache: bool 
     try:
         _grava_cache_atomico(cache_file, res)
         res["_cache_path"] = str(cache_file)
-    except Exception as exc:
+    except OSError as exc:
         logger.warning("gravação do cache %s (cracked) falhou: %s", cache_file, exc)
     return res
 
@@ -633,7 +635,7 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
             c = _json.loads(cache_file.read_text(encoding="utf-8"))
             if c.get("_cached_at") and (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < 86400:
                 c["_de_cache"] = True; return c
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
             logger.warning("leitura do cache %s falhou, seguindo p/ leitura viva: %s", cache_file, exc)
     # navega p/ a Pesquisa AVANÇADA (menu "Pesquisa") — clique REAL preserva a sessão
     await pg.evaluate(r"""()=>{const e=[...document.querySelectorAll('a')].find(a=>/^pesquisa$/i.test((a.innerText||'').trim())||/protocolo_pesquisar\b/i.test(a.href||a.getAttribute('onclick')||''));if(e)e.click();}""")
@@ -703,7 +705,7 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     try:
         _grava_cache_atomico(cache_file, res)
         res["_cache_path"] = str(cache_file)
-    except Exception as exc:
+    except OSError as exc:
         logger.warning("gravação do cache %s falhou: %s", cache_file, exc)
     return res
 
@@ -736,7 +738,7 @@ async def ler(numero: str, usar_cache: bool = True, tentativas_login: int = 30,
             if c.get("_cached_at") and (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < 86400:
                 c["_de_cache"] = True
                 return c
-        except Exception as exc:
+        except (OSError, ValueError) as exc:
             logger.warning("leitura do cache %s falhou, seguindo p/ leitura viva: %s", cache_file, exc)
     if not P:
         return {"numero": numero, "erro": "INDISPONÍVEL: SEI_PASS vazio (.env)", "texto": "", "conteudo_documentos": []}
@@ -892,7 +894,7 @@ async def main():
                 fr = [{"name": f.name, "url": f.url[:90]} for f in pg.frames]
                 print("   FRAMES:", fr)
                 print("   SHOT:", os.environ["SEI_DEBUG_SHOT"])
-            except Exception as e:
+            except PWError as e:
                 print("   shot erro:", e)
         await b.close()
 

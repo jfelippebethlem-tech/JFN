@@ -15,7 +15,10 @@ Uso:  python tools/gen_skills.py [--force] [--all]
   --force : regera mesmo as que já existem (cuidado: sobrescreve curadas)
   --all   : inclui capacidades com status != PRONTO (marcadas como experimental)
 """
-import os, sys, re, yaml
+import os
+import sys
+import re
+import yaml
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CAPS = os.path.join(HERE, "..", "capabilities.yaml")

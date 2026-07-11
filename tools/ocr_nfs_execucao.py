@@ -3,7 +3,12 @@
 """OCR de TODAS as páginas-imagem de um processo de execução SEI (NFs escaneadas).
 Extrai candidatos a Nota Fiscal de limpeza (MGS emitente + valor + competência) p/ a perícia.
 Salva data/sei_cache/ocr_nfs_<proc>.json. VM-guarded. Uso: ocr_nfs_execucao.py <pdf>"""
-import fitz, pytesseract, re, json, sys, io
+import fitz
+import pytesseract
+import re
+import json
+import sys
+import io
 from pathlib import Path
 from PIL import Image
 sys.path.insert(0, "/home/ubuntu/JFN")

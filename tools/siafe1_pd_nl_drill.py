@@ -3,7 +3,10 @@
 """Drill SIAFE 1: abre 'Execução Financeira > Acompanhamento de Execução de PD', filtra por um PD
 e extrai a Nota de Liquidação (NL) que ele paga. 1ª rodada = DISCOVERY da página (campos do form +
 conteúdo), p/ localizar onde o NL aparece. VM-guarded. Playwright local (SIAFE é ADF autenticado)."""
-import asyncio, json, os, sys
+import asyncio
+import json
+import os
+import sys
 from pathlib import Path
 
 os.environ["JFN_SIAFE_LOGIN_URL"] = "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"

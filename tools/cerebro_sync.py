@@ -131,8 +131,8 @@ def painel(db) -> str:
         com_docs = sum(1 for v in feitos.values() if isinstance(v, dict) and v.get("n_docs", 0) > 0)
         esgotados = sum(1 for v in feitos.values()
                         if isinstance(v, dict) and not v.get("n_docs", 0) and v.get("tentativas", 1) >= 3)
-    except Exception:
-        pass
+    except (OSError, ValueError) as e:
+        print(f"cerebro_sync: progresso do sweep ilegível ({e}) — seção fica com defaults", file=sys.stderr)
 
     # taxa do sweep por dia (7d) direto do log — padrão EXATO ("frescor" também tem "→")
     taxa = []
@@ -144,8 +144,8 @@ def painel(db) -> str:
             if ls:
                 ok = sum(1 for x in ls if x != "0")
                 taxa.append(f"{d[5:]}: {ok}/{len(ls)}")
-    except Exception:
-        pass
+    except OSError as e:
+        print(f"cerebro_sync: log do sweep ilegível ({e}) — taxa 7d fica vazia", file=sys.stderr)
 
     vivos = []
     for nome, p in [("sweep SEI", "data/sei_sweep.log"), ("SIAFE diário", "data/siafe_runner_cron.log"),

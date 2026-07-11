@@ -8,7 +8,11 @@ Cria VCN/subnet pública automaticamente se não houver. SSH keypair gerado em ~
 Uso: PYTHONPATH=. .venv/bin/python tools/criar_vm_oracle2.py
 Pausar: criar ~/.oci2/.pause   ·   Parar: matar o processo.
 """
-import os, sys, time, pathlib, datetime
+import os
+import sys
+import time
+import pathlib
+import datetime
 import oci
 
 OCI_DIR = pathlib.Path.home() / ".oci2"

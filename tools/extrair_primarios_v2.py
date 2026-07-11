@@ -3,7 +3,10 @@
 """Extração de fonte primária v2: abre o processo EM-SESSÃO (sei_reader.ler_processo) e então, para cada
 doc, lê o frame de conteúdo; se for scan (PDF/imagem), BAIXA os bytes e roda OCR (corrige o gargalo do
 gatilho ≤50 chars). Foco: NF/OB/NL do processo 2026 (tem o relatório + os anexos)."""
-import asyncio, json, re, sys
+import asyncio
+import json
+import re
+import sys
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR

@@ -3,7 +3,10 @@
 """SIAFE 1 (www5/SiafeRio): Execução > Contratos e Convênios > Contrato. Filtra por Favorecido~MGS
 (grid §8b alcança outras UGs mesmo a conta só expondo ALERJ no dropdown), abre o detalhe do 005/2021
 e extrai o campo PROCESSO (nº do processo SEI da contratação) + vigência/valor/aditivos. Exploratório."""
-import os, asyncio, json, re, sys
+import os
+import asyncio
+import re
+import sys
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 os.environ["JFN_SIAFE_LOGIN_URL"] = "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"  # ANTES do import
@@ -92,7 +95,7 @@ async def main():
                 valor = "MGS" if re.search(r"favorec|credor", alvo_prop or "", re.I) else "005/2021"
                 val = pg.locator('[id*="in_value_rtfFilter"]:visible').last
                 if await val.count() == 0:
-                    val = pg.locator(f'[id*="table_rtfFilter:0"] input[type="text"]:visible').last
+                    val = pg.locator('[id*="table_rtfFilter:0"] input[type="text"]:visible').last
                 if await val.count():
                     await val.click(); await val.press("Control+a"); await val.press("Delete")
                     await pg.keyboard.type(valor, delay=90); await pg.keyboard.press("Tab")

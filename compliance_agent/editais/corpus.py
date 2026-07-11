@@ -33,7 +33,8 @@ async def _itens_crus(id_pncp: str) -> list[dict]:
             r = await c.get(f"{PNCP_BASE}/orgaos/{cnpj}/compras/{ano}/{seq}/itens",
                             headers={"User-Agent": "JFN-Compliance/2.0"})
             return r.json() if r.status_code == 200 else []
-    except Exception:
+    except (httpx.HTTPError, ValueError) as e:
+        print(f"  itens PNCP {cnpj}/{ano}/{seq}: INDISPONÍVEL ({e})", flush=True)
         return []
 
 

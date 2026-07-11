@@ -2,7 +2,10 @@
 """Watcher do canal jfn-core <- jfn-agent-2. Quando a VM-2 escreve em
 ~/shared-brain/_handoff/from-vm2/*.md, avisa no Telegram do dono (via bot do Hermes).
 Cursor evita repetir. Roda por systemd user timer (1/min)."""
-import os, sys, json, pathlib
+import os
+import sys
+import json
+import pathlib
 sys.path.insert(0, "/home/ubuntu/JFN")
 from compliance_agent.envfile import carregar_env
 

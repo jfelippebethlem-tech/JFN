@@ -3,7 +3,10 @@
 """Enumera TODOS os processos relacionados dos âncoras MGS (contrato 762/2021 + pagamentos conhecidos)
 para localizar os processos de pagamento de 2022-2023 (e suas NFs). Usa sei_reader.ler (cracked).
 Salva data/sei_cache/relacionados_mgs.json. VM-guarded."""
-import asyncio, json, sys, re
+import asyncio
+import json
+import sys
+import re
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))
 from tools.vm_guard import preflight, cleanup_orphans

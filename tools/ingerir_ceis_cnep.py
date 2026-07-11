@@ -16,7 +16,6 @@ import csv
 import io
 import re
 import sqlite3
-import sys
 import urllib.error
 import urllib.request
 import zipfile

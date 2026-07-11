@@ -2,7 +2,12 @@
 """Alerta incremental no Telegram dos contratos do FUNESBOM recém-coletados COM red flags relevantes.
 Cursor evita repetição. Não spamma captura rasa (exige red_flags não-triviais OU valor alto + risco).
 Honestidade: indício≠acusação. Roda ao fim de cada lote do supervisor."""
-import os, json, re, sqlite3, pathlib, httpx
+import os
+import json
+import re
+import sqlite3
+import pathlib
+import httpx
 from compliance_agent.envfile import carregar_env
 
 DB = "/home/ubuntu/JFN/data/compliance.db"

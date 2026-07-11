@@ -10,7 +10,9 @@ inclui `metodo`), fechando o loop: erro pego → regra que o previne → aplicad
 Rodar: python tools/hermes_auto_melhoria.py {seed|run}
 """
 from __future__ import annotations
-import json, re, sys
+import json
+import re
+import sys
 from pathlib import Path
 
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

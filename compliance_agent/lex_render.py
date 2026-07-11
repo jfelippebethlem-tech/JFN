@@ -7,7 +7,6 @@ parecer_md(ctx) sem análise pronta importa lex._analise tardiamente (evita cicl
 from __future__ import annotations
 
 import logging
-import os
 from pathlib import Path
 
 from fpdf.enums import XPos, YPos

@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """Coleta SIAFE 1 (www5) ITERJ(133100) p/ um exercício, salvando HEADER + LINHAS CRUAS em JSON.
 Reusa as funções internas de siafe_ob_orcamentaria (login/nav/filtro/colher) — sem ingerir (mapeio depois)."""
-import asyncio, json, os, sys
+import asyncio
+import json
+import os
+import sys
 from pathlib import Path
 
 os.environ.setdefault("JFN_SIAFE_LOGIN_URL", "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp")

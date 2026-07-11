@@ -4,22 +4,15 @@ Comportamento idêntico; rede de segurança: tools/inteligencia_snapshot_check.p
 """
 from __future__ import annotations
 
-import asyncio
-import json
 import os
-import re
 import sqlite3
-import time
-from collections import OrderedDict, defaultdict
-from datetime import date, datetime
 from pathlib import Path
 from typing import Optional
 
-from compliance_agent.reporting.intel_base import _DATA, _DB, _REPORTS, fmt_cnpj, moeda, so_digitos, cabecalho_frescor
+from compliance_agent.reporting.intel_base import _DB, fmt_cnpj, moeda, so_digitos, cabecalho_frescor
 from compliance_agent.reporting.intel_analise import (
     _FEAT_ANOM, _NOTA_CARDINALIDADE, _anomalias_fornecedor, _beneficios_socios, _fatores_risco,
-    _frase_cardinalidade, _red_flags, _resumo_executivo, _termos_significativos,
-    parecer_fornecedor, troca_controle_societaria,
+    _frase_cardinalidade, _red_flags, _resumo_executivo, parecer_fornecedor,
 )
 from compliance_agent.reporting.intel_base import _num_brl
 from compliance_agent import fachada_remotes as _fr

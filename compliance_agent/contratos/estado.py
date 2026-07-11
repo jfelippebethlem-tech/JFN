@@ -15,6 +15,8 @@ Apoio principal do parecer estadual: sinais cruzados, Lex e prorrogação (vigê
 """
 from __future__ import annotations
 
+import sqlite3
+
 import re
 
 # os SEIS → padrões de unidade no TCE-RJ (uma família pode ter várias unidades)
@@ -62,7 +64,7 @@ def _sinais_fornecedor(con, doc: str) -> list[str]:
             if con.execute("select 1 from rede_socios_fornecedores where raiz=? limit 1",
                            (doc[:8],)).fetchone():
                 sinais.append("sócio liga ≥2 fornecedores (rede)")
-        except Exception:
+        except sqlite3.Error:
             pass
     return sinais
 

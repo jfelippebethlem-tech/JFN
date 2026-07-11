@@ -58,7 +58,7 @@ def listar_deputados_rj(legislaturas: tuple[int, ...] = (56, 57)) -> dict:
                             d["_legs"] = {leg}
                             deputados[d["id"]] = d
                     url = next((l["href"] for l in j.get("links", []) if l["rel"] == "next"), None)
-    except Exception as e:
+    except (httpx.HTTPError, ValueError, KeyError) as e:
         return {"verificado": False, "deputados": [], "motivo": f"API Câmara: {e}"}
     return {"verificado": True, "deputados": list(deputados.values()), "motivo": None}
 

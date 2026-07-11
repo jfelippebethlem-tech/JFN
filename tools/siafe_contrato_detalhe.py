@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """SIAFE: navega Execução > Contratos e Convênios, acha o contrato 005/2021 (MGS) e extrai o nº do
 processo SEI da contratação + campos (vigência, valor, empenhos, anexos/planilha). Exploratório."""
-import asyncio, json, os, re, sys
+import asyncio
+import json
+import re
+import sys
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 import compliance_agent.siafe_ob_orcamentaria as M

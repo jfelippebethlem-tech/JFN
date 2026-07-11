@@ -4,7 +4,11 @@
 O Processo SEI provavelmente é COLUNA scrollada à direita. Este script rola o grid horizontalmente
 em passos e coleta TODOS os headers que aparecem (uniões), + screenshot scale-2 nítido da toolbar.
 NUNCA culpar acesso. Salva data/sei_cache/siafe1_scroll_colunas.json. VM-guarded."""
-import asyncio, json, os, sys, traceback
+import asyncio
+import json
+import os
+import sys
+import traceback
 from pathlib import Path
 os.environ["JFN_SIAFE_LOGIN_URL"] = "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

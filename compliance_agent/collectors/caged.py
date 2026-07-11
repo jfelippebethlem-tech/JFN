@@ -379,7 +379,6 @@ async def baixar_folha_orgao_externo(orgao: str, session) -> int:
             # Check if this looks like a payroll table
             has_cpf = any("cpf" in h for h in header_cells)
             has_nome = any("nome" in h for h in header_cells)
-            has_rem = any(any(k in h for k in ["remun", "salário", "salario", "vencimento"]) for h in header_cells)
 
             if not (has_nome or has_cpf):
                 continue

@@ -8,6 +8,8 @@ os itens/preços (PNCP) e os sinais do fornecedor (emenda/sanção/rede). Cada
 """
 from __future__ import annotations
 
+import sqlite3
+
 import asyncio
 
 
@@ -31,7 +33,7 @@ def _sinais_fornecedor(con, doc: str, com_rede: bool) -> list[str]:
             if con.execute("select 1 from rede_socios_fornecedores where raiz=? limit 1",
                            (doc[:8],)).fetchone():
                 sinais.append("sócio liga ≥2 fornecedores (rede)")
-        except Exception:
+        except sqlite3.Error:
             pass
     return sinais
 

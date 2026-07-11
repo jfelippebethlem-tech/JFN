@@ -4,7 +4,10 @@
 colunas por padrão (sem Processo). Este script loga, abre o grid e dumpa o SELETOR DE COLUNAS (menu ADF
 Ver/Colunas) + qualquer referência a 'Processo' — p/ habilitar a coluna e recuperar o nº SEI de 2021-2023.
 VM-guarded. Salva data/sei_cache/siafe1_colunas.json."""
-import asyncio, json, os, sys
+import asyncio
+import json
+import os
+import sys
 from pathlib import Path
 os.environ["JFN_SIAFE_LOGIN_URL"] = "https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

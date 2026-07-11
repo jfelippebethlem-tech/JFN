@@ -60,7 +60,7 @@ def _texto_do_edital(row) -> str:
             d = it.get("descricao")
             if d:
                 partes.append(d)
-    except Exception:
+    except (ValueError, TypeError, AttributeError):
         pass
     return " · ".join(p for p in partes if p)[:1000]
 

@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 """Busca SEI por INTERESSADO (pesquisa avançada) — acha o processo da contratação/aditivos da MGS no ITERJ.
 Modo 'inspect' dumpa os campos do form; modo 'buscar <termo>' preenche Interessado/Especificação e lista resultados."""
-import asyncio, sys, re, json
+import asyncio
+import sys
+import re
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR
 

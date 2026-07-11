@@ -11,7 +11,9 @@ legítimo está no Google) — por isso grava evidência explícita. Idempotente
 
 Uso: python -m tools.sweep_sem_google [--dry]
 """
-import argparse, os, sqlite3, sys
+import argparse
+import os
+import sqlite3
 
 DB = os.environ.get("JFN_DB") or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "compliance.db")
 

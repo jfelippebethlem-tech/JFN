@@ -25,9 +25,9 @@ from __future__ import annotations
 import re
 import logging
 import statistics
-from typing import Iterable, Iterator
+from typing import Iterator
 
-from compliance_agent.nucleo.dossie import Contratacao, Dossie, Fornecedor
+from compliance_agent.nucleo.dossie import Contratacao, Fornecedor
 from compliance_agent.nucleo.nucleo import Laudo, periciar
 
 

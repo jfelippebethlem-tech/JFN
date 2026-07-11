@@ -10,6 +10,7 @@ Uso: tools/editais_direcionamento.py [--clausulas] [--clusters] [--max-candidata
 """
 import argparse
 import asyncio
+import sqlite3
 import json
 import sys
 from datetime import datetime
@@ -57,8 +58,9 @@ def _sinais_vencedor(con, numero_controle_pncp: str) -> tuple[str | None, list[s
             if con.execute("select 1 from rede_socios_fornecedores where raiz=? limit 1",
                            (doc[:8],)).fetchone():
                 sinais.append("sócio liga ≥2 fornecedores (rede)")
-        except Exception:
-            pass   # coluna 'raiz' pode variar entre versões da rede — não derruba o dossiê
+        except sqlite3.Error as e:
+            # coluna 'raiz' pode variar entre versões da rede — não derruba o dossiê, mas avisa
+            print(f"  rede_socios indisponível p/ {doc[:8]}: {e}", file=sys.stderr)
     return f"{row['fornecedor_nome']} ({doc})", sinais
 
 
@@ -182,8 +184,8 @@ async def main():
                     f"---\ntipo: caso\nprojeto: jfn\nseveridade: 🔴 {a['risco']}/10\nstatus: aberto\n"
                     f"fonte: enxame de editais (peer-diff + 5 lentes)\natualizado: {hoje}\n---\n\n"
                     f"# {a['titulo']}\n\n{a['descricao']}\n", encoding="utf-8")
-            except Exception:
-                pass
+            except OSError as e:
+                print(f"  nota do vault {slug} não gravada: {e}", file=sys.stderr)
 
     for s in saidas:
         print("saída:", s)

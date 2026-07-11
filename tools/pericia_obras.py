@@ -11,7 +11,11 @@ INDISPONÍVEL≠0 (TCE-RJ às vezes não traz o pago — anota).
 
 Uso: python -m tools.pericia_obras [--hoje AAAA-MM-DD] [--top N] [--md saida.md]
 """
-import argparse, datetime, json, os, sqlite3
+import argparse
+import datetime
+import json
+import os
+import sqlite3
 
 DB = os.environ.get("JFN_DB") or os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "compliance.db")
 OBRA = ("(LOWER(objeto) LIKE '%obra%' OR LOWER(objeto) LIKE '%constru%' OR LOWER(objeto) LIKE '%reforma%' "

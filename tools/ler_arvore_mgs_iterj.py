@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """Lê FRESH (sem cache) a árvore SEI dos processos de pagamento MGS-ITERJ via itkava (sei_reader).
 Segue relacionados, extrai NF/competência/medição. Salva tudo em data/sei_cache/arvore_mgs_iterj.json."""
-import asyncio, json, re, sys
+import asyncio
+import json
+import re
+import sys
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools.sei_reader import ler

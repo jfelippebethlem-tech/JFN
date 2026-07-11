@@ -84,7 +84,7 @@ def _chave() -> str:
 def _ckpt_load() -> dict:
     try:
         return json.loads(_CKPT.read_text("utf-8"))
-    except Exception:
+    except (OSError, ValueError):
         return {}
 
 

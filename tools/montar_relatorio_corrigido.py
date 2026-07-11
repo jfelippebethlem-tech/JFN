@@ -3,7 +3,9 @@
 """RELATÓRIO CORRIGIDO — Contrato 005/2021 ITERJ × MGS. SUPERA a ASSCONT e meus relatórios
 anteriores. Baseado SÓ em documentos primários (Termos Aditivos, planilha, pesquisa de preços/Cotações,
 Parecer 64, atestados/NFs, ledger). Render Kroll → PDF → Yoda."""
-import asyncio, re, sys
+import asyncio
+import re
+import sys
 from datetime import datetime
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

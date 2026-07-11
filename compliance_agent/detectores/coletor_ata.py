@@ -189,7 +189,7 @@ def _llm_extrair_decisoes(fontes: list[dict], gerar: Callable[[str, str], str] |
     if gerar is None:
         try:
             from compliance_agent.direcionamento_cerebro import gerar_sync as gerar  # type: ignore
-        except Exception:
+        except ImportError:
             return []
     contexto = "\n\n".join(f"[{f['fonte']}]\n{f['texto'][:1500]}" for f in fontes[:4])[:6000]
     prompt = (f"ATA/DECISÕES:\n{contexto}\n\n"

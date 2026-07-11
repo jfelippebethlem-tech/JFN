@@ -5,12 +5,11 @@ from __future__ import annotations
 
 import logging
 import asyncio
-import os
 from pathlib import Path
 from typing import Optional
 
-from fastapi import APIRouter, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import APIRouter
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 

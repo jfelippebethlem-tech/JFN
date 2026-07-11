@@ -2,7 +2,11 @@
 """ONE-SHOT (agendado pós-cooldown): recupera o Processo SEI do SIAFE-1. UM login só (não martelar).
 Caminhos: (a) clique REAL no commandLink do número da OB -> detalhe; (b) consulta 'Execução Orçamentária'
 (NE/empenho) -> colunas. Dump DOM+screenshot+Processo. Grava data/sei_cache/siafe1_processo_oneshot.json."""
-import asyncio,json,os,sys,traceback
+import asyncio
+import json
+import os
+import sys
+import traceback
 from pathlib import Path
 os.environ["JFN_SIAFE_LOGIN_URL"]="https://www5.fazenda.rj.gov.br/SiafeRio/faces/login.jsp"
 REPO=Path("/home/ubuntu/JFN");sys.path.insert(0,str(REPO))

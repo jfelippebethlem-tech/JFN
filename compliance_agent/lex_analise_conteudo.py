@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 import re
 
-from compliance_agent.reporting.inteligencia import moeda, so_digitos
+from compliance_agent.reporting.inteligencia import moeda
 from compliance_agent.lex_redflags import (
     _RF, _eh_servico_continuo, _ramo_objeto,
 )

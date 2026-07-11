@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """Extrai FONTE PRIMÁRIA (NF/NL/OB/comprovante) dos documentos SEI dos processos MGS-ITERJ,
 com OCR para scans. Reusa o login itkava + _conteudo_doc do sei_reader (browser_lock, sem 2 browsers)."""
-import asyncio, json, re, sys
+import asyncio
+import json
+import re
+import sys
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR

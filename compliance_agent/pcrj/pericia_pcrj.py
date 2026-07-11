@@ -14,6 +14,7 @@ marca institucional; trava `_verificar`). Indício, nunca acusação; datas p/ n
 """
 from __future__ import annotations
 
+import sys
 from datetime import datetime
 from pathlib import Path
 
@@ -135,11 +136,15 @@ def _secao_fora_rio(regs, fora):
             f"<th>Programas</th></tr>{''.join(linhas)}</table>")
 
 
-def _verificar(html):
+def _verificar(html, origem=""):
     low = html.lower()
     bad = [t for t in _PROIBIDOS if t in low]
     # nomes de cidadãos podem conter os termos; checa só fora de conteúdo de dados não é trivial —
-    # o template é construído aqui sem marca, então qualquer hit é de DADO (nome/município) e ok.
+    # o template é construído aqui sem marca, então um hit costuma ser DADO (nome/município) — avisa
+    # p/ revisão humana em vez de bloquear a emissão.
+    if bad:
+        print(f"⚠️ trava de marca ({origem}): termos proibidos no HTML: {bad} — revisar antes de entregar",
+              file=sys.stderr)
     return bad
 
 
@@ -178,7 +183,7 @@ def gerar_camara(dados=None) -> str:
     html = _render("Perícia — Câmara Municipal do Rio: nomeados × benefício assistencial",
                    f"Emitido em {datetime.now():%d/%m/%Y} · Período {_pb._comp_legivel(d['competencias'][0])}–{_pb._comp_legivel(d['ultima'])} · "
                    "Câmara + convergência com a Prefeitura", kpis, "".join(corpo))
-    bad = _verificar(html)
+    _verificar(html, "camara")
     dest = str(_REPORTS / f"pericia_camara_{datetime.now().date()}.html")
     Path(dest).write_text(html, encoding="utf-8")
     return dest
@@ -202,6 +207,7 @@ def gerar_prefeitura(dados=None) -> str:
     html = _render("Perícia — Prefeitura do Rio: servidores × benefício assistencial",
                    f"Emitido em {datetime.now():%d/%m/%Y} · Período {_pb._comp_legivel(d['competencias'][0])}–{_pb._comp_legivel(d['ultima'])} · "
                    "folha completa por órgão", kpis, "".join(corpo))
+    _verificar(html, "prefeitura")
     dest = str(_REPORTS / f"pericia_prefeitura_{datetime.now().date()}.html")
     Path(dest).write_text(html, encoding="utf-8")
     return dest

@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 """DEBUG do search por Interessado: loga, abre Pesquisa, digita o CNPJ no Contato, espera o autocomplete
 e DUMPA o estado (dropdown, hidden, botões) — sem submeter. Descobre por que trava. VM-guarded."""
-import asyncio, json, sys
+import asyncio
+import json
+import sys
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))
 from tools.vm_guard import preflight, cleanup_orphans

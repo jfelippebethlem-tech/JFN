@@ -6,7 +6,9 @@ SEI é a fonte fiel (PNCP cobre mal o RJ): varre o texto dos docs coletados proc
 e injeta os processos-licitação novos no topo da `bombeiros_sei_fila.json` (prioridade alta), p/ o sweep
 coletar o edital/ata → destrava direcionamento (ata/desclassificações) e sobrepreço (TR/itens).
 Determinístico (regex), idempotente. Honestidade: indício≠acusação."""
-import json, re, pathlib, sqlite3
+import json
+import re
+import pathlib
 
 CACHE = pathlib.Path("data/sei_cache")
 FILA = pathlib.Path("data/bombeiros_sei_fila.json")

@@ -4,7 +4,9 @@
 Processo" e salva. Guardado (vm_guard). Uso:
   .venv/bin/python tools/sei_gerar_pdf_processo.py "330020/000762/2021"
 """
-import os, sys, re, asyncio
+import sys
+import re
+import asyncio
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR

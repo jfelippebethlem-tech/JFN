@@ -2,7 +2,10 @@
 # -*- coding: utf-8 -*-
 """Engeprat v2 — 2 relatórios (por contrato/tema · perícia por órgão) → PDF (chromium) → Yoda.
 Reconciliação fecha em R$402.369.627,76. SIAFE(OB)=recebido; contrato+aditivos(SEI/TCE)=teto a receber."""
-import re, sqlite3, subprocess, sys
+import re
+import sqlite3
+import subprocess
+import sys
 from datetime import datetime
 from pathlib import Path
 REPO = Path("/home/ubuntu/JFN"); sys.path.insert(0, str(REPO))

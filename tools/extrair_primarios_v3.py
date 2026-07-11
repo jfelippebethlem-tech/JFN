@@ -3,7 +3,10 @@
 """Extração SEI v3 (wiring corrigido): abre processo em-sessão, e por doc usa request.get (sessão
 autenticada) p/ pegar os BYTES — se HTML, segue o iframe/embed do arquivo real; se PDF/imagem, OCR.
 Resolve o ERR_ABORTED do goto direto em scan. Engine OCR: tesseract/poppler/fitz (instalados)."""
-import asyncio, json, re, sys
+import asyncio
+import json
+import re
+import sys
 from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR

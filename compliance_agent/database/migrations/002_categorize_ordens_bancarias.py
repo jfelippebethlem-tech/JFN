@@ -88,7 +88,6 @@ def _categorizar_ob(ob) -> str:
 
     # 3. Refino por órgão quando já conhecemos a função típica, mas o texto não deu match
     ug_codigo = (ob.ug_codigo or "").strip()
-    ug_nome = (ob.ug_nome or "").strip()
     for cat, rules in UG_KEYWORDS.items():
         if ug_codigo in rules["codes"] or any(h in texto for h in rules["hints"]):
             return cat

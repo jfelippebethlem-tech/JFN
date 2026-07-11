@@ -58,7 +58,6 @@ def gerar(ctx: dict, destino: str, modo: str = "fornecedor") -> str:
     f_hdr = Font(name="Calibri", size=10, bold=True, color="FFFFFF")
     fill_az = PatternFill("solid", fgColor=_AZUL)
     fill_az2 = PatternFill("solid", fgColor=_AZUL_CLARO)
-    fill_cinza = PatternFill("solid", fgColor=_CINZA)
     center = Alignment(horizontal="center", vertical="center")
     right = Alignment(horizontal="right")
     thin = Side(style="thin", color="D9D9D9")
