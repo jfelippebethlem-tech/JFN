@@ -331,6 +331,21 @@ async def abrir_processo(pg, proc: str, tentativas: int = 4):
                     return fr
             except PWError:
                 continue
+    # FALLBACK quicksearch (fix 2026-07-12): processo de OUTRA unidade (ex.: SEAS 070026, Juventude
+    # 280001) que o caminho CRACKED do ITERJ vê mas não abre — a PESQUISA RÁPIDA do topo abre por
+    # número completo (mesma lógica que já existe no ler() canônico). Aditivo e sem regressão: só roda
+    # quando o loop cracked acima não achou a árvore; para os processos que já abriam, retorna antes.
+    try:
+        await _abrir_por_quicksearch(pg, proc)
+        await _esperar_arvore(pg)
+        for fr in pg.frames:
+            try:
+                if "infraArvoreNo" in await fr.content():
+                    return fr
+            except PWError:
+                continue
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("abrir_processo: quicksearch fallback falhou p/ %s: %s", proc, exc)
     return None
 
 
