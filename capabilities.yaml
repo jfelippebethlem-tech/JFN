@@ -124,7 +124,7 @@ capacidades:
      args: {alvo: obrigatorio, saltos: "int=2", so_contrato: bool}, retorno: "{nos,arestas,comunidades}",
      menu: {grupo: "🕸️ Rede & Idoneidade", nome: "Rede de poder (quem liga a quem)", exemplo: "quem está ligado à empresa X", ordem: 31}}
   - {id: dossie, agente: jfn, dominio: inteligencia, tipo: http, metodo: POST, rota: /api/dossie, status: PRONTO,
-     descricao: "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias)", quando_usar: "'monte um dossie sobre X'", args: {alvo: obrigatorio}, retorno: "{path_pdf,resumo}",
+     descricao: "Dossie 360 ORQUESTRADO: painel (cadastro/QSA+sancoes CEIS/CNEP/OpenSanctions+OB/concentracao+conflito doador-contrato+rede de poder+midia adversa+red flags de fachada) E o relatorio de INTELIGENCIA de fornecedor COM parecer juridico Lex — envia os dois no Telegram (PDF+XLSX+MD+Lex).", quando_usar: "'monte um dossie sobre X', 'dossie do CNPJ Y' (pacote completo: painel 360 + due diligence + Lex)", args: {alvo: obrigatorio}, retorno: "{path_pdf,resumo} (painel) + relatorio inteligencia/Lex enviados junto",
      menu: {grupo: "🏢 Auditoria & Relatórios", nome: "Dossiê 360 de um alvo", exemplo: "monte um dossiê da Extreme", ordem: 14, cmd: "/dossie"}}
   - {id: grafo_ftm, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/grafo/ftm, status: PRONTO,
      descricao: "Exporta o Grafo de Poder no modelo FollowTheMoney (interoperar Aleph/Gephi, sem migrar)", quando_usar: "'exporte a rede de X p/ FtM/Aleph'",

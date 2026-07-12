@@ -44,7 +44,7 @@ Versão 2.2.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `consultar_links` | jfn | http | `/api/links` | PRONTO | 'onde mais pesquisar sobre X', aprofundar DD |
 | `consultar_ownership` | jfn | http | `/api/ownership` | PRONTO | vinculo societario cross-jurisdicao |
 | `doador_contrato_qsa` | lex | http | `/api/doador_contrato` | PRONTO | 'algum socio do fornecedor X financiou campanha?', conflito doador-fornecedor pela via QSA |
-| `dossie` | jfn | http | `/api/dossie` | PRONTO | 'monte um dossie sobre X' |
+| `dossie` | jfn | http | `/api/dossie` | PRONTO | 'monte um dossie sobre X', 'dossie do CNPJ Y' (pacote completo: painel 360 + due diligence + Lex) |
 | `grafo_ftm` | jfn | http | `/api/grafo/ftm` | PRONTO | 'exporte a rede de X p/ FtM/Aleph' |
 | `grafo_poder` | jfn | http | `/api/grafo` | PRONTO | 'quem esta ligado a X', 'a N saltos do deputado Y com contrato' |
 | `investigar_web` | jfn | http | `/api/compliance/investigar` | PRONTO | 'pesquise na web sobre X', 'noticias recentes de X', 'atividade publica/aparicoes na midia de X', 'o que saiu sobre X', monitoramento diario de uma pessoa |

@@ -222,10 +222,26 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     return d
 
 
-async def _gerar_pdf_classe_mundial(d: dict) -> str:
-    """Onda 7 — monta o ctx do dossiê (rating card + gráficos SVG + proveniência) e gera o PDF."""
+def _brl(v) -> str:
+    try:
+        return f"{float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except (TypeError, ValueError):
+        return str(v)
+
+
+def _esc(s) -> str:
+    import html as _h
+    return _h.escape(str(s or ""))
+
+
+def _ctx_dossie(d: dict) -> dict:
+    """Monta o ctx COMPLETO do dossiê (rating card + gráficos + TODAS as seções coletadas). Puro
+    e testável: recebe o dict de dossie() e devolve o ctx do render_html — sem I/O.
+
+    Bug 2026-07-12: a versão anterior renderizava só OB + matriz + síntese, ignorando cadastro/QSA,
+    sanções (CEIS/CNEP/OpenSanctions), conflito doador↔contrato, rede de poder, mídia adversa e
+    pistas de investigação — tudo isso JÁ vinha coletado em `d`, mas nunca chegava ao PDF."""
     from compliance_agent.reporting import charts_svg as C
-    from compliance_agent.reporting.render_html import gerar_pdf
 
     cad = d.get("cadastro", {}) or {}
     nome = cad.get("razao_social") or cad.get("nome") or d["alvo"]
@@ -233,31 +249,142 @@ async def _gerar_pdf_classe_mundial(d: dict) -> str:
     sc = d.get("score", {}) or {}
     conf = d.get("conflito", {}) or {}
     rede = d.get("rede", {}) or {}
+    secoes: list[dict] = []
 
-    secoes = []
+    # 1) Identificação cadastral + QSA (BrasilAPI) — honesto se indisponível
+    if cad.get("error") or cad.get("_nota"):
+        secoes.append({"titulo": "1. Identificação cadastral",
+                       "html": f"<p class='indisp'>INDISPONÍVEL — {_esc(cad.get('error') or cad.get('_nota'))}. "
+                               "Nada foi fabricado.</p>"})
+    else:
+        socios = cad.get("socios") or []
+        qsa = "".join(
+            f"<tr><td>{_esc(s.get('nome'))}</td><td>{_esc(s.get('qualificacao'))}</td>"
+            f"<td>{_esc(s.get('data_entrada'))}</td></tr>" for s in socios)
+        secoes.append({"titulo": "1. Identificação cadastral e quadro societário (QSA)",
+                       "html":
+            "<table><tr><th>Campo</th><th>Valor</th></tr>"
+            f"<tr><td>Razão social</td><td>{_esc(nome)}</td></tr>"
+            f"<tr><td>Nome fantasia</td><td>{_esc(cad.get('nome_fantasia'))}</td></tr>"
+            f"<tr><td>Situação cadastral</td><td>{_esc(cad.get('situacao'))}</td></tr>"
+            f"<tr><td>Abertura</td><td>{_esc(cad.get('data_abertura'))}</td></tr>"
+            f"<tr><td>Natureza jurídica</td><td>{_esc(cad.get('natureza_jur'))}</td></tr>"
+            f"<tr><td>Atividade (CNAE)</td><td>{_esc(cad.get('atividade'))}</td></tr>"
+            f"<tr><td>Capital social</td><td>R$ {_brl(cad.get('capital_social', 0))}</td></tr>"
+            f"<tr><td>Município/UF</td><td>{_esc(cad.get('municipio'))}/{_esc(cad.get('uf'))}</td></tr>"
+            "</table>" + (
+                f"<h4>Sócios/dirigentes ({len(socios)})</h4><table>"
+                "<tr><th>Nome</th><th>Qualificação</th><th>Entrada</th></tr>" + qsa + "</table>"
+                if socios else "<p class='nota'>Sem QSA na fonte (natureza jurídica pode não expor sócios).</p>")})
+
+    # 2) Sanções (CEIS/CNEP/CEPIM) + OpenSanctions (PEP/sanções internacionais) — honesto
+    san = d.get("sancoes", {}) or {}
+    osan = d.get("opensanctions", {}) or {}
+    if san.get("verificado"):
+        if san.get("sancionado"):
+            linhas = "".join(
+                f"<li>{_esc(x.get('tipo'))} — {_esc(x.get('orgao'))} (desde {_esc(x.get('inicio'))})</li>"
+                for x in (san.get("sancoes") or [])) or "<li>sanção registrada</li>"
+            san_html = f"<p class='flag'>⚠️ SANCIONADA (CEIS/CNEP/CEPIM):</p><ul>{linhas}</ul>"
+        else:
+            san_html = "<p>Sem sanção localizada no CEIS/CNEP/CEPIM na data da consulta.</p>"
+    else:
+        san_html = (f"<p class='indisp'>Sanção CEIS/CNEP <b>não verificada</b> — {_esc(san.get('_nota') or 'INDISPONÍVEL')}. "
+                    "INDISPONÍVEL ≠ limpo; não pontuada no índice.</p>")
+    if osan.get("_nota"):
+        san_html += f"<p class='nota'>OpenSanctions (PEP/internacional): {_esc(osan.get('_nota'))}</p>"
+    elif osan:
+        pep = "SIM" if osan.get("pep") else ("não" if osan.get("pep") is not None else "n/d")
+        intl = "SIM" if osan.get("sancionado") else ("não" if osan.get("sancionado") is not None else "n/d")
+        san_html += f"<p>OpenSanctions — PEP: <b>{pep}</b> · sanção internacional: <b>{intl}</b> · " \
+                    f"correspondências: {len(osan.get('matches') or [])}.</p>"
+    secoes.append({"titulo": "2. Idoneidade — sanções e PEP", "html": san_html})
+
+    # 3) Pagamentos (OB) — gráfico de concentração + síntese
     ugs = ob.get("ugs") or []
     if ugs:
         total = ob.get("total_ob") or 1
-        secoes.append({"titulo": "Concentração de pagamentos por órgão (OB)",
+        secoes.append({"titulo": "3. Concentração de pagamentos por órgão (OB)",
                        "chart": C.barras([u["nome"] or u["ug"] for u in ugs],
-                                         [(u["total"] / total) for u in ugs], "Participação por UG")})
-    # matriz P×I a partir do score (heurística: prob~score/10, impacto~concentração)
-    prob = max(1, min(round((sc.get("score", 0) or 0) / 11) + 1, 9))
-    imp = max(1, min(round((ob.get("concentracao_top_ug", 0) or 0) * 9) + 1, 9))
-    secoes.append({"titulo": "Matriz de risco P×I (TCU)", "chart": C.heatmap_pxi(prob, imp)})
-    secoes.append({"titulo": "Síntese",
-                   "html": f"<table><tr><th>Indicador</th><th>Valor</th></tr>"
-                           f"<tr><td>Total pago (OB)</td><td>R$ {ob.get('total_ob', 0):,.2f}</td></tr>"
-                           f"<tr><td>Nº de OBs / UGs</td><td>{ob.get('n_ob', 0)} / {ob.get('n_ugs', 0)}</td></tr>"
-                           f"<tr><td>Conflito doador↔contrato</td><td>{conf.get('n', 0)} vínculo(s)</td></tr>"
-                           f"<tr><td>Rede de poder (2 saltos)</td><td>{rede.get('n_nos', 0)} nós</td></tr></table>"})
+                                         [(u["total"] / total) for u in ugs], "Participação por UG"),
+                       "html": "<p class='nota'>OB = pagamento efetivo (empenho não entra). "
+                               f"Total pago: R$ {_brl(ob.get('total_ob', 0))} em {ob.get('n_ob', 0)} "
+                               f"OBs sobre {ob.get('n_ugs', 0)} UG(s).</p>"})
+    else:
+        secoes.append({"titulo": "3. Pagamentos (OB)",
+                       "html": f"<p class='nota'>{_esc(ob.get('_nota') or 'Sem OB deste favorecido na base (pode ser fornecedor municipal/federal ou fora da cobertura).')}</p>"})
+
+    # 4) Conflito doador↔contrato (TSE)
+    rede_conf = conf.get("rede") or []
+    if rede_conf:
+        linhas = "".join(
+            f"<tr><td>{_esc(r.get('doador'))}</td><td>{_esc(r.get('candidato'))} ({_esc(r.get('partido'))}/{_esc(r.get('ano'))})</td>"
+            f"<td>R$ {_brl(r.get('valor_doacao'))}</td><td>R$ {_brl(r.get('total_ob'))}</td>"
+            f"<td>{_esc(r.get('via'))}</td></tr>" for r in rede_conf)
+        secoes.append({"titulo": "4. Conflito doador de campanha ↔ contrato (TSE × OB)",
+                       "html": "<table><tr><th>Doador (sócio)</th><th>Beneficiário</th><th>Doação</th>"
+                               f"<th>Pago à empresa</th><th>Vínculo</th></tr>{linhas}</table>"
+                               "<p class='nota'>Indício a verificar; CPF de sócio mascarado, match por nome+fragmento (LGPD).</p>"})
+    else:
+        secoes.append({"titulo": "4. Conflito doador ↔ contrato",
+                       "html": f"<p class='nota'>{_esc(conf.get('_nota') or 'Nenhum vínculo doador↔contrato localizado.')}</p>"})
+
+    # 5) Rede de poder (Grafo de Poder, 2 saltos)
+    if rede.get("_nota"):
+        secoes.append({"titulo": "5. Rede de poder", "html": f"<p class='indisp'>{_esc(rede.get('_nota'))}</p>"})
+    else:
+        nos = rede.get("nos") or []
+        amostra = "".join(f"<li>{_esc(n.get('rotulo') or n.get('id'))} <i>({_esc(n.get('tipo'))})</i></li>"
+                          for n in nos[:20])
+        secoes.append({"titulo": "5. Rede de poder (2 saltos)",
+                       "html": f"<p>{rede.get('n_nos', 0)} nós e {rede.get('n_arestas', 0)} arestas "
+                               "(sócios, servidores, doações, contratos, nomeações). Amostra:</p>"
+                               f"<ul>{amostra}</ul>" if nos else
+                               f"<p>{rede.get('n_nos', 0)} nós / {rede.get('n_arestas', 0)} arestas.</p>"})
+
+    # 6) Red flags estruturais (fachada/laranja)
     rfe = d.get("red_flags_estruturais") or []
     if rfe:
-        linhas = "".join(f"<li>{(r.get('obs') or '')}</li>" for r in rfe)
-        secoes.append({"titulo": "Red flags estruturais (fachada/laranja — indício a verificar)",
+        linhas = "".join(f"<li><b>{_esc(r.get('flag'))}</b> — {_esc(r.get('obs'))}</li>" for r in rfe)
+        secoes.append({"titulo": "6. Red flags estruturais (fachada/laranja — indício a verificar)",
                        "html": f"<ul>{linhas}</ul>"})
 
-    ctx = {
+    # 7) Mídia adversa (GDELT)
+    mid = d.get("midia_adversa") or {}
+    if mid.get("adversos"):
+        linhas = "".join(
+            f"<tr><td>{_esc(a.get('data'))}</td><td>{_esc(a.get('titulo'))}</td><td>{_esc(a.get('fonte'))}</td></tr>"
+            for a in mid["adversos"][:15])
+        secoes.append({"titulo": "7. Mídia adversa (fontes abertas)",
+                       "html": f"<p>{mid.get('n_adversos', 0)} de {mid.get('n_total', 0)} artigos com termos de risco.</p>"
+                               f"<table><tr><th>Data</th><th>Manchete</th><th>Fonte</th></tr>{linhas}</table>"})
+    elif mid and not mid.get("ok"):
+        secoes.append({"titulo": "7. Mídia adversa",
+                       "html": f"<p class='indisp'>INDISPONÍVEL — {_esc(mid.get('erro'))}.</p>"})
+
+    # 8) Matriz de risco P×I (TCU)
+    prob = max(1, min(round((sc.get("score", 0) or 0) / 11) + 1, 9))
+    imp = max(1, min(round((ob.get("concentracao_top_ug", 0) or 0) * 9) + 1, 9))
+    secoes.append({"titulo": "8. Matriz de risco P×I (TCU)", "chart": C.heatmap_pxi(prob, imp)})
+
+    # 9) Síntese
+    secoes.append({"titulo": "9. Síntese",
+                   "html": "<table><tr><th>Indicador</th><th>Valor</th></tr>"
+                           f"<tr><td>Total pago (OB)</td><td>R$ {_brl(ob.get('total_ob', 0))}</td></tr>"
+                           f"<tr><td>Nº de OBs / UGs</td><td>{ob.get('n_ob', 0)} / {ob.get('n_ugs', 0)}</td></tr>"
+                           f"<tr><td>Conflito doador↔contrato</td><td>{conf.get('n', 0)} vínculo(s)</td></tr>"
+                           f"<tr><td>Rede de poder (2 saltos)</td><td>{rede.get('n_nos', 0)} nós</td></tr>"
+                           f"<tr><td>Red flags estruturais</td><td>{len(rfe)}</td></tr></table>"})
+
+    # 10) Pistas de investigação hospedada (deep-links manuais)
+    links = d.get("links_investigacao") or []
+    if links:
+        linhas = "".join(f"<li>{_esc(l.get('fonte'))} <i>({_esc(l.get('categoria'))})</i>: "
+                         f"<a href='{_esc(l.get('url'))}'>{_esc(l.get('url'))}</a></li>" for l in links[:20])
+        secoes.append({"titulo": "10. Pistas de investigação (fontes hospedadas — uso manual)",
+                       "html": f"<ul>{linhas}</ul>"})
+
+    return {
         "_dados": d, "titulo": f"Dossiê 360 — {nome}", "subtitulo": f"CNPJ {d['alvo']}",
         "classificacao": "CONFIDENCIAL — USO INTERNO (controle externo)",
         "score": sc.get("score", 0), "faixa": sc.get("faixa", "BAIXO"),
@@ -265,12 +392,21 @@ async def _gerar_pdf_classe_mundial(d: dict) -> str:
         "secoes": secoes,
         "proveniencia": [
             {"dado": "Pagamentos (OB)", "estado": "REAL", "fonte": "TFE/SIAFE", "data": d.get("gerado_em", "")[:10]},
-            {"dado": "Cadastro", "estado": "REAL" if cad.get("razao_social") else "INDISPONÍVEL",
+            {"dado": "Cadastro/QSA", "estado": "REAL" if cad.get("razao_social") else "INDISPONÍVEL",
              "fonte": "BrasilAPI", "data": d.get("gerado_em", "")[:10]},
+            {"dado": "Sanções", "estado": "REAL" if san.get("verificado") else "INDISPONÍVEL",
+             "fonte": "CEIS/CNEP/CEPIM", "data": d.get("gerado_em", "")[:10]},
             {"dado": "Doações", "estado": "REAL", "fonte": "TSE", "data": d.get("gerado_em", "")[:10]},
+            {"dado": "Rede de poder", "estado": "REAL" if not rede.get("_nota") else "INDISPONÍVEL",
+             "fonte": "Grafo de Poder (interno)", "data": d.get("gerado_em", "")[:10]},
         ],
     }
-    return await gerar_pdf(ctx, f"dossie_{d['alvo']}")
+
+
+async def _gerar_pdf_classe_mundial(d: dict) -> str:
+    """Onda 7 — gera o PDF do dossiê a partir do ctx completo (_ctx_dossie)."""
+    from compliance_agent.reporting.render_html import gerar_pdf
+    return await gerar_pdf(_ctx_dossie(d), f"dossie_{d['alvo']}")
 
 
 def _gerar_pdf(d: dict) -> str:

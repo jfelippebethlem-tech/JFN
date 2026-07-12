@@ -104,17 +104,40 @@ async def _gerar_e_enviar_orgao(orgao, ug, anos, key) -> None:
 
 
 async def _gerar_e_enviar_dossie(alvo, key) -> None:
+    """Dossiê 360 ORQUESTRADO: o painel 360 (dossie: cadastro/QSA/sanções/OB/conflito/rede/mídia)
+    + o relatório de INTELIGÊNCIA de fornecedor (montar) COM o parecer jurídico Lex. O pedido do
+    Mestre por /dossie é o pacote completo — o painel sozinho não substitui a due diligence + Lex."""
+    import re as _re
     from compliance_agent.dossie import dossie
     from compliance_agent.notifications import telegram as _tg
+    from compliance_agent.reporting.inteligencia import montar
     _pausar_sweeps_para_relatorio()
+    cnpj = _re.sub(r"\D", "", alvo or "")
     try:
         result = await dossie(alvo)
         if not result.get("ok"):
             await _tg.enviar_mensagem(result.get("pergunta") if result.get("ambiguo")
                                       else f"⚠️ Não consegui gerar o dossiê: {(result.get('erro') or '')[:300]}")
             return
-        # O dossiê só tem path_pdf (sem xlsx/lex) — _enviar_docs_telegram envia o que houver.
-        await _enviar_docs_telegram(result, f"Dossiê 360 — {alvo}")
+        nome = ((result.get("cadastro") or {}).get("razao_social") or alvo)
+        await _enviar_docs_telegram(result, f"Dossiê 360 (painel) — {nome}")
+
+        # relatório de inteligência de fornecedor + parecer Lex (o "e tudo o mais")
+        if len(cnpj) == 14:
+            try:
+                intel = await montar(cnpj=cnpj)
+                if intel.get("ok"):
+                    await _enviar_docs_telegram(
+                        intel, f"Relatório de inteligência + parecer Lex — {intel.get('empresa') or nome}")
+                else:
+                    await _tg.enviar_mensagem(
+                        "ℹ️ Dossiê 360 enviado; o relatório de inteligência/Lex não saiu: "
+                        f"{(intel.get('erro') or intel.get('pergunta') or 'indisponível')[:200]}")
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("dossiê: inteligência+Lex falhou p/ %s: %s", cnpj, exc)
+                await _tg.enviar_mensagem(
+                    "ℹ️ Dossiê 360 (painel) enviado; o relatório de inteligência/Lex falhou "
+                    f"e fica pendente ({str(exc)[:160]}).")
     except Exception as exc:  # noqa: BLE001
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o dossiê de {alvo}: {str(exc)[:300]}")
     finally:

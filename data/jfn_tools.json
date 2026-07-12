@@ -855,7 +855,7 @@
       "type": "function",
       "function": {
         "name": "dossie",
-        "description": "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias) — usar quando: 'monte um dossie sobre X' — chamar: POST /api/dossie (base http://127.0.0.1:8000)",
+        "description": "Dossie 360 ORQUESTRADO: painel (cadastro/QSA+sancoes CEIS/CNEP/OpenSanctions+OB/concentracao+conflito doador-contrato+rede de poder+midia adversa+red flags de fachada) E o relatorio de INTELIGENCIA de fornecedor COM parecer juridico Lex — envia os dois no Telegram (PDF+XLSX+MD+Lex). — usar quando: 'monte um dossie sobre X', 'dossie do CNPJ Y' (pacote completo: painel 360 + due diligence + Lex) — chamar: POST /api/dossie (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
