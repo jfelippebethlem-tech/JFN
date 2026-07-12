@@ -17,7 +17,7 @@ import argparse
 import json
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -31,18 +31,20 @@ from compliance_agent.pcrj.nomes import normalizar  # noqa: E402
 from compliance_agent.pcrj.pcrj_remuneracao import Sessao  # noqa: E402
 
 
-def _alvos() -> list[dict]:
-    """ALTA + natureza não informada + lado Prefeitura, com a(s) competência(s) de consulta."""
+def _alvos(certezas: tuple[str, ...], desde_dias: int) -> list[dict]:
+    """Casos (certeza no recorte) + natureza não informada + lado Prefeitura, com a(s)
+    competência(s) de consulta. Pula quem já foi consultado nos últimos `desde_dias` dias
+    (retomada de varredura longa que atravessa a meia-noite)."""
     d = pb.analisar()
     regs = [r for r in d["registros"]
-            if r["certeza"] == "ALTA" and r["eh_nomeado"] is None and "Prefeitura" in r["poder"]]
+            if r["certeza"] in certezas and r["eh_nomeado"] is None and "Prefeitura" in r["poder"]]
     con = _db.conectar()
-    hoje = datetime.now(timezone.utc).date().isoformat()
-    ja_hoje = {r[0] for r in con.execute(
-        "SELECT DISTINCT nome_norm FROM pcrj_prefeitura_consulta WHERE consultado_em>=?", (hoje,))}
+    corte = (datetime.now(timezone.utc) - timedelta(days=desde_dias)).date().isoformat()
+    ja_feitos = {r[0] for r in con.execute(
+        "SELECT DISTINCT nome_norm FROM pcrj_prefeitura_consulta WHERE consultado_em>=?", (corte,))}
     alvos = []
     for r in regs:
-        if r["nome_norm"] in ja_hoje:
+        if r["nome_norm"] in ja_feitos:
             continue
         row = con.execute("SELECT MAX(competencia), MIN(competencia) FROM pcrj_folha_pref "
                           "WHERE nome_norm=?", (r["nome_norm"],)).fetchone()
@@ -50,7 +52,7 @@ def _alvos() -> list[dict]:
         alvos.append({"nome_norm": r["nome_norm"], "nome": r["nome"],
                       "comps": sorted(comps, reverse=True)})
     con.close()
-    print(f"alvos ALTA+NÃO INFORMADO: {len(regs)} · já consultados hoje: "
+    print(f"alvos {'+'.join(certezas)}+NÃO INFORMADO: {len(regs)} · já consultados (≤{desde_dias}d): "
           f"{len(regs) - len(alvos)} · a consultar: {len(alvos)}", flush=True)
     return alvos
 
@@ -78,9 +80,13 @@ def main():
     ap.add_argument("--limite", type=int, default=None)
     ap.add_argument("--workers", type=int, default=2)
     ap.add_argument("--pausa", type=float, default=0.4)
+    ap.add_argument("--certeza", default="alta", choices=["alta", "media", "todas"])
+    ap.add_argument("--desde-dias", type=int, default=3,
+                    help="pula quem já foi consultado há menos de N dias (retomada)")
     args = ap.parse_args()
 
-    alvos = _alvos()
+    certezas = {"alta": ("ALTA",), "media": ("MÉDIA",), "todas": ("ALTA", "MÉDIA")}[args.certeza]
+    alvos = _alvos(certezas, args.desde_dias)
     if args.limite:
         alvos = alvos[:args.limite]
     if not alvos:
@@ -89,6 +95,7 @@ def main():
 
     sessoes = [Sessao(pausa=args.pausa) for _ in range(args.workers)]
     con = _db.conectar()
+    con.execute("PRAGMA busy_timeout=180000")   # convive com o cron mensal que escreve no pcrj.db
     agora = datetime.now(timezone.utc).isoformat(timespec="seconds")
     cont = {"indicio_nome_unico": 0, "homonimo_ambiguo": 0, "nao_encontrado": 0,
             "indisponivel": 0, "comissao": 0, "carreira": 0}

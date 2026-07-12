@@ -57,9 +57,10 @@ def _cargo_comissionado(cargo: str) -> bool:
 
 def _cargo_prefeitura(con, nome_norm: str) -> str:
     """Cargo na Prefeitura quando alguma consulta nominal já o trouxe (a folha em bloco não
-    publica cargo). '' = nunca consultado / não encontrado."""
+    publica cargo). '' = nunca consultado / não encontrado. Só vale consulta de NOME ÚNICO
+    (confianca='indicio_nome_unico') — com homônimo ambíguo o cargo pode ser de OUTRA pessoa."""
     for sql in ("SELECT cargo FROM pcrj_prefeitura_consulta WHERE nome_norm=? AND encontrado=1 "
-                "AND cargo IS NOT NULL AND cargo<>'' LIMIT 1",
+                "AND confianca='indicio_nome_unico' AND cargo IS NOT NULL AND cargo<>'' LIMIT 1",
                 "SELECT cargo_pcrj FROM pcrj_comissionado_candidato WHERE nome_norm=? "
                 "AND cargo_pcrj IS NOT NULL AND cargo_pcrj<>'' LIMIT 1"):
         try:

@@ -45,10 +45,16 @@ def test_cargo_comissionado(cargo, eh):
 def con():
     c = sqlite3.connect(":memory:")
     c.row_factory = sqlite3.Row
-    c.execute("CREATE TABLE pcrj_prefeitura_consulta (nome_norm TEXT, encontrado INT, cargo TEXT)")
+    c.execute("CREATE TABLE pcrj_prefeitura_consulta "
+              "(nome_norm TEXT, encontrado INT, cargo TEXT, confianca TEXT)")
     c.execute("CREATE TABLE pcrj_comissionado_candidato (nome_norm TEXT, cargo_pcrj TEXT)")
-    c.execute("INSERT INTO pcrj_prefeitura_consulta VALUES ('fulano comissao', 1, 'ESPECIAL')")
-    c.execute("INSERT INTO pcrj_prefeitura_consulta VALUES ('beltrano carreira', 1, 'GUARDA MUNICIPAL')")
+    c.execute("INSERT INTO pcrj_prefeitura_consulta VALUES "
+              "('fulano comissao', 1, 'ESPECIAL', 'indicio_nome_unico')")
+    c.execute("INSERT INTO pcrj_prefeitura_consulta VALUES "
+              "('beltrano carreira', 1, 'GUARDA MUNICIPAL', 'indicio_nome_unico')")
+    # homônimo ambíguo: o cargo pode ser de OUTRA pessoa → NÃO pode classificar
+    c.execute("INSERT INTO pcrj_prefeitura_consulta VALUES "
+              "('zutano ambiguo', 1, 'ESPECIAL', 'homonimo_ambiguo')")
     return c
 
 
@@ -72,6 +78,12 @@ def test_prefeitura_comissionado_confirmado(con):
 def test_prefeitura_carreira(con):
     c, det, n = pb._natureza_prefeitura(con, "beltrano carreira", {"NORMAL"})
     assert c == "EFETIVO" and n is False and "GUARDA MUNICIPAL" in det
+
+
+def test_prefeitura_homonimo_ambiguo_nao_classifica(con):
+    """Consulta com homônimo ambíguo: o cargo pode ser de outra pessoa → segue NÃO INFORMADO."""
+    c, _, n = pb._natureza_prefeitura(con, "zutano ambiguo", {"NORMAL"})
+    assert c == "NÃO INFORMADO" and n is None
 
 
 def test_prefeitura_sem_cargo_e_nao_informado(con):
