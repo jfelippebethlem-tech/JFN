@@ -3,8 +3,8 @@
 # Origem: JFN-DOCUMENTO-MESTRE-CONSOLIDADO §7 (docs/refs/). Status: PRONTO = já existe; "ONDA N" = alvo da onda.
 # Regra de ouro do roteador: o Yoda só pode chamar ids presentes aqui; fora do registro = erro explícito.
 meta:
-  versao: "2.1.0"
-  atualizado: "2026-06-08"
+  versao: "2.2.0"
+  atualizado: "2026-07-11"
   base_http: "http://127.0.0.1:8000"
   cli_prefixo: "cd ~/JFN && PYTHONPATH=. .venv/bin/python -m"
   invariantes:
@@ -20,31 +20,38 @@ capacidades:
   - {id: relatorio_inteligencia, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/relatorio/inteligencia, status: PRONTO,
      descricao: "Due diligence de FORNECEDOR (PDF+XLSX+parecer Lex)", quando_usar: "relatorio/auditoria/due diligence de empresa, CNPJ", exemplo: "due diligence da MGS Clean",
      args: {empresa: "string (um de empresa|cnpj)", cnpj: "string", anos: "list[int] opcional"},
-     retorno: "{cnpj,empresa,risco,score,path_pdf,path_xlsx,path_lex,grau_lex} | {ambiguo,candidatos}", enviar_telegram: [path_pdf, path_xlsx, path_lex]}
+     retorno: "{cnpj,empresa,risco,score,path_pdf,path_xlsx,path_lex,grau_lex} | {ambiguo,candidatos}", enviar_telegram: [path_pdf, path_xlsx, path_lex],
+     menu: {grupo: "🏢 Auditoria & Relatórios", nome: "Relatório de um fornecedor", exemplo: "due diligence da MGS Clean", ordem: 11, cmd: "/relatorio"}}
   - {id: relatorio_orgao, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/relatorio/orgao, status: PRONTO,
      descricao: "Inteligencia de ORGAO/UG (PDF+XLSX+parecer Lex de orgao)", quando_usar: "auditoria de orgao/UG/secretaria", exemplo: "quanto o ITERJ pagou e a quem em 2024",
      args: {orgao: "string (um de orgao|ug)", ug: "string", anos: "list[int] opcional"},
-     retorno: "{ug,orgao,path_pdf,path_xlsx,path_lex,grau_lex} | {ambiguo,candidatos}", enviar_telegram: [path_pdf, path_xlsx, path_lex]}
+     retorno: "{ug,orgao,path_pdf,path_xlsx,path_lex,grau_lex} | {ambiguo,candidatos}", enviar_telegram: [path_pdf, path_xlsx, path_lex],
+     menu: {grupo: "🏢 Auditoria & Relatórios", nome: "Relatório de um órgão/UG", exemplo: "quanto o ITERJ pagou e a quem em 2024", ordem: 12, cmd: "/orgao"}}
   - {id: listar_ugs, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/ugs, status: PRONTO,
      descricao: "Catalogo das UGs/orgaos: codigo + nome + nº OBs + total pago (o /UG)", quando_usar: "'/ug', 'quais os codigos/nomes dos orgaos/UGs', 'listar UGs', 'qual o codigo da SEEDUC', 'que orgaos existem', ANTES de pedir o /orgao quando nao se sabe o codigo", exemplo: "/ug tribunal",
-     args: {filtro: "string opcional (nome OU codigo; acento nao importa)", limite: "int opcional"}, retorno: "{texto,ugs[],n,n_total}", enviar_telegram: []}
+     args: {filtro: "string opcional (nome OU codigo; acento nao importa)", limite: "int opcional"}, retorno: "{texto,ugs[],n,n_total}", enviar_telegram: [],
+     menu: {grupo: "🏢 Auditoria & Relatórios", nome: "Catálogo de UGs/órgãos (códigos e nomes)", exemplo: "/ug tribunal", ordem: 13, cmd: "/ug"}}
   - {id: anomalias, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/anomalias, status: PRONTO,
      descricao: "Anomalias em OBs (+Benford na Onda 3)", quando_usar: "triagem de risco; 'algo estranho em X'",
-     args: {ug: opcional, cnpj: opcional, exercicio: opcional}, retorno: "{alertas[]}"}
+     args: {ug: opcional, cnpj: opcional, exercicio: opcional}, retorno: "{alertas[]}",
+     menu: {grupo: "🔎 Investigação", nome: "Anomalias automáticas nos pagamentos", exemplo: "algo estranho nos pagamentos do ITERJ?", ordem: 24}}
   - {id: cartel, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/cartel, status: PRONTO,
      descricao: "Cartel/bid-rigging em grafo + QSA (concentracao, rodizio, socios em comum entre concorrentes)", quando_usar: "conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?'", exemplo: "fornecedores presos a um so orgao (modo=captura)? socios em comum do CNPJ X (modo=qsa)?",
-     args: {modo: "captura|dependencia|vizinhanca|cruzado|qsa", cnpj: "obrigatorio p/ vizinhanca/cruzado/qsa", top: opcional}, retorno: "{modo,dados,aviso}"}
+     args: {modo: "captura|dependencia|vizinhanca|cruzado|qsa", cnpj: "obrigatorio p/ vizinhanca/cruzado/qsa", top: opcional}, retorno: "{modo,dados,aviso}",
+     menu: {grupo: "🔎 Investigação", nome: "Cartel/conluio entre fornecedores", exemplo: "tem cartel nas licitações da UG 133100?", ordem: 21}}
   - {id: rodizio, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/rodizio, status: PRONTO,
      descricao: "Rodizio temporal de cartel (bid rotation): vencedores que se revezam no topo de uma UG ano a ano", quando_usar: "rodizio/revezamento de vencedores; 'a UG X tem fornecedores que se alternam no 1o lugar?'", exemplo: "rodizio na UG 170100? varredura das UGs com indicio de rodizio?",
      args: {ug: "opcional (sem ug = varredura)", qsa: "1 cruza socios dos campeoes (concorrencia ficticia)", top: opcional}, retorno: "{ug,dados,aviso}"}
   - {id: conflito_doador_contrato, agente: lex, dominio: auditoria, tipo: http, metodo: GET, rota: /api/conflito, status: PRONTO,
      descricao: "Cruza doacoes TSE com contratos/OB (doador->fornecedor)", quando_usar: "'quem me doou ganhou contrato', conflito de interesse",
-     args: {cnpj: "um de cnpj|candidato", candidato: "string"}, retorno: "{rede[]}", fonte: "TSE + SIAFE/PNCP"}
+     args: {cnpj: "um de cnpj|candidato", candidato: "string"}, retorno: "{rede[]}", fonte: "TSE + SIAFE/PNCP",
+     menu: {grupo: "🔎 Investigação", nome: "Doador de campanha que virou fornecedor", exemplo: "quem me doou ganhou contrato?", ordem: 23}}
   - {id: sobrepreco, agente: lex, dominio: auditoria, tipo: http, metodo: GET, rota: /api/sobrepreco, status: PRONTO,
      descricao: "Preco pago vs mediana de referencia (Compras Dados Abertos, CATMAT/CATSER)", quando_usar: "'esta caro?', superfaturamento, R4",
      args: {codigo: "int CATMAT|CATSER obrigatorio", valor: "float preco pago", servico: "bool (CATSER)"}, retorno: "{mediana_ref,p25,p75,pct,classificacao,fonte}"}
   - {id: cruzamento, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/cruzamento, status: PRONTO,
-     descricao: "OB<->CNPJ<->SEI<->socios", quando_usar: "'cruze os dados da empresa X'", args: {cnpj: obrigatorio}, retorno: "{obs,processos_sei,socios}"}
+     descricao: "OB<->CNPJ<->SEI<->socios", quando_usar: "'cruze os dados da empresa X'", args: {cnpj: obrigatorio}, retorno: "{obs,processos_sei,socios}",
+     menu: {grupo: "🔎 Investigação", nome: "Cruzar OB × CNPJ × SEI × sócios", exemplo: "cruze os dados da empresa X", ordem: 22, cmd: "/cruzamento"}}
   - {id: concentracao_grupo, agente: jfn, dominio: auditoria, tipo: cli, comando: "compliance_agent.grafo_cartel --vizinhanca <CNPJ>", status: PRONTO,
      descricao: "Concentracao OCULTA por GRUPO economico numa UG: colapsa os fornecedores por socio em comum (dedup por raiz CNPJ-8) — muitos CNPJs que parecem concorrentes mas sao UM grupo = diversidade/concorrencia FICTICIA (Art. 90 Lei 8.666 · 337-F CP · Art. 36 Lei 12.529-CADE). INDICIO a corroborar no certame (SEI/PNCP), nunca acusacao; QSA mascarado/indisponivel != afastado.",
      quando_usar: "'ha concentracao escondida por grupo na UG X?', 'esses concorrentes sao na verdade o mesmo grupo?', cartel oculto / concorrencia simulada numa UG", exemplo: "concentracao por grupo na UG 660100 (Grupo Vieira concentrou fatia relevante via varios CNPJs)",
@@ -56,12 +63,14 @@ capacidades:
   - {id: emendas_pericia, agente: jfn, dominio: auditoria, tipo: cli, comando: "tools/emendas_pericia.py [--telegram] [--sem-pdf]", status: PRONTO,
      descricao: "Pericia deterministica de emendas D1-D6 (PIX impedida, concentracao autor->destino, favorecido sancionado, fachada, retroalimentacao doador-socio, empenho sem execucao) -> PDF Kroll + XLSX + alertas. Indicio != acusacao; cobertura declarada por detector.",
      quando_usar: "'pericia/analise das emendas', 'quais emendas suspeitas'", exemplo: "tools/emendas_pericia.py --telegram",
-     args: {telegram: "flag", sem_pdf: "flag"}, retorno: "reports/emendas_rj_pericia_<data>.pdf + xlsx", enviar_telegram: [path_pdf, path_xlsx]}
+     args: {telegram: "flag", sem_pdf: "flag"}, retorno: "reports/emendas_rj_pericia_<data>.pdf + xlsx", enviar_telegram: [path_pdf, path_xlsx],
+     menu: {grupo: "🕵️ Fiscalização & Perícias", nome: "Perícia das emendas parlamentares (RJ)", exemplo: "quais emendas suspeitas?", ordem: 41}}
   - {id: nucleo_pericia, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/nucleo/comando, status: PRONTO,
      descricao: "Nucleo de pericia INTERATIVO (inteligencia progressiva): pericia na hora de OB/CNPJ/contrato, veredito humano que fecha o ciclo de aprendizado, placar de acerto, fantasma (8 sinais), fases de contratacao, promover hipotese. Comandos: /pericia /veredito /placar /fantasma /fases /promover /ciclo_nucleo /fornecedor /parametros /evolucao.",
      quando_usar: "'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'essa empresa e fantasma/laranja?', 'fantasma cnpj X', 'fases da contratacao'", exemplo: "pericia a MGS Clean / fantasma 19088605000104",
      args: {comando: "string ex.: /pericia (ou omitir e mandar texto)", args: "string alvo (CNPJ/OB/ref)", texto: "string livre (roteador deterministico)"},
-     retorno: "{ok, comando, resposta(markdown)}"}
+     retorno: "{ok, comando, resposta(markdown)}",
+     menu: {grupo: "🕵️ Fiscalização & Perícias", nome: "Perícia na hora (OB/CNPJ/contrato) + fantasma", exemplo: "essa empresa é fantasma?", ordem: 45, cmd: "/pericia"}}
   - {id: pcrj_gastos_coletar, agente: jfn, dominio: auditoria, tipo: cli, comando: "tools/pcrj_gastos_coletar.py [--ini AAAAMMDD --fim AAAAMMDD]", status: PRONTO,
      descricao: "Contratos/empenhos + licitacoes do MUNICIPIO do Rio via PNCP (descobre orgaos municipais pelo IBGE 3304557); despesa por credor historica 2008-2023 via ContasRio/Open_Data_Empenhos (pcrj.contasrio.coletar_exercicios). Grava pcrj_contratos/pcrj_licitacoes/pcrj_despesa.",
      quando_usar: "'atualizar gastos/contratos da prefeitura do Rio'", exemplo: "tools/pcrj_gastos_coletar.py --ini 20250101 --fim 20251231",
@@ -69,7 +78,13 @@ capacidades:
   - {id: pcrj_pericia_gastos, agente: jfn, dominio: auditoria, tipo: cli, comando: "tools/pcrj_pericia_gastos.py [--telegram] [--sem-pdf]", status: PRONTO,
      descricao: "Pericia deterministica de gastos PCRJ D7-D10 (fracionamento janela 90d abaixo do teto de dispensa, credor recem-aberto, socio de credor na folha municipal [homonimo sinalizado], rede societaria entre fornecedores + aditivos > art. 125) -> PDF Kroll + XLSX + alertas.",
      quando_usar: "'pericia dos gastos da prefeitura', 'fracionamento na PCRJ'", exemplo: "tools/pcrj_pericia_gastos.py --telegram",
-     args: {telegram: "flag", sem_pdf: "flag"}, retorno: "reports/pcrj_gastos_pericia_<data>.pdf + xlsx", enviar_telegram: [path_pdf, path_xlsx]}
+     args: {telegram: "flag", sem_pdf: "flag"}, retorno: "reports/pcrj_gastos_pericia_<data>.pdf + xlsx", enviar_telegram: [path_pdf, path_xlsx],
+     menu: {grupo: "🕵️ Fiscalização & Perícias", nome: "Perícia dos gastos da Prefeitura do Rio", exemplo: "fracionamento na PCRJ?", ordem: 42}}
+  - {id: pericia_beneficios, agente: jfn, dominio: auditoria, tipo: cli, comando: "tools/pericia_beneficios_run.py [--doc camara|prefeitura|consolidado|socios|todos] [--telegram]", status: PRONTO,
+     descricao: "Pericia de beneficio assistencial (BPC/Bolsa Familia/Auxilio Brasil/Emergencial) x quadro de pessoal do Rio, com a NATUREZA DO VINCULO explicita pessoa a pessoa (NOMEADO em comissao x efetivo x requisitado x aposentado/pensionista x estagio x nao informado pela fonte — nunca presume). 4 documentos: Camara (fichas individuais dos nomeados + convergencia Camara-Prefeitura + gabinetes sob suplencia), Prefeitura (fichas + pensionistas + natureza nao informada separada), consolidado (anexo de certeza MEDIA integral) e socios de fornecedores (com total pago a empresa via OB SIAFE contabilizada). Fairness: so beneficio recebido DURANTE o vinculo; identidade por nome+fragmento de CPF no municipio do Rio; indicio != acusacao.",
+     quando_usar: "'pericia de beneficios', 'nomeado/servidor recebendo bolsa familia/BPC', 'quem do gabinete/da prefeitura recebe beneficio', 'socio de fornecedor com beneficio', 'quem e nomeado nesses cruzamentos'", exemplo: "tools/pericia_beneficios_run.py --doc todos --telegram",
+     args: {doc: "camara|prefeitura|consolidado|socios|todos", telegram: "flag"}, retorno: "reports/pericia_camara|prefeitura|beneficios_nomeados|socios_fornecedores_beneficio_<data>.pdf", enviar_telegram: [path_pdf],
+     menu: {grupo: "👥 Pessoal × Benefícios", nome: "Perícia de benefícios (Câmara/Prefeitura/sócios) — quem é nomeado", exemplo: "perícia de benefícios da prefeitura", ordem: 51}}
   - {id: editais_corpus, agente: jfn, dominio: auditoria, tipo: cli, comando: "tools/editais_corpus.py [--limite N]", status: PRONTO,
      descricao: "Baixa o corpus de editais municipais do Rio (texto do edital + itens via PNCP) p/ a analise de direcionamento. Degrada honesto: sem documento acessivel -> documento_disponivel=0.",
      quando_usar: "'atualizar editais', 'baixar editais da prefeitura'", exemplo: "tools/editais_corpus.py --limite 2000",
@@ -77,11 +92,13 @@ capacidades:
   - {id: editais_direcionamento, agente: jfn, dominio: auditoria, tipo: cli, comando: "tools/editais_direcionamento.py [--clausulas] [--clusters] [--max-candidatas N]", status: PRONTO,
      descricao: "ENXAME de avaliacao de direcionamento: compara editais de OBJETO SEMELHANTE clausula-a-clausula (agrupamento semantico Cohere, pois CATMAT vem ~0% na PCRJ), acha a exigencia de habilitacao que SO um edital do grupo impoe (peer-diff = raridade x forca E7/sumula) e sobe as candidatas p/ 5 agentes-lente free-tier (proporcionalidade, jurisprudencia, competicao, refutador adversarial, beneficiario) com desempate pro-refutador. Direcionamento = anomalia RELATIVA ao grupo. Indicio != acusacao.",
      quando_usar: "'ha direcionamento nos editais?', 'compare os editais de X', 'quais exigencias reduzem competitividade'", exemplo: "tools/editais_direcionamento.py --clausulas --clusters",
-     args: {clausulas: "flag (re-extrai)", clusters: "flag (re-agrupa, usa Cohere)", "max-candidatas": "int", "limiar-raridade": "float 0-1"}, retorno: "reports/editais_direcionamento_<data>.pdf + xlsx + clausula_veredito", enviar_telegram: [path_pdf, path_xlsx]}
+     args: {clausulas: "flag (re-extrai)", clusters: "flag (re-agrupa, usa Cohere)", "max-candidatas": "int", "limiar-raridade": "float 0-1"}, retorno: "reports/editais_direcionamento_<data>.pdf + xlsx + clausula_veredito", enviar_telegram: [path_pdf, path_xlsx],
+     menu: {grupo: "🕵️ Fiscalização & Perícias", nome: "Direcionamento em editais (cláusula a cláusula)", exemplo: "há direcionamento nos editais?", ordem: 43}}
   - {id: contratos_parecer, agente: jfn, dominio: auditoria, tipo: cli, comando: "tools/contratos_parecer.py [--max-contratos N] [--telegram]", status: PRONTO,
      descricao: "CAMARA de contratos estilo Tribunal de Contas (nao-monolito): dossie compartilhado por contrato (contrato+aditivos PNCP termos+pagamentos+itens+sinais) que 6 pensamentos determinsticos cruzam (aditivo art.125, prorrogacao art.106/107, execucao financeira art.63, sobrepreco/jogo de planilha via peer+Painel de Precos compras.gov.br, Lex R2-R12, sinais do fornecedor), depois a camara (enxame free-tier + RAG jurisprudencia + MEMORIA que nao re-acusa refutado) emite PARECER TC: relatorio/fundamentacao/conclusao/voto. Aprende: veredito -> memoria_aprendizado -> auto_melhoria. Indicio != acusacao.",
      quando_usar: "'analise/parecer dos contratos', 'esse contrato tem aditivo/sobrepreco irregular?', 'como um tribunal de contas'", exemplo: "tools/contratos_parecer.py --max-contratos 50 --telegram",
-     args: {"max-contratos": "int", telegram: "flag", "sem-pdf": "flag"}, retorno: "reports/contrato_parecer_<controle>_<data>.pdf (parecer TC) + indice xlsx + casos vault", enviar_telegram: [path_pdf, path_xlsx]}
+     args: {"max-contratos": "int", telegram: "flag", "sem-pdf": "flag"}, retorno: "reports/contrato_parecer_<controle>_<data>.pdf (parecer TC) + indice xlsx + casos vault", enviar_telegram: [path_pdf, path_xlsx],
+     menu: {grupo: "🕵️ Fiscalização & Perícias", nome: "Parecer de contratos (estilo Tribunal de Contas)", exemplo: "analise os contratos da Prefeitura", ordem: 44}}
   - {id: relacoes, agente: jfn, dominio: auditoria, tipo: cli, comando: "compliance_agent.relacoes \"<CNPJ | nome do socio | UG>\"", status: PRONTO,
      descricao: "Mapa de RELACOES de um alvo: socio<->empresa (QSA), empresa<->empresa por socio OU endereco em comum (dedup por raiz; indicio de grupo economico/concorrencia ficticia), empresa<->orgao (UGs que pagaram; UG em comum = vinculo mais forte). Resolve sozinho: 14dig=empresa, 6dig=UG, senao=nome de socio.",
      quando_usar: "'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo", exemplo: "relacoes do CNPJ 19088605000104 / relacoes do socio Fulano de Tal",
@@ -104,19 +121,23 @@ capacidades:
   # ---- GRAFO / DOSSIE ----
   - {id: grafo_poder, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/grafo, status: PRONTO,
      descricao: "Grafo unico: socios+servidores+doacoes+contratos+nomeacoes", quando_usar: "'quem esta ligado a X', 'a N saltos do deputado Y com contrato'",
-     args: {alvo: obrigatorio, saltos: "int=2", so_contrato: bool}, retorno: "{nos,arestas,comunidades}"}
+     args: {alvo: obrigatorio, saltos: "int=2", so_contrato: bool}, retorno: "{nos,arestas,comunidades}",
+     menu: {grupo: "🕸️ Rede & Idoneidade", nome: "Rede de poder (quem liga a quem)", exemplo: "quem está ligado à empresa X", ordem: 31}}
   - {id: dossie, agente: jfn, dominio: inteligencia, tipo: http, metodo: POST, rota: /api/dossie, status: PRONTO,
-     descricao: "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias)", quando_usar: "'monte um dossie sobre X'", args: {alvo: obrigatorio}, retorno: "{path_pdf,resumo}"}
+     descricao: "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias)", quando_usar: "'monte um dossie sobre X'", args: {alvo: obrigatorio}, retorno: "{path_pdf,resumo}",
+     menu: {grupo: "🏢 Auditoria & Relatórios", nome: "Dossiê 360 de um alvo", exemplo: "monte um dossiê da Extreme", ordem: 14, cmd: "/dossie"}}
   - {id: grafo_ftm, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/grafo/ftm, status: PRONTO,
      descricao: "Exporta o Grafo de Poder no modelo FollowTheMoney (interoperar Aleph/Gephi, sem migrar)", quando_usar: "'exporte a rede de X p/ FtM/Aleph'",
      args: {alvo: obrigatorio, saltos: "int=2"}, retorno: "{entidades[FtM]}", fonte: "Grafo de Poder -> FtM (Onda 12)"}
   # ---- PROVIDERS (Onda 12: consulta hospedada sob demanda, sem baixar base; fallback+cache+proveniencia) ----
   - {id: consultar_empresa, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/empresa, status: PRONTO,
      descricao: "Cadastro + socios (QSA) por CNPJ, fonte hospedada (BrasilAPI->cnpj.pw, fallback)", quando_usar: "'dados da empresa X', socios de um CNPJ",
-     args: {cnpj: obrigatorio}, retorno: "{ok,fonte,estado,obtido_em,dados:{razao_social,situacao,abertura,socios[]}}", fonte: "BrasilAPI / api.cnpj.pw (sem baixar base)"}
+     args: {cnpj: obrigatorio}, retorno: "{ok,fonte,estado,obtido_em,dados:{razao_social,situacao,abertura,socios[]}}", fonte: "BrasilAPI / api.cnpj.pw (sem baixar base)",
+     menu: {grupo: "🕸️ Rede & Idoneidade", nome: "Cadastro + sócios de um CNPJ", exemplo: "dados da empresa 19.088.605/0001-04", ordem: 32}}
   - {id: consultar_idoneidade, agente: lex, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/idoneidade, status: PRONTO,
      descricao: "Triagem em listas: CEIS/CNEP (BR) + sancoes/PEP (OpenSanctions)", quando_usar: "'a empresa X esta sancionada?', PEP",
-     args: {cnpj: opcional, nome: opcional}, retorno: "{resultados[{fonte,estado,dados}]}", fonte: "Portal da Transparencia + OpenSanctions"}
+     args: {cnpj: opcional, nome: opcional}, retorno: "{resultados[{fonte,estado,dados}]}", fonte: "Portal da Transparencia + OpenSanctions",
+     menu: {grupo: "🕸️ Rede & Idoneidade", nome: "A empresa está sancionada? (CEIS/CNEP)", exemplo: "a empresa X está sancionada?", ordem: 33}}
   - {id: consultar_ownership, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/ownership, status: PRONTO,
      descricao: "Empresa/controle internacional (LEI + relacoes)", quando_usar: "vinculo societario cross-jurisdicao", exemplo: "controle internacional da Petrobras (LEI)", args: {nome: opcional, lei: opcional}, retorno: "{ok,fonte,dados}", fonte: "GLEIF"}
   - {id: consultar_leaks, agente: jfn, dominio: inteligencia, tipo: http, metodo: GET, rota: /api/leaks, status: PRONTO,
@@ -159,7 +180,8 @@ capacidades:
   - {id: siafe_atualizar, agente: jfn, dominio: coleta, tipo: http, metodo: POST, rota: /api/siafe/atualizar, status: PRONTO,
      descricao: "Incremental diaria (cron 05:00); sessao unica via lockfile", quando_usar: "'atualize o SIAFE'", args: {exercicio: opcional}, retorno: "{coletadas,ingeridas}"}
   - {id: siafe_stats, agente: jfn, dominio: coleta, tipo: http, metodo: GET, rota: /api/siafe/stats, status: PRONTO,
-     descricao: "Quanto já foi coletado do SIAFE: total de OBs, por ano/UG, cobertura/frescor", quando_usar: "'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia'", args: {}, retorno: "{total,valor_total,por_ano,com_processo}"}
+     descricao: "Quanto já foi coletado do SIAFE: total de OBs, por ano/UG, cobertura/frescor", quando_usar: "'quantas OBs temos', 'status/cobertura da coleta SIAFE', 'quanto ja coletamos', 'o SIAFE esta em dia'", args: {}, retorno: "{total,valor_total,por_ano,com_processo}",
+     menu: {grupo: "🛰️ Coleta & Base", nome: "Status da coleta / cobertura da base", exemplo: "quantas OBs já coletamos?", ordem: 61}}
   - {id: sweeps_status, agente: jfn, dominio: coleta, tipo: http, metodo: GET, rota: /api/sweeps/status, status: PRONTO,
      descricao: "Status dos SWEEPS diarios SINGLE-PASS escalonados (cron, sem 2 pesados ao mesmo tempo — licao VM): sweep_sei (le processos SEI das OBs, sessao itkava unica; 07/13/19h) + sweep_dados (endereco/beneficios/fachada, DB/rede; 10/16h) + cruzador (cruzamento noturno OB<->SEI e varredura de concentracao-grupo; 23h)", quando_usar: "'como esta o sweep', 'o sweep do SEI/dados esta funcionando', 'a coleta continua esta rodando', 'quantos processos SEI ja foram lidos'", exemplo: "como esta o sweep do sei?",
      args: {}, retorno: "{texto,sei{feitos,supervisor,rodando},siafe{...},pausado}"}
@@ -244,7 +266,8 @@ menu_lista:
     🏢 **Relatório de fornecedor** — tudo que uma empresa recebeu do Estado, com rede e risco.
     🏛️ **Relatório de órgão** — quanto uma secretaria/UG pagou, e a quem.
     🔎 **Investigar** — cartel, rede de sócios e se a empresa está sancionada.
-    📈 **Mercado & previsão** — cenários e previsões do Massare.
+    🕵️ **Fiscalização & perícias** — emendas, gastos e editais da Prefeitura, parecer de contratos.
+    👥 **Pessoal × benefícios** — quem do quadro (nomeado? efetivo?) recebe benefício; sócios também.
     📚 **Ver todas as funções** — o catálogo completo.
 
     *Toque numa opção ou fale comigo em linguagem natural.*
@@ -252,6 +275,8 @@ menu_lista:
     - [["🏢 Relatório de fornecedor", "menu:forn"]]
     - [["🏛️ Relatório de órgão", "menu:orgao"]]
     - [["🔎 Investigar (cartel/rede)", "menu:invest"]]
+    - [["🕵️ Fiscalização & perícias", "menu:fisc"]]
+    - [["👥 Pessoal × benefícios", "menu:benef"]]
     - [["📚 Ver todas as funções", "menu:all"]]
   dicas:
     forn: |
@@ -269,3 +294,13 @@ menu_lista:
       Cartel/conluio entre fornecedores, rede de poder (sócios e doações de campanha) e se a empresa está sancionada (CEIS/CNEP).
 
       Ex.: *tem cartel na UG 133100?* · *quem está ligado à empresa X*.
+    fisc: |
+      🕵️ **Fiscalização & perícias**
+      Perícia das emendas parlamentares (RJ), gastos da Prefeitura (fracionamento/credor recém-aberto), direcionamento em editais (cláusula a cláusula) e parecer de contratos estilo Tribunal de Contas. Também a perícia na hora: /pericia e /fantasma.
+
+      Ex.: *quais emendas suspeitas?* · *fracionamento na PCRJ?* · *há direcionamento nos editais?* · *parecer dos contratos*.
+    benef: |
+      👥 **Pessoal × benefícios**
+      Quem do quadro da Câmara/Prefeitura recebe BPC/Bolsa Família — com a **natureza do vínculo explícita** (nomeado em comissão × efetivo × requisitado × pensionista × não informado pela fonte) — e sócios de fornecedores com benefício (com o total que a empresa recebeu do Estado).
+
+      Ex.: *perícia de benefícios da prefeitura* · *quem do gabinete recebe benefício?* · *sócio de fornecedor com Bolsa Família?*
