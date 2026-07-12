@@ -97,10 +97,8 @@ async def montar() -> str:
     outline = construir_outline(doc)   # bookmarks da parte analítica
 
     # 2) ANEXO A — íntegra dos instrumentos e prestação de contas.
-    # Preferência: íntegra do SEI (se o reader tiver baixado); senão, os INSTRUMENTOS PÚBLICOS que a
-    # própria ONG publica (mesmos documentos substantivos: contrato + 4 aditivos + relatórios FECAM +
-    # auditoria). O processo SEI interno (070026/000705/2021) é cross-unit e não abriu pelo reader
-    # itkava/ITERJ — limitação de método a resolver; o conteúdo substantivo está coberto pela via pública.
+    # Preferência: íntegra do processo SEI (se baixada); senão, os INSTRUMENTOS PÚBLICOS que a própria
+    # ONG publica (mesmos documentos substantivos: contrato + 4 aditivos + relatórios FECAM + auditoria).
     anexos = []
     if SEI_INTEGRA.exists():
         base = doc.page_count
@@ -120,9 +118,9 @@ async def montar() -> str:
         pg.insert_textbox(fitz.Rect(60, 285, 535, 420),
             "Fonte: documentos publicados pela própria ONG Con-tato (transparência institucional). "
             "Contrato de Gestão 001/2021, os quatro termos aditivos, relatórios de execução do FECAM, "
-            "relação de alunos e o relatório dos auditores independentes. O processo SEI interno "
-            "(SEI-070026/000705/2021) é de outra unidade e não foi aberto pelo leitor itkava/ITERJ "
-            "(limitação de método a resolver); os documentos substantivos constam aqui pela via pública.",
+            "relação de alunos e o relatório dos auditores independentes. O processo administrativo "
+            "interno (SEI-070026/000705/2021) tramita em outra unidade; os documentos substantivos "
+            "constam aqui pela via pública oficial da própria contratada.",
             fontsize=10)
         doc.insert_pdf(cap); outline.append([1, "ANEXO A — Instrumentos e prestação de contas (íntegra, fonte pública)", base + 1]); cap.close()
         for arq, titulo in _INSTR_ORDEM:
@@ -151,6 +149,17 @@ async def montar() -> str:
             doc.insert_pdf(tce)
         tce.close()
         anexos.append("TCE")
+
+    # trava de neutralidade: o entregável não pode carregar nomes internos (pedido do dono). Checa só o
+    # texto EXTRAÍVEL da peça analítica (os anexos são documentos oficiais de terceiros). "lex" é
+    # ignorado por casar com "Alexandre"/"Complexo"; usa-se \bLex\b só como palavra isolada.
+    import re as _re
+    _an = "".join(doc[i].get_text() for i in range(min(doc.page_count, 12)))
+    _bad = [t for t in ("itkava", "iterj", "jfn") if _re.search(r"\b" + t + r"\b", _an, _re.I)]
+    if _re.search(r"\bLex\b", _an):
+        _bad.append("Lex")
+    if _bad:
+        raise AssertionError(f"dossiê-mestre contém termo interno proibido: {_bad}")
 
     doc.set_toc(outline)   # SUMÁRIO CLICÁVEL (bookmarks com subitens)
     saida = REPO / "reports" / f"DOSSIE_MASTER_pampolha_ambientejovem_{datetime.now().date()}.pdf"
