@@ -1,6 +1,6 @@
 # CAPACIDADES (gerado de capabilities.yaml — NÃO editar à mão)
 
-Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPATH=. .venv/bin/python -m`
+Versão 2.2.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPATH=. .venv/bin/python -m`
 
 | id | agente | tipo | rota/comando | status | quando usar |
 |---|---|---|---|---|---|
@@ -22,6 +22,7 @@ Versão 2.1.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `nucleo_pericia` | jfn | http | `/api/nucleo/comando` | PRONTO | 'pericia a empresa X / OB Y', 'veredito confirmado/descartado', 'placar do nucleo', 'essa empresa e fantasma/laranja?', 'fantasma cnpj X', 'fases da contratacao' |
 | `pcrj_gastos_coletar` | jfn | cli | `tools/pcrj_gastos_coletar.py [--ini AAAAMMDD --fim AAAAMMDD]` | PRONTO | 'atualizar gastos/contratos da prefeitura do Rio' |
 | `pcrj_pericia_gastos` | jfn | cli | `tools/pcrj_pericia_gastos.py [--telegram] [--sem-pdf]` | PRONTO | 'pericia dos gastos da prefeitura', 'fracionamento na PCRJ' |
+| `pericia_beneficios` | jfn | cli | `tools/pericia_beneficios_run.py [--doc camara|prefeitura|consolidado|socios|todos] [--telegram]` | PRONTO | 'pericia de beneficios', 'nomeado/servidor recebendo bolsa familia/BPC', 'quem do gabinete/da prefeitura recebe beneficio', 'socio de fornecedor com beneficio', 'quem e nomeado nesses cruzamentos' |
 | `relacoes` | jfn | cli | `compliance_agent.relacoes "<CNPJ | nome do socio | UG>"` | PRONTO | 'onde a empresa/socio X se relaciona', 'que empresas tem socio em comum com Y', 'quem sao os fornecedores ligados na UG Z', rede societaria de um alvo |
 | `relatorio_inteligencia` | jfn | http | `/api/relatorio/inteligencia` | PRONTO | relatorio/auditoria/due diligence de empresa, CNPJ |
 | `relatorio_orgao` | jfn | http | `/api/relatorio/orgao` | PRONTO | auditoria de orgao/UG/secretaria |

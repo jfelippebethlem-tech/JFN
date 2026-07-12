@@ -20,6 +20,7 @@ oficial de gabinetes e aponta o comissionado que ingressou antes da posse do sup
 """
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from pathlib import Path
 
@@ -32,6 +33,100 @@ _REPORTS = Path(__file__).resolve().parents[2] / "reports"
 
 _LEGISLATURA_YM = "202501"  # início da legislatura 2025–2028 (referência p/ ingresso)
 _VINCULO_COMISSIONADO = ("livre nomeação", "livre nomeacao", "requisitado")
+
+# ── NATUREZA DO VÍNCULO (clareza pedida pelo dono 2026-07-11): o relatório precisa dizer, pessoa a
+# pessoa, quem é NOMEADO (cargo em comissão), efetivo de carreira, requisitado/cedido, aposentado/
+# pensionista ou estagiário — e não chamar todo mundo de "nomeado". Fontes por poder:
+#   • Câmara: o campo "vínculo" da relação oficial decide sozinho (Livre Nomeação e Exoneração /
+#     Requisitados / cargos de carreira).
+#   • Prefeitura: a folha em bloco (ArquivoTC) NÃO publica cargo/forma de provimento; o TIPO_FOLHA
+#     separa previdência (PREV*/APA) e estágio/bolsa (TSVE — empiricamente estagiários, residentes
+#     e bolsistas), e o CARGO vem das consultas nominais já feitas ao contracheque
+#     (pcrj_prefeitura_consulta / pcrj_comissionado_candidato). Sem cargo conhecido, a natureza fica
+#     explicitamente "não informada pela fonte" — nunca se presume comissionamento.
+# Padrão de cargo em comissão (mesma família do _RE_COMISSIONADO canônico), com VETOS para os
+# falsos positivos conhecidos ("AGENTE DE APOIO A EDUCACAO ESPECIAL", "ESPECIALIDADE", estágios).
+_RE_CARGO_COMISSAO = re.compile(r"^ESPECIAL\b|\bDAS\b|\bDAI\b|COMISS|^ASSESSOR", re.IGNORECASE)
+_RE_CARGO_VETO = re.compile(r"EDUCA[CÇ][AÃ]O ESPECIAL|ESPECIALIDADE|ESTAGI", re.IGNORECASE)
+
+
+def _cargo_comissionado(cargo: str) -> bool:
+    c = (cargo or "").strip()
+    return bool(c) and bool(_RE_CARGO_COMISSAO.search(c)) and not _RE_CARGO_VETO.search(c)
+
+
+def _cargo_prefeitura(con, nome_norm: str) -> str:
+    """Cargo na Prefeitura quando alguma consulta nominal já o trouxe (a folha em bloco não
+    publica cargo). '' = nunca consultado / não encontrado."""
+    for sql in ("SELECT cargo FROM pcrj_prefeitura_consulta WHERE nome_norm=? AND encontrado=1 "
+                "AND cargo IS NOT NULL AND cargo<>'' LIMIT 1",
+                "SELECT cargo_pcrj FROM pcrj_comissionado_candidato WHERE nome_norm=? "
+                "AND cargo_pcrj IS NOT NULL AND cargo_pcrj<>'' LIMIT 1"):
+        try:
+            r = con.execute(sql, (nome_norm,)).fetchone()
+        except Exception:  # noqa: BLE001 — tabela pode não existir num banco parcial
+            r = None
+        if r and r[0]:
+            return str(r[0]).strip()
+    return ""
+
+
+def _natureza_camara(vinculo: str) -> tuple[str, str, bool | None]:
+    """(rótulo curto, detalhe, eh_nomeado) a partir do campo 'vínculo' da relação da Câmara."""
+    v = (vinculo or "").lower()
+    if not v:
+        return "NÃO INFORMADO", "vínculo não informado na relação da Câmara", None
+    if "livre nomea" in v:
+        return "NOMEADO", "cargo em comissão — Livre Nomeação e Exoneração (Câmara)", True
+    if "requisitado" in v:
+        return "REQUISITADO", f"requisitado/cedido de outro órgão à Câmara ({vinculo})", False
+    return "EFETIVO", f"efetivo de carreira da Câmara ({vinculo})", False
+
+
+def _natureza_prefeitura(con, nome_norm: str, tipos_folha: set) -> tuple[str, str, bool | None]:
+    """(rótulo curto, detalhe, eh_nomeado) para o lado Prefeitura, a partir do TIPO_FOLHA
+    (previdência/estágio) e do cargo das consultas nominais (comissão × carreira)."""
+    tipos = {t for t in (tipos_folha or set()) if t}
+    ativos = {t for t in tipos if eh_ativo(t)}
+    if tipos and not ativos:
+        return ("APOSENT./PENSÃO",
+                "aposentado/pensionista — folha previdenciária (" + ", ".join(sorted(tipos)) + ")", False)
+    if ativos and all("ESTAGI" in t.upper() or t.upper() == "TSVE" for t in ativos):
+        return ("ESTÁGIO/BOLSA",
+                "estagiário/residente/bolsista — folha sem vínculo efetivo ("
+                + ", ".join(sorted(ativos)) + ")", False)
+    cargo = _cargo_prefeitura(con, nome_norm)
+    tambem_prev = " · também consta em folha previdenciária" if (tipos - ativos) else ""
+    if cargo and _cargo_comissionado(cargo):
+        return "NOMEADO", f"cargo em comissão na Prefeitura ({cargo})" + tambem_prev, True
+    if cargo:
+        return "EFETIVO", f"cargo de carreira na Prefeitura ({cargo})" + tambem_prev, False
+    return ("NÃO INFORMADO",
+            "a folha em bloco da Prefeitura não publica cargo/forma de provimento — natureza não "
+            "determinável pela fonte" + tambem_prev, None)
+
+
+def _classificar_vinculo(con, nome_norm: str, info: dict) -> dict:
+    """Natureza consolidada da pessoa: {natureza (curta), natureza_detalhe, eh_nomeado}.
+    eh_nomeado: True = comissionado confirmado; False = todos os vínculos são de outra natureza;
+    None = a fonte não permite determinar (honestidade: não vira 'não' nem 'sim')."""
+    partes_curta, partes_det, flags = [], [], []
+    if info["poder"].startswith("Câmara"):
+        c, det, n = _natureza_camara(info.get("vinculo", ""))
+        partes_curta.append(("Câmara", c)); partes_det.append(det); flags.append(n)
+    if info.get("folha_desde"):
+        c, det, n = _natureza_prefeitura(con, nome_norm, info.get("tipos_folha") or set())
+        partes_curta.append(("Pref.", c)); partes_det.append(det); flags.append(n)
+    if any(f is True for f in flags):
+        eh_nomeado = True
+    elif any(f is None for f in flags) or not flags:
+        eh_nomeado = None
+    else:
+        eh_nomeado = False
+    curta = (partes_curta[0][1] if len(partes_curta) == 1
+             else " | ".join(f"{p}: {c}" for p, c in partes_curta)) or "NÃO INFORMADO"
+    return {"natureza": curta, "natureza_detalhe": "; ".join(partes_det) or "—",
+            "eh_nomeado": eh_nomeado}
 
 # Data de POSSE do suplente por gabinete ('AAAAMM'), curada do Diário Oficial/CMRJ. Os gabinetes
 # hoje sob suplência (6, 11, 20, 41, 44) tiveram o titular indo ao Executivo NO INÍCIO do mandato,
@@ -82,7 +177,7 @@ def _orgaos_do_nome(con, nome_norm: str) -> dict:
     """(poder, orgao_legivel, cargo, ingresso, gabinete_num, vinculo) do nomeado.
     Prefeitura vem da folha COMPLETA (pcrj_folha_pref); Câmara da relação de servidores."""
     d = {"poder": "", "orgao": "", "cargo": "", "ingresso": "", "gab": None,
-         "vinculo": "", "tipo_folha": ""}
+         "vinculo": "", "tipo_folha": "", "tipos_folha": set()}
     cam = con.execute(
         "SELECT lotacao, cargo, data1, gabinete_num, vinculo FROM pcrj_camara_servidores "
         "WHERE nome_norm=? ORDER BY CASE WHEN data1 LIKE '__/__/____' "
@@ -104,6 +199,7 @@ def _orgaos_do_nome(con, nome_norm: str) -> dict:
         orgs = sorted({_orgao_limpo(r["orgao"]) for r in prefs if r["orgao"]})
         pref_org = " ; ".join(orgs) if orgs else "(órgão não informado)"
         tipo = prefs[0]["tipo_folha"] or ""
+        d["tipos_folha"] = {r["tipo_folha"] for r in prefs if r["tipo_folha"]}
         comps = sorted({r["competencia"] for r in prefs})
         d["folha_desde"], d["folha_ate"] = comps[0], comps[-1]  # tenure aprox. (faixa na folha)
         if d["poder"]:
@@ -218,6 +314,7 @@ def analisar() -> dict:
         # ALTA exige: um único servidor com o nome E um fragmento de CPF legível (não vazio).
         certeza = "ALTA" if (n_serv <= 1 and frag != "?") else "MÉDIA"
         ativo = eh_ativo(info["tipo_folha"]) if info["tipo_folha"] else em_camara_ing
+        nat = _classificar_vinculo(p, nn, info)
 
         titular = ""
         if info["gab"] is not None:
@@ -252,7 +349,10 @@ def analisar() -> dict:
             "por_ano": {a: len(por_ano.get(a, set())) for a in anos},
             "ainda_recebe": (cmax == ultima),
             "rio": True, "certeza": certeza, "n_serv": n_serv,
-            "ativo": ativo, "situacao": "ativo/nomeado" if ativo else "aposent./pensão",
+            "ativo": ativo, "situacao": "ativo" if ativo else "aposentado/pensionista",
+            # natureza do vínculo — a resposta explícita a "é nomeado?" (True/False/None=fonte não diz)
+            "natureza": nat["natureza"], "natureza_detalhe": nat["natureza_detalhe"],
+            "eh_nomeado": nat["eh_nomeado"],
             # vínculos COERENTES (cada um com sua janela); benefício acima já é só o recebido nelas.
             "vinculos": " · ".join(vinculos),
             "nomeacao": info["ingresso"] or (_comp_legivel(info["folha_desde"]) if info["folha_desde"] else ""),
@@ -310,6 +410,14 @@ def analisar() -> dict:
         por_orgao.setdefault(r["_orgao_topo"], []).append(r)
     grupos = sorted(por_orgao.items(), key=lambda kv: (-len(kv[1]), kv[0]))
 
+    # certeza MÉDIA em anexo próprio (diretriz 2026-07-11: o PDF carrega TODAS as informações;
+    # a força de cada indício fica explícita, nada some em "contagens").
+    por_orgao_media: dict[str, list] = {}
+    for r in registros:
+        if r["certeza"] == "MÉDIA":
+            por_orgao_media.setdefault(r["_orgao_topo"], []).append(r)
+    grupos_media = sorted(por_orgao_media.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+
     def _tem(reg, sub):
         return any(sub in pr["ben"] for pr in reg["programas"])
 
@@ -338,11 +446,16 @@ def analisar() -> dict:
     return {
         "competencias": comps, "anos": anos, "ultima": ultima,
         "cobertura_folha": cobertura_folha, "cobertura_benef": cobertura_benef,
-        "registros": registros, "grupos": grupos,
+        "registros": registros, "grupos": grupos, "grupos_media": grupos_media,
         "homonimos": homonimos, "fora_rio": fora_rio, "fora_vinculo": fora_vinculo,
         "fantasmas": fantasmas, "gabs_suplencia": gabs_suplencia,
         "n_alta": sum(1 for x in registros if x["certeza"] == "ALTA"),
         "n_media": sum(1 for x in registros if x["certeza"] == "MÉDIA"),
+        # natureza do vínculo — clareza "é nomeado?" nos números do topo
+        "n_nomeados": sum(1 for x in registros if x["eh_nomeado"] is True),
+        "n_nao_nomeados": sum(1 for x in registros if x["eh_nomeado"] is False),
+        "n_vinculo_indet": sum(1 for x in registros if x["eh_nomeado"] is None),
+        "n_inativos": sum(1 for x in registros if not x["ativo"]),
         "n_bpc": sum(1 for x in registros if _tem(x, "BPC")),
         "n_bf": sum(1 for x in registros if _tem(x, "Bolsa")),
         "n_ab": sum(1 for x in registros if _tem(x, "Brasil")),
@@ -353,38 +466,78 @@ def analisar() -> dict:
 
 _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   @page { size: A4 landscape; margin: 12mm 10mm; }
-  body { font-family:'Helvetica Neue',Arial,sans-serif; color:#1a1a1a; font-size:9.5px; line-height:1.45; }
-  .capa { border-bottom:3px solid #7a1f1f; padding-bottom:9px; margin-bottom:12px; }
-  .classif { color:#7a1f1f; font-weight:700; letter-spacing:1px; font-size:9.5px; }
-  h1 { font-size:19px; color:#3a1010; margin:4px 0; }
+  body { font-family:Georgia,'Times New Roman',serif; color:#1a1a1a; font-size:9.5px; line-height:1.5; }
+  .capa { border-bottom:3px double #7a1f1f; padding-bottom:10px; margin-bottom:13px; }
+  .classif { color:#7a1f1f; font-weight:700; letter-spacing:2px; font-size:9px; font-family:'Helvetica Neue',Arial,sans-serif; }
+  h1 { font-size:20px; color:#2b0d0d; margin:5px 0 3px; font-weight:700; letter-spacing:.2px; }
   .meta { color:#555; font-size:9px; }
-  h2 { font-size:13px; color:#7a1f1f; border-bottom:1px solid #e0d3d3; padding-bottom:3px; margin-top:16px; }
-  h3 { font-size:11px; color:#3a1010; margin:12px 0 2px; background:#f2e9e9; padding:3px 7px; border-radius:4px; }
-  .kpis { display:flex; gap:9px; margin:11px 0; flex-wrap:wrap; }
-  .kpi { border:1px solid #e2d5d5; border-radius:8px; padding:9px 13px; background:#fbf7f7; min-width:110px; }
-  .kpi .n { font-size:21px; font-weight:700; color:#7a1f1f; line-height:1; }
-  .kpi .l { font-size:8.5px; color:#666; margin-top:3px; }
-  table { width:100%; border-collapse:collapse; font-size:8.5px; margin:4px 0 10px; }
+  h2 { font-size:13.5px; color:#7a1f1f; border-bottom:1px solid #e0d3d3; padding-bottom:3px; margin-top:18px; }
+  h3 { font-size:11px; color:#3a1010; margin:12px 0 2px; background:#f5eded; padding:4px 8px; border-left:3px solid #7a1f1f; }
+  .kpis { display:flex; gap:8px; margin:11px 0; flex-wrap:wrap; }
+  .kpi { border:1px solid #e2d5d5; border-radius:7px; padding:8px 12px; background:#fbf7f7; min-width:104px; }
+  .kpi .n { font-size:21px; font-weight:700; color:#7a1f1f; line-height:1; font-family:'Helvetica Neue',Arial,sans-serif; }
+  .kpi .l { font-size:8px; color:#666; margin-top:3px; font-family:'Helvetica Neue',Arial,sans-serif; }
+  table { width:100%; border-collapse:collapse; font-size:8.3px; margin:4px 0 10px; font-family:'Helvetica Neue',Arial,sans-serif; }
   th,td { text-align:left; padding:3px 5px; border-bottom:1px solid #eee; vertical-align:top; }
-  th { background:#7a1f1f; color:#fff; }
-  table tr:nth-child(even) td { background:#f7f0f0; }
-  .tag { padding:1px 5px; border-radius:3px; font-size:8px; font-weight:600; }
+  th { background:#7a1f1f; color:#fff; font-weight:600; }
+  table tr:nth-child(even) td { background:#f9f4f4; }
+  .tag { padding:1px 5px; border-radius:3px; font-size:7.8px; font-weight:700; white-space:nowrap;
+         font-family:'Helvetica Neue',Arial,sans-serif; }
   .sim { background:#fdecea; color:#c62828; } .rio { background:#fff3e0; color:#e65100; }
+  .nomeado { background:#7a1f1f; color:#fff; } .efetivo { background:#e3ecf7; color:#1f4e79; }
+  .requisitado { background:#ede7f6; color:#4527a0; } .inativo { background:#eceff1; color:#455a64; }
+  .estagio { background:#e0f2f1; color:#00695c; } .indet { background:#fff8e1; color:#a06a00; border:1px dashed #d3a94a; }
+  .det { color:#777; font-size:7.6px; font-weight:400; white-space:normal; margin-top:1px; }
   .part { background:#e8eef7; color:#1f4e79; padding:1px 5px; border-radius:3px; font-size:8px; }
-  .nota { font-size:8.5px; color:#666; font-style:italic; }
+  .nota { font-size:8.6px; color:#555; font-style:italic; }
+  .legenda { font-size:8.4px; color:#444; margin:7px 0 0; font-family:'Helvetica Neue',Arial,sans-serif; }
+  .legenda .tag { margin-right:3px; }
   footer { margin-top:18px; border-top:1px solid #ddd; padding-top:6px; font-size:8px; color:#888; }
 </style></head><body>
+  {% macro nat(r) -%}
+    <span class="tag {% if r.eh_nomeado %}nomeado{% elif r.eh_nomeado is none %}indet{% elif 'APOSENT' in r.natureza %}inativo{% elif 'REQUISITADO' in r.natureza %}requisitado{% elif 'ESTÁGIO' in r.natureza %}estagio{% else %}efetivo{% endif %}">{{ r.natureza }}</span>
+    <div class="det">{{ r.natureza_detalhe }}</div>
+  {%- endmacro %}
+  {% macro tabela(regs) -%}
+  <table>
+    <tr><th>Nome</th><th>Certeza</th><th>CPF (frag.)</th><th>Poder</th><th>Natureza do vínculo</th>
+        <th>Cargo/função</th><th>Titular do gab.</th><th>Partido</th>
+        <th>Vínculo(s) — janela</th><th>Programas (trajetória)</th>{% for a in anos %}<th>{{ a }}</th>{% endfor %}
+        <th>Ainda?</th></tr>
+    {% for r in regs %}
+    <tr><td><b>{{ r.nome }}</b></td>
+        <td><span class="tag {% if r.certeza=='ALTA' %}sim{% else %}rio{% endif %}">{{ r.certeza }}</span></td>
+        <td>…{{ r.cpf_frag }}…</td><td>{{ r.poder }}</td><td>{{ nat(r) }}</td>
+        <td>{{ r.cargo }}</td><td>{{ r.gab_titular }}</td>
+        <td><span class="part">{{ r.partido }}</span></td><td>{{ r.vinculos }}</td>
+        <td>{% for pr in r.programas %}{{ pr.ben }} ({{ pr.desde }}→{{ pr.ate }}, {{ pr.n }}m){% if not loop.last %}; {% endif %}{% endfor %}</td>
+        {% for a in anos %}<td style="text-align:center">{{ r.por_ano[a] or '·' }}</td>{% endfor %}
+        <td>{% if r.ainda_recebe %}<span class="tag sim">SIM</span>{% else %}não{% endif %}</td></tr>
+    {% endfor %}
+  </table>
+  {%- endmacro %}
   <div class="capa">
     <div class="classif">CONFIDENCIAL — SUBSÍDIO PARA APURAÇÃO</div>
     <h1>{{ titulo }}</h1>
     <div class="meta">Emitido em {{ data }} · Cruzamento nominal com desambiguação por fragmento de
     CPF · Período coberto: {{ periodo }} · Filiação partidária: foto pública TSE 2018 (cobertura parcial)</div>
+    <div class="legenda"><b>Natureza do vínculo</b> (classificada pessoa a pessoa, pela fonte):
+      <span class="tag nomeado">NOMEADO</span>cargo em comissão (livre nomeação) — confirmado ·
+      <span class="tag efetivo">EFETIVO</span>carreira/concurso ·
+      <span class="tag requisitado">REQUISITADO</span>cedido de outro órgão ·
+      <span class="tag inativo">APOSENT./PENSÃO</span>folha previdenciária ·
+      <span class="tag estagio">ESTÁGIO/BOLSA</span>sem vínculo efetivo ·
+      <span class="tag indet">NÃO INFORMADO</span>a fonte não publica a forma de provimento — não se presume.</div>
   </div>
 
   <div class="kpis">
-    <div class="kpi"><div class="n">{{ total }}</div><div class="l">nomeados com benefício no Rio (dedup.)</div></div>
-    <div class="kpi"><div class="n">{{ n_alta }}</div><div class="l">certeza ALTA (1 pessoa, 1 servidor) — detalhados</div></div>
-    <div class="kpi"><div class="n">{{ n_media }}</div><div class="l">certeza MÉDIA (nome comum/CPF ausente)</div></div>
+    <div class="kpi"><div class="n">{{ total }}</div><div class="l">pessoas do quadro com benefício no Rio (dedup.)</div></div>
+    <div class="kpi"><div class="n">{{ n_nomeados }}</div><div class="l">NOMEADOS confirmados (cargo em comissão)</div></div>
+    <div class="kpi"><div class="n">{{ n_nao_nomeados }}</div><div class="l">efetivos / requisitados / inativos / estágio</div></div>
+    <div class="kpi"><div class="n">{{ n_vinculo_indet }}</div><div class="l">natureza não informada pela fonte</div></div>
+    <div class="kpi"><div class="n">{{ n_inativos }}</div><div class="l">aposentados/pensionistas</div></div>
+    <div class="kpi"><div class="n">{{ n_alta }}</div><div class="l">certeza ALTA (1 pessoa, 1 servidor)</div></div>
+    <div class="kpi"><div class="n">{{ n_media }}</div><div class="l">certeza MÉDIA (anexo)</div></div>
     <div class="kpi"><div class="n">{{ n_ainda }}</div><div class="l">ainda recebendo em {{ ultima }}</div></div>
     <div class="kpi"><div class="n">{{ n_bpc }}</div><div class="l">BPC/LOAS</div></div>
     <div class="kpi"><div class="n">{{ n_bf }}</div><div class="l">Bolsa Família</div></div>
@@ -394,32 +547,21 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
     <div class="kpi"><div class="n">{{ n_fantasmas }}</div><div class="l">sobreviventes do titular sob suplente</div></div>
   </div>
 
-  <h2>1. Nomeados recebendo benefício assistencial durante a nomeação — por órgão</h2>
+  <h2>1. Quadro de pessoal × benefício assistencial durante o vínculo — por órgão (certeza ALTA)</h2>
   <p class="nota">Identidade da pessoa unificada por (nome + fragmento de CPF) entre <b>todos</b> os
   programas, restrita a benefício pago <b>no município do Rio</b> (afasta o homônimo de outro
   estado). A tabela detalha os <b>{{ n_alta }}</b> casos de <b>certeza ALTA</b> (um único
   beneficiário e um único servidor com o nome, CPF legível); os <b>{{ n_media }}</b> de certeza
-  MÉDIA (nome comum com mais de um servidor homônimo, ou fragmento de CPF ausente) entram só nas
-  contagens — atribuição individual incerta. As colunas de ano contam meses com benefício; a coluna
-  Programas traz a trajetória com datas. <b>Observação:</b> o Auxílio Emergencial (2020–2021) teve
-  elegibilidade ampla na pandemia (inclusive trabalhadores informais de baixa renda), então recebê-lo
-  é sinal mais fraco que BPC/Bolsa Família/Auxílio Brasil, cuja renda exigida é incompatível com cargo.</p>
+  MÉDIA estão no <b>anexo da seção 4</b> — atribuição individual incerta. A coluna <b>Natureza do
+  vínculo</b> responde, pessoa a pessoa, se o caso é de <b>nomeado</b> (cargo em comissão), efetivo,
+  requisitado, aposentado/pensionista ou estagiário — quando a fonte não informa, o rótulo diz isso
+  expressamente. As colunas de ano contam meses com benefício; a coluna Programas traz a trajetória
+  com datas. <b>Observação:</b> o Auxílio Emergencial (2020–2021) teve elegibilidade ampla na
+  pandemia (inclusive trabalhadores informais de baixa renda), então recebê-lo é sinal mais fraco
+  que BPC/Bolsa Família/Auxílio Brasil, cuja renda exigida é incompatível com cargo.</p>
   {% for orgao, regs in grupos %}
-  <h3>{{ orgao }} — {{ regs|length }} nomeado(s)</h3>
-  <table>
-    <tr><th>Nome</th><th>Certeza</th><th>CPF (frag.)</th><th>Poder</th><th>Situação</th><th>Cargo</th><th>Titular do gab.</th>
-        <th>Partido</th><th>Ingresso</th><th>Programas (trajetória)</th>{% for a in anos %}<th>{{ a }}</th>{% endfor %}
-        <th>Ainda?</th></tr>
-    {% for r in regs %}
-    <tr><td>{{ r.nome }}</td>
-        <td><span class="tag {% if r.certeza=='ALTA' %}sim{% else %}rio{% endif %}">{{ r.certeza }}</span></td>
-        <td>…{{ r.cpf_frag }}…</td><td>{{ r.poder }}</td><td>{{ r.situacao }}</td><td>{{ r.cargo }}</td><td>{{ r.gab_titular }}</td>
-        <td><span class="part">{{ r.partido }}</span></td><td>{{ r.ingresso }}</td>
-        <td>{% for pr in r.programas %}{{ pr.ben }} ({{ pr.desde }}→{{ pr.ate }}, {{ pr.n }}m){% if not loop.last %}; {% endif %}{% endfor %}</td>
-        {% for a in anos %}<td style="text-align:center">{{ r.por_ano[a] or '·' }}</td>{% endfor %}
-        <td>{% if r.ainda_recebe %}<span class="tag sim">SIM</span>{% else %}não{% endif %}</td></tr>
-    {% endfor %}
-  </table>
+  <h3>{{ orgao }} — {{ regs|length }} pessoa(s), sendo {{ regs|selectattr('eh_nomeado')|list|length }} nomeada(s) confirmada(s)</h3>
+  {{ tabela(regs) }}
   {% endfor %}
 
   <h2>2. Gabinetes sob suplência — equipe do titular sobrevivente sob o suplente</h2>
@@ -453,6 +595,17 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   depois retorna) exigem varredura do Diário Oficial da CMRJ — recomendável para fechar o quadro.</p>
 
   <h2>3. Método, cobertura e ressalvas</h2>
+  <p><b>Natureza do vínculo (classificação pessoa a pessoa).</b> A pergunta central — <i>a pessoa é
+  NOMEADA (cargo em comissão)?</i> — é respondida pela fonte de cada poder, nunca por presunção.
+  <b>Câmara:</b> o campo "vínculo" da relação oficial de servidores decide sozinho ("Livre Nomeação
+  e Exoneração" = nomeado; "Requisitados" = cedido de outro órgão; demais = cargos efetivos de
+  carreira). <b>Prefeitura:</b> a folha em bloco NÃO publica cargo nem forma de provimento; o tipo
+  de folha separa a previdência (PREV*/APA = aposentado/pensionista) e o estágio/bolsa (TSVE —
+  verificado empiricamente: estagiários, residentes e bolsistas), e o cargo, quando disponível, vem
+  das consultas nominais ao portal de remuneração (cargo "ESPECIAL"/DAS/DAI/assessoria = comissão;
+  Guarda Municipal, professor, gari etc. = carreira). Quem não tem cargo conhecido recebe o rótulo
+  <b>"NÃO INFORMADO"</b> — a ausência de informação é declarada, não convertida em suspeita nem em
+  absolvição.</p>
   <p><b>Cruzamento e deduplicação de homônimos.</b> Nomes normalizados dos nomeados/servidores
   contra os arquivos mensais oficiais dos quatro programas — BPC, Bolsa Família, Auxílio Brasil e
   Auxílio Emergencial — competência a competência. Duas travas de identidade dão a certeza: (1) só
@@ -484,6 +637,18 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   encerradas ou iniciadas no meio do mandato exige varredura do Diário Oficial. Apuração formal
   compete aos órgãos de controle e ao Ministério Público.</p>
 
+  <h2>4. Anexo — casos de certeza MÉDIA (indício mais fraco, a conferir antes de qualquer juízo)</h2>
+  <p class="nota">⚠️ Certeza MÉDIA = nome comum com mais de um servidor homônimo, ou fragmento de
+  CPF ausente na fonte do benefício. A atribuição individual é <b>incerta</b> — este anexo existe
+  para o documento carregar toda a informação (nada some em contagens), mas cada linha exige
+  conferência (CPF completo via requisição formal) antes de qualquer providência.</p>
+  {% for orgao, regs in grupos_media %}
+  <h3>{{ orgao }} — {{ regs|length }} pessoa(s) [MÉDIA]</h3>
+  {{ tabela(regs) }}
+  {% else %}
+  <p class="nota">Sem casos de certeza MÉDIA na base atual.</p>
+  {% endfor %}
+
   <footer>Peça de subsídio à apuração — indícios, não acusação; presunção de legitimidade dos atos
   administrativos preservada. Fonte pública oficial. CPF de terceiros mascarado (LGPD).</footer>
 </body></html>"""
@@ -494,15 +659,19 @@ def render(dados: dict) -> str:
     comps = dados["competencias"]
     periodo = f"{_comp_legivel(comps[0])} a {_comp_legivel(comps[-1])}" if comps else "—"
     return Template(_TPL).render(
-        titulo="Perícia — Nomeados da Câmara e da Prefeitura do Rio: benefício assistencial e fantasmas de gabinete",
+        titulo="Perícia — Quadro de pessoal da Câmara e da Prefeitura do Rio × benefício "
+               "assistencial: nomeados, efetivos, pensionistas e fantasmas de gabinete",
         data=datetime.now().strftime("%d/%m/%Y"),
         periodo=periodo, ultima=_comp_legivel(dados["ultima"]) if dados["ultima"] else "—",
         anos=dados["anos"], total=len(dados["registros"]), n_ainda=dados["n_ainda"],
         n_alta=dados["n_alta"], n_media=dados["n_media"],
+        n_nomeados=dados["n_nomeados"], n_nao_nomeados=dados["n_nao_nomeados"],
+        n_vinculo_indet=dados["n_vinculo_indet"], n_inativos=dados["n_inativos"],
         n_bpc=dados["n_bpc"], n_bf=dados["n_bf"], n_ab=dados["n_ab"], n_ae=dados["n_ae"],
         n_fantasmas=len(dados["fantasmas"]), n_suplencia=len(dados["gabs_suplencia"]),
         homonimos=dados["homonimos"], fora_rio=dados["fora_rio"],
-        grupos=dados["grupos"], gabs_suplencia=dados["gabs_suplencia"],
+        grupos=dados["grupos"], grupos_media=dados["grupos_media"],
+        gabs_suplencia=dados["gabs_suplencia"],
         cobertura_folha=dados.get("cobertura_folha", "—"),
         cobertura_benef=dados.get("cobertura_benef", "—"),
     )

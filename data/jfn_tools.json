@@ -1,6 +1,6 @@
 {
   "_gerado_de": "capabilities.yaml (NÃO editar à mão)",
-  "versao": "2.1.0",
+  "versao": "2.2.0",
   "base_http": "http://127.0.0.1:8000",
   "tools": [
     {
@@ -516,6 +516,39 @@
         "enviar_telegram": [
           "path_pdf",
           "path_xlsx"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "pericia_beneficios",
+        "description": "Pericia de beneficio assistencial (BPC/Bolsa Familia/Auxilio Brasil/Emergencial) x quadro de pessoal do Rio, com a NATUREZA DO VINCULO explicita pessoa a pessoa (NOMEADO em comissao x efetivo x requisitado x aposentado/pensionista x estagio x nao informado pela fonte — nunca presume). 4 documentos: Camara (fichas individuais dos nomeados + convergencia Camara-Prefeitura + gabinetes sob suplencia), Prefeitura (fichas + pensionistas + natureza nao informada separada), consolidado (anexo de certeza MEDIA integral) e socios de fornecedores (com total pago a empresa via OB SIAFE contabilizada). Fairness: so beneficio recebido DURANTE o vinculo; identidade por nome+fragmento de CPF no municipio do Rio; indicio != acusacao. — usar quando: 'pericia de beneficios', 'nomeado/servidor recebendo bolsa familia/BPC', 'quem do gabinete/da prefeitura recebe beneficio', 'socio de fornecedor com beneficio', 'quem e nomeado nesses cruzamentos' — chamar (cli): tools/pericia_beneficios_run.py [--doc camara|prefeitura|consolidado|socios|todos] [--telegram]",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "doc": {
+              "type": "string",
+              "description": "camara|prefeitura|consolidado|socios|todos"
+            },
+            "telegram": {
+              "type": "string",
+              "description": "flag"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "tools/pericia_beneficios_run.py [--doc camara|prefeitura|consolidado|socios|todos] [--telegram]",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": [
+          "path_pdf"
         ]
       }
     },
