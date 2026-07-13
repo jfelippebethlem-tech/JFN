@@ -48,13 +48,22 @@ async def main():
         try:
             if not await SR.login(pg, tentativas=25): print("LOGIN FALHOU"); return
             print("login OK", flush=True)
-            # ENUMERAÇÃO via primitivo novo (arvore_do_fonte): abre o processo (retry) e expande TODAS as
-            # pastas lazy-load pelo loader nativo do SEI. Substitui docs_da_pagina/clicar_proxima (paginação
-            # de BUSCA, que retornava 0 na árvore). Provado 2026-07-10: túnel 460001/000779/2023 = 658 docs.
-            fr = await SR.abrir_processo(pg, PROC)
-            if not fr:
+            # ENUMERAÇÃO — caminho CRACKED primeiro (mesmo do ler() canônico): abre processos de OUTRA
+            # unidade que o itkava VÊ mas o abrir_processo/arvore_do_fonte não abre (070002/INEA,
+            # 070026/SEAS). Provado 2026-07-13: INEA 070002/004135/2025 = 274 docs via cracked. Fallback:
+            # arvore_do_fonte (unidade do login). Os docs trazem {titulo,url}; a url é o nó arvore_visualizar.
+            arv = []
+            try:
+                dump = await SR._ler_cracked(pg, PROC)
+                arv = dump.get("documentos") or []
+            except Exception as e:  # noqa: BLE001
+                print(f"cracked: {str(e)[:60]}", flush=True)
+            if not arv:
+                fr = await SR.abrir_processo(pg, PROC)
+                if fr:
+                    arv = await SR.arvore_do_fonte(pg)
+            if not arv:
                 print("SEM ÁRVORE (processo não abriu)"); return
-            arv = await SR.arvore_do_fonte(pg)
             # formato p/ o resto do script: {t: titulo, u: url, pai: ''}
             docs = [{"t": d.get("titulo") or d.get("texto") or "", "u": d.get("url") or "", "pai": ""}
                     for d in arv if d.get("url")]
