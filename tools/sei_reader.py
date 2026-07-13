@@ -545,22 +545,121 @@ def _url_conteudo_doc(url: str) -> str:
     return url
 
 
-async def _conteudo_doc(pg, doc: dict) -> dict | None:
-    """Extrai o conteúdo de UM documento do SEI.
+async def _frame_arvore(pg):
+    """Frame da ÁRVORE viva = o que tem âncoras de documento clicáveis (``a[href*=id_documento=]``);
+    prefere o de mais âncoras (o ifrArvoreHtml). None se não houver árvore carregada na página."""
+    best, best_n = None, 0
+    for fr in pg.frames:
+        try:
+            n = await fr.evaluate("()=>document.querySelectorAll('a[href*=\"id_documento=\"]').length")
+        except PWError:
+            n = 0
+        if n and n > best_n:
+            best_n, best = n, fr
+    return best
 
-    Caminho normal: navega até ``doc["url"]`` e lê o ``innerText`` (texto HTML nativo).
-    Quando o texto nativo vier VAZIO ou CURTO (``len(t) <= 50``) o documento é provavelmente
-    um SCAN (PDF-imagem / digitalizado) → baixa os BYTES pela request-context da própria página
-    (mesma sessão/cookies) e roda OCR em executor (CPU-bound síncrono, fora do event loop).
-    Se o OCR vier não-vazio, usa-o como conteúdo e marca ``"via": "ocr"`` (proveniência honesta);
-    se vier vazio, segue INDISPONÍVEL (não inventa). Degrada honesto: 1 doc que falha não derruba a
-    leitura (retorna ``None``).
+
+async def _frame_visualizacao(pg):
+    """O iframe onde o SEI 4.x carrega o CONTEÚDO do documento clicado na árvore (name=ifrVisualizacao)."""
+    for fr in pg.frames:
+        if "ifrvisualizacao" in (fr.name or "").lower():
+            return fr
+    return None
+
+
+async def _conteudo_via_arvore(pg, doc: dict) -> dict | None:
+    """Lê o conteúdo do doc pela ÁRVORE VIVA — o único caminho que funciona cross-unit (provado
+    2026-07-13). Clica o nó (``a[id_documento]``) no frame da árvore → o SEI carrega o doc no
+    ``ifrVisualizacao`` com contexto/hash CORRETOS. Doc NATIVO = texto inline do editor; doc
+    ESCANEADO/EXTERNO = placeholder "…nova janela" → segue o link ``documento_download_anexo`` (PDF/
+    imagem, hash válido, request.get na sessão) → OCR. Degrada honesto (None)."""
+    m = re.search(r"id_documento=(\d+)", doc.get("url") or "")
+    if not m:
+        return None
+    idd = m.group(1)
+    arv = await _frame_arvore(pg)
+    if arv is None:
+        return None
+    vf = await _frame_visualizacao(pg)
+    url_antes = (vf.url if vf else "") or ""
+    try:
+        clicou = await arv.evaluate(
+            """(idd)=>{const a=[...document.querySelectorAll('a[href*="id_documento="]')]
+                 .find(x=>x.href.includes('id_documento='+idd)); if(a){a.click();return true;} return false;}""",
+            idd)
+    except PWError:
+        return None
+    if not clicou:
+        return None
+    # espera EVENT-BASED o ifrVisualizacao trocar de conteúdo (teto ~6s; nativo carrega em <1s)
+    txt = ""
+    for _ in range(24):
+        await pg.wait_for_timeout(250)
+        vf = await _frame_visualizacao(pg)
+        if not vf or (vf.url or "") == url_antes:
+            continue
+        try:
+            txt = (await vf.evaluate("()=>document.body?document.body.innerText:''")) or ""
+        except PWError:
+            txt = ""
+        if txt.strip():
+            break
+    txt = txt.strip()
+    from compliance_agent.sei.ocr_docs import ocr_documento  # import LAZY
+    # placeholder de doc EXTERNO/escaneado ("Clique aqui … nova janela") → baixa o anexo e OCR
+    if "nova janela" in txt.lower() or len(txt) < 120:
+        try:
+            links = await vf.evaluate(
+                "()=>[...document.querySelectorAll('a[href]')].map(a=>a.getAttribute('href')||'').filter(Boolean)") if vf else []
+        except PWError:
+            links = []
+        for s in links:
+            mm = re.search(r"controlador\.php\?[^'\"]*(?:documento_download|download_anexo)[^'\"]*", s or "")
+            if not mm:
+                continue
+            u = mm.group(0).replace("&amp;", "&")
+            full = u if u.startswith("http") else ("https://sei.rj.gov.br/sei/" + u.lstrip("/"))
+            try:
+                r = await pg.context.request.get(full, timeout=45000)
+                if not r.ok:
+                    continue
+                body = await r.body()
+                ct = (r.headers.get("content-type") or "").lower()
+                tipo = "pdf" if (body[:5] == b"%PDF-" or "pdf" in ct) else ("imagem" if ct.startswith("image/") else None)
+                if not tipo:
+                    continue
+                loop = asyncio.get_event_loop()
+                txt_ocr = await loop.run_in_executor(None, lambda: ocr_documento(body, tipo=tipo))
+                if txt_ocr and len(txt_ocr.strip()) > 20:
+                    return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr.strip()[:20000], "via": "ocr"}
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("download/OCR do anexo (via árvore) %r falhou: %s", (doc.get("texto") or "")[:60], str(exc)[:80])
+        return None
+    # documento NATIVO (editor): texto inline já renderizado no ifrVisualizacao
+    if len(txt) > 50:
+        return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt[:20000], "via": "arvore"}
+    return None
+
+
+async def _conteudo_doc(pg, doc: dict) -> dict | None:
+    """Extrai o conteúdo de UM documento do SEI pela ÁRVORE VIVA (caminho canônico 2026-07-13).
+
+    Por que pela árvore: request.get/goto direto na url do doc CAEM NO LOGIN — o nó vem com
+    ``acao=arvore_visualizar`` e um ``infra_hash`` assinado sobre os params; converter p/
+    ``documento_visualizar`` mantendo o hash invalida a assinatura → o SEI redireciona p/ login (a
+    "casca" de 893 chars — "GOVERNO DO ESTADO… Sistema Eletrônico de Informações" — que poluía TODO
+    conteúdo cross-unit era a própria tela de login). Só clicar o nó na árvore viva dá a url de conteúdo
+    certa (ver ``_conteudo_via_arvore``). Degrada honesto: retorna None se não conseguir (nunca inventa).
     """
-    # URL de CONTEÚDO: no SEI-RJ atual o nó da árvore vem como acao=arvore_visualizar; o conteúdo é servido por
-    # acao=documento_visualizar. Sem essa conversão, request.get/goto abriam a ÁRVORE (não o doc) → 0 conteúdo.
+    via = await _conteudo_via_arvore(pg, doc)
+    if via is not None:
+        return via
+    # Há árvore viva mas o doc não rendeu conteúdo (restrito/anexo sem link/etc.): NÃO faz goto —
+    # destruiria a árvore e envenenaria os próximos docs. Devolve None honesto.
+    if await _frame_arvore(pg) is not None:
+        return None
+    # LEGADO (sem árvore viva na página — chamador fora do fluxo de árvore): caminho antigo por url.
     url_c = _url_conteudo_doc(doc.get("url") or "")
-    # 1) DETECTA SCAN ANTES do innerText: o visualizador do SEI mostra uma casca >50 chars mesmo p/ PDF-imagem,
-    # então o gatilho antigo (innerText<=50) NUNCA OCR'ava scan. Baixa os bytes pela sessão; se PDF/imagem → OCR.
     try:
         from compliance_agent.sei.ocr_docs import ocr_documento  # import LAZY
         resp = await pg.context.request.get(url_c, timeout=40000)
@@ -578,10 +677,6 @@ async def _conteudo_doc(pg, doc: dict) -> dict | None:
                     return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr, "via": "ocr"}
     except Exception as exc:
         logger.warning("download/OCR do doc %r falhou: %s", (doc.get("texto") or doc.get("url") or "")[:80], exc)
-    # 2) doc HTML nativo (editor): navega e lê o corpo do IFRAME INTERNO (não o frameset do menu).
-    # O doc do SEI abre num visualizador com iframes aninhados; ler o document.body da PÁGINA pegava a
-    # CASCA do menu ("GOVERNO DO ESTADO… AGENERSA AGERIO…", ~893 chars iguais p/ todo doc). Fix 2026-07-10:
-    # varrer TODOS os frames, descartar a casca do menu (assinatura) e ficar com o maior innerText real.
     try:
         await pg.goto(url_c, wait_until="domcontentloaded", timeout=20000)
         await pg.wait_for_timeout(1100)
