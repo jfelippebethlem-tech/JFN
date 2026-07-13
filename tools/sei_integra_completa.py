@@ -71,20 +71,22 @@ async def main():
             paths = []
 
             async def baixa_um(x, fp):
-                # o url é o nó da árvore (arvore_visualizar); o conteúdo é servido por documento_visualizar
-                resp = await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=25000); body = await resp.body()
-                ct = (resp.headers.get("content-type") or "").lower()
-                if "pdf" in ct or body[:5] == b"%PDF-":
-                    fp.write_bytes(body); return True
-                html = body.decode("utf-8", "ignore")
-                txt = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", html)
-                txt = re.sub(r"(?i)<br\s*/?>|</p>|</div>|</tr>", "\n", txt)
-                txt = re.sub(r"<[^>]+>", " ", txt)
-                txt = re.sub(r"&nbsp;", " ", txt); txt = re.sub(r"[ \t]+", " ", txt)
-                txt = re.sub(r"\n{3,}", "\n\n", txt).strip()
-                if len(txt) < 30:
+                # CONTEÚDO via _conteudo_doc (drill no iframe, MESMA sessão) — funciona cross-unit e tem
+                # fallback de OCR; o GET direto do ctx.request voltava VAZIO em processo de outra unidade.
+                # 1º tenta o PDF original (rápido) por documento_visualizar; se vier vazio/HTML, usa o drill.
+                try:
+                    resp = await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=20000)
+                    body = await resp.body()
+                    if body[:5] == b"%PDF-" and len(body) > 800:
+                        fp.write_bytes(body); return True
+                except Exception:  # noqa: BLE001
+                    pass
+                c = await SR._conteudo_doc(pg, {"url": x["u"], "texto": x["t"]})
+                txt = ((c or {}).get("conteudo") or "").strip()
+                if len(txt) < 15:
                     return False
-                doc = fitz.open(); doc.new_page().insert_textbox(fitz.Rect(40, 40, 555, 800), f"[{x['t']}]\n\n" + txt[:6000], fontsize=8)
+                doc = fitz.open()
+                doc.new_page().insert_textbox(fitz.Rect(40, 40, 555, 800), f"[{x['t']}]\n\n" + txt[:6000], fontsize=8)
                 rest = txt[6000:]
                 while rest:
                     doc.new_page().insert_textbox(fitz.Rect(40, 40, 555, 800), rest[:6500], fontsize=8); rest = rest[6500:]
@@ -95,7 +97,7 @@ async def main():
                 fp = outdir / f"{i:03d}.pdf"
                 ok = False
                 try:
-                    if await asyncio.wait_for(baixa_um(x, fp), timeout=30):
+                    if await asyncio.wait_for(baixa_um(x, fp), timeout=int(os.environ.get("SEI_DOC_TIMEOUT", "15"))):
                         paths.append(fp); ok = True
                 except Exception as e:
                     print(f"  doc {i} pulado: {str(e)[:35]}", flush=True)
