@@ -71,14 +71,18 @@ async def main():
             paths = []
 
             async def baixa_um(x, fp):
-                # CONTEÚDO via _conteudo_doc (drill no iframe, MESMA sessão) — funciona cross-unit e tem
-                # fallback de OCR; o GET direto do ctx.request voltava VAZIO em processo de outra unidade.
-                # 1º tenta o PDF original (rápido) por documento_visualizar; se vier vazio/HTML, usa o drill.
+                # CONTEÚDO via _conteudo_doc (drill no iframe, MESMA sessão) — é o que FUNCIONA cross-unit
+                # (o GET direto do ctx.request voltava um PDF em branco de ~1KB, passando falso-positivo).
+                # O GET só é tentado quando confiável: PDF com >2KB E texto extraível (docs da unidade do login).
                 try:
-                    resp = await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=20000)
+                    resp = await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=12000)
                     body = await resp.body()
-                    if body[:5] == b"%PDF-" and len(body) > 800:
-                        fp.write_bytes(body); return True
+                    if body[:5] == b"%PDF-" and len(body) > 2048:
+                        import fitz as _f
+                        _d = _f.open(stream=body, filetype="pdf")
+                        if _d.page_count and sum(len(p.get_text()) for p in _d) > 40:
+                            fp.write_bytes(body); _d.close(); return True
+                        _d.close()
                 except Exception:  # noqa: BLE001
                     pass
                 c = await SR._conteudo_doc(pg, {"url": x["u"], "texto": x["t"]})
