@@ -125,6 +125,91 @@ def _seas_obs(con):
         f"ORDER BY data_pagamento", (CNPJ_ONG,)).fetchall()
 
 
+def _secao_jose_ricardo() -> str:
+    """Ficha do gestor José Ricardo Ferreira de Brito — o nó que liga os enredos, hoje na CEDAE."""
+    return """
+<h2>9. José Ricardo Ferreira de Brito — o gestor que atravessa os enredos</h2>
+<p>É a figura que costura o caso: assina/gere nos <b>dois</b> programas das entidades de Raphael
+Gonçalves (Esporte RJ→SOLAZER e Ambiente Jovem→Con-tato) e hoje ocupa uma diretoria na CEDAE, a
+estatal do acordo de R$ 900 mi (seção 10). CPF 120.362.787-44.</p>
+<table><tr><th>Período</th><th>Cargo</th><th>Órgão</th></tr>
+<tr><td>2011–2013</td><td>Consultor especial</td><td>ALERJ</td></tr>
+<tr><td>—</td><td>Presidente</td><td>SUDERJ (Superintendência de Desportos)</td></tr>
+<tr><td>2017–2018</td><td>Chefe de Gabinete / depois Secretário</td><td>Esporte, Lazer e Juventude</td></tr>
+<tr><td>—</td><td>Subsecretário Executivo</td><td>SEAS (Ambiente)</td></tr>
+<tr><td><b>abr–dez/2022</b></td><td><b>Secretário do Ambiente INTERINO</b> (substituiu Pampolha na campanha)</td><td>SEAS</td></tr>
+<tr><td><b>out/2025 →</b></td><td><b>Diretor de Saneamento e Grande Operação (DSG)</b></td><td>CEDAE</td></tr></table>
+<div class="callout"><div class="t">Por que importa</div>
+Foi <b>ex-subordinado direto de Pampolha</b> (não coincidência de pasta): assinou pela SEAS o Contrato
+de Gestão 001/2021 do Ambiente Jovem e foi cobrado pelo TCE-RJ no caso "Esporte RJ" (Proc. 107.485-1/2016)
+— <b>absolvido em 26/03/2025</b>. No CPF dele consta apenas a diretoria da CEDAE (QSA confirma); nenhuma
+outra empresa nem sanção localizada. <b>Não</b> é citado na Operação Emendatio.</div>"""
+
+
+# ── CEDAE — acordo R$ 900 mi (subagente, imprensa nomeada; nº do processo TCE a confirmar) ────
+_CEDAE_TIMELINE = [
+    ("03/10/2025", "Termo de Conciliação assinado (Estado/CEDAE/Agenersa/Águas do Rio 1 e 4 SPE), em reunião emergencial noturna"),
+    ("06/10/2025", "Castro envia ofício indicando José Ricardo Ferreira de Brito à diretoria da CEDAE (3 dias após o acordo)"),
+    ("~15/10/2025", "Cons. José Gomes Graciosa SUSPENDE o acordo (liminar), por denúncia dos dep. Luiz Paulo e Jari Oliveira"),
+    ("16/10/2025", "MPRJ abre inquérito civil (lesão ao erário / governança)"),
+    ("12/11/2025", "Pampolha (revisor) abre divergência p/ derrubar a liminar → empate 3×3"),
+    ("26/11/2025", "Julgamento encerra 4×3 pela liberação (voto de minerva do presidente Pacheco); no MESMO dia a CEDAE cria a Diretoria de Sustentabilidade e nomeia Philipe Campello"),
+]
+
+
+def _secao_cedae() -> str:
+    tl = "".join(f"<tr><td>{d}</td><td>{e}</td></tr>" for d, e in _CEDAE_TIMELINE)
+    return f"""
+<h2>10. CEDAE — o acordo de R$ 900 milhões (Águas do Rio) e as diretorias</h2>
+<p>Instrumento: <b>Termo de Conciliação de 03/10/2025</b> entre Estado, CEDAE, Agenersa e a
+concessionária <b>Águas do Rio 1 e 4 SPE S.A.</b> (grupo Aegea). Não é pagamento direto: é um
+<b>desconto de 24,13%</b> no valor da água que a CEDAE vende à concessionária <b>até 2056</b>, somando
+<b>~R$ 900 milhões</b> (podendo chegar a ~R$ 1,4 bi). Justificativa: divergência entre os índices de
+cobertura de esgoto do edital de 2021 e a realidade, constatada ao pagar a outorga final em dez/2024.</p>
+<table><tr><th>Data</th><th>Evento</th></tr>{tl}</table>
+<div class="callout"><div class="t">🚩 O eixo de risco (quid pro quo EM TESE)</div>
+Pampolha — hoje conselheiro do TCE-RJ, indicado pelo governador Cláudio Castro — deu o <b>voto de
+divergência decisivo</b> que liberou o acordo (4×3), enquanto <b>dois de seus ex-auxiliares na SEAS</b>
+(José Ricardo Ferreira de Brito, DSG; e Philipe Campello, ex-presidente do INEA, Sustentabilidade) eram
+nomeados diretores da <b>mesma estatal</b> que arca com a conta. A favor votaram Pampolha, Marcelo
+Verdini, Andreia Siqueira e Pacheco; contra, Graciosa e outros dois. O próprio TCE oficiou o MPRJ para
+apurar <b>coação de diretores</b> e <b>conflito de interesses</b>.</div>
+<div class="callout info"><div class="t">Ressalvas de rigor</div>
+<b>Não</b> é fato provado — é materialidade para representação, com inquérito do MPRJ em curso. Pampolha
+<b>não</b> assinou a concessão de 2021 (à época era Secretário do Ambiente; só virou vice em 2023) —
+o conflito apontado é o <b>atual</b>. Não há registro de que ele tenha se declarado impedido; a CPI na
+ALERJ foi anunciada, não instaurada. Números do processo no TCE e atos do DOERJ das nomeações: a
+confirmar em fonte primária.</div>"""
+
+
+def _secao_inea_seas(con) -> str:
+    """Maiores contratos de INEA/SEAS na gestão Pampolha (dado primário TFE) + achado de método."""
+    norm = "REPLACE(REPLACE(REPLACE(favorecido_cpf,'.',''),'/',''),'-','')"
+    tops = con.execute(
+        f"SELECT MAX(favorecido_nome), ug_codigo, COUNT(*), ROUND(SUM(valor),2) FROM ordens_bancarias "
+        f"WHERE ug_codigo IN ('240100','240200','243200') AND substr(data_pagamento,1,4) BETWEEN '2020' "
+        f"AND '2024' AND length({norm})=14 GROUP BY {norm},ug_codigo ORDER BY 4 DESC LIMIT 15", ()).fetchall()
+    _UGN = {"240100": "SEAS", "240200": "SEAS-PSAM", "243200": "INEA"}
+    linhas = "".join(
+        f"<tr><td>{(r[0] or '')[:42]}</td><td>{_UGN.get(r[1], r[1])}</td><td class='num'>{r[2]}</td>"
+        f"<td class='num'>R$ {_brl(r[3])}</td></tr>" for r in tops if (r[0] or "") != "FOLHA DE PAGAMENTOS")
+    return f"""
+<h2>11. INEA e SEAS na gestão Pampolha — maiores contratos (2020–2024)</h2>
+<p>Pagamentos efetivos (OB) das UGs ambientais — Secretaria do Ambiente (240100), SEAS-PSAM (240200,
+saneamento da Baía de Guanabara) e INEA (243200) — na gestão de Pampolha. Maiores credores:</p>
+<table><tr><th>Credor</th><th>UG</th><th>OBs</th><th>Total pago</th></tr>{linhas}</table>
+<div class="callout warn"><div class="t">🚩 Idoneidade — a maior credora do INEA está impedida</div>
+A <b>Construtora Lytoranea</b> (~R$ 202 mi do INEA em macrodrenagem) consta com <b>impedimento/proibição
+de contratar</b> (sanção federal — Fundação Oswaldo Cruz, jun–ago/2026). Idoneidade atual comprometida.</div>
+<div class="callout info"><div class="t">Achado de método (importante)</div>
+As <b>grandes obras de INEA/SEAS foram por LICITAÇÃO</b> (critério Menor Preço, Lei 8.666) — as
+macro-obras de drenagem e saneamento passaram por concorrência. A <b>dispensa/inexigibilidade</b>, foco
+de risco, concentra-se na <b>rota de OS / contrato de gestão</b> (Ambiente Jovem R$ 96 mi; Ceperj "Mais
+Acesso" R$ 26 mi) — é ali a contratação direta, não nas obras. <b>Recorrentes</b> nas duas pastas
+ambientais (sinal a aprofundar): Hydra Engenharia (R$ 89,9 mi), Construtora Brasform (R$ 74,3 mi) e
+Trial Ambiental (R$ 37,6 mi).</div>"""
+
+
 # ── parlamentares (subagente A, fonte A Tribuna RJ) ──────────────────────────────────
 _DEP_FED = ["Carlos Jordy (PL)", "Chiquinho Brazão", "Hugo Leal (PSD)", "Jorge Braz (Republicanos)",
             "Laura Carneiro (PSD)", "Luiz Antônio Corrêa (PP)", "Otoni de Paula (MDB)",
@@ -188,6 +273,7 @@ def build_html() -> str:
     ong_ug, ong_ano, ong_tot = _ob_por_ug(con, CNPJ_ONG), _ob_por_ano(con, CNPJ_ONG), _total(con, CNPJ_ONG)
     sol_ug, sol_tot = _ob_por_ug(con, CNPJ_SOL), _total(con, CNPJ_SOL)
     seas = _seas_obs(con)
+    inea_seas_html = _secao_inea_seas(con)   # precisa do con aberto — computa antes do close
     con.close()
     hoje = datetime.now().strftime("%d/%m/%Y")
     seas_tot = sum(r[2] for r in seas)
@@ -378,7 +464,13 @@ relevância de fiscalizar este contrato de gestão, o maior custeado pela fonte 
 
 {_secao_contratados()}
 
-<h2>9. Repasses de 2017–2018 e o bloqueio do SIAFE-1</h2>
+{_secao_jose_ricardo()}
+
+{_secao_cedae()}
+
+{inea_seas_html}
+
+<h2>12. Repasses de 2017–2018 e o bloqueio do SIAFE-1</h2>
 <div class="callout warn"><div class="t">🚩 SIAFE-1 não liberado para nós em 2017–2018 (INDISPONÍVEL ≠ zero)</div>
 A base SIAFE-1 (2016–2023) só expõe, para a nossa conta, a UG da <b>ALERJ (010100)</b> nos exercícios
 de 2016 a 2020 — as demais UGs (Secretaria de Esporte 170100, SUDERJ 173100) só aparecem a partir de
@@ -395,7 +487,7 @@ nenhuma das duas. <b>Estadual 2017–2018 (Esporte/SUDERJ):</b> não localizado 
 Vaadin, não indexável) — a apurar pelo SIAFE-1 liberado ou pelos autos do TCE-RJ. Agregado federal
 histórico das entidades: SOLAZER R$ 13.099.999,64; Con-tato/CPASC R$ 145.802.031,61.</p>
 
-<h2>10. Situação processual</h2>
+<h2>13. Situação processual</h2>
 <ul>
 <li><b>STF</b> (min. Alexandre de Moraes): autorizou prisões, buscas e bloqueio de R$ 100 mi (09/07/2026).</li>
 <li><b>PF</b>: inquérito por peculato, lavagem e organização criminosa; desdobra apuração de 2024 sobre a ONG.</li>
@@ -404,7 +496,7 @@ histórico das entidades: SOLAZER R$ 13.099.999,64; Con-tato/CPASC R$ 145.802.03
 <li><b>Prefeitura do Rio</b>: licitação de ~R$ 120 mi cancelada (maio/2024).</li>
 </ul>
 
-<h2>11. Em apuração — próximas entregas (sem limite de páginas)</h2>
+<h2>14. Em apuração — próximas entregas (sem limite de páginas)</h2>
 <div class="pend">Estas frentes estão em execução e serão entregues na sequência, no Yoda:
 <ul>
 <li><b>Íntegra do processo SEI-070026/000705/2021</b> (contrato-mãe SEAS) — download em curso; dela

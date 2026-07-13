@@ -60,9 +60,12 @@ _OUTLINE = [
     (1, "Contratados do projeto"),
     (2, "Contratados que já foram candidatos"),
     (2, "Contratados que constam recebendo benefício"),
-    (1, "9. Repasses de 2017"),
-    (1, "10. Situação processual"),
-    (1, "11. Em apuração"),
+    (1, "9. José Ricardo Ferreira de Brito"),
+    (1, "10. CEDAE — o acordo de R$ 900"),
+    (1, "11. INEA e SEAS na gestão Pampolha"),
+    (1, "12. Repasses de 2017"),
+    (1, "13. Situação processual"),
+    (1, "14. Em apuração"),
 ]
 
 
