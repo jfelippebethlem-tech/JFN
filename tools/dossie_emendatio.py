@@ -125,6 +125,106 @@ def _seas_obs(con):
         f"ORDER BY data_pagamento", (CNPJ_ONG,)).fetchall()
 
 
+def _secao_improbidade() -> str:
+    """Análise jurídica autoral (não automatizada) — hipóteses de improbidade administrativa por frente,
+    sob a Lei 8.429/92 com a reforma da Lei 14.230/2021. Rigor: indício ≠ acusação; a LIA pós-2021 exige
+    DOLO específico; culpa/irregularidade formal não bastam. Cada linha traz o dispositivo, o elemento a
+    provar e o agente potencial — é roteiro de apuração, não juízo condenatório."""
+    return """
+<h2>15. Análise jurídica — hipóteses de improbidade administrativa</h2>
+<div class="callout info"><div class="t">Marco legal e advertência metodológica</div>
+Análise sob a <b>Lei 8.429/92 (LIA), com a reforma da Lei 14.230/2021</b>. Três balizas da reforma
+condicionam tudo o que segue: (1) <b>exige-se DOLO</b> — a vontade livre e consciente de praticar o ato
+ímprobo com o fim específico previsto no tipo; <b>culpa, erro ou mera irregularidade não configuram
+improbidade</b> (art. 1º, §§ 1º-3º); (2) o rol do <b>art. 11</b> (atos contra princípios) passou a ser
+<b>taxativo</b>; (3) o <b>dano ao erário (art. 10)</b> deve ser <b>efetivo e comprovado</b>, não
+presumido. Logo, o que abaixo se descreve são <b>hipóteses a apurar</b> — cada uma indica o elemento que
+<b>ainda falta provar</b> (sobretudo o dolo). Nada aqui é afirmação de culpa; a competência para a ação
+é do Ministério Público, e vigora a presunção de legitimidade dos atos.</div>
+
+<h3>15.1 Ambiente Jovem — contrato de gestão 001/2021 (SEAS × Con-tato)</h3>
+<table><tr><th>Fato apurado</th><th>Dispositivo potencial (LIA)</th><th>Elemento a provar</th></tr>
+<tr><td>Chamamento 002/2021 com sessão em 29/12 e assinatura em 30/12/2021 (1 dia, no encerramento do exercício)</td><td>Art. 10, VIII (frustrar/dispensar indevidamente processo seletivo) c/c art. 11 (moralidade/publicidade)</td><td>Que o chamamento foi <b>simulado/direcionado</b> à Con-tato (concorrência fictícia) e que o gestor agiu com <b>dolo</b> — não bastam a celeridade e o fim de ano</td></tr>
+<tr><td>Emendatio (PF): apontamento de superfaturamento, inexecução e empresas interpostas na execução de emendas via a ONG</td><td>Art. 9º (enriquecimento ilícito de quem se apropriou) e art. 10 (dano ao erário)</td><td>Nexo entre o desvio e cada agente; que houve <b>perda patrimonial efetiva</b>; dolo. Investigação em curso no STF/PF</td></tr>
+<tr><td>Atestes de execução dos núcleos × alegada inexecução</td><td>Art. 10 (dano) / art. 11 (falsidade em prestação de contas, se dolosa)</td><td>Que os atestes foram <b>ideologicamente falsos</b> e quem os assinou sabia</td></tr></table>
+<p class="fonte">Ponto de atenção: a íntegra do processo SEI-070026/000705/2021 e das medições/prestações de
+contas é o que permite fechar (ou afastar) o dolo dos agentes públicos signatários.</p>
+
+<h3>15.2 SOLAZER — "Esporte RJ" (contrato de gestão 002/2015, Proc. TCE 107.485-1/16)</h3>
+<table><tr><th>Fato apurado</th><th>Dispositivo potencial</th><th>Situação</th></tr>
+<tr><td>TCE apurou dano ~R$ 21 mi (núcleos fantasmas — 5 de 31 ativos; prestações de contas repetidas)</td><td>Art. 10 (dano ao erário) — para a OS e os agentes com dolo</td><td>Dano <b>reconhecido pelo TCE</b>; a via de improbidade dependeria de ação do MP demonstrando dolo de cada réu</td></tr>
+<tr><td>Assinatura do contrato pelo Chefe de Gabinete Bernardo R. Cardoso Pinto (apontado como próximo de Marco Antônio Cabral)</td><td>Art. 11 (favorecimento) / art. 10</td><td>A apurar — pessoalidade/vínculo é indício, não prova</td></tr>
+<tr><td><b>Pampolha e José Ricardo F. de Brito ABSOLVIDOS pelo TCE (26/03/2025)</b></td><td>—</td><td><b>Elemento subjetivo (dolo) afastado para ambos</b> no juízo de contas — pesa fortemente contra a tese de improbidade destes dois neste contrato</td></tr></table>
+
+<h3>15.3 CEDAE — Termo de Conciliação de R$ 900 mi (Águas do Rio)</h3>
+<table><tr><th>Fato apurado</th><th>Dispositivo potencial</th><th>Elemento a provar</th></tr>
+<tr><td><b>Termo NÃO deliberado pelo Conselho de Administração</b>; sem parecer jurídico prévio, estudo técnico ou manifestação da PGE (vícios apontados pelo próprio TCE ao suspender)</td><td>Art. 11 (violação de deveres de legalidade/moralidade e de competência) e art. 10 (dano), se o desconto de 24,13% for indevido</td><td>Que o reequilíbrio se fundou em <b>premissas falsas</b> (dano) — atenção: se os dados de cobertura do edital de 2021 eram de fato inflados (alerta do BNDES), o pleito da concessionária pode ser <b>legítimo</b>, o que afastaria o dano; a chave é a perícia técnica do índice</td></tr>
+<tr><td>Voto de Pampolha (conselheiro do TCE) derrubando a liminar, com dois ex-subordinados nomeados diretores da CEDAE em paralelo</td><td>Art. 11 (conflito de interesses / quebra de imparcialidade), se houver impedimento não declarado e dolo</td><td>Que havia <b>dever de se declarar impedido</b> e nexo entre o voto e as nomeações — <b>quid pro quo</b>. Ressalva relevante: o voto de conselheiro é ato decisório com proteção funcional; a tese exige demonstrar desvio de finalidade, não só a coincidência temporal</td></tr>
+<tr><td>Nomeações de José Ricardo (DSG) e Philipe Campello (DSU) dias após o acordo</td><td>Art. 9º/11 (se contrapartida), art. 11 (nepotismo cruzado/favorecimento) — a apurar</td><td>Prova da <b>troca</b>; nomeação para cargo de confiança é, em regra, ato discricionário lícito</td></tr></table>
+<div class="callout warn"><div class="t">Onde está a materialidade mais forte de improbidade</div>
+Não é a coincidência das nomeações (discricionárias) nem o voto do conselheiro (protegido), mas o
+<b>Termo de R$ 900 mi firmado sem deliberação do Conselho de Administração e sem os pareceres
+obrigatórios</b> — se comprovado que causou <b>perda efetiva</b> ao patrimônio da CEDAE por
+reequilíbrio <b>indevido</b>, tem-se dano ao erário (art. 10) dos agentes que o firmaram com dolo. O
+inquérito do MPRJ (2ª PJ Patrimônio Público) e a perícia do índice de cobertura são o caminho.</div>
+
+<h3>15.4 INEA — obras de macrodrenagem (Lytoranea): aprofundamento pela instrução dos processos</h3>
+<p>Leitura da instrução real dos processos SEI do INEA (070002) — a árvore completa consta do Anexo D.
+A estrutura formal está presente (Estudo Técnico Preliminar, Termo de Referência, Planilha Orçamentária
+onerada e desonerada, Cronograma Físico-Financeiro, Memória de Cálculo, Termos Aditivos, Declaração do
+Ordenador de Despesa, Apólice, Relatório de Vistoria). Sobre esse esqueleto, os dados financeiros
+(TCE-RJ + SIAFE) revelam três pontos que pedem apuração:</p>
+<div class="callout warn"><div class="t">🚩 (i) Mesmo objeto, dois contratos, salto de +37%</div>
+A <b>Obra de Macrodrenagem do Rio Maxambomba</b> aparece em <b>dois</b> contratos da Lytoranea:
+<b>SEI-070002/000991/2022 — R$ 69.792.944,31</b> (vigência 02/2023–05/2025), do qual foi <b>pago apenas
+R$ 398.094,63</b> (empenhado R$ 10,2 mi, liquidado R$ 426 mil); e <b>SEI-070002/004135/2025 —
+R$ 95.969.573,46</b>, cujo processo <b>abre com um Termo Aditivo</b>. O mesmo objeto salta de ~R$ 70 mi
+para ~R$ 96 mi (<b>+37%</b>) após execução ínfima do primeiro. <b>Hipótese a apurar:</b> se for aditivo
+de valor, <b>excede o teto de 25% do art. 125 da Lei 14.133/21</b> (art. 65, §1º, da Lei 8.666/93);
+se for recontratação do mesmo objeto com preço maior após inexecução, há indício de <b>dano (art. 10)</b>
+e possível <b>jogo de planilha/sobrepreço</b>. A confirmação exige o texto do Termo Aditivo e das
+Planilhas Orçamentárias (peças escaneadas — ver ressalva ao fim).</div>
+<div class="callout warn"><div class="t">🚩 (ii) Concentração — Lytoranea recebeu ~R$ 321 mi do INEA (2021–2026)</div>
+Além dos contratos de macrodrenagem, a Lytoranea é credora recorrente e <b>dominante</b> do INEA:
+R$ 20,8 mi (2021) · R$ 45,7 mi (2022) · R$ 66,6 mi (2023) · R$ 68,9 mi (2024) · R$ 88,1 mi (2025) ·
+R$ 31,7 mi (2026) = <b>~R$ 321 milhões</b>. A mesma empresa também tem grandes contratos em SEIOP,
+FDRM e SECID. Concentração dessa magnitude num único fornecedor de obras é sinal de <b>competição
+possivelmente restrita</b> — a apurar direcionamento de edital (art. 11 / art. 10, VIII) e, se
+comprovado, cartel/combinação. <b>Agrava:</b> a Lytoranea consta <b>impedida de contratar</b> (sanção
+federal — Fiocruz, 2026), o que exige revisão das contratações em curso.</div>
+<div class="callout warn"><div class="t">🚩 (iii) Contrato × execução — R$ 70 mi contratados, R$ 398 mil pagos</div>
+O descompasso entre o valor contratado e o efetivamente pago (0,6% no contrato de 2022) sugere
+<b>inexecução</b> ou <b>reserva de mercado</b> (contratar e não executar, mantendo o vínculo). Se houver
+medição/atesto de serviço não realizado, configura-se <b>art. 10 (dano)</b> e possível falsidade
+(art. 11); o Anexo D traz as medições e a Declaração do Ordenador para conferência.</div>
+<p><b>Elementos típicos a fechar (todos dependem do dolo, art. 1º §§):</b> Termo Aditivo acima do teto
+legal → art. 10, se com dano; sobrepreço na planilha (comparar com SINAPI/EMOP) → art. 10; direcionamento
+do edital → art. 11 / art. 10, VIII; medição sem execução → art. 10 + falsidade. O ordenador de despesa
+e o fiscal do contrato são os agentes públicos naturais do exame; a empresa responde como particular
+(art. 3º).</p>
+<div class="callout info"><div class="t">Ressalva de método (honestidade)</div>
+A árvore completa dos processos do INEA foi obtida (Anexo D, índice por documento), mas o <b>texto das
+peças substantivas</b> (Termos Aditivos, Planilhas Orçamentárias, Declarações do Ordenador) está em
+documentos <b>escaneados</b> cujo conteúdo ainda não foi lido por extração automática. As hipóteses acima
+derivam da <b>estrutura da instrução</b> e dos <b>valores financeiros</b> (TCE-RJ/SIAFE); a confirmação
+(percentual exato do aditivo, preços unitários da planilha, teor das medições) exige a leitura dessas
+peças — pendência técnica registrada.</p></div>
+
+<h3>15.5 Prescrição e sujeitos (art. 23, red. Lei 14.230/21)</h3>
+<p>Prazo de <b>8 anos</b> a contar do fato/ciência, com <b>prescrição intercorrente</b> (metade do prazo)
+— relevante para os atos de 2015 (Esporte RJ) e 2021 (Ambiente Jovem). Sujeitos: agentes públicos
+(art. 2º) e o <b>particular</b> que concorreu ou se beneficiou (art. 3º) — alcança as OS e seus
+dirigentes. <b>Sanções (art. 12):</b> ressarcimento integral, perda dos valores acrescidos ao
+patrimônio, perda da função, suspensão de direitos políticos e multa — dosadas conforme o tipo.</p>
+<div class="callout info"><div class="t">Conclusão do exame jurídico</div>
+Há, em tese, materialidade para <b>representação e aprofundamento</b> em três frentes — dispensa/
+direcionamento no Ambiente Jovem (art. 10, VIII/11), dano já reconhecido no Esporte RJ (art. 10, com
+dolo a demonstrar) e o Termo da CEDAE sem deliberação do CA (art. 11 e, se dano, art. 10). O que
+converte indício em improbidade é sempre o <b>dolo específico</b> e, no art. 10, o <b>dano efetivo</b> —
+elementos que dependem da íntegra dos processos administrativos (SEI) e das perícias. Este exame é
+roteiro de apuração; a imputação é do Ministério Público.</div>"""
+
+
 def _secao_jose_ricardo() -> str:
     """Ficha do gestor José Ricardo Ferreira de Brito — o nó que liga os enredos, hoje na CEDAE."""
     return """
@@ -543,6 +643,8 @@ conteúdo substantivo consta do Anexo A pela via pública; falta o trâmite inte
 </ul>
 Nota de honestidade: os controladores da ONG (Cíntia, Raphael, Tathyane) <b>não constam</b> recebendo
 benefício assistencial na base do município do Rio (checagem negativa).</div>
+
+{_secao_improbidade()}
 
 <footer>Peça de subsídio à apuração — indícios, não acusação; presunção de legitimidade dos atos
 administrativos preservada. Pagamentos: SIAFE/TFE-RJ (Ordem Bancária = pagamento). Fatos da operação:

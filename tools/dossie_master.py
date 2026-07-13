@@ -122,17 +122,50 @@ def _pagina_do_titulo(doc, titulo: str, ini: int = 0) -> int:
     return 0
 
 
+def _pagina_indice(doc) -> int:
+    """Página (0-based) da PÁGINA DE ÍNDICE VISÍVEL; -1 se não houver. A resolução dos títulos
+    tem de começar DEPOIS dela — senão cada título casa primeiro na lista do índice (que traz
+    todos), e todos os bookmarks caem na página 1."""
+    for pno in range(min(5, doc.page_count)):
+        if doc[pno].search_for("ÍNDICE CLICÁVEL"):
+            return pno
+    return -1
+
+
 def construir_outline(doc, heads: list, base_offset: int = 0) -> list:
     """Bookmarks da peça analítica = TODOS os títulos/subitens (h2/h3) extraídos, na ordem,
-    cada um mapeado à sua 1ª página. Busca por prefixo (evita quebra por títulos longos)."""
-    toc, ultimo = [], 0
+    cada um mapeado à sua 1ª página REAL (busca começa após a página de índice). Prefixo p/
+    não quebrar em títulos longos."""
+    piso = _pagina_indice(doc) + 1  # 0 se não houver índice; senão, 1ª página após o índice
+    toc, ultimo = [], piso
     for nivel, titulo in heads:
         alvo = titulo[:38]
-        p = _pagina_do_titulo(doc, alvo, max(0, ultimo - 1)) or _pagina_do_titulo(doc, alvo, 0)
+        p = _pagina_do_titulo(doc, alvo, max(piso, ultimo - 1)) or _pagina_do_titulo(doc, alvo, piso)
         if p:
             toc.append([nivel, titulo[:70], p + base_offset])
             ultimo = p
     return toc
+
+
+def _linkar_indice(doc, outline: list) -> int:
+    """Torna a PÁGINA DE ÍNDICE VISÍVEL de fato clicável: cada linha de título vira um link
+    (LINK_GOTO) para a página resolvida no bookmark. Corrige o fato de o Playwright não
+    converter as âncoras <a href='#sN'> em links de PDF. Retorna nº de links inseridos."""
+    idxpg = _pagina_indice(doc)
+    if idxpg < 0:
+        return 0
+    page = doc[idxpg]
+    n = 0
+    for nivel, titulo, destino in outline:
+        if destino - 1 <= idxpg:  # só os títulos analíticos que estão listados no índice
+            continue
+        rects = page.search_for(titulo[:34])
+        if not rects:
+            continue
+        page.insert_link({"kind": fitz.LINK_GOTO, "from": rects[0],
+                          "page": destino - 1, "to": fitz.Point(0, 0)})
+        n += 1
+    return n
 
 
 async def montar() -> str:
@@ -147,6 +180,7 @@ async def montar() -> str:
     await html_to_pdf(html, str(analitico))
     doc = fitz.open(str(analitico))
     outline = construir_outline(doc, heads)   # bookmarks = todos os títulos e subitens
+    _linkar_indice(doc, outline)              # torna a página de índice visível de fato clicável
 
     # 2) ANEXO A — íntegra dos instrumentos e prestação de contas.
     # Preferência: íntegra do processo SEI (se baixada); senão, os INSTRUMENTOS PÚBLICOS que a própria
