@@ -167,13 +167,36 @@ concessionária <b>Águas do Rio 1 e 4 SPE S.A.</b> (grupo Aegea). Não é pagam
 <b>~R$ 900 milhões</b> (podendo chegar a ~R$ 1,4 bi). Justificativa: divergência entre os índices de
 cobertura de esgoto do edital de 2021 e a realidade, constatada ao pagar a outorga final em dez/2024.</p>
 <table><tr><th>Data</th><th>Evento</th></tr>{tl}</table>
+<div class="callout"><div class="t">🚩 Achado de governança — o Termo NÃO foi deliberado pelo Conselho de Administração</div>
+Fato confirmado (não ausência de pesquisa): o Termo de Conciliação de 03/10/2025 <b>não passou por
+deliberação do Conselho de Administração da CEDAE</b>. A própria <b>suspensão do TCE-RJ (14/10/2025,
+Cons. Graciosa)</b> apontou como vício a "<b>inexistência de deliberação do Conselho de Administração
+da Cedae</b>", além da falta de parecer jurídico prévio, estudo técnico e manifestação da PGE. Nas atas
+do CA o tema só aparece <b>a posteriori</b> (Ata 828ª, 21/10/2025, como relato). A íntegra das atas
+consta do Anexo C.</div>
+<div class="callout"><div class="t">Os atos das nomeações (fonte primária — atas do CA)</div>
+<b>José Ricardo Ferreira de Brito (DSG):</b> eleito na <b>827ª Reunião do CA, 10/10/2025</b> (Ofício GG
+nº 207/2025 de Castro, 06/10/2025 — em substituição a Daniel Okumura); posse 13/10/2025; processo
+SEI-150001/013307/2025. <b>Philipe Campello (DSU):</b> eleito na <b>833ª Reunião, 26/11/2025</b> (Ofício
+GG nº 223/2025, 19/11/2025); a <b>Diretoria de Sustentabilidade foi criada por AGE de 26/11/2025</b>
+(alteração estatutária proposta em 21/10). Publicação: <b>DOERJ nº 227, Parte V, 10/12/2025, p. 1</b>;
+registro JUCERJA 00007336076.</div>
 <div class="callout"><div class="t">🚩 O eixo de risco (quid pro quo EM TESE)</div>
 Pampolha — hoje conselheiro do TCE-RJ, indicado pelo governador Cláudio Castro — deu o <b>voto de
 divergência decisivo</b> que liberou o acordo (4×3), enquanto <b>dois de seus ex-auxiliares na SEAS</b>
 (José Ricardo Ferreira de Brito, DSG; e Philipe Campello, ex-presidente do INEA, Sustentabilidade) eram
-nomeados diretores da <b>mesma estatal</b> que arca com a conta. A favor votaram Pampolha, Marcelo
-Verdini, Andreia Siqueira e Pacheco; contra, Graciosa e outros dois. O próprio TCE oficiou o MPRJ para
-apurar <b>coação de diretores</b> e <b>conflito de interesses</b>.</div>
+nomeados diretores da <b>mesma estatal</b> que arca com a conta. <b>Composição do voto (26/11/2025):</b>
+a favor de derrubar a liminar — Pampolha, Marcelo Verdini Maia, Andreia Siqueira Martins e o presidente
+Márcio Pacheco (minerva); contra — José Gomes Graciosa (relator), Marianna Montebello Willeman e Rodrigo
+Melo do Nascimento. O <b>MPRJ</b> instaurou inquérito civil (2ª Promotoria de Tutela Coletiva do
+Patrimônio Público da Capital, promotor Alberto Flores Camargo, 15/10/2025).</div>
+<div class="callout warn"><div class="t">🔒 O processo do acordo está sob ACESSO RESTRITO no TCE-RJ</div>
+A consulta pública do TCE-RJ, para o interessado "Águas do Rio", devolve apenas "processos internos que
+não estão autorizados para consulta pública" — <b>não há número nem PDF públicos</b> do voto/acórdão
+(por isso a imprensa não os divulga). Obter a íntegra exige acesso interno (SEI) ou requerimento formal
+(LAI) ao TCE — ao contrário do processo do Esporte RJ (Anexo B), que é público. <b>Desdobramentos:</b>
+em 01/03/2026 a 9ª Câmara do TJRJ restabeleceu liminar mantendo o desconto; em jul/2026 a nova direção
+da CEDAE passou a tentar <b>anular</b> o desconto de 24,13%, alegando prejuízo de até R$ 25 bilhões.</div>
 <div class="callout info"><div class="t">Ressalvas de rigor</div>
 <b>Não</b> é fato provado — é materialidade para representação, com inquérito do MPRJ em curso. Pampolha
 <b>não</b> assinou a concessão de 2021 (à época era Secretário do Ambiente; só virou vice em 2023) —

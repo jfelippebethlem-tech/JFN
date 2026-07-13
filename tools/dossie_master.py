@@ -27,6 +27,14 @@ SEI_INTEGRA = REPO / "data" / "sei_cache" / "INTEGRA_070026_000705_2021.pdf"
 INSTRUMENTOS = REPO / "data" / "aj_instrumentos"   # instrumentos públicos (contrato+aditivos+prest.contas)
 TCE_DOCS = REPO / "data" / "tce_docs"              # peças individuais do processo TCE (doc_N.pdf)
 TCE_PDF = REPO / "data" / "tce_processo.pdf"
+CEDAE_ATOS = REPO / "data" / "cedae_atos"          # atos societários da CEDAE (atas do CA, DOERJ)
+
+# Anexo C — atos da CEDAE (fonte primária: atas do Conselho de Administração / portal RI + DOERJ)
+_CEDAE_ORDEM = [
+    ("Ata_827a_CA_10-10-2025.pdf", "Ata 827ª do Conselho de Administração (10/10/2025) — eleição de José Ricardo F. de Brito (DSG)"),
+    ("Ata_833a_CA_26-11-2025.pdf", "Ata 833ª do Conselho de Administração (26/11/2025) — eleição de Philipe Campello (DSU) + criação da Diretoria de Sustentabilidade"),
+    ("Regimento_Interno_CEDAE.pdf", "Regimento Interno da CEDAE (consolidado pós-AGE 26/11/2025)"),
+]
 
 
 def _headers(html: str) -> list[tuple[int, str]]:
@@ -218,6 +226,32 @@ async def montar() -> str:
             doc.insert_pdf(tce)
         tce.close()
         anexos.append("TCE")
+
+    # ANEXO C — atos da CEDAE (atas do Conselho de Administração + Regimento), um marcador por documento.
+    cedae_docs = [(a, t) for a, t in _CEDAE_ORDEM if (CEDAE_ATOS / a).exists()] if CEDAE_ATOS.exists() else []
+    if cedae_docs:
+        base = doc.page_count
+        cap = fitz.open(); pg = cap.new_page()
+        pg.insert_text((60, 260), "ANEXO C — ATOS SOCIETÁRIOS DA CEDAE (ÍNTEGRA)", fontsize=15)
+        pg.insert_textbox(fitz.Rect(60, 285, 535, 400),
+            "Fonte primária: atas do Conselho de Administração da CEDAE (portal de Relações com "
+            "Investidores) e Diário Oficial do RJ. Documentam a eleição dos diretores José Ricardo "
+            "Ferreira de Brito (DSG) e Philipe Campello (DSU) e a criação da Diretoria de Sustentabilidade. "
+            "Registre-se que o Termo de Conciliação de R$ 900 mi NÃO consta de deliberação do Conselho.",
+            fontsize=10)
+        doc.insert_pdf(cap); outline.append([1, "ANEXO C — Atos societários da CEDAE (íntegra)", base + 1]); cap.close()
+        for arq, titulo in cedae_docs:
+            base = doc.page_count
+            sep = fitz.open(); sep.new_page().insert_textbox(fitz.Rect(60, 190, 535, 320), f"C.  {titulo}", fontsize=12)
+            doc.insert_pdf(sep); outline.append([2, titulo[:70], base + 1]); sep.close()
+            try:
+                d2 = fitz.open(str(CEDAE_ATOS / arq))
+                if d2.page_count:
+                    doc.insert_pdf(d2)
+                d2.close()
+            except Exception:  # noqa: BLE001
+                pass
+        anexos.append("CEDAE-atos")
 
     # trava de neutralidade: o entregável não pode carregar nomes internos (pedido do dono). Checa só o
     # texto EXTRAÍVEL da peça analítica (os anexos são documentos oficiais de terceiros). "lex" é
