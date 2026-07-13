@@ -262,6 +262,14 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; }
 .tag { padding:1px 6px; border-radius:3px; font-size:8.5px; font-weight:700; font-family:'Helvetica Neue',Arial,sans-serif; }
 .conf { background:#e6f4ea; color:#1b5e20; } .ind { background:#fff8e1; color:#a06a00; } .nao { background:#fdecea; color:#c62828; }
 ul { margin:4px 0 10px; padding-left:20px; } li { margin:2px 0; }
+.indice { margin:2px 0 4px; }
+.indice .it { font-size:15px; font-weight:700; color:#7a1f1f; letter-spacing:1px; font-family:'Helvetica Neue',Arial,sans-serif; border-bottom:2px solid #7a1f1f; padding-bottom:3px; margin-bottom:6px; }
+.indice .ihint { font-size:8.5px; color:#777; font-style:italic; margin-bottom:8px; }
+.indice .i1 { font-size:10.5px; margin:3px 0 1px; font-family:'Helvetica Neue',Arial,sans-serif; }
+.indice .i1 a { color:#2b0d0d; font-weight:700; text-decoration:none; }
+.indice .i2 { font-size:9px; margin:1px 0 1px 22px; font-family:'Helvetica Neue',Arial,sans-serif; }
+.indice .i2 a { color:#555; text-decoration:none; }
+.indice a:hover { text-decoration:underline; }
 .fonte { font-size:8px; color:#888; }
 .pend { border:1px dashed #b98; background:#fbf8f4; border-radius:6px; padding:9px 13px; margin:8px 0; font-size:9.5px; }
 footer { margin-top:20px; border-top:1px solid #ddd; padding-top:7px; font-size:8px; color:#888; }
@@ -496,17 +504,19 @@ histórico das entidades: SOLAZER R$ 13.099.999,64; Con-tato/CPASC R$ 145.802.03
 <li><b>Prefeitura do Rio</b>: licitação de ~R$ 120 mi cancelada (maio/2024).</li>
 </ul>
 
-<h2>14. Em apuração — próximas entregas (sem limite de páginas)</h2>
-<div class="pend">Estas frentes estão em execução e serão entregues na sequência, no Yoda:
+<h2>14. Pendências de fonte primária (para blindar cada frente)</h2>
+<div class="pend">Itens em apuração, a fechar diretamente na fonte oficial:
 <ul>
-<li><b>Íntegra do processo SEI-070026/000705/2021</b> (contrato-mãe SEAS) — download em curso; dela
-saem as listas de <b>contratados</b> (coordenadores, monitores, os 100 auxiliares de integração) e a
-<b>prestação de contas</b> com os beneficiários.</li>
-<li><b>Processo SEI-280001/000163/2023 (Secretaria de Juventude)</b> — <b>não</b> consta na documentação
-da SEAS; a apurar se é repasse paralelo ao mesmo objeto (potencial sobreposição de fonte).</li>
-<li><b>Cruzamento dos contratados e beneficiários</b> — para cada nome: já foi candidato (TSE)? já foi
-nomeado (folha estadual/municipal)? recebe Bolsa Família/BPC? de onde é? — reusando a maquinaria de
-perícia de benefícios da casa.</li>
+<li><b>Processo do TCE-RJ do acordo de R$ 900 mi</b> (CEDAE × Águas do Rio) — número do processo,
+íntegra do voto/acórdão de 26/11/2025 e da liminar de Graciosa; íntegra do Termo de Conciliação de
+03/10/2025 e do parecer da Agenersa (percentual 24,13%).</li>
+<li><b>Atos do DOERJ</b> das nomeações na CEDAE (José Ricardo Ferreira de Brito e Philipe Campello,
+out–dez/2025) e da criação da Diretoria de Sustentabilidade.</li>
+<li><b>Pagamentos estaduais de 2017–2018</b> (Esporte/SUDERJ) — indisponíveis pelo SIAFE-1 (seção 12);
+exigem liberação do exercício ou os autos do TCE (Anexo B já cobre o Esporte RJ).</li>
+<li><b>Tramitação interna do processo SEI-070026/000705/2021</b> (contrato do Ambiente Jovem) — o
+conteúdo substantivo consta do Anexo A pela via pública; falta o trâmite interno.</li>
+<li><b>Pente-fino processo a processo</b> dos maiores contratos de INEA/SEAS (seção 11).</li>
 </ul>
 Nota de honestidade: os controladores da ONG (Cíntia, Raphael, Tathyane) <b>não constam</b> recebendo
 benefício assistencial na base do município do Rio (checagem negativa).</div>
