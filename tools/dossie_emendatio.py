@@ -168,47 +168,61 @@ obrigatórios</b> — se comprovado que causou <b>perda efetiva</b> ao patrimôn
 reequilíbrio <b>indevido</b>, tem-se dano ao erário (art. 10) dos agentes que o firmaram com dolo. O
 inquérito do MPRJ (2ª PJ Patrimônio Público) e a perícia do índice de cobertura são o caminho.</div>
 
-<h3>15.4 INEA — obras de macrodrenagem (Lytoranea): aprofundamento pela instrução dos processos</h3>
-<p>Leitura da instrução real dos processos SEI do INEA (070002) — a árvore completa consta do Anexo D.
-A estrutura formal está presente (Estudo Técnico Preliminar, Termo de Referência, Planilha Orçamentária
-onerada e desonerada, Cronograma Físico-Financeiro, Memória de Cálculo, Termos Aditivos, Declaração do
-Ordenador de Despesa, Apólice, Relatório de Vistoria). Sobre esse esqueleto, os dados financeiros
-(TCE-RJ + SIAFE) revelam três pontos que pedem apuração:</p>
-<div class="callout warn"><div class="t">🚩 (i) Mesmo objeto, dois contratos, salto de +37%</div>
-A <b>Obra de Macrodrenagem do Rio Maxambomba</b> aparece em <b>dois</b> contratos da Lytoranea:
-<b>SEI-070002/000991/2022 — R$ 69.792.944,31</b> (vigência 02/2023–05/2025), do qual foi <b>pago apenas
-R$ 398.094,63</b> (empenhado R$ 10,2 mi, liquidado R$ 426 mil); e <b>SEI-070002/004135/2025 —
-R$ 95.969.573,46</b>, cujo processo <b>abre com um Termo Aditivo</b>. O mesmo objeto salta de ~R$ 70 mi
-para ~R$ 96 mi (<b>+37%</b>) após execução ínfima do primeiro. <b>Hipótese a apurar:</b> se for aditivo
-de valor, <b>excede o teto de 25% do art. 125 da Lei 14.133/21</b> (art. 65, §1º, da Lei 8.666/93);
-se for recontratação do mesmo objeto com preço maior após inexecução, há indício de <b>dano (art. 10)</b>
-e possível <b>jogo de planilha/sobrepreço</b>. A confirmação exige o texto do Termo Aditivo e das
-Planilhas Orçamentárias (peças escaneadas — ver ressalva ao fim).</div>
-<div class="callout warn"><div class="t">🚩 (ii) Concentração — Lytoranea recebeu ~R$ 321 mi do INEA (2021–2026)</div>
-Além dos contratos de macrodrenagem, a Lytoranea é credora recorrente e <b>dominante</b> do INEA:
-R$ 20,8 mi (2021) · R$ 45,7 mi (2022) · R$ 66,6 mi (2023) · R$ 68,9 mi (2024) · R$ 88,1 mi (2025) ·
-R$ 31,7 mi (2026) = <b>~R$ 321 milhões</b>. A mesma empresa também tem grandes contratos em SEIOP,
-FDRM e SECID. Concentração dessa magnitude num único fornecedor de obras é sinal de <b>competição
-possivelmente restrita</b> — a apurar direcionamento de edital (art. 11 / art. 10, VIII) e, se
-comprovado, cartel/combinação. <b>Agrava:</b> a Lytoranea consta <b>impedida de contratar</b> (sanção
-federal — Fiocruz, 2026), o que exige revisão das contratações em curso.</div>
-<div class="callout warn"><div class="t">🚩 (iii) Contrato × execução — R$ 70 mi contratados, R$ 398 mil pagos</div>
-O descompasso entre o valor contratado e o efetivamente pago (0,6% no contrato de 2022) sugere
-<b>inexecução</b> ou <b>reserva de mercado</b> (contratar e não executar, mantendo o vínculo). Se houver
-medição/atesto de serviço não realizado, configura-se <b>art. 10 (dano)</b> e possível falsidade
-(art. 11); o Anexo D traz as medições e a Declaração do Ordenador para conferência.</div>
-<p><b>Elementos típicos a fechar (todos dependem do dolo, art. 1º §§):</b> Termo Aditivo acima do teto
-legal → art. 10, se com dano; sobrepreço na planilha (comparar com SINAPI/EMOP) → art. 10; direcionamento
-do edital → art. 11 / art. 10, VIII; medição sem execução → art. 10 + falsidade. O ordenador de despesa
-e o fiscal do contrato são os agentes públicos naturais do exame; a empresa responde como particular
-(art. 3º).</p>
-<div class="callout info"><div class="t">Ressalva de método (honestidade)</div>
-A árvore completa dos processos do INEA foi obtida (Anexo D, índice por documento), mas o <b>texto das
-peças substantivas</b> (Termos Aditivos, Planilhas Orçamentárias, Declarações do Ordenador) está em
-documentos <b>escaneados</b> cujo conteúdo ainda não foi lido por extração automática. As hipóteses acima
-derivam da <b>estrutura da instrução</b> e dos <b>valores financeiros</b> (TCE-RJ/SIAFE); a confirmação
-(percentual exato do aditivo, preços unitários da planilha, teor das medições) exige a leitura dessas
-peças — pendência técnica registrada.</p></div>
+<h3>15.4 INEA — Contrato de macrodrenagem do Rio Maxambomba (Lytoranea): análise pela instrução real</h3>
+<p>As peças substantivas do processo <b>SEI-070002/004135/2025</b> foram lidas na íntegra (texto nativo e
+OCR das peças escaneadas — Anexo D). Objeto: <i>"Projeto Executivo e Obra de Macrodrenagem do Rio
+Maxambomba – Areia Branca – Belford Roxo/RJ"</i>, <b>Contrato INEA nº 08/2025</b>, regido pela
+Lei 14.133/2021. A leitura permite <b>substituir hipótese por fato</b> — e, por rigor, corrige pontos que
+a mera estrutura sugeria.</p>
+<div class="callout ok"><div class="t">✔️ O que a instrução mostra REGULAR (registrado por honestidade)</div>
+<b>Orçamento estimativo R$ 95.969.573,46</b> (regime desonerado; onerado R$ 96.323.171,00), data-base
+<b>EMOP 12/2024</b>, custo direto R$ 75.341.460,37. <b>BDI de 27,38%</b> (desonerado) / 22,47% (onerado)
+<b>referenciado à EMOP</b> (13ª ed., tipo "Obras Portuárias, Marítimas e Fluviais"), com composição padrão
+(Adm. Central 4,50% · Seguro/Garantia 0,80% · Risco 1,50% · Desp. Financeiras 0,70% · Lucro 6,30% ·
+tributos). O regime <b>desonerado adotado é o mais barato</b> dos dois (95,97 mi &lt; 96,32 mi) — ou seja,
+<b>não há "jogo de planilha" onerada×desonerada</b>. Instrução técnica robusta: ETP, Termo de Referência,
+Memória de Cálculo detalhada, Relatório de Vistoria, composição de BDI e parcelas de maior relevância.</div>
+<div class="callout warn"><div class="t">🚩 (i) Primeiro aditivo já "colado no teto": 24,97% de 25%</div>
+O <b>1º Termo Aditivo nº 110/2025</b> (assinado em <b>19/12/2025</b> — fim de exercício) promove
+<b>acréscimo qualitativo e quantitativo de R$ 17.305.130,73</b>, que o próprio instrumento declara equivaler
+a <b>24,97% do valor inicial atualizado</b> (art. 124, I, "a"/"b", Lei 14.133/21), elevando o contrato a
+<b>R$ 86.595.162,77</b>. Ou seja: valor inicial contratado ≈ R$ 69,3 mi (deságio de ~28% sobre o estimativo)
+→ <b>+24,97%</b> logo no primeiro aditivo. <b>Não excede</b> o teto de 25% do art. 125 (corrige a leitura
+anterior, que supunha estouro) — mas <b>encosta nele</b>: acréscimo máximo admissível já no 1º aditivo, em
+obra recém-contratada, é padrão que o TCU trata como sinal de <b>projeto básico deficiente / orçamento
+subdimensionado na largada</b>. A apurar: a <b>justificativa técnica</b> do acréscimo (se o quantitativo era
+previsível na licitação, o aditivo pode mascarar direcionamento ou sobrepreço — art. 10).</div>
+<div class="callout warn"><div class="t">🚩 (ii) Contratada em RECUPERAÇÃO JUDICIAL e já sancionada</div>
+A <b>Declaração do Ordenador de Despesa</b> (LRF, art. 16) qualifica a contratada como <b>"CONSTRUTORA
+LYTORANEA LTDA – EM RECUPERAÇÃO JUDICIAL"</b> (CNPJ 07.792.269/0001-05). Contratar e <b>aditar em +R$ 17,3 mi</b>
+uma empresa em recuperação judicial — que ainda consta <b>impedida de contratar</b> por sanção federal
+(Fiocruz, 2026) — exige exame reforçado de habilitação econômico-financeira e de capacidade de execução
+(a inexecução gera dano — art. 10). Assina pelo INEA o Presidente Renato Jordão Bussiere e o Diretor de
+Recuperação Ambiental Raul Marques Fanzeres.</div>
+<div class="callout warn"><div class="t">🚩 (iii) Mesmo objeto já contratado e NÃO executado em 2022</div>
+A macrodrenagem do Maxambomba já fora contratada em <b>SEI-070002/000991/2022 — R$ 69.792.944,31</b>
+(vigência 02/2023–05/2025), do qual foi <b>pago apenas R$ 398.094,63</b> (0,6%). Recontratar o mesmo objeto
+em 2025 após execução ínfima do contrato anterior pede resposta: houve <b>distrato/rescisão</b> do de 2022?
+o que foi feito com o empenhado? há <b>sobreposição</b>? Inexecução seguida de recontratação a preço maior é
+vetor de <b>dano (art. 10)</b> se não houver justificativa técnica idônea.</div>
+<div class="callout warn"><div class="t">🚩 (iv) Concentração — Lytoranea recebeu ~R$ 321 mi do INEA (2021–2026)</div>
+A Lytoranea é credora <b>dominante</b> do INEA: R$ 20,8 mi (2021) · 45,7 (2022) · 66,6 (2023) · 68,9 (2024) ·
+88,1 (2025) · 31,7 (2026) = <b>~R$ 321 milhões</b>, além de grandes contratos em SEIOP, FDRM e SECID.
+Concentração dessa magnitude num único fornecedor de obras é sinal de <b>competição possivelmente
+restrita</b> — a apurar direcionamento de edital (art. 11 / art. 10, VIII). Custeio pelo <b>FECAM
+(Fonte 1.7.59.151)</b> — o <b>mesmo fundo</b> que banca o Ambiente Jovem, hoje sob notificação do MPRJ/GAEMA.</div>
+<p><b>Síntese jurídica (honesta):</b> a instrução do Contrato 08/2025 está formalmente bem montada e o preço/BDI
+tem lastro na EMOP — <b>não há ilegalidade evidente na formação do preço</b>. O que merece fiscalização é o
+<b>padrão</b>: 1º aditivo de acréscimo colado no teto legal (24,97%) e assinado em 19/12; contratação e
+aditamento de empresa <b>em recuperação judicial e sancionada</b>; recontratação de objeto <b>inexecutado</b>
+em 2022; e <b>concentração</b> num único fornecedor custeado pelo FECAM. Nenhum desses fatos, isolado, é
+ilícito; em <b>conjunto</b> desenham risco de <b>art. 10</b> (dano, se o acréscimo/execução não tiver lastro)
+e <b>art. 11</b> (se houver direcionamento) — sempre dependentes de <b>dolo</b> (art. 1º, §§, red. Lei
+14.230/21). Próximos passos verificáveis: (a) ler a <b>justificativa técnica</b> do aditivo 110/2025;
+(b) confrontar itens da <b>Memória de Cálculo</b> (agora legível) com a tabela EMOP para aferir sobrepreço;
+(c) linha do tempo do contrato de 2022 (distrato × empenho × OB); (d) habilitação econômica na recuperação
+judicial. O ordenador de despesa e o fiscal do contrato são os agentes naturais do exame; a empresa responde
+como particular (art. 3º).</p>
 
 <h3>15.5 Prescrição e sujeitos (art. 23, red. Lei 14.230/21)</h3>
 <p>Prazo de <b>8 anos</b> a contar do fato/ciência, com <b>prescrição intercorrente</b> (metade do prazo)
@@ -377,6 +391,7 @@ td.num { text-align:right; font-variant-numeric:tabular-nums; }
 .callout { border:1px solid #e0c9c9; border-left:4px solid #b71c1c; background:#fdf5f5; border-radius:6px; padding:10px 14px; margin:12px 0; page-break-inside:avoid; }
 .callout.warn { border-left-color:#a06a00; background:#fffaf0; }
 .callout.info { border-left-color:#1f4e79; background:#f4f8fc; }
+.callout.ok { border-left-color:#1b5e20; background:#f3faf4; }
 .callout .t { font-weight:700; color:#7a1f1f; font-family:'Helvetica Neue',Arial,sans-serif; font-size:10px; margin-bottom:3px; }
 .kpis { display:flex; gap:9px; margin:12px 0; flex-wrap:wrap; }
 .kpi { border:1px solid #e2d5d5; border-radius:8px; padding:9px 13px; background:#fbf7f7; min-width:120px; }
