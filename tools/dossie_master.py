@@ -28,6 +28,7 @@ INSTRUMENTOS = REPO / "data" / "aj_instrumentos"   # instrumentos públicos (con
 TCE_DOCS = REPO / "data" / "tce_docs"              # peças individuais do processo TCE (doc_N.pdf)
 TCE_PDF = REPO / "data" / "tce_processo.pdf"
 CEDAE_ATOS = REPO / "data" / "cedae_atos"          # atos societários da CEDAE (atas do CA, DOERJ)
+PROC_INTEGRA = REPO / "data" / "proc_integra"      # processos administrativos na íntegra (1 PDF/processo, c/ toc por doc)
 
 # Anexo C — atos da CEDAE (fonte primária: atas do Conselho de Administração / portal RI + DOERJ)
 _CEDAE_ORDEM = [
@@ -252,6 +253,34 @@ async def montar() -> str:
             except Exception:  # noqa: BLE001
                 pass
         anexos.append("CEDAE-atos")
+
+    # ANEXO D — processos administrativos na íntegra (toda a instrução), um por PDF, com o índice de
+    # documentos de CADA processo aninhado no sumário (nível 3 = cada despacho/parecer/medição).
+    proc_pdfs = sorted(PROC_INTEGRA.glob("*.pdf")) if PROC_INTEGRA.exists() else []
+    if proc_pdfs:
+        base = doc.page_count
+        cap = fitz.open(); pg = cap.new_page()
+        pg.insert_text((60, 260), "ANEXO D — PROCESSOS ADMINISTRATIVOS NA ÍNTEGRA", fontsize=15)
+        pg.insert_textbox(fitz.Rect(60, 285, 535, 420),
+            "Instrução completa dos processos SEI dos maiores contratos de INEA/SEAS na gestão Pampolha "
+            "e do contrato de gestão do Ambiente Jovem — todos os documentos da árvore (declarações do "
+            "ordenador, despachos, pareceres, termos, notas técnicas, medições, prestação de contas), com "
+            "índice clicável por documento. Fonte: SEI-RJ (leitura autenticada). Documento sem texto "
+            "extraível = imagem/anexo; consta do índice.", fontsize=10)
+        doc.insert_pdf(cap); outline.append([1, "ANEXO D — Processos administrativos (íntegra da instrução)", base + 1]); cap.close()
+        for fp in proc_pdfs:
+            base = doc.page_count
+            nome = re.sub(r"[-_]+", " ", fp.stem)
+            outline.append([2, nome[:70], base + 1])
+            try:
+                src = fitz.open(str(fp))
+                for lvl, tit, p in (src.get_toc() or []):
+                    if lvl >= 2:  # os bookmarks por-documento do processo (nível 2 no arquivo) → nível 3 aqui
+                        outline.append([3, tit[:70], base + p])
+                doc.insert_pdf(src); src.close()
+            except Exception:  # noqa: BLE001
+                pass
+        anexos.append("processos-integra")
 
     # trava de neutralidade: o entregável não pode carregar nomes internos (pedido do dono). Checa só o
     # texto EXTRAÍVEL da peça analítica (os anexos são documentos oficiais de terceiros). "lex" é
