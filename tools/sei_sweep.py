@@ -440,6 +440,13 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                             _log("  browser/pipe caiu no meio — encerrando a sessão LIMPO (cron repete). Sem crash.")
                             break
                         continue
+                    # controle de RESTRITOS: registra o resultado final ao longo do sweep (0-doc+árvore-não-abriu
+                    # +existe no cadastro = provável acesso restrito). Degrada em silêncio, nunca derruba o sweep.
+                    try:
+                        from tools import sei_restritos as _restr
+                        _restr.registrar(proc, r)
+                    except Exception:  # noqa: BLE001
+                        pass
                     # SEI-2: segue a ÁRVORE de relacionados (o processo de pagamento tem pouco; a licitação/
                     # contrato relacionado tem a substância). Guarda 1<=N<=15 evita a CAIXA (~40 inbox).
                     rel = r.get("relacionados") or []
@@ -568,6 +575,13 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
                         if _browser_morto(e):
                             _log("  [pais] browser/pipe caiu — encerrando a sessão LIMPO. Sem crash."); break
                         continue
+                    # controle de RESTRITOS: registra o resultado final ao longo do sweep (0-doc+árvore-não-abriu
+                    # +existe no cadastro = provável acesso restrito). Degrada em silêncio, nunca derruba o sweep.
+                    try:
+                        from tools import sei_restritos as _restr
+                        _restr.registrar(proc, r)
+                    except Exception:  # noqa: BLE001
+                        pass
                     ficha_info = None
                     if fazer_ficha and nd:
                         try:
