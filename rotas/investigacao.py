@@ -950,3 +950,79 @@ async def api_nucleo_comando(payload: dict = None):
         return JSONResponse(content={"ok": True, "comando": comando, "args": args, "resposta": resposta})
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONTROLE: processos SEI restritos (alimentado pelos sweeps) + flags vermelhos graves
+# Endpoints /api/restritos e /api/flags + página /controle (autocontida, dark). 2026-07-14.
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get("/api/restritos")
+async def api_restritos(todos: int = 0):
+    """Lista de controle dos processos SEI de acesso RESTRITO (data/sei_restritos.json)."""
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(RAIZ))
+        from tools import sei_restritos as _R
+        itens = _R.listar(todos=bool(todos))
+        return JSONResponse({"ok": True, "n": len(itens), "itens": itens})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(e), "itens": []}, status_code=500)
+
+
+@router.get("/api/flags")
+async def api_flags():
+    """Flags vermelhos GRAVES da fiscalização (data/flags_graves.json)."""
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(RAIZ))
+        from tools import flags_graves as _F
+        itens = _F.listar()
+        return JSONResponse({"ok": True, "n": len(itens), "itens": itens})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(e), "itens": []}, status_code=500)
+
+
+@router.get("/controle")
+async def pagina_controle():
+    """Página de CONTROLE (dark, mobile): flags graves + processos SEI restritos. Consome /api/flags e /api/restritos."""
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(_CONTROLE_HTML)
+
+
+_CONTROLE_HTML = r"""<!doctype html><html lang=pt-BR><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>JFN — Controle</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--bd:#272b34;--tx:#e6e8ec;--mut:#9aa2ad;--crit:#e5484d;--alta:#e08a2b;--med:#d9c33a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:1000px;margin:auto}
+h1{font-size:18px;margin:.2em 0}h2{font-size:15px;color:var(--mut);margin:1.4em 0 .5em;border-bottom:1px solid var(--bd);padding-bottom:4px}
+.card{background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--bd);border-radius:8px;padding:10px 12px;margin:8px 0}
+.card.CRÍTICA{border-left-color:var(--crit)}.card.ALTA{border-left-color:var(--alta)}.card.MÉDIA{border-left-color:var(--med)}
+.g{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;background:#222;color:#fff}
+.g.CRÍTICA{background:var(--crit)}.g.ALTA{background:var(--alta)}.g.MÉDIA{background:var(--med);color:#111}
+.caso{font-weight:600}.tit{margin:4px 0}.meta{color:var(--mut);font-size:12.5px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--bd)}
+th{color:var(--mut);font-weight:600}.pill{font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px}
+.pill.RESTRITO{background:var(--crit);color:#fff}.pill.RESTRITO\?{background:var(--alta);color:#fff}.pill.PARCIAL{background:var(--med);color:#111}
+.upd{color:var(--mut);font-size:12px;margin-top:2em}code{background:#222;padding:1px 5px;border-radius:4px}
+</style></head><body>
+<h1>🛡️ JFN — Controle de fiscalização</h1>
+<div class=meta>Flags vermelhos graves e processos SEI restritos. Atualiza sozinho ao longo dos sweeps.</div>
+<h2 id=hf>🚩 Flags vermelhos graves</h2><div id=flags>carregando…</div>
+<h2 id=hr>🔒 Processos SEI restritos <span class=meta id=rct></span></h2><div id=restr>carregando…</div>
+<div class=upd id=upd></div>
+<script>
+const brl=v=>{v=+v;return !v?'':'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})};
+async function j(u){try{const r=await fetch(u);return await r.json()}catch(e){return{ok:false,itens:[]}}}
+(async()=>{
+ const f=await j('/api/flags');
+ document.getElementById('flags').innerHTML = (f.itens||[]).map(e=>`
+   <div class="card ${e.gravidade}"><span class="g ${e.gravidade}">${e.gravidade||''}</span>
+   <span class=caso> ${e.caso||''}</span><div class=tit>${e.titulo||''}</div>
+   <div class=meta>${e.valor>0?('💰 '+brl(e.valor)+' · '):''}${e.base_legal?('⚖️ '+e.base_legal):''}${e.status?(' · 📌 '+e.status):''}</div></div>`).join('') || '<div class=meta>sem flags</div>';
+ const r=await j('/api/restritos');
+ document.getElementById('rct').textContent = '('+(r.itens||[]).length+')';
+ document.getElementById('restr').innerHTML = (r.itens||[]).length ? `<table><tr><th>Status</th><th>Processo</th><th>Unidade</th><th>Existe</th><th>Leit.</th><th>Última</th></tr>`+
+   r.itens.map(e=>`<tr><td><span class="pill ${e.status}">${e.status||''}</span></td><td><code>${e.numero||''}</code></td><td>${e.unidade||'—'}</td><td>${e.fonte_existencia||e.existe||'—'}</td><td>${e.n_leituras||0}</td><td>${e.ultima||''}</td></tr>`).join('')+`</table>` : '<div class=meta>Nenhum restrito ainda — a lista se alimenta ao longo dos sweeps.</div>';
+ document.getElementById('upd').textContent = 'atualizado '+new Date().toLocaleString('pt-BR');
+})();
+</script></body></html>"""
