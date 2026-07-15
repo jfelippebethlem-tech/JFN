@@ -44,11 +44,27 @@ _RE_PROCESSO = [
     re.compile(r"\b\d{2}\s*/\s*\d{5,6}\s*/\s*\d{4}\b"),                         # 08/003668/2025 (SIGA sem ponto)
 ]
 
+# Ordem: mais específico → mais amplo. Cada tipo exige CONTEXTO (não keyword solta),
+# para não etiquetar ato administrativo (homologar conselheiro, relatório de despesa) como licitatório.
 _TIPOS = [
-    ("homologacao",      re.compile(r"homolog", re.I)),  # homologa/homologo/homologação/homologado
-    ("extrato_contrato", re.compile(r"extrato.{0,30}contrato|termo de contrato", re.I)),
-    ("ppp",              re.compile(r"parceria p[úu]blico|\bPPP\b|concess[ãa]o|CCPAR", re.I)),
-    ("edital",           re.compile(r"\bedital\b|concorr[êe]ncia|preg[ãa]o|licita", re.I)),
+    # PPP/concessão REAL — exige o INSTRUMENTO/órgão, não a palavra 'PPP' solta (cada 'conteudo'
+    # é uma PÁGINA do D.O.; 'obrigações de PPP' aparece em balanço/RREO, 'concessão' em diária/energia).
+    ("ppp", re.compile(
+        r"\bCCPAR\b|Companhia Carioca de Parcerias|contrato de parceria p[úu]blico[- ]privada|"
+        r"concess[ãa]o administrativa|edital.{0,40}parceria p[úu]blico[- ]privada|"
+        r"licita[çc][ãa]o.{0,40}\bPPP\b", re.I)),
+    # homologação DE LICITAÇÃO (não de indicação/nomeação/conselheiro)
+    ("homologacao", re.compile(
+        r"homolog\w*\s+(o\s+|a\s+)?(resultado|julgamento|a\s+licita|licita[çc][ãa]o|preg[ãa]o|"
+        r"concorr[êe]ncia|certame|adjudica)|adjudico?\s+o\s+objeto", re.I)),
+    # extrato de contrato (não "contrato" solto)
+    ("extrato_contrato", re.compile(
+        r"extrato d[eo]\s+(termo de\s+)?contrato|termo de contrato n|extrato de instrumento contratual|"
+        r"extrato d[eo]\s+aditamento", re.I)),
+    # edital/aviso de licitação
+    ("edital", re.compile(
+        r"\bedital\b|concorr[êe]ncia p[úu]blica|preg[ãa]o eletr[ôo]nico|preg[ãa]o presencial|"
+        r"aviso de licita[çc][ãa]o|abertura de licita", re.I)),
 ]
 
 
@@ -173,6 +189,28 @@ def coletar_termo(termo: str, *, ano_min: int = 2021, max_paginas: int = 5,
         "gravadas": gravadas, "com_processo": sum(1 for _ in procs_unicos),
         "processos": procs_unicos, "por_tipo": por_tipo,
     }
+
+
+def reprocessar(db_path=None) -> dict:
+    """Re-deriva ``processos`` e ``tipo`` do texto JÁ guardado, aplicando a leitura/heurística
+    ATUAIS (corrige dados de harvests antigos — ex.: submatch de nº de processo). Idempotente.
+    """
+    db.inicializar(db_path)
+    con = db.conectar(db_path)
+    mudados = 0
+    try:
+        rows = con.execute("SELECT id_materia, texto, processos, tipo FROM pcrj_doe_materia").fetchall()
+        for r in rows:
+            procs = json.dumps(extrair_processos(r["texto"]), ensure_ascii=False)
+            tipo = classificar(r["texto"])
+            if procs != (r["processos"] or "[]") or tipo != r["tipo"]:
+                con.execute("UPDATE pcrj_doe_materia SET processos=?, tipo=? WHERE id_materia=?",
+                            (procs, tipo, r["id_materia"]))
+                mudados += 1
+        con.commit()
+    finally:
+        con.close()
+    return {"linhas": len(rows), "reprocessadas": mudados}
 
 
 def main() -> None:

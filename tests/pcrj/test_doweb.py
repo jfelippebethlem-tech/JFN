@@ -50,3 +50,24 @@ def test_classifica_homologacao():
 
 def test_classifica_outro():
     assert classificar("Nomeação de servidor para cargo em comissão.") == "outro"
+
+
+# Regressão de precisão (bugs achados testando a base real — página do D.O. mistura atos)
+def test_relatorio_fiscal_com_ppp_nao_e_ppp():
+    """'obrigações de PPP' em balanço/RREO NÃO é ato de PPP (era falso positivo)."""
+    t = "DESPESAS COM SAÚDE NÃO COMPUTADAS NO CÁLCULO MÍNIMO. OBRIGAÇÕES DE PPP SALDO TOTAL EM 31 DE DEZEMBRO."
+    assert classificar(t) == "outro"
+
+
+def test_homologacao_de_conselheiro_nao_e_licitacao():
+    assert classificar("DELIBERA: Art. 1º Homologar a indicação do Conselheiro Fulano de Tal.") == "outro"
+
+
+def test_homologacao_de_ppp_real_e_ppp():
+    """Homologação de concorrência de PPP é ato de PPP (instrumento presente)."""
+    t = "HOMOLOGO o resultado da CONCESSÃO ADMINISTRATIVA - CONCORRÊNCIA PPP ADM SMS Nº 01/2023."
+    assert classificar(t) == "ppp"
+
+
+def test_concessao_solta_nao_e_ppp():
+    assert classificar("Concessão de diária ao servidor para viagem.") == "outro"
