@@ -26,6 +26,8 @@ from . import lente_ppp
 from ..reporting import render_html as rh
 
 _RE_VALOR = re.compile(r"R\$\s?([\d\.]+,\d{2})")
+# valor monetário com separador de milhar, com ou sem "R$" (tabelas do D.O. trazem número cru)
+_RE_VALOR_MILHAR = re.compile(r"(\d{1,3}(?:\.\d{3})+,\d{2})")
 
 
 def _fmt_reais(v) -> str:
@@ -37,33 +39,68 @@ def _fmt_reais(v) -> str:
         return str(v)
 
 
-def _acts_do_projeto(con, termos: list[str]) -> list[dict]:
-    """Atos do D.O. cujo termo_busca casa com o projeto, priorizando ppp/edital/contrato."""
-    qs = " OR ".join("termo_busca LIKE ?" for _ in termos)
+def _chaves_projeto(nome: str) -> list[str]:
+    """Chaves de casamento por CONTEÚDO derivadas do nome do projeto (nunca hardcoded).
+
+    Inclui o nome inteiro e as 2 últimas palavras significativas (ex.: 'Souza Aguiar'),
+    p/ pegar variantes ('...Municipal Souza Aguiar'). Assim um projeto não puxa atos de outro.
+    """
+    chaves = [nome] if nome else []
+    palavras = [w for w in re.findall(r"[A-Za-zÀ-ÿ]{4,}", nome or "")]
+    if len(palavras) >= 2:
+        chaves.append(" ".join(palavras[-2:]))
+    return list(dict.fromkeys(c for c in chaves if c and len(c) >= 5))
+
+
+def _acts_do_projeto(con, chaves: list[str]) -> list[dict]:
+    """Atos do D.O. cujo TEXTO menciona o projeto (por conteúdo, não pelo termo de busca)."""
+    if not chaves:
+        return []
+    qs = " OR ".join("texto LIKE ?" for _ in chaves)
     rows = con.execute(
         f"SELECT id_materia,data,ano,tipo,processos,texto FROM pcrj_doe_materia "
         f"WHERE {qs} ORDER BY data DESC",
-        [f"%{t}%" for t in termos],
+        [f"%{c}%" for c in chaves],
     ).fetchall()
     return [dict(r) for r in rows]
 
 
+def _valor_num(s: str) -> float:
+    return float(s.replace(".", "").replace(",", "."))
+
+
 def _extrair_resultado(acts: list[dict]) -> dict:
-    """Vencedor, contraprestação e processos a partir do texto dos atos (indício)."""
-    vencedor, contrap, processos = None, None, []
+    """Vencedor, contraprestação e processos a partir do texto dos atos (indício).
+
+    Contraprestação: valores ≥ R$ 1 mi numa janela após o vencedor / 'contraprestação' / 'VCM',
+    escolhendo o MAIS FREQUENTE (repete na tabela de classificação). Valor duvidoso ⇒ INDISPONÍVEL
+    (número errado é pior que ausente — regra de honestidade).
+    """
+    from collections import Counter
+    vencedor, processos = None, []
+    candidatos: list[str] = []
     for a in acts:
         txt = a["texto"] or ""
         if vencedor is None:
             m = re.search(r"(?:Concession[áa]ria|Cons[óo]rcio)\s+([A-ZÀ-Ú][\w \./&-]{3,50}?S[/.]?A)", txt)
             if m:
                 vencedor = m.group(1).strip()
-        if contrap is None:
-            m = _RE_VALOR.search(txt)
-            if m and ("contrapresta" in txt.lower() or "PARCERIA" in txt or "SMART" in txt.upper()):
-                contrap = m.group(1)
+        ancoras = [w for w in ("contrapresta", "VCM", "contrapresta[çc][ãa]o mensal") if w]
+        if vencedor:  # núcleo do nome do vencedor (2 primeiras palavras) como âncora
+            ancoras.append(re.escape(" ".join(vencedor.split()[:2])))
+        for anc in ancoras:
+            for am in re.finditer(anc, txt, re.I):
+                janela = txt[am.start(): am.start() + 260]
+                for vm in _RE_VALOR_MILHAR.finditer(janela):
+                    try:
+                        if _valor_num(vm.group(1)) >= 1_000_000:
+                            candidatos.append(vm.group(1))
+                    except ValueError:
+                        continue
         for p in json.loads(a["processos"] or "[]"):
             if p not in processos:
                 processos.append(p)
+    contrap = Counter(candidatos).most_common(1)[0][0] if candidatos else None
     return {"vencedor": vencedor, "contraprestacao": contrap, "processos": processos}
 
 
@@ -82,9 +119,8 @@ def montar_dossie(slug: str, db_path=None) -> dict:
         ppp = con.execute("SELECT * FROM pcrj_ppp WHERE slug=?", (slug,)).fetchone()
         ppp = dict(ppp) if ppp else {}
         nome = ppp.get("nome") or slug.replace("-", " ").title()
-        # atos do D.O. do projeto (por nome e por vencedor conhecido)
-        termos = [w for w in [nome, "Smart Hospital", "Souza Aguiar"] if w]
-        acts = _acts_do_projeto(con, list(dict.fromkeys(termos)))
+        # atos do D.O. cujo TEXTO menciona o projeto (chaves derivadas do nome — sem hardcode)
+        acts = _acts_do_projeto(con, _chaves_projeto(nome))
         # edital CCPAR ingerido (texto completo das cláusulas de habilitação), se houver
         eds = con.execute(
             "SELECT texto FROM pcrj_processo_doc WHERE numero_processo=? AND tipo='edital_ccpar' "
