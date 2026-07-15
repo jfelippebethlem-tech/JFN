@@ -84,6 +84,11 @@ def montar_dossie(slug: str, db_path=None) -> dict:
         # atos do D.O. do projeto (por nome e por vencedor conhecido)
         termos = [w for w in [nome, "Smart Hospital", "Souza Aguiar"] if w]
         acts = _acts_do_projeto(con, list(dict.fromkeys(termos)))
+        # edital CCPAR ingerido (texto completo das cláusulas de habilitação), se houver
+        ed = con.execute(
+            "SELECT texto FROM pcrj_processo_doc WHERE numero_processo=? AND tipo='edital_ccpar'",
+            (slug,)).fetchone()
+        edital_ccpar = ed["texto"] if ed and ed["texto"] else ""
     finally:
         con.close()
 
@@ -91,8 +96,10 @@ def montar_dossie(slug: str, db_path=None) -> dict:
     docs = json.loads(ppp.get("docs_json") or "[]")
     datas = json.loads(ppp.get("datas_json") or "[]")
 
-    # análise: roda os motores sobre o texto dos atos de edital/ppp/contrato
-    corpus = "\n\n".join(a["texto"] for a in acts if a["tipo"] in ("edital", "ppp", "extrato_contrato"))[:60_000]
+    # análise: prefere o EDITAL CCPAR (cláusulas de habilitação reais); senão, atos do D.O.
+    fonte_corpus = "edital CCPAR (completo)" if edital_ccpar else "atos do D.O. Rio"
+    corpus = (edital_ccpar or
+              "\n\n".join(a["texto"] for a in acts if a["tipo"] in ("edital", "ppp", "extrato_contrato")))[:120_000]
     an = analise.analisar_edital(
         corpus, numero=(resultado["processos"][0] if resultado["processos"] else ""),
         orgao=ppp.get("orgao_gestor") or "", objeto=nome,
@@ -131,6 +138,7 @@ def montar_dossie(slug: str, db_path=None) -> dict:
         dirc = an.get("direcionamento", {})
         linhas = [
             ("Triagem consolidada", f"{r['faixa']} (score {r['score']})"),
+            ("Base analisada", html.escape(fonte_corpus)),
             ("Grau de direcionamento", dirc.get("grau_det", "indeterminado")),
             ("Cláusulas restritivas", dirc.get("n_clausulas_restritivas", 0)),
             ("Cascata de inabilitações", "SIM" if dirc.get("cascata") else "não/indeterminado"),

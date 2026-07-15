@@ -184,8 +184,10 @@ Suíte `tests/pcrj/`: **79 passed**.
 `pcrj/analise.analisar_edital(texto, …)` roda sobre o texto captado:
 (i) `detectores.rodar_edital` (E1–E7 via `montar_ctx_de_sei`); (ii) `direcionamento_sinais.analisar_direcionamento_det`; (iii) `lex_analise_conteudo.analisar_texto_edital`; (iv) `knowledge.pattern_engine.analisar_contexto_completo` (catálogo `fraudes_licitacao`). Consolida num score de triagem (indício ≠ acusação). **Validado disparando em edital real** (município: Lex R5 + hipótese de fraude) e em edital dirigido sintético (🔴 vermelho, cascata, E7, R3/R7).
 
+### Edital completo ingerido (dossiê "quente") ✅
+`ppp_ccpar.ingerir_edital(slug)` baixa o doc EDITAL da CCPAR (ZIP 47 MB), extrai o PDF principal (`EDITAL PPP COMPLEXO SOUZA AGUIAR.pdf`, 53 pág, 128 mil chars) e guarda em `pcrj_processo_doc` (`tipo='edital_ccpar'`). O `dossie_ppp` passa a analisar as **cláusulas de habilitação reais**. Resultado no Souza Aguiar: **🔴 alto (score 0.85), 12 cláusulas restritivas** (atestado específico + certificações), **E7 confirmado**, **Lex R5/R7**. A triagem deixou de ser factual e virou analítica.
+
 ### Próximos passos
-- Alimentar a análise com o **edital completo** (baixar PDF CCPAR / PNCP `editais/corpus.py`) — hoje a triagem do dossiê Souza Aguiar roda sobre o contrato (D.O.), não sobre as cláusulas de habilitação → por isso score baixo (honesto).
-- **Lente PPP-específica** (a hipótese `consulta_ppp_privatizacao_manipulada` já existe no catálogo) — concessão não aciona heurísticas de pregão comum.
+- **Lente PPP-específica** (a hipótese `consulta_ppp_privatizacao_manipulada` já existe no catálogo) — concessão não aciona todas as heurísticas de pregão comum.
 - F6: `/di:AAAA-MM-DD` + lista de CNPJs/UGs Saúde-Município para o sweep 2021+.
 - Escopar/limpar o PNCP atual (remover contaminação federal/estadual de `pcrj_licitacoes`).

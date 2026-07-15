@@ -16,8 +16,10 @@ não da CCPAR) é feito no dossiê (F4), não aqui — cada fonte guarda só o q
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import re
+import zipfile
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -119,11 +121,81 @@ def coletar_projeto(slug: str, *, db_path=None,
     return info
 
 
+def _texto_pdf(blob: bytes, max_paginas: int = 80) -> str:
+    from pypdf import PdfReader
+    r = PdfReader(io.BytesIO(blob))
+    return "\n".join((p.extract_text() or "") for p in r.pages[:max_paginas])
+
+
+def _edital_de_zip(blob: bytes) -> tuple[str, str]:
+    """Acha o PDF do edital principal dentro do ZIP (ignora ANEXOs) e extrai o texto."""
+    z = zipfile.ZipFile(io.BytesIO(blob))
+    pdfs = [n for n in z.namelist() if n.lower().endswith(".pdf")]
+    principais = [n for n in pdfs if "edital" in n.lower() and "anexo" not in n.lower()]
+    alvo = (principais or pdfs or [None])[0]
+    if not alvo:
+        return "", ""
+    return alvo.split("/")[-1], _texto_pdf(z.read(alvo))
+
+
+def ingerir_edital(slug: str, *, db_path=None,
+                   client: Optional[httpx.Client] = None) -> dict:
+    """Baixa o doc 'EDITAL' do projeto (ZIP ou PDF), extrai o texto e guarda em ``pcrj_processo_doc``.
+
+    É o que torna a triagem cláusula-a-cláusula durável: o dossiê passa a analisar as
+    cláusulas de habilitação reais, não só o extrato de contrato do D.O.
+    """
+    db.inicializar(db_path)
+    con = db.conectar(db_path)
+    try:
+        row = con.execute("SELECT docs_json FROM pcrj_ppp WHERE slug=?", (slug,)).fetchone()
+        docs = json.loads(row["docs_json"]) if row and row["docs_json"] else []
+    finally:
+        con.close()
+    edital = next((d for d in docs if "EDITAL" in (d.get("titulo") or "").upper()), None)
+    if not edital:
+        return {"slug": slug, "erro": "nenhum documento de edital em pcrj_ppp.docs_json"}
+
+    own = client is None
+    cli = client or httpx.Client(headers={"User-Agent": UA}, timeout=300, follow_redirects=True)
+    try:
+        r = cli.get(edital["url"])
+        r.raise_for_status()
+        blob, ctype = r.content, r.headers.get("content-type", "")
+    finally:
+        if own:
+            cli.close()
+
+    if "zip" in ctype or blob[:2] == b"PK":
+        nome, texto = _edital_de_zip(blob)
+    else:
+        nome, texto = (edital.get("titulo") or "edital.pdf"), _texto_pdf(blob)
+
+    con = db.conectar(db_path)
+    try:
+        con.execute(
+            """INSERT INTO pcrj_processo_doc (numero_processo,seq,tipo,titulo,texto,url,coletado_em)
+               VALUES (?,?,?,?,?,?,?)
+               ON CONFLICT(numero_processo,seq) DO UPDATE SET
+                 titulo=excluded.titulo, texto=excluded.texto, coletado_em=excluded.coletado_em""",
+            (slug, 0, "edital_ccpar", nome, texto, edital["url"], _now()),
+        )
+        con.commit()
+    finally:
+        con.close()
+    return {"slug": slug, "pdf": nome, "chars": len(texto), "url": edital["url"]}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Coletor de PPP da CCPAR (ccpar.rio).")
     ap.add_argument("slug", help="slug do projeto, ex.: complexo-hospitalar-souza-aguiar")
+    ap.add_argument("--ingerir-edital", action="store_true",
+                    help="baixa o edital (ZIP/PDF) e guarda o texto em pcrj_processo_doc")
     ap.add_argument("--db", default=None)
     a = ap.parse_args()
+    if a.ingerir_edital:
+        print(json.dumps(ingerir_edital(a.slug, db_path=a.db), ensure_ascii=False, indent=2))
+        return
     info = coletar_projeto(a.slug, db_path=a.db)
     info["docs"] = f"{len(info['docs'])} documentos"  # resumo no print
     print(json.dumps(info, ensure_ascii=False, indent=2))
