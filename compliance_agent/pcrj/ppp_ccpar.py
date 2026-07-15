@@ -127,15 +127,35 @@ def _texto_pdf(blob: bytes, max_paginas: int = 80) -> str:
     return "\n".join((p.extract_text() or "") for p in r.pages[:max_paginas])
 
 
-def _edital_de_zip(blob: bytes) -> tuple[str, str]:
-    """Acha o PDF do edital principal dentro do ZIP (ignora ANEXOs) e extrai o texto."""
+def _prioridade_pdf(nome: str) -> int:
+    """Ordem de relevância jurídica: edital → minuta de contrato → caderno de encargos → resto."""
+    ln = nome.lower()
+    if "edital" in ln and "anexo" not in ln:
+        return 0
+    if "minuta" in ln and "contrato" in ln:
+        return 1
+    if "contrato" in ln:
+        return 2
+    if "encargos" in ln:
+        return 3
+    return 4
+
+
+def _docs_de_zip(blob: bytes, max_docs: int = 6) -> list[tuple[str, str]]:
+    """Extrai texto dos PDFs do ZIP, priorizando os juridicamente relevantes.
+
+    A leitura completa importa: cláusulas como a garantia via Fundo Nacional de Saúde
+    vivem na MINUTA DE CONTRATO, não no edital principal — ler só um PDF cega a análise.
+    """
     z = zipfile.ZipFile(io.BytesIO(blob))
-    pdfs = [n for n in z.namelist() if n.lower().endswith(".pdf")]
-    principais = [n for n in pdfs if "edital" in n.lower() and "anexo" not in n.lower()]
-    alvo = (principais or pdfs or [None])[0]
-    if not alvo:
-        return "", ""
-    return alvo.split("/")[-1], _texto_pdf(z.read(alvo))
+    pdfs = sorted((n for n in z.namelist() if n.lower().endswith(".pdf")), key=_prioridade_pdf)
+    docs = []
+    for nome in pdfs[:max_docs]:
+        try:
+            docs.append((nome.split("/")[-1], _texto_pdf(z.read(nome))))
+        except Exception:  # noqa: BLE001 — um PDF ruim não derruba os outros
+            continue
+    return docs
 
 
 def ingerir_edital(slug: str, *, db_path=None,
@@ -167,23 +187,28 @@ def ingerir_edital(slug: str, *, db_path=None,
             cli.close()
 
     if "zip" in ctype or blob[:2] == b"PK":
-        nome, texto = _edital_de_zip(blob)
+        docs = _docs_de_zip(blob)
     else:
-        nome, texto = (edital.get("titulo") or "edital.pdf"), _texto_pdf(blob)
+        docs = [((edital.get("titulo") or "edital.pdf"), _texto_pdf(blob))]
+    docs = [(n, t) for n, t in docs if (t or "").strip()]
+    if not docs:
+        return {"slug": slug, "erro": "não extraí texto de nenhum PDF do documento"}
 
     con = db.conectar(db_path)
     try:
-        con.execute(
-            """INSERT INTO pcrj_processo_doc (numero_processo,seq,tipo,titulo,texto,url,coletado_em)
-               VALUES (?,?,?,?,?,?,?)
-               ON CONFLICT(numero_processo,seq) DO UPDATE SET
-                 titulo=excluded.titulo, texto=excluded.texto, coletado_em=excluded.coletado_em""",
-            (slug, 0, "edital_ccpar", nome, texto, edital["url"], _now()),
-        )
+        for seq, (nome, texto) in enumerate(docs):
+            con.execute(
+                """INSERT INTO pcrj_processo_doc (numero_processo,seq,tipo,titulo,texto,url,coletado_em)
+                   VALUES (?,?,?,?,?,?,?)
+                   ON CONFLICT(numero_processo,seq) DO UPDATE SET
+                     titulo=excluded.titulo, texto=excluded.texto, coletado_em=excluded.coletado_em""",
+                (slug, seq, "edital_ccpar", nome, texto, edital["url"], _now()),
+            )
         con.commit()
     finally:
         con.close()
-    return {"slug": slug, "pdf": nome, "chars": len(texto), "url": edital["url"]}
+    return {"slug": slug, "docs": [n for n, _ in docs], "n_docs": len(docs),
+            "chars": sum(len(t) for _, t in docs), "url": edital["url"]}
 
 
 def main() -> None:

@@ -342,3 +342,15 @@ async def api_ppp(payload: Optional[dict] = None):
     asyncio.create_task(_gerar_e_enviar_ppp(slug, key))
     return JSONResponse({"ok": True, "status": "gerando",
                          "msg": f"📥 Preparando o dossiê da PPP *{alvo}* (PDF, ~1–2 min). Te envio aqui mesmo."})
+
+
+@router.get("/api/ppp/triagem")
+async def api_ppp_triagem():
+    """Triagem EM LOTE das PPPs/concessões municipais captadas, pela lente PPP (garantia via Fundo
+    Nacional de Saúde, aporte, PMI-captura, 5% RCL, verificador) — lista rankeada por gravidade.
+    Síncrona e rápida. Indícios p/ apuração; dossiê completo por /ppp <projeto>."""
+    from compliance_agent.pcrj import triagem_ppp
+    try:
+        return JSONResponse(content=await asyncio.to_thread(triagem_ppp.triar_lote, db_path="data/pcrj.db"))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)

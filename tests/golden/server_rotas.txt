@@ -35,6 +35,7 @@ GET /api/orgao/cidades -> api_orgao_cidades
 GET /api/ownership -> api_ownership
 GET /api/pipelines -> api_pipelines
 GET /api/pncp -> api_pncp
+GET /api/ppp/triagem -> api_ppp_triagem
 GET /api/radar/status -> api_radar_status
 GET /api/restritos -> api_restritos
 GET /api/rodizio -> api_rodizio

@@ -555,6 +555,28 @@
     {
       "type": "function",
       "function": {
+        "name": "ppp_triagem",
+        "description": "Triagem EM LOTE das PPPs/concessoes municipais captadas, pela lente PPP (garantia via Fundo Nacional de Saude, aporte publico, PMI-captura, prazo/valor vs 5% da RCL, verificador independente); lista rankeada por gravidade. Indicio != acusacao. — usar quando: 'triagem das PPPs', 'quais PPPs/concessoes da prefeitura tem risco', 'lista as PPPs em lote' — chamar: GET /api/ppp/triagem (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/ppp/triagem",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": []
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "pericia_beneficios",
         "description": "Pericia de beneficio assistencial (BPC/Bolsa Familia/Auxilio Brasil/Emergencial) x quadro de pessoal do Rio, com a NATUREZA DO VINCULO explicita pessoa a pessoa (NOMEADO em comissao x efetivo x requisitado x aposentado/pensionista x estagio x nao informado pela fonte — nunca presume). 4 documentos: Camara (fichas individuais dos nomeados + convergencia Camara-Prefeitura + gabinetes sob suplencia), Prefeitura (fichas + pensionistas + natureza nao informada separada), consolidado (anexo de certeza MEDIA integral) e socios de fornecedores (com total pago a empresa via OB SIAFE contabilizada). Fairness: so beneficio recebido DURANTE o vinculo; identidade por nome+fragmento de CPF no municipio do Rio; indicio != acusacao. — usar quando: 'pericia de beneficios', 'nomeado/servidor recebendo bolsa familia/BPC', 'quem do gabinete/da prefeitura recebe beneficio', 'socio de fornecedor com beneficio', 'quem e nomeado nesses cruzamentos' — chamar (cli): tools/pericia_beneficios_run.py [--doc camara|prefeitura|consolidado|socios|todos] [--telegram]",
         "parameters": {

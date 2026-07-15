@@ -86,10 +86,10 @@ def montar_dossie(slug: str, db_path=None) -> dict:
         termos = [w for w in [nome, "Smart Hospital", "Souza Aguiar"] if w]
         acts = _acts_do_projeto(con, list(dict.fromkeys(termos)))
         # edital CCPAR ingerido (texto completo das cláusulas de habilitação), se houver
-        ed = con.execute(
-            "SELECT texto FROM pcrj_processo_doc WHERE numero_processo=? AND tipo='edital_ccpar'",
-            (slug,)).fetchone()
-        edital_ccpar = ed["texto"] if ed and ed["texto"] else ""
+        eds = con.execute(
+            "SELECT texto FROM pcrj_processo_doc WHERE numero_processo=? AND tipo='edital_ccpar' "
+            "ORDER BY seq", (slug,)).fetchall()
+        edital_ccpar = "\n\n".join(r["texto"] for r in eds if r["texto"])
     finally:
         con.close()
 
@@ -98,9 +98,10 @@ def montar_dossie(slug: str, db_path=None) -> dict:
     datas = json.loads(ppp.get("datas_json") or "[]")
 
     # análise: prefere o EDITAL CCPAR (cláusulas de habilitação reais); senão, atos do D.O.
-    fonte_corpus = "edital CCPAR (completo)" if edital_ccpar else "atos do D.O. Rio"
-    corpus = (edital_ccpar or
-              "\n\n".join(a["texto"] for a in acts if a["tipo"] in ("edital", "ppp", "extrato_contrato")))[:120_000]
+    fonte_corpus = "edital+anexos CCPAR (completo)" if edital_ccpar else "atos do D.O. Rio"
+    corpus_full = (edital_ccpar or
+                   "\n\n".join(a["texto"] for a in acts if a["tipo"] in ("edital", "ppp", "extrato_contrato")))
+    corpus = corpus_full[:120_000]  # cap só p/ os motores E1–E7 (a lente roda no texto inteiro)
     an = analise.analisar_edital(
         corpus, numero=(resultado["processos"][0] if resultado["processos"] else ""),
         orgao=ppp.get("orgao_gestor") or "", objeto=nome,
@@ -154,8 +155,8 @@ def montar_dossie(slug: str, db_path=None) -> dict:
             "<p>Texto de edital/contrato ainda não captado em volume suficiente para a triagem "
             "cláusula-a-cláusula. Requer baixar o edital completo (PDF CCPAR) — pendente.</p>"})
 
-    # VI. Lente PPP-específica (red flags de concessão que o pregão não pega)
-    lente = lente_ppp.analisar_ppp(corpus) if corpus.strip() else None
+    # VI. Lente PPP-específica (red flags de concessão que o pregão não pega) — no texto INTEGRAL
+    lente = lente_ppp.analisar_ppp(corpus_full) if corpus_full.strip() else None
     if lente and lente["flags"]:
         linhas_l = [(f"<b>{html.escape(f['tipo'])}</b> · {f['gravidade']}",
                      f"{html.escape(f['verificar'])}<br><span style='font-size:11px;color:#666'>"
