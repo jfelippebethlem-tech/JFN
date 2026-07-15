@@ -22,10 +22,12 @@ def test_edital_ppp_dispara_altas():
     assert r["grau"] == "🔴 alto"
 
 
-def test_cada_flag_tem_base_legal_e_verificar():
+def test_cada_flag_tem_base_legal_verificar_e_jurisprudencia():
     r = analisar_ppp(TXT_PPP)
+    assert r["flags"]
     for f in r["flags"]:
         assert f["base_legal"] and f["verificar"]
+        assert f["jurisprudencia"] and len(f["jurisprudencia"]) > 40  # cruzamento com o TC
 
 
 def test_pregao_comum_nao_alarma():

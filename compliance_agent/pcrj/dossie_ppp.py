@@ -195,8 +195,10 @@ def montar_dossie(slug: str, db_path=None) -> dict:
     lente = lente_ppp.analisar_ppp(corpus_full) if corpus_full.strip() else None
     if lente and lente["flags"]:
         linhas_l = [(f"<b>{html.escape(f['tipo'])}</b> · {f['gravidade']}",
-                     f"{html.escape(f['verificar'])}<br><span style='font-size:11px;color:#666'>"
-                     f"base: {html.escape(f['base_legal'])}</span>")
+                     f"{html.escape(f['verificar'])}"
+                     f"<br><span style='font-size:11px;color:#444'><b>Base:</b> {html.escape(f['base_legal'])}</span>"
+                     f"<br><span style='font-size:11px;color:#666'><b>Jurisprudência/TC:</b> "
+                     f"{html.escape(f.get('jurisprudencia', ''))}</span>")
                     for f in lente["flags"]]
         secoes.append({"titulo": f"VI. Lente PPP — red flags de concessão ({lente['grau']})",
             "html": _tabela(linhas_l)

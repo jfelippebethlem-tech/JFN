@@ -21,6 +21,47 @@ import os
 from datetime import datetime, timezone
 
 from compliance_agent.reporting import render_html as rh
+from compliance_agent.pcrj import lente_ppp
+from compliance_agent.pcrj import db as _pcrj_db
+
+_SLUG = "complexo-hospitalar-souza-aguiar"
+
+
+def _corpus_ccpar() -> str:
+    """Texto integral do edital+minuta+anexos ingeridos (pcrj.db), p/ rodar a lente."""
+    try:
+        con = _pcrj_db.conectar("data/pcrj.db")
+        rows = con.execute(
+            "SELECT texto FROM pcrj_processo_doc WHERE numero_processo=? AND tipo='edital_ccpar' ORDER BY seq",
+            (_SLUG,)).fetchall()
+        con.close()
+        return "\n\n".join(r["texto"] for r in rows if r["texto"])
+    except Exception:  # noqa: BLE001
+        return ""
+
+
+def _secao_cruzamento_lente() -> str:
+    """Cruza cada flag da lente PPP (rodada no corpus real) com a jurisprudência/TC."""
+    corpus = _corpus_ccpar()
+    lente = lente_ppp.analisar_ppp(corpus) if corpus.strip() else {"flags": [], "grau": "sem_dados"}
+    if not lente["flags"]:
+        return ("<p>Lente PPP sem corpus ingerido — rode a ingestão do edital CCPAR "
+                "(<code>ppp_ccpar.ingerir_edital</code>) para o cruzamento por flag.</p>")
+    blocos = []
+    for f in lente["flags"]:
+        blocos.append(
+            f"<div style='margin:0 0 12px;padding:8px 12px;border-left:3px solid "
+            f"{'#b00' if f['gravidade']=='alta' else '#c80' if f['gravidade']=='media' else '#888'}'>"
+            f"<p style='margin:0 0 3px'><b>{_q(f['tipo'])}</b> · gravidade {_q(f['gravidade'])}</p>"
+            f"<p style='margin:0 0 3px;font-size:12px'><b>Base legal:</b> {_q(f['base_legal'])}</p>"
+            f"<p style='margin:0 0 3px;font-size:12px'><b>Jurisprudência / Tribunais de Contas:</b> "
+            f"{_q(f['jurisprudencia'])}</p>"
+            f"<p style='margin:0 0 3px;font-size:12px'><b>A verificar:</b> {_q(f['verificar'])}</p>"
+            f"<p style='margin:0;font-size:11px;color:#666'><b>Trecho:</b> …{_q(f['trecho'])}…</p></div>")
+    cab = (f"<p>Lente PPP aplicada ao edital+minuta+anexos (íntegra): <b>{_q(lente['grau'])}</b>, "
+           f"{lente['n_flags']} indício(s), {lente['n_altas']} de gravidade alta. "
+           f"Cada indício é cruzado com sua base normativa e o entendimento dos Tribunais de Contas.</p>")
+    return cab + "".join(blocos)
 
 TXT = "/tmp/claude-1001/-home-ubuntu/75ab75be-dc47-4cd9-900a-a179d0f75684/scratchpad/sa_edital/_txt"
 
@@ -253,8 +294,12 @@ def montar_ctx() -> dict:
     secoes.append({"titulo": "VIII. Dispositivos e boas práticas dos Tribunais de Contas", "html":
         _dispositivos_tc()})
 
-    # IX. Conclusão
-    secoes.append({"titulo": "IX. Conclusão e Encaminhamentos", "html":
+    # IX. Cruzamento das flags da lente PPP × jurisprudência (rodada no corpus real)
+    secoes.append({"titulo": "IX. Cruzamento das flags (lente PPP) × jurisprudência dos TCs",
+        "page_break": True, "html": _secao_cruzamento_lente()})
+
+    # X. Conclusão
+    secoes.append({"titulo": "X. Conclusão e Encaminhamentos", "html":
         "<p><b>Veredito de triagem:</b> há <b>indícios que justificam aprofundamento</b> — com destaque "
         "para a <b>garantia via Fundo Nacional de Saúde</b> e a <b>sustentabilidade fiscal</b> — sem que, "
         "até aqui, se confirme irregularidade ou o alegado conflito via BTG. Presunção de legitimidade "
