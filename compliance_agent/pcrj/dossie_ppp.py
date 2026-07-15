@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 
 from . import db
 from . import analise
+from . import lente_ppp
 from ..reporting import render_html as rh
 
 _RE_VALOR = re.compile(r"R\$\s?([\d\.]+,\d{2})")
@@ -153,6 +154,17 @@ def montar_dossie(slug: str, db_path=None) -> dict:
             "<p>Texto de edital/contrato ainda não captado em volume suficiente para a triagem "
             "cláusula-a-cláusula. Requer baixar o edital completo (PDF CCPAR) — pendente.</p>"})
 
+    # VI. Lente PPP-específica (red flags de concessão que o pregão não pega)
+    lente = lente_ppp.analisar_ppp(corpus) if corpus.strip() else None
+    if lente and lente["flags"]:
+        linhas_l = [(f"<b>{html.escape(f['tipo'])}</b> · {f['gravidade']}",
+                     f"{html.escape(f['verificar'])}<br><span style='font-size:11px;color:#666'>"
+                     f"base: {html.escape(f['base_legal'])}</span>")
+                    for f in lente["flags"]]
+        secoes.append({"titulo": f"VI. Lente PPP — red flags de concessão ({lente['grau']})",
+            "html": _tabela(linhas_l)
+                    + f"<p style='font-size:11px;color:#666'>{html.escape(lente['ressalva'])}</p>"})
+
     score = an["resumo"]["score"] if an else 0.0
     return {
         "titulo": f"Dossiê de Fiscalização — {nome}",
@@ -180,7 +192,8 @@ def gerar(slug: str, *, pdf: bool = False, db_path=None) -> dict:
     saida = {"slug": slug, "score": ctx["score"], "faixa": ctx["faixa"],
              "n_secoes": len(ctx["secoes"])}
     if pdf:
-        saida["pdf"] = rh.gerar_pdf(ctx, f"dossie_ppp_{slug}")
+        import asyncio
+        saida["pdf"] = asyncio.run(rh.gerar_pdf(ctx, f"dossie_ppp_{slug}"))
     else:
         html_str = rh.render_html(ctx)
         out = f"output/dossie_ppp_{slug}.html"

@@ -277,3 +277,68 @@ async def api_mandato_minuta(payload: Optional[dict] = None):
         return JSONResponse(content=gerar(p.get("tipo", ""), p.get("base", "")))
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+# ── PPP / concessões municipais (Prefeitura do Rio) ────────────────────────
+_PPP_SLUGS = {
+    "souza aguiar": "complexo-hospitalar-souza-aguiar",
+    "souza-aguiar": "complexo-hospitalar-souza-aguiar",
+    "complexo hospitalar souza aguiar": "complexo-hospitalar-souza-aguiar",
+}
+
+
+def _resolver_slug_ppp(alvo: str) -> str:
+    import re as _re
+    a = (alvo or "").strip().lower()
+    if a in _PPP_SLUGS:
+        return _PPP_SLUGS[a]
+    if "souza aguiar" in a or "souza-aguiar" in a:
+        return "complexo-hospitalar-souza-aguiar"
+    return _re.sub(r"[^a-z0-9]+", "-", a).strip("-")
+
+
+async def _gerar_e_enviar_ppp(slug: str, key: str) -> None:
+    from compliance_agent.notifications import telegram as _tg
+    from compliance_agent.pcrj import ppp_ccpar, dossie_ppp
+    from compliance_agent.reporting import render_html as rh
+    _pausar_sweeps_para_relatorio()
+    try:
+        await asyncio.to_thread(ppp_ccpar.coletar_projeto, slug, db_path="data/pcrj.db")
+        try:  # ingestão do edital (ZIP ~47MB) é opcional — sem ela o dossiê roda sobre o D.O.
+            await asyncio.to_thread(ppp_ccpar.ingerir_edital, slug, db_path="data/pcrj.db")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("ingestão do edital CCPAR falhou (segue com D.O.): %s", exc)
+        ctx = await asyncio.to_thread(dossie_ppp.montar_dossie, slug, "data/pcrj.db")
+        pdf = await rh.gerar_pdf(ctx, f"dossie_ppp_{slug}")
+        resumo = f"{ctx.get('faixa', '')} — {ctx.get('subtitulo', '')}"
+        await _enviar_docs_telegram({"path_pdf": pdf, "resumo": resumo},
+                                    f"Dossiê PPP — {ctx.get('titulo', slug)}")
+    except Exception as exc:  # noqa: BLE001
+        await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o dossiê da PPP {slug}: {str(exc)[:300]}")
+    finally:
+        _REL_EM_CURSO.discard(key)
+        _retomar_sweeps_se_ocioso()
+
+
+@router.post("/api/ppp")
+async def api_ppp(payload: Optional[dict] = None):
+    """Dossiê pericial de PPP/concessão municipal (CCPAR + D.O. Rio + motores + lente PPP) → PDF Kroll.
+    Body: {"projeto"|"slug": "souza aguiar"}. ASSÍNCRONO (empurra o PDF no Telegram); {"sync": true}
+    devolve o resultado na hora (CLI/testes). Indícios p/ apuração; indício ≠ acusação; INDISPONÍVEL ≠ 0."""
+    payload = payload or {}
+    alvo = (payload.get("projeto") or payload.get("slug") or payload.get("alvo") or "").strip()
+    if not alvo:
+        return JSONResponse(content={"ok": False, "erro": "informe {'projeto': 'souza aguiar'} ou {'slug': ...}"},
+                            status_code=400)
+    slug = _resolver_slug_ppp(alvo)
+    if payload.get("sync"):  # modo síncrono (CLI/testes) — gera HTML, não baixa o ZIP
+        from compliance_agent.pcrj import dossie_ppp
+        return JSONResponse(content=await asyncio.to_thread(dossie_ppp.gerar, slug, db_path="data/pcrj.db"))
+    key = f"ppp:{slug}"
+    if key in _REL_EM_CURSO:
+        return JSONResponse({"ok": True, "status": "gerando",
+                             "msg": "⏳ Já estou preparando esse dossiê de PPP — te envio em instantes."})
+    _REL_EM_CURSO.add(key)
+    asyncio.create_task(_gerar_e_enviar_ppp(slug, key))
+    return JSONResponse({"ok": True, "status": "gerando",
+                         "msg": f"📥 Preparando o dossiê da PPP *{alvo}* (PDF, ~1–2 min). Te envio aqui mesmo."})

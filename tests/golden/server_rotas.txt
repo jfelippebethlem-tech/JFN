@@ -18,6 +18,7 @@ GET /api/diario -> api_diario
 GET /api/doador_contrato -> api_doador_contrato
 GET /api/empresa -> api_empresa
 GET /api/fachada/revisar -> api_fachada_revisar
+GET /api/flags -> api_flags
 GET /api/grafo -> api_grafo
 GET /api/grafo/ftm -> api_grafo_ftm
 GET /api/hermes/auditor24h/status -> api_auditor24h_status
@@ -35,6 +36,7 @@ GET /api/ownership -> api_ownership
 GET /api/pipelines -> api_pipelines
 GET /api/pncp -> api_pncp
 GET /api/radar/status -> api_radar_status
+GET /api/restritos -> api_restritos
 GET /api/rodizio -> api_rodizio
 GET /api/route -> api_route
 GET /api/sei/direcionamento -> api_sei_direcionamento
@@ -50,6 +52,7 @@ GET /api/tunnel/status -> api_tunnel_status
 GET /api/ugs -> api_ugs
 GET /auditoria -> auditoria_ui
 GET /chat -> chat_ui
+GET /controle -> pagina_controle
 GET /exports -> list_exports
 GET /graph -> graph_page
 GET /hermes -> hermes_ui
@@ -79,6 +82,7 @@ POST /api/hermes/relatorio -> api_hermes_relatorio
 POST /api/hermes/trabalhar -> api_hermes_trabalhar
 POST /api/mandato/minuta -> api_mandato_minuta
 POST /api/nucleo/comando -> api_nucleo_comando
+POST /api/ppp -> api_ppp
 POST /api/radar/ciclo -> api_radar_ciclo
 POST /api/radar/vigiar -> api_radar_vigiar
 POST /api/relatorio/inteligencia -> api_relatorio_inteligencia
