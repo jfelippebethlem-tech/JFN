@@ -45,14 +45,20 @@ def _grau_para_score(grau: str) -> float:
 
 def analisar_edital(texto: str, *, numero: str = "", orgao: str = "",
                     modalidade: str = "", valor: Optional[float] = None,
-                    objeto: str = "", ata: str = "", usar_llm: bool = False) -> dict:
-    """Roda os 4 motores sobre o texto de um edital municipal e consolida.
+                    objeto: str = "", ata: str = "", orgao_cnpj: str = "",
+                    esfera: Optional[str] = None, usar_llm: bool = False) -> dict:
+    """Roda os 4 motores sobre o texto de um edital e consolida.
 
-    Retorna ``{numero, orgao, valor, detectores, direcionamento, lex, fraude, resumo}``.
-    Cada motor é tolerante a dado faltante (não inventa). Nunca levanta por edital ruim:
-    isola falhas de motor em ``{"erro": ...}`` para não derrubar os outros.
+    Esfera-aware: se ``esfera`` não vier, é derivada do órgão (federal/estadual-RJ/
+    municipal-Rio) — os MESMOS motores servem Estado e Prefeitura, filtrando por esfera.
+    Retorna ``{numero, orgao, esfera, valor, detectores, direcionamento, lex, fraude, resumo}``.
+    Cada motor é tolerante a dado faltante (não inventa) e isola falhas em ``{"erro": ...}``.
     """
-    resultado: dict = {"numero": numero, "orgao": orgao, "valor": valor, "objeto": objeto}
+    if esfera is None:
+        from .esfera import classificar_esfera
+        esfera = classificar_esfera(orgao, orgao_cnpj)
+    resultado: dict = {"numero": numero, "orgao": orgao, "esfera": esfera,
+                       "valor": valor, "objeto": objeto}
 
     # (i) E1–E7 cláusula-a-cláusula
     try:

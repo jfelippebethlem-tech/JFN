@@ -187,7 +187,15 @@ Suíte `tests/pcrj/`: **79 passed**.
 ### Edital completo ingerido (dossiê "quente") ✅
 `ppp_ccpar.ingerir_edital(slug)` baixa o doc EDITAL da CCPAR (ZIP 47 MB), extrai o PDF principal (`EDITAL PPP COMPLEXO SOUZA AGUIAR.pdf`, 53 pág, 128 mil chars) e guarda em `pcrj_processo_doc` (`tipo='edital_ccpar'`). O `dossie_ppp` passa a analisar as **cláusulas de habilitação reais**. Resultado no Souza Aguiar: **🔴 alto (score 0.85), 12 cláusulas restritivas** (atestado específico + certificações), **E7 confirmado**, **Lex R5/R7**. A triagem deixou de ser factual e virou analítica.
 
-### Próximos passos
-- **Lente PPP-específica** (a hipótese `consulta_ppp_privatizacao_manipulada` já existe no catálogo) — concessão não aciona todas as heurísticas de pregão comum.
-- F6: `/di:AAAA-MM-DD` + lista de CNPJs/UGs Saúde-Município para o sweep 2021+.
-- Escopar/limpar o PNCP atual (remover contaminação federal/estadual de `pcrj_licitacoes`).
+### Sistema DUAL por esfera + orquestrador (2026-07-15b) ✅
+Correção do dono: o PNCP **não se limpa** — classifica-se por **esfera**. Implementado:
+- **`pcrj/esfera.py`** — `classificar_esfera(nome, cnpj)` (federal/estadual-RJ/municipal-Rio/indefinido; honesto no default) + `construir_mapa()` que materializa `pcrj_orgao_esfera` na `pcrj.db` **lendo a compliance.db em modo read-only** (não altera o hub). Mapa real: 125 órgãos (57 federal, 13 estadual-RJ, 3 municipal-Rio, 52 indefinido). `tests/pcrj/test_esfera.py` (13).
+- **`pcrj/harvester.py`** — orquestrador serial/VM-safe: mapa de esfera + varredura D.O. Rio por termos de saúde (2021+) + PPPs CCPAR; isola falha de coletor. `tests/pcrj/test_harvester.py` (3).
+- **`analise.analisar_edital`** agora é **esfera-aware** (deriva a esfera do órgão) — os MESMOS motores servem Estado e Prefeitura, filtrando por esfera. Particularidades: Estado = SEI itkava + SIAFE; Prefeitura = D.O. aberto + CCPAR + contorno do reCAPTCHA.
+
+Suíte `tests/pcrj/`: **95 passed**.
+
+### Próximos passos (fora desta run)
+- **Lente PPP-específica** (`consulta_ppp_privatizacao_manipulada` já no catálogo).
+- Wiring no **Yoda/servidor** (capability + rota) — deixado de fora de propósito nesta run para não hot-patchar o serviço live sem supervisão; hoje tudo roda por CLI (`-m compliance_agent.pcrj.harvester`, `.dossie_ppp`, `tools.pericia_ppp_souza_aguiar`).
+- Sweep amplo estadual reusando `esfera` + os mesmos motores.
