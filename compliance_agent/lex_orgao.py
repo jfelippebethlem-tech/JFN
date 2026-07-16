@@ -5,9 +5,13 @@ Extraído de lex.py (split 2026-07-06); comportamento idêntico (snapshot-tested
 """
 from __future__ import annotations
 
+import logging
+
 from compliance_agent.reporting.inteligencia import _REPORTS, _slug, moeda
 from compliance_agent.lex_redflags import _RF, _grau
 from compliance_agent.lex_render import render_pdf
+
+logger = logging.getLogger(__name__)
 
 # ─────────────────────── PARECER LEX DE ÓRGÃO (UG) ───────────────────────
 # O /orgao passa a "pensar" como o /relatorio: além do PDF/XLSX, emite um PARECER LEX próprio. Os indícios
@@ -188,6 +192,29 @@ def _parecer_orgao_md(ctx: dict, analise: dict, merito: str = "") -> str:
     # III-B. Triangulação: convergência entre FAMÍLIAS independentes de indício (padrão do
     # parecer de fornecedor, espelhado no órgão). Famílias: concentração (R8), execução (R2/R10),
     # fuga ao certame (R5), societária/cadastral via Receita (R7/DD/*). A força vem da convergência.
+    # III-A2. Conluio a partir dos RESULTADOS estruturados do PNCP (vencedor por item) — cross-certame.
+    try:
+        from compliance_agent.collectors.pncp_resultados import conluio_do_orgao
+        _cj = conluio_do_orgao(ctx.get("nome", "") or "")
+        _cap, _rod = _cj.get("captura") or [], _cj.get("rodizio_vencedores") or []
+        if _cj.get("n_certames", 0) >= 3 and (_cap or _rod):
+            add("## III-A2. CONLUIO EM LICITAÇÕES — RESULTADOS DO PNCP (indício OCDE)")
+            add("")
+            add(f"*Sobre {_cj['n_certames']} certame(s) com resultado homologado no PNCP para este órgão. "
+                "Vencedor estruturado por item — indício a verificar (bid rigging), nunca acusação.*")
+            add("")
+            for c in _cap[:5]:
+                add(f"- **Captura:** {c.get('nome', '—')} venceu **{int(c.get('share', 0) * 100)}%** "
+                    f"de {c.get('certames')} certames — concentração a examinar (competitividade real).")
+            for r in _rod[:5]:
+                grp = ", ".join(f"{m}×{n}" for m, n in (r.get('reparticao') or {}).items())
+                add(f"- **Rodízio de vencedores:** {len(r.get('grupo', []))} fornecedores repartem "
+                    f"{r.get('certames')} certames (cobertura {int(r.get('cobertura_grupo', 0) * 100)}%): {grp}. "
+                    "Revezamento a verificar (propostas, QSA, cronologia).")
+            add("")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("conluio PNCP do órgão indisponível (seção some): %s", exc)
+
     add("## III-B. TRIANGULAÇÃO (análise cruzada) E STANDARD PROBATÓRIO")
     add("")
     _familias = {

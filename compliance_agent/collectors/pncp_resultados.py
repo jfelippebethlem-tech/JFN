@@ -228,6 +228,38 @@ def registros_vencedores(con, uf: str | None = "RJ") -> list[dict]:
     return list(por_certame.values())
 
 
+def conluio_do_orgao(nome_orgao: str, db_path: str = "data/compliance.db", min_certames: int = 3) -> dict:
+    """Conluio (captura/rodízio de vencedores do PNCP) filtrado por NOME de órgão — insumo do /orgao.
+    Match best-effort por LIKE no orgao_nome (o relatório identifica por UG/nome, o PNCP por CNPJ).
+    Retorna {captura, rodizio_vencedores, n_certames} ou {n_certames:0} se não houver resultado."""
+    import sqlite3 as _sq
+
+    from compliance_agent.rodizio_grafo import detectar_rodizio_vencedores
+    termo = re.sub(r"\s+", " ", (nome_orgao or "").strip()).upper()
+    if len(termo) < 4:
+        return {"captura": [], "rodizio_vencedores": [], "n_certames": 0}
+    con = _sq.connect(f"file:{db_path}?mode=ro", uri=True)
+    con.row_factory = _sq.Row
+    try:
+        rows = con.execute(
+            "SELECT certame, orgao_cnpj, orgao_nome, objeto, data_pub, fornecedor_cnpj, "
+            "fornecedor_nome, SUM(valor_homologado) v FROM pncp_resultado "
+            "WHERE ordem_classificacao=1 AND UPPER(orgao_nome) LIKE ? GROUP BY certame, fornecedor_cnpj",
+            (f"%{termo}%",)).fetchall()
+    finally:
+        con.close()
+    por: dict[str, dict] = {}
+    for r in rows:
+        c = por.setdefault(r["certame"], {"certame": r["certame"], "orgao": r["orgao_cnpj"],
+                                          "orgao_nome": r["orgao_nome"], "objeto": r["objeto"],
+                                          "data": r["data_pub"], "vencedores": []})
+        c["vencedores"].append({"cnpj": r["fornecedor_cnpj"], "nome": r["fornecedor_nome"], "valor": r["v"]})
+    regs = list(por.values())
+    pad = detectar_rodizio_vencedores(regs, min_certames=min_certames)
+    pad["n_certames"] = len(regs)
+    return pad
+
+
 def conluio_enriquecido(con, uf: str | None = "RJ", min_certames: int = 5) -> dict:
     """Roda detectar_rodizio_vencedores sobre os resultados do PNCP e DECORA com nome de fornecedor,
     nome de órgão e amostra de OBJETOS — pronto para o painel/relatório (user-friendly)."""
