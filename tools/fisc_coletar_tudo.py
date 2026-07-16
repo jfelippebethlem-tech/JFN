@@ -129,7 +129,8 @@ async def main():
             _log(f"[2/5] emendas PIX (Transferegov): {rpix}")
 
         if "favorecidos" not in pular:
-            rf = favorecidos.coletar_favorecidos(con, pausa=args.pausa)
+            # 3h de teto: sobra folga p/ ContasRio+PNCP dentro do TimeoutStartSec=4h do systemd
+            rf = favorecidos.coletar_favorecidos(con, pausa=args.pausa, orcamento_s=3 * 3600)
             _log(f"[3/5] favorecidos: {rf}")
 
         if "pcrj_csv" not in pular:

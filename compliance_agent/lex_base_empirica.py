@@ -29,6 +29,16 @@ _EXPO_TTL = 6 * 3600
 _EXPO_CACHE: dict = {"ts": 0.0, "totais": []}
 
 
+def _brl(v) -> str:
+    """R$ em formato brasileiro (milhar com ponto, decimal com vírgula) — regra da casa."""
+    return f"{(v or 0):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
+def _num(v) -> str:
+    s = f"{v:,}" if isinstance(v, int) else f"{v:,.1f}"
+    return s.replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def _con():
     return sqlite3.connect(str(_DB))
 
@@ -106,8 +116,8 @@ def fatos_volume(con) -> list[tuple]:
     if not r[0] or p90 is None:
         return []  # base vazia: sem fato (evita format de None)
     return [("base_volume",
-             f"Base: {r[0]:,} OBs (chave única numero_ob+ug+exercício), {r[1]} UGs, {r[2]:,} fornecedores, "
-             f"exercícios {r[3]}–{r[4]}. p90 do valor de OB ≈ R$ {p90:,.2f}.", 0.95, r[0])]
+             f"Base: {_num(r[0])} OBs (chave única numero_ob+ug+exercício), {r[1]} UGs, {_num(r[2])} fornecedores, "
+             f"exercícios {r[3]}–{r[4]}. p90 do valor de OB ≈ R$ {_brl(p90)}.", 0.95, r[0])]
 
 
 _COLETORES = [fatos_volume, fatos_anomalia, fatos_concentracao, fatos_ubiquidade, fatos_cobertura_sei]
@@ -167,8 +177,12 @@ def posicao_fornecedor(cnpj: str) -> dict:
         acima = bisect.bisect_left(totais, total)
         ntot = len(totais)
         pct = (acima / ntot * 100) if ntot else 0
+        mediana = totais[ntot // 2] if ntot else 0.0
+        p90 = totais[min(ntot - 1, int(ntot * 0.90))] if ntot else 0.0
         return {"cnpj": cpf, "tem_dados": True, "n_obs": r[0], "total_pago": total,
-                "n_ugs": r[2], "percentil_exposicao": round(pct, 1)}
+                "n_ugs": r[2], "percentil_exposicao": round(pct, 1),
+                "mediana_fornecedor": mediana, "p90_fornecedor": p90,
+                "multiplo_mediana": round(total / mediana, 1) if mediana else None}
     finally:
         con.close()
 
@@ -188,8 +202,13 @@ def contexto_empirico_md(cnpj: str | None = None) -> str:
     if cnpj:
         pos = posicao_fornecedor(cnpj)
         if pos.get("tem_dados"):
-            L.append(f"> **Posição do alvo:** R$ {pos['total_pago']:,.2f} pagos em {pos['n_obs']} OBs / "
-                     f"{pos['n_ugs']} UG(s) — percentil {pos['percentil_exposicao']}% de exposição entre os fornecedores do Estado.")
+            linha = (f"> **Posição do alvo:** R$ {_brl(pos['total_pago'])} pagos em {pos['n_obs']} OBs / "
+                     f"{pos['n_ugs']} UG(s) — percentil " + str(pos['percentil_exposicao']).replace(".", ",")
+                     + "% de exposição entre os fornecedores do Estado")
+            if pos.get("multiplo_mediana"):
+                linha += (f"; **{_num(pos['multiplo_mediana'])}×** a mediana de exposição por fornecedor "
+                          f"(R$ {_brl(pos['mediana_fornecedor'])}; p90 = R$ {_brl(pos['p90_fornecedor'])})")
+            L.append(linha + ".")
     return "\n".join(L)
 
 

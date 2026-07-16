@@ -20,14 +20,109 @@ from compliance_agent.lex_redflags import (
     _RF, _anatomia, _eh_servico_continuo, _elemento_subjetivo, _fmt_proc,
 )
 
+def _padrao_temporal(p: dict) -> dict:
+    """Métricas temporais dos pagamentos: janela, crescimento máximo ano-a-ano e share de dezembro.
+    Trabalha sobre TODAS as linhas (por_ano.linhas é completo — intel_dados não amostra)."""
+    por_ano = p.get("por_ano") or {}
+    anos = sorted(a for a in por_ano if a)
+    out: dict = {"anos": anos}
+    if len(anos) >= 2:
+        cresc = []
+        for a0, a1 in zip(anos, anos[1:]):
+            t0 = por_ano[a0].get("total") or 0
+            t1 = por_ano[a1].get("total") or 0
+            if t0 > 0 and t1 > t0:
+                cresc.append((a0, a1, (t1 / t0 - 1) * 100, t0, t1))
+        if cresc:
+            out["maior_salto"] = max(cresc, key=lambda c: c[2])
+    tot = dez = 0.0
+    datas = []
+    for bloco in por_ano.values():
+        for ln in bloco.get("linhas") or []:
+            v = float(ln.get("valor") or 0)
+            d = ln.get("data") or ""
+            if v > 0:
+                tot += v
+                if isinstance(d, str) and len(d) >= 7 and d[5:7] == "12":
+                    dez += v
+            if isinstance(d, str) and len(d) >= 10 and d[4:5] == "-":
+                datas.append(d[:10])
+    if tot > 0:
+        out["dez_share"] = dez / tot * 100
+    if datas:
+        out["primeira"], out["ultima"] = min(datas), max(datas)
+    return out
+
+
+def _idade_na_primeira_ob(emp: dict, temporal: dict) -> float | None:
+    """Anos entre a abertura da empresa e a 1ª OB recebida (None quando falta data)."""
+    ab = (emp.get("data_abertura") or "").strip()
+    pr = temporal.get("primeira") or ""
+    if len(ab) >= 10 and len(pr) >= 10 and ab[4:5] == "-":
+        try:
+            from datetime import date
+            d0 = date(int(ab[:4]), int(ab[5:7]), int(ab[8:10]))
+            d1 = date(int(pr[:4]), int(pr[5:7]), int(pr[8:10]))
+            return max(0.0, (d1 - d0).days / 365.25)
+        except ValueError:
+            return None
+    return None
+
+
+def _linhas_de_evidencia(ctx: dict, analise: dict) -> list[tuple[str, bool, str]]:
+    """Triangulação: cada linha INDEPENDENTE de evidência, se apontou indício e o resumo.
+    Padrão de auditoria (ISSAI 100/300): a força do conjunto vem da CONVERGÊNCIA de fontes
+    independentes, não da soma de sinais correlacionados."""
+    achados = analise.get("achados") or []
+    tcerj = analise.get("tcerj") or {}
+    cartel = analise.get("cartel") or {}
+    cruzado = analise.get("cruzado") or {}
+    inv = analise.get("investigacao") or {}
+    direc = analise.get("direcionamento") or {}
+    lidos = [x for x in (analise.get("leituras") or []) if x.get("lido")]
+    rfs = {str(a.get("rf", "")) for a in achados}
+    linhas: list[tuple[str, bool, str]] = []
+    fin = [r for r in rfs if r.startswith("R") and r not in ("R6", "R8", "R11")]
+    linhas.append(("Financeira (OBs SIAFE/TFE)", bool(fin),
+                   f"red flags {', '.join(sorted(fin))}" if fin else "padrão de pagamento sem disparo"))
+    if lidos:
+        doc = [r for r in rfs if r.startswith("DOC")]
+        linhas.append(("Documental (íntegra SEI)", bool(doc),
+                       f"{len(lidos)} processo(s) lidos" + (f"; disparos {', '.join(sorted(doc))}" if doc else ", sem disparo")))
+    if tcerj.get("n_contratos") or tcerj.get("n_compras_diretas"):
+        linhas.append(("Registral (TCE-RJ Dados Abertos)", bool(tcerj.get("n_diretas_dispensa")),
+                       f"{tcerj.get('n_contratos', 0)} contrato(s), {tcerj.get('n_diretas_dispensa', 0)} por afastamento de licitação"))
+    if cartel.get("vizinhos") or cruzado.get("co_ocorrencia_com_socio_comum"):
+        forte = bool(cruzado.get("co_ocorrencia_com_socio_comum"))
+        linhas.append(("Societária/rede (QSA × co-ocorrência)", forte or "R8" in rfs,
+                       "sócio em comum com co-ocorrente" if forte else "co-ocorrência estreita a verificar"))
+    hips = inv.get("hipoteses") or []
+    if hips:
+        conf = [h for h in hips if h.get("status") in ("CONFIRMADO", "INDICIO")]
+        linhas.append(("Due diligence (fachada/laranja)", bool(conf),
+                       f"{len(conf)}/{len(hips)} hipótese(s) com indício" if conf else f"{len(hips)} hipótese(s), nenhuma confirmada"))
+    if direc.get("grau"):
+        g = str(direc.get("grau")).lower()
+        linhas.append(("Direcionamento de certame", g == "vermelho",
+                       f"grau {g} (score {direc.get('score', 0)}/100)"))
+    return linhas
+
+
 def _analise_merito(ctx: dict, analise: dict) -> str:
-    """Prosa de mérito (parecer raciocinado), adaptada aos dados — natureza, concentração, dispensas, síntese."""
+    """Prosa de mérito (parecer raciocinado) — perfil e aderência cadastral, padrão temporal,
+    concentração, contratação direta, TRIANGULAÇÃO de linhas de evidência e standard probatório.
+    Cada bloco só entra quando há dado real (INDISPONÍVEL ≠ 0); a régua empírica é contexto de
+    calibragem, nunca prova (indício ≠ acusação)."""
     p = ctx.get("pagamentos") or {}
     emp = (ctx.get("enriq", {}).get("dados") or {}).get("empresa") or {}
     achados = analise.get("achados", [])
     continuo = _eh_servico_continuo([emp.get("cnae_principal"), emp.get("atividade"), ctx.get("nome")])
-    total = p.get("total_geral", 0) or 0
-    nob, norg = p.get("n_geral", 0), len(p.get("por_orgao_geral", {}))
+    total = p.get("total_geral") or p.get("total") or 0
+    nob = p.get("n_geral") or p.get("n_obs") or 0
+    norg = len(p.get("por_orgao_geral") or {}) or len({
+        ln.get("orgao") for b in (p.get("por_ano") or {}).values()
+        for ln in (b.get("linhas") or []) if ln.get("orgao")})
+    temporal = _padrao_temporal(p)
     L = []
     try:
         from compliance_agent.lex_base_empirica import contexto_empirico_md
@@ -36,42 +131,146 @@ def _analise_merito(ctx: dict, analise: dict) -> str:
             L.append(_emp)
     except Exception as exc:
         logger.warning("contexto empírico do Lex indisponível p/ %s (seção some do parecer): %s", ctx.get("cnpj"), exc)
+
+    # 1. Perfil e aderência cadastral × exposição
     natureza = ("prestadora de **serviços contínuos** (limpeza/conservação/vigilância/mão de obra)"
                 if continuo else "fornecedora do Estado")
     L.append(
-        f"Trata-se de empresa {natureza}, com exposição de **R$ {moeda(total)}** em {nob} ordens bancárias "
-        f"junto a {norg} órgão(s) no período. " + (
+        f"**1. Perfil do fornecedor e aderência cadastral.** Trata-se de empresa {natureza}, com exposição de "
+        f"**R$ {moeda(total)}** em " + f"{nob:,}".replace(",", ".") + f" ordens bancárias junto a {norg} órgão(s) no período"
+        + (f" (janela observada: {temporal['primeira']} a {temporal['ultima']})" if temporal.get("primeira") else "")
+        + ". " + (
             "Para esse segmento, a presença em múltiplos órgãos — cada um com contrato próprio, em regra por pregão "
             "e com vigência de até 10 anos (arts. 106-107 da Lei 14.133/2021) — é a **estrutura ordinária do "
             "mercado** e não evidencia, por si só, irregularidade." if continuo else
             "A pulverização entre órgãos, isoladamente, não indica irregularidade."))
+    idade = _idade_na_primeira_ob(emp, temporal)
+    cap = emp.get("capital_social")
+    perfil = []
+    if idade is not None:
+        if idade < 2:
+            perfil.append(
+                "a empresa recebeu a primeira OB estadual **" + f"{idade:.1f}".replace(".", ",") + " ano(s)** após a abertura do CNPJ "
+                f"({emp.get('data_abertura')}) — contratação de pessoa jurídica recém-constituída não é vedada "
+                "(livre iniciativa, art. 170 CF/88), mas desloca o exame para a **demonstração concreta de "
+                "capacidade técnica e econômico-financeira** exigível na habilitação (arts. 62, 66-69 da "
+                "Lei 14.133/2021)" + ("; histórico operacional inexistente somado a exposição dessa ordem é "
+                "indício clássico de interposição a apurar" if total >= 1_000_000 else
+                " — registrar para acompanhamento da escalada de exposição"))
+        else:
+            perfil.append(f"há **{idade:.0f} anos** de existência formal antes da primeira OB observada — "
+                          "maturidade cadastral compatível com fornecimento regular")
+    if cap and total and float(cap) > 0:
+        mult = total / float(cap)
+        if mult >= 100:
+            perfil.append(
+                "a exposição equivale a **" + f"{mult:,.0f}".replace(",", ".") + f"×** o capital social registrado (R$ {moeda(cap)}) — razão "
+                "dessa ordem não é ilícita per se, porém esvazia a função de garantia do capital e reforça a "
+                "necessidade de aferir a qualificação econômico-financeira efetivamente exigida e demonstrada "
+                "(art. 69 da Lei 14.133/2021: balanço patrimonial, certidões, capital mínimo ou garantia)")
+        elif mult >= 10:
+            perfil.append("a exposição equivale a **" + f"{mult:,.0f}".replace(",", ".") + f"×** o capital social (R$ {moeda(cap)}) — proporção "
+                          "relevante, usual em serviços intensivos em mão de obra, a contextualizar com o balanço")
+    sit = (emp.get("situacao") or "").upper()
+    if sit and sit != "ATIVA":
+        perfil.append(f"a situação cadastral na RFB é **{sit}** — fornecedor não-ATIVO recebendo recurso público "
+                      "exige verificação imediata da regularidade fiscal mantida durante a execução (art. 92 da "
+                      "Lei 14.133/2021 — manutenção das condições de habilitação — e jurisprudência pacífica do TCU: "
+                      "a regularidade deve subsistir ao longo da execução)")
+    if perfil:
+        L.append("No plano cadastral, " + "; ".join(perfil) + ".")
+
+    # 2. Padrão temporal dos pagamentos
+    tempo = []
+    salto = temporal.get("maior_salto")
+    if salto:
+        a0, a1, pct, t0, t1 = salto
+        if pct >= 150:
+            tempo.append(
+                "o valor pago saltou **" + f"{pct:,.0f}".replace(",", ".") + f"%** de {a0} (R$ {moeda(t0)}) para {a1} (R$ {moeda(t1)}) — "
+                "escalada dessa magnitude pede confronto com os instrumentos que a lastrearam (novos contratos? "
+                "aditivos? — teto de 25%/50% do art. 125 da Lei 14.133/2021; sucessivos aditivos que dobram o "
+                "objeto configuram burla ao dever de licitar)")
+        elif pct >= 60:
+            tempo.append("crescimento de **" + f"{pct:,.0f}".replace(",", ".") + f"%** entre {a0} e {a1} — expansão relevante, compatível com "
+                         "novos certames vencidos; conferir se houve licitação própria para cada incremento")
+    dez = temporal.get("dez_share")
+    if dez is not None and dez >= 25:
+        tempo.append(
+            f"**{dez:.0f}%** do valor foi pago em dezembros — concentração de fim de exercício («corrida de "
+            "empenho») é padrão sensível: liquidação e atesto sob pressão de prazo degradam o controle (arts. "
+            "62-63 da Lei 4.320/64 exigem liquidação REAL antes do pagamento; conferir medições/atestos dos "
+            "pagamentos de dezembro)")
+    if tempo:
+        L.append("**2. Padrão temporal.** No eixo do tempo, " + "; ".join(tempo) + ".")
+
+    # 3. Concentração e competitividade
     hhi = p.get("hhi", {})
     if hhi.get("top_share", 0):
+        top_orgao = next(iter(p.get("por_orgao_geral") or {}), "")
         L.append(
-            f"A concentração (HHI) é **{hhi.get('indice')}** ({hhi.get('nivel')}), com o maior órgão respondendo por "
-            f"**{hhi.get('top_share')}%** do valor pago. " + (
-                "Concentração elevada num único contratante, ainda que possa decorrer de mérito técnico, recomenda "
-                "conferir a competitividade dos certames e a isonomia (art. 37 CF/88; art. 5º Lei 14.133)."
+            "**3. Concentração.** O índice de concentração (HHI) é **" + str(hhi.get('indice')).replace(".", ",")
+            + f"** ({hhi.get('nivel')}), com o maior contratante — {top_orgao} — respondendo por **"
+            + str(hhi.get('top_share')).replace(".", ",") + "%** do valor. " + (
+                "Concentração elevada num único órgão, ainda que possa decorrer de mérito técnico, atrai o exame "
+                "da competitividade real dos certames (art. 11, I-II, da Lei 14.133/2021: seleção da proposta apta "
+                "a gerar o resultado mais vantajoso E tratamento isonômico) — verificar quantos licitantes "
+                "compareceram, quantos foram desclassificados e por quê (a cascata de desclassificações é o "
+                "mecanismo clássico de direcionamento — Súmula TCU 263 sobre exigências restritivas)."
                 if hhi.get("top_share", 0) >= 50 else
-                "O grau é compatível com atuação difusa, sem alerta específico de captura."))
+                "O grau é compatível com atuação difusa, sem alerta específico de captura de órgão."))
+
+    # 4. Contratação direta
     tcerj = analise.get("tcerj") or {}
     if tcerj.get("n_diretas_dispensa"):
         L.append(
-            f"O TCE-RJ registra **{tcerj.get('n_diretas_dispensa')} contratação(ões) por dispensa/inexigibilidade**. " + (
-                "Em serviços contínuos, a dispensa emergencial costuma cobrir o intervalo entre o fim de um contrato e "
-                "a conclusão de novo pregão — regular quando justificada e temporária. O exame deve focar a reiteração "
-                "do **mesmo objeto/local** sob o teto, que aí sim configuraria fracionamento (art. 75 §1º Lei 14.133)."
+            f"**4. Contratação direta.** O TCE-RJ registra **{tcerj.get('n_diretas_dispensa')} contratação(ões) "
+            "por dispensa/inexigibilidade**. " + (
+                "Em serviços contínuos, a dispensa emergencial costuma cobrir o intervalo entre o fim de um contrato "
+                "e a conclusão do novo pregão — regular quando justificada, temporária e instruída (art. 72 da Lei "
+                "14.133/2021 lista as peças obrigatórias do processo de contratação direta; art. 75 traz as "
+                "hipóteses). O exame deve focar a **reiteração do mesmo objeto/local sob o teto** — aí sim "
+                "fracionamento vedado (art. 75, §1º) — e a emergência **fabricada** por desídia administrativa "
+                "(jurisprudência pacífica do TCU: a emergência decorrente da falta de planejamento não legitima a "
+                "dispensa, sem prejuízo da contratação para afastar o risco, com apuração de responsabilidade)."
                 if continuo else
-                "Cabe verificar o enquadramento legal de cada uma e eventual sucessão do mesmo objeto sob o teto."))
+                "Cabe verificar, uma a uma: o enquadramento legal invocado, a instrução exigida pelo art. 72 da "
+                "Lei 14.133/2021 (estudo técnico, estimativa, razão de escolha, justificativa de preço) e a "
+                "eventual sucessão do mesmo objeto sob o teto (art. 75, §1º — fracionamento)."))
+
+    # 5. Triangulação — convergência de linhas independentes de evidência
+    linhas_ev = _linhas_de_evidencia(ctx, analise)
+    if linhas_ev:
+        pos = [nome for nome, hit, _ in linhas_ev if hit]
+        detalhe = "; ".join(f"{nome}: {'⚠ ' if hit else '✓ '}{res}" for nome, hit, res in linhas_ev)
+        if len(pos) >= 2:
+            forca = (
+                f"**{len(pos)} linhas independentes** apontam no mesmo sentido ({', '.join(pos)}) — é a "
+                "**convergência**, não o sinal isolado, que confere força ao conjunto (evidência suficiente e "
+                "apropriada, ISSAI 100/300; na prova indiciária, indícios múltiplos, graves, precisos e "
+                "concordantes autorizam a conclusão — art. 239 CPP, aplicado analogicamente ao processo de contas).")
+        elif len(pos) == 1:
+            forca = (f"apenas **1 linha** ({pos[0]}) disparou; sem corroboração independente, o conjunto NÃO "
+                     "sustenta mais que diligência — sinal único é hipótese de trabalho, não achado maduro.")
+        else:
+            forca = ("**nenhuma linha** de evidência disparou — as fontes independentes se corroboram no sentido "
+                     "da regularidade; a presunção de legitimidade sai REFORÇADA do cruzamento.")
+        L.append("**5. Triangulação (análise cruzada).** Linhas examinadas — " + detalhe + ". " + forca)
+
+    # 6. Síntese e standard probatório
     graves = [a for a in achados if a.get("grav", 0) >= 3]
     L.append(
-        (f"Em síntese, convergem **{len(achados)} indício(s)**, {len(graves)} de maior gravidade, sustentando a "
-         f"classificação **{analise.get('rotulo')}**. " if achados
-         else "Em síntese, não há indícios relevantes nos dados disponíveis. ") +
-        "Reitere-se que os apontamentos são **indícios** sob **presunção de legitimidade** dos atos administrativos "
-        "(o ônus de provar o vício recai sobre quem o invoca — Meirelles); a confirmação depende de diligência "
-        "documental nos processos SEI (edital/TR, pesquisa de preços, atestos) e de contraditório. Este parecer **não** "
-        "constitui juízo de irregularidade, improbidade ou crime.")
+        "**6. Síntese e standard probatório.** " +
+        (f"Convergem **{len(achados)} indício(s)**, {len(graves)} de maior gravidade, sustentando a classificação "
+         f"**{analise.get('rotulo')}**. " if achados
+         else "Não há indícios relevantes nos dados disponíveis. ") +
+        "Reitere-se o standard: os apontamentos são **indícios** sob **presunção de legitimidade** dos atos "
+        "administrativos (o ônus de provar o vício recai sobre quem o invoca — Meirelles); na interpretação das "
+        "condutas valem os arts. 20-22 da LINDB (consequências práticas da decisão; obstáculos e dificuldades REAIS "
+        "do gestor; primazia da realidade sobre o formalismo) e só o **erro grosseiro** responsabiliza o agente "
+        "público (art. 28 LINDB). A confirmação de qualquer achado depende de diligência documental nos processos "
+        "SEI (edital/TR, pesquisa de preços, atas, atestos, medições) e de **contraditório** (art. 5º, LV, CF/88). "
+        "Este parecer **não** constitui juízo de irregularidade, improbidade ou crime.")
     return "\n\n".join(L)
 
 

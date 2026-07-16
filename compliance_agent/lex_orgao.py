@@ -185,6 +185,36 @@ def _parecer_orgao_md(ctx: dict, analise: dict, merito: str = "") -> str:
     if not achados:
         add("| — | — | — | — | — |")
     add("")
+    # III-B. Triangulação: convergência entre FAMÍLIAS independentes de indício (padrão do
+    # parecer de fornecedor, espelhado no órgão). Famílias: concentração (R8), execução (R2/R10),
+    # fuga ao certame (R5), societária/cadastral via Receita (R7/DD/*). A força vem da convergência.
+    add("## III-B. TRIANGULAÇÃO (análise cruzada) E STANDARD PROBATÓRIO")
+    add("")
+    _familias = {
+        "Concentração/captura (HHI)": [a for a in achados if a.get("rf") == "R8"],
+        "Execução financeira (recorrência/estornos)": [a for a in achados if a.get("rf") in ("R2", "R10")],
+        "Fuga ao certame (TAC/emergencial/dispensa)": [a for a in achados if a.get("rf") == "R5"],
+        "Societária/cadastral (QSA Receita)": [a for a in achados
+                                               if a.get("rf") == "R7" or str(a.get("rf", "")).startswith("DD/")],
+    }
+    _hits = [nome for nome, lst in _familias.items() if lst]
+    if len(_hits) >= 2:
+        add(f"**{len(_hits)} famílias independentes** de indício convergem ({'; '.join(_hits)}). É a "
+            "**convergência de fontes que não se derivam umas das outras** — pagamento, contrato, quadro societário — "
+            "que confere força ao conjunto (evidência suficiente e apropriada, ISSAI 100/300; prova indiciária por "
+            "indícios múltiplos e concordantes, art. 239 CPP por analogia). O conjunto justifica **fiscalização "
+            "ordenada** (requisição de contratos, certames e medições ao órgão), não mera observação.")
+    elif len(_hits) == 1:
+        add(f"Apenas **1 família** de indício disparou ({_hits[0]}) — sem corroboração independente, o achado "
+            "sustenta **diligência**, não representação: sinal único é hipótese de trabalho.")
+    else:
+        add("**Nenhuma família de indício disparou** — as fontes se corroboram no sentido da regularidade e a "
+            "presunção de legitimidade sai reforçada do cruzamento.")
+    add("")
+    add("No plano do standard probatório: valem os arts. 20-22 da **LINDB** (consequências práticas; obstáculos e "
+        "dificuldades reais da gestão; primazia da realidade) e o art. 28 (só o **erro grosseiro** responsabiliza o "
+        "agente). Todo encaminhamento pressupõe **contraditório** (art. 5º, LV, CF/88) — indício ≠ acusação.")
+    add("")
     add("## IV. CONCLUSÃO — GRAU DE ATENÇÃO")
     add("")
     add(f"{analise.get('emoji','')} **{analise.get('rotulo','')}** — {analise.get('just','')}.")

@@ -14,6 +14,12 @@ Nenhum indício automático disparou a partir dos pagamentos (OB) disponíveis. 
 |---|---:|---:|---:|---|
 | — | — | — | — | — |
 
+## III-B. TRIANGULAÇÃO (análise cruzada) E STANDARD PROBATÓRIO
+
+**Nenhuma família de indício disparou** — as fontes se corroboram no sentido da regularidade e a presunção de legitimidade sai reforçada do cruzamento.
+
+No plano do standard probatório: valem os arts. 20-22 da **LINDB** (consequências práticas; obstáculos e dificuldades reais da gestão; primazia da realidade) e o art. 28 (só o **erro grosseiro** responsabiliza o agente). Todo encaminhamento pressupõe **contraditório** (art. 5º, LV, CF/88) — indício ≠ acusação.
+
 ## IV. CONCLUSÃO — GRAU DE ATENÇÃO
 
 🟢 **VERDE** — sem indícios relevantes nos dados disponíveis — presunção de regularidade mantida.

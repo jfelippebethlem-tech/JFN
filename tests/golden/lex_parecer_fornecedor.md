@@ -64,11 +64,17 @@ _Nenhum indicador de risco disparado a partir dos dados disponíveis._
 
 ## IV-B. ANÁLISE DE MÉRITO
 
-> **Régua empírica (aprendida da base JFN):** Base: 1,121,302 OBs (chave única numero_ob+ug+exercício), 152 UGs, 73,881 fornecedores, exercícios 2019–2026. p90 do valor de OB ≈ R$ 148,358.32.
+> **Régua empírica (aprendida da base JFN):** [régua viva da base — normalizada p/ snapshot]
 
-Trata-se de empresa fornecedora do Estado, com exposição de **R$ 0,00** em 0 ordens bancárias junto a 0 órgão(s) no período. A pulverização entre órgãos, isoladamente, não indica irregularidade.
+**1. Perfil do fornecedor e aderência cadastral.** Trata-se de empresa fornecedora do Estado, com exposição de **R$ 4.320.000,00** em 6 ordens bancárias junto a 2 órgão(s) no período (janela observada: 2023-03-10 a 2025-08-20). A pulverização entre órgãos, isoladamente, não indica irregularidade.
 
-Em síntese, não há indícios relevantes nos dados disponíveis. Reitere-se que os apontamentos são **indícios** sob **presunção de legitimidade** dos atos administrativos (o ônus de provar o vício recai sobre quem o invoca — Meirelles); a confirmação depende de diligência documental nos processos SEI (edital/TR, pesquisa de preços, atestos) e de contraditório. Este parecer **não** constitui juízo de irregularidade, improbidade ou crime.
+No plano cadastral, a empresa recebeu a primeira OB estadual **0,4 ano(s)** após a abertura do CNPJ (2022-11-01) — contratação de pessoa jurídica recém-constituída não é vedada (livre iniciativa, art. 170 CF/88), mas desloca o exame para a **demonstração concreta de capacidade técnica e econômico-financeira** exigível na habilitação (arts. 62, 66-69 da Lei 14.133/2021); histórico operacional inexistente somado a exposição dessa ordem é indício clássico de interposição a apurar; a exposição equivale a **432×** o capital social registrado (R$ 10.000,00) — razão dessa ordem não é ilícita per se, porém esvazia a função de garantia do capital e reforça a necessidade de aferir a qualificação econômico-financeira efetivamente exigida e demonstrada (art. 69 da Lei 14.133/2021: balanço patrimonial, certidões, capital mínimo ou garantia).
+
+**2. Padrão temporal.** No eixo do tempo, o valor pago saltou **3.400%** de 2023 (R$ 120.000,00) para 2025 (R$ 4.200.000,00) — escalada dessa magnitude pede confronto com os instrumentos que a lastrearam (novos contratos? aditivos? — teto de 25%/50% do art. 125 da Lei 14.133/2021; sucessivos aditivos que dobram o objeto configuram burla ao dever de licitar).
+
+**5. Triangulação (análise cruzada).** Linhas examinadas — Financeira (OBs SIAFE/TFE): ✓ padrão de pagamento sem disparo. **nenhuma linha** de evidência disparou — as fontes independentes se corroboram no sentido da regularidade; a presunção de legitimidade sai REFORÇADA do cruzamento.
+
+**6. Síntese e standard probatório.** Não há indícios relevantes nos dados disponíveis. Reitere-se o standard: os apontamentos são **indícios** sob **presunção de legitimidade** dos atos administrativos (o ônus de provar o vício recai sobre quem o invoca — Meirelles); na interpretação das condutas valem os arts. 20-22 da LINDB (consequências práticas da decisão; obstáculos e dificuldades REAIS do gestor; primazia da realidade sobre o formalismo) e só o **erro grosseiro** responsabiliza o agente público (art. 28 LINDB). A confirmação de qualquer achado depende de diligência documental nos processos SEI (edital/TR, pesquisa de preços, atas, atestos, medições) e de **contraditório** (art. 5º, LV, CF/88). Este parecer **não** constitui juízo de irregularidade, improbidade ou crime.
 
 ## IV-D. DEFESA CONTRA SI MESMO — PASSO EXCULPATÓRIO
 

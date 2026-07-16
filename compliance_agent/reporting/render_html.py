@@ -139,8 +139,13 @@ def render_html(ctx: dict) -> str:
     return Template(_TEMPLATE).render(**full)
 
 
-async def html_to_pdf(html: str, destino: str) -> str:
-    """Converte HTML→PDF com Playwright (page.pdf). Tipografia A4 profissional."""
+async def html_to_pdf(html: str, destino: str, timeout_s: float = 120.0) -> str:
+    """Converte HTML→PDF com Playwright (page.pdf). Tipografia A4 profissional.
+
+    ``timeout_s``: teto duro do render — browser morto no meio (vm_guard mata órfãos)
+    não pode pendurar o produto; estourou → TimeoutError, e o caller degrada p/ fpdf."""
+    import asyncio
+
     from playwright.async_api import async_playwright
 
     Path(destino).parent.mkdir(parents=True, exist_ok=True)
@@ -148,8 +153,15 @@ async def html_to_pdf(html: str, destino: str) -> str:
         b = await pw.chromium.launch(headless=True, args=["--no-sandbox"])
         try:
             page = await b.new_page()
-            await page.set_content(html, wait_until="networkidle")
-            await page.pdf(path=destino, format="A4", print_background=True,
+            await asyncio.wait_for(page.set_content(html, wait_until="networkidle"), timeout_s)
+            await asyncio.wait_for(_pdf_da_pagina(page, destino), timeout_s)
+        finally:
+            await b.close()
+    return destino
+
+
+async def _pdf_da_pagina(page, destino: str) -> None:
+    await page.pdf(path=destino, format="A4", print_background=True,
                            display_header_footer=True,
                            header_template="<span></span>",
                            footer_template=(
@@ -159,9 +171,6 @@ async def html_to_pdf(html: str, destino: str) -> str:
                                "<span>pág. <span class='pageNumber'></span> de <span class='totalPages'></span></span>"
                                "</div>"),
                            margin={"top": "14mm", "bottom": "16mm", "left": "10mm", "right": "10mm"})
-        finally:
-            await b.close()
-    return destino
 
 
 async def gerar_pdf(ctx: dict, nome_base: str) -> str:
