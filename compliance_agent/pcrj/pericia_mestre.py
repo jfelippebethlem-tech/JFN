@@ -333,56 +333,86 @@ def montar_html(slug: str, db_path=None) -> str:
         "leilão. <b>Encaminhamento:</b> requisitar a ata da sessão pública, o relatório da comissão e o "
         "extrato do contrato publicado no Diário Oficial (novembro de 2023).")))
 
-    caps.append(("cap-conflito", "Governança e Conflito de Interesse", _p(
-        "Trouxe-se ao exame, por dever de exaustividade, a hipótese aventada de intervenção do banco BTG "
-        "Pactual nesta parceria, à luz do <b>vínculo de parentesco</b> — relação de irmandade, reconhecida "
-        "publicamente pelo próprio Chefe do Executivo municipal — entre o Prefeito e o Sr. Guilherme Paes, "
-        "sócio, diretor estatutário e co-responsável pela área de <i>investment banking</i> daquela "
-        "instituição. O parentesco é fato público e verificável.",
-        "A hipótese foi investigada de forma sistemática, em cinco frentes: (i) assessoria/estruturação da "
-        "modelagem; (ii) financiamento de dívida da concessionária; (iii) coordenação da oferta/leilão; "
-        "(iv) participação societária na sociedade de propósito específico; e (v) prestação de garantia. "
-        + _crit("Em nenhuma delas se localizou registro público de participação do BTG Pactual nesta "
-                "concessão") + ". Ao contrário, as fontes apontam terceiros: a modelagem coube ao Consórcio "
-        "Pezco–Kraft–Apparecido; o financiamento de dívida está sendo negociado com o " + _hl("IDB Invest "
-        "(até R$ 161 milhões, empréstimo ainda não aprovado — status 'Hold', com decisão de comitê "
-        "prevista para 06/10/2026)") + "; a Caixa Econômica Federal figura apenas como banco da "
-        "conta-garantia; e a sociedade de propósito específico é controlada por grupo de origem baiana "
-        "(Sian Engenharia e Lotus Participações, sob Ivan Mattos Neto). Não se localizou emissão de dívida "
-        "da concessionária em mercado de capitais.",
-        "A verificação foi levada ao nível do <b>quadro societário oficial (Receita Federal)</b> de toda a "
-        "cadeia de controle, sem que o banco apareça em qualquer elo: na concessionária Smart Hospital S.A. "
-        "(CNPJ 52.592.077/0001-00) constam apenas os administradores Allan Kardec Machado, André Viana "
-        "Portela, Qin Zhang e Rodrigo Galina; na Sian Engenharia Ltda. (CNPJ 03.746.272/0001-23), os "
-        "sócios André Portela, Luis Augusto Gomes Siqueira e a Sian Holding; e na Sian Holding Ltda. (CNPJ "
-        "36.296.376/0001-32), um quadro amplo de participações de origem baiana — " + _crit("em nenhum "
-        "deles figura o BTG Pactual ou fundo por ele gerido") + ". A modelagem coube ao consórcio "
-        "Pezco–Kraft–Apparecido e o único financiador de dívida nomeado, no disclosure do próprio "
-        "organismo multilateral, é o IDB Invest. Registre-se, por honestidade, a única peça em aberto: o "
-        "quadro societário exato da Lotus Participações (a cotista carioca do consórcio) não pôde ser "
-        "casado em fonte pública e deve ser obtido no ato de constituição do consórcio — lacuna que, "
-        "contudo, " + _hl("não abre qualquer indício de participação do BTG; apenas resta a confirmar em "
-        "fonte primária") + ".",
-        "Registre-se, por rigor, que a imprensa já associou o BTG a temas da política fluminense em "
-        "episódios <b>anteriores e alheios</b> a esta concessão (o imóvel do Sr. Guilherme Paes ocupado "
-        "por ex-governador, em 2011; menções em 2013 e 2015). Nada disso guarda nexo documentado com o "
-        "Souza Aguiar.",
-        "Conclui-se, portanto, que a intervenção do BTG nesta parceria é " + _crit("hipótese NÃO "
-        "confirmada — e, pelas fontes abertas, sem sustentação") + ": o parentesco, isoladamente, é "
-        "contexto de potencial conflito a monitorar, jamais prova de irregularidade. Afirmá-la sem "
-        "elemento probatório violaria a presunção de legitimidade e exporia o próprio controle. "
-        "<b>Caso</b> venha a ser demonstrado interesse da instituição em qualquer das partes, o "
-        "enquadramento seria o dos princípios da impessoalidade e da moralidade (art. 37 da Constituição), "
-        "das vedações da Lei nº 14.133/2021 (arts. 9º e 14) e da Lei nº 12.813/2013 — <b>não</b> a Súmula "
-        "Vinculante 13 do Supremo Tribunal Federal, que trata de nomeação para cargo, não de contrato "
-        "licitado.",
-        "Um ponto societário merece diligência autônoma: a presença, desde a constituição da sociedade de "
-        "propósito específico, do sócio " + _hl("Qin Zhang") + ", cuja identidade e cujo papel não estão "
-        "esclarecidos nas fontes públicas — possível parceiro/investidor estrangeiro, eventualmente ligado "
-        "ao fornecimento de equipamentos (o projeto prevê substituição integral do parque tecnológico). "
-        "<b>Encaminhamento:</b> obter, na Junta Comercial, o estatuto e o quadro societário completo da "
-        "concessionária (com percentuais e a identificação de Qin Zhang); requisitar os contratos de "
-        "financiamento e de garantia; e cruzar os quadros societários da modeladora e da vencedora.")))
+    caps.append(("cap-conflito", "Governança, Controle Societário e as Hipóteses de Conflito (BTG e BYD)", _p(
+        "Este capítulo examina, com rigor e à exaustão, o eixo de governança — quem, de fato, controla a "
+        "concessionária — e duas hipóteses de conflito de interesse aventadas em relação ao Chefe do "
+        "Executivo municipal. Adianta-se a conclusão metodológica: das duas hipóteses, <b>ambas se "
+        "refutam nas fontes</b>; mas a apuração revelou um <b>fato societário concreto e mais relevante do "
+        "que as hipóteses de origem</b> — o controle da concessionária por um grupo econômico chinês.")
+        # (a) BTG
+        + "<h3>a) A hipótese do BTG Pactual — REFUTADA</h3>"
+        + _p("Aventou-se a intervenção do banco BTG Pactual, ao argumento do <b>parentesco</b> — "
+             "irmandade, reconhecida publicamente pelo próprio Prefeito — com o Sr. Guilherme Paes, sócio "
+             "e co-responsável de <i>investment banking</i> daquela instituição. O parentesco é fato. A "
+             "participação do BTG nesta concessão, porém, foi investigada em cinco frentes (modelagem, "
+             "dívida, leilão, capital e garantia) e no <b>quadro societário oficial (Receita) de toda a "
+             "cadeia</b> — concessionária Smart Hospital S.A. (52.592.077/0001-00), Sian Engenharia "
+             "(03.746.272/0001-23) e Sian Holding (36.296.376/0001-32) —, " + _crit("sem que o BTG "
+             "figure em qualquer elo") + ". A modelagem coube ao Consórcio Pezco–Kraft–Apparecido; a "
+             "dívida, ao IDB Invest (até R$ 161 mi, ainda 'Hold'); a garantia, à Caixa. A hipótese não se "
+             "sustenta em fonte alguma — e afirmá-la sem prova violaria a presunção de legitimidade.")
+        # (b) BYD / Eduardo Paes
+        + "<h3>b) A hipótese da BYD e o passado do Prefeito — parcialmente verdadeira, sem nexo com a PPP</h3>"
+        + _p("Verificou-se, também, a hipótese de vínculo com a BYD, dado que o Prefeito Eduardo Paes, "
+             "entre seus mandatos, foi " + _hl("Vice-Presidente da BYD para toda a América Latina") + " "
+             "(cargo executivo, ~2017–2020, admitido publicamente por ele em 19/10/2023, ocasião em que "
+             "invocou esse passado para justificar NÃO adquirir ônibus elétricos e não favorecer a "
+             "ex-empregadora). O vínculo Prefeito⇄BYD é, portanto, <b>real e público</b>.",
+             "Contudo, " + _crit("nenhuma fonte liga a BYD a esta concessão") + ": a BYD atua em veículos "
+             "elétricos, baterias e eletrônicos, e não possui divisão de equipamentos médico-hospitalares "
+             "(o objeto do investimento). Os controladores chineses da concessionária (adiante) <b>não "
+             "integram</b> o Conselho da BYD nem a ela se vinculam em qualquer registro. A corrente "
+             "'Prefeito → BYD → concessionária' <b>não se fecha</b> — permanece como contexto a monitorar, "
+             "não como achado.")
+        # (c) o achado real: controle chinês
+        + "<h3>c) O CONTROLE CHINÊS DA CONCESSIONÁRIA — o achado documentado</h3>"
+        + _p("A diligência societária revelou que a concessionária de uma concessão de saúde de R$ 5,75 "
+             "bilhões é " + _crit("controlada, de fato, por um grupo econômico chinês") + ", e não pelos "
+             "grupos de origem baiana ou fluminense inicialmente noticiados. A cadeia, documentada em "
+             "registros públicos, é a seguinte:")
+        + _tabela([
+            ("Presidente do Conselho da SPE", "Pengfei Du (CPF 061.737.617-42) — Diário Comercial 17/09/2025"),
+            ("Administrador da SPE", "Qin Zhang — QSA Receita"),
+            ("E-mail cadastral da SPE (Receita)", _crit("juridico@bestenergy.com") + " — vincula a "
+                "concessionária ao grupo 'Best Energy'"),
+            ("Cluster controlado por Pengfei Du + Qin Zhang", "Best Energy &amp; Engineering Ltda "
+                "(44.694.340/0001-35); Lotus ICT Empreendimentos S.A. (31.799.537/0001-97); Galaxy "
+                "Resource S.A. (41.335.151/0001-88, trading mineral com filiais China/Chile/Argentina); "
+                "DGT Holding Ltda (55.253.369/0001-06); La Vida Holding"),
+            ("Entrada de capital estrangeiro", _hl("LOTUS ICT INTERNATIONAL LIMITED — sócia pessoa "
+                "jurídica DOMICILIADA NO EXTERIOR (perfil Hong Kong) da DGT Holding")),
+        ])
+        + _p("O elo probatório mais forte é o <b>e-mail cadastral da própria concessionária na Receita "
+             "Federal — @bestenergy.com —</b> e a cadeia Lotus ICT International (exterior) → DGT Holding "
+             "→ Best Energy → Smart Hospital, todas sob os mesmos Pengfei Du e Qin Zhang. Trata-se de "
+             "grupo chinês de <b>energia/engenharia, tecnologia e trading de minerais</b> — " + _crit("não "
+             "a BYD, não o BTG") + ". Num projeto cujo investimento é a <b>troca de 100% dos equipamentos "
+             "hospitalares</b>, a identidade do grupo estrangeiro que controla a concessionária, e sua "
+             "eventual atuação também como fornecedor dos equipamentos, é matéria central de fiscalização "
+             "(risco de o mesmo grupo lucrar como concessionário e como fornecedor).")
+        # ambiguidade Lotus + Sian
+        + _p("Registra-se um ponto que a imprensa pode ter confundido: noticiou-se que o consórcio incluiria "
+             "a 'Lotus Participações, de Ivan Mattos Neto' (grupo baiano) — porém " + _hl("o quadro "
+             "societário da Sian NÃO contém Ivan Mattos") + ", e existe, na órbita do grupo chinês, uma "
+             "'Lotus ICT'. Ou seja, a 'Lotus' do consórcio pode ligar-se ao grupo chinês, e não ao "
+             "empresário baiano — o que só o contrato de consórcio esclarece. O elo documentado entre o "
+             "lado de engenharia e a SPE é o Sr. <b>André Viana Portela</b>, sócio da Sian Engenharia e, "
+             "simultaneamente, administrador da Smart Hospital.")
+        # peça em aberto + encaminhamentos
+        + _p(_hl("Em aberto (S.A. de capital fechado): os percentuais e a lista nominal de acionistas não "
+             "são públicos") + " — constam do Livro de Registro de Ações e da ata da Assembleia Geral "
+             "Extraordinária de 30/09/2025 (a ser localizada no D.O. do Estado do RJ, caderno "
+             "'Publicações a Pedido' de outubro/2025) e da ficha da JUCERJA (NIRE 33.3.0035115-9). "
+             "<b>Encaminhamentos:</b> (i) requisitar à JUCERJA a certidão da íntegra do NIRE — constituição "
+             "e todas as atas — que traz o boletim de subscrição com acionistas e percentuais; (ii) obter "
+             "a ata da AGE de 30/09/2025 (aporte de capital para <b>finalizar as obras</b> + remuneração "
+             "dos administradores — sinal de que, quase dois anos após a assinatura, a obra ainda "
+             "dependia de aporte); (iii) identificar o controlador final da Lotus ICT International Limited "
+             "(indício Hong Kong/China) e se o grupo Best Energy/Lotus ICT atua também como fornecedor dos "
+             "equipamentos; (iv) esclarecer qual 'Lotus' integra o consórcio. Enquadramento, se comprovado "
+             "favorecimento a qualquer parte: impessoalidade e moralidade (art. 37 da Constituição), "
+             "Lei nº 14.133/2021 (arts. 9º e 14) e Lei nº 12.813/2013 — jamais a Súmula Vinculante 13, que "
+             "trata de nomeação para cargo. Tudo o que aqui se registra é indício sujeito a apuração.")))
 
     caps.append(("cap-conclusao", "Conclusão e Encaminhamentos", _p(
         "Do exame resulta a existência de <b>indícios relevantes que justificam o aprofundamento da "
@@ -660,6 +690,9 @@ def _montar_documento(nome, caps, anexos, data_hoje, dirc, lente, resultado) -> 
          "https://api.mziq.com/mzfilemanager/v2/d/31984144-b5d8-42f6-b944-26345a820727/92eb3bca-7ac1-9bf7-11b3-f30bc36363ad?origin=2"),
         ("Manual de Procedimentos B3 (regras do leilão)",
          "https://api.mziq.com/mzfilemanager/v2/d/31984144-b5d8-42f6-b944-26345a820727/526e3803-a2b4-eac3-e35c-32ab877d6825?origin=2"),
+        ("Edital de Convocação de AGE da Smart Hospital S.A. (Presidente do Conselho Pengfei Du; "
+         "aporte de capital p/ finalizar obras) — Diário Comercial, 17/09/2025",
+         "https://diariocomercial.com.br/wp-content/uploads/2025/09/edicaodigital17092025-1.pdf"),
         ("Página do projeto — índice de documentos (concedente)",
          "https://www.ccpar.rio/mapa/complexo-hospitalar-souza-aguiar/"),
         ("Transparência / Licitações da concedente",
@@ -683,6 +716,14 @@ def _montar_documento(nome, caps, anexos, data_hoje, dirc, lente, resultado) -> 
          "https://www.bnews.com.br/noticias/economia-e-mercado/exclusivo-consorcio-com-empresa-baiana-ganha-concessao-milionaria-de-grande-hospital-do-rio-de-janeiro.html"),
         ("Parentesco e histórico BTG × política do Rio — Diário do Rio",
          "https://diariodorio.com/qual-relacao-de-eduardo-paes-com-o-btg-pactual/"),
+        ("QSA cruzado de Pengfei Du (empresas: Galaxy Resource, Lotus ICT, DGT Holding, Securelink) — ConsultaSócio",
+         "https://www.consultasocio.com/q/sa/pengfei-du"),
+        ("QSA cruzado de Qin Zhang (Smart Hospital, Best Energy, Galaxy Resource, La Vida) — ConsultaSócio",
+         "https://www.consultasocio.com/q/sa/qin-zhang"),
+        ("Cadastro da SPE (e-mail juridico@bestenergy.com; natureza S.A. fechada) — CNPJá",
+         "https://cnpja.com/office/52592077000100"),
+        ("Eduardo Paes admite ter sido Vice-Presidente da BYD para a América Latina (19/10/2023) — Revista Fórum",
+         "https://revistaforum.com.br/politica/2023/10/19/curiosa-explicao-de-eduardo-paes-para-no-comprar-nibus-eletricos-no-rio-de-janeiro-146158.html"),
     ]
     lista_d = "".join(f"<li>{_q(t)}<br><a href='{_q(u)}' style='font-size:10px'>{_q(u)}</a></li>" for t, u in fontes_doc)
     lista_p = "".join(f"<li>{_q(t)}<br><a href='{_q(u)}' style='font-size:10px'>{_q(u)}</a></li>" for t, u in fontes_pesq)
