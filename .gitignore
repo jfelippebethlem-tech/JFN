@@ -165,3 +165,11 @@ data/contasrio/
 data/emendas_checkpoint.json
 data/fisc_coletar_tudo.log
 data/.coleta.lock
+
+# dumps documentais pesados (mesmo precedente do sei_arquivo/ — GitHub não é depósito de PDF)
+data/ajovem_folhas/
+data/aj_instrumentos/
+data/tce_docs/
+data/tce_processo.pdf
+data/cedae_atos/
+.firecrawl/

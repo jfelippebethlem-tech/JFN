@@ -1,7 +1,7 @@
 # CLAUDE.md — JFN (ENXUTO · injetado a cada turno)
 
 **JFN** = motor de auditoria/compliance do Estado do RJ (TCE-RJ/controle externo). Owner: jfelippebethlem-tech ·
-branch **`seguranca/ssrf-captcha`** · VM Linux Oracle Cloud ARM (`jfn-core`, 2 vCPU · 11,6GB · 4GB swap), `~/JFN`.
+branch **`feat/fiscalizacao-emendas-pcrj`** · VM Linux Oracle Cloud ARM (`jfn-core`, 2 vCPU · 11,6GB · 4GB swap), `~/JFN`.
 
 > **Detalhe vive fora daqui** (leveza — não duplicar): hub **`docs/REFERENCIA-PROJETO.md`** (estado/roadmap/lições/§10
 > log/§11 retomada — *"continue pelo docs/REFERENCIA-PROJETO.md"*) · jurídico/orçamentário completo
@@ -11,7 +11,7 @@ branch **`seguranca/ssrf-captcha`** · VM Linux Oracle Cloud ARM (`jfn-core`, 2 
 1. **Estética Kroll/Deloitte:** capa, seções numeradas, tabelas alinhadas, rating 🔴🟡🟢+score, R$ milhar+2 casas, fontes citadas. Nada feio.
 2. **OB (Ordem Bancária) = pagamento = verdade.** Empenho ≠ pagamento — nunca citar empenho como "total pago".
 3. **Credenciais só em `.env`/secrets** (gitignored), nunca em código/log/git (`os.environ.get`); `auth.json` nunca versionar.
-4. **Git:** sem force-push sem ok; commit por unidade (sem spam); msg semântica; `Co-Authored-By: Claude Opus 4.8`.
+4. **Git:** sem force-push sem ok; commit por unidade (sem spam); msg semântica; `Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>`.
 5. **Contexto/cota:** cortar só DESPERDÍCIO (reler o que já está no contexto, pollar subprocesso, dump grande), nunca profundidade. Ler grande em PARTES (offset/limit); grep/tail > dump. Pesado → background. Salvar cedo; nunca despachar pela metade.
 6. **Honestidade:** indício ≠ acusação; INDISPONÍVEL ≠ 0; nunca inventar número; presunção de regularidade; score = indício interno; CPF de sócio mascarado (LGPD).
 
@@ -38,7 +38,7 @@ branch **`seguranca/ssrf-captcha`** · VM Linux Oracle Cloud ARM (`jfn-core`, 2 
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **JFN** (25454 symbols, 38638 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **JFN** (25534 symbols, 36064 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 
