@@ -232,7 +232,10 @@ if __name__ == "__main__":
     import json
     import sys
     args = sys.argv[1:]
-    con = sqlite3.connect("data/compliance.db")
+    # timeout alto: compliance.db é compartilhado com o jfn.service vivo — numa carga de horas o
+    # busy_timeout de 5s (default) estouraria em contenção de escrita. WAL + 60s absorve.
+    con = sqlite3.connect("data/compliance.db", timeout=60)
+    con.execute("PRAGMA busy_timeout=60000")
     if "--incremental" in args:
         # timer: só os 2 meses mais recentes (idempotente — reprocessa o que fechou/foi homologado agora)
         hoje = date.today()
