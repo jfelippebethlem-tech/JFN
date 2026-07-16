@@ -228,6 +228,57 @@ def registros_vencedores(con, uf: str | None = "RJ") -> list[dict]:
     return list(por_certame.values())
 
 
+def conluio_enriquecido(con, uf: str | None = "RJ", min_certames: int = 5) -> dict:
+    """Roda detectar_rodizio_vencedores sobre os resultados do PNCP e DECORA com nome de fornecedor,
+    nome de órgão e amostra de OBJETOS — pronto para o painel/relatório (user-friendly)."""
+    from compliance_agent.rodizio_grafo import detectar_rodizio_vencedores
+    regs = registros_vencedores(con, uf=uf)
+    pad = detectar_rodizio_vencedores(regs, min_certames=min_certames)
+    # índices auxiliares: cnpj→nome, orgao→nome, orgao→objetos, (orgao,cnpj)→objetos
+    nome_forn: dict[str, str] = {}
+    nome_org: dict[str, str] = {}
+    obj_org: dict[str, list] = {}
+    obj_org_forn: dict[tuple, list] = {}
+    for r in regs:
+        org = re.sub(r"\D", "", r.get("orgao") or "")
+        if org and r.get("orgao_nome"):
+            nome_org[org] = r["orgao_nome"]
+        obj = (r.get("objeto") or "").strip()
+        if org and obj:
+            obj_org.setdefault(org, [])
+            if obj not in obj_org[org]:
+                obj_org[org].append(obj)
+        for v in r.get("vencedores") or []:
+            c = re.sub(r"\D", "", v.get("cnpj") or "")
+            if c and v.get("nome"):
+                nome_forn[c] = v["nome"]
+            if c and org and obj:
+                obj_org_forn.setdefault((org, c), [])
+                if obj not in obj_org_forn[(org, c)]:
+                    obj_org_forn[(org, c)].append(obj)
+
+    def _fmt_cnpj(c: str) -> str:
+        c = (c or "").zfill(14)
+        return f"{c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:]}" if len(c) == 14 else c
+
+    for cap in pad.get("captura", []):
+        org, fc = cap["orgao"], cap["vencedor"]
+        cap["orgao_nome"] = nome_org.get(org, "—")
+        cap["orgao_cnpj_fmt"] = _fmt_cnpj(org)
+        cap["nome"] = nome_forn.get(fc, cap.get("nome") or "—")
+        cap["fornecedor_cnpj_fmt"] = _fmt_cnpj(fc)
+        cap["objetos"] = (obj_org_forn.get((org, fc)) or obj_org.get(org) or [])[:5]
+    for rod in pad.get("rodizio_vencedores", []):
+        org = rod["orgao"]
+        rod["orgao_nome"] = nome_org.get(org, "—")
+        rod["orgao_cnpj_fmt"] = _fmt_cnpj(org)
+        rod["membros_nome"] = [{"cnpj": _fmt_cnpj(c), "nome": nome_forn.get(c, "—"),
+                                "vitorias": rod["reparticao"].get(c, 0)} for c in rod["grupo"]]
+        rod["objetos"] = (obj_org.get(org) or [])[:5]
+    pad["cobertura"] = {"certames_com_resultado": len(regs), "orgaos": pad.get("n_orgaos", 0)}
+    return pad
+
+
 if __name__ == "__main__":
     import json
     import sys

@@ -3,128 +3,130 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>JFN — Painel</title>
+<title>JFN — Central de Inteligência</title>
 <style>
   :root{
-    --bg:#0b1020; --bg2:#0d1424; --card:#141c33; --card2:#0f1730;
-    --bd:#243049; --bd2:#1d2740;
-    --tx:#eef2fb; --mut:#8a97b3; --dim:#5d6a87;
-    --blue:#3b82f6; --green:#22c55e; --amber:#eab308; --rose:#f43f5e; --purple:#a855f7;
+    --bg:#070b16; --bg2:#0a1020; --card:#111a30; --card2:#0d1526;
+    --bd:#223052; --bd2:#182541; --glass:rgba(17,26,48,.66);
+    --tx:#eaf0fb; --mut:#93a1c0; --dim:#5f6e90;
+    --cyan:#22d3ee; --blue:#3b82f6; --green:#22c55e; --amber:#f5b301; --rose:#fb3b6d; --purple:#b25cff;
     --r:16px;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0}
   body{
     background:
-      radial-gradient(900px 480px at 100% -8%, rgba(59,130,246,.10), transparent 60%),
-      radial-gradient(760px 420px at -10% 0%, rgba(168,85,247,.08), transparent 55%),
+      radial-gradient(1100px 560px at 100% -10%, rgba(34,211,238,.10), transparent 60%),
+      radial-gradient(900px 480px at -12% 2%, rgba(178,92,255,.10), transparent 55%),
+      radial-gradient(700px 700px at 50% 120%, rgba(59,130,246,.08), transparent 60%),
       var(--bg);
     color:var(--tx); font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     min-height:100dvh; -webkit-font-smoothing:antialiased; overflow-x:hidden;
   }
-  .wrap{max-width:720px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+  .wrap{max-width:1140px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
 
-  /* Header */
-  header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
-    padding:14px 18px calc(14px) 18px;background:rgba(13,20,36,.72);backdrop-filter:blur(12px);
-    border-bottom:1px solid var(--bd2)}
-  header .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.2px}
-  header .brand .lg{font-size:19px}
-  header .brand small{display:block;color:var(--mut);font-size:11px;font-weight:500;letter-spacing:.2px;margin-top:1px}
-  header .sair{color:var(--mut);font-size:13px;text-decoration:none;border:1px solid var(--bd);
-    padding:7px 13px;border-radius:10px;transition:.15s}
-  header .sair:active,header .sair:hover{color:#fff;border-color:var(--blue);background:rgba(59,130,246,.1)}
+  header{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;
+    padding:13px 18px;background:var(--glass);backdrop-filter:blur(14px);border-bottom:1px solid var(--bd2)}
+  header .brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:.2px}
+  header .brand .lg{font-size:20px;filter:drop-shadow(0 0 10px var(--cyan))}
+  header .brand small{display:block;color:var(--mut);font-size:11px;font-weight:500;margin-top:1px}
+  header .live{margin-left:6px;display:inline-flex;align-items:center;gap:6px;font-size:11px;color:var(--cyan);
+    border:1px solid rgba(34,211,238,.3);padding:3px 9px;border-radius:20px;background:rgba(34,211,238,.07)}
+  header .live .pulse{width:7px;height:7px;border-radius:50%;background:var(--cyan);box-shadow:0 0 10px var(--cyan);animation:pl 1.6s infinite}
+  @keyframes pl{0%,100%{opacity:1}50%{opacity:.25}}
+  header .actions{margin-left:auto;display:flex;gap:10px;align-items:center}
+  header a.sair,header a.ctrl{font-size:13px;text-decoration:none;border:1px solid var(--bd);padding:7px 13px;border-radius:10px;transition:.15s;color:var(--mut)}
+  header a.ctrl{color:#ff6b8a;border-color:rgba(251,59,109,.35)}
+  header a.sair:hover{color:#fff;border-color:var(--blue)}
 
-  /* Content */
-  main{flex:1;padding:18px 16px 104px}
-  h2.sec{margin:2px 0 14px;font-size:13px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;
+  main{flex:1;padding:20px 16px 108px}
+  h2.sec{margin:4px 0 14px;font-size:12.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;
     color:var(--mut);display:flex;align-items:center;gap:9px}
   h2.sec .dot{width:8px;height:8px;border-radius:50%;box-shadow:0 0 12px currentColor}
+  h2.sec .cnt{margin-left:auto;color:var(--dim);font-weight:600;letter-spacing:.3px}
+  .lead{color:var(--mut);font-size:13px;margin:-8px 0 14px}
 
   .grid{display:grid;gap:12px;min-width:0}
   .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
   .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--bd);
-    border-radius:var(--r);padding:16px 17px;min-width:0;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 24px -18px #000}
-  .kpi .v{font-size:18px;font-weight:750;letter-spacing:-.3px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    border-radius:var(--r);padding:15px 16px;min-width:0;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 12px 30px -22px #000;transition:.16s}
+  .card.hl{border-color:rgba(251,59,109,.4)}
+  .kpi{position:relative;overflow:hidden}
+  .kpi .v{font-size:20px;font-weight:800;letter-spacing:-.4px;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .kpi .l{color:var(--mut);font-size:12px;margin-top:5px}
-  .kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd2);font-size:14px}
+  .kpi .gl{position:absolute;right:-14px;top:-14px;font-size:44px;opacity:.10}
+  .kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bd2);font-size:14px}
   .kv:first-child{padding-top:2px}.kv:last-child{border-bottom:0;padding-bottom:2px}
   .kv .k{color:var(--mut)}.kv b{font-weight:650;color:#fff}
-  .muted{color:var(--mut)} .dim{color:var(--dim);font-size:12px}
-  .right{text-align:right}
+  .muted{color:var(--mut)} .dim{color:var(--dim);font-size:12px} .right{text-align:right}
+  code{font:12px/1.4 ui-monospace,Menlo,monospace;color:#9fd0ff;background:rgba(59,130,246,.08);padding:1px 6px;border-radius:6px}
 
-  table{width:100%;border-collapse:collapse;font-size:14px}
-  thead th{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.4px;text-align:right;padding:0 0 8px;font-weight:600}
+  .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .tag.cyan{background:rgba(34,211,238,.14);color:#7fe6f6} .tag.rose{background:rgba(251,59,109,.15);color:#ff8aa6}
+  .tag.amber{background:rgba(245,179,1,.15);color:#ffd166} .tag.purple{background:rgba(178,92,255,.15);color:#d3a6ff}
+  .tag.green{background:rgba(34,197,94,.15);color:#68e39a} .tag.blue{background:rgba(59,130,246,.15);color:#8fbaff}
+  .sev{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-radius:7px;flex:0 0 auto}
+  .sev.alta{background:rgba(251,59,109,.16);color:#ff8aa6}.sev.media{background:rgba(245,179,1,.16);color:#ffd166}.sev.baixa{background:rgba(147,161,192,.16);color:#b6c2de}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  thead th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;text-align:right;padding:0 0 8px;font-weight:700}
   thead th:first-child{text-align:left}
-  tbody td{padding:9px 0;border-bottom:1px solid var(--bd2);text-align:right}
-  tbody td:first-child{text-align:left;color:var(--mut)}
+  tbody td{padding:9px 0;border-bottom:1px solid var(--bd2);text-align:right;vertical-align:top}
+  tbody td:first-child{text-align:left;color:var(--tx)}
   tbody tr:last-child td{border-bottom:0}
 
-  .pill{font-size:11px;font-weight:650;padding:3px 9px;border-radius:20px;white-space:nowrap}
-  .pill.on{background:rgba(34,197,94,.15);color:#5cd98a}
-  .pill.off{background:rgba(244,63,94,.15);color:#fb8aa0}
-  .sev{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-radius:7px;flex:0 0 auto}
-  .sev.alta{background:rgba(244,63,94,.16);color:#fb8aa0}
-  .sev.media{background:rgba(234,179,8,.16);color:#f3cf6a}
-  .sev.baixa{background:rgba(138,151,179,.16);color:#aeb9d6}
-
-  pre{white-space:pre-wrap;word-break:break-word;font:12px/1.5 ui-monospace,Menlo,monospace;color:#aeb9d6;margin:0;
-    background:#0a1124;border:1px solid var(--bd2);border-radius:11px;padding:11px 12px;max-height:150px;overflow:auto}
+  .barw{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+  .barw .row{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px}
+  .barw .lab{color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .barw .track{grid-column:1/-1;height:8px;background:#0a1327;border-radius:6px;overflow:hidden;border:1px solid var(--bd2)}
+  .barw .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--cyan),var(--purple));box-shadow:0 0 12px -2px var(--cyan)}
 
   .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
-  .btn{flex:1;min-width:96px;border:0;border-radius:11px;padding:11px 12px;font-size:13px;font-weight:650;
-    cursor:pointer;color:#fff;transition:.12s;display:flex;align-items:center;justify-content:center;gap:6px}
+  .btn{flex:1;min-width:96px;border:0;border-radius:11px;padding:11px 12px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;transition:.12s;display:flex;align-items:center;justify-content:center;gap:6px}
   .btn:active{transform:scale(.97)}
-  .btn.red{background:#b9442f}.btn.green{background:#1f9d57}
-  .btn.ghost{background:#1b2440;border:1px solid var(--bd)}
+  .btn.red{background:#c53a52}.btn.green{background:#1f9d57}.btn.ghost{background:#16203b;border:1px solid var(--bd)}
+  .btn.cyan{background:linear-gradient(90deg,#0e7490,#22d3ee);color:#04222b}
   .lnks{display:flex;flex-direction:column;gap:9px}
-  .lnk{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--tx);
-    background:#10182f;border:1px solid var(--bd);border-radius:12px;padding:13px 14px;transition:.12s}
-  .lnk:active{transform:scale(.99)} .lnk:hover{border-color:var(--blue)}
-  .lnk .ic{font-size:18px;width:24px;text-align:center} .lnk .ar{margin-left:auto;color:var(--dim)}
-  .lnk .t{font-weight:600} .lnk .d{color:var(--mut);font-size:12px;margin-top:1px}
+  .lnk{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--tx);background:#0f1830;border:1px solid var(--bd);border-radius:12px;padding:12px 14px;transition:.12s}
+  .lnk:hover{border-color:var(--cyan);transform:translateX(2px)}
+  .lnk .ic{font-size:18px;width:24px;text-align:center}.lnk .ar{margin-left:auto;color:var(--dim)}
+  .lnk .t{font-weight:650}.lnk .d{color:var(--mut);font-size:12px;margin-top:1px}
 
-  input{width:100%;padding:11px 12px;border-radius:11px;border:1px solid var(--bd);background:#0a1124;color:var(--tx);font-size:14px}
-  input::placeholder{color:var(--dim)}
+  input{width:100%;padding:11px 12px;border-radius:11px;border:1px solid var(--bd);background:#0a1327;color:var(--tx);font-size:14px}
+  input::placeholder{color:var(--dim)} input:focus{outline:0;border-color:var(--cyan)}
   label.fld{display:block;color:var(--mut);font-size:12px;margin:0 0 6px}
+  .search{position:relative;margin-bottom:12px}
+  .search input{padding-left:36px} .search .mag{position:absolute;left:12px;top:11px;color:var(--dim)}
 
-  .skel{color:var(--dim);font-size:13px;padding:6px 0}
+  pre{white-space:pre-wrap;word-break:break-word;font:12px/1.5 ui-monospace,Menlo,monospace;color:#b6c2de;margin:0;background:#081124;border:1px solid var(--bd2);border-radius:11px;padding:11px 12px;max-height:180px;overflow:auto}
+  .skel{color:var(--dim);font-size:13px;padding:18px 0;text-align:center}
+  .skel .sp{display:inline-block;width:16px;height:16px;border:2px solid var(--bd);border-top-color:var(--cyan);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:8px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .warn{display:flex;gap:10px;align-items:center;background:rgba(245,179,1,.09);border:1px solid rgba(245,179,1,.32);border-radius:12px;padding:11px 13px;color:#ffd166;font-size:13px;margin-bottom:12px}
+  .note{background:rgba(147,161,192,.06);border:1px dashed var(--bd);border-radius:11px;padding:10px 12px;color:var(--mut);font-size:12px;margin-top:12px}
+  .exp{cursor:pointer} .exp .objs{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd2)}
+  .exp.open .objs{display:block;animation:f .2s ease}
+  .obj{font-size:12.5px;color:var(--mut);padding:5px 0;border-bottom:1px solid var(--bd2)}
+  .obj:last-child{border-bottom:0}
+  .chev{transition:.18s;display:inline-block} .exp.open .chev{transform:rotate(90deg)}
 
-  /* Bottom tab bar */
-  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
-    background:rgba(11,16,32,.86);backdrop-filter:blur(16px);border-top:1px solid var(--bd2);
-    padding:6px 6px calc(6px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto}
-  nav.tabs button{flex:1;background:none;border:0;color:var(--dim);cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px 5px;font:inherit;transition:.12s;border-radius:12px}
-  nav.tabs button .ti{font-size:20px;line-height:1}
-  nav.tabs button .tl{font-size:10.5px;font-weight:600;letter-spacing:.2px}
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;overflow-x:auto;scrollbar-width:none;
+    background:var(--glass);backdrop-filter:blur(18px);border-top:1px solid var(--bd2);padding:6px 6px calc(6px + env(safe-area-inset-bottom));max-width:1140px;margin:0 auto}
+  nav.tabs::-webkit-scrollbar{display:none}
+  nav.tabs button{flex:1 0 auto;min-width:60px;background:none;border:0;color:var(--dim);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 8px 5px;font:inherit;transition:.12s;border-radius:12px}
+  nav.tabs button .ti{font-size:19px;line-height:1}
+  nav.tabs button .tl{font-size:10px;font-weight:700;letter-spacing:.2px}
   nav.tabs button.on{color:#fff}
-  nav.tabs button.on .ti{filter:drop-shadow(0 0 9px var(--blue))}
-  nav.tabs button.on .tl{color:var(--blue)}
-  nav.tabs button:active{transform:scale(.92)}
+  nav.tabs button.on .ti{filter:drop-shadow(0 0 9px var(--cyan))}
+  nav.tabs button.on .tl{color:var(--cyan)}
+  nav.tabs button:active{transform:scale(.9)}
+  .fade{animation:f .24s ease}@keyframes f{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 
-  .fade{animation:f .22s ease}@keyframes f{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-
-  /* Callout de alerta operacional (ex.: coleta SIAFE com erro) */
-  .warn{display:flex;gap:10px;align-items:center;background:rgba(234,179,8,.10);border:1px solid rgba(234,179,8,.35);
-    border-radius:12px;padding:11px 13px;color:#f3cf6a;font-size:13px;margin-bottom:12px}
-  .warn b{color:#ffe08a}
-  /* mini-barras SVG inline (sem libs) */
-  .bars{display:flex;flex-direction:column;gap:8px;margin-top:4px}
-  .bar{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;font-size:13px}
-  .bar .lab{color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .bar .track{height:9px;background:#0a1124;border-radius:6px;overflow:hidden;border:1px solid var(--bd2)}
-  .bar .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--blue),var(--purple))}
-  .bar .val{color:#fff;font-weight:650;white-space:nowrap}
-
-  /* Desktop: preenche a tela em vez de coluna estreita com vazio */
-  @media (min-width:760px){
-    .wrap{max-width:1080px}
-    nav.tabs{max-width:1080px}
-    main{padding:24px 28px 112px}
+  @media (min-width:820px){
+    main{padding:26px 30px 116px}
     .g2{grid-template-columns:repeat(4,minmax(0,1fr))}
-    .grid:not(.g2){grid-template-columns:repeat(2,minmax(0,1fr))}
-    .kpi .v{font-size:22px}
+    .grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .kpi .v{font-size:24px}
     .span2{grid-column:1 / -1}
   }
 </style>
@@ -132,295 +134,301 @@
 <body>
 <div class="wrap">
   <header>
-    <div class="brand"><span class="lg">🛰️</span><div>JFN<small id="hsub">auditoria · Estado do RJ</small></div></div>
-    <span style="margin-left:auto;display:flex;gap:12px;align-items:center">
-      <a href="/controle" style="color:#e5484d;font-weight:600;text-decoration:none;font-size:13px">🛡️ Controle</a>
-      <a class="sair" href="/logout_jfn">Sair</a></span>
+    <div class="brand"><span class="lg">🛰️</span><div>JFN<small id="hsub">Central de Inteligência · RJ</small></div></div>
+    <span class="live"><span class="pulse"></span>ao vivo</span>
+    <span class="actions"><a class="ctrl" href="/controle">🛡️ Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
   </header>
-  <main id="view"><div class="skel">Carregando…</div></main>
+  <main id="view"><div class="skel"><span class="sp"></span>Carregando inteligência…</div></main>
   <nav class="tabs" id="tabs"></nav>
 </div>
 
 <script>
-const $ = (id)=>document.getElementById(id);
-const fmtN = n => (n==null?'—':Number(n).toLocaleString('pt-BR'));
-const fmtR = v => 'R$ '+(v==null?'0,00':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));
-const fmtRc = v => { v=Number(v||0); const a=Math.abs(v);
-  if(a>=1e9) return 'R$ '+(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1})+' bi';
-  if(a>=1e6) return 'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';
-  if(a>=1e3) return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil';
-  return fmtR(v); };
-const pct = x => (x==null?'—':(x*100).toFixed(1)+'%');
-async function J(ep,opt){ try{ const r=await fetch(ep,opt); return await r.json(); }catch(e){ return {erro:String(e)}; } }
-const card = (h)=>`<div class="card">${h}</div>`;
-const kpi = (v,l,cor)=>`<div class="card kpi"><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div><div class="l">${l}</div></div>`;
-const sec = (dot,t)=>`<h2 class="sec"><span class="dot" style="color:${dot};background:${dot}"></span>${t}</h2>`;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtN=n=>(n==null?'—':Number(n).toLocaleString('pt-BR'));
+const fmtR=v=>'R$ '+(v==null?'0,00':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));
+const fmtRc=v=>{v=Number(v||0);const a=Math.abs(v);
+  if(a>=1e9)return 'R$ '+(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1})+' bi';
+  if(a>=1e6)return 'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';
+  if(a>=1e3)return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil';return fmtR(v);};
+async function J(ep,opt){try{const r=await fetch(ep,opt);return await r.json();}catch(e){return{erro:String(e)};}}
+const card=(h,cls)=>`<div class="card ${cls||''}">${h}</div>`;
+const kpi=(v,l,cor,gl)=>`<div class="card kpi"><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div><div class="l">${l}</div>${gl?`<span class="gl">${gl}</span>`:''}</div>`;
+const sec=(dot,t,cnt)=>`<h2 class="sec"><span class="dot" style="color:${dot};background:${dot}"></span>${t}${cnt!=null?`<span class="cnt">${cnt}</span>`:''}</h2>`;
+const spin=t=>`<div class="skel"><span class="sp"></span>${t||'Carregando…'}</div>`;
+function toggle(el){el.classList.toggle('open');}
+function filtrar(inp,sel){const q=inp.value.toLowerCase();document.querySelectorAll(sel).forEach(c=>{c.style.display=c.textContent.toLowerCase().includes(q)?'':'none';});}
 
-const TABS = [
-  {id:'geral',  ic:'📊', tl:'Geral',   render:renderGeral},
-  {id:'alertas',ic:'🚨', tl:'Alertas', render:renderAlertas},
-  {id:'siafe',  ic:'💰', tl:'SIAFE',   render:renderSiafe},
-  {id:'sweeps', ic:'🛰️', tl:'Sweeps',  render:renderSweeps},
-  {id:'validar',ic:'🏢', tl:'Validar', render:renderValidar},
-  {id:'mais',   ic:'⋯',  tl:'Mais',    render:renderMais},
+const TABS=[
+  {id:'geral',   ic:'📊', tl:'Geral',    render:renderGeral},
+  {id:'conluio', ic:'🕸️', tl:'Conluio',  render:renderConluio},
+  {id:'poder',   ic:'🏛️', tl:'Poder',    render:renderPoder},
+  {id:'laranjas',ic:'🎭', tl:'Laranjas', render:renderLaranjas},
+  {id:'cartel',  ic:'🔗', tl:'Cartel',   render:renderCartel},
+  {id:'alertas', ic:'🚨', tl:'Alertas',  render:renderAlertas},
+  {id:'siafe',   ic:'💰', tl:'SIAFE',    render:renderSiafe},
+  {id:'sweeps',  ic:'🛰️', tl:'Sweeps',   render:renderSweeps},
+  {id:'validar', ic:'🏢', tl:'Validar',  render:renderValidar},
+  {id:'acoes',   ic:'⚡', tl:'Ações',    render:renderAcoes},
 ];
 let atual='geral';
-const sessaoReports = new Set();   // relatórios gerados nesta sessão → apagados ao sair (efêmeros)
+const sessaoReports=new Set();
 
 function montarTabs(){
-  $('tabs').innerHTML = TABS.map(t=>
-    `<button class="${t.id===atual?'on':''}" onclick="ir('${t.id}')"><span class="ti">${t.ic}</span><span class="tl">${t.tl}</span></button>`).join('');
+  $('tabs').innerHTML=TABS.map(t=>`<button class="${t.id===atual?'on':''}" onclick="ir('${t.id}')"><span class="ti">${t.ic}</span><span class="tl">${t.tl}</span></button>`).join('');
 }
 async function ir(id){
-  atual=id; montarTabs();
-  const v=$('view'); v.innerHTML='<div class="skel">Carregando…</div>';
-  const t=TABS.find(x=>x.id===id);
-  try{
-    const html=await t.render();
-    v.innerHTML=`<div class="fade">${html}</div>`;
-  }catch(e){
-    v.innerHTML=card('<div class="warn">⚠ Falha ao carregar esta aba: '+String(e)+'</div>');
-  }
+  atual=id;montarTabs();
+  const v=$('view');v.innerHTML=spin();
+  try{v.innerHTML=`<div class="fade">${await TABS.find(x=>x.id===id).render()}</div>`;}
+  catch(e){v.innerHTML=card(`<div class="warn">⚠ Falha ao carregar: ${esc(e)}</div>`);}
+  window.scrollTo(0,0);
 }
 
-const barras = (itens)=>{ // itens: [{lab,val,pctw,cor?}]
-  return `<div class="bars">`+itens.map(i=>
-    `<div class="bar"><span class="lab">${i.lab}</span>
-       <span class="track"><span class="fill" style="width:${Math.max(3,Math.min(100,i.pctw))}%${i.cor?`;background:${i.cor}`:''}"></span></span>
-       <span class="val">${i.val}</span></div>`).join('')+`</div>`;
-};
-
+// ── GERAL ──
 async function renderGeral(){
-  const [st,p,c]=await Promise.all([J('/status'),J('/api/compliance/painel'),J('/api/cartel')]);
-  const a=p.alertas||{}, o=p.obs||{};
-  const coletaErro = /erro/i.test(p.ultima_coleta||'');
-  const lst=(p.lista_alertas||[]).slice(0,3);
-  const cart=(c.dados||[]).slice(0,5);
-  const maxShare = Math.max(1, ...cart.map(u=>u.top_share||0));
-  let html = sec('var(--blue)','Visão geral');
-  if(coletaErro) html += `<div class="warn">⚠ <span>Última coleta SIAFE falhou — <b>${p.ultima_coleta}</b>. Dados podem estar defasados.</span></div>`;
-  html += `<div class="grid g2">
-    ${kpi(fmtN(o.total),'Ordens Bancárias')}
-    ${kpi(fmtRc(o.valor_total),'Valor fiscalizado')}
-    ${kpi(fmtN(a.total??0),'Alertas ativos', (a.alta? 'var(--rose)':'#fff'))}
-    ${kpi(st.logged_in?'🟢 ok':'🔴 off','SIAFE · '+(st.exercicio||'—'))}
-    ${kpi(fmtN(a.alta??0),'🔴 Alta', 'var(--rose)')}
-    ${kpi(fmtN(a.media??0),'🟡 Média', 'var(--amber)')}
-    ${kpi(fmtRc(o.valor_hoje??0),'Pago hoje')}
+  const [st,p,cj]=await Promise.all([J('/status'),J('/api/compliance/painel'),J('/api/pncp/conluio').catch(()=>({}))]);
+  const a=p.alertas||{},o=p.obs||{};
+  const coletaErro=/erro/i.test(p.ultima_coleta||'');
+  const nrod=(cj.rodizio_vencedores||[]).length,ncap=(cj.captura||[]).length;
+  let html=sec('var(--cyan)','Panorama de fiscalização');
+  if(coletaErro)html+=`<div class="warn">⚠ Última coleta SIAFE falhou — <b>${esc(p.ultima_coleta)}</b>. Dados podem estar defasados.</div>`;
+  html+=`<div class="grid g2">
+    ${kpi(fmtN(o.total),'Ordens Bancárias',null,'💳')}
+    ${kpi(fmtRc(o.valor_total),'Valor fiscalizado',null,'💰')}
+    ${kpi(fmtN(a.total??0),'Alertas ativos',(a.alta?'var(--rose)':'#fff'),'🚨')}
+    ${kpi((ncap+nrod),'Indícios de conluio','var(--purple)','🕸️')}
+    ${kpi(fmtN(a.alta??0),'🔴 Alta','var(--rose)')}
+    ${kpi(fmtN(a.media??0),'🟡 Média','var(--amber)')}
+    ${kpi(st.logged_in?'🟢 ok':'🔴 off','SIAFE · '+esc(st.exercicio||'—'))}
     ${kpi(fmtN(o.hoje??0),'OBs hoje')}
   </div>`;
-  if(lst.length){
-    html += `<div style="height:16px"></div>`+sec('var(--rose)','Alertas recentes')+
-      `<div class="grid">`+lst.map(al=>card(
-        `<div style="display:flex;gap:11px;align-items:flex-start">
-           <span class="sev ${al.severidade||'baixa'}">${al.severidade||'—'}</span>
-           <div><div style="font-weight:650">${al.titulo||al.tipo||'Alerta'}</div></div>
-         </div>`)).join('')+`</div>`;
-  }
-  if(cart.length){
-    html += `<div style="height:16px"></div>`+sec('var(--purple)','Maior concentração de fornecedor (top share por UG)')+
-      card(barras(cart.map(u=>({lab:`${(u.ug_nome||u.ug||'').slice(0,22)}`, val:`${u.top_share}%`,
-        pctw:(u.top_share/maxShare)*100, cor:u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':null}))));
-  }
-  html += `<div style="height:16px"></div>`+
-    card(`<div class="kv"><span class="k">Última atualização</span><b>${p.atualizado||'—'}</b></div>
-          <div class="kv"><span class="k">Última coleta</span><b style="${coletaErro?'color:#f3cf6a':''}">${p.ultima_coleta||'—'}</b></div>`);
+  html+=`<div style="height:16px"></div>`+sec('var(--purple)','Atalhos de inteligência');
+  html+=`<div class="grid two">
+    ${card(`<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:700">🕸️ Conluio em licitações</div><div class="muted" style="font-size:13px">Rodízio e captura (PNCP)</div></div><span class="tag purple">${ncap+nrod}</span></div><div class="btns"><button class="btn cyan" onclick="ir('conluio')">Abrir</button></div>`)}
+    ${card(`<div style="display:flex;justify-content:space-between;align-items:center"><div><div style="font-weight:700">🏛️ Nomeados × candidatos</div><div class="muted" style="font-size:13px">Servidor que foi à urna</div></div><span class="tag amber">poder</span></div><div class="btns"><button class="btn ghost" onclick="ir('poder')">Abrir</button></div>`)}
+  </div>`;
+  html+=`<div style="height:14px"></div>`+card(`<div class="kv"><span class="k">Última atualização</span><b>${esc(p.atualizado||'—')}</b></div><div class="kv"><span class="k">Última coleta SIAFE</span><b style="${coletaErro?'color:#ffd166':''}">${esc(p.ultima_coleta||'—')}</b></div>`);
   return html;
 }
 
-async function renderAlertas(){
-  const p=await J('/api/compliance/painel');
-  const lst=p.lista_alertas||[];
-  if(!lst.length) return sec('var(--green)','Auditoria')+card('<div class="muted">Sem alertas no momento. 🟢</div>');
-  return sec('var(--rose)','Auditoria · alertas')+
-    `<div class="grid">`+lst.map(al=>card(
-      `<div style="display:flex;gap:11px;align-items:flex-start">
-         <span class="sev ${al.severidade||'baixa'}">${al.severidade||'—'}</span>
-         <div><div style="font-weight:650">${al.titulo||al.tipo||'Alerta'}</div>
-         ${al.descricao?`<div class="muted" style="font-size:13px;margin-top:3px">${al.descricao}</div>`:''}</div>
-       </div>`)).join('')+`</div>`;
+// ── CONLUIO (PNCP) ──
+async function renderConluio(){
+  const d=await J('/api/pncp/conluio');
+  if(!d.ok)return sec('var(--rose)','Conluio')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const cov=d.cobertura||{},cap=d.captura||[],rod=d.rodizio_vencedores||[];
+  let html=sec('var(--purple)','Conluio em licitações · PNCP',cap.length+rod.length);
+  html+=`<div class="lead">Vencedor homologado de cada item, direto do PNCP. <b>Captura</b> = um fornecedor domina o órgão; <b>rodízio</b> = poucos se revezam. Toque num card para ver os objetos.</div>`;
+  html+=`<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado),'Certames c/ resultado',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos',null,'🏢')}${kpi(cap.length,'Capturas','var(--rose)')}${kpi(rod.length,'Rodízios','var(--amber)')}</div>`;
+
+  if(cap.length){
+    html+=`<div style="height:16px"></div>`+sec('var(--rose)','Captura de órgão (≥80% das vitórias)',cap.length);
+    html+=`<div class="grid">`+cap.map(c=>card(
+      `<div class="exp" onclick="toggle(this)">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+          <div style="min-width:0"><div style="font-weight:700">${esc(c.orgao_nome)}</div>
+          <div class="muted" style="font-size:13px;margin-top:2px">venceu: <b style="color:#fff">${esc(c.nome)}</b></div>
+          <div class="dim" style="margin-top:2px">${esc(c.fornecedor_cnpj_fmt)}</div></div>
+          <div class="right"><div style="font-weight:800;color:var(--rose);font-size:19px">${Math.round(c.share*100)}%</div><div class="dim">${c.certames} certames</div></div>
+        </div>
+        <div class="objs">${(c.objetos||[]).map(o=>`<div class="obj">📦 ${esc(o)}</div>`).join('')||'<div class="dim">sem objeto</div>'}</div>
+        <div class="dim" style="margin-top:8px"><span class="chev">▸</span> objetos comprados</div>
+      </div>`,'hl')).join('')+`</div>`;
+  }
+  if(rod.length){
+    html+=`<div style="height:16px"></div>`+sec('var(--amber)','Rodízio de vencedores (poucos se revezam)',rod.length);
+    html+=`<div class="grid">`+rod.map(r=>card(
+      `<div class="exp" onclick="toggle(this)">
+        <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+          <div style="min-width:0"><div style="font-weight:700">${esc(r.orgao_nome)}</div>
+          <div class="muted" style="font-size:13px;margin-top:2px">${r.certames} certames · cobertura ${Math.round(r.cobertura_grupo*100)}%</div></div>
+          <span class="tag amber">${(r.membros_nome||[]).length} players</span>
+        </div>
+        <table style="margin-top:10px"><tbody>${(r.membros_nome||[]).map(m=>`<tr><td>${esc(m.nome)}<div class="dim">${esc(m.cnpj)}</div></td><td><b>${m.vitorias}</b> <span class="dim">vit.</span></td></tr>`).join('')}</tbody></table>
+        <div class="objs">${(r.objetos||[]).map(o=>`<div class="obj">📦 ${esc(o)}</div>`).join('')||'<div class="dim">sem objeto</div>'}</div>
+        <div class="dim" style="margin-top:8px"><span class="chev">▸</span> objetos do órgão</div>
+      </div>`)).join('')+`</div>`;
+  }
+  if(!cap.length&&!rod.length)html+=card('<div class="muted">Nenhum padrão de conluio com o volume atual. A base cresce a cada coleta do PNCP. 🟢</div>');
+  html+=`<div class="note">${esc(d.aviso||'')}</div>`;
+  return html;
 }
 
+// ── PODER (nomeados × candidatos) ──
+async function renderPoder(){
+  const d=await J('/api/poder/nomeados_candidatos');
+  if(!d.ok)return sec('var(--amber)','Poder')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const it=d.itens||[];
+  let html=sec('var(--amber)','Nomeados × candidatos',it.length);
+  html+=`<div class="lead">Servidor público (na folha) que também foi <b>candidato</b> a cargo eletivo — sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo).</div>`;
+  html+=`<div class="grid g2">${kpi(it.length,'Cruzamentos',null,'🏛️')}${kpi(d.n_comissionados,'Comissionados','var(--rose)','🎖️')}</div>`;
+  html+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, cargo, partido…" oninput="filtrar(this,'#poder-list .card')"></div>`;
+  html+=`<div id="poder-list" class="grid">`+it.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+       <div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div>
+       <div class="muted" style="font-size:13px;margin-top:2px">${esc(x.orgao||'—')} · ${esc(x.cargo_folha||'—')}</div></div>
+       ${x.comissionado?'<span class="tag rose">comissão</span>':'<span class="tag blue">efetivo</span>'}
+     </div>
+     <div class="kv" style="margin-top:8px"><span class="k">Disputou</span><b>${esc(x.cargo_disputado||'—')} · ${esc(x.partido||'—')} · ${esc(x.ano||'—')}</b></div>`)).join('')+`</div>`;
+  html+=`<div class="note">${esc(d.aviso||'')}</div>`;
+  return html;
+}
+
+// ── LARANJAS (benefícios) ──
+async function renderLaranjas(){
+  const d=await J('/api/laranjas');
+  if(!d.ok)return sec('var(--rose)','Laranjas')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const it=d.itens||[];
+  let html=sec('var(--rose)','Laranjas — sócio que recebe benefício',it.length);
+  html+=`<div class="lead">Sócio de empresa que <b>recebe do Estado</b> e ao mesmo tempo <b>recebe benefício social</b> de subsistência — indício clássico de interposição (art. 337-F CP).</div>`;
+  if(!it.length)return html+card('<div class="muted">Nenhum sócio-beneficiário confirmado na base atual. A resolução de CPF×benefício é conservadora (evita falso-positivo por homônimo). 🟢</div>')+`<div class="note">${esc(d.aviso||'')}</div>`;
+  html+=`<div class="grid">`+it.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+       <div><div style="font-weight:700">${esc(x.socio||'—')}</div><div class="dim">${esc(x.cpf||'')}</div></div>
+       <span class="tag rose">laranja?</span></div>
+     <div class="kv" style="margin-top:6px"><span class="k">Benefícios</span><b>${(x.beneficios||[]).map(esc).join(', ')||'—'}</b></div>
+     ${x.motivo?`<div class="muted" style="font-size:12.5px;margin-top:4px">${esc(x.motivo)}</div>`:''}`,'hl')).join('')+`</div>`;
+  html+=`<div class="note">${esc(d.aviso||'')}</div>`;
+  return html;
+}
+
+// ── CARTEL (concentração SIAFE) ──
+async function renderCartel(){
+  const c=await J('/api/cartel');
+  const d=(c.dados||[]).slice(0,20);
+  let html=sec('var(--purple)','Cartel & concentração · SIAFE',d.length);
+  html+=`<div class="lead">Órgãos onde um fornecedor concentra a maior fatia do valor pago (top share por UG). Complementa o conluio do PNCP com o lado do pagamento.</div>`;
+  if(!d.length)return html+card('<div class="muted">Sem dados de concentração.</div>');
+  const maxS=Math.max(1,...d.map(u=>u.top_share||0));
+  html+=card(`<div class="barw">`+d.slice(0,10).map(u=>{const cor=u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':null;
+    return `<div><div class="row"><span class="lab">${esc((u.ug_nome||u.ug||'').slice(0,34))}</span><span style="font-weight:700;color:${cor||'#fff'}">${u.top_share}%</span></div><div class="track"><span class="fill" style="width:${Math.max(4,(u.top_share/maxS)*100)}%${cor?`;background:${cor};box-shadow:0 0 12px -2px ${cor}`:''}"></span></div></div>`;}).join('')+`</div>`);
+  html+=`<div style="height:14px"></div><div class="grid">`+d.map(u=>card(
+    `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+       <div style="min-width:0"><div style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.ug_nome||'')} <span class="dim">(${esc(u.ug||'')})</span></div>
+       <div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.n_fornecedores} fornec. · top: ${esc(u.top_fornecedor||'—')}</div></div>
+       <div class="right"><div style="font-weight:800;color:${u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':'#fff'}">${u.top_share}%</div><div class="dim">${fmtRc(u.total)}</div></div>
+     </div>`)).join('')+`</div>`;
+  return html;
+}
+
+// ── ALERTAS ──
+async function renderAlertas(){
+  const p=await J('/api/compliance/painel');const lst=p.lista_alertas||[];
+  if(!lst.length)return sec('var(--green)','Auditoria')+card('<div class="muted">Sem alertas no momento. 🟢</div>');
+  return sec('var(--rose)','Auditoria · alertas',lst.length)+`<div class="grid">`+lst.map(al=>card(
+    `<div style="display:flex;gap:11px;align-items:flex-start"><span class="sev ${al.severidade||'baixa'}">${esc(al.severidade||'—')}</span>
+     <div><div style="font-weight:650">${esc(al.titulo||al.tipo||'Alerta')}</div>${al.descricao?`<div class="muted" style="font-size:13px;margin-top:3px">${esc(al.descricao)}</div>`:''}</div></div>`)).join('')+`</div>`;
+}
+
+// ── SIAFE ──
 async function renderSiafe(){
   const s=await J('/api/siafe/stats');
-  if(!s.ok) return sec('var(--amber)','SIAFE')+card('<div class="muted">SIAFE indisponível.</div>');
-  const linhas=(s.por_ano||[]).filter(x=>x.valor>0)
-    .map(x=>`<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join('');
-  return sec('var(--amber)','SIAFE · ordens bancárias')+
-   `<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas')}${kpi(fmtRc(s.valor_total),'Valor total')}</div>
-    <div style="height:12px"></div>
-    ${card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`)}`;
+  if(!s.ok)return sec('var(--amber)','SIAFE')+card('<div class="muted">SIAFE indisponível.</div>');
+  const linhas=(s.por_ano||[]).filter(x=>x.valor>0).map(x=>`<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join('');
+  return sec('var(--amber)','SIAFE · ordens bancárias')+`<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas')}${kpi(fmtRc(s.valor_total),'Valor total')}</div><div style="height:12px"></div>`+
+    card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
 }
 
+// ── SWEEPS ──
 async function renderSweeps(){
-  const [d,slo]=await Promise.all([J('/api/sweeps/status'),J('/api/pipelines').catch(()=>null)]);
-  const pausado=d.pausado;
-  const badge=pausado?'<span class="pill off">pausado</span>'
-    :(d.sei?.rodando?'<span class="pill on">rodando</span>':'<span class="pill on">agendado</span>');
-  return sec('var(--blue)','Sweeps SEI / SIAFE')+
-   card(`<div class="kv"><span class="k">Estado ${badge}</span><b>${pausado?'pausado':'ativo'}</b></div>
+  const d=await J('/api/sweeps/status');
+  const badge=d.pausado?'<span class="tag rose">pausado</span>':(d.sei?.rodando?'<span class="tag green">rodando</span>':'<span class="tag green">agendado</span>');
+  return sec('var(--cyan)','Sweeps SEI / SIAFE')+
+   card(`<div class="kv"><span class="k">Estado ${badge}</span><b>${d.pausado?'pausado':'ativo'}</b></div>
          <div class="kv"><span class="k">SEI — processos lidos</span><b>${fmtN(d.sei?.feitos)}</b></div>
          <div class="kv"><span class="k">SIAFE 2 — OBs orçamentárias</span><b>${fmtN(d.siafe?.ob_orcamentaria)}</b></div>`)+
-   (d.sei?.ultima?`<div style="height:12px"></div><pre>${(d.sei.ultima||'').replace(/\*\*/g,'')}</pre>`:'')+
-   (slo&&slo.ok?`<div style="height:12px"></div>`+sec(slo.ruins.length?'var(--red)':'var(--green)','SLO de frescor — '+(slo.ruins.length?slo.ruins.length+' etapa(s) STALE':slo.total+'/'+slo.total+' frescos'))+
-     card(`<table><thead><tr><th>Etapa</th><th>Grupo</th><th>Idade</th><th>SLO</th></tr></thead><tbody>${
-       slo.itens.map(i=>`<tr><td>${{ok:'✅',pausado:'⏸',stale:'🔴',ausente:'⚠️'}[i.status]||'❔'} ${i.nome}</td><td class="muted">${i.grupo}</td><td>${i.idade_h==null?'—':i.idade_h+'h'}</td><td class="muted">${i.slo_h}h</td></tr>`).join('')
-     }</tbody></table>`):'')+
-   `<div class="btns">
-      <button class="btn red" onclick="sweep('pausar')">⏸ Pausar</button>
-      <button class="btn green" onclick="sweep('retomar')">▶ Retomar</button>
-      <button class="btn ghost" onclick="ir('sweeps')">↻ Atualizar</button>
-    </div>`;
+   (d.sei?.ultima?`<div style="height:12px"></div><pre>${esc((d.sei.ultima||'').replace(/\*\*/g,''))}</pre>`:'')+
+   `<div class="btns"><button class="btn red" onclick="sweep('pausar')">⏸ Pausar</button><button class="btn green" onclick="sweep('retomar')">▶ Retomar</button><button class="btn ghost" onclick="ir('sweeps')">↻ Atualizar</button></div>`;
 }
-async function sweep(acao){
-  if(acao==='pausar' && !confirm('Pausar TODOS os sweeps?')) return;
-  await J('/api/sweeps/'+acao,{method:'POST'});
-  setTimeout(()=>ir('sweeps'),500);
-}
+async function sweep(a){if(a==='pausar'&&!confirm('Pausar TODOS os sweeps?'))return;await J('/api/sweeps/'+a,{method:'POST'});setTimeout(()=>ir('sweeps'),500);}
 
-// ── Validador de fachada (revisão humana 1-a-1) ──
-let _valLista=[], _valIdx=0;
+// ── VALIDAR (fachada) ──
+let _valLista=[],_valIdx=0;
 async function renderValidar(){
-  const d=await J('/api/fachada/revisar?limite=200');
-  _valLista=(d&&d.fachadas)||[]; _valIdx=0;
-  return sec('var(--rose)','Validador de fachada')+
-    `<div class="muted" style="font-size:13px;margin:-6px 0 12px">${_valLista.length} fachada(s) flagrada(s) p/ revisar. Veja o Street View, decida, e a base atualiza.</div>`+
-    `<div id="val-card">${_valCard()}</div>`;
+  const d=await J('/api/fachada/revisar?limite=200');_valLista=(d&&d.fachadas)||[];_valIdx=0;
+  return sec('var(--rose)','Validador de fachada',_valLista.length)+
+    `<div class="lead">Fachadas flagradas p/ revisão humana. Veja o Street View, decida, e a base atualiza.</div><div id="val-card">${_valCard()}</div>`;
 }
 function _valCard(){
-  if(_valIdx>=_valLista.length) return card('<div class="muted">✅ Tudo revisado nesta sessão. Recarregue a aba p/ buscar mais.</div>');
+  if(_valIdx>=_valLista.length)return card('<div class="muted">✅ Tudo revisado nesta sessão. Recarregue a aba p/ mais.</div>');
   const f=_valLista[_valIdx];
   const maps=(f.geo_lat&&f.geo_lon)?`https://www.google.com/maps/@${f.geo_lat},${f.geo_lon},19z`:`https://www.google.com/maps/search/${encodeURIComponent((f.endereco||'')+', '+(f.municipio||''))}`;
   const sv=(f.geo_lat&&f.geo_lon)?`https://www.google.com/maps?layer=c&cbll=${f.geo_lat},${f.geo_lon}`:maps;
-  const motivo=f.nivel==='SEM_GOOGLE'?'Sem marcação no Google':f.nivel==='FECHADO_GOOGLE'?'Fechado permanentemente no Google':'Revisar fachada';
-  return card(
-    `<div class="dim">${_valIdx+1} de ${_valLista.length}</div>
-     <div style="font-weight:700;font-size:16px;margin:4px 0">${f.razao||f.cnpj}</div>
-     <div class="kv"><span class="k">Motivo do flag</span><b style="color:var(--rose)">${motivo}</b></div>
+  const motivo=f.nivel==='SEM_GOOGLE'?'Sem marcação no Google':f.nivel==='FECHADO_GOOGLE'?'Fechado no Google':'Revisar fachada';
+  return card(`<div class="dim">${_valIdx+1} de ${_valLista.length}</div>
+     <div style="font-weight:700;font-size:16px;margin:4px 0">${esc(f.razao||f.cnpj)}</div>
+     <div class="kv"><span class="k">Motivo</span><b style="color:var(--rose)">${esc(motivo)}</b></div>
      <div class="kv"><span class="k">Recebido do Estado</span><b>${fmtR(f.total_recebido)}</b></div>
-     <div class="kv"><span class="k">Endereço</span><b class="right" style="max-width:60%">${f.endereco||'—'}, ${f.municipio||''}/${f.uf||''}</b></div>
-     <div class="kv"><span class="k">CNPJ</span><b>${f.cnpj}</b></div>
+     <div class="kv"><span class="k">Endereço</span><b class="right" style="max-width:60%">${esc(f.endereco||'—')}, ${esc(f.municipio||'')}/${esc(f.uf||'')}</b></div>
+     <div class="kv"><span class="k">CNPJ</span><b>${esc(f.cnpj)}</b></div>
      <div class="btns"><a class="btn ghost" href="${sv}" target="_blank">🛰️ Street View</a><a class="btn ghost" href="${maps}" target="_blank">🗺️ Maps</a></div>
      <input id="val-nota" placeholder="nota p/ o Claude (opcional)" style="margin-top:10px">
-     <div class="btns" style="margin-top:8px">
-       <button class="btn red" onclick="validar('suspeito')">🔴 Suspeito</button>
-       <button class="btn green" onclick="validar('ok')">🟢 Legítima</button>
-       <button class="btn ghost" onclick="validar('mais_info')">❓ Mais info</button>
-     </div>`);
+     <div class="btns" style="margin-top:8px"><button class="btn red" onclick="validar('suspeito')">🔴 Suspeito</button><button class="btn green" onclick="validar('ok')">🟢 Legítima</button><button class="btn ghost" onclick="validar('mais_info')">❓ Mais info</button></div>`);
 }
-async function validar(v){
-  const f=_valLista[_valIdx]; if(!f) return;
-  const nota=($('val-nota')||{}).value||'';
+async function validar(v){const f=_valLista[_valIdx];if(!f)return;const nota=($('val-nota')||{}).value||'';
   await J('/api/fachada/veredito',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cnpj:f.cnpj,veredito:v,nota})});
-  _valIdx++;
-  const el=$('val-card'); if(el) el.innerHTML=_valCard();
-}
+  _valIdx++;const el=$('val-card');if(el)el.innerHTML=_valCard();}
 
-async function renderMais(){
-  const [c,y,reps]=await Promise.all([J('/api/cartel'),J('/api/hermes/estado'),J('/api/compliance/reports')]);
-  const d=(c.dados||[]).slice(0,8);
-  const cartel = d.length? d.map(u=>card(
-     `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
-        <div style="min-width:0"><div style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.ug_nome} <span class="dim">(${u.ug})</span></div>
-        <div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.n_fornecedores} fornec. · top: ${u.top_fornecedor||'—'}</div></div>
-        <div class="right"><div style="font-weight:750;color:${u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':'#fff'}">${u.top_share}%</div><div class="dim">${fmtR(u.total)}</div></div>
-      </div>`)).join('') : card('<div class="muted">Sem dados de concentração.</div>');
-
+// ── AÇÕES ──
+async function renderAcoes(){
+  const reps=await J('/api/compliance/reports');
   const pdfs=((reps&&reps.length?reps:[])||[]).filter(x=>x.type==='pdf').slice(0,12);
-  const repsHtml = pdfs.length
-    ? `<div class="lnks">`+pdfs.map(f=>`<a class="lnk" href="${f.url}" target="_blank"><span class="ic">📄</span><div><div class="t">${f.name}</div></div><span class="ar">→</span></a>`).join('')+`</div>`
-    : card('<div class="muted">Nenhum relatório gerado ainda.</div>');
-
-  return sec('var(--purple)','Cartel & concentração')+`<div class="grid">${cartel}</div>`+
-   `<div style="height:18px"></div>`+sec('var(--purple)','Yoda / Hermes')+
-   card(`<div class="kv"><span class="k">Missão</span><b class="right" style="max-width:62%">${y.missao||'—'}</b></div>
-         <div class="kv"><span class="k">OBs na base</span><b>${fmtN(y.n_obs)}</b></div>
-         <div class="kv"><span class="k">Alertas</span><b>${fmtN(y.n_alertas)}</b></div>
-         <div class="kv"><span class="k">LLM / Chrome</span><b>${y.llm_ok?'🟢':'🔴'} / ${y.chrome_9222?'🟢':'🔴'}</b></div>`)+
-   `<div style="height:18px"></div>`+sec('var(--blue)','Relatórios gerados')+repsHtml+`<div style="height:18px"></div>`+
-   `<div style="height:18px"></div>`+sec('var(--amber)','Ações & atalhos')+
-   `<div class="lnks">
-      <a class="lnk" href="/auditoria"><span class="ic">📊</span><div><div class="t">Painel de Auditoria</div><div class="d">KPIs, OBs, favorecidos (clássico)</div></div><span class="ar">→</span></a>
+  const repsHtml=pdfs.length?`<div class="lnks">`+pdfs.map(f=>`<a class="lnk" href="${f.url}" target="_blank"><span class="ic">📄</span><div><div class="t">${esc(f.name)}</div></div><span class="ar">→</span></a>`).join('')+`</div>`:card('<div class="muted">Nenhum relatório gerado ainda.</div>');
+  return sec('var(--cyan)','Gerar relatório')+
+    card(`<label class="fld">Relatório de fornecedor (+ Lex forense)</label>
+      <div style="display:flex;gap:8px"><input id="ac-emp" placeholder="nome ou CNPJ"><button class="btn cyan" style="flex:0 0 auto;min-width:84px" onclick="acao('relatorio')">Gerar</button></div>
+      <div style="height:11px"></div><label class="fld">Relatório de órgão (+ Lex)</label>
+      <div style="display:flex;gap:8px"><input id="ac-org" placeholder="órgão ou UG (ex: 133100)"><button class="btn cyan" style="flex:0 0 auto;min-width:84px" onclick="acao('orgao')">Gerar</button></div>
+      <div style="height:11px"></div><label class="fld">Dossiê 360</label>
+      <div style="display:flex;gap:8px"><input id="ac-dos" placeholder="nome ou CNPJ do alvo"><button class="btn cyan" style="flex:0 0 auto;min-width:84px" onclick="acao('dossie')">Gerar</button></div>
+      <div style="height:11px"></div><label class="fld">Cruzamento (sócios × OB × SEI × endereço)</label>
+      <div style="display:flex;gap:8px"><input id="ac-cruz" placeholder="CNPJ (14 dígitos)"><button class="btn ghost" style="flex:0 0 auto;min-width:84px" onclick="acao('cruzamento')">Ver</button></div>
+      <pre id="ac-out" style="margin-top:13px;display:none"></pre>`)+
+    `<div style="height:18px"></div>`+sec('var(--purple)','Relatórios gerados')+repsHtml+
+    `<div style="height:18px"></div>`+sec('var(--amber)','Painéis')+
+    `<div class="lnks">
+      <a class="lnk" href="/auditoria"><span class="ic">📊</span><div><div class="t">Painel de Auditoria</div><div class="d">KPIs clássicos</div></div><span class="ar">→</span></a>
       <a class="lnk" href="/graph"><span class="ic">🕸️</span><div><div class="t">Grafo de fraude</div><div class="d">relações entre entes</div></div><span class="ar">→</span></a>
       <a class="lnk" href="/hermes"><span class="ic">🤖</span><div><div class="t">Yoda / Hermes</div><div class="d">chat e relatórios</div></div><span class="ar">→</span></a>
-    </div>
-    <div style="height:18px"></div>
-    ${card(`<label class="fld">Relatório de fornecedor (+ Lex)</label>
-      <div style="display:flex;gap:8px"><input id="ac-emp" placeholder="nome ou CNPJ"><button class="btn red" style="flex:0 0 auto;min-width:84px" onclick="acao('relatorio')">Gerar</button></div>
-      <div style="height:11px"></div>
-      <label class="fld">Relatório de órgão (+ Lex)</label>
-      <div style="display:flex;gap:8px"><input id="ac-org" placeholder="órgão ou UG (ex: 133100)"><button class="btn red" style="flex:0 0 auto;min-width:84px" onclick="acao('orgao')">Gerar</button></div>
-      <div style="height:11px"></div>
-      <label class="fld">Dossiê 360 (cadastro+sanções+OB+rede)</label>
-      <div style="display:flex;gap:8px"><input id="ac-dos" placeholder="nome ou CNPJ do alvo"><button class="btn red" style="flex:0 0 auto;min-width:84px" onclick="acao('dossie')">Gerar</button></div>
-      <div style="height:11px"></div>
-      <label class="fld">Cruzamento (sócios × OB × SEI × endereço)</label>
-      <div style="display:flex;gap:8px"><input id="ac-cruz" placeholder="CNPJ (14 dígitos)"><button class="btn ghost" style="flex:0 0 auto;min-width:84px" onclick="acao('cruzamento')">Ver</button></div>
-      <pre id="ac-out" style="margin-top:13px;display:none"></pre>`)}`;
+    </div>`;
 }
 async function acao(tipo){
-  const out=$('ac-out'); out.style.display='block';
-  let url,body,val;
-  if(tipo==='cruzamento'){ // GET síncrono → mostra inline (não gera PDF)
-    val=$('ac-cruz').value.replace(/\D/g,''); if(val.length!==14){out.textContent='⚠ informe um CNPJ de 14 dígitos.';return;}
-    out.textContent='⏳ cruzando…';
-    const r=await J('/api/cruzamento?cnpj='+val);
+  const out=$('ac-out');out.style.display='block';let url,body,val;
+  if(tipo==='cruzamento'){val=$('ac-cruz').value.replace(/\D/g,'');if(val.length!==14){out.textContent='⚠ informe um CNPJ de 14 dígitos.';return;}
+    out.textContent='⏳ cruzando…';const r=await J('/api/cruzamento?cnpj='+val);
     if(r.erro||r._nota){out.textContent='⚠ '+(r.erro||r._nota);return;}
-    const co=(r.coendereco||[]).length, ind=(r.indicios||[]).length;
-    out.textContent=`✅ ${r.razao||val}\nco-endereço: ${co} empresa(s) · indícios: ${ind}\nOB/SEI: ${JSON.stringify(r.obs_sei||{}).slice(0,200)}`;
-    return;
-  }
-  if(tipo==='relatorio'){ val=$('ac-emp').value.trim(); if(!val)return; url='/api/relatorio/inteligencia'; body={empresa:val}; }
-  if(tipo==='orgao'){ val=$('ac-org').value.trim(); if(!val)return; url='/api/relatorio/orgao'; body={orgao:val}; }
-  if(tipo==='dossie'){ val=$('ac-dos').value.trim(); if(!val)return; url='/api/dossie'; body={alvo:val}; }
+    const dd=r.dados||r;const co=(dd.coendereco||[]).length,ind=(dd.indicios||[]).length;
+    out.textContent=`✅ ${dd.razao||val}\nco-endereço: ${co} · indícios: ${ind}`;return;}
+  if(tipo==='relatorio'){val=$('ac-emp').value.trim();if(!val)return;url='/api/relatorio/inteligencia';body={empresa:val};}
+  if(tipo==='orgao'){val=$('ac-org').value.trim();if(!val)return;url='/api/relatorio/orgao';body={orgao:val};}
+  if(tipo==='dossie'){val=$('ac-dos').value.trim();if(!val)return;url='/api/dossie';body={alvo:val};}
   out.textContent=`⏳ processando "${val}"… (até ~1 min)`;
-  const t0 = Date.now()/1000;  // mtime é epoch em segundos
-  const antes = new Set(((await J('/api/compliance/reports'))||[]).filter(x=>x.type==='pdf').map(x=>x.name));
+  const t0=Date.now()/1000;
+  const antes=new Set(((await J('/api/compliance/reports'))||[]).filter(x=>x.type==='pdf').map(x=>x.name));
   const d=await J(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(d.erro){ out.textContent='⚠ erro: '+d.erro; return; }
-  if(d.ambiguo){ out.textContent=`❓ ambíguo: ${d.pergunta}\ncandidatos: ${(d.candidatos||[]).map(c=>c.nome||c).join(' · ')}`; return; }
-  if(d.status==='gerando' || (d.msg && d.path_pdf==null && d.resumo==null)){
-    out.textContent=(d.msg||'⏳ Gerando relatório…').replace(/\*/g,'');
-    return pollarPdf(out, val, t0, antes);
-  }
+  if(d.erro){out.textContent='⚠ erro: '+d.erro;return;}
+  if(d.ambiguo){out.textContent=`❓ ambíguo: ${d.pergunta}\ncandidatos: ${(d.candidatos||[]).map(c=>c.nome||c).join(' · ')}`;return;}
+  if(d.status==='gerando'||(d.msg&&d.path_pdf==null&&d.resumo==null)){out.textContent=(d.msg||'⏳ Gerando…').replace(/\*/g,'');return pollarPdf(out,val,t0,antes);}
   const pdf=d.path_pdf||d.path_lex||d.path_xlsx;
-  const linha=[d.empresa||d.orgao||val, d.risco?('risco '+d.risco):'', d.grau_lex?('Lex '+d.grau_lex):'', d.score!=null?('score '+d.score):''].filter(Boolean).join(' · ');
-  out.innerHTML=`✅ ${linha}\n${(d.resumo||'').slice(0,500)}`+(pdf?`\n\n📄 <a href="/${pdf.replace(/^\//,'')}" target="_blank" style="color:#7ab8ff">abrir PDF</a> (também no Telegram)`:'');
+  const linha=[d.empresa||d.orgao||val,d.risco?('risco '+d.risco):'',d.grau_lex?('Lex '+d.grau_lex):'',d.score!=null?('score '+d.score):''].filter(Boolean).join(' · ');
+  out.innerHTML=`✅ ${esc(linha)}\n${esc((d.resumo||'').slice(0,500))}`+(pdf?`\n\n📄 <a href="/${pdf.replace(/^\//,'')}" target="_blank" style="color:#7fe6f6">abrir PDF</a>`:'');
 }
-async function pollarPdf(out, termo, t0, antes){
+async function pollarPdf(out,termo,t0,antes){
   const slug=(termo||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,12);
-  for(let i=0;i<36;i++){                       // ~3 min (36 × 5s)
-    await new Promise(r=>setTimeout(r,5000));
+  for(let i=0;i<36;i++){await new Promise(r=>setTimeout(r,5000));
     const pdfs=((await J('/api/compliance/reports'))||[]).filter(x=>x.type==='pdf');
-    let novos=pdfs.filter(x=>x.mtime && x.mtime>t0);     // preferido: mtime
-    if(!novos.length) novos=pdfs.filter(x=>!antes.has(x.name)); // fallback: diff de nomes
-    const alvo=novos.find(x=>slug && x.name.toLowerCase().includes(slug))||novos[0];
-    if(alvo){
-      sessaoReports.add(alvo.name);   // efêmero: apaga ao sair da página
-      out.innerHTML='✅ relatório pronto: '+alvo.name+
-        '\n\n📄 <a href="'+alvo.url+'" target="_blank" style="color:#7ab8ff">abrir PDF</a> (também no Telegram · apaga ao sair)';
-      return;
-    }
-  }
-  out.textContent='⏳ Ainda gerando — confira no Telegram ou na seção Relatórios.';
+    let novos=pdfs.filter(x=>x.mtime&&x.mtime>t0);if(!novos.length)novos=pdfs.filter(x=>!antes.has(x.name));
+    const alvo=novos.find(x=>slug&&x.name.toLowerCase().includes(slug))||novos[0];
+    if(alvo){sessaoReports.add(alvo.name);out.innerHTML='✅ pronto: '+esc(alvo.name)+`\n\n📄 <a href="${alvo.url}" target="_blank" style="color:#7fe6f6">abrir PDF</a> (apaga ao sair)`;return;}}
+  out.textContent='⏳ Ainda gerando — confira no Telegram ou em Relatórios.';
 }
+function limparEfemeros(){if(!sessaoReports.size)return;const body=JSON.stringify({nomes:[...sessaoReports]});
+  try{navigator.sendBeacon('/api/compliance/reports/limpar',new Blob([body],{type:'application/json'}));}
+  catch(e){fetch('/api/compliance/reports/limpar',{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true});}}
+window.addEventListener('pagehide',limparEfemeros);window.addEventListener('beforeunload',limparEfemeros);
 
-// Relatórios EFÊMEROS: o que a sessão gerar é apagado ao sair da página (não acumula duplicados na VM).
-function limparEfemeros(){
-  if(!sessaoReports.size) return;
-  const body = JSON.stringify({nomes:[...sessaoReports]});
-  try{ navigator.sendBeacon('/api/compliance/reports/limpar', new Blob([body],{type:'application/json'})); }
-  catch(e){ fetch('/api/compliance/reports/limpar',{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true}); }
-}
-window.addEventListener('pagehide', limparEfemeros);
-window.addEventListener('beforeunload', limparEfemeros);
-
-(async()=>{
-  montarTabs();
-  await ir('geral');
-  const st=await J('/status');
-  if(st.username) $('hsub').textContent = 'SIAFE '+st.username.slice(0,4)+'… · exerc. '+(st.exercicio||'—');
-})();
+(async()=>{montarTabs();await ir('geral');
+  const st=await J('/status');if(st.username)$('hsub').textContent='SIAFE '+st.username.slice(0,4)+'… · exerc. '+(st.exercicio||'—');})();
 </script>
 </body>
 </html>

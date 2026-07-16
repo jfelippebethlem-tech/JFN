@@ -1026,3 +1026,113 @@ async function j(u){try{const r=await fetch(u);return await r.json()}catch(e){re
  document.getElementById('upd').textContent = 'atualizado '+new Date().toLocaleString('pt-BR');
 })();
 </script></body></html>"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CENTRAL DE INTELIGÊNCIA (painel v2) — conluio PNCP, nomeados×candidatos, laranjas
+# ─────────────────────────────────────────────────────────────────────────────
+import time as _time
+
+_cache: dict = {}
+
+
+def _cache_get(chave: str, ttl: int):
+    v = _cache.get(chave)
+    if v and (_time.time() - v[0]) < ttl:
+        return v[1]
+    return None
+
+
+def _cache_put(chave: str, val):
+    _cache[chave] = (_time.time(), val)
+    return val
+
+
+@router.get("/api/pncp/conluio")
+async def api_pncp_conluio(min_certames: int = 4):
+    """Conluio a partir dos RESULTADOS estruturados do PNCP (vencedor homologado por item):
+    CAPTURA (1 fornecedor domina o órgão) e RODÍZIO DE VENCEDORES (poucos se revezam) — com
+    nome de fornecedor, nome de órgão e amostra de OBJETOS. Indício OCDE a verificar, não acusação."""
+    import sqlite3 as _sq
+    cache = _cache_get("conluio", 300)
+    if cache:
+        return JSONResponse(cache)
+    try:
+        from compliance_agent.collectors.pncp_resultados import conluio_enriquecido
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        try:
+            dados = conluio_enriquecido(con, min_certames=max(3, int(min_certames or 4)))
+        finally:
+            con.close()
+        out = {"ok": True, **dados,
+               "aviso": "Indício OCDE (bid rigging) para apuração interna — objetos diversos enfraquecem "
+                        "a hipótese; corroborar propostas, QSA e cronologia. Não é acusação."}
+        return JSONResponse(_cache_put("conluio", out))
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/poder/nomeados_candidatos")
+async def api_nomeados_candidatos(limite: int = 200):
+    """Cruzamento SERVIDOR/NOMEADO (registros_folha) × CANDIDATO (doacoes_eleitorais/TSE) por nome.
+    Servidor público — sobretudo cargo em comissão — que foi candidato a cargo eletivo. Match por
+    NOME (verificar homônimo). Indício de relação político-administrativa, não irregularidade."""
+    import sqlite3 as _sq
+    cache = _cache_get("nomcand", 600)
+    if cache:
+        return JSONResponse(cache)
+    try:
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        con.execute("CREATE TEMP TABLE _cand AS SELECT DISTINCT UPPER(TRIM(nome_candidato)) nc, "
+                    "cargo_candidato, partido, ano_eleicao FROM doacoes_eleitorais")
+        con.execute("CREATE INDEX _tc ON _cand(nc)")
+        rows = con.execute(
+            "SELECT f.nome, f.cargo, f.orgao_nome, c.cargo_candidato, c.partido, c.ano_eleicao "
+            "FROM (SELECT DISTINCT nome, cargo, orgao_nome FROM registros_folha) f "
+            "JOIN _cand c ON UPPER(TRIM(f.nome))=c.nc "
+            "ORDER BY f.nome LIMIT ?", (max(10, min(int(limite or 200), 1000)),)).fetchall()
+        con.close()
+        comissao = [r for r in rows if "comiss" in (r["cargo"] or "").lower()]
+        itens = [{"nome": r["nome"], "cargo_folha": r["cargo"], "orgao": r["orgao_nome"],
+                  "cargo_disputado": r["cargo_candidato"], "partido": r["partido"],
+                  "ano": r["ano_eleicao"],
+                  "comissionado": "comiss" in (r["cargo"] or "").lower()} for r in rows]
+        out = {"ok": True, "total": len(itens), "n_comissionados": len(comissao), "itens": itens,
+               "aviso": "Match por NOME (homônimos possíveis) — indício de relação político-administrativa "
+                        "a verificar, não irregularidade. Ser candidato é direito; o foco é conflito de interesse."}
+        return JSONResponse(_cache_put("nomcand", out))
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/laranjas")
+async def api_laranjas(limite: int = 100):
+    """Sócios de fornecedores do Estado que RECEBEM benefício social de subsistência (bolsa família etc.)
+    — indício clássico de LARANJA/interposição (art. 337-F CP): quem figura como dono de empresa que
+    recebe do Estado não deveria depender de auxílio. Só os confirmados (recebe_beneficio=1)."""
+    import json as _json
+    import sqlite3 as _sq
+    try:
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        rows = con.execute(
+            "SELECT socio_nome_norm, cpf_resolvido, beneficios_json, motivo, confianca "
+            "FROM socio_beneficio WHERE recebe_beneficio=1 ORDER BY confianca DESC LIMIT ?",
+            (max(10, min(int(limite or 100), 500)),)).fetchall()
+        con.close()
+        itens = []
+        for r in rows:
+            try:
+                bens = _json.loads(r["beneficios_json"] or "[]")
+            except (ValueError, TypeError):
+                bens = []
+            itens.append({"socio": r["socio_nome_norm"], "cpf": r["cpf_resolvido"],
+                          "beneficios": bens if isinstance(bens, list) else [str(bens)],
+                          "motivo": r["motivo"], "confianca": r["confianca"]})
+        out = {"ok": True, "total": len(itens), "itens": itens,
+               "aviso": "Indício de laranja/interposição (art. 337-F CP) a verificar — receber benefício "
+                        "não é ilícito; o sinal é ser SÓCIO de empresa que recebe do Estado E depender de auxílio."}
+        return JSONResponse(out)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
