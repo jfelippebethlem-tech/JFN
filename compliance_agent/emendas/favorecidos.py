@@ -103,9 +103,16 @@ def coletar_favorecidos(con, chave: str | None = None, pausa: float = 1.0,
             pagina = 1
             while True:
                 r = _get(cli, f"{_BASE}/emendas/documentos/{cod}", {"pagina": pagina})
-                if r is None or r.status_code != 200 or not r.json():
+                if r is None or r.status_code != 200:
                     break
-                docs.extend(r.json())
+                try:
+                    pagina_docs = r.json()
+                except ValueError:  # 200 com corpo não-JSON (HTML de erro do Portal) — lição 2026-07-16
+                    logger.warning("favorecidos: resposta não-JSON p/ emenda %s pág %s — pulando", cod, pagina)
+                    break
+                if not pagina_docs:
+                    break
+                docs.extend(pagina_docs)
                 pagina += 1
                 time.sleep(pausa)
             for d in escolher_documentos(docs, cap=cap_docs):
@@ -113,7 +120,12 @@ def coletar_favorecidos(con, chave: str | None = None, pausa: float = 1.0,
                 time.sleep(pausa)
                 if rd is None or rd.status_code != 200:
                     continue
-                row = parse_documento_detalhe(cod, rd.json())
+                try:
+                    det = rd.json()
+                except ValueError:
+                    logger.warning("favorecidos: detalhe não-JSON p/ doc %s — pulando", d.get("codigoDocumento"))
+                    continue
+                row = parse_documento_detalhe(cod, det)
                 if not row["documento_favorecido"]:
                     continue
                 con.execute(
