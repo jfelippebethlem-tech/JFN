@@ -14,6 +14,7 @@ PYTHONHASHSEED=0 é obrigatório: o parecer itera sets de termos (ordem depende 
 hash de str) — o teste pytest chama este script via subprocess com o seed fixo.
 """
 import difflib
+import re
 import os
 import sys
 from pathlib import Path
@@ -99,6 +100,15 @@ def _gerar() -> dict[str, str]:
     return {"lex_parecer_fornecedor.md": forn, "lex_parecer_orgao.md": org_md}
 
 
+RE_REGUA = re.compile(r"(\*\*Régua empírica \(aprendida da base JFN\):\*\*).*")
+
+
+def _normalizar(texto: str) -> str:
+    """A régua empírica vem da compliance.db VIVA (cresce a cada coleta) — é ambiente, não
+    comportamento do motor. Normalizada nos DOIS lados p/ o snapshot não quebrar sozinho."""
+    return RE_REGUA.sub(r"\1 [régua viva da base — normalizada p/ snapshot]", texto)
+
+
 def main() -> int:
     if os.environ.get("PYTHONHASHSEED") != "0":
         print("ERRO: rode com PYTHONHASHSEED=0 (ordem de sets no parecer).")
@@ -107,12 +117,13 @@ def main() -> int:
     GOLDEN.mkdir(parents=True, exist_ok=True)
     falhas = 0
     for nome, texto in _gerar().items():
+        texto = _normalizar(texto)
         alvo = GOLDEN / nome
         if update or not alvo.exists():
             alvo.write_text(texto, encoding="utf-8")
             print(f"golden gravado: {alvo} ({len(texto)} chars)")
             continue
-        esperado = alvo.read_text(encoding="utf-8")
+        esperado = _normalizar(alvo.read_text(encoding="utf-8"))
         if texto == esperado:
             print(f"OK: {nome} idêntico ao golden ({len(texto)} chars)")
         else:

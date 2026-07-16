@@ -42,7 +42,7 @@ def test_projeto_sem_texto_vira_sem_dados(tmp_path):
     con = db.conectar(p)
     _seed(con, "vazio-z", "PPP Sem Texto", None)
     con.close()
-    r = triar = triagem_ppp.triar_lote(db_path=p)
+    r = triagem_ppp.triar_lote(db_path=p)
     assert r["itens"][0]["grau"] == "sem_dados"
 
 

@@ -344,7 +344,7 @@ async def abrir_processo(pg, proc: str, tentativas: int = 4):
                     return fr
             except PWError:
                 continue
-    except Exception as exc:  # noqa: BLE001
+    except PWError as exc:
         logger.debug("abrir_processo: quicksearch fallback falhou p/ %s: %s", proc, exc)
     return None
 
@@ -551,8 +551,8 @@ async def _frame_arvore(pg):
     best, best_n = None, 0
     for fr in pg.frames:
         try:
-            n = await fr.evaluate("()=>document.querySelectorAll('a[href*=\"id_documento=\"]').length")
-        except PWError:
+            n = int(await fr.evaluate("()=>document.querySelectorAll('a[href*=\"id_documento=\"]').length") or 0)
+        except (PWError, TypeError, ValueError):
             n = 0
         if n and n > best_n:
             best_n, best = n, fr
@@ -632,7 +632,7 @@ async def _conteudo_via_arvore(pg, doc: dict) -> dict | None:
                 txt_ocr = await loop.run_in_executor(None, lambda: ocr_documento(body, tipo=tipo))
                 if txt_ocr and len(txt_ocr.strip()) > 20:
                     return {"doc": (doc.get("texto") or "")[:80], "conteudo": txt_ocr.strip()[:20000], "via": "ocr"}
-            except Exception as exc:  # noqa: BLE001
+            except (PWError, RuntimeError, OSError, ValueError) as exc:
                 logger.warning("download/OCR do anexo (via árvore) %r falhou: %s", (doc.get("texto") or "")[:60], str(exc)[:80])
         return None
     # documento NATIVO (editor): texto inline já renderizado no ifrVisualizacao

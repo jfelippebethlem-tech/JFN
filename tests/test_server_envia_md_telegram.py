@@ -29,6 +29,7 @@ def _capturar(monkeypatch):
 
     async def fake_arquivo(p, caption=""):
         enviados.append(p)
+        return {"ok": True}  # contrato novo: _enviar_docs_telegram confere a entrega
 
     async def fake_msg(txt):
         msgs.append(txt)
