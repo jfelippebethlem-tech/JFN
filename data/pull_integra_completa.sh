@@ -25,7 +25,7 @@ for item in "${PROCS[@]}"; do
   [ -f "data/proc_integra/${rot}.pdf" ] && { say "já feito: $rot"; continue; }
   livre; pkill -9 -f ms-playwright 2>/dev/null; sleep 2
   say "lendo $proc ($rot)"
-  timeout 3000 $PY tools/sei_processo_integral.py "$proc" "data/proc_integra/${rot}.pdf" >> "$LOG" 2>&1
+  timeout 7800 $PY tools/sei_processo_integral.py "$proc" "data/proc_integra/${rot}.pdf" >> "$LOG" 2>&1
   [ -f "data/proc_integra/${rot}.pdf" ] && say "  OK $rot" || say "  FALHOU $rot"
   sleep 5
 done

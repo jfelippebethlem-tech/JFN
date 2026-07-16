@@ -1,17 +1,78 @@
 {
  "processo": "260007/019552/2024",
- "gerado_em": "2026-07-06T07:11:53+00:00",
+ "gerado_em": "2026-07-11T07:19:24+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_019552_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Nota Fiscal - NF 2142 TARGERT R$ 10.691,60 (89999481)",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/000_nota_fiscal_nf_2142_targert_r_10_691_60.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Anexo 2024NE07123 TARGERT R$ 10.691,60 (89999983)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/001_anexo_2024ne07123_targert_r_10_691_60_89.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Encaminhamento de Processo 90000192",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_encaminhamento_de_processo_9.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Nota de Liquidação - NL 2024NL08026 (90090327)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/003_nota_de_liquida_o_nl_2024nl08026_9009032.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 90104833",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Comprovante 2024OB13743 10563,3 Target medicamentos e Produtos Hospitalare (90763334)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/005_comprovante_2024ob13743_10563_3_target_m.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 5,
   "controle": 0,
-  "tramitacao": 0,
+  "tramitacao": 1,
   "indefinida": 0
  },
  "lacunas": [
@@ -26,6 +87,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

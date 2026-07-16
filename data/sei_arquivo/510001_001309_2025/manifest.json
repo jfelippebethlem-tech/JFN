@@ -1,18 +1,249 @@
 {
  "processo": "510001/001309/2025",
- "gerado_em": "2026-07-06T08:17:24+00:00",
+ "gerado_em": "2026-07-11T07:46:13+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_510001_001309_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Comprovante de Pagamento ISS (120593700)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/000_comprovante_de_pagamento_iss_120593700.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Encaminhamento de Processo 120592893",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/001_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Encaminhamento de Processo 120596121",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Anexo 17 - ANOTAÇÃO DE RESPONSABILIDADE TÉCNICA - ART (118840341)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/003_anexo_17_anota_o_de_responsabilidade_t_c.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Anexo 18 - CNO - CONSÓRCIO OBRA SANTA IZABEL - SG (118841623)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/004_anexo_18_cno_cons_rcio_obra_santa_izabel.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Anexo 19 - NOTA DE EMPENHO NE 00386 (118840359)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/005_anexo_19_nota_de_empenho_ne_00386_118840.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Anexo 20 - NOTA DE EMPENHO NE - 00564 (119325612)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/006_anexo_20_nota_de_empenho_ne_00564_119325.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Anexo 21 - NOTA FISCAL Nº 0003 - SANTA IZABEL (119348600)",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/007_anexo_21_nota_fiscal_n_0003_santa_izabel.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Anexo 22 - GUIA ISS NF 0003 - SANTA IZABEL (119347942)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/008_anexo_22_guia_iss_nf_0003_santa_izabel_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Nota Técnica 119357950",
+   "fase": "controle",
+   "tipo": "parecer",
+   "texto": "texto/009_nota_t_cnica_119357950.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Checklist 119391104",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/010_checklist_119391104.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Despacho de Encaminhamento de Processo 119391112",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/011_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Despacho de Encaminhamento de Processo 119420108",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/012_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Despacho de Encaminhamento de Processo 119421686",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/013_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Despacho de Autorização de Emissão e Execução - PD 119483394",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/014_despacho_de_autoriza_o_de_emiss_o_e_exec.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "Anexo 2025NL00614 (119539330)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/015_anexo_2025nl00614_119539330.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "Anexo 2025NP000697 (119538421)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/016_anexo_2025np000697_119538421.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "Programação de Desembolso - PD 01214 (119564046)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/017_programa_o_de_desembolso_pd_01214_119564.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Programação de Desembolso - PD 01215-ISS (119563810)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/018_programa_o_de_desembolso_pd_01215_iss_11.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Programação de Desembolso - PD 01216-IRRF (119563932)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/019_programa_o_de_desembolso_pd_01216_irrf_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "Anexo 2025OB01159 (120591896)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/020_anexo_2025ob01159_120591896.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "Anexo 2025OB01154 (120591440)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/021_anexo_2025ob01154_120591440.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "Anexo 2025OB01153 (120592365)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/022_anexo_2025ob01153_120592365.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
-  "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "despesa": 10,
+  "controle": 1,
+  "tramitacao": 6,
+  "indefinida": 6
  },
  "lacunas": [
   {
@@ -26,6 +257,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

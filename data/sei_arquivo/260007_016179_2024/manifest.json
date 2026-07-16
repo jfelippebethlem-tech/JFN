@@ -1,18 +1,139 @@
 {
  "processo": "260007/016179/2024",
- "gerado_em": "2026-07-06T07:12:37+00:00",
+ "gerado_em": "2026-07-11T07:20:24+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_016179_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Nota de Empenho Original - 2024NE02217 (85659657)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/000_nota_de_empenho_original_2024ne02217_856.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Nota de Empenho Reforço - 2024NE05759 (85658607)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/001_nota_de_empenho_refor_o_2024ne05759_8565.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Nota Fiscal - NFs CONSIG (85664531)",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/002_nota_fiscal_nfs_consig_85664531.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Comunicado de Uso - Claudio Francisco (85665874)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/003_comunicado_de_uso_claudio_francisco_8566.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Nota Fiscal - NF 61595 + CCe - Claudio Francisco (85665896)",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/004_nota_fiscal_nf_61595_cce_claudio_francis.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Despacho de Solicitação de Liquidação de Despesa 85665907",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/005_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Nota de Liquidação - NL 2024NL06092 (86128259)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/006_nota_de_liquida_o_nl_2024nl06092_8612825.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 86127755",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/007_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Comprovante 2024OB11062 6719,88 Per Prima Com. E Repres Ltda (88536034)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/008_comprovante_2024ob11062_6719_88_per_prim.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Comprovante 2025OB01505 R$81,62 42498675000152 SECRETARIA DE ESTAD (116757928)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/009_comprovante_2025ob01505_r_81_62_42498675.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Despacho de Encaminhamento de Processo 130762156",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/010_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Termo de Encerramento de Processo 130949157",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/011_termo_de_encerramento_de_processo_130949.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 9,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 2,
+  "indefinida": 1
  },
  "lacunas": [
   {
@@ -26,6 +147,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

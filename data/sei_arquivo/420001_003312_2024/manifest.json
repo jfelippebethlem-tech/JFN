@@ -1,32 +1,287 @@
 {
  "processo": "420001/003312/2024",
- "gerado_em": "2026-07-06T07:13:59+00:00",
+ "gerado_em": "2026-07-11T07:21:40+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_420001_003312_2024",
- "modalidade": "",
- "docs": [],
+ "modalidade": "licitacao",
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Nota de Liquidação - NL 2024NL01947 e 2024NL01948 (85117297)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/000_nota_de_liquida_o_nl_2024nl01947_e_2024n.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 85117331",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/001_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Programação de Desembolso - PD 2024PD02833 A 2836 (85123257)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/002_programa_o_de_desembolso_pd_2024pd02833.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Anexo 2024OB 02594 Á 2024 OB 02597. (85702652)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/003_anexo_2024ob_02594_2024_ob_02597_8570265.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Despacho de Encaminhamento de Documento 85709766",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/004_despacho_de_encaminhamento_de_documento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Termo de Encerramento de Processo 86122747",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/005_termo_de_encerramento_de_processo_861227.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Documento Oficialização de Demanda (85049996)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/006_documento_oficializa_o_de_demanda_850499.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Termo de Referência (85049997)",
+   "fase": "planejamento",
+   "tipo": "termo_referencia",
+   "texto": "texto/007_termo_de_refer_ncia_85049997.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Informação da Contratação (85049999)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/008_informa_o_da_contrata_o_85049999.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Anexo ARP 36 00456 23 05 (85050000)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/009_anexo_arp_36_00456_23_05_85050000.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Anexo EDITAL e Anexos (85050002)",
+   "fase": "selecao",
+   "tipo": "edital",
+   "texto": "texto/010_anexo_edital_e_anexos_85050002.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Proposta CDEL (85050004)",
+   "fase": "selecao",
+   "tipo": "proposta",
+   "texto": "texto/011_proposta_cdel_85050004.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Anexo 1 - D.O. - PUBLICAÇÃO PREGÃO (85050005)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/012_anexo_1_d_o_publica_o_preg_o_85050005.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Publicação Contratação (85050007)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/013_publica_o_contrata_o_85050007.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Nota de Empenho Original - NE (85050008)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/014_nota_de_empenho_original_ne_85050008.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "Publicação Comissão Gestão, Acompanhamento e Fiscalização (85050009)",
+   "fase": "execucao",
+   "tipo": "fiscalizacao",
+   "texto": "texto/015_publica_o_comiss_o_gest_o_acompanhamento.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": [
+    "fotos/015_p01.jpg"
+   ]
+  },
+  {
+   "i": 16,
+   "titulo": "Nota Fiscal - NF (85050010)",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/016_nota_fiscal_nf_85050010.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "Nota Fiscal - NF Completas (85050012)",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/017_nota_fiscal_nf_completas_85050012.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Certidão (85050014)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/018_certid_o_85050014.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Planilha de  Faturamento (85050015)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/019_planilha_de_faturamento_85050015.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "Despacho de Encaminhamento de Processo 85050016",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/020_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "Atestado de Recebimento de Materiais 85065796",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/021_atestado_de_recebimento_de_materiais_850.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "Despacho de Encaminhamento de Processo 85070204",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/022_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "Informação de Demonstrativo de Retenção (85073844)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/023_informa_o_de_demonstrativo_de_reten_o_85.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "Despacho de Solicitação de Liquidação de Despesa 85074506",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/024_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "Publicação (85077110)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/025_publica_o_85077110.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
-  "planejamento": 0,
-  "selecao": 0,
+  "planejamento": 1,
+  "selecao": 2,
   "contratacao": 0,
-  "execucao": 0,
-  "despesa": 0,
+  "execucao": 1,
+  "despesa": 7,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 4,
+  "indefinida": 11
  },
  "lacunas": [
-  {
-   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
-   "gravidade": "media"
-  },
-  {
-   "falta": "Seleção (edital, julgamento, homologação)",
-   "gravidade": "alta"
-  },
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
   }
  ],
- "fotos_total": 0
+ "fotos_total": 1
 }

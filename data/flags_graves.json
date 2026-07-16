@@ -1,0 +1,86 @@
+{
+ "contato-contrato-gestao": {
+  "id": "contato-contrato-gestao",
+  "caso": "ONG Con-tato / Ambiente Jovem",
+  "gravidade": "CRÍTICA",
+  "titulo": "Contrato de gestão 001/2021 sem licitação — chamamento 002/2021 com sessão 29/12 e assinatura 30/12/2021 (1 dia, fim de exercício); R$ 42,0→95,8 mi via 4 aditivos; FECAM.",
+  "valor": 95811723.88,
+  "base_legal": "Lei 14.133/21; Lei 6.470/13 (OS); improbidade art. 10/11 Lei 8.429/92",
+  "status": "indício; Raphael Gonçalves preso na Operação Emendatio (PF 09/07/2026)",
+  "fonte": "OCR dos instrumentos publicados pela ONG + SEI 070026/000705/2021",
+  "primeira": "2026-07-14 17:34",
+  "ultima": "2026-07-14 17:34"
+ },
+ "contato-troca-controle": {
+  "id": "contato-troca-controle",
+  "caso": "ONG Con-tato",
+  "gravidade": "ALTA",
+  "titulo": "Troca de controle no QSA (Tathyane Höfke, 14/05/2025) após ~71% do valor já pago (R$ 148,7 mi de R$ 208,5 mi).",
+  "valor": 208468555.26,
+  "base_legal": "indício de blindagem patrimonial",
+  "status": "indício",
+  "fonte": "QSA Receita + SIAFE/TFE (compliance.db)",
+  "primeira": "2026-07-14 17:34",
+  "ultima": "2026-07-14 17:34"
+ },
+ "lytoranea-aditivo-teto": {
+  "id": "lytoranea-aditivo-teto",
+  "caso": "Lytoranea / INEA-Maxambomba",
+  "gravidade": "ALTA",
+  "titulo": "1º Termo Aditivo 110/2025 de acréscimo = 24,97% (colado no teto de 25%, art. 125 Lei 14.133), assinado 19/12; contratada EM RECUPERAÇÃO JUDICIAL e impedida (sanção Fiocruz).",
+  "valor": 17305130.73,
+  "base_legal": "art. 124/125 Lei 14.133/21; art. 10 Lei 8.429/92 (dolo)",
+  "status": "indício; preço/BDI com lastro EMOP (não abusivo na cara)",
+  "fonte": "OCR do SEI 070002/004135/2025 (Contrato INEA 08/2025)",
+  "primeira": "2026-07-14 17:34",
+  "ultima": "2026-07-14 17:34"
+ },
+ "lytoranea-concentracao": {
+  "id": "lytoranea-concentracao",
+  "caso": "Lytoranea / INEA",
+  "gravidade": "ALTA",
+  "titulo": "Concentração ~R$ 321 mi do INEA (2021–2026) num único fornecedor de obras + recontratação de objeto inexecutado (Maxambomba 2022: pago R$ 398 mil de R$ 69,8 mi).",
+  "valor": 321000000.0,
+  "base_legal": "art. 11 / art. 10, VIII Lei 8.429/92 (a apurar direcionamento)",
+  "status": "indício de competição restrita",
+  "fonte": "contratos_tcerj + siafe_ob (compliance.db)",
+  "primeira": "2026-07-14 17:34",
+  "ultima": "2026-07-14 17:34"
+ },
+ "solazer-tce-esporte": {
+  "id": "solazer-tce-esporte",
+  "caso": "SOLAZER / Esporte RJ",
+  "gravidade": "ALTA",
+  "titulo": "TCE-RJ 107.485-1/2016 — Contrato de Gestão 002/2015, dano ~R$ 21 mi (núcleos fantasmas: 5 de 31 ativos). Raphael Gonçalves presidia a SOLAZER.",
+  "valor": 21000000.0,
+  "base_legal": "dano ao erário",
+  "status": "Pampolha e Brito ABSOLVIDOS (Plenário 26/03/2025); apuração segue contra Cabral/servidores/OS",
+  "fonte": "Processo TCE-RJ (íntegra, Anexo B)",
+  "primeira": "2026-07-14 17:34",
+  "ultima": "2026-07-14 17:34"
+ },
+ "cedae-acordo-900mi": {
+  "id": "cedae-acordo-900mi",
+  "caso": "CEDAE / Águas do Rio",
+  "gravidade": "ALTA",
+  "titulo": "Termo de Conciliação de ~R$ 900 mi (desconto 24,13% até 2056) NÃO deliberado pelo Conselho de Administração; voto decisivo do conselheiro-TCE Pampolha (4×3, 26/11/2025); nomeações de ex-SEAS (José Ricardo, Philipe Campello) dias após.",
+  "valor": 900000000.0,
+  "base_legal": "conflito de interesses; quid pro quo EM TESE",
+  "status": "EM TESE; inquérito MPRJ (16/10); TCE oficiou MPRJ; NÃO provado",
+  "fonte": "atas CEDAE (Anexo C) + imprensa/inquérito",
+  "primeira": "2026-07-14 17:34",
+  "ultima": "2026-07-14 17:34"
+ },
+ "sei-restritos": {
+  "id": "sei-restritos",
+  "caso": "Transparência / SEI",
+  "gravidade": "MÉDIA",
+  "titulo": "Processos-chave em acesso RESTRITO, ocultos à consulta cross-unit do itkava (AmbienteJovem 070026/000705/2021; Brasform 070028/000089/2021).",
+  "valor": 0.0,
+  "base_legal": "Lei 12.527/2011 (LAI); art. 11 Lei 8.429/92",
+  "status": "mapeado; ver lista de restritos",
+  "fonte": "tools/sei_restritos.py (data/sei_restritos.json)",
+  "primeira": "2026-07-14 17:34",
+  "ultima": "2026-07-14 17:34"
+ }
+}

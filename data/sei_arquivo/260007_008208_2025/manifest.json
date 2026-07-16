@@ -1,18 +1,89 @@
 {
  "processo": "260007/008208/2025",
- "gerado_em": "2026-07-06T07:23:21+00:00",
+ "gerado_em": "2026-07-11T07:37:50+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_008208_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Anexo NF 6 - MF EQUIPAMENTOS (103281281)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/000_anexo_nf_6_mf_equipamentos_103281281.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Anexo 2025NE02912 - MF EQUIPAMENTOS (103282497)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/001_anexo_2025ne02912_mf_equipamentos_103282.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Anexo Simples Nacional MF EQUIPAMENTOS (103282504)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/002_anexo_simples_nacional_mf_equipamentos_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Despacho de Encaminhamento de Processo 103282539",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/003_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Nota de Liquidação - NL 3406 (104424450)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_nota_de_liquida_o_nl_3406_104424450.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 104423974",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/005_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Comprovante 2025OB13011 R$64.197,00 53863249000197 M F EQUIPAMENTOS MEDI (116542601)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/006_comprovante_2025ob13011_r_64_197_00_5386.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 4,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 1,
+  "indefinida": 2
  },
  "lacunas": [
   {
@@ -26,6 +97,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0
