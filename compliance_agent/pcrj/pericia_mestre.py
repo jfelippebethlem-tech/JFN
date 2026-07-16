@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 
 from . import db
 from . import lente_ppp
-from .dossie_ppp import _extrair_resultado, _chaves_projeto, _fmt_reais
+from .dossie_ppp import _extrair_resultado, _chaves_projeto
 from ..direcionamento_sinais import analisar_direcionamento_det
 from ..reporting import render_html as rh
 
@@ -98,7 +98,6 @@ def montar_html(slug: str, db_path=None) -> str:
     corpus = "\n\n".join(d["texto"] for d in docs if d["texto"])
     resultado = _extrair_resultado(acts)
     datas = json.loads(ppp.get("datas_json") or "[]")
-    docs_ccpar = json.loads(ppp.get("docs_json") or "[]")
     dirc = analisar_direcionamento_det(corpus) if corpus.strip() else {"clausulas": [], "grau_det": "indeterminado"}
     lente = lente_ppp.analisar_ppp(corpus) if corpus.strip() else {"flags": []}
     data_hoje = datetime.now(timezone.utc).astimezone().strftime("%d de %B de %Y")
@@ -170,14 +169,7 @@ def montar_html(slug: str, db_path=None) -> str:
              "assinalados em destaque merecem verificação humana; os pontos em vermelho são os de maior "
              "sensibilidade.")))
 
-    if datas:
-        caps.append(("cap-crono", "Cronologia do Processo", _p(
-            "A sequência procedimental, reconstruída a partir dos atos publicados e do portal da "
-            "concedente, é a seguinte:")
-            + "<ul>" + "".join(f"<li>{_q(d)}</li>" for d in datas) + "</ul>"
-            + _p("A leitura da cronologia é relevante para aferir a regularidade das fases da "
-                 "manifestação de interesse, da consulta e audiência públicas, da publicação do edital e "
-                 "da assinatura do contrato.")))
+    caps.append(("cap-crono", "Cronologia do Processo", _cronologia_html(datas)))
 
     caps.append(("cap-garantia", "Estrutura de Garantia e o Fundo Nacional de Saúde", _p(
         "A cláusula de garantia pública de pagamento destina <b>receitas vinculadas do Fundo Nacional de "
@@ -457,6 +449,71 @@ def _clausulas_restritivas_html(dirc: dict) -> str:
             + (f"<p class='tr'>Trecho: …{_q(trecho[:300])}…</p>" if trecho else "")
             + "</div>")
     return intro + "".join(blocos)
+
+
+# (data, evento, descrição, crítico?) — linha do tempo do processo
+_CRONOLOGIA = [
+    ("17/11/2021", "Abertura do Procedimento de Manifestação de Interesse (PMI)",
+     "A Secretaria Municipal de Saúde publica o chamamento para que a iniciativa privada apresente "
+     "estudos destinados a subsidiar a estruturação da parceria (PMI/SMI nº 01/2021).", False),
+    ("2022", "Elaboração dos estudos de modelagem",
+     "Os estudos que subsidiaram a licitação são elaborados pelo Consórcio Pezco–Kraft–Apparecido, "
+     "com ressarcimento posterior a cargo do vencedor (R$ 3.266.280,90).", False),
+    ("05/10 a 04/11/2022", "Consulta pública",
+     "Abertura do projeto à sociedade e ao mercado; nessa fase, seis grupos manifestaram interesse "
+     "(um espanhol, um japonês e quatro brasileiros).", False),
+    ("Abril/2023", "Determinação do Tribunal de Contas do Município (TCM-RJ)",
+     "O TCM-RJ determina que a Secretaria Municipal de Saúde preste esclarecimentos sobre itens do "
+     "Edital nº 01/2023 — providência de escopo amplo cujo teor deve ser obtido junto à Corte.", True),
+    ("03/04/2023", "Publicação do edital",
+     "Publicação do Edital de Concorrência Pública SMS CO nº 01/2023 (Processo SMS-PRO-2022/03013).", False),
+    ("11/05 a 19/06/2023", "Erratas e versões dos documentos",
+     "Sucessivas alterações do edital e dos anexos (erratas de 11/05, 15/06, 16/06 e 19/06/2023), o que "
+     "pode sinalizar reabertura de prazos e ajustes relevantes na modelagem — a examinar.", False),
+    ("27/06 e 13/07/2023", "Impugnações ao edital",
+     "A empresa Dimensional Engenharia Ltda. apresenta duas impugnações, ambas julgadas improcedentes — "
+     "cujo inteiro teor e fundamentos devem ser requisitados.", True),
+    ("02/08/2023", "Sessão pública / leilão na B3 (São Paulo)",
+     "Realiza-se o leilão pelo critério de menor contraprestação. Compareceu e foi habilitado um único "
+     "proponente — o Consórcio Smart Hospital —, que ofertou deságio de 2,5% sobre o teto em proposta "
+     "única. Não houve disputa nem mapa de lances competitivo.", True),
+    ("19/10/2023", "Constituição da concessionária",
+     "É constituída a sociedade de propósito específico Concessionária Smart Hospital S.A. "
+     "(CNPJ 52.592.077/0001-00), capital social de R$ 84.826.000,17.", False),
+    ("23/10/2023", "Assinatura do contrato",
+     "Assinatura do contrato de concessão administrativa SMS nº 197/2023, prazo de 30 anos, valor global "
+     "de R$ 5.753.200.548,30.", False),
+    ("Novembro/2023", "Publicação do extrato do contrato e homologação do ressarcimento",
+     "Publicação do extrato do contrato no Diário Oficial do Município e homologação do ressarcimento dos "
+     "estudos ao consórcio autor da modelagem.", False),
+    ("01/12/2023", "Início da operação pela concessionária",
+     "A concessionária assume a responsabilidade pelos serviços, encerrando-se contratos de apoio "
+     "operacional anteriores.", False),
+    ("26/11/2024", "Contrato de garantia (conta-garantia)",
+     "Formaliza-se o contrato de conta-garantia junto à Caixa Econômica Federal (R$ 9.588.667,58).", False),
+    ("06/10/2026 (previsto)", "Decisão sobre o financiamento de dívida",
+     "Data prevista para a decisão de comitê do IDB Invest sobre o empréstimo (até R$ 161 mi), ainda "
+     "pendente de aprovação (status 'Hold') — o funding de longo prazo, portanto, ainda não está fechado.", True),
+]
+
+
+def _cronologia_html(datas_ccpar) -> str:
+    linhas = "".join(
+        f"<div style='margin:0 0 9px;padding-left:10px;border-left:2px solid "
+        f"{'#8a1a1a' if crit else '#ccc'}'>"
+        f"<p style='margin:0'><b>{_q(data)} — {_q(ev)}.</b> {desc if not crit else _hl(desc)}</p></div>"
+        for data, ev, desc, crit in _CRONOLOGIA)
+    intro = _p(
+        "A sequência procedimental abaixo foi reconstruída a partir dos atos publicados, do portal da "
+        "concedente e das fontes públicas especializadas. Cada marco é descrito, e os pontos de maior "
+        "sensibilidade para o controle externo — a determinação do Tribunal de Contas, as impugnações, o "
+        "leilão com proponente único e a pendência do financiamento — vêm assinalados.")
+    fecho = _p(
+        "A leitura integrada da cronologia revela um processo que, entre a consulta pública com seis "
+        "interessados e o leilão com um único proponente, <b>perdeu competitividade ao longo do caminho</b> "
+        "— fato que, somado às sucessivas erratas, às impugnações e à determinação do Tribunal de Contas, "
+        "recomenda exame detido das razões dessa migração.")
+    return intro + linhas + fecho
 
 
 def _lente_juris_html(lente: dict) -> str:
