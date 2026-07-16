@@ -607,7 +607,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
         add("")
         add("| Processo SEI | Nº de OBs | Valor pago (R$) |")
         add("|---|---:|---:|")
-        for s in sei[:25]:
+        for s in sei:
             add(f"| {s.get('numero_sei')} | {s.get('n_obs')} | {moeda(s.get('total'))} |")
         add("")
     else:
@@ -662,7 +662,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
             add("")
             add("| Processo | Ano | Objeto | Critério | Valor contrato (R$) | Unidade |")
             add("|---|---:|---|---|---:|---|")
-            for c in tcerj["contratos"][:12]:
+            for c in tcerj["contratos"]:
                 obj = (c.get("objeto") or "").strip()
                 obj = (obj[:55] + "…") if len(obj) > 55 else (obj or "—")
                 add(f"| {_fmt_proc(c.get('processo',''))} | {c.get('ano_processo','')} | {obj} | "
@@ -674,7 +674,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
             add("")
             add("| Processo | Ano | Objeto | Afastamento | Enquadramento legal | Valor (R$) |")
             add("|---|---:|---|---|---|---:|")
-            for c in tcerj["compras"][:12]:
+            for c in tcerj["compras"]:
                 obj = (c.get("objeto") or "").strip()
                 obj = (obj[:45] + "…") if len(obj) > 45 else (obj or "—")
                 enq = (c.get("enquadramento_legal") or "").strip()
@@ -735,6 +735,15 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
 
     # II-G.1. Aprendizado cruzado — padrões em fornecedores ligados (mesmos sócios/veículos), SURFACE.
     _secao_padroes_ligados(add, (analise.get("pesquisa") or {}).get("cruzado") or "")
+
+    # II-H. Análise forense quantitativa (Benford/redondos/sazonalidade/cadência/rastreabilidade/timeline).
+    try:
+        from compliance_agent import lex_forense as _lf
+        _forense = _lf.secao_forense_md(ctx, analise)
+        if _forense:
+            add(_forense)
+    except Exception as exc:  # noqa: BLE001 — seção some, parecer não cai
+        logger.warning("análise forense quantitativa falhou (seção II-H some do parecer): %s", exc)
 
     # III. Matriz de Achados + análise por red flag
     add("## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)")
@@ -861,6 +870,13 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     else:
         add("> Sem indícios a submeter ao passo exculpatório — presunção de regularidade mantida.")
     add("")
+    try:  # IV-D.2 — cenários benigno×risco com teste discriminante (lex_forense)
+        from compliance_agent import lex_forense as _lf2
+        _cen = _lf2.secao_cenarios_md(analise)
+        if _cen:
+            add(_cen)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("cenários discriminantes falharam (seção some do parecer): %s", exc)
 
     # IV-B-bis. Triagem ilegalidade × improbidade (elemento subjetivo) — doutrina §5.1 / Lei 14.230/2021.
     # Conservador: separa o que é controle de contas (a maioria) do que TOCA improbidade (só com sinal de dolo).
