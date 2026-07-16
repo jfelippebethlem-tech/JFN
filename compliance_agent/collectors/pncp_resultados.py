@@ -1,0 +1,240 @@
+# -*- coding: utf-8 -*-
+"""pncp_resultados — coletor de RESULTADOS estruturados do PNCP (vencedor por item).
+
+O endpoint `/orgaos/{cnpj}/compras/{ano}/{seq}/itens/{n}/resultados` publica o FORNECEDOR
+HOMOLOGADO de cada item (niFornecedor, valorHomologado, ordemClassificacaoSrp=1). Ele NÃO
+traz os perdedores (só o vencedor) — os perdedores/cover vêm do parser de ata
+(`rodizio_grafo.extrair_participantes_ata`). Juntos: vencedor estruturado + perdedores do texto.
+
+COBERTURA TEMPORAL (medida em 2026-07, RJ, pregão eletrônico, API de consulta):
+  2021-2022 → 204 (sem dado); 2023 → esparso (dezenas); 2024 → denso (centenas/mês);
+  2025+ → ~900/mês. A adesão obrigatória ao PNCP fechou em 2023-12-30 (fim da transição da
+  Lei 8.666 → 14.133). Padrão: coletar de **2024-01** em diante; 2023 opcional (parcial).
+
+LIMITE DE REQUISIÇÃO: janela de 1 ANO estoura 429. Varre-se MÊS A MÊS com pausa; 429 → backoff.
+"""
+from __future__ import annotations
+
+import asyncio
+import re
+import sqlite3
+from datetime import date
+
+import httpx
+
+from compliance_agent.collectors.pncp import (
+    CONSULTA_BASE, MODALIDADES_PADRAO, PNCP_BASE, _parse_id_pncp,
+)
+
+_H = {"User-Agent": "JFN-Compliance/2.0"}
+# menor data com dado estruturado útil no PNCP (ver docstring — 2024 é o 1º ano denso).
+PNCP_PRIMEIRO_ANO_DENSO = 2024
+
+
+def init_schema(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS pncp_resultado (
+            certame       TEXT NOT NULL,          -- numeroControlePNCP
+            orgao_cnpj    TEXT,
+            orgao_nome    TEXT,
+            uf            TEXT,
+            municipio     TEXT,
+            modalidade    INTEGER,
+            objeto        TEXT,
+            data_pub      TEXT,                   -- AAAA-MM-DD (publicação da contratação)
+            item          INTEGER NOT NULL,
+            fornecedor_cnpj TEXT,                 -- niFornecedor (vencedor homologado)
+            fornecedor_nome TEXT,
+            valor_homologado REAL,
+            ordem_classificacao INTEGER,          -- 1 = vencedor
+            porte_fornecedor INTEGER,
+            coletado_em   TEXT DEFAULT (datetime('now')),
+            PRIMARY KEY (certame, item, fornecedor_cnpj)
+        )""")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_pncpres_orgao ON pncp_resultado(orgao_cnpj)")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_pncpres_forn ON pncp_resultado(fornecedor_cnpj)")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_pncpres_data ON pncp_resultado(data_pub)")
+    con.commit()
+
+
+def _meses(ano_ini: int, mes_ini: int, ano_fim: int, mes_fim: int):
+    a, m = ano_ini, mes_ini
+    while (a, m) <= (ano_fim, mes_fim):
+        d_ini = f"{a:04d}{m:02d}01"
+        # último dia do mês (sem calendar p/ manter determinismo simples: usa 1º do mês seguinte -1)
+        if m == 12:
+            fa, fm = a + 1, 1
+        else:
+            fa, fm = a, m + 1
+        d_fim = date(fa, fm, 1).toordinal() - 1
+        yield d_ini, date.fromordinal(d_fim).strftime("%Y%m%d")
+        a, m = (a + 1, 1) if m == 12 else (a, m + 1)
+
+
+async def _consulta(client: httpx.AsyncClient, endpoint: str, params: dict) -> dict | None:
+    """GET na API de consulta com backoff em 429 (limite de requisição)."""
+    for tent in range(5):
+        try:
+            r = await client.get(f"{CONSULTA_BASE}{endpoint}", params=params, headers=_H)
+        except httpx.HTTPError:
+            await asyncio.sleep(2 * (tent + 1))
+            continue
+        if r.status_code == 200:
+            return r.json()
+        if r.status_code == 204:
+            return None  # sem dado na janela (honesto: não é erro)
+        if r.status_code == 429:
+            await asyncio.sleep(5 * (tent + 1))  # backoff do rate-limit
+            continue
+        return None
+    return None
+
+
+async def _resultado_item(client: httpx.AsyncClient, cnpj: str, ano: str, seq: int, item: int) -> list[dict]:
+    for tent in range(4):
+        try:
+            r = await client.get(f"{PNCP_BASE}/orgaos/{cnpj}/compras/{ano}/{seq}/itens/{item}/resultados",
+                                 headers=_H)
+        except httpx.HTTPError:
+            await asyncio.sleep(1.5 * (tent + 1))
+            continue
+        if r.status_code == 200:
+            return r.json() or []
+        if r.status_code in (204, 404):
+            return []
+        if r.status_code == 429:
+            await asyncio.sleep(4 * (tent + 1))
+            continue
+        return []
+    return []
+
+
+async def coletar_resultados(con, uf: str = "RJ", ano_ini: int = PNCP_PRIMEIRO_ANO_DENSO,
+                             mes_ini: int = 1, ano_fim: int | None = None, mes_fim: int | None = None,
+                             modalidades=None, max_paginas: int = 40, pausa: float = 0.3) -> dict:
+    """Varre contratações publicadas (mês a mês) e grava o vencedor de cada item em pncp_resultado.
+
+    Idempotente (PRIMARY KEY certame+item+fornecedor; usa INSERT OR IGNORE). Serial e educado com a
+    API (pausa + backoff 429). Retorna {meses, certames, itens_com_resultado, gravados}."""
+    init_schema(con)
+    hoje = date.today()
+    ano_fim = ano_fim or hoje.year
+    mes_fim = mes_fim or hoje.month
+    modalidades = modalidades or MODALIDADES_PADRAO
+    tot = {"meses": 0, "certames": 0, "itens_com_resultado": 0, "gravados": 0}
+    async with httpx.AsyncClient(timeout=40) as client:
+        for d_ini, d_fim in _meses(ano_ini, mes_ini, ano_fim, mes_fim):
+            tot["meses"] += 1
+            for mod in modalidades:
+                for pagina in range(1, max_paginas + 1):
+                    j = await _consulta(client, "/contratacoes/publicacao", {
+                        "dataInicial": d_ini, "dataFinal": d_fim, "uf": uf.upper(),
+                        "codigoModalidadeContratacao": mod, "pagina": pagina, "tamanhoPagina": 50})
+                    data = (j or {}).get("data") or []
+                    if not data:
+                        break
+                    for ct in data:
+                        n = await _gravar_certame(con, client, ct, tot)
+                        tot["gravados"] += n
+                        await asyncio.sleep(pausa)
+                    con.commit()
+                    if pagina >= ((j or {}).get("totalPaginas") or 1):
+                        break
+                    await asyncio.sleep(pausa)
+    con.commit()
+    return tot
+
+
+async def _gravar_certame(con, client, ct: dict, tot: dict) -> int:
+    idp = ct.get("numeroControlePNCP")
+    pr = _parse_id_pncp(idp or "")
+    if not pr:
+        return 0
+    cnpj, ano, seq = pr
+    tot["certames"] += 1
+    org = ct.get("orgaoEntidade") or {}
+    uni = ct.get("unidadeOrgao") or {}
+    meta = {
+        "certame": idp, "orgao_cnpj": re.sub(r"\D", "", org.get("cnpj", "") or ""),
+        "orgao_nome": org.get("razaoSocial"), "uf": uni.get("ufSigla"),
+        "municipio": uni.get("municipioNome"), "modalidade": ct.get("modalidadeId"),
+        "objeto": (ct.get("objetoCompra") or "")[:500],
+        "data_pub": (ct.get("dataPublicacaoPncp") or ct.get("dataInclusao") or "")[:10],
+    }
+    itens = await _consulta_itens(client, cnpj, ano, seq)
+    gravados = 0
+    for it in itens:
+        num = it.get("numeroItem")
+        if num is None:
+            continue
+        res = await _resultado_item(client, cnpj, ano, seq, num)
+        if res:
+            tot["itens_com_resultado"] += 1
+        for rr in res:
+            forn = re.sub(r"\D", "", rr.get("niFornecedor", "") or "")
+            if not forn:
+                continue
+            con.execute("""INSERT OR IGNORE INTO pncp_resultado
+                (certame, orgao_cnpj, orgao_nome, uf, municipio, modalidade, objeto, data_pub,
+                 item, fornecedor_cnpj, fornecedor_nome, valor_homologado, ordem_classificacao,
+                 porte_fornecedor)
+                VALUES (:certame,:orgao_cnpj,:orgao_nome,:uf,:municipio,:modalidade,:objeto,:data_pub,
+                        :item,:forn,:nome,:valor,:ordem,:porte)""",
+                        {**meta, "item": num, "forn": forn,
+                         "nome": rr.get("nomeRazaoSocialFornecedor"),
+                         "valor": rr.get("valorTotalHomologado"),
+                         "ordem": rr.get("ordemClassificacaoSrp"),
+                         "porte": rr.get("porteFornecedorId")})
+            gravados += con.total_changes and 1 or 0
+    return gravados
+
+
+async def _consulta_itens(client, cnpj: str, ano: str, seq: int) -> list[dict]:
+    for tent in range(4):
+        try:
+            r = await client.get(f"{PNCP_BASE}/orgaos/{cnpj}/compras/{ano}/{seq}/itens", headers=_H)
+        except httpx.HTTPError:
+            await asyncio.sleep(1.5 * (tent + 1))
+            continue
+        if r.status_code == 200:
+            return r.json() or []
+        if r.status_code in (204, 404):
+            return []
+        if r.status_code == 429:
+            await asyncio.sleep(4 * (tent + 1))
+            continue
+        return []
+    return []
+
+
+def registros_vencedores(con, uf: str | None = "RJ") -> list[dict]:
+    """Lê pncp_resultado e devolve UM registro por certame com seu(s) vencedor(es) — insumo do
+    detector de rodízio de vencedores (rodizio_grafo.detectar_rodizio_vencedores)."""
+    con.row_factory = sqlite3.Row
+    q = ("SELECT certame, orgao_cnpj, orgao_nome, objeto, data_pub, "
+         "fornecedor_cnpj, fornecedor_nome, SUM(valor_homologado) v "
+         "FROM pncp_resultado WHERE ordem_classificacao=1 ")
+    params: tuple = ()
+    if uf:
+        q += "AND uf=? "
+        params = (uf,)
+    q += "GROUP BY certame, fornecedor_cnpj"
+    por_certame: dict[str, dict] = {}
+    for r in con.execute(q, params):
+        c = por_certame.setdefault(r["certame"], {
+            "certame": r["certame"], "orgao": r["orgao_cnpj"], "orgao_nome": r["orgao_nome"],
+            "objeto": r["objeto"], "data": r["data_pub"], "vencedores": []})
+        c["vencedores"].append({"cnpj": r["fornecedor_cnpj"], "nome": r["fornecedor_nome"], "valor": r["v"]})
+    return list(por_certame.values())
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+    a = sys.argv[1:]
+    ai = int(a[0]) if len(a) > 0 else PNCP_PRIMEIRO_ANO_DENSO
+    mi = int(a[1]) if len(a) > 1 else 1
+    con = sqlite3.connect("data/compliance.db")
+    r = asyncio.run(coletar_resultados(con, ano_ini=ai, mes_ini=mi))
+    con.close()
+    print(json.dumps(r, ensure_ascii=False))

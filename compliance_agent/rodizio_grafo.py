@@ -208,6 +208,55 @@ def analisar_atas(atas: list[dict], min_certames: int = 3, min_juntos: int = 3) 
     return padroes
 
 
+def detectar_rodizio_vencedores(registros: list[dict], min_certames: int = 5) -> dict:
+    """Rodízio/captura a partir de VENCEDORES por certame (dados estruturados do PNCP, que só
+    publica o homologado). Bucketiza por ÓRGÃO e olha a sequência de vencedores ao longo do tempo:
+
+      • **captura** — 1 fornecedor vence ≥80% dos certames do órgão (mercado capturado);
+      • **rodízio** — 2-3 fornecedores dividem ~igualmente TODAS as vitórias do órgão em ≥min_certames
+        certames (bid rotation: cada um na sua vez), com baixa entropia de vencedores.
+
+    Complementa o grafo de participantes (que precisa dos perdedores): aqui só o vencedor basta.
+    INDÍCIO a verificar — concentração pode ser mérito/mercado raso; corroborar competitividade."""
+    from collections import Counter
+    por_orgao: dict[str, list] = defaultdict(list)
+    for r in registros:
+        org = _so_digitos(r.get("orgao") or "")
+        vs = r.get("vencedores") or []
+        if not org or not vs:
+            continue
+        # vencedor dominante do certame (maior valor homologado)
+        venc = max(vs, key=lambda x: x.get("valor") or 0)
+        por_orgao[org].append({"certame": r.get("certame"), "data": r.get("data"),
+                               "cnpj": _so_digitos(venc.get("cnpj") or ""),
+                               "nome": venc.get("nome")})
+    captura, rodizio = [], []
+    for org, certames in por_orgao.items():
+        n = len(certames)
+        if n < min_certames:
+            continue
+        cont = Counter(c["cnpj"] for c in certames if c["cnpj"])
+        if not cont:
+            continue
+        top_cnpj, top_n = cont.most_common(1)[0]
+        share = top_n / n
+        nome_top = next((c["nome"] for c in certames if c["cnpj"] == top_cnpj), "?")
+        if share >= 0.80:
+            captura.append({"orgao": org, "certames": n, "vencedor": top_cnpj, "nome": nome_top,
+                            "share": round(share, 2), "distintos": len(cont)})
+        elif 2 <= len(cont) <= 3 and cont.most_common(1)[0][1] < n:
+            # rodízio: poucos vencedores repartem quase tudo, nenhum domina isolado
+            cobre = sum(v for _, v in cont.most_common(3)) / n
+            if cobre >= 0.9:
+                rodizio.append({"orgao": org, "certames": n, "grupo": list(cont.keys()),
+                                "reparticao": dict(cont), "cobertura_grupo": round(cobre, 2)})
+    captura.sort(key=lambda x: -x["certames"])
+    rodizio.sort(key=lambda x: -x["certames"])
+    return {"captura": captura, "rodizio_vencedores": rodizio, "n_orgaos": len(por_orgao),
+            "ressalva": "Indício a verificar (OCDE): concentração pode ser mérito ou mercado raso; "
+                        "rodízio de vencedores pede exame das propostas e do QSA. Indício ≠ acusação."}
+
+
 def coletar_atas_do_corpus(db_path: str = "data/compliance.db", limite: int = 8000) -> list[dict]:
     """Lê o corpus de editais/atas já coletado (edital_documento) filtrando os que têm marcadores de
     RESULTADO (vencedor/adjudicado + inabilitado). Certame = numero_controle_pncp; órgão = orgao_cnpj."""
