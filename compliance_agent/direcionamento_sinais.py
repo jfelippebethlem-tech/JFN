@@ -132,6 +132,75 @@ _REGRAS: list[tuple[str, re.Pattern, str, str]] = [
     # exclusividade ATADA a fornecedor/marca/produto (restritividade real) — NÃO o advérbio "exclusivamente"
     # solto (que aparece em prosa administrativa: "em relação exclusivamente a", "faltas justificadas
     # exclusivamente"). Calibrado em dado real (falso-positivo em despacho/processo disciplinar do CBMERJ).
+    # vedação à participação de consórcio SEM justificativa (art. 15 da Lei 14.133 admite; a vedação
+    # imotivada em objeto vultoso restringe — jurisprudência TCU pacífica)
+    # tempered-dot: NÃO cruza "coligadas/controladas/sob controle comum" — cláusula anti-conluio
+    # (grupo econômico proibido de participar isolado E em consórcio) é cláusula BOA, não restritiva.
+    ("vedacao_consorcio",
+     re.compile(r"(?:vedad|nao sera (?:admitid|permitid)|nao se admit|nao poderao participar)"
+                r"(?:(?!coligad|controlad|sob controle comum|mesmo grupo|isoladamente|inidone|suspens|impedid)[^.]){0,80}?"
+                r"(?:reunid\w+ em consorcio|em consorcio|sob (?:a )?forma de consorcio)"
+                r"|consorci(?:(?!coligad|controlad|sob controle comum)[^.]){0,60}?"
+                r"(?:vedad|nao sera (?:admitid|permitid))"),
+     "Veda a participação de empresas em consórcio sem justificativa técnica — em objetos de grande vulto "
+     "a vedação imotivada reduz o universo de competidores aptos.",
+     "art. 15 da Lei 14.133/2021 (consórcio admitido; vedação exige motivação) / jurisprudência TCU"),
+    # índice de liquidez/solvência mínimo desproporcional (usual ≈ 1,0; acima disso exige justificativa)
+    ("indices_contabeis",
+     re.compile(r"(?:indice de liquidez|liquidez (?:geral|corrente|seca)|indice de solvencia|solvencia geral)"
+                r"[^.]{0,60}?(?:igual ou superior|nao inferior|superior|minimo) a?\s*"
+                r"(?:[2-9]|1[,.][5-9])"),
+     "Índice contábil mínimo desproporcional (≥1,5): o usual na Administração é ≈1,0 — exigir mais afasta "
+     "empresas economicamente saudáveis de menor folga patrimonial.",
+     "art. 69 da Lei 14.133/2021 (habilitação econômico-financeira limitada ao indispensável) / juris. TCU"),
+    # atestado com quantitativo mínimo ACIMA de 50% do objeto (o usual admitido é até 50%)
+    ("atestado_percentual_alto",
+     re.compile(r"atestad[^.]{0,140}?(?:no minimo|minimo de|igual ou superior a|nao inferior a)\s*"
+                r"(?:5[1-9]|[6-9]\d|100)\s*%"),
+     "Atestado exigindo quantitativo acima de 50% do objeto — a jurisprudência consolidada admite até 50%; "
+     "acima disso a exigência tende a reservar o certame a quem já executou contrato equivalente.",
+     "Súmula TCU 263 (quantitativos mínimos proporcionais) / art. 67 da Lei 14.133/2021"),
+    # visto/registro REGIONAL do conselho profissional como condição de habilitação (só é exigível p/ EXECUÇÃO)
+    ("registro_regional",
+     re.compile(r"(?:visto|registro|inscricao)[^.]{0,50}?(?:crea|cau|conselho regional)[^.]{0,60}?"
+                r"(?:com jurisdicao no estado|do estado do rio|da regiao|do local|"
+                r"onde (?:a obra|os servicos|sera[o]? executad))"),
+     "Exigir visto/registro do conselho profissional DA REGIÃO já na habilitação restringe empresas de fora — "
+     "o visto regional só é exigível do vencedor, para a execução.",
+     "jurisprudência pacífica do TCU (visto regional do CREA/CAU apenas na contratação) / art. 37, XXI CF"),
+    # cadastro/credenciamento com ANTECEDÊNCIA mínima da sessão (barreira temporal de entrada)
+    ("cadastro_antecedencia",
+     re.compile(r"(?:cadastr|credenciament|registro cadastral)[^.]{0,80}?"
+                r"(?:antecedencia (?:minima )?de|ate) \s*\d+\s*(?:dias?|horas?)[^.]{0,40}?"
+                r"(?:da (?:sessao|abertura|data)|anterior)"),
+     "Cadastro/credenciamento exigido com antecedência mínima da sessão cria barreira temporal de entrada "
+     "sem amparo — quem soube 'na hora certa' participa; os demais não.",
+     "arts. 87-88 da Lei 14.133/2021 (registro cadastral não pode virar barreira) / art. 37, XXI CF"),
+    # filiação a sindicato/associação/cooperativa como condição
+    ("filiacao_entidade",
+     re.compile(r"(?:filiad[oa]|filiacao|associad[oa])[^.]{0,60}?"
+                r"(?:sindicato|associacao|entidade de classe|cooperativa|federacao)"
+                r"|(?:sindicato|associacao de classe)[^.]{0,50}?(?:comprovacao|declaracao) de filiacao"),
+     "Exigir filiação a sindicato/associação/entidade condiciona a participação à adesão associativa — "
+     "inconstitucional (liberdade de associação) e sem pertinência com a capacidade de executar.",
+     "art. 5º, XX, CF/88 (ninguém é compelido a associar-se) / art. 37, XXI CF"),
+    # distância/raio máximo de usina/depósito/instalação (direcionador geográfico clássico de obra)
+    ("distancia_maxima",
+     re.compile(r"(?:usina|deposito|central de (?:concreto|asfalto)|unidade (?:fabril|industrial)|instalacoes)"
+                r"[^.]{0,80}?(?:raio|distancia)[^.]{0,50}?\d+\s*(?:km|quilometr)"
+                r"|(?:raio|distancia) (?:maxim[oa] )?de\s*\d+\s*(?:km|quilometr)[^.]{0,60}?"
+                r"(?:usina|deposito|central|obra|canteiro)"),
+     "Raio/distância máxima de usina/depósito é o direcionador geográfico clássico de obras: só compete quem "
+     "já tem instalação na região (quando tecnicamente necessário, admite-se instalação APÓS a contratação).",
+     "jurisprudência TCU sobre usinas de asfalto (exigível só do contratado) / art. 37, XXI CF"),
+    # prazo exíguo para apresentação de proposta/documentos (corrida de quem já sabia)
+    ("prazo_exiguo",
+     re.compile(r"(?:apresentacao|entrega|protocolo) d[ae]s? (?:propostas?|documentos de habilitacao)"
+                r"[^.]{0,60}?(?:prazo de|em ate|no prazo maximo de)\s*(?:[1-9]|1[0-2])\s*horas?"
+                r"|(?:prazo de|em ate)\s*[1-3]\s*dias?[^.]{0,50}?(?:apresentacao|entrega) d[ae]s? propostas"),
+     "Prazo exíguo para apresentar proposta/habilitação favorece quem conhecia o certame de antemão — "
+     "assinatura temporal de direcionamento (OCDE: bid rigging por vantagem informacional).",
+     "arts. 54-55 da Lei 14.133/2021 (prazos mínimos de publicidade) / art. 37 CF"),
     ("marca_modelo",
      re.compile(r"\b(?:exclusivamente|com exclusividade|de forma exclusiva|exclusiv[oa])\b[^.]{0,50}?"
                 r"\b(?:marca|modelo|fabricante|fornecedor|distribuidor|representante|revend\w+|"
@@ -152,7 +221,8 @@ _MARC_EDITAL_N = tuple(_sem_acento(k) for k in _MARC_EDITAL)  # versão normaliz
 # "garantia") que só são CLÁUSULA quando aparecem em CONTEXTO de habilitação/edital — caso contrário
 # disparam em prosa de resumo/contrato (falso-positivo). Os FORTES dispensam contexto (são específicos).
 _TIPOS_GENERICOS = {"marca_modelo", "certificacao", "prazo_local_quantitativo", "capital_garantia_alto",
-                    "vinculo_previo", "amostra_previa"}
+                    "vinculo_previo", "amostra_previa", "indices_contabeis", "cadastro_antecedencia",
+                    "prazo_exiguo", "filiacao_entidade"}
 _JANELA_CTX = 400  # chars ao redor do match onde procuramos um marcador de edital
 
 
@@ -293,6 +363,46 @@ def extrair_inabilitacoes(texto: str) -> dict:
 
 
 # ──────────────────────────────────────────────────────────────────────────────
+# 2-B) SINAIS DE CERTAME (ata/homologação/concorrência) — red flags OCDE de bid rigging
+# ──────────────────────────────────────────────────────────────────────────────
+_RX_UNICO = re.compile(
+    r"(?:apenas|somente|tao somente)\s+(?:uma?|01|1)\s+(?:proposta|licitante|empresa)"
+    r"|unic[oa]\s+(?:licitante|proposta|empresa\s+(?:participante|interessada|compareceu))"
+    r"|licitante\s+unic[oa]|compareceu\s+(?:apenas|somente)\s+(?:uma?|01|1)")
+_RX_VAL_EST = re.compile(
+    r"valor\s+(?:estimado|de\s+referencia|orcado|maximo\s+(?:aceitavel|admitido))"
+    r"[^.]{0,60}?r?\$?\s*([\d.]{1,15},\d{2})")
+_RX_VAL_HOM = re.compile(
+    r"(?:adjudicad|homologad|arrematad|melhor\s+propost|proposta\s+vencedora|valor\s+global\s+d[ao]\s+vencedor)"
+    r"\w*[^.]{0,80}?r?\$?\s*([\d.]{1,15},\d{2})")
+
+
+def _num_brl(txt: str) -> float:
+    return float(txt.replace(".", "").replace(",", "."))
+
+
+def sinais_de_certame(texto: str) -> dict:
+    """Red flags de RESULTADO do certame (OCDE — Guidelines for Fighting Bid Rigging):
+
+    - **licitante único** — competição que não aconteceu (não conclusivo: mercado pode ser raso);
+    - **desconto irrisório** (<1% entre estimado e homologado) — quem combina não precisa descontar.
+    Determinístico e best-effort: só afirma quando o texto sustenta os DOIS valores na mesma peça."""
+    low = _norm(texto or "")
+    out: dict = {"licitante_unico": bool(_RX_UNICO.search(low)), "desconto": None}
+    m_est, m_hom = _RX_VAL_EST.search(low), _RX_VAL_HOM.search(low)
+    if m_est and m_hom:
+        try:
+            est, hom = _num_brl(m_est.group(1)), _num_brl(m_hom.group(1))
+        except ValueError:
+            return out
+        if est > 0 and 0 < hom <= est:
+            pct = (est - hom) / est * 100
+            if pct < 1.0:
+                out["desconto"] = {"estimado": est, "homologado": hom, "desconto_pct": round(pct, 3)}
+    return out
+
+
+# ──────────────────────────────────────────────────────────────────────────────
 # 3) VEREDITO DETERMINÍSTICO
 # ──────────────────────────────────────────────────────────────────────────────
 def _parece_ata(low: str) -> bool:
@@ -323,6 +433,7 @@ def analisar_direcionamento_det(texto: str) -> dict:
     tem_edital = _parece_edital(low)
     cascata = bool(inab["cascata_mesmo_motivo"]["repetido"])
     n_restr_forte = sum(1 for c in clausulas if c["tipo"] in _FORTE)
+    certame = sinais_de_certame(t) if (tem_ata or tem_edital) else {"licitante_unico": False, "desconto": None}
 
     sinais: list[str] = []
     for c in clausulas:
@@ -330,6 +441,12 @@ def analisar_direcionamento_det(texto: str) -> dict:
     if cascata:
         for q in inab["cascata_mesmo_motivo"]["quais"]:
             sinais.append(f"cascata: {q['vezes']}× mesmo motivo — «{q['motivo_trecho'][:120]}»")
+    if certame["licitante_unico"]:
+        sinais.append("resultado: LICITANTE ÚNICO no certame (red flag OCDE — competição que não aconteceu)")
+    if certame["desconto"]:
+        d = certame["desconto"]
+        sinais.append(f"resultado: desconto irrisório de {d['desconto_pct']}% sobre o estimado "
+                      f"(R$ {d['estimado']:,.2f} → R$ {d['homologado']:,.2f}) — quem combina não desconta")
 
     if not tem_ata and not tem_edital:
         return {
@@ -353,13 +470,17 @@ def analisar_direcionamento_det(texto: str) -> dict:
         resumo = (f"INDÍCIO FORTE a verificar: {n_restr_forte} cláusula(s) restritiva(s) forte(s) de habilitação "
                   f"E cascata de {inab['cascata_mesmo_motivo']['n']} inabilitações/desclassificações pelo MESMO "
                   f"motivo — assinatura clássica de direcionamento.")
-    elif clausulas or cascata:
+    elif clausulas or cascata or certame["licitante_unico"] or certame["desconto"]:
         grau = "amarelo"
         partes = []
         if clausulas:
             partes.append(f"{len(clausulas)} cláusula(s) restritiva(s) de habilitação")
         if cascata:
             partes.append(f"cascata de {inab['cascata_mesmo_motivo']['n']} inabilitações pelo mesmo motivo")
+        if certame["licitante_unico"]:
+            partes.append("licitante único")
+        if certame["desconto"]:
+            partes.append(f"desconto irrisório ({certame['desconto']['desconto_pct']}%)")
         resumo = "Indício a verificar: " + " e ".join(partes) + " (isoladamente)."
     else:
         grau = "verde"
@@ -374,6 +495,7 @@ def analisar_direcionamento_det(texto: str) -> dict:
         "cascata": cascata,
         "clausulas": clausulas,
         "inabilitacoes": inab,
+        "certame": certame,
         "sinais": sinais,
         "resumo": resumo,
         "ressalva": "presunção de legitimidade; indício a apurar, não acusação",
