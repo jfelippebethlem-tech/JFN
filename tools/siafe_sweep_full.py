@@ -45,7 +45,7 @@ def _ck(sistema):
 def _ck_save(sistema, d):
     try:
         _ckpt_path(sistema).write_text(json.dumps(d, ensure_ascii=False))
-    except Exception:
+    except (OSError, TypeError):
         pass
 
 
@@ -66,7 +66,7 @@ async def _ler_ugs(login_url, sistema) -> list[str]:
     if cache.exists():
         try:
             return json.loads(cache.read_text())
-        except Exception:
+        except (OSError, ValueError):
             pass
     from playwright.async_api import async_playwright
     import compliance_agent.siafe_ob_orcamentaria as M

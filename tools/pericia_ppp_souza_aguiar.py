@@ -18,6 +18,7 @@ import argparse
 import html
 import json
 import os
+import sqlite3
 from datetime import datetime, timezone
 
 from compliance_agent.reporting import render_html as rh
@@ -36,7 +37,7 @@ def _corpus_ccpar() -> str:
             (_SLUG,)).fetchall()
         con.close()
         return "\n\n".join(r["texto"] for r in rows if r["texto"])
-    except Exception:  # noqa: BLE001
+    except sqlite3.Error:
         return ""
 
 

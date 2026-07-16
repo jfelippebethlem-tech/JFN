@@ -142,7 +142,7 @@ def registrar(numero: str, r: dict, *, fonte: str = "sweep") -> str:
         reg[d] = e
         _save(reg)
         return e["status"]
-    except Exception:  # noqa: BLE001 — nunca derrubar o sweep
+    except (OSError, ValueError, TypeError, KeyError):  # nunca derrubar o sweep
         return "?"
 
 

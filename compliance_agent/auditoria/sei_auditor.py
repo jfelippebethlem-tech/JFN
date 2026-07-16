@@ -151,7 +151,7 @@ class Aba:
     def renew(self):
         try:
             self.ws.close()
-        except Exception:
+        except (OSError, websocket.WebSocketException, AttributeError):
             pass
         time.sleep(1.5)
         self._open()

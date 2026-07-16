@@ -71,7 +71,6 @@ def _sinais_empresa(empresa: dict) -> list[dict]:
     capital = empresa.get("capital_social") or 0.0
     porte = empresa.get("porte") or ""
     natureza = empresa.get("natureza_juridica") or ""
-    data_abertura = empresa.get("data_abertura") or ""
     email = empresa.get("email") or ""
 
     # ALTO: capital social desproporcional ao porte

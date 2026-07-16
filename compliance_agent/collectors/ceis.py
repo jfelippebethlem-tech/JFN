@@ -63,7 +63,7 @@ def _salva_cache() -> None:
     try:
         CACHE_DIR.mkdir(exist_ok=True)
         _CACHE_FILE.write_text(json.dumps(_cache, ensure_ascii=False), "utf-8")
-    except Exception:
+    except (OSError, TypeError):
         pass
 
 

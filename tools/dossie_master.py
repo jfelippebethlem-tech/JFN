@@ -21,6 +21,9 @@ from datetime import datetime
 from pathlib import Path
 
 import fitz  # PyMuPDF
+import logging
+
+logger = logging.getLogger(__name__)
 
 REPO = Path(__file__).resolve().parent.parent
 SEI_INTEGRA = REPO / "data" / "sei_cache" / "INTEGRA_070026_000705_2021.pdf"
@@ -221,8 +224,8 @@ async def montar() -> str:
                 if d2.page_count:
                     doc.insert_pdf(d2)
                 d2.close()
-            except Exception:  # noqa: BLE001 — PDF corrompido não derruba o master
-                pass
+            except (RuntimeError, ValueError) as exc:
+                logger.debug("PDF corrompido pulado (%s): %s", fp, exc)
         anexos.append("instrumentos-públicos")
     # ANEXO B — íntegra do processo TCE-RJ 107.485-1/2016, com um MARCADOR POR PEÇA (doc_N.pdf) para
     # navegar direto a cada documento dos autos. Se as peças individuais não existirem, cai no PDF unido.
@@ -247,8 +250,8 @@ async def montar() -> str:
                 if d2.page_count:
                     doc.insert_pdf(d2)
                 d2.close()
-            except Exception:  # noqa: BLE001
-                pass
+            except (RuntimeError, ValueError) as exc:
+                logger.debug("PDF corrompido pulado (%s): %s", fp, exc)
         anexos.append("TCE-por-peça")
     elif TCE_PDF.exists():
         base = doc.page_count
@@ -284,8 +287,8 @@ async def montar() -> str:
                 if d2.page_count:
                     doc.insert_pdf(d2)
                 d2.close()
-            except Exception:  # noqa: BLE001
-                pass
+            except (RuntimeError, ValueError) as exc:
+                logger.debug("PDF corrompido pulado (%s): %s", arq, exc)
         anexos.append("CEDAE-atos")
 
     # ANEXO D — processos administrativos na íntegra (toda a instrução), um por PDF, com o índice de
@@ -312,8 +315,8 @@ async def montar() -> str:
                     if lvl >= 2:  # os bookmarks por-documento do processo (nível 2 no arquivo) → nível 3 aqui
                         outline.append([3, tit[:70], base + p])
                 doc.insert_pdf(src); src.close()
-            except Exception:  # noqa: BLE001
-                pass
+            except (RuntimeError, ValueError) as exc:
+                logger.debug("PDF corrompido pulado (%s): %s", fp, exc)
         anexos.append("processos-integra")
 
     # trava de neutralidade: o entregável não pode carregar nomes internos (pedido do dono). Checa só o

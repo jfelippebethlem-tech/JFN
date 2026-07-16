@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR
 from tools import vm_guard as G
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, Error as PWError
 import httpx
 import fitz
 
@@ -56,7 +56,7 @@ async def main():
             try:
                 dump = await SR._ler_cracked(pg, PROC)
                 arv = dump.get("documentos") or []
-            except Exception as e:  # noqa: BLE001
+            except (PWError, asyncio.TimeoutError) as e:
                 print(f"cracked: {str(e)[:60]}", flush=True)
             if not arv:
                 fr = await SR.abrir_processo(pg, PROC)
@@ -83,7 +83,7 @@ async def main():
                         if _d.page_count and sum(len(p.get_text()) for p in _d) > 40:
                             fp.write_bytes(body); _d.close(); return True
                         _d.close()
-                except Exception:  # noqa: BLE001
+                except (PWError, RuntimeError, ValueError, OSError):
                     pass
                 c = await SR._conteudo_doc(pg, {"url": x["u"], "texto": x["t"]})
                 txt = ((c or {}).get("conteudo") or "").strip()
@@ -103,7 +103,7 @@ async def main():
                 try:
                     if await asyncio.wait_for(baixa_um(x, fp), timeout=int(os.environ.get("SEI_DOC_TIMEOUT", "15"))):
                         paths.append(fp); ok = True
-                except Exception as e:
+                except (asyncio.TimeoutError, PWError, httpx.HTTPError, RuntimeError, OSError, ValueError) as e:
                     print(f"  doc {i} pulado: {str(e)[:35]}", flush=True)
                 manifest.append({"i": i, "arquivo": fp.name, "titulo": x.get("t") or "",
                                  "contexto": x.get("pai") or "", "url": x.get("u") or "",
@@ -123,7 +123,7 @@ async def main():
                     s = fitz.open(str(fp))
                     if s.is_pdf and s.page_count: out.insert_pdf(s)
                     s.close()
-                except Exception: pass
+                except (RuntimeError, ValueError, OSError): pass
             full = Path(f"data/sei_cache/INTEGRA_{TAG}.pdf"); out.save(str(full), deflate=True, garbage=4)
             sz = full.stat().st_size; print(f"ÍNTEGRA: {len(paths)} docs, {out.page_count} págs, {sz/1024/1024:.1f}MB", flush=True)
             # envia (divide se >45MB); SEI_SEM_TG=1 → só baixa/arquiva, sem Telegram

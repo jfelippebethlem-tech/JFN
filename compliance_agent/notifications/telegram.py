@@ -29,6 +29,9 @@ from pathlib import Path
 from typing import Union
 
 import httpx
+import logging
+
+logger = logging.getLogger(__name__)
 
 _BOT_TOKEN, _CHAT_ID = "", ""
 BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", _BOT_TOKEN)
@@ -813,7 +816,7 @@ async def _conversar_com_agente(pergunta: str) -> str:
             finally:
                 session.close()
         except Exception:
-            pass  # fallback para Groq abaixo
+            logger.debug("responder_hermes falhou — fallback Groq")
 
     prompt = (
         f"{contexto_db}\n\n"

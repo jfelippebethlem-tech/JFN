@@ -29,6 +29,9 @@ import re
 import time
 
 import httpx
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ── Configuração ──────────────────────────────────────────────────────────────
 
@@ -551,8 +554,8 @@ def _cap_inc(name: str) -> None:
     d[m][name] = d[m].get(name, 0) + 1
     try:
         _CAP_FILE.write_text(json.dumps(d))
-    except Exception:
-        pass
+    except (OSError, TypeError) as exc:
+        logger.debug("gravação do cap mensal falhou: %s", exc)
 
 def _cap_ok(name: str) -> bool:
     cap = _MONTH_CAP.get(name)
@@ -641,8 +644,8 @@ async def qwen_chat_async(prompt: str, system: str = "", smart: bool = False,
     try:
         if openrouter_available():
             return await openrouter_chat_async(prompt, system=system, smart=smart, max_tokens=max_tokens)
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 — fallback total p/ pool free
+        logger.debug("openrouter indisponível, caindo p/ pool free: %s", exc)
     return await best_free_chat_async(prompt, system=system, smart=smart)
 
 
@@ -709,7 +712,7 @@ def _trace(provider: str, ok: bool, ms: int, erro: str = "") -> None:
         con.commit()
         con.close()
     except (sqlite3.Error, OSError):
-        pass  # telemetria NUNCA derruba a cadeia
+        logger.debug("telemetria não gravada (nunca derruba a cadeia)")
 
 
 def best_free_chat(
@@ -885,8 +888,8 @@ def extrair_entidades_texto(texto: str) -> dict:
         match = re.search(r"\{.*\}", resultado, re.DOTALL)
         if match:
             return json.loads(match.group())
-    except Exception:
-        pass
+    except ValueError as exc:
+        logger.debug("JSON do LLM ilegível: %s", exc)
     return {"pessoas": [], "empresas": [], "valores": [], "cpfs": [], "cnpjs": []}
 
 
@@ -919,8 +922,8 @@ def analisar_red_flags_contrato(objeto: str, orgao: str, valor: float) -> list[s
         llm_flags = best_free_chat(prompt, fallback="")
         if llm_flags and "nenhum" not in llm_flags.lower():
             flags_locais.append(f"🤖 Análise LLM: {llm_flags[:300]}")
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 — flags LLM são opcionais
+        logger.debug("flags LLM indisponíveis: %s", exc)
 
     return flags_locais
 

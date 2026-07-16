@@ -101,7 +101,7 @@ def _consome_cota(api: str, default_max: int = 9999) -> bool:
     try:
         _QUOTA_DIR.mkdir(exist_ok=True)
         f.write_text(_json.dumps(st), "utf-8")
-    except Exception:
+    except (OSError, TypeError):
         pass
     return True
 

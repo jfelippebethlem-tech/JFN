@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:  # só p/ anotações (o import real é lazy dentro das rotas) — resolve F821
-    from compliance_agent.hermes_goal import HermesGoalAgent
+    pass
 
 import uvicorn
 from fastapi import FastAPI, Form, Request, WebSocket, WebSocketDisconnect
@@ -36,7 +36,6 @@ from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
     RedirectResponse,
-    StreamingResponse,
 )
 from fastapi.staticfiles import StaticFiles
 

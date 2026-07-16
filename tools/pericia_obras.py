@@ -26,7 +26,7 @@ def _data(s):
     for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
         try:
             return datetime.datetime.strptime((s or "").strip()[:10], fmt).date()
-        except Exception:
+        except ValueError:
             pass
     return None
 

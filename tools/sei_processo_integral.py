@@ -27,7 +27,10 @@ import fitz
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR  # noqa: E402
 from tools import vm_guard as G  # noqa: E402
-from playwright.async_api import async_playwright  # noqa: E402
+from playwright.async_api import async_playwright, Error as PWError  # noqa: E402
+import logging
+
+logger = logging.getLogger(__name__)
 
 PROC = sys.argv[1]
 OUT = sys.argv[2] if len(sys.argv) > 2 else f"data/proc_integra/{re.sub(r'[^0-9]', '_', PROC)}.pdf"
@@ -47,7 +50,7 @@ def _load_ckpt() -> dict:
         try:
             return json.loads(RESUME.read_text(encoding="utf-8"))
         except (OSError, ValueError):
-            pass
+            logger.debug("resume ilegível — recomeçando do zero")
     return {"numero": PROC, "docs": [], "conteudos": {}}
 
 
@@ -81,7 +84,7 @@ async def _abrir_arvore(pg):
             return docs
         try:
             await pg.wait_for_timeout(2500)
-        except Exception:  # noqa: BLE001
+        except PWError:
             break
     return []
 
@@ -110,7 +113,8 @@ async def _coletar():
                 if not docs:
                     print("SEM ÁRVORE (tentativa)", flush=True); relaunches += 1
                     try: await b.close()
-                    except Exception: pass  # noqa: BLE001
+                    except PWError as exc:
+                        logger.debug("close do browser falhou: %s", exc)
                     continue
                 if not ck["docs"]:
                     ck["docs"] = [{"titulo": d.get("titulo") or d.get("texto") or "", "url": d.get("url") or "",
@@ -121,7 +125,8 @@ async def _coletar():
                 print(f"árvore: {len(docs)} docs | já lidos: {len(ck['conteudos'])} | pendentes: {len(pendentes)}", flush=True)
                 if not pendentes:
                     try: await b.close()
-                    except Exception: pass  # noqa: BLE001
+                    except PWError as exc:
+                        logger.debug("close do browser falhou: %s", exc)
                     break
                 lidos_no_lote = 0
                 crashou = False
@@ -153,7 +158,8 @@ async def _coletar():
                         break                               # relança preventivo (memória limitada)
                 _save_ckpt(ck)
                 try: await b.close()
-                except Exception: pass  # noqa: BLE001
+                except PWError as exc:
+                    logger.debug("close do browser falhou: %s", exc)
                 if crashou:
                     relaunches += 1
                     print(f"  browser caiu/pendurou — relançando ({relaunches}/{MAX_RELAUNCH}) e retomando", flush=True)
@@ -165,7 +171,8 @@ async def _coletar():
                 relaunches += 1
                 try:
                     if b: await b.close()
-                except Exception: pass  # noqa: BLE001
+                except PWError as exc:
+                    logger.debug("close do browser falhou: %s", exc)
             finally:
                 G.cleanup_orphans()
     return ck
@@ -209,7 +216,8 @@ async def main():
     pend = [d for d in docs if d.get("idd") and d["idd"] not in ck["conteudos"]]
     if not pend:
         try: RESUME.unlink()
-        except OSError: pass
+        except OSError as exc:
+            logger.debug("unlink do resume falhou: %s", exc)
     return 0
 
 

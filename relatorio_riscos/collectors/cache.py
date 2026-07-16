@@ -99,7 +99,7 @@ def limpar_tudo() -> None:
         conn.execute("DELETE FROM cache")
         conn.commit()
         conn.close()
-    except Exception:
+    except sqlite3.Error:
         pass
 
 

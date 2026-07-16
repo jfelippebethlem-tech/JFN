@@ -153,7 +153,7 @@ def _docs_de_zip(blob: bytes, max_docs: int = 6) -> list[tuple[str, str]]:
     for nome in pdfs[:max_docs]:
         try:
             docs.append((nome.split("/")[-1], _texto_pdf(z.read(nome))))
-        except Exception:  # noqa: BLE001 — um PDF ruim não derruba os outros
+        except (KeyError, RuntimeError, ValueError, OSError, zipfile.BadZipFile):  # um PDF ruim não derruba os outros
             continue
     return docs
 
