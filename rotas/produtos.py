@@ -297,24 +297,42 @@ def _resolver_slug_ppp(alvo: str) -> str:
     return _re.sub(r"[^a-z0-9]+", "-", a).strip("-")
 
 
+# Projetos com PERÍCIA MESTRE (aprofundada, bespoke) — o /ppp entrega ela, não o dossiê automático.
+# Cada valor é uma função que devolve o ctx de render (mesmo formato do dossiê). Extensível.
+def _mestre_souza_aguiar() -> dict:
+    from tools.pericia_ppp_souza_aguiar import montar_ctx
+    return montar_ctx()
+
+
+_PERICIAS_MESTRE = {"complexo-hospitalar-souza-aguiar": _mestre_souza_aguiar}
+
+
+def _ctx_ppp(slug: str) -> tuple[dict, str, str]:
+    """Devolve (ctx, nome_base_pdf, rotulo). Mestre se houver; senão dossiê genérico."""
+    if slug in _PERICIAS_MESTRE:
+        return _PERICIAS_MESTRE[slug](), f"pericia_ppp_{slug}", "Perícia (mestre)"
+    from compliance_agent.pcrj import dossie_ppp
+    return dossie_ppp.montar_dossie(slug, db_path="data/pcrj.db"), f"dossie_ppp_{slug}", "Dossiê PPP"
+
+
 async def _gerar_e_enviar_ppp(slug: str, key: str) -> None:
     from compliance_agent.notifications import telegram as _tg
-    from compliance_agent.pcrj import ppp_ccpar, dossie_ppp
+    from compliance_agent.pcrj import ppp_ccpar
     from compliance_agent.reporting import render_html as rh
     _pausar_sweeps_para_relatorio()
     try:
         await asyncio.to_thread(ppp_ccpar.coletar_projeto, slug, db_path="data/pcrj.db")
-        try:  # ingestão do edital (ZIP ~47MB) é opcional — sem ela o dossiê roda sobre o D.O.
+        try:  # ingestão do edital (ZIP ~47MB) alimenta o corpus da perícia/lente
             await asyncio.to_thread(ppp_ccpar.ingerir_edital, slug, db_path="data/pcrj.db")
         except Exception as exc:  # noqa: BLE001
             logger.warning("ingestão do edital CCPAR falhou (segue com D.O.): %s", exc)
-        ctx = await asyncio.to_thread(dossie_ppp.montar_dossie, slug, "data/pcrj.db")
-        pdf = await rh.gerar_pdf(ctx, f"dossie_ppp_{slug}")
+        ctx, nome_base, rotulo = await asyncio.to_thread(_ctx_ppp, slug)
+        pdf = await rh.gerar_pdf(ctx, nome_base)
         resumo = f"{ctx.get('faixa', '')} — {ctx.get('subtitulo', '')}"
         await _enviar_docs_telegram({"path_pdf": pdf, "resumo": resumo},
-                                    f"Dossiê PPP — {ctx.get('titulo', slug)}")
+                                    f"{rotulo} — {ctx.get('titulo', slug)}")
     except Exception as exc:  # noqa: BLE001
-        await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o dossiê da PPP {slug}: {str(exc)[:300]}")
+        await _tg.enviar_mensagem(f"⚠️ Erro ao gerar a perícia/dossiê da PPP {slug}: {str(exc)[:300]}")
     finally:
         _REL_EM_CURSO.discard(key)
         _retomar_sweeps_se_ocioso()
@@ -331,17 +349,19 @@ async def api_ppp(payload: Optional[dict] = None):
         return JSONResponse(content={"ok": False, "erro": "informe {'projeto': 'souza aguiar'} ou {'slug': ...}"},
                             status_code=400)
     slug = _resolver_slug_ppp(alvo)
-    if payload.get("sync"):  # modo síncrono (CLI/testes) — gera HTML, não baixa o ZIP
-        from compliance_agent.pcrj import dossie_ppp
-        return JSONResponse(content=await asyncio.to_thread(dossie_ppp.gerar, slug, db_path="data/pcrj.db"))
+    if payload.get("sync"):  # modo síncrono (CLI/testes) — devolve o resumo do ctx (mestre ou dossiê)
+        ctx, _nome, rotulo = await asyncio.to_thread(_ctx_ppp, slug)
+        return JSONResponse(content={"ok": True, "tipo": rotulo, "titulo": ctx.get("titulo"),
+                                     "faixa": ctx.get("faixa"), "n_secoes": len(ctx.get("secoes", []))})
     key = f"ppp:{slug}"
+    produto = "a perícia (mestre)" if slug in _PERICIAS_MESTRE else "o dossiê"
     if key in _REL_EM_CURSO:
         return JSONResponse({"ok": True, "status": "gerando",
-                             "msg": "⏳ Já estou preparando esse dossiê de PPP — te envio em instantes."})
+                             "msg": f"⏳ Já estou preparando {produto} dessa PPP — te envio em instantes."})
     _REL_EM_CURSO.add(key)
     asyncio.create_task(_gerar_e_enviar_ppp(slug, key))
     return JSONResponse({"ok": True, "status": "gerando",
-                         "msg": f"📥 Preparando o dossiê da PPP *{alvo}* (PDF, ~1–2 min). Te envio aqui mesmo."})
+                         "msg": f"📥 Preparando {produto} da PPP *{alvo}* (PDF, ~1–2 min). Te envio aqui mesmo."})
 
 
 @router.get("/api/ppp/triagem")
