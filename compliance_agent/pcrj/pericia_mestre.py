@@ -291,8 +291,8 @@ def montar_html(slug: str, db_path=None) -> str:
         "Tribunal de Contas do Município, o processo do Edital nº 01/2023 — em especial os pontos "
         "objeto de esclarecimento e a análise de competitividade.")))
 
-    # cap. cláusulas restritivas (as flags que faltavam) — em prosa, agrupadas por tipo, com triagem honesta
-    caps.append(("cap-restritividade", "Cláusulas Restritivas do Edital", _clausulas_restritivas_html(dirc)))
+    # cap. cláusulas restritivas (as flags que faltavam) — em prosa, com o TRECHO COMPLETO do edital
+    caps.append(("cap-restritividade", "Cláusulas Restritivas do Edital", _clausulas_restritivas_html(dirc, corpus)))
 
     # cap. lente × jurisprudência
     caps.append(("cap-lente", "Indícios de Concessão × Jurisprudência dos Tribunais de Contas",
@@ -350,6 +350,19 @@ def montar_html(slug: str, db_path=None) -> str:
         "conta-garantia; e a sociedade de propósito específico é controlada por grupo de origem baiana "
         "(Sian Engenharia e Lotus Participações, sob Ivan Mattos Neto). Não se localizou emissão de dívida "
         "da concessionária em mercado de capitais.",
+        "A verificação foi levada ao nível do <b>quadro societário oficial (Receita Federal)</b> de toda a "
+        "cadeia de controle, sem que o banco apareça em qualquer elo: na concessionária Smart Hospital S.A. "
+        "(CNPJ 52.592.077/0001-00) constam apenas os administradores Allan Kardec Machado, André Viana "
+        "Portela, Qin Zhang e Rodrigo Galina; na Sian Engenharia Ltda. (CNPJ 03.746.272/0001-23), os "
+        "sócios André Portela, Luis Augusto Gomes Siqueira e a Sian Holding; e na Sian Holding Ltda. (CNPJ "
+        "36.296.376/0001-32), um quadro amplo de participações de origem baiana — " + _crit("em nenhum "
+        "deles figura o BTG Pactual ou fundo por ele gerido") + ". A modelagem coube ao consórcio "
+        "Pezco–Kraft–Apparecido e o único financiador de dívida nomeado, no disclosure do próprio "
+        "organismo multilateral, é o IDB Invest. Registre-se, por honestidade, a única peça em aberto: o "
+        "quadro societário exato da Lotus Participações (a cotista carioca do consórcio) não pôde ser "
+        "casado em fonte pública e deve ser obtido no ato de constituição do consórcio — lacuna que, "
+        "contudo, " + _hl("não abre qualquer indício de participação do BTG; apenas resta a confirmar em "
+        "fonte primária") + ".",
         "Registre-se, por rigor, que a imprensa já associou o BTG a temas da política fluminense em "
         "episódios <b>anteriores e alheios</b> a esta concessão (o imóvel do Sr. Guilherme Paes ocupado "
         "por ex-governador, em 2011; menções em 2013 e 2015). Nada disso guarda nexo documentado com o "
@@ -422,13 +435,39 @@ def _romano(n: int) -> str:
     return out or "I"
 
 
-def _clausulas_restritivas_html(dirc: dict) -> str:
+def _clausula_completa(corpus_norm: str, trecho: str) -> str:
+    """Expande a janela curta do detector até os limites do item numerado do edital (trecho íntegro)."""
+    anchor = re.sub(r"\s+", " ", trecho or "").strip()
+    if not anchor:
+        return ""
+    i = corpus_norm.find(anchor[:60])
+    if i < 0:
+        i = corpus_norm.find(anchor[:30])
+    if i < 0:
+        return anchor  # não localizou no corpus — devolve o que veio (sem cortar)
+    # recua até o início do item numerado (ex.: '25.22.2 '), com teto de 300 p/ trás
+    ini = i
+    tras = corpus_norm[max(0, i - 300):i]
+    marcos = list(re.finditer(r"(?<![\d.])\d{1,2}(?:\.\d{1,3}){1,3}\.?\s", tras))
+    if marcos:
+        ini = max(0, i - 300) + marcos[-1].start()
+    # janela generosa p/ frente (não cortar); só para num item numerado de 3+ grupos
+    # (medidas '9.518' e quantidades não têm 3 grupos e não enganam mais), após ≥ 500 chars
+    limite = min(len(corpus_norm), ini + 2200)
+    janela = corpus_norm[ini + 500:limite]
+    m = re.search(r"\s\d{1,2}\.\d{1,3}\.\d{1,3}(?:\.\d{1,3})?\s", janela)
+    fim = (ini + 500 + m.start()) if m else limite
+    return corpus_norm[ini:fim].strip()
+
+
+def _clausulas_restritivas_html(dirc: dict, corpus: str = "") -> str:
     clausulas = dirc.get("clausulas", [])
     if not clausulas:
         return _p("A leitura do edital não evidenciou cláusulas restritivas pelos parâmetros aferidos. "
                   "Ausência de indício, contudo, não equivale a atestado de regularidade da fase de "
                   "habilitação, que deve ser confrontada com a ata da sessão pública.")
     from collections import Counter
+    corpus_norm = re.sub(r"\s+", " ", corpus or "")  # colapsa TODO whitespace (casa a âncora do detector)
     cont = Counter(c.get("tipo") for c in clausulas)
     intro = _p(
         f"A análise cláusula a cláusula das exigências de habilitação e de qualificação técnica do edital "
@@ -437,16 +476,18 @@ def _clausulas_restritivas_html(dirc: dict) -> str:
         "A relação abaixo é <b>exaustiva</b> e deliberadamente crítica; adota-se, porém, triagem honesta: "
         "concessões hospitalares de grande vulto legitimamente exigem qualificação robusta, de modo que o "
         "ponto pericial não é a existência da exigência, e sim a <b>proporcionalidade justificada nos "
-        "autos</b>. Sinaliza-se, quando cabível, o que tende a ser mera formalidade e o que constitui "
-        "indício substantivo a apurar.")
+        "autos</b>. Cada ocorrência vem acompanhada do <b>trecho íntegro</b> do edital, para conferência "
+        "direta.")
     blocos = []
-    for c in clausulas:
+    for n, c in enumerate(clausulas, 1):
         rot, expl = _ROTULO_CLAUSULA.get(c.get("tipo"), (c.get("tipo"), c.get("por_que_restringe") or ""))
-        trecho = re.sub(r"\s+", " ", c.get("trecho") or "").strip()
+        integra = _clausula_completa(corpus_norm, c.get("trecho") or "") if corpus_norm else \
+            re.sub(r"\s+", " ", c.get("trecho") or "").strip()
         blocos.append(
-            f"<div class='flag'><p class='ft'><b>{_q(rot)}</b></p>"
+            f"<div class='flag'><p class='ft'><b>{n}. {_q(rot)}</b></p>"
             f"<p>{_q(expl)}</p>"
-            + (f"<p class='tr'>Trecho: …{_q(trecho[:300])}…</p>" if trecho else "")
+            + (f"<p class='tr'><b>Trecho íntegro do edital:</b></p>"
+               f"<blockquote class='clausula'>{_q(integra)}</blockquote>" if integra else "")
             + "</div>")
     return intro + "".join(blocos)
 
@@ -562,7 +603,9 @@ table.dados td { border:1px solid #ddd; padding:5px 9px; vertical-align:top; }
 table.dados td.k { font-weight:bold; width:34%; background:#f6f6f6; }
 .flag { border-left:3px solid #8a5a00; padding:6px 12px; margin:10px 0; background:#fafafa; }
 .flag .ft { margin:0 0 3px; }
-.flag .tr { font-size:11px; color:#666; margin:4px 0 0; }
+.flag .tr { font-size:11px; color:#444; margin:6px 0 2px; }
+blockquote.clausula { white-space:pre-wrap; word-wrap:break-word; font-size:10.5px; line-height:1.4;
+    background:#f4f4f4; border-left:2px solid #999; padding:6px 10px; margin:2px 0 0; color:#222; }
 .integra { white-space:pre-wrap; word-wrap:break-word; font-family:'DejaVu Sans Mono',monospace;
            font-size:9.5px; line-height:1.35; color:#222; }
 .callout { border:1px solid #8a1a1a; background:#fbecec; padding:8px 12px; margin:10px 0; }
