@@ -110,6 +110,16 @@ def _consolidar(r: dict) -> dict:
             sinais.append("cascata de inabilitações")
         for c in d.get("clausulas", [])[:5]:
             sinais.append(f"cláusula restritiva: {c.get('tipo')}")
+        cert = d.get("certame") or {}
+        if cert.get("licitante_unico"):
+            sinais.append("resultado: licitante único (OCDE)")
+        if cert.get("desconto"):
+            sinais.append(f"resultado: desconto irrisório {cert['desconto'].get('desconto_pct')}%")
+        for _k, _r in (("mesmo_representante", "conluio: mesmo representante"),
+                       ("subcontrata_perdedor", "conluio: subcontrata derrotado"),
+                       ("supressao_proposta", "conluio: supressão de proposta")):
+            if cert.get(_k):
+                sinais.append(_r)
     det = r.get("detectores", {})
     if isinstance(det, dict) and det.get("confirmados"):
         for c in det["confirmados"]:

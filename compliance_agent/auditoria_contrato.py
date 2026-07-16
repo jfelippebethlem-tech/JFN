@@ -580,11 +580,65 @@ def _t24_bruto_liquido(d) -> dict:
                 "Relatório do órgão × OBs", "Lei 4.320/64 art. 63", _PESO["media"])
 
 
+def _t25_jogo_planilha(d) -> dict:
+    """T25 — Jogo de planilha (sobrepreço via aditivo que restabelece o preço após desconto na licitação).
+
+    Assinatura macro (TCU, Acórdãos 1.755/2004, 2.988/2018 Plenário): a empresa vence com desconto
+    agressivo (mergulho) e RECUPERA valor por termos aditivos que elevam o global de volta à/acima da
+    estimativa — o item barato encolhe, o caro cresce. Caracterização INDEPENDE de dolo (Acórdão TCU
+    sobre jogo de planilhas), então basta o padrão quantitativo para o INDÍCIO. Sem os preços UNITÁRIOS
+    o teste não conclui superfaturamento — aponta o padrão e pede a planilha de quantitativos.
+    """
+    vi = _money(d.get("valor_inicial") or 0)   # valor adjudicado (proposta vencedora)
+    vg = _money(d.get("valor_global") or 0)     # valor com aditivos
+    est = _money(d.get("valor_estimado") or 0)  # estimativa/orçamento do edital (se houver)
+    n_adit = int(d.get("n_aditivos") or 0)
+    obj = " ".join(str(d.get(k) or "") for k in ("objeto", "contrato")).lower()
+    # obra de engenharia — com fronteira de palavra e EXCLUINDO os falsos-amigos reais do corpus:
+    # "mão de obra" (serviço contínuo, contém "obra") e "infraestrutura elétrica/de TI" (fornecimento).
+    obj_limpo = re.sub(r"m[ãa]o[ -]de[ -]obra", " ", obj)
+    eh_obra = bool(re.search(
+        r"\b(obras?|engenharia|constru(?:ç|c)\w*|reforma|pavimenta\w*|drenagem|urbaniza\w*|"
+        r"edifica(?:ç|c)\w*|terraplen\w*|saneamento|rodovi\w*|macrodrenagem)\b", obj_limpo))
+    # infraestrutura só conta como obra quando é de engenharia civil (não elétrica/TI/telecom)
+    if re.search(r"infraestrutura\s+(?:vi[áa]ria|urbana|de\s+drenagem|de\s+saneamento|de\s+transporte)", obj_limpo):
+        eh_obra = True
+    if vi <= 0 or vg <= 0:
+        return _indisp("T25-JOGO-PLANILHA", "Jogo de planilha (recuperação por aditivo)",
+                       "valor_inicial e valor_global do contrato", "Lei 14.133/2021 art. 125; Acórdãos TCU "
+                       "1.755/2004, 2.988/2018-P", _PESO["media"])
+    acresc = (vg / vi - 1) * 100 if vi > 0 else 0.0
+    # sinal de mergulho na licitação (só quando há estimativa): adjudicado << estimado
+    mergulho = (est > 0 and vi < est * 0.85)
+    desc_pct = (1 - vi / est) * 100 if est > 0 else None
+    recuperou = est > 0 and vg >= est * 0.98  # aditivos levam o global de volta à estimativa
+    limiar = 25.0  # teto legal ordinário de acréscimo (art. 125) — acima disso o padrão é sensível
+    if eh_obra and n_adit >= 1 and acresc >= limiar and (mergulho or recuperou or est == 0):
+        partes = [f"contrato de obra/engenharia adjudicado por R$ {vi:,.2f} e elevado a R$ {vg:,.2f} "
+                  f"via {n_adit} aditivo(s) (+{acresc:.1f}%)"]
+        if mergulho:
+            partes.append(f"após MERGULHO na licitação ({desc_pct:.1f}% abaixo da estimativa de R$ {est:,.2f})")
+        if recuperou:
+            partes.append("com o global RECUPERANDO a estimativa original — assinatura clássica do jogo de planilha")
+        ev = ("; ".join(partes) + f". Acréscimo por aditivo acima do teto ordinário de {limiar:.0f}% do art. 125 "
+              "sem, ainda, a planilha de quantitativos que confirme sobrepreço unitário. INDÍCIO cuja "
+              "caracterização, na jurisprudência do TCU, INDEPENDE de dolo — pede análise dos preços unitários.")
+        nivel = "alto" if (mergulho and recuperou) else "medio"
+        return _hip("T25-JOGO-PLANILHA", "Jogo de planilha (recuperação por aditivo)", "INDICIO", nivel, ev,
+                    "valor_inicial × valor_global × estimativa (PNCP/TCE-RJ)",
+                    "Lei 14.133/2021 arts. 125-126; Acórdãos TCU 1.755/2004, 2.988/2018-Plenário", _PESO["alta"])
+    return _hip("T25-JOGO-PLANILHA", "Jogo de planilha (recuperação por aditivo)", "AFASTADO", "—",
+                f"Acréscimo por aditivo {acresc:.1f}% (adjudicado R$ {vi:,.2f} → global R$ {vg:,.2f})"
+                + ("" if eh_obra else "; objeto não é obra/engenharia (padrão típico de obras)")
+                + " — sem o padrão de mergulho-e-recuperação característico do jogo de planilha.",
+                "valor_inicial × valor_global", "Lei 14.133/2021 art. 125", _PESO["media"])
+
+
 _TESTES = [
     _t01_3way, _t02_status_pago, _t03_reconcilia, _t04_reajuste_cct, _t05_database, _t06_interregno,
     _t07_duplicidade, _t08_gap, _t09_inss, _t10_ir, _t11_identidade, _t12_glosa, _t13_trabalhista,
     _t14_piso, _t15_grupo_a, _t16_regime, _t17_lucro, _t18_beneficio, _t19_preclusao, _t20_garantia,
-    _t21_conta_vinculada, _t23_auto_aritmetica, _t24_bruto_liquido,
+    _t21_conta_vinculada, _t23_auto_aritmetica, _t24_bruto_liquido, _t25_jogo_planilha,
 ]
 
 

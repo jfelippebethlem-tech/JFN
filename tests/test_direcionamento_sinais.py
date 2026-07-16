@@ -199,3 +199,43 @@ def test_sinais_certame_desconto_saudavel_nao_dispara():
            "homologada no valor de R$ 780.000,00 após disputa de lances entre nove licitantes.")
     r = DS.sinais_de_certame(ata)
     assert r["desconto"] is None
+
+
+# ───────────── conluio OCDE 2025 em ata (Bid-Rigging Detection List) ─────────────
+
+def test_certame_mesmo_representante_dispara():
+    ata = ("ATA DE SESSÃO. Verificou-se que o mesmo representante legal assinou as propostas de duas "
+           "licitantes distintas. " * 3 + "edital pregão habilitação atestado proposta")
+    r = DS.sinais_de_certame(ata)
+    assert r["mesmo_representante"] is True
+
+
+def test_certame_subcontratacao_ao_derrotado_dispara():
+    ata = ("A vencedora subcontratou a empresa licitante que havia sido desclassificada no certame. " * 3
+           + "edital pregão habilitação atestado proposta")
+    r = DS.sinais_de_certame(ata)
+    assert r["subcontrata_perdedor"] is True
+
+
+def test_certame_supressao_de_proposta_dispara():
+    ata = ("A licitante retirou sua proposta após ser convocada, deixando o caminho livre. " * 3
+           + "edital pregão habilitação atestado proposta")
+    r = DS.sinais_de_certame(ata)
+    assert r["supressao_proposta"] is True
+
+
+def test_certame_ata_limpa_nao_dispara_conluio():
+    ata = ("ATA DA SESSÃO. Nove licitantes disputaram lances. A proposta vencedora ofertou desconto de "
+           "22% sobre o estimado, após ampla competição. " * 2)
+    r = DS.sinais_de_certame(ata)
+    assert not r["mesmo_representante"] and not r["subcontrata_perdedor"] and not r["supressao_proposta"]
+
+
+def test_conluio_ocde_entra_no_veredito_como_amarelo():
+    ata = ("ATA DE SESSÃO PÚBLICA DE PREGÃO. Compareceram três licitantes. Constatou-se que o mesmo "
+           "procurador representava duas delas. A vencedora subcontratou a empresa desclassificada. "
+           "Habilitação, atestado de capacidade técnica, proposta e edital constam dos autos. " * 3)
+    det = DS.analisar_direcionamento_det(ata)
+    assert det["grau_det"] in ("amarelo", "vermelho")
+    assert any("conluio" in s.lower() for s in det["sinais"])
+    assert "certame" in det and det["certame"]["mesmo_representante"]

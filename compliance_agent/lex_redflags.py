@@ -23,6 +23,10 @@ _RF = {
     "R10": ("Liquidação irregular / pagamento atípico (estornos)", "Arts. 62-63 Lei 4.320/64; Decreto 93.872/86 art. 38"),
     "R11": ("Atividade-fim (CNAE) incompatível com o objeto contratado", "Arts. 62-63 Lei 14.133 (qualificação técnica); art. 337-F CP; ACFE — shell company"),
     "R12": ("Planejamento de fachada (DFD/ETP/TR genéricos)", "Art. 5º e Art. 18 Lei 14.133"),
+    "R13": ("Jogo de planilha (sobrepreço recuperado por aditivo após mergulho na licitação)",
+            "Arts. 125-126 Lei 14.133/2021; Acórdãos TCU 1.755/2004 e 2.988/2018-Plenário (independe de dolo)"),
+    "R14": ("Conluio entre licitantes (rodízio/cobertura/supressão — OCDE)",
+            "Art. 90 Lei 14.133/2021 (frustrar/fraudar licitação); Art. 337-F CP; Art. 36 Lei 12.529/2011 (CADE)"),
     # Investigação de Due Diligence (fachada/laranja) — motor investigacao_dd; detalhe na seção II-E.
     "DD/H-END-RESID": ("Sede em endereço de natureza residencial", "art. 337-F CP; art. 11 Lei 8.429/92"),
     "DD/H-END-EXISTE": ("Endereço não confirmado fisicamente (geocodificação)", "art. 337-F CP"),
@@ -233,6 +237,7 @@ _MOTIVO_IMPROBIDADE_RF = {
     "R7": "direcionamento/restrição à competitividade",
     "R11": "qualificação técnica frágil / empresa de fachada",
     "R12": "planejamento deficiente / escalada de faturamento a justificar",
+    "R14": "conluio/fraude à licitação (cartel entre licitantes)",
     "DD": "fachada/laranja",
 }
 # RF → famílias de destinatário (um achado pode disparar mais de uma família).
@@ -248,6 +253,8 @@ _RF_DESTINATARIO = {
     "R10": ("debito",),
     "R11": ("improbidade", "par"),
     "R12": ("improbidade",),
+    "R13": ("debito",),
+    "R14": ("conluio", "improbidade"),
     "DD": ("par", "improbidade"),
 }
 
@@ -258,7 +265,7 @@ _RF_DESTINATARIO = {
 # comprovado; art. 11 é rol taxativo. O Lex SÓ aponta indício a apurar — NUNCA afirma dolo. Default =
 # irregularidade/erro de gestão (controle de contas/TCE-RJ); só sobe a 'dolo a apurar' quando há SINAL
 # de elemento subjetivo desonesto (fachada/laranja/cartel/interposição). NUNCA superdimensiona.
-_DOLO_RF = {"R11"}
+_DOLO_RF = {"R11", "R14"}  # R14 (conluio) é intrinsecamente doloso; R13 (jogo de planilha) NÃO — TCU: independe de dolo
 _DOLO_OBS = ("sócio em comum", "socio em comum", "sócios em comum", "irmã", "laranja", "fachada",
              "interposi", "nominee", "cartel", "conluio", "compartilh", "mesma sede", "co-endereço",
              "coendereço", "co-endereco", "testa de ferro")

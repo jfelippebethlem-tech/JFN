@@ -375,6 +375,18 @@ _RX_VAL_EST = re.compile(
 _RX_VAL_HOM = re.compile(
     r"(?:adjudicad|homologad|arrematad|melhor\s+propost|proposta\s+vencedora|valor\s+global\s+d[ao]\s+vencedor)"
     r"\w*[^.]{0,80}?r?\$?\s*([\d.]{1,15},\d{2})")
+# OCDE 2025 (Bid-Rigging Detection List) — padrões de conluio detectáveis no TEXTO de uma ata/edital:
+_RX_MESMO_REPR = re.compile(
+    r"mesm[oa]\s+(?:representante|procurador|preposto|responsavel legal)"
+    r"|(?:representante|procurador|preposto)\s+(?:comum|de (?:ambas|duas|varias|mais de uma))")
+_RX_SUBCONTR_PERD = re.compile(
+    r"subcontrat\w+[^.]{0,80}?(?:licitante|empresa|proponente)[^.]{0,40}?"
+    r"(?:desclassificad|inabilitad|perdedor|derrotad|nao vencedor|segund[oa] colocad)"
+    r"|(?:licitante|empresa) (?:desclassificad|inabilitad|perdedor)\w*[^.]{0,60}?subcontrat")
+_RX_SUPRESSAO = re.compile(
+    r"(?:retirou|retirad[ao] d[ae]|desistiu d[ae]|desistencia d[ae]|declinou)\s+(?:sua )?propost"
+    r"|proposta\s+(?:retirada|declinada)|abstenc\w+ de (?:ofertar|apresentar propost)"
+    r"|nao apresentou (?:lance|proposta) apos (?:convocad|habilitad)")
 
 
 def _num_brl(txt: str) -> float:
@@ -388,7 +400,10 @@ def sinais_de_certame(texto: str) -> dict:
     - **desconto irrisório** (<1% entre estimado e homologado) — quem combina não precisa descontar.
     Determinístico e best-effort: só afirma quando o texto sustenta os DOIS valores na mesma peça."""
     low = _norm(texto or "")
-    out: dict = {"licitante_unico": bool(_RX_UNICO.search(low)), "desconto": None}
+    out: dict = {"licitante_unico": bool(_RX_UNICO.search(low)), "desconto": None,
+                 "mesmo_representante": bool(_RX_MESMO_REPR.search(low)),
+                 "subcontrata_perdedor": bool(_RX_SUBCONTR_PERD.search(low)),
+                 "supressao_proposta": bool(_RX_SUPRESSAO.search(low))}
     m_est, m_hom = _RX_VAL_EST.search(low), _RX_VAL_HOM.search(low)
     if m_est and m_hom:
         try:
@@ -447,6 +462,15 @@ def analisar_direcionamento_det(texto: str) -> dict:
         d = certame["desconto"]
         sinais.append(f"resultado: desconto irrisório de {d['desconto_pct']}% sobre o estimado "
                       f"(R$ {d['estimado']:,.2f} → R$ {d['homologado']:,.2f}) — quem combina não desconta")
+    if certame.get("mesmo_representante"):
+        sinais.append("conluio (OCDE): MESMO representante/procurador para 2+ licitantes — indício de "
+                      "propostas coordenadas (cover bidding / propostas de cobertura)")
+    if certame.get("subcontrata_perdedor"):
+        sinais.append("conluio (OCDE): vencedor SUBCONTRATA licitante derrotado — padrão de compensação "
+                      "de cartel (o perdedor combinado recebe sua parte via subcontrato)")
+    if certame.get("supressao_proposta"):
+        sinais.append("conluio (OCDE): retirada/desistência/supressão de proposta — bid suppression "
+                      "(licitante se abstém para o combinado vencer)")
 
     if not tem_ata and not tem_edital:
         return {
@@ -470,7 +494,8 @@ def analisar_direcionamento_det(texto: str) -> dict:
         resumo = (f"INDÍCIO FORTE a verificar: {n_restr_forte} cláusula(s) restritiva(s) forte(s) de habilitação "
                   f"E cascata de {inab['cascata_mesmo_motivo']['n']} inabilitações/desclassificações pelo MESMO "
                   f"motivo — assinatura clássica de direcionamento.")
-    elif clausulas or cascata or certame["licitante_unico"] or certame["desconto"]:
+    elif clausulas or cascata or any(certame.get(k) for k in
+            ("licitante_unico", "desconto", "mesmo_representante", "subcontrata_perdedor", "supressao_proposta")):
         grau = "amarelo"
         partes = []
         if clausulas:
@@ -481,6 +506,11 @@ def analisar_direcionamento_det(texto: str) -> dict:
             partes.append("licitante único")
         if certame["desconto"]:
             partes.append(f"desconto irrisório ({certame['desconto']['desconto_pct']}%)")
+        _conluio = [n for k, n in (("mesmo_representante", "mesmo representante"),
+                                   ("subcontrata_perdedor", "subcontratação ao derrotado"),
+                                   ("supressao_proposta", "supressão de proposta")) if certame.get(k)]
+        if _conluio:
+            partes.append("sinais de conluio OCDE (" + ", ".join(_conluio) + ")")
         resumo = "Indício a verificar: " + " e ".join(partes) + " (isoladamente)."
     else:
         grau = "verde"
