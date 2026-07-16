@@ -231,10 +231,18 @@ def registros_vencedores(con, uf: str | None = "RJ") -> list[dict]:
 if __name__ == "__main__":
     import json
     import sys
-    a = sys.argv[1:]
-    ai = int(a[0]) if len(a) > 0 else PNCP_PRIMEIRO_ANO_DENSO
-    mi = int(a[1]) if len(a) > 1 else 1
+    args = sys.argv[1:]
     con = sqlite3.connect("data/compliance.db")
-    r = asyncio.run(coletar_resultados(con, ano_ini=ai, mes_ini=mi))
+    if "--incremental" in args:
+        # timer: só os 2 meses mais recentes (idempotente — reprocessa o que fechou/foi homologado agora)
+        hoje = date.today()
+        ano_ant, mes_ant = (hoje.year - 1, 12) if hoje.month == 1 else (hoje.year, hoje.month - 1)
+        r = asyncio.run(coletar_resultados(con, ano_ini=ano_ant, mes_ini=mes_ant,
+                                           ano_fim=hoje.year, mes_fim=hoje.month))
+    else:
+        # backfill: [ano_ini] [mes_ini] (default 2024-01 → hoje)
+        ai = int(args[0]) if len(args) > 0 and args[0].isdigit() else PNCP_PRIMEIRO_ANO_DENSO
+        mi = int(args[1]) if len(args) > 1 and args[1].isdigit() else 1
+        r = asyncio.run(coletar_resultados(con, ano_ini=ai, mes_ini=mi))
     con.close()
-    print(json.dumps(r, ensure_ascii=False))
+    print(json.dumps(r, ensure_ascii=False), flush=True)
