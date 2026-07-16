@@ -297,22 +297,14 @@ def _resolver_slug_ppp(alvo: str) -> str:
     return _re.sub(r"[^a-z0-9]+", "-", a).strip("-")
 
 
-# Projetos com PERÍCIA MESTRE (aprofundada, bespoke) — o /ppp entrega ela, não o dossiê automático.
-# Cada valor é uma função que devolve o ctx de render (mesmo formato do dossiê). Extensível.
-def _mestre_souza_aguiar() -> dict:
-    from tools.pericia_ppp_souza_aguiar import montar_ctx
-    return montar_ctx()
+# Projetos com PERÍCIA MESTRE (documento aprofundado, com íntegras + menu navegável).
+# Cada valor é (coroutine que gera o PDF, rótulo). Extensível: mapear novo slug.
+async def _pdf_mestre_souza_aguiar() -> str:
+    from compliance_agent.pcrj import pericia_mestre
+    return await pericia_mestre.gerar_pdf("complexo-hospitalar-souza-aguiar", db_path="data/pcrj.db")
 
 
-_PERICIAS_MESTRE = {"complexo-hospitalar-souza-aguiar": _mestre_souza_aguiar}
-
-
-def _ctx_ppp(slug: str) -> tuple[dict, str, str]:
-    """Devolve (ctx, nome_base_pdf, rotulo). Mestre se houver; senão dossiê genérico."""
-    if slug in _PERICIAS_MESTRE:
-        return _PERICIAS_MESTRE[slug](), f"pericia_ppp_{slug}", "Perícia (mestre)"
-    from compliance_agent.pcrj import dossie_ppp
-    return dossie_ppp.montar_dossie(slug, db_path="data/pcrj.db"), f"dossie_ppp_{slug}", "Dossiê PPP"
+_PERICIAS_MESTRE = {"complexo-hospitalar-souza-aguiar": (_pdf_mestre_souza_aguiar, "Perícia mestre")}
 
 
 async def _gerar_e_enviar_ppp(slug: str, key: str) -> None:
@@ -326,11 +318,18 @@ async def _gerar_e_enviar_ppp(slug: str, key: str) -> None:
             await asyncio.to_thread(ppp_ccpar.ingerir_edital, slug, db_path="data/pcrj.db")
         except Exception as exc:  # noqa: BLE001
             logger.warning("ingestão do edital CCPAR falhou (segue com D.O.): %s", exc)
-        ctx, nome_base, rotulo = await asyncio.to_thread(_ctx_ppp, slug)
-        pdf = await rh.gerar_pdf(ctx, nome_base)
-        resumo = f"{ctx.get('faixa', '')} — {ctx.get('subtitulo', '')}"
-        await _enviar_docs_telegram({"path_pdf": pdf, "resumo": resumo},
-                                    f"{rotulo} — {ctx.get('titulo', slug)}")
+        if slug in _PERICIAS_MESTRE:  # perícia mestre (íntegras + menu navegável)
+            gen, rotulo = _PERICIAS_MESTRE[slug]
+            pdf = await gen()
+            titulo, resumo = "Complexo Hospitalar Souza Aguiar", \
+                "Documento completo — íntegras + sumário navegável. Indício ≠ acusação."
+        else:  # dossiê genérico automático
+            from compliance_agent.pcrj import dossie_ppp
+            ctx = await asyncio.to_thread(dossie_ppp.montar_dossie, slug, "data/pcrj.db")
+            pdf = await rh.gerar_pdf(ctx, f"dossie_ppp_{slug}")
+            rotulo, titulo = "Dossiê PPP", ctx.get("titulo", slug)
+            resumo = f"{ctx.get('faixa', '')} — {ctx.get('subtitulo', '')}"
+        await _enviar_docs_telegram({"path_pdf": pdf, "resumo": resumo}, f"{rotulo} — {titulo}")
     except Exception as exc:  # noqa: BLE001
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar a perícia/dossiê da PPP {slug}: {str(exc)[:300]}")
     finally:
@@ -349,10 +348,12 @@ async def api_ppp(payload: Optional[dict] = None):
         return JSONResponse(content={"ok": False, "erro": "informe {'projeto': 'souza aguiar'} ou {'slug': ...}"},
                             status_code=400)
     slug = _resolver_slug_ppp(alvo)
-    if payload.get("sync"):  # modo síncrono (CLI/testes) — devolve o resumo do ctx (mestre ou dossiê)
-        ctx, _nome, rotulo = await asyncio.to_thread(_ctx_ppp, slug)
-        return JSONResponse(content={"ok": True, "tipo": rotulo, "titulo": ctx.get("titulo"),
-                                     "faixa": ctx.get("faixa"), "n_secoes": len(ctx.get("secoes", []))})
+    if payload.get("sync"):  # modo síncrono (CLI/testes) — resumo (não baixa ZIP nem gera PDF)
+        if slug in _PERICIAS_MESTRE:
+            return JSONResponse(content={"ok": True, "tipo": "Perícia mestre", "slug": slug,
+                                         "obs": "perícia aprofundada com íntegras + menu navegável"})
+        from compliance_agent.pcrj import dossie_ppp
+        return JSONResponse(content=await asyncio.to_thread(dossie_ppp.gerar, slug, db_path="data/pcrj.db"))
     key = f"ppp:{slug}"
     produto = "a perícia (mestre)" if slug in _PERICIAS_MESTRE else "o dossiê"
     if key in _REL_EM_CURSO:
