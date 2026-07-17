@@ -147,3 +147,133 @@ def test_gate_sem_objeto_mantem_compat():
     r = detectar_rodizio_vencedores(regs, min_certames=4)
     assert len(r["rodizio_vencedores"]) == 1
     assert r["rodizio_vencedores"][0]["coesao_objeto"] is None  # bucket ∅, sem gate
+
+
+# ── unidadeOrgao (bug: painel mostrava sempre o ENTE "Estado do Rio de Janeiro") ──
+# O PNCP identifica contratação estadual pelo CNPJ do ente federativo; o órgão REAL
+# (secretaria/autarquia) vem em unidadeOrgao. Sem ela, todos os órgãos do Estado
+# colapsam num só — nome errado no painel e análise de captura/rodízio corrompida.
+
+ENTE_RJ = "42498600000171"
+
+
+def _seed_uni(con, certame, cnpj_ente, ente_nome, uni_cod, uni_nome, forn, forn_nome):
+    con.execute("INSERT OR IGNORE INTO pncp_resultado (certame,orgao_cnpj,orgao_nome,uf,item,"
+                "fornecedor_cnpj,fornecedor_nome,valor_homologado,ordem_classificacao,"
+                "unidade_codigo,unidade_nome) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (certame, cnpj_ente, ente_nome, "RJ", 1, forn, forn_nome, 100.0, 1,
+                 uni_cod, uni_nome))
+    con.commit()
+
+
+def test_schema_tem_colunas_de_unidade():
+    con = _con()
+    cols = {r[1] for r in con.execute("PRAGMA table_info(pncp_resultado)")}
+    assert {"unidade_codigo", "unidade_nome"} <= cols
+
+
+def test_init_schema_migra_tabela_antiga():
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE pncp_resultado (certame TEXT NOT NULL, orgao_cnpj TEXT, "
+                "orgao_nome TEXT, uf TEXT, municipio TEXT, modalidade INTEGER, objeto TEXT, "
+                "data_pub TEXT, item INTEGER NOT NULL, fornecedor_cnpj TEXT, fornecedor_nome TEXT, "
+                "valor_homologado REAL, ordem_classificacao INTEGER, porte_fornecedor INTEGER, "
+                "coletado_em TEXT, PRIMARY KEY (certame, item, fornecedor_cnpj))")
+    PR.init_schema(con)
+    cols = {r[1] for r in con.execute("PRAGMA table_info(pncp_resultado)")}
+    assert {"unidade_codigo", "unidade_nome"} <= cols
+
+
+def test_registros_vencedores_separa_orgaos_por_unidade():
+    con = _con()
+    _seed_uni(con, "e-1", ENTE_RJ, "ESTADO DO RIO DE JANEIRO", "100", "SECRETARIA DE ESTADO DE SAUDE", B, "EMP B")
+    _seed_uni(con, "e-2", ENTE_RJ, "ESTADO DO RIO DE JANEIRO", "200", "DETRAN-RJ", C, "EMP C")
+    regs = PR.registros_vencedores(con)
+    chaves = {r["orgao"] for r in regs}
+    assert len(chaves) == 2  # mesma razão social do ente ≠ mesmo órgão
+    by = {r["certame"]: r for r in regs}
+    assert by["e-1"]["unidade_nome"] == "SECRETARIA DE ESTADO DE SAUDE"
+    assert by["e-1"]["orgao_nome"] == "ESTADO DO RIO DE JANEIRO"  # ente preservado (esfera/compat)
+
+
+def test_registros_vencedores_sem_unidade_mantem_chave_cnpj():
+    con = _con()
+    _seed(con, "cert-1", A, 1, B, "EMP B", 1000.0)
+    regs = PR.registros_vencedores(con)
+    assert regs[0]["orgao"] == A  # linha antiga (sem backfill) não muda de chave
+
+
+def test_conluio_enriquecido_mostra_nome_da_unidade():
+    con = _con()
+    # captura: EMP B vence 5/5 certames da SES; ente = Estado do RJ
+    for i in range(5):
+        _seed_uni(con, f"ses-{i}", ENTE_RJ, "ESTADO DO RIO DE JANEIRO", "100",
+                  "SECRETARIA DE ESTADO DE SAUDE", B, "EMP B")
+    r = PR.conluio_enriquecido(con, min_certames=4)
+    assert r["captura"], "captura da unidade deve disparar"
+    cap = r["captura"][0]
+    assert cap["orgao_nome"] == "SECRETARIA DE ESTADO DE SAUDE"  # o órgão real, não o ente
+    assert cap["ente_nome"] == "ESTADO DO RIO DE JANEIRO"
+    assert cap["orgao_cnpj_fmt"] == "42.498.600/0001-71"  # CNPJ do ente, não a chave composta
+
+
+def test_esfera_considera_unidade_alem_do_ente():
+    # dado REAL do PNCP: certame com ente "ESTADO DO RIO DE JANEIRO" mas unidade
+    # "PREF.MUN.DO RIO DE JANEIRO/RJ" — a esfera correta é prefeitura, não estado
+    con = _con()
+    for i in range(5):
+        _seed_uni(con, f"pm-{i}", ENTE_RJ, "ESTADO DO RIO DE JANEIRO", "986001",
+                  "PREF.MUN.DO RIO DE JANEIRO/RJ", B, "EMP B")
+    r_pref = PR.conluio_enriquecido(con, min_certames=4, esfera="prefeitura")
+    r_est = PR.conluio_enriquecido(con, min_certames=4, esfera="estado")
+    assert r_pref["captura"], "unidade municipal deve cair na esfera prefeitura"
+    assert not r_est["captura"], "e sair da esfera estado"
+
+
+def test_esfera_unidade_estadual_com_municipios_no_nome_fica_estado():
+    # counterexample do code review: substring "MUNICÍPIOS" em unidade ESTADUAL não pode
+    # reclassificar o órgão como prefeitura
+    assert PR.esfera_do_orgao("SECRETARIA DE ESTADO DE APOIO AOS MUNICIPIOS") == "estado"
+    assert PR.esfera_do_orgao("MUNICIPIO DE PARACAMBI") == "prefeitura"
+
+
+def test_leitores_degradam_em_schema_antigo_sem_unidade():
+    # base pré-migração (mode=ro nunca roda init_schema): não pode dar 500
+    con = sqlite3.connect(":memory:")
+    con.execute("CREATE TABLE pncp_resultado (certame TEXT NOT NULL, orgao_cnpj TEXT, "
+                "orgao_nome TEXT, uf TEXT, municipio TEXT, modalidade INTEGER, objeto TEXT, "
+                "data_pub TEXT, item INTEGER NOT NULL, fornecedor_cnpj TEXT, fornecedor_nome TEXT, "
+                "valor_homologado REAL, ordem_classificacao INTEGER, porte_fornecedor INTEGER, "
+                "coletado_em TEXT, PRIMARY KEY (certame, item, fornecedor_cnpj))")
+    con.execute("INSERT INTO pncp_resultado (certame,orgao_cnpj,orgao_nome,uf,item,fornecedor_cnpj,"
+                "fornecedor_nome,valor_homologado,ordem_classificacao) VALUES "
+                "('c1',?,?, 'RJ',1,?, 'EMP B',100.0,1)", (A, "ORGAO X", B))
+    con.commit()
+    regs = PR.registros_vencedores(con)
+    assert regs and regs[0]["orgao"] == A and regs[0]["unidade_nome"] is None
+
+
+def test_cobertura_expoe_certames_sem_unidade():
+    con = _con()
+    _seed(con, "cert-1", A, 1, B, "EMP B", 1000.0)  # sem unidade (pré-backfill)
+    _seed_uni(con, "e-1", ENTE_RJ, "ESTADO DO RIO DE JANEIRO", "100", "SES", C, "EMP C")
+    r = PR.conluio_enriquecido(con, min_certames=99)
+    assert r["cobertura"]["certames_sem_unidade"] == 1
+
+
+def test_conluio_do_orgao_casa_por_nome_da_unidade():
+    import os
+    import tempfile
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    try:
+        con = sqlite3.connect(path)
+        PR.init_schema(con)
+        for i in range(4):
+            _seed_uni(con, f"det-{i}", ENTE_RJ, "ESTADO DO RIO DE JANEIRO", "200",
+                      "DEPARTAMENTO DE TRANSITO DETRAN", B, "EMP B")
+        con.close()
+        r = PR.conluio_do_orgao("DETRAN", db_path=path, min_certames=3)
+        assert r["n_certames"] == 4  # match pelo nome da UNIDADE (orgao_nome é o ente)
+    finally:
+        os.unlink(path)

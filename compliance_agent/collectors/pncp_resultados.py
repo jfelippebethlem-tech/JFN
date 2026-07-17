@@ -48,9 +48,17 @@ def init_schema(con: sqlite3.Connection) -> None:
             valor_homologado REAL,
             ordem_classificacao INTEGER,          -- 1 = vencedor
             porte_fornecedor INTEGER,
+            unidade_codigo TEXT,                  -- unidadeOrgao.codigoUnidade (órgão REAL do ente)
+            unidade_nome  TEXT,                   -- unidadeOrgao.nomeUnidade
             coletado_em   TEXT DEFAULT (datetime('now')),
             PRIMARY KEY (certame, item, fornecedor_cnpj)
         )""")
+    # migração: bases antigas não têm unidadeOrgao (orgao_nome = razão social do ENTE —
+    # p/ contratação estadual é sempre "Estado do Rio de Janeiro", colapsando os órgãos)
+    cols = {r[1] for r in con.execute("PRAGMA table_info(pncp_resultado)")}
+    for c in ("unidade_codigo", "unidade_nome"):
+        if c not in cols:
+            con.execute(f"ALTER TABLE pncp_resultado ADD COLUMN {c} TEXT")
     con.execute("CREATE INDEX IF NOT EXISTS ix_pncpres_orgao ON pncp_resultado(orgao_cnpj)")
     con.execute("CREATE INDEX IF NOT EXISTS ix_pncpres_forn ON pncp_resultado(fornecedor_cnpj)")
     con.execute("CREATE INDEX IF NOT EXISTS ix_pncpres_data ON pncp_resultado(data_pub)")
@@ -160,6 +168,7 @@ async def _gravar_certame(con, client, ct: dict, tot: dict) -> int:
         "municipio": uni.get("municipioNome"), "modalidade": ct.get("modalidadeId"),
         "objeto": (ct.get("objetoCompra") or "")[:500],
         "data_pub": (ct.get("dataPublicacaoPncp") or ct.get("dataInclusao") or "")[:10],
+        "unidade_codigo": uni.get("codigoUnidade"), "unidade_nome": uni.get("nomeUnidade"),
     }
     itens = await _consulta_itens(client, cnpj, ano, seq)
     gravados = 0
@@ -177,9 +186,9 @@ async def _gravar_certame(con, client, ct: dict, tot: dict) -> int:
             con.execute("""INSERT OR IGNORE INTO pncp_resultado
                 (certame, orgao_cnpj, orgao_nome, uf, municipio, modalidade, objeto, data_pub,
                  item, fornecedor_cnpj, fornecedor_nome, valor_homologado, ordem_classificacao,
-                 porte_fornecedor)
+                 porte_fornecedor, unidade_codigo, unidade_nome)
                 VALUES (:certame,:orgao_cnpj,:orgao_nome,:uf,:municipio,:modalidade,:objeto,:data_pub,
-                        :item,:forn,:nome,:valor,:ordem,:porte)""",
+                        :item,:forn,:nome,:valor,:ordem,:porte,:unidade_codigo,:unidade_nome)""",
                         {**meta, "item": num, "forn": forn,
                          "nome": rr.get("nomeRazaoSocialFornecedor"),
                          "valor": rr.get("valorTotalHomologado"),
@@ -207,11 +216,27 @@ async def _consulta_itens(client, cnpj: str, ano: str, seq: int) -> list[dict]:
     return []
 
 
+def _chave_orgao(orgao_cnpj: str | None, unidade_codigo: str | None) -> str:
+    """Chave do órgão COMPRADOR real: CNPJ do ente + código da unidade (só dígitos — o detector
+    normaliza com _so_digitos). O PNCP registra contratação estadual no CNPJ do ENTE ("Estado do
+    Rio de Janeiro"); sem a unidade, todos os órgãos do Estado colapsariam num só. Os 14 primeiros
+    dígitos são sempre o CNPJ (linha sem unidade — pré-backfill — mantém a chave = CNPJ puro)."""
+    cnpj = re.sub(r"\D", "", orgao_cnpj or "").zfill(14)
+    uni = re.sub(r"\D", "", unidade_codigo or "")
+    return cnpj + uni
+
+
 def registros_vencedores(con, uf: str | None = "RJ") -> list[dict]:
     """Lê pncp_resultado e devolve UM registro por certame com seu(s) vencedor(es) — insumo do
-    detector de rodízio de vencedores (rodizio_grafo.detectar_rodizio_vencedores)."""
+    detector de rodízio de vencedores (rodizio_grafo.detectar_rodizio_vencedores).
+    `orgao` = chave composta ente+unidade (_chave_orgao); `orgao_nome` = razão social do ENTE
+    (esfera/compat); `unidade_nome` = o órgão real para exibição."""
     con.row_factory = sqlite3.Row
-    q = ("SELECT certame, orgao_cnpj, orgao_nome, objeto, data_pub, "
+    # base pré-migração (conexão mode=ro nunca roda init_schema): degrada p/ unidade NULL
+    tem_uni = {r[1] for r in con.execute("PRAGMA table_info(pncp_resultado)")} >= {"unidade_codigo"}
+    sel_uni = ("unidade_codigo, unidade_nome" if tem_uni
+               else "NULL AS unidade_codigo, NULL AS unidade_nome")
+    q = (f"SELECT certame, orgao_cnpj, orgao_nome, {sel_uni}, objeto, data_pub, "
          "fornecedor_cnpj, fornecedor_nome, SUM(valor_homologado) v "
          "FROM pncp_resultado WHERE ordem_classificacao=1 ")
     params: tuple = ()
@@ -222,7 +247,9 @@ def registros_vencedores(con, uf: str | None = "RJ") -> list[dict]:
     por_certame: dict[str, dict] = {}
     for r in con.execute(q, params):
         c = por_certame.setdefault(r["certame"], {
-            "certame": r["certame"], "orgao": r["orgao_cnpj"], "orgao_nome": r["orgao_nome"],
+            "certame": r["certame"], "orgao": _chave_orgao(r["orgao_cnpj"], r["unidade_codigo"]),
+            "orgao_cnpj": r["orgao_cnpj"], "orgao_nome": r["orgao_nome"],
+            "unidade_codigo": r["unidade_codigo"], "unidade_nome": r["unidade_nome"],
             "objeto": r["objeto"], "data": r["data_pub"], "vencedores": []})
         c["vencedores"].append({"cnpj": r["fornecedor_cnpj"], "nome": r["fornecedor_nome"], "valor": r["v"]})
     return list(por_certame.values())
@@ -230,8 +257,9 @@ def registros_vencedores(con, uf: str | None = "RJ") -> list[dict]:
 
 def conluio_do_orgao(nome_orgao: str, db_path: str = "data/compliance.db", min_certames: int = 3) -> dict:
     """Conluio (captura/rodízio de vencedores do PNCP) filtrado por NOME de órgão — insumo do /orgao.
-    Match best-effort por LIKE no orgao_nome (o relatório identifica por UG/nome, o PNCP por CNPJ).
-    Retorna {captura, rodizio_vencedores, n_certames} ou {n_certames:0} se não houver resultado."""
+    Match best-effort por LIKE no orgao_nome OU unidade_nome (contratação estadual tem orgao_nome =
+    ente "Estado do Rio de Janeiro"; o órgão real é a unidade). Retorna {captura, rodizio_vencedores,
+    n_certames} ou {n_certames:0} se não houver resultado."""
     import sqlite3 as _sq
 
     from compliance_agent.rodizio_grafo import detectar_rodizio_vencedores
@@ -241,18 +269,25 @@ def conluio_do_orgao(nome_orgao: str, db_path: str = "data/compliance.db", min_c
     con = _sq.connect(f"file:{db_path}?mode=ro", uri=True)
     con.row_factory = _sq.Row
     try:
+        # base pré-migração (mode=ro não migra): degrada p/ unidade NULL em vez de 500
+        tem_uni = {r[1] for r in con.execute("PRAGMA table_info(pncp_resultado)")} >= {"unidade_codigo"}
+        sel_uni = ("unidade_codigo, unidade_nome" if tem_uni
+                   else "NULL AS unidade_codigo, NULL AS unidade_nome")
+        cond_uni = "OR UPPER(COALESCE(unidade_nome,'')) LIKE ? " if tem_uni else ""
+        params = (f"%{termo}%",) * (2 if tem_uni else 1)
         rows = con.execute(
-            "SELECT certame, orgao_cnpj, orgao_nome, objeto, data_pub, fornecedor_cnpj, "
-            "fornecedor_nome, SUM(valor_homologado) v FROM pncp_resultado "
-            "WHERE ordem_classificacao=1 AND UPPER(orgao_nome) LIKE ? GROUP BY certame, fornecedor_cnpj",
-            (f"%{termo}%",)).fetchall()
+            f"SELECT certame, orgao_cnpj, orgao_nome, {sel_uni}, objeto, data_pub, "
+            "fornecedor_cnpj, fornecedor_nome, SUM(valor_homologado) v FROM pncp_resultado "
+            f"WHERE ordem_classificacao=1 AND (UPPER(orgao_nome) LIKE ? {cond_uni})"
+            "GROUP BY certame, fornecedor_cnpj", params).fetchall()
     finally:
         con.close()
     por: dict[str, dict] = {}
     for r in rows:
-        c = por.setdefault(r["certame"], {"certame": r["certame"], "orgao": r["orgao_cnpj"],
-                                          "orgao_nome": r["orgao_nome"], "objeto": r["objeto"],
-                                          "data": r["data_pub"], "vencedores": []})
+        c = por.setdefault(r["certame"], {
+            "certame": r["certame"], "orgao": _chave_orgao(r["orgao_cnpj"], r["unidade_codigo"]),
+            "orgao_nome": r["orgao_nome"], "unidade_nome": r["unidade_nome"], "objeto": r["objeto"],
+            "data": r["data_pub"], "vencedores": []})
         c["vencedores"].append({"cnpj": r["fornecedor_cnpj"], "nome": r["fornecedor_nome"], "valor": r["v"]})
     regs = list(por.values())
     pad = detectar_rodizio_vencedores(regs, min_certames=min_certames)
@@ -261,7 +296,10 @@ def conluio_do_orgao(nome_orgao: str, db_path: str = "data/compliance.db", min_c
 
 
 _RX_MUNICIPAL = __import__("re").compile(
-    r"MUNICIP|PREFEITURA|C[ÂA]MARA MUNICIPAL|FUNDO MUNICIPAL|SECRETARIA MUNICIPAL", __import__("re").I)
+    # sinais de ENTIDADE municipal — não a mera substring "MUNICIP" (uma "SECRETARIA DE ESTADO DE
+    # APOIO AOS MUNICÍPIOS" é estadual e não pode cair em prefeitura)
+    r"\bMUNIC[IÍ]PIO DE\b|PREF(EITURA|\.)|\bMUN\.|C[ÂA]MARA MUNICIPAL|FUNDO MUNICIPAL|"
+    r"SECRETARIA MUNICIPAL", __import__("re").I)
 _RX_ESTADUAL = __import__("re").compile(
     r"\bESTAD|SECRETARIA DE ESTADO|GOVERNO DO ESTADO|FUNDO ESTADUAL|ASSEMBLEIA LEGISLATIVA|"
     r"TRIBUNAL DE JUSTI|DETRAN|POL[ÍI]CIA (MILITAR|CIVIL)|CORPO DE BOMBEIROS", __import__("re").I)
@@ -285,17 +323,23 @@ def conluio_enriquecido(con, uf: str | None = "RJ", min_certames: int = 5,
     from compliance_agent.rodizio_grafo import detectar_rodizio_vencedores
     regs = registros_vencedores(con, uf=uf)
     if esfera in ("estado", "prefeitura", "outros"):
-        regs = [r for r in regs if esfera_do_orgao(r.get("orgao_nome") or "") == esfera]
+        # unidade primeiro: há certame com ente "Estado do RJ" cuja unidade é a Prefeitura do Rio
+        # (dado real do PNCP) — o nome da unidade é o sinal mais próximo do comprador
+        regs = [r for r in regs
+                if esfera_do_orgao(f"{r.get('unidade_nome') or ''} {r.get('orgao_nome') or ''}") == esfera]
     pad = detectar_rodizio_vencedores(regs, min_certames=min_certames)
-    # índices auxiliares: cnpj→nome, orgao→nome, orgao→objetos, (orgao,cnpj)→objetos
+    # índices auxiliares: cnpj→nome, orgao→(nome exibível, ente), orgao→objetos, (orgao,cnpj)→objetos
     nome_forn: dict[str, str] = {}
     nome_org: dict[str, str] = {}
+    ente_org: dict[str, str] = {}
     obj_org: dict[str, list] = {}
     obj_org_forn: dict[tuple, list] = {}
     for r in regs:
         org = re.sub(r"\D", "", r.get("orgao") or "")
-        if org and r.get("orgao_nome"):
-            nome_org[org] = r["orgao_nome"]
+        if org and (r.get("unidade_nome") or r.get("orgao_nome")):
+            # nome exibível = a UNIDADE (órgão real); o ente fica em ente_org p/ contexto
+            nome_org[org] = r.get("unidade_nome") or r["orgao_nome"]
+            ente_org[org] = r.get("orgao_nome") or ""
         obj = (r.get("objeto") or "").strip()
         if org and obj:
             obj_org.setdefault(org, [])
@@ -317,18 +361,24 @@ def conluio_enriquecido(con, uf: str | None = "RJ", min_certames: int = 5,
     for cap in pad.get("captura", []):
         org, fc = cap["orgao"], cap["vencedor"]
         cap["orgao_nome"] = nome_org.get(org, "—")
-        cap["orgao_cnpj_fmt"] = _fmt_cnpj(org)
+        cap["ente_nome"] = ente_org.get(org, "")
+        cap["orgao_cnpj_fmt"] = _fmt_cnpj(org[:14])  # chave = CNPJ do ente (14) + cód. unidade
         cap["nome"] = nome_forn.get(fc, cap.get("nome") or "—")
         cap["fornecedor_cnpj_fmt"] = _fmt_cnpj(fc)
         cap["objetos"] = (obj_org_forn.get((org, fc)) or obj_org.get(org) or [])[:5]
     for rod in pad.get("rodizio_vencedores", []):
         org = rod["orgao"]
         rod["orgao_nome"] = nome_org.get(org, "—")
-        rod["orgao_cnpj_fmt"] = _fmt_cnpj(org)
+        rod["ente_nome"] = ente_org.get(org, "")
+        rod["orgao_cnpj_fmt"] = _fmt_cnpj(org[:14])
         rod["membros_nome"] = [{"cnpj": _fmt_cnpj(c), "nome": nome_forn.get(c, "—"),
                                 "vitorias": rod["reparticao"].get(c, 0)} for c in rod["grupo"]]
         rod["objetos"] = (obj_org.get(org) or [])[:5]
-    pad["cobertura"] = {"certames_com_resultado": len(regs), "orgaos": pad.get("n_orgaos", 0)}
+    sem_uni = sum(1 for r in regs if not r.get("unidade_codigo"))
+    pad["cobertura"] = {"certames_com_resultado": len(regs), "orgaos": pad.get("n_orgaos", 0),
+                        # transparência do backfill: certame sem unidade fica agrupado no ENTE —
+                        # grupos do mesmo órgão real podem estar fragmentados até a cobertura fechar
+                        "certames_sem_unidade": sem_uni}
     return pad
 
 
