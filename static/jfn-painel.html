@@ -5,105 +5,135 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>JFN — Central de Inteligência</title>
 <style>
+  /* ── Design system JFN v3 ─────────────────────────────────────────────
+     Superfícies: elevação por LUZ (camadas s0→s3), não por sombra.
+     Cor saturada só carrega SIGNIFICADO (dado/status); o resto é neutro.
+     Paleta de dados validada (CVD ΔE≥15, contraste ≥3:1 sobre --card,
+     banda L 0.48–0.67 — script validate_palette da skill dataviz).       */
   :root{
-    --bg:#080c15; --bg2:#0b1120; --card:#0f1626; --card2:#0c121f; --raise:#131c2f;
-    --bd:#1f2b45; --bd2:#17223a; --glass:rgba(11,17,32,.74);
-    --tx:#e8eefb; --tx2:#c3cee3; --mut:#8493b2; --dim:#5a6889;
-    --accent:#5b9dff; --accent2:#7c74ff; --teal:#2dd4bf; --gold:#e6b24a;
-    --green:#31c46b; --amber:#e8a33d; --rose:#f2557d; --purple:#9d7bff;
+    /* superfícies (elevação por lightness) */
+    --bg:#070b13; --bg2:#0a101c; --card:#0e1524; --card2:#0c1220; --raise:#141e33;
+    --bd:rgba(148,170,215,.13); --bd2:rgba(148,170,215,.08); --glass:rgba(9,14,25,.78);
+    /* tinta (off-white, nunca branco puro em massa) */
+    --tx:#edf2fc; --tx2:#c4cfe6; --mut:#8b9abc; --dim:#637192;
+    /* dados (marcas/preenchimentos — validados sobre --card) */
+    --blue:#4287e6; --teal-d:#0ea895; --amber-d:#c67f1c; --green-d:#2aae62;
+    --violet:#8f7bf0; --rose-d:#e5537a;
+    /* texto colorido (tints AA para rótulos sobre superfícies escuras) */
+    --accent:#6ea8ff; --accent2:#8f7bf0; --teal:#4fd6c4; --gold:#e8bd72;
+    --green:#5fd08d; --amber:#e8a94f; --rose:#ff7d9c; --purple:#b3a1ff;
     --r:14px; --r2:18px;
-    --sh:0 1px 0 rgba(255,255,255,.03) inset,0 18px 40px -30px #000;
+    --sh:0 1px 0 rgba(255,255,255,.035) inset,0 20px 44px -34px rgba(2,6,16,.9);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0}
   body{
     background:
-      radial-gradient(1200px 600px at 100% -12%, rgba(91,157,255,.09), transparent 58%),
-      radial-gradient(1000px 520px at -14% 4%, rgba(124,116,255,.08), transparent 54%),
-      var(--bg);
-    color:var(--tx); font:15px/1.55 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden;letter-spacing:.1px;
+      radial-gradient(1100px 560px at 88% -14%, rgba(66,135,230,.10), transparent 60%),
+      radial-gradient(900px 480px at -12% 6%, rgba(143,123,240,.07), transparent 55%),
+      linear-gradient(180deg,var(--bg2),var(--bg) 320px);
+    color:var(--tx); font:14.5px/1.6 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
-  .wrap{max-width:1180px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+  .num,td,th,.kpi .v,.mini .b .v{font-variant-numeric:tabular-nums}
+  .wrap{max-width:1220px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
 
-  header{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(16px);border-bottom:1px solid var(--bd2)}
-  .htop{display:flex;align-items:center;gap:12px;padding:12px 18px 10px}
-  .brand{display:flex;align-items:center;gap:11px;font-weight:750;letter-spacing:.2px}
-  .brand .lg{font-size:19px}
-  .brand small{display:block;color:var(--mut);font-size:11px;font-weight:500;margin-top:1px;letter-spacing:.3px}
-  .live{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;color:var(--teal);border:1px solid rgba(45,212,191,.28);padding:3px 9px;border-radius:20px;background:rgba(45,212,191,.06)}
+  header{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(18px);border-bottom:1px solid var(--bd2)}
+  .htop{display:flex;align-items:center;gap:12px;padding:13px 18px 11px}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:.3px}
+  .brand .lg{font-size:19px;filter:drop-shadow(0 0 10px rgba(66,135,230,.55))}
+  .brand small{display:block;color:var(--mut);font-size:10.5px;font-weight:550;margin-top:2px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:650;color:var(--teal);border:1px solid rgba(79,214,196,.25);padding:3px 10px;border-radius:20px;background:rgba(14,168,149,.07);white-space:nowrap;flex:0 0 auto}
   .live .pulse{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);animation:pl 1.8s infinite}
   @keyframes pl{0%,100%{opacity:1}50%{opacity:.3}}
-  .htop .actions{margin-left:auto;display:flex;gap:9px;align-items:center}
-  .htop a.sair,.htop a.ctrl{font-size:12.5px;text-decoration:none;border:1px solid var(--bd);padding:6px 12px;border-radius:9px;transition:.15s;color:var(--mut)}
-  .htop a.ctrl{color:#ff7a97;border-color:rgba(242,85,125,.32)}
-  .htop a.sair:hover{color:#fff;border-color:var(--accent)}
-  /* sphere switcher */
-  .spheres{display:flex;gap:6px;padding:0 14px 12px;overflow-x:auto;scrollbar-width:none}
+  .htop .actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .htop a.sair,.htop a.ctrl,.htop a.help{font-size:12.5px;text-decoration:none;border:1px solid var(--bd);padding:6px 12px;border-radius:9px;transition:.15s;color:var(--mut);cursor:pointer}
+  .htop a.ctrl{color:var(--rose);border-color:rgba(229,83,122,.3)}
+  .htop a.help{color:var(--accent);border-color:rgba(110,168,255,.28)}
+  .htop a.sair:hover,.htop a.help:hover{color:#fff;border-color:var(--accent)}
+  /* seletor de esfera — segmented control com identidade por cor */
+  .spheres{display:flex;gap:7px;padding:0 14px 13px;overflow-x:auto;scrollbar-width:none}
   .spheres::-webkit-scrollbar{display:none}
-  .sph{flex:1;min-width:112px;display:flex;align-items:center;justify-content:center;gap:8px;padding:11px 10px;border-radius:12px;cursor:pointer;
-    border:1px solid var(--bd);background:linear-gradient(180deg,var(--card),var(--card2));color:var(--mut);font-weight:650;font-size:13.5px;transition:.16s}
+  .sph{flex:1;min-width:118px;display:flex;align-items:center;justify-content:center;gap:9px;padding:11px 12px;border-radius:12px;cursor:pointer;position:relative;
+    border:1px solid var(--bd2);background:linear-gradient(180deg,var(--card),var(--card2));color:var(--mut);font-weight:650;font-size:13.5px;transition:.16s}
+  .sph:hover{border-color:var(--bd);color:var(--tx2)}
   .sph .i{font-size:16px}
   .sph.on{color:#fff;border-color:transparent}
-  .sph.on.estado{background:linear-gradient(135deg,#1a3a6b,#245089);box-shadow:0 0 0 1px rgba(91,157,255,.4),0 10px 26px -16px #245089}
-  .sph.on.prefeitura{background:linear-gradient(135deg,#6b4a1a,#8a6620);box-shadow:0 0 0 1px rgba(230,178,74,.4),0 10px 26px -16px #8a6620}
-  .sph.on.geral{background:linear-gradient(135deg,#3a2a6b,#4d3d89);box-shadow:0 0 0 1px rgba(157,123,255,.4),0 10px 26px -16px #4d3d89}
-  .sph .c{font-size:11px;opacity:.85;font-weight:600}
+  .sph.on.estado{background:linear-gradient(140deg,#17305f,#1d4a85);box-shadow:0 0 0 1px rgba(110,168,255,.38),0 12px 28px -18px #1d4a85}
+  .sph.on.prefeitura{background:linear-gradient(140deg,#5c3f12,#7d5c17);box-shadow:0 0 0 1px rgba(232,189,114,.38),0 12px 28px -18px #7d5c17}
+  .sph.on.geral{background:linear-gradient(140deg,#33255f,#463683);box-shadow:0 0 0 1px rgba(179,161,255,.38),0 12px 28px -18px #463683}
+  .sph .c{font-size:10.5px;opacity:.85;font-weight:550}
+  @media (max-width:600px){
+    .sph{min-width:0;flex-direction:column;gap:4px;padding:9px 6px;text-align:center}
+    .sph .c{display:none}
+    .live{display:none}
+    .htop{gap:8px;padding:12px 14px 10px}
+    .htop a.sair,.htop a.ctrl,.htop a.help{padding:6px 9px;font-size:12px;white-space:nowrap}
+    .brand small{max-width:38vw}
+  }
 
   main{flex:1;padding:18px 16px 112px}
-  .cover{border-radius:var(--r2);padding:18px 18px;margin-bottom:16px;border:1px solid var(--bd);position:relative;overflow:hidden}
-  .cover.estado{background:linear-gradient(135deg,rgba(36,80,137,.28),rgba(15,22,38,.6))}
-  .cover.prefeitura{background:linear-gradient(135deg,rgba(138,102,32,.24),rgba(15,22,38,.6))}
-  .cover.geral{background:linear-gradient(135deg,rgba(77,61,137,.24),rgba(15,22,38,.6))}
+  .cover{border-radius:var(--r2);padding:19px 19px 17px;margin-bottom:16px;border:1px solid var(--bd2);position:relative;overflow:hidden}
+  .cover::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:linear-gradient(rgba(148,170,215,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(148,170,215,.05) 1px,transparent 1px);
+    background-size:26px 26px;mask-image:radial-gradient(400px 160px at 85% 0%,#000,transparent)}
+  .cover.estado{background:linear-gradient(135deg,rgba(29,74,133,.30),rgba(13,19,33,.65))}
+  .cover.prefeitura{background:linear-gradient(135deg,rgba(125,92,23,.26),rgba(13,19,33,.65))}
+  .cover.geral{background:linear-gradient(135deg,rgba(70,54,131,.28),rgba(13,19,33,.65))}
   .cover .t{font-size:19px;font-weight:800;letter-spacing:-.3px}
-  .cover .s{color:var(--tx2);font-size:13px;margin-top:3px;max-width:640px}
-  .cover .ic{position:absolute;right:6px;top:-8px;font-size:80px;opacity:.08}
+  .cover .s{color:var(--tx2);font-size:13px;margin-top:4px;max-width:660px;line-height:1.55}
+  .cover .ic{position:absolute;right:8px;top:-6px;font-size:78px;opacity:.09}
 
-  h2.sec{margin:6px 0 13px;font-size:12px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:10px}
-  h2.sec::before{content:"";width:3px;height:13px;border-radius:3px;background:linear-gradient(var(--accent),var(--accent2))}
+  h2.sec{margin:8px 0 12px;font-size:11.5px;font-weight:750;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:10px}
+  h2.sec::before{content:"";width:3px;height:13px;border-radius:3px;background:linear-gradient(var(--blue),var(--violet))}
   h2.sec .cnt{margin-left:auto;color:var(--dim);font-weight:600;letter-spacing:.3px;text-transform:none;font-size:11.5px}
-  .lead{color:var(--mut);font-size:13px;margin:-6px 0 14px;max-width:720px}
+  .lead{color:var(--mut);font-size:13px;margin:-4px 0 14px;max-width:720px}
 
   .grid{display:grid;gap:11px;min-width:0}
   .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--bd);border-radius:var(--r);padding:15px 16px;min-width:0;box-shadow:var(--sh);transition:.16s}
-  .card.hl{border-color:rgba(242,85,125,.35)}
+  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--bd2);border-radius:var(--r);padding:15px 16px;min-width:0;box-shadow:var(--sh);transition:.16s}
+  .card:hover{border-color:var(--bd)}
+  .card.hl{border-color:rgba(229,83,122,.32)}
   .kpi{position:relative;overflow:hidden}
-  .kpi .v{font-size:21px;font-weight:800;letter-spacing:-.4px;line-height:1.12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .kpi .l{color:var(--mut);font-size:12px;margin-top:5px}
-  .kpi .gl{position:absolute;right:-10px;top:-12px;font-size:40px;opacity:.09}
+  .kpi .l{color:var(--mut);font-size:11px;font-weight:650;letter-spacing:.5px;text-transform:uppercase}
+  .kpi .v{font-size:clamp(17px,5vw,23px);font-weight:800;letter-spacing:-.4px;line-height:1.15;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kpi .gl{position:absolute;right:-8px;top:-10px;font-size:38px;opacity:.08}
   .kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bd2);font-size:14px}
   .kv:first-child{padding-top:2px}.kv:last-child{border-bottom:0;padding-bottom:2px}
   .kv .k{color:var(--mut)}.kv b{font-weight:650;color:#fff}
   .muted{color:var(--mut)} .dim{color:var(--dim);font-size:12px} .right{text-align:right}
+  .card .right{white-space:nowrap;flex:0 0 auto}
   code{font:12px/1.4 ui-monospace,Menlo,monospace;color:#9fc4ff;background:rgba(91,157,255,.09);padding:1px 6px;border-radius:6px}
 
-  .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;padding:3px 9px;border-radius:20px;white-space:nowrap}
-  .tag.accent{background:rgba(91,157,255,.14);color:#9fc4ff}.tag.rose{background:rgba(242,85,125,.15);color:#ff8fa9}
-  .tag.amber{background:rgba(232,163,61,.15);color:#f0c078}.tag.purple{background:rgba(157,123,255,.15);color:#c3aeff}
-  .tag.green{background:rgba(49,196,107,.15);color:#6fdd9c}.tag.teal{background:rgba(45,212,191,.15);color:#7fe6d8}
+  .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;padding:3px 9px;border-radius:20px;white-space:nowrap;border:1px solid transparent}
+  .tag.accent{background:rgba(66,135,230,.13);color:#9fc4ff;border-color:rgba(110,168,255,.18)}
+  .tag.rose{background:rgba(229,83,122,.13);color:#ff92ac;border-color:rgba(255,125,156,.2)}
+  .tag.amber{background:rgba(198,127,28,.14);color:#eebf7a;border-color:rgba(232,169,79,.2)}
+  .tag.purple{background:rgba(143,123,240,.13);color:#c3b3ff;border-color:rgba(179,161,255,.2)}
+  .tag.green{background:rgba(42,174,98,.13);color:#7ade9f;border-color:rgba(95,208,141,.2)}
+  .tag.teal{background:rgba(14,168,149,.13);color:#5fd9c8;border-color:rgba(79,214,196,.2)}
   .sev{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-radius:7px;flex:0 0 auto}
-  .sev.alta{background:rgba(242,85,125,.16);color:#ff8fa9}.sev.media{background:rgba(232,163,61,.16);color:#f0c078}.sev.baixa{background:rgba(132,147,178,.16);color:#b0bcd8}
+  .sev.alta{background:rgba(229,83,122,.16);color:#ff92ac}.sev.media{background:rgba(198,127,28,.16);color:#eebf7a}.sev.baixa{background:rgba(139,154,188,.14);color:#b0bcd8}
 
   table{width:100%;border-collapse:collapse;font-size:13.5px}
-  thead th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:.4px;text-align:right;padding:0 0 9px;font-weight:700}
+  thead th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;text-align:right;padding:0 0 9px;font-weight:700}
   thead th:first-child{text-align:left}
   tbody td{padding:9px 0;border-bottom:1px solid var(--bd2);text-align:right;vertical-align:top}
   tbody td:first-child{text-align:left;color:var(--tx)}
   tbody tr:last-child td{border-bottom:0}
   th.srt{cursor:pointer;user-select:none}th.srt:hover{color:var(--accent)}
 
-  .barw{display:flex;flex-direction:column;gap:10px;margin-top:4px}
+  .barw{display:flex;flex-direction:column;gap:11px;margin-top:4px}
   .barw .row{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px}
   .barw .lab{color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .barw .track{grid-column:1/-1;height:7px;background:#0a1120;border-radius:6px;overflow:hidden;border:1px solid var(--bd2)}
-  .barw .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .barw .track{grid-column:1/-1;height:6px;background:#0a1120;border-radius:4px;overflow:hidden}
+  .barw .fill{display:block;height:100%;border-radius:4px;background:var(--blue)}
 
   .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
   .btn{flex:1;min-width:92px;border:0;border-radius:11px;padding:11px 12px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;transition:.12s;display:flex;align-items:center;justify-content:center;gap:6px}
   .btn:active{transform:scale(.97)}
-  .btn.red{background:#c1405f}.btn.green{background:#25945a}.btn.ghost{background:var(--raise);border:1px solid var(--bd);color:var(--tx2)}
-  .btn.accent{background:linear-gradient(135deg,#2f6bc4,#5b9dff)}
+  .btn.red{background:#b13a58}.btn.green{background:#218a52}.btn.ghost{background:var(--raise);border:1px solid var(--bd);color:var(--tx2)}
+  .btn.accent{background:linear-gradient(135deg,#2a63b8,#4287e6);box-shadow:0 8px 20px -12px rgba(66,135,230,.7)}
   .lnks{display:flex;flex-direction:column;gap:9px}
   .lnk{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;transition:.14s}
   .lnk:hover{border-color:var(--accent);transform:translateX(2px)}
@@ -133,13 +163,14 @@
 
   nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;overflow-x:auto;scrollbar-width:none;background:var(--glass);backdrop-filter:blur(18px);border-top:1px solid var(--bd2);padding:6px 6px calc(6px + env(safe-area-inset-bottom));max-width:1180px;margin:0 auto}
   nav.tabs::-webkit-scrollbar{display:none}
-  nav.tabs button{flex:1 0 auto;min-width:58px;background:none;border:0;color:var(--dim);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 9px 5px;font:inherit;transition:.12s;border-radius:12px}
+  nav.tabs button{flex:1 0 auto;min-width:58px;background:none;border:0;color:var(--dim);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 9px 6px;font:inherit;transition:.12s;border-radius:12px;position:relative}
   nav.tabs button .ti{font-size:18px;line-height:1}
-  nav.tabs button .tl{font-size:9.5px;font-weight:700;letter-spacing:.2px}
-  nav.tabs button.on{color:#fff}
+  nav.tabs button .tl{font-size:9.5px;font-weight:700;letter-spacing:.3px}
+  nav.tabs button.on{color:#fff;background:rgba(66,135,230,.10)}
+  nav.tabs button.on::after{content:"";position:absolute;top:-6px;left:22%;right:22%;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--violet))}
   nav.tabs button.on .ti{filter:drop-shadow(0 0 8px var(--accent))}
   nav.tabs button.on .tl{color:var(--accent)}
-  nav.tabs button:active{transform:scale(.9)}
+  nav.tabs button:active{transform:scale(.92)}
   .fade{animation:f .24s ease}@keyframes f{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 
   .ov{position:fixed;inset:0;z-index:60;background:rgba(4,7,14,.74);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center}
@@ -168,7 +199,7 @@
     <div class="htop">
       <div class="brand"><span class="lg">🛰️</span><div>JFN<small id="hsub">Central de Inteligência · RJ</small></div></div>
       <span class="live"><span class="pulse"></span>ao vivo</span>
-      <span class="actions"><a class="ctrl" href="/controle">🛡️ Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
+      <span class="actions"><a class="help" onclick="glossario()">ⓘ Termos</a><a class="ctrl" href="/controle">🛡️ Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
     </div>
     <div class="spheres" id="spheres"></div>
   </header>
@@ -188,7 +219,7 @@ const fmtRc=v=>{v=Number(v||0);const a=Math.abs(v);
   if(a>=1e3)return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil';return fmtR(v);};
 async function J(ep,opt){try{const r=await fetch(ep,opt);return await r.json();}catch(e){return{erro:String(e)};}}
 const card=(h,cls)=>`<div class="card ${cls||''}">${h}</div>`;
-const kpi=(v,l,cor,gl)=>`<div class="card kpi"><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div><div class="l">${l}</div>${gl?`<span class="gl">${gl}</span>`:''}</div>`;
+const kpi=(v,l,cor,gl)=>`<div class="card kpi"><div class="l">${l}</div><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div>${gl?`<span class="gl">${gl}</span>`:''}</div>`;
 const sec=(t,cnt)=>`<h2 class="sec">${t}${cnt!=null?`<span class="cnt">${cnt}</span>`:''}</h2>`;
 const spin=t=>`<div class="skel"><span class="sp"></span>${t||'Carregando…'}</div>`;
 const cover=(sph,t,s,ic)=>`<div class="cover ${sph}"><div class="t">${t}</div><div class="s">${s}</div><span class="ic">${ic}</span></div>`;
@@ -237,13 +268,35 @@ function montarTabs(){
   $('tabs').innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')"><span class="ti">${t.ic}</span><span class="tl">${t.tl}</span></button>`).join('');
 }
 function trocarEsfera(id){esfera=id;aba=TABS[id][0].id;montarSpheres();montarTabs();ir(aba);}
+let _nav=0; // token anti-corrida: render lento de aba anterior não sobrescreve a aba atual
 async function ir(id){
   aba=id;montarTabs();
+  const meu=++_nav;
   const v=$('view');v.innerHTML=spin();
   const t=TABS[esfera].find(x=>x.id===id);
-  try{v.innerHTML=`<div class="fade">${await t.render()}</div>`;}
-  catch(e){v.innerHTML=card(`<div class="warn">⚠ Falha: ${esc(e)}</div>`);}
+  try{const html=await t.render();if(meu!==_nav)return;v.innerHTML=`<div class="fade">${html}</div>`;}
+  catch(e){if(meu!==_nav)return;v.innerHTML=card(`<div class="warn">⚠ Falha: ${esc(e)}</div>`);}
   window.scrollTo(0,0);
+}
+
+// ═══ GLOSSÁRIO (linguagem simples — o painel deve ser legível por qualquer pessoa) ═══
+const TERMOS=[
+ ['🎯','Captura de órgão','Uma única empresa vence 80% ou mais das licitações de um órgão. Sinal de mercado fechado — merece verificação de propostas e sócios.'],
+ ['🔁','Rodízio de vencedores','2 ou 3 empresas se revezam nas vitórias de licitações PARECIDAS (mesmo tipo de objeto). Padrão clássico de combinação de propostas (OCDE).'],
+ ['📄','Certame','Cada licitação (disputa pública de compra) publicada no PNCP, o Portal Nacional de Contratações Públicas.'],
+ ['🏢','Órgão × Ente','O ENTE é o "dono do CNPJ" (ex.: Estado do Rio de Janeiro); o ÓRGÃO é quem compra de fato (ex.: Secretaria de Saúde). O painel mostra o órgão real.'],
+ ['💳','Ordem Bancária (OB)','O pagamento de fato — dinheiro que saiu do caixa. Diferente de EMPENHO, que é só reserva de verba e pode ser cancelado.'],
+ ['🎖️','Comissionado','Servidor nomeado sem concurso (cargo de confiança). Cruzado com candidaturas para mapear relação político-administrativa.'],
+ ['🎭','Laranja','Pessoa usada como sócia de fachada. Indício aqui: sócio de empresa que fatura com o Estado e ao mesmo tempo recebe benefício social de subsistência.'],
+ ['🏚️','Fachada','Endereço da empresa que não corresponde a uma operação real (residência, terreno vazio, fechado no Google).'],
+ ['⚖️','Indício ≠ prova','Tudo neste painel é INDÍCIO para apuração interna — não é acusação. Presunção de regularidade até verificação documental.'],
+];
+function glossario(){
+  const ov=$('ov'),sh=$('sheet');ov.classList.add('on');
+  sh.innerHTML=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
+   <div style="font-weight:800;font-size:17px;margin-bottom:4px">ⓘ Entenda os termos</div>
+   <div class="muted" style="font-size:13px;margin-bottom:14px">O que cada conceito do painel significa, em linguagem simples.</div>
+   <div class="grid">`+TERMOS.map(([ic,t,d])=>card(`<div style="display:flex;gap:11px;align-items:flex-start"><span style="font-size:20px">${ic}</span><div><div style="font-weight:700">${t}</div><div class="muted" style="font-size:13px;margin-top:3px;line-height:1.55">${d}</div></div></div>`)).join('')+`</div>`;
 }
 
 // ═══ DOSSIÊ modal ═══
@@ -331,23 +384,26 @@ async function renderConluio(esf){
   const rot=esf==='estado'?'órgãos estaduais':esf==='prefeitura'?'municípios':'todos os órgãos';
   if(!d.ok)return sec('Conluio')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const cov=d.cobertura||{},cap=d.captura||[],rod=d.rodizio_vencedores||[];
-  let h=cover(esf==='prefeitura'?'prefeitura':esf==='estado'?'estado':'geral','Conluio em licitações · '+rot,'Vencedor homologado de cada item (PNCP). <b>Captura</b>: um fornecedor domina o órgão. <b>Rodízio</b>: poucos se revezam. Toque para ver os objetos.','🕸️');
-  h+=`<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado),'Certames',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos',null,'🏢')}${kpi(cap.length,'Capturas','var(--rose)')}${kpi(rod.length,'Rodízios','var(--amber)')}</div>`;
-  if(cap.length){h+=`<div style="height:16px"></div>`+sec('Captura de órgão (≥80% das vitórias)',cap.length)+`<div class="grid">`+cap.map(c=>card(
+  let h=cover(esf==='prefeitura'?'prefeitura':esf==='estado'?'estado':'geral','Conluio em licitações · '+rot,'Vencedor homologado de cada item (fonte: PNCP). <b>Captura</b>: uma empresa vence quase tudo num órgão. <b>Rodízio</b>: 2-3 empresas se revezam em compras parecidas. Toque num card para ver o que foi comprado.','🕸️');
+  h+=`<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado),'Certames analisados',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢')}${kpi(cap.length,'Capturas','var(--rose)','🎯')}${kpi(rod.length,'Rodízios','var(--amber)','🔁')}</div>`;
+  if(cov.certames_sem_unidade>0)h+=`<div class="warn" style="margin-top:12px">⏳ Identificação do órgão comprador em andamento: <b>${fmtN(cov.certames_sem_unidade)}</b> de ${fmtN(cov.certames_com_resultado)} certames ainda aparecem no nome do ente (ex.: "Estado do Rio de Janeiro"). O backfill do PNCP completa isso automaticamente.</div>`;
+  const orgHead=x=>`<div style="font-weight:700">${esc(x.orgao_nome)}</div>${x.ente_nome&&x.ente_nome!==x.orgao_nome?`<div class="dim" style="margin-top:1px">${esc(x.ente_nome)} · ${esc(x.orgao_cnpj_fmt||'')}</div>`:''}`;
+  if(cap.length){h+=`<div style="height:16px"></div>`+sec('Captura de órgão · 1 empresa vence ≥80%',cap.length)+`<div class="grid">`+cap.map(c=>card(
     `<div class="exp" onclick="toggle(this)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:700">${esc(c.orgao_nome)}</div><div class="muted" style="font-size:13px;margin-top:2px">venceu: ${clk(c.fornecedor_cnpj_fmt,c.nome)}</div><div class="dim" style="margin-top:2px">${esc(c.fornecedor_cnpj_fmt)}</div></div>
-      <div class="right"><div style="font-weight:800;color:var(--rose);font-size:19px">${Math.round(c.share*100)}%</div><div class="dim">${c.certames} certames</div></div></div>
+      <div style="min-width:0">${orgHead(c)}<div class="muted" style="font-size:13px;margin-top:4px">quem venceu: ${clk(c.fornecedor_cnpj_fmt,c.nome)}</div><div class="dim" style="margin-top:2px">${esc(c.fornecedor_cnpj_fmt)}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;color:var(--rose);font-size:20px">${Math.round(c.share*100)}%</div><div class="dim">das vitórias</div></div></div>
+      <div class="muted" style="font-size:12.5px;margin-top:8px">Esta empresa venceu <b>${Math.round(c.share*100)}%</b> dos <b>${c.certames}</b> certames deste órgão (${c.distintos||'—'} concorrentes distintos no período).</div>
       <div class="objs">${(c.objetos||[]).map(o=>`<div class="obj">📦 ${esc(o)}</div>`).join('')||'<div class="dim">sem objeto</div>'}</div>
-      <div class="dim" style="margin-top:8px"><span class="chev">▸</span> objetos comprados</div></div>`,'hl')).join('')+`</div>`;}
-  if(rod.length){h+=`<div style="height:16px"></div>`+sec('Rodízio de vencedores',rod.length)+`<div class="grid">`+rod.map(r=>card(
+      <div class="dim" style="margin-top:8px"><span class="chev">▸</span> o que foi comprado</div></div>`,'hl')).join('')+`</div>`;}
+  if(rod.length){h+=`<div style="height:16px"></div>`+sec('Rodízio de vencedores · revezamento em objeto parecido',rod.length)+`<div class="grid">`+rod.map(r=>card(
     `<div class="exp" onclick="toggle(this)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><div style="font-weight:700">${esc(r.orgao_nome)}</div><div class="muted" style="font-size:13px;margin-top:2px">${r.certames} certames · cobertura ${Math.round(r.cobertura_grupo*100)}%</div></div>
-      <span class="tag amber">${(r.membros_nome||[]).length} players</span></div>
-      ${r.coesao_objeto!=null?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="tag ${r.coesao_objeto>=0.6?'rose':'teal'}">objeto ${Math.round(r.coesao_objeto*100)}% coeso</span>${(r.termos_comuns||[]).slice(0,4).map(t=>`<span class="tag accent">${esc(t)}</span>`).join('')}</div>`:'<div class="dim" style="margin-top:6px">sem objeto comparável (rodízio de nível órgão)</div>'}
-      <table style="margin-top:10px"><tbody>${(r.membros_nome||[]).map(m=>`<tr><td>${clk(m.cnpj,m.nome)}<div class="dim">${esc(m.cnpj)}</div></td><td><b>${m.vitorias}</b> <span class="dim">vit.</span></td></tr>`).join('')}</tbody></table>
+      <div style="min-width:0">${orgHead(r)}<div class="muted" style="font-size:13px;margin-top:4px">${r.certames} certames · o grupo levou ${Math.round(r.cobertura_grupo*100)}% deles</div></div>
+      <span class="tag amber">${(r.membros_nome||[]).length} empresas</span></div>
+      ${r.coesao_objeto!=null?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="tag ${r.coesao_objeto>=0.6?'rose':'teal'}" title="quão parecidos são os objetos dos certames deste grupo">compras ${Math.round(r.coesao_objeto*100)}% parecidas</span>${(r.termos_comuns||[]).slice(0,4).map(t=>`<span class="tag accent">${esc(t)}</span>`).join('')}</div>`:'<div class="dim" style="margin-top:6px">sem objeto comparável (rodízio no nível do órgão)</div>'}
+      <table style="margin-top:10px"><tbody>${(r.membros_nome||[]).map(m=>`<tr><td>${clk(m.cnpj,m.nome)}<div class="dim">${esc(m.cnpj)}</div></td><td class="num"><b>${m.vitorias}</b> <span class="dim">vitórias</span></td></tr>`).join('')}</tbody></table>
       <div class="objs">${(r.objetos||[]).map(o=>`<div class="obj">📦 ${esc(o)}</div>`).join('')||'<div class="dim">sem objeto</div>'}</div>
-      <div class="dim" style="margin-top:8px"><span class="chev">▸</span> objetos do órgão</div></div>`)).join('')+`</div>`;}
-  if(!cap.length&&!rod.length)h+=card('<div class="muted">Nenhum padrão com o volume atual desta esfera. A base cresce a cada coleta. 🟢</div>');
+      <div class="dim" style="margin-top:8px"><span class="chev">▸</span> o que foi comprado</div></div>`)).join('')+`</div>`;}
+  if(!cap.length&&!rod.length)h+=card('<div class="muted">🟢 Nenhum padrão de captura ou rodízio com o volume atual desta esfera. A base cresce a cada coleta do PNCP.</div>');
   h+=`<div class="note">${esc(d.aviso||'')}</div>`;
   return h;
 }
@@ -395,7 +451,7 @@ async function fazBusca(){
 
 // ═══ PODER / LARANJAS / CARTEL / ALERTAS / SIAFE / SWEEPS / VALIDAR / AÇÕES ═══
 async function renderPoder(){
-  const d=await J('/api/poder/nomeados_candidatos');
+  const d=await J('/api/poder/nomeados_candidatos?limite=1000');
   if(!d.ok)return sec('Poder')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const it=d.itens||[];
   let h=cover('estado','Nomeados × candidatos','Servidor público (folhas coletadas: Defensoria/RJ + Câmara Municipal do Rio + TJRJ) que também foi candidato a cargo eletivo, sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo). Mais órgãos entram conforme os coletores são ligados.','🏛️');
@@ -417,8 +473,8 @@ async function renderCartel(){
   let h=cover('estado','Concentração & cartel · SIAFE','Órgãos onde um fornecedor concentra a maior fatia do valor pago (top share por UG). Complementa o conluio do PNCP com o lado do pagamento.','🔗');
   if(!d.length)return h+card('<div class="muted">Sem dados de concentração.</div>');
   const maxS=Math.max(1,...d.map(u=>u.top_share||0));
-  h+=card(`<div class="barw">`+d.slice(0,10).map(u=>{const cor=u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':null;
-    return `<div><div class="row"><span class="lab">${esc((u.ug_nome||u.ug||'').slice(0,34))}</span><span style="font-weight:700;color:${cor||'#fff'}">${u.top_share}%</span></div><div class="track"><span class="fill" style="width:${Math.max(4,(u.top_share/maxS)*100)}%${cor?`;background:${cor}`:''}"></span></div></div>`;}).join('')+`</div>`);
+  h+=card(`<div class="barw">`+d.slice(0,10).map(u=>{const cor=u.top_share>=90?'var(--rose-d)':u.top_share>=70?'var(--amber-d)':null;
+    return `<div><div class="row"><span class="lab">${esc((u.ug_nome||u.ug||'').slice(0,58))}</span><span class="num" style="font-weight:700;color:${cor?(u.top_share>=90?'var(--rose)':'var(--amber)'):'#fff'}">${u.top_share}%</span></div><div class="track"><span class="fill" style="width:${Math.max(4,(u.top_share/maxS)*100)}%${cor?`;background:${cor}`:''}"></span></div></div>`;}).join('')+`</div>`);
   h+=`<div style="height:14px"></div><div class="grid">`+d.map(u=>card(`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div style="min-width:0"><div style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.ug_nome||'')} <span class="dim">(${esc(u.ug||'')})</span></div><div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.n_fornecedores} fornec. · top: ${esc(u.top_fornecedor||'—')}</div></div><div class="right"><div style="font-weight:800;color:${u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':'#fff'}">${u.top_share}%</div><div class="dim">${fmtRc(u.total)}</div></div></div>`)).join('')+`</div>`;
   return h;
 }
@@ -502,7 +558,7 @@ function limparEfemeros(){if(!sessaoReports.size)return;const body=JSON.stringif
 window.addEventListener('pagehide',limparEfemeros);window.addEventListener('beforeunload',limparEfemeros);
 
 (async()=>{montarSpheres();montarTabs();await ir('e_panorama');
-  const st=await J('/status');if(st.username)$('hsub').textContent='SIAFE '+st.username.slice(0,4)+'… · exerc. '+(st.exercicio||'—');})();
+  const st=await J('/status');if(st.exercicio)$('hsub').textContent='Inteligência · SIAFE '+(st.logged_in?'✓':'✗')+' · '+st.exercicio;})();
 </script>
 </body>
 </html>
