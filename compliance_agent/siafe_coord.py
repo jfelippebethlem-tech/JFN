@@ -114,10 +114,34 @@ def aguardar_liberacao(motivo: str, timeout_total_s: int = 6 * 3600, poll_s: int
         sleep(poll_s)
 
 
+_MFA_FLAG = _REPO / "data" / "sei_cache" / "siafe_mfa.json"
+
+
+def set_mfa(codigo: str):
+    """Grava o código MFA do SIAFE (Yoda chama ao receber 'siafe codigo NNNNNN' do Jorge)."""
+    _MFA_FLAG.parent.mkdir(parents=True, exist_ok=True)
+    _MFA_FLAG.write_text(json.dumps({"codigo": str(codigo).strip(), "ts": int(time.time())}),
+                         encoding="utf-8")
+
+
+def get_mfa(depois_de: float = 0) -> str:
+    """Código MFA gravado APÓS `depois_de` (senão ''). Código velho expira no SIAFE — só vale o fresco."""
+    try:
+        d = json.loads(_MFA_FLAG.read_text(encoding="utf-8"))
+        if float(d.get("ts", 0)) >= depois_de:
+            return str(d.get("codigo", "")).strip()
+    except Exception as exc:
+        logger.debug("sem flag MFA legível: %s", exc)
+    return ""
+
+
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] in ("livre", "ocupado", "coletor_rodando"):
         set_status(sys.argv[1], " ".join(sys.argv[2:]))
         print(f"flag SIAFE = {sys.argv[1]}")
+    elif len(sys.argv) > 2 and sys.argv[1] == "mfa":
+        set_mfa(sys.argv[2])
+        print("código MFA gravado")
     else:
         print(f"status atual: {get_status()}")
