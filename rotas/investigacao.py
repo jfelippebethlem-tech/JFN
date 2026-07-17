@@ -1299,6 +1299,20 @@ async def api_intel_perdedoras():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/fracionamento")
+async def api_intel_fracionamento(limite: int = 120):
+    """Possível fracionamento de despesa: favorecido+UG+mês com várias OBs coladas no teto de
+    dispensa (fatiar p/ não licitar, Lei 14.133 art. 75 §1º). Ordena por concentração colada."""
+    try:
+        from compliance_agent.cruzamentos_intel import fracionamento
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:frac:{lim}", 600)):
+            d = _cache_put(f"intel:frac:{lim}", fracionamento(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/fantasmas")
 async def api_intel_fantasmas(limite: int = 50):
     """Ranking de risco de empresa-fantasma (8 sinais determinísticos do /fantasma) no conjunto-alvo

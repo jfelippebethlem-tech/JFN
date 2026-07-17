@@ -259,6 +259,7 @@ const TABS={
     {id:'e_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaEstado},
     {id:'e_pericias',ic:'⚖️',tl:'Perícias',render:renderPericias},
     {id:'e_sanc',    ic:'🚫',tl:'Sancionadas',render:()=>renderSancionadas('estado')},
+    {id:'e_frac',    ic:'✂️',tl:'Fracion.',render:renderFracionamento},
     {id:'e_cartel',  ic:'🔗',tl:'Cartel',  render:renderCartel},
     {id:'e_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('estado')},
     {id:'e_poder',   ic:'🏛️',tl:'Nomeados',render:renderPoder},
@@ -415,6 +416,30 @@ async function renderSancionadas(esf){
       <div style="margin-top:6px" class="num"><b>${fmtRc(e.estado.valor_durante+e.pncp.valor_durante||e.estado.valor+e.pncp.valor)}</b></div>
       <div class="dim">${grave?'durante a sanção':'total recebido'}</div></div></div>
       ${grave&&ex?leitura(`Exemplo: ${ex.ob?('OB <b>'+esc(ex.ob)+'</b> paga em '):'certame homologado em '}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`):''}`,grave?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
+// ═══ FRACIONAMENTO (Estado) ═══
+async function renderFracionamento(){
+  const d=await J('/api/intel/fracionamento?limite=120');
+  if(!d.ok)return sec('Fracionamento')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const g=d.grupos||[];
+  let h=cover('estado','Fracionamento de despesa — fatiar para não licitar',
+    'Mesmo favorecido, mesma unidade gestora e mesmo mês, com várias Ordens Bancárias <b>coladas no teto de dispensa</b> de licitação. É o padrão de dividir a compra para caber embaixo do limite e não licitar (Lei 14.133, art. 75 §1º). Quanto maior a <b>concentração</b> (% de OBs coladas no teto), mais deliberado o indício.','✂️');
+  const alta=g.filter(x=>x.concentracao>=0.5).length;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Grupos sinalizados','var(--amber)','✂️')}${kpi(fmtN(alta),'Concentração ≥50%','var(--rose)','🎯')}
+      ${kpi(fmtRc(g.reduce((s,x)=>s+x.soma,0)),'Soma dos grupos exibidos',null,'💰')}${kpi(g.length?Math.round(Math.max(...g.map(x=>x.concentracao))*100)+'%':'—','Pior concentração','var(--rose)')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por favorecido, UG ou mês…" oninput="filtrar(this,'#frac-list .card')"></div>`;
+  h+=`<div id="frac-list" class="grid">`+g.map(x=>{
+    const pct=Math.round(x.concentracao*100);
+    const cor=pct>=60?'var(--rose)':pct>=40?'var(--amber)':'var(--tx2)';
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">${clk(x.credor,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · UG ${esc(String(x.ug_emitente))} · ${esc(x.mes)}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:19px;color:${cor}">${pct}%</div><div class="dim">colado no teto</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">${x.n_colado} de ${x.n} OBs em 85–100% do teto (R$ ${Number(x.teto).toLocaleString('pt-BR',{maximumFractionDigits:0})})</span><b>${fmtRc(x.soma)}</b></div>
+      ${leitura(`${x.n_colado} das ${x.n} OBs deste favorecido para a UG ${esc(String(x.ug_emitente))} em ${esc(x.mes)} ficaram logo abaixo do teto de dispensa. Somadas dão ${fmtRc(x.soma)} — acima do limite, o que exigiria licitação. Cruzar com os empenhos/processos do mês.`)}`,
+      pct>=50?'hl':'');}).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
 }

@@ -44,6 +44,14 @@ RESSALVA = ("Indício para apuração interna, não acusação. Sanção impedit
             "cadastro-fonte (Portal da Transparência/CGU) antes de qualquer uso externo.")
 
 
+# Teto de dispensa de licitação por ano (Lei 14.133 art. 75-II, compras/serviços comuns; valores
+# atualizados por decreto). Abaixo dele o gestor pode contratar SEM licitação — o incentivo a
+# "fatiar" a despesa para caber embaixo é o vetor clássico de fracionamento (Lei 14.133 art. 75 §1º).
+_TETO_DISPENSA = {2021: 50000.00, 2022: 50000.00, 2023: 52707.00,
+                  2024: 59906.02, 2025: 59906.02, 2026: 59906.02}
+_TETO_DEFAULT = 59906.02
+
+
 def _ro(db_path: str | None = None) -> sqlite3.Connection:
     con = sqlite3.connect(f"file:{db_path or _DB}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
@@ -301,6 +309,65 @@ def ranking_fantasmas(db_path: str | None = None, limite: int = 50) -> dict:
 
 # ── cache p/ endpoints (perdedoras varre 8k atas — não roda no request) ──────
 
+def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int = 3,
+                  banda: float = 0.85, limite: int = 120) -> dict:
+    """Possível FRACIONAMENTO de despesa: mesmo favorecido + mesma UG + mesmo MÊS com muitas OBs,
+    várias delas "coladas no teto" de dispensa (85-100% do limite do ano) — padrão de fatiar a
+    compra para caber embaixo do limite e fugir da licitação (Lei 14.133 art. 75 §1º).
+    Ordena pela CONCENTRAÇÃO colada no teto (separa dodging deliberado de fornecimento contínuo:
+    utilidade/combustível tem valores variados, baixa concentração)."""
+    con = _ro(db_path)
+    try:
+        iso_mes = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)"
+        ano = "CAST(substr(data_emissao,7,4) AS INT)"
+        # teto do ano via CASE (SQLite não tem dict); banda = 85% do teto
+        casos_teto = " ".join(f"WHEN {a} THEN {t}" for a, t in _TETO_DISPENSA.items())
+        teto_expr = f"(CASE {ano} {casos_teto} ELSE {_TETO_DEFAULT} END)"
+        # favorecido que é ENTE PÚBLICO = repasse/transferência (fundo-a-fundo, parcelas iguais),
+        # não compra fatiada — fora do detector (senão vira falso-positivo).
+        publico = ("nome_credor NOT LIKE '%FUNDO%' AND nome_credor NOT LIKE '%PREFEITURA%' "
+                   "AND nome_credor NOT LIKE '%MUNICIPIO%' AND nome_credor NOT LIKE '%MUNICÍPIO%' "
+                   "AND nome_credor NOT LIKE '%SECRETARIA%' AND nome_credor NOT LIKE '%C_MARA%' "
+                   "AND nome_credor NOT LIKE '%TRIBUNAL%' AND nome_credor NOT LIKE '%INSTITUTO DE PREV%' "
+                   "AND nome_credor NOT LIKE '%ESTADO DO RIO%' AND nome_credor NOT LIKE '%DEFENSORIA%'")
+        q = f"""
+        SELECT credor, MAX(nome_credor) nome, ug_emitente, {iso_mes} mes,
+               COUNT(*) n, SUM(valor) soma, MAX(valor) maior,
+               SUM(CASE WHEN valor >= {banda}*{teto_expr} AND valor < {teto_expr} THEN 1 ELSE 0 END) n_colado,
+               MAX({teto_expr}) teto
+        FROM ob_orcamentaria_siafe
+        WHERE length(credor)=14 AND valor>0 AND valor < {teto_expr} AND {publico}
+        GROUP BY credor, ug_emitente, {iso_mes}
+        HAVING n >= ? AND n_colado >= ?
+        ORDER BY (CAST(n_colado AS REAL)/n) DESC, soma DESC
+        LIMIT ?"""
+        rows = [dict(r) for r in con.execute(q, (min_obs, min_colado, limite))]
+        for r in rows:
+            r["concentracao"] = round(r["n_colado"] / r["n"], 2) if r["n"] else 0
+            r["cnpj_fmt"] = (f"{r['credor'][:2]}.{r['credor'][2:5]}.{r['credor'][5:8]}/"
+                             f"{r['credor'][8:12]}-{r['credor'][12:]}") if len(r["credor"] or "") == 14 else r["credor"]
+        # total (sem limite) p/ KPI
+        total = con.execute(f"""SELECT COUNT(*) FROM (
+            SELECT credor FROM ob_orcamentaria_siafe
+            WHERE length(credor)=14 AND valor>0 AND valor < {teto_expr} AND {publico}
+            GROUP BY credor, ug_emitente, {iso_mes}
+            HAVING COUNT(*) >= ? AND
+              SUM(CASE WHEN valor >= {banda}*{teto_expr} AND valor < {teto_expr} THEN 1 ELSE 0 END) >= ?)""",
+            (min_obs, min_colado)).fetchone()[0]
+        return {"ok": True, "grupos": rows, "n": total, "mostrados": len(rows),
+                "explicacao": ("Mesmo favorecido, mesma unidade gestora e mesmo mês, com várias OBs "
+                               "logo abaixo do teto de dispensa de licitação. É o padrão de FATIAR a "
+                               "compra para não licitar (Lei 14.133 art. 75 §1º veda). Quanto maior a "
+                               "'concentração' (% de OBs coladas no teto), mais deliberado o indício — "
+                               "fornecimento contínuo legítimo tem valores variados, concentração baixa."),
+                "ressalva": ("OB é PAGAMENTO, não empenho/contrato — o fracionamento se prova no "
+                             "processo de contratação. Cruzar com os empenhos/processos do mês antes de "
+                             "concluir; fornecimento contínuo (água, energia, combustível) pode explicar "
+                             "o volume. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 def _beneficios_vinculo_resumo() -> dict:
     """Resumo do cruzamento comissionados/servidores PCRJ × benefício social DURANTE o vínculo
     (pericia_beneficios.analisar() — cruza 7,3 mi de registros; NUNCA rodar no request HTTP)."""
@@ -370,3 +437,9 @@ if __name__ == "__main__":
         print(f"{d['n']} perdedoras contumazes")
         for p in d["perdedoras"][:10]:
             print(f"  {p['cnpj_fmt']} {p['nome'][:40]:40} participou={p['participou']}")
+    elif cmd == "fracionamento":
+        d = fracionamento()
+        print(f"{d['n']} grupos com possível fracionamento (colado no teto)")
+        for g in d["grupos"][:12]:
+            print(f"  {(g['nome'] or '')[:26]:26} UG{g['ug_emitente']} {g['mes']} "
+                  f"{g['n_colado']}/{g['n']} colados ({int(g['concentracao']*100)}%) soma R${g['soma']:,.2f}")
