@@ -236,7 +236,7 @@ def registros_vencedores(con, uf: str | None = "RJ") -> list[dict]:
     tem_uni = {r[1] for r in con.execute("PRAGMA table_info(pncp_resultado)")} >= {"unidade_codigo"}
     sel_uni = ("unidade_codigo, unidade_nome" if tem_uni
                else "NULL AS unidade_codigo, NULL AS unidade_nome")
-    q = (f"SELECT certame, orgao_cnpj, orgao_nome, {sel_uni}, objeto, data_pub, "
+    q = (f"SELECT certame, orgao_cnpj, orgao_nome, {sel_uni}, municipio, objeto, data_pub, "
          "fornecedor_cnpj, fornecedor_nome, SUM(valor_homologado) v "
          "FROM pncp_resultado WHERE ordem_classificacao=1 ")
     params: tuple = ()
@@ -250,6 +250,7 @@ def registros_vencedores(con, uf: str | None = "RJ") -> list[dict]:
             "certame": r["certame"], "orgao": _chave_orgao(r["orgao_cnpj"], r["unidade_codigo"]),
             "orgao_cnpj": r["orgao_cnpj"], "orgao_nome": r["orgao_nome"],
             "unidade_codigo": r["unidade_codigo"], "unidade_nome": r["unidade_nome"],
+            "municipio": r["municipio"],
             "objeto": r["objeto"], "data": r["data_pub"], "vencedores": []})
         c["vencedores"].append({"cnpj": r["fornecedor_cnpj"], "nome": r["fornecedor_nome"], "valor": r["v"]})
     return list(por_certame.values())
@@ -300,34 +301,133 @@ _RX_MUNICIPAL = __import__("re").compile(
     # APOIO AOS MUNICÍPIOS" é estadual e não pode cair em prefeitura)
     r"\bMUNIC[IÍ]PIO DE\b|PREF(EITURA|\.)|\bMUN\.|C[ÂA]MARA MUNICIPAL|FUNDO MUNICIPAL|"
     r"SECRETARIA MUNICIPAL", __import__("re").I)
+_RX_FEDERAL = __import__("re").compile(
+    # federais têm "DO ESTADO DO RIO DE JANEIRO" no nome (UNIRIO, conselhos regionais) — checar
+    # ANTES do estadual, senão viram "estado" (bug real: DNIT/IBGE/Exército no módulo Estado)
+    r"FEDERAL|MINIST[ÉE]RIO|COMANDO D[OA]|CONSELHO (REGIONAL|NACIONAL)|TRIBUNAL REGIONAL|"
+    r"JUSTI[ÇC]A FEDERAL|\bDNIT\b|\bIBGE\b|\bIBAMA\b|\bSEBRAE\b|\bSENAI\b|\bSENAC\b|"
+    r"FUNDA[ÇC][AÃ]O OSWALDO CRUZ|\bFIOCRUZ\b|\bINSS\b|\bUFRJ\b|\bUFF\b", __import__("re").I)
 _RX_ESTADUAL = __import__("re").compile(
     r"\bESTAD|SECRETARIA DE ESTADO|GOVERNO DO ESTADO|FUNDO ESTADUAL|ASSEMBLEIA LEGISLATIVA|"
     r"TRIBUNAL DE JUSTI|DETRAN|POL[ÍI]CIA (MILITAR|CIVIL)|CORPO DE BOMBEIROS", __import__("re").I)
 
 
 def esfera_do_orgao(nome: str) -> str:
-    """Classifica o órgão em 'prefeitura' | 'estado' | 'outros' (federal/autarquia) pelo nome."""
+    """FALLBACK por nome: 'prefeitura' | 'estado' | 'outros' (federal/autarquia). Usado só quando o
+    ente não está em pncp_ente (esfera OFICIAL do PNCP) — ver classificar_esfera()."""
     n = nome or ""
     if _RX_MUNICIPAL.search(n):
         return "prefeitura"
+    if _RX_FEDERAL.search(n):
+        return "outros"
     if _RX_ESTADUAL.search(n):
         return "estado"
     return "outros"
+
+
+def init_ente_schema(con: sqlite3.Connection) -> None:
+    con.execute("""
+        CREATE TABLE IF NOT EXISTS pncp_ente (
+            cnpj        TEXT PRIMARY KEY,        -- 14 dígitos
+            nome        TEXT,
+            esfera_id   TEXT,                    -- F=federal E=estadual M=municipal (oficial PNCP)
+            poder_id    TEXT,                    -- E=executivo L=legislativo J=judiciário N=n/a
+            natureza_juridica TEXT,
+            coletado_em TEXT DEFAULT (datetime('now'))
+        )""")
+    con.commit()
+
+
+def coletar_entes(con, pausa: float = 0.25) -> dict:
+    """Esfera OFICIAL de cada ente com resultado no PNCP (GET /orgaos/{cnpj} → esferaId F/E/M).
+    1 requisição por CNPJ ainda não coletado (~centenas, roda 1×; incremental depois)."""
+    import time as _t
+    init_ente_schema(con)
+    tem = {r[0] for r in con.execute("SELECT cnpj FROM pncp_ente WHERE esfera_id IS NOT NULL")}
+    todos = {re.sub(r"\D", "", r[0] or "").zfill(14)
+             for r in con.execute("SELECT DISTINCT orgao_cnpj FROM pncp_resultado "
+                                  "WHERE orgao_cnpj IS NOT NULL")}
+    falta = sorted(todos - tem)
+    n_ok = n_err = 0
+    with httpx.Client(headers=_H, timeout=20) as cli:
+        for cnpj in falta:
+            try:
+                r = cli.get(f"{PNCP_BASE}/orgaos/{cnpj}")
+                if r.status_code == 200:
+                    d = r.json()
+                    con.execute("INSERT OR REPLACE INTO pncp_ente(cnpj,nome,esfera_id,poder_id,"
+                                "natureza_juridica) VALUES(?,?,?,?,?)",
+                                (cnpj, d.get("razaoSocial"), d.get("esferaId"), d.get("poderId"),
+                                 d.get("codigoNaturezaJuridica")))
+                    n_ok += 1
+                else:
+                    n_err += 1
+            except Exception:
+                n_err += 1
+            _t.sleep(pausa)
+    con.commit()
+    return {"ok": True, "novos": n_ok, "erros": n_err, "faltavam": len(falta), "entes": len(todos)}
+
+
+def esferas_por_ente(con) -> dict[str, str]:
+    """cnpj(14) → esfera_id oficial ('F'/'E'/'M'). Vazio se a tabela pncp_ente não existe (fallback regex)."""
+    try:
+        return {r[0]: (r[1] or "") for r in con.execute("SELECT cnpj, esfera_id FROM pncp_ente")}
+    except sqlite3.OperationalError:
+        return {}
+
+
+def classificar_esfera(registro: dict, oficial: dict[str, str]) -> str:
+    """Esfera de UM certame: 'estado' | 'prefeitura' (município do Rio) | 'municipios' (demais
+    municípios) | 'federal' | 'outros'. Fonte 1 = esferaId OFICIAL do ente no PNCP; exceção real:
+    ente estadual com UNIDADE municipal (acontece no PNCP) segue a unidade. Fallback = nome."""
+    nome_uni = f"{registro.get('unidade_nome') or ''} {registro.get('orgao_nome') or ''}"
+    muni = (registro.get("municipio") or "").strip().lower()
+    eh_rio = muni in ("rio de janeiro", "")
+    cnpj14 = re.sub(r"\D", "", registro.get("orgao_cnpj") or (registro.get("orgao") or ""))[:14].zfill(14)
+    esf = oficial.get(cnpj14)
+    if esf == "M":
+        return "prefeitura" if eh_rio else "municipios"
+    if esf == "E":
+        uni = registro.get("unidade_nome") or ""
+        # exceção 1: unidade explicitamente municipal dentro do ente estadual
+        if _RX_MUNICIPAL.search(uni):
+            return "prefeitura" if eh_rio else "municipios"
+        # exceção 2 (dado real do PNCP): autarquia MUNICIPAL do interior cadastrada como unidade do
+        # ente "Estado do RJ" (ex.: Instituto de Seguridade Social de Maricá). Sem marcador estadual
+        # no nome E fora da capital → é municipal; unidades estaduais do interior têm marcador
+        # (SECRETARIA DE ESTADO, DETRAN, POLÍCIA, HOSPITAL ESTADUAL...).
+        if uni and muni and not eh_rio and not _RX_ESTADUAL.search(uni):
+            return "municipios"
+        return "estado"
+    if esf == "F":
+        return "federal"
+    e = esfera_do_orgao(nome_uni)
+    if e == "prefeitura":
+        return "prefeitura" if eh_rio else "municipios"
+    return e
 
 
 def conluio_enriquecido(con, uf: str | None = "RJ", min_certames: int = 5,
                         esfera: str | None = None) -> dict:
     """Roda detectar_rodizio_vencedores sobre os resultados do PNCP e DECORA com nome de fornecedor,
     nome de órgão e amostra de OBJETOS — pronto para o painel/relatório (user-friendly).
-    ``esfera`` ∈ {'estado','prefeitura','outros'} filtra por natureza do órgão (classificada pelo nome)."""
+    ``esfera`` ∈ {'estado','prefeitura','municipios','federal','outros'} filtra pela esfera OFICIAL
+    do ente no PNCP (pncp_ente.esferaId; fallback nome) — 'prefeitura' = município do Rio;
+    'municipios' = demais municípios do RJ; 'outros' = tudo que não é estado/prefeitura."""
     from compliance_agent.rodizio_grafo import detectar_rodizio_vencedores
     regs = registros_vencedores(con, uf=uf)
-    if esfera in ("estado", "prefeitura", "outros"):
-        # unidade primeiro: há certame com ente "Estado do RJ" cuja unidade é a Prefeitura do Rio
-        # (dado real do PNCP) — o nome da unidade é o sinal mais próximo do comprador
-        regs = [r for r in regs
-                if esfera_do_orgao(f"{r.get('unidade_nome') or ''} {r.get('orgao_nome') or ''}") == esfera]
+    oficial = esferas_por_ente(con)
+    contagem_esferas: dict[str, int] = {}
+    for r in regs:
+        r["_esfera"] = classificar_esfera(r, oficial)
+        contagem_esferas[r["_esfera"]] = contagem_esferas.get(r["_esfera"], 0) + 1
+    if esfera == "outros":
+        regs = [r for r in regs if r["_esfera"] not in ("estado", "prefeitura")]
+    elif esfera in ("estado", "prefeitura", "municipios", "federal"):
+        regs = [r for r in regs if r["_esfera"] == esfera]
     pad = detectar_rodizio_vencedores(regs, min_certames=min_certames)
+    pad["esferas"] = contagem_esferas  # transparência da segregação (Estado ≠ prefeituras ≠ federal)
     # índices auxiliares: cnpj→nome, orgao→(nome exibível, ente), orgao→objetos, (orgao,cnpj)→objetos
     nome_forn: dict[str, str] = {}
     nome_org: dict[str, str] = {}
