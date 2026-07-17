@@ -390,12 +390,17 @@ def _mediana(xs: list) -> float:
     return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
 
 
-def sobrepreco(db_path: str | None = None, min_amostra: int = 5, fator: float = 2.0,
-               limite: int = 120) -> dict:
+def sobrepreco(db_path: str | None = None, min_amostra: int = 5, min_certames: int = 4,
+               fator: float = 2.0, limite: int = 120) -> dict:
     """Sobrepreço por MEDIANA de item: agrupa compras pela descrição normalizada do item
     (mesmo produto entre órgãos) e sinaliza quem pagou preço UNITÁRIO muito acima da mediana do
     grupo (≥ `fator`× a mediana E fora da banda robusta mediana+3·MAD). Fonte: valorUnitarioHomologado
-    do PNCP. Robusto a outlier (mediana/MAD, não média)."""
+    do PNCP. Robusto a outlier (mediana/MAD, não média).
+
+    Guarda anti-falso-positivo: o grupo precisa abranger ≥`min_certames` CERTAMES distintos — senão
+    a 'mediana' seria só a variedade de produtos dentro de um mesmo pregão sob rótulo genérico
+    (ex.: esteira e halteres ambos como 'Aparelho de Acondicionamento Físico'). E o achado precisa
+    ser de um certame DIFERENTE da maioria (compara compras independentes, não itens do mesmo lote)."""
     con = _ro(db_path)
     try:
         rows = con.execute(
@@ -413,21 +418,28 @@ def sobrepreco(db_path: str | None = None, min_amostra: int = 5, fator: float = 
         n_grupos_validos = 0
         for chave, itens in grupos.items():
             precos = [r["vu"] for r in itens]
-            if len(precos) < min_amostra:
+            n_certames = len({r["certame"] for r in itens})
+            # exige amostra E diversidade de certames (compras independentes, não 1 lote genérico)
+            if len(precos) < min_amostra or n_certames < min_certames:
                 continue
             med = _mediana(precos)
             if med <= 0:
                 continue
             mad = _mediana([abs(p - med) for p in precos]) or (med * 0.1)
             n_grupos_validos += 1
+            # a mediana só é confiável se a maioria dos certames fica perto dela: exige que
+            # ≥60% dos certames distintos tenham preço ≤ 2× mediana (senão o grupo é heterogêneo).
+            base = len({r["certame"] for r in itens if r["vu"] <= 2 * med})
+            if base < 0.6 * n_certames:
+                continue
             for r in itens:
                 p = r["vu"]
-                z = (p - med) / (1.4826 * mad) if mad else 0  # z-score robusto (Nigrini/Iglewicz)
-                if p >= fator * med and z >= 3:
+                z = (p - med) / (1.4826 * mad) if mad else 0  # z-score robusto (Iglewicz/Nigrini)
+                if p >= fator * med and z >= 3.5:
                     achados.append({
                         "item": r["d"], "unidade_medida": r["un"], "grupo": chave,
                         "preco": p, "mediana": round(med, 2), "razao": round(p / med, 1),
-                        "z_robusto": round(z, 1), "amostra": len(precos),
+                        "z_robusto": round(z, 1), "amostra": len(precos), "certames": n_certames,
                         "orgao": r["unidade_nome"] or r["orgao_nome"], "municipio": r["municipio"],
                         "fornecedor": r["fornecedor_nome"], "fornecedor_cnpj": r["fornecedor_cnpj"],
                         "certame": r["certame"], "data": (r["data_pub"] or "")[:10],
