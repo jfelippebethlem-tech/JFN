@@ -708,15 +708,16 @@ async def coletar_contratos_estado(con, ano_ini: int = 2021, mes_ini: int = 1,
                 acresc += row["valor_acrescido"]
             if row.get("valor_global"):
                 vg_max = max(vg_max or 0, row["valor_global"])
-        # valor global efetivo = maior valor_global dos termos, ou inicial + acréscimos
+        # valor global efetivo: PRIORIZA inicial + Σacréscimo (confiável); o valorGlobal do termo
+        # às vezes vem com lixo (< inicial) — só o usa se for sanamente MAIOR que o inicial.
         con.execute(
             """UPDATE pcrj_contratos SET num_aditivos=?, aditivos_checados=1,
                  valor_global=CASE
-                    WHEN ?>0 THEN MAX(COALESCE(valor_global,0), ?)
                     WHEN ?>0 THEN COALESCE(valor_inicial,0)+?
+                    WHEN ?>COALESCE(valor_inicial,0) THEN ?
                     ELSE valor_global END
                WHERE numero_controle_pncp=?""",
-            (len(termos), vg_max or 0, vg_max or 0, acresc, acresc, ncp))
+            (len(termos), acresc, acresc, vg_max or 0, vg_max or 0, ncp))
         tot["aditivos_checados"] += 1
         tot["termos"] += len(termos)
         if acresc > 0 or (vg_max or 0) > 0:
