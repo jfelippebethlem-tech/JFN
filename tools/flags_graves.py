@@ -124,7 +124,8 @@ def resumo_texto(markdown: bool = True) -> str:
         bola = {"CRÍTICA": "🔴", "ALTA": "🟠", "MÉDIA": "🟡"}.get(g, "⚪")
         v = _fmt_r(e.get("valor"))
         cabeca = f"{bola} *{g} — {e.get('caso','')}*" if markdown else f"{bola} {g} — {e.get('caso','')}"
-        linhas.append(f"{cabeca}\n{e.get('titulo','')}" + (f"\n💰 {v}" if v != "—" else "")
+        # rótulo explícito: é valor ENVOLVIDO (contrato/concentração), não prejuízo apurado
+        linhas.append(f"{cabeca}\n{e.get('titulo','')}" + (f"\n💰 valor envolvido: {v}" if v != "—" else "")
                       + (f"\n⚖️ {e.get('base_legal','')}" if e.get("base_legal") else "")
                       + (f"\n📌 {e.get('status','')}" if e.get("status") else ""))
     return "\n\n".join(linhas)
