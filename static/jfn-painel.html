@@ -277,6 +277,7 @@ const TABS={
     {id:'g_buscar',  ic:'🔎',tl:'Buscar',  render:renderBuscar},
     {id:'g_riscos',  ic:'👻',tl:'Riscos',  render:renderRiscos},
     {id:'g_laranjas',ic:'🎭',tl:'Laranjas',render:renderLaranjas},
+    {id:'g_socserv', ic:'🕴️',tl:'Servidor-sócio',render:renderSocioServidor},
     {id:'g_poder',   ic:'🏛️',tl:'Poder',   render:renderPoder},
     {id:'g_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio(_cjEsf)},
     {id:'g_validar', ic:'🏢',tl:'Validar', render:renderValidar},
@@ -677,6 +678,28 @@ async function renderPoder(){
   h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, cargo, partido…" oninput="filtrar(this,'#pod-list .card')"></div>`;
   h+=`<div id="pod-list" class="grid">`+it.map(x=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="muted" style="font-size:13px;margin-top:2px">${esc(x.orgao||'—')} · ${esc(x.cargo_folha||'—')}</div></div>${x.comissionado?'<span class="tag rose">comissão</span>':'<span class="tag accent">efetivo</span>'}</div><div class="kv" style="margin-top:8px"><span class="k">Disputou</span><b>${esc(x.cargo_disputado||'—')} · ${esc(x.partido||'—')} · ${esc(x.ano||'—')}</b></div>`)).join('')+`</div>`;
   h+=`<div class="note">${esc(d.aviso||'')}</div>`;return h;
+}
+async function renderSocioServidor(){
+  const d=await J('/api/intel/socio_servidor?limite=150');
+  if(!d.ok)return sec('Servidor-sócio')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Servidor público sócio de fornecedor do Estado',
+    'Servidor que aparece nas folhas coletadas e também é sócio de empresa que recebeu do Estado. Servidor <b>administrador/diretor</b> de empresa privada viola a vedação estatutária de gerência; se a empresa contrata com o órgão dele, há impedimento (Lei 14.133 art. 9). <b>Confiança ALTA</b> = nome e fragmento de CPF batem; <b>MÉDIA</b> = só o nome.','🕴️');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Servidores sócios','var(--rose)','🕴️')}${kpi(fmtN(d.n_gerencia),'Com gerência (vedada)','var(--rose)','⚖️')}
+      ${kpi(fmtN(d.n_alta),'Confiança ALTA (CPF)','var(--amber)','🔎')}${kpi(fmtN(d.homonimos_descartados),'Homônimos descartados',null,'🚮')}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas||[]).join(', '))||'—'}. Cobertura cresce conforme novas folhas entram.</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por servidor, empresa, órgão ou cargo…" oninput="filtrar(this,'#ss-list .card')"></div>`;
+  h+=`<div id="ss-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.socio)} ${x.gerencia?'<span class="tag rose">gerência</span>':'<span class="tag amber">sócio</span>'}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.qualificacao)} de ${clk(x.cnpj,x.empresa)}</div>
+      <div class="dim" style="margin-top:2px">servidor: ${esc(x.servidor_cargo||'—')} · ${esc((x.servidor_orgao||'').slice(0,40))} · ${esc(x.vinculo||'')}</div></div>
+      <div class="right"><span class="tag ${x.confianca==='ALTA'?'rose':'accent'}">${esc(x.confianca)}</span>
+      <div class="num" style="margin-top:6px;font-weight:800">${fmtRc(x.total_pago)}</div><div class="dim">recebido · ${fmtN(x.n_obs)} OBs</div></div></div>
+      ${leitura(`<b>${esc(x.socio)}</b> é <b>${esc(x.qualificacao)}</b> da empresa <b>${esc(x.empresa)}</b> (recebeu ${fmtRc(x.total_pago)} do Estado) e consta na folha como <b>${esc(x.servidor_cargo||'servidor')}</b> ${esc(x.servidor_orgao?('do '+x.servidor_orgao):'')}.${x.gerencia?' Cargo de gerência em empresa privada é vedado ao servidor (estatuto).':''} ${x.confianca==='ALTA'?'Nome e fragmento de CPF coincidem.':'Casamento por nome — confirmar CPF.'}`)}`,
+    x.confianca==='ALTA'||x.gerencia?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
 }
 async function renderLaranjas(){
   const d=await J('/api/laranjas');if(!d.ok)return sec('Laranjas')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);

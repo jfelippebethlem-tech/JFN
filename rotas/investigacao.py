@@ -1313,6 +1313,20 @@ async def api_intel_fracionamento(limite: int = 120):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/socio_servidor")
+async def api_intel_socio_servidor(limite: int = 150):
+    """Servidor público (folha) que é sócio de fornecedor do Estado — conflito de interesse
+    (Lei 14.133 art. 9) e, se administrador, vedação estatutária de gerência. Nome + fragmento de CPF."""
+    try:
+        from compliance_agent.cruzamentos_intel import socio_servidor
+        lim = max(1, min(int(limite or 150), 300))
+        if not (d := _cache_get(f"intel:socserv:{lim}", 600)):
+            d = _cache_put(f"intel:socserv:{lim}", socio_servidor(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/sobrepreco")
 async def api_intel_sobrepreco(limite: int = 120):
     """Sobrepreço por mediana de item: mesmo produto (descrição normalizada) comprado por vários

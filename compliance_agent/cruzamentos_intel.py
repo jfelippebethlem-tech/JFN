@@ -368,6 +368,106 @@ def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int 
         con.close()
 
 
+def _norm_nome(s: str) -> str:
+    """Normaliza nome de pessoa p/ casar sócio×servidor: maiúsculas, sem acento, só letras."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", (s or "").upper())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return re.sub(r"\s+", " ", re.sub(r"[^A-Z ]", " ", s)).strip()
+
+
+def _frag6(doc: str) -> str:
+    """Os 6 dígitos visíveis de um CPF mascarado (senão '')."""
+    d = re.sub(r"\D", "", doc or "")
+    return d if len(d) == 6 else ""
+
+
+# favorecido NÃO-comercial: servidor é membro/dirigente pela profissão, não dono-fornecedor
+_RX_NAOCOM = re.compile(
+    r"MUTUA|\bFUND\b|FUNDAC|INSTITUTO|ASSOCIA|CAIXA DE ASSIST|CAIXA ESCOLAR|COOPERATIVA|SINDICATO|"
+    r"CONSELHO|FEDERAC|CONFEDERAC|\bOAB\b|IGREJA|PARTIDO|VIVA RIO|CRUZ VERMELHA|APAE|SANTA CASA|"
+    r"OSCIP|\bONG\b|\bAAE\b|\bAEE\b|GREMIO|\bCLUBE\b|CARTORIO|SERVICO NOTARIAL|SOCIEDADE BENEF|"
+    r"\bFORUM\b|ESCOLA SUP|CENTRO ACAD|DIRETORIO|CAMARA DOS|ORDEM DOS")
+# qualificação de DONO/gerência (servidor-administrador de empresa privada = vedação estatutária)
+_RX_DONO = re.compile(r"SOCIO|ADMINISTRADOR|TITULAR|EMPRESARIO|PROPRIET|PRESIDENTE|DIRETOR")
+_RX_GERENCIA = re.compile(r"ADMINISTRADOR|PRESIDENTE|DIRETOR|TITULAR|GERENTE")
+
+
+def socio_servidor(db_path: str | None = None, limite: int = 150) -> dict:
+    """Servidor público (folha) que é SÓCIO de empresa fornecedora do Estado — conflito de interesse
+    (Lei 14.133 art. 9; interposição art. 337-F CP) e, quando é ADMINISTRADOR, vedação estatutária
+    de gerência de empresa privada. Casa por nome + corrobora com fragmento de CPF (mascarado):
+    ALTA se os dígitos visíveis coincidem, MÉDIA se só o nome, e DESCARTA quando o CPF conflita
+    (homônimo). Exclui entidades de classe (o servidor é dirigente pela profissão, não dono)."""
+    con = _ro(db_path)
+    try:
+        folha: dict[str, list] = {}
+        for r in con.execute("SELECT nome, cpf, orgao_nome, cargo, vinculo, fonte "
+                             "FROM registros_folha WHERE nome IS NOT NULL"):
+            nn = _norm_nome(r["nome"])
+            if nn.count(" ") < 1:  # exige nome + sobrenome (reduz homônimo)
+                continue
+            folha.setdefault(nn, []).append(
+                (_frag6(r["cpf"]), r["orgao_nome"], r["cargo"], r["vinculo"], r["fonte"]))
+        achados, conflitos = [], 0
+        q = ("SELECT s.socio_nome, s.socio_doc, s.cnpj, s.qualificacao, "
+             "f.favorecido_nome, f.total_pago, f.n_obs "
+             "FROM socios_fornecedor s JOIN favorecido_resumo f ON f.favorecido_cpf=s.cnpj "
+             "WHERE f.total_pago>0 AND s.socio_nome<>''")
+        for r in con.execute(q):
+            emp = r["favorecido_nome"] or ""
+            if _RX_NAOCOM.search(_norm_nome(emp)):
+                continue
+            qual = r["qualificacao"] or ""
+            if not _RX_DONO.search(_norm_nome(qual)):
+                continue
+            nn = _norm_nome(r["socio_nome"])
+            cands = folha.get(nn)
+            if not cands:
+                continue
+            fs = _frag6(r["socio_doc"])
+            tier, info, houve_conflito = None, None, False
+            for (ff, org, cargo, vinc, fonte) in cands:
+                if fs and ff:
+                    if fs[0:5] == ff[1:6]:   # janelas D4-D9 (sócio) × D3-D8 (folha) → overlap D4-D8
+                        tier, info = "ALTA", (org, cargo, vinc, fonte)
+                        break
+                    houve_conflito = True
+                elif not tier:
+                    tier, info = "MEDIA", (org, cargo, vinc, fonte)
+            if not tier:
+                if houve_conflito:
+                    conflitos += 1
+                continue
+            cnpj = r["cnpj"]
+            achados.append({
+                "socio": r["socio_nome"], "cnpj": cnpj,
+                "cnpj_fmt": (f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
+                             if len(cnpj or "") == 14 else cnpj),
+                "empresa": emp, "qualificacao": qual,
+                "gerencia": bool(_RX_GERENCIA.search(_norm_nome(qual))),
+                "confianca": tier, "servidor_orgao": info[0], "servidor_cargo": info[1],
+                "vinculo": info[2], "fonte_folha": info[3],
+                "total_pago": r["total_pago"], "n_obs": r["n_obs"]})
+        # ranking: confiança ALTA + gerência + maior valor
+        achados.sort(key=lambda a: (a["confianca"] != "ALTA", not a["gerencia"], -(a["total_pago"] or 0)))
+        n_alta = sum(1 for a in achados if a["confianca"] == "ALTA")
+        n_ger = sum(1 for a in achados if a["gerencia"])
+        return {"ok": True, "achados": achados[:limite], "n": len(achados),
+                "n_alta": n_alta, "n_gerencia": n_ger, "homonimos_descartados": conflitos,
+                "folhas": sorted({c[4] for lst in folha.values() for c in lst if c[4]}),
+                "explicacao": ("Servidor público (nas folhas coletadas) que é sócio de empresa que "
+                               "recebeu do Estado. Servidor ADMINISTRADOR/diretor de empresa privada "
+                               "viola a vedação estatutária de gerência; se a empresa contrata com o "
+                               "órgão dele, há impedimento (Lei 14.133 art. 9). Confiança ALTA = nome "
+                               "e fragmento de CPF batem; MÉDIA = só o nome (homônimo possível)."),
+                "ressalva": ("Match por nome + fragmento de CPF mascarado — homônimo com fragmento "
+                             "conflitante já é descartado, mas confirmar CPF completo antes de citar. "
+                             "Sócio sem gerência (mero quotista) pode ser permitido. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 def _norm_item(desc: str) -> str:
     """Normaliza a descrição do item p/ agrupar compras comparáveis: minúsculas, sem acento,
     sem plural simples, sem pontuação/números soltos. 'Ventiladores' e 'VENTILADOR' → 'ventilador'."""
@@ -533,6 +633,14 @@ if __name__ == "__main__":
         for g in d["grupos"][:12]:
             print(f"  {(g['nome'] or '')[:26]:26} UG{g['ug_emitente']} {g['mes']} "
                   f"{g['n_colado']}/{g['n']} colados ({int(g['concentracao']*100)}%) soma R${g['soma']:,.2f}")
+    elif cmd == "socio_servidor":
+        d = socio_servidor()
+        print(f"sócio-servidor: {d['n']} (ALTA={d['n_alta']}, gerência={d['n_gerencia']}, "
+              f"homônimos descartados={d['homonimos_descartados']})")
+        for a in d["achados"][:15]:
+            print(f"  [{a['confianca']}] {a['socio'][:24]:24} {a['qualificacao'][:16]:16} de "
+                  f"{a['empresa'][:26]:26} R${a['total_pago']:>12,.0f} | {a['servidor_cargo'][:16]:16} "
+                  f"@ {(a['servidor_orgao'] or '')[:22]}")
     elif cmd == "sobrepreco":
         d = sobrepreco()
         print(f"itens com preço unitário: {d['itens_com_preco']} | grupos comparáveis: "
