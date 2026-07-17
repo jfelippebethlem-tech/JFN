@@ -5,23 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>JFN — Central de Inteligência</title>
 <style>
-  /* ── Design system JFN v3 ─────────────────────────────────────────────
-     Superfícies: elevação por LUZ (camadas s0→s3), não por sombra.
-     Cor saturada só carrega SIGNIFICADO (dado/status); o resto é neutro.
-     Paleta de dados validada (CVD ΔE≥15, contraste ≥3:1 sobre --card,
-     banda L 0.48–0.67 — script validate_palette da skill dataviz).       */
+  /* ── Design system JFN v4 "sala de comando" ───────────────────────────
+     Evolução do v3: telemetria mono, HUD discreto (cantoneiras/scan), LEDs
+     de status por fonte. Elevação por LUZ; cor saturada só com SIGNIFICADO.
+     Paleta de dados validada (CVD ΔE≥15, contraste ≥3:1 sobre --card).    */
   :root{
-    /* superfícies (elevação por lightness) */
-    --bg:#070b13; --bg2:#0a101c; --card:#0e1524; --card2:#0c1220; --raise:#141e33;
-    --bd:rgba(148,170,215,.13); --bd2:rgba(148,170,215,.08); --glass:rgba(9,14,25,.78);
-    /* tinta (off-white, nunca branco puro em massa) */
+    --bg:#04070e; --bg2:#080d18; --card:#0d1424; --card2:#0b111f; --raise:#131d33;
+    --bd:rgba(148,170,215,.14); --bd2:rgba(148,170,215,.08); --glass:rgba(7,11,20,.82);
     --tx:#edf2fc; --tx2:#c4cfe6; --mut:#8b9abc; --dim:#637192;
-    /* dados (marcas/preenchimentos — validados sobre --card) */
     --blue:#4287e6; --teal-d:#0ea895; --amber-d:#c67f1c; --green-d:#2aae62;
     --violet:#8f7bf0; --rose-d:#e5537a;
-    /* texto colorido (tints AA para rótulos sobre superfícies escuras) */
     --accent:#6ea8ff; --accent2:#8f7bf0; --teal:#4fd6c4; --gold:#e8bd72;
     --green:#5fd08d; --amber:#e8a94f; --rose:#ff7d9c; --purple:#b3a1ff;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
     --r:14px; --r2:18px;
     --sh:0 1px 0 rgba(255,255,255,.035) inset,0 20px 44px -34px rgba(2,6,16,.9);
   }
@@ -29,21 +25,26 @@
   html,body{margin:0}
   body{
     background:
-      radial-gradient(1100px 560px at 88% -14%, rgba(66,135,230,.10), transparent 60%),
-      radial-gradient(900px 480px at -12% 6%, rgba(143,123,240,.07), transparent 55%),
+      radial-gradient(1100px 560px at 88% -14%, rgba(66,135,230,.11), transparent 60%),
+      radial-gradient(900px 480px at -12% 6%, rgba(79,214,196,.05), transparent 55%),
       linear-gradient(180deg,var(--bg2),var(--bg) 320px);
     color:var(--tx); font:14.5px/1.6 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
     min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
   .num,td,th,.kpi .v,.mini .b .v{font-variant-numeric:tabular-nums}
+  .mono{font-family:var(--mono)}
   .wrap{max-width:1220px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
 
-  header{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(18px);border-bottom:1px solid var(--bd2)}
+  header{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(18px);border-bottom:1px solid var(--bd2);position:sticky;overflow:hidden}
+  header::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(79,214,196,.6),rgba(110,168,255,.6),transparent);
+    animation:scan 7s linear infinite;opacity:.55;pointer-events:none}
+  @keyframes scan{0%{transform:translateX(-60%)}100%{transform:translateX(60%)}}
   .htop{display:flex;align-items:center;gap:12px;padding:13px 18px 11px}
   .brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:.3px}
-  .brand .lg{font-size:19px;filter:drop-shadow(0 0 10px rgba(66,135,230,.55))}
-  .brand small{display:block;color:var(--mut);font-size:10.5px;font-weight:550;margin-top:2px;letter-spacing:.5px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw}
-  .live{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:650;color:var(--teal);border:1px solid rgba(79,214,196,.25);padding:3px 10px;border-radius:20px;background:rgba(14,168,149,.07);white-space:nowrap;flex:0 0 auto}
+  .brand .lg{font-size:19px;filter:drop-shadow(0 0 10px rgba(79,214,196,.6))}
+  .brand small{display:block;color:var(--mut);font-size:10px;font-weight:600;margin-top:2px;letter-spacing:.9px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw;font-family:var(--mono)}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:650;color:var(--teal);border:1px solid rgba(79,214,196,.25);padding:3px 10px;border-radius:20px;background:rgba(14,168,149,.07);white-space:nowrap;flex:0 0 auto;font-family:var(--mono)}
   .live .pulse{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);animation:pl 1.8s infinite}
   @keyframes pl{0%,100%{opacity:1}50%{opacity:.3}}
   .htop .actions{margin-left:auto;display:flex;gap:8px;align-items:center}
@@ -51,7 +52,6 @@
   .htop a.ctrl{color:var(--rose);border-color:rgba(229,83,122,.3)}
   .htop a.help{color:var(--accent);border-color:rgba(110,168,255,.28)}
   .htop a.sair:hover,.htop a.help:hover{color:#fff;border-color:var(--accent)}
-  /* seletor de esfera — segmented control com identidade por cor */
   .spheres{display:flex;gap:7px;padding:0 14px 13px;overflow-x:auto;scrollbar-width:none}
   .spheres::-webkit-scrollbar{display:none}
   .sph{flex:1;min-width:118px;display:flex;align-items:center;justify-content:center;gap:9px;padding:11px 12px;border-radius:12px;cursor:pointer;position:relative;
@@ -73,19 +73,26 @@
   }
 
   main{flex:1;padding:18px 16px 112px}
+  /* cover HUD: grade + cantoneiras */
   .cover{border-radius:var(--r2);padding:19px 19px 17px;margin-bottom:16px;border:1px solid var(--bd2);position:relative;overflow:hidden}
   .cover::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
     background-image:linear-gradient(rgba(148,170,215,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(148,170,215,.05) 1px,transparent 1px);
     background-size:26px 26px;mask-image:radial-gradient(400px 160px at 85% 0%,#000,transparent)}
+  .cover::before{content:"";position:absolute;inset:10px;pointer-events:none;border-radius:10px;
+    background:
+      linear-gradient(90deg,rgba(79,214,196,.5) 14px,transparent 14px) top left/28px 1.5px no-repeat,
+      linear-gradient(180deg,rgba(79,214,196,.5) 14px,transparent 14px) top left/1.5px 28px no-repeat,
+      linear-gradient(270deg,rgba(79,214,196,.35) 14px,transparent 14px) bottom right/28px 1.5px no-repeat,
+      linear-gradient(0deg,rgba(79,214,196,.35) 14px,transparent 14px) bottom right/1.5px 28px no-repeat;opacity:.7}
   .cover.estado{background:linear-gradient(135deg,rgba(29,74,133,.30),rgba(13,19,33,.65))}
   .cover.prefeitura{background:linear-gradient(135deg,rgba(125,92,23,.26),rgba(13,19,33,.65))}
   .cover.geral{background:linear-gradient(135deg,rgba(70,54,131,.28),rgba(13,19,33,.65))}
   .cover .t{font-size:19px;font-weight:800;letter-spacing:-.3px}
-  .cover .s{color:var(--tx2);font-size:13px;margin-top:4px;max-width:660px;line-height:1.55}
+  .cover .s{color:var(--tx2);font-size:13px;margin-top:4px;max-width:680px;line-height:1.55}
   .cover .ic{position:absolute;right:8px;top:-6px;font-size:78px;opacity:.09}
 
-  h2.sec{margin:8px 0 12px;font-size:11.5px;font-weight:750;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:10px}
-  h2.sec::before{content:"";width:3px;height:13px;border-radius:3px;background:linear-gradient(var(--blue),var(--violet))}
+  h2.sec{margin:8px 0 12px;font-size:11px;font-weight:750;letter-spacing:1.1px;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:10px;font-family:var(--mono)}
+  h2.sec::before{content:"";width:3px;height:13px;border-radius:3px;background:linear-gradient(var(--teal),var(--blue))}
   h2.sec .cnt{margin-left:auto;color:var(--dim);font-weight:600;letter-spacing:.3px;text-transform:none;font-size:11.5px}
   .lead{color:var(--mut);font-size:13px;margin:-4px 0 14px;max-width:720px}
 
@@ -95,15 +102,16 @@
   .card:hover{border-color:var(--bd)}
   .card.hl{border-color:rgba(229,83,122,.32)}
   .kpi{position:relative;overflow:hidden}
-  .kpi .l{color:var(--mut);font-size:11px;font-weight:650;letter-spacing:.5px;text-transform:uppercase}
-  .kpi .v{font-size:clamp(17px,5vw,23px);font-weight:800;letter-spacing:-.4px;line-height:1.15;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .kpi::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:2px;border-radius:2px;background:linear-gradient(rgba(79,214,196,.55),rgba(66,135,230,.25))}
+  .kpi .l{color:var(--mut);font-size:10.5px;font-weight:650;letter-spacing:.7px;text-transform:uppercase;font-family:var(--mono)}
+  .kpi .v{font-size:clamp(17px,5vw,23px);font-weight:800;letter-spacing:-.4px;line-height:1.15;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)}
   .kpi .gl{position:absolute;right:-8px;top:-10px;font-size:38px;opacity:.08}
   .kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bd2);font-size:14px}
   .kv:first-child{padding-top:2px}.kv:last-child{border-bottom:0;padding-bottom:2px}
   .kv .k{color:var(--mut)}.kv b{font-weight:650;color:#fff}
   .muted{color:var(--mut)} .dim{color:var(--dim);font-size:12px} .right{text-align:right}
   .card .right{white-space:nowrap;flex:0 0 auto}
-  code{font:12px/1.4 ui-monospace,Menlo,monospace;color:#9fc4ff;background:rgba(91,157,255,.09);padding:1px 6px;border-radius:6px}
+  code{font:12px/1.4 var(--mono);color:#9fc4ff;background:rgba(91,157,255,.09);padding:1px 6px;border-radius:6px}
 
   .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;padding:3px 9px;border-radius:20px;white-space:nowrap;border:1px solid transparent}
   .tag.accent{background:rgba(66,135,230,.13);color:#9fc4ff;border-color:rgba(110,168,255,.18)}
@@ -115,8 +123,19 @@
   .sev{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-radius:7px;flex:0 0 auto}
   .sev.alta{background:rgba(229,83,122,.16);color:#ff92ac}.sev.media{background:rgba(198,127,28,.16);color:#eebf7a}.sev.baixa{background:rgba(139,154,188,.14);color:#b0bcd8}
 
+  /* LEDs de frescor por fonte */
+  .fresh{display:flex;flex-direction:column;gap:0}
+  .fresh .f{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2);font-size:13px}
+  .fresh .f:last-child{border-bottom:0}
+  .fresh .led{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .fresh .ok{background:var(--green);box-shadow:0 0 7px rgba(95,208,141,.7)}
+  .fresh .atencao{background:var(--amber);box-shadow:0 0 7px rgba(232,169,79,.7)}
+  .fresh .critico{background:var(--rose);box-shadow:0 0 7px rgba(255,125,156,.8);animation:pl 1.4s infinite}
+  .fresh .nome{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fresh .idade{font-family:var(--mono);font-size:11.5px;color:var(--mut);white-space:nowrap}
+
   table{width:100%;border-collapse:collapse;font-size:13.5px}
-  thead th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;text-align:right;padding:0 0 9px;font-weight:700}
+  thead th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;text-align:right;padding:0 0 9px;font-weight:700;font-family:var(--mono)}
   thead th:first-child{text-align:left}
   tbody td{padding:9px 0;border-bottom:1px solid var(--bd2);text-align:right;vertical-align:top}
   tbody td:first-child{text-align:left;color:var(--tx)}
@@ -148,12 +167,13 @@
   .chip{border:1px solid var(--bd);background:var(--card);color:var(--mut);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:650;cursor:pointer;transition:.12s}
   .chip.on{color:#fff;border-color:var(--accent);background:rgba(91,157,255,.14)}
 
-  pre{white-space:pre-wrap;word-break:break-word;font:12px/1.5 ui-monospace,Menlo,monospace;color:var(--tx2);margin:0;background:#080f1e;border:1px solid var(--bd2);border-radius:11px;padding:11px 12px;max-height:190px;overflow:auto}
+  pre{white-space:pre-wrap;word-break:break-word;font:12px/1.5 var(--mono);color:var(--tx2);margin:0;background:#080f1e;border:1px solid var(--bd2);border-radius:11px;padding:11px 12px;max-height:190px;overflow:auto}
   .skel{color:var(--dim);font-size:13px;padding:24px 0;text-align:center}
-  .skel .sp{display:inline-block;width:15px;height:15px;border:2px solid var(--bd);border-top-color:var(--accent);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:8px}
+  .skel .sp{display:inline-block;width:15px;height:15px;border:2px solid var(--bd);border-top-color:var(--teal);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:8px}
   @keyframes sp{to{transform:rotate(360deg)}}
   .warn{display:flex;gap:10px;align-items:center;background:rgba(232,163,61,.08);border:1px solid rgba(232,163,61,.3);border-radius:12px;padding:11px 13px;color:#f0c078;font-size:13px;margin-bottom:12px}
   .note{background:rgba(132,147,178,.05);border:1px dashed var(--bd);border-radius:11px;padding:10px 12px;color:var(--mut);font-size:12px;margin-top:13px}
+  .leitura{background:rgba(79,214,196,.05);border-left:2px solid rgba(79,214,196,.4);border-radius:0 9px 9px 0;padding:8px 11px;color:var(--tx2);font-size:12.5px;margin-top:9px;line-height:1.55}
   .clk{cursor:pointer;border-bottom:1px dotted rgba(91,157,255,.5);transition:.12s;font-weight:600}
   .clk:hover{color:var(--accent)}
   .exp{cursor:pointer}.exp .objs{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd2)}
@@ -165,11 +185,11 @@
   nav.tabs::-webkit-scrollbar{display:none}
   nav.tabs button{flex:1 0 auto;min-width:58px;background:none;border:0;color:var(--dim);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 9px 6px;font:inherit;transition:.12s;border-radius:12px;position:relative}
   nav.tabs button .ti{font-size:18px;line-height:1}
-  nav.tabs button .tl{font-size:9.5px;font-weight:700;letter-spacing:.3px}
+  nav.tabs button .tl{font-size:9.5px;font-weight:700;letter-spacing:.3px;font-family:var(--mono)}
   nav.tabs button.on{color:#fff;background:rgba(66,135,230,.10)}
-  nav.tabs button.on::after{content:"";position:absolute;top:-6px;left:22%;right:22%;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--blue),var(--violet))}
-  nav.tabs button.on .ti{filter:drop-shadow(0 0 8px var(--accent))}
-  nav.tabs button.on .tl{color:var(--accent)}
+  nav.tabs button.on::after{content:"";position:absolute;top:-6px;left:22%;right:22%;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--teal),var(--blue))}
+  nav.tabs button.on .ti{filter:drop-shadow(0 0 8px var(--teal))}
+  nav.tabs button.on .tl{color:var(--teal)}
   nav.tabs button:active{transform:scale(.92)}
   .fade{animation:f .24s ease}@keyframes f{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 
@@ -182,7 +202,7 @@
   .badge-grau{font-size:26px;line-height:1}
   .mini{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:13px 0}
   .mini .b{background:#0b1322;border:1px solid var(--bd2);border-radius:11px;padding:10px 12px}
-  .mini .b .v{font-weight:750;font-size:16px}.mini .b .l{color:var(--mut);font-size:11px;margin-top:2px}
+  .mini .b .v{font-weight:750;font-size:16px;font-family:var(--mono)}.mini .b .l{color:var(--mut);font-size:11px;margin-top:2px}
 
   @media (min-width:820px){
     main{padding:24px 30px 116px}
@@ -197,7 +217,7 @@
 <div class="wrap">
   <header>
     <div class="htop">
-      <div class="brand"><span class="lg">🛰️</span><div>JFN<small id="hsub">Central de Inteligência · RJ</small></div></div>
+      <div class="brand"><span class="lg">🛰️</span><div>JFN<small id="hsub">CENTRAL DE INTELIGÊNCIA · RJ</small></div></div>
       <span class="live"><span class="pulse"></span>ao vivo</span>
       <span class="actions"><a class="help" onclick="glossario()">ⓘ Termos</a><a class="ctrl" href="/controle">🛡️ Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
     </div>
@@ -223,20 +243,22 @@ const kpi=(v,l,cor,gl)=>`<div class="card kpi"><div class="l">${l}</div><div cla
 const sec=(t,cnt)=>`<h2 class="sec">${t}${cnt!=null?`<span class="cnt">${cnt}</span>`:''}</h2>`;
 const spin=t=>`<div class="skel"><span class="sp"></span>${t||'Carregando…'}</div>`;
 const cover=(sph,t,s,ic)=>`<div class="cover ${sph}"><div class="t">${t}</div><div class="s">${s}</div><span class="ic">${ic}</span></div>`;
+const leitura=t=>`<div class="leitura">🧭 ${t}</div>`;
 function toggle(el){el.classList.toggle('open');}
 function filtrar(inp,sel){const q=inp.value.toLowerCase();document.querySelectorAll(sel).forEach(c=>{c.style.display=c.textContent.toLowerCase().includes(q)?'':'none';});}
 const clk=(cnpj,txt)=>{const d=String(cnpj||'').replace(/\D/g,'');return d.length===14?`<span class="clk" onclick="abrirDossie('${d}','${esc(String(txt)).replace(/'/g,'')}')">${esc(txt)}</span>`:`<b>${esc(txt)}</b>`;};
 
-// ═══ ESFERAS (Estado / Prefeitura / Geral) ═══
+// ═══ ESFERAS ═══
 const SPHERES=[
-  {id:'estado',    ic:'🏛️', tl:'Estado',     c:'órgãos estaduais (SIAFE + PNCP)'},
-  {id:'prefeitura',ic:'🏙️', tl:'Prefeitura', c:'municípios (PNCP + folha)'},
-  {id:'geral',     ic:'🌐', tl:'Transversal',c:'busca, laranjas, poder, ferramentas'},
+  {id:'estado',    ic:'🏛️', tl:'Estado',       c:'órgãos estaduais (SIAFE + PNCP)'},
+  {id:'prefeitura',ic:'🏙️', tl:'Prefeitura·Rio',c:'município do Rio (PNCP + folha)'},
+  {id:'geral',     ic:'🌐', tl:'Transversal',  c:'riscos, busca, poder, ferramentas'},
 ];
 const TABS={
   estado:[
     {id:'e_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaEstado},
     {id:'e_pericias',ic:'⚖️',tl:'Perícias',render:renderPericias},
+    {id:'e_sanc',    ic:'🚫',tl:'Sancionadas',render:()=>renderSancionadas('estado')},
     {id:'e_cartel',  ic:'🔗',tl:'Cartel',  render:renderCartel},
     {id:'e_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('estado')},
     {id:'e_poder',   ic:'🏛️',tl:'Nomeados',render:renderPoder},
@@ -245,14 +267,16 @@ const TABS={
   ],
   prefeitura:[
     {id:'p_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaPref},
+    {id:'p_comis',   ic:'🎖️',tl:'Comissionados',render:renderComissionadosPref},
     {id:'p_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('prefeitura')},
     {id:'p_contr',   ic:'📄',tl:'Contratos',render:renderContratosPref},
   ],
   geral:[
     {id:'g_buscar',  ic:'🔎',tl:'Buscar',  render:renderBuscar},
+    {id:'g_riscos',  ic:'👻',tl:'Riscos',  render:renderRiscos},
     {id:'g_laranjas',ic:'🎭',tl:'Laranjas',render:renderLaranjas},
     {id:'g_poder',   ic:'🏛️',tl:'Poder',   render:renderPoder},
-    {id:'g_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('')},
+    {id:'g_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio(_cjEsf)},
     {id:'g_validar', ic:'🏢',tl:'Validar', render:renderValidar},
     {id:'g_sweeps',  ic:'🛰️',tl:'Sweeps',  render:renderSweeps},
     {id:'g_acoes',   ic:'⚡',tl:'Ações',   render:renderAcoes},
@@ -268,7 +292,7 @@ function montarTabs(){
   $('tabs').innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')"><span class="ti">${t.ic}</span><span class="tl">${t.tl}</span></button>`).join('');
 }
 function trocarEsfera(id){esfera=id;aba=TABS[id][0].id;montarSpheres();montarTabs();ir(aba);}
-let _nav=0; // token anti-corrida: render lento de aba anterior não sobrescreve a aba atual
+let _nav=0; // token anti-corrida
 async function ir(id){
   aba=id;montarTabs();
   const meu=++_nav;
@@ -279,16 +303,19 @@ async function ir(id){
   window.scrollTo(0,0);
 }
 
-// ═══ GLOSSÁRIO (linguagem simples — o painel deve ser legível por qualquer pessoa) ═══
+// ═══ GLOSSÁRIO ═══
 const TERMOS=[
  ['🎯','Captura de órgão','Uma única empresa vence 80% ou mais das licitações de um órgão. Sinal de mercado fechado — merece verificação de propostas e sócios.'],
  ['🔁','Rodízio de vencedores','2 ou 3 empresas se revezam nas vitórias de licitações PARECIDAS (mesmo tipo de objeto). Padrão clássico de combinação de propostas (OCDE).'],
+ ['🎭','Perdedora contumaz','Empresa que participa de várias licitações e NUNCA vence. Perfil de "proposta de cobertura": existe para dar aparência de disputa e legitimar o vencedor combinado.'],
+ ['👻','Empresa fantasma','Score 0-100 por 8 sinais objetivos (situação irregular na Receita, capital incompatível, endereço-ninho, aberta às vésperas do contrato, sanção…). "Sem cadastro" = ainda não consultada — não é nem regular nem fantasma.'],
+ ['🚫','Sancionada à época','Empresa punida no CEIS/CNEP (impedimento, suspensão, inidoneidade) cujo contrato/pagamento ocorreu DENTRO do período da punição — vedação legal direta.'],
  ['📄','Certame','Cada licitação (disputa pública de compra) publicada no PNCP, o Portal Nacional de Contratações Públicas.'],
- ['🏢','Órgão × Ente','O ENTE é o "dono do CNPJ" (ex.: Estado do Rio de Janeiro); o ÓRGÃO é quem compra de fato (ex.: Secretaria de Saúde). O painel mostra o órgão real.'],
+ ['🏢','Órgão × Ente × Esfera','O ENTE é o dono do CNPJ (ex.: Estado do RJ); o ÓRGÃO é quem compra (ex.: Sec. de Saúde). A ESFERA (federal/estadual/municipal) vem do cadastro OFICIAL do PNCP — o painel separa Estado, Prefeitura do Rio, demais municípios e federais.'],
  ['💳','Ordem Bancária (OB)','O pagamento de fato — dinheiro que saiu do caixa. Diferente de EMPENHO, que é só reserva de verba e pode ser cancelado.'],
- ['🎖️','Comissionado','Servidor nomeado sem concurso (cargo de confiança). Cruzado com candidaturas para mapear relação político-administrativa.'],
+ ['🎖️','Comissionado','Servidor nomeado sem concurso (cargo de confiança). Cruzado com candidaturas (TSE) e com benefícios sociais para mapear aparelhamento e incompatibilidade de renda.'],
  ['🎭','Laranja','Pessoa usada como sócia de fachada. Indício aqui: sócio de empresa que fatura com o Estado e ao mesmo tempo recebe benefício social de subsistência.'],
- ['🏚️','Fachada','Endereço da empresa que não corresponde a uma operação real (residência, terreno vazio, fechado no Google).'],
+ ['🟢','Frescor de fonte','Cada base tem um LED: verde = coletada há ≤3 dias; âmbar ≤10; vermelho = parada (investigar o coletor). Defasagem nunca mais passa despercebida.'],
  ['⚖️','Indício ≠ prova','Tudo neste painel é INDÍCIO para apuração interna — não é acusação. Presunção de regularidade até verificação documental.'],
 ];
 function glossario(){
@@ -335,37 +362,163 @@ async function verCruzamento(cnpj){const out=$('dos-cruz');out.style.display='bl
   const r=await J('/api/cruzamento?cnpj='+cnpj);if(r.erro){out.textContent='⚠ '+r.erro;return;}
   const dd=r.dados||r;out.textContent=`co-endereço: ${(dd.coendereco||[]).length} · indícios: ${(dd.indicios||[]).length}\n`+(dd.socios||[]).slice(0,6).map(s=>'• '+(s.nome||s)).join('\n');}
 
+// ═══ FRESCOR DE FONTES (LEDs) ═══
+async function frescorHtml(){
+  const d=await J('/api/fontes/frescor');
+  if(!d.ok)return '';
+  const rows=(d.fontes||[]).map(f=>{
+    const idade=f.idade_dias==null?'sem dado':f.idade_dias===0?'hoje':f.idade_dias+'d atrás';
+    return `<div class="f"><span class="led ${f.estado}"></span><span class="nome">${esc(f.fonte)}</span><span class="idade">${idade}</span></div>`;}).join('');
+  return sec('Fontes & frescor')+card(`<div class="fresh">${rows}</div><div class="dim" style="margin-top:8px">🟢 ≤3 dias · 🟡 ≤10 · 🔴 parada — vermelho significa coletor quebrado: investigar, não ignorar.</div>`);
+}
+
 // ═══ ESTADO ═══
 async function renderPanoramaEstado(){
-  const [st,p,cj]=await Promise.all([J('/status'),J('/api/compliance/painel'),J('/api/pncp/conluio?esfera=estado').catch(()=>({}))]);
+  const [st,p,cj,sc]=await Promise.all([J('/status'),J('/api/compliance/painel'),J('/api/pncp/conluio?esfera=estado'),J('/api/intel/sancionadas?limite=1')]);
   const a=p.alertas||{},o=p.obs||{};const coletaErro=/erro/i.test(p.ultima_coleta||'');
   const nc=(cj.captura||[]).length+(cj.rodizio_vencedores||[]).length;
-  let h=cover('estado','Estado do Rio de Janeiro','Ordens Bancárias do SIAFE, concentração de fornecedores, perícias e conluio nos órgãos estaduais.','🏛️');
+  let h=cover('estado','Estado do Rio de Janeiro','Ordens Bancárias do SIAFE, concentração de fornecedores, sancionadas, perícias e conluio — somente órgãos ESTADUAIS (esfera oficial do PNCP; federais e municípios ficam em Transversal).','🏛️');
   if(coletaErro)h+=`<div class="warn">⚠ Última coleta SIAFE falhou — <b>${esc(p.ultima_coleta)}</b>.</div>`;
   h+=`<div class="grid g2">
     ${kpi(fmtN(o.total),'Ordens Bancárias',null,'💳')}${kpi(fmtRc(o.valor_total),'Valor fiscalizado',null,'💰')}
     ${kpi(fmtN(a.total??0),'Alertas ativos',(a.alta?'var(--rose)':'#fff'),'🚨')}${kpi(nc,'Conluio (estado)','var(--purple)','🕸️')}
-    ${kpi(fmtN(a.alta??0),'🔴 Alta','var(--rose)')}${kpi(fmtN(a.media??0),'🟡 Média','var(--amber)')}
+    ${kpi(fmtN(sc.n_a_epoca??'—'),'Sancionadas à época','var(--rose)','🚫')}${kpi(fmtN(a.alta??0),'🔴 Alta','var(--rose)')}
     ${kpi(st.logged_in?'🟢 ok':'🔴 off','SIAFE · '+esc(st.exercicio||'—'))}${kpi(fmtN(o.hoje??0),'OBs hoje')}</div>`;
   h+=`<div style="height:16px"></div>`+sec('Ir para')+`<div class="grid two">
-    ${card(`<div style="font-weight:700">⚖️ Perícias de fornecedor</div><div class="muted" style="font-size:13px">8.648 periciados, pesquisável</div><div class="btns"><button class="btn accent" onclick="ir('e_pericias')">Abrir</button></div>`)}
-    ${card(`<div style="font-weight:700">🔗 Concentração / cartel</div><div class="muted" style="font-size:13px">top share por órgão</div><div class="btns"><button class="btn ghost" onclick="ir('e_cartel')">Abrir</button></div>`)}</div>`;
+    ${card(`<div style="font-weight:700">🚫 Sancionadas contratadas</div><div class="muted" style="font-size:13px">CEIS/CNEP × pagamentos, com teste "à época"</div><div class="btns"><button class="btn accent" onclick="ir('e_sanc')">Abrir</button></div>`)}
+    ${card(`<div style="font-weight:700">⚖️ Perícias de fornecedor</div><div class="muted" style="font-size:13px">8.648 periciados, pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
+  h+=`<div style="height:16px"></div>`+await frescorHtml();
   h+=`<div style="height:14px"></div>`+card(`<div class="kv"><span class="k">Última atualização</span><b>${esc(p.atualizado||'—')}</b></div><div class="kv"><span class="k">Última coleta SIAFE</span><b style="${coletaErro?'color:#f0c078':''}">${esc(p.ultima_coleta||'—')}</b></div>`);
   return h;
 }
 
-// ═══ PREFEITURA ═══
+// ═══ SANCIONADAS (Estado e Transversal) ═══
+async function renderSancionadas(esf){
+  const d=await J('/api/intel/sancionadas?limite=100');
+  if(!d.ok)return sec('Sancionadas')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  let emp=d.empresas||[];
+  if(esf==='estado')emp=emp.filter(e=>e.estado.obs>0);
+  const aepoca=emp.filter(e=>e.estado.obs_durante>0||e.pncp.vitorias_durante>0);
+  let h=cover(esf==='estado'?'estado':'geral','Sancionadas que contratam com o poder público',
+    'Empresas punidas no CEIS/CNEP (impedimento, suspensão, inidoneidade) que receberam pagamento (OB SIAFE) ou venceram licitação (PNCP). <b>À ÉPOCA</b> = o ato ocorreu DENTRO da vigência da punição — vedação legal direta (Lei 14.133, art. 156).','🚫');
+  h+=`<div class="grid g2">${kpi(fmtN(emp.length),'Empresas sancionadas c/ contrato',null,'🚫')}${kpi(fmtN(aepoca.length),'Com ato À ÉPOCA','var(--rose)','⚠️')}
+      ${kpi(fmtRc(aepoca.reduce((s,e)=>s+e.estado.valor_durante,0)),'Pago durante sanção (OB)','var(--rose)','💸')}${kpi(fmtN(aepoca.reduce((s,e)=>s+e.pncp.vitorias_durante,0)),'Vitórias durante sanção','var(--amber)','🏆')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#san-list .card')"></div>`;
+  h+=`<div id="san-list" class="grid">`+emp.slice(0,80).map(e=>{
+    const grave=e.estado.obs_durante>0||e.pncp.vitorias_durante>0;
+    const s0=(e.sancoes||[])[0]||{};
+    const ex=(e.estado.exemplos_durante||[])[0]||(e.pncp.exemplos_durante||[])[0];
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">${clk(e.cnpj,e.nome||e.cnpj)}<div class="dim">${esc(e.cnpj)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">${esc(s0.cadastro||'')} · ${esc((s0.categoria||'').slice(0,60))}<br>vigência ${esc(s0.data_inicio||'?')} → ${esc(s0.data_fim||'?')} · ${esc((s0.orgao||'').slice(0,50))}</div></div>
+      <div class="right">${grave?'<span class="sev alta">à época</span>':'<span class="sev baixa">fora da vigência</span>'}
+      <div style="margin-top:6px" class="num"><b>${fmtRc(e.estado.valor_durante+e.pncp.valor_durante||e.estado.valor+e.pncp.valor)}</b></div>
+      <div class="dim">${grave?'durante a sanção':'total recebido'}</div></div></div>
+      ${grave&&ex?leitura(`Exemplo: ${ex.ob?('OB <b>'+esc(ex.ob)+'</b> paga em '):'certame homologado em '}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`):''}`,grave?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
+// ═══ RISCOS (Transversal): fantasmas · sancionadas · nunca ganham ═══
+let _riscoView='fantasmas';
+async function renderRiscos(){
+  const chips=`<div class="chips">
+    <span class="chip ${_riscoView==='fantasmas'?'on':''}" onclick="_riscoView='fantasmas';ir('g_riscos')">👻 Fantasmas</span>
+    <span class="chip ${_riscoView==='sanc'?'on':''}" onclick="_riscoView='sanc';ir('g_riscos')">🚫 Sancionadas</span>
+    <span class="chip ${_riscoView==='cover'?'on':''}" onclick="_riscoView='cover';ir('g_riscos')">🎭 Nunca ganham</span></div>`;
+  if(_riscoView==='sanc')return chips+(await renderSancionadas(''));
+  if(_riscoView==='cover'){
+    const d=await J('/api/intel/perdedoras');
+    let h=cover('geral','Perdedoras contumazes — participam e NUNCA vencem',
+      'Empresa que compete "sempre" e nunca vence é o perfil clássico de <b>proposta de cobertura</b> (OCDE bid rigging): existe para dar aparência de disputa e legitimar o vencedor combinado. Quanto mais vezes perde junto do MESMO vencedor, mais forte o indício.','🎭')+chips;
+    if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+    const cov=d.cobertura_extracao||{};
+    h+=`<div class="grid g2">${kpi(fmtN(d.n),'Perdedoras contumazes','var(--amber)','🎭')}${kpi(fmtN(cov.atas_entrada),'Atas no corpus',null,'📄')}${kpi(fmtN(cov.atas_avaliaveis),'Atas avaliáveis',null,'✅')}${kpi(fmtN(cov.certames_no_grafo),'Certames no grafo',null,'🕸️')}</div>`;
+    if((cov.atas_avaliaveis||0)<50)h+=`<div class="warn" style="margin-top:12px">⏳ Cobertura ainda pequena: só ${fmtN(cov.atas_avaliaveis)} de ${fmtN(cov.atas_entrada)} atas têm participantes+resultado extraíveis. O PNCP publica apenas o vencedor; os perdedores vêm do texto das atas — a extração é conservadora de propósito (zero falso-positivo) e cresce com o corpus.</div>`;
+    h+=`<div class="grid" style="margin-top:12px">`+(d.perdedoras||[]).map(p=>card(
+      `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(p.cnpj,p.nome!=='—'?p.nome:p.cnpj_fmt)}<div class="dim">${esc(p.cnpj_fmt)}</div></div>
+       <div class="right"><div class="num" style="font-weight:800;font-size:19px;color:var(--amber)">${p.participou}×</div><div class="dim">participou · 0 vitórias</div></div></div>
+       ${(p.perde_junto_com||[]).length?leitura('Perde junto com: '+(p.perde_junto_com||[]).map(x=>`<b>${esc(x.nome!=='—'?x.nome:x.cnpj)}</b> (${x.vezes}×)`).join(' · ')+' — o co-participante mais frequente é o beneficiário provável da cobertura.'):''}`)).join('')+`</div>`;
+    h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+    return h;
+  }
+  // fantasmas
+  const d=await J('/api/intel/fantasmas?limite=60');
+  let h=cover('geral','Radar de empresas-fantasma',
+    'Score 0-100 por <b>8 sinais objetivos</b> (situação irregular na Receita, capital incompatível com o que recebe, endereço-ninho, endereço residencial, aberta às vésperas do 1º contrato, sócio único + capital baixo, CNAE incompatível, sanção). Aplicado ao conjunto-alvo: vencedoras de captura/rodízio, perdedoras contumazes, sancionadas e top favorecidos.','👻')+chips;
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const emp=(d.empresas||[]).filter(e=>e.classificacao!=='sem_cadastro');
+  h+=`<div class="grid g2">${kpi(fmtN(d.total_alvo),'Empresas no alvo',null,'🎯')}${kpi(fmtN(emp.filter(e=>e.classificacao==='alto').length),'Risco ALTO','var(--rose)','🔴')}
+      ${kpi(fmtN(emp.filter(e=>e.classificacao==='medio').length),'Risco médio','var(--amber)','🟡')}${kpi(fmtN(d.sem_cadastro),'Sem cadastro ainda','var(--dim)','⏳')}</div>`;
+  if(d.sem_cadastro>0)h+=`<div class="warn" style="margin-top:12px">⏳ <b>${fmtN(d.sem_cadastro)}</b> empresas do alvo ainda sem cadastro da Receita na base (fila de enriquecimento). "Sem cadastro" NÃO significa regular — significa não-avaliada.</div>`;
+  h+=`<div class="grid" style="margin-top:12px">`+emp.slice(0,50).map(e=>{
+    const cor=e.classificacao==='alto'?'var(--rose)':e.classificacao==='medio'?'var(--amber)':'var(--green)';
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">${clk(e.cnpj,e.razao_social||e.cnpj)}<div class="dim">${esc(e.cnpj)} · veio de: ${esc(e.origem||'—')}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${e.score??'—'}</div><div class="dim">/100 ${esc(e.classificacao)}</div></div></div>
+      ${(e.sinais||[]).length?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${e.sinais.map(s=>`<span class="tag ${e.classificacao==='alto'?'rose':'amber'}" title="${esc(s.detalhe||'')}">${esc(s.id)} +${s.peso}</span>`).join('')}</div>`:''}
+      ${(e.sinais||[]).length?leitura(esc((e.sinais[0]||{}).detalhe||'')+((e.sinais||[]).length>1?' — e mais '+(e.sinais.length-1)+' sinal(is); toque no nome para o dossiê completo.':'')):''}`,e.classificacao==='alto'?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
+// ═══ PREFEITURA DO RIO ═══
 async function renderPanoramaPref(){
-  const cj=await J('/api/pncp/conluio?esfera=prefeitura');
+  const [cj,cc,bv]=await Promise.all([J('/api/pncp/conluio?esfera=prefeitura'),J('/api/pcrj/comissionados_candidatos?limite=1'),J('/api/pcrj/beneficios_vinculo')]);
   const cov=cj.cobertura||{},cap=cj.captura||[],rod=cj.rodizio_vencedores||[];
-  let h=cover('prefeitura','Prefeituras & municípios','Licitações municipais pelo PNCP (vencedor homologado por item), com detecção de captura e rodízio de fornecedores.','🏙️');
+  let h=cover('prefeitura','Prefeitura do Rio de Janeiro','Licitações do MUNICÍPIO do Rio pelo PNCP (esfera oficial), folha de comissionados, candidaturas e benefícios sociais. Os demais municípios do RJ ficam em Transversal → Conluio → chip "Municípios".','🏙️');
   h+=`<div class="grid g2">
-    ${kpi(fmtN(cov.certames_com_resultado),'Certames municipais',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos',null,'🏢')}
-    ${kpi(cap.length,'Capturas','var(--rose)','🎯')}${kpi(rod.length,'Rodízios','var(--amber)','🔁')}</div>`;
+    ${kpi(fmtN(cov.certames_com_resultado),'Certames do município',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢')}
+    ${kpi(cap.length+rod.length,'Conluio (capturas+rodízios)','var(--purple)','🕸️')}${kpi(fmtN(cc.n??'—'),'Comissionados ex-candidatos','var(--amber)','🎖️')}
+    ${kpi(fmtN((bv.resumo||{}).n_alta??'—'),'Benefício DURANTE vínculo (certeza alta)','var(--rose)','🚨')}${kpi(fmtN((bv.resumo||{}).n_ainda??'—'),'Ainda recebendo','var(--rose)','⏰')}</div>`;
   h+=`<div style="height:16px"></div>`+sec('Ir para')+`<div class="grid two">
-    ${card(`<div style="font-weight:700">🕸️ Conluio municipal</div><div class="muted" style="font-size:13px">${cap.length+rod.length} indícios · nomes e objetos</div><div class="btns"><button class="btn accent" onclick="ir('p_conluio')">Abrir</button></div>`)}
-    ${card(`<div style="font-weight:700">📄 Contratações recentes</div><div class="muted" style="font-size:13px">últimas licitações do PNCP</div><div class="btns"><button class="btn ghost" onclick="ir('p_contr')">Abrir</button></div>`)}</div>`;
+    ${card(`<div style="font-weight:700">🎖️ Comissionados</div><div class="muted" style="font-size:13px">ex-candidatos + benefício social durante o vínculo</div><div class="btns"><button class="btn accent" onclick="ir('p_comis')">Abrir</button></div>`)}
+    ${card(`<div style="font-weight:700">🕸️ Conluio municipal</div><div class="muted" style="font-size:13px">${cap.length+rod.length} indícios · nomes e objetos</div><div class="btns"><button class="btn ghost" onclick="ir('p_conluio')">Abrir</button></div>`)}</div>`;
   h+=`<div class="note">${esc(cj.aviso||'')}</div>`;
+  return h;
+}
+let _comisView='cand';
+async function renderComissionadosPref(){
+  const chips=`<div class="chips">
+    <span class="chip ${_comisView==='cand'?'on':''}" onclick="_comisView='cand';ir('p_comis')">🗳️ Foram candidatos</span>
+    <span class="chip ${_comisView==='benef'?'on':''}" onclick="_comisView='benef';ir('p_comis')">🍞 Benefício × vínculo</span></div>`;
+  if(_comisView==='benef'){
+    const d=await J('/api/pcrj/beneficios_vinculo');
+    let h=cover('prefeitura','Servidores × benefício social — DURANTE o vínculo',
+      'Bolsa Família, BPC, Auxílio Brasil ou Auxílio Emergencial recebidos <b>no mesmo mês</b> em que a pessoa tinha vínculo remunerado com a Prefeitura/Câmara do Rio. Meses fora da janela de vínculo NÃO contam (fairness) e homônimos são eliminados por município + fragmento de CPF.','🍞')+chips;
+    if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+    const r=d.resumo||{};
+    h+=`<div class="grid g2">${kpi(fmtN(d.n_casos),'Pessoas flagradas',null,'👥')}${kpi(fmtN(r.n_alta),'Certeza ALTA','var(--rose)','🔴')}
+        ${kpi(fmtN(r.n_nomeados),'Comissionados/nomeados','var(--amber)','🎖️')}${kpi(fmtN(r.n_ainda),'Ainda recebendo','var(--rose)','⏰')}
+        ${kpi(fmtN(r.n_bf),'Bolsa Família',null,'🍞')}${kpi(fmtN(r.n_bpc),'BPC',null,'♿')}
+        ${kpi(esc(r.cobertura_benef||'—'),'Cobertura benefícios',null,'📅')}${kpi(esc(r.ultima||'—'),'Última competência',null,'🗓️')}</div>`;
+    h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, órgão, cargo, partido…" oninput="filtrar(this,'#bv-list .card')"></div>`;
+    h+=`<div id="bv-list" class="grid">`+(d.casos||[]).slice(0,120).map(x=>card(
+      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+        <div style="font-weight:700">${esc(x.nome)}</div>
+        <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.poder||'')} · ${esc((x.orgao||'').slice(0,44))} · ${esc((x.cargo||'').slice(0,30))}${x.partido?' · '+esc(x.partido):''}</div>
+        <div class="dim" style="margin-top:3px">${esc(x.natureza||'')} · ${esc(x.situacao||'')}</div></div>
+        <div class="right"><span class="sev ${x.certeza==='ALTA'?'alta':'media'}">${esc(x.certeza||'')}</span>
+        ${x.ainda_recebe?'<div style="margin-top:5px"><span class="tag rose">ainda recebe</span></div>':''}</div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">${esc(x.beneficios_str||'benefício')}</span><b>${esc(x.desde||'')} → ${esc(x.ate||'')} · ${fmtN(x.n_meses)} meses</b></div>`,
+      x.certeza==='ALTA'?'hl':'')).join('')+`</div>`;
+    h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
+    return h;
+  }
+  const d=await J('/api/pcrj/comissionados_candidatos?limite=600');
+  let h=cover('prefeitura','Comissionados da Prefeitura que foram candidatos',
+    'Cruzamento da folha de cargos de confiança da Prefeitura do Rio com as candidaturas registradas no TSE. Cargo de confiança ocupado por quem disputa eleição é o retrato do aparelhamento político da máquina.','🗳️')+chips;
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const it=d.comissionados||[];
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Comissionados ex-candidatos','var(--amber)','🎖️')}${kpi(fmtN(new Set(it.map(x=>x.cand_cidade)).size),'Cidades de candidatura',null,'🗺️')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, cargo, órgão, cidade…" oninput="filtrar(this,'#cc-list .card')"></div>`;
+  h+=`<div id="cc-list" class="grid">`+it.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+      <div style="font-weight:700">${esc(x.nome_pcrj)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao_pcrj||'—').slice(0,50))} · cargo ${esc(x.cargo_pcrj||'—')}</div>
+      ${x.admissao?`<div class="dim" style="margin-top:2px">admissão ${esc(x.admissao)}${x.exoneracao?' · exoneração '+esc(x.exoneracao):' · ativo'}</div>`:''}</div>
+      <div class="right"><span class="tag amber">${esc(x.cand_cargo||'?')} ${esc(String(x.cand_ano||''))}</span><div class="dim" style="margin-top:4px">${esc(x.cand_cidade||'')}</div></div></div>`)).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
   return h;
 }
 async function renderContratosPref(){
@@ -378,13 +531,21 @@ async function renderContratosPref(){
   return h;
 }
 
-// ═══ CONLUIO (esfera-aware) ═══
+// ═══ CONLUIO (esfera-aware; no Transversal tem chips de esfera) ═══
+let _cjEsf='';
 async function renderConluio(esf){
   const d=await J('/api/pncp/conluio'+(esf?'?esfera='+esf:''));
-  const rot=esf==='estado'?'órgãos estaduais':esf==='prefeitura'?'municípios':'todos os órgãos';
+  const rotulos={estado:'órgãos estaduais',prefeitura:'Prefeitura do Rio',municipios:'demais municípios do RJ',federal:'órgãos federais no RJ','':'todas as esferas'};
+  const rot=rotulos[esf]??esf;
   if(!d.ok)return sec('Conluio')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
-  const cov=d.cobertura||{},cap=d.captura||[],rod=d.rodizio_vencedores||[];
-  let h=cover(esf==='prefeitura'?'prefeitura':esf==='estado'?'estado':'geral','Conluio em licitações · '+rot,'Vencedor homologado de cada item (fonte: PNCP). <b>Captura</b>: uma empresa vence quase tudo num órgão. <b>Rodízio</b>: 2-3 empresas se revezam em compras parecidas. Toque num card para ver o que foi comprado.','🕸️');
+  const cov=d.cobertura||{},cap=d.captura||[],rod=d.rodizio_vencedores||[],esfs=d.esferas||{};
+  let h=cover(esf==='prefeitura'?'prefeitura':esf==='estado'?'estado':'geral','Conluio em licitações · '+rot,
+    'Vencedor homologado de cada item (fonte: PNCP, esfera OFICIAL do ente). <b>Captura</b>: uma empresa vence quase tudo num órgão. <b>Rodízio</b>: 2-3 empresas se revezam em compras parecidas. Toque num card para ver o que foi comprado — cada achado explica por que importa.','🕸️');
+  // chips de esfera (só na visão Transversal, onde a comparação faz sentido)
+  if(esfera==='geral'){
+    const chip=(id,tl)=>`<span class="chip ${(_cjEsf===id)?'on':''}" onclick="_cjEsf='${id}';ir('g_conluio')">${tl}${esfs[id]!=null?` <span class="dim">${fmtN(esfs[id])}</span>`:''}</span>`;
+    h+=`<div class="chips">${chip('','🌐 Todas')}${chip('estado','🏛️ Estado')}${chip('prefeitura','🏙️ Pref. Rio')}${chip('municipios','🏘️ Municípios')}${chip('federal','🏦 Federais')}</div>`;
+  }
   h+=`<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado),'Certames analisados',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢')}${kpi(cap.length,'Capturas','var(--rose)','🎯')}${kpi(rod.length,'Rodízios','var(--amber)','🔁')}</div>`;
   if(cov.certames_sem_unidade>0)h+=`<div class="warn" style="margin-top:12px"><span>⏳ Identificação do órgão comprador em andamento: <b>${fmtN(cov.certames_sem_unidade)}</b> de ${fmtN(cov.certames_com_resultado)} certames ainda aparecem no nome do ente (ex.: "Estado do Rio de Janeiro"). O backfill do PNCP completa isso automaticamente.</span></div>`;
   const orgHead=x=>`<div style="font-weight:700">${esc(x.orgao_nome)}</div>${x.ente_nome&&x.ente_nome!==x.orgao_nome?`<div class="dim" style="margin-top:1px">${esc(x.ente_nome)} · ${esc(x.orgao_cnpj_fmt||'')}</div>`:''}`;
@@ -392,18 +553,22 @@ async function renderConluio(esf){
     `<div class="exp" onclick="toggle(this)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0">${orgHead(c)}<div class="muted" style="font-size:13px;margin-top:4px">quem venceu: ${clk(c.fornecedor_cnpj_fmt,c.nome)}</div><div class="dim" style="margin-top:2px">${esc(c.fornecedor_cnpj_fmt)}</div></div>
       <div class="right"><div class="num" style="font-weight:800;color:var(--rose);font-size:20px">${Math.round(c.share*100)}%</div><div class="dim">das vitórias</div></div></div>
-      <div class="muted" style="font-size:12.5px;margin-top:8px">Esta empresa venceu <b>${Math.round(c.share*100)}%</b> dos <b>${c.certames}</b> certames deste órgão (${c.distintos||'—'} concorrentes distintos no período).</div>
+      ${leitura(`<b>${esc(c.nome)}</b> venceu ${Math.round(c.share*100)}% dos <b>${c.certames}</b> certames deste órgão (${c.distintos||'—'} concorrentes distintos apareceram no período). Concentração ≥80% é o gatilho OCDE de <b>mercado capturado</b>: pode ser mérito ou mercado raso — o próximo passo é comparar as propostas perdedoras e o QSA dos concorrentes.`)}
       <div class="objs">${(c.objetos||[]).map(o=>`<div class="obj">📦 ${esc(o)}</div>`).join('')||'<div class="dim">sem objeto</div>'}</div>
       <div class="dim" style="margin-top:8px"><span class="chev">▸</span> o que foi comprado</div></div>`,'hl')).join('')+`</div>`;}
-  if(rod.length){h+=`<div style="height:16px"></div>`+sec('Rodízio de vencedores · revezamento em objeto parecido',rod.length)+`<div class="grid">`+rod.map(r=>card(
+  if(rod.length){h+=`<div style="height:16px"></div>`+sec('Rodízio de vencedores · revezamento em objeto parecido',rod.length)+`<div class="grid">`+rod.map(r=>{
+    const nomes=(r.membros_nome||[]).map(m=>`<b>${esc(m.nome)}</b> (${m.vitorias}×)`).join(' · ');
+    return card(
     `<div class="exp" onclick="toggle(this)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0">${orgHead(r)}<div class="muted" style="font-size:13px;margin-top:4px">${r.certames} certames · o grupo levou ${Math.round(r.cobertura_grupo*100)}% deles</div></div>
       <span class="tag amber">${(r.membros_nome||[]).length} empresas</span></div>
       ${r.coesao_objeto!=null?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="tag ${r.coesao_objeto>=0.6?'rose':'teal'}" title="quão parecidos são os objetos dos certames deste grupo">compras ${Math.round(r.coesao_objeto*100)}% parecidas</span>${(r.termos_comuns||[]).slice(0,4).map(t=>`<span class="tag accent">${esc(t)}</span>`).join('')}</div>`:'<div class="dim" style="margin-top:6px">sem objeto comparável (rodízio no nível do órgão)</div>'}
+      ${leitura(`${nomes} se revezam nas vitórias de compras ${r.coesao_objeto!=null?`<b>${Math.round(r.coesao_objeto*100)}% parecidas</b>`:'deste órgão'}${(r.termos_comuns||[]).length?` (em comum: ${r.termos_comuns.slice(0,3).map(esc).join(', ')})`:''}. Revezamento equilibrado no MESMO tipo de objeto é o padrão nº 1 de <b>combinação de propostas</b> (OCDE) — verificar QSA, endereços e quem mais participou de cada certame.`)}
       <table style="margin-top:10px"><tbody>${(r.membros_nome||[]).map(m=>`<tr><td>${clk(m.cnpj,m.nome)}<div class="dim">${esc(m.cnpj)}</div></td><td class="num"><b>${m.vitorias}</b> <span class="dim">vitórias</span></td></tr>`).join('')}</tbody></table>
       <div class="objs">${(r.objetos||[]).map(o=>`<div class="obj">📦 ${esc(o)}</div>`).join('')||'<div class="dim">sem objeto</div>'}</div>
-      <div class="dim" style="margin-top:8px"><span class="chev">▸</span> o que foi comprado</div></div>`)).join('')+`</div>`;}
+      <div class="dim" style="margin-top:8px"><span class="chev">▸</span> o que foi comprado</div></div>`);}).join('')+`</div>`;}
   if(!cap.length&&!rod.length)h+=card('<div class="muted">🟢 Nenhum padrão de captura ou rodízio com o volume atual desta esfera. A base cresce a cada coleta do PNCP.</div>');
+  if(esfera==='geral')h+=`<div style="height:14px"></div>`+card(`<div style="font-weight:700">🎭 E quem participa e NUNCA vence?</div><div class="muted" style="font-size:13px;margin-top:3px">As perdedoras contumazes (candidatas a proposta de cobertura) estão em Riscos.</div><div class="btns"><button class="btn ghost" onclick="_riscoView='cover';ir('g_riscos')">Abrir perdedoras</button></div>`);
   h+=`<div class="note">${esc(d.aviso||'')}</div>`;
   return h;
 }
@@ -454,7 +619,7 @@ async function renderPoder(){
   const d=await J('/api/poder/nomeados_candidatos?limite=1000');
   if(!d.ok)return sec('Poder')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const it=d.itens||[];
-  let h=cover('estado','Nomeados × candidatos','Servidor público (folhas coletadas: Defensoria/RJ + Câmara Municipal do Rio + TJRJ) que também foi candidato a cargo eletivo, sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo). Mais órgãos entram conforme os coletores são ligados.','🏛️');
+  let h=cover('estado','Nomeados × candidatos (Estado)','Servidor público estadual (folhas: Defensoria/RJ + Câmara Municipal do Rio + TJRJ) que também foi candidato a cargo eletivo, sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo). Os comissionados da PREFEITURA estão na esfera Prefeitura → Comissionados.','🏛️');
   h+=`<div class="grid g2">${kpi(it.length,'Cruzamentos',null,'🏛️')}${kpi(d.n_comissionados,'Comissionados','var(--rose)','🎖️')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, cargo, partido…" oninput="filtrar(this,'#pod-list .card')"></div>`;
   h+=`<div id="pod-list" class="grid">`+it.map(x=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="muted" style="font-size:13px;margin-top:2px">${esc(x.orgao||'—')} · ${esc(x.cargo_folha||'—')}</div></div>${x.comissionado?'<span class="tag rose">comissão</span>':'<span class="tag accent">efetivo</span>'}</div><div class="kv" style="margin-top:8px"><span class="k">Disputou</span><b>${esc(x.cargo_disputado||'—')} · ${esc(x.partido||'—')} · ${esc(x.ano||'—')}</b></div>`)).join('')+`</div>`;
@@ -486,11 +651,15 @@ async function renderAlertas(){
 async function renderSiafe(){
   const s=await J('/api/siafe/stats');if(!s.ok)return sec('SIAFE')+card('<div class="muted">SIAFE indisponível.</div>');
   const linhas=(s.por_ano||[]).filter(x=>x.valor>0).map(x=>`<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join('');
-  return sec('SIAFE · ordens bancárias')+`<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas')}${kpi(fmtRc(s.valor_total),'Valor total')}</div><div style="height:12px"></div>`+card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
+  let h=sec('SIAFE · ordens bancárias')+`<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas')}${kpi(fmtRc(s.valor_total),'Valor total')}</div><div style="height:12px"></div>`+card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
+  h+=`<div style="height:16px"></div>`+await frescorHtml();
+  return h;
 }
 async function renderSweeps(){
   const d=await J('/api/sweeps/status');const badge=d.pausado?'<span class="tag rose">pausado</span>':(d.sei?.rodando?'<span class="tag green">rodando</span>':'<span class="tag green">agendado</span>');
-  return sec('Sweeps SEI / SIAFE')+card(`<div class="kv"><span class="k">Estado ${badge}</span><b>${d.pausado?'pausado':'ativo'}</b></div><div class="kv"><span class="k">SEI — processos lidos</span><b>${fmtN(d.sei?.feitos)}</b></div><div class="kv"><span class="k">SIAFE 2 — OBs orçamentárias</span><b>${fmtN(d.siafe?.ob_orcamentaria)}</b></div>`)+(d.sei?.ultima?`<div style="height:12px"></div><pre>${esc((d.sei.ultima||'').replace(/\*\*/g,''))}</pre>`:'')+`<div class="btns"><button class="btn red" onclick="sweep('pausar')">⏸ Pausar</button><button class="btn green" onclick="sweep('retomar')">▶ Retomar</button><button class="btn ghost" onclick="ir(aba)">↻ Atualizar</button></div>`;
+  let h=sec('Sweeps SEI / SIAFE')+card(`<div class="kv"><span class="k">Estado ${badge}</span><b>${d.pausado?'pausado':'ativo'}</b></div><div class="kv"><span class="k">SEI — processos lidos</span><b>${fmtN(d.sei?.feitos)}</b></div><div class="kv"><span class="k">SIAFE 2 — OBs orçamentárias</span><b>${fmtN(d.siafe?.ob_orcamentaria)}</b></div>`)+(d.sei?.ultima?`<div style="height:12px"></div><pre>${esc((d.sei.ultima||'').replace(/\*\*/g,''))}</pre>`:'')+`<div class="btns"><button class="btn red" onclick="sweep('pausar')">⏸ Pausar</button><button class="btn green" onclick="sweep('retomar')">▶ Retomar</button><button class="btn ghost" onclick="ir(aba)">↻ Atualizar</button></div>`;
+  h+=`<div style="height:16px"></div>`+await frescorHtml();
+  return h;
 }
 async function sweep(a){if(a==='pausar'&&!confirm('Pausar TODOS os sweeps?'))return;await J('/api/sweeps/'+a,{method:'POST'});setTimeout(()=>ir(aba),500);}
 let _valLista=[],_valIdx=0;
@@ -558,7 +727,7 @@ function limparEfemeros(){if(!sessaoReports.size)return;const body=JSON.stringif
 window.addEventListener('pagehide',limparEfemeros);window.addEventListener('beforeunload',limparEfemeros);
 
 (async()=>{montarSpheres();montarTabs();await ir('e_panorama');
-  const st=await J('/status');if(st.exercicio)$('hsub').textContent='Inteligência · SIAFE '+(st.logged_in?'✓':'✗')+' · '+st.exercicio;})();
+  const st=await J('/status');if(st.exercicio)$('hsub').textContent='CENTRAL DE INTELIGÊNCIA · SIAFE '+(st.logged_in?'✓':'✗')+' · '+st.exercicio;})();
 </script>
 </body>
 </html>
