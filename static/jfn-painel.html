@@ -208,13 +208,13 @@ const TABS={
     {id:'e_pericias',ic:'⚖️',tl:'Perícias',render:renderPericias},
     {id:'e_cartel',  ic:'🔗',tl:'Cartel',  render:renderCartel},
     {id:'e_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('estado')},
+    {id:'e_poder',   ic:'🏛️',tl:'Nomeados',render:renderPoder},
     {id:'e_alertas', ic:'🚨',tl:'Alertas', render:renderAlertas},
     {id:'e_siafe',   ic:'💰',tl:'SIAFE',   render:renderSiafe},
   ],
   prefeitura:[
     {id:'p_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaPref},
     {id:'p_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('prefeitura')},
-    {id:'p_poder',   ic:'🏛️',tl:'Nomeados',render:renderPoder},
     {id:'p_contr',   ic:'📄',tl:'Contratos',render:renderContratosPref},
   ],
   geral:[
@@ -305,13 +305,13 @@ async function renderPanoramaEstado(){
 async function renderPanoramaPref(){
   const cj=await J('/api/pncp/conluio?esfera=prefeitura');
   const cov=cj.cobertura||{},cap=cj.captura||[],rod=cj.rodizio_vencedores||[];
-  let h=cover('prefeitura','Prefeituras & municípios','Licitações municipais pelo PNCP (vencedor homologado), conluio, e servidores municipais que foram candidatos.','🏙️');
+  let h=cover('prefeitura','Prefeituras & municípios','Licitações municipais pelo PNCP (vencedor homologado por item), com detecção de captura e rodízio de fornecedores.','🏙️');
   h+=`<div class="grid g2">
     ${kpi(fmtN(cov.certames_com_resultado),'Certames municipais',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos',null,'🏢')}
     ${kpi(cap.length,'Capturas','var(--rose)','🎯')}${kpi(rod.length,'Rodízios','var(--amber)','🔁')}</div>`;
   h+=`<div style="height:16px"></div>`+sec('Ir para')+`<div class="grid two">
     ${card(`<div style="font-weight:700">🕸️ Conluio municipal</div><div class="muted" style="font-size:13px">${cap.length+rod.length} indícios · nomes e objetos</div><div class="btns"><button class="btn accent" onclick="ir('p_conluio')">Abrir</button></div>`)}
-    ${card(`<div style="font-weight:700">🏛️ Nomeados × candidatos</div><div class="muted" style="font-size:13px">servidor que foi à urna</div><div class="btns"><button class="btn ghost" onclick="ir('p_poder')">Abrir</button></div>`)}</div>`;
+    ${card(`<div style="font-weight:700">📄 Contratações recentes</div><div class="muted" style="font-size:13px">últimas licitações do PNCP</div><div class="btns"><button class="btn ghost" onclick="ir('p_contr')">Abrir</button></div>`)}</div>`;
   h+=`<div class="note">${esc(cj.aviso||'')}</div>`;
   return h;
 }
@@ -397,7 +397,7 @@ async function renderPoder(){
   const d=await J('/api/poder/nomeados_candidatos');
   if(!d.ok)return sec('Poder')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const it=d.itens||[];
-  let h=cover('prefeitura','Nomeados × candidatos','Servidor público (na folha) que também foi candidato a cargo eletivo — sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo).','🏛️');
+  let h=cover('estado','Nomeados × candidatos','Servidor público (folha coletada — hoje a Defensoria Pública do Estado do RJ) que também foi candidato a cargo eletivo, sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo).','🏛️');
   h+=`<div class="grid g2">${kpi(it.length,'Cruzamentos',null,'🏛️')}${kpi(d.n_comissionados,'Comissionados','var(--rose)','🎖️')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, cargo, partido…" oninput="filtrar(this,'#pod-list .card')"></div>`;
   h+=`<div id="pod-list" class="grid">`+it.map(x=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="muted" style="font-size:13px;margin-top:2px">${esc(x.orgao||'—')} · ${esc(x.cargo_folha||'—')}</div></div>${x.comissionado?'<span class="tag rose">comissão</span>':'<span class="tag accent">efetivo</span>'}</div><div class="kv" style="margin-top:8px"><span class="k">Disputou</span><b>${esc(x.cargo_disputado||'—')} · ${esc(x.partido||'—')} · ${esc(x.ano||'—')}</b></div>`)).join('')+`</div>`;
