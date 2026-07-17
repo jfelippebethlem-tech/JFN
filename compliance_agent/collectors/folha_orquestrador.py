@@ -50,8 +50,26 @@ def _coletor_mprj() -> dict:
 _FONTES = [
     ("DPRJ", "https://transparencia.rj.def.br/gastos-com-pessoal/relatorio-mensal-de-remuneracao", _coletor_dprj),
     ("MPRJ", "https://api-transparencia.mprj.mp.br:8280/cnmp115/1.0.0/anos", _coletor_mprj),
-    # ("UERJ/UENF/exec", "https://www.rj.gov.br/remuneracao", _coletor_seplag),   # quando o coletor existir
 ]
+
+# ── MAPA DE FONTES RECONHECIDAS (2026-07-16) — coletores a construir (entram em _FONTES) ──
+# Reconhecimento (health-check ao vivo + pedido do dono). Cada um é um coletor próprio:
+_FONTES_MAPEADAS = {
+    # Estado — executivo (GESPERJ): SPA JS; achar o backend XHR (dev-tools) que serve a consulta.
+    "EXEC_ESTADO": {"url": "https://www.rj.gov.br/remuneracao/", "acesso": "SPA/GESPERJ (XHR backend)", "status": "200"},
+    # TJRJ: ASPX com ViewState — POST no PortalCorpDetalheFolha.aspx (form + __VIEWSTATE).
+    "TJRJ": {"url": "https://www3.tjrj.jus.br/portalservidor/PortalCorpDetalheFolha.aspx", "acesso": "ASPX ViewState", "status": "200"},
+    # MPRJ: API WSO2 CNMP115 (coletor existe em folha_mprj) — backend voltou a 401 (auth), reendpoint de dados instável.
+    "MPRJ_API": {"url": "https://api-transparencia.mprj.mp.br:8280/cnmp115/1.0.0", "acesso": "OAuth client_credentials", "status": "401"},
+    # TCE-RJ: portal da transparência (consulta remuneração de conselheiros/servidores).
+    "TCE_RJ": {"url": "https://www.tcerj.tc.br/portalnovo/pagina/portal-da-transparencia-tce-rj", "acesso": "portal (verificar export)", "status": "200"},
+    # Câmara Municipal do RJ: portal transparência (memória: CSV por ANOINGRESSO no módulo PCRJ).
+    "CAMARA_RJ": {"url": "https://transparencia.camara.rj.gov.br/", "acesso": "CSV/portal", "status": "200"},
+    # Prefeitura do RJ (PCRJ): contracheque JSF (não é REST) — usar contrachequedoc/ArquivoTC já mapeado no módulo PCRJ.
+    "PCRJ": {"url": "https://contrachequeapi.rio.gov.br/contrachequeapi/transparencia", "acesso": "JSF (viewstate) / ArquivoTC", "status": "200"},
+    # TCM-RJ: Tribunal de Contas do Município (buscar portal de transparência específico).
+    "TCM_RJ": {"url": "https://www.tcmrj.tc.br/", "acesso": "portal (a mapear)", "status": "?"},
+}
 
 
 def _total_por_orgao() -> dict:
