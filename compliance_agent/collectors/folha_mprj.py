@@ -12,8 +12,13 @@ STATUS (reverendo 2026-07-16): token OK; `/anos` OK; `/meses/{ano}` OK (retorna 
 ex. "062025"). Config da página traz **tipoFunc="MATIV"** (Membros ATIVos; servidores usa outro tipo).
 MAS o endpoint de DADOS `/servidores/...` devolve 404 em TODO formato testado (ano/mes, MMAAAA, com/sem
 tipoFunc, com/sem paginação, GET e POST). A montagem exata da URL está no main.js do tema (Liferay,
-não-fetchável). PRÓXIMO PASSO: capturar o XHR real no browser (MiMo Claw/Playwright) abrindo
-transparencia.mprj.mp.br/contracheque/... e observando a chamada a /servidores/ — daí fixar o path aqui.
+não-fetchável).
+
+TENTATIVA 2026-07-17 (Playwright headless): a página tem BANNER DE COOKIES bloqueando + os dropdowns
+de ano/mês só renderizam via JS após aceitar; o clique automatizado em 'pesquisar' deu timeout e NENHUM
+XHR a /servidores foi disparado. Precisa de uma sessão de browser INTERATIVA (real ou com scripting
+cuidadoso do consent+dropdowns+submit) para capturar a chamada. Fica como PRÓXIMO PASSO dedicado —
+TJRJ e Câmara já cobrem o cruzamento nomeados×candidatos enquanto isso.
 """
 from __future__ import annotations
 
