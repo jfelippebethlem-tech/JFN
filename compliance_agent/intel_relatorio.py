@@ -135,10 +135,95 @@ def _b_perdedoras(d):
             [{"titulo": "1. Licitantes que só perdem", "html": _tabela(["Particip.", "Empresa", "Perde junto com"], ls)}], d)
 
 
+def _d_conluio(p):
+    import sqlite3
+    from compliance_agent.collectors.pncp_resultados import conluio_enriquecido
+    con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+    try:
+        dd = conluio_enriquecido(con, min_certames=4)
+        dd["n"] = len(dd.get("captura", [])) + len(dd.get("rodizio_vencedores", []))
+        return {"ok": True, **dd}
+    finally:
+        con.close()
+
+
+def _b_conluio(d):
+    cap = d.get("captura", [])
+    rod = d.get("rodizio_vencedores", [])
+    lc = [f"<tr><td>{int(c['share']*100)}%</td><td>{_esc(c['orgao_nome'])}</td><td>{_esc(c['nome'])}</td>"
+          f"<td>{c['certames']} certames</td></tr>" for c in cap[:100]]
+    lr = [f"<tr><td>{len(r.get('membros_nome',[]))}</td><td>{_esc(r['orgao_nome'])}</td>"
+          f"<td><small>{_esc(' · '.join(m['nome'] for m in r.get('membros_nome',[])[:3]))}</small></td>"
+          f"<td>{r['certames']} certames</td></tr>" for r in rod[:100]]
+    secoes = [{"titulo": "1. Captura de órgão (1 empresa vence ≥80%)",
+               "html": _tabela(["Share", "Órgão", "Vencedor", "Volume"], lc) if lc else "<p>Nenhuma.</p>"},
+              {"titulo": "2. Rodízio de vencedores (revezamento)", "page_break": True,
+               "html": _tabela(["Empresas", "Órgão", "Grupo", "Volume"], lr) if lr else "<p>Nenhum.</p>"}]
+    return ("Conluio em licitações — captura e rodízio (PNCP)",
+            f"{len(cap)} capturas · {len(rod)} rodízios · indício OCDE de bid rigging",
+            secoes, d)
+
+
+def _d_nomeados(p):
+    import sqlite3
+    con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        # mesma otimização do endpoint: TEMP TABLE indexada de candidatos, evita o cross-join lento
+        con.execute("CREATE TEMP TABLE _cand AS SELECT DISTINCT UPPER(TRIM(nome_candidato)) nc, "
+                    "cargo_candidato, partido, ano_eleicao FROM doacoes_eleitorais")
+        con.execute("CREATE INDEX _tc ON _cand(nc)")
+        rows = con.execute(
+            "SELECT f.nome, f.cargo, f.orgao_nome, c.cargo_candidato, c.partido, c.ano_eleicao "
+            "FROM (SELECT DISTINCT nome, cargo, orgao_nome FROM registros_folha) f "
+            "JOIN _cand c ON UPPER(TRIM(f.nome))=c.nc ORDER BY f.nome LIMIT 300").fetchall()
+        it = [{"nome": r["nome"], "cargo": r["cargo"], "orgao": r["orgao_nome"],
+               "disputou": r["cargo_candidato"], "partido": r["partido"], "ano": r["ano_eleicao"],
+               "comiss": "comiss" in (r["cargo"] or "").lower()} for r in rows]
+        return {"ok": True, "itens": it, "n": len(it)}
+    finally:
+        con.close()
+
+
+def _b_nomeados(d):
+    ls = [f"<tr><td>{'🎖️' if x['comiss'] else ''}</td><td>{_esc(x['nome'])}</td>"
+          f"<td>{_esc((x['orgao'] or '')[:34])} · {_esc(x['cargo'])}</td>"
+          f"<td>{_esc(x['disputou'])} / {_esc(x['partido'])} / {_esc(str(x['ano']))}</td></tr>"
+          for x in d.get("itens", [])[:200]]
+    return ("Servidores × candidatos (folha × TSE)",
+            f"{d.get('n',0)} servidores que também foram candidatos",
+            [{"titulo": "1. Cruzamento nome a nome", "html": _tabela(["", "Servidor", "Órgão / cargo", "Disputou"], ls)}], d)
+
+
+def _d_comissionados(p):
+    import sqlite3
+    con = sqlite3.connect(f"file:{p.replace('compliance.db','pcrj.db')}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        it = [dict(r) for r in con.execute(
+            "SELECT nome_pcrj, cargo_pcrj, orgao_pcrj, admissao, exoneracao, cand_ano, cand_cargo, cand_cidade "
+            "FROM pcrj_comissionado_candidato ORDER BY cand_ano DESC LIMIT 400")]
+        return {"ok": True, "itens": it, "n": len(it)}
+    finally:
+        con.close()
+
+
+def _b_comissionados(d):
+    ls = [f"<tr><td>{_esc(x['nome_pcrj'])}</td><td>{_esc((x['orgao_pcrj'] or '')[:34])} · {_esc(x['cargo_pcrj'])}</td>"
+          f"<td>{_esc(x['cand_cargo'])} {_esc(str(x['cand_ano']))} · {_esc(x['cand_cidade'])}</td></tr>"
+          for x in d.get("itens", [])[:250]]
+    return ("Comissionados da Prefeitura do Rio × candidaturas (TSE)",
+            f"{d.get('n',0)} comissionados que foram candidatos",
+            [{"titulo": "1. Cargo de confiança × disputa eleitoral", "html": _tabela(["Nome", "Órgão / cargo", "Disputou"], ls)}], d)
+
+
 # tipo → (função-detector com db_path opcional, builder, faixa)
 def _detectores():
     from compliance_agent import cruzamentos_intel as C
     return {
+        "conluio": (_d_conluio, _b_conluio, "ALTO"),
+        "nomeados": (_d_nomeados, _b_nomeados, "MÉDIO"),
+        "comissionados": (_d_comissionados, _b_comissionados, "MÉDIO"),
         "sancionadas": (lambda p: C.sancionadas_contratadas(p), _b_sancionadas, "ALTO"),
         "fracionamento": (lambda p: C.fracionamento(db_path=p), _b_fracionamento, "ALTO"),
         "sobrepreco": (lambda p: C.sobrepreco(db_path=p), _b_sobrepreco, "ALTO"),
