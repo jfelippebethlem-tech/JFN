@@ -272,8 +272,15 @@ async def _login(pg, exercicio: int):
 
 
 async def _mfa_presente(pg) -> bool:
-    """Diálogo de Autenticação Multifator na tela? (novo na build 4.168.13, 13/07/2026 — código por e-mail)."""
+    """Diálogo de Autenticação Multifator na tela? (novo na build 4.168.13, 13/07/2026 — código por e-mail).
+    Sinal robusto: o campo de token do form MFA visível (id exato); fallback textual."""
     try:
+        campo = await pg.evaluate(
+            """()=>{const e=document.getElementById('loginBox:frmTokenMfa:itxTokenMfa::content');
+                if(!e) return false; const r=e.getBoundingClientRect(); const s=getComputedStyle(e);
+                return r.width>0 && r.height>0 && s.visibility!=='hidden' && s.display!=='none';}""")
+        if campo:
+            return True
         body = ((await pg.inner_text("body")) or "").lower()
     except Exception:
         return False
@@ -302,35 +309,43 @@ async def _resolver_mfa(pg, timeout_s: int = 900) -> dict:
         return {"ok": False, "erro": "mfa_sem_codigo",
                 "detail": f"Mestre não enviou o código MFA em {timeout_s//60}min (responder 'siafe codigo NNNNNN')."}
     print("   [mfa] código recebido — preenchendo", flush=True)
-    r = await pg.evaluate(
-        """(cod)=>{
-            const vis = el => { if(!el) return false; const r=el.getBoundingClientRect(); const s=getComputedStyle(el);
-                return r.width>0 && r.height>0 && s.visibility!=='hidden' && s.display!=='none'; };
-            const chk=[...document.querySelectorAll('input[type=checkbox]')].filter(vis)[0];
-            if (chk && !chk.checked) chk.click();
-            const inp=[...document.querySelectorAll('input[type=text],input[type=password],input:not([type])')]
-                .filter(vis).find(i=>(i.id||'').indexOf('loginBox:itxUsuario')<0);
-            if (!inp) return {inp:false};
-            inp.focus(); inp.value = cod;
-            inp.dispatchEvent(new Event('input',{bubbles:true}));
-            inp.dispatchEvent(new Event('change',{bubbles:true}));
-            inp.blur();
-            return {inp:true, chk:!!chk};
-        }""", codigo)
-    if not r.get("inp"):
-        return {"ok": False, "erro": "mfa_campo_nao_encontrado"}
-    await pg.wait_for_timeout(800)
-    await pg.evaluate(
-        """()=>{
-            const vis = el => { if(!el) return false; const r=el.getBoundingClientRect(); const s=getComputedStyle(el);
-                return r.width>0 && r.height>0 && s.visibility!=='hidden' && s.display!=='none'; };
-            const els=[...document.querySelectorAll('button,a,input[type=button],input[type=submit]')];
-            const ok=els.find(e=>((e.innerText||e.value||'').trim()==='Ok') && vis(e)
-                                  && (e.id||'').indexOf('loginBox:btnConfirmar')<0);
-            if (ok) ok.click();
-        }""")
-    await pg.wait_for_timeout(4000)
+    # IDs EXATOS do diálogo MFA (build 4.168.13). O form de login (usuário/senha) CONTINUA no DOM
+    # atrás do popup — um seletor genérico digitava o código no campo Senha e a validação falhava.
+    # Preenchimento NATIVO (Playwright type/press): o input ADF só comita o valor no modelo com
+    # eventos de tecla reais — setar .value por JS não basta.
+    campo = '[id="loginBox:frmTokenMfa:itxTokenMfa::content"]'
+    try:
+        await pg.click(campo, timeout=8000)
+        await pg.fill(campo, "")
+        await pg.type(campo, codigo, delay=60)  # digitação real, tecla a tecla
+        # "dispensar 30 dias" → o cookie do perfil persistente evita novo MFA por 1 mês
+        try:
+            await pg.check('[id="loginBox:frmTokenMfa:ckTrustDevice::content"]', timeout=3000)
+        except Exception as exc:
+            logger.debug("checkbox 'dispensar 30 dias' não marcado (segue sem persistir): %s", exc)
+    except Exception as exc:
+        try:
+            await pg.screenshot(path=str(_REPO / "data/sei_cache/ERRO_mfa.png"))
+        except Exception:
+            pass
+        return {"ok": False, "erro": "mfa_campo_nao_encontrado", "detail": f"campo MFA inacessível: {exc}"}
+    await pg.wait_for_timeout(400)
+    # confirma: Enter no campo E clique no botão (o que disparar primeiro resolve)
+    try:
+        await pg.press(campo, "Enter")
+    except Exception as exc:
+        logger.debug("Enter no campo MFA falhou (segue p/ o clique do botão): %s", exc)
+    try:
+        await pg.click('[id="loginBox:frmTokenMfa:btnConfirmToken"]', timeout=5000)
+    except Exception as exc:
+        logger.debug("clique no botão Ok do MFA falhou (Enter pode ter resolvido): %s", exc)
+    await pg.wait_for_timeout(4500)
     if await _mfa_presente(pg):
+        # deixa evidência p/ diagnóstico (o valor entrou no campo? há msg de erro?)
+        try:
+            await pg.screenshot(path=str(_REPO / "data/sei_cache/ERRO_mfa.png"))
+        except Exception:
+            pass
         return {"ok": False, "erro": "mfa_codigo_rejeitado",
                 "detail": "Código MFA preenchido mas o diálogo persiste (código errado/expirado?)."}
     siafe_coord.notificar("✅ Código MFA aceito — coleta SIAFE retomada. Dispensa de 30 dias marcada.")
