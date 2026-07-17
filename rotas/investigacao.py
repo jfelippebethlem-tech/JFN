@@ -4,6 +4,7 @@ Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -103,6 +104,10 @@ async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int
     try:
         from compliance_agent import grafo_cartel as G
         top = max(1, min(int(top or 20), 100))
+        # captura/dependencia varrem a base inteira (~3s) e não dependem de cnpj → cache curto
+        ck = f"cartel:{modo}:{top}" if modo in ("captura", "dependencia") else None
+        if ck and (cache := _cache_get(ck, 300)):
+            return JSONResponse(cache)
         if modo == "vizinhanca":
             if not cnpj:
                 return JSONResponse({"ok": False, "erro": "informe ?cnpj="}, status_code=400)
@@ -125,8 +130,11 @@ async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int
             dados = G.cartel_com_qsa(cnpj, limite=top)
         else:
             dados = G.captura_orgaos(limite=top)
-        return JSONResponse({"ok": True, "modo": modo, "dados": dados,
-                             "aviso": "Indícios de captura/cartel para apuração interna — não constituem acusação."})
+        out = {"ok": True, "modo": modo, "dados": dados,
+               "aviso": "Indícios de captura/cartel para apuração interna — não constituem acusação."}
+        if ck:
+            _cache_put(ck, out)
+        return JSONResponse(out)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -194,7 +202,10 @@ async def api_orgao_cidades(ug: Optional[str] = None, top: int = 20):
 
 @router.get("/api/compliance/painel")
 async def api_painel():
-    """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições."""
+    """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições.
+    Cacheado 120s — as agregações varrem ~1,1M de OBs (~3s) e o panorama abre em toda visita."""
+    if cache := _cache_get("painel:snapshot", 120):
+        return JSONResponse(content=cache)
     try:
         from datetime import date
         import sqlalchemy as sa
@@ -256,7 +267,7 @@ async def api_painel():
             except Exception as exc:
                 logger.warning("lições da memória indisponíveis p/ a investigação: %s", exc)
 
-            return JSONResponse(content={
+            return JSONResponse(content=_cache_put("painel:snapshot", {
                 "atualizado": str(hoje),
                 "obs": {"total": total_obs, "hoje": obs_hoje,
                         "valor_hoje": float(valor_hoje), "valor_total": float(valor_total)},
@@ -267,7 +278,7 @@ async def api_painel():
                 "top_favorecidos": top,
                 "obs_recentes": obs_recentes,
                 "licoes": licoes,
-            })
+            }))
         finally:
             s.close()
     except Exception as e:
@@ -1082,7 +1093,9 @@ async def api_nomeados_candidatos(limite: int = 200):
     Servidor público — sobretudo cargo em comissão — que foi candidato a cargo eletivo. Match por
     NOME (verificar homônimo). Indício de relação político-administrativa, não irregularidade."""
     import sqlite3 as _sq
-    cache = _cache_get("nomcand", 600)
+    lim = max(10, min(int(limite or 200), 1000))
+    ck = f"nomcand:{lim}"  # o payload varia com o limite — chave fixa congelava o tamanho p/ todos
+    cache = _cache_get(ck, 600)
     if cache:
         return JSONResponse(cache)
     try:
@@ -1095,7 +1108,7 @@ async def api_nomeados_candidatos(limite: int = 200):
             "SELECT f.nome, f.cargo, f.orgao_nome, c.cargo_candidato, c.partido, c.ano_eleicao "
             "FROM (SELECT DISTINCT nome, cargo, orgao_nome FROM registros_folha) f "
             "JOIN _cand c ON UPPER(TRIM(f.nome))=c.nc "
-            "ORDER BY f.nome LIMIT ?", (max(10, min(int(limite or 200), 1000)),)).fetchall()
+            "ORDER BY f.nome LIMIT ?", (lim,)).fetchall()
         con.close()
         comissao = [r for r in rows if "comiss" in (r["cargo"] or "").lower()]
         itens = [{"nome": r["nome"], "cargo_folha": r["cargo"], "orgao": r["orgao_nome"],
@@ -1105,7 +1118,7 @@ async def api_nomeados_candidatos(limite: int = 200):
         out = {"ok": True, "total": len(itens), "n_comissionados": len(comissao), "itens": itens,
                "aviso": "Match por NOME (homônimos possíveis) — indício de relação político-administrativa "
                         "a verificar, não irregularidade. Ser candidato é direito; o foco é conflito de interesse."}
-        return JSONResponse(_cache_put("nomcand", out))
+        return JSONResponse(_cache_put(ck, out))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -1131,7 +1144,10 @@ async def api_laranjas(limite: int = 100):
                 bens = _json.loads(r["beneficios_json"] or "[]")
             except (ValueError, TypeError):
                 bens = []
-            itens.append({"socio": r["socio_nome_norm"], "cpf": r["cpf_resolvido"],
+            cpf = re.sub(r"\D", "", r["cpf_resolvido"] or "")
+            # fail-CLOSED: valor não-canônico (≠11 dígitos) vira "***" — nunca ecoar o bruto
+            cpf_masc = f"***.{cpf[3:6]}.{cpf[6:9]}-**" if len(cpf) == 11 else ("***" if cpf else "")
+            itens.append({"socio": r["socio_nome_norm"], "cpf": cpf_masc,  # LGPD: nunca CPF completo
                           "beneficios": bens if isinstance(bens, list) else [str(bens)],
                           "motivo": r["motivo"], "confianca": r["confianca"]})
         out = {"ok": True, "total": len(itens), "itens": itens,
