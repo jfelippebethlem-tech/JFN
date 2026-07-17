@@ -208,8 +208,12 @@ def _parecer_orgao_md(ctx: dict, analise: dict, merito: str = "") -> str:
                     f"de {c.get('certames')} certames — concentração a examinar (competitividade real).")
             for r in _rod[:5]:
                 grp = ", ".join(f"{m}×{n}" for m, n in (r.get('reparticao') or {}).items())
+                coesao = r.get("coesao_objeto")
+                termos = ", ".join(r.get("termos_comuns") or [])
+                ctx = (f" no MESMO tipo de objeto (coesão {int(coesao * 100)}%"
+                       + (f": {termos}" if termos else "") + ")") if coesao is not None else ""
                 add(f"- **Rodízio de vencedores:** {len(r.get('grupo', []))} fornecedores repartem "
-                    f"{r.get('certames')} certames (cobertura {int(r.get('cobertura_grupo', 0) * 100)}%): {grp}. "
+                    f"{r.get('certames')} certames{ctx} (cobertura {int(r.get('cobertura_grupo', 0) * 100)}%): {grp}. "
                     "Revezamento a verificar (propostas, QSA, cronologia).")
             add("")
     except Exception as exc:  # noqa: BLE001

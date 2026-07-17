@@ -343,6 +343,7 @@ async function renderConluio(esf){
     `<div class="exp" onclick="toggle(this)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0"><div style="font-weight:700">${esc(r.orgao_nome)}</div><div class="muted" style="font-size:13px;margin-top:2px">${r.certames} certames · cobertura ${Math.round(r.cobertura_grupo*100)}%</div></div>
       <span class="tag amber">${(r.membros_nome||[]).length} players</span></div>
+      ${r.coesao_objeto!=null?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="tag ${r.coesao_objeto>=0.6?'rose':'teal'}">objeto ${Math.round(r.coesao_objeto*100)}% coeso</span>${(r.termos_comuns||[]).slice(0,4).map(t=>`<span class="tag accent">${esc(t)}</span>`).join('')}</div>`:'<div class="dim" style="margin-top:6px">sem objeto comparável (rodízio de nível órgão)</div>'}
       <table style="margin-top:10px"><tbody>${(r.membros_nome||[]).map(m=>`<tr><td>${clk(m.cnpj,m.nome)}<div class="dim">${esc(m.cnpj)}</div></td><td><b>${m.vitorias}</b> <span class="dim">vit.</span></td></tr>`).join('')}</tbody></table>
       <div class="objs">${(r.objetos||[]).map(o=>`<div class="obj">📦 ${esc(o)}</div>`).join('')||'<div class="dim">sem objeto</div>'}</div>
       <div class="dim" style="margin-top:8px"><span class="chev">▸</span> objetos do órgão</div></div>`)).join('')+`</div>`;}

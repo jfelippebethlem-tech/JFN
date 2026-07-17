@@ -208,53 +208,127 @@ def analisar_atas(atas: list[dict], min_certames: int = 3, min_juntos: int = 3) 
     return padroes
 
 
-def detectar_rodizio_vencedores(registros: list[dict], min_certames: int = 5) -> dict:
+# termos genéricos de compra pública que NÃO discriminam o objeto (não entram na similaridade)
+_STOP_OBJ = {
+    "contratacao", "contratacoes", "empresa", "empresas", "especializada", "aquisicao", "aquisicoes",
+    "prestacao", "servico", "servicos", "fornecimento", "registro", "precos", "preco", "objeto",
+    "para", "com", "por", "dos", "das", "que", "atender", "atendimento", "eventual", "futura",
+    "material", "materiais", "diversos", "diversas", "conforme", "termo", "referencia", "edital",
+    "pregao", "eletronico", "licitacao", "compra", "compras", "visando", "destinado", "destinada",
+    "necessidade", "necessidades", "demanda", "demandas", "presente", "instrumento", "solucao",
+    # boilerplate administrativo (não discrimina o objeto; nomes de órgão inflam falsamente a coesão)
+    "municipio", "municipal", "camara", "prefeitura", "secretaria", "fundo", "estado", "estadual",
+    "federal", "governo", "instituto", "fundacao", "autarquia", "departamento", "superintendencia",
+}
+
+
+def _termos_objeto(texto: str) -> frozenset:
+    """Termos SIGNIFICATIVOS do objeto (normalizado, sem stopwords de compra pública). Discrimina
+    'ventilador' de 'vestibular' — a base do gate de similaridade do rodízio."""
+    import unicodedata
+    t = unicodedata.normalize("NFKD", (texto or "").lower())
+    t = "".join(c for c in t if not unicodedata.combining(c))
+    toks = re.findall(r"[a-z]{4,}", t)
+    return frozenset(w for w in toks if w not in _STOP_OBJ)
+
+
+def _jaccard(a: frozenset, b: frozenset) -> float:
+    if not a or not b:
+        return 0.0
+    return len(a & b) / len(a | b)
+
+
+def _clusters_por_objeto(certames: list[dict], limiar: float = 0.30) -> list[list[dict]]:
+    """Agrupa (guloso) os certames de um órgão por similaridade de objeto. Certames SEM objeto
+    (termos vazios) caem num único cluster '∅' — preserva o comportamento sem-gate (grafo/sintético)."""
+    sem_obj = [c for c in certames if not c["_termos"]]
+    com_obj = [c for c in certames if c["_termos"]]
+    clusters: list[list[dict]] = []
+    reps: list[frozenset] = []  # termos representativos (união) de cada cluster
+    for c in sorted(com_obj, key=lambda x: -len(x["_termos"])):
+        melhor, melhor_sim = -1, 0.0
+        for i, rep in enumerate(reps):
+            s = _jaccard(c["_termos"], rep)
+            if s > melhor_sim:
+                melhor, melhor_sim = i, s
+        if melhor >= 0 and melhor_sim >= limiar:
+            clusters[melhor].append(c)
+            reps[melhor] = reps[melhor] | c["_termos"]
+        else:
+            clusters.append([c])
+            reps.append(set(c["_termos"]))
+    if sem_obj:
+        clusters.append(sem_obj)  # bucket ∅
+    return clusters
+
+
+def detectar_rodizio_vencedores(registros: list[dict], min_certames: int = 5,
+                                limiar_objeto: float = 0.30) -> dict:
     """Rodízio/captura a partir de VENCEDORES por certame (dados estruturados do PNCP, que só
-    publica o homologado). Bucketiza por ÓRGÃO e olha a sequência de vencedores ao longo do tempo:
+    publica o homologado). Captura é ÓRGÃO-level; RODÍZIO passa por um GATE DE SIMILARIDADE DE OBJETO:
 
       • **captura** — 1 fornecedor vence ≥80% dos certames do órgão (mercado capturado);
-      • **rodízio** — 2-3 fornecedores dividem ~igualmente TODAS as vitórias do órgão em ≥min_certames
-        certames (bid rotation: cada um na sua vez), com baixa entropia de vencedores.
+      • **rodízio** — 2-3 fornecedores repartem ~igualmente as vitórias DENTRO DE UM MESMO TIPO DE
+        OBJETO (não do órgão inteiro). Certames com objetos diversos caem em clusters distintos e NÃO
+        contam como rodízio — corta o falso-positivo 'A vence ventilador, B vence vestibular'.
 
-    Complementa o grafo de participantes (que precisa dos perdedores): aqui só o vencedor basta.
-    INDÍCIO a verificar — concentração pode ser mérito/mercado raso; corroborar competitividade."""
+    Cada rodízio traz `coesao_objeto` (similaridade média do cluster) e `termos_comuns` (o que os
+    certames compartilham) para o humano julgar. INDÍCIO a verificar — corroborar propostas/QSA."""
     from collections import Counter
+    from itertools import combinations
     por_orgao: dict[str, list] = defaultdict(list)
     for r in registros:
         org = _so_digitos(r.get("orgao") or "")
         vs = r.get("vencedores") or []
         if not org or not vs:
             continue
-        # vencedor dominante do certame (maior valor homologado)
-        venc = max(vs, key=lambda x: x.get("valor") or 0)
+        venc = max(vs, key=lambda x: x.get("valor") or 0)  # vencedor dominante (maior valor)
+        # remove os tokens do NOME DO ÓRGÃO do objeto (senão 'paty alferes itabapoana' viram
+        # coesão falsa entre objetos diversos do mesmo município)
+        termos = _termos_objeto(r.get("objeto") or "") - _termos_objeto(r.get("orgao_nome") or "")
         por_orgao[org].append({"certame": r.get("certame"), "data": r.get("data"),
                                "cnpj": _so_digitos(venc.get("cnpj") or ""),
-                               "nome": venc.get("nome")})
+                               "nome": venc.get("nome"), "_termos": termos})
     captura, rodizio = [], []
     for org, certames in por_orgao.items():
-        n = len(certames)
-        if n < min_certames:
-            continue
-        cont = Counter(c["cnpj"] for c in certames if c["cnpj"])
-        if not cont:
-            continue
-        top_cnpj, top_n = cont.most_common(1)[0]
-        share = top_n / n
-        nome_top = next((c["nome"] for c in certames if c["cnpj"] == top_cnpj), "?")
-        if share >= 0.80:
-            captura.append({"orgao": org, "certames": n, "vencedor": top_cnpj, "nome": nome_top,
-                            "share": round(share, 2), "distintos": len(cont)})
-        elif 2 <= len(cont) <= 3 and cont.most_common(1)[0][1] < n:
-            # rodízio: poucos vencedores repartem quase tudo, nenhum domina isolado
+        # CAPTURA é órgão-level (concentração vale para o conjunto do órgão)
+        if len(certames) >= min_certames:
+            cont_org = Counter(c["cnpj"] for c in certames if c["cnpj"])
+            if cont_org:
+                top_cnpj, top_n = cont_org.most_common(1)[0]
+                share = top_n / len(certames)
+                if share >= 0.80:
+                    nome_top = next((c["nome"] for c in certames if c["cnpj"] == top_cnpj), "?")
+                    captura.append({"orgao": org, "certames": len(certames), "vencedor": top_cnpj,
+                                    "nome": nome_top, "share": round(share, 2), "distintos": len(cont_org)})
+        # RODÍZIO por CLUSTER DE OBJETO (gate de similaridade)
+        for grupo in _clusters_por_objeto(certames, limiar=limiar_objeto):
+            n = len(grupo)
+            if n < min_certames:
+                continue
+            cont = Counter(c["cnpj"] for c in grupo if c["cnpj"])
+            if not (2 <= len(cont) <= 3) or cont.most_common(1)[0][1] >= n:
+                continue
             cobre = sum(v for _, v in cont.most_common(3)) / n
-            if cobre >= 0.9:
-                rodizio.append({"orgao": org, "certames": n, "grupo": list(cont.keys()),
-                                "reparticao": dict(cont), "cobertura_grupo": round(cobre, 2)})
+            if cobre < 0.9:
+                continue
+            termos = [c["_termos"] for c in grupo if c["_termos"]]
+            comuns = frozenset.intersection(*termos) if termos else frozenset()
+            if termos:  # há objeto → o gate exige coesão real (senão são compras diversas coincidentes)
+                coesao = sum(_jaccard(a, b) for a, b in combinations(termos, 2)) / max(1, len(termos) * (len(termos) - 1) // 2)
+                if coesao < limiar_objeto and not comuns:
+                    continue
+                coesao = round(coesao, 2)
+            else:
+                coesao = None  # bucket ∅ (sem objeto): rodízio órgão-level, sem gate (compat)
+            rodizio.append({"orgao": org, "certames": n, "grupo": list(cont.keys()),
+                            "reparticao": dict(cont), "cobertura_grupo": round(cobre, 2),
+                            "coesao_objeto": coesao, "termos_comuns": sorted(comuns)[:6]})
     captura.sort(key=lambda x: -x["certames"])
-    rodizio.sort(key=lambda x: -x["certames"])
+    rodizio.sort(key=lambda x: (-(x["coesao_objeto"] or 0), -x["certames"]))
     return {"captura": captura, "rodizio_vencedores": rodizio, "n_orgaos": len(por_orgao),
             "ressalva": "Indício a verificar (OCDE): concentração pode ser mérito ou mercado raso; "
-                        "rodízio de vencedores pede exame das propostas e do QSA. Indício ≠ acusação."}
+                        "rodízio (mesmo objeto) pede exame das propostas e do QSA. Indício ≠ acusação."}
 
 
 def coletar_atas_do_corpus(db_path: str = "data/compliance.db", limite: int = 8000) -> list[dict]:

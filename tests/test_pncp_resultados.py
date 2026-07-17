@@ -103,3 +103,47 @@ def test_amostra_pequena_nao_dispara():
     regs = [{"certame": f"c{i}", "orgao": A, "vencedores": [{"cnpj": B, "valor": 100}]} for i in range(4)]
     r = detectar_rodizio_vencedores(regs, min_certames=5)
     assert not r["captura"]
+
+
+# ── gate de similaridade de objeto no rodízio (corta o FP 'ventilador vs vestibular') ──
+
+def _reg_obj(certame, orgao, objeto, cnpj):
+    return {"certame": certame, "orgao": orgao, "objeto": objeto,
+            "vencedores": [{"cnpj": cnpj, "valor": 100}]}
+
+
+def test_gate_objeto_similar_dispara_rodizio():
+    regs = [_reg_obj(f"s{i}", A, "limpeza e conservacao predial escolar", (B if i % 2 else C))
+            for i in range(6)]
+    r = detectar_rodizio_vencedores(regs, min_certames=4)
+    assert len(r["rodizio_vencedores"]) == 1
+    rod = r["rodizio_vencedores"][0]
+    assert rod["coesao_objeto"] and rod["coesao_objeto"] >= 0.3
+    assert "limpeza" in rod["termos_comuns"]
+
+
+def test_gate_objeto_diverso_suprime_rodizio():
+    objs = ["ventiladores hospitalares uti", "concurso vestibular medicina",
+            "locacao de veiculos", "material de escritorio",
+            "servico de vigilancia armada", "obras de pavimentacao asfaltica"]
+    regs = [_reg_obj(f"d{i}", A, o, (B if i % 2 else C)) for i, o in enumerate(objs)]
+    r = detectar_rodizio_vencedores(regs, min_certames=4)
+    assert r["rodizio_vencedores"] == []  # objetos diversos → clusters pequenos → sem rodízio
+
+
+def test_gate_remove_tokens_do_nome_do_orgao():
+    # objetos diversos, mas todos citam o nome do município → não pode gerar coesão falsa
+    regs = [{"certame": f"m{i}", "orgao": A, "orgao_nome": "MUNICIPIO DE PATY DO ALFERES",
+             "objeto": f"prefeitura de paty do alferes - {o}",
+             "vencedores": [{"cnpj": (B if i % 2 else C), "valor": 100}]}
+            for i, o in enumerate(["merenda escolar", "combustivel", "material medico",
+                                   "obras de drenagem", "locacao de veiculos", "servico de limpeza"])]
+    r = detectar_rodizio_vencedores(regs, min_certames=4)
+    assert r["rodizio_vencedores"] == []  # nome do órgão removido → objetos ficam diversos → sem rodízio
+
+
+def test_gate_sem_objeto_mantem_compat():
+    regs = [_reg_obj(f"o{i}", A, "", (B if i % 2 else C)) for i in range(6)]
+    r = detectar_rodizio_vencedores(regs, min_certames=4)
+    assert len(r["rodizio_vencedores"]) == 1
+    assert r["rodizio_vencedores"][0]["coesao_objeto"] is None  # bucket ∅, sem gate
