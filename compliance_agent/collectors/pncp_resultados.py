@@ -260,11 +260,32 @@ def conluio_do_orgao(nome_orgao: str, db_path: str = "data/compliance.db", min_c
     return pad
 
 
-def conluio_enriquecido(con, uf: str | None = "RJ", min_certames: int = 5) -> dict:
+_RX_MUNICIPAL = __import__("re").compile(
+    r"MUNICIP|PREFEITURA|C[ÂA]MARA MUNICIPAL|FUNDO MUNICIPAL|SECRETARIA MUNICIPAL", __import__("re").I)
+_RX_ESTADUAL = __import__("re").compile(
+    r"\bESTAD|SECRETARIA DE ESTADO|GOVERNO DO ESTADO|FUNDO ESTADUAL|ASSEMBLEIA LEGISLATIVA|"
+    r"TRIBUNAL DE JUSTI|DETRAN|POL[ÍI]CIA (MILITAR|CIVIL)|CORPO DE BOMBEIROS", __import__("re").I)
+
+
+def esfera_do_orgao(nome: str) -> str:
+    """Classifica o órgão em 'prefeitura' | 'estado' | 'outros' (federal/autarquia) pelo nome."""
+    n = nome or ""
+    if _RX_MUNICIPAL.search(n):
+        return "prefeitura"
+    if _RX_ESTADUAL.search(n):
+        return "estado"
+    return "outros"
+
+
+def conluio_enriquecido(con, uf: str | None = "RJ", min_certames: int = 5,
+                        esfera: str | None = None) -> dict:
     """Roda detectar_rodizio_vencedores sobre os resultados do PNCP e DECORA com nome de fornecedor,
-    nome de órgão e amostra de OBJETOS — pronto para o painel/relatório (user-friendly)."""
+    nome de órgão e amostra de OBJETOS — pronto para o painel/relatório (user-friendly).
+    ``esfera`` ∈ {'estado','prefeitura','outros'} filtra por natureza do órgão (classificada pelo nome)."""
     from compliance_agent.rodizio_grafo import detectar_rodizio_vencedores
     regs = registros_vencedores(con, uf=uf)
+    if esfera in ("estado", "prefeitura", "outros"):
+        regs = [r for r in regs if esfera_do_orgao(r.get("orgao_nome") or "") == esfera]
     pad = detectar_rodizio_vencedores(regs, min_certames=min_certames)
     # índices auxiliares: cnpj→nome, orgao→nome, orgao→objetos, (orgao,cnpj)→objetos
     nome_forn: dict[str, str] = {}

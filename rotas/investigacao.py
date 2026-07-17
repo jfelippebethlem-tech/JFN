@@ -1049,25 +1049,29 @@ def _cache_put(chave: str, val):
 
 
 @router.get("/api/pncp/conluio")
-async def api_pncp_conluio(min_certames: int = 4):
+async def api_pncp_conluio(min_certames: int = 4, esfera: str = ""):
     """Conluio a partir dos RESULTADOS estruturados do PNCP (vencedor homologado por item):
     CAPTURA (1 fornecedor domina o órgão) e RODÍZIO DE VENCEDORES (poucos se revezam) — com
-    nome de fornecedor, nome de órgão e amostra de OBJETOS. Indício OCDE a verificar, não acusação."""
+    nome de fornecedor, nome de órgão e amostra de OBJETOS. ?esfera=estado|prefeitura filtra por
+    natureza do órgão. Indício OCDE a verificar, não acusação."""
     import sqlite3 as _sq
-    cache = _cache_get("conluio", 300)
+    esf = esfera if esfera in ("estado", "prefeitura", "outros") else None
+    ck = f"conluio:{esf or 'todos'}"
+    cache = _cache_get(ck, 300)
     if cache:
         return JSONResponse(cache)
     try:
         from compliance_agent.collectors.pncp_resultados import conluio_enriquecido
         con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
         try:
-            dados = conluio_enriquecido(con, min_certames=max(3, int(min_certames or 4)))
+            dados = conluio_enriquecido(con, min_certames=max(3, int(min_certames or 4)), esfera=esf)
         finally:
             con.close()
         out = {"ok": True, **dados,
+               "esfera": esf or "todos",
                "aviso": "Indício OCDE (bid rigging) para apuração interna — objetos diversos enfraquecem "
                         "a hipótese; corroborar propostas, QSA e cronologia. Não é acusação."}
-        return JSONResponse(_cache_put("conluio", out))
+        return JSONResponse(_cache_put(ck, out))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -1133,6 +1137,104 @@ async def api_laranjas(limite: int = 100):
         out = {"ok": True, "total": len(itens), "itens": itens,
                "aviso": "Indício de laranja/interposição (art. 337-F CP) a verificar — receber benefício "
                         "não é ilícito; o sinal é ser SÓCIO de empresa que recebe do Estado E depender de auxílio."}
+        return JSONResponse(out)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/pericias")
+async def api_pericias(q: str = "", grau: str = "", limite: int = 60, ordem: str = "score"):
+    """Ranking pesquisável de perícias de fornecedor (pericia_fornecedor). ?q=nome/cnpj &grau=🟡/🟢
+    &ordem=score|total. Cada fornecedor é agregado (maior grau, soma de OB, achados). Indício."""
+    import sqlite3 as _sq
+    try:
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        col = "total" if ordem == "total" else "score"
+        params: list = []
+        where = "WHERE 1=1"
+        if q:
+            where += " AND (favorecido LIKE ? OR cnpj LIKE ?)"
+            params += [f"%{q}%", f"%{q.replace('.', '').replace('/', '').replace('-', '')}%"]
+        if grau:
+            where += " AND grau = ?"
+            params.append(grau)
+        rows = con.execute(
+            f"SELECT cnpj, MAX(favorecido) favorecido, "
+            f"       CASE WHEN SUM(CASE WHEN grau='🔴' THEN 1 ELSE 0 END)>0 THEN '🔴' "
+            f"            WHEN SUM(CASE WHEN grau='🟡' THEN 1 ELSE 0 END)>0 THEN '🟡' ELSE '🟢' END grau, "
+            f"       MAX(score) score, SUM(total_pago) total, SUM(n_obs) n_obs, "
+            f"       SUM(n_confirmados) confirmados, SUM(n_indicios) indicios, COUNT(DISTINCT ug) ugs "
+            f"FROM pericia_fornecedor {where} GROUP BY cnpj "
+            f"ORDER BY {col} DESC LIMIT ?", (*params, max(10, min(int(limite or 60), 300)))).fetchall()
+        con.close()
+        itens = [dict(r) for r in rows]
+        return JSONResponse({"ok": True, "total": len(itens), "itens": itens})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/perfil")
+async def api_perfil(cnpj: str):
+    """Dossiê 360 INSTANTÂNEO de um CNPJ, montado do banco local (sem rede): perícia (grau/achados),
+    pagamento (OB total, órgãos), QSA (sócios), sede/fachada, vitórias no PNCP e sinal de laranja.
+    O motor da tela de drill-down do painel. Indício a verificar, nunca acusação."""
+    import json as _json
+    import sqlite3 as _sq
+    dig = "".join(c for c in (cnpj or "") if c.isdigit())
+    if len(dig) != 14:
+        return JSONResponse({"ok": False, "erro": "informe um CNPJ de 14 dígitos"}, status_code=400)
+    try:
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        out: dict = {"ok": True, "cnpj": dig, "cnpj_fmt": f"{dig[:2]}.{dig[2:5]}.{dig[5:8]}/{dig[8:12]}-{dig[12:]}"}
+        # perícia (agrega por CNPJ)
+        per = con.execute(
+            "SELECT MAX(favorecido) nome, MAX(score) score, SUM(total_pago) total, SUM(n_obs) n_obs, "
+            "SUM(n_confirmados) confirmados, SUM(n_indicios) indicios, COUNT(DISTINCT ug) ugs, "
+            "CASE WHEN SUM(CASE WHEN grau='🔴' THEN 1 ELSE 0 END)>0 THEN '🔴' "
+            "WHEN SUM(CASE WHEN grau='🟡' THEN 1 ELSE 0 END)>0 THEN '🟡' ELSE '🟢' END grau "
+            "FROM pericia_fornecedor WHERE cnpj=?", (dig,)).fetchone()
+        out["pericia"] = dict(per) if per and per["nome"] else None
+        # achados detalhados (do maior score)
+        det = con.execute("SELECT achados_json, resumo FROM pericia_fornecedor WHERE cnpj=? "
+                          "ORDER BY score DESC LIMIT 1", (dig,)).fetchone()
+        if det:
+            try:
+                out["achados"] = _json.loads(det["achados_json"] or "[]")[:12]
+            except (ValueError, TypeError):
+                out["achados"] = []
+            out["resumo"] = det["resumo"]
+        # pagamento (OB TFE) + órgãos
+        ob = con.execute("SELECT COUNT(*) n, COALESCE(SUM(valor),0) v, COUNT(DISTINCT ug_codigo) ugs, "
+                         "MAX(favorecido_nome) nome FROM ordens_bancarias WHERE favorecido_cpf=?",
+                         (dig,)).fetchone()
+        out["ob"] = {"n": ob["n"], "total": ob["v"], "orgaos": ob["ugs"]} if ob and ob["n"] else None
+        out["nome"] = (out.get("pericia") or {}).get("nome") or (ob["nome"] if ob else None) or "—"
+        top_org = con.execute("SELECT ug_codigo, COALESCE(ug_nome,'') nome, SUM(valor) v FROM ordens_bancarias "
+                              "WHERE favorecido_cpf=? AND valor>0 GROUP BY ug_codigo ORDER BY v DESC LIMIT 8",
+                              (dig,)).fetchall()
+        out["orgaos"] = [{"ug": r["ug_codigo"], "nome": r["nome"], "total": r["v"]} for r in top_org]
+        # QSA
+        soc = con.execute("SELECT socio_nome, qualificacao, socio_servidor FROM socios_fornecedor "
+                          "WHERE cnpj=? LIMIT 12", (dig,)).fetchall()
+        out["socios"] = [{"nome": r["socio_nome"], "qualificacao": r["qualificacao"],
+                          "servidor": bool(r["socio_servidor"])} for r in soc]
+        # sede/fachada
+        sede = con.execute("SELECT razao, endereco, municipio, uf, status, nivel, evidencia, "
+                           "geo_lat, geo_lon, addr_residencial FROM verificacao_sede WHERE cnpj=? LIMIT 1",
+                           (dig,)).fetchone()
+        if sede:
+            out["sede"] = {"endereco": sede["endereco"], "municipio": sede["municipio"], "uf": sede["uf"],
+                           "status": sede["status"], "nivel": sede["nivel"], "evidencia": sede["evidencia"],
+                           "residencial": bool(sede["addr_residencial"]),
+                           "lat": sede["geo_lat"], "lon": sede["geo_lon"]}
+        # vitórias no PNCP
+        pncp = con.execute("SELECT COUNT(DISTINCT certame) certames, COALESCE(SUM(valor_homologado),0) v, "
+                           "COUNT(DISTINCT orgao_cnpj) orgaos FROM pncp_resultado "
+                           "WHERE fornecedor_cnpj=? AND ordem_classificacao=1", (dig,)).fetchone()
+        out["pncp"] = {"certames": pncp["certames"], "total": pncp["v"], "orgaos": pncp["orgaos"]} if pncp and pncp["certames"] else None
+        con.close()
         return JSONResponse(out)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
