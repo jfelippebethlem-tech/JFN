@@ -8,10 +8,12 @@ Reverse-engineering (2026-06-07): o portal (Liferay) proxeia para uma API REST W
   Endpoints (achados no JS da página): /anos, /meses, /servidores/
 Padrão CNMP Resolução 115 (remuneração de membros/servidores).
 
-STATUS: auth + endpoints CONFIRMADOS; em 2026-06-07 o BACKEND estava 404/instável (transport error),
-então a coleta não rodou ainda. Quando o backend voltar, este coletor puxa /servidores por ano/mês
-e grava em registros_folha. O PARSER é flexível (mapeia nomes de campo comuns do modelo CNMP) e deve
-ser conferido no 1º fetch bem-sucedido (ajustar _MAP se os nomes diferirem).
+STATUS (reverendo 2026-07-16): token OK; `/anos` OK; `/meses/{ano}` OK (retorna ano_mes="MMAAAA",
+ex. "062025"). Config da página traz **tipoFunc="MATIV"** (Membros ATIVos; servidores usa outro tipo).
+MAS o endpoint de DADOS `/servidores/...` devolve 404 em TODO formato testado (ano/mes, MMAAAA, com/sem
+tipoFunc, com/sem paginação, GET e POST). A montagem exata da URL está no main.js do tema (Liferay,
+não-fetchável). PRÓXIMO PASSO: capturar o XHR real no browser (MiMo Claw/Playwright) abrindo
+transparencia.mprj.mp.br/contracheque/... e observando a chamada a /servidores/ — daí fixar o path aqui.
 """
 from __future__ import annotations
 

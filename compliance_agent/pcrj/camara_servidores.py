@@ -136,13 +136,55 @@ def coletar(ano_min: int = ANO_MIN, ano_max: int | None = None,
             "gabinetes": gab}
 
 
+def bridge_para_folha(db_path=None) -> dict:
+    """Ponte pcrj_camara_servidores (pcrj.db) → registros_folha (compliance.db), para o cruzamento
+    nomeados×candidatos e o painel pegarem a Câmara automaticamente. Sem CPF (a Câmara não publica) —
+    o cruzamento é por NOME. Idempotente (dedup por fonte+nome+cargo). Sem valor de remuneração (o CSV
+    de dados abertos da Câmara traz cadastro/lotação, não a folha financeira)."""
+    import sqlite3
+    from pathlib import Path
+    con_p = _db.conectar(db_path)
+    try:
+        rows = con_p.execute(
+            "SELECT DISTINCT nome, cargo, vinculo, lotacao, ano_ingresso FROM pcrj_camara_servidores "
+            "WHERE nome IS NOT NULL AND TRIM(nome) != ''").fetchall()
+    finally:
+        con_p.close()
+    _COMP = str(Path(__file__).resolve().parent.parent.parent / "data" / "compliance.db")
+    con = sqlite3.connect(_COMP, timeout=60)
+    con.execute("PRAGMA busy_timeout=60000")
+    ins = 0
+    try:
+        for r in rows:
+            nome, cargo = (r["nome"] or "").strip(), (r["cargo"] or "").strip()
+            if con.execute("SELECT 1 FROM registros_folha WHERE fonte='camara_csv' AND nome=? AND cargo=?",
+                           (nome, cargo)).fetchone():
+                continue
+            con.execute(
+                "INSERT INTO registros_folha (cpf,nome,orgao_codigo,orgao_nome,cargo,vinculo,competencia,"
+                "remuneracao_bruta,remuneracao_liquida,abonos,descontos,fonte,created_at) "
+                "VALUES ('',?,?,?,?,?,?,0,0,0,0,'camara_csv',datetime('now'))",
+                (nome, "CAMARA_RJ", "Câmara Municipal do Rio de Janeiro", cargo,
+                 (r["vinculo"] or "").strip(), str(r["ano_ingresso"] or "")))
+            ins += 1
+        con.commit()
+    finally:
+        con.close()
+    return {"bridge_inseridos": ins, "camara_lidos": len(rows)}
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Coletor de servidores da Câmara Municipal RJ")
     ap.add_argument("--ano-min", type=int, default=ANO_MIN)
     ap.add_argument("--ano-max", type=int, default=None)
+    ap.add_argument("--bridge", action="store_true", help="só ponte p/ registros_folha (não coleta)")
     args = ap.parse_args()
+    if args.bridge:
+        print(f"BRIDGE: {bridge_para_folha()}")
+        return
     resumo = coletar(ano_min=args.ano_min, ano_max=args.ano_max)
     print(f"\nRESUMO: {resumo}")
+    print(f"BRIDGE p/ registros_folha: {bridge_para_folha()}")
 
 
 if __name__ == "__main__":

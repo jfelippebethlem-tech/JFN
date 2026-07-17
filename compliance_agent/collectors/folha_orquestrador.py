@@ -46,10 +46,24 @@ def _coletor_mprj() -> dict:
     return folha_mprj.coletar()
 
 
+def _coletor_camara() -> dict:
+    """Câmara Municipal do RJ (dados abertos, CSV por ano de ingresso). Refresh dos anos recentes
+    (servidores que podem ter sido candidatos) + ponte p/ registros_folha. Full histórico (1990+) é
+    manual: `python -m compliance_agent.pcrj.camara_servidores --ano-min 1990`."""
+    import datetime as _dt
+
+    from compliance_agent.pcrj import camara_servidores as C
+    ano = _dt.date.today().year
+    col = C.coletar(ano_min=ano - 8, ano_max=ano, pausa=0.4)
+    br = C.bridge_para_folha()
+    return {**col, **br}
+
+
 # (órgão, URL de health-check, função de coleta)
 _FONTES = [
     ("DPRJ", "https://transparencia.rj.def.br/gastos-com-pessoal/relatorio-mensal-de-remuneracao", _coletor_dprj),
     ("MPRJ", "https://api-transparencia.mprj.mp.br:8280/cnmp115/1.0.0/anos", _coletor_mprj),
+    ("CAMARA_RJ", "https://transparencia.camara.rj.gov.br/", _coletor_camara),
 ]
 
 # ── MAPA DE FONTES RECONHECIDAS (2026-07-16) — coletores a construir (entram em _FONTES) ──
