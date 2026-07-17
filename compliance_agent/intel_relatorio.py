@@ -126,6 +126,20 @@ def _b_fantasmas(d):
             [{"titulo": "1. Empresas com sinais de fachada", "html": _tabela(["Score", "Empresa", "Sinais", "Risco"], ls)}], d)
 
 
+def _b_nepotismo(d):
+    ls = []
+    for a in d.get("achados", [])[:120]:
+        membros = "<br>".join(f"{_esc(m['nome'])} <small>({_esc(m['cargo'])}{' · CPF …'+_esc(m['cpf_frag']) if m.get('cpf_frag') else ''})</small>"
+                              for m in a.get("membros", [])[:6])
+        ls.append(f"<tr><td>{'⚖️' if a['tem_autoridade'] else ''} {a['n_membros']}</td>"
+                  f"<td>{_esc(a['sobrenome'])}<br><small>{int(a['concentracao']*100)}% de {a['total_folha']} na folha</small></td>"
+                  f"<td>{_esc((a['orgao'] or '')[:34])}</td><td>{membros}</td></tr>")
+    return ("Nepotismo — parentes em cargo de confiança (SV13)",
+            f"{d.get('n',0)} clusters de sobrenome raro · {d.get('n_com_autoridade',0)} com autoridade nomeante",
+            [{"titulo": "1. Famílias em cargos de confiança no mesmo órgão",
+              "html": _tabela(["Nº", "Sobrenome (raridade)", "Órgão", "Membros"], ls)}], d)
+
+
 def _b_perdedoras(d):
     ls = [f"<tr><td>{p['participou']}×</td><td>{_esc(p['nome'])}<br><small>{_esc(p['cnpj_fmt'])}</small></td>"
           f"<td><small>{_esc(', '.join(x['nome'] for x in p.get('perde_junto_com',[])[:3]))}</small></td></tr>"
@@ -232,6 +246,7 @@ def _detectores():
         "fornecedor_dependente": (lambda p: C.fornecedor_dependente(db_path=p), _b_fornecedor_dependente, "MÉDIO"),
         "corrida_dezembro": (lambda p: C.corrida_dezembro(db_path=p), _b_corrida_dezembro, "MÉDIO"),
         "socio_oculto": (lambda p: C.socio_oculto(db_path=p), _b_socio_oculto, "ALTO"),
+        "nepotismo": (lambda p: C.nepotismo(db_path=p), _b_nepotismo, "ALTO"),
         "fantasmas": (lambda p: C.ranking_fantasmas(db_path=p, limite=150), _b_fantasmas, "ALTO"),
         "perdedoras": (lambda p: C.perdedoras_contumazes(db_path=p), _b_perdedoras, "MÉDIO"),
     }

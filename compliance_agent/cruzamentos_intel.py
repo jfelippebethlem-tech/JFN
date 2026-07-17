@@ -677,6 +677,97 @@ _SQL_NAO_PUBLICO = (
     "AND nome_credor NOT LIKE '%DEFENSORIA%' AND nome_credor NOT LIKE '%ASSEMBLEIA%'")
 
 
+_NEP_CONECT = {"DA", "DE", "DO", "DAS", "DOS", "E"}
+_NEP_SUFIXO = {"NETO", "FILHO", "JUNIOR", "JR", "SOBRINHO", "SEGUNDO", "NETA", "FILHA"}
+_NEP_COMUNS = {
+    "SILVA", "SANTOS", "OLIVEIRA", "SOUZA", "SOUSA", "LIMA", "PEREIRA", "FERREIRA", "COSTA",
+    "RODRIGUES", "ALVES", "GOMES", "RIBEIRO", "MARTINS", "CARVALHO", "ALMEIDA", "LOPES", "SOARES",
+    "FERNANDES", "VIEIRA", "BARBOSA", "ROCHA", "DIAS", "MONTEIRO", "CARDOSO", "REIS", "ARAUJO",
+    "CASTRO", "ANDRADE", "NASCIMENTO", "MOREIRA", "NUNES", "MARQUES", "MACHADO", "MELO", "FREITAS",
+    "CAMPOS", "CUNHA", "PINTO", "MOURA", "DUARTE", "TEIXEIRA", "MENDES", "RAMOS", "GONCALVES",
+    "BATISTA", "SANTANA", "SANT ANNA", "CORREA", "CORREIA", "AZEVEDO", "BORGES", "MEDEIROS", "JESUS",
+    "ASSIS", "FRANCO", "PINHEIRO", "FONSECA", "GUEDES", "VIDAL", "BRAGA", "ESPIRITO SANTO", "MORAES",
+    "CARDOSO", "TAVARES", "MIRANDA", "CAMARGO", "FIGUEIREDO", "SIQUEIRA", "AMARAL"}
+_NEP_AUTORIDADE = __import__("re").compile(
+    r"DEFENSOR|DESEMBARGADOR|\bJUIZ|SECRETARI[OA]|DIRETOR|PRESIDENTE|PROCURADOR|SUBSECRETARI|"
+    r"SUPERINTENDENTE|COORDENADOR GERAL|CHEFE DE GABINETE|VEREADOR")
+_NEP_CONF = __import__("re").compile(
+    r"COMISS|ESPECIAL|ASSESSOR|GABINETE|\bCHEFE\b|DIRETOR|SUPERINT|COORDENAD|SECRETARI|OFICIAL")
+
+
+def _nep_tokens(nome: str) -> list:
+    import unicodedata
+    s = unicodedata.normalize("NFKD", (nome or "").upper())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    return [t for t in re.sub(r"[^A-Z ]", " ", s).split() if t not in _NEP_CONECT]
+
+
+def _nep_familia(toks: list) -> str | None:
+    """Sobrenome de família = últimos 2 tokens significativos, ignorando sufixos (Neto/Filho/Jr)."""
+    sig = [t for t in toks if len(t) >= 3 and t not in _NEP_SUFIXO]
+    return " ".join(sig[-2:]) if len(sig) >= 2 else None
+
+
+def nepotismo(db_path: str | None = None, min_membros: int = 2, max_raridade: int = 20,
+              limite: int = 120) -> dict:
+    """Nepotismo (Súmula Vinculante 13 STF): ≥2 pessoas de NOMES distintos com o MESMO sobrenome de
+    família RARO, ambas em cargo de confiança no MESMO órgão. Sobrenome comum é excluído; sufixos
+    (Neto/Filho/Jr) são normalizados; o fragmento de CPF corrobora que são pessoas distintas. Marca
+    quando o cluster inclui uma AUTORIDADE nomeante (defensor/diretor/secretário)."""
+    con = _ro(db_path)
+    try:
+        from collections import defaultdict
+        total_fam: dict[str, set] = defaultdict(set)
+        org_fam: dict = defaultdict(lambda: defaultdict(dict))
+        for r in con.execute("SELECT nome, orgao_nome, cargo, cpf FROM registros_folha WHERE nome IS NOT NULL"):
+            toks = _nep_tokens(r["nome"])
+            fam = _nep_familia(toks)
+            if not fam:
+                continue
+            nn = " ".join(toks)
+            total_fam[fam].add(nn)
+            if _NEP_CONF.search((r["cargo"] or "").upper()):
+                frag = re.sub(r"\D", "", r["cpf"] or "")
+                org_fam[r["orgao_nome"]][fam][nn] = {
+                    "nome": r["nome"], "cargo": r["cargo"],
+                    "cpf_frag": frag if 5 <= len(frag) <= 9 else "",
+                    "autoridade": bool(_NEP_AUTORIDADE.search((r["cargo"] or "").upper()))}
+        achados = []
+        for org, fams in org_fam.items():
+            for fam, membros in fams.items():
+                if fam in _NEP_COMUNS or any(t in _NEP_COMUNS for t in fam.split()):
+                    continue
+                if len(membros) < min_membros:
+                    continue
+                ntot = len(total_fam[fam])
+                if ntot > max_raridade:
+                    continue
+                # sobrenome menos raro (>4 no total) só passa se o órgão concentra ≥50% deles
+                if ntot > 4 and (len(membros) / ntot) < 0.5:
+                    continue
+                mm = list(membros.values())
+                achados.append({
+                    "sobrenome": fam, "orgao": org, "n_membros": len(membros),
+                    "total_folha": ntot, "concentracao": round(len(membros) / ntot, 2) if ntot else 0,
+                    "tem_autoridade": any(m["autoridade"] for m in mm),
+                    "membros": [{"nome": m["nome"], "cargo": m["cargo"], "cpf_frag": m["cpf_frag"]} for m in mm[:8]]})
+        # autoridade no cluster + mais membros + maior concentração primeiro
+        achados.sort(key=lambda a: (not a["tem_autoridade"], -a["n_membros"], -a["concentracao"]))
+        return {"ok": True, "achados": achados[:limite], "n": len(achados),
+                "n_com_autoridade": sum(1 for a in achados if a["tem_autoridade"]),
+                "folhas": sorted({r[0] for r in con.execute("SELECT DISTINCT fonte FROM registros_folha") if r[0]}),
+                "explicacao": ("Duas ou mais pessoas de nomes distintos com o mesmo sobrenome de "
+                               "família RARO, ambas em cargo de confiança no mesmo órgão — perfil de "
+                               "nepotismo (Súmula Vinculante 13 do STF proíbe nomear parente para "
+                               "cargo em comissão). Mais forte quando o cluster inclui a autoridade "
+                               "nomeante (defensor, diretor, secretário)."),
+                "ressalva": ("Sobrenome igual não prova parentesco — pode ser coincidência; confirmar "
+                             "o vínculo familiar e a cadeia de nomeação. Cobertura limitada às folhas "
+                             "coletadas. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 def fornecedor_dependente(db_path: str | None = None, min_total: float = 2_000_000,
                           min_share: float = 0.90, limite: int = 120) -> dict:
     """Fornecedor comercial cuja receita do Estado vem ≥90% de UMA ÚNICA unidade gestora — perfil de

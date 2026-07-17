@@ -291,6 +291,7 @@ const TABS={
     {id:'g_dep',     ic:'🔗',tl:'Cativos', render:renderFornecedorDependente},
     {id:'g_dez',     ic:'📅',tl:'Dezembro',render:renderCorridaDezembro},
     {id:'g_ocult',   ic:'🕸️',tl:'Sócio oculto',render:renderSocioOculto},
+    {id:'g_nep',     ic:'👪',tl:'Nepotismo',render:renderNepotismo},
     {id:'g_laranjas',ic:'🎭',tl:'Laranjas',render:renderLaranjas},
     {id:'g_socserv', ic:'🕴️',tl:'Servidor-sócio',render:renderSocioServidor},
     {id:'g_poder',   ic:'🏛️',tl:'Poder',   render:renderPoder},
@@ -795,6 +796,26 @@ async function renderSocioOculto(){
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
 }
 
+// ═══ NEPOTISMO ═══
+async function renderNepotismo(){
+  const d=await J('/api/intel/nepotismo?limite=150');
+  if(!d.ok)return sec('Nepotismo')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Nepotismo — parentes em cargo de confiança','Duas ou mais pessoas de nomes distintos com o <b>mesmo sobrenome de família raro</b>, ambas em cargo de confiança no mesmo órgão. É o perfil de nepotismo — a <b>Súmula Vinculante 13 do STF</b> proíbe nomear parente para cargo em comissão. O fragmento de CPF confirma que são pessoas distintas.','👪')+acoesAba('nepotismo');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Clusters familiares','var(--rose)','👪')}${kpi(fmtN(d.n_com_autoridade),'Com autoridade nomeante','var(--rose)','⚖️')}
+      ${kpi(a.filter(x=>x.concentracao>=1).length,'100% do sobrenome','var(--amber)','🎯')}${kpi(a.length?a[0].n_membros:'—','Maior cluster')}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas||[]).join(', '))||'—'}. Cobertura cresce com novas folhas.</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por sobrenome, órgão ou nome…" oninput="filtrar(this,'#nep-list .card')"></div>`;
+  h+=`<div id="nep-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.sobrenome)} ${x.tem_autoridade?'<span class="tag rose">autoridade no cluster</span>':''}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao||'').slice(0,44))}</div>
+      <div class="dim" style="margin-top:2px">${Math.round(x.concentracao*100)}% das ${x.total_folha} pessoas desse sobrenome na folha</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.n_membros}</div><div class="dim">parentes?</div></div></div>
+      <table style="margin-top:10px"><tbody>${(x.membros||[]).map(m=>`<tr><td>${esc(m.nome)}</td><td class="dim">${esc(m.cargo||'')}${m.cpf_frag?' · CPF …'+esc(m.cpf_frag):''}</td></tr>`).join('')}</tbody></table>
+      ${leitura(`<b>${x.n_membros}</b> pessoas com o sobrenome <b>${esc(x.sobrenome)}</b> (${Math.round(x.concentracao*100)}% de todos com esse sobrenome na folha) ocupam cargo de confiança no mesmo órgão. Sobrenome raro concentrado em cargos comissionados é o perfil de nepotismo (SV13). ${x.membros.some(m=>m.cpf_frag)?'Fragmentos de CPF distintos confirmam pessoas diferentes.':''} Confirmar o parentesco e a cadeia de nomeação.`)}`,
+    'hl')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
 async function renderLaranjas(){
   const d=await J('/api/laranjas');if(!d.ok)return sec('Laranjas')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const it=d.itens||[];

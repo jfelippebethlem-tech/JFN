@@ -1350,6 +1350,20 @@ async def api_intel_corrida_dezembro(limite: int = 120):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/nepotismo")
+async def api_intel_nepotismo(limite: int = 120):
+    """Nepotismo (SV13 STF): ≥2 pessoas de nomes distintos, mesmo sobrenome de família raro, ambas
+    em cargo de confiança no mesmo órgão. Fragmento de CPF corrobora pessoas distintas."""
+    try:
+        from compliance_agent.cruzamentos_intel import nepotismo
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:nep:{lim}", 600)):
+            d = _cache_put(f"intel:nep:{lim}", nepotismo(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/socio_oculto")
 async def api_intel_socio_oculto(limite: int = 120):
     """Pessoa/holding sócia de ≥3 empresas fornecedoras do Estado (empresário oculto / grupo familiar)."""
