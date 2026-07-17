@@ -1313,6 +1313,20 @@ async def api_intel_fracionamento(limite: int = 120):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/sobrepreco")
+async def api_intel_sobrepreco(limite: int = 120):
+    """Sobrepreço por mediana de item: mesmo produto (descrição normalizada) comprado por vários
+    órgãos; sinaliza preço unitário ≥2× a mediana (e fora de mediana+3·MAD). Fonte: PNCP."""
+    try:
+        from compliance_agent.cruzamentos_intel import sobrepreco
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:sobre:{lim}", 600)):
+            d = _cache_put(f"intel:sobre:{lim}", sobrepreco(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/fantasmas")
 async def api_intel_fantasmas(limite: int = 50):
     """Ranking de risco de empresa-fantasma (8 sinais determinísticos do /fantasma) no conjunto-alvo

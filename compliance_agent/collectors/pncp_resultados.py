@@ -50,18 +50,27 @@ def init_schema(con: sqlite3.Connection) -> None:
             porte_fornecedor INTEGER,
             unidade_codigo TEXT,                  -- unidadeOrgao.codigoUnidade (órgão REAL do ente)
             unidade_nome  TEXT,                   -- unidadeOrgao.nomeUnidade
+            item_descricao TEXT,                  -- descrição do ITEM (ex.: "Ventilador") — base do sobrepreço
+            unidade_medida TEXT,                  -- unidadeMedida (ex.: "Unidade", "Caixa")
+            valor_unitario REAL,                  -- valorUnitarioHomologado (preço unitário pago)
+            quantidade    REAL,                   -- quantidadeHomologada
             coletado_em   TEXT DEFAULT (datetime('now')),
             PRIMARY KEY (certame, item, fornecedor_cnpj)
         )""")
     # migração: bases antigas não têm unidadeOrgao (orgao_nome = razão social do ENTE —
-    # p/ contratação estadual é sempre "Estado do Rio de Janeiro", colapsando os órgãos)
+    # p/ contratação estadual é sempre "Estado do Rio de Janeiro", colapsando os órgãos),
+    # nem os campos de item (descrição/preço unitário) usados na detecção de sobrepreço
     cols = {r[1] for r in con.execute("PRAGMA table_info(pncp_resultado)")}
-    for c in ("unidade_codigo", "unidade_nome"):
+    for c in ("unidade_codigo", "unidade_nome", "item_descricao", "unidade_medida"):
         if c not in cols:
             con.execute(f"ALTER TABLE pncp_resultado ADD COLUMN {c} TEXT")
+    for c in ("valor_unitario", "quantidade"):
+        if c not in cols:
+            con.execute(f"ALTER TABLE pncp_resultado ADD COLUMN {c} REAL")
     con.execute("CREATE INDEX IF NOT EXISTS ix_pncpres_orgao ON pncp_resultado(orgao_cnpj)")
     con.execute("CREATE INDEX IF NOT EXISTS ix_pncpres_forn ON pncp_resultado(fornecedor_cnpj)")
     con.execute("CREATE INDEX IF NOT EXISTS ix_pncpres_data ON pncp_resultado(data_pub)")
+    con.execute("CREATE INDEX IF NOT EXISTS ix_pncpres_desc ON pncp_resultado(item_descricao)")
     con.commit()
 
 
@@ -176,6 +185,9 @@ async def _gravar_certame(con, client, ct: dict, tot: dict) -> int:
         num = it.get("numeroItem")
         if num is None:
             continue
+        # descrição/unidade do item vêm do /itens (base do sobrepreço: "Ventilador", "Caixa"...)
+        desc = (it.get("descricao") or "")[:200]
+        unid = (it.get("unidadeMedida") or "").strip()
         res = await _resultado_item(client, cnpj, ano, seq, num)
         if res:
             tot["itens_com_resultado"] += 1
@@ -183,17 +195,31 @@ async def _gravar_certame(con, client, ct: dict, tot: dict) -> int:
             forn = re.sub(r"\D", "", rr.get("niFornecedor", "") or "")
             if not forn:
                 continue
-            con.execute("""INSERT OR IGNORE INTO pncp_resultado
+            # UPSERT: linha nova entra completa; linha já existente ganha os campos de item
+            # (descrição/preço unitário/qtd) — permite o backfill de sobrepreço sobre a base atual.
+            con.execute("""INSERT INTO pncp_resultado
                 (certame, orgao_cnpj, orgao_nome, uf, municipio, modalidade, objeto, data_pub,
                  item, fornecedor_cnpj, fornecedor_nome, valor_homologado, ordem_classificacao,
-                 porte_fornecedor, unidade_codigo, unidade_nome)
+                 porte_fornecedor, unidade_codigo, unidade_nome,
+                 item_descricao, unidade_medida, valor_unitario, quantidade)
                 VALUES (:certame,:orgao_cnpj,:orgao_nome,:uf,:municipio,:modalidade,:objeto,:data_pub,
-                        :item,:forn,:nome,:valor,:ordem,:porte,:unidade_codigo,:unidade_nome)""",
+                        :item,:forn,:nome,:valor,:ordem,:porte,:unidade_codigo,:unidade_nome,
+                        :desc,:unid,:vunit,:qtd)
+                ON CONFLICT(certame, item, fornecedor_cnpj) DO UPDATE SET
+                    item_descricao=COALESCE(excluded.item_descricao, item_descricao),
+                    unidade_medida=COALESCE(excluded.unidade_medida, unidade_medida),
+                    valor_unitario=COALESCE(excluded.valor_unitario, valor_unitario),
+                    quantidade=COALESCE(excluded.quantidade, quantidade),
+                    unidade_codigo=COALESCE(excluded.unidade_codigo, unidade_codigo),
+                    unidade_nome=COALESCE(excluded.unidade_nome, unidade_nome)""",
                         {**meta, "item": num, "forn": forn,
                          "nome": rr.get("nomeRazaoSocialFornecedor"),
                          "valor": rr.get("valorTotalHomologado"),
                          "ordem": rr.get("ordemClassificacaoSrp"),
-                         "porte": rr.get("porteFornecedorId")})
+                         "porte": rr.get("porteFornecedorId"),
+                         "desc": desc, "unid": unid,
+                         "vunit": rr.get("valorUnitarioHomologado"),
+                         "qtd": rr.get("quantidadeHomologada")})
             gravados += con.total_changes and 1 or 0
     return gravados
 
@@ -214,6 +240,54 @@ async def _consulta_itens(client, cnpj: str, ano: str, seq: int) -> list[dict]:
             continue
         return []
     return []
+
+
+async def backfill_precos_unitarios(con, limite: int = 3000, pausa: float = 0.25) -> dict:
+    """Repopula item_descricao/valor_unitario/quantidade nas linhas JÁ existentes (a base antiga só
+    guardava o total). Re-busca itens+resultados dos certames que ainda não têm preço unitário,
+    mais RECENTES primeiro (onde o sobrepreço interessa). Idempotente (upsert), educado com a API."""
+    init_schema(con)
+    certames = [r[0] for r in con.execute(
+        "SELECT DISTINCT certame FROM pncp_resultado "
+        "WHERE ordem_classificacao=1 AND valor_unitario IS NULL AND certame IS NOT NULL "
+        "ORDER BY data_pub DESC LIMIT ?", (limite,))]
+    tot = {"certames": 0, "linhas_completadas": 0, "sem_id": 0}
+    async with httpx.AsyncClient(timeout=40) as client:
+        for idp in certames:
+            pr = _parse_id_pncp(idp or "")
+            if not pr:
+                tot["sem_id"] += 1
+                continue
+            cnpj, ano, seq = pr
+            itens = await _consulta_itens(client, cnpj, ano, seq)
+            for it in itens:
+                num = it.get("numeroItem")
+                if num is None:
+                    continue
+                desc = (it.get("descricao") or "")[:200]
+                unid = (it.get("unidadeMedida") or "").strip()
+                res = await _resultado_item(client, cnpj, ano, seq, num)
+                for rr in res:
+                    forn = re.sub(r"\D", "", rr.get("niFornecedor", "") or "")
+                    if not forn:
+                        continue
+                    con.execute("""UPDATE pncp_resultado SET
+                            item_descricao=COALESCE(:desc, item_descricao),
+                            unidade_medida=COALESCE(:unid, unidade_medida),
+                            valor_unitario=COALESCE(:vunit, valor_unitario),
+                            quantidade=COALESCE(:qtd, quantidade)
+                        WHERE certame=:certame AND item=:item AND fornecedor_cnpj=:forn""",
+                        {"desc": desc, "unid": unid, "vunit": rr.get("valorUnitarioHomologado"),
+                         "qtd": rr.get("quantidadeHomologada"), "certame": idp, "item": num, "forn": forn})
+                    tot["linhas_completadas"] += con.total_changes and 1 or 0
+                await asyncio.sleep(pausa)
+            tot["certames"] += 1
+            if tot["certames"] % 50 == 0:
+                con.commit()
+                print(f"[backfill precos] {tot['certames']}/{len(certames)} certames · "
+                      f"{tot['linhas_completadas']} linhas", flush=True)
+    con.commit()
+    return tot
 
 
 def _chave_orgao(orgao_cnpj: str | None, unidade_codigo: str | None) -> str:
@@ -490,7 +564,11 @@ if __name__ == "__main__":
     # busy_timeout de 5s (default) estouraria em contenção de escrita. WAL + 60s absorve.
     con = sqlite3.connect("data/compliance.db", timeout=60)
     con.execute("PRAGMA busy_timeout=60000")
-    if "--incremental" in args:
+    if "--backfill-precos" in args:
+        # repopula preço unitário/descrição nas linhas antigas (sobrepreço). [N] = teto de certames.
+        n = next((int(a) for a in args if a.isdigit()), 3000)
+        r = asyncio.run(backfill_precos_unitarios(con, limite=n))
+    elif "--incremental" in args:
         # timer: só os 2 meses mais recentes (idempotente — reprocessa o que fechou/foi homologado agora)
         hoje = date.today()
         ano_ant, mes_ant = (hoje.year - 1, 12) if hoje.month == 1 else (hoje.year, hoje.month - 1)

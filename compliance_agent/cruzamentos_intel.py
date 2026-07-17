@@ -368,6 +368,84 @@ def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int 
         con.close()
 
 
+def _norm_item(desc: str) -> str:
+    """Normaliza a descrição do item p/ agrupar compras comparáveis: minúsculas, sem acento,
+    sem plural simples, sem pontuação/números soltos. 'Ventiladores' e 'VENTILADOR' → 'ventilador'."""
+    import unicodedata
+    s = unicodedata.normalize("NFKD", (desc or "").lower())
+    s = "".join(c for c in s if not unicodedata.combining(c))
+    s = re.sub(r"[^a-z0-9 ]", " ", s)
+    toks = []
+    for t in s.split():
+        if len(t) < 3 or t.isdigit():
+            continue
+        t = re.sub(r"(es|s)$", "", t) if len(t) > 4 else t  # plural simples
+        toks.append(t)
+    return " ".join(sorted(set(toks)))  # ordem-insensível: "caneta azul" == "azul caneta"
+
+
+def _mediana(xs: list) -> float:
+    xs = sorted(xs)
+    n = len(xs)
+    return xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+
+def sobrepreco(db_path: str | None = None, min_amostra: int = 5, fator: float = 2.0,
+               limite: int = 120) -> dict:
+    """Sobrepreço por MEDIANA de item: agrupa compras pela descrição normalizada do item
+    (mesmo produto entre órgãos) e sinaliza quem pagou preço UNITÁRIO muito acima da mediana do
+    grupo (≥ `fator`× a mediana E fora da banda robusta mediana+3·MAD). Fonte: valorUnitarioHomologado
+    do PNCP. Robusto a outlier (mediana/MAD, não média)."""
+    con = _ro(db_path)
+    try:
+        rows = con.execute(
+            "SELECT item_descricao d, unidade_medida un, valor_unitario vu, certame, orgao_nome, "
+            "unidade_nome, fornecedor_cnpj, fornecedor_nome, municipio, data_pub "
+            "FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 "
+            "AND item_descricao IS NOT NULL AND length(item_descricao)>=3").fetchall()
+        grupos: dict[str, list] = {}
+        for r in rows:
+            chave = _norm_item(r["d"])
+            if not chave:
+                continue
+            grupos.setdefault(chave, []).append(r)
+        achados = []
+        n_grupos_validos = 0
+        for chave, itens in grupos.items():
+            precos = [r["vu"] for r in itens]
+            if len(precos) < min_amostra:
+                continue
+            med = _mediana(precos)
+            if med <= 0:
+                continue
+            mad = _mediana([abs(p - med) for p in precos]) or (med * 0.1)
+            n_grupos_validos += 1
+            for r in itens:
+                p = r["vu"]
+                z = (p - med) / (1.4826 * mad) if mad else 0  # z-score robusto (Nigrini/Iglewicz)
+                if p >= fator * med and z >= 3:
+                    achados.append({
+                        "item": r["d"], "unidade_medida": r["un"], "grupo": chave,
+                        "preco": p, "mediana": round(med, 2), "razao": round(p / med, 1),
+                        "z_robusto": round(z, 1), "amostra": len(precos),
+                        "orgao": r["unidade_nome"] or r["orgao_nome"], "municipio": r["municipio"],
+                        "fornecedor": r["fornecedor_nome"], "fornecedor_cnpj": r["fornecedor_cnpj"],
+                        "certame": r["certame"], "data": (r["data_pub"] or "")[:10],
+                        "sobrepreco_est": round(p - med, 2)})
+        achados.sort(key=lambda a: -a["razao"])
+        return {"ok": True, "achados": achados[:limite], "n": len(achados),
+                "grupos_comparaveis": n_grupos_validos, "itens_com_preco": len(rows),
+                "explicacao": ("Mesmo item (descrição normalizada) comprado por vários órgãos: "
+                               "sinaliza quem pagou preço UNITÁRIO muito acima da mediana do grupo "
+                               "(≥ 2× a mediana e fora de mediana+3·MAD, medida robusta a outliers). "
+                               "Fonte: preço unitário homologado do PNCP."),
+                "ressalva": ("Itens com MESMO nome podem diferir em marca, especificação, embalagem ou "
+                             "quantidade — a descrição do PNCP é curta. Confirmar o termo de referência "
+                             "antes de concluir sobrepreço. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 def _beneficios_vinculo_resumo() -> dict:
     """Resumo do cruzamento comissionados/servidores PCRJ × benefício social DURANTE o vínculo
     (pericia_beneficios.analisar() — cruza 7,3 mi de registros; NUNCA rodar no request HTTP)."""
@@ -443,3 +521,10 @@ if __name__ == "__main__":
         for g in d["grupos"][:12]:
             print(f"  {(g['nome'] or '')[:26]:26} UG{g['ug_emitente']} {g['mes']} "
                   f"{g['n_colado']}/{g['n']} colados ({int(g['concentracao']*100)}%) soma R${g['soma']:,.2f}")
+    elif cmd == "sobrepreco":
+        d = sobrepreco()
+        print(f"itens com preço unitário: {d['itens_com_preco']} | grupos comparáveis: "
+              f"{d['grupos_comparaveis']} | achados: {d['n']}")
+        for a in d["achados"][:12]:
+            print(f"  {a['item'][:34]:34} R${a['preco']:>10,.2f} vs med R${a['mediana']:>9,.2f} "
+                  f"({a['razao']}x, n={a['amostra']}) — {(a['orgao'] or '')[:26]}")

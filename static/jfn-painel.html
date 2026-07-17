@@ -260,6 +260,7 @@ const TABS={
     {id:'e_pericias',ic:'⚖️',tl:'Perícias',render:renderPericias},
     {id:'e_sanc',    ic:'🚫',tl:'Sancionadas',render:()=>renderSancionadas('estado')},
     {id:'e_frac',    ic:'✂️',tl:'Fracion.',render:renderFracionamento},
+    {id:'e_sobre',   ic:'📈',tl:'Sobrepreço',render:renderSobrepreco},
     {id:'e_cartel',  ic:'🔗',tl:'Cartel',  render:renderCartel},
     {id:'e_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('estado')},
     {id:'e_poder',   ic:'🏛️',tl:'Nomeados',render:renderPoder},
@@ -440,6 +441,33 @@ async function renderFracionamento(){
       <div class="kv" style="margin-top:8px"><span class="k">${x.n_colado} de ${x.n} OBs em 85–100% do teto (R$ ${Number(x.teto).toLocaleString('pt-BR',{maximumFractionDigits:0})})</span><b>${fmtRc(x.soma)}</b></div>
       ${leitura(`${x.n_colado} das ${x.n} OBs deste favorecido para a UG ${esc(String(x.ug_emitente))} em ${esc(x.mes)} ficaram logo abaixo do teto de dispensa. Somadas dão ${fmtRc(x.soma)} — acima do limite, o que exigiria licitação. Cruzar com os empenhos/processos do mês.`)}`,
       pct>=50?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
+// ═══ SOBREPREÇO (Estado) ═══
+async function renderSobrepreco(){
+  const d=await J('/api/intel/sobrepreco?limite=120');
+  if(!d.ok)return sec('Sobrepreço')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('estado','Sobrepreço — pagou muito acima da mediana',
+    'Mesmo item (descrição normalizada) comprado por vários órgãos: sinaliza quem pagou o preço <b>unitário</b> muito acima da mediana do grupo (≥ 2× a mediana e fora de mediana+3·MAD, medida robusta a outliers). Fonte: preço unitário homologado do PNCP.','📈');
+  if(!a.length){
+    h+=`<div class="warn" style="margin-top:12px">⏳ Base de preços unitários em formação: ${fmtN(d.itens_com_preco)} itens com preço, ${fmtN(d.grupos_comparaveis)} grupos comparáveis (≥5 compras do mesmo item). O backfill do PNCP popula o preço unitário item a item; a aba acende conforme a cobertura cresce.</div>`;
+    return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+  }
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Itens com sobrepreço','var(--rose)','📈')}${kpi(fmtN(d.grupos_comparaveis),'Grupos comparáveis',null,'🧺')}
+      ${kpi(a.length?a[0].razao+'×':'—','Pior caso (× mediana)','var(--rose)')}${kpi(fmtRc(a.reduce((s,x)=>s+(x.sobrepreco_est*(x.amostra?1:1)),0)),'Δ acima da mediana (unit.)',null,'💸')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#sob-list .card')"></div>`;
+  h+=`<div id="sob-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao||'—').slice(0,48))}${x.municipio?' · '+esc(x.municipio):''}</div>
+      <div class="dim" style="margin-top:2px">venc.: ${clk(x.fornecedor_cnpj,x.fornecedor||'—')}${x.data?' · '+esc(x.data):''}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.razao}×</div><div class="dim">a mediana</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">Pagou <b style="color:var(--rose)">${fmtR(x.preco)}</b> · mediana ${fmtR(x.mediana)} (n=${x.amostra})</span><b>z ${x.z_robusto}</b></div>
+      ${leitura(`Este órgão pagou <b>${fmtR(x.preco)}</b> por unidade de "${esc(x.item)}", enquanto a mediana de ${x.amostra} compras do mesmo item foi <b>${fmtR(x.mediana)}</b> — <b>${x.razao}× mais caro</b> (z robusto ${x.z_robusto}). Sobrepreço unitário estimado: ${fmtR(x.sobrepreco_est)}. Confirmar marca/especificação no termo de referência.`)}`,
+    'hl')).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
 }
