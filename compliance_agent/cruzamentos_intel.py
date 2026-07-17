@@ -503,17 +503,22 @@ def sobrepreco(db_path: str | None = None, min_amostra: int = 5, min_certames: i
     ser de um certame DIFERENTE da maioria (compara compras independentes, não itens do mesmo lote)."""
     con = _ro(db_path)
     try:
+        # quantidade>=2: preço unitário só é comparável em compra REAL por unidade. Linha com
+        # quantidade 1 costuma trazer o total do lote/contrato no campo unitário (Água a R$62 mil,
+        # serviço a R$85 mi) — poluiria a mediana e viraria falso outlier.
         rows = con.execute(
             "SELECT item_descricao d, unidade_medida un, valor_unitario vu, certame, orgao_nome, "
             "unidade_nome, fornecedor_cnpj, fornecedor_nome, municipio, data_pub "
-            "FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 "
+            "FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 AND quantidade>=2 "
             "AND item_descricao IS NOT NULL AND length(item_descricao)>=3").fetchall()
-        grupos: dict[str, list] = {}
+        grupos: dict[tuple, list] = {}
         for r in rows:
-            chave = _norm_item(r["d"])
-            if not chave:
+            base = _norm_item(r["d"])
+            if not base:
                 continue
-            grupos.setdefault(chave, []).append(r)
+            # a UNIDADE DE MEDIDA entra na chave: "óleo" em litro ≠ em tambor; "refeição" ≠ "evento".
+            un = re.sub(r"[^a-z]", "", (r["un"] or "").lower())[:8]
+            grupos.setdefault((base, un), []).append(r)
         achados = []
         n_grupos_validos = 0
         for chave, itens in grupos.items():
@@ -537,7 +542,7 @@ def sobrepreco(db_path: str | None = None, min_amostra: int = 5, min_certames: i
                 z = (p - med) / (1.4826 * mad) if mad else 0  # z-score robusto (Iglewicz/Nigrini)
                 if p >= fator * med and z >= 3.5:
                     achados.append({
-                        "item": r["d"], "unidade_medida": r["un"], "grupo": chave,
+                        "item": r["d"], "unidade_medida": r["un"], "grupo": chave[0],
                         "preco": p, "mediana": round(med, 2), "razao": round(p / med, 1),
                         "z_robusto": round(z, 1), "amostra": len(precos), "certames": n_certames,
                         "orgao": r["unidade_nome"] or r["orgao_nome"], "municipio": r["municipio"],
