@@ -654,11 +654,14 @@ def _upsert_contrato_estado(con, c: dict) -> None:
 
 async def coletar_contratos_estado(con, ano_ini: int = 2021, mes_ini: int = 1,
                                    ano_fim: int | None = None, mes_fim: int | None = None,
-                                   limite_termos: int = 4000, pausa: float = 0.3) -> dict:
+                                   limite_termos: int = 4000, pausa: float = 0.3,
+                                   so_aditivos: bool = False) -> dict:
     """Coleta contratos dos ENTES ESTADUAIS do RJ no PNCP (fonte='pncp_estado') e, para os que ainda
     não foram checados, busca os TERMOS ADITIVOS — grava em contrato_aditivo e atualiza valor_global +
     num_aditivos em pcrj_contratos (a variação real do valor, base do detector de aditivos). Serial e
-    educado (pausas, backoff no _consulta_retry). Resumível: só re-checa aditivos onde falta."""
+    educado (pausas, backoff no _consulta_retry). Resumível: só re-checa aditivos onde falta.
+    `so_aditivos=True` PULA a fase 1 (contratos) e roda só a fase 2 sobre os já coletados — desacopla
+    a fase de aditivos da coleta de contratos (que o PNCP rate-limita depois de muitas chamadas)."""
     from compliance_agent.pcrj.gastos_db import init_schema
     init_schema(con)
     cols = {r[1] for r in con.execute("PRAGMA table_info(pcrj_contratos)")}
@@ -671,16 +674,17 @@ async def coletar_contratos_estado(con, ano_ini: int = 2021, mes_ini: int = 1,
     tot = {"contratos": 0, "entes": 0, "aditivos_checados": 0, "termos": 0, "com_acrescimo": 0}
 
     # ── fase 1: contratos ──────────────────────────────────────────────────
-    for cnpj in _entes_estado(con):
-        tot["entes"] += 1
-        for d_ini, d_fim in _meses_iso(ano_ini, mes_ini, ano_fim, mes_fim):
-            res = await coletar_contratos_pcrj(d_ini, d_fim, cnpj_orgao=cnpj)
-            for c in res.get("itens", []):
-                if c.get("numero_controle_pncp"):
-                    _upsert_contrato_estado(con, c)
-                    tot["contratos"] += 1
-            con.commit()
-            await asyncio.sleep(pausa)
+    if not so_aditivos:
+        for cnpj in _entes_estado(con):
+            tot["entes"] += 1
+            for d_ini, d_fim in _meses_iso(ano_ini, mes_ini, ano_fim, mes_fim):
+                res = await coletar_contratos_pcrj(d_ini, d_fim, cnpj_orgao=cnpj)
+                for c in res.get("itens", []):
+                    if c.get("numero_controle_pncp"):
+                        _upsert_contrato_estado(con, c)
+                        tot["contratos"] += 1
+                con.commit()
+                await asyncio.sleep(pausa)
 
     # ── fase 2: termos aditivos (resumível) ────────────────────────────────
     pend = [r[0] for r in con.execute(
@@ -738,7 +742,11 @@ if __name__ == "__main__":
     args = sys.argv[1:]
     con = sqlite3.connect("data/compliance.db", timeout=60)
     con.execute("PRAGMA busy_timeout=60000")
-    if "--incremental" in args:
+    if "--aditivos" in args:
+        # SÓ fase 2: termos aditivos sobre os contratos estaduais já coletados (desacopla do rate-limit)
+        lim = next((int(a) for a in args if a.isdigit()), 8000)
+        r = asyncio.run(coletar_contratos_estado(con, so_aditivos=True, limite_termos=lim))
+    elif "--incremental" in args:
         # timer diário: contratos dos 2 meses recentes + fatia de termos p/ completar a cobertura
         hoje = date.today()
         ai, mi = (hoje.year - 1, 12) if hoje.month == 1 else (hoje.year, hoje.month - 1)
