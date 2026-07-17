@@ -46,6 +46,12 @@ def _coletor_mprj() -> dict:
     return folha_mprj.coletar()
 
 
+def _coletor_tjrj() -> dict:
+    """TJRJ — folha do mês mais recente (Anexo VIII CNJ, ZIP). Grava direto em registros_folha."""
+    from compliance_agent.collectors import folha_tjrj
+    return folha_tjrj.coletar()
+
+
 def _coletor_camara() -> dict:
     """Câmara Municipal do RJ (dados abertos, CSV por ano de ingresso). Refresh dos anos recentes
     (servidores que podem ter sido candidatos) + ponte p/ registros_folha. Full histórico (1990+) é
@@ -64,6 +70,7 @@ _FONTES = [
     ("DPRJ", "https://transparencia.rj.def.br/gastos-com-pessoal/relatorio-mensal-de-remuneracao", _coletor_dprj),
     ("MPRJ", "https://api-transparencia.mprj.mp.br:8280/cnmp115/1.0.0/anos", _coletor_mprj),
     ("CAMARA_RJ", "https://transparencia.camara.rj.gov.br/", _coletor_camara),
+    ("TJRJ", "https://www3.tjrj.jus.br/portalservidor/PortalCorpDetalheFolha.aspx", _coletor_tjrj),
 ]
 
 # ── MAPA DE FONTES RECONHECIDAS (2026-07-16) — coletores a construir (entram em _FONTES) ──
