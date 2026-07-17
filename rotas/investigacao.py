@@ -1313,6 +1313,56 @@ async def api_intel_fracionamento(limite: int = 120):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/pdf")
+async def api_intel_pdf(tipo: str):
+    """Gera o PDF Kroll do detector `tipo` e devolve a URL. Síncrono (detectores são rápidos/cache)."""
+    try:
+        from compliance_agent.intel_relatorio import gerar_pdf_intel
+        d = await gerar_pdf_intel(tipo, db_path=str(RAIZ / "data" / "compliance.db"))
+        return JSONResponse(d, status_code=200 if d.get("ok") else 400)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/fornecedor_dependente")
+async def api_intel_fornecedor_dependente(limite: int = 120):
+    """Fornecedor comercial com ≥90% da receita do Estado numa única unidade gestora ('empresa do órgão')."""
+    try:
+        from compliance_agent.cruzamentos_intel import fornecedor_dependente
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:dep:{lim}", 600)):
+            d = _cache_put(f"intel:dep:{lim}", fornecedor_dependente(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/corrida_dezembro")
+async def api_intel_corrida_dezembro(limite: int = 120):
+    """Fornecedor comercial com ≥75% do valor do ano concentrado em dezembro (corrida do empenho)."""
+    try:
+        from compliance_agent.cruzamentos_intel import corrida_dezembro
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:dez:{lim}", 600)):
+            d = _cache_put(f"intel:dez:{lim}", corrida_dezembro(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/socio_oculto")
+async def api_intel_socio_oculto(limite: int = 120):
+    """Pessoa/holding sócia de ≥3 empresas fornecedoras do Estado (empresário oculto / grupo familiar)."""
+    try:
+        from compliance_agent.cruzamentos_intel import socio_oculto
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:ocult:{lim}", 600)):
+            d = _cache_put(f"intel:ocult:{lim}", socio_oculto(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/aditivos")
 async def api_intel_aditivos(limite: int = 120):
     """Aditivos que estouram o limite legal de acréscimo (25%/50%, Lei 14.133 art. 125) e change

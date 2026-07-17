@@ -668,6 +668,119 @@ def sobrepreco(db_path: str | None = None, min_amostra: int = 5, min_certames: i
         con.close()
 
 
+# favorecido que é ENTE PÚBLICO/banco (repasse, não fornecedor comercial) — SQL reutilizável
+_SQL_NAO_PUBLICO = (
+    "nome_credor NOT LIKE '%FUNDO%' AND nome_credor NOT LIKE '%PREFEITURA%' AND nome_credor NOT LIKE '%MUNICIPIO%' "
+    "AND nome_credor NOT LIKE '%MUNICÍPIO%' AND nome_credor NOT LIKE '%SECRETARIA%' AND nome_credor NOT LIKE '%BANCO%' "
+    "AND nome_credor NOT LIKE '%CAIXA ECON%' AND nome_credor NOT LIKE '%EQUALIZ%' AND nome_credor NOT LIKE '%TRIBUNAL%' "
+    "AND nome_credor NOT LIKE '%ESTADO DO RIO%' AND nome_credor NOT LIKE '%INSTITUTO DE PREV%' "
+    "AND nome_credor NOT LIKE '%DEFENSORIA%' AND nome_credor NOT LIKE '%ASSEMBLEIA%'")
+
+
+def fornecedor_dependente(db_path: str | None = None, min_total: float = 2_000_000,
+                          min_share: float = 0.90, limite: int = 120) -> dict:
+    """Fornecedor comercial cuja receita do Estado vem ≥90% de UMA ÚNICA unidade gestora — perfil de
+    'empresa do órgão' (criada/mantida para atender um comprador só). Exclui repasses a entes públicos."""
+    con = _ro(db_path)
+    try:
+        rows = con.execute(f"""
+        WITH tot AS (SELECT credor, SUM(valor) t FROM ob_orcamentaria_siafe
+                     WHERE length(credor)=14 AND valor>0 AND {_SQL_NAO_PUBLICO}
+                     GROUP BY credor HAVING t >= ?),
+        porug AS (SELECT credor, ug_emitente, SUM(valor) v, MAX(nome_credor) nome
+                  FROM ob_orcamentaria_siafe WHERE length(credor)=14 AND valor>0
+                  GROUP BY credor, ug_emitente)
+        SELECT p.credor, p.nome, p.ug_emitente, p.v, t.t,
+               (SELECT COUNT(DISTINCT ug_emitente) FROM ob_orcamentaria_siafe
+                WHERE credor=p.credor AND valor>0) n_ugs
+        FROM porug p JOIN tot t ON t.credor=p.credor
+        WHERE p.v >= ? * t.t ORDER BY t.t DESC LIMIT ?""",
+                           (min_total, min_share, limite)).fetchall()
+        import json as _json
+        try:
+            ugn = _json.loads((_REPO / "data" / "ug_index_siafe.json").read_text())["ugs"]
+        except Exception:
+            ugn = {}
+        achados = [{
+            "cnpj": r["credor"], "nome": r["nome"],
+            "cnpj_fmt": (f"{r['credor'][:2]}.{r['credor'][2:5]}.{r['credor'][5:8]}/{r['credor'][8:12]}-{r['credor'][12:]}"),
+            "total": r["t"], "valor_ug": r["v"], "share": round(r["v"] / r["t"], 2) if r["t"] else 0,
+            "ug": r["ug_emitente"], "ug_nome": ugn.get(r["ug_emitente"], ""), "n_ugs": r["n_ugs"]}
+            for r in rows]
+        return {"ok": True, "achados": achados, "n": len(achados),
+                "explicacao": ("Empresa que recebe quase tudo (≥90%) de uma única unidade gestora do "
+                               "Estado. Dependência total de um comprador é o perfil de fornecedor "
+                               "cativo/'empresa do órgão' — mercado fechado, risco de direcionamento."),
+                "ressalva": ("Monopólio pode ser legítimo (nicho, concessão exclusiva) — cruzar com o "
+                             "histórico de licitações do órgão e o QSA. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
+def corrida_dezembro(db_path: str | None = None, min_total: float = 2_000_000,
+                     min_share: float = 0.75, limite: int = 120) -> dict:
+    """Fornecedor comercial com ≥75% do valor recebido no ano concentrado em DEZEMBRO — corrida do
+    empenho de fim de ano (planejamento deficiente ou direcionamento na virada do exercício)."""
+    con = _ro(db_path)
+    try:
+        rows = con.execute(f"""
+        WITH t AS (SELECT credor, MAX(nome_credor) nome, SUM(valor) tot,
+                     SUM(CASE WHEN substr(data_emissao,4,2)='12' THEN valor ELSE 0 END) dez,
+                     COUNT(*) n_obs
+                   FROM ob_orcamentaria_siafe WHERE length(credor)=14 AND valor>0 AND {_SQL_NAO_PUBLICO}
+                   GROUP BY credor HAVING tot >= ?)
+        SELECT credor, nome, tot, dez, n_obs FROM t WHERE dez >= ? * tot
+        ORDER BY tot DESC LIMIT ?""", (min_total, min_share, limite)).fetchall()
+        achados = [{
+            "cnpj": r["credor"], "nome": r["nome"],
+            "cnpj_fmt": (f"{r['credor'][:2]}.{r['credor'][2:5]}.{r['credor'][5:8]}/{r['credor'][8:12]}-{r['credor'][12:]}"),
+            "total": r["tot"], "dezembro": r["dez"], "share": round(r["dez"] / r["tot"], 2) if r["tot"] else 0,
+            "n_obs": r["n_obs"]} for r in rows]
+        return {"ok": True, "achados": achados, "n": len(achados),
+                "explicacao": ("Fornecedor que recebeu a maior parte do ano em DEZEMBRO. Concentração "
+                               "no fim do exercício é red-flag de 'corrida do empenho' — verba usada às "
+                               "pressas antes de perder o orçamento, terreno fértil para dispensa e "
+                               "direcionamento."),
+                "ressalva": ("Alguns objetos são sazonais (fim de ano) legitimamente — confirmar o "
+                             "processo. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
+def socio_oculto(db_path: str | None = None, min_empresas: int = 3, limite: int = 120) -> dict:
+    """Pessoa/holding que é sócia de VÁRIAS (≥3) empresas fornecedoras do Estado — empresário oculto
+    ou grupo familiar controlando um leque de fornecedores (indício de fracionamento entre 'concorrentes'
+    do mesmo dono). Exclui conselheiros de estatal (não são donos)."""
+    con = _ro(db_path)
+    try:
+        rows = con.execute("""
+        SELECT s.socio_nome, s.socio_doc, COUNT(DISTINCT s.cnpj) n_emp, SUM(f.total_pago) tot,
+               GROUP_CONCAT(DISTINCT f.favorecido_nome) empresas
+        FROM socios_fornecedor s JOIN favorecido_resumo f ON f.favorecido_cpf=s.cnpj
+        WHERE s.socio_nome<>'' AND f.total_pago>0
+          AND (lower(s.qualificacao) LIKE '%administrador%' OR s.qualificacao LIKE '%Sócio%' OR lower(s.qualificacao) LIKE '%titular%')
+          AND s.qualificacao NOT LIKE '%Conselh%'
+        GROUP BY s.socio_nome HAVING n_emp >= ? AND tot < 2e9
+        ORDER BY n_emp DESC, tot DESC LIMIT ?""", (min_empresas, limite)).fetchall()
+        achados = []
+        for r in rows:
+            emps = [e for e in (r["empresas"] or "").split(",") if e][:8]
+            achados.append({
+                "socio": r["socio_nome"], "doc": r["socio_doc"], "n_empresas": r["n_emp"],
+                "total": r["tot"], "empresas": emps,
+                "holding": bool(re.search(r"PARTICIPAC|HOLDING|EMPREEND|LTDA|S\.?A\.?$",
+                                          _norm_nome(r["socio_nome"]))) or r["socio_nome"].isupper()})
+        return {"ok": True, "achados": achados, "n": len(achados),
+                "explicacao": ("Mesma pessoa (ou holding) sócia de várias empresas que vendem ao Estado. "
+                               "Um dono por trás de vários fornecedores permite simular concorrência "
+                               "entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e "
+                               "concentrar contratos disfarçadamente."),
+                "ressalva": ("Ser sócio de várias empresas é lícito; o indício é a combinação com "
+                             "contratos no mesmo órgão/objeto. Cruzar QSA e certames. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 def _beneficios_vinculo_resumo() -> dict:
     """Resumo do cruzamento comissionados/servidores PCRJ × benefício social DURANTE o vínculo
     (pericia_beneficios.analisar() — cruza 7,3 mi de registros; NUNCA rodar no request HTTP)."""
