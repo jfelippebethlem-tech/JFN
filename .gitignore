@@ -173,3 +173,5 @@ data/tce_docs/
 data/tce_processo.pdf
 data/cedae_atos/
 .firecrawl/
+data/folha_estado_progresso.json
+data/folha_estado.lock

@@ -52,6 +52,13 @@ def _coletor_tjrj() -> dict:
     return folha_tjrj.coletar()
 
 
+def _coletor_estado() -> dict:
+    """Executivo do Estado (GESPERJ — API REST da SPA /remuneracao, descoberta 2026-07-17).
+    ~482k registros/competência em páginas de 50 → teto por run + retomada via progresso."""
+    from compliance_agent.collectors import folha_estado
+    return folha_estado.coletar(paginas_por_run=1500)
+
+
 def _coletor_camara() -> dict:
     """Câmara Municipal do RJ (dados abertos, CSV por ano de ingresso). Refresh dos anos recentes
     (servidores que podem ter sido candidatos) + ponte p/ registros_folha. Full histórico (1990+) é
@@ -71,6 +78,7 @@ _FONTES = [
     ("MPRJ", "https://api-transparencia.mprj.mp.br:8280/cnmp115/1.0.0/anos", _coletor_mprj),
     ("CAMARA_RJ", "https://transparencia.camara.rj.gov.br/", _coletor_camara),
     ("TJRJ", "https://www3.tjrj.jus.br/portalservidor/PortalCorpDetalheFolha.aspx", _coletor_tjrj),
+    ("EXEC_ESTADO", "https://www.rj.gov.br/remuneracao/api/rest/remuneracoes/cargos", _coletor_estado),
 ]
 
 # ── MAPA DE FONTES RECONHECIDAS (2026-07-16) — coletores a construir (entram em _FONTES) ──
