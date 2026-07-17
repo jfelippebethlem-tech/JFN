@@ -1313,6 +1313,20 @@ async def api_intel_fracionamento(limite: int = 120):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/aditivos")
+async def api_intel_aditivos(limite: int = 120):
+    """Aditivos que estouram o limite legal de acréscimo (25%/50%, Lei 14.133 art. 125) e change
+    orders em série (≥3 aditivos). Fonte: pcrj_contratos + contrato_aditivo."""
+    try:
+        from compliance_agent.cruzamentos_intel import aditivos_estouro
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:adit:{lim}", 600)):
+            d = _cache_put(f"intel:adit:{lim}", aditivos_estouro(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/socio_servidor")
 async def api_intel_socio_servidor(limite: int = 150):
     """Servidor público (folha) que é sócio de fornecedor do Estado — conflito de interesse

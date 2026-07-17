@@ -368,6 +368,70 @@ def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int 
         con.close()
 
 
+def aditivos_estouro(db_path: str | None = None, limite: int = 120) -> dict:
+    """Aditivos que estouram o limite legal de acréscimo (Lei 14.133 art. 125; Lei 8.666 art. 65 §1º
+    — 25% p/ compras/serviços/obras, 50% p/ reforma). Usa pcrj_contratos (valor_inicial × valor_global)
+    e cruza com contrato_aditivo p/ separar ACRÉSCIMO real de reajuste (qualif_acrescimo). Também
+    marca CHANGE ORDERS EM SÉRIE (≥3 aditivos — red-flag OCDE/Banco Mundial), mesmo sem estouro de valor."""
+    con = _ro(db_path)
+    try:
+        # acréscimos reais (não reajuste) por contrato, do contrato_aditivo (fonte granular)
+        acresc = {}
+        try:
+            for r in con.execute("SELECT numero_controle_pncp c, SUM(valor_acrescido) v "
+                                 "FROM contrato_aditivo WHERE qualif_acrescimo='1' AND valor_acrescido>0 "
+                                 "GROUP BY numero_controle_pncp"):
+                acresc[r["c"]] = r["v"]
+        except sqlite3.OperationalError:
+            pass
+        # sanity: exclui valor_global lixo (> R$ 1 bi quase sempre é erro de coleta do PNCP)
+        rows = con.execute(
+            "SELECT numero_controle_pncp cc, fornecedor_nome, fornecedor_documento, orgao_nome, "
+            "unidade, objeto, valor_inicial vi, valor_global vg, num_aditivos, vigencia_fim "
+            "FROM pcrj_contratos WHERE valor_inicial>1000 AND valor_global>0 "
+            "AND valor_global<1e9 AND valor_inicial<1e9").fetchall()
+        achados = []
+        for r in rows:
+            vi, vg, nad = r["vi"], r["vg"], r["num_aditivos"] or 0
+            pct = (vg - vi) / vi if vi else 0
+            estouro = pct >= 0.25
+            serie = nad >= 3
+            if not (estouro or serie):
+                continue
+            # limite aplicável: 50% se o objeto sugere reforma/obra, senão 25%
+            obj = _norm_nome(r["objeto"])
+            teto = 0.50 if re.search(r"REFORMA|OBRA|EDIFIC|CONSTRU|ENGENHARIA", obj) else 0.25
+            cnpj = re.sub(r"\D", "", r["fornecedor_documento"] or "")
+            achados.append({
+                "contrato": r["cc"], "fornecedor": r["fornecedor_nome"],
+                "cnpj": cnpj, "cnpj_fmt": (f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
+                                           if len(cnpj) == 14 else cnpj),
+                "orgao": r["unidade"] or r["orgao_nome"], "objeto": (r["objeto"] or "")[:160],
+                "valor_inicial": vi, "valor_global": vg, "acrescimo": round(vg - vi, 2),
+                "pct": round(pct * 100, 1), "num_aditivos": nad, "teto_pct": int(teto * 100),
+                "estoura_teto": pct >= teto,
+                "acrescimo_real": round(acresc.get(r["cc"], 0), 2) if r["cc"] in acresc else None,
+                "tipo": ("estouro" if estouro else "serie"),
+                "vigencia_fim": r["vigencia_fim"]})
+        # ranking: estoura o teto legal primeiro, depois maior %/mais aditivos
+        achados.sort(key=lambda a: (not a["estoura_teto"], -(a["pct"] or 0), -(a["num_aditivos"] or 0)))
+        n_estouro = sum(1 for a in achados if a["estoura_teto"])
+        n_serie = sum(1 for a in achados if a["tipo"] == "serie")
+        return {"ok": True, "achados": achados[:limite], "n": len(achados),
+                "n_estoura_teto": n_estouro, "n_serie": n_serie,
+                "contratos_analisados": len(rows),
+                "explicacao": ("Contrato cujo valor global cresceu acima do limite legal de acréscimo "
+                               "(25% em regra; 50% p/ reforma — Lei 14.133 art. 125). Também marca "
+                               "CHANGE ORDERS EM SÉRIE (≥3 aditivos), red-flag de fraude por aditivos "
+                               "(OCDE/Banco Mundial). 'acréscimo real' vem do termo aditivo quando "
+                               "classificado como acréscimo (não reajuste)."),
+                "ressalva": ("A variação do valor global inclui REAJUSTE (correção inflacionária), que "
+                             "NÃO conta no limite de 25% — confirmar no termo aditivo se é acréscimo "
+                             "quantitativo. Base de contratos ainda parcial (PNCP). Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 def _norm_nome(s: str) -> str:
     """Normaliza nome de pessoa p/ casar sócio×servidor: maiúsculas, sem acento, só letras."""
     import unicodedata
@@ -393,14 +457,41 @@ _RX_DONO = re.compile(r"SOCIO|ADMINISTRADOR|TITULAR|EMPRESARIO|PROPRIET|PRESIDEN
 _RX_GERENCIA = re.compile(r"ADMINISTRADOR|PRESIDENTE|DIRETOR|TITULAR|GERENTE")
 
 
+# Órgão da folha → UG(s) do SIAFE estadual, p/ provar o impedimento do art. 9 (empresa do servidor
+# paga pela PRÓPRIA repartição). Só órgãos do Executivo estadual têm UG no OB do SIAFE — TJRJ
+# (autônomo) e Câmara Municipal ficam fora (checagem de art. 9 indisponível, mas a vedação de
+# gerência permanece). Ampliar conforme novas folhas do Executivo entram.
+_ORGAO_FOLHA_UG = {
+    "DEFENSORIA": ["110100"],           # DPGE
+    "POLICIA MILITAR": ["266500"],      # FUNESPOM/PM
+    "POLICIA CIVIL": ["263100"],        # DETRAN e correlatos (aprox.)
+    "EDUCACAO": ["190100", "191100"],
+    "SAUDE": ["294200"],                # Fundo Estadual de Saúde
+}
+
+
+def _ug_do_orgao_servidor(orgao_nome: str) -> list:
+    o = _norm_nome(orgao_nome)
+    for chave, ugs in _ORGAO_FOLHA_UG.items():
+        if chave in o:
+            return ugs
+    return []
+
+
 def socio_servidor(db_path: str | None = None, limite: int = 150) -> dict:
     """Servidor público (folha) que é SÓCIO de empresa fornecedora do Estado — conflito de interesse
     (Lei 14.133 art. 9; interposição art. 337-F CP) e, quando é ADMINISTRADOR, vedação estatutária
     de gerência de empresa privada. Casa por nome + corrobora com fragmento de CPF (mascarado):
     ALTA se os dígitos visíveis coincidem, MÉDIA se só o nome, e DESCARTA quando o CPF conflita
-    (homônimo). Exclui entidades de classe (o servidor é dirigente pela profissão, não dono)."""
+    (homônimo). Exclui entidades de classe. Liga a UG pagadora ao órgão do servidor: se a empresa
+    é paga pela PRÓPRIA repartição do servidor, marca impedimento do art. 9 (mesmo_orgao)."""
+    import json as _json
     con = _ro(db_path)
     try:
+        try:
+            _ug_nome = _json.loads((_REPO / "data" / "ug_index_siafe.json").read_text())["ugs"]
+        except Exception:
+            _ug_nome = {}
         folha: dict[str, list] = {}
         for r in con.execute("SELECT nome, cpf, orgao_nome, cargo, vinculo, fonte "
                              "FROM registros_folha WHERE nome IS NOT NULL"):
@@ -440,6 +531,15 @@ def socio_servidor(db_path: str | None = None, limite: int = 150) -> dict:
                     conflitos += 1
                 continue
             cnpj = r["cnpj"]
+            # UGs que pagaram a empresa (nome do índice) + teste de art. 9 (mesma repartição)
+            ugs_alvo = set(_ug_do_orgao_servidor(info[0]))
+            pagadoras, mesmo_orgao = [], False
+            for pr in con.execute("SELECT ug_emitente ug, SUM(valor) v FROM ob_orcamentaria_siafe "
+                                  "WHERE credor=? AND valor>0 GROUP BY ug_emitente "
+                                  "ORDER BY v DESC LIMIT 3", (cnpj,)):
+                pagadoras.append({"ug": pr["ug"], "nome": _ug_nome.get(pr["ug"], ""), "valor": pr["v"]})
+                if pr["ug"] in ugs_alvo:
+                    mesmo_orgao = True
             achados.append({
                 "socio": r["socio_nome"], "cnpj": cnpj,
                 "cnpj_fmt": (f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
@@ -448,13 +548,18 @@ def socio_servidor(db_path: str | None = None, limite: int = 150) -> dict:
                 "gerencia": bool(_RX_GERENCIA.search(_norm_nome(qual))),
                 "confianca": tier, "servidor_orgao": info[0], "servidor_cargo": info[1],
                 "vinculo": info[2], "fonte_folha": info[3],
+                "ugs_pagadoras": pagadoras, "mesmo_orgao": mesmo_orgao,
+                "art9_verificavel": bool(ugs_alvo),  # False = órgão do servidor não tem UG no SIAFE
                 "total_pago": r["total_pago"], "n_obs": r["n_obs"]})
-        # ranking: confiança ALTA + gerência + maior valor
-        achados.sort(key=lambda a: (a["confianca"] != "ALTA", not a["gerencia"], -(a["total_pago"] or 0)))
+        # ranking: art. 9 (mesmo órgão) primeiro, depois ALTA + gerência + valor
+        achados.sort(key=lambda a: (not a["mesmo_orgao"], a["confianca"] != "ALTA",
+                                    not a["gerencia"], -(a["total_pago"] or 0)))
         n_alta = sum(1 for a in achados if a["confianca"] == "ALTA")
         n_ger = sum(1 for a in achados if a["gerencia"])
+        n_art9 = sum(1 for a in achados if a["mesmo_orgao"])
         return {"ok": True, "achados": achados[:limite], "n": len(achados),
-                "n_alta": n_alta, "n_gerencia": n_ger, "homonimos_descartados": conflitos,
+                "n_alta": n_alta, "n_gerencia": n_ger, "n_art9": n_art9,
+                "homonimos_descartados": conflitos,
                 "folhas": sorted({c[4] for lst in folha.values() for c in lst if c[4]}),
                 "explicacao": ("Servidor público (nas folhas coletadas) que é sócio de empresa que "
                                "recebeu do Estado. Servidor ADMINISTRADOR/diretor de empresa privada "
@@ -638,6 +743,14 @@ if __name__ == "__main__":
         for g in d["grupos"][:12]:
             print(f"  {(g['nome'] or '')[:26]:26} UG{g['ug_emitente']} {g['mes']} "
                   f"{g['n_colado']}/{g['n']} colados ({int(g['concentracao']*100)}%) soma R${g['soma']:,.2f}")
+    elif cmd == "aditivos":
+        d = aditivos_estouro()
+        print(f"aditivos: {d['n']} (estouram teto={d['n_estoura_teto']}, série={d['n_serie']}) "
+              f"de {d['contratos_analisados']} contratos")
+        for a in d["achados"][:12]:
+            print(f"  [{'TETO' if a['estoura_teto'] else a['tipo']}] +{a['pct']:>7.0f}% "
+                  f"({a['num_aditivos']}adt) R${a['valor_inicial']:>12,.0f}->R${a['valor_global']:>13,.0f} "
+                  f"{(a['fornecedor'] or '')[:20]:20} @ {(a['orgao'] or '')[:22]}")
     elif cmd == "socio_servidor":
         d = socio_servidor()
         print(f"sócio-servidor: {d['n']} (ALTA={d['n_alta']}, gerência={d['n_gerencia']}, "
