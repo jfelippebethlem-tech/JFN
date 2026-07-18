@@ -21,7 +21,8 @@ from collections import defaultdict
 from itertools import combinations
 
 # ── identidade do licitante ──────────────────────────────────────────────────
-_CNPJ = re.compile(r"\b(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2})\b")  # formatado (evita nº de processo cru)
+# formatado sempre; cru de 14 dígitos SÓ com dígito verificador válido (evita nº de processo)
+_CNPJ = re.compile(r"\b(\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}|\d{14})\b")
 _VENC = re.compile(r"vencedor|adjudicad|declarad[oa] vencedor|homologad|arrematant|1[ºo°]?\s*lugar|"
                    r"primeir[oa]\s+colocad", re.I)
 _PERD = re.compile(r"inabilitad|desclassificad|desabilitad|desistiu|desistenc|nao\s+habilitad|"
@@ -36,6 +37,18 @@ _PREAMBULO = re.compile(r"neste ato representad|doravante denominad|órg[ãa]o g
 
 def _so_digitos(s: str) -> str:
     return "".join(c for c in (s or "") if c.isdigit())
+
+
+def _cnpj_dv_ok(c: str) -> bool:
+    """Dígitos verificadores do CNPJ (módulo 11) — separa CNPJ real de nº de processo."""
+    if len(c) != 14 or c == c[0] * 14:
+        return False
+    pesos = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+    for n in (12, 13):
+        d = sum(int(a) * b for a, b in zip(c[:n], ([6] + pesos) if n == 13 else pesos)) % 11
+        if c[n] != str(0 if 11 - d > 9 else 11 - d):
+            return False
+    return True
 
 
 def extrair_participantes_ata(texto: str, janela: int = 140, orgao_cnpj: str | None = None) -> dict:
@@ -55,6 +68,8 @@ def extrair_participantes_ata(texto: str, janela: int = 140, orgao_cnpj: str | N
     vistos: dict[str, dict] = {}
     for idx, m in enumerate(matches):
         cnpj = _so_digitos(m.group(1))
+        if "." not in m.group(1) and not _cnpj_dv_ok(cnpj):
+            continue  # 14 dígitos crus sem DV válido = nº de processo, não licitante
         if cnpj in vistos or (org and cnpj == org):
             continue
         i, fim = m.start(), m.end()
@@ -344,7 +359,11 @@ def coletar_atas_do_corpus(db_path: str = "data/compliance.db", limite: int = 80
             "AND length(texto) > 1500 LIMIT ?", (limite,)).fetchall()
     finally:
         con.close()
-    return [{"certame": r["npc"], "orgao": r["orgao_cnpj"], "texto": r["texto"]} for r in rows]
+    # pós-filtro: o LIKE acima é satisfeito pelo BOILERPLATE de edital ("será inabilitado o
+    # licitante que…"); só entra no grafo o texto com marcador REAL de ata/sessão de julgamento.
+    from compliance_agent.detectores.coletor_ata import _RX_ATA_MARCADOR
+    return [{"certame": r["npc"], "orgao": r["orgao_cnpj"], "texto": r["texto"]}
+            for r in rows if _RX_ATA_MARCADOR.search(r["texto"])]
 
 
 def _nome(cnpj: str, db_path: str = "data/compliance.db") -> str:

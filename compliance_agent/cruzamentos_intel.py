@@ -44,12 +44,14 @@ RESSALVA = ("Indício para apuração interna, não acusação. Sanção impedit
             "cadastro-fonte (Portal da Transparência/CGU) antes de qualquer uso externo.")
 
 
-# Teto de dispensa de licitação por ano (Lei 14.133 art. 75-II, compras/serviços comuns; valores
-# atualizados por decreto). Abaixo dele o gestor pode contratar SEM licitação — o incentivo a
-# "fatiar" a despesa para caber embaixo é o vetor clássico de fracionamento (Lei 14.133 art. 75 §1º).
-_TETO_DISPENSA = {2021: 50000.00, 2022: 50000.00, 2023: 52707.00,
-                  2024: 59906.02, 2025: 59906.02, 2026: 59906.02}
-_TETO_DEFAULT = 59906.02
+# Teto de dispensa de licitação por ano (Lei 14.133 art. 75-II, compras/serviços comuns).
+# Abaixo dele o gestor pode contratar SEM licitação — o incentivo a "fatiar" a despesa para
+# caber embaixo é o vetor clássico de fracionamento (Lei 14.133 art. 75 §1º).
+# Fonte única verificada nos decretos (Planalto): compliance_agent/limites_dispensa.py.
+from compliance_agent.limites_dispensa import LIMITES as _LIMITES_DISP
+
+_TETO_DISPENSA = {a: v["compras"] for a, v in _LIMITES_DISP.items()}
+_TETO_DEFAULT = _TETO_DISPENSA[max(_TETO_DISPENSA)]
 
 
 def _ro(db_path: str | None = None) -> sqlite3.Connection:
@@ -307,6 +309,115 @@ def ranking_fantasmas(db_path: str | None = None, limite: int = 50) -> dict:
         con.close()
 
 
+# ── RADAR DE RISCO composto (funde os detectores num ranking único) ──────────
+
+_RADAR_PESOS = {
+    "conluio_forte": 30, "conluio_medio": 15,
+    "sancao_a_epoca": 25, "sancao_fora_vigencia": 10,
+    "fantasma_alto": 20, "fantasma_medio": 10,
+    "socio_servidor": 15, "perdedora_contumaz": 10, "fenix": 10,
+}
+
+
+def radar_risco(db_path: str | None = None, limite: int = 100) -> dict:
+    """RADAR: score composto 0-100 por fornecedor, somando os sinais dos detectores já
+    existentes (pesos em _RADAR_PESOS; escala explícita no retorno). Um fornecedor que
+    acende VÁRIOS detectores ao mesmo tempo sobe ao topo — é o "onde olhar primeiro".
+    Determinístico; lê caches quando o cruzamento é pesado (perdedoras/conluio)."""
+    sin: dict[str, list] = {}
+
+    def _add(cnpj, sinal, detalhe=""):
+        if cnpj and len(cnpj) == 14:
+            sin.setdefault(cnpj, []).append(
+                {"sinal": sinal, "peso": _RADAR_PESOS[sinal], "detalhe": (detalhe or "")[:60]})
+
+    # conluio direto (cache → cálculo rápido sem atas)
+    try:
+        d = (ler_cache_intel("conluio_qsa") if db_path is None else None) \
+            or conluio_qsa(db_path, incluir_atas=False)
+        for p in d.get("pares", []):
+            forte = p["tier"] in ("MESMA_EMPRESA", "ALTA")
+            for lado in ("vencedor", "perdedora"):
+                _add(p[lado]["cnpj"], "conluio_forte" if forte else "conluio_medio",
+                     f"{p['tier']} com {p['perdedora' if lado == 'vencedor' else 'vencedor']['nome']}")
+    except Exception as exc:
+        logger.warning("radar sem conluio: %s", exc)
+    # sancionadas contratadas
+    try:
+        d = (ler_cache_intel("sancionadas_contratadas") if db_path is None else None) \
+            or sancionadas_contratadas(db_path)
+        for e in d.get("empresas", []):
+            epoca = e["estado"]["obs_durante"] or e["pncp"]["vitorias_durante"]
+            _add(e["cnpj"], "sancao_a_epoca" if epoca else "sancao_fora_vigencia",
+                 (e["sancoes"][0].get("cadastro", "") if e.get("sancoes") else ""))
+    except Exception as exc:
+        logger.warning("radar sem sancionadas: %s", exc)
+    con = _ro(db_path)
+    try:
+        # fantasma + sócio-servidor direto das tabelas persistidas
+        for r in con.execute("SELECT cnpj, classificacao, razao_social FROM fantasma_score "
+                             "WHERE classificacao IN ('alto','medio')"):
+            _add(r["cnpj"], f"fantasma_{r['classificacao']}", r["razao_social"])
+        for r in con.execute("SELECT DISTINCT cnpj, socio_nome FROM socios_fornecedor "
+                             "WHERE socio_servidor=1"):
+            _add(r["cnpj"], "socio_servidor", r["socio_nome"])
+    except sqlite3.OperationalError as exc:
+        logger.debug("radar: %s", exc)
+    finally:
+        con.close()
+    # perdedoras contumazes (só cache — varre 8k atas) e fênix (rápido)
+    if db_path is None:
+        for p in (ler_cache_intel("perdedoras_contumazes") or {}).get("perdedoras", []):
+            _add(p["cnpj"], "perdedora_contumaz", f"participou {p['participou']}x, venceu 0")
+    try:
+        for a in empresa_fenix(db_path).get("achados", []):
+            _add(a.get("cnpj"), "fenix", a.get("situacao") or a.get("motivo") or "")
+    except Exception as exc:
+        logger.warning("radar sem fênix: %s", exc)
+
+    # nomes + montagem
+    con = _ro(db_path)
+    try:
+        nomes = {r["favorecido_cpf"]: r["favorecido_nome"] for r in con.execute(
+            "SELECT favorecido_cpf, favorecido_nome FROM favorecido_resumo")} \
+            if _tabela_existe(con, "favorecido_resumo") else {}
+        if _tabela_existe(con, "pncp_resultado"):
+            for r in con.execute("SELECT DISTINCT fornecedor_cnpj, fornecedor_nome "
+                                 "FROM pncp_resultado WHERE fornecedor_nome IS NOT NULL"):
+                nomes.setdefault(r["fornecedor_cnpj"], r["fornecedor_nome"])
+    finally:
+        con.close()
+    achados = []
+    for cnpj, sinais in sin.items():
+        vistos, uniq = set(), []
+        for s in sinais:                      # mesmo sinal 2x (ex.: 2 pares) conta 1x
+            if s["sinal"] not in vistos:
+                vistos.add(s["sinal"])
+                uniq.append(s)
+        score = min(sum(s["peso"] for s in uniq), 100)
+        achados.append({
+            "cnpj": cnpj,
+            "cnpj_fmt": f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}",
+            "nome": nomes.get(cnpj, "—"), "score": score,
+            "rating": "🔴" if score >= 50 else ("🟡" if score >= 25 else "🟢"),
+            "n_sinais": len(uniq), "sinais": uniq})
+    achados.sort(key=lambda a: (-a["score"], -a["n_sinais"]))
+    return {"ok": True, "achados": achados[:limite], "n": len(achados),
+            "n_vermelho": sum(1 for a in achados if a["score"] >= 50),
+            "escala": ("Score 0-100 somando sinais independentes (cada tipo conta 1x): "
+                       + ", ".join(f"{k} +{v}" for k, v in _RADAR_PESOS.items())
+                       + ". 🔴 ≥50 · 🟡 25-49 · 🟢 <25."),
+            "explicacao": ("Um detector isolado é indício fraco; vários detectores acesos no "
+                           "MESMO fornecedor raramente são coincidência. O radar prioriza a "
+                           "fila de apuração."),
+            "ressalva": RESSALVA}
+
+
+def _tabela_existe(con, nome: str) -> bool:
+    return bool(con.execute("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?",
+                            (nome,)).fetchone())
+
+
 # ── cache p/ endpoints (perdedoras varre 8k atas — não roda no request) ──────
 
 def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int = 3,
@@ -393,7 +504,11 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120) -> dict:
         achados = []
         for r in rows:
             vi, vg, nad = r["vi"], r["vg"], r["num_aditivos"] or 0
-            pct = (vg - vi) / vi if vi else 0
+            # pct sobre o ACRÉSCIMO REAL (qualif='1') quando o contrato_aditivo o traz — vg−vi inclui
+            # reajuste/prorrogação, que NÃO contam no teto do art. 125. Sem o dado granular, o achado
+            # segue (honestidade: vira indício NÃO confirmado, rebaixado na ordenação).
+            confirmado = r["cc"] in acresc and vi
+            pct = (acresc[r["cc"]] / vi) if confirmado else ((vg - vi) / vi if vi else 0)
             estouro = pct >= 0.25
             serie = nad >= 3
             if not (estouro or serie):
@@ -411,10 +526,13 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120) -> dict:
                 "pct": round(pct * 100, 1), "num_aditivos": nad, "teto_pct": int(teto * 100),
                 "estoura_teto": pct >= teto,
                 "acrescimo_real": round(acresc.get(r["cc"], 0), 2) if r["cc"] in acresc else None,
+                "acrescimo_confirmado": bool(confirmado),
                 "tipo": ("estouro" if estouro else "serie"),
                 "vigencia_fim": r["vigencia_fim"]})
-        # ranking: estoura o teto legal primeiro, depois maior %/mais aditivos
-        achados.sort(key=lambda a: (not a["estoura_teto"], -(a["pct"] or 0), -(a["num_aditivos"] or 0)))
+        # ranking: estoura o teto legal primeiro, acréscimo CONFIRMADO antes do não confirmado
+        # (vg−vi pode ser só reajuste), depois maior %/mais aditivos
+        achados.sort(key=lambda a: (not a["estoura_teto"], not a["acrescimo_confirmado"],
+                                    -(a["pct"] or 0), -(a["num_aditivos"] or 0)))
         n_estouro = sum(1 for a in achados if a["estoura_teto"])
         n_serie = sum(1 for a in achados if a["tipo"] == "serie")
         return {"ok": True, "achados": achados[:limite], "n": len(achados),
@@ -425,9 +543,10 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120) -> dict:
                                "CHANGE ORDERS EM SÉRIE (≥3 aditivos), red-flag de fraude por aditivos "
                                "(OCDE/Banco Mundial). 'acréscimo real' vem do termo aditivo quando "
                                "classificado como acréscimo (não reajuste)."),
-                "ressalva": ("A variação do valor global inclui REAJUSTE (correção inflacionária), que "
-                             "NÃO conta no limite de 25% — confirmar no termo aditivo se é acréscimo "
-                             "quantitativo. Base de contratos ainda parcial (PNCP). Indício ≠ acusação.")}
+                "ressalva": ("Achado com acrescimo_confirmado=False usa vg−vi, que inclui REAJUSTE "
+                             "(correção inflacionária) — NÃO conta no limite de 25%; confirmar no termo "
+                             "aditivo se é acréscimo quantitativo. Base de contratos ainda parcial (PNCP). "
+                             "Indício ≠ acusação.")}
     finally:
         con.close()
 
@@ -1128,6 +1247,175 @@ def nepotismo_cruzado(db_path: str | None = None, limite: int = 60) -> dict:
         con.close()
 
 
+# ── 4. CONLUIO DIRETO vencedor × perdedora × QSA ─────────────────────────────
+
+def _certames_vencedor_perdedora(con) -> dict[str, dict]:
+    """Por certame: vencedoras (ordem=1 OU registro só-de-vencedor: ordem NULL com valor>0)
+    e perdedoras CONFIRMADAS (ordem>1 em algum item e nenhuma vitória no mesmo certame)."""
+    cert: dict[str, dict] = {}
+    for r in con.execute(
+            "SELECT certame, orgao_nome, objeto, data_pub, fornecedor_cnpj, fornecedor_nome, "
+            "valor_homologado, ordem_classificacao FROM pncp_resultado "
+            "WHERE length(fornecedor_cnpj)=14"):
+        c = cert.setdefault(r["certame"], {
+            "orgao": r["orgao_nome"], "objeto": r["objeto"], "data": (r["data_pub"] or "")[:10],
+            "venc": {}, "perd": {}, "nomes": {}})
+        c["nomes"][r["fornecedor_cnpj"]] = r["fornecedor_nome"]
+        o, v = r["ordem_classificacao"], r["valor_homologado"] or 0.0
+        if o == 1 or (o is None and v > 0):
+            c["venc"][r["fornecedor_cnpj"]] = c["venc"].get(r["fornecedor_cnpj"], 0.0) + v
+        elif o is not None and o > 1:
+            c["perd"].setdefault(r["fornecedor_cnpj"], 0)
+    for c in cert.values():
+        for w in c["venc"]:
+            c["perd"].pop(w, None)     # venceu QUALQUER item → não é perdedora do certame
+    return cert
+
+
+def conluio_qsa(db_path: str | None = None, limite: int = 120,
+                max_ubiquidade: int = 40, incluir_atas: bool = True,
+                limite_atas: int = 8000) -> dict:
+    """CONLUIO DIRETO: vencedor e perdedora do MESMO certame com sócio em comum no QSA da
+    Receita — a perdedora do mesmo dono existe para dar aparência de disputa (proposta de
+    cobertura, OCDE bid rigging; fraude à licitação, Lei 14.133 art. 337-F CP). Tiers:
+    MESMA_EMPRESA (matriz×filial concorrendo entre si) > ALTA (nome + fragmento de CPF/CNPJ
+    do sócio coincidem) > MEDIA (só o nome). CPF conflitante = homônimo, descarta.
+    Sócio-conselheiro e sócio ubíquo (fundo/holding em >max_ubiquidade empresas) não contam.
+    Duas fontes de perdedora: PNCP (ordem_classificacao>1, explícita) e ATAS do corpus
+    (inabilitada/desclassificada extraída do texto — mesma régua das perdedoras contumazes)."""
+    con = _ro(db_path)
+    try:
+        cert = _certames_vencedor_perdedora(con)
+        for m in cert.values():
+            m["fonte"] = "pncp"
+        if incluir_atas:
+            try:
+                from compliance_agent.rodizio_grafo import (
+                    coletar_atas_do_corpus, extrair_participantes_ata)
+                for ata in coletar_atas_do_corpus(db_path or _DB, limite=limite_atas):
+                    ext = extrair_participantes_ata(ata["texto"], orgao_cnpj=ata["orgao"])
+                    if not ext["avaliavel"]:
+                        continue
+                    venc = [p["cnpj"] for p in ext["participantes"] if p["venceu"] is True]
+                    perd = [p["cnpj"] for p in ext["participantes"] if p["venceu"] is False]
+                    if not (venc and perd):
+                        continue
+                    c = cert.setdefault(ata["certame"], {
+                        "orgao": ata["orgao"], "objeto": None, "data": None,
+                        "venc": {}, "perd": {}, "nomes": {}, "fonte": "ata"})
+                    if c["fonte"] == "pncp":
+                        c["fonte"] = "pncp+ata"
+                    for v in venc:
+                        c["venc"].setdefault(v, 0.0)
+                    for p in perd:
+                        c["perd"].setdefault(p, 0)
+                    for w in c["venc"]:          # venceu (em qualquer fonte) → não é perdedora
+                        c["perd"].pop(w, None)
+            except Exception as exc:
+                logger.warning("conluio_qsa: fonte de atas indisponível: %s", exc)
+        alvo = {c for m in cert.values() if m["perd"] and m["venc"]
+                for c in list(m["venc"]) + list(m["perd"])}
+        # nome p/ CNPJ que só aparece em ata (o PNCP traz nome; a ata só o CNPJ)
+        raz_min: dict[str, str] = {}
+        alvo_basicos = {c[:8] for c in alvo}
+        try:
+            for r in con.execute("SELECT cnpj_basico, razao_social FROM empresas_min"):
+                if r["cnpj_basico"] in alvo_basicos:
+                    raz_min.setdefault(r["cnpj_basico"], r["razao_social"])
+        except sqlite3.OperationalError as exc:
+            logger.debug("conluio_qsa sem empresas_min (nome fica do PNCP): %s", exc)
+
+        def _nome_emp(cnpj: str, nomes: dict) -> str:
+            return nomes.get(cnpj) or raz_min.get(cnpj[:8]) or "—"
+        # QSA por cnpj_basico — pessoa = nome_norm, corroborada pelo fragmento do doc
+        qsa: dict[str, dict[str, str]] = {}
+        basicos = {c[:8] for c in alvo}
+        for r in con.execute(
+                "SELECT cnpj_basico, nome_socio, nome_norm, doc_socio, qualificacao_txt "
+                "FROM socios_receita WHERE nome_norm<>''"):
+            if r["cnpj_basico"] not in basicos:
+                continue
+            if "CONSELH" in _norm_nome(r["qualificacao_txt"] or ""):
+                continue                      # conselheiro de S/A não é dono
+            qsa.setdefault(r["cnpj_basico"], {})[r["nome_norm"]] = (
+                _frag6(r["doc_socio"]) or re.sub(r"\D", "", r["doc_socio"] or ""),
+                r["nome_socio"])
+        # ubiquidade: fundo/holding presente em dezenas de QSAs geraria FP em série
+        ubiq: dict[str, int] = {}
+        for socios in qsa.values():
+            for nn in socios:
+                ubiq[nn] = ubiq.get(nn, 0) + 1
+
+        pares: dict[tuple, dict] = {}
+        n_cert_perd = n_pares = n_sem_qsa = 0
+        fontes: dict[str, int] = {}
+        for cid, m in cert.items():
+            if not (m["venc"] and m["perd"]):
+                continue
+            n_cert_perd += 1
+            f = m.get("fonte", "pncp")
+            fontes[f] = fontes.get(f, 0) + 1
+            for v, val in m["venc"].items():
+                for p in m["perd"]:
+                    n_pares += 1
+                    tier, comuns = None, []
+                    if v[:8] == p[:8]:
+                        tier = "MESMA_EMPRESA"
+                    else:
+                        qv, qp = qsa.get(v[:8]), qsa.get(p[:8])
+                        if not (qv and qp):
+                            n_sem_qsa += 1
+                            continue
+                        for nn in set(qv) & set(qp):
+                            if ubiq.get(nn, 0) > max_ubiquidade:
+                                continue
+                            (fv, nome), (fp, _) = qv[nn], qp[nn]
+                            if fv and fp and fv != fp:
+                                continue      # doc conflita → homônimo, descarta
+                            forte = bool(fv and fp and fv == fp)
+                            comuns.append({"nome": nome, "doc_frag": fv or fp or "",
+                                           "match": "ALTA" if forte else "MEDIA"})
+                        if comuns:
+                            tier = ("ALTA" if any(s["match"] == "ALTA" for s in comuns)
+                                    else "MEDIA")
+                    if not tier:
+                        continue
+                    key = (v[:8], p[:8])
+                    par = pares.setdefault(key, {
+                        "vencedor": {"cnpj": v, "nome": _nome_emp(v, m["nomes"])},
+                        "perdedora": {"cnpj": p, "nome": _nome_emp(p, m["nomes"])},
+                        "tier": tier, "socios_comuns": comuns,
+                        "n_certames": 0, "valor_vencido": 0.0, "certames": []})
+                    par["n_certames"] += 1
+                    par["valor_vencido"] += val
+                    if len(par["certames"]) < 6:
+                        par["certames"].append({"certame": cid, "orgao": m["orgao"],
+                                                "data": m["data"], "valor": val,
+                                                "fonte": m.get("fonte", "pncp")})
+                    ordem = {"MESMA_EMPRESA": 0, "ALTA": 1, "MEDIA": 2}
+                    if ordem[tier] < ordem[par["tier"]]:
+                        par["tier"], par["socios_comuns"] = tier, comuns or par["socios_comuns"]
+
+        rank = {"MESMA_EMPRESA": 0, "ALTA": 1, "MEDIA": 2}
+        lista = sorted(pares.values(),
+                       key=lambda x: (rank[x["tier"]], -x["n_certames"], -x["valor_vencido"]))
+        n_forte = sum(1 for x in lista if x["tier"] in ("MESMA_EMPRESA", "ALTA"))
+        return {"ok": True, "pares": lista[:limite], "n": len(lista), "n_forte": n_forte,
+                "cobertura": {"certames_com_perdedora": n_cert_perd,
+                              "pares_avaliados": n_pares, "pares_sem_qsa": n_sem_qsa,
+                              "certames_por_fonte": fontes},
+                "explicacao": ("Vencedor e perdedora do MESMO certame com sócio em comum "
+                               "(ou matriz×filial 'concorrendo' entre si): a disputa é de "
+                               "fachada — o dono ganha dos dois lados. Quanto mais certames "
+                               "o par repete, mais forte o padrão."),
+                "ressalva": ("Indício ≠ acusação. QSA da Receita com CPF mascarado — ALTA = "
+                             "nome + fragmento coincidem; confirmar CPF completo antes de "
+                             "citar. Par sem QSA local = INDISPONÍVEL (≠ inocente); a fila "
+                             "de enriquecimento resolve.")}
+    finally:
+        con.close()
+
+
 def _beneficios_vinculo_resumo() -> dict:
     """Resumo do cruzamento comissionados/servidores PCRJ × benefício social DURANTE o vínculo
     (pericia_beneficios.analisar() — cruza 7,3 mi de registros; NUNCA rodar no request HTTP)."""
@@ -1154,9 +1442,17 @@ def gerar_cache_intel(db_path: str | None = None) -> dict:
     """Materializa os cruzamentos pesados em data/cache/*.json (o painel lê em ms)."""
     _CACHE_DIR.mkdir(parents=True, exist_ok=True)
     out = {}
+    def _comunidades():
+        from compliance_agent.grafo_comunidades import detectar_comunidades
+        return detectar_comunidades(db_path)
+
+    # ordem importa: radar lê os caches de sancionadas/perdedoras/conluio; comunidades lê conluio
     for nome, fn in (("sancionadas_contratadas", lambda: sancionadas_contratadas(db_path)),
                      ("perdedoras_contumazes", lambda: perdedoras_contumazes(db_path)),
-                     ("beneficios_vinculo", _beneficios_vinculo_resumo)):
+                     ("beneficios_vinculo", _beneficios_vinculo_resumo),
+                     ("conluio_qsa", lambda: conluio_qsa(db_path)),
+                     ("comunidades", _comunidades),
+                     ("radar_risco", lambda: radar_risco(db_path))):
         try:
             d = fn()
             (_CACHE_DIR / f"{nome}.json").write_text(
@@ -1211,6 +1507,20 @@ if __name__ == "__main__":
             print(f"  [{'TETO' if a['estoura_teto'] else a['tipo']}] +{a['pct']:>7.0f}% "
                   f"({a['num_aditivos']}adt) R${a['valor_inicial']:>12,.0f}->R${a['valor_global']:>13,.0f} "
                   f"{(a['fornecedor'] or '')[:20]:20} @ {(a['orgao'] or '')[:22]}")
+    elif cmd == "conluio":
+        d = conluio_qsa()
+        print(f"conluio direto: {d['n']} pares ({d['n_forte']} fortes) | {d['cobertura']}")
+        for p in d["pares"][:15]:
+            sc = ", ".join(s["nome"][:22] for s in p["socios_comuns"][:2]) or "matriz×filial"
+            print(f"  [{p['tier']:13}] {p['vencedor']['nome'][:26]:26} x "
+                  f"{p['perdedora']['nome'][:26]:26} n={p['n_certames']} "
+                  f"R${p['valor_vencido']:,.0f} | {sc}")
+    elif cmd == "radar":
+        d = radar_risco()
+        print(f"radar: {d['n']} fornecedores com sinal ({d['n_vermelho']} 🔴)")
+        for a in d["achados"][:15]:
+            ss = ", ".join(s["sinal"] for s in a["sinais"])
+            print(f"  {a['rating']} [{a['score']:3}] {a['nome'][:34]:34} {ss}")
     elif cmd == "socio_servidor":
         d = socio_servidor()
         print(f"sócio-servidor: {d['n']} (ALTA={d['n_alta']}, gerência={d['n_gerencia']}, "

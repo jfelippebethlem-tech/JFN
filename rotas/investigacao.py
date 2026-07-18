@@ -1299,6 +1299,52 @@ async def api_intel_perdedoras():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/conluio_qsa")
+async def api_intel_conluio_qsa():
+    """CONLUIO DIRETO: vencedor × perdedora do MESMO certame com sócio em comum (QSA Receita)
+    ou matriz×filial concorrendo entre si. Cache do intel (com atas); fallback = só PNCP."""
+    try:
+        from compliance_agent.cruzamentos_intel import conluio_qsa, ler_cache_intel
+        d = ler_cache_intel("conluio_qsa")
+        if not d:
+            if not (d := _cache_get("intel:conluio", 3600)):
+                d = _cache_put("intel:conluio", conluio_qsa(incluir_atas=False))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/comunidades")
+async def api_intel_comunidades():
+    """Comunidades (Louvain) do grafo família-empresa-órgão, ranqueadas por risco 0-100.
+    Sai do cache (construir o grafo completo não roda no request)."""
+    try:
+        from compliance_agent.cruzamentos_intel import ler_cache_intel
+        d = ler_cache_intel("comunidades")
+        if not d:
+            return JSONResponse({"ok": False, "erro": "cache ainda não gerado — "
+                                 "rodar: python -m compliance_agent.cruzamentos_intel cache"})
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/radar")
+async def api_intel_radar(limite: int = 100):
+    """RADAR composto: score 0-100 por fornecedor somando os sinais de todos os detectores —
+    a fila de apuração priorizada. Cache do intel; fallback = computa na hora."""
+    try:
+        from compliance_agent.cruzamentos_intel import ler_cache_intel, radar_risco
+        d = ler_cache_intel("radar_risco")
+        if not d:
+            lim = max(1, min(int(limite or 100), 300))
+            if not (d := _cache_get(f"intel:radar:{lim}", 3600)):
+                d = _cache_put(f"intel:radar:{lim}", radar_risco(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/fracionamento")
 async def api_intel_fracionamento(limite: int = 120):
     """Possível fracionamento de despesa: favorecido+UG+mês com várias OBs coladas no teto de

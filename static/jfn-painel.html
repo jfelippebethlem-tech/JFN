@@ -287,6 +287,9 @@ const TABS={
   ],
   geral:[
     {id:'g_buscar',  ic:'🔎',tl:'Buscar',  render:renderBuscar},
+    {id:'g_radar',   ic:'🎯',tl:'Radar',   render:renderRadar},
+    {id:'g_conluioq',ic:'🤝',tl:'Conluio QSA',render:renderConluioQSA},
+    {id:'g_comun',   ic:'🧩',tl:'Comunidades',render:renderComunidades},
     {id:'g_riscos',  ic:'👻',tl:'Riscos',  render:renderRiscos},
     {id:'g_dep',     ic:'🔗',tl:'Cativos', render:renderFornecedorDependente},
     {id:'g_dez',     ic:'📅',tl:'Dezembro',render:renderCorridaDezembro},
@@ -781,6 +784,78 @@ async function renderCorridaDezembro(){
       <div class="kv" style="margin-top:8px"><span class="k">${fmtRc(x.dezembro)} em dezembro</span><b>de ${fmtRc(x.total)} no ano</b></div>
       ${leitura(`<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share*100)}%</b> do valor do ano (${fmtRc(x.total)}) só em dezembro. Concentração no fim do exercício sugere corrida do empenho — verificar se houve planejamento ou uso apressado da verba.`)}`,
     x.share>=0.99?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ RADAR DE RISCO (score composto) ═══
+async function renderRadar(){
+  const d=await J('/api/intel/radar?limite=150');
+  if(!d.ok)return sec('Radar')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Radar de risco — todos os detectores somados','Score <b>0-100</b> por fornecedor somando sinais independentes de todos os detectores (conluio societário, sanção à época, fantasma, servidor-sócio, perdedora contumaz, fênix). Um detector isolado é indício fraco; <b>vários acesos no mesmo CNPJ raramente são coincidência</b> — esta é a fila de apuração priorizada.','🎯');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores com sinal','var(--amber)','🎯')}${kpi(fmtN(d.n_vermelho||0),'Score ≥50 (🔴)','var(--rose)','🚨')}
+      ${kpi(a.length?a[0].score:'—','Maior score','var(--rose)')}${kpi(a.filter(x=>x.n_sinais>=3).length,'Com ≥3 sinais',null,'🧮')}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'')}</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#radar-list .card')"></div>`;
+  h+=`<div id="radar-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">${(x.sinais||[]).map(s=>`<span class="tag ${s.peso>=25?'rose':'amber'}">${esc(s.sinal)} +${s.peso}</span>`).join(' ')}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.score>=50?'var(--rose)':'var(--amber)'}">${x.score}</div><div class="dim">${x.rating} ${x.n_sinais} sinais</div></div></div>
+      ${leitura(`<b>${esc(x.nome)}</b> acende <b>${x.n_sinais}</b> detector(es) ao mesmo tempo: ${esc((x.sinais||[]).map(s=>s.sinal+(s.detalhe?' ('+s.detalhe+')':'')).join('; '))}. Sinais independentes que se corroboram — priorizar na apuração.`)}`,
+    x.score>=50?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ CONLUIO DIRETO (vencedor × perdedora × QSA) ═══
+async function renderConluioQSA(){
+  const d=await J('/api/intel/conluio_qsa');
+  if(!d.ok)return sec('Conluio QSA')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.pares||[];const cob=d.cobertura||{};
+  let h=cover('geral','Conluio direto — vencedor × perdedora do mesmo dono','Vencedor e perdedora do <b>MESMO certame</b> com <b>sócio em comum</b> no QSA da Receita (ou matriz×filial "concorrendo" entre si). A perdedora do mesmo dono existe para dar aparência de disputa — <b>proposta de cobertura</b> (OCDE bid rigging; art. 337-F do CP). Fontes: resultados PNCP + atas de julgamento do corpus.','🤝');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Pares vencedor×perdedora','var(--rose)','🤝')}${kpi(fmtN(d.n_forte||0),'Fortes (QSA/matriz-filial)','var(--rose)','🚨')}
+      ${kpi(fmtN(cob.certames_com_perdedora||0),'Certames com perdedora conhecida',null,'⚖️')}${kpi(fmtN(cob.pares_sem_qsa||0),'Pares sem QSA local (INDISPONÍVEL ≠ 0)','var(--amber)','❓')}</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por empresa ou sócio…" oninput="filtrar(this,'#cq-list .card')"></div>`;
+  h+=`<div id="cq-list" class="grid">`+a.map(x=>{
+    const socios=(x.socios_comuns||[]).map(s=>esc(s.nome)).slice(0,3).join(', ')||'matriz × filial (mesmo CNPJ-raiz)';
+    const tcls=x.tier==='MEDIA'?'amber':'rose';
+    return card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+      <div style="font-weight:700">${clk(x.vencedor.cnpj,x.vencedor.nome)} <span class="dim">venceu</span></div>
+      <div style="font-weight:700">${clk(x.perdedora.cnpj,x.perdedora.nome)} <span class="dim">perdeu</span></div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px"><span class="tag ${tcls}">${esc(x.tier)}</span> sócio(s) em comum: ${socios}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.n_certames}</div><div class="dim">certame(s) · ${fmtRc(x.valor_vencido)}</div></div></div>
+      ${leitura(`<b>${esc(x.vencedor.nome)}</b> venceu ${x.n_certames} certame(s) (${fmtRc(x.valor_vencido)}) em que <b>${esc(x.perdedora.nome)}</b> — ${x.tier==='MESMA_EMPRESA'?'a PRÓPRIA empresa (outra filial)':'empresa com sócio em comum'} — aparecia como concorrente. Disputa de fachada: o dono ganha dos dois lados. Confirmar CPF completo do sócio antes de citar.`)}`,
+    x.tier!=='MEDIA'?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ COMUNIDADES (Louvain) ═══
+async function renderComunidades(){
+  const d=await J('/api/intel/comunidades');
+  if(!d.ok)return sec('Comunidades')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.comunidades||[];const g=d.grafo||{};
+  let h=cover('geral','Comunidades — clusters família-empresa-órgão (Louvain)','Algoritmo de comunidades (Louvain) sobre o grafo de <b>sócios (QSA), disputas em comum e dinheiro dos mesmos órgãos</b>. O cluster denso pessoa+empresa+órgão é o desenho clássico do grupo econômico oculto atrás de licitações. Score 0-100 por sinais objetivos dentro do cluster.','🧩');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Comunidades relevantes','var(--amber)','🧩')}${kpi(fmtN(a.filter(x=>x.score>=50).length),'Score ≥50 (🔴)','var(--rose)','🚨')}
+      ${kpi(fmtN(g.nos||0),'Nós no grafo',null,'🕸️')}${kpi(fmtN(g.arestas||0),'Arestas',null,'🔗')}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'')}</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por empresa, pessoa ou órgão…" oninput="filtrar(this,'#com-list .card')"></div>`;
+  h+=`<div id="com-list" class="grid">`+a.map(x=>{
+    const emp=(x.membros||[]).filter(m=>m.tipo==='empresa').slice(0,4).map(m=>esc(m.label));
+    const pes=(x.membros||[]).filter(m=>m.tipo==='pessoa').slice(0,3).map(m=>esc(m.label));
+    const org=(x.membros||[]).filter(m=>m.tipo==='orgao').slice(0,2).map(m=>esc(m.label));
+    return card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+      <div style="font-weight:700">${x.rating} Comunidade #${x.id} · ${x.n_empresas} empresa(s), ${x.n_pessoas} pessoa(s), ${x.n_orgaos} órgão(s)</div>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">🏢 ${emp.join(' · ')||'—'}</div>
+      <div class="muted" style="font-size:12.5px">👤 ${pes.join(' · ')||'—'} &nbsp; 🏛️ ${org.join(' · ')||'—'}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">${(x.sinais||[]).map(s=>`<span class="tag ${s.peso>=20?'rose':'amber'}">${esc(s.sinal)} +${s.peso}</span>`).join(' ')}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.score>=50?'var(--rose)':'var(--amber)'}">${x.score}</div><div class="dim">${fmtRc(x.valor_total)}</div></div></div>
+      ${leitura(`Cluster com <b>${x.n_empresas}</b> empresa(s) e <b>${x.n_pessoas}</b> pessoa(s) movimentando <b>${fmtRc(x.valor_total)}</b>${(x.sinais||[]).length?', com sinais: '+esc(x.sinais.map(s=>s.sinal+(s.detalhe?' ('+s.detalhe+')':'')).join('; ')):''}. Densidade ${x.densidade}. Mapa de onde olhar — não prova de conluio.`)}`,
+    x.score>=50?'hl':'');}).join('')+`</div>`;
+  if(d.articuladores&&d.articuladores.length){
+    h+=sec('Articuladores (pontes entre grupos)')+`<div class="grid">`+d.articuladores.slice(0,10).map(x=>card(
+      `<div style="display:flex;justify-content:space-between;gap:10px"><div><b>${esc(x.label)}</b> <span class="dim">${esc(x.tipo)}</span></div>
+       <div class="right"><span class="num">${x.grau}</span> <span class="dim">conexões</span></div></div>`)).join('')+`</div>`;}
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
 }
 

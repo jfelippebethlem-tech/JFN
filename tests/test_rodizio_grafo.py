@@ -102,3 +102,14 @@ def test_pipeline_reporta_cobertura_de_extracao():
     res = RG.analisar_atas(atas)
     assert res["cobertura_extracao"]["atas_entrada"] == 2
     assert res["cobertura_extracao"]["atas_avaliaveis"] == 1
+
+
+def test_cnpj_cru_com_dv_valido_entra_e_processo_nao():
+    from compliance_agent.rodizio_grafo import extrair_participantes_ata
+    txt = ("A empresa ALFA, CNPJ 11222333000181, foi declarada vencedora. "
+           "A proposta da empresa BETA, CNPJ 12345678901234, foi inabilitada. "
+           "Processo administrativo 99999000012202401 arquivado.")
+    out = extrair_participantes_ata(txt)
+    cnpjs = {p["cnpj"]: p["venceu"] for p in out["participantes"]}
+    assert cnpjs.get("11222333000181") is True          # DV válido → entra
+    assert "12345678901234" not in cnpjs                # DV inválido (nº qualquer) → fora
