@@ -1775,10 +1775,11 @@ async def api_fontes_frescor():
                  detalhe="data da OB mais nova")
             _add("PNCP · resultados", "SELECT MAX(coletado_em) FROM pncp_resultado", con,
                  detalhe="timer semanal (dom 01:40)")
-            _add("Sanções CEIS/CNEP", "SELECT MAX(coletado_em) FROM sancoes_federais", con,
-                 detalhe="timer semanal (dom 05:40)")
-            _add("Folhas (Estado)", "SELECT MAX(coletado_em) FROM registros_folha", con,
-                 detalhe="DPE + CMRJ + TJRJ")
+            # sancoes/folha não têm coletado_em: proxy = data da sanção mais nova / competência mais nova
+            _add("Sanções CEIS/CNEP", "SELECT MAX(data_inicio) FROM sancoes_federais", con,
+                 detalhe="sanção mais nova · timer semanal (dom 05:40)")
+            _add("Folhas (Estado)", "SELECT MAX(competencia)||'-01' FROM registros_folha", con,
+                 detalhe="competência mais nova · DPE + CMRJ + TJRJ")
         finally:
             con.close()
         try:

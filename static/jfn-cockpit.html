@@ -26,8 +26,22 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);
 @keyframes drift1{to{transform:translate(6vw,4vw) scale(1.12)}}
 @keyframes drift2{to{transform:translate(-5vw,-3vw) scale(1.1)}}
 /* scanline + vignette atmosphere */
+/* piso de grade em perspectiva (synthwave HUD) */
+.gridfloor{position:fixed;left:0;right:0;bottom:0;height:42vh;z-index:0;pointer-events:none;overflow:hidden;
+  -webkit-mask-image:linear-gradient(0deg,#000,transparent 92%);mask-image:linear-gradient(0deg,#000,transparent 92%)}
+.gridfloor::before{content:"";position:absolute;left:-50%;right:-50%;bottom:0;height:120%;
+  background-image:linear-gradient(90deg,rgba(63,224,208,.14) 1px,transparent 1px),linear-gradient(0deg,rgba(63,224,208,.14) 1px,transparent 1px);
+  background-size:56px 56px;transform:perspective(340px) rotateX(70deg);transform-origin:bottom;
+  animation:floor 9s linear infinite}
+@keyframes floor{to{background-position:0 56px}}
 .veil{position:fixed;inset:0;z-index:1;pointer-events:none;
-  background:radial-gradient(120% 90% at 50% 0%,transparent 55%,rgba(2,6,11,.65) 100%);}
+  background:radial-gradient(120% 90% at 50% 0%,transparent 55%,rgba(2,6,11,.7) 100%);}
+/* cantos HUD nas peças de vidro */
+.corner{position:absolute;width:16px;height:16px;pointer-events:none;opacity:.55}
+.corner.tl{left:10px;top:10px;border-left:1.5px solid var(--teal);border-top:1.5px solid var(--teal)}
+.corner.tr{right:10px;top:10px;border-right:1.5px solid var(--teal);border-top:1.5px solid var(--teal)}
+.corner.bl{left:10px;bottom:10px;border-left:1.5px solid var(--gold);border-bottom:1.5px solid var(--gold)}
+.corner.br{right:10px;bottom:10px;border-right:1.5px solid var(--gold);border-bottom:1.5px solid var(--gold)}
 .veil::after{content:"";position:absolute;inset:0;opacity:.05;mix-blend-mode:overlay;
   background:repeating-linear-gradient(0deg,#7ff 0 1px,transparent 1px 3px)}
 .wrap{position:relative;z-index:3;max-width:1220px;margin:0 auto;padding:22px clamp(16px,4vw,40px) 60px}
@@ -152,9 +166,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);
 </style>
 </head>
 <body>
-<div id="boot"><div class="bt">Inicializando inteligência</div><div class="bar"><i></i></div></div>
+<div id="boot"><div class="bt" id="boottxt">Inicializando inteligência</div><div class="bar"><i></i></div></div>
 <canvas id="net"></canvas>
-<div class="aura a"></div><div class="aura b"></div><div class="veil"></div>
+<div class="aura a"></div><div class="aura b"></div><div class="gridfloor"></div><div class="veil"></div>
 
 <div class="wrap">
   <header class="hud rise g1">
@@ -175,6 +189,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);
   <div class="ticker rise g2"><div class="lane" id="lane"><span class="t">◉ inicializando telemetria…</span></div></div>
 
   <section class="hero rise g2">
+    <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
     <svg class="sweep" viewBox="0 0 200 200" aria-hidden="true">
       <defs><radialGradient id="sw" cx="50%" cy="50%" r="50%">
         <stop offset="0%" stop-color="#3fe0d0" stop-opacity="0"/><stop offset="88%" stop-color="#3fe0d0" stop-opacity="0"/>
@@ -222,8 +237,12 @@ const rBRL=(v)=>{if(v==null||isNaN(v))return "—";const a=Math.abs(v);
 const nBR=(v)=>v==null?"—":Number(v).toLocaleString('pt-BR');
 async function J(u){try{const r=await fetch(u);return await r.json();}catch(e){return {ok:false,erro:String(e)};}}
 
-/* boot overlay off */
-addEventListener('load',()=>setTimeout(()=>$('boot')?.classList.add('gone'),950));
+/* boot overlay: typewriter conectando fontes, depois some */
+(function(){const el=$('boottxt');if(!el||RM)return;
+  const seq=['Conectando SIAFE','· PNCP','· CEIS/CNEP','· Receita','Inteligência on-line'];let i=0,c=0,t='';
+  (function type(){if(i>=seq.length)return;const w=seq[i];if(c<=w.length){el.textContent=t+w.slice(0,c);c++;setTimeout(type,26);}
+    else{t+=w+'  ';i++;c=0;setTimeout(type,180);}})();})();
+addEventListener('load',()=>setTimeout(()=>$('boot')?.classList.add('gone'),1050));
 
 /* clock */
 (function(){const c=$('clock');function t(){c.textContent=new Date().toLocaleTimeString('pt-BR');}setInterval(t,1000);t();})();
