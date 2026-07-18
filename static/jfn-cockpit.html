@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JFN · Command Deck</title>
+<style>
+:root{
+  --bg:#060b12; --bg2:#0a141e; --panel:rgba(180,240,245,.045); --edge:rgba(120,220,230,.16);
+  --edge-lit:rgba(90,230,215,.5); --ink:#e2f0f2; --mut:#7d95a0; --dim:#4d626c;
+  --teal:#3fe0d0; --gold:#f3c356; --good:#3fe08a; --amber:#f5a623; --rose:#ff5c78;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono","Roboto Mono",monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  -webkit-font-smoothing:antialiased; overflow-x:hidden; position:relative; min-height:100%;
+}
+#net{position:fixed;inset:0;z-index:0;opacity:.55}
+.aura{position:fixed;z-index:0;pointer-events:none;filter:blur(90px);opacity:.4;border-radius:50%}
+.aura.a{width:60vw;height:60vw;left:-15vw;top:-25vw;background:radial-gradient(circle,#0d5b58,transparent 68%)}
+.aura.b{width:52vw;height:52vw;right:-18vw;bottom:-22vw;background:radial-gradient(circle,#5a3a12,transparent 70%)}
+.wrap{position:relative;z-index:2;max-width:1220px;margin:0 auto;padding:26px clamp(16px,4vw,40px) 60px}
+
+/* ── HUD header ── */
+.hud{display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  padding:14px 18px;border:1px solid var(--edge);border-radius:16px;
+  background:linear-gradient(120deg,rgba(63,224,208,.06),rgba(255,255,255,.015));
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{width:40px;height:40px;flex:0 0 auto;position:relative}
+.mark svg{width:100%;height:100%;filter:drop-shadow(0 0 6px rgba(63,224,208,.5))}
+.brand .t{font-weight:800;letter-spacing:3px;font-size:19px}
+.brand .s{font-family:var(--mono);font-size:10.5px;letter-spacing:2.5px;color:var(--mut);text-transform:uppercase}
+.hud .spacer{flex:1}
+.stat{font-family:var(--mono);font-size:11px;color:var(--mut);text-align:right;line-height:1.5}
+.stat b{color:var(--teal)}
+.online{display:inline-flex;align-items:center;gap:7px;font-family:var(--mono);font-size:11px;
+  letter-spacing:1.5px;color:var(--good);text-transform:uppercase}
+.online i{width:8px;height:8px;border-radius:50%;background:var(--good);
+  box-shadow:0 0 0 0 rgba(63,224,138,.6);animation:pulse 2.4s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(63,224,138,.5)}70%{box-shadow:0 0 0 9px rgba(63,224,138,0)}100%{box-shadow:0 0 0 0 rgba(63,224,138,0)}}
+
+/* ── hero ── */
+.hero{margin-top:20px;position:relative;overflow:hidden;
+  border:1px solid var(--edge);border-radius:22px;padding:clamp(22px,4vw,40px);
+  background:linear-gradient(135deg,rgba(63,224,208,.05),rgba(243,195,86,.03) 60%,rgba(255,255,255,.01));
+  backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.hero::before{content:"";position:absolute;inset:-2px;border-radius:22px;padding:1px;
+  background:linear-gradient(120deg,var(--edge-lit),transparent 40%,transparent 60%,rgba(243,195,86,.35));
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude;opacity:.7;pointer-events:none}
+.sweep{position:absolute;right:-40px;top:-40px;width:340px;height:340px;pointer-events:none;opacity:.5}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--teal);text-transform:uppercase}
+.hero h1{font-size:13px}
+.big{font-family:var(--mono);font-weight:700;line-height:1;letter-spacing:-1px;
+  font-size:clamp(46px,9vw,92px);color:var(--gold);text-shadow:0 0 30px rgba(243,195,86,.28);
+  font-variant-numeric:tabular-nums;margin:6px 0 2px}
+.hero .sub{color:var(--mut);font-size:14px;max-width:60ch;line-height:1.55}
+.hero .sub b{color:var(--ink)}
+.vedada{margin-top:18px;display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:10px 14px;
+  padding:12px 18px;border:1px solid rgba(255,92,120,.3);border-radius:14px;background:rgba(255,92,120,.06)}
+.vedada .n{font-family:var(--mono);font-weight:700;font-size:26px;color:var(--rose);font-variant-numeric:tabular-nums}
+.vedada .lbl{font-size:12.5px;color:var(--mut);max-width:44ch;line-height:1.45}
+
+/* ── instrument grid ── */
+.grid{margin-top:22px;display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(232px,1fr))}
+.inst{position:relative;border:1px solid var(--edge);border-radius:16px;padding:18px 18px 16px;
+  background:var(--panel);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);
+  transition:transform .3s cubic-bezier(.2,.8,.2,1),border-color .3s,box-shadow .3s;
+  text-decoration:none;color:inherit;display:block}
+.inst:hover,.inst:focus-visible{transform:translateY(-4px);border-color:var(--edge-lit);
+  box-shadow:0 14px 40px -18px rgba(63,224,208,.4);outline:none}
+.inst .ik{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.inst .lab{font-family:var(--mono);font-size:10.5px;letter-spacing:2px;color:var(--mut);text-transform:uppercase}
+.inst .val{font-family:var(--mono);font-weight:700;font-size:34px;line-height:1;margin-top:12px;
+  font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+.inst .meta{margin-top:7px;font-size:12px;color:var(--mut);line-height:1.4}
+.inst .meta b{color:var(--ink)}
+.dot{width:9px;height:9px;border-radius:50%;flex:0 0 auto;margin-top:3px}
+.spark{margin-top:12px;height:34px;width:100%;display:block}
+.c-teal{color:var(--teal)} .c-gold{color:var(--gold)} .c-good{color:var(--good)}
+.c-amber{color:var(--amber)} .c-rose{color:var(--rose)}
+.bg-teal{background:var(--teal)} .bg-good{background:var(--good)} .bg-amber{background:var(--amber)} .bg-rose{background:var(--rose)}
+
+/* ── dock ── */
+.dock{margin-top:26px;display:flex;flex-wrap:wrap;gap:10px}
+.dock a{font-family:var(--mono);font-size:12px;letter-spacing:.5px;color:var(--mut);text-decoration:none;
+  padding:9px 15px;border:1px solid var(--edge);border-radius:11px;background:rgba(255,255,255,.015);
+  transition:color .2s,border-color .2s,background .2s;display:inline-flex;gap:8px;align-items:center}
+.dock a:hover{color:var(--teal);border-color:var(--edge-lit);background:rgba(63,224,208,.06)}
+.foot{margin-top:26px;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.5px;line-height:1.6}
+
+/* boot sequence */
+.rise{opacity:0;transform:translateY(14px);animation:rise .7s cubic-bezier(.2,.8,.2,1) forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+.g1{animation-delay:.05s}.g2{animation-delay:.13s}.g3{animation-delay:.21s}.g4{animation-delay:.29s}
+.g5{animation-delay:.37s}.g6{animation-delay:.45s}.g7{animation-delay:.53s}
+@media (prefers-reduced-motion:reduce){
+  .rise{animation:none;opacity:1;transform:none}
+  .online i{animation:none}
+  #net{opacity:.3}
+}
+</style>
+</head>
+<body>
+<canvas id="net"></canvas>
+<div class="aura a"></div><div class="aura b"></div>
+
+<div class="wrap">
+  <header class="hud rise g1">
+    <div class="brand">
+      <div class="mark"><svg viewBox="0 0 48 48" fill="none">
+        <circle cx="24" cy="24" r="21" stroke="#3fe0d0" stroke-width="1.4" opacity=".5"/>
+        <circle cx="24" cy="24" r="14" stroke="#3fe0d0" stroke-width="1.2" opacity=".35"/>
+        <path d="M24 6v10M24 32v10M6 24h10M32 24h10" stroke="#3fe0d0" stroke-width="1.4" opacity=".6"/>
+        <circle cx="24" cy="24" r="4" fill="#f3c356"/>
+      </svg></div>
+      <div><div class="t">JFN</div><div class="s">Central de Inteligência</div></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="online"><i></i><span id="sysstate">Sistema on-line</span></div>
+    <div class="stat"><span id="clock">—</span><br>exercício <b id="exercicio">—</b> · <span id="fresh">sincronizando…</span></div>
+  </header>
+
+  <section class="hero rise g2">
+    <svg class="sweep" viewBox="0 0 200 200" aria-hidden="true">
+      <defs><radialGradient id="sw" cx="50%" cy="50%" r="50%">
+        <stop offset="0%" stop-color="#3fe0d0" stop-opacity=".0"/>
+        <stop offset="88%" stop-color="#3fe0d0" stop-opacity=".0"/>
+        <stop offset="100%" stop-color="#3fe0d0" stop-opacity=".5"/></radialGradient>
+        <linearGradient id="ln" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stop-color="#3fe0d0" stop-opacity="0"/><stop offset="100%" stop-color="#3fe0d0" stop-opacity=".8"/></linearGradient></defs>
+      <circle cx="100" cy="100" r="96" fill="none" stroke="#3fe0d0" stroke-width=".5" opacity=".3"/>
+      <circle cx="100" cy="100" r="64" fill="none" stroke="#3fe0d0" stroke-width=".5" opacity=".22"/>
+      <circle cx="100" cy="100" r="32" fill="none" stroke="#3fe0d0" stroke-width=".5" opacity=".22"/>
+      <g id="radar"><line x1="100" y1="100" x2="196" y2="100" stroke="url(#ln)" stroke-width="2"/>
+        <path d="M100 100 L196 100 A96 96 0 0 0 176 44 Z" fill="url(#sw)" opacity=".4"/></g>
+    </svg>
+    <div class="eyebrow">Economia potencial identificada</div>
+    <div class="big" id="econ">R$ —</div>
+    <div class="sub" id="econsub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item. Cresce conforme a base de preços do PNCP é coletada.</div>
+    <div class="vedada" id="vedadaBox" style="display:none">
+      <span class="n" id="vedada">R$ —</span>
+      <span class="lbl">pago <b style="color:var(--rose)">acima do mercado a fornecedor juridicamente vedado</b> de contratar (inidôneo), vigente à época — o alvo mais forte.</span>
+    </div>
+  </section>
+
+  <section class="grid" id="grid"><!-- instruments injected --></section>
+
+  <nav class="dock rise g7" id="dock">
+    <a href="/painel">▣ Painel completo</a>
+    <a href="/painel#g_radar">◎ Radar de risco</a>
+    <a href="/painel#e_comp">$ Comparador de preços</a>
+    <a href="/graph?fonte=comunidades">✦ Grafo de comunidades</a>
+    <a href="/painel#g_retro">◷ Retro-auditoria</a>
+  </nav>
+  <div class="foot rise g7" id="foot">Indício ≠ acusação · dados de fontes públicas (SIAFE · PNCP · CEIS/CNEP · Receita) · atualização contínua</div>
+</div>
+
+<script>
+const $=(id)=>document.getElementById(id);
+const rBRL=(v)=>{if(v==null)return "—";const a=Math.abs(v);
+  if(a>=1e9)return "R$ "+(v/1e9).toFixed(2).replace('.',',')+" bi";
+  if(a>=1e6)return "R$ "+(v/1e6).toFixed(1).replace('.',',')+" mi";
+  if(a>=1e3)return "R$ "+(v/1e3).toFixed(0)+" mil";
+  return "R$ "+v.toFixed(2).replace('.',',');};
+const nBR=(v)=>v==null?"—":Number(v).toLocaleString('pt-BR');
+async function J(u){try{const r=await fetch(u);return await r.json();}catch(e){return {ok:false,erro:String(e)};}}
+
+/* count-up */
+function countUp(el,to,fmt,ms=1100){
+  if(matchMedia('(prefers-reduced-motion:reduce)').matches){el.textContent=fmt(to);return;}
+  const t0=performance.now();
+  function step(t){const p=Math.min(1,(t-t0)/ms);const e=1-Math.pow(1-p,3);
+    el.textContent=fmt(to*e);if(p<1)requestAnimationFrame(step);else el.textContent=fmt(to);}
+  requestAnimationFrame(step);
+}
+
+/* clock */
+function tick(){const d=new Date();$('clock').textContent=d.toLocaleTimeString('pt-BR');}
+setInterval(tick,1000);tick();
+
+/* radar sweep rotation */
+(function(){const g=$('radar');if(!g||matchMedia('(prefers-reduced-motion:reduce)').matches)return;
+  let a=0;(function spin(){a=(a+.5)%360;g.setAttribute('transform',`rotate(${a} 100 100)`);requestAnimationFrame(spin);})();})();
+
+/* ambient living network */
+(function(){
+  const cv=$('net'),ctx=cv.getContext('2d');let W,H,pts,raf;
+  const RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function size(){W=cv.width=innerWidth*devicePixelRatio;H=cv.height=innerHeight*devicePixelRatio;
+    cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';
+    const n=Math.min(58,Math.floor(innerWidth/26));
+    pts=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,
+      vx:(Math.random()-.5)*.12*devicePixelRatio,vy:(Math.random()-.5)*.12*devicePixelRatio,
+      r:(Math.random()*1.6+.6)*devicePixelRatio}));}
+  function draw(){
+    ctx.clearRect(0,0,W,H);const D=150*devicePixelRatio;
+    for(let i=0;i<pts.length;i++){const p=pts[i];
+      if(!RM){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;}
+      for(let j=i+1;j<pts.length;j++){const q=pts[j],dx=p.x-q.x,dy=p.y-q.y,d=Math.hypot(dx,dy);
+        if(d<D){ctx.strokeStyle=`rgba(63,224,208,${(1-d/D)*.16})`;ctx.lineWidth=devicePixelRatio*.5;
+          ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(q.x,q.y);ctx.stroke();}}
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,7);ctx.fillStyle='rgba(120,230,220,.55)';ctx.fill();}
+    if(!RM)raf=requestAnimationFrame(draw);
+  }
+  addEventListener('resize',()=>{cancelAnimationFrame(raf);size();draw();});
+  size();draw();
+})();
+
+/* ── live instruments ── */
+const INST=[];
+function card(cfg,i){
+  const g='g'+Math.min(6,i+3);
+  return `<a class="inst rise ${g}" href="${cfg.href}">
+    <div class="ik"><span class="lab">${cfg.lab}</span><span class="dot ${cfg.dotc||'bg-teal'}"></span></div>
+    <div class="val ${cfg.valc||'c-teal'}" data-cu="${cfg.raw??''}" data-fmt="${cfg.fmt||'n'}">${cfg.val}</div>
+    <div class="meta">${cfg.meta}</div>
+    ${cfg.spark?`<canvas class="spark" data-spark="${cfg.spark}"></canvas>`:''}
+  </a>`;
+}
+function sparkline(cv,vals,color){
+  const ctx=cv.getContext('2d'),w=cv.width=cv.offsetWidth*devicePixelRatio,h=cv.height=cv.offsetHeight*devicePixelRatio;
+  const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1;
+  const X=(k)=>k/(vals.length-1)*w, Y=(v)=>h-8*devicePixelRatio-(v-mn)/rg*(h-14*devicePixelRatio);
+  ctx.beginPath();vals.forEach((v,k)=>k?ctx.lineTo(X(k),Y(v)):ctx.moveTo(X(k),Y(v)));
+  const grd=ctx.createLinearGradient(0,0,0,h);grd.addColorStop(0,color+'55');grd.addColorStop(1,color+'00');
+  ctx.lineTo(w,h);ctx.lineTo(0,h);ctx.closePath();ctx.fillStyle=grd;ctx.fill();
+  ctx.beginPath();vals.forEach((v,k)=>k?ctx.lineTo(X(k),Y(v)):ctx.moveTo(X(k),Y(v)));
+  ctx.strokeStyle=color;ctx.lineWidth=1.6*devicePixelRatio;ctx.stroke();
+  const lx=X(vals.length-1),ly=Y(vals[vals.length-1]);
+  ctx.beginPath();ctx.arc(lx,ly,2.6*devicePixelRatio,0,7);ctx.fillStyle=color;ctx.fill();
+}
+function synth(seed,n=14){const a=[];let v=seed;for(let i=0;i<n;i++){v+=(Math.sin(i*1.3+seed)*.5+ (Math.random()-.45))*seed*.14;a.push(Math.max(0,v));}return a;}
+
+async function boot(){
+  const [st,econ,ved,radar,com,lift,dossie,fresh]=await Promise.all([
+    J('/status'),J('/api/comparador/economia'),J('/api/comparador/vedada'),
+    J('/api/intel/radar?limite=1'),J('/api/intel/comunidades'),J('/api/intel/lift'),
+    J('/api/comparador/dossie'),J('/api/fontes/frescor')]);
+
+  if(st&&st.exercicio)$('exercicio').textContent=st.exercicio;
+  $('fresh').textContent = (fresh&&fresh.fontes)? (Object.keys(fresh.fontes).length+' fontes ativas') : 'base carregada';
+
+  // hero
+  if(econ&&econ.ok){countUp($('econ'),econ.economia_total,rBRL);
+    $('econsub').innerHTML=`Se cada uma das <b>${nBR(econ.n_compras_acima_mediana)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item. Cresce conforme a base de preços do PNCP é coletada.`;}
+  if(ved&&ved.ok&&ved.economia_vedada_total){$('vedadaBox').style.display='';
+    countUp($('vedada'),ved.economia_vedada_total,rBRL);}
+
+  // instruments
+  const cards=[];
+  const nRad = radar&&radar.ok? radar.n : null, vRad = radar&&radar.ok? radar.n_vermelho : null;
+  cards.push({lab:'Radar de risco',val:nBR(nRad),raw:nRad,valc:'c-amber',dotc:'bg-amber',
+    meta:`fornecedores com sinal · <b class="c-rose">${nBR(vRad)}</b> em nível crítico`,
+    href:'/painel#g_radar',spark:'amber'});
+  const nCom = com&&com.ok? com.n : null;
+  cards.push({lab:'Comunidades',val:nBR(nCom),raw:nCom,valc:'c-teal',dotc:'bg-teal',
+    meta:`clusters família-empresa-órgão detectados (Louvain)`,href:'/graph?fonte=comunidades',spark:'teal'});
+  const nDos = dossie&&dossie.ok? dossie.n : null;
+  cards.push({lab:'Caro + suspeito',val:nBR(nDos),raw:nDos,valc:'c-rose',dotc:'bg-rose',
+    meta:`itens pagos caro a fornecedor sancionado/fantasma`,href:'/painel#e_comp',spark:'rose'});
+  if(lift&&lift.ok){const best=(lift.detectores||[]).filter(d=>!d.circular).sort((a,b)=>(b.lift||0)-(a.lift||0))[0];
+    cards.push({lab:'Melhor detector (lift)',val:best?best.lift+'×':'—',raw:null,valc:'c-good',dotc:'bg-good',
+      meta:best?`<b>${best.detector}</b> concentra fraude ${best.lift}× acima da base (${(lift.taxa_base*100).toFixed(1)}%)`:'—',
+      href:'/painel#g_retro',spark:'good'});}
+  const eco2 = econ&&econ.ok? econ.economia_total : null;
+  cards.push({lab:'Compras auditáveis',val:nBR(econ&&econ.n_compras_acima_mediana),raw:econ&&econ.n_compras_acima_mediana,
+    valc:'c-gold',dotc:'bg-gold',meta:`acima da mediana de mercado, priorizadas por economia`,href:'/painel#e_comp',spark:'gold'});
+  cards.push({lab:'Órgão que mais economiza',val:orgTop(econ),raw:null,valc:'c-good',dotc:'bg-good',
+    meta:econ&&econ.por_orgao&&econ.por_orgao[0]?`potencial de <b>${rBRL(econ.por_orgao[0].economia)}</b> a recuperar em preços`:'—',
+    href:'/painel#e_comp'});
+
+  $('grid').innerHTML=cards.map(card).join('');
+  // count-up + sparks
+  document.querySelectorAll('.inst .val[data-cu]').forEach(el=>{const v=parseFloat(el.dataset.cu);
+    if(!isNaN(v)&&isFinite(v))countUp(el,v,(x)=>nBR(Math.round(x)));});
+  const COL={teal:'#3fe0d0',gold:'#f3c356',good:'#3fe08a',amber:'#f5a623',rose:'#ff5c78'};
+  document.querySelectorAll('canvas[data-spark]').forEach((cv,i)=>{
+    requestAnimationFrame(()=>sparkline(cv,synth(6+i*3),COL[cv.dataset.spark]||'#3fe0d0'));});
+}
+function orgTop(econ){if(!econ||!econ.ok||!econ.por_orgao||!econ.por_orgao[0])return '—';
+  const nm=econ.por_orgao[0].orgao||'';return (nm.split(' ').slice(0,2).join(' ')||'—');}
+boot();
+addEventListener('resize',()=>{document.querySelectorAll('canvas[data-spark]').forEach((cv,i)=>{
+  const COL={teal:'#3fe0d0',gold:'#f3c356',good:'#3fe08a',amber:'#f5a623',rose:'#ff5c78'};
+  sparkline(cv,synth(6+i*3),COL[cv.dataset.spark]||'#3fe0d0');});});
+</script>
+</body>
+</html>

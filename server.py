@@ -352,6 +352,12 @@ async def painel_fiscalizacao():
     return FileResponse("static/jfn-painel.html")
 
 
+@app.get("/cockpit", response_class=HTMLResponse)
+async def cockpit():
+    """Command deck ultrafuturista (Jarvis/glass): visão geral ao vivo dos indicadores de inteligência."""
+    return FileResponse("static/jfn-cockpit.html")
+
+
 @app.get("/chat", response_class=HTMLResponse)
 async def chat_ui():
     """Serve the legacy chat UI."""

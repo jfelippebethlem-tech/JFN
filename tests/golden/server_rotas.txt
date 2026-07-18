@@ -92,6 +92,7 @@ GET /api/tunnel/status -> api_tunnel_status
 GET /api/ugs -> api_ugs
 GET /auditoria -> auditoria_ui
 GET /chat -> chat_ui
+GET /cockpit -> cockpit
 GET /controle -> pagina_controle
 GET /exports -> list_exports
 GET /graph -> graph_page
