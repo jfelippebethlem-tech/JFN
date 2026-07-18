@@ -44,6 +44,7 @@ _RUBRICA_NECESSIDADE = {
 
 # Limiar objetivo de evasão pós-visita (no CÓDIGO, nunca no prompt).
 _EVASAO_FORTE = 0.50            # ≥ 50% dos visitantes não viraram proponentes → forte
+_EVASAO_N_MIN_FORTE = 4        # 'forte' exige n≥4 visitantes; 2≤n<4 é amostra pequena → só 'fraco'
 _JANELA_ESTREITA_DIAS = 2      # janela única ≤ 2 dias = agendamento de fato controlado
 
 
@@ -141,11 +142,16 @@ class E4VisitaTecnica(Detector):
                 detalhe.append(f"janela única estreita ({janela} dia(s))")
             razoes.append("agrava: " + " + ".join(detalhe) + " (controla/expõe quem pretende competir)")
 
-        # ── REGRA OBJETIVA 3: taxa de evasão pós-visita alta ──
+        # ── REGRA OBJETIVA 3: taxa de evasão pós-visita alta ('forte' só com n≥4; amostra pequena → 'fraco') ──
         if evasao and evasao["taxa"] is not None and evasao["taxa"] >= _EVASAO_FORTE and evasao["n_visitantes"] >= 2:
-            score = max(score, ancora("forte"))
-            razoes.append(f"evasão pós-visita de {evasao['taxa']:.0%}: {evasao['n_evadidos']} de "
-                          f"{evasao['n_visitantes']} visitantes NÃO apresentaram proposta")
+            if evasao["n_visitantes"] >= _EVASAO_N_MIN_FORTE:
+                score = max(score, ancora("forte"))
+                razoes.append(f"evasão pós-visita de {evasao['taxa']:.0%}: {evasao['n_evadidos']} de "
+                              f"{evasao['n_visitantes']} visitantes NÃO apresentaram proposta")
+            else:
+                score = max(score, ancora("fraco"))
+                razoes.append(f"evasão pós-visita de {evasao['taxa']:.0%} com amostra pequena "
+                              f"(n={evasao['n_visitantes']} < {_EVASAO_N_MIN_FORTE} visitantes) — rebaixado a fraco")
             res.add_evidencia(
                 fonte="autos — lista de visitantes × proponentes",
                 trecho=(f"{evasao['n_evadidos']} de {evasao['n_visitantes']} visitantes não apresentaram proposta "

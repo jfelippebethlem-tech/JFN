@@ -68,9 +68,28 @@ def test_e1_confirma_capital_acima_do_teto_10pct():
 
 
 def test_e1_sob_medida_vs_analogos():
-    """Exigência ausente em ≥metade dos análogos → candidata a sob medida (médio)."""
+    """Exigência ausente em ≥metade dos análogos (baseline n≥3) → candidata a sob medida (médio)."""
     ctx = {
         "processo": "edital-3",
+        "exigencias_habilitacao": [{"tipo": "certificacao_rara_xyz", "texto": "certificação XYZ proprietária"}],
+        "editais_analogos": [
+            {"exigencias": [{"tipo": "atestado"}]},
+            {"exigencias": [{"tipo": "atestado"}, {"tipo": "balanco"}]},
+            {"exigencias": [{"tipo": "atestado"}]},
+        ],
+    }
+    r = E1Barreira().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.score >= ANCORAS["medio"]
+    assert "certificacao_rara_xyz" in r.valores["exigencias_sob_medida"]
+    assert "/3 análogos" in r.motivo_refutacao          # n gravado na razão do achado
+
+
+def test_e1_sob_medida_menos_de_tres_analogos_nao_avaliavel():
+    """Baseline com só 2 análogos NÃO sustenta 'sob medida' (n≥3): única base → nao_avaliavel honesto."""
+    ctx = {
+        "processo": "edital-3b",
         "exigencias_habilitacao": [{"tipo": "certificacao_rara_xyz", "texto": "certificação XYZ proprietária"}],
         "editais_analogos": [
             {"exigencias": [{"tipo": "atestado"}]},
@@ -79,9 +98,32 @@ def test_e1_sob_medida_vs_analogos():
     }
     r = E1Barreira().avaliar(ctx)
     _valido(r)
-    assert r.status == "confirmado"
-    assert r.score >= ANCORAS["medio"]
-    assert "certificacao_rara_xyz" in r.valores["exigencias_sob_medida"]
+    assert r.status == "nao_avaliavel"
+    assert "análogos" in r.motivo_refutacao
+
+
+def test_e1_valor_monetario_nao_vira_quantitativo():
+    """Exigência de atestado com `valor` MONETÁRIO (R$) não pode ser dividida pelo quantitativo FÍSICO
+    licitado (razão sem sentido fabricava crítico) → sem quantitativo_exigido, não pontua."""
+    ctx = {
+        "processo": "edital-9",
+        "exigencias_habilitacao": [
+            {"tipo": "atestado", "texto": "atestado de capacidade técnica", "valor": 800_000.0},
+        ],
+        "quantitativos": 1000,
+    }
+    r = E1Barreira().avaliar(ctx)
+    _valido(r)
+    assert r.status == "descartado"
+    assert r.score == 0.0
+
+
+def test_e1_chave_exig_normaliza_acentos_completos():
+    """Normalização NFKD cobre ê/ô/õ/â/ú (a manual antiga não): chaves iguais com e sem acento."""
+    from compliance_agent.detectores.e1_barreira import _chave_exig
+    a = _chave_exig({"texto": "PATRIMÔNIO LÍQUIDO mínimo compatível"})
+    b = _chave_exig({"texto": "patrimonio liquido minimo compativel"})
+    assert a == b
 
 
 def test_e1_exculpatorio_objeto_critico_rebaixa():
@@ -231,6 +273,18 @@ def test_e2_nao_avaliavel_sem_datas():
     assert r.status == "nao_avaliavel"
 
 
+def test_e2_nao_avaliavel_abertura_antes_da_publicacao():
+    """Dado sujo (abertura ANTERIOR à publicação) não fabrica violação 'forte' → nao_avaliavel honesto."""
+    ctx = {
+        "processo": "cert-8", "modalidade": "pregao", "criterio": "menor_preco",
+        "data_publicacao": "2024-03-11", "data_abertura": "2024-03-04",
+    }
+    r = E2Prazos().avaliar(ctx)
+    _valido(r)
+    assert r.status == "nao_avaliavel"
+    assert "inconsistentes" in r.motivo_refutacao
+
+
 def test_e2_nao_avaliavel_modalidade_desconhecida():
     ctx = {"processo": "cert-7", "modalidade": "modalidade_xyz",
            "data_publicacao": "2024-03-01", "data_abertura": "2024-03-11"}
@@ -253,14 +307,24 @@ def _lote_heterogeneo():
 
 
 def test_e3_confirma_lote_heterogeneo_sem_justificativa():
-    """5 mercados distintos + justificativa ausente → forte."""
-    ctx = {"processo": "lote-1", "lotes": _lote_heterogeneo()}  # sem justificativa
+    """5 mercados distintos + autos PESQUISADOS sem justificativa → forte (omissão do dever)."""
+    ctx = {"processo": "lote-1", "lotes": _lote_heterogeneo(),
+           "justificativa_pesquisada_nos_autos": True}  # pesquisamos: realmente não há
     r = E3LotePacote().avaliar(ctx)
     _valido(r)
     assert r.status == "confirmado"
     assert r.score >= ANCORAS["forte"]
     assert r.valores["n_mercados_no_lote"] == 5
     assert r.valores["justificativa_status"] == "ausente"
+
+
+def test_e3_justificativa_nao_ingerida_nao_e_ausente():
+    """INDISPONÍVEL ≠ 0: sem afirmação de pesquisa nos autos, campo não ingerido
+    NÃO vira 'ausente' (não pontua omissão do dever)."""
+    ctx = {"processo": "lote-1b", "lotes": _lote_heterogeneo()}
+    r = E3LotePacote().avaliar(ctx)
+    _valido(r)
+    assert r.valores["justificativa_status"] == "nao_avaliavel"
 
 
 def test_e3_justificativa_generica_medio():

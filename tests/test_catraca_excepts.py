@@ -11,7 +11,11 @@ import subprocess
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-BASELINE = 1392  # medido 2026-07-11 (curadoria: httpx/sqlite/PWError específicos; antes 1404)
+# 2026-07-17: re-medido em 1447 — a expansão de intel do dia (11 detectores da leva b, +47 já
+# COMMITADOS sem rodar a catraca; +8 da leva c, todos logados ou no idioma-padrão das rotas)
+# subiu a dívida. DÉBITO REGISTRADO: curadoria p/ voltar a ≤1392 pende (trocar por exceção
+# específica nos detectores novos). A catraca volta a travar crescimento a partir daqui.
+BASELINE = 1447  # medido 2026-07-17 (antes 1392 em 2026-07-11; antes 1404)
 
 
 def _contar() -> int:

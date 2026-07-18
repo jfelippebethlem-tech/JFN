@@ -369,6 +369,11 @@ _EXCLUDENTES: dict[str, "re.Pattern[str]"] = {
         r"per[óo]xido|refrat[óo]metr|ph\b|brix", re.IGNORECASE),
 }
 
+# VETO GLOBAL (todo tipo): negação ("NÃO será exigida garantia", "fica dispensada a visita") e mera citação
+# de lei ("art. 69 da Lei ... poderá ser exigido") casam o gatilho sem INSTITUIR a exigência — não é cláusula.
+_EXCLUDENTE_GLOBAL = re.compile(
+    r"n[ãa]o\s+ser[áa]\s+exigid|dispensad|art\.\s*\d+.{0,30}lei", re.IGNORECASE)
+
 
 def _extrair_clausulas_restritivas(linhas: list[tuple[str, str]], valor_estimado: float | None) -> list[dict]:
     """Lista COMPLETA de cláusulas restritivas do edital (E7), cada uma normalizada em `tipo`+`categoria`, com
@@ -377,6 +382,8 @@ def _extrair_clausulas_restritivas(linhas: list[tuple[str, str]], valor_estimado
     marca a cláusula; a gravidade é decidida no E7. Uma linha casa no máx. UMA cláusula (a 1ª do catálogo)."""
     clausulas: list[dict] = []
     for ln, fonte in linhas:
+        if _EXCLUDENTE_GLOBAL.search(ln):
+            continue  # negação/mera citação legal — gatilho sem cláusula instituída (guarda anti-FP)
         for tipo, categoria, rx in _CATALOGO_CLAUSULAS:
             if not rx.search(ln):
                 continue
@@ -541,14 +548,15 @@ def montar_ctx_de_sei(leitura: dict, *, usar_llm: bool = False, gerar: Callable[
         ctx["data_abertura_processo"] = abe["valor"]  # P5 usa este rótulo
         prov["data_abertura"] = abe["prov"]
 
-    # exigências de habilitação (E1)
-    exig = _extrair_exigencias(linhas, valor_estimado)
+    # exigências de habilitação (E1) — SÓ dos docs de edital/planejamento (mesma guarda das cláusulas:
+    # "patrimônio líquido" de um balanço não é exigência de habilitação)
+    linhas_edital = _linhas_com_contexto(_fontes_de_edital(leitura))
+    exig = _extrair_exigencias(linhas_edital, valor_estimado)
     if exig:
         ctx["exigencias_habilitacao"] = exig
         prov["exigencias_habilitacao"] = [e["prov"] for e in exig]
 
     # cláusulas restritivas — SÓ dos documentos de edital/planejamento (precisão: não varre NF/OB/despacho)
-    linhas_edital = _linhas_com_contexto(_fontes_de_edital(leitura))
     clausulas = _extrair_clausulas_restritivas(linhas_edital, valor_estimado)
     if clausulas:
         ctx["clausulas_edital"] = clausulas

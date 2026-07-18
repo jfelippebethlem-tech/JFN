@@ -56,6 +56,18 @@ _PISTAS_NOMINATIVO = re.compile(
     re.IGNORECASE,
 )
 _OU_EQUIVALENTE = re.compile(r"ou\s+(equivalente|similar|superior)", re.IGNORECASE)
+# contexto de NEGAÇÃO: "é vedada a indicação de marca", "não será aceita marca", "sem indicação de marca"
+# NÃO é requisito nominativo — é a própria cláusula que proíbe (anti-FP).
+_NEGACAO_MARCA = re.compile(r"vedad|n[aã]o\s+ser[aá]\s+aceit|sem\s+indica[cç][aã]o", re.IGNORECASE)
+
+
+def _pista_nominativa(texto: str) -> re.Match | None:
+    """Primeiro match nominativo FORA de contexto de negação (janela ±60 chars). None se só há negações."""
+    for m in _PISTAS_NOMINATIVO.finditer(texto):
+        janela = texto[max(0, m.start() - 60):m.end() + 60]
+        if not _NEGACAO_MARCA.search(janela):
+            return m
+    return None
 
 
 def _is_redondo(v: float) -> bool:
@@ -147,7 +159,7 @@ class P1EspecificacaoDirigida(Detector):
         for r in requisitos:
             texto = _texto_req(r)
             marcado = bool(r.get("nominativo"))
-            tem_pista = marcado or bool(_PISTAS_NOMINATIVO.search(texto)) or bool(r.get("marca") or r.get("modelo"))
+            tem_pista = marcado or bool(_pista_nominativa(texto)) or bool(r.get("marca") or r.get("modelo"))
             tem_equiv = bool(_OU_EQUIVALENTE.search(texto))
             if tem_pista and not tem_equiv:
                 nominativos.append(r)
@@ -156,13 +168,15 @@ class P1EspecificacaoDirigida(Detector):
                     fonte="requisito do TR (nominativo)",
                     trecho=f"{texto[:90]} — cita marca/modelo/código SEM 'ou equivalente' (art. 41)",
                 )
-        # marca solta no corpo do TR (sem estar em requisito estruturado), sem "ou equivalente"
-        if tr_texto and _PISTAS_NOMINATIVO.search(tr_texto) and not _OU_EQUIVALENTE.search(tr_texto) and not nominativos:
-            m = _PISTAS_NOMINATIVO.search(tr_texto)
-            ini = max(0, m.start() - 30)
-            nominativos.append({"requisito": tr_texto[ini:m.end() + 30]})
-            res.add_evidencia(fonte="TR (corpo)",
-                              trecho=f"marca/modelo no corpo do TR sem 'ou equivalente': '{tr_texto[ini:m.end() + 30]}'")
+        # marca solta no corpo do TR (sem estar em requisito estruturado), sem "ou equivalente";
+        # ignora contexto de negação ("é vedada a indicação de marca" não é evidência nominativa)
+        if tr_texto and not _OU_EQUIVALENTE.search(tr_texto) and not nominativos:
+            m = _pista_nominativa(tr_texto)
+            if m:
+                ini = max(0, m.start() - 30)
+                nominativos.append({"requisito": tr_texto[ini:m.end() + 30]})
+                res.add_evidencia(fonte="TR (corpo)",
+                                  trecho=f"marca/modelo no corpo do TR sem 'ou equivalente': '{tr_texto[ini:m.end() + 30]}'")
         valores["n_requisitos_nominativos"] = len(nominativos)
         if nominativos:
             score = max(score, ancora("critico"))

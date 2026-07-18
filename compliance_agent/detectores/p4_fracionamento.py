@@ -39,16 +39,10 @@ from compliance_agent.detectores.base import (
 )
 
 # ───────────────────────────── Limites de dispensa do art. 75, I/II (Lei 14.133/2021) ─────────────────────────────
-# Valores vigentes por exercício (atualizados anualmente por DECRETO FEDERAL — §1.5: usar o da DATA da contratação).
-# I = obras/serviços de engenharia · II = demais (compras/serviços). Fonte: Decreto 11.871/2023 e reajustes.
-LIMITES_DISPENSA: dict[int, dict[str, float]] = {
-    # exercicio: {"obras": valor, "compras": valor}
-    2021: {"obras": 100_000.00, "compras": 50_000.00},   # valores originais da Lei 14.133
-    2023: {"obras": 119_812.02, "compras": 59_906.02},   # Decreto 11.871/2023
-    2024: {"obras": 119_812.02, "compras": 59_906.02},
-    2025: {"obras": 128_722.10, "compras": 64_361.04},   # reajuste 2025 (confirmar no decreto do exercício)
-    2026: {"obras": 128_722.10, "compras": 64_361.04},   # placeholder até o reajuste 2026 sair — confirmar
-}
+# Fonte ÚNICA verificada verbatim nos decretos (Planalto): compliance_agent/limites_dispensa.py — nunca duplicar
+# a tabela aqui (§1.5: usar o limite da DATA da contratação). I = obras/engenharia · II = demais (compras/serviços).
+from compliance_agent.limites_dispensa import LIMITES as LIMITES_DISPENSA
+
 _DEFAULT_EXERCICIO = 2024
 
 
@@ -271,12 +265,26 @@ class P4Fracionamento(Detector):
         tipo_obj = next((c.get("tipo_obj") for c in disp if c.get("tipo_obj")), "compras")
         limite = limite_dispensa(exercicio, tipo_obj)
 
+        # partição por EXERCÍCIO: a soma de cada ano é comparada ao limite DAQUELE ano (somar exercícios
+        # distintos contra o limite de um ano só inflaria o indício — anti-FP).
+        por_exercicio: dict = {}
+        for c in disp:
+            por_exercicio.setdefault(_exercicio(c, _data(c)), []).append(c)
+        somas_exercicio: dict = {}
+        for ex, cs in por_exercicio.items():
+            somas_exercicio[str(ex)] = {
+                "soma": round(sum(float(c.get("valor") or 0) for c in cs), 2),
+                "limite": limite_dispensa(ex, tipo_obj),
+                "n": len(cs),
+            }
+
         valores: dict = {
             "n_dispensas_cluster": len(disp),
             "soma_cluster": round(soma, 2),
             "exercicio": exercicio,
             "tipo_objeto": tipo_obj,
             "limite_dispensa_vigente": limite,
+            "soma_por_exercicio": somas_exercicio,
             # rastreabilidade probatória (§7.4): QUAIS processos compõem o cluster achado — permite a
             # consumidores (ex.: sweep em lote) auditar/remover o cluster e citar os autos na evidência.
             "processos_cluster": [str(c.get("processo")) for c in disp if c.get("processo")][:50],
@@ -292,10 +300,19 @@ class P4Fracionamento(Detector):
         score = 0.0
         razoes: list[str] = []
 
-        # 1) Soma do grupo > limite E ≥2 dispensas → forte (0.85)
-        if soma > limite and len(disp) >= 2:
+        # 1) Soma do grupo > limite E ≥2 dispensas → forte (0.85) — POR EXERCÍCIO (limite do próprio ano)
+        estouro = None
+        for ex, cs in por_exercicio.items():
+            soma_ex = sum(float(c.get("valor") or 0) for c in cs)
+            lim_ex = limite_dispensa(ex, tipo_obj)
+            if lim_ex is not None and len(cs) >= 2 and soma_ex > lim_ex:
+                if estouro is None or soma_ex > estouro[1]:
+                    estouro = (ex, soma_ex, lim_ex, len(cs))
+        if estouro:
+            ex, soma_ex, lim_ex, n_ex = estouro
             score = max(score, ancora("forte"))
-            razoes.append(f"soma das {len(disp)} dispensas (R$ {soma:,.2f}) excede o limite (R$ {limite:,.2f})")
+            razoes.append(f"soma das {n_ex} dispensas do exercício {ex} (R$ {soma_ex:,.2f}) "
+                          f"excede o limite do ano (R$ {lim_ex:,.2f})")
 
         # 2) Clustering sob o teto: ≥2 com valor individual entre 80%–100% do limite → forte
         sob_teto = [c for c in disp if limite * 0.8 <= float(c.get("valor") or 0) <= limite]

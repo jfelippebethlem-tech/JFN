@@ -42,10 +42,13 @@ _RUBRICA_COBERTURA = {
     "cobertura_suspeita_percentuais_constantes": "forte",  # perdedores quase-lineares ao vencedor
 }
 
-# Limiar (CÓDIGO, nunca no prompt — spec §1.3): CV das COBERTURAS abaixo disto ⇒ percentuais constantes suspeitos.
+# Limiar (CÓDIGO, nunca no prompt — spec §1.3): dispersão das COBERTURAS abaixo disto ⇒ percentuais
+# constantes suspeitos (medida ROBUSTA: MAD/mediana — um perdedor discrepante não descaracteriza o padrão).
 _CV_COBERTURA_SUSPEITO = 0.05
 # Mínimo de propostas para um screen ter sentido (1 vencedor + ≥2 perdedores).
 _MIN_PROPOSTAS = 3
+# Screen 'forte' exige ≥3 perdedores; com 2 a dispersão baixa é pouco informativa → teto médio + ressalva.
+_MIN_PERDEDORES_FORTE = 3
 
 
 def _num(v) -> float | None:
@@ -56,16 +59,24 @@ def _num(v) -> float | None:
     return None
 
 
-def _cv(valores: list[float]) -> float | None:
-    """Coeficiente de variação (desvio padrão populacional / média). None se < 2 valores ou média 0."""
-    vs = [v for v in valores if isinstance(v, (int, float))]
-    if len(vs) < 2:
+def _disp_robusta(valores: list[float]) -> float | None:
+    """Dispersão ROBUSTA das coberturas: MAD/|mediana|. Ao contrário do CV (média/desvio), um único
+    perdedor genuíno discrepante não mascara o padrão de percentuais constantes dos demais.
+    None se < 2 valores ou mediana 0."""
+    vs = sorted(v for v in valores if isinstance(v, (int, float)))
+    n = len(vs)
+    if n < 2:
         return None
-    media = sum(vs) / len(vs)
-    if media == 0:
+
+    def _mediana(xs: list[float]) -> float:
+        m = len(xs)
+        return xs[m // 2] if m % 2 else (xs[m // 2 - 1] + xs[m // 2]) / 2
+
+    med = _mediana(vs)
+    if med == 0:
         return None
-    var = sum((v - media) ** 2 for v in vs) / len(vs)
-    return (var ** 0.5) / abs(media)
+    mad = _mediana(sorted(abs(v - med) for v in vs))
+    return mad / abs(med)
 
 
 def _vencedor_e_perdedores(propostas: list[dict]) -> tuple[dict | None, list[dict]]:
@@ -140,9 +151,9 @@ class J2PropostasCobertura(Detector):
         venc_val = venc["_valor"]
         mercado_homogeneo = bool(contexto.get("mercado_homogeneo"))
 
-        # ── REGRA OBJETIVA: coberturas dos perdedores e sua dispersão ──
+        # ── REGRA OBJETIVA: coberturas dos perdedores e sua dispersão (robusta: MAD/mediana) ──
         coberturas = [(p["_valor"] - venc_val) / venc_val for p in perdedores if venc_val > 0]
-        cv_cob = _cv(coberturas)
+        cv_cob = _disp_robusta(coberturas)
         cob_media = sum(coberturas) / len(coberturas) if coberturas else None
 
         valores: dict = {
@@ -159,14 +170,24 @@ class J2PropostasCobertura(Detector):
         razoes: list[str] = []
 
         if cv_cob is not None and cv_cob < _CV_COBERTURA_SUSPEITO and not mercado_homogeneo:
-            score = max(score, ancora("forte"))
-            razoes.append(
-                f"coberturas com dispersão baixíssima (CV={cv_cob:.3f} < {_CV_COBERTURA_SUSPEITO}) — perdedores como "
-                f"função quase-linear do vencedor (percentuais de cobertura ~constantes em ~{cob_media:.0%})")
+            if len(perdedores) >= _MIN_PERDEDORES_FORTE:
+                score = max(score, ancora("forte"))
+                razoes.append(
+                    f"coberturas com dispersão baixíssima (MAD/mediana={cv_cob:.3f} < {_CV_COBERTURA_SUSPEITO}) — "
+                    f"perdedores como função quase-linear do vencedor (percentuais ~constantes em ~{cob_media:.0%})")
+            else:
+                # só 2 perdedores: dispersão baixa é pouco informativa → teto médio, ressalva explícita de n
+                score = max(score, ancora("medio"))
+                valores["ressalva_n_perdedores"] = (
+                    f"apenas {len(perdedores)} perdedores — screen de dispersão exige ≥{_MIN_PERDEDORES_FORTE} "
+                    "p/ 'forte'; teto médio")
+                razoes.append(
+                    f"coberturas com dispersão baixa (MAD/mediana={cv_cob:.3f}) MAS só {len(perdedores)} "
+                    f"perdedores (mín. {_MIN_PERDEDORES_FORTE} p/ forte) — limitado a médio")
             res.add_evidencia(
                 fonte="propostas do certame (screen de cobertura)",
                 trecho=(f"vencedor={venc_val:,.2f}; coberturas dos {len(perdedores)} perdedores com "
-                        f"CV={cv_cob:.4f} (< {_CV_COBERTURA_SUSPEITO}), média {cob_media:.4f}"))
+                        f"MAD/mediana={cv_cob:.4f} (< {_CV_COBERTURA_SUSPEITO}), média {cob_media:.4f}"))
         elif cv_cob is not None and cv_cob < _CV_COBERTURA_SUSPEITO and mercado_homogeneo:
             razoes.append(
                 f"CV das coberturas baixo ({cv_cob:.3f}) MAS mercado homogêneo (poucos players/custos similares) — "

@@ -185,3 +185,43 @@ def test_x1_rubricas_nao_avaliaveis_sem_llm():
     assert r.score == ANCORAS["critico"]
     assert r.valores["pertinencia"] == "nao_avaliavel"
     assert all(s == "nao_avaliavel" for s in r.valores["justificativas"])
+
+
+# ═══════════════════════════════ reajuste NÃO consome o teto do art.125 ═══════════════════════════════
+def test_x1_reajuste_por_justificativa_nao_conta_no_teto():
+    """Aditivo 'valor' cuja justificativa é REAJUSTE (IPCA) é recomposição de preço, não acréscimo —
+    excluído do teto: 26% brutos viram 6% reais → descartado (era falso ESTOURO)."""
+    ctx = {
+        "processo": "exec-9",
+        "valor_inicial": 1_000_000.0,
+        "aditivos": [
+            {"data": "2025-03-01", "tipo": "valor", "valor": 200_000.0,
+             "justificativa": "reajuste anual pelo IPCA, cláusula 12ª"},
+            {"data": "2025-06-01", "tipo": "valor", "valor": 60_000.0,
+             "justificativa": "acréscimo de quantitativos"},
+        ],
+    }
+    r = X1CrescimentoAditivo().avaliar(ctx)
+    _valido(r)
+    assert r.status == "descartado"
+    assert r.valores["pct_acrescimo"] == 0.06
+    assert r.valores["n_aditivos_reajuste"] == 1
+    assert r.valores["n_aditivos_de_valor"] == 1
+
+
+def test_x1_reajuste_por_tipo_e_repactuacao_nao_contam():
+    """`tipo` de reajuste/repactuação também exclui (campo estruturado, sem depender da justificativa)."""
+    ctx = {
+        "processo": "exec-10",
+        "valor_inicial": 1_000_000.0,
+        "aditivos": [
+            {"data": "2025-03-01", "tipo": "reajuste", "valor": 150_000.0},
+            {"data": "2025-05-01", "tipo": "valor", "valor": 140_000.0,
+             "justificativa": "repactuação de preços por convenção coletiva"},
+        ],
+    }
+    r = X1CrescimentoAditivo().avaliar(ctx)
+    _valido(r)
+    assert r.status == "descartado"
+    assert r.valores["pct_acrescimo"] == 0.0
+    assert r.valores["n_aditivos_reajuste"] == 2

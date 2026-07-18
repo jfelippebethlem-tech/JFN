@@ -166,3 +166,27 @@ def test_x5_pearson_inline():
     assert _pearson([1.0, 2.0, 3.0], [2.0, 4.0, 6.0]) > 0.999
     assert _pearson([1.0, 1.0, 1.0], [2.0, 4.0, 6.0]) is None
     assert _pearson([1.0], [2.0]) is None
+
+
+def test_x5_correlacao_com_n_pequeno_cap_em_medio():
+    """r alto MAS n=4 itens executados: Pearson instável com amostra pequena → cap em médio + ressalva de n
+    (forte exige n≥8; crítico n≥6)."""
+    itens = [
+        {"item": "A", "preco_contratado": 150.0, "referencial": 100.0, "quantidade_contratada": 100.0, "quantidade_executada": 200.0},
+        {"item": "B", "preco_contratado": 140.0, "referencial": 100.0, "quantidade_contratada": 100.0, "quantidade_executada": 180.0},
+        {"item": "D", "preco_contratado": 70.0, "referencial": 100.0, "quantidade_contratada": 100.0, "quantidade_executada": 40.0},
+        {"item": "E", "preco_contratado": 60.0, "referencial": 100.0, "quantidade_contratada": 100.0, "quantidade_executada": 20.0},
+    ]
+    r = X5JogoDePlanilha().avaliar({"processo": "x5-10", "itens": itens})
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.valores["correlacao_pearson"] is not None and r.valores["correlacao_pearson"] >= 0.8
+    assert r.score <= ANCORAS["medio"]  # antes: n=4 com r≥0.8 virava 'critico'
+    assert "ressalva_n_correlacao" in r.valores
+
+
+def test_x5_critico_exige_n6_forte_exige_n8():
+    """n=6 com r≥0.8 sustenta 'critico' (fixture direcional padrão) — sanidade dos novos mínimos."""
+    r = X5JogoDePlanilha().avaliar({"processo": "x5-11", "itens": _itens_direcionais()})
+    _valido(r)
+    assert r.score == ANCORAS["critico"]

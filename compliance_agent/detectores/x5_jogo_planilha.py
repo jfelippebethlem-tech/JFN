@@ -52,6 +52,10 @@ _RUBRICA_JUSTIFICATIVA = {
 _N_MIN_CORRELACAO = 4
 _R_FORTE = 0.5
 _R_CRITICO = 0.8
+# Pearson com n pequeno é instável (r=0,5 com n=4 não sustenta 'forte'): n mínimo por nível de âncora.
+# r moderado exige amostra maior; abaixo destes n o achado fica capado em 'medio' com ressalva explícita.
+_N_MIN_FORTE = 8
+_N_MIN_CRITICO = 6
 # Tolerância para "sobreprecificado"/"subcotado": desvio relativo mínimo para considerar a linha desequilibrada.
 _TOL_DESVIO = 0.05
 
@@ -184,16 +188,25 @@ class X5JogoDePlanilha(Detector):
             valores["n_itens_com_execucao"] = len(with_exec)
 
         if r is not None and len(with_exec) >= _N_MIN_CORRELACAO:
-            if r >= _R_CRITICO:
+            if r >= _R_CRITICO and len(with_exec) >= _N_MIN_CRITICO:
                 score = max(score, ancora("critico"))
                 razoes.append(
                     f"correlação direcional CRÍTICA (Pearson r={r:.2f}, n={len(with_exec)}) entre sobrepreço e "
                     "crescimento de quantidade: itens caros cresceram, subcotados sumiram — assinatura do desenho")
-            elif r >= _R_FORTE:
+            elif r >= _R_FORTE and len(with_exec) >= _N_MIN_FORTE:
                 score = max(score, ancora("forte"))
                 razoes.append(
                     f"correlação direcional FORTE (Pearson r={r:.2f}, n={len(with_exec)}) entre sobrepreço e "
                     "crescimento de quantidade — desequilíbrio explorado na execução")
+            elif r >= _R_FORTE:
+                # r alto mas amostra pequena — Pearson instável: cap em médio com ressalva explícita de n
+                score = max(score, ancora("medio"))
+                valores["ressalva_n_correlacao"] = (
+                    f"r={r:.2f} com apenas n={len(with_exec)} itens executados — abaixo do n mínimo "
+                    f"(forte exige n≥{_N_MIN_FORTE}; crítico n≥{_N_MIN_CRITICO}); cap em médio")
+                razoes.append(
+                    f"correlação direcional r={r:.2f} MAS n={len(with_exec)} pequeno (forte n≥{_N_MIN_FORTE}, "
+                    f"crítico n≥{_N_MIN_CRITICO}) — Pearson instável com poucos itens; limitado a médio")
             else:
                 # desequilíbrio com execução, mas SEM correlação direcional → exculpatória do spec (margens
                 # heterogêneas sem desenho); fica no patamar do desequilíbrio (médio).

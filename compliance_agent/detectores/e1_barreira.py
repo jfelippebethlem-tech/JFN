@@ -34,11 +34,14 @@ from compliance_agent.detectores.base import (
     ResultadoDetector,
     ancora,
     avaliar_rubrica,
+    sem_acentos,
 )
 
 # tipos de exigência que disparam razões objetivas (chaves canônicas)
 _TIPO_ATESTADO = ("atestado", "capacidade_tecnica", "qualificacao_tecnica")
 _TIPO_CAPITAL = ("capital_social", "patrimonio_liquido", "capital", "patrimonio")
+
+_MIN_ANALOGOS = 3  # baseline "sob medida" exige n≥3 análogos — com 1-2 o baseline não sustenta juízo
 
 # Rubrica fechada de pertinência ao risco (spec E1).
 _RUBRICA_PERTINENCIA = {
@@ -57,8 +60,7 @@ def _chave_exig(e: dict) -> str:
     tipo = str(e.get("tipo") or "").strip().lower()
     if tipo:
         return tipo
-    t = _texto_exig(e).lower()
-    t = (t.replace("ã", "a").replace("á", "a").replace("é", "e").replace("í", "i").replace("ó", "o").replace("ç", "c"))
+    t = sem_acentos(_texto_exig(e))
     import re
     toks = [w for w in re.sub(r"[^a-z0-9 ]+", " ", t).split() if len(w) > 3]
     return " ".join(sorted(set(toks))[:6])
@@ -118,10 +120,11 @@ class E1Barreira(Detector):
             "n_editais_analogos": len(analogos),
             "objeto_critico": objeto_critico,
         }
-        # se NENHUMA base objetiva nem análogos existem, não há como avaliar → nao_avaliavel honesto
-        if valor_estimado is None and quant_lic is None and not analogos:
-            res.motivo_refutacao = ("nao_avaliavel: sem valor estimado, sem quantitativo e sem editais análogos — "
-                                    "nenhuma base para as razões objetivas (campo ausente ≠ 0)")
+        # se NENHUMA base objetiva nem análogos SUFICIENTES (n≥3) existem, não há como avaliar → nao_avaliavel
+        if valor_estimado is None and quant_lic is None and len(analogos) < _MIN_ANALOGOS:
+            res.motivo_refutacao = ("nao_avaliavel: sem valor estimado, sem quantitativo e sem editais análogos "
+                                    f"suficientes (n={len(analogos)} < {_MIN_ANALOGOS}) — nenhuma base para as "
+                                    "razões objetivas (campo ausente ≠ 0)")
             res.valores = valores
             return res
 
@@ -134,9 +137,10 @@ class E1Barreira(Detector):
             tipo = str(e.get("tipo") or "").strip().lower()
             texto = _texto_exig(e)
 
-            # 1) atestado: quantitativo exigido vs quantitativo licitado
-            if quant_lic and (tipo in _TIPO_ATESTADO or any(t in texto.lower() for t in ("atestado", "capacidade técnica"))):
-                qexig = _num(e.get("quantitativo_exigido") or e.get("valor"))
+            # 1) atestado: quantitativo exigido vs quantitativo licitado — SÓ quantitativo FÍSICO
+            #    (e["valor"] é monetário/R$; dividir R$ por quantitativo físico fabricaria razão sem sentido)
+            if quant_lic and (tipo in _TIPO_ATESTADO or any(t in sem_acentos(texto) for t in ("atestado", "capacidade tecnica"))):
+                qexig = _num(e.get("quantitativo_exigido"))
                 if qexig and quant_lic > 0:
                     razao = qexig / quant_lic
                     if razao > 1.0:
@@ -167,10 +171,13 @@ class E1Barreira(Detector):
         # 3) exigências que SÓ este órgão pede (vs análogos) — candidatas a "sob medida"
         sob_medida = self._exigencias_sob_medida(exigencias, analogos)
         valores["exigencias_sob_medida"] = [s["chave"] for s in sob_medida]
+        if analogos and len(analogos) < _MIN_ANALOGOS:
+            valores["sob_medida_nao_avaliavel"] = f"apenas {len(analogos)} análogo(s) (< {_MIN_ANALOGOS})"
         if sob_medida:
             score = max(score, ancora("medio"))
             for s in sob_medida[:5]:
-                razoes.append(f"exigência ausente em ≥metade dos análogos: '{s['chave'][:50]}' (candidata a sob medida)")
+                razoes.append(f"exigência ausente em {s['ausente_em']}/{s['n_analogos']} análogos: "
+                              f"'{s['chave'][:50]}' (candidata a sob medida)")
                 res.add_evidencia(fonte="baseline de editais análogos",
                                   trecho=f"exigência '{_texto_exig(s['exig'])[:80]}' não consta em {s['ausente_em']}/{s['n_analogos']} análogos")
                 exig_suspeitas.append(s["exig"])
@@ -235,8 +242,9 @@ class E1Barreira(Detector):
 
     def _exigencias_sob_medida(self, exigencias: list[dict], analogos: list[dict]) -> list[dict]:
         """Exigências deste edital AUSENTES em ≥ metade dos editais análogos → candidatas a 'sob medida'.
-        Sem análogos → lista vazia (não acusa por falta de baseline — exculpatória 'praxe do setor')."""
-        if not analogos:
+        Exige n≥3 análogos: com menos, o baseline não sustenta o juízo (componente nao_avaliavel — não acusa
+        por baseline raso; exculpatória 'praxe do setor')."""
+        if len(analogos) < _MIN_ANALOGOS:
             return []
         chaves_analogos: list[set[str]] = []
         for a in analogos:

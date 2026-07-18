@@ -106,10 +106,23 @@ def _valor_aditivo(a: dict) -> float:
         return 0.0
 
 
+# Reajuste/repactuação/correção monetária = RECOMPOSIÇÃO de preço, não acréscimo — fora do teto do art.125.
+_KW_REAJUSTE = ("reajust", "repactua", "ipca", "incc", "igp-m", "igp m",
+                "correção monetária", "correcao monetaria")
+
+
+def _e_reajuste(a: dict) -> bool:
+    """Aditivo de reajuste/repactuação/correção monetária — identificado pelo `tipo` ou por keywords
+    na justificativa. NÃO consome o teto de acréscimos do art.125."""
+    txt = f"{a.get('tipo') or ''} {a.get('justificativa') or ''}".lower()
+    return any(k in txt for k in _KW_REAJUSTE)
+
+
 def _conta_no_teto(a: dict) -> bool:
     """Um aditivo entra no cálculo do teto do art.125? SÓ se mexe em VALOR. Aditivo de só-prazo NÃO conta
-    (tem outra análise — X2). Aditivo de objeto com valor conta pelo valor."""
-    return _tipo_aditivo(a) in ("valor", "objeto") and _valor_aditivo(a) != 0.0
+    (tem outra análise — X2). Aditivo de objeto com valor conta pelo valor. Reajuste NÃO conta."""
+    return (not _e_reajuste(a)
+            and _tipo_aditivo(a) in ("valor", "objeto") and _valor_aditivo(a) != 0.0)
 
 
 class X1CrescimentoAditivo(Detector):
@@ -182,6 +195,7 @@ class X1CrescimentoAditivo(Detector):
             "teto_art125": teto,
             "n_aditivos": len(aditivos),
             "n_aditivos_de_valor": len(aditivos_valor),
+            "n_aditivos_reajuste": sum(1 for a in aditivos if _e_reajuste(a)),
             "acrescimos_total": round(acrescimos, 2),
             "supressoes_total": round(supressoes, 2),
             "pct_acrescimo": round(pct_acrescimo, 4),

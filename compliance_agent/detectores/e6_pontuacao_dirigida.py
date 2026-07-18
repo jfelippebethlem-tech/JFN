@@ -349,7 +349,21 @@ class E6PontuacaoDirigida(Detector):
             return melhor_cnpj
 
         vencedor_completo = vencedor_decl or argmax(None)
-        vencedor_sem = argmax(criterios_zerar)
+        totais_sem = [(p.get("cnpj") or p.get("licitante_cnpj"), total(p.get("notas") or {}, criterios_zerar))
+                      for p in propostas]
+        melhor_sem = max(n for _, n in totais_sem)
+        empatados = [c for c, n in totais_sem if n == melhor_sem]
+        if len(empatados) > 1:
+            # empate pós-exclusão (inclui todas as notas = 0): não há vencedor alternativo elegível — declarar
+            # "vencedor muda" seria artefato da ordem das propostas → inconclusivo (guarda anti-FP)
+            return {
+                "vencedor_muda": False,
+                "empate_pos_exclusao": True,
+                "vencedor_original": vencedor_completo,
+                "criterios_zerados": sorted(criterios_zerar),
+                "motivo": "notas pós-exclusão empatadas — simulação inconclusiva",
+            }
+        vencedor_sem = empatados[0]
         muda = (
             vencedor_completo is not None
             and vencedor_sem is not None

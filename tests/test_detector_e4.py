@@ -87,6 +87,22 @@ def test_e4_confirma_evasao_alta():
     assert r.valores["n_evadidos"] == 3
 
 
+def test_e4_evasao_amostra_pequena_rebaixa_a_fraco():
+    """Evasão de 50% mas com só 2 visitantes (n<4) → amostra pequena não sustenta 'forte'; fica no 'medio'
+    da obrigatoriedade (a evasão entra rebaixada a fraco, com ressalva na razão)."""
+    ctx = {
+        "processo": "visita-2c",
+        "visita": {"obrigatoria": True, "alternativa_declaracao": False},
+        "visitantes": ["11111111000111", "22222222000122"],
+        "licitantes": ["11111111000111"],   # 1 de 2 evadiu = 50%, n=2
+    }
+    r = E4VisitaTecnica().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.score < ANCORAS["forte"]
+    assert "amostra pequena" in r.motivo_refutacao
+
+
 def test_e4_evadidos_recorrentes_correlacao_j1_j4():
     """Evadidos que também 'desistem' em outros certames (J1/J4) → agrava para forte e vira evidência."""
     ctx = {

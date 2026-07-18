@@ -46,7 +46,8 @@ def _faixa(clau: dict) -> str:
     """Bucketiza o parâmetro numérico p/ a assinatura ser estável a pequenas variações."""
     pct = clau.get("quantitativo_exigido_pct")
     if pct is not None:
-        return "alto" if pct > 50 else "baixo"
+        # _pct do coletor devolve FRAÇÃO (50% → 0.50); tolera fonte legada em pontos percentuais
+        return "alto" if (pct > 0.50 if pct <= 1 else pct > 50) else "baixo"
     if clau.get("valor") is not None:
         return "com_valor"
     return "na"

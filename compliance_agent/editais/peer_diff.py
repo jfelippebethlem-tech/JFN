@@ -57,6 +57,10 @@ def candidatas(con, cluster_id: int, limiar_raridade: float = 0.7) -> list[dict]
     membros = json.loads(row["membros_json"])
     if len(membros) < 3:
         return []   # cluster pequeno = não avaliável por peer-diff
+    # raridade máxima num cluster de n é (n-1)/n: com n=3 ela é 0.667 < 0.7 e o limiar fixo
+    # silenciava TODO cluster de 3 ("0 candidatas sem erro" é a pior falha). O limiar efetivo
+    # acompanha o teto do cluster.
+    limiar_raridade = min(limiar_raridade, (len(membros) - 1) / len(membros) - 1e-9)
     q = ",".join("?" * len(membros))
     linhas = con.execute(
         f"""select numero_controle_pncp, assinatura, subtipo, id, texto, trecho_fonte

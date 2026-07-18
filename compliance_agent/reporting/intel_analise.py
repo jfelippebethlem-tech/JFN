@@ -4,12 +4,15 @@ Comportamento idêntico; rede de segurança: tools/inteligencia_snapshot_check.p
 """
 from __future__ import annotations
 
+import logging
 import re
 import sqlite3
 
 from compliance_agent.reporting.intel_base import _DB, moeda, so_digitos
 from compliance_agent.reporting.intel_dados import _crescimento
 from compliance_agent.reporting.intel_base import _num_brl
+
+logger = logging.getLogger(__name__)
 
 _NOTA_CARDINALIDADE = (
     "**Nota conceitual (cadeia da despesa):** a **OB (Ordem Bancária) é o pagamento** — a verdade financeira, "
@@ -272,8 +275,8 @@ def _fatos_para_raciocinio(ctx: dict) -> str:
             if _bf.get("suficiente") and "NÃO CONFORM" in (_d1.get("faixa_nigrini", "") or "").upper():
                 L.append(f"Lei de Benford (1º dígito, n={_d1.get('n')}): NÃO conformidade (MAD {_d1.get('mad')}) — "
                          "indício estatístico de fracionamento/valores fabricados a verificar nos documentos.")
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("parecer sem Benford: %s", exc)
         _an = ctx.get("anomalias") or _anomalias_fornecedor(ctx.get("cnpj", ""))
         if _an.get("ok") and _an.get("n_anomalas"):
             L.append(f"Modelo de anomalias: {_an['n_anomalas']} de {_an['n_obs']} OBs do fornecedor com score alto "
@@ -282,8 +285,8 @@ def _fatos_para_raciocinio(ctx: dict) -> str:
         rf = _red_flags(ctx)
         if rf:
             L.append("Red flags automáticos disparados: " + "; ".join(t for t, _, _ in rf[:6]) + ".")
-    except Exception:  # noqa: BLE001
-        pass
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("parecer sem red flags: %s", exc)
     return "\n".join("- " + x for x in L)
 
 
