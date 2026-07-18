@@ -564,7 +564,13 @@ if __name__ == "__main__":
     # busy_timeout de 5s (default) estouraria em contenção de escrita. WAL + 60s absorve.
     con = sqlite3.connect("data/compliance.db", timeout=60)
     con.execute("PRAGMA busy_timeout=60000")
-    if "--backfill-precos" in args:
+    if "--atas" in args:
+        # coleta as ATAS DE JULGAMENTO reais (perdedoras) dos próximos N certames competitivos.
+        # OCR nas escaneadas — CARO; [N] modesto no timer. Alimenta conluio_qsa/rodízio.
+        from compliance_agent.collectors.atas_julgamento import coletar_atas_julgamento
+        n = next((int(a) for a in args if a.isdigit()), 300)
+        r = asyncio.run(coletar_atas_julgamento(con, limite=n))
+    elif "--backfill-precos" in args:
         # repopula preço unitário/descrição nas linhas antigas (sobrepreço). [N] = teto de certames.
         n = next((int(a) for a in args if a.isdigit()), 3000)
         r = asyncio.run(backfill_precos_unitarios(con, limite=n))

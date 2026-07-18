@@ -16,9 +16,12 @@ honesta. INDÍCIO a verificar — presunção de legitimidade, nunca acusação.
 """
 from __future__ import annotations
 
+import logging
 import re
 from collections import defaultdict
 from itertools import combinations
+
+logger = logging.getLogger(__name__)
 
 # ── identidade do licitante ──────────────────────────────────────────────────
 # formatado sempre; cru de 14 dígitos SÓ com dígito verificador válido (evita nº de processo)
@@ -362,8 +365,21 @@ def coletar_atas_do_corpus(db_path: str = "data/compliance.db", limite: int = 80
     # pós-filtro: o LIKE acima é satisfeito pelo BOILERPLATE de edital ("será inabilitado o
     # licitante que…"); só entra no grafo o texto com marcador REAL de ata/sessão de julgamento.
     from compliance_agent.detectores.coletor_ata import _RX_ATA_MARCADOR
-    return [{"certame": r["npc"], "orgao": r["orgao_cnpj"], "texto": r["texto"]}
-            for r in rows if _RX_ATA_MARCADOR.search(r["texto"])]
+    out = [{"certame": r["npc"], "orgao": r["orgao_cnpj"], "texto": r["texto"]}
+           for r in rows if _RX_ATA_MARCADOR.search(r["texto"])]
+    # atas de julgamento REAIS coletadas do PNCP (atas_julgamento — a fonte densa de perdedoras)
+    con2 = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    con2.row_factory = sqlite3.Row
+    try:
+        vistos = {a["certame"] for a in out}
+        for r in con2.execute("SELECT certame, orgao_cnpj, texto FROM ata_documento"):
+            if r["certame"] not in vistos:
+                out.append({"certame": r["certame"], "orgao": r["orgao_cnpj"], "texto": r["texto"]})
+    except sqlite3.OperationalError as exc:
+        logger.debug("ata_documento ainda ausente (sweep de atas não rodou): %s", exc)
+    finally:
+        con2.close()
+    return out
 
 
 def _nome(cnpj: str, db_path: str = "data/compliance.db") -> str:
