@@ -28,7 +28,10 @@ Indícios de fachada/laranja (literatura: TCU; OECD Bid Rigging 2025; ACFE; osin
 from __future__ import annotations
 
 import datetime as dt
+import logging
 import re
+
+logger = logging.getLogger(__name__)
 
 # ───────────────────────── helpers ─────────────────────────
 
@@ -91,11 +94,15 @@ def _marcadores_residenciais(*partes: str) -> list[str]:
 # PAGO pelo Estado já supera o teto do porte declarado. Indício (o teto é anual e plurianual aqui) — apura.
 _TETO_PORTE = {
     "MEI": 81_000.0,
+    "MICROEMPRESA": 360_000.0,
     "MICRO EMPRESA": 360_000.0,
     "ME": 360_000.0,
     "EMPRESA DE PEQUENO PORTE": 4_800_000.0,
     "EPP": 4_800_000.0,
 }
+
+# portes conhecidos que NÃO têm teto de receita (empresa grande/normal) — 'porte verificado', sem H-PORTE
+_PORTE_SEM_TETO = {"DEMAIS", "NAO INFORMADO"}
 
 
 def _teto_do_porte(porte: str) -> tuple[str, float] | None:
@@ -111,6 +118,28 @@ def _teto_do_porte(porte: str) -> tuple[str, float] | None:
 def _hip(codigo, titulo, status, nivel, evidencia, fonte, base_legal, peso) -> dict:
     return {"codigo": codigo, "titulo": titulo, "status": status, "nivel": nivel,
             "evidencia": evidencia, "fonte": fonte, "base_legal": base_legal, "peso": peso}
+
+
+def _cadastro_dump(cnpj_basico: str, db_path=None) -> dict | None:
+    """Capital social / porte / razão do dump da Receita (empresas_cadastro, populado por
+    tools/empresas_dump_sweep). Read-only; tabela ausente → None (degrada honesto)."""
+    import sqlite3
+    from pathlib import Path
+    p = Path(db_path or "data/compliance.db")
+    if not p.exists():
+        return None
+    try:
+        con = sqlite3.connect(f"file:{p}?mode=ro", uri=True, timeout=10)
+        con.row_factory = sqlite3.Row
+        try:
+            r = con.execute(
+                "SELECT razao_social, capital_social, porte_txt FROM empresas_cadastro "
+                "WHERE cnpj_basico=?", (cnpj_basico,)).fetchone()
+        finally:
+            con.close()
+    except sqlite3.OperationalError:
+        return None
+    return dict(r) if r else None
 
 
 def _verificacao_sede(cnpj: str, db_path=None) -> dict | None:
@@ -166,6 +195,21 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
                 cad = r.dados
         except Exception:
             cad = {}
+
+    # ENRIQUECIMENTO do capital/porte pelo dump da Receita (empresas_cadastro): torna o tópico
+    # H-CAPITAL DISPONÍVEL p/ ~todos os fornecedores (a tabela `empresas` só cobria ~200). Só
+    # completa o que falta — não sobrescreve o que a BrasilAPI já trouxe (mais rico/atual).
+    if len(cnpj) == 14 and (cad.get("capital") in (None, "") or cad.get("porte") in (None, "")):
+        try:
+            _c = _cadastro_dump(cnpj[:8])
+            if _c:
+                cad.setdefault("razao_social", _c.get("razao_social"))
+                if cad.get("capital") in (None, ""):
+                    cad["capital"] = _c.get("capital_social")
+                if cad.get("porte") in (None, "") and _c.get("porte_txt"):
+                    cad["porte"] = _c.get("porte_txt")
+        except Exception as _exc:  # noqa: BLE001
+            logger.debug("cadastro-dump indisponível p/ %s: %s", cnpj, _exc)
 
     hipoteses: list[dict] = []
     cobertura: dict[str, str] = {}
@@ -354,8 +398,10 @@ def investigar(cnpj: str, *, cadastral: dict | None = None, pagamentos: dict | N
                 "apuração de enquadramento indevido (benefício de ME/EPP) ou de pulverização entre CNPJs.",
                 "Receita Federal (porte) × OBs", "LC 123/2006; Lei 14.133/21 art. 4º", 8))
         cobertura["porte"] = "verificado"
+    elif _norm(cad.get("porte") or "").strip() in _PORTE_SEM_TETO:
+        cobertura["porte"] = "verificado"       # porte conhecido, mas sem teto (empresa não-ME/EPP)
     else:
-        cobertura["porte"] = "INDISPONIVEL" if not tp else "verificado"
+        cobertura["porte"] = "INDISPONIVEL"
 
     # H-SOCIO-UNICO — composição mínima + sinais (composite; só dispara com corroboração)
     socios = cad.get("socios") or []

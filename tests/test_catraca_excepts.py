@@ -30,7 +30,9 @@ REPO = Path(__file__).resolve().parent.parent
 # 2026-07-18g: +2 (1462→1464) — rotas /api/comparador/economia + /api/sancoes/detalhar (idioma
 # das rotas, catch-and-return).
 # 2026-07-18h: +1 (1464→1465) — rota /api/comparador/vedada (idioma das rotas).
-BASELINE = 1465  # medido 2026-07-18h (1464→vedada; 1392 em 2026-07-11)
+# 2026-07-18i: +1 (1465→1466) — enriquecimento capital/porte no investigacao_dd (except→logger.debug,
+# não mudo; degrada honesto se a tabela empresas_cadastro não existir).
+BASELINE = 1466  # medido 2026-07-18i (1465→enriquecimento perícia; 1392 em 2026-07-11)
 
 
 def _contar() -> int:
