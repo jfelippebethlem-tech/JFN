@@ -33,7 +33,53 @@
   }
   .num,td,th,.kpi .v,.mini .b .v{font-variant-numeric:tabular-nums}
   .mono{font-family:var(--mono)}
-  .wrap{max-width:1220px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+  .wrap{max-width:1220px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;position:relative;z-index:2}
+  /* ── ambiente cockpit em TODO o painel ── */
+  #netbg{position:fixed;inset:0;z-index:0;opacity:.5;pointer-events:none}
+  .aura{position:fixed;z-index:0;pointer-events:none;filter:blur(100px);border-radius:50%;will-change:transform}
+  .aura.a{width:58vw;height:58vw;left:-16vw;top:-24vw;background:radial-gradient(circle,#0e6360,transparent 68%);opacity:.32;animation:auraA 28s ease-in-out infinite alternate}
+  .aura.b{width:52vw;height:52vw;right:-18vw;bottom:-24vw;background:radial-gradient(circle,#5f3d12,transparent 70%);opacity:.26;animation:auraB 34s ease-in-out infinite alternate}
+  @keyframes auraA{to{transform:translate(6vw,4vw) scale(1.12)}}
+  @keyframes auraB{to{transform:translate(-5vw,-3vw) scale(1.1)}}
+  .veilbg{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(120% 90% at 50% 0%,transparent 58%,rgba(3,6,12,.55) 100%)}
+  /* ── cockpit home (aba Início) ── */
+  .ck{position:relative}
+  .ck-hero{position:relative;overflow:hidden;border:1px solid rgba(120,220,230,.16);border-radius:22px;padding:clamp(20px,3.6vw,38px);
+    background:linear-gradient(135deg,rgba(63,224,208,.05),rgba(243,195,86,.03) 60%,rgba(255,255,255,.012));
+    backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px)}
+  .ck-hero::before{content:"";position:absolute;inset:0;border-radius:22px;padding:1.3px;
+    background:conic-gradient(from var(--ang,0deg),transparent 0 62%,rgba(90,230,215,.55) 74%,rgba(243,195,86,.5) 82%,transparent 92%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;animation:ckorbit 9s linear infinite}
+  @property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+  @keyframes ckorbit{to{--ang:360deg}}
+  .ck-eye{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--teal);text-transform:uppercase}
+  .ck-big{font-family:var(--mono);font-weight:700;line-height:1;letter-spacing:-1px;font-size:clamp(42px,8vw,86px);color:var(--gold);
+    text-shadow:0 0 30px rgba(232,189,114,.28);font-variant-numeric:tabular-nums;margin:6px 0 4px}
+  .ck-sub{color:var(--mut);font-size:14px;max-width:60ch;line-height:1.55}.ck-sub b{color:var(--tx)}
+  .ck-ved{margin-top:16px;display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;padding:11px 16px;border:1px solid rgba(255,92,120,.3);border-radius:13px;background:rgba(255,92,120,.06)}
+  .ck-ved .n{font-family:var(--mono);font-weight:700;font-size:24px;color:var(--rose,#ff5c78);font-variant-numeric:tabular-nums}
+  .ck-ved .l{font-size:12.5px;color:var(--mut);max-width:46ch;line-height:1.45}
+  .ck-grid{margin-top:16px;display:grid;gap:13px;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));perspective:1000px}
+  .ck-inst{position:relative;border:1px solid rgba(120,220,230,.16);border-radius:15px;padding:16px;cursor:pointer;
+    background:rgba(180,240,245,.045);backdrop-filter:blur(11px);transition:border-color .3s,box-shadow .3s,transform .12s;transform-style:preserve-3d}
+  .ck-inst:hover{border-color:rgba(90,230,215,.5);box-shadow:0 16px 42px -20px rgba(63,224,208,.45)}
+  .ck-inst .k{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .ck-inst .lab{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase}
+  .ck-inst .val{font-family:var(--mono);font-weight:700;font-size:31px;line-height:1;margin-top:10px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .ck-inst .meta{margin-top:6px;font-size:12px;color:var(--mut);line-height:1.4}.ck-inst .meta b{color:var(--tx)}
+  .ck-inst .dot{width:8px;height:8px;border-radius:50%;position:relative;margin-top:3px}
+  .ck-inst .dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:inherit;animation:ckblip 2.8s ease-out infinite}
+  @keyframes ckblip{0%{transform:scale(1);opacity:.7}70%{transform:scale(3);opacity:0}100%{opacity:0}}
+  .ck-inst .spk{margin-top:11px;height:32px;width:100%;display:block}
+  .ck-ticker{margin:14px 0;height:32px;overflow:hidden;position:relative;border:1px solid rgba(120,220,230,.16);border-radius:11px;
+    background:rgba(63,224,208,.03);display:flex;align-items:center;mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+  .ck-ticker .lane{display:inline-flex;gap:32px;white-space:nowrap;padding-left:100%;font-family:var(--mono);font-size:12px;color:var(--mut);animation:cktick 48s linear infinite}
+  .ck-ticker .lane span b{color:var(--tx)} .ck-ticker .lane span.a b{color:var(--rose,#ff5c78)} .ck-ticker .lane span.g b{color:var(--gold)}
+  .ck-ticker:hover .lane{animation-play-state:paused}
+  @keyframes cktick{to{transform:translateX(-100%)}}
+  .ckteal{color:var(--teal)}.ckgold{color:var(--gold)}.ckgood{color:#3fe08a}.ckamber{color:#f5a623}.ckrose{color:#ff5c78}
+  .bgteal{background:var(--teal)}.bggood{background:#3fe08a}.bgamber{background:#f5a623}.bgrose{background:#ff5c78}.bggold{background:var(--gold)}
+  @media (prefers-reduced-motion:reduce){#netbg{opacity:.28}.aura,.ck-hero::before,.ck-inst .dot::after,.ck-ticker .lane{animation:none!important}}
 
   header{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(18px);border-bottom:1px solid var(--bd2);position:sticky;overflow:hidden}
   header::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;
@@ -216,6 +262,9 @@
 </style>
 </head>
 <body>
+<canvas id="netbg" aria-hidden="true"></canvas>
+<div class="aura a" aria-hidden="true"></div><div class="aura b" aria-hidden="true"></div>
+<div class="veilbg" aria-hidden="true"></div>
 <div class="wrap">
   <header>
     <div class="htop">
@@ -263,11 +312,15 @@ const clk=(cnpj,txt)=>{const d=String(cnpj||'').replace(/\D/g,'');return d.lengt
 
 // ═══ ESFERAS ═══
 const SPHERES=[
+  {id:'inicio',    ic:'◎', tl:'Início',        c:'command deck ao vivo'},
   {id:'estado',    ic:'🏛️', tl:'Estado',       c:'órgãos estaduais (SIAFE + PNCP)'},
   {id:'prefeitura',ic:'🏙️', tl:'Prefeitura·Rio',c:'município do Rio (PNCP + folha)'},
   {id:'geral',     ic:'🌐', tl:'Transversal',  c:'riscos, busca, poder, ferramentas'},
 ];
 const TABS={
+  inicio:[
+    {id:'i_cockpit', ic:'◎',tl:'Cockpit', render:renderCockpit},
+  ],
   estado:[
     {id:'e_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaEstado},
     {id:'e_pericias',ic:'⚖️',tl:'Perícias',render:renderPericias},
@@ -312,7 +365,7 @@ const TABS={
     {id:'g_acoes',   ic:'⚡',tl:'Ações',   render:renderAcoes},
   ],
 };
-let esfera='estado',aba='e_panorama';
+let esfera='inicio',aba='i_cockpit';
 const sessaoReports=new Set();
 
 function montarSpheres(){
@@ -1291,7 +1344,91 @@ function limparEfemeros(){if(!sessaoReports.size)return;const body=JSON.stringif
   catch(e){fetch('/api/compliance/reports/limpar',{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true});}}
 window.addEventListener('pagehide',limparEfemeros);window.addEventListener('beforeunload',limparEfemeros);
 
-(async()=>{montarSpheres();montarTabs();await ir('e_panorama');
+// ═══ COCKPIT (aba Início) — command deck ao vivo ═══
+let _ckMX=.5,_ckMY=.5,_ckTimer=null;
+addEventListener('pointermove',e=>{_ckMX=e.clientX/innerWidth;_ckMY=e.clientY/innerHeight;},{passive:true});
+function netbgStart(){
+  const cv=$('netbg');if(!cv)return;const ctx=cv.getContext('2d');let W,H,pts,raf;
+  const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function size(){const d=Math.min(2,devicePixelRatio);W=cv.width=innerWidth*d;H=cv.height=innerHeight*d;
+    cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';cv._d=d;
+    const n=Math.min(56,Math.floor(innerWidth/26));
+    pts=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,z:Math.random()*.8+.2,
+      vx:(Math.random()-.5)*.11*d,vy:(Math.random()-.5)*.11*d,r:(Math.random()*1.5+.6)*d}));}
+  function draw(){const d=cv._d,D=150*d;ctx.clearRect(0,0,W,H);const px=(_ckMX-.5)*26*d,py=(_ckMY-.5)*26*d;
+    for(let i=0;i<pts.length;i++){const p=pts[i];if(!rm){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;}
+      const ox=p.x+px*p.z,oy=p.y+py*p.z;p._ox=ox;p._oy=oy;
+      for(let j=i+1;j<pts.length;j++){const q=pts[j],qx=q.x+px*q.z,qy=q.y+py*q.z,dx=ox-qx,dy=oy-qy,dd=Math.hypot(dx,dy);
+        if(dd<D){ctx.strokeStyle='rgba(63,224,208,'+((1-dd/D)*.15)+')';ctx.lineWidth=d*.5;ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(qx,qy);ctx.stroke();}}
+      ctx.beginPath();ctx.arc(ox,oy,p.r,0,7);ctx.fillStyle='rgba(120,230,220,'+(.32+p.z*.28)+')';ctx.fill();}
+    if(!rm)raf=requestAnimationFrame(draw);}
+  addEventListener('resize',()=>{cancelAnimationFrame(raf);size();draw();});size();draw();
+}
+function _ckSpark(cv,vals,color){const d=Math.min(2,devicePixelRatio),w=cv.width=cv.offsetWidth*d,h=cv.height=cv.offsetHeight*d,ctx=cv.getContext('2d');
+  const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1,X=k=>k/(vals.length-1)*w,Y=v=>h-8*d-(v-mn)/rg*(h-14*d);
+  let pr=0;(function f(){pr=Math.min(1,pr+.06);const cut=Math.floor(pr*(vals.length-1));ctx.clearRect(0,0,w,h);
+    ctx.beginPath();for(let k=0;k<=cut;k++)k?ctx.lineTo(X(k),Y(vals[k])):ctx.moveTo(X(k),Y(vals[k]));
+    ctx.lineTo(X(cut),h);ctx.lineTo(0,h);ctx.closePath();const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,color+'55');g.addColorStop(1,color+'00');ctx.fillStyle=g;ctx.fill();
+    ctx.beginPath();for(let k=0;k<=cut;k++)k?ctx.lineTo(X(k),Y(vals[k])):ctx.moveTo(X(k),Y(vals[k]));ctx.strokeStyle=color;ctx.lineWidth=1.6*d;ctx.stroke();
+    ctx.beginPath();ctx.arc(X(cut),Y(vals[cut]),2.6*d,0,7);ctx.fillStyle=color;ctx.fill();if(pr<1)requestAnimationFrame(f);})();}
+function _ckSynth(seed,n=15){const a=[];let v=seed;for(let i=0;i<n;i++){v+=(Math.sin(i*1.3+seed)*.5+(Math.random()-.42))*seed*.13;a.push(Math.max(.2,v));}return a;}
+function _ckCount(el,to,fmt,ms=1000){const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;if(rm||to==null){el.textContent=fmt(to);return;}
+  const t0=performance.now();(function s(t){const p=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-p,3);el.textContent=fmt(to*e);if(p<1)requestAnimationFrame(s);else el.textContent=fmt(to);})(performance.now());}
+const _CK={teal:'#4fd6c4',gold:'#e8bd72',good:'#3fe08a',amber:'#f5a623',rose:'#ff5c78'};
+
+async function renderCockpit(){
+  const html=`<div class="ck">
+    <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ carregando telemetria…</span></div></div>
+    <div class="ck-hero">
+      <div class="ck-eye">Economia potencial identificada</div>
+      <div class="ck-big" id="ck-econ">R$ ——</div>
+      <div class="ck-sub" id="ck-sub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item.</div>
+      <div class="ck-ved" id="ck-vedbox" style="display:none"><span class="n" id="ck-ved">R$ —</span>
+        <span class="l">pago <b style="color:var(--rose)">acima do mercado a fornecedor juridicamente vedado</b> (inidôneo), à época — o alvo mais forte.</span></div>
+    </div>
+    <div class="ck-grid" id="ck-grid"></div></div>`;
+  setTimeout(ckBoot,0);   // preenche após o innerHTML assentar
+  return html;
+}
+function ckCard(id,lab,valc,dotc,href,spark){return `<div class="ck-inst" id="cki-${id}" onclick="ir('${href}')">
+  <div class="k"><span class="lab">${lab}</span><span class="dot ${dotc}"></span></div>
+  <div class="val ${valc}">—</div><div class="meta">aguardando…</div>
+  ${spark?`<canvas class="spk" data-spark="${spark}"></canvas>`:''}</div>`;}
+function ckFill(id,{num,txt,meta}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
+  if(num!=null&&isFinite(num))_ckCount(v,num,x=>fmtN(Math.round(x)));else if(txt!=null)v.textContent=txt;
+  if(meta!=null)m.innerHTML=meta;const cv=el.querySelector('canvas[data-spark]');if(cv)requestAnimationFrame(()=>_ckSpark(cv,_ckSynth(6+Math.random()*9),_CK[cv.dataset.spark]||'#4fd6c4'));}
+let _ckTick=[];
+function ckPush(items){items.forEach(x=>_ckTick.push(x));const L=$('ck-lane');if(L&&_ckTick.length)L.innerHTML=_ckTick.concat(_ckTick).map(x=>`<span class="${x.c||''}">${x.h}</span>`).join('');}
+function ckBoot(){
+  const g=$('ck-grid');if(!g)return;
+  g.innerHTML=[ckCard('radar','Radar de risco','ckamber','bgamber','g_radar','amber'),
+    ckCard('com','Comunidades','ckteal','bgteal','g_comun','teal'),
+    ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp','rose'),
+    ckCard('lift','Melhor detector (lift)','ckgood','bggood','g_retro','good'),
+    ckCard('compras','Compras auditáveis','ckgold','bggold','e_comp','gold'),
+    ckCard('orgao','Órgão que mais economiza','ckgood','bggood','e_comp')].join('');
+  ckPull(true);
+  clearInterval(_ckTimer);_ckTimer=setInterval(()=>{if(!document.hidden&&aba==='i_cockpit')ckPull(false);},30000);
+}
+function ckPull(first){
+  _ckTick=[];
+  J('/api/comparador/economia').then(d=>{if(!d||!d.ok)return;
+    _ckCount($('ck-econ'),d.economia_total,fmtRc,first?1300:900);
+    if($('ck-sub'))$('ck-sub').innerHTML=`Se cada uma das <b>${fmtN(d.n_compras_acima_mediana)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item.`;
+    ckFill('compras',{num:d.n_compras_acima_mediana,meta:'acima da mediana de mercado, priorizadas por economia'});
+    const o=d.por_orgao&&d.por_orgao[0];ckFill('orgao',{txt:o?(o.orgao||'').split(' ').slice(0,2).join(' '):'—',meta:o?`potencial de <b>${fmtRc(o.economia)}</b> a recuperar`:'—'});
+    ckPush([{c:'g',h:`✦ economia potencial <b>${fmtRc(d.economia_total)}</b> em ${fmtN(d.n_compras_acima_mediana)} compras`}]);});
+  J('/api/comparador/vedada').then(d=>{if(d&&d.ok&&d.economia_vedada_total){const b=$('ck-vedbox');if(b)b.style.display='';_ckCount($('ck-ved'),d.economia_vedada_total,fmtRc);}});
+  J('/api/intel/radar?limite=6').then(d=>{if(!d||!d.ok)return;ckFill('radar',{num:d.n,meta:`fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico`});
+    ckPush((d.achados||[]).slice(0,5).map(a=>({c:'',h:`▸ RADAR ${a.score} — <b>${(a.nome||'').slice(0,30)}</b> · ${(a.sinais||[]).map(s=>s.sinal).slice(0,2).join(', ')}`})));});
+  J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;ckFill('com',{num:d.n,meta:'clusters família-empresa-órgão (Louvain)'});});
+  J('/api/intel/lift').then(d=>{if(!d||!d.ok)return;const b=(d.detectores||[]).filter(x=>!x.circular).sort((a,c)=>(c.lift||0)-(a.lift||0))[0];
+    ckFill('lift',{txt:b?b.lift+'×':'—',meta:b?`<b>${b.detector}</b> concentra fraude ${b.lift}× acima da base`:'—'});});
+  J('/api/comparador/dossie').then(d=>{if(!d||!d.ok)return;ckFill('dossie',{num:d.n,meta:'itens pagos caro a fornecedor sancionado/fantasma'});
+    ckPush((d.achados||[]).slice(0,6).map(a=>({c:'a',h:`◉ ${(a.orgao||'').slice(0,24)} pagou <b>${a.vs_mediana}× a mediana</b> — ${(a.fornecedor||'').slice(0,24)} (sancionada)`})));});
+}
+
+(async()=>{montarSpheres();montarTabs();netbgStart();await ir('i_cockpit');
   const st=await J('/status');if(st.exercicio)$('hsub').textContent='CENTRAL DE INTELIGÊNCIA · SIAFE '+(st.logged_in?'✓':'✗')+' · '+st.exercicio;})();
 </script>
 </body>
