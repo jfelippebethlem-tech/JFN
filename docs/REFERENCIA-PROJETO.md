@@ -216,6 +216,19 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **07-18 (painel VIVO em toda aba + UX cockpit + análise prioridade_valor):** **Estética viva do cockpit
+  em TODAS as abas** (não só no fundo): hook global `vivo()` no `ir()` — cascata de entrada (`.rise`), contagem
+  animada dos KPIs, **malha de luz** (canvas) ligando capa→KPIs→cards com pulsos viajando pelas arestas, hover
+  que energiza o card; respeita `prefers-reduced-motion`. **UX (olhos de humano):** removido o botão "◎ Cockpit"
+  do header (ejetava pra `/cockpit` standalone duplicado) — o cockpit já é a HOME unificada (esfera Início), uma
+  porta só. Fix: guard de null em `_ckCount` (navegar pra fora do cockpit durante count-up async gerava 2 erros de
+  console). **Análise NOVA `prioridade_valor`** (o "dossiê automático" pedido — cruza *quem paga mais* × radar):
+  interseção de fornecedores que o RADAR marca COM economia recuperável (pagaram acima da mediana) — **76 forn.,
+  R$882.355,73 em risco**; ordena por R$ recuperável, rating honesto (🔴🟡🟢, sinal fraco+dinheiro alto ainda
+  aparece). `compliance_agent/cruzamentos_intel.prioridade_valor` (compõe radar+economia, 0 dado novo) +
+  `/api/intel/prioridade_valor` + aba ⚡ Prioridade. Honestidade: economia=teto teórico (não ressarcimento);
+  score=indício; interseção prioriza, não acusa. Verificado como humano (Playwright). Testes: `test_prioridade_valor`
+  (4); catraca 1470→1471; golden regenerado.
 - **07-18 (mapa Karpathy — onde já está aplicado, verificado no código):** as ideias do Karpathy
   (`CLAUDE.md` dele + `autoresearch`) **já estão aplicadas nas 3 camadas**, não é pendência:
   **① Claude Code (aqui):** `~/.claude/CLAUDE.md §6` = 4 princípios de codificação adaptados do CLAUDE.md do Karpathy
