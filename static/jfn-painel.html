@@ -1413,6 +1413,7 @@ function ckBoot(){
     ckCard('com','Comunidades','ckteal','bgteal','g_comun','teal'),
     ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp','rose'),
     ckCard('lift','Melhor detector (lift)','ckgood','bggood','g_retro','good'),
+    ckCard('fenix','Pago a empresa morta','ckrose','bgrose','g_fenix','rose'),
     ckCard('compras','Compras auditáveis','ckgold','bggold','e_comp','gold'),
     ckCard('orgao','Órgão que mais economiza','ckgood','bggood','e_comp')].join('');
   ckPull(true);
@@ -1434,6 +1435,9 @@ function ckPull(first){
     ckFill('lift',{txt:b?b.lift+'×':'—',meta:b?`<b>${b.detector}</b> concentra fraude ${b.lift}× acima da base`:'—'});});
   J('/api/comparador/dossie').then(d=>{if(!d||!d.ok)return;ckFill('dossie',{num:d.n,meta:'itens pagos caro a fornecedor sancionado/fantasma'});
     ckPush((d.achados||[]).slice(0,6).map(a=>({c:'a',h:`◉ ${(a.orgao||'').slice(0,24)} pagou <b>${a.vs_mediana}× a mediana</b> — ${(a.fornecedor||'').slice(0,24)} (sancionada)`})));});
+  J('/api/intel/fenix').then(d=>{if(!d||!d.ok)return;
+    ckFill('fenix',{txt:fmtRc(d.total_defunta||0),meta:`<b>${fmtN(d.n_defunta)}</b> empresas BAIXADA/INAPTA que receberam do Estado`});
+    ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_defunta)}</b> pagos a ${fmtN(d.n_defunta)} empresas MORTAS/irregulares`}]);});
   J('/api/fontes/frescor').then(d=>{const box=$('ck-fontes');if(!box||!d||!d.fontes)return;
     const cor=f=>{const s=(f.estado||'').toLowerCase();if(s.includes('verde')||s.includes('ok')||s.includes('fresc'))return '#3fe08a';
       if(s.includes('amar')||s.includes('aten')||s.includes('velh'))return '#f5a623';if(s.includes('verm')||s.includes('erro')||s.includes('crit'))return '#ff5c78';
