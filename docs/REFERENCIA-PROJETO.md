@@ -216,6 +216,19 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **07-18 (mapa Karpathy — onde já está aplicado, verificado no código):** as ideias do Karpathy
+  (`CLAUDE.md` dele + `autoresearch`) **já estão aplicadas nas 3 camadas**, não é pendência:
+  **① Claude Code (aqui):** `~/.claude/CLAUDE.md §6` = 4 princípios de codificação adaptados do CLAUDE.md do Karpathy
+  (pensar-antes-de-codar / simplicidade / mudanças cirúrgicas / execução orientada a meta); **hook determinístico**
+  `~/.claude/hooks/jfn_guard.py` (PreToolUse fail-open: barra credenciais/exec-remota/force-push/rm-rf — regra>prompt,
+  a tese central do Karpathy) + `test_jfn_guard.sh`; `SessionStart` hook (carrega memória sob demanda).
+  **② JFN (motor):** `tools/autoauditoria.py` = porte do `karpathy/autoresearch` — baseline (fingerprint+drift, timer 07:10)
+  + sintonia otimizando **LIFT** contra gabarito objetivo; `compliance_agent/eval_groundtruth.py` = **eval-set** (AUC do
+  score do motor como preditor de punição TCE-RJ — mede calibração, não acusa); `data/baseline_2026-06-09` snapshot.
+  **③ Hermes (agente):** `tools/hermes_metacognicao.py` + `jfn-metacognicao.timer` (06:50, "sono REM": reflexão+auto-melhoria+RAG);
+  `compliance_agent/llm/auto_melhoria.py` (meta-cognição critica outputs vs vereditos → correções de método); `tools/hermes_rag.py`
+  (segundo cérebro); `tests/test_hermes_metacognicao.py`. **Gap remanescente:** não há `program.md`/loop de mutação-de-prompt
+  automatizado estilo autoresearch puro — a sintonia hoje é de _grade de detector_ (LIFT), não de prompt de agente.
 - **07-18 (comparador de preços + cockpit ultrafuturista + enriquecimento cadastral — 1 sessão longa):**
   **Comparador de preços** (`compliance_agent/comparador_precos.py`, pedido do dono): `buscar_grupos`/`comparar`
   (quem paga mais/menos pelo MESMO item — locação de veículo: 5 órgãos R$1.070→R$239.999), `ranking_orgaos`/`ranking_fornecedores`
