@@ -5,6 +5,7 @@ GET /api/anomalias -> api_anomalias
 GET /api/cartel -> api_cartel
 GET /api/coendereco/clusters -> api_coendereco_clusters
 GET /api/comparador/buscar -> api_comparador_buscar
+GET /api/comparador/dossie -> api_comparador_dossie
 GET /api/comparador/fornecedores -> api_comparador_fornecedores
 GET /api/comparador/item -> api_comparador_item
 GET /api/comparador/orgaos -> api_comparador_orgaos

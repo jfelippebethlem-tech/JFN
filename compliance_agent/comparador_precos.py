@@ -211,6 +211,83 @@ def ranking_fornecedores(db_path: str | None = None, min_itens: int = 8, limite:
         con.close()
 
 
+def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: int = 2,
+                    min_certames: int = 3, limite: int = 120) -> dict:
+    """DOSSIÊ AUTOMÁTICO: item comprado MUITO acima da mediana (≥`fator`×) por um órgão, cujo
+    fornecedor vencedor É SUSPEITO por outra fonte independente — sancionado (CEIS/CNEP), no radar
+    de risco, ou fantasma. É o cruzamento 'paga caro + fornecedor com problema': prioriza o que
+    tem preço fora da curva E fornecedor já marcado, o alvo mais forte para auditoria.
+
+    Guarda anti-FP: grupo comparável (≥`min_orgaos` órgãos, ≥`min_certames` certames); preço do
+    achado ≥`fator`× a mediana E ≥ mediana+3·MAD (fora da banda robusta); artefato (<10% da
+    mediana) descartado. O 'suspeito' vem de fonte INDEPENDENTE do preço."""
+    con = _ro(db_path)
+    try:
+        sanc = {r["cpf_cnpj"] for r in con.execute(
+            "SELECT DISTINCT cpf_cnpj FROM sancoes_federais WHERE length(cpf_cnpj)=14 AND "
+            "(lower(categoria) LIKE '%imped%' OR lower(categoria) LIKE '%inid%' OR "
+            "lower(categoria) LIKE '%suspens%' OR lower(categoria) LIKE '%declar%')")}
+        try:
+            fant = {r["cnpj"]: r["classificacao"] for r in con.execute(
+                "SELECT cnpj, classificacao FROM fantasma_score WHERE classificacao IN ('alto','medio')")}
+        except sqlite3.OperationalError:
+            fant = {}
+        try:
+            from compliance_agent.cruzamentos_intel import ler_cache_intel
+            radar = {a["cnpj"]: a["score"] for a in
+                     (ler_cache_intel("radar_risco") or {}).get("achados") or [] if a.get("cnpj")}
+        except Exception:  # noqa: BLE001
+            radar = {}
+
+        achados = []
+        for (base, un), itens in _grupos(con).items():
+            orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
+            n_cert = len({r["certame"] for r in itens})
+            if len(orgaos) < min_orgaos or n_cert < min_certames:
+                continue
+            precos = sorted(r["vu"] for r in itens)
+            med = _mediana(precos)
+            if med <= 0:
+                continue
+            mad = _mediana([abs(p - med) for p in precos]) or (med * 0.1)
+            for r in itens:
+                p = r["vu"]
+                if p < fator * med or (p - med) < 3 * 1.4826 * mad:
+                    continue                      # não está caro o bastante / dentro da banda
+                cnpj = r["fornecedor_cnpj"]
+                sinais = []
+                if cnpj in sanc:
+                    sinais.append({"sinal": "sancionada", "peso": 3})
+                if cnpj in radar:
+                    sinais.append({"sinal": f"radar_{radar[cnpj]}", "peso": 2})
+                if cnpj in fant:
+                    sinais.append({"sinal": f"fantasma_{fant[cnpj]}", "peso": 2})
+                if not sinais:
+                    continue                      # caro MAS sem outro sinal → fica no sobrepreço, não aqui
+                achados.append({
+                    "item": r["d"], "grupo": base, "unidade_medida": r["un"],
+                    "orgao": r["unidade_nome"] or r["orgao_nome"], "municipio": r["municipio"] if "municipio" in r.keys() else None,
+                    "fornecedor": r["fornecedor_nome"], "fornecedor_cnpj": cnpj,
+                    "preco": round(p, 2), "mediana": round(med, 2),
+                    "vs_mediana": round(p / med, 1), "sobrepreco_est": round(p - med, 2),
+                    "certame": r["certame"], "data": (r["data_pub"] or "")[:10],
+                    "sinais": sinais, "gravidade": sum(s["peso"] for s in sinais)})
+        # ranking: mais sinais/sanção primeiro, depois quão acima da mediana
+        achados.sort(key=lambda a: (-a["gravidade"], -a["vs_mediana"]))
+        return {"ok": True, "achados": achados[:limite], "n": len(achados),
+                "n_sancionada": sum(1 for a in achados
+                                    if any(s["sinal"] == "sancionada" for s in a["sinais"])),
+                "explicacao": ("Cruzamento do comparador de preços com o gabarito de risco: item pago "
+                               f"≥{fator:g}× a mediana de mercado por um órgão, cujo FORNECEDOR já é "
+                               "sancionado (CEIS/CNEP), está no radar de risco ou é fantasma. Preço "
+                               "fora da curva + fornecedor marcado por fonte independente = alvo forte."),
+                "ressalva": ("O preço alto e o sinal de risco vêm de FONTES INDEPENDENTES — a "
+                             "coincidência é o indício, não prova. Descrição do PNCP é curta (pode "
+                             "misturar especificação). Confirmar termo de referência. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 if __name__ == "__main__":
     import sys
     cmd = sys.argv[1] if len(sys.argv) > 1 else "orgaos"
@@ -227,6 +304,13 @@ if __name__ == "__main__":
             print(" ÓRGÃOS (mais caro → mais barato):")
             for o in d["orgaos"][:12]:
                 print(f"   {o['vs_geral']:5}x  R${o['mediana']:>10.2f}  {(o['nome'] or '')[:44]} (n={o['n']})")
+    elif cmd == "dossie":
+        d = caro_e_suspeito()
+        print(f"{d['n']} casos 'paga caro + fornecedor suspeito' ({d['n_sancionada']} c/ sanção):")
+        for a in d["achados"][:15]:
+            ss = ",".join(s["sinal"] for s in a["sinais"])
+            print(f"  {a['vs_mediana']:5}x med  R${a['preco']:>10.2f}  {(a['item'] or '')[:24]:24} "
+                  f"{(a['fornecedor'] or '')[:24]:24} [{ss}] @ {(a['orgao'] or '')[:22]}")
     elif cmd == "fornecedores":
         d = ranking_fornecedores()
         print(f"{d['n']} fornecedores. MAIS CAROS:")

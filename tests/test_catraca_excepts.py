@@ -25,7 +25,9 @@ REPO = Path(__file__).resolve().parent.parent
 # detector arbitrário no harness de lift, como o fingerprint; logado, amplo por design correto).
 # 2026-07-18e: +5 (1455→1460) — comparador de preços: 4 route handlers novos (buscar/item/orgaos/
 # fornecedores) no idioma-padrão das rotas + 1 já contabilizado. Todos catch-and-return, não mudos.
-BASELINE = 1460  # medido 2026-07-18e (1455→comparador; 1392 em 2026-07-11)
+# 2026-07-18f: +2 (1460→1462) — dossiê caro+suspeito: rota /api/comparador/dossie + degradação
+# graciosa do cache do radar (except→radar={}, não mudo). Ambos idioma-padrão, logados/graceful.
+BASELINE = 1462  # medido 2026-07-18f (1460→dossiê; 1392 em 2026-07-11)
 
 
 def _contar() -> int:

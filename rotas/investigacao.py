@@ -1390,6 +1390,19 @@ async def api_comparador_item(grupo: str = "", unidade: str = ""):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/comparador/dossie")
+async def api_comparador_dossie():
+    """Dossiê automático: item pago muito acima da mediana por um órgão cujo FORNECEDOR já é
+    sancionado/no radar/fantasma. Cruza o comparador de preços com o gabarito de risco."""
+    try:
+        from compliance_agent.comparador_precos import caro_e_suspeito
+        if not (d := _cache_get("comp:dossie", 1800)):
+            d = _cache_put("comp:dossie", caro_e_suspeito())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/comparador/orgaos")
 async def api_comparador_orgaos():
     """Ranking de órgãos por eficiência de gasto (razão preço/mercado ao longo de muitos itens)."""
