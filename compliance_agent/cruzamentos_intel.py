@@ -1471,7 +1471,7 @@ def ler_cache_intel(nome: str) -> dict | None:
         d["gerado_em"] = __import__("datetime").datetime.fromtimestamp(
             p.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
         return d
-    except Exception:
+    except (OSError, ValueError):        # cache ausente ou JSON corrompido → sem cache
         return None
 
 

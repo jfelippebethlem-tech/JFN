@@ -43,6 +43,7 @@ GET /api/intel/pdf -> api_intel_pdf
 GET /api/intel/perdedoras -> api_intel_perdedoras
 GET /api/intel/porta_giratoria -> api_intel_porta_giratoria
 GET /api/intel/radar -> api_intel_radar
+GET /api/intel/retro -> api_intel_retro
 GET /api/intel/sancionadas -> api_intel_sancionadas
 GET /api/intel/sobrepreco -> api_intel_sobrepreco
 GET /api/intel/socio_oculto -> api_intel_socio_oculto

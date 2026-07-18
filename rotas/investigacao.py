@@ -1345,6 +1345,19 @@ async def api_intel_radar(limite: int = 100):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/retro")
+async def api_intel_retro():
+    """Retro-auditoria (hindsight): por detector, sanção POSTERIOR ao 1º sinal (corroboração
+    independente) e R$ pagos/vitórias APÓS o alerta (custo da inação). Ledger diário no timer."""
+    try:
+        from compliance_agent.retro_auditoria import medir
+        if not (d := _cache_get("intel:retro", 3600)):
+            d = _cache_put("intel:retro", medir())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/fracionamento")
 async def api_intel_fracionamento(limite: int = 120):
     """Possível fracionamento de despesa: favorecido+UG+mês com várias OBs coladas no teto de
