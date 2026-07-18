@@ -1525,6 +1525,21 @@ async def api_intel_capital(limite: int = 120):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/prioridade_valor")
+async def api_intel_prioridade_valor(limite: int = 60, min_score: int = 10):
+    """Fila priorizada por VALOR EM RISCO: interseção do RADAR (fornecedor arriscado) com a ECONOMIA
+    POTENCIAL (R$ recuperável se tivesse pago a mediana). Cruza 'quem paga mais' com o radar."""
+    try:
+        from compliance_agent.cruzamentos_intel import prioridade_valor
+        lim = max(1, min(int(limite or 60), 200))
+        ms = max(0, min(int(min_score or 10), 100))
+        if not (d := _cache_get(f"intel:prival:{lim}:{ms}", 900)):
+            d = _cache_put(f"intel:prival:{lim}:{ms}", prioridade_valor(min_score=ms, limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/fornecedor_dependente")
 async def api_intel_fornecedor_dependente(limite: int = 120):
     """Fornecedor comercial com ≥90% da receita do Estado numa única unidade gestora ('empresa do órgão')."""

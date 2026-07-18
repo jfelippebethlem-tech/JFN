@@ -1614,6 +1614,44 @@ def _beneficios_vinculo_resumo() -> dict:
                         "Indício ≠ acusação."}
 
 
+def prioridade_valor(db_path: str | None = None, min_score: int = 10, limite: int = 60) -> dict:
+    """FILA DE PRIORIDADE POR VALOR EM RISCO: cruza o RADAR (quão arriscado é o fornecedor) com a
+    ECONOMIA POTENCIAL (quanto os cofres recuperariam se ele tivesse pago a mediana). O topo é o
+    fornecedor que junta as duas coisas — sinal de risco aceso E muito dinheiro recuperável —, que
+    é onde a auditoria rende mais por hora de trabalho. Determinístico; compõe detectores honestos
+    já existentes (nenhum dado novo). Responde ao pedido 'cruzar quem paga mais com o radar'.
+
+    Honestidade: economia é TETO teórico (mediana atingível), não valor a ressarcir; score é indício
+    interno; a interseção prioriza, não acusa. Só entram fornecedores com score ≥ min_score E economia>0."""
+    from compliance_agent.comparador_precos import economia_potencial
+    radar = {a["cnpj"]: a for a in radar_risco(db_path, limite=100_000).get("achados", [])}
+    eco = economia_potencial(db_path, limite=100_000).get("por_fornecedor", [])
+    achados = []
+    for f in eco:
+        cnpj = (f.get("fornecedor_cnpj") or "").strip()
+        r = radar.get(cnpj)
+        if not r or r["score"] < min_score or f.get("economia", 0) <= 0:
+            continue
+        achados.append({
+            "cnpj": cnpj, "cnpj_fmt": r["cnpj_fmt"],
+            "nome": r.get("nome") or f.get("fornecedor") or "—",
+            "score": r["score"], "rating": r["rating"], "n_sinais": r["n_sinais"],
+            "sinais": [s["sinal"] for s in r.get("sinais", [])],
+            "economia": round(f["economia"], 2), "n_compras": f.get("n", 0)})
+    achados.sort(key=lambda a: (-a["economia"], -a["score"]))
+    return {"ok": True, "achados": achados[:limite], "n": len(achados),
+            "economia_em_risco": round(sum(a["economia"] for a in achados), 2),
+            "escala": ("Interseção RADAR × ECONOMIA. Ordenado pelo R$ recuperável (sobrepreço acima "
+                       "da mediana) entre fornecedores que o radar já marca (score ≥ "
+                       f"{min_score}). Rating honesto do risco: 🔴 ≥50 · 🟡 25-49 · 🟢 <25 "
+                       "(sinal fraco, mas há dinheiro em jogo — ainda vale conferir)."),
+            "explicacao": ("Risco alto sem dinheiro em jogo pode esperar; dinheiro alto sem sinal de "
+                           "risco pode ser variação legítima de mercado. O cruzamento das duas coisas "
+                           "no MESMO fornecedor é a fila que rende mais por hora de apuração."),
+            "ressalva": ("Economia = teto teórico (mediana atingível), não valor a ressarcir. Score = "
+                         "indício interno. Confirmar termo de referência e documentos. Indício ≠ acusação.")}
+
+
 def gerar_cache_intel(db_path: str | None = None) -> dict:
     """Materializa os cruzamentos pesados em data/cache/*.json (o painel lê em ms)."""
     _CACHE_DIR.mkdir(parents=True, exist_ok=True)

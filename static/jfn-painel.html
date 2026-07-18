@@ -363,6 +363,7 @@ const TABS={
   geral:[
     {id:'g_buscar',  ic:'🔎',tl:'Buscar',  render:renderBuscar},
     {id:'g_radar',   ic:'🎯',tl:'Radar',   render:renderRadar},
+    {id:'g_prioridade',ic:'⚡',tl:'Prioridade',render:renderPrioridade},
     {id:'g_conluioq',ic:'🤝',tl:'Conluio QSA',render:renderConluioQSA},
     {id:'g_comun',   ic:'🧩',tl:'Comunidades',render:renderComunidades},
     {id:'g_retro',   ic:'🔮',tl:'Retro',   render:renderRetro},
@@ -1060,6 +1061,23 @@ async function renderCapital(){
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
 }
+async function renderPrioridade(){
+  const d=await J('/api/intel/prioridade_valor?limite=80');
+  if(!d.ok)return sec('Prioridade por valor em risco')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Prioridade — onde a auditoria rende mais','Fila que cruza <b>risco × dinheiro</b>: fornecedores que o <b>radar</b> já marca (sinal aceso) <b>E</b> que têm <b>economia recuperável</b> (pagaram acima da mediana de mercado do item). Risco alto sem dinheiro pode esperar; dinheiro alto sem sinal pode ser variação legítima — o cruzamento dos dois no mesmo CNPJ é a fila que rende mais por hora de apuração.','⚡')+acoesAba('prioridade_valor');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Na interseção','var(--teal)','⚡')}${kpi(fmtRc(d.economia_em_risco),'Economia em risco',null,'💰')}
+      ${kpi(a.filter(x=>x.score>=25).length,'Sinal médio+ (🟡🔴)','var(--amber)')}${kpi(a.length?fmtRc(a[0].economia):'—','Maior isolado','var(--rose)')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#pri-list .card')"></div>`;
+  h+=`<div id="pri-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_compras)} compra(s) acima da mediana</div>
+      <div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">${(x.sinais||[]).slice(0,4).map(s=>`<span class="tag teal">${esc(s)}</span>`).join('')}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--teal)">${fmtRc(x.economia)}</div><div class="dim">${x.rating} score ${fmtN(x.score)}</div></div></div>
+      ${leitura(`<b>${esc(x.nome)}</b> junta <b>sinal de risco</b> (${(x.sinais||[]).join(', ')||'—'}, score ${fmtN(x.score)}/100) com <b>${fmtRc(x.economia)}</b> de sobrepreço recuperável sobre ${fmtN(x.n_compras)} compra(s) acima da mediana de mercado. Priorizar: risco + dinheiro no mesmo fornecedor. Economia é teto teórico (mediana atingível), não valor a ressarcir.`)}`,
+    x.score>=50?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.escala||'')} — ${esc(d.ressalva||'')}</div>`;
+  return h;
+}
 async function renderFornecedorDependente(){
   const d=await J('/api/intel/fornecedor_dependente?limite=150');
   if(!d.ok)return sec('Cativos')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
@@ -1463,7 +1481,7 @@ function _ckSpark(cv,vals,color){const d=Math.min(2,devicePixelRatio),w=cv.width
     ctx.beginPath();for(let k=0;k<=cut;k++)k?ctx.lineTo(X(k),Y(vals[k])):ctx.moveTo(X(k),Y(vals[k]));ctx.strokeStyle=color;ctx.lineWidth=1.6*d;ctx.stroke();
     ctx.beginPath();ctx.arc(X(cut),Y(vals[cut]),2.6*d,0,7);ctx.fillStyle=color;ctx.fill();if(pr<1)requestAnimationFrame(f);})();}
 function _ckSynth(seed,n=15){const a=[];let v=seed;for(let i=0;i<n;i++){v+=(Math.sin(i*1.3+seed)*.5+(Math.random()-.42))*seed*.13;a.push(Math.max(.2,v));}return a;}
-function _ckCount(el,to,fmt,ms=1000){const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;if(rm||to==null){el.textContent=fmt(to);return;}
+function _ckCount(el,to,fmt,ms=1000){if(!el)return;const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;if(rm||to==null){el.textContent=fmt(to);return;}
   const t0=performance.now();(function s(t){const p=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-p,3);el.textContent=fmt(to*e);if(p<1)requestAnimationFrame(s);else el.textContent=fmt(to);})(performance.now());}
 const _CK={teal:'#4fd6c4',gold:'#e8bd72',good:'#3fe08a',amber:'#f5a623',rose:'#ff5c78'};
 
