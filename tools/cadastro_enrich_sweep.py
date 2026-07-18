@@ -42,8 +42,8 @@ def _guarda_recursos() -> None:
             print(f"[cadenrich] pausa: load={load:.1f}", flush=True)
             time.sleep(20)
             load = float(open("/proc/loadavg").read().split()[0])
-    except Exception:  # noqa: BLE001
-        pass
+    except (OSError, ValueError, IndexError):
+        return                              # sem /proc/loadavg → segue sem guarda (não trava)
 
 
 def _alvos(con: sqlite3.Connection, limite: int, min_valor: float) -> list[tuple[str, float]]:
@@ -131,5 +131,5 @@ if __name__ == "__main__":
         try:
             mv = float(args[args.index("--min-valor") + 1])
         except (IndexError, ValueError):
-            pass
+            mv = 100_000.0                  # arg malformado → default
     print(json.dumps(enriquecer(limite=lim, min_valor=mv), ensure_ascii=False))
