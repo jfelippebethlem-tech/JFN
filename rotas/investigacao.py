@@ -1511,6 +1511,20 @@ async def api_intel_pdf(tipo: str):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/capital_incompativel")
+async def api_intel_capital(limite: int = 120):
+    """Capital irrisório (<R$50k) frente ao volume recebido (≥100× o capital) — subcapitalização/
+    fachada (Lei 14.133 art. 5, 62-63). Fonte do capital: dump da Receita (empresas_cadastro)."""
+    try:
+        from compliance_agent.cruzamentos_intel import capital_incompativel
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:capinc:{lim}", 600)):
+            d = _cache_put(f"intel:capinc:{lim}", capital_incompativel(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/fornecedor_dependente")
 async def api_intel_fornecedor_dependente(limite: int = 120):
     """Fornecedor comercial com ≥90% da receita do Estado numa única unidade gestora ('empresa do órgão')."""

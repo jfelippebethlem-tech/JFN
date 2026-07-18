@@ -36,6 +36,7 @@ GET /api/hermes/missoes/{missao_id} -> api_hermes_detalhe_missao
 GET /api/hermes/stream -> api_hermes_stream
 GET /api/idoneidade -> api_idoneidade
 GET /api/intel/aditivos -> api_intel_aditivos
+GET /api/intel/capital_incompativel -> api_intel_capital
 GET /api/intel/comunidades -> api_intel_comunidades
 GET /api/intel/comunidades_grafo -> api_intel_comunidades_grafo
 GET /api/intel/conluio_qsa -> api_intel_conluio_qsa
