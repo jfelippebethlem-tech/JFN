@@ -1422,6 +1422,18 @@ async def api_intel_grafo_familias():
         return JSONResponse({"nodes": [], "links": [], "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/comunidades_grafo")
+async def api_intel_comunidades_grafo():
+    """Grafo D3 (nodes/links) das comunidades Louvain — consumido pelo graph.html em
+    /graph?fonte=comunidades. Sai do cache do intel (construir o grafo não roda no request)."""
+    try:
+        from compliance_agent.cruzamentos_intel import ler_cache_intel
+        d = ler_cache_intel("comunidades") or {}
+        return JSONResponse(d.get("d3") or {"nodes": [], "links": []})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"nodes": [], "links": [], "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/fenix")
 async def api_intel_fenix(limite: int = 120):
     """Empresa fênix: BAIXADA/INAPTA que recebeu, ou aberta ≤12m antes do 1º pagamento."""

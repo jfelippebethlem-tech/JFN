@@ -147,42 +147,63 @@ def baseline(db_path: str | None = None, registrar: bool = True) -> dict:
     return reg
 
 
-def _testes_verdes(expr: str) -> bool:
-    """Roda `pytest -k <expr>` e devolve True se passou (nenhuma falha)."""
+# arquivos de teste que protegem cada detector (evita `pytest -k` coletar as 1700+; None = detector
+# sem teste rotulado → o gate de testes é PULADO e a recomendação sai só pela conservação de achados)
+_TEST_FILES = {
+    "conluio_qsa": ["tests/test_conluio_qsa.py"],
+    "comunidades": ["tests/test_grafo_comunidades.py"],
+    "radar_risco": ["tests/test_conluio_qsa.py"],   # radar depende do conluio; sem teste próprio
+}
+
+
+def _testes_verdes(detector: str) -> bool | None:
+    """Roda só os arquivos de teste que protegem o detector. None = não há teste rotulado
+    (gate pulado). Coletar 1700+ testes por valor de grade era o gargalo — aqui vai direto."""
+    arquivos = _TEST_FILES.get(detector)
+    if not arquivos:
+        return None
     r = subprocess.run(
-        [sys.executable, "-m", "pytest", "-q", "-k", expr, "--no-header", "-p", "no:cacheprovider"],
-        cwd=_REPO, capture_output=True, text=True, timeout=600)
+        [sys.executable, "-m", "pytest", "-q", "--no-header", "-p", "no:cacheprovider", *arquivos],
+        cwd=_REPO, capture_output=True, text=True, timeout=300)
     return r.returncode == 0
 
 
-def sintonizar(detector: str, param: str, grade: list, testes_k: str | None = None) -> dict:
-    """Loop autoresearch determinístico: varre a grade de `param`, mede n_achados no DB real e se
-    os testes seguem verdes. Recomenda o valor MAIS CONSERVADOR (menos achados) que passa nos testes.
-    Orçamento = len(grade) experimentos. Não edita código — recomenda (autonomy slider)."""
+def sintonizar(detector: str, param: str, grade: list) -> dict:
+    """Loop autoresearch determinístico: mede n_achados no DB real p/ toda a grade (barato) e roda
+    os TESTES do detector UMA vez (gate de sanidade — o teste valida o comportamento commitado, não
+    enxerga o valor da grade). Se o gate está verde (ou não há teste rotulado), recomenda o valor
+    MAIS CONSERVADOR (menos achados = menos FP); se o gate está vermelho, não recomenda (a base de
+    verdade está quebrada, não confiar). Não edita código — recomenda (autonomy slider)."""
     if detector not in _DETECTORES:
         return {"ok": False, "erro": f"detector desconhecido: {detector}"}
-    fn = _DETECTORES[detector][0]
-    chave = _DETECTORES[detector][1]
-    testes_k = testes_k or detector
+    fn, chave = _DETECTORES[detector][0], _DETECTORES[detector][1]
     experimentos = []
     for v in grade:
         try:
-            d = _chamar(fn, **{param: v})
-            n = len(d.get(chave) or [])
+            n = len(_chamar(fn, **{param: v}).get(chave) or [])
+            experimentos.append({"valor": v, "n_achados": n})
         except Exception as exc:  # noqa: BLE001
             experimentos.append({"valor": v, "erro": str(exc)[:80]})
-            continue
-        verde = _testes_verdes(testes_k)
-        experimentos.append({"valor": v, "n_achados": n, "testes_verdes": verde})
-    validos = [e for e in experimentos if e.get("testes_verdes")]
-    # mais conservador entre os que passam nos testes = menos achados (menos FP), desempata pelo
-    # valor de threshold mais alto (mais exigente)
-    recomendado = min(validos, key=lambda e: (e["n_achados"], -_num(e["valor"]))) if validos else None
+    gate = _testes_verdes(detector)           # None = sem teste rotulado; True/False = suite do detector
+    validos = [e for e in experimentos if "n_achados" in e]
+    ns = {e["n_achados"] for e in validos}
+    recomendado, motivo = None, None
+    if gate is False:
+        motivo = "suite do detector VERMELHA — não confiar em recomendação"
+    elif len(ns) <= 1:
+        # o parâmetro não muda o nº de achados nesta grade → sem sinal p/ sintonizar (não desempatar
+        # por valor: a direção 'conservadora' depende da semântica de min_/max_, ambígua aqui)
+        motivo = f"parâmetro não discrimina nesta grade (todos n={ns.pop() if ns else 0})"
+    else:
+        # há discriminação real: o mais conservador é o de MENOR nº de achados (menos FP)
+        recomendado = min(validos, key=lambda e: e["n_achados"])
     return {"ok": True, "detector": detector, "param": param,
-            "experimentos": experimentos, "recomendado": recomendado,
-            "nota": ("Recomendação = valor mais conservador que mantém TODOS os testes verdes. "
-                     "Aplicar é decisão humana (autonomy slider). Menos achados ≠ sempre melhor: "
-                     "conferir que não perdeu detecção real antes de aplicar.")}
+            "experimentos": experimentos, "testes_verdes": gate, "recomendado": recomendado,
+            "motivo": motivo,
+            "gate_de_testes": ("rotulado" if _TEST_FILES.get(detector) else "ausente (só conservação)"),
+            "nota": ("Recomendação = valor de MENOR nº de achados (menos FP), quando o parâmetro "
+                     "discrimina e a suite está verde. Aplicar é decisão humana (autonomy slider); "
+                     "conferir que não perdeu detecção real antes.")}
 
 
 def _num(v):
@@ -235,9 +256,10 @@ if __name__ == "__main__":
             if not r.get("ok"):
                 print(r.get("erro"))
                 continue
-            print(f"\n{r['detector']}.{r['param']}:")
+            gate = {True: "✓ verde", False: "✗ VERMELHO", None: "— sem teste"}[r["testes_verdes"]]
+            print(f"\n{r['detector']}.{r['param']}  (gate de testes: {gate})")
             for e in r["experimentos"]:
-                print(f"   {e['valor']}: " + (e.get("erro") or
-                      f"n={e['n_achados']} testes={'✓' if e['testes_verdes'] else '✗'}"))
+                print(f"   {e['valor']}: " + (e.get("erro") or f"n_achados={e['n_achados']}"))
             rec = r["recomendado"]
-            print(f"   → recomendado: {rec['valor'] if rec else 'nenhum passa nos testes'}")
+            print(f"   → recomendado: {rec['valor'] if rec else '—'} "
+                  f"({r.get('motivo') or r['gate_de_testes']})")

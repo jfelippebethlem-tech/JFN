@@ -54,37 +54,40 @@ def test_ler_programa_parseia_direcoes(tmp_path, monkeypatch):
 
 
 def test_sintonizar_recomenda_mais_conservador(monkeypatch):
-    # detector fake: n_achados cai com o threshold; testes sempre verdes
+    # detector fake: n_achados cai com o threshold; gate de testes verde
     def fake_chamar(fn, **kw):
         v = kw.get("min_colado", 0)
         return {"grupos": list(range(max(0, 10 - v)))}   # v=3→7, v=5→5
     monkeypatch.setattr(AA, "_chamar", fake_chamar)
-    monkeypatch.setattr(AA, "_testes_verdes", lambda k: True)
+    monkeypatch.setattr(AA, "_testes_verdes", lambda d: True)
     r = AA.sintonizar("fracionamento", "min_colado", [3, 4, 5])
-    assert r["ok"] is True
-    assert r["recomendado"]["valor"] == 5        # mais conservador (menos achados) e passa nos testes
+    assert r["ok"] is True and r["testes_verdes"] is True
+    assert r["recomendado"]["valor"] == 5        # mais conservador (menos achados), suite verde
 
 
-def test_sintonizar_rejeita_valor_que_quebra_testes(monkeypatch):
-    monkeypatch.setattr(AA, "_chamar", lambda fn, **kw: {"grupos": [1]})
-    # só o valor 4 passa nos testes
-    monkeypatch.setattr(AA, "_testes_verdes", lambda k: True)
-    monkeypatch.setattr(AA, "sintonizar", AA.sintonizar)  # noop, clareza
-
-    calls = {"v": None}
-
-    def verdes(_k):
-        return calls["v"] == 4
-    # simula: cada experimento seta calls["v"] via _chamar
-    def chamar(fn, **kw):
-        calls["v"] = kw.get("min_colado")
-        return {"grupos": [1, 2]}
-    monkeypatch.setattr(AA, "_chamar", chamar)
-    monkeypatch.setattr(AA, "_testes_verdes", verdes)
+def test_sintonizar_gate_vermelho_nao_recomenda(monkeypatch):
+    # a suite do detector está QUEBRADA → não confiar em nenhuma recomendação
+    monkeypatch.setattr(AA, "_chamar", lambda fn, **kw: {"grupos": [1, 2]})
+    monkeypatch.setattr(AA, "_testes_verdes", lambda d: False)
     r = AA.sintonizar("fracionamento", "min_colado", [3, 4, 5])
-    verdes_exp = [e for e in r["experimentos"] if e.get("testes_verdes")]
-    assert len(verdes_exp) == 1 and verdes_exp[0]["valor"] == 4
-    assert r["recomendado"]["valor"] == 4
+    assert r["testes_verdes"] is False and r["recomendado"] is None
+
+
+def test_sintonizar_sem_teste_rotulado_usa_so_conservacao(monkeypatch):
+    def fake_chamar(fn, **kw):
+        return {"grupos": list(range(max(0, 10 - kw.get("min_colado", 0))))}
+    monkeypatch.setattr(AA, "_chamar", fake_chamar)
+    monkeypatch.setattr(AA, "_testes_verdes", lambda d: None)   # detector sem teste
+    r = AA.sintonizar("fracionamento", "min_colado", [3, 4, 5])
+    assert r["testes_verdes"] is None and r["recomendado"]["valor"] == 5
+
+
+def test_sintonizar_param_que_nao_discrimina_nao_recomenda(monkeypatch):
+    # todos os valores dão o mesmo nº de achados → sem sinal de sintonia (não desempatar por valor)
+    monkeypatch.setattr(AA, "_chamar", lambda fn, **kw: {"grupos": [1, 2, 3, 4]})
+    monkeypatch.setattr(AA, "_testes_verdes", lambda d: None)
+    r = AA.sintonizar("nepotismo", "max_raridade", [12, 20, 30])
+    assert r["recomendado"] is None and "não discrimina" in r["motivo"]
 
 
 def test_baseline_grava_e_compara(tmp_path, monkeypatch):

@@ -260,6 +260,87 @@ def _b_comissionados(d):
             [{"titulo": "1. Cargo de confiança × disputa eleitoral", "html": _tabela(["Nome", "Órgão / cargo", "Disputou"], ls)}], d)
 
 
+def _b_radar(d):
+    ls = [f"<tr><td>{a['rating']} {a['score']}</td><td>{_esc(a['nome'])}<br><small>{_esc(a['cnpj_fmt'])}</small></td>"
+          f"<td>{a['n_sinais']}</td><td><small>{_esc(', '.join(s['sinal'] for s in a.get('sinais', [])[:6]))}</small></td></tr>"
+          for a in d.get("achados", [])[:150]]
+    return ("Radar de risco — todos os detectores somados",
+            f"{d.get('n',0)} fornecedores com sinal · {d.get('n_vermelho',0)} com score ≥50 (🔴)",
+            [{"titulo": "1. Fila de apuração priorizada (score composto 0-100)",
+              "html": _tabela(["Score", "Empresa / CNPJ", "Nº", "Sinais"], ls)}], d)
+
+
+def _b_conluio_qsa(d):
+    ls = []
+    for p in d.get("pares", [])[:150]:
+        socios = ", ".join(s["nome"] for s in p.get("socios_comuns", [])[:3]) or "matriz × filial (mesmo CNPJ-raiz)"
+        ls.append(f"<tr><td>{'🔴' if p['tier'] != 'MEDIA' else '🟡'} {_esc(p['tier'])}</td>"
+                  f"<td>{_esc(p['vencedor']['nome'])}<br><small>{_esc(p['vencedor']['cnpj'])}</small></td>"
+                  f"<td>{_esc(p['perdedora']['nome'])}<br><small>{_esc(p['perdedora']['cnpj'])}</small></td>"
+                  f"<td><small>{_esc(socios)}</small></td>"
+                  f"<td style='text-align:right'>{p['n_certames']}×<br><small>{_rs(p['valor_vencido'])}</small></td></tr>")
+    return ("Conluio direto — vencedor × perdedora do mesmo dono",
+            f"{d.get('n',0)} pares · {d.get('n_forte',0)} fortes (QSA/matriz-filial) · proposta de cobertura (OCDE)",
+            [{"titulo": "1. Pares vencedor × perdedora com sócio em comum",
+              "html": _tabela(["Tier", "Vencedor", "Perdedora", "Sócios comuns", "Certames"], ls)
+              if ls else "<p>Nenhum par identificado na base atual.</p>"}], d)
+
+
+def _b_comunidades(d):
+    ls = []
+    for c in d.get("comunidades", [])[:100]:
+        emps = " · ".join(m["label"] for m in c.get("membros", []) if m["tipo"] == "empresa")
+        sinais = ", ".join(s["sinal"] for s in c.get("sinais", [])) or "—"
+        ls.append(f"<tr><td>{c['rating']} {c['score']}</td>"
+                  f"<td>#{c['id']} · {c['n_empresas']} emp / {c['n_pessoas']} pes / {c['n_orgaos']} órg"
+                  f"<br><small>{_esc(emps[:120])}</small></td>"
+                  f"<td><small>{_esc(sinais)}</small></td>"
+                  f"<td style='text-align:right'>{_rs(c['valor_total'])}</td></tr>")
+    g = d.get("grafo", {})
+    return ("Comunidades — clusters família-empresa-órgão (Louvain)",
+            f"{d.get('n',0)} comunidades relevantes · grafo com {g.get('nos',0)} nós e {g.get('arestas',0)} arestas",
+            [{"titulo": "1. Comunidades ranqueadas por risco (score 0-100)",
+              "html": _tabela(["Score", "Comunidade", "Sinais", "Valor movimentado"], ls)}], d)
+
+
+def _b_retro(d):
+    lp = [f"<tr><td>{_esc(s)}</td><td style='text-align:right'>{v['n_sinais']}</td>"
+          f"<td style='text-align:right'>{v['n_sancao_depois']}</td>"
+          f"<td style='text-align:right'>{_rs(v['pago_depois'])}<br><small>{v['vitorias_depois']} vitória(s) PNCP depois</small></td></tr>"
+          for s, v in sorted(d.get("por_sinal", {}).items())]
+    lx = [f"<tr><td>{'⚖️' if e.get('sancao_depois') else '💸'}</td>"
+          f"<td>{_esc(e['cnpj'])}<br><small>{_esc(e['sinal'])} · desde {_esc(e['desde'])}</small></td>"
+          f"<td><small>{_esc((e.get('detalhe') or '')[:40])}"
+          f"{(' · sanção em ' + _esc(e['sancao_depois'].get('data_inicio'))) if e.get('sancao_depois') else ''}</small></td>"
+          f"<td style='text-align:right'>{_rs(e['pago_depois'])}</td></tr>"
+          for e in d.get("exemplos", [])[:60]]
+    j = d.get("janela", {})
+    return ("Retro-auditoria — o que aconteceu DEPOIS do alerta",
+            f"janela de {j.get('sinal_mais_antigo_dias', '—')} dia(s) de ledger · sanção posterior corrobora · pago após = custo da inação",
+            [{"titulo": "1. Hindsight por detector",
+              "html": _tabela(["Detector", "Sinais", "Sanção depois", "Pago depois"], lp)},
+             {"titulo": "2. Casos (sanção posterior ou pagamento pós-alerta)", "page_break": True,
+              "html": _tabela(["", "Empresa / sinal", "Detalhe", "Pago após"], lx) if lx else "<p>Nenhum.</p>"}], d)
+
+
+def _d_comunidades(p):
+    # cache do intel primeiro (construir o grafo completo é pesado p/ o request); fallback = computa sem d3
+    from compliance_agent.cruzamentos_intel import ler_cache_intel
+    d = ler_cache_intel("comunidades")
+    if not (d and d.get("ok")):
+        from compliance_agent.grafo_comunidades import detectar_comunidades
+        d = detectar_comunidades(db_path=p, incluir_grafo_d3=False)
+    return d
+
+
+def _d_retro(p):
+    from compliance_agent.retro_auditoria import medir
+    d = medir(db_path=p)
+    if d.get("ok"):
+        d["n"] = sum(v["n_sinais"] for v in d.get("por_sinal", {}).values())
+    return d
+
+
 # tipo → (função-detector com db_path opcional, builder, faixa)
 def _detectores():
     from compliance_agent import cruzamentos_intel as C
@@ -281,6 +362,10 @@ def _detectores():
         "nepotismo_cruzado": (lambda p: C.nepotismo_cruzado(db_path=p), _b_nepcruz, "ALTO"),
         "fantasmas": (lambda p: C.ranking_fantasmas(db_path=p, limite=150), _b_fantasmas, "ALTO"),
         "perdedoras": (lambda p: C.perdedoras_contumazes(db_path=p), _b_perdedoras, "MÉDIO"),
+        "radar_risco": (lambda p: C.radar_risco(db_path=p), _b_radar, "ALTO"),
+        "conluio_qsa": (lambda p: C.conluio_qsa(db_path=p, incluir_atas=False), _b_conluio_qsa, "ALTO"),
+        "comunidades": (_d_comunidades, _b_comunidades, "ALTO"),
+        "retro": (_d_retro, _b_retro, "MÉDIO"),
     }
 
 

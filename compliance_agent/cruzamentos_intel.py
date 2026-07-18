@@ -1251,12 +1251,20 @@ def nepotismo_cruzado(db_path: str | None = None, limite: int = 60) -> dict:
 
 def _certames_vencedor_perdedora(con) -> dict[str, dict]:
     """Por certame: vencedoras (ordem=1 OU registro só-de-vencedor: ordem NULL com valor>0)
-    e perdedoras CONFIRMADAS (ordem>1 em algum item e nenhuma vitória no mesmo certame)."""
+    e perdedoras CONFIRMADAS (ordem>1 em algum item e nenhuma vitória no mesmo certame).
+    Exclui ÓRGÃO PÚBLICO que aparece como 'fornecedor' (ruído: Ministério da Fazenda, autarquias
+    que recebem repasse) — não é licitante e contaminaria o conluio."""
+    try:
+        entes = {r[0] for r in con.execute("SELECT cnpj FROM pncp_ente WHERE length(cnpj)=14")}
+    except sqlite3.OperationalError:
+        entes = set()
     cert: dict[str, dict] = {}
     for r in con.execute(
             "SELECT certame, orgao_nome, objeto, data_pub, fornecedor_cnpj, fornecedor_nome, "
             "valor_homologado, ordem_classificacao FROM pncp_resultado "
             "WHERE length(fornecedor_cnpj)=14"):
+        if r["fornecedor_cnpj"] in entes:
+            continue                       # órgão público não é licitante
         c = cert.setdefault(r["certame"], {
             "orgao": r["orgao_nome"], "objeto": r["objeto"], "data": (r["data_pub"] or "")[:10],
             "venc": {}, "perd": {}, "nomes": {}})
@@ -1340,6 +1348,20 @@ def conluio_qsa(db_path: str | None = None, limite: int = 120,
             qsa.setdefault(r["cnpj_basico"], {})[r["nome_norm"]] = (
                 _frag6(r["doc_socio"]) or re.sub(r"\D", "", r["doc_socio"] or ""),
                 r["nome_socio"])
+        # 2ª fonte de QSA: socios_fornecedor (BrasilAPI por-CNPJ) — cobre firmas que o dump da
+        # Receita não trouxe (empresa nova, EIRELI, sócio não migrado). Chaveada por cnpj_basico.
+        try:
+            for r in con.execute(
+                    "SELECT cnpj, socio_nome, socio_nome_norm, socio_doc, qualificacao "
+                    "FROM socios_fornecedor WHERE socio_nome_norm<>'' AND socio_nome<>''"):
+                b = (r["cnpj"] or "")[:8]
+                if b not in basicos or "CONSELH" in _norm_nome(r["qualificacao"] or ""):
+                    continue
+                qsa.setdefault(b, {}).setdefault(r["socio_nome_norm"], (
+                    _frag6(r["socio_doc"]) or re.sub(r"\D", "", r["socio_doc"] or ""),
+                    r["socio_nome"]))
+        except sqlite3.OperationalError as exc:
+            logger.debug("conluio_qsa sem socios_fornecedor (só dump): %s", exc)
         # ubiquidade: fundo/holding presente em dezenas de QSAs geraria FP em série
         ubiq: dict[str, int] = {}
         for socios in qsa.values():

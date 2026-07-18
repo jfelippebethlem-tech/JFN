@@ -371,7 +371,8 @@
 <script>
 // ── Configuration ─────────────────────────────────────────────────────────────
 const NODE_COLORS = { pessoa: '#3b82f6', empresa: '#10b981', orgao: '#a855f7', instituicao: '#f59e0b', familia: '#ec4899' };
-const EDGE_COLORS = { sócio: '#64748b', socio: '#10b981', contrato: '#a855f7', relacionado: '#475569', parente: '#ef4444', parentesco: '#ec4899', lotacao: '#a855f7' };
+const EDGE_COLORS = { sócio: '#64748b', socio: '#10b981', contrato: '#a855f7', relacionado: '#475569', parente: '#ef4444', parentesco: '#ec4899', lotacao: '#a855f7', vitoria: '#a855f7', pagamento: '#f59e0b', coparticipacao: '#ef4444' };
+const COMM_COLORS = ['#3b82f6', '#10b981', '#a855f7', '#f59e0b', '#ec4899', '#ef4444', '#14b8a6', '#eab308', '#8b5cf6', '#f97316'];
 const NODE_MIN_R = 8, NODE_MAX_R = 30;
 
 let allNodes = [], allLinks = [], simulation = null;
@@ -417,7 +418,7 @@ async function loadGraph(opts = {}) {
 
   try {
     const _fonte=new URLSearchParams(location.search).get('fonte');
-    const _ep=_fonte==='familias'?'/api/intel/grafo_familias':'/api/compliance/graph';
+    const _ep=_fonte==='familias'?'/api/intel/grafo_familias':_fonte==='comunidades'?'/api/intel/comunidades_grafo':'/api/compliance/graph';
     const resp = await fetch(_ep);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
@@ -512,7 +513,7 @@ function renderGraph(nodes, links) {
   // Node circle
   nodeSelection.append('circle')
     .attr('r', nodeRadius)
-    .attr('fill', d => NODE_COLORS[d.tipo] || '#6b7280')
+    .attr('fill', d => d.comunidade != null ? COMM_COLORS[d.comunidade % COMM_COLORS.length] : (NODE_COLORS[d.tipo] || '#6b7280'))
     .attr('stroke', d => {
       if (d._alertSev === 'alta') return '#ef4444';
       if (d._alertSev === 'média' || d._alertSev === 'media') return '#f59e0b';
