@@ -29,7 +29,8 @@ REPO = Path(__file__).resolve().parent.parent
 # graciosa do cache do radar (except→radar={}, não mudo). Ambos idioma-padrão, logados/graceful.
 # 2026-07-18g: +2 (1462→1464) — rotas /api/comparador/economia + /api/sancoes/detalhar (idioma
 # das rotas, catch-and-return).
-BASELINE = 1464  # medido 2026-07-18g (1462→economia+detalhar; 1392 em 2026-07-11)
+# 2026-07-18h: +1 (1464→1465) — rota /api/comparador/vedada (idioma das rotas).
+BASELINE = 1465  # medido 2026-07-18h (1464→vedada; 1392 em 2026-07-11)
 
 
 def _contar() -> int:

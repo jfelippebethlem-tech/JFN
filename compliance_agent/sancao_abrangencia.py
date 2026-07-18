@@ -120,6 +120,11 @@ def veda_ente(sancao: dict, esfera_alvo: str = "estadual", uf_alvo: str = "RJ") 
     if cl["abrangencia"] == "total":
         return {"veda": True, "motivo": "inidoneidade alcança toda a Administração",
                 "abrangencia": "total", "tipo": cl["tipo"]}
+    if cl["abrangencia"] == "orgao":
+        # suspensão (art. 87 III) veda SÓ o órgão sancionador; sem identificar o órgão comprador
+        # exato, não se pode afirmar vedação para um órgão diferente (conservador — evita FP).
+        return {"veda": False, "abrangencia": "orgao", "tipo": cl["tipo"],
+                "motivo": "suspensão restrita ao órgão sancionador — não verificável p/ outro órgão"}
     ente = ente_do_orgao(sancao.get("orgao"), sancao.get("uf"))
     # impedimento (ente) ou suspensão (órgão): só veda se a esfera do sancionador == a do alvo
     mesma_esfera = ente["esfera"] == esfera_alvo

@@ -1403,6 +1403,19 @@ async def api_comparador_economia():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/comparador/vedada")
+async def api_comparador_vedada():
+    """O número mais forte: sobrepreço (acima da mediana) pago a fornecedor JURIDICAMENTE VEDADO
+    de contratar com aquele ente comprador, VIGENTE à época. Inidoneidade veda todos."""
+    try:
+        from compliance_agent.comparador_precos import economia_vedada
+        if not (d := _cache_get("comp:vedada", 1800)):
+            d = _cache_put("comp:vedada", economia_vedada())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/sancoes/detalhar")
 async def api_sancoes_detalhar(cnpj: str = "", esfera: str = "estadual", uf: str = "RJ"):
     """Detalha as sanções de um CNPJ: tipo, abrangência, órgão, vigência e se VEDA de fato o

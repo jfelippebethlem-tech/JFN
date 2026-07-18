@@ -10,6 +10,7 @@ GET /api/comparador/economia -> api_comparador_economia
 GET /api/comparador/fornecedores -> api_comparador_fornecedores
 GET /api/comparador/item -> api_comparador_item
 GET /api/comparador/orgaos -> api_comparador_orgaos
+GET /api/comparador/vedada -> api_comparador_vedada
 GET /api/compliance/alerts -> api_compliance_alerts
 GET /api/compliance/buscar -> api_compliance_buscar
 GET /api/compliance/graph -> api_compliance_graph

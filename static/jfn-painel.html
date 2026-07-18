@@ -626,10 +626,29 @@ async function _compEconomia(){
         <div class="right"><div class="num" style="font-weight:800;color:#4ade80">${fmtRc(x.economia)}</div><div class="dim">economizável</div></div></div>`)).join('');
     return s+`</div>`;
   };
+  // destaque: sobrepreço pago a fornecedor JURIDICAMENTE VEDADO (o número mais forte)
+  h+=await _blocoVedada();
   h+=bloco('🏛️ Onde a economia está — por ÓRGÃO', d.por_orgao, 'orgao', x=>esc(x.orgao||'—'));
   h+=bloco('📦 Por ITEM', d.por_item, 'item', x=>esc(x.item||'—')+(x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''));
   h+=bloco('🏢 Por FORNECEDOR (quem cobrou o excedente)', d.por_fornecedor, 'fornecedor', x=>x.fornecedor_cnpj?clk(x.fornecedor_cnpj,x.fornecedor):esc(x.fornecedor||'—'));
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+}
+async function _blocoVedada(){
+  const d=await J('/api/comparador/vedada');
+  if(!d.ok||!d.economia_vedada_total)return '';
+  const ABR={total:'inidôneas (veda todos)',ente:'impedidas no ente',orgao:'órgão'};
+  let h=`<div class="card hl" style="border-left:4px solid var(--rose);margin:8px 0 18px">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="min-width:0"><div style="font-weight:800;font-size:17px">⚖️ Destes, pago a fornecedor JURIDICAMENTE VEDADO</div>
+      <div class="dim" style="margin-top:3px">Sobrepreço pago a empresa que estava <b>proibida de contratar</b> com aquele ente, <b>vigente à época</b> — o alvo mais forte. Por abrangência: ${Object.entries(d.por_abrangencia).filter(([k,v])=>v>0).map(([k,v])=>`${ABR[k]||k} ${fmtRc(v)}`).join(' · ')||'—'}.</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:30px;color:var(--rose)">${fmtRc(d.economia_vedada_total)}</div><div class="dim">${d.n_compras} compra(s) · ${d.n_fornecedores} fornecedor(es)</div></div>
+    </div>`;
+  h+=`<div class="grid" style="margin-top:10px">`+(d.por_fornecedor||[]).slice(0,8).map(f=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <div style="min-width:0;flex:1">${clk(f.fornecedor_cnpj,f.fornecedor||'—')} <span class="tag ${f.abrangencia==='total'?'rose':'amber'}">${esc(ABR[f.abrangencia]||f.abrangencia)}</span>
+      <div class="dim" style="font-size:12px">${(f.exemplos||[]).slice(0,1).map(e=>esc(e.item)+' — pagou '+fmtR(e.preco)+' vs mediana '+fmtR(e.mediana)+' @ '+esc((e.orgao||'').slice(0,30))).join('')}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;color:var(--rose)">${fmtRc(f.economia_vedada)}</div></div></div>`)).join('')+`</div></div>`;
+  return h;
 }
 async function _compDossie(){
   const d=await J('/api/comparador/dossie');
