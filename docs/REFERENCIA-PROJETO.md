@@ -216,6 +216,18 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **07-18 (resolve INDISPONÍVEL das perícias + A→Z em tudo + ajuste infra):** **Removidos OpenSanctions
+  e OCCRP Aleph de TUDO** (decisão do dono): exigiam chave grátis nunca provida e geravam "INDISPONÍVEL"
+  em toda perícia/dossiê — só a idoneidade doméstica CEIS/CNEP/CEPIM (REAL) permanece. Removidos call-sites
+  (dossie.py, reporting/intel_pdf.py), classe `OpenSanctionsSearch`+registro, e os 2 módulos `enrich/{opensanctions,aleph}.py`;
+  4 testes+fixtures ajustados; catraca 1471→1464 (−7 except). Verificado: MGS CLEAN + 4 aleatórios (Estado/Prefeitura)
+  → **0 INDISPONÍVEL** (cadastro/sanções/OB/rede REAIS). O `midia_adversa` (GDELT) nunca aparece como INDISPONÍVEL
+  no dossiê (degrada p/ DDG; seção só entra se há achado). **A→Z + filtros em TODAS as listas** (pedido "vale pra tudo"):
+  botão A→Z injetado automaticamente em toda busca via o hook `vivo()` — ordena por nome do fornecedor e volta à ordem
+  por risco/valor (padrão preservado); `ordenar()` guarda a ordem original. **Ajuste de infra:** vault Obsidian
+  sincronizado (commit+push, 11 arq.; a pendência "vault sem remote" já estava resolvida — TEM remote); graphify v0.9.9
+  íntegro; **GitNexus re-índice** disparado (index estava em 07-15) — worker timeout sob carga da VM + "Invalid argument"
+  em arquivos grandes; roda sequencial. Sem segredo exposto no `.gitnexus/meta.json`.
 - **07-18 (painel VIVO em toda aba + UX cockpit + análise prioridade_valor):** **Estética viva do cockpit
   em TODAS as abas** (não só no fundo): hook global `vivo()` no `ir()` — cascata de entrada (`.rise`), contagem
   animada dos KPIs, **malha de luz** (canvas) ligando capa→KPIs→cards com pulsos viajando pelas arestas, hover
