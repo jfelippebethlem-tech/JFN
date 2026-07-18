@@ -38,7 +38,7 @@ branch **`feat/fiscalizacao-emendas-pcrj`** · VM Linux Oracle Cloud ARM (`jfn-c
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
-This project is indexed by GitNexus as **JFN** (25534 symbols, 36064 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
+This project is indexed by GitNexus as **JFN** (27611 symbols, 41845 relationships, 300 execution flows). Use the GitNexus MCP tools to understand code, assess impact, and navigate safely.
 
 > If any GitNexus tool warns the index is stale, run `npx gitnexus analyze` in terminal first.
 

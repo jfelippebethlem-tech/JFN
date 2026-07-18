@@ -228,7 +228,10 @@
   input{width:100%;padding:11px 13px;border-radius:11px;border:1px solid var(--bd);background:#0a1120;color:var(--tx);font-size:14px}
   input::placeholder{color:var(--dim)}input:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,157,255,.12)}
   label.fld{display:block;color:var(--mut);font-size:12px;margin:0 0 6px}
-  .search{position:relative;margin-bottom:12px}.search input{padding-left:38px}.search .mag{position:absolute;left:13px;top:11px;color:var(--dim)}
+  .search{position:relative;margin-bottom:12px}.search input{padding-left:38px;padding-right:78px}.search .mag{position:absolute;left:13px;top:11px;color:var(--dim)}
+  .search .az{position:absolute;right:7px;top:6px;font:600 11.5px/1 var(--mono);color:var(--teal);background:rgba(79,214,196,.08);border:1px solid rgba(79,214,196,.28);border-radius:8px;padding:6px 10px;cursor:pointer;letter-spacing:.4px;transition:.14s}
+  .search .az:hover{background:rgba(79,214,196,.16)}
+  .search .az.on{background:var(--teal);color:#04120f;border-color:var(--teal)}
   .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
   .chip{border:1px solid var(--bd);background:var(--card);color:var(--mut);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:650;cursor:pointer;transition:.12s}
   .chip.on{color:#fff;border-color:var(--accent);background:rgba(91,157,255,.14)}
@@ -326,6 +329,18 @@ async function gerarPdfIntel(tipo,el){
 const acoesAba=(tipo,extra)=>`<div class="btns" style="margin:-4px 0 14px">${btnPdf(tipo)}${extra||''}</div>`;
 function toggle(el){el.classList.toggle('open');}
 function filtrar(inp,sel){const q=inp.value.toLowerCase();document.querySelectorAll(sel).forEach(c=>{c.style.display=c.textContent.toLowerCase().includes(q)?'':'none';});}
+// ordena qualquer lista por NOME do fornecedor (A→Z) e volta à ordem original (por risco/valor)
+function ordenar(sel,btn){
+  const cont=document.querySelector(String(sel).split(' ')[0]); if(!cont)return;
+  const cards=[...cont.querySelectorAll(':scope > .card')]; if(!cards.length)return;
+  const chave=c=>((c.querySelector('.clk,b,strong,a')||c).textContent||'').trim().toLowerCase();
+  const az=btn.classList.toggle('on');
+  if(az){cards.forEach((c,i)=>{if(c.dataset.ord0==null)c.dataset.ord0=i;});
+         cards.sort((a,b)=>chave(a).localeCompare(chave(b),'pt'));btn.textContent='A→Z ✓';}
+  else{cards.sort((a,b)=>(+a.dataset.ord0)-(+b.dataset.ord0));btn.textContent='A→Z';}
+  cards.forEach(c=>cont.appendChild(c));
+  const cv=document.querySelector('#view .view-wire'); if(cv)cv.remove();   // posições mudaram → tira malha estática
+}
 const clk=(cnpj,txt)=>{const d=String(cnpj||'').replace(/\D/g,'');return d.length===14?`<span class="clk" onclick="abrirDossie('${d}','${esc(String(txt)).replace(/'/g,'')}')">${esc(txt)}</span>`:`<b>${esc(txt)}</b>`;};
 
 // ═══ ESFERAS ═══
@@ -421,7 +436,15 @@ function vivo(){
   if(!rm){const k=v.querySelector('.kpi');if(k)setTimeout(()=>k.classList.add('beat'),700);}
   // 2) números que sobem
   if(!rm)v.querySelectorAll('.kpi .v').forEach(_countUp);
-  // 3) malha de luz ligando os cards
+  // 3) A→Z em TODA busca de lista (vale pra tudo; padrão continua por risco/valor)
+  v.querySelectorAll('.search').forEach(box=>{
+    const inp=box.querySelector('input[oninput*="filtrar"]'); if(!inp||box.querySelector('.az'))return;
+    const m=(inp.getAttribute('oninput')||'').match(/filtrar\(this,\s*'([^']+)'\)/); if(!m)return;
+    const b=document.createElement('button');b.type='button';b.className='az';b.textContent='A→Z';
+    b.title='Ordenar por nome do fornecedor (A→Z) · clique de novo p/ voltar à ordem por risco';
+    b.setAttribute('onclick',`ordenar('${m[1]}',this)`);box.appendChild(b);
+  });
+  // 4) malha de luz ligando os cards
   _wire(top,rm);
 }
 function _countUp(el){

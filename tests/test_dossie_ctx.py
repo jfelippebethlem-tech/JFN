@@ -15,7 +15,6 @@ _D = {
     },
     "sancoes": {"verificado": True, "sancionado": True,
                 "sancoes": [{"tipo": "CEIS", "orgao": "CGU", "inicio": "2024-01-01"}]},
-    "opensanctions": {"ok": True, "sancionado": False, "pep": True, "matches": [{"caption": "X"}]},
     "midia_adversa": {"ok": True, "n_total": 5, "n_adversos": 2, "adversos": [
         {"titulo": "Entidade investigada por desvio", "fonte": "jornal", "url": "http://x", "data": "2026-01-02"}]},
     "links_investigacao": [{"fonte": "RedeCNPJ", "categoria": "societário", "url": "http://y"}],
@@ -41,8 +40,8 @@ def test_ctx_dossie_renderiza_todos_os_blocos():
     corpo = _html_total(ctx)
     # cadastro + QSA
     assert "cadastral" in corpo and "fulano dirigente" in corpo and "presidente" in corpo
-    # sanções (CEIS detalhe) + OpenSanctions (PEP)
-    assert "ceis" in corpo and "pep" in corpo
+    # sanções (CEIS detalhe) — doméstico
+    assert "ceis" in corpo
     # conflito doador↔contrato com a linha da rede
     assert "beltrano" in corpo and "5.000,00" in corpo.replace("5,000.00", "5.000,00")
     # rede de poder
