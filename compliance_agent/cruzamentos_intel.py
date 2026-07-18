@@ -1161,41 +1161,52 @@ def empresa_fenix(db_path: str | None = None, limite: int = 120) -> dict:
     consórcio/SPE (legitimamente criados para um projeto). Cadastro Receita ainda parcial."""
     con = _ro(db_path)
     try:
+        # valor recebido = favorecido_resumo (agrega TODAS as fontes de pagamento; a OB SIAFE sozinha
+        # perdia quem recebeu por TFE) + 1ª OB do SIAFE p/ a janela de recência quando houver.
+        pago = {r["favorecido_cpf"]: (r["total_pago"] or 0.0, r["n_obs"] or 0) for r in con.execute(
+            "SELECT favorecido_cpf, total_pago, n_obs FROM favorecido_resumo WHERE total_pago>0")}
         iso = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
-        prim = {r["credor"]: (r["p"], r["tot"]) for r in con.execute(
-            f"SELECT credor, MIN({iso}) p, SUM(valor) tot FROM ob_orcamentaria_siafe "
+        prim = {r["credor"]: r["p"] for r in con.execute(
+            f"SELECT credor, MIN({iso}) p FROM ob_orcamentaria_siafe "
             "WHERE length(credor)=14 AND valor>0 GROUP BY credor")}
         rx_spe = re.compile(r"CONSORCIO|CONSÓRCIO|\bSPE\b| S/?A\b|SOCIEDADE DE PROPOSITO|CONCESSION", re.I)
+        _DEFUNTA = ("BAIXADA", "INAPTA", "SUSPENSA", "NULA", "INAPTA/BAIXADA")
         achados = []
         for e in con.execute("SELECT cnpj, razao_social, data_abertura, situacao FROM empresas "
-                             "WHERE data_abertura IS NOT NULL AND data_abertura<>''"):
-            info = prim.get(e["cnpj"])
-            if not info:
-                continue
-            p, tot = info
+                             "WHERE situacao IS NOT NULL AND situacao<>''"):
+            val = pago.get(e["cnpj"])
+            if not val or val[0] <= 0:
+                continue                                # só quem RECEBEU entra
+            tot, n_obs = val
+            sit = (e["situacao"] or "").upper()         # normaliza caixa: 'Baixada'→'BAIXADA'
+            defunta = any(d in sit for d in _DEFUNTA)
             ab = (e["data_abertura"] or "")[:10]
-            try:
-                y1, m1 = int(ab[:4]), int(ab[5:7])
-                y2, m2 = int(p[:4]), int(p[5:7])
-                meses = (y2 - y1) * 12 + (m2 - m1)
-            except Exception:
-                continue
-            defunta = e["situacao"] in ("BAIXADA", "INAPTA", "SUSPENSA", "NULA")
-            recem = 0 <= meses <= 12 and not rx_spe.search(e["razao_social"] or "")
+            meses = None
+            p = prim.get(e["cnpj"])
+            if ab and p:
+                try:
+                    meses = (int(p[:4]) - int(ab[:4])) * 12 + (int(p[5:7]) - int(ab[5:7]))
+                except (ValueError, IndexError):
+                    meses = None
+            recem = (meses is not None and 0 <= meses <= 12
+                     and not rx_spe.search(e["razao_social"] or ""))
             if not (defunta or recem):
                 continue
             achados.append({
                 "cnpj": e["cnpj"], "nome": e["razao_social"], "data_abertura": ab, "primeira_ob": p,
                 "meses_ate_ob": meses, "situacao": e["situacao"], "total_recebido": tot,
-                "tipo": "defunta" if defunta else "recem_aberta"})
+                "n_obs": n_obs, "tipo": "defunta" if defunta else "recem_aberta"})
         achados.sort(key=lambda a: (a["tipo"] != "defunta", -(a["total_recebido"] or 0)))
         return {"ok": True, "achados": achados[:limite], "n": len(achados),
                 "n_defunta": sum(1 for a in achados if a["tipo"] == "defunta"),
-                "explicacao": ("Empresa BAIXADA/INAPTA na Receita que mesmo assim recebeu do Estado "
-                               "(pagamento a empresa morta), ou aberta poucos meses antes do primeiro "
-                               "pagamento (nasceu já para faturar — perfil de laranja/fachada)."),
-                "ressalva": ("Cadastro da Receita ainda parcial (poucas empresas enriquecidas); SPE e "
-                             "consórcio são legitimamente novos e foram excluídos. Indício ≠ acusação.")}
+                "total_defunta": round(sum(a["total_recebido"] for a in achados
+                                           if a["tipo"] == "defunta"), 2),
+                "explicacao": ("Empresa BAIXADA/INAPTA/SUSPENSA na Receita que mesmo assim recebeu do "
+                               "Estado (pagamento a empresa morta/irregular), ou aberta ≤12 meses antes "
+                               "do 1º pagamento (nasceu já para faturar — perfil de laranja/fachada)."),
+                "ressalva": ("A situação cadastral pode ter mudado APÓS o pagamento (empresa baixada "
+                             "depois de receber) — confirmar a data da baixa vs a do pagamento. SPE e "
+                             "consórcio (novos por natureza) foram excluídos. Indício ≠ acusação.")}
     finally:
         con.close()
 
