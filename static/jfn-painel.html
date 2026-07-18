@@ -911,7 +911,26 @@ async function renderRetro(){
       ${e.sancao_depois?`<div class="muted" style="font-size:12.5px;margin-top:2px"><span class="tag rose">⚖️ sancionada em ${esc(e.sancao_depois.data_inicio)}</span> ${esc(e.sancao_depois.cadastro||'')}</div>`:''}</div>
       <div class="right"><div class="num" style="font-weight:800;color:var(--rose)">${fmtRc(e.pago_depois)}</div><div class="dim">pago após o alerta</div></div></div>`,
     e.sancao_depois?'hl':'')).join('')+`</div>`;}
+  h+=await _liftBloco();
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// bloco de LIFT: valida cada detector contra o gabarito objetivo (sanções)
+async function _liftBloco(){
+  const d=await J('/api/intel/lift');
+  if(!d.ok)return '';
+  const det=d.detectores||[];
+  const barra=(l,circ)=>{const w=Math.min(100,(l||0)/15*100);const col=circ?'var(--muted)':(l>=2?'var(--rose)':(l>=1?'var(--amber)':'var(--green,#4ade80)'));
+    return `<div style="background:rgba(255,255,255,.06);border-radius:4px;height:8px;overflow:hidden"><div style="width:${w}%;height:100%;background:${col}"></div></div>`;};
+  let h=sec('Validação contra o gabarito objetivo (sanções) — lift por detector');
+  h+=`<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${(d.taxa_base*100).toFixed(1)}%</b> dos ${fmtN(d.universo)} fornecedores são sancionados. <b>Lift</b> = quantas vezes o detector concentra sancionados acima disso. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal · <span class="dim">🔁 circular</span> = usa sanção como input (não é corroboração independente).</div>`;
+  h+=`<div class="grid">`+det.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+      <div style="min-width:0;flex:1"><div style="font-weight:700">${esc(x.detector)} ${x.circular?'<span class="tag" style="opacity:.6">🔁 circular</span>':''}${x.n_pequeno?'<span class="tag amber">⚠️ n<10</span>':''}</div>
+      <div class="muted" style="font-size:12.5px;margin:3px 0">${x.sancionados}/${x.n} marcados são sancionados (${(x.taxa*100).toFixed(1)}%)</div>
+      ${barra(x.lift,x.circular)}</div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.circular?'var(--muted)':(x.lift>=2?'var(--rose)':(x.lift>=1?'var(--amber)':'#4ade80'))}">${x.lift}×</div><div class="dim">lift</div></div></div>`)).join('')+`</div>`;
+  return h;
 }
 
 // ═══ SÓCIO OCULTO ═══

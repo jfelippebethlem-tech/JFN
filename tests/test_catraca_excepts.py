@@ -21,7 +21,9 @@ REPO = Path(__file__).resolve().parent.parent
 # 2026-07-18b: +1 (1451→1452) — 1 route handler novo (/api/intel/comunidades_grafo) no idioma-padrão
 # das ~71 rotas do investigacao.py (catch-all que RETORNA o erro no JSON, não é mudo).
 # 2026-07-18c: +1 (1452→1453) — rota /api/intel/escalada (detector novo), idioma-padrão das rotas.
-BASELINE = 1453  # medido 2026-07-18c (1452→escalada; 1447 em 2026-07-17; 1392 em 2026-07-11)
+# 2026-07-18d: +2 (1453→1455) — rota /api/intel/lift + o catch-por-detector do avaliar_lift (roda
+# detector arbitrário no harness de lift, como o fingerprint; logado, amplo por design correto).
+BASELINE = 1455  # medido 2026-07-18d (1453→lift; 1447 em 2026-07-17; 1392 em 2026-07-11)
 
 
 def _contar() -> int:

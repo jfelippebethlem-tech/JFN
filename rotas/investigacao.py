@@ -1358,6 +1358,19 @@ async def api_intel_retro():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/lift")
+async def api_intel_lift():
+    """Validação de cada detector contra o gabarito OBJETIVO (sanções impeditivas): LIFT = taxa de
+    sancionados no que o detector marca ÷ taxa-base do universo. lift>1 = sinal; <1 = anti-sinal."""
+    try:
+        from compliance_agent.retro_auditoria import avaliar_lift
+        if not (d := _cache_get("intel:lift", 3600)):
+            d = _cache_put("intel:lift", avaliar_lift())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/fracionamento")
 async def api_intel_fracionamento(limite: int = 120):
     """Possível fracionamento de despesa: favorecido+UG+mês com várias OBs coladas no teto de

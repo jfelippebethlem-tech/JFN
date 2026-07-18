@@ -53,6 +53,13 @@ def _rw(db_path: str | None = None) -> sqlite3.Connection:
     return con
 
 
+def _ro(db_path: str | None = None) -> sqlite3.Connection:
+    con = sqlite3.connect(f"file:{db_path or _DB}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA busy_timeout=30000")
+    return con
+
+
 def _sinais_atuais(con) -> list[tuple[str, str, str]]:
     """(cnpj, sinal, detalhe) de todas as fontes persistidas/cacheadas de HOJE."""
     out: list[tuple[str, str, str]] = []
@@ -157,9 +164,116 @@ def medir(db_path: str | None = None, limite_exemplos: int = 30) -> dict:
         con.close()
 
 
+# ── LIFT DE CORROBORAÇÃO: gabarito OBJETIVO (sanções) valida cada detector ────
+
+# detector → (fonte de CNPJs, usa_sancao_como_input). usa_sancao=True → o lift é CIRCULAR (o
+# detector marca em parte PORQUE a empresa é sancionada) e não mede corroboração independente.
+def _cnpjs_detector(con, nome: str, db_path: str | None = None) -> set[str]:
+    """CNPJs marcados por um detector, das fontes rápidas (cache/tabela/função barata). db_path é
+    passado aos detectores para consistência e isolamento de teste (senão rodariam no DB default)."""
+    from compliance_agent.cruzamentos_intel import (
+        corrida_dezembro, escalada_preco, fornecedor_dependente, ler_cache_intel,
+        sobrepreco)
+    out: set[str] = set()
+
+    def _add(x):
+        if x and len(x) == 14:
+            out.add(x)
+
+    if nome == "fantasma_alto":
+        for r in con.execute("SELECT cnpj FROM fantasma_score WHERE classificacao='alto'"):
+            _add(r["cnpj"])
+    elif nome == "fantasma_medio":
+        for r in con.execute("SELECT cnpj FROM fantasma_score WHERE classificacao='medio'"):
+            _add(r["cnpj"])
+    elif nome == "radar_risco":
+        for a in (ler_cache_intel("radar_risco") or {}).get("achados") or []:
+            _add(a.get("cnpj"))
+    elif nome == "escalada_preco":
+        for a in escalada_preco(db_path).get("achados", []):
+            _add(a.get("fornecedor_cnpj"))
+    elif nome == "sobrepreco":
+        for a in sobrepreco(db_path).get("achados", []):
+            _add(a.get("fornecedor_cnpj"))
+    elif nome == "corrida_dezembro":
+        for a in corrida_dezembro(db_path).get("achados", []):
+            _add(a.get("cnpj"))
+    elif nome == "fornecedor_dependente":
+        for a in fornecedor_dependente(db_path).get("achados", []):
+            _add(a.get("cnpj"))
+    elif nome == "conluio_qsa":
+        for p in (ler_cache_intel("conluio_qsa") or {}).get("pares") or []:
+            _add(p.get("vencedor", {}).get("cnpj"))
+            _add(p.get("perdedora", {}).get("cnpj"))
+    return out
+
+
+_LIFT_DETECTORES = [
+    ("escalada_preco", False), ("sobrepreco", False), ("corrida_dezembro", False),
+    ("fornecedor_dependente", False), ("conluio_qsa", False),
+    ("fantasma_medio", True), ("fantasma_alto", True), ("radar_risco", True),
+]
+
+
+def avaliar_lift(db_path: str | None = None) -> dict:
+    """Valida cada detector contra o GABARITO OBJETIVO (sanções impeditivas): dos CNPJs que o
+    detector marca, que fração está sancionada, e o LIFT vs a taxa-base do universo de fornecedores.
+    lift>1 = o detector concentra empresas com problema independente; ~1 = ruído; <1 = anti-sinal.
+    Detectores que USAM sanção como input são marcados 'circular' (lift não é independente)."""
+    con = _ro(db_path)
+    try:
+        sanc = {r[0] for r in con.execute(
+            "SELECT DISTINCT cpf_cnpj FROM sancoes_federais WHERE length(cpf_cnpj)=14 AND "
+            "(lower(categoria) LIKE '%imped%' OR lower(categoria) LIKE '%inid%' OR "
+            "lower(categoria) LIKE '%suspens%' OR lower(categoria) LIKE '%declar%')")}
+        univ = {r[0] for r in con.execute(
+            "SELECT DISTINCT fornecedor_cnpj FROM pncp_resultado WHERE length(fornecedor_cnpj)=14")}
+        if not univ:
+            return {"ok": False, "erro": "universo de fornecedores vazio (PNCP não coletado)"}
+        base = len(univ & sanc) / len(univ)
+        linhas = []
+        for nome, circular in _LIFT_DETECTORES:
+            try:
+                cnpjs = _cnpjs_detector(con, nome, db_path)
+            except Exception as exc:  # noqa: BLE001
+                logger.debug("lift %s: %s", nome, exc)
+                continue
+            if not cnpjs:
+                continue
+            marc = len(cnpjs & sanc)
+            taxa = marc / len(cnpjs)
+            linhas.append({
+                "detector": nome, "n": len(cnpjs), "sancionados": marc,
+                "taxa": round(taxa, 4), "lift": round(taxa / base, 2) if base else None,
+                "circular": circular,
+                "n_pequeno": len(cnpjs) < 10})
+        # ranking: independentes (não-circular) por lift; circulares ao fim (só sanidade)
+        linhas.sort(key=lambda x: (x["circular"], -(x["lift"] or 0)))
+        return {"ok": True, "taxa_base": round(base, 4), "universo": len(univ),
+                "sancionados_universo": len(univ & sanc), "detectores": linhas,
+                "explicacao": ("Gabarito OBJETIVO = sanções impeditivas (CEIS/CNEP). Para cada "
+                               "detector, o LIFT é a razão entre a taxa de sancionados no que ele "
+                               "marca e a taxa-base do universo. lift>1 = concentra risco real; "
+                               "~1 = ruído; <1 = anti-sinal. 'circular' = o detector usa sanção "
+                               "como input (lift não é corroboração independente)."),
+                "ressalva": ("Sanção é uma prova PARCIAL (nem toda fraude vira sanção; sanção pode "
+                             "ter causa alheia ao sinal). n pequeno = lift instável. É calibração "
+                             "relativa entre detectores, não veredito sobre empresa. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 if __name__ == "__main__":
     import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "registrar":
+    if len(sys.argv) > 1 and sys.argv[1] == "lift":
+        d = avaliar_lift()
+        if not d.get("ok"):
+            print(d); sys.exit(1)
+        print(f"taxa-base: {d['taxa_base']*100:.2f}% ({d['sancionados_universo']}/{d['universo']})")
+        for x in d["detectores"]:
+            tag = "🔁circular" if x["circular"] else ("⚠️n<10" if x["n_pequeno"] else "")
+            print(f"  {x['detector']:22} n={x['n']:4} lift={x['lift']:5}x taxa={x['taxa']*100:5.1f}% {tag}")
+    elif len(sys.argv) > 1 and sys.argv[1] == "registrar":
         print(json.dumps(registrar_sinais(), ensure_ascii=False))
     else:
         d = medir()

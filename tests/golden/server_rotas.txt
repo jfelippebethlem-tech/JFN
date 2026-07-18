@@ -39,6 +39,7 @@ GET /api/intel/fenix -> api_intel_fenix
 GET /api/intel/fornecedor_dependente -> api_intel_fornecedor_dependente
 GET /api/intel/fracionamento -> api_intel_fracionamento
 GET /api/intel/grafo_familias -> api_intel_grafo_familias
+GET /api/intel/lift -> api_intel_lift
 GET /api/intel/nepotismo -> api_intel_nepotismo
 GET /api/intel/nepotismo_cruzado -> api_intel_nepotismo_cruzado
 GET /api/intel/pdf -> api_intel_pdf
