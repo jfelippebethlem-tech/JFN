@@ -187,14 +187,16 @@
   code{font:12px/1.4 var(--mono);color:#9fc4ff;background:rgba(91,157,255,.09);padding:1px 6px;border-radius:6px}
 
   .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;padding:3px 9px;border-radius:20px;white-space:nowrap;border:1px solid transparent}
-  .tag.accent{background:rgba(66,135,230,.13);color:#9fc4ff;border-color:rgba(110,168,255,.18)}
-  .tag.rose{background:rgba(229,83,122,.13);color:#ff92ac;border-color:rgba(255,125,156,.2)}
-  .tag.amber{background:rgba(198,127,28,.14);color:#eebf7a;border-color:rgba(232,169,79,.2)}
-  .tag.purple{background:rgba(143,123,240,.13);color:#c3b3ff;border-color:rgba(179,161,255,.2)}
-  .tag.green{background:rgba(42,174,98,.13);color:#7ade9f;border-color:rgba(95,208,141,.2)}
-  .tag.teal{background:rgba(14,168,149,.13);color:#5fd9c8;border-color:rgba(79,214,196,.2)}
+  /* tags/severidade derivadas dos tokens semânticos — 1 cor = 1 significado. Texto = token direto
+     (já calibrado claro no dark); bg/borda = tinta do token via color-mix com transparent. */
+  .tag.accent{background:color-mix(in oklch,var(--blue) 15%,transparent);color:var(--blue);border-color:color-mix(in oklch,var(--blue) 26%,transparent)}
+  .tag.rose{background:color-mix(in oklch,var(--rose) 14%,transparent);color:var(--rose);border-color:color-mix(in oklch,var(--rose) 26%,transparent)}
+  .tag.amber{background:color-mix(in oklch,var(--amber) 14%,transparent);color:var(--amber);border-color:color-mix(in oklch,var(--amber) 26%,transparent)}
+  .tag.purple{background:color-mix(in oklch,var(--purple) 15%,transparent);color:var(--purple);border-color:color-mix(in oklch,var(--purple) 26%,transparent)}
+  .tag.green{background:color-mix(in oklch,var(--green) 14%,transparent);color:var(--green);border-color:color-mix(in oklch,var(--green) 26%,transparent)}
+  .tag.teal{background:color-mix(in oklch,var(--teal) 14%,transparent);color:var(--teal);border-color:color-mix(in oklch,var(--teal) 26%,transparent)}
   .sev{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-radius:7px;flex:0 0 auto}
-  .sev.alta{background:rgba(229,83,122,.16);color:#ff92ac}.sev.media{background:rgba(198,127,28,.16);color:#eebf7a}.sev.baixa{background:rgba(139,154,188,.14);color:#b0bcd8}
+  .sev.alta{background:color-mix(in oklch,var(--rose) 18%,transparent);color:var(--rose)}.sev.media{background:color-mix(in oklch,var(--amber) 18%,transparent);color:var(--amber)}.sev.baixa{background:color-mix(in oklch,var(--mut) 20%,transparent);color:var(--tx2)}
 
   /* LEDs de frescor por fonte */
   .fresh{display:flex;flex-direction:column;gap:0}
