@@ -273,6 +273,7 @@ const TABS={
     {id:'e_frac',    ic:'✂️',tl:'Fracion.',render:renderFracionamento},
     {id:'e_sobre',   ic:'📈',tl:'Sobrepreço',render:renderSobrepreco},
     {id:'e_escal',   ic:'📈',tl:'Escalada', render:renderEscalada},
+    {id:'e_comp',    ic:'💰',tl:'Comparador',render:renderComparador},
     {id:'e_adit',    ic:'📑',tl:'Aditivos',render:renderAditivos},
     {id:'e_cartel',  ic:'🔗',tl:'Cartel',  render:renderCartel},
     {id:'e_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('estado')},
@@ -550,6 +551,72 @@ async function renderEscalada(){
     'hl');}).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
+}
+
+// ═══ COMPARADOR DE PREÇOS (quem paga mais/menos pelo mesmo item) ═══
+let _compView='buscar', _compTermo='', _compGrupo=null;
+async function renderComparador(){
+  let h=cover('estado','Comparador de preços — quem paga mais e quem paga menos','Para o <b>mesmo item</b> (aluguel de carro, medicamento, refeição…), quanto cada <b>órgão</b> paga e quanto cada <b>fornecedor</b> cobra. E o ranking transversal: quais órgãos <b>gastam melhor</b> o recurso público e quais fornecedores são <b>caros ou baratos</b> vs o mercado. Fonte: preço unitário homologado do PNCP.','💰');
+  h+=`<div class="chips" style="margin:6px 0 14px">
+    <span class="chip ${_compView==='buscar'?'on':''}" onclick="_compView='buscar';ir('e_comp')">🔎 Buscar item</span>
+    <span class="chip ${_compView==='orgaos'?'on':''}" onclick="_compView='orgaos';ir('e_comp')">🏛️ Órgãos que gastam melhor</span>
+    <span class="chip ${_compView==='forn'?'on':''}" onclick="_compView='forn';ir('e_comp')">🏢 Fornecedores caros/baratos</span></div>`;
+  if(_compView==='orgaos')return h+await _compOrgaos();
+  if(_compView==='forn')return h+await _compForn();
+  return h+await _compBuscar();
+}
+async function _compBuscar(){
+  let h=`<div class="search"><span class="mag">🔎</span><input id="comp-in" placeholder="digite o item: aluguel carro, medicamento, refeição, combustível…" value="${esc(_compTermo)}" onkeydown="if(event.key==='Enter'){_compTermo=this.value;_compGrupo=null;ir('e_comp')}"></div>
+    <div class="dim" style="margin:6px 0">Enter para buscar. Exemplos: <a onclick="_compTermo='locacao veiculo';_compGrupo=null;ir('e_comp')">locação veículo</a> · <a onclick="_compTermo='combustivel';_compGrupo=null;ir('e_comp')">combustível</a> · <a onclick="_compTermo='refeicao';_compGrupo=null;ir('e_comp')">refeição</a> · <a onclick="_compTermo='reagente';_compGrupo=null;ir('e_comp')">reagente</a></div>`;
+  if(_compGrupo){
+    const d=await J('/api/comparador/item?grupo='+encodeURIComponent(_compGrupo.grupo)+'&unidade='+encodeURIComponent(_compGrupo.un||''));
+    if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+    h+=`<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir('e_comp')">← voltar à busca</a></div>`;
+    h+=`<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida||'')}</span></h3>`;
+    h+=`<div class="grid g2">${kpi(fmtR(d.mediana_geral),'Mediana do item','var(--amber)','⚖️')}${kpi(fmtN(d.n_orgaos),'Órgãos',null,'🏛️')}${kpi(fmtN(d.n_fornecedores),'Fornecedores',null,'🏢')}${kpi(fmtN(d.n_compras),'Compras',null,'🧾')}</div>`;
+    const linha=(x,lbl)=>{const c=x.vs_geral>=1.5?'var(--rose)':(x.vs_geral<=0.75?'#4ade80':'var(--amber)');
+      return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">n=${x.n}</div></div>
+        <div class="right"><div class="num" style="font-weight:800;color:${c}">${fmtR(x.mediana)}</div><div class="dim">${x.vs_geral}× a mediana</div></div></div>`,x.vs_geral>=1.5?'hl':'');};
+    h+=sec('Órgãos — do que paga MAIS ao que paga MENOS')+`<div class="grid">`+d.orgaos.map(x=>linha(x)).join('')+`</div>`;
+    h+=sec('Fornecedores — do mais caro ao mais barato')+`<div class="grid">`+d.fornecedores.slice(0,30).map(x=>linha(x)).join('')+`</div>`;
+    return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+  }
+  if(!_compTermo)return h;
+  const d=await J('/api/comparador/buscar?termo='+encodeURIComponent(_compTermo));
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  if(!d.grupos.length)return h+card(`<div class="warn">Nenhum grupo comparável para "${esc(_compTermo)}". Tente outro termo (a base é o preço unitário do PNCP).</div>`);
+  h+=`<div class="dim" style="margin-bottom:8px">${d.n} grupo(s) — clique para ver quem paga mais/menos:</div>`;
+  h+=`<div class="grid">`+d.grupos.map(g=>card(
+    `<div onclick='_compGrupo=${JSON.stringify({grupo:g.grupo,un:_unOf(g)})};ir("e_comp")' style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <div style="min-width:0"><div style="font-weight:600">${esc(g.exemplo)} <span class="dim">/ ${esc(g.unidade_medida||'')}</span></div>
+      <div class="dim" style="font-size:12.5px">${g.n_orgaos} órgãos · ${g.n_compras} compras · mediana ${fmtR(g.mediana)}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;color:${g.dispersao>=5?'var(--rose)':'var(--amber)'}">${g.dispersao}×</div><div class="dim">${fmtR(g.min)}–${fmtR(g.max)}</div></div></div>`,
+    g.dispersao>=10?'hl':'')).join('')+`</div>`;
+  return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+}
+function _unOf(g){return '';}  // unidade já embutida no grupo; comparar aceita todas as unidades do grupo
+async function _compOrgaos(){
+  const d=await J('/api/comparador/orgaos');
+  if(!d.ok)return card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const linha=(x,bom)=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+    <div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">${x.n_itens} itens comparáveis · ${x.n_compras} compras</div></div>
+    <div class="right"><div class="num" style="font-weight:800;color:${bom?'#4ade80':'var(--rose)'}">${x.razao_mediana}×</div><div class="dim">${bom?'abaixo':'acima'} do mercado</div></div></div>`,!bom?'hl':'');
+  let h=`<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
+  h+=sec('🟢 Gastam MELHOR (pagam abaixo do mercado)')+`<div class="grid">`+(d.melhores||[]).slice(0,20).map(x=>linha(x,true)).join('')+`</div>`;
+  h+=sec('🔴 Pagam ACIMA do mercado (auditar preços)')+`<div class="grid">`+(d.piores||[]).slice(0,20).map(x=>linha(x,false)).join('')+`</div>`;
+  return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+}
+async function _compForn(){
+  const d=await J('/api/comparador/fornecedores');
+  if(!d.ok)return card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const linha=(x,caro)=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+    <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">${x.n_itens} itens · ${x.n_compras} compras</div></div>
+    <div class="right"><div class="num" style="font-weight:800;color:${caro?'var(--rose)':'#4ade80'}">${x.razao_mediana}×</div><div class="dim">${caro?'acima':'abaixo'} do mercado</div></div></div>`,caro?'hl':'');
+  let h=`<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
+  h+=sec('🔴 Mais CAROS (cobram acima do mercado)')+`<div class="grid">`+(d.mais_caros||[]).slice(0,20).map(x=>linha(x,true)).join('')+`</div>`;
+  h+=sec('🟢 Mais BARATOS (cobram abaixo do mercado)')+`<div class="grid">`+(d.mais_baratos||[]).slice(0,20).map(x=>linha(x,false)).join('')+`</div>`;
+  return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
 
 // ═══ RISCOS (Transversal): fantasmas · sancionadas · nunca ganham ═══

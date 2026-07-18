@@ -1358,6 +1358,62 @@ async def api_intel_retro():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/comparador/buscar")
+async def api_comparador_buscar(termo: str = ""):
+    """Grupos de item que casam o termo (ex.: 'aluguel carro', 'medicamento'), com dispersão de
+    preço entre órgãos — abrir um grupo mostra quem paga mais/menos."""
+    try:
+        from compliance_agent.comparador_precos import buscar_grupos
+        t = (termo or "").strip()[:60]
+        if len(t) < 3:
+            return JSONResponse({"ok": False, "erro": "termo muito curto (≥3 letras)"})
+        if not (d := _cache_get(f"comp:busca:{t.lower()}", 600)):
+            d = _cache_put(f"comp:busca:{t.lower()}", buscar_grupos(t))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/comparador/item")
+async def api_comparador_item(grupo: str = "", unidade: str = ""):
+    """Para um item (grupo normalizado), ranking de ÓRGÃOS e FORNECEDORES por preço unitário."""
+    try:
+        from compliance_agent.comparador_precos import comparar
+        g = (grupo or "").strip()
+        if not g:
+            return JSONResponse({"ok": False, "erro": "grupo vazio"})
+        ck = f"comp:item:{g}:{(unidade or '').lower()}"
+        if not (d := _cache_get(ck, 600)):
+            d = _cache_put(ck, comparar(g, unidade or None))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/comparador/orgaos")
+async def api_comparador_orgaos():
+    """Ranking de órgãos por eficiência de gasto (razão preço/mercado ao longo de muitos itens)."""
+    try:
+        from compliance_agent.comparador_precos import ranking_orgaos
+        if not (d := _cache_get("comp:orgaos", 1800)):
+            d = _cache_put("comp:orgaos", ranking_orgaos())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/comparador/fornecedores")
+async def api_comparador_fornecedores():
+    """Ranking de fornecedores por preço relativo (mais caros / mais baratos vs mercado)."""
+    try:
+        from compliance_agent.comparador_precos import ranking_fornecedores
+        if not (d := _cache_get("comp:forn", 1800)):
+            d = _cache_put("comp:forn", ranking_fornecedores())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/lift")
 async def api_intel_lift():
     """Validação de cada detector contra o gabarito OBJETIVO (sanções impeditivas): LIFT = taxa de

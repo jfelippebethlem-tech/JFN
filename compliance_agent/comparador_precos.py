@@ -1,0 +1,242 @@
+# -*- coding: utf-8 -*-
+"""comparador_precos — quanto cada ÓRGÃO paga pelo MESMO item, quem é caro/barato.
+
+Responde às perguntas do dono: para um objeto (aluguel de carro, medicamento, refeição…),
+QUAIS ÓRGÃOS pagam mais ou menos? QUAIS FORNECEDORES são caros/baratos? QUAIS ÓRGÃOS gastam
+melhor o recurso público? Fonte: preço UNITÁRIO homologado do PNCP (mesmo dado do sobrepreço),
+agrupado pela descrição normalizada do item + unidade de medida.
+
+Três produtos:
+  • `buscar_grupos(termo)`  — grupos de item que casam o termo, com mediana/min/max/dispersão.
+  • `comparar(grupo, un)`   — ranking de ÓRGÃOS e de FORNECEDORES por preço unitário desse item.
+  • `ranking_orgaos()` / `ranking_fornecedores()` — eficiência transversal (paga acima/abaixo da
+    mediana do item, agregado por muitos itens): quem gasta melhor, quem cobra mais caro.
+
+Determinístico. Robusto a outlier (mediana). Guarda anti-artefato: preço < 10% da mediana do item
+(erro de unidade/lote no PNCP) é descartado da comparação. Indício ≠ acusação; a descrição do
+PNCP é curta e pode misturar marca/especificação — confirmar no termo de referência."""
+from __future__ import annotations
+
+import logging
+import re
+import sqlite3
+from collections import defaultdict
+from pathlib import Path
+
+from compliance_agent.cruzamentos_intel import _mediana, _norm_item
+
+_REPO = Path(__file__).resolve().parent.parent
+_DB = str(_REPO / "data" / "compliance.db")
+
+logger = logging.getLogger(__name__)
+
+RESSALVA = ("Preço unitário do PNCP; a descrição é curta e pode misturar marca/especificação/"
+            "embalagem entre compras. Preços < 10% da mediana do item são descartados (artefato de "
+            "unidade/lote). É comparação de mercado para priorizar auditoria, não veredito de "
+            "sobrepreço — confirmar o termo de referência. Indício ≠ acusação.")
+
+
+def _ro(db_path: str | None = None) -> sqlite3.Connection:
+    con = sqlite3.connect(f"file:{db_path or _DB}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    con.execute("PRAGMA busy_timeout=30000")
+    return con
+
+
+def _un(u: str | None) -> str:
+    return re.sub(r"[^a-z]", "", (u or "").lower())[:8]
+
+
+def _linhas(con):
+    return con.execute(
+        "SELECT item_descricao d, unidade_medida un, valor_unitario vu, orgao_nome, "
+        "unidade_nome, fornecedor_nome, fornecedor_cnpj, certame, data_pub "
+        "FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 AND quantidade>=2 "
+        "AND item_descricao IS NOT NULL AND length(item_descricao)>=4").fetchall()
+
+
+def _grupos(con) -> dict:
+    g: dict[tuple, list] = defaultdict(list)
+    for r in _linhas(con):
+        base = _norm_item(r["d"])
+        if base:
+            g[(base, _un(r["un"]))].append(r)
+    return g
+
+
+def buscar_grupos(termo: str, db_path: str | None = None, min_compras: int = 3,
+                  min_orgaos: int = 2, limite: int = 40) -> dict:
+    """Grupos de item cuja descrição normalizada casa TODAS as palavras do termo, com estatística
+    de preço. Ex.: 'aluguel carro' → grupos de locação de veículo comparáveis entre órgãos."""
+    toks = [t for t in _norm_item(termo).split() if t] or [t for t in re.sub(r"[^a-z ]", " ",
+            (termo or "").lower()).split() if len(t) >= 3]
+    con = _ro(db_path)
+    try:
+        achados = []
+        for (base, un), itens in _grupos(con).items():
+            if not all(t in base for t in toks):
+                continue
+            orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
+            if len(itens) < min_compras or len(orgaos) < min_orgaos:
+                continue
+            precos = sorted(r["vu"] for r in itens)
+            med = _mediana(precos)
+            achados.append({
+                "grupo": base, "unidade_medida": itens[0]["un"],
+                "exemplo": itens[0]["d"], "n_compras": len(itens), "n_orgaos": len(orgaos),
+                "mediana": round(med, 2), "min": round(precos[0], 2), "max": round(precos[-1], 2),
+                "dispersao": round(precos[-1] / precos[0], 1) if precos[0] > 0 else None})
+        achados.sort(key=lambda a: -(a["dispersao"] or 0))
+        return {"ok": True, "termo": termo, "grupos": achados[:limite], "n": len(achados),
+                "explicacao": ("Grupos de item comprados por ≥2 órgãos que casam o termo. Dispersão "
+                               "alta = os órgãos pagam preços MUITO diferentes pelo mesmo item — "
+                               "abra o grupo para ver quem paga mais/menos."),
+                "ressalva": RESSALVA}
+    finally:
+        con.close()
+
+
+def comparar(grupo: str, unidade: str | None = None, db_path: str | None = None) -> dict:
+    """Para UM item (grupo normalizado + unidade), ranqueia ÓRGÃOS e FORNECEDORES pelo preço
+    unitário mediano. Mostra quem paga acima/abaixo da mediana geral do item."""
+    un_alvo = _un(unidade) if unidade is not None else None
+    con = _ro(db_path)
+    try:
+        itens = [r for (b, u), lst in _grupos(con).items() if b == grupo
+                 and (un_alvo is None or u == un_alvo) for r in lst]
+        if not itens:
+            return {"ok": False, "erro": f"grupo '{grupo}' sem compras comparáveis"}
+        med_geral = _mediana(sorted(r["vu"] for r in itens))
+        piso = 0.10 * med_geral                      # < 10% da mediana = artefato
+        val = [r for r in itens if r["vu"] >= piso]
+
+        def _rank(chave_fn, ident_fn=None):
+            agg: dict = defaultdict(list)
+            ident: dict = {}
+            for r in val:
+                k = chave_fn(r)
+                agg[k].append(r["vu"])
+                if ident_fn:
+                    ident[k] = ident_fn(r)
+            out = []
+            for k, ps in agg.items():
+                m = _mediana(sorted(ps))
+                out.append({"nome": k, "id": ident.get(k), "n": len(ps),
+                            "mediana": round(m, 2),
+                            "vs_geral": round(m / med_geral, 2) if med_geral > 0 else None})
+            out.sort(key=lambda x: -(x["vs_geral"] or 0))
+            return out
+
+        orgaos = _rank(lambda r: r["unidade_nome"] or r["orgao_nome"])
+        fornecedores = _rank(lambda r: r["fornecedor_nome"], lambda r: r["fornecedor_cnpj"])
+        return {"ok": True, "grupo": grupo, "unidade_medida": itens[0]["un"],
+                "exemplo": itens[0]["d"], "mediana_geral": round(med_geral, 2),
+                "n_compras": len(val), "n_orgaos": len(orgaos), "n_fornecedores": len(fornecedores),
+                "orgaos": orgaos, "fornecedores": fornecedores[:60],
+                "explicacao": ("Preço unitário mediano por órgão e por fornecedor para o MESMO item. "
+                               "'vs_geral' = quantas vezes acima/abaixo da mediana geral do item "
+                               "(>1 paga/cobra mais caro; <1 mais barato)."),
+                "ressalva": RESSALVA}
+    finally:
+        con.close()
+
+
+def _eficiencia(con, por: str, min_itens: int) -> list:
+    """Agrega, por órgão OU fornecedor, a razão preço/mediana-do-item ao longo de MUITOS itens.
+    razão mediana <1 = paga/cobra abaixo do mercado; >1 = acima. Exige ≥`min_itens` itens DISTINTOS
+    comparáveis (diversidade real, não a mesma compra repetida) para significância."""
+    razoes: dict = defaultdict(list)
+    itens_de: dict = defaultdict(set)                 # k -> conjunto de itens distintos (sem cap)
+    ident: dict = {}
+    for (base, un), itens in _grupos(con).items():
+        orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
+        if len(itens) < 3 or len(orgaos) < 2:
+            continue                                  # só item comparável entra na eficiência
+        med = _mediana(sorted(r["vu"] for r in itens))
+        if med <= 0:
+            continue
+        piso = 0.10 * med
+        for r in itens:
+            if r["vu"] < piso:
+                continue
+            if por == "orgao":
+                k = r["unidade_nome"] or r["orgao_nome"]
+            else:
+                k = r["fornecedor_nome"]
+                ident[k] = r["fornecedor_cnpj"]
+            razoes[k].append(r["vu"] / med)
+            itens_de[k].add(base)
+    out = []
+    for k, rs in razoes.items():
+        n_itens = len(itens_de[k])
+        if n_itens < min_itens:                       # significância = DIVERSIDADE de itens
+            continue
+        out.append({"nome": k, "id": ident.get(k), "n_compras": len(rs),
+                    "n_itens": n_itens, "razao_mediana": round(_mediana(sorted(rs)), 2),
+                    "itens_exemplo": sorted(itens_de[k])[:5]})
+    return out
+
+
+def ranking_orgaos(db_path: str | None = None, min_itens: int = 8, limite: int = 60) -> dict:
+    """Órgãos por eficiência de gasto: razão mediana preço/mercado ao longo de muitos itens.
+    <1 = compra abaixo do mercado (gasta bem); >1 = paga acima (auditar)."""
+    con = _ro(db_path)
+    try:
+        r = _eficiencia(con, "orgao", min_itens)
+        r.sort(key=lambda x: x["razao_mediana"])
+        return {"ok": True, "melhores": r[:limite], "piores": list(reversed(r))[:limite],
+                "n": len(r),
+                "explicacao": ("Para cada órgão, a razão mediana entre o que ele paga e a mediana de "
+                               "mercado do item, ao longo de ≥8 itens comparáveis. <1 = gasta melhor "
+                               "que o mercado; >1 = paga acima (candidato a auditoria de preços)."),
+                "ressalva": RESSALVA}
+    finally:
+        con.close()
+
+
+def ranking_fornecedores(db_path: str | None = None, min_itens: int = 8, limite: int = 60) -> dict:
+    """Fornecedores por preço relativo: razão mediana preço/mercado ao longo de muitos itens.
+    >1 = cobra acima do mercado (caro); <1 = abaixo (barato)."""
+    con = _ro(db_path)
+    try:
+        r = _eficiencia(con, "fornecedor", min_itens)
+        r.sort(key=lambda x: -x["razao_mediana"])
+        return {"ok": True, "mais_caros": r[:limite], "mais_baratos": list(reversed(r))[:limite],
+                "n": len(r),
+                "explicacao": ("Para cada fornecedor, a razão mediana entre o que ele cobra e a "
+                               "mediana de mercado do item, ao longo de ≥8 itens. >1 = cobra acima "
+                               "do mercado; <1 = abaixo."),
+                "ressalva": RESSALVA}
+    finally:
+        con.close()
+
+
+if __name__ == "__main__":
+    import sys
+    cmd = sys.argv[1] if len(sys.argv) > 1 else "orgaos"
+    if cmd == "buscar":
+        d = buscar_grupos(" ".join(sys.argv[2:]) or "locacao veiculo")
+        print(f"{d['n']} grupos p/ '{d['termo']}':")
+        for g in d["grupos"][:15]:
+            print(f"  {g['dispersao']:6}x '{g['exemplo'][:34]:34}' {g['n_orgaos']}órgãos "
+                  f"med R${g['mediana']:.2f} (R${g['min']:.2f}–R${g['max']:.2f})")
+    elif cmd == "comparar":
+        d = comparar(sys.argv[2])
+        if d.get("ok"):
+            print(f"{d['exemplo']} | mediana geral R${d['mediana_geral']:.2f} | {d['n_orgaos']} órgãos")
+            print(" ÓRGÃOS (mais caro → mais barato):")
+            for o in d["orgaos"][:12]:
+                print(f"   {o['vs_geral']:5}x  R${o['mediana']:>10.2f}  {(o['nome'] or '')[:44]} (n={o['n']})")
+    elif cmd == "fornecedores":
+        d = ranking_fornecedores()
+        print(f"{d['n']} fornecedores. MAIS CAROS:")
+        for f in d["mais_caros"][:12]:
+            print(f"   {f['razao_mediana']:5}x  {(f['nome'] or '')[:40]:40} ({f['n_itens']} itens)")
+    else:
+        d = ranking_orgaos()
+        print(f"{d['n']} órgãos. MELHORES (gastam abaixo do mercado):")
+        for o in d["melhores"][:10]:
+            print(f"   {o['razao_mediana']:5}x  {(o['nome'] or '')[:44]:44} ({o['n_itens']} itens)")
+        print(" PIORES (pagam acima do mercado):")
+        for o in d["piores"][:10]:
+            print(f"   {o['razao_mediana']:5}x  {(o['nome'] or '')[:44]:44} ({o['n_itens']} itens)")

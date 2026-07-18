@@ -23,7 +23,9 @@ REPO = Path(__file__).resolve().parent.parent
 # 2026-07-18c: +1 (1452→1453) — rota /api/intel/escalada (detector novo), idioma-padrão das rotas.
 # 2026-07-18d: +2 (1453→1455) — rota /api/intel/lift + o catch-por-detector do avaliar_lift (roda
 # detector arbitrário no harness de lift, como o fingerprint; logado, amplo por design correto).
-BASELINE = 1455  # medido 2026-07-18d (1453→lift; 1447 em 2026-07-17; 1392 em 2026-07-11)
+# 2026-07-18e: +5 (1455→1460) — comparador de preços: 4 route handlers novos (buscar/item/orgaos/
+# fornecedores) no idioma-padrão das rotas + 1 já contabilizado. Todos catch-and-return, não mudos.
+BASELINE = 1460  # medido 2026-07-18e (1455→comparador; 1392 em 2026-07-11)
 
 
 def _contar() -> int:
