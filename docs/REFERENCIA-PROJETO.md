@@ -216,6 +216,18 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **07-18 (impeccable: elevação + polish + animate + audit do painel):** aplicado o **/impeccable**
+  (skill de design, instalada) + PRODUCT.md/DESIGN.md. Elevação: paleta **OKLCH** dark, remoção de
+  side-stripes/hero-metric/glass-default, tipografia rem fixa. Polish por superfície: **cockpit**
+  (cores tokenizadas, glow contido), **abas principais** (tags/sev via tokens), **comparador+covers+spheres**
+  (color-mix oklch). **Animate**: feedback de clique `:active`, `:focus-visible` teal global, foco de input,
+  touch-targets ≥44px (coarse). **A11y (audit #1)**: `[onclick]` (chips/spheres/.clk) agora focáveis
+  (`tabindex+role=button`) e operáveis por Enter/Espaço — verificado. **Audit 16/20 (Good)** em
+  `docs/AUDIT-PAINEL-2026-07-18.md` (dívida: onclick→semântico no render; glass do cockpit = brief).
+  **Lightsaber vivo**: indicador da aba ativa vira lâmina que acende (ignite scaleX) e respira (hum);
+  seções ganham glow de sabre. UX: removido "MGS" dos exemplos de busca da Transversal. Descoberta:
+  `color-mix` de dois `var()` cai pro inherit neste Chromium → sempre token+keyword. Tudo verificado
+  como humano (0 erro de console). Regra `:where()` zera especificidade — evitar em foco.
 - **07-18 (resolve INDISPONÍVEL das perícias + A→Z em tudo + ajuste infra):** **Removidos OpenSanctions
   e OCCRP Aleph de TUDO** (decisão do dono): exigiam chave grátis nunca provida e geravam "INDISPONÍVEL"
   em toda perícia/dossiê — só a idoneidade doméstica CEIS/CNEP/CEPIM (REAL) permanece. Removidos call-sites
