@@ -22,6 +22,7 @@
 - sintonia: sobrepreco min_certames 3 4 5 6
 - sintonia: socio_oculto min_empresas 3 4 5
 - sintonia: nepotismo max_raridade 12 20 30
+- sintonia: escalada_preco fator 2.5 3.0 4.0 5.0
 
 **Racional de cada uma:**
 - `fracionamento.min_colado` — quantas OBs coladas no teto exige-se para o grupo virar indício.
@@ -29,6 +30,7 @@
 - `sobrepreco.min_certames` — tamanho mínimo do grupo comparável para a mediana ser confiável.
 - `socio_oculto.min_empresas` — nº de empresas do mesmo sócio para acender o sinal.
 - `nepotismo.max_raridade` — quão raro o sobrenome precisa ser (acima disso, sobrenome comum polui).
+- `escalada_preco.fator` — quantas vezes o preço precisa multiplicar (3× já exclui reajuste; 5× só o gritante).
 
 ## Como ler uma recomendação
 
