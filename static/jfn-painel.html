@@ -290,6 +290,7 @@ const TABS={
     {id:'g_radar',   ic:'🎯',tl:'Radar',   render:renderRadar},
     {id:'g_conluioq',ic:'🤝',tl:'Conluio QSA',render:renderConluioQSA},
     {id:'g_comun',   ic:'🧩',tl:'Comunidades',render:renderComunidades},
+    {id:'g_retro',   ic:'🔮',tl:'Retro',   render:renderRetro},
     {id:'g_riscos',  ic:'👻',tl:'Riscos',  render:renderRiscos},
     {id:'g_dep',     ic:'🔗',tl:'Cativos', render:renderFornecedorDependente},
     {id:'g_dez',     ic:'📅',tl:'Dezembro',render:renderCorridaDezembro},
@@ -856,6 +857,31 @@ async function renderComunidades(){
     h+=sec('Articuladores (pontes entre grupos)')+`<div class="grid">`+d.articuladores.slice(0,10).map(x=>card(
       `<div style="display:flex;justify-content:space-between;gap:10px"><div><b>${esc(x.label)}</b> <span class="dim">${esc(x.tipo)}</span></div>
        <div class="right"><span class="num">${x.grau}</span> <span class="dim">conexões</span></div></div>`)).join('')+`</div>`;}
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ RETRO-AUDITORIA (hindsight) ═══
+async function renderRetro(){
+  const d=await J('/api/intel/retro');
+  if(!d.ok)return sec('Retro')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const ps=d.por_sinal||{};const ex=d.exemplos||[];const j=d.janela||{};
+  const nsin=Object.values(ps).reduce((s,x)=>s+x.n_sinais,0);
+  const ncor=Object.values(ps).reduce((s,x)=>s+x.n_sancao_depois,0);
+  const pago=Object.values(ps).reduce((s,x)=>s+x.pago_depois,0);
+  let h=cover('geral','Retro-auditoria — o que aconteceu DEPOIS do alerta','Para cada detector, o <b>ledger de sinais</b> guarda a data do 1º alerta por empresa (nunca regravada). Aqui medimos o que veio depois: <b>sanção federal posterior</b> (corroboração independente do detector) e <b>R$ que o Estado continuou pagando após o alerta</b> — o custo da inação. A janela cresce todo dia com o timer.','🔮');
+  h+=`<div class="grid g2">${kpi(fmtN(nsin),'Sinais no ledger','var(--amber)','📒')}${kpi(fmtN(ncor),'Sanção DEPOIS do sinal','var(--rose)','⚖️')}
+      ${kpi(fmtRc(pago),'Pago APÓS o alerta','var(--rose)','💸')}${kpi((j.sinal_mais_antigo_dias??'—')+'d','Idade do sinal mais antigo',null,'📅')}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">Janela retro de ${j.sinal_mais_antigo_dias??'—'} dia(s) — zeros são esperados no começo (sanção demora); a leitura fica forte com semanas de ledger.</div>`;
+  h+=sec('Por detector')+`<div class="grid">`+Object.entries(ps).map(([s,v])=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px"><div><b>${esc(s)}</b>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">${fmtN(v.n_sinais)} empresa(s) sinalizadas · ${fmtN(v.vitorias_depois)} vitória(s) PNCP depois</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${v.n_sancao_depois?'var(--rose)':'var(--amber)'}">${v.n_sancao_depois}</div><div class="dim">sanção depois · ${fmtRc(v.pago_depois)} pago depois</div></div></div>`)).join('')+`</div>`;
+  if(ex.length){h+=sec('Casos (sanção posterior ou pagamento pós-alerta)')+`<div class="grid">`+ex.slice(0,20).map(e=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(e.cnpj,e.cnpj)}
+      <div class="muted" style="font-size:12.5px">[${esc(e.sinal)}] desde ${esc(e.desde)} · ${esc(e.detalhe||'')}</div>
+      ${e.sancao_depois?`<div class="muted" style="font-size:12.5px;margin-top:2px"><span class="tag rose">⚖️ sancionada em ${esc(e.sancao_depois.data_inicio)}</span> ${esc(e.sancao_depois.cadastro||'')}</div>`:''}</div>
+      <div class="right"><div class="num" style="font-weight:800;color:var(--rose)">${fmtRc(e.pago_depois)}</div><div class="dim">pago após o alerta</div></div></div>`,
+    e.sancao_depois?'hl':'')).join('')+`</div>`;}
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
 }
 
