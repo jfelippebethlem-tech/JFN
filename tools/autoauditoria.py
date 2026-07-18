@@ -154,6 +154,16 @@ _TEST_FILES = {
     "conluio_qsa": ["tests/test_conluio_qsa.py"],
     "comunidades": ["tests/test_grafo_comunidades.py"],
     "radar_risco": ["tests/test_conluio_qsa.py"],   # radar depende do conluio; sem teste próprio
+    "escalada_preco": ["tests/test_escalada_preco.py"],
+}
+
+# como extrair o CNPJ de UM achado de cada detector (p/ medir o LIFT contra o gabarito objetivo).
+# Detector ausente aqui → sem métrica de lift (cai na conservação de achados).
+_CNPJ_DE_ACHADO = {
+    "escalada_preco": lambda a: a.get("fornecedor_cnpj"),
+    "sobrepreco": lambda a: a.get("fornecedor_cnpj"),
+    "corrida_dezembro": lambda a: a.get("cnpj"),
+    "fornecedor_dependente": lambda a: a.get("cnpj"),
 }
 
 
@@ -169,12 +179,45 @@ def _testes_verdes(detector: str) -> bool | None:
     return r.returncode == 0
 
 
-def sintonizar(detector: str, param: str, grade: list) -> dict:
-    """Loop autoresearch determinístico: mede n_achados no DB real p/ toda a grade (barato) e roda
-    os TESTES do detector UMA vez (gate de sanidade — o teste valida o comportamento commitado, não
-    enxerga o valor da grade). Se o gate está verde (ou não há teste rotulado), recomenda o valor
-    MAIS CONSERVADOR (menos achados = menos FP); se o gate está vermelho, não recomenda (a base de
-    verdade está quebrada, não confiar). Não edita código — recomenda (autonomy slider)."""
+def _lift_por_grade(detector: str, fn: str, chave: str, param: str, grade: list,
+                    min_n: int = 5) -> list:
+    """Para cada valor da grade, mede o LIFT dos CNPJs marcados contra o gabarito objetivo
+    (sanções). Só p/ detector com extrator de CNPJ. Requer o DB real (produção)."""
+    extrai = _CNPJ_DE_ACHADO.get(detector)
+    if not extrai:
+        return []
+    import sqlite3
+    from compliance_agent.retro_auditoria import gabarito, lift_de
+    con = sqlite3.connect(f"file:{_DB}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        sanc, base, _ = gabarito(con)
+    finally:
+        con.close()
+    out = []
+    for v in grade:
+        try:
+            achados = _chamar(fn, **{param: v}).get(chave) or []
+            cnpjs = {extrai(a) for a in achados}
+            cnpjs = {x for x in cnpjs if x and len(x) == 14}
+            out.append({"valor": v, "n_cnpj": len(cnpjs),
+                        "lift": lift_de(cnpjs, sanc, base) if len(cnpjs) >= min_n else None})
+        except Exception as exc:  # noqa: BLE001
+            out.append({"valor": v, "erro": str(exc)[:80]})
+    return out
+
+
+def sintonizar(detector: str, param: str, grade: list, min_n: int = 5) -> dict:
+    """Loop autoresearch determinístico. Fitness em duas camadas:
+
+      1. Se o detector marca CNPJs e NÃO é circular (`_CNPJ_DE_ACHADO`): otimiza o **LIFT** contra o
+         gabarito objetivo (sanções) — recomenda o valor de MAIOR lift com ≥`min_n` CNPJs. É a
+         métrica de qualidade real: concentra fraude corroborada, não só 'menos achados'. (Descoberta
+         que motivou isto: em escalada.fator, subir demais o threshold REDUZ o lift — menos achados
+         ≠ melhor.)
+      2. Senão: cai na CONSERVAÇÃO (menor nº de achados que ainda discrimina).
+
+    Sempre com o gate de testes (suite do detector verde). Não edita código — recomenda."""
     if detector not in _DETECTORES:
         return {"ok": False, "erro": f"detector desconhecido: {detector}"}
     fn, chave = _DETECTORES[detector][0], _DETECTORES[detector][1]
@@ -187,24 +230,37 @@ def sintonizar(detector: str, param: str, grade: list) -> dict:
             experimentos.append({"valor": v, "erro": str(exc)[:80]})
     gate = _testes_verdes(detector)           # None = sem teste rotulado; True/False = suite do detector
     validos = [e for e in experimentos if "n_achados" in e]
-    ns = {e["n_achados"] for e in validos}
-    recomendado, motivo = None, None
+
+    # camada 1: LIFT (qualidade real contra o gabarito)
+    lifts = _lift_por_grade(detector, fn, chave, param, grade, min_n) if gate is not False else []
+    lift_map = {x["valor"]: x.get("lift") for x in lifts}
+    for e in validos:
+        e["lift"] = lift_map.get(e["valor"])
+    com_lift = [e for e in validos if e.get("lift") is not None]
+
+    recomendado, motivo, criterio = None, None, None
     if gate is False:
         motivo = "suite do detector VERMELHA — não confiar em recomendação"
-    elif len(ns) <= 1:
-        # o parâmetro não muda o nº de achados nesta grade → sem sinal p/ sintonizar (não desempatar
-        # por valor: a direção 'conservadora' depende da semântica de min_/max_, ambígua aqui)
-        motivo = f"parâmetro não discrimina nesta grade (todos n={ns.pop() if ns else 0})"
+    elif com_lift:
+        criterio = "lift"
+        melhor = max(e["lift"] for e in com_lift)
+        # maior lift; desempate por MAIS achados (mais cobertura ao mesmo lift)
+        recomendado = max((e for e in com_lift if e["lift"] == melhor),
+                          key=lambda e: e["n_achados"])
     else:
-        # há discriminação real: o mais conservador é o de MENOR nº de achados (menos FP)
-        recomendado = min(validos, key=lambda e: e["n_achados"])
-    return {"ok": True, "detector": detector, "param": param,
+        criterio = "conservacao"
+        ns = {e["n_achados"] for e in validos}
+        if len(ns) <= 1:
+            motivo = f"parâmetro não discrimina nesta grade (todos n={ns.pop() if ns else 0})"
+        else:
+            recomendado = min(validos, key=lambda e: e["n_achados"])
+    return {"ok": True, "detector": detector, "param": param, "criterio": criterio,
             "experimentos": experimentos, "testes_verdes": gate, "recomendado": recomendado,
             "motivo": motivo,
             "gate_de_testes": ("rotulado" if _TEST_FILES.get(detector) else "ausente (só conservação)"),
-            "nota": ("Recomendação = valor de MENOR nº de achados (menos FP), quando o parâmetro "
-                     "discrimina e a suite está verde. Aplicar é decisão humana (autonomy slider); "
-                     "conferir que não perdeu detecção real antes.")}
+            "nota": ("Recomendação = MAIOR lift contra o gabarito (sanções) quando há CNPJs "
+                     "suficientes; senão, menor nº de achados. Aplicar é decisão humana (autonomy "
+                     "slider); conferir que não perdeu detecção real antes.")}
 
 
 def _num(v):
@@ -258,9 +314,10 @@ if __name__ == "__main__":
                 print(r.get("erro"))
                 continue
             gate = {True: "✓ verde", False: "✗ VERMELHO", None: "— sem teste"}[r["testes_verdes"]]
-            print(f"\n{r['detector']}.{r['param']}  (gate de testes: {gate})")
+            print(f"\n{r['detector']}.{r['param']}  (gate: {gate} · critério: {r.get('criterio') or '—'})")
             for e in r["experimentos"]:
-                print(f"   {e['valor']}: " + (e.get("erro") or f"n_achados={e['n_achados']}"))
+                extra = "" if e.get("lift") is None else f" lift={e['lift']}x"
+                print(f"   {e['valor']}: " + (e.get("erro") or f"n_achados={e['n_achados']}{extra}"))
             rec = r["recomendado"]
             print(f"   → recomendado: {rec['valor'] if rec else '—'} "
-                  f"({r.get('motivo') or r['gate_de_testes']})")
+                  f"({r.get('motivo') or ('máx lift' if r.get('criterio')=='lift' else r['gate_de_testes'])})")

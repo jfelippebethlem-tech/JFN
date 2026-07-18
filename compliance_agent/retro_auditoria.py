@@ -215,6 +215,27 @@ _LIFT_DETECTORES = [
 ]
 
 
+def gabarito(con) -> tuple[set[str], float, int]:
+    """(sanções impeditivas PJ, taxa-base do universo de fornecedores, tamanho do universo).
+    Base de verdade OBJETIVA reutilizável (lift na autoauditoria e no avaliar_lift)."""
+    sanc = {r[0] for r in con.execute(
+        "SELECT DISTINCT cpf_cnpj FROM sancoes_federais WHERE length(cpf_cnpj)=14 AND "
+        "(lower(categoria) LIKE '%imped%' OR lower(categoria) LIKE '%inid%' OR "
+        "lower(categoria) LIKE '%suspens%' OR lower(categoria) LIKE '%declar%')")}
+    univ = {r[0] for r in con.execute(
+        "SELECT DISTINCT fornecedor_cnpj FROM pncp_resultado WHERE length(fornecedor_cnpj)=14")}
+    base = len(univ & sanc) / len(univ) if univ else 0.0
+    return sanc, base, len(univ)
+
+
+def lift_de(cnpjs: set[str], sanc: set[str], base: float) -> float | None:
+    """Lift de corroboração de um conjunto de CNPJs: taxa de sancionados ÷ taxa-base. None se vazio."""
+    cnpjs = {x for x in cnpjs if x and len(x) == 14}
+    if not cnpjs or base <= 0:
+        return None
+    return round((len(cnpjs & sanc) / len(cnpjs)) / base, 2)
+
+
 def avaliar_lift(db_path: str | None = None) -> dict:
     """Valida cada detector contra o GABARITO OBJETIVO (sanções impeditivas): dos CNPJs que o
     detector marca, que fração está sancionada, e o LIFT vs a taxa-base do universo de fornecedores.
@@ -222,15 +243,9 @@ def avaliar_lift(db_path: str | None = None) -> dict:
     Detectores que USAM sanção como input são marcados 'circular' (lift não é independente)."""
     con = _ro(db_path)
     try:
-        sanc = {r[0] for r in con.execute(
-            "SELECT DISTINCT cpf_cnpj FROM sancoes_federais WHERE length(cpf_cnpj)=14 AND "
-            "(lower(categoria) LIKE '%imped%' OR lower(categoria) LIKE '%inid%' OR "
-            "lower(categoria) LIKE '%suspens%' OR lower(categoria) LIKE '%declar%')")}
-        univ = {r[0] for r in con.execute(
-            "SELECT DISTINCT fornecedor_cnpj FROM pncp_resultado WHERE length(fornecedor_cnpj)=14")}
-        if not univ:
+        sanc, base, n_univ = gabarito(con)
+        if not n_univ:
             return {"ok": False, "erro": "universo de fornecedores vazio (PNCP não coletado)"}
-        base = len(univ & sanc) / len(univ)
         linhas = []
         for nome, circular in _LIFT_DETECTORES:
             try:
@@ -249,8 +264,8 @@ def avaliar_lift(db_path: str | None = None) -> dict:
                 "n_pequeno": len(cnpjs) < 10})
         # ranking: independentes (não-circular) por lift; circulares ao fim (só sanidade)
         linhas.sort(key=lambda x: (x["circular"], -(x["lift"] or 0)))
-        return {"ok": True, "taxa_base": round(base, 4), "universo": len(univ),
-                "sancionados_universo": len(univ & sanc), "detectores": linhas,
+        return {"ok": True, "taxa_base": round(base, 4), "universo": n_univ,
+                "sancionados_universo": round(base * n_univ), "detectores": linhas,
                 "explicacao": ("Gabarito OBJETIVO = sanções impeditivas (CEIS/CNEP). Para cada "
                                "detector, o LIFT é a razão entre a taxa de sancionados no que ele "
                                "marca e a taxa-base do universo. lift>1 = concentra risco real; "
