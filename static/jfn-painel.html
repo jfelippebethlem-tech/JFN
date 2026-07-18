@@ -153,9 +153,20 @@
 
   .grid{display:grid;gap:11px;min-width:0}
   .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--bd2);border-radius:var(--r);padding:15px 16px;min-width:0;box-shadow:var(--sh);transition:.16s}
-  .card:hover{border-color:var(--bd)}
+  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--bd2);border-radius:var(--r);padding:15px 16px;min-width:0;box-shadow:var(--sh);transition:transform .2s cubic-bezier(.2,.7,.2,1),border-color .2s,box-shadow .2s;position:relative}
+  .card:hover{border-color:rgba(79,214,196,.42);box-shadow:0 0 0 1px rgba(79,214,196,.16),0 18px 42px -26px rgba(79,214,196,.5),var(--sh);transform:translateY(-2px)}
   .card.hl{border-color:rgba(229,83,122,.32)}
+  /* ── VIDA GLOBAL: toda aba herda o cockpit (cascata · malha · pulso · contagem) ── */
+  #view{position:relative}
+  #view .fade{position:relative;z-index:1}
+  .view-wire{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;opacity:.9}
+  .rise{opacity:0;animation:rise .52s cubic-bezier(.2,.75,.25,1) both;animation-delay:var(--d,0ms)}
+  @keyframes rise{from{opacity:0;transform:translateY(13px) scale(.982)}to{opacity:1;transform:none}}
+  .kpi.rise::after,.card.beat::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
+    box-shadow:0 0 0 1px rgba(79,214,196,.0);animation:beat 1.7s ease-out}
+  @keyframes beat{0%{box-shadow:0 0 0 1px rgba(79,214,196,.42),0 0 22px -4px rgba(79,214,196,.55)}100%{box-shadow:0 0 0 1px rgba(79,214,196,0),0 0 0 rgba(79,214,196,0)}}
+  .kpi .v.counting{color:var(--teal)}
+  @media (prefers-reduced-motion:reduce){.rise{animation:none;opacity:1}.view-wire{opacity:.5}.card.beat::after,.kpi.rise::after{animation:none}}
   .kpi{position:relative;overflow:hidden}
   .kpi::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:2px;border-radius:2px;background:linear-gradient(rgba(79,214,196,.55),rgba(66,135,230,.25))}
   .kpi .l{color:var(--mut);font-size:10.5px;font-weight:650;letter-spacing:.7px;text-transform:uppercase;font-family:var(--mono)}
@@ -277,7 +288,7 @@
     <div class="htop">
       <div class="brand"><span class="lg">🛰️</span><div>JFN<small id="hsub">CENTRAL DE INTELIGÊNCIA · RJ</small></div></div>
       <span class="live"><span class="pulse"></span>ao vivo</span>
-      <span class="actions"><a class="cockpit" href="/cockpit" title="Command deck ao vivo">◎ Cockpit</a><a class="help" onclick="glossario()">ⓘ Termos</a><a class="ctrl" href="/controle">🛡️ Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
+      <span class="actions"><a class="help" onclick="glossario()">ⓘ Termos</a><a class="ctrl" href="/controle">🛡️ Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
     </div>
     <div class="spheres" id="spheres"></div>
   </header>
@@ -395,6 +406,61 @@ async function ir(id){
   try{const html=await t.render();if(meu!==_nav)return;v.innerHTML=`<div class="fade">${html}</div>`;}
   catch(e){if(meu!==_nav)return;v.innerHTML=card(`<div class="warn">⚠ Falha: ${esc(e)}</div>`);}
   window.scrollTo(0,0);
+  if(aba!=='i_cockpit')vivo();   // cockpit tem animação própria; demais abas herdam a "vida"
+}
+
+// ═══ VIDA GLOBAL — o cockpit em toda aba (cascata · contagem · malha de luz) ═══
+let _wireRAF=0;
+function vivo(){
+  const v=$('view'); if(!v) return;
+  const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const top=[...v.querySelectorAll('.card,.cover')].filter(el=>!el.parentElement.closest('.card,.cover'));
+  // 1) cascata de entrada + pulso "ao vivo" no 1º KPI
+  top.forEach((el,i)=>{el.classList.add('rise');el.style.setProperty('--d',Math.min(i*32,640)+'ms');});
+  if(!rm){const k=v.querySelector('.kpi');if(k)setTimeout(()=>k.classList.add('beat'),700);}
+  // 2) números que sobem
+  if(!rm)v.querySelectorAll('.kpi .v').forEach(_countUp);
+  // 3) malha de luz ligando os cards
+  _wire(top,rm);
+}
+function _countUp(el){
+  const raw=(el.textContent||'').trim();
+  const m=raw.match(/^([^\d]*?)(\d[\d.\s]*(?:,\d+)?)(.*)$/); if(!m)return;
+  const pre=m[1],suf=m[3],dec=(m[2].split(',')[1]||'').length;
+  const val=parseFloat(m[2].replace(/[.\s]/g,'').replace(',','.'));
+  if(!isFinite(val)||val===0)return;
+  el.classList.add('counting');const t0=performance.now(),dur=850;
+  (function step(t){const p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+    el.textContent=pre+(val*e).toLocaleString('pt-BR',{minimumFractionDigits:dec,maximumFractionDigits:dec})+suf;
+    if(p<1)requestAnimationFrame(step);else{el.textContent=raw;el.classList.remove('counting');}})(t0);
+}
+function _wire(nodes,rm){
+  cancelAnimationFrame(_wireRAF);
+  const v=$('view'),fade=v&&v.querySelector('.fade'); if(!v||!fade||nodes.length<2)return;
+  let cv=v.querySelector('.view-wire');
+  if(!cv){cv=document.createElement('canvas');cv.className='view-wire';v.insertBefore(cv,fade);}
+  const cx=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1),vr=v.getBoundingClientRect();
+  const W=v.clientWidth,H=Math.max(v.scrollHeight,fade.scrollHeight);
+  cv.width=W*dpr;cv.height=H*dpr;cv.style.width=W+'px';cv.style.height=H+'px';cx.scale(dpr,dpr);
+  const pts=nodes.slice(0,46).map(el=>{const r=el.getBoundingClientRect();
+    return {x:r.left-vr.left+Math.min(r.width/2,80),y:r.top-vr.top+9};});
+  // arestas: cada nó liga aos 2 vizinhos mais próximos (grafo esparso, sem cruzar tudo)
+  const edges=[];
+  pts.forEach((a,i)=>{const d=pts.map((b,j)=>({j,d:(a.x-b.x)**2+(a.y-b.y)**2})).filter(o=>o.j!==i).sort((p,q)=>p.d-q.d).slice(0,2);
+    d.forEach(o=>{const k=i<o.j?i+'-'+o.j:o.j+'-'+i;if(!edges.some(e=>e.k===k))edges.push({k,a:i,b:o.j});});});
+  function draw(t){
+    cx.clearRect(0,0,W,H);
+    edges.forEach(e=>{const A=pts[e.a],B=pts[e.b];
+      cx.strokeStyle='rgba(79,214,196,.13)';cx.lineWidth=1;
+      cx.beginPath();cx.moveTo(A.x,A.y);cx.lineTo(B.x,B.y);cx.stroke();});
+    pts.forEach(p=>{cx.fillStyle='rgba(79,214,196,.32)';cx.beginPath();cx.arc(p.x,p.y,1.6,0,6.283);cx.fill();});
+    if(!rm){edges.forEach((e,i)=>{const A=pts[e.a],B=pts[e.b],ph=((t/1400)+i*0.16)%1;
+      const x=A.x+(B.x-A.x)*ph,y=A.y+(B.y-A.y)*ph;
+      const g=cx.createRadialGradient(x,y,0,x,y,7);g.addColorStop(0,'rgba(120,240,220,.75)');g.addColorStop(1,'rgba(120,240,220,0)');
+      cx.fillStyle=g;cx.beginPath();cx.arc(x,y,7,0,6.283);cx.fill();});
+      _wireRAF=requestAnimationFrame(draw);}
+  }
+  draw(rm?0:performance.now());
 }
 
 // ═══ GLOSSÁRIO ═══
