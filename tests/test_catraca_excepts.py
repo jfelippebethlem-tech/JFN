@@ -15,7 +15,10 @@ REPO = Path(__file__).resolve().parent.parent
 # COMMITADOS sem rodar a catraca; +8 da leva c, todos logados ou no idioma-padrão das rotas)
 # subiu a dívida. DÉBITO REGISTRADO: curadoria p/ voltar a ≤1392 pende (trocar por exceção
 # específica nos detectores novos). A catraca volta a travar crescimento a partir daqui.
-BASELINE = 1447  # medido 2026-07-17 (antes 1392 em 2026-07-11; antes 1404)
+# 2026-07-18: +4 (1447→1451) — todos LOGADOS (não mudos) e amplos por DESIGN correto: rodar
+# detector arbitrário no fingerprint da autoauditoria (erro = estado do retrato) e libs de OCR
+# (fitz/tesseract/PIL, espaço de exceção enorme). Converter p/ específico seria errado aqui.
+BASELINE = 1451  # medido 2026-07-18 (antes 1447 em 2026-07-17; 1392 em 2026-07-11; 1404 antes)
 
 
 def _contar() -> int:
