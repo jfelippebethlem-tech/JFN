@@ -357,6 +357,7 @@ const TABS={
     {id:'g_retro',   ic:'🔮',tl:'Retro',   render:renderRetro},
     {id:'g_riscos',  ic:'👻',tl:'Riscos',  render:renderRiscos},
     {id:'g_dep',     ic:'🔗',tl:'Cativos', render:renderFornecedorDependente},
+    {id:'g_capital', ic:'🫧',tl:'Capital irrisório',render:renderCapital},
     {id:'g_dez',     ic:'📅',tl:'Dezembro',render:renderCorridaDezembro},
     {id:'g_ocult',   ic:'🕸️',tl:'Sócio oculto',render:renderSocioOculto},
     {id:'g_nep',     ic:'👪',tl:'Nepotismo',render:renderNepotismo},
@@ -976,6 +977,23 @@ async function renderSocioServidor(){
   return h;
 }
 // ═══ FORNECEDOR DEPENDENTE / CATIVO ═══
+async function renderCapital(){
+  const d=await J('/api/intel/capital_incompativel?limite=150');
+  if(!d.ok)return sec('Capital irrisório')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Capital irrisório — sem lastro para o que faturou','Empresa com <b>capital social ínfimo</b> (&lt; R$50 mil) que recebeu do Estado <b>≥100× o próprio capital</b> (e mais de R$1 mi). Subcapitalização crônica frente ao volume faturado é indício de <b>fachada/interposição</b> — falta capacidade econômico-financeira para executar contratos vultosos (Lei 14.133 art. 5º, 62-63). Capital: dump da Receita.','🫧')+acoesAba('capital_incompativel');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Empresas','var(--rose)','🫧')}${kpi(a.length?fmtN(a[0].razao)+'×':'—','Pior razão (recebido/capital)','var(--rose)')}
+      ${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_recebido||0),0)),'Volume recebido',null,'💰')}${kpi(a.filter(x=>x.capital<=1000).length,'Capital ≤ R$1k','var(--amber)','⚠️')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#cap-list .card')"></div>`;
+  h+=`<div id="cap-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_obs)} OBs</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${fmtN(x.razao)}×</div><div class="dim">o capital</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">capital <b>${fmtR(x.capital)}</b></span><b>recebeu ${fmtRc(x.total_recebido)}</b></div>
+      ${leitura(`<b>${esc(x.nome)}</b> tem capital social de apenas <b>${fmtR(x.capital)}</b> mas recebeu <b>${fmtRc(x.total_recebido)}</b> do Estado — <b>${fmtN(x.razao)}× o próprio capital</b>. Capital irrisório frente ao volume faturado é indício de subcapitalização/fachada. Confirmar o capital ATUAL (o dump é de um mês) e a capacidade econômico-financeira.`)}`,
+    x.razao>=1000?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
 async function renderFornecedorDependente(){
   const d=await J('/api/intel/fornecedor_dependente?limite=150');
   if(!d.ok)return sec('Cativos')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
