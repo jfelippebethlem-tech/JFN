@@ -370,8 +370,8 @@
 
 <script>
 // ── Configuration ─────────────────────────────────────────────────────────────
-const NODE_COLORS = { pessoa: '#3b82f6', empresa: '#10b981', orgao: '#f59e0b', instituicao: '#f59e0b' };
-const EDGE_COLORS = { sócio: '#64748b', contrato: '#a855f7', relacionado: '#475569', parente: '#ef4444' };
+const NODE_COLORS = { pessoa: '#3b82f6', empresa: '#10b981', orgao: '#a855f7', instituicao: '#f59e0b', familia: '#ec4899' };
+const EDGE_COLORS = { sócio: '#64748b', socio: '#10b981', contrato: '#a855f7', relacionado: '#475569', parente: '#ef4444', parentesco: '#ec4899', lotacao: '#a855f7' };
 const NODE_MIN_R = 8, NODE_MAX_R = 30;
 
 let allNodes = [], allLinks = [], simulation = null;
@@ -416,7 +416,9 @@ async function loadGraph(opts = {}) {
   }
 
   try {
-    const resp = await fetch('/api/compliance/graph');
+    const _fonte=new URLSearchParams(location.search).get('fonte');
+    const _ep=_fonte==='familias'?'/api/intel/grafo_familias':'/api/compliance/graph';
+    const resp = await fetch(_ep);
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
 

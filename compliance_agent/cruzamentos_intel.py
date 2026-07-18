@@ -872,6 +872,83 @@ def socio_oculto(db_path: str | None = None, min_empresas: int = 3, limite: int 
         con.close()
 
 
+def grafo_familias(db_path: str | None = None, max_raridade: int = 12, so_com_empresa: bool = True) -> dict:
+    """Grafo D3 (nodes/links p/ o graph.html) das FAMÍLIAS que tocam o dinheiro público. Uma família =
+    sobrenome de família RARO com ≥2 pessoas distintas, ligando as que estão em cargo de confiança
+    (folha) E as que são sócias de fornecedores. Conecta pessoa→órgão (lotação) e pessoa→empresa
+    (sócio, com o valor recebido). Mostra clãs que ocupam cargos E fornecem ao Estado.
+    `so_com_empresa`: só mostra famílias em que ao menos um membro tem empresa fornecedora (o cruzamento)."""
+    con = _ro(db_path)
+    try:
+        from collections import defaultdict
+        # 1) pessoas por sobrenome-família: comissionados (folha) e sócios (fornecedor)
+        fam_pes: dict[str, dict] = defaultdict(dict)   # fam -> nome_norm -> {nome, papeis:set, orgao, empresas:[]}
+        for r in con.execute("SELECT nome, orgao_nome, cargo FROM registros_folha WHERE nome IS NOT NULL "
+                            "AND (cargo LIKE '%COMISS%' OR cargo LIKE '%ESPECIAL%' OR cargo LIKE '%ASSESSOR%' "
+                            "OR cargo LIKE '%GABINETE%' OR cargo LIKE '%DIRETOR%')"):
+            toks = _nep_tokens(r["nome"])
+            fam = _nep_familia(toks)
+            if not fam or fam in _NEP_COMUNS or any(t in _NEP_COMUNS for t in fam.split()):
+                continue
+            nn = " ".join(toks)
+            e = fam_pes[fam].setdefault(nn, {"nome": r["nome"], "orgao": None, "empresas": []})
+            e["orgao"] = r["orgao_nome"]
+        for r in con.execute("SELECT s.socio_nome, s.cnpj, f.favorecido_nome, f.total_pago "
+                            "FROM socios_fornecedor s JOIN favorecido_resumo f ON f.favorecido_cpf=s.cnpj "
+                            "WHERE f.total_pago>0 AND s.socio_nome<>''"):
+            toks = _nep_tokens(r["socio_nome"])
+            fam = _nep_familia(toks)
+            if not fam or fam in _NEP_COMUNS or any(t in _NEP_COMUNS for t in fam.split()):
+                continue
+            nn = " ".join(toks)
+            e = fam_pes[fam].setdefault(nn, {"nome": r["socio_nome"], "orgao": None, "empresas": []})
+            if len(e["empresas"]) < 5:
+                e["empresas"].append((r["favorecido_nome"], r["total_pago"], r["cnpj"]))
+        # raridade global (pessoas distintas com esse sobrenome em TODA a folha)
+        tot_fam: dict[str, set] = defaultdict(set)
+        for r in con.execute("SELECT nome FROM registros_folha WHERE nome IS NOT NULL"):
+            f = _nep_familia(_nep_tokens(r["nome"]))
+            if f:
+                tot_fam[f].add(" ".join(_nep_tokens(r["nome"])))
+
+        nodes: dict[str, dict] = {}
+        links: list[dict] = []
+
+        def _node(nid, label, tipo, **kw):
+            if nid not in nodes:
+                nodes[nid] = {"id": nid, "label": (label or "")[:40], "tipo": tipo, **kw}
+            return nid
+
+        for fam, pessoas in fam_pes.items():
+            if len(pessoas) < 2:
+                continue
+            if len(tot_fam.get(fam, set())) > max_raridade:   # sobrenome pouco raro → fora
+                continue
+            tem_emp = any(p["empresas"] for p in pessoas.values())
+            tem_org = any(p["orgao"] for p in pessoas.values())
+            if so_com_empresa and not (tem_emp and tem_org):   # o cruzamento exige os dois lados
+                continue
+            fid = _node(f"fam:{fam}", fam, "familia", badge="alta" if tem_emp and tem_org else "media")
+            for nn, p in pessoas.items():
+                pid = _node(f"pes:{fam}:{nn}", p["nome"], "pessoa")
+                links.append({"source": fid, "target": pid, "tipo": "parentesco"})
+                if p["orgao"]:
+                    oid = _node(f"org:{p['orgao']}", p["orgao"], "orgao")
+                    links.append({"source": pid, "target": oid, "tipo": "lotacao"})
+                for (emp, tot, cnpj) in p["empresas"]:
+                    eid = _node(f"emp:{cnpj}", emp, "empresa", valor=float(tot or 0), cnpj=cnpj)
+                    links.append({"source": pid, "target": eid, "tipo": "socio", "valor": float(tot or 0)})
+        return {"nodes": list(nodes.values()), "links": links,
+                "n_familias": sum(1 for n in nodes.values() if n["tipo"] == "familia"),
+                "n_pessoas": sum(1 for n in nodes.values() if n["tipo"] == "pessoa"),
+                "n_empresas": sum(1 for n in nodes.values() if n["tipo"] == "empresa"),
+                "legenda": ("Família = sobrenome raro com ≥2 pessoas. Azul=pessoa, verde=empresa "
+                            "fornecedora, roxo=órgão. Famílias que ocupam cargo de confiança E fornecem "
+                            "ao Estado. Indício ≠ acusação — sobrenome não prova parentesco.")}
+    finally:
+        con.close()
+
+
 def empresa_fenix(db_path: str | None = None, limite: int = 120) -> dict:
     """Empresa FÊNIX: (a) BAIXADA/INAPTA na Receita que ainda recebeu do Estado (paga a empresa
     morta); ou (b) aberta ≤12 meses antes do 1º pagamento (nasceu já para faturar). Exclui

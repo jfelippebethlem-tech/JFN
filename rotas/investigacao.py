@@ -1350,6 +1350,19 @@ async def api_intel_corrida_dezembro(limite: int = 120):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/grafo_familias")
+async def api_intel_grafo_familias():
+    """Grafo D3 (nodes/links) das famílias que ocupam cargo de confiança E fornecem ao Estado —
+    consumido pelo graph.html em /graph?fonte=familias."""
+    try:
+        from compliance_agent.cruzamentos_intel import grafo_familias
+        if not (d := _cache_get("intel:grafofam", 600)):
+            d = _cache_put("intel:grafofam", grafo_familias(db_path=str(RAIZ / "data" / "compliance.db")))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"nodes": [], "links": [], "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/fenix")
 async def api_intel_fenix(limite: int = 120):
     """Empresa fênix: BAIXADA/INAPTA que recebeu, ou aberta ≤12m antes do 1º pagamento."""
