@@ -206,7 +206,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         secoes.append({"titulo": "3. Doações eleitorais dos sócios/empresa",
                        "html": "<p class='nota'>Nenhuma doação eleitoral (TSE) localizada para a empresa ou seus sócios na base.</p>"})
 
-    # 4. Listas restritivas / OSINT (CEIS/CNEP + OpenSanctions)
+    # 4. Listas restritivas (CEIS/CNEP/CEPIM — doméstico)
     osint = []
     try:
         from compliance_agent.collectors.ceis import verificar_sancao
@@ -224,24 +224,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
             osint.append("<li>CEIS/CNEP/CEPIM (CGU): nada localizado <span class='nota'>(consulta verificada)</span></li>")
     except Exception:  # noqa: BLE001
         osint.append("<li>CEIS/CNEP: INDISPONÍVEL</li>")
-    try:
-        from compliance_agent.enrich.opensanctions import checar
-        o = checar(cnpj)
-        osint.append("<li>OpenSanctions (PEP/sanções intl.): INDISPONÍVEL (sem chave grátis)</li>"
-                     if o.get("sancionado") is None else
-                     f"<li>OpenSanctions: sanção={esc(o.get('sancionado'))} · PEP={esc(o.get('pep'))}</li>")
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("OpenSanctions falhou p/ CNPJ %s — item omitido da seção 4: %s", cnpj, exc)
-    try:
-        from compliance_agent.enrich.aleph import buscar as _aleph
-        al = _aleph(cnpj)
-        if not al.get("matches"):
-            osint.append("<li>OCCRP Aleph (follow-the-money intl.): INDISPONÍVEL (sem chave grátis) ou sem registro</li>")
-        else:
-            tops = "; ".join(f"{esc(m.get('nome'))} ({esc(m.get('schema'))})" for m in al["matches"][:3])
-            osint.append(f"<li>OCCRP Aleph: <b>{esc(al.get('total'))} registro(s)</b> — {tops} <span class='nota'>(indício a confirmar na fonte)</span></li>")
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("OCCRP Aleph falhou p/ CNPJ %s — item omitido da seção 4: %s", cnpj, exc)
+    # (OpenSanctions/OCCRP Aleph removidos 2026-07-18 — exigiam chave grátis nunca provida; só geravam INDISPONÍVEL.)
     gz = ctx.get("gazetas") or {}
     if gz.get("total"):
         muns = "; ".join(dict.fromkeys(

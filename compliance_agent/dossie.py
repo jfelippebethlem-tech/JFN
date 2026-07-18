@@ -133,20 +133,8 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     except Exception as e:  # noqa: BLE001
         d["sancoes"] = {"_nota": f"INDISPONÍVEL: {e}", "verificado": False}
 
-    # 2b) OpenSanctions (PEP + sanções internacionais) — Onda 12 (key-gated, honesto)
-    try:
-        from compliance_agent.enrich.opensanctions import checar
-        d["opensanctions"] = checar(cnpj)
-        sancionado = sancionado or bool(d["opensanctions"].get("sancionado"))
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("seção OpenSanctions do dossiê indisponível p/ CNPJ %s: %s", cnpj, exc)
-
-    # 2c) OCCRP Aleph (follow-the-money cross-jurisdição) — Onda 12 (API, key-gated, honesto)
-    try:
-        from compliance_agent.enrich.aleph import buscar as _aleph
-        d["aleph"] = _aleph(cnpj)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning("seção OCCRP Aleph do dossiê indisponível p/ CNPJ %s: %s", cnpj, exc)
+    # (OpenSanctions/OCCRP Aleph removidos por decisão do dono 2026-07-18: exigiam chave grátis que
+    #  nunca foi provida e geravam INDISPONÍVEL em toda perícia. Sanção doméstica CEIS/CNEP acima basta.)
 
     # 2d) Mídia adversa (fontes abertas, KEYLESS via GDELT) — DD §9
     try:
@@ -239,7 +227,7 @@ def _ctx_dossie(d: dict) -> dict:
     e testável: recebe o dict de dossie() e devolve o ctx do render_html — sem I/O.
 
     Bug 2026-07-12: a versão anterior renderizava só OB + matriz + síntese, ignorando cadastro/QSA,
-    sanções (CEIS/CNEP/OpenSanctions), conflito doador↔contrato, rede de poder, mídia adversa e
+    sanções (CEIS/CNEP), conflito doador↔contrato, rede de poder, mídia adversa e
     pistas de investigação — tudo isso JÁ vinha coletado em `d`, mas nunca chegava ao PDF."""
     from compliance_agent.reporting import charts_svg as C
 
@@ -277,9 +265,8 @@ def _ctx_dossie(d: dict) -> dict:
                 "<tr><th>Nome</th><th>Qualificação</th><th>Entrada</th></tr>" + qsa + "</table>"
                 if socios else "<p class='nota'>Sem QSA na fonte (natureza jurídica pode não expor sócios).</p>")})
 
-    # 2) Sanções (CEIS/CNEP/CEPIM) + OpenSanctions (PEP/sanções internacionais) — honesto
+    # 2) Sanções CEIS/CNEP/CEPIM (doméstico) — honesto
     san = d.get("sancoes", {}) or {}
-    osan = d.get("opensanctions", {}) or {}
     if san.get("verificado"):
         if san.get("sancionado"):
             linhas = "".join(
@@ -291,14 +278,7 @@ def _ctx_dossie(d: dict) -> dict:
     else:
         san_html = (f"<p class='indisp'>Sanção CEIS/CNEP <b>não verificada</b> — {_esc(san.get('_nota') or 'INDISPONÍVEL')}. "
                     "INDISPONÍVEL ≠ limpo; não pontuada no índice.</p>")
-    if osan.get("_nota"):
-        san_html += f"<p class='nota'>OpenSanctions (PEP/internacional): {_esc(osan.get('_nota'))}</p>"
-    elif osan:
-        pep = "SIM" if osan.get("pep") else ("não" if osan.get("pep") is not None else "n/d")
-        intl = "SIM" if osan.get("sancionado") else ("não" if osan.get("sancionado") is not None else "n/d")
-        san_html += f"<p>OpenSanctions — PEP: <b>{pep}</b> · sanção internacional: <b>{intl}</b> · " \
-                    f"correspondências: {len(osan.get('matches') or [])}.</p>"
-    secoes.append({"titulo": "2. Idoneidade — sanções e PEP", "html": san_html})
+    secoes.append({"titulo": "2. Idoneidade — sanções (CEIS/CNEP/CEPIM)", "html": san_html})
 
     # 3) Pagamentos (OB) — gráfico de concentração + síntese
     ugs = ob.get("ugs") or []

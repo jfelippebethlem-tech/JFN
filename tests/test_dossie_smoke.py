@@ -53,8 +53,6 @@ def _sem_rede(monkeypatch):
     """Desliga TODA chamada externa do dossiê → determinístico e offline (sem WAF/DNS da VM)."""
     import compliance_agent.collectors.cnpj as cnpj_mod
     import compliance_agent.collectors.ceis as ceis_mod
-    import compliance_agent.enrich.opensanctions as os_mod
-    import compliance_agent.enrich.aleph as aleph_mod
     import compliance_agent.enrich.midia_adversa as midia_mod
 
     async def _fake_cnpj(cnpj, client=None):
@@ -65,8 +63,6 @@ def _sem_rede(monkeypatch):
 
     monkeypatch.setattr(cnpj_mod, "buscar_cnpj", _fake_cnpj)
     monkeypatch.setattr(ceis_mod, "verificar_sancao", _fake_ceis)
-    monkeypatch.setattr(os_mod, "checar", lambda *a, **k: {"_nota": "INDISPONÍVEL (smoke)"})
-    monkeypatch.setattr(aleph_mod, "buscar", lambda *a, **k: {"_nota": "INDISPONÍVEL (smoke)"})
     monkeypatch.setattr(midia_mod, "varrer", lambda *a, **k: {"_nota": "INDISPONÍVEL (smoke)", "artigos": []})
 
 

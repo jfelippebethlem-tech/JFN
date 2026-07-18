@@ -34,7 +34,7 @@ REPO = Path(__file__).resolve().parent.parent
 # não mudo; degrada honesto se a tabela empresas_cadastro não existir).
 # 2026-07-18j: +4 (1466→1470) — sweeps de cadastro (cadastro_enrich + empresas_dump): lookups de
 # rede e guarda de recursos (amplos por design, todos logados/degradam honesto).
-BASELINE = 1471  # medido 2026-07-18k (+1: rota /api/intel/prioridade_valor, boundary HTTP padrão; 1466→sweeps cadastro)
+BASELINE = 1464  # medido 2026-07-18m (-7: remoção OpenSanctions/Aleph — módulos+classe+intel_pdf; 1471 antes)
 
 
 def _contar() -> int:
