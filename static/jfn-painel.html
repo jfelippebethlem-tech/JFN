@@ -120,9 +120,9 @@
   .sph:hover{border-color:var(--bd);color:var(--tx2)}
   .sph .i{font-size:16px}
   .sph.on{color:#fff;border-color:transparent}
-  .sph.on.estado{background:linear-gradient(140deg,#17305f,#1d4a85);box-shadow:0 0 0 1px rgba(110,168,255,.38),0 12px 28px -18px #1d4a85}
-  .sph.on.prefeitura{background:linear-gradient(140deg,#5c3f12,#7d5c17);box-shadow:0 0 0 1px rgba(232,189,114,.38),0 12px 28px -18px #7d5c17}
-  .sph.on.geral{background:linear-gradient(140deg,#33255f,#463683);box-shadow:0 0 0 1px rgba(179,161,255,.38),0 12px 28px -18px #463683}
+  .sph.on.estado{background:linear-gradient(140deg,color-mix(in oklch,var(--blue),black 62%),color-mix(in oklch,var(--blue),black 46%));box-shadow:0 0 0 1px color-mix(in oklch,var(--blue) 40%,transparent),0 12px 28px -18px color-mix(in oklch,var(--blue),black 40%)}
+  .sph.on.prefeitura{background:linear-gradient(140deg,color-mix(in oklch,var(--gold),black 64%),color-mix(in oklch,var(--gold),black 48%));box-shadow:0 0 0 1px color-mix(in oklch,var(--gold) 40%,transparent),0 12px 28px -18px color-mix(in oklch,var(--gold),black 44%)}
+  .sph.on.geral{background:linear-gradient(140deg,color-mix(in oklch,var(--purple),black 62%),color-mix(in oklch,var(--purple),black 46%));box-shadow:0 0 0 1px color-mix(in oklch,var(--purple) 40%,transparent),0 12px 28px -18px color-mix(in oklch,var(--purple),black 42%)}
   .sph .c{font-size:10.5px;opacity:.85;font-weight:550}
   @media (max-width:600px){
     .sph{min-width:0;flex-direction:column;gap:4px;padding:9px 6px;text-align:center}
@@ -145,9 +145,9 @@
       linear-gradient(180deg,rgba(79,214,196,.5) 14px,transparent 14px) top left/1.5px 28px no-repeat,
       linear-gradient(270deg,rgba(79,214,196,.35) 14px,transparent 14px) bottom right/28px 1.5px no-repeat,
       linear-gradient(0deg,rgba(79,214,196,.35) 14px,transparent 14px) bottom right/1.5px 28px no-repeat;opacity:.7}
-  .cover.estado{background:linear-gradient(135deg,rgba(29,74,133,.30),rgba(13,19,33,.65))}
-  .cover.prefeitura{background:linear-gradient(135deg,rgba(125,92,23,.26),rgba(13,19,33,.65))}
-  .cover.geral{background:linear-gradient(135deg,rgba(70,54,131,.28),rgba(13,19,33,.65))}
+  .cover.estado{background:linear-gradient(135deg,color-mix(in oklch,var(--blue) 22%,transparent),color-mix(in oklch,var(--bg) 55%,transparent))}
+  .cover.prefeitura{background:linear-gradient(135deg,color-mix(in oklch,var(--gold) 20%,transparent),color-mix(in oklch,var(--bg) 55%,transparent))}
+  .cover.geral{background:linear-gradient(135deg,color-mix(in oklch,var(--purple) 22%,transparent),color-mix(in oklch,var(--bg) 55%,transparent))}
   .cover .t{font-size:1.5rem;font-weight:750;letter-spacing:-.02em;line-height:1.2;text-wrap:balance}
   .cover .s{color:var(--tx2);font-size:13px;margin-top:4px;max-width:680px;line-height:1.55}
   .cover .ic{position:absolute;right:8px;top:-6px;font-size:78px;opacity:.09}
@@ -243,7 +243,8 @@
   .search .az.on{background:var(--teal);color:#04120f;border-color:var(--teal)}
   .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
   .chip{border:1px solid var(--bd);background:var(--card);color:var(--mut);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:650;cursor:pointer;transition:.12s}
-  .chip.on{color:#fff;border-color:var(--accent);background:rgba(91,157,255,.14)}
+  .chip:hover{border-color:var(--bd);color:var(--tx2)}
+  .chip.on{color:var(--ink);border-color:var(--accent);background:color-mix(in oklch,var(--accent) 14%,transparent)}
 
   pre{white-space:pre-wrap;word-break:break-word;font:12px/1.5 var(--mono);color:var(--tx2);margin:0;background:#080f1e;border:1px solid var(--bd2);border-radius:11px;padding:11px 12px;max-height:190px;overflow:auto}
   .skel{color:var(--dim);font-size:13px;padding:24px 0;text-align:center}
@@ -740,7 +741,7 @@ async function _compBuscar(){
     h+=`<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir('e_comp')">← voltar à busca</a></div>`;
     h+=`<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida||'')}</span></h3>`;
     h+=`<div class="grid g2">${kpi(fmtR(d.mediana_geral),'Mediana do item','var(--amber)','⚖️')}${kpi(fmtN(d.n_orgaos),'Órgãos',null,'🏛️')}${kpi(fmtN(d.n_fornecedores),'Fornecedores',null,'🏢')}${kpi(fmtN(d.n_compras),'Compras',null,'🧾')}</div>`;
-    const linha=(x,lbl)=>{const c=x.vs_geral>=1.5?'var(--rose)':(x.vs_geral<=0.75?'#4ade80':'var(--amber)');
+    const linha=(x,lbl)=>{const c=x.vs_geral>=1.5?'var(--rose)':(x.vs_geral<=0.75?'var(--green)':'var(--amber)');
       return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
         <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">n=${x.n}</div></div>
         <div class="right"><div class="num" style="font-weight:800;color:${c}">${fmtR(x.mediana)}</div><div class="dim">${x.vs_geral}× a mediana</div></div></div>`,x.vs_geral>=1.5?'hl':'');};
@@ -767,7 +768,7 @@ async function _compOrgaos(){
   if(!d.ok)return card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const linha=(x,bom)=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
     <div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">${x.n_itens} itens comparáveis · ${x.n_compras} compras</div></div>
-    <div class="right"><div class="num" style="font-weight:800;color:${bom?'#4ade80':'var(--rose)'}">${x.razao_mediana}×</div><div class="dim">${bom?'abaixo':'acima'} do mercado</div></div></div>`,!bom?'hl':'');
+    <div class="right"><div class="num" style="font-weight:800;color:${bom?'var(--green)':'var(--rose)'}">${x.razao_mediana}×</div><div class="dim">${bom?'abaixo':'acima'} do mercado</div></div></div>`,!bom?'hl':'');
   let h=`<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
   h+=sec('🟢 Gastam MELHOR (pagam abaixo do mercado)')+`<div class="grid">`+(d.melhores||[]).slice(0,20).map(x=>linha(x,true)).join('')+`</div>`;
   h+=sec('🔴 Pagam ACIMA do mercado (auditar preços)')+`<div class="grid">`+(d.piores||[]).slice(0,20).map(x=>linha(x,false)).join('')+`</div>`;
@@ -778,14 +779,14 @@ async function _compEconomia(){
   if(!d.ok)return card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   let h=`<div style="text-align:center;margin:10px 0 18px">
     <div class="dim" style="font-size:13px;letter-spacing:.5px">ECONOMIA POTENCIAL IDENTIFICADA (itens comparáveis do PNCP)</div>
-    <div style="font-weight:800;font-size:46px;color:#4ade80;line-height:1.1;margin:4px 0">${fmtRc(d.economia_total)}</div>
+    <div style="font-weight:800;font-size:46px;color:var(--green);line-height:1.1;margin:4px 0">${fmtRc(d.economia_total)}</div>
     <div class="dim">se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item · ${fmtN(d.n_compras_acima_mediana)} compras acima da mediana · o número cresce conforme a base de preços do PNCP é coletada</div></div>`;
   const bloco=(titulo,arr,campo,fn)=>{
     let s=sec(titulo)+`<div class="grid">`;
     s+=(arr||[]).slice(0,12).map(x=>card(
       `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
         <div style="min-width:0;flex:1"><div style="font-weight:600">${fn(x)}</div><div class="dim" style="font-size:12px">${x.n} compra(s) acima da mediana</div></div>
-        <div class="right"><div class="num" style="font-weight:800;color:#4ade80">${fmtRc(x.economia)}</div><div class="dim">economizável</div></div></div>`)).join('');
+        <div class="right"><div class="num" style="font-weight:800;color:var(--green)">${fmtRc(x.economia)}</div><div class="dim">economizável</div></div></div>`)).join('');
     return s+`</div>`;
   };
   // destaque: sobrepreço pago a fornecedor JURIDICAMENTE VEDADO (o número mais forte)
@@ -839,7 +840,7 @@ async function _compForn(){
   if(!d.ok)return card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const linha=(x,caro)=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
     <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">${x.n_itens} itens · ${x.n_compras} compras</div></div>
-    <div class="right"><div class="num" style="font-weight:800;color:${caro?'var(--rose)':'#4ade80'}">${x.razao_mediana}×</div><div class="dim">${caro?'acima':'abaixo'} do mercado</div></div></div>`,caro?'hl':'');
+    <div class="right"><div class="num" style="font-weight:800;color:${caro?'var(--rose)':'var(--green)'}">${x.razao_mediana}×</div><div class="dim">${caro?'acima':'abaixo'} do mercado</div></div></div>`,caro?'hl':'');
   let h=`<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
   h+=sec('🔴 Mais CAROS (cobram acima do mercado)')+`<div class="grid">`+(d.mais_caros||[]).slice(0,20).map(x=>linha(x,true)).join('')+`</div>`;
   h+=sec('🟢 Mais BARATOS (cobram abaixo do mercado)')+`<div class="grid">`+(d.mais_baratos||[]).slice(0,20).map(x=>linha(x,false)).join('')+`</div>`;
@@ -1248,7 +1249,7 @@ async function _liftBloco(){
   const d=await J('/api/intel/lift');
   if(!d.ok)return '';
   const det=d.detectores||[];
-  const barra=(l,circ)=>{const w=Math.min(100,(l||0)/15*100);const col=circ?'var(--muted)':(l>=2?'var(--rose)':(l>=1?'var(--amber)':'var(--green,#4ade80)'));
+  const barra=(l,circ)=>{const w=Math.min(100,(l||0)/15*100);const col=circ?'var(--muted)':(l>=2?'var(--rose)':(l>=1?'var(--amber)':'var(--green,var(--green))'));
     return `<div style="background:rgba(255,255,255,.06);border-radius:4px;height:8px;overflow:hidden"><div style="width:${w}%;height:100%;background:${col}"></div></div>`;};
   let h=sec('Validação contra o gabarito objetivo (sanções) — lift por detector');
   h+=`<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${(d.taxa_base*100).toFixed(1)}%</b> dos ${fmtN(d.universo)} fornecedores são sancionados. <b>Lift</b> = quantas vezes o detector concentra sancionados acima disso. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal · <span class="dim">🔁 circular</span> = usa sanção como input (não é corroboração independente).</div>`;
@@ -1257,7 +1258,7 @@ async function _liftBloco(){
       <div style="min-width:0;flex:1"><div style="font-weight:700">${esc(x.detector)} ${x.circular?'<span class="tag" style="opacity:.6">🔁 circular</span>':''}${x.n_pequeno?'<span class="tag amber">⚠️ n<10</span>':''}</div>
       <div class="muted" style="font-size:12.5px;margin:3px 0">${x.sancionados}/${x.n} marcados são sancionados (${(x.taxa*100).toFixed(1)}%)</div>
       ${barra(x.lift,x.circular)}</div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.circular?'var(--muted)':(x.lift>=2?'var(--rose)':(x.lift>=1?'var(--amber)':'#4ade80'))}">${x.lift}×</div><div class="dim">lift</div></div></div>`)).join('')+`</div>`;
+      <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.circular?'var(--muted)':(x.lift>=2?'var(--rose)':(x.lift>=1?'var(--amber)':'var(--green)'))}">${x.lift}×</div><div class="dim">lift</div></div></div>`)).join('')+`</div>`;
   return h;
 }
 
