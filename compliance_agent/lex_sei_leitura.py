@@ -6,21 +6,37 @@ Extraído de lex.py (split 2026-07-06); comportamento idêntico (snapshot-tested
 from __future__ import annotations
 
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 # ── Leitura da ÍNTEGRA dos processos SEI ──────────────────────────────────────
 
-def _run_coro(factory):
-    """Roda uma corrotina com segurança, mesmo dentro de um event loop (FastAPI)."""
+def _run_coro(factory, timeout_s: float = 180.0):
+    """Roda uma corrotina com segurança, mesmo dentro de um event loop (FastAPI).
+
+    ``timeout_s``: teto duro — se o Chromium da leitura morrer no meio (vm_guard/cron mata
+    órfãos), o Future interno nunca resolve e o parecer travava PARA SEMPRE (flaky de
+    2026-07-16). Estourou → None (os callers degradam com ``or {}``)."""
     import asyncio
     import concurrent.futures
     try:
         loop = asyncio.get_running_loop()
     except RuntimeError:
         loop = None
-    if loop and loop.is_running():
-        with concurrent.futures.ThreadPoolExecutor(1) as ex:
-            return ex.submit(lambda: asyncio.run(factory())).result()
-    return asyncio.run(factory())
+    try:
+        if loop and loop.is_running():
+            ex = concurrent.futures.ThreadPoolExecutor(1)
+            try:
+                return ex.submit(lambda: asyncio.run(factory())).result(timeout=timeout_s)
+            finally:
+                # wait=False: não bloquear no join de um playwright pendurado; a thread
+                # zumbi morre quando o transporte do browser erra (segundos depois).
+                ex.shutdown(wait=False)
+        return asyncio.run(asyncio.wait_for(factory(), timeout=timeout_s))
+    except (asyncio.TimeoutError, concurrent.futures.TimeoutError):
+        logger.warning("_run_coro: corrotina estourou o teto de %.0fs — degradando p/ None", timeout_s)
+        return None
 
 
 def _dossie_sei(numero: str) -> dict | None:

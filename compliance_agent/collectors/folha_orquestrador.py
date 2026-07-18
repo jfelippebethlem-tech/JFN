@@ -46,12 +46,59 @@ def _coletor_mprj() -> dict:
     return folha_mprj.coletar()
 
 
+def _coletor_tjrj() -> dict:
+    """TJRJ — folha do mês mais recente (Anexo VIII CNJ, ZIP). Grava direto em registros_folha."""
+    from compliance_agent.collectors import folha_tjrj
+    return folha_tjrj.coletar()
+
+
+def _coletor_estado() -> dict:
+    """Executivo do Estado (GESPERJ — API REST da SPA /remuneracao, descoberta 2026-07-17).
+    ~482k registros/competência em páginas de 50 → teto por run + retomada via progresso."""
+    from compliance_agent.collectors import folha_estado
+    return folha_estado.coletar(paginas_por_run=1500)
+
+
+def _coletor_camara() -> dict:
+    """Câmara Municipal do RJ (dados abertos, CSV por ano de ingresso). Refresh dos anos recentes
+    (servidores que podem ter sido candidatos) + ponte p/ registros_folha. Full histórico (1990+) é
+    manual: `python -m compliance_agent.pcrj.camara_servidores --ano-min 1990`."""
+    import datetime as _dt
+
+    from compliance_agent.pcrj import camara_servidores as C
+    ano = _dt.date.today().year
+    col = C.coletar(ano_min=ano - 8, ano_max=ano, pausa=0.4)
+    br = C.bridge_para_folha()
+    return {**col, **br}
+
+
 # (órgão, URL de health-check, função de coleta)
 _FONTES = [
     ("DPRJ", "https://transparencia.rj.def.br/gastos-com-pessoal/relatorio-mensal-de-remuneracao", _coletor_dprj),
     ("MPRJ", "https://api-transparencia.mprj.mp.br:8280/cnmp115/1.0.0/anos", _coletor_mprj),
-    # ("UERJ/UENF/exec", "https://www.rj.gov.br/remuneracao", _coletor_seplag),   # quando o coletor existir
+    ("CAMARA_RJ", "https://transparencia.camara.rj.gov.br/", _coletor_camara),
+    ("TJRJ", "https://www3.tjrj.jus.br/portalservidor/PortalCorpDetalheFolha.aspx", _coletor_tjrj),
+    ("EXEC_ESTADO", "https://www.rj.gov.br/remuneracao/api/rest/remuneracoes/cargos", _coletor_estado),
 ]
+
+# ── MAPA DE FONTES RECONHECIDAS (2026-07-16) — coletores a construir (entram em _FONTES) ──
+# Reconhecimento (health-check ao vivo + pedido do dono). Cada um é um coletor próprio:
+_FONTES_MAPEADAS = {
+    # Estado — executivo (GESPERJ): SPA JS; achar o backend XHR (dev-tools) que serve a consulta.
+    "EXEC_ESTADO": {"url": "https://www.rj.gov.br/remuneracao/", "acesso": "SPA/GESPERJ (XHR backend)", "status": "200"},
+    # TJRJ: ASPX com ViewState — POST no PortalCorpDetalheFolha.aspx (form + __VIEWSTATE).
+    "TJRJ": {"url": "https://www3.tjrj.jus.br/portalservidor/PortalCorpDetalheFolha.aspx", "acesso": "ASPX ViewState", "status": "200"},
+    # MPRJ: API WSO2 CNMP115 (coletor existe em folha_mprj) — backend voltou a 401 (auth), reendpoint de dados instável.
+    "MPRJ_API": {"url": "https://api-transparencia.mprj.mp.br:8280/cnmp115/1.0.0", "acesso": "OAuth client_credentials", "status": "401"},
+    # TCE-RJ: portal da transparência (consulta remuneração de conselheiros/servidores).
+    "TCE_RJ": {"url": "https://www.tcerj.tc.br/portalnovo/pagina/portal-da-transparencia-tce-rj", "acesso": "portal (verificar export)", "status": "200"},
+    # Câmara Municipal do RJ: portal transparência (memória: CSV por ANOINGRESSO no módulo PCRJ).
+    "CAMARA_RJ": {"url": "https://transparencia.camara.rj.gov.br/", "acesso": "CSV/portal", "status": "200"},
+    # Prefeitura do RJ (PCRJ): contracheque JSF (não é REST) — usar contrachequedoc/ArquivoTC já mapeado no módulo PCRJ.
+    "PCRJ": {"url": "https://contrachequeapi.rio.gov.br/contrachequeapi/transparencia", "acesso": "JSF (viewstate) / ArquivoTC", "status": "200"},
+    # TCM-RJ: Tribunal de Contas do Município (buscar portal de transparência específico).
+    "TCM_RJ": {"url": "https://www.tcmrj.tc.br/", "acesso": "portal (a mapear)", "status": "?"},
+}
 
 
 def _total_por_orgao() -> dict:

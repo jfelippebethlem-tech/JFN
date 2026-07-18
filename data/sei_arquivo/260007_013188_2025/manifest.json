@@ -1,15 +1,66 @@
 {
  "processo": "260007/013188/2025",
- "gerado_em": "2026-07-06T08:13:49+00:00",
+ "gerado_em": "2026-07-11T07:42:18+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_013188_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Nota de Empenho Original - NE 2025NE03185 (115157223)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/000_nota_de_empenho_original_ne_2025ne03185.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Nota Fiscal - NF 2239 (115157239)",
+   "fase": "despesa",
+   "tipo": "nota_fiscal",
+   "texto": "texto/001_nota_fiscal_nf_2239_115157239.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Solicitação de Liquidação de Despesa 115158402",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/002_despacho_de_solicita_o_de_liquida_o_de_d.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Nota de Liquidação - 2025NL05622 (115571171)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/003_nota_de_liquida_o_2025nl05622_115571171.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 115572020",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 5,
   "controle": 0,
   "tramitacao": 0,
   "indefinida": 0
@@ -26,6 +77,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

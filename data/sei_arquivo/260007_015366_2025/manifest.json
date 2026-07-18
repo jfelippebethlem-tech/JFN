@@ -1,18 +1,79 @@
 {
  "processo": "260007/015366/2025",
- "gerado_em": "2026-07-06T07:23:43+00:00",
+ "gerado_em": "2026-07-11T07:38:44+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_015366_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Anexo NF 905 - DONEGATE (118482694)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/000_anexo_nf_905_donegate_118482694.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Anexo 2025NE06317 - DONEGATE (118482713)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/001_anexo_2025ne06317_donegate_118482713.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Anexo DONEGATE SIMPLES NACIONAL (118482815)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/002_anexo_donegate_simples_nacional_11848281.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Despacho de Encaminhamento de Processo 118485140",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/003_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Nota de Liquidação - NL 2025NL06649 (118897180)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_nota_de_liquida_o_nl_2025nl06649_1188971.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 118897880",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/005_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 3,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 1,
+  "indefinida": 2
  },
  "lacunas": [
   {
@@ -26,6 +87,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

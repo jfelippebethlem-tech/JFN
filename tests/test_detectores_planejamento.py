@@ -115,6 +115,33 @@ def test_p1_nao_avaliavel_sem_tr_nem_requisitos():
     assert r.status == "nao_avaliavel"
 
 
+def test_p1_negacao_de_marca_no_tr_nao_e_nominativo():
+    """'É vedada a indicação de marca' é a cláusula que PROÍBE — não pode acionar evidência nominativa."""
+    ctx = {
+        "processo": "plan-6b",
+        "tr_texto": ("As especificações são neutras. É vedada a indicação de marca, modelo ou fabricante, "
+                     "nos termos do art. 41 da Lei 14.133/2021."),
+    }
+    r = P1EspecificacaoDirigida().avaliar(ctx)
+    _valido(r)
+    assert r.status == "descartado"
+    assert r.score == 0.0
+    assert r.valores["n_requisitos_nominativos"] == 0
+
+
+def test_p1_marca_afirmativa_no_tr_segue_critico():
+    """Controle positivo: marca AFIRMATIVA no corpo do TR (sem 'ou equivalente') continua crítico."""
+    ctx = {
+        "processo": "plan-6c",
+        "tr_texto": "O equipamento deverá ser da marca Cisco, modelo Catalyst 9300, novo e lacrado.",
+    }
+    r = P1EspecificacaoDirigida().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.score == ANCORAS["critico"]
+    assert r.valores["n_requisitos_nominativos"] == 1
+
+
 # ═══════════════════════════════ P2 — cotações combinadas ═══════════════════════════════
 def test_p2_confirma_vencedor_entre_cotantes():
     """O vencedor está entre os cotantes (cotou o próprio teto) → forte."""
@@ -196,6 +223,32 @@ def test_p2_nao_avaliavel_menos_de_2_cotacoes():
     r = P2CotacoesCombinadas().avaliar({"processo": "plan-12", "cotacoes": [{"cnpj": "1"}]})
     _valido(r)
     assert r.status == "nao_avaliavel"
+
+
+def test_p2_cv_com_2_totais_nao_pontua():
+    """CV com n=2 não diz nada (2 cotações sempre 'alinham' fácil) → ressalva, não pontua → descartado."""
+    ctx = {
+        "processo": "plan-13",
+        "cotacoes": [{"cnpj": "1", "total": 100.0}, {"cnpj": "2", "total": 100.5}],
+    }
+    r = P2CotacoesCombinadas().avaliar(ctx)
+    _valido(r)
+    assert r.status == "descartado"
+    assert r.score == 0.0
+    assert "ressalva_cv_n" in r.valores
+
+
+def test_p2_cv_com_3_totais_pontua_com_ressalva():
+    """n=3 é o mínimo da regra de CV: pontua (fraco) mas registra ressalva de n em valores."""
+    ctx = {
+        "processo": "plan-14",
+        "cotacoes": [{"cnpj": "1", "total": 100.0}, {"cnpj": "2", "total": 100.5}, {"cnpj": "3", "total": 101.0}],
+    }
+    r = P2CotacoesCombinadas().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.score == ANCORAS["fraco"]
+    assert "ressalva_cv_n" in r.valores
 
 
 # ═══════════════════════════════ P5 — emergência fabricada ═══════════════════════════════

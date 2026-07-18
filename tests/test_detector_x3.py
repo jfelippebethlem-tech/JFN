@@ -43,21 +43,32 @@ def test_x3_confirma_pagamento_antes_do_atesto():
 
 
 # ═══════════════════════════════ (b) ≥40% em dezembro + sem cronograma → forte ═══════════════════════════════
+def _pagamentos_ano_cheio_dezembro_alto() -> list[dict]:
+    """6 pagamentos ao longo do ano, 80% do valor em dezembro (n e cobertura satisfeitos)."""
+    return [
+        {"data_pagamento": "2024-02-10", "valor": 5000.0},
+        {"data_pagamento": "2024-04-10", "valor": 5000.0},
+        {"data_pagamento": "2024-06-10", "valor": 5000.0},
+        {"data_pagamento": "2024-08-10", "valor": 5000.0},
+        {"data_pagamento": "2024-12-05", "valor": 60000.0},
+        {"data_pagamento": "2024-12-20", "valor": 20000.0},
+    ]
+
+
 def test_x3_confirma_dezembro_sem_cronograma():
     ctx = {
         "processo": "exec-2",
         "tem_cronograma": False,
-        "pagamentos": [
-            {"data_pagamento": "2024-12-05", "valor": 60000.0},
-            {"data_pagamento": "2024-12-20", "valor": 20000.0},
-            {"data_pagamento": "2024-06-10", "valor": 20000.0},
-        ],  # 80% do valor em dezembro
+        "vigencia_inicio": "2024-01-01",
+        "vigencia_fim": "2024-12-31",
+        "pagamentos": _pagamentos_ano_cheio_dezembro_alto(),  # 80% do valor em dezembro
     }
     r = X3ExecucaoFinanceira().avaliar(ctx)
     _valido(r)
     assert r.status == "confirmado"
     assert r.score >= ANCORAS["forte"]
     assert r.valores["pct_dezembro"] >= 0.40
+    assert r.valores["meses_vigencia_no_ano"] == 12
 
 
 def test_x3_dezembro_com_cronograma_so_medio():
@@ -65,6 +76,23 @@ def test_x3_dezembro_com_cronograma_so_medio():
     ctx = {
         "processo": "exec-2b",
         "tem_cronograma": True,
+        "vigencia_inicio": "2024-01-01",
+        "vigencia_fim": "2024-12-31",
+        "pagamentos": _pagamentos_ano_cheio_dezembro_alto(),
+    }
+    r = X3ExecucaoFinanceira().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"
+    assert ANCORAS["medio"] <= r.score < ANCORAS["forte"]
+
+
+def test_x3_dezembro_n_pequeno_nao_pontua():
+    """<6 pagamentos → concentração em dezembro é aritmética (1 de 2 OBs em dez = 50%): ressalva, não pontua."""
+    ctx = {
+        "processo": "exec-2c",
+        "tem_cronograma": False,
+        "vigencia_inicio": "2024-01-01",
+        "vigencia_fim": "2024-12-31",
         "pagamentos": [
             {"data_pagamento": "2024-12-05", "valor": 60000.0},
             {"data_pagamento": "2024-06-10", "valor": 40000.0},
@@ -72,8 +100,32 @@ def test_x3_dezembro_com_cronograma_so_medio():
     }
     r = X3ExecucaoFinanceira().avaliar(ctx)
     _valido(r)
-    assert r.status == "confirmado"
-    assert ANCORAS["medio"] <= r.score < ANCORAS["forte"]
+    assert r.status == "descartado"
+    assert r.score == 0.0
+    assert "ressalva_dezembro" in r.valores
+
+
+def test_x3_dezembro_vigencia_curta_nao_pontua():
+    """Contrato vigente só out–dez concentra em dezembro NATURALMENTE (cobertura <6 meses) → não pontua."""
+    ctx = {
+        "processo": "exec-2d",
+        "tem_cronograma": False,
+        "vigencia_inicio": "2024-10-01",
+        "vigencia_fim": "2024-12-31",
+        "pagamentos": [
+            {"data_pagamento": "2024-10-10", "valor": 5000.0},
+            {"data_pagamento": "2024-10-25", "valor": 5000.0},
+            {"data_pagamento": "2024-11-10", "valor": 5000.0},
+            {"data_pagamento": "2024-11-25", "valor": 5000.0},
+            {"data_pagamento": "2024-12-05", "valor": 40000.0},
+            {"data_pagamento": "2024-12-20", "valor": 40000.0},
+        ],
+    }
+    r = X3ExecucaoFinanceira().avaliar(ctx)
+    _valido(r)
+    assert r.status == "descartado"
+    assert r.valores["meses_vigencia_no_ano"] == 3
+    assert "ressalva_dezembro" in r.valores
 
 
 # ═══════════════════════════════ (c) inversão de fila recorrente → confirma ═══════════════════════════════
@@ -180,3 +232,21 @@ def test_x3_identidade_e_familia():
     det = X3ExecucaoFinanceira()
     assert det.id == "X3"
     assert det.familia == "execucao"
+
+
+def test_x3_inversoes_contadas_por_pagamento_distinto_nao_por_par():
+    """UM pagamento que fura a fila diante de 3 esperas = 1 inversão (não 3 pares) → não é recorrente."""
+    ctx = {
+        "processo": "exec-3c",
+        "pagamentos": [{"data_pagamento": "2024-04-10", "valor": 10000.0}],
+        "fila_orgao": [
+            {"contrato": "A", "data_chegada": "2024-01-01", "data_pago": "2024-03-01"},
+            {"contrato": "B", "data_chegada": "2024-01-02", "data_pago": "2024-03-02"},
+            {"contrato": "C", "data_chegada": "2024-01-03", "data_pago": "2024-03-03"},
+            {"contrato": "D", "data_chegada": "2024-01-04", "data_pago": "2024-01-10"},  # único furo
+        ],
+    }
+    r = X3ExecucaoFinanceira().avaliar(ctx)
+    _valido(r)
+    assert r.valores["n_inversoes_fila"] == 1  # antes: 3 (pares) → falso 'recorrente'
+    assert r.status == "descartado"

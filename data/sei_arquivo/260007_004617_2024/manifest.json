@@ -1,24 +1,6281 @@
 {
  "processo": "260007/004617/2024",
- "gerado_em": "2026-07-06T07:02:54+00:00",
+ "gerado_em": "2026-07-11T07:14:00+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_004617_2024",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Comprovante 2024OB08797 R$20.000,00 CG0014104 237 6897 -178-3-Div (117278066)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/000_comprovante_2024ob08797_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Comprovante 2024OB08798 R$25.000,00 CG0014127 237 6897 -162-7-Ser (117278074)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/001_comprovante_2024ob08798_r_25_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Comprovante 2024OB11186 R$12.700,00 CG0014092 237 6897 -194-5-Com (117277340)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_comprovante_2024ob11186_r_12_700_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Comprovante 2024OB11196 R$60.000,00 CG0014126 237 6897 -167-8-Ser (117279351)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/003_comprovante_2024ob11196_r_60_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Comprovante 2024OB11202 R$2.000,00 CG0014139 237 6897 -1295-5-Se (117278659)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/004_comprovante_2024ob11202_r_2_000_00_cg001.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Comprovante 2024OB13591 R$34.000,00 CG0014149 237 6897 -7169-2-UD (117280076)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/005_comprovante_2024ob13591_r_34_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Despacho de Encaminhamento de Processo 124705413",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/006_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Despacho de Encaminhamento de Processo 124761958",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/007_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Correspondência Interna - NA 5 SIDES 2024 (70351321)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/008_correspond_ncia_interna_na_5_sides_2024.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Nota de Autorização de Despesa - NAD 141 (70370461)",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/009_nota_de_autoriza_o_de_despesa_nad_141_70.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Despacho de Encaminhamento de Processo 70607708",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/010_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Despacho de Encaminhamento de Processo 70625536",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/011_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Nota de Empenho Original - NE REF. COTA MARÇO 2024 (70647298)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/012_nota_de_empenho_original_ne_ref_cota_mar.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Despacho de Encaminhamento de Processo 70646958",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/013_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Anexo 2024NL00448 (70655477)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/014_anexo_2024nl00448_70655477.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "Anexo 2024NL00449 (70655478)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/015_anexo_2024nl00449_70655478.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "Anexo 2024NL00450 (70655479)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/016_anexo_2024nl00450_70655479.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "Anexo 2024NL00451 (70655484)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/017_anexo_2024nl00451_70655484.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Anexo 2024NL00452 (70655486)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/018_anexo_2024nl00452_70655486.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Anexo 2024NL00453 (70655829)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/019_anexo_2024nl00453_70655829.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "Anexo 2024NL00454 (70655830)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/020_anexo_2024nl00454_70655830.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "Anexo 2024NL00455 (70655833)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/021_anexo_2024nl00455_70655833.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "Anexo 2024NL00456 (70654971)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/022_anexo_2024nl00456_70654971.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "Anexo 2024NL00457 (70655836)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/023_anexo_2024nl00457_70655836.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "Anexo 2024NL00458 (70655489)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/024_anexo_2024nl00458_70655489.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "Anexo 2024NL00459 (70655838)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/025_anexo_2024nl00459_70655838.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "Anexo 2024NL00460 (70655839)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/026_anexo_2024nl00460_70655839.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 27,
+   "titulo": "Anexo 2024NL00461 (70655845)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/027_anexo_2024nl00461_70655845.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 28,
+   "titulo": "Anexo 2024NL00462 (70655846)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/028_anexo_2024nl00462_70655846.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 29,
+   "titulo": "Anexo 2024NL00463 (70655847)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/029_anexo_2024nl00463_70655847.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 30,
+   "titulo": "Anexo 2024NL00464 (70655848)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/030_anexo_2024nl00464_70655848.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 31,
+   "titulo": "Anexo 2024NL00465 (70655849)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/031_anexo_2024nl00465_70655849.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 32,
+   "titulo": "Anexo 2024NL00466 (70654331)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/032_anexo_2024nl00466_70654331.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 33,
+   "titulo": "Anexo 2024NL00467 (70654332)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/033_anexo_2024nl00467_70654332.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 34,
+   "titulo": "Anexo 2024NL00468 (70654333)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/034_anexo_2024nl00468_70654333.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 35,
+   "titulo": "Anexo 2024NL00469 (70655509)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/035_anexo_2024nl00469_70655509.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 36,
+   "titulo": "Anexo 2024NL00470 (70655853)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/036_anexo_2024nl00470_70655853.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 37,
+   "titulo": "Anexo 2024NL00471 (70655854)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/037_anexo_2024nl00471_70655854.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 38,
+   "titulo": "Anexo 2024NL00472 (70654335)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/038_anexo_2024nl00472_70654335.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 39,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 70655860",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/039_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 40,
+   "titulo": "Relação de PDs de SIDES COMP 03/2024 (70756430)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/040_rela_o_de_pds_de_sides_comp_03_2024_7075.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 41,
+   "titulo": "Despacho de Encaminhamento de Processo 70756519",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/041_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 42,
+   "titulo": "Ofício - NA 21 (70757481)",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/042_of_cio_na_21_70757481.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 43,
+   "titulo": "Despacho de Encaminhamento de Processo 70758490",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/043_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 44,
+   "titulo": "Relação de Ordens Bancárias SIDES MARÇO 2024 (71799571)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/044_rela_o_de_ordens_banc_rias_sides_mar_o_2.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 45,
+   "titulo": "Despacho de Encaminhamento de Processo 71800089",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/045_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 46,
+   "titulo": "Despacho de Encaminhamento de Processo 72100357",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/046_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 47,
+   "titulo": "Nota de Empenho Reforço - NE REF. COTA ABRIL 2024 (72256478)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/047_nota_de_empenho_refor_o_ne_ref_cota_abri.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 48,
+   "titulo": "Despacho de Encaminhamento de Processo 72257293",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/048_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 49,
+   "titulo": "Nota de Liquidação - NL 01149 (72343275)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/049_nota_de_liquida_o_nl_01149_72343275.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 50,
+   "titulo": "Nota de Liquidação - NL 01150 (72344826)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/050_nota_de_liquida_o_nl_01150_72344826.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 51,
+   "titulo": "Anexo 01152 (72344057)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/051_anexo_01152_72344057.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 52,
+   "titulo": "Nota de Liquidação - NL 01153 (72345045)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/052_nota_de_liquida_o_nl_01153_72345045.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 53,
+   "titulo": "Nota de Liquidação - NL 01154 (72345849)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/053_nota_de_liquida_o_nl_01154_72345849.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 54,
+   "titulo": "Nota de Liquidação - NL 01155 (72345439)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/054_nota_de_liquida_o_nl_01155_72345439.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 55,
+   "titulo": "Nota de Liquidação - NL 01156 (72345508)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/055_nota_de_liquida_o_nl_01156_72345508.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 56,
+   "titulo": "Nota de Liquidação - NL 01157 (72346527)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/056_nota_de_liquida_o_nl_01157_72346527.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 57,
+   "titulo": "Nota de Liquidação - NL 01159 (72346983)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/057_nota_de_liquida_o_nl_01159_72346983.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 58,
+   "titulo": "Nota de Liquidação - NL 01160 (72348618)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/058_nota_de_liquida_o_nl_01160_72348618.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 59,
+   "titulo": "Nota de Liquidação - NL 001161 (72347499)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/059_nota_de_liquida_o_nl_001161_72347499.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 60,
+   "titulo": "Nota de Liquidação - NL 01162 (72348527)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/060_nota_de_liquida_o_nl_01162_72348527.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 61,
+   "titulo": "Nota de Liquidação - NL 1166 (72349626)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/061_nota_de_liquida_o_nl_1166_72349626.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 62,
+   "titulo": "Nota de Liquidação - NL 01167 (72350259)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/062_nota_de_liquida_o_nl_01167_72350259.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 63,
+   "titulo": "Nota de Liquidação - NL 01168 (72350680)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/063_nota_de_liquida_o_nl_01168_72350680.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 64,
+   "titulo": "Nota de Liquidação - NL 01170 (72350491)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/064_nota_de_liquida_o_nl_01170_72350491.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 65,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 72350578",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/065_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 66,
+   "titulo": "Relação de PDs de SIDES COMP 04/2024 (72672749)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/066_rela_o_de_pds_de_sides_comp_04_2024_7267.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 67,
+   "titulo": "Despacho de Encaminhamento de Processo 72673697",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/067_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 68,
+   "titulo": "Ofício - NA 40 (72712685)",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/068_of_cio_na_40_72712685.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 69,
+   "titulo": "Despacho de Encaminhamento de Processo 72798588",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/069_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 70,
+   "titulo": "Relação de Ordens Bancárias Externas 2024RE00702 Relação de Ordem Bancaria (73022442)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/070_rela_o_de_ordens_banc_rias_externas_2024.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 71,
+   "titulo": "Despacho de Encaminhamento de Processo 73035109",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/071_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 72,
+   "titulo": "Relação de Ordens Bancárias SIDES ABRIL 2024 (74210742)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/072_rela_o_de_ordens_banc_rias_sides_abril_2.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 73,
+   "titulo": "Despacho de Encaminhamento de Processo 74211228",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/073_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 74,
+   "titulo": "Termo de Cancelamento de Documento 74604074",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/074_termo_de_cancelamento_de_documento_74604.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 75,
+   "titulo": "Despacho de Encaminhamento de Processo 74604638",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/075_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 76,
+   "titulo": "Despacho de Encaminhamento de Processo 74651624",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/076_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 77,
+   "titulo": "Nota de Empenho Original - NE COTAS SIDES MAIO/2024 HUPE (74651876)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/077_nota_de_empenho_original_ne_cotas_sides.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 78,
+   "titulo": "Anexo 2024NL02094 (74704813)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/078_anexo_2024nl02094_74704813.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 79,
+   "titulo": "Anexo 2024NL02095 (74704815)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/079_anexo_2024nl02095_74704815.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 80,
+   "titulo": "Anexo 2024NL02096 (74704818)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/080_anexo_2024nl02096_74704818.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 81,
+   "titulo": "Anexo 2024NL02097 (74703953)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/081_anexo_2024nl02097_74703953.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 82,
+   "titulo": "Anexo 2024NL02098 (74704821)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/082_anexo_2024nl02098_74704821.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 83,
+   "titulo": "Anexo 2024NL02099 (74703958)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/083_anexo_2024nl02099_74703958.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 84,
+   "titulo": "Anexo 2024NL02100 (74704242)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/084_anexo_2024nl02100_74704242.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 85,
+   "titulo": "Anexo 2024NL02101 (74702431)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/085_anexo_2024nl02101_74702431.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 86,
+   "titulo": "Anexo 2024NL02102 (74703962)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/086_anexo_2024nl02102_74703962.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 87,
+   "titulo": "Anexo 2024NL02103 (74703965)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/087_anexo_2024nl02103_74703965.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 88,
+   "titulo": "Anexo 2024NL02104 (74703966)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/088_anexo_2024nl02104_74703966.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 89,
+   "titulo": "Anexo 2024NL02105 (74703967)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/089_anexo_2024nl02105_74703967.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 90,
+   "titulo": "Anexo 2024NL02106 (74703968)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/090_anexo_2024nl02106_74703968.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 91,
+   "titulo": "Anexo 2024NL02107 (74703969)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/091_anexo_2024nl02107_74703969.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 92,
+   "titulo": "Anexo 2024NL02108 (74702432)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/092_anexo_2024nl02108_74702432.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 93,
+   "titulo": "Anexo 2024NL02109 (74702433)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/093_anexo_2024nl02109_74702433.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 94,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 74703979",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/094_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 95,
+   "titulo": "Despacho de Encaminhamento de Processo 76398537",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/095_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 96,
+   "titulo": "Anexo Notas de Empenho - COTA JUNHO - SIDES (76828045)",
+   "fase": "planejamento",
+   "tipo": "pesquisa_precos",
+   "texto": "texto/096_anexo_notas_de_empenho_cota_junho_sides.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 97,
+   "titulo": "Despacho de Encaminhamento de Processo 76828688",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/097_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 98,
+   "titulo": "Anexo 2024NL02892 (76859871)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/098_anexo_2024nl02892_76859871.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 99,
+   "titulo": "Anexo 2024NL02893 (76859883)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/099_anexo_2024nl02893_76859883.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 100,
+   "titulo": "Anexo 2024NL02894 (76863415)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/100_anexo_2024nl02894_76863415.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 101,
+   "titulo": "Anexo 2024NL02895 (76863416)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/101_anexo_2024nl02895_76863416.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 102,
+   "titulo": "Anexo 2024NL02896 (76863690)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/102_anexo_2024nl02896_76863690.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 103,
+   "titulo": "Anexo 2024NL02897 (76863691)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/103_anexo_2024nl02897_76863691.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 104,
+   "titulo": "Anexo 2024NL02898 (76863692)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/104_anexo_2024nl02898_76863692.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 105,
+   "titulo": "Anexo 2024NL02899 (76863693)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/105_anexo_2024nl02899_76863693.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 106,
+   "titulo": "Anexo 2024NL02900 (76863418)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/106_anexo_2024nl02900_76863418.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 107,
+   "titulo": "Relação de PDs de SIDES para execução JUNHO 2024 R$ 821.500,00 (77141028)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/107_rela_o_de_pds_de_sides_para_execu_o_junh.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 108,
+   "titulo": "Despacho de Encaminhamento de Processo 77143193",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/108_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 109,
+   "titulo": "Ofício - NA 72 (77144454)",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/109_of_cio_na_72_77144454.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 110,
+   "titulo": "Despacho de Encaminhamento de Processo 77167331",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/110_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 111,
+   "titulo": "Despacho de Encaminhamento de Processo 78686308",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/111_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 112,
+   "titulo": "Despacho de Encaminhamento de Processo 79119638",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/112_despacho_de_encaminhamento_de_processo_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 113,
+   "titulo": "Anexo NOTAS DE EMPENHO - COTA JULHO SIDES (80235823)",
+   "fase": "planejamento",
+   "tipo": "pesquisa_precos",
+   "texto": "texto/113_anexo_notas_de_empenho_cota_julho_sides.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 114,
+   "titulo": "Despacho de Encaminhamento de Processo 80235598",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/114_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 115,
+   "titulo": "Anexo 2024NL04076 (80242746)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/115_anexo_2024nl04076_80242746.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 116,
+   "titulo": "Anexo 2024NL04077 (80242237)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/116_anexo_2024nl04077_80242237.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 117,
+   "titulo": "Anexo 2024NL04078 (80242748)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/117_anexo_2024nl04078_80242748.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 118,
+   "titulo": "Anexo 2024NL04079 (80242239)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/118_anexo_2024nl04079_80242239.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 119,
+   "titulo": "Anexo 2024NL04080 (80242749)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/119_anexo_2024nl04080_80242749.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 120,
+   "titulo": "Anexo 2024NL04081 (80242240)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/120_anexo_2024nl04081_80242240.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 121,
+   "titulo": "Anexo 2024NL04082 (80242241)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/121_anexo_2024nl04082_80242241.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 122,
+   "titulo": "Anexo 2024NL04083 (80242243)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/122_anexo_2024nl04083_80242243.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 123,
+   "titulo": "Anexo 2024NL04084 (80242244)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/123_anexo_2024nl04084_80242244.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 124,
+   "titulo": "Anexo 2024NL04085 (80242245)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/124_anexo_2024nl04085_80242245.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 125,
+   "titulo": "Anexo 2024NL04086 (80241825)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/125_anexo_2024nl04086_80241825.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 126,
+   "titulo": "Anexo 2024NL04087 (80241826)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/126_anexo_2024nl04087_80241826.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 127,
+   "titulo": "Anexo 2024NL04088 (80242273)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/127_anexo_2024nl04088_80242273.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 128,
+   "titulo": "Anexo 2024NL04089 (80241827)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/128_anexo_2024nl04089_80241827.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 129,
+   "titulo": "Anexo 2024NL04090 (80241828)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/129_anexo_2024nl04090_80241828.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 130,
+   "titulo": "Anexo 2024NL04091 (80241830)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/130_anexo_2024nl04091_80241830.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 131,
+   "titulo": "Anexo 2024NL04092 (80241831)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/131_anexo_2024nl04092_80241831.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 132,
+   "titulo": "Anexo 2024NL04093 (80241832)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/132_anexo_2024nl04093_80241832.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 133,
+   "titulo": "Anexo 2024NL04094 (80242276)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/133_anexo_2024nl04094_80242276.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 134,
+   "titulo": "Anexo 2024NL04095 (80242277)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/134_anexo_2024nl04095_80242277.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 135,
+   "titulo": "Anexo 2024NL04096 (80242291)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/135_anexo_2024nl04096_80242291.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 136,
+   "titulo": "Anexo 2024NL04097 (80242292)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/136_anexo_2024nl04097_80242292.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 137,
+   "titulo": "Anexo 2024NL04098 (80242802)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/137_anexo_2024nl04098_80242802.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 138,
+   "titulo": "Anexo 2024NL04099 (80242803)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/138_anexo_2024nl04099_80242803.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 139,
+   "titulo": "Anexo 2024NL04100 (80242804)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/139_anexo_2024nl04100_80242804.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 140,
+   "titulo": "Anexo 2024NL04101 (80242805)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/140_anexo_2024nl04101_80242805.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 141,
+   "titulo": "Anexo 2024NL04102 (80242293)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/141_anexo_2024nl04102_80242293.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 142,
+   "titulo": "Anexo 2024NL04103 (80242294)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/142_anexo_2024nl04103_80242294.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 143,
+   "titulo": "Anexo 2024NL04104 (80242295)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/143_anexo_2024nl04104_80242295.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 144,
+   "titulo": "Anexo 2024NL04105 (80242807)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/144_anexo_2024nl04105_80242807.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 145,
+   "titulo": "Anexo 2024NL04106 (80241847)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/145_anexo_2024nl04106_80241847.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 146,
+   "titulo": "Anexo 2024NL04107 (80241848)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/146_anexo_2024nl04107_80241848.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 147,
+   "titulo": "Anexo 2024NL04108 (80242297)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/147_anexo_2024nl04108_80242297.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 148,
+   "titulo": "Anexo 2024NL04109 (80242298)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/148_anexo_2024nl04109_80242298.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 149,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 80242299",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/149_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 150,
+   "titulo": "Relação de PDs de SIDES para execução JULHO 2024 R$ 1.103.500,00 (80717613)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/150_rela_o_de_pds_de_sides_para_execu_o_julh.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 151,
+   "titulo": "Despacho de Encaminhamento de Processo 80716102",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/151_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 152,
+   "titulo": "Ofício - NA 99 (80761116)",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/152_of_cio_na_99_80761116.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 153,
+   "titulo": "Despacho de Encaminhamento de Processo 80863442",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/153_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 154,
+   "titulo": "Despacho de Encaminhamento de Processo 80992433",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/154_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 155,
+   "titulo": "Anexo Notas de Empenho - COTA AGOSTO - SIDES (81129952)",
+   "fase": "planejamento",
+   "tipo": "pesquisa_precos",
+   "texto": "texto/155_anexo_notas_de_empenho_cota_agosto_sides.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 156,
+   "titulo": "Despacho de Encaminhamento de Processo 81130216",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/156_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 157,
+   "titulo": "Anexo 2024NL04329 (81133216)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/157_anexo_2024nl04329_81133216.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 158,
+   "titulo": "Anexo 2024NL04330 (81133217)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/158_anexo_2024nl04330_81133217.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 159,
+   "titulo": "Anexo 2024NL04331 (81133219)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/159_anexo_2024nl04331_81133219.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 160,
+   "titulo": "Anexo 2024NL04332 (81133220)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/160_anexo_2024nl04332_81133220.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 161,
+   "titulo": "Anexo 2024NL04333 (81132595)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/161_anexo_2024nl04333_81132595.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 162,
+   "titulo": "Anexo 2024NL04334 (81131580)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/162_anexo_2024nl04334_81131580.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 163,
+   "titulo": "Anexo 2024NL04335 (81133224)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/163_anexo_2024nl04335_81133224.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 164,
+   "titulo": "Anexo 2024NL04336 (81132597)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/164_anexo_2024nl04336_81132597.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 165,
+   "titulo": "Anexo 2024NL04337 (81132598)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/165_anexo_2024nl04337_81132598.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 166,
+   "titulo": "Anexo 2024NL04338 (81132599)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/166_anexo_2024nl04338_81132599.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 167,
+   "titulo": "Anexo 2024NL04339 (81132601)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/167_anexo_2024nl04339_81132601.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 168,
+   "titulo": "Anexo 2024NL04340 (81133226)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/168_anexo_2024nl04340_81133226.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 169,
+   "titulo": "Anexo 2024NL04341 (81133228)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/169_anexo_2024nl04341_81133228.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 170,
+   "titulo": "Anexo 2024NL04342 (81133231)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/170_anexo_2024nl04342_81133231.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 171,
+   "titulo": "Anexo 2024NL04343 (81133233)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/171_anexo_2024nl04343_81133233.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 172,
+   "titulo": "Anexo 2024NL04344 (81133234)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/172_anexo_2024nl04344_81133234.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 173,
+   "titulo": "Anexo 2024NL04345 (81131585)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/173_anexo_2024nl04345_81131585.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 174,
+   "titulo": "Anexo 2024NL04346 (81131586)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/174_anexo_2024nl04346_81131586.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 175,
+   "titulo": "Anexo 2024NL04347 (81133310)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/175_anexo_2024nl04347_81133310.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 176,
+   "titulo": "Anexo 2024NL04348 (81133311)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/176_anexo_2024nl04348_81133311.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 177,
+   "titulo": "Anexo 2024NL04349 (81133312)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/177_anexo_2024nl04349_81133312.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 178,
+   "titulo": "Anexo 2024NL04350 (81133314)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/178_anexo_2024nl04350_81133314.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 179,
+   "titulo": "Anexo 2024NL04351 (81133689)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/179_anexo_2024nl04351_81133689.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 180,
+   "titulo": "Anexo 2024NL04352 (81133690)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/180_anexo_2024nl04352_81133690.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 181,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 81131604",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/181_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 182,
+   "titulo": "Despacho de Encaminhamento de Processo 83137226",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/182_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 183,
+   "titulo": "Despacho de Encaminhamento de Processo 83292105",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/183_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 184,
+   "titulo": "Anexo Notas de Empenho - COTA SETEMBRO - SIDES (83528688)",
+   "fase": "planejamento",
+   "tipo": "pesquisa_precos",
+   "texto": "texto/184_anexo_notas_de_empenho_cota_setembro_sid.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 185,
+   "titulo": "Despacho de Encaminhamento de Processo 83529144",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/185_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 186,
+   "titulo": "Anexo 2024NL05185 (83568348)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/186_anexo_2024nl05185_83568348.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 187,
+   "titulo": "Anexo 2024NL05188 (83568349)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/187_anexo_2024nl05188_83568349.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 188,
+   "titulo": "Anexo 2024NL05190 (83569635)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/188_anexo_2024nl05190_83569635.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 189,
+   "titulo": "Anexo 2024NL05192 (83569636)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/189_anexo_2024nl05192_83569636.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 190,
+   "titulo": "Anexo 2024NL05194 (83568352)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/190_anexo_2024nl05194_83568352.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 191,
+   "titulo": "Anexo 2024NL05196 (83568353)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/191_anexo_2024nl05196_83568353.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 192,
+   "titulo": "Anexo 2024NL05198 (83568354)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/192_anexo_2024nl05198_83568354.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 193,
+   "titulo": "Anexo 2024NL05200 (83568355)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/193_anexo_2024nl05200_83568355.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 194,
+   "titulo": "Anexo 2024NL05202 (83568548)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/194_anexo_2024nl05202_83568548.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 195,
+   "titulo": "Anexo 2024NL05203 (83569504)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/195_anexo_2024nl05203_83569504.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 196,
+   "titulo": "Anexo 2024NL05204 (83568549)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/196_anexo_2024nl05204_83568549.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 197,
+   "titulo": "Anexo 2024NL05205 (83569858)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/197_anexo_2024nl05205_83569858.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 198,
+   "titulo": "Anexo 2024NL05206 (83569859)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/198_anexo_2024nl05206_83569859.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 199,
+   "titulo": "Anexo 2024NL05207 (83569860)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/199_anexo_2024nl05207_83569860.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 200,
+   "titulo": "Anexo 2024NL05208 (83568551)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/200_anexo_2024nl05208_83568551.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 201,
+   "titulo": "Anexo 2024NL05209 (83569862)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/201_anexo_2024nl05209_83569862.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 202,
+   "titulo": "Anexo 2024NL05210 (83568554)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/202_anexo_2024nl05210_83568554.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 203,
+   "titulo": "Anexo 2024NL05211 (83569863)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/203_anexo_2024nl05211_83569863.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 204,
+   "titulo": "Anexo 2024NL05212 (83569864)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/204_anexo_2024nl05212_83569864.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 205,
+   "titulo": "Anexo 2024NL05213 (83569865)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/205_anexo_2024nl05213_83569865.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 206,
+   "titulo": "Anexo 2024NL05214 (83568565)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/206_anexo_2024nl05214_83568565.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 207,
+   "titulo": "Anexo 2024NL05215 (83569868)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/207_anexo_2024nl05215_83569868.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 208,
+   "titulo": "Anexo 2024NL05201 (83568577)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/208_anexo_2024nl05201_83568577.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 209,
+   "titulo": "Anexo 2024NL05199 (83568578)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/209_anexo_2024nl05199_83568578.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 210,
+   "titulo": "Anexo 2024NL05197 (83568580)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/210_anexo_2024nl05197_83568580.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 211,
+   "titulo": "Anexo 2024NL05195 (83569522)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/211_anexo_2024nl05195_83569522.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 212,
+   "titulo": "Anexo 2024NL05193 (83568581)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/212_anexo_2024nl05193_83568581.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 213,
+   "titulo": "Anexo 2024NL05191 (83568582)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/213_anexo_2024nl05191_83568582.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 214,
+   "titulo": "Anexo 2024NL05187 (83568583)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/214_anexo_2024nl05187_83568583.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 215,
+   "titulo": "Anexo 2024NL05186 (83569887)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/215_anexo_2024nl05186_83569887.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 216,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 83569532",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/216_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 217,
+   "titulo": "Relação de PDs de SIDES para execução AGOSTO R$ 656.200,00 (83780808)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/217_rela_o_de_pds_de_sides_para_execu_o_agos.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 218,
+   "titulo": "Relação de Ordens Bancárias Externas 2024RE02762 Relação de Ordem Bancaria (84469933)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/218_rela_o_de_ordens_banc_rias_externas_2024.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 219,
+   "titulo": "Comprovante 2024OB08184 10000 237 6897 -11360-3-Cirurgia Torácica (84514063)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/219_comprovante_2024ob08184_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 220,
+   "titulo": "Comprovante 2024OB08183 11000 237 6897 -160-0-Cirurgia Bucomaxilofacial (84513549)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/220_comprovante_2024ob08183_11000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 221,
+   "titulo": "Comprovante 2024OB08180 30000 237 6897 -7679-1-Terapia Intensiva Pediátric (84514871)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/221_comprovante_2024ob08180_30000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 222,
+   "titulo": "Comprovante 2024OB08179 15000 237 6897 -184-8-Terapia Intensiva Geral (84515611)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/222_comprovante_2024ob08179_15000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 223,
+   "titulo": "Comprovante 2024OB08178 25000 237 6897 -7625-2-SIDA - Serviço de Informaçã (84515628)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/223_comprovante_2024ob08178_25000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 224,
+   "titulo": "Comprovante 2024OB08177 10000 237 6897 -7149-8-Serviço de Nefrologia (84515644)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/224_comprovante_2024ob08177_10000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 225,
+   "titulo": "Comprovante 2024OB08176 73000 237 6897 -177-5-Serviço de Manutenção (84514453)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/225_comprovante_2024ob08176_73000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 226,
+   "titulo": "Comprovante 2024OB08175 25000 237 6897 -172-4-Serviço de Laboratórios (84514466)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/226_comprovante_2024ob08175_25000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 227,
+   "titulo": "Comprovante 2024OB08174 30000 237 6897 -187-2-Serviço de Farmácia (84515799)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/227_comprovante_2024ob08174_30000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 228,
+   "titulo": "Comprovante 2024OB08173 20000 237 6897 -170-8-Serviço de Cirurgia Geral (84515818)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/228_comprovante_2024ob08173_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 229,
+   "titulo": "Comprovante 2024OB08172 140000 237 6897 -180-5-Serviço de Engenharia Clíni (84516159)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/229_comprovante_2024ob08172_140000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 230,
+   "titulo": "Comprovante 2024OB08171 30000 237 6897 -162-7-Serviço de Centro Cirúrgico (84514585)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/230_comprovante_2024ob08171_30000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 231,
+   "titulo": "Comprovante 2024OB08170 10000 237 6897 -7674-0-Reumatologia (84516635)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/231_comprovante_2024ob08170_10000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 232,
+   "titulo": "Comprovante 2024OB08169 10000 237 6897 -12260-2-UDA Psiquiatria (84515921)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/232_comprovante_2024ob08169_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 233,
+   "titulo": "Comprovante 2024OB08168 10000 237 6897 -181-3-Pneumologia (84515936)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/233_comprovante_2024ob08168_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 234,
+   "titulo": "Comprovante 2024OB08167 15000 237 6897 -7676-7-Pediatria (84516289)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/234_comprovante_2024ob08167_15000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 235,
+   "titulo": "Comprovante 2024OB08166 70000 237 6897 -17389-4-UDA Patologia Geral (84515978)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/235_comprovante_2024ob08166_70000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 236,
+   "titulo": "Comprovante 2024OB08165 27000 237 6897 -195-3-Ortopedia (84516001)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/236_comprovante_2024ob08165_27000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 237,
+   "titulo": "Comprovante 2024OB08164 36000 237 6897 -25184-4-NIR - Núcleo Interno de Re (84516382)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/237_comprovante_2024ob08164_36000_237_6897_2.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 238,
+   "titulo": "Comprovante 2024OB08162 40000 237 6897 -155-4-Neurocirurgia (84516734)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/238_comprovante_2024ob08162_40000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 239,
+   "titulo": "Comprovante 2024OB08161 14000 237 6897 -17000-3-Dermato -Laboratório de Mi (84515538)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/239_comprovante_2024ob08161_14000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 240,
+   "titulo": "Comprovante 2024OB08160 70000 237 6897 -182-1-Hemodinâmica (84516084)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/240_comprovante_2024ob08160_70000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 241,
+   "titulo": "Comprovante 2024OB08159 40000 237 6897 -7967-7-Gastroenterologia (84516106)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/241_comprovante_2024ob08159_40000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 242,
+   "titulo": "Comprovante 2024OB08158 30000 237 6897 -6920-5-Gabinete Direção - HUPE (84516529)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/242_comprovante_2024ob08158_30000_237_6897_6.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 243,
+   "titulo": "Comprovante 2024OB08157 50000 237 6897 -7960-0-UDA de Endrocrinologia (84517172)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/243_comprovante_2024ob08157_50000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 244,
+   "titulo": "Comprovante 2024OB08156 10000 237 6897 -11361-1-Dermatologia (84516564)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/244_comprovante_2024ob08156_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 245,
+   "titulo": "Comprovante 2024OB08155 110000 237 6897 -175-9-DA HUPE - Departamento de A (84516580)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/245_comprovante_2024ob08155_110000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 246,
+   "titulo": "Comprovante 2024OB08154 20000 237 6897 -168-6-Coordenadoria de Serviços Té (84516605)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/246_comprovante_2024ob08154_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 247,
+   "titulo": "Comprovante 2024OB08153 10000 237 6897 -193-7-Coordenadoria de Comunicação (84517741)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/247_comprovante_2024ob08153_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 248,
+   "titulo": "Comprovante 2024OB08152 3500 237 6897 -194-5-Comissão Científica Pedro Ern (84516979)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/248_comprovante_2024ob08152_3500_237_6897_19.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 249,
+   "titulo": "Comprovante 2024OB08151 25000 237 6897 -161-9-Coordenadoria de Assistência (84517536)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/249_comprovante_2024ob08151_25000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 250,
+   "titulo": "Comprovante 2024OB08182 7000 237 6897 -201-1-Anatomia Patológica (84519740)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/250_comprovante_2024ob08182_7000_237_6897_20.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 251,
+   "titulo": "Despacho de Encaminhamento de Processo 85797473",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/251_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 252,
+   "titulo": "Anexo SIDES OUTUBRO (22) (86674853)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/252_anexo_sides_outubro_22_86674853.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 253,
+   "titulo": "Despacho de Encaminhamento de Processo 86674348",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/253_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 254,
+   "titulo": "Anexo 2024NL06314 (86747961)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/254_anexo_2024nl06314_86747961.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 255,
+   "titulo": "Anexo 2024NL06315 (86747964)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/255_anexo_2024nl06315_86747964.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 256,
+   "titulo": "Anexo 2024NL06316 (86747969)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/256_anexo_2024nl06316_86747969.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 257,
+   "titulo": "Anexo 2024NL06317 (86748730)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/257_anexo_2024nl06317_86748730.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 258,
+   "titulo": "Anexo 2024NL06318 (86748452)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/258_anexo_2024nl06318_86748452.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 259,
+   "titulo": "Anexo 2024NL06319 (86748454)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/259_anexo_2024nl06319_86748454.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 260,
+   "titulo": "Anexo 2024NL06320 (86750522)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/260_anexo_2024nl06320_86750522.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 261,
+   "titulo": "Anexo 2024NL06321 (86750528)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/261_anexo_2024nl06321_86750528.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 262,
+   "titulo": "Anexo 2024NL06323 (86750531)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/262_anexo_2024nl06323_86750531.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 263,
+   "titulo": "Anexo 2024NL06326 (86751286)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/263_anexo_2024nl06326_86751286.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 264,
+   "titulo": "Anexo 2024NL06327 (86750541)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/264_anexo_2024nl06327_86750541.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 265,
+   "titulo": "Anexo 2024NL06329 (86750545)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/265_anexo_2024nl06329_86750545.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 266,
+   "titulo": "Anexo 2024NL06332 (86753027)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/266_anexo_2024nl06332_86753027.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 267,
+   "titulo": "Anexo 2024NL06334 (86753029)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/267_anexo_2024nl06334_86753029.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 268,
+   "titulo": "Anexo 2024NL06336 (86753033)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/268_anexo_2024nl06336_86753033.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 269,
+   "titulo": "Anexo 2024NL06338 (86753833)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/269_anexo_2024nl06338_86753833.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 270,
+   "titulo": "Anexo 2024NL06339 (86754302)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/270_anexo_2024nl06339_86754302.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 271,
+   "titulo": "Anexo 2024NL06341 (86753841)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/271_anexo_2024nl06341_86753841.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 272,
+   "titulo": "Anexo 2024NL06344 (86755633)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/272_anexo_2024nl06344_86755633.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 273,
+   "titulo": "Anexo 2024NL06346 (86754835)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/273_anexo_2024nl06346_86754835.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 274,
+   "titulo": "Anexo 2024NL06347 (86754836)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/274_anexo_2024nl06347_86754836.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 275,
+   "titulo": "Anexo 2024NL06349 (86754843)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/275_anexo_2024nl06349_86754843.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 276,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 86754927",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/276_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 277,
+   "titulo": "Relação PDs de SIDES para execução OUTUBRO 2024 (87220580)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/277_rela_o_pds_de_sides_para_execu_o_outubro.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 278,
+   "titulo": "Despacho de Encaminhamento de Processo 87220622",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/278_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 279,
+   "titulo": "Ofício - NA 161 (87222129)",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/279_of_cio_na_161_87222129.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 280,
+   "titulo": "Despacho de Encaminhamento de Processo 87306808",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/280_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 281,
+   "titulo": "Despacho de Encaminhamento de Processo 87539445",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/281_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 282,
+   "titulo": "Anexo SIDES 2024 NOVEMBRO (87911662)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/282_anexo_sides_2024_novembro_87911662.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 283,
+   "titulo": "Despacho de Encaminhamento de Processo 87911674",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/283_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 284,
+   "titulo": "Anexo 2024NL06688 (87956964)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/284_anexo_2024nl06688_87956964.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 285,
+   "titulo": "Anexo 2024NL06690 (87956996)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/285_anexo_2024nl06690_87956996.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 286,
+   "titulo": "Anexo 2024NL06691 (87957051)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/286_anexo_2024nl06691_87957051.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 287,
+   "titulo": "Anexo 2024NL06692 (87957854)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/287_anexo_2024nl06692_87957854.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 288,
+   "titulo": "Anexo 2024NL06693 (87957910)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/288_anexo_2024nl06693_87957910.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 289,
+   "titulo": "Anexo 2024NL06694 (87957631)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/289_anexo_2024nl06694_87957631.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 290,
+   "titulo": "Anexo 2024NL06695 (87957986)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/290_anexo_2024nl06695_87957986.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 291,
+   "titulo": "Anexo 2024NL06696 (87958394)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/291_anexo_2024nl06696_87958394.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 292,
+   "titulo": "Anexo 2024NL06697 (87958042)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/292_anexo_2024nl06697_87958042.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 293,
+   "titulo": "Anexo 2024NL06698 (87957724)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/293_anexo_2024nl06698_87957724.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 294,
+   "titulo": "Anexo 2024NL06699 (87962922)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/294_anexo_2024nl06699_87962922.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 295,
+   "titulo": "Anexo 2024NL06701 (87962512)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/295_anexo_2024nl06701_87962512.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 296,
+   "titulo": "Anexo 2024NL06702 (87962523)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/296_anexo_2024nl06702_87962523.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 297,
+   "titulo": "Anexo 2024NL06703 (87962550)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/297_anexo_2024nl06703_87962550.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 298,
+   "titulo": "Anexo 2024NL06704 (87962640)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/298_anexo_2024nl06704_87962640.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 299,
+   "titulo": "Anexo 2024NL06705 (87962649)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/299_anexo_2024nl06705_87962649.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 300,
+   "titulo": "Anexo 2024NL06706 (87963147)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/300_anexo_2024nl06706_87963147.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 301,
+   "titulo": "Anexo 2024NL06707 (87962661)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/301_anexo_2024nl06707_87962661.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 302,
+   "titulo": "Anexo 2024NL06708 (87962663)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/302_anexo_2024nl06708_87962663.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 303,
+   "titulo": "Anexo 2024NL06709 (87962672)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/303_anexo_2024nl06709_87962672.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 304,
+   "titulo": "Anexo 2024NL06710 (87971556)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/304_anexo_2024nl06710_87971556.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 305,
+   "titulo": "Anexo 2024NL06711 (87970636)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/305_anexo_2024nl06711_87970636.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 306,
+   "titulo": "Anexo 2024NL06712 (87971063)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/306_anexo_2024nl06712_87971063.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 307,
+   "titulo": "Anexo 2024NL06713 (87971559)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/307_anexo_2024nl06713_87971559.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 308,
+   "titulo": "Anexo 2024NL06714 (87971086)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/308_anexo_2024nl06714_87971086.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 309,
+   "titulo": "Anexo 2024NL06715 (87971088)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/309_anexo_2024nl06715_87971088.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 310,
+   "titulo": "Anexo 2024NL06716 (87971582)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/310_anexo_2024nl06716_87971582.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 311,
+   "titulo": "Anexo 2024NL06717 (87970668)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/311_anexo_2024nl06717_87970668.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 312,
+   "titulo": "Anexo 2024NL06718 (87971098)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/312_anexo_2024nl06718_87971098.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 313,
+   "titulo": "Anexo 2024NL06719 (87971914)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/313_anexo_2024nl06719_87971914.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 314,
+   "titulo": "Anexo 2024NL06723 (87970680)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/314_anexo_2024nl06723_87970680.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 315,
+   "titulo": "Anexo 2024NL06725 (87970682)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/315_anexo_2024nl06725_87970682.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 316,
+   "titulo": "Anexo 2024NL06726 (87971927)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/316_anexo_2024nl06726_87971927.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 317,
+   "titulo": "Anexo 2024NL06727 (87970698)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/317_anexo_2024nl06727_87970698.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 318,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 87971227",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/318_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 319,
+   "titulo": "Comprovante 2024OB11206 30000 237 6897 -176-7-Urologia (88533631)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/319_comprovante_2024ob11206_30000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 320,
+   "titulo": "Comprovante 2024OB11205 84000 237 6897 -17389-4-UDA Patologia Geral (88534683)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/320_comprovante_2024ob11205_84000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 321,
+   "titulo": "Comprovante 2024OB11204 16000 237 6897 -10981-9-Setor de Fonoaudiologia (88534686)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/321_comprovante_2024ob11204_16000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 322,
+   "titulo": "Comprovante 2024OB11203 10000 237 6897 -516-9-Setor de Fisiatria (88535113)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/322_comprovante_2024ob11203_10000_237_6897_5.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 323,
+   "titulo": "Comprovante 2024OB11201 20000 237 6897 -172-4-Serviço de Laboratórios (88534691)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/323_comprovante_2024ob11201_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 324,
+   "titulo": "Comprovante 2024OB11200 30000 237 6897 -165-1-Serviço de Hotelaria Hospita (88534135)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/324_comprovante_2024ob11200_30000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 325,
+   "titulo": "Comprovante 2024OB11199 10000 237 6897 -13462-7-Serviço de Hemoterapia Her (88533634)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/325_comprovante_2024ob11199_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 326,
+   "titulo": "Comprovante 2024OB11198 16000 237 6897 -170-8-Serviço de Cirurgia Geral (88535116)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/326_comprovante_2024ob11198_16000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 327,
+   "titulo": "Comprovante 2024OB11197 20000 237 6897 -162-7-Serviço de Centro Cirúrgico (88534703)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/327_comprovante_2024ob11197_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 328,
+   "titulo": "Comprovante 2024OB11195 15000 237 6897 -195-3-Ortopedia (88534141)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/328_comprovante_2024ob11195_15000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 329,
+   "titulo": "Comprovante 2024OB11194 12000 237 6897 -25184-4-NIR - Núcleo Interno de Re (88535127)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/329_comprovante_2024ob11194_12000_237_6897_2.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 330,
+   "titulo": "Comprovante 2024OB11193 15000 237 6897 -9618-0-Neurologia (88533636)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/330_comprovante_2024ob11193_15000_237_6897_9.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 331,
+   "titulo": "Comprovante 2024OB11192 40000 237 6897 -155-4-Neurocirurgia (88535131)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/331_comprovante_2024ob11192_40000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 332,
+   "titulo": "Comprovante 2024OB11191 3500 237 6897 -157-0-Medicina Integral (88534147)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/332_comprovante_2024ob11191_3500_237_6897_15.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 333,
+   "titulo": "Comprovante 2024OB11190 25000 237 6897 -7967-7-Gastroenterologia (88534150)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/333_comprovante_2024ob11190_25000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 334,
+   "titulo": "Comprovante 2024OB11189 5000 237 6897 -1425-7-Enfermaria de Adolecentes (88535135)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/334_comprovante_2024ob11189_5000_237_6897_14.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 335,
+   "titulo": "Comprovante 2024OB11188 100000 237 6897 -175-9-DA HUPE - Departamento de A (88535137)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/335_comprovante_2024ob11188_100000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 336,
+   "titulo": "Comprovante 2024OB11187 31000 237 6897 -169-4-Coordenadoria de Enfermagem (88533652)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/336_comprovante_2024ob11187_31000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 337,
+   "titulo": "Comprovante 2024OB11185 10000 237 6897 -13401-5-Cirurgia Plástica Enfermar (88533657)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/337_comprovante_2024ob11185_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 338,
+   "titulo": "Relação de PDs de Sides para execução Novembro 2024 (88657997)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/338_rela_o_de_pds_de_sides_para_execu_o_nove.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 339,
+   "titulo": "Despacho de Encaminhamento de Processo 88657245",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/339_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 340,
+   "titulo": "Ofício - NA 170 (88666523)",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/340_of_cio_na_170_88666523.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 341,
+   "titulo": "Despacho de Encaminhamento de Processo 88683341",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/341_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 342,
+   "titulo": "Termo de Cancelamento de Documento 88972322",
+   "fase": "tramitacao",
+   "tipo": "oficio",
+   "texto": "texto/342_termo_de_cancelamento_de_documento_88972.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 343,
+   "titulo": "Despacho de Encaminhamento de Processo 88972341",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/343_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 344,
+   "titulo": "Nota de Autorização de Despesa - NAD 699 (89005197)",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/344_nota_de_autoriza_o_de_despesa_nad_699_89.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 345,
+   "titulo": "Anexo SIDES 2024 DEZEMBRO - PT2 (89074519)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/345_anexo_sides_2024_dezembro_pt2_89074519.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 346,
+   "titulo": "Anexo SIDES 2024 DEZEMBRO - PT3 (89074922)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/346_anexo_sides_2024_dezembro_pt3_89074922.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 347,
+   "titulo": "Anexo SIDES 2024 DEZEMBRO - PT1 (89073752)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/347_anexo_sides_2024_dezembro_pt1_89073752.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 348,
+   "titulo": "Despacho de Encaminhamento de Processo 89074527",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/348_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 349,
+   "titulo": "Nota de Liquidação - NL NL07516 (89410189)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/349_nota_de_liquida_o_nl_nl07516_89410189.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 350,
+   "titulo": "Nota de Liquidação - NL 07518 (89409738)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/350_nota_de_liquida_o_nl_07518_89409738.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 351,
+   "titulo": "Nota de Liquidação - NL 07521 (89410965)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/351_nota_de_liquida_o_nl_07521_89410965.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 352,
+   "titulo": "Nota de Liquidação - NL 07523 (89411905)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/352_nota_de_liquida_o_nl_07523_89411905.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 353,
+   "titulo": "Nota de Liquidação - NL 07524 (89411672)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/353_nota_de_liquida_o_nl_07524_89411672.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 354,
+   "titulo": "Nota de Liquidação - NL 07525 (89413350)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/354_nota_de_liquida_o_nl_07525_89413350.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 355,
+   "titulo": "Nota de Liquidação - NL 07526 (89413724)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/355_nota_de_liquida_o_nl_07526_89413724.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 356,
+   "titulo": "Nota de Liquidação - NL 07527 (89414458)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/356_nota_de_liquida_o_nl_07527_89414458.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 357,
+   "titulo": "Nota de Liquidação - NL 07529 (89415769)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/357_nota_de_liquida_o_nl_07529_89415769.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 358,
+   "titulo": "Nota de Liquidação - NL 07531 (89416936)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/358_nota_de_liquida_o_nl_07531_89416936.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 359,
+   "titulo": "Nota de Liquidação - NL 07532 (89416662)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/359_nota_de_liquida_o_nl_07532_89416662.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 360,
+   "titulo": "Nota de Liquidação - NL 07533 (89418421)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/360_nota_de_liquida_o_nl_07533_89418421.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 361,
+   "titulo": "Nota de Liquidação - NL 07534 (89419046)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/361_nota_de_liquida_o_nl_07534_89419046.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 362,
+   "titulo": "Nota de Liquidação - NL 07535 (89420349)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/362_nota_de_liquida_o_nl_07535_89420349.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 363,
+   "titulo": "Nota de Liquidação - NL 07537 (89420995)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/363_nota_de_liquida_o_nl_07537_89420995.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 364,
+   "titulo": "Nota de Liquidação - NL 07539 (89421174)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/364_nota_de_liquida_o_nl_07539_89421174.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 365,
+   "titulo": "Nota de Liquidação - NL 07540 (89421512)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/365_nota_de_liquida_o_nl_07540_89421512.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 366,
+   "titulo": "Nota de Liquidação - NL 07542 (89421640)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/366_nota_de_liquida_o_nl_07542_89421640.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 367,
+   "titulo": "Nota de Liquidação - NL 07543 (89423102)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/367_nota_de_liquida_o_nl_07543_89423102.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 368,
+   "titulo": "Nota de Liquidação - NL 07545 (89423897)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/368_nota_de_liquida_o_nl_07545_89423897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 369,
+   "titulo": "Nota de Liquidação - NL 07548 (89424433)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/369_nota_de_liquida_o_nl_07548_89424433.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 370,
+   "titulo": "Nota de Liquidação - NL 07550 (89424579)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/370_nota_de_liquida_o_nl_07550_89424579.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 371,
+   "titulo": "Nota de Liquidação - NL 07556 (89424697)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/371_nota_de_liquida_o_nl_07556_89424697.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 372,
+   "titulo": "Nota de Liquidação - NL 07559 (89425524)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/372_nota_de_liquida_o_nl_07559_89425524.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 373,
+   "titulo": "Nota de Liquidação - NL 07563 (89425724)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/373_nota_de_liquida_o_nl_07563_89425724.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 374,
+   "titulo": "Nota de Liquidação - NL 07567 (89425284)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/374_nota_de_liquida_o_nl_07567_89425284.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 375,
+   "titulo": "Nota de Liquidação - NL 07570 (89426837)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/375_nota_de_liquida_o_nl_07570_89426837.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 376,
+   "titulo": "Nota de Liquidação - NL 07574 (89427118)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/376_nota_de_liquida_o_nl_07574_89427118.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 377,
+   "titulo": "Nota de Liquidação - NL 07577 (89428696)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/377_nota_de_liquida_o_nl_07577_89428696.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 378,
+   "titulo": "Nota de Liquidação - NL 07536 (89430004)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/378_nota_de_liquida_o_nl_07536_89430004.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 379,
+   "titulo": "Nota de Liquidação - NL 7538 (89430448)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/379_nota_de_liquida_o_nl_7538_89430448.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 380,
+   "titulo": "Nota de Liquidação - NL 7544 (89429328)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/380_nota_de_liquida_o_nl_7544_89429328.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 381,
+   "titulo": "Nota de Liquidação - NL 7546 (89430506)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/381_nota_de_liquida_o_nl_7546_89430506.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 382,
+   "titulo": "Nota de Liquidação - NL 7549 (89430274)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/382_nota_de_liquida_o_nl_7549_89430274.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 383,
+   "titulo": "Nota de Liquidação - NL 7553 (89431354)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/383_nota_de_liquida_o_nl_7553_89431354.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 384,
+   "titulo": "Nota de Liquidação - NL 7557 (89430585)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/384_nota_de_liquida_o_nl_7557_89430585.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 385,
+   "titulo": "Nota de Liquidação - NL 7562 (89430609)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/385_nota_de_liquida_o_nl_7562_89430609.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 386,
+   "titulo": "Nota de Liquidação - NL 7569 (89431886)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/386_nota_de_liquida_o_nl_7569_89431886.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 387,
+   "titulo": "Nota de Liquidação - NL 7576 (89431917)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/387_nota_de_liquida_o_nl_7576_89431917.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 388,
+   "titulo": "Nota de Liquidação - NL 7579 (89431987)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/388_nota_de_liquida_o_nl_7579_89431987.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 389,
+   "titulo": "Nota de Liquidação - NL 7581 (89431140)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/389_nota_de_liquida_o_nl_7581_89431140.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 390,
+   "titulo": "Nota de Liquidação - NL 7582 (89432035)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/390_nota_de_liquida_o_nl_7582_89432035.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 391,
+   "titulo": "Nota de Liquidação - NL07547 (89432079)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/391_nota_de_liquida_o_nl07547_89432079.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 392,
+   "titulo": "Nota de Liquidação - NL07551 (89432448)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/392_nota_de_liquida_o_nl07551_89432448.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 393,
+   "titulo": "Nota de Liquidação - NL07554 (89432929)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/393_nota_de_liquida_o_nl07554_89432929.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 394,
+   "titulo": "Nota de Liquidação - NL07558 (89432932)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/394_nota_de_liquida_o_nl07558_89432932.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 395,
+   "titulo": "Nota de Liquidação - NL07560 (89431791)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/395_nota_de_liquida_o_nl07560_89431791.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 396,
+   "titulo": "Nota de Liquidação - NL07565 (89431792)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/396_nota_de_liquida_o_nl07565_89431792.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 397,
+   "titulo": "Nota de Liquidação - NL07566 (89431794)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/397_nota_de_liquida_o_nl07566_89431794.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 398,
+   "titulo": "Nota de Liquidação - NL07568 (89432943)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/398_nota_de_liquida_o_nl07568_89432943.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 399,
+   "titulo": "Nota de Liquidação - NL07572 (89432475)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/399_nota_de_liquida_o_nl07572_89432475.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 400,
+   "titulo": "Nota de Liquidação - NL07575 (89432477)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/400_nota_de_liquida_o_nl07575_89432477.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 401,
+   "titulo": "Nota de Liquidação - NL07583 (89432480)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/401_nota_de_liquida_o_nl07583_89432480.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 402,
+   "titulo": "Nota de Liquidação - NL07580 (89432482)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/402_nota_de_liquida_o_nl07580_89432482.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 403,
+   "titulo": "Despacho de Encaminhamento de Processo 89433250",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/403_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 404,
+   "titulo": "Comprovante 2024OB11733 40000 237 6897 -176-7-Urologia (89610879)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/404_comprovante_2024ob11733_40000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 405,
+   "titulo": "Comprovante 2024OB11732 10000 237 6897 -7679-1-Terapia Intensiva Pediátric (89610069)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/405_comprovante_2024ob11732_10000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 406,
+   "titulo": "Comprovante 2024OB11731 50000 237 6897 -148-1-Terapia Intensiva Neonatal (89609709)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/406_comprovante_2024ob11731_50000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 407,
+   "titulo": "Comprovante 2024OB11730 5000 237 6897 -183-0-Terapia Cardio-Intensiva (89610076)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/407_comprovante_2024ob11730_5000_237_6897_18.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 408,
+   "titulo": "Comprovante 2024OB11729 2000 237 6897 -1295-5-Serviço Social (89610890)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/408_comprovante_2024ob11729_2000_237_6897_12.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 409,
+   "titulo": "Comprovante 2024OB11728 5000 237 6897 -156-2-Serviço de Pacientes Externos (89610893)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/409_comprovante_2024ob11728_5000_237_6897_15.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 410,
+   "titulo": "Comprovante 2024OB11727 50000 237 6897 -172-4-Serviço de Laboratórios (89610085)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/410_comprovante_2024ob11727_50000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 411,
+   "titulo": "Comprovante 2024OB11726 50000 237 6897 -514-2-Serviço de Imagem (89610090)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/411_comprovante_2024ob11726_50000_237_6897_5.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 412,
+   "titulo": "Comprovante 2024OB11725 30000 237 6897 -165-1-Serviço de Hotelaria Hospita (89610094)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/412_comprovante_2024ob11725_30000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 413,
+   "titulo": "Comprovante 2024OB11724 120000 237 6897 -180-5-Serviço de Engenharia Clíni (89609727)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/413_comprovante_2024ob11724_120000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 414,
+   "titulo": "Comprovante 2024OB11723 30000 237 6897 -170-8-Serviço de Cirurgia Geral (89609731)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/414_comprovante_2024ob11723_30000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 415,
+   "titulo": "Comprovante 2024OB11722 10000 237 6897 -162-7-Serviço de Centro Cirúrgico (89609734)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/415_comprovante_2024ob11722_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 416,
+   "titulo": "Comprovante 2024OB11721 50000 237 6897 -167-8-Serviço de Assistência a Mul (89610910)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/416_comprovante_2024ob11721_50000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 417,
+   "titulo": "Comprovante 2024OB11720 10000 237 6897 -11362-0-Setor de Fisioterapia (89610913)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/417_comprovante_2024ob11720_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 418,
+   "titulo": "Comprovante 2024OB11719 17000 237 6897 -192-9-Radioterapia (89610112)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/418_comprovante_2024ob11719_17000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 419,
+   "titulo": "Comprovante 2024OB11718 10000 237 6897 -7676-7-Pediatria (89609749)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/419_comprovante_2024ob11718_10000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 420,
+   "titulo": "Comprovante 2024OB11717 55000 237 6897 -17389-4-UDA Patologia Geral (89610930)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/420_comprovante_2024ob11717_55000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 421,
+   "titulo": "Comprovante 2024OB11716 10000 237 6897 -195-3-Ortopedia (89610119)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/421_comprovante_2024ob11716_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 422,
+   "titulo": "Comprovante 2024OB11715 22000 237 6897 -25184-4-NIR - Núcleo Interno de Re (89610122)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/422_comprovante_2024ob11715_22000_237_6897_2.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 423,
+   "titulo": "Comprovante 2024OB11714 15000 237 6897 -9618-0-Neurologia (89610125)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/423_comprovante_2024ob11714_15000_237_6897_9.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 424,
+   "titulo": "Comprovante 2024OB11713 10000 237 6897 -155-4-Neurocirurgia (89610128)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/424_comprovante_2024ob11713_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 425,
+   "titulo": "Comprovante 2024OB11712 20000 237 6897 -6920-5-Gabinete Direção - HUPE (89610941)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/425_comprovante_2024ob11712_20000_237_6897_6.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 426,
+   "titulo": "Comprovante 2024OB11711 14000 237 6897 -1425-7-Enfermaria de Adolecentes (89610943)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/426_comprovante_2024ob11711_14000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 427,
+   "titulo": "Comprovante 2024OB11710 40000 237 6897 -7960-0-UDA de Endrocrinologia (89609763)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/427_comprovante_2024ob11710_40000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 428,
+   "titulo": "Comprovante 2024OB11709 20000 237 6897 -178-3-Divisão Financeira (89610139)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/428_comprovante_2024ob11709_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 429,
+   "titulo": "Comprovante 2024OB11708 200000 237 6897 -175-9-DA HUPE - Departamento de A (89609768)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/429_comprovante_2024ob11708_200000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 430,
+   "titulo": "Comprovante 2024OB11707 4500 237 6897 -194-5-Comissão Científica Pedro Ern (89609770)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/430_comprovante_2024ob11707_4500_237_6897_19.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 431,
+   "titulo": "Comprovante 2024OB11706 10000 237 6897 -190-2-Clínica Médica HUPE (89610951)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/431_comprovante_2024ob11706_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 432,
+   "titulo": "Comprovante 2024OB11705 35000 237 6897 -169-4-Coordenadoria de Enfermagem (89610150)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/432_comprovante_2024ob11705_35000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 433,
+   "titulo": "Comprovante 2024OB11704 20000 237 6897 -161-9-Coordenadoria de Assistência (89610156)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/433_comprovante_2024ob11704_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 434,
+   "titulo": "Comprovante 2024OB11703 10000 237 6897 -164-3-Cirurgia Vascular (89609777)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/434_comprovante_2024ob11703_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 435,
+   "titulo": "Comprovante 2024OB11702 10000 237 6897 -11360-3-Cirurgia Torácica (89610164)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/435_comprovante_2024ob11702_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 436,
+   "titulo": "Comprovante 2024OB11701 10000 237 6897 -7169-2-UDA de Anestesiologia (89609782)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/436_comprovante_2024ob11701_10000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 437,
+   "titulo": "Comprovante 2024OB11292 10000 237 6897 -158-9-Cirurgia Cardíaca (89613194)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/437_comprovante_2024ob11292_10000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 438,
+   "titulo": "Relação de PDs de SIDES para execução-FONTE 225 Dezembro 2024 (89717908)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/438_rela_o_de_pds_de_sides_para_execu_o_font.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 439,
+   "titulo": "Despacho de Encaminhamento de Processo 89768586",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/439_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 440,
+   "titulo": "Nota de Autorização de Despesa - NAD 768 (89784547)",
+   "fase": "despesa",
+   "tipo": "autorizacao_despesa",
+   "texto": "texto/440_nota_de_autoriza_o_de_despesa_nad_768_89.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 441,
+   "titulo": "Anexo SIDES COTA DEZEMBRO - COMPLEMENTO (89783668)",
+   "fase": "planejamento",
+   "tipo": "pesquisa_precos",
+   "texto": "texto/441_anexo_sides_cota_dezembro_complemento_89.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 442,
+   "titulo": "Despacho de Encaminhamento de Processo 89788738",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/442_despacho_de_encaminhamento_de_processo_8.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 443,
+   "titulo": "Nota de Liquidação - NL 07855 (89858299)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/443_nota_de_liquida_o_nl_07855_89858299.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 444,
+   "titulo": "Nota de Liquidação - NL 07856 (89858985)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/444_nota_de_liquida_o_nl_07856_89858985.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 445,
+   "titulo": "Nota de Liquidação - NL 07858 (89859113)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/445_nota_de_liquida_o_nl_07858_89859113.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 446,
+   "titulo": "Nota de Liquidação - NL 07859 (89860136)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/446_nota_de_liquida_o_nl_07859_89860136.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 447,
+   "titulo": "Nota de Liquidação - NL 07861 (89860488)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/447_nota_de_liquida_o_nl_07861_89860488.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 448,
+   "titulo": "Nota de Liquidação - NL 07862 (89861527)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/448_nota_de_liquida_o_nl_07862_89861527.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 449,
+   "titulo": "Nota de Liquidação - NL 07863 (89861654)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/449_nota_de_liquida_o_nl_07863_89861654.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 450,
+   "titulo": "Nota de Liquidação - NL 07865 (89862016)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/450_nota_de_liquida_o_nl_07865_89862016.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 451,
+   "titulo": "Nota de Liquidação - NL 07867 (89862992)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/451_nota_de_liquida_o_nl_07867_89862992.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 452,
+   "titulo": "Nota de Liquidação - NL 07869 (89862209)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/452_nota_de_liquida_o_nl_07869_89862209.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 453,
+   "titulo": "Nota de Liquidação - NL 7872 (89878159)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/453_nota_de_liquida_o_nl_7872_89878159.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 454,
+   "titulo": "Nota de Liquidação - NL 7873 (89879082)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/454_nota_de_liquida_o_nl_7873_89879082.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 455,
+   "titulo": "Nota de Liquidação - NL 7876 (89878213)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/455_nota_de_liquida_o_nl_7876_89878213.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 456,
+   "titulo": "Nota de Liquidação - NL 7877 (89878732)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/456_nota_de_liquida_o_nl_7877_89878732.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 457,
+   "titulo": "Nota de Liquidação - NL 7878 (89878759)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/457_nota_de_liquida_o_nl_7878_89878759.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 458,
+   "titulo": "Nota de Liquidação - NL 7880 (89878783)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/458_nota_de_liquida_o_nl_7880_89878783.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 459,
+   "titulo": "Nota de Liquidação - NL 7881 (89879361)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/459_nota_de_liquida_o_nl_7881_89879361.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 460,
+   "titulo": "Nota de Liquidação - NL 7883 (89879858)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/460_nota_de_liquida_o_nl_7883_89879858.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 461,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 89885307",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/461_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 462,
+   "titulo": "Comprovante 2024OB13618 75000 237 6897 -7676-7-Pediatria (90765037)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/462_comprovante_2024ob13618_75000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 463,
+   "titulo": "Comprovante 2024OB13616 30000 237 6897 -13462-7-Serviço de Hemoterapia Her (90765562)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/463_comprovante_2024ob13616_30000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 464,
+   "titulo": "Comprovante 2024OB13614 40000 237 6897 -7679-1-Terapia Intensiva Pediátric (90765046)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/464_comprovante_2024ob13614_40000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 465,
+   "titulo": "Comprovante 2024OB13612 50000 237 6897 -165-1-Serviço de Hotelaria Hospita (90765048)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/465_comprovante_2024ob13612_50000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 466,
+   "titulo": "Comprovante 2024OB13609 150000 237 6897 -514-2-Serviço de Imagem (90765057)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/466_comprovante_2024ob13609_150000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 467,
+   "titulo": "Comprovante 2024OB13607 40000 237 6897 -186-4-Oftalmologia (90764816)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/467_comprovante_2024ob13607_40000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 468,
+   "titulo": "Comprovante 2024OB13589 50000 237 6897 -163-5-Cardiologia (90765116)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/468_comprovante_2024ob13589_50000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 469,
+   "titulo": "Comprovante 2024OB13587 32000 237 6897 -160-0-Cirurgia Bucomaxilofacial (90765118)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/469_comprovante_2024ob13587_32000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 470,
+   "titulo": "Comprovante 2024OB13584 100000 237 6897 -158-9-Cirurgia Cardíaca (90765120)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/470_comprovante_2024ob13584_100000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 471,
+   "titulo": "Comprovante 2024OB13580 30000 237 6897 -11360-3-Cirurgia Torácica (90765125)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/471_comprovante_2024ob13580_30000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 472,
+   "titulo": "Comprovante 2024OB13566 20000 237 6897 -176-7-Urologia (90765132)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/472_comprovante_2024ob13566_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 473,
+   "titulo": "Comprovante 2024OB13565 20000 237 6897 -148-1-Terapia Intensiva Neonatal (90763663)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/473_comprovante_2024ob13565_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 474,
+   "titulo": "Comprovante 2024OB13564 20000 237 6897 -172-4-Serviço de Laboratórios (90765889)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/474_comprovante_2024ob13564_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 475,
+   "titulo": "Comprovante 2024OB13563 20000 237 6897 -165-1-Serviço de Hotelaria Hospita (90765136)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/475_comprovante_2024ob13563_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 476,
+   "titulo": "Comprovante 2024OB13562 20000 237 6897 -13462-7-Serviço de Hemoterapia Her (90765893)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/476_comprovante_2024ob13562_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 477,
+   "titulo": "Comprovante 2024OB13561 20000 237 6897 -187-2-Serviço de Farmácia (90763666)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/477_comprovante_2024ob13561_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 478,
+   "titulo": "Comprovante 2024OB13560 20000 237 6897 -162-7-Serviço de Centro Cirúrgico (90765617)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/478_comprovante_2024ob13560_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 479,
+   "titulo": "Comprovante 2024OB13559 50000 237 6897 -164-3-Cirurgia Vascular (90765141)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/479_comprovante_2024ob13559_50000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 480,
+   "titulo": "Comprovante 2024OB13558 6000 237 6897 -189-9-Coordenação de Controle de In (90765144)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/480_comprovante_2024ob13558_6000_237_6897_18.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 481,
+   "titulo": "Comprovante 2024OB13557 80000 237 6897 -161-9-Coordenadoria de Assistência (90765620)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/481_comprovante_2024ob13557_80000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 482,
+   "titulo": "Comprovante 2024OB13556 120000 237 6897 -169-4-Coordenadoria de Enfermagem (90765897)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/482_comprovante_2024ob13556_120000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 483,
+   "titulo": "Comprovante 2024OB13555 60000 237 6897 -168-6-Coordenadoria de Serviços Té (90765622)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/483_comprovante_2024ob13555_60000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 484,
+   "titulo": "Comprovante 2024OB13554 32000 237 6897 -190-2-Clínica Médica HUPE (90765151)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/484_comprovante_2024ob13554_32000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 485,
+   "titulo": "Comprovante 2024OB13553 9500 237 6897 -194-5-Comissão Científica Pedro Ern (90765623)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/485_comprovante_2024ob13553_9500_237_6897_19.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 486,
+   "titulo": "Comprovante 2024OB13552 200000 237 6897 -175-9-DA HUPE - Departamento de A (90765154)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/486_comprovante_2024ob13552_200000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 487,
+   "titulo": "Comprovante 2024OB13551 30000 237 6897 -192-9-Radioterapia (90765627)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/487_comprovante_2024ob13551_30000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 488,
+   "titulo": "Comprovante 2024OB13550 15000 237 6897 -74-4-UDA DE DIABETES (90765157)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/488_comprovante_2024ob13550_15000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 489,
+   "titulo": "Comprovante 2024OB13549 10000 237 6897 -7674-0-Reumatologia (90765158)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/489_comprovante_2024ob13549_10000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 490,
+   "titulo": "Comprovante 2024OB13548 60000 237 6897 -188-0-Divisão de Nutrição (90765901)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/490_comprovante_2024ob13548_60000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 491,
+   "titulo": "Comprovante 2024OB13547 50000 237 6897 -178-3-Divisão Financeira (90765903)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/491_comprovante_2024ob13547_50000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 492,
+   "titulo": "Comprovante 2024OB13546 25000 237 6897 -13401-5-Cirurgia Plástica Enfermar (90765161)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/492_comprovante_2024ob13546_25000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 493,
+   "titulo": "Comprovante 2024OB13545 24000 237 6897 -1425-7-Enfermaria de Adolecentes (90765163)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/493_comprovante_2024ob13545_24000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 494,
+   "titulo": "Comprovante 2024OB13544 35000 237 6897 -516-9-Setor de Fisiatria (90765632)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/494_comprovante_2024ob13544_35000_237_6897_5.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 495,
+   "titulo": "Comprovante 2024OB13543 60000 237 6897 -6920-5-Gabinete Direção - HUPE (90765165)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/495_comprovante_2024ob13543_60000_237_6897_6.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 496,
+   "titulo": "Comprovante 2024OB13542 35000 237 6897 -11362-0-Setor de Fisioterapia (90765167)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/496_comprovante_2024ob13542_35000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 497,
+   "titulo": "Comprovante 2024OB13541 25000 237 6897 -7625-2-SIDA - Serviço de Informaçã (90765170)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/497_comprovante_2024ob13541_25000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 498,
+   "titulo": "Comprovante 2024OB13540 40000 237 6897 -7967-7-Gastroenterologia (90765176)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/498_comprovante_2024ob13540_40000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 499,
+   "titulo": "Comprovante 2024OB13519 20000 237 6897 -7674-0-Reumatologia (90765649)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/499_comprovante_2024ob13519_20000_237_6897_7.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 500,
+   "titulo": "Comprovante 2024OB13518 20000 237 6897 -192-9-Radioterapia (90765917)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/500_comprovante_2024ob13518_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 501,
+   "titulo": "Comprovante 2024OB13517 20000 237 6897 -185-6-Hematologia (90765651)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/501_comprovante_2024ob13517_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 502,
+   "titulo": "Comprovante 2024OB13516 20000 237 6897 -1425-7-Enfermaria de Adolecentes (90765919)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/502_comprovante_2024ob13516_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 503,
+   "titulo": "Comprovante 2024OB13515 20000 237 6897 -178-3-Divisão Financeira (90765196)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/503_comprovante_2024ob13515_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 504,
+   "titulo": "Comprovante 2024OB13514 20000 237 6897 -188-0-Divisão de Nutrição (90765921)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/504_comprovante_2024ob13514_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 505,
+   "titulo": "Comprovante 2024OB13512 20000 237 6897 -175-9-DA HUPE - Departamento de Ad (90763668)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/505_comprovante_2024ob13512_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 506,
+   "titulo": "Comprovante 2024OB13510 20000 237 6897 -168-6-Coordenadoria de Serviços Té (90765923)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/506_comprovante_2024ob13510_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 507,
+   "titulo": "Comprovante 2024OB13508 20000 237 6897 -179-1-Coordenadoria de Desenvolvim (90765203)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/507_comprovante_2024ob13508_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 508,
+   "titulo": "Comprovante 2024OB13506 20000 237 6897 -161-9-Coordenadoria de Assistência (90765926)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/508_comprovante_2024ob13506_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 509,
+   "titulo": "Comprovante 2024OB13504 20000 237 6897 -169-4-Coordenadoria de Enfermagem (90765654)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/509_comprovante_2024ob13504_20000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 510,
+   "titulo": "Comprovante 2024OB13279 15000 237 6897 -185-6-Hematologia (90765296)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/510_comprovante_2024ob13279_15000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 511,
+   "titulo": "Comprovante 2024OB13257 160000 237 6897 -172-4-Serviço de Laboratórios (90766026)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/511_comprovante_2024ob13257_160000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 512,
+   "titulo": "Comprovante 2024OB13256 160000 237 6897 -167-8-Serviço de Assistência a Mu (90765806)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/512_comprovante_2024ob13256_160000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 513,
+   "titulo": "Comprovante 2024OB13255 80000 237 6897 -177-5-Serviço de Manutenção (90765307)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/513_comprovante_2024ob13255_80000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 514,
+   "titulo": "Comprovante 2024OB13254 40000 237 6897 -155-4-Neurocirurgia (90765310)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/514_comprovante_2024ob13254_40000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 515,
+   "titulo": "Comprovante 2024OB13253 90000 237 6897 -162-7-Serviço de Centro Cirúrgico (90765808)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/515_comprovante_2024ob13253_90000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 516,
+   "titulo": "Comprovante 2024OB13251 40000 237 6897 -9618-0-Neurologia (90765312)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/516_comprovante_2024ob13251_40000_237_6897_9.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 517,
+   "titulo": "Comprovante 2024OB13249 30000 237 6897 -159-7-Serviço de Elaboração de Pro (90766028)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/517_comprovante_2024ob13249_30000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 518,
+   "titulo": "Comprovante 2024OB13248 40000 237 6897 -25184-4-NIR - Núcleo Interno de Re (90765316)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/518_comprovante_2024ob13248_40000_237_6897_2.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 519,
+   "titulo": "Comprovante 2024OB13246 25000 237 6897 -184-8-Terapia Intensiva Geral (90765812)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/519_comprovante_2024ob13246_25000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 520,
+   "titulo": "Comprovante 2024OB13245 30000 237 6897 -195-3-Ortopedia (90765813)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/520_comprovante_2024ob13245_30000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 521,
+   "titulo": "Comprovante 2024OB13244 60000 237 6897 -148-1-Terapia Intensiva Neonatal (90765319)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/521_comprovante_2024ob13244_60000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 522,
+   "titulo": "Comprovante 2024OB13243 130000 237 6897 -180-5-Serviço de Engenharia Clíni (90765321)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/522_comprovante_2024ob13243_130000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 523,
+   "titulo": "Comprovante 2024OB13242 40000 237 6897 -174-0-Otorrinolaringologia (90765815)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/523_comprovante_2024ob13242_40000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 524,
+   "titulo": "Comprovante 2024OB13241 90000 237 6897 -176-7-Urologia (90765323)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/524_comprovante_2024ob13241_90000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 525,
+   "titulo": "Comprovante 2024OB13240 66000 237 6897 -17389-4-UDA Patologia Geral (90765817)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/525_comprovante_2024ob13240_66000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 526,
+   "titulo": "Comprovante 2024OB13239 133000 237 6897 -173-2-Departamento de Sistemas de (90765819)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/526_comprovante_2024ob13239_133000_237_6897.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 527,
+   "titulo": "Comprovante 2024OB13238 50000 237 6897 -187-2-Serviço de Farmácia (90765821)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/527_comprovante_2024ob13238_50000_237_6897_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 528,
+   "titulo": "Comprovante 2024OB13582 60000 237 6897 -27827-0-Nucleo de Cirurgia Endovas (90864969)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/528_comprovante_2024ob13582_60000_237_6897_2.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 529,
+   "titulo": "Comprovante 2025OB00799 R$10.000,00 CG0014142 237 6897 -10981-9-Setor de F (115454318)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/529_comprovante_2025ob00799_r_10_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 530,
+   "titulo": "Comprovante 2025OB00800 R$3.000,00 CG0014138 237 6897 -156-2-Serviço de Pa (115455038)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/530_comprovante_2025ob00800_r_3_000_00_cg001.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 531,
+   "titulo": "Comprovante 2025OB00801 R$6.000,00 CG0014139 237 6897 -1295-5-Serviço Soci (115454727)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/531_comprovante_2025ob00801_r_6_000_00_cg001.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 532,
+   "titulo": "Comprovante 2025OB00802 R$5.000,00 CG0014144 237 6897 -183-0-Terapia Cardi (115454728)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/532_comprovante_2025ob00802_r_5_000_00_cg001.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 533,
+   "titulo": "Comprovante 2024OB03878 R$11.000,00 CG0014149 237 6897 -7169-2-UD (117274001)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/533_comprovante_2024ob03878_r_11_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 534,
+   "titulo": "Comprovante 2024OB03879 R$27.000,00 CG0014094 237 6897 -169-4-Coo (117274985)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/534_comprovante_2024ob03879_r_27_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 535,
+   "titulo": "Comprovante 2024OB03880 R$5.000,00 CG0014092 237 6897 -194-5-Com (117274991)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/535_comprovante_2024ob03880_r_5_000_00_cg001.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 536,
+   "titulo": "Comprovante 2024OB03881 R$38.000,00 CG0014096 237 6897 -193-7-Coo (117274028)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/536_comprovante_2024ob03881_r_38_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 537,
+   "titulo": "Comprovante 2024OB03882 R$100.000,00 CG0014099 237 6897 -175-9-DA (117274598)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/537_comprovante_2024ob03882_r_100_000_00_cg0.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 538,
+   "titulo": "Comprovante 2024OB03883 R$20.000,00 CG0014104 237 6897 -178-3-Div (117274605)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/538_comprovante_2024ob03883_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 539,
+   "titulo": "Comprovante 2024OB03884 R$30.000,00 CG0014110 237 6897 -185-6-Hem (117274053)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/539_comprovante_2024ob03884_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 540,
+   "titulo": "Comprovante 2024OB03885 R$40.000,00 CG0014114 237 6897 -155-4-Neu (117274618)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/540_comprovante_2024ob03885_r_40_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 541,
+   "titulo": "Comprovante 2024OB03886 R$30.000,00 CG0014116 237 6897 -25184-4-N (117275429)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/541_comprovante_2024ob03886_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 542,
+   "titulo": "Comprovante 2024OB03887 R$85.000,00 CG0014152 237 6897 -17389-4-U (117275444)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/542_comprovante_2024ob03887_r_85_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 543,
+   "titulo": "Comprovante 2024OB03888 R$15.000,00 CG0014132 237 6897 -13462-7-S (117274089)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/543_comprovante_2024ob03888_r_15_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 544,
+   "titulo": "Comprovante 2024OB03889 R$11.000,00 CG0014142 237 6897 -10981-9-S (117275459)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/544_comprovante_2024ob03889_r_11_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 545,
+   "titulo": "Comprovante 2024OB03890 R$20.000,00 CG0014127 237 6897 -162-7-Ser (117274672)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/545_comprovante_2024ob03890_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 546,
+   "titulo": "Comprovante 2024OB03892 R$30.000,00 CG0014129 237 6897 -159-7-Ser (117274678)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/546_comprovante_2024ob03892_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 547,
+   "titulo": "Comprovante 2024OB03893 R$75.000,00 CG0014136 237 6897 -177-5-Ser (117274120)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/547_comprovante_2024ob03893_r_75_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 548,
+   "titulo": "Comprovante 2024OB03894 R$30.000,00 CG0014154 237 6897 -4642-6-Un (117275076)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/548_comprovante_2024ob03894_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 549,
+   "titulo": "Comprovante 2024OB07233 R$12.000,00 CG0014088 237 6897 -13401-5-C (117276946)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/549_comprovante_2024ob07233_r_12_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 550,
+   "titulo": "Comprovante 2024OB07234 R$32.000,00 CG0014094 237 6897 -169-4-Coo (117276099)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/550_comprovante_2024ob07234_r_32_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 551,
+   "titulo": "Comprovante 2024OB07235 R$20.000,00 CG0014095 237 6897 -161-9-Coo (117276526)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/551_comprovante_2024ob07235_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 552,
+   "titulo": "Comprovante 2024OB07236 R$13.000,00 CG0014092 237 6897 -194-5-Com (117277383)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/552_comprovante_2024ob07236_r_13_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 553,
+   "titulo": "Comprovante 2024OB07237 R$20.000,00 CG0014098 237 6897 -168-6-Coo (117277394)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/553_comprovante_2024ob07237_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 554,
+   "titulo": "Comprovante 2024OB07238 R$100.000,00 CG0014099 237 6897 -175-9-DA (117276122)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/554_comprovante_2024ob07238_r_100_000_00_cg0.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 555,
+   "titulo": "Comprovante 2024OB07239 R$55.000,00 CG0014150 237 6897 -74-4-UDA (117276127)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/555_comprovante_2024ob07239_r_55_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 556,
+   "titulo": "Comprovante 2024OB07240 R$20.000,00 CG0014104 237 6897 -178-3-Div (117276561)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/556_comprovante_2024ob07240_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 557,
+   "titulo": "Comprovante 2024OB07241 R$40.000,00 CG0014151 237 6897 -7960-0-UD (117277423)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/557_comprovante_2024ob07241_r_40_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 558,
+   "titulo": "Comprovante 2024OB07242 R$20.000,00 CG0014107 237 6897 -6920-5-Ga (117277429)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/558_comprovante_2024ob07242_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 559,
+   "titulo": "Comprovante 2024OB07243 R$45.000,00 CG0014108 237 6897 -7967-7-Ga (117277433)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/559_comprovante_2024ob07243_r_45_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 560,
+   "titulo": "Comprovante 2024OB07244 R$15.000,00 CG0014110 237 6897 -185-6-Hem (117276154)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/560_comprovante_2024ob07244_r_15_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 561,
+   "titulo": "Comprovante 2024OB07245 R$50.000,00 CG0014111 237 6897 -182-1-Hem (117276991)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/561_comprovante_2024ob07245_r_50_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 562,
+   "titulo": "Comprovante 2024OB07246 R$40.000,00 CG0014114 237 6897 -155-4-Neu (117276166)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/562_comprovante_2024ob07246_r_40_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 563,
+   "titulo": "Comprovante 2024OB07247 R$10.000,00 CG0014115 237 6897 -9618-0-Ne (117276613)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/563_comprovante_2024ob07247_r_10_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 564,
+   "titulo": "Comprovante 2024OB07248 R$30.000,00 CG0014116 237 6897 -25184-4-N (117276620)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/564_comprovante_2024ob07248_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 565,
+   "titulo": "Comprovante 2024OB07249 R$20.000,00 CG0014119 237 6897 -186-4-Oft (117277458)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/565_comprovante_2024ob07249_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 566,
+   "titulo": "Comprovante 2024OB07250 R$10.000,00 CG0014120 237 6897 -195-3-Ort (117276635)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/566_comprovante_2024ob07250_r_10_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 567,
+   "titulo": "Comprovante 2024OB07251 R$25.000,00 CG0014132 237 6897 -13462-7-S (117276195)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/567_comprovante_2024ob07251_r_25_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 568,
+   "titulo": "Comprovante 2024OB07252 R$60.000,00 CG0014126 237 6897 -167-8-Ser (117276646)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/568_comprovante_2024ob07252_r_60_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 569,
+   "titulo": "Comprovante 2024OB07253 R$30.000,00 CG0014127 237 6897 -162-7-Ser (117276653)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/569_comprovante_2024ob07253_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 570,
+   "titulo": "Comprovante 2024OB07254 R$17.000,00 CG0014128 237 6897 -170-8-Ser (117276216)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/570_comprovante_2024ob07254_r_17_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 571,
+   "titulo": "Comprovante 2024OB07255 R$96.000,00 CG0014136 237 6897 -177-5-Ser (117276221)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/571_comprovante_2024ob07255_r_96_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 572,
+   "titulo": "Comprovante 2024OB07256 R$5.000,00 CG0014138 237 6897 -156-2-Ser (117277476)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/572_comprovante_2024ob07256_r_5_000_00_cg001.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 573,
+   "titulo": "Comprovante 2024OB07257 R$2.000,00 CG0014139 237 6897 -1295-5-Se (117276675)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/573_comprovante_2024ob07257_r_2_000_00_cg001.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 574,
+   "titulo": "Comprovante 2024OB07258 R$4.500,00 CG0014144 237 6897 -183-0-Ter (117276685)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/574_comprovante_2024ob07258_r_4_500_00_cg001.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 575,
+   "titulo": "Comprovante 2024OB07259 R$10.000,00 CG0014146 237 6897 -148-1-Ter (117276689)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/575_comprovante_2024ob07259_r_10_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 576,
+   "titulo": "Comprovante 2024OB07260 R$20.000,00 CG0014152 237 6897 -17389-4-U (117276700)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/576_comprovante_2024ob07260_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 577,
+   "titulo": "Comprovante 2024OB08162 R$40.000,00 CG0014114 237 6897 -155-4-Neu (117277551)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/577_comprovante_2024ob08162_r_40_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 578,
+   "titulo": "Comprovante 2024OB08163 R$15.000,00 CG0014115 237 6897 -9618-0-Ne (117277083)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/578_comprovante_2024ob08163_r_15_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 579,
+   "titulo": "Comprovante 2024OB08185 R$62.000,00 CG0014094 237 6897 -169-4-Coo (117276338)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/579_comprovante_2024ob08185_r_62_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 580,
+   "titulo": "Comprovante 2024OB08425 R$40.000,00 CG0014151 237 6897 -7960-0-UD (117277637)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/580_comprovante_2024ob08425_r_40_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 581,
+   "titulo": "Comprovante 2024OB08426 R$16.000,00 CG0014142 237 6897 -10981-9-S (117277639)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/581_comprovante_2024ob08426_r_16_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 582,
+   "titulo": "Comprovante 2024OB08427 R$30.000,00 CG0014108 237 6897 -7967-7-Ga (117277107)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/582_comprovante_2024ob08427_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 583,
+   "titulo": "Comprovante 2024OB08428 R$10.000,00 CG0014110 237 6897 -185-6-Hem (117277112)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/583_comprovante_2024ob08428_r_10_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 584,
+   "titulo": "Comprovante 2024OB08429 R$13.200,00 CG0014101 237 6897 -17000-3-D (117276836)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/584_comprovante_2024ob08429_r_13_200_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 585,
+   "titulo": "Comprovante 2024OB08430 R$8.000,00 CG0014115 237 6897 -9618-0-Ne (117277119)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/585_comprovante_2024ob08430_r_8_000_00_cg001.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 586,
+   "titulo": "Comprovante 2024OB08431 R$16.500,00 CG0014116 237 6897 -25184-4-N (117277122)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/586_comprovante_2024ob08431_r_16_500_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 587,
+   "titulo": "Comprovante 2024OB08432 R$11.000,00 CG0014118 237 6897 -12300-5-N (117277896)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/587_comprovante_2024ob08432_r_11_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 588,
+   "titulo": "Comprovante 2024OB08433 R$20.000,00 CG0014120 237 6897 -195-3-Ort (117277658)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/588_comprovante_2024ob08433_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 589,
+   "titulo": "Comprovante 2024OB08434 R$18.000,00 CG0014121 237 6897 -174-0-Oto (117277905)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/589_comprovante_2024ob08434_r_18_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 590,
+   "titulo": "Comprovante 2024OB08435 R$42.000,00 CG0014152 237 6897 -17389-4-U (117277910)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/590_comprovante_2024ob08435_r_42_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 591,
+   "titulo": "Comprovante 2024OB08436 R$46.000,00 CG0014122 237 6897 -7676-7-Pe (117277913)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/591_comprovante_2024ob08436_r_46_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 592,
+   "titulo": "Comprovante 2024OB08437 R$20.000,00 CG0014127 237 6897 -162-7-Ser (117277915)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/592_comprovante_2024ob08437_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 593,
+   "titulo": "Comprovante 2024OB08438 R$30.000,00 CG0014131 237 6897 -187-2-Ser (117277920)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/593_comprovante_2024ob08438_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 594,
+   "titulo": "Comprovante 2024OB08439 R$15.000,00 CG0014135 237 6897 -172-4-Ser (117277683)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/594_comprovante_2024ob08439_r_15_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 595,
+   "titulo": "Comprovante 2024OB08440 R$32.000,00 CG0014136 237 6897 -177-5-Ser (117277152)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/595_comprovante_2024ob08440_r_32_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 596,
+   "titulo": "Comprovante 2024OB08451 R$30.000,00 CG0014147 237 6897 -7679-1-Te (117277930)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/596_comprovante_2024ob08451_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 597,
+   "titulo": "Comprovante 2024OB08452 R$30.000,00 CG0014155 237 6897 -176-7-Uro (117277158)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/597_comprovante_2024ob08452_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 598,
+   "titulo": "Comprovante 2024OB08652 R$10.000,00 CG0014084 237 6897 -201-1-Ana (117277171)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/598_comprovante_2024ob08652_r_10_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 599,
+   "titulo": "Comprovante 2024OB08653 R$35.000,00 CG0014094 237 6897 -169-4-Coo (117278397)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/599_comprovante_2024ob08653_r_35_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 600,
+   "titulo": "Comprovante 2024OB08712 R$20.000,00 CG0014095 237 6897 -161-9-Coo (117277952)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/600_comprovante_2024ob08712_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 601,
+   "titulo": "Comprovante 2024OB08713 R$10.000,00 CG0014096 237 6897 -193-7-Coo (117277180)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/601_comprovante_2024ob08713_r_10_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 602,
+   "titulo": "Comprovante 2024OB08714 R$30.000,00 CG0014098 237 6897 -168-6-Coo (117277182)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/602_comprovante_2024ob08714_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 603,
+   "titulo": "Comprovante 2024OB08715 R$50.000,00 CG0014099 237 6897 -175-9-DA (117277724)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/603_comprovante_2024ob08715_r_50_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 604,
+   "titulo": "Comprovante 2024OB08716 R$20.000,00 CG0014151 237 6897 -7960-0-UD (117278421)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/604_comprovante_2024ob08716_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 605,
+   "titulo": "Comprovante 2024OB08717 R$15.000,00 CG0014107 237 6897 -6920-5-Ga (117278423)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/605_comprovante_2024ob08717_r_15_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 606,
+   "titulo": "Comprovante 2024OB08752 R$14.000,00 CG0014101 237 6897 -17000-3-D (117277968)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/606_comprovante_2024ob08752_r_14_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 607,
+   "titulo": "Comprovante 2024OB08753 R$15.000,00 CG0014115 237 6897 -9618-0-Ne (117277732)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/607_comprovante_2024ob08753_r_15_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 608,
+   "titulo": "Comprovante 2024OB08754 R$15.200,00 CG0014116 237 6897 -25184-4-N (117277973)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/608_comprovante_2024ob08754_r_15_200_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 609,
+   "titulo": "Comprovante 2024OB08755 R$35.000,00 CG0014152 237 6897 -17389-4-U (117277975)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/609_comprovante_2024ob08755_r_35_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 610,
+   "titulo": "Comprovante 2024OB08756 R$30.000,00 CG0014123 237 6897 -181-3-Pne (117277743)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/610_comprovante_2024ob08756_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 611,
+   "titulo": "Comprovante 2024OB08757 R$18.000,00 CG0014128 237 6897 -170-8-Ser (117277980)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/611_comprovante_2024ob08757_r_18_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 612,
+   "titulo": "Comprovante 2024OB08758 R$30.000,00 CG0014131 237 6897 -187-2-Ser (117277988)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/612_comprovante_2024ob08758_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 613,
+   "titulo": "Comprovante 2024OB08759 R$40.000,00 CG0014133 237 6897 -165-1-Ser (117277747)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/613_comprovante_2024ob08759_r_40_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 614,
+   "titulo": "Comprovante 2024OB08760 R$20.000,00 CG0014135 237 6897 -172-4-Ser (117277994)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/614_comprovante_2024ob08760_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 615,
+   "titulo": "Comprovante 2024OB08786 R$40.000,00 CG0014136 237 6897 -177-5-Ser (117278469)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/615_comprovante_2024ob08786_r_40_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 616,
+   "titulo": "Comprovante 2024OB08787 R$25.000,00 CG0014141 237 6897 -11362-0-S (117278002)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/616_comprovante_2024ob08787_r_25_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 617,
+   "titulo": "Comprovante 2024OB08788 R$28.600,00 CG0014091 237 6897 -190-2-Clí (117277213)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/617_comprovante_2024ob08788_r_28_600_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 618,
+   "titulo": "Comprovante 2024OB08789 R$50.000,00 CG0014146 237 6897 -148-1-Ter (117277217)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/618_comprovante_2024ob08789_r_50_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 619,
+   "titulo": "Comprovante 2024OB08790 R$10.000,00 CG0014106 237 6897 -1425-7-En (117277221)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/619_comprovante_2024ob08790_r_10_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 620,
+   "titulo": "Comprovante 2024OB08791 R$5.000,00 CG0014144 237 6897 -183-0-Ter (117277780)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/620_comprovante_2024ob08791_r_5_000_00_cg001.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 621,
+   "titulo": "Comprovante 2024OB08792 R$30.000,00 CG0014119 237 6897 -186-4-Oft (117277229)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/621_comprovante_2024ob08792_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 622,
+   "titulo": "Comprovante 2024OB08793 R$10.000,00 CG0014088 237 6897 -13401-5-C (117277233)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/622_comprovante_2024ob08793_r_10_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 623,
+   "titulo": "Comprovante 2024OB08794 R$30.000,00 CG0014155 237 6897 -176-7-Uro (117278033)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/623_comprovante_2024ob08794_r_30_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 624,
+   "titulo": "Comprovante 2024OB08795 R$20.000,00 CG0014121 237 6897 -174-0-Oto (117278496)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/624_comprovante_2024ob08795_r_20_000_00_cg00.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 625,
+   "titulo": "Comprovante 2024OB08796 R$3.700,00 CG0014139 237 6897 -1295-5-Se (117278500)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/625_comprovante_2024ob08796_r_3_700_00_cg001.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
-  "planejamento": 0,
+  "planejamento": 5,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 553,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 51,
+  "indefinida": 17
  },
  "lacunas": [
-  {
-   "falta": "Planejamento (ETP/TR/pesquisa de preços)",
-   "gravidade": "media"
-  },
   {
    "falta": "Seleção (edital, julgamento, homologação)",
    "gravidade": "alta"
@@ -26,6 +6283,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

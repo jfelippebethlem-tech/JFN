@@ -70,9 +70,14 @@ def _get(cli: httpx.Client, url: str, params: dict | None = None):
 
 
 def coletar_favorecidos(con, chave: str | None = None, pausa: float = 1.0,
-                        max_emendas: int | None = None, cap_docs: int = 25) -> dict:
+                        max_emendas: int | None = None, cap_docs: int = 25,
+                        orcamento_s: float | None = None) -> dict:
     """Para cada emenda sem favorecido coletado (maior pago primeiro):
-    lista documentos → detalha os escolhidos → grava emenda_favorecidos."""
+    lista documentos → detalha os escolhidos → grava emenda_favorecidos.
+
+    ``orcamento_s``: teto de tempo — encerra LIMPO ao estourar (retomada é idempotente:
+    pend = left join null). Sem teto, 488 emendas × ~25 docs × pausa estoura o
+    TimeoutStartSec do systemd e o processo morre no meio (lição 2026-07-13)."""
     chave = chave or _chave()
     if not chave:
         return {"verificado": False, "emendas": 0, "favorecidos": 0, "motivo": "sem chave"}
@@ -84,15 +89,30 @@ def coletar_favorecidos(con, chave: str | None = None, pausa: float = 1.0,
     if max_emendas:
         pend = pend[:max_emendas]
     tot = 0
+    t0 = time.monotonic()
+    parcial = False
     with httpx.Client(timeout=_TIMEOUT, headers={**_HEADERS, "chave-api-dados": chave}) as cli:
-        for cod in pend:
+        for i_em, cod in enumerate(pend, 1):
+            if orcamento_s and time.monotonic() - t0 > orcamento_s:
+                parcial = True
+                logger.warning("favorecidos: orçamento de %.0fs estourou em %d/%d emendas — encerrando limpo (retomada continua de onde parou)", orcamento_s, i_em - 1, len(pend))
+                break
+            if i_em % 20 == 0:
+                print(f"  favorecidos: {i_em}/{len(pend)} emendas ({tot} gravados)", flush=True)
             docs: list[dict] = []
             pagina = 1
             while True:
                 r = _get(cli, f"{_BASE}/emendas/documentos/{cod}", {"pagina": pagina})
-                if r is None or r.status_code != 200 or not r.json():
+                if r is None or r.status_code != 200:
                     break
-                docs.extend(r.json())
+                try:
+                    pagina_docs = r.json()
+                except ValueError:  # 200 com corpo não-JSON (HTML de erro do Portal) — lição 2026-07-16
+                    logger.warning("favorecidos: resposta não-JSON p/ emenda %s pág %s — pulando", cod, pagina)
+                    break
+                if not pagina_docs:
+                    break
+                docs.extend(pagina_docs)
                 pagina += 1
                 time.sleep(pausa)
             for d in escolher_documentos(docs, cap=cap_docs):
@@ -100,7 +120,12 @@ def coletar_favorecidos(con, chave: str | None = None, pausa: float = 1.0,
                 time.sleep(pausa)
                 if rd is None or rd.status_code != 200:
                     continue
-                row = parse_documento_detalhe(cod, rd.json())
+                try:
+                    det = rd.json()
+                except ValueError:
+                    logger.warning("favorecidos: detalhe não-JSON p/ doc %s — pulando", d.get("codigoDocumento"))
+                    continue
+                row = parse_documento_detalhe(cod, det)
                 if not row["documento_favorecido"]:
                     continue
                 con.execute(
@@ -111,4 +136,5 @@ def coletar_favorecidos(con, chave: str | None = None, pausa: float = 1.0,
                                :fase,:documento_ref,:valor)""", row)
                 tot += 1
             con.commit()
-    return {"verificado": True, "emendas": len(pend), "favorecidos": tot, "motivo": None}
+    return {"verificado": True, "emendas": len(pend), "favorecidos": tot,
+            "parcial": parcial, "motivo": None}

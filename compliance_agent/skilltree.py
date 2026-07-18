@@ -182,56 +182,39 @@ class SkillTree:
     _DOM_TITULO = {"auditoria": "AUDITORIA & RELATÓRIOS", "inteligencia": "INTELIGÊNCIA / OSINT",
                    "juridico": "JURÍDICO (Lex) / SEI", "sistema": "SISTEMA"}
 
-    # /lista = MENU CURADO, em linguagem natural — só o essencial que o Mestre Jorge de fato usa.
-    # O catálogo COMPLETO (todas as capacidades) fica no /skills. Itens inexistentes são omitidos.
-    _MENU_PUBLICO = [
-        ("🏢", "Auditoria & Relatórios", [
-            ("relatorio_inteligencia", "Relatório de um fornecedor", "due diligence da MGS Clean"),
-            ("relatorio_orgao", "Relatório de um órgão/UG", "quanto o ITERJ pagou e a quem em 2024"),
-            ("listar_ugs", "Catálogo de UGs/órgãos (códigos e nomes)", "/ug tribunal"),
-            ("dossie", "Dossiê 360 de um alvo", "monte um dossiê da Extreme"),
-        ]),
-        ("🔎", "Investigação", [
-            ("cartel", "Cartel/conluio entre fornecedores", "tem cartel nas licitações da UG 133100?"),
-            ("cruzamento", "Cruzar OB × CNPJ × SEI × sócios", "cruze os dados da empresa X"),
-            ("conflito_doador_contrato", "Doador de campanha que virou fornecedor", "quem me doou ganhou contrato?"),
-            ("anomalias", "Anomalias automáticas nos pagamentos", "algo estranho nos pagamentos do ITERJ?"),
-        ]),
-        ("🕸️", "Rede & Idoneidade", [
-            ("grafo_poder", "Rede de poder (quem liga a quem)", "quem está ligado à empresa X"),
-            ("consultar_empresa", "Cadastro + sócios de um CNPJ", "dados da empresa 19.088.605/0001-04"),
-            ("consultar_idoneidade", "A empresa está sancionada? (CEIS/CNEP)", "a empresa X está sancionada?"),
-        ]),
-        ("🛰️", "Coleta & Base", [
-            ("siafe_status", "Status da coleta / cobertura da base", "quantas OBs já coletamos?"),
-        ]),
-    ]
-
-    # comando-slash tappável por capacidade (o Telegram auto-linka "/cmd" → vira botão; tap preenche o input).
-    # Só os que o Yoda roteia explicitamente no prompt (config.yaml) — senão o tap não casa.
-    _CMD = {
-        "relatorio_inteligencia": "/relatorio", "relatorio_orgao": "/orgao", "listar_ugs": "/ug",
-        "dossie": "/dossie", "cruzamento": "/cruzamento",
-    }
-
     def render_menu(self, so_prontas: bool = True) -> str:
-        """/lista = menu CURADO e enxuto, em linguagem natural (não despeja as ~47 capacidades). O catálogo
-        completo está no /skills. Itens cujo id não existe no capabilities.yaml são omitidos. Itens com
-        comando-slash (`_CMD`) ganham um atalho TAPPÁVEL (o Telegram transforma "/cmd" em botão)."""
+        """/lista = menu CURADO e VIVO: os itens vêm do PRÓPRIO capabilities.yaml (campo `menu:` de
+        cada capacidade — grupo/nome/exemplo/ordem/cmd). Registrou capacidade nova com `menu:` → ela
+        aparece no /lista sem tocar em código (hot-reload via /skills_reload, sync via /skills_sync);
+        nunca defasa. O catálogo COMPLETO (todas as capacidades) segue no /skills. Itens com `cmd`
+        ganham atalho TAPPÁVEL (o Telegram transforma "/cmd" em botão; só comandos que o Yoda roteia)."""
+        itens = []
+        for cid, c in self.capacidades.items():
+            m = c.get("menu")
+            if not isinstance(m, dict):
+                continue
+            if so_prontas and str(c.get("status", "")).startswith("ONDA"):
+                continue
+            itens.append((m.get("ordem", 999), m.get("grupo", "▪️ Outros"),
+                          m.get("nome") or c.get("descricao", cid),
+                          m.get("cmd"), m.get("exemplo", "")))
+        if not itens:   # fail-safe: YAML sem curadoria de menu → aponta o catálogo completo
+            return "🧭 *JFN* — use `/skills` para ver todas as funções."
+        itens.sort(key=lambda x: x[0])
+        grupos: dict[str, list] = {}
+        for _ordem, grupo, nome, cmd, ex in itens:
+            grupos.setdefault(grupo, []).append((nome, cmd, ex))
         linhas = [
             "🧭 *JFN — o que posso fazer por você*",
             "_Fale em linguagem natural ou toque num comando; eu, o Yoda, aciono o agente certo._",
         ]
-        for emoji, titulo, itens in self._MENU_PUBLICO:
-            disp = [(cid, nome, ex) for cid, nome, ex in itens if cid in self.capacidades]
-            if not disp:
-                continue
+        for grupo, its in grupos.items():   # ordem de inserção = menor `ordem` primeiro
             linhas.append("")
-            linhas.append(f"{emoji} *{titulo}*")
-            for _cid, nome, ex in disp:
-                cmd = self._CMD.get(_cid)
+            linhas.append(f"*{grupo}*")
+            for nome, cmd, ex in its:
                 linhas.append(f"• *{nome}*" + (f" — toque {cmd}" if cmd else ""))
-                linhas.append(f"   _«{ex}»_")
+                if ex:
+                    linhas.append(f"   _«{ex}»_")
         linhas.append("")
         linhas.append("───────────")
         linhas.append("_Tudo (catálogo completo): `/skills` · Detalhe de uma função: `/skill <id>`_")

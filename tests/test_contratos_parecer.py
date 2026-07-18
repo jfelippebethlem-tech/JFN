@@ -19,6 +19,7 @@ def test_dossie_txt_inclui_memoria():
 
 
 def test_deliberar_monta_4_secoes(monkeypatch, tmp_path):
+    monkeypatch.setattr(parecer, "_rag", lambda q: "")  # teste unitário: sem Cohere vivo (429 trava)
     con = ed.conectar(tmp_path / "t.db"); _seed_mem(con)
     dossie = {"contrato": {"numero_controle_pncp": "C1", "fornecedor_documento": "11222333000181",
                            "fornecedor_nome": "ACME", "objeto": "obra", "valor_inicial": 100000,
@@ -36,6 +37,7 @@ def test_deliberar_monta_4_secoes(monkeypatch, tmp_path):
 
 
 def test_deliberar_sem_achado_relevante(monkeypatch, tmp_path):
+    monkeypatch.setattr(parecer, "_rag", lambda q: "")  # idem: teste offline
     con = ed.conectar(tmp_path / "t.db"); _seed_mem(con)
     dossie = {"contrato": {"numero_controle_pncp": "C2", "fornecedor_documento": "1", "objeto": "x",
                            "valor_inicial": 1, "valor_global": 1}, "aditivos": [], "pagamentos": {},

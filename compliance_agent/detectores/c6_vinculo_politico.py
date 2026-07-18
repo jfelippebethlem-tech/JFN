@@ -303,7 +303,12 @@ class C6VinculoPolitico(Detector):
         nome normalizado + MUNICÍPIO (mitiga homonímia — nome igual nunca basta; sem município comprovado, não casa)."""
         d_cpf = doa.get("doador_cpf")
         if socio_cpf and d_cpf and _cpf_match(socio_cpf, d_cpf):
-            return True
+            da, db = _so_digitos(socio_cpf), _so_digitos(d_cpf)
+            if len(da) == 11 and len(db) == 11:
+                return True   # igualdade plena de CPF basta
+            # CPF MASCARADO casa por miolo (~6 dígitos): colisão esperada em milhões de
+            # doações — exigir também o nome (detector juridicamente sensível)
+            return bool(socio_nome_norm) and socio_nome_norm == _norm_nome(doa.get("doador_nome"))
         # fallback nome+município só quando CPF não está disponível para casar
         if socio_cpf and d_cpf:
             return False  # ambos têm CPF e não casaram → é outra pessoa (não cair no nome)

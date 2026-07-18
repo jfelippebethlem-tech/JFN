@@ -4,6 +4,7 @@ Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -103,6 +104,10 @@ async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int
     try:
         from compliance_agent import grafo_cartel as G
         top = max(1, min(int(top or 20), 100))
+        # captura/dependencia varrem a base inteira (~3s) e não dependem de cnpj → cache curto
+        ck = f"cartel:{modo}:{top}" if modo in ("captura", "dependencia") else None
+        if ck and (cache := _cache_get(ck, 300)):
+            return JSONResponse(cache)
         if modo == "vizinhanca":
             if not cnpj:
                 return JSONResponse({"ok": False, "erro": "informe ?cnpj="}, status_code=400)
@@ -125,8 +130,11 @@ async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int
             dados = G.cartel_com_qsa(cnpj, limite=top)
         else:
             dados = G.captura_orgaos(limite=top)
-        return JSONResponse({"ok": True, "modo": modo, "dados": dados,
-                             "aviso": "Indícios de captura/cartel para apuração interna — não constituem acusação."})
+        out = {"ok": True, "modo": modo, "dados": dados,
+               "aviso": "Indícios de captura/cartel para apuração interna — não constituem acusação."}
+        if ck:
+            _cache_put(ck, out)
+        return JSONResponse(out)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
@@ -194,7 +202,10 @@ async def api_orgao_cidades(ug: Optional[str] = None, top: int = 20):
 
 @router.get("/api/compliance/painel")
 async def api_painel():
-    """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições."""
+    """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições.
+    Cacheado 120s — as agregações varrem ~1,1M de OBs (~3s) e o panorama abre em toda visita."""
+    if cache := _cache_get("painel:snapshot", 120):
+        return JSONResponse(content=cache)
     try:
         from datetime import date
         import sqlalchemy as sa
@@ -245,9 +256,17 @@ async def api_painel():
                 .order_by(desc(OrdemBancaria.data_emissao), desc(OrdemBancaria.id))
                 .limit(25).all()
             ]
-            ult = s.query(SessaoAuditoria).order_by(desc(SessaoAuditoria.created_at)).first()
-            ultima_coleta = (f"{ult.data_sessao} [{ult.tipo}] {ult.status}"
-                             if ult else "nenhuma ainda")
+            # verdade = a própria tabela de OBs (SessaoAuditoria parou de ser escrita pelo runner
+            # atual e congelava um erro de jun/2026 no painel — desinformação)
+            try:
+                from sqlalchemy import text as _text
+                _ult = s.execute(_text(
+                    "SELECT MAX(coletado_em) FROM ob_orcamentaria_siafe")).scalar()
+                ultima_coleta = f"{_ult} [siafe_ob] ok" if _ult else "nenhuma ainda"
+            except Exception:
+                ult = s.query(SessaoAuditoria).order_by(desc(SessaoAuditoria.created_at)).first()
+                ultima_coleta = (f"{ult.data_sessao} [{ult.tipo}] {ult.status}"
+                                 if ult else "nenhuma ainda")
 
             licoes = []
             try:
@@ -256,7 +275,7 @@ async def api_painel():
             except Exception as exc:
                 logger.warning("lições da memória indisponíveis p/ a investigação: %s", exc)
 
-            return JSONResponse(content={
+            return JSONResponse(content=_cache_put("painel:snapshot", {
                 "atualizado": str(hoje),
                 "obs": {"total": total_obs, "hoje": obs_hoje,
                         "valor_hoje": float(valor_hoje), "valor_total": float(valor_total)},
@@ -267,7 +286,7 @@ async def api_painel():
                 "top_favorecidos": top,
                 "obs_recentes": obs_recentes,
                 "licoes": licoes,
-            })
+            }))
         finally:
             s.close()
     except Exception as e:
@@ -950,3 +969,839 @@ async def api_nucleo_comando(payload: dict = None):
         return JSONResponse(content={"ok": True, "comando": comando, "args": args, "resposta": resposta})
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CONTROLE: processos SEI restritos (alimentado pelos sweeps) + flags vermelhos graves
+# Endpoints /api/restritos e /api/flags + página /controle (autocontida, dark). 2026-07-14.
+# ─────────────────────────────────────────────────────────────────────────────
+@router.get("/api/restritos")
+async def api_restritos(todos: int = 0):
+    """Lista de controle dos processos SEI de acesso RESTRITO (data/sei_restritos.json)."""
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(RAIZ))
+        from tools import sei_restritos as _R
+        itens = _R.listar(todos=bool(todos))
+        return JSONResponse({"ok": True, "n": len(itens), "itens": itens})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(e), "itens": []}, status_code=500)
+
+
+@router.get("/api/flags")
+async def api_flags():
+    """Flags vermelhos GRAVES da fiscalização (data/flags_graves.json)."""
+    try:
+        import sys as _sys
+        _sys.path.insert(0, str(RAIZ))
+        from tools import flags_graves as _F
+        itens = _F.listar()
+        return JSONResponse({"ok": True, "n": len(itens), "itens": itens})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(e), "itens": []}, status_code=500)
+
+
+@router.get("/controle")
+async def pagina_controle():
+    """Página de CONTROLE (dark, mobile): flags graves + processos SEI restritos. Consome /api/flags e /api/restritos."""
+    from fastapi.responses import HTMLResponse
+    return HTMLResponse(_CONTROLE_HTML)
+
+
+_CONTROLE_HTML = r"""<!doctype html><html lang=pt-BR><head><meta charset=utf-8>
+<meta name=viewport content="width=device-width,initial-scale=1"><title>JFN — Controle</title>
+<style>
+:root{--bg:#0f1115;--card:#171a21;--bd:#272b34;--tx:#e6e8ec;--mut:#9aa2ad;--crit:#e5484d;--alta:#e08a2b;--med:#d9c33a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;padding:16px;max-width:1000px;margin:auto}
+h1{font-size:18px;margin:.2em 0}h2{font-size:15px;color:var(--mut);margin:1.4em 0 .5em;border-bottom:1px solid var(--bd);padding-bottom:4px}
+.card{background:var(--card);border:1px solid var(--bd);border-left:4px solid var(--bd);border-radius:8px;padding:10px 12px;margin:8px 0}
+.card.CRÍTICA{border-left-color:var(--crit)}.card.ALTA{border-left-color:var(--alta)}.card.MÉDIA{border-left-color:var(--med)}
+.g{display:inline-block;font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px;background:#222;color:#fff}
+.g.CRÍTICA{background:var(--crit)}.g.ALTA{background:var(--alta)}.g.MÉDIA{background:var(--med);color:#111}
+.caso{font-weight:600}.tit{margin:4px 0}.meta{color:var(--mut);font-size:12.5px}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--bd)}
+th{color:var(--mut);font-weight:600}.pill{font-size:11px;font-weight:700;padding:1px 7px;border-radius:10px}
+.pill.RESTRITO{background:var(--crit);color:#fff}.pill.RESTRITO\?{background:var(--alta);color:#fff}.pill.PARCIAL{background:var(--med);color:#111}
+.upd{color:var(--mut);font-size:12px;margin-top:2em}code{background:#222;padding:1px 5px;border-radius:4px}
+</style></head><body>
+<h1>🛡️ JFN — Controle de fiscalização</h1>
+<div class=meta>Flags vermelhos graves e processos SEI restritos. Atualiza sozinho ao longo dos sweeps.</div>
+<h2 id=hf>🚩 Flags vermelhos graves</h2><div id=flags>carregando…</div>
+<h2 id=hr>🔒 Processos SEI restritos <span class=meta id=rct></span></h2><div id=restr>carregando…</div>
+<div class=upd id=upd></div>
+<script>
+const brl=v=>{v=+v;return !v?'':'R$ '+v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})};
+async function j(u){try{const r=await fetch(u);return await r.json()}catch(e){return{ok:false,itens:[]}}}
+(async()=>{
+ const f=await j('/api/flags');
+ document.getElementById('flags').innerHTML = (f.itens||[]).map(e=>`
+   <div class="card ${e.gravidade}"><span class="g ${e.gravidade}">${e.gravidade||''}</span>
+   <span class=caso> ${e.caso||''}</span><div class=tit>${e.titulo||''}</div>
+   <div class=meta>${e.valor>0?('💰 '+brl(e.valor)+' · '):''}${e.base_legal?('⚖️ '+e.base_legal):''}${e.status?(' · 📌 '+e.status):''}</div></div>`).join('') || '<div class=meta>sem flags</div>';
+ const r=await j('/api/restritos');
+ document.getElementById('rct').textContent = '('+(r.itens||[]).length+')';
+ document.getElementById('restr').innerHTML = (r.itens||[]).length ? `<table><tr><th>Status</th><th>Processo</th><th>Unidade</th><th>Existe</th><th>Leit.</th><th>Última</th></tr>`+
+   r.itens.map(e=>`<tr><td><span class="pill ${e.status}">${e.status||''}</span></td><td><code>${e.numero||''}</code></td><td>${e.unidade||'—'}</td><td>${e.fonte_existencia||e.existe||'—'}</td><td>${e.n_leituras||0}</td><td>${e.ultima||''}</td></tr>`).join('')+`</table>` : '<div class=meta>Nenhum restrito ainda — a lista se alimenta ao longo dos sweeps.</div>';
+ document.getElementById('upd').textContent = 'atualizado '+new Date().toLocaleString('pt-BR');
+})();
+</script></body></html>"""
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# CENTRAL DE INTELIGÊNCIA (painel v2) — conluio PNCP, nomeados×candidatos, laranjas
+# ─────────────────────────────────────────────────────────────────────────────
+import time as _time
+
+_cache: dict = {}
+
+
+def _cache_get(chave: str, ttl: int):
+    v = _cache.get(chave)
+    if v and (_time.time() - v[0]) < ttl:
+        return v[1]
+    return None
+
+
+def _cache_put(chave: str, val):
+    _cache[chave] = (_time.time(), val)
+    return val
+
+
+@router.get("/api/pncp/conluio")
+async def api_pncp_conluio(min_certames: int = 4, esfera: str = ""):
+    """Conluio a partir dos RESULTADOS estruturados do PNCP (vencedor homologado por item):
+    CAPTURA (1 fornecedor domina o órgão) e RODÍZIO DE VENCEDORES (poucos se revezam) — com
+    nome de fornecedor, nome de órgão e amostra de OBJETOS. ?esfera=estado|prefeitura|municipios|
+    federal|outros filtra pela esfera OFICIAL do ente (pncp_ente). Indício OCDE a verificar, não acusação."""
+    import sqlite3 as _sq
+    esf = esfera if esfera in ("estado", "prefeitura", "municipios", "federal", "outros") else None
+    ck = f"conluio:{esf or 'todos'}"
+    cache = _cache_get(ck, 300)
+    if cache:
+        return JSONResponse(cache)
+    try:
+        from compliance_agent.collectors.pncp_resultados import conluio_enriquecido
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        try:
+            dados = conluio_enriquecido(con, min_certames=max(3, int(min_certames or 4)), esfera=esf)
+        finally:
+            con.close()
+        out = {"ok": True, **dados,
+               "esfera": esf or "todos",
+               "aviso": "Indício OCDE (bid rigging) para apuração interna — objetos diversos enfraquecem "
+                        "a hipótese; corroborar propostas, QSA e cronologia. Não é acusação."}
+        return JSONResponse(_cache_put(ck, out))
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/poder/nomeados_candidatos")
+async def api_nomeados_candidatos(limite: int = 200):
+    """Cruzamento SERVIDOR/NOMEADO (registros_folha) × CANDIDATO (doacoes_eleitorais/TSE) por nome.
+    Servidor público — sobretudo cargo em comissão — que foi candidato a cargo eletivo. Match por
+    NOME (verificar homônimo). Indício de relação político-administrativa, não irregularidade."""
+    import sqlite3 as _sq
+    lim = max(10, min(int(limite or 200), 1000))
+    ck = f"nomcand:{lim}"  # o payload varia com o limite — chave fixa congelava o tamanho p/ todos
+    cache = _cache_get(ck, 600)
+    if cache:
+        return JSONResponse(cache)
+    try:
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        con.execute("CREATE TEMP TABLE _cand AS SELECT DISTINCT UPPER(TRIM(nome_candidato)) nc, "
+                    "cargo_candidato, partido, ano_eleicao FROM doacoes_eleitorais")
+        con.execute("CREATE INDEX _tc ON _cand(nc)")
+        rows = con.execute(
+            "SELECT f.nome, f.cargo, f.orgao_nome, c.cargo_candidato, c.partido, c.ano_eleicao "
+            "FROM (SELECT DISTINCT nome, cargo, orgao_nome FROM registros_folha) f "
+            "JOIN _cand c ON UPPER(TRIM(f.nome))=c.nc "
+            "ORDER BY f.nome LIMIT ?", (lim,)).fetchall()
+        con.close()
+        comissao = [r for r in rows if "comiss" in (r["cargo"] or "").lower()]
+        itens = [{"nome": r["nome"], "cargo_folha": r["cargo"], "orgao": r["orgao_nome"],
+                  "cargo_disputado": r["cargo_candidato"], "partido": r["partido"],
+                  "ano": r["ano_eleicao"],
+                  "comissionado": "comiss" in (r["cargo"] or "").lower()} for r in rows]
+        out = {"ok": True, "total": len(itens), "n_comissionados": len(comissao), "itens": itens,
+               "aviso": "Match por NOME (homônimos possíveis) — indício de relação político-administrativa "
+                        "a verificar, não irregularidade. Ser candidato é direito; o foco é conflito de interesse."}
+        return JSONResponse(_cache_put(ck, out))
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/laranjas")
+async def api_laranjas(limite: int = 100):
+    """Sócios de fornecedores do Estado que RECEBEM benefício social de subsistência (bolsa família etc.)
+    — indício clássico de LARANJA/interposição (art. 337-F CP): quem figura como dono de empresa que
+    recebe do Estado não deveria depender de auxílio. Só os confirmados (recebe_beneficio=1)."""
+    import json as _json
+    import sqlite3 as _sq
+    try:
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        rows = con.execute(
+            "SELECT socio_nome_norm, cpf_resolvido, beneficios_json, motivo, confianca "
+            "FROM socio_beneficio WHERE recebe_beneficio=1 ORDER BY confianca DESC LIMIT ?",
+            (max(10, min(int(limite or 100), 500)),)).fetchall()
+        con.close()
+        itens = []
+        for r in rows:
+            try:
+                bens = _json.loads(r["beneficios_json"] or "[]")
+            except (ValueError, TypeError):
+                bens = []
+            cpf = re.sub(r"\D", "", r["cpf_resolvido"] or "")
+            # fail-CLOSED: valor não-canônico (≠11 dígitos) vira "***" — nunca ecoar o bruto
+            cpf_masc = f"***.{cpf[3:6]}.{cpf[6:9]}-**" if len(cpf) == 11 else ("***" if cpf else "")
+            itens.append({"socio": r["socio_nome_norm"], "cpf": cpf_masc,  # LGPD: nunca CPF completo
+                          "beneficios": bens if isinstance(bens, list) else [str(bens)],
+                          "motivo": r["motivo"], "confianca": r["confianca"]})
+        out = {"ok": True, "total": len(itens), "itens": itens,
+               "aviso": "Indício de laranja/interposição (art. 337-F CP) a verificar — receber benefício "
+                        "não é ilícito; o sinal é ser SÓCIO de empresa que recebe do Estado E depender de auxílio."}
+        return JSONResponse(out)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/pericias")
+async def api_pericias(q: str = "", grau: str = "", limite: int = 60, ordem: str = "score"):
+    """Ranking pesquisável de perícias de fornecedor (pericia_fornecedor). ?q=nome/cnpj &grau=🟡/🟢
+    &ordem=score|total. Cada fornecedor é agregado (maior grau, soma de OB, achados). Indício."""
+    import sqlite3 as _sq
+    try:
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        col = "total" if ordem == "total" else "score"
+        params: list = []
+        where = "WHERE 1=1"
+        if q:
+            where += " AND (favorecido LIKE ? OR cnpj LIKE ?)"
+            params += [f"%{q}%", f"%{q.replace('.', '').replace('/', '').replace('-', '')}%"]
+        if grau:
+            where += " AND grau = ?"
+            params.append(grau)
+        rows = con.execute(
+            f"SELECT cnpj, MAX(favorecido) favorecido, "
+            f"       CASE WHEN SUM(CASE WHEN grau='🔴' THEN 1 ELSE 0 END)>0 THEN '🔴' "
+            f"            WHEN SUM(CASE WHEN grau='🟡' THEN 1 ELSE 0 END)>0 THEN '🟡' ELSE '🟢' END grau, "
+            f"       MAX(score) score, SUM(total_pago) total, SUM(n_obs) n_obs, "
+            f"       SUM(n_confirmados) confirmados, SUM(n_indicios) indicios, COUNT(DISTINCT ug) ugs "
+            f"FROM pericia_fornecedor {where} GROUP BY cnpj "
+            f"ORDER BY {col} DESC LIMIT ?", (*params, max(10, min(int(limite or 60), 300)))).fetchall()
+        con.close()
+        itens = [dict(r) for r in rows]
+        return JSONResponse({"ok": True, "total": len(itens), "itens": itens})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/perfil")
+async def api_perfil(cnpj: str):
+    """Dossiê 360 INSTANTÂNEO de um CNPJ, montado do banco local (sem rede): perícia (grau/achados),
+    pagamento (OB total, órgãos), QSA (sócios), sede/fachada, vitórias no PNCP e sinal de laranja.
+    O motor da tela de drill-down do painel. Indício a verificar, nunca acusação."""
+    import json as _json
+    import sqlite3 as _sq
+    dig = "".join(c for c in (cnpj or "") if c.isdigit())
+    if len(dig) != 14:
+        return JSONResponse({"ok": False, "erro": "informe um CNPJ de 14 dígitos"}, status_code=400)
+    try:
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        out: dict = {"ok": True, "cnpj": dig, "cnpj_fmt": f"{dig[:2]}.{dig[2:5]}.{dig[5:8]}/{dig[8:12]}-{dig[12:]}"}
+        # perícia (agrega por CNPJ)
+        per = con.execute(
+            "SELECT MAX(favorecido) nome, MAX(score) score, SUM(total_pago) total, SUM(n_obs) n_obs, "
+            "SUM(n_confirmados) confirmados, SUM(n_indicios) indicios, COUNT(DISTINCT ug) ugs, "
+            "CASE WHEN SUM(CASE WHEN grau='🔴' THEN 1 ELSE 0 END)>0 THEN '🔴' "
+            "WHEN SUM(CASE WHEN grau='🟡' THEN 1 ELSE 0 END)>0 THEN '🟡' ELSE '🟢' END grau "
+            "FROM pericia_fornecedor WHERE cnpj=?", (dig,)).fetchone()
+        out["pericia"] = dict(per) if per and per["nome"] else None
+        # achados detalhados (do maior score)
+        det = con.execute("SELECT achados_json, resumo FROM pericia_fornecedor WHERE cnpj=? "
+                          "ORDER BY score DESC LIMIT 1", (dig,)).fetchone()
+        if det:
+            try:
+                out["achados"] = _json.loads(det["achados_json"] or "[]")[:12]
+            except (ValueError, TypeError):
+                out["achados"] = []
+            out["resumo"] = det["resumo"]
+        # pagamento (OB TFE) + órgãos
+        ob = con.execute("SELECT COUNT(*) n, COALESCE(SUM(valor),0) v, COUNT(DISTINCT ug_codigo) ugs, "
+                         "MAX(favorecido_nome) nome FROM ordens_bancarias WHERE favorecido_cpf=?",
+                         (dig,)).fetchone()
+        out["ob"] = {"n": ob["n"], "total": ob["v"], "orgaos": ob["ugs"]} if ob and ob["n"] else None
+        out["nome"] = (out.get("pericia") or {}).get("nome") or (ob["nome"] if ob else None) or "—"
+        top_org = con.execute("SELECT ug_codigo, COALESCE(ug_nome,'') nome, SUM(valor) v FROM ordens_bancarias "
+                              "WHERE favorecido_cpf=? AND valor>0 GROUP BY ug_codigo ORDER BY v DESC LIMIT 8",
+                              (dig,)).fetchall()
+        out["orgaos"] = [{"ug": r["ug_codigo"], "nome": r["nome"], "total": r["v"]} for r in top_org]
+        # QSA
+        soc = con.execute("SELECT socio_nome, qualificacao, socio_servidor FROM socios_fornecedor "
+                          "WHERE cnpj=? LIMIT 12", (dig,)).fetchall()
+        out["socios"] = [{"nome": r["socio_nome"], "qualificacao": r["qualificacao"],
+                          "servidor": bool(r["socio_servidor"])} for r in soc]
+        # sede/fachada
+        sede = con.execute("SELECT razao, endereco, municipio, uf, status, nivel, evidencia, "
+                           "geo_lat, geo_lon, addr_residencial FROM verificacao_sede WHERE cnpj=? LIMIT 1",
+                           (dig,)).fetchone()
+        if sede:
+            out["sede"] = {"endereco": sede["endereco"], "municipio": sede["municipio"], "uf": sede["uf"],
+                           "status": sede["status"], "nivel": sede["nivel"], "evidencia": sede["evidencia"],
+                           "residencial": bool(sede["addr_residencial"]),
+                           "lat": sede["geo_lat"], "lon": sede["geo_lon"]}
+        # vitórias no PNCP
+        pncp = con.execute("SELECT COUNT(DISTINCT certame) certames, COALESCE(SUM(valor_homologado),0) v, "
+                           "COUNT(DISTINCT orgao_cnpj) orgaos FROM pncp_resultado "
+                           "WHERE fornecedor_cnpj=? AND ordem_classificacao=1", (dig,)).fetchone()
+        out["pncp"] = {"certames": pncp["certames"], "total": pncp["v"], "orgaos": pncp["orgaos"]} if pncp and pncp["certames"] else None
+        con.close()
+        return JSONResponse(out)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+# ── INTELIGÊNCIA 2026-07-17: sancionadas × contratadas, perdedoras contumazes, fantasmas ──
+
+@router.get("/api/intel/sancionadas")
+async def api_intel_sancionadas(limite: int = 60):
+    """Empresas com sanção IMPEDITIVA (CEIS/CNEP) que receberam OB do Estado ou venceram no PNCP —
+    com o teste temporal "à época" (ato DENTRO da vigência da sanção). Cache materializado por
+    tools/intel (cruzamentos_intel.gerar_cache_intel); fallback = computa na hora."""
+    try:
+        from compliance_agent.cruzamentos_intel import ler_cache_intel, sancionadas_contratadas
+        d = ler_cache_intel("sancionadas_contratadas")
+        if not d:
+            if not (d := _cache_get("intel:sanc", 3600)):
+                d = _cache_put("intel:sanc", sancionadas_contratadas())
+        d = dict(d)
+        d["empresas"] = d.get("empresas", [])[:max(1, min(int(limite or 60), 300))]
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/perdedoras")
+async def api_intel_perdedoras():
+    """Perdedoras contumazes ("nunca ganharam"): participam de ≥K certames nas atas e nunca vencem —
+    perfil de proposta de cobertura (OCDE). Sai do cache (varrer 8k atas não roda no request)."""
+    try:
+        from compliance_agent.cruzamentos_intel import ler_cache_intel
+        d = ler_cache_intel("perdedoras_contumazes")
+        if not d:
+            return JSONResponse({"ok": False, "erro": "cache ainda não gerado — "
+                                 "rodar: python -m compliance_agent.cruzamentos_intel cache"})
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/conluio_qsa")
+async def api_intel_conluio_qsa():
+    """CONLUIO DIRETO: vencedor × perdedora do MESMO certame com sócio em comum (QSA Receita)
+    ou matriz×filial concorrendo entre si. Cache do intel (com atas); fallback = só PNCP."""
+    try:
+        from compliance_agent.cruzamentos_intel import conluio_qsa, ler_cache_intel
+        d = ler_cache_intel("conluio_qsa")
+        if not d:
+            if not (d := _cache_get("intel:conluio", 3600)):
+                d = _cache_put("intel:conluio", conluio_qsa(incluir_atas=False))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/comunidades")
+async def api_intel_comunidades():
+    """Comunidades (Louvain) do grafo família-empresa-órgão, ranqueadas por risco 0-100.
+    Sai do cache (construir o grafo completo não roda no request)."""
+    try:
+        from compliance_agent.cruzamentos_intel import ler_cache_intel
+        d = ler_cache_intel("comunidades")
+        if not d:
+            return JSONResponse({"ok": False, "erro": "cache ainda não gerado — "
+                                 "rodar: python -m compliance_agent.cruzamentos_intel cache"})
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/radar")
+async def api_intel_radar(limite: int = 100):
+    """RADAR composto: score 0-100 por fornecedor somando os sinais de todos os detectores —
+    a fila de apuração priorizada. Cache do intel; fallback = computa na hora."""
+    try:
+        from compliance_agent.cruzamentos_intel import ler_cache_intel, radar_risco
+        d = ler_cache_intel("radar_risco")
+        if not d:
+            lim = max(1, min(int(limite or 100), 300))
+            if not (d := _cache_get(f"intel:radar:{lim}", 3600)):
+                d = _cache_put(f"intel:radar:{lim}", radar_risco(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/retro")
+async def api_intel_retro():
+    """Retro-auditoria (hindsight): por detector, sanção POSTERIOR ao 1º sinal (corroboração
+    independente) e R$ pagos/vitórias APÓS o alerta (custo da inação). Ledger diário no timer."""
+    try:
+        from compliance_agent.retro_auditoria import medir
+        if not (d := _cache_get("intel:retro", 3600)):
+            d = _cache_put("intel:retro", medir())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/comparador/buscar")
+async def api_comparador_buscar(termo: str = ""):
+    """Grupos de item que casam o termo (ex.: 'aluguel carro', 'medicamento'), com dispersão de
+    preço entre órgãos — abrir um grupo mostra quem paga mais/menos."""
+    try:
+        from compliance_agent.comparador_precos import buscar_grupos
+        t = (termo or "").strip()[:60]
+        if len(t) < 3:
+            return JSONResponse({"ok": False, "erro": "termo muito curto (≥3 letras)"})
+        if not (d := _cache_get(f"comp:busca:{t.lower()}", 600)):
+            d = _cache_put(f"comp:busca:{t.lower()}", buscar_grupos(t))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/comparador/item")
+async def api_comparador_item(grupo: str = "", unidade: str = ""):
+    """Para um item (grupo normalizado), ranking de ÓRGÃOS e FORNECEDORES por preço unitário."""
+    try:
+        from compliance_agent.comparador_precos import comparar
+        g = (grupo or "").strip()
+        if not g:
+            return JSONResponse({"ok": False, "erro": "grupo vazio"})
+        ck = f"comp:item:{g}:{(unidade or '').lower()}"
+        if not (d := _cache_get(ck, 600)):
+            d = _cache_put(ck, comparar(g, unidade or None))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/comparador/economia")
+async def api_comparador_economia():
+    """Economia potencial: quanto os cofres economizariam se cada compra acima da mediana tivesse
+    pago a mediana de mercado do item. Total + quebra por item/órgão/fornecedor."""
+    try:
+        from compliance_agent.comparador_precos import economia_potencial
+        if not (d := _cache_get("comp:economia", 1800)):
+            d = _cache_put("comp:economia", economia_potencial())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/comparador/vedada")
+async def api_comparador_vedada():
+    """O número mais forte: sobrepreço (acima da mediana) pago a fornecedor JURIDICAMENTE VEDADO
+    de contratar com aquele ente comprador, VIGENTE à época. Inidoneidade veda todos."""
+    try:
+        from compliance_agent.comparador_precos import economia_vedada
+        if not (d := _cache_get("comp:vedada", 1800)):
+            d = _cache_put("comp:vedada", economia_vedada())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/sancoes/detalhar")
+async def api_sancoes_detalhar(cnpj: str = "", esfera: str = "estadual", uf: str = "RJ"):
+    """Detalha as sanções de um CNPJ: tipo, abrangência, órgão, vigência e se VEDA de fato o
+    contrato com o ente-alvo (default Estado-RJ). Responde 'quais são e qual a abrangência'."""
+    try:
+        import sqlite3 as _sq
+        from compliance_agent.sancao_abrangencia import detalhar
+        c = re.sub(r"\D", "", cnpj or "")
+        if len(c) != 14:
+            return JSONResponse({"ok": False, "erro": "CNPJ inválido"})
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        try:
+            return JSONResponse(detalhar(c, con, esfera, (uf or "RJ").upper()))
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/comparador/dossie")
+async def api_comparador_dossie():
+    """Dossiê automático: item pago muito acima da mediana por um órgão cujo FORNECEDOR já é
+    sancionado/no radar/fantasma. Cruza o comparador de preços com o gabarito de risco."""
+    try:
+        from compliance_agent.comparador_precos import caro_e_suspeito
+        if not (d := _cache_get("comp:dossie", 1800)):
+            d = _cache_put("comp:dossie", caro_e_suspeito())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/comparador/orgaos")
+async def api_comparador_orgaos():
+    """Ranking de órgãos por eficiência de gasto (razão preço/mercado ao longo de muitos itens)."""
+    try:
+        from compliance_agent.comparador_precos import ranking_orgaos
+        if not (d := _cache_get("comp:orgaos", 1800)):
+            d = _cache_put("comp:orgaos", ranking_orgaos())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/comparador/fornecedores")
+async def api_comparador_fornecedores():
+    """Ranking de fornecedores por preço relativo (mais caros / mais baratos vs mercado)."""
+    try:
+        from compliance_agent.comparador_precos import ranking_fornecedores
+        if not (d := _cache_get("comp:forn", 1800)):
+            d = _cache_put("comp:forn", ranking_fornecedores())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/lift")
+async def api_intel_lift():
+    """Validação de cada detector contra o gabarito OBJETIVO (sanções impeditivas): LIFT = taxa de
+    sancionados no que o detector marca ÷ taxa-base do universo. lift>1 = sinal; <1 = anti-sinal."""
+    try:
+        from compliance_agent.retro_auditoria import avaliar_lift
+        if not (d := _cache_get("intel:lift", 3600)):
+            d = _cache_put("intel:lift", avaliar_lift())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/fracionamento")
+async def api_intel_fracionamento(limite: int = 120):
+    """Possível fracionamento de despesa: favorecido+UG+mês com várias OBs coladas no teto de
+    dispensa (fatiar p/ não licitar, Lei 14.133 art. 75 §1º). Ordena por concentração colada."""
+    try:
+        from compliance_agent.cruzamentos_intel import fracionamento
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:frac:{lim}", 600)):
+            d = _cache_put(f"intel:frac:{lim}", fracionamento(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/pdf")
+async def api_intel_pdf(tipo: str):
+    """Gera o PDF Kroll do detector `tipo` e devolve a URL. Síncrono (detectores são rápidos/cache)."""
+    try:
+        from compliance_agent.intel_relatorio import gerar_pdf_intel
+        d = await gerar_pdf_intel(tipo, db_path=str(RAIZ / "data" / "compliance.db"))
+        return JSONResponse(d, status_code=200 if d.get("ok") else 400)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/fornecedor_dependente")
+async def api_intel_fornecedor_dependente(limite: int = 120):
+    """Fornecedor comercial com ≥90% da receita do Estado numa única unidade gestora ('empresa do órgão')."""
+    try:
+        from compliance_agent.cruzamentos_intel import fornecedor_dependente
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:dep:{lim}", 600)):
+            d = _cache_put(f"intel:dep:{lim}", fornecedor_dependente(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/corrida_dezembro")
+async def api_intel_corrida_dezembro(limite: int = 120):
+    """Fornecedor comercial com ≥75% do valor do ano concentrado em dezembro (corrida do empenho)."""
+    try:
+        from compliance_agent.cruzamentos_intel import corrida_dezembro
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:dez:{lim}", 600)):
+            d = _cache_put(f"intel:dez:{lim}", corrida_dezembro(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/grafo_familias")
+async def api_intel_grafo_familias():
+    """Grafo D3 (nodes/links) das famílias que ocupam cargo de confiança E fornecem ao Estado —
+    consumido pelo graph.html em /graph?fonte=familias."""
+    try:
+        from compliance_agent.cruzamentos_intel import grafo_familias
+        if not (d := _cache_get("intel:grafofam", 600)):
+            d = _cache_put("intel:grafofam", grafo_familias(db_path=str(RAIZ / "data" / "compliance.db")))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"nodes": [], "links": [], "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/comunidades_grafo")
+async def api_intel_comunidades_grafo():
+    """Grafo D3 (nodes/links) das comunidades Louvain — consumido pelo graph.html em
+    /graph?fonte=comunidades. Sai do cache do intel (construir o grafo não roda no request)."""
+    try:
+        from compliance_agent.cruzamentos_intel import ler_cache_intel
+        d = ler_cache_intel("comunidades") or {}
+        return JSONResponse(d.get("d3") or {"nodes": [], "links": []})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"nodes": [], "links": [], "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/fenix")
+async def api_intel_fenix(limite: int = 120):
+    """Empresa fênix: BAIXADA/INAPTA que recebeu, ou aberta ≤12m antes do 1º pagamento."""
+    try:
+        from compliance_agent.cruzamentos_intel import empresa_fenix
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:fenix:{lim}", 600)):
+            d = _cache_put(f"intel:fenix:{lim}", empresa_fenix(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/porta_giratoria")
+async def api_intel_porta_giratoria(limite: int = 120):
+    """Porta giratória: ex-servidor (inativo/exonerado) que virou sócio de fornecedor do Estado."""
+    try:
+        from compliance_agent.cruzamentos_intel import porta_giratoria
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:porta:{lim}", 600)):
+            d = _cache_put(f"intel:porta:{lim}", porta_giratoria(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/nepotismo_cruzado")
+async def api_intel_nepotismo_cruzado(limite: int = 60):
+    """Nepotismo cruzado: colocação recíproca de parentes entre dois órgãos (dribla a SV13)."""
+    try:
+        from compliance_agent.cruzamentos_intel import nepotismo_cruzado
+        lim = max(1, min(int(limite or 60), 200))
+        if not (d := _cache_get(f"intel:nepcruz:{lim}", 600)):
+            d = _cache_put(f"intel:nepcruz:{lim}", nepotismo_cruzado(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/nepotismo")
+async def api_intel_nepotismo(limite: int = 120):
+    """Nepotismo (SV13 STF): ≥2 pessoas de nomes distintos, mesmo sobrenome de família raro, ambas
+    em cargo de confiança no mesmo órgão. Fragmento de CPF corrobora pessoas distintas."""
+    try:
+        from compliance_agent.cruzamentos_intel import nepotismo
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:nep:{lim}", 600)):
+            d = _cache_put(f"intel:nep:{lim}", nepotismo(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/socio_oculto")
+async def api_intel_socio_oculto(limite: int = 120):
+    """Pessoa/holding sócia de ≥3 empresas fornecedoras do Estado (empresário oculto / grupo familiar)."""
+    try:
+        from compliance_agent.cruzamentos_intel import socio_oculto
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:ocult:{lim}", 600)):
+            d = _cache_put(f"intel:ocult:{lim}", socio_oculto(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/aditivos")
+async def api_intel_aditivos(limite: int = 120):
+    """Aditivos que estouram o limite legal de acréscimo (25%/50%, Lei 14.133 art. 125) e change
+    orders em série (≥3 aditivos). Fonte: pcrj_contratos + contrato_aditivo."""
+    try:
+        from compliance_agent.cruzamentos_intel import aditivos_estouro
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:adit:{lim}", 600)):
+            d = _cache_put(f"intel:adit:{lim}", aditivos_estouro(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/socio_servidor")
+async def api_intel_socio_servidor(limite: int = 150):
+    """Servidor público (folha) que é sócio de fornecedor do Estado — conflito de interesse
+    (Lei 14.133 art. 9) e, se administrador, vedação estatutária de gerência. Nome + fragmento de CPF."""
+    try:
+        from compliance_agent.cruzamentos_intel import socio_servidor
+        lim = max(1, min(int(limite or 150), 300))
+        if not (d := _cache_get(f"intel:socserv:{lim}", 600)):
+            d = _cache_put(f"intel:socserv:{lim}", socio_servidor(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/escalada")
+async def api_intel_escalada(limite: int = 120):
+    """Escalada de preço unitário: MESMO fornecedor vende o MESMO item por preços cada vez maiores
+    ao longo do tempo (≥3 compras, ≥45 dias, alta ≥3×). Preço dirigido/captura. Fonte: PNCP."""
+    try:
+        from compliance_agent.cruzamentos_intel import escalada_preco
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:escal:{lim}", 600)):
+            d = _cache_put(f"intel:escal:{lim}", escalada_preco(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/sobrepreco")
+async def api_intel_sobrepreco(limite: int = 120):
+    """Sobrepreço por mediana de item: mesmo produto (descrição normalizada) comprado por vários
+    órgãos; sinaliza preço unitário ≥2× a mediana (e fora de mediana+3·MAD). Fonte: PNCP."""
+    try:
+        from compliance_agent.cruzamentos_intel import sobrepreco
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:sobre:{lim}", 600)):
+            d = _cache_put(f"intel:sobre:{lim}", sobrepreco(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/fantasmas")
+async def api_intel_fantasmas(limite: int = 50):
+    """Ranking de risco de empresa-fantasma (8 sinais determinísticos do /fantasma) no conjunto-alvo
+    (capturas, rodízios, perdedoras contumazes, sancionadas, top favorecidos)."""
+    try:
+        from compliance_agent.cruzamentos_intel import ranking_fantasmas
+        lim = max(1, min(int(limite or 50), 200))
+        if not (d := _cache_get(f"intel:fant:{lim}", 600)):
+            d = _cache_put(f"intel:fant:{lim}", ranking_fantasmas(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/pcrj/comissionados_candidatos")
+async def api_pcrj_comissionados_candidatos(limite: int = 300):
+    """Comissionados da PREFEITURA do Rio que foram CANDIDATOS (TSE) — tabela
+    pcrj_comissionado_candidato (data/pcrj.db, coletor pcrj/comissionados_candidatos)."""
+    import sqlite3 as _sq
+    try:
+        lim = max(1, min(int(limite or 300), 1000))
+        ck = f"pcrj:comis_cand:{lim}"  # chave POR limite (limite=1 do panorama envenenava a aba)
+        if d := _cache_get(ck, 600):
+            return JSONResponse(d)
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        try:
+            rows = [dict(r) for r in con.execute(
+                "SELECT nome_pcrj, cargo_pcrj, orgao_pcrj, admissao, exoneracao, "
+                "cand_ano, cand_cargo, cand_cidade FROM pcrj_comissionado_candidato "
+                "ORDER BY cand_ano DESC, nome_pcrj LIMIT ?", (lim,))]
+            n = con.execute("SELECT COUNT(*) FROM pcrj_comissionado_candidato").fetchone()[0]
+        finally:
+            con.close()
+        out = {"ok": True, "n": n, "comissionados": rows,
+               "explicacao": ("Cruzamento por nome entre a folha de comissionados da Prefeitura do "
+                              "Rio e as candidaturas do TSE. Comissionado que concorreu (ou concorre) "
+                              "a cargo eletivo é sinal de aparelhamento político do cargo de confiança."),
+               "ressalva": "Match por NOME (homônimo possível) — confirmar por CPF antes de citar."}
+        return JSONResponse(_cache_put("pcrj:comis_cand", out))
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/pcrj/beneficios_vinculo")
+async def api_pcrj_beneficios_vinculo():
+    """Comissionados/servidores municipais × benefício social (Bolsa Família etc.) DURANTE o vínculo
+    (fairness: só o mês dentro da janela de vínculo conta). Lê o cache materializado — a perícia
+    cruza 7,3 mi de registros e NUNCA roda no request."""
+    try:
+        from compliance_agent.cruzamentos_intel import ler_cache_intel
+        d = ler_cache_intel("beneficios_vinculo")
+        if not d:
+            return JSONResponse({"ok": False, "erro": "cache ainda não gerado — "
+                                 "rodar: python -m compliance_agent.cruzamentos_intel cache"})
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/fontes/frescor")
+async def api_fontes_frescor():
+    """Frescor de CADA fonte de dados (última coleta + último dado). O painel mostra em verde/âmbar/
+    vermelho — defasagem nunca mais passa despercebida (lição SIAFE 16-17/07: MFA quebrou a coleta
+    e nada avisava)."""
+    import sqlite3 as _sq
+    from datetime import datetime as _dt
+    try:
+        if d := _cache_get("fontes:frescor", 300):
+            return JSONResponse(d)
+        fontes = []
+
+        def _add(nome, q, con, fmt="iso", detalhe=""):
+            try:
+                v = con.execute(q).fetchone()[0]
+                if fmt == "br" and v:  # DD/MM/AAAA → ISO p/ ordenar
+                    v = f"{v[6:10]}-{v[3:5]}-{v[0:2]}"
+                fontes.append({"fonte": nome, "ultimo": v, "detalhe": detalhe})
+            except Exception as exc:  # noqa: BLE001
+                fontes.append({"fonte": nome, "ultimo": None, "detalhe": f"erro: {exc}"})
+
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        try:
+            _add("SIAFE · OB orçamentária (coleta)", "SELECT MAX(coletado_em) FROM ob_orcamentaria_siafe", con,
+                 detalhe="coletor diário 05:00 (MFA mensal)")
+            _add("SIAFE · OB orçamentária (dado)",
+                 "SELECT MAX(substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)) "
+                 "FROM ob_orcamentaria_siafe WHERE exercicio=(SELECT MAX(exercicio) FROM ob_orcamentaria_siafe)", con,
+                 detalhe="data da OB mais nova")
+            _add("PNCP · resultados", "SELECT MAX(coletado_em) FROM pncp_resultado", con,
+                 detalhe="timer semanal (dom 01:40)")
+            # sancoes/folha não têm coletado_em: proxy = data da sanção mais nova / competência mais nova
+            _add("Sanções CEIS/CNEP", "SELECT MAX(data_inicio) FROM sancoes_federais", con,
+                 detalhe="sanção mais nova · timer semanal (dom 05:40)")
+            _add("Folhas (Estado)", "SELECT MAX(competencia)||'-01' FROM registros_folha", con,
+                 detalhe="competência mais nova · DPE + CMRJ + TJRJ")
+        finally:
+            con.close()
+        try:
+            con2 = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
+            try:
+                _add("PCRJ · folha Prefeitura", "SELECT MAX(coletado_em) FROM pcrj_folha_pref", con2)
+                _add("PCRJ · comissionados×candidatos",
+                     "SELECT MAX(coletado_em) FROM pcrj_comissionado_candidato", con2)
+            finally:
+                con2.close()
+        except Exception as exc:  # noqa: BLE001
+            fontes.append({"fonte": "PCRJ", "ultimo": None, "detalhe": f"erro: {exc}"})
+        hoje = _dt.now()
+        for f in fontes:
+            try:
+                idade = (hoje - _dt.fromisoformat(str(f["ultimo"])[:19])).days
+            except Exception:
+                idade = None
+            f["idade_dias"] = idade
+            f["estado"] = ("ok" if idade is not None and idade <= 3 else
+                           "atencao" if idade is not None and idade <= 10 else "critico")
+        out = {"ok": True, "fontes": fontes, "gerado": hoje.strftime("%Y-%m-%d %H:%M")}
+        return JSONResponse(_cache_put("fontes:frescor", out))
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

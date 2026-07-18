@@ -1,18 +1,2489 @@
 {
  "processo": "420001/004819/2025",
- "gerado_em": "2026-07-06T07:20:10+00:00",
+ "gerado_em": "2026-07-11T07:30:32+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_420001_004819_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 13-11 (122395121)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/000_ordem_bancaria_2025_ob_paga_13_11_122395.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 18-11 (122395164)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/001_ordem_bancaria_2025_ob_paga_18_11_122395.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 19-11 (122395206)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/002_ordem_bancaria_2025_ob_paga_19_11_122395.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 26-11 (122394256)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/003_ordem_bancaria_2025_ob_paga_26_11_122394.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 01-12 (122394888)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/004_ordem_bancaria_2025_ob_paga_01_12_122394.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 05-12 (122394343)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/005_ordem_bancaria_2025_ob_paga_05_12_122394.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Despacho de Encaminhamento de Processo 122671427",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/006_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 7,
+   "titulo": "Despacho de Encaminhamento de Processo 115512035",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/007_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 8,
+   "titulo": "Planilha Emendas 1 (115515488)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/008_planilha_emendas_1_115515488.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 9,
+   "titulo": "Planilha Emendas 2 (115515510)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/009_planilha_emendas_2_115515510.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 10,
+   "titulo": "Lei complementar nº 219 de 06/07/2024 (115516338)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/010_lei_complementar_n_219_de_06_07_2024_115.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 11,
+   "titulo": "Declaração de Disponibilidade Orçamentária 115725805",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/011_declara_o_de_disponibilidade_or_ament_ri.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 12,
+   "titulo": "Declaração de Disponibilidade Orçamentária 115887460",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/012_declara_o_de_disponibilidade_or_ament_ri.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 13,
+   "titulo": "Declaração de ordenador de despesas 116149677",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/013_declara_o_de_ordenador_de_despesas_11614.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 14,
+   "titulo": "Declaração de ordenador de despesas 116152733",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/014_declara_o_de_ordenador_de_despesas_11615.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 15,
+   "titulo": "Despacho 116322118",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/015_despacho_116322118.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 16,
+   "titulo": "Despacho de Encaminhamento de Processo 116324078",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/016_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 17,
+   "titulo": "Despacho de Encaminhamento de Processo 116334020",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/017_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 18,
+   "titulo": "Anexo Contas abertas para recebimento de emendas parlamentares (116338378)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/018_anexo_contas_abertas_para_recebimento_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 19,
+   "titulo": "Despacho 116402593",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/019_despacho_116402593.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 20,
+   "titulo": "Planilha Controle de Pagamento Emendas (116408389)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/020_planilha_controle_de_pagamento_emendas_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 21,
+   "titulo": "Despacho de Encaminhamento de Processo 116409392",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/021_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 22,
+   "titulo": "Nota de Empenho Original - NE 2025NE03694 EMENDA 704 - Pref Mun De Trajano de Moraes (116466226)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/022_nota_de_empenho_original_ne_2025ne03694.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 23,
+   "titulo": "Nota de Empenho Original - NE 2025NE03695 EMENDA 1849-Pref.Mun.De S.Goncalo (116468642)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/023_nota_de_empenho_original_ne_2025ne03695.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 24,
+   "titulo": "Nota de Empenho Original - NE 2025NE03696 EMENDA 2274-Pref.Mun.Belf.Roxo (116470359)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/024_nota_de_empenho_original_ne_2025ne03696.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 25,
+   "titulo": "Nota de Empenho Original - NE 2025NE03697 EMENDA 2266-Pref.Muni.de Paracambi (116470235)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/025_nota_de_empenho_original_ne_2025ne03697.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 26,
+   "titulo": "Nota de Empenho Original - NE EMENDA 1307-Pref.Mun.S.Fidelis (116472934)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/026_nota_de_empenho_original_ne_emenda_1307.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 27,
+   "titulo": "Nota de Empenho Original - NE 2025NE03700 EMENDA 2236-Pref.Muni.de Magé (116473348)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/027_nota_de_empenho_original_ne_2025ne03700.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 28,
+   "titulo": "Nota de Empenho Original - NE 2025NE03701 EMENDA 2233 - Pref.Muni.de Magé (116474398)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/028_nota_de_empenho_original_ne_2025ne03701.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 29,
+   "titulo": "Nota de Empenho Original - NE 2025NE03703 EMENDA 1306-Pref.Muni.de Sto.Ant.de Pádua (116473658)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/029_nota_de_empenho_original_ne_2025ne03703.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 30,
+   "titulo": "Nota de Empenho Original - NE 2025NE03705 EMENDA 2235 - Pref.Muni.de Araruama (116476634)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/030_nota_de_empenho_original_ne_2025ne03705.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 31,
+   "titulo": "Nota de Empenho Original - NE 2025NE03707 EMENDA 2232-Pref.Muni.de Araruama (116476787)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/031_nota_de_empenho_original_ne_2025ne03707.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 32,
+   "titulo": "Nota de Empenho Original - NE 2025NE03709 EMENDA 1568-Pref.Muni.de S.J. da  Barra (116478278)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/032_nota_de_empenho_original_ne_2025ne03709.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 33,
+   "titulo": "Nota de Empenho Original - NE 2025NE03711 EMENDA 383-Predf.Muni.de V.Redonda (116479431)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/033_nota_de_empenho_original_ne_2025ne03711.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 34,
+   "titulo": "Nota de Empenho Original - NE 2025NE03713 EMENDA 1381-Pref.Muni.de Porciuncula (116479016)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/034_nota_de_empenho_original_ne_2025ne03713.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 35,
+   "titulo": "Nota de Empenho Original - NE 2025NE03717 EMENDA 38 - Pref.Munic.de N. Friburgo (116479137)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/035_nota_de_empenho_original_ne_2025ne03717.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 36,
+   "titulo": "Nota de Empenho Original - NE 2025NE03698 - Emenda n° 1145- Fundo Municipal de Itaboraí (116490033)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/036_nota_de_empenho_original_ne_2025ne03698.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 37,
+   "titulo": "Nota de Empenho Original - NE 2025NE03702- Emenda n° 421- Prefeitura de Porto Real (116490144)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/037_nota_de_empenho_original_ne_2025ne03702.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 38,
+   "titulo": "Nota de Empenho Original - NE 2025NE03708 - Emnda n° 2265 - Prefeitura Municipal de Paracambi (116490873)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/038_nota_de_empenho_original_ne_2025ne03708.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 39,
+   "titulo": "Nota de Empenho Original - NE 2025NE03710- Emenda n° 702- Prefeituta de Conceição de Macabu (116489837)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/039_nota_de_empenho_original_ne_2025ne03710.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 40,
+   "titulo": "Nota de Empenho Original - NE 2025NE03729- Emenda n°414 - Prefeitura Municipal Belford Roxo (116490278)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/040_nota_de_empenho_original_ne_2025ne03729.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 41,
+   "titulo": "Nota de Empenho Original - NE 2025NE03732 - Emenda n° 1715 - Prefeitura Municipal de Belford Roxo (116490707)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/041_nota_de_empenho_original_ne_2025ne03732.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 42,
+   "titulo": "Nota de Empenho Original - NE 2025NE03712 - Emenda n° 2380- Prefeitura Municipal de Conceição de Macabu (116491116)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/042_nota_de_empenho_original_ne_2025ne03712.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 43,
+   "titulo": "Nota de Empenho Original - NE 2025NE03714 - Emenda n°28 - Prefeitura Municipal de São Fidelis (116490783)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/043_nota_de_empenho_original_ne_2025ne03714.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 44,
+   "titulo": "Nota de Empenho Original - NE 2025NE03715 Emenda n° 30 - Prefeitura Municipal de de Seropédica (116491157)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/044_nota_de_empenho_original_ne_2025ne03715.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 45,
+   "titulo": "Nota de Empenho Original - NE 2025NE03716 Emenda n° 1848 - Prefeitura Municipal de Quissamã (116491186)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/045_nota_de_empenho_original_ne_2025ne03716.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 46,
+   "titulo": "Nota de Empenho Original - NE 2025NE03718 - Emenda n° 570 - Prefeitura Municipal de Magé (116491596)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/046_nota_de_empenho_original_ne_2025ne03718.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 47,
+   "titulo": "Nota de Empenho Original - NE 2025NE03719 Emenda n° 1567- Prefeitura Municipal Municipal de S.Joao da Barra (116491205)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/047_nota_de_empenho_original_ne_2025ne03719.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 48,
+   "titulo": "Nota de Empenho Original - NE 2025NE03720 - Emenda n°35 - Prefeitura Municipal de Carmo (116491227)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/048_nota_de_empenho_original_ne_2025ne03720.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 49,
+   "titulo": "Nota de Empenho Original - NE 2025NE03721 - Emenda n° 29 - Prefeitura Municipal de Carmo (116491239)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/049_nota_de_empenho_original_ne_2025ne03721.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 50,
+   "titulo": "Nota de Empenho Original - NE 2025NE03722- Emenda n°36 Prefeitura Municipal de Itaocara (116491249)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/050_nota_de_empenho_original_ne_2025ne03722.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 51,
+   "titulo": "Nota de Empenho Original - NE 2025NE03723 - Emenda n° 415 - Prefeitura Municipal de S.Joao de Meriti (116491662)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/051_nota_de_empenho_original_ne_2025ne03723.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 52,
+   "titulo": "Nota de Empenho Original - NE 2025NE03724 - Emenda nº 2690 - Prefeitura Municipal de S.Joao de Meriti (116492428)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/052_nota_de_empenho_original_ne_2025ne03724.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 53,
+   "titulo": "Nota de Empenho Original - NE 2025NE03725 - Emenda n° 1331 Prefeitura Municipal de Nova Friburgo (116492440)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/053_nota_de_empenho_original_ne_2025ne03725.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 54,
+   "titulo": "Nota de Empenho Original - NE 2025NE03726 - Emenda n° 37 - Prefeitura Municipal de Cordeiro (116492450)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/054_nota_de_empenho_original_ne_2025ne03726.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 55,
+   "titulo": "Nota de Empenho Original - NE 2025NE03727 - Emenda n° 1177 - Prefeitura Municipal de Mangaratiba (116492462)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/055_nota_de_empenho_original_ne_2025ne03727.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 56,
+   "titulo": "Nota de Empenho Original - NE 2025NE03730 Emenda n° 2153 - Prefeitura Municipal de Mesquita (116492473)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/056_nota_de_empenho_original_ne_2025ne03730.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 57,
+   "titulo": "Despacho de Encaminhamento de Processo 116496852",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/057_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 58,
+   "titulo": "Nota de Liquidação - NL 2025NL03483 Prefeitura Municipal De Trajano De Moraes (116504079)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/058_nota_de_liquida_o_nl_2025nl03483_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 59,
+   "titulo": "Nota de Liquidação - NL 2025NL03484 Prefeitura Municipal De São Gonçalo (116507850)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/059_nota_de_liquida_o_nl_2025nl03484_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 60,
+   "titulo": "Nota de Liquidação - NL 2025NL03485 Prefeitura Municipal De Belford Roxo (116510501)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/060_nota_de_liquida_o_nl_2025nl03485_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 61,
+   "titulo": "Nota de Liquidação - NL 2025NL03486 Prefeitura Municipal De Paracambi (116511048)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/061_nota_de_liquida_o_nl_2025nl03486_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 62,
+   "titulo": "Nota de Liquidação - NL 2025NL03487 Prefeitura Municipal De São Fidélis (116512516)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/062_nota_de_liquida_o_nl_2025nl03487_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 63,
+   "titulo": "Nota de Liquidação - NL 2025NL03488 Prefeitura Municipal De Magé (116512722)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/063_nota_de_liquida_o_nl_2025nl03488_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 64,
+   "titulo": "Nota de Liquidação - NL 2025NL03489 Prefeitura Municipal De Magé (116517400)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/064_nota_de_liquida_o_nl_2025nl03489_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 65,
+   "titulo": "Nota de Liquidação - NL 2025NL03490 Prefeitura Municipal de Santo Antônio de Pádua (116519540)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/065_nota_de_liquida_o_nl_2025nl03490_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 66,
+   "titulo": "Nota de Liquidação - NL 2025NL03491 Prefeitura Municipal De Araruama (116519755)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/066_nota_de_liquida_o_nl_2025nl03491_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 67,
+   "titulo": "Nota de Liquidação - NL 2025NL03492 Prefeitura Municipal De Araruama (116523580)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/067_nota_de_liquida_o_nl_2025nl03492_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 68,
+   "titulo": "Nota de Liquidação - NL 2025NL03493 Prefeitura Municipal De São João Da Barra (116524407)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/068_nota_de_liquida_o_nl_2025nl03493_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 69,
+   "titulo": "Nota de Liquidação - NL 2025NL03494 Prefeitura Municipal De Volta Redonda (116524578)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/069_nota_de_liquida_o_nl_2025nl03494_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 70,
+   "titulo": "Nota de Liquidação - NL 2025NL03495 Prefeitura Municipal De Porciúncula (116525225)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/070_nota_de_liquida_o_nl_2025nl03495_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 71,
+   "titulo": "Nota de Liquidação - NL 2025NL03497 Prefeitura Municipal De Nova Friburgo (116527043)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/071_nota_de_liquida_o_nl_2025nl03497_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 72,
+   "titulo": "Nota de Liquidação - NL 2025NL03496 Prefeitura Municipal De Porto Real (116527061)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/072_nota_de_liquida_o_nl_2025nl03496_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 73,
+   "titulo": "Nota de Liquidação - NL 2025NL03498 Prefeitura Municipal De Belford Roxo (116527241)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/073_nota_de_liquida_o_nl_2025nl03498_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 74,
+   "titulo": "Nota de Liquidação - NL 2025NL03499 Prefeitura Municipal De Belford Roxo (116528871)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/074_nota_de_liquida_o_nl_2025nl03499_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 75,
+   "titulo": "Nota de Liquidação - NL 2025NL03500 Prefeitura Municipal De Paracambi (116528137)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/075_nota_de_liquida_o_nl_2025nl03500_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 76,
+   "titulo": "Nota de Liquidação - NL 2025NL03501 Prefeitura Municipal De Conceição de Macabu (116529183)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/076_nota_de_liquida_o_nl_2025nl03501_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 77,
+   "titulo": "Nota de Liquidação - NL 2025NL03502 Prefeitura Municipal De Conceição de Macabu (116529313)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/077_nota_de_liquida_o_nl_2025nl03502_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 78,
+   "titulo": "Nota de Liquidação - NL 2025NL03503 Prefeitura Municipal De São Fidélis (116530411)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/078_nota_de_liquida_o_nl_2025nl03503_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 79,
+   "titulo": "Nota de Liquidação - NL 2025NL03504 Prefeitura Municipal de Seropédica (116531035)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/079_nota_de_liquida_o_nl_2025nl03504_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 80,
+   "titulo": "Nota de Liquidação - NL 2025NL03505 Prefeitura Municipal de Quissamã (116531351)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/080_nota_de_liquida_o_nl_2025nl03505_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 81,
+   "titulo": "Nota de Liquidação - NL 2025NL03506 Prefeitura Municipal De Magé (116530733)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/081_nota_de_liquida_o_nl_2025nl03506_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 82,
+   "titulo": "Nota de Liquidação - NL 2025NL03507 Prefeitura Municipal De São João Da Barra (116532016)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/082_nota_de_liquida_o_nl_2025nl03507_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 83,
+   "titulo": "Nota de Liquidação - NL 2025NL03508 Prefeitura Municipal De Carmo (116532087)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/083_nota_de_liquida_o_nl_2025nl03508_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 84,
+   "titulo": "Nota de Liquidação - NL 2025NL03509 Prefeitura Municipal De Carmo (116531773)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/084_nota_de_liquida_o_nl_2025nl03509_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 85,
+   "titulo": "Nota de Liquidação - NL 2025NL03510 Prefeitura Municipal De Itaocara (116532284)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/085_nota_de_liquida_o_nl_2025nl03510_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 86,
+   "titulo": "Nota de Liquidação - NL 2025NL03511 Prefeitura Municipal De São João De Meriti (116533889)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/086_nota_de_liquida_o_nl_2025nl03511_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 87,
+   "titulo": "Nota de Liquidação - NL 2025NL03512 Prefeitura Municipal De São João De Meriti (116534450)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/087_nota_de_liquida_o_nl_2025nl03512_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 88,
+   "titulo": "Nota de Liquidação - NL 2025NL03513 Prefeitura Municipal De Nova Friburgo (116534976)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/088_nota_de_liquida_o_nl_2025nl03513_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 89,
+   "titulo": "Nota de Liquidação - NL 2025NL03514 Prefeitura Municipal de Cordeiro (116534717)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/089_nota_de_liquida_o_nl_2025nl03514_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 90,
+   "titulo": "Nota de Liquidação - NL 2025NL03515 Prefeitura Municipal De Mangaratiba (116535038)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/090_nota_de_liquida_o_nl_2025nl03515_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 91,
+   "titulo": "Nota de Liquidação - NL 2025NL03516 Prefeitura Municipal de Mesquita (116533828)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/091_nota_de_liquida_o_nl_2025nl03516_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 92,
+   "titulo": "Nota de Liquidação - NL 2025NL03483 a 2025NL03516 Emendas Parlamentares Agrupadas (116536319)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/092_nota_de_liquida_o_nl_2025nl03483_a_2025n.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 93,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 116537397",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/093_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 94,
+   "titulo": "Programação de Desembolso - PD 2025PD04675 -Prefeitura Municipal De Cordeiro (116784653)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/094_programa_o_de_desembolso_pd_2025pd04675.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 95,
+   "titulo": "Programação de Desembolso - PD 2025PD04676 - Prefeitura Municipal De Paracambi (116799716)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/095_programa_o_de_desembolso_pd_2025pd04676.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 96,
+   "titulo": "Programação de Desembolso - PD 2025PD04677 - Prefeitura Municipal De Trajano de Moraes (116799725)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/096_programa_o_de_desembolso_pd_2025pd04677.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 97,
+   "titulo": "Programação de Desembolso - PD 2025PD04678-  Prefeitura Municipal De Sao Goncalo (116799874)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/097_programa_o_de_desembolso_pd_2025pd04678.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 98,
+   "titulo": "Programação de Desembolso - PD 2025PD04679 -Prefeitura Municipal De Belford Roxo (116798804)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/098_programa_o_de_desembolso_pd_2025pd04679.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 99,
+   "titulo": "Programação de Desembolso - PD 2025PD04680- Prefeitura Municipal De Sao Fidelis (116799328)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/099_programa_o_de_desembolso_pd_2025pd04680.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 100,
+   "titulo": "Programação de Desembolso - PD 2025PD04682 - Prefeitura Municipal De Araruama (116800406)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/100_programa_o_de_desembolso_pd_2025pd04682.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 101,
+   "titulo": "Programação de Desembolso - PD 2025PD04683 - Prefeitura Municipal De Araruama (116801361)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/101_programa_o_de_desembolso_pd_2025pd04683.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 102,
+   "titulo": "Programação de Desembolso - PD 2025PD04684 Prefeitura Municipal de  São joão da Barra (116801369)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/102_programa_o_de_desembolso_pd_2025pd04684.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 103,
+   "titulo": "Programação de Desembolso - PD 2025PD04685 Prefeitura Municipal De Volta Redonda (116801379)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/103_programa_o_de_desembolso_pd_2025pd04685.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 104,
+   "titulo": "Programação de Desembolso - PD 2025PD04686 -Prefeitura Municipal De Porciuncula (116800455)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/104_programa_o_de_desembolso_pd_2025pd04686.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 105,
+   "titulo": "Programação de Desembolso - PD 2025PD04687 Prefeitura Municipal De Nova Friburgo (116801392)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/105_programa_o_de_desembolso_pd_2025pd04687.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 106,
+   "titulo": "Programação de Desembolso - PD 2025PD04688 Prefeitura Municipal De Belford Roxo (116800470)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/106_programa_o_de_desembolso_pd_2025pd04688.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 107,
+   "titulo": "Programação de Desembolso - PD 2025PD04689 Prefeitura Municipal De Belford Roxo (116800031)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/107_programa_o_de_desembolso_pd_2025pd04689.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 108,
+   "titulo": "Programação de Desembolso - PD 2025PD04690 Prefeitura Municipal De Mangaratiba (116801425)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/108_programa_o_de_desembolso_pd_2025pd04690.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 109,
+   "titulo": "Programação de Desembolso - PD 2025PD04691 Prefeitura Municipal De Mesquita (116802268)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/109_programa_o_de_desembolso_pd_2025pd04691.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 110,
+   "titulo": "Programação de Desembolso - PD 2025PD04692 Prefeitura Municipal De Nova Friburgo (116803117)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/110_programa_o_de_desembolso_pd_2025pd04692.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 111,
+   "titulo": "Programação de Desembolso - PD 2025PD04693 Prefeitura Municipal De S. De Meriti (116803120)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/111_programa_o_de_desembolso_pd_2025pd04693.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 112,
+   "titulo": "Programação de Desembolso - PD 2025PD04694 Prefeitura Municipal De S.joao De Mer (116803124)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/112_programa_o_de_desembolso_pd_2025pd04694.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 113,
+   "titulo": "Programação de Desembolso - PD 2025PD04695  Prefeitura Municipal De Conceicao De Macabu (116803130)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/113_programa_o_de_desembolso_pd_2025pd04695.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 114,
+   "titulo": "Programação de Desembolso - PD 2025PD04696  Prefeitura Municipal De Conceicao De Macabu (116803137)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/114_programa_o_de_desembolso_pd_2025pd04696.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 115,
+   "titulo": "Programação de Desembolso - PD 2025PD04697  Prefeitura Municipal De São Fidelis (116803143)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/115_programa_o_de_desembolso_pd_2025pd04697.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 116,
+   "titulo": "Programação de Desembolso - PD 2025PD04698 -  Prefeitura Municipal De Seropédica (116803148)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/116_programa_o_de_desembolso_pd_2025pd04698.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 117,
+   "titulo": "Programação de Desembolso - PD 2025PD04699 - Prefeitura Municipal De Quissama (116802318)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/117_programa_o_de_desembolso_pd_2025pd04699.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 118,
+   "titulo": "Programação de Desembolso - PD 2025PD04700 Prefeitura Municipal De Sao Joao Da Barra (116802328)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/118_programa_o_de_desembolso_pd_2025pd04700.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 119,
+   "titulo": "Programação de Desembolso - PD 2025PD04701 - Prefeitura Municipal De Carmo (116803642)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/119_programa_o_de_desembolso_pd_2025pd04701.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 120,
+   "titulo": "Programação de Desembolso - PD 2025PD04702 - Prefeitura Municipal De Carmo (116802343)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/120_programa_o_de_desembolso_pd_2025pd04702.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 121,
+   "titulo": "Programação de Desembolso - PD 2025PD04703 Prefeitura Municipal De Itaocara (116803176)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/121_programa_o_de_desembolso_pd_2025pd04703.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 122,
+   "titulo": "Programação de Desembolso - PD 2025PD04706 Prefeitura Municipal de Paracambi (116803726)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/122_programa_o_de_desembolso_pd_2025pd04706.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 123,
+   "titulo": "Consulta _MAGE_CONTAS_INVALIDAS (116803920)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/123_consulta_mage_contas_invalidas_116803920.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 124,
+   "titulo": "Consulta _PORTO_REAL_CONTA (116803924)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/124_consulta_porto_real_conta_116803924.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 125,
+   "titulo": "Programação de Desembolso - PD 2025PD04681 - Prefeitura Municipal de Santo Anton (116892080)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/125_programa_o_de_desembolso_pd_2025pd04681.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 126,
+   "titulo": "Nota de Empenho de Anulação - NE 2025NE03750___de_anulacao (116892565)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/126_nota_de_empenho_de_anula_o_ne_2025ne0375.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 127,
+   "titulo": "Informação 116893065",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/127_informa_o_116893065.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 128,
+   "titulo": "Anexo Contas Abertas para recebimento de Emendas Parlamentares (117150638)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/128_anexo_contas_abertas_para_recebimento_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 129,
+   "titulo": "Despacho de Encaminhamento de Processo 117151122",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/129_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 130,
+   "titulo": "Despacho de Encaminhamento de Processo 117161053",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/130_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 131,
+   "titulo": "Planilha Planilha de Empenho - E.P (parte 2) (117164605)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/131_planilha_planilha_de_empenho_e_p_parte_2.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 132,
+   "titulo": "Despacho de Encaminhamento de Processo 117164626",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/132_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 133,
+   "titulo": "Despacho de Encaminhamento de Processo 117169371",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/133_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 134,
+   "titulo": "Nota de Empenho Original - NE 2025NE04016 - Prefeitura Municipal de Duas Barras (117254788)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/134_nota_de_empenho_original_ne_2025ne04016.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 135,
+   "titulo": "Nota de Empenho Original - NE 2025NE04015 - Prefeitura Municipal de Itaperuna (117256376)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/135_nota_de_empenho_original_ne_2025ne04015.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 136,
+   "titulo": "Nota de Empenho Original - NE 2025NE04014 - Prefeitura Municipal de Tangua (117255100)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/136_nota_de_empenho_original_ne_2025ne04014.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 137,
+   "titulo": "Nota de Empenho Original - NE 2025NE04007 - Prefeitura Municipal de Campos de G (117256216)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/137_nota_de_empenho_original_ne_2025ne04007.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 138,
+   "titulo": "Nota de Empenho Original - NE 2025NE03997 - Prefeitura Municipal de Paraty (117256684)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/138_nota_de_empenho_original_ne_2025ne03997.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 139,
+   "titulo": "Nota de Empenho Original - NE 2025NE03996 - Prefeitura Municipal de Nilopolis (117256996)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/139_nota_de_empenho_original_ne_2025ne03996.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 140,
+   "titulo": "Nota de Empenho Original - NE 2025NE03992 - Prefeitura Municipal de Nilopolis (117257013)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/140_nota_de_empenho_original_ne_2025ne03992.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 141,
+   "titulo": "Nota de Empenho Original - NE 2025NE04020 -Prefeitura Municipal De Itaborai (117258465)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/141_nota_de_empenho_original_ne_2025ne04020.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 142,
+   "titulo": "Nota de Empenho Original - NE 2025NE04019 - Prefeitura Municipal De Mendes (117257219)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/142_nota_de_empenho_original_ne_2025ne04019.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 143,
+   "titulo": "Nota de Empenho Original - NE 2025NE04018 - Prefeitura Municipal de Valença (117258661)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/143_nota_de_empenho_original_ne_2025ne04018.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 144,
+   "titulo": "Nota de Empenho Original - NE 2025NE04017 - Prefeitura Municipal de Nilopolis (117258664)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/144_nota_de_empenho_original_ne_2025ne04017.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 145,
+   "titulo": "Despacho de Encaminhamento de Processo 117259876",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/145_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 146,
+   "titulo": "Nota de Liquidação - NL 2025NL03771 Prefeitura Municipal de Nilópolis (117272491)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/146_nota_de_liquida_o_nl_2025nl03771_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 147,
+   "titulo": "Nota de Liquidação - NL 2025NL03772 Prefeitura Municipal de Nilópolis (117273403)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/147_nota_de_liquida_o_nl_2025nl03772_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 148,
+   "titulo": "Nota de Liquidação - NL 2025NL03773 Prefeitura Municipal de Paraty (117273649)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/148_nota_de_liquida_o_nl_2025nl03773_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 149,
+   "titulo": "Nota de Liquidação - NL 2025NL03774 Prefeitura Municipal de Tanguá (117273757)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/149_nota_de_liquida_o_nl_2025nl03774_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 150,
+   "titulo": "Nota de Liquidação - NL 2025NL03775 Prefeitura Municipal de Campos dos Goytacazes (117274925)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/150_nota_de_liquida_o_nl_2025nl03775_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 151,
+   "titulo": "Nota de Liquidação - NL 2025NL03776 Prefeitura Municipal de Itaperuna (117274589)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/151_nota_de_liquida_o_nl_2025nl03776_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 152,
+   "titulo": "Nota de Liquidação - NL 2025NL03777 Prefeitura Municipal de Duas Barras (117274682)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/152_nota_de_liquida_o_nl_2025nl03777_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 153,
+   "titulo": "Nota de Liquidação - NL 2025NL03778 Prefeitura Municipal de Nilópolis (117275320)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/153_nota_de_liquida_o_nl_2025nl03778_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 154,
+   "titulo": "Nota de Liquidação - NL 2025NL03779 Prefeitura Municipal de Valença (117275995)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/154_nota_de_liquida_o_nl_2025nl03779_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 155,
+   "titulo": "Nota de Liquidação - NL 2025NL03780 Prefeitura Municipal de Mendes (117276555)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/155_nota_de_liquida_o_nl_2025nl03780_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 156,
+   "titulo": "Nota de Liquidação - NL 2025NL03781 Prefeitura Municipal de Itaboraí (117276169)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/156_nota_de_liquida_o_nl_2025nl03781_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 157,
+   "titulo": "Nota de Liquidação - NL 2025NL03771 a 2025NL03781 Emendas Parlamentares Agrupadas (117276692)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/157_nota_de_liquida_o_nl_2025nl03771_a_2025n.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 158,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 117277492",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/158_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 159,
+   "titulo": "Programação de Desembolso - PD 2025PD04927 a 4941 - Agrupadas (117574923)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/159_programa_o_de_desembolso_pd_2025pd04927.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 160,
+   "titulo": "Programação de Desembolso - PD PD04927- Prefeitura Municipal De Nilopolis (117576322)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/160_programa_o_de_desembolso_pd_pd04927_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 161,
+   "titulo": "Programação de Desembolso - PD PD04928 -Prefeitura Municipal De Nilopolis (117576339)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/161_programa_o_de_desembolso_pd_pd04928_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 162,
+   "titulo": "Programação de Desembolso - PD PD04929 -Prefeitura Municipal De Paraty (117577147)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/162_programa_o_de_desembolso_pd_pd04929_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 163,
+   "titulo": "Programação de Desembolso - PD PD04930 -Prefeitura Municipal De Tangua (117577227)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/163_programa_o_de_desembolso_pd_pd04930_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 164,
+   "titulo": "Programação de Desembolso - PD PD04931 - Pref Munic De Campos De Goytacazes (117579204)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/164_programa_o_de_desembolso_pd_pd04931_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 165,
+   "titulo": "Programação de Desembolso - PD PD04932- Prefeitura Municipal Itaperuna (117579966)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/165_programa_o_de_desembolso_pd_pd04932_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 166,
+   "titulo": "Programação de Desembolso - PD PD04933 - Prefeitura Municipal De Nilopolis (117580406)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/166_programa_o_de_desembolso_pd_pd04933_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 167,
+   "titulo": "Programação de Desembolso - PD PD04934 - Prefeitura Municipal De Valenca (117580415)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/167_programa_o_de_desembolso_pd_pd04934_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 168,
+   "titulo": "Programação de Desembolso - PD PD04935 - - Prefeitura Municipal De Mendes (117579550)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/168_programa_o_de_desembolso_pd_pd04935_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 169,
+   "titulo": "Programação de Desembolso - PD PD04936 -Prefeitura Municipal De Itaborai (117579557)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/169_programa_o_de_desembolso_pd_pd04936_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 170,
+   "titulo": "Programação de Desembolso - PD PD04939 -Prefeitura Municipal De Trajano De Moraes (117580440)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/170_programa_o_de_desembolso_pd_pd04939_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 171,
+   "titulo": "Programação de Desembolso - PD PD04940-- Prefeitura Municipal de Santo Antonio De (117580015)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/171_programa_o_de_desembolso_pd_pd04940_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 172,
+   "titulo": "Programação de Desembolso - PD PD04941 -Prefeitura Municipal De Quissama (117579584)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/172_programa_o_de_desembolso_pd_pd04941_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 173,
+   "titulo": "Programação de Desembolso - PD PD05002-- Prefeitura Municipal De Duas Barras (117580471)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/173_programa_o_de_desembolso_pd_pd05002_pref.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 174,
+   "titulo": "Anexo Contas abertas para recebimento de Emendas Parlamentares (118074972)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/174_anexo_contas_abertas_para_recebimento_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 175,
+   "titulo": "Despacho de Encaminhamento de Processo 118074676",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/175_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 176,
+   "titulo": "Despacho de Encaminhamento de Processo 118079449",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/176_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 177,
+   "titulo": "Planilha Planilha Emendas (118093217)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/177_planilha_planilha_emendas_118093217.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 178,
+   "titulo": "Despacho de Encaminhamento de Processo 118092778",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/178_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 179,
+   "titulo": "Despacho de Encaminhamento de Processo 118095513",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/179_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 180,
+   "titulo": "Nota de Empenho Original - NE 2025NE04111 - Prefeitura Munic. De Bom Jesus De I (118110549)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/180_nota_de_empenho_original_ne_2025ne04111.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 181,
+   "titulo": "Nota de Empenho Original - NE 2025NE04112 - Prefeitura Munic. De Bom Jesus De I (118110553)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/181_nota_de_empenho_original_ne_2025ne04112.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 182,
+   "titulo": "Nota de Empenho Original - NE 2025NE04113 - Prefeitura Munic. De Bom Jesus De I (118110972)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/182_nota_de_empenho_original_ne_2025ne04113.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 183,
+   "titulo": "Nota de Empenho Original - NE 2025NE04114 - MUNICIPIO DE RIO DE JANEIRO (118109665)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/183_nota_de_empenho_original_ne_2025ne04114.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 184,
+   "titulo": "Nota de Empenho Original - NE 2025NE04115 - Prefeitura Municipal De Quatis (118109681)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/184_nota_de_empenho_original_ne_2025ne04115.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 185,
+   "titulo": "Nota de Empenho Original - NE 2025NE04116 - Prefeitura Municipal De Valenca (118109687)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/185_nota_de_empenho_original_ne_2025ne04116.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 186,
+   "titulo": "Nota de Empenho Original - NE 2025NE04117 - Prefeitura Municipal De S.joao De M (118110615)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/186_nota_de_empenho_original_ne_2025ne04117.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 187,
+   "titulo": "Despacho de Encaminhamento de Processo 118112871",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/187_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 188,
+   "titulo": "Nota de Liquidação - NL 2025NL03876 - Prefeitura Municipal de Bom Jesus do Itabapoana (118118077)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/188_nota_de_liquida_o_nl_2025nl03876_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 189,
+   "titulo": "Nota de Liquidação - NL 2025NL03877 - Prefeitura Municipal de Bom Jesus do Itabapoana (118117317)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/189_nota_de_liquida_o_nl_2025nl03877_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 190,
+   "titulo": "Nota de Liquidação - NL 2025NL03878 - Prefeitura Municipal de Bom Jesus do Itabapoana (118118889)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/190_nota_de_liquida_o_nl_2025nl03878_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 191,
+   "titulo": "Nota de Liquidação - NL 2025NL03879 - Prefeitura Municipal do Rio de Janeiro (118118263)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/191_nota_de_liquida_o_nl_2025nl03879_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 192,
+   "titulo": "Nota de Liquidação - NL 2025NL03880 - Prefeitura Municipal de Quatis (118118836)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/192_nota_de_liquida_o_nl_2025nl03880_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 193,
+   "titulo": "Nota de Liquidação - NL 2025NL03881 -  Prefeitura Municipal de Valença (118119891)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/193_nota_de_liquida_o_nl_2025nl03881_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 194,
+   "titulo": "Nota de Liquidação - NL 2025NL03882 - Prefeitura Municipal de São João de Meriti (118120445)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/194_nota_de_liquida_o_nl_2025nl03882_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 195,
+   "titulo": "Nota de Liquidação - NL 2025NL03876 a 2025NL03882 - Emendas Parlamentares Agrupadas (118119772)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/195_nota_de_liquida_o_nl_2025nl03876_a_2025n.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 196,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 118120148",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/196_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 197,
+   "titulo": "Programação de Desembolso - PD 2025PD05130 a 5123 (118124270)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/197_programa_o_de_desembolso_pd_2025pd05130.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 198,
+   "titulo": "Anexo Contas abertas para recebimento de Emendas Parlamentares (118934039)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/198_anexo_contas_abertas_para_recebimento_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 199,
+   "titulo": "Despacho de Encaminhamento de Processo 118933739",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/199_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 200,
+   "titulo": "Despacho de Encaminhamento de Processo 118937548",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/200_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 201,
+   "titulo": "Publicação (118937203)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/201_publica_o_118937203.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 202,
+   "titulo": "Planilha (118948105)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/202_planilha_118948105.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 203,
+   "titulo": "Despacho de Encaminhamento de Processo 118948563",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/203_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 204,
+   "titulo": "Despacho de Encaminhamento de Processo 118952620",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/204_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 205,
+   "titulo": "Publicação (118952834)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/205_publica_o_118952834.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 206,
+   "titulo": "Nota de Empenho Original - NE Prefeitura Municipal De Volta Redonda (118955317)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/206_nota_de_empenho_original_ne_prefeitura_m.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 207,
+   "titulo": "Nota de Empenho Original - NE Prefeitura Municipal De Tangua (118955326)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/207_nota_de_empenho_original_ne_prefeitura_m.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 208,
+   "titulo": "Despacho de Encaminhamento de Processo 118956907",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/208_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 209,
+   "titulo": "Nota de Liquidação - NL 2025NL04074 - Prefeitura Municipal de Tanguá (118960413)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/209_nota_de_liquida_o_nl_2025nl04074_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 210,
+   "titulo": "Nota de Liquidação - NL 2025NL04075 - Prefeitura Municipal de Volta Redonda (118959844)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/210_nota_de_liquida_o_nl_2025nl04075_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 211,
+   "titulo": "Nota de Liquidação - NL 2025NL04074 e 2025NL04075 - Emendas Parlamentares Agrupadas (118960697)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/211_nota_de_liquida_o_nl_2025nl04074_e_2025n.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 212,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 118961435",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/212_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 213,
+   "titulo": "Programação de Desembolso - PD 2025PD05295 A 5350 (118961047)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/213_programa_o_de_desembolso_pd_2025pd05295.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 214,
+   "titulo": "Programação de Desembolso - PD 2025PD05295-Prefeitura Municipal De Valenca (118961921)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/214_programa_o_de_desembolso_pd_2025pd05295.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 215,
+   "titulo": "Programação de Desembolso - PD 2025PD05349-- Prefeitura Municipal De Tangua (118961121)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/215_programa_o_de_desembolso_pd_2025pd05349.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 216,
+   "titulo": "Programação de Desembolso - PD 2025PD05350-- Prefeitura Municipal De Volta Redonda (118962003)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/216_programa_o_de_desembolso_pd_2025pd05350.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 217,
+   "titulo": "Anexo Contas abertas para recebimento de Emendas Parlamentares (119499925)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/217_anexo_contas_abertas_para_recebimento_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 218,
+   "titulo": "Despacho de Encaminhamento de Processo 119501067",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/218_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 219,
+   "titulo": "Despacho de Encaminhamento de Processo 119534534",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/219_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 220,
+   "titulo": "Planilha (119548270)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/220_planilha_119548270.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 221,
+   "titulo": "Despacho de Encaminhamento de Processo 119548287",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/221_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 222,
+   "titulo": "Despacho de Encaminhamento de Processo 119598585",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/222_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 223,
+   "titulo": "Nota de Empenho Original - NE 2025NE04512 (119628166)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/223_nota_de_empenho_original_ne_2025ne04512.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 224,
+   "titulo": "Despacho de Encaminhamento de Processo 119627791",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/224_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 225,
+   "titulo": "Nota de Liquidação - NL 2025NL04291 - Prefeitura Municipal de Casimiro de Abreu (119660944)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/225_nota_de_liquida_o_nl_2025nl04291_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 226,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 119661831",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/226_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 227,
+   "titulo": "Programação de Desembolso - PD 2025PD05594 - Prefeitura Municipal De Casimiro De (119687853)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/227_programa_o_de_desembolso_pd_2025pd05594.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 228,
+   "titulo": "Anexo Contas abertas para recebimento de Emendas Parlamentares (120063834)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/228_anexo_contas_abertas_para_recebimento_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 229,
+   "titulo": "Despacho de Encaminhamento de Processo 120063876",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/229_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 230,
+   "titulo": "Despacho de Encaminhamento de Processo 120066607",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/230_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 231,
+   "titulo": "Planilha (120108634)",
+   "fase": "indefinida",
+   "tipo": "outro",
+   "texto": "texto/231_planilha_120108634.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 232,
+   "titulo": "Despacho de Encaminhamento de Processo 120109474",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/232_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 233,
+   "titulo": "Despacho de Encaminhamento de Processo 120113713",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/233_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 234,
+   "titulo": "Despacho de Encaminhamento de Processo 120119343",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/234_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 235,
+   "titulo": "Nota de Empenho Original - NE 2025NE04748 Prefeitura Municipal De Teresopolis (120137238)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/235_nota_de_empenho_original_ne_2025ne04748.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 236,
+   "titulo": "Despacho de Encaminhamento de Processo 120143103",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/236_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 237,
+   "titulo": "Nota de Liquidação - NL 2025NL04470  - Prefeitura Municipal de Teresópolis (120170636)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/237_nota_de_liquida_o_nl_2025nl04470_prefeit.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 238,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 120170376",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/238_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 239,
+   "titulo": "Programação de Desembolso - PD 2025PD05832 (120175878)",
+   "fase": "despesa",
+   "tipo": "programacao_desembolso",
+   "texto": "texto/239_programa_o_de_desembolso_pd_2025pd05832.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 240,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 17-10 (122391881)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/240_ordem_bancaria_2025_ob_paga_17_10_122391.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 241,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 22-10 (122393560)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/241_ordem_bancaria_2025_ob_paga_22_10_122393.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 242,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 23-10 (122392907)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/242_ordem_bancaria_2025_ob_paga_23_10_122392.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 243,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 27-10 (122392964)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/243_ordem_bancaria_2025_ob_paga_27_10_122392.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 244,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 29-10 (122393682)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/244_ordem_bancaria_2025_ob_paga_29_10_122393.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 245,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 03-11 (122395011)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/245_ordem_bancaria_2025_ob_paga_03_11_122395.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 246,
+   "titulo": "Ordem BANCARIA 2025 OB PAGA 07-11 (122393801)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/246_ordem_bancaria_2025_ob_paga_07_11_122393.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 189,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 34,
+  "indefinida": 24
  },
  "lacunas": [
   {
@@ -26,6 +2497,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

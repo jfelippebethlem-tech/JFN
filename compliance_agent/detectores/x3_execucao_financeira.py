@@ -42,6 +42,10 @@ from compliance_agent.detectores.base import (
 _DELTA_TRIADE_CURTO_DIAS = 3
 # Sazonalidade: fração dos pagamentos (em VALOR) concentrada em dezembro a partir da qual há indício.
 _LIMIAR_DEZEMBRO = 0.40
+# n mínimo e cobertura de vigência p/ a regra de dezembro: com poucos pagamentos, ou contrato vigente só no
+# fim do ano, a concentração em dezembro é aritmética/natural (anti-FP) — registra ressalva, não pontua.
+_N_MIN_PAGAMENTOS_DEZEMBRO = 6
+_MESES_MIN_VIGENCIA_ANO = 6
 # Inversões de fila para caracterizar RECORRÊNCIA (uma só pode ser fortuita; o padrão é que condena).
 _INVERSOES_RECORRENTES = 2
 
@@ -170,8 +174,19 @@ class X3ExecucaoFinanceira(Detector):
         pct_dezembro = (valor_dezembro / total_valor) if total_valor > 0 else None
         valores["pct_dezembro"] = round(pct_dezembro, 4) if pct_dezembro is not None else None
         if pct_dezembro is not None and pct_dezembro >= _LIMIAR_DEZEMBRO:
+            meses_vig = self._meses_vigencia_no_ano(contexto, pagamentos)
+            valores["meses_vigencia_no_ano"] = meses_vig
             # dezembro concentra pagamentos em TODO órgão; o que separa é o limiar + ausência de cronograma
-            if tem_cronograma is False:
+            if (len(pagamentos) < _N_MIN_PAGAMENTOS_DEZEMBRO
+                    or meses_vig is None or meses_vig < _MESES_MIN_VIGENCIA_ANO):
+                ressalva = (
+                    f"dezembro {pct_dezembro:.0%} MAS n={len(pagamentos)} pagamento(s) / vigência no ano="
+                    f"{'?' if meses_vig is None else meses_vig} mês(es) — exige ≥{_N_MIN_PAGAMENTOS_DEZEMBRO} "
+                    f"pagamentos E vigência cobrindo ≥{_MESES_MIN_VIGENCIA_ANO} meses do ano (não pontua; "
+                    "amostra pequena/contrato de fim de ano concentra em dezembro naturalmente)")
+                valores["ressalva_dezembro"] = ressalva
+                razoes.append(ressalva)
+            elif tem_cronograma is False:
                 score = max(score, ancora("forte"))
                 razoes.append(
                     f"{pct_dezembro:.0%} dos pagamentos concentrados em DEZEMBRO (≥{_LIMIAR_DEZEMBRO:.0%}) E SEM "
@@ -181,10 +196,11 @@ class X3ExecucaoFinanceira(Detector):
                 razoes.append(
                     f"{pct_dezembro:.0%} dos pagamentos concentrados em DEZEMBRO (≥{_LIMIAR_DEZEMBRO:.0%}) — "
                     "sazonalidade anômala (médio; cronograma presente/desconhecido)")
-            res.add_evidencia(
-                fonte="SIAFE sazonalidade de pagamentos",
-                trecho=(f"R$ {valor_dezembro:,.2f} de R$ {total_valor:,.2f} pagos em dezembro "
-                        f"({pct_dezembro:.0%}); cronograma={tem_cronograma}"))
+            if "ressalva_dezembro" not in valores:
+                res.add_evidencia(
+                    fonte="SIAFE sazonalidade de pagamentos",
+                    trecho=(f"R$ {valor_dezembro:,.2f} de R$ {total_valor:,.2f} pagos em dezembro "
+                            f"({pct_dezembro:.0%}); cronograma={tem_cronograma}"))
 
         # ── (d) INVERSÃO da ordem cronológica da fila (pago na frente de quem chegou antes) ──
         n_inversoes = self._contar_inversoes(contexto.get("fila_orgao"))
@@ -232,10 +248,28 @@ class X3ExecucaoFinanceira(Detector):
         return res
 
     # ───────────────────────────── helpers ─────────────────────────────
+    def _meses_vigencia_no_ano(self, contexto: dict, pagamentos: list[dict]) -> int | None:
+        """Quantos meses do ano dos pagamentos de dezembro a vigência do contrato cobre. Sem
+        `vigencia_inicio`/`vigencia_fim` no contexto → None (cobertura não verificável, honesto)."""
+        vi = _data(contexto.get("vigencia_inicio"))
+        vf = _data(contexto.get("vigencia_fim"))
+        if not vi or not vf:
+            return None
+        anos = {d.year for d in (_data(p.get("data_pagamento")) for p in pagamentos) if d and d.month == 12}
+        if not anos:
+            return None
+        ano = max(anos)
+        ini = max(vi, date(ano, 1, 1))
+        fim = min(vf, date(ano, 12, 31))
+        if fim < ini:
+            return 0
+        return fim.month - ini.month + 1
+
     def _contar_inversoes(self, fila) -> int | None:
-        """Conta INVERSÕES da ordem cronológica da fila: pares (a, b) em que `a` chegou antes de `b`
-        (data_chegada menor) mas foi pago DEPOIS (data_pago maior) → `b` furou a fila. Retorna None se a fila
-        não tem dados utilizáveis (honesto: campo ausente ≠ 0 inversões)."""
+        """Conta pagamentos DISTINTOS que furaram a fila: `j` furou se existe `i` que chegou antes
+        (data_chegada menor) mas foi pago depois (data_pago maior). Contar por pagamento — não por PAR —
+        evita que um único furo diante de N esperas vire N inversões. Retorna None se a fila não tem dados
+        utilizáveis (honesto: campo ausente ≠ 0 inversões)."""
         if not fila:
             return None
         itens = []
@@ -247,15 +281,16 @@ class X3ExecucaoFinanceira(Detector):
                 itens.append((dc, dpg))
         if len(itens) < 2:
             return None
-        inversoes = 0
-        for i in range(len(itens)):
-            for j in range(len(itens)):
+        furadores: set[int] = set()
+        for j in range(len(itens)):
+            for i in range(len(itens)):
                 if i == j:
                     continue
                 # i chegou ANTES de j, mas foi pago DEPOIS de j → j furou a fila à frente de i
                 if itens[i][0] < itens[j][0] and itens[i][1] > itens[j][1]:
-                    inversoes += 1
-        return inversoes
+                    furadores.add(j)
+                    break
+        return len(furadores)
 
     def _avaliar_quebra_ordem(self, contexto: dict) -> dict:
         """Rubrica fechada da justificativa de quebra da ordem cronológica (art. 141). Atalho de teste:

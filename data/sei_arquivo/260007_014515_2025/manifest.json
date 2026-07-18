@@ -1,18 +1,69 @@
 {
  "processo": "260007/014515/2025",
- "gerado_em": "2026-07-06T07:09:52+00:00",
+ "gerado_em": "2026-07-11T07:18:30+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_014515_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Anexo NF 88801 - DBV (117507484)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/000_anexo_nf_88801_dbv_117507484.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Anexo 2025NE05953 - DBV (117507494)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/001_anexo_2025ne05953_dbv_117507494.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Encaminhamento de Processo 117507332",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_encaminhamento_de_processo_1.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Nota de Liquidação - NL (118985397)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/003_nota_de_liquida_o_nl_118985397.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 118985884",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 3,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 1,
+  "indefinida": 1
  },
  "lacunas": [
   {
@@ -26,6 +77,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

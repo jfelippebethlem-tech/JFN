@@ -131,6 +131,43 @@ def test_j2_nao_avaliavel_sem_propostas():
     assert r.status == "nao_avaliavel"
 
 
+def test_j2_dois_perdedores_cap_medio_com_ressalva():
+    """Dispersão baixa MAS só 2 perdedores: screen exige ≥3 p/ 'forte' → teto médio + ressalva de n."""
+    ctx = {
+        "processo": "julg-5c",
+        "propostas": [
+            {"licitante_cnpj": "1", "valor": 100.0, "classificacao": 1},
+            {"licitante_cnpj": "2", "valor": 115.0, "classificacao": 2},
+            {"licitante_cnpj": "3", "valor": 115.2, "classificacao": 3},
+        ],
+    }
+    r = J2PropostasCobertura().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.score == ANCORAS["medio"]  # antes: 2 perdedores colados já viravam 'forte'
+    assert "ressalva_n_perdedores" in r.valores
+
+
+def test_j2_dispersao_robusta_resiste_a_perdedor_discrepante():
+    """3 perdedores colados + 1 genuíno discrepante: o CV clássico (média/desvio) estourava e MASCARAVA o
+    padrão; MAD/mediana resiste ao outlier e mantém o screen forte."""
+    ctx = {
+        "processo": "julg-5d",
+        "propostas": [
+            {"licitante_cnpj": "1", "valor": 100.0, "classificacao": 1},
+            {"licitante_cnpj": "2", "valor": 115.0, "classificacao": 2},
+            {"licitante_cnpj": "3", "valor": 115.0, "classificacao": 3},
+            {"licitante_cnpj": "4", "valor": 115.2, "classificacao": 4},
+            {"licitante_cnpj": "5", "valor": 160.0, "classificacao": 5},  # perdedor genuíno (fora do desenho)
+        ],
+    }
+    r = J2PropostasCobertura().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.score >= ANCORAS["forte"]
+    assert r.valores["cv_coberturas"] < 0.05  # dispersão robusta (MAD/mediana)
+
+
 # ═══════════════════════════════ J3 — desconto anômalo ═══════════════════════════════
 def test_j3_confirma_desconto_irrisorio():
     """Desconto < 2% (rente ao teto) → medio."""
@@ -222,6 +259,39 @@ def test_j4_confirma_rubrica_rigor_seletivo():
     assert r.status == "confirmado"
     assert r.score >= ANCORAS["forte"]
     assert r.valores["gravidade_inabilitacao"] == "rigor_seletivo_desproporcional"
+
+
+def test_j4_motivo_de_habilitacao_legitima_nao_agrava():
+    """Motivos AMPLOS ('índice de liquidez', 'atestado insuficiente', 'ausência de documentação técnica')
+    são inabilitação legítima — não contam como erro grosseiro (sem o agravo de +0.10)."""
+    ctx = {
+        "processo": "julg-13b",
+        "licitantes_inscritos": 4,
+        "licitantes_classificados": 1,
+        "inabilitados": [{"cnpj": "2", "motivo": "não atingiu o índice de liquidez corrente exigido"},
+                         {"cnpj": "3", "motivo": "atestado de capacidade técnica insuficiente"},
+                         {"cnpj": "4", "motivo": "ausência de documentação técnica complementar"}],
+    }
+    r = J4SupressaoPropostas().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.score == ANCORAS["forte"]  # só o afunilamento; sem bump de erro grosseiro
+
+
+def test_j4_motivo_primario_agrava():
+    """Falha genuinamente primária ('certidão vencida') mantém o agravo sobre o afunilamento."""
+    ctx = {
+        "processo": "julg-13c",
+        "licitantes_inscritos": 4,
+        "licitantes_classificados": 1,
+        "inabilitados": [{"cnpj": "2", "motivo": "certidão vencida"},
+                         {"cnpj": "3", "motivo": "proposta em branco"},
+                         {"cnpj": "4", "motivo": "não anexou a proposta de preços"}],
+    }
+    r = J4SupressaoPropostas().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.score > ANCORAS["forte"]  # afunilamento + agravo de falha primária
 
 
 def test_j4_exculpatorio_fundada_uniforme_descartado():

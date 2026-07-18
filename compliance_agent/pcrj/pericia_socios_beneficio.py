@@ -46,6 +46,10 @@ def _fmt_cnpj(c: str | None) -> str:
     return f"{c[:2]}.{c[2:5]}.{c[5:8]}/{c[8:12]}-{c[12:14]}" if len(c) == 14 else (c or "")
 
 
+def _moeda(v: float) -> str:
+    return f"{v:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+
 def analisar() -> dict:
     b = _db.sqlite3.connect(f"file:{BENEF_DB}?mode=ro", uri=True)
     b.row_factory = _db.sqlite3.Row
@@ -77,12 +81,24 @@ def analisar() -> dict:
             e["por_ano"][r["ano"]] = r["n"]
     b.close()
 
-    # sócios de fornecedores (com CPF mascarado)
+    # sócios de fornecedores (com CPF mascarado) + quanto cada empresa RECEBEU do Estado.
+    # Pagamento = OB SIAFE 'Contabilizado' (regra da casa: só a Ordem Bancária é pago; Anulado/
+    # Excluído fora) — dá a dimensão do sinal: sócio de empresa que fatura X com o poder público.
     cc = _db.sqlite3.connect(f"file:{COMPLIANCE_DB}?mode=ro", uri=True)
     cc.row_factory = _db.sqlite3.Row
     socios = cc.execute(
         "SELECT DISTINCT cnpj, razao, socio_nome, socio_nome_norm, socio_doc, qualificacao "
         "FROM socios_fornecedor WHERE socio_nome_norm<>''").fetchall()
+    pagos = {}
+    try:
+        pagos = {r["credor"]: {"total": r["total"] or 0.0, "n": r["n"],
+                               "ini": r["ini"], "fim": r["fim"]}
+                 for r in cc.execute(
+                     "SELECT credor, SUM(valor) AS total, COUNT(*) AS n, MIN(exercicio) AS ini, "
+                     "MAX(exercicio) AS fim FROM ob_orcamentaria_siafe "
+                     "WHERE status='Contabilizado' AND length(credor)=14 GROUP BY credor")}
+    except Exception:  # noqa: BLE001 — banco parcial segue sem o contexto de pagamento
+        pagos = {}
     cc.close()
 
     registros = []
@@ -108,6 +124,7 @@ def analisar() -> dict:
         registros.append({
             "socio": s["socio_nome"] or nn.title(),
             "empresa": s["razao"] or "", "cnpj": _fmt_cnpj(s["cnpj"]),
+            "cnpj_raw": re.sub(r"\D", "", s["cnpj"] or ""),
             "qualificacao": s["qualificacao"] or "",
             "cpf_frag": frag, "certeza": certeza,
             "programas": progs, "beneficios_str": ", ".join(p["ben"] for p in progs),
@@ -127,7 +144,13 @@ def analisar() -> dict:
     por_emp: dict[str, list] = {}
     for r in unicos:
         por_emp.setdefault(f'{r["empresa"]} — {r["cnpj"]}', []).append(r)
-    grupos = sorted(por_emp.items(), key=lambda kv: (-len(kv[1]), kv[0]))
+    grupos = []
+    for titulo, regs in sorted(por_emp.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+        pg = pagos.get(regs[0]["cnpj_raw"])
+        contexto = (f"recebeu do Estado R$ {_moeda(pg['total'])} em {pg['n']} OB(s) "
+                    f"({pg['ini']}–{pg['fim']})" if pg else
+                    "sem OB estadual na base (fornecedor municipal/federal ou fora da cobertura)")
+        grupos.append({"titulo": titulo, "contexto": contexto, "regs": regs})
 
     return {
         "competencias": comps, "anos": anos, "ultima": ultima,
@@ -141,35 +164,38 @@ def analisar() -> dict:
 
 _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   @page { size: A4 landscape; margin: 12mm 10mm; }
-  body { font-family:'Helvetica Neue',Arial,sans-serif; color:#1a1a1a; font-size:9.5px; line-height:1.45; }
-  .capa { border-bottom:3px solid #1f4e5a; padding-bottom:9px; margin-bottom:12px; }
-  .classif { color:#1f4e5a; font-weight:700; letter-spacing:1px; font-size:9.5px; }
-  h1 { font-size:19px; color:#10303a; margin:4px 0; }
+  body { font-family:Georgia,'Times New Roman',serif; color:#1a1a1a; font-size:9.5px; line-height:1.5; }
+  .capa { border-bottom:3px double #1f4e5a; padding-bottom:10px; margin-bottom:12px; }
+  .classif { color:#1f4e5a; font-weight:700; letter-spacing:2px; font-size:9px; font-family:'Helvetica Neue',Arial,sans-serif; }
+  h1 { font-size:20px; color:#0b2228; margin:5px 0 3px; letter-spacing:.2px; }
   .meta { color:#555; font-size:9px; }
-  h2 { font-size:13px; color:#1f4e5a; border-bottom:1px solid #d3e0e0; padding-bottom:3px; margin-top:16px; }
-  h3 { font-size:10.5px; color:#10303a; margin:12px 0 2px; background:#e9f1f2; padding:3px 7px; border-radius:4px; }
-  .kpis { display:flex; gap:9px; margin:11px 0; flex-wrap:wrap; }
-  .kpi { border:1px solid #d5e2e2; border-radius:8px; padding:9px 13px; background:#f7fbfb; min-width:120px; }
-  .kpi .n { font-size:21px; font-weight:700; color:#1f4e5a; line-height:1; }
-  .kpi .l { font-size:8.5px; color:#666; margin-top:3px; }
-  table { width:100%; border-collapse:collapse; font-size:8.5px; margin:4px 0 10px; }
+  h2 { font-size:13.5px; color:#1f4e5a; border-bottom:1px solid #d3e0e0; padding-bottom:3px; margin-top:17px; }
+  h3 { font-size:10.5px; color:#10303a; margin:12px 0 2px; background:#eaf2f3; padding:4px 8px; border-left:3px solid #1f4e5a; }
+  h3 .ctx { font-weight:400; color:#456; font-size:9px; }
+  .kpis { display:flex; gap:8px; margin:11px 0; flex-wrap:wrap; }
+  .kpi { border:1px solid #d5e2e2; border-radius:7px; padding:8px 12px; background:#f7fbfb; min-width:112px; }
+  .kpi .n { font-size:21px; font-weight:700; color:#1f4e5a; line-height:1; font-family:'Helvetica Neue',Arial,sans-serif; }
+  .kpi .l { font-size:8px; color:#666; margin-top:3px; font-family:'Helvetica Neue',Arial,sans-serif; }
+  table { width:100%; border-collapse:collapse; font-size:8.4px; margin:4px 0 10px; font-family:'Helvetica Neue',Arial,sans-serif; }
   th,td { text-align:left; padding:3px 5px; border-bottom:1px solid #eee; vertical-align:top; }
-  th { background:#1f4e5a; color:#fff; }
-  table tr:nth-child(even) td { background:#f0f6f6; }
-  .tag { padding:1px 5px; border-radius:3px; font-size:8px; font-weight:600; }
+  th { background:#1f4e5a; color:#fff; font-weight:600; }
+  table tr:nth-child(even) td { background:#f2f7f7; }
+  .tag { padding:1px 5px; border-radius:3px; font-size:8px; font-weight:700; font-family:'Helvetica Neue',Arial,sans-serif; }
   .alta { background:#fdecea; color:#c62828; } .media { background:#fff3e0; color:#e65100; }
-  .nota { font-size:8.5px; color:#666; font-style:italic; }
+  .nota { font-size:8.6px; color:#555; font-style:italic; }
   footer { margin-top:18px; border-top:1px solid #ddd; padding-top:6px; font-size:8px; color:#888; }
 </style></head><body>
   <div class="capa">
     <div class="classif">CONFIDENCIAL — SUBSÍDIO PARA APURAÇÃO</div>
     <h1>{{ titulo }}</h1>
     <div class="meta">Emitido em {{ data }} · Sócios de fornecedores × benefício assistencial ·
-    Casamento por nome + fragmento de CPF (QSA da Receita × arquivos de benefício) · Período: {{ periodo }}</div>
+    Casamento por nome + fragmento de CPF (QSA da Receita × arquivos de benefício) · Período: {{ periodo }} ·
+    Pagamentos ao fornecedor: OB SIAFE contabilizada (só Ordem Bancária é pagamento; empenho não)</div>
   </div>
   <div class="kpis">
     <div class="kpi"><div class="n">{{ total }}</div><div class="l">sócios de fornecedores com benefício (Rio)</div></div>
     <div class="kpi"><div class="n">{{ n_alta }}</div><div class="l">certeza ALTA (nome + CPF batem)</div></div>
+    <div class="kpi"><div class="n">{{ n_media }}</div><div class="l">certeza MÉDIA (CPF não confirmado)</div></div>
     <div class="kpi"><div class="n">{{ n_ainda }}</div><div class="l">ainda recebendo em {{ ultima }}</div></div>
     <div class="kpi"><div class="n">{{ n_empresas }}</div><div class="l">empresas fornecedoras envolvidas</div></div>
   </div>
@@ -177,14 +203,17 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   <h2>1. Sócios de empresas fornecedoras recebendo benefício assistencial — por empresa</h2>
   <p class="nota">Certeza ALTA = o fragmento de CPF do sócio (QSA) coincide com o do beneficiário
   homônimo — praticamente a mesma pessoa. MÉDIA = há um único beneficiário com o nome, mas sem
-  confirmar o CPF. Colunas de ano contam meses com benefício; "Programas" traz a trajetória.</p>
-  {% for empresa, regs in grupos %}
-  <h3>{{ empresa }} — {{ regs|length }} sócio(s)</h3>
+  confirmar o CPF. Colunas de ano contam meses com benefício; "Programas" traz a trajetória. O
+  subtítulo de cada empresa traz quanto ela <b>recebeu do Estado</b> (soma das OBs contabilizadas
+  do SIAFE) — a dimensão do sinal: quanto maior o faturamento público, mais incompatível o
+  benefício de renda mínima do sócio.</p>
+  {% for g in grupos %}
+  <h3>{{ g.titulo }} — {{ g.regs|length }} sócio(s) · <span class="ctx">{{ g.contexto }}</span></h3>
   <table>
     <tr><th>Sócio</th><th>Certeza</th><th>CPF (frag.)</th><th>Qualificação</th><th>Programas (trajetória)</th>
         {% for a in anos %}<th>{{ a }}</th>{% endfor %}<th>Ainda?</th></tr>
-    {% for r in regs %}
-    <tr><td>{{ r.socio }}</td>
+    {% for r in g.regs %}
+    <tr><td><b>{{ r.socio }}</b></td>
         <td><span class="tag {% if r.certeza=='ALTA' %}alta{% else %}media{% endif %}">{{ r.certeza }}</span></td>
         <td>…{{ r.cpf_frag }}…</td><td>{{ r.qualificacao }}</td>
         <td>{% for pr in r.programas %}{{ pr.ben }} ({{ pr.desde }}→{{ pr.ate }}, {{ pr.n }}m){% if not loop.last %}; {% endif %}{% endfor %}</td>
@@ -204,9 +233,14 @@ _TPL = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><style>
   para apuração, não acusação; a incompatibilidade de renda (ser sócio de empresa que fatura com o
   poder público e receber benefício de renda mínima) deve ser apurada pelos órgãos de controle e
   pelo Ministério Público, resguardada a presunção de legitimidade.</p>
+  <p><b>Pagamentos ao fornecedor.</b> O valor "recebeu do Estado" de cada empresa é a soma das
+  Ordens Bancárias <b>contabilizadas</b> do SIAFE estadual (OBs anuladas/excluídas fora) — pela
+  regra de ouro orçamentária, só a OB é pagamento; empenho e liquidação não entram. Empresa "sem OB
+  estadual na base" pode ser fornecedora municipal/federal ou estar fora da janela de cobertura da
+  coleta — ausência declarada, não zero.</p>
 
   <footer>Peça de subsídio à apuração — indícios, não acusação. Fonte pública oficial (Receita
-  Federal / Portal da Transparência). CPF de terceiros mascarado (LGPD).</footer>
+  Federal / Portal da Transparência / SIAFE-RJ). CPF de terceiros mascarado (LGPD).</footer>
 </body></html>"""
 
 _PROIBIDOS = ("jfn", "yoda", "hermes", "massare", "politimonitor", "gitnexus",
@@ -229,8 +263,8 @@ def render(dados: dict) -> str:
         data=datetime.now().strftime("%d/%m/%Y"), periodo=periodo,
         ultima=_comp_legivel(dados["ultima"]) if dados["ultima"] else "—",
         anos=dados["anos"], total=len(dados["registros"]),
-        n_alta=dados["n_alta"], n_ainda=dados["n_ainda"], n_empresas=dados["n_empresas"],
-        grupos=dados["grupos"],
+        n_alta=dados["n_alta"], n_media=dados["n_media"], n_ainda=dados["n_ainda"],
+        n_empresas=dados["n_empresas"], grupos=dados["grupos"],
     )
 
 

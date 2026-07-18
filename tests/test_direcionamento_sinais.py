@@ -116,3 +116,126 @@ def test_wired_no_cerebro_sem_llm():
     out2 = asyncio.run(DC.avaliar_direcionamento(_EDITAL, _ATA, gerar=_fake_ok))
     assert out2["sinais_deterministicos"]["grau_det"] == "vermelho"
     assert out2["grau"] == "amarelo"  # caminho LLM preservado (aditivo, não quebra)
+
+
+# ───────────────────── novas famílias (expansão 2026-07-16) ─────────────────────
+# Cada regra nova: 1 positivo verbatim + 1 guarda de falso-positivo em prosa administrativa.
+
+_CTX = ("EDITAL DE PREGÃO ELETRÔNICO. Termo de Referência. QUALIFICAÇÃO TÉCNICA: exige-se atestado "
+        "de capacidade técnica e documentos de habilitação conforme a proposta. " * 4)
+
+
+def _tipos(texto):
+    return {c["tipo"] for c in DS.extrair_clausulas_restritivas(texto)}
+
+
+def test_vedacao_consorcio_dispara_e_prosa_nao():
+    assert "vedacao_consorcio" in _tipos(
+        _CTX + "Não será admitida a participação de empresas reunidas em consórcio.")
+    assert "vedacao_consorcio" not in _tipos(
+        _CTX + "O consórcio intermunicipal de saúde firmou convênio com o Estado.")
+
+
+def test_indices_contabeis_desproporcional_dispara_e_usual_nao():
+    assert "indices_contabeis" in _tipos(
+        _CTX + "Índice de Liquidez Geral igual ou superior a 2,0, comprovado pelo balanço.")
+    # índice usual (1,0) NÃO é restritivo — não dispara
+    assert "indices_contabeis" not in _tipos(
+        _CTX + "Índice de Liquidez Geral igual ou superior a 1,0, comprovado pelo balanço.")
+
+
+def test_atestado_percentual_alto_dispara_e_50_nao():
+    assert "atestado_percentual_alto" in _tipos(
+        _CTX + "O atestado deverá comprovar execução de no mínimo 70% do quantitativo do objeto.")
+    assert "atestado_percentual_alto" not in _tipos(
+        _CTX + "O atestado deverá comprovar execução de no mínimo 50% do quantitativo do objeto.")
+
+
+def test_registro_regional_crea_dispara():
+    assert "registro_regional" in _tipos(
+        _CTX + "Registro ou inscrição da empresa no CREA do Estado do Rio de Janeiro, como condição de habilitação.")
+
+
+def test_cadastro_antecedencia_dispara_e_sicaf_normal_nao():
+    assert "cadastro_antecedencia" in _tipos(
+        _CTX + "O credenciamento deverá ser efetuado com antecedência mínima de 3 dias úteis da sessão pública.")
+    assert "cadastro_antecedencia" not in _tipos(
+        _CTX + "O credenciamento no SICAF é gratuito e pode ser feito a qualquer tempo.")
+
+
+def test_filiacao_entidade_dispara():
+    assert "filiacao_entidade" in _tipos(
+        _CTX + "A licitante deverá estar filiada ao sindicato da categoria, apresentando comprovação.")
+
+
+def test_distancia_maxima_usina_dispara():
+    assert "distancia_maxima" in _tipos(
+        _CTX + "A usina de asfalto deverá situar-se a uma distância máxima de 40 km do canteiro de obras.")
+
+
+def test_prazo_exiguo_dispara_e_prazo_legal_nao():
+    assert "prazo_exiguo" in _tipos(
+        _CTX + "A entrega das propostas deverá ocorrer no prazo de 8 horas contadas da publicação.")
+    assert "prazo_exiguo" not in _tipos(
+        _CTX + "A entrega das propostas ocorrerá no prazo de 8 dias úteis, na forma da lei.")
+
+
+def test_sinais_certame_licitante_unico_e_desconto_irrisorio():
+    ata = ("ATA DA SESSÃO PÚBLICA. Compareceu apenas uma licitante interessada. A empresa foi inabilitada e "
+           "depois habilitada em diligência. O valor estimado da contratação é de R$ 1.000.000,00. "
+           "Foi declarada vencedora com proposta homologada no valor de R$ 998.000,00. "
+           "As demais empresas foram desclassificadas por não apresentar atestado. " * 3)
+    r = DS.sinais_de_certame(ata)
+    assert r["licitante_unico"] is True
+    assert r["desconto"] and r["desconto"]["desconto_pct"] < 1.0
+    det = DS.analisar_direcionamento_det(ata)
+    assert det["grau_det"] in ("amarelo", "vermelho")
+    assert any("LICITANTE ÚNICO" in s for s in det["sinais"])
+    assert any("desconto irrisório" in s for s in det["sinais"])
+
+
+def test_sinais_certame_desconto_saudavel_nao_dispara():
+    ata = ("ATA DA SESSÃO. O valor estimado da contratação é de R$ 1.000.000,00. Melhor proposta "
+           "homologada no valor de R$ 780.000,00 após disputa de lances entre nove licitantes.")
+    r = DS.sinais_de_certame(ata)
+    assert r["desconto"] is None
+
+
+# ───────────── conluio OCDE 2025 em ata (Bid-Rigging Detection List) ─────────────
+
+def test_certame_mesmo_representante_dispara():
+    ata = ("ATA DE SESSÃO. Verificou-se que o mesmo representante legal assinou as propostas de duas "
+           "licitantes distintas. " * 3 + "edital pregão habilitação atestado proposta")
+    r = DS.sinais_de_certame(ata)
+    assert r["mesmo_representante"] is True
+
+
+def test_certame_subcontratacao_ao_derrotado_dispara():
+    ata = ("A vencedora subcontratou a empresa licitante que havia sido desclassificada no certame. " * 3
+           + "edital pregão habilitação atestado proposta")
+    r = DS.sinais_de_certame(ata)
+    assert r["subcontrata_perdedor"] is True
+
+
+def test_certame_supressao_de_proposta_dispara():
+    ata = ("A licitante retirou sua proposta após ser convocada, deixando o caminho livre. " * 3
+           + "edital pregão habilitação atestado proposta")
+    r = DS.sinais_de_certame(ata)
+    assert r["supressao_proposta"] is True
+
+
+def test_certame_ata_limpa_nao_dispara_conluio():
+    ata = ("ATA DA SESSÃO. Nove licitantes disputaram lances. A proposta vencedora ofertou desconto de "
+           "22% sobre o estimado, após ampla competição. " * 2)
+    r = DS.sinais_de_certame(ata)
+    assert not r["mesmo_representante"] and not r["subcontrata_perdedor"] and not r["supressao_proposta"]
+
+
+def test_conluio_ocde_entra_no_veredito_como_amarelo():
+    ata = ("ATA DE SESSÃO PÚBLICA DE PREGÃO. Compareceram três licitantes. Constatou-se que o mesmo "
+           "procurador representava duas delas. A vencedora subcontratou a empresa desclassificada. "
+           "Habilitação, atestado de capacidade técnica, proposta e edital constam dos autos. " * 3)
+    det = DS.analisar_direcionamento_det(ata)
+    assert det["grau_det"] in ("amarelo", "vermelho")
+    assert any("conluio" in s.lower() for s in det["sinais"])
+    assert "certame" in det and det["certame"]["mesmo_representante"]

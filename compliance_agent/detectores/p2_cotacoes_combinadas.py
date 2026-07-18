@@ -188,13 +188,19 @@ class P2CotacoesCombinadas(Detector):
                               trecho=f"vencedor {vencedor} consta entre os cotantes da pesquisa de preços")
         valores["vencedor_e_cotante"] = bool(vencedor and vencedor in cnpjs)
 
-        # ── REGRA OBJETIVA 4: CV dos valores muito baixo ──
+        # ── REGRA OBJETIVA 4: CV dos valores muito baixo (exige ≥3 totais — CV com n=2 não diz nada) ──
         totais = [t for t in (_total_cotacao(c) for c in cotacoes) if t is not None]
         cv = _cv(totais)
         valores["cv_valores"] = round(cv, 4) if cv is not None else None
-        if cv is not None and cv < 0.05 and not item_regulado:
+        if cv is not None and cv < 0.05 and len(totais) < 3:
+            valores["ressalva_cv_n"] = (f"CV baixo ({cv:.3f}) mas só {len(totais)} totais — "
+                                        "n insuficiente p/ a regra de CV (mín. 3); não pontua")
+            razoes.append(valores["ressalva_cv_n"])
+        elif cv is not None and cv < 0.05 and not item_regulado:
             score = min(1.0, score + 0.10) if score > 0 else ancora("fraco")
             razoes.append(f"CV dos valores muito baixo ({cv:.3f} < 0,05) — cotações suspeitamente alinhadas")
+            if len(totais) == 3:
+                valores["ressalva_cv_n"] = "CV computado com n=3 (mínimo da regra) — indício frágil isolado"
             res.add_evidencia(fonte="valores das cotações",
                               trecho=f"coeficiente de variação = {cv:.4f} (< 0,05) entre {len(totais)} cotações")
         elif cv is not None and cv < 0.05 and item_regulado:

@@ -188,6 +188,7 @@ class E7ClausulaRestritiva(Detector):
         score = 0.0
         razoes: list[str] = []
         marcadas: list[dict] = []           # cláusulas restritivas confirmadas (nivel medio+)
+        tipos_instituidos: set[str] = set()  # cláusulas cujo teste finalístico CONCLUIU (exigência instituída)
         fundamentacao: dict[str, dict] = {}  # tipo → fundamentação jurídica
         verificar_flags: list[str] = []
 
@@ -199,8 +200,11 @@ class E7ClausulaRestritiva(Detector):
                 continue
             fn, tipo_fund = teste
             nivel, motivo = fn(c, valor_estimado)
-            if nivel is None or nivel not in _NIVEIS_MARCA:
-                continue  # 'ausente' (cláusula ok) ou nao_avaliavel → não marca
+            if nivel is None:
+                continue  # nao_avaliavel (sem parâmetro literal) → não marca nem entra na cumulação
+            tipos_instituidos.add(tipo)  # teste rodou com juízo: exigência instituída (mesmo se 'ausente')
+            if nivel not in _NIVEIS_MARCA:
+                continue  # 'ausente' (cláusula ok) → não marca
             nivel = self._pertinencia(c, nivel)  # exculpatória LLM-opcional pode rebaixar
             if nivel not in _NIVEIS_MARCA:
                 razoes.append(f"[{tipo}] rebaixada por pertinência ao risco — não pontua")
@@ -217,8 +221,10 @@ class E7ClausulaRestritiva(Detector):
                         verificar_flags.append(tipo_fund)
 
         # ── cumulação capital/PL + garantia (Súmula 275 — só NÃO cumulativos) ──
+        # só sobre cláusulas que PASSARAM no teste finalístico (parâmetro literal) — mera presença crua
+        # ("garantia" citada sem valor → nao_avaliavel) não cumula (guarda anti-FP)
         tipos_presentes = {str(c.get("tipo") or "") for c in clausulas}
-        if {"capital_patrimonio", "garantia_proposta"} <= tipos_presentes:
+        if {"capital_patrimonio", "garantia_proposta"} <= tipos_instituidos:
             score = max(score, ancora("forte"))
             razoes.append("cumulação: capital/PL E garantia de participação exigidos juntos (Súmula TCU 275 — "
                           "só de forma NÃO cumulativa)")

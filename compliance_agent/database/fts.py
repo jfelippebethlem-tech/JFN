@@ -71,7 +71,7 @@ def criar_indices_fts(db_path=None):
         if ja:
             conn.close()
             return
-    except Exception:
+    except sqlite3.Error:
         pass
     try:
         # ── fts_contratos ─────────────────────────────────────────────────────

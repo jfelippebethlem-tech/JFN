@@ -186,6 +186,14 @@ class E2Prazos(Detector):
             res.valores = {"tem_publicacao": dt_pub is not None, "tem_abertura": dt_abe is not None}
             return res
 
+        if dt_abe < dt_pub:
+            # dado sujo: abertura ANTES da publicação não fabrica violação 'forte' — sem base honesta
+            res.motivo_refutacao = ("nao_avaliavel: datas inconsistentes (abertura anterior à publicação) — "
+                                    "dado sujo, sem base para o prazo útil")
+            res.valores = {"data_publicacao": dt_pub.date().isoformat(),
+                           "data_abertura": dt_abe.date().isoformat()}
+            return res
+
         minimo = minimo_art55(modalidade, criterio)
         if minimo is None:
             res.motivo_refutacao = (f"nao_avaliavel: modalidade {modalidade!r} desconhecida — sem mínimo "

@@ -118,6 +118,65 @@ CREATE TABLE IF NOT EXISTS pcrj_vinculo_cruzado (
     gerado_em     TEXT,
     PRIMARY KEY (nome_norm, orgao_pcrj, cargo_pcrj)
 );
+
+-- ── Harvester de licitações municipais (Saúde + PPPs, 2021+) ──────────────
+-- Fontes: A=PNCP  B=ContasRio  C=D.O. Rio(doweb)  D=SEI-Pref(SIGA/SEI.RIO)  E=CCPAR
+CREATE TABLE IF NOT EXISTS pcrj_doe_materia (   -- ato bruto do Diário Oficial (proveniência)
+    id_materia    TEXT PRIMARY KEY,             -- {diario_id}_{pagina} (id do Elasticsearch)
+    diario_id     TEXT,
+    pdf_id        TEXT,
+    pagina        INTEGER,
+    data          TEXT,                          -- verbatim da fonte
+    ano           INTEGER,
+    termo_busca   TEXT,                          -- termo que trouxe a matéria
+    orgao         TEXT,                          -- inferido do texto (se possível)
+    tipo          TEXT,                          -- edital|homologacao|extrato_contrato|ppp|outro (heurístico)
+    processos     TEXT,                          -- json: nºs de processo extraídos do texto
+    texto         TEXT,
+    url           TEXT,                          -- link imprimível da matéria
+    coletado_em   TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_doe_ano  ON pcrj_doe_materia(ano);
+CREATE INDEX IF NOT EXISTS ix_doe_tipo ON pcrj_doe_materia(tipo);
+
+CREATE TABLE IF NOT EXISTS pcrj_processo (      -- processo administrativo (SIGA/SEI municipal)
+    numero_processo TEXT PRIMARY KEY,
+    sistema         TEXT,                        -- siga | seirio
+    interessado     TEXT,
+    assunto         TEXT,
+    orgao           TEXT,
+    andamento_json  TEXT,                        -- tramitação
+    disponivel      INTEGER,                     -- 1 achou / 0 nada / NULL indisponível (tri-estado)
+    coletado_em     TEXT
+);
+
+CREATE TABLE IF NOT EXISTS pcrj_processo_doc (  -- documentos do processo (inteiro teor público)
+    numero_processo TEXT,
+    seq             INTEGER,
+    tipo            TEXT,
+    titulo          TEXT,
+    texto           TEXT,
+    url             TEXT,
+    coletado_em     TEXT,
+    PRIMARY KEY (numero_processo, seq)
+);
+
+CREATE TABLE IF NOT EXISTS pcrj_ppp (           -- projeto de PPP/concessão (CCPAR)
+    slug              TEXT PRIMARY KEY,
+    nome              TEXT,
+    orgao_gestor      TEXT,
+    objeto            TEXT,
+    modalidade        TEXT,
+    fase              TEXT,
+    valor_investimento REAL,
+    contraprestacao   REAL,
+    prazo_anos        INTEGER,
+    vencedor          TEXT,
+    numero_processo   TEXT,
+    datas_json        TEXT,
+    docs_json         TEXT,
+    coletado_em       TEXT
+);
 """
 
 

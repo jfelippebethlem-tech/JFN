@@ -119,6 +119,13 @@ def sha256_hex(texto: str) -> str:
     return "sha256:" + hashlib.sha256((texto or "").encode("utf-8")).hexdigest()
 
 
+def sem_acentos(texto: str) -> str:
+    """Minúsculas sem acentos (NFKD, completo — cobre ê/ô/õ/â/ú/ü etc.) p/ chaves de comparação de texto."""
+    import unicodedata
+    t = unicodedata.normalize("NFKD", str(texto or "").lower())
+    return "".join(ch for ch in t if not unicodedata.combining(ch))
+
+
 def _agora_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 

@@ -79,6 +79,18 @@ def test_cumulacao_capital_e_garantia_forte():
     assert res.score >= 0.85  # cumulação Súmula 275 mesmo com cada um dentro do teto isolado
 
 
+def test_cumulacao_exige_teste_finalistico_nao_presenca_crua():
+    """'Garantia' citada SEM valor/percentual literal (teste finalístico nao_avaliavel) não cumula com o
+    capital por mera presença crua — era falso positivo de Súmula 275."""
+    res = _av({"valor_estimado": 1_000_000.0, "clausulas_edital": [
+        {"tipo": "capital_patrimonio", "categoria": "economica", "texto": "capital social mínimo 5%", "pct": 0.05},
+        {"tipo": "garantia_proposta", "categoria": "economica",
+         "texto": "garantia de participação conforme o edital"},   # sem pct/valor → nao_avaliavel
+    ]})
+    assert res.status == "descartado"
+    assert res.score == 0.0
+
+
 def test_cruza_resultado_explica_cascata():
     res = _av({"clausulas_edital": [{"tipo": "recorte_geografico", "categoria": "geografico",
                                      "texto": "sede no Município"}],

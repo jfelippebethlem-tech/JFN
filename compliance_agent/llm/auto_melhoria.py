@@ -60,7 +60,7 @@ def _parse_auto_correcoes(raw: str) -> list[dict]:
     if m:
         try:
             return json.loads(m.group()).get("auto_correcoes", [])
-        except Exception:
+        except (ValueError, AttributeError):
             pass
     # fallback robusto: cada objeto {chave..regra..porque}
     out = []

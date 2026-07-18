@@ -218,11 +218,19 @@ async def _login(pg, exercicio: int):
     if "bloqueado" in body0.lower() and "exerc" in body0.lower() or "está bloqueado" in body0.lower():
         return {"ok": False, "erro": "exercicio_bloqueado", "ano": exercicio,
                 "detail": f"Exercício {exercicio} bloqueado para esta conta (pedir liberação ao Administrador do SIAFE)."}
-    # SEQUÊNCIA DE POPUPS pós-Ok (sessão única "já logado" + avisos/termos). Clica nos botões conhecidos
-    # até não haver mais (até 7 rodadas). Tudo via JS por ID/texto (sem o auto-wait de 30s do Playwright).
+    # SEQUÊNCIA DE POPUPS pós-Ok (sessão única "já logado" + MFA da build 13/07/2026 + avisos/termos).
+    # Clica nos botões conhecidos até não haver mais (até 7 rodadas). MFA tem tratamento próprio ANTES do
+    # clique genérico (senão o "Ok" do diálogo MFA seria clicado com o código vazio).
     for _ in range(7):
+        if await _mfa_presente(pg):
+            r = await _resolver_mfa(pg)
+            if not r.get("ok"):
+                return r
+            await pg.wait_for_timeout(3000)
+            continue
         agiu = await pg.evaluate(
             """()=>{
+                if ((document.body.innerText||'').includes('Autenticação Multifator')) return null;
                 const vis = el => { if(!el) return false; const r=el.getBoundingClientRect(); const s=getComputedStyle(el);
                     return r.width>0 && r.height>0 && s.visibility!=='hidden' && s.display!=='none'; };
                 // 1) botão "Sim" do diálogo de sessão única (id conhecido)
@@ -239,6 +247,8 @@ async def _login(pg, exercicio: int):
                 return null;
             }""")
         if not agiu:
+            if await _mfa_presente(pg):
+                continue
             break
         await pg.wait_for_timeout(2800)
     await pg.wait_for_timeout(3000)
@@ -249,8 +259,9 @@ async def _login(pg, exercicio: int):
     tem_workspace = await pg.evaluate("""()=>[...document.querySelectorAll('a.xyo')].some(e=>(e.innerText||'').trim()==='Execução')||/workspace/.test(location.href)""")
     # Não logar o corpo da página pós-login (higiene: evita despejar conteúdo sensível em stdout/log).
     print(f"   [login] url={pg.url} | senha_login={tem_senha_login} workspace={tem_workspace}", flush=True)
-    if any(k in bl for k in ("token", "código de verificação", "autenticação de dois")):
-        return {"ok": False, "erro": "mfa", "detail": "SIAFE pediu MFA — fornecer o código."}
+    if any(k in bl for k in ("token", "código de verificação", "autenticação de dois",
+                             "autenticação multifator", "código de autenticação")):
+        return {"ok": False, "erro": "mfa", "detail": "SIAFE pediu MFA e o código não foi resolvido a tempo."}
     if tem_workspace or not tem_senha_login:
         return {"ok": True, "url": pg.url}
     try:
@@ -258,6 +269,87 @@ async def _login(pg, exercicio: int):
     except Exception as exc:
         logger.debug("screenshot de erro de login (ERRO_login.png) falhou: %s", exc)
     return {"ok": False, "erro": "login_falhou", "url": pg.url, "body": body[:300]}
+
+
+async def _mfa_presente(pg) -> bool:
+    """Diálogo de Autenticação Multifator na tela? (novo na build 4.168.13, 13/07/2026 — código por e-mail).
+    Sinal robusto: o campo de token do form MFA visível (id exato); fallback textual."""
+    try:
+        campo = await pg.evaluate(
+            """()=>{const e=document.getElementById('loginBox:frmTokenMfa:itxTokenMfa::content');
+                if(!e) return false; const r=e.getBoundingClientRect(); const s=getComputedStyle(e);
+                return r.width>0 && r.height>0 && s.visibility!=='hidden' && s.display!=='none';}""")
+        if campo:
+            return True
+        body = ((await pg.inner_text("body")) or "").lower()
+    except Exception:
+        return False
+    return "autenticação multifator" in body or "código de autenticação" in body
+
+
+async def _resolver_mfa(pg, timeout_s: int = 900) -> dict:
+    """Resolve o MFA: marca "Dispensar código neste dispositivo por 30 dias" (persiste no perfil de browser),
+    pede o código ao Mestre Jorge via Telegram (chega no e-mail ALERJ dele) e aguarda o Yoda gravar o flag
+    (`siafe codigo NNNNNN` → siafe_coord.set_mfa). Preenche e confirma."""
+    from compliance_agent import siafe_coord
+    pedido_ts = time.time()
+    siafe_coord.notificar(
+        "🔐 JFN — SIAFE-2 agora exige código MFA (mudança da SEFAZ em 13/07).\n\n"
+        "Um código de 6 dígitos acabou de ser enviado ao seu e-mail da ALERJ.\n"
+        "Responda aqui: *siafe codigo NNNNNN*\n\n"
+        "Vou marcar 'dispensar por 30 dias' — só pedirei de novo no mês que vem.")
+    print("   [mfa] aguardando código do Mestre via Telegram...", flush=True)
+    codigo = ""
+    while time.time() - pedido_ts < timeout_s:
+        codigo = siafe_coord.get_mfa(depois_de=pedido_ts - 60)
+        if codigo:
+            break
+        await asyncio.sleep(10)
+    if not codigo:
+        return {"ok": False, "erro": "mfa_sem_codigo",
+                "detail": f"Mestre não enviou o código MFA em {timeout_s//60}min (responder 'siafe codigo NNNNNN')."}
+    print("   [mfa] código recebido — preenchendo", flush=True)
+    # IDs EXATOS do diálogo MFA (build 4.168.13). O form de login (usuário/senha) CONTINUA no DOM
+    # atrás do popup — um seletor genérico digitava o código no campo Senha e a validação falhava.
+    # Preenchimento NATIVO (Playwright type/press): o input ADF só comita o valor no modelo com
+    # eventos de tecla reais — setar .value por JS não basta.
+    campo = '[id="loginBox:frmTokenMfa:itxTokenMfa::content"]'
+    try:
+        await pg.click(campo, timeout=8000)
+        await pg.fill(campo, "")
+        await pg.type(campo, codigo, delay=60)  # digitação real, tecla a tecla
+        # "dispensar 30 dias" → o cookie do perfil persistente evita novo MFA por 1 mês
+        try:
+            await pg.check('[id="loginBox:frmTokenMfa:ckTrustDevice::content"]', timeout=3000)
+        except Exception as exc:
+            logger.debug("checkbox 'dispensar 30 dias' não marcado (segue sem persistir): %s", exc)
+    except Exception as exc:
+        try:
+            await pg.screenshot(path=str(_REPO / "data/sei_cache/ERRO_mfa.png"))
+        except Exception:
+            pass
+        return {"ok": False, "erro": "mfa_campo_nao_encontrado", "detail": f"campo MFA inacessível: {exc}"}
+    await pg.wait_for_timeout(400)
+    # confirma: Enter no campo E clique no botão (o que disparar primeiro resolve)
+    try:
+        await pg.press(campo, "Enter")
+    except Exception as exc:
+        logger.debug("Enter no campo MFA falhou (segue p/ o clique do botão): %s", exc)
+    try:
+        await pg.click('[id="loginBox:frmTokenMfa:btnConfirmToken"]', timeout=5000)
+    except Exception as exc:
+        logger.debug("clique no botão Ok do MFA falhou (Enter pode ter resolvido): %s", exc)
+    await pg.wait_for_timeout(4500)
+    if await _mfa_presente(pg):
+        # deixa evidência p/ diagnóstico (o valor entrou no campo? há msg de erro?)
+        try:
+            await pg.screenshot(path=str(_REPO / "data/sei_cache/ERRO_mfa.png"))
+        except Exception:
+            pass
+        return {"ok": False, "erro": "mfa_codigo_rejeitado",
+                "detail": "Código MFA preenchido mas o diálogo persiste (código errado/expirado?)."}
+    siafe_coord.notificar("✅ Código MFA aceito — coleta SIAFE retomada. Dispensa de 30 dias marcada.")
+    return {"ok": True}
 
 
 async def _shot(pg, nome):
@@ -450,6 +542,24 @@ def _ckpt_save(exercicio: int, header: list, linhas: list):
         logger.warning("falha ao salvar checkpoint de OBs (exercício %s) em %s: %s", exercicio, _CKPT, exc)
 
 
+_PROFILE = _REPO / "data" / "siafe_profile"
+
+
+async def _novo_browser(pw, headless=True):
+    """Contexto PERSISTENTE (data/siafe_profile): preserva o cookie "dispensar MFA por 30 dias" entre
+    coletas — o código MFA só é pedido ao Mestre ~1×/mês. Retorna (ctx, pg); ctx.close() encerra tudo."""
+    _PROFILE.mkdir(parents=True, exist_ok=True)
+    ctx = await pw.chromium.launch_persistent_context(
+        str(_PROFILE), headless=headless, args=["--no-sandbox", "--ignore-certificate-errors"],
+        ignore_https_errors=True, locale="pt-BR", timezone_id="America/Sao_Paulo",
+        viewport={"width": 1600, "height": 1000},
+        user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                    "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"))
+    await ctx.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+    pg = await ctx.new_page()
+    return ctx, pg
+
+
 async def coletar(exercicio=2025, maxn=300, headless=True, vistos=None, linhas=None) -> dict:
     """Uma passada: login → navega → colhe. Acumula em `vistos`/`linhas` (para retomar entre tentativas)."""
     from playwright.async_api import async_playwright
@@ -457,13 +567,7 @@ async def coletar(exercicio=2025, maxn=300, headless=True, vistos=None, linhas=N
     linhas = linhas if linhas is not None else []
     save_cb = lambda h, ls: _ckpt_save(exercicio, h, ls)
     async with async_playwright() as pw:
-        b = await pw.chromium.launch(headless=headless, args=["--no-sandbox", "--ignore-certificate-errors"])
-        ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", timezone_id="America/Sao_Paulo",
-                                  viewport={"width": 1600, "height": 1000},
-                                  user_agent=("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                                              "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"))
-        pg = await ctx.new_page()
-        await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+        b, pg = await _novo_browser(pw, headless)
         _t0 = time.time()
         _log = lambda m: print(f"[{time.time()-_t0:5.1f}s] {m}", flush=True)
         try:
@@ -625,11 +729,7 @@ async def _sweep_sessao(exercicio, prefixos, maxn, headless, _log) -> dict:
     if not pend:
         return {"ok": True, "pendentes": []}
     async with async_playwright() as pw:
-        b = await pw.chromium.launch(headless=headless, args=["--no-sandbox", "--ignore-certificate-errors"])
-        ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", timezone_id="America/Sao_Paulo",
-                                  viewport={"width": 1600, "height": 1000})
-        pg = await ctx.new_page()
-        await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+        b, pg = await _novo_browser(pw, headless)
         try:
             lg = await _login(pg, exercicio); _log(f"login: {lg.get('ok')}")
             if not lg.get("ok"):
@@ -761,11 +861,7 @@ async def coletar_por_ug_grande(exercicio=2026, ug="180100", headless=True, pref
     if not prefixos:
         prefixos = [f"{exercicio}OB{d}" for d in range(10)]
     async with async_playwright() as pw:
-        b = await pw.chromium.launch(headless=headless, args=["--no-sandbox", "--ignore-certificate-errors"])
-        ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", timezone_id="America/Sao_Paulo",
-                                  viewport={"width": 1600, "height": 1000})
-        pg = await ctx.new_page()
-        await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+        b, pg = await _novo_browser(pw, headless)
         try:
             if not (await _login(pg, exercicio)).get("ok"):
                 return {"ok": False, "etapa": "login"}
@@ -839,11 +935,7 @@ async def coletar_por_data(exercicio=2026, data="", headless=True, maxn=20000) -
     from playwright.async_api import async_playwright
     from compliance_agent.siafe_adf import AdfSync
     async with async_playwright() as pw:
-        b = await pw.chromium.launch(headless=headless, args=["--no-sandbox", "--ignore-certificate-errors"])
-        ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", timezone_id="America/Sao_Paulo",
-                                  viewport={"width": 1600, "height": 1000})
-        pg = await ctx.new_page()
-        await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+        b, pg = await _novo_browser(pw, headless)
         try:
             if not (await _login(pg, exercicio)).get("ok"):
                 return {"ok": False, "etapa": "login"}
@@ -898,11 +990,7 @@ async def coletar_por_ug(exercicio=2026, ug="133100", headless=True, maxn=20000)
     from playwright.async_api import async_playwright
     from compliance_agent.siafe_adf import AdfSync
     async with async_playwright() as pw:
-        b = await pw.chromium.launch(headless=headless, args=["--no-sandbox", "--ignore-certificate-errors"])
-        ctx = await b.new_context(ignore_https_errors=True, locale="pt-BR", timezone_id="America/Sao_Paulo",
-                                  viewport={"width": 1600, "height": 1000})
-        pg = await ctx.new_page()
-        await pg.add_init_script("Object.defineProperty(navigator,'webdriver',{get:()=>undefined})")
+        b, pg = await _novo_browser(pw, headless)
         try:
             lg = await _login(pg, exercicio)
             if not lg.get("ok"):

@@ -1,5 +1,709 @@
 [
  {
+  "sei": "SEI-270006/019293/2024",
+  "orig": "SEI-270006/019293/2024",
+  "valor": 42853.0,
+  "score": 40,
+  "forn": "PACLIMED DISTRIBUIDORA DE PRODUTOS FARMACÊUTICOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270060/019293/2024"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270131/000556/2023",
+  "orig": "SEI-270131/000556/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000140/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270006/027928/2025",
+  "orig": "SEI-270006/027928/2025",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/003106/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270131/000140/2023",
+  "orig": "SEI-270131/000140/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/000448/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/003106/2025",
+  "orig": "SEI-270003/003106/2025",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270006/002522/2024"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/001823/2024",
+  "orig": "SEI-270003/001823/2024",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/000447/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270006/002672/2024",
+  "orig": "SEI-270006/002672/2024",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/000447/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270131/000141/2023",
+  "orig": "SEI-270131/000141/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/000447/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/001824/2024",
+  "orig": "SEI-270003/001824/2024",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/000446/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270131/000142/2023",
+  "orig": "SEI-270131/000142/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/000446/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/001834/2024",
+  "orig": "SEI-270003/001834/2024",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/000450/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270131/000189/2023",
+  "orig": "SEI-270131/000189/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/000450/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/001827/2024",
+  "orig": "SEI-270003/001827/2024",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/000422/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270131/000145/2023",
+  "orig": "SEI-270131/000145/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/000422/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270131/000564/2023",
+  "orig": "SEI-270131/000564/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270003/000422/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270060/001441/2023",
+  "orig": "SEI-270060/001441/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270060/001643/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/002147/2024",
+  "orig": "SEI-270003/002147/2024",
+  "valor": 133544.36,
+  "score": 40,
+  "forn": "M4 IMPORTAÇÃO E COMERCIO DE MATERIAS MEDICO HOSPITALARES LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270057/000012/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/002165/2024",
+  "orig": "SEI-270003/002165/2024",
+  "valor": 133544.36,
+  "score": 40,
+  "forn": "M4 IMPORTAÇÃO E COMERCIO DE MATERIAS MEDICO HOSPITALARES LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270057/000012/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/003073/2024",
+  "orig": "SEI-270003/003073/2024",
+  "valor": 133544.36,
+  "score": 40,
+  "forn": "M4 IMPORTAÇÃO E COMERCIO DE MATERIAS MEDICO HOSPITALARES LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270057/000012/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270057/001327/2023",
+  "orig": "SEI-270057/001327/2023",
+  "valor": 133544.36,
+  "score": 40,
+  "forn": "M4 IMPORTAÇÃO E COMERCIO DE MATERIAS MEDICO HOSPITALARES LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270057/000012/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270061/000192/2022",
+  "orig": "SEI-270061/000192/2022",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001172/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270128/000004/2023",
+  "orig": "SEI-270128/000004/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001172/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/000448/2025",
+  "orig": "SEI-270003/000448/2025",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000067/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/001822/2024",
+  "orig": "SEI-270003/001822/2024",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000067/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270006/002522/2024",
+  "orig": "SEI-270006/002522/2024",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000067/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270006/007113/2026",
+  "orig": "SEI-270006/007113/2026",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000067/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270131/000557/2023",
+  "orig": "SEI-270131/000557/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000067/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/000447/2025",
+  "orig": "SEI-270003/000447/2025",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000068/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/003107/2025",
+  "orig": "SEI-270003/003107/2025",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000068/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270131/000558/2023",
+  "orig": "SEI-270131/000558/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000068/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/000446/2025",
+  "orig": "SEI-270003/000446/2025",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000069/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270006/002400/2024",
+  "orig": "SEI-270006/002400/2024",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000069/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270131/000559/2023",
+  "orig": "SEI-270131/000559/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000069/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/000450/2025",
+  "orig": "SEI-270003/000450/2025",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000072/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270131/000565/2023",
+  "orig": "SEI-270131/000565/2023",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000072/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270003/000422/2025",
+  "orig": "SEI-270003/000422/2025",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000074/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270006/004042/2024",
+  "orig": "SEI-270006/004042/2024",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270131/000074/2023"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270040/000251/2023",
+  "orig": "SEI-270040/000251/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270040/000351/2023",
+  "orig": "SEI-270040/000351/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270040/000429/2023",
+  "orig": "SEI-270040/000429/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270040/000433/2023",
+  "orig": "SEI-270040/000433/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270042/000335/2023",
+  "orig": "SEI-270042/000335/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270050/000527/2023",
+  "orig": "SEI-270050/000527/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270057/000992/2021",
+  "orig": "SEI-270057/000992/2021",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270060/001438/2023",
+  "orig": "SEI-270060/001438/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270060/001641/2023",
+  "orig": "SEI-270060/001641/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270060/001642/2023",
+  "orig": "SEI-270060/001642/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270060/001643/2023",
+  "orig": "SEI-270060/001643/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270060/001644/2023",
+  "orig": "SEI-270060/001644/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270064/000316/2023",
+  "orig": "SEI-270064/000316/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270078/000457/2023",
+  "orig": "SEI-270078/000457/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270080/000470/2023",
+  "orig": "SEI-270080/000470/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270087/000248/2023",
+  "orig": "SEI-270087/000248/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270097/000775/2023",
+  "orig": "SEI-270097/000775/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270100/000701/2023",
+  "orig": "SEI-270100/000701/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270104/001052/2023",
+  "orig": "SEI-270104/001052/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270105/000886/2022",
+  "orig": "SEI-270105/000886/2022",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270122/000553/2023",
+  "orig": "SEI-270122/000553/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270126/000057/2023",
+  "orig": "SEI-270126/000057/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270130/000006/2023",
+  "orig": "SEI-270130/000006/2023",
+  "valor": 1180.0,
+  "score": 40,
+  "forn": "LEMAN MEDICAMENTOS E CIA LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270042/001754/2022"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270006/006200/2026",
+  "orig": "SEI-270006/006200/2026",
+  "valor": 942.82,
+  "score": 40,
+  "forn": "EXCELENCIA DISTRIBUIDORA DE PRODUTOS E SERVIÇOS LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270006/039706/2025"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270006/004889/2026",
+  "orig": "SEI-270006/004889/2026",
+  "valor": 593.76,
+  "score": 40,
+  "forn": "POLYSUTURE INDUSTRIA E COMERCIO LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270006/000076/2026"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270006/012880/2026",
+  "orig": "SEI-270006/012880/2026",
+  "valor": 590.4,
+  "score": 40,
+  "forn": "DROGAFONTE LTDA.",
+  "flags": [
+   "LICITACAO_DE:SEI-270006/006502/2026"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
+  "sei": "SEI-270057/000012/2023",
+  "orig": "SEI-270057/000012/2023",
+  "valor": 133544.36,
+  "score": 40,
+  "forn": "M4 IMPORTAÇÃO E COMERCIO DE MATERIAS MEDICO HOSPITALARES LTDA",
+  "flags": [
+   "LICITACAO_DE:SEI-270006/009421/2024"
+  ],
+  "tipo": "LICITACAO"
+ },
+ {
   "sei": "SEI-270006/013933/2026",
   "orig": "SEI-270006/013933/2026",
   "valor": 896.0,

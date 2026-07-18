@@ -15,6 +15,9 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 _REPO = Path(__file__).resolve().parent.parent
 _DB = _REPO / "data" / "compliance.db"
@@ -27,8 +30,8 @@ def _tok() -> str:
             for ln in env.read_text(encoding="utf-8-sig").splitlines():
                 if ln.strip().startswith("TELEGRAM_BOT_TOKEN="):
                     return ln.split("=", 1)[1].strip().strip('"').strip("'")
-        except Exception:
-            pass
+        except OSError:
+            logger.debug("token do bot ilegível no .env")
     return ""
 
 
@@ -97,8 +100,8 @@ def main():
     out = _REPO / "docs" / f"ANALISE-POS-SWEEP-{datetime.now(timezone.utc).strftime('%Y%m%d')}.md"
     try:
         out.write_text(rel, encoding="utf-8")
-    except Exception:
-        pass
+    except OSError as exc:
+        logger.debug("gravação do relatório falhou: %s", exc)
     print(rel, flush=True)
     _tg(f"📊 ANÁLISE PÓS-SWEEP pronta!\n"
         f"Total: {a['total']:,} OBs (R$ {a['valor']/1e9:.2f} bi)\n"

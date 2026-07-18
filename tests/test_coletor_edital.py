@@ -244,6 +244,41 @@ def test_recorte_geografico_exige_obrigacao_ao_licitante():
     assert "recorte_geografico" in {c["tipo"] for c in ctx.get("clausulas_edital", [])}
 
 
+def test_exigencia_so_de_documento_de_edital_nao_de_balanco():
+    """Regressão: 'patrimônio líquido' de um BALANÇO não é exigência de habilitação — exigências seguem a
+    mesma guarda das cláusulas (só docs de edital/planejamento)."""
+    leitura = {
+        "numero": "SEI-1", "texto": "",
+        "documentos": [{"url": "u"}],
+        "conteudo_documentos": [
+            {"doc": "Balanço Patrimonial 2023",
+             "conteudo": "ATIVO TOTAL: R$ 1.500.000,00\nPatrimônio líquido: R$ 500.000,00"},
+        ],
+    }
+    ctx = montar_ctx_de_sei(leitura, usar_llm=False)
+    assert "exigencias_habilitacao" not in ctx  # balanço não gera exigência (era falso positivo E1)
+
+
+def test_negacao_e_citacao_legal_nao_viram_clausula():
+    """Regressão: 'NÃO será exigida garantia' e a mera citação do art. 69 da Lei ('poderá ser exigido')
+    casavam o gatilho sem instituir a exigência — excludente global veta."""
+    edital = """
+EDITAL DE PREGÃO 88/2024
+DA HABILITAÇÃO
+NÃO será exigida garantia de participação nesta licitação.
+Nos termos do art. 69 da Lei nº 14.133/2021, poderá ser exigido capital social mínimo.
+Fica dispensada a visita técnica obrigatória prevista no termo de referência.
+"""
+    leitura = {"numero": "SEI-1", "texto": "",
+               "documentos": [{"url": "u"}],
+               "conteudo_documentos": [{"doc": "Edital de Pregão 88/2024", "conteudo": edital}]}
+    ctx = montar_ctx_de_sei(leitura, usar_llm=False)
+    tipos = {c["tipo"] for c in ctx.get("clausulas_edital", [])}
+    assert "garantia_proposta" not in tipos      # negação ("NÃO será exigida")
+    assert "capital_patrimonio" not in tipos     # citação de lei, não cláusula instituída
+    assert "visita_tecnica" not in tipos          # "fica dispensada"
+
+
 def test_edital_limpo_sem_clausulas_restritivas():
     """Edital sem gatilhos restritivos → clausulas_edital fica FORA do ctx (campo ausente ≠ 0)."""
     leitura = {"numero": "SEI-2", "texto": "Pregão menor preço, ampla concorrência.",

@@ -23,6 +23,7 @@ Ao final gera: diagnostic_report.txt + screenshots em diagnostic_screenshots/
 """
 
 import asyncio
+from playwright.async_api import Error as PWError
 import os
 import sys
 from datetime import datetime
@@ -1908,7 +1909,7 @@ async def main_siafe2():
                     if popup_pg:
                         try:
                             await popup_pg.close()
-                        except Exception:
+                        except PWError:
                             pass
                 else:
                     log("  ❌ Detalhe não abriu — listando visíveis:")

@@ -132,6 +132,12 @@ def test_hhi_calculo():
 @skip_sem_db
 def test_montar_gera_md_e_pdf(tmp_path, monkeypatch):
     import asyncio
+
+    # determinismo na suíte CHEIA: lex._LER_SEI é constante de módulo avaliada no 1º import —
+    # se outro teste importar lex antes do setdefault do topo deste arquivo, a leitura SEI real
+    # liga e o montar depende de Chromium vivo (flaky de 2026-07-16). Trava no atributo.
+    from compliance_agent import lex as _lex
+    monkeypatch.setattr(_lex, "_LER_SEI", False)
     res = asyncio.run(I.montar(cnpj=CNPJ_MGS))
     assert res["ok"] is True
     assert res["cnpj"] == CNPJ_MGS

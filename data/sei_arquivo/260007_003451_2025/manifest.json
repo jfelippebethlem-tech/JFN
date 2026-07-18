@@ -1,18 +1,89 @@
 {
  "processo": "260007/003451/2025",
- "gerado_em": "2026-07-06T07:19:05+00:00",
+ "gerado_em": "2026-07-11T07:25:31+00:00",
  "origem": "/home/ubuntu/JFN/data/sei_cache/integra_260007_003451_2025",
  "modalidade": "",
- "docs": [],
+ "docs": [
+  {
+   "i": 0,
+   "titulo": "Anexo NF 270878 CEI (96779249)",
+   "fase": "indefinida",
+   "tipo": "anexo",
+   "texto": "texto/000_anexo_nf_270878_cei_96779249.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 1,
+   "titulo": "Anexo 2025NE00794 - CEI (96779300)",
+   "fase": "despesa",
+   "tipo": "nota_empenho",
+   "texto": "texto/001_anexo_2025ne00794_cei_96779300.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 2,
+   "titulo": "Despacho de Encaminhamento de Processo 96779317",
+   "fase": "tramitacao",
+   "tipo": "despacho",
+   "texto": "texto/002_despacho_de_encaminhamento_de_processo_9.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 3,
+   "titulo": "Nota de Liquidação - NL 2025NL00865 (97014504)",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/003_nota_de_liquida_o_nl_2025nl00865_9701450.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 4,
+   "titulo": "Despacho de Formalização de Liquidação de Despesa 97015475",
+   "fase": "despesa",
+   "tipo": "nota_liquidacao",
+   "texto": "texto/004_despacho_de_formaliza_o_de_liquida_o_de.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 5,
+   "titulo": "Comprovante 2025OB06872 R$11,31 SECRETARIA DE ESTADO DE FAZENDA - SEFAZ (101151018)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/005_comprovante_2025ob06872_r_11_31_secretar.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  },
+  {
+   "i": 6,
+   "titulo": "Comprovante 2025OB09000 R$931,09 Cei Com Exp E Imp De Mat Medicos Ltda (103054894)",
+   "fase": "despesa",
+   "tipo": "ordem_bancaria",
+   "texto": "texto/006_comprovante_2025ob09000_r_931_09_cei_com.txt",
+   "chars": 0,
+   "ocr": false,
+   "fotos": []
+  }
+ ],
  "linha_do_tempo": {
   "planejamento": 0,
   "selecao": 0,
   "contratacao": 0,
   "execucao": 0,
-  "despesa": 0,
+  "despesa": 5,
   "controle": 0,
-  "tramitacao": 0,
-  "indefinida": 0
+  "tramitacao": 1,
+  "indefinida": 1
  },
  "lacunas": [
   {
@@ -26,6 +97,10 @@
   {
    "falta": "Contrato/ata formalizados",
    "gravidade": "media"
+  },
+  {
+   "falta": "Evidência de execução (medição/atesto/relatório fotográfico) apesar de haver pagamento",
+   "gravidade": "critica"
   }
  ],
  "fotos_total": 0

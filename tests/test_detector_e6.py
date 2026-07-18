@@ -195,6 +195,43 @@ def test_e6_nao_avaliavel_matriz_sem_pontos():
     assert r.status == "nao_avaliavel"
 
 
+def test_e6_simulacao_empate_pos_exclusao_inconclusiva():
+    """Notas pós-exclusão EMPATADAS: eleger 'vencedor alternativo' pela ordem das propostas era espúrio →
+    simulação inconclusiva (vencedor_muda=False, empate registrado)."""
+    ctx = {
+        "processo": "tp-12",
+        "matriz_pontuacao": _matriz_dirigida(),
+        "propostas_tecnicas": [
+            {"cnpj": "B", "notas": {"atestado de capacidade": 20, "titulação da equipe": 10, "qualidade da metodologia": 10}},
+            {"cnpj": "A", "notas": {"atestado de capacidade": 20, "titulação da equipe": 10, "qualidade da metodologia": 50}},
+        ],
+        "vencedor_cnpj": "A",
+    }
+    r = E6PontuacaoDirigida().avaliar(ctx)
+    _valido(r)
+    assert r.valores["simulacao"]["vencedor_muda"] is False
+    assert r.valores["simulacao"]["empate_pos_exclusao"] is True
+    assert r.score < ANCORAS["forte"]                  # sem o 'forte' espúrio da simulação
+    assert r.status == "confirmado"                    # % subjetivo ainda sustenta o médio
+
+
+def test_e6_simulacao_todas_as_notas_zeradas_inconclusiva():
+    """Todos os pontos nos critérios zerados → notas pós-exclusão todas 0 (empate) → inconclusivo."""
+    ctx = {
+        "processo": "tp-13",
+        "matriz_pontuacao": [{"criterio": "metodologia", "pontos": 100, "subjetividade": "subjetivo_puro"}],
+        "propostas_tecnicas": [
+            {"cnpj": "B", "notas": {"metodologia": 40}},
+            {"cnpj": "A", "notas": {"metodologia": 90}},
+        ],
+        "vencedor_cnpj": "A",
+    }
+    r = E6PontuacaoDirigida().avaliar(ctx)
+    _valido(r)
+    assert r.valores["simulacao"]["vencedor_muda"] is False
+    assert r.valores["simulacao"]["empate_pos_exclusao"] is True
+
+
 def test_e6_simulacao_sem_propostas_nao_quebra():
     """Sem propostas a simulação não roda (vencedor_muda=False) e não quebra; % subjetivo ainda confirma médio."""
     ctx = {"processo": "tp-11", "matriz_pontuacao": _matriz_dirigida()}

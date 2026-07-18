@@ -29,6 +29,8 @@ HONESTIDADE JFN: indício ≠ acusação; sem ≥2 versões/retificações no co
 """
 from __future__ import annotations
 
+import re
+
 from compliance_agent.detectores.base import (
     Detector,
     ResultadoDetector,
@@ -60,7 +62,8 @@ class E5EditalIterado(Detector):
           ('deserto'|'fracassado'|'revogado'|'homologado'|...)}. Menos de 2 → nao_avaliavel (não há iteração).
       contexto["retificacoes"] (opcional): list[dict] de avisos de retificação, cada
           {secao, antes, depois, origem? ('tce'|'erro_material'|'oficio'|None),
-           _rubrica_beneficiario? (atalho de teste)}.
+           tipo? ('esclarecimento' fica fora do contador de volume), nova_versao? (bool),
+           reabriu_prazo? (bool), _rubrica_beneficiario? (atalho de teste)}.
       contexto["impugnacoes"] (opcional): list[dict] {licitante, pedido, atendida(bool)?,
           mudanca_exclui_impugnante(bool)?}.
       contexto["vencedor"] (opcional): {cnpj, caracteristicas?: [str,...]} — perfil do vencedor final.
@@ -100,16 +103,19 @@ class E5EditalIterado(Detector):
 
         # ── nº efetivo de republicações DIRIGIDAS (limiar objetivo) ──
         # cada versão nova após a 1ª é uma republicação, MENOS as que decorrem de origem legítima (TCE/erro
-        # material são republicações devidas); cada retificação de ofício/sem origem também conta. Não contamos
-        # abaixo de zero. Retificações legítimas NÃO entram no volume (exculpatória do spec).
+        # material são republicações devidas). No contador por retificação só entra quem MATERIALIZOU
+        # republicação (nova versão publicada ou reabertura de prazo) — errata/esclarecimento trivial fica no
+        # diff/rubrica, não no volume. Não contamos abaixo de zero.
         republicacoes_por_versao = max(n_versoes - 1 - n_legitimas, 0)
-        n_republicacoes = max(republicacoes_por_versao, n_retif_relevantes)
+        n_retif_volume = sum(1 for r in retif_relevantes if self._conta_no_volume(r))
+        n_republicacoes = max(republicacoes_por_versao, n_retif_volume)
 
         valores: dict = {
             "n_versoes": n_versoes,
             "n_retificacoes": n_retif,
             "n_retificacoes_legitimas": n_legitimas,
             "n_retificacoes_relevantes": n_retif_relevantes,
+            "n_retificacoes_no_volume": n_retif_volume,
             "n_republicacoes": n_republicacoes,
         }
         score = 0.0
@@ -203,6 +209,14 @@ class E5EditalIterado(Detector):
         return res
 
     # ───────────────────────────── helpers ─────────────────────────────
+    @staticmethod
+    def _conta_no_volume(r: dict) -> bool:
+        """Uma retificação só conta no CONTADOR de volume se materializou REPUBLICAÇÃO: nova versão publicada
+        ou reabertura de prazo. Errata/esclarecimento trivial entra no diff/rubrica, não no contador."""
+        if _norm(r.get("tipo")) == "esclarecimento":
+            return False
+        return bool(r.get("nova_versao") or r.get("reabriu_prazo"))
+
     @staticmethod
     def _resultados_rodadas(contexto: dict, versoes: list[dict]) -> list[str]:
         """Lista os resultados por rodada: usa `resultados_rodadas` se vier, senão extrai de cada versão."""
@@ -328,12 +342,13 @@ class E5EditalIterado(Detector):
     @staticmethod
     def _casa_com_vencedor(venc_caract: list[str], trecho_rubrica: str, perfil_alvo: str) -> str | None:
         """Retorna a característica do vencedor que casa com a alteração (trecho da rubrica ou perfil alvo),
-        ou None. Sem características do vencedor → não há como confirmar o casamento (honesto)."""
+        ou None. Guarda anti-FP: característica curta ("me", "rj") casaria qualquer texto por substring —
+        exige len≥4 e fronteira de palavra. Sem características do vencedor → não confirma (honesto)."""
         if not venc_caract:
             return None
         alvo = f"{trecho_rubrica} {perfil_alvo}".strip()
         for c in venc_caract:
-            if c and (c in alvo or c in trecho_rubrica or c in perfil_alvo):
+            if len(c) >= 4 and re.search(r"\b" + re.escape(c) + r"\b", alvo):
                 return c
         return None
 

@@ -107,6 +107,14 @@ async def atualizar_diario(exercicio: int | None = None, maxn: int = 1000) -> di
         res = await M.coletar(ano, maxn=maxn)
         if not res.get("ok"):
             _log(f"diário {ano}: coleta falhou: {res}")
+            # falha NUNCA silenciosa: o dono fica sabendo na hora (a defasagem de 16-17/07 passou batida)
+            try:
+                from compliance_agent import siafe_coord
+                siafe_coord.notificar(
+                    f"🚨 JFN — coleta diária do SIAFE {ano} FALHOU: {res.get('erro') or res.get('etapa')}\n"
+                    f"{(res.get('detail') or '')[:200]}\nOs dados de OB ficam defasados até resolver.")
+            except Exception as exc:
+                logger.debug("notificação de falha do diário não enviada: %s", exc)
             return {"ok": False, "etapa": "coleta", **res}
         ing = M.ingerir(ano, res.get("header", []), res.get("linhas", []))
         _log(f"diário {ano}: {res.get('n')} colhidas, {ing.get('ingeridas')} ingeridas (total {ing.get('total_tabela')})")

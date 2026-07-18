@@ -12,7 +12,7 @@ from pathlib import Path
 sys.path.insert(0, "/home/ubuntu/JFN")
 from tools import sei_reader as SR
 from tools import vm_guard as G
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, Error as PWError
 import httpx
 import fitz
 
@@ -48,13 +48,22 @@ async def main():
         try:
             if not await SR.login(pg, tentativas=25): print("LOGIN FALHOU"); return
             print("login OK", flush=True)
-            # ENUMERAÇÃO via primitivo novo (arvore_do_fonte): abre o processo (retry) e expande TODAS as
-            # pastas lazy-load pelo loader nativo do SEI. Substitui docs_da_pagina/clicar_proxima (paginação
-            # de BUSCA, que retornava 0 na árvore). Provado 2026-07-10: túnel 460001/000779/2023 = 658 docs.
-            fr = await SR.abrir_processo(pg, PROC)
-            if not fr:
+            # ENUMERAÇÃO — caminho CRACKED primeiro (mesmo do ler() canônico): abre processos de OUTRA
+            # unidade que o itkava VÊ mas o abrir_processo/arvore_do_fonte não abre (070002/INEA,
+            # 070026/SEAS). Provado 2026-07-13: INEA 070002/004135/2025 = 274 docs via cracked. Fallback:
+            # arvore_do_fonte (unidade do login). Os docs trazem {titulo,url}; a url é o nó arvore_visualizar.
+            arv = []
+            try:
+                dump = await SR._ler_cracked(pg, PROC)
+                arv = dump.get("documentos") or []
+            except (PWError, asyncio.TimeoutError) as e:
+                print(f"cracked: {str(e)[:60]}", flush=True)
+            if not arv:
+                fr = await SR.abrir_processo(pg, PROC)
+                if fr:
+                    arv = await SR.arvore_do_fonte(pg)
+            if not arv:
                 print("SEM ÁRVORE (processo não abriu)"); return
-            arv = await SR.arvore_do_fonte(pg)
             # formato p/ o resto do script: {t: titulo, u: url, pai: ''}
             docs = [{"t": d.get("titulo") or d.get("texto") or "", "u": d.get("url") or "", "pai": ""}
                     for d in arv if d.get("url")]
@@ -62,20 +71,26 @@ async def main():
             paths = []
 
             async def baixa_um(x, fp):
-                # o url é o nó da árvore (arvore_visualizar); o conteúdo é servido por documento_visualizar
-                resp = await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=25000); body = await resp.body()
-                ct = (resp.headers.get("content-type") or "").lower()
-                if "pdf" in ct or body[:5] == b"%PDF-":
-                    fp.write_bytes(body); return True
-                html = body.decode("utf-8", "ignore")
-                txt = re.sub(r"(?is)<(script|style)[^>]*>.*?</\1>", " ", html)
-                txt = re.sub(r"(?i)<br\s*/?>|</p>|</div>|</tr>", "\n", txt)
-                txt = re.sub(r"<[^>]+>", " ", txt)
-                txt = re.sub(r"&nbsp;", " ", txt); txt = re.sub(r"[ \t]+", " ", txt)
-                txt = re.sub(r"\n{3,}", "\n\n", txt).strip()
-                if len(txt) < 30:
+                # CONTEÚDO via _conteudo_doc (drill no iframe, MESMA sessão) — é o que FUNCIONA cross-unit
+                # (o GET direto do ctx.request voltava um PDF em branco de ~1KB, passando falso-positivo).
+                # O GET só é tentado quando confiável: PDF com >2KB E texto extraível (docs da unidade do login).
+                try:
+                    resp = await ctx.request.get(SR._url_conteudo_doc(x["u"]), timeout=12000)
+                    body = await resp.body()
+                    if body[:5] == b"%PDF-" and len(body) > 2048:
+                        import fitz as _f
+                        _d = _f.open(stream=body, filetype="pdf")
+                        if _d.page_count and sum(len(p.get_text()) for p in _d) > 40:
+                            fp.write_bytes(body); _d.close(); return True
+                        _d.close()
+                except (PWError, RuntimeError, ValueError, OSError):
+                    pass
+                c = await SR._conteudo_doc(pg, {"url": x["u"], "texto": x["t"]})
+                txt = ((c or {}).get("conteudo") or "").strip()
+                if len(txt) < 15:
                     return False
-                doc = fitz.open(); doc.new_page().insert_textbox(fitz.Rect(40, 40, 555, 800), f"[{x['t']}]\n\n" + txt[:6000], fontsize=8)
+                doc = fitz.open()
+                doc.new_page().insert_textbox(fitz.Rect(40, 40, 555, 800), f"[{x['t']}]\n\n" + txt[:6000], fontsize=8)
                 rest = txt[6000:]
                 while rest:
                     doc.new_page().insert_textbox(fitz.Rect(40, 40, 555, 800), rest[:6500], fontsize=8); rest = rest[6500:]
@@ -86,9 +101,9 @@ async def main():
                 fp = outdir / f"{i:03d}.pdf"
                 ok = False
                 try:
-                    if await asyncio.wait_for(baixa_um(x, fp), timeout=30):
+                    if await asyncio.wait_for(baixa_um(x, fp), timeout=int(os.environ.get("SEI_DOC_TIMEOUT", "15"))):
                         paths.append(fp); ok = True
-                except Exception as e:
+                except (asyncio.TimeoutError, PWError, httpx.HTTPError, RuntimeError, OSError, ValueError) as e:
                     print(f"  doc {i} pulado: {str(e)[:35]}", flush=True)
                 manifest.append({"i": i, "arquivo": fp.name, "titulo": x.get("t") or "",
                                  "contexto": x.get("pai") or "", "url": x.get("u") or "",
@@ -108,7 +123,7 @@ async def main():
                     s = fitz.open(str(fp))
                     if s.is_pdf and s.page_count: out.insert_pdf(s)
                     s.close()
-                except Exception: pass
+                except (RuntimeError, ValueError, OSError): pass
             full = Path(f"data/sei_cache/INTEGRA_{TAG}.pdf"); out.save(str(full), deflate=True, garbage=4)
             sz = full.stat().st_size; print(f"ÍNTEGRA: {len(paths)} docs, {out.page_count} págs, {sz/1024/1024:.1f}MB", flush=True)
             # envia (divide se >45MB); SEI_SEM_TG=1 → só baixa/arquiva, sem Telegram

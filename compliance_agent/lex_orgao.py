@@ -5,9 +5,13 @@ Extraído de lex.py (split 2026-07-06); comportamento idêntico (snapshot-tested
 """
 from __future__ import annotations
 
+import logging
+
 from compliance_agent.reporting.inteligencia import _REPORTS, _slug, moeda
 from compliance_agent.lex_redflags import _RF, _grau
 from compliance_agent.lex_render import render_pdf
+
+logger = logging.getLogger(__name__)
 
 # ─────────────────────── PARECER LEX DE ÓRGÃO (UG) ───────────────────────
 # O /orgao passa a "pensar" como o /relatorio: além do PDF/XLSX, emite um PARECER LEX próprio. Os indícios
@@ -184,6 +188,63 @@ def _parecer_orgao_md(ctx: dict, analise: dict, merito: str = "") -> str:
         add(f"| {a['rf']} {nome} | {pp} | {ii} | {sc} | {faixa} |")
     if not achados:
         add("| — | — | — | — | — |")
+    add("")
+    # III-B. Triangulação: convergência entre FAMÍLIAS independentes de indício (padrão do
+    # parecer de fornecedor, espelhado no órgão). Famílias: concentração (R8), execução (R2/R10),
+    # fuga ao certame (R5), societária/cadastral via Receita (R7/DD/*). A força vem da convergência.
+    # III-A2. Conluio a partir dos RESULTADOS estruturados do PNCP (vencedor por item) — cross-certame.
+    try:
+        from compliance_agent.collectors.pncp_resultados import conluio_do_orgao
+        _cj = conluio_do_orgao(ctx.get("nome", "") or "")
+        _cap, _rod = _cj.get("captura") or [], _cj.get("rodizio_vencedores") or []
+        if _cj.get("n_certames", 0) >= 3 and (_cap or _rod):
+            add("## III-A2. CONLUIO EM LICITAÇÕES — RESULTADOS DO PNCP (indício OCDE)")
+            add("")
+            add(f"*Sobre {_cj['n_certames']} certame(s) com resultado homologado no PNCP para este órgão. "
+                "Vencedor estruturado por item — indício a verificar (bid rigging), nunca acusação.*")
+            add("")
+            for c in _cap[:5]:
+                add(f"- **Captura:** {c.get('nome', '—')} venceu **{int(c.get('share', 0) * 100)}%** "
+                    f"de {c.get('certames')} certames — concentração a examinar (competitividade real).")
+            for r in _rod[:5]:
+                grp = ", ".join(f"{m}×{n}" for m, n in (r.get('reparticao') or {}).items())
+                coesao = r.get("coesao_objeto")
+                termos = ", ".join(r.get("termos_comuns") or [])
+                ctx = (f" no MESMO tipo de objeto (coesão {int(coesao * 100)}%"
+                       + (f": {termos}" if termos else "") + ")") if coesao is not None else ""
+                add(f"- **Rodízio de vencedores:** {len(r.get('grupo', []))} fornecedores repartem "
+                    f"{r.get('certames')} certames{ctx} (cobertura {int(r.get('cobertura_grupo', 0) * 100)}%): {grp}. "
+                    "Revezamento a verificar (propostas, QSA, cronologia).")
+            add("")
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("conluio PNCP do órgão indisponível (seção some): %s", exc)
+
+    add("## III-B. TRIANGULAÇÃO (análise cruzada) E STANDARD PROBATÓRIO")
+    add("")
+    _familias = {
+        "Concentração/captura (HHI)": [a for a in achados if a.get("rf") == "R8"],
+        "Execução financeira (recorrência/estornos)": [a for a in achados if a.get("rf") in ("R2", "R10")],
+        "Fuga ao certame (TAC/emergencial/dispensa)": [a for a in achados if a.get("rf") == "R5"],
+        "Societária/cadastral (QSA Receita)": [a for a in achados
+                                               if a.get("rf") == "R7" or str(a.get("rf", "")).startswith("DD/")],
+    }
+    _hits = [nome for nome, lst in _familias.items() if lst]
+    if len(_hits) >= 2:
+        add(f"**{len(_hits)} famílias independentes** de indício convergem ({'; '.join(_hits)}). É a "
+            "**convergência de fontes que não se derivam umas das outras** — pagamento, contrato, quadro societário — "
+            "que confere força ao conjunto (evidência suficiente e apropriada, ISSAI 100/300; prova indiciária por "
+            "indícios múltiplos e concordantes, art. 239 CPP por analogia). O conjunto justifica **fiscalização "
+            "ordenada** (requisição de contratos, certames e medições ao órgão), não mera observação.")
+    elif len(_hits) == 1:
+        add(f"Apenas **1 família** de indício disparou ({_hits[0]}) — sem corroboração independente, o achado "
+            "sustenta **diligência**, não representação: sinal único é hipótese de trabalho.")
+    else:
+        add("**Nenhuma família de indício disparou** — as fontes se corroboram no sentido da regularidade e a "
+            "presunção de legitimidade sai reforçada do cruzamento.")
+    add("")
+    add("No plano do standard probatório: valem os arts. 20-22 da **LINDB** (consequências práticas; obstáculos e "
+        "dificuldades reais da gestão; primazia da realidade) e o art. 28 (só o **erro grosseiro** responsabiliza o "
+        "agente). Todo encaminhamento pressupõe **contraditório** (art. 5º, LV, CF/88) — indício ≠ acusação.")
     add("")
     add("## IV. CONCLUSÃO — GRAU DE ATENÇÃO")
     add("")

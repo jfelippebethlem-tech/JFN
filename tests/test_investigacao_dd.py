@@ -206,3 +206,36 @@ def test_ponte_cpf_mascarado_destrava_beneficio(monkeypatch):
     h = next(h for h in out["hipoteses"] if h["codigo"] == "H-BENEFICIO")
     assert "resolvida por nome" in h["evidencia"]
     assert "via ponte nome+6díg" in out["cobertura"]["beneficio_social"]
+
+
+def test_porte_conhecido_sem_teto_e_verificado():
+    # 'Demais' é porte conhecido (empresa grande), sem teto de receita → cobertura verificada, sem H-PORTE
+    out = _inv({"porte": "Demais", "capital": 1_000_000}, total=5_000_000)
+    assert out["cobertura"]["porte"] == "verificado"
+    assert "H-PORTE" not in _codigos(out)
+
+
+def test_microempresa_acima_do_teto_dispara_h_porte():
+    out = _inv({"porte": "Microempresa", "capital": 100_000}, total=600_000)
+    assert out["cobertura"]["porte"] == "verificado"
+    assert "H-PORTE" in _codigos(out)
+
+
+def test_enriquecimento_capital_pelo_dump(tmp_path, monkeypatch):
+    # sem capital no cadastral, mas com empresas_cadastro no DB → capital vira 'verificado'
+    import sqlite3
+    p = tmp_path / "c.db"
+    con = sqlite3.connect(str(p))
+    con.execute("CREATE TABLE empresas_cadastro (cnpj_basico TEXT PRIMARY KEY, razao_social TEXT, "
+                "capital_social REAL, porte_txt TEXT)")
+    con.execute("INSERT INTO empresas_cadastro VALUES ('11222333','ACME LTDA',1000.0,'Microempresa')")
+    con.commit(); con.close()
+    import compliance_agent.investigacao_dd as DD
+    monkeypatch.chdir(tmp_path)  # investigar lê 'data/compliance.db' por padrão no helper
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "compliance.db").write_bytes(p.read_bytes())
+    out = DD.investigar("11222333000181", cadastral={}, pagamentos={"total_pago": 5_000_000},
+                        usar_rede=False, geocode=False, usar_beneficios=False)
+    # cadastral={} não dispara rede, mas o enriquecimento do dump completa capital/porte
+    assert out["cobertura"]["capital"] == "verificado"
+    assert "H-CAPITAL" in _codigos(out)   # capital R$1k vs R$5mi recebidos = irrisório

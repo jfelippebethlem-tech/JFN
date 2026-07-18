@@ -193,6 +193,62 @@ def test_e5_subjetivo_nao_avaliavel_sem_llm():
     assert r.status == "descartado"
 
 
+def test_e5_esclarecimentos_nao_contam_no_volume():
+    """Esclarecimentos triviais entram no diff mas NÃO no contador de volume: 4 esclarecimentos + 2 versões
+    não viram '4 republicações' (era falso positivo de iteração dirigida)."""
+    ctx = {
+        "processo": "ed5-12",
+        "versoes": _versoes(2),
+        "retificacoes": [
+            {"secao": f"duvida-{i}", "antes": "?", "depois": "resposta", "origem": "oficio",
+             "tipo": "esclarecimento"}
+            for i in range(4)
+        ],
+    }
+    r = E5EditalIterado().avaliar(ctx)
+    _valido(r)
+    assert r.valores["n_republicacoes"] == 1        # só a republicação por versão conta
+    assert r.valores["n_retificacoes_no_volume"] == 0
+    assert r.status == "descartado"
+
+
+def test_e5_retificacao_com_reabertura_conta_no_volume():
+    """Retificação que materializou republicação (nova versão publicada / reabertura de prazo) conta."""
+    ctx = {
+        "processo": "ed5-13",
+        "versoes": _versoes(2),
+        "retificacoes": [
+            {"secao": "hab", "antes": "a", "depois": "b", "origem": "oficio", "nova_versao": True},
+            {"secao": "obj", "antes": "c", "depois": "d", "origem": "oficio", "reabriu_prazo": True},
+            {"secao": "anexo", "antes": "e", "depois": "f", "origem": "oficio", "nova_versao": True},
+        ],
+    }
+    r = E5EditalIterado().avaliar(ctx)
+    _valido(r)
+    assert r.valores["n_retificacoes_no_volume"] == 3
+    assert r.valores["n_republicacoes"] == 3
+    assert r.status == "confirmado"
+
+
+def test_e5_caracteristica_curta_ou_parcial_nao_casa_vencedor():
+    """Guarda anti-FP do casamento com o vencedor: característica curta ('me', 'rj') ou casamento sem
+    fronteira de palavra ('regional' em 'regionalizada') não confirmam o perfil."""
+    ctx = {
+        "processo": "ed5-14",
+        "versoes": _versoes(5),   # volume objetivo sustenta o confirmado
+        "retificacoes": [{"secao": "hab", "antes": "a", "depois": "b", "origem": "oficio"}],
+        "vencedor": {"cnpj": "00.000.000/0001-00", "caracteristicas": ["me", "rj", "regional"]},
+        "_rubricas_alteracoes": [
+            {"nivel": "restringe_ou_beneficia_perfil_especifico",
+             "trecho": "exige atestado emitido por empresa regionalizada", "perfil_beneficiado": "certame"},
+        ],
+    }
+    r = E5EditalIterado().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"                     # volume >=4 sustenta
+    assert r.valores["confirma_perfil_vencedor"] is False
+
+
 def test_e5_restritiva_sem_caracteristica_vencedor_nao_confirma_perfil():
     """Rubrica restritiva mas SEM características do vencedor → não há casamento confirmado; o volume objetivo
     (>=4 republicações) ainda confirma, mas confirma_perfil_vencedor permanece False (honesto)."""

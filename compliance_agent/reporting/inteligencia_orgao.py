@@ -380,7 +380,7 @@ def _fatos_orgao(ctx: dict) -> str:
     if grupos:
         L.append("Pagamentos recorrentes de valor IDÊNTICO (ACFE identical payments): "
                  f"{len(grupos)} grupo(s) — ex.: "
-                 + "; ".join(f"{g['favorecido'][:30]} {g['n']}× R$ {moeda(g['valor'])}" for g in grupos[:3]) + ".")
+                 + "; ".join(f"{g['favorecido'][:30]} {g['n']}× R$ {moeda(g['valor'])}" for g in grupos[:8]) + ".")
     geo = ctx.get("geo") or {}
     if geo.get("ok") and geo.get("cidades"):
         c0 = geo["cidades"][0]
@@ -983,7 +983,7 @@ def _secao_contratos_fornecedor_md(add, ctx: dict) -> None:
         forns = con.execute(
             "SELECT favorecido_cpf cnpj, MAX(favorecido_nome) nome, ROUND(SUM(valor),2) pago, COUNT(*) n "
             "FROM ordens_bancarias WHERE ug_codigo=? AND length(favorecido_cpf)=14 AND valor>0 "
-            "GROUP BY favorecido_cpf ORDER BY SUM(valor) DESC LIMIT 15", (ug,)).fetchall()
+            "GROUP BY favorecido_cpf ORDER BY SUM(valor) DESC LIMIT 50", (ug,)).fetchall()
         nome_ug = (ctx.get("nome") or "").lower()
         algum = False
         sem_contrato: list[str] = []
@@ -1006,7 +1006,7 @@ def _secao_contratos_fornecedor_md(add, ctx: dict) -> None:
             add("")
             add("| Situação | Objeto | Processo | Vigência | Critério | Contratado (R$) | Pago no contrato (R$) |")
             add("|:--|:--|:--|:--:|:--:|--:|--:|")
-            for c in contratos[:12]:
+            for c in contratos[:50]:
                 badge = _classe_contrato(c["status"])[0]
                 obj = (c["objeto"] or "—").strip().replace("|", "/").replace("\n", " ")[:90]
                 proc = (c["processo"] or "—").replace("|", "/")
@@ -1291,7 +1291,7 @@ def _secao_concentracao_grupo_md(add, ctx: dict) -> None:
     if grupos_multi:
         add("| # | Grupo (raiz) | Nº CNPJs | Nº raízes | Share % | Total (R$) | Maior CNPJ do grupo |")
         add("|--:|---|--:|--:|--:|--:|---|")
-        for i, g in enumerate(grupos_multi[:15], 1):
+        for i, g in enumerate(grupos_multi[:50], 1):
             add(f"| {i} | {fmt_cnpj(g['grupo']) if g.get('grupo') else '—'} | {g['n_cnpjs']} | {g['n_raizes']} | "
                 f"{g['share']:.1f}% | {moeda(g['total'])} | {(g.get('top_nome') or '—')[:36]} |")
         add("")
@@ -1522,7 +1522,7 @@ def _secao_anomalia_receita_md(add, ctx: dict) -> None:
         add("")
         add("| # | Administrador (doc) | Nº de CNPJs (Brasil) |")
         add("|--:|---|--:|")
-        for i, r in enumerate(veic[:12], 1):
+        for i, r in enumerate(veic[:40], 1):
             add(f"| {i} | {(r['nome_socio'] or '—')[:38]} ({r.get('doc_socio', '')}) | {r['n_cnpjs_brasil']} |")
         add("")
         add("> ⚠ **Ressalva importante:** aparecer em dezenas/centenas de CNPJs é o padrão de **executivos de "
@@ -1625,7 +1625,7 @@ def render_md(ctx: dict) -> str:
         tot = p["total_geral"] or 1
         from compliance_agent.entidades_gov import eh_nao_fornecedor
         _tem_intergov = False
-        for nome, val in list(p["por_favorecido_geral"].items())[:25]:
+        for nome, val in list(p["por_favorecido_geral"].items())[:120]:
             tag = ""
             if eh_nao_fornecedor(nome):
                 tag = " ⟨transf. intergov.⟩"
@@ -1700,7 +1700,7 @@ def render_md(ctx: dict) -> str:
     if grupos:
         add("| Fornecedor (CNPJ) | Valor unitário (R$) | Repetições | Total (R$) |")
         add("|---|---:|---:|---:|")
-        for g in grupos[:12]:
+        for g in grupos[:40]:
             forn = f"{g['favorecido']} ({fmt_cnpj(g['cnpj'])})" if g["cnpj"] else g["favorecido"]
             add(f"| {forn} | {moeda(g['valor'])} | {g['n']}× | {moeda(g['total'])} |")
         add("")
@@ -1742,7 +1742,7 @@ def render_md(ctx: dict) -> str:
         "estornos/regularizações.")
     add("")
     if p["tem_dados"]:
-        TOP_OB_ANO = 12  # padrão de due diligence: destacar o material; detalhe completo na planilha
+        TOP_OB_ANO = 40  # material ampliado (diretriz 2026-07-11: sem limite, tudo no PDF); cauda no XLSX
         for a in p["anos"]:
             b = p["por_ano"][a]
             add(f"### Exercício {a} — {b['n']} OBs — Total pago: R$ {moeda(b['total'])}")
@@ -1853,7 +1853,7 @@ def _secao_dd_pdf(pdf, _t, ctx: dict) -> None:
     procs = dd.get("processos_prioritarios") or []
     if procs:
         pdf.ln(1); pdf.set_font(pdf._fam, "", 7); pdf.set_text_color(80, 80, 80)
-        _mc(pdf, 4, _t("Processos SEI a priorizar: " + ", ".join(procs[:24]) + (" ..." if len(procs) > 24 else "")))
+        _mc(pdf, 4, _t("Processos SEI a priorizar: " + ", ".join(procs[:80]) + (f" (+{len(procs)-80} no XLSX)" if len(procs) > 80 else "")))
         pdf.set_text_color(0, 0, 0)
 
 
@@ -1973,7 +1973,7 @@ def _secao_concentracao_grupo_pdf(pdf, _t, ctx: dict) -> None:
         pdf.ln(1); _tab_header(pdf, [("Grupo (raiz)", 40), ("CNPJs", 16), ("Raízes", 16),
                                      ("Share %", 18), ("Total (R$)", 34), ("Maior CNPJ do grupo", 58)])
         pdf.set_font(pdf._fam, "", 7)
-        for g in grupos_multi[:15]:
+        for g in grupos_multi[:50]:
             _tab_row(pdf, [(_t(fmt_cnpj(g["grupo"]) if g.get("grupo") else "-"), 40, "L"),
                            (str(g["n_cnpjs"]), 16, "R"), (str(g["n_raizes"]), 16, "R"),
                            (f"{g['share']:.1f}", 18, "R"), (moeda(g["total"]), 34, "R"),
@@ -2225,7 +2225,7 @@ def _secao_anomalia_receita_pdf(pdf, _t, ctx: dict) -> None:
         pdf.cell(0, 6, _t("Administradores em muitos CNPJs no Brasil (possivel veiculo de aluguel):"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         _tab_header(pdf, [("Administrador (doc)", 130), ("N CNPJs (Brasil)", 40)])
         pdf.set_font(pdf._fam, "", 7)
-        for r in veic[:12]:
+        for r in veic[:40]:
             nome = f"{(r.get('nome_socio') or '-')[:46]} ({r.get('doc_socio', '')})"
             _tab_row(pdf, [(_t(nome)[:80], 130, "L"), (str(r.get("n_cnpjs_brasil", "")), 40, "C")], h=4.6)
         pdf.ln(1); pdf.set_font(pdf._fam, "I", 7); pdf.set_text_color(110, 110, 110)
@@ -2334,7 +2334,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         pdf.set_font(pdf._fam, "", 8)
         tot = p["total_geral"] or 1
         from compliance_agent.entidades_gov import eh_nao_fornecedor
-        for nome, val in list(p["por_favorecido_geral"].items())[:30]:
+        for nome, val in list(p["por_favorecido_geral"].items())[:120]:
             rot = (_t(nome)[:74] + " [transf.intergov]") if eh_nao_fornecedor(nome) else _t(nome)[:86]
             _tab_row(pdf, [(rot, 130, "L"), (moeda(val), 36, "R"), (f"{val/tot*100:.1f}", 16, "R")], h=5)
 

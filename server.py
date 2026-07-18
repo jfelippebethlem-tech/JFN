@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:  # só p/ anotações (o import real é lazy dentro das rotas) — resolve F821
-    from compliance_agent.hermes_goal import HermesGoalAgent
+    pass
 
 import uvicorn
 from fastapi import FastAPI, Form, Request, WebSocket, WebSocketDisconnect
@@ -36,7 +36,6 @@ from fastapi.responses import (
     HTMLResponse,
     JSONResponse,
     RedirectResponse,
-    StreamingResponse,
 )
 from fastapi.staticfiles import StaticFiles
 
@@ -351,6 +350,12 @@ async def auditoria_ui():
 async def painel_fiscalizacao():
     """Painel de fiscalização unificado (leve, Tailwind): visão geral, auditoria/alertas, SIAFE, sweeps, cartel."""
     return FileResponse("static/jfn-painel.html")
+
+
+@app.get("/cockpit", response_class=HTMLResponse)
+async def cockpit():
+    """Command deck ultrafuturista (Jarvis/glass): visão geral ao vivo dos indicadores de inteligência."""
+    return FileResponse("static/jfn-cockpit.html")
 
 
 @app.get("/chat", response_class=HTMLResponse)

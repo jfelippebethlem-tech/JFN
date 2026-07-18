@@ -1,6 +1,6 @@
 {
   "_gerado_de": "capabilities.yaml (NÃO editar à mão)",
-  "versao": "2.1.0",
+  "versao": "2.2.0",
   "base_http": "http://127.0.0.1:8000",
   "tools": [
     {
@@ -522,6 +522,94 @@
     {
       "type": "function",
       "function": {
+        "name": "ppp_dossie",
+        "description": "Dossie pericial de PPP/concessao municipal (Prefeitura do Rio): capta CCPAR + Diario Oficial + edital completo, roda os motores (E1-E7, direcionamento, Lex, fraudes) + a lente PPP (garantia via Fundo Nacional de Saude, aporte, PMI-captura, 5% RCL, verificador) -> PDF Kroll. Indicio != acusacao. — usar quando: 'dossie/pericia da PPP X', 'a PPP do Souza Aguiar', 'concessao/parceria publico-privada da prefeitura' — chamar: POST /api/ppp (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "projeto": {
+              "type": "string",
+              "description": "string (nome do projeto, ex.: 'souza aguiar')"
+            },
+            "slug": {
+              "type": "string",
+              "description": "string opcional (slug CCPAR)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/ppp",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": [
+          "path_pdf"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "ppp_triagem",
+        "description": "Triagem EM LOTE das PPPs/concessoes municipais captadas, pela lente PPP (garantia via Fundo Nacional de Saude, aporte publico, PMI-captura, prazo/valor vs 5% da RCL, verificador independente); lista rankeada por gravidade. Indicio != acusacao. — usar quando: 'triagem das PPPs', 'quais PPPs/concessoes da prefeitura tem risco', 'lista as PPPs em lote' — chamar: GET /api/ppp/triagem (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/ppp/triagem",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": []
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "pericia_beneficios",
+        "description": "Pericia de beneficio assistencial (BPC/Bolsa Familia/Auxilio Brasil/Emergencial) x quadro de pessoal do Rio, com a NATUREZA DO VINCULO explicita pessoa a pessoa (NOMEADO em comissao x efetivo x requisitado x aposentado/pensionista x estagio x nao informado pela fonte — nunca presume). 4 documentos: Camara (fichas individuais dos nomeados + convergencia Camara-Prefeitura + gabinetes sob suplencia), Prefeitura (fichas + pensionistas + natureza nao informada separada), consolidado (anexo de certeza MEDIA integral) e socios de fornecedores (com total pago a empresa via OB SIAFE contabilizada). Fairness: so beneficio recebido DURANTE o vinculo; identidade por nome+fragmento de CPF no municipio do Rio; indicio != acusacao. — usar quando: 'pericia de beneficios', 'nomeado/servidor recebendo bolsa familia/BPC', 'quem do gabinete/da prefeitura recebe beneficio', 'socio de fornecedor com beneficio', 'quem e nomeado nesses cruzamentos' — chamar (cli): tools/pericia_beneficios_run.py [--doc camara|prefeitura|consolidado|socios|todos] [--telegram]",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "doc": {
+              "type": "string",
+              "description": "camara|prefeitura|consolidado|socios|todos"
+            },
+            "telegram": {
+              "type": "string",
+              "description": "flag"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "tools/pericia_beneficios_run.py [--doc camara|prefeitura|consolidado|socios|todos] [--telegram]",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": [
+          "path_pdf"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "editais_corpus",
         "description": "Baixa o corpus de editais municipais do Rio (texto do edital + itens via PNCP) p/ a analise de direcionamento. Degrada honesto: sem documento acessivel -> documento_disponivel=0. — usar quando: 'atualizar editais', 'baixar editais da prefeitura' — chamar (cli): tools/editais_corpus.py [--limite N]",
         "parameters": {
@@ -822,7 +910,7 @@
       "type": "function",
       "function": {
         "name": "dossie",
-        "description": "Dossie 360 (cadastro+rede+contratos+doacoes+SEI/PNCP+sancoes+noticias) — usar quando: 'monte um dossie sobre X' — chamar: POST /api/dossie (base http://127.0.0.1:8000)",
+        "description": "Dossie 360 ORQUESTRADO: painel (cadastro/QSA+sancoes CEIS/CNEP/OpenSanctions+OB/concentracao+conflito doador-contrato+rede de poder+midia adversa+red flags de fachada) E o relatorio de INTELIGENCIA de fornecedor COM parecer juridico Lex — envia os dois no Telegram (PDF+XLSX+MD+Lex). — usar quando: 'monte um dossie sobre X', 'dossie do CNPJ Y' (pacote completo: painel 360 + due diligence + Lex) — chamar: POST /api/dossie (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {

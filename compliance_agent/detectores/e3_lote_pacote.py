@@ -228,8 +228,12 @@ class E3LotePacote(Detector):
                 return {"status": "nao_avaliavel", "motivo": motivo}
             return {"status": (pre.get("nivel") or pre.get("classificacao") or "").strip().lower(), "motivo": motivo}
         if not texto:
-            # ausência é FATO objetivo (não exige LLM): com lote heterogêneo, é omissão do dever legal
-            return {"status": "ausente", "motivo": "nenhuma justificativa de não-parcelamento nos autos"}
+            # INDISPONÍVEL ≠ 0: só é "ausente dos AUTOS" (fato objetivo, omissão do dever) quando o
+            # coletor afirma que pesquisou a íntegra; campo não ingerido é indisponibilidade nossa.
+            if contexto.get("justificativa_pesquisada_nos_autos") is True:
+                return {"status": "ausente", "motivo": "nenhuma justificativa de não-parcelamento nos autos"}
+            return {"status": "nao_avaliavel",
+                    "motivo": "justificativa não ingerida no contexto (indisponível ≠ ausente dos autos)"}
         gerar = contexto.get("gerar")
         if gerar is None:
             return {"status": "nao_avaliavel", "motivo": "LLM ausente — qualidade da justificativa não auditada"}

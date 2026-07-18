@@ -34,6 +34,17 @@ def test_limite_dispensa_por_exercicio():
     assert limite_dispensa(2030, "compras") is not None
 
 
+def test_limite_dispensa_fonte_unica():
+    """P4 importa a tabela de compliance_agent/limites_dispensa (fonte única verificada nos decretos) —
+    a cópia local divergente (2025=128.722,10) era ERRADA (Decreto 12.343/2024: 125.451,15/62.725,59)."""
+    from compliance_agent.limites_dispensa import limite_dispensa as canonico
+    for ano in (2021, 2022, 2023, 2024, 2025, 2026):
+        assert limite_dispensa(ano, "compras") == pytest.approx(canonico(ano, "compras"))
+        assert limite_dispensa(ano, "obras") == pytest.approx(canonico(ano, "obras"))
+    assert limite_dispensa(2025, "compras") == pytest.approx(62725.59)
+    assert limite_dispensa(2022, "obras") == pytest.approx(108040.82)
+
+
 def test_clusteriza_objetos_similares_juntos():
     cs = [
         {"objeto": "aquisição de material de limpeza para o almoxarifado"},
@@ -167,6 +178,37 @@ def test_soma_sob_o_limite_descartado():
     res = P4.avaliar({"processo": "p", "contratacoes": contratacoes})
     assert res.status == "descartado"
     assert res.score == 0.0
+
+
+# ───────────────────────────── partição por exercício (soma de cada ano × limite do ano) ─────────────────────────────
+def test_cluster_multi_exercicio_nao_soma_anos_distintos():
+    """2 dispensas/ano em 2023 e 2024, cada ano SOB o limite do próprio ano (50k < 57,2k/59,9k) — a soma
+    total (100k) só estouraria se (indevidamente) somada contra o limite de UM ano → descartado."""
+    contratacoes = [
+        _disp("material de limpeza almoxarifado", 25000, "2023-02-10", "11222333000181", exercicio=2023),
+        _disp("material de limpeza almoxarifado", 25000, "2023-08-10", "44555666000199", exercicio=2023),
+        _disp("material de limpeza almoxarifado", 25000, "2024-02-10", "77888999000155", exercicio=2024),
+        _disp("material de limpeza almoxarifado", 25000, "2024-08-10", "22333444000177", exercicio=2024),
+    ]
+    res = P4.avaliar({"processo": "p", "contratacoes": contratacoes})
+    assert res.status == "descartado"
+    assert res.score == 0.0
+    assert res.valores["soma_por_exercicio"]["2023"]["soma"] == 50000.0
+    assert res.valores["soma_por_exercicio"]["2024"]["soma"] == 50000.0
+
+
+def test_cluster_multi_exercicio_estouro_num_ano_confirma():
+    """Cluster atravessa 2023/2024 mas SÓ 2023 estoura o limite daquele ano (60k > 57.208,33) → confirma
+    citando o exercício estourado."""
+    contratacoes = [
+        _disp("material de limpeza almoxarifado", 30000, "2023-02-10", "11222333000181", exercicio=2023),
+        _disp("material de limpeza almoxarifado", 30000, "2023-08-10", "44555666000199", exercicio=2023),
+        _disp("material de limpeza almoxarifado", 10000, "2024-02-10", "77888999000155", exercicio=2024),
+    ]
+    res = P4.avaliar({"processo": "p", "contratacoes": contratacoes})
+    assert res.status == "confirmado"
+    assert res.score >= 0.85
+    assert "2023" in res.motivo_refutacao
 
 
 # ───────────────────────────── exculpatória estrutural: UGs autônomas ─────────────────────────────

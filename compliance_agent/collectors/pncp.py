@@ -597,3 +597,164 @@ async def coletar_aditivos(con, numero_controle_pncp: str) -> int:
             {**row, "ncp": numero_controle_pncp})
     con.commit()
     return len(termos)
+
+
+# ---------------------------------------------------------------------------
+# Contratos ESTADUAIS + aditivos (PNCP) — alimenta o detector de aditivos e o art. 9
+# ---------------------------------------------------------------------------
+
+# Entes estaduais do RJ no PNCP (esfera E). A lista base cobre os grandes; em runtime
+# unimos com o que o pncp_ente já conhece (cresce sozinho a cada coleta de resultados).
+_ENTES_ESTADO_BASE = {
+    "42498600000171": "ESTADO DO RIO DE JANEIRO",       # Executivo (todas as secretarias, por unidade)
+    "28538734000148": "TRIBUNAL DE JUSTICA DO RJ",
+    "31443526000170": "DEFENSORIA PUBLICA DO RJ",
+    "28305936000140": "MINISTERIO PUBLICO DO RJ",
+    "30051023000196": "TRIBUNAL DE CONTAS DO RJ",
+    "33540014000157": "UNIVERSIDADE DO ESTADO DO RJ",   # UERJ
+    "32855236000104": "SECRETARIA DE ESTADO DE POLICIA CIVIL",
+}
+
+
+def _entes_estado(con) -> list[str]:
+    cnpjs = set(_ENTES_ESTADO_BASE)
+    try:
+        cnpjs |= {r[0] for r in con.execute("SELECT cnpj FROM pncp_ente WHERE esfera_id='E'")}
+    except Exception:
+        pass
+    return sorted(c for c in cnpjs if c and len(c) == 14)
+
+
+def _meses_iso(ano_ini: int, mes_ini: int, ano_fim: int, mes_fim: int):
+    a, m = ano_ini, mes_ini
+    while (a, m) <= (ano_fim, mes_fim):
+        ult = 28
+        for d in (31, 30, 29):
+            try:
+                date(a, m, d); ult = d; break
+            except ValueError:
+                continue
+        yield f"{a}{m:02d}01", f"{a}{m:02d}{ult:02d}"
+        a, m = (a + 1, 1) if m == 12 else (a, m + 1)
+
+
+def _upsert_contrato_estado(con, c: dict) -> None:
+    c = {**c, "fonte": "pncp_estado"}
+    cols = ["numero_controle_pncp", "numero_compra", "ano", "orgao_cnpj", "orgao_nome", "unidade",
+            "fornecedor_documento", "fornecedor_nome", "tipo", "objeto", "valor_inicial",
+            "valor_global", "data_assinatura", "vigencia_ini", "vigencia_fim", "num_aditivos", "fonte"]
+    reg = {k: c.get(k) for k in cols}
+    # não sobrescreve valor_global/num_aditivos já enriquecidos pelos termos (aditivos_checados=1)
+    sets = ",".join(f"{k}=excluded.{k}" for k in cols
+                    if k not in ("numero_controle_pncp", "valor_global", "num_aditivos"))
+    con.execute(
+        f"INSERT INTO pcrj_contratos ({','.join(cols)}) VALUES ({','.join(':'+k for k in cols)}) "
+        f"ON CONFLICT(numero_controle_pncp) DO UPDATE SET {sets}", reg)
+
+
+async def coletar_contratos_estado(con, ano_ini: int = 2021, mes_ini: int = 1,
+                                   ano_fim: int | None = None, mes_fim: int | None = None,
+                                   limite_termos: int = 4000, pausa: float = 0.3,
+                                   so_aditivos: bool = False) -> dict:
+    """Coleta contratos dos ENTES ESTADUAIS do RJ no PNCP (fonte='pncp_estado') e, para os que ainda
+    não foram checados, busca os TERMOS ADITIVOS — grava em contrato_aditivo e atualiza valor_global +
+    num_aditivos em pcrj_contratos (a variação real do valor, base do detector de aditivos). Serial e
+    educado (pausas, backoff no _consulta_retry). Resumível: só re-checa aditivos onde falta.
+    `so_aditivos=True` PULA a fase 1 (contratos) e roda só a fase 2 sobre os já coletados — desacopla
+    a fase de aditivos da coleta de contratos (que o PNCP rate-limita depois de muitas chamadas)."""
+    from compliance_agent.pcrj.gastos_db import init_schema
+    init_schema(con)
+    cols = {r[1] for r in con.execute("PRAGMA table_info(pcrj_contratos)")}
+    if "aditivos_checados" not in cols:
+        con.execute("ALTER TABLE pcrj_contratos ADD COLUMN aditivos_checados INTEGER DEFAULT 0")
+        con.commit()
+    hoje = date.today()
+    ano_fim = ano_fim or hoje.year
+    mes_fim = mes_fim or hoje.month
+    tot = {"contratos": 0, "entes": 0, "aditivos_checados": 0, "termos": 0, "com_acrescimo": 0}
+
+    # ── fase 1: contratos ──────────────────────────────────────────────────
+    if not so_aditivos:
+        for cnpj in _entes_estado(con):
+            tot["entes"] += 1
+            for d_ini, d_fim in _meses_iso(ano_ini, mes_ini, ano_fim, mes_fim):
+                res = await coletar_contratos_pcrj(d_ini, d_fim, cnpj_orgao=cnpj)
+                for c in res.get("itens", []):
+                    if c.get("numero_controle_pncp"):
+                        _upsert_contrato_estado(con, c)
+                        tot["contratos"] += 1
+                con.commit()
+                await asyncio.sleep(pausa)
+
+    # ── fase 2: termos aditivos (resumível) ────────────────────────────────
+    pend = [r[0] for r in con.execute(
+        "SELECT numero_controle_pncp FROM pcrj_contratos "
+        "WHERE fonte='pncp_estado' AND COALESCE(aditivos_checados,0)=0 "
+        "ORDER BY data_assinatura DESC LIMIT ?", (limite_termos,))]
+    for ncp in pend:
+        pr = _parse_id_pncp(ncp)
+        if not pr:
+            con.execute("UPDATE pcrj_contratos SET aditivos_checados=1 WHERE numero_controle_pncp=?", (ncp,))
+            continue
+        cnpj, ano, seq = pr
+        termos = await termos_contrato(cnpj, ano, seq)
+        acresc = 0.0
+        vg_max = None
+        for row in termos:
+            con.execute(
+                """INSERT OR IGNORE INTO contrato_aditivo (numero_controle_pncp, sequencial_termo,
+                     numero_termo, objeto, valor_acrescido, valor_global, prazo_aditado_dias,
+                     vigencia_fim, qualif_acrescimo, qualif_vigencia, qualif_reajuste, fundamento_legal)
+                   VALUES (:ncp,:sequencial_termo,:numero_termo,:objeto,:valor_acrescido,:valor_global,
+                     :prazo_aditado_dias,:vigencia_fim,:qualif_acrescimo,:qualif_vigencia,:qualif_reajuste,:fundamento_legal)""",
+                {**row, "ncp": ncp})
+            if row.get("valor_acrescido"):
+                acresc += row["valor_acrescido"]
+            if row.get("valor_global"):
+                vg_max = max(vg_max or 0, row["valor_global"])
+        # valor global efetivo: PRIORIZA inicial + Σacréscimo (confiável); o valorGlobal do termo
+        # às vezes vem com lixo (< inicial) — só o usa se for sanamente MAIOR que o inicial.
+        con.execute(
+            """UPDATE pcrj_contratos SET num_aditivos=?, aditivos_checados=1,
+                 valor_global=CASE
+                    WHEN ?>0 THEN COALESCE(valor_inicial,0)+?
+                    WHEN ?>COALESCE(valor_inicial,0) THEN ?
+                    ELSE valor_global END
+               WHERE numero_controle_pncp=?""",
+            (len(termos), acresc, acresc, vg_max or 0, vg_max or 0, ncp))
+        tot["aditivos_checados"] += 1
+        tot["termos"] += len(termos)
+        if acresc > 0 or (vg_max or 0) > 0:
+            tot["com_acrescimo"] += 1
+        if tot["aditivos_checados"] % 100 == 0:
+            con.commit()
+            print(f"[contratos-estado] aditivos {tot['aditivos_checados']}/{len(pend)} · "
+                  f"{tot['com_acrescimo']} com acréscimo", flush=True)
+        await asyncio.sleep(pausa)
+    con.commit()
+    return tot
+
+
+if __name__ == "__main__":
+    import json
+    import sqlite3
+    import sys
+    args = sys.argv[1:]
+    con = sqlite3.connect("data/compliance.db", timeout=60)
+    con.execute("PRAGMA busy_timeout=60000")
+    if "--aditivos" in args:
+        # SÓ fase 2: termos aditivos sobre os contratos estaduais já coletados (desacopla do rate-limit)
+        lim = next((int(a) for a in args if a.isdigit()), 8000)
+        r = asyncio.run(coletar_contratos_estado(con, so_aditivos=True, limite_termos=lim))
+    elif "--incremental" in args:
+        # timer diário: contratos dos 2 meses recentes + fatia de termos p/ completar a cobertura
+        hoje = date.today()
+        ai, mi = (hoje.year - 1, 12) if hoje.month == 1 else (hoje.year, hoje.month - 1)
+        r = asyncio.run(coletar_contratos_estado(con, ano_ini=ai, mes_ini=mi,
+                                                 ano_fim=hoje.year, mes_fim=hoje.month, limite_termos=800))
+    else:
+        ai = int(args[0]) if args and args[0].isdigit() else 2021
+        lim = next((int(a) for a in args[1:] if a.isdigit()), 4000)
+        r = asyncio.run(coletar_contratos_estado(con, ano_ini=ai, limite_termos=lim))
+    con.close()
+    print(json.dumps(r, ensure_ascii=False), flush=True)

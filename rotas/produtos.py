@@ -104,17 +104,40 @@ async def _gerar_e_enviar_orgao(orgao, ug, anos, key) -> None:
 
 
 async def _gerar_e_enviar_dossie(alvo, key) -> None:
+    """Dossiê 360 ORQUESTRADO: o painel 360 (dossie: cadastro/QSA/sanções/OB/conflito/rede/mídia)
+    + o relatório de INTELIGÊNCIA de fornecedor (montar) COM o parecer jurídico Lex. O pedido do
+    Mestre por /dossie é o pacote completo — o painel sozinho não substitui a due diligence + Lex."""
+    import re as _re
     from compliance_agent.dossie import dossie
     from compliance_agent.notifications import telegram as _tg
+    from compliance_agent.reporting.inteligencia import montar
     _pausar_sweeps_para_relatorio()
+    cnpj = _re.sub(r"\D", "", alvo or "")
     try:
         result = await dossie(alvo)
         if not result.get("ok"):
             await _tg.enviar_mensagem(result.get("pergunta") if result.get("ambiguo")
                                       else f"⚠️ Não consegui gerar o dossiê: {(result.get('erro') or '')[:300]}")
             return
-        # O dossiê só tem path_pdf (sem xlsx/lex) — _enviar_docs_telegram envia o que houver.
-        await _enviar_docs_telegram(result, f"Dossiê 360 — {alvo}")
+        nome = ((result.get("cadastro") or {}).get("razao_social") or alvo)
+        await _enviar_docs_telegram(result, f"Dossiê 360 (painel) — {nome}")
+
+        # relatório de inteligência de fornecedor + parecer Lex (o "e tudo o mais")
+        if len(cnpj) == 14:
+            try:
+                intel = await montar(cnpj=cnpj)
+                if intel.get("ok"):
+                    await _enviar_docs_telegram(
+                        intel, f"Relatório de inteligência + parecer Lex — {intel.get('empresa') or nome}")
+                else:
+                    await _tg.enviar_mensagem(
+                        "ℹ️ Dossiê 360 enviado; o relatório de inteligência/Lex não saiu: "
+                        f"{(intel.get('erro') or intel.get('pergunta') or 'indisponível')[:200]}")
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("dossiê: inteligência+Lex falhou p/ %s: %s", cnpj, exc)
+                await _tg.enviar_mensagem(
+                    "ℹ️ Dossiê 360 (painel) enviado; o relatório de inteligência/Lex falhou "
+                    f"e fica pendente ({str(exc)[:160]}).")
     except Exception as exc:  # noqa: BLE001
         await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o dossiê de {alvo}: {str(exc)[:300]}")
     finally:
@@ -252,5 +275,103 @@ async def api_mandato_minuta(payload: Optional[dict] = None):
 
         p = payload or {}
         return JSONResponse(content=gerar(p.get("tipo", ""), p.get("base", "")))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+# ── PPP / concessões municipais (Prefeitura do Rio) ────────────────────────
+_PPP_SLUGS = {
+    "souza aguiar": "complexo-hospitalar-souza-aguiar",
+    "souza-aguiar": "complexo-hospitalar-souza-aguiar",
+    "complexo hospitalar souza aguiar": "complexo-hospitalar-souza-aguiar",
+}
+
+
+def _resolver_slug_ppp(alvo: str) -> str:
+    import re as _re
+    a = (alvo or "").strip().lower()
+    if a in _PPP_SLUGS:
+        return _PPP_SLUGS[a]
+    if "souza aguiar" in a or "souza-aguiar" in a:
+        return "complexo-hospitalar-souza-aguiar"
+    return _re.sub(r"[^a-z0-9]+", "-", a).strip("-")
+
+
+# Projetos com PERÍCIA MESTRE (documento aprofundado, com íntegras + menu navegável).
+# Cada valor é (coroutine que gera o PDF, rótulo). Extensível: mapear novo slug.
+async def _pdf_mestre_souza_aguiar() -> str:
+    from compliance_agent.pcrj import pericia_mestre
+    return await pericia_mestre.gerar_pdf("complexo-hospitalar-souza-aguiar", db_path="data/pcrj.db")
+
+
+_PERICIAS_MESTRE = {"complexo-hospitalar-souza-aguiar": (_pdf_mestre_souza_aguiar, "Perícia mestre")}
+
+
+async def _gerar_e_enviar_ppp(slug: str, key: str) -> None:
+    from compliance_agent.notifications import telegram as _tg
+    from compliance_agent.pcrj import ppp_ccpar
+    from compliance_agent.reporting import render_html as rh
+    _pausar_sweeps_para_relatorio()
+    try:
+        await asyncio.to_thread(ppp_ccpar.coletar_projeto, slug, db_path="data/pcrj.db")
+        try:  # ingestão do edital (ZIP ~47MB) alimenta o corpus da perícia/lente
+            await asyncio.to_thread(ppp_ccpar.ingerir_edital, slug, db_path="data/pcrj.db")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("ingestão do edital CCPAR falhou (segue com D.O.): %s", exc)
+        if slug in _PERICIAS_MESTRE:  # perícia mestre (íntegras + menu navegável)
+            gen, rotulo = _PERICIAS_MESTRE[slug]
+            pdf = await gen()
+            titulo, resumo = "Complexo Hospitalar Souza Aguiar", \
+                "Documento completo — íntegras + sumário navegável. Indício ≠ acusação."
+        else:  # dossiê genérico automático
+            from compliance_agent.pcrj import dossie_ppp
+            ctx = await asyncio.to_thread(dossie_ppp.montar_dossie, slug, "data/pcrj.db")
+            pdf = await rh.gerar_pdf(ctx, f"dossie_ppp_{slug}")
+            rotulo, titulo = "Dossiê PPP", ctx.get("titulo", slug)
+            resumo = f"{ctx.get('faixa', '')} — {ctx.get('subtitulo', '')}"
+        await _enviar_docs_telegram({"path_pdf": pdf, "resumo": resumo}, f"{rotulo} — {titulo}")
+    except Exception as exc:  # noqa: BLE001
+        await _tg.enviar_mensagem(f"⚠️ Erro ao gerar a perícia/dossiê da PPP {slug}: {str(exc)[:300]}")
+    finally:
+        _REL_EM_CURSO.discard(key)
+        _retomar_sweeps_se_ocioso()
+
+
+@router.post("/api/ppp")
+async def api_ppp(payload: Optional[dict] = None):
+    """Dossiê pericial de PPP/concessão municipal (CCPAR + D.O. Rio + motores + lente PPP) → PDF Kroll.
+    Body: {"projeto"|"slug": "souza aguiar"}. ASSÍNCRONO (empurra o PDF no Telegram); {"sync": true}
+    devolve o resultado na hora (CLI/testes). Indícios p/ apuração; indício ≠ acusação; INDISPONÍVEL ≠ 0."""
+    payload = payload or {}
+    alvo = (payload.get("projeto") or payload.get("slug") or payload.get("alvo") or "").strip()
+    if not alvo:
+        return JSONResponse(content={"ok": False, "erro": "informe {'projeto': 'souza aguiar'} ou {'slug': ...}"},
+                            status_code=400)
+    slug = _resolver_slug_ppp(alvo)
+    if payload.get("sync"):  # modo síncrono (CLI/testes) — resumo (não baixa ZIP nem gera PDF)
+        if slug in _PERICIAS_MESTRE:
+            return JSONResponse(content={"ok": True, "tipo": "Perícia mestre", "slug": slug,
+                                         "obs": "perícia aprofundada com íntegras + menu navegável"})
+        from compliance_agent.pcrj import dossie_ppp
+        return JSONResponse(content=await asyncio.to_thread(dossie_ppp.gerar, slug, db_path="data/pcrj.db"))
+    key = f"ppp:{slug}"
+    produto = "a perícia (mestre)" if slug in _PERICIAS_MESTRE else "o dossiê"
+    if key in _REL_EM_CURSO:
+        return JSONResponse({"ok": True, "status": "gerando",
+                             "msg": f"⏳ Já estou preparando {produto} dessa PPP — te envio em instantes."})
+    _REL_EM_CURSO.add(key)
+    asyncio.create_task(_gerar_e_enviar_ppp(slug, key))
+    return JSONResponse({"ok": True, "status": "gerando",
+                         "msg": f"📥 Preparando {produto} da PPP *{alvo}* (PDF, ~1–2 min). Te envio aqui mesmo."})
+
+
+@router.get("/api/ppp/triagem")
+async def api_ppp_triagem():
+    """Triagem EM LOTE das PPPs/concessões municipais captadas, pela lente PPP (garantia via Fundo
+    Nacional de Saúde, aporte, PMI-captura, 5% RCL, verificador) — lista rankeada por gravidade.
+    Síncrona e rápida. Indícios p/ apuração; dossiê completo por /ppp <projeto>."""
+    from compliance_agent.pcrj import triagem_ppp
+    try:
+        return JSONResponse(content=await asyncio.to_thread(triagem_ppp.triar_lote, db_path="data/pcrj.db"))
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)

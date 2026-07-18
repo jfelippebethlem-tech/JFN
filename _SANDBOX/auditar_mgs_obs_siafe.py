@@ -67,7 +67,7 @@ def _parse_date(s: str) -> datetime | None:
     for fmt in ("%d/%m/%Y", "%Y-%m-%d"):
         try:
             return datetime.strptime(s.strip(), fmt)
-        except Exception:
+        except ValueError:
             pass
     return None
 

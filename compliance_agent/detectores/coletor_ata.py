@@ -30,9 +30,14 @@ from compliance_agent.detectores.j7_inabilitacao_seletiva import classificar_cla
 from compliance_agent.sei.fases import classificar
 
 # ───────────────────────────── regex determinístico (decisões da ata) ─────────────────────────────
-_RX_CNPJ = re.compile(r"\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}")
+# CNPJ formatado sempre; cru de 14 dígitos SÓ com DV válido (mesma régua do rodizio_grafo — evita
+# nº de processo). Tolerante a espaços de OCR em torno de ./-/ .
+_RX_CNPJ = re.compile(r"\d{2}\s?\.\s?\d{3}\s?\.\s?\d{3}\s?/\s?\d{4}\s?-\s?\d{2}|\d{14}")
 _RX_INABILITADO = re.compile(r"inabilitad[oa]|desclassificad[oa]|desabilitad[oa]", re.IGNORECASE)
-_RX_HABILITADO = re.compile(r"\bhabilitad[oa]\b|\bclassificad[oa]\b|declarad[oa]\s+vencedor|arrematante", re.IGNORECASE)
+_RX_HABILITADO = re.compile(
+    r"\bhabilitad[oa]\b|\bclassificad[oa]\b|melhor\s+classificad|declarad[oa]\s+vencedor|"
+    r"sagrou-?se\s+vencedor|arrematante|adjudic|homologad|homologo\b|1[ºo°]?\s*lugar|"
+    r"primeir[oa]\s+colocad", re.IGNORECASE)
 _RX_DILIGENCIA = re.compile(
     r"dilig[êe]ncia|saneamento|prazo\s+para\s+(?:sanar|regulariz|apresentar|complementar)|convertid[oa]\s+em\s+dilig",
     re.IGNORECASE)
@@ -85,15 +90,24 @@ def _blocos_com_contexto(fontes: list[dict]) -> list[tuple[str, str]]:
 
 
 def _segmentos_por_cnpj(fontes: list[dict]) -> list[tuple[str, str, str]]:
-    """Segmenta cada bloco por CNPJ → (cnpj, segmento, fonte). O segmento de um CNPJ vai da sua posição até o
-    próximo CNPJ (o texto da decisão vem logo após o CNPJ do licitante — 'empresa X, CNPJ Y, foi inabilitada
-    por Z'). Robusto aos dois formatos de ata: um parágrafo por licitante OU vários numa mesma linha/bloco."""
+    """Segmenta cada bloco por CNPJ → (cnpj, segmento, fonte). O segmento inclui uma JANELA RETROATIVA
+    (a decisão pode vir ANTES do CNPJ: 'foi declarada vencedora a empresa X, CNPJ Y') limitada pelo CNPJ
+    anterior, e vai até o próximo CNPJ. CNPJ cru de 14 dígitos só entra com DV válido (nº de processo
+    fora); CNPJ em contexto de PREÂMBULO (autoridade contratante) não é licitante."""
+    from compliance_agent.rodizio_grafo import _PREAMBULO, _cnpj_dv_ok
     out: list[tuple[str, str, str]] = []
     for bloco, fonte in _blocos_com_contexto(fontes):
         matches = list(_RX_CNPJ.finditer(bloco))
         for i, m in enumerate(matches):
+            cnpj = re.sub(r"\s", "", m.group(0))
+            if "." not in cnpj and not _cnpj_dv_ok(cnpj):
+                continue
+            ini = max(matches[i - 1].end() if i > 0 else 0, m.start() - 80)
             fim = matches[i + 1].start() if i + 1 < len(matches) else len(bloco)
-            out.append((m.group(0), bloco[m.start():fim], fonte))
+            seg = bloco[ini:fim]
+            if _PREAMBULO.search(seg):
+                continue
+            out.append((cnpj, seg, fonte))
     return out
 
 
@@ -125,9 +139,15 @@ def _extrair_decisoes(fontes: list[dict]) -> list[dict]:
         if decisao is None:
             continue
         fund = _fundamento(seg)
-        falha = fund or seg[:160]  # J7 precisa de falha não-vazia p/ parear; o segmento é o texto literal da decisão
+        # J7 precisa de falha não-vazia p/ parear INABILITADOS; para HABILITADO sem fundamento
+        # rotulado, o segmento é boilerplate ("apresentou toda a documentação") — não é falha:
+        # emitir classe 'outra' evita parear tolerância espúria (o J7 ignora 'outra').
+        if decisao == "habilitado" and not fund:
+            falha, classe = "", "outra"
+        else:
+            falha = fund or seg[:160]
+            classe = classificar_classe_falha(fund or seg)
         vencedor = bool(_RX_VENCEDOR.search(seg))
-        classe = classificar_classe_falha(fund or seg)
         decisoes.append({
             "cnpj": cnpj,
             "decisao": decisao,

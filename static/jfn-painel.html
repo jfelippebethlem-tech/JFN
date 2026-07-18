@@ -3,422 +3,1452 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>JFN — Painel</title>
+<title>JFN — Central de Inteligência</title>
 <style>
+  /* ── Design system JFN v4 "sala de comando" ───────────────────────────
+     Evolução do v3: telemetria mono, HUD discreto (cantoneiras/scan), LEDs
+     de status por fonte. Elevação por LUZ; cor saturada só com SIGNIFICADO.
+     Paleta de dados validada (CVD ΔE≥15, contraste ≥3:1 sobre --card).    */
   :root{
-    --bg:#0b1020; --bg2:#0d1424; --card:#141c33; --card2:#0f1730;
-    --bd:#243049; --bd2:#1d2740;
-    --tx:#eef2fb; --mut:#8a97b3; --dim:#5d6a87;
-    --blue:#3b82f6; --green:#22c55e; --amber:#eab308; --rose:#f43f5e; --purple:#a855f7;
-    --r:16px;
+    --bg:#04070e; --bg2:#080d18; --card:#0d1424; --card2:#0b111f; --raise:#131d33;
+    --bd:rgba(148,170,215,.14); --bd2:rgba(148,170,215,.08); --glass:rgba(7,11,20,.82);
+    --tx:#edf2fc; --tx2:#c4cfe6; --mut:#8b9abc; --dim:#637192;
+    --blue:#4287e6; --teal-d:#0ea895; --amber-d:#c67f1c; --green-d:#2aae62;
+    --violet:#8f7bf0; --rose-d:#e5537a;
+    --accent:#6ea8ff; --accent2:#8f7bf0; --teal:#4fd6c4; --gold:#e8bd72;
+    --green:#5fd08d; --amber:#e8a94f; --rose:#ff7d9c; --purple:#b3a1ff;
+    --mono:"JetBrains Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+    --r:14px; --r2:18px;
+    --sh:0 1px 0 rgba(255,255,255,.035) inset,0 20px 44px -34px rgba(2,6,16,.9);
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0}
   body{
     background:
-      radial-gradient(900px 480px at 100% -8%, rgba(59,130,246,.10), transparent 60%),
-      radial-gradient(760px 420px at -10% 0%, rgba(168,85,247,.08), transparent 55%),
-      var(--bg);
-    color:var(--tx); font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-    min-height:100dvh; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+      radial-gradient(1100px 560px at 88% -14%, rgba(66,135,230,.11), transparent 60%),
+      radial-gradient(900px 480px at -12% 6%, rgba(79,214,196,.05), transparent 55%),
+      linear-gradient(180deg,var(--bg2),var(--bg) 320px);
+    color:var(--tx); font:14.5px/1.6 "Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+    min-height:100dvh;-webkit-font-smoothing:antialiased;overflow-x:hidden;
   }
-  .wrap{max-width:720px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column}
+  .num,td,th,.kpi .v,.mini .b .v{font-variant-numeric:tabular-nums}
+  .mono{font-family:var(--mono)}
+  .wrap{max-width:1220px;margin:0 auto;min-height:100dvh;display:flex;flex-direction:column;position:relative;z-index:2}
+  /* ── ambiente cockpit em TODO o painel ── */
+  #netbg{position:fixed;inset:0;z-index:0;opacity:.5;pointer-events:none}
+  .aura{position:fixed;z-index:0;pointer-events:none;filter:blur(100px);border-radius:50%;will-change:transform}
+  .aura.a{width:58vw;height:58vw;left:-16vw;top:-24vw;background:radial-gradient(circle,#0e6360,transparent 68%);opacity:.32;animation:auraA 28s ease-in-out infinite alternate}
+  .aura.b{width:52vw;height:52vw;right:-18vw;bottom:-24vw;background:radial-gradient(circle,#5f3d12,transparent 70%);opacity:.26;animation:auraB 34s ease-in-out infinite alternate}
+  @keyframes auraA{to{transform:translate(6vw,4vw) scale(1.12)}}
+  @keyframes auraB{to{transform:translate(-5vw,-3vw) scale(1.1)}}
+  .veilbg{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(120% 90% at 50% 0%,transparent 58%,rgba(3,6,12,.55) 100%)}
+  /* ── cockpit home (aba Início) ── */
+  .ck{position:relative}
+  .ck-hero{position:relative;overflow:hidden;border:1px solid rgba(120,220,230,.16);border-radius:22px;padding:clamp(20px,3.6vw,38px);
+    background:linear-gradient(135deg,rgba(63,224,208,.05),rgba(243,195,86,.03) 60%,rgba(255,255,255,.012));
+    backdrop-filter:blur(15px);-webkit-backdrop-filter:blur(15px)}
+  .ck-hero::before{content:"";position:absolute;inset:0;border-radius:22px;padding:1.3px;
+    background:conic-gradient(from var(--ang,0deg),transparent 0 62%,rgba(90,230,215,.55) 74%,rgba(243,195,86,.5) 82%,transparent 92%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;animation:ckorbit 9s linear infinite}
+  @property --ang{syntax:'<angle>';inherits:false;initial-value:0deg}
+  @keyframes ckorbit{to{--ang:360deg}}
+  .ck-eye{font-family:var(--mono);font-size:11px;letter-spacing:3px;color:var(--teal);text-transform:uppercase}
+  .ck-big{font-family:var(--mono);font-weight:700;line-height:1;letter-spacing:-1px;font-size:clamp(42px,8vw,86px);color:var(--gold);
+    text-shadow:0 0 30px rgba(232,189,114,.28);font-variant-numeric:tabular-nums;margin:6px 0 4px}
+  .ck-sub{color:var(--mut);font-size:14px;max-width:60ch;line-height:1.55}.ck-sub b{color:var(--tx)}
+  .ck-ved{margin-top:16px;display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px;padding:11px 16px;border:1px solid rgba(255,92,120,.3);border-radius:13px;background:rgba(255,92,120,.06)}
+  .ck-ved .n{font-family:var(--mono);font-weight:700;font-size:24px;color:var(--rose,#ff5c78);font-variant-numeric:tabular-nums}
+  .ck-ved .l{font-size:12.5px;color:var(--mut);max-width:46ch;line-height:1.45}
+  .ck-grid{margin-top:16px;display:grid;gap:13px;grid-template-columns:repeat(auto-fill,minmax(224px,1fr));perspective:1000px}
+  .ck-inst{position:relative;border:1px solid rgba(120,220,230,.16);border-radius:15px;padding:16px;cursor:pointer;
+    background:rgba(180,240,245,.045);backdrop-filter:blur(11px);transition:border-color .3s,box-shadow .3s,transform .12s;transform-style:preserve-3d}
+  .ck-inst:hover{border-color:rgba(90,230,215,.5);box-shadow:0 16px 42px -20px rgba(63,224,208,.45)}
+  .ck-inst .k{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .ck-inst .lab{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase}
+  .ck-inst .val{font-family:var(--mono);font-weight:700;font-size:31px;line-height:1;margin-top:10px;font-variant-numeric:tabular-nums;letter-spacing:-.5px}
+  .ck-inst .meta{margin-top:6px;font-size:12px;color:var(--mut);line-height:1.4}.ck-inst .meta b{color:var(--tx)}
+  .ck-inst .dot{width:8px;height:8px;border-radius:50%;position:relative;margin-top:3px}
+  .ck-inst .dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:inherit;animation:ckblip 2.8s ease-out infinite}
+  @keyframes ckblip{0%{transform:scale(1);opacity:.7}70%{transform:scale(3);opacity:0}100%{opacity:0}}
+  .ck-inst .spk{margin-top:11px;height:32px;width:100%;display:block}
+  .ck-ticker{margin:14px 0;height:32px;overflow:hidden;position:relative;border:1px solid rgba(120,220,230,.16);border-radius:11px;
+    background:rgba(63,224,208,.03);display:flex;align-items:center;mask-image:linear-gradient(90deg,transparent,#000 5%,#000 95%,transparent)}
+  .ck-ticker .lane{display:inline-flex;gap:32px;white-space:nowrap;padding-left:100%;font-family:var(--mono);font-size:12px;color:var(--mut);animation:cktick 48s linear infinite}
+  .ck-ticker .lane span b{color:var(--tx)} .ck-ticker .lane span.a b{color:var(--rose,#ff5c78)} .ck-ticker .lane span.g b{color:var(--gold)}
+  .ck-ticker:hover .lane{animation-play-state:paused}
+  @keyframes cktick{to{transform:translateX(-100%)}}
+  .ckteal{color:var(--teal)}.ckgold{color:var(--gold)}.ckgood{color:#3fe08a}.ckamber{color:#f5a623}.ckrose{color:#ff5c78}
+  .bgteal{background:var(--teal)}.bggood{background:#3fe08a}.bgamber{background:#f5a623}.bgrose{background:#ff5c78}.bggold{background:var(--gold)}
+  .ck-fontes{margin-top:18px}
+  .ck-flabel{font-family:var(--mono);font-size:10.5px;letter-spacing:2px;color:var(--mut);text-transform:uppercase;margin-bottom:9px}
+  .ck-fgrid{display:flex;flex-wrap:wrap;gap:8px}
+  .ck-fchip{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border:1px solid rgba(120,220,230,.14);border-radius:20px;
+    background:rgba(255,255,255,.015);font-family:var(--mono);font-size:11.5px;color:var(--mut)}
+  .ck-fchip .fled{width:8px;height:8px;border-radius:50%;flex:0 0 auto;animation:ckblip 3s ease-out infinite}
+  .ck-fchip .fnm{color:var(--tx2)} .ck-fchip .fage{color:var(--dim)}
+  @media (prefers-reduced-motion:reduce){#netbg{opacity:.28}.aura,.ck-hero::before,.ck-inst .dot::after,.ck-ticker .lane,.ck-fchip .fled{animation:none!important}}
 
-  /* Header */
-  header{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;
-    padding:14px 18px calc(14px) 18px;background:rgba(13,20,36,.72);backdrop-filter:blur(12px);
-    border-bottom:1px solid var(--bd2)}
-  header .brand{display:flex;align-items:center;gap:9px;font-weight:700;letter-spacing:.2px}
-  header .brand .lg{font-size:19px}
-  header .brand small{display:block;color:var(--mut);font-size:11px;font-weight:500;letter-spacing:.2px;margin-top:1px}
-  header .sair{color:var(--mut);font-size:13px;text-decoration:none;border:1px solid var(--bd);
-    padding:7px 13px;border-radius:10px;transition:.15s}
-  header .sair:active,header .sair:hover{color:#fff;border-color:var(--blue);background:rgba(59,130,246,.1)}
+  header{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(18px);border-bottom:1px solid var(--bd2);position:sticky;overflow:hidden}
+  header::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(79,214,196,.6),rgba(110,168,255,.6),transparent);
+    animation:scan 7s linear infinite;opacity:.55;pointer-events:none}
+  @keyframes scan{0%{transform:translateX(-60%)}100%{transform:translateX(60%)}}
+  .htop{display:flex;align-items:center;gap:12px;padding:13px 18px 11px}
+  .brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:.3px}
+  .brand .lg{font-size:19px;filter:drop-shadow(0 0 10px rgba(79,214,196,.6))}
+  .brand small{display:block;color:var(--mut);font-size:10px;font-weight:600;margin-top:2px;letter-spacing:.9px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:46vw;font-family:var(--mono)}
+  .live{display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:650;color:var(--teal);border:1px solid rgba(79,214,196,.25);padding:3px 10px;border-radius:20px;background:rgba(14,168,149,.07);white-space:nowrap;flex:0 0 auto;font-family:var(--mono)}
+  .live .pulse{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);animation:pl 1.8s infinite}
+  @keyframes pl{0%,100%{opacity:1}50%{opacity:.3}}
+  .htop .actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+  .htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit{font-size:12.5px;text-decoration:none;border:1px solid var(--bd);padding:6px 12px;border-radius:9px;transition:.15s;color:var(--mut);cursor:pointer}
+  .htop a.ctrl{color:var(--rose);border-color:rgba(229,83,122,.3)}
+  .htop a.help{color:var(--accent);border-color:rgba(110,168,255,.28)}
+  .htop a.cockpit{color:#3fe0d0;border-color:rgba(63,224,208,.35);font-weight:600;letter-spacing:.3px}
+  .htop a.cockpit:hover{color:#fff;border-color:#3fe0d0;box-shadow:0 0 14px -2px rgba(63,224,208,.5);background:rgba(63,224,208,.08)}
+  .htop a.sair:hover,.htop a.help:hover{color:#fff;border-color:var(--accent)}
+  .spheres{display:flex;gap:7px;padding:0 14px 13px;overflow-x:auto;scrollbar-width:none}
+  .spheres::-webkit-scrollbar{display:none}
+  .sph{flex:1;min-width:118px;display:flex;align-items:center;justify-content:center;gap:9px;padding:11px 12px;border-radius:12px;cursor:pointer;position:relative;
+    border:1px solid var(--bd2);background:linear-gradient(180deg,var(--card),var(--card2));color:var(--mut);font-weight:650;font-size:13.5px;transition:.16s}
+  .sph:hover{border-color:var(--bd);color:var(--tx2)}
+  .sph .i{font-size:16px}
+  .sph.on{color:#fff;border-color:transparent}
+  .sph.on.estado{background:linear-gradient(140deg,#17305f,#1d4a85);box-shadow:0 0 0 1px rgba(110,168,255,.38),0 12px 28px -18px #1d4a85}
+  .sph.on.prefeitura{background:linear-gradient(140deg,#5c3f12,#7d5c17);box-shadow:0 0 0 1px rgba(232,189,114,.38),0 12px 28px -18px #7d5c17}
+  .sph.on.geral{background:linear-gradient(140deg,#33255f,#463683);box-shadow:0 0 0 1px rgba(179,161,255,.38),0 12px 28px -18px #463683}
+  .sph .c{font-size:10.5px;opacity:.85;font-weight:550}
+  @media (max-width:600px){
+    .sph{min-width:0;flex-direction:column;gap:4px;padding:9px 6px;text-align:center}
+    .sph .c{display:none}
+    .live{display:none}
+    .htop{gap:8px;padding:12px 14px 10px}
+    .htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit{padding:6px 9px;font-size:12px;white-space:nowrap}
+    .brand small{max-width:38vw}
+  }
 
-  /* Content */
-  main{flex:1;padding:18px 16px 104px}
-  h2.sec{margin:2px 0 14px;font-size:13px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;
-    color:var(--mut);display:flex;align-items:center;gap:9px}
-  h2.sec .dot{width:8px;height:8px;border-radius:50%;box-shadow:0 0 12px currentColor}
+  main{flex:1;padding:18px 16px 112px}
+  /* cover HUD: grade + cantoneiras */
+  .cover{border-radius:var(--r2);padding:19px 19px 17px;margin-bottom:16px;border:1px solid var(--bd2);position:relative;overflow:hidden}
+  .cover::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;
+    background-image:linear-gradient(rgba(148,170,215,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(148,170,215,.05) 1px,transparent 1px);
+    background-size:26px 26px;mask-image:radial-gradient(400px 160px at 85% 0%,#000,transparent)}
+  .cover::before{content:"";position:absolute;inset:10px;pointer-events:none;border-radius:10px;
+    background:
+      linear-gradient(90deg,rgba(79,214,196,.5) 14px,transparent 14px) top left/28px 1.5px no-repeat,
+      linear-gradient(180deg,rgba(79,214,196,.5) 14px,transparent 14px) top left/1.5px 28px no-repeat,
+      linear-gradient(270deg,rgba(79,214,196,.35) 14px,transparent 14px) bottom right/28px 1.5px no-repeat,
+      linear-gradient(0deg,rgba(79,214,196,.35) 14px,transparent 14px) bottom right/1.5px 28px no-repeat;opacity:.7}
+  .cover.estado{background:linear-gradient(135deg,rgba(29,74,133,.30),rgba(13,19,33,.65))}
+  .cover.prefeitura{background:linear-gradient(135deg,rgba(125,92,23,.26),rgba(13,19,33,.65))}
+  .cover.geral{background:linear-gradient(135deg,rgba(70,54,131,.28),rgba(13,19,33,.65))}
+  .cover .t{font-size:19px;font-weight:800;letter-spacing:-.3px}
+  .cover .s{color:var(--tx2);font-size:13px;margin-top:4px;max-width:680px;line-height:1.55}
+  .cover .ic{position:absolute;right:8px;top:-6px;font-size:78px;opacity:.09}
 
-  .grid{display:grid;gap:12px;min-width:0}
+  h2.sec{margin:8px 0 12px;font-size:11px;font-weight:750;letter-spacing:1.1px;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:10px;font-family:var(--mono)}
+  h2.sec::before{content:"";width:3px;height:13px;border-radius:3px;background:linear-gradient(var(--teal),var(--blue))}
+  h2.sec .cnt{margin-left:auto;color:var(--dim);font-weight:600;letter-spacing:.3px;text-transform:none;font-size:11.5px}
+  .lead{color:var(--mut);font-size:13px;margin:-4px 0 14px;max-width:720px}
+
+  .grid{display:grid;gap:11px;min-width:0}
   .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--bd);
-    border-radius:var(--r);padding:16px 17px;min-width:0;box-shadow:0 1px 0 rgba(255,255,255,.03) inset,0 8px 24px -18px #000}
-  .kpi .v{font-size:18px;font-weight:750;letter-spacing:-.3px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .kpi .l{color:var(--mut);font-size:12px;margin-top:5px}
-  .kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--bd2);font-size:14px}
+  .card{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--bd2);border-radius:var(--r);padding:15px 16px;min-width:0;box-shadow:var(--sh);transition:.16s}
+  .card:hover{border-color:var(--bd)}
+  .card.hl{border-color:rgba(229,83,122,.32)}
+  .kpi{position:relative;overflow:hidden}
+  .kpi::before{content:"";position:absolute;left:0;top:12px;bottom:12px;width:2px;border-radius:2px;background:linear-gradient(rgba(79,214,196,.55),rgba(66,135,230,.25))}
+  .kpi .l{color:var(--mut);font-size:10.5px;font-weight:650;letter-spacing:.7px;text-transform:uppercase;font-family:var(--mono)}
+  .kpi .v{font-size:clamp(17px,5vw,23px);font-weight:800;letter-spacing:-.4px;line-height:1.15;margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)}
+  .kpi .gl{position:absolute;right:-8px;top:-10px;font-size:38px;opacity:.08}
+  .kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--bd2);font-size:14px}
   .kv:first-child{padding-top:2px}.kv:last-child{border-bottom:0;padding-bottom:2px}
   .kv .k{color:var(--mut)}.kv b{font-weight:650;color:#fff}
-  .muted{color:var(--mut)} .dim{color:var(--dim);font-size:12px}
-  .right{text-align:right}
+  .muted{color:var(--mut)} .dim{color:var(--dim);font-size:12px} .right{text-align:right}
+  .card .right{white-space:nowrap;flex:0 0 auto}
+  code{font:12px/1.4 var(--mono);color:#9fc4ff;background:rgba(91,157,255,.09);padding:1px 6px;border-radius:6px}
 
-  table{width:100%;border-collapse:collapse;font-size:14px}
-  thead th{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.4px;text-align:right;padding:0 0 8px;font-weight:600}
+  .tag{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:650;padding:3px 9px;border-radius:20px;white-space:nowrap;border:1px solid transparent}
+  .tag.accent{background:rgba(66,135,230,.13);color:#9fc4ff;border-color:rgba(110,168,255,.18)}
+  .tag.rose{background:rgba(229,83,122,.13);color:#ff92ac;border-color:rgba(255,125,156,.2)}
+  .tag.amber{background:rgba(198,127,28,.14);color:#eebf7a;border-color:rgba(232,169,79,.2)}
+  .tag.purple{background:rgba(143,123,240,.13);color:#c3b3ff;border-color:rgba(179,161,255,.2)}
+  .tag.green{background:rgba(42,174,98,.13);color:#7ade9f;border-color:rgba(95,208,141,.2)}
+  .tag.teal{background:rgba(14,168,149,.13);color:#5fd9c8;border-color:rgba(79,214,196,.2)}
+  .sev{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-radius:7px;flex:0 0 auto}
+  .sev.alta{background:rgba(229,83,122,.16);color:#ff92ac}.sev.media{background:rgba(198,127,28,.16);color:#eebf7a}.sev.baixa{background:rgba(139,154,188,.14);color:#b0bcd8}
+
+  /* LEDs de frescor por fonte */
+  .fresh{display:flex;flex-direction:column;gap:0}
+  .fresh .f{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--bd2);font-size:13px}
+  .fresh .f:last-child{border-bottom:0}
+  .fresh .led{width:8px;height:8px;border-radius:50%;flex:0 0 auto}
+  .fresh .ok{background:var(--green);box-shadow:0 0 7px rgba(95,208,141,.7)}
+  .fresh .atencao{background:var(--amber);box-shadow:0 0 7px rgba(232,169,79,.7)}
+  .fresh .critico{background:var(--rose);box-shadow:0 0 7px rgba(255,125,156,.8);animation:pl 1.4s infinite}
+  .fresh .nome{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .fresh .idade{font-family:var(--mono);font-size:11.5px;color:var(--mut);white-space:nowrap}
+
+  table{width:100%;border-collapse:collapse;font-size:13.5px}
+  thead th{color:var(--dim);font-size:10.5px;text-transform:uppercase;letter-spacing:.5px;text-align:right;padding:0 0 9px;font-weight:700;font-family:var(--mono)}
   thead th:first-child{text-align:left}
-  tbody td{padding:9px 0;border-bottom:1px solid var(--bd2);text-align:right}
-  tbody td:first-child{text-align:left;color:var(--mut)}
+  tbody td{padding:9px 0;border-bottom:1px solid var(--bd2);text-align:right;vertical-align:top}
+  tbody td:first-child{text-align:left;color:var(--tx)}
   tbody tr:last-child td{border-bottom:0}
+  th.srt{cursor:pointer;user-select:none}th.srt:hover{color:var(--accent)}
 
-  .pill{font-size:11px;font-weight:650;padding:3px 9px;border-radius:20px;white-space:nowrap}
-  .pill.on{background:rgba(34,197,94,.15);color:#5cd98a}
-  .pill.off{background:rgba(244,63,94,.15);color:#fb8aa0}
-  .sev{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;padding:3px 8px;border-radius:7px;flex:0 0 auto}
-  .sev.alta{background:rgba(244,63,94,.16);color:#fb8aa0}
-  .sev.media{background:rgba(234,179,8,.16);color:#f3cf6a}
-  .sev.baixa{background:rgba(138,151,179,.16);color:#aeb9d6}
-
-  pre{white-space:pre-wrap;word-break:break-word;font:12px/1.5 ui-monospace,Menlo,monospace;color:#aeb9d6;margin:0;
-    background:#0a1124;border:1px solid var(--bd2);border-radius:11px;padding:11px 12px;max-height:150px;overflow:auto}
+  .barw{display:flex;flex-direction:column;gap:11px;margin-top:4px}
+  .barw .row{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px}
+  .barw .lab{color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .barw .track{grid-column:1/-1;height:6px;background:#0a1120;border-radius:4px;overflow:hidden}
+  .barw .fill{display:block;height:100%;border-radius:4px;background:var(--blue)}
 
   .btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px}
-  .btn{flex:1;min-width:96px;border:0;border-radius:11px;padding:11px 12px;font-size:13px;font-weight:650;
-    cursor:pointer;color:#fff;transition:.12s;display:flex;align-items:center;justify-content:center;gap:6px}
+  .btn{flex:1;min-width:92px;border:0;border-radius:11px;padding:11px 12px;font-size:13px;font-weight:700;cursor:pointer;color:#fff;transition:.12s;display:flex;align-items:center;justify-content:center;gap:6px}
   .btn:active{transform:scale(.97)}
-  .btn.red{background:#b9442f}.btn.green{background:#1f9d57}
-  .btn.ghost{background:#1b2440;border:1px solid var(--bd)}
+  .btn.red{background:#b13a58}.btn.green{background:#218a52}.btn.ghost{background:var(--raise);border:1px solid var(--bd);color:var(--tx2)}
+  .btn.accent{background:linear-gradient(135deg,#2a63b8,#4287e6);box-shadow:0 8px 20px -12px rgba(66,135,230,.7)}
   .lnks{display:flex;flex-direction:column;gap:9px}
-  .lnk{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--tx);
-    background:#10182f;border:1px solid var(--bd);border-radius:12px;padding:13px 14px;transition:.12s}
-  .lnk:active{transform:scale(.99)} .lnk:hover{border-color:var(--blue)}
-  .lnk .ic{font-size:18px;width:24px;text-align:center} .lnk .ar{margin-left:auto;color:var(--dim)}
-  .lnk .t{font-weight:600} .lnk .d{color:var(--mut);font-size:12px;margin-top:1px}
+  .lnk{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--tx);background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;transition:.14s}
+  .lnk:hover{border-color:var(--accent);transform:translateX(2px)}
+  .lnk .ic{font-size:18px;width:24px;text-align:center}.lnk .ar{margin-left:auto;color:var(--dim)}
+  .lnk .t{font-weight:650}.lnk .d{color:var(--mut);font-size:12px;margin-top:1px}
 
-  input{width:100%;padding:11px 12px;border-radius:11px;border:1px solid var(--bd);background:#0a1124;color:var(--tx);font-size:14px}
-  input::placeholder{color:var(--dim)}
+  input{width:100%;padding:11px 13px;border-radius:11px;border:1px solid var(--bd);background:#0a1120;color:var(--tx);font-size:14px}
+  input::placeholder{color:var(--dim)}input:focus{outline:0;border-color:var(--accent);box-shadow:0 0 0 3px rgba(91,157,255,.12)}
   label.fld{display:block;color:var(--mut);font-size:12px;margin:0 0 6px}
+  .search{position:relative;margin-bottom:12px}.search input{padding-left:38px}.search .mag{position:absolute;left:13px;top:11px;color:var(--dim)}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{border:1px solid var(--bd);background:var(--card);color:var(--mut);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:650;cursor:pointer;transition:.12s}
+  .chip.on{color:#fff;border-color:var(--accent);background:rgba(91,157,255,.14)}
 
-  .skel{color:var(--dim);font-size:13px;padding:6px 0}
+  pre{white-space:pre-wrap;word-break:break-word;font:12px/1.5 var(--mono);color:var(--tx2);margin:0;background:#080f1e;border:1px solid var(--bd2);border-radius:11px;padding:11px 12px;max-height:190px;overflow:auto}
+  .skel{color:var(--dim);font-size:13px;padding:24px 0;text-align:center}
+  .skel .sp{display:inline-block;width:15px;height:15px;border:2px solid var(--bd);border-top-color:var(--teal);border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:8px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .warn{display:flex;gap:10px;align-items:center;background:rgba(232,163,61,.08);border:1px solid rgba(232,163,61,.3);border-radius:12px;padding:11px 13px;color:#f0c078;font-size:13px;margin-bottom:12px}
+  .note{background:rgba(132,147,178,.05);border:1px dashed var(--bd);border-radius:11px;padding:10px 12px;color:var(--mut);font-size:12px;margin-top:13px}
+  .leitura{background:rgba(79,214,196,.05);border-left:2px solid rgba(79,214,196,.4);border-radius:0 9px 9px 0;padding:8px 11px;color:var(--tx2);font-size:12.5px;margin-top:9px;line-height:1.55}
+  .clk{cursor:pointer;border-bottom:1px dotted rgba(91,157,255,.5);transition:.12s;font-weight:600}
+  .clk:hover{color:var(--accent)}
+  .exp{cursor:pointer}.exp .objs{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd2)}
+  .exp.open .objs{display:block;animation:f .2s ease}
+  .obj{font-size:12.5px;color:var(--mut);padding:5px 0;border-bottom:1px solid var(--bd2)}.obj:last-child{border-bottom:0}
+  .chev{transition:.18s;display:inline-block}.exp.open .chev{transform:rotate(90deg)}
 
-  /* Bottom tab bar */
-  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;
-    background:rgba(11,16,32,.86);backdrop-filter:blur(16px);border-top:1px solid var(--bd2);
-    padding:6px 6px calc(6px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto}
-  nav.tabs button{flex:1;background:none;border:0;color:var(--dim);cursor:pointer;
-    display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 2px 5px;font:inherit;transition:.12s;border-radius:12px}
-  nav.tabs button .ti{font-size:20px;line-height:1}
-  nav.tabs button .tl{font-size:10.5px;font-weight:600;letter-spacing:.2px}
-  nav.tabs button.on{color:#fff}
-  nav.tabs button.on .ti{filter:drop-shadow(0 0 9px var(--blue))}
-  nav.tabs button.on .tl{color:var(--blue)}
+  nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;overflow-x:auto;scrollbar-width:none;background:var(--glass);backdrop-filter:blur(18px);border-top:1px solid var(--bd2);padding:6px 6px calc(6px + env(safe-area-inset-bottom));max-width:1180px;margin:0 auto}
+  nav.tabs::-webkit-scrollbar{display:none}
+  nav.tabs button{flex:1 0 auto;min-width:58px;background:none;border:0;color:var(--dim);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:7px 9px 6px;font:inherit;transition:.12s;border-radius:12px;position:relative}
+  nav.tabs button .ti{font-size:18px;line-height:1}
+  nav.tabs button .tl{font-size:9.5px;font-weight:700;letter-spacing:.3px;font-family:var(--mono)}
+  nav.tabs button.on{color:#fff;background:rgba(66,135,230,.10)}
+  nav.tabs button.on::after{content:"";position:absolute;top:-6px;left:22%;right:22%;height:2px;border-radius:2px;background:linear-gradient(90deg,var(--teal),var(--blue))}
+  nav.tabs button.on .ti{filter:drop-shadow(0 0 8px var(--teal))}
+  nav.tabs button.on .tl{color:var(--teal)}
   nav.tabs button:active{transform:scale(.92)}
+  .fade{animation:f .24s ease}@keyframes f{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 
-  .fade{animation:f .22s ease}@keyframes f{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+  .ov{position:fixed;inset:0;z-index:60;background:rgba(4,7,14,.74);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center}
+  .ov.on{display:flex;animation:f .2s ease}
+  .sheet{background:linear-gradient(180deg,#0e1728,#0a1120);border:1px solid var(--bd);border-bottom:0;border-radius:22px 22px 0 0;width:100%;max-width:1180px;max-height:92dvh;overflow:auto;padding:16px 17px calc(20px + env(safe-area-inset-bottom))}
+  .sheet .grab{width:42px;height:5px;border-radius:5px;background:var(--bd);margin:2px auto 14px}
+  .sheet .x{position:sticky;top:0;float:right;background:var(--raise);border:1px solid var(--bd);color:var(--mut);border-radius:9px;padding:5px 11px;cursor:pointer;font-size:13px;z-index:2}
+  @media (min-width:820px){.ov{align-items:center}.sheet{border-radius:22px;border-bottom:1px solid var(--bd)}}
+  .badge-grau{font-size:26px;line-height:1}
+  .mini{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:13px 0}
+  .mini .b{background:#0b1322;border:1px solid var(--bd2);border-radius:11px;padding:10px 12px}
+  .mini .b .v{font-weight:750;font-size:16px;font-family:var(--mono)}.mini .b .l{color:var(--mut);font-size:11px;margin-top:2px}
 
-  /* Callout de alerta operacional (ex.: coleta SIAFE com erro) */
-  .warn{display:flex;gap:10px;align-items:center;background:rgba(234,179,8,.10);border:1px solid rgba(234,179,8,.35);
-    border-radius:12px;padding:11px 13px;color:#f3cf6a;font-size:13px;margin-bottom:12px}
-  .warn b{color:#ffe08a}
-  /* mini-barras SVG inline (sem libs) */
-  .bars{display:flex;flex-direction:column;gap:8px;margin-top:4px}
-  .bar{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;font-size:13px}
-  .bar .lab{color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .bar .track{height:9px;background:#0a1124;border-radius:6px;overflow:hidden;border:1px solid var(--bd2)}
-  .bar .fill{height:100%;border-radius:6px;background:linear-gradient(90deg,var(--blue),var(--purple))}
-  .bar .val{color:#fff;font-weight:650;white-space:nowrap}
-
-  /* Desktop: preenche a tela em vez de coluna estreita com vazio */
-  @media (min-width:760px){
-    .wrap{max-width:1080px}
-    nav.tabs{max-width:1080px}
-    main{padding:24px 28px 112px}
+  @media (min-width:820px){
+    main{padding:24px 30px 116px}
     .g2{grid-template-columns:repeat(4,minmax(0,1fr))}
-    .grid:not(.g2){grid-template-columns:repeat(2,minmax(0,1fr))}
-    .kpi .v{font-size:22px}
-    .span2{grid-column:1 / -1}
+    .grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .kpi .v{font-size:24px}.span2{grid-column:1 / -1}
+    .mini{grid-template-columns:repeat(4,1fr)}
   }
 </style>
 </head>
 <body>
+<canvas id="netbg" aria-hidden="true"></canvas>
+<div class="aura a" aria-hidden="true"></div><div class="aura b" aria-hidden="true"></div>
+<div class="veilbg" aria-hidden="true"></div>
 <div class="wrap">
   <header>
-    <div class="brand"><span class="lg">🛰️</span><div>JFN<small id="hsub">auditoria · Estado do RJ</small></div></div>
-    <a class="sair" href="/logout_jfn">Sair</a>
+    <div class="htop">
+      <div class="brand"><span class="lg">🛰️</span><div>JFN<small id="hsub">CENTRAL DE INTELIGÊNCIA · RJ</small></div></div>
+      <span class="live"><span class="pulse"></span>ao vivo</span>
+      <span class="actions"><a class="cockpit" href="/cockpit" title="Command deck ao vivo">◎ Cockpit</a><a class="help" onclick="glossario()">ⓘ Termos</a><a class="ctrl" href="/controle">🛡️ Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
+    </div>
+    <div class="spheres" id="spheres"></div>
   </header>
-  <main id="view"><div class="skel">Carregando…</div></main>
+  <main id="view"><div class="skel"><span class="sp"></span>Carregando inteligência…</div></main>
   <nav class="tabs" id="tabs"></nav>
 </div>
+<div class="ov" id="ov" onclick="if(event.target===this)fecharDossie()"><div class="sheet" id="sheet"></div></div>
 
 <script>
-const $ = (id)=>document.getElementById(id);
-const fmtN = n => (n==null?'—':Number(n).toLocaleString('pt-BR'));
-const fmtR = v => 'R$ '+(v==null?'0,00':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));
-const fmtRc = v => { v=Number(v||0); const a=Math.abs(v);
-  if(a>=1e9) return 'R$ '+(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1})+' bi';
-  if(a>=1e6) return 'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';
-  if(a>=1e3) return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil';
-  return fmtR(v); };
-const pct = x => (x==null?'—':(x*100).toFixed(1)+'%');
-async function J(ep,opt){ try{ const r=await fetch(ep,opt); return await r.json(); }catch(e){ return {erro:String(e)}; } }
-const card = (h)=>`<div class="card">${h}</div>`;
-const kpi = (v,l,cor)=>`<div class="card kpi"><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div><div class="l">${l}</div></div>`;
-const sec = (dot,t)=>`<h2 class="sec"><span class="dot" style="color:${dot};background:${dot}"></span>${t}</h2>`;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmtN=n=>(n==null?'—':Number(n).toLocaleString('pt-BR'));
+const fmtR=v=>'R$ '+(v==null?'0,00':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));
+const fmtRc=v=>{v=Number(v||0);const a=Math.abs(v);
+  if(a>=1e9)return 'R$ '+(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1})+' bi';
+  if(a>=1e6)return 'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';
+  if(a>=1e3)return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil';return fmtR(v);};
+async function J(ep,opt){try{const r=await fetch(ep,opt);return await r.json();}catch(e){return{erro:String(e)};}}
+const card=(h,cls)=>`<div class="card ${cls||''}">${h}</div>`;
+const kpi=(v,l,cor,gl)=>`<div class="card kpi"><div class="l">${l}</div><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div>${gl?`<span class="gl">${gl}</span>`:''}</div>`;
+const sec=(t,cnt)=>`<h2 class="sec">${t}${cnt!=null?`<span class="cnt">${cnt}</span>`:''}</h2>`;
+const spin=t=>`<div class="skel"><span class="sp"></span>${t||'Carregando…'}</div>`;
+const cover=(sph,t,s,ic)=>`<div class="cover ${sph}"><div class="t">${t}</div><div class="s">${s}</div><span class="ic">${ic}</span></div>`;
+const leitura=t=>`<div class="leitura">🧭 ${t}</div>`;
+// botão "Gerar PDF" (padrão Kroll) para qualquer aba de inteligência
+const btnPdf=tipo=>`<button class="btn ghost" style="flex:0 0 auto;min-width:120px" onclick="gerarPdfIntel('${tipo}',this)">📄 Gerar PDF</button>`;
+async function gerarPdfIntel(tipo,el){
+  const txt=el.innerHTML;el.innerHTML='<span class="sp" style="width:12px;height:12px"></span> gerando…';el.disabled=true;
+  const r=await J('/api/intel/pdf?tipo='+encodeURIComponent(tipo));
+  el.disabled=false;el.innerHTML=txt;
+  if(r.ok&&r.url){window.open(r.url,'_blank');}
+  else{alert('Falha ao gerar PDF: '+(r.erro||'indisponível'));}
+}
+// barra de ação da aba (PDF + eventuais extras), colocada logo após o cover
+const acoesAba=(tipo,extra)=>`<div class="btns" style="margin:-4px 0 14px">${btnPdf(tipo)}${extra||''}</div>`;
+function toggle(el){el.classList.toggle('open');}
+function filtrar(inp,sel){const q=inp.value.toLowerCase();document.querySelectorAll(sel).forEach(c=>{c.style.display=c.textContent.toLowerCase().includes(q)?'':'none';});}
+const clk=(cnpj,txt)=>{const d=String(cnpj||'').replace(/\D/g,'');return d.length===14?`<span class="clk" onclick="abrirDossie('${d}','${esc(String(txt)).replace(/'/g,'')}')">${esc(txt)}</span>`:`<b>${esc(txt)}</b>`;};
 
-const TABS = [
-  {id:'geral',  ic:'📊', tl:'Geral',   render:renderGeral},
-  {id:'alertas',ic:'🚨', tl:'Alertas', render:renderAlertas},
-  {id:'siafe',  ic:'💰', tl:'SIAFE',   render:renderSiafe},
-  {id:'sweeps', ic:'🛰️', tl:'Sweeps',  render:renderSweeps},
-  {id:'validar',ic:'🏢', tl:'Validar', render:renderValidar},
-  {id:'mais',   ic:'⋯',  tl:'Mais',    render:renderMais},
+// ═══ ESFERAS ═══
+const SPHERES=[
+  {id:'inicio',    ic:'◎', tl:'Início',        c:'command deck ao vivo'},
+  {id:'estado',    ic:'🏛️', tl:'Estado',       c:'órgãos estaduais (SIAFE + PNCP)'},
+  {id:'prefeitura',ic:'🏙️', tl:'Prefeitura·Rio',c:'município do Rio (PNCP + folha)'},
+  {id:'geral',     ic:'🌐', tl:'Transversal',  c:'riscos, busca, poder, ferramentas'},
 ];
-let atual='geral';
-const sessaoReports = new Set();   // relatórios gerados nesta sessão → apagados ao sair (efêmeros)
-
-function montarTabs(){
-  $('tabs').innerHTML = TABS.map(t=>
-    `<button class="${t.id===atual?'on':''}" onclick="ir('${t.id}')"><span class="ti">${t.ic}</span><span class="tl">${t.tl}</span></button>`).join('');
-}
-async function ir(id){
-  atual=id; montarTabs();
-  const v=$('view'); v.innerHTML='<div class="skel">Carregando…</div>';
-  const t=TABS.find(x=>x.id===id);
-  try{
-    const html=await t.render();
-    v.innerHTML=`<div class="fade">${html}</div>`;
-  }catch(e){
-    v.innerHTML=card('<div class="warn">⚠ Falha ao carregar esta aba: '+String(e)+'</div>');
-  }
-}
-
-const barras = (itens)=>{ // itens: [{lab,val,pctw,cor?}]
-  return `<div class="bars">`+itens.map(i=>
-    `<div class="bar"><span class="lab">${i.lab}</span>
-       <span class="track"><span class="fill" style="width:${Math.max(3,Math.min(100,i.pctw))}%${i.cor?`;background:${i.cor}`:''}"></span></span>
-       <span class="val">${i.val}</span></div>`).join('')+`</div>`;
+const TABS={
+  inicio:[
+    {id:'i_cockpit', ic:'◎',tl:'Cockpit', render:renderCockpit},
+  ],
+  estado:[
+    {id:'e_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaEstado},
+    {id:'e_pericias',ic:'⚖️',tl:'Perícias',render:renderPericias},
+    {id:'e_sanc',    ic:'🚫',tl:'Sancionadas',render:()=>renderSancionadas('estado')},
+    {id:'e_frac',    ic:'✂️',tl:'Fracion.',render:renderFracionamento},
+    {id:'e_sobre',   ic:'📈',tl:'Sobrepreço',render:renderSobrepreco},
+    {id:'e_escal',   ic:'📈',tl:'Escalada', render:renderEscalada},
+    {id:'e_comp',    ic:'💰',tl:'Comparador',render:renderComparador},
+    {id:'e_adit',    ic:'📑',tl:'Aditivos',render:renderAditivos},
+    {id:'e_cartel',  ic:'🔗',tl:'Cartel',  render:renderCartel},
+    {id:'e_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('estado')},
+    {id:'e_poder',   ic:'🏛️',tl:'Nomeados',render:renderPoder},
+    {id:'e_alertas', ic:'🚨',tl:'Alertas', render:renderAlertas},
+    {id:'e_siafe',   ic:'💰',tl:'SIAFE',   render:renderSiafe},
+  ],
+  prefeitura:[
+    {id:'p_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaPref},
+    {id:'p_comis',   ic:'🎖️',tl:'Comissionados',render:renderComissionadosPref},
+    {id:'p_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('prefeitura')},
+    {id:'p_contr',   ic:'📄',tl:'Contratos',render:renderContratosPref},
+  ],
+  geral:[
+    {id:'g_buscar',  ic:'🔎',tl:'Buscar',  render:renderBuscar},
+    {id:'g_radar',   ic:'🎯',tl:'Radar',   render:renderRadar},
+    {id:'g_conluioq',ic:'🤝',tl:'Conluio QSA',render:renderConluioQSA},
+    {id:'g_comun',   ic:'🧩',tl:'Comunidades',render:renderComunidades},
+    {id:'g_retro',   ic:'🔮',tl:'Retro',   render:renderRetro},
+    {id:'g_riscos',  ic:'👻',tl:'Riscos',  render:renderRiscos},
+    {id:'g_dep',     ic:'🔗',tl:'Cativos', render:renderFornecedorDependente},
+    {id:'g_dez',     ic:'📅',tl:'Dezembro',render:renderCorridaDezembro},
+    {id:'g_ocult',   ic:'🕸️',tl:'Sócio oculto',render:renderSocioOculto},
+    {id:'g_nep',     ic:'👪',tl:'Nepotismo',render:renderNepotismo},
+    {id:'g_nepx',    ic:'🔀',tl:'Nepot. cruzado',render:renderNepotismoCruzado},
+    {id:'g_fenix',   ic:'🦅',tl:'Fênix',   render:renderFenix},
+    {id:'g_porta',   ic:'🚪',tl:'Porta giratória',render:renderPortaGiratoria},
+    {id:'g_laranjas',ic:'🎭',tl:'Laranjas',render:renderLaranjas},
+    {id:'g_socserv', ic:'🕴️',tl:'Servidor-sócio',render:renderSocioServidor},
+    {id:'g_poder',   ic:'🏛️',tl:'Poder',   render:renderPoder},
+    {id:'g_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio(_cjEsf)},
+    {id:'g_validar', ic:'🏢',tl:'Validar', render:renderValidar},
+    {id:'g_sweeps',  ic:'🛰️',tl:'Sweeps',  render:renderSweeps},
+    {id:'g_acoes',   ic:'⚡',tl:'Ações',   render:renderAcoes},
+  ],
 };
+let esfera='inicio',aba='i_cockpit';
+const sessaoReports=new Set();
 
-async function renderGeral(){
-  const [st,p,c]=await Promise.all([J('/status'),J('/api/compliance/painel'),J('/api/cartel')]);
-  const a=p.alertas||{}, o=p.obs||{};
-  const coletaErro = /erro/i.test(p.ultima_coleta||'');
-  const lst=(p.lista_alertas||[]).slice(0,3);
-  const cart=(c.dados||[]).slice(0,5);
-  const maxShare = Math.max(1, ...cart.map(u=>u.top_share||0));
-  let html = sec('var(--blue)','Visão geral');
-  if(coletaErro) html += `<div class="warn">⚠ <span>Última coleta SIAFE falhou — <b>${p.ultima_coleta}</b>. Dados podem estar defasados.</span></div>`;
-  html += `<div class="grid g2">
-    ${kpi(fmtN(o.total),'Ordens Bancárias')}
-    ${kpi(fmtRc(o.valor_total),'Valor fiscalizado')}
-    ${kpi(fmtN(a.total??0),'Alertas ativos', (a.alta? 'var(--rose)':'#fff'))}
-    ${kpi(st.logged_in?'🟢 ok':'🔴 off','SIAFE · '+(st.exercicio||'—'))}
-    ${kpi(fmtN(a.alta??0),'🔴 Alta', 'var(--rose)')}
-    ${kpi(fmtN(a.media??0),'🟡 Média', 'var(--amber)')}
-    ${kpi(fmtRc(o.valor_hoje??0),'Pago hoje')}
-    ${kpi(fmtN(o.hoje??0),'OBs hoje')}
-  </div>`;
-  if(lst.length){
-    html += `<div style="height:16px"></div>`+sec('var(--rose)','Alertas recentes')+
-      `<div class="grid">`+lst.map(al=>card(
-        `<div style="display:flex;gap:11px;align-items:flex-start">
-           <span class="sev ${al.severidade||'baixa'}">${al.severidade||'—'}</span>
-           <div><div style="font-weight:650">${al.titulo||al.tipo||'Alerta'}</div></div>
-         </div>`)).join('')+`</div>`;
+function montarSpheres(){
+  $('spheres').innerHTML=SPHERES.map(s=>`<div class="sph ${s.id} ${s.id===esfera?'on':''}" onclick="trocarEsfera('${s.id}')"><span class="i">${s.ic}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></div>`).join('');
+}
+function montarTabs(){
+  $('tabs').innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')"><span class="ti">${t.ic}</span><span class="tl">${t.tl}</span></button>`).join('');
+}
+function trocarEsfera(id){esfera=id;aba=TABS[id][0].id;montarSpheres();montarTabs();ir(aba);}
+let _nav=0; // token anti-corrida
+async function ir(id){
+  // blindagem: se o id não é da esfera atual, procura a esfera dona e troca (evita crash)
+  let t=TABS[esfera].find(x=>x.id===id);
+  if(!t){for(const e of Object.keys(TABS)){const cand=TABS[e].find(x=>x.id===id);if(cand){esfera=e;t=cand;montarSpheres();break;}}}
+  if(!t)return;
+  aba=id;montarTabs();
+  const meu=++_nav;
+  const v=$('view');v.innerHTML=spin();
+  try{const html=await t.render();if(meu!==_nav)return;v.innerHTML=`<div class="fade">${html}</div>`;}
+  catch(e){if(meu!==_nav)return;v.innerHTML=card(`<div class="warn">⚠ Falha: ${esc(e)}</div>`);}
+  window.scrollTo(0,0);
+}
+
+// ═══ GLOSSÁRIO ═══
+const TERMOS=[
+ ['🎯','Captura de órgão','Uma única empresa vence 80% ou mais das licitações de um órgão. Sinal de mercado fechado — merece verificação de propostas e sócios.'],
+ ['🔁','Rodízio de vencedores','2 ou 3 empresas se revezam nas vitórias de licitações PARECIDAS (mesmo tipo de objeto). Padrão clássico de combinação de propostas (OCDE).'],
+ ['🎭','Perdedora contumaz','Empresa que participa de várias licitações e NUNCA vence. Perfil de "proposta de cobertura": existe para dar aparência de disputa e legitimar o vencedor combinado.'],
+ ['👻','Empresa fantasma','Score 0-100 por 8 sinais objetivos (situação irregular na Receita, capital incompatível, endereço-ninho, aberta às vésperas do contrato, sanção…). "Sem cadastro" = ainda não consultada — não é nem regular nem fantasma.'],
+ ['🚫','Sancionada à época','Empresa punida no CEIS/CNEP (impedimento, suspensão, inidoneidade) cujo contrato/pagamento ocorreu DENTRO do período da punição — vedação legal direta.'],
+ ['📄','Certame','Cada licitação (disputa pública de compra) publicada no PNCP, o Portal Nacional de Contratações Públicas.'],
+ ['🏢','Órgão × Ente × Esfera','O ENTE é o dono do CNPJ (ex.: Estado do RJ); o ÓRGÃO é quem compra (ex.: Sec. de Saúde). A ESFERA (federal/estadual/municipal) vem do cadastro OFICIAL do PNCP — o painel separa Estado, Prefeitura do Rio, demais municípios e federais.'],
+ ['💳','Ordem Bancária (OB)','O pagamento de fato — dinheiro que saiu do caixa. Diferente de EMPENHO, que é só reserva de verba e pode ser cancelado.'],
+ ['🎖️','Comissionado','Servidor nomeado sem concurso (cargo de confiança). Cruzado com candidaturas (TSE) e com benefícios sociais para mapear aparelhamento e incompatibilidade de renda.'],
+ ['🎭','Laranja','Pessoa usada como sócia de fachada. Indício aqui: sócio de empresa que fatura com o Estado e ao mesmo tempo recebe benefício social de subsistência.'],
+ ['🟢','Frescor de fonte','Cada base tem um LED: verde = coletada há ≤3 dias; âmbar ≤10; vermelho = parada (investigar o coletor). Defasagem nunca mais passa despercebida.'],
+ ['⚖️','Indício ≠ prova','Tudo neste painel é INDÍCIO para apuração interna — não é acusação. Presunção de regularidade até verificação documental.'],
+];
+function glossario(){
+  const ov=$('ov'),sh=$('sheet');ov.classList.add('on');
+  sh.innerHTML=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>
+   <div style="font-weight:800;font-size:17px;margin-bottom:4px">ⓘ Entenda os termos</div>
+   <div class="muted" style="font-size:13px;margin-bottom:14px">O que cada conceito do painel significa, em linguagem simples.</div>
+   <div class="grid">`+TERMOS.map(([ic,t,d])=>card(`<div style="display:flex;gap:11px;align-items:flex-start"><span style="font-size:20px">${ic}</span><div><div style="font-weight:700">${t}</div><div class="muted" style="font-size:13px;margin-top:3px;line-height:1.55">${d}</div></div></div>`)).join('')+`</div>`;
+}
+
+// ═══ DOSSIÊ modal ═══
+function fecharDossie(){$('ov').classList.remove('on');}
+async function abrirDossie(cnpj,nome){
+  const dig=String(cnpj||'').replace(/\D/g,'');if(dig.length!==14)return;
+  const ov=$('ov'),sh=$('sheet');ov.classList.add('on');
+  sh.innerHTML=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>${spin('Montando dossiê de '+esc(nome||dig)+'…')}`;
+  const d=await J('/api/perfil?cnpj='+dig);
+  if(!d.ok){sh.innerHTML=`<span class="x" onclick="fecharDossie()">✕</span><div class="grab"></div>`+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);return;}
+  const per=d.pericia||{},ob=d.ob||{},pncp=d.pncp||{},sede=d.sede||{};
+  const sv=(sede.lat&&sede.lon)?`https://www.google.com/maps?layer=c&cbll=${sede.lat},${sede.lon}`:(sede.endereco?`https://www.google.com/maps/search/${encodeURIComponent(sede.endereco+', '+(sede.municipio||''))}`:null);
+  let h=`<span class="x" onclick="fecharDossie()">✕ fechar</span><div class="grab"></div>`;
+  h+=`<div style="display:flex;gap:12px;align-items:center"><span class="badge-grau">${per.grau||'⚪'}</span>
+      <div style="min-width:0"><div style="font-weight:800;font-size:17px;line-height:1.2">${esc(d.nome)}</div>
+      <div class="dim">${esc(d.cnpj_fmt)}${per.score!=null?` · score perícia ${per.score}`:''}</div></div></div>`;
+  h+=`<div class="mini">
+      <div class="b"><div class="v">${fmtRc(ob.total)}</div><div class="l">Pago pelo Estado (OB)</div></div>
+      <div class="b"><div class="v">${fmtN(ob.orgaos)}</div><div class="l">Órgãos pagadores</div></div>
+      <div class="b"><div class="v">${fmtN(pncp.certames||0)}</div><div class="l">Vitórias no PNCP</div></div>
+      <div class="b"><div class="v" style="color:${(per.indicios||0)?'var(--amber)':'#fff'}">${fmtN(per.indicios||0)}</div><div class="l">Indícios na perícia</div></div></div>`;
+  if(d.resumo)h+=card(`<div style="font-size:13.5px;color:var(--mut)">${esc(d.resumo).slice(0,600)}</div>`);
+  if((d.socios||[]).length)h+=`<div style="height:12px"></div>`+sec('Quadro societário (QSA)',d.socios.length)+card(`<table><tbody>${d.socios.map(s=>`<tr><td>${esc(s.nome)}${s.servidor?' <span class="tag rose">servidor</span>':''}</td><td class="dim">${esc(s.qualificacao||'')}</td></tr>`).join('')}</tbody></table>`);
+  if((d.orgaos||[]).length)h+=`<div style="height:12px"></div>`+sec('Órgãos que mais pagaram')+card(`<table><tbody>${d.orgaos.map(o=>`<tr><td>${esc(o.nome||o.ug)}</td><td>${fmtRc(o.total)}</td></tr>`).join('')}</tbody></table>`);
+  if(sede.endereco)h+=`<div style="height:12px"></div>`+sec('Sede / fachada')+card(`<div class="kv"><span class="k">Endereço</span><b class="right" style="max-width:64%">${esc(sede.endereco)}, ${esc(sede.municipio||'')}/${esc(sede.uf||'')}</b></div>${sede.status?`<div class="kv"><span class="k">Verificação</span><b>${esc(sede.status)}${sede.nivel?' · '+esc(sede.nivel):''}</b></div>`:''}${sede.residencial?`<div class="kv"><span class="k">Natureza</span><b style="color:var(--amber)">endereço residencial</b></div>`:''}${sv?`<div class="btns"><a class="btn ghost" href="${sv}" target="_blank">🛰️ Street View</a></div>`:''}`);
+  if((d.achados||[]).length)h+=`<div style="height:12px"></div>`+sec('Achados da perícia',d.achados.length)+`<div class="grid">`+d.achados.map(a=>card(`<div style="display:flex;gap:9px;align-items:flex-start"><span class="tag ${a.status==='CONFIRMADO'?'rose':a.status==='INDICIO'?'amber':a.status==='AFASTADO'?'green':'accent'}">${esc(a.status||'')}</span><div><div style="font-weight:650;font-size:13.5px">${esc(a.codigo||'')} — ${esc(a.titulo||'')}</div>${a.evidencia?`<div class="muted" style="font-size:12.5px;margin-top:3px">${esc(a.evidencia).slice(0,260)}</div>`:''}</div></div>`)).join('')+`</div>`;
+  h+=`<div style="height:14px"></div><div class="btns">
+      <button class="btn accent" onclick="fecharDossie();esfera='geral';aba='g_acoes';montarSpheres();montarTabs();ir('g_acoes').then(()=>{const e=$('ac-emp');if(e)e.value='${d.cnpj}';})">📄 Relatório+Lex</button>
+      <button class="btn ghost" onclick="verCruzamento('${d.cnpj}')">🔗 Cruzamento</button>
+      <a class="btn ghost" href="/graph?cnpj=${d.cnpj}" target="_blank">🕸️ Grafo</a></div>
+      <pre id="dos-cruz" style="margin-top:10px;display:none"></pre>`;
+  h+=`<div class="note">Dossiê do banco local — indício a verificar, presunção de legitimidade. CPF de sócio mascarado (LGPD).</div>`;
+  sh.innerHTML=h;
+}
+async function verCruzamento(cnpj){const out=$('dos-cruz');out.style.display='block';out.textContent='⏳ cruzando…';
+  const r=await J('/api/cruzamento?cnpj='+cnpj);if(r.erro){out.textContent='⚠ '+r.erro;return;}
+  const dd=r.dados||r;out.textContent=`co-endereço: ${(dd.coendereco||[]).length} · indícios: ${(dd.indicios||[]).length}\n`+(dd.socios||[]).slice(0,6).map(s=>'• '+(s.nome||s)).join('\n');}
+
+// ═══ FRESCOR DE FONTES (LEDs) ═══
+async function frescorHtml(){
+  const d=await J('/api/fontes/frescor');
+  if(!d.ok)return '';
+  const rows=(d.fontes||[]).map(f=>{
+    const idade=f.idade_dias==null?'sem dado':f.idade_dias===0?'hoje':f.idade_dias+'d atrás';
+    return `<div class="f"><span class="led ${f.estado}"></span><span class="nome">${esc(f.fonte)}</span><span class="idade">${idade}</span></div>`;}).join('');
+  return sec('Fontes & frescor')+card(`<div class="fresh">${rows}</div><div class="dim" style="margin-top:8px">🟢 ≤3 dias · 🟡 ≤10 · 🔴 parada — vermelho significa coletor quebrado: investigar, não ignorar.</div>`);
+}
+
+// ═══ ESTADO ═══
+async function renderPanoramaEstado(){
+  const [st,p,cj,sc]=await Promise.all([J('/status'),J('/api/compliance/painel'),J('/api/pncp/conluio?esfera=estado'),J('/api/intel/sancionadas?limite=1')]);
+  const a=p.alertas||{},o=p.obs||{};const coletaErro=/erro/i.test(p.ultima_coleta||'');
+  const nc=(cj.captura||[]).length+(cj.rodizio_vencedores||[]).length;
+  let h=cover('estado','Estado do Rio de Janeiro','Ordens Bancárias do SIAFE, concentração de fornecedores, sancionadas, perícias e conluio — somente órgãos ESTADUAIS (esfera oficial do PNCP; federais e municípios ficam em Transversal).','🏛️');
+  if(coletaErro)h+=`<div class="warn">⚠ Última coleta SIAFE falhou — <b>${esc(p.ultima_coleta)}</b>.</div>`;
+  h+=`<div class="grid g2">
+    ${kpi(fmtN(o.total),'Ordens Bancárias',null,'💳')}${kpi(fmtRc(o.valor_total),'Valor fiscalizado',null,'💰')}
+    ${kpi(fmtN(a.total??0),'Alertas ativos',(a.alta?'var(--rose)':'#fff'),'🚨')}${kpi(nc,'Conluio (estado)','var(--purple)','🕸️')}
+    ${kpi(fmtN(sc.n_a_epoca??'—'),'Sancionadas à época','var(--rose)','🚫')}${kpi(fmtN(a.alta??0),'🔴 Alta','var(--rose)')}
+    ${kpi(st.logged_in?'🟢 ok':'🔴 off','SIAFE · '+esc(st.exercicio||'—'))}${kpi(fmtN(o.hoje??0),'OBs hoje')}</div>`;
+  h+=`<div style="height:16px"></div>`+sec('Ir para')+`<div class="grid two">
+    ${card(`<div style="font-weight:700">🚫 Sancionadas contratadas</div><div class="muted" style="font-size:13px">CEIS/CNEP × pagamentos, com teste "à época"</div><div class="btns"><button class="btn accent" onclick="ir('e_sanc')">Abrir</button></div>`)}
+    ${card(`<div style="font-weight:700">⚖️ Perícias de fornecedor</div><div class="muted" style="font-size:13px">8.648 periciados, pesquisável</div><div class="btns"><button class="btn ghost" onclick="ir('e_pericias')">Abrir</button></div>`)}</div>`;
+  h+=`<div style="height:16px"></div>`+await frescorHtml();
+  h+=`<div style="height:14px"></div>`+card(`<div class="kv"><span class="k">Última atualização</span><b>${esc(p.atualizado||'—')}</b></div><div class="kv"><span class="k">Última coleta SIAFE</span><b style="${coletaErro?'color:#f0c078':''}">${esc(p.ultima_coleta||'—')}</b></div>`);
+  return h;
+}
+
+// ═══ SANCIONADAS (Estado e Transversal) ═══
+async function renderSancionadas(esf){
+  const d=await J('/api/intel/sancionadas?limite=100');
+  if(!d.ok)return sec('Sancionadas')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  let emp=d.empresas||[];
+  if(esf==='estado')emp=emp.filter(e=>e.estado.obs>0);
+  const aepoca=emp.filter(e=>e.estado.obs_durante>0||e.pncp.vitorias_durante>0);
+  let h=cover(esf==='estado'?'estado':'geral','Sancionadas que contratam com o poder público',
+    'Empresas punidas no CEIS/CNEP (impedimento, suspensão, inidoneidade) que receberam pagamento (OB SIAFE) ou venceram licitação (PNCP). <b>À ÉPOCA</b> = o ato ocorreu DENTRO da vigência da punição — vedação legal direta (Lei 14.133, art. 156).','🚫')+acoesAba('sancionadas');
+  h+=`<div class="grid g2">${kpi(fmtN(emp.length),'Empresas sancionadas c/ contrato',null,'🚫')}${kpi(fmtN(aepoca.length),'Com ato À ÉPOCA','var(--rose)','⚠️')}
+      ${kpi(fmtRc(aepoca.reduce((s,e)=>s+e.estado.valor_durante,0)),'Pago durante sanção (OB)','var(--rose)','💸')}${kpi(fmtN(aepoca.reduce((s,e)=>s+e.pncp.vitorias_durante,0)),'Vitórias durante sanção','var(--amber)','🏆')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#san-list .card')"></div>`;
+  h+=`<div id="san-list" class="grid">`+emp.slice(0,80).map(e=>{
+    const grave=e.estado.obs_durante>0||e.pncp.vitorias_durante>0;
+    const s0=(e.sancoes||[])[0]||{};
+    const ex=(e.estado.exemplos_durante||[])[0]||(e.pncp.exemplos_durante||[])[0];
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">${clk(e.cnpj,e.nome||e.cnpj)}<div class="dim">${esc(e.cnpj)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">${esc(s0.cadastro||'')} · ${esc((s0.categoria||'').slice(0,60))}<br>vigência ${esc(s0.data_inicio||'?')} → ${esc(s0.data_fim||'?')} · ${esc((s0.orgao||'').slice(0,50))}</div></div>
+      <div class="right">${grave?'<span class="sev alta">à época</span>':'<span class="sev baixa">fora da vigência</span>'}
+      <div style="margin-top:6px" class="num"><b>${fmtRc(e.estado.valor_durante+e.pncp.valor_durante||e.estado.valor+e.pncp.valor)}</b></div>
+      <div class="dim">${grave?'durante a sanção':'total recebido'}</div></div></div>
+      ${grave&&ex?leitura(`Exemplo: ${ex.ob?('OB <b>'+esc(ex.ob)+'</b> paga em '):'certame homologado em '}<b>${esc(ex.data)}</b> (${fmtRc(ex.valor)}) — a sanção ${esc(ex.sancao)} vigia de ${esc(ex.vigencia)}. Pagamento/contratação DENTRO do período vedado.`):''}`,grave?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
+// ═══ FRACIONAMENTO (Estado) ═══
+async function renderFracionamento(){
+  const d=await J('/api/intel/fracionamento?limite=120');
+  if(!d.ok)return sec('Fracionamento')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const g=d.grupos||[];
+  let h=cover('estado','Fracionamento de despesa — fatiar para não licitar',
+    'Mesmo favorecido, mesma unidade gestora e mesmo mês, com várias Ordens Bancárias <b>coladas no teto de dispensa</b> de licitação. É o padrão de dividir a compra para caber embaixo do limite e não licitar (Lei 14.133, art. 75 §1º). Quanto maior a <b>concentração</b> (% de OBs coladas no teto), mais deliberado o indício.','✂️')+acoesAba('fracionamento');
+  const alta=g.filter(x=>x.concentracao>=0.5).length;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Grupos sinalizados','var(--amber)','✂️')}${kpi(fmtN(alta),'Concentração ≥50%','var(--rose)','🎯')}
+      ${kpi(fmtRc(g.reduce((s,x)=>s+x.soma,0)),'Soma dos grupos exibidos',null,'💰')}${kpi(g.length?Math.round(Math.max(...g.map(x=>x.concentracao))*100)+'%':'—','Pior concentração','var(--rose)')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por favorecido, UG ou mês…" oninput="filtrar(this,'#frac-list .card')"></div>`;
+  h+=`<div id="frac-list" class="grid">`+g.map(x=>{
+    const pct=Math.round(x.concentracao*100);
+    const cor=pct>=60?'var(--rose)':pct>=40?'var(--amber)':'var(--tx2)';
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">${clk(x.credor,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · UG ${esc(String(x.ug_emitente))} · ${esc(x.mes)}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:19px;color:${cor}">${pct}%</div><div class="dim">colado no teto</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">${x.n_colado} de ${x.n} OBs em 85–100% do teto (R$ ${Number(x.teto).toLocaleString('pt-BR',{maximumFractionDigits:0})})</span><b>${fmtRc(x.soma)}</b></div>
+      ${leitura(`${x.n_colado} das ${x.n} OBs deste favorecido para a UG ${esc(String(x.ug_emitente))} em ${esc(x.mes)} ficaram logo abaixo do teto de dispensa. Somadas dão ${fmtRc(x.soma)} — acima do limite, o que exigiria licitação. Cruzar com os empenhos/processos do mês.`)}`,
+      pct>=50?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
+// ═══ ADITIVOS (Estado) ═══
+async function renderAditivos(){
+  const d=await J('/api/intel/aditivos?limite=120');
+  if(!d.ok)return sec('Aditivos')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('estado','Aditivos que estouram o limite legal',
+    'Contrato cujo valor cresceu <b>acima do limite de acréscimo</b> (25% em regra; 50% p/ reforma — Lei 14.133 art. 125), ou com <b>change orders em série</b> (≥3 aditivos, red-flag OCDE/Banco Mundial de fraude por aditivos).','📑')+acoesAba('aditivos');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_estoura_teto),'Estouram o teto legal','var(--rose)','🚨')}${kpi(fmtN(d.n_serie),'≥3 aditivos (série)','var(--amber)','📑')}
+      ${kpi(fmtN(d.contratos_analisados),'Contratos analisados',null,'📄')}${kpi(a.length?'+'+a[0].pct+'%':'—','Pior acréscimo','var(--rose)')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por fornecedor, órgão ou objeto…" oninput="filtrar(this,'#adt-list .card')"></div>`;
+  h+=`<div id="adt-list" class="grid">`+a.map(x=>{
+    const forte=x.estoura_teto;
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${clk(x.cnpj,x.fornecedor||x.cnpj_fmt)} ${forte?`<span class="tag rose">+${x.pct}%</span>`:`<span class="tag amber">${x.num_aditivos} aditivos</span>`}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao||'—').slice(0,46))}</div>
+      <div class="dim" style="margin-top:2px">${esc((x.objeto||'').slice(0,90))}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;color:${forte?'var(--rose)':'var(--tx2)'}">${forte?'+'+x.pct+'%':x.num_aditivos+'×'}</div><div class="dim">${forte?'acréscimo':'aditivos'}</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">R$ inicial ${fmtRc(x.valor_inicial)} → global ${fmtRc(x.valor_global)}${x.acrescimo_real!=null?` · acréscimo real ${fmtRc(x.acrescimo_real)}`:''}</span><b>teto ${x.teto_pct}%</b></div>
+      ${leitura(forte?`Contrato de <b>${esc(x.fornecedor||'—')}</b> saiu de ${fmtRc(x.valor_inicial)} para ${fmtRc(x.valor_global)} — <b>+${x.pct}%</b>, acima do teto de ${x.teto_pct}% de acréscimo (${x.num_aditivos} aditivo(s)). ${x.acrescimo_real!=null?'Acréscimo classificado no termo: '+fmtRc(x.acrescimo_real)+'.':'Separar reajuste do acréscimo no termo aditivo.'}`:`${x.num_aditivos} aditivos no mesmo contrato de ${esc(x.fornecedor||'—')} (${fmtRc(x.valor_global)}). Aditamento em série é red-flag de fraude — verificar se cada termo tem justificativa e se somados estouram o limite.`)}`,
+    forte?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
+// ═══ SOBREPREÇO (Estado) ═══
+async function renderSobrepreco(){
+  const d=await J('/api/intel/sobrepreco?limite=120');
+  if(!d.ok)return sec('Sobrepreço')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('estado','Sobrepreço — pagou muito acima da mediana',
+    'Mesmo item (descrição normalizada) comprado por vários órgãos: sinaliza quem pagou o preço <b>unitário</b> muito acima da mediana do grupo (≥ 2× a mediana e fora de mediana+3·MAD, medida robusta a outliers). Fonte: preço unitário homologado do PNCP.','📈')+acoesAba('sobrepreco');
+  if(!a.length){
+    h+=`<div class="warn" style="margin-top:12px">⏳ Base de preços unitários em formação: ${fmtN(d.itens_com_preco)} itens com preço, ${fmtN(d.grupos_comparaveis)} grupos comparáveis (≥5 compras do mesmo item). O backfill do PNCP popula o preço unitário item a item; a aba acende conforme a cobertura cresce.</div>`;
+    return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
   }
-  if(cart.length){
-    html += `<div style="height:16px"></div>`+sec('var(--purple)','Maior concentração de fornecedor (top share por UG)')+
-      card(barras(cart.map(u=>({lab:`${(u.ug_nome||u.ug||'').slice(0,22)}`, val:`${u.top_share}%`,
-        pctw:(u.top_share/maxShare)*100, cor:u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':null}))));
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Itens com sobrepreço','var(--rose)','📈')}${kpi(fmtN(d.grupos_comparaveis),'Grupos comparáveis',null,'🧺')}
+      ${kpi(a.length?a[0].razao+'×':'—','Pior caso (× mediana)','var(--rose)')}${kpi(fmtRc(a.reduce((s,x)=>s+(x.sobrepreco_est*(x.amostra?1:1)),0)),'Δ acima da mediana (unit.)',null,'💸')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#sob-list .card')"></div>`;
+  h+=`<div id="sob-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao||'—').slice(0,48))}${x.municipio?' · '+esc(x.municipio):''}</div>
+      <div class="dim" style="margin-top:2px">venc.: ${clk(x.fornecedor_cnpj,x.fornecedor||'—')}${x.data?' · '+esc(x.data):''}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.razao}×</div><div class="dim">a mediana</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">Pagou <b style="color:var(--rose)">${fmtR(x.preco)}</b> · mediana ${fmtR(x.mediana)} (n=${x.amostra})</span><b>z ${x.z_robusto}</b></div>
+      ${leitura(`Este órgão pagou <b>${fmtR(x.preco)}</b> por unidade de "${esc(x.item)}", enquanto a mediana de ${x.amostra} compras do mesmo item foi <b>${fmtR(x.mediana)}</b> — <b>${x.razao}× mais caro</b> (z robusto ${x.z_robusto}). Sobrepreço unitário estimado: ${fmtR(x.sobrepreco_est)}. Confirmar marca/especificação no termo de referência.`)}`,
+    'hl')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
+// ═══ ESCALADA DE PREÇO (mesmo fornecedor sobe o preço do mesmo item no tempo) ═══
+async function renderEscalada(){
+  const d=await J('/api/intel/escalada?limite=120');
+  if(!d.ok)return sec('Escalada')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('estado','Escalada de preço — o mesmo fornecedor sobe o preço no tempo','Diferente do sobrepreço (que compara entre órgãos), aqui é <b>longitudinal</b>: o <b>mesmo fornecedor</b> vende o <b>mesmo item</b> ao poder público por preços cada vez <b>maiores</b> (≥3 compras, ≥45 dias, alta ≥3×). É o padrão de <b>preço dirigido/captura</b> — o fornecedor aprende que o comprador aceita aumentos. Cruza com a mediana de mercado dos outros fornecedores.','📈')+acoesAba('escalada');
+  if(!a.length){
+    h+=`<div class="warn" style="margin-top:12px">⏳ Sem escalada detectada na janela atual de preços do PNCP — a base de preço unitário ainda é estreita no tempo. Acende conforme o histórico cresce.</div>`;
+    return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
   }
-  html += `<div style="height:16px"></div>`+
-    card(`<div class="kv"><span class="k">Última atualização</span><b>${p.atualizado||'—'}</b></div>
-          <div class="kv"><span class="k">Última coleta</span><b style="${coletaErro?'color:#f3cf6a':''}">${p.ultima_coleta||'—'}</b></div>`);
-  return html;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Escaladas detectadas','var(--rose)','📈')}${kpi(a.filter(x=>x.final_vs_mercado&&x.final_vs_mercado>=2).length,'Também acima do mercado','var(--rose)','🎯')}
+      ${kpi(a.length?a[0].razao+'×':'—','Maior escalada','var(--rose)')}${kpi(a.length?a[0].span_dias+'d':'—','Janela do pior caso',null,'📅')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por item ou fornecedor…" oninput="filtrar(this,'#escal-list .card')"></div>`;
+  h+=`<div id="escal-list" class="grid">`+a.map(x=>{
+    const serie=(x.serie||[]).map(s=>`<span title="${esc(s.orgao||'')} ${esc(s.data)}">${fmtR(s.preco)}</span>`).join(' <span class="dim">→</span> ');
+    const mkt=x.final_vs_mercado?`<span class="tag rose">${x.final_vs_mercado}× o mercado</span>`:'';
+    return card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''}</div>
+      <div class="dim" style="margin-top:2px">${clk(x.fornecedor_cnpj,x.fornecedor||'—')} · ${x.n_compras} compras em ${x.span_dias} dias ${mkt}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.razao}×</div><div class="dim">${fmtR(x.preco_inicial)} → ${fmtR(x.preco_final)}</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">série: ${serie}</span></div>
+      ${leitura(`<b>${esc(x.fornecedor)}</b> vendeu "${esc(x.item)}" começando em <b>${fmtR(x.preco_inicial)}</b> e chegando a <b>${fmtR(x.preco_final)}</b> (<b>${x.razao}× mais caro</b>) em ${x.span_dias} dias${x.final_vs_mercado?`, hoje <b>${x.final_vs_mercado}× a mediana de mercado</b> do item`:''}. Nenhum reajuste legítimo triplica preço nessa janela — indício de preço dirigido. Confirmar especificação no termo de referência.`)}`,
+    'hl');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
 }
 
-async function renderAlertas(){
-  const p=await J('/api/compliance/painel');
-  const lst=p.lista_alertas||[];
-  if(!lst.length) return sec('var(--green)','Auditoria')+card('<div class="muted">Sem alertas no momento. 🟢</div>');
-  return sec('var(--rose)','Auditoria · alertas')+
-    `<div class="grid">`+lst.map(al=>card(
-      `<div style="display:flex;gap:11px;align-items:flex-start">
-         <span class="sev ${al.severidade||'baixa'}">${al.severidade||'—'}</span>
-         <div><div style="font-weight:650">${al.titulo||al.tipo||'Alerta'}</div>
-         ${al.descricao?`<div class="muted" style="font-size:13px;margin-top:3px">${al.descricao}</div>`:''}</div>
-       </div>`)).join('')+`</div>`;
+// ═══ COMPARADOR DE PREÇOS (quem paga mais/menos pelo mesmo item) ═══
+let _compView='buscar', _compTermo='', _compGrupo=null;
+async function renderComparador(){
+  let h=cover('estado','Comparador de preços — quem paga mais e quem paga menos','Para o <b>mesmo item</b> (aluguel de carro, medicamento, refeição…), quanto cada <b>órgão</b> paga e quanto cada <b>fornecedor</b> cobra. E o ranking transversal: quais órgãos <b>gastam melhor</b> o recurso público e quais fornecedores são <b>caros ou baratos</b> vs o mercado. Fonte: preço unitário homologado do PNCP.','💰');
+  h+=`<div class="chips" style="margin:6px 0 14px">
+    <span class="chip ${_compView==='economia'?'on':''}" onclick="_compView='economia';ir('e_comp')">💵 Economia possível</span>
+    <span class="chip ${_compView==='dossie'?'on':''}" onclick="_compView='dossie';ir('e_comp')">🚨 Caro + fornecedor suspeito</span>
+    <span class="chip ${_compView==='buscar'?'on':''}" onclick="_compView='buscar';ir('e_comp')">🔎 Buscar item</span>
+    <span class="chip ${_compView==='orgaos'?'on':''}" onclick="_compView='orgaos';ir('e_comp')">🏛️ Órgãos que gastam melhor</span>
+    <span class="chip ${_compView==='forn'?'on':''}" onclick="_compView='forn';ir('e_comp')">🏢 Fornecedores caros/baratos</span></div>`;
+  if(_compView==='economia')return h+await _compEconomia();
+  if(_compView==='dossie')return h+await _compDossie();
+  if(_compView==='orgaos')return h+await _compOrgaos();
+  if(_compView==='forn')return h+await _compForn();
+  return h+await _compBuscar();
 }
-
-async function renderSiafe(){
-  const s=await J('/api/siafe/stats');
-  if(!s.ok) return sec('var(--amber)','SIAFE')+card('<div class="muted">SIAFE indisponível.</div>');
-  const linhas=(s.por_ano||[]).filter(x=>x.valor>0)
-    .map(x=>`<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join('');
-  return sec('var(--amber)','SIAFE · ordens bancárias')+
-   `<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas')}${kpi(fmtRc(s.valor_total),'Valor total')}</div>
-    <div style="height:12px"></div>
-    ${card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`)}`;
+async function _compBuscar(){
+  let h=`<div class="search"><span class="mag">🔎</span><input id="comp-in" placeholder="digite o item: aluguel carro, medicamento, refeição, combustível…" value="${esc(_compTermo)}" onkeydown="if(event.key==='Enter'){_compTermo=this.value;_compGrupo=null;ir('e_comp')}"></div>
+    <div class="dim" style="margin:6px 0">Enter para buscar. Exemplos: <a onclick="_compTermo='locacao veiculo';_compGrupo=null;ir('e_comp')">locação veículo</a> · <a onclick="_compTermo='combustivel';_compGrupo=null;ir('e_comp')">combustível</a> · <a onclick="_compTermo='refeicao';_compGrupo=null;ir('e_comp')">refeição</a> · <a onclick="_compTermo='reagente';_compGrupo=null;ir('e_comp')">reagente</a></div>`;
+  if(_compGrupo){
+    const d=await J('/api/comparador/item?grupo='+encodeURIComponent(_compGrupo.grupo)+'&unidade='+encodeURIComponent(_compGrupo.un||''));
+    if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+    h+=`<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir('e_comp')">← voltar à busca</a></div>`;
+    h+=`<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida||'')}</span></h3>`;
+    h+=`<div class="grid g2">${kpi(fmtR(d.mediana_geral),'Mediana do item','var(--amber)','⚖️')}${kpi(fmtN(d.n_orgaos),'Órgãos',null,'🏛️')}${kpi(fmtN(d.n_fornecedores),'Fornecedores',null,'🏢')}${kpi(fmtN(d.n_compras),'Compras',null,'🧾')}</div>`;
+    const linha=(x,lbl)=>{const c=x.vs_geral>=1.5?'var(--rose)':(x.vs_geral<=0.75?'#4ade80':'var(--amber)');
+      return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">n=${x.n}</div></div>
+        <div class="right"><div class="num" style="font-weight:800;color:${c}">${fmtR(x.mediana)}</div><div class="dim">${x.vs_geral}× a mediana</div></div></div>`,x.vs_geral>=1.5?'hl':'');};
+    h+=sec('Órgãos — do que paga MAIS ao que paga MENOS')+`<div class="grid">`+d.orgaos.map(x=>linha(x)).join('')+`</div>`;
+    h+=sec('Fornecedores — do mais caro ao mais barato')+`<div class="grid">`+d.fornecedores.slice(0,30).map(x=>linha(x)).join('')+`</div>`;
+    return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+  }
+  if(!_compTermo)return h;
+  const d=await J('/api/comparador/buscar?termo='+encodeURIComponent(_compTermo));
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  if(!d.grupos.length)return h+card(`<div class="warn">Nenhum grupo comparável para "${esc(_compTermo)}". Tente outro termo (a base é o preço unitário do PNCP).</div>`);
+  h+=`<div class="dim" style="margin-bottom:8px">${d.n} grupo(s) — clique para ver quem paga mais/menos:</div>`;
+  h+=`<div class="grid">`+d.grupos.map(g=>card(
+    `<div onclick='_compGrupo=${JSON.stringify({grupo:g.grupo,un:_unOf(g)})};ir("e_comp")' style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <div style="min-width:0"><div style="font-weight:600">${esc(g.exemplo)} <span class="dim">/ ${esc(g.unidade_medida||'')}</span></div>
+      <div class="dim" style="font-size:12.5px">${g.n_orgaos} órgãos · ${g.n_compras} compras · mediana ${fmtR(g.mediana)}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;color:${g.dispersao>=5?'var(--rose)':'var(--amber)'}">${g.dispersao}×</div><div class="dim">${fmtR(g.min)}–${fmtR(g.max)}</div></div></div>`,
+    g.dispersao>=10?'hl':'')).join('')+`</div>`;
+  return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
-
-async function renderSweeps(){
-  const [d,slo]=await Promise.all([J('/api/sweeps/status'),J('/api/pipelines').catch(()=>null)]);
-  const pausado=d.pausado;
-  const badge=pausado?'<span class="pill off">pausado</span>'
-    :(d.sei?.rodando?'<span class="pill on">rodando</span>':'<span class="pill on">agendado</span>');
-  return sec('var(--blue)','Sweeps SEI / SIAFE')+
-   card(`<div class="kv"><span class="k">Estado ${badge}</span><b>${pausado?'pausado':'ativo'}</b></div>
-         <div class="kv"><span class="k">SEI — processos lidos</span><b>${fmtN(d.sei?.feitos)}</b></div>
-         <div class="kv"><span class="k">SIAFE 2 — OBs orçamentárias</span><b>${fmtN(d.siafe?.ob_orcamentaria)}</b></div>`)+
-   (d.sei?.ultima?`<div style="height:12px"></div><pre>${(d.sei.ultima||'').replace(/\*\*/g,'')}</pre>`:'')+
-   (slo&&slo.ok?`<div style="height:12px"></div>`+sec(slo.ruins.length?'var(--red)':'var(--green)','SLO de frescor — '+(slo.ruins.length?slo.ruins.length+' etapa(s) STALE':slo.total+'/'+slo.total+' frescos'))+
-     card(`<table><thead><tr><th>Etapa</th><th>Grupo</th><th>Idade</th><th>SLO</th></tr></thead><tbody>${
-       slo.itens.map(i=>`<tr><td>${{ok:'✅',pausado:'⏸',stale:'🔴',ausente:'⚠️'}[i.status]||'❔'} ${i.nome}</td><td class="muted">${i.grupo}</td><td>${i.idade_h==null?'—':i.idade_h+'h'}</td><td class="muted">${i.slo_h}h</td></tr>`).join('')
-     }</tbody></table>`):'')+
-   `<div class="btns">
-      <button class="btn red" onclick="sweep('pausar')">⏸ Pausar</button>
-      <button class="btn green" onclick="sweep('retomar')">▶ Retomar</button>
-      <button class="btn ghost" onclick="ir('sweeps')">↻ Atualizar</button>
+function _unOf(g){return '';}  // unidade já embutida no grupo; comparar aceita todas as unidades do grupo
+async function _compOrgaos(){
+  const d=await J('/api/comparador/orgaos');
+  if(!d.ok)return card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const linha=(x,bom)=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+    <div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">${x.n_itens} itens comparáveis · ${x.n_compras} compras</div></div>
+    <div class="right"><div class="num" style="font-weight:800;color:${bom?'#4ade80':'var(--rose)'}">${x.razao_mediana}×</div><div class="dim">${bom?'abaixo':'acima'} do mercado</div></div></div>`,!bom?'hl':'');
+  let h=`<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
+  h+=sec('🟢 Gastam MELHOR (pagam abaixo do mercado)')+`<div class="grid">`+(d.melhores||[]).slice(0,20).map(x=>linha(x,true)).join('')+`</div>`;
+  h+=sec('🔴 Pagam ACIMA do mercado (auditar preços)')+`<div class="grid">`+(d.piores||[]).slice(0,20).map(x=>linha(x,false)).join('')+`</div>`;
+  return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+}
+async function _compEconomia(){
+  const d=await J('/api/comparador/economia');
+  if(!d.ok)return card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  let h=`<div style="text-align:center;margin:10px 0 18px">
+    <div class="dim" style="font-size:13px;letter-spacing:.5px">ECONOMIA POTENCIAL IDENTIFICADA (itens comparáveis do PNCP)</div>
+    <div style="font-weight:800;font-size:46px;color:#4ade80;line-height:1.1;margin:4px 0">${fmtRc(d.economia_total)}</div>
+    <div class="dim">se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item · ${fmtN(d.n_compras_acima_mediana)} compras acima da mediana · o número cresce conforme a base de preços do PNCP é coletada</div></div>`;
+  const bloco=(titulo,arr,campo,fn)=>{
+    let s=sec(titulo)+`<div class="grid">`;
+    s+=(arr||[]).slice(0,12).map(x=>card(
+      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div style="min-width:0;flex:1"><div style="font-weight:600">${fn(x)}</div><div class="dim" style="font-size:12px">${x.n} compra(s) acima da mediana</div></div>
+        <div class="right"><div class="num" style="font-weight:800;color:#4ade80">${fmtRc(x.economia)}</div><div class="dim">economizável</div></div></div>`)).join('');
+    return s+`</div>`;
+  };
+  // destaque: sobrepreço pago a fornecedor JURIDICAMENTE VEDADO (o número mais forte)
+  h+=await _blocoVedada();
+  h+=bloco('🏛️ Onde a economia está — por ÓRGÃO', d.por_orgao, 'orgao', x=>esc(x.orgao||'—'));
+  h+=bloco('📦 Por ITEM', d.por_item, 'item', x=>esc(x.item||'—')+(x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''));
+  h+=bloco('🏢 Por FORNECEDOR (quem cobrou o excedente)', d.por_fornecedor, 'fornecedor', x=>x.fornecedor_cnpj?clk(x.fornecedor_cnpj,x.fornecedor):esc(x.fornecedor||'—'));
+  return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+}
+async function _blocoVedada(){
+  const d=await J('/api/comparador/vedada');
+  if(!d.ok||!d.economia_vedada_total)return '';
+  const ABR={total:'inidôneas (veda todos)',ente:'impedidas no ente',orgao:'órgão'};
+  let h=`<div class="card hl" style="border-left:4px solid var(--rose);margin:8px 0 18px">
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap">
+      <div style="min-width:0"><div style="font-weight:800;font-size:17px">⚖️ Destes, pago a fornecedor JURIDICAMENTE VEDADO</div>
+      <div class="dim" style="margin-top:3px">Sobrepreço pago a empresa que estava <b>proibida de contratar</b> com aquele ente, <b>vigente à época</b> — o alvo mais forte. Por abrangência: ${Object.entries(d.por_abrangencia).filter(([k,v])=>v>0).map(([k,v])=>`${ABR[k]||k} ${fmtRc(v)}`).join(' · ')||'—'}.</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:30px;color:var(--rose)">${fmtRc(d.economia_vedada_total)}</div><div class="dim">${d.n_compras} compra(s) · ${d.n_fornecedores} fornecedor(es)</div></div>
     </div>`;
+  h+=`<div class="grid" style="margin-top:10px">`+(d.por_fornecedor||[]).slice(0,8).map(f=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <div style="min-width:0;flex:1">${clk(f.fornecedor_cnpj,f.fornecedor||'—')} <span class="tag ${f.abrangencia==='total'?'rose':'amber'}">${esc(ABR[f.abrangencia]||f.abrangencia)}</span>
+      <div class="dim" style="font-size:12px">${(f.exemplos||[]).slice(0,1).map(e=>esc(e.item)+' — pagou '+fmtR(e.preco)+' vs mediana '+fmtR(e.mediana)+' @ '+esc((e.orgao||'').slice(0,30))).join('')}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;color:var(--rose)">${fmtRc(f.economia_vedada)}</div></div></div>`)).join('')+`</div></div>`;
+  return h;
 }
-async function sweep(acao){
-  if(acao==='pausar' && !confirm('Pausar TODOS os sweeps?')) return;
-  await J('/api/sweeps/'+acao,{method:'POST'});
-  setTimeout(()=>ir('sweeps'),500);
+async function _compDossie(){
+  const d=await J('/api/comparador/dossie');
+  if(!d.ok)return card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=`<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Casos caro + suspeito','var(--rose)','🚨')}${kpi(fmtN(d.n_sancionada),'Fornecedor SANCIONADO','var(--rose)','⚖️')}
+      ${kpi(a.length?a[0].vs_mediana+'×':'—','Pior caso (× mediana)','var(--rose)')}${kpi(a.filter(x=>x.sinais.length>=2).length,'Com ≥2 sinais',null,'🎯')}</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#dossie-list .card')"></div>`;
+  h+=`<div id="dossie-list" class="grid">`+a.map(x=>{
+    const ABR={total:'toda a Adm.',ente:'ente federativo',orgao:'órgão sancionador'};
+    const tags=(x.sinais||[]).map(s=>{const ab=s.abrangencia?` (${ABR[s.abrangencia]||s.abrangencia})`:'';
+      return `<span class="tag ${s.sinal==='sancionada'?'rose':'amber'}">${esc(s.sinal)}${esc(ab)}</span>`;}).join(' ');
+    return card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''}</div>
+      <div class="dim" style="margin-top:2px">venc.: ${clk(x.fornecedor_cnpj,x.fornecedor||'—')} · ${esc((x.orgao||'').slice(0,42))}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">${tags}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.vs_mediana}×</div><div class="dim">${fmtR(x.preco)} vs ${fmtR(x.mediana)}</div></div></div>
+      ${leitura(`O órgão <b>${esc(x.orgao)}</b> pagou <b>${fmtR(x.preco)}</b> por "${esc(x.item)}" — <b>${x.vs_mediana}× a mediana</b> de mercado (${fmtR(x.mediana)}) — ao fornecedor <b>${esc(x.fornecedor)}</b>, que é ${esc((x.sinais||[]).map(s=>s.sinal).join(', '))} por fonte INDEPENDENTE do preço. Preço fora da curva + fornecedor marcado = alvo forte para auditoria. Confirmar o termo de referência.`)}`,
+    'hl');}).join('')+`</div>`;
+  return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+}
+async function _compForn(){
+  const d=await J('/api/comparador/fornecedores');
+  if(!d.ok)return card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const linha=(x,caro)=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+    <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">${x.n_itens} itens · ${x.n_compras} compras</div></div>
+    <div class="right"><div class="num" style="font-weight:800;color:${caro?'var(--rose)':'#4ade80'}">${x.razao_mediana}×</div><div class="dim">${caro?'acima':'abaixo'} do mercado</div></div></div>`,caro?'hl':'');
+  let h=`<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
+  h+=sec('🔴 Mais CAROS (cobram acima do mercado)')+`<div class="grid">`+(d.mais_caros||[]).slice(0,20).map(x=>linha(x,true)).join('')+`</div>`;
+  h+=sec('🟢 Mais BARATOS (cobram abaixo do mercado)')+`<div class="grid">`+(d.mais_baratos||[]).slice(0,20).map(x=>linha(x,false)).join('')+`</div>`;
+  return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
 
-// ── Validador de fachada (revisão humana 1-a-1) ──
-let _valLista=[], _valIdx=0;
+// ═══ RISCOS (Transversal): fantasmas · sancionadas · nunca ganham ═══
+let _riscoView='fantasmas';
+async function renderRiscos(){
+  const chips=`<div class="chips">
+    <span class="chip ${_riscoView==='fantasmas'?'on':''}" onclick="_riscoView='fantasmas';ir('g_riscos')">👻 Fantasmas</span>
+    <span class="chip ${_riscoView==='sanc'?'on':''}" onclick="_riscoView='sanc';ir('g_riscos')">🚫 Sancionadas</span>
+    <span class="chip ${_riscoView==='cover'?'on':''}" onclick="_riscoView='cover';ir('g_riscos')">🎭 Nunca ganham</span></div>`;
+  if(_riscoView==='sanc')return chips+acoesAba('sancionadas')+(await renderSancionadas(''));
+  if(_riscoView==='cover'){
+    const d=await J('/api/intel/perdedoras');
+    let h=cover('geral','Perdedoras contumazes — participam e NUNCA vencem',
+      'Empresa que compete "sempre" e nunca vence é o perfil clássico de <b>proposta de cobertura</b> (OCDE bid rigging): existe para dar aparência de disputa e legitimar o vencedor combinado. Quanto mais vezes perde junto do MESMO vencedor, mais forte o indício.','🎭')+chips+acoesAba('perdedoras');
+    if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+    const cov=d.cobertura_extracao||{};
+    h+=`<div class="grid g2">${kpi(fmtN(d.n),'Perdedoras contumazes','var(--amber)','🎭')}${kpi(fmtN(cov.atas_entrada),'Atas no corpus',null,'📄')}${kpi(fmtN(cov.atas_avaliaveis),'Atas avaliáveis',null,'✅')}${kpi(fmtN(cov.certames_no_grafo),'Certames no grafo',null,'🕸️')}</div>`;
+    if((cov.atas_avaliaveis||0)<50)h+=`<div class="warn" style="margin-top:12px">⏳ Cobertura ainda pequena: só ${fmtN(cov.atas_avaliaveis)} de ${fmtN(cov.atas_entrada)} atas têm participantes+resultado extraíveis. O PNCP publica apenas o vencedor; os perdedores vêm do texto das atas — a extração é conservadora de propósito (zero falso-positivo) e cresce com o corpus.</div>`;
+    h+=`<div class="grid" style="margin-top:12px">`+(d.perdedoras||[]).map(p=>card(
+      `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(p.cnpj,p.nome!=='—'?p.nome:p.cnpj_fmt)}<div class="dim">${esc(p.cnpj_fmt)}</div></div>
+       <div class="right"><div class="num" style="font-weight:800;font-size:19px;color:var(--amber)">${p.participou}×</div><div class="dim">participou · 0 vitórias</div></div></div>
+       ${(p.perde_junto_com||[]).length?leitura('Perde junto com: '+(p.perde_junto_com||[]).map(x=>`<b>${esc(x.nome!=='—'?x.nome:x.cnpj)}</b> (${x.vezes}×)`).join(' · ')+' — o co-participante mais frequente é o beneficiário provável da cobertura.'):''}`)).join('')+`</div>`;
+    h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+    return h;
+  }
+  // fantasmas
+  const d=await J('/api/intel/fantasmas?limite=60');
+  let h=cover('geral','Radar de empresas-fantasma',
+    'Score 0-100 por <b>8 sinais objetivos</b> (situação irregular na Receita, capital incompatível com o que recebe, endereço-ninho, endereço residencial, aberta às vésperas do 1º contrato, sócio único + capital baixo, CNAE incompatível, sanção). Aplicado ao conjunto-alvo: vencedoras de captura/rodízio, perdedoras contumazes, sancionadas e top favorecidos.','👻')+chips+acoesAba('fantasmas');
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const emp=(d.empresas||[]).filter(e=>e.classificacao!=='sem_cadastro');
+  h+=`<div class="grid g2">${kpi(fmtN(d.total_alvo),'Empresas no alvo',null,'🎯')}${kpi(fmtN(emp.filter(e=>e.classificacao==='alto').length),'Risco ALTO','var(--rose)','🔴')}
+      ${kpi(fmtN(emp.filter(e=>e.classificacao==='medio').length),'Risco médio','var(--amber)','🟡')}${kpi(fmtN(d.sem_cadastro),'Sem cadastro ainda','var(--dim)','⏳')}</div>`;
+  if(d.sem_cadastro>0)h+=`<div class="warn" style="margin-top:12px">⏳ <b>${fmtN(d.sem_cadastro)}</b> empresas do alvo ainda sem cadastro da Receita na base (fila de enriquecimento). "Sem cadastro" NÃO significa regular — significa não-avaliada.</div>`;
+  h+=`<div class="grid" style="margin-top:12px">`+emp.slice(0,50).map(e=>{
+    const cor=e.classificacao==='alto'?'var(--rose)':e.classificacao==='medio'?'var(--amber)':'var(--green)';
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">${clk(e.cnpj,e.razao_social||e.cnpj)}<div class="dim">${esc(e.cnpj)} · veio de: ${esc(e.origem||'—')}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${e.score??'—'}</div><div class="dim">/100 ${esc(e.classificacao)}</div></div></div>
+      ${(e.sinais||[]).length?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${e.sinais.map(s=>`<span class="tag ${e.classificacao==='alto'?'rose':'amber'}" title="${esc(s.detalhe||'')}">${esc(s.id)} +${s.peso}</span>`).join('')}</div>`:''}
+      ${(e.sinais||[]).length?leitura(esc((e.sinais[0]||{}).detalhe||'')+((e.sinais||[]).length>1?' — e mais '+(e.sinais.length-1)+' sinal(is); toque no nome para o dossiê completo.':'')):''}`,e.classificacao==='alto'?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
+// ═══ PREFEITURA DO RIO ═══
+async function renderPanoramaPref(){
+  const [cj,cc,bv]=await Promise.all([J('/api/pncp/conluio?esfera=prefeitura'),J('/api/pcrj/comissionados_candidatos?limite=1'),J('/api/pcrj/beneficios_vinculo')]);
+  const cov=cj.cobertura||{},cap=cj.captura||[],rod=cj.rodizio_vencedores||[];
+  let h=cover('prefeitura','Prefeitura do Rio de Janeiro','Licitações do MUNICÍPIO do Rio pelo PNCP (esfera oficial), folha de comissionados, candidaturas e benefícios sociais. Os demais municípios do RJ ficam em Transversal → Conluio → chip "Municípios".','🏙️');
+  h+=`<div class="grid g2">
+    ${kpi(fmtN(cov.certames_com_resultado),'Certames do município',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢')}
+    ${kpi(cap.length+rod.length,'Conluio (capturas+rodízios)','var(--purple)','🕸️')}${kpi(fmtN(cc.n??'—'),'Comissionados ex-candidatos','var(--amber)','🎖️')}
+    ${kpi(fmtN((bv.resumo||{}).n_alta??'—'),'Benefício DURANTE vínculo (certeza alta)','var(--rose)','🚨')}${kpi(fmtN((bv.resumo||{}).n_ainda??'—'),'Ainda recebendo','var(--rose)','⏰')}</div>`;
+  h+=`<div style="height:16px"></div>`+sec('Ir para')+`<div class="grid two">
+    ${card(`<div style="font-weight:700">🎖️ Comissionados</div><div class="muted" style="font-size:13px">ex-candidatos + benefício social durante o vínculo</div><div class="btns"><button class="btn accent" onclick="ir('p_comis')">Abrir</button></div>`)}
+    ${card(`<div style="font-weight:700">🕸️ Conluio municipal</div><div class="muted" style="font-size:13px">${cap.length+rod.length} indícios · nomes e objetos</div><div class="btns"><button class="btn ghost" onclick="ir('p_conluio')">Abrir</button></div>`)}</div>`;
+  h+=`<div class="note">${esc(cj.aviso||'')}</div>`;
+  return h;
+}
+let _comisView='cand';
+async function renderComissionadosPref(){
+  const chips=`<div class="chips">
+    <span class="chip ${_comisView==='cand'?'on':''}" onclick="_comisView='cand';ir('p_comis')">🗳️ Foram candidatos</span>
+    <span class="chip ${_comisView==='benef'?'on':''}" onclick="_comisView='benef';ir('p_comis')">🍞 Benefício × vínculo</span></div>`;
+  if(_comisView==='benef'){
+    const d=await J('/api/pcrj/beneficios_vinculo');
+    let h=cover('prefeitura','Servidores × benefício social — DURANTE o vínculo',
+      'Bolsa Família, BPC, Auxílio Brasil ou Auxílio Emergencial recebidos <b>no mesmo mês</b> em que a pessoa tinha vínculo remunerado com a Prefeitura/Câmara do Rio. Meses fora da janela de vínculo NÃO contam (fairness) e homônimos são eliminados por município + fragmento de CPF.','🍞')+chips;
+    if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+    const r=d.resumo||{};
+    h+=`<div class="grid g2">${kpi(fmtN(d.n_casos),'Pessoas flagradas',null,'👥')}${kpi(fmtN(r.n_alta),'Certeza ALTA','var(--rose)','🔴')}
+        ${kpi(fmtN(r.n_nomeados),'Comissionados/nomeados','var(--amber)','🎖️')}${kpi(fmtN(r.n_ainda),'Ainda recebendo','var(--rose)','⏰')}
+        ${kpi(fmtN(r.n_bf),'Bolsa Família',null,'🍞')}${kpi(fmtN(r.n_bpc),'BPC',null,'♿')}
+        ${kpi(esc(r.cobertura_benef||'—'),'Cobertura benefícios',null,'📅')}${kpi(esc(r.ultima||'—'),'Última competência',null,'🗓️')}</div>`;
+    h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, órgão, cargo, partido…" oninput="filtrar(this,'#bv-list .card')"></div>`;
+    h+=`<div id="bv-list" class="grid">`+(d.casos||[]).slice(0,120).map(x=>card(
+      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+        <div style="font-weight:700">${esc(x.nome)}</div>
+        <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.poder||'')} · ${esc((x.orgao||'').slice(0,44))} · ${esc((x.cargo||'').slice(0,30))}${x.partido?' · '+esc(x.partido):''}</div>
+        <div class="dim" style="margin-top:3px">${esc(x.natureza||'')} · ${esc(x.situacao||'')}</div></div>
+        <div class="right"><span class="sev ${x.certeza==='ALTA'?'alta':'media'}">${esc(x.certeza||'')}</span>
+        ${x.ainda_recebe?'<div style="margin-top:5px"><span class="tag rose">ainda recebe</span></div>':''}</div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">${esc(x.beneficios_str||'benefício')}</span><b>${esc(x.desde||'')} → ${esc(x.ate||'')} · ${fmtN(x.n_meses)} meses</b></div>`,
+      x.certeza==='ALTA'?'hl':'')).join('')+`</div>`;
+    h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
+    return h;
+  }
+  const d=await J('/api/pcrj/comissionados_candidatos?limite=600');
+  let h=cover('prefeitura','Comissionados da Prefeitura que foram candidatos',
+    'Cruzamento da folha de cargos de confiança da Prefeitura do Rio com as candidaturas registradas no TSE. Cargo de confiança ocupado por quem disputa eleição é o retrato do aparelhamento político da máquina.','🗳️')+chips+acoesAba('comissionados');
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const it=d.comissionados||[];
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Comissionados ex-candidatos','var(--amber)','🎖️')}${kpi(fmtN(new Set(it.map(x=>x.cand_cidade)).size),'Cidades de candidatura',null,'🗺️')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, cargo, órgão, cidade…" oninput="filtrar(this,'#cc-list .card')"></div>`;
+  h+=`<div id="cc-list" class="grid">`+it.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+      <div style="font-weight:700">${esc(x.nome_pcrj)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao_pcrj||'—').slice(0,50))} · cargo ${esc(x.cargo_pcrj||'—')}</div>
+      ${x.admissao?`<div class="dim" style="margin-top:2px">admissão ${esc(x.admissao)}${x.exoneracao?' · exoneração '+esc(x.exoneracao):' · ativo'}</div>`:''}</div>
+      <div class="right"><span class="tag amber">${esc(x.cand_cargo||'?')} ${esc(String(x.cand_ano||''))}</span><div class="dim" style="margin-top:4px">${esc(x.cand_cidade||'')}</div></div></div>`)).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+async function renderContratosPref(){
+  const r=await J('/api/pncp?uf=RJ&dias=45');const its=(r.contratacoes||r.dados||r.itens||[]);
+  let h=cover('prefeitura','Contratações recentes (PNCP)','Últimas licitações publicadas no PNCP para o RJ. Fonte pública, sem login.','📄');
+  h+=sec('Publicadas (45 dias)',its.length);
+  if(!its.length)return h+card('<div class="muted">Sem contratações no período (ou API indisponível). Tente a aba Conluio.</div>');
+  h+=`<div class="search"><span class="mag">🔎</span><input placeholder="filtrar por objeto ou órgão…" oninput="filtrar(this,'#ctr-list .card')"></div>`;
+  h+=`<div id="ctr-list" class="grid">`+its.slice(0,60).map(c=>card(`<div style="font-weight:650;font-size:13.5px">${esc((c.objeto||c.objetoCompra||'—')).slice(0,140)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc((c.orgao||c.orgaoNome||c.unidade||'')).slice(0,60)} ${c.valor||c.valorTotal?'· '+fmtRc(c.valor||c.valorTotal):''}</div>`)).join('')+`</div>`;
+  return h;
+}
+
+// ═══ CONLUIO (esfera-aware; no Transversal tem chips de esfera) ═══
+let _cjEsf='';
+async function renderConluio(esf){
+  const d=await J('/api/pncp/conluio'+(esf?'?esfera='+esf:''));
+  const rotulos={estado:'órgãos estaduais',prefeitura:'Prefeitura do Rio',municipios:'demais municípios do RJ',federal:'órgãos federais no RJ','':'todas as esferas'};
+  const rot=rotulos[esf]??esf;
+  if(!d.ok)return sec('Conluio')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const cov=d.cobertura||{},cap=d.captura||[],rod=d.rodizio_vencedores||[],esfs=d.esferas||{};
+  let h=cover(esf==='prefeitura'?'prefeitura':esf==='estado'?'estado':'geral','Conluio em licitações · '+rot,
+    'Vencedor homologado de cada item (fonte: PNCP, esfera OFICIAL do ente). <b>Captura</b>: uma empresa vence quase tudo num órgão. <b>Rodízio</b>: 2-3 empresas se revezam em compras parecidas. Toque num card para ver o que foi comprado — cada achado explica por que importa.','🕸️')+acoesAba('conluio');
+  // chips de esfera (só na visão Transversal, onde a comparação faz sentido)
+  if(esfera==='geral'){
+    const chip=(id,tl)=>`<span class="chip ${(_cjEsf===id)?'on':''}" onclick="_cjEsf='${id}';ir('g_conluio')">${tl}${esfs[id]!=null?` <span class="dim">${fmtN(esfs[id])}</span>`:''}</span>`;
+    h+=`<div class="chips">${chip('','🌐 Todas')}${chip('estado','🏛️ Estado')}${chip('prefeitura','🏙️ Pref. Rio')}${chip('municipios','🏘️ Municípios')}${chip('federal','🏦 Federais')}</div>`;
+  }
+  h+=`<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado),'Certames analisados',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢')}${kpi(cap.length,'Capturas','var(--rose)','🎯')}${kpi(rod.length,'Rodízios','var(--amber)','🔁')}</div>`;
+  if(cov.certames_sem_unidade>0)h+=`<div class="warn" style="margin-top:12px"><span>⏳ Identificação do órgão comprador em andamento: <b>${fmtN(cov.certames_sem_unidade)}</b> de ${fmtN(cov.certames_com_resultado)} certames ainda aparecem no nome do ente (ex.: "Estado do Rio de Janeiro"). O backfill do PNCP completa isso automaticamente.</span></div>`;
+  const orgHead=x=>`<div style="font-weight:700">${esc(x.orgao_nome)}</div>${x.ente_nome&&x.ente_nome!==x.orgao_nome?`<div class="dim" style="margin-top:1px">${esc(x.ente_nome)} · ${esc(x.orgao_cnpj_fmt||'')}</div>`:''}`;
+  if(cap.length){h+=`<div style="height:16px"></div>`+sec('Captura de órgão · 1 empresa vence ≥80%',cap.length)+`<div class="grid">`+cap.map(c=>card(
+    `<div class="exp" onclick="toggle(this)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">${orgHead(c)}<div class="muted" style="font-size:13px;margin-top:4px">quem venceu: ${clk(c.fornecedor_cnpj_fmt,c.nome)}</div><div class="dim" style="margin-top:2px">${esc(c.fornecedor_cnpj_fmt)}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;color:var(--rose);font-size:20px">${Math.round(c.share*100)}%</div><div class="dim">das vitórias</div></div></div>
+      ${leitura(`<b>${esc(c.nome)}</b> venceu ${Math.round(c.share*100)}% dos <b>${c.certames}</b> certames deste órgão (${c.distintos||'—'} concorrentes distintos apareceram no período). Concentração ≥80% é o gatilho OCDE de <b>mercado capturado</b>: pode ser mérito ou mercado raso — o próximo passo é comparar as propostas perdedoras e o QSA dos concorrentes.`)}
+      <div class="objs">${(c.objetos||[]).map(o=>`<div class="obj">📦 ${esc(o)}</div>`).join('')||'<div class="dim">sem objeto</div>'}</div>
+      <div class="dim" style="margin-top:8px"><span class="chev">▸</span> o que foi comprado</div></div>`,'hl')).join('')+`</div>`;}
+  if(rod.length){h+=`<div style="height:16px"></div>`+sec('Rodízio de vencedores · revezamento em objeto parecido',rod.length)+`<div class="grid">`+rod.map(r=>{
+    const nomes=(r.membros_nome||[]).map(m=>`<b>${esc(m.nome)}</b> (${m.vitorias}×)`).join(' · ');
+    return card(
+    `<div class="exp" onclick="toggle(this)"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0">${orgHead(r)}<div class="muted" style="font-size:13px;margin-top:4px">${r.certames} certames · o grupo levou ${Math.round(r.cobertura_grupo*100)}% deles</div></div>
+      <span class="tag amber">${(r.membros_nome||[]).length} empresas</span></div>
+      ${r.coesao_objeto!=null?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span class="tag ${r.coesao_objeto>=0.6?'rose':'teal'}" title="quão parecidos são os objetos dos certames deste grupo">compras ${Math.round(r.coesao_objeto*100)}% parecidas</span>${(r.termos_comuns||[]).slice(0,4).map(t=>`<span class="tag accent">${esc(t)}</span>`).join('')}</div>`:'<div class="dim" style="margin-top:6px">sem objeto comparável (rodízio no nível do órgão)</div>'}
+      ${leitura(`${nomes} se revezam nas vitórias de compras ${r.coesao_objeto!=null?`<b>${Math.round(r.coesao_objeto*100)}% parecidas</b>`:'deste órgão'}${(r.termos_comuns||[]).length?` (em comum: ${r.termos_comuns.slice(0,3).map(esc).join(', ')})`:''}. Revezamento equilibrado no MESMO tipo de objeto é o padrão nº 1 de <b>combinação de propostas</b> (OCDE) — verificar QSA, endereços e quem mais participou de cada certame.`)}
+      <table style="margin-top:10px"><tbody>${(r.membros_nome||[]).map(m=>`<tr><td>${clk(m.cnpj,m.nome)}<div class="dim">${esc(m.cnpj)}</div></td><td class="num"><b>${m.vitorias}</b> <span class="dim">vitórias</span></td></tr>`).join('')}</tbody></table>
+      <div class="objs">${(r.objetos||[]).map(o=>`<div class="obj">📦 ${esc(o)}</div>`).join('')||'<div class="dim">sem objeto</div>'}</div>
+      <div class="dim" style="margin-top:8px"><span class="chev">▸</span> o que foi comprado</div></div>`);}).join('')+`</div>`;}
+  if(!cap.length&&!rod.length)h+=card('<div class="muted">🟢 Nenhum padrão de captura ou rodízio com o volume atual desta esfera. A base cresce a cada coleta do PNCP.</div>');
+  if(esfera==='geral')h+=`<div style="height:14px"></div>`+card(`<div style="font-weight:700">🎭 E quem participa e NUNCA vence?</div><div class="muted" style="font-size:13px;margin-top:3px">As perdedoras contumazes (candidatas a proposta de cobertura) estão em Riscos.</div><div class="btns"><button class="btn ghost" onclick="_riscoView='cover';ir('g_riscos')">Abrir perdedoras</button></div>`);
+  h+=`<div class="note">${esc(d.aviso||'')}</div>`;
+  return h;
+}
+
+// ═══ PERÍCIAS ═══
+let _perOrdem='score',_perGrau='';
+async function renderPericias(){
+  const d=await J('/api/pericias?limite=80&ordem='+_perOrdem+(_perGrau?'&grau='+encodeURIComponent(_perGrau):''));
+  const it=d.itens||[];
+  let h=cover('estado','Perícias de fornecedor','8.648 fornecedores periciados (grau 🟢🟡🔴 + achados). Clique num nome para o dossiê 360.','⚖️');
+  h+=`<div class="chips">
+    <span class="chip ${_perGrau===''?'on':''}" onclick="_perGrau='';ir('e_pericias')">Todos</span>
+    <span class="chip ${_perGrau==='🟡'?'on':''}" onclick="_perGrau='🟡';ir('e_pericias')">🟡 Atenção</span>
+    <span class="chip ${_perGrau==='🔴'?'on':''}" onclick="_perGrau='🔴';ir('e_pericias')">🔴 Grave</span>
+    <span class="chip ${_perOrdem==='total'?'on':''}" onclick="_perOrdem=_perOrdem==='total'?'score':'total';ir('e_pericias')">↕ ${_perOrdem==='total'?'ordenar: R$':'ordenar: score'}</span></div>`;
+  h+=`<div class="search"><span class="mag">🔎</span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#per-list .card')"></div>`;
+  h+=`<div id="per-list" class="grid">`+it.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div style="min-width:0"><div>${clk(x.cnpj,x.favorecido||x.cnpj)}</div>
+      <div class="dim">${(x.indicios||0)} indício(s) · ${x.ugs} órgão(s) · ${fmtN(x.n_obs)} OBs</div></div>
+      <div class="right"><div style="font-size:18px">${x.grau||'⚪'}</div><div class="dim">${fmtRc(x.total)}</div></div></div>`)).join('')+`</div>`;
+  if(!it.length)h+=card('<div class="muted">Nenhum fornecedor com esse filtro.</div>');
+  return h;
+}
+
+// ═══ BUSCA universal ═══
+let _bq='';
+async function renderBuscar(){
+  return cover('geral','Busca universal','Procure por empresa, CNPJ, órgão, contrato ou termo. Clique num resultado para o dossiê 360.','🔎')+
+    `<div class="search"><span class="mag">🔎</span><input id="bq" placeholder="MGS, engenharia, 42498733000148, limpeza…" value="${esc(_bq)}" onkeydown="if(event.key==='Enter')fazBusca()"></div>
+     <div class="btns" style="margin-top:-2px"><button class="btn accent" onclick="fazBusca()">Buscar</button></div>
+     <div id="bres" style="margin-top:14px">${_bq?spin():'<div class="dim" style="text-align:center;padding:20px">Digite acima e toque em Buscar.</div>'}</div>`;
+}
+async function fazBusca(){
+  const q=($('bq')||{}).value?.trim()||'';if(!q)return;_bq=q;const box=$('bres');box.innerHTML=spin('Buscando "'+esc(q)+'"…');
+  const r=await J('/api/compliance/buscar?q='+encodeURIComponent(q));
+  if(r.error){box.innerHTML=card(`<div class="warn">${esc(r.error)}</div>`);return;}
+  const forn=r.fornecedores||[],ctr=r.contratos||[],doe=r.doerj||[],alt=r.alertas||[];let h='';
+  if(forn.length){h+=sec('Fornecedores',forn.length)+`<div class="grid">`+forn.slice(0,30).map(f=>{const cnpj=(f.cnpj||'').replace(/\D/g,'');
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div style="min-width:0">${clk(cnpj,f.nome||f.razao_social||cnpj)}<div class="dim">${esc(f.cnpj_fmt||f.cnpj||'')}</div></div>${f.total_pago!=null?`<div class="right"><b>${fmtRc(f.total_pago)}</b><div class="dim">${fmtN(f.n_obs||0)} OBs</div></div>`:''}</div>`);}).join('')+`</div>`;}
+  if(ctr.length)h+=`<div style="height:14px"></div>`+sec('Contratos',ctr.length)+`<div class="grid">`+ctr.slice(0,20).map(c=>card(`<div style="font-weight:650;font-size:13.5px">${esc((c.objeto||c.descricao||'contrato')).slice(0,140)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc(c.fornecedor||c.contratado||'')} ${c.valor?'· '+fmtRc(c.valor):''}</div>`)).join('')+`</div>`;
+  if(doe.length)h+=`<div style="height:14px"></div>`+sec('Diário Oficial',doe.length)+`<div class="grid">`+doe.slice(0,12).map(x=>card(`<div style="font-size:13px">${esc((x.texto||x.trecho||JSON.stringify(x)).slice(0,220))}</div>`)).join('')+`</div>`;
+  if(alt.length)h+=`<div style="height:14px"></div>`+sec('Alertas',alt.length)+`<div class="grid">`+alt.slice(0,12).map(x=>card(`<div style="font-size:13px">${esc(x.titulo||x.tipo||JSON.stringify(x).slice(0,180))}</div>`)).join('')+`</div>`;
+  box.innerHTML=h||card('<div class="muted">Nada encontrado. Tente nome parcial, CNPJ ou objeto.</div>');
+}
+
+// ═══ PODER / LARANJAS / CARTEL / ALERTAS / SIAFE / SWEEPS / VALIDAR / AÇÕES ═══
+async function renderPoder(){
+  const d=await J('/api/poder/nomeados_candidatos?limite=1000');
+  if(!d.ok)return sec('Poder')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const it=d.itens||[];
+  let h=cover('estado','Nomeados × candidatos (Estado)','Servidor público estadual (folhas: Defensoria/RJ + Câmara Municipal do Rio + TJRJ) que também foi candidato a cargo eletivo, sobretudo cargo em comissão. Cruzamento por nome (verificar homônimo). Os comissionados da PREFEITURA estão na esfera Prefeitura → Comissionados.','🏛️')+acoesAba('nomeados');
+  h+=`<div class="grid g2">${kpi(it.length,'Cruzamentos',null,'🏛️')}${kpi(d.n_comissionados,'Comissionados','var(--rose)','🎖️')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, cargo, partido…" oninput="filtrar(this,'#pod-list .card')"></div>`;
+  h+=`<div id="pod-list" class="grid">`+it.map(x=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.nome)}</div><div class="muted" style="font-size:13px;margin-top:2px">${esc(x.orgao||'—')} · ${esc(x.cargo_folha||'—')}</div></div>${x.comissionado?'<span class="tag rose">comissão</span>':'<span class="tag accent">efetivo</span>'}</div><div class="kv" style="margin-top:8px"><span class="k">Disputou</span><b>${esc(x.cargo_disputado||'—')} · ${esc(x.partido||'—')} · ${esc(x.ano||'—')}</b></div>`)).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.aviso||'')}</div>`;return h;
+}
+async function renderSocioServidor(){
+  const d=await J('/api/intel/socio_servidor?limite=150');
+  if(!d.ok)return sec('Servidor-sócio')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Servidor público sócio de fornecedor do Estado',
+    'Servidor que aparece nas folhas coletadas e também é sócio de empresa que recebeu do Estado. Servidor <b>administrador/diretor</b> de empresa privada viola a vedação estatutária de gerência; se a empresa contrata com o órgão dele, há impedimento (Lei 14.133 art. 9). <b>Confiança ALTA</b> = nome e fragmento de CPF batem; <b>MÉDIA</b> = só o nome.','🕴️')+acoesAba('socio_servidor');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Servidores sócios','var(--rose)','🕴️')}${kpi(fmtN(d.n_gerencia),'Com gerência (vedada)','var(--rose)','⚖️')}
+      ${kpi(fmtN(d.n_art9||0),'Art. 9 (mesmo órgão)','var(--rose)','🎯')}${kpi(fmtN(d.n_alta),'Confiança ALTA (CPF)','var(--amber)','🔎')}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas||[]).join(', '))||'—'}. Homônimos descartados por CPF: ${fmtN(d.homonimos_descartados)}. Art. 9 = empresa paga pela própria repartição do servidor (impedimento direto).</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por servidor, empresa, órgão ou cargo…" oninput="filtrar(this,'#ss-list .card')"></div>`;
+  h+=`<div id="ss-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.socio)} ${x.mesmo_orgao?'<span class="tag rose">art. 9 · mesmo órgão</span>':x.gerencia?'<span class="tag rose">gerência</span>':'<span class="tag amber">sócio</span>'}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.qualificacao)} de ${clk(x.cnpj,x.empresa)}</div>
+      <div class="dim" style="margin-top:2px">servidor: ${esc(x.servidor_cargo||'—')} · ${esc((x.servidor_orgao||'').slice(0,40))} · ${esc(x.vinculo||'')}</div>
+      ${(x.ugs_pagadoras||[]).length&&x.ugs_pagadoras[0].nome?`<div class="dim" style="margin-top:2px">paga por: ${(x.ugs_pagadoras||[]).filter(u=>u.nome).map(u=>esc(u.nome)+' ('+fmtRc(u.valor)+')').join(' · ')}</div>`:''}</div>
+      <div class="right"><span class="tag ${x.confianca==='ALTA'?'rose':'accent'}">${esc(x.confianca)}</span>
+      <div class="num" style="margin-top:6px;font-weight:800">${fmtRc(x.total_pago)}</div><div class="dim">recebido · ${fmtN(x.n_obs)} OBs</div></div></div>
+      ${leitura(`<b>${esc(x.socio)}</b> é <b>${esc(x.qualificacao)}</b> da empresa <b>${esc(x.empresa)}</b> (recebeu ${fmtRc(x.total_pago)} do Estado) e consta na folha como <b>${esc(x.servidor_cargo||'servidor')}</b> ${esc(x.servidor_orgao?('do '+x.servidor_orgao):'')}.${x.mesmo_orgao?' <b>A empresa é paga pela PRÓPRIA repartição do servidor — impedimento direto do art. 9.</b>':x.gerencia?' Cargo de gerência em empresa privada é vedado ao servidor (estatuto).':''} ${x.confianca==='ALTA'?'Nome e fragmento de CPF coincidem.':'Casamento por nome — confirmar CPF.'}`)}`,
+    x.mesmo_orgao||x.confianca==='ALTA'||x.gerencia?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+// ═══ FORNECEDOR DEPENDENTE / CATIVO ═══
+async function renderFornecedorDependente(){
+  const d=await J('/api/intel/fornecedor_dependente?limite=150');
+  if(!d.ok)return sec('Cativos')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Fornecedor cativo — "empresa do órgão"','Empresa comercial que recebe <b>quase tudo (≥90%)</b> de UMA única unidade gestora do Estado. Dependência total de um comprador é o perfil de fornecedor cativo — mercado fechado, risco de direcionamento.','🔗')+acoesAba('fornecedor_dependente');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores cativos','var(--amber)','🔗')}${kpi(fmtRc(a.reduce((s,x)=>s+x.total,0)),'Volume dependente',null,'💰')}
+      ${kpi(a.filter(x=>x.share>=0.99).length,'100% de 1 órgão','var(--rose)','🎯')}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior dependência')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por empresa ou UG…" oninput="filtrar(this,'#dep-list .card')"></div>`;
+  h+=`<div id="dep-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">UG ${esc(String(x.ug))} ${esc(x.ug_nome||'')} · aparece em ${x.n_ugs} órgão(s)</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${x.share>=0.99?'var(--rose)':'var(--amber)'}">${Math.round(x.share*100)}%</div><div class="dim">de ${fmtRc(x.total)}</div></div></div>
+      ${leitura(`<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share*100)}%</b> de tudo (${fmtRc(x.total)}) da UG ${esc(String(x.ug))} ${esc(x.ug_nome||'')}. Empresa comercial dependente de um só comprador é o perfil de fornecedor cativo — checar o histórico de licitações desse órgão.`)}`,
+    x.share>=0.99?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ CORRIDA DE DEZEMBRO ═══
+async function renderCorridaDezembro(){
+  const d=await J('/api/intel/corrida_dezembro?limite=150');
+  if(!d.ok)return sec('Dezembro')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Corrida do empenho de dezembro','Fornecedor comercial que recebeu <b>a maior parte do ano em dezembro</b> (≥75%). Concentração no fim do exercício é red-flag de "corrida do empenho" — verba usada às pressas antes de perder o orçamento, terreno fértil para dispensa e direcionamento.','📅')+acoesAba('corrida_dezembro');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores concentrados','var(--amber)','📅')}${kpi(fmtRc(a.reduce((s,x)=>s+x.dezembro,0)),'Pago em dezembro',null,'💰')}
+      ${kpi(a.filter(x=>x.share>=0.99).length,'100% em dezembro','var(--rose)','🎯')}${kpi(a.length?Math.round(a[0].share*100)+'%':'—','Maior concentração')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#dez-list .card')"></div>`;
+  h+=`<div id="dez-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_obs)} OBs</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${x.share>=0.99?'var(--rose)':'var(--amber)'}">${Math.round(x.share*100)}%</div><div class="dim">em dezembro</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">${fmtRc(x.dezembro)} em dezembro</span><b>de ${fmtRc(x.total)} no ano</b></div>
+      ${leitura(`<b>${esc(x.nome)}</b> recebeu <b>${Math.round(x.share*100)}%</b> do valor do ano (${fmtRc(x.total)}) só em dezembro. Concentração no fim do exercício sugere corrida do empenho — verificar se houve planejamento ou uso apressado da verba.`)}`,
+    x.share>=0.99?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ RADAR DE RISCO (score composto) ═══
+async function renderRadar(){
+  const d=await J('/api/intel/radar?limite=150');
+  if(!d.ok)return sec('Radar')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Radar de risco — todos os detectores somados','Score <b>0-100</b> por fornecedor somando sinais independentes de todos os detectores (conluio societário, sanção à época, fantasma, servidor-sócio, perdedora contumaz, fênix). Um detector isolado é indício fraco; <b>vários acesos no mesmo CNPJ raramente são coincidência</b> — esta é a fila de apuração priorizada.','🎯')+acoesAba('radar_risco');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores com sinal','var(--amber)','🎯')}${kpi(fmtN(d.n_vermelho||0),'Score ≥50 (🔴)','var(--rose)','🚨')}
+      ${kpi(a.length?a[0].score:'—','Maior score','var(--rose)')}${kpi(a.filter(x=>x.n_sinais>=3).length,'Com ≥3 sinais',null,'🧮')}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'')}</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#radar-list .card')"></div>`;
+  h+=`<div id="radar-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">${(x.sinais||[]).map(s=>`<span class="tag ${s.peso>=25?'rose':'amber'}">${esc(s.sinal)} +${s.peso}</span>`).join(' ')}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.score>=50?'var(--rose)':'var(--amber)'}">${x.score}</div><div class="dim">${x.rating} ${x.n_sinais} sinais</div></div></div>
+      ${leitura(`<b>${esc(x.nome)}</b> acende <b>${x.n_sinais}</b> detector(es) ao mesmo tempo: ${esc((x.sinais||[]).map(s=>s.sinal+(s.detalhe?' ('+s.detalhe+')':'')).join('; '))}. Sinais independentes que se corroboram — priorizar na apuração.`)}`,
+    x.score>=50?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ CONLUIO DIRETO (vencedor × perdedora × QSA) ═══
+async function renderConluioQSA(){
+  const d=await J('/api/intel/conluio_qsa');
+  if(!d.ok)return sec('Conluio QSA')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.pares||[];const cob=d.cobertura||{};
+  let h=cover('geral','Conluio direto — vencedor × perdedora do mesmo dono','Vencedor e perdedora do <b>MESMO certame</b> com <b>sócio em comum</b> no QSA da Receita (ou matriz×filial "concorrendo" entre si). A perdedora do mesmo dono existe para dar aparência de disputa — <b>proposta de cobertura</b> (OCDE bid rigging; art. 337-F do CP). Fontes: resultados PNCP + atas de julgamento do corpus.','🤝')+acoesAba('conluio_qsa');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Pares vencedor×perdedora','var(--rose)','🤝')}${kpi(fmtN(d.n_forte||0),'Fortes (QSA/matriz-filial)','var(--rose)','🚨')}
+      ${kpi(fmtN(cob.certames_com_perdedora||0),'Certames com perdedora conhecida',null,'⚖️')}${kpi(fmtN(cob.pares_sem_qsa||0),'Pares sem QSA local (INDISPONÍVEL ≠ 0)','var(--amber)','❓')}</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por empresa ou sócio…" oninput="filtrar(this,'#cq-list .card')"></div>`;
+  h+=`<div id="cq-list" class="grid">`+a.map(x=>{
+    const socios=(x.socios_comuns||[]).map(s=>esc(s.nome)).slice(0,3).join(', ')||'matriz × filial (mesmo CNPJ-raiz)';
+    const tcls=x.tier==='MEDIA'?'amber':'rose';
+    return card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+      <div style="font-weight:700">${clk(x.vencedor.cnpj,x.vencedor.nome)} <span class="dim">venceu</span></div>
+      <div style="font-weight:700">${clk(x.perdedora.cnpj,x.perdedora.nome)} <span class="dim">perdeu</span></div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px"><span class="tag ${tcls}">${esc(x.tier)}</span> sócio(s) em comum: ${socios}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.n_certames}</div><div class="dim">certame(s) · ${fmtRc(x.valor_vencido)}</div></div></div>
+      ${leitura(`<b>${esc(x.vencedor.nome)}</b> venceu ${x.n_certames} certame(s) (${fmtRc(x.valor_vencido)}) em que <b>${esc(x.perdedora.nome)}</b> — ${x.tier==='MESMA_EMPRESA'?'a PRÓPRIA empresa (outra filial)':'empresa com sócio em comum'} — aparecia como concorrente. Disputa de fachada: o dono ganha dos dois lados. Confirmar CPF completo do sócio antes de citar.`)}`,
+    x.tier!=='MEDIA'?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ COMUNIDADES (Louvain) ═══
+async function renderComunidades(){
+  const d=await J('/api/intel/comunidades');
+  if(!d.ok)return sec('Comunidades')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.comunidades||[];const g=d.grafo||{};
+  let h=cover('geral','Comunidades — clusters família-empresa-órgão (Louvain)','Algoritmo de comunidades (Louvain) sobre o grafo de <b>sócios (QSA), disputas em comum e dinheiro dos mesmos órgãos</b>. O cluster denso pessoa+empresa+órgão é o desenho clássico do grupo econômico oculto atrás de licitações. Score 0-100 por sinais objetivos dentro do cluster.','🧩')+acoesAba('comunidades',`<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=comunidades" target="_blank">🧩 Grafo das comunidades</a>`);
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Comunidades relevantes','var(--amber)','🧩')}${kpi(fmtN(a.filter(x=>x.score>=50).length),'Score ≥50 (🔴)','var(--rose)','🚨')}
+      ${kpi(fmtN(g.nos||0),'Nós no grafo',null,'🕸️')}${kpi(fmtN(g.arestas||0),'Arestas',null,'🔗')}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'')}</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por empresa, pessoa ou órgão…" oninput="filtrar(this,'#com-list .card')"></div>`;
+  h+=`<div id="com-list" class="grid">`+a.map(x=>{
+    const emp=(x.membros||[]).filter(m=>m.tipo==='empresa').slice(0,4).map(m=>esc(m.label));
+    const pes=(x.membros||[]).filter(m=>m.tipo==='pessoa').slice(0,3).map(m=>esc(m.label));
+    const org=(x.membros||[]).filter(m=>m.tipo==='orgao').slice(0,2).map(m=>esc(m.label));
+    return card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+      <div style="font-weight:700">${x.rating} Comunidade #${x.id} · ${x.n_empresas} empresa(s), ${x.n_pessoas} pessoa(s), ${x.n_orgaos} órgão(s)</div>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">🏢 ${emp.join(' · ')||'—'}</div>
+      <div class="muted" style="font-size:12.5px">👤 ${pes.join(' · ')||'—'} &nbsp; 🏛️ ${org.join(' · ')||'—'}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:4px">${(x.sinais||[]).map(s=>`<span class="tag ${s.peso>=20?'rose':'amber'}">${esc(s.sinal)} +${s.peso}</span>`).join(' ')}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.score>=50?'var(--rose)':'var(--amber)'}">${x.score}</div><div class="dim">${fmtRc(x.valor_total)}</div></div></div>
+      ${leitura(`Cluster com <b>${x.n_empresas}</b> empresa(s) e <b>${x.n_pessoas}</b> pessoa(s) movimentando <b>${fmtRc(x.valor_total)}</b>${(x.sinais||[]).length?', com sinais: '+esc(x.sinais.map(s=>s.sinal+(s.detalhe?' ('+s.detalhe+')':'')).join('; ')):''}. Densidade ${x.densidade}. Mapa de onde olhar — não prova de conluio.`)}`,
+    x.score>=50?'hl':'');}).join('')+`</div>`;
+  if(d.articuladores&&d.articuladores.length){
+    h+=sec('Articuladores (pontes entre grupos)')+`<div class="grid">`+d.articuladores.slice(0,10).map(x=>card(
+      `<div style="display:flex;justify-content:space-between;gap:10px"><div><b>${esc(x.label)}</b> <span class="dim">${esc(x.tipo)}</span></div>
+       <div class="right"><span class="num">${x.grau}</span> <span class="dim">conexões</span></div></div>`)).join('')+`</div>`;}
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ RETRO-AUDITORIA (hindsight) ═══
+async function renderRetro(){
+  const d=await J('/api/intel/retro');
+  if(!d.ok)return sec('Retro')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const ps=d.por_sinal||{};const ex=d.exemplos||[];const j=d.janela||{};
+  const nsin=Object.values(ps).reduce((s,x)=>s+x.n_sinais,0);
+  const ncor=Object.values(ps).reduce((s,x)=>s+x.n_sancao_depois,0);
+  const pago=Object.values(ps).reduce((s,x)=>s+x.pago_depois,0);
+  let h=cover('geral','Retro-auditoria — o que aconteceu DEPOIS do alerta','Para cada detector, o <b>ledger de sinais</b> guarda a data do 1º alerta por empresa (nunca regravada). Aqui medimos o que veio depois: <b>sanção federal posterior</b> (corroboração independente do detector) e <b>R$ que o Estado continuou pagando após o alerta</b> — o custo da inação. A janela cresce todo dia com o timer.','🔮')+acoesAba('retro');
+  h+=`<div class="grid g2">${kpi(fmtN(nsin),'Sinais no ledger','var(--amber)','📒')}${kpi(fmtN(ncor),'Sanção DEPOIS do sinal','var(--rose)','⚖️')}
+      ${kpi(fmtRc(pago),'Pago APÓS o alerta','var(--rose)','💸')}${kpi((j.sinal_mais_antigo_dias??'—')+'d','Idade do sinal mais antigo',null,'📅')}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">Janela retro de ${j.sinal_mais_antigo_dias??'—'} dia(s) — zeros são esperados no começo (sanção demora); a leitura fica forte com semanas de ledger.</div>`;
+  h+=sec('Por detector')+`<div class="grid">`+Object.entries(ps).map(([s,v])=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px"><div><b>${esc(s)}</b>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">${fmtN(v.n_sinais)} empresa(s) sinalizadas · ${fmtN(v.vitorias_depois)} vitória(s) PNCP depois</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${v.n_sancao_depois?'var(--rose)':'var(--amber)'}">${v.n_sancao_depois}</div><div class="dim">sanção depois · ${fmtRc(v.pago_depois)} pago depois</div></div></div>`)).join('')+`</div>`;
+  if(ex.length){h+=sec('Casos (sanção posterior ou pagamento pós-alerta)')+`<div class="grid">`+ex.slice(0,20).map(e=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px"><div style="min-width:0">${clk(e.cnpj,e.cnpj)}
+      <div class="muted" style="font-size:12.5px">[${esc(e.sinal)}] desde ${esc(e.desde)} · ${esc(e.detalhe||'')}</div>
+      ${e.sancao_depois?`<div class="muted" style="font-size:12.5px;margin-top:2px"><span class="tag rose">⚖️ sancionada em ${esc(e.sancao_depois.data_inicio)}</span> ${esc(e.sancao_depois.cadastro||'')}</div>`:''}</div>
+      <div class="right"><div class="num" style="font-weight:800;color:var(--rose)">${fmtRc(e.pago_depois)}</div><div class="dim">pago após o alerta</div></div></div>`,
+    e.sancao_depois?'hl':'')).join('')+`</div>`;}
+  h+=await _liftBloco();
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// bloco de LIFT: valida cada detector contra o gabarito objetivo (sanções)
+async function _liftBloco(){
+  const d=await J('/api/intel/lift');
+  if(!d.ok)return '';
+  const det=d.detectores||[];
+  const barra=(l,circ)=>{const w=Math.min(100,(l||0)/15*100);const col=circ?'var(--muted)':(l>=2?'var(--rose)':(l>=1?'var(--amber)':'var(--green,#4ade80)'));
+    return `<div style="background:rgba(255,255,255,.06);border-radius:4px;height:8px;overflow:hidden"><div style="width:${w}%;height:100%;background:${col}"></div></div>`;};
+  let h=sec('Validação contra o gabarito objetivo (sanções) — lift por detector');
+  h+=`<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${(d.taxa_base*100).toFixed(1)}%</b> dos ${fmtN(d.universo)} fornecedores são sancionados. <b>Lift</b> = quantas vezes o detector concentra sancionados acima disso. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal · <span class="dim">🔁 circular</span> = usa sanção como input (não é corroboração independente).</div>`;
+  h+=`<div class="grid">`+det.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+      <div style="min-width:0;flex:1"><div style="font-weight:700">${esc(x.detector)} ${x.circular?'<span class="tag" style="opacity:.6">🔁 circular</span>':''}${x.n_pequeno?'<span class="tag amber">⚠️ n<10</span>':''}</div>
+      <div class="muted" style="font-size:12.5px;margin:3px 0">${x.sancionados}/${x.n} marcados são sancionados (${(x.taxa*100).toFixed(1)}%)</div>
+      ${barra(x.lift,x.circular)}</div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.circular?'var(--muted)':(x.lift>=2?'var(--rose)':(x.lift>=1?'var(--amber)':'#4ade80'))}">${x.lift}×</div><div class="dim">lift</div></div></div>`)).join('')+`</div>`;
+  return h;
+}
+
+// ═══ SÓCIO OCULTO ═══
+async function renderSocioOculto(){
+  const d=await J('/api/intel/socio_oculto?limite=150');
+  if(!d.ok)return sec('Sócio oculto')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Sócio oculto — um dono, vários fornecedores','Mesma pessoa (ou holding) sócia de <b>várias empresas</b> que vendem ao Estado. Um dono por trás de vários fornecedores permite simular concorrência entre empresas do mesmo grupo (fracionamento, propostas de cobertura) e concentrar contratos disfarçadamente.','🕸️')+acoesAba('socio_oculto');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Sócios com ≥3 empresas','var(--amber)','🕸️')}${kpi(fmtRc(a.reduce((s,x)=>s+x.total,0)),'Volume das empresas',null,'💰')}
+      ${kpi(a.length?a[0].n_empresas:'—','Mais empresas (1 sócio)','var(--rose)')}${kpi(a.filter(x=>x.holding).length,'Holdings/PJ',null,'🏢')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por sócio ou empresa…" oninput="filtrar(this,'#ocult-list .card')"></div>`;
+  h+=`<div id="ocult-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.socio)} ${x.holding?'<span class="tag purple">holding/PJ</span>':''}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">${esc((x.empresas||[]).slice(0,4).join(' · '))}${(x.empresas||[]).length>4?' …':''}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--amber)">${x.n_empresas}</div><div class="dim">empresas · ${fmtRc(x.total)}</div></div></div>
+      ${leitura(`<b>${esc(x.socio)}</b> é sócio de <b>${x.n_empresas}</b> empresas que receberam do Estado (${fmtRc(x.total)} somados). Um mesmo dono em vários fornecedores permite simular concorrência entre empresas do próprio grupo — cruzar se disputam os mesmos certames/órgãos.`)}`,
+    x.n_empresas>=5?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ NEPOTISMO ═══
+async function renderNepotismo(){
+  const d=await J('/api/intel/nepotismo?limite=150');
+  if(!d.ok)return sec('Nepotismo')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Nepotismo — parentes em cargo de confiança','Duas ou mais pessoas de nomes distintos com o <b>mesmo sobrenome de família raro</b>, ambas em cargo de confiança no mesmo órgão. É o perfil de nepotismo — a <b>Súmula Vinculante 13 do STF</b> proíbe nomear parente para cargo em comissão. O fragmento de CPF confirma que são pessoas distintas.','👪')+acoesAba('nepotismo',`<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=familias" target="_blank">🕸️ Grafo de famílias</a>`);
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Clusters familiares','var(--rose)','👪')}${kpi(fmtN(d.n_com_autoridade),'Com autoridade nomeante','var(--rose)','⚖️')}
+      ${kpi(a.filter(x=>x.concentracao>=1).length,'100% do sobrenome','var(--amber)','🎯')}${kpi(a.length?a[0].n_membros:'—','Maior cluster')}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">Folhas cruzadas: ${esc((d.folhas||[]).join(', '))||'—'}. Cobertura cresce com novas folhas.</div>`;
+  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por sobrenome, órgão ou nome…" oninput="filtrar(this,'#nep-list .card')"></div>`;
+  h+=`<div id="nep-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.sobrenome)} ${x.tem_autoridade?'<span class="tag rose">autoridade no cluster</span>':''}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao||'').slice(0,44))}</div>
+      <div class="dim" style="margin-top:2px">${Math.round(x.concentracao*100)}% das ${x.total_folha} pessoas desse sobrenome na folha</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.n_membros}</div><div class="dim">parentes?</div></div></div>
+      <table style="margin-top:10px"><tbody>${(x.membros||[]).map(m=>`<tr><td>${esc(m.nome)}</td><td class="dim">${esc(m.cargo||'')}${m.cpf_frag?' · CPF …'+esc(m.cpf_frag):''}</td></tr>`).join('')}</tbody></table>
+      ${leitura(`<b>${x.n_membros}</b> pessoas com o sobrenome <b>${esc(x.sobrenome)}</b> (${Math.round(x.concentracao*100)}% de todos com esse sobrenome na folha) ocupam cargo de confiança no mesmo órgão. Sobrenome raro concentrado em cargos comissionados é o perfil de nepotismo (SV13). ${x.membros.some(m=>m.cpf_frag)?'Fragmentos de CPF distintos confirmam pessoas diferentes.':''} Confirmar o parentesco e a cadeia de nomeação.`)}`,
+    'hl')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+// ═══ EMPRESA FÊNIX ═══
+async function renderFenix(){
+  const d=await J('/api/intel/fenix?limite=150');
+  if(!d.ok)return sec('Fênix')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Empresa fênix — morta que recebe, ou nascida para faturar','Empresa <b>BAIXADA/INAPTA</b> na Receita que mesmo assim recebeu do Estado (pagamento a empresa morta), ou <b>aberta poucos meses antes</b> do primeiro pagamento (nasceu já para faturar — perfil de laranja).','🦅')+acoesAba('fenix');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Empresas fênix','var(--rose)','🦅')}${kpi(fmtN(d.n_defunta),'Baixada/inapta que recebeu','var(--rose)','💀')}
+      ${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_recebido||0),0)),'Volume envolvido',null,'💰')}${kpi(fmtN(a.filter(x=>x.tipo==='recem_aberta').length),'Aberta às vésperas','var(--amber)','🐣')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#fenix-list .card')"></div>`;
+  h+=`<div id="fenix-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">${esc(x.cnpj)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">${x.tipo==='defunta'?`<span class="tag rose">${esc(x.situacao)}</span>`:'<span class="tag amber">recém-aberta</span>'} · aberta ${esc(x.data_abertura)} · 1ª OB ${esc(x.primeira_ob)}</div></div>
+      <div class="right"><div class="num" style="font-weight:800">${fmtRc(x.total_recebido)}</div><div class="dim">recebido</div></div></div>
+      ${leitura(x.tipo==='defunta'?`<b>${esc(x.nome)}</b> está <b>${esc(x.situacao)}</b> na Receita mas recebeu ${fmtRc(x.total_recebido)} do Estado. Pagar empresa baixada/inapta é irregular — verificar se os pagamentos são posteriores à baixa.`:`<b>${esc(x.nome)}</b> foi aberta em ${esc(x.data_abertura)} e recebeu o 1º pagamento ${x.meses_ate_ob} meses depois. Empresa que nasce e já fatura com o Estado é perfil de laranja/fachada.`)}`,
+    x.tipo==='defunta'?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ PORTA GIRATÓRIA ═══
+async function renderPortaGiratoria(){
+  const d=await J('/api/intel/porta_giratoria?limite=150');
+  if(!d.ok)return sec('Porta giratória')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Porta giratória — ex-servidor virou fornecedor','Ex-servidor público (vínculo inativo/exonerado/sem lotação nas folhas) que hoje é <b>sócio de empresa fornecedora do Estado</b>. Sair do serviço público e virar fornecedor pode violar a quarentena e indica captura do ex-órgão.','🚪')+acoesAba('porta_giratoria');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Ex-servidores fornecedores','var(--rose)','🚪')}${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_pago||0),0)),'Volume recebido',null,'💰')}
+      ${kpi(fmtN(a.filter(x=>x.confianca==='ALTA').length),'Confiança ALTA (CPF)','var(--amber)','🔎')}${kpi(fmtN(d.homonimos_descartados),'Homônimos descartados',null,'🚮')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, empresa ou órgão…" oninput="filtrar(this,'#porta-list .card')"></div>`;
+  h+=`<div id="porta-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.socio)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.qualificacao)} de ${clk(x.cnpj,x.empresa)}</div>
+      <div class="dim" style="margin-top:2px">ex: ${esc(x.ex_cargo||'—')} · ${esc((x.ex_orgao||'').slice(0,34))} <span class="tag amber">${esc(x.vinculo)}</span></div></div>
+      <div class="right"><span class="tag ${x.confianca==='ALTA'?'rose':'accent'}">${esc(x.confianca)}</span><div class="num" style="margin-top:6px;font-weight:800">${fmtRc(x.total_pago)}</div></div></div>
+      ${leitura(`<b>${esc(x.socio)}</b> consta na folha como ex-servidor (${esc(x.vinculo)}, ${esc(x.ex_orgao||'')}) e hoje é ${esc(x.qualificacao)} de <b>${esc(x.empresa)}</b>, que recebeu ${fmtRc(x.total_pago)} do Estado. Porta giratória — confirmar as datas de saída e do contrato (quarentena).`)}`,
+    x.confianca==='ALTA'?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ NEPOTISMO CRUZADO ═══
+async function renderNepotismoCruzado(){
+  const d=await J('/api/intel/nepotismo_cruzado?limite=80');
+  if(!d.ok)return sec('Nepotismo cruzado')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Nepotismo cruzado — troca de favores entre órgãos','A família X manda no órgão A e coloca um parente no órgão B, enquanto a família Y manda no órgão B e coloca um parente no A. A <b>reciprocidade</b> dribla a Súmula Vinculante 13, que só proíbe nomear parente no PRÓPRIO órgão.','🔀')+acoesAba('nepotismo_cruzado');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Pares recíprocos','var(--rose)','🔀')}</div>`;
+  if(!a.length)return h+card('<div class="muted">Nenhum par recíproco com o padrão rigoroso nas folhas atuais. Cresce com mais folhas. 🟢</div>')+`<div class="note">${esc(d.ressalva||'')}</div>`;
+  h+=`<div class="grid" style="margin-top:14px">`+a.map(x=>card(
+    `<div style="font-weight:700">${esc(x.sobrenome_a)} ⇄ ${esc(x.sobrenome_b)}</div>
+     <div class="kv" style="margin-top:8px"><span class="k">${esc((x.orgao_a||'').slice(0,30))}</span><b>autoridade: ${esc(x.autoridade_a)}</b></div>
+     <div class="kv"><span class="k">${esc((x.orgao_b||'').slice(0,30))}</span><b>autoridade: ${esc(x.autoridade_b)}</b></div>
+     ${leitura(`No órgão <b>${esc((x.orgao_a||'').slice(0,26))}</b> manda um <b>${esc(x.sobrenome_a)}</b> e há um <b>${esc(x.sobrenome_b)}</b> colocado; no <b>${esc((x.orgao_b||'').slice(0,26))}</b> é o inverso. Padrão de troca recíproca de parentes entre órgãos — confirmar parentesco e nomeações.`)}`,
+    'hl')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+async function renderLaranjas(){
+  const d=await J('/api/laranjas');if(!d.ok)return sec('Laranjas')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const it=d.itens||[];
+  let h=cover('geral','Laranjas — sócio que recebe benefício','Sócio de empresa que recebe do Estado e ao mesmo tempo recebe benefício social de subsistência — indício de interposição (art. 337-F CP).','🎭');
+  if(!it.length)return h+card('<div class="muted">Nenhum sócio-beneficiário confirmado. A resolução CPF×benefício é conservadora (evita homônimo). 🟢</div>')+`<div class="note">${esc(d.aviso||'')}</div>`;
+  h+=`<div class="grid">`+it.map(x=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><div style="font-weight:700">${esc(x.socio||'—')}</div><div class="dim">${esc(x.cpf||'')}</div></div><span class="tag rose">laranja?</span></div><div class="kv" style="margin-top:6px"><span class="k">Benefícios</span><b>${(x.beneficios||[]).map(esc).join(', ')||'—'}</b></div>${x.motivo?`<div class="muted" style="font-size:12.5px;margin-top:4px">${esc(x.motivo)}</div>`:''}`,'hl')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.aviso||'')}</div>`;return h;
+}
+async function renderCartel(){
+  const c=await J('/api/cartel');const d=(c.dados||[]).slice(0,20);
+  let h=cover('estado','Concentração & cartel · SIAFE','Órgãos onde um fornecedor concentra a maior fatia do valor pago (top share por UG). Complementa o conluio do PNCP com o lado do pagamento.','🔗');
+  if(!d.length)return h+card('<div class="muted">Sem dados de concentração.</div>');
+  const maxS=Math.max(1,...d.map(u=>u.top_share||0));
+  h+=card(`<div class="barw">`+d.slice(0,10).map(u=>{const cor=u.top_share>=90?'var(--rose-d)':u.top_share>=70?'var(--amber-d)':null;
+    return `<div><div class="row"><span class="lab">${esc((u.ug_nome||u.ug||'').slice(0,58))}</span><span class="num" style="font-weight:700;color:${cor?(u.top_share>=90?'var(--rose)':'var(--amber)'):'#fff'}">${u.top_share}%</span></div><div class="track"><span class="fill" style="width:${Math.max(4,(u.top_share/maxS)*100)}%${cor?`;background:${cor}`:''}"></span></div></div>`;}).join('')+`</div>`);
+  h+=`<div style="height:14px"></div><div class="grid">`+d.map(u=>card(`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div style="min-width:0"><div style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.ug_nome||'')} <span class="dim">(${esc(u.ug||'')})</span></div><div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.n_fornecedores} fornec. · top: ${esc(u.top_fornecedor||'—')}</div></div><div class="right"><div style="font-weight:800;color:${u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':'#fff'}">${u.top_share}%</div><div class="dim">${fmtRc(u.total)}</div></div></div>`)).join('')+`</div>`;
+  return h;
+}
+// glossário: traduz os CÓDIGOS crípticos dos alertas p/ linguagem simples
+const TIPO_ALERTA={
+  pcrj_d7_fracionamento:['✂️','Fracionamento de despesa','Compras fatiadas em várias notas para caber abaixo do limite e não fazer licitação.'],
+  pcrj_d10_rede_concorrentes:['🕸️','Rede de concorrentes','Empresas ligadas entre si (mesmo sócio/endereço) que disputam as mesmas licitações — concorrência de fachada.'],
+  pcrj_d9_socio_na_folha:['🕴️','Sócio na folha','Sócio de empresa fornecedora que também é servidor público — conflito de interesse.'],
+  fracionamento:['✂️','Fracionamento de despesa','Compras fatiadas para não licitar.'],
+  sobrepreco:['📈','Sobrepreço','Preço muito acima da mediana de mercado.'],
+};
+const SEV_LEGENDA={
+  alta:['🔴','Alta','Indício forte — priorize a verificação.'],
+  media:['🟡','Média','Merece checagem, mas o sinal é mais fraco ou depende de confirmação documental.'],
+  baixa:['⚪','Baixa','Sinal fraco / informativo.'],
+};
+async function renderAlertas(){
+  const p=await J('/api/compliance/painel');const lst=p.lista_alertas||[];
+  if(!lst.length)return sec('Auditoria')+card('<div class="muted">Sem alertas no momento. 🟢</div>');
+  // legenda da escala (o que 🔴/🟡 significam) — resolve "não entendo o amarelo"
+  let h=cover('estado','Alertas de auditoria','Sinais automáticos de irregularidade nas contas. A <b>cor</b> indica a força do indício, não uma acusação.','🚨');
+  h+=card(`<div style="font-weight:700;margin-bottom:8px">Como ler as cores</div>`+
+    Object.values(SEV_LEGENDA).map(([ic,nome,desc])=>`<div class="kv"><span class="k" style="min-width:110px"><span class="sev ${nome.toLowerCase()==='alta'?'alta':nome.toLowerCase()==='média'?'media':'baixa'}">${ic} ${nome}</span></span><b style="font-weight:500;color:var(--tx2);text-align:right">${desc}</b></div>`).join(''));
+  // agrupa por TIPO, com contagem e explicação em português
+  const porTipo={};lst.forEach(a=>{(porTipo[a.tipo]=porTipo[a.tipo]||[]).push(a);});
+  h+=`<div style="height:14px"></div>`+sec('Alertas por tipo',lst.length);
+  h+=`<div class="grid">`+Object.entries(porTipo).map(([tipo,alertas])=>{
+    const[ic,nome,desc]=TIPO_ALERTA[tipo]||['🚩',tipo,''];
+    const nAlta=alertas.filter(a=>a.severidade==='alta').length,nMed=alertas.length-nAlta;
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${ic} ${esc(nome)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc(desc)}</div></div>
+      <div class="right">${nAlta?`<span class="sev alta">${nAlta} 🔴</span> `:''}${nMed?`<span class="sev media">${nMed} 🟡</span>`:''}</div></div>
+      <div class="exp" onclick="toggle(this)" style="margin-top:8px"><div class="dim"><span class="chev">▸</span> ver os ${alertas.length} casos</div>
+      <div class="objs">${alertas.slice(0,40).map(a=>`<div class="obj">${a.severidade==='alta'?'🔴':'🟡'} <b>${esc((a.titulo||'').replace(/^[^—]*—\\s*/,''))}</b>${a.descricao?` — <span class="muted">${esc(a.descricao)}</span>`:''}</div>`).join('')}</div></div>`);
+  }).join('')+`</div>`;
+  h+=`<div class="note">Indício para apuração interna — não é acusação. 🔴 = sinal forte; 🟡 = merece checagem.</div>`;
+  return h;
+}
+async function renderSiafe(){
+  const s=await J('/api/siafe/stats');if(!s.ok)return sec('SIAFE')+card('<div class="muted">SIAFE indisponível.</div>');
+  const linhas=(s.por_ano||[]).filter(x=>x.valor>0).map(x=>`<tr><td>${x.exercicio}</td><td>${fmtN(x.n)}</td><td>${fmtR(x.valor)}</td></tr>`).join('');
+  let h=sec('SIAFE · ordens bancárias')+`<div class="grid g2">${kpi(fmtN(s.total),'OBs ingeridas')}${kpi(fmtRc(s.valor_total),'Valor total')}</div><div style="height:12px"></div>`+card(`<table><thead><tr><th>Exercício</th><th>OBs</th><th>Valor</th></tr></thead><tbody>${linhas||'<tr><td colspan=3 class="muted">sem dados</td></tr>'}</tbody></table>`);
+  h+=`<div style="height:16px"></div>`+await frescorHtml();
+  return h;
+}
+async function renderSweeps(){
+  const d=await J('/api/sweeps/status');const badge=d.pausado?'<span class="tag rose">pausado</span>':(d.sei?.rodando?'<span class="tag green">rodando</span>':'<span class="tag green">agendado</span>');
+  let h=sec('Sweeps SEI / SIAFE')+card(`<div class="kv"><span class="k">Estado ${badge}</span><b>${d.pausado?'pausado':'ativo'}</b></div><div class="kv"><span class="k">SEI — processos lidos</span><b>${fmtN(d.sei?.feitos)}</b></div><div class="kv"><span class="k">SIAFE 2 — OBs orçamentárias</span><b>${fmtN(d.siafe?.ob_orcamentaria)}</b></div>`)+(d.sei?.ultima?`<div style="height:12px"></div><pre>${esc((d.sei.ultima||'').replace(/\*\*/g,''))}</pre>`:'')+`<div class="btns"><button class="btn red" onclick="sweep('pausar')">⏸ Pausar</button><button class="btn green" onclick="sweep('retomar')">▶ Retomar</button><button class="btn ghost" onclick="ir(aba)">↻ Atualizar</button></div>`;
+  h+=`<div style="height:16px"></div>`+await frescorHtml();
+  return h;
+}
+async function sweep(a){if(a==='pausar'&&!confirm('Pausar TODOS os sweeps?'))return;await J('/api/sweeps/'+a,{method:'POST'});setTimeout(()=>ir(aba),500);}
+let _valLista=[],_valIdx=0;
 async function renderValidar(){
-  const d=await J('/api/fachada/revisar?limite=200');
-  _valLista=(d&&d.fachadas)||[]; _valIdx=0;
-  return sec('var(--rose)','Validador de fachada')+
-    `<div class="muted" style="font-size:13px;margin:-6px 0 12px">${_valLista.length} fachada(s) flagrada(s) p/ revisar. Veja o Street View, decida, e a base atualiza.</div>`+
-    `<div id="val-card">${_valCard()}</div>`;
+  const d=await J('/api/fachada/revisar?limite=200');_valLista=(d&&d.fachadas)||[];_valIdx=0;
+  return cover('geral','Validador de fachada','Fachadas flagradas p/ revisão humana. Veja o Street View, decida, e a base atualiza.','🏢')+`<div id="val-card">${_valCard()}</div>`;
 }
 function _valCard(){
-  if(_valIdx>=_valLista.length) return card('<div class="muted">✅ Tudo revisado nesta sessão. Recarregue a aba p/ buscar mais.</div>');
+  if(_valIdx>=_valLista.length)return card('<div class="muted">✅ Tudo revisado nesta sessão. Recarregue p/ mais.</div>');
   const f=_valLista[_valIdx];
   const maps=(f.geo_lat&&f.geo_lon)?`https://www.google.com/maps/@${f.geo_lat},${f.geo_lon},19z`:`https://www.google.com/maps/search/${encodeURIComponent((f.endereco||'')+', '+(f.municipio||''))}`;
   const sv=(f.geo_lat&&f.geo_lon)?`https://www.google.com/maps?layer=c&cbll=${f.geo_lat},${f.geo_lon}`:maps;
-  const motivo=f.nivel==='SEM_GOOGLE'?'Sem marcação no Google':f.nivel==='FECHADO_GOOGLE'?'Fechado permanentemente no Google':'Revisar fachada';
-  return card(
-    `<div class="dim">${_valIdx+1} de ${_valLista.length}</div>
-     <div style="font-weight:700;font-size:16px;margin:4px 0">${f.razao||f.cnpj}</div>
-     <div class="kv"><span class="k">Motivo do flag</span><b style="color:var(--rose)">${motivo}</b></div>
-     <div class="kv"><span class="k">Recebido do Estado</span><b>${fmtR(f.total_recebido)}</b></div>
-     <div class="kv"><span class="k">Endereço</span><b class="right" style="max-width:60%">${f.endereco||'—'}, ${f.municipio||''}/${f.uf||''}</b></div>
-     <div class="kv"><span class="k">CNPJ</span><b>${f.cnpj}</b></div>
+  const motivo=f.nivel==='SEM_GOOGLE'?'Sem marcação no Google':f.nivel==='FECHADO_GOOGLE'?'Fechado no Google':'Revisar fachada';
+  return card(`<div class="dim">${_valIdx+1} de ${_valLista.length}</div><div style="font-weight:700;font-size:16px;margin:4px 0">${esc(f.razao||f.cnpj)}</div>
+     <div class="kv"><span class="k">Motivo</span><b style="color:var(--rose)">${esc(motivo)}</b></div><div class="kv"><span class="k">Recebido do Estado</span><b>${fmtR(f.total_recebido)}</b></div>
+     <div class="kv"><span class="k">Endereço</span><b class="right" style="max-width:60%">${esc(f.endereco||'—')}, ${esc(f.municipio||'')}/${esc(f.uf||'')}</b></div><div class="kv"><span class="k">CNPJ</span><b>${esc(f.cnpj)}</b></div>
      <div class="btns"><a class="btn ghost" href="${sv}" target="_blank">🛰️ Street View</a><a class="btn ghost" href="${maps}" target="_blank">🗺️ Maps</a></div>
      <input id="val-nota" placeholder="nota p/ o Claude (opcional)" style="margin-top:10px">
-     <div class="btns" style="margin-top:8px">
-       <button class="btn red" onclick="validar('suspeito')">🔴 Suspeito</button>
-       <button class="btn green" onclick="validar('ok')">🟢 Legítima</button>
-       <button class="btn ghost" onclick="validar('mais_info')">❓ Mais info</button>
-     </div>`);
+     <div class="btns" style="margin-top:8px"><button class="btn red" onclick="validar('suspeito')">🔴 Suspeito</button><button class="btn green" onclick="validar('ok')">🟢 Legítima</button><button class="btn ghost" onclick="validar('mais_info')">❓ Mais info</button></div>`);
 }
-async function validar(v){
-  const f=_valLista[_valIdx]; if(!f) return;
-  const nota=($('val-nota')||{}).value||'';
+async function validar(v){const f=_valLista[_valIdx];if(!f)return;const nota=($('val-nota')||{}).value||'';
   await J('/api/fachada/veredito',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cnpj:f.cnpj,veredito:v,nota})});
-  _valIdx++;
-  const el=$('val-card'); if(el) el.innerHTML=_valCard();
-}
-
-async function renderMais(){
-  const [c,y,reps]=await Promise.all([J('/api/cartel'),J('/api/hermes/estado'),J('/api/compliance/reports')]);
-  const d=(c.dados||[]).slice(0,8);
-  const cartel = d.length? d.map(u=>card(
-     `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
-        <div style="min-width:0"><div style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.ug_nome} <span class="dim">(${u.ug})</span></div>
-        <div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.n_fornecedores} fornec. · top: ${u.top_fornecedor||'—'}</div></div>
-        <div class="right"><div style="font-weight:750;color:${u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':'#fff'}">${u.top_share}%</div><div class="dim">${fmtR(u.total)}</div></div>
-      </div>`)).join('') : card('<div class="muted">Sem dados de concentração.</div>');
-
-  const pdfs=((reps&&reps.length?reps:[])||[]).filter(x=>x.type==='pdf').slice(0,12);
-  const repsHtml = pdfs.length
-    ? `<div class="lnks">`+pdfs.map(f=>`<a class="lnk" href="${f.url}" target="_blank"><span class="ic">📄</span><div><div class="t">${f.name}</div></div><span class="ar">→</span></a>`).join('')+`</div>`
-    : card('<div class="muted">Nenhum relatório gerado ainda.</div>');
-
-  return sec('var(--purple)','Cartel & concentração')+`<div class="grid">${cartel}</div>`+
-   `<div style="height:18px"></div>`+sec('var(--purple)','Yoda / Hermes')+
-   card(`<div class="kv"><span class="k">Missão</span><b class="right" style="max-width:62%">${y.missao||'—'}</b></div>
-         <div class="kv"><span class="k">OBs na base</span><b>${fmtN(y.n_obs)}</b></div>
-         <div class="kv"><span class="k">Alertas</span><b>${fmtN(y.n_alertas)}</b></div>
-         <div class="kv"><span class="k">LLM / Chrome</span><b>${y.llm_ok?'🟢':'🔴'} / ${y.chrome_9222?'🟢':'🔴'}</b></div>`)+
-   `<div style="height:18px"></div>`+sec('var(--blue)','Relatórios gerados')+repsHtml+`<div style="height:18px"></div>`+
-   `<div style="height:18px"></div>`+sec('var(--amber)','Ações & atalhos')+
-   `<div class="lnks">
-      <a class="lnk" href="/auditoria"><span class="ic">📊</span><div><div class="t">Painel de Auditoria</div><div class="d">KPIs, OBs, favorecidos (clássico)</div></div><span class="ar">→</span></a>
+  _valIdx++;const el=$('val-card');if(el)el.innerHTML=_valCard();}
+async function renderAcoes(){
+  const reps=await J('/api/compliance/reports');const pdfs=((reps&&reps.length?reps:[])||[]).filter(x=>x.type==='pdf').slice(0,12);
+  const repsHtml=pdfs.length?`<div class="lnks">`+pdfs.map(f=>`<a class="lnk" href="${f.url}" target="_blank"><span class="ic">📄</span><div><div class="t">${esc(f.name)}</div></div><span class="ar">→</span></a>`).join('')+`</div>`:card('<div class="muted">Nenhum relatório gerado ainda.</div>');
+  return cover('geral','Gerar relatórios & atalhos','Relatório de fornecedor/órgão com Lex forense, dossiê 360, cruzamento e painéis.','⚡')+
+    card(`<label class="fld">Relatório de fornecedor (+ Lex forense)</label><div style="display:flex;gap:8px"><input id="ac-emp" placeholder="nome ou CNPJ"><button class="btn accent" style="flex:0 0 auto;min-width:82px" onclick="acao('relatorio')">Gerar</button></div>
+      <div style="height:11px"></div><label class="fld">Relatório de órgão (+ Lex)</label><div style="display:flex;gap:8px"><input id="ac-org" placeholder="órgão ou UG (ex: 133100)"><button class="btn accent" style="flex:0 0 auto;min-width:82px" onclick="acao('orgao')">Gerar</button></div>
+      <div style="height:11px"></div><label class="fld">Dossiê 360</label><div style="display:flex;gap:8px"><input id="ac-dos" placeholder="nome ou CNPJ do alvo"><button class="btn accent" style="flex:0 0 auto;min-width:82px" onclick="acao('dossie')">Gerar</button></div>
+      <pre id="ac-out" style="margin-top:13px;display:none"></pre>`)+
+    `<div style="height:18px"></div>`+sec('Relatórios gerados')+repsHtml+
+    `<div style="height:18px"></div>`+sec('Painéis')+`<div class="lnks">
+      <a class="lnk" href="/auditoria"><span class="ic">📊</span><div><div class="t">Painel de Auditoria</div><div class="d">KPIs clássicos</div></div><span class="ar">→</span></a>
       <a class="lnk" href="/graph"><span class="ic">🕸️</span><div><div class="t">Grafo de fraude</div><div class="d">relações entre entes</div></div><span class="ar">→</span></a>
-      <a class="lnk" href="/hermes"><span class="ic">🤖</span><div><div class="t">Yoda / Hermes</div><div class="d">chat e relatórios</div></div><span class="ar">→</span></a>
-    </div>
-    <div style="height:18px"></div>
-    ${card(`<label class="fld">Relatório de fornecedor (+ Lex)</label>
-      <div style="display:flex;gap:8px"><input id="ac-emp" placeholder="nome ou CNPJ"><button class="btn red" style="flex:0 0 auto;min-width:84px" onclick="acao('relatorio')">Gerar</button></div>
-      <div style="height:11px"></div>
-      <label class="fld">Relatório de órgão (+ Lex)</label>
-      <div style="display:flex;gap:8px"><input id="ac-org" placeholder="órgão ou UG (ex: 133100)"><button class="btn red" style="flex:0 0 auto;min-width:84px" onclick="acao('orgao')">Gerar</button></div>
-      <div style="height:11px"></div>
-      <label class="fld">Dossiê 360 (cadastro+sanções+OB+rede)</label>
-      <div style="display:flex;gap:8px"><input id="ac-dos" placeholder="nome ou CNPJ do alvo"><button class="btn red" style="flex:0 0 auto;min-width:84px" onclick="acao('dossie')">Gerar</button></div>
-      <div style="height:11px"></div>
-      <label class="fld">Cruzamento (sócios × OB × SEI × endereço)</label>
-      <div style="display:flex;gap:8px"><input id="ac-cruz" placeholder="CNPJ (14 dígitos)"><button class="btn ghost" style="flex:0 0 auto;min-width:84px" onclick="acao('cruzamento')">Ver</button></div>
-      <pre id="ac-out" style="margin-top:13px;display:none"></pre>`)}`;
+      <a class="lnk" href="/graph?fonte=familias" target="_blank"><span class="ic">👪</span><div><div class="t">Grafo de famílias</div><div class="d">clãs em cargos + suas empresas</div></div><span class="ar">→</span></a>
+      <a class="lnk" href="/hermes"><span class="ic">🤖</span><div><div class="t">Yoda / Hermes</div><div class="d">chat e relatórios</div></div><span class="ar">→</span></a></div>`;
 }
 async function acao(tipo){
-  const out=$('ac-out'); out.style.display='block';
-  let url,body,val;
-  if(tipo==='cruzamento'){ // GET síncrono → mostra inline (não gera PDF)
-    val=$('ac-cruz').value.replace(/\D/g,''); if(val.length!==14){out.textContent='⚠ informe um CNPJ de 14 dígitos.';return;}
-    out.textContent='⏳ cruzando…';
-    const r=await J('/api/cruzamento?cnpj='+val);
-    if(r.erro||r._nota){out.textContent='⚠ '+(r.erro||r._nota);return;}
-    const co=(r.coendereco||[]).length, ind=(r.indicios||[]).length;
-    out.textContent=`✅ ${r.razao||val}\nco-endereço: ${co} empresa(s) · indícios: ${ind}\nOB/SEI: ${JSON.stringify(r.obs_sei||{}).slice(0,200)}`;
-    return;
-  }
-  if(tipo==='relatorio'){ val=$('ac-emp').value.trim(); if(!val)return; url='/api/relatorio/inteligencia'; body={empresa:val}; }
-  if(tipo==='orgao'){ val=$('ac-org').value.trim(); if(!val)return; url='/api/relatorio/orgao'; body={orgao:val}; }
-  if(tipo==='dossie'){ val=$('ac-dos').value.trim(); if(!val)return; url='/api/dossie'; body={alvo:val}; }
-  out.textContent=`⏳ processando "${val}"… (até ~1 min)`;
-  const t0 = Date.now()/1000;  // mtime é epoch em segundos
-  const antes = new Set(((await J('/api/compliance/reports'))||[]).filter(x=>x.type==='pdf').map(x=>x.name));
+  const out=$('ac-out');out.style.display='block';let url,body,val;
+  if(tipo==='relatorio'){val=$('ac-emp').value.trim();if(!val)return;url='/api/relatorio/inteligencia';body={empresa:val};}
+  if(tipo==='orgao'){val=$('ac-org').value.trim();if(!val)return;url='/api/relatorio/orgao';body={orgao:val};}
+  if(tipo==='dossie'){val=$('ac-dos').value.trim();if(!val)return;url='/api/dossie';body={alvo:val};}
+  out.textContent=`⏳ processando "${val}"… (até ~1 min)`;const t0=Date.now()/1000;
+  const antes=new Set(((await J('/api/compliance/reports'))||[]).filter(x=>x.type==='pdf').map(x=>x.name));
   const d=await J(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(d.erro){ out.textContent='⚠ erro: '+d.erro; return; }
-  if(d.ambiguo){ out.textContent=`❓ ambíguo: ${d.pergunta}\ncandidatos: ${(d.candidatos||[]).map(c=>c.nome||c).join(' · ')}`; return; }
-  if(d.status==='gerando' || (d.msg && d.path_pdf==null && d.resumo==null)){
-    out.textContent=(d.msg||'⏳ Gerando relatório…').replace(/\*/g,'');
-    return pollarPdf(out, val, t0, antes);
-  }
+  if(d.erro){out.textContent='⚠ erro: '+d.erro;return;}
+  if(d.ambiguo){out.textContent=`❓ ambíguo: ${d.pergunta}\ncandidatos: ${(d.candidatos||[]).map(c=>c.nome||c).join(' · ')}`;return;}
+  if(d.status==='gerando'||(d.msg&&d.path_pdf==null&&d.resumo==null)){out.textContent=(d.msg||'⏳ Gerando…').replace(/\*/g,'');return pollarPdf(out,val,t0,antes);}
   const pdf=d.path_pdf||d.path_lex||d.path_xlsx;
-  const linha=[d.empresa||d.orgao||val, d.risco?('risco '+d.risco):'', d.grau_lex?('Lex '+d.grau_lex):'', d.score!=null?('score '+d.score):''].filter(Boolean).join(' · ');
-  out.innerHTML=`✅ ${linha}\n${(d.resumo||'').slice(0,500)}`+(pdf?`\n\n📄 <a href="/${pdf.replace(/^\//,'')}" target="_blank" style="color:#7ab8ff">abrir PDF</a> (também no Telegram)`:'');
+  const linha=[d.empresa||d.orgao||val,d.risco?('risco '+d.risco):'',d.grau_lex?('Lex '+d.grau_lex):'',d.score!=null?('score '+d.score):''].filter(Boolean).join(' · ');
+  out.innerHTML=`✅ ${esc(linha)}\n${esc((d.resumo||'').slice(0,500))}`+(pdf?`\n\n📄 <a href="/${pdf.replace(/^\//,'')}" target="_blank" style="color:var(--accent)">abrir PDF</a>`:'');
 }
-async function pollarPdf(out, termo, t0, antes){
+async function pollarPdf(out,termo,t0,antes){
   const slug=(termo||'').toLowerCase().replace(/[^a-z0-9]+/g,'_').slice(0,12);
-  for(let i=0;i<36;i++){                       // ~3 min (36 × 5s)
-    await new Promise(r=>setTimeout(r,5000));
+  for(let i=0;i<36;i++){await new Promise(r=>setTimeout(r,5000));
     const pdfs=((await J('/api/compliance/reports'))||[]).filter(x=>x.type==='pdf');
-    let novos=pdfs.filter(x=>x.mtime && x.mtime>t0);     // preferido: mtime
-    if(!novos.length) novos=pdfs.filter(x=>!antes.has(x.name)); // fallback: diff de nomes
-    const alvo=novos.find(x=>slug && x.name.toLowerCase().includes(slug))||novos[0];
-    if(alvo){
-      sessaoReports.add(alvo.name);   // efêmero: apaga ao sair da página
-      out.innerHTML='✅ relatório pronto: '+alvo.name+
-        '\n\n📄 <a href="'+alvo.url+'" target="_blank" style="color:#7ab8ff">abrir PDF</a> (também no Telegram · apaga ao sair)';
-      return;
-    }
-  }
-  out.textContent='⏳ Ainda gerando — confira no Telegram ou na seção Relatórios.';
+    let novos=pdfs.filter(x=>x.mtime&&x.mtime>t0);if(!novos.length)novos=pdfs.filter(x=>!antes.has(x.name));
+    const alvo=novos.find(x=>slug&&x.name.toLowerCase().includes(slug))||novos[0];
+    if(alvo){sessaoReports.add(alvo.name);out.innerHTML='✅ pronto: '+esc(alvo.name)+`\n\n📄 <a href="${alvo.url}" target="_blank" style="color:var(--accent)">abrir PDF</a> (apaga ao sair)`;return;}}
+  out.textContent='⏳ Ainda gerando — confira no Telegram ou em Relatórios.';
+}
+function limparEfemeros(){if(!sessaoReports.size)return;const body=JSON.stringify({nomes:[...sessaoReports]});
+  try{navigator.sendBeacon('/api/compliance/reports/limpar',new Blob([body],{type:'application/json'}));}
+  catch(e){fetch('/api/compliance/reports/limpar',{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true});}}
+window.addEventListener('pagehide',limparEfemeros);window.addEventListener('beforeunload',limparEfemeros);
+
+// ═══ COCKPIT (aba Início) — command deck ao vivo ═══
+let _ckMX=.5,_ckMY=.5,_ckTimer=null;
+addEventListener('pointermove',e=>{_ckMX=e.clientX/innerWidth;_ckMY=e.clientY/innerHeight;},{passive:true});
+function netbgStart(){
+  const cv=$('netbg');if(!cv)return;const ctx=cv.getContext('2d');let W,H,pts,raf;
+  const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  function size(){const d=Math.min(2,devicePixelRatio);W=cv.width=innerWidth*d;H=cv.height=innerHeight*d;
+    cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';cv._d=d;
+    const n=Math.min(56,Math.floor(innerWidth/26));
+    pts=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,z:Math.random()*.8+.2,
+      vx:(Math.random()-.5)*.11*d,vy:(Math.random()-.5)*.11*d,r:(Math.random()*1.5+.6)*d}));}
+  function draw(){const d=cv._d,D=150*d;ctx.clearRect(0,0,W,H);const px=(_ckMX-.5)*26*d,py=(_ckMY-.5)*26*d;
+    for(let i=0;i<pts.length;i++){const p=pts[i];if(!rm){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;}
+      const ox=p.x+px*p.z,oy=p.y+py*p.z;p._ox=ox;p._oy=oy;
+      for(let j=i+1;j<pts.length;j++){const q=pts[j],qx=q.x+px*q.z,qy=q.y+py*q.z,dx=ox-qx,dy=oy-qy,dd=Math.hypot(dx,dy);
+        if(dd<D){ctx.strokeStyle='rgba(63,224,208,'+((1-dd/D)*.15)+')';ctx.lineWidth=d*.5;ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(qx,qy);ctx.stroke();}}
+      ctx.beginPath();ctx.arc(ox,oy,p.r,0,7);ctx.fillStyle='rgba(120,230,220,'+(.32+p.z*.28)+')';ctx.fill();}
+    if(!rm)raf=requestAnimationFrame(draw);}
+  addEventListener('resize',()=>{cancelAnimationFrame(raf);size();draw();});size();draw();
+}
+function _ckSpark(cv,vals,color){const d=Math.min(2,devicePixelRatio),w=cv.width=cv.offsetWidth*d,h=cv.height=cv.offsetHeight*d,ctx=cv.getContext('2d');
+  const mn=Math.min(...vals),mx=Math.max(...vals),rg=(mx-mn)||1,X=k=>k/(vals.length-1)*w,Y=v=>h-8*d-(v-mn)/rg*(h-14*d);
+  let pr=0;(function f(){pr=Math.min(1,pr+.06);const cut=Math.floor(pr*(vals.length-1));ctx.clearRect(0,0,w,h);
+    ctx.beginPath();for(let k=0;k<=cut;k++)k?ctx.lineTo(X(k),Y(vals[k])):ctx.moveTo(X(k),Y(vals[k]));
+    ctx.lineTo(X(cut),h);ctx.lineTo(0,h);ctx.closePath();const g=ctx.createLinearGradient(0,0,0,h);g.addColorStop(0,color+'55');g.addColorStop(1,color+'00');ctx.fillStyle=g;ctx.fill();
+    ctx.beginPath();for(let k=0;k<=cut;k++)k?ctx.lineTo(X(k),Y(vals[k])):ctx.moveTo(X(k),Y(vals[k]));ctx.strokeStyle=color;ctx.lineWidth=1.6*d;ctx.stroke();
+    ctx.beginPath();ctx.arc(X(cut),Y(vals[cut]),2.6*d,0,7);ctx.fillStyle=color;ctx.fill();if(pr<1)requestAnimationFrame(f);})();}
+function _ckSynth(seed,n=15){const a=[];let v=seed;for(let i=0;i<n;i++){v+=(Math.sin(i*1.3+seed)*.5+(Math.random()-.42))*seed*.13;a.push(Math.max(.2,v));}return a;}
+function _ckCount(el,to,fmt,ms=1000){const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;if(rm||to==null){el.textContent=fmt(to);return;}
+  const t0=performance.now();(function s(t){const p=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-p,3);el.textContent=fmt(to*e);if(p<1)requestAnimationFrame(s);else el.textContent=fmt(to);})(performance.now());}
+const _CK={teal:'#4fd6c4',gold:'#e8bd72',good:'#3fe08a',amber:'#f5a623',rose:'#ff5c78'};
+
+async function renderCockpit(){
+  const html=`<div class="ck">
+    <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ carregando telemetria…</span></div></div>
+    <div class="ck-hero">
+      <div class="ck-eye">Economia potencial identificada</div>
+      <div class="ck-big" id="ck-econ">R$ ——</div>
+      <div class="ck-sub" id="ck-sub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item.</div>
+      <div class="ck-ved" id="ck-vedbox" style="display:none"><span class="n" id="ck-ved">R$ —</span>
+        <span class="l">pago <b style="color:var(--rose)">acima do mercado a fornecedor juridicamente vedado</b> (inidôneo), à época — o alvo mais forte.</span></div>
+    </div>
+    <div class="ck-grid" id="ck-grid"></div>
+    <div class="ck-fontes" id="ck-fontes"></div></div>`;
+  setTimeout(ckBoot,0);   // preenche após o innerHTML assentar
+  return html;
+}
+function ckCard(id,lab,valc,dotc,href,spark){return `<div class="ck-inst" id="cki-${id}" onclick="ir('${href}')">
+  <div class="k"><span class="lab">${lab}</span><span class="dot ${dotc}"></span></div>
+  <div class="val ${valc}">—</div><div class="meta">aguardando…</div>
+  ${spark?`<canvas class="spk" data-spark="${spark}"></canvas>`:''}</div>`;}
+function ckFill(id,{num,txt,meta}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
+  if(num!=null&&isFinite(num))_ckCount(v,num,x=>fmtN(Math.round(x)));else if(txt!=null)v.textContent=txt;
+  if(meta!=null)m.innerHTML=meta;const cv=el.querySelector('canvas[data-spark]');if(cv)requestAnimationFrame(()=>_ckSpark(cv,_ckSynth(6+Math.random()*9),_CK[cv.dataset.spark]||'#4fd6c4'));}
+let _ckTick=[];
+function ckPush(items){items.forEach(x=>_ckTick.push(x));const L=$('ck-lane');if(L&&_ckTick.length)L.innerHTML=_ckTick.concat(_ckTick).map(x=>`<span class="${x.c||''}">${x.h}</span>`).join('');}
+function ckBoot(){
+  const g=$('ck-grid');if(!g)return;
+  g.innerHTML=[ckCard('radar','Radar de risco','ckamber','bgamber','g_radar','amber'),
+    ckCard('com','Comunidades','ckteal','bgteal','g_comun','teal'),
+    ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp','rose'),
+    ckCard('lift','Melhor detector (lift)','ckgood','bggood','g_retro','good'),
+    ckCard('fenix','Pago a empresa morta','ckrose','bgrose','g_fenix','rose'),
+    ckCard('compras','Compras auditáveis','ckgold','bggold','e_comp','gold'),
+    ckCard('orgao','Órgão que mais economiza','ckgood','bggood','e_comp')].join('');
+  ckPull(true);
+  clearInterval(_ckTimer);_ckTimer=setInterval(()=>{if(!document.hidden&&aba==='i_cockpit')ckPull(false);},30000);
+}
+function ckPull(first){
+  _ckTick=[];
+  J('/api/comparador/economia').then(d=>{if(!d||!d.ok)return;
+    _ckCount($('ck-econ'),d.economia_total,fmtRc,first?1300:900);
+    if($('ck-sub'))$('ck-sub').innerHTML=`Se cada uma das <b>${fmtN(d.n_compras_acima_mediana)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item.`;
+    ckFill('compras',{num:d.n_compras_acima_mediana,meta:'acima da mediana de mercado, priorizadas por economia'});
+    const o=d.por_orgao&&d.por_orgao[0];ckFill('orgao',{txt:o?(o.orgao||'').split(' ').slice(0,2).join(' '):'—',meta:o?`potencial de <b>${fmtRc(o.economia)}</b> a recuperar`:'—'});
+    ckPush([{c:'g',h:`✦ economia potencial <b>${fmtRc(d.economia_total)}</b> em ${fmtN(d.n_compras_acima_mediana)} compras`}]);});
+  J('/api/comparador/vedada').then(d=>{if(d&&d.ok&&d.economia_vedada_total){const b=$('ck-vedbox');if(b)b.style.display='';_ckCount($('ck-ved'),d.economia_vedada_total,fmtRc);}});
+  J('/api/intel/radar?limite=6').then(d=>{if(!d||!d.ok)return;ckFill('radar',{num:d.n,meta:`fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico`});
+    ckPush((d.achados||[]).slice(0,5).map(a=>({c:'',h:`▸ RADAR ${a.score} — <b>${(a.nome||'').slice(0,30)}</b> · ${(a.sinais||[]).map(s=>s.sinal).slice(0,2).join(', ')}`})));});
+  J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;ckFill('com',{num:d.n,meta:'clusters família-empresa-órgão (Louvain)'});});
+  J('/api/intel/lift').then(d=>{if(!d||!d.ok)return;const b=(d.detectores||[]).filter(x=>!x.circular).sort((a,c)=>(c.lift||0)-(a.lift||0))[0];
+    ckFill('lift',{txt:b?b.lift+'×':'—',meta:b?`<b>${b.detector}</b> concentra fraude ${b.lift}× acima da base`:'—'});});
+  J('/api/comparador/dossie').then(d=>{if(!d||!d.ok)return;ckFill('dossie',{num:d.n,meta:'itens pagos caro a fornecedor sancionado/fantasma'});
+    ckPush((d.achados||[]).slice(0,6).map(a=>({c:'a',h:`◉ ${(a.orgao||'').slice(0,24)} pagou <b>${a.vs_mediana}× a mediana</b> — ${(a.fornecedor||'').slice(0,24)} (sancionada)`})));});
+  J('/api/intel/fenix').then(d=>{if(!d||!d.ok)return;
+    ckFill('fenix',{txt:fmtRc(d.total_defunta||0),meta:`<b>${fmtN(d.n_defunta)}</b> empresas BAIXADA/INAPTA que receberam do Estado`});
+    ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_defunta)}</b> pagos a ${fmtN(d.n_defunta)} empresas MORTAS/irregulares`}]);});
+  J('/api/fontes/frescor').then(d=>{const box=$('ck-fontes');if(!box||!d||!d.fontes)return;
+    const cor=f=>{const s=(f.estado||'').toLowerCase();if(s.includes('verde')||s.includes('ok')||s.includes('fresc'))return '#3fe08a';
+      if(s.includes('amar')||s.includes('aten')||s.includes('velh'))return '#f5a623';if(s.includes('verm')||s.includes('erro')||s.includes('crit'))return '#ff5c78';
+      return f.idade_dias==null?'#637192':(f.idade_dias<=2?'#3fe08a':(f.idade_dias<=10?'#f5a623':'#ff5c78'));};
+    box.innerHTML=`<div class="ck-flabel">Fontes de dados — frescor ao vivo</div><div class="ck-fgrid">`+
+      d.fontes.map(f=>`<div class="ck-fchip" title="${esc(f.detalhe||'')}"><span class="fled" style="background:${cor(f)};box-shadow:0 0 8px ${cor(f)}"></span>
+        <span class="fnm">${esc((f.fonte||'').replace(/·/g,'·'))}</span><span class="fage">${f.idade_dias==null?'—':f.idade_dias+'d'}</span></div>`).join('')+`</div>`;});
 }
 
-// Relatórios EFÊMEROS: o que a sessão gerar é apagado ao sair da página (não acumula duplicados na VM).
-function limparEfemeros(){
-  if(!sessaoReports.size) return;
-  const body = JSON.stringify({nomes:[...sessaoReports]});
-  try{ navigator.sendBeacon('/api/compliance/reports/limpar', new Blob([body],{type:'application/json'})); }
-  catch(e){ fetch('/api/compliance/reports/limpar',{method:'POST',headers:{'Content-Type':'application/json'},body,keepalive:true}); }
-}
-window.addEventListener('pagehide', limparEfemeros);
-window.addEventListener('beforeunload', limparEfemeros);
-
-(async()=>{
-  montarTabs();
-  await ir('geral');
-  const st=await J('/status');
-  if(st.username) $('hsub').textContent = 'SIAFE '+st.username.slice(0,4)+'… · exerc. '+(st.exercicio||'—');
-})();
+(async()=>{montarSpheres();montarTabs();netbgStart();await ir('i_cockpit');
+  const st=await J('/status');if(st.exercicio)$('hsub').textContent='CENTRAL DE INTELIGÊNCIA · SIAFE '+(st.logged_in?'✓':'✗')+' · '+st.exercicio;})();
 </script>
 </body>
 </html>

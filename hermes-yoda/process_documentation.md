@@ -228,3 +228,14 @@ Ex.: MGS CLEAN agora 2021–2026 (R$ 136.225.497,94; não há OB em 2019/2020).
 - **Gráfico de TIA:** Apenas 'MGS' aparece, outros não são gerados.
 
 /usr/bin/bash: line 3: agent-browser: command not found
+
+## 2026-07-11 — Relatório Especial Engeprat (v2)
+
+### Ação executada
+- Recebido comando informal "Engeprat" do Mestre Jorge no Telegram.
+- Identificado o script de perícia customizada `JFN/tools/relatorio_engeprat_yoda.py` específico para a Engeprat, que consolida e reconcilia a carteira total da empresa no estado do RJ em R$ 402.369.627,76.
+- Executado o script em ambiente Python da venv, gerando os relatórios:
+  1. `engeprat_por_contrato_v2_2026-07-11.pdf` (Túnel Extravasor de Petrópolis e carteira temática)
+  2. `engeprat_pericia_por_orgao_v2_2026-07-11.pdf` (Repartido por unidade gestora contratante)
+- O próprio script fez o envio de ambos os relatórios (com mensagens de resumo e os PDFs acoplados) diretamente ao Telegram do Mestre Jorge via o bot.
+- A reconciliação financeira fechou com diferença de R$ 0,00.

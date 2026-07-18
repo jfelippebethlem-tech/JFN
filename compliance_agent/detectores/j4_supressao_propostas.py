@@ -40,10 +40,12 @@ _RUBRICA_INABILITACAO = {
 }
 
 # Palavras-chave de motivos de inabilitação por falha PRIMÁRIA (erro grosseiro de empresa experiente).
+# ESTREITO de propósito: termos amplos ("documentação", "atestado", "índice", "ausência de") casam
+# inabilitação LEGÍTIMA (habilitação técnica/econômica, art. 62 ss.) — anti-FP.
 _MOTIVOS_GROSSEIROS = (
-    "erro grosseiro", "documentação", "documentacao", "assinatura", "certidão vencida", "certidao vencida",
-    "sem proposta", "proposta em branco", "rasura", "fora do prazo", "ausência de", "ausencia de", "faltou",
-    "não anexou", "nao anexou", "índice", "indice", "atestado",
+    "erro grosseiro", "certidão vencida", "certidao vencida", "sem assinatura", "sem proposta",
+    "proposta em branco", "fora do prazo", "não anexou", "nao anexou",
+    "não apresentou documento", "nao apresentou documento",
 )
 
 # Limiar (CÓDIGO): "muitos inscritos" para afunilamento → 1 classificado.

@@ -22,6 +22,7 @@ Saída automática:
 Depois: git add + git commit + git push (automático ao final).
 """
 from __future__ import annotations
+from playwright.async_api import Error as PWError
 
 import asyncio
 import json
@@ -282,7 +283,7 @@ def _load_empresas() -> list[dict]:
         try:
             dados = json.loads(cfg.read_text(encoding="utf-8"))
             return dados if isinstance(dados, list) else dados.get("empresas", [])
-        except Exception:
+        except (OSError, ValueError, AttributeError):
             pass
 
     return [{"cnpj": CNPJ, "cnpj_fmt": CNPJ_FMT, "nome": NOME_EMP, "categoria": "mgs_clean_real"}]
@@ -297,7 +298,7 @@ def _parse_date(s: str) -> Optional[datetime]:
     for fmt in ("%d/%m/%Y","%Y-%m-%d","%d-%m-%Y"):
         try:
             return datetime.strptime(s.strip(), fmt)
-        except Exception:
+        except ValueError:
             pass
     return None
 
@@ -1483,7 +1484,7 @@ async def _coletar_ug_ano(browser, ug_code: str, ano: int) -> list[dict]:
     finally:
         try:
             await page.close()
-        except Exception:
+        except PWError:
             pass
 
 
@@ -1574,7 +1575,7 @@ async def _coletar_exercicio(browser, ano: int, empresa: dict | None = None) -> 
     finally:
         try:
             await page.close()
-        except Exception:
+        except PWError:
             pass
 
 
@@ -1846,7 +1847,7 @@ def _carregar_progresso() -> dict:
     if _PROGRESS_FILE.exists():
         try:
             return json.loads(_PROGRESS_FILE.read_text(encoding="utf-8"))
-        except Exception:
+        except (OSError, ValueError):
             pass
     return {"empresas": {}, "historico_runs": []}
 
@@ -2179,7 +2180,7 @@ async def main():
     finally:
         try:
             await browser.close()
-        except Exception:
+        except PWError:
             pass
         await p.stop()
 

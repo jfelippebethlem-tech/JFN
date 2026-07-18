@@ -37,7 +37,7 @@ def _ck_save(d: dict):
     try:
         _CKPT.parent.mkdir(parents=True, exist_ok=True)
         _CKPT.write_text(json.dumps(d, ensure_ascii=False, indent=1))
-    except Exception:
+    except (OSError, TypeError):
         pass
 
 

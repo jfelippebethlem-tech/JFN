@@ -90,7 +90,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
     socios = (emp or {}).get("socios") or []
     if socios:
         rows = "".join(f"<tr><td>{esc(s.get('nome'))}</td><td>{esc(s.get('qualificacao'))}</td>"
-                       f"<td>{esc(s.get('data_entrada'))}</td></tr>" for s in socios[:25])
+                       f"<td>{esc(s.get('data_entrada'))}</td></tr>" for s in socios[:80])
         secoes.append({"titulo": "2. Quadro societário (QSA / diretores)",
                        "html": f"<table><tr><th>Sócio</th><th>Qualificação</th><th>Entrada</th></tr>{rows}</table>"})
 
@@ -117,7 +117,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
             _rows_bs = "".join(f"<tr><td>{esc(it.get('nome'))}</td><td>{esc(it.get('papel'))}</td>"
                                f"<td>{esc(', '.join(it.get('tipos') or []) or '—')}</td>"
                                f"<td>{esc(_fmap_bs.get(it.get('fonte', ''), it.get('fonte', '') or '—'))}</td></tr>"
-                               for it in _itens_bs[:20])
+                               for it in _itens_bs[:60])
             _tab_bs = ("<table><tr><th>Sócio/Administrador</th><th>Papel</th><th>Benefício</th>"
                        f"<th>Fonte do CPF</th></tr>{_rows_bs}</table>")
         secoes.append({"titulo": "2-B. Benefícios sociais dos sócios/administradores (indício de laranja)",
@@ -163,7 +163,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         _ch = f"<p class='nota'>{esc(_cpv.leitura(_cpa).replace('**', ''))}</p>"
         if _ci:
             _cr = "".join(f"<tr><td>{esc(it['nome'])}</td><td>{esc(it['papel'])}</td><td>{esc(it['orgao'])}</td>"
-                          f"<td>{esc(it['cargo'])}</td><td>{esc(it['vinculo'])}</td></tr>" for it in _ci[:20])
+                          f"<td>{esc(it['cargo'])}</td><td>{esc(it['vinculo'])}</td></tr>" for it in _ci[:60])
             _ch += ("<table><tr><th>Sócio/Adm</th><th>Papel</th><th>Órgão (folha)</th><th>Cargo</th>"
                     f"<th>Vínculo</th></tr>{_cr}</table>")
         secoes.append({"titulo": "2-E. Conflito de pessoal — sócio na folha do Estado", "html": _ch})
@@ -182,7 +182,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
             ugs_l = r.get("ugs") or []
             if not ugs_l:
                 return "—"
-            top = "; ".join(f"{esc(u.get('nome'))} (R$ {moeda(u.get('total'))})" for u in ugs_l[:3])
+            top = "; ".join(f"{esc(u.get('nome'))} (R$ {moeda(u.get('total'))})" for u in ugs_l[:10])
             extra = f" (+{len(ugs_l) - 3} UG)" if len(ugs_l) > 3 else ""
             return top + extra
 
@@ -195,7 +195,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         rows = "".join(f"<tr><td>{esc(r.get('doador'))}</td><td>{esc(r.get('via'))}</td>"
                        f"<td>{esc(r.get('candidato'))}</td><td>{esc(r.get('partido'))}</td>"
                        f"<td>{esc(r.get('ano'))}</td><td>R$ {moeda(r.get('valor_doacao'))}</td>"
-                       f"<td>{_ug_cell(r)}</td><td class='nota'>{_sei_cell(r)}</td></tr>" for r in rede[:20])
+                       f"<td>{_ug_cell(r)}</td><td class='nota'>{_sei_cell(r)}</td></tr>" for r in rede[:80])
         secoes.append({"titulo": "3. Doações eleitorais (sócios/empresa → candidatos) — conflito de interesse",
                        "html": "<p class='nota'>Cruzamento TSE × QSA × contratos: o doador pode ser a empresa OU um sócio dela (coluna Via). "
                                "As colunas <b>Órgão (UG) pagador</b> e <b>Processos SEI</b> mostram por onde a empresa contratada recebeu — "
@@ -217,7 +217,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
         elif s.get("sancionado"):
             sl = s.get("sancoes") or []
             top = "; ".join(f"{esc(x.get('_fonte'))}: {esc(x.get('tipo_sancao') or x.get('fundamentacao'))}"
-                            for x in sl[:3])
+                            for x in sl[:15])
             osint.append(f"<li>CEIS/CNEP/CEPIM (CGU): <b>SANCIONADA — {esc(len(sl))} registro(s)</b> — {top} "
                          f"<span class='nota'>(verificar vigência na fonte)</span></li>")
         else:
@@ -262,7 +262,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
             li = "".join(
                 f"<li><a href='{esc(a.get('url'))}'>{esc(a.get('titulo'))}</a> "
                 f"<span class='nota'>— {esc(a.get('fonte'))} · {esc(a.get('data'))} · termos: {esc(', '.join(a.get('termos') or []))}</span></li>"
-                for a in adversos[:10])
+                for a in adversos[:40])
             ma_html = (f"<p class='nota'>Varredura de cobertura jornalística (GDELT, fontes abertas, sem chave). "
                        f"{ma.get('n_adversos')} de {ma.get('n_total')} matérias com termos de risco. "
                        "Indício a confirmar na fonte — cobertura não é prova e pode haver homônimos.</p>"
@@ -370,7 +370,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
                 _mes = int(_d[5:7]) if _ok else 0
                 linhas_ob.append((int(_ano or 0), _mes, _ln, (f"{_d[5:7]}/{_d[0:4]}" if _ok else "s/data")))
         if linhas_ob:
-            _LIM = 400
+            _LIM = 2000
             linhas_ob.sort(key=lambda t: (t[0], t[1], float(t[2].get("valor") or 0)), reverse=True)
             _total_ob = len(linhas_ob)
             _rows = "".join(
@@ -411,8 +411,8 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
     elif tcerj_contr:
         tcerj_contr.sort(key=lambda i: (i.get("valor_contrato") or 0), reverse=True)
         rows = "".join(f"<tr><td>{esc(i.get('numero') or i.get('processo'))}</td>"
-                       f"<td>{esc((i.get('objeto') or '—')[:70])}</td><td>{esc(i.get('orgao') or i.get('unidade') or '—')}</td>"
-                       f"<td>R$ {moeda(i.get('valor_contrato'))}</td></tr>" for i in tcerj_contr[:15])
+                       f"<td>{esc((i.get('objeto') or '—'))}</td><td>{esc(i.get('orgao') or i.get('unidade') or '—')}</td>"
+                       f"<td>R$ {moeda(i.get('valor_contrato'))}</td></tr>" for i in tcerj_contr[:80])
         gap = (f" <b>Pago (OB) R$ {moeda(pago)} = {pago/contratado:.1f}× o contratado</b> — possíveis aditivos/contratos "
                "não listados, a verificar." if contratado and pago > contratado * 1.2 else "")
         secoes.append({"titulo": f"7. Carteira de contratos — TCE-RJ ({len(tcerj_contr)} — R$ {moeda(contratado)})",
@@ -450,7 +450,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
             if _ai:
                 _ar = "".join(f"<tr><td>{it['score']:.3f}</td><td>{esc(it.get('ob', '-'))}</td>"
                               f"<td>{esc(moeda(it.get('valor')))}</td><td>{esc(str(it.get('data', '-')))}</td></tr>"
-                              for it in _ai[:12])
+                              for it in _ai[:60])
                 _ah = (f"<p class='nota'>Das {_an['n_obs']} OBs pontuadas, <b>{_an['n_anomalas']}</b> com score alto "
                        "(≥0,70) de anomalia (valor/frequência/dia/UG). Indício de pagamento atípico a inspecionar "
                        "(lastro/contrato/medição) — não prova.</p>"
@@ -463,7 +463,7 @@ async def render_pdf_html(ctx: dict, destino: str) -> str:
     # 10. Co-endereço / sócios em comum (sinal de cartel/laranja) — sempre presente (sem buraco de numeração)
     coend = (ctx.get("cruzamento") or {}).get("coendereco") or []
     if coend:
-        rows = "".join(f"<tr><td>{esc(x.get('razao') or x.get('cnpj'))}</td><td>{esc(x.get('cnpj'))}</td></tr>" for x in coend[:15])
+        rows = "".join(f"<tr><td>{esc(x.get('razao') or x.get('cnpj'))}</td><td>{esc(x.get('cnpj'))}</td></tr>" for x in coend[:60])
         secoes.append({"titulo": "10. Empresas no MESMO endereço (sinal de cartel/laranja)",
                        "html": "<p class='nota'>Outras empresas registradas no mesmo endereço da sede — indício de "
                                "fachada/cartel a verificar (não é prova).</p>"
