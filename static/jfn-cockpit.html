@@ -121,6 +121,14 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);
   transition:color .2s,border-color .2s,background .2s;display:inline-flex;gap:8px;align-items:center}
 .dock a:hover{color:var(--teal);border-color:var(--edge-lit);background:rgba(63,224,208,.06)}
 .foot{margin-top:26px;font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.5px;line-height:1.6}
+/* fontes — frescor ao vivo */
+.fontes{margin-top:22px}
+.flabel{font-family:var(--mono);font-size:10.5px;letter-spacing:2px;color:var(--mut);text-transform:uppercase;margin-bottom:10px}
+.fgrid{display:flex;flex-wrap:wrap;gap:9px}
+.fchip{display:inline-flex;align-items:center;gap:8px;padding:8px 13px;border:1px solid var(--edge);border-radius:22px;
+  background:rgba(255,255,255,.015);font-family:var(--mono);font-size:11.5px;color:var(--mut)}
+.fchip .fled{width:8px;height:8px;border-radius:50%;flex:0 0 auto;animation:blip 3s ease-out infinite}
+.fchip .fnm{color:var(--ink)}.fchip .fage{color:var(--dim)}
 
 /* boot */
 .rise{opacity:0;transform:translateY(16px);animation:rise .75s cubic-bezier(.2,.85,.25,1) forwards}
@@ -190,6 +198,8 @@ body{background:var(--bg);color:var(--ink);font-family:var(--sans);
   </section>
 
   <section class="grid" id="grid"></section>
+
+  <section class="fontes rise g7" id="fontes"></section>
 
   <nav class="dock rise g7">
     <a href="/painel">▣ Painel completo</a>
@@ -332,7 +342,15 @@ function pull(first){
   if(first)skeleton();
   TICK.length=0;                         // ticker reconstruído a cada ciclo (não cresce infinito)
   J('/status').then(st=>{if(st&&st.exercicio)$('exercicio').textContent=st.exercicio;});
-  J('/api/fontes/frescor').then(f=>$('fresh').textContent=(f&&f.fontes)?(Object.keys(f.fontes).length+' fontes ativas'):'base carregada');
+  J('/api/fontes/frescor').then(f=>{
+    if(!f||!f.fontes){$('fresh').textContent='base carregada';return;}
+    $('fresh').textContent=f.fontes.length+' fontes';
+    const cor=x=>{const s=(x.estado||'').toLowerCase();if(s.includes('verde')||s.includes('ok')||s.includes('fresc'))return '#3fe08a';
+      if(s.includes('amar')||s.includes('aten')||s.includes('velh'))return '#f5a623';if(s.includes('verm')||s.includes('erro')||s.includes('crit'))return '#ff5c78';
+      return x.idade_dias==null?'#4a5f69':(x.idade_dias<=2?'#3fe08a':(x.idade_dias<=10?'#f5a623':'#ff5c78'));};
+    const box=$('fontes');if(box)box.innerHTML=`<div class="flabel">Fontes de dados — frescor ao vivo</div><div class="fgrid">`+
+      f.fontes.map(x=>`<div class="fchip" title="${(x.detalhe||'').replace(/"/g,'')}"><span class="fled" style="background:${cor(x)};box-shadow:0 0 8px ${cor(x)}"></span>
+        <span class="fnm">${(x.fonte||'')}</span><span class="fage">${x.idade_dias==null?'—':x.idade_dias+'d'}</span></div>`).join('')+`</div>`;});
 
   J('/api/comparador/economia').then(econ=>{
     if(!econ||!econ.ok)return;
