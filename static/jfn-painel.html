@@ -48,9 +48,11 @@
   .live .pulse{width:6px;height:6px;border-radius:50%;background:var(--teal);box-shadow:0 0 8px var(--teal);animation:pl 1.8s infinite}
   @keyframes pl{0%,100%{opacity:1}50%{opacity:.3}}
   .htop .actions{margin-left:auto;display:flex;gap:8px;align-items:center}
-  .htop a.sair,.htop a.ctrl,.htop a.help{font-size:12.5px;text-decoration:none;border:1px solid var(--bd);padding:6px 12px;border-radius:9px;transition:.15s;color:var(--mut);cursor:pointer}
+  .htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit{font-size:12.5px;text-decoration:none;border:1px solid var(--bd);padding:6px 12px;border-radius:9px;transition:.15s;color:var(--mut);cursor:pointer}
   .htop a.ctrl{color:var(--rose);border-color:rgba(229,83,122,.3)}
   .htop a.help{color:var(--accent);border-color:rgba(110,168,255,.28)}
+  .htop a.cockpit{color:#3fe0d0;border-color:rgba(63,224,208,.35);font-weight:600;letter-spacing:.3px}
+  .htop a.cockpit:hover{color:#fff;border-color:#3fe0d0;box-shadow:0 0 14px -2px rgba(63,224,208,.5);background:rgba(63,224,208,.08)}
   .htop a.sair:hover,.htop a.help:hover{color:#fff;border-color:var(--accent)}
   .spheres{display:flex;gap:7px;padding:0 14px 13px;overflow-x:auto;scrollbar-width:none}
   .spheres::-webkit-scrollbar{display:none}
@@ -68,7 +70,7 @@
     .sph .c{display:none}
     .live{display:none}
     .htop{gap:8px;padding:12px 14px 10px}
-    .htop a.sair,.htop a.ctrl,.htop a.help{padding:6px 9px;font-size:12px;white-space:nowrap}
+    .htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit{padding:6px 9px;font-size:12px;white-space:nowrap}
     .brand small{max-width:38vw}
   }
 
@@ -219,7 +221,7 @@
     <div class="htop">
       <div class="brand"><span class="lg">🛰️</span><div>JFN<small id="hsub">CENTRAL DE INTELIGÊNCIA · RJ</small></div></div>
       <span class="live"><span class="pulse"></span>ao vivo</span>
-      <span class="actions"><a class="help" onclick="glossario()">ⓘ Termos</a><a class="ctrl" href="/controle">🛡️ Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
+      <span class="actions"><a class="cockpit" href="/cockpit" title="Command deck ao vivo">◎ Cockpit</a><a class="help" onclick="glossario()">ⓘ Termos</a><a class="ctrl" href="/controle">🛡️ Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
     </div>
     <div class="spheres" id="spheres"></div>
   </header>
