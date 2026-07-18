@@ -327,14 +327,17 @@ const TICK=[];
 function pushTicker(items){items.forEach(x=>TICK.push(x));
   if(TICK.length)$('lane').innerHTML=TICK.concat(TICK).map(x=>`<span class="${x.c}">${x.h}</span>`).join('');}
 
-function boot(){
-  skeleton();
+/* ciclo reutilizável: first=carga inicial (scramble+skeleton); refresh=count-up suave */
+function pull(first){
+  if(first)skeleton();
+  TICK.length=0;                         // ticker reconstruído a cada ciclo (não cresce infinito)
   J('/status').then(st=>{if(st&&st.exercicio)$('exercicio').textContent=st.exercicio;});
   J('/api/fontes/frescor').then(f=>$('fresh').textContent=(f&&f.fontes)?(Object.keys(f.fontes).length+' fontes ativas'):'base carregada');
 
   J('/api/comparador/economia').then(econ=>{
     if(!econ||!econ.ok)return;
-    scrambleThenCount($('econ'),econ.economia_total,rBRL);
+    if(first)scrambleThenCount($('econ'),econ.economia_total,rBRL);
+    else countUp($('econ'),econ.economia_total,rBRL,900);
     $('econsub').innerHTML=`Se cada uma das <b>${nBR(econ.n_compras_acima_mediana)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item. Cresce conforme a base de preços do PNCP é coletada.`;
     fillCard('compras',{num:econ.n_compras_acima_mediana,meta:'acima da mediana de mercado, priorizadas por economia'});
     const o=econ.por_orgao&&econ.por_orgao[0];
@@ -366,8 +369,15 @@ function boot(){
     pushTicker((dossie.achados||[]).slice(0,6).map(a=>({c:'a',
       h:`◉ ${(a.orgao||'').slice(0,26)} pagou <b>${a.vs_mediana}× a mediana</b> — ${(a.fornecedor||'').slice(0,26)} (sancionada)`})));
   });
+  if(!first)flashFresh();               // pulso sutil de "atualizado"
 }
-boot();
+/* pulso no indicador de frescor a cada refresh silencioso */
+function flashFresh(){const el=$('fresh');if(!el)return;el.style.transition='color .35s ease';
+  el.style.color='#3fe0d0';setTimeout(()=>el.style.color='',1000);}
+pull(true);
+/* auto-refresh silencioso: o deck "respira" sozinho. Pausa quando a aba está oculta (economiza). */
+let _rt=setInterval(()=>{if(!document.hidden)pull(false);},30000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull(false);});
 </script>
 </body>
 </html>
