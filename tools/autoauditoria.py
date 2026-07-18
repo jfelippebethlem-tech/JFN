@@ -47,6 +47,7 @@ _DETECTORES = {
     "socio_oculto": ("socio_oculto", "achados", "n_empresas"),
     "nepotismo": ("nepotismo", "achados", "n_membros"),
     "fornecedor_dependente": ("fornecedor_dependente", "achados", "share"),
+    "capital_incompativel": ("capital_incompativel", "achados", "razao"),
     "corrida_dezembro": ("corrida_dezembro", "achados", "share"),
     "empresa_fenix": ("empresa_fenix", "achados", None),
     "porta_giratoria": ("porta_giratoria", "achados", None),

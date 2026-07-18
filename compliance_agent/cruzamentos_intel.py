@@ -316,6 +316,7 @@ _RADAR_PESOS = {
     "sancao_a_epoca": 25, "sancao_fora_vigencia": 10,
     "fantasma_alto": 20, "fantasma_medio": 10,
     "socio_servidor": 15, "perdedora_contumaz": 10, "fenix": 10,
+    "capital_irrisorio": 15,
 }
 
 
@@ -374,6 +375,11 @@ def radar_risco(db_path: str | None = None, limite: int = 100) -> dict:
             _add(a.get("cnpj"), "fenix", a.get("situacao") or a.get("motivo") or "")
     except Exception as exc:
         logger.warning("radar sem fênix: %s", exc)
+    try:
+        for a in capital_incompativel(db_path).get("achados", []):
+            _add(a.get("cnpj"), "capital_irrisorio", f"cap R${a.get('capital'):,.0f}, {a.get('razao')}x")
+    except Exception as exc:
+        logger.warning("radar sem capital: %s", exc)
 
     # nomes + montagem
     con = _ro(db_path)
@@ -1014,6 +1020,56 @@ def fornecedor_dependente(db_path: str | None = None, min_total: float = 2_000_0
         con.close()
 
 
+def capital_incompativel(db_path: str | None = None, min_total: float = 1_000_000,
+                         max_capital: float = 50_000.0, fator: float = 100.0,
+                         limite: int = 120) -> dict:
+    """CAPITAL IRRISÓRIO frente ao volume recebido: empresa com capital social ínfimo (< `max_capital`)
+    que recebeu do Estado ≥ `fator`× o próprio capital (e > `min_total`). Subcapitalização crônica é
+    sinal de FACHADA/interposição — a empresa não tem lastro econômico-financeiro para o que faturou
+    (Lei 14.133 art. 5, art. 62-63: qualificação econômico-financeira; capital de R$10 recebendo
+    dezenas de milhões não sustenta a execução). Fonte do capital: dump da Receita (empresas_cadastro).
+
+    Guarda anti-FP: o dump traz o capital de UM mês — pode ter havido aumento de capital depois;
+    a razão altíssima (≥100×) e o valor absoluto (>R$1mi) reduzem o ruído, mas confirmar o capital
+    ATUAL e a capacidade econômica antes de citar."""
+    con = _ro(db_path)
+    try:
+        cap = {}
+        try:
+            for r in con.execute("SELECT cnpj_basico, capital_social, razao_social FROM empresas_cadastro "
+                                 "WHERE capital_social IS NOT NULL AND capital_social>=0"):
+                cap[r["cnpj_basico"]] = (r["capital_social"], r["razao_social"])
+        except sqlite3.OperationalError:
+            return {"ok": False, "erro": "empresas_cadastro ausente — rodar tools/empresas_dump_sweep"}
+        achados = []
+        for r in con.execute("SELECT favorecido_cpf c, favorecido_nome nm, total_pago t, n_obs "
+                            "FROM favorecido_resumo WHERE length(favorecido_cpf)=14 AND total_pago>=?",
+                            (min_total,)):
+            info = cap.get(r["c"][:8])
+            if not info:
+                continue
+            capital, razao = info
+            # capital 0 = 'não declarado' (ambíguo), fora; só capital POSITIVO e ínfimo entra
+            if not (0 < capital < max_capital) or r["t"] < fator * capital:
+                continue
+            achados.append({
+                "cnpj": r["c"], "nome": r["nm"] or razao,
+                "cnpj_fmt": f"{r['c'][:2]}.{r['c'][2:5]}.{r['c'][5:8]}/{r['c'][8:12]}-{r['c'][12:]}",
+                "capital": round(capital, 2), "total_recebido": r["t"], "n_obs": r["n_obs"],
+                "razao": round(r["t"] / capital)})
+        achados.sort(key=lambda a: -a["razao"])
+        return {"ok": True, "achados": achados[:limite], "n": len(achados),
+                "explicacao": ("Empresa com capital social irrisório (< R$50 mil) que recebeu do Estado "
+                               "≥100× o próprio capital. Subcapitalização frente ao volume faturado é "
+                               "indício de fachada/interposição — falta lastro econômico-financeiro para "
+                               "executar contratos vultosos (Lei 14.133 art. 5º e 62-63)."),
+                "ressalva": ("O capital vem do dump da Receita de UM mês — pode ter havido aumento de "
+                             "capital posterior. Serviços intensivos em mão de obra têm capital baixo por "
+                             "natureza. Confirmar o capital ATUAL e a capacidade econômica. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 def corrida_dezembro(db_path: str | None = None, min_total: float = 2_000_000,
                      min_share: float = 0.75, limite: int = 120) -> dict:
     """Fornecedor comercial com ≥75% do valor recebido no ano concentrado em DEZEMBRO — corrida do
@@ -1556,6 +1612,44 @@ def _beneficios_vinculo_resumo() -> dict:
                            "são eliminados por município+fragmento de CPF."),
             "ressalva": "Indício por competência (mês). Confirmar CPF completo antes de citar. "
                         "Indício ≠ acusação."}
+
+
+def prioridade_valor(db_path: str | None = None, min_score: int = 10, limite: int = 60) -> dict:
+    """FILA DE PRIORIDADE POR VALOR EM RISCO: cruza o RADAR (quão arriscado é o fornecedor) com a
+    ECONOMIA POTENCIAL (quanto os cofres recuperariam se ele tivesse pago a mediana). O topo é o
+    fornecedor que junta as duas coisas — sinal de risco aceso E muito dinheiro recuperável —, que
+    é onde a auditoria rende mais por hora de trabalho. Determinístico; compõe detectores honestos
+    já existentes (nenhum dado novo). Responde ao pedido 'cruzar quem paga mais com o radar'.
+
+    Honestidade: economia é TETO teórico (mediana atingível), não valor a ressarcir; score é indício
+    interno; a interseção prioriza, não acusa. Só entram fornecedores com score ≥ min_score E economia>0."""
+    from compliance_agent.comparador_precos import economia_potencial
+    radar = {a["cnpj"]: a for a in radar_risco(db_path, limite=100_000).get("achados", [])}
+    eco = economia_potencial(db_path, limite=100_000).get("por_fornecedor", [])
+    achados = []
+    for f in eco:
+        cnpj = (f.get("fornecedor_cnpj") or "").strip()
+        r = radar.get(cnpj)
+        if not r or r["score"] < min_score or f.get("economia", 0) <= 0:
+            continue
+        achados.append({
+            "cnpj": cnpj, "cnpj_fmt": r["cnpj_fmt"],
+            "nome": r.get("nome") or f.get("fornecedor") or "—",
+            "score": r["score"], "rating": r["rating"], "n_sinais": r["n_sinais"],
+            "sinais": [s["sinal"] for s in r.get("sinais", [])],
+            "economia": round(f["economia"], 2), "n_compras": f.get("n", 0)})
+    achados.sort(key=lambda a: (-a["economia"], -a["score"]))
+    return {"ok": True, "achados": achados[:limite], "n": len(achados),
+            "economia_em_risco": round(sum(a["economia"] for a in achados), 2),
+            "escala": ("Interseção RADAR × ECONOMIA. Ordenado pelo R$ recuperável (sobrepreço acima "
+                       "da mediana) entre fornecedores que o radar já marca (score ≥ "
+                       f"{min_score}). Rating honesto do risco: 🔴 ≥50 · 🟡 25-49 · 🟢 <25 "
+                       "(sinal fraco, mas há dinheiro em jogo — ainda vale conferir)."),
+            "explicacao": ("Risco alto sem dinheiro em jogo pode esperar; dinheiro alto sem sinal de "
+                           "risco pode ser variação legítima de mercado. O cruzamento das duas coisas "
+                           "no MESMO fornecedor é a fila que rende mais por hora de apuração."),
+            "ressalva": ("Economia = teto teórico (mediana atingível), não valor a ressarcir. Score = "
+                         "indício interno. Confirmar termo de referência e documentos. Indício ≠ acusação.")}
 
 
 def gerar_cache_intel(db_path: str | None = None) -> dict:

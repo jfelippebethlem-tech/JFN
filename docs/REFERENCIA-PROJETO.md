@@ -216,6 +216,32 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **07-18 (painel VIVO em toda aba + UX cockpit + análise prioridade_valor):** **Estética viva do cockpit
+  em TODAS as abas** (não só no fundo): hook global `vivo()` no `ir()` — cascata de entrada (`.rise`), contagem
+  animada dos KPIs, **malha de luz** (canvas) ligando capa→KPIs→cards com pulsos viajando pelas arestas, hover
+  que energiza o card; respeita `prefers-reduced-motion`. **UX (olhos de humano):** removido o botão "◎ Cockpit"
+  do header (ejetava pra `/cockpit` standalone duplicado) — o cockpit já é a HOME unificada (esfera Início), uma
+  porta só. Fix: guard de null em `_ckCount` (navegar pra fora do cockpit durante count-up async gerava 2 erros de
+  console). **Análise NOVA `prioridade_valor`** (o "dossiê automático" pedido — cruza *quem paga mais* × radar):
+  interseção de fornecedores que o RADAR marca COM economia recuperável (pagaram acima da mediana) — **76 forn.,
+  R$882.355,73 em risco**; ordena por R$ recuperável, rating honesto (🔴🟡🟢, sinal fraco+dinheiro alto ainda
+  aparece). `compliance_agent/cruzamentos_intel.prioridade_valor` (compõe radar+economia, 0 dado novo) +
+  `/api/intel/prioridade_valor` + aba ⚡ Prioridade. Honestidade: economia=teto teórico (não ressarcimento);
+  score=indício; interseção prioriza, não acusa. Verificado como humano (Playwright). Testes: `test_prioridade_valor`
+  (4); catraca 1470→1471; golden regenerado.
+- **07-18 (mapa Karpathy — onde já está aplicado, verificado no código):** as ideias do Karpathy
+  (`CLAUDE.md` dele + `autoresearch`) **já estão aplicadas nas 3 camadas**, não é pendência:
+  **① Claude Code (aqui):** `~/.claude/CLAUDE.md §6` = 4 princípios de codificação adaptados do CLAUDE.md do Karpathy
+  (pensar-antes-de-codar / simplicidade / mudanças cirúrgicas / execução orientada a meta); **hook determinístico**
+  `~/.claude/hooks/jfn_guard.py` (PreToolUse fail-open: barra credenciais/exec-remota/force-push/rm-rf — regra>prompt,
+  a tese central do Karpathy) + `test_jfn_guard.sh`; `SessionStart` hook (carrega memória sob demanda).
+  **② JFN (motor):** `tools/autoauditoria.py` = porte do `karpathy/autoresearch` — baseline (fingerprint+drift, timer 07:10)
+  + sintonia otimizando **LIFT** contra gabarito objetivo; `compliance_agent/eval_groundtruth.py` = **eval-set** (AUC do
+  score do motor como preditor de punição TCE-RJ — mede calibração, não acusa); `data/baseline_2026-06-09` snapshot.
+  **③ Hermes (agente):** `tools/hermes_metacognicao.py` + `jfn-metacognicao.timer` (06:50, "sono REM": reflexão+auto-melhoria+RAG);
+  `compliance_agent/llm/auto_melhoria.py` (meta-cognição critica outputs vs vereditos → correções de método); `tools/hermes_rag.py`
+  (segundo cérebro); `tests/test_hermes_metacognicao.py`. **Gap remanescente:** não há `program.md`/loop de mutação-de-prompt
+  automatizado estilo autoresearch puro — a sintonia hoje é de _grade de detector_ (LIFT), não de prompt de agente.
 - **07-18 (comparador de preços + cockpit ultrafuturista + enriquecimento cadastral — 1 sessão longa):**
   **Comparador de preços** (`compliance_agent/comparador_precos.py`, pedido do dono): `buscar_grupos`/`comparar`
   (quem paga mais/menos pelo MESMO item — locação de veículo: 5 órgãos R$1.070→R$239.999), `ranking_orgaos`/`ranking_fornecedores`
