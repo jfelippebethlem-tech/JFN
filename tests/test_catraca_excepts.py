@@ -18,7 +18,9 @@ REPO = Path(__file__).resolve().parent.parent
 # 2026-07-18: +4 (1447→1451) — todos LOGADOS (não mudos) e amplos por DESIGN correto: rodar
 # detector arbitrário no fingerprint da autoauditoria (erro = estado do retrato) e libs de OCR
 # (fitz/tesseract/PIL, espaço de exceção enorme). Converter p/ específico seria errado aqui.
-BASELINE = 1451  # medido 2026-07-18 (antes 1447 em 2026-07-17; 1392 em 2026-07-11; 1404 antes)
+# 2026-07-18b: +1 (1451→1452) — 1 route handler novo (/api/intel/comunidades_grafo) no idioma-padrão
+# das ~71 rotas do investigacao.py (catch-all que RETORNA o erro no JSON, não é mudo).
+BASELINE = 1452  # medido 2026-07-18b (1451→ rota nova; 1447 em 2026-07-17; 1392 em 2026-07-11)
 
 
 def _contar() -> int:

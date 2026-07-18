@@ -30,6 +30,7 @@ GET /api/hermes/stream -> api_hermes_stream
 GET /api/idoneidade -> api_idoneidade
 GET /api/intel/aditivos -> api_intel_aditivos
 GET /api/intel/comunidades -> api_intel_comunidades
+GET /api/intel/comunidades_grafo -> api_intel_comunidades_grafo
 GET /api/intel/conluio_qsa -> api_intel_conluio_qsa
 GET /api/intel/corrida_dezembro -> api_intel_corrida_dezembro
 GET /api/intel/fantasmas -> api_intel_fantasmas
