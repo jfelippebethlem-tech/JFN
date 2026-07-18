@@ -1350,6 +1350,45 @@ async def api_intel_corrida_dezembro(limite: int = 120):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/fenix")
+async def api_intel_fenix(limite: int = 120):
+    """Empresa fênix: BAIXADA/INAPTA que recebeu, ou aberta ≤12m antes do 1º pagamento."""
+    try:
+        from compliance_agent.cruzamentos_intel import empresa_fenix
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:fenix:{lim}", 600)):
+            d = _cache_put(f"intel:fenix:{lim}", empresa_fenix(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/porta_giratoria")
+async def api_intel_porta_giratoria(limite: int = 120):
+    """Porta giratória: ex-servidor (inativo/exonerado) que virou sócio de fornecedor do Estado."""
+    try:
+        from compliance_agent.cruzamentos_intel import porta_giratoria
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:porta:{lim}", 600)):
+            d = _cache_put(f"intel:porta:{lim}", porta_giratoria(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/intel/nepotismo_cruzado")
+async def api_intel_nepotismo_cruzado(limite: int = 60):
+    """Nepotismo cruzado: colocação recíproca de parentes entre dois órgãos (dribla a SV13)."""
+    try:
+        from compliance_agent.cruzamentos_intel import nepotismo_cruzado
+        lim = max(1, min(int(limite or 60), 200))
+        if not (d := _cache_get(f"intel:nepcruz:{lim}", 600)):
+            d = _cache_put(f"intel:nepcruz:{lim}", nepotismo_cruzado(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/nepotismo")
 async def api_intel_nepotismo(limite: int = 120):
     """Nepotismo (SV13 STF): ≥2 pessoas de nomes distintos, mesmo sobrenome de família raro, ambas

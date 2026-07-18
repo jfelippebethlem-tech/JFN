@@ -292,6 +292,9 @@ const TABS={
     {id:'g_dez',     ic:'📅',tl:'Dezembro',render:renderCorridaDezembro},
     {id:'g_ocult',   ic:'🕸️',tl:'Sócio oculto',render:renderSocioOculto},
     {id:'g_nep',     ic:'👪',tl:'Nepotismo',render:renderNepotismo},
+    {id:'g_nepx',    ic:'🔀',tl:'Nepot. cruzado',render:renderNepotismoCruzado},
+    {id:'g_fenix',   ic:'🦅',tl:'Fênix',   render:renderFenix},
+    {id:'g_porta',   ic:'🚪',tl:'Porta giratória',render:renderPortaGiratoria},
     {id:'g_laranjas',ic:'🎭',tl:'Laranjas',render:renderLaranjas},
     {id:'g_socserv', ic:'🕴️',tl:'Servidor-sócio',render:renderSocioServidor},
     {id:'g_poder',   ic:'🏛️',tl:'Poder',   render:renderPoder},
@@ -313,10 +316,13 @@ function montarTabs(){
 function trocarEsfera(id){esfera=id;aba=TABS[id][0].id;montarSpheres();montarTabs();ir(aba);}
 let _nav=0; // token anti-corrida
 async function ir(id){
+  // blindagem: se o id não é da esfera atual, procura a esfera dona e troca (evita crash)
+  let t=TABS[esfera].find(x=>x.id===id);
+  if(!t){for(const e of Object.keys(TABS)){const cand=TABS[e].find(x=>x.id===id);if(cand){esfera=e;t=cand;montarSpheres();break;}}}
+  if(!t)return;
   aba=id;montarTabs();
   const meu=++_nav;
   const v=$('view');v.innerHTML=spin();
-  const t=TABS[esfera].find(x=>x.id===id);
   try{const html=await t.render();if(meu!==_nav)return;v.innerHTML=`<div class="fade">${html}</div>`;}
   catch(e){if(meu!==_nav)return;v.innerHTML=card(`<div class="warn">⚠ Falha: ${esc(e)}</div>`);}
   window.scrollTo(0,0);
@@ -816,6 +822,60 @@ async function renderNepotismo(){
     'hl')).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
 }
+// ═══ EMPRESA FÊNIX ═══
+async function renderFenix(){
+  const d=await J('/api/intel/fenix?limite=150');
+  if(!d.ok)return sec('Fênix')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Empresa fênix — morta que recebe, ou nascida para faturar','Empresa <b>BAIXADA/INAPTA</b> na Receita que mesmo assim recebeu do Estado (pagamento a empresa morta), ou <b>aberta poucos meses antes</b> do primeiro pagamento (nasceu já para faturar — perfil de laranja).','🦅')+acoesAba('fenix');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Empresas fênix','var(--rose)','🦅')}${kpi(fmtN(d.n_defunta),'Baixada/inapta que recebeu','var(--rose)','💀')}
+      ${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_recebido||0),0)),'Volume envolvido',null,'💰')}${kpi(fmtN(a.filter(x=>x.tipo==='recem_aberta').length),'Aberta às vésperas','var(--amber)','🐣')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por empresa…" oninput="filtrar(this,'#fenix-list .card')"></div>`;
+  h+=`<div id="fenix-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj)}<div class="dim">${esc(x.cnpj)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">${x.tipo==='defunta'?`<span class="tag rose">${esc(x.situacao)}</span>`:'<span class="tag amber">recém-aberta</span>'} · aberta ${esc(x.data_abertura)} · 1ª OB ${esc(x.primeira_ob)}</div></div>
+      <div class="right"><div class="num" style="font-weight:800">${fmtRc(x.total_recebido)}</div><div class="dim">recebido</div></div></div>
+      ${leitura(x.tipo==='defunta'?`<b>${esc(x.nome)}</b> está <b>${esc(x.situacao)}</b> na Receita mas recebeu ${fmtRc(x.total_recebido)} do Estado. Pagar empresa baixada/inapta é irregular — verificar se os pagamentos são posteriores à baixa.`:`<b>${esc(x.nome)}</b> foi aberta em ${esc(x.data_abertura)} e recebeu o 1º pagamento ${x.meses_ate_ob} meses depois. Empresa que nasce e já fatura com o Estado é perfil de laranja/fachada.`)}`,
+    x.tipo==='defunta'?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ PORTA GIRATÓRIA ═══
+async function renderPortaGiratoria(){
+  const d=await J('/api/intel/porta_giratoria?limite=150');
+  if(!d.ok)return sec('Porta giratória')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Porta giratória — ex-servidor virou fornecedor','Ex-servidor público (vínculo inativo/exonerado/sem lotação nas folhas) que hoje é <b>sócio de empresa fornecedora do Estado</b>. Sair do serviço público e virar fornecedor pode violar a quarentena e indica captura do ex-órgão.','🚪')+acoesAba('porta_giratoria');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Ex-servidores fornecedores','var(--rose)','🚪')}${kpi(fmtRc(a.reduce((s,x)=>s+(x.total_pago||0),0)),'Volume recebido',null,'💰')}
+      ${kpi(fmtN(a.filter(x=>x.confianca==='ALTA').length),'Confiança ALTA (CPF)','var(--amber)','🔎')}${kpi(fmtN(d.homonimos_descartados),'Homônimos descartados',null,'🚮')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, empresa ou órgão…" oninput="filtrar(this,'#porta-list .card')"></div>`;
+  h+=`<div id="porta-list" class="grid">`+a.map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0"><div style="font-weight:700">${esc(x.socio)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.qualificacao)} de ${clk(x.cnpj,x.empresa)}</div>
+      <div class="dim" style="margin-top:2px">ex: ${esc(x.ex_cargo||'—')} · ${esc((x.ex_orgao||'').slice(0,34))} <span class="tag amber">${esc(x.vinculo)}</span></div></div>
+      <div class="right"><span class="tag ${x.confianca==='ALTA'?'rose':'accent'}">${esc(x.confianca)}</span><div class="num" style="margin-top:6px;font-weight:800">${fmtRc(x.total_pago)}</div></div></div>
+      ${leitura(`<b>${esc(x.socio)}</b> consta na folha como ex-servidor (${esc(x.vinculo)}, ${esc(x.ex_orgao||'')}) e hoje é ${esc(x.qualificacao)} de <b>${esc(x.empresa)}</b>, que recebeu ${fmtRc(x.total_pago)} do Estado. Porta giratória — confirmar as datas de saída e do contrato (quarentena).`)}`,
+    x.confianca==='ALTA'?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
+// ═══ NEPOTISMO CRUZADO ═══
+async function renderNepotismoCruzado(){
+  const d=await J('/api/intel/nepotismo_cruzado?limite=80');
+  if(!d.ok)return sec('Nepotismo cruzado')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('geral','Nepotismo cruzado — troca de favores entre órgãos','A família X manda no órgão A e coloca um parente no órgão B, enquanto a família Y manda no órgão B e coloca um parente no A. A <b>reciprocidade</b> dribla a Súmula Vinculante 13, que só proíbe nomear parente no PRÓPRIO órgão.','🔀')+acoesAba('nepotismo_cruzado');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Pares recíprocos','var(--rose)','🔀')}</div>`;
+  if(!a.length)return h+card('<div class="muted">Nenhum par recíproco com o padrão rigoroso nas folhas atuais. Cresce com mais folhas. 🟢</div>')+`<div class="note">${esc(d.ressalva||'')}</div>`;
+  h+=`<div class="grid" style="margin-top:14px">`+a.map(x=>card(
+    `<div style="font-weight:700">${esc(x.sobrenome_a)} ⇄ ${esc(x.sobrenome_b)}</div>
+     <div class="kv" style="margin-top:8px"><span class="k">${esc((x.orgao_a||'').slice(0,30))}</span><b>autoridade: ${esc(x.autoridade_a)}</b></div>
+     <div class="kv"><span class="k">${esc((x.orgao_b||'').slice(0,30))}</span><b>autoridade: ${esc(x.autoridade_b)}</b></div>
+     ${leitura(`No órgão <b>${esc((x.orgao_a||'').slice(0,26))}</b> manda um <b>${esc(x.sobrenome_a)}</b> e há um <b>${esc(x.sobrenome_b)}</b> colocado; no <b>${esc((x.orgao_b||'').slice(0,26))}</b> é o inverso. Padrão de troca recíproca de parentes entre órgãos — confirmar parentesco e nomeações.`)}`,
+    'hl')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+}
+
 async function renderLaranjas(){
   const d=await J('/api/laranjas');if(!d.ok)return sec('Laranjas')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const it=d.itens||[];
@@ -834,10 +894,40 @@ async function renderCartel(){
   h+=`<div style="height:14px"></div><div class="grid">`+d.map(u=>card(`<div style="display:flex;justify-content:space-between;gap:12px;align-items:center"><div style="min-width:0"><div style="font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(u.ug_nome||'')} <span class="dim">(${esc(u.ug||'')})</span></div><div class="muted" style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${u.n_fornecedores} fornec. · top: ${esc(u.top_fornecedor||'—')}</div></div><div class="right"><div style="font-weight:800;color:${u.top_share>=90?'var(--rose)':u.top_share>=70?'var(--amber)':'#fff'}">${u.top_share}%</div><div class="dim">${fmtRc(u.total)}</div></div></div>`)).join('')+`</div>`;
   return h;
 }
+// glossário: traduz os CÓDIGOS crípticos dos alertas p/ linguagem simples
+const TIPO_ALERTA={
+  pcrj_d7_fracionamento:['✂️','Fracionamento de despesa','Compras fatiadas em várias notas para caber abaixo do limite e não fazer licitação.'],
+  pcrj_d10_rede_concorrentes:['🕸️','Rede de concorrentes','Empresas ligadas entre si (mesmo sócio/endereço) que disputam as mesmas licitações — concorrência de fachada.'],
+  pcrj_d9_socio_na_folha:['🕴️','Sócio na folha','Sócio de empresa fornecedora que também é servidor público — conflito de interesse.'],
+  fracionamento:['✂️','Fracionamento de despesa','Compras fatiadas para não licitar.'],
+  sobrepreco:['📈','Sobrepreço','Preço muito acima da mediana de mercado.'],
+};
+const SEV_LEGENDA={
+  alta:['🔴','Alta','Indício forte — priorize a verificação.'],
+  media:['🟡','Média','Merece checagem, mas o sinal é mais fraco ou depende de confirmação documental.'],
+  baixa:['⚪','Baixa','Sinal fraco / informativo.'],
+};
 async function renderAlertas(){
   const p=await J('/api/compliance/painel');const lst=p.lista_alertas||[];
   if(!lst.length)return sec('Auditoria')+card('<div class="muted">Sem alertas no momento. 🟢</div>');
-  return sec('Auditoria · alertas',lst.length)+`<div class="grid">`+lst.map(al=>card(`<div style="display:flex;gap:11px;align-items:flex-start"><span class="sev ${al.severidade||'baixa'}">${esc(al.severidade||'—')}</span><div><div style="font-weight:650">${esc(al.titulo||al.tipo||'Alerta')}</div>${al.descricao?`<div class="muted" style="font-size:13px;margin-top:3px">${esc(al.descricao)}</div>`:''}</div></div>`)).join('')+`</div>`;
+  // legenda da escala (o que 🔴/🟡 significam) — resolve "não entendo o amarelo"
+  let h=cover('estado','Alertas de auditoria','Sinais automáticos de irregularidade nas contas. A <b>cor</b> indica a força do indício, não uma acusação.','🚨');
+  h+=card(`<div style="font-weight:700;margin-bottom:8px">Como ler as cores</div>`+
+    Object.values(SEV_LEGENDA).map(([ic,nome,desc])=>`<div class="kv"><span class="k" style="min-width:110px"><span class="sev ${nome.toLowerCase()==='alta'?'alta':nome.toLowerCase()==='média'?'media':'baixa'}">${ic} ${nome}</span></span><b style="font-weight:500;color:var(--tx2);text-align:right">${desc}</b></div>`).join(''));
+  // agrupa por TIPO, com contagem e explicação em português
+  const porTipo={};lst.forEach(a=>{(porTipo[a.tipo]=porTipo[a.tipo]||[]).push(a);});
+  h+=`<div style="height:14px"></div>`+sec('Alertas por tipo',lst.length);
+  h+=`<div class="grid">`+Object.entries(porTipo).map(([tipo,alertas])=>{
+    const[ic,nome,desc]=TIPO_ALERTA[tipo]||['🚩',tipo,''];
+    const nAlta=alertas.filter(a=>a.severidade==='alta').length,nMed=alertas.length-nAlta;
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${ic} ${esc(nome)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc(desc)}</div></div>
+      <div class="right">${nAlta?`<span class="sev alta">${nAlta} 🔴</span> `:''}${nMed?`<span class="sev media">${nMed} 🟡</span>`:''}</div></div>
+      <div class="exp" onclick="toggle(this)" style="margin-top:8px"><div class="dim"><span class="chev">▸</span> ver os ${alertas.length} casos</div>
+      <div class="objs">${alertas.slice(0,40).map(a=>`<div class="obj">${a.severidade==='alta'?'🔴':'🟡'} <b>${esc((a.titulo||'').replace(/^[^—]*—\\s*/,''))}</b>${a.descricao?` — <span class="muted">${esc(a.descricao)}</span>`:''}</div>`).join('')}</div></div>`);
+  }).join('')+`</div>`;
+  h+=`<div class="note">Indício para apuração interna — não é acusação. 🔴 = sinal forte; 🟡 = merece checagem.</div>`;
+  return h;
 }
 async function renderSiafe(){
   const s=await J('/api/siafe/stats');if(!s.ok)return sec('SIAFE')+card('<div class="muted">SIAFE indisponível.</div>');

@@ -872,6 +872,185 @@ def socio_oculto(db_path: str | None = None, min_empresas: int = 3, limite: int 
         con.close()
 
 
+def empresa_fenix(db_path: str | None = None, limite: int = 120) -> dict:
+    """Empresa FÊNIX: (a) BAIXADA/INAPTA na Receita que ainda recebeu do Estado (paga a empresa
+    morta); ou (b) aberta ≤12 meses antes do 1º pagamento (nasceu já para faturar). Exclui
+    consórcio/SPE (legitimamente criados para um projeto). Cadastro Receita ainda parcial."""
+    con = _ro(db_path)
+    try:
+        iso = "substr(data_emissao,7,4)||'-'||substr(data_emissao,4,2)||'-'||substr(data_emissao,1,2)"
+        prim = {r["credor"]: (r["p"], r["tot"]) for r in con.execute(
+            f"SELECT credor, MIN({iso}) p, SUM(valor) tot FROM ob_orcamentaria_siafe "
+            "WHERE length(credor)=14 AND valor>0 GROUP BY credor")}
+        rx_spe = re.compile(r"CONSORCIO|CONSÓRCIO|\bSPE\b| S/?A\b|SOCIEDADE DE PROPOSITO|CONCESSION", re.I)
+        achados = []
+        for e in con.execute("SELECT cnpj, razao_social, data_abertura, situacao FROM empresas "
+                             "WHERE data_abertura IS NOT NULL AND data_abertura<>''"):
+            info = prim.get(e["cnpj"])
+            if not info:
+                continue
+            p, tot = info
+            ab = (e["data_abertura"] or "")[:10]
+            try:
+                y1, m1 = int(ab[:4]), int(ab[5:7])
+                y2, m2 = int(p[:4]), int(p[5:7])
+                meses = (y2 - y1) * 12 + (m2 - m1)
+            except Exception:
+                continue
+            defunta = e["situacao"] in ("BAIXADA", "INAPTA", "SUSPENSA", "NULA")
+            recem = 0 <= meses <= 12 and not rx_spe.search(e["razao_social"] or "")
+            if not (defunta or recem):
+                continue
+            achados.append({
+                "cnpj": e["cnpj"], "nome": e["razao_social"], "data_abertura": ab, "primeira_ob": p,
+                "meses_ate_ob": meses, "situacao": e["situacao"], "total_recebido": tot,
+                "tipo": "defunta" if defunta else "recem_aberta"})
+        achados.sort(key=lambda a: (a["tipo"] != "defunta", -(a["total_recebido"] or 0)))
+        return {"ok": True, "achados": achados[:limite], "n": len(achados),
+                "n_defunta": sum(1 for a in achados if a["tipo"] == "defunta"),
+                "explicacao": ("Empresa BAIXADA/INAPTA na Receita que mesmo assim recebeu do Estado "
+                               "(pagamento a empresa morta), ou aberta poucos meses antes do primeiro "
+                               "pagamento (nasceu já para faturar — perfil de laranja/fachada)."),
+                "ressalva": ("Cadastro da Receita ainda parcial (poucas empresas enriquecidas); SPE e "
+                             "consórcio são legitimamente novos e foram excluídos. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
+def porta_giratoria(db_path: str | None = None, limite: int = 120) -> dict:
+    """Porta giratória (revolving door): EX-servidor (folha com vínculo inativo/exonerado/encerramento)
+    que virou SÓCIO de empresa fornecedora do Estado. Reusa o casamento nome+fragmento de CPF do
+    servidor-sócio; exclui entidade de classe. Quebra de quarentena quando o contrato é logo após a saída."""
+    con = _ro(db_path)
+    try:
+        from collections import defaultdict
+        ex = defaultdict(list)  # nome_norm -> [(orgao, cargo, vinculo, cpf_frag)]
+        vinc_ex = ("INATIVO", "ENCERRAMENTO", "SEM LOTAÇÃO", "Livre Nomeação e Exoneração", "EXONERADO")
+        q_ph = ",".join("?" * len(vinc_ex))
+        for r in con.execute(f"SELECT nome, orgao_nome, cargo, vinculo, cpf FROM registros_folha "
+                            f"WHERE vinculo IN ({q_ph})", vinc_ex):
+            nn = _norm_nome(r["nome"])
+            if nn.count(" ") >= 1:
+                ex[nn].append((r["orgao_nome"], r["cargo"], r["vinculo"], _frag6(r["cpf"])))
+        achados, conflitos = [], 0
+        vistos = set()
+        for r in con.execute("SELECT s.socio_nome, s.socio_doc, s.cnpj, s.qualificacao, "
+                            "f.favorecido_nome, f.total_pago, f.n_obs FROM socios_fornecedor s "
+                            "JOIN favorecido_resumo f ON f.favorecido_cpf=s.cnpj "
+                            "WHERE f.total_pago>0 AND s.socio_nome<>'' ORDER BY f.total_pago DESC"):
+            emp = r["favorecido_nome"] or ""
+            if _RX_NAOCOM.search(_norm_nome(emp)):
+                continue
+            if not _RX_DONO.search(_norm_nome(r["qualificacao"] or "")):
+                continue
+            nn = _norm_nome(r["socio_nome"])
+            cands = ex.get(nn)
+            if not cands:
+                continue
+            fs = _frag6(r["socio_doc"])
+            tier, info, houve = None, None, False
+            for (org, cargo, vinc, ff) in cands:
+                if fs and ff:
+                    if fs[0:5] == ff[1:6]:
+                        tier, info = "ALTA", (org, cargo, vinc)
+                        break
+                    houve = True
+                elif not tier:
+                    tier, info = "MEDIA", (org, cargo, vinc)
+            if not tier:
+                if houve:
+                    conflitos += 1
+                continue
+            chave = (nn, r["cnpj"])
+            if chave in vistos:
+                continue
+            vistos.add(chave)
+            cnpj = r["cnpj"]
+            achados.append({
+                "socio": r["socio_nome"], "cnpj": cnpj,
+                "cnpj_fmt": (f"{cnpj[:2]}.{cnpj[2:5]}.{cnpj[5:8]}/{cnpj[8:12]}-{cnpj[12:]}"
+                             if len(cnpj or "") == 14 else cnpj),
+                "empresa": emp, "qualificacao": r["qualificacao"], "confianca": tier,
+                "ex_orgao": info[0], "ex_cargo": info[1], "vinculo": info[2],
+                "total_pago": r["total_pago"], "n_obs": r["n_obs"]})
+        achados.sort(key=lambda a: (a["confianca"] != "ALTA", -(a["total_pago"] or 0)))
+        return {"ok": True, "achados": achados[:limite], "n": len(achados),
+                "homonimos_descartados": conflitos,
+                "explicacao": ("Ex-servidor público (vínculo inativo/exonerado/sem lotação nas folhas) "
+                               "que hoje é sócio de empresa fornecedora do Estado. A 'porta giratória' "
+                               "— sair do serviço público e virar fornecedor — pode violar a quarentena "
+                               "e indica captura do ex-órgão."),
+                "ressalva": ("Casamento por nome + fragmento de CPF; a quarentena depende das datas de "
+                             "saída e do contrato (a confirmar). 'Sem lotação' pode não ser saída "
+                             "definitiva. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
+def nepotismo_cruzado(db_path: str | None = None, limite: int = 60) -> dict:
+    """Nepotismo CRUZADO: troca de favores entre órgãos — o sobrenome raro X tem AUTORIDADE no órgão A
+    e um comissionado no órgão B, enquanto o sobrenome raro Y tem autoridade no órgão B e comissionado
+    no A (colocação recíproca de parentes, driblando a SV13 do mesmo órgão). Rigoroso: exige o par
+    recíproco A↔B com autoridade dos dois lados."""
+    con = _ro(db_path)
+    try:
+        from collections import defaultdict
+        fam_tot: dict[str, set] = defaultdict(set)
+        aut: dict = defaultdict(dict)   # fam -> {orgao: nome_autoridade}
+        conf: dict = defaultdict(lambda: defaultdict(set))  # fam -> orgao -> {nome}
+        for r in con.execute("SELECT nome, orgao_nome, cargo FROM registros_folha WHERE nome IS NOT NULL"):
+            toks = _nep_tokens(r["nome"])
+            fam = _nep_familia(toks)
+            if not fam or fam in _NEP_COMUNS or any(t in _NEP_COMUNS for t in fam.split()):
+                continue
+            nn = " ".join(toks)
+            fam_tot[fam].add(nn)
+            cargo = (r["cargo"] or "").upper()
+            if _NEP_CONF.search(cargo):
+                conf[fam][r["orgao_nome"]].add(nn)
+            if _NEP_AUTORIDADE.search(cargo):
+                aut[fam].setdefault(r["orgao_nome"], r["nome"])
+        # só sobrenomes raros
+        raros = {f for f, s in fam_tot.items() if len(s) <= 20}
+        pares = []
+        famX = [f for f in raros if f in aut]
+        for i, X in enumerate(famX):
+            if len(fam_tot[X]) > 20:
+                continue
+            for orgA, autX in aut[X].items():
+                # X tem membro (conf) em algum órgão B ≠ A
+                for orgB in conf.get(X, {}):
+                    if orgB == orgA:
+                        continue
+                    # existe Y raro com autoridade em B e membro em A?
+                    for Y in raros:
+                        if Y == X or Y not in aut:
+                            continue
+                        if orgB in aut[Y] and orgA in conf.get(Y, {}):
+                            pares.append({
+                                "sobrenome_a": X, "orgao_a": orgA, "autoridade_a": autX,
+                                "sobrenome_b": Y, "orgao_b": orgB, "autoridade_b": aut[Y][orgB],
+                                "membro_a_em_b": sorted(conf[X][orgB])[:3],
+                                "membro_b_em_a": sorted(conf[Y][orgA])[:3]})
+        # dedup por par de sobrenomes+órgãos
+        seen, uniq = set(), []
+        for p in pares:
+            k = tuple(sorted([p["sobrenome_a"], p["sobrenome_b"]]) + sorted([p["orgao_a"] or "", p["orgao_b"] or ""]))
+            if k in seen:
+                continue
+            seen.add(k)
+            uniq.append(p)
+        return {"ok": True, "achados": uniq[:limite], "n": len(uniq),
+                "explicacao": ("Nepotismo cruzado (troca de favores): a família X manda no órgão A e "
+                               "coloca um parente no órgão B, enquanto a família Y manda no órgão B e "
+                               "coloca um parente no A. A reciprocidade dribla a Súmula Vinculante 13, "
+                               "que só proíbe nomear parente no PRÓPRIO órgão."),
+                "ressalva": ("Sobrenome igual não prova parentesco nem combinação — é o padrão que "
+                             "levanta a suspeita; confirmar vínculos e cadeia de nomeação. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 def _beneficios_vinculo_resumo() -> dict:
     """Resumo do cruzamento comissionados/servidores PCRJ × benefício social DURANTE o vínculo
     (pericia_beneficios.analisar() — cruza 7,3 mi de registros; NUNCA rodar no request HTTP)."""

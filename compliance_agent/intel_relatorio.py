@@ -126,6 +126,35 @@ def _b_fantasmas(d):
             [{"titulo": "1. Empresas com sinais de fachada", "html": _tabela(["Score", "Empresa", "Sinais", "Risco"], ls)}], d)
 
 
+def _b_fenix(d):
+    ls = [f"<tr><td>{'🔴' if a['tipo']=='defunta' else '🟡'}</td><td>{_esc(a['nome'])}<br><small>{_esc(a['cnpj'])}</small></td>"
+          f"<td>{_esc(a['situacao'] or '')} · aberta {_esc(a['data_abertura'])} · 1ª OB {_esc(a['primeira_ob'])}</td>"
+          f"<td style='text-align:right'>{_rs(a['total_recebido'])}</td></tr>" for a in d.get("achados", [])[:120]]
+    return ("Empresas fênix — defunta ou aberta às vésperas",
+            f"{d.get('n',0)} empresas · {d.get('n_defunta',0)} baixadas/inaptas que receberam",
+            [{"titulo": "1. Empresas de risco (situação × pagamento)", "html": _tabela(["", "Empresa", "Situação / datas", "Recebido"], ls)}], d)
+
+
+def _b_porta(d):
+    ls = [f"<tr><td>{_esc(a['socio'])}<br><small>{_esc(a['qualificacao'])} de {_esc(a['empresa'])}</small></td>"
+          f"<td>ex: {_esc(a['ex_cargo'])} · {_esc((a['ex_orgao'] or '')[:30])} ({_esc(a['vinculo'])})</td>"
+          f"<td style='text-align:right'>{_rs(a['total_pago'])}<br><small>{a['confianca']}</small></td></tr>"
+          for a in d.get("achados", [])[:120]]
+    return ("Porta giratória — ex-servidor virou fornecedor",
+            f"{d.get('n',0)} ex-servidores sócios de fornecedores do Estado",
+            [{"titulo": "1. Ex-servidores sócios de fornecedores", "html": _tabela(["Sócio / empresa", "Ex-cargo / órgão", "Recebido"], ls)}], d)
+
+
+def _b_nepcruz(d):
+    ls = [f"<tr><td>{_esc(a['sobrenome_a'])} ⇄ {_esc(a['sobrenome_b'])}</td>"
+          f"<td>{_esc((a['orgao_a'] or '')[:26])}<br><small>autoridade: {_esc(a['autoridade_a'])}</small></td>"
+          f"<td>{_esc((a['orgao_b'] or '')[:26])}<br><small>autoridade: {_esc(a['autoridade_b'])}</small></td></tr>"
+          for a in d.get("achados", [])[:80]]
+    return ("Nepotismo cruzado — colocação recíproca entre órgãos",
+            f"{d.get('n',0)} pares recíprocos (dribla a SV13 do mesmo órgão)",
+            [{"titulo": "1. Pares recíprocos A⇄B", "html": _tabela(["Sobrenomes", "Órgão A", "Órgão B"], ls)}], d)
+
+
 def _b_nepotismo(d):
     ls = []
     for a in d.get("achados", [])[:120]:
@@ -247,6 +276,9 @@ def _detectores():
         "corrida_dezembro": (lambda p: C.corrida_dezembro(db_path=p), _b_corrida_dezembro, "MÉDIO"),
         "socio_oculto": (lambda p: C.socio_oculto(db_path=p), _b_socio_oculto, "ALTO"),
         "nepotismo": (lambda p: C.nepotismo(db_path=p), _b_nepotismo, "ALTO"),
+        "fenix": (lambda p: C.empresa_fenix(db_path=p), _b_fenix, "ALTO"),
+        "porta_giratoria": (lambda p: C.porta_giratoria(db_path=p), _b_porta, "ALTO"),
+        "nepotismo_cruzado": (lambda p: C.nepotismo_cruzado(db_path=p), _b_nepcruz, "ALTO"),
         "fantasmas": (lambda p: C.ranking_fantasmas(db_path=p, limite=150), _b_fantasmas, "ALTO"),
         "perdedoras": (lambda p: C.perdedoras_contumazes(db_path=p), _b_perdedoras, "MÉDIO"),
     }
