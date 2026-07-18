@@ -33,6 +33,7 @@ GET /api/intel/comunidades -> api_intel_comunidades
 GET /api/intel/comunidades_grafo -> api_intel_comunidades_grafo
 GET /api/intel/conluio_qsa -> api_intel_conluio_qsa
 GET /api/intel/corrida_dezembro -> api_intel_corrida_dezembro
+GET /api/intel/escalada -> api_intel_escalada
 GET /api/intel/fantasmas -> api_intel_fantasmas
 GET /api/intel/fenix -> api_intel_fenix
 GET /api/intel/fornecedor_dependente -> api_intel_fornecedor_dependente

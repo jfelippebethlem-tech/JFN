@@ -63,6 +63,19 @@ def _b_sobrepreco(d):
               "html": _tabela(["× med", "Item", "Órgão / vencedor", "Preço unit."], ls)}], d)
 
 
+def _b_escalada(d):
+    ls = [f"<tr><td>{a['razao']}×</td><td>{_esc(a['item'])}{(' / '+_esc(a['unidade_medida'])) if a.get('unidade_medida') else ''}"
+          f"<br><small>{_esc(a.get('fornecedor'))}</small></td>"
+          f"<td>{a['n_compras']} compras / {a['span_dias']}d"
+          f"{('<br><small>'+str(a['final_vs_mercado'])+'× o mercado</small>') if a.get('final_vs_mercado') else ''}</td>"
+          f"<td style='text-align:right'>{_rs(a['preco_inicial'])} → {_rs(a['preco_final'])}</td></tr>"
+          for a in d.get("achados", [])[:150]]
+    return ("Escalada de preço unitário (mesmo fornecedor, mesmo item)",
+            f"{d.get('n',0)} escaladas: o mesmo fornecedor subiu o preço do mesmo item ≥3× no tempo",
+            [{"titulo": "1. Fornecedores que escalaram o preço do próprio item",
+              "html": _tabela(["× alta", "Item / fornecedor", "Compras / janela", "Inicial → final"], ls)}], d)
+
+
 def _b_aditivos(d):
     ls = [f"<tr><td>{'🔴' if a['estoura_teto'] else '🟡'}</td><td>{_esc(a.get('fornecedor'))}<br><small>{_esc((a.get('orgao') or '')[:40])}</small></td>"
           f"<td>{('+'+str(a['pct'])+'%') if a['estoura_teto'] else str(a['num_aditivos'])+' aditivos'} (teto {a['teto_pct']}%)</td>"
@@ -351,6 +364,7 @@ def _detectores():
         "sancionadas": (lambda p: C.sancionadas_contratadas(p), _b_sancionadas, "ALTO"),
         "fracionamento": (lambda p: C.fracionamento(db_path=p), _b_fracionamento, "ALTO"),
         "sobrepreco": (lambda p: C.sobrepreco(db_path=p), _b_sobrepreco, "ALTO"),
+        "escalada": (lambda p: C.escalada_preco(db_path=p), _b_escalada, "ALTO"),
         "aditivos": (lambda p: C.aditivos_estouro(db_path=p), _b_aditivos, "ALTO"),
         "socio_servidor": (lambda p: C.socio_servidor(db_path=p), _b_socio_servidor, "EXTREMO"),
         "fornecedor_dependente": (lambda p: C.fornecedor_dependente(db_path=p), _b_fornecedor_dependente, "MÉDIO"),

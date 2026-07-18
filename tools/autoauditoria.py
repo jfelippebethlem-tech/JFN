@@ -43,6 +43,7 @@ _PROGRAMA = _REPO / "docs" / "PROGRAMA-AUTOAUDITORIA.md"
 _DETECTORES = {
     "fracionamento": ("fracionamento", "grupos", "concentracao"),
     "sobrepreco": ("sobrepreco", "achados", "razao"),
+    "escalada_preco": ("escalada_preco", "achados", "razao"),
     "socio_oculto": ("socio_oculto", "achados", "n_empresas"),
     "nepotismo": ("nepotismo", "achados", "n_membros"),
     "fornecedor_dependente": ("fornecedor_dependente", "achados", "share"),

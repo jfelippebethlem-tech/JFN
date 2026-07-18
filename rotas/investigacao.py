@@ -1528,6 +1528,20 @@ async def api_intel_socio_servidor(limite: int = 150):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/escalada")
+async def api_intel_escalada(limite: int = 120):
+    """Escalada de preço unitário: MESMO fornecedor vende o MESMO item por preços cada vez maiores
+    ao longo do tempo (≥3 compras, ≥45 dias, alta ≥3×). Preço dirigido/captura. Fonte: PNCP."""
+    try:
+        from compliance_agent.cruzamentos_intel import escalada_preco
+        lim = max(1, min(int(limite or 120), 300))
+        if not (d := _cache_get(f"intel:escal:{lim}", 600)):
+            d = _cache_put(f"intel:escal:{lim}", escalada_preco(limite=lim))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/sobrepreco")
 async def api_intel_sobrepreco(limite: int = 120):
     """Sobrepreço por mediana de item: mesmo produto (descrição normalizada) comprado por vários

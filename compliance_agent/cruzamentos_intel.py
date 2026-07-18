@@ -787,6 +787,93 @@ def sobrepreco(db_path: str | None = None, min_amostra: int = 5, min_certames: i
         con.close()
 
 
+def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: float = 3.0,
+                   min_span_dias: int = 45, limite: int = 120) -> dict:
+    """ESCALADA de preço unitário do MESMO fornecedor para o MESMO item ao longo do tempo — a
+    empresa vende o item Y ao poder público por preços cada vez MAIORES (aprende que o comprador
+    paga qualquer coisa; preço dirigido, captura). Distinto do `sobrepreco` (que é transversal,
+    entre órgãos): aqui é LONGITUDINAL, o fornecedor contra a própria série.
+
+    Sinal: ≥`min_compras` vitórias do mesmo (fornecedor, item, unidade) em datas distintas cobrindo
+    ≥`min_span_dias` dias (da 1ª à última), com preço final > inicial e razão máx/mín ≥ `fator`
+    (default 3× em ≥45 dias — nenhum reajuste/inflação legítimo triplica preço nessa janela).
+    Corrobora com a mediana de MERCADO do item (outros fornecedores): se o preço final também está
+    muito acima do mercado, o indício é mais forte.
+
+    Guardas anti-FP: quantidade≥2 (evita total-do-lote no campo unitário); descrição normalizada +
+    unidade de medida na chave (litro≠tambor); razão alta (3×) e tendência de alta exigidas juntas —
+    ainda assim a descrição do PNCP é curta e pode misturar especificações (por isso mostra a série)."""
+    from datetime import date as _date
+
+    def _span(d0: str, d1: str) -> int:
+        try:
+            return (_date.fromisoformat(d1) - _date.fromisoformat(d0)).days
+        except ValueError:
+            return 0
+
+    con = _ro(db_path)
+    try:
+        rows = con.execute(
+            "SELECT fornecedor_cnpj, fornecedor_nome, item_descricao d, unidade_medida un, "
+            "valor_unitario vu, data_pub, orgao_nome, unidade_nome, certame "
+            "FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 AND quantidade>=2 "
+            "AND item_descricao IS NOT NULL AND length(item_descricao)>=4 AND data_pub IS NOT NULL "
+            "AND length(fornecedor_cnpj)=14").fetchall()
+        from collections import defaultdict
+        grupos: dict[tuple, list] = defaultdict(list)
+        mercado: dict[tuple, list] = defaultdict(list)   # (item,un) -> preços de TODOS os fornecedores
+        for r in rows:
+            base = _norm_item(r["d"])
+            if not base:
+                continue
+            un = re.sub(r"[^a-z]", "", (r["un"] or "").lower())[:8]
+            grupos[(r["fornecedor_cnpj"], base, un)].append(r)
+            mercado[(base, un)].append(r["vu"])
+        achados = []
+        for (cnpj, base, un), itens in grupos.items():
+            serie = sorted({(r["data_pub"][:10], r["vu"], r["unidade_nome"] or r["orgao_nome"],
+                             r["certame"]) for r in itens})
+            if len(serie) < min_compras:
+                continue
+            datas = [s[0] for s in serie]
+            precos = [s[1] for s in serie]
+            span = _span(datas[0], datas[-1])   # janela real da 1ª à última compra
+            if span < min_span_dias:
+                continue
+            med_mkt = _mediana(mercado[(base, un)]) if len(mercado[(base, un)]) >= 5 else None
+            # a ESCALADA é a tendência (final/inicial), não o spread máx/mín — este é sensível a um
+            # único preço-artefato baixo na série (R$0,19 num item de R$100). Guarda anti-artefato:
+            # o preço INICIAL precisa ser ≥10% da mediana de mercado (senão é erro de unidade/lote).
+            if precos[0] <= 0 or precos[-1] <= precos[0]:
+                continue
+            if med_mkt and precos[0] < 0.10 * med_mkt:
+                continue
+            if precos[-1] / precos[0] < fator:
+                continue                              # o preço TRIPLICOU (tendência), não só variou
+            acima_mkt = round(precos[-1] / med_mkt, 1) if med_mkt and med_mkt > 0 else None
+            achados.append({
+                "fornecedor": itens[0]["fornecedor_nome"], "fornecedor_cnpj": cnpj,
+                "item": itens[0]["d"], "grupo": base, "unidade_medida": itens[0]["un"],
+                "n_compras": len(serie), "span_dias": span,
+                "preco_inicial": round(precos[0], 2), "preco_final": round(precos[-1], 2),
+                "razao": round(precos[-1] / precos[0], 1),
+                "mediana_mercado": round(med_mkt, 2) if med_mkt else None,
+                "final_vs_mercado": acima_mkt,
+                "serie": [{"data": d, "preco": round(p, 2), "orgao": o} for d, p, o, _ in serie[:8]]})
+        # ranking: escalada que também está acima do mercado primeiro, depois pela razão
+        achados.sort(key=lambda a: (-(a["final_vs_mercado"] or 0), -a["razao"]))
+        return {"ok": True, "achados": achados[:limite], "n": len(achados),
+                "explicacao": ("Mesmo fornecedor vendendo o MESMO item por preços unitários cada vez "
+                               "maiores ao poder público (≥3 compras, ≥3 meses, alta ≥3×). Indica "
+                               "preço dirigido/captura — o fornecedor aprende que o comprador aceita "
+                               "aumentos. 'Acima do mercado' cruza com a mediana de outros fornecedores."),
+                "ressalva": ("A descrição do PNCP é curta e pode misturar marca/especificação/embalagem "
+                             "entre compras — a série é mostrada para conferência. Reajuste contratual "
+                             "legítimo não chega a 3×. Confirmar o termo de referência. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 # favorecido que é ENTE PÚBLICO/banco (repasse, não fornecedor comercial) — SQL reutilizável
 _SQL_NAO_PUBLICO = (
     "nome_credor NOT LIKE '%FUNDO%' AND nome_credor NOT LIKE '%PREFEITURA%' AND nome_credor NOT LIKE '%MUNICIPIO%' "

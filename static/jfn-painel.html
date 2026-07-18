@@ -272,6 +272,7 @@ const TABS={
     {id:'e_sanc',    ic:'🚫',tl:'Sancionadas',render:()=>renderSancionadas('estado')},
     {id:'e_frac',    ic:'✂️',tl:'Fracion.',render:renderFracionamento},
     {id:'e_sobre',   ic:'📈',tl:'Sobrepreço',render:renderSobrepreco},
+    {id:'e_escal',   ic:'📈',tl:'Escalada', render:renderEscalada},
     {id:'e_adit',    ic:'📑',tl:'Aditivos',render:renderAditivos},
     {id:'e_cartel',  ic:'🔗',tl:'Cartel',  render:renderCartel},
     {id:'e_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('estado')},
@@ -519,6 +520,34 @@ async function renderSobrepreco(){
       <div class="kv" style="margin-top:8px"><span class="k">Pagou <b style="color:var(--rose)">${fmtR(x.preco)}</b> · mediana ${fmtR(x.mediana)} (n=${x.amostra})</span><b>z ${x.z_robusto}</b></div>
       ${leitura(`Este órgão pagou <b>${fmtR(x.preco)}</b> por unidade de "${esc(x.item)}", enquanto a mediana de ${x.amostra} compras do mesmo item foi <b>${fmtR(x.mediana)}</b> — <b>${x.razao}× mais caro</b> (z robusto ${x.z_robusto}). Sobrepreço unitário estimado: ${fmtR(x.sobrepreco_est)}. Confirmar marca/especificação no termo de referência.`)}`,
     'hl')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
+// ═══ ESCALADA DE PREÇO (mesmo fornecedor sobe o preço do mesmo item no tempo) ═══
+async function renderEscalada(){
+  const d=await J('/api/intel/escalada?limite=120');
+  if(!d.ok)return sec('Escalada')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const a=d.achados||[];
+  let h=cover('estado','Escalada de preço — o mesmo fornecedor sobe o preço no tempo','Diferente do sobrepreço (que compara entre órgãos), aqui é <b>longitudinal</b>: o <b>mesmo fornecedor</b> vende o <b>mesmo item</b> ao poder público por preços cada vez <b>maiores</b> (≥3 compras, ≥45 dias, alta ≥3×). É o padrão de <b>preço dirigido/captura</b> — o fornecedor aprende que o comprador aceita aumentos. Cruza com a mediana de mercado dos outros fornecedores.','📈')+acoesAba('escalada');
+  if(!a.length){
+    h+=`<div class="warn" style="margin-top:12px">⏳ Sem escalada detectada na janela atual de preços do PNCP — a base de preço unitário ainda é estreita no tempo. Acende conforme o histórico cresce.</div>`;
+    return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+  }
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Escaladas detectadas','var(--rose)','📈')}${kpi(a.filter(x=>x.final_vs_mercado&&x.final_vs_mercado>=2).length,'Também acima do mercado','var(--rose)','🎯')}
+      ${kpi(a.length?a[0].razao+'×':'—','Maior escalada','var(--rose)')}${kpi(a.length?a[0].span_dias+'d':'—','Janela do pior caso',null,'📅')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por item ou fornecedor…" oninput="filtrar(this,'#escal-list .card')"></div>`;
+  h+=`<div id="escal-list" class="grid">`+a.map(x=>{
+    const serie=(x.serie||[]).map(s=>`<span title="${esc(s.orgao||'')} ${esc(s.data)}">${fmtR(s.preco)}</span>`).join(' <span class="dim">→</span> ');
+    const mkt=x.final_vs_mercado?`<span class="tag rose">${x.final_vs_mercado}× o mercado</span>`:'';
+    return card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''}</div>
+      <div class="dim" style="margin-top:2px">${clk(x.fornecedor_cnpj,x.fornecedor||'—')} · ${x.n_compras} compras em ${x.span_dias} dias ${mkt}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.razao}×</div><div class="dim">${fmtR(x.preco_inicial)} → ${fmtR(x.preco_final)}</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">série: ${serie}</span></div>
+      ${leitura(`<b>${esc(x.fornecedor)}</b> vendeu "${esc(x.item)}" começando em <b>${fmtR(x.preco_inicial)}</b> e chegando a <b>${fmtR(x.preco_final)}</b> (<b>${x.razao}× mais caro</b>) em ${x.span_dias} dias${x.final_vs_mercado?`, hoje <b>${x.final_vs_mercado}× a mediana de mercado</b> do item`:''}. Nenhum reajuste legítimo triplica preço nessa janela — indício de preço dirigido. Confirmar especificação no termo de referência.`)}`,
+    'hl');}).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
 }

@@ -20,7 +20,8 @@ REPO = Path(__file__).resolve().parent.parent
 # (fitz/tesseract/PIL, espaço de exceção enorme). Converter p/ específico seria errado aqui.
 # 2026-07-18b: +1 (1451→1452) — 1 route handler novo (/api/intel/comunidades_grafo) no idioma-padrão
 # das ~71 rotas do investigacao.py (catch-all que RETORNA o erro no JSON, não é mudo).
-BASELINE = 1452  # medido 2026-07-18b (1451→ rota nova; 1447 em 2026-07-17; 1392 em 2026-07-11)
+# 2026-07-18c: +1 (1452→1453) — rota /api/intel/escalada (detector novo), idioma-padrão das rotas.
+BASELINE = 1453  # medido 2026-07-18c (1452→escalada; 1447 em 2026-07-17; 1392 em 2026-07-11)
 
 
 def _contar() -> int:
