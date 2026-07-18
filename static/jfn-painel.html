@@ -558,10 +558,12 @@ let _compView='buscar', _compTermo='', _compGrupo=null;
 async function renderComparador(){
   let h=cover('estado','Comparador de preços — quem paga mais e quem paga menos','Para o <b>mesmo item</b> (aluguel de carro, medicamento, refeição…), quanto cada <b>órgão</b> paga e quanto cada <b>fornecedor</b> cobra. E o ranking transversal: quais órgãos <b>gastam melhor</b> o recurso público e quais fornecedores são <b>caros ou baratos</b> vs o mercado. Fonte: preço unitário homologado do PNCP.','💰');
   h+=`<div class="chips" style="margin:6px 0 14px">
+    <span class="chip ${_compView==='economia'?'on':''}" onclick="_compView='economia';ir('e_comp')">💵 Economia possível</span>
     <span class="chip ${_compView==='dossie'?'on':''}" onclick="_compView='dossie';ir('e_comp')">🚨 Caro + fornecedor suspeito</span>
     <span class="chip ${_compView==='buscar'?'on':''}" onclick="_compView='buscar';ir('e_comp')">🔎 Buscar item</span>
     <span class="chip ${_compView==='orgaos'?'on':''}" onclick="_compView='orgaos';ir('e_comp')">🏛️ Órgãos que gastam melhor</span>
     <span class="chip ${_compView==='forn'?'on':''}" onclick="_compView='forn';ir('e_comp')">🏢 Fornecedores caros/baratos</span></div>`;
+  if(_compView==='economia')return h+await _compEconomia();
   if(_compView==='dossie')return h+await _compDossie();
   if(_compView==='orgaos')return h+await _compOrgaos();
   if(_compView==='forn')return h+await _compForn();
@@ -609,6 +611,26 @@ async function _compOrgaos(){
   h+=sec('🔴 Pagam ACIMA do mercado (auditar preços)')+`<div class="grid">`+(d.piores||[]).slice(0,20).map(x=>linha(x,false)).join('')+`</div>`;
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
+async function _compEconomia(){
+  const d=await J('/api/comparador/economia');
+  if(!d.ok)return card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  let h=`<div style="text-align:center;margin:10px 0 18px">
+    <div class="dim" style="font-size:13px;letter-spacing:.5px">ECONOMIA POTENCIAL IDENTIFICADA (itens comparáveis do PNCP)</div>
+    <div style="font-weight:800;font-size:46px;color:#4ade80;line-height:1.1;margin:4px 0">${fmtRc(d.economia_total)}</div>
+    <div class="dim">se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item · ${fmtN(d.n_compras_acima_mediana)} compras acima da mediana · o número cresce conforme a base de preços do PNCP é coletada</div></div>`;
+  const bloco=(titulo,arr,campo,fn)=>{
+    let s=sec(titulo)+`<div class="grid">`;
+    s+=(arr||[]).slice(0,12).map(x=>card(
+      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+        <div style="min-width:0;flex:1"><div style="font-weight:600">${fn(x)}</div><div class="dim" style="font-size:12px">${x.n} compra(s) acima da mediana</div></div>
+        <div class="right"><div class="num" style="font-weight:800;color:#4ade80">${fmtRc(x.economia)}</div><div class="dim">economizável</div></div></div>`)).join('');
+    return s+`</div>`;
+  };
+  h+=bloco('🏛️ Onde a economia está — por ÓRGÃO', d.por_orgao, 'orgao', x=>esc(x.orgao||'—'));
+  h+=bloco('📦 Por ITEM', d.por_item, 'item', x=>esc(x.item||'—')+(x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''));
+  h+=bloco('🏢 Por FORNECEDOR (quem cobrou o excedente)', d.por_fornecedor, 'fornecedor', x=>x.fornecedor_cnpj?clk(x.fornecedor_cnpj,x.fornecedor):esc(x.fornecedor||'—'));
+  return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+}
 async function _compDossie(){
   const d=await J('/api/comparador/dossie');
   if(!d.ok)return card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
@@ -618,7 +640,9 @@ async function _compDossie(){
       ${kpi(a.length?a[0].vs_mediana+'×':'—','Pior caso (× mediana)','var(--rose)')}${kpi(a.filter(x=>x.sinais.length>=2).length,'Com ≥2 sinais',null,'🎯')}</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por item, órgão ou fornecedor…" oninput="filtrar(this,'#dossie-list .card')"></div>`;
   h+=`<div id="dossie-list" class="grid">`+a.map(x=>{
-    const tags=(x.sinais||[]).map(s=>`<span class="tag ${s.sinal==='sancionada'?'rose':'amber'}">${esc(s.sinal)}</span>`).join(' ');
+    const ABR={total:'toda a Adm.',ente:'ente federativo',orgao:'órgão sancionador'};
+    const tags=(x.sinais||[]).map(s=>{const ab=s.abrangencia?` (${ABR[s.abrangencia]||s.abrangencia})`:'';
+      return `<span class="tag ${s.sinal==='sancionada'?'rose':'amber'}">${esc(s.sinal)}${esc(ab)}</span>`;}).join(' ');
     return card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0"><div style="font-weight:700">${esc(x.item)}${x.unidade_medida?` <span class="dim">/ ${esc(x.unidade_medida)}</span>`:''}</div>

@@ -1390,6 +1390,39 @@ async def api_comparador_item(grupo: str = "", unidade: str = ""):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/comparador/economia")
+async def api_comparador_economia():
+    """Economia potencial: quanto os cofres economizariam se cada compra acima da mediana tivesse
+    pago a mediana de mercado do item. Total + quebra por item/órgão/fornecedor."""
+    try:
+        from compliance_agent.comparador_precos import economia_potencial
+        if not (d := _cache_get("comp:economia", 1800)):
+            d = _cache_put("comp:economia", economia_potencial())
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/sancoes/detalhar")
+async def api_sancoes_detalhar(cnpj: str = "", esfera: str = "estadual", uf: str = "RJ"):
+    """Detalha as sanções de um CNPJ: tipo, abrangência, órgão, vigência e se VEDA de fato o
+    contrato com o ente-alvo (default Estado-RJ). Responde 'quais são e qual a abrangência'."""
+    try:
+        import sqlite3 as _sq
+        from compliance_agent.sancao_abrangencia import detalhar
+        c = re.sub(r"\D", "", cnpj or "")
+        if len(c) != 14:
+            return JSONResponse({"ok": False, "erro": "CNPJ inválido"})
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        try:
+            return JSONResponse(detalhar(c, con, esfera, (uf or "RJ").upper()))
+        finally:
+            con.close()
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/comparador/dossie")
 async def api_comparador_dossie():
     """Dossiê automático: item pago muito acima da mediana por um órgão cujo FORNECEDOR já é

@@ -6,6 +6,7 @@ GET /api/cartel -> api_cartel
 GET /api/coendereco/clusters -> api_coendereco_clusters
 GET /api/comparador/buscar -> api_comparador_buscar
 GET /api/comparador/dossie -> api_comparador_dossie
+GET /api/comparador/economia -> api_comparador_economia
 GET /api/comparador/fornecedores -> api_comparador_fornecedores
 GET /api/comparador/item -> api_comparador_item
 GET /api/comparador/orgaos -> api_comparador_orgaos
@@ -76,6 +77,7 @@ GET /api/radar/status -> api_radar_status
 GET /api/restritos -> api_restritos
 GET /api/rodizio -> api_rodizio
 GET /api/route -> api_route
+GET /api/sancoes/detalhar -> api_sancoes_detalhar
 GET /api/sei/direcionamento -> api_sei_direcionamento
 GET /api/siafe/stats -> api_siafe_stats
 GET /api/siafe/status -> api_siafe_status

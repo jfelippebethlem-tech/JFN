@@ -27,7 +27,9 @@ REPO = Path(__file__).resolve().parent.parent
 # fornecedores) no idioma-padrão das rotas + 1 já contabilizado. Todos catch-and-return, não mudos.
 # 2026-07-18f: +2 (1460→1462) — dossiê caro+suspeito: rota /api/comparador/dossie + degradação
 # graciosa do cache do radar (except→radar={}, não mudo). Ambos idioma-padrão, logados/graceful.
-BASELINE = 1462  # medido 2026-07-18f (1460→dossiê; 1392 em 2026-07-11)
+# 2026-07-18g: +2 (1462→1464) — rotas /api/comparador/economia + /api/sancoes/detalhar (idioma
+# das rotas, catch-and-return).
+BASELINE = 1464  # medido 2026-07-18g (1462→economia+detalhar; 1392 em 2026-07-11)
 
 
 def _contar() -> int:

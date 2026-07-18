@@ -18,7 +18,7 @@ def db(tmp_path, monkeypatch):
         quantidade REAL, orgao_nome TEXT, unidade_nome TEXT, municipio TEXT, fornecedor_nome TEXT,
         fornecedor_cnpj TEXT, ordem_classificacao INTEGER, data_pub TEXT, certame TEXT);
     CREATE TABLE sancoes_federais (cpf_cnpj TEXT, nome TEXT, cadastro TEXT, categoria TEXT,
-        data_inicio TEXT, data_fim TEXT, orgao TEXT);
+        data_inicio TEXT, data_fim TEXT, orgao TEXT, uf TEXT, fundamentacao TEXT);
     CREATE TABLE fantasma_score (cnpj TEXT PRIMARY KEY, classificacao TEXT);
     """)
     ins = ("INSERT INTO pncp_resultado (item_descricao, unidade_medida, valor_unitario, quantidade, "
@@ -39,8 +39,8 @@ def db(tmp_path, monkeypatch):
         ("Gaze", "UN", 12.0, 5, "D", "D", "RJ", "FORN OK", LIMPO, "2025-04-01", "g4"),
     ]
     con.executemany(ins, rows)
-    con.execute("INSERT INTO sancoes_federais VALUES (?,?,?,?,?,?,?)",
-                (SANC, "SUSPEITA", "CEIS", "Impedimento", "2024-01-01", "2027-01-01", "CGU"))
+    con.execute("INSERT INTO sancoes_federais VALUES (?,?,?,?,?,?,?,?,?)",
+                (SANC, "SUSPEITA", "CEIS", "Impedimento/proibição de contratar com prazo determinado", "2024-01-01", "2027-01-01", "Controladoria-Geral do Estado do Rio de Janeiro", "RJ", ""))
     con.commit()
     con.close()
     monkeypatch.setattr("compliance_agent.cruzamentos_intel.ler_cache_intel", lambda n: None)

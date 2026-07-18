@@ -49,7 +49,7 @@ def _un(u: str | None) -> str:
 
 def _linhas(con):
     return con.execute(
-        "SELECT item_descricao d, unidade_medida un, valor_unitario vu, orgao_nome, "
+        "SELECT item_descricao d, unidade_medida un, valor_unitario vu, quantidade, orgao_nome, "
         "unidade_nome, fornecedor_nome, fornecedor_cnpj, certame, data_pub "
         "FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 AND quantidade>=2 "
         "AND item_descricao IS NOT NULL AND length(item_descricao)>=4").fetchall()
@@ -211,6 +211,88 @@ def ranking_fornecedores(db_path: str | None = None, min_itens: int = 8, limite:
         con.close()
 
 
+def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amostra: int = 5,
+                       min_certames: int = 3, teto_razao: float = 10.0, limite: int = 60) -> dict:
+    """QUANTO os cofres públicos economizariam se cada compra acima da mediana tivesse pago a
+    MEDIANA de mercado do item. Economia = Σ (preço_pago − mediana) × quantidade, sobre as compras
+    com preço > mediana, em grupos comparáveis. Quebra por ITEM, ÓRGÃO e FORNECEDOR.
+
+    Honestidade: é um teto teórico (a mediana é atingível — metade já paga abaixo). Robusto a
+    outlier (mediana como referência); razões acima de `teto_razao`× a mediana são CAPADAS no teto
+    (a descrição do PNCP mistura especificação — sem o cap, 1 artefato de 500× dominaria o total).
+    Artefato (<10% da mediana) descartado. Só compras com quantidade real entram."""
+    con = _ro(db_path)
+    try:
+        total = 0.0
+        por_item: dict[str, dict] = {}
+        por_orgao: dict[str, dict] = {}
+        por_forn: dict[str, dict] = {}
+        n_compras_caras = 0
+        for (base, un), itens in _grupos(con).items():
+            orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
+            n_cert = len({r["certame"] for r in itens})
+            # amostra E diversidade suficientes → a mediana é confiável e um único item genérico
+            # de alto valor ('Sistema para compressão' com 1 compra) não domina a economia.
+            if len(itens) < min_amostra or len(orgaos) < min_orgaos or n_cert < min_certames:
+                continue
+            precos = sorted(r["vu"] for r in itens)
+            med = _mediana(precos)
+            if med <= 0:
+                continue
+            # a mediana só vale se o grupo é homogêneo: ≥60% dos certames perto dela (mesma
+            # guarda do sobrepreço) — senão são produtos diferentes sob rótulo genérico.
+            n_perto = len({r["certame"] for r in itens if r["vu"] <= 2 * med})
+            if n_perto < 0.6 * n_cert:
+                continue
+            piso = 0.10 * med
+            teto = teto_razao * med                    # cap anti-artefato: preço efetivo p/ economia
+            for r in itens:
+                p = r["vu"]
+                if p < piso or p <= med:
+                    continue
+                p_ef = min(p, teto)
+                qtd = r["quantidade"] if ("quantidade" in r.keys() and r["quantidade"]) else 1
+                excesso = (p_ef - med) * qtd
+                if excesso <= 0:
+                    continue
+                total += excesso
+                n_compras_caras += 1
+                org = r["unidade_nome"] or r["orgao_nome"] or "—"
+                it = por_item.setdefault(base, {"item": r["d"], "unidade_medida": r["un"],
+                                                "economia": 0.0, "n": 0})
+                it["economia"] += excesso
+                it["n"] += 1
+                og = por_orgao.setdefault(org, {"orgao": org, "economia": 0.0, "n": 0})
+                og["economia"] += excesso
+                og["n"] += 1
+                fk = r["fornecedor_cnpj"]
+                fo = por_forn.setdefault(fk, {"fornecedor": r["fornecedor_nome"],
+                                              "fornecedor_cnpj": fk, "economia": 0.0, "n": 0})
+                fo["economia"] += excesso
+                fo["n"] += 1
+
+        def _top(d):
+            xs = sorted(d.values(), key=lambda x: -x["economia"])
+            for x in xs:
+                x["economia"] = round(x["economia"], 2)
+            return xs[:limite]
+
+        return {"ok": True, "economia_total": round(total, 2),
+                "n_compras_acima_mediana": n_compras_caras,
+                "por_item": _top(por_item), "por_orgao": _top(por_orgao),
+                "por_fornecedor": _top(por_forn),
+                "explicacao": ("Economia potencial = quanto o poder público deixaria de gastar se "
+                               "cada compra acima da mediana tivesse pago a MEDIANA de mercado do "
+                               "item (por unidade × quantidade). Referência conservadora — metade "
+                               "das compras já paga abaixo dela."),
+                "ressalva": ("Teto teórico. Preços acima de "
+                             f"{teto_razao:g}× a mediana são capados (a descrição do PNCP mistura "
+                             "especificação; sem o cap um artefato dominaria). Confirmar termo de "
+                             "referência. É priorização de auditoria, não valor a ressarcir. Indício ≠ acusação.")}
+    finally:
+        con.close()
+
+
 def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: int = 2,
                     min_certames: int = 3, limite: int = 120) -> dict:
     """DOSSIÊ AUTOMÁTICO: item comprado MUITO acima da mediana (≥`fator`×) por um órgão, cujo
@@ -221,12 +303,21 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
     Guarda anti-FP: grupo comparável (≥`min_orgaos` órgãos, ≥`min_certames` certames); preço do
     achado ≥`fator`× a mediana E ≥ mediana+3·MAD (fora da banda robusta); artefato (<10% da
     mediana) descartado. O 'suspeito' vem de fonte INDEPENDENTE do preço."""
+    from compliance_agent.sancao_abrangencia import classificar_sancao
     con = _ro(db_path)
     try:
-        sanc = {r["cpf_cnpj"] for r in con.execute(
-            "SELECT DISTINCT cpf_cnpj FROM sancoes_federais WHERE length(cpf_cnpj)=14 AND "
-            "(lower(categoria) LIKE '%imped%' OR lower(categoria) LIKE '%inid%' OR "
-            "lower(categoria) LIKE '%suspens%' OR lower(categoria) LIKE '%declar%')")}
+        # sanção → maior abrangência por CNPJ (total > ente > órgão) para exibir o alcance
+        sanc: dict[str, str] = {}
+        _ordem = {"total": 3, "ente": 2, "orgao": 1, "nenhuma": 0}
+        for r in con.execute(
+                "SELECT cpf_cnpj, categoria, fundamentacao, cadastro FROM sancoes_federais "
+                "WHERE length(cpf_cnpj)=14"):
+            cl = classificar_sancao(r["categoria"], r["fundamentacao"], r["cadastro"])
+            if not cl["veda_contratacao"]:
+                continue
+            atual = sanc.get(r["cpf_cnpj"])
+            if atual is None or _ordem[cl["abrangencia"]] > _ordem[atual]:
+                sanc[r["cpf_cnpj"]] = cl["abrangencia"]
         try:
             fant = {r["cnpj"]: r["classificacao"] for r in con.execute(
                 "SELECT cnpj, classificacao FROM fantasma_score WHERE classificacao IN ('alto','medio')")}
@@ -257,7 +348,8 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
                 cnpj = r["fornecedor_cnpj"]
                 sinais = []
                 if cnpj in sanc:
-                    sinais.append({"sinal": "sancionada", "peso": 3})
+                    sinais.append({"sinal": "sancionada", "peso": 3,
+                                   "abrangencia": sanc.get(cnpj)})
                 if cnpj in radar:
                     sinais.append({"sinal": f"radar_{radar[cnpj]}", "peso": 2})
                 if cnpj in fant:
@@ -304,6 +396,16 @@ if __name__ == "__main__":
             print(" ÓRGÃOS (mais caro → mais barato):")
             for o in d["orgaos"][:12]:
                 print(f"   {o['vs_geral']:5}x  R${o['mediana']:>10.2f}  {(o['nome'] or '')[:44]} (n={o['n']})")
+    elif cmd == "economia":
+        d = economia_potencial()
+        print(f"ECONOMIA POTENCIAL: R${d['economia_total']:,.2f}  "
+              f"({d['n_compras_acima_mediana']} compras acima da mediana)")
+        print(" TOP itens:")
+        for x in d["por_item"][:8]:
+            print(f"   R${x['economia']:>14,.2f}  {(x['item'] or '')[:36]:36} (n={x['n']})")
+        print(" TOP órgãos:")
+        for x in d["por_orgao"][:8]:
+            print(f"   R${x['economia']:>14,.2f}  {(x['orgao'] or '')[:44]:44} (n={x['n']})")
     elif cmd == "dossie":
         d = caro_e_suspeito()
         print(f"{d['n']} casos 'paga caro + fornecedor suspeito' ({d['n_sancionada']} c/ sanção):")
