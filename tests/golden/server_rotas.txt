@@ -3,6 +3,7 @@ GET / -> index
 GET /api/agenda -> api_agenda
 GET /api/anomalias -> api_anomalias
 GET /api/cartel -> api_cartel
+GET /api/certame/indice -> api_certame_indice
 GET /api/coendereco/clusters -> api_coendereco_clusters
 GET /api/comparador/buscar -> api_comparador_buscar
 GET /api/comparador/dossie -> api_comparador_dossie
@@ -24,6 +25,7 @@ GET /api/cruzamento -> api_cruzamento
 GET /api/diario -> api_diario
 GET /api/doador_contrato -> api_doador_contrato
 GET /api/empresa -> api_empresa
+GET /api/eventos/stream -> api_eventos_stream
 GET /api/fachada/revisar -> api_fachada_revisar
 GET /api/flags -> api_flags
 GET /api/fontes/frescor -> api_fontes_frescor
@@ -47,6 +49,7 @@ GET /api/intel/fenix -> api_intel_fenix
 GET /api/intel/fornecedor_dependente -> api_intel_fornecedor_dependente
 GET /api/intel/fracionamento -> api_intel_fracionamento
 GET /api/intel/grafo_familias -> api_intel_grafo_familias
+GET /api/intel/hub_compartilhado -> api_intel_hub_compartilhado
 GET /api/intel/lift -> api_intel_lift
 GET /api/intel/nepotismo -> api_intel_nepotismo
 GET /api/intel/nepotismo_cruzado -> api_intel_nepotismo_cruzado
@@ -69,6 +72,8 @@ GET /api/orgao/cidades -> api_orgao_cidades
 GET /api/ownership -> api_ownership
 GET /api/pcrj/beneficios_vinculo -> api_pcrj_beneficios_vinculo
 GET /api/pcrj/comissionados_candidatos -> api_pcrj_comissionados_candidatos
+GET /api/pcrj/fantasmas -> api_pcrj_fantasmas
+GET /api/pcrj/gastos_achados -> api_pcrj_gastos_achados
 GET /api/perfil -> api_perfil
 GET /api/pericias -> api_pericias
 GET /api/pipelines -> api_pipelines
@@ -120,7 +125,6 @@ POST /api/hermes/chat -> api_hermes_chat
 POST /api/hermes/missao -> api_hermes_definir_missao
 POST /api/hermes/missoes -> api_hermes_criar_missao
 POST /api/hermes/parar -> api_hermes_parar
-POST /api/hermes/parar -> api_hermes_parar
 POST /api/hermes/relatorio -> api_hermes_relatorio
 POST /api/hermes/trabalhar -> api_hermes_trabalhar
 POST /api/mandato/minuta -> api_mandato_minuta
@@ -141,5 +145,6 @@ POST /login_jfn -> login_jfn_post
 POST /otp -> submit_otp
 WS /output -> Mount
 WS /screenshots -> Mount
+WS /static/assets -> Mount
 WS /tunnel -> websocket_tunnel
 WS /ws -> websocket_chat
