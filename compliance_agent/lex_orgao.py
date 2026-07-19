@@ -153,8 +153,20 @@ def _achados_orgao(ctx: dict) -> list[dict]:
 def _parecer_orgao_md(ctx: dict, analise: dict, merito: str = "") -> str:
     """Corpo (markdown) do parecer Lex de órgão — mesma anatomia do parecer de fornecedor."""
     achados = analise.get("achados", [])
+    # Gate de esfera: quando o órgão é inequivocamente municipal-Rio, a competência de controle
+    # externo é do TCM-RJ (não TCE-RJ). Esfera desconhecida cai no default estadual (não chuta).
+    from compliance_agent.lex_redflags import jurisdicao as _jurisdicao
+    from compliance_agent.pcrj.esfera import classificar_esfera as _classificar_esfera
+    _esfera = ctx.get("esfera") or _classificar_esfera(ctx.get("nome", "") or "",
+                                                       ctx.get("orgao_cnpj", "") or ctx.get("cnpj", "") or "")
+    _jur = _jurisdicao(_esfera)
     L = ["---", ""]
     add = L.append
+    if _jur["esfera"] == "municipal-rio":
+        add(f"> **Competência (esfera municipal-Rio):** o controle externo desta despesa é do "
+            f"**{_jur['contas_nome']}**, não do TCE-RJ ({_jur['base_competencia']}); o controle "
+            f"interno é a **{_jur['controle_interno']}**. Encaminhamentos abaixo já ajustados.")
+        add("")
     add("## I. MÉRITO DA EXECUÇÃO DO ÓRGÃO")
     add("")
     add(merito or "Sem narrativa de mérito disponível.")
@@ -170,7 +182,7 @@ def _parecer_orgao_md(ctx: dict, analise: dict, merito: str = "") -> str:
             g = a.get("grav", 0)
             if g >= 3:
                 add(f"- **⤴ Encaminhamento:** indício relevante (gravidade {g}/5) — cabe **requerimento** ao órgão exigindo "
-                    "justificativa documental (contratos, modalidade, pesquisa de preços); persistindo, representação ao TCE-RJ/MP-RJ.")
+                    f"justificativa documental (contratos, modalidade, pesquisa de preços); persistindo, representação ao {_jur['representacao']}.")
             else:
                 add(f"- **Encaminhamento:** gravidade {g}/5 — manter em diligência/monitoramento; reavaliar com mais dados.")
             add("")

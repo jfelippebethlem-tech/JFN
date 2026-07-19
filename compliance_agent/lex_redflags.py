@@ -320,6 +320,42 @@ def _destinatarios(achados: list) -> list[dict]:
     return out
 
 
+# ── Jurisdição por ESFERA (federal / estadual-RJ / municipal-Rio) ────────────────────────────────
+# Correção de competência: o controle EXTERNO da despesa municipal do Rio é do **TCM-RJ**, não do
+# TCE-RJ; o controle interno municipal é a **CGM-Rio** (não a CGE-RJ); o processo administrativo
+# sancionador segue o regulamento municipal da Lei 14.133 (e, p/ OS, a Lei Rio 5.026/2019), não a
+# Lei estadual 5.427/2009. Default = comportamento estadual atual (não muda parecer de Estado/União).
+_JURISDICAO = {
+    "municipal-rio": {
+        "contas": "TCM-RJ",
+        "contas_nome": "Tribunal de Contas do Município do Rio de Janeiro (TCM-RJ)",
+        "controle_interno": "CGM-Rio",
+        "representacao": "TCM-RJ/MP-RJ",
+        "proc_adm": ("regulamento municipal da Lei 14.133/2021 (Decreto Rio) e, p/ organizações "
+                     "sociais, a Lei Rio 5.026/2019"),
+        "base_competencia": ("art. 31, §1º, CF/88 c/c Lei Orgânica do Município do Rio — controle "
+                             "externo da despesa municipal pelo TCM-RJ"),
+    },
+}
+_JURISDICAO_DEFAULT = {   # estadual-rj / federal / indefinido → preserva o comportamento atual
+    "contas": "TCE-RJ",
+    "contas_nome": "Tribunal de Contas do Estado do Rio de Janeiro (TCE-RJ)",
+    "controle_interno": "CGE-RJ",
+    "representacao": "TCE-RJ/MP-RJ",
+    "proc_adm": "Lei RJ 5.427/2009",
+    "base_competencia": "jurisdição de contas sobre a despesa estadual",
+}
+
+
+def jurisdicao(esfera: str) -> dict:
+    """Órgão de controle externo/interno e norma sancionatória competentes por esfera.
+
+    ``municipal-rio`` → TCM-RJ / CGM-Rio; demais esferas → TCE-RJ / CGE-RJ (comportamento atual).
+    Honestidade: esfera desconhecida cai no default (não chuta competência municipal sem sinal).
+    """
+    return {"esfera": esfera, **_JURISDICAO.get(esfera, _JURISDICAO_DEFAULT)}
+
+
 def _primeira_data_pag(p: dict) -> str:
     """Data do PRIMEIRO pagamento (menor `data` entre as linhas das OBs) em ISO, ou '' se indisponível.
 
