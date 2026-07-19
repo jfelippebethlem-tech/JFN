@@ -2,6 +2,7 @@
 
 > Porta de entrada para TODO benchmark/avaliação de IA e de produto do JFN.
 > Regra: benchmark novo → registrar aqui (uma linha) + artefatos em `data/benchmark_*`.
+> Referências EXTERNAS de elite (ALICE/ADELE, ARACHNE/OCP/CRI, screens OCDE/CADE, design Palantir/Linear): **`docs/BENCHMARKS-EXTERNOS.md`** (pesquisa 2026-07-19).
 
 ## 1. Benchmarks de IA (modelo × função)
 
