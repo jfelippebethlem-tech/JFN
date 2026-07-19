@@ -241,6 +241,7 @@ output_dir.mkdir(exist_ok=True)
 
 app.mount("/screenshots", StaticFiles(directory="screenshots"), name="screenshots")
 app.mount("/output", StaticFiles(directory="output"), name="output")
+app.mount("/static/assets", StaticFiles(directory="static/assets"), name="assets")  # fontes/libs self-hosted do painel
 
 
 # ── login_jfn — gate de acesso ao dashboard (ISOLADO do Bond/:3000) ───────────────────────────────
@@ -357,10 +358,10 @@ async def painel_fiscalizacao():
     return FileResponse("static/jfn-painel.html")
 
 
-@app.get("/cockpit", response_class=HTMLResponse)
+@app.get("/cockpit")
 async def cockpit():
-    """Command deck ultrafuturista (Jarvis/glass): visão geral ao vivo dos indicadores de inteligência."""
-    return FileResponse("static/jfn-cockpit.html")
+    """Unificado no painel v6 (aba Início = command deck); a página separada foi aposentada."""
+    return RedirectResponse("/painel", status_code=308)
 
 
 @app.get("/chat", response_class=HTMLResponse)
