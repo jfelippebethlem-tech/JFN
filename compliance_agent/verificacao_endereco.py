@@ -128,9 +128,22 @@ def geocodificar(endereco: str, municipio: str | None = None, uf: str | None = N
     except Exception:
         return {**base, "motivo": "httpx ausente"}
     variantes = _variantes_consulta(endereco, municipio, uf, cep)
+    nominatim_local = (os.environ.get("NOMINATIM_LOCAL_URL") or "").rstrip("/")
     data, idx = None, -1
     for i, consulta in enumerate(variantes):
         params = {"q": consulta, "format": "jsonv2", "addressdetails": 1, "limit": 1, "countrycodes": "br"}
+        if nominatim_local:  # Task 1.3: instância própria primeiro (ilimitada — deploy/nominatim/); sem env, fluxo intacto
+            try:
+                r = httpx.get(f"{nominatim_local}/search", params=params,
+                              headers={"User-Agent": _UA}, timeout=15)
+                if r.status_code == 200:
+                    d = r.json()
+                    if d:
+                        data, idx = d, i
+                        break
+                    continue  # local respondeu "não achei" (mesma base OSM) → próxima variante, poupa o público
+            except Exception:
+                logger.debug("Nominatim local fora do ar; caindo p/ o público")
         dt = time.time() - _ult_nominatim[0]  # rate-limit Nominatim (≤1 req/s)
         if dt < 1.1:
             time.sleep(1.1 - dt)

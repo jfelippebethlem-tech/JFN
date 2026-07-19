@@ -1,0 +1,29 @@
+# Nominatim self-hosted — extrato RJ (Geofabrik) p/ geocoding ILIMITADO do JFN.
+#
+# ⚠ SUBIR SOB DEMANDA, NÃO 24h: a VM tem 2 vCPU — o import inicial e o Postgres do Nominatim
+#   disputam CPU/RAM com o jfn.service. Subir só para sweeps de geocode, derrubar ao terminar.
+#   Ver LEIAME.md ao lado. NUNCA `restart: always`.
+#
+# Uso pelo JFN: exportar NOMINATIM_LOCAL_URL=http://127.0.0.1:8088 no .env
+# (compliance_agent/geo/osm_local.py e verificacao_endereco.py passam a usar o local primeiro).
+services:
+  nominatim:
+    image: mediagis/nominatim:4.4
+    container_name: jfn-nominatim
+    environment:
+      # Extrato RJ da Geofabrik (se o recorte estadual estiver indisponível, usar o sudeste:
+      # https://download.geofabrik.de/south-america/brazil/sudeste-latest.osm.pbf — ~1,5 GB)
+      PBF_URL: https://download.geofabrik.de/south-america/brazil/sudeste/rio-de-janeiro-latest.osm.pbf
+      IMPORT_WIKIPEDIA: "false"
+      IMPORT_STYLE: address          # só endereços — import mais leve p/ 2 vCPU
+      NOMINATIM_PASSWORD: trocar-esta-senha   # uso local (porta só em 127.0.0.1)
+    ports:
+      - "127.0.0.1:8088:8080"
+    volumes:
+      - nominatim-data:/var/lib/postgresql/14/main   # import persiste entre up/down
+    mem_limit: 3g
+    shm_size: 1g
+    restart: "no"    # sob demanda — nunca ressuscitar sozinho na VM de produção
+
+volumes:
+  nominatim-data:
