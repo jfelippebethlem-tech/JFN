@@ -1,759 +1,602 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
+<!doctype html>
+<html lang="pt-br">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>JFN Compliance — Grafo de Relacionamentos</title>
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>JFN — Grafo societário</title>
+<link rel="stylesheet" href="/static/assets/lamina.css">
+<style>
+  /* ── página: instrumento de grafo em tela cheia (LÂMINA v6) ─────────────── */
+  html,body{height:100dvh;overflow:hidden}
+  body{display:flex;flex-direction:column;background:var(--bg)}
 
-    body {
-      background: #0f172a;
-      color: #e2e8f0;
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      display: flex;
-      height: 100vh;
-      overflow: hidden;
-    }
+  header{display:flex;align-items:center;gap:14px;padding:9px 16px;border-bottom:1px solid var(--bd2);
+    background:var(--glass);backdrop-filter:blur(14px);position:relative;z-index:30;flex:0 0 auto}
+  @media (prefers-reduced-transparency:reduce){header{background:var(--bg2);backdrop-filter:none}}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.4px;text-decoration:none;color:var(--tx);flex:0 0 auto}
+  .brand .lg{display:inline-flex;width:24px;height:24px;border-radius:6px;background:var(--accent);color:var(--accent-ink);
+    align-items:center;justify-content:center;font:600 11px/1 var(--mono);letter-spacing:0}
+  .brand small{display:block;color:var(--dim);font-size:9.5px;font-weight:500;margin-top:2px;letter-spacing:1.4px;text-transform:uppercase;white-space:nowrap;font-family:var(--mono)}
+  header .chips{margin:0;flex-wrap:nowrap}
+  .gq{position:relative;flex:1;max-width:400px;min-width:140px}
+  .gq input{padding:8px 58px 8px 33px;font-size:13px}
+  .gq .mag{position:absolute;left:11px;top:8px;color:var(--dim);pointer-events:none}
+  .gq .hits{position:absolute;right:10px;top:9px;font:400 11px/1.4 var(--mono);color:var(--dim);pointer-events:none}
+  a.voltar{font-size:12px;font-weight:500;text-decoration:none;border:1px solid var(--bd2);padding:6px 12px;border-radius:7px;
+    transition:.15s;color:var(--mut);margin-left:auto;white-space:nowrap;flex:0 0 auto}
+  a.voltar:hover{color:var(--tx);border-color:var(--bd)}
+  @media (max-width:760px){header .chips{display:none}.brand small{display:none}}
 
-    /* ── Sidebar ─────────────────────────────────────────────────── */
-    #sidebar {
-      width: 280px;
-      min-width: 280px;
-      background: #1e293b;
-      border-right: 1px solid #334155;
-      display: flex;
-      flex-direction: column;
-      padding: 16px;
-      gap: 12px;
-      overflow-y: auto;
-      z-index: 10;
-    }
+  #stage{flex:1;position:relative;min-height:0}
+  #sigma{position:absolute;inset:0}
+  #shapes{position:absolute;inset:0;pointer-events:none}
 
-    #sidebar h1 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: #60a5fa;
-      letter-spacing: 0.05em;
-    }
+  /* legenda — hairline card discreto */
+  #legend{position:absolute;left:14px;bottom:14px;z-index:10;width:236px;padding:11px 13px;font-size:12px}
+  #legend h2.sec{margin:0 0 9px}
+  #legend .lr{display:flex;align-items:center;gap:9px;padding:3.5px 0;color:var(--tx2)}
+  #legend .sw{flex:0 0 14px;display:flex;align-items:center;justify-content:center}
+  .sw i{display:block}
+  .sw .ci{width:11px;height:11px;border-radius:50%;background:var(--blue-d)}
+  .sw .sq{width:10px;height:10px;border-radius:2px;background:oklch(0.60 0.03 250)}
+  .sw .di{width:9px;height:9px;border-radius:2px;transform:rotate(45deg);background:var(--violet)}
+  .sw .rg{width:10px;height:10px;border-radius:50%;border:2px solid var(--rose)}
+  .sw .ra{width:10px;height:10px;border-radius:50%;border:2px solid var(--amber)}
+  .sw .pl{font:500 10px/1 var(--mono);color:var(--mut)}
+  #legend .foot{margin-top:9px;padding-top:8px;border-top:1px solid var(--bd2);color:var(--dim);font-size:11px;line-height:1.5}
+  #lg-stat{display:block;margin-top:7px;font:400 10.5px/1.5 var(--mono);color:var(--dim)}
 
-    #sidebar h2 {
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #94a3b8;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 6px;
-    }
+  /* painel lateral sincronizado (estilo Chainalysis) */
+  #side{position:absolute;top:14px;right:14px;bottom:14px;z-index:12;width:min(332px,92vw);overflow-y:auto;
+    padding:15px 16px;transform:translateX(14px);opacity:0;pointer-events:none;
+    transition:transform .2s cubic-bezier(.2,.7,.2,1),opacity .2s}
+  #side.open{transform:none;opacity:1;pointer-events:auto}
+  #side .sx{position:absolute;top:10px;right:10px;border:1px solid var(--bd2);background:var(--raise);color:var(--mut);
+    border-radius:6px;width:26px;height:26px;font:500 12px/1 var(--mono);cursor:pointer;transition:.12s}
+  #side .sx:hover{color:var(--tx);border-color:var(--bd)}
+  #side .tags{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding-right:30px}
+  #side h3{margin:0 0 3px;font-size:15.5px;font-weight:600;letter-spacing:-.01em;line-height:1.3;text-wrap:balance}
+  #side .doc{font:400 12px/1.5 var(--mono);color:var(--mut);margin-bottom:10px;word-break:break-all}
+  #side .viz{margin-top:4px}
+  #side .vz{display:flex;align-items:baseline;gap:10px;width:100%;padding:7px 0;border-bottom:1px solid var(--bd2);
+    background:none;border-left:0;border-right:0;border-top:0;color:var(--tx2);font:inherit;font-size:12.5px;cursor:pointer;text-align:left;transition:.12s}
+  #side .vz:hover{color:var(--accent)}
+  #side .vz:last-child{border-bottom:0}
+  #side .vz .nm{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #side .vz .vv{font-family:var(--mono);font-size:11px;color:var(--mut);white-space:nowrap}
+  #side .aviso{margin-top:12px;color:var(--dim);font-size:11px;line-height:1.5}
+  @media (prefers-reduced-motion:reduce){#side{transition:none}}
 
-    .sidebar-section {
-      background: #0f172a;
-      border-radius: 8px;
-      padding: 12px;
-      border: 1px solid #334155;
-    }
+  /* estados de carga/erro */
+  #estado{position:absolute;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:var(--bg)}
+  #estado .card{max-width:360px;text-align:center;padding:22px 24px}
+  #estado .sp{display:inline-block;width:15px;height:15px;border:2px solid var(--bd2);border-top-color:var(--accent);
+    border-radius:50%;animation:sp .7s linear infinite;vertical-align:-3px;margin-right:9px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  #estado p{margin:0;color:var(--mut);font-size:13px;line-height:1.6}
+  #estado .t{color:var(--tx);font-weight:600;margin-bottom:6px}
+  @media (prefers-reduced-motion:reduce){#estado .sp{animation:none}}
 
-    input[type="text"] {
-      width: 100%;
-      background: #0f172a;
-      border: 1px solid #475569;
-      border-radius: 6px;
-      color: #e2e8f0;
-      padding: 7px 10px;
-      font-size: 0.85rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    input[type="text"]:focus { border-color: #60a5fa; }
-    input[type="text"]::placeholder { color: #475569; }
-
-    .filter-group { display: flex; flex-direction: column; gap: 6px; }
-
-    .checkbox-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      cursor: pointer;
-      font-size: 0.85rem;
-    }
-    .checkbox-row input { cursor: pointer; accent-color: #60a5fa; }
-
-    .dot {
-      width: 10px; height: 10px;
-      border-radius: 50%;
-      display: inline-block;
-      flex-shrink: 0;
-    }
-
-    .stat-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 0.85rem;
-      padding: 3px 0;
-    }
-    .stat-row .stat-label { color: #94a3b8; }
-    .stat-row .stat-value { font-weight: 600; color: #e2e8f0; }
-
-    button {
-      background: #1d4ed8;
-      color: #fff;
-      border: none;
-      border-radius: 6px;
-      padding: 8px 14px;
-      font-size: 0.85rem;
-      cursor: pointer;
-      width: 100%;
-      transition: background 0.2s;
-      font-weight: 500;
-    }
-    button:hover { background: #2563eb; }
-
-    select {
-      width: 100%;
-      background: #0f172a;
-      border: 1px solid #475569;
-      border-radius: 6px;
-      color: #e2e8f0;
-      padding: 7px 10px;
-      font-size: 0.85rem;
-      outline: none;
-    }
-
-    /* ── Main graph area ─────────────────────────────────────────── */
-    #main {
-      flex: 1;
-      position: relative;
-      overflow: hidden;
-    }
-
-    #graph-svg {
-      width: 100%;
-      height: 100%;
-      cursor: grab;
-    }
-    #graph-svg:active { cursor: grabbing; }
-
-    /* ── Loading spinner ─────────────────────────────────────────── */
-    #loading {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #0f172a;
-      z-index: 20;
-      gap: 16px;
-    }
-
-    .spinner {
-      width: 48px; height: 48px;
-      border: 4px solid #334155;
-      border-top-color: #60a5fa;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    #loading p { color: #94a3b8; font-size: 0.9rem; }
-
-    /* ── Error state ─────────────────────────────────────────────── */
-    #error-msg {
-      position: absolute;
-      inset: 0;
-      display: none;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: #0f172a;
-      z-index: 20;
-      gap: 12px;
-    }
-    #error-msg p { color: #94a3b8; font-size: 0.95rem; text-align: center; max-width: 360px; }
-    #error-msg .err-icon { font-size: 3rem; }
-
-    /* ── Tooltip ─────────────────────────────────────────────────── */
-    #tooltip {
-      position: absolute;
-      background: #1e293b;
-      border: 1px solid #475569;
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 0.82rem;
-      pointer-events: none;
-      display: none;
-      z-index: 100;
-      max-width: 280px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-    }
-    #tooltip .tt-name { font-weight: 700; color: #f1f5f9; margin-bottom: 4px; }
-    #tooltip .tt-row { color: #94a3b8; display: flex; justify-content: space-between; gap: 8px; }
-    #tooltip .tt-val { color: #e2e8f0; }
-
-    /* ── Detail panel ────────────────────────────────────────────── */
-    #detail-panel {
-      position: absolute;
-      right: 0; top: 0; bottom: 0;
-      width: 300px;
-      max-width: 90%;          /* nunca toma a página inteira em telas estreitas */
-      background: #1e293b;
-      border-left: 1px solid #334155;
-      padding: 16px;
-      transform: translateX(110%);  /* 110% garante esconder por completo incl. borda */
-      transition: transform 0.3s ease;
-      overflow-y: auto;
-      z-index: 50;
-    }
-    #detail-panel.open { transform: translateX(0); }
-
-    #detail-panel h3 { font-size: 1rem; color: #60a5fa; margin-bottom: 12px; }
-    #detail-panel .dp-close {
-      position: absolute; top: 12px; right: 12px;
-      background: #334155; border: none; border-radius: 4px;
-      color: #94a3b8; padding: 4px 8px; cursor: pointer; font-size: 0.8rem;
-      width: auto;            /* override global button{width:100%} so X não estica/sobrepõe o título */
-      line-height: 1; z-index: 2;
-    }
-    #detail-panel h3 { padding-right: 32px; }  /* reserva espaço p/ o botão X */
-    #detail-panel .dp-close:hover { background: #475569; }
-
-    .dp-field { margin-bottom: 10px; }
-    .dp-field label { font-size: 0.72rem; text-transform: uppercase; color: #64748b; letter-spacing: 0.08em; }
-    .dp-field p { color: #e2e8f0; font-size: 0.88rem; margin-top: 2px; }
-
-    .dp-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 9999px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      margin-top: 4px;
-    }
-    .badge-alta { background: #7f1d1d; color: #fca5a5; }
-    .badge-média, .badge-media { background: #78350f; color: #fcd34d; }
-    .badge-baixa { background: #14532d; color: #86efac; }
-    .badge-pessoa { background: #1e3a5f; color: #93c5fd; }
-    .badge-empresa { background: #064e3b; color: #6ee7b7; }
-    .badge-orgao { background: #4a1d96; color: #c4b5fd; }
-  </style>
+  #toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,8px);z-index:60;opacity:0;pointer-events:none;
+    background:var(--raise);border:1px solid var(--bd);border-radius:8px;box-shadow:var(--sh);
+    padding:9px 15px;font-size:12.5px;color:var(--tx2);transition:.18s;white-space:nowrap}
+  #toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
 </head>
 <body>
 
-<!-- ── Sidebar ──────────────────────────────────────────────────── -->
-<div id="sidebar">
-  <h1>🔍 JFN Compliance</h1>
-  <div style="color:#94a3b8; font-size:0.78rem;">Grafo de Relacionamentos</div>
+<header>
+  <a class="brand" href="/painel"><span class="lg">JF</span>
+    <span>Grafo societário<small id="hsub">REDE DE PAGAMENTOS · SIAFE</small></span></a>
+  <div class="chips" role="tablist">
+    <button class="chip on" data-fonte="pagamentos">Pagamentos</button>
+    <button class="chip" data-fonte="familias">Famílias</button>
+    <button class="chip" data-fonte="comunidades">Comunidades</button>
+  </div>
+  <div class="gq">
+    <span class="mag"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+    <input id="q" placeholder="localizar nome ou CNPJ… (Enter)" autocomplete="off" spellcheck="false">
+    <span class="hits" id="q-hits"></span>
+  </div>
+  <a class="voltar" href="/painel">&larr; Painel</a>
+</header>
 
-  <!-- Search -->
-  <div class="sidebar-section">
-    <h2>Buscar</h2>
-    <input type="text" id="search-input" placeholder="Nome, CPF, CNPJ..." />
+<div id="stage">
+  <div id="sigma"></div>
+
+  <div id="legend" class="card">
+    <h2 class="sec">Legenda</h2>
+    <div class="lr"><span class="sw"><i class="ci"></i></span>Empresa — tamanho &prop; R$ pago</div>
+    <div class="lr"><span class="sw"><i class="sq"></i></span>Órgão / unidade gestora</div>
+    <div class="lr"><span class="sw"><i class="di"></i></span>Pessoa, sócio ou família</div>
+    <div class="lr"><span class="sw"><i class="rg"></i></span>Anel rosa — indício crítico</div>
+    <div class="lr"><span class="sw"><i class="ra"></i></span>Anel âmbar — atenção</div>
+    <div class="lr"><span class="sw"><i class="pl">+n</i></span>Vizinhos ocultos — clique expande</div>
+    <div class="foot">Indício &ne; acusação — presunção de regularidade. Fontes: SIAFE/TFE, QSA, CEIS.
+      <span id="lg-stat">—</span></div>
   </div>
 
-  <!-- Type filter -->
-  <div class="sidebar-section">
-    <h2>Tipo de Nó</h2>
-    <div class="filter-group">
-      <label class="checkbox-row">
-        <input type="checkbox" id="filter-pessoa" checked />
-        <span class="dot" style="background:#3b82f6;"></span>
-        Pessoa / Servidor
-      </label>
-      <label class="checkbox-row">
-        <input type="checkbox" id="filter-empresa" checked />
-        <span class="dot" style="background:#10b981;"></span>
-        Empresa
-      </label>
-      <label class="checkbox-row">
-        <input type="checkbox" id="filter-orgao" checked />
-        <span class="dot" style="background:#f59e0b;"></span>
-        Órgão / Instituição
-      </label>
-    </div>
-  </div>
+  <aside id="side" class="card" aria-label="Detalhe do nó">
+    <button class="sx" id="side-x" title="Fechar">&#215;</button>
+    <div id="side-body"></div>
+  </aside>
 
-  <!-- Alert filter -->
-  <div class="sidebar-section">
-    <h2>Filtro de Alertas</h2>
-    <select id="alert-filter">
-      <option value="todos">Todos os nós</option>
-      <option value="com-alertas">Com alertas</option>
-      <option value="alta">Alta severidade</option>
-    </select>
-  </div>
-
-  <!-- Statistics -->
-  <div class="sidebar-section" id="stats-panel">
-    <h2>Estatísticas</h2>
-    <div class="stat-row">
-      <span class="stat-label">Nós totais</span>
-      <span class="stat-value" id="stat-nodes">—</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Arestas totais</span>
-      <span class="stat-value" id="stat-edges">—</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Alertas alta</span>
-      <span class="stat-value" style="color:#ef4444;" id="stat-alta">—</span>
-    </div>
-    <div class="stat-row">
-      <span class="stat-label">Nós visíveis</span>
-      <span class="stat-value" id="stat-visible">—</span>
-    </div>
-  </div>
-
-  <!-- Legend -->
-  <div class="sidebar-section">
-    <h2>Legenda — Bordas</h2>
-    <div class="filter-group" style="font-size:0.82rem; color:#94a3b8;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="display:inline-block;width:18px;height:18px;border-radius:50%;border:2px solid #ef4444;"></span>
-        Alerta alta severidade
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="display:inline-block;width:18px;height:18px;border-radius:50%;border:2px solid #f59e0b;"></span>
-        Alerta média severidade
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="display:inline-block;width:18px;height:18px;border-radius:50%;border:2px solid transparent;"></span>
-        Sem alerta
-      </div>
-    </div>
-  </div>
-
-  <!-- Actions -->
-  <div style="display:flex; flex-direction:column; gap:8px;">
-    <button id="btn-export">Exportar SVG</button>
-    <button id="btn-reset" style="background:#334155;">Resetar Zoom</button>
-    <button id="btn-reload" style="background:#334155;">Recarregar Dados</button>
-  </div>
+  <div id="estado"><div class="card"><p><span class="sp"></span>Carregando o grafo…</p></div></div>
+  <div id="toast" role="status"></div>
 </div>
 
-<!-- ── Graph area ────────────────────────────────────────────────── -->
-<div id="main">
-  <!-- Loading spinner -->
-  <div id="loading">
-    <div class="spinner"></div>
-    <p>Carregando grafo de relacionamentos...</p>
-  </div>
-
-  <!-- Error state -->
-  <div id="error-msg">
-    <div class="err-icon">📭</div>
-    <p>Nenhum dado disponível.<br />Execute o compliance primeiro para popular o grafo.</p>
-    <button id="btn-retry" style="width:auto; margin-top:8px; padding:8px 20px;">Tentar novamente</button>
-  </div>
-
-  <svg id="graph-svg">
-    <defs>
-      <!-- Arrow marker -->
-      <marker id="arrowhead" markerWidth="8" markerHeight="7" refX="8" refY="3.5" orient="auto">
-        <polygon points="0 0, 8 3.5, 0 7" fill="#475569" />
-      </marker>
-    </defs>
-    <g id="graph-container"></g>
-  </svg>
-
-  <!-- Tooltip -->
-  <div id="tooltip"></div>
-
-  <!-- Detail panel -->
-  <div id="detail-panel">
-    <button class="dp-close" id="detail-close">✕</button>
-    <h3 id="detail-title">Detalhes</h3>
-    <div id="detail-content"></div>
-  </div>
-</div>
-
+<script src="/static/assets/graphology.umd.min.js"></script>
+<script src="/static/assets/sigma.min.js"></script>
 <script>
-// ── Configuration ─────────────────────────────────────────────────────────────
-const NODE_COLORS = { pessoa: '#3b82f6', empresa: '#10b981', orgao: '#a855f7', instituicao: '#f59e0b', familia: '#ec4899' };
-const EDGE_COLORS = { sócio: '#64748b', socio: '#10b981', contrato: '#a855f7', relacionado: '#475569', parente: '#ef4444', parentesco: '#ec4899', lotacao: '#a855f7', vitoria: '#a855f7', pagamento: '#f59e0b', coparticipacao: '#ef4444' };
-const COMM_COLORS = ['#3b82f6', '#10b981', '#a855f7', '#f59e0b', '#ec4899', '#ef4444', '#14b8a6', '#eab308', '#8b5cf6', '#f97316'];
-const NODE_MIN_R = 8, NODE_MAX_R = 30;
+'use strict';
+/* ── JFN Grafo societário — sigma.js 2.4 + graphology (self-hosted) ──────────
+   Padrão de produto de investigação (Chainalysis/Linkurious/Maltego):
+   nós tipados por forma, expansão progressiva, painel lateral sincronizado,
+   busca com foco de câmera, layout com iterações FIXAS (VM 2 vCPU).        */
 
-let allNodes = [], allLinks = [], simulation = null;
-let nodeSelection, linkSelection;
-let selectedNode = null;
-let zoomBehavior;
+const GraphCtor = (typeof graphology === 'function') ? graphology : graphology.Graph;
+const SigmaCtor = (typeof Sigma === 'function') ? Sigma : (Sigma.Sigma || Sigma.default);
 
-const svg   = d3.select('#graph-svg');
-const g     = d3.select('#graph-container');
-const tt    = document.getElementById('tooltip');
-const dp    = document.getElementById('detail-panel');
-const w     = () => document.getElementById('main').offsetWidth;
-const h     = () => document.getElementById('main').offsetHeight;
+/* paleta LÂMINA (hex p/ WebGL; espelha os tokens OKLCH do lamina.css) */
+const C = {
+  empresa : '#6288b8',   // aço-azul (--blue-d)
+  orgao   : '#78859b',   // slate neutro
+  pessoa  : '#8f83c9',   // violeta (--violet)
+  familia : '#b08a4f',   // âmbar-d (núcleo familiar = atenção estrutural)
+  accent  : '#6ab8d0',   // cian-aço (--accent) — só seleção/foco
+  rose    : '#e8637c', amber:'#d6a054', gold:'#cfb069',
+  label   : '#9aa2b1', ink:'#eef1f5', dimNode:'#2a3140',
+  edge    : '#2e3949', edgeDim:'rgba(46,57,73,.25)', edgeHi:'rgba(106,184,208,.55)',
+  badge   : 'rgba(154,163,177,.9)'
+};
+const FONTES = {
+  pagamentos : {ep:'/api/compliance/graph',        sub:'REDE DE PAGAMENTOS · SIAFE'},
+  familias   : {ep:'/api/intel/grafo_familias',    sub:'FAMÍLIAS &times; FORNECEDORES'},
+  comunidades: {ep:'/api/intel/comunidades_grafo', sub:'COMUNIDADES LOUVAIN'}
+};
+const LIMIAR_TUDO = 130;   // até aqui mostra o grafo inteiro
+const SEEDS = 40, VIZ_SEED = 3, EXPANDE_MAX = 30;
+const REDUZ = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-// ── Zoom & Pan ────────────────────────────────────────────────────────────────
-zoomBehavior = d3.zoom()
-  .scaleExtent([0.1, 6])
-  .on('zoom', (event) => {
-    g.attr('transform', event.transform);
-  });
+/* estado */
+let FULL = null;          // {nodes:Map, edges:[], adj:Map(id->[i])}
+let G = null, sigma = null, fonte = 'pagamentos';
+let sel = null, selViz = new Set();
+let shapes, sctx;         // overlay canvas
 
-svg.call(zoomBehavior);
+const $ = id => document.getElementById(id);
+const fmtBRL = new Intl.NumberFormat('pt-BR', {style:'currency', currency:'BRL'});
+const fmtInt = new Intl.NumberFormat('pt-BR');
+const norm = s => (s||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+const esc  = s => (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
-function resetZoom() {
-  svg.transition().duration(500).call(
-    zoomBehavior.transform,
-    d3.zoomIdentity.translate(w() / 2, h() / 2).scale(0.7)
-  );
+/* ── documento (CNPJ/CPF) a partir do shape real dos endpoints ─────────────── */
+function docDe(n){
+  if (n.cnpj) return {tipo:'CNPJ', dig:n.cnpj.replace(/\D/g,'')};
+  const m = /^(?:empresa|emp|org|orgao):(\d{8,14})$/.exec(n.id||'');
+  if (m) return {tipo: m[1].length===14 ? 'CNPJ' : 'CNPJ raiz', dig:m[1]};
+  const f = /\|(\d{4,8})$/.exec(n.id||'');
+  if (f) return {tipo:'Fragmento de CPF', dig:f[1], frag:true};   // LGPD: só fragmento
+  return null;
 }
+function fmtDoc(d){
+  if (!d) return '';
+  if (d.frag) return `${d.tipo} &bull;&bull;&bull;${d.dig}`;
+  if (d.dig.length===14) return `${d.tipo} ${d.dig.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5')}`;
+  if (d.dig.length===8)  return `${d.tipo} ${d.dig.replace(/(\d{2})(\d{3})(\d{3})/,'$1.$2.$3')}`;
+  return `${d.tipo} ${d.dig}`;
+}
+const sevDe = n => {
+  const s = norm(n.severidade || n.badge || '');
+  return s.startsWith('alta') ? 'alta' : (s.startsWith('med') ? 'media' : '');
+};
 
-// ── Data loading ──────────────────────────────────────────────────────────────
-let _isLoading = false;   // guarda anti-reentrância (evita fetches sobrepostos)
-
-async function loadGraph(opts = {}) {
-  if (_isLoading) return;            // já há um carregamento em curso
-  _isLoading = true;
-  const silent = opts.silent === true;   // auto-refresh não mostra spinner full-screen
-
-  if (!silent) {
-    document.getElementById('loading').style.display = 'flex';
-    document.getElementById('error-msg').style.display = 'none';
-  }
-
-  try {
-    const _fonte=new URLSearchParams(location.search).get('fonte');
-    const _ep=_fonte==='familias'?'/api/intel/grafo_familias':_fonte==='comunidades'?'/api/intel/comunidades_grafo':'/api/compliance/graph';
-    const resp = await fetch(_ep);
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-
-    if (!data.nodes || data.nodes.length === 0) {
-      showError();
+/* ── carga ─────────────────────────────────────────────────────────────────── */
+async function carregar(){
+  estado(`<p><span class="sp"></span>Carregando o grafo…</p>`);
+  try{
+    const r = await fetch(FONTES[fonte].ep);
+    if (!r.ok) throw new Error('HTTP '+r.status);
+    const d = await r.json();
+    if (!d.nodes || !d.nodes.length){
+      estado(`<p class="t">Sem dados nesta fonte</p><p>Rode a coleta/compliance primeiro para popular o grafo.</p>
+        <div class="btns"><button class="btn ghost" onclick="carregar()">Tentar de novo</button></div>`);
       return;
     }
-
-    allNodes = data.nodes;
-    allLinks = data.links;
-
-    // Compute node degrees
-    const degMap = {};
-    allLinks.forEach(l => {
-      const s = typeof l.source === 'object' ? l.source.id : l.source;
-      const t = typeof l.target === 'object' ? l.target.id : l.target;
-      degMap[s] = (degMap[s] || 0) + 1;
-      degMap[t] = (degMap[t] || 0) + 1;
-    });
-    allNodes.forEach(n => { n._degree = degMap[n.id] || 0; });
-
-    // Attach alert severity from a synthetic check
-    // (in a real scenario, the API would include alert data)
-    allNodes.forEach(n => { n._alertSev = n.alert_severity || null; });
-
-    updateStats(allNodes, allLinks);
-    renderGraph(allNodes, allLinks);
-    document.getElementById('loading').style.display = 'none';
-    if (!silent) resetZoom();   // não re-centraliza/zoom no auto-refresh (preserva o estado do usuário)
-
-  } catch (err) {
-    console.error('Failed to load graph:', err);
-    if (!silent) showError();   // refresh silencioso não derruba o grafo atual por falha de rede
-  } finally {
-    _isLoading = false;
+    montar(d);
+    $('estado').style.display = 'none';
+  }catch(e){
+    estado(`<p class="t">Falha ao carregar</p><p>${esc(e.message)}</p>
+      <div class="btns"><button class="btn ghost" onclick="carregar()">Tentar de novo</button></div>`);
   }
 }
+function estado(html){ const el=$('estado'); el.style.display='flex'; el.querySelector('.card').innerHTML=html; }
 
-function showError() {
-  document.getElementById('loading').style.display = 'none';
-  document.getElementById('error-msg').style.display = 'flex';
-}
-
-// ── Statistics ────────────────────────────────────────────────────────────────
-function updateStats(nodes, links) {
-  document.getElementById('stat-nodes').textContent  = allNodes.length;
-  document.getElementById('stat-edges').textContent  = allLinks.length;
-  const alta = allNodes.filter(n => n._alertSev === 'alta').length;
-  document.getElementById('stat-alta').textContent   = alta;
-  document.getElementById('stat-visible').textContent = nodes.length;
-}
-
-// ── Node radius by degree ─────────────────────────────────────────────────────
-function nodeRadius(d) {
-  const maxDeg = Math.max(...allNodes.map(n => n._degree), 1);
-  const r = NODE_MIN_R + (NODE_MAX_R - NODE_MIN_R) * (d._degree / maxDeg);
-  return Math.max(NODE_MIN_R, Math.min(NODE_MAX_R, r));
-}
-
-// ── Main render ───────────────────────────────────────────────────────────────
-function renderGraph(nodes, links) {
-  g.selectAll('*').remove();
-
-  // Links
-  linkSelection = g.append('g').attr('class', 'links')
-    .selectAll('line')
-    .data(links)
-    .join('line')
-    .attr('stroke', d => EDGE_COLORS[d.tipo] || '#334155')
-    .attr('stroke-width', 1.5)
-    .attr('stroke-opacity', 0.6)
-    .attr('marker-end', 'url(#arrowhead)');
-
-  // Nodes group
-  nodeSelection = g.append('g').attr('class', 'nodes')
-    .selectAll('g')
-    .data(nodes)
-    .join('g')
-    .attr('class', 'node-group')
-    .style('cursor', 'pointer')
-    .call(d3.drag()
-      .on('start', dragStart)
-      .on('drag',  dragged)
-      .on('end',   dragEnd))
-    .on('mouseover', showTooltip)
-    .on('mousemove', moveTooltip)
-    .on('mouseout',  hideTooltip)
-    .on('click', onNodeClick)
-    .on('dblclick', onNodeDblClick);
-
-  // Node circle
-  nodeSelection.append('circle')
-    .attr('r', nodeRadius)
-    .attr('fill', d => d.comunidade != null ? COMM_COLORS[d.comunidade % COMM_COLORS.length] : (NODE_COLORS[d.tipo] || '#6b7280'))
-    .attr('stroke', d => {
-      if (d._alertSev === 'alta') return '#ef4444';
-      if (d._alertSev === 'média' || d._alertSev === 'media') return '#f59e0b';
-      return 'transparent';
-    })
-    .attr('stroke-width', d => d._alertSev ? 3 : 0);
-
-  // Node label
-  nodeSelection.append('text')
-    .attr('dy', d => nodeRadius(d) + 12)
-    .attr('text-anchor', 'middle')
-    .attr('font-size', '9px')
-    .attr('fill', '#94a3b8')
-    .attr('pointer-events', 'none')
-    .text(d => {
-      const label = d.label || '';
-      return label.length > 20 ? label.substring(0, 20) + '…' : label;
-    });
-
-  // Simulation
-  if (simulation) simulation.stop();
-
-  simulation = d3.forceSimulation(nodes)
-    .force('link', d3.forceLink(links).id(d => d.id).distance(120).strength(0.5))
-    .force('charge', d3.forceManyBody().strength(-300).distanceMax(400))
-    .force('center', d3.forceCenter(w() / 2, h() / 2))
-    .force('collide', d3.forceCollide(d => nodeRadius(d) + 8))
-    .on('tick', ticked);
-}
-
-function ticked() {
-  linkSelection
-    .attr('x1', d => d.source.x)
-    .attr('y1', d => d.source.y)
-    .attr('x2', d => d.target.x)
-    .attr('y2', d => d.target.y);
-
-  nodeSelection.attr('transform', d => `translate(${d.x},${d.y})`);
-}
-
-// ── Drag ──────────────────────────────────────────────────────────────────────
-function dragStart(event, d) {
-  if (!event.active) simulation.alphaTarget(0.3).restart();
-  d.fx = d.x; d.fy = d.y;
-}
-function dragged(event, d) { d.fx = event.x; d.fy = event.y; }
-function dragEnd(event, d) {
-  if (!event.active) simulation.alphaTarget(0);
-  d.fx = null; d.fy = null;
-}
-
-// ── Tooltip ───────────────────────────────────────────────────────────────────
-function showTooltip(event, d) {
-  const alertCount = d.n_alertas || 0;
-  tt.innerHTML = `
-    <div class="tt-name">${d.label || d.id}</div>
-    <div class="tt-row"><span>Tipo</span><span class="tt-val">${d.tipo || '—'}</span></div>
-    <div class="tt-row"><span>Conexões</span><span class="tt-val">${d._degree}</span></div>
-    ${d.cpf ? `<div class="tt-row"><span>CPF</span><span class="tt-val">${d.cpf}</span></div>` : ''}
-    ${d.cnpj ? `<div class="tt-row"><span>CNPJ</span><span class="tt-val">${d.cnpj}</span></div>` : ''}
-    ${d._alertSev ? `<div class="tt-row"><span>Alerta</span><span class="tt-val" style="color:${d._alertSev === 'alta' ? '#ef4444' : '#f59e0b'}">${d._alertSev.toUpperCase()}</span></div>` : ''}
-  `;
-  tt.style.display = 'block';
-  moveTooltip(event);
-}
-function moveTooltip(event) {
-  const x = event.clientX + 12, y = event.clientY - 10;
-  tt.style.left = x + 'px';
-  tt.style.top  = y + 'px';
-}
-function hideTooltip() { tt.style.display = 'none'; }
-
-// ── Click: highlight neighbors ────────────────────────────────────────────────
-function onNodeClick(event, d) {
-  event.stopPropagation();
-
-  if (selectedNode === d.id) {
-    // Deselect
-    selectedNode = null;
-    nodeSelection.select('circle').attr('opacity', 1);
-    linkSelection.attr('opacity', 0.6);
-    return;
-  }
-
-  selectedNode = d.id;
-
-  const neighborIds = new Set([d.id]);
-  allLinks.forEach(l => {
-    const s = typeof l.source === 'object' ? l.source.id : l.source;
-    const t = typeof l.target === 'object' ? l.target.id : l.target;
-    if (s === d.id) neighborIds.add(t);
-    if (t === d.id) neighborIds.add(s);
+function montar(d){
+  const nodes = new Map(), edges = [], adj = new Map();
+  d.nodes.forEach(n => { nodes.set(n.id, n); adj.set(n.id, []); });
+  (d.links||[]).forEach(l => {
+    const s = typeof l.source==='object' ? l.source.id : l.source;
+    const t = typeof l.target==='object' ? l.target.id : l.target;
+    if (!nodes.has(s) || !nodes.has(t) || s===t) return;
+    const i = edges.push({s, t, tipo:l.tipo||'', v:+(l.valor ?? l.weight ?? 0)}) - 1;
+    adj.get(s).push(i); adj.get(t).push(i);
   });
+  FULL = {nodes, edges, adj};
 
-  nodeSelection.select('circle')
-    .attr('opacity', nd => neighborIds.has(nd.id) ? 1 : 0.15);
-  linkSelection
-    .attr('opacity', l => {
-      const s = typeof l.source === 'object' ? l.source.id : l.source;
-      const t = typeof l.target === 'object' ? l.target.id : l.target;
-      return neighborIds.has(s) && neighborIds.has(t) ? 1 : 0.05;
+  /* materialidade: R$ do nó, senão soma das arestas, senão grau */
+  let vmax = 1;
+  nodes.forEach(n => {
+    const inc = adj.get(n.id);
+    n._score = +(n.valor||0) || inc.reduce((a,i)=>a+(edges[i].v||0),0) || inc.length;
+    vmax = Math.max(vmax, n._score);
+  });
+  nodes.forEach(n => { n._size = (n.tipo==='pessoa' ? 4.5 : 5) + 11*Math.sqrt(n._score/vmax); });
+  const emax = edges.reduce((a,e)=>Math.max(a,e.v),1);
+
+  /* expansão progressiva: top-N sementes + melhores vizinhos */
+  let vis;
+  if (nodes.size <= LIMIAR_TUDO) vis = new Set(nodes.keys());
+  else {
+    vis = new Set();
+    const rank = [...nodes.values()].sort((a,b)=>b._score-a._score);
+    rank.slice(0,SEEDS).forEach(n => {
+      vis.add(n.id);
+      FULL.adj.get(n.id).map(i=>edges[i]).sort((a,b)=>b.v-a.v).slice(0,VIZ_SEED)
+        .forEach(e => vis.add(e.s===n.id ? e.t : e.s));
     });
-}
+  }
 
-// Clicking background deselects
-svg.on('click', () => {
-  selectedNode = null;
-  nodeSelection && nodeSelection.select('circle').attr('opacity', 1);
-  linkSelection && linkSelection.attr('opacity', 0.6);
-  dp.classList.remove('open');
-});
+  G = new GraphCtor({multi:true, type:'undirected'});
+  vis.forEach(id => addNo(id));
+  edges.forEach((e,i) => { if (vis.has(e.s) && vis.has(e.t)) addAresta(i, emax); });
+  layout([...G.nodes()], true);
 
-// ── Double-click: detail panel ────────────────────────────────────────────────
-function onNodeDblClick(event, d) {
-  event.stopPropagation();
-  openDetailPanel(d);
-}
-
-function openDetailPanel(d) {
-  document.getElementById('detail-title').textContent = d.label || d.id;
-
-  const fields = [
-    { label: 'ID', value: d.id },
-    { label: 'Tipo', value: d.tipo },
-    { label: 'Subtipo', value: d.subtipo || '—' },
-    { label: 'CPF', value: d.cpf || '—' },
-    { label: 'CNPJ', value: d.cnpj || '—' },
-    { label: 'Cargo', value: d.cargo || '—' },
-    { label: 'Órgão', value: d.orgao || '—' },
-    { label: 'Situação', value: d.situacao || '—' },
-    { label: 'Conexões', value: String(d._degree) },
-    { label: 'Alerta', value: d._alertSev || 'nenhum', badge: d._alertSev },
-  ];
-
-  const content = document.getElementById('detail-content');
-  content.innerHTML = fields.map(f => `
-    <div class="dp-field">
-      <label>${f.label}</label>
-      <p>${f.value}${f.badge ? `<span class="dp-badge badge-${f.badge}">${f.badge.toUpperCase()}</span>` : ''}</p>
-    </div>
-  `).join('');
-
-  dp.classList.add('open');
-}
-
-document.getElementById('detail-close').addEventListener('click', () => {
-  dp.classList.remove('open');
-});
-
-// ── Filters ───────────────────────────────────────────────────────────────────
-function applyFilters() {
-  const searchTerm = document.getElementById('search-input').value.toLowerCase();
-  const showPessoa  = document.getElementById('filter-pessoa').checked;
-  const showEmpresa = document.getElementById('filter-empresa').checked;
-  const showOrgao   = document.getElementById('filter-orgao').checked;
-  const alertFilter = document.getElementById('alert-filter').value;
-
-  const filtered = allNodes.filter(n => {
-    // Type filter
-    if (n.tipo === 'pessoa' && !showPessoa) return false;
-    if (n.tipo === 'empresa' && !showEmpresa) return false;
-    if ((n.tipo === 'orgao' || n.tipo === 'instituicao') && !showOrgao) return false;
-
-    // Alert filter
-    if (alertFilter === 'com-alertas' && !n._alertSev) return false;
-    if (alertFilter === 'alta' && n._alertSev !== 'alta') return false;
-
-    // Search
-    if (searchTerm) {
-      const haystack = [n.label, n.cpf, n.cnpj, n.cargo, n.orgao]
-        .filter(Boolean).join(' ').toLowerCase();
-      if (!haystack.includes(searchTerm)) return false;
+  if (sigma) sigma.kill();
+  sel = null; selViz.clear(); fecharSide();
+  sigma = new SigmaCtor(G, $('sigma'), {
+    allowInvalidContainer:true,
+    minCameraRatio:.04, maxCameraRatio:6, stagePadding:56,
+    defaultNodeColor:C.empresa, defaultEdgeColor:C.edge, zIndex:true,
+    labelFont:'"IBM Plex Sans", sans-serif', labelSize:11.5, labelWeight:'500',
+    labelColor:{color:C.label}, labelRenderedSizeThreshold:8,
+    hoverRenderer: drawHover,
+    nodeReducer:(id,data)=>{
+      if (sel && id!==sel && !selViz.has(id)){ return {...data, color:C.dimNode, label:null, zIndex:0}; }
+      return {...data, zIndex: id===sel ? 3 : 1};
+    },
+    edgeReducer:(id,data)=>{
+      if (!sel) return data;
+      const [a,b] = G.extremities(id);
+      return (a===sel||b===sel) ? {...data, color:C.edgeHi, size:data.size+.6, zIndex:2}
+                                : {...data, color:C.edgeDim, zIndex:0};
     }
-
-    return true;
   });
-
-  const filteredIds = new Set(filtered.map(n => n.id));
-  const filteredLinks = allLinks.filter(l => {
-    const s = typeof l.source === 'object' ? l.source.id : l.source;
-    const t = typeof l.target === 'object' ? l.target.id : l.target;
-    return filteredIds.has(s) && filteredIds.has(t);
-  });
-
-  document.getElementById('stat-visible').textContent = filtered.length;
-
-  // Stop and restart simulation
-  if (simulation) simulation.stop();
-  renderGraph(filtered, filteredLinks);
-  resetZoom();
+  montarOverlay();
+  sigma.on('clickNode',  ({node}) => aoClicarNo(node));
+  sigma.on('clickStage', () => { sel=null; selViz.clear(); fecharSide(); sigma.refresh(); });
+  sigma.on('enterNode',  () => $('sigma').style.cursor='pointer');
+  sigma.on('leaveNode',  () => $('sigma').style.cursor='default');
+  sigma.on('afterRender', desenharFormas);
+  document.fonts && document.fonts.ready.then(()=>sigma && sigma.refresh());
+  atualizarStat();
 }
 
-['filter-pessoa', 'filter-empresa', 'filter-orgao'].forEach(id => {
-  document.getElementById(id).addEventListener('change', applyFilters);
-});
-document.getElementById('alert-filter').addEventListener('change', applyFilters);
-document.getElementById('search-input').addEventListener('input', () => {
-  clearTimeout(window._searchTimer);
-  window._searchTimer = setTimeout(applyFilters, 300);
-});
+function addNo(id){
+  const n = FULL.nodes.get(id);
+  G.addNode(id, {x:0, y:0, _semPos:true, size:n._size, label:n.label||id,
+                 color:C[n.tipo]||C.empresa, tipo:n.tipo, sev:sevDe(n)});
+}
+function addAresta(i, emax){
+  const e = FULL.edges[i];
+  emax = emax || FULL.edges.reduce((a,x)=>Math.max(a,x.v),1);
+  G.addEdgeWithKey('e'+i, e.s, e.t, {size:.6 + 1.9*Math.sqrt((e.v||0)/emax), color:C.edge});
+}
+const ocultos = id => FULL.adj.get(id).reduce((a,i)=>{
+  const e=FULL.edges[i]; const o=e.s===id?e.t:e.s; return a + (G.hasNode(o)?0:1); },0);
 
-// ── Buttons ───────────────────────────────────────────────────────────────────
-document.getElementById('btn-reset').addEventListener('click', resetZoom);
-
-document.getElementById('btn-reload').addEventListener('click', loadGraph);
-
-document.getElementById('btn-retry').addEventListener('click', loadGraph);
-
-document.getElementById('btn-export').addEventListener('click', () => {
-  const svgEl = document.getElementById('graph-svg');
-  const serializer = new XMLSerializer();
-  let source = serializer.serializeToString(svgEl);
-  if (!source.match(/^<svg[^>]+xmlns="http:\/\/www\.w3\.org\/2000\/svg"/)) {
-    source = source.replace(/^<svg/, '<svg xmlns="http://www.w3.org/2000/svg"');
+/* ── clique = seleciona + expande vizinhos ocultos (progressivo) ───────────── */
+function aoClicarNo(id){
+  const inc = FULL.adj.get(id).map(i=>({i, e:FULL.edges[i]}))
+    .filter(({e}) => !G.hasNode(e.s===id?e.t:e.s))
+    .sort((a,b)=>b.e.v-a.e.v).slice(0,EXPANDE_MAX);
+  if (inc.length){
+    const p0 = G.getNodeAttributes(id);
+    inc.forEach(({e},k)=>{
+      const o = e.s===id?e.t:e.s;
+      addNo(o);
+      const th = k*2.39996, rr = 34 + 7*Math.sqrt(k);
+      G.mergeNodeAttributes(o, {x:p0.x+rr*Math.cos(th), y:p0.y+rr*Math.sin(th), _semPos:false});
+    });
+    FULL.edges.forEach((e,i)=>{
+      if (G.hasNode(e.s) && G.hasNode(e.t) && !G.hasEdge('e'+i)) addAresta(i);
+    });
+    layout([...G.nodes()], false);
+    atualizarStat();
   }
-  const blob = new Blob([source], { type: 'image/svg+xml;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = `grafo_compliance_${new Date().toISOString().slice(0,10)}.svg`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  selecionar(id);
+}
+function selecionar(id){
+  sel = id; selViz = new Set([id]);
+  G.forEachNeighbor(id, o => selViz.add(o));
+  abrirSide(id);
+  sigma.refresh();
+}
+
+/* ── layout: Fruchterman-Reingold com iterações fixas + empacotamento ──────── */
+function layout(ids, inicial){
+  const K = 42, IT = inicial ? 150 : 60;
+  const idx = new Map(ids.map((id,i)=>[id,i]));
+  const px = new Float64Array(ids.length), py = new Float64Array(ids.length);
+  /* componentes (union-find) */
+  const uf = ids.map((_,i)=>i);
+  const find = a => { while(uf[a]!==a){ uf[a]=uf[uf[a]]; a=uf[a]; } return a; };
+  const liga = [];
+  G.forEachEdge((ek,at,s,t)=>{
+    const a=idx.get(s), b=idx.get(t); liga.push([a,b]);
+    const ra=find(a), rb=find(b); if(ra!==rb) uf[ra]=rb;
+  });
+  const comps = new Map();
+  ids.forEach((id,i)=>{ const r=find(i); (comps.get(r)||comps.set(r,[]).get(r)).push(i); });
+  /* posições iniciais: mantém as existentes; novas em filotaxia no centroide */
+  comps.forEach(mem=>{
+    let cx=0, cy=0, n=0;
+    mem.forEach(i=>{ const a=G.getNodeAttributes(ids[i]);
+      if(!a._semPos){ cx+=a.x; cy+=a.y; n++; } });
+    if(n){ cx/=n; cy/=n; }
+    mem.forEach((i,k)=>{
+      const a=G.getNodeAttributes(ids[i]);
+      if(a._semPos){ const th=k*2.39996, rr=16*Math.sqrt(k+1);
+        px[i]=cx+rr*Math.cos(th); py[i]=cy+rr*Math.sin(th); }
+      else { px[i]=a.x; py[i]=a.y; }
+    });
+  });
+  /* forças — só dentro do componente (o empacotamento separa os demais) */
+  const dx = new Float64Array(ids.length), dy = new Float64Array(ids.length);
+  let temp = inicial ? K*2.2 : K*.7;
+  const esfria = Math.pow(0.02, 1/IT);
+  for(let it=0; it<IT; it++){
+    dx.fill(0); dy.fill(0);
+    comps.forEach(mem=>{
+      for(let a=0;a<mem.length;a++) for(let b=a+1;b<mem.length;b++){
+        const i=mem[a], j=mem[b];
+        let vx=px[i]-px[j], vy=py[i]-py[j];
+        let d2=vx*vx+vy*vy; if(d2<.01){ vx=.1*((i%3)-1)||.1; vy=.1*((j%3)-1)||.05; d2=vx*vx+vy*vy; }
+        const f=K*K/d2;
+        dx[i]+=vx*f; dy[i]+=vy*f; dx[j]-=vx*f; dy[j]-=vy*f;
+      }
+    });
+    liga.forEach(([i,j])=>{
+      const vx=px[i]-px[j], vy=py[i]-py[j], d=Math.sqrt(vx*vx+vy*vy)||.1, f=d/K;
+      dx[i]-=vx*f; dy[i]-=vy*f; dx[j]+=vx*f; dy[j]+=vy*f;
+    });
+    for(let i=0;i<ids.length;i++){
+      const d=Math.sqrt(dx[i]*dx[i]+dy[i]*dy[i])||.1, m=Math.min(d,temp)/d;
+      px[i]+=dx[i]*m; py[i]+=dy[i]*m;
+    }
+    temp*=esfria;
+  }
+  /* empacota componentes em espiral (só no layout inicial) */
+  if (inicial && comps.size>1){
+    const lista=[...comps.values()].map(mem=>{
+      let cx=0,cy=0; mem.forEach(i=>{cx+=px[i];cy+=py[i];}); cx/=mem.length; cy/=mem.length;
+      let r=0; mem.forEach(i=>{ r=Math.max(r, Math.hypot(px[i]-cx,py[i]-cy)); });
+      return {mem,cx,cy,r:r+K};
+    }).sort((a,b)=>b.r-a.r);
+    const postos=[];
+    lista.forEach((c,k)=>{
+      let ox=0, oy=0;
+      if(k>0){
+        for(let t=1;;t++){
+          const th=t*.55, rr=t*14;
+          ox=rr*Math.cos(th); oy=rr*Math.sin(th);
+          if(postos.every(p=>Math.hypot(ox-p.x,oy-p.y) >= p.r+c.r)) break;
+        }
+      }
+      postos.push({x:ox,y:oy,r:c.r});
+      c.mem.forEach(i=>{ px[i]+=ox-c.cx; py[i]+=oy-c.cy; });
+    });
+  }
+  ids.forEach((id,i)=>G.mergeNodeAttributes(id,{x:px[i], y:py[i], _semPos:false}));
+}
+
+/* ── overlay canvas: formas (quadrado/losango), anéis de risco, badges +n ──── */
+function montarOverlay(){
+  shapes = $('shapes');
+  if (!shapes){ shapes = document.createElement('canvas'); shapes.id = 'shapes'; }
+  const cont = $('sigma');
+  const labels = cont.querySelector('.sigma-labels');
+  if (labels) cont.insertBefore(shapes, labels);   // abaixo dos rótulos/hover
+  else cont.appendChild(shapes);
+  sctx = shapes.getContext('2d');
+  dimensionar();
+  if (!montarOverlay._res){ addEventListener('resize', dimensionar); montarOverlay._res = true; }
+}
+function dimensionar(){
+  if (!shapes) return;
+  const st = $('stage'), dpr = devicePixelRatio||1;
+  shapes.width = st.clientWidth*dpr; shapes.height = st.clientHeight*dpr;
+  shapes.style.width = st.clientWidth+'px'; shapes.style.height = st.clientHeight+'px';
+  sctx.setTransform(dpr,0,0,dpr,0,0);
+}
+function losango(x,y,r){ sctx.beginPath(); sctx.moveTo(x,y-r); sctx.lineTo(x+r,y); sctx.lineTo(x,y+r); sctx.lineTo(x-r,y); sctx.closePath(); }
+function desenharFormas(){
+  if (!sctx || !sigma) return;
+  const W = shapes.clientWidth, H = shapes.clientHeight;
+  sctx.clearRect(0,0,W,H);
+  G.forEachNode((id,a)=>{
+    const p = sigma.graphToViewport({x:a.x, y:a.y});
+    if (p.x<-40||p.y<-40||p.x>W+40||p.y>H+40) return;
+    const dd = sigma.getNodeDisplayData(id); if(!dd) return;
+    const r = sigma.scaleSize ? sigma.scaleSize(dd.size)
+                              : dd.size / Math.sqrt(sigma.getCamera().ratio);
+    const dim = sel && id!==sel && !selViz.has(id);
+    const cor = dim ? C.dimNode : (C[a.tipo]||C.empresa);
+    if (a.tipo==='orgao' || a.tipo==='instituicao'){          // quadrado
+      sctx.fillStyle = cor; const s=r*.98;
+      sctx.beginPath(); sctx.roundRect(p.x-s, p.y-s, 2*s, 2*s, Math.min(2.5,s*.3)); sctx.fill();
+    } else if (a.tipo==='pessoa' || a.tipo==='familia'){       // losango
+      sctx.fillStyle = cor; losango(p.x, p.y, r*1.42); sctx.fill();
+    }
+    if (!dim && a.sev){                                        // anel de risco
+      sctx.strokeStyle = a.sev==='alta' ? C.rose : C.amber;
+      sctx.lineWidth = 1.6;
+      if (a.tipo==='orgao'||a.tipo==='instituicao'){ const s=r*.98+3;
+        sctx.beginPath(); sctx.roundRect(p.x-s,p.y-s,2*s,2*s,3); sctx.stroke(); }
+      else if (a.tipo==='pessoa'||a.tipo==='familia'){ losango(p.x,p.y,r*1.42+3.5); sctx.stroke(); }
+      else { sctx.beginPath(); sctx.arc(p.x,p.y,r+3,0,6.2832); sctx.stroke(); }
+    }
+    if (id===sel){                                             // foco = acento
+      sctx.strokeStyle = C.accent; sctx.lineWidth = 2;
+      sctx.beginPath(); sctx.arc(p.x,p.y,r*1.5+6,0,6.2832); sctx.stroke();
+    }
+    if (!dim && r>=5){                                         // badge de ocultos
+      const n = ocultos(id);
+      if (n>0){
+        sctx.font = '500 9.5px "IBM Plex Mono", monospace';
+        sctx.fillStyle = C.badge; sctx.textAlign='left';
+        sctx.fillText('+'+n, p.x + r*.85 + 3, p.y + r*.85 + 4);
+      }
+    }
+  });
+}
+
+/* hover — chip escuro no tema (substitui o balão branco default do sigma) */
+function drawHover(ctx, data, settings){
+  if (!data.label) return;
+  const size = settings.labelSize||12;
+  ctx.font = `500 ${size}px ${settings.labelFont}`;
+  const w = ctx.measureText(data.label).width;
+  const x = data.x + data.size + 8, y = data.y;
+  ctx.beginPath(); ctx.roundRect(x-6, y-size*.85-4, w+12, size*1.7+8, 6);
+  ctx.fillStyle = 'rgba(27,32,42,.96)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(140,155,175,.28)'; ctx.lineWidth = 1; ctx.stroke();
+  ctx.fillStyle = C.ink; ctx.fillText(data.label, x, y + size*.32);
+}
+
+/* ── painel lateral (estilo Chainalysis) + botões-verbo (estilo Maltego) ───── */
+function abrirSide(id){
+  const n = FULL.nodes.get(id); if(!n) return;
+  const a = G.getNodeAttributes(id);
+  const doc = docDe(n), sev = sevDe(n);
+  const grauTotal = FULL.adj.get(id).length;
+  const tipoTag = {empresa:'accent', orgao:'purple', instituicao:'purple', pessoa:'teal', familia:'amber'}[n.tipo]||'accent';
+  const viz = FULL.adj.get(id).map(i=>FULL.edges[i])
+    .filter(e=>G.hasNode(e.s===id?e.t:e.s))
+    .sort((x,y)=>y.v-x.v).slice(0,8);
+
+  let h = `<div class="tags"><span class="tag ${tipoTag}">${esc(n.tipo)}</span>`;
+  if (sev) h += `<span class="sev ${sev}">${sev==='alta'?'indício alto':'atenção'}</span>`;
+  h += `</div><h3>${esc(n.label||id)}</h3>`;
+  if (doc) h += `<div class="doc">${fmtDoc(doc)}</div>`;
+
+  h += `<div class="kvs">`;
+  if (n.valor > 0) h += `<div class="kv"><span class="k">Valor pago (OB)</span><b class="mono" style="color:var(--gold)">${fmtBRL.format(n.valor)}</b></div>`;
+  if (n.n_obs)     h += `<div class="kv"><span class="k">Ordens bancárias</span><b class="mono">${fmtInt.format(n.n_obs)}</b></div>`;
+  h += `<div class="kv"><span class="k">Conexões</span><b class="mono">${fmtInt.format(G.degree(id))} de ${fmtInt.format(grauTotal)}</b></div>`;
+  if (n.comunidade != null) h += `<div class="kv"><span class="k">Comunidade</span><b class="mono">#${n.comunidade}</b></div>`;
+  h += `</div>`;
+
+  if (viz.length){
+    h += `<h2 class="sec" style="margin-top:14px">Ligações <span class="cnt">${viz.length} maiores</span></h2><div class="viz">`;
+    viz.forEach(e=>{
+      const o = e.s===id?e.t:e.s, on = FULL.nodes.get(o);
+      h += `<button class="vz" data-no="${esc(o)}"><span class="nm">${esc(on.label||o)}</span>
+            <span class="vv">${e.v>0 ? fmtBRL.format(e.v) : esc(e.tipo)}</span></button>`;
+    });
+    h += `</div>`;
+  }
+
+  h += `<div class="btns">
+    <button class="btn accent" id="b-dossie">Dossiê 360</button>`;
+  if (doc && !doc.frag){
+    h += `<button class="btn ghost" id="b-sanc">Ver sanções</button>
+          <button class="btn ghost" id="b-cnpj">Copiar CNPJ</button>`;
+  }
+  h += `</div><div class="aviso">Indício &ne; acusação — dado para priorizar apuração.</div>`;
+
+  $('side-body').innerHTML = h;
+  $('side').classList.add('open');
+  $('side-body').querySelectorAll('.vz').forEach(b=>b.addEventListener('click',()=>focar(b.dataset.no)));
+  const alvo = (doc && !doc.frag) ? doc.dig : (n.label||'');
+  const bd = $('b-dossie'); if (bd) bd.addEventListener('click', ()=>{
+    navigator.clipboard && navigator.clipboard.writeText(alvo).catch(()=>{});
+    toast('Alvo copiado — cole em Ações &rsaquo; Dossiê 360 no Painel');
+    open('/painel','_blank');
+  });
+  const bs = $('b-sanc'); if (bs) bs.addEventListener('click', ()=>
+    open('https://portaldatransparencia.gov.br/busca?termo='+encodeURIComponent(doc.dig),'_blank'));
+  const bc = $('b-cnpj'); if (bc) bc.addEventListener('click', ()=>{
+    navigator.clipboard && navigator.clipboard.writeText(doc.dig)
+      .then(()=>toast('CNPJ copiado')).catch(()=>toast('Falha ao copiar'));
+  });
+}
+function fecharSide(){ $('side').classList.remove('open'); }
+$('side-x').addEventListener('click', ()=>{ sel=null; selViz.clear(); fecharSide(); sigma && sigma.refresh(); });
+
+/* ── busca: localiza, revela se oculto e centraliza ────────────────────────── */
+let hits = [], hitIdx = 0;
+function buscar(term){
+  const t = norm(term), dig = term.replace(/\D/g,'');
+  hits = [];
+  if (t.length>=2 || dig.length>=4){
+    FULL.nodes.forEach(n=>{
+      const d = docDe(n);
+      if (norm(n.label).includes(t) || (dig && d && d.dig.includes(dig))) hits.push(n.id);
+    });
+    hits.sort((a,b)=>FULL.nodes.get(b)._score - FULL.nodes.get(a)._score);
+  }
+  $('q-hits').textContent = term ? (hits.length ? fmtInt.format(hits.length) : '0') : '';
+}
+function focar(id){
+  if (!FULL.nodes.has(id)) return;
+  if (!G.hasNode(id)){
+    addNo(id);
+    FULL.edges.forEach((e,i)=>{ if (G.hasNode(e.s)&&G.hasNode(e.t)&&!G.hasEdge('e'+i)) addAresta(i); });
+    layout([...G.nodes()], false);
+    atualizarStat();
+  }
+  selecionar(id);
+  const dd = sigma.getNodeDisplayData(id);
+  if (dd) sigma.getCamera().animate({x:dd.x, y:dd.y, ratio:Math.min(sigma.getCamera().ratio,.5)},
+                                    {duration: REDUZ?0:420});
+}
+let qTimer;
+$('q').addEventListener('input', e=>{ clearTimeout(qTimer); qTimer=setTimeout(()=>buscar(e.target.value),220); });
+$('q').addEventListener('keydown', e=>{
+  if (e.key!=='Enter') return;
+  buscar(e.target.value);
+  if (hits.length){ focar(hits[hitIdx % hits.length]); hitIdx++; }
 });
 
-// ── Initialize ────────────────────────────────────────────────────────────────
-loadGraph();
+/* ── fontes / stats / toast ────────────────────────────────────────────────── */
+document.querySelectorAll('.chip[data-fonte]').forEach(ch=>ch.addEventListener('click',()=>{
+  if (ch.dataset.fonte===fonte) return;
+  fonte = ch.dataset.fonte;
+  document.querySelectorAll('.chip[data-fonte]').forEach(c=>c.classList.toggle('on', c===ch));
+  $('hsub').innerHTML = FONTES[fonte].sub;
+  history.replaceState(null,'', fonte==='pagamentos' ? location.pathname : '?fonte='+fonte);
+  hitIdx=0; $('q').value=''; $('q-hits').textContent='';
+  carregar();
+}));
+function atualizarStat(){
+  $('lg-stat').textContent =
+    `${fmtInt.format(G.order)} de ${fmtInt.format(FULL.nodes.size)} nós · ` +
+    `${fmtInt.format(G.size)} de ${fmtInt.format(FULL.edges.length)} ligações`;
+}
+let toastT;
+function toast(msg){
+  const el=$('toast'); el.innerHTML=msg; el.classList.add('on');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('on'), 2400);
+}
 
-// ── Auto-refresh ──────────────────────────────────────────────────────────────
-// Re-busca /api/compliance/graph periodicamente. Guardas: pula se a aba está
-// oculta, se já há um load em curso, ou se o usuário está com um nó selecionado
-// (para não destruir o foco/realce de investigação no meio da análise).
-const AUTO_REFRESH_MS = 30000;   // 30s
-setInterval(() => {
-  if (document.hidden) return;        // aba em segundo plano → não desperdiça fetch
-  if (_isLoading) return;             // load já em curso
-  if (selectedNode) return;           // usuário com nó selecionado → preserva contexto
-  loadGraph({ silent: true });        // sem spinner, sem reset de zoom
-}, AUTO_REFRESH_MS);
+/* init — preserva o contrato ?fonte= usado pelo painel */
+const qf = new URLSearchParams(location.search).get('fonte');
+if (qf && FONTES[qf]){ fonte = qf;
+  document.querySelectorAll('.chip[data-fonte]').forEach(c=>c.classList.toggle('on', c.dataset.fonte===fonte));
+  $('hsub').innerHTML = FONTES[fonte].sub;
+}
+carregar();
 </script>
 </body>
 </html>
