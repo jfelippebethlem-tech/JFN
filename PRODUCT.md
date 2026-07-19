@@ -16,16 +16,18 @@ Transformar dado bruto de contratação/pagamento em **fila priorizada de apura�
 A régua é **Linear / Raycast / Stripe**: um usuário fluente nas melhores ferramentas de dado deve sentar e **confiar** na interface na hora — nada de componente sutilmente errado, nada de "game UI". Densidade quando o usuário precisa; calma e precisão sempre.
 
 ## Brand personality
-**Sala de comando precisa, não nave sci-fi.** Autoridade técnica, sobriedade forense, confiança. "Apple-elegante com alma Jarvis": a base é calma, precisa, arejada e tipograficamente forte; o brilho/movimento (glow teal, malha, HUD) é **acento raro e proposital** — nunca decoração constante. Premium, não espetáculo.
+**Organismo vivo: Jarvis × lightsaber × Apple Glass** (brief do dono, 2026-07-19 — SUPERSEDE "sala de comando sóbria").
+A interface é um organismo de energia: informação REAL fluindo visivelmente (lâmina SSE, malha de luz, plexus),
+vidro líquido (visionOS: highlight especular + sombra + iluminação), cores vivas com significado, e CADA elemento
+interativo vivo — respondendo ao cursor, mudando de cor, com estado luminoso. Elegância premium continua obrigatória:
+vivo ≠ poluído; o dado sempre lê primeiro, a luz o serve.
 
 ## Anti-references (o que NÃO ser)
-- **Game UI / HUD de videogame**: glow em tudo, movimento constante, neon gratuito.
-- **Glassmorphism por padrão**: blur/vidro decorativo em todo card.
-- **Hero-metric SaaS**: número gigante + rótulo + gradiente, repetido.
-- **Grid de cards idênticos** com ícone+título+texto ao infinito.
-- **Side-stripe** (borda colorida à esquerda de card/callout).
-- **Motion decorativo** que não comunica estado; sequência orquestrada de "load".
-- Dashboard cinza-sobre-cinza sem hierarquia (o oposto do problema acima).
+- **Dado sintético**: nenhuma animação de número/gráfico inventado (Math.random em série "de dados" é proibido). Vida = evento/dado REAL.
+- **Ruído que esconde o dado**: glow/partícula nunca por cima de texto denso; camadas ambientes ficam ATRÁS e discretas.
+- **Motion que trava**: canvas com cap de partículas, RAF pausado em document.hidden, transform/opacity only.
+- **Ignorar acessibilidade**: prefers-reduced-motion desliga TUDO que se move; contraste de texto ≥4.5:1 sempre.
+- Dashboard cinza-sobre-cinza sem alma (o v6 "Lâmina" — regressão declarada pelo dono).
 
 ## Strategic design principles
 1. **Honestidade visual** = honestidade do dado: indício ≠ acusação; INDISPONÍVEL ≠ 0. O rating (🔴🟡🟢) e a escala são sempre explícitos. A UI nunca faz um indício parecer prova.

@@ -342,6 +342,8 @@ _BUS_TABELAS = {
     "alerta": ("alertas", "alerta de compliance"),
     "radar": ("radar_alertas", "alerta do radar"),
     "clausula": ("clausula_veredito", "cláusula julgada pelo colegiado"),
+    "pericia": ("pericia_fornecedor", "perícia de fornecedor concluída"),
+    "ata": ("ata_documento", "ata de julgamento coletada"),
 }
 
 
@@ -395,9 +397,19 @@ async def _bus_sampler():
             l1, l5, _ = os.getloadavg()
         except OSError:
             l1 = l5 = 0.0
+        mem_pct = None
+        try:  # % de RAM em uso (MemAvailable é a métrica honesta no Linux)
+            info = {}
+            with open("/proc/meminfo") as fh:
+                for ln in fh:
+                    k, v = ln.split(":", 1)
+                    info[k] = int(v.split()[0])
+            mem_pct = round(100 * (1 - info["MemAvailable"] / info["MemTotal"]))
+        except Exception:  # noqa: BLE001
+            pass
         estado = "critico" if l1 >= 5.0 else ("carga" if l1 >= 3.5 else "ok")
         evs.append({"tipo": "pulse", "load1": round(l1, 2), "load5": round(l5, 2),
-                    "estado": estado, "sweeps": vivos})
+                    "mem": mem_pct, "estado": estado, "sweeps": vivos})
 
         agora = _t.strftime("%H:%M:%S")
         for ev in evs:

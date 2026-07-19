@@ -1,5 +1,13 @@
 # DESIGN.md — JFN
 
+> ## ⚡ v7 "REATOR" (2026-07-19) — VIGENTE, supersede regras conflitantes abaixo
+> Brief do dono: **vivo, interativo, cores vivas, lightsaber, Jarvis, Apple Glass**. Sistema:
+> - **Paleta viva**: mesmos tokens, chroma elevado (accent cian holográfico ~oklch(0.85 0.14 200); estados do sabre teal/âmbar/rosa; ouro=dinheiro; azul=Estado, ouro=Prefeitura, violeta=Transversal).
+> - **Vidro líquido (visionOS)**: card = blur+saturate, highlight especular no topo (inset 1px branco), sombra de profundidade, borda-hairline com gradiente. `prefers-reduced-transparency` → sólido.
+> - **Energia contínua** (assinatura): Conduíte-lâmina (núcleo branco-quente + glow) → plexus de fundo → malha de luz entre cards → border-beam em hover/ativo. Metáfora única: informação = plasma.
+> - **Cada controle vivo**: spotlight que segue o cursor (--mx/--my), borda que energiza na cor da esfera, active com spring, chips/tabs acesos com glow. Tudo desligado em reduced-motion.
+> - **Honestidade intacta**: vida SÓ com dado/evento real; contraste ≥4.5:1; INDISPONÍVEL ≠ 0.
+
 > Sistema visual do painel de fiscalização. Register **product**, dark, "Apple-elegante com alma Jarvis".
 > Regência: acento com significado, motion = estado, densidade com ar. Impeccable-compliant.
 
