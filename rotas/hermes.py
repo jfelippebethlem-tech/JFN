@@ -180,6 +180,9 @@ async def _cancelar_loop_trabalhar():
 
 @router.post("/api/hermes/trabalhar")
 async def api_hermes_trabalhar():
+    # sem 'global', as atribuições abaixo viravam locais e o módulo ficava com queue=None
+    # para sempre — o SSE /api/hermes/stream nunca emitia nada (bug 2026-07-18)
+    global _agent_loop_queue, _agent_loop_trabalhar_task
     from compliance_agent.database.models import get_session, init_db
     from compliance_agent.hermes_goal import HermesGoalAgent
     init_db()
@@ -215,7 +218,6 @@ async def api_hermes_stream():
 
 
 @router.post("/api/hermes/parar")
-@router.post("/api/hermes/parar")
 async def api_hermes_parar(payload: Optional[dict] = None):
     """Para o ciclo 'trabalhar agora' em andamento."""
     from compliance_agent.database.models import get_session, init_db
@@ -244,7 +246,60 @@ async def api_hermes_parar(payload: Optional[dict] = None):
 
 @router.post("/api/hermes/chat")
 async def api_hermes_chat(payload: dict):
-    """Conversa com o Hermes (raciocínio profundo sobre os casos)."""
+    """Conversa com o Hermes (raciocínio sobre os casos). Handler estava VAZIO desde o split
+    de 2026-07-06 — a caixa de chat da UI sempre recebia null. Responde via cadeia de
+    produtos (gemini→cerebras), com a missão atual como contexto; degrada honesto."""
+    pergunta = (payload.get("pergunta") or "").strip()
+    if not pergunta:
+        return JSONResponse({"erro": "pergunta vazia"}, status_code=400)
+    from compliance_agent.database.models import get_session, init_db
+    from compliance_agent.hermes_goal import HermesGoalAgent
+    init_db()
+    s = get_session()
+    try:
+        missao = HermesGoalAgent(session=s).missao_atual() or "(sem missão definida)"
+    except Exception:
+        missao = "(estado indisponível)"
+    finally:
+        s.close()
+    # grounding determinístico: súmula curada VERBATIM no prompt quando o tema casa — sem isso
+    # o LLM alucina teto (respondeu "25%" p/ capital social; o correto é 10%, Súmula TCU 275)
+    base_curada = ""
+    try:
+        from compliance_agent.knowledge.jurisprudencia import INDICE_CLAUSULA, SUMULAS
+        p_low = pergunta.lower()
+        hits = [s for s in SUMULAS.values()
+                if any(tok in p_low for tok in s["tema"].lower().split() if len(tok) > 4)
+                or any(tok in s["texto"].lower() for tok in p_low.split() if len(tok) > 6)][:3]
+        # os TETOS objetivos (10% capital, 50% atestado, 1% garantia…) vivem no teste do índice
+        testes = [f"- {tipo}: {e['teste']} ({'; '.join(e['dispositivos'])})"
+                  for tipo, e in INDICE_CLAUSULA.items()
+                  if any(tok in p_low for tok in tipo.replace("_", " ").split() if len(tok) > 4)
+                  or any(tok in e["teste"].lower() for tok in p_low.split() if len(tok) > 6)][:3]
+        blocos = []
+        if hits:
+            blocos.append("Súmulas (verbatim):\n" +
+                          "\n".join(f"- {s['numero']} ({s['orgao']}): {s['texto']}" for s in hits))
+        if testes:
+            blocos.append("Testes de legalidade (tetos objetivos):\n" + "\n".join(testes))
+        if blocos:
+            base_curada = ("\nBASE CURADA (fonte primária conferida — quando cobrir o tema, "
+                           "responda COM ela e cite):\n" + "\n".join(blocos))
+    except Exception:
+        pass
+    prompt = (
+        "Você é o Hermes, agente de auditoria/compliance do Estado do RJ (controle externo). "
+        "Responda em pt-BR, texto corrido (nunca JSON), técnico e direto. Indício ≠ acusação; "
+        "nunca invente número nem percentual de memória; dado indisponível = 'INDISPONÍVEL'.\n"
+        f"Missão atual: {missao}{base_curada}\n\nPergunta do auditor: {pergunta}")
+    try:
+        from compliance_agent.direcionamento_cerebro import gerar_sync
+        resposta = await asyncio.to_thread(gerar_sync, prompt)
+        if not (resposta or "").strip():
+            return JSONResponse({"erro": "LLM indisponível no momento (cadeia gemini/cerebras vazia)"})
+        return JSONResponse({"ok": True, "resposta": resposta.strip()})
+    except Exception as e:
+        return JSONResponse({"erro": f"{type(e).__name__}: {e}"})
 
 
 @router.post("/api/hermes/auditor24h/iniciar")

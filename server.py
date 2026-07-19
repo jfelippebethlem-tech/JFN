@@ -216,7 +216,12 @@ async def lifespan(app: FastAPI):
         try:
             await _agent.stop()
         except Exception as e:
-            print(f"[SIAFE] Erro no stop do agente ({e.__class__.__name__}): {e}")
+            # TargetClosedError no shutdown = página/browser já fechados (reaper de ócio ou o
+            # próprio Chromium caiu antes) — resultado desejado alcançado; só ruído no journal.
+            if "TargetClosed" in e.__class__.__name__ or "has been closed" in str(e):
+                logger.debug("[SIAFE] stop no shutdown: browser já estava fechado (%s)", e.__class__.__name__)
+            else:
+                print(f"[SIAFE] Erro no stop do agente ({e.__class__.__name__}): {e}")
 
 
 app = FastAPI(lifespan=lifespan)

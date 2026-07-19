@@ -164,24 +164,39 @@ async function limparMissao(){
   carregarEstado();
 }
 
+// O backend virou assíncrono (POST devolve {status:'trabalhando'} e empurra os passos no
+// SSE /api/hermes/stream) — a UI antiga esperava os passos na resposta e sempre mostrava
+// "0 passos". Agora assina o stream e pinta cada passo ao vivo.
+let _esTrabalho = null;
+function _assinarStream(rotulo){
+  if(_esTrabalho) _esTrabalho.close();
+  let nPassos = 0;
+  _esTrabalho = new EventSource('/api/hermes/stream');
+  _esTrabalho.onmessage = ev => {
+    let p; try{ p = JSON.parse(ev.data); }catch(_){ return; }
+    if(p.acao === 'concluir'){
+      addMsg('✅ '+rotulo+' concluído ('+nPassos+' passos). '+((p.resultado||{}).resumo||''),'he');
+      _esTrabalho.close(); _esTrabalho=null;
+      const btn=$('#btnTrabalhar'); btn.disabled=false; btn.textContent='▶ Trabalhar agora';
+      carregarEstado();
+      return;
+    }
+    nPassos++;
+    addStep(p.acao||'passo', (p.pensamento? p.pensamento+' · ':'') +
+            JSON.stringify(p.resultado||'').slice(0,200));
+  };
+  _esTrabalho.onerror = () => { /* reconexão automática do EventSource; silêncio ≠ erro */ };
+}
+
 async function trabalhar(){
   const btn = $('#btnTrabalhar'); btn.disabled=true; btn.textContent='⏳ trabalhando…';
   addMsg('Iniciando ciclo autônomo rumo à missão…','he');
   try{
     const r = await fetch('/api/hermes/trabalhar', {method:'POST'});
     const d = await r.json();
-    if(d.erro){ addMsg('⚠ '+d.erro,'he'); }
-    else{
-      (d.passos||[]).forEach(p=>{
-        const det = p.acao==='concluir' ? (p.resultado.resumo||'') :
-          JSON.stringify(p.resultado).slice(0,160);
-        addStep(p.acao, (p.pensamento? p.pensamento+' · ':'') + det);
-      });
-      addMsg('✅ Ciclo concluído ('+ (d.n_passos||0) +' passos). '+(d.resumo||''),'he');
-    }
-  }catch(e){ addMsg('Erro: '+e,'he'); }
-  btn.disabled=false; btn.textContent='▶ Trabalhar agora';
-  carregarEstado();
+    if(d.erro){ addMsg('⚠ '+d.erro,'he'); btn.disabled=false; btn.textContent='▶ Trabalhar agora'; return; }
+    _assinarStream('Ciclo');
+  }catch(e){ addMsg('Erro: '+e,'he'); btn.disabled=false; btn.textContent='▶ Trabalhar agora'; }
 }
 
 async function enviar(){
@@ -240,15 +255,16 @@ async function trabalharGoal(){
   try{
     const r = await fetch('/api/hermes/trabalhar', {method:'POST'});
     const d = await r.json();
-    if(d.erro){ addMsg('⚠ '+d.erro,'he'); return; }
-    (d.passos||[]).forEach(p=>{
-      const det = p.acao==='concluir' ? (p.resultado.resumo||'') : JSON.stringify(p.resultado).slice(0,200);
-      addStep(p.acao, (p.pensamento? p.pensamento+' · ':'') + det);
-    });
-    addMsg('✅ Ciclo /goal concluído ('+ (d.n_passos||0) +' passos). '+(d.resumo||''),'he');
-  }catch(e){ addMsg('Erro no /goal: '+e,'he'); }
-  const btn=$('#btnTrabalhar'); btn.disabled=false; btn.textContent='▶ Trabalhar agora';
-  carregarEstado();
+    if(d.erro){
+      addMsg('⚠ '+d.erro,'he');
+      const btn=$('#btnTrabalhar'); btn.disabled=false; btn.textContent='▶ Trabalhar agora';
+      return;
+    }
+    _assinarStream('Ciclo /goal');
+  }catch(e){
+    addMsg('Erro no /goal: '+e,'he');
+    const btn=$('#btnTrabalhar'); btn.disabled=false; btn.textContent='▶ Trabalhar agora';
+  }
 }
 
 // ── Auditor 24 horas ──────────────────────────────────────────────────────

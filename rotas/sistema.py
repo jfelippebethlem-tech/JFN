@@ -326,3 +326,112 @@ async def api_skills_validate():
         return JSONResponse(content={"ok": not probs, "problemas": probs})
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+# ── Barramento de eventos ao vivo (SSE) — alimenta o Conduíte do painel ──────────────────
+# Um ÚNICO amostrador para N inscritos (leve p/ 2 vCPU): MAX(rowid) é O(1) (~1ms nas 5
+# tabelas), pgrep só a cada 3 ciclos, DB aberto read-only e fechado a cada amostra.
+# Sem inscritos, o amostrador morre sozinho — custo zero quando ninguém olha o painel.
+
+_bus_subs: set = set()
+_bus_task = None
+
+_BUS_TABELAS = {
+    "ob_siafe": ("ob_orcamentaria_siafe", "OB SIAFE ingerida"),
+    "ob_tfe": ("ordens_bancarias", "OB (espelho TFE) ingerida"),
+    "alerta": ("alertas", "alerta de compliance"),
+    "radar": ("radar_alertas", "alerta do radar"),
+    "clausula": ("clausula_veredito", "cláusula julgada pelo colegiado"),
+}
+
+
+async def _bus_sampler():
+    import asyncio
+    import sqlite3
+    import time as _t
+    marcas: dict = {}
+    sei_size = None
+    ciclo = 0
+    vivos = {"sei": False, "siafe": False}
+
+    def _pgrep(pat):
+        import subprocess
+        try:
+            return bool(subprocess.run(["pgrep", "-f", pat], capture_output=True, timeout=3).stdout.strip())
+        except Exception:  # noqa: BLE001
+            return False
+
+    while _bus_subs:
+        evs = []
+        try:
+            con = sqlite3.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True, timeout=2)
+            try:
+                for chave, (tabela, rotulo) in _BUS_TABELAS.items():
+                    try:
+                        atual = con.execute(f"SELECT MAX(rowid) FROM {tabela}").fetchone()[0] or 0
+                    except sqlite3.OperationalError:
+                        continue  # tabela ainda não existe nesta base
+                    antes = marcas.get(chave)
+                    if antes is not None and atual > antes:
+                        evs.append({"tipo": chave, "delta": atual - antes, "rotulo": rotulo})
+                    marcas[chave] = atual
+            finally:
+                con.close()
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("bus: amostra de DB falhou (segue vivo): %s", exc)
+
+        # avanço do sweep SEI pelo tamanho do checkpoint (parse do JSON inteiro seria caro)
+        try:
+            sz = (RAIZ / "data/sei_cache/sei_sweep_progress.json").stat().st_size
+            if sei_size is not None and sz != sei_size:
+                evs.append({"tipo": "sei_doc", "delta": 1, "rotulo": "sweep SEI avançou (checkpoint)"})
+            sei_size = sz
+        except OSError:
+            pass
+
+        if ciclo % 3 == 0:
+            vivos = {"sei": _pgrep("tools[.]sei_sweep"), "siafe": _pgrep("siafe[_]sweep_full")}
+        try:
+            l1, l5, _ = os.getloadavg()
+        except OSError:
+            l1 = l5 = 0.0
+        estado = "critico" if l1 >= 5.0 else ("carga" if l1 >= 3.5 else "ok")
+        evs.append({"tipo": "pulse", "load1": round(l1, 2), "load5": round(l5, 2),
+                    "estado": estado, "sweeps": vivos})
+
+        agora = _t.strftime("%H:%M:%S")
+        for ev in evs:
+            ev["t"] = agora
+            for q in list(_bus_subs):
+                try:
+                    q.put_nowait(ev)
+                except Exception:  # noqa: BLE001 — fila cheia = cliente lento; descarta p/ ele
+                    pass
+        ciclo += 1
+        await asyncio.sleep(4)
+
+
+@router.get("/api/eventos/stream")
+async def api_eventos_stream():
+    """SSE com a vida real do sistema: deltas de OB/alertas/cláusulas, avanço de sweep e pulso
+    de carga. O painel usa cada evento como um pulso de plasma no Conduíte; sem eventos, a
+    lâmina apenas respira (silêncio honesto). Fallback do cliente: polling de 30s já existente."""
+    import asyncio
+    from fastapi.responses import StreamingResponse
+    global _bus_task
+    q: asyncio.Queue = asyncio.Queue(maxsize=200)
+    _bus_subs.add(q)
+    if _bus_task is None or _bus_task.done():
+        _bus_task = asyncio.create_task(_bus_sampler())
+
+    async def gen():
+        try:
+            yield "retry: 5000\n\n"
+            while True:
+                item = await q.get()
+                yield f"data: {json.dumps(item, ensure_ascii=False)}\n\n"
+        finally:
+            _bus_subs.discard(q)
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
