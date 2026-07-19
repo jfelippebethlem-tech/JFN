@@ -1258,6 +1258,27 @@ async def api_perfil(cnpj: str):
                            "COUNT(DISTINCT orgao_cnpj) orgaos FROM pncp_resultado "
                            "WHERE fornecedor_cnpj=? AND ordem_classificacao=1", (dig,)).fetchone()
         out["pncp"] = {"certames": pncp["certames"], "total": pncp["v"], "orgaos": pncp["orgaos"]} if pncp and pncp["certames"] else None
+        # contato/hub (Receita Estabelecimentos) — telefone/e-mail/endereço compartilhados = ninho de fantasmas.
+        # ATTACH readonly do DB separado; se não ingerido, campo ausente (INDISPONÍVEL ≠ 0).
+        try:
+            estab_fp = RAIZ / "data" / "receita_estab.db"
+            if estab_fp.exists():
+                con.execute(f"ATTACH DATABASE 'file:{estab_fp}?mode=ro' AS estab")
+                e = con.execute("SELECT endereco_norm, telefone1, correio_eletronico, situacao_cadastral, cnae_principal "
+                                "FROM estab.estabelecimentos WHERE cnpj=? LIMIT 1", (dig,)).fetchone()
+                if e:
+                    hub = {}
+                    for chave, col in (("endereco", "endereco_norm"), ("telefone", "telefone1"), ("email", "correio_eletronico")):
+                        val = e[col]
+                        if val:
+                            n = con.execute(f"SELECT COUNT(DISTINCT cnpj) c FROM estab.estabelecimentos WHERE {col}=?", (val,)).fetchone()["c"]
+                            if n >= 5:
+                                hub[chave] = n
+                    out["estab"] = {"situacao": e["situacao_cadastral"], "cnae": e["cnae_principal"],
+                                    "tem_telefone": bool(e["telefone1"]), "tem_email": bool(e["correio_eletronico"]),
+                                    "hub_compartilhado": hub or None}
+        except Exception:  # noqa: BLE001 — enriquecimento opcional; nunca derruba o dossiê
+            pass
         con.close()
         return JSONResponse(out)
     except Exception as exc:  # noqa: BLE001
