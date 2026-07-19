@@ -33,7 +33,7 @@ except Exception as exc:  # noqa: BLE001 — stdout sem reconfigure só degrada 
 
 import websocket  # websocket-client
 
-log = logging.getLogger(__name__)
+_lg = logging.getLogger(__name__)
 
 # ---------- CONFIG ----------
 CDP_PORT = 9222
@@ -59,7 +59,7 @@ def env(chave, default=None):
                 if ln.startswith(chave + "="):
                     return ln.split("=", 1)[1].strip()
     except Exception as exc:  # noqa: BLE001
-        log.debug("env %s ilegível no .env (%s) — usando default", chave, exc)
+        _lg.debug("env %s ilegível no .env (%s) — usando default", chave, exc)
     return default
 
 
