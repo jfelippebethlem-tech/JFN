@@ -96,6 +96,14 @@ _DET_META: dict[str, dict] = {
         "evid": [("socio", "Sócio em comum", "s"), ("fornecedores", "Fornecedores (CNPJs)", "lista"),
                  ("ano", "Ano", "s"), ("match_tipo", "Correspondência", "s")],
     },
+    "d12_coendereco_concorrentes": {
+        "rotulo": "D12 · Co-endereço entre fornecedores do mesmo órgão",
+        "detecta": "Fornecedores concorrentes contratados pelo mesmo órgão compartilhando o mesmo CEP (red flag OCDE 2025 de bid rigging).",
+        "irregularidade": "conluio",
+        "dispositivos": ["Lei 14.133/2021 art. 9º", "Lei 12.529/2011 art. 36 §3º I"],
+        "evid": [("cep", "CEP compartilhado", "s"), ("fornecedores", "Fornecedores (CNPJs)", "lista"),
+                 ("n_empresas_no_cep_base", "Empresas no CEP (base)", "s")],
+    },
     "d11_aditivo_estourado": {
         "rotulo": "D11 · Acréscimo contratual acima do limite legal",
         "detecta": "Aditivo que eleva o valor do contrato além dos 25%/50% do art. 125.",

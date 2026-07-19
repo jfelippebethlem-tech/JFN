@@ -12,9 +12,23 @@ from datetime import date, datetime
 
 logger = logging.getLogger(__name__)
 
-# Lei 14.133/2021, art. 75, II (compras/serviços) — valor ATUALIZADO ANUALMENTE
-# por decreto; revisar a cada exercício. Valor vigente 2026.
-TETO_DISPENSA_COMPRAS = 62_725.68
+# Lei 14.133/2021, art. 75, II (compras/serviços) — teto ATUALIZADO ANUALMENTE por decreto.
+# Registro DATADO (config): adicionar cada exercício quando o decreto sair, com o valor
+# CONFERIDO em fonte oficial (nunca de memória). Ano ausente usa o mais próximo ANTERIOR
+# conhecido — fallback honesto que evita FP/FN silencioso quando o reajuste ainda não entrou.
+TETO_DISPENSA_POR_ANO: dict[int, float] = {
+    2026: 62_725.68,   # valor vigente conferido (2026)
+}
+
+
+def teto_dispensa(ano: int | None = None) -> float:
+    ano = ano or date.today().year
+    conhecidos = [a for a in TETO_DISPENSA_POR_ANO if a <= ano]
+    chave = max(conhecidos) if conhecidos else min(TETO_DISPENSA_POR_ANO)
+    return TETO_DISPENSA_POR_ANO[chave]
+
+
+TETO_DISPENSA_COMPRAS = teto_dispensa(2026)  # compat: consumidores antigos importam a constante
 D7_JANELA_DIAS = 90
 D7_MINIMO_REGISTROS = 3
 D8_DIAS_RECEM_ABERTA = 180
@@ -119,9 +133,20 @@ def d8_credor_recem_aberto(con, consulta_cnpj=None, dias: int = D8_DIAS_RECEM_AB
         where length(fornecedor_documento) = 14 and data_assinatura is not null
         group by 1 having total >= ? order by total desc limit ?""",
         (valor_minimo, top)).fetchall()
+    # cadastro LOCAL primeiro (tabela empresas, backfill diário): quando a minhareceita cai,
+    # o D8 inteiro zerava silenciosamente — 1.820 fornecedores têm data_abertura local
+    def _abertura_local(doc: str) -> str | None:
+        try:
+            r = con.execute("SELECT data_abertura FROM empresas WHERE cnpj=? "
+                            "AND data_abertura IS NOT NULL", (doc,)).fetchone()
+            return r[0] if r else None
+        except Exception:  # noqa: BLE001 — tabela pode não existir num banco parcial
+            return None
+
     achados = []
     for r in rows:
-        info = consulta_cnpj(r["fornecedor_documento"])
+        local = _abertura_local(r["fornecedor_documento"])
+        info = {"data_inicio_atividade": local} if local else consulta_cnpj(r["fornecedor_documento"])
         if not info:
             continue        # INDISPONÍVEL — logado na consulta; não vira "limpo"
         abertura = _data(str(info.get("data_inicio_atividade") or ""))
@@ -259,6 +284,61 @@ def d11_aditivo_estourado(con, limite_aditivo: float = D10_LIMITE_ADITIVO) -> li
     return achados
 
 
+# ── D12 — co-endereço entre fornecedores do mesmo órgão (OCDE 2025) ──────────
+D12_CEP_POPULAR = 5   # CEP em mais empresas que isto na base = edifício/galeria comercial → guard
+
+
+def d12_coendereco_concorrentes(con, cep_popular: int = D12_CEP_POPULAR) -> list[dict]:
+    """Fornecedores CONTRATADOS pelo mesmo órgão/ano compartilhando o MESMO CEP — red flag
+    clássica da lista OCDE 2025 de bid rigging ("bidders sharing the same address").
+    Guards de honestidade: (a) CEP no Rio cobre um trecho de logradouro, não um imóvel —
+    risco médio, nunca alto sozinho; (b) CEP presente em > cep_popular empresas da base é
+    endereço comercial popular (coworking/galeria) e sai do detector."""
+    try:
+        rows = con.execute("""
+            select c.orgao_cnpj, coalesce(c.orgao_nome,'') as orgao_nome, c.ano, e.cep,
+                   group_concat(distinct c.fornecedor_documento) as docs,
+                   group_concat(distinct coalesce(c.fornecedor_nome, c.fornecedor_documento)) as nomes
+            from pcrj_contratos c
+            join empresas e on e.cnpj = c.fornecedor_documento
+            where length(c.fornecedor_documento) = 14
+              and e.cep is not null and trim(e.cep) != ''
+            group by c.orgao_cnpj, c.ano, e.cep
+            having count(distinct c.fornecedor_documento) >= 2""").fetchall()
+    except Exception as e:  # noqa: BLE001 — tabela empresas ausente = INDISPONÍVEL, não zero
+        logger.warning("d12: cadastro local indisponível (%s) — detector não avaliável", e)
+        return []
+    # dedup por (cep, conjunto de fornecedores): o MESMO par em anos distintos é UM indício
+    # (recorrente até fortalece) — sem isso o leitor via o par repetido por ano
+    grupos: dict[tuple, dict] = {}
+    for r in rows:
+        docs = tuple(sorted((r["docs"] or "").split(",")))
+        g = grupos.setdefault((r["cep"], docs), {"anos": set(), "r": r})
+        g["anos"].add(r["ano"])
+    achados = []
+    for (cep, docs), g in grupos.items():
+        n_no_cep = con.execute("SELECT COUNT(*) FROM empresas WHERE cep=?", (cep,)).fetchone()[0]
+        if n_no_cep > cep_popular:
+            continue  # endereço comercial popular — co-localização não indicia nada
+        r = g["r"]
+        anos = ", ".join(str(a) for a in sorted(g["anos"]))
+        recorrente = len(g["anos"]) > 1
+        achados.append(_achado(
+            "d12_coendereco_concorrentes", 7 if recorrente else 6,
+            f"Co-endereço — {len(docs)} fornecedores do mesmo órgão no CEP {cep}",
+            f"Indício de vínculo entre fornecedores: {r['nomes']} compartilham o CEP "
+            f"{cep} e foram contratados pelo mesmo órgão "
+            f"({r['orgao_nome'] or r['orgao_cnpj']}) em {anos}"
+            + (" — padrão RECORRENTE em múltiplos exercícios" if recorrente else "")
+            + ". Empresas concorrentes no mesmo endereço é red flag da lista OCDE 2025 de "
+            "combinação de propostas (bid rigging). CEP cobre trecho de logradouro (não um "
+            "imóvel) — corroborar com QSA, telefone/e-mail de cadastro e participação nos "
+            "mesmos certames. (fontes: PNCP + cadastro local RFB)",
+            {"subtipo": "coendereco", "cep": cep, "fornecedores": list(docs), "anos": sorted(g["anos"]),
+             "n_empresas_no_cep_base": n_no_cep}))
+    return achados
+
+
 # ── orquestração ─────────────────────────────────────────────────────────────
 _DETECTORES = {
     "d7": d7_fracionamento,
@@ -266,6 +346,7 @@ _DETECTORES = {
     "d9": d9_socio_na_folha,
     "d10": d10_rede_concorrentes,
     "d11": d11_aditivo_estourado,
+    "d12": d12_coendereco_concorrentes,
 }
 
 
@@ -283,10 +364,19 @@ def rodar_todas(con, gravar_alertas: bool = False) -> dict:
     achados.sort(key=lambda a: -a["risco"])
     if gravar_alertas:
         for a in achados:
-            con.execute(
-                """insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
-                   values (?,?,?,?,?, 'novo')""",
-                (f"pcrj_{a['detector']}", _sev(a["risco"]), a["titulo"], a["descricao"],
-                 json.dumps(a["evidencias"], ensure_ascii=False, default=str)))
+            # dedup por (tipo, titulo): re-rodar a perícia ATUALIZA o alerta em vez de duplicar
+            # (antes cada corrida empilhava cópias; o painel dedupava na leitura, o DB inchava)
+            ex = con.execute("select id from alertas where tipo=? and titulo=?",
+                             (f"pcrj_{a['detector']}", a["titulo"])).fetchone()
+            if ex:
+                con.execute("update alertas set severidade=?, descricao=?, evidencias=? where id=?",
+                            (_sev(a["risco"]), a["descricao"],
+                             json.dumps(a["evidencias"], ensure_ascii=False, default=str), ex[0]))
+            else:
+                con.execute(
+                    """insert into alertas (tipo, severidade, titulo, descricao, evidencias, status)
+                       values (?,?,?,?,?, 'novo')""",
+                    (f"pcrj_{a['detector']}", _sev(a["risco"]), a["titulo"], a["descricao"],
+                     json.dumps(a["evidencias"], ensure_ascii=False, default=str)))
         con.commit()
     return {"achados": achados, "cobertura": cobertura}

@@ -1824,7 +1824,8 @@ async def api_pcrj_gastos_achados(limite_por_detector: int = 40):
         # em que aditivo_estourado saía sob o código d10 (duas análises num rótulo, pré-split D11)
         _sub2det = {"fracionamento": "d7_fracionamento", "recem_aberta": "d8_credor_recem_aberto",
                     "socio_folha": "d9_socio_na_folha", "rede_socios": "d10_rede_concorrentes",
-                    "aditivo_estourado": "d11_aditivo_estourado"}
+                    "aditivo_estourado": "d11_aditivo_estourado",
+                    "coendereco": "d12_coendereco_concorrentes"}
         por_det: dict[str, list] = {}
         for r in rows:
             ev = {}

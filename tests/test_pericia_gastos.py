@@ -107,4 +107,60 @@ def test_d10_rede_concorrentes_e_aditivos(con_semeado):
 
 def test_rodar_todas_cobertura(con_semeado):
     r = pericia_gastos.rodar_todas(con_semeado)
-    assert set(r["cobertura"]) == {"d7", "d8", "d9", "d10", "d11"}
+    assert set(r["cobertura"]) == {"d7", "d8", "d9", "d10", "d11", "d12"}
+
+
+def test_teto_dispensa_datado_por_ano():
+    # teto muda por decreto anual; ano sem valor conhecido usa o mais próximo ANTERIOR
+    assert pericia_gastos.teto_dispensa(2026) == 62_725.68
+    assert pericia_gastos.teto_dispensa(2027) == pericia_gastos.teto_dispensa(2026)  # fallback honesto
+    assert pericia_gastos.teto_dispensa() > 0
+
+
+def test_d8_usa_cadastro_local_antes_da_api(con_semeado):
+    con = con_semeado
+    con.execute("""create table empresas (cnpj text, razao_social text, situacao text,
+                   data_abertura text, cep text)""")
+    con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                   fornecedor_documento, fornecedor_nome, tipo, valor_global, data_assinatura)
+                   values ('L1',2025,'42498733000148','11222333000181','LOCAL LTDA',
+                           'Contrato',900000,'2025-03-01')""")
+    con.execute("insert into empresas (cnpj, data_abertura) values ('11222333000181','2025-01-15')")
+    def api_fora_do_ar(cnpj):
+        return None   # minhareceita indisponível — antes disso o D8 zerava silenciosamente
+    achados = pericia_gastos.d8_credor_recem_aberto(con, consulta_cnpj=api_fora_do_ar)
+    assert len(achados) == 1 and "LOCAL" in achados[0]["titulo"]
+
+
+def test_d12_coendereco_entre_concorrentes(con_semeado):
+    con = con_semeado
+    con.execute("""create table empresas (cnpj text, razao_social text, situacao text,
+                   data_abertura text, cep text)""")
+    # dois fornecedores do MESMO órgão/ano com o MESMO CEP → indício OCDE
+    for doc, nome in (("11222333000181", "ALFA"), ("44555666000199", "BETA")):
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       orgao_nome, fornecedor_documento, fornecedor_nome, tipo, valor_global,
+                       data_assinatura) values (?,2025,'42498733000148','PCRJ',?,?,
+                       'Contrato',100000,'2025-02-01')""", (f"CE-{doc}", doc, nome))
+        con.execute("insert into empresas (cnpj, cep) values (?, '20031-170')", (doc,))
+    achados = pericia_gastos.d12_coendereco_concorrentes(con)
+    assert len(achados) == 1
+    assert achados[0]["evidencias"]["cep"] == "20031-170"
+    assert "OCDE" in achados[0]["descricao"] or "endereço" in achados[0]["descricao"]
+
+
+def test_d12_guard_cep_popular(con_semeado):
+    con = con_semeado
+    con.execute("""create table empresas (cnpj text, razao_social text, situacao text,
+                   data_abertura text, cep text)""")
+    # CEP compartilhado por MUITAS empresas da base (edifício comercial) → guard descarta
+    for i in range(2):
+        doc = f"1122233300018{i}"
+        con.execute("""insert into pcrj_contratos (numero_controle_pncp, ano, orgao_cnpj,
+                       fornecedor_documento, tipo, valor_global, data_assinatura)
+                       values (?,2025,'42498733000148',?,'Contrato',100000,'2025-02-01')""",
+                    (f"CP{i}", doc))
+        con.execute("insert into empresas (cnpj, cep) values (?, '20000-000')", (doc,))
+    for i in range(6):  # +6 empresas quaisquer no mesmo CEP = popular
+        con.execute("insert into empresas (cnpj, cep) values (?, '20000-000')", (f"9988877700010{i}",))
+    assert pericia_gastos.d12_coendereco_concorrentes(con) == []

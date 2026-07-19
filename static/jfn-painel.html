@@ -1063,7 +1063,8 @@ const _DET_ROTULO={d7_fracionamento:['✂️','Fracionamento de despesa','sucess
   d8_credor_recem_aberto:['🐣','Credor recém-aberto','empresa criada há <180 dias já recebendo da Prefeitura'],
   d9_socio_na_folha:['👔','Sócio de credor na folha','sócio de empresa contratada com vínculo na folha municipal (Lei 14.133 art. 9º)'],
   d10_rede_concorrentes:['🕸️','Rede entre concorrentes','sócios em comum entre empresas que disputam os mesmos certames'],
-  d11_aditivo_estourado:['📈','Aditivo acima do limite','acréscimo contratual além dos 25%/50% do art. 125']};
+  d11_aditivo_estourado:['📈','Aditivo acima do limite','acréscimo contratual além dos 25%/50% do art. 125'],
+  d12_coendereco_concorrentes:['📍','Co-endereço (OCDE)','fornecedores concorrentes do mesmo órgão no mesmo CEP']};
 let _gastosDet='';
 async function renderGastosPref(){
   const d=await J('/api/pcrj/gastos_achados');
