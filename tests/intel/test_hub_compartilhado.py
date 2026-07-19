@@ -15,6 +15,7 @@ from compliance_agent.cruzamentos_intel import hub_compartilhado
 ENDERECO_NINHO = "RUA DAS FLORES 100 CENTRO 20000000"
 ENDERECO_GOVERNO = "AV PRES ANTONIO CARLOS 375 CENTRO 20020010"
 ENDERECO_MATRIZ = "RUA MATRIZ 1 CENTRO 70000000"
+ENDERECO_TORRE = "AV PRESIDENTE VARGAS 2655 CIDADE NOVA 20210030"
 EMAIL_CONTABIL = "contato@contabilidade.com.br"
 EMAIL_NINHO = "laranja@ninho.io"
 TELEFONE_MASSA = "21999990000"
@@ -89,6 +90,14 @@ def dbs(tmp_path):
         if i < 2:
             favor.append((c, f"FILIAL {i}", 800_000.0, 3))
 
+    # Grupo X — TORRE COMERCIAL: 6 CNPJs de 6 setores CNAE distintos, 3 recebem OB → 'medio'.
+    cnaes_torre = ["7319002", "4399103", "3600601", "5611203", "3314719", "5620104"]
+    for i in range(6):
+        c = _cnpj("80", i)
+        _linha(c, ENDERECO_TORRE, "", "", "ATIVA", cnae=cnaes_torre[i])
+        if i < 3:
+            favor.append((c, f"TORRE {i}", 600_000_000.0, 4))
+
     ce.executemany("INSERT INTO estabelecimentos VALUES (?,?,?,?,?,?,?)", linhas)
     cm.executemany("INSERT INTO favorecido_resumo VALUES (?,?,?,?)", favor)
     ce.commit(); ce.close(); cm.commit(); cm.close()
@@ -115,6 +124,16 @@ def test_ente_publico_e_info(dbs):
     assert g["risco"] == "info"
     assert g["n_publicos"] == 2
     assert "administração pública" in g["motivo"]
+
+
+def test_torre_comercial_setores_diversos_e_medio(dbs):
+    """Setores CNAE diversos = inquilinos de prédio comercial, não lote de fachadas → 'medio'."""
+    main, estab = dbs
+    d = hub_compartilhado(chave="endereco", min_cnpjs=5, db_path=main, estab_path=estab)
+    g = {x["valor"]: x for x in d["grupos"]}[ENDERECO_TORRE]
+    assert g["risco"] == "medio"
+    assert g["n_setores"] == 5      # 56xx aparece 2× (lanchonete+catering) → 5 setores
+    assert "multi-inquilino" in g["motivo"]
 
 
 def test_filiais_mesma_raiz_e_info(dbs):

@@ -90,7 +90,7 @@
   @media (prefers-reduced-motion:reduce){.ck-inst:hover{transform:none}}
   .ck-inst .k{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
   .ck-inst .lab{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;color:var(--mut);text-transform:uppercase;font-weight:500}
-  .ck-inst .val{font-family:var(--mono);font-weight:600;font-size:26px;line-height:1;margin-top:10px;font-variant-numeric:tabular-nums;letter-spacing:-.4px}
+  .ck-inst .val{font-family:var(--mono);font-weight:600;font-size:26px;line-height:1;margin-top:10px;font-variant-numeric:tabular-nums;letter-spacing:-.4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ck-inst .meta{margin-top:6px;font-size:12px;color:var(--mut);line-height:1.45}.ck-inst .meta b{color:var(--tx);font-weight:600}
   .ck-inst .dot{width:7px;height:7px;border-radius:50%;position:relative;margin-top:4px}
   .ck-inst .dot::after{content:"";position:absolute;inset:0;border-radius:50%;background:inherit;animation:ckblip 3.2s ease-out infinite}
@@ -537,6 +537,7 @@ const ROTULOS={conluio_forte:'conluio societário',conluio_qsa:'conluio societá
   perdedora_contumaz:'perdedora contumaz',fenix:'empresa fênix',empresa_fenix:'empresa fênix',escalada_preco:'escalada de preço',
   sobrepreco:'sobrepreço unitário',fracionamento:'fracionamento de despesa',capital_incompativel:'capital incompatível',
   fornecedor_dependente:'fornecedor cativo',corrida_dezembro:'corrida de dezembro',socio_oculto:'sócio oculto',
+  hub_massa:'membro de ninho (contato/endereço)',capital_irrisorio:'capital irrisório',conluio_medio:'conluio societário (médio)',
   nepotismo:'nepotismo',nepotismo_cruzado:'nepotismo cruzado',porta_giratoria:'porta giratória',
   situacao_irregular:'situação irregular na Receita',endereco_compartilhado:'endereço-ninho',endereco_residencial:'endereço residencial',
   aberta_as_vesperas:'aberta às vésperas',socio_unico_capital_baixo:'sócio único + capital baixo',cnae_incompativel:'CNAE incompatível',
@@ -1967,7 +1968,8 @@ function ckPull(first){
     _ckCount($('ck-econ'),d.economia_total,fmtRc,first?1300:900);
     if($('ck-sub'))$('ck-sub').innerHTML=`Se cada uma das <b>${fmtN(d.n_compras_acima_mediana)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item.`;
     ckFill('compras',{num:d.n_compras_acima_mediana,meta:'acima da mediana de mercado, priorizadas por economia'});
-    const o=d.por_orgao&&d.por_orgao[0];ckFill('orgao',{txt:o?(o.orgao||'').split(' ').slice(0,2).join(' '):'—',meta:o?`potencial de <b>${fmtRc(o.economia)}</b> a recuperar`:'—'});
+    const o=d.por_orgao&&d.por_orgao[0],onm=o?(o.orgao||''):'';
+    ckFill('orgao',{txt:onm?(onm.length>26?onm.slice(0,25).trimEnd()+'…':onm):'—',meta:o?`<b>${esc(onm)}</b> — potencial de <b>${fmtRc(o.economia)}</b> a recuperar`:'—'});
     ckPush([{c:'g',h:`✦ economia potencial <b>${fmtRc(d.economia_total)}</b> em ${fmtN(d.n_compras_acima_mediana)} compras`}]);});
   J('/api/comparador/vedada').then(d=>{if(d&&d.ok&&d.economia_vedada_total){const b=$('ck-vedbox');if(b)b.style.display='';_ckCount($('ck-ved'),d.economia_vedada_total,fmtRc);}});
   J('/api/intel/radar?limite=6').then(d=>{if(!d||!d.ok)return;ckFill('radar',{num:d.n,meta:`fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico`});

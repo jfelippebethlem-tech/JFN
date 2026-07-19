@@ -317,9 +317,7 @@ _RADAR_PESOS = {
     "fantasma_alto": 20, "fantasma_medio": 10,
     "socio_servidor": 15, "perdedora_contumaz": 10, "fenix": 10,
     "capital_irrisorio": 15,
-    # TODO(1.7): integrar hub_compartilhado (risco='alto') como sinal do radar_risco.
-    # Só a constante por ora — a fusão no radar é followup (não refatorar radar_risco aqui).
-    "hub_massa": 12,
+    "hub_massa": 12,   # membro de ninho 'alto' do hub_compartilhado (via cache — Task 1.7)
 }
 
 
@@ -369,10 +367,14 @@ def radar_risco(db_path: str | None = None, limite: int = 100) -> dict:
         logger.debug("radar: %s", exc)
     finally:
         con.close()
-    # perdedoras contumazes (só cache — varre 8k atas) e fênix (rápido)
+    # perdedoras contumazes e hub-ninho (só cache — cruzamentos de minutos) e fênix (rápido)
     if db_path is None:
         for p in (ler_cache_intel("perdedoras_contumazes") or {}).get("perdedoras", []):
             _add(p["cnpj"], "perdedora_contumaz", f"participou {p['participou']}x, venceu 0")
+        for g in (ler_cache_intel("hub_compartilhado") or {}).get("grupos", []):
+            if g.get("risco") == "alto":
+                for c in g.get("cnpjs", []):
+                    _add(c, "hub_massa", f"{g.get('n_cnpjs')} CNPJs no mesmo {g.get('chave')}")
     try:
         for a in empresa_fenix(db_path).get("achados", []):
             _add(a.get("cnpj"), "fenix", a.get("situacao") or a.get("motivo") or "")
@@ -1658,6 +1660,7 @@ def hub_compartilhado(chave: str = "endereco", min_cnpjs: int = 5,
             rows = con.execute(
                 f"SELECT e.{col} AS valor, COUNT(DISTINCT e.cnpj) AS n_cnpjs, "
                 f"  COUNT(DISTINCT e.cnpj_basico) AS n_raizes, "
+                f"  COUNT(DISTINCT substr(e.cnae_principal,1,2)) AS n_setores, "
                 f"  SUM(CASE WHEN e.cnae_principal LIKE '84%' THEN 1 ELSE 0 END) AS n_publicos, "
                 f"  SUM(CASE WHEN e.situacao_cadastral='ATIVA' THEN 1 ELSE 0 END) AS n_ativos, "
                 f"  COUNT(DISTINCT CASE WHEN f.favorecido_cpf IS NOT NULL THEN e.cnpj END) AS n_recebem_ob, "
@@ -1676,21 +1679,25 @@ def hub_compartilhado(chave: str = "endereco", min_cnpjs: int = 5,
             valor, n = r["valor"], r["n_cnpjs"]
             n_ativos, n_ob = r["n_ativos"] or 0, r["n_recebem_ob"] or 0
             n_raizes, n_pub = r["n_raizes"] or 0, r["n_publicos"] or 0
+            n_setores = r["n_setores"] or 0
             total = float(r["total_recebido_ob"] or 0.0)
             amostra = [x["cnpj"] for x in con.execute(
                 f"SELECT cnpj FROM estab.estabelecimentos WHERE {col} = ? LIMIT 20", (valor,))]
-            risco, motivo = _hub_risco(chave, valor, n, n_ativos, n_ob, total, n_raizes, n_pub)
+            risco, motivo = _hub_risco(chave, valor, n, n_ativos, n_ob, total,
+                                       n_raizes, n_pub, n_setores)
             grupos.append({
                 "chave": chave, "valor": valor, "n_cnpjs": n, "n_ativos": n_ativos,
-                "n_raizes": n_raizes, "n_publicos": n_pub,
+                "n_raizes": n_raizes, "n_publicos": n_pub, "n_setores": n_setores,
                 "cnpjs": amostra, "n_recebem_ob": n_ob,
                 "total_recebido_ob": round(total, 2), "risco": risco, "motivo": motivo})
         return {"ok": True, "grupos": grupos, "n": len(grupos), "chave": chave,
                 "explicacao": ("Uma âncora física (endereço, telefone ou e-mail) usada por vários "
                                "CNPJs é a assinatura de 'ninho de fantasmas' — empresas de fachada "
                                "abertas em lote compartilham o mesmo contato. 'alto' = grupo coeso "
-                               "com dinheiro do Estado e maioria não-ativa; massa legítima "
-                               "(contador, galeria, coworking) é rebaixada por guarda anti-FP."),
+                               "com dinheiro do Estado e maioria não-ativa. Guardas anti-FP rebaixam: "
+                               "massa legítima (contador, galeria/coworking), prédio de GOVERNO "
+                               "(CNAE 84), matriz+filiais de uma só raiz de CNPJ e prédio comercial "
+                               "multi-inquilino (setores econômicos diversos)."),
                 "ressalva": ("Indício ≠ acusação. Endereço/telefone/e-mail compartilhado é comum e "
                              "muitas vezes legítimo (contabilidade, condomínio comercial). Confirmar "
                              "o vínculo real (QSA, execução) antes de citar. Dump da Receita = foto de "
@@ -1701,7 +1708,8 @@ def hub_compartilhado(chave: str = "endereco", min_cnpjs: int = 5,
 
 def _hub_risco(chave: str, valor: str, n_cnpjs: int, n_ativos: int,
                n_recebem_ob: int, total_recebido_ob: float,
-               n_raizes: int = 0, n_publicos: int = 0) -> tuple[str, str]:
+               n_raizes: int = 0, n_publicos: int = 0,
+               n_setores: int = 0) -> tuple[str, str]:
     """Classifica o risco de um grupo aplicando as guardas anti-FP (ver ``_HUB_*``)."""
     # guarda de ENTE PÚBLICO: prédio institucional (Fazenda, secretarias, autarquias) concentra
     # CNPJs da administração (CNAE 84xx) e recebe OB bilionária — é governo, não ninho de fachada
@@ -1721,6 +1729,12 @@ def _hub_risco(chave: str, valor: str, n_cnpjs: int, n_ativos: int,
     if chave == "endereco" and n_cnpjs > _HUB_ENDERECO_MASSA:
         return "info", (f"endereço em {n_cnpjs} CNPJs (>{_HUB_ENDERECO_MASSA}) — "
                         "provável galeria/coworking/condomínio comercial")
+    # guarda de TORRE COMERCIAL: ninho nasce em lote com CNAEs coesos; inquilinos de um
+    # prédio comercial são de setores econômicos DIVERSOS (banca, obra, lanchonete...)
+    if chave == "endereco" and n_setores >= max(4, -(-n_cnpjs * 7 // 10)):  # ceil(0.7n)
+        return "medio", (f"{n_setores} setores econômicos distintos em {n_cnpjs} CNPJs — "
+                         "perfil de prédio multi-inquilino, não lote de fachadas; "
+                         "materialidade merece olhar, sem tratar como ninho")
     if (min_ok := n_recebem_ob >= 1) and n_cnpjs <= _HUB_TETO_ALTO and \
             (n_ativos < n_cnpjs / 2 or total_recebido_ob >= _HUB_TOTAL_ALTO):
         return "alto", (f"grupo coeso ({n_cnpjs} CNPJs), {n_recebem_ob} recebem OB "
@@ -1801,11 +1815,12 @@ def gerar_cache_intel(db_path: str | None = None) -> dict:
         from compliance_agent.grafo_comunidades import detectar_comunidades
         return detectar_comunidades(db_path)
 
-    # ordem importa: radar lê os caches de sancionadas/perdedoras/conluio; comunidades lê conluio
+    # ordem importa: radar lê os caches de sancionadas/perdedoras/conluio/hub; comunidades lê conluio
     for nome, fn in (("sancionadas_contratadas", lambda: sancionadas_contratadas(db_path)),
                      ("perdedoras_contumazes", lambda: perdedoras_contumazes(db_path)),
                      ("beneficios_vinculo", _beneficios_vinculo_resumo),
                      ("conluio_qsa", lambda: conluio_qsa(db_path)),
+                     ("hub_compartilhado", lambda: hub_compartilhado(db_path=db_path)),
                      ("comunidades", _comunidades),
                      ("radar_risco", lambda: radar_risco(db_path))):
         try:
