@@ -1597,7 +1597,10 @@ def _beneficios_vinculo_resumo() -> dict:
     (pericia_beneficios.analisar() — cruza 7,3 mi de registros; NUNCA rodar no request HTTP)."""
     from compliance_agent.pcrj import pericia_beneficios as PB
     r = PB.analisar()
-    regs = sorted(r.get("registros", []), key=lambda x: -x.get("n_meses", 0))
+    # ALTA primeiro (os acionáveis — e os que a consulta nominal enriquece com cargo/natureza),
+    # depois por duração; ordenar só por meses afogava os 538 ALTA sob 12k casos MÉDIA
+    regs = sorted(r.get("registros", []),
+                  key=lambda x: (0 if x.get("certeza") == "ALTA" else 1, -x.get("n_meses", 0)))
     casos = [{k: x.get(k) for k in ("nome", "poder", "orgao", "cargo", "vinculo", "partido",
                                     "beneficios_str", "desde", "ate", "n_meses", "ainda_recebe",
                                     "certeza", "situacao", "natureza")} for x in regs[:300]]

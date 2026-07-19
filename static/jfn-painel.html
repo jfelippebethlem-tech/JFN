@@ -1068,8 +1068,8 @@ const _DET_ROTULO={d7_fracionamento:['✂️','Fracionamento de despesa','sucess
 let _gastosDet='';
 async function renderGastosPref(){
   const d=await J('/api/pcrj/gastos_achados');
-  let h=cover('prefeitura','Perícia de gastos — detectores D7–D10',
-    'Detectores determinísticos sobre a despesa por credor (ContasRio 2019-2023) e contratos/licitações municipais (PNCP 2024+). Cada achado carrega a evidência e a base normativa; a perícia completa em PDF sai pelo runner com o colegiado de 5 lentes.','✂️');
+  let h=cover('prefeitura','Perícia de gastos — detectores D7–D12',
+    'Detectores determinísticos sobre a despesa por credor (ContasRio 2019-2023) e contratos/licitações municipais (PNCP 2024+): fracionamento, credor recém-aberto, sócio na folha, rede societária, aditivo acima do limite e co-endereço entre concorrentes (red flag OCDE 2025). Cada achado carrega a evidência e a base normativa; a perícia completa em PDF sai pelo runner com o colegiado de 5 lentes.','✂️');
   if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')} — rode tools/pcrj_pericia_gastos.py</div>`);
   const dets=Object.keys(d.detectores||{});
   h+=`<div class="grid g2">`+dets.map(k=>{const m=_DET_ROTULO[k]||['📌',k,''];
