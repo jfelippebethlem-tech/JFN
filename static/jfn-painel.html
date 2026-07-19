@@ -115,10 +115,11 @@
   .spheres{display:flex;gap:7px;padding:0 14px 13px;overflow-x:auto;scrollbar-width:none}
   .spheres::-webkit-scrollbar{display:none}
   .sph{flex:1;min-width:118px;display:flex;align-items:center;justify-content:center;gap:9px;padding:11px 12px;border-radius:12px;cursor:pointer;position:relative;
+    appearance:none;font-family:inherit;text-align:center;
     border:1px solid var(--bd2);background:linear-gradient(180deg,var(--card),var(--card2));color:var(--mut);font-weight:650;font-size:13.5px;transition:.16s}
   .sph:hover{border-color:var(--bd);color:var(--tx2)}
   .sph .i{font-size:16px}
-  .sph.on{color:#fff;border-color:transparent}
+  .sph.on{color:var(--ink);border-color:transparent}
   .sph.on.estado{background:linear-gradient(140deg,color-mix(in oklch,var(--blue),black 62%),color-mix(in oklch,var(--blue),black 46%));box-shadow:0 0 0 1px color-mix(in oklch,var(--blue) 40%,transparent),0 12px 28px -18px color-mix(in oklch,var(--blue),black 40%)}
   .sph.on.prefeitura{background:linear-gradient(140deg,color-mix(in oklch,var(--gold),black 64%),color-mix(in oklch,var(--gold),black 48%));box-shadow:0 0 0 1px color-mix(in oklch,var(--gold) 40%,transparent),0 12px 28px -18px color-mix(in oklch,var(--gold),black 44%)}
   .sph.on.geral{background:linear-gradient(140deg,color-mix(in oklch,var(--purple),black 62%),color-mix(in oklch,var(--purple),black 46%));box-shadow:0 0 0 1px color-mix(in oklch,var(--purple) 40%,transparent),0 12px 28px -18px color-mix(in oklch,var(--purple),black 42%)}
@@ -241,7 +242,7 @@
   .search .az:hover{background:rgba(79,214,196,.16)}
   .search .az.on{background:var(--teal);color:#04120f;border-color:var(--teal)}
   .chips{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px}
-  .chip{border:1px solid var(--bd);background:var(--card);color:var(--mut);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:650;cursor:pointer;transition:.12s}
+  .chip{appearance:none;font-family:inherit;border:1px solid var(--bd);background:var(--card);color:var(--mut);border-radius:20px;padding:7px 13px;font-size:12.5px;font-weight:650;cursor:pointer;transition:.12s}
   .chip:hover{border-color:var(--bd);color:var(--tx2)}
   .chip.on{color:var(--ink);border-color:var(--accent);background:color-mix(in oklch,var(--accent) 14%,transparent)}
 
@@ -252,7 +253,7 @@
   .warn{display:flex;gap:10px;align-items:center;background:color-mix(in oklch,var(--amber) 9%,transparent);border:1px solid color-mix(in oklch,var(--amber) 30%,transparent);border-radius:12px;padding:11px 13px;color:var(--amber);font-size:13px;margin-bottom:12px}
   .note{background:rgba(132,147,178,.05);border:1px dashed var(--bd);border-radius:11px;padding:10px 12px;color:var(--mut);font-size:12px;margin-top:13px}
   .leitura{background:color-mix(in oklch,var(--accent) 6%,transparent);border:1px solid color-mix(in oklch,var(--accent) 22%,transparent);border-radius:10px;padding:9px 12px;color:var(--tx2);font-size:12.5px;margin-top:9px;line-height:1.55}
-  .clk{cursor:pointer;border-bottom:1px dotted color-mix(in oklch,var(--accent) 50%,transparent);transition:.12s;font-weight:600}
+  .clk{display:inline;background:none;border:0;padding:0;margin:0;font:inherit;font-weight:600;color:inherit;text-align:left;cursor:pointer;border-bottom:1px dotted color-mix(in oklch,var(--accent) 50%,transparent);transition:.12s}
   .clk:hover{color:var(--accent)}
   .exp{cursor:pointer}.exp .objs{display:none;margin-top:10px;padding-top:10px;border-top:1px solid var(--bd2)}
   .exp.open .objs{display:block;animation:f .2s ease}
@@ -369,7 +370,7 @@ function ordenar(sel,btn){
   cards.forEach(c=>cont.appendChild(c));
   const cv=document.querySelector('#view .view-wire'); if(cv)cv.remove();   // posições mudaram → tira malha estática
 }
-const clk=(cnpj,txt)=>{const d=String(cnpj||'').replace(/\D/g,'');return d.length===14?`<span class="clk" onclick="abrirDossie('${d}','${esc(String(txt)).replace(/'/g,'')}')">${esc(txt)}</span>`:`<b>${esc(txt)}</b>`;};
+const clk=(cnpj,txt)=>{const d=String(cnpj||'').replace(/\D/g,'');return d.length===14?`<button type="button" class="clk" onclick="abrirDossie('${d}','${esc(String(txt)).replace(/'/g,'')}')">${esc(txt)}</button>`:`<b>${esc(txt)}</b>`;};
 
 // ═══ ESFERAS ═══
 const SPHERES=[
@@ -432,7 +433,7 @@ let esfera='inicio',aba='i_cockpit';
 const sessaoReports=new Set();
 
 function montarSpheres(){
-  $('spheres').innerHTML=SPHERES.map(s=>`<div class="sph ${s.id} ${s.id===esfera?'on':''}" onclick="trocarEsfera('${s.id}')"><span class="i">${s.ic}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></div>`).join('');
+  $('spheres').innerHTML=SPHERES.map(s=>`<button type="button" class="sph ${s.id} ${s.id===esfera?'on':''}" aria-pressed="${s.id===esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${s.ic}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join('');
 }
 function montarTabs(){
   $('tabs').innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')"><span class="ti">${t.ic}</span><span class="tl">${t.tl}</span></button>`).join('');
@@ -454,15 +455,16 @@ async function ir(id){
   a11yfy(document.body);         // torna chips/spheres/.clk operáveis por teclado (audit a11y #1)
 }
 
-// ═══ A11Y — elementos [onclick] (span/div) viram focáveis e operáveis por Enter/Espaço ═══
+// ═══ A11Y — restam apenas cards <div onclick> e links <a> sem href: padrão ARIA button (foco+teclado).
+//    (chips, spheres e .clk já são <button> semânticos.) ═══
 function a11yfy(root){
-  (root||document).querySelectorAll('[onclick]:not(button):not(a):not(input):not([tabindex])').forEach(el=>{
+  (root||document).querySelectorAll('[onclick]:not(button):not(input):not([tabindex]):not(a[href])').forEach(el=>{
     el.tabIndex=0; if(!el.hasAttribute('role'))el.setAttribute('role','button');
   });
 }
 document.addEventListener('keydown',e=>{
   const el=e.target;
-  if((e.key==='Enter'||e.key===' ')&&el.matches&&el.matches('[role="button"][tabindex]:not(button):not(a)')){
+  if((e.key==='Enter'||e.key===' ')&&el.matches&&el.matches('[role="button"][tabindex]:not(button)')){
     e.preventDefault(); el.click();
   }
 });
@@ -753,11 +755,11 @@ let _compView='buscar', _compTermo='', _compGrupo=null;
 async function renderComparador(){
   let h=cover('estado','Comparador de preços — quem paga mais e quem paga menos','Para o <b>mesmo item</b> (aluguel de carro, medicamento, refeição…), quanto cada <b>órgão</b> paga e quanto cada <b>fornecedor</b> cobra. E o ranking transversal: quais órgãos <b>gastam melhor</b> o recurso público e quais fornecedores são <b>caros ou baratos</b> vs o mercado. Fonte: preço unitário homologado do PNCP.','💰');
   h+=`<div class="chips" style="margin:6px 0 14px">
-    <span class="chip ${_compView==='economia'?'on':''}" onclick="_compView='economia';ir('e_comp')">💵 Economia possível</span>
-    <span class="chip ${_compView==='dossie'?'on':''}" onclick="_compView='dossie';ir('e_comp')">🚨 Caro + fornecedor suspeito</span>
-    <span class="chip ${_compView==='buscar'?'on':''}" onclick="_compView='buscar';ir('e_comp')">🔎 Buscar item</span>
-    <span class="chip ${_compView==='orgaos'?'on':''}" onclick="_compView='orgaos';ir('e_comp')">🏛️ Órgãos que gastam melhor</span>
-    <span class="chip ${_compView==='forn'?'on':''}" onclick="_compView='forn';ir('e_comp')">🏢 Fornecedores caros/baratos</span></div>`;
+    <button type="button" class="chip ${_compView==='economia'?'on':''}" onclick="_compView='economia';ir('e_comp')">💵 Economia possível</button>
+    <button type="button" class="chip ${_compView==='dossie'?'on':''}" onclick="_compView='dossie';ir('e_comp')">🚨 Caro + fornecedor suspeito</button>
+    <button type="button" class="chip ${_compView==='buscar'?'on':''}" onclick="_compView='buscar';ir('e_comp')">🔎 Buscar item</button>
+    <button type="button" class="chip ${_compView==='orgaos'?'on':''}" onclick="_compView='orgaos';ir('e_comp')">🏛️ Órgãos que gastam melhor</button>
+    <button type="button" class="chip ${_compView==='forn'?'on':''}" onclick="_compView='forn';ir('e_comp')">🏢 Fornecedores caros/baratos</button></div>`;
   if(_compView==='economia')return h+await _compEconomia();
   if(_compView==='dossie')return h+await _compDossie();
   if(_compView==='orgaos')return h+await _compOrgaos();
@@ -883,9 +885,9 @@ async function _compForn(){
 let _riscoView='fantasmas';
 async function renderRiscos(){
   const chips=`<div class="chips">
-    <span class="chip ${_riscoView==='fantasmas'?'on':''}" onclick="_riscoView='fantasmas';ir('g_riscos')">👻 Fantasmas</span>
-    <span class="chip ${_riscoView==='sanc'?'on':''}" onclick="_riscoView='sanc';ir('g_riscos')">🚫 Sancionadas</span>
-    <span class="chip ${_riscoView==='cover'?'on':''}" onclick="_riscoView='cover';ir('g_riscos')">🎭 Nunca ganham</span></div>`;
+    <button type="button" class="chip ${_riscoView==='fantasmas'?'on':''}" onclick="_riscoView='fantasmas';ir('g_riscos')">👻 Fantasmas</button>
+    <button type="button" class="chip ${_riscoView==='sanc'?'on':''}" onclick="_riscoView='sanc';ir('g_riscos')">🚫 Sancionadas</button>
+    <button type="button" class="chip ${_riscoView==='cover'?'on':''}" onclick="_riscoView='cover';ir('g_riscos')">🎭 Nunca ganham</button></div>`;
   if(_riscoView==='sanc')return chips+acoesAba('sancionadas')+(await renderSancionadas(''));
   if(_riscoView==='cover'){
     const d=await J('/api/intel/perdedoras');
@@ -940,8 +942,8 @@ async function renderPanoramaPref(){
 let _comisView='cand';
 async function renderComissionadosPref(){
   const chips=`<div class="chips">
-    <span class="chip ${_comisView==='cand'?'on':''}" onclick="_comisView='cand';ir('p_comis')">🗳️ Foram candidatos</span>
-    <span class="chip ${_comisView==='benef'?'on':''}" onclick="_comisView='benef';ir('p_comis')">🍞 Benefício × vínculo</span></div>`;
+    <button type="button" class="chip ${_comisView==='cand'?'on':''}" onclick="_comisView='cand';ir('p_comis')">🗳️ Foram candidatos</button>
+    <button type="button" class="chip ${_comisView==='benef'?'on':''}" onclick="_comisView='benef';ir('p_comis')">🍞 Benefício × vínculo</button></div>`;
   if(_comisView==='benef'){
     const d=await J('/api/pcrj/beneficios_vinculo');
     let h=cover('prefeitura','Servidores × benefício social — DURANTE o vínculo',
@@ -1003,7 +1005,7 @@ async function renderConluio(esf){
     'Vencedor homologado de cada item (fonte: PNCP, esfera OFICIAL do ente). <b>Captura</b>: uma empresa vence quase tudo num órgão. <b>Rodízio</b>: 2-3 empresas se revezam em compras parecidas. Toque num card para ver o que foi comprado — cada achado explica por que importa.','🕸️')+acoesAba('conluio');
   // chips de esfera (só na visão Transversal, onde a comparação faz sentido)
   if(esfera==='geral'){
-    const chip=(id,tl)=>`<span class="chip ${(_cjEsf===id)?'on':''}" onclick="_cjEsf='${id}';ir('g_conluio')">${tl}${esfs[id]!=null?` <span class="dim">${fmtN(esfs[id])}</span>`:''}</span>`;
+    const chip=(id,tl)=>`<button type="button" class="chip ${(_cjEsf===id)?'on':''}" onclick="_cjEsf='${id}';ir('g_conluio')">${tl}${esfs[id]!=null?` <span class="dim">${fmtN(esfs[id])}</span>`:''}</button>`;
     h+=`<div class="chips">${chip('','🌐 Todas')}${chip('estado','🏛️ Estado')}${chip('prefeitura','🏙️ Pref. Rio')}${chip('municipios','🏘️ Municípios')}${chip('federal','🏦 Federais')}</div>`;
   }
   h+=`<div class="grid g2">${kpi(fmtN(cov.certames_com_resultado),'Certames analisados',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢')}${kpi(cap.length,'Capturas','var(--rose)','🎯')}${kpi(rod.length,'Rodízios','var(--amber)','🔁')}</div>`;
@@ -1040,10 +1042,10 @@ async function renderPericias(){
   const it=d.itens||[];
   let h=cover('estado','Perícias de fornecedor','8.648 fornecedores periciados (grau 🟢🟡🔴 + achados). Clique num nome para o dossiê 360.','⚖️');
   h+=`<div class="chips">
-    <span class="chip ${_perGrau===''?'on':''}" onclick="_perGrau='';ir('e_pericias')">Todos</span>
-    <span class="chip ${_perGrau==='🟡'?'on':''}" onclick="_perGrau='🟡';ir('e_pericias')">🟡 Atenção</span>
-    <span class="chip ${_perGrau==='🔴'?'on':''}" onclick="_perGrau='🔴';ir('e_pericias')">🔴 Grave</span>
-    <span class="chip ${_perOrdem==='total'?'on':''}" onclick="_perOrdem=_perOrdem==='total'?'score':'total';ir('e_pericias')">↕ ${_perOrdem==='total'?'ordenar: R$':'ordenar: score'}</span></div>`;
+    <button type="button" class="chip ${_perGrau===''?'on':''}" onclick="_perGrau='';ir('e_pericias')">Todos</button>
+    <button type="button" class="chip ${_perGrau==='🟡'?'on':''}" onclick="_perGrau='🟡';ir('e_pericias')">🟡 Atenção</button>
+    <button type="button" class="chip ${_perGrau==='🔴'?'on':''}" onclick="_perGrau='🔴';ir('e_pericias')">🔴 Grave</button>
+    <button type="button" class="chip ${_perOrdem==='total'?'on':''}" onclick="_perOrdem=_perOrdem==='total'?'score':'total';ir('e_pericias')">↕ ${_perOrdem==='total'?'ordenar: R$':'ordenar: score'}</button></div>`;
   h+=`<div class="search"><span class="mag">🔎</span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#per-list .card')"></div>`;
   h+=`<div id="per-list" class="grid">`+it.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><div style="min-width:0"><div>${clk(x.cnpj,x.favorecido||x.cnpj)}</div>
