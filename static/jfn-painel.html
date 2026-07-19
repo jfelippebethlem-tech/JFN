@@ -1050,8 +1050,8 @@ async function renderBeneficiosPref(chips){
   h+=`<div id="bv-list" class="grid">`+(d.casos||[]).slice(0,120).map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
       <div style="font-weight:700">${esc(x.nome)}</div>
-      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.poder||'')} · ${esc((x.orgao||'').slice(0,44))} · ${esc((x.cargo||'').slice(0,30))}${x.partido?' · '+esc(x.partido):''}</div>
-      <div class="dim" style="margin-top:3px">${esc(x.natureza||'')} · ${esc(x.situacao||'')}</div></div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${[x.poder,(x.orgao||'').slice(0,44),(x.cargo||'').slice(0,30),x.partido].filter(Boolean).map(esc).join(' · ')}</div>
+      <div class="dim" style="margin-top:3px">${[x.natureza,x.situacao,x.cargo?'':'cargo não informado pela fonte'].filter(Boolean).map(esc).join(' · ')}</div></div>
       <div class="right"><span class="sev ${x.certeza==='ALTA'?'alta':'media'}">${esc(x.certeza||'')}</span>
       ${x.ainda_recebe?'<div style="margin-top:5px"><span class="tag rose">ainda recebe</span></div>':''}</div></div>
     <div class="kv" style="margin-top:8px"><span class="k">${esc(x.beneficios_str||'benefício')}</span><b>${esc(x.desde||'')} → ${esc(x.ate||'')} · ${fmtN(x.n_meses)} meses</b></div>`,
