@@ -46,6 +46,7 @@ from compliance_agent.detectores.j4_supressao_propostas import J4SupressaoPropos
 from compliance_agent.detectores.j5_digitais_compartilhadas import J5DigitaisCompartilhadas
 from compliance_agent.detectores.j6_subcontratacao_cruzada import J6SubcontratacaoCruzada
 from compliance_agent.detectores.j7_inabilitacao_seletiva import J7InabilitacaoSeletiva
+from compliance_agent.detectores.j_atestado_cruzado import JAtestadoCruzado
 from compliance_agent.detectores.p1_especificacao_dirigida import P1EspecificacaoDirigida
 from compliance_agent.detectores.p2_cotacoes_combinadas import P2CotacoesCombinadas
 from compliance_agent.detectores.p3_sobrepreco import P3Sobrepreco
@@ -71,6 +72,7 @@ REGISTRO: dict[str, Detector] = {
         J5DigitaisCompartilhadas(),  # julgamento — propostas com metadados/redação/origem compartilhados
         J6SubcontratacaoCruzada(),   # julgamento/execução — subcontratar perdedores / consórcio anômalo
         J7InabilitacaoSeletiva(),    # julgamento — inabilitação seletiva (dois pesos na sessão)
+        JAtestadoCruzado(),          # habilitação — atestado emitido por empresa vinculada (Ac. TCU 725/2026)
         E1Barreira(),    # fase de edital — barreira de entrada/qualificação
         E2Prazos(),      # fase de edital — publicidade e prazos minimizados
         E3LotePacote(),  # fase de edital — lote-pacote/agregação anticompetitiva
@@ -101,6 +103,7 @@ PESOS_DETECTOR: dict[str, float] = {
     "J5": PESOS_FAMILIA["conluio"],
     "J6": PESOS_FAMILIA["conluio"],
     "J7": PESOS_FAMILIA["conluio"],
+    "J8": PESOS_FAMILIA["conluio"],
     "P3": PESOS_FAMILIA["preco"],
     "C1": PESOS_FAMILIA["perfil"], "C2": PESOS_FAMILIA["perfil"],
     "C3/C5": PESOS_FAMILIA["perfil"], "C4": PESOS_FAMILIA["perfil"],
