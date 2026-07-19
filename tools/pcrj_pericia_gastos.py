@@ -55,6 +55,8 @@ async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--telegram", action="store_true")
     ap.add_argument("--sem-pdf", action="store_true")
+    ap.add_argument("--sem-colegiado", action="store_true",
+                    help="pula as 5 lentes (sem custo LLM); fichas saem só com o risco determinístico")
     args = ap.parse_args()
 
     con = edb.conectar()
@@ -62,6 +64,11 @@ async def main():
     resultado = pericia_gastos.rodar_todas(con, gravar_alertas=True)
     print(json.dumps(resultado["cobertura"], ensure_ascii=False, indent=2))
     print(f"achados: {len(resultado['achados'])}")
+
+    if not args.sem_colegiado:
+        from compliance_agent.reporting import ficha7
+        n_delib = ficha7.deliberar_achados(con, resultado["achados"], "pcrj")
+        print(f"colegiado: {n_delib} achado(s) deliberado(s) pelas 5 lentes")
 
     hoje = datetime.now().date().isoformat()
     fontes = [
@@ -80,7 +87,7 @@ async def main():
         "Perícia de Gastos e Contratações — Prefeitura do Rio de Janeiro",
         "Despesa por credor (CGM 2019–2023) + contratos/licitações (PNCP 2024+) · "
         "Detectores D7–D10",
-        resultado, fontes, panorama_html=_panorama(con))
+        resultado, fontes, panorama_html=_panorama(con), superficie="pcrj")
 
     data = datetime.now().date()
     saidas = []

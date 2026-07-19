@@ -53,6 +53,8 @@ async def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--telegram", action="store_true")
     ap.add_argument("--sem-pdf", action="store_true")
+    ap.add_argument("--sem-colegiado", action="store_true",
+                    help="pula as 5 lentes (sem custo LLM); fichas saem só com o risco determinístico")
     args = ap.parse_args()
 
     con = edb.conectar()
@@ -60,6 +62,13 @@ async def main():
     resultado = pericia.rodar_todas(con, gravar_alertas=True)
     print(json.dumps(resultado["cobertura"], ensure_ascii=False, indent=2))
     print(f"achados: {len(resultado['achados'])}")
+
+    if not args.sem_colegiado:
+        # colegiado de 5 lentes nos achados mais graves (gate de custo: risco≥7, cap 8);
+        # anota votos in place — esses achados saem na ficha de 7 seções (padrão representação)
+        from compliance_agent.reporting import ficha7
+        n_delib = ficha7.deliberar_achados(con, resultado["achados"], "emendas")
+        print(f"colegiado: {n_delib} achado(s) deliberado(s) pelas 5 lentes")
 
     fontes = [
         {"dado": "Emendas (autor/valores 3 fases)", "estado": "REAL",

@@ -108,35 +108,10 @@ def deliberar(con, dossie: dict, achados: list[dict], gerar=None) -> dict:
     }
 
 
-_LENTES_ORDEM = ["proporcionalidade", "jurisprudencia", "competicao", "refutador", "beneficiario"]
-_LENTE_ROTULO = {"proporcionalidade": "Proporcionalidade", "jurisprudencia": "Jurisprudência",
-                 "competicao": "Impacto na competição/economicidade", "refutador": "Defesa do contrato (refutador)",
-                 "beneficiario": "Beneficiário / captura"}
 _ROTULO_REL = {"controle": "Nº de controle PNCP", "orgao": "Órgão contratante", "fornecedor": "Fornecedor",
                "objeto": "Objeto", "valor_inicial": "Valor inicial", "valor_global": "Valor global (c/ aditivos)",
                "empenhado": "Empenhado", "liquidado": "Liquidado", "pago": "Pago (OB)",
                "n_aditivos": "Nº de aditivos", "vigencia": "Vigência"}
-
-
-def _painel_votos(votos: dict) -> str:
-    import html as _h
-    if not votos:
-        return ""
-    linhas = []
-    for lente in _LENTES_ORDEM:
-        v = votos.get(lente) or {}
-        voto = v.get("voto")
-        if voto is None:
-            badge = "<span class='ind'>INDISPONÍVEL</span>"
-        else:
-            cls = "alto" if voto >= 7 else "medio" if voto >= 4 else "baixo"
-            badge = f"<span class='voto {cls}'>{voto}/10</span>"
-        gate = " <span class='gate'>· voto-gate</span>" if lente == "refutador" else ""
-        cit = f"<div class='cit'>{_h.escape(v.get('citacao') or '')}</div>" if v.get("citacao") else ""
-        linhas.append(f"<tr><td class='lente'>{_h.escape(_LENTE_ROTULO[lente])}{gate}</td>"
-                      f"<td class='vc'>{badge}</td><td>{_h.escape(v.get('justificativa') or '')}{cit}</td></tr>")
-    return ("<table class='colegiado'><tr><th>Lente</th><th>Voto</th><th>Fundamento</th></tr>"
-            f"{''.join(linhas)}</table>")
 
 
 def _ficha_aditivos(aditivos: list) -> str:
@@ -178,17 +153,32 @@ def render_parecer_ctx(parecer: dict) -> dict:
         secoes.append({"titulo": "III. Sinais cruzados do fornecedor",
                        "html": f"<ul>{lis}</ul><p class='nota'>Sinais objetivos (cadastros públicos); indício ≠ acusação.</p>"})
 
-    # fundamentação por dimensão, cada uma com o painel das 5 lentes
+    # cada dimensão deliberada vira uma FICHA de 7 seções (mesmo padrão-representação de
+    # editais/emendas/pcrj — reporting.ficha7); o parecer segue com conclusão e voto próprios
+    from compliance_agent.reporting import ficha7
     fund_parts = []
     for i, f in enumerate(parecer["fundamentacao"], 1):
-        fund_parts.append(f"<h4>{_h.escape(f['dimensao'])} — enxame {f.get('score', '?')}/10 "
-                          f"({_h.escape(str(f.get('veredito_enxame') or '—'))})</h4>")
-        fund_parts.append(f"<p><b>Fatos:</b> {_h.escape(f['fatos'])}</p>")
-        fund_parts.append(f"<p><b>Norma:</b> {_h.escape(f['norma'])}.</p>")
-        if f.get("jurisprudencia"):
-            fund_parts.append(f"<div class='acordao'><b>Jurisprudência (RAG):</b> "
-                              f"<i>{_h.escape(f['jurisprudencia'][:400])}</i></div>")
-        fund_parts.append(_painel_votos(f.get("votos", {})))
+        fund_parts.append(ficha7.ficha_html(i, {
+            "titulo": f"{f['dimensao']} — contrato {parecer['numero_controle_pncp']}",
+            "superficie": "contratos",
+            "ident": [("Contrato (controle PNCP)", _h.escape(str(parecer["numero_controle_pncp"] or "—"))),
+                      ("Órgão", _h.escape(str(r.get("orgao") or "—"))),
+                      ("Fornecedor", _h.escape(str(r.get("fornecedor") or "—"))),
+                      ("Dimensão do achado", _h.escape(f["dimensao"])),
+                      ("Risco (funil determinístico)", f"{f.get('risco', '—')}/10")],
+            "objeto_html": f"<p>{_h.escape(f['fatos'])}</p>",
+            "comparativa_html": None,  # baseline = limiares nomeados de contratos/thoughts.py
+            "fundamentacao_html": ficha7.fundamentacao_html(
+                dispositivos=[f["norma"]] if f.get("norma") else None,
+                rag=f.get("jurisprudencia") or ""),
+            "votos": f.get("votos", {}),
+            "score_colegiado": f.get("score"),
+            "veredito": f.get("veredito_enxame"),
+            "risco_det": f.get("risco") or 0,
+            "beneficiario_html": (
+                f"<p>Fornecedor do contrato: <b>{_h.escape(str(r.get('fornecedor') or '—'))}</b>.</p>"
+                + (("<p><b>Sinais cruzados:</b> " + _h.escape("; ".join(map(str, sinais))) + ".</p>") if sinais else "")),
+        }))
     n_fund = "IV" if sinais else "III"
     secoes.append({"titulo": f"{n_fund}. Fundamentação e parecer do colegiado",
                    "html": "".join(fund_parts) or "<p>Sem dimensão relevante deliberada (achados abaixo do limiar).</p>"})

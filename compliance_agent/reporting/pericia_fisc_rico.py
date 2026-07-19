@@ -172,10 +172,44 @@ def _icone(risco: int) -> str:
     return "🔴" if risco >= 8 else "🟡" if risco >= 5 else "🟢"
 
 
+def _ficha7_de_achado(n: int, a: dict, meta: dict, superficie: str) -> str:
+    """Adaptador: achado de detector deliberado pelo colegiado → ficha de 7 seções (ficha7).
+    Usado quando `deliberar_achados` anotou votos; sem votos, vale a ficha rica de sempre."""
+    from compliance_agent.reporting import ficha7
+    ev = a.get("evidencias") or {}
+    alvo = ev.get("cnpj") or ev.get("doc") or ev.get("fornecedor") or ev.get("credor") or ""
+    ident = [("Detector", _esc(meta.get("rotulo", a.get("detector", "")))),
+             ("Alvo/documento", _fmt(alvo, "doc") if alvo else "<span class='ind'>não identificado</span>"),
+             ("Gravidade (detector)", f"{a.get('risco', 0)}/10")]
+    if a.get("codigo_emenda"):
+        ident.append(("Código da emenda", _esc(a["codigo_emenda"])))
+    beneficiario = None
+    if alvo:
+        sinais = ev.get("sinais") or []
+        beneficiario = (f"<p>Beneficiário/alvo do achado: <b>{_fmt(alvo, 'doc')}</b>.</p>"
+                        + (f"<p><b>Sinais objetivos:</b> {_esc('; '.join(map(str, sinais)))}.</p>" if sinais else ""))
+    d = {
+        "titulo": a.get("titulo", ""), "superficie": superficie,
+        "ident": ident,
+        "objeto_html": (f"<p>{_esc(a.get('descricao', ''))}</p>"
+                        + _tabela_evid(ev, meta.get("evid", []))),
+        "comparativa_html": None,  # detector determinístico: régua explícita, sem base de pares
+        "fundamentacao_html": ficha7.fundamentacao_html(
+            dispositivos=meta.get("dispositivos"), irregularidade=meta.get("irregularidade", "")),
+        "votos": a.get("votos") or {},
+        "score_colegiado": a.get("score_colegiado"),
+        "veredito": a.get("veredito"),
+        "risco_det": a.get("risco", 0),
+        "beneficiario_html": beneficiario,
+    }
+    return ficha7.ficha_html(n, d)
+
+
 def ctx_de_achados_rico(titulo: str, subtitulo: str, resultado: dict, fontes: list[dict],
                         panorama_html: str = "", classificacao: str = "CONFIDENCIAL — CONTROLE EXTERNO",
-                        limiar_corpo: int = 5) -> dict:
-    """resultado = {"achados", "cobertura"}. Ficha rica por achado, agrupada por detector.
+                        limiar_corpo: int = 5, superficie: str = "emendas") -> dict:
+    """resultado = {"achados", "cobertura"}. Ficha rica por achado, agrupada por detector; achado
+    DELIBERADO pelo colegiado (ficha7.deliberar_achados anotou votos) sai na ficha de 7 seções.
 
     limiar_corpo: risco mínimo p/ a ficha ir ao CORPO; abaixo, vai à tabela-anexo (todos comparecem)."""
     achados = resultado["achados"]
@@ -228,7 +262,10 @@ def ctx_de_achados_rico(titulo: str, subtitulo: str, resultado: dict, fontes: li
         cab = [f"<p class='det-desc'>{_esc(meta.get('detecta', ''))}</p>", _fundamentacao_html(meta)]
         com_ficha = do_det[:max_fichas]
         fichas = []
-        for a in com_ficha:
+        for i, a in enumerate(com_ficha, 1):
+            if a.get("votos") or a.get("score_colegiado") is not None:
+                fichas.append(_ficha7_de_achado(i, a, meta, superficie))
+                continue
             fichas.append("".join([
                 "<div class='ficha'>",
                 f"<h4>{_icone(a['risco'])} {_esc(a['titulo'])} — gravidade {a['risco']}/10</h4>",
