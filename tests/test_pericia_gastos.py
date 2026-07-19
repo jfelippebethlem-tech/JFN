@@ -96,11 +96,15 @@ def test_d10_rede_concorrentes_e_aditivos(con_semeado):
                    data_assinatura)
                    values ('A1',2024,'42498733000148','77888999000155','GAMA','Contrato',
                            100000,210000,'2024-05-01')""")
+    # split 2026-07-18: d10 = SÓ rede societária; aditivo estourado virou detector próprio (d11)
     achados = pericia_gastos.d10_rede_concorrentes(con)
     tipos = {a["evidencias"].get("subtipo") for a in achados}
-    assert "rede_socios" in tipos and "aditivo_estourado" in tipos
+    assert tipos == {"rede_socios"}
+    aditivos = pericia_gastos.d11_aditivo_estourado(con)
+    assert {a["evidencias"].get("subtipo") for a in aditivos} == {"aditivo_estourado"}
+    assert all(a["detector"] == "d11_aditivo_estourado" for a in aditivos)
 
 
 def test_rodar_todas_cobertura(con_semeado):
     r = pericia_gastos.rodar_todas(con_semeado)
-    assert set(r["cobertura"]) == {"d7", "d8", "d9", "d10"}
+    assert set(r["cobertura"]) == {"d7", "d8", "d9", "d10", "d11"}

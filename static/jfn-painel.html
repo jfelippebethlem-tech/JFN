@@ -468,7 +468,11 @@ const TABS={
   ],
   prefeitura:[
     {id:'p_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaPref},
+    {id:'p_gastos',  ic:'✂️',tl:'Gastos', render:renderGastosPref},
     {id:'p_comis',   ic:'🎖️',tl:'Comissionados',render:renderComissionadosPref},
+    {id:'p_benef',   ic:'🍞',tl:'Benefícios',render:()=>renderBeneficiosPref('')},
+    {id:'p_fant',    ic:'👻',tl:'Fantasmas',render:renderFantasmasPref},
+    {id:'p_ppp',     ic:'🏗️',tl:'PPP',     render:renderPPPPref},
     {id:'p_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('prefeitura')},
     {id:'p_contr',   ic:'📄',tl:'Contratos',render:renderContratosPref},
   ],
@@ -1002,7 +1006,10 @@ async function renderPanoramaPref(){
     ${kpi(cap.length+rod.length,'Conluio (capturas+rodízios)','var(--purple)','🕸️')}${kpi(fmtN(cc.n??'—'),'Comissionados ex-candidatos','var(--amber)','🎖️')}
     ${kpi(fmtN((bv.resumo||{}).n_alta??'—'),'Benefício DURANTE vínculo (certeza alta)','var(--rose)','🚨')}${kpi(fmtN((bv.resumo||{}).n_ainda??'—'),'Ainda recebendo','var(--rose)','⏰')}</div>`;
   h+=`<div style="height:16px"></div>`+sec('Ir para')+`<div class="grid two">
+    ${card(`<div style="font-weight:700">✂️ Perícia de gastos D7–D10</div><div class="muted" style="font-size:13px">fracionamento, credor recém-aberto, sócio na folha, rede entre concorrentes</div><div class="btns"><button class="btn accent" onclick="ir('p_gastos')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">🎖️ Comissionados</div><div class="muted" style="font-size:13px">ex-candidatos + benefício social durante o vínculo</div><div class="btns"><button class="btn accent" onclick="ir('p_comis')">Abrir</button></div>`)}
+    ${card(`<div style="font-weight:700">👻 Servidor-fantasma</div><div class="muted" style="font-size:13px">8 sinais determinísticos, faixas forte/verificar/fraco</div><div class="btns"><button class="btn ghost" onclick="ir('p_fant')">Abrir</button></div>`)}
+    ${card(`<div style="font-weight:700">🏗️ PPPs e concessões</div><div class="muted" style="font-size:13px">triagem de red flags CCPAR + dossiê Souza Aguiar</div><div class="btns"><button class="btn ghost" onclick="ir('p_ppp')">Abrir</button></div>`)}
     ${card(`<div style="font-weight:700">🕸️ Conluio municipal</div><div class="muted" style="font-size:13px">${cap.length+rod.length} indícios · nomes e objetos</div><div class="btns"><button class="btn ghost" onclick="ir('p_conluio')">Abrir</button></div>`)}</div>`;
   h+=`<div class="note">${esc(cj.aviso||'')}</div>`;
   return h;
@@ -1012,29 +1019,7 @@ async function renderComissionadosPref(){
   const chips=`<div class="chips">
     <button type="button" class="chip ${_comisView==='cand'?'on':''}" onclick="_comisView='cand';ir('p_comis')">🗳️ Foram candidatos</button>
     <button type="button" class="chip ${_comisView==='benef'?'on':''}" onclick="_comisView='benef';ir('p_comis')">🍞 Benefício × vínculo</button></div>`;
-  if(_comisView==='benef'){
-    const d=await J('/api/pcrj/beneficios_vinculo');
-    let h=cover('prefeitura','Servidores × benefício social — DURANTE o vínculo',
-      'Bolsa Família, BPC, Auxílio Brasil ou Auxílio Emergencial recebidos <b>no mesmo mês</b> em que a pessoa tinha vínculo remunerado com a Prefeitura/Câmara do Rio. Meses fora da janela de vínculo NÃO contam (fairness) e homônimos são eliminados por município + fragmento de CPF.','🍞')+chips;
-    if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
-    const r=d.resumo||{};
-    h+=`<div class="grid g2">${kpi(fmtN(d.n_casos),'Pessoas flagradas',null,'👥')}${kpi(fmtN(r.n_alta),'Certeza ALTA','var(--rose)','🔴')}
-        ${kpi(fmtN(r.n_nomeados),'Comissionados/nomeados','var(--amber)','🎖️')}${kpi(fmtN(r.n_ainda),'Ainda recebendo','var(--rose)','⏰')}
-        ${kpi(fmtN(r.n_bf),'Bolsa Família',null,'🍞')}${kpi(fmtN(r.n_bpc),'BPC',null,'♿')}
-        ${kpi(esc(r.cobertura_benef||'—'),'Cobertura benefícios',null,'📅')}${kpi(esc(r.ultima||'—'),'Última competência',null,'🗓️')}</div>`;
-    h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, órgão, cargo, partido…" oninput="filtrar(this,'#bv-list .card')"></div>`;
-    h+=`<div id="bv-list" class="grid">`+(d.casos||[]).slice(0,120).map(x=>card(
-      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
-        <div style="font-weight:700">${esc(x.nome)}</div>
-        <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.poder||'')} · ${esc((x.orgao||'').slice(0,44))} · ${esc((x.cargo||'').slice(0,30))}${x.partido?' · '+esc(x.partido):''}</div>
-        <div class="dim" style="margin-top:3px">${esc(x.natureza||'')} · ${esc(x.situacao||'')}</div></div>
-        <div class="right"><span class="sev ${x.certeza==='ALTA'?'alta':'media'}">${esc(x.certeza||'')}</span>
-        ${x.ainda_recebe?'<div style="margin-top:5px"><span class="tag rose">ainda recebe</span></div>':''}</div></div>
-      <div class="kv" style="margin-top:8px"><span class="k">${esc(x.beneficios_str||'benefício')}</span><b>${esc(x.desde||'')} → ${esc(x.ate||'')} · ${fmtN(x.n_meses)} meses</b></div>`,
-      x.certeza==='ALTA'?'hl':'')).join('')+`</div>`;
-    h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
-    return h;
-  }
+  if(_comisView==='benef')return renderBeneficiosPref(chips);
   const d=await J('/api/pcrj/comissionados_candidatos?limite=600');
   let h=cover('prefeitura','Comissionados da Prefeitura que foram candidatos',
     'Cruzamento da folha de cargos de confiança da Prefeitura do Rio com as candidaturas registradas no TSE. Cargo de confiança ocupado por quem disputa eleição é o retrato do aparelhamento político da máquina.','🗳️')+chips+acoesAba('comissionados');
@@ -1049,6 +1034,100 @@ async function renderComissionadosPref(){
       ${x.admissao?`<div class="dim" style="margin-top:2px">admissão ${esc(x.admissao)}${x.exoneracao?' · exoneração '+esc(x.exoneracao):' · ativo'}</div>`:''}</div>
       <div class="right"><span class="tag amber">${esc(x.cand_cargo||'?')} ${esc(String(x.cand_ano||''))}</span><div class="dim" style="margin-top:4px">${esc(x.cand_cidade||'')}</div></div></div>`)).join('')+`</div>`;
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+async function renderBeneficiosPref(chips){
+  const d=await J('/api/pcrj/beneficios_vinculo');
+  let h=cover('prefeitura','Servidores × benefício social — DURANTE o vínculo',
+    'Bolsa Família, BPC, Auxílio Brasil ou Auxílio Emergencial recebidos <b>no mesmo mês</b> em que a pessoa tinha vínculo remunerado com a Prefeitura/Câmara do Rio. Meses fora da janela de vínculo NÃO contam (fairness) e homônimos são eliminados por município + fragmento de CPF.','🍞')+(chips||'');
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const r=d.resumo||{};
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_casos),'Pessoas flagradas',null,'👥')}${kpi(fmtN(r.n_alta),'Certeza ALTA','var(--rose)','🔴')}
+      ${kpi(fmtN(r.n_nomeados),'Comissionados/nomeados','var(--amber)','🎖️')}${kpi(fmtN(r.n_ainda),'Ainda recebendo','var(--rose)','⏰')}
+      ${kpi(fmtN(r.n_bf),'Bolsa Família',null,'🍞')}${kpi(fmtN(r.n_bpc),'BPC',null,'♿')}
+      ${kpi(esc(r.cobertura_benef||'—'),'Cobertura benefícios',null,'📅')}${kpi(esc(r.ultima||'—'),'Última competência',null,'🗓️')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por nome, órgão, cargo, partido…" oninput="filtrar(this,'#bv-list .card')"></div>`;
+  h+=`<div id="bv-list" class="grid">`+(d.casos||[]).slice(0,120).map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+      <div style="font-weight:700">${esc(x.nome)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(x.poder||'')} · ${esc((x.orgao||'').slice(0,44))} · ${esc((x.cargo||'').slice(0,30))}${x.partido?' · '+esc(x.partido):''}</div>
+      <div class="dim" style="margin-top:3px">${esc(x.natureza||'')} · ${esc(x.situacao||'')}</div></div>
+      <div class="right"><span class="sev ${x.certeza==='ALTA'?'alta':'media'}">${esc(x.certeza||'')}</span>
+      ${x.ainda_recebe?'<div style="margin-top:5px"><span class="tag rose">ainda recebe</span></div>':''}</div></div>
+    <div class="kv" style="margin-top:8px"><span class="k">${esc(x.beneficios_str||'benefício')}</span><b>${esc(x.desde||'')} → ${esc(x.ate||'')} · ${fmtN(x.n_meses)} meses</b></div>`,
+    x.certeza==='ALTA'?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+const _DET_ROTULO={d7_fracionamento:['✂️','Fracionamento de despesa','sucessão de contratações do mesmo objeto/credor somando acima do teto de dispensa (Lei 14.133 art. 75)'],
+  d8_credor_recem_aberto:['🐣','Credor recém-aberto','empresa criada há <180 dias já recebendo da Prefeitura'],
+  d9_socio_na_folha:['👔','Sócio de credor na folha','sócio de empresa contratada com vínculo na folha municipal (Lei 14.133 art. 9º)'],
+  d10_rede_concorrentes:['🕸️','Rede entre concorrentes','sócios em comum entre empresas que disputam os mesmos certames'],
+  d11_aditivo_estourado:['📈','Aditivo acima do limite','acréscimo contratual além dos 25%/50% do art. 125']};
+let _gastosDet='';
+async function renderGastosPref(){
+  const d=await J('/api/pcrj/gastos_achados');
+  let h=cover('prefeitura','Perícia de gastos — detectores D7–D10',
+    'Detectores determinísticos sobre a despesa por credor (ContasRio 2019-2023) e contratos/licitações municipais (PNCP 2024+). Cada achado carrega a evidência e a base normativa; a perícia completa em PDF sai pelo runner com o colegiado de 5 lentes.','✂️');
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')} — rode tools/pcrj_pericia_gastos.py</div>`);
+  const dets=Object.keys(d.detectores||{});
+  h+=`<div class="grid g2">`+dets.map(k=>{const m=_DET_ROTULO[k]||['📌',k,''];
+    return kpi(fmtN(d.detectores[k]),m[1],k==='d9_socio_na_folha'?'var(--rose)':null,m[0]);}).join('')+`</div>`;
+  h+=`<div class="chips" style="margin-top:12px"><button type="button" class="chip ${_gastosDet===''?'on':''}" onclick="_gastosDet='';ir('p_gastos')">Todos</button>`+
+    dets.map(k=>`<button type="button" class="chip ${_gastosDet===k?'on':''}" onclick="_gastosDet='${k}';ir('p_gastos')">${(_DET_ROTULO[k]||['📌',k])[0]} ${(_DET_ROTULO[k]||['',k])[1]}</button>`).join('')+`</div>`;
+  h+=`<div class="search"><span class="mag">🔎</span><input placeholder="filtrar por credor, órgão, objeto…" oninput="filtrar(this,'#pg-list .card')"></div>`;
+  const mostrar=_gastosDet?{[_gastosDet]:(d.achados||{})[_gastosDet]||[]}:(d.achados||{});
+  let cards='';
+  for(const [det,lista] of Object.entries(mostrar)){
+    const m=_DET_ROTULO[det]||['📌',det,''];
+    cards+=(lista||[]).slice(0,_gastosDet?200:12).map(a=>card(
+      `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+        <div style="font-weight:700">${m[0]} ${esc((a.titulo||'').slice(0,90))}</div>
+        <div class="muted" style="font-size:12.5px;margin-top:4px">${esc((a.descricao||'').slice(0,260))}</div></div>
+        <span class="sev ${a.severidade==='alta'?'alta':'media'}">${esc(a.severidade||'')}</span></div>`,
+      a.severidade==='alta'?'hl':'')).join('');
+  }
+  h+=`<div id="pg-list" class="grid">`+cards+`</div>`;
+  if(!cards)h+=card('<div class="muted">Nenhum achado deste detector na última corrida.</div>');
+  h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+let _fantFaixa='';
+async function renderFantasmasPref(){
+  const d=await J('/api/pcrj/fantasmas'+(_fantFaixa?'?faixa='+_fantFaixa:''));
+  let h=cover('prefeitura','Sinais de servidor-fantasma — Câmara/Prefeitura',
+    'Oito sinais determinísticos (múltiplos gabinetes, cargo incompatível, vínculos concomitantes, geografia impossível…) somados em escore. É funil de priorização OSINT: a prova definitiva é o ponto/frequência interno, que só a apuração formal alcança.','👻');
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const fx=d.faixas||{};
+  h+=`<div class="grid g2">${kpi(fmtN(fx.forte),'Faixa FORTE','var(--rose)','🔴')}${kpi(fmtN(fx.verificar),'Verificar','var(--amber)','🟡')}${kpi(fmtN(fx.fraco),'Fraco',null,'🟢')}${kpi(esc((d.gerado_em||'').slice(0,10)),'Gerado em',null,'🗓️')}</div>`;
+  h+=`<div class="chips" style="margin-top:12px">`+['','forte','verificar','fraco'].map(f=>
+    `<button type="button" class="chip ${_fantFaixa===f?'on':''}" onclick="_fantFaixa='${f}';ir('p_fant')">${f||'Todas as faixas'}</button>`).join('')+`</div>`;
+  h+=`<div class="search"><span class="mag">🔎</span><input placeholder="filtrar por nome, gabinete…" oninput="filtrar(this,'#pf-list .card')"></div>`;
+  h+=`<div id="pf-list" class="grid">`+(d.itens||[]).map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+      <div style="font-weight:700">${esc(x.nome)}${x.homonimo?' <span class="tag amber" title="nome existe em ≥3 municípios — confirmar por CPF/matrícula">homônimo?</span>':''}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.gabinetes||'—').slice(0,60))} · ${esc((x.cargos_camara||'—').slice(0,40))}</div>
+      <div class="dim" style="margin-top:4px">${esc((x.sinais||'').slice(0,200))}</div></div>
+      <div class="right"><span class="sev ${x.faixa==='forte'?'alta':'media'}">${esc(x.faixa)}</span><div class="dim" style="margin-top:4px">score ${x.score}</div></div></div>`,
+    x.faixa==='forte'?'hl':'')).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+async function renderPPPPref(){
+  const d=await J('/api/ppp/triagem');
+  let h=cover('prefeitura','PPPs e concessões — triagem de red flags',
+    'Lente determinística sobre editais/anexos de PPP da CCPAR: garantia com receita de saúde, aporte público, PMI-captura, prazo, valor vs RCL. O dossiê pericial completo (perícia mestre, íntegras normativas) sai por /ppp no Yoda.','🏗️');
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const r=d.resumo||{};
+  h+=`<div class="grid g2">${kpi(fmtN(r.projetos),'Projetos triados',null,'🏗️')}${kpi(fmtN(r.alto),'Grau ALTO','var(--rose)','🔴')}${kpi(fmtN(r.medio),'Grau médio','var(--amber)','🟡')}${kpi(fmtN(r.cobertura_doe_ppp),'Matérias D.O. PPP',null,'📰')}</div>`;
+  h+=`<div class="grid" style="margin-top:14px">`+(d.itens||[]).map(x=>card(
+    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
+      <div style="font-weight:700">${esc(x.nome)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">fase: ${esc(x.fase||'—')} · fonte: ${esc(x.fonte||'—')}</div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${(x.flags||[]).map(f=>`<span class="tag ${['garantia_receita_saude','aporte_publico','pmi_privado_ressarcimento'].includes(f)?'rose':'accent'}">${esc(f.replace(/_/g,' '))}</span>`).join('')}</div></div>
+      <div class="right"><span class="sev ${(x.grau||'').includes('alto')?'alta':'media'}">${esc(x.grau||'')}</span><div class="dim" style="margin-top:4px">${x.n_altas} flag(s) alta(s)</div></div></div>`,
+    (x.grau||'').includes('alto')?'hl':'')).join('')+`</div>`;
+  h+=leitura('PPP transfere risco de décadas para o ente público. As três flags vermelhas — garantia com receita da saúde (CF art. 167 IV), aporte público e PMI ressarcida pelo vencedor — são as que a jurisprudência trata como as mais graves.');
   return h;
 }
 async function renderContratosPref(){

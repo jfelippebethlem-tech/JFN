@@ -197,10 +197,10 @@ def d9_socio_na_folha(con, folha_norm: dict[str, dict] | None = None) -> list[di
     return achados
 
 
-# ── D10 — rede entre fornecedores + aditivos estourados ─────────────────────
-def d10_rede_concorrentes(con, limite_aditivo: float = D10_LIMITE_ADITIVO) -> list[dict]:
+# ── D10 — rede societária entre fornecedores do mesmo órgão ─────────────────
+def d10_rede_concorrentes(con) -> list[dict]:
     achados = []
-    # (a) mesmo sócio (nome_norm ou CPF) em ≥2 fornecedores do MESMO órgão no ano
+    # mesmo sócio (nome_norm ou CPF) em ≥2 fornecedores do MESMO órgão no ano
     rows = con.execute("""
         select c.orgao_cnpj, coalesce(c.orgao_nome,'') as orgao_nome, c.ano,
                s.nome_norm, s.nome_socio, s.doc_socio,
@@ -227,7 +227,15 @@ def d10_rede_concorrentes(con, limite_aditivo: float = D10_LIMITE_ADITIVO) -> li
             {"subtipo": "rede_socios", "socio": r["nome_socio"], "ano": r["ano"],
              "fornecedores": (r["fornecedores"] or "").split(","),
              "match_tipo": "CPF" if forte else "NOME"}))
-    # (b) valor global estourando o limite legal de acréscimo sobre o inicial
+    return achados
+
+
+# ── D11 — aditivo acima do limite do art. 125 ────────────────────────────────
+# (vivia DENTRO do d10 sob o MESMO código de detector — duas análises num rótulo só
+# confundiam contagem, KPI e ficha; split 2026-07-18, subtipo preservado p/ compat)
+def d11_aditivo_estourado(con, limite_aditivo: float = D10_LIMITE_ADITIVO) -> list[dict]:
+    achados = []
+    # valor global estourando o limite legal de acréscimo sobre o inicial
     rows = con.execute("""
         select numero_controle_pncp, ano, orgao_cnpj, coalesce(orgao_nome,'') as orgao_nome,
                fornecedor_documento, coalesce(fornecedor_nome,'') as fornecedor_nome,
@@ -238,7 +246,7 @@ def d10_rede_concorrentes(con, limite_aditivo: float = D10_LIMITE_ADITIVO) -> li
     for r in rows:
         pct = (r["valor_global"] / r["valor_inicial"] - 1) * 100
         achados.append(_achado(
-            "d10_rede_concorrentes", min(9, 6 + int(pct // 50)),
+            "d11_aditivo_estourado", min(9, 6 + int(pct // 50)),
             f"Aditivos acima do limite — {r['fornecedor_nome'] or r['fornecedor_documento']}",
             f"Indício de acréscimo contratual acima do limite: contrato "
             f"{r['numero_controle_pncp']} ({r['orgao_nome'] or r['orgao_cnpj']}, {r['ano']}) "
@@ -257,6 +265,7 @@ _DETECTORES = {
     "d8": d8_credor_recem_aberto,
     "d9": d9_socio_na_folha,
     "d10": d10_rede_concorrentes,
+    "d11": d11_aditivo_estourado,
 }
 
 

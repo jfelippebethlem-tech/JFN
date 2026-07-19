@@ -522,6 +522,88 @@
     {
       "type": "function",
       "function": {
+        "name": "pcrj_gastos_achados",
+        "description": "Achados JA PERICIADOS dos gastos da Prefeitura (D7 fracionamento, D8 credor recem-aberto, D9 socio na folha, D10 rede entre concorrentes, aditivo estourado) — leitura instantanea dos alertas da ultima corrida, dedup por titulo. Para RE-rodar a pericia use pcrj_pericia_gastos. — usar quando: 'quais os achados de gastos da prefeitura', 'me mostra o fracionamento da PCRJ agora' — chamar: GET /api/pcrj/gastos_achados (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "limite_por_detector": {
+              "type": "integer",
+              "description": "int (5-200, default 40)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/pcrj/gastos_achados",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "pcrj_fantasmas",
+        "description": "Sinais de servidor-fantasma na Camara/Prefeitura do Rio (8 sinais deterministicos somados em escore; faixas forte/verificar/fraco; homonimo sinalizado). FUNIL de priorizacao OSINT — a prova definitiva e o ponto/frequencia interno, que so apuracao formal alcanca. Indicio != acusacao. — usar quando: 'servidores fantasmas na prefeitura/camara', 'quem tem sinal de fantasma', 'faixa forte de fantasma' — chamar: GET /api/pcrj/fantasmas (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "faixa": {
+              "type": "string",
+              "description": "forte|verificar|fraco (opcional)"
+            },
+            "limite": {
+              "type": "integer",
+              "description": "int (1-800)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/pcrj/fantasmas",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "pcrj_dossie_comissionados",
+        "description": "Dossie Kroll COMPLETO de comissionados/gabinetes da Camara x Prefeitura do Rio: acumulo com direcao temporal, movimentacoes gabinete<->prefeitura<->candidatura, alternancia titular/suplente, candidatos nominais (TSE) e relatorio por gabinete. Roda a finalizacao autonoma do sweep all-RJ (aguarda sweep terminar). — usar quando: 'dossie dos comissionados', 'relatorio completo dos gabinetes', 'finaliza o sweep da camara' — chamar (cli): tools/pcrj_finalizar.py",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "cli",
+        "rota": null,
+        "comando": "tools/pcrj_finalizar.py",
+        "metodo": null,
+        "status": "PRONTO",
+        "enviar_telegram": [
+          "path_pdf"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "ppp_dossie",
         "description": "Dossie pericial de PPP/concessao municipal (Prefeitura do Rio): capta CCPAR + Diario Oficial + edital completo, roda os motores (E1-E7, direcionamento, Lex, fraudes) + a lente PPP (garantia via Fundo Nacional de Saude, aporte, PMI-captura, 5% RCL, verificador) -> PDF Kroll. Indicio != acusacao. — usar quando: 'dossie/pericia da PPP X', 'a PPP do Souza Aguiar', 'concessao/parceria publico-privada da prefeitura' — chamar: POST /api/ppp (base http://127.0.0.1:8000)",
         "parameters": {

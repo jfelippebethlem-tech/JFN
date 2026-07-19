@@ -109,6 +109,31 @@ pipelines:
     grupo: second-brain
     nota: verificação/rebuild incremental (metacognição 06:50 + cron 13:07); mtime marca a checagem
 
+  # ---- PCRJ (Prefeitura do Rio — coletas que alimentam a esfera do painel) ----
+  - nome: pcrj-fisc-refresh
+    arquivo: data/fisc_coletar_tudo.log
+    max_stale_h: 192
+    grupo: pcrj
+    nota: refresh semanal seg 05:40 (timer jfn-fisc-refresh) — emendas + ContasRio + PNCP municipal
+
+  - nome: pcrj-comissionados
+    arquivo: data/pcrj_comiss_mensal.log
+    max_stale_h: 800
+    grupo: pcrj
+    nota: coleta mensal de comissionados×candidatos (pcrj_comissionado_candidato); alimenta a aba Comissionados
+
+  - nome: pcrj-db-vivo
+    arquivo: data/pcrj.db
+    max_stale_h: 192
+    grupo: pcrj
+    nota: mtime do banco pcrj.db — qualquer coleta nominal (câmara/cruzamento/TSE/D.O.) o toca; parado >8d = starvation
+
+  - nome: pcrj-beneficios-base
+    arquivo: data/pcrj_benef.db
+    max_stale_h: 1080
+    grupo: pcrj
+    nota: ingest mensal do Portal da Transparência (competência sai com ~2 meses de atraso editorial); >45d = investigar
+
   # ---- ENRIQUECIMENTO ----
   - nome: sweep-dados
     arquivo: data/sweep_dados.log

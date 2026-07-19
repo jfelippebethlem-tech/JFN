@@ -1752,7 +1752,99 @@ async def api_pcrj_comissionados_candidatos(limite: int = 300):
                               "Rio e as candidaturas do TSE. Comissionado que concorreu (ou concorre) "
                               "a cargo eletivo é sinal de aparelhamento político do cargo de confiança."),
                "ressalva": "Match por NOME (homônimo possível) — confirmar por CPF antes de citar."}
-        return JSONResponse(_cache_put("pcrj:comis_cand", out))
+        return JSONResponse(_cache_put(ck, out))  # era chave fixa ≠ ck do get: cache nunca batia
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/pcrj/fantasmas")
+async def api_pcrj_fantasmas(faixa: str = "", limite: int = 200):
+    """Servidor-fantasma na folha da Câmara/PCRJ — 8 sinais determinísticos (pcrj/fantasma_servidor),
+    cache materializado em pcrj_fantasma_servidor. ?faixa=forte|verificar|fraco filtra."""
+    import sqlite3 as _sq
+    try:
+        lim = max(1, min(int(limite or 200), 800))
+        fx = faixa if faixa in ("forte", "verificar", "fraco") else ""
+        ck = f"pcrj:fantasma:{fx}:{lim}"
+        if d := _cache_get(ck, 600):
+            return JSONResponse(d)
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        try:
+            cond = "WHERE faixa=?" if fx else ""
+            args = ([fx] if fx else []) + [lim]
+            rows = [dict(r) for r in con.execute(
+                f"""SELECT nome, gabinetes, cargos_camara, sinais, score, faixa, homonimo, gerado_em
+                    FROM pcrj_fantasma_servidor {cond}
+                    ORDER BY CASE faixa WHEN 'forte' THEN 0 WHEN 'verificar' THEN 1 ELSE 2 END,
+                             score DESC LIMIT ?""", args)]
+            faixas = dict(con.execute(
+                "SELECT faixa, COUNT(*) FROM pcrj_fantasma_servidor GROUP BY faixa").fetchall())
+            gerado = con.execute("SELECT MAX(gerado_em) FROM pcrj_fantasma_servidor").fetchone()[0]
+        finally:
+            con.close()
+        if not rows and not faixas:
+            return JSONResponse({"ok": False, "erro": "detector ainda não rodou — "
+                                 "rodar: python -m compliance_agent.pcrj.fantasma_servidor"})
+        out = {"ok": True, "n": sum(faixas.values()), "faixas": faixas, "itens": rows,
+               "gerado_em": gerado,
+               "explicacao": ("Sinais objetivos de servidor-fantasma (múltiplos gabinetes, cargo "
+                              "incompatível, vínculo concomitante, geografia impossível…) somados em "
+                              "escore; faixa FORTE = convergência de sinais independentes."),
+               "ressalva": ("Indício ≠ acusação. `homonimo`=1 marca nome presente em ≥3 municípios "
+                            "(ambiguidade — confirmar por CPF/matrícula antes de qualquer citação).")}
+        return JSONResponse(_cache_put(ck, out))
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/pcrj/gastos_achados")
+async def api_pcrj_gastos_achados(limite_por_detector: int = 40):
+    """Achados da perícia de gastos da PREFEITURA (D7 fracionamento · D8 recém-aberta · D9 sócio na
+    folha · D10 rede de sócios entre concorrentes · aditivo estourado) — lê os alertas gravados pela
+    última corrida de tools/pcrj_pericia_gastos.py (dedup por título, mais recente vence)."""
+    import json as _json
+    import sqlite3 as _sq
+    try:
+        lim = max(5, min(int(limite_por_detector or 40), 200))
+        ck = f"pcrj:gastos:{lim}"
+        if d := _cache_get(ck, 600):
+            return JSONResponse(d)
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        try:
+            rows = con.execute(
+                """SELECT tipo, severidade, titulo, descricao, evidencias, MAX(id) id
+                   FROM alertas WHERE tipo LIKE 'pcrj_d%' GROUP BY titulo
+                   ORDER BY CASE severidade WHEN 'alta' THEN 0 WHEN 'media' THEN 1 ELSE 2 END, id DESC
+                """).fetchall()
+        finally:
+            con.close()
+        # o detector de EXIBIÇÃO vem do subtipo da evidência quando houver — corrige o histórico
+        # em que aditivo_estourado saía sob o código d10 (duas análises num rótulo, pré-split D11)
+        _sub2det = {"fracionamento": "d7_fracionamento", "recem_aberta": "d8_credor_recem_aberto",
+                    "socio_folha": "d9_socio_na_folha", "rede_socios": "d10_rede_concorrentes",
+                    "aditivo_estourado": "d11_aditivo_estourado"}
+        por_det: dict[str, list] = {}
+        for r in rows:
+            ev = {}
+            try:
+                ev = _json.loads(r["evidencias"] or "{}")
+            except ValueError:
+                pass
+            det = _sub2det.get(ev.get("subtipo") or "", r["tipo"].replace("pcrj_", ""))
+            if len(por_det.setdefault(det, [])) >= lim:
+                continue
+            por_det[det].append({"detector": det, "severidade": r["severidade"],
+                                 "titulo": r["titulo"], "descricao": r["descricao"], "evidencias": ev})
+        contagem = {d_: len(v) for d_, v in por_det.items()}
+        out = {"ok": True, "detectores": contagem, "achados": por_det,
+               "explicacao": ("Perícia determinística sobre despesa por credor (CGM 2019-2023) + "
+                              "contratos/licitações municipais (PNCP 2024+): fracionamento colado no "
+                              "teto de dispensa, credor recém-aberto, sócio de credor na folha, rede "
+                              "societária entre concorrentes e aditivo acima do art. 125."),
+               "ressalva": "Indício ≠ acusação; match por NOME vem sinalizado; só a apuração fecha."}
+        return JSONResponse(_cache_put(ck, out))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 

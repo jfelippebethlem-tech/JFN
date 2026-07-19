@@ -80,6 +80,21 @@ capacidades:
      quando_usar: "'pericia dos gastos da prefeitura', 'fracionamento na PCRJ'", exemplo: "tools/pcrj_pericia_gastos.py --telegram",
      args: {telegram: "flag", sem_pdf: "flag"}, retorno: "reports/pcrj_gastos_pericia_<data>.pdf + xlsx", enviar_telegram: [path_pdf, path_xlsx],
      menu: {grupo: "🕵️ Fiscalização & Perícias", nome: "Perícia dos gastos da Prefeitura do Rio", exemplo: "fracionamento na PCRJ?", ordem: 42}}
+  - {id: pcrj_gastos_achados, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/pcrj/gastos_achados, status: PRONTO,
+     descricao: "Achados JA PERICIADOS dos gastos da Prefeitura (D7 fracionamento, D8 credor recem-aberto, D9 socio na folha, D10 rede entre concorrentes, aditivo estourado) — leitura instantanea dos alertas da ultima corrida, dedup por titulo. Para RE-rodar a pericia use pcrj_pericia_gastos.",
+     quando_usar: "'quais os achados de gastos da prefeitura', 'me mostra o fracionamento da PCRJ agora'", exemplo: "GET /api/pcrj/gastos_achados",
+     args: {limite_por_detector: "int (5-200, default 40)"}, retorno: "{ok, detectores{contagens}, achados{por detector}}",
+     menu: {grupo: "🕵️ Fiscalização & Perícias", nome: "Achados de gastos da Prefeitura (instantâneo)", exemplo: "quais os achados de gastos da PCRJ?", ordem: 48}}
+  - {id: pcrj_fantasmas, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/pcrj/fantasmas, status: PRONTO,
+     descricao: "Sinais de servidor-fantasma na Camara/Prefeitura do Rio (8 sinais deterministicos somados em escore; faixas forte/verificar/fraco; homonimo sinalizado). FUNIL de priorizacao OSINT — a prova definitiva e o ponto/frequencia interno, que so apuracao formal alcanca. Indicio != acusacao.",
+     quando_usar: "'servidores fantasmas na prefeitura/camara', 'quem tem sinal de fantasma', 'faixa forte de fantasma'", exemplo: "GET /api/pcrj/fantasmas?faixa=forte",
+     args: {faixa: "forte|verificar|fraco (opcional)", limite: "int (1-800)"}, retorno: "{ok, n, faixas{}, itens[], gerado_em}",
+     menu: {grupo: "👥 Pessoal × Benefícios", nome: "Sinais de servidor-fantasma (Câmara/PCRJ)", exemplo: "servidores fantasma na faixa forte?", ordem: 52}}
+  - {id: pcrj_dossie_comissionados, agente: jfn, dominio: auditoria, tipo: cli, comando: "tools/pcrj_finalizar.py", status: PRONTO,
+     descricao: "Dossie Kroll COMPLETO de comissionados/gabinetes da Camara x Prefeitura do Rio: acumulo com direcao temporal, movimentacoes gabinete<->prefeitura<->candidatura, alternancia titular/suplente, candidatos nominais (TSE) e relatorio por gabinete. Roda a finalizacao autonoma do sweep all-RJ (aguarda sweep terminar).",
+     quando_usar: "'dossie dos comissionados', 'relatorio completo dos gabinetes', 'finaliza o sweep da camara'", exemplo: "tools/pcrj_finalizar.py",
+     args: {}, retorno: "PDFs Kroll em reports/ (dossie completo + gabinetes)", enviar_telegram: [path_pdf],
+     menu: {grupo: "👥 Pessoal × Benefícios", nome: "Dossiê completo de comissionados/gabinetes", exemplo: "dossiê dos gabinetes da Câmara", ordem: 53}}
   - {id: ppp_dossie, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/ppp, status: PRONTO,
      descricao: "Dossie pericial de PPP/concessao municipal (Prefeitura do Rio): capta CCPAR + Diario Oficial + edital completo, roda os motores (E1-E7, direcionamento, Lex, fraudes) + a lente PPP (garantia via Fundo Nacional de Saude, aporte, PMI-captura, 5% RCL, verificador) -> PDF Kroll. Indicio != acusacao.",
      quando_usar: "'dossie/pericia da PPP X', 'a PPP do Souza Aguiar', 'concessao/parceria publico-privada da prefeitura'", exemplo: "faz a pericia da PPP do Souza Aguiar",

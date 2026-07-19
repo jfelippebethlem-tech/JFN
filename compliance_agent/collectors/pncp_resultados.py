@@ -547,7 +547,15 @@ def conluio_enriquecido(con, uf: str | None = "RJ", min_certames: int = 5,
         rod["orgao_cnpj_fmt"] = _fmt_cnpj(org[:14])
         rod["membros_nome"] = [{"cnpj": _fmt_cnpj(c), "nome": nome_forn.get(c, "—"),
                                 "vitorias": rod["reparticao"].get(c, 0)} for c in rod["grupo"]]
-        rod["objetos"] = (obj_org.get(org) or [])[:5]
+        # objetos DO GRUPO (o que os membros venceram), não do órgão inteiro — em ente
+        # mono-unidade (PCRJ publica tudo sob 986001) o fallback órgão-level mostrava
+        # objetos alheios ao grupo (TI/locação num rodízio de medicamentos)
+        obj_grupo: list = []
+        for c in rod["grupo"]:
+            for o in obj_org_forn.get((org, c), []):
+                if o not in obj_grupo:
+                    obj_grupo.append(o)
+        rod["objetos"] = (obj_grupo or obj_org.get(org) or [])[:5]
     sem_uni = sum(1 for r in regs if not r.get("unidade_codigo"))
     pad["cobertura"] = {"certames_com_resultado": len(regs), "orgaos": pad.get("n_orgaos", 0),
                         # transparência do backfill: certame sem unidade fica agrupado no ENTE —
