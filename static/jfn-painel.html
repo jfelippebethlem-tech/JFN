@@ -84,8 +84,10 @@
   .ck-grid{margin-top:14px;display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(216px,1fr))}
   .ck-inst{position:relative;border:1px solid var(--bd2);border-radius:var(--r);padding:14px 15px;cursor:pointer;
     background:linear-gradient(165deg,var(--card),var(--card2));box-shadow:var(--sh);transition:border-color .2s,background .15s,box-shadow .25s,transform .2s}
-  .ck-inst:hover{border-color:color-mix(in oklch,var(--accent) 48%,transparent);background:var(--raise);transform:translateY(-2px);
+  .ck-inst:hover{border-color:color-mix(in oklch,var(--accent) 48%,transparent);background:var(--raise);
+    transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateY(-2px) translateZ(6px);
     box-shadow:var(--sh),0 0 26px -10px color-mix(in oklch,var(--accent) 40%,transparent)}
+  @media (prefers-reduced-motion:reduce){.ck-inst:hover{transform:none}}
   .ck-inst .k{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
   .ck-inst .lab{font-family:var(--mono);font-size:10px;letter-spacing:1.2px;color:var(--mut);text-transform:uppercase;font-weight:500}
   .ck-inst .val{font-family:var(--mono);font-weight:600;font-size:26px;line-height:1;margin-top:10px;font-variant-numeric:tabular-nums;letter-spacing:-.4px}
@@ -165,7 +167,8 @@
     font-family:var(--mono);font-size:11.5px;color:var(--tx2);animation:hfin .26s cubic-bezier(.2,.7,.2,1) 1}
   #holofeed li:last-child{border-bottom:0}
   #holofeed li .t{color:var(--dim);flex:0 0 auto;font-size:10.5px}
-  #holofeed li .d{color:var(--saber);font-weight:600;flex:0 0 auto;transition:color 2s}
+  #holofeed li .d{color:var(--evc,var(--saber));font-weight:600;flex:0 0 auto;transition:color 2s;
+    text-shadow:0 0 8px color-mix(in oklch,var(--evc,var(--saber)) 40%,transparent)}
   #holofeed li.crit .d{color:var(--rose)}
   #holofeed .hf-vazio{padding:16px 14px;color:var(--dim);font-size:12px;font-family:var(--mono)}
   @keyframes hfin{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
@@ -187,11 +190,15 @@
   .htop a.help{color:var(--tx2)}
   .htop a.sair:hover,.htop a.help:hover{color:var(--tx);border-color:var(--bd)}
   /* esferas = segmented control sóbrio; identidade da esfera = ponto de cor 6px, nada mais */
-  .spheres{display:flex;gap:6px;padding:0 14px 12px;overflow-x:auto;scrollbar-width:none}
+  /* deck 3D: as esferas vivem num plano angulado; a ativa salta para frente */
+  .spheres{display:flex;gap:6px;padding:0 14px 12px;overflow-x:auto;scrollbar-width:none;perspective:900px}
   .spheres::-webkit-scrollbar{display:none}
   .sph{flex:1;min-width:112px;display:flex;align-items:center;justify-content:center;gap:9px;padding:9px 12px;border-radius:9px;cursor:pointer;position:relative;
-    appearance:none;font-family:inherit;text-align:left;
-    border:1px solid transparent;background:transparent;color:var(--mut);font-weight:500;font-size:13px;transition:.15s}
+    appearance:none;font-family:inherit;text-align:left;transform:rotateX(9deg);transform-style:preserve-3d;
+    border:1px solid transparent;background:transparent;color:var(--mut);font-weight:500;font-size:13px;
+    transition:transform .28s cubic-bezier(.2,.8,.25,1.15),background .15s,border-color .15s,color .15s,box-shadow .2s}
+  .sph:hover{transform:rotateX(0deg) translateZ(10px)}
+  @media (prefers-reduced-motion:reduce){.sph,.sph:hover,.sph.on{transform:none}}
   .sph::before{content:"";width:6px;height:6px;border-radius:2px;flex:0 0 auto;background:var(--dim);transition:.15s}
   .sph.inicio::before{background:var(--accent)}
   .sph.estado::before{background:var(--blue)}
@@ -201,6 +208,7 @@
   .sph.inicio{--sphc:var(--accent)}.sph.estado{--sphc:var(--blue)}.sph.prefeitura{--sphc:var(--gold)}.sph.geral{--sphc:var(--purple)}
   .sph:hover::before{box-shadow:0 0 10px var(--sphc,var(--dim))}
   .sph.on{color:var(--tx);border-color:color-mix(in oklch,var(--sphc) 40%,transparent);background:var(--card);font-weight:600;
+    transform:rotateX(0deg) translateZ(14px);
     box-shadow:var(--sh),0 0 20px -8px color-mix(in oklch,var(--sphc) 45%,transparent)}
   .sph.on::before{box-shadow:0 0 10px var(--sphc);animation:pl 2.6s infinite}
   @media (prefers-reduced-motion:reduce){.sph.on::before{animation:none}}
@@ -244,7 +252,9 @@
     transition:--spot .3s ease}
   .card:hover,.lnk:hover,.ck-inst:hover{--spot:color-mix(in oklch,var(--esf) 12%,transparent)}
   .card:hover{border-color:color-mix(in oklch,var(--esf) 48%,transparent);
+    transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
     box-shadow:var(--sh),0 0 28px -10px color-mix(in oklch,var(--esf) 38%,transparent)}
+  @media (prefers-reduced-motion:reduce){.card:hover{transform:none}}
   /* COISAS GRAVES BRILHAM GRAVES — severidade = luminosidade */
   .card.hl{border-color:color-mix(in oklch,var(--rose) 48%,transparent);animation:graveGlow 3.2s ease-in-out infinite}
   @keyframes graveGlow{0%,100%{box-shadow:var(--sh),0 0 16px -8px color-mix(in oklch,var(--rose) 42%,transparent)}
@@ -377,7 +387,10 @@
 
   nav.tabs{position:fixed;left:0;right:0;bottom:0;z-index:30;display:flex;overflow-x:auto;scrollbar-width:none;background:var(--glass);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);border-top:1px solid var(--bd2);padding:4px 8px calc(4px + env(safe-area-inset-bottom));max-width:1180px;margin:0 auto}
   nav.tabs::-webkit-scrollbar{display:none}
-  nav.tabs button{flex:1 0 auto;min-width:0;background:none;border:0;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:11px 12px;font:inherit;transition:.12s;border-radius:7px;position:relative}
+  nav.tabs{perspective:700px}
+  nav.tabs button{flex:1 0 auto;min-width:0;background:none;border:0;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:11px 12px;font:inherit;transition:color .15s,transform .22s cubic-bezier(.2,.8,.25,1.1);border-radius:7px;position:relative;transform:rotateX(-7deg)}
+  nav.tabs button:hover,nav.tabs button.on{transform:rotateX(0deg) translateZ(6px)}
+  @media (prefers-reduced-motion:reduce){nav.tabs button,nav.tabs button:hover,nav.tabs button.on{transform:none}}
   nav.tabs button .ti{display:none}
   nav.tabs button .tl{font-size:11px;font-weight:500;letter-spacing:.2px}
   nav.tabs button:hover{color:var(--tx2);text-shadow:0 0 10px color-mix(in oklch,var(--esf) 40%,transparent)}
@@ -614,12 +627,22 @@ document.addEventListener('keydown',e=>{
   }
 });
 
-// ═══ SPOTLIGHT — a luz segue o cursor em toda superfície de vidro (1 listener global) ═══
+// ═══ SPOTLIGHT + TILT 3D — a luz E o plano seguem o cursor (1 listener global) ═══
+const _rmGlobal=matchMedia('(prefers-reduced-motion:reduce)').matches;
 document.addEventListener('pointermove',e=>{
   const t=e.target.closest&&e.target.closest('.card,.lnk,.ck-inst,.ck-hero');
-  if(!t)return;const r=t.getBoundingClientRect();
-  t.style.setProperty('--mx',(e.clientX-r.left).toFixed(0)+'px');
-  t.style.setProperty('--my',(e.clientY-r.top).toFixed(0)+'px');
+  if(!t)return;const r=t.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
+  t.style.setProperty('--mx',x.toFixed(0)+'px');
+  t.style.setProperty('--my',y.toFixed(0)+'px');
+  if(!_rmGlobal&&(t.classList.contains('card')||t.classList.contains('ck-inst'))&&r.width<560){
+    t.style.setProperty('--rx',((y/r.height-.5)*-3.5).toFixed(2)+'deg');   // cards largos não tombam
+    t.style.setProperty('--ry',((x/r.width-.5)*4.5).toFixed(2)+'deg');
+  }
+},{passive:true});
+document.addEventListener('pointerout',e=>{
+  const t=e.target.closest&&e.target.closest('.card,.ck-inst');
+  if(!t||t.contains(e.relatedTarget))return;
+  t.style.removeProperty('--rx');t.style.removeProperty('--ry');
 },{passive:true});
 
 // ═══ VIDA GLOBAL — o cockpit em toda aba (cascata · contagem · malha de luz) ═══
@@ -1823,12 +1846,19 @@ function ckBoot(){
     ckCard('lift','Melhor detector (lift)','','bgteal','g_retro'),
     ckCard('fenix','Pago a empresa morta','ckrose','bgrose','g_fenix'),
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
-    ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp')].join('');
+    ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
+    ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos')].join('');
   ckPull(true);
   clearInterval(_ckTimer);_ckTimer=setInterval(()=>{if(!document.hidden&&aba==='i_cockpit')ckPull(false);},30000);
 }
 function ckPull(first){
   _ckTick=[];
+  if(first)J('/api/intel/hub_compartilhado?limite=40').then(d=>{   // caro a frio: só no boot da aba
+    if(!d||!d.ok)return;const gs=(d.grupos||[]),altos=gs.filter(g=>g.risco==='alto');
+    const tot=altos.reduce((s,g)=>s+(g.total_recebido_ob||0),0);
+    ckFill('ninho',{num:altos.length,meta:`grupos de CNPJs no mesmo tel/endereço com OB — <b>${fmtRc(tot)}</b> recebidos`});
+    const nomeChave={endereco:'endereço',telefone:'telefone',email:'e-mail'};
+    ckPush(altos.slice(0,3).map(g=>({c:'a',h:`◉ ninho por ${nomeChave[g.chave]||esc(g.chave)} — <b>${fmtN(g.n_cnpjs)} CNPJs</b> · ${fmtRc(g.total_recebido_ob)} em OB`})));});
   J('/api/comparador/economia').then(d=>{if(!d||!d.ok)return;
     _ckCount($('ck-econ'),d.economia_total,fmtRc,first?1300:900);
     if($('ck-sub'))$('ck-sub').innerHTML=`Se cada uma das <b>${fmtN(d.n_compras_acima_mediana)}</b> compras acima da mediana tivesse pago a <b>mediana de mercado</b> do item.`;
@@ -1868,10 +1898,13 @@ const _redMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
 const _saberCor={ok:'var(--teal)',carga:'var(--amber)',critico:'var(--rose)'};
 let _hfN=0;
 function hfToggle(){$('holofeed').classList.toggle('open');}
+const _EV_COR={ob_siafe:'var(--gold)',ob_tfe:'var(--gold)',alerta:'var(--rose)',radar:'var(--rose)',
+  clausula:'var(--violet)',pericia:'var(--green)',ata:'var(--blue)',sei_doc:'var(--teal)'};
 function _hfAdd(ev,crit){
   const ul=$('hflist');if(!ul)return;
   $('hfvazio').style.display='none';
   const li=document.createElement('li');if(crit)li.className='crit';
+  li.style.setProperty('--evc',_EV_COR[ev.tipo]||'var(--saber)');
   li.innerHTML=`<span class="t">${esc(ev.t||'')}</span><span class="d">${ev.delta>1?'×'+fmtN(ev.delta):'◈'}</span><span>${esc(ev.rotulo||ev.tipo)}</span>`;
   ul.prepend(li);
   while(ul.children.length>10)ul.lastChild.remove();
