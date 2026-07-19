@@ -1320,6 +1320,27 @@ async def api_intel_sancionadas(limite: int = 60):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/sancionadas_municipio")
+async def api_intel_sancionadas_municipio(limite: int = 60):
+    """Empresas com sanção IMPEDITIVA contratadas pela PREFEITURA DO RIO (pcrj_contratos fonte='pncp'),
+    com o teste "à época" (contrato ASSINADO dentro da vigência da sanção). Análogo municipal do
+    /api/intel/sancionadas (competência TCM-RJ). Descarta órgão federal/estadual (contabiliza)."""
+    try:
+        from compliance_agent.cruzamentos_intel import sancionadas_municipio
+        ck = "intel:sanc_mun"
+        if not (d := _cache_get(ck, 3600)):
+            d = _cache_put(ck, sancionadas_municipio())
+        d = dict(d)
+        d["empresas"] = d.get("empresas", [])[:max(1, min(int(limite or 60), 300))]
+        d["explicacao"] = ("Contratação municipal do Rio de empresa sob sanção impeditiva vigente à "
+                           "época da assinatura (vedação: Lei 14.133 art. 156 §1º). Competência de "
+                           "controle externo: TCM-RJ. `descartados_outra_esfera` = órgãos federais "
+                           "(ex.: Fiocruz) e estaduais excluídos por não serem do Município.")
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/perdedoras")
 async def api_intel_perdedoras():
     """Perdedoras contumazes ("nunca ganharam"): participam de ≥K certames nas atas e nunca vencem —

@@ -150,6 +150,73 @@ def sancionadas_contratadas(db_path: str | None = None, min_valor: float = 0.0) 
         con.close()
 
 
+def sancionadas_municipio(db_path: str | None = None, min_valor: float = 0.0) -> dict:
+    """Sanção impeditiva × CONTRATO da Prefeitura do Rio (análogo municipal do
+    ``sancionadas_contratadas``, que só cobre SIAFE-Estado + PNCP).
+
+    Fonte: ``pcrj_contratos`` (só ``fonte='pncp'`` = município do Rio, IBGE 3304557 —
+    exclui as linhas ``pncp_estado`` que contaminam a tabela) × ``sancoes_federais``.
+    Teste "à época": o contrato foi ASSINADO dentro da vigência [data_inicio, data_fim]
+    de uma sanção impeditiva? Contrato fora da janela NÃO macula (mesma régua do Estado).
+    Guarda extra: corrobora a esfera do órgão via ``pcrj.esfera.classificar_esfera``.
+    """
+    try:
+        from compliance_agent.pcrj.esfera import classificar_esfera as _cls
+    except Exception:                       # pragma: no cover
+        _cls = None
+    con = _ro(db_path)
+    try:
+        sanc: dict[str, list] = {}
+        for r in con.execute(
+                f"SELECT cpf_cnpj, nome, cadastro, categoria, data_inicio, data_fim, orgao "
+                f"FROM sancoes_federais WHERE length(cpf_cnpj)=14 AND {_SQL_IMPEDITIVA}"):
+            sanc.setdefault(r["cpf_cnpj"], []).append(dict(r))
+        if not sanc or not _tabela_existe(con, "pcrj_contratos"):
+            return {"ok": True, "empresas": [], "n": 0, "n_a_epoca": 0, "ressalva": RESSALVA}
+
+        achados: dict[str, dict] = {}
+        descartados = {"federal": 0, "estadual-rj": 0}   # honestidade: reporta o que saiu e por quê
+        q = ("SELECT fornecedor_documento c, fornecedor_nome, orgao_cnpj, orgao_nome, "
+             "numero_controle_pncp, objeto, valor_global, valor_inicial, data_assinatura "
+             "FROM pcrj_contratos WHERE fonte='pncp' AND length(fornecedor_documento)=14 "
+             f"AND fornecedor_documento IN ({','.join('?' * len(sanc))})")
+        for r in con.execute(q, list(sanc)):
+            # SÓ município do Rio (competência TCM-RJ). A fonte='pncp' colhe pelo território (IBGE
+            # 3304557) e arrasta órgão FEDERAL sediado no Rio (ex.: Fiocruz) e, raramente, estadual —
+            # jurisdição de outro tribunal. Descarta e contabiliza (não some com o dado em silêncio).
+            esf = _cls(r["orgao_nome"] or "", r["orgao_cnpj"] or "") if _cls else "municipal-rio"
+            if esf in ("federal", "estadual-rj"):
+                descartados[esf] += 1
+                continue
+            a = achados.setdefault(r["c"], {
+                "cnpj": r["c"], "nome": r["fornecedor_nome"], "sancoes": sanc.get(r["c"], []),
+                "contratos": 0, "valor": 0.0, "contratos_durante": 0, "valor_durante": 0.0,
+                "exemplos_durante": []})
+            val = r["valor_global"] or r["valor_inicial"] or 0.0
+            dt = (r["data_assinatura"] or "")[:10]
+            a["contratos"] += 1
+            a["valor"] += val
+            for s in a["sancoes"]:
+                ini, fim = s.get("data_inicio") or "0000", s.get("data_fim") or "9999"
+                if dt and ini <= dt <= fim:
+                    a["contratos_durante"] += 1
+                    a["valor_durante"] += val
+                    if len(a["exemplos_durante"]) < 5:
+                        a["exemplos_durante"].append(
+                            {"contrato": r["numero_controle_pncp"], "orgao": r["orgao_nome"],
+                             "objeto": (r["objeto"] or "")[:120], "data": dt, "valor": val,
+                             "sancao": s["cadastro"], "vigencia": f"{ini}→{fim}"})
+                    break
+
+        lista = [a for a in achados.values() if a["valor"] >= min_valor]
+        lista.sort(key=lambda a: (-a["valor_durante"], -a["valor"]))
+        n_epoca = sum(1 for a in lista if a["contratos_durante"])
+        return {"ok": True, "empresas": lista, "n": len(lista), "n_a_epoca": n_epoca,
+                "descartados_outra_esfera": descartados, "ressalva": RESSALVA}
+    finally:
+        con.close()
+
+
 # ── 2. PERDEDORAS CONTUMAZES (nunca ganharam) ────────────────────────────────
 
 def perdedoras_contumazes(db_path: str | None = None, min_certames: int = 3,
@@ -1881,6 +1948,13 @@ if __name__ == "__main__":
         for e in d["empresas"][:10]:
             print(f"  {e['cnpj']} {e['nome'][:40]:40} estado_durante=R${e['estado']['valor_durante']:,.2f} "
                   f"pncp_durante={e['pncp']['vitorias_durante']}")
+    elif cmd == "sancionadas_municipio":
+        d = sancionadas_municipio()
+        print(f"{d['n']} empresas contratadas pela Prefeitura ({d['n_a_epoca']} À ÉPOCA da sanção); "
+              f"descartados por esfera: {d['descartados_outra_esfera']}")
+        for e in d["empresas"][:10]:
+            print(f"  {e['cnpj']} {e['nome'][:38]:38} durante={e['contratos_durante']} "
+                  f"R${e['valor_durante']:,.2f}")
     elif cmd == "perdedoras":
         d = perdedoras_contumazes()
         print(f"{d['n']} perdedoras contumazes")
