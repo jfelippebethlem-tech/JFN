@@ -317,6 +317,9 @@ _RADAR_PESOS = {
     "fantasma_alto": 20, "fantasma_medio": 10,
     "socio_servidor": 15, "perdedora_contumaz": 10, "fenix": 10,
     "capital_irrisorio": 15,
+    # TODO(1.7): integrar hub_compartilhado (risco='alto') como sinal do radar_risco.
+    # Só a constante por ora — a fusão no radar é followup (não refatorar radar_risco aqui).
+    "hub_massa": 12,
 }
 
 
@@ -1590,6 +1593,124 @@ def conluio_qsa(db_path: str | None = None, limite: int = 120,
                              "de enriquecimento resolve.")}
     finally:
         con.close()
+
+
+# ── HUB COMPARTILHADO (assinatura de "ninho de fantasmas": 1 âncora física, N CNPJs) ──
+
+# chave lógica → coluna física da tabela `estabelecimentos` (dump Receita, Task 1.1;
+# vive em DB separado data/receita_estab.db, ATTACHado readonly).
+_HUB_COLUNA = {"endereco": "endereco_norm", "telefone": "telefone1",
+               "email": "correio_eletronico"}
+
+# Guardas anti-FALSO-POSITIVO: a MESMA âncora física pode ser legítima em massa.
+#  - telefone repetido em CENTENAS de CNPJs ≈ contabilidade de massa / call-center /
+#    provedor (o contador declara o próprio telefone em todos os clientes) → não é ninho.
+#  - e-mail de domínio/prefixo de contabilidade (contabil/assessoria) → idem.
+#  - endereço com DEZENAS de CNPJs ≈ galeria comercial / coworking / condomínio de
+#    salas — muitos CNPJs reais dividem o mesmo logradouro normalizado.
+# Fundamento: um "ninho" fraudulento é COESO (poucas empresas, casca fina); a massa
+# legítima é grande e difusa. Por isso 'alto' exige grupo pequeno E materialidade.
+_HUB_TELEFONE_MASSA = 200      # telefone1 em >200 CNPJs → risco 'baixo' (contador/provedor)
+_HUB_ENDERECO_MASSA = 80       # endereço em >80 CNPJs → risco 'info' (galeria/coworking)
+_HUB_TETO_ALTO = 80            # 'alto' só para grupo coeso (min_cnpjs..80), nunca massa
+_HUB_TOTAL_ALTO = 1_000_000.0  # materialidade que sozinha sustenta 'alto' (R$ recebido de OB)
+_EMAIL_CONTABIL = ("contabil", "contabilidade", "assessoria", "escritorio")
+
+
+def hub_compartilhado(chave: str = "endereco", min_cnpjs: int = 5,
+                      db_path: str | None = None, estab_path: str | None = None,
+                      limite: int = 200) -> dict:
+    """HUB COMPARTILHADO: uma âncora física (endereço/telefone/e-mail) usada por N CNPJs.
+
+    Empresas de fachada nascem em lote e compartilham o mesmo endereço-ninho, o mesmo
+    telefone ou o mesmo e-mail de contato — a assinatura clássica do "ninho de fantasmas"
+    (interposição/laranja; Lei 14.133 art. 5º e 62-63, qualificação inexistente). Agrupa
+    `estabelecimentos` (dump Receita, DB separado ``data/receita_estab.db``) pela coluna da
+    chave, com ``HAVING COUNT(DISTINCT cnpj) >= min_cnpjs``, e cruza com ``favorecido_resumo``
+    (OB do Estado) para materialidade.
+
+    Guarda anti-FP (ver ``_HUB_*``): a mesma âncora pode ser massa LEGÍTIMA (contador com
+    o próprio telefone em centenas de clientes; galeria/coworking com dezenas de CNPJs
+    reais). Por isso ``risco='alto'`` exige grupo COESO (min_cnpjs..``_HUB_TETO_ALTO``) E
+    ≥1 CNPJ recebendo OB E (maioria NÃO-ATIVA OU ``total_recebido_ob`` alto); telefone de
+    massa (>200) vira 'baixo', e-mail contábil vira 'baixo', endereço de massa (>80) vira
+    'info'. INDISPONÍVEL (dump não ingerido) ≠ 0: retorna ``ok=False`` com o motivo.
+
+    Retorna ``{ok, grupos:list[dict], n, chave, explicacao, ressalva}`` — cada grupo é
+    ``{chave, valor, n_cnpjs, n_ativos, cnpjs (≤20), n_recebem_ob, total_recebido_ob,
+    risco, motivo}`` — para casar o padrão dict/ok/ressalva do módulo (o painel e o cache
+    esperam ``.get('ok')``).
+    """
+    col = _HUB_COLUNA.get(chave)
+    if not col:
+        return {"ok": False, "erro": f"chave inválida: {chave!r} (use endereco|telefone|email)"}
+    estab = estab_path or str(_REPO / "data" / "receita_estab.db")
+    con = _ro(db_path)
+    try:
+        try:
+            con.execute("ATTACH DATABASE ? AS estab", (f"file:{estab}?mode=ro",))
+        except sqlite3.OperationalError as exc:
+            return {"ok": False, "erro": f"estabelecimentos indisponível ({estab}): {exc} — "
+                                         "rodar ingest_estabelecimentos (Task 1.1)"}
+        try:
+            rows = con.execute(
+                f"SELECT e.{col} AS valor, COUNT(DISTINCT e.cnpj) AS n_cnpjs, "
+                f"  SUM(CASE WHEN e.situacao_cadastral='ATIVA' THEN 1 ELSE 0 END) AS n_ativos, "
+                f"  COUNT(DISTINCT CASE WHEN f.favorecido_cpf IS NOT NULL THEN e.cnpj END) AS n_recebem_ob, "
+                f"  COALESCE(SUM(f.total_pago), 0) AS total_recebido_ob "
+                f"FROM estab.estabelecimentos e "
+                f"LEFT JOIN favorecido_resumo f ON f.favorecido_cpf = e.cnpj "
+                f"WHERE e.{col} IS NOT NULL AND TRIM(e.{col}) != '' "
+                f"GROUP BY e.{col} HAVING COUNT(DISTINCT e.cnpj) >= ? "
+                f"ORDER BY total_recebido_ob DESC, n_cnpjs DESC LIMIT ?",
+                (min_cnpjs, limite)).fetchall()
+        except sqlite3.OperationalError as exc:
+            return {"ok": False, "erro": f"estabelecimentos ausente no dump: {exc}"}
+
+        grupos = []
+        for r in rows:
+            valor, n = r["valor"], r["n_cnpjs"]
+            n_ativos, n_ob = r["n_ativos"] or 0, r["n_recebem_ob"] or 0
+            total = float(r["total_recebido_ob"] or 0.0)
+            amostra = [x["cnpj"] for x in con.execute(
+                f"SELECT cnpj FROM estab.estabelecimentos WHERE {col} = ? LIMIT 20", (valor,))]
+            risco, motivo = _hub_risco(chave, valor, n, n_ativos, n_ob, total)
+            grupos.append({
+                "chave": chave, "valor": valor, "n_cnpjs": n, "n_ativos": n_ativos,
+                "cnpjs": amostra, "n_recebem_ob": n_ob,
+                "total_recebido_ob": round(total, 2), "risco": risco, "motivo": motivo})
+        return {"ok": True, "grupos": grupos, "n": len(grupos), "chave": chave,
+                "explicacao": ("Uma âncora física (endereço, telefone ou e-mail) usada por vários "
+                               "CNPJs é a assinatura de 'ninho de fantasmas' — empresas de fachada "
+                               "abertas em lote compartilham o mesmo contato. 'alto' = grupo coeso "
+                               "com dinheiro do Estado e maioria não-ativa; massa legítima "
+                               "(contador, galeria, coworking) é rebaixada por guarda anti-FP."),
+                "ressalva": ("Indício ≠ acusação. Endereço/telefone/e-mail compartilhado é comum e "
+                             "muitas vezes legítimo (contabilidade, condomínio comercial). Confirmar "
+                             "o vínculo real (QSA, execução) antes de citar. Dump da Receita = foto de "
+                             "um mês; INDISPONÍVEL (não ingerido) ≠ inexistente.")}
+    finally:
+        con.close()
+
+
+def _hub_risco(chave: str, valor: str, n_cnpjs: int, n_ativos: int,
+               n_recebem_ob: int, total_recebido_ob: float) -> tuple[str, str]:
+    """Classifica o risco de um grupo aplicando as guardas anti-FP (ver ``_HUB_*``)."""
+    if chave == "telefone" and n_cnpjs > _HUB_TELEFONE_MASSA:
+        return "baixo", (f"telefone em {n_cnpjs} CNPJs (>{_HUB_TELEFONE_MASSA}) — "
+                         "padrão de contabilidade de massa/call-center, não ninho")
+    if chave == "email" and any(t in (valor or "").lower() for t in _EMAIL_CONTABIL):
+        return "baixo", "e-mail de contabilidade/assessoria — contato terceirizado legítimo"
+    if chave == "endereco" and n_cnpjs > _HUB_ENDERECO_MASSA:
+        return "info", (f"endereço em {n_cnpjs} CNPJs (>{_HUB_ENDERECO_MASSA}) — "
+                        "provável galeria/coworking/condomínio comercial")
+    if (min_ok := n_recebem_ob >= 1) and n_cnpjs <= _HUB_TETO_ALTO and \
+            (n_ativos < n_cnpjs / 2 or total_recebido_ob >= _HUB_TOTAL_ALTO):
+        return "alto", (f"grupo coeso ({n_cnpjs} CNPJs), {n_recebem_ob} recebem OB "
+                        f"(R${total_recebido_ob:,.2f}), {n_ativos} ativos — ninho com materialidade")
+    if min_ok:
+        return "medio", f"{n_recebem_ob} de {n_cnpjs} CNPJs recebem OB — verificar vínculo"
+    return "baixo", "nenhum CNPJ do grupo recebe OB do Estado — sem materialidade"
 
 
 def _beneficios_vinculo_resumo() -> dict:

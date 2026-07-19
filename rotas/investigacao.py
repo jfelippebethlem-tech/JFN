@@ -1727,6 +1727,26 @@ async def api_intel_fantasmas(limite: int = 50):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/hub_compartilhado")
+async def api_intel_hub_compartilhado(chave: str = "endereco", min: int = 5):
+    """Hub compartilhado: 1 âncora física (endereço/telefone/e-mail) usada por N CNPJs — assinatura
+    de 'ninho de fantasmas'. Guarda anti-FP rebaixa massa legítima (contador, galeria, coworking)."""
+    from datetime import datetime as _dt
+    try:
+        from compliance_agent.cruzamentos_intel import hub_compartilhado
+        ch = chave if chave in ("endereco", "telefone", "email") else "endereco"
+        mn = int(min or 5)
+        mn = 2 if mn < 2 else (100 if mn > 100 else mn)
+        if not (d := _cache_get(f"intel:hub:{ch}:{mn}", 600)):
+            d = _cache_put(f"intel:hub:{ch}:{mn}", hub_compartilhado(chave=ch, min_cnpjs=mn))
+        return JSONResponse({"ok": d.get("ok", True), "grupos": d.get("grupos", []),
+                             "erro": d.get("erro"), "explicacao": d.get("explicacao"),
+                             "ressalva": d.get("ressalva"),
+                             "gerado_em": _dt.now().strftime("%Y-%m-%d %H:%M")})
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/pcrj/comissionados_candidatos")
 async def api_pcrj_comissionados_candidatos(limite: int = 300):
     """Comissionados da PREFEITURA do Rio que foram CANDIDATOS (TSE) — tabela
