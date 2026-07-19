@@ -1931,6 +1931,44 @@ async def api_pcrj_beneficios_vinculo():
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/pcrj/doe_concentracao")
+async def api_pcrj_doe_concentracao(min_atas: int = 2, min_valor: float = 100_000.0):
+    """Concentração de vencedor nas Atas de Registro de Preços mineradas do D.O. RIO
+    (pcrj_doe_materia → eventos). CNPJ que vence ≥min_atas atas com valor material —
+    sinal de concentração/captura na fonte municipal. Determinístico, roda em ms."""
+    try:
+        ck = f"pcrj:doe_conc:{int(min_atas)}:{int(min_valor)}"
+        if d := _cache_get(ck, 900):
+            return JSONResponse(d)
+        from compliance_agent.pcrj.doe_minerador import concentracao_vencedor
+        out = concentracao_vencedor(min_atas=int(min_atas), min_valor=float(min_valor))
+        out["explicacao"] = ("Vencedor recorrente de atas de registro de preços no D.O. do "
+                             "Município (fonte OCR). Cobertura = matérias já colhidas pelo doweb; "
+                             "INDISPONÍVEL ≠ 0 — a cobertura cresce com o harvest do Diário.")
+        return JSONResponse(_cache_put(ck, out))
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
+@router.get("/api/pcrj/doe_canal_informal")
+async def api_pcrj_doe_canal_informal():
+    """Canais @gmail.com usados como via de compra por órgão municipal (pesquisa de mercado /
+    retirada de empenho por e-mail pessoal) — minerado do D.O. RIO. Baixa transparência,
+    vetor de direcionamento (contorna o processo formal SIGA/SEI)."""
+    try:
+        ck = "pcrj:doe_gmail"
+        if d := _cache_get(ck, 900):
+            return JSONResponse(d)
+        from compliance_agent.pcrj.doe_minerador import canal_informal
+        out = canal_informal()
+        out["explicacao"] = ("Compra pública conduzida por e-mail pessoal @gmail.com (gratuito, "
+                             "sem rastro institucional). Indício de fragilidade de controle interno "
+                             "e de canal informal fora do processo administrativo formal.")
+        return JSONResponse(_cache_put(ck, out))
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/fontes/frescor")
 async def api_fontes_frescor():
     """Frescor de CADA fonte de dados (última coleta + último dado). O painel mostra em verde/âmbar/
