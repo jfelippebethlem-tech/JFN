@@ -6,7 +6,13 @@ import sqlite3
 
 from compliance_agent.emendas.db import conectar  # reexport: mesmo helper WAL/row_factory
 
-__all__ = ["conectar", "init_schema", "DDL"]
+__all__ = ["conectar", "init_schema", "DDL", "DDL_CERTAME_INDICE"]
+
+# Índice de Direcionamento de Certame (Task 4.3 — indice_certame.py); faixas BAIXO/MEDIO/ALTO/EXTREMO
+DDL_CERTAME_INDICE = """CREATE TABLE IF NOT EXISTS certame_indice (
+    certame TEXT PRIMARY KEY, score REAL, prioridade REAL, faixa TEXT,
+    confianca REAL, familias_json TEXT, drivers_json TEXT,
+    gerado_em TEXT DEFAULT (datetime('now')))"""
 
 DDL = [
     """CREATE TABLE IF NOT EXISTS edital_documento (
@@ -32,6 +38,7 @@ DDL = [
         numero_controle_pncp TEXT, raridade REAL, forca_e7 TEXT, sumula TEXT,
         votos_json TEXT, score_final INTEGER, veredito TEXT,
         verificado_em TEXT DEFAULT (datetime('now')))""",
+    DDL_CERTAME_INDICE,
 ]
 
 
