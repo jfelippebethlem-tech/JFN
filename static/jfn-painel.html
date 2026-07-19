@@ -5,9 +5,10 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>JFN — Central de Inteligência</title>
 <style>
-  /* ── Design system JFN v4 "sala de comando" ───────────────────────────
-     Evolução do v3: telemetria mono, HUD discreto (cantoneiras/scan), LEDs
-     de status por fonte. Elevação por LUZ; cor saturada só com SIGNIFICADO.
+  /* ── Design system JFN v5 "SABRE" ─────────────────────────────────────
+     Evolução do v4: o Conduíte (lâmina viva = barramento SSE de eventos
+     reais; cor = estado do sistema), Kyber core (carga da VM), holofeed
+     (vidro líquido flutuante). Motion SIGNIFICA estado — nada decorativo.
      Paleta de dados validada (CVD ΔE≥15, contraste ≥3:1 sobre --card).    */
   :root{
     /* JFN design system — OKLCH, dark, "Apple-elegante com alma Jarvis" (ver DESIGN.md).
@@ -94,11 +95,67 @@
   .ck-fchip .fnm{color:var(--tx2)} .ck-fchip .fage{color:var(--dim)}
   @media (prefers-reduced-motion:reduce){#netbg{opacity:.28}.aura,.ck-hero::before,.ck-inst .dot::after,.ck-ticker .lane,.ck-fchip .fled{animation:none!important}}
 
-  header{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(18px);border-bottom:1px solid var(--bd2);position:sticky;overflow:hidden}
-  header::after{content:"";position:absolute;left:0;right:0;top:0;height:1px;
-    background:linear-gradient(90deg,transparent,rgba(79,214,196,.6),rgba(110,168,255,.6),transparent);
-    animation:scan 7s linear infinite;opacity:.55;pointer-events:none}
-  @keyframes scan{0%{transform:translateX(-60%)}100%{transform:translateX(60%)}}
+  header{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(18px);border-bottom:1px solid var(--bd2);position:sticky;overflow:hidden;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.06)}
+  @media (prefers-reduced-transparency:reduce){header{background:var(--bg2);backdrop-filter:none}}
+
+  /* ── O CONDUÍTE — lâmina viva: barramento de eventos reais do sistema ──────────
+     Não é decoração: cada pulso = um evento do SSE /api/eventos/stream (OB ingerida,
+     alerta, cláusula julgada, sweep avançando). Cor da lâmina = estado agregado
+     (teal saudável → âmbar carga → rosa crítico). Sem eventos, respira (vivo, ocioso).
+     Substitui o scanline decorativo do v4 — motion passa a SIGNIFICAR estado. */
+  :root{--saber:var(--teal)}
+  #conduit{position:relative;height:10px;margin:0 0 2px;pointer-events:none}
+  .cblade{position:absolute;left:14px;right:14px;top:4px;height:2px;border-radius:2px;
+    background:linear-gradient(90deg,transparent,var(--saber) 3%,var(--saber) 97%,transparent);
+    box-shadow:0 0 7px color-mix(in oklch,var(--saber) 45%,transparent),0 0 22px color-mix(in oklch,var(--saber) 18%,transparent);
+    transform-origin:left center;animation:ignicao .32s cubic-bezier(.2,.7,.2,1) 1,respira 4.5s ease-in-out .4s infinite;
+    transition:background 2s linear,box-shadow 2s linear}
+  .cblade::before{content:"";position:absolute;left:-3px;top:-2.5px;width:7px;height:7px;border-radius:50%;
+    background:var(--saber);box-shadow:0 0 9px var(--saber);transition:background 2s,box-shadow 2s}
+  @keyframes ignicao{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+  @keyframes respira{0%,100%{opacity:1}50%{opacity:.82}}
+  .cpulse{position:absolute;top:3.1px;left:0;width:34px;height:3.8px;border-radius:3px;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--saber) 60%,white 12%),white 82%,transparent);
+    filter:drop-shadow(0 0 6px var(--saber));animation:viaja .9s linear 1 forwards}
+  .cpulse.crit{background:linear-gradient(90deg,transparent,var(--rose),white 82%,transparent);filter:drop-shadow(0 0 7px var(--rose))}
+  @keyframes viaja{from{transform:translateX(0)}to{transform:translateX(min(100vw,1220px))}}
+  .clabel{position:absolute;top:-17px;right:16px;font-family:var(--mono);font-size:10px;letter-spacing:.6px;
+    color:color-mix(in oklch,var(--saber) 75%,white 20%);opacity:0;animation:clab 2.6s ease-out 1 forwards;white-space:nowrap}
+  @keyframes clab{0%{opacity:0;transform:translateY(3px)}12%{opacity:.95;transform:none}78%{opacity:.95}100%{opacity:0}}
+
+  /* ── KYBER CORE — reator do header: arco = carga da VM; núcleo pisca com sweep ── */
+  #kyber{flex:0 0 auto;width:30px;height:30px;cursor:pointer;position:relative}
+  #kyber svg{width:100%;height:100%;transform:rotate(-90deg)}
+  #kyber .karc{fill:none;stroke:color-mix(in oklch,var(--saber) 80%,transparent);stroke-width:2.6;stroke-linecap:round;
+    transition:stroke-dashoffset 1.6s ease,stroke 2s linear}
+  #kyber .ktrk{fill:none;stroke:var(--bd2);stroke-width:2.6}
+  #kyber .knuc{fill:var(--saber);transition:fill 2s}
+  #kyber.sweep .knuc{animation:pl 1.8s infinite}
+  #kyber:hover .karc{stroke:var(--saber)}
+
+  /* ── HOLOFEED — vidro líquido flutuante com os últimos eventos reais ──
+     Vidro SÓ em camada flutuante (elevação real); densidade cockpit: divide-y, mono. */
+  #holofeed{position:fixed;right:16px;bottom:16px;z-index:45;width:min(330px,88vw);border-radius:15px;
+    background:color-mix(in oklch,var(--bg2) 82%,transparent);backdrop-filter:blur(20px) saturate(1.15);-webkit-backdrop-filter:blur(20px) saturate(1.15);
+    border:1px solid rgba(255,255,255,.09);box-shadow:inset 0 1px 0 rgba(255,255,255,.10),0 22px 48px -26px rgba(0,0,0,.8);
+    transform:translateY(14px);opacity:0;pointer-events:none;transition:transform .22s cubic-bezier(.2,.7,.2,1),opacity .22s}
+  #holofeed.open{transform:none;opacity:1;pointer-events:auto}
+  @media (prefers-reduced-transparency:reduce){#holofeed{background:var(--bg2);backdrop-filter:none}}
+  #holofeed .hf-t{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--bd2);
+    font-family:var(--mono);font-size:10.5px;letter-spacing:1.6px;text-transform:uppercase;color:var(--mut)}
+  #holofeed .hf-t b{color:var(--saber);transition:color 2s}
+  #holofeed ul{list-style:none;margin:0;padding:2px 0;max-height:264px;overflow-y:auto}
+  #holofeed li{display:flex;gap:10px;align-items:baseline;padding:7px 14px;border-bottom:1px solid color-mix(in oklch,var(--bd2) 55%,transparent);
+    font-family:var(--mono);font-size:11.5px;color:var(--tx2);animation:hfin .28s cubic-bezier(.2,.7,.2,1) 1}
+  #holofeed li:last-child{border-bottom:0}
+  #holofeed li .t{color:var(--dim);flex:0 0 auto;font-size:10.5px}
+  #holofeed li .d{color:var(--saber);font-weight:700;flex:0 0 auto;transition:color 2s}
+  #holofeed li.crit .d{color:var(--rose)}
+  #holofeed .hf-vazio{padding:16px 14px;color:var(--dim);font-size:12px;font-family:var(--mono)}
+  @keyframes hfin{from{opacity:0;transform:translateY(-5px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){
+    .cblade{animation:none}.cpulse,.clabel{display:none}#holofeed li{animation:none}#kyber.sweep .knuc{animation:none}}
   .htop{display:flex;align-items:center;gap:12px;padding:13px 18px 11px}
   .brand{display:flex;align-items:center;gap:11px;font-weight:800;letter-spacing:.3px}
   .brand .lg{font-size:19px;filter:drop-shadow(0 0 10px rgba(79,214,196,.6))}
@@ -319,15 +376,26 @@
   <header>
     <div class="htop">
       <div class="brand"><span class="lg">🛰️</span><div>JFN<small id="hsub">CENTRAL DE INTELIGÊNCIA · RJ</small></div></div>
-      <span class="live"><span class="pulse"></span>ao vivo</span>
-      <span class="actions"><a class="help" onclick="glossario()">ⓘ Termos</a><a class="ctrl" href="/controle">🛡️ Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
+      <span class="live" id="livebadge" onclick="hfToggle()" style="cursor:pointer" title="canal de eventos ao vivo — clique para o holofeed"><span class="pulse"></span><span id="livetxt">ao vivo</span></span>
+      <span class="actions">
+        <span id="kyber" onclick="hfToggle()" title="Kyber core — carga da VM · clique para o holofeed">
+          <svg viewBox="0 0 30 30"><circle class="ktrk" cx="15" cy="15" r="11.5"/>
+          <circle class="karc" id="karc" cx="15" cy="15" r="11.5" stroke-dasharray="72.3" stroke-dashoffset="72.3"/>
+          <circle class="knuc" cx="15" cy="15" r="3.2"/></svg>
+        </span>
+        <a class="help" onclick="glossario()">ⓘ Termos</a><a class="ctrl" href="/controle">🛡️ Controle</a><a class="sair" href="/logout_jfn">Sair</a></span>
     </div>
+    <div id="conduit" aria-hidden="true"><span class="cblade"></span></div>
     <div class="spheres" id="spheres"></div>
   </header>
   <main id="view"><div class="skel"><span class="sp"></span>Carregando inteligência…</div></main>
   <nav class="tabs" id="tabs"></nav>
 </div>
 <div class="ov" id="ov" onclick="if(event.target===this)fecharDossie()"><div class="sheet" id="sheet"></div></div>
+<div id="holofeed" role="log" aria-label="eventos do sistema ao vivo">
+  <div class="hf-t"><b>◈</b> holofeed <span id="hfload" style="margin-left:auto;color:var(--dim)"></span></div>
+  <ul id="hflist"></ul><div class="hf-vazio" id="hfvazio">Silêncio honesto — sem eventos novos; a lâmina respira.</div>
+</div>
 
 <script>
 const $=id=>document.getElementById(id);
@@ -1618,6 +1686,59 @@ function ckPull(first){
 
 (async()=>{montarSpheres();montarTabs();netbgStart();await ir('i_cockpit');
   const st=await J('/status');if(st.exercicio)$('hsub').textContent='CENTRAL DE INTELIGÊNCIA · SIAFE '+(st.logged_in?'✓':'✗')+' · '+st.exercicio;})();
+
+/* ── SABRE: motor do Conduíte + Kyber core + holofeed ─────────────────────────
+   Assina /api/eventos/stream (SSE). Cada evento REAL vira: (a) pulso de plasma
+   viajando na lâmina, (b) linha no holofeed. O pulso de 4s do backend rege a cor
+   da lâmina (estado) e o arco do Kyber (carga da VM). Se o SSE cair, o EventSource
+   reconecta sozinho; o badge diz a verdade ("reconectando"), e o painel segue no
+   polling de 30s que sempre existiu — tempo real é elevação, não dependência. */
+const _redMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const _saberCor={ok:'var(--teal)',carga:'var(--amber)',critico:'var(--rose)'};
+let _hfN=0;
+function hfToggle(){$('holofeed').classList.toggle('open');}
+function _hfAdd(ev,crit){
+  const ul=$('hflist');if(!ul)return;
+  $('hfvazio').style.display='none';
+  const li=document.createElement('li');if(crit)li.className='crit';
+  li.innerHTML=`<span class="t">${esc(ev.t||'')}</span><span class="d">${ev.delta>1?'×'+fmtN(ev.delta):'◈'}</span><span>${esc(ev.rotulo||ev.tipo)}</span>`;
+  ul.prepend(li);
+  while(ul.children.length>10)ul.lastChild.remove();
+  _hfN++;
+}
+function _pulso(ev,crit){
+  if(_redMotion)return;
+  const c=$('conduit');if(!c)return;
+  const p=document.createElement('span');p.className='cpulse'+(crit?' crit':'');
+  p.addEventListener('animationend',()=>p.remove());c.appendChild(p);
+  if(ev.rotulo){const l=document.createElement('span');l.className='clabel';
+    l.textContent=(ev.delta>1?ev.delta+'× ':'')+ev.rotulo;
+    l.addEventListener('animationend',()=>l.remove());c.appendChild(l);}
+}
+function _kyber(load1,sweeps){
+  const arc=$('karc');if(!arc)return;
+  const frac=Math.min(1,(load1||0)/5);          // 2 vCPU: load 5 = teto crítico do arco
+  arc.style.strokeDashoffset=(72.3*(1-frac)).toFixed(1);
+  $('kyber').classList.toggle('sweep',!!(sweeps&&(sweeps.sei||sweeps.siafe)));
+  $('hfload').textContent='load '+(load1==null?'—':load1.toFixed(2));
+}
+function sabreStart(){
+  if(!window.EventSource)return;               // navegador antigo: polling de sempre
+  const es=new EventSource('/api/eventos/stream');
+  es.onopen=()=>{$('livetxt').textContent='ao vivo';};
+  es.onerror=()=>{$('livetxt').textContent='reconectando…';};
+  es.onmessage=m=>{
+    let ev;try{ev=JSON.parse(m.data);}catch(_){return;}
+    if(ev.tipo==='pulse'){
+      document.documentElement.style.setProperty('--saber',_saberCor[ev.estado]||_saberCor.ok);
+      _kyber(ev.load1,ev.sweeps);
+      return;                                   // batimento não polui o feed nem pulsa a lâmina
+    }
+    const crit=(ev.tipo==='alerta'||ev.tipo==='radar');
+    _pulso(ev,crit);_hfAdd(ev,crit);
+  };
+}
+sabreStart();
 </script>
 </body>
 </html>

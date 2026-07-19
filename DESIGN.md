@@ -51,6 +51,17 @@ Escala **fixa** (rem), razão ~1.2 — não fluida:
 - z-index semântico: base(0) < conteúdo(1) < sticky(20) < overlay(40) < sheet(50) < toast(60).
 - Cards: só quando são a melhor affordance; **nunca** card dentro de card; **nunca** side-stripe.
 
+## v5 "SABRE" — o vivo em tempo real (2026-07-18)
+Assinatura única do painel (boldness gasta em UM lugar): **o Conduíte** — lâmina fina sob o
+header que é o barramento SSE `/api/eventos/stream`. Cada evento real (OB, alerta, cláusula,
+sweep) = pulso de plasma viajando; cor da lâmina = estado agregado (teal ok · âmbar carga ·
+rosa crítico, transição 2s, nunca pisca); ocioso = respiração sutil (silêncio honesto).
+**Kyber core** no header: arco = load da VM (teto 5), núcleo pisca com sweep ativo.
+**Holofeed**: vidro líquido flutuante (blur + borda interna 1px + inset highlight; fallback
+sólido sob `prefers-reduced-transparency`), últimos 10 eventos, mono, divide-y.
+Vidro SÓ em camada flutuante (elevação real). O único glow permitido = lâmina/core.
+`prefers-reduced-motion`: lâmina estática, sem pulsos; feed continua.
+
 ## Motion (alma Jarvis, contida)
 - 150–220ms na maioria; ease-out-quart `cubic-bezier(.2,.7,.2,1)`. Sem bounce/elastic.
 - Motion = ESTADO: hover, focus, seleção, entrada de conteúdo (crossfade curto), reveal de sheet.
