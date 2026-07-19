@@ -482,6 +482,24 @@ def classificar_esfera(registro: dict, oficial: dict[str, str]) -> str:
     return e
 
 
+def certames_da_esfera(con, esfera: str | None) -> set | None:
+    """Set de `certame` cuja esfera oficial (classificar_esfera) é `esfera`
+    ('estado'|'prefeitura'|'municipios'|'federal'|'outros'). None/''/'todas' = sem filtro.
+    É O filtro canônico das abas do painel: aba Estado passa 'estado', Prefeitura 'prefeitura' —
+    nenhum detector deve reinventar a classificação (exceções de unidade vivem no classificar_esfera)."""
+    if not esfera or esfera == "todas":
+        return None
+    oficial = esferas_por_ente(con)
+    certs: set = set()
+    for r in con.execute(
+            "SELECT certame, MAX(orgao_cnpj) orgao_cnpj, MAX(orgao_nome) orgao_nome, "
+            "MAX(unidade_nome) unidade_nome, MAX(municipio) municipio "
+            "FROM pncp_resultado GROUP BY certame"):
+        if classificar_esfera(dict(r), oficial) == esfera:
+            certs.add(r["certame"])
+    return certs
+
+
 def conluio_enriquecido(con, uf: str | None = "RJ", min_certames: int = 5,
                         esfera: str | None = None) -> dict:
     """Roda detectar_rodizio_vencedores sobre os resultados do PNCP e DECORA com nome de fornecedor,

@@ -47,17 +47,24 @@ def _un(u: str | None) -> str:
     return re.sub(r"[^a-z]", "", (u or "").lower())[:8]
 
 
-def _linhas(con):
-    return con.execute(
+def _linhas(con, certs: set | None = None):
+    rows = con.execute(
         "SELECT item_descricao d, unidade_medida un, valor_unitario vu, quantidade, orgao_nome, "
         "unidade_nome, fornecedor_nome, fornecedor_cnpj, certame, data_pub "
         "FROM pncp_resultado WHERE ordem_classificacao=1 AND valor_unitario>0 AND quantidade>=2 "
         "AND item_descricao IS NOT NULL AND length(item_descricao)>=4").fetchall()
+    return rows if certs is None else [r for r in rows if r["certame"] in certs]
 
 
-def _grupos(con) -> dict:
+def _certs(con, esfera: str | None) -> set | None:
+    """Filtro canônico de esfera (aba Estado = 'estado', Prefeitura = 'prefeitura')."""
+    from compliance_agent.collectors.pncp_resultados import certames_da_esfera
+    return certames_da_esfera(con, esfera)
+
+
+def _grupos(con, certs: set | None = None) -> dict:
     g: dict[tuple, list] = defaultdict(list)
-    for r in _linhas(con):
+    for r in _linhas(con, certs):
         base = _norm_item(r["d"])
         if base:
             g[(base, _un(r["un"]))].append(r)
@@ -65,7 +72,7 @@ def _grupos(con) -> dict:
 
 
 def buscar_grupos(termo: str, db_path: str | None = None, min_compras: int = 3,
-                  min_orgaos: int = 2, limite: int = 40) -> dict:
+                  min_orgaos: int = 2, limite: int = 40, esfera: str | None = None) -> dict:
     """Grupos de item cuja descrição normalizada casa TODAS as palavras do termo, com estatística
     de preço. Ex.: 'aluguel carro' → grupos de locação de veículo comparáveis entre órgãos."""
     toks = [t for t in _norm_item(termo).split() if t] or [t for t in re.sub(r"[^a-z ]", " ",
@@ -73,7 +80,7 @@ def buscar_grupos(termo: str, db_path: str | None = None, min_compras: int = 3,
     con = _ro(db_path)
     try:
         achados = []
-        for (base, un), itens in _grupos(con).items():
+        for (base, un), itens in _grupos(con, _certs(con, esfera)).items():
             if not all(t in base for t in toks):
                 continue
             orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
@@ -96,13 +103,14 @@ def buscar_grupos(termo: str, db_path: str | None = None, min_compras: int = 3,
         con.close()
 
 
-def comparar(grupo: str, unidade: str | None = None, db_path: str | None = None) -> dict:
+def comparar(grupo: str, unidade: str | None = None, db_path: str | None = None,
+             esfera: str | None = None) -> dict:
     """Para UM item (grupo normalizado + unidade), ranqueia ÓRGÃOS e FORNECEDORES pelo preço
     unitário mediano. Mostra quem paga acima/abaixo da mediana geral do item."""
     un_alvo = _un(unidade) if unidade is not None else None
     con = _ro(db_path)
     try:
-        itens = [r for (b, u), lst in _grupos(con).items() if b == grupo
+        itens = [r for (b, u), lst in _grupos(con, _certs(con, esfera)).items() if b == grupo
                  and (un_alvo is None or u == un_alvo) for r in lst]
         if not itens:
             return {"ok": False, "erro": f"grupo '{grupo}' sem compras comparáveis"}
@@ -141,14 +149,14 @@ def comparar(grupo: str, unidade: str | None = None, db_path: str | None = None)
         con.close()
 
 
-def _eficiencia(con, por: str, min_itens: int) -> list:
+def _eficiencia(con, por: str, min_itens: int, certs: set | None = None) -> list:
     """Agrega, por órgão OU fornecedor, a razão preço/mediana-do-item ao longo de MUITOS itens.
     razão mediana <1 = paga/cobra abaixo do mercado; >1 = acima. Exige ≥`min_itens` itens DISTINTOS
     comparáveis (diversidade real, não a mesma compra repetida) para significância."""
     razoes: dict = defaultdict(list)
     itens_de: dict = defaultdict(set)                 # k -> conjunto de itens distintos (sem cap)
     ident: dict = {}
-    for (base, un), itens in _grupos(con).items():
+    for (base, un), itens in _grupos(con, certs).items():
         orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
         if len(itens) < 3 or len(orgaos) < 2:
             continue                                  # só item comparável entra na eficiência
@@ -177,12 +185,13 @@ def _eficiencia(con, por: str, min_itens: int) -> list:
     return out
 
 
-def ranking_orgaos(db_path: str | None = None, min_itens: int = 8, limite: int = 60) -> dict:
+def ranking_orgaos(db_path: str | None = None, min_itens: int = 8, limite: int = 60,
+                   esfera: str | None = None) -> dict:
     """Órgãos por eficiência de gasto: razão mediana preço/mercado ao longo de muitos itens.
     <1 = compra abaixo do mercado (gasta bem); >1 = paga acima (auditar)."""
     con = _ro(db_path)
     try:
-        r = _eficiencia(con, "orgao", min_itens)
+        r = _eficiencia(con, "orgao", min_itens, _certs(con, esfera))
         r.sort(key=lambda x: x["razao_mediana"])
         return {"ok": True, "melhores": r[:limite], "piores": list(reversed(r))[:limite],
                 "n": len(r),
@@ -194,12 +203,13 @@ def ranking_orgaos(db_path: str | None = None, min_itens: int = 8, limite: int =
         con.close()
 
 
-def ranking_fornecedores(db_path: str | None = None, min_itens: int = 8, limite: int = 60) -> dict:
+def ranking_fornecedores(db_path: str | None = None, min_itens: int = 8, limite: int = 60,
+                         esfera: str | None = None) -> dict:
     """Fornecedores por preço relativo: razão mediana preço/mercado ao longo de muitos itens.
     >1 = cobra acima do mercado (caro); <1 = abaixo (barato)."""
     con = _ro(db_path)
     try:
-        r = _eficiencia(con, "fornecedor", min_itens)
+        r = _eficiencia(con, "fornecedor", min_itens, _certs(con, esfera))
         r.sort(key=lambda x: -x["razao_mediana"])
         return {"ok": True, "mais_caros": r[:limite], "mais_baratos": list(reversed(r))[:limite],
                 "n": len(r),
@@ -212,7 +222,8 @@ def ranking_fornecedores(db_path: str | None = None, min_itens: int = 8, limite:
 
 
 def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amostra: int = 5,
-                       min_certames: int = 3, teto_razao: float = 10.0, limite: int = 60) -> dict:
+                       min_certames: int = 3, teto_razao: float = 10.0, limite: int = 60,
+                       esfera: str | None = None) -> dict:
     """QUANTO os cofres públicos economizariam se cada compra acima da mediana tivesse pago a
     MEDIANA de mercado do item. Economia = Σ (preço_pago − mediana) × quantidade, sobre as compras
     com preço > mediana, em grupos comparáveis. Quebra por ITEM, ÓRGÃO e FORNECEDOR.
@@ -223,6 +234,7 @@ def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amos
     Artefato (<10% da mediana) descartado. Só compras com quantidade real entram."""
     con = _ro(db_path)
     try:
+        certs = _certs(con, esfera)   # mediana continua GLOBAL (mercado); só o ACHADO é da esfera
         total = 0.0
         por_item: dict[str, dict] = {}
         por_orgao: dict[str, dict] = {}
@@ -247,6 +259,8 @@ def economia_potencial(db_path: str | None = None, min_orgaos: int = 3, min_amos
             piso = 0.10 * med
             teto = teto_razao * med                    # cap anti-artefato: preço efetivo p/ economia
             for r in itens:
+                if certs is not None and r["certame"] not in certs:
+                    continue                       # compra de outra esfera não entra na aba
                 p = r["vu"]
                 if p < piso or p <= med:
                     continue
@@ -297,6 +311,7 @@ _ESFERA_PNCP = {"E": "estadual", "F": "federal", "M": "municipal", "N": "federal
 
 
 def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra: int = 5,
+                    esfera: str | None = None,
                     min_certames: int = 3, teto_razao: float = 10.0, limite: int = 60) -> dict:
     """O número mais forte: sobrepreço (economia acima da mediana) pago a fornecedor que estava
     JURIDICAMENTE VEDADO de contratar com AQUELE ente comprador, À ÉPOCA da compra.
@@ -309,6 +324,7 @@ def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra
     from compliance_agent.sancao_abrangencia import classificar_sancao, veda_ente
     con = _ro(db_path)
     try:
+        certs_esf = _certs(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
         # sanções que vedam (algum ente) por CNPJ, com vigência
         sanc: dict[str, list] = {}
         for r in con.execute(
@@ -354,6 +370,8 @@ def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra
                 continue
             piso, teto = 0.10 * med, teto_razao * med
             for r in itens:
+                if certs_esf is not None and r["certame"] not in certs_esf:
+                    continue                       # compra de outra esfera não entra na aba
                 p = r["vu"]
                 if p < piso or p <= med:
                     continue
@@ -417,7 +435,7 @@ def economia_vedada(db_path: str | None = None, min_orgaos: int = 3, min_amostra
 
 
 def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: int = 2,
-                    min_certames: int = 3, limite: int = 120) -> dict:
+                    min_certames: int = 3, limite: int = 120, esfera: str | None = None) -> dict:
     """DOSSIÊ AUTOMÁTICO: item comprado MUITO acima da mediana (≥`fator`×) por um órgão, cujo
     fornecedor vencedor É SUSPEITO por outra fonte independente — sancionado (CEIS/CNEP), no radar
     de risco, ou fantasma. É o cruzamento 'paga caro + fornecedor com problema': prioriza o que
@@ -453,6 +471,7 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
         except Exception:  # noqa: BLE001
             radar = {}
 
+        certs = _certs(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
         achados = []
         for (base, un), itens in _grupos(con).items():
             orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
@@ -465,6 +484,8 @@ def caro_e_suspeito(db_path: str | None = None, fator: float = 3.0, min_orgaos: 
                 continue
             mad = _mediana([abs(p - med) for p in precos]) or (med * 0.1)
             for r in itens:
+                if certs is not None and r["certame"] not in certs:
+                    continue
                 p = r["vu"]
                 if p < fator * med or (p - med) < 3 * 1.4826 * mad:
                     continue                      # não está caro o bastante / dentro da banda

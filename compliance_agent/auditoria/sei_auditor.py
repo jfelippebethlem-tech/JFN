@@ -22,15 +22,18 @@ import json
 import time
 import random
 import urllib.request
+import logging
 import subprocess
 
 try:
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
-except Exception:
-    pass
+except Exception as exc:  # noqa: BLE001 — stdout sem reconfigure só degrada acentuação
+    print(f"[sei_auditor] reconfigure stdout falhou: {exc}", file=sys.stderr)
 
 import websocket  # websocket-client
+
+log = logging.getLogger(__name__)
 
 # ---------- CONFIG ----------
 CDP_PORT = 9222
@@ -55,8 +58,8 @@ def env(chave, default=None):
                 ln = ln.strip()
                 if ln.startswith(chave + "="):
                     return ln.split("=", 1)[1].strip()
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001
+        log.debug("env %s ilegível no .env (%s) — usando default", chave, exc)
     return default
 
 

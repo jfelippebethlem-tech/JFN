@@ -156,11 +156,14 @@ def competencias_mensais(ini_mes: int = 1, ini_ano: int = 2021,
 def coletar_mensal(anos: list[int] | None = None,
                    apenas_municipio: str | None = "RIO DE JANEIRO",
                    ini: tuple[int, int] = (1, 2021), workers: int = 2,
-                   pausa: float = 0.4, db_path=None) -> dict:
+                   pausa: float = 0.4, db_path=None,
+                   budget_s: float | None = None) -> dict:
     """Varre a folha da Prefeitura MÊS A MÊS (2021→hoje) atrás de candidatos que viraram
     comissionados. RESUMÍVEL: um checkpoint (data/pcrj_comiss_mensal.done) guarda as
     competências já concluídas — reiniciar retoma de onde parou. Throttle seguro (workers=2,
-    pausa=0.4 = 0 bloqueios). Loop competência-externo p/ o checkpoint fazer sentido."""
+    pausa=0.4 = 0 bloqueios). Loop competência-externo p/ o checkpoint fazer sentido.
+    ``budget_s``: para LIMPO antes do TimeoutStartSec do systemd (a competência em curso
+    termina, a próxima não começa) — o unit deixa de morrer 'failed' no meio."""
     import json
     from pathlib import Path
 
@@ -181,7 +184,12 @@ def coletar_mensal(anos: list[int] | None = None,
     sessoes = [Sessao(pausa=pausa) for _ in range(workers)]
     agora = datetime.now(timezone.utc).isoformat()
     total_reg = 0
+    t0 = time.monotonic()
     for (mes, ano) in todas:
+        if budget_s and time.monotonic() - t0 > budget_s:
+            print(f"orçamento de tempo esgotado ({budget_s:.0f}s) — parada limpa; "
+                  f"{len(feitas)} competências no checkpoint, retomo na próxima rodada", flush=True)
+            break
         def tarefa(i_item, mm=mes, aa=ano):
             i, (nn, info) = i_item
             sess = sessoes[i % workers]

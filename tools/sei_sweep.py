@@ -421,6 +421,11 @@ async def run(max_n: int, ug: str | None, tentativas_login: int = 20,
                             # NÃO um processo aberto — não contar como sucesso.
                             if nd > 0:
                                 break
+                            # árvore ABRIU e deu 0 docs = restrito/vazio HONESTO — retentar leitura completa
+                            # não muda o resultado (era o custo dominante do sweep: 3×~45s p/ cada 0-doc).
+                            # Só retenta quando a LEITURA falhou: árvore não abriu ou caiu na caixa (rel>15).
+                            if not r.get("indisponivel") and len(r.get("relacionados") or []) <= 15:
+                                break
                             await asyncio.sleep(2)
                         if nd == 0 and (r.get("indisponivel") or len(r.get("relacionados") or []) > 15):
                             # CAIXA/leitura falha (indisponivel=árvore não abriu; rel>15=inbox legado) →
@@ -561,6 +566,8 @@ async def run_pais(max_n: int, tentativas_login: int = 20, fazer_ficha: bool = T
                             nd = len(r.get("documentos") or [])
                             if nd > 0:
                                 break
+                            if not r.get("indisponivel") and len(r.get("relacionados") or []) <= 15:
+                                break              # 0-doc honesto (árvore abriu) — retry não muda
                             await asyncio.sleep(2)
                         if nd == 0:
                             # caminho normal caiu na caixa (rel=40/0 docs) → tenta o método CRACKED, como

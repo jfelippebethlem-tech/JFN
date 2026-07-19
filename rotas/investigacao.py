@@ -715,7 +715,8 @@ async def api_conflito(cnpj: str = "", candidato: str = "", limite: int = 200):
 
 @router.get("/api/pncp")
 async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "", id: str = "",
-                   abertos: bool = False, modalidade: int = 0, dias: int = 30):
+                   abertos: bool = False, modalidade: int = 0, dias: int = 30,
+                   esfera: str = ""):
     """Onda 2 — PNCP (API pública de consulta, sem login): licitação SEM depender do SEI.
 
     - id= : ANÁLISE PROFUNDA de uma contratação (numeroControlePNCP) — baixa o edital/TR
@@ -757,6 +758,20 @@ async def api_pncp(uf: str = "RJ", orgao: str = "", cnpj: str = "", id: str = ""
             uf=uf, data_ini=hoje - timedelta(days=dias), data_fim=hoje,
             modalidade=(modalidade or None), abertos=abertos,
             orgao_cnpj=(orgao or None))
+        if esfera and esfera != "todas":
+            # esfera OFICIAL do ente (pncp_ente + exceções de unidade) — aba estanque no painel
+            import sqlite3 as _sq
+            from compliance_agent.collectors.pncp_resultados import (
+                classificar_esfera, esferas_por_ente)
+            _c = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+            try:
+                oficial = esferas_por_ente(_c)
+            finally:
+                _c.close()
+            contratacoes = [x for x in contratacoes if classificar_esfera(
+                {"orgao_cnpj": x.get("orgao_cnpj"), "orgao_nome": x.get("orgao"),
+                 "unidade_nome": x.get("unidade"), "municipio": x.get("municipio")},
+                oficial) == esfera]
         return JSONResponse(content={
             "ok": True, "modo": "abertos" if abertos else "publicacao",
             "uf": uf, "n": len(contratacoes), "contratacoes": contratacoes,
@@ -1380,7 +1395,7 @@ async def api_intel_retro():
 
 
 @router.get("/api/comparador/buscar")
-async def api_comparador_buscar(termo: str = ""):
+async def api_comparador_buscar(termo: str = "", esfera: str = ""):
     """Grupos de item que casam o termo (ex.: 'aluguel carro', 'medicamento'), com dispersão de
     preço entre órgãos — abrir um grupo mostra quem paga mais/menos."""
     try:
@@ -1388,50 +1403,53 @@ async def api_comparador_buscar(termo: str = ""):
         t = (termo or "").strip()[:60]
         if len(t) < 3:
             return JSONResponse({"ok": False, "erro": "termo muito curto (≥3 letras)"})
-        if not (d := _cache_get(f"comp:busca:{t.lower()}", 600)):
-            d = _cache_put(f"comp:busca:{t.lower()}", buscar_grupos(t))
+        ck = f"comp:busca:{t.lower()}:{esfera or 'todas'}"
+        if not (d := _cache_get(ck, 600)):
+            d = _cache_put(ck, buscar_grupos(t, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
 @router.get("/api/comparador/item")
-async def api_comparador_item(grupo: str = "", unidade: str = ""):
+async def api_comparador_item(grupo: str = "", unidade: str = "", esfera: str = ""):
     """Para um item (grupo normalizado), ranking de ÓRGÃOS e FORNECEDORES por preço unitário."""
     try:
         from compliance_agent.comparador_precos import comparar
         g = (grupo or "").strip()
         if not g:
             return JSONResponse({"ok": False, "erro": "grupo vazio"})
-        ck = f"comp:item:{g}:{(unidade or '').lower()}"
+        ck = f"comp:item:{g}:{(unidade or '').lower()}:{esfera or 'todas'}"
         if not (d := _cache_get(ck, 600)):
-            d = _cache_put(ck, comparar(g, unidade or None))
+            d = _cache_put(ck, comparar(g, unidade or None, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
 @router.get("/api/comparador/economia")
-async def api_comparador_economia():
+async def api_comparador_economia(esfera: str = ""):
     """Economia potencial: quanto os cofres economizariam se cada compra acima da mediana tivesse
     pago a mediana de mercado do item. Total + quebra por item/órgão/fornecedor."""
     try:
         from compliance_agent.comparador_precos import economia_potencial
-        if not (d := _cache_get("comp:economia", 1800)):
-            d = _cache_put("comp:economia", economia_potencial())
+        ck = f"comp:economia:{esfera or 'todas'}"
+        if not (d := _cache_get(ck, 1800)):
+            d = _cache_put(ck, economia_potencial(esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
 @router.get("/api/comparador/vedada")
-async def api_comparador_vedada():
+async def api_comparador_vedada(esfera: str = ""):
     """O número mais forte: sobrepreço (acima da mediana) pago a fornecedor JURIDICAMENTE VEDADO
     de contratar com aquele ente comprador, VIGENTE à época. Inidoneidade veda todos."""
     try:
         from compliance_agent.comparador_precos import economia_vedada
-        if not (d := _cache_get("comp:vedada", 1800)):
-            d = _cache_put("comp:vedada", economia_vedada())
+        ck = f"comp:vedada:{esfera or 'todas'}"
+        if not (d := _cache_get(ck, 1800)):
+            d = _cache_put(ck, economia_vedada(esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1458,37 +1476,40 @@ async def api_sancoes_detalhar(cnpj: str = "", esfera: str = "estadual", uf: str
 
 
 @router.get("/api/comparador/dossie")
-async def api_comparador_dossie():
+async def api_comparador_dossie(esfera: str = ""):
     """Dossiê automático: item pago muito acima da mediana por um órgão cujo FORNECEDOR já é
     sancionado/no radar/fantasma. Cruza o comparador de preços com o gabarito de risco."""
     try:
         from compliance_agent.comparador_precos import caro_e_suspeito
-        if not (d := _cache_get("comp:dossie", 1800)):
-            d = _cache_put("comp:dossie", caro_e_suspeito())
+        ck = f"comp:dossie:{esfera or 'todas'}"
+        if not (d := _cache_get(ck, 1800)):
+            d = _cache_put(ck, caro_e_suspeito(esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
 @router.get("/api/comparador/orgaos")
-async def api_comparador_orgaos():
+async def api_comparador_orgaos(esfera: str = ""):
     """Ranking de órgãos por eficiência de gasto (razão preço/mercado ao longo de muitos itens)."""
     try:
         from compliance_agent.comparador_precos import ranking_orgaos
-        if not (d := _cache_get("comp:orgaos", 1800)):
-            d = _cache_put("comp:orgaos", ranking_orgaos())
+        ck = f"comp:orgaos:{esfera or 'todas'}"
+        if not (d := _cache_get(ck, 1800)):
+            d = _cache_put(ck, ranking_orgaos(esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
 @router.get("/api/comparador/fornecedores")
-async def api_comparador_fornecedores():
+async def api_comparador_fornecedores(esfera: str = ""):
     """Ranking de fornecedores por preço relativo (mais caros / mais baratos vs mercado)."""
     try:
         from compliance_agent.comparador_precos import ranking_fornecedores
-        if not (d := _cache_get("comp:forn", 1800)):
-            d = _cache_put("comp:forn", ranking_fornecedores())
+        ck = f"comp:forn:{esfera or 'todas'}"
+        if not (d := _cache_get(ck, 1800)):
+            d = _cache_put(ck, ranking_fornecedores(esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1679,14 +1700,15 @@ async def api_intel_socio_oculto(limite: int = 120):
 
 
 @router.get("/api/intel/aditivos")
-async def api_intel_aditivos(limite: int = 120):
+async def api_intel_aditivos(limite: int = 120, esfera: str = ""):
     """Aditivos que estouram o limite legal de acréscimo (25%/50%, Lei 14.133 art. 125) e change
     orders em série (≥3 aditivos). Fonte: pcrj_contratos + contrato_aditivo."""
     try:
         from compliance_agent.cruzamentos_intel import aditivos_estouro
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:adit:{lim}", 600)):
-            d = _cache_put(f"intel:adit:{lim}", aditivos_estouro(limite=lim))
+        ck = f"intel:adit:{lim}:{esfera or 'todas'}"
+        if not (d := _cache_get(ck, 600)):
+            d = _cache_put(ck, aditivos_estouro(limite=lim, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
@@ -1707,28 +1729,30 @@ async def api_intel_socio_servidor(limite: int = 150):
 
 
 @router.get("/api/intel/escalada")
-async def api_intel_escalada(limite: int = 120):
+async def api_intel_escalada(limite: int = 120, esfera: str = ""):
     """Escalada de preço unitário: MESMO fornecedor vende o MESMO item por preços cada vez maiores
     ao longo do tempo (≥3 compras, ≥45 dias, alta ≥3×). Preço dirigido/captura. Fonte: PNCP."""
     try:
         from compliance_agent.cruzamentos_intel import escalada_preco
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:escal:{lim}", 600)):
-            d = _cache_put(f"intel:escal:{lim}", escalada_preco(limite=lim))
+        ck = f"intel:escal:{lim}:{esfera or 'todas'}"
+        if not (d := _cache_get(ck, 600)):
+            d = _cache_put(ck, escalada_preco(limite=lim, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
 @router.get("/api/intel/sobrepreco")
-async def api_intel_sobrepreco(limite: int = 120):
+async def api_intel_sobrepreco(limite: int = 120, esfera: str = ""):
     """Sobrepreço por mediana de item: mesmo produto (descrição normalizada) comprado por vários
     órgãos; sinaliza preço unitário ≥2× a mediana (e fora de mediana+3·MAD). Fonte: PNCP."""
     try:
         from compliance_agent.cruzamentos_intel import sobrepreco
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:sobre:{lim}", 600)):
-            d = _cache_put(f"intel:sobre:{lim}", sobrepreco(limite=lim))
+        ck = f"intel:sobre:{lim}:{esfera or 'todas'}"
+        if not (d := _cache_get(ck, 600)):
+            d = _cache_put(ck, sobrepreco(limite=lim, esfera=esfera or None))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)

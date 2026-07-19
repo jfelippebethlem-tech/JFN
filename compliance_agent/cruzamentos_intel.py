@@ -490,7 +490,8 @@ def fracionamento(db_path: str | None = None, min_obs: int = 5, min_colado: int 
         con.close()
 
 
-def aditivos_estouro(db_path: str | None = None, limite: int = 120) -> dict:
+def aditivos_estouro(db_path: str | None = None, limite: int = 120,
+                     esfera: str | None = None) -> dict:
     """Aditivos que estouram o limite legal de acréscimo (Lei 14.133 art. 125; Lei 8.666 art. 65 §1º
     — 25% p/ compras/serviços/obras, 50% p/ reforma). Usa pcrj_contratos (valor_inicial × valor_global)
     e cruza com contrato_aditivo p/ separar ACRÉSCIMO real de reajuste (qualif_acrescimo). Também
@@ -512,8 +513,23 @@ def aditivos_estouro(db_path: str | None = None, limite: int = 120) -> dict:
             "unidade, objeto, valor_inicial vi, valor_global vg, num_aditivos, vigencia_fim "
             "FROM pcrj_contratos WHERE valor_inicial>1000 AND valor_global>0 "
             "AND valor_global<1e9 AND valor_inicial<1e9").fetchall()
+        # esfera do CONTRATO = esfera oficial do ENTE dono (CNPJ embutido no nº de controle PNCP);
+        # a tabela pcrj_contratos, apesar do nome, guarda contratos de TODOS os entes coletados.
+        filtro_esfera = None
+        if esfera and esfera != "todas":
+            from compliance_agent.collectors.pncp_resultados import (
+                classificar_esfera, esferas_por_ente)
+            oficial = esferas_por_ente(con)
+
+            def filtro_esfera(cc, orgao_nome, unidade):  # noqa: E306
+                cnpj_ente = re.sub(r"\D", "", str(cc or "").split("-")[0])[:14]
+                reg = {"orgao_cnpj": cnpj_ente, "orgao_nome": orgao_nome,
+                       "unidade_nome": unidade, "municipio": ""}
+                return classificar_esfera(reg, oficial) == esfera
         achados = []
         for r in rows:
+            if filtro_esfera and not filtro_esfera(r["cc"], r["orgao_nome"], r["unidade"]):
+                continue
             vi, vg, nad = r["vi"], r["vg"], r["num_aditivos"] or 0
             # pct sobre o ACRÉSCIMO REAL (qualif='1') quando o contrato_aditivo o traz — vg−vi inclui
             # reajuste/prorrogação, que NÃO contam no teto do art. 125. Sem o dado granular, o achado
@@ -726,7 +742,7 @@ def _mediana(xs: list) -> float:
 
 
 def sobrepreco(db_path: str | None = None, min_amostra: int = 5, min_certames: int = 4,
-               fator: float = 2.0, limite: int = 120) -> dict:
+               fator: float = 2.0, limite: int = 120, esfera: str | None = None) -> dict:
     """Sobrepreço por MEDIANA de item: agrupa compras pela descrição normalizada do item
     (mesmo produto entre órgãos) e sinaliza quem pagou preço UNITÁRIO muito acima da mediana do
     grupo (≥ `fator`× a mediana E fora da banda robusta mediana+3·MAD). Fonte: valorUnitarioHomologado
@@ -738,6 +754,8 @@ def sobrepreco(db_path: str | None = None, min_amostra: int = 5, min_certames: i
     ser de um certame DIFERENTE da maioria (compara compras independentes, não itens do mesmo lote)."""
     con = _ro(db_path)
     try:
+        from compliance_agent.collectors.pncp_resultados import certames_da_esfera
+        certs = certames_da_esfera(con, esfera)   # mediana GLOBAL; achado restrito à esfera da aba
         # quantidade>=2: preço unitário só é comparável em compra REAL por unidade. Linha com
         # quantidade 1 costuma trazer o total do lote/contrato no campo unitário (Água a R$62 mil,
         # serviço a R$85 mi) — poluiria a mediana e viraria falso outlier.
@@ -773,6 +791,8 @@ def sobrepreco(db_path: str | None = None, min_amostra: int = 5, min_certames: i
             if base < 0.6 * n_certames:
                 continue
             for r in itens:
+                if certs is not None and r["certame"] not in certs:
+                    continue                       # compra de outra esfera não entra na aba
                 p = r["vu"]
                 z = (p - med) / (1.4826 * mad) if mad else 0  # z-score robusto (Iglewicz/Nigrini)
                 if p >= fator * med and z >= 3.5:
@@ -799,7 +819,7 @@ def sobrepreco(db_path: str | None = None, min_amostra: int = 5, min_certames: i
 
 
 def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: float = 3.0,
-                   min_span_dias: int = 45, limite: int = 120) -> dict:
+                   min_span_dias: int = 45, limite: int = 120, esfera: str | None = None) -> dict:
     """ESCALADA de preço unitário do MESMO fornecedor para o MESMO item ao longo do tempo — a
     empresa vende o item Y ao poder público por preços cada vez MAIORES (aprende que o comprador
     paga qualquer coisa; preço dirigido, captura). Distinto do `sobrepreco` (que é transversal,
@@ -831,6 +851,8 @@ def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: floa
             "AND item_descricao IS NOT NULL AND length(item_descricao)>=4 AND data_pub IS NOT NULL "
             "AND length(fornecedor_cnpj)=14").fetchall()
         from collections import defaultdict
+        from compliance_agent.collectors.pncp_resultados import certames_da_esfera
+        certs = certames_da_esfera(con, esfera)
         grupos: dict[tuple, list] = defaultdict(list)
         mercado: dict[tuple, list] = defaultdict(list)   # (item,un) -> preços de TODOS os fornecedores
         for r in rows:
@@ -838,8 +860,9 @@ def escalada_preco(db_path: str | None = None, min_compras: int = 3, fator: floa
             if not base:
                 continue
             un = re.sub(r"[^a-z]", "", (r["un"] or "").lower())[:8]
-            grupos[(r["fornecedor_cnpj"], base, un)].append(r)
-            mercado[(base, un)].append(r["vu"])
+            if certs is None or r["certame"] in certs:    # série = compras DA esfera da aba
+                grupos[(r["fornecedor_cnpj"], base, un)].append(r)
+            mercado[(base, un)].append(r["vu"])           # mercado corrobora com TODAS as esferas
         achados = []
         for (cnpj, base, un), itens in grupos.items():
             serie = sorted({(r["data_pub"][:10], r["vu"], r["unidade_nome"] or r["orgao_nome"],

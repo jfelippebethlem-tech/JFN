@@ -388,8 +388,8 @@ async def _bus_sampler():
             if sei_size is not None and sz != sei_size:
                 evs.append({"tipo": "sei_doc", "delta": 1, "rotulo": "sweep SEI avançou (checkpoint)"})
             sei_size = sz
-        except OSError:
-            pass
+        except OSError as exc:
+            logger.debug("bus: checkpoint SEI ilegível (%s)", exc)
 
         if ciclo % 3 == 0:
             vivos = {"sei": _pgrep("tools[.]sei_sweep"), "siafe": _pgrep("siafe[_]sweep_full")}
@@ -405,8 +405,8 @@ async def _bus_sampler():
                     k, v = ln.split(":", 1)
                     info[k] = int(v.split()[0])
             mem_pct = round(100 * (1 - info["MemAvailable"] / info["MemTotal"]))
-        except Exception:  # noqa: BLE001
-            pass
+        except (OSError, ValueError, KeyError, IndexError, ZeroDivisionError) as exc:
+            logger.debug("bus: meminfo indisponível (%s)", exc)
         estado = "critico" if l1 >= 5.0 else ("carga" if l1 >= 3.5 else "ok")
         evs.append({"tipo": "pulse", "load1": round(l1, 2), "load5": round(l5, 2),
                     "mem": mem_pct, "estado": estado, "sweeps": vivos})

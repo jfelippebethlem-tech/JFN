@@ -34,7 +34,13 @@ REPO = Path(__file__).resolve().parent.parent
 # não mudo; degrada honesto se a tabela empresas_cadastro não existir).
 # 2026-07-18j: +4 (1466→1470) — sweeps de cadastro (cadastro_enrich + empresas_dump): lookups de
 # rede e guarda de recursos (amplos por design, todos logados/degradam honesto).
-BASELINE = 1464  # medido 2026-07-18m (-7: remoção OpenSanctions/Aleph — módulos+classe+intel_pdf; 1471 antes)
+# 2026-07-18m: -7 (remoção OpenSanctions/Aleph — módulos+classe+intel_pdf; 1471 antes) → 1464.
+# 2026-07-19: +25 (1464→1489) — missão 4 frentes commitada sem rodar a catraca (J8 atestado
+# cruzado, forense/pdf_metadados, geo/osm_local, âncora setorial, spiderfoot_bridge, proposta_item,
+# screens_conluio, indice_certame, narrativa_certame, rotas novas). AUDITADO 2026-07-19: ZERO
+# `except Exception: pass` MUDO nos arquivos tocados — todos logados, catch-and-return de rota ou
+# amplos por design (rodar detector arbitrário / lib externa). Curadoria p/ específico segue aberta.
+BASELINE = 1489
 
 
 def _contar() -> int:

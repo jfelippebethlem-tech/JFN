@@ -79,8 +79,8 @@ async def _get_page_state(page) -> dict:
     try:
         body = await page.inner_text("body")
         visible_text = body[:2000]
-    except Exception:
-        pass
+    except Exception as exc:  # noqa: BLE001 — página sem body legível: snapshot segue sem texto
+        print(f"[groq_explorer] inner_text falhou: {exc}")
 
     elements = await page.evaluate("""
         () => {

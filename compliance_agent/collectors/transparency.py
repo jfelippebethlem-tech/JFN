@@ -14,6 +14,8 @@ import io
 import re
 from typing import Optional
 
+import logging
+
 import httpx
 from bs4 import BeautifulSoup
 
@@ -35,6 +37,9 @@ _HEADERS = {
     "Accept": "application/json, text/html, */*",
     "Accept-Language": "pt-BR,pt;q=0.9",
 }
+
+
+logger = logging.getLogger(__name__)
 
 
 class TransparenciaRJCollector:
@@ -136,8 +141,8 @@ class TransparenciaRJCollector:
                 data = response.json()
                 items = data if isinstance(data, list) else data.get("dados", data.get("items", data.get("resultado", [])))
                 return [self._normalizar_servidor(i) for i in items if isinstance(i, dict)]
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — fallback de formato; segue p/ o próximo parser
+                logger.debug("transparency: parse JSON falhou (%s) — tentando próximo formato", exc)
 
         # Tenta CSV
         if "csv" in ct or response.text.startswith('"') or response.text.startswith("nome"):
@@ -174,8 +179,8 @@ class TransparenciaRJCollector:
                     "remuneracao_bruta": self._parse_valor(row.get("REMUNERAÇÃO BRUTA", 0)),
                     "remuneracao_liquida": self._parse_valor(row.get("REMUNERAÇÃO LÍQUIDA", 0)),
                 })
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("transparency: parse CSV incompleto (%s) — retorna o que leu", exc)
         return registros
 
     def _parse_contratos(self, response: httpx.Response) -> list[dict]:
@@ -185,8 +190,8 @@ class TransparenciaRJCollector:
                 data = response.json()
                 items = data if isinstance(data, list) else data.get("dados", data.get("items", []))
                 return [self._normalizar_contrato(i) for i in items if isinstance(i, dict)]
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — fallback de formato; segue p/ o próximo parser
+                logger.debug("transparency: parse JSON falhou (%s) — tentando próximo formato", exc)
         return self._parse_html_tabela(response.text, tipo="contrato")
 
     def _normalizar_contrato(self, item: dict) -> dict:
@@ -210,8 +215,8 @@ class TransparenciaRJCollector:
                 data = response.json()
                 items = data if isinstance(data, list) else data.get("dados", data.get("items", []))
                 return items
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 — fallback de formato; segue p/ o próximo parser
+                logger.debug("transparency: parse JSON falhou (%s) — tentando próximo formato", exc)
         return []
 
     def _parse_html_tabela(self, html: str, tipo: str) -> list[dict]:
