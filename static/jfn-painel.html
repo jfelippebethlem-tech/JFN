@@ -59,6 +59,7 @@
   .ck-big{font-family:var(--mono);font-weight:600;line-height:1.05;letter-spacing:-1px;font-size:clamp(30px,4.5vw,46px);
     color:var(--gold);font-variant-numeric:tabular-nums;margin:8px 0 6px}
   .ck-sub{color:var(--mut);font-size:13.5px;max-width:64ch;line-height:1.55}.ck-sub b{color:var(--tx);font-weight:600}
+  @media (min-width:820px){.ck-hero{display:grid;grid-template-columns:1.5fr 1fr;gap:28px;align-items:center}.ck-hero .ck-ved{margin-top:0}}
   .ck-ved{margin-top:14px;display:inline-flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;padding:10px 14px;
     border:1px solid color-mix(in oklch,var(--rose) 25%,transparent);border-left:2px solid var(--rose);
     border-radius:8px;background:color-mix(in oklch,var(--rose) 6%,transparent)}
@@ -263,7 +264,7 @@
   .btn:active{transform:scale(.98)}
   .btn.red{background:color-mix(in oklch,var(--rose) 75%,black)}.btn.green{background:color-mix(in oklch,var(--green) 55%,black)}
   .btn.ghost{background:var(--raise);border:1px solid var(--bd2);color:var(--tx2)}
-  .btn.accent{background:var(--accent);color:var(--accent-ink)}
+  .btn.accent{background:color-mix(in oklch,var(--accent) 14%,transparent);color:var(--accent);border:1px solid color-mix(in oklch,var(--accent) 32%,transparent)}
   .lnks{display:flex;flex-direction:column;gap:8px}
   .lnk{display:flex;align-items:center;gap:12px;text-decoration:none;color:var(--tx);background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--bd2);border-radius:var(--r);padding:12px 14px;transition:.14s;box-shadow:var(--sh)}
   .lnk:hover{border-color:var(--bd)}
@@ -404,6 +405,18 @@ function ordenar(sel,btn){
   cards.forEach(c=>cont.appendChild(c));
   const cv=document.querySelector('#view .view-wire'); if(cv)cv.remove();   // posições mudaram → tira malha estática
 }
+// rótulos humanos p/ ids técnicos de sinal/detector — snake_case NUNCA chega ao usuário
+const ROTULOS={conluio_forte:'conluio societário',conluio_qsa:'conluio societário',sancao_a_epoca:'sanção vigente à época',
+  sancao_fora_vigencia:'sanção fora da vigência',sancionada:'sancionada (CEIS/CNEP)',socio_servidor:'sócio na folha pública',
+  fantasma_alto:'perfil fantasma (alto)',fantasma_medio:'perfil fantasma (médio)',fantasma_baixo:'perfil fantasma (baixo)',
+  perdedora_contumaz:'perdedora contumaz',fenix:'empresa fênix',empresa_fenix:'empresa fênix',escalada_preco:'escalada de preço',
+  sobrepreco:'sobrepreço unitário',fracionamento:'fracionamento de despesa',capital_incompativel:'capital incompatível',
+  fornecedor_dependente:'fornecedor cativo',corrida_dezembro:'corrida de dezembro',socio_oculto:'sócio oculto',
+  nepotismo:'nepotismo',nepotismo_cruzado:'nepotismo cruzado',porta_giratoria:'porta giratória',
+  situacao_irregular:'situação irregular na Receita',endereco_compartilhado:'endereço-ninho',endereco_residencial:'endereço residencial',
+  aberta_as_vesperas:'aberta às vésperas',socio_unico_capital_baixo:'sócio único + capital baixo',cnae_incompativel:'CNAE incompatível',
+  radar_risco:'radar de risco',prioridade_valor:'prioridade por valor',grafo_familias:'grafo de famílias',aditivos:'aditivos'};
+const rot=id=>ROTULOS[id]||String(id||'').replace(/_/g,' ');
 const clk=(cnpj,txt)=>{const d=String(cnpj||'').replace(/\D/g,'');return d.length===14?`<button type="button" class="clk" onclick="abrirDossie('${d}','${esc(String(txt)).replace(/'/g,'')}')">${esc(txt)}</button>`:`<b>${esc(txt)}</b>`;};
 
 // ═══ ESFERAS ═══
@@ -904,7 +917,7 @@ async function _compDossie(){
       <div class="dim" style="margin-top:2px">venc.: ${clk(x.fornecedor_cnpj,x.fornecedor||'—')} · ${esc((x.orgao||'').slice(0,42))}</div>
       <div class="muted" style="font-size:12.5px;margin-top:4px">${tags}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--rose)">${x.vs_mediana}×</div><div class="dim">${fmtR(x.preco)} vs ${fmtR(x.mediana)}</div></div></div>
-      ${leitura(`O órgão <b>${esc(x.orgao)}</b> pagou <b>${fmtR(x.preco)}</b> por "${esc(x.item)}" — <b>${x.vs_mediana}× a mediana</b> de mercado (${fmtR(x.mediana)}) — ao fornecedor <b>${esc(x.fornecedor)}</b>, que é ${esc((x.sinais||[]).map(s=>s.sinal).join(', '))} por fonte INDEPENDENTE do preço. Preço fora da curva + fornecedor marcado = alvo forte para auditoria. Confirmar o termo de referência.`)}`,
+      ${leitura(`O órgão <b>${esc(x.orgao)}</b> pagou <b>${fmtR(x.preco)}</b> por "${esc(x.item)}" — <b>${x.vs_mediana}× a mediana</b> de mercado (${fmtR(x.mediana)}) — ao fornecedor <b>${esc(x.fornecedor)}</b>, que é ${esc((x.sinais||[]).map(s=>rot(s.sinal)).join(', '))} por fonte INDEPENDENTE do preço. Preço fora da curva + fornecedor marcado = alvo forte para auditoria. Confirmar o termo de referência.`)}`,
     'hl');}).join('')+`</div>`;
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
@@ -957,7 +970,7 @@ async function renderRiscos(){
     return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0">${clk(e.cnpj,e.razao_social||e.cnpj)}<div class="dim">${esc(e.cnpj)} · veio de: ${esc(e.origem||'—')}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${e.score??'—'}</div><div class="dim">/100 ${esc(e.classificacao)}</div></div></div>
-      ${(e.sinais||[]).length?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${e.sinais.map(s=>`<span class="tag ${e.classificacao==='alto'?'rose':'amber'}" title="${esc(s.detalhe||'')}">${esc(s.id)} +${s.peso}</span>`).join('')}</div>`:''}
+      ${(e.sinais||[]).length?`<div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${e.sinais.map(s=>`<span class="tag ${e.classificacao==='alto'?'rose':'amber'}" title="${esc(s.detalhe||'')}">${rot(s.id)} +${s.peso}</span>`).join('')}</div>`:''}
       ${(e.sinais||[]).length?leitura(esc((e.sinais[0]||{}).detalhe||'')+((e.sinais||[]).length>1?' — e mais '+(e.sinais.length-1)+' sinal(is); toque no nome para o dossiê completo.':'')):''}`,e.classificacao==='alto'?'hl':'');}).join('')+`</div>`;
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
   return h;
@@ -1253,9 +1266,9 @@ async function renderPrioridade(){
   h+=`<div class="search" style="margin-top:14px"><span class="mag">🔎</span><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#pri-list .card')"></div>`;
   h+=`<div id="pri-list" class="grid">`+a.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)} · ${fmtN(x.n_compras)} compra(s) acima da mediana</div>
-      <div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">${(x.sinais||[]).slice(0,4).map(s=>`<span class="tag teal">${esc(s)}</span>`).join('')}</div></div>
+      <div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap">${(x.sinais||[]).slice(0,4).map(s=>`<span class="tag teal">${rot(s)}</span>`).join('')}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:var(--teal)">${fmtRc(x.economia)}</div><div class="dim">${x.rating} score ${fmtN(x.score)}</div></div></div>
-      ${leitura(`<b>${esc(x.nome)}</b> junta <b>sinal de risco</b> (${(x.sinais||[]).join(', ')||'—'}, score ${fmtN(x.score)}/100) com <b>${fmtRc(x.economia)}</b> de sobrepreço recuperável sobre ${fmtN(x.n_compras)} compra(s) acima da mediana de mercado. Priorizar: risco + dinheiro no mesmo fornecedor. Economia é teto teórico (mediana atingível), não valor a ressarcir.`)}`,
+      ${leitura(`<b>${esc(x.nome)}</b> junta <b>sinal de risco</b> (${(x.sinais||[]).map(rot).join(', ')||'—'}, score ${fmtN(x.score)}/100) com <b>${fmtRc(x.economia)}</b> de sobrepreço recuperável sobre ${fmtN(x.n_compras)} compra(s) acima da mediana de mercado. Priorizar: risco + dinheiro no mesmo fornecedor. Economia é teto teórico (mediana atingível), não valor a ressarcir.`)}`,
     x.score>=50?'hl':'')).join('')+`</div>`;
   h+=`<div class="note">${esc(d.escala||'')} — ${esc(d.ressalva||'')}</div>`;
   return h;
@@ -1309,7 +1322,7 @@ async function renderRadar(){
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)}</div>
       <div class="muted" style="font-size:12.5px;margin-top:4px">${(x.sinais||[]).map(s=>`<span class="tag ${s.peso>=25?'rose':'amber'}">${esc(s.sinal)} +${s.peso}</span>`).join(' ')}</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.score>=50?'var(--rose)':'var(--amber)'}">${x.score}</div><div class="dim">${x.rating} ${x.n_sinais} sinais</div></div></div>
-      ${leitura(`<b>${esc(x.nome)}</b> acende <b>${x.n_sinais}</b> detector(es) ao mesmo tempo: ${esc((x.sinais||[]).map(s=>s.sinal+(s.detalhe?' ('+s.detalhe+')':'')).join('; '))}. Sinais independentes que se corroboram — priorizar na apuração.`)}`,
+      ${leitura(`<b>${esc(x.nome)}</b> acende <b>${x.n_sinais}</b> detector(es) ao mesmo tempo: ${esc((x.sinais||[]).map(s=>rot(s.sinal)+(s.detalhe?' ('+s.detalhe+')':'')).join('; '))}. Sinais independentes que se corroboram — priorizar na apuração.`)}`,
     x.score>=50?'hl':'')).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
 }
@@ -1404,7 +1417,7 @@ async function _liftBloco(){
   h+=`<div class="dim" style="margin-bottom:8px">Taxa-base do universo: <b>${(d.taxa_base*100).toFixed(1)}%</b> dos ${fmtN(d.universo)} fornecedores são sancionados. <b>Lift</b> = quantas vezes o detector concentra sancionados acima disso. <b>lift ≥ 2</b> = sinal forte · <b>~1</b> = ruído · <b>&lt; 1</b> = anti-sinal · <span class="dim">🔁 circular</span> = usa sanção como input (não é corroboração independente).</div>`;
   h+=`<div class="grid">`+det.map(x=>card(
     `<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
-      <div style="min-width:0;flex:1"><div style="font-weight:700">${esc(x.detector)} ${x.circular?'<span class="tag" style="opacity:.6">🔁 circular</span>':''}${x.n_pequeno?'<span class="tag amber">⚠️ n<10</span>':''}</div>
+      <div style="min-width:0;flex:1"><div style="font-weight:700">${rot(x.detector)} ${x.circular?'<span class="tag" style="opacity:.6">🔁 circular</span>':''}${x.n_pequeno?'<span class="tag amber">⚠️ n<10</span>':''}</div>
       <div class="muted" style="font-size:12.5px;margin:3px 0">${x.sancionados}/${x.n} marcados são sancionados (${(x.taxa*100).toFixed(1)}%)</div>
       ${barra(x.lift,x.circular)}</div>
       <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.circular?'var(--muted)':(x.lift>=2?'var(--rose)':(x.lift>=1?'var(--amber)':'var(--green)'))}">${x.lift}×</div><div class="dim">lift</div></div></div>`)).join('')+`</div>`;
@@ -1665,15 +1678,15 @@ function _ckSpark(cv,vals,color){const d=Math.min(2,devicePixelRatio),w=cv.width
 function _ckSynth(seed,n=15){const a=[];let v=seed;for(let i=0;i<n;i++){v+=(Math.sin(i*1.3+seed)*.5+(Math.random()-.42))*seed*.13;a.push(Math.max(.2,v));}return a;}
 function _ckCount(el,to,fmt,ms=1000){if(!el)return;const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;if(rm||to==null){el.textContent=fmt(to);return;}
   const t0=performance.now();(function s(t){const p=Math.min(1,(t-t0)/ms),e=1-Math.pow(1-p,3);el.textContent=fmt(to*e);if(p<1)requestAnimationFrame(s);else el.textContent=fmt(to);})(performance.now());}
-const _CK={teal:'#4fd6c4',gold:'#e8bd72',good:'#3fe08a',amber:'#f5a623',rose:'#ff5c78'};
+const _CK={teal:'#63b3c9',gold:'#d9b36a',good:'#4cc38a',amber:'#e0a63e',rose:'#f2707e'};
 
 async function renderCockpit(){
   const html=`<div class="ck">
     <div class="ck-ticker"><div class="lane" id="ck-lane"><span>◉ carregando telemetria…</span></div></div>
     <div class="ck-hero">
-      <div class="ck-eye">Economia potencial identificada</div>
+      <div class="ck-lead"><div class="ck-eye">Economia potencial identificada</div>
       <div class="ck-big" id="ck-econ">R$ ——</div>
-      <div class="ck-sub" id="ck-sub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item.</div>
+      <div class="ck-sub" id="ck-sub">Quanto os cofres públicos deixariam de gastar se cada compra acima da mediana tivesse pago a <b>mediana de mercado</b> do item.</div></div>
       <div class="ck-ved" id="ck-vedbox" style="display:none"><span class="n" id="ck-ved">R$ —</span>
         <span class="l">pago <b style="color:var(--rose)">acima do mercado a fornecedor juridicamente vedado</b> (inidôneo), à época — o alvo mais forte.</span></div>
     </div>
@@ -1685,21 +1698,21 @@ async function renderCockpit(){
 function ckCard(id,lab,valc,dotc,href,spark){return `<div class="ck-inst" id="cki-${id}" onclick="ir('${href}')">
   <div class="k"><span class="lab">${lab}</span><span class="dot ${dotc}"></span></div>
   <div class="val ${valc}">—</div><div class="meta">aguardando…</div>
-  ${spark?`<canvas class="spk" data-spark="${spark}"></canvas>`:''}</div>`;}
+  </div>`;}
 function ckFill(id,{num,txt,meta}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
   if(num!=null&&isFinite(num))_ckCount(v,num,x=>fmtN(Math.round(x)));else if(txt!=null)v.textContent=txt;
-  if(meta!=null)m.innerHTML=meta;const cv=el.querySelector('canvas[data-spark]');if(cv)requestAnimationFrame(()=>_ckSpark(cv,_ckSynth(6+Math.random()*9),_CK[cv.dataset.spark]||'#4fd6c4'));}
+  if(meta!=null)m.innerHTML=meta;}
 let _ckTick=[];
 function ckPush(items){items.forEach(x=>_ckTick.push(x));const L=$('ck-lane');if(L&&_ckTick.length)L.innerHTML=_ckTick.concat(_ckTick).map(x=>`<span class="${x.c||''}">${x.h}</span>`).join('');}
 function ckBoot(){
   const g=$('ck-grid');if(!g)return;
-  g.innerHTML=[ckCard('radar','Radar de risco','ckamber','bgamber','g_radar','amber'),
-    ckCard('com','Comunidades','ckteal','bgteal','g_comun','teal'),
-    ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp','rose'),
-    ckCard('lift','Melhor detector (lift)','ckgood','bggood','g_retro','good'),
-    ckCard('fenix','Pago a empresa morta','ckrose','bgrose','g_fenix','rose'),
-    ckCard('compras','Compras auditáveis','ckgold','bggold','e_comp','gold'),
-    ckCard('orgao','Órgão que mais economiza','ckgood','bggood','e_comp')].join('');
+  g.innerHTML=[ckCard('radar','Radar de risco','','bgteal','g_radar'),
+    ckCard('com','Comunidades','','bgteal','g_comun'),
+    ckCard('dossie','Caro + suspeito','ckrose','bgrose','e_comp'),
+    ckCard('lift','Melhor detector (lift)','','bgteal','g_retro'),
+    ckCard('fenix','Pago a empresa morta','ckrose','bgrose','g_fenix'),
+    ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
+    ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp')].join('');
   ckPull(true);
   clearInterval(_ckTimer);_ckTimer=setInterval(()=>{if(!document.hidden&&aba==='i_cockpit')ckPull(false);},30000);
 }
@@ -1713,21 +1726,21 @@ function ckPull(first){
     ckPush([{c:'g',h:`✦ economia potencial <b>${fmtRc(d.economia_total)}</b> em ${fmtN(d.n_compras_acima_mediana)} compras`}]);});
   J('/api/comparador/vedada').then(d=>{if(d&&d.ok&&d.economia_vedada_total){const b=$('ck-vedbox');if(b)b.style.display='';_ckCount($('ck-ved'),d.economia_vedada_total,fmtRc);}});
   J('/api/intel/radar?limite=6').then(d=>{if(!d||!d.ok)return;ckFill('radar',{num:d.n,meta:`fornecedores com sinal · <b class="ckrose">${fmtN(d.n_vermelho)}</b> em nível crítico`});
-    ckPush((d.achados||[]).slice(0,5).map(a=>({c:'',h:`▸ RADAR ${a.score} — <b>${(a.nome||'').slice(0,30)}</b> · ${(a.sinais||[]).map(s=>s.sinal).slice(0,2).join(', ')}`})));});
+    ckPush((d.achados||[]).slice(0,5).map(a=>({c:'',h:`▸ RADAR ${a.score} — <b>${(a.nome||'').slice(0,30)}</b> · ${(a.sinais||[]).map(s=>rot(s.sinal)).slice(0,2).join(', ')}`})));});
   J('/api/intel/comunidades').then(d=>{if(!d||!d.ok)return;ckFill('com',{num:d.n,meta:'clusters família-empresa-órgão (Louvain)'});});
   J('/api/intel/lift').then(d=>{if(!d||!d.ok)return;const b=(d.detectores||[]).filter(x=>!x.circular).sort((a,c)=>(c.lift||0)-(a.lift||0))[0];
-    ckFill('lift',{txt:b?b.lift+'×':'—',meta:b?`<b>${b.detector}</b> concentra fraude ${b.lift}× acima da base`:'—'});});
+    ckFill('lift',{txt:b?b.lift+'×':'—',meta:b?`<b>${rot(b.detector)}</b> concentra fraude ${b.lift}× acima da base`:'—'});});
   J('/api/comparador/dossie').then(d=>{if(!d||!d.ok)return;ckFill('dossie',{num:d.n,meta:'itens pagos caro a fornecedor sancionado/fantasma'});
     ckPush((d.achados||[]).slice(0,6).map(a=>({c:'a',h:`◉ ${(a.orgao||'').slice(0,24)} pagou <b>${a.vs_mediana}× a mediana</b> — ${(a.fornecedor||'').slice(0,24)} (sancionada)`})));});
   J('/api/intel/fenix').then(d=>{if(!d||!d.ok)return;
     ckFill('fenix',{txt:fmtRc(d.total_defunta||0),meta:`<b>${fmtN(d.n_defunta)}</b> empresas BAIXADA/INAPTA que receberam do Estado`});
     ckPush([{c:'a',h:`◉ <b>${fmtRc(d.total_defunta)}</b> pagos a ${fmtN(d.n_defunta)} empresas MORTAS/irregulares`}]);});
   J('/api/fontes/frescor').then(d=>{const box=$('ck-fontes');if(!box||!d||!d.fontes)return;
-    const cor=f=>{const s=(f.estado||'').toLowerCase();if(s.includes('verde')||s.includes('ok')||s.includes('fresc'))return '#3fe08a';
-      if(s.includes('amar')||s.includes('aten')||s.includes('velh'))return '#f5a623';if(s.includes('verm')||s.includes('erro')||s.includes('crit'))return '#ff5c78';
-      return f.idade_dias==null?'#637192':(f.idade_dias<=2?'#3fe08a':(f.idade_dias<=10?'#f5a623':'#ff5c78'));};
+    const cor=f=>{const s=(f.estado||'').toLowerCase();if(s.includes('verde')||s.includes('ok')||s.includes('fresc'))return '#4cc38a';
+      if(s.includes('amar')||s.includes('aten')||s.includes('velh'))return '#e0a63e';if(s.includes('verm')||s.includes('erro')||s.includes('crit'))return '#f2707e';
+      return f.idade_dias==null?'#63718f':(f.idade_dias<=2?'#4cc38a':(f.idade_dias<=10?'#e0a63e':'#f2707e'));};
     box.innerHTML=`<div class="ck-flabel">Fontes de dados — frescor ao vivo</div><div class="ck-fgrid">`+
-      d.fontes.map(f=>`<div class="ck-fchip" title="${esc(f.detalhe||'')}"><span class="fled" style="background:${cor(f)};box-shadow:0 0 8px ${cor(f)}"></span>
+      d.fontes.map(f=>`<div class="ck-fchip" title="${esc(f.detalhe||'')}"><span class="fled" style="background:${cor(f)}"></span>
         <span class="fnm">${esc((f.fonte||'').replace(/·/g,'·'))}</span><span class="fage">${f.idade_dias==null?'—':f.idade_dias+'d'}</span></div>`).join('')+`</div>`;});
 }
 
