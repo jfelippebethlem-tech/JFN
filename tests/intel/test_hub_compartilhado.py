@@ -13,6 +13,8 @@ import pytest
 from compliance_agent.cruzamentos_intel import hub_compartilhado
 
 ENDERECO_NINHO = "RUA DAS FLORES 100 CENTRO 20000000"
+ENDERECO_GOVERNO = "AV PRES ANTONIO CARLOS 375 CENTRO 20020010"
+ENDERECO_MATRIZ = "RUA MATRIZ 1 CENTRO 70000000"
 EMAIL_CONTABIL = "contato@contabilidade.com.br"
 EMAIL_NINHO = "laranja@ninho.io"
 TELEFONE_MASSA = "21999990000"
@@ -33,41 +35,61 @@ def dbs(tmp_path):
                "total_pago REAL, n_obs INTEGER)")
 
     ce = sqlite3.connect(estab)
-    ce.execute("CREATE TABLE estabelecimentos (cnpj TEXT PRIMARY KEY, endereco_norm TEXT, "
+    ce.execute("CREATE TABLE estabelecimentos (cnpj TEXT PRIMARY KEY, cnpj_basico TEXT, "
+               "cnae_principal TEXT, endereco_norm TEXT, "
                "telefone1 TEXT, correio_eletronico TEXT, situacao_cadastral TEXT)")
 
     linhas: list[tuple] = []
     favor: list[tuple] = []
 
+    def _linha(c, end, tel, email, sit, raiz=None, cnae="4711301"):
+        # raiz default = DISTINTA por CNPJ (ninho real junta raízes diferentes)
+        linhas.append((c, raiz or c[:4] + c[-4:], cnae, end, tel, email, sit))
+
     # Grupo A — endereço-ninho: 8 CNPJs, 3 ATIVA / 5 BAIXADA, 4 recebem OB (R$2mi) → 'alto'.
     for i in range(8):
         c = _cnpj("10", i)
         sit = "ATIVA" if i < 3 else "BAIXADA"
-        linhas.append((c, ENDERECO_NINHO, "", "", sit))
+        _linha(c, ENDERECO_NINHO, "", "", sit)
         if i < 4:
             favor.append((c, f"NINHO {i}", 500_000.0, 2))
 
     # Grupo pequeno S — 3 CNPJs no mesmo endereço: NÃO deve aparecer com min_cnpjs=5.
     for i in range(3):
-        linhas.append((_cnpj("20", i), "RUA Y 5 X 30000000", "", "", "ATIVA"))
+        _linha(_cnpj("20", i), "RUA Y 5 X 30000000", "", "", "ATIVA")
 
     # Grupo T — telefone de massa: 300 CNPJs, endereços distintos → contador/call-center → 'baixo'.
     for i in range(300):
-        linhas.append((_cnpj("30", i), f"RUA T {i} BAIRRO 40000000", TELEFONE_MASSA, "", "ATIVA"))
+        _linha(_cnpj("30", i), f"RUA T {i} BAIRRO 40000000", TELEFONE_MASSA, "", "ATIVA")
 
     # Grupo E1 — e-mail de contabilidade: 6 CNPJs → guarda anti-FP → 'baixo'.
     for i in range(6):
-        linhas.append((_cnpj("40", i), f"RUA E1 {i} 50000000", "", EMAIL_CONTABIL, "ATIVA"))
+        _linha(_cnpj("40", i), f"RUA E1 {i} 50000000", "", EMAIL_CONTABIL, "ATIVA")
 
     # Grupo E2 — e-mail-ninho com materialidade: 5 CNPJs, 1 ATIVA / 4 BAIXADA, 3 recebem OB → 'alto'.
     for i in range(5):
         c = _cnpj("50", i)
         sit = "ATIVA" if i == 0 else "BAIXADA"
-        linhas.append((c, f"RUA E2 {i} 60000000", "", EMAIL_NINHO, sit))
+        _linha(c, f"RUA E2 {i} 60000000", "", EMAIL_NINHO, sit)
         if i < 3:
             favor.append((c, f"E2 {i}", 500_000.0, 1))
 
-    ce.executemany("INSERT INTO estabelecimentos VALUES (?,?,?,?,?)", linhas)
+    # Grupo P — prédio de GOVERNO: 6 CNPJs, 2 da adm pública (CNAE 84), OB bilionária → 'info'.
+    for i in range(6):
+        c = _cnpj("60", i)
+        _linha(c, ENDERECO_GOVERNO, "", "", "ATIVA",
+               cnae="8411600" if i < 2 else "4711301")
+        if i < 3:
+            favor.append((c, f"ORGAO {i}", 2_000_000_000.0, 9))
+
+    # Grupo F — FILIAIS de uma raiz só (banco/estatal): 7 CNPJs, mesma raiz, 2 recebem OB → 'info'.
+    for i in range(7):
+        c = _cnpj("70", i)
+        _linha(c, ENDERECO_MATRIZ, "", "", "ATIVA", raiz="70000000")
+        if i < 2:
+            favor.append((c, f"FILIAL {i}", 800_000.0, 3))
+
+    ce.executemany("INSERT INTO estabelecimentos VALUES (?,?,?,?,?,?,?)", linhas)
     cm.executemany("INSERT INTO favorecido_resumo VALUES (?,?,?,?)", favor)
     ce.commit(); ce.close(); cm.commit(); cm.close()
     return main, estab
@@ -77,15 +99,32 @@ def test_endereco_ninho_alto(dbs):
     main, estab = dbs
     d = hub_compartilhado(chave="endereco", min_cnpjs=5, db_path=main, estab_path=estab)
     assert d["ok"] is True
-    # só o grupo A qualifica (S tem 3<5; T/E têm endereços distintos)
-    assert len(d["grupos"]) == 1
-    g = d["grupos"][0]
-    assert g["valor"] == ENDERECO_NINHO
+    g = {x["valor"]: x for x in d["grupos"]}[ENDERECO_NINHO]
     assert g["n_cnpjs"] == 8 and g["n_recebem_ob"] == 4
     assert g["n_ativos"] == 3
     assert g["total_recebido_ob"] == 2_000_000.0
     assert g["risco"] == "alto"
     assert len(g["cnpjs"]) == 8
+
+
+def test_ente_publico_e_info(dbs):
+    """Prédio de governo (CNAE 84 no grupo) NUNCA vira ninho — mesmo com OB bilionária."""
+    main, estab = dbs
+    d = hub_compartilhado(chave="endereco", min_cnpjs=5, db_path=main, estab_path=estab)
+    g = {x["valor"]: x for x in d["grupos"]}[ENDERECO_GOVERNO]
+    assert g["risco"] == "info"
+    assert g["n_publicos"] == 2
+    assert "administração pública" in g["motivo"]
+
+
+def test_filiais_mesma_raiz_e_info(dbs):
+    """Matriz+filiais de UMA raiz de CNPJ (banco/estatal/rede) não é ninho de fachadas."""
+    main, estab = dbs
+    d = hub_compartilhado(chave="endereco", min_cnpjs=5, db_path=main, estab_path=estab)
+    g = {x["valor"]: x for x in d["grupos"]}[ENDERECO_MATRIZ]
+    assert g["risco"] == "info"
+    assert g["n_raizes"] == 1
+    assert "filiais" in g["motivo"].lower()
 
 
 def test_grupo_pequeno_nao_aparece(dbs):

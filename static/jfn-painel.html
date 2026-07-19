@@ -113,6 +113,26 @@
   .ck-fchip .fnm{color:var(--tx2)} .ck-fchip .fage{color:var(--dim)}
   @media (prefers-reduced-motion:reduce){.ck-inst .dot::after,.ck-ticker .lane{animation:none!important}}
 
+  /* ── NÚCLEO ORGÂNICO — órbitas de domínios ao redor do reator (conceito "fluxo") ── */
+  .ck-nucleo{position:relative;height:clamp(360px,46vw,540px);border:1px solid var(--bd2);border-radius:var(--r2);
+    background:radial-gradient(ellipse at 50% 55%,oklch(0.175 0.05 278) 0%,oklch(0.135 0.035 262) 55%,oklch(0.12 0.028 255) 100%);
+    box-shadow:var(--sh);overflow:hidden;margin-top:14px;isolation:isolate}
+  #nucleo-cv{position:absolute;inset:0}
+  .nu-legend{position:absolute;left:14px;top:10px;z-index:2;font-family:var(--mono);font-size:9.5px;
+    letter-spacing:1.2px;text-transform:uppercase;color:var(--dim);max-width:75%}
+  .nu-chip{position:absolute;z-index:2;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:1px;
+    appearance:none;font-family:inherit;cursor:pointer;padding:5px 10px;border-radius:8px;
+    border:1px solid color-mix(in srgb,var(--nc) 45%,transparent);
+    background:color-mix(in srgb,var(--nc) 10%,oklch(0.14 0.03 260/.7));backdrop-filter:blur(6px);
+    color:var(--tx);transition:box-shadow .2s,border-color .2s}
+  .nu-chip small{font-family:var(--mono);font-size:9px;letter-spacing:.8px;text-transform:uppercase;color:var(--mut);white-space:nowrap}
+  .nu-chip .n{font-family:var(--mono);font-weight:600;font-size:14.5px;font-variant-numeric:tabular-nums;
+    color:color-mix(in srgb,var(--nc) 70%,white);text-shadow:0 0 10px color-mix(in srgb,var(--nc) 50%,transparent)}
+  .nu-chip:hover{box-shadow:0 0 20px -4px var(--nc);border-color:var(--nc)}
+  .nu-delta{position:absolute;top:-15px;right:-8px;font:600 10px var(--mono);font-style:normal;
+    color:var(--green);text-shadow:0 0 8px color-mix(in oklch,var(--green) 50%,transparent);animation:f .3s ease}
+  @media (max-width:600px){.ck-nucleo{height:340px}.nu-chip{padding:4px 7px}.nu-chip .n{font-size:12px}.nu-chip small{font-size:8px}}
+
   header{position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(18px) saturate(1.5);-webkit-backdrop-filter:blur(18px) saturate(1.5);border-bottom:1px solid var(--bd2)}
   @media (prefers-reduced-transparency:reduce){header{background:var(--bg2);backdrop-filter:none}}
 
@@ -1824,10 +1844,89 @@ async function renderCockpit(){
       <div class="ck-ved" id="ck-vedbox" style="display:none"><span class="n" id="ck-ved">R$ —</span>
         <span class="l">pago <b style="color:var(--rose)">acima do mercado a fornecedor juridicamente vedado</b> (inidôneo), à época — o alvo mais forte.</span></div>
     </div>
+    <div class="ck-nucleo" id="ck-nucleo"><canvas id="nucleo-cv" aria-hidden="true"></canvas>
+      <div class="nu-legend">Núcleo orgânico — cada órbita é um domínio vivo · anel que expande = evento real no barramento</div>
+      <div id="nu-chips"></div></div>
     <div class="ck-grid" id="ck-grid"></div>
     <div class="ck-fontes" id="ck-fontes"></div></div>`;
   setTimeout(ckBoot,0);   // preenche após o innerHTML assentar
   return html;
+}
+
+// ═══ NÚCLEO ORGÂNICO — a mesma informação do cockpit em forma viva (dados/eventos REAIS) ═══
+const NU_NODES=[
+  {id:'radar',  lab:'radar de risco', tab:'g_radar', cor:'#5fd9ff', orb:.9,  sp:1},
+  {id:'alertas',lab:'alertas',        tab:'e_alertas',cor:'#ff7a8a', orb:.66, sp:-.7},
+  {id:'ninho',  lab:'ninhos',         tab:'g_riscos', cor:'#f2b544', orb:.88, sp:.8},
+  {id:'fenix',  lab:'empresa morta',  tab:'g_fenix',  cor:'#ff9a6a', orb:.6,  sp:1.15},
+  {id:'com',    lab:'comunidades',    tab:'g_comun',  cor:'#c096ff', orb:.92, sp:-.55},
+  {id:'compras',lab:'compras auditáveis',tab:'e_comp',cor:'#eec276', orb:.68, sp:.9},
+  {id:'dossie', lab:'caro + suspeito',tab:'e_comp',   cor:'#ff7ab8', orb:.86, sp:-.95},
+];
+let _nuRAF=0,_nuPulses=[],_nuVals={};
+function nuSet(id,val){
+  const el=$('nu-'+id);if(el==null)return;const n=el.querySelector('.n');
+  const prev=_nuVals[id];_nuVals[id]=val;
+  n.textContent=val==null?'—':(typeof val==='number'?fmtN(val):val);
+  if(typeof val==='number'&&typeof prev==='number'&&val!==prev){   // delta REAL desde a última amostra
+    const d=val-prev,s=document.createElement('em');s.className='nu-delta';
+    s.textContent=(d>0?'+':'')+fmtN(d);el.appendChild(s);setTimeout(()=>s.remove(),4000);}
+}
+function nucleoPulse(tipo){
+  if(_redMotion||!$('ck-nucleo'))return;
+  const c={alerta:'255,122,138',radar:'255,122,138',ob_siafe:'238,194,118',ob_tfe:'238,194,118',
+           clausula:'192,150,255',pericia:'95,224,161',ata:'125,175,255'}[tipo]||'95,217,255';
+  _nuPulses.push({r:30,a:.85,c});
+}
+function nucleoStart(){
+  const box=$('ck-nucleo'),cv=$('nucleo-cv');if(!box||!cv)return;
+  const rm=_redMotion,ctx=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1),N=NU_NODES.length;
+  $('nu-chips').innerHTML=NU_NODES.map(n=>
+    `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor}" onclick="ir('${n.tab}')">
+      <small>${n.lab}</small><span class="n">—</span></button>`).join('');
+  let W,H,CX,CY,RX,RY;
+  function size(){W=box.clientWidth;H=box.clientHeight;cv.width=W*dpr;cv.height=H*dpr;
+    cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
+    CX=W/2;CY=H*0.52;RX=Math.min(W*0.4,430);RY=H*0.37;}
+  size();addEventListener('resize',()=>{if(cv.isConnected)size();});
+  function draw(t){
+    if(!cv.isConnected){cancelAnimationFrame(_nuRAF);_nuRAF=0;return;}
+    if(document.hidden){_nuRAF=requestAnimationFrame(draw);return;}
+    ctx.clearRect(0,0,W,H);
+    NU_NODES.forEach(n=>{ctx.strokeStyle='rgba(120,180,255,.07)';ctx.lineWidth=1;
+      ctx.beginPath();ctx.ellipse(CX,CY,RX*n.orb,RY*n.orb,0,0,6.283);ctx.stroke();});
+    NU_NODES.forEach((n,i)=>{
+      const a=-Math.PI/2+i*(2*Math.PI/N)+(rm?0:t*0.000045*(n.sp||1));
+      const x=CX+Math.cos(a)*RX*n.orb,y=CY+Math.sin(a)*RY*n.orb;n._x=x;n._y=y;
+      const g=ctx.createLinearGradient(CX,CY,x,y);
+      g.addColorStop(0,n.cor+'00');g.addColorStop(.6,n.cor+'26');g.addColorStop(1,n.cor+'55');
+      ctx.strokeStyle=g;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(x,y);ctx.stroke();
+      const rg=ctx.createRadialGradient(x,y,0,x,y,16);
+      rg.addColorStop(0,n.cor+'cc');rg.addColorStop(.35,n.cor+'44');rg.addColorStop(1,n.cor+'00');
+      ctx.fillStyle=rg;ctx.beginPath();ctx.arc(x,y,16,0,6.283);ctx.fill();
+      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,2.2,0,6.283);ctx.fill();
+      if(!rm)for(let k=0;k<3;k++){   // partículas da órbita
+        const pa=a+k*2.1+Math.sin(t*0.0003+k)*.05;
+        ctx.fillStyle=n.cor+'55';ctx.beginPath();
+        ctx.arc(CX+Math.cos(pa)*RX*n.orb,CY+Math.sin(pa)*RY*n.orb,1.4,0,6.283);ctx.fill();}
+    });
+    const spin=rm?0:t*0.0004;
+    for(let r=0;r<3;r++){ctx.strokeStyle=`rgba(140,200,255,${.16-r*.04})`;ctx.lineWidth=1.2;
+      ctx.setLineDash([6,10]);ctx.lineDashOffset=(r%2?1:-1)*spin*40;
+      ctx.beginPath();ctx.arc(CX,CY,26+r*13,0,6.283);ctx.stroke();ctx.setLineDash([]);}
+    const cg=ctx.createRadialGradient(CX,CY,0,CX,CY,30);
+    cg.addColorStop(0,'rgba(255,255,255,.95)');cg.addColorStop(.25,'rgba(150,220,255,.75)');
+    cg.addColorStop(.6,'rgba(120,140,255,.25)');cg.addColorStop(1,'rgba(120,140,255,0)');
+    ctx.fillStyle=cg;ctx.beginPath();ctx.arc(CX,CY,30,0,6.283);ctx.fill();
+    _nuPulses=_nuPulses.filter(p=>p.a>.02);
+    _nuPulses.forEach(p=>{p.r+=2.6;p.a*=.96;
+      ctx.strokeStyle=`rgba(${p.c},${p.a})`;ctx.lineWidth=1.6;
+      ctx.beginPath();ctx.arc(CX,CY,p.r,0,6.283);ctx.stroke();});
+    NU_NODES.forEach(n=>{const el=$('nu-'+n.id);
+      if(el){el.style.left=n._x+'px';el.style.top=(n._y-24)+'px';}});
+    if(!rm)_nuRAF=requestAnimationFrame(draw);
+  }
+  cancelAnimationFrame(_nuRAF);draw(performance.now());
 }
 function ckCard(id,lab,valc,dotc,href,spark){return `<div class="ck-inst" id="cki-${id}" onclick="ir('${href}')">
   <div class="k"><span class="lab">${lab}</span><span class="dot ${dotc}"></span></div>
@@ -1835,7 +1934,9 @@ function ckCard(id,lab,valc,dotc,href,spark){return `<div class="ck-inst" id="ck
   </div>`;}
 function ckFill(id,{num,txt,meta}={}){const el=$('cki-'+id);if(!el)return;const v=el.querySelector('.val'),m=el.querySelector('.meta');
   if(num!=null&&isFinite(num))_ckCount(v,num,x=>fmtN(Math.round(x)));else if(txt!=null)v.textContent=txt;
-  if(meta!=null)m.innerHTML=meta;}
+  if(meta!=null)m.innerHTML=meta;
+  nuSet(id,num!=null&&isFinite(num)?Math.round(num):txt);   // espelha no Núcleo orbital
+}
 let _ckTick=[];
 function ckPush(items){items.forEach(x=>_ckTick.push(x));const L=$('ck-lane');if(L&&_ckTick.length)L.innerHTML=_ckTick.concat(_ckTick).map(x=>`<span class="${x.c||''}">${x.h}</span>`).join('');}
 function ckBoot(){
@@ -1848,11 +1949,14 @@ function ckBoot(){
     ckCard('compras','Compras auditáveis','','bgteal','e_comp'),
     ckCard('orgao','Órgão que mais economiza','ckgood','bgteal','e_comp'),
     ckCard('ninho','Ninhos de fachada','ckamber','bgamber','g_riscos')].join('');
+  nucleoStart();
   ckPull(true);
   clearInterval(_ckTimer);_ckTimer=setInterval(()=>{if(!document.hidden&&aba==='i_cockpit')ckPull(false);},30000);
 }
 function ckPull(first){
   _ckTick=[];
+  J('/api/compliance/painel').then(d=>{const n=(d&&d.lista_alertas||[]).length;
+    if(n)nuSet('alertas',n);});
   if(first)J('/api/intel/hub_compartilhado?limite=40').then(d=>{   // caro a frio: só no boot da aba
     if(!d||!d.ok)return;const gs=(d.grupos||[]),altos=gs.filter(g=>g.risco==='alto');
     const tot=altos.reduce((s,g)=>s+(g.total_recebido_ob||0),0);
@@ -1939,7 +2043,7 @@ function sabreStart(){
       return;                                   // batimento não polui o feed nem pulsa a lâmina
     }
     const crit=(ev.tipo==='alerta'||ev.tipo==='radar');
-    _pulso(ev,crit);_hfAdd(ev,crit);
+    _pulso(ev,crit);_hfAdd(ev,crit);nucleoPulse(ev.tipo);
   };
 }
 sabreStart();

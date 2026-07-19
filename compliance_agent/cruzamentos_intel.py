@@ -1634,7 +1634,9 @@ def hub_compartilhado(chave: str = "endereco", min_cnpjs: int = 5,
     reais). Por isso ``risco='alto'`` exige grupo COESO (min_cnpjs..``_HUB_TETO_ALTO``) E
     ≥1 CNPJ recebendo OB E (maioria NÃO-ATIVA OU ``total_recebido_ob`` alto); telefone de
     massa (>200) vira 'baixo', e-mail contábil vira 'baixo', endereço de massa (>80) vira
-    'info'. INDISPONÍVEL (dump não ingerido) ≠ 0: retorna ``ok=False`` com o motivo.
+    'info'; grupo com ente PÚBLICO (CNAE 84xx — prédio de governo) vira 'info'; grupo de
+    UMA só raiz de CNPJ (matriz+filiais) vira 'info'. INDISPONÍVEL (dump não ingerido)
+    ≠ 0: retorna ``ok=False`` com o motivo.
 
     Retorna ``{ok, grupos:list[dict], n, chave, explicacao, ressalva}`` — cada grupo é
     ``{chave, valor, n_cnpjs, n_ativos, cnpjs (≤20), n_recebem_ob, total_recebido_ob,
@@ -1655,6 +1657,8 @@ def hub_compartilhado(chave: str = "endereco", min_cnpjs: int = 5,
         try:
             rows = con.execute(
                 f"SELECT e.{col} AS valor, COUNT(DISTINCT e.cnpj) AS n_cnpjs, "
+                f"  COUNT(DISTINCT e.cnpj_basico) AS n_raizes, "
+                f"  SUM(CASE WHEN e.cnae_principal LIKE '84%' THEN 1 ELSE 0 END) AS n_publicos, "
                 f"  SUM(CASE WHEN e.situacao_cadastral='ATIVA' THEN 1 ELSE 0 END) AS n_ativos, "
                 f"  COUNT(DISTINCT CASE WHEN f.favorecido_cpf IS NOT NULL THEN e.cnpj END) AS n_recebem_ob, "
                 f"  COALESCE(SUM(f.total_pago), 0) AS total_recebido_ob "
@@ -1671,12 +1675,14 @@ def hub_compartilhado(chave: str = "endereco", min_cnpjs: int = 5,
         for r in rows:
             valor, n = r["valor"], r["n_cnpjs"]
             n_ativos, n_ob = r["n_ativos"] or 0, r["n_recebem_ob"] or 0
+            n_raizes, n_pub = r["n_raizes"] or 0, r["n_publicos"] or 0
             total = float(r["total_recebido_ob"] or 0.0)
             amostra = [x["cnpj"] for x in con.execute(
                 f"SELECT cnpj FROM estab.estabelecimentos WHERE {col} = ? LIMIT 20", (valor,))]
-            risco, motivo = _hub_risco(chave, valor, n, n_ativos, n_ob, total)
+            risco, motivo = _hub_risco(chave, valor, n, n_ativos, n_ob, total, n_raizes, n_pub)
             grupos.append({
                 "chave": chave, "valor": valor, "n_cnpjs": n, "n_ativos": n_ativos,
+                "n_raizes": n_raizes, "n_publicos": n_pub,
                 "cnpjs": amostra, "n_recebem_ob": n_ob,
                 "total_recebido_ob": round(total, 2), "risco": risco, "motivo": motivo})
         return {"ok": True, "grupos": grupos, "n": len(grupos), "chave": chave,
@@ -1694,8 +1700,19 @@ def hub_compartilhado(chave: str = "endereco", min_cnpjs: int = 5,
 
 
 def _hub_risco(chave: str, valor: str, n_cnpjs: int, n_ativos: int,
-               n_recebem_ob: int, total_recebido_ob: float) -> tuple[str, str]:
+               n_recebem_ob: int, total_recebido_ob: float,
+               n_raizes: int = 0, n_publicos: int = 0) -> tuple[str, str]:
     """Classifica o risco de um grupo aplicando as guardas anti-FP (ver ``_HUB_*``)."""
+    # guarda de ENTE PÚBLICO: prédio institucional (Fazenda, secretarias, autarquias) concentra
+    # CNPJs da administração (CNAE 84xx) e recebe OB bilionária — é governo, não ninho de fachada
+    if n_publicos >= 1:
+        return "info", (f"inclui {n_publicos} CNPJ(s) da administração pública (CNAE 84) — "
+                        "endereço institucional de governo, não ninho")
+    # guarda de FILIAL: todas as unidades da MESMA raiz de CNPJ = matriz+filiais de um só ente
+    # (banco público, estatal, rede corporativa) — coesão societária legítima, não ninho
+    if n_raizes == 1 and n_cnpjs > 1:
+        return "info", (f"{n_cnpjs} estabelecimentos da MESMA raiz de CNPJ (matriz+filiais) — "
+                        "grupo próprio, não ninho")
     if chave == "telefone" and n_cnpjs > _HUB_TELEFONE_MASSA:
         return "baixo", (f"telefone em {n_cnpjs} CNPJs (>{_HUB_TELEFONE_MASSA}) — "
                          "padrão de contabilidade de massa/call-center, não ninho")
