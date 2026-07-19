@@ -384,8 +384,68 @@ def garantir_tabela(conn: sqlite3.Connection) -> None:
     conn.execute(DDL_CERTAME_INDICE)
 
 
-def calcular_e_persistir(certame: str, db_path=None) -> dict:
-    """calcular() + UPSERT em certame_indice (gerado_em = agora)."""
+# Espelho do schema REAL de `caso` no compliance.db (PRAGMA verificado em 2026-07-19);
+# IF NOT EXISTS = aditivo: em produção a tabela já existe, em DB de teste é criada igual.
+DDL_CASO = """CREATE TABLE IF NOT EXISTS caso (
+  id TEXT PRIMARY KEY,
+  alvo TEXT,
+  tipo_achado TEXT,
+  titulo TEXT,
+  resumo TEXT,
+  risco_achado REAL,
+  risco_punicao REAL,
+  economia_potencial REAL,
+  status TEXT DEFAULT 'novo',
+  evidencia_ids TEXT,
+  criado_em TEXT,
+  atualizado_em TEXT,
+  nota TEXT
+)"""
+
+FAIXAS_CASO = ("ALTO", "EXTREMO")   # faixas que abrem caso de fiscalização (Task 4.5)
+
+
+def gravar_caso_se_alto(resultado: dict, db_path=None) -> bool:
+    """Abre um CASO de fiscalização quando o índice fecha em faixa ALTO/EXTREMO.
+
+    Idempotente por (alvo, tipo_achado='direcionamento'): recomputar o índice nunca
+    duplica o caso nem regride o `status` já em andamento (novo→apurando→...).
+    `risco_punicao`/`economia_potencial` ficam NULL — não há fonte apurável aqui e
+    INDISPONÍVEL ≠ 0. Devolve True só quando um caso NOVO foi gravado."""
+    if resultado.get("faixa") not in FAIXAS_CASO:
+        return False
+    certame = resultado["certame"]
+    conn = conectar(db_path)
+    try:
+        conn.execute(DDL_CASO)
+        ja = conn.execute("SELECT 1 FROM caso WHERE alvo=? AND tipo_achado='direcionamento'",
+                          (certame,)).fetchone()
+        if ja:
+            return False
+        drivers = resultado.get("drivers") or []
+        titulo = (f"Índice de Direcionamento {resultado['faixa']} "
+                  f"({resultado['score']:.0f}/100) — certame {certame}")
+        resumo = (f"Score {resultado['score']:.1f}/100 (confiança {resultado['confianca']:.2f}); "
+                  f"{len(drivers)} driver(s): "
+                  + ("; ".join(f"{d['familia']}/{d['flag']}" for d in drivers) or "nenhum")
+                  + ". Indício de priorização interna — não é acusação.")
+        conn.execute(
+            "INSERT INTO caso (id, alvo, tipo_achado, titulo, resumo, risco_achado, "
+            "risco_punicao, economia_potencial, status, evidencia_ids, criado_em, "
+            "atualizado_em, nota) VALUES (?,?,?,?,?,?,NULL,NULL,'novo',?,"
+            "datetime('now'),datetime('now'),?)",
+            (f"direcionamento:{certame}", certame, "direcionamento", titulo, resumo,
+             resultado["score"], json.dumps(drivers, ensure_ascii=False),
+             resultado.get("_nota") or ""))
+        conn.commit()
+        return True
+    finally:
+        conn.close()
+
+
+def calcular_e_persistir(certame: str, db_path=None, gravar_caso: bool = True) -> dict:
+    """calcular() + UPSERT em certame_indice (gerado_em = agora); faixa ALTO/EXTREMO
+    abre caso de fiscalização (idempotente — desligável com gravar_caso=False)."""
     r = calcular(certame, db_path)
     conn = conectar(db_path)
     try:
@@ -399,6 +459,8 @@ def calcular_e_persistir(certame: str, db_path=None) -> dict:
         conn.commit()
     finally:
         conn.close()
+    if gravar_caso:
+        gravar_caso_se_alto(r, db_path)
     return r
 
 

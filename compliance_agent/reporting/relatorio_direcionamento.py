@@ -24,8 +24,10 @@ from __future__ import annotations
 import html as _html
 import json
 import re
+import sqlite3
 from datetime import datetime
 
+from compliance_agent.editais.indice_certame import _matriz_sv as _matriz_sv_certame
 from compliance_agent.editais.peer_diff import _SUBTIPO_PARA_TIPO_E7
 from compliance_agent.editais.teste_finalistico import avaliar as _teste_exec
 from compliance_agent.knowledge.jurisprudencia import fundamentar_clausula, obter_sumula
@@ -420,6 +422,107 @@ def _bloco_beneficiario(d: dict) -> str:
             "restritividade da cláusula, não no favorecimento a fornecedor identificado.</p>")
 
 
+# ── Contexto do certame (Índice de Direcionamento — certame_indice, Task 4.5) ──
+
+_FAMILIA_ROTULO = {
+    "transparencia": "Transparência",
+    "competicao": "Competição",
+    "conluio": "Conluio",
+    "fraude_cadastral": "Fraude cadastral",
+    "preco": "Preço",
+    "execucao": "Execução",
+}
+
+
+def _g(row, k):
+    """Acesso tolerante a coluna ausente (sqlite3.Row → IndexError; dict → KeyError):
+    `narrativa_json` é migração aditiva e pode não existir na linha."""
+    try:
+        return row[k]
+    except (KeyError, IndexError):
+        return None
+
+
+def _cor_barra(valor: float) -> str:
+    return ("#b3261e" if valor >= 0.75 else "#c77700" if valor >= 0.5
+            else "#b8a300" if valor >= 0.25 else "#2e7d32")
+
+
+def _linha_indice_certame(con, nc: str):
+    """Linha de `certame_indice` do certame, ou None (tabela ausente, sem linha ou linha
+    sem score — ex.: criada só pela narrativa). Aditivo: sem índice, o relatório sai
+    byte-idêntico ao de antes."""
+    try:
+        row = con.execute("SELECT * FROM certame_indice WHERE certame=?", (nc,)).fetchone()
+    except sqlite3.OperationalError:
+        return None
+    if row is None or row["score"] is None:
+        return None
+    return row
+
+
+def _bloco_indice_certame(row) -> str:
+    """Seção VIII da ficha — o CERTAME como um todo (Índice de Direcionamento 0-100,
+    6 famílias com máximo por flag), complementando a ficha, que é da CLÁUSULA.
+    Recebe a linha de `certame_indice` (sqlite3.Row ou dict)."""
+    familias = json.loads(_g(row, "familias_json") or "{}")
+    drivers = json.loads(_g(row, "drivers_json") or "[]")
+    score = float(_g(row, "score") or 0.0)
+    faixa = _g(row, "faixa") or "BAIXO"
+    confianca = float(_g(row, "confianca") or 0.0)
+
+    partes = ["<h4>VIII. Contexto do certame — Índice de Direcionamento</h4>",
+              f"<p>O <b>certame como um todo</b> (não apenas a cláusula desta ficha) apresenta "
+              f"Índice de Direcionamento <b>{score:.1f}/100 — faixa {_esc(faixa)}</b> "
+              f"(confiança {confianca:.2f} = famílias apuráveis / 6; "
+              f"família INDISPONÍVEL não pontua nem zera).</p>"]
+
+    linhas = []
+    for fam, d in familias.items():
+        rot = _esc(_FAMILIA_ROTULO.get(fam, fam))
+        if not d.get("apuravel"):
+            linhas.append(f"<tr><td>{rot}</td><td class='vc'><span class='ind'>INDISPONÍVEL</span></td>"
+                          f"<td class='nota'>{_esc(d.get('nota') or 'fonte não coletada')}</td></tr>")
+            continue
+        val = float(d.get("valor") or 0.0)
+        pct = int(round(val * 100))
+        barra = ("<span style='display:inline-block;width:100px;height:9px;background:#e8e8e8;"
+                 "vertical-align:middle;'><span style='display:block;height:9px;"
+                 f"width:{pct}px;background:{_cor_barra(val)};'></span></span> {pct}%")
+        top = max(d.get("flags") or [], key=lambda f: f.get("valor", 0), default=None)
+        ev = _esc(top["evidencia"]) if top else "—"
+        linhas.append(f"<tr><td>{rot}</td><td class='vc'>{barra}</td><td>{ev}</td></tr>")
+    partes.append("<table><tr><th>Família</th><th>Intensidade</th><th>Evidência (flag máximo)</th></tr>"
+                  + "".join(linhas) + "</table>")
+
+    if drivers:
+        itens = "".join(
+            f"<li><b>{_esc(_FAMILIA_ROTULO.get(d['familia'], d['familia']))} · {_esc(d['flag'])}</b> "
+            f"({d['valor']:.2f}) — {_esc(d['evidencia'])}</li>" for d in drivers)
+        partes.append(f"<p class='sub'>Drivers do índice (família ≥ 0,50):</p><ul>{itens}</ul>")
+
+    m = _matriz_sv_certame(faixa, confianca, len(drivers))
+    partes.append("<div class='matriz'><b>Matriz de risco do certame (Severidade × Verossimilhança, "
+                  f"escala 1–5 cada; produto 1–25):</b> severidade <b>{m['severidade']}/5</b> × "
+                  f"verossimilhança <b>{m['verossimilhanca']}/5</b> = <b>{m['produto']}/25 — "
+                  f"{_esc(m['nivel'])}</b>. Ação recomendada: {_esc(m['acao'])}. "
+                  f"<span class='nota'>Régua: {_esc(m['regua'])}.</span></div>")
+
+    raw = _g(row, "narrativa_json")
+    if raw:
+        try:
+            nar = json.loads(raw)
+        except (TypeError, ValueError):
+            nar = None
+        if nar and nar.get("paragrafo"):
+            tese = f"<b>{_esc(nar['tese'])}.</b> " if nar.get("tese") else ""
+            partes.append(f"<blockquote class='clausula'>{tese}{_esc(nar['paragrafo'])}</blockquote>")
+
+    partes.append("<p class='nota'>Índice contextual de PRIORIZAÇÃO interna: indício ≠ acusação; "
+                  "presume-se a legitimidade do certame. INDISPONÍVEL ≠ 0.</p>")
+    return "".join(partes)
+
+
 def _ficha_html(n: int, d: dict) -> str:
     return "".join([
         "<div class='ficha'>",
@@ -511,10 +614,17 @@ def montar_ctx(con, limiar_corpo: int = 7) -> dict:
         "âncora ainda depende de conferência no verbatim primário; (c) valores podem constar como sigilosos. "
         "Empenho ≠ liquidação ≠ pagamento; nada indisponível foi fabricado.</p>")})
 
-    # 3..N. Fichas completas (uma seção por achado quente, com quebra de página)
+    # 3..N. Fichas completas (uma seção por achado quente, com quebra de página).
+    # Seção VIII (aditiva): contexto do CERTAME via certame_indice — só quando a linha
+    # existe; sem índice persistido o relatório sai byte-idêntico ao de antes.
     for i, d in enumerate(dados_quentes, 1):
+        html_ficha = _ficha_html(i, d)
+        row_ic = _linha_indice_certame(con, d["controle_pncp"])
+        if row_ic is not None:
+            html_ficha = (html_ficha[:-len("</div>")]
+                          + _bloco_indice_certame(row_ic) + "</div>")
         secoes.append({"titulo": f"{i + 2}. Achado nº {i} — {d['orgao']}",
-                       "html": _ficha_html(i, d), "page_break": True})
+                       "html": html_ficha, "page_break": True})
 
     # anexo: cauda (indício fraco + normal) — TODOS, sem truncar silenciosamente
     def _linha_anexo(v):

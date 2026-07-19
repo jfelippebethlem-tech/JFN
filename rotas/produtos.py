@@ -365,6 +365,83 @@ async def api_ppp(payload: Optional[dict] = None):
                          "msg": f"📥 Preparando {produto} da PPP *{alvo}* (PDF, ~1–2 min). Te envio aqui mesmo."})
 
 
+# ── Índice de Direcionamento de Certame (Task 4.5) ─────────────────────────
+_INDICE_MAX_IDADE_HORAS = 24  # registro persistido mais velho que isso é recalculado na hora
+
+
+def _indice_certame_payload(certame: str, db_path=None) -> dict:
+    """Lógica síncrona (testável) do GET /api/certame/indice: devolve o registro de
+    `certame_indice` quando persistido recente (<24h); senão calcula na hora, em LEITURA
+    (não persiste — quem persiste é o runner/CLI `indice_certame`). Narrativa pericial
+    (`narrativa_json`) acompanha quando existir."""
+    import json as _json
+    import sqlite3 as _sq
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+    from compliance_agent.editais.indice_certame import _conectar_ro, _matriz_sv, calcular
+
+    certame = (certame or "").strip()
+    if not certame:
+        return {"ok": False, "erro": "informe ?certame=<numero de controle PNCP>"}
+    row, narrativa = None, None
+    try:
+        con = _conectar_ro(db_path)
+        try:
+            row = con.execute("SELECT * FROM certame_indice WHERE certame=?",
+                              (certame,)).fetchone()
+        finally:
+            con.close()
+    except _sq.OperationalError:  # tabela/DB ainda não existem → calcula na hora
+        row = None
+    if row is not None:
+        raw = row["narrativa_json"] if "narrativa_json" in row.keys() else None
+        if raw:
+            try:
+                narrativa = _json.loads(raw)
+            except (TypeError, ValueError):
+                narrativa = None
+        recente = False
+        if row["gerado_em"] and row["score"] is not None:
+            try:
+                agora = _dt.now(_tz.utc).replace(tzinfo=None)
+                recente = agora - _dt.fromisoformat(row["gerado_em"]) <= \
+                    _td(hours=_INDICE_MAX_IDADE_HORAS)
+            except (TypeError, ValueError):
+                recente = False
+        if recente:
+            drivers = _json.loads(row["drivers_json"]) if row["drivers_json"] else []
+            return {"ok": True, "certame": certame, "fonte": "certame_indice",
+                    "gerado_em": row["gerado_em"],
+                    "indice": {"score": row["score"], "prioridade": row["prioridade"],
+                               "faixa": row["faixa"], "confianca": row["confianca"],
+                               "familias": (_json.loads(row["familias_json"])
+                                            if row["familias_json"] else {}),
+                               "drivers": drivers,
+                               "matriz_sv": _matriz_sv(row["faixa"], row["confianca"] or 0.0,
+                                                       len(drivers))},
+                    "narrativa": narrativa}
+    r = calcular(certame, db_path)
+    return {"ok": True, "certame": certame, "fonte": "calculado",
+            "indice": {k: r[k] for k in ("score", "prioridade", "faixa", "confianca",
+                                         "familias", "drivers", "matriz_sv")},
+            "narrativa": narrativa, "nota": r["_nota"]}
+
+
+@router.get("/api/certame/indice")
+async def api_certame_indice(certame: Optional[str] = None):
+    """Índice de Direcionamento de Certame (0-100, 6 famílias — Task 4.5).
+    GET ?certame=<numero de controle PNCP>. Lê `certame_indice` se persistido recente (<24h);
+    senão calcula na hora (leitura; não persiste). Devolve {ok, indice:{score, prioridade,
+    faixa, confianca, familias, drivers, matriz_sv}, narrativa (se persistida)}.
+    Indício ≠ acusação; família INDISPONÍVEL ≠ 0 (só reduz a confiança)."""
+    if not (certame or "").strip():
+        return JSONResponse({"ok": False, "erro": "informe ?certame=<numero de controle PNCP>"},
+                            status_code=400)
+    try:
+        return JSONResponse(await asyncio.to_thread(_indice_certame_payload, certame))
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(e)}, status_code=500)
+
+
 @router.get("/api/ppp/triagem")
 async def api_ppp_triagem():
     """Triagem EM LOTE das PPPs/concessões municipais captadas, pela lente PPP (garantia via Fundo
