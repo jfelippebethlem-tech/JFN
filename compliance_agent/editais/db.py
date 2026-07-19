@@ -38,4 +38,11 @@ DDL = [
 def init_schema(con: sqlite3.Connection) -> None:
     for ddl in DDL:
         con.execute(ddl)
+    # migração aditiva: beneficiário na própria linha do veredito (o runner já extrai o vencedor
+    # via atas; sem persistir, a seção VI da ficha ficava eternamente "indisponível")
+    for col in ("vencedor_doc TEXT", "sinais_json TEXT"):
+        try:
+            con.execute(f"ALTER TABLE clausula_veredito ADD COLUMN {col}")
+        except sqlite3.OperationalError:
+            pass  # coluna já existe
     con.commit()

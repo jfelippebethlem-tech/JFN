@@ -27,7 +27,8 @@ import re
 from datetime import datetime
 
 from compliance_agent.editais.peer_diff import _SUBTIPO_PARA_TIPO_E7
-from compliance_agent.knowledge.jurisprudencia import SUMULAS, fundamentar_clausula
+from compliance_agent.editais.teste_finalistico import avaliar as _teste_exec
+from compliance_agent.knowledge.jurisprudencia import fundamentar_clausula, obter_sumula
 
 _LENTES_ORDEM = ["proporcionalidade", "jurisprudencia", "competicao", "refutador", "beneficiario"]
 _LENTE_ROTULO = {
@@ -194,7 +195,11 @@ def _enriquecer(con, v) -> dict:
         "n_grupo": (cluster["tamanho"] if cluster else len(membros)),
         "pares": pares,
         "fundamentacao": _fundamentacao(subtipo),
+        "teste_exec": _teste_exec(subtipo, clausula_int, valor),
         "votos": votos,
+        "vencedor": (v["vencedor_doc"] if "vencedor_doc" in v.keys() else None) or "",
+        "sinais_beneficiario": (json.loads(v["sinais_json"])
+                                if "sinais_json" in v.keys() and v["sinais_json"] else []),
         "score": v["score_final"],
         "veredito": v["veredito"],
     }
@@ -218,6 +223,15 @@ def _tabela_id(d: dict) -> str:
 
 
 def _bloco_peerdiff(d: dict) -> str:
+    if d["raridade"] is None:
+        # fallback absoluto (cluster < 3): comparação entre pares INDISPONÍVEL ≠ raridade zero
+        html = [
+            f"<p>O agrupamento deste objeto reúne apenas <b>{d['n_grupo']} edital(is)</b> — "
+            "insuficiente para comparação entre pares (peer-diff). O indício repousa na "
+            f"<b>força absoluta do catálogo E7</b> (tier <b>{_esc(d['forca_e7'])}</b>): a exigência "
+            "pertence à classe reconhecida pela jurisprudência como restritiva em si, "
+            "independentemente do comportamento dos pares.</p>"]
+        return "".join(html)
     pct = int(round((d["raridade"] or 0) * 100))
     html = [
         f"<p>No agrupamento de <b>{d['n_grupo']} editais</b> de objeto semelhante, "
@@ -243,10 +257,16 @@ def _bloco_fundamentacao(d: dict) -> str:
                 "a análise repousa nos votos do colegiado e no princípio da competitividade "
                 "(art. 9º, I, da Lei 14.133/2021).</p>")
     partes = []
-    # súmulas com texto verbatim
+    # teste finalístico EXECUTADO (número da cláusula vs teto legal) — objetivo, antes do colegiado
+    te = d.get("teste_exec")
+    if te and te["status"] != "nao_aferivel":
+        cls = "violado" if te["status"] == "violado" else "conforme"
+        rotulo = ("Aferição objetiva: exigência EXCEDE o teto legal" if te["status"] == "violado"
+                  else "Aferição objetiva: exigência dentro do teto legal")
+        partes.append(f"<p class='teste-exec {cls}'><b>{rotulo}.</b> {_esc(te['motivo'])}.</p>")
+    # súmulas com texto verbatim (match normalizado — qualquer grafia de "Súmula TCU nº 263")
     for nome in f.get("sumulas", []):
-        chave = nome.replace("Súmula ", "").strip()  # "Súmula TCU 275" → "TCU 275"
-        s = SUMULAS.get(chave)
+        s = obter_sumula(nome)
         if s:
             obs = f" <span class='nota'>({_esc(s['obs'])})</span>" if s.get("obs") else ""
             partes.append(f"<div class='sumula'><b>{_esc(s['numero'])} ({_esc(s['orgao'])}) — {_esc(s['tema'])}.</b> "
@@ -266,7 +286,51 @@ def _bloco_fundamentacao(d: dict) -> str:
     if f.get("verificar_antes_de_citar"):
         partes.append("<p class='aviso'>⚠️ Parte das âncoras deste subtipo ainda depende de conferência "
                       "no verbatim primário (pesquisa.apps.tcu.gov.br) antes de citação em peça definitiva.</p>")
+    # redação-conforme (redline): a alternativa LÍCITA que saneia a cláusula — dá objeto à diligência
+    red = _REDACAO_CONFORME.get(_SUBTIPO_PARA_TIPO_E7.get(d["subtipo"], d["subtipo"]))
+    if red:
+        partes.append("<div class='redline'><b>Redação conforme sugerida</b> (parâmetro para a diligência — "
+                      f"a cláusula deixa de ser restritiva se reescrita nestes termos): <i>“{_esc(red)}”</i></div>")
     return "".join(partes)
+
+
+# redação alternativa lícita por tipo de cláusula (padrão redline: cláusula atual → proposta + fundamento).
+# Determinística, curada com a mesma âncora do INDICE_CLAUSULA — nada inventado por LLM.
+_REDACAO_CONFORME = {
+    "capital_patrimonio": ("Exige-se capital social mínimo OU patrimônio líquido mínimo de até 10% (dez por "
+                           "cento) do valor estimado da contratação, admitida, em alternativa, a prestação de "
+                           "garantia, vedada a exigência cumulativa (Súmula TCU 275; Lei 14.133/2021 art. 69)"),
+    "atestado_quantitativo": ("Atestado(s) de capacidade técnica que comprovem execução anterior de até 50% "
+                              "(cinquenta por cento) do quantitativo licitado, restrito às parcelas de maior "
+                              "relevância e valor significativo, admitido o somatório de atestados "
+                              "(Súmula TCU 263)"),
+    "atestado_identico": ("Admite-se o somatório de atestados para comprovação dos quantitativos mínimos, "
+                          "vedada a exigência de atestado único de objeto idêntico sem motivação técnica "
+                          "expressa (Súmula TCU 263; Acórdão TCU 1.153/2024)"),
+    "garantia_proposta": ("Garantia de manutenção de proposta de até 1% (um por cento) do valor estimado, "
+                          "não cumulável com exigência de capital ou patrimônio líquido mínimo "
+                          "(Lei 14.133/2021 art. 58 §1º; Súmula TCU 275)"),
+    "marca_dirigida": ("Indicação de marca exclusivamente como referência de qualidade, acrescida da "
+                       "expressão 'ou equivalente/similar ou de melhor qualidade', salvo padronização "
+                       "previamente justificada nos autos (Súmula TCU 270; Lei 14.133/2021 art. 41 I)"),
+    "visita_tecnica": ("Visita técnica facultativa, substituível por declaração formal do licitante de pleno "
+                       "conhecimento das condições do local; obrigatoriedade somente mediante justificativa "
+                       "de imprescindibilidade nos autos (Súmula TCE-RJ nº 01; Lei 14.133/2021 art. 63 III)"),
+    "vinculo_profissional": ("Comprovação de disponibilidade do profissional por declaração de compromisso "
+                             "de contratação futura, vedada a exigência de vínculo empregatício prévio "
+                             "(Súmula TCE-RJ nº 10; Súmula TCU 272)"),
+    "recorte_geografico": ("Vedada distinção quanto à sede, domicílio ou local de fabricação como condição "
+                           "de habilitação ou pontuação (Lei 14.133/2021 art. 9º I 'b'); a localização pode "
+                           "figurar apenas como critério de desempate legalmente previsto"),
+    "recorte_temporal": ("Prazo de apresentação de amostra/documentos proporcional à complexidade do objeto "
+                         "e suficiente para licitante que não seja o atual prestador (Acórdão TCU 871/2023)"),
+    "amostra_poc": ("Amostra ou prova de conceito exigida apenas do licitante provisoriamente classificado "
+                    "em primeiro lugar, nunca de todos os licitantes como condição de participação "
+                    "(Lei 14.133/2021 arts. 17 §3º e 42)"),
+    "indices_contabeis": ("Índices contábeis usuais de mercado (liquidez geral/corrente), com justificativa "
+                          "nos autos e vedada fórmula que inclua rentabilidade ou lucratividade "
+                          "(Súmula TCU 289; Lei 14.133/2021 art. 69)"),
+}
 
 
 def _bloco_colegiado(d: dict) -> str:
@@ -294,6 +358,32 @@ def _bloco_colegiado(d: dict) -> str:
             f"{''.join(linhas)}</table>{nota}")
 
 
+def _matriz_risco(d: dict) -> str:
+    """Matriz Severidade × Verossimilhança (5×5) — escala explícita, cálculo determinístico.
+
+    Severidade = dano potencial à competição (tier E7; +1 se o teste objetivo confirmou violação).
+    Verossimilhança = robustez do indício (escore do colegiado; teto 3 sem peer-diff)."""
+    sev = {"forte": 4, "medio": 3}.get(d["forca_e7"], 2)
+    te = d.get("teste_exec")
+    if te and te["status"] == "violado":
+        sev = min(5, sev + 1)
+    ver = 5 if d["score"] >= 9 else 4 if d["score"] >= 7 else 3 if d["score"] >= 4 else 2
+    if d["raridade"] is None:
+        ver = min(ver, 3)  # sem comparação entre pares, a verossimilhança não passa de "possível"
+    prod = sev * ver
+    nivel, acao = (("CRÍTICO 🔴", "representação com pedido de suspensão cautelar do certame")
+                   if prod >= 16 else
+                   ("ALTO 🟠", "diligência prioritária ao órgão; minuta de representação preparada")
+                   if prod >= 10 else
+                   ("MÉDIO 🟡", "diligência ordinária; reavaliar com a resposta do órgão")
+                   if prod >= 5 else
+                   ("BAIXO 🟢", "monitoramento; sem medida imediata"))
+    return ("<div class='matriz'><b>Matriz de risco (Severidade × Verossimilhança, escala 1–5 cada; "
+            f"produto 1–25):</b> severidade <b>{sev}/5</b> × verossimilhança <b>{ver}/5</b> = "
+            f"<b>{prod}/25 — {nivel}</b>. Ação recomendada: {acao}. "
+            "<span class='nota'>Régua: 1–4 baixo · 5–9 médio · 10–15 alto · 16–25 crítico.</span></div>")
+
+
 def _bloco_conclusao(d: dict) -> str:
     verd = d["veredito"]
     cor = "extremo" if d["score"] >= 9 else "alto" if d["score"] >= 7 else "medio"
@@ -306,8 +396,28 @@ def _bloco_conclusao(d: dict) -> str:
                           "restritividade — pode haver justificativa técnica legítima. Fica registrado para "
                           "acompanhamento, sem recomendação de medida imediata."),
     }.get(verd, "Cláusula dentro do padrão do grupo — sem indício relevante de direcionamento.")
-    return (f"<p class='conclusao {cor}'><b>Veredito do colegiado: {_esc(verd)} — escore {d['score']}/10.</b> "
+    return (_matriz_risco(d) +
+            f"<p class='conclusao {cor}'><b>Veredito do colegiado: {_esc(verd)} — escore {d['score']}/10.</b> "
             f"{txt} <i>Indício não é acusação; presume-se a legitimidade do ato administrativo até prova em contrário.</i></p>")
+
+
+def _bloco_beneficiario(d: dict) -> str:
+    """Seção VI honesta: vencedor REAL quando a ata foi lida (coletor_ata → runner), senão declara
+    a indisponibilidade — nunca finge que ausência de dado é ausência de favorecimento."""
+    if d.get("vencedor"):
+        sinais = d.get("sinais_beneficiario") or []
+        sin_html = ("<p><b>Sinais de risco do vencedor:</b> " + _esc("; ".join(sinais)) + ".</p>"
+                    if sinais else
+                    "<p class='nota'>Sem sinal de risco societário/sancionatório mapeado para o vencedor "
+                    "na base atual — o que não exaure a diligência.</p>")
+        return (f"<p>Vencedor do certame (ata de julgamento): <b>{_esc(d['vencedor'])}</b>. "
+                "A restritividade da cláusula deve ser lida em conjunto com o resultado: exigência rara "
+                "que converge para o vencedor identificado fortalece o indício de direcionamento.</p>"
+                + sin_html)
+    return ("<p class='ind'>Vínculo edital→contrato/fornecedor vencedor indisponível nesta base "
+            "(ata de julgamento ainda não lida para este certame). "
+            "A lente de beneficiário votou sem sinal de captura — logo, o indício repousa na "
+            "restritividade da cláusula, não no favorecimento a fornecedor identificado.</p>")
 
 
 def _ficha_html(n: int, d: dict) -> str:
@@ -320,11 +430,7 @@ def _ficha_html(n: int, d: dict) -> str:
         "<h4>III. Análise comparativa (peer-diff)</h4>", _bloco_peerdiff(d),
         "<h4>IV. Fundamentação jurídica</h4>", _bloco_fundamentacao(d),
         "<h4>V. Parecer do colegiado (5 lentes)</h4>", _bloco_colegiado(d),
-        "<h4>VI. Beneficiário</h4>",
-        "<p class='ind'>Vínculo edital→contrato/fornecedor vencedor indisponível nesta base "
-        "(chave PNCP entre editais e contratos não pareável na coleta atual). "
-        "A lente de beneficiário votou sem sinal de captura — logo, o indício repousa na "
-        "restritividade da cláusula, não no favorecimento a fornecedor identificado.</p>",
+        "<h4>VI. Beneficiário</h4>", _bloco_beneficiario(d),
         "<h4>VII. Conclusão</h4>", _bloco_conclusao(d),
         "</div>",
     ])
@@ -345,22 +451,33 @@ def montar_ctx(con, limiar_corpo: int = 7) -> dict:
     normais = [v for v in vereditos if (v["score_final"] or 0) < 4]
 
     _todos_quentes = [_enriquecer(con, v) for v in quentes]
-    # revisão de sanidade: separa cláusulas de habilitação REAIS dos falsos positivos de classificação
-    dados_quentes, descartados = [], []
+    # revisão de sanidade: separa cláusulas de habilitação REAIS dos falsos positivos de classificação;
+    # e a AFERIÇÃO OBJETIVA rebaixa achado cuja exigência está DENTRO do teto legal (lícita em abstrato)
+    dados_quentes, descartados, rebaixados = [], [], []
     for d in _todos_quentes:
         motivo = _falso_positivo(d["subtipo"], d["clausula"])
         if motivo:
             d["_motivo_descarte"] = motivo
             descartados.append(d)
-        else:
-            dados_quentes.append(d)
+            continue
+        te = d.get("teste_exec")
+        if te and te["status"] == "dentro_do_teto":
+            d["_motivo_rebaixe"] = te["motivo"]
+            rebaixados.append(d)
+            continue
+        dados_quentes.append(d)
 
     secoes = []
 
     # 1. Sumário executivo + índice navegável
-    _extra_desc = (f" Destes, <b>{len(descartados)}</b> foram <b>descartados na revisão de sanidade</b> "
-                   f"(classificação equivocada — ver anexo) e <b>{len(dados_quentes)}</b> seguem para ficha completa."
-                   if descartados else "")
+    _partes_desc = []
+    if descartados:
+        _partes_desc.append(f"<b>{len(descartados)}</b> descartados na revisão de sanidade (classificação equivocada)")
+    if rebaixados:
+        _partes_desc.append(f"<b>{len(rebaixados)}</b> rebaixados pela aferição objetiva "
+                            "(exigência dentro do teto legal)")
+    _extra_desc = (f" Destes, {' e '.join(_partes_desc)} — ver anexos; "
+                   f"<b>{len(dados_quentes)}</b> seguem para ficha completa." if _partes_desc else "")
     resumo = [
         f"<p>Foram submetidas ao colegiado de cinco lentes <b>{n_total}</b> cláusulas raras "
         f"(triadas por <i>peer-diff</i> entre editais de objeto semelhante). Resultado: "
@@ -404,9 +521,10 @@ def montar_ctx(con, limiar_corpo: int = 7) -> dict:
         nc = v["numero_controle_pncp"]
         cl = con.execute("SELECT subtipo FROM edital_clausula WHERE id=?", (v["clausula_id"],)).fetchone()
         lic = con.execute("SELECT orgao_nome FROM pcrj_licitacoes WHERE numero_controle_pncp=?", (nc,)).fetchone()
+        rar = f"{v['raridade']:.2f}" if v["raridade"] is not None else "s/ pares"
         return (f"<tr><td>{_esc(lic['orgao_nome'] if lic else '—')}</td>"
                 f"<td><i>{_esc(cl['subtipo'] if cl else '—')}</i></td>"
-                f"<td class='mono'>{_esc(nc)}</td><td>{v['raridade']:.2f}</td>"
+                f"<td class='mono'>{_esc(nc)}</td><td>{rar}</td>"
                 f"<td>{_esc(v['veredito'])}</td><td class='vc'>{v['score_final']}/10</td></tr>")
 
     # seção de descartados na revisão de sanidade (transparência — não some com o falso positivo)
@@ -425,10 +543,26 @@ def montar_ctx(con, limiar_corpo: int = 7) -> dict:
                                 f"<th>Motivo do descarte</th></tr>{linhas}</table>"),
                        "page_break": True})
 
+    # rebaixados pela aferição objetiva (transparência: exigência lícita em abstrato, mantida à vista)
+    if rebaixados:
+        linhas = "".join(
+            f"<tr><td>{_esc(d['orgao'])}</td><td>{_esc((d['objeto'] or '')[:60])}</td>"
+            f"<td><i>{_esc(d['subtipo'])}</i></td><td class='vc'>{d['score']}/10</td>"
+            f"<td>{_esc(d['_motivo_rebaixe'])}</td></tr>" for d in rebaixados)
+        secoes.append({"titulo": f"{len(dados_quentes) + (4 if descartados else 3)}. Rebaixados pela aferição "
+                                 f"objetiva ({len(rebaixados)})",
+                       "html": ("<p class='nota'>Cláusulas com escore alto do colegiado cujo número exigido, "
+                                "medido contra o teto da jurisprudência, está <b>dentro do limite lícito</b> — "
+                                "a restritividade em abstrato não se confirma. Permanecem registradas para "
+                                "acompanhamento (o contexto do certame ainda pode revelar direcionamento).</p>"
+                                "<table><tr><th>Órgão</th><th>Objeto</th><th>Exigência</th><th>Escore</th>"
+                                f"<th>Aferição objetiva</th></tr>{linhas}</table>"),
+                       "page_break": True})
+
     cauda = fracos + normais
     if cauda:
         linhas = "".join(_linha_anexo(v) for v in cauda)
-        _n_anexo = len(dados_quentes) + (4 if descartados else 3)
+        _n_anexo = len(dados_quentes) + 3 + (1 if descartados else 0) + (1 if rebaixados else 0)
         secoes.append({"titulo": f"{_n_anexo}. Anexo — demais cláusulas avaliadas ({len(cauda)})",
                        "html": ("<p class='nota'>Cláusulas com escore abaixo do limiar de direcionamento — "
                                 "listadas na íntegra (sem truncamento); detalhamento por lente no XLSX de apoio.</p>"

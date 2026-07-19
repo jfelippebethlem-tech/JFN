@@ -43,13 +43,36 @@ def _con():
     return sqlite3.connect(str(_DB))
 
 
+def _quantil(ordenados: list, q: float) -> float | None:
+    """Quantil com interpolação linear (método 7/NumPy) sobre lista JÁ ordenada.
+    Índice cru truncado enganava em cauda/n pequeno; interpolar elimina o salto."""
+    n = len(ordenados)
+    if not n:
+        return None
+    if n == 1:
+        return float(ordenados[0])
+    pos = q * (n - 1)
+    lo = int(pos)
+    hi = min(lo + 1, n - 1)
+    frac = pos - lo
+    return float(ordenados[lo]) + (float(ordenados[hi]) - float(ordenados[lo])) * frac
+
+
 def _percentil(con, tabela: str, coluna: str, p: float, where: str = "") -> float | None:
     n = con.execute(f"SELECT COUNT(*) FROM {tabela} {where}").fetchone()[0]
     if not n:
         return None
-    off = max(0, min(n - 1, int(n * p)))
-    r = con.execute(f"SELECT {coluna} FROM {tabela} {where} ORDER BY {coluna} LIMIT 1 OFFSET {off}").fetchone()
-    return float(r[0]) if r and r[0] is not None else None
+    # interpolação entre as duas linhas vizinhas da posição fracionária (sem carregar a coluna inteira)
+    pos = p * (n - 1)
+    off = int(pos)
+    rows = con.execute(f"SELECT {coluna} FROM {tabela} {where} ORDER BY {coluna} "
+                       f"LIMIT 2 OFFSET {off}").fetchall()
+    vals = [float(r[0]) for r in rows if r[0] is not None]
+    if not vals:
+        return None
+    if len(vals) == 1:
+        return vals[0]
+    return vals[0] + (vals[1] - vals[0]) * (pos - off)
 
 
 # ── consultas de aprendizado (cada uma devolve fatos para memoria_aprendizado) ──
@@ -177,12 +200,18 @@ def posicao_fornecedor(cnpj: str) -> dict:
         acima = bisect.bisect_left(totais, total)
         ntot = len(totais)
         pct = (acima / ntot * 100) if ntot else 0
-        mediana = totais[ntot // 2] if ntot else 0.0
-        p90 = totais[min(ntot - 1, int(ntot * 0.90))] if ntot else 0.0
-        return {"cnpj": cpf, "tem_dados": True, "n_obs": r[0], "total_pago": total,
-                "n_ugs": r[2], "percentil_exposicao": round(pct, 1),
-                "mediana_fornecedor": mediana, "p90_fornecedor": p90,
-                "multiplo_mediana": round(total / mediana, 1) if mediana else None}
+        mediana = _quantil(totais, 0.5) or 0.0
+        p90 = _quantil(totais, 0.90) or 0.0
+        out = {"cnpj": cpf, "tem_dados": True, "n_obs": r[0], "total_pago": total,
+               "n_ugs": r[2], "percentil_exposicao": round(pct, 1),
+               "n_fornecedores_base": ntot,
+               "mediana_fornecedor": mediana, "p90_fornecedor": p90,
+               "multiplo_mediana": round(total / mediana, 1) if mediana else None}
+        if ntot < 30:
+            # honestidade estatística: percentil/mediana sobre base rasa engana — o parecer
+            # deve exibir a ressalva em vez de tratar o número como régua firme
+            out["amostra_insuficiente"] = True
+        return out
     finally:
         con.close()
 

@@ -56,7 +56,30 @@ def candidatas(con, cluster_id: int, limiar_raridade: float = 0.7) -> list[dict]
         return []
     membros = json.loads(row["membros_json"])
     if len(membros) < 3:
-        return []   # cluster pequeno = não avaliável por peer-diff
+        # cluster pequeno = peer-diff indisponível. Mas silenciar cláusula de tier FORTE
+        # (marca sem equivalente, capital, visita…) seria falso negativo ESTRUTURAL para
+        # objetos raros no PNCP. Fallback: catálogo E7 absoluto — raridade=None (honesto:
+        # comparação indisponível ≠ 0), só tier forte sobe, score ancorado no peso do tier.
+        q = ",".join("?" * len(membros))
+        linhas = con.execute(
+            f"""select numero_controle_pncp, assinatura, subtipo, id, texto, trecho_fonte
+                from edital_clausula where numero_controle_pncp in ({q})""", membros).fetchall()
+        out = []
+        vistas: set[str] = set()
+        for l in linhas:
+            if l["assinatura"] in vistas:
+                continue
+            vistas.add(l["assinatura"])
+            nivel, sumula = forca_e7(l["subtipo"])
+            if nivel != "forte":
+                continue
+            out.append({
+                "clausula_id": l["id"], "numero_controle_pncp": l["numero_controle_pncp"],
+                "assinatura": l["assinatura"], "subtipo": l["subtipo"], "texto": l["texto"],
+                "trecho_fonte": l["trecho_fonte"], "raridade": None, "forca_e7": nivel,
+                "sumula": sumula, "score": _PESO["forte"] * 0.5, "origem": "absoluto",
+            })
+        return out
     # raridade máxima num cluster de n é (n-1)/n: com n=3 ela é 0.667 < 0.7 e o limiar fixo
     # silenciava TODO cluster de 3 ("0 candidatas sem erro" é a pior falha). O limiar efetivo
     # acompanha o teto do cluster.

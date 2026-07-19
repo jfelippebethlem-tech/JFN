@@ -60,6 +60,13 @@ _TEMPLATE = """<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
   .sumula { margin:6px 0; padding:8px 12px; background:#f1f8f4; border-left:4px solid #2e7d32; border-radius:0 4px 4px 0; }
   .acordao { margin:6px 0; padding:8px 12px; background:#f3f6fb; border-left:4px solid #5b7fb0; border-radius:0 4px 4px 0; }
   .teste { background:#eef3fa; padding:6px 10px; border-radius:4px; }
+  .teste-exec { padding:7px 11px; border-radius:0 4px 4px 0; font-size:10px; }
+  .teste-exec.violado { background:#fdecea; border-left:4px solid #c62828; }
+  .teste-exec.conforme { background:#f1f8f4; border-left:4px solid #2e7d32; }
+  .redline { margin:6px 0; padding:8px 12px; background:#f9f4ff; border-left:4px solid #6a4fa3;
+       border-radius:0 4px 4px 0; font-size:10px; }
+  .matriz { margin:6px 0 8px; padding:8px 12px; background:#f4f6f8; border:1px solid #d9dee4;
+       border-radius:5px; font-size:10px; }
   .aviso { color:#8a6d00; background:#fff8e1; padding:6px 10px; border-radius:4px; font-size:9px; }
   /* colegiado / votos */
   table.colegiado td.lente { font-weight:700; color:#12335a; width:20%; }

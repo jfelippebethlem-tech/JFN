@@ -11,6 +11,8 @@ Fontes:
   TCU    — pesquisa.apps.tcu.gov.br (Jurisprudência Selecionada)
 """
 
+import re
+
 from dataclasses import dataclass, field
 
 
@@ -815,6 +817,26 @@ INDICE_CLAUSULA: dict[str, dict] = {
         "verificar_antes_de_citar": False,
     },
 }
+
+
+_RE_ORGAO_SUM = re.compile(r"TCE[\s-]?RJ|TCU", re.I)
+
+
+def obter_sumula(nome: str) -> dict | None:
+    """Resolve QUALQUER grafia de súmula ("Súmula TCU nº 263", "Súmula nº 275 do TCU", "TCERJ 01")
+    para o verbete verbatim de SUMULAS. None se não mapeada — o chamador degrada honesto, sem
+    inventar enunciado. Mata o match frágil por replace de prefixo."""
+    m = _RE_ORGAO_SUM.search(nome or "")
+    if not m:
+        return None
+    orgao = "TCU" if m.group(0).upper() == "TCU" else "TCE-RJ"
+    # número = primeiro inteiro FORA do token do órgão (ordem livre: "TCU 263" ou "nº 275 do TCU")
+    mn = re.search(r"\d{1,4}", _RE_ORGAO_SUM.sub(" ", nome))
+    if not mn:
+        return None
+    num = mn.group(0).lstrip("0") or "0"
+    # TCE-RJ grava com zero à esquerda ("01"); TCU sem. Tenta as duas formas.
+    return SUMULAS.get(f"{orgao} {num}") or SUMULAS.get(f"{orgao} {num.zfill(2)}")
 
 
 def _acordao_por_numero(num: str) -> Acordao | None:

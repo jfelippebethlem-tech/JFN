@@ -68,3 +68,30 @@ def test_sumulas_carregam_orgao_e_numero():
     assert SUMULAS
     for sid, s in SUMULAS.items():
         assert s["orgao"] and s["numero"]
+
+
+# ── normalização de chave de súmula (obter_sumula) — mata o match frágil por string ──
+
+def test_obter_sumula_forma_canonica():
+    from compliance_agent.knowledge.jurisprudencia import obter_sumula
+    s = obter_sumula("Súmula TCU 263")
+    assert s and s["orgao"] == "TCU" and "263" in s["numero"]
+
+
+def test_obter_sumula_com_no_e_ordinal():
+    from compliance_agent.knowledge.jurisprudencia import obter_sumula
+    assert obter_sumula("Súmula TCU nº 263") is not None
+    assert obter_sumula("Súmula nº 275 do TCU") is not None
+
+
+def test_obter_sumula_tcerj_zero_a_esquerda():
+    from compliance_agent.knowledge.jurisprudencia import obter_sumula
+    # "TCE-RJ 01" está gravada com zero à esquerda; "nº 1" tem de achar a mesma
+    assert obter_sumula("Súmula TCE-RJ nº 1") is not None
+    assert obter_sumula("Súmula TCERJ 01") is not None
+
+
+def test_obter_sumula_desconhecida_none():
+    from compliance_agent.knowledge.jurisprudencia import obter_sumula
+    assert obter_sumula("Súmula TCU 999") is None
+    assert obter_sumula("") is None

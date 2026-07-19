@@ -90,11 +90,13 @@ def avaliar_clusters(con, max_candidatas: int, limiar_raridade: float) -> list[d
             n += 1
             con.execute(
                 """INSERT INTO clausula_veredito (clausula_id, cluster_id, numero_controle_pncp,
-                     raridade, forca_e7, sumula, votos_json, score_final, veredito)
-                   VALUES (?,?,?,?,?,?,?,?,?)""",
+                     raridade, forca_e7, sumula, votos_json, score_final, veredito,
+                     vencedor_doc, sinais_json)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                 (c["clausula_id"], cl["id"], c["numero_controle_pncp"], c["raridade"],
                  c["forca_e7"], c["sumula"], json.dumps(r["votos"], ensure_ascii=False, default=str),
-                 r["score_final"], r["veredito"]))
+                 r["score_final"], r["veredito"],
+                 venc or None, json.dumps(sinais, ensure_ascii=False) if sinais else None))
             con.commit()
             achados.append({
                 "detector": f"edital_direcionamento_{c['forca_e7']}",
@@ -102,7 +104,11 @@ def avaliar_clusters(con, max_candidatas: int, limiar_raridade: float) -> list[d
                 "titulo": f"Direcionamento ({c['subtipo']}) — {cl['assinatura_objeto'][:45]}",
                 "descricao": (f"Indício de direcionamento: no grupo de {len(membros)} editais do mesmo "
                               f"objeto, o edital {c['numero_controle_pncp']} exige \"{c['texto'][:120]}\" "
-                              f"que {int(c['raridade'] * 100)}% dos pares NÃO exigem ({c['sumula'] or 's/ súmula'}). "
+                              + (f"que {int(c['raridade'] * 100)}% dos pares NÃO exigem "
+                                 if c["raridade"] is not None else
+                                 "— grupo pequeno demais p/ comparação entre pares; indício pela força "
+                                 "absoluta do catálogo E7 ")
+                              + f"({c['sumula'] or 's/ súmula'}). "
                               f"Enxame {r['score_final']}/10 = {r['veredito']}. "
                               f"Vencedor: {venc or 'n/d'}; sinais: {', '.join(sinais) or 'nenhum'}. "
                               f"Indício ≠ acusação."),

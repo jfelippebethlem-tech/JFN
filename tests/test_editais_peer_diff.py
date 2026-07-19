@@ -23,3 +23,32 @@ def test_score_candidatura():
     # rara (0.75) × forte (1.0) = 0.75
     assert abs(peer_diff._score(0.75, "forte") - 0.75) < 1e-9
     assert abs(peer_diff._score(0.75, "medio") - 0.45) < 1e-9
+
+
+def _con_cluster_pequeno():
+    """Cluster de 2 editais (não avaliável por peer-diff) com cláusula FORTE (marca)."""
+    import sqlite3, json
+    from compliance_agent.editais import db as ed
+    con = sqlite3.connect(":memory:")
+    con.row_factory = sqlite3.Row
+    ed.init_schema(con)
+    con.execute("INSERT INTO edital_cluster (id, assinatura_objeto, membros_json, tamanho, avaliavel) "
+                "VALUES (1, 'toner', ?, 2, 1)", (json.dumps(["a", "b"]),))
+    con.execute("INSERT INTO edital_clausula (id, numero_controle_pncp, eixo, subtipo, texto, assinatura) "
+                "VALUES (1, 'a', 'tecnica', 'marca', 'exclusivamente marca HP', 'tecnica:marca:1')")
+    con.execute("INSERT INTO edital_clausula (id, numero_controle_pncp, eixo, subtipo, texto, assinatura) "
+                "VALUES (2, 'b', 'tecnica', 'indices', 'liquidez 2.0', 'economica:indices:1')")
+    return con
+
+
+def test_cluster_pequeno_cai_no_catalogo_absoluto():
+    # cluster < 3: peer-diff indisponível, mas cláusula de tier FORTE ainda vira candidata
+    # (raridade=None = comparação honesta indisponível; força vem do catálogo E7 absoluto)
+    con = _con_cluster_pequeno()
+    cands = peer_diff.candidatas(con, 1)
+    fortes = [c for c in cands if c["forca_e7"] == "forte"]
+    assert fortes, "cláusula forte de cluster pequeno não pode ser silenciada (falso negativo estrutural)"
+    c = fortes[0]
+    assert c["raridade"] is None and c.get("origem") == "absoluto"
+    # tier médio/fraco NÃO entra no fallback (sem comparação, só força alta sustenta indício)
+    assert all(x["forca_e7"] == "forte" for x in cands)
