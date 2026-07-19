@@ -6,12 +6,18 @@ Escopo: `static/jfn-painel.html` após a elevação de design + polish (cockpit,
 
 | # | Dimensão | Nota | Achado principal |
 |---|-----------|:---:|---|
-| 1 | Acessibilidade | 3/4 | Foco visível e touch-targets **corrigidos**; resta `span/div[onclick]` não-focável por teclado (chips, spheres, `.clk`) |
+| 1 | Acessibilidade | **4/4** | `clk`/`chips`/`spheres` agora `<button>` semânticos; foco visível + touch-targets + teclado ✅ (ver "Atualização") |
 | 2 | Performance | 3/4 | Canvas rAF (netbg/malha) + `backdrop-filter` — limitados e com guarda de reduced-motion; sem layout thrash |
 | 3 | Theming | 4/4 | Sistema OKLCH completo; componentes derivam de tokens; dark único **intencional** (DESIGN.md) |
 | 4 | Responsivo | 3/4 | Grid `auto-fit/minmax`, media query mobile, `overflow-x:hidden`, touch-targets ≥44px em ponteiro grosso |
 | 5 | Anti-padrões | 3/4 | Side-stripes/hero-metric/motion decorativo removidos; resta glass + número-herói no **cockpit** (contido = brief) |
-| **Total** | | **16/20** | **Good** — endereçar as dimensões fracas |
+| **Total** | | **17/20** | **Good+** — perto de Excellent |
+
+> **Atualização 2026-07-18 (gap #1 resolvido estruturalmente):** os `onclick` viraram elementos semânticos —
+> `clk()`→`<button>` (nomes de empresa), `montarSpheres()`→`<button aria-pressed>` (nav), 15 chips→`<button>`.
+> Os cards `<div onclick>` (HTML aninhado) e `<a>` sem href seguem o **padrão ARIA button** (role+tabindex+Enter/Espaço
+> via `a11yfy`), recomendação WAI-ARIA quando `<button>` nativo aninharia bloco. Verificado: sphere=`BUTTON aria-pressed`,
+> clk=`BUTTON` abre dossiê, layout inline preservado, 0 erro. A11y 3→**4/4**.
 
 ## Corrigido nesta run (animate + audit)
 - **Foco de teclado visível**: `:focus-visible{outline:2px solid var(--accent)}` global (antes: só o anel do UA). Verificado: regra parseada, `--accent`→`oklch(0.82 0.12 188)`.
