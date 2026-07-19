@@ -48,12 +48,16 @@ Somente onde o dado **já existe** e o risco de falso-positivo é controlável, 
   - **B1b Concentração de vencedor** por órgão gestor da ata.
   - **B1c Canal informal `@gmail.com`** — hospital/órgão municipal conduzindo "pesquisa de mercado"
     e retirada de empenho por e-mail pessoal (baixa transparência, vetor de direcionamento).
-- **B2 · Aditivo-salame** (sequência de aditivos, cada `<25%`, soma `>25%/50%` — art. 125/126
-  da 14.133): fecha o buraco do `aditivos_estouro` (que só olha o total vg−vi).
-- **B3 · Duplicidade de documento fiscal** — mesmo doc fiscal (`re`/`nl`) em 2+ OBs ao mesmo credor
-  (complementa `duplicidade_competencia`, que deixa "mesma NF" de fora de propósito).
-- **B4 · Sancionadas contratadas — Município** — análogo do `sancionadas_contratadas` (hoje só
-  SIAFE-Estado) repontado a `pcrj_contratos`/`pcrj_despesa`, com teste "à época" + `sancao_abrangencia`.
+- **B2 · Aditivo-salame** — ~~sequência de aditivos, cada `<25%`, soma `>25%`~~ **DESCARTADO
+  (já coberto):** `aditivos_estouro` SOMA `valor_acrescido` (qualif='1') de todos os aditivos do
+  contrato — `pct = soma_acréscimo / valor_inicial` — e já sinaliza `série ≥3`. O caso "vários
+  pequenos que somam" já cai no total. Não reinventar (regra §6.3 do CLAUDE global).
+- **B3 · Duplicidade de documento fiscal (município)** — **INVIÁVEL com o dado atual:**
+  `pcrj_despesa` é agregada por credor×órgão×exercício (sem granularidade de NF/`re`/`nl`).
+  Fica como lacuna de coleta (execução 2024+ por OB). No Estado, `duplicidade_competencia` cobre.
+- **B4 · Sancionadas contratadas — Município** ✅ **ENTREGUE** — análogo do `sancionadas_contratadas`
+  (hoje só SIAFE-Estado) sobre `pcrj_contratos` (fonte='pncp'), teste "à época", guarda anti-Fiocruz
+  (descarta federal/estadual). Achado real: 58 empresas, 19 à-época (topo R$13,72mi e R$13,14mi).
 
 Cada detector: função em `cruzamentos_intel.py` (ou módulo dedicado) retornando `{ok, n, achados,
 ressalva}`, materializada em `data/cache/*.json`, exposta em `/api/intel/*`, com teste.
