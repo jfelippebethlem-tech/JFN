@@ -252,6 +252,10 @@
   tbody td:first-child{text-align:left;color:var(--tx)}
   tbody tr:last-child td{border-bottom:0}
   th.srt{cursor:pointer;user-select:none}th.srt:hover{color:var(--accent)}
+  .meter{display:inline-block;width:64px;height:4px;background:var(--bg2);border-radius:2px;margin-right:8px;vertical-align:2px;overflow:hidden}
+  .meter i{display:block;height:100%;background:var(--amber);border-radius:2px}
+  .meter.crit i{background:var(--rose)}
+  td .tag{margin:1px 2px 1px 0}
 
   .barw{display:flex;flex-direction:column;gap:10px;margin-top:4px}
   .barw .row{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px}
@@ -1314,17 +1318,17 @@ async function renderRadar(){
   if(!d.ok)return sec('Radar')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const a=d.achados||[];
   let h=cover('geral','Radar de risco — todos os detectores somados','Score <b>0-100</b> por fornecedor somando sinais independentes de todos os detectores (conluio societário, sanção à época, fantasma, servidor-sócio, perdedora contumaz, fênix). Um detector isolado é indício fraco; <b>vários acesos no mesmo CNPJ raramente são coincidência</b> — esta é a fila de apuração priorizada.','🎯')+acoesAba('radar_risco');
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores com sinal','var(--amber)','🎯')}${kpi(fmtN(d.n_vermelho||0),'Score ≥50 (🔴)','var(--rose)','🚨')}
-      ${kpi(a.length?a[0].score:'—','Maior score','var(--rose)')}${kpi(a.filter(x=>x.n_sinais>=3).length,'Com ≥3 sinais',null,'🧮')}</div>`;
-  h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'')}</div>`;
-  h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#radar-list .card')"></div>`;
-  h+=`<div id="radar-list" class="grid">`+a.map(x=>card(
-    `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim">${esc(x.cnpj_fmt)}</div>
-      <div class="muted" style="font-size:12.5px;margin-top:4px">${(x.sinais||[]).map(s=>`<span class="tag ${s.peso>=25?'rose':'amber'}">${esc(s.sinal)} +${s.peso}</span>`).join(' ')}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;font-size:22px;color:${x.score>=50?'var(--rose)':'var(--amber)'}">${x.score}</div><div class="dim">${x.rating} ${x.n_sinais} sinais</div></div></div>
-      ${leitura(`<b>${esc(x.nome)}</b> acende <b>${x.n_sinais}</b> detector(es) ao mesmo tempo: ${esc((x.sinais||[]).map(s=>rot(s.sinal)+(s.detalhe?' ('+s.detalhe+')':'')).join('; '))}. Sinais independentes que se corroboram — priorizar na apuração.`)}`,
-    x.score>=50?'hl':'')).join('')+`</div>`;
-  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;return h;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Fornecedores com sinal',null)}${kpi(fmtN(d.n_vermelho||0),'Score ≥50 (crítico)','var(--rose)')}
+      ${kpi(a.length?a[0].score:'—','Maior score','var(--rose)')}${kpi(a.filter(x=>x.n_sinais>=3).length,'Com ≥3 sinais',null)}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'').replace(/\b([a-z]+_[a-z_]+)\b/g,m=>rot(m))}</div>`;
+  h+=`<div class="search" style="margin-top:12px"><input placeholder="filtrar por empresa ou sinal…" oninput="filtrar(this,'#radar-tbl tbody tr')"></div>`;
+  h+=`<div class="card" style="padding:4px 15px;overflow-x:auto"><table id="radar-tbl"><thead><tr><th>Fornecedor</th><th style="text-align:left">Sinais que dispararam</th><th class="right">Nº</th><th class="right">Score</th></tr></thead><tbody>`+
+    a.map(x=>`<tr><td style="min-width:180px">${clk(x.cnpj,x.nome||x.cnpj_fmt)}<div class="dim mono" style="font-size:11px">${esc(x.cnpj_fmt)}</div></td>
+      <td style="text-align:left;max-width:520px" title="${esc((x.sinais||[]).map(s=>rot(s.sinal)+(s.detalhe?' — '+s.detalhe:'')).join(' · '))}">${(x.sinais||[]).map(s=>`<span class="tag ${s.peso>=25?'rose':'amber'}">${rot(s.sinal)} +${s.peso}</span>`).join('')}</td>
+      <td class="num">${x.n_sinais}</td>
+      <td style="white-space:nowrap"><span class="meter ${x.score>=50?'crit':''}"><i style="width:${Math.min(100,x.score)}%"></i></span><b class="num" style="color:${x.score>=50?'var(--rose)':'var(--amber)'}">${x.score}</b></td></tr>`).join('')+
+    `</tbody></table></div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')} Score sempre acompanhado das regras que o dispararam — clique no nome para a trilha completa no dossiê.</div>`;return h;
 }
 
 // ═══ CONLUIO DIRETO (vencedor × perdedora × QSA) ═══
@@ -1358,7 +1362,7 @@ async function renderComunidades(){
   let h=cover('geral','Comunidades — clusters família-empresa-órgão (Louvain)','Algoritmo de comunidades (Louvain) sobre o grafo de <b>sócios (QSA), disputas em comum e dinheiro dos mesmos órgãos</b>. O cluster denso pessoa+empresa+órgão é o desenho clássico do grupo econômico oculto atrás de licitações. Score 0-100 por sinais objetivos dentro do cluster.','🧩')+acoesAba('comunidades',`<a class="btn ghost" style="flex:0 0 auto;min-width:150px" href="/graph?fonte=comunidades" target="_blank">🧩 Grafo das comunidades</a>`);
   h+=`<div class="grid g2">${kpi(fmtN(d.n),'Comunidades relevantes','var(--amber)','🧩')}${kpi(fmtN(a.filter(x=>x.score>=50).length),'Score ≥50 (🔴)','var(--rose)','🚨')}
       ${kpi(fmtN(g.nos||0),'Nós no grafo',null,'🕸️')}${kpi(fmtN(g.arestas||0),'Arestas',null,'🔗')}</div>`;
-  h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'')}</div>`;
+  h+=`<div class="dim" style="margin-top:8px">${esc(d.escala||'').replace(/\b([a-z]+_[a-z_]+)\b/g,m=>rot(m))}</div>`;
   h+=`<div class="search" style="margin-top:12px"><span class="mag">🔎</span><input placeholder="filtrar por empresa, pessoa ou órgão…" oninput="filtrar(this,'#com-list .card')"></div>`;
   h+=`<div id="com-list" class="grid">`+a.map(x=>{
     const emp=(x.membros||[]).filter(m=>m.tipo==='empresa').slice(0,4).map(m=>esc(m.label));
