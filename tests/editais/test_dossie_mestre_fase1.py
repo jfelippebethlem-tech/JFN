@@ -248,6 +248,27 @@ def test_portfolio_ranqueia_e_beira_pares(db):
     assert pf["orgaos"][0]["desvio_vs_pares"] == 20.0
 
 
+def test_avaliar_unidades_ranqueia_por_secretaria(db):
+    from compliance_agent.editais.avaliacao_conjunto import avaliar_unidades
+    p, con = db
+    unidades = {"HOSPITAL PEDRO ERNESTO": 60.0, "FUNDO ESTADUAL DE SAUDE": 20.0}
+    for uni, sc in unidades.items():
+        for i in range(3):
+            c = f"U-{uni[:4]}-{i}"
+            con.execute("INSERT INTO edital_documento (numero_controle_pncp, ano, orgao_cnpj) "
+                        "VALUES (?, 2026, '42498600000171')", (c,))
+            con.execute("INSERT INTO certame_indice (certame, score, prioridade, faixa, confianca) "
+                        "VALUES (?, ?, 1, ?, 0.5)", (c, sc, "ALTO" if sc >= 50 else "BAIXO"))
+            con.execute("INSERT INTO pncp_resultado (certame, orgao_cnpj, unidade_nome, ordem_classificacao) "
+                        "VALUES (?, '42498600000171', ?, 1)", (c, uni))
+    con.commit()
+    r = avaliar_unidades(db_path=p, min_certames=3)
+    assert r["n_unidades"] == 2
+    assert r["unidades"][0]["unidade"] == "HOSPITAL PEDRO ERNESTO"  # pior mediana primeiro
+    assert r["unidades"][0]["score_mediana"] == 60.0
+    assert r["unidades"][0]["desvio_vs_pares"] == 20.0  # 60 - mediana(40)
+
+
 def test_portfolio_filtra_federal_por_esfera(db):
     p, con = db
     # 42498600 = raiz guarda-chuva do ESTADO do RJ (estadual-rj); 00394452 = COMANDO DO EXERCITO (federal)

@@ -499,6 +499,20 @@ async def api_conjunto_orgao(cnpj: Optional[str] = None):
         return JSONResponse({"ok": False, "erro": str(e)}, status_code=500)
 
 
+@router.get("/api/conjunto/unidades")
+async def api_conjunto_unidades(min_certames: int = 3):
+    """Ranking por UNIDADE/secretaria do RJ (granularidade que o CNPJ guarda-chuva esconde):
+    Hospital Pedro Ernesto, Fundo Estadual de Saúde, etc., pela mediana do Índice de Certame.
+    Só unidades com ≥min_certames indexados E com unidade conhecida no PNCP. Indício ≠ acusação."""
+    try:
+        from compliance_agent.editais.avaliacao_conjunto import avaliar_unidades
+        r = await asyncio.to_thread(avaliar_unidades, ("42498600", "42498733"), None,
+                                    max(1, min(int(min_certames), 20)))
+        return JSONResponse({"ok": True, **r})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(e)}, status_code=500)
+
+
 @router.get("/api/conjunto/portfolio")
 async def api_conjunto_portfolio(min_certames: int = 3):
     """Ranking de ÓRGÃOS por risco de certame (portfólio, dossiê mestre §5): órgãos com

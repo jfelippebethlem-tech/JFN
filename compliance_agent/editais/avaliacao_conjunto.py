@@ -146,6 +146,57 @@ def avaliar_portfolio(db_path=None, min_certames: int = 3,
                      "− mediana dos pares (positivo = pior que os pares)"}
 
 
+def avaliar_unidades(raizes_cnpj: tuple[str, ...] = ("42498600", "42498733"),
+                     db_path=None, min_certames: int = 3) -> dict:
+    """Ranking por UNIDADE/secretaria (granularidade que orgao_cnpj esconde: todo órgão estadual
+    compartilha o CNPJ guarda-chuva 42498600). Agrupa os certames indexados por
+    `pncp_resultado.unidade_nome` — Hospital Pedro Ernesto, Fundo Estadual de Saúde, etc.
+
+    Cobertura HONESTA: só rankeia certames que TÊM unidade em pncp_resultado (o índice cobre mais
+    editais do que o PNCP expõe vencedor); as unidades crescem conforme o PNCP/enxame avançam."""
+    con = _ro(db_path)
+    try:
+        marks = ",".join("?" for _ in raizes_cnpj)
+        rows = _q(con,
+                  "SELECT pr.unidade_nome AS unidade, ci.score, ci.faixa, ci.prioridade, ci.certame "
+                  "FROM certame_indice ci JOIN edital_documento ed "
+                  "ON ed.numero_controle_pncp = ci.certame "
+                  "JOIN pncp_resultado pr ON pr.certame = ci.certame "
+                  "WHERE substr(ed.orgao_cnpj,1,8) IN (" + marks + ") "
+                  "AND pr.unidade_nome IS NOT NULL AND ci.score IS NOT NULL",
+                  tuple(raizes_cnpj))
+    finally:
+        con.close()
+    por_unidade: dict[str, list] = {}
+    for r in rows:
+        por_unidade.setdefault(r["unidade"], []).append(r)
+    unidades = []
+    for nome, rs in por_unidade.items():
+        certames = {r["certame"]: r for r in rs}.values()  # dedup por certame
+        scores = sorted(r["score"] for r in certames)
+        if len(scores) < min_certames:
+            continue
+        ancora = sorted(certames, key=lambda r: -(r["prioridade"] or 0))[:3]
+        unidades.append({
+            "unidade": nome,
+            "n_certames": len(scores),
+            "score_mediana": _quantil(scores, 0.5),
+            "score_p90": _quantil(scores, 0.9),
+            "n_alto_extremo": sum(1 for r in certames if r["faixa"] in ("ALTO", "EXTREMO")),
+            "casos_ancora": [{"certame": r["certame"], "score": r["score"], "faixa": r["faixa"]}
+                             for r in ancora],
+        })
+    medianas = sorted(u["score_mediana"] for u in unidades if u["score_mediana"] is not None)
+    mediana_pares = _quantil(medianas, 0.5)
+    for u in unidades:
+        u["desvio_vs_pares"] = (round(u["score_mediana"] - mediana_pares, 2)
+                                if u["score_mediana"] is not None and mediana_pares is not None else None)
+    unidades.sort(key=lambda u: -(u["score_mediana"] or 0))
+    return {"n_unidades": len(unidades), "mediana_pares": mediana_pares, "unidades": unidades,
+            "_nota": "granularidade por unidade (pncp_resultado.unidade_nome); só certames com unidade "
+                     "conhecida entram — cobertura cresce com PNCP/enxame (INDISPONÍVEL ≠ 0)"}
+
+
 def ctx_secao(av: dict) -> dict:
     """Converte a avaliação de um órgão no contrato de seção do dossiê ({titulo, html}) — pluga em
     `_ctx_dossie`/consolidado sem tocar no render (pipeline Kroll)."""

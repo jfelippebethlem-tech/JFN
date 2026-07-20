@@ -23,6 +23,7 @@ GET /api/compliance/stats -> api_compliance_stats
 GET /api/conflito -> api_conflito
 GET /api/conjunto/orgao -> api_conjunto_orgao
 GET /api/conjunto/portfolio -> api_conjunto_portfolio
+GET /api/conjunto/unidades -> api_conjunto_unidades
 GET /api/cruzamento -> api_cruzamento
 GET /api/diario -> api_diario
 GET /api/doador_contrato -> api_doador_contrato
