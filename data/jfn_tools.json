@@ -264,6 +264,35 @@
     {
       "type": "function",
       "function": {
+        "name": "dossie_mestre",
+        "description": "Dossie Mestre de LICITACOES em PDF (Kroll): portfolio de orgaos (ranking+peer-benchmark) ou 1 orgao (CNPJ) com avaliacao de conjunto — usar quando: dossie mestre/panorama de licitacoes de um orgao ou do conjunto de orgaos — chamar: POST /api/dossie/mestre (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "alvo": {
+              "type": "string",
+              "description": "string opcional (CNPJ do orgao; vazio = portfolio)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/dossie/mestre",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": [
+          "path_pdf"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "cartel",
         "description": "Cartel/bid-rigging em grafo + QSA (concentracao, rodizio, socios em comum entre concorrentes) — usar quando: conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?' — chamar: GET /api/cartel (base http://127.0.0.1:8000)",
         "parameters": {

@@ -326,22 +326,39 @@ def _f_preco(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
 
 
 def _f_execucao(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
-    """Aditivos do contrato decorrente. HOJE sempre INDISPONÍVEL na base real: a chave de
-    contrato_aditivo é do CONTRATO ("-2-"), não da compra ("-1-"), e não há ponte (0 joins
-    verificados). A query fica pronta para quando a ponte existir."""
-    rows = _q(conn, "SELECT valor_acrescido FROM contrato_aditivo WHERE numero_controle_pncp=?",
-              (certame,))
-    acrescido = sum(r[0] for r in rows if r and r[0])
-    if not rows or not ctx["valor_total"]:
-        return _familia([], "contrato_aditivo",
-                        "sem vínculo compra→contrato na base (chaves PNCP distintas) — "
-                        "ausência de aditivo relacionável ≠ ausência de aditivo")
-    pct = acrescido / ctx["valor_total"]
+    """Aditivos do contrato decorrente da compra. PONTE DE DUAS PERNAS (destravada 2026-07-20):
+    compra ("-1-") → `pcrj_contratos.numero_compra` → contrato ("-2-") → `contrato_aditivo`.
+    O coletor de contratos sempre gravou `numeroControlePncpCompra`; o join é que não a usava.
+    Denominador preferencial = valor_inicial do CONTRATO (base correta do art. 125); fallback
+    honesto = valor homologado do certame."""
+    try:
+        contratos = _q(conn, "SELECT numero_controle_pncp, valor_inicial FROM pcrj_contratos "
+                             "WHERE numero_compra=?", (certame,))
+    except sqlite3.OperationalError:
+        contratos = []
+    # fallback legado: alguma base pode ter aditivos gravados direto na chave da compra
+    chaves = [r[0] for r in contratos] or [certame]
+    marks = ",".join("?" for _ in chaves)
+    rows = _q(conn, f"SELECT numero_controle_pncp, valor_acrescido FROM contrato_aditivo "
+                    f"WHERE numero_controle_pncp IN ({marks})", tuple(chaves))
+    base = sum(r[1] for r in contratos if r[1]) or ctx["valor_total"]
+    if not rows or not base:
+        nota = ("compra sem contrato vinculado (numero_compra) nem aditivo na base — "
+                "ausência de vínculo ≠ ausência de aditivo")
+        return _familia([], "pcrj_contratos.numero_compra → contrato_aditivo", nota)
+    acrescido = sum(r[1] for r in rows if r and r[1])
+    flags = []
+    pct = acrescido / base
     valor = (1.0 if pct > LIMITE_ADITIVO_LEGAL else
              VALOR_ADITIVO_METADE_LIMITE if pct > LIMITE_ADITIVO_LEGAL / 2 else 0.0)
-    return _familia([_flag("aditivo_relevante", valor,
-                           f"acréscimos somam {pct:.1%} do valor homologado "
-                           f"(limite legal 25% — art. 125 Lei 14.133)")], "contrato_aditivo")
+    flags.append(_flag("aditivo_relevante", valor,
+                       f"acréscimos somam {pct:.1%} do valor-base ({'contrato' if contratos else 'homologado'}) "
+                       f"em {len(rows)} termo(s) — limite legal 25%, art. 125 Lei 14.133"))
+    if len(rows) >= 3:
+        flags.append(_flag("aditivos_em_serie", 0.6,
+                           f"{len(rows)} termos aditivos no(s) contrato(s) da compra — change orders em "
+                           "série (red-flag OCDE/Banco Mundial)"))
+    return _familia(flags, "pcrj_contratos.numero_compra → contrato_aditivo")
 
 
 # ───────────────────────────── agregação, matriz e persistência ─────────────────────────────

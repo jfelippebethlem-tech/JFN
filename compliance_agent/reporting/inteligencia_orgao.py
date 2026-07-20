@@ -311,6 +311,7 @@ def montar(orgao: Optional[str] = None, ug: Optional[str] = None,
     ctx["penalidades_tce"] = _penalidades_tce_orgao(ug_cod)  # sanções do TCE-RJ ao órgão (controle externo)
     ctx["concentracao_grupo"] = _concentracao_grupo_orgao(ug_cod)  # concentração oculta por grupo (cartel/conc. fictícia)
     ctx["painel_detectores"] = _painel_detectores_orgao(ug_cod)  # §1-I: visão unificada dos detectores (spec licitações)
+    ctx["conjunto_certames"] = _conjunto_certames_orgao(ug_cod, nome)  # §1-M: o órgão como LICITANTE (F5.1)
     ctx["tac_orgao"] = _tac_orgao(ug_cod)  # §1-J: pagamento fora de contrato (TAC/indenização) + emergencial + worklist
     ctx["anomalia_receita"] = _anomalia_receita_orgao(ug_cod)  # §1-K: cruzamento dump RF × fornecedores (anomalias)
     ctx["raciocinio"] = parecer_raciocinado_orgao(ctx)  # síntese de IA sobre os fatos (degrada honesto)
@@ -1311,6 +1312,67 @@ def _secao_concentracao_grupo_md(add, ctx: dict) -> None:
     add("")
 
 
+def _conjunto_certames_orgao(ug: str, nome: str) -> dict:
+    """§1-M — resolve UG→CNPJ (editais/ug_cnpj) e roda a avaliação de CONJUNTO dos certames do
+    órgão no PNCP (editais/avaliacao_conjunto). Degrada honesto em cada elo da corrente."""
+    try:
+        from compliance_agent.editais.avaliacao_conjunto import avaliar_orgao
+        from compliance_agent.editais.ug_cnpj import resolver
+        r = resolver(ug, nome)
+        if not r:
+            return {"ok": False, "_nota": ("UG sem correspondência única de CNPJ nas bases PNCP "
+                                           "(match por sigla/nome falhou ou ambíguo) — INDISPONÍVEL ≠ 0")}
+        av = avaliar_orgao(r["cnpj"])
+        if not av.get("n_certames_indexados"):
+            return {"ok": False, "resolucao": r,
+                    "_nota": f"CNPJ {r['cnpj']} resolvido ({r['metodo']}), mas sem certame indexado no corpus"}
+        return {"ok": True, "resolucao": r, "avaliacao": av}
+    except Exception as exc:  # noqa: BLE001 — seção é bônus; nunca derruba o /orgao (logado, não mudo)
+        import logging
+        logging.getLogger(__name__).debug("conjunto_certames indisponível p/ UG %s: %s", ug, exc)
+        return {"ok": False, "_nota": f"avaliação de conjunto indisponível: {str(exc)[:120]}"}
+
+
+def _secao_conjunto_certames_md(add, ctx: dict) -> None:
+    """§1-M — o órgão como LICITANTE: conjunto dos certames PNCP (mediana/p90 do índice, reincidência
+    de cláusula restritiva → auditoria temática, eliminações triviais, HHI de vitórias, casos-âncora)."""
+    cj = ctx.get("conjunto_certames") or {}
+    add("## 1-M. O ÓRGÃO COMO LICITANTE — CONJUNTO DOS CERTAMES (PNCP)")
+    add("")
+    add("> Os certames do órgão avaliados **como conjunto** (Índice de Direcionamento 0-100, 7 famílias — "
+        "inclui o que **ocorreu na sessão**: eliminações em massa/por motivo trivial sem saneamento, art. 64 "
+        "§1º c/c art. 12 III). Um certame ruim pode ser acaso; um padrão de órgão não. **Indício ≠ acusação**; "
+        "INDISPONÍVEL ≠ 0.")
+    add("")
+    if not cj.get("ok"):
+        add(f"*{cj.get('_nota') or 'INDISPONÍVEL nesta execução'}.*")
+        add("")
+        return
+    r, av = cj["resolucao"], cj["avaliacao"]
+    add(f"**Órgão no PNCP:** {av.get('orgao_nome') or r['orgao_nome']} (CNPJ {r['cnpj']}, ponte por {r['metodo']})")
+    add("")
+    add("| Métrica | Valor |")
+    add("|---|---:|")
+    add(f"| Certames indexados | {av['n_certames_indexados']} |")
+    add(f"| Índice — mediana | {av['score_mediana']:.1f} |")
+    add(f"| Índice — p90 | {av['score_p90']:.1f} |")
+    add(f"| Certames ALTO/EXTREMO | {av['n_alto_extremo']} |")
+    add(f"| Sessões com ata persistida | {av['sessoes_com_ata']} |")
+    add(f"| Eliminações triviais sem saneamento | {av['violacoes_saneamento']} |")
+    hhi = av.get("hhi_vitorias")
+    add(f"| HHI de vitórias | {hhi if hhi is not None else 'INDISPONÍVEL'} |")
+    add("")
+    if av.get("auditoria_tematica"):
+        alvo = "; ".join(f"**{a['subtipo']}** em {a['certames']} certames" for a in av["auditoria_tematica"])
+        add(f"> 🎯 **Gatilho de auditoria temática:** {alvo} — o mesmo padrão restritivo reincide; "
+            "caso de auditoria temática, não de representação avulsa (skill §5).")
+        add("")
+    if av.get("casos_ancora"):
+        add("**Casos-âncora:** " + " · ".join(f"`{c['certame']}` ({c['score']:.0f}/{c['faixa']})"
+                                              for c in av["casos_ancora"]))
+        add("")
+
+
 def _secao_painel_detectores_md(add, ctx: dict) -> None:
     """Seção 1-I — PAINEL DE DETECTORES (spec de licitações). Visão UNIFICADA dos detectores no schema do spec
     (§1.4): só os `confirmado` (não refutados) no topo, com a defesa inocente visível; um resumo honesto dos
@@ -1729,6 +1791,7 @@ def render_md(ctx: dict) -> str:
     _secao_concentracao_grupo_md(add, ctx)
     # 1-I. Painel de detectores (spec de licitações) — visão unificada dos ResultadoDetector (J1 + futuros)
     _secao_painel_detectores_md(add, ctx)
+    _secao_conjunto_certames_md(add, ctx)
     # 1-J. Pagamento fora de contrato regular (TAC/indenização) + emergencial + worklist de co-suspeitos
     _secao_tac_md(add, ctx)
     # 1-K. Cruzamento Receita Federal — anomalias (sem-fins / rede-grupo / veículo de aluguel / laranja)
@@ -1986,6 +2049,39 @@ def _secao_concentracao_grupo_pdf(pdf, _t, ctx: dict) -> None:
                        "fictícia = red flag de cartel/concorrência simulada; corroborar editais (SEI/PNCP) e, se "
                        "confirmado, comunicar MP e CADE. Indício, não prova; mercado restrito explica parte."))
         pdf.set_text_color(0, 0, 0)
+
+
+def _secao_conjunto_certames_pdf(pdf, _t, ctx: dict) -> None:
+    """PDF — espelho da §1-M (o órgão como licitante: conjunto dos certames PNCP)."""
+    cj = ctx.get("conjunto_certames") or {}
+    pdf.ln(4); pdf.set_font(pdf._fam, "B", 12); pdf.set_text_color(20, 30, 50)
+    pdf.cell(0, 8, _t("O orgao como LICITANTE - conjunto dos certames (PNCP)"), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_text_color(0, 0, 0); pdf.set_font(pdf._fam, "", 8)
+    _mc(pdf, 4.5, _t("Certames do orgao avaliados como CONJUNTO (Indice de Direcionamento 0-100, 7 familias - "
+                     "inclui o que ocorreu na sessao: eliminacoes em massa/por motivo trivial sem saneamento, "
+                     "art. 64 par. 1 c/c art. 12 III da Lei 14.133). Padrao de orgao > certame isolado. "
+                     "Indicio != acusacao; INDISPONIVEL != 0."))
+    if not cj.get("ok"):
+        pdf.set_font(pdf._fam, "I", 8); pdf.set_text_color(110, 110, 110)
+        _mc(pdf, 4.5, _t(cj.get("_nota") or "INDISPONIVEL nesta execucao"))
+        pdf.set_text_color(0, 0, 0); return
+    r, av = cj["resolucao"], cj["avaliacao"]
+    pdf.ln(1)
+    _mc(pdf, 4.5, _t(f"Orgao no PNCP: {(av.get('orgao_nome') or r['orgao_nome'])[:70]} "
+                     f"(CNPJ {fmt_cnpj(r['cnpj'])}, ponte por {r['metodo']})."))
+    hhi = av.get("hhi_vitorias")
+    _mc(pdf, 4.5, _t(f"Certames indexados: {av['n_certames_indexados']} | indice mediana {av['score_mediana']:.1f} "
+                     f"/ p90 {av['score_p90']:.1f} | ALTO/EXTREMO: {av['n_alto_extremo']} | sessoes com ata: "
+                     f"{av['sessoes_com_ata']} | eliminacoes triviais sem saneamento: {av['violacoes_saneamento']} | "
+                     f"HHI de vitorias: {hhi if hhi is not None else 'INDISPONIVEL'}."))
+    if av.get("auditoria_tematica"):
+        pdf.set_font(pdf._fam, "B", 8)
+        alvo = "; ".join(f"{a['subtipo']} em {a['certames']} certames" for a in av["auditoria_tematica"])
+        _mc(pdf, 4.5, _t(f"GATILHO DE AUDITORIA TEMATICA: {alvo} - o mesmo padrao restritivo reincide."))
+        pdf.set_font(pdf._fam, "", 8)
+    if av.get("casos_ancora"):
+        _mc(pdf, 4.5, _t("Casos-ancora: " + " | ".join(f"{c['certame']} ({c['score']:.0f}/{c['faixa']})"
+                                                       for c in av["casos_ancora"][:4])))
 
 
 def _secao_painel_detectores_pdf(pdf, _t, ctx: dict) -> None:
@@ -2400,6 +2496,7 @@ def render_pdf(ctx: dict, destino: str) -> str:
         _secao_tce_pdf(pdf, _t, ctx)
         _secao_concentracao_grupo_pdf(pdf, _t, ctx)
         _secao_painel_detectores_pdf(pdf, _t, ctx)
+        _secao_conjunto_certames_pdf(pdf, _t, ctx)
         _secao_tac_pdf(pdf, _t, ctx)  # §1-J: TAC/indenização + emergencial + worklist de co-suspeitos
         _secao_anomalia_receita_pdf(pdf, _t, ctx)  # §1-K: cruzamento dump RF × fornecedores (anomalias)
 

@@ -163,9 +163,10 @@ CATALOGO: tuple[Vicio, ...] = (
           origem=("casa", "TCU", "redflags.eu")),
     Vicio("deserto_fracassado_dirigido", "Deserto/fracassado reincidente → contratação direta", "edital",
           "Certame repetidamente deserto/fracassado (edital propositalmente inviável) para justificar dispensa "
-          "(art. 75 III). Requer série histórica de certames do órgão — sem detector dedicado ainda.",
-          dispositivos=("Lei 14.133/2021 art. 75 III",), escalada="diligencia",
-          origem=("redflags.eu",), status="lacuna"),
+          "(art. 75 III). Detector E8 sobre a série do órgão/objeto; exculpatória = republicação flexibilizada.",
+          detectores=("E8",), dispositivos=("Lei 14.133/2021 art. 75 III",),
+          teste_objetivo="≥2 desertos/fracassados sem ajuste + conversão em direta → crítico (E8)",
+          escalada="diligencia", origem=("redflags.eu",)),
 
     # ────────────────────────────── JULGAMENTO ──────────────────────────────
     Vicio("cartel_rodizio", "Cartel — rodízio de vencedores", "julgamento",

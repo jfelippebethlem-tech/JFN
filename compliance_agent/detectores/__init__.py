@@ -39,6 +39,7 @@ from compliance_agent.detectores.e4_visita_tecnica import E4VisitaTecnica
 from compliance_agent.detectores.e5_edital_iterado import E5EditalIterado
 from compliance_agent.detectores.e6_pontuacao_dirigida import E6PontuacaoDirigida
 from compliance_agent.detectores.e7_clausula_restritiva import E7ClausulaRestritiva
+from compliance_agent.detectores.e8_deserto_dirigido import E8DesertoDirigido
 from compliance_agent.detectores.j1_cartel import J1Cartel
 from compliance_agent.detectores.j2_propostas_cobertura import J2PropostasCobertura
 from compliance_agent.detectores.j3_desconto_anomalo import J3DescontoAnomalo
@@ -80,6 +81,7 @@ REGISTRO: dict[str, Detector] = {
         E5EditalIterado(),     # fase de edital — republicações dirigidas (edital iterado)
         E6PontuacaoDirigida(),  # fase de edital — pontuação técnica dirigida (técnica e preço)
         E7ClausulaRestritiva(),  # fase de edital — cláusula-a-cláusula finalística + efeito combinado (jurisprudência)
+        E8DesertoDirigido(),     # fase de edital — deserto/fracassado reincidente convertido em contratação direta
         P1EspecificacaoDirigida(),  # fase de planejamento — especificação dirigida/marca disfarçada
         P2CotacoesCombinadas(),     # fase de planejamento — cotações combinadas/orçamentos de fachada
         P5EmergenciaFabricada(),    # fase de planejamento — emergência fabricada (dispensa art. 75 VIII)
@@ -186,7 +188,7 @@ def rodar_edital(processo: str, *, contexto: dict | None = None, exculpatoria: b
         ctx.update(contexto)
     if gerar is not None and "gerar" not in ctx:
         ctx["gerar"] = gerar
-    dets = [d for d in REGISTRO.values() if d.id in ("E1", "E2", "E3", "E4", "E5", "E6", "E7")]
+    dets = [d for d in REGISTRO.values() if d.id in ("E1", "E2", "E3", "E4", "E5", "E6", "E7", "E8")]
     return pipeline(dets, ctx, exculpatoria=exculpatoria, gerar=gerar)
 
 
@@ -289,6 +291,7 @@ __all__ = [
     "E5EditalIterado",
     "E6PontuacaoDirigida",
     "E7ClausulaRestritiva",
+    "E8DesertoDirigido",
     "P1EspecificacaoDirigida",
     "P2CotacoesCombinadas",
     "P5EmergenciaFabricada",

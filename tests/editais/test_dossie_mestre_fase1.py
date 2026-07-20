@@ -108,6 +108,40 @@ def test_efeito_combinado_de_clausulas(db):
     assert "272" in flags["efeito_combinado"]["evidencia"]
 
 
+def test_ponte_compra_contrato_destrava_familia_execucao(db):
+    """F5.2: compra(-1-) → pcrj_contratos.numero_compra → contrato(-2-) → contrato_aditivo.
+    Acréscimos de 30% sobre o valor_inicial do contrato → aditivo_relevante = 1.0 (>25%, art. 125)."""
+    p, con = db
+    con.execute("""CREATE TABLE pcrj_contratos (numero_controle_pncp TEXT PRIMARY KEY, ano INTEGER,
+                   orgao_cnpj TEXT, fornecedor_documento TEXT, valor_inicial REAL, valor_global REAL,
+                   num_aditivos INTEGER, fonte TEXT, numero_compra TEXT)""")
+    con.execute("""CREATE TABLE contrato_aditivo (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                   numero_controle_pncp TEXT, sequencial_termo INTEGER, numero_termo TEXT,
+                   objeto TEXT, valor_acrescido REAL, valor_global REAL, prazo_aditado_dias INTEGER,
+                   vigencia_fim TEXT, qualif_acrescimo TEXT, qualif_vigencia TEXT,
+                   qualif_reajuste TEXT, fundamento_legal TEXT, coletado_em TEXT)""")
+    contrato = "99999999000199-2-000077/2026"
+    con.execute("INSERT INTO pcrj_contratos (numero_controle_pncp, valor_inicial, numero_compra) "
+                "VALUES (?, 1000000, ?)", (contrato, CERT))
+    for seq, v in ((1, 200000), (2, 100000)):
+        con.execute("INSERT INTO contrato_aditivo (numero_controle_pncp, sequencial_termo, "
+                    "valor_acrescido) VALUES (?, ?, ?)", (contrato, seq, v))
+    con.commit()
+    r = calcular(CERT, db_path=p)
+    fam = r["familias"]["execucao"]
+    assert fam["apuravel"] is True
+    flags = {f["flag"]: f for f in fam["flags"]}
+    assert flags["aditivo_relevante"]["valor"] == 1.0  # 300k/1M = 30% > 25%
+    assert "30.0%" in flags["aditivo_relevante"]["evidencia"]
+
+
+def test_sem_ponte_execucao_segue_indisponivel(db):
+    p, con = db
+    r = calcular(CERT, db_path=p)
+    fam = r["familias"]["execucao"]
+    assert fam["apuravel"] is False and fam["valor"] is None
+
+
 # ───────────────────────── acatamento de pareceres ─────────────────────────
 
 def _doc(ref, tipo, texto):

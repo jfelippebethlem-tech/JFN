@@ -48,6 +48,10 @@ OVERRIDES = {
 # ITERJ no SIAFE-Rio 2 = 270042; no espelho TFE/dados-abertos (compliance.db) = 133100.
 ALIASES = {
     "133100": {"siafe_rio2": "270042", "instituicao": "ITERJ", "orgao_superior": "Secretaria de Estado de Infraestrutura e Obras"},
+    # nomes por extenso p/ a ponte UG→CNPJ do PNCP (editais/ug_cnpj) — só NOMES (fato público);
+    # CNPJ nunca é hardcoded: sai da base PNCP pelo match
+    "010100": {"instituicao": "Assembleia Legislativa do Estado do Rio de Janeiro"},
+    "020100": {"instituicao": "Tribunal de Contas do Estado do Rio de Janeiro"},
 }
 
 _cache: dict | None = None

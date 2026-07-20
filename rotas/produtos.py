@@ -442,6 +442,47 @@ async def api_certame_indice(certame: Optional[str] = None):
         return JSONResponse({"ok": False, "erro": str(e)}, status_code=500)
 
 
+async def _gerar_e_enviar_dossie_mestre(alvo: str | None, key: str) -> None:
+    """Dossiê Mestre de licitações (PDF Kroll): portfólio de órgãos (sem alvo) ou um órgão (CNPJ)."""
+    from compliance_agent.notifications import telegram as _tg
+    from compliance_agent.reporting import dossie_mestre
+    _pausar_sweeps_para_relatorio()
+    try:
+        cnpj = "".join(c for c in (alvo or "") if c.isdigit())
+        if len(cnpj) == 14:
+            res = await dossie_mestre.gerar_pdf_orgao(cnpj)
+        else:
+            res = await dossie_mestre.gerar_pdf_portfolio()
+        await _enviar_docs_telegram({"path_pdf": res["path_pdf"]}, f"Dossiê Mestre de Licitações — {res['titulo']}")
+    except Exception as exc:  # noqa: BLE001
+        await _tg.enviar_mensagem(f"⚠️ Erro ao gerar o dossiê mestre: {str(exc)[:300]}")
+    finally:
+        _REL_EM_CURSO.discard(key)
+        _retomar_sweeps_se_ocioso()
+
+
+@router.post("/api/dossie/mestre")
+async def api_dossie_mestre(payload: dict | None = None):
+    """Dossiê Mestre de licitações (assíncrono, empurra PDF no Telegram). Sem `alvo` → PORTFÓLIO de
+    órgãos (ranking + peer-benchmark); com `alvo`=CNPJ do órgão → dossiê de conjunto do órgão."""
+    payload = payload or {}
+    alvo = (payload.get("alvo") or payload.get("cnpj") or "").strip() or None
+    if payload.get("sync"):  # caminho testável/síncrono
+        from compliance_agent.reporting import dossie_mestre
+        cnpj = "".join(c for c in (alvo or "") if c.isdigit())
+        res = (await dossie_mestre.gerar_pdf_orgao(cnpj) if len(cnpj) == 14
+               else await dossie_mestre.gerar_pdf_portfolio())
+        return JSONResponse({"ok": True, "path_pdf": res["path_pdf"], "titulo": res["titulo"]})
+    key = f"dossie_mestre:{alvo or 'portfolio'}"
+    if key in _REL_EM_CURSO:
+        return JSONResponse({"ok": True, "status": "em_curso", "msg": "dossiê mestre já sendo gerado"})
+    _REL_EM_CURSO.add(key)
+    asyncio.create_task(_gerar_e_enviar_dossie_mestre(alvo, key))
+    return JSONResponse({"ok": True, "status": "gerando",
+                         "msg": f"Gerando o dossiê mestre {'do órgão' if alvo else 'do portfólio'} — "
+                                "empurro o PDF no Telegram quando ficar pronto."})
+
+
 @router.get("/api/conjunto/orgao")
 async def api_conjunto_orgao(cnpj: Optional[str] = None):
     """Avaliação de CONJUNTO dos certames de um órgão (dossiê mestre §5): distribuição do índice

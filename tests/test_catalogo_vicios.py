@@ -26,8 +26,10 @@ def test_cobre_as_cinco_fases():
 def test_lacunas_sao_declaradas_nao_escondidas():
     # a honestidade do catálogo: o que não roda sozinho está DECLARADO como lacuna/parcial
     ids_lacuna = {v.id for v in cv.lacunas()}
-    assert "deserto_fracassado_dirigido" in ids_lacuna
-    assert "proposta_dia_nao_util" in ids_lacuna
+    # deserto_fracassado_dirigido saiu das lacunas em 2026-07-20 (detector E8)
+    assert "deserto_fracassado_dirigido" not in ids_lacuna
+    assert cv.obter("deserto_fracassado_dirigido").detectores == ("E8",)
+    assert "proposta_dia_nao_util" in ids_lacuna  # segue lacuna: falta timestamp de envio
     assert all(v.descricao for v in cv.lacunas())
 
 
