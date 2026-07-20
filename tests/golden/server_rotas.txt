@@ -21,6 +21,8 @@ GET /api/compliance/relatorio_30d -> api_relatorio_30d
 GET /api/compliance/reports -> api_compliance_reports
 GET /api/compliance/stats -> api_compliance_stats
 GET /api/conflito -> api_conflito
+GET /api/conjunto/orgao -> api_conjunto_orgao
+GET /api/conjunto/portfolio -> api_conjunto_portfolio
 GET /api/cruzamento -> api_cruzamento
 GET /api/diario -> api_diario
 GET /api/doador_contrato -> api_doador_contrato
@@ -60,6 +62,7 @@ GET /api/intel/prioridade_valor -> api_intel_prioridade_valor
 GET /api/intel/radar -> api_intel_radar
 GET /api/intel/retro -> api_intel_retro
 GET /api/intel/sancionadas -> api_intel_sancionadas
+GET /api/intel/sancionadas_municipio -> api_intel_sancionadas_municipio
 GET /api/intel/sobrepreco -> api_intel_sobrepreco
 GET /api/intel/socio_oculto -> api_intel_socio_oculto
 GET /api/intel/socio_servidor -> api_intel_socio_servidor
@@ -72,6 +75,8 @@ GET /api/orgao/cidades -> api_orgao_cidades
 GET /api/ownership -> api_ownership
 GET /api/pcrj/beneficios_vinculo -> api_pcrj_beneficios_vinculo
 GET /api/pcrj/comissionados_candidatos -> api_pcrj_comissionados_candidatos
+GET /api/pcrj/doe_canal_informal -> api_pcrj_doe_canal_informal
+GET /api/pcrj/doe_concentracao -> api_pcrj_doe_concentracao
 GET /api/pcrj/fantasmas -> api_pcrj_fantasmas
 GET /api/pcrj/gastos_achados -> api_pcrj_gastos_achados
 GET /api/perfil -> api_perfil
@@ -86,6 +91,7 @@ GET /api/restritos -> api_restritos
 GET /api/rodizio -> api_rodizio
 GET /api/route -> api_route
 GET /api/sancoes/detalhar -> api_sancoes_detalhar
+GET /api/sei/acatamento -> api_sei_acatamento
 GET /api/sei/direcionamento -> api_sei_direcionamento
 GET /api/siafe/stats -> api_siafe_stats
 GET /api/siafe/status -> api_siafe_status

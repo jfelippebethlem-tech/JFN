@@ -37,8 +37,7 @@ capacidades:
      menu: {grupo: "🔎 Investigação", nome: "Anomalias automáticas nos pagamentos", exemplo: "algo estranho nos pagamentos do ITERJ?", ordem: 24}}
   - {id: certame_indice, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/certame/indice, status: PRONTO,
      descricao: "Indice de Direcionamento de Certame 0-100 (7 familias, inclui execucao da ata: inabilitacao em massa/trivial)", quando_usar: "risco de um certame/licitacao especifica pelo nº de controle PNCP", exemplo: "indice do certame 34023077000107-1-000085/2024",
-     args: {certame: "string (nº de controle PNCP)"}, retorno: "{ok,indice:{score,faixa,confianca,familias,drivers,matriz_sv}}",
-     menu: {grupo: "🔎 Investigação", nome: "Índice de risco de um certame", exemplo: "índice do certame <nº PNCP>", ordem: 26, cmd: "/certame"}}
+     args: {certame: "string (nº de controle PNCP)"}, retorno: "{ok,indice:{score,faixa,confianca,familias,drivers,matriz_sv}}"}
   - {id: conjunto_orgao, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/conjunto/orgao, status: PRONTO,
      descricao: "Avaliacao de CONJUNTO dos certames de um orgao (mediana/p90 do indice, reincidencia de clausula restritiva -> auditoria tematica, eliminacoes triviais, HHI de vitorias)", quando_usar: "visao de portfolio de um orgao licitante (CNPJ do orgao)", exemplo: "conjunto dos certames do CNPJ 34023077000107",
      args: {cnpj: "string (CNPJ do orgao no PNCP)"}, retorno: "{ok,avaliacao,secao_html}"}
@@ -48,8 +47,7 @@ capacidades:
      menu: {grupo: "🔎 Investigação", nome: "Ranking de órgãos por risco de certame (conjunto)", exemplo: "ranking de órgãos por risco", ordem: 27, cmd: "/conjunto"}}
   - {id: sei_acatamento, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/sei/acatamento, status: PRONTO,
      descricao: "Acatamento de pareceres (art. 53 Lei 14.133): autoridade acolheu/contrariou motivadamente/silenciou/ignorou pareceres PGE/PGM/CGE/CGM no processo", quando_usar: "os pareceres juridicos/controladoria foram atendidos no processo X?", exemplo: "pareceres do SEI-330020/000762/2021 foram acatados?",
-     args: {processo: "string (nº SEI)"}, retorno: "{ok,veredito,pareceres[],despachos[],leitura}",
-     menu: {grupo: "🔎 Investigação", nome: "Pareceres acatados? (PGE/CGE no processo)", exemplo: "pareceres do processo X foram acatados?", ordem: 28, cmd: "/acatamento"}}
+     args: {processo: "string (nº SEI)"}, retorno: "{ok,veredito,pareceres[],despachos[],leitura}"}
   - {id: cartel, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/cartel, status: PRONTO,
      descricao: "Cartel/bid-rigging em grafo + QSA (concentracao, rodizio, socios em comum entre concorrentes)", quando_usar: "conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?'", exemplo: "fornecedores presos a um so orgao (modo=captura)? socios em comum do CNPJ X (modo=qsa)?",
      args: {modo: "captura|dependencia|vizinhanca|cruzado|qsa", cnpj: "obrigatorio p/ vizinhanca/cruzado/qsa", top: opcional}, retorno: "{modo,dados,aviso}",

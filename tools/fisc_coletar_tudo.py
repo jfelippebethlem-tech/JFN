@@ -106,6 +106,9 @@ async def main():
 
     with coleta_lock():          # 1 escritor por vez — fim do 'database is locked'
         con = edb.conectar()
+        # o timer de segunda 05:40 convive com escritores matinais longos (cerebro_sync 06:25,
+        # metacognição 06:50); 60s de busy_timeout não seguram — 5 min seguram (falha real 2026-07-20)
+        con.execute("PRAGMA busy_timeout=300000")
         edb.init_schema(con)
         gastos_db.init_schema(con)
 

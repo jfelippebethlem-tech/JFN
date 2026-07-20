@@ -150,8 +150,9 @@ def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
             elif aud["veredito"] in ("SILENTE", "CONTRARIADO_COM_MOTIVACAO"):
                 achados.append({"rf": "R15", "grav": 2,
                                 "obs": f"**Acatamento de pareceres ({aud['veredito']}):** {aud['leitura']}"})
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 — achado R15 é bônus, mas NUNCA mudo (catraca)
+            import logging
+            logging.getLogger(__name__).debug("auditar_acatamento falhou: %s", exc)
 
     resumo = {
         "numero": integra.get("numero", ""),

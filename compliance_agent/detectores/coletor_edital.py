@@ -652,8 +652,9 @@ async def analisar_processo_sei(numero: str, *, usar_llm: bool = False, ler_fn: 
             cert = certame_de_leitura(leitura)
             if cert:
                 persistir_julgamento(leitura, cert, processo_sei=numero)
-        except Exception:  # noqa: BLE001
-            pass
+        except Exception as exc:  # noqa: BLE001 — persistência é bônus, mas NUNCA muda (catraca)
+            import logging
+            logging.getLogger(__name__).debug("persistir_julgamento falhou p/ %s: %s", numero, exc)
 
     resultados = []
     resultados.extend(rodar_edital(ctx["processo"], contexto=ctx))

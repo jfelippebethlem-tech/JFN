@@ -41,7 +41,10 @@ def _norm(col: str) -> str:
 _TEST_OB = "2026OB99001"  # OB sintética de poluição (test_offline antigo) — não é dado real.
 GOLDEN = {
     "mgs_clean": {"cnpj": "19088605000104", "obs": 1173, "total": 143257999.30},
-    "iterj_ug": {"ug": "133100", "obs": 2524, "total": 295179659.72, "fornecedores": 197},
+    # 2026-07-20: total revisado DE PROPÓSITO 295.179.659,72 → 295.301.277,60 (+121.617,88).
+    # Mesmas 2.524 OBs e 197 fornecedores — o sweep SIAFE atualizou VALORES de OBs in place
+    # (correção da fonte). Drift auditado antes da revisão (contagem e fornecedores intactos).
+    "iterj_ug": {"ug": "133100", "obs": 2524, "total": 295301277.60, "fornecedores": 197},
     "cobertura": {"total_obs": 1121301, "pct_cnpj_min": 76},
 }
 

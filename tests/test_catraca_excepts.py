@@ -40,7 +40,12 @@ REPO = Path(__file__).resolve().parent.parent
 # screens_conluio, indice_certame, narrativa_certame, rotas novas). AUDITADO 2026-07-19: ZERO
 # `except Exception: pass` MUDO nos arquivos tocados — todos logados, catch-and-return de rota ou
 # amplos por design (rodar detector arbitrário / lib externa). Curadoria p/ específico segue aberta.
-BASELINE = 1489
+# 2026-07-20: +13 (1489→1502) — dossiê mestre F1-F4. AUDITADO no dia: 3 route handlers novos no
+# idioma-padrão das rotas (conjunto/orgao, conjunto/portfolio, sei/acatamento — catch-and-return);
+# persist da ata (coletor_edital) e achado R15 (lex_analise) eram os únicos MUDOS → convertidos p/
+# logger.debug; backfill/fase_indice e rubrica de motivo degradam honesto (contador/segue ambíguo).
+# Zero `except Exception: pass` mudo no código novo. Curadoria do legado p/ específico segue aberta.
+BASELINE = 1502
 
 
 def _contar() -> int:
