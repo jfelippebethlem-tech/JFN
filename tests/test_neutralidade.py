@@ -41,6 +41,17 @@ def test_neutralizar_ctx_zera_analista_interno():
     assert out["titulo"] == "X"  # não mexe no resto
 
 
+def test_goldens_lex_sao_neutros():
+    # o parecer jurídico vai ao dono junto do pacote — não pode carregar nome interno (Lex/paths)
+    from pathlib import Path
+    raiz = Path(__file__).resolve().parent / "golden"
+    for nome in ("lex_parecer_fornecedor.md", "lex_parecer_orgao.md"):
+        f = raiz / nome
+        if f.exists():
+            bad = termos_proibidos(f.read_text())
+            assert bad == [], f"{nome} vazou termo interno: {bad}"
+
+
 def test_dossie_mestre_ctx_e_neutro():
     # o produto que o dono recebe não pode conter termo interno em nenhuma seção
     import sqlite3

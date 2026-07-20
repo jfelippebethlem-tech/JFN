@@ -1,9 +1,9 @@
 # PARECER JURÍDICO PRELIMINAR — SNAPSHOT ENGENHARIA E SERVICOS LTDA
-### Lex · Avaliação fático-jurídica de contratação, licitação e pagamentos
+### Avaliação fático-jurídica de contratação, licitação e pagamentos
 
 *Tomada de contas preliminar — Direito Administrativo e Controle Externo (TCU/TCE-RJ)*
 
-**CNPJ:** 11.222.333/0001-81  |  **Data:** 2026-07-06  |  **Analista:** Agente Lex
+**CNPJ:** 11.222.333/0001-81  |  **Data:** 2026-07-06  |  **Analista:** Controle Externo (automatizado)
 **Classificação (modelo CGE-RJ — Decreto 47.408/2020):** Nota Técnica **SEM Achado**.
 **Grau de atenção:** 🟢 **VERDE** — sem indícios relevantes nos dados disponíveis — presunção de regularidade mantida.
 
@@ -84,7 +84,7 @@ Das **3** OBs ≥ R$ 1.000,00: **100,0%** fecham em milhar exato (3 OBs) e **100
 
 ## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)
 
-*Modelo TCU/ISSAI/CGU: **critério × condição → causa → efeito**, com evidência e recomendação (ver `docs/PESQUISA-DIREITO-ADMIN-CGE.md`).*
+*Modelo TCU/ISSAI/CGU: **critério × condição → causa → efeito**, com evidência e recomendação (metodologia de controle externo).*
 
 > **Nota Técnica SEM Achado** — não há indício que sustente um achado. Mantém-se a presunção de regularidade dos atos administrativos.
 
@@ -139,12 +139,12 @@ No plano cadastral, a empresa recebeu a primeira OB estadual **0,4 ano(s)** apó
 - **Diligência documental:** confrontar, nos processos SEI, o edital/TR (especificações), a pesquisa de preços (cesta — Acórdão 1875/2021-TCU), o mapa de licitantes (sócios/endereços) e os atestos/medições.
 - **Controle externo:** havendo indício de dano, representar ao **TCE-RJ** (jurisdição sobre a despesa estadual).
 - **Demais órgãos:** ciência ao **MP-RJ** (improbidade) e ao **CADE** (conluio/bid rigging, Lei 12.529) se cabível; PAR (Lei 12.846) e ciência à **CGE-RJ** (controle interno).
-  > Cautela na qualificação de improbidade (Lei 8.429/92 pós-Lei 14.230/2021): exige-se **dolo** nos arts. 9/10/11 (**STF Tema 1199, ARE 843989/PR**) e, no **art. 10**, **dano efetivo** — fim do dano presumido (**STJ REsp 1.929.685/TO**, 1ª T., 2024). O Lex aponta o indício; a tipificação é do MP-RJ/Judiciário.
+  > Cautela na qualificação de improbidade (Lei 8.429/92 pós-Lei 14.230/2021): exige-se **dolo** nos arts. 9/10/11 (**STF Tema 1199, ARE 843989/PR**) e, no **art. 10**, **dano efetivo** — fim do dano presumido (**STJ REsp 1.929.685/TO**, 1ª T., 2024). Aponta-se o indício; a tipificação é do MP-RJ/Judiciário.
   > Esfera penal (referência, não imputação): desvios podem tangenciar **CP arts. 312 (peculato), 316 (concussão), 317 (corrupção passiva), 333 (corrupção ativa)** e os crimes licitatórios da **Lei 14.133, arts. 337-E a 337-P**. Dispensa/inexigibilidade irregular hoje é **art. 337-E CP** (ex-art. 89/8.666 — *continuidade típica*, STJ REsp 2.069.436, não abolitio). Confirmar conduta e dolo antes de qualquer juízo.
   > Base normativa estadual (RJ): Lei 14.133 regulamentada pelo **Decreto 47.680/2021** + **Resoluções SEPLAG 179/180/2023** e **PGE 4.937/2023**; controle interno na **CGE-RJ** (Lei 7.989/2018); o rito de Tomada de Contas é a **Deliberação TCE-RJ 279/2017**, cujo **art. 7º** exige apenas *elementos que indiquem* — o mesmo limiar de **indício** deste parecer.
 
 ## VII. RESSALVAS
 
-> 1. Os apontamentos são **INDÍCIOS**, sujeitos a contraditório e ampla defesa. 2. Vigora a **presunção de legitimidade** dos atos administrativos (dúvida sobre economicidade favorece o gestor — TCE-RJ, Proc. 101.922-9/12). 3. Lex **não afirma crime, improbidade ou dolo** — competência do TCE-RJ, MP-RJ e Judiciário. 4. Conclusões limitadas aos dados/documentos analisados; lacunas geram **diligência**, não condenação. 5. A leitura automática do SEI extrai texto público; trechos podem faltar por OCR/restrição — sempre confirmar na fonte.
+> 1. Os apontamentos são **INDÍCIOS**, sujeitos a contraditório e ampla defesa. 2. Vigora a **presunção de legitimidade** dos atos administrativos (dúvida sobre economicidade favorece o gestor — TCE-RJ, Proc. 101.922-9/12). 3. **Não se afirma crime, improbidade ou dolo** — competência do TCE-RJ, MP-RJ e Judiciário. 4. Conclusões limitadas aos dados/documentos analisados; lacunas geram **diligência**, não condenação. 5. A leitura automática do SEI extrai texto público; trechos podem faltar por OCR/restrição — sempre confirmar na fonte.
 
-_Parecer gerado automaticamente pelo Agente Lex em 2026-07-06. Base jurídica: docs/LEX-BASE-JURIDICA.md + docs/PESQUISA-DIREITO-ADMIN-DOUTRINA-RJ.md (doutrina, improbidade pós-14.230, controle e RJ — CERJ arts. 122-123). Não substitui parecer jurídico formal._
+_Parecer gerado automaticamente por sistema de controle externo em 2026-07-06. Fundamentação em doutrina de Direito Administrativo e controle externo (doutrina, improbidade pós-14.230, controle e RJ — CERJ arts. 122-123). Não substitui parecer jurídico formal._

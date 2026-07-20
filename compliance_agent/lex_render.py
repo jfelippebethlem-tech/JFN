@@ -343,7 +343,7 @@ def _secao_pesquisa(add, pesq: dict | None) -> None:
         return
     add("## II-G. PESQUISA-INTERNET — dúvidas, aprendizado e re-ajuste (indício a verificar)")
     add("")
-    add("*O Lex pesquisou as dúvidas abertas na internet (busca web, notícias, Diário Oficial/Querido Diário, "
+    add("*A análise pesquisou as dúvidas abertas na internet (busca web, notícias, Diário Oficial/Querido Diário, "
         "mídia adversa) e re-ajustou a análise. Indício a apurar — presunção de legitimidade, NUNCA acusação; "
         "ausência de registro NÃO é agravante.*")
     add("")
@@ -575,11 +575,11 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     add = L.append
 
     add(f"# PARECER JURÍDICO PRELIMINAR — {ctx.get('nome','')}")
-    add("### Lex · Avaliação fático-jurídica de contratação, licitação e pagamentos")
+    add("### Avaliação fático-jurídica de contratação, licitação e pagamentos")
     add("")
     add("*Tomada de contas preliminar — Direito Administrativo e Controle Externo (TCU/TCE-RJ)*")
     add("")
-    add(f"**CNPJ:** {fmt_cnpj(cnpj)}  |  **Data:** {ctx.get('data','')}  |  **Analista:** Agente Lex")
+    add(f"**CNPJ:** {fmt_cnpj(cnpj)}  |  **Data:** {ctx.get('data','')}  |  **Analista:** Controle Externo (automatizado)")
     classif = "COM Achado" if achados else "SEM Achado"
     add(f"**Classificação (modelo CGE-RJ — Decreto 47.408/2020):** Nota Técnica **{classif}**.")
     add(f"**Grau de atenção:** {emoji} **{rotulo}** — {just}.")
@@ -619,7 +619,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     add("## II-B. LEITURA DOS PROCESSOS SEI (íntegra)")
     add("")
     if lidos:
-        add(f"Lex abriu e leu o inteiro teor de **{len(lidos)} processo(s)** no sistema SEI-RJ (pesquisa pública), "
+        add(f"Foram abertos e lidos o inteiro teor de **{len(lidos)} processo(s)** no sistema eletrônico (pesquisa pública), "
             "extraindo objeto, modalidade, documentos, partes (CNPJs) e valores:")
         add("")
         for l in lidos:
@@ -749,7 +749,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     add("## III. MATRIZ DE ACHADOS (anatomia do achado de auditoria)")
     add("")
     add("*Modelo TCU/ISSAI/CGU: **critério × condição → causa → efeito**, com evidência e recomendação "
-        "(ver `docs/PESQUISA-DIREITO-ADMIN-CGE.md`).*")
+        "(metodologia de controle externo).*")
     add("")
     if achados:
         add("| # | Critério (norma) | Condição (situação) | Causa provável | Efeito potencial | Recomendação |")
@@ -885,7 +885,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
         add("")
         add("*Doutrina (Garcia & Pacheco Alves; Medina Osório): **ilegalidade é o gênero; improbidade é a espécie "
             "qualificada pelo DOLO**. Pós-Lei 14.230/2021 não há improbidade culposa; o art. 10 exige **dano efetivo "
-            "comprovado** (não in re ipsa); o art. 11 é rol taxativo. O Lex aponta INDÍCIO a apurar — não afirma dolo.*")
+            "comprovado** (não in re ipsa); o art. 11 é rol taxativo. Aponta-se INDÍCIO a apurar — não se afirma dolo.*")
         add("")
         add("| Indício | Elemento subjetivo (triagem) | Encaminhamento doutrinário |")
         add("|---|---|---|")
@@ -970,7 +970,7 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
         "PAR (Lei 12.846) e ciência à **CGE-RJ** (controle interno).")
     add("  > Cautela na qualificação de improbidade (Lei 8.429/92 pós-Lei 14.230/2021): exige-se **dolo** nos "
         "arts. 9/10/11 (**STF Tema 1199, ARE 843989/PR**) e, no **art. 10**, **dano efetivo** — fim do dano presumido "
-        "(**STJ REsp 1.929.685/TO**, 1ª T., 2024). O Lex aponta o indício; a tipificação é do MP-RJ/Judiciário.")
+        "(**STJ REsp 1.929.685/TO**, 1ª T., 2024). Aponta-se o indício; a tipificação é do MP-RJ/Judiciário.")
     add("  > Esfera penal (referência, não imputação): desvios podem tangenciar **CP arts. 312 (peculato), 316 "
         "(concussão), 317 (corrupção passiva), 333 (corrupção ativa)** e os crimes licitatórios da **Lei 14.133, "
         "arts. 337-E a 337-P**. Dispensa/inexigibilidade irregular hoje é **art. 337-E CP** (ex-art. 89/8.666 — "
@@ -986,12 +986,12 @@ def parecer_md(ctx: dict, analise: dict | None = None) -> str:
     add("")
     add("> 1. Os apontamentos são **INDÍCIOS**, sujeitos a contraditório e ampla defesa. "
         "2. Vigora a **presunção de legitimidade** dos atos administrativos (dúvida sobre economicidade favorece o gestor — "
-        "TCE-RJ, Proc. 101.922-9/12). 3. Lex **não afirma crime, improbidade ou dolo** — competência do TCE-RJ, MP-RJ e "
+        "TCE-RJ, Proc. 101.922-9/12). 3. **Não se afirma crime, improbidade ou dolo** — competência do TCE-RJ, MP-RJ e "
         "Judiciário. 4. Conclusões limitadas aos dados/documentos analisados; lacunas geram **diligência**, não condenação. "
         "5. A leitura automática do SEI extrai texto público; trechos podem faltar por OCR/restrição — sempre confirmar na fonte.")
     add("")
-    add(f"_Parecer gerado automaticamente pelo Agente Lex em {ctx.get('data','')}. "
-        "Base jurídica: docs/LEX-BASE-JURIDICA.md + docs/PESQUISA-DIREITO-ADMIN-DOUTRINA-RJ.md "
+    add(f"_Parecer gerado automaticamente por sistema de controle externo em {ctx.get('data','')}. "
+        "Fundamentação em doutrina de Direito Administrativo e controle externo "
         "(doutrina, improbidade pós-14.230, controle e RJ — CERJ arts. 122-123). Não substitui parecer jurídico formal._")
     return "\n".join(L)
 
@@ -1023,7 +1023,7 @@ def render_pdf(ctx: dict, destino: str, analise: dict | None = None, md: str | N
         return s.encode("latin-1", "replace").decode("latin-1")
 
     pdf.set_fill_color(20, 30, 50); pdf.set_text_color(255, 255, 255); pdf.set_font(pdf._fam, "B", 15)
-    pdf.cell(0, 13, _t("PARECER JURÍDICO — AGENTE LEX"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
+    pdf.cell(0, 13, _t("PARECER JURIDICO - CONTROLE EXTERNO"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.set_font(pdf._fam, "", 9); pdf.set_fill_color(45, 60, 90)
     pdf.cell(0, 7, _t("Avaliação fático-jurídica · Direito Administrativo e Controle Externo (TCU/TCE-RJ)"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
     pdf.cell(0, 7, _t(f"JFN Intelligence Engine  |  {ctx.get('data','')}"), fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT, align="C")
