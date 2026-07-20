@@ -55,11 +55,25 @@
 - graphify: re-ingestão completa NÃO rodada hoje (custo de tokens alto; GitNexus cobre o grafo de
   código; graphify fica para ingestão de DOCUMENTOS novos — decisão consciente, não esquecimento).
 
-## 5. Próxima onda sugerida (F5, em ordem de retorno por esforço)
+## 5. F5 — ENTREGUE (2026-07-20, commits a37f874→…)
 
-1. Mapa `ug↔cnpj` + seção de conjunto no produto `/orgao` (fecha o ciclo Telegram).
-2. Ponte compra↔contrato → liga a família `execucao` (aditivos) no índice.
-3. E7/cláusulas sobre editais MUNICIPAIS (paridade PCRJ).
-4. Detector `deserto_fracassado_dirigido` (série por objeto+órgão já existe no corpus).
-5. Dossiê Mestre como PRODUTO PDF único (`tools/dossie_master.py` é o esqueleto; seções prontas:
-   conjunto, acatamento, fichas por certame).
+1. ✅ `ug↔cnpj` (`editais/ug_cnpj`) + seção **1-M** no `/orgao` (o órgão como licitante).
+2. ✅ Ponte compra↔contrato (`pcrj_contratos.numero_compra`) → família `execucao`/aditivos destravada.
+3. ✅ Paridade municipal: descoberto que o corpus JÁ é municipal por construção; índice ampliado
+   sobre RJ (900 estaduais + 500 municipais indexados).
+4. ✅ Detector **E8** deserto/fracassado-dirigido (lacuna do catálogo fechada).
+5. ✅ Produto **Dossiê Mestre** PDF (`reporting/dossie_mestre` + `/api/dossie/mestre`), portfólio ou
+   1 órgão, filtrado à jurisdição RJ (estadual+municipal) por esfera — federal-que-licita-no-RJ fora.
+
+## 6. Dívidas remanescentes após F5 (honestas, priorizadas)
+
+1. **Granularidade por unidade**: os órgãos RJ colapsam em 2 CNPJs guarda-chuva (Estado 42498600 /
+   Município 42498733) — o portfólio mostra "ESTADO" e "MUNICÍPIO", não secretaria a secretaria.
+   O PNCP tem `unidade_codigo`/`unidade_nome` (em `pncp_resultado`); usar isso como chave de órgão
+   daria o ranking por secretaria que o dono quer. *Valor: alto (o ranking vira acionável). Médio.*
+2. **Índice sub-powered para RJ**: a maioria dos certames RJ pontua ~0 porque a camada de veredito
+   do enxame (`clausula_veredito`, só 312 linhas) e os resultados/propostas ainda não cobrem o corpus
+   municipal — é sweep LLM, não código. Rodar o enxame sobre o corpus RJ acende o índice.
+3. **UG↔CNPJ resolve só 3/596**: precisão > cobertura foi a escolha certa (zero FP), mas a maioria das
+   UGs não casa por nome. Um mapa curado UG→CNPJ (ou por `unidade_codigo` do SIAFE-Rio) ampliaria.
+4. Lacuna `proposta_dia_nao_util` (precisa timestamp de envio da proposta — PNCP não expõe hoje).

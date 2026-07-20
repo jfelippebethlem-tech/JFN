@@ -239,8 +239,30 @@ def test_portfolio_ranqueia_e_beira_pares(db):
                         "VALUES (?, 2026, ?)", (c, org))
             con.execute("INSERT INTO certame_indice (certame, score, prioridade, faixa, confianca) "
                         "VALUES (?, ?, 1, 'MEDIO', 0.5)", (c, 20.0 + 40 * j))
+            con.execute("INSERT INTO pncp_resultado (certame, orgao_cnpj, uf, ordem_classificacao) "
+                        "VALUES (?, ?, 'RJ', 1)", (c, org))
     con.commit()
-    pf = avaliar_portfolio(db_path=p, min_certames=3)
+    pf = avaliar_portfolio(db_path=p, min_certames=3, esferas=None)  # mecânica de ranking, sem filtro
     assert pf["n_orgaos"] == 2
     assert pf["orgaos"][0]["score_mediana"] == 60.0  # pior primeiro
     assert pf["orgaos"][0]["desvio_vs_pares"] == 20.0
+
+
+def test_portfolio_filtra_federal_por_esfera(db):
+    p, con = db
+    # 42498600 = raiz guarda-chuva do ESTADO do RJ (estadual-rj); 00394452 = COMANDO DO EXERCITO (federal)
+    for org, nome in (("42498600000171", "ESTADO DO RIO DE JANEIRO"),
+                      ("00394452000103", "COMANDO DO EXERCITO")):
+        for i in range(3):
+            c = f"F-{org}-{i}"
+            con.execute("INSERT INTO edital_documento (numero_controle_pncp, ano, orgao_cnpj) "
+                        "VALUES (?, 2026, ?)", (c, org))
+            con.execute("INSERT INTO certame_indice (certame, score, prioridade, faixa, confianca) "
+                        "VALUES (?, 30, 1, 'MEDIO', 0.5)", (c,))
+            con.execute("INSERT INTO pncp_resultado (certame, orgao_cnpj, orgao_nome, uf, ordem_classificacao) "
+                        "VALUES (?, ?, ?, 'RJ', 1)", (c, org, nome))  # ambos licitam no RJ (uf=RJ)
+    con.commit()
+    cnpjs = {o["orgao_cnpj"] for o in avaliar_portfolio(db_path=p, min_certames=3)["orgaos"]}
+    assert cnpjs == {"42498600000171"}  # federal fora, apesar de uf=RJ (esfera ≠ local de compra)
+    cnpjs_all = {o["orgao_cnpj"] for o in avaliar_portfolio(db_path=p, min_certames=3, esferas=None)["orgaos"]}
+    assert "00394452000103" in cnpjs_all  # sem filtro, entra

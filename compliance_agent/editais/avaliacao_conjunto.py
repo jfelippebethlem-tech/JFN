@@ -108,18 +108,32 @@ def avaliar_orgao(orgao_cnpj: str, db_path=None) -> dict:
         con.close()
 
 
-def avaliar_portfolio(db_path=None, min_certames: int = 3) -> dict:
+def avaliar_portfolio(db_path=None, min_certames: int = 3,
+                      esferas: tuple[str, ...] | None = ("estadual-rj", "municipal-rio")) -> dict:
     """Portfólio: todos os órgãos com ≥ min_certames indexados, ranqueados + peer-benchmark
-    (mediana do órgão vs mediana dos PARES — peer_diff um nível acima)."""
+    (mediana do órgão vs mediana dos PARES — peer_diff um nível acima).
+
+    `esferas` restringe à JURISDIÇÃO fiscalizada (default estadual-RJ + municipal-Rio = TCE-RJ/TCM-RJ;
+    o dono é Deputado Estadual do RJ). Sem o filtro o ranking enche de órgão FEDERAL que apenas licita
+    no RJ (uf='RJ' é local de compra, não esfera) — fora da jurisdição. None = sem filtro. A esfera vem
+    de pcrj/esfera.classificar_esfera (CNPJ-raiz guarda-chuva + nome), não de UF."""
+    from compliance_agent.pcrj.esfera import classificar_esfera
+
     con = _ro(db_path)
     try:
-        orgaos = [r["orgao_cnpj"] for r in
-                  _q(con, "SELECT ed.orgao_cnpj, COUNT(DISTINCT ci.certame) AS n FROM certame_indice ci "
-                          "JOIN edital_documento ed ON ed.numero_controle_pncp = ci.certame "
-                          "WHERE ed.orgao_cnpj IS NOT NULL GROUP BY ed.orgao_cnpj "
-                          "HAVING n >= ?", (min_certames,))]
+        rows = _q(con, "SELECT ed.orgao_cnpj, MAX(pr.orgao_nome) AS nome, COUNT(DISTINCT ci.certame) AS n "
+                       "FROM certame_indice ci JOIN edital_documento ed "
+                       "ON ed.numero_controle_pncp = ci.certame "
+                       "LEFT JOIN pncp_resultado pr ON pr.orgao_cnpj = ed.orgao_cnpj "
+                       "WHERE ed.orgao_cnpj IS NOT NULL GROUP BY ed.orgao_cnpj HAVING n >= ?",
+                       (min_certames,))
     finally:
         con.close()
+    orgaos = []
+    for r in rows:
+        if esferas and classificar_esfera(r["nome"] or "", r["orgao_cnpj"]) not in esferas:
+            continue
+        orgaos.append(r["orgao_cnpj"])
     avaliacoes = [avaliar_orgao(o, db_path) for o in orgaos]
     medianas = sorted(a["score_mediana"] for a in avaliacoes if a["score_mediana"] is not None)
     mediana_pares = _quantil(medianas, 0.5)

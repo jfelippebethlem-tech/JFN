@@ -31,8 +31,9 @@ def db(tmp_path):
                     "VALUES (?, 2026, ?)", (c, ORG))
         con.execute("INSERT INTO certame_indice (certame, score, prioridade, faixa, confianca) "
                     "VALUES (?, ?, 1, ?, 0.5)", (c, 40.0 + 10 * i, "MEDIO" if i < 3 else "ALTO"))
-        con.execute("INSERT INTO pncp_resultado (certame, orgao_cnpj, orgao_nome, fornecedor_cnpj, "
-                    "ordem_classificacao) VALUES (?, ?, 'TRIBUNAL DE CONTAS', '11111111000191', 1)", (c, ORG))
+        con.execute("INSERT INTO pncp_resultado (certame, orgao_cnpj, orgao_nome, uf, fornecedor_cnpj, "
+                    "ordem_classificacao) VALUES (?, ?, ?, 'RJ', '11111111000191', 1)",
+                    (c, ORG, "TRIBUNAL DE CONTAS DO ESTADO DO RIO DE JANEIRO"))  # esfera estadual-rj
     con.commit()
     yield p, con
     con.close()
