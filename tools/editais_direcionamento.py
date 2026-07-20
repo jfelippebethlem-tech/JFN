@@ -67,15 +67,27 @@ def _tem_tabela(con, nome: str) -> bool:
     return bool(con.execute("select 1 from sqlite_master where type='table' and name=?", (nome,)).fetchone())
 
 
-def avaliar_clusters(con, max_candidatas: int, limiar_raridade: float) -> list[dict]:
+def avaliar_clusters(con, max_candidatas: int, limiar_raridade: float,
+                     raizes_cnpj: tuple[str, ...] | None = None) -> list[dict]:
+    """Roda o enxame (5 lentes LLM free-tier) nas cláusulas RARAS (peer-diff) dos clusters avaliáveis.
+
+    DEDUP (2026-07-20): pula cláusula que JÁ tem veredito — re-run não desperdiça chamada LLM nem
+    duplica linha (antes o INSERT era cego). `raizes_cnpj` (ex.: ('42498600','42498733')) restringe
+    às esferas fiscalizadas — acende o índice do RJ sem gastar LLM em edital federal fora da jurisdição."""
     clusters = con.execute("select id, assinatura_objeto, membros_json from edital_cluster "
                            "where avaliavel=1").fetchall()
+    ja_avaliadas = {r[0] for r in con.execute("select distinct clausula_id from clausula_veredito "
+                                              "where clausula_id is not null")}
     achados = []
     n = 0
     for cl in clusters:
         cands = peer_diff.candidatas(con, cl["id"], limiar_raridade=limiar_raridade)
         membros = json.loads(cl["membros_json"])
         for c in cands:
+            if c["clausula_id"] in ja_avaliadas:
+                continue  # dedup: já tem veredito — não re-bate o LLM
+            if raizes_cnpj and (c["numero_controle_pncp"] or "")[:8] not in raizes_cnpj:
+                continue  # fora da esfera-alvo — não gasta LLM
             if n >= max_candidatas:
                 print(f"  [corte] {max_candidatas} candidatas avaliadas — resto no XLSX", flush=True)
                 return achados
@@ -124,6 +136,9 @@ async def main():
     ap.add_argument("--clusters", action="store_true", help="(re)constrói clusters (usa Cohere)")
     ap.add_argument("--max-candidatas", type=int, default=120)
     ap.add_argument("--limiar-raridade", type=float, default=0.7)
+    ap.add_argument("--so-rj", action="store_true",
+                    help="restringe o enxame às esferas estadual-RJ + municipal-Rio (CNPJ-raiz "
+                         "42498600/42498733) — acende o índice do RJ sem gastar LLM no federal")
     ap.add_argument("--sem-pdf", action="store_true")
     ap.add_argument("--so-relatorio", action="store_true",
                     help="só (re)gera o PDF/XLSX dos vereditos JÁ avaliados — não re-roda o enxame (sem custo LLM)")
@@ -140,7 +155,8 @@ async def main():
             print(f"cláusulas extraídas: {extrair_todas_clausulas(con)}", flush=True)
         if args.clusters:
             print(f"clusters: {agrupar.construir_clusters(con)}", flush=True)
-        achados = avaliar_clusters(con, args.max_candidatas, args.limiar_raridade)
+        raizes = ("42498600", "42498733") if args.so_rj else None
+        achados = avaliar_clusters(con, args.max_candidatas, args.limiar_raridade, raizes_cnpj=raizes)
         achados.sort(key=lambda a: -a["risco"])
         print(f"candidatas avaliadas: {len(achados)} | direcionamento (≥7): "
               f"{sum(1 for a in achados if a['risco'] >= 7)}", flush=True)
