@@ -350,6 +350,17 @@ _CATALOGO_CLAUSULAS: list[tuple[str, str, "re.Pattern[str]"]] = [
                 re.IGNORECASE)),
     ("amostra_poc", "amostra",
      re.compile(r"(?:amostra|prova\s+de\s+conceito).*(?:todos\s+os\s+licitantes|antes\s+d[ao]\s+(?:habilita|julgamento))", re.IGNORECASE)),
+    ("faturamento_minimo", "economica",
+     # exige contexto de HABILITAÇÃO ("comprovar faturamento mínimo") — "faturamento mensal dos serviços"
+     # (cobrança/medição do contrato) é rotina lícita e NÃO pode casar (indício ≠ acusação).
+     re.compile(r"(?:comprov\w+|demonstr\w+|possuir|apresentar).{0,60}(?:faturamento|receita\s+bruta).{0,30}m[íi]nim"
+                r"|(?:faturamento|receita\s+bruta)\s+(?:anual\s+|bruto\s+)?m[íi]nim", re.IGNORECASE | re.DOTALL)),
+    ("vigencia_contratual", "vigencia",
+     # só o PATOLÓGICO sobe (vigência ≥60 meses / ≥5 anos / indeterminada) — vigência de 12-48 meses é o
+     # cotidiano lícito e viraria ruído no peer-diff; o teste finalístico decide (60 = teto legal, > = vício).
+     re.compile(r"(?:vig[êe]ncia|dura[çc][ãa]o|prazo\s+de\s+vig[êe]ncia).{0,50}"
+                r"(?:indeterminad|(?:6[0-9]|[7-9]\d|1[01]\d|120)\s*(?:\([^)]*\)\s*)?meses"
+                r"|(?:[5-9]|10)\s*(?:\([^)]*\)\s*)?anos)", re.IGNORECASE | re.DOTALL)),
     ("pontuacao_dirigida", "pontuacao",
      re.compile(r"pontua[çc][ãa]o.*(?:t[ée]cnica|muito\s+satisfat[óo]ri|crit[ée]rio\s+subjetiv)", re.IGNORECASE)),
 ]

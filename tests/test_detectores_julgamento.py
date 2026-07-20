@@ -227,6 +227,26 @@ def test_j3_nao_avaliavel_sem_valores():
     assert r.status == "nao_avaliavel"
 
 
+def test_j3_homologado_acima_do_estimado_forte():
+    """Homologado ACIMA do estimado → desclassificação obrigatória descumprida (art. 59 III) → forte."""
+    ctx = {"processo": "julg-12", "valor_estimado": 1000.0, "valor_homologado": 1100.0}
+    r = J3DescontoAnomalo().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.score >= ANCORAS["forte"]
+    assert "59" in r.motivo_refutacao
+
+
+def test_j3_homologado_acima_nao_e_exculpado_por_item_regulado():
+    """Art. 59 III vale mesmo para item regulado — a exculpatória do desconto baixo não alcança homologar acima."""
+    ctx = {"processo": "julg-13", "valor_estimado": 1000.0, "valor_homologado": 1050.0,
+           "item_preco_regulado": True}
+    r = J3DescontoAnomalo().avaliar(ctx)
+    _valido(r)
+    assert r.status == "confirmado"
+    assert r.score >= ANCORAS["forte"]
+
+
 # ═══════════════════════════════ J4 — supressão de propostas ═══════════════════════════════
 def test_j4_confirma_afunilamento():
     """Muitos inscritos → 1 classificado (inabilitações/desistências) → forte."""

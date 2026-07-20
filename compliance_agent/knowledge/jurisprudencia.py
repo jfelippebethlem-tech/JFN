@@ -816,6 +816,22 @@ INDICE_CLAUSULA: dict[str, dict] = {
         "teste": "efeito combinado das cláusulas limita artificialmente a competição — aferir dano concreto",
         "verificar_antes_de_citar": False,
     },
+    "faturamento_minimo": {
+        "sumulas": ["Súmula TCU 275"],
+        "acordaos": [],
+        "dispositivos": ["Lei 14.133/2021 art. 69", "Lei 14.133/2021 art. 66"],
+        "teste": "faturamento mínimo não consta do rol restrito do art. 69; se exigido, ≤ 10% por analogia ao capital/PL",
+        "verificar_antes_de_citar": True,  # falta acórdão primário específico sobre faturamento mínimo sob a 14.133
+    },
+    "vigencia_contratual": {
+        "sumulas": [],
+        "acordaos": [],
+        "dispositivos": ["Lei 14.133/2021 art. 106", "Lei 14.133/2021 art. 107",
+                         "Lei 14.133/2021 art. 109", "Lei 14.133/2021 art. 111"],
+        "teste": "contínuos: até 5 anos iniciais (art. 106) e teto decenal (art. 107); indeterminado só em "
+                 "monopólio (art. 109); contratos por escopo têm regra própria (art. 111)",
+        "verificar_antes_de_citar": False,  # texto legal direto, sem dependência de precedente
+    },
 }
 
 

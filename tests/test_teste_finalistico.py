@@ -114,6 +114,66 @@ def test_resultado_carrega_fonte_do_teto():
     assert "263" in r["fonte_teto"]
 
 
+# ── faturamento mínimo (fora do rol restrito do art. 69 — teto 10% por analogia) ──
+
+def test_faturamento_acima_do_teto_viola():
+    r = avaliar("faturamento_minimo", "comprovação de faturamento mínimo anual de 30% do valor estimado")
+    assert r["status"] == "violado"
+    assert r["valor_extraido"] == 30.0 and r["teto"] == 10.0
+
+
+def test_faturamento_dentro_do_teto_nao_rebaixa_sozinho():
+    # simetria quebrada de propósito: faturamento mínimo não consta do rol do art. 69 — mesmo ≤10%
+    # o achado NÃO vira dentro_do_teto; volta ao colegiado (nao_aferivel) com o motivo do rol.
+    r = avaliar("faturamento_minimo", "faturamento mínimo de 5% do valor estimado")
+    assert r["status"] == "nao_aferivel"
+    assert "rol restrito" in r["motivo"]
+
+
+def test_faturamento_sem_numero_nao_aferivel():
+    r = avaliar("faturamento_minimo", "comprovação de faturamento compatível com o objeto")
+    assert r["status"] == "nao_aferivel"
+
+
+# ── vigência contratual (Lei 14.133 arts. 106-111) ──
+
+def test_vigencia_continuo_acima_de_5_anos_viola():
+    r = avaliar("vigencia_contratual",
+                "vigência de 72 (setenta e dois) meses para a prestação de serviço contínuo de limpeza")
+    assert r["status"] == "violado"
+    assert r["valor_extraido"] == 72.0 and r["teto"] == 60.0
+
+
+def test_vigencia_no_teto_dentro():
+    r = avaliar("vigencia_contratual", "prazo de vigência de 60 (sessenta) meses, serviço contínuo")
+    assert r["status"] == "dentro_do_teto"
+
+
+def test_vigencia_longa_sem_continuo_devolve_ao_colegiado():
+    # >60 meses sem afirmação de serviço contínuo — pode ser contrato por escopo (art. 111): não acusa
+    r = avaliar("vigencia_contratual", "vigência de 84 meses para execução das obras do lote 2")
+    assert r["status"] == "nao_aferivel"
+    assert "111" in r["motivo"]
+
+
+def test_vigencia_indeterminada_viola():
+    r = avaliar("vigencia_contratual", "o contrato terá vigência por prazo indeterminado")
+    assert r["status"] == "violado"
+    assert "109" in r["motivo"]
+
+
+def test_vigencia_indeterminada_monopolio_exculpatoria():
+    r = avaliar("vigencia_contratual",
+                "vigência indeterminada — fornecimento de energia em regime de monopólio (art. 109)")
+    assert r["status"] == "nao_aferivel"
+
+
+def test_vigencia_em_anos_converte():
+    r = avaliar("vigencia_contratual", "vigência de 6 (seis) anos, prestação de serviços contínuos")
+    assert r["status"] == "violado"
+    assert r["valor_extraido"] == 72.0
+
+
 # ── quantil interpolado (lex_base_empirica) ──
 
 def test_quantil_interpolado():

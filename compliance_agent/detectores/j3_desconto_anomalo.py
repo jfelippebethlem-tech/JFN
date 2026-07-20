@@ -98,8 +98,19 @@ class J3DescontoAnomalo(Detector):
         score = 0.0
         razoes: list[str] = []
 
+        # ── REGRA OBJETIVA: homologado ACIMA do estimado (desconto NEGATIVO) ──
+        # Proposta que permanece acima do orçamento estimado após negociação deve ser DESCLASSIFICADA
+        # (Lei 14.133/2021 art. 59 III) — homologar acima é violação objetiva, não "desconto baixo".
+        if desc < 0:
+            score = max(score, ancora("forte"))
+            razoes.append(f"valor homologado {abs(desc):.1%} ACIMA do orçamento estimado — proposta deveria ter "
+                          "sido desclassificada (Lei 14.133/2021 art. 59 III)")
+            res.add_evidencia(
+                fonte="valores do certame (estimado × homologado)",
+                trecho=(f"estimado={estimado:,.2f}, homologado={homologado:,.2f} ⇒ homologação {abs(desc):.2%} "
+                        "acima do estimado (art. 59 III)"))
         # ── REGRA OBJETIVA: desconto irrisório (rente ao teto) ──
-        if desc < _DESCONTO_IRRISORIO and not item_regulado:
+        elif desc < _DESCONTO_IRRISORIO and not item_regulado:
             score = max(score, ancora("medio"))
             razoes.append(f"desconto irrisório ({desc:.1%} < {_DESCONTO_IRRISORIO:.0%}) — vencedor fechou rente ao teto")
             res.add_evidencia(
