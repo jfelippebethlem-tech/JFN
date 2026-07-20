@@ -13,7 +13,12 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from compliance_agent.editais.avaliacao_conjunto import avaliar_orgao, avaliar_portfolio, ctx_secao
+from compliance_agent.editais.avaliacao_conjunto import (
+    avaliar_orgao,
+    avaliar_portfolio,
+    avaliar_unidades,
+    ctx_secao,
+)
 
 _METODOLOGIA = (
     "Índice de Direcionamento de Certame (0-100, 7 famílias: transparência, competição, conluio, "
@@ -79,9 +84,30 @@ def _secao_ranking(pf: dict, top_n: int = 25) -> dict:
     return {"titulo": "Ranking de órgãos por risco de certame", "html": "\n".join(linhas)}
 
 
+def _secao_unidades(un: dict, top_n: int = 25) -> dict:
+    if not un.get("n_unidades"):
+        return {"titulo": "Ranking por unidade/secretaria",
+                "html": "<p>Sem unidade com certames indexados suficientes — INDISPONÍVEL ≠ 0 "
+                        "(a cobertura por unidade cresce com o avanço do PNCP/enxame).</p>"}
+    linhas = ["<p>Granularidade por unidade (o CNPJ guarda-chuva do Estado/Município esconde a "
+              f"secretaria real). {un['n_unidades']} unidades; mediana dos pares {un['mediana_pares']}.</p>",
+              "<table class='tabela'><tr><th>#</th><th>Unidade</th><th>Certames</th>"
+              "<th>Índice mediana</th><th>p90</th><th>ALTO/EXTREMO</th><th>vs pares</th></tr>"]
+    for i, u in enumerate(un["unidades"][:top_n], 1):
+        dv = u.get("desvio_vs_pares")
+        dv_s = f"{dv:+.0f}" if dv is not None else "—"
+        linhas.append(
+            f"<tr><td>{i}</td><td>{u['unidade']}</td><td>{u['n_certames']}</td>"
+            f"<td>{u['score_mediana']:.1f}</td><td>{u['score_p90']:.1f}</td>"
+            f"<td>{u['n_alto_extremo']}</td><td>{dv_s}</td></tr>")
+    linhas.append("</table>")
+    return {"titulo": "Ranking por unidade/secretaria", "html": "\n".join(linhas)}
+
+
 def montar_ctx_portfolio(db_path=None, min_certames: int = 3, top_n: int = 25) -> dict:
-    """ctx Kroll do dossiê mestre do PORTFÓLIO (todos os órgãos, peer-benchmark)."""
+    """ctx Kroll do dossiê mestre do PORTFÓLIO (órgãos + unidades/secretarias, peer-benchmark)."""
     pf = avaliar_portfolio(db_path=db_path, min_certames=min_certames)
+    un = avaliar_unidades(db_path=db_path, min_certames=min_certames)
     piores = [o for o in pf["orgaos"] if (o.get("desvio_vs_pares") or 0) > 10]
     top = [f"{len(piores)} órgão(s) acima dos pares (+10)"] if piores else []
     aud = [o for o in pf["orgaos"] if o.get("auditoria_tematica")]
@@ -101,8 +127,9 @@ def montar_ctx_portfolio(db_path=None, min_certames: int = 3, top_n: int = 25) -
         "top_flags": top or ["portfólio sem outlier acima do limiar"],
         "metodologia": _METODOLOGIA,
         "data": datetime.now().strftime("%d/%m/%Y"),
-        "secoes": [_secao_metodologia(), _secao_ranking(pf, top_n)],
-        "_dados": {"n_orgaos": pf["n_orgaos"], "mediana_pares": pf["mediana_pares"]},
+        "secoes": [_secao_metodologia(), _secao_ranking(pf, top_n), _secao_unidades(un, top_n)],
+        "_dados": {"n_orgaos": pf["n_orgaos"], "mediana_pares": pf["mediana_pares"],
+                   "n_unidades": un["n_unidades"]},
         "ressalva": ("Peer-benchmark determinístico entre órgãos (desvio da mediana do órgão vs mediana "
                      "dos pares). Indícios para priorização de auditoria; presunção de legitimidade."),
     }

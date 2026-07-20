@@ -54,8 +54,9 @@ def test_ctx_portfolio_ranqueia(db):
     p, _con = db
     ctx = montar_ctx_portfolio(db_path=p, min_certames=3)
     assert "Portfólio" in ctx["titulo"]
-    ranking = next(s for s in ctx["secoes"] if "Ranking" in s["titulo"])
+    ranking = next(s for s in ctx["secoes"] if s["titulo"].startswith("Ranking de órgãos"))
     assert "TRIBUNAL DE CONTAS" in ranking["html"]
+    assert any(s["titulo"] == "Ranking por unidade/secretaria" for s in ctx["secoes"])
 
 
 def test_ctx_renderiza_sem_erro(db):
