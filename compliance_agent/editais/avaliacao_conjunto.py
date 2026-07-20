@@ -121,10 +121,13 @@ def avaliar_portfolio(db_path=None, min_certames: int = 3,
 
     con = _ro(db_path)
     try:
-        rows = _q(con, "SELECT ed.orgao_cnpj, MAX(pr.orgao_nome) AS nome, COUNT(DISTINCT ci.certame) AS n "
+        # o GROUP BY é só sobre certame_indice×edital_documento (barato); o nome vem de subquery
+        # escalar (LEFT JOIN em pncp_resultado, milhares de linhas por CNPJ guarda-chuva, explodia)
+        rows = _q(con, "SELECT ed.orgao_cnpj, COUNT(DISTINCT ci.certame) AS n, "
+                       "(SELECT pr.orgao_nome FROM pncp_resultado pr WHERE pr.orgao_cnpj = ed.orgao_cnpj "
+                       " AND pr.orgao_nome IS NOT NULL LIMIT 1) AS nome "
                        "FROM certame_indice ci JOIN edital_documento ed "
                        "ON ed.numero_controle_pncp = ci.certame "
-                       "LEFT JOIN pncp_resultado pr ON pr.orgao_cnpj = ed.orgao_cnpj "
                        "WHERE ed.orgao_cnpj IS NOT NULL GROUP BY ed.orgao_cnpj HAVING n >= ?",
                        (min_certames,))
     finally:
