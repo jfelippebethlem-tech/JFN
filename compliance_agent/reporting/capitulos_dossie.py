@@ -195,6 +195,51 @@ def secao_suspeitas(con: sqlite3.Connection, cnpj: str, d: dict) -> dict | None:
                      + "".join(f"<li>{i}</li>" for i in itens) + "</ul>")}
 
 
+def secao_nomeacoes_orgao(orgao_nome: str, pcrj_db_path: str = "data/pcrj.db",
+                          limite: int = 60) -> dict | None:
+    """Capítulo de NOMEAÇÕES do órgão com DATAS (mês de admissão e de exoneração — o dono frisou que
+    datas importam). Fonte: pcrj_comissionado_candidato (comissionados que também foram candidatos —
+    o retrato do aparelhamento). Casa por nome de órgão (municipal). Sem match → None (honesto)."""
+    if not (orgao_nome or "").strip():
+        return None
+    con = sqlite3.connect(f"file:{Path(pcrj_db_path)}?mode=ro", uri=True)
+    try:
+        # orgao_pcrj guarda SIGLAS (PCRJ, SMAC, SMS…). Casa por sigla (all-caps ≥2) e por palavra
+        # significativa do nome — o que vier. Sem termo → None (honesto, sem varrer tudo).
+        siglas = re.findall(r"\b[A-Z]{2,}\b", orgao_nome)
+        palavras = [t for t in re.findall(r"[A-Za-zÀ-ú]{4,}", orgao_nome) if t.lower() not in
+                    ("estado", "municipio", "governo", "secretaria", "fundo", "instituto", "companhia")]
+        termos = list(dict.fromkeys(siglas + palavras))[:3]
+        if not termos:
+            return None
+        cond = " OR ".join("orgao_pcrj LIKE ?" for _ in termos)
+        rows = con.execute(
+            f"SELECT nome_pcrj, cargo_pcrj, orgao_pcrj, admissao, exoneracao, matricula, cand_cargo "
+            f"FROM pcrj_comissionado_candidato WHERE {cond} ORDER BY admissao DESC LIMIT ?",
+            tuple(f"%{t}%" for t in termos) + (limite,)).fetchall()
+    except sqlite3.OperationalError:
+        return None
+    finally:
+        con.close()
+    if not rows:
+        return None
+    linhas = ["<table class='tabela'><tr><th>Nome</th><th>Cargo</th><th>Órgão</th>"
+              "<th>Admissão</th><th>Exoneração</th><th>Matrícula</th><th>Também candidato a</th></tr>"]
+    for r in rows:
+        exo = r[4] if (r[4] and r[4] not in ("None", "")) else "— (ativo)"
+        linhas.append(f"<tr><td>{_esc(r[0])}</td><td>{_esc(r[1])}</td><td>{_esc(r[2])}</td>"
+                      f"<td>{_esc(r[3])}</td><td>{_esc(exo)}</td><td>{_esc(r[5])}</td>"
+                      f"<td>{_esc(r[6])}</td></tr>")
+    linhas.append("</table>")
+    return {"titulo": "Nomeações e vínculos — comissionados com datas de admissão/exoneração",
+            "html": ("<p>Comissionados do órgão que também disputaram eleição — o retrato do "
+                     "<b>aparelhamento político</b> da máquina. Cada linha traz a <b>data de admissão "
+                     "e de exoneração</b> (mês e ano), o cargo e a candidatura. Cargo de confiança "
+                     "ocupado por quem disputa mandato é indício de uso político do cargo público; "
+                     "confirmar homônimo pelo fragmento de CPF. Indício ≠ acusação.</p>"
+                     + "".join(linhas))}
+
+
 def _slug_processo(numero: str) -> str:
     return "".join(c if c.isalnum() else "_" for c in (numero or "").replace("SEI-", "")).strip("_")
 

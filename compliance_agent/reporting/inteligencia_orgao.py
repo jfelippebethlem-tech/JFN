@@ -1333,6 +1333,24 @@ def _conjunto_certames_orgao(ug: str, nome: str) -> dict:
         return {"ok": False, "_nota": f"avaliação de conjunto indisponível: {str(exc)[:120]}"}
 
 
+def _secao_nomeacoes_md(add, ctx: dict) -> None:
+    """§1-N — nomeações do órgão com DATAS de admissão/exoneração (comissionados × candidaturas).
+    Best-effort por nome/sigla do órgão (dado municipal); degrada honesto para UG sem match."""
+    try:
+        from compliance_agent.reporting.capitulos_dossie import secao_nomeacoes_orgao
+        sec = secao_nomeacoes_orgao(ctx.get("nome") or "")
+    except Exception as exc:  # noqa: BLE001 — capítulo é bônus; nunca derruba o /orgao (logado)
+        import logging
+        logging.getLogger(__name__).debug("seção nomeações do órgão indisponível: %s", exc)
+        sec = None
+    if not sec:
+        return
+    add(f"## 1-N. {sec['titulo'].upper()}")
+    add("")
+    add(sec["html"])
+    add("")
+
+
 def _secao_conjunto_certames_md(add, ctx: dict) -> None:
     """§1-M — o órgão como LICITANTE: conjunto dos certames PNCP (mediana/p90 do índice, reincidência
     de cláusula restritiva → auditoria temática, eliminações triviais, HHI de vitórias, casos-âncora)."""
@@ -1792,6 +1810,7 @@ def render_md(ctx: dict) -> str:
     # 1-I. Painel de detectores (spec de licitações) — visão unificada dos ResultadoDetector (J1 + futuros)
     _secao_painel_detectores_md(add, ctx)
     _secao_conjunto_certames_md(add, ctx)
+    _secao_nomeacoes_md(add, ctx)
     # 1-J. Pagamento fora de contrato regular (TAC/indenização) + emergencial + worklist de co-suspeitos
     _secao_tac_md(add, ctx)
     # 1-K. Cruzamento Receita Federal — anomalias (sem-fins / rede-grupo / veículo de aluguel / laranja)

@@ -97,3 +97,29 @@ def test_sei_arvore_le_arquivo(tmp_path, monkeypatch):
 def test_sei_arvore_none_sem_arquivo(tmp_path, monkeypatch):
     monkeypatch.setattr(cap, "_ARQUIVO_SEI", tmp_path)
     assert cap.secao_sei_arvore(["inexistente"]) is None
+
+
+def test_nomeacoes_orgao_com_datas(tmp_path):
+    db = tmp_path / "pcrj.db"
+    c = sqlite3.connect(db)
+    c.execute("CREATE TABLE pcrj_comissionado_candidato (nome_norm TEXT, nome_pcrj TEXT, "
+              "cargo_pcrj TEXT, orgao_pcrj TEXT, admissao TEXT, exoneracao TEXT, matricula TEXT, "
+              "cand_cargo TEXT)")
+    c.execute("INSERT INTO pcrj_comissionado_candidato VALUES "
+              "('joao','JOAO SILVA','ESPECIAL','SMAS','15/12/2021','05/12/2022','123','Vereador')")
+    c.commit(); c.close()
+    sec = cap.secao_nomeacoes_orgao("Secretaria SMAS", pcrj_db_path=str(db))
+    assert sec is not None
+    assert "15/12/2021" in sec["html"] and "05/12/2022" in sec["html"]  # datas de admissão/exoneração
+    assert "Vereador" in sec["html"]
+    assert termos_proibidos(sec["html"]) == []
+
+
+def test_nomeacoes_orgao_none_sem_match(tmp_path):
+    db = tmp_path / "pcrj.db"
+    c = sqlite3.connect(db)
+    c.execute("CREATE TABLE pcrj_comissionado_candidato (nome_norm TEXT, nome_pcrj TEXT, "
+              "cargo_pcrj TEXT, orgao_pcrj TEXT, admissao TEXT, exoneracao TEXT, matricula TEXT, "
+              "cand_cargo TEXT)")
+    c.commit(); c.close()
+    assert cap.secao_nomeacoes_orgao("Órgão Inexistente XPTO", pcrj_db_path=str(db)) is None
