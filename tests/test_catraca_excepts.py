@@ -47,7 +47,10 @@ REPO = Path(__file__).resolve().parent.parent
 # Zero `except Exception: pass` mudo no código novo. Curadoria do legado p/ específico segue aberta.
 # 2026-07-20b: +2 (1502→1504) — F5. AUDITADO: a seção 1-M do /orgao (conjunto_certames indisponível →
 # logger.debug) e o degradar da rota; ambos LOGADOS/graceful, nenhum mudo.
-BASELINE = 1504
+# 2026-07-20c: +5 (1504→1509) — pacote completo (G1-G7). AUDITADO: §1-N nomeações do /orgao, capítulo SEI
+# do dossiê completo (dossie.montar_ctx_completo) e worker/sub-try da rota /api/dossie/completo — todos
+# LOGADOS (logger.debug/warning) ou catch-and-return de rota; zero pass mudo no código novo.
+BASELINE = 1509
 
 
 def _contar() -> int:
