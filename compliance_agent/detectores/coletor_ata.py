@@ -273,6 +273,19 @@ def montar_ctx_julgamento(leitura: dict, *, usar_llm: bool = False,
     return ctx
 
 
+_RX_CERTAME_PNCP = re.compile(r"\b(\d{14}-\d-\d{6}/\d{4})\b")
+
+
+def certame_de_leitura(leitura: dict) -> str | None:
+    """Nº de controle PNCP mais citado nos textos do processo (None se nenhum — nunca inventa)."""
+    from collections import Counter
+    hits: Counter = Counter()
+    for d in leitura.get("conteudo_documentos") or []:
+        for m in _RX_CERTAME_PNCP.findall(d.get("conteudo") or ""):
+            hits[m] += 1
+    return hits.most_common(1)[0][0] if hits else None
+
+
 def persistir_julgamento(leitura: dict, certame: str, con=None, *, processo_sei: str | None = None) -> dict | None:
     """Monta o ctx da ata e PERSISTE o `resultado` em certame_julgamento (editais/db.salvar_julgamento) —
     antes o resultado era efêmero e a família certame_ata do índice ficava eternamente INDISPONÍVEL.

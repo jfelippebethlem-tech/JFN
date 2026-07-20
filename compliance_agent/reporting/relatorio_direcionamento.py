@@ -430,7 +430,8 @@ _FAMILIA_ROTULO = {
     "conluio": "Conluio",
     "fraude_cadastral": "Fraude cadastral",
     "preco": "Preço",
-    "execucao": "Execução",
+    "execucao": "Execução (aditivos)",
+    "certame_ata": "Execução do certame (ata)",
 }
 
 
@@ -474,7 +475,7 @@ def _bloco_indice_certame(row) -> str:
     partes = ["<h4>VIII. Contexto do certame — Índice de Direcionamento</h4>",
               f"<p>O <b>certame como um todo</b> (não apenas a cláusula desta ficha) apresenta "
               f"Índice de Direcionamento <b>{score:.1f}/100 — faixa {_esc(faixa)}</b> "
-              f"(confiança {confianca:.2f} = famílias apuráveis / 6; "
+              f"(confiança {confianca:.2f} = famílias apuráveis / {len(familias) or 7}; "
               f"família INDISPONÍVEL não pontua nem zera).</p>"]
 
     linhas = []

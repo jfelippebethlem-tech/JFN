@@ -52,6 +52,20 @@ _RE_REJEICAO_MOTIVADA = re.compile(
     r"decido\s+em\s+sentido\s+(?:contr[áa]rio|diverso))\b", re.I)
 _RE_DESPACHO_DECISORIO = re.compile(
     r"\b(despacho|homologo|homologa[çc][aã]o|adjudico|autorizo|aprovo|ratifico|decis[aã]o)\b", re.I)
+# decisório DE VERDADE (homologa/adjudica/autoriza/ratifica) — "Despacho de Encaminhamento" é mera
+# tramitação e NÃO conta: sem decisório real, parecer sem resposta é SILENTE, nunca IGNORADO (anti-FP
+# aprendido no teste real de 2026-07-20: 31 encaminhamentos, zero decisão, veredito errava p/ IGNORADO).
+_RE_DECISORIO_FORTE = re.compile(
+    r"\b(homologo|homologa[çc][aã]o|adjudico|adjudica[çc][aã]o|autorizo|ratifico|aprovo\s+a\s+"
+    r"(?:contrata[çc][aã]o|dispensa|inexigibilidade)|decis[aã]o\s+(?:final|da\s+autoridade))\b", re.I)
+# boilerplate de parecer/certidão que casa _RE_RECOMENDA mas NÃO é ressalva substantiva (teste real):
+_RE_BOILERPLATE = re.compile(
+    r"aplica[çc][aã]o\s+do\s+checklist|checklist\s+correspondente|condiciona-?se\s+[àa]\s+verifica[çc][aã]o|"
+    r"verifica[çc][aã]o\s+de\s+(?:sua\s+)?autenticidade|recomenda-?se\s+a\s+leitura|"
+    r"observ[âa]ncia\s+ao\s+princ[ií]pio\s+da\s+prud[êe]ncia", re.I)
+# doc que É parecer pelo TÍTULO (mesmo favorável, sem ressalva) — p/ separar "sem parecer" de "parecer regular"
+_RE_TITULO_PARECER = re.compile(
+    r"\b(parecer|manifesta[çc][aã]o\s+jur[ií]dica|nota\s+t[eé]cnica|promo[çc][aã]o)\b", re.I)
 
 
 def classificar_emissor(texto: str) -> str | None:
@@ -104,41 +118,57 @@ def auditar_acatamento(docs: list[dict]) -> dict:
     manifesta) · SEM_PARECER_LOCALIZADO (nenhum doc de emissor jurídico/controle entre os LIDOS —
     art. 53 exige parecer prévio, mas cobertura de leitura ≠ inexistência: indício a confirmar).
     """
-    pareceres = detectar(docs)
+    candidatos = detectar(docs)
+    # ressalva SUBSTANTIVA = ao menos um trecho de recomendação fora do boilerplate, OU sinal de
+    # não-atendimento (teste real 2026-07-20: checklist/certidão da PGE inflava falso IGNORADO)
+    pareceres = [p for p in candidatos
+                 if p["sinal_nao_atendida"]
+                 or any(not _RE_BOILERPLATE.search(t) for t in p["trechos_recomendacao"])]
+    tem_doc_parecer = any(
+        _RE_TITULO_PARECER.search(f"{d.get('tipo') or ''} {d.get('ref') or ''}")
+        or classificar_emissor(d.get("texto") or "")
+        for d in docs or [])
     despachos = []
     for i, d in enumerate(docs or []):
         texto = d.get("texto") or ""
-        rotulo = f"{d.get('tipo') or ''} {texto[:200]}"
+        rotulo = f"{d.get('tipo') or ''} {d.get('ref') or ''} {texto[:200]}"
         if _RE_DESPACHO_DECISORIO.search(rotulo):
             despachos.append({"i": i, "ref": d.get("ref"),
+                              "decisorio": bool(_RE_DECISORIO_FORTE.search(rotulo)),
                               "acolhe": bool(_RE_ACOLHIMENTO.search(texto)),
                               "rejeita_motivado": bool(_RE_REJEICAO_MOTIVADA.search(texto)),
                               "trechos": _trechos(texto, _RE_ACOLHIMENTO) or _trechos(texto, _RE_REJEICAO_MOTIVADA)})
-    if not pareceres:
+    if not candidatos and not tem_doc_parecer:
         return {"veredito": "SEM_PARECER_LOCALIZADO", "pareceres": [], "despachos": despachos,
-                "leitura": ("Nenhum parecer de PGE/PGM/CGE/CGM/jurídico com recomendação entre os documentos "
-                            "LIDOS. O art. 53 da Lei 14.133/2021 exige análise jurídica prévia — mas leitura "
-                            "parcial ≠ inexistência (INDISPONÍVEL ≠ 0): conferir a íntegra antes de apontar.")}
+                "leitura": ("Nenhum parecer de PGE/PGM/CGE/CGM/jurídico entre os documentos LIDOS. O art. 53 "
+                            "da Lei 14.133/2021 exige análise jurídica prévia — mas leitura parcial ≠ "
+                            "inexistência (INDISPONÍVEL ≠ 0): conferir a íntegra antes de apontar.")}
+    if not pareceres:
+        return {"veredito": "PARECER_SEM_RESSALVA", "pareceres": [], "despachos": despachos,
+                "leitura": ("Há parecer/manifestação jurídica nos autos e nenhuma ressalva substantiva "
+                            "detectada (recomendações localizadas são boilerplate de checklist/certidão) — "
+                            "cadeia aparentemente regular.")}
     algum_nao_atendida = any(p["sinal_nao_atendida"] for p in pareceres)
     acolheu = any(dp["acolhe"] for dp in despachos)
     rejeitou = any(dp["rejeita_motivado"] for dp in despachos)
+    tem_decisorio = any(dp["decisorio"] for dp in despachos)
     if rejeitou:
         veredito = "CONTRARIADO_COM_MOTIVACAO"
         leitura = ("A autoridade decidiu em sentido diverso do parecer COM motivação expressa — lícito em "
                    "abstrato (LINDB art. 22), mas a motivação merece exame de mérito (registrar no dossiê).")
-    elif algum_nao_atendida and not acolheu:
+    elif algum_nao_atendida and tem_decisorio and not acolheu:
         veredito = "IGNORADO_INDICIO"
-        leitura = ("Ressalva/recomendação com sinal explícito de NÃO-atendimento e nenhum despacho de "
-                   "acolhimento ou divergência motivada localizado — indício FORTE de instrução viciada "
-                   "(art. 53 Lei 14.133; Lei 8.429 art. 11). Confirmar em doc posterior antes de peça.")
+        leitura = ("Ressalva com sinal explícito de NÃO-atendimento, autoridade DECIDIU (homologou/adjudicou/"
+                   "autorizou) e nenhum acolhimento ou divergência motivada — indício FORTE de instrução "
+                   "viciada (art. 53 Lei 14.133; Lei 8.429 art. 11). Confirmar em doc posterior antes de peça.")
     elif acolheu:
         veredito = "ACOLHIDO"
         leitura = "Despacho da autoridade acolhe o parecer (nos termos/acolho/aprovo) — cadeia regular."
     else:
         veredito = "SILENTE"
-        leitura = ("Parecer com recomendação e NENHUM despacho decisório manifestando acolhimento ou "
-                   "divergência entre os docs lidos — silêncio administrativo sobre o controle prévio "
-                   "(indício médio; pode estar em documento não lido).")
+        leitura = ("Parecer com ressalva e NENHUM despacho DECISÓRIO respondendo (encaminhamentos não "
+                   "decidem) — silêncio administrativo sobre o controle prévio (indício médio; a decisão "
+                   "pode estar em documento não lido).")
     return {"veredito": veredito, "pareceres": pareceres, "despachos": despachos, "leitura": leitura}
 
 

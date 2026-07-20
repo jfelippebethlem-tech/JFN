@@ -67,3 +67,36 @@ def test_taxa_trivialidade_agrega():
 
 def test_taxa_vazia_honesta():
     assert taxa_trivialidade([])["taxa_trivial"] is None
+
+
+# ── rubrica LLM (só o resíduo ambíguo; citação literal obrigatória; abstenção honesta) ──
+
+def test_rubrica_nao_roda_quando_gabarito_decide():
+    from compliance_agent.editais.motivo_inabilitacao import classificar_com_rubrica
+    chamado = []
+    r = classificar_com_rubrica("ausência de assinatura na proposta",
+                                gerar=lambda *a: chamado.append(1) or "{}")
+    assert r["classe"] == "trivial" and not chamado  # determinístico decidiu; LLM nem foi chamada
+
+
+def test_rubrica_exige_citacao_literal():
+    from compliance_agent.editais.motivo_inabilitacao import classificar_com_rubrica
+    motivo = "a empresa não demonstrou aderência à visão estratégica"
+    fake = lambda sys, p: '{"classe":"substancial","trecho":"texto que não está no motivo original"}'  # noqa: E731
+    assert classificar_com_rubrica(motivo, gerar=fake)["classe"] == "ambiguo"  # citação falsa → descarta
+
+
+def test_rubrica_valida_promove_com_origem_llm():
+    from compliance_agent.editais.motivo_inabilitacao import classificar_com_rubrica
+    motivo = "a empresa não demonstrou aderência à visão estratégica do órgão"
+    fake = lambda sys, p: '{"classe":"trivial","trecho":"não demonstrou aderência à visão"}'  # noqa: E731
+    r = classificar_com_rubrica(motivo, gerar=fake)
+    assert r["classe"] == "trivial" and r["origem_llm"] is True
+    assert "SUSPEITO" in r["fundamento"]
+
+
+def test_rubrica_llm_caida_segue_ambiguo():
+    from compliance_agent.editais.motivo_inabilitacao import classificar_com_rubrica
+    def quebra(*a):
+        raise RuntimeError("nous fora")
+    assert classificar_com_rubrica("motivo estranho qualquer", gerar=quebra)["classe"] == "ambiguo"

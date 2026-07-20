@@ -565,6 +565,7 @@ const TABS={
     {id:'e_escal',   ic:'📈',tl:'Escalada', render:renderEscalada},
     {id:'e_comp',    ic:'💰',tl:'Comparador',render:renderComparador},
     {id:'e_adit',    ic:'📑',tl:'Aditivos',render:renderAditivos},
+    {id:'e_certames',ic:'🧮',tl:'Certames',render:renderCertames},
     {id:'e_cartel',  ic:'🔗',tl:'Cartel',  render:renderCartel},
     {id:'e_conluio', ic:'🕸️',tl:'Conluio', render:()=>renderConluio('estado')},
     {id:'e_poder',   ic:'🏛️',tl:'Nomeados',render:renderPoder},
@@ -873,6 +874,35 @@ async function renderFracionamento(){
       ${leitura(`${x.n_colado} das ${x.n} OBs deste favorecido para a UG ${esc(String(x.ug_emitente))} em ${esc(x.mes)} ficaram logo abaixo do teto de dispensa. Somadas dão ${fmtRc(x.soma)} — acima do limite, o que exigiria licitação. Cruzar com os empenhos/processos do mês.`)}`,
       pct>=50?'hl':'');}).join('')+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
+// ═══ CERTAMES — conjunto por órgão (Estado) ═══
+async function renderCertames(){
+  const d=await J('/api/conjunto/portfolio?min_certames=3');
+  if(!d.ok)return sec('Certames')+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const o=d.orgaos||[];
+  let h=cover('estado','Certames — o padrão de cada órgão licitante',
+    'Todos os certames indexados de cada órgão, avaliados <b>como conjunto</b>: mediana do Índice de Direcionamento (0-100, 7 famílias — inclui o que <b>ocorreu na sessão</b>: eliminações em massa ou por motivo trivial sem saneamento, art. 64 §1º), <b>reincidência</b> da mesma cláusula restritiva (≥3 certames = auditoria temática) e <b>desvio frente aos pares</b>. Um certame ruim pode ser acaso; um padrão de órgão nunca é.','🧮')+acoesAba('certames');
+  const piores=o.filter(x=>(x.desvio_vs_pares||0)>10).length, aud=o.filter(x=>x.auditoria_tematica&&x.auditoria_tematica.length).length;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_orgaos),'Órgãos avaliados (≥3 certames)',null,'🏢')}${kpi(d.mediana_pares!=null?d.mediana_pares.toFixed(0):'—','Mediana dos pares',null,'📏')}
+      ${kpi(fmtN(piores),'Acima dos pares (+10)','var(--amber)','📈')}${kpi(fmtN(aud),'Com gatilho de auditoria temática','var(--rose)','🎯')}</div>`;
+  h+=`<div class="grid" style="margin-top:14px">`+o.map(x=>{
+    const md=x.score_mediana!=null?x.score_mediana:0, dv=x.desvio_vs_pares;
+    const cor=md>=50?'var(--rose)':md>=25?'var(--amber)':'var(--tx2)';
+    const nome=x.orgao_nome||x.orgao_cnpj;
+    const audit=(x.auditoria_tematica||[]).map(a=>`<span class="tag rose">${esc(a.subtipo)} × ${a.certames} certames</span>`).join(' ');
+    const ancoras=(x.casos_ancora||[]).slice(0,3).map(c=>`<span class="tag ${c.faixa==='ALTO'||c.faixa==='EXTREMO'?'rose':'accent'}" title="${esc(c.certame)}">${c.score.toFixed(0)}·${esc(c.faixa)}</span>`).join(' ');
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><b>${esc(nome)}</b><div class="dim">${esc(x.orgao_cnpj)} · ${fmtN(x.n_certames_indexados)} certames indexados</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${md.toFixed(0)}</div><div class="dim">mediana · p90 ${x.score_p90!=null?x.score_p90.toFixed(0):'—'}</div></div></div>
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${dv!=null?`<span class="tag ${dv>10?'rose':dv>0?'amber':'teal'}">${dv>0?'+':''}${dv.toFixed(0)} vs pares</span>`:''}
+        ${x.violacoes_saneamento?`<span class="tag rose">${x.violacoes_saneamento} eliminação(ões) trivial(is) sem saneamento</span>`:''}
+        ${x.hhi_concentrado?`<span class="tag amber">vitórias concentradas (HHI ${x.hhi_vitorias})</span>`:''}${audit}</div>
+      ${ancoras?`<div style="margin-top:6px" class="dim">casos-âncora: ${ancoras}</div>`:''}
+      ${leitura(`A mediana <b>${md.toFixed(0)}/100</b> em ${fmtN(x.n_certames_indexados)} certames ${dv!=null&&dv>10?`está <b>${dv.toFixed(0)} pontos acima</b> dos pares — o padrão do órgão destoa`:dv!=null&&dv>0?'fica levemente acima dos pares':'acompanha os pares'}.${(x.auditoria_tematica||[]).length?` A <b>mesma cláusula restritiva reincide</b> em ${x.auditoria_tematica[0].certames} certames — caso de <b>auditoria temática</b>, não de representação avulsa.`:''} Quanto menos certames indexados, menor a confiança — toque nos casos-âncora para ver o índice de cada um.`)}`,
+      (dv!=null&&dv>10)||(x.auditoria_tematica||[]).length?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">Determinístico e auditável (indício ≠ acusação; órgão sem certame indexado não aparece — INDISPONÍVEL ≠ 0). Fontes: certame_indice + clausula_veredito + certame_julgamento + PNCP.</div>`;
   return h;
 }
 

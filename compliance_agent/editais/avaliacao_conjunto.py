@@ -81,8 +81,11 @@ def avaliar_orgao(orgao_cnpj: str, db_path=None) -> dict:
         hhi = round(sum((r["vitorias"] / tot_v) ** 2 for r in venc), 4) if tot_v else None
 
         casos_ancora = sorted(rows, key=lambda r: -(r["prioridade"] or 0))[:5]
+        nome_r = _q(con, "SELECT orgao_nome FROM pncp_resultado WHERE orgao_cnpj=? "
+                         "AND orgao_nome IS NOT NULL LIMIT 1", (orgao_cnpj,))
         return {
             "orgao_cnpj": orgao_cnpj,
+            "orgao_nome": (nome_r[0]["orgao_nome"] if nome_r else None),
             "n_certames_indexados": n,
             "score_mediana": _quantil(scores, 0.5),
             "score_p90": _quantil(scores, 0.9),

@@ -148,6 +148,20 @@ def test_sem_parecer_localizado_e_honesto():
     assert "INDISPONÍVEL" in r["leitura"]
 
 
+def test_parecer_favoravel_boilerplate_e_regular():
+    # aprendido no teste real: checklist/certidão da PGE não é ressalva substantiva
+    docs = [_doc("doc-2", "parecer", "Parecer PGE: opina favoravelmente. Recomenda-se a aplicação do "
+                 "checklist correspondente. A certidão condiciona-se à verificação de sua autenticidade.")]
+    assert auditar_acatamento(docs)["veredito"] == "PARECER_SEM_RESSALVA"
+
+
+def test_encaminhamento_nao_e_decisorio_vira_silente():
+    # 31 'Despachos de Encaminhamento' sem decisão não podem sustentar IGNORADO (caso 330020/000762/2021)
+    docs = [_doc("doc-2", "parecer", "Parecer CGE: a ressalva não foi atendida e permanece a pendência."),
+            _doc("doc-3", "Despacho de Encaminhamento de Processo", "Encaminho o processo à unidade seguinte.")]
+    assert auditar_acatamento(docs)["veredito"] == "SILENTE"
+
+
 # ───────────────────────── avaliação de conjunto ─────────────────────────
 
 def test_avaliar_orgao_agrega_e_gatilha_auditoria(db):

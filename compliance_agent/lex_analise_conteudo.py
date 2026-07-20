@@ -135,6 +135,24 @@ def _analisar_conteudo_sei(integra: dict) -> tuple[list, dict]:
         a["numero_proc"] = integra.get("numero", "")
         a["trecho"] = _trecho(txt, _gat.get(a["rf"], []))
 
+    # R15 — acatamento de pareceres (art. 53, dossiê mestre §4): auditoria determinística sobre os
+    # docs da íntegra. IGNORADO = ressalva sem resposta + decisão tomada → grav 4; SILENTE/CONTRARIADO
+    # motivado → grav 2 (registrar). Falha aqui nunca derruba a análise (achado é bônus).
+    docs_aud = [{"ref": d.get("doc"), "tipo": d.get("doc"), "texto": d.get("conteudo")}
+                for d in integra.get("conteudo_documentos") or []]
+    if docs_aud:
+        try:
+            from compliance_agent.sei_recomendacoes import auditar_acatamento
+            aud = auditar_acatamento(docs_aud)
+            if aud["veredito"] == "IGNORADO_INDICIO":
+                achados.append({"rf": "R15", "grav": 4,
+                                "obs": f"**Acatamento de pareceres:** {aud['leitura']}"})
+            elif aud["veredito"] in ("SILENTE", "CONTRARIADO_COM_MOTIVACAO"):
+                achados.append({"rf": "R15", "grav": 2,
+                                "obs": f"**Acatamento de pareceres ({aud['veredito']}):** {aud['leitura']}"})
+        except Exception:  # noqa: BLE001
+            pass
+
     resumo = {
         "numero": integra.get("numero", ""),
         "objeto": objeto,

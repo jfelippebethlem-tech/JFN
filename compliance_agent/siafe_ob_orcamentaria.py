@@ -587,7 +587,7 @@ async def coletar(exercicio=2025, maxn=300, headless=True, vistos=None, linhas=N
                 return {"ok": False, "etapa": "navegacao", "detail": "tabela tblOBOrcamentaria não apareceu",
                         "itens_submenu": nav.get("itens_submenu")}
             try:
-                await ctx.storage_state(path=str(_STATE))
+                await b.storage_state(path=str(_STATE))
             except Exception as exc:
                 logger.debug("falha ao salvar storage_state da sessão SIAFE em %s: %s", _STATE, exc)
             # remove o teto de 1000 registros/consulta antes de varrer (docs/SIAFE-RIO2-GUIA-AUTOMACAO.md §5)
@@ -738,7 +738,7 @@ async def _sweep_sessao(exercicio, prefixos, maxn, headless, _log) -> dict:
             if not nv.get("ok"):
                 return {"ok": False, "etapa": "navegacao"}
             try:
-                await ctx.storage_state(path=str(_STATE))
+                await b.storage_state(path=str(_STATE))
             except Exception as exc:
                 logger.debug("falha ao salvar storage_state da sessão SIAFE em %s: %s", _STATE, exc)
             adf = AdfSync(pg); await adf.boot()

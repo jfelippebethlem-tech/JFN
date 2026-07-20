@@ -1,6 +1,6 @@
 {
   "_gerado_de": "capabilities.yaml (NÃO editar à mão)",
-  "versao": "2.2.0",
+  "versao": "2.3.0",
   "base_http": "http://127.0.0.1:8000",
   "tools": [
     {
@@ -147,6 +147,114 @@
         "dominio": "auditoria",
         "tipo": "http",
         "rota": "/api/anomalias",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "certame_indice",
+        "description": "Indice de Direcionamento de Certame 0-100 (7 familias, inclui execucao da ata: inabilitacao em massa/trivial) — usar quando: risco de um certame/licitacao especifica pelo nº de controle PNCP — chamar: GET /api/certame/indice (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "certame": {
+              "type": "string",
+              "description": "string (nº de controle PNCP)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/certame/indice",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "conjunto_orgao",
+        "description": "Avaliacao de CONJUNTO dos certames de um orgao (mediana/p90 do indice, reincidencia de clausula restritiva -> auditoria tematica, eliminacoes triviais, HHI de vitorias) — usar quando: visao de portfolio de um orgao licitante (CNPJ do orgao) — chamar: GET /api/conjunto/orgao (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "string (CNPJ do orgao no PNCP)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/conjunto/orgao",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "conjunto_portfolio",
+        "description": "Ranking de ORGAOS por risco de certame (peer-benchmark: desvio da mediana do orgao vs pares) — usar quando: quais orgaos tem o pior padrao de licitacao; avaliacao global do conjunto — chamar: GET /api/conjunto/portfolio (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "min_certames": {
+              "type": "integer",
+              "description": "int opcional (default 3)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/conjunto/portfolio",
+        "comando": null,
+        "metodo": "GET",
+        "status": "PRONTO",
+        "enviar_telegram": null
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "sei_acatamento",
+        "description": "Acatamento de pareceres (art. 53 Lei 14.133): autoridade acolheu/contrariou motivadamente/silenciou/ignorou pareceres PGE/PGM/CGE/CGM no processo — usar quando: os pareceres juridicos/controladoria foram atendidos no processo X? — chamar: GET /api/sei/acatamento (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "processo": {
+              "type": "string",
+              "description": "string (nº SEI)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/sei/acatamento",
         "comando": null,
         "metodo": "GET",
         "status": "PRONTO",

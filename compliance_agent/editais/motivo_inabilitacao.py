@@ -92,6 +92,44 @@ def classificar(motivo: str, houve_diligencia: bool = False) -> dict:
             "violacao_saneamento": False}
 
 
+_SYS_RUBRICA = (
+    "Você audita atas de licitação (Lei 14.133/2021). Recebe o MOTIVO pelo qual um licitante foi "
+    "eliminado. Classifique APENAS: 'trivial' = falha meramente formal/sanável (art. 64 §1º: não altera "
+    "a substância — assinatura, certidão vencida verificável, formatação, cópia sem autenticação); "
+    "'substancial' = descumprimento de requisito de mérito (atestado/capital insuficiente, objeto "
+    "incompatível, documento essencial ausente, preço acima do estimado, sanção vigente); "
+    "'nao_sei' quando o texto não permite concluir. Responda SÓ um JSON: "
+    '{"classe":"trivial|substancial|nao_sei","trecho":"citação LITERAL do motivo que sustenta"}. '
+    "Sem trecho literal a resposta será DESCARTADA. Nunca invente."
+)
+
+
+def classificar_com_rubrica(motivo: str, gerar=None, *, houve_diligencia: bool = False) -> dict:
+    """Gabarito determinístico primeiro; só o resíduo 'ambiguo' vai à rubrica LLM (padrão lentes/
+    avaliar_rubrica: payload mínimo, citação literal obrigatória, abstenção = fica ambíguo).
+    O juízo da LLM produz no MÁXIMO flag suspeito (flags.grau_flag origem='llm') — nunca A."""
+    r = classificar(motivo, houve_diligencia=houve_diligencia)
+    if r["classe"] != "ambiguo" or gerar is None:
+        return r
+    import json as _json
+    import re as _re
+    try:
+        raw = gerar(_SYS_RUBRICA, f"MOTIVO DA ELIMINAÇÃO:\n{(motivo or '')[:2000]}\n\nResponda só o JSON.")
+        m = _re.search(r"\{.*\}", raw or "", _re.S)
+        j = _json.loads(m.group(0)) if m else {}
+    except Exception:  # noqa: BLE001 — LLM caído = segue ambíguo (indisponível ≠ decidido)
+        return r
+    classe, trecho = j.get("classe"), (j.get("trecho") or "").strip()
+    if classe not in ("trivial", "substancial") or not trecho or trecho[:40].lower() not in (motivo or "").lower():
+        return r  # sem classe válida OU sem citação literal do próprio motivo → descarta (regra de ouro)
+    viol = classe == "trivial" and not houve_diligencia
+    return {"classe": classe, "sinal": f"rubrica LLM (citou: “{trecho[:80]}”)",
+            "fundamento": ("juízo de rubrica LLM com citação literal — flag no máximo SUSPEITO; "
+                           + ("art. 64 §1º c/c art. 12 III se confirmado" if classe == "trivial"
+                              else "requisito de mérito — lícito em abstrato")),
+            "violacao_saneamento": viol, "origem_llm": True}
+
+
 def taxa_trivialidade(motivos: list[dict]) -> dict:
     """Agrega classificações de um certame: {n, triviais, violacoes_saneamento, substanciais, ambiguos,
     nao_aferiveis, taxa_trivial}. `motivos` = lista de retornos de classificar()."""

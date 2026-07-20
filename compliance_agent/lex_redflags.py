@@ -27,6 +27,8 @@ _RF = {
             "Arts. 125-126 Lei 14.133/2021; Acórdãos TCU 1.755/2004 e 2.988/2018-Plenário (independe de dolo)"),
     "R14": ("Conluio entre licitantes (rodízio/cobertura/supressão — OCDE)",
             "Art. 90 Lei 14.133/2021 (frustrar/fraudar licitação); Art. 337-F CP; Art. 36 Lei 12.529/2011 (CADE)"),
+    "R15": ("Parecer jurídico/controle prévio não acatado sem motivação",
+            "Art. 53 Lei 14.133/2021 (controle prévio de legalidade); LINDB art. 22; art. 11 Lei 8.429/92"),
     # Investigação de Due Diligence (fachada/laranja) — motor investigacao_dd; detalhe na seção II-E.
     "DD/H-END-RESID": ("Sede em endereço de natureza residencial", "art. 337-F CP; art. 11 Lei 8.429/92"),
     "DD/H-END-EXISTE": ("Endereço não confirmado fisicamente (geocodificação)", "art. 337-F CP"),
@@ -120,6 +122,10 @@ _MATRIZ = {
     "R12": ("planejamento de fachada (DFD/ETP/TR genéricos) ou crescimento sem lastro",
             "contratação sem planejamento real; sobre/subdimensionamento",
             "exigir ETP robusto e justificativa da demanda (art. 18 Lei 14.133)"),
+    "R15": ("ressalva de parecer (PGE/CGE/jurídico) aparentemente sem resposta da autoridade",
+            "instrução viciada: decisão sem enfrentar o controle prévio de legalidade",
+            "localizar o despacho decisório; sem acolhimento nem divergência motivada, representar "
+            "(art. 53 Lei 14.133; LINDB art. 22)"),
 }
 
 
@@ -238,6 +244,7 @@ _MOTIVO_IMPROBIDADE_RF = {
     "R11": "qualificação técnica frágil / empresa de fachada",
     "R12": "planejamento deficiente / escalada de faturamento a justificar",
     "R14": "conluio/fraude à licitação (cartel entre licitantes)",
+    "R15": "parecer/controle prévio não acatado",
     "DD": "fachada/laranja",
 }
 # RF → famílias de destinatário (um achado pode disparar mais de uma família).
@@ -255,6 +262,7 @@ _RF_DESTINATARIO = {
     "R12": ("improbidade",),
     "R13": ("debito",),
     "R14": ("conluio", "improbidade"),
+    "R15": ("improbidade",),
     "DD": ("par", "improbidade"),
 }
 

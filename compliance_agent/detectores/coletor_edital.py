@@ -644,6 +644,16 @@ async def analisar_processo_sei(numero: str, *, usar_llm: bool = False, ler_fn: 
         if ctx_julg.get(k):
             ctx[k] = ctx_julg[k]
             ctx.setdefault("_proveniencia", {})[k] = ctx_julg.get("_proveniencia", {}).get(k)
+    # resultado da ata → certame_julgamento (alimenta a família certame_ata do índice); persistência
+    # é bônus: falha (db travado, sem nº PNCP nos textos) NUNCA derruba a análise do processo
+    if ctx_julg.get("resultado"):
+        try:
+            from compliance_agent.detectores.coletor_ata import certame_de_leitura, persistir_julgamento
+            cert = certame_de_leitura(leitura)
+            if cert:
+                persistir_julgamento(leitura, cert, processo_sei=numero)
+        except Exception:  # noqa: BLE001
+            pass
 
     resultados = []
     resultados.extend(rodar_edital(ctx["processo"], contexto=ctx))

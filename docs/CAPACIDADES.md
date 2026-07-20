@@ -1,13 +1,16 @@
 # CAPACIDADES (gerado de capabilities.yaml — NÃO editar à mão)
 
-Versão 2.2.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPATH=. .venv/bin/python -m`
+Versão 2.3.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPATH=. .venv/bin/python -m`
 
 | id | agente | tipo | rota/comando | status | quando usar |
 |---|---|---|---|---|---|
 | `anomalias` | jfn | http | `/api/anomalias` | PRONTO | triagem de risco; 'algo estranho em X' |
 | `cartel` | jfn | http | `/api/cartel` | PRONTO | conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?' |
+| `certame_indice` | jfn | http | `/api/certame/indice` | PRONTO | risco de um certame/licitacao especifica pelo nº de controle PNCP |
 | `concentracao_grupo` | jfn | cli | `compliance_agent.grafo_cartel --vizinhanca <CNPJ>` | PRONTO | 'ha concentracao escondida por grupo na UG X?', 'esses concorrentes sao na verdade o mesmo grupo?', cartel oculto / concorrencia simulada numa UG |
 | `conflito_doador_contrato` | lex | http | `/api/conflito` | PRONTO | 'quem me doou ganhou contrato', conflito de interesse |
+| `conjunto_orgao` | jfn | http | `/api/conjunto/orgao` | PRONTO | visao de portfolio de um orgao licitante (CNPJ do orgao) |
+| `conjunto_portfolio` | jfn | http | `/api/conjunto/portfolio` | PRONTO | quais orgaos tem o pior padrao de licitacao; avaliacao global do conjunto |
 | `contratos_parecer` | jfn | cli | `tools/contratos_parecer.py [--max-contratos N] [--telegram]` | PRONTO | 'analise/parecer dos contratos', 'esse contrato tem aditivo/sobrepreco irregular?', 'como um tribunal de contas' |
 | `cruzamento` | jfn | http | `/api/cruzamento` | PRONTO | 'cruze os dados da empresa X' |
 | `editais_corpus` | jfn | cli | `tools/editais_corpus.py [--limite N]` | PRONTO | 'atualizar editais', 'baixar editais da prefeitura' |
@@ -32,6 +35,7 @@ Versão 2.2.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `relatorio_inteligencia` | jfn | http | `/api/relatorio/inteligencia` | PRONTO | relatorio/auditoria/due diligence de empresa, CNPJ |
 | `relatorio_orgao` | jfn | http | `/api/relatorio/orgao` | PRONTO | auditoria de orgao/UG/secretaria |
 | `rodizio` | jfn | http | `/api/rodizio` | PRONTO | rodizio/revezamento de vencedores; 'a UG X tem fornecedores que se alternam no 1o lugar?' |
+| `sei_acatamento` | jfn | http | `/api/sei/acatamento` | PRONTO | os pareceres juridicos/controladoria foram atendidos no processo X? |
 | `sobrepreco` | lex | http | `/api/sobrepreco` | PRONTO | 'esta caro?', superfaturamento, R4 |
 | `sobrepreco_interno` | lex | cli | `compliance_agent.precos_extract` | PRONTO | 'esse item esta caro comparado a outros orgaos?', dispersao de preco unitario do mesmo produto sem precisar de CATMAT/mercado, complemento interno ao /sobrepreco |
 | `bond_captura` | bond | cli | `desktop: telegram /capturar (poller) ou captura_nodriver.py` | ONDA 0 | ver quem curtiu posts do IG / leaderboard de engajamento do gabinete; SO no desktop residencial, NUNCA na VM (= ban) |

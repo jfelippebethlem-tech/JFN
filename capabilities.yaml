@@ -3,8 +3,8 @@
 # Origem: JFN-DOCUMENTO-MESTRE-CONSOLIDADO §7 (docs/refs/). Status: PRONTO = já existe; "ONDA N" = alvo da onda.
 # Regra de ouro do roteador: o Yoda só pode chamar ids presentes aqui; fora do registro = erro explícito.
 meta:
-  versao: "2.2.0"
-  atualizado: "2026-07-11"
+  versao: "2.3.0"   # 2026-07-20: +certame_indice, +conjunto_orgao, +conjunto_portfolio, +sei_acatamento (dossiê mestre)
+  atualizado: "2026-07-20"
   base_http: "http://127.0.0.1:8000"
   cli_prefixo: "cd ~/JFN && PYTHONPATH=. .venv/bin/python -m"
   invariantes:
@@ -35,6 +35,21 @@ capacidades:
      descricao: "Anomalias em OBs (+Benford na Onda 3)", quando_usar: "triagem de risco; 'algo estranho em X'",
      args: {ug: opcional, cnpj: opcional, exercicio: opcional}, retorno: "{alertas[]}",
      menu: {grupo: "🔎 Investigação", nome: "Anomalias automáticas nos pagamentos", exemplo: "algo estranho nos pagamentos do ITERJ?", ordem: 24}}
+  - {id: certame_indice, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/certame/indice, status: PRONTO,
+     descricao: "Indice de Direcionamento de Certame 0-100 (7 familias, inclui execucao da ata: inabilitacao em massa/trivial)", quando_usar: "risco de um certame/licitacao especifica pelo nº de controle PNCP", exemplo: "indice do certame 34023077000107-1-000085/2024",
+     args: {certame: "string (nº de controle PNCP)"}, retorno: "{ok,indice:{score,faixa,confianca,familias,drivers,matriz_sv}}",
+     menu: {grupo: "🔎 Investigação", nome: "Índice de risco de um certame", exemplo: "índice do certame <nº PNCP>", ordem: 26, cmd: "/certame"}}
+  - {id: conjunto_orgao, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/conjunto/orgao, status: PRONTO,
+     descricao: "Avaliacao de CONJUNTO dos certames de um orgao (mediana/p90 do indice, reincidencia de clausula restritiva -> auditoria tematica, eliminacoes triviais, HHI de vitorias)", quando_usar: "visao de portfolio de um orgao licitante (CNPJ do orgao)", exemplo: "conjunto dos certames do CNPJ 34023077000107",
+     args: {cnpj: "string (CNPJ do orgao no PNCP)"}, retorno: "{ok,avaliacao,secao_html}"}
+  - {id: conjunto_portfolio, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/conjunto/portfolio, status: PRONTO,
+     descricao: "Ranking de ORGAOS por risco de certame (peer-benchmark: desvio da mediana do orgao vs pares)", quando_usar: "quais orgaos tem o pior padrao de licitacao; avaliacao global do conjunto", exemplo: "ranking de orgaos por risco de certame",
+     args: {min_certames: "int opcional (default 3)"}, retorno: "{ok,n_orgaos,mediana_pares,orgaos[]}",
+     menu: {grupo: "🔎 Investigação", nome: "Ranking de órgãos por risco de certame (conjunto)", exemplo: "ranking de órgãos por risco", ordem: 27, cmd: "/conjunto"}}
+  - {id: sei_acatamento, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/sei/acatamento, status: PRONTO,
+     descricao: "Acatamento de pareceres (art. 53 Lei 14.133): autoridade acolheu/contrariou motivadamente/silenciou/ignorou pareceres PGE/PGM/CGE/CGM no processo", quando_usar: "os pareceres juridicos/controladoria foram atendidos no processo X?", exemplo: "pareceres do SEI-330020/000762/2021 foram acatados?",
+     args: {processo: "string (nº SEI)"}, retorno: "{ok,veredito,pareceres[],despachos[],leitura}",
+     menu: {grupo: "🔎 Investigação", nome: "Pareceres acatados? (PGE/CGE no processo)", exemplo: "pareceres do processo X foram acatados?", ordem: 28, cmd: "/acatamento"}}
   - {id: cartel, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/cartel, status: PRONTO,
      descricao: "Cartel/bid-rigging em grafo + QSA (concentracao, rodizio, socios em comum entre concorrentes)", quando_usar: "conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?'", exemplo: "fornecedores presos a um so orgao (modo=captura)? socios em comum do CNPJ X (modo=qsa)?",
      args: {modo: "captura|dependencia|vizinhanca|cruzado|qsa", cnpj: "obrigatorio p/ vizinhanca/cruzado/qsa", top: opcional}, retorno: "{modo,dados,aviso}",

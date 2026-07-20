@@ -442,6 +442,35 @@ async def api_certame_indice(certame: Optional[str] = None):
         return JSONResponse({"ok": False, "erro": str(e)}, status_code=500)
 
 
+@router.get("/api/conjunto/orgao")
+async def api_conjunto_orgao(cnpj: Optional[str] = None):
+    """Avaliação de CONJUNTO dos certames de um órgão (dossiê mestre §5): distribuição do índice
+    (mediana/p90), reincidência de cláusula restritiva (≥3 certames → auditoria temática), eliminações
+    por motivo trivial sem saneamento, HHI de vitórias e casos-âncora. ?cnpj=<CNPJ do órgão no PNCP>."""
+    if not (cnpj or "").strip():
+        return JSONResponse({"ok": False, "erro": "informe ?cnpj=<CNPJ do órgão (14 dígitos)>"},
+                            status_code=400)
+    try:
+        from compliance_agent.editais.avaliacao_conjunto import avaliar_orgao, ctx_secao
+        av = await asyncio.to_thread(avaliar_orgao, "".join(c for c in cnpj if c.isdigit()))
+        return JSONResponse({"ok": True, "avaliacao": av, "secao_html": ctx_secao(av)["html"]})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(e)}, status_code=500)
+
+
+@router.get("/api/conjunto/portfolio")
+async def api_conjunto_portfolio(min_certames: int = 3):
+    """Ranking de ÓRGÃOS por risco de certame (portfólio, dossiê mestre §5): órgãos com
+    ≥min_certames indexados, mediana do índice, desvio vs pares (peer-benchmark), gatilhos de
+    auditoria temática. Determinístico e auditável; indício ≠ acusação."""
+    try:
+        from compliance_agent.editais.avaliacao_conjunto import avaliar_portfolio
+        pf = await asyncio.to_thread(avaliar_portfolio, None, max(1, min(int(min_certames), 50)))
+        return JSONResponse({"ok": True, **pf})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(e)}, status_code=500)
+
+
 @router.get("/api/ppp/triagem")
 async def api_ppp_triagem():
     """Triagem EM LOTE das PPPs/concessões municipais captadas, pela lente PPP (garantia via Fundo

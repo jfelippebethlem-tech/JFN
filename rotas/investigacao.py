@@ -3,6 +3,7 @@
 Handlers idênticos aos originais; só o decorador mudou de @app p/ @router."""
 from __future__ import annotations
 
+import asyncio
 import logging
 import re
 from pathlib import Path
@@ -897,6 +898,32 @@ async def api_grafo_ftm(alvo: str, saltos: int = 2):
         return JSONResponse(content=export(alvo, saltos=saltos))
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+@router.get("/api/sei/acatamento")
+async def api_sei_acatamento(processo: str = ""):
+    """Auditoria de ACATAMENTO de pareceres (art. 53 Lei 14.133; dossiê mestre §4): a autoridade
+    acolheu, contrariou motivadamente, silenciou ou ignorou os pareceres de PGE/PGM/CGE/CGM/jurídico?
+    Lê o ARQUIVO compacto do processo (regra da casa: arquivo antes de browser). ?processo=SEI-.../nº."""
+    if not (processo or "").strip():
+        return JSONResponse({"ok": False, "erro": "informe ?processo=<nº SEI>"}, status_code=400)
+    try:
+        from compliance_agent.sei_recomendacoes import auditar_acatamento
+        from tools.backfill_dossie_mestre import ARQUIVO, _leitura_do_arquivo
+
+        slug = "".join(c if c.isalnum() else "_" for c in processo.replace("SEI-", "")).strip("_")
+        pdir = ARQUIVO / slug
+        leitura = await asyncio.to_thread(_leitura_do_arquivo, pdir)
+        if not leitura:
+            return JSONResponse({"ok": False, "erro": f"processo '{processo}' sem arquivo compacto em "
+                                 "data/sei_arquivo (rode tools/sei_consultar primeiro) — INDISPONÍVEL ≠ 0"},
+                                status_code=404)
+        docs = [{"ref": d["doc"], "tipo": d["doc"], "texto": d["conteudo"]}
+                for d in leitura["conteudo_documentos"]]
+        r = await asyncio.to_thread(auditar_acatamento, docs)
+        return JSONResponse({"ok": True, "processo": leitura["numero"], "n_docs": len(docs), **r})
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(e)}, status_code=500)
 
 
 @router.get("/api/sei/direcionamento")
