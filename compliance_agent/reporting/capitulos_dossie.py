@@ -19,7 +19,11 @@ import sqlite3
 from pathlib import Path
 
 from compliance_agent.editais.flags import grau_flag
+from compliance_agent.editais.peer_diff import forca_e7
 from compliance_agent.knowledge.jurisprudencia import obter_sumula
+
+# tetos de exibição do capítulo de cláusulas (evita despejar 100+ cláusulas NÃO-AFERÍVEIS)
+_MAX_SEM_VEREDITO = 20
 
 _REPO = Path(__file__).resolve().parent.parent.parent
 _ARQUIVO_SEI = _REPO / "data" / "sei_arquivo"
@@ -65,21 +69,40 @@ def secao_clausulas_restritivas(con: sqlite3.Connection, cnpj: str) -> dict | No
     if not certames:
         return None
     marks = ",".join("?" for _ in certames)
-    linhas = con.execute(
+    todas = con.execute(
         f"SELECT ec.numero_controle_pncp, ec.subtipo, ec.eixo, ec.texto, ec.trecho_fonte, "
         f"cv.score_final, cv.veredito, cv.sumula, cv.raridade "
         f"FROM edital_clausula ec "
         f"LEFT JOIN clausula_veredito cv ON cv.clausula_id = ec.id "
         f"WHERE ec.numero_controle_pncp IN ({marks}) AND ec.texto IS NOT NULL "
         f"ORDER BY COALESCE(cv.score_final,0) DESC, ec.numero_controle_pncp", certames).fetchall()
+    if not todas:
+        return None
+    # foco > ruído: mostra as com VEREDITO (colegiado falou) + as de tier FORTE (capital, atestado,
+    # marca, visita…); dedup por (certame, subtipo); as de menor peso viram nota agregada.
+    com_veredito = [r for r in todas if r[5] is not None]
+    forte_sem_veredito, vistos, omitidas = [], set(), 0
+    for r in todas:
+        if r[5] is not None:
+            continue
+        nivel, _ = forca_e7(r[1])
+        chave = (r[0], r[1])
+        if nivel == "forte" and chave not in vistos:
+            vistos.add(chave)
+            forte_sem_veredito.append(r)
+        else:
+            omitidas += 1
+    linhas = com_veredito + forte_sem_veredito[:_MAX_SEM_VEREDITO]
+    omitidas += max(0, len(forte_sem_veredito) - _MAX_SEM_VEREDITO)
     if not linhas:
         return None
 
     blocos = ["<p>Este capítulo transcreve, <b>na íntegra</b>, as cláusulas de habilitação e "
-              "julgamento que restringem a competição nos certames vencidos por este fornecedor. "
-              "Cada cláusula vem com seu fundamento normativo (súmula transcrita literalmente), o "
-              "grau de certeza do indício e, quando o colegiado analítico já se pronunciou, o "
-              "veredito e o escore. <b>Indício não é acusação</b>: presume-se a legitimidade dos atos.</p>"]
+              "julgamento de maior potencial restritivo nos certames vencidos por este fornecedor "
+              "(as de menor peso são resumidas ao final). Cada cláusula vem com seu fundamento "
+              "normativo (súmula transcrita literalmente), o grau de certeza do indício e, quando o "
+              "colegiado analítico já se pronunciou, o veredito e o escore. <b>Indício não é "
+              "acusação</b>: presume-se a legitimidade dos atos.</p>"]
     n_viciada = 0
     for r in linhas:
         subtipo, eixo, texto, fonte = r[1], r[2], r[3], r[4]
@@ -105,10 +128,12 @@ def secao_clausulas_restritivas(con: sqlite3.Connection, cnpj: str) -> dict | No
             f"<blockquote>{_esc(texto)}</blockquote>"
             + (f"<div class='fonte dim'>Trecho do documento: “{_esc(fonte)}”</div>" if fonte else "")
             + fund + "</div>")
-    cabecalho = (f"<p><b>{len(linhas)}</b> cláusula(s) restritiva(s) transcrita(s); "
+    nota_omit = (f"<p class='dim'>{omitidas} cláusula(s) de menor potencial restritivo foram "
+                 "omitidas desta transcrição para foco (constam na base analítica).</p>" if omitidas else "")
+    cabecalho = (f"<p><b>{len(linhas)}</b> cláusula(s) transcrita(s) de {len(todas)} extraída(s); "
                  f"<b>{n_viciada}</b> com grau CERTO/FORTE (podem fundamentar peça).</p>")
     return {"titulo": "Cláusulas restritivas — íntegra e fundamento",
-            "html": cabecalho + "\n".join(blocos)}
+            "html": cabecalho + "\n".join(blocos) + nota_omit}
 
 
 def secao_veredito_fachada(d: dict) -> dict | None:

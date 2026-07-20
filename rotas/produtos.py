@@ -461,6 +461,54 @@ async def _gerar_e_enviar_dossie_mestre(alvo: str | None, key: str) -> None:
         _retomar_sweeps_se_ocioso()
 
 
+async def _gerar_e_enviar_dossie_completo(cnpj: str, key: str) -> None:
+    """Dossiê COMPLETO de fornecedor (360 + fachada + cláusulas na íntegra + suspeitas + SEI) e,
+    na sequência, o relatório de inteligência + parecer Lex — o pacote inteiro no Telegram."""
+    from compliance_agent.dossie import gerar_pdf_completo
+    from compliance_agent.notifications import telegram as _tg
+    from compliance_agent.reporting.inteligencia import montar
+    _pausar_sweeps_para_relatorio()
+    try:
+        res = await gerar_pdf_completo(cnpj)
+        if not res.get("ok"):
+            await _tg.enviar_mensagem(f"⚠️ Dossiê completo indisponível: {(res.get('erro') or '')[:200]}")
+        else:
+            await _enviar_docs_telegram({"path_pdf": res["path_pdf"]},
+                                        f"Dossiê Completo — {res.get('titulo') or cnpj}")
+        try:  # inteligência de fornecedor + Lex (contrato/licitação/processo/pagamentos) + planilha
+            intel = await montar(cnpj=cnpj)
+            if intel.get("ok"):
+                await _enviar_docs_telegram(intel, f"Análise jurídica + planilha — {intel.get('empresa') or cnpj}")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("dossiê completo: inteligência+Lex falhou p/ %s: %s", cnpj, exc)
+    except Exception as exc:  # noqa: BLE001
+        await _tg.enviar_mensagem(f"⚠️ Erro no dossiê completo de {cnpj}: {str(exc)[:300]}")
+    finally:
+        _REL_EM_CURSO.discard(key)
+        _retomar_sweeps_se_ocioso()
+
+
+@router.post("/api/dossie/completo")
+async def api_dossie_completo(payload: dict | None = None):
+    """Dossiê COMPLETO de fornecedor (assíncrono, PDF no Telegram): dossiê 360 + veredito de fachada
+    + cláusulas restritivas na íntegra + suspeitas + árvore/íntegra SEI + análise jurídica + planilha."""
+    payload = payload or {}
+    alvo = (payload.get("cnpj") or payload.get("alvo") or "").strip()
+    cnpj = "".join(c for c in alvo if c.isdigit())
+    if len(cnpj) != 14:
+        return JSONResponse({"ok": False, "erro": "informe um CNPJ (14 dígitos)"}, status_code=400)
+    if payload.get("sync"):
+        from compliance_agent.dossie import gerar_pdf_completo
+        return JSONResponse(await gerar_pdf_completo(cnpj))
+    key = f"dossie_completo:{cnpj}"
+    if key in _REL_EM_CURSO:
+        return JSONResponse({"ok": True, "status": "em_curso"})
+    _REL_EM_CURSO.add(key)
+    asyncio.create_task(_gerar_e_enviar_dossie_completo(cnpj, key))
+    return JSONResponse({"ok": True, "status": "gerando",
+                         "msg": "Gerando o dossiê completo — empurro o PDF no Telegram quando pronto."})
+
+
 @router.post("/api/dossie/mestre")
 async def api_dossie_mestre(payload: dict | None = None):
     """Dossiê Mestre de licitações (assíncrono, empurra PDF no Telegram). Sem `alvo` → PORTFÓLIO de

@@ -48,6 +48,9 @@ capacidades:
   - {id: sei_acatamento, agente: jfn, dominio: auditoria, tipo: http, metodo: GET, rota: /api/sei/acatamento, status: PRONTO,
      descricao: "Acatamento de pareceres (art. 53 Lei 14.133): autoridade acolheu/contrariou motivadamente/silenciou/ignorou pareceres PGE/PGM/CGE/CGM no processo", quando_usar: "os pareceres juridicos/controladoria foram atendidos no processo X?", exemplo: "pareceres do SEI-330020/000762/2021 foram acatados?",
      args: {processo: "string (nº SEI)"}, retorno: "{ok,veredito,pareceres[],despachos[],leitura}"}
+  - {id: dossie_completo, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/dossie/completo, status: PRONTO,
+     descricao: "Dossie COMPLETO de fornecedor em PDF (360 + veredito de fachada + clausulas restritivas na integra + suspeitas + arvore/integra SEI) + analise juridica Lex + planilha", quando_usar: "dossie completo/tudo sobre uma empresa/fornecedor por CNPJ", exemplo: "dossie completo da MGS Clean | tudo sobre o CNPJ X",
+     args: {cnpj: "string (CNPJ 14 digitos)"}, retorno: "{ok,status,msg} (assincrono, PDFs no Telegram)", enviar_telegram: [path_pdf]}
   - {id: dossie_mestre, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/dossie/mestre, status: PRONTO,
      descricao: "Dossie Mestre de LICITACOES em PDF (Kroll): portfolio de orgaos (ranking+peer-benchmark) ou 1 orgao (CNPJ) com avaliacao de conjunto", quando_usar: "dossie mestre/panorama de licitacoes de um orgao ou do conjunto de orgaos", exemplo: "dossie mestre de licitacoes do CNPJ 30051023000196 | dossie mestre do portfolio",
      args: {alvo: "string opcional (CNPJ do orgao; vazio = portfolio)"}, retorno: "{ok,status,msg} (assincrono, PDF no Telegram)", enviar_telegram: [path_pdf]}

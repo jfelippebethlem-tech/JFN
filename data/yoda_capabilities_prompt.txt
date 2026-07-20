@@ -9,6 +9,7 @@ COMO CHAMAR: base HTTP = http://127.0.0.1:8000 — use EXATAMENTE o método e a 
 - conjunto_orgao(cnpj) [GET /api/conjunto/orgao] — visao de portfolio de um orgao licitante (CNPJ do orgao)
 - conjunto_portfolio(min_certames) [GET /api/conjunto/portfolio] — quais orgaos tem o pior padrao de licitacao; avaliacao global do conjunto
 - sei_acatamento(processo) [GET /api/sei/acatamento] — os pareceres juridicos/controladoria foram atendidos no processo X?
+- dossie_completo(cnpj) [POST /api/dossie/completo] — dossie completo/tudo sobre uma empresa/fornecedor por CNPJ
 - dossie_mestre(alvo) [POST /api/dossie/mestre] — dossie mestre/panorama de licitacoes de um orgao ou do conjunto de orgaos
 - cartel(modo,cnpj,top) [GET /api/cartel] — conluio/cartel/combinacao; 'os concorrentes do fornecedor X tem socio em comum?'
 - rodizio(ug,qsa,top) [GET /api/rodizio] — rodizio/revezamento de vencedores; 'a UG X tem fornecedores que se alternam no 1o lugar?'

@@ -264,6 +264,35 @@
     {
       "type": "function",
       "function": {
+        "name": "dossie_completo",
+        "description": "Dossie COMPLETO de fornecedor em PDF (360 + veredito de fachada + clausulas restritivas na integra + suspeitas + arvore/integra SEI) + analise juridica Lex + planilha — usar quando: dossie completo/tudo sobre uma empresa/fornecedor por CNPJ — chamar: POST /api/dossie/completo (base http://127.0.0.1:8000)",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "cnpj": {
+              "type": "string",
+              "description": "string (CNPJ 14 digitos)"
+            }
+          },
+          "required": []
+        }
+      },
+      "_meta": {
+        "agente": "jfn",
+        "dominio": "auditoria",
+        "tipo": "http",
+        "rota": "/api/dossie/completo",
+        "comando": null,
+        "metodo": "POST",
+        "status": "PRONTO",
+        "enviar_telegram": [
+          "path_pdf"
+        ]
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "dossie_mestre",
         "description": "Dossie Mestre de LICITACOES em PDF (Kroll): portfolio de orgaos (ranking+peer-benchmark) ou 1 orgao (CNPJ) com avaliacao de conjunto — usar quando: dossie mestre/panorama de licitacoes de um orgao ou do conjunto de orgaos — chamar: POST /api/dossie/mestre (base http://127.0.0.1:8000)",
         "parameters": {

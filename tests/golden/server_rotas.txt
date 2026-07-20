@@ -125,6 +125,7 @@ POST /api/cartel -> api_cartel
 POST /api/compliance/reports/limpar -> api_compliance_reports_limpar
 POST /api/compliance/tse/{ano} -> api_tse_download
 POST /api/dossie -> api_dossie
+POST /api/dossie/completo -> api_dossie_completo
 POST /api/dossie/mestre -> api_dossie_mestre
 POST /api/fachada/veredito -> api_fachada_veredito
 POST /api/hermes/auditor24h/iniciar -> api_auditor24h_iniciar

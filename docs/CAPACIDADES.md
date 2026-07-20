@@ -13,6 +13,7 @@ Versão 2.3.0 · base HTTP `http://127.0.0.1:8000` · CLI `cd ~/JFN && PYTHONPAT
 | `conjunto_portfolio` | jfn | http | `/api/conjunto/portfolio` | PRONTO | quais orgaos tem o pior padrao de licitacao; avaliacao global do conjunto |
 | `contratos_parecer` | jfn | cli | `tools/contratos_parecer.py [--max-contratos N] [--telegram]` | PRONTO | 'analise/parecer dos contratos', 'esse contrato tem aditivo/sobrepreco irregular?', 'como um tribunal de contas' |
 | `cruzamento` | jfn | http | `/api/cruzamento` | PRONTO | 'cruze os dados da empresa X' |
+| `dossie_completo` | jfn | http | `/api/dossie/completo` | PRONTO | dossie completo/tudo sobre uma empresa/fornecedor por CNPJ |
 | `dossie_mestre` | jfn | http | `/api/dossie/mestre` | PRONTO | dossie mestre/panorama de licitacoes de um orgao ou do conjunto de orgaos |
 | `editais_corpus` | jfn | cli | `tools/editais_corpus.py [--limite N]` | PRONTO | 'atualizar editais', 'baixar editais da prefeitura' |
 | `editais_direcionamento` | jfn | cli | `tools/editais_direcionamento.py [--clausulas] [--clusters] [--max-candidatas N]` | PRONTO | 'ha direcionamento nos editais?', 'compare os editais de X', 'quais exigencias reduzem competitividade' |

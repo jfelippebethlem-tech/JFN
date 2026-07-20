@@ -210,6 +210,73 @@ async def dossie(alvo: str, gerar_pdf: bool = True) -> dict:
     return d
 
 
+async def montar_ctx_completo(alvo: str) -> dict:
+    """Dossiê COMPLETO de fornecedor (pedido do dono 2026-07-20): o dossiê 360 + capítulos novos —
+    veredito de fachada explícito, cláusulas restritivas na íntegra, suspeitas registradas e a
+    árvore/íntegra dos processos SEID. Sem limite de páginas; prosa + tabelas; neutro. Puro ctx
+    (o PDF sai por reporting/render_html.gerar_pdf). O parecer jurídico Lex segue como documento
+    próprio (o /relatorio já o envia) — aqui ficam os capítulos factuais e de cláusulas."""
+    import sqlite3
+
+    from compliance_agent.reporting import capitulos_dossie as _cap
+    from compliance_agent.reporting.neutralidade import neutralizar_ctx
+
+    cnpj = _digits(alvo)
+    d = await dossie(cnpj, gerar_pdf=False)
+    if not d.get("ok"):
+        return {"ok": False, "erro": d.get("erro") or "dossiê indisponível"}
+    ctx = _ctx_dossie(d)
+
+    # enriquece com o escore de fachada persistido (fantasma_score) p/ o veredito explícito
+    try:
+        from compliance_agent.emendas.db import conectar
+        con = conectar()
+        row = con.execute("SELECT score, classificacao, sinais_json FROM fantasma_score WHERE cnpj=?",
+                          (cnpj,)).fetchone()
+        if row:
+            import json as _json
+            d["fantasma"] = {"score": row[0], "classificacao": row[1],
+                             "sinais": _json.loads(row[2]) if row[2] else []}
+    except sqlite3.Error:
+        con = None
+
+    secoes = list(ctx.get("secoes") or [])
+    novas = []
+    novas.append(_cap.secao_veredito_fachada(d))
+    if con is not None:
+        novas.append(_cap.secao_clausulas_restritivas(con, cnpj))
+        novas.append(_cap.secao_suspeitas(con, cnpj, d))
+    # árvore + íntegra dos processos SEI do fornecedor (arquivo primeiro)
+    try:
+        from compliance_agent.correlacao_sei import processos_de_fornecedor
+        procs = [p.get("numero_sei") for p in processos_de_fornecedor(cnpj, limite=12) if p.get("numero_sei")]
+        if procs:
+            novas.append(_cap.secao_sei_arvore(procs))
+    except Exception as exc:  # noqa: BLE001 — capítulo SEI é bônus; nunca derruba o dossiê
+        logger.debug("capítulo SEI do dossiê completo indisponível p/ %s: %s", cnpj, exc)
+    if con is not None:
+        con.close()
+
+    ctx["secoes"] = secoes + [s for s in novas if s]
+    ctx["titulo"] = "Dossiê Completo — Fornecedor"
+    ctx = neutralizar_ctx(ctx)
+    ctx["ok"] = True
+    ctx["_cnpj"] = cnpj
+    return ctx
+
+
+async def gerar_pdf_completo(alvo: str) -> dict:
+    """Gera o PDF do dossiê completo de fornecedor (Kroll) com gate de neutralidade."""
+    from compliance_agent.reporting.neutralidade import garantir_neutro
+    from compliance_agent.reporting.render_html import gerar_pdf, render_html
+    ctx = await montar_ctx_completo(alvo)
+    if not ctx.get("ok"):
+        return ctx
+    garantir_neutro(render_html(ctx), "dossiê completo de fornecedor")
+    path = await gerar_pdf(ctx, f"dossie_completo_{ctx['_cnpj']}")
+    return {"ok": True, "path_pdf": path, "titulo": ctx.get("subtitulo") or ctx["titulo"]}
+
+
 def _brl(v) -> str:
     try:
         return f"{float(v):,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
