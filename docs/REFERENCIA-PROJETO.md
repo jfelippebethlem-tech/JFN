@@ -216,6 +216,15 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **07-20c (pacote completo G1-G7 + síntese reflexiva):** `/api/dossie/completo`
+  (`dossie.montar_ctx_completo`: 360 + veredito de fachada + cláusulas restritivas na ÍNTEGRA +
+  suspeitas + árvore/íntegra SEI, `reporting/capitulos_dossie`) + Lex + planilha; **gate de
+  neutralidade** (`reporting/neutralidade`, parecer Lex e painel sem "JFN"/"Lex"/paths, teste trava
+  goldens); ranking por **unidade/secretaria** (`avaliar_unidades`, INEA/Fundo Saúde/Prefeitura);
+  nomeações datadas no /orgao (§1-N); enxame RJ aceso (136 certames com veredito); fixes: portfolio
+  60s→0.17s (JOIN explodia), sinal beneficiário (`cnpjs_basicos`); **lição: enxame só off-hours
+  (trava leitura do painel)**. GitNexus 29.576 nós. Síntese `docs/SINTESE-REFLEXIVA-2026-07-20.md`.
+  Commits `92b1df62`→`90e00b65`.
 - **07-20b (F5 do dossiê mestre):** E8 deserto/fracassado-dirigido (fecha lacuna do catálogo);
   ponte compra↔contrato (`pcrj_contratos.numero_compra`) DESTRAVA a família de aditivos do índice;
   UG↔CNPJ (`editais/ug_cnpj`, precisão>cobertura, CNPJ nunca hardcoded) → seção **1-M** "o órgão
