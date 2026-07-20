@@ -216,6 +216,12 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **07-20b (F5 do dossiê mestre):** E8 deserto/fracassado-dirigido (fecha lacuna do catálogo);
+  ponte compra↔contrato (`pcrj_contratos.numero_compra`) DESTRAVA a família de aditivos do índice;
+  UG↔CNPJ (`editais/ug_cnpj`, precisão>cobertura, CNPJ nunca hardcoded) → seção **1-M** "o órgão
+  como licitante" no /orgao (md+pdf); produto **Dossiê Mestre** PDF (`reporting/dossie_mestre` +
+  `/api/dossie/mestre`, portfólio ou 1 órgão); paridade municipal já existia por construção
+  (corpus.py lê pcrj_licitacoes). Commit `a37f874`.
 - **07-20 (dossiê mestre + catálogo de vícios + loops com dado real):** pesquisa claude-for-legal/
   redflags.eu/ALICE → `knowledge/catalogo_vicios.py` (40 vícios, fonte única, `validar()`/`lacunas()`),
   `editais/{flags,escalada,motivo_inabilitacao,avaliacao_conjunto,restritividade via indice}`;
