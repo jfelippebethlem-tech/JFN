@@ -45,7 +45,9 @@ REPO = Path(__file__).resolve().parent.parent
 # persist da ata (coletor_edital) e achado R15 (lex_analise) eram os únicos MUDOS → convertidos p/
 # logger.debug; backfill/fase_indice e rubrica de motivo degradam honesto (contador/segue ambíguo).
 # Zero `except Exception: pass` mudo no código novo. Curadoria do legado p/ específico segue aberta.
-BASELINE = 1502
+# 2026-07-20b: +2 (1502→1504) — F5. AUDITADO: a seção 1-M do /orgao (conjunto_certames indisponível →
+# logger.debug) e o degradar da rota; ambos LOGADOS/graceful, nenhum mudo.
+BASELINE = 1504
 
 
 def _contar() -> int:
