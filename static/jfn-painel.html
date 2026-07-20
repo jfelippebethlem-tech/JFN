@@ -902,7 +902,24 @@ async function renderCertames(){
       ${ancoras?`<div style="margin-top:6px" class="dim">casos-âncora: ${ancoras}</div>`:''}
       ${leitura(`A mediana <b>${md.toFixed(0)}/100</b> em ${fmtN(x.n_certames_indexados)} certames ${dv!=null&&dv>10?`está <b>${dv.toFixed(0)} pontos acima</b> dos pares — o padrão do órgão destoa`:dv!=null&&dv>0?'fica levemente acima dos pares':'acompanha os pares'}.${(x.auditoria_tematica||[]).length?` A <b>mesma cláusula restritiva reincide</b> em ${x.auditoria_tematica[0].certames} certames — caso de <b>auditoria temática</b>, não de representação avulsa.`:''} Quanto menos certames indexados, menor a confiança — toque nos casos-âncora para ver o índice de cada um.`)}`,
       (dv!=null&&dv>10)||(x.auditoria_tematica||[]).length?'hl':'');}).join('')+`</div>`;
-  h+=`<div class="note">Determinístico e auditável (indício ≠ acusação; órgão sem certame indexado não aparece — INDISPONÍVEL ≠ 0). Fontes: certame_indice + clausula_veredito + certame_julgamento + PNCP.</div>`;
+  // ── granularidade por UNIDADE/secretaria (o CNPJ guarda-chuva esconde a secretaria real) ──
+  const u=await J('/api/conjunto/unidades?min_certames=3');
+  if(u.ok&&(u.unidades||[]).length){
+    h+=`<h3 style="margin:22px 0 4px">Por unidade / secretaria</h3>`;
+    h+=`<div class="dim" style="margin-bottom:10px">O CNPJ guarda-chuva do Estado/Município esconde a secretaria real. Aqui, ${fmtN(u.n_unidades)} unidades com ≥3 certames (mediana dos pares ${u.mediana_pares!=null?u.mediana_pares.toFixed(0):'—'}). Cobertura cresce com o PNCP/enxame.</div>`;
+    h+=`<div class="grid">`+u.unidades.map(x=>{
+      const md=x.score_mediana!=null?x.score_mediana:0, dv=x.desvio_vs_pares;
+      const cor=md>=50?'var(--rose)':md>=25?'var(--amber)':'var(--tx2)';
+      const anc=(x.casos_ancora||[]).slice(0,3).map(c=>`<span class="tag ${c.faixa==='ALTO'||c.faixa==='EXTREMO'?'rose':'accent'}" title="${esc(c.certame)}">${c.score.toFixed(0)}·${esc(c.faixa)}</span>`).join(' ');
+      return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+        <div style="min-width:0"><b>${esc(x.unidade)}</b><div class="dim">${fmtN(x.n_certames)} certames · ${x.n_alto_extremo} ALTO/EXTREMO</div></div>
+        <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${md.toFixed(0)}</div><div class="dim">mediana · p90 ${x.score_p90!=null?x.score_p90.toFixed(0):'—'}</div></div></div>
+        ${dv!=null?`<div style="margin-top:8px"><span class="tag ${dv>10?'rose':dv>0?'amber':'teal'}">${dv>0?'+':''}${dv.toFixed(0)} vs pares</span>${x.n_alto_extremo>0?` <span class="tag rose">${x.n_alto_extremo} certame(s) de alto risco</span>`:''}</div>`:''}
+        ${anc?`<div style="margin-top:6px" class="dim">casos-âncora: ${anc}</div>`:''}
+        ${leitura(`<b>${esc(x.unidade)}</b>: mediana ${md.toFixed(0)}/100 em ${fmtN(x.n_certames)} certames${x.n_alto_extremo>0?`, com <b>${x.n_alto_extremo}</b> de alto risco`:''}. ${dv!=null&&dv>10?'Padrão acima dos pares — prioridade de auditoria.':'Acompanha os pares.'} Toque nos casos-âncora para o índice de cada certame.`)}`,
+        (dv!=null&&dv>10)||x.n_alto_extremo>0?'hl':'');}).join('')+`</div>`;
+  }
+  h+=`<div class="note">Determinístico e auditável (indício ≠ acusação; órgão/unidade sem certame indexado não aparece — INDISPONÍVEL ≠ 0). Fontes: certame_indice + clausula_veredito + certame_julgamento + PNCP.</div>`;
   return h;
 }
 

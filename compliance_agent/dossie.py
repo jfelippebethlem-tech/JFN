@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Dossiê 360 — JFN 2.0, Onda 4. Perfil 1-comando agregando todas as fontes reais.
+"""Dossiê 360 — perfil 1-comando. Perfil 1-comando agregando todas as fontes reais.
 
 Une, sobre um alvo (CNPJ): cadastro (BrasilAPI), sanções (CEIS/CNEP), rede (Grafo de Poder),
 OB/contratos, conflito doador↔contrato (TSE), e o score de convergência decomponível.

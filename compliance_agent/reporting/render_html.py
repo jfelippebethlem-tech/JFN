@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Relatório classe mundial — JFN 2.0, Onda 7. HTML (Jinja2+CSS) → PDF (Playwright).
+"""Relatório classe mundial. HTML (Jinja2+CSS) → PDF (Playwright).
 
 Salto estético Kroll/Deloitte: capa com rating card, seções, gráficos SVG vetoriais, proveniência
 por número (REAL/CACHE + fonte + data) e hash de integridade no rodapé. HTML→PDF via Playwright

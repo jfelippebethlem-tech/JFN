@@ -136,14 +136,18 @@ def montar_ctx_portfolio(db_path=None, min_certames: int = 3, top_n: int = 25) -
 
 
 async def gerar_pdf_orgao(orgao_cnpj: str, db_path=None) -> dict:
-    from compliance_agent.reporting.render_html import gerar_pdf
-    ctx = montar_ctx_orgao(orgao_cnpj, db_path=db_path)
+    from compliance_agent.reporting.neutralidade import garantir_neutro, neutralizar_ctx
+    from compliance_agent.reporting.render_html import gerar_pdf, render_html
+    ctx = neutralizar_ctx(montar_ctx_orgao(orgao_cnpj, db_path=db_path))
+    garantir_neutro(render_html(ctx), "dossiê mestre de órgão")  # gate ANTES de enviar
     path = await gerar_pdf(ctx, f"dossie_mestre_orgao_{orgao_cnpj}")
     return {"ok": True, "path_pdf": path, "titulo": ctx["subtitulo"], "ctx": ctx}
 
 
 async def gerar_pdf_portfolio(db_path=None, min_certames: int = 3) -> dict:
-    from compliance_agent.reporting.render_html import gerar_pdf
-    ctx = montar_ctx_portfolio(db_path=db_path, min_certames=min_certames)
+    from compliance_agent.reporting.neutralidade import garantir_neutro, neutralizar_ctx
+    from compliance_agent.reporting.render_html import gerar_pdf, render_html
+    ctx = neutralizar_ctx(montar_ctx_portfolio(db_path=db_path, min_certames=min_certames))
+    garantir_neutro(render_html(ctx), "dossiê mestre de portfólio")
     path = await gerar_pdf(ctx, "dossie_mestre_portfolio")
     return {"ok": True, "path_pdf": path, "titulo": ctx["subtitulo"], "ctx": ctx}
