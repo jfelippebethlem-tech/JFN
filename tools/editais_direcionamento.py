@@ -12,6 +12,7 @@ import argparse
 import asyncio
 import sqlite3
 import json
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -54,11 +55,15 @@ def _sinais_vencedor(con, numero_controle_pncp: str) -> tuple[str | None, list[s
         sinais.append("favorecido de emenda federal")
     if _tem_tabela(con, "rede_socios_fornecedores"):
         try:
-            if con.execute("select 1 from rede_socios_fornecedores where raiz=? limit 1",
-                           (doc[:8],)).fetchone():
+            # a raiz (8 dígitos) do vencedor aparece em cnpjs_basicos de algum sócio que liga
+            # ≥2 fornecedores → indício de grupo econômico oculto por trás do certame
+            raiz = re.sub(r"\D", "", doc)[:8]
+            if raiz and con.execute(
+                    "select 1 from rede_socios_fornecedores "
+                    "where n_fornecedores>=2 and cnpjs_basicos like ? limit 1",
+                    (f"%{raiz}%",)).fetchone():
                 sinais.append("sócio liga ≥2 fornecedores (rede)")
         except sqlite3.Error as e:
-            # coluna 'raiz' pode variar entre versões da rede — não derruba o dossiê, mas avisa
             print(f"  rede_socios indisponível p/ {doc[:8]}: {e}", file=sys.stderr)
     return f"{row['fornecedor_nome']} ({doc})", sinais
 
