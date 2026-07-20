@@ -226,7 +226,7 @@ def contexto_empirico_md(cnpj: str | None = None) -> str:
         fatos = {}
     finally:
         con.close()
-    L = ["> **Régua empírica (aprendida da base JFN):** " +
+    L = ["> **Régua empírica (aprendida da base histórica):** " +
          (fatos.get("base_volume", "base em construção") or "")]
     if cnpj:
         pos = posicao_fornecedor(cnpj)
