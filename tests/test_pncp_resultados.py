@@ -230,6 +230,24 @@ def test_esfera_considera_unidade_alem_do_ente():
     assert not r_est["captura"], "e sair da esfera estado"
 
 
+def test_esfera_municipio_vazio_nao_e_rio():
+    # BUG real 2026-07-20: municipio VAZIO era tratado como Rio → Companhia de Desenvolvimento de
+    # MARICÁ (esfera oficial 'M', campo municipio em branco) vazava na aba Prefeitura do Rio.
+    oficial = {"29131075000193": "M", "42498733000148": "M"}
+    # Maricá (esf 'M', municipio vazio, nome sem "RIO DE JANEIRO") → 'municipios', NÃO 'prefeitura'
+    marica = {"orgao_cnpj": "29131075000193", "orgao_nome": "MUNICIPIO DE MARICA",
+              "unidade_nome": "", "municipio": ""}
+    assert PR.classificar_esfera(marica, oficial) == "municipios"
+    # Município do Rio (esf 'M', municipio vazio, MAS nome tem "RIO DE JANEIRO") → 'prefeitura'
+    rio = {"orgao_cnpj": "42498733000148", "orgao_nome": "MUNICIPIO DO RIO DE JANEIRO",
+           "unidade_nome": "SMS", "municipio": ""}
+    assert PR.classificar_esfera(rio, oficial) == "prefeitura"
+    # Rio pelo campo municipio explícito também
+    rio2 = {"orgao_cnpj": "42498733000148", "orgao_nome": "PREFEITURA", "unidade_nome": "H",
+            "municipio": "Rio de Janeiro"}
+    assert PR.classificar_esfera(rio2, oficial) == "prefeitura"
+
+
 def test_esfera_unidade_estadual_com_municipios_no_nome_fica_estado():
     # counterexample do code review: substring "MUNICÍPIOS" em unidade ESTADUAL não pode
     # reclassificar o órgão como prefeitura

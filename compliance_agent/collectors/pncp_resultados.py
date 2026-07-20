@@ -457,8 +457,14 @@ def classificar_esfera(registro: dict, oficial: dict[str, str]) -> str:
     ente estadual com UNIDADE municipal (acontece no PNCP) segue a unidade. Fallback = nome."""
     nome_uni = f"{registro.get('unidade_nome') or ''} {registro.get('orgao_nome') or ''}"
     muni = (registro.get("municipio") or "").strip().lower()
-    eh_rio = muni in ("rio de janeiro", "")
     cnpj14 = re.sub(r"\D", "", registro.get("orgao_cnpj") or (registro.get("orgao") or ""))[:14].zfill(14)
+    # BUG 2026-07-20: municipio VAZIO era tratado como Rio → Companhia de Desenvolvimento de MARICÁ
+    # (esfera 'M', municipio em branco) vazava na aba Prefeitura. Município vazio ≠ Rio: exigir sinal
+    # REAL de Rio (nome com "RIO DE JANEIRO" ou raiz do CNPJ do Município do Rio 42498733). Outro
+    # município nomeado (MARICÁ, NITERÓI…) nunca é Rio.
+    _nome_up = nome_uni.upper()
+    eh_rio = (muni == "rio de janeiro"
+              or (muni == "" and ("RIO DE JANEIRO" in _nome_up or cnpj14.startswith("42498733"))))
     esf = oficial.get(cnpj14)
     if esf == "M":
         return "prefeitura" if eh_rio else "municipios"
