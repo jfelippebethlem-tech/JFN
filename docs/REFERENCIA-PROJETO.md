@@ -216,6 +216,16 @@ outras unidades (acesso do itkava) · repor/rotacionar billing das chaves Gemini
 manuais quando expirarem (caem no nous até lá).
 
 ## 10. CHANGELOG (1 linha/sessão — detalhe no git)
+- **07-20 (dossiê mestre + catálogo de vícios + loops com dado real):** pesquisa claude-for-legal/
+  redflags.eu/ALICE → `knowledge/catalogo_vicios.py` (40 vícios, fonte única, `validar()`/`lacunas()`),
+  `editais/{flags,escalada,motivo_inabilitacao,avaliacao_conjunto,restritividade via indice}`;
+  `certame_julgamento` persiste ata (7ª família **certame_ata** no índice; confiança /7);
+  `teste_finalistico` +faturamento_minimo/vigencia_contratual; J3 +art. 59 III; `auditar_acatamento`
+  (art. 53; refinado NO DADO REAL: boilerplate PGE fora, encaminhamento ≠ decisório, PARECER_SEM_RESSALVA);
+  Lex **R15**; rotas `/api/conjunto/*` + `/api/sei/acatamento`; capabilities **2.3.0** (menus /certame
+  /conjunto /acatamento); painel aba **Estado→Certames** (validada por screenshot CDP); backfill
+  `tools/backfill_dossie_mestre.py` (500 certames indexados: 428 BAIXO/61 MÉDIO/10 ALTO/1 EXTREMO);
+  fix SIAFE storage_state (`ctx`→`b`, falhava mudo). Commits `7942959b`→`4dd67258`.
 - **07-18 (impeccable: elevação + polish + animate + audit do painel):** aplicado o **/impeccable**
   (skill de design, instalada) + PRODUCT.md/DESIGN.md. Elevação: paleta **OKLCH** dark, remoção de
   side-stripes/hero-metric/glass-default, tipografia rem fixa. Polish por superfície: **cockpit**
