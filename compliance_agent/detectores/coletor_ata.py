@@ -271,3 +271,25 @@ def montar_ctx_julgamento(leitura: dict, *, usar_llm: bool = False,
 
     ctx["_proveniencia"] = prov
     return ctx
+
+
+def persistir_julgamento(leitura: dict, certame: str, con=None, *, processo_sei: str | None = None) -> dict | None:
+    """Monta o ctx da ata e PERSISTE o `resultado` em certame_julgamento (editais/db.salvar_julgamento) —
+    antes o resultado era efêmero e a família certame_ata do índice ficava eternamente INDISPONÍVEL.
+    `houve_diligencia` é inferido das próprias decisões (alguma decisao=='diligencia' na sessão).
+    Sem resultado extraível → None (não grava vazio). `con` ausente → abre o compliance.db da casa."""
+    from compliance_agent.editais.db import conectar, salvar_julgamento
+
+    ctx = montar_ctx_julgamento(leitura)
+    resultado = ctx.get("resultado")
+    if not resultado:
+        return None
+    houve_dil = any(d.get("decisao") == "diligencia" for d in ctx.get("decisoes") or [])
+    fechar = con is None
+    con = con or conectar()
+    try:
+        return salvar_julgamento(con, certame, resultado, houve_diligencia=houve_dil,
+                                 processo_sei=processo_sei)
+    finally:
+        if fechar:
+            con.close()

@@ -109,7 +109,8 @@ def test_certame_podre_extremo_com_drivers(db):
     assert all(d["evidencia"] for d in r["drivers"])
     # execucao INDISPONÍVEL honesta (sem ponte compra->contrato) não zera o certame
     assert r["familias"]["execucao"]["apuravel"] is False
-    assert r["confianca"] == pytest.approx(5 / 6, abs=0.01)
+    # 7 famílias desde 2026-07-20 (certame_ata): sem ata persistida, confiança = 5/7
+    assert r["confianca"] == pytest.approx(5 / 7, abs=0.01)
     # matriz S x V no contrato do _matriz_risco (1-5 cada, produto 1-25)
     m = r["matriz_sv"]
     assert m["severidade"] == 5 and m["verossimilhanca"] == 5 and m["produto"] == 25
@@ -177,7 +178,7 @@ def test_confianca_duas_familias(db):
     r = calcular("DUAS-1-000001/2026", p)
     apuraveis = [f for f, d in r["familias"].items() if d["apuravel"]]
     assert sorted(apuraveis) == ["fraude_cadastral", "transparencia"]
-    assert r["confianca"] == pytest.approx(2 / 6, abs=0.01)
+    assert r["confianca"] == pytest.approx(2 / 7, abs=0.01)  # 7 famílias desde certame_ata
     pt, pf = _PESOS_FAMILIA["transparencia"], _PESOS_FAMILIA["fraude_cadastral"]
     assert r["score"] == pytest.approx(100 * (pt * 1.0 + pf * 0.5) / (pt + pf), abs=0.01)
     # INDISPONÍVEL não zera: com 4 famílias sem dado o score NÃO é diluído para ~17

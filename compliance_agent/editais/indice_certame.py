@@ -58,7 +58,8 @@ def _conectar_ro(db_path=None) -> sqlite3.Connection:
     con.row_factory = sqlite3.Row
     return con
 
-FAMILIAS = ("transparencia", "competicao", "conluio", "fraude_cadastral", "preco", "execucao")
+FAMILIAS = ("transparencia", "competicao", "conluio", "fraude_cadastral", "preco", "execucao",
+            "certame_ata")
 
 # ── Pesos por família (Σ=1.0). Fundamento: Banca d'Italia (Decarolis-Giorgiantonio 2022) —
 # flags de DISCRICIONARIEDADE/competição predizem corrupção; urgência/publicidade foram não
@@ -73,6 +74,10 @@ _PESOS_FAMILIA = {
     "fraude_cadastral": 0.15,
     "preco": 0.15,
     "execucao": 0.10,
+    # o que de fato OCORREU na sessão (certame_julgamento): inabilitação em massa/trivial é o sinal
+    # finalístico da barreira funcionando. Σ nominal passa de 1.0 de propósito — o score renormaliza
+    # pelos pesos das famílias APURÁVEIS, então certames sem ata persistida ficam idênticos.
+    "certame_ata": 0.12,
 }
 
 # Faixas do score 0-100 (contrato da tabela certame_indice)
@@ -197,7 +202,46 @@ def _f_competicao(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
         flags.append(_flag("clausula_restritiva", top[0] / 10.0,
                            f"veredito '{top[1]}' escore {top[0]}/10 (força E7: {top[2]}"
                            + (f"; {top[3]}" if top[3] else "") + ")"))
+        # efeito COMBINADO (doutrina E7/direcionamento_conjunto): várias cláusulas restritivas
+        # fecham o certame mesmo quando cada uma isolada seria defensável
+        n_restritivas = sum(1 for r in ver if r[0] >= 7)
+        if n_restritivas >= 2:
+            flags.append(_flag("efeito_combinado",
+                               0.85 if n_restritivas >= 3 else 0.6,
+                               f"{n_restritivas} cláusulas com escore ≥7/10 no mesmo edital — "
+                               "efeito combinado (Súmula TCU 272; Lei 14.133 art. 9º I)"))
     return _familia(flags, "proposta_item + pncp_resultado + clausula_veredito")
+
+
+def _f_certame_ata(conn: sqlite3.Connection, certame: str) -> dict:
+    """O que de fato OCORREU na sessão (certame_julgamento, persistido por editais/db.salvar_julgamento):
+    inabilitação em massa, inabilitação por motivo TRIVIAL sem saneamento (art. 64 §1º c/c art. 12 III)
+    e licitante único efetivo. Tabela ausente/vazia → INDISPONÍVEL (nunca 0)."""
+    try:
+        rows = _q(conn, "SELECT licitantes, inabilitados, trivialidade_json, houve_diligencia "
+                        "FROM certame_julgamento WHERE certame=?", (certame,))
+    except sqlite3.OperationalError:
+        return _familia([], "certame_julgamento (tabela ainda não criada nesta base)")
+    if not rows:
+        return _familia([], "certame_julgamento")
+    lic, inab, triv_json, _dil = rows[0]
+    flags = []
+    if lic and lic > 0 and inab is not None:
+        taxa = inab / lic
+        if taxa >= 1 / 3:
+            flags.append(_flag("inabilitacao_em_massa", 0.85 if taxa >= 2 / 3 else 0.6,
+                               f"{inab}/{lic} licitantes eliminados na sessão ({taxa:.0%})"))
+        if lic - inab <= 1 and lic >= 2:
+            flags.append(_flag("licitante_unico_efetivo", 0.85,
+                               f"dos {lic} licitantes, restou {lic - inab} após as eliminações"))
+    triv = json.loads(triv_json) if triv_json else {}
+    v = triv.get("violacoes_saneamento") or 0
+    if v:
+        flags.append(_flag("inabilitacao_trivial_sem_saneamento",
+                           0.85 if (v >= 2 or (triv.get("taxa_trivial") or 0) >= 0.5) else 0.6,
+                           f"{v} eliminação(ões) por motivo TRIVIAL sem diligência de saneamento — "
+                           "art. 64 §1º c/c art. 12 III da Lei 14.133/2021"))
+    return _familia(flags, "certame_julgamento (resultado da ata persistido)")
 
 
 def _f_conluio(conn: sqlite3.Connection, certame: str) -> dict:
@@ -342,6 +386,7 @@ def calcular(certame: str, db_path=None) -> dict:
             "fraude_cadastral": _f_fraude_cadastral(conn, ctx),
             "preco": _f_preco(conn, certame, ctx),
             "execucao": _f_execucao(conn, certame, ctx),
+            "certame_ata": _f_certame_ata(conn, certame),
         }
     finally:
         conn.close()

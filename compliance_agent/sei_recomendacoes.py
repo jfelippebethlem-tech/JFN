@@ -26,6 +26,9 @@ _EMISSORES = [
     ("CONTROLE_INTERNO", r"\b(controle\s+interno|auditoria\s+interna|unidade\s+de\s+controle)\b"),
     ("ASSESSORIA_JURIDICA", r"\b(assessoria\s+jur[ií]dica|consultoria\s+jur[ií]dica|parecer\s+jur[ií]dico|ASJUR|nota\s+t[eé]cnica\s+jur[ií]dica)\b"),
     ("TCE", r"\b(tribunal\s+de\s+contas|TCE-?RJ|corte\s+de\s+contas)\b"),
+    # esfera MUNICIPAL (PCRJ): procuradoria e controladoria do Município
+    ("PGM", r"\b(procuradoria\s+geral\s+do\s+munic[ií]pio|PGM)\b"),
+    ("CGM", r"\b(controladoria\s+geral\s+do\s+munic[ií]pio|CGM)\b"),
 ]
 _RE_RECOMENDA = re.compile(
     r"\b(recomenda|recomenda[çc][aã]o|ressalva|determina|determina[çc][aã]o|gloss?a|apontamento|"
@@ -36,6 +39,19 @@ _RE_NAO_ATENDIDA = re.compile(
     r"persist\w+\s+a\s+(?:pend|irregular|falh)|descumpr|sem\s+manifesta[çc][aã]o|deixou\s+de\s+(?:atender|cumprir|sanar)|"
     r"n[aã]o\s+(?:foi\s+)?observ\w+\s+(?:o|a)\s+(?:parecer|recomenda|determina)|contrari\w+\s+(?:o|ao)\s+parecer|"
     r"pend[eê]ncia\s+n[aã]o\s+(?:sanad|atendid)|ressalva\s+n[aã]o\s+(?:sanad|atendid))", re.I)
+
+
+# ── eixo de ACATAMENTO (art. 53 Lei 14.133: parecer jurídico prévio obrigatório; a autoridade só
+#    pode divergir MOTIVADAMENTE — LINDB art. 22). Sinais no despacho da autoridade:
+_RE_ACOLHIMENTO = re.compile(
+    r"\b(acolho|acato|adoto|aprovo\s+(?:o|nos\s+termos\s+do)\s+parecer|nos\s+termos\s+do\s+parecer|"
+    r"conforme\s+(?:o\s+)?parecer|em\s+conson[âa]ncia\s+com\s+o\s+parecer|acolhimento\s+(?:integral|do\s+parecer))\b", re.I)
+_RE_REJEICAO_MOTIVADA = re.compile(
+    r"\b(deixo\s+de\s+acolher|n[aã]o\s+acolho|divirjo\s+do\s+parecer|em\s+que\s+pese\s+o\s+parecer|"
+    r"n[aã]o\s+obstante\s+o\s+parecer|afasto\s+a\s+(?:ressalva|recomenda[çc][aã]o)|"
+    r"decido\s+em\s+sentido\s+(?:contr[áa]rio|diverso))\b", re.I)
+_RE_DESPACHO_DECISORIO = re.compile(
+    r"\b(despacho|homologo|homologa[çc][aã]o|adjudico|autorizo|aprovo|ratifico|decis[aã]o)\b", re.I)
 
 
 def classificar_emissor(texto: str) -> str | None:
@@ -75,6 +91,55 @@ def detectar(docs: list[dict]) -> list[dict]:
             "trechos_nao_atendida": _trechos(texto, _RE_NAO_ATENDIDA) if nao_at else [],
             "status": "INDICIO_NAO_ATENDIDA" if nao_at else "RECOMENDACAO_A_CONFERIR"})
     return achados
+
+
+def auditar_acatamento(docs: list[dict]) -> dict:
+    """Veredito de ACATAMENTO do processo (determinístico): a autoridade acolheu, contrariou
+    motivadamente, silenciou ou ignorou os pareceres de controle/jurídico? docs na ORDEM do
+    processo: [{ref, tipo, texto}].
+
+    Vereditos: ACOLHIDO · CONTRARIADO_COM_MOTIVACAO (lícito em abstrato — LINDB art. 22; registrar) ·
+    IGNORADO_INDICIO (ressalva com sinal de não-atendimento e nenhum despacho de acolhimento/motivação
+    posterior — flag forte) · SILENTE (parecer com recomendação e nenhum despacho decisório se
+    manifesta) · SEM_PARECER_LOCALIZADO (nenhum doc de emissor jurídico/controle entre os LIDOS —
+    art. 53 exige parecer prévio, mas cobertura de leitura ≠ inexistência: indício a confirmar).
+    """
+    pareceres = detectar(docs)
+    despachos = []
+    for i, d in enumerate(docs or []):
+        texto = d.get("texto") or ""
+        rotulo = f"{d.get('tipo') or ''} {texto[:200]}"
+        if _RE_DESPACHO_DECISORIO.search(rotulo):
+            despachos.append({"i": i, "ref": d.get("ref"),
+                              "acolhe": bool(_RE_ACOLHIMENTO.search(texto)),
+                              "rejeita_motivado": bool(_RE_REJEICAO_MOTIVADA.search(texto)),
+                              "trechos": _trechos(texto, _RE_ACOLHIMENTO) or _trechos(texto, _RE_REJEICAO_MOTIVADA)})
+    if not pareceres:
+        return {"veredito": "SEM_PARECER_LOCALIZADO", "pareceres": [], "despachos": despachos,
+                "leitura": ("Nenhum parecer de PGE/PGM/CGE/CGM/jurídico com recomendação entre os documentos "
+                            "LIDOS. O art. 53 da Lei 14.133/2021 exige análise jurídica prévia — mas leitura "
+                            "parcial ≠ inexistência (INDISPONÍVEL ≠ 0): conferir a íntegra antes de apontar.")}
+    algum_nao_atendida = any(p["sinal_nao_atendida"] for p in pareceres)
+    acolheu = any(dp["acolhe"] for dp in despachos)
+    rejeitou = any(dp["rejeita_motivado"] for dp in despachos)
+    if rejeitou:
+        veredito = "CONTRARIADO_COM_MOTIVACAO"
+        leitura = ("A autoridade decidiu em sentido diverso do parecer COM motivação expressa — lícito em "
+                   "abstrato (LINDB art. 22), mas a motivação merece exame de mérito (registrar no dossiê).")
+    elif algum_nao_atendida and not acolheu:
+        veredito = "IGNORADO_INDICIO"
+        leitura = ("Ressalva/recomendação com sinal explícito de NÃO-atendimento e nenhum despacho de "
+                   "acolhimento ou divergência motivada localizado — indício FORTE de instrução viciada "
+                   "(art. 53 Lei 14.133; Lei 8.429 art. 11). Confirmar em doc posterior antes de peça.")
+    elif acolheu:
+        veredito = "ACOLHIDO"
+        leitura = "Despacho da autoridade acolhe o parecer (nos termos/acolho/aprovo) — cadeia regular."
+    else:
+        veredito = "SILENTE"
+        leitura = ("Parecer com recomendação e NENHUM despacho decisório manifestando acolhimento ou "
+                   "divergência entre os docs lidos — silêncio administrativo sobre o controle prévio "
+                   "(indício médio; pode estar em documento não lido).")
+    return {"veredito": veredito, "pareceres": pareceres, "despachos": despachos, "leitura": leitura}
 
 
 _SYS_PENSANTE = (

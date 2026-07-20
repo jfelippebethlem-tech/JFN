@@ -83,3 +83,37 @@ def test_degrada_honesto_sem_ata():
     ctx = montar_ctx_julgamento(leitura, usar_llm=False)
     assert "decisoes" not in ctx
     assert "resultado" not in ctx
+
+
+def test_persistir_julgamento_grava_e_infere_diligencia(tmp_path):
+    """persistir_julgamento: resultado da ata deixa de ser efêmero (alimenta a família certame_ata do
+    índice); a diligência da própria sessão exculpa a violação de saneamento (anti-FP conservador)."""
+    import sqlite3
+
+    from compliance_agent.detectores.coletor_ata import persistir_julgamento
+    from compliance_agent.editais.db import init_schema
+
+    con = sqlite3.connect(tmp_path / "c.db")
+    init_schema(con)
+    agg = persistir_julgamento(_leitura_ata(), "CERT-1", con, processo_sei="SEI-330020/000762/2021")
+    assert agg is not None and agg["n"] >= 1
+    assert agg["violacoes_saneamento"] == 0  # BETA recebeu diligência na sessão → houve_diligencia=True
+    row = con.execute("SELECT licitantes, inabilitados, houve_diligencia FROM certame_julgamento "
+                      "WHERE certame='CERT-1'").fetchone()
+    assert row[0] == 2 and row[1] == 1 and row[2] == 1
+    con.close()
+
+
+def test_persistir_julgamento_sem_resultado_nao_grava(tmp_path):
+    import sqlite3
+
+    from compliance_agent.detectores.coletor_ata import persistir_julgamento
+    from compliance_agent.editais.db import init_schema
+
+    con = sqlite3.connect(tmp_path / "c.db")
+    init_schema(con)
+    leitura = {"numero": "SEI-x", "texto": "", "documentos": [],
+               "conteudo_documentos": [{"doc": "Edital", "conteudo": "Edital de pregão."}]}
+    assert persistir_julgamento(leitura, "CERT-2", con) is None
+    assert con.execute("SELECT COUNT(*) FROM certame_julgamento").fetchone()[0] == 0
+    con.close()

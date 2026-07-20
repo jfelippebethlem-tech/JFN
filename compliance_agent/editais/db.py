@@ -6,13 +6,21 @@ import sqlite3
 
 from compliance_agent.emendas.db import conectar  # reexport: mesmo helper WAL/row_factory
 
-__all__ = ["conectar", "init_schema", "DDL", "DDL_CERTAME_INDICE"]
+__all__ = ["conectar", "init_schema", "DDL", "DDL_CERTAME_INDICE", "DDL_CERTAME_JULGAMENTO",
+           "salvar_julgamento"]
 
 # Índice de Direcionamento de Certame (Task 4.3 — indice_certame.py); faixas BAIXO/MEDIO/ALTO/EXTREMO
 DDL_CERTAME_INDICE = """CREATE TABLE IF NOT EXISTS certame_indice (
     certame TEXT PRIMARY KEY, score REAL, prioridade REAL, faixa TEXT,
     confianca REAL, familias_json TEXT, drivers_json TEXT,
     gerado_em TEXT DEFAULT (datetime('now')))"""
+
+# Resultado da sessão de julgamento (coletor_ata._extrair_resultado) — antes era EFÊMERO (vivia só
+# no ctx); persistido, alimenta a família certame_ata do índice ("o que de fato ocorreu no certame").
+DDL_CERTAME_JULGAMENTO = """CREATE TABLE IF NOT EXISTS certame_julgamento (
+    certame TEXT PRIMARY KEY, processo_sei TEXT, licitantes INTEGER, inabilitados INTEGER,
+    vencedor_cnpj TEXT, motivos_json TEXT, trivialidade_json TEXT,
+    houve_diligencia INTEGER DEFAULT 0, atualizado_em TEXT DEFAULT (datetime('now')))"""
 
 DDL = [
     """CREATE TABLE IF NOT EXISTS edital_documento (
@@ -39,7 +47,37 @@ DDL = [
         votos_json TEXT, score_final INTEGER, veredito TEXT,
         verificado_em TEXT DEFAULT (datetime('now')))""",
     DDL_CERTAME_INDICE,
+    DDL_CERTAME_JULGAMENTO,
 ]
+
+
+def salvar_julgamento(con: sqlite3.Connection, certame: str, resultado: dict,
+                      *, houve_diligencia: bool = False, processo_sei: str | None = None) -> dict:
+    """Persiste o `resultado` do coletor_ata ({licitantes, inabilitados, motivos, vencedor_cnpj})
+    já classificando a TRIVIALIDADE dos motivos (motivo_inabilitacao). `houve_diligencia` =
+    a comissão diligenciou/saneou na sessão (anti-FP conservador: com diligência registrada,
+    motivo trivial NÃO vira violação de saneamento). Retorna o agregado de trivialidade."""
+    import json
+
+    from compliance_agent.editais.motivo_inabilitacao import classificar, taxa_trivialidade
+
+    motivos = list(resultado.get("motivos") or [])
+    classif = [classificar(m, houve_diligencia=houve_diligencia) for m in motivos]
+    agg = taxa_trivialidade(classif)
+    con.execute(DDL_CERTAME_JULGAMENTO)
+    con.execute(
+        "INSERT INTO certame_julgamento (certame, processo_sei, licitantes, inabilitados, "
+        "vencedor_cnpj, motivos_json, trivialidade_json, houve_diligencia, atualizado_em) "
+        "VALUES (?,?,?,?,?,?,?,?, datetime('now')) ON CONFLICT(certame) DO UPDATE SET "
+        "processo_sei=excluded.processo_sei, licitantes=excluded.licitantes, "
+        "inabilitados=excluded.inabilitados, vencedor_cnpj=excluded.vencedor_cnpj, "
+        "motivos_json=excluded.motivos_json, trivialidade_json=excluded.trivialidade_json, "
+        "houve_diligencia=excluded.houve_diligencia, atualizado_em=datetime('now')",
+        (certame, processo_sei, resultado.get("licitantes"), resultado.get("inabilitados"),
+         resultado.get("vencedor_cnpj"), json.dumps(motivos, ensure_ascii=False),
+         json.dumps(agg, ensure_ascii=False), int(houve_diligencia)))
+    con.commit()
+    return agg
 
 
 def init_schema(con: sqlite3.Connection) -> None:
