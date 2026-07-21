@@ -4,6 +4,7 @@ GET /api/agenda -> api_agenda
 GET /api/anomalias -> api_anomalias
 GET /api/cartel -> api_cartel
 GET /api/certame/indice -> api_certame_indice
+GET /api/certames/lista -> api_certames_lista
 GET /api/coendereco/clusters -> api_coendereco_clusters
 GET /api/comparador/buscar -> api_comparador_buscar
 GET /api/comparador/dossie -> api_comparador_dossie
@@ -94,12 +95,15 @@ GET /api/route -> api_route
 GET /api/sancoes/detalhar -> api_sancoes_detalhar
 GET /api/sei/acatamento -> api_sei_acatamento
 GET /api/sei/direcionamento -> api_sei_direcionamento
+GET /api/sei/empresa/status -> api_sei_empresa_status
+GET /api/sei/empresa/zip -> api_sei_empresa_zip
 GET /api/siafe/stats -> api_siafe_stats
 GET /api/siafe/status -> api_siafe_status
 GET /api/skill -> api_skill
 GET /api/skills -> api_skills
 GET /api/skills/validate -> api_skills_validate
 GET /api/sobrepreco -> api_sobrepreco
+GET /api/sugestoes -> api_sugestoes
 GET /api/sweeps/status -> api_sweeps_status
 GET /api/trace/{correlation_id} -> _get_trace
 GET /api/tunnel/status -> api_tunnel_status
@@ -144,6 +148,7 @@ POST /api/radar/vigiar -> api_radar_vigiar
 POST /api/relatorio/inteligencia -> api_relatorio_inteligencia
 POST /api/relatorio/orgao -> api_relatorio_orgao
 POST /api/rodizio -> api_rodizio
+POST /api/sei/empresa/iniciar -> api_sei_empresa_iniciar
 POST /api/siafe/atualizar -> api_siafe_atualizar
 POST /api/siafe/sweep -> api_siafe_sweep
 POST /api/skills/reload -> api_skills_reload

@@ -1160,6 +1160,70 @@ def _cache_put(chave: str, val):
     return val
 
 
+@router.get("/api/certames/lista")
+async def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = ""):
+    """Certames da base LOCAL, cada um com a SUA análise (Índice de Direcionamento + temas).
+
+    A aba Contratos do painel deixa de depender do PNCP ao vivo (lento/instável) — lê
+    edital_documento + certame_indice. `temas` = famílias com sinal (valor>0) do
+    familias_json; certame com confiança 0 sai como analisado=False (INDISPONÍVEL ≠ 0,
+    nunca "score 0"). Ordena: analisados por prioridade desc, depois os demais por ano."""
+    import json as _json
+    import sqlite3 as _sq
+    raiz_cnpj = {"prefeitura": "42498733", "estado": "42498600"}.get(esfera)
+    lim = max(1, min(int(limite or 600), 2000))
+    termo = f"%{q.strip()}%" if q.strip() else None
+    try:
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        sql = ("SELECT ed.numero_controle_pncp nc, ed.ano, ed.objeto, ed.valor_estimado, "
+               "ci.score, ci.faixa, ci.confianca, ci.prioridade, ci.familias_json "
+               "FROM edital_documento ed LEFT JOIN certame_indice ci "
+               "ON ci.certame = ed.numero_controle_pncp WHERE 1=1")
+        params: list = []
+        if raiz_cnpj:
+            sql += " AND substr(ed.orgao_cnpj,1,8) = ?"
+            params.append(raiz_cnpj)
+        if termo:
+            sql += " AND ed.objeto LIKE ?"
+            params.append(termo)
+        sql += (" ORDER BY (ci.confianca IS NULL OR ci.confianca<=0), ci.prioridade DESC, "
+                "ed.ano DESC, ed.numero_controle_pncp DESC LIMIT ?")
+        params.append(lim)
+        rows = con.execute(sql, params).fetchall()
+        total = con.execute(
+            "SELECT COUNT(*), SUM(EXISTS(SELECT 1 FROM certame_indice ci WHERE "
+            "ci.certame=ed.numero_controle_pncp AND ci.confianca>0)) "
+            "FROM edital_documento ed" + (" WHERE substr(ed.orgao_cnpj,1,8)=?" if raiz_cnpj else ""),
+            ([raiz_cnpj] if raiz_cnpj else [])).fetchone()
+        con.close()
+    except Exception as e:  # noqa: BLE001
+        return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+    itens = []
+    for r in rows:
+        analisado = (r["confianca"] or 0) > 0
+        temas = []
+        if analisado and r["familias_json"]:
+            try:
+                fams = _json.loads(r["familias_json"])
+                temas = sorted(
+                    ({"familia": nome, "valor": round(f["valor"], 2)}
+                     for nome, f in fams.items() if f.get("apuravel") and (f.get("valor") or 0) > 0),
+                    key=lambda t: -t["valor"])
+            except (ValueError, TypeError):
+                pass
+        itens.append({"nc": r["nc"], "ano": r["ano"], "objeto": r["objeto"],
+                      "valor_estimado": r["valor_estimado"], "analisado": analisado,
+                      "score": r["score"] if analisado else None,
+                      "faixa": r["faixa"] if analisado else None,
+                      "confianca": r["confianca"], "temas": temas})
+    return JSONResponse(content={
+        "ok": True, "itens": itens,
+        "resumo": {"total": total[0], "analisados": total[1] or 0},
+        "ressalva": "Índice determinístico e auditável (indício ≠ acusação). Certame sem família "
+                    "analisável = INDISPONÍVEL, não zero; a cobertura cresce com o enxame."})
+
+
 @router.get("/api/pncp/conluio")
 async def api_pncp_conluio(min_certames: int = 4, esfera: str = ""):
     """Conluio a partir dos RESULTADOS estruturados do PNCP (vencedor homologado por item):
@@ -1916,39 +1980,13 @@ async def api_pcrj_comissionados_candidatos(limite: int = 300):
         finally:
             con.close()
 
-        pessoas: dict[str, dict] = {}
-        for r in rows:
-            pz = pessoas.setdefault(r["nome_norm"], {
-                "nome_norm": r["nome_norm"], "nome_pcrj": r["nome_pcrj"],
-                "_postos": {}, "_cands": set(), "_cidades": set(),
-            })
-            # dedupe de posto por matrícula quando existe (mesmo vínculo mesmo com
-            # orgao_pcrj variando textualmente entre coletas); senão cai no órgão mesmo
-            chave = (r["matricula"], r["admissao"], r["exoneracao"], r["cargo_pcrj"]) if r["matricula"] \
-                else (r["orgao_pcrj"], r["admissao"], r["exoneracao"], r["cargo_pcrj"])
-            pz["_postos"].setdefault(chave, {
-                "cargo": r["cargo_pcrj"], "orgao": r["orgao_pcrj"], "admissao": r["admissao"],
-                "exoneracao": r["exoneracao"], "matricula": r["matricula"]})
-            pz["_cands"].add((r["cand_ano"], r["cand_cargo"], r["cand_cidade"]))
-            if r["cand_cidade"]:
-                pz["_cidades"].add(r["cand_cidade"])
-
-        out_pessoas = []
-        for pz in pessoas.values():
-            postos = sorted(pz["_postos"].values(), key=lambda p: p["admissao"] or "")
-            cands = sorted(({"ano": a, "cargo": c, "cidade": ci} for a, c, ci in pz["_cands"]),
-                            key=lambda c: c["ano"] or 0)
-            out_pessoas.append({
-                "nome_norm": pz["nome_norm"], "nome_pcrj": pz["nome_pcrj"],
-                "postos": postos, "n_postos": len(postos), "candidaturas": cands,
-                "homonimo_provavel": len(pz["_cidades"]) >= 3,
-                "cand_ano_recente": max((c["ano"] for c in cands if c["ano"]), default=None),
-            })
-        out_pessoas.sort(key=lambda p: (-(p["cand_ano_recente"] or 0), p["nome_pcrj"] or ""))
+        from compliance_agent.pcrj.comissionados_candidatos import agrupar_por_pessoa
+        out_pessoas = agrupar_por_pessoa(rows)
+        n_pessoas = len(out_pessoas)
         truncado = len(out_pessoas) > lim
         out_pessoas = out_pessoas[:lim]
 
-        out = {"ok": True, "n": n_linhas, "n_pessoas": len(pessoas), "truncado": truncado,
+        out = {"ok": True, "n": n_linhas, "n_pessoas": n_pessoas, "truncado": truncado,
                "comissionados": out_pessoas,
                "explicacao": ("Cruzamento por nome entre a folha de comissionados da Prefeitura do "
                               "Rio e as candidaturas do TSE. Comissionado que concorreu (ou concorre) "

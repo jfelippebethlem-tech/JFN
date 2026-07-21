@@ -106,7 +106,7 @@ _Nenhum indicador de risco disparado a partir dos dados disponíveis._
 
 ## IV-B. ANÁLISE DE MÉRITO
 
-> **Régua empírica (aprendida da base histórica):** Base: 1.138.236 OBs (chave única numero_ob+ug+exercício), 152 UGs, 74.782 fornecedores, exercícios 2019–2026. p90 do valor de OB ≈ R$ 148.953,29.
+> **Régua empírica (aprendida da base histórica):** Base: 1.138.236 OBs (chave única numero_ob+ug+exercício), 152 UGs, 74.780 fornecedores, exercícios 2019–2026. p90 do valor de OB ≈ R$ 148.959,46.
 
 **1. Perfil do fornecedor e aderência cadastral.** Trata-se de empresa fornecedora do Estado, com exposição de **R$ 4.320.000,00** em 6 ordens bancárias junto a 2 órgão(s) no período (janela observada: 2023-03-10 a 2025-08-20). A pulverização entre órgãos, isoladamente, não indica irregularidade.
 

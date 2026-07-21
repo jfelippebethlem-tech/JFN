@@ -138,6 +138,43 @@ def coletar(anos: list[int] | None = None, apenas_municipio: str | None = "RIO D
             "registros": n_reg, "municipio": apenas_municipio}
 
 
+def agrupar_por_pessoa(rows: list[dict]) -> list[dict]:
+    """Agrega as linhas brutas de pcrj_comissionado_candidato em 1 entrada por PESSOA
+    (nome_norm), com histórico de postos e candidaturas — fonte única do padrão usado
+    pela rota /api/pcrj/comissionados_candidatos e pelo PDF (intel_relatorio). A tabela
+    tem 1 linha por (pessoa, órgão, cargo, admissão) e a variação textual de orgao_pcrj
+    entre coletas mensais duplicava o mesmo vínculo (achado 2026-07-21)."""
+    pessoas: dict[str, dict] = {}
+    for r in rows:
+        pz = pessoas.setdefault(r["nome_norm"], {
+            "nome_norm": r["nome_norm"], "nome_pcrj": r["nome_pcrj"],
+            "_postos": {}, "_cands": set(), "_cidades": set(),
+        })
+        # dedupe de posto por matrícula quando existe (mesmo vínculo mesmo com
+        # orgao_pcrj variando textualmente entre coletas); senão cai no órgão mesmo
+        chave = (r["matricula"], r["admissao"], r["exoneracao"], r["cargo_pcrj"]) if r["matricula"] \
+            else (r["orgao_pcrj"], r["admissao"], r["exoneracao"], r["cargo_pcrj"])
+        pz["_postos"].setdefault(chave, {
+            "cargo": r["cargo_pcrj"], "orgao": r["orgao_pcrj"], "admissao": r["admissao"],
+            "exoneracao": r["exoneracao"], "matricula": r["matricula"]})
+        pz["_cands"].add((r["cand_ano"], r["cand_cargo"], r["cand_cidade"]))
+        if r["cand_cidade"]:
+            pz["_cidades"].add(r["cand_cidade"])
+    out = []
+    for pz in pessoas.values():
+        postos = sorted(pz["_postos"].values(), key=lambda p: p["admissao"] or "")
+        cands = sorted(({"ano": a, "cargo": c, "cidade": ci} for a, c, ci in pz["_cands"]),
+                       key=lambda c: c["ano"] or 0)
+        out.append({
+            "nome_norm": pz["nome_norm"], "nome_pcrj": pz["nome_pcrj"],
+            "postos": postos, "n_postos": len(postos), "candidaturas": cands,
+            "homonimo_provavel": len(pz["_cidades"]) >= 3,
+            "cand_ano_recente": max((c["ano"] for c in cands if c["ano"]), default=None),
+        })
+    out.sort(key=lambda p: (-(p["cand_ano_recente"] or 0), p["nome_pcrj"] or ""))
+    return out
+
+
 def competencias_mensais(ini_mes: int = 1, ini_ano: int = 2021,
                          fim: tuple[int, int] | None = None) -> list[tuple[int, int]]:
     """Todas as competências (mês,ano) de ini→fim (default: até a mais recente com dados)."""

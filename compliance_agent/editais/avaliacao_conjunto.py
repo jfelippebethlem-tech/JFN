@@ -43,11 +43,15 @@ def avaliar_orgao(orgao_cnpj: str, db_path=None) -> dict:
     """Avaliação de conjunto de UM órgão (CNPJ do órgão em edital_documento)."""
     con = _ro(db_path)
     try:
-        rows = _q(con, "SELECT ci.certame, ci.score, ci.faixa, ci.prioridade FROM certame_indice ci "
+        rows = _q(con, "SELECT ci.certame, ci.score, ci.faixa, ci.prioridade, ci.confianca "
+                       "FROM certame_indice ci "
                        "JOIN edital_documento ed ON ed.numero_controle_pncp = ci.certame "
                        "WHERE ed.orgao_cnpj = ? AND ci.score IS NOT NULL", (orgao_cnpj,))
-        scores = sorted(r["score"] for r in rows)
-        n = len(scores)
+        # confianca=0 → NENHUMA das 7 famílias era analisável: é INDISPONÍVEL, não "score 0".
+        # Entrar na mediana afundaria o órgão inteiro para 0 e mascararia o padrão real.
+        avaliados = [r for r in rows if (r["confianca"] or 0) > 0]
+        scores = sorted(r["score"] for r in avaliados)
+        n = len(rows)
 
         # reincidência por subtipo de cláusula restritiva (a assinatura do modus operandi)
         rein = _q(con, "SELECT ec.subtipo, COUNT(DISTINCT cv.numero_controle_pncp) AS certames "
@@ -80,13 +84,14 @@ def avaliar_orgao(orgao_cnpj: str, db_path=None) -> dict:
         tot_v = sum(r["vitorias"] for r in venc)
         hhi = round(sum((r["vitorias"] / tot_v) ** 2 for r in venc), 4) if tot_v else None
 
-        casos_ancora = sorted(rows, key=lambda r: -(r["prioridade"] or 0))[:5]
+        casos_ancora = sorted(avaliados or rows, key=lambda r: -(r["prioridade"] or 0))[:5]
         nome_r = _q(con, "SELECT orgao_nome FROM pncp_resultado WHERE orgao_cnpj=? "
                          "AND orgao_nome IS NOT NULL LIMIT 1", (orgao_cnpj,))
         return {
             "orgao_cnpj": orgao_cnpj,
             "orgao_nome": (nome_r[0]["orgao_nome"] if nome_r else None),
             "n_certames_indexados": n,
+            "n_avaliados": len(avaliados),
             "score_mediana": _quantil(scores, 0.5),
             "score_p90": _quantil(scores, 0.9),
             "n_alto_extremo": sum(1 for r in rows if r["faixa"] in ("ALTO", "EXTREMO")),
@@ -102,7 +107,8 @@ def avaliar_orgao(orgao_cnpj: str, db_path=None) -> dict:
             "hhi_concentrado": (hhi is not None and hhi >= HHI_CONCENTRADO) or None,
             "casos_ancora": [{"certame": r["certame"], "score": r["score"], "faixa": r["faixa"]}
                              for r in casos_ancora],
-            "_nota": "conjunto determinístico e auditável; sem certame indexado → tudo INDISPONÍVEL (≠ 0)",
+            "_nota": "conjunto determinístico e auditável; mediana/p90 só sobre certames com confiança>0 "
+                     "(≥1 família analisável) — indexado sem família analisável = INDISPONÍVEL (≠ 0)",
         }
     finally:
         con.close()
@@ -161,7 +167,7 @@ def avaliar_unidades(raizes_cnpj: tuple[str, ...] = ("42498600", "42498733"),
     try:
         marks = ",".join("?" for _ in raizes_cnpj)
         rows = _q(con,
-                  "SELECT pr.unidade_nome AS unidade, ci.score, ci.faixa, ci.prioridade, ci.certame "
+                  "SELECT pr.unidade_nome AS unidade, ci.score, ci.faixa, ci.prioridade, ci.certame, ci.confianca "
                   "FROM certame_indice ci JOIN edital_documento ed "
                   "ON ed.numero_controle_pncp = ci.certame "
                   "JOIN pncp_resultado pr ON pr.certame = ci.certame "
@@ -176,13 +182,16 @@ def avaliar_unidades(raizes_cnpj: tuple[str, ...] = ("42498600", "42498733"),
     unidades = []
     for nome, rs in por_unidade.items():
         certames = {r["certame"]: r for r in rs}.values()  # dedup por certame
-        scores = sorted(r["score"] for r in certames)
-        if len(scores) < min_certames:
+        if len(certames) < min_certames:
             continue
-        ancora = sorted(certames, key=lambda r: -(r["prioridade"] or 0))[:3]
+        # mesma doutrina do avaliar_orgao: confianca=0 = INDISPONÍVEL, fora da mediana
+        avaliados = [r for r in certames if (r["confianca"] or 0) > 0]
+        scores = sorted(r["score"] for r in avaliados)
+        ancora = sorted(avaliados or certames, key=lambda r: -(r["prioridade"] or 0))[:3]
         unidades.append({
             "unidade": nome,
-            "n_certames": len(scores),
+            "n_certames": len(certames),
+            "n_avaliados": len(avaliados),
             "score_mediana": _quantil(scores, 0.5),
             "score_p90": _quantil(scores, 0.9),
             "n_alto_extremo": sum(1 for r in certames if r["faixa"] in ("ALTO", "EXTREMO")),

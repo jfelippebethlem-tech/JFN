@@ -253,24 +253,94 @@ def _b_nomeados(d):
 
 def _d_comissionados(p):
     import sqlite3
+
+    from compliance_agent.pcrj.comissionados_candidatos import agrupar_por_pessoa
     con = sqlite3.connect(f"file:{p.replace('compliance.db','pcrj.db')}?mode=ro", uri=True)
     con.row_factory = sqlite3.Row
     try:
-        it = [dict(r) for r in con.execute(
-            "SELECT nome_pcrj, cargo_pcrj, orgao_pcrj, admissao, exoneracao, cand_ano, cand_cargo, cand_cidade "
-            "FROM pcrj_comissionado_candidato ORDER BY cand_ano DESC LIMIT 2000")]
-        return {"ok": True, "itens": it, "n": len(it)}
+        rows = [dict(r) for r in con.execute(
+            "SELECT nome_norm, nome_pcrj, cargo_pcrj, orgao_pcrj, admissao, exoneracao, "
+            "matricula, cand_ano, cand_cargo, cand_cidade FROM pcrj_comissionado_candidato")]
     finally:
         con.close()
+    pessoas = agrupar_por_pessoa(rows)
+    return {"ok": True, "itens": pessoas, "n": len(pessoas),
+            "ressalva": "1 linha por PESSOA (histórico de nomeações agregado); match por NOME — "
+                        "confirmar por CPF antes de citar."}
 
 
 def _b_comissionados(d):
-    ls = [f"<tr><td>{_esc(x['nome_pcrj'])}</td><td>{_esc((x['orgao_pcrj'] or '')[:34])} · {_esc(x['cargo_pcrj'])}</td>"
-          f"<td>{_esc(x['cand_cargo'])} {_esc(str(x['cand_ano']))} · {_esc(x['cand_cidade'])}</td></tr>"
-          for x in d.get("itens", [])[:1000]]
+    ls = []
+    for x in d.get("itens", [])[:1000]:
+        postos = "<br>".join(
+            f"<small>{_esc(p['cargo'] or '—')} · {_esc((p['orgao'] or '—')[:40])} · "
+            f"{_esc(p['admissao'] or '?')}{' → ' + _esc(p['exoneracao']) if p['exoneracao'] else ' (ativo)'}</small>"
+            for p in x.get("postos", []))
+        cands = " · ".join(f"{_esc(c['cargo'] or '?')} {_esc(str(c['ano'] or ''))} ({_esc(c['cidade'] or '?')})"
+                           for c in x.get("candidaturas", []))
+        ls.append(f"<tr><td>{_esc(x['nome_pcrj'])}{' ⚠ homônimo?' if x.get('homonimo_provavel') else ''}</td>"
+                  f"<td>{postos}</td><td><small>{cands}</small></td></tr>")
     return ("Comissionados da Prefeitura do Rio × candidaturas (TSE)",
-            f"{d.get('n',0)} comissionados que foram candidatos",
-            [{"titulo": "1. Cargo de confiança × disputa eleitoral", "html": _tabela(["Nome", "Órgão / cargo", "Disputou"], ls)}], d)
+            f"{d.get('n',0)} pessoas (histórico completo de nomeações por pessoa)",
+            [{"titulo": "1. Cargo de confiança × disputa eleitoral — por pessoa",
+              "html": _tabela(["Pessoa", "Histórico de nomeações", "Candidaturas"], ls)}], d)
+
+
+def _d_certames(p):
+    from compliance_agent.editais.avaliacao_conjunto import avaliar_portfolio, avaliar_unidades
+    pf = avaliar_portfolio(db_path=p)
+    un = avaliar_unidades(db_path=p)
+    return {"ok": True, "orgaos": pf.get("orgaos", []), "unidades": un.get("unidades", []),
+            "mediana_pares": pf.get("mediana_pares"), "n": pf.get("n_orgaos", 0),
+            "ressalva": "Mediana só sobre certames com confiança>0 (≥1 família analisável); "
+                        "indexado sem análise = INDISPONÍVEL (≠ 0). Indício ≠ acusação."}
+
+
+def _b_certames(d):
+    def _linha(nome, x):
+        med = f"{x['score_mediana']:.0f}" if x.get("score_mediana") is not None else "—"
+        p90 = f"{x['score_p90']:.0f}" if x.get("score_p90") is not None else "—"
+        dv = x.get("desvio_vs_pares")
+        return (f"<tr><td>{_esc(nome)}</td>"
+                f"<td style='text-align:right'>{x.get('n_avaliados', 0)}/{x.get('n_certames_indexados', x.get('n_certames', 0))}</td>"
+                f"<td style='text-align:right'>{med}</td><td style='text-align:right'>{p90}</td>"
+                f"<td style='text-align:right'>{('%+.0f' % dv) if dv is not None else '—'}</td>"
+                f"<td style='text-align:right'>{x.get('n_alto_extremo', 0)}</td></tr>")
+    cab = ["Órgão / unidade", "Avaliados/indexados", "Mediana", "p90", "vs pares", "ALTO/EXTREMO"]
+    lo = [_linha(x.get("orgao_nome") or x.get("orgao_cnpj"), x) for x in d.get("orgaos", [])]
+    lu = [_linha(x["unidade"], x) for x in d.get("unidades", [])]
+    secoes = [{"titulo": "1. Índice de Direcionamento por órgão (conjunto)", "html": _tabela(cab, lo)}]
+    if lu:
+        secoes.append({"titulo": "2. Por unidade / secretaria", "html": _tabela(cab, lu)})
+    return ("Certames — o padrão de cada órgão licitante",
+            f"{d.get('n',0)} órgão(s) avaliados como conjunto (mediana dos pares "
+            f"{d.get('mediana_pares') if d.get('mediana_pares') is not None else '—'})", secoes, d)
+
+
+def _b_capital(d):
+    ls = [f"<tr><td>{_esc(a['nome'])}<br><small>{_esc(a['cnpj_fmt'])}</small></td>"
+          f"<td style='text-align:right'>{_rs(a['capital'])}</td>"
+          f"<td style='text-align:right'>{_rs(a['total_recebido'])}</td>"
+          f"<td style='text-align:right'>{a['razao']:,}×</td>"
+          f"<td style='text-align:right'>{a['n_obs']}</td></tr>".replace(",", ".")
+          for a in d.get("achados", [])[:1000]]
+    return ("Capital irrisório — sem lastro para o que faturou",
+            f"{d.get('n',0)} empresas com capital <R$50 mil recebendo ≥100× o próprio capital",
+            [{"titulo": "1. Subcapitalização frente ao volume recebido (Lei 14.133 art. 62-63)",
+              "html": _tabela(["Empresa", "Capital social", "Recebido (OB)", "Razão", "OBs"], ls)}], d)
+
+
+def _b_prioridade(d):
+    ls = [f"<tr><td>{a['rating']} {a['score']}</td><td>{_esc(a['nome'])}<br><small>{_esc(a['cnpj_fmt'])}</small></td>"
+          f"<td style='text-align:right'>{_rs(a['economia'])}</td>"
+          f"<td style='text-align:right'>{a['n_compras']}</td>"
+          f"<td><small>{_esc(', '.join(a.get('sinais', [])[:6]))}</small></td></tr>"
+          for a in d.get("achados", [])[:1000]]
+    return ("Prioridade — onde a auditoria rende mais (risco × dinheiro)",
+            f"{d.get('n',0)} fornecedores no radar com economia recuperável "
+            f"(total em risco {_rs(d.get('economia_em_risco') or 0)})",
+            [{"titulo": "1. Fila risco × economia potencial",
+              "html": _tabela(["Score", "Empresa / CNPJ", "Economia potencial", "Compras", "Sinais"], ls)}], d)
 
 
 def _b_radar(d):
@@ -383,6 +453,9 @@ def _detectores():
         "conluio_qsa": (lambda p: C.conluio_qsa(db_path=p, limite=L, incluir_atas=False), _b_conluio_qsa, "ALTO"),
         "comunidades": (_d_comunidades, _b_comunidades, "ALTO"),
         "retro": (_d_retro, _b_retro, "MÉDIO"),
+        "certames": (_d_certames, _b_certames, "ALTO"),
+        "capital_incompativel": (lambda p: C.capital_incompativel(db_path=p, limite=L), _b_capital, "ALTO"),
+        "prioridade_valor": (lambda p: C.prioridade_valor(db_path=p, limite=L), _b_prioridade, "ALTO"),
     }
 
 
