@@ -283,12 +283,15 @@
   #view{position:relative}
   #view .fade{position:relative;z-index:1}
   .rise{opacity:0;animation:rise .3s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0ms)}
+  /* card grave (hl) + cascata: compor as DUAS animações — o shorthand de .card.hl sozinho
+     mataria o rise e deixava o card preso em opacity:0 (o achado mais grave ficava INVISÍVEL) */
+  .card.hl.rise{animation:rise .3s cubic-bezier(.2,.7,.2,1) both,graveGlow 3.2s ease-in-out infinite;animation-delay:var(--d,0ms),0ms}
   @keyframes rise{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
   .kpi.rise::after,.card.beat::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
     box-shadow:0 0 0 1px color-mix(in oklch,var(--accent) 0%,transparent);animation:beat 1.4s ease-out}
   @keyframes beat{0%{box-shadow:0 0 0 1px color-mix(in oklch,var(--accent) 40%,transparent)}100%{box-shadow:0 0 0 1px transparent}}
   .kpi .v.counting{color:var(--accent)}
-  @media (prefers-reduced-motion:reduce){.rise{animation:none;opacity:1}.card.beat::after,.kpi.rise::after{animation:none}}
+  @media (prefers-reduced-motion:reduce){.rise,.card.hl.rise{animation:none;opacity:1}.card.beat::after,.kpi.rise::after{animation:none}}
   .kpi{position:relative;overflow:hidden}
   .kpi .l{color:var(--mut);font-size:10px;font-weight:500;letter-spacing:1px;text-transform:uppercase;font-family:var(--mono)}
   .kpi .v{font-size:1.35rem;font-weight:600;letter-spacing:-.3px;line-height:1.15;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)}
@@ -504,7 +507,14 @@ const fmtRc=v=>{v=Number(v||0);const a=Math.abs(v);
   if(a>=1e9)return 'R$ '+(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1})+' bi';
   if(a>=1e6)return 'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';
   if(a>=1e3)return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil';return fmtR(v);};
-async function J(ep,opt){try{const r=await fetch(ep,opt);return await r.json();}catch(e){return{erro:String(e)};}}
+// 1 retry (só GET) — rede/DB ocupado num instante não pode virar aba "zerada" pro usuário
+async function J(ep,opt){
+  const podeRepetir=!opt||!opt.method||opt.method==='GET';
+  for(let t=0;;t++){
+    try{const r=await fetch(ep,opt);return await r.json();}
+    catch(e){if(!podeRepetir||t>=1)return{erro:String(e)};await new Promise(rs=>setTimeout(rs,1200));}
+  }
+}
 const card=(h,cls)=>`<div class="card ${cls||''}">${h}</div>`;
 const kpi=(v,l,cor,gl)=>`<div class="card kpi"><div class="l">${l}</div><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div>${gl?`<span class="gl">${gl}</span>`:''}</div>`;
 const sec=(t,cnt)=>`<h2 class="sec">${t}${cnt!=null?`<span class="cnt">${cnt}</span>`:''}</h2>`;
@@ -996,13 +1006,13 @@ async function renderCertames(){
     const audit=(x.auditoria_tematica||[]).map(a=>`<span class="tag rose">${esc(a.subtipo)} × ${a.certames} certames</span>`).join(' ');
     const ancoras=(x.casos_ancora||[]).slice(0,3).map(c=>`<span class="tag ${c.faixa==='ALTO'||c.faixa==='EXTREMO'?'rose':'accent'}" style="cursor:pointer" title="${esc(c.certame)} — clique p/ ver as 7 famílias" onclick="abrirCertame('${jsq(c.certame)}')">${c.score.toFixed(0)}·${esc(c.faixa)}</span>`).join(' ');
     return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-      <div style="min-width:0"><b>${esc(nome)}</b><div class="dim">${esc(x.orgao_cnpj)} · ${fmtN(x.n_certames_indexados)} certames indexados</div></div>
+      <div style="min-width:0"><b>${esc(nome)}</b><div class="dim">${esc(x.orgao_cnpj)} · ${fmtN(x.n_avaliados??x.n_certames_indexados)} avaliados de ${fmtN(x.n_certames_indexados)} indexados</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${md.toFixed(0)}</div><div class="dim">mediana · p90 ${x.score_p90!=null?x.score_p90.toFixed(0):'—'}</div></div></div>
       <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">${dv!=null?`<span class="tag ${dv>10?'rose':dv>0?'amber':'teal'}">${dv>0?'+':''}${dv.toFixed(0)} vs pares</span>`:''}
         ${x.violacoes_saneamento?`<span class="tag rose">${x.violacoes_saneamento} eliminação(ões) trivial(is) sem saneamento</span>`:''}
         ${x.hhi_concentrado?`<span class="tag amber">vitórias concentradas (HHI ${x.hhi_vitorias})</span>`:''}${audit}</div>
       ${ancoras?`<div style="margin-top:6px" class="dim">casos-âncora: ${ancoras}</div>`:''}
-      ${leitura(`A mediana <b>${md.toFixed(0)}/100</b> em ${fmtN(x.n_certames_indexados)} certames ${dv!=null&&dv>10?`está <b>${dv.toFixed(0)} pontos acima</b> dos pares — o padrão do órgão destoa`:dv!=null&&dv>0?'fica levemente acima dos pares':'acompanha os pares'}.${(x.auditoria_tematica||[]).length?` A <b>mesma cláusula restritiva reincide</b> em ${x.auditoria_tematica[0].certames} certames — caso de <b>auditoria temática</b>, não de representação avulsa.`:''} Quanto menos certames indexados, menor a confiança — toque nos casos-âncora para ver o índice de cada um.`)}`,
+      ${leitura(`A mediana <b>${md.toFixed(0)}/100</b> sobre os <b>${fmtN(x.n_avaliados??x.n_certames_indexados)}</b> certames com análise real (dos ${fmtN(x.n_certames_indexados)} indexados — o resto ainda sem família analisável, INDISPONÍVEL ≠ 0) ${dv!=null&&dv>10?`está <b>${dv.toFixed(0)} pontos acima</b> dos pares — o padrão do órgão destoa`:dv!=null&&dv>0?'fica levemente acima dos pares':'acompanha os pares'}.${(x.auditoria_tematica||[]).length?` A <b>mesma cláusula restritiva reincide</b> em ${x.auditoria_tematica[0].certames} certames — caso de <b>auditoria temática</b>, não de representação avulsa.`:''} Quanto menos certames indexados, menor a confiança — toque nos casos-âncora para ver o índice de cada um.`)}`,
       (dv!=null&&dv>10)||(x.auditoria_tematica||[]).length?'hl':'');}).join('')+`</div>`;
   // ── granularidade por UNIDADE/secretaria (o CNPJ guarda-chuva esconde a secretaria real) ──
   const u=await J('/api/conjunto/unidades?min_certames=3');
@@ -1014,7 +1024,7 @@ async function renderCertames(){
       const cor=md>=50?'var(--rose)':md>=25?'var(--amber)':'var(--tx2)';
       const anc=(x.casos_ancora||[]).slice(0,3).map(c=>`<span class="tag ${c.faixa==='ALTO'||c.faixa==='EXTREMO'?'rose':'accent'}" style="cursor:pointer" title="${esc(c.certame)} — clique p/ ver as 7 famílias" onclick="abrirCertame('${jsq(c.certame)}')">${c.score.toFixed(0)}·${esc(c.faixa)}</span>`).join(' ');
       return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
-        <div style="min-width:0"><b>${esc(x.unidade)}</b><div class="dim">${fmtN(x.n_certames)} certames · ${x.n_alto_extremo} ALTO/EXTREMO</div></div>
+        <div style="min-width:0"><b>${esc(x.unidade)}</b><div class="dim">${fmtN(x.n_avaliados??x.n_certames)} avaliados de ${fmtN(x.n_certames)} · ${x.n_alto_extremo} ALTO/EXTREMO</div></div>
         <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${md.toFixed(0)}</div><div class="dim">mediana · p90 ${x.score_p90!=null?x.score_p90.toFixed(0):'—'}</div></div></div>
         ${dv!=null?`<div style="margin-top:8px"><span class="tag ${dv>10?'rose':dv>0?'amber':'teal'}">${dv>0?'+':''}${dv.toFixed(0)} vs pares</span>${x.n_alto_extremo>0?` <span class="tag rose">${x.n_alto_extremo} certame(s) de alto risco</span>`:''}</div>`:''}
         ${anc?`<div style="margin-top:6px" class="dim">casos-âncora: ${anc}</div>`:''}
@@ -1285,7 +1295,7 @@ async function renderPanoramaPref(){
   let h=cover('prefeitura','Prefeitura do Rio de Janeiro','Licitações do MUNICÍPIO do Rio pelo PNCP (esfera oficial), folha de comissionados, candidaturas e benefícios sociais. Os demais municípios do RJ ficam em Transversal → Conluio → chip "Municípios".','🏙️');
   h+=`<div class="grid g2">
     ${kpi(fmtN(cov.certames_com_resultado),'Certames do município',null,'📄')}${kpi(fmtN(cov.orgaos),'Órgãos compradores',null,'🏢')}
-    ${kpi(cap.length+rod.length,'Conluio (capturas+rodízios)','var(--purple)','🕸️')}${kpi(fmtN(cc.n??'—'),'Comissionados ex-candidatos','var(--amber)','🎖️')}
+    ${kpi(cap.length+rod.length,'Conluio (capturas+rodízios)','var(--purple)','🕸️')}${kpi(fmtN(cc.n_pessoas??cc.n??'—'),'Comissionados ex-candidatos','var(--amber)','🎖️')}
     ${kpi(fmtN((bv.resumo||{}).n_alta??'—'),'Benefício DURANTE vínculo (certeza alta)','var(--rose)','🚨')}${kpi(fmtN((bv.resumo||{}).n_ainda??'—'),'Ainda recebendo','var(--rose)','⏰')}</div>`;
   h+=`<div style="height:16px"></div>`+sec('Ir para')+`<div class="grid two">
     ${card(`<div style="font-weight:700">Perícia de gastos D7–D10</div><div class="muted" style="font-size:13px">fracionamento, credor recém-aberto, sócio na folha, rede entre concorrentes</div><div class="btns"><button class="btn accent" onclick="ir('p_gastos')">Abrir</button></div>`)}
@@ -1431,13 +1441,44 @@ async function renderPPPPref(){
   h+=leitura('PPP transfere risco de décadas para o ente público. As três flags vermelhas — garantia com receita da saúde (CF art. 167 IV), aporte público e PMI ressarcida pelo vencedor — são as que a jurisprudência trata como as mais graves.');
   return h;
 }
+const _TEMA_ROTULO={transparencia:'transparência',competicao:'competição',conluio:'conluio',fraude_cadastral:'fraude cadastral',preco:'preço',execucao:'execução',certame_ata:'sessão/ata'};
+let _ctrView='analise';
 async function renderContratosPref(){
-  const r=await J('/api/pncp?uf=RJ&dias=45&esfera=prefeitura');const its=(r.contratacoes||r.dados||r.itens||[]);
-  let h=cover('prefeitura','Contratações recentes (PNCP)','Últimas licitações da PREFEITURA DO RIO publicadas no PNCP (esfera oficial do ente). Fonte pública, sem login.','📄');
-  h+=sec('Publicadas (45 dias)',its.length);
-  if(!its.length)return h+card('<div class="muted">Sem contratações no período (ou API indisponível). Tente a aba Conluio.</div>');
-  h+=`<div class="search"><span class="mag"></span><input placeholder="filtrar por objeto ou órgão…" oninput="filtrar(this,'#ctr-list .card')"></div>`;
-  h+=`<div id="ctr-list" class="grid">`+its.slice(0,60).map(c=>card(`<div style="font-weight:650;font-size:13.5px">${esc((c.objeto||c.objetoCompra||'—')).slice(0,140)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc((c.orgao||c.orgaoNome||c.unidade||'')).slice(0,60)} ${c.valor||c.valorTotal?'· '+fmtRc(c.valor||c.valorTotal):''}</div>`)).join('')+`</div>`;
+  const chips=`<div class="chips">
+    <button type="button" class="chip ${_ctrView==='analise'?'on':''}" onclick="_ctrView='analise';ir('p_contr')">Com análise (base local)</button>
+    <button type="button" class="chip ${_ctrView==='vivo'?'on':''}" onclick="_ctrView='vivo';ir('p_contr')">Publicadas agora (PNCP ao vivo)</button></div>`;
+  if(_ctrView==='vivo'){
+    const r=await J('/api/pncp?uf=RJ&dias=45&esfera=prefeitura');const its=(r.contratacoes||r.dados||r.itens||[]);
+    let h=cover('prefeitura','Contratações recentes (PNCP ao vivo)','Últimas licitações da PREFEITURA DO RIO publicadas no PNCP (esfera oficial do ente). Fonte pública, sem login — pode demorar: é a API nacional ao vivo.','📄')+chips;
+    h+=sec('Publicadas (45 dias)',its.length);
+    if(!its.length)return h+card('<div class="muted">Sem contratações no período (ou API do PNCP indisponível agora — a visão "Com análise" usa a base local e sempre responde).</div>');
+    h+=`<div class="search"><span class="mag"></span><input placeholder="filtrar por objeto ou órgão…" oninput="filtrar(this,'#ctr-list-wrap .card')"></div>`;
+    h+=listaPaginada('ctr-list',its,c=>card(`<div style="font-weight:650;font-size:13.5px">${esc((c.objeto||c.objetoCompra||'—')).slice(0,140)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc((c.orgao||c.orgaoNome||c.unidade||'')).slice(0,60)} ${c.valor||c.valorTotal?'· '+fmtRc(c.valor||c.valorTotal):''}</div>`),60);
+    return h;
+  }
+  const d=await J('/api/certames/lista?esfera=prefeitura&limite=600');
+  let h=cover('prefeitura','Contratações do município — cada uma com a sua análise','Certames da PREFEITURA DO RIO na base local, cada um com o <b>Índice de Direcionamento</b> (0-100) e os <b>temas</b> (7 famílias: transparência, competição, conluio, fraude cadastral, preço, execução, sessão/ata) onde acendeu sinal. Toque num card para a análise completa das 7 famílias. Certame sem análise = INDISPONÍVEL (≠ 0) — a cobertura cresce com o enxame.','📄')+chips;
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const its=d.itens||[],rs=d.resumo||{};
+  h+=`<div class="grid g2">${kpi(fmtN(rs.total),'Certames na base',null,'📄')}${kpi(fmtN(rs.analisados),'Com análise (índice calculado)','var(--amber)','🧮')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por objeto (só no que já carregou)…" oninput="filtrar(this,'#ctr-list-wrap .card')"></div>`;
+  const _montarCtr=c=>{
+    const cor=c.faixa==='EXTREMO'||c.faixa==='ALTO'?'var(--rose)':c.faixa==='MEDIO'?'var(--amber)':'var(--tx2)';
+    const temas=(c.temas||[]).slice(0,4).map(t=>`<span class="tag ${t.valor>=0.6?'rose':t.valor>=0.3?'amber':'accent'}">${esc(_TEMA_ROTULO[t.familia]||t.familia)} ${(t.valor*100).toFixed(0)}%</span>`).join(' ');
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:650;font-size:13.5px">${esc((c.objeto||'—')).slice(0,140)}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">${esc(c.nc)} · ${c.ano||''}${c.valor_estimado?' · estimado '+fmtRc(c.valor_estimado):''}</div>
+      ${temas?`<div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">${temas}</div>`:''}</div>
+      <div class="right" style="text-align:right">${c.analisado
+        ?`<div class="num" style="font-weight:800;font-size:19px;color:${cor}">${c.score.toFixed(0)}</div><div class="dim">${esc(c.faixa||'')} · conf. ${((c.confianca||0)*100).toFixed(0)}%</div>`
+        :`<span class="tag" title="nenhuma das 7 famílias era analisável ainda — INDISPONÍVEL, não zero">sem análise</span>`}</div></div>`,
+      c.faixa==='EXTREMO'||c.faixa==='ALTO'?'hl':'');
+  };
+  h+=`<div onclick="const c=event.target.closest('.card');if(!c)return;const nc=c.dataset.nc;if(nc)abrirCertame(nc);">`;
+  // listaPaginada não injeta data-attrs — embrulha cada card com o nc pro clique
+  const _wrap=c=>_montarCtr(c).replace('<div class="card','<div data-nc="'+esc(c.nc)+'" style="cursor:pointer" class="card');
+  h+=listaPaginada('ctr-list',its,_wrap,60)+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
 }
 
