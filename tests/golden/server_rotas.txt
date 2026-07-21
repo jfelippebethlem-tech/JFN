@@ -7,6 +7,7 @@ GET /api/certame/indice -> api_certame_indice
 GET /api/certames/lista -> api_certames_lista
 GET /api/coendereco/clusters -> api_coendereco_clusters
 GET /api/comparador/buscar -> api_comparador_buscar
+GET /api/comparador/catalogo -> api_comparador_catalogo
 GET /api/comparador/dossie -> api_comparador_dossie
 GET /api/comparador/economia -> api_comparador_economia
 GET /api/comparador/fornecedores -> api_comparador_fornecedores
