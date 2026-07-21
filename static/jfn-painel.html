@@ -1202,19 +1202,24 @@ async function renderComissionadosPref(){
   if(_comisView==='benef')return renderBeneficiosPref(chips);
   const d=await J('/api/pcrj/comissionados_candidatos?limite=600');
   let h=cover('prefeitura','Comissionados da Prefeitura que foram candidatos',
-    'Cruzamento da folha de cargos de confiança da Prefeitura do Rio com as candidaturas registradas no TSE. Cargo de confiança ocupado por quem disputa eleição é o retrato do aparelhamento político da máquina.','🗳️')+chips+acoesAba('comissionados');
+    'Cruzamento da folha de cargos de confiança da Prefeitura do Rio com as candidaturas registradas no TSE. Cargo de confiança ocupado por quem disputa eleição é o retrato do aparelhamento político da máquina. Cada card é <b>uma pessoa</b>, com o histórico completo de nomeações — não mais uma linha por vínculo.','🗳️')+chips+acoesAba('comissionados');
   if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
-  const it=d.comissionados||[];
+  const it=d.comissionados||[];  // agora 1 item por PESSOA, com postos[] e candidaturas[]
   const MOSTRA=150;  // cap de DOM: 600 cards de uma vez travava o browser remoto (pelo túnel)
-  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Comissionados ex-candidatos','var(--amber)','🎖️')}${kpi(fmtN(new Set(it.map(x=>x.cand_cidade)).size),'Cidades de candidatura',null,'🗺️')}</div>`;
+  const nCidades=new Set(it.flatMap(x=>(x.candidaturas||[]).map(c=>c.cidade)).filter(Boolean)).size;
+  h+=`<div class="grid g2">${kpi(fmtN(d.n_pessoas||it.length),'Pessoas ex-candidatas','var(--amber)','🎖️')}${kpi(fmtN(nCidades),'Cidades de candidatura',null,'🗺️')}</div>`;
   h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, cargo, órgão, cidade…" oninput="filtrar(this,'#cc-list .card')"></div>`;
-  if(it.length>MOSTRA)h+=`<div class="note" style="margin-top:8px">Mostrando os <b>${MOSTRA}</b> primeiros de <b>${fmtN(it.length)}</b> — use o filtro acima para achar um nome, cargo ou cidade específicos.</div>`;
-  h+=`<div id="cc-list" class="grid">`+it.slice(0,MOSTRA).map(x=>card(
+  if(it.length>MOSTRA)h+=`<div class="note" style="margin-top:8px">Mostrando as <b>${MOSTRA}</b> primeiras de <b>${fmtN(it.length)}</b> pessoas — use o filtro acima para achar um nome, cargo ou cidade específicos.</div>`;
+  h+=`<div id="cc-list" class="grid">`+it.slice(0,MOSTRA).map(x=>{
+    const postos=(x.postos||[]).map(p=>`<div class="dim" style="margin-top:2px">${esc(p.cargo||'—')} @ ${esc((p.orgao||'—').slice(0,50))} — ${esc(p.admissao||'?')}${p.exoneracao?' → '+esc(p.exoneracao):' · ativo'}</div>`).join('');
+    const cands=(x.candidaturas||[]).map(c=>`<span class="tag amber">${esc(c.cargo||'?')} ${esc(String(c.ano||''))}${c.cidade?' · '+esc(c.cidade):''}</span>`).join(' ');
+    const homon=x.homonimo_provavel?` <span class="tag" title="candidatou em 3+ cidades — provável homônimo, não a mesma pessoa">homônimo provável</span>`:'';
+    return card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
-      <div style="font-weight:700">${esc(x.nome_pcrj)}</div>
-      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.orgao_pcrj||'—').slice(0,50))} · cargo ${esc(x.cargo_pcrj||'—')}</div>
-      ${x.admissao?`<div class="dim" style="margin-top:2px">admissão ${esc(x.admissao)}${x.exoneracao?' · exoneração '+esc(x.exoneracao):' · ativo'}</div>`:''}</div>
-      <div class="right"><span class="tag amber">${esc(x.cand_cargo||'?')} ${esc(String(x.cand_ano||''))}</span><div class="dim" style="margin-top:4px">${esc(x.cand_cidade||'')}</div></div></div>`)).join('')+`</div>`;
+      <div style="font-weight:700">${esc(x.nome_pcrj)}${x.n_postos>1?` <span class="tag" style="font-weight:400">${x.n_postos} nomeações</span>`:''}${homon}</div>
+      ${postos}</div>
+      <div class="right" style="text-align:right">${cands}</div></div>`);
+  }).join('')+`</div>`;
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
   return h;
 }

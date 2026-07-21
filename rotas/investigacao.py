@@ -1843,29 +1843,68 @@ async def api_intel_hub_compartilhado(chave: str = "endereco", min: int = 5):
 @router.get("/api/pcrj/comissionados_candidatos")
 async def api_pcrj_comissionados_candidatos(limite: int = 300):
     """Comissionados da PREFEITURA do Rio que foram CANDIDATOS (TSE) — tabela
-    pcrj_comissionado_candidato (data/pcrj.db, coletor pcrj/comissionados_candidatos)."""
+    pcrj_comissionado_candidato (data/pcrj.db, coletor pcrj/comissionados_candidatos).
+    Agregado por PESSOA (nome_norm): 1 entrada por pessoa com a lista de postos
+    (nomeações) e candidaturas no histórico — a tabela tem 1 linha por (pessoa, órgão,
+    cargo, admissão), e a variação textual de orgao_pcrj entre coletas mensais duplicava
+    o mesmo vínculo em várias linhas (achado 2026-07-21); `limite` agora é por PESSOA,
+    não por linha bruta. Padrão de agrupamento espelha pericia.py::_tabela_comissionados_cand."""
     import sqlite3 as _sq
     try:
         lim = max(1, min(int(limite or 300), 1000))
-        ck = f"pcrj:comis_cand:{lim}"  # chave POR limite (limite=1 do panorama envenenava a aba)
+        ck = f"pcrj:comis_cand:v2:{lim}"  # v2: payload agora é por pessoa, não por linha
         if d := _cache_get(ck, 600):
             return JSONResponse(d)
         con = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
         con.row_factory = _sq.Row
         try:
             rows = [dict(r) for r in con.execute(
-                "SELECT nome_pcrj, cargo_pcrj, orgao_pcrj, admissao, exoneracao, "
-                "cand_ano, cand_cargo, cand_cidade FROM pcrj_comissionado_candidato "
-                "ORDER BY cand_ano DESC, nome_pcrj LIMIT ?", (lim,))]
-            n = con.execute("SELECT COUNT(*) FROM pcrj_comissionado_candidato").fetchone()[0]
+                "SELECT nome_norm, nome_pcrj, cargo_pcrj, orgao_pcrj, admissao, exoneracao, "
+                "matricula, cand_ano, cand_cargo, cand_cidade FROM pcrj_comissionado_candidato")]
+            n_linhas = len(rows)
         finally:
             con.close()
-        out = {"ok": True, "n": n, "comissionados": rows,
+
+        pessoas: dict[str, dict] = {}
+        for r in rows:
+            pz = pessoas.setdefault(r["nome_norm"], {
+                "nome_norm": r["nome_norm"], "nome_pcrj": r["nome_pcrj"],
+                "_postos": {}, "_cands": set(), "_cidades": set(),
+            })
+            # dedupe de posto por matrícula quando existe (mesmo vínculo mesmo com
+            # orgao_pcrj variando textualmente entre coletas); senão cai no órgão mesmo
+            chave = (r["matricula"], r["admissao"], r["exoneracao"], r["cargo_pcrj"]) if r["matricula"] \
+                else (r["orgao_pcrj"], r["admissao"], r["exoneracao"], r["cargo_pcrj"])
+            pz["_postos"].setdefault(chave, {
+                "cargo": r["cargo_pcrj"], "orgao": r["orgao_pcrj"], "admissao": r["admissao"],
+                "exoneracao": r["exoneracao"], "matricula": r["matricula"]})
+            pz["_cands"].add((r["cand_ano"], r["cand_cargo"], r["cand_cidade"]))
+            if r["cand_cidade"]:
+                pz["_cidades"].add(r["cand_cidade"])
+
+        out_pessoas = []
+        for pz in pessoas.values():
+            postos = sorted(pz["_postos"].values(), key=lambda p: p["admissao"] or "")
+            cands = sorted(({"ano": a, "cargo": c, "cidade": ci} for a, c, ci in pz["_cands"]),
+                            key=lambda c: c["ano"] or 0)
+            out_pessoas.append({
+                "nome_norm": pz["nome_norm"], "nome_pcrj": pz["nome_pcrj"],
+                "postos": postos, "n_postos": len(postos), "candidaturas": cands,
+                "homonimo_provavel": len(pz["_cidades"]) >= 3,
+                "cand_ano_recente": max((c["ano"] for c in cands if c["ano"]), default=None),
+            })
+        out_pessoas.sort(key=lambda p: (-(p["cand_ano_recente"] or 0), p["nome_pcrj"] or ""))
+        truncado = len(out_pessoas) > lim
+        out_pessoas = out_pessoas[:lim]
+
+        out = {"ok": True, "n": n_linhas, "n_pessoas": len(pessoas), "truncado": truncado,
+               "comissionados": out_pessoas,
                "explicacao": ("Cruzamento por nome entre a folha de comissionados da Prefeitura do "
                               "Rio e as candidaturas do TSE. Comissionado que concorreu (ou concorre) "
-                              "a cargo eletivo é sinal de aparelhamento político do cargo de confiança."),
+                              "a cargo eletivo é sinal de aparelhamento político do cargo de confiança. "
+                              "Cada pessoa aparece uma vez, com o histórico de nomeações abaixo."),
                "ressalva": "Match por NOME (homônimo possível) — confirmar por CPF antes de citar."}
-        return JSONResponse(_cache_put(ck, out))  # era chave fixa ≠ ck do get: cache nunca batia
+        return JSONResponse(_cache_put(ck, out))
     except Exception as exc:  # noqa: BLE001
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
