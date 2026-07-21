@@ -94,13 +94,121 @@ def buscar_grupos(termo: str, db_path: str | None = None, min_compras: int = 3,
                 "mediana": round(med, 2), "min": round(precos[0], 2), "max": round(precos[-1], 2),
                 "dispersao": round(precos[-1] / precos[0], 1) if precos[0] > 0 else None})
         achados.sort(key=lambda a: -(a["dispersao"] or 0))
+        parecidos = []
+        if not achados and len(toks) >= 1:
+            # nada casa TODAS as palavras → sugere grupos que casam QUALQUER uma (o usuário
+            # não deve adivinhar o vocabulário da base; 'refeição' devolvia 0 e ponto final)
+            for (base, un), itens in _grupos(con, _certs(con, esfera)).items():
+                if not any(t in base for t in toks):
+                    continue
+                orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
+                if len(itens) < min_compras or len(orgaos) < min_orgaos:
+                    continue
+                precos = sorted(r["vu"] for r in itens)
+                parecidos.append({"grupo": base, "unidade_medida": itens[0]["un"],
+                                  "exemplo": itens[0]["d"], "n_compras": len(itens),
+                                  "n_orgaos": len(orgaos),
+                                  "mediana": round(_mediana(precos), 2),
+                                  "min": round(precos[0], 2), "max": round(precos[-1], 2),
+                                  "dispersao": round(precos[-1] / precos[0], 1)
+                                  if precos[0] > 0 else None})
+            parecidos.sort(key=lambda a: -(a["dispersao"] or 0))
+            parecidos = parecidos[:10]
         return {"ok": True, "termo": termo, "grupos": achados[:limite], "n": len(achados),
+                "parecidos": parecidos,
                 "explicacao": ("Grupos de item comprados por ≥2 órgãos que casam o termo. Dispersão "
                                "alta = os órgãos pagam preços MUITO diferentes pelo mesmo item — "
                                "abra o grupo para ver quem paga mais/menos."),
                 "ressalva": RESSALVA}
     finally:
         con.close()
+
+
+# ── catálogo navegável: menu de categorias → submenu de itens (grupos comparáveis) ──
+# Ordem importa: a PRIMEIRA categoria cujo token aparece no grupo vence (saúde antes de
+# limpeza p/ "luva cirúrgica"; veículos antes de serviços p/ "locação de veículo").
+_CATALOGO_CATS: list[tuple[str, str, str, tuple[str, ...]]] = [
+    ("saude", "Saúde e hospitalar", "🩺",
+     ("medicamento", "cirurgic", "hospitalar", "seringa", "agulha", "luva", "curativo", "gaze",
+      "soro", "sonda", "cateter", "mascara", "ampola", "comprimido", "injetavel", "odontologic",
+      "reagente", "laboratorio", "raio", "ultrassom", "estetoscopio", "gastrostomia", "cardiaca",
+      "neonatal", "ambulancia", "enfermagem", "clinic", "vacina", "diagnostic")),
+    ("alimentacao", "Alimentação", "🍽️",
+     ("refeicao", "alimento", "alimenticio", "cesta", "cafe", "acucar", "leite", "carne", "arroz",
+      "feijao", "pao", "merenda", "lanche", "achocolatado", "biscoito", "bebida", "agua mineral",
+      "coffee", "buffet", "marmitex", "hortifruti")),
+    ("veiculos", "Veículos e transporte", "🚗",
+     ("veiculo", "veicular", "carro", "pneu", "combustivel", "gasolina", "diesel", "etanol",
+      "onibus", "caminhao", "motocicleta", "automotiv", "transporte", "fretamento", "passagem")),
+    ("ti", "Tecnologia e informática", "💻",
+     ("computador", "notebook", "monitor", "impressora", "toner", "cartucho", "servidor",
+      "software", "licenca", "tablet", "scanner", "informatica", "rede", "switch", "roteador",
+      "nobreak", "hd", "ssd", "disco", "memoria", "processador", "teclado", "mouse", "projetor")),
+    ("limpeza", "Limpeza e higiene", "🧴",
+     ("limpeza", "detergente", "sabao", "sabonete", "desinfetante", "sanitaria", "alvejante",
+      "higiene", "papel higienico", "lixo", "vassoura", "rodo", "esponja", "alcool")),
+    ("escritorio", "Escritório e papelaria", "📎",
+     ("papel", "caneta", "lapis", "envelope", "grampeador", "pasta", "resma", "etiqueta",
+      "caderno", "expediente", "arquivo", "clips", "pincel", "quadro")),
+    ("mobiliario", "Mobiliário", "🪑",
+     ("armario", "cadeira", "mesa", "estante", "poltrona", "arquivo aco", "gaveteiro",
+      "longarina", "sofa", "mobiliario", "beliche", "colchao")),
+    ("vestuario", "Vestuário e EPI", "🦺",
+     ("camisa", "camiseta", "uniforme", "farda", "bota", "calcado", "capacete", "colete",
+      "epi", "protecao", "avental", "jaleco", "toca", "bone", "calca", "tecido")),
+    ("obras", "Obras e manutenção predial", "🧱",
+     ("cimento", "tinta", "eletric", "hidraulic", "madeira", "telha", "areia", "brita",
+      "argamassa", "tubo pvc", "lampada", "luminaria", "cabo", "disjuntor", "fechadura",
+      "vidro", "porta", "janela", "predial", "reforma", "alvenaria")),
+    ("servicos", "Serviços", "🛠️",
+     ("servico", "locacao", "manutencao", "vigilancia", "seguranca", "evento", "consultoria",
+      "assessoria", "impressao", "publicacao", "seguro", "limpeza predial", "capacitacao",
+      "treinamento", "hospedagem", "engenharia")),
+]
+
+
+def catalogo(db_path: str | None = None, esfera: str | None = None,
+             min_compras: int = 3, min_orgaos: int = 2) -> dict:
+    """Catálogo navegável do comparador: TODOS os grupos comparáveis (≥min_compras compras,
+    ≥min_orgaos órgãos), organizados em categorias determinísticas (menu → submenu → item).
+    Nasceu do achado 2026-07-21: a busca por termo exigia adivinhar a palavra certa da
+    descrição normalizada — 'refeição' (exemplo do próprio placeholder) devolvia 0. Aqui o
+    usuário NAVEGA pelo que existe, em vez de adivinhar. Filtros/ordenação ficam no cliente."""
+    con = _ro(db_path)
+    try:
+        grupos_raw = _grupos(con, _certs(con, esfera))
+    finally:
+        con.close()
+    cats: dict[str, list] = {c[0]: [] for c in _CATALOGO_CATS}
+    cats["outros"] = []
+    for (base, _un_k), itens in grupos_raw.items():
+        orgaos = {r["unidade_nome"] or r["orgao_nome"] for r in itens}
+        if len(itens) < min_compras or len(orgaos) < min_orgaos:
+            continue
+        precos = sorted(r["vu"] for r in itens)
+        med = _mediana(precos)
+        g = {"grupo": base, "unidade_medida": itens[0]["un"], "exemplo": itens[0]["d"],
+             "n_compras": len(itens), "n_orgaos": len(orgaos), "mediana": round(med, 2),
+             "min": round(precos[0], 2), "max": round(precos[-1], 2),
+             "dispersao": round(precos[-1] / precos[0], 1) if precos[0] > 0 else None}
+        alvo = "outros"
+        for cid, _rot, _ic, toks in _CATALOGO_CATS:
+            if any(t in base for t in toks):
+                alvo = cid
+                break
+        cats[alvo].append(g)
+    categorias = []
+    for cid, rot, ic, _toks in _CATALOGO_CATS + [("outros", "Outros itens", "📦", ())]:
+        gs = sorted(cats[cid], key=lambda g: -(g["dispersao"] or 0))
+        if gs:
+            categorias.append({"id": cid, "rotulo": rot, "icone": ic, "n": len(gs), "grupos": gs})
+    return {"ok": True, "categorias": categorias,
+            "n_grupos": sum(c["n"] for c in categorias),
+            "explicacao": ("Todos os itens com preço comparável (comprados ≥%d vezes por ≥%d órgãos),"
+                           " por categoria. Dispersão = maior preço ÷ menor preço do MESMO item — "
+                           "quanto maior, mais os órgãos pagam preços diferentes."
+                           % (min_compras, min_orgaos)),
+            "ressalva": RESSALVA}
 
 
 def comparar(grupo: str, unidade: str | None = None, db_path: str | None = None,

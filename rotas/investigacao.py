@@ -1574,6 +1574,20 @@ async def api_comparador_buscar(termo: str = "", esfera: str = ""):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/comparador/catalogo")
+async def api_comparador_catalogo(esfera: str = ""):
+    """Catálogo navegável: TODOS os grupos comparáveis por CATEGORIA (menu→submenu→item).
+    Filtros/ordenação são do cliente; aqui só a estrutura, cacheada."""
+    try:
+        from compliance_agent.comparador_precos import catalogo
+        ck = f"comp:catalogo:{esfera or 'todas'}"
+        if not (d := _cache_get(ck, 1800)):
+            d = _cache_put(ck, await asyncio.to_thread(catalogo, esfera=esfera or None))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/comparador/item")
 async def api_comparador_item(grupo: str = "", unidade: str = "", esfera: str = ""):
     """Para um item (grupo normalizado), ranking de ÓRGÃOS e FORNECEDORES por preço unitário."""

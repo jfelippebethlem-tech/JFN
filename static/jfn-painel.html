@@ -290,6 +290,37 @@
   .kpi.rise::after,.card.beat::after{content:"";position:absolute;inset:-1px;border-radius:inherit;pointer-events:none;
     box-shadow:0 0 0 1px color-mix(in oklch,var(--accent) 0%,transparent);animation:beat 1.4s ease-out}
   @keyframes beat{0%{box-shadow:0 0 0 1px color-mix(in oklch,var(--accent) 40%,transparent)}100%{box-shadow:0 0 0 1px transparent}}
+  /* ═══ RIQUEZA SCI-FI v8 — SÓ ADIÇÃO (nada do v7 muda): cometas, aurora da esfera,
+     boot-sweep no cover, anel holográfico nos KPIs, ping de radar no AO VIVO ═══ */
+  .cometa{position:fixed;pointer-events:none;z-index:0;width:190px;height:1px;opacity:0;
+    background:linear-gradient(90deg,transparent,color-mix(in oklch,var(--esf) 75%,white 10%),transparent);
+    filter:drop-shadow(0 0 6px color-mix(in oklch,var(--esf) 60%,transparent))}
+  .cometa.c1{top:16%;animation:cometa1 21s linear infinite 3s}
+  .cometa.c2{top:64%;animation:cometa2 33s linear infinite 11s}
+  @keyframes cometa1{0%{transform:translateX(-220px) rotate(14deg);opacity:0}4%{opacity:.5}12%{opacity:.5}
+    18%{transform:translateX(110vw) rotate(14deg);opacity:0}100%{transform:translateX(110vw) rotate(14deg);opacity:0}}
+  @keyframes cometa2{0%{transform:translateX(110vw) rotate(-11deg);opacity:0}4%{opacity:.35}14%{opacity:.35}
+    20%{transform:translateX(-220px) rotate(-11deg);opacity:0}100%{transform:translateX(-220px) rotate(-11deg);opacity:0}}
+  #aurora{position:fixed;left:-10%;right:-10%;top:-18%;height:52vh;pointer-events:none;z-index:0;opacity:.55;
+    background:radial-gradient(46% 60% at 24% 18%,color-mix(in oklch,var(--esf) 9%,transparent),transparent 70%),
+               radial-gradient(38% 52% at 78% 8%,color-mix(in oklch,var(--esf) 6%,transparent),transparent 72%);
+    animation:auroraFlow 26s ease-in-out infinite alternate;transition:opacity 1s}
+  @keyframes auroraFlow{from{transform:translate3d(-2%,0,0) scale(1)}to{transform:translate3d(2%,3%,0) scale(1.06)}}
+  .cover::after{content:"";position:absolute;inset:0 0 -1px;pointer-events:none;
+    background:linear-gradient(105deg,transparent 42%,color-mix(in oklch,var(--esf) 20%,white 5%) 50%,transparent 58%);
+    opacity:0;animation:bootSweep .9s ease-out .05s}
+  @keyframes bootSweep{0%{opacity:.85;transform:translateX(-70%)}100%{opacity:0;transform:translateX(75%)}}
+  @property --holo{syntax:'<angle>';initial-value:0deg;inherits:false}
+  .kpi::before{content:"";position:absolute;inset:-1px;border-radius:inherit;padding:1px;pointer-events:none;opacity:0;
+    background:conic-gradient(from var(--holo,0deg),transparent 12%,color-mix(in oklch,var(--esf) 65%,transparent) 22%,transparent 34%,transparent 62%,color-mix(in oklch,var(--esf) 40%,transparent) 74%,transparent 86%);
+    -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask-composite:exclude;
+    transition:opacity .3s}
+  .kpi:hover::before{opacity:1;animation:holoSpin 2.6s linear infinite}
+  @keyframes holoSpin{to{--holo:360deg}}
+  .live .pulse{position:relative}
+  .live .pulse::after{content:"";position:absolute;inset:-4px;border-radius:50%;border:1px solid var(--accent);opacity:0;animation:ping 2s ease-out infinite}
+  @keyframes ping{0%{transform:scale(.4);opacity:.7}80%{transform:scale(1.8);opacity:0}100%{transform:scale(1.8);opacity:0}}
+  @media (prefers-reduced-motion:reduce){.cometa,#aurora{animation:none;opacity:0}.cover::after{animation:none;opacity:0}.kpi:hover::before{animation:none}.live .pulse::after{animation:none}}
   .kpi .v.counting{color:var(--accent)}
   @media (prefers-reduced-motion:reduce){.rise,.card.hl.rise{animation:none;opacity:1}.card.beat::after,.kpi.rise::after{animation:none}}
   .kpi{position:relative;overflow:hidden}
@@ -472,6 +503,8 @@
 <body>
 <canvas id="netbg" aria-hidden="true"></canvas>
 <div class="aura a1" aria-hidden="true"></div><div class="aura a2" aria-hidden="true"></div>
+<div id="aurora" aria-hidden="true"></div>
+<span class="cometa c1" aria-hidden="true"></span><span class="cometa c2" aria-hidden="true"></span>
 <div class="wrap">
   <header>
     <div class="htop">
@@ -1156,49 +1189,97 @@ async function renderEscalada(){
 }
 
 // ═══ COMPARADOR DE PREÇOS (quem paga mais/menos pelo mesmo item) ═══
-let _compView='buscar', _compTermo='', _compGrupo=null;
+let _compView='catalogo', _compTermo='', _compGrupo=null, _compCat=null, _compEsf='todas', _compDisp=0, _compOrd='dispersao';
 async function renderComparador(){
   let h=cover('estado','Comparador de preços — quem paga mais e quem paga menos','Para o <b>mesmo item</b> (aluguel de carro, medicamento, refeição…), quanto cada <b>órgão</b> paga e quanto cada <b>fornecedor</b> cobra. E o ranking transversal: quais órgãos <b>gastam melhor</b> o recurso público e quais fornecedores são <b>caros ou baratos</b> vs o mercado. Fonte: preço unitário homologado do PNCP.','💰');
   h+=`<div class="chips" style="margin:6px 0 14px">
+    <button type="button" class="chip ${_compView==='catalogo'?'on':''}" onclick="_compView='catalogo';_compGrupo=null;ir('e_comp')">🗂️ Catálogo por categoria</button>
+    <button type="button" class="chip ${_compView==='buscar'?'on':''}" onclick="_compView='buscar';_compGrupo=null;ir('e_comp')">Buscar item</button>
     <button type="button" class="chip ${_compView==='economia'?'on':''}" onclick="_compView='economia';ir('e_comp')">Economia possível</button>
     <button type="button" class="chip ${_compView==='dossie'?'on':''}" onclick="_compView='dossie';ir('e_comp')">Caro + fornecedor suspeito</button>
-    <button type="button" class="chip ${_compView==='buscar'?'on':''}" onclick="_compView='buscar';ir('e_comp')">Buscar item</button>
     <button type="button" class="chip ${_compView==='orgaos'?'on':''}" onclick="_compView='orgaos';ir('e_comp')">Órgãos que gastam melhor</button>
     <button type="button" class="chip ${_compView==='forn'?'on':''}" onclick="_compView='forn';ir('e_comp')">Fornecedores caros/baratos</button></div>`;
   if(_compView==='economia')return h+await _compEconomia();
   if(_compView==='dossie')return h+await _compDossie();
   if(_compView==='orgaos')return h+await _compOrgaos();
   if(_compView==='forn')return h+await _compForn();
+  if(_compView==='catalogo')return h+await _compCatalogo();
   return h+await _compBuscar();
 }
-async function _compBuscar(){
-  let h=`<div class="search"><span class="mag"></span><input id="comp-in" placeholder="digite o item: aluguel carro, medicamento, refeição, combustível…" value="${esc(_compTermo)}" onkeydown="if(event.key==='Enter'){_compTermo=this.value;_compGrupo=null;ir('e_comp')}"></div>
-    <div class="dim" style="margin:6px 0">Enter para buscar. Exemplos: <a onclick="_compTermo='locacao veiculo';_compGrupo=null;ir('e_comp')">locação veículo</a> · <a onclick="_compTermo='combustivel';_compGrupo=null;ir('e_comp')">combustível</a> · <a onclick="_compTermo='refeicao';_compGrupo=null;ir('e_comp')">refeição</a> · <a onclick="_compTermo='reagente';_compGrupo=null;ir('e_comp')">reagente</a></div>`;
-  if(_compGrupo){
-    const d=await J('/api/comparador/item?esfera=estado&grupo='+encodeURIComponent(_compGrupo.grupo)+'&unidade='+encodeURIComponent(_compGrupo.un||''));
-    if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
-    h+=`<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir('e_comp')">← voltar à busca</a></div>`;
-    h+=`<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida||'')}</span></h3>`;
-    h+=`<div class="grid g2">${kpi(fmtR(d.mediana_geral),'Mediana do item','var(--amber)','⚖️')}${kpi(fmtN(d.n_orgaos),'Órgãos',null,'🏛️')}${kpi(fmtN(d.n_fornecedores),'Fornecedores',null,'🏢')}${kpi(fmtN(d.n_compras),'Compras',null,'🧾')}</div>`;
-    const linha=(x,lbl)=>{const c=x.vs_geral>=1.5?'var(--rose)':(x.vs_geral<=0.75?'var(--green)':'var(--amber)');
-      return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
-        <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">n=${x.n}</div></div>
-        <div class="right"><div class="num" style="font-weight:800;color:${c}">${fmtR(x.mediana)}</div><div class="dim">${x.vs_geral}× a mediana</div></div></div>`,x.vs_geral>=1.5?'hl':'');};
-    h+=sec('Órgãos — do que paga MAIS ao que paga MENOS')+`<div class="grid">`+d.orgaos.map(x=>linha(x)).join('')+`</div>`;
-    h+=sec('Fornecedores — do mais caro ao mais barato')+`<div class="grid">`+d.fornecedores.slice(0,30).map(x=>linha(x)).join('')+`</div>`;
-    return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
-  }
-  if(!_compTermo)return h;
-  const d=await J('/api/comparador/buscar?esfera=estado&termo='+encodeURIComponent(_compTermo));
+// esfera do comparador (todas as visões respeitam)
+const _compEsfChips=()=>`<div class="chips" style="margin:0 0 10px">
+  ${['todas','estado','prefeitura'].map(e=>`<button type="button" class="chip ${_compEsf===e?'on':''}" onclick="_compEsf='${e}';ir('e_comp')">${e==='todas'?'🌐 Todas as esferas':e==='estado'?'🏛️ Estado':'🏙️ Prefeitura·Rio'}</button>`).join('')}</div>`;
+// visão de UM item (órgãos × fornecedores) — usada pelo catálogo E pela busca
+async function _compItemView(voltar){
+  const d=await J('/api/comparador/item?esfera='+(_compEsf==='todas'?'':_compEsf)+'&grupo='+encodeURIComponent(_compGrupo.grupo)+'&unidade='+encodeURIComponent(_compGrupo.un||''));
+  let h=`<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir('e_comp')">← ${voltar}</a></div>`;
   if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
-  if(!d.grupos.length)return h+card(`<div class="warn">Nenhum grupo comparável para "${esc(_compTermo)}". Tente outro termo (a base é o preço unitário do PNCP).</div>`);
+  h+=`<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida||'')}</span></h3>`;
+  h+=`<div class="grid g2">${kpi(fmtR(d.mediana_geral),'Mediana do item','var(--amber)','⚖️')}${kpi(fmtN(d.n_orgaos),'Órgãos',null,'🏛️')}${kpi(fmtN(d.n_fornecedores),'Fornecedores',null,'🏢')}${kpi(fmtN(d.n_compras),'Compras',null,'🧾')}</div>`;
+  const linha=x=>{const c=x.vs_geral>=1.5?'var(--rose)':(x.vs_geral<=0.75?'var(--green)':'var(--amber)');
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
+      <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">n=${x.n}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;color:${c}">${fmtR(x.mediana)}</div><div class="dim">${x.vs_geral}× a mediana</div></div></div>`,x.vs_geral>=1.5?'hl':'');};
+  h+=sec('Órgãos — do que paga MAIS ao que paga MENOS')+`<div class="grid">`+d.orgaos.map(linha).join('')+`</div>`;
+  h+=sec('Fornecedores — do mais caro ao mais barato')+`<div class="grid">`+d.fornecedores.slice(0,30).map(linha).join('')+`</div>`;
+  return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+}
+const _montarGrupoCard=g=>card(
+  `<div onclick='_compGrupo=${JSON.stringify({grupo:g.grupo,un:_unOf(g)})};ir("e_comp")' style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center">
+    <div style="min-width:0"><div style="font-weight:600">${esc(g.exemplo)} <span class="dim">/ ${esc(g.unidade_medida||'')}</span></div>
+    <div class="dim" style="font-size:12.5px">${g.n_orgaos} órgãos · ${g.n_compras} compras · mediana ${fmtR(g.mediana)}</div></div>
+    <div class="right"><div class="num" style="font-weight:800;color:${g.dispersao>=5?'var(--rose)':'var(--amber)'}">${g.dispersao!=null?g.dispersao+'×':'—'}</div><div class="dim">${fmtR(g.min)}–${fmtR(g.max)}</div></div></div>`,
+  g.dispersao>=10?'hl':'');
+async function _compCatalogo(){
+  let h=_compEsfChips();
+  if(_compGrupo)return h+await _compItemView('voltar ao catálogo');
+  const d=await J('/api/comparador/catalogo?esfera='+(_compEsf==='todas'?'':_compEsf));
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  const cats=d.categorias||[];
+  if(!_compCat||!cats.find(c=>c.id===_compCat)){
+    // MENU: categorias com contagem e amostra do que tem dentro
+    h+=`<div class="dim" style="margin:0 0 10px">${fmtN(d.n_grupos)} itens com preço comparável, por categoria — toque para abrir o submenu:</div>`;
+    h+=`<div class="grid two">`+cats.map(c=>card(
+      `<div onclick="_compCat='${c.id}';ir('e_comp')" style="cursor:pointer">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div style="font-weight:700;font-size:14.5px">${c.icone} ${esc(c.rotulo)}</div>
+          <span class="cnt">${fmtN(c.n)}</span></div>
+        <div class="dim" style="margin-top:6px;font-size:12px">${c.grupos.slice(0,3).map(g=>esc((g.exemplo||'').slice(0,38))).join(' · ')}…</div></div>`)).join('')+`</div>`;
+    return h+`<div class="note">${esc(d.explicacao||'')}</div>`;
+  }
+  // SUBMENU: itens da categoria com filtros (dispersão / ordenação / busca no dataset todo)
+  const cat=cats.find(c=>c.id===_compCat);
+  let gs=cat.grupos.filter(g=>!_compDisp||(g.dispersao||0)>=_compDisp);
+  if(_compOrd==='mediana')gs=[...gs].sort((a,b)=>(b.mediana||0)-(a.mediana||0));
+  else if(_compOrd==='compras')gs=[...gs].sort((a,b)=>(b.n_compras||0)-(a.n_compras||0));
+  h+=`<div style="margin:4px 0 10px"><a onclick="_compCat=null;ir('e_comp')">← todas as categorias</a></div>`;
+  h+=`<h3 style="margin:6px 0 10px">${cat.icone} ${esc(cat.rotulo)} <span class="cnt">${fmtN(gs.length)} de ${fmtN(cat.n)}</span></h3>`;
+  h+=`<div class="chips" style="margin:0 0 4px">
+    ${[[0,'toda dispersão'],[2,'≥2× (paga o dobro)'],[5,'≥5×'],[10,'≥10× (grave)']].map(([v,r])=>`<button type="button" class="chip ${_compDisp===v?'on':''}" onclick="_compDisp=${v};ir('e_comp')">${r}</button>`).join('')}</div>
+  <div class="chips" style="margin:0 0 6px">
+    ${[['dispersao','↕ por dispersão'],['mediana','R$ por mediana'],['compras','nº de compras']].map(([v,r])=>`<button type="button" class="chip ${_compOrd===v?'on':''}" onclick="_compOrd='${v}';ir('e_comp')">${r}</button>`).join('')}</div>`;
+  h+=buscaPag('cat-list','filtrar item dentro da categoria — busca em todos…');
+  h+=listaPaginada('cat-list',gs,_montarGrupoCard,60,g=>(g.exemplo||'').slice(0,60));
+  return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
+}
+async function _compBuscar(){
+  let h=_compEsfChips();
+  h+=`<div class="search"><span class="mag"></span><input id="comp-in" placeholder="digite o item: luva, computador, café, cimento, detergente…" value="${esc(_compTermo)}" onkeydown="if(event.key==='Enter'){_compTermo=this.value;_compGrupo=null;ir('e_comp')}"></div>
+    <div class="dim" style="margin:6px 0">Enter para buscar. Exemplos que existem na base: <a onclick="_compTermo='luva';_compGrupo=null;ir('e_comp')">luva</a> · <a onclick="_compTermo='computador';_compGrupo=null;ir('e_comp')">computador</a> · <a onclick="_compTermo='cafe';_compGrupo=null;ir('e_comp')">café</a> · <a onclick="_compTermo='cimento';_compGrupo=null;ir('e_comp')">cimento</a> — ou navegue pelo <a onclick="_compView='catalogo';_compCat=null;ir('e_comp')">🗂️ Catálogo</a>, sem precisar adivinhar o termo.</div>`;
+  if(_compGrupo)return h+await _compItemView('voltar à busca');
+  if(!_compTermo)return h;
+  const d=await J('/api/comparador/buscar?esfera='+(_compEsf==='todas'?'':_compEsf)+'&termo='+encodeURIComponent(_compTermo));
+  if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
+  if(!d.grupos.length){
+    h+=card(`<div class="warn">Nenhum item casa TODAS as palavras de "${esc(_compTermo)}".</div>`);
+    if((d.parecidos||[]).length){
+      h+=`<div class="dim" style="margin:10px 0 8px">Mas estes itens casam PARTE do termo — talvez seja um destes:</div>`;
+      h+=`<div class="grid">`+d.parecidos.map(_montarGrupoCard).join('')+`</div>`;
+    }else h+=`<div class="dim" style="margin:8px 0">Dica: o <a onclick="_compView='catalogo';_compCat=null;ir('e_comp')">🗂️ Catálogo</a> lista tudo o que é comparável, por categoria.</div>`;
+    return h;
+  }
   h+=`<div class="dim" style="margin-bottom:8px">${d.n} grupo(s) — clique para ver quem paga mais/menos:</div>`;
-  h+=`<div class="grid">`+d.grupos.map(g=>card(
-    `<div onclick='_compGrupo=${JSON.stringify({grupo:g.grupo,un:_unOf(g)})};ir("e_comp")' style="cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center">
-      <div style="min-width:0"><div style="font-weight:600">${esc(g.exemplo)} <span class="dim">/ ${esc(g.unidade_medida||'')}</span></div>
-      <div class="dim" style="font-size:12.5px">${g.n_orgaos} órgãos · ${g.n_compras} compras · mediana ${fmtR(g.mediana)}</div></div>
-      <div class="right"><div class="num" style="font-weight:800;color:${g.dispersao>=5?'var(--rose)':'var(--amber)'}">${g.dispersao}×</div><div class="dim">${fmtR(g.min)}–${fmtR(g.max)}</div></div></div>`,
-    g.dispersao>=10?'hl':'')).join('')+`</div>`;
+  h+=`<div class="grid">`+d.grupos.map(_montarGrupoCard).join('')+`</div>`;
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
 function _unOf(g){return '';}  // unidade já embutida no grupo; comparar aceita todas as unidades do grupo
