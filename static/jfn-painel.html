@@ -1337,6 +1337,7 @@ async function renderComissionadosPref(){
 }
 async function renderBeneficiosPref(chips){
   const d=await J('/api/pcrj/beneficios_vinculo');
+  chips=(chips||'')+acoesAba('beneficios');
   let h=cover('prefeitura','Servidores × benefício social — DURANTE o vínculo',
     'Pessoas que recebiam <b>Bolsa Família, BPC, Auxílio Brasil ou Auxílio Emergencial</b> (programas para quem tem baixa renda) <b>no mesmo mês</b> em que tinham salário como servidor/comissionado da Prefeitura ou Câmara do Rio. Meses fora do vínculo NÃO entram (justiça na contagem). É <b>indício de renda incompatível a apurar</b> — nunca acusação: pode haver dependente no mesmo CPF, homônimo ou erro de base. Cada linha traz o <b>nome</b>, o órgão, o cargo e o período.','🍞')+(chips||'');
   if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
@@ -1375,7 +1376,7 @@ let _gastosDet='';
 async function renderGastosPref(){
   const d=await J('/api/pcrj/gastos_achados');
   let h=cover('prefeitura','Perícia de gastos — detectores D7–D12',
-    'Detectores determinísticos sobre a despesa por credor (ContasRio 2019-2023) e contratos/licitações municipais (PNCP 2024+): fracionamento, credor recém-aberto, sócio na folha, rede societária, aditivo acima do limite e co-endereço entre concorrentes (red flag OCDE 2025). Cada achado carrega a evidência e a base normativa; a perícia completa em PDF sai pelo runner com o colegiado de 5 lentes.','✂️');
+    'Detectores determinísticos sobre a despesa por credor (ContasRio 2019-2023) e contratos/licitações municipais (PNCP 2024+): fracionamento, credor recém-aberto, sócio na folha, rede societária, aditivo acima do limite e co-endereço entre concorrentes (red flag OCDE 2025). Cada achado carrega a evidência e a base normativa; a perícia completa em PDF sai pelo runner com o colegiado de 5 lentes.','✂️')+acoesAba('gastos_pcrj');
   if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')} — rode tools/pcrj_pericia_gastos.py</div>`);
   const dets=Object.keys(d.detectores||{});
   h+=`<div class="grid g2">`+dets.map(k=>{const m=_DET_ROTULO[k]||['📌',k,''];
@@ -1405,7 +1406,7 @@ async function renderFantasmasPref(){
   if(_fantFaixa)qsF.set('faixa',_fantFaixa);
   const d=await J('/api/pcrj/fantasmas?'+qsF.toString());
   let h=cover('prefeitura','Sinais de servidor-fantasma — Câmara/Prefeitura',
-    'Oito sinais determinísticos (múltiplos gabinetes, cargo incompatível, vínculos concomitantes, geografia impossível…) somados em escore. É funil de priorização OSINT: a prova definitiva é o ponto/frequência interno, que só a apuração formal alcança.','👻');
+    'Oito sinais determinísticos (múltiplos gabinetes, cargo incompatível, vínculos concomitantes, geografia impossível…) somados em escore. É funil de priorização OSINT: a prova definitiva é o ponto/frequência interno, que só a apuração formal alcança.','👻')+acoesAba('fantasmas_pcrj');
   if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const fx=d.faixas||{};
   h+=`<div class="grid g2">${kpi(fmtN(fx.forte),'Faixa FORTE','var(--rose)','🔴')}${kpi(fmtN(fx.verificar),'Verificar','var(--amber)','🟡')}${kpi(fmtN(fx.fraco),'Fraco',null,'🟢')}${kpi(esc((d.gerado_em||'').slice(0,10)),'Gerado em',null,'🗓️')}</div>`;
@@ -1457,7 +1458,7 @@ async function renderContratosPref(){
     return h;
   }
   const d=await J('/api/certames/lista?esfera=prefeitura&limite=600');
-  let h=cover('prefeitura','Contratações do município — cada uma com a sua análise','Certames da PREFEITURA DO RIO na base local, cada um com o <b>Índice de Direcionamento</b> (0-100) e os <b>temas</b> (7 famílias: transparência, competição, conluio, fraude cadastral, preço, execução, sessão/ata) onde acendeu sinal. Toque num card para a análise completa das 7 famílias. Certame sem análise = INDISPONÍVEL (≠ 0) — a cobertura cresce com o enxame.','📄')+chips;
+  let h=cover('prefeitura','Contratações do município — cada uma com a sua análise','Certames da PREFEITURA DO RIO na base local, cada um com o <b>Índice de Direcionamento</b> (0-100) e os <b>temas</b> (7 famílias: transparência, competição, conluio, fraude cadastral, preço, execução, sessão/ata) onde acendeu sinal. Toque num card para a análise completa das 7 famílias. Certame sem análise = INDISPONÍVEL (≠ 0) — a cobertura cresce com o enxame.','📄')+chips+acoesAba('contratos_analise');
   if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const its=d.itens||[],rs=d.resumo||{};
   h+=`<div class="grid g2">${kpi(fmtN(rs.total),'Certames na base',null,'📄')}${kpi(fmtN(rs.analisados),'Com análise (índice calculado)','var(--amber)','🧮')}</div>`;

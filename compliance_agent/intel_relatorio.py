@@ -317,6 +317,127 @@ def _b_certames(d):
             f"{d.get('mediana_pares') if d.get('mediana_pares') is not None else '—'})", secoes, d)
 
 
+def _d_beneficios(p):
+    from compliance_agent.cruzamentos_intel import ler_cache_intel
+    d = ler_cache_intel("beneficios_vinculo") or {}
+    if not d.get("ok"):
+        return {"ok": False, "erro": "cache beneficios_vinculo ainda não gerado"}
+    d.setdefault("n", len(d.get("casos", [])))
+    return d
+
+
+def _b_beneficios(d):
+    r = d.get("resumo", {})
+    ls = [f"<tr><td>{'✓' if x.get('certeza') == 'ALTA' else '?'} {_esc(x['nome'])}</td>"
+          f"<td><small>{_esc((x.get('orgao') or '—')[:38])} · {_esc((x.get('cargo') or '—')[:30])}</small></td>"
+          f"<td><small>{_esc(x.get('beneficios_str') or '—')}</small></td>"
+          f"<td>{_esc(x.get('desde') or '?')}→{_esc(x.get('ate') or '?')} ({x.get('n_meses') or '?'}m)"
+          f"{' · <b>ainda recebe</b>' if x.get('ainda_recebe') else ''}</td></tr>"
+          for x in d.get("casos", [])]
+    return ("Servidores × benefício social — DURANTE o vínculo (Prefeitura/Câmara)",
+            f"{len(d.get('casos', []))} casos no período ({r.get('n_alta', 0)} com identidade confirmada; "
+            f"{r.get('n_ainda', 0)} ainda recebendo)",
+            [{"titulo": "1. Benefício recebido dentro da janela do vínculo (nível de mês)",
+              "html": _tabela(["Servidor (✓=identidade)", "Órgão · cargo", "Benefícios", "Janela"], ls)}], d)
+
+
+def _d_fantasmas_pcrj(p):
+    import sqlite3
+    con = sqlite3.connect(f"file:{p.replace('compliance.db','pcrj.db')}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        it = [dict(r) for r in con.execute(
+            "SELECT nome, gabinetes, cargos_camara, sinais, score, faixa, homonimo "
+            "FROM pcrj_fantasma_servidor ORDER BY score DESC")]
+    finally:
+        con.close()
+    return {"ok": True, "itens": it, "n": len(it),
+            "ressalva": "Funil de priorização OSINT (8 sinais determinísticos) — a prova definitiva "
+                        "é o ponto/frequência interno, que só a apuração formal alcança."}
+
+
+def _b_fantasmas_pcrj(d):
+    ls = [f"<tr><td>{'🔴' if x['faixa'] == 'forte' else '🟡' if x['faixa'] == 'verificar' else '⚪'} "
+          f"{x['score']}</td><td>{_esc(x['nome'])}{' ⚠ homônimo?' if x.get('homonimo') else ''}</td>"
+          f"<td><small>{_esc((x.get('gabinetes') or '—')[:44])}</small></td>"
+          f"<td><small>{_esc((x.get('sinais') or '')[:120])}</small></td></tr>"
+          for x in d.get("itens", [])[:1500]]
+    return ("Sinais de servidor-fantasma — Câmara/Prefeitura do Rio",
+            f"{d.get('n', 0)} servidores com sinal, ordenados por score",
+            [{"titulo": "1. Escore composto (8 sinais determinísticos)",
+              "html": _tabela(["Faixa/score", "Servidor", "Gabinetes", "Sinais"], ls)}], d)
+
+
+def _d_gastos_pcrj(p):
+    import sqlite3
+    con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(
+            """SELECT tipo, severidade, titulo, descricao, MAX(id) id FROM alertas
+               WHERE tipo LIKE 'pcrj_d%' GROUP BY titulo
+               ORDER BY CASE severidade WHEN 'alta' THEN 0 WHEN 'media' THEN 1 ELSE 2 END, id DESC
+            """).fetchall()
+    finally:
+        con.close()
+    it = [dict(r) for r in rows]
+    return {"ok": True, "itens": it, "n": len(it),
+            "ressalva": "Perícia determinística D7-D12 sobre despesa por credor (CGM) + PNCP "
+                        "municipal. Indício ≠ acusação; match por NOME vem sinalizado."}
+
+
+def _b_gastos_pcrj(d):
+    ls = [f"<tr><td>{'🔴' if x['severidade'] == 'alta' else '🟡' if x['severidade'] == 'media' else '⚪'}</td>"
+          f"<td>{_esc(x['tipo'].replace('pcrj_', ''))}</td><td>{_esc(x['titulo'])}"
+          f"<br><small>{_esc((x.get('descricao') or '')[:220])}</small></td></tr>"
+          for x in d.get("itens", [])[:1500]]
+    return ("Perícia de gastos da Prefeitura — achados D7-D12",
+            f"{d.get('n', 0)} achados (fracionamento, credor recém-aberto, sócio na folha, "
+            "rede entre concorrentes, aditivo estourado, coendereço)",
+            [{"titulo": "1. Achados por severidade", "html": _tabela(["Sev.", "Detector", "Achado"], ls)}], d)
+
+
+def _d_contratos_analise(p):
+    import json as _json
+    import sqlite3
+    con = sqlite3.connect(f"file:{p}?mode=ro", uri=True)
+    con.row_factory = sqlite3.Row
+    try:
+        rows = con.execute(
+            """SELECT ed.numero_controle_pncp nc, ed.ano, ed.objeto, ed.valor_estimado,
+                      ci.score, ci.faixa, ci.confianca, ci.drivers_json
+               FROM edital_documento ed JOIN certame_indice ci
+               ON ci.certame = ed.numero_controle_pncp
+               WHERE substr(ed.orgao_cnpj,1,8) IN ('42498733','42498600') AND ci.confianca > 0
+               ORDER BY ci.prioridade DESC""").fetchall()
+    finally:
+        con.close()
+    it = []
+    for r in rows:
+        drivers = []
+        try:
+            drivers = [f"{x['familia']}: {x['flag']}" for x in _json.loads(r["drivers_json"] or "[]")]
+        except (ValueError, TypeError, KeyError):
+            pass
+        it.append({**{k: r[k] for k in ("nc", "ano", "objeto", "valor_estimado", "score", "faixa",
+                                        "confianca")}, "drivers": drivers})
+    return {"ok": True, "itens": it, "n": len(it),
+            "ressalva": "Só certames com confiança>0 (≥1 família analisável) — indexado sem análise "
+                        "= INDISPONÍVEL (≠ 0). Índice determinístico e auditável; indício ≠ acusação."}
+
+
+def _b_contratos_analise(d):
+    ls = [f"<tr><td>{'🔴' if x['faixa'] in ('ALTO', 'EXTREMO') else '🟡' if x['faixa'] == 'MEDIO' else '⚪'} "
+          f"{x['score']:.0f}</td><td><small>{_esc(x['nc'])}</small><br>{_esc((x['objeto'] or '—')[:110])}</td>"
+          f"<td style='text-align:right'>{_rs(x['valor_estimado']) if x['valor_estimado'] else '—'}</td>"
+          f"<td><small>{_esc('; '.join(x['drivers'][:4]) or '—')}</small></td></tr>"
+          for x in d.get("itens", [])[:1500]]
+    return ("Contratações Estado + Município — cada certame com a sua análise",
+            f"{d.get('n', 0)} certames com Índice de Direcionamento calculado (temas nas 7 famílias)",
+            [{"titulo": "1. Certames analisados, por prioridade",
+              "html": _tabela(["Índice", "Certame / objeto", "Valor estimado", "O que disparou"], ls)}], d)
+
+
 def _b_capital(d):
     ls = [f"<tr><td>{_esc(a['nome'])}<br><small>{_esc(a['cnpj_fmt'])}</small></td>"
           f"<td style='text-align:right'>{_rs(a['capital'])}</td>"
@@ -454,6 +575,10 @@ def _detectores():
         "comunidades": (_d_comunidades, _b_comunidades, "ALTO"),
         "retro": (_d_retro, _b_retro, "MÉDIO"),
         "certames": (_d_certames, _b_certames, "ALTO"),
+        "beneficios": (_d_beneficios, _b_beneficios, "MÉDIO"),
+        "fantasmas_pcrj": (_d_fantasmas_pcrj, _b_fantasmas_pcrj, "ALTO"),
+        "gastos_pcrj": (_d_gastos_pcrj, _b_gastos_pcrj, "ALTO"),
+        "contratos_analise": (_d_contratos_analise, _b_contratos_analise, "ALTO"),
         "capital_incompativel": (lambda p: C.capital_incompativel(db_path=p, limite=L), _b_capital, "ALTO"),
         "prioridade_valor": (lambda p: C.prioridade_valor(db_path=p, limite=L), _b_prioridade, "ALTO"),
     }
