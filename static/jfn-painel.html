@@ -524,6 +524,27 @@ async function gerarPdfIntel(tipo,el){
 const acoesAba=(tipo,extra)=>`<div class="btns" style="margin:-4px 0 14px">${btnPdf(tipo)}${extra||''}</div>`;
 function toggle(el){el.classList.toggle('open');}
 function filtrar(inp,sel){const q=inp.value.toLowerCase();document.querySelectorAll(sel).forEach(c=>{c.style.display=c.textContent.toLowerCase().includes(q)?'':'none';});}
+// ═══ LISTA PAGINADA incremental — nunca trava o DOM (lote pequeno por vez) e nunca esconde
+// dado atrás de um cap fixo (o resto sempre alcançável via "carregar mais", não perdido) ═══
+let _pagState={};
+function _pagRenderInner(id){
+  const st=_pagState[id];if(!st)return'';
+  const total=st.itens.length;
+  const corpo=st.itens.slice(0,st.mostrados).map(st.montarCard).join('');
+  const restam=total-st.mostrados;
+  const mais=restam>0?`<div style="text-align:center;margin:14px 0"><button class="btn ghost" onclick="_pagMais('${id}')">Carregar mais (${fmtN(restam)} restante${restam===1?'':'s'} de ${fmtN(total)})</button></div>`:'';
+  return `<div class="grid">${corpo}</div>${mais}`;
+}
+function _pagMais(id){
+  const st=_pagState[id];if(!st)return;
+  st.mostrados=Math.min(st.mostrados+st.lote,st.itens.length);
+  const wrap=$(id+'-wrap');if(wrap)wrap.innerHTML=_pagRenderInner(id);
+}
+function listaPaginada(id,itens,montarCard,lote){
+  lote=lote||60;
+  _pagState[id]={itens,montarCard,lote,mostrados:Math.min(lote,itens.length)};
+  return `<div id="${id}-wrap">${_pagRenderInner(id)}</div>`;
+}
 // ordena qualquer lista por NOME do fornecedor (A→Z) e volta à ordem original (por risco/valor)
 function ordenar(sel,btn){
   const cont=document.querySelector(String(sel).split(' ')[0]); if(!cont)return;
@@ -1241,17 +1262,16 @@ async function renderComissionadosPref(){
     <button type="button" class="chip ${_comisView==='cand'?'on':''}" onclick="_comisView='cand';ir('p_comis')">Foram candidatos</button>
     <button type="button" class="chip ${_comisView==='benef'?'on':''}" onclick="_comisView='benef';ir('p_comis')">Benefício × vínculo</button></div>`;
   if(_comisView==='benef')return renderBeneficiosPref(chips);
-  const d=await J('/api/pcrj/comissionados_candidatos?limite=600');
+  const d=await J('/api/pcrj/comissionados_candidatos?limite=1000');
   let h=cover('prefeitura','Comissionados da Prefeitura que foram candidatos',
     'Cruzamento da folha de cargos de confiança da Prefeitura do Rio com as candidaturas registradas no TSE. Cargo de confiança ocupado por quem disputa eleição é o retrato do aparelhamento político da máquina. Cada card é <b>uma pessoa</b>, com o histórico completo de nomeações — não mais uma linha por vínculo.','🗳️')+chips+acoesAba('comissionados');
   if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const it=d.comissionados||[];  // agora 1 item por PESSOA, com postos[] e candidaturas[]
-  const MOSTRA=150;  // cap de DOM: 600 cards de uma vez travava o browser remoto (pelo túnel)
   const nCidades=new Set(it.flatMap(x=>(x.candidaturas||[]).map(c=>c.cidade)).filter(Boolean)).size;
   h+=`<div class="grid g2">${kpi(fmtN(d.n_pessoas||it.length),'Pessoas ex-candidatas','var(--amber)','🎖️')}${kpi(fmtN(nCidades),'Cidades de candidatura',null,'🗺️')}</div>`;
-  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, cargo, órgão, cidade…" oninput="filtrar(this,'#cc-list .card')"></div>`;
-  if(it.length>MOSTRA)h+=`<div class="note" style="margin-top:8px">Mostrando as <b>${MOSTRA}</b> primeiras de <b>${fmtN(it.length)}</b> pessoas — use o filtro acima para achar um nome, cargo ou cidade específicos.</div>`;
-  h+=`<div id="cc-list" class="grid">`+it.slice(0,MOSTRA).map(x=>{
+  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, cargo, órgão, cidade (só no que já carregou)…" oninput="filtrar(this,'#cc-list-wrap .card')"></div>`;
+  if(d.truncado)h+=`<div class="note" style="margin-top:8px">Base tem mais pessoas do que o teto do servidor (1000) — caso raro; avise se precisar de mais.</div>`;
+  const _montarCC=x=>{
     const postos=(x.postos||[]).map(p=>`<div class="dim" style="margin-top:2px">${esc(p.cargo||'—')} @ ${esc((p.orgao||'—').slice(0,50))} — ${esc(p.admissao||'?')}${p.exoneracao?' → '+esc(p.exoneracao):' · ativo'}</div>`).join('');
     const cands=(x.candidaturas||[]).map(c=>`<span class="tag amber">${esc(c.cargo||'?')} ${esc(String(c.ano||''))}${c.cidade?' · '+esc(c.cidade):''}</span>`).join(' ');
     const homon=x.homonimo_provavel?` <span class="tag" title="candidatou em 3+ cidades — provável homônimo, não a mesma pessoa">homônimo provável</span>`:'';
@@ -1260,7 +1280,8 @@ async function renderComissionadosPref(){
       <div style="font-weight:700">${esc(x.nome_pcrj)}${x.n_postos>1?` <span class="tag" style="font-weight:400">${x.n_postos} nomeações</span>`:''}${homon}</div>
       ${postos}</div>
       <div class="right" style="text-align:right">${cands}</div></div>`);
-  }).join('')+`</div>`;
+  };
+  h+=listaPaginada('cc-list',it,_montarCC,60);
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
   return h;
 }
@@ -1276,8 +1297,8 @@ async function renderBeneficiosPref(chips){
       ${kpi(fmtN(r.n_nomeados),'Comissionados/nomeados','var(--amber)','🎖️')}${kpi(fmtN(r.n_ainda),'Benefício ainda ativo','var(--rose)','⏰')}
       ${kpi(fmtN(r.n_bf),'Bolsa Família',null,'🍞')}${kpi(fmtN(r.n_bpc),'BPC',null,'♿')}
       ${kpi(esc(r.cobertura_benef||'—'),'Cobertura benefícios',null,'📅')}${kpi(esc(r.ultima||'—'),'Última competência',null,'🗓️')}</div>`;
-  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, órgão, cargo, partido…" oninput="filtrar(this,'#bv-list .card')"></div>`;
-  h+=`<div id="bv-list" class="grid">`+(d.casos||[]).slice(0,120).map(x=>{
+  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, órgão, cargo, partido (só no que já carregou — carregue mais se não achar)…" oninput="filtrar(this,'#bv-list-wrap .card')"></div>`;
+  const _montarBV=x=>{
     const idOk=x.certeza==='ALTA';
     const selo=idOk?'<span class="sev alta" title="um só servidor com este nome + CPF bate — é esta pessoa">identidade ✓</span>'
                   :'<span class="sev media" title="nome comum — confirmar CPF antes de usar">conferir homônimo</span>';
@@ -1289,7 +1310,8 @@ async function renderBeneficiosPref(chips){
       <div class="right">${selo}
       ${x.ainda_recebe?'<div style="margin-top:5px"><span class="tag rose" title="o benefício continua ativo na última competência">ainda recebe</span></div>':''}</div></div>
     <div class="kv" style="margin-top:8px"><span class="k">${esc(x.beneficios_str||'benefício')}</span><b>${esc(x.desde||'')} → ${esc(x.ate||'')} · ${fmtN(x.n_meses)} meses no vínculo</b></div>`,
-    idOk?'hl':'');}).join('')+`</div>`;
+    idOk?'hl':'');};
+  h+=listaPaginada('bv-list',d.casos||[],_montarBV,60);
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
   return h;
 }
@@ -1329,7 +1351,9 @@ async function renderGastosPref(){
 }
 let _fantFaixa='';
 async function renderFantasmasPref(){
-  const d=await J('/api/pcrj/fantasmas'+(_fantFaixa?'?faixa='+_fantFaixa:''));
+  const qsF=new URLSearchParams({limite:800});  // 800 = teto real do servidor (rotas/investigacao.py)
+  if(_fantFaixa)qsF.set('faixa',_fantFaixa);
+  const d=await J('/api/pcrj/fantasmas?'+qsF.toString());
   let h=cover('prefeitura','Sinais de servidor-fantasma — Câmara/Prefeitura',
     'Oito sinais determinísticos (múltiplos gabinetes, cargo incompatível, vínculos concomitantes, geografia impossível…) somados em escore. É funil de priorização OSINT: a prova definitiva é o ponto/frequência interno, que só a apuração formal alcança.','👻');
   if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
@@ -1337,16 +1361,16 @@ async function renderFantasmasPref(){
   h+=`<div class="grid g2">${kpi(fmtN(fx.forte),'Faixa FORTE','var(--rose)','🔴')}${kpi(fmtN(fx.verificar),'Verificar','var(--amber)','🟡')}${kpi(fmtN(fx.fraco),'Fraco',null,'🟢')}${kpi(esc((d.gerado_em||'').slice(0,10)),'Gerado em',null,'🗓️')}</div>`;
   h+=`<div class="chips" style="margin-top:12px">`+['','forte','verificar','fraco'].map(f=>
     `<button type="button" class="chip ${_fantFaixa===f?'on':''}" onclick="_fantFaixa='${f}';ir('p_fant')">${f||'Todas as faixas'}</button>`).join('')+`</div>`;
-  h+=`<div class="search"><span class="mag"></span><input placeholder="filtrar por nome, gabinete…" oninput="filtrar(this,'#pf-list .card')"></div>`;
+  h+=`<div class="search"><span class="mag"></span><input placeholder="filtrar por nome, gabinete (só no que já carregou — carregue mais se não achar)…" oninput="filtrar(this,'#pf-list-wrap .card')"></div>`;
   const _itF=d.itens||[];
-  if(_itF.length>150)h+=`<div class="note" style="margin-top:8px">Mostrando os <b>150</b> primeiros de <b>${fmtN(_itF.length)}</b> — filtre por nome/gabinete ou use as faixas acima.</div>`;
-  h+=`<div id="pf-list" class="grid">`+_itF.slice(0,150).map(x=>card(
+  const _montarF=x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
       <div style="font-weight:700">${esc(x.nome)}${x.homonimo?' <span class="tag amber" title="nome existe em ≥3 municípios — confirmar por CPF/matrícula">homônimo?</span>':''}</div>
       <div class="muted" style="font-size:12.5px;margin-top:2px">${esc((x.gabinetes||'—').slice(0,60))} · ${esc((x.cargos_camara||'—').slice(0,40))}</div>
       <div class="dim" style="margin-top:4px">${esc((x.sinais||'').slice(0,200))}</div></div>
       <div class="right"><span class="sev ${x.faixa==='forte'?'alta':'media'}">${esc(x.faixa)}</span><div class="dim" style="margin-top:4px">score ${x.score}</div></div></div>`,
-    x.faixa==='forte'?'hl':'')).join('')+`</div>`;
+    x.faixa==='forte'?'hl':'');
+  h+=listaPaginada('pf-list',_itF,_montarF,60);
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
   return h;
 }

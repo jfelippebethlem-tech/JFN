@@ -1843,9 +1843,11 @@ def _beneficios_vinculo_resumo() -> dict:
     # depois por duração; ordenar só por meses afogava os 538 ALTA sob 12k casos MÉDIA
     regs = sorted(r.get("registros", []),
                   key=lambda x: (0 if x.get("certeza") == "ALTA" else 1, -x.get("n_meses", 0)))
+    # sem cap: os 300 escondiam 12k+ casos do painel (só ~2,4% visível); o cap de DOM
+    # fica por conta do client (paginar() incremental) — aqui o cache guarda TUDO.
     casos = [{k: x.get(k) for k in ("nome", "poder", "orgao", "cargo", "vinculo", "partido",
                                     "beneficios_str", "desde", "ate", "n_meses", "ainda_recebe",
-                                    "certeza", "situacao", "natureza")} for x in regs[:300]]
+                                    "certeza", "situacao", "natureza")} for x in regs]
     return {"ok": True, "n_casos": len(regs), "casos": casos,
             "resumo": {k: r.get(k) for k in ("n_alta", "n_media", "n_nomeados", "n_nao_nomeados",
                                              "n_vinculo_indet", "n_inativos", "n_bpc", "n_bf",
