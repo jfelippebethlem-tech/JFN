@@ -379,6 +379,12 @@
   .search .az{position:absolute;right:6px;top:5px;font:500 11px/1 var(--mono);color:var(--accent);background:color-mix(in oklch,var(--accent) 8%,transparent);border:1px solid color-mix(in oklch,var(--accent) 25%,transparent);border-radius:6px;padding:7px 10px;cursor:pointer;letter-spacing:.4px;transition:.14s}
   .search .az:hover{background:color-mix(in oklch,var(--accent) 15%,transparent)}
   .search .az.on{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .ac-box{display:none;position:absolute;left:0;right:0;top:100%;margin-top:4px;background:var(--card2);border:1px solid var(--bd2);border-radius:var(--r);box-shadow:0 8px 24px -8px rgba(0,0,0,.5);z-index:40;max-height:280px;overflow-y:auto}
+  .ac-box.on{display:block}
+  .ac-item{padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--bd)}
+  .ac-item:last-child{border-bottom:none}
+  .ac-item:hover,.ac-item.sel{background:color-mix(in oklch,var(--accent) 12%,transparent)}
+  .ac-item .dim{display:block;font-size:11.5px;margin-top:1px}
   .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
   .chip{appearance:none;font-family:inherit;border:1px solid var(--bd2);background:transparent;color:var(--mut);border-radius:7px;padding:6px 12px;font-size:12px;font-weight:500;cursor:pointer;transition:.12s}
   .chip:hover{border-color:color-mix(in oklch,var(--esf) 50%,transparent);color:var(--tx2);background:var(--card);
@@ -1433,13 +1439,44 @@ async function renderPericias(){
   return h;
 }
 
+// ═══ AUTOCOMPLETE genérico (empresas + nomeados, /api/sugestoes) ═══
+let _acTimer=null,_acItens=[],_acCb=null,_acSelIdx=-1;
+function _acRenderSel(box){[...box.querySelectorAll('.ac-item')].forEach((el,i)=>el.classList.toggle('sel',i===_acSelIdx));}
+function _acPick(i){const it=_acItens[i];if(!it)return;document.querySelectorAll('.ac-box.on').forEach(b=>b.classList.remove('on'));if(_acCb)_acCb(it);}
+function autocompletar(input,boxSel,onPick){
+  clearTimeout(_acTimer);
+  const box=document.querySelector(boxSel);if(!box)return;
+  const q=input.value.trim();_acSelIdx=-1;
+  if(q.length<2){box.classList.remove('on');return;}
+  _acTimer=setTimeout(async()=>{
+    const d=await J('/api/sugestoes?q='+encodeURIComponent(q));
+    if(input.value.trim()!==q)return;  // resposta atrasada de digitação antiga — descarta
+    const emp=(d.empresas||[]).map(e=>({tipo:'empresa',nome:e.nome,cnpj:e.cnpj,sub:e.cnpj||'',...e}));
+    const nom=(d.nomeados||[]).map(n=>({tipo:'nomeado',nome:n.nome,sub:`${n.cargo||''} · ${(n.orgao||'').slice(0,30)} (${n.esfera})`,...n}));
+    _acItens=[...emp,...nom];_acCb=onPick;
+    if(!_acItens.length){box.classList.remove('on');return;}
+    box.innerHTML=_acItens.map((it,i)=>`<div class="ac-item" data-i="${i}" onmousedown="event.preventDefault();_acPick(${i})">${it.tipo==='empresa'?'🏢':'👤'} <b>${esc(it.nome||'')}</b><span class="dim">${esc(it.sub||'')}</span></div>`).join('');
+    box.classList.add('on');
+  },250);
+}
+function acKeydown(ev,input,boxSel,onEnterSemSelecao){
+  const box=document.querySelector(boxSel);
+  if(!box||!box.classList.contains('on')){if(ev.key==='Enter')onEnterSemSelecao();return;}
+  if(ev.key==='ArrowDown'){ev.preventDefault();_acSelIdx=Math.min(_acSelIdx+1,_acItens.length-1);_acRenderSel(box);}
+  else if(ev.key==='ArrowUp'){ev.preventDefault();_acSelIdx=Math.max(_acSelIdx-1,0);_acRenderSel(box);}
+  else if(ev.key==='Enter'){if(_acSelIdx>=0){ev.preventDefault();_acPick(_acSelIdx);}else{box.classList.remove('on');onEnterSemSelecao();}}
+  else if(ev.key==='Escape'){box.classList.remove('on');}
+}
 // ═══ BUSCA universal ═══
 let _bq='';
 async function renderBuscar(){
   return cover('geral','Busca universal','Procure por empresa, CNPJ, órgão, contrato ou termo. Clique num resultado para o dossiê 360.','🔎')+
-    `<div class="search"><span class="mag"></span><input id="bq" placeholder="nome, CNPJ ou objeto — ex.: engenharia, limpeza, 42498733000148…" value="${esc(_bq)}" onkeydown="if(event.key==='Enter')fazBusca()"></div>
+    `<div class="search"><span class="mag"></span><input id="bq" placeholder="nome, CNPJ ou objeto — ex.: engenharia, limpeza, 42498733000148…" value="${esc(_bq)}"
+       oninput="autocompletar(this,'#bq-ac',(it)=>{$('bq').value=it.nome;if(it.tipo==='empresa'&&it.cnpj)abrirDossie(it.cnpj,it.nome);else fazBusca();})"
+       onkeydown="acKeydown(event,this,'#bq-ac',fazBusca)">
+     <div id="bq-ac" class="ac-box"></div></div>
      <div class="btns" style="margin-top:-2px"><button class="btn accent" onclick="fazBusca()">Buscar</button></div>
-     <div id="bres" style="margin-top:14px">${_bq?spin():'<div class="dim" style="text-align:center;padding:20px">Digite acima e toque em Buscar.</div>'}</div>`;
+     <div id="bres" style="margin-top:14px">${_bq?spin():'<div class="dim" style="text-align:center;padding:20px">Digite acima e toque em Buscar (ou escolha uma sugestão).</div>'}</div>`;
 }
 async function fazBusca(){
   const q=($('bq')||{}).value?.trim()||'';if(!q)return;_bq=q;const box=$('bres');box.innerHTML=spin('Buscando "'+esc(q)+'"…');

@@ -696,6 +696,57 @@ async def api_compliance_buscar(q: str = "", tabela: str = "todos"):
         return JSONResponse(content={"error": str(e)}, status_code=500)
 
 
+@router.get("/api/sugestoes")
+async def api_sugestoes(q: str = "", limite: int = 8):
+    """Autocomplete leve: empresas (favorecido_resumo, prefixo no nome ou no CNPJ) +
+    nomeados (registros_folha=estado, pcrj_comissionado_candidato=prefeitura). Prefixo
+    de ≥2 caracteres (por palavra, não só início do nome inteiro) — sugestão enquanto
+    digita, não busca completa (isso é o /api/compliance/buscar, no Enter)."""
+    import sqlite3 as _sq
+    termo = (q or "").strip().upper()
+    if len(termo) < 2:
+        return JSONResponse({"ok": True, "empresas": [], "nomeados": []})
+    lim = max(1, min(int(limite or 8), 20))
+    prefixo, meio = f"{termo}%", f"% {termo}%"
+    digitos = "".join(c for c in termo if c.isdigit())
+    empresas: list[dict] = []
+    nomeados: list[dict] = []
+    try:
+        con = _sq.connect(f"file:{RAIZ / 'data' / 'compliance.db'}?mode=ro", uri=True)
+        con.row_factory = _sq.Row
+        if digitos:
+            rows = con.execute(
+                "SELECT favorecido_nome nome, favorecido_cpf cnpj, total_pago FROM favorecido_resumo "
+                "WHERE favorecido_cpf LIKE ? ORDER BY total_pago DESC LIMIT ?", (digitos + "%", lim)).fetchall()
+        else:
+            rows = con.execute(
+                "SELECT favorecido_nome nome, favorecido_cpf cnpj, total_pago FROM favorecido_resumo "
+                "WHERE favorecido_nome LIKE ? OR favorecido_nome LIKE ? "
+                "ORDER BY total_pago DESC LIMIT ?", (prefixo, meio, lim)).fetchall()
+        empresas = [{"nome": r["nome"], "cnpj": r["cnpj"], "total_pago": r["total_pago"]} for r in rows]
+        rows2 = con.execute(
+            "SELECT DISTINCT nome, cargo, orgao_nome FROM registros_folha "
+            "WHERE nome LIKE ? OR nome LIKE ? LIMIT ?", (prefixo, meio, lim)).fetchall()
+        nomeados = [{"nome": r["nome"], "cargo": r["cargo"], "orgao": r["orgao_nome"], "esfera": "estado"}
+                    for r in rows2]
+        con.close()
+    except Exception:  # noqa: BLE001
+        pass  # sugestão é best-effort — indisponibilidade não deve quebrar a caixa de busca
+    try:
+        conp = _sq.connect(f"file:{RAIZ / 'data' / 'pcrj.db'}?mode=ro", uri=True)
+        conp.row_factory = _sq.Row
+        rows3 = conp.execute(
+            "SELECT DISTINCT nome_pcrj nome, cargo_pcrj cargo, orgao_pcrj orgao "
+            "FROM pcrj_comissionado_candidato WHERE nome_pcrj LIKE ? OR nome_pcrj LIKE ? LIMIT ?",
+            (prefixo, meio, lim)).fetchall()
+        nomeados += [{"nome": r["nome"], "cargo": r["cargo"], "orgao": r["orgao"], "esfera": "prefeitura"}
+                     for r in rows3]
+        conp.close()
+    except Exception:  # noqa: BLE001
+        pass
+    return JSONResponse({"ok": True, "empresas": empresas[:lim], "nomeados": nomeados[:lim]})
+
+
 @router.get("/api/conflito")
 async def api_conflito(cnpj: str = "", candidato: str = "", limite: int = 200):
     """Onda 2 — Conflito de interesse: doador TSE ↔ (empresa | SÓCIO da empresa) ↔ OB.
