@@ -796,6 +796,41 @@ async function verCruzamento(cnpj){const out=$('dos-cruz');out.style.display='bl
   const r=await J('/api/cruzamento?cnpj='+cnpj);if(r.erro){out.textContent='⚠ '+r.erro;return;}
   const dd=r.dados||r;out.textContent=`co-endereço: ${(dd.coendereco||[]).length} · indícios: ${(dd.indicios||[]).length}\n`+(dd.socios||[]).slice(0,6).map(s=>'• '+(s.nome||s)).join('\n');}
 
+// ═══ CERTAME — Índice de Direcionamento por temas (7 famílias) ═══
+const _CERT_FAM={transparencia:['📋','Transparência'],competicao:['⚔️','Competição'],conluio:['🤝','Conluio'],
+  fraude_cadastral:['🎭','Fraude cadastral'],preco:['💰','Preço'],execucao:['📈','Execução'],
+  certame_ata:['⚖️','Ata de julgamento']};
+function jsq(s){return String(s==null?'':s).replace(/\\/g,'\\\\').replace(/'/g,"\\'");}
+function fecharCertame(){$('ov').classList.remove('on');}
+async function abrirCertame(certame){
+  if(!certame)return;
+  const ov=$('ov'),sh=$('sheet');ov.classList.add('on');
+  sh.innerHTML=`<span class="x" onclick="fecharCertame()">✕ fechar</span><div class="grab"></div>${spin('Calculando índice de '+esc(certame)+'…')}`;
+  const d=await J('/api/certame/indice?certame='+encodeURIComponent(certame));
+  if(!d.ok){sh.innerHTML=`<span class="x" onclick="fecharCertame()">✕</span><div class="grab"></div>`+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);return;}
+  const ix=d.indice||{},fam=ix.familias||{},sv=ix.matriz_sv||{},drivers=ix.drivers||[];
+  const cor=ix.faixa==='EXTREMO'||ix.faixa==='ALTO'?'var(--rose)':ix.faixa==='MEDIO'?'var(--amber)':'var(--tx2)';
+  let h=`<span class="x" onclick="fecharCertame()">✕ fechar</span><div class="grab"></div>`;
+  h+=`<div style="display:flex;gap:12px;align-items:center"><div style="font-weight:800;font-size:28px;color:${cor}">${(ix.score||0).toFixed(0)}</div>
+      <div style="min-width:0"><div style="font-weight:800;font-size:15px;line-height:1.2">${esc(certame)}</div>
+      <div class="dim">faixa <b>${esc(ix.faixa||'—')}</b> · confiança ${((ix.confianca||0)*100).toFixed(0)}% (${Object.values(fam).filter(f=>f.apuravel).length}/7 famílias apuráveis)</div></div></div>`;
+  if(sv.nivel)h+=`<div style="height:12px"></div>`+card(`<div class="kv"><span class="k">Matriz S×V</span><b>${esc(sv.nivel)} (${sv.severidade}×${sv.verossimilhanca}=${sv.produto})</b></div><div class="kv"><span class="k">Ação recomendada</span><b class="right" style="max-width:64%">${esc(sv.acao||'')}</b></div><div class="dim" style="margin-top:4px">${esc(sv.regua||'')}</div>`);
+  h+=`<div style="height:12px"></div>`+sec('As 7 famílias')+`<div class="grid">`+Object.entries(_CERT_FAM).map(([k,[ic,lbl]])=>{
+    const f=fam[k]||{};
+    if(!f.apuravel)return card(`<div style="display:flex;justify-content:space-between;gap:8px"><div>${ic} ${lbl}</div><div class="dim">INDISPONÍVEL</div></div>`);
+    const v=f.valor||0,cor2=v>=0.5?'var(--rose)':v>=0.25?'var(--amber)':'var(--teal)';
+    return card(`<div style="display:flex;justify-content:space-between;gap:8px;align-items:center"><div>${ic} ${lbl}</div><div style="font-weight:700;color:${cor2}">${(v*100).toFixed(0)}%</div></div>
+      <div style="background:var(--card2);border-radius:6px;height:6px;margin-top:6px;overflow:hidden"><div style="background:${cor2};width:${(v*100).toFixed(0)}%;height:100%"></div></div>`);
+  }).join('')+`</div>`;
+  if(drivers.length)h+=`<div style="height:12px"></div>`+sec('O que disparou (drivers)',drivers.length)+`<div class="grid">`+drivers.map(dr=>{
+    const lbl=(_CERT_FAM[dr.familia]||['📌',dr.familia])[1];
+    return card(`<div style="display:flex;gap:9px;align-items:flex-start"><span class="tag rose">${esc(lbl)}</span><div><div style="font-weight:650;font-size:13.5px">${esc(dr.flag||'')} — ${(dr.valor*100).toFixed(0)}%</div>${dr.evidencia?`<div class="muted" style="font-size:12.5px;margin-top:3px">${esc(dr.evidencia).slice(0,260)}</div>`:''}</div></div>`);
+  }).join('')+`</div>`;
+  if(d.narrativa)h+=`<div style="height:12px"></div>`+card(`<div style="font-size:13.5px;color:var(--mut);white-space:pre-wrap">${esc(d.narrativa).slice(0,1500)}</div>`);
+  h+=`<div class="note">Índice de Direcionamento — indício a apurar, nunca acusação. Fonte: ${esc(d.fonte||'calculado')}${d.gerado_em?', gerado em '+esc(d.gerado_em):''}.</div>`;
+  sh.innerHTML=h;
+}
+
 // ═══ FRESCOR DE FONTES (LEDs) ═══
 async function frescorHtml(){
   const d=await J('/api/fontes/frescor');
@@ -892,7 +927,7 @@ async function renderCertames(){
     const cor=md>=50?'var(--rose)':md>=25?'var(--amber)':'var(--tx2)';
     const nome=x.orgao_nome||x.orgao_cnpj;
     const audit=(x.auditoria_tematica||[]).map(a=>`<span class="tag rose">${esc(a.subtipo)} × ${a.certames} certames</span>`).join(' ');
-    const ancoras=(x.casos_ancora||[]).slice(0,3).map(c=>`<span class="tag ${c.faixa==='ALTO'||c.faixa==='EXTREMO'?'rose':'accent'}" title="${esc(c.certame)}">${c.score.toFixed(0)}·${esc(c.faixa)}</span>`).join(' ');
+    const ancoras=(x.casos_ancora||[]).slice(0,3).map(c=>`<span class="tag ${c.faixa==='ALTO'||c.faixa==='EXTREMO'?'rose':'accent'}" style="cursor:pointer" title="${esc(c.certame)} — clique p/ ver as 7 famílias" onclick="abrirCertame('${jsq(c.certame)}')">${c.score.toFixed(0)}·${esc(c.faixa)}</span>`).join(' ');
     return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
       <div style="min-width:0"><b>${esc(nome)}</b><div class="dim">${esc(x.orgao_cnpj)} · ${fmtN(x.n_certames_indexados)} certames indexados</div></div>
       <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${md.toFixed(0)}</div><div class="dim">mediana · p90 ${x.score_p90!=null?x.score_p90.toFixed(0):'—'}</div></div></div>
@@ -910,7 +945,7 @@ async function renderCertames(){
     h+=`<div class="grid">`+u.unidades.map(x=>{
       const md=x.score_mediana!=null?x.score_mediana:0, dv=x.desvio_vs_pares;
       const cor=md>=50?'var(--rose)':md>=25?'var(--amber)':'var(--tx2)';
-      const anc=(x.casos_ancora||[]).slice(0,3).map(c=>`<span class="tag ${c.faixa==='ALTO'||c.faixa==='EXTREMO'?'rose':'accent'}" title="${esc(c.certame)}">${c.score.toFixed(0)}·${esc(c.faixa)}</span>`).join(' ');
+      const anc=(x.casos_ancora||[]).slice(0,3).map(c=>`<span class="tag ${c.faixa==='ALTO'||c.faixa==='EXTREMO'?'rose':'accent'}" style="cursor:pointer" title="${esc(c.certame)} — clique p/ ver as 7 famílias" onclick="abrirCertame('${jsq(c.certame)}')">${c.score.toFixed(0)}·${esc(c.faixa)}</span>`).join(' ');
       return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
         <div style="min-width:0"><b>${esc(x.unidade)}</b><div class="dim">${fmtN(x.n_certames)} certames · ${x.n_alto_extremo} ALTO/EXTREMO</div></div>
         <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${cor}">${md.toFixed(0)}</div><div class="dim">mediana · p90 ${x.score_p90!=null?x.score_p90.toFixed(0):'—'}</div></div></div>
