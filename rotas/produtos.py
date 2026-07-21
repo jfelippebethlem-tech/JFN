@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import logging
 import asyncio
+import os
 from pathlib import Path
 from typing import Optional
 
@@ -15,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 
 router = APIRouter()
+RAIZ = Path(__file__).resolve().parent.parent
 
 _REL_EM_CURSO: set = set()
 
@@ -584,3 +586,100 @@ async def api_ppp_triagem():
         return JSONResponse(content=await asyncio.to_thread(triagem_ppp.triar_lote, db_path="data/pcrj.db"))
     except Exception as e:  # noqa: BLE001
         return JSONResponse(content={"ok": False, "erro": str(e)}, status_code=500)
+
+
+# ═══ SEI — árvore completa de uma empresa (busca + download em lote) ═══
+# Reusa tools/sei_integra_fila.py --empresa (mesmo lock/browser_lock/resumibilidade dos sweeps SEI
+# já agendados — não reinventa o playbook único). Roda como subprocess destacado (pode levar
+# minutos a horas); o painel acompanha por polling e baixa o que já estiver pronto (parcial > nada).
+_SEI_EMPRESA_EM_CURSO: dict = {}
+
+
+def _sei_processos_empresa(cnpj: str) -> list[str]:
+    from compliance_agent.correlacao_sei import processos_de_fornecedor
+    return sorted({p["numero_sei"] for p in processos_de_fornecedor(cnpj, limite=300) if p.get("numero_sei")})
+
+
+def _sei_arquivado(numero_sei: str) -> bool:
+    import re
+    m = re.search(r"(\d{6})/(\d{6})/(\d{4})", numero_sei or "")
+    if not m:
+        return False
+    d = RAIZ / "data" / "sei_arquivo" / f"{m.group(1)}_{m.group(2)}_{m.group(3)}"
+    return d.is_dir() and (d / "texto").is_dir() and any((d / "texto").glob("*.txt"))
+
+
+@router.post("/api/sei/empresa/iniciar")
+async def api_sei_empresa_iniciar(payload: dict | None = None):
+    """Dispara a busca+download da árvore SEI completa de uma empresa. Background (subprocess
+    destacado): pode levar minutos a horas conforme o nº de processos — acompanhe por
+    /api/sei/empresa/status. Respeita o single-instance dos sweeps SEI (nunca 2 browsers): se
+    outro sweep já estiver com o browser, este pedido fica pendente e roda quando ele soltar."""
+    payload = payload or {}
+    cnpj = "".join(c for c in (payload.get("cnpj") or "") if c.isdigit())
+    if len(cnpj) != 14:
+        return JSONResponse({"ok": False, "erro": "informe um CNPJ (14 dígitos)"}, status_code=400)
+    busca_viva = bool(payload.get("busca_viva"))
+    info = _SEI_EMPRESA_EM_CURSO.get(cnpj)
+    if info and info["proc"].poll() is None:
+        return JSONResponse({"ok": True, "status": "em_curso", "msg": "já está rodando"})
+    import subprocess
+    env = dict(os.environ, SEI_SEM_TG="1", PYTHONPATH=str(RAIZ))
+    cmd = [str(RAIZ / ".venv" / "bin" / "python"), "tools/sei_integra_fila.py",
+           "--empresa", cnpj, "--segundos", "7200"]
+    if busca_viva:
+        cmd.append("--busca-viva")
+    proc = subprocess.Popen(cmd, cwd=str(RAIZ), env=env,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    _SEI_EMPRESA_EM_CURSO[cnpj] = {"proc": proc, "busca_viva": busca_viva}
+    return JSONResponse({"ok": True, "status": "iniciado",
+                         "msg": "Buscando e baixando os processos SEI dessa empresa — acompanhe o "
+                                "progresso; o que já estiver arquivado já pode ser baixado."})
+
+
+@router.get("/api/sei/empresa/status")
+async def api_sei_empresa_status(cnpj: str = ""):
+    """Progresso da árvore SEI de uma empresa: quantos processos existem (via OB paga —
+    processos_de_fornecedor) vs quantos já estão no arquivo compacto. Nota: só enxerga processos
+    sem OB ainda se /iniciar tiver sido chamado com busca_viva=true (Pesquisa Avançada ao vivo)."""
+    cnpj = "".join(c for c in cnpj if c.isdigit())
+    if len(cnpj) != 14:
+        return JSONResponse({"ok": False, "erro": "informe um CNPJ (14 dígitos)"}, status_code=400)
+    procs = _sei_processos_empresa(cnpj)
+    arquivados = [p for p in procs if _sei_arquivado(p)]
+    info = _SEI_EMPRESA_EM_CURSO.get(cnpj)
+    rodando = bool(info and info["proc"].poll() is None)
+    return JSONResponse({"ok": True, "cnpj": cnpj, "n_processos": len(procs),
+                         "n_arquivados": len(arquivados), "processos": procs, "rodando": rodando,
+                         "pronto": len(arquivados) > 0,
+                         "concluido": (not rodando) and len(procs) > 0 and len(arquivados) == len(procs)})
+
+
+@router.get("/api/sei/empresa/zip")
+async def api_sei_empresa_zip(cnpj: str = ""):
+    """ZIP do arquivo compacto (texto+fotos+manifest) de cada processo SEI JÁ arquivado dessa
+    empresa. Baixa o que já tem — não espera os que ainda faltam (parcial > nada; o payload diz
+    honestamente quantos de quantos foram incluídos)."""
+    import re
+    import zipfile
+    cnpj = "".join(c for c in cnpj if c.isdigit())
+    if len(cnpj) != 14:
+        return JSONResponse({"ok": False, "erro": "informe um CNPJ (14 dígitos)"}, status_code=400)
+    procs = _sei_processos_empresa(cnpj)
+    arquivados = [p for p in procs if _sei_arquivado(p)]
+    if not arquivados:
+        return JSONResponse({"ok": False, "erro": "nenhum processo arquivado ainda — dispare "
+                             "/api/sei/empresa/iniciar e acompanhe o status"}, status_code=404)
+    dest_dir = RAIZ / "reports"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    zip_path = dest_dir / f"sei_arvore_{cnpj}.zip"
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for numero in arquivados:
+            m = re.search(r"(\d{6})/(\d{6})/(\d{4})", numero)
+            slug = f"{m.group(1)}_{m.group(2)}_{m.group(3)}"
+            pasta = RAIZ / "data" / "sei_arquivo" / slug
+            for f in pasta.rglob("*"):
+                if f.is_file():
+                    zf.write(f, arcname=f"{slug}/{f.relative_to(pasta)}")
+    return JSONResponse({"ok": True, "url": f"/reports/{zip_path.name}",
+                         "n_incluidos": len(arquivados), "n_total": len(procs)})

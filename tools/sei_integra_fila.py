@@ -179,12 +179,42 @@ def _fila_reler_por_ob(max_reler: int = 10) -> list[str]:
     return [sei for _, sei in out[:max_reler]]
 
 
+def _fila_empresa(cnpj: str, busca_viva: bool = False) -> list[str]:
+    """Todos os processos SEI de uma empresa: (1) rápido/local — processos_de_fornecedor (só o que
+    já tem OB paga no SIAFE/TFE); (2) --busca-viva soma a Pesquisa Avançada do próprio SEI
+    (tools/sei_busca_mgs.py --interessado, subprocess — reusa o playbook único, não reinventa),
+    que acha TAMBÉM processos sem pagamento ainda. Honesto: se a busca viva falhar, devolve só o
+    que achou localmente (não trava a fila por causa de 1 passo opcional)."""
+    from compliance_agent.correlacao_sei import processos_de_fornecedor
+    out = {p["numero_sei"] for p in processos_de_fornecedor(cnpj, limite=300) if p.get("numero_sei")}
+    if busca_viva:
+        PAUSA.touch(); PAUSA_SEI.touch()
+        _esperar_browser_livre()
+        try:
+            r = subprocess.run([PY, "-m", "tools.sei_busca_mgs", cnpj, "--interessado"],
+                               cwd=RAIZ, env=dict(os.environ, SEI_SEM_TG="1", PYTHONPATH=str(RAIZ)),
+                               capture_output=True, text=True, timeout=180)
+            d = json.loads(r.stdout) if r.stdout.strip() else {}
+            if d.get("ok"):
+                out |= {f"SEI-{k}" if not k.startswith("SEI-") else k for k in (d.get("todos") or {})}
+            else:
+                _log(f"busca-viva p/ {cnpj}: sem sucesso ({d.get('erro', d.get('vm_guard', 'indisponível'))})")
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError) as exc:
+            _log(f"busca-viva p/ {cnpj} falhou: {exc} — seguindo só com o que achou local")
+        finally:
+            PAUSA.unlink(missing_ok=True); PAUSA_SEI.unlink(missing_ok=True)
+    return sorted(out)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--max", type=int, default=int(os.environ.get("INTEGRA_FILA_MAX", "2")))
     ap.add_argument("--fila", default=str(RAIZ / "data" / "bombeiros_sei_fila.json"))
     ap.add_argument("--geral", action="store_true",
                     help="fila = TODO o SEI (cdp bons não arquivados, por valor), não só bombeiros")
+    ap.add_argument("--empresa", default="", help="CNPJ: fila = todos os processos SEI dessa empresa")
+    ap.add_argument("--busca-viva", action="store_true",
+                    help="com --empresa: soma a Pesquisa Avançada ao vivo do SEI (acha os sem OB ainda)")
     ap.add_argument("--segundos", type=int, default=int(os.environ.get("INTEGRA_FILA_SEGUNDOS", "0")),
                     help="orçamento de tempo (passe bounded); 0 = usa --max")
     args = ap.parse_args()
@@ -193,9 +223,12 @@ def main() -> int:
         _log("outra sei_integra_fila já em execução — saindo (single-instance, evita 2 browsers)")
         return 0
 
-    # candidatos ordenados (não arquivados). Fonte: geral (todo o SEI) ou a fila json (bombeiros).
+    # candidatos ordenados (não arquivados). Fonte: geral (todo o SEI), empresa (CNPJ) ou fila json (bombeiros).
     reler: list[str] = []
-    if args.geral:
+    if args.empresa:
+        candidatos = _fila_empresa(args.empresa, busca_viva=args.busca_viva)
+        _log(f"fonte=EMPRESA {args.empresa}: {len(candidatos)} processo(s) (busca_viva={args.busca_viva})")
+    elif args.geral:
         novos = [c["sei"] for c in _fila_geral()]
         reler = _fila_reler_por_ob()          # frescor: OB nova em processo já arquivado → re-ler
         candidatos = novos + reler

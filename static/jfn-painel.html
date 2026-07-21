@@ -814,10 +814,50 @@ async function abrirDossie(cnpj,nome){
   h+=`<div style="height:14px"></div><div class="btns">
       <button class="btn accent" onclick="fecharDossie();esfera='geral';aba='g_acoes';montarSpheres();montarTabs();ir('g_acoes').then(()=>{const e=$('ac-emp');if(e)e.value='${d.cnpj}';})">Relatório + Lex</button>
       <button class="btn ghost" onclick="verCruzamento('${d.cnpj}')">Cruzamento</button>
+      <button class="btn ghost" onclick="seiArvore('${d.cnpj}')">🗂️ Árvore SEI completa</button>
       <a class="btn ghost" href="/graph?cnpj=${d.cnpj}" target="_blank">Grafo societário</a></div>
-      <pre id="dos-cruz" style="margin-top:10px;display:none"></pre>`;
+      <pre id="dos-cruz" style="margin-top:10px;display:none"></pre>
+      <div id="sei-arvore-box" style="margin-top:10px"></div>`;
   h+=`<div class="note">Dossiê do banco local — indício a verificar, presunção de legitimidade. CPF de sócio mascarado (LGPD).</div>`;
   sh.innerHTML=h;
+}
+// ═══ ÁRVORE SEI completa de uma empresa (busca + download em lote) ═══
+let _seiArvoreTimer=null;
+async function seiArvore(cnpj){
+  clearInterval(_seiArvoreTimer);
+  const box=$('sei-arvore-box');if(!box)return;
+  box.innerHTML=spin('Consultando processos SEI conhecidos…');
+  const s0=await J('/api/sei/empresa/status?cnpj='+cnpj);
+  if(!s0.ok){box.innerHTML=`<div class="warn">${esc(s0.erro||'indisponível')}</div>`;return;}
+  if(!s0.rodando&&!s0.concluido){
+    box.innerHTML=spin('Iniciando busca — pode levar minutos a horas (baixa cada processo pelo SEI)…');
+    const r=await fetch('/api/sei/empresa/iniciar',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({cnpj})}).then(x=>x.json()).catch(e=>({ok:false,erro:String(e)}));
+    if(!r.ok){box.innerHTML=`<div class="warn">${esc(r.erro||'falha ao iniciar')}</div>`;return;}
+  }
+  _seiArvorePoll(cnpj);
+}
+async function _seiArvorePoll(cnpj){
+  const tick=async()=>{
+    const box=$('sei-arvore-box');if(!box){clearInterval(_seiArvoreTimer);return;}
+    const s=await J('/api/sei/empresa/status?cnpj='+cnpj);
+    if(!s.ok){box.innerHTML=`<div class="warn">${esc(s.erro||'indisponível')}</div>`;clearInterval(_seiArvoreTimer);return;}
+    const pct=s.n_processos?Math.round(100*s.n_arquivados/s.n_processos):0;
+    box.innerHTML=`<div class="dim">${fmtN(s.n_arquivados)} de ${fmtN(s.n_processos)} processo(s) SEI arquivado(s)${s.rodando?' · buscando/baixando… (pode fechar e conferir depois)':''}</div>
+      <div style="background:var(--card2);border-radius:6px;height:6px;margin-top:6px;overflow:hidden"><div style="background:var(--accent);width:${pct}%;height:100%"></div></div>
+      ${s.pronto?`<div class="btns" style="margin-top:8px"><button class="btn accent" onclick="seiBaixarZip('${cnpj}')">Baixar ZIP (${fmtN(s.n_arquivados)} de ${fmtN(s.n_processos)})</button>${!s.rodando&&!s.concluido?`<button class="btn ghost" onclick="seiArvore('${cnpj}')">Continuar buscando</button>`:''}</div>`:''}
+      ${s.concluido?'<div class="note" style="margin-top:6px">✅ completo — todos os processos conhecidos (via OB paga) foram arquivados.</div>':''}
+      ${!s.n_processos?'<div class="note" style="margin-top:6px">Nenhum processo SEI conhecido via OB paga para este CNPJ ainda.</div>':''}`;
+    if(s.concluido||!s.rodando)clearInterval(_seiArvoreTimer);
+  };
+  await tick();
+  clearInterval(_seiArvoreTimer);
+  _seiArvoreTimer=setInterval(tick,8000);
+}
+async function seiBaixarZip(cnpj){
+  const r=await J('/api/sei/empresa/zip?cnpj='+cnpj);
+  if(!r.ok){alert('Falha: '+(r.erro||'indisponível'));return;}
+  window.open(r.url,'_blank');
 }
 async function verCruzamento(cnpj){const out=$('dos-cruz');out.style.display='block';out.textContent='cruzando…';
   const r=await J('/api/cruzamento?cnpj='+cnpj);if(r.erro){out.textContent='⚠ '+r.erro;return;}
