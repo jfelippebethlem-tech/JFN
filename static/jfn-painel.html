@@ -507,12 +507,19 @@ const fmtRc=v=>{v=Number(v||0);const a=Math.abs(v);
   if(a>=1e9)return 'R$ '+(v/1e9).toLocaleString('pt-BR',{maximumFractionDigits:1})+' bi';
   if(a>=1e6)return 'R$ '+(v/1e6).toLocaleString('pt-BR',{maximumFractionDigits:1})+' mi';
   if(a>=1e3)return 'R$ '+(v/1e3).toLocaleString('pt-BR',{maximumFractionDigits:0})+' mil';return fmtR(v);};
-// 1 retry (só GET) — rede/DB ocupado num instante não pode virar aba "zerada" pro usuário
+// 1 retry (só GET) — rede/DB ocupado num instante não pode virar aba "zerada" pro usuário.
+// + cache de navegação (TTL 90s, só GET): voltar numa aba já vista abre INSTANTÂNEO sem perder
+// informação — o dado expira sozinho e re-busca. Fora do cache: SSE e os status de polling.
+const _jCache=new Map();
 async function J(ep,opt){
-  const podeRepetir=!opt||!opt.method||opt.method==='GET';
+  const isGet=!opt||!opt.method||opt.method==='GET';
+  const cacheavel=isGet&&!/\/stream|\/status|\/api\/eventos/.test(ep);
+  if(cacheavel){const c=_jCache.get(ep);if(c&&Date.now()-c.t<90000)return c.d;}
   for(let t=0;;t++){
-    try{const r=await fetch(ep,opt);return await r.json();}
-    catch(e){if(!podeRepetir||t>=1)return{erro:String(e)};await new Promise(rs=>setTimeout(rs,1200));}
+    try{const r=await fetch(ep,opt);const d=await r.json();
+      if(cacheavel&&d&&d.ok!==false)_jCache.set(ep,{t:Date.now(),d});
+      return d;}
+    catch(e){if(!isGet||t>=1)return{erro:String(e)};await new Promise(rs=>setTimeout(rs,1200));}
   }
 }
 const card=(h,cls)=>`<div class="card ${cls||''}">${h}</div>`;
@@ -537,22 +544,56 @@ function filtrar(inp,sel){const q=inp.value.toLowerCase();document.querySelector
 // ═══ LISTA PAGINADA incremental — nunca trava o DOM (lote pequeno por vez) e nunca esconde
 // dado atrás de um cap fixo (o resto sempre alcançável via "carregar mais", não perdido) ═══
 let _pagState={};
+function _pagFiltrados(st){
+  if(!st.filtro)return st.itens;
+  if(!st._idx)st._idx=st.itens.map(x=>JSON.stringify(x).toLowerCase());  // índice 1×, filtra em ms
+  return st.itens.filter((_,i)=>st._idx[i].includes(st.filtro));
+}
 function _pagRenderInner(id){
   const st=_pagState[id];if(!st)return'';
-  const total=st.itens.length;
-  const corpo=st.itens.slice(0,st.mostrados).map(st.montarCard).join('');
-  const restam=total-st.mostrados;
-  const mais=restam>0?`<div style="text-align:center;margin:14px 0"><button class="btn ghost" onclick="_pagMais('${id}')">Carregar mais (${fmtN(restam)} restante${restam===1?'':'s'} de ${fmtN(total)})</button></div>`:'';
-  return `<div class="grid">${corpo}</div>${mais}`;
+  const itens=_pagFiltrados(st);
+  const corpo=itens.slice(0,st.mostrados).map(st.montarCard).join('');
+  const restam=itens.length-st.mostrados;
+  const nota=st.filtro?`<div class="dim" style="margin:4px 2px 8px">${fmtN(itens.length)} de ${fmtN(st.itens.length)} no filtro — buscando em <b>tudo</b>, não só no que está na tela.</div>`:'';
+  const mais=restam>0?`<div style="text-align:center;margin:14px 0"><button class="btn ghost" onclick="_pagMais('${id}')">Carregar mais (${fmtN(restam)} restante${restam===1?'':'s'} de ${fmtN(itens.length)})</button></div>`:'';
+  return `${nota}<div class="grid">${corpo}</div>${mais}`;
 }
 function _pagMais(id){
   const st=_pagState[id];if(!st)return;
-  st.mostrados=Math.min(st.mostrados+st.lote,st.itens.length);
+  st.mostrados=st.mostrados+st.lote;
   const wrap=$(id+'-wrap');if(wrap)wrap.innerHTML=_pagRenderInner(id);
 }
-function listaPaginada(id,itens,montarCard,lote){
+// filtro paginado: varre o DATASET COMPLETO em memória (não só os cards já no DOM)
+function filtrarPag(inp,id){
+  const st=_pagState[id];if(!st){filtrar(inp,'#'+id+'-wrap .card');return;}
+  st.filtro=inp.value.trim().toLowerCase();st.mostrados=st.lote;
+  const wrap=$(id+'-wrap');if(wrap)wrap.innerHTML=_pagRenderInner(id);
+  _acPagSugerir(inp,id);
+}
+// autocomplete CONTEXTUAL da seção: sugere nomes que existem NESTA aba (dataset em memória)
+function _acPagSugerir(inp,id){
+  const st=_pagState[id],box=$(id+'-ac');if(!st||!box)return;
+  const q=st.filtro;if(!q||q.length<2||!st.campoSug){box.classList.remove('on');return;}
+  const vistos=new Set(),sug=[];
+  for(const x of st.itens){
+    const v=st.campoSug(x);if(!v)continue;
+    const lv=String(v);if(vistos.has(lv))continue;
+    if(lv.toLowerCase().includes(q)){vistos.add(lv);sug.push(lv);if(sug.length>=8)break;}
+  }
+  if(!sug.length){box.classList.remove('on');return;}
+  box.innerHTML=sug.map(s=>`<div class="ac-item" onmousedown="event.preventDefault();_acPagPick('${id}',${JSON.stringify(s).replace(/"/g,'&quot;')})">${esc(s)}</div>`).join('');
+  box.classList.add('on');
+}
+function _acPagPick(id,valor){
+  const box=$(id+'-ac');if(box)box.classList.remove('on');
+  const inp=box&&box.parentElement.querySelector('input');if(!inp)return;
+  inp.value=valor;filtrarPag(inp,id);
+}
+// barra de busca padrão das listas paginadas (filtro no dataset todo + sugestões da própria aba)
+const buscaPag=(id,ph)=>`<div class="search" style="margin-top:14px;position:relative"><span class="mag"></span><input placeholder="${ph}" oninput="filtrarPag(this,'${id}')" onblur="setTimeout(()=>{const b=$('${id}-ac');if(b)b.classList.remove('on')},150)"><div class="ac-box" id="${id}-ac"></div></div>`;
+function listaPaginada(id,itens,montarCard,lote,campoSug){
   lote=lote||60;
-  _pagState[id]={itens,montarCard,lote,mostrados:Math.min(lote,itens.length)};
+  _pagState[id]={itens,montarCard,lote,mostrados:Math.min(lote,itens.length),filtro:'',campoSug:campoSug||null};
   return `<div id="${id}-wrap">${_pagRenderInner(id)}</div>`;
 }
 // ordena qualquer lista por NOME do fornecedor (A→Z) e volta à ordem original (por risco/valor)
@@ -1319,7 +1360,7 @@ async function renderComissionadosPref(){
   const it=d.comissionados||[];  // agora 1 item por PESSOA, com postos[] e candidaturas[]
   const nCidades=new Set(it.flatMap(x=>(x.candidaturas||[]).map(c=>c.cidade)).filter(Boolean)).size;
   h+=`<div class="grid g2">${kpi(fmtN(d.n_pessoas||it.length),'Pessoas ex-candidatas','var(--amber)','🎖️')}${kpi(fmtN(nCidades),'Cidades de candidatura',null,'🗺️')}</div>`;
-  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, cargo, órgão, cidade (só no que já carregou)…" oninput="filtrar(this,'#cc-list-wrap .card')"></div>`;
+  h+=buscaPag('cc-list','filtrar por nome, cargo, órgão, cidade — busca em TODAS as pessoas…');
   if(d.truncado)h+=`<div class="note" style="margin-top:8px">Base tem mais pessoas do que o teto do servidor (1000) — caso raro; avise se precisar de mais.</div>`;
   const _montarCC=x=>{
     const postos=(x.postos||[]).map(p=>`<div class="dim" style="margin-top:2px">${esc(p.cargo||'—')} @ ${esc((p.orgao||'—').slice(0,50))} — ${esc(p.admissao||'?')}${p.exoneracao?' → '+esc(p.exoneracao):' · ativo'}</div>`).join('');
@@ -1331,7 +1372,7 @@ async function renderComissionadosPref(){
       ${postos}</div>
       <div class="right" style="text-align:right">${cands}</div></div>`);
   };
-  h+=listaPaginada('cc-list',it,_montarCC,60);
+  h+=listaPaginada('cc-list',it,_montarCC,60,x=>x.nome_pcrj);
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
   return h;
 }
@@ -1348,7 +1389,7 @@ async function renderBeneficiosPref(chips){
       ${kpi(fmtN(r.n_nomeados),'Comissionados/nomeados','var(--amber)','🎖️')}${kpi(fmtN(r.n_ainda),'Benefício ainda ativo','var(--rose)','⏰')}
       ${kpi(fmtN(r.n_bf),'Bolsa Família',null,'🍞')}${kpi(fmtN(r.n_bpc),'BPC',null,'♿')}
       ${kpi(esc(r.cobertura_benef||'—'),'Cobertura benefícios',null,'📅')}${kpi(esc(r.ultima||'—'),'Última competência',null,'🗓️')}</div>`;
-  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome, órgão, cargo, partido (só no que já carregou — carregue mais se não achar)…" oninput="filtrar(this,'#bv-list-wrap .card')"></div>`;
+  h+=buscaPag('bv-list','filtrar por nome, órgão, cargo, partido — busca em TODOS os casos…');
   const _montarBV=x=>{
     const idOk=x.certeza==='ALTA';
     const selo=idOk?'<span class="sev alta" title="um só servidor com este nome + CPF bate — é esta pessoa">identidade ✓</span>'
@@ -1362,7 +1403,7 @@ async function renderBeneficiosPref(chips){
       ${x.ainda_recebe?'<div style="margin-top:5px"><span class="tag rose" title="o benefício continua ativo na última competência">ainda recebe</span></div>':''}</div></div>
     <div class="kv" style="margin-top:8px"><span class="k">${esc(x.beneficios_str||'benefício')}</span><b>${esc(x.desde||'')} → ${esc(x.ate||'')} · ${fmtN(x.n_meses)} meses no vínculo</b></div>`,
     idOk?'hl':'');};
-  h+=listaPaginada('bv-list',d.casos||[],_montarBV,60);
+  h+=listaPaginada('bv-list',d.casos||[],_montarBV,60,x=>x.nome);
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
   return h;
 }
@@ -1412,7 +1453,7 @@ async function renderFantasmasPref(){
   h+=`<div class="grid g2">${kpi(fmtN(fx.forte),'Faixa FORTE','var(--rose)','🔴')}${kpi(fmtN(fx.verificar),'Verificar','var(--amber)','🟡')}${kpi(fmtN(fx.fraco),'Fraco',null,'🟢')}${kpi(esc((d.gerado_em||'').slice(0,10)),'Gerado em',null,'🗓️')}</div>`;
   h+=`<div class="chips" style="margin-top:12px">`+['','forte','verificar','fraco'].map(f=>
     `<button type="button" class="chip ${_fantFaixa===f?'on':''}" onclick="_fantFaixa='${f}';ir('p_fant')">${f||'Todas as faixas'}</button>`).join('')+`</div>`;
-  h+=`<div class="search"><span class="mag"></span><input placeholder="filtrar por nome, gabinete (só no que já carregou — carregue mais se não achar)…" oninput="filtrar(this,'#pf-list-wrap .card')"></div>`;
+  h+=buscaPag('pf-list','filtrar por nome ou gabinete — busca em TODOS os servidores…');
   const _itF=d.itens||[];
   const _montarF=x=>card(
     `<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div style="min-width:0">
@@ -1421,7 +1462,7 @@ async function renderFantasmasPref(){
       <div class="dim" style="margin-top:4px">${esc((x.sinais||'').slice(0,200))}</div></div>
       <div class="right"><span class="sev ${x.faixa==='forte'?'alta':'media'}">${esc(x.faixa)}</span><div class="dim" style="margin-top:4px">score ${x.score}</div></div></div>`,
     x.faixa==='forte'?'hl':'');
-  h+=listaPaginada('pf-list',_itF,_montarF,60);
+  h+=listaPaginada('pf-list',_itF,_montarF,60,x=>x.nome);
   h+=`<div class="note">${esc(d.explicacao||'')} ${esc(d.ressalva||'')}</div>`;
   return h;
 }
@@ -1453,7 +1494,7 @@ async function renderContratosPref(){
     let h=cover('prefeitura','Contratações recentes (PNCP ao vivo)','Últimas licitações da PREFEITURA DO RIO publicadas no PNCP (esfera oficial do ente). Fonte pública, sem login — pode demorar: é a API nacional ao vivo.','📄')+chips;
     h+=sec('Publicadas (45 dias)',its.length);
     if(!its.length)return h+card('<div class="muted">Sem contratações no período (ou API do PNCP indisponível agora — a visão "Com análise" usa a base local e sempre responde).</div>');
-    h+=`<div class="search"><span class="mag"></span><input placeholder="filtrar por objeto ou órgão…" oninput="filtrar(this,'#ctr-list-wrap .card')"></div>`;
+    h+=buscaPag('ctr-list','filtrar por objeto ou órgão…');
     h+=listaPaginada('ctr-list',its,c=>card(`<div style="font-weight:650;font-size:13.5px">${esc((c.objeto||c.objetoCompra||'—')).slice(0,140)}</div><div class="muted" style="font-size:12.5px;margin-top:3px">${esc((c.orgao||c.orgaoNome||c.unidade||'')).slice(0,60)} ${c.valor||c.valorTotal?'· '+fmtRc(c.valor||c.valorTotal):''}</div>`),60);
     return h;
   }
@@ -1462,7 +1503,7 @@ async function renderContratosPref(){
   if(!d.ok)return h+card(`<div class="warn">${esc(d.erro||'indisponível')}</div>`);
   const its=d.itens||[],rs=d.resumo||{};
   h+=`<div class="grid g2">${kpi(fmtN(rs.total),'Certames na base',null,'📄')}${kpi(fmtN(rs.analisados),'Com análise (índice calculado)','var(--amber)','🧮')}</div>`;
-  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por objeto (só no que já carregou)…" oninput="filtrar(this,'#ctr-list-wrap .card')"></div>`;
+  h+=buscaPag('ctr-list','filtrar por objeto ou nº de controle — busca em TODOS os certames…');
   const _montarCtr=c=>{
     const cor=c.faixa==='EXTREMO'||c.faixa==='ALTO'?'var(--rose)':c.faixa==='MEDIO'?'var(--amber)':'var(--tx2)';
     const temas=(c.temas||[]).slice(0,4).map(t=>`<span class="tag ${t.valor>=0.6?'rose':t.valor>=0.3?'amber':'accent'}">${esc(_TEMA_ROTULO[t.familia]||t.familia)} ${(t.valor*100).toFixed(0)}%</span>`).join(' ');
@@ -1478,7 +1519,7 @@ async function renderContratosPref(){
   h+=`<div onclick="const c=event.target.closest('.card');if(!c)return;const nc=c.dataset.nc;if(nc)abrirCertame(nc);">`;
   // listaPaginada não injeta data-attrs — embrulha cada card com o nc pro clique
   const _wrap=c=>_montarCtr(c).replace('<div class="card','<div data-nc="'+esc(c.nc)+'" style="cursor:pointer" class="card');
-  h+=listaPaginada('ctr-list',its,_wrap,60)+`</div>`;
+  h+=listaPaginada('ctr-list',its,_wrap,60,c=>(c.objeto||'').slice(0,70))+`</div>`;
   h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
   return h;
 }
