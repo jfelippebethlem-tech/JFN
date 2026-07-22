@@ -42,6 +42,22 @@ def _b_sancionadas(d):
               "html": _tabela(["", "Empresa / CNPJ", "Sanção (vigência)", "Recebido"], ls)}], d)
 
 
+def _b_sancionadas_mun(d):
+    ls = []
+    for e in d.get("empresas", [])[:1000]:
+        grave = e.get("contratos_durante")
+        s0 = (e.get("sancoes") or [{}])[0]
+        ls.append(f"<tr><td>{'🔴' if grave else '🟡'}</td><td>{_esc(e['nome'])}<br><small>{_esc(e['cnpj'])}</small></td>"
+                  f"<td>{_esc(s0.get('cadastro'))} · {_esc((s0.get('categoria') or '')[:40])}<br><small>{_esc(s0.get('data_inicio'))}→{_esc(s0.get('data_fim'))}</small></td>"
+                  f"<td style='text-align:right'>{e.get('contratos_durante', 0)}/{e.get('contratos', 0)}</td>"
+                  f"<td style='text-align:right'>{_rs(e.get('valor_durante') or e.get('valor') or 0)}</td></tr>")
+    return ("Sancionadas contratadas pela Prefeitura do Rio",
+            "Sanção impeditiva (CEIS) × contratos municipais · assinatura DENTRO da vigência = vedação "
+            "(Lei 14.133, art. 156 §§4º-5º) · competência TCM-RJ",
+            [{"titulo": "1. Empresas sancionadas com contrato municipal",
+              "html": _tabela(["", "Empresa / CNPJ", "Sanção (vigência)", "Durante/total", "Valor durante"], ls)}], d)
+
+
 def _b_fracionamento(d):
     ls = [f"<tr><td>{int(g['concentracao']*100)}%</td><td>{_esc(g['nome'])}<br><small>{_esc(g['cnpj_fmt'])} · UG {g['ug_emitente']} · {g['mes']}</small></td>"
           f"<td>{g['n_colado']}/{g['n']} coladas no teto</td><td style='text-align:right'>{_rs(g['soma'])}</td></tr>"
@@ -556,6 +572,7 @@ def _detectores():
         "nomeados": (_d_nomeados, _b_nomeados, "MÉDIO"),
         "comissionados": (_d_comissionados, _b_comissionados, "MÉDIO"),
         "sancionadas": (lambda p: C.sancionadas_contratadas(p), _b_sancionadas, "ALTO"),
+        "sancionadas_municipio": (lambda p: C.sancionadas_municipio(db_path=p), _b_sancionadas_mun, "ALTO"),
         "fracionamento": (lambda p: C.fracionamento(db_path=p, limite=L), _b_fracionamento, "ALTO"),
         "sobrepreco": (lambda p: C.sobrepreco(db_path=p, limite=L), _b_sobrepreco, "ALTO"),
         "escalada": (lambda p: C.escalada_preco(db_path=p, limite=L), _b_escalada, "ALTO"),

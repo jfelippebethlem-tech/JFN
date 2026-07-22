@@ -1041,6 +1041,11 @@ const TABS={
   prefeitura:[
     {id:'p_panorama',ic:'📊',tl:'Panorama',render:renderPanoramaPref},
     {id:'p_gastos',  ic:'✂️',tl:'Gastos', render:renderGastosPref},
+    {id:'p_sanc',    ic:'🚫',tl:'Sancionadas',render:renderSancionadasMun},
+    {id:'p_sobre',   ic:'📈',tl:'Sobrepreço',render:()=>renderSobrepreco('prefeitura')},
+    {id:'p_escal',   ic:'📈',tl:'Escalada',render:()=>renderEscalada('prefeitura')},
+    {id:'p_comp',    ic:'💰',tl:'Comparador',render:renderComparador},
+    {id:'p_adit',    ic:'📑',tl:'Aditivos',render:()=>renderAditivos('prefeitura')},
     {id:'p_comis',   ic:'🎖️',tl:'Comissionados',render:renderComissionadosPref},
     {id:'p_benef',   ic:'🍞',tl:'Benefícios',render:()=>renderBeneficiosPref('')},
     {id:'p_fant',    ic:'👻',tl:'Fantasmas',render:renderFantasmasPref},
@@ -1466,11 +1471,36 @@ async function renderCertames(){
 }
 
 // ═══ ADITIVOS (Estado) ═══
-async function renderAditivos(){
-  const d=await J('/api/intel/aditivos?limite=120&esfera=estado');
+// ═══ SANCIONADAS × PREFEITURA (contrato municipal DURANTE sanção impeditiva — TCM-RJ) ═══
+async function renderSancionadasMun(){
+  const d=await J('/api/intel/sancionadas_municipio?limite=100');
+  if(!d.ok)return sec('Sancionadas — Prefeitura')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  const emp=d.empresas||[];const aepoca=emp.filter(e=>(e.contratos_durante||0)>0);
+  let h=cover('prefeitura','Sancionadas contratadas pela Prefeitura do Rio',
+    'Empresas com sanção <b>impeditiva</b> (CEIS: impedimento, suspensão, inidoneidade) que assinaram contrato com o <b>Município do Rio</b>. <b>À ÉPOCA</b> = assinatura DENTRO da vigência da punição — vedação legal direta (Lei 14.133, art. 156 §§4º-5º). Competência: <b>TCM-RJ</b>. Órgãos federais/estaduais são excluídos do corte.','🚫')+acoesAba('sancionadas_municipio');
+  h+=`<div class="grid g2">${kpi(fmtN(emp.length),'Sancionadas c/ contrato municipal',null,'🚫')}${kpi(fmtN(aepoca.length),'Com contrato À ÉPOCA','var(--rose)','⚠️')}
+      ${kpi(fmtRc(aepoca.reduce((s,e)=>s+(e.valor_durante||0),0)),'Contratado durante sanção','var(--rose)','💸')}${kpi(fmtN(Object.values(d.descartados_outra_esfera||{}).reduce((s,v)=>s+v,0)),'Descartados (outra esfera)',null,'🧹')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por nome ou CNPJ…" oninput="filtrar(this,'#sanm-list .card')"></div>`;
+  h+=`<div id="sanm-list" class="grid">`+emp.map(e=>{
+    const s0=(e.sancoes||[])[0]||{};const forte=(e.contratos_durante||0)>0;
+    const ex=(e.exemplos_durante||[])[0];
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${clk(e.cnpj,e.nome||e.cnpj)} ${forte?`<span class="tag rose">à época</span>`:''}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:2px">${esc(s0.cadastro||'')}: ${esc(s0.categoria||'—')} · ${esc(s0.data_inicio||'?')} → ${esc(s0.data_fim||'sem prazo')}</div>
+      <div class="dim" style="margin-top:2px">sancionador: ${esc((s0.orgao||'—').slice(0,60))}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${forte?'var(--rose)':'var(--tx2)'}">${fmtN(e.contratos_durante||0)}/${fmtN(e.contratos||0)}</div><div class="dim">durante/total</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">Contratado total ${fmtRc(e.valor||0)}</span><b style="color:${forte?'var(--rose)':'inherit'}">${fmtRc(e.valor_durante||0)} durante</b></div>
+      ${forte&&ex?leitura(`Contrato <b>${esc(ex.contrato||'')}</b> (${esc(ex.data||'?')}, ${fmtRc(ex.valor||0)}) assinado <b>dentro da vigência</b> da sanção ${esc(ex.sancao||'')} (${esc(ex.vigencia||'')}) — "${esc((ex.objeto||'').slice(0,90))}". Vedação objetiva: matéria para representação ao TCM-RJ com pedido de apuração da habilitação.`):''}`,
+    forte?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.explicacao||'')}</div>`;
+  return h;
+}
+
+async function renderAditivos(esf='estado'){
+  const d=await J('/api/intel/aditivos?limite=120&esfera='+esf);
   if(!d.ok)return sec('Aditivos')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
-  let h=cover('estado','Aditivos que estouram o limite legal',
+  let h=cover(esf,'Aditivos que estouram o limite legal',
     'Contrato cujo valor cresceu <b>acima do limite de acréscimo</b> (25% em regra; 50% p/ reforma — Lei 14.133 art. 125), ou com <b>change orders em série</b> (≥3 aditivos, red-flag OCDE/Banco Mundial de fraude por aditivos).','📑')+acoesAba('aditivos');
   h+=`<div class="grid g2">${kpi(fmtN(d.n_estoura_teto),'Estouram o teto legal','var(--rose)','🚨')}${kpi(fmtN(d.n_serie),'3+ aditivos em série','var(--amber)','📑')}
       ${kpi(fmtN(d.contratos_analisados),'Contratos analisados',null,'📄')}${kpi(a.length?'+'+a[0].pct+'%':'—','Pior acréscimo','var(--rose)')}</div>`;
@@ -1490,11 +1520,11 @@ async function renderAditivos(){
 }
 
 // ═══ SOBREPREÇO (Estado) ═══
-async function renderSobrepreco(){
-  const d=await J('/api/intel/sobrepreco?limite=120&esfera=estado');
+async function renderSobrepreco(esf='estado'){
+  const d=await J('/api/intel/sobrepreco?limite=120&esfera='+esf);
   if(!d.ok)return sec('Sobrepreço')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
-  let h=cover('estado','Sobrepreço — pagou muito acima da mediana',
+  let h=cover(esf,'Sobrepreço — pagou muito acima da mediana',
     'Mesmo item (descrição normalizada) comprado por vários órgãos: sinaliza quem pagou o preço <b>unitário</b> muito acima da mediana do grupo (≥ 2× a mediana e fora de mediana+3·MAD, medida robusta a outliers). Fonte: preço unitário homologado do PNCP.','📈')+acoesAba('sobrepreco');
   if(!a.length){
     h+=`<div class="warn" style="margin-top:12px">Base de preços unitários em formação: ${fmtN(d.itens_com_preco)} itens com preço, ${fmtN(d.grupos_comparaveis)} grupos comparáveis (≥5 compras do mesmo item). O backfill do PNCP popula o preço unitário item a item; a aba acende conforme a cobertura cresce.</div>`;
@@ -1517,11 +1547,11 @@ async function renderSobrepreco(){
 }
 
 // ═══ ESCALADA DE PREÇO (mesmo fornecedor sobe o preço do mesmo item no tempo) ═══
-async function renderEscalada(){
-  const d=await J('/api/intel/escalada?limite=120&esfera=estado');
+async function renderEscalada(esf='estado'){
+  const d=await J('/api/intel/escalada?limite=120&esfera='+esf);
   if(!d.ok)return sec('Escalada')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
-  let h=cover('estado','Escalada de preço — o mesmo fornecedor sobe o preço no tempo','Diferente do sobrepreço (que compara entre órgãos), aqui é <b>longitudinal</b>: o <b>mesmo fornecedor</b> vende o <b>mesmo item</b> ao poder público por preços cada vez <b>maiores</b> (≥3 compras, ≥45 dias, alta ≥3×). É o padrão de <b>preço dirigido/captura</b> — o fornecedor aprende que o comprador aceita aumentos. Cruza com a mediana de mercado dos outros fornecedores.','📈')+acoesAba('escalada');
+  let h=cover(esf,'Escalada de preço — o mesmo fornecedor sobe o preço no tempo','Diferente do sobrepreço (que compara entre órgãos), aqui é <b>longitudinal</b>: o <b>mesmo fornecedor</b> vende o <b>mesmo item</b> ao poder público por preços cada vez <b>maiores</b> (≥3 compras, ≥45 dias, alta ≥3×). É o padrão de <b>preço dirigido/captura</b> — o fornecedor aprende que o comprador aceita aumentos. Cruza com a mediana de mercado dos outros fornecedores.','📈')+acoesAba('escalada');
   if(!a.length){
     h+=`<div class="warn" style="margin-top:12px">Sem escalada detectada na janela atual de preços do PNCP — a base de preço unitário ainda é estreita no tempo. Acende conforme o histórico cresce.</div>`;
     return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
@@ -1547,14 +1577,16 @@ async function renderEscalada(){
 // ═══ COMPARADOR DE PREÇOS (quem paga mais/menos pelo mesmo item) ═══
 let _compView='catalogo', _compTermo='', _compGrupo=null, _compCat=null, _compEsf='todas', _compDisp=0, _compOrd='dispersao';
 async function renderComparador(){
-  let h=cover('estado','Comparador de preços — quem paga mais e quem paga menos','Para o <b>mesmo item</b> (aluguel de carro, medicamento, refeição…), quanto cada <b>órgão</b> paga e quanto cada <b>fornecedor</b> cobra. E o ranking transversal: quais órgãos <b>gastam melhor</b> o recurso público e quais fornecedores são <b>caros ou baratos</b> vs o mercado. Fonte: preço unitário homologado do PNCP.','💰');
+  // aba da prefeitura abre já filtrada na esfera municipal (o chip continua trocável)
+  if(aba==='p_comp'&&_compEsf==='todas')_compEsf='prefeitura';
+  let h=cover(aba==='p_comp'?'prefeitura':'estado','Comparador de preços — quem paga mais e quem paga menos','Para o <b>mesmo item</b> (aluguel de carro, medicamento, refeição…), quanto cada <b>órgão</b> paga e quanto cada <b>fornecedor</b> cobra. E o ranking transversal: quais órgãos <b>gastam melhor</b> o recurso público e quais fornecedores são <b>caros ou baratos</b> vs o mercado. Fonte: preço unitário homologado do PNCP.','💰');
   h+=`<div class="chips" style="margin:6px 0 14px">
-    <button type="button" class="chip ${_compView==='catalogo'?'on':''}" onclick="_compView='catalogo';_compGrupo=null;ir('e_comp')">🗂️ Catálogo por categoria</button>
-    <button type="button" class="chip ${_compView==='buscar'?'on':''}" onclick="_compView='buscar';_compGrupo=null;ir('e_comp')">Buscar item</button>
-    <button type="button" class="chip ${_compView==='economia'?'on':''}" onclick="_compView='economia';ir('e_comp')">Economia possível</button>
-    <button type="button" class="chip ${_compView==='dossie'?'on':''}" onclick="_compView='dossie';ir('e_comp')">Caro + fornecedor suspeito</button>
-    <button type="button" class="chip ${_compView==='orgaos'?'on':''}" onclick="_compView='orgaos';ir('e_comp')">Órgãos que gastam melhor</button>
-    <button type="button" class="chip ${_compView==='forn'?'on':''}" onclick="_compView='forn';ir('e_comp')">Fornecedores caros/baratos</button></div>`;
+    <button type="button" class="chip ${_compView==='catalogo'?'on':''}" onclick="_compView='catalogo';_compGrupo=null;ir(aba)">🗂️ Catálogo por categoria</button>
+    <button type="button" class="chip ${_compView==='buscar'?'on':''}" onclick="_compView='buscar';_compGrupo=null;ir(aba)">Buscar item</button>
+    <button type="button" class="chip ${_compView==='economia'?'on':''}" onclick="_compView='economia';ir(aba)">Economia possível</button>
+    <button type="button" class="chip ${_compView==='dossie'?'on':''}" onclick="_compView='dossie';ir(aba)">Caro + fornecedor suspeito</button>
+    <button type="button" class="chip ${_compView==='orgaos'?'on':''}" onclick="_compView='orgaos';ir(aba)">Órgãos que gastam melhor</button>
+    <button type="button" class="chip ${_compView==='forn'?'on':''}" onclick="_compView='forn';ir(aba)">Fornecedores caros/baratos</button></div>`;
   if(_compView==='economia')return h+await _compEconomia();
   if(_compView==='dossie')return h+await _compDossie();
   if(_compView==='orgaos')return h+await _compOrgaos();
@@ -1564,11 +1596,11 @@ async function renderComparador(){
 }
 // esfera do comparador (todas as visões respeitam)
 const _compEsfChips=()=>`<div class="chips" style="margin:0 0 10px">
-  ${['todas','estado','prefeitura'].map(e=>`<button type="button" class="chip ${_compEsf===e?'on':''}" onclick="_compEsf='${e}';ir('e_comp')">${e==='todas'?'🌐 Todas as esferas':e==='estado'?'🏛️ Estado':'🏙️ Prefeitura·Rio'}</button>`).join('')}</div>`;
+  ${['todas','estado','prefeitura'].map(e=>`<button type="button" class="chip ${_compEsf===e?'on':''}" onclick="_compEsf='${e}';ir(aba)">${e==='todas'?'🌐 Todas as esferas':e==='estado'?'🏛️ Estado':'🏙️ Prefeitura·Rio'}</button>`).join('')}</div>`;
 // visão de UM item (órgãos × fornecedores) — usada pelo catálogo E pela busca
 async function _compItemView(voltar){
   const d=await J('/api/comparador/item?esfera='+(_compEsf==='todas'?'':_compEsf)+'&grupo='+encodeURIComponent(_compGrupo.grupo)+'&unidade='+encodeURIComponent(_compGrupo.un||''));
-  let h=`<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir('e_comp')">← ${voltar}</a></div>`;
+  let h=`<div style="margin:4px 0 10px"><a onclick="_compGrupo=null;ir(aba)">← ${voltar}</a></div>`;
   if(!d.ok)return h+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   h+=`<h3 style="margin:6px 0">${esc(d.exemplo)} <span class="dim">/ ${esc(d.unidade_medida||'')}</span></h3>`;
   h+=`<div class="grid g2">${kpi(fmtR(d.mediana_geral),'Mediana do item','var(--amber)','⚖️')}${kpi(fmtN(d.n_orgaos),'Órgãos',null,'🏛️')}${kpi(fmtN(d.n_fornecedores),'Fornecedores',null,'🏢')}${kpi(fmtN(d.n_compras),'Compras',null,'🧾')}</div>`;
@@ -1596,7 +1628,7 @@ async function _compCatalogo(){
     // MENU: categorias com contagem e amostra do que tem dentro
     h+=`<div class="dim" style="margin:0 0 10px">${fmtN(d.n_grupos)} itens com preço comparável, por categoria — toque para abrir o submenu:</div>`;
     h+=`<div class="grid two">`+cats.map(c=>card(
-      `<div onclick="_compCat='${c.id}';ir('e_comp')" style="cursor:pointer">
+      `<div onclick="_compCat='${c.id}';ir(aba)" style="cursor:pointer">
         <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
           <div style="font-weight:700;font-size:14.5px">${c.icone} ${esc(c.rotulo)}</div>
           <span class="cnt">${fmtN(c.n)}</span></div>
@@ -1608,20 +1640,20 @@ async function _compCatalogo(){
   let gs=cat.grupos.filter(g=>!_compDisp||(g.dispersao||0)>=_compDisp);
   if(_compOrd==='mediana')gs=[...gs].sort((a,b)=>(b.mediana||0)-(a.mediana||0));
   else if(_compOrd==='compras')gs=[...gs].sort((a,b)=>(b.n_compras||0)-(a.n_compras||0));
-  h+=`<div style="margin:4px 0 10px"><a onclick="_compCat=null;ir('e_comp')">← todas as categorias</a></div>`;
+  h+=`<div style="margin:4px 0 10px"><a onclick="_compCat=null;ir(aba)">← todas as categorias</a></div>`;
   h+=`<h3 style="margin:6px 0 10px">${cat.icone} ${esc(cat.rotulo)} <span class="cnt">${fmtN(gs.length)} de ${fmtN(cat.n)}</span></h3>`;
   h+=`<div class="chips" style="margin:0 0 4px">
-    ${[[0,'toda dispersão'],[2,'≥2× (paga o dobro)'],[5,'≥5×'],[10,'≥10× (grave)']].map(([v,r])=>`<button type="button" class="chip ${_compDisp===v?'on':''}" onclick="_compDisp=${v};ir('e_comp')">${r}</button>`).join('')}</div>
+    ${[[0,'toda dispersão'],[2,'≥2× (paga o dobro)'],[5,'≥5×'],[10,'≥10× (grave)']].map(([v,r])=>`<button type="button" class="chip ${_compDisp===v?'on':''}" onclick="_compDisp=${v};ir(aba)">${r}</button>`).join('')}</div>
   <div class="chips" style="margin:0 0 6px">
-    ${[['dispersao','↕ por dispersão'],['mediana','R$ por mediana'],['compras','nº de compras']].map(([v,r])=>`<button type="button" class="chip ${_compOrd===v?'on':''}" onclick="_compOrd='${v}';ir('e_comp')">${r}</button>`).join('')}</div>`;
+    ${[['dispersao','↕ por dispersão'],['mediana','R$ por mediana'],['compras','nº de compras']].map(([v,r])=>`<button type="button" class="chip ${_compOrd===v?'on':''}" onclick="_compOrd='${v}';ir(aba)">${r}</button>`).join('')}</div>`;
   h+=buscaPag('cat-list','filtrar item dentro da categoria — busca em todos…');
   h+=listaPaginada('cat-list',gs,_montarGrupoCard,60,g=>(g.exemplo||'').slice(0,60));
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
 async function _compBuscar(){
   let h=_compEsfChips();
-  h+=`<div class="search"><span class="mag"></span><input id="comp-in" placeholder="digite o item: luva, computador, café, cimento, detergente…" value="${esc(_compTermo)}" onkeydown="if(event.key==='Enter'){_compTermo=this.value;_compGrupo=null;ir('e_comp')}"></div>
-    <div class="dim" style="margin:6px 0">Enter para buscar. Exemplos que existem na base: <a onclick="_compTermo='luva';_compGrupo=null;ir('e_comp')">luva</a> · <a onclick="_compTermo='computador';_compGrupo=null;ir('e_comp')">computador</a> · <a onclick="_compTermo='cafe';_compGrupo=null;ir('e_comp')">café</a> · <a onclick="_compTermo='cimento';_compGrupo=null;ir('e_comp')">cimento</a> — ou navegue pelo <a onclick="_compView='catalogo';_compCat=null;ir('e_comp')">🗂️ Catálogo</a>, sem precisar adivinhar o termo.</div>`;
+  h+=`<div class="search"><span class="mag"></span><input id="comp-in" placeholder="digite o item: luva, computador, café, cimento, detergente…" value="${esc(_compTermo)}" onkeydown="if(event.key==='Enter'){_compTermo=this.value;_compGrupo=null;ir(aba)}"></div>
+    <div class="dim" style="margin:6px 0">Enter para buscar. Exemplos que existem na base: <a onclick="_compTermo='luva';_compGrupo=null;ir(aba)">luva</a> · <a onclick="_compTermo='computador';_compGrupo=null;ir(aba)">computador</a> · <a onclick="_compTermo='cafe';_compGrupo=null;ir(aba)">café</a> · <a onclick="_compTermo='cimento';_compGrupo=null;ir(aba)">cimento</a> — ou navegue pelo <a onclick="_compView='catalogo';_compCat=null;ir(aba)">🗂️ Catálogo</a>, sem precisar adivinhar o termo.</div>`;
   if(_compGrupo)return h+await _compItemView('voltar à busca');
   if(!_compTermo)return h;
   const d=await J('/api/comparador/buscar?esfera='+(_compEsf==='todas'?'':_compEsf)+'&termo='+encodeURIComponent(_compTermo));
@@ -1631,7 +1663,7 @@ async function _compBuscar(){
     if((d.parecidos||[]).length){
       h+=`<div class="dim" style="margin:10px 0 8px">Mas estes itens casam PARTE do termo — talvez seja um destes:</div>`;
       h+=`<div class="grid">`+d.parecidos.map(_montarGrupoCard).join('')+`</div>`;
-    }else h+=`<div class="dim" style="margin:8px 0">Dica: o <a onclick="_compView='catalogo';_compCat=null;ir('e_comp')">🗂️ Catálogo</a> lista tudo o que é comparável, por categoria.</div>`;
+    }else h+=`<div class="dim" style="margin:8px 0">Dica: o <a onclick="_compView='catalogo';_compCat=null;ir(aba)">🗂️ Catálogo</a> lista tudo o que é comparável, por categoria.</div>`;
     return h;
   }
   h+=`<div class="dim" style="margin-bottom:8px">${d.n} grupo(s) — clique para ver quem paga mais/menos:</div>`;
@@ -1640,7 +1672,7 @@ async function _compBuscar(){
 }
 function _unOf(g){return '';}  // unidade já embutida no grupo; comparar aceita todas as unidades do grupo
 async function _compOrgaos(){
-  const d=await J('/api/comparador/orgaos?esfera=estado');
+  const d=await J('/api/comparador/orgaos?esfera='+(_compEsf==='todas'?'':_compEsf)+'');
   if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const linha=(x,bom)=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
     <div style="min-width:0;flex:1"><div style="font-weight:600">${esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">${x.n_itens} itens comparáveis · ${x.n_compras} compras</div></div>
@@ -1651,7 +1683,7 @@ async function _compOrgaos(){
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
 async function _compEconomia(){
-  const d=await J('/api/comparador/economia?esfera=estado');
+  const d=await J('/api/comparador/economia?esfera='+(_compEsf==='todas'?'':_compEsf)+'');
   if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   let h=`<div style="text-align:center;margin:10px 0 18px">
     <div class="dim" style="font-size:13px;letter-spacing:.5px">ECONOMIA POTENCIAL IDENTIFICADA (itens comparáveis do PNCP)</div>
@@ -1673,7 +1705,7 @@ async function _compEconomia(){
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
 async function _blocoVedada(){
-  const d=await J('/api/comparador/vedada?esfera=estado');
+  const d=await J('/api/comparador/vedada?esfera='+(_compEsf==='todas'?'':_compEsf)+'');
   if(!d.ok||!d.economia_vedada_total)return '';
   const ABR={total:'inidôneas (veda todos)',ente:'impedidas no ente',orgao:'órgão'};
   let h=`<div class="card hl" style="border-color:color-mix(in oklch,var(--rose) 45%,transparent);background:color-mix(in oklch,var(--rose) 6%,var(--card));margin:8px 0 18px">
@@ -1690,7 +1722,7 @@ async function _blocoVedada(){
   return h;
 }
 async function _compDossie(){
-  const d=await J('/api/comparador/dossie?esfera=estado');
+  const d=await J('/api/comparador/dossie?esfera='+(_compEsf==='todas'?'':_compEsf)+'');
   if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const a=d.achados||[];
   let h=`<div class="dim" style="margin-bottom:8px">${esc(d.explicacao)}</div>`;
@@ -1712,7 +1744,7 @@ async function _compDossie(){
   return h+`<div class="note">${esc(d.ressalva||'')}</div>`;
 }
 async function _compForn(){
-  const d=await J('/api/comparador/fornecedores?esfera=estado');
+  const d=await J('/api/comparador/fornecedores?esfera='+(_compEsf==='todas'?'':_compEsf)+'');
   if(!d.ok)return card(`<div class="warn">${erroHumano(d.erro)}</div>`);
   const linha=(x,caro)=>card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:center">
     <div style="min-width:0;flex:1"><div style="font-weight:600">${x.id?clk(x.id,x.nome):esc(x.nome||'—')}</div><div class="dim" style="font-size:12px">${x.n_itens} itens · ${x.n_compras} compras</div></div>
