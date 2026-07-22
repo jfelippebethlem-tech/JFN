@@ -7,6 +7,8 @@ Três fases (todas serial, leves — sqlite + regex sobre texto local; VM 2 vCPU
               PNCP do certame é extraído dos próprios textos (regex; sem match → pula, honesto).
   indice      calcular_e_persistir sobre os certames com contexto (popula certame_indice —
               nunca havia sido persistido; o endpoint calculava na hora).
+  julgamento_pncp  (opt-in via --fases) atas do PNCP (`ata_documento`) → certame_julgamento
+              pela ponte editais/ata_para_julgamento + recálculo do índice dos certames tocados.
   acatamento  roda auditar_acatamento em cada processo e escreve um RELATÓRIO DE APRENDIZADO
               (reports/backfill_dossie_mestre.json): distribuição de vereditos, motivos de
               inabilitação por classe (trivial/substancial/ambíguo — ambíguo alto = gabarito
@@ -134,6 +136,33 @@ def fase_julgamento(max_processos: int, dry: bool) -> dict:
     return {"stats": dict(stats), "exemplos": exemplos[:25], "n_dirs": len(dirs)}
 
 
+def fase_julgamento_pncp(limite: int | None, dry: bool) -> dict:
+    """Atas coletadas do PNCP (`ata_documento`) → certame_julgamento, via a ponte
+    editais/ata_para_julgamento (antes: trilha morta — o texto existia, a decisão nunca era
+    extraída e a família certame_ata do índice ficava INDISPONÍVEL)."""
+    from compliance_agent.editais.ata_para_julgamento import backfill
+    from compliance_agent.editais.db import conectar
+
+    if dry:
+        con = conectar()
+        try:
+            n = con.execute("SELECT COUNT(DISTINCT certame) FROM ata_documento WHERE certame "
+                            "NOT IN (SELECT certame FROM certame_julgamento)").fetchone()[0]
+        finally:
+            con.close()
+        return {"stats": {"candidatos": n, "dry_run": True}}
+    stats = backfill(limite=limite)
+    # recalcula o índice só dos certames tocados (a família certame_ata acabou de nascer p/ eles)
+    from compliance_agent.editais.indice_certame import calcular_e_persistir
+    recalc = Counter()
+    for c in stats.pop("certames", []):
+        try:
+            recalc[calcular_e_persistir(c)["faixa"]] += 1
+        except Exception:  # noqa: BLE001
+            recalc["erro"] += 1
+    return {"stats": stats, "indice_recalculado": dict(recalc)}
+
+
 def fase_indice(max_certames: int) -> dict:
     from compliance_agent.editais.indice_certame import _certames_com_contexto, calcular_e_persistir
 
@@ -185,6 +214,9 @@ def main(argv=None) -> int:
     if "julgamento" in fases:
         out["julgamento"] = fase_julgamento(args.max_processos, args.dry_run)
         print("julgamento:", json.dumps(out["julgamento"]["stats"], ensure_ascii=False))
+    if "julgamento_pncp" in fases:
+        out["julgamento_pncp"] = fase_julgamento_pncp(args.max_certames, args.dry_run)
+        print("julgamento_pncp:", json.dumps(out["julgamento_pncp"], ensure_ascii=False))
     if "indice" in fases and not args.dry_run:
         out["indice"] = fase_indice(args.max_certames)
         print("indice:", json.dumps(out["indice"]["faixas"], ensure_ascii=False))

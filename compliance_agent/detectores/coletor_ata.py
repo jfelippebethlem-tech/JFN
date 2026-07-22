@@ -181,12 +181,22 @@ def _extrair_resultado(decisoes: list[dict], propostas: list[dict]) -> dict:
     """Agrega o RESULTADO do certame que o cruzamento do E1 consome: {licitantes, inabilitados, motivos,
     vencedor_cnpj}. `licitantes` = CNPJs distintos vistos em decisões + propostas."""
     cnpjs = {d["cnpj"] for d in decisoes} | {p["licitante_cnpj"] for p in propostas}
-    inabilitados = [d for d in decisoes if d["decisao"] == "inabilitado"]
+    # dedup por CNPJ: o mesmo licitante inabilitado em docs/itens diferentes conta UMA vez
+    # (senão inab > licitantes e a taxa de inabilitação em massa infla — visto em ata real)
+    vistos: set[str] = set()
+    inabilitados = [d for d in decisoes if d["decisao"] == "inabilitado"
+                    and not (d["cnpj"] in vistos or vistos.add(d["cnpj"]))]
     vencedores = [d["cnpj"] for d in decisoes if d["vencedor"]]
+    # diligência é ATRIBUÍDA por licitante (art. 64 §1º): saneamento concedido a OUTRO CNPJ não
+    # exculpa a inabilitação trivial deste — é justamente o padrão dois-pesos que o J7 caça.
+    dil_cnpjs = {d["cnpj"] for d in decisoes if d["decisao"] == "diligencia"}
     resultado: dict[str, Any] = {
         "licitantes": len(cnpjs),
         "inabilitados": len(inabilitados),
         "motivos": [d["fundamento"] for d in inabilitados if d["fundamento"]],
+        "motivos_det": [{"cnpj": d["cnpj"], "motivo": d["fundamento"],
+                         "diligencia": d["cnpj"] in dil_cnpjs}
+                        for d in inabilitados if d["fundamento"]],
     }
     if vencedores:
         resultado["vencedor_cnpj"] = vencedores[0]

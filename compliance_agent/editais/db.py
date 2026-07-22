@@ -54,16 +54,27 @@ DDL = [
 def salvar_julgamento(con: sqlite3.Connection, certame: str, resultado: dict,
                       *, houve_diligencia: bool = False, processo_sei: str | None = None) -> dict:
     """Persiste o `resultado` do coletor_ata ({licitantes, inabilitados, motivos, vencedor_cnpj})
-    já classificando a TRIVIALIDADE dos motivos (motivo_inabilitacao). `houve_diligencia` =
-    a comissão diligenciou/saneou na sessão (anti-FP conservador: com diligência registrada,
-    motivo trivial NÃO vira violação de saneamento). Retorna o agregado de trivialidade."""
+    já classificando a TRIVIALIDADE dos motivos (motivo_inabilitacao). A diligência conta POR
+    LICITANTE (`motivos_det`): saneamento concedido a outro CNPJ não exculpa a inabilitação
+    trivial deste (art. 64 §1º — é o padrão dois-pesos do J7). `houve_diligencia` (sessão) segue
+    gravado como contexto; fonte antiga sem `motivos_det` cai no comportamento por sessão.
+    Retorna o agregado de trivialidade (com `por_licitante` quando a ata atribui CNPJ)."""
     import json
 
     from compliance_agent.editais.motivo_inabilitacao import classificar, taxa_trivialidade
 
     motivos = list(resultado.get("motivos") or [])
-    classif = [classificar(m, houve_diligencia=houve_diligencia) for m in motivos]
-    agg = taxa_trivialidade(classif)
+    det = list(resultado.get("motivos_det") or [])
+    if det:
+        classif = [classificar(m["motivo"], houve_diligencia=bool(m.get("diligencia")))
+                   for m in det]
+        agg = taxa_trivialidade(classif)
+        agg["por_licitante"] = [{"cnpj": m["cnpj"], "classe": c.get("classe"),
+                                 "violacao_saneamento": bool(c.get("violacao_saneamento"))}
+                                for m, c in zip(det, classif)]
+    else:
+        classif = [classificar(m, houve_diligencia=houve_diligencia) for m in motivos]
+        agg = taxa_trivialidade(classif)
     con.execute(DDL_CERTAME_JULGAMENTO)
     con.execute(
         "INSERT INTO certame_julgamento (certame, processo_sei, licitantes, inabilitados, "

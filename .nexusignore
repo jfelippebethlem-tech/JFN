@@ -23,3 +23,5 @@
 *.zip
 *.duckdb
 *.sqlite
+data/
+reports/

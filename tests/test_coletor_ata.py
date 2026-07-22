@@ -85,9 +85,11 @@ def test_degrada_honesto_sem_ata():
     assert "resultado" not in ctx
 
 
-def test_persistir_julgamento_grava_e_infere_diligencia(tmp_path):
+def test_persistir_julgamento_diligencia_por_licitante(tmp_path):
     """persistir_julgamento: resultado da ata deixa de ser efêmero (alimenta a família certame_ata do
-    índice); a diligência da própria sessão exculpa a violação de saneamento (anti-FP conservador)."""
+    índice). A diligência conta POR LICITANTE (art. 64 §1º): o saneamento concedido só à BETA NÃO
+    exculpa a inabilitação trivial da ALFA — é o padrão dois-pesos que o J7 caça (antes, um único
+    'diligência' na sessão apagava a violação de todos)."""
     import sqlite3
 
     from compliance_agent.detectores.coletor_ata import persistir_julgamento
@@ -97,10 +99,32 @@ def test_persistir_julgamento_grava_e_infere_diligencia(tmp_path):
     init_schema(con)
     agg = persistir_julgamento(_leitura_ata(), "CERT-1", con, processo_sei="SEI-330020/000762/2021")
     assert agg is not None and agg["n"] >= 1
-    assert agg["violacoes_saneamento"] == 0  # BETA recebeu diligência na sessão → houve_diligencia=True
+    assert agg["violacoes_saneamento"] == 1  # ALFA: trivial sem diligência PRÓPRIA (BETA teve, ALFA não)
+    pl = {p["cnpj"]: p for p in agg["por_licitante"]}
+    assert pl["11.111.111/0001-11"]["violacao_saneamento"] is True
     row = con.execute("SELECT licitantes, inabilitados, houve_diligencia FROM certame_julgamento "
                       "WHERE certame='CERT-1'").fetchone()
-    assert row[0] == 2 and row[1] == 1 and row[2] == 1
+    assert row[0] == 2 and row[1] == 1 and row[2] == 1  # houve_diligencia (sessão) segue como contexto
+    con.close()
+
+
+def test_salvar_julgamento_diligencia_propria_exculpa(tmp_path):
+    """Licitante inabilitado que RECEBEU diligência própria (motivos_det.diligencia=True) não vira
+    violação de saneamento — a exculpação continua, só que atribuída ao CNPJ certo."""
+    import sqlite3
+
+    from compliance_agent.editais.db import init_schema, salvar_julgamento
+
+    con = sqlite3.connect(tmp_path / "c.db")
+    init_schema(con)
+    resultado = {"licitantes": 2, "inabilitados": 1,
+                 "motivos": ["certidão de regularidade fiscal vencida"],
+                 "motivos_det": [{"cnpj": "33.333.333/0001-33",
+                                  "motivo": "certidão de regularidade fiscal vencida",
+                                  "diligencia": True}]}
+    agg = salvar_julgamento(con, "CERT-3", resultado, houve_diligencia=True)
+    assert agg["violacoes_saneamento"] == 0
+    assert agg["por_licitante"][0]["violacao_saneamento"] is False
     con.close()
 
 

@@ -184,16 +184,24 @@ def _f_competicao(conn: sqlite3.Connection, certame: str, ctx: dict) -> dict:
     flags = []
     forn_propostas = {r[0] for r in _q(conn, "SELECT DISTINCT fornecedor_cnpj FROM proposta_item "
                                              "WHERE certame=?", (certame,))}
-    # nº de proponentes: apurável só com atas (proposta_item) ou PNCP com ordem>1 gravada
-    # (registro só do vencedor NÃO prova licitante único — ver docstring)
-    if forn_propostas or ctx["tem_ordem_alem_do_1o"]:
-        n = max(len(forn_propostas), ctx["n_forn_ordem"])
+    # 3ª fonte: a ATA julgada nomeia quem participou (certame_julgamento.licitantes — ponte
+    # ata_para_julgamento). Fonte real de contagem; registro PNCP só do vencedor continua
+    # NÃO provando licitante único (ver docstring).
+    n_ata = 0
+    try:
+        row = _q(conn, "SELECT licitantes FROM certame_julgamento WHERE certame=?", (certame,))
+        n_ata = int(row[0][0] or 0) if row else 0
+    except sqlite3.OperationalError:
+        pass  # tabela ainda não existe nesta base
+    if forn_propostas or ctx["tem_ordem_alem_do_1o"] or n_ata:
+        n = max(len(forn_propostas), ctx["n_forn_ordem"], n_ata)
         valor = (VALOR_LICITANTE_UNICO if n <= 1 else
                  VALOR_DOIS_LICITANTES if n == 2 else
                  VALOR_TRES_LICITANTES if n < MIN_LICITANTES_SAUDAVEL else 0.0)
         nome = "licitante_unico" if n <= 1 else "poucos_licitantes"
         flags.append(_flag(nome, valor, f"{n} proponente(s) distinto(s) "
-                           f"(proposta_item={len(forn_propostas)}, pncp ordem={ctx['n_forn_ordem']})"))
+                           f"(proposta_item={len(forn_propostas)}, pncp ordem={ctx['n_forn_ordem']}, "
+                           f"ata={n_ata})"))
     # restritividade de cláusulas (clausula_veredito casa por numero_controle_pncp — 226 na base)
     ver = _q(conn, "SELECT score_final, veredito, forca_e7, sumula FROM clausula_veredito "
                    "WHERE numero_controle_pncp=? AND score_final IS NOT NULL", (certame,))
