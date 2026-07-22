@@ -688,7 +688,18 @@
     50%{box-shadow:inset 0 1px 0 oklch(1 0 0/.10),0 10px 34px -6px color-mix(in oklch,var(--esf) 84%,transparent)}}
   .live .pulse{animation:pl 1.8s infinite}
   @media (prefers-reduced-motion:reduce){.sph.on,nav.tabs button.on,nav.tabs button.on::after,.cover-seal,.live .pulse{animation:none}}
-  #rjbg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.42;mix-blend-mode:screen;
+  /* GRID HOLOGRÁFICO GLOBAL — o "chão" tech que flui na cor da esfera, preenche o
+     vazio sem competir com o dado (opacity baixa, fundido nas beiradas). */
+  #hologrid{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.2;
+    background:linear-gradient(color-mix(in oklch,var(--esf) 62%,transparent) 1px,transparent 1px) 0 0/100% 44px,
+               linear-gradient(90deg,color-mix(in oklch,var(--esf) 62%,transparent) 1px,transparent 1px) 0 0/44px 100%,
+               radial-gradient(closest-side at 50% 46%,color-mix(in oklch,var(--esf) 10%,transparent),transparent);
+    -webkit-mask-image:radial-gradient(150% 110% at 50% 34%,#000 46%,transparent 92%);
+            mask-image:radial-gradient(150% 110% at 50% 34%,#000 46%,transparent 92%);
+    animation:gridFlow 9s linear infinite}
+  @keyframes gridFlow{to{background-position:0 44px,44px 0,0 0}}
+  @media (prefers-reduced-motion:reduce){#hologrid{animation:none;opacity:.13}}
+  #rjbg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.5;mix-blend-mode:screen;
     -webkit-mask-image:radial-gradient(120% 100% at 60% 42%,#000 42%,transparent 88%);
             mask-image:radial-gradient(120% 100% at 60% 42%,#000 42%,transparent 88%)}
   @media (prefers-reduced-motion:reduce){#rjbg{opacity:.3}}
@@ -748,6 +759,7 @@
     <div class="pskip">toque para entrar</div>
   </div>
 </div>
+<div id="hologrid" aria-hidden="true"></div>
 <canvas id="rjbg" aria-hidden="true"></canvas>
 <div id="esfnebula" aria-hidden="true"></div>
 <canvas id="netbg" aria-hidden="true"></canvas>
@@ -2499,15 +2511,15 @@ function netbgStart(){
   const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
   function size(){const d=Math.min(2,devicePixelRatio);W=cv.width=innerWidth*d;H=cv.height=innerHeight*d;
     cv.style.width=innerWidth+'px';cv.style.height=innerHeight+'px';cv._d=d;
-    const n=Math.min(56,Math.floor(innerWidth/26));
+    const n=Math.min(76,Math.floor(innerWidth/20));
     pts=Array.from({length:n},()=>({x:Math.random()*W,y:Math.random()*H,z:Math.random()*.8+.2,
       vx:(Math.random()-.5)*.11*d,vy:(Math.random()-.5)*.11*d,r:(Math.random()*1.5+.6)*d}));}
   function draw(){const d=cv._d,D=150*d;ctx.clearRect(0,0,W,H);const px=(_ckMX-.5)*26*d,py=(_ckMY-.5)*26*d;
     for(let i=0;i<pts.length;i++){const p=pts[i];if(!rm){p.x+=p.vx;p.y+=p.vy;if(p.x<0||p.x>W)p.vx*=-1;if(p.y<0||p.y>H)p.vy*=-1;}
       const ox=p.x+px*p.z,oy=p.y+py*p.z;p._ox=ox;p._oy=oy;
       for(let j=i+1;j<pts.length;j++){const q=pts[j],qx=q.x+px*q.z,qy=q.y+py*q.z,dx=ox-qx,dy=oy-qy,dd=Math.hypot(dx,dy);
-        if(dd<D){ctx.strokeStyle='rgba(80,215,255,'+((1-dd/D)*.16)+')';ctx.lineWidth=d*.5;ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(qx,qy);ctx.stroke();}}
-      ctx.beginPath();ctx.arc(ox,oy,p.r,0,7);ctx.fillStyle='rgba(135,225,255,'+(.3+p.z*.3)+')';ctx.fill();}
+        if(dd<D){ctx.strokeStyle='rgba(90,210,255,'+((1-dd/D)*.24)+')';ctx.lineWidth=d*.55;ctx.beginPath();ctx.moveTo(ox,oy);ctx.lineTo(qx,qy);ctx.stroke();}}
+      ctx.beginPath();ctx.arc(ox,oy,p.r,0,7);ctx.fillStyle='rgba(140,228,255,'+(.38+p.z*.4)+')';ctx.fill();}
     if(!rm)raf=requestAnimationFrame(draw);}
   addEventListener('resize',()=>{cancelAnimationFrame(raf);size();draw();});
   document.addEventListener('visibilitychange',()=>{cancelAnimationFrame(raf);if(!document.hidden)draw();});
@@ -2652,14 +2664,31 @@ function nucleoStart(){
         ctx.beginPath();ctx.arc(x,y,2.6,0,6.283);ctx.fill();
       });
     }
-    const spin=rm?0:t*0.0004;
-    for(let r=0;r<3;r++){ctx.strokeStyle=`rgba(140,200,255,${.16-r*.04})`;ctx.lineWidth=1.2;
-      ctx.setLineDash([6,10]);ctx.lineDashOffset=(r%2?1:-1)*spin*40;
-      ctx.beginPath();ctx.arc(CX,CY,26+r*13,0,6.283);ctx.stroke();ctx.setLineDash([]);}
-    const cg=ctx.createRadialGradient(CX,CY,0,CX,CY,30);
-    cg.addColorStop(0,'rgba(255,255,255,.95)');cg.addColorStop(.25,'rgba(150,220,255,.75)');
-    cg.addColorStop(.6,'rgba(120,140,255,.25)');cg.addColorStop(1,'rgba(120,140,255,0)');
-    ctx.fillStyle=cg;ctx.beginPath();ctx.arc(CX,CY,30,0,6.283);ctx.fill();
+    // ── ARC REACTOR: anéis segmentados em sentidos opostos + núcleo incandescente ──
+    const spin=rm?0:t*0.0004, pulse=rm?1:(0.86+0.14*Math.sin(t*0.0021));
+    for(let r=0;r<4;r++){
+      const rad=24+r*11, seg=8+r*4, dir=(r%2?-1:1);
+      ctx.save();ctx.translate(CX,CY);ctx.rotate(spin*40*dir*(1+r*0.28));
+      ctx.strokeStyle=`rgba(150,200,255,${((.30-r*.05)*pulse).toFixed(3)})`;ctx.lineWidth=Math.max(.7,2-r*.35);
+      for(let s=0;s<seg;s++){const a0=s/seg*6.283;
+        ctx.beginPath();ctx.arc(0,0,rad,a0,a0+6.283/seg*0.62);ctx.stroke();}
+      ctx.restore();
+    }
+    if(!rm){ // raios de energia pulsando do coração
+      ctx.save();ctx.translate(CX,CY);ctx.rotate(-spin*22);
+      for(let s=0;s<12;s++){ctx.rotate(6.283/12);
+        const len=12+8*Math.abs(Math.sin(t*0.003+s));
+        ctx.strokeStyle=`rgba(185,220,255,${(.14*pulse).toFixed(3)})`;ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(0,9);ctx.lineTo(0,9+len);ctx.stroke();}
+      ctx.restore();
+    }
+    // núcleo: coração branco-quente com laranja, envolto em azul-íon (arc reactor)
+    const cr=34*pulse;
+    const cg=ctx.createRadialGradient(CX,CY,0,CX,CY,cr);
+    cg.addColorStop(0,'rgba(255,244,226,1)');cg.addColorStop(.16,'rgba(255,192,120,.92)');
+    cg.addColorStop(.40,'rgba(150,220,255,.72)');cg.addColorStop(.7,'rgba(120,150,255,.24)');cg.addColorStop(1,'rgba(120,140,255,0)');
+    ctx.fillStyle=cg;ctx.beginPath();ctx.arc(CX,CY,cr,0,6.283);ctx.fill();
+    ctx.fillStyle='rgba(255,255,255,'+(0.9*pulse).toFixed(2)+')';ctx.beginPath();ctx.arc(CX,CY,3.4,0,6.283);ctx.fill();
     _nuPulses=_nuPulses.filter(p=>p.a>.02);
     _nuPulses.forEach(p=>{p.r+=2.6;p.a*=.96;
       ctx.strokeStyle=`rgba(${p.c},${p.a})`;ctx.lineWidth=1.6;
