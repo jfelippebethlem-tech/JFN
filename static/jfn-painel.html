@@ -591,6 +591,13 @@
   @media (prefers-reduced-motion:reduce){
     .btn,.chip,.search .az,.htop a,.sheet .x,.sph,.sph:hover,nav.tabs button,nav.tabs button:hover,nav.tabs button.on{transform:none!important}
     .btn::after,.chip::after,.search .az::after,.htop a::after{display:none}}
+  /* TERRITÓRIO GLOBAL — o Estado do RJ atrás de TODA aba (não só o cockpit).
+     Malha real do IBGE, tingida pela cor da esfera ativa, varrida por um radar.
+     Fica no fundo, discreto: o dado sempre lê primeiro. */
+  #rjbg{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:.42;mix-blend-mode:screen;
+    -webkit-mask-image:radial-gradient(120% 100% at 60% 42%,#000 42%,transparent 88%);
+            mask-image:radial-gradient(120% 100% at 60% 42%,#000 42%,transparent 88%)}
+  @media (prefers-reduced-motion:reduce){#rjbg{opacity:.3}}
 
   /* ── PORTAL DE IGNIÇÃO ─────────────────────────────────────────────────────
      Toca UMA vez por sessão, por cima do painel que já está carregando atrás.
@@ -600,7 +607,11 @@
   /* composição: o REATOR fica no centro óptico, a fala vive no terço inferior.
      Nunca deixar texto por cima do núcleo — foi o erro da 1ª volta (o brilho
      comia as palavras do meio e a frase virava ilegível).                   */
-  #portal{position:fixed;inset:0;z-index:100;background:oklch(0.035 0.014 265);
+  #portal{position:fixed;inset:0;z-index:100;
+    /* nebulosa fotográfica (Pollinations/Flux) escurecida sob o shader procedural */
+    background:linear-gradient(oklch(0.04 0.015 265/.52),oklch(0.035 0.014 265/.72)),
+               url(/static/assets/portal-nebula.jpg) center/cover no-repeat,
+               oklch(0.035 0.014 265);
     display:flex;align-items:flex-end;justify-content:center;cursor:pointer;
     transition:opacity .5s ease,filter .5s ease}
   /* véu inferior: garante contraste do texto contra qualquer quadro da cena */
@@ -643,6 +654,7 @@
     <div class="pskip">toque para entrar</div>
   </div>
 </div>
+<canvas id="rjbg" aria-hidden="true"></canvas>
 <canvas id="netbg" aria-hidden="true"></canvas>
 <div class="aura a1" aria-hidden="true"></div><div class="aura a2" aria-hidden="true"></div>
 <div id="aurora" aria-hidden="true"></div>
@@ -675,6 +687,7 @@
 
 <script>
 const $=id=>document.getElementById(id);
+var _rjCbs=[],_rjLoading=false;   // carregador da malha do RJ — declarado no topo (o init usa antes da def de _rjCarregar)
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const fmtN=n=>(n==null?'—':Number(n).toLocaleString('pt-BR'));
 const fmtR=v=>'R$ '+(v==null?'0,00':Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}));
@@ -879,6 +892,7 @@ async function ir(id){
   if(!t)return;
   aba=id;montarTabs();
   document.body.setAttribute('data-esf',esfera);   // tinge hovers/energia com a cor da esfera
+  if(typeof _rjbgTinge==='function')_rjbgTinge();   // território de fundo re-tinge na cor da esfera
   const meu=++_nav;
   const v=$('view');v.innerHTML=spin();
   try{const html=await t.render();if(meu!==_nav)return;v.innerHTML=`<div class="fade">${html}</div>`;}
@@ -2308,6 +2322,74 @@ window.addEventListener('pagehide',limparEfemeros);window.addEventListener('befo
 // ═══ COCKPIT (aba Início) — command deck ao vivo ═══
 let _ckMX=.5,_ckMY=.5,_ckTimer=null;
 addEventListener('pointermove',e=>{_ckMX=e.clientX/innerWidth;_ckMY=e.clientY/innerHeight;},{passive:true});
+/* ── TERRITÓRIO GLOBAL — o Estado do RJ atrás de toda aba ──────────────────
+   Desenha a malha REAL do IBGE num offscreen (1× por tamanho/cor), tingida pela
+   cor da esfera ativa, e no RAF passa só uma varredura de radar + respiração
+   (barato). Pausa em document.hidden e reduced-motion. O território re-tinge
+   quando a esfera muda (rjbgTinge). O dado sempre lê primeiro: opacity baixa. */
+let _rjbgTinge=()=>{};
+function rjbgStart(){
+  const cv=$('rjbg');if(!cv)return;
+  const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const ctx=cv.getContext('2d');
+  let W,H,dpr,mapC=null,raf=0,corAtual='';
+  const corEsf=()=>getComputedStyle(document.body).getPropertyValue('--esf').trim()||'oklch(0.72 0.175 258)';
+  function build(){
+    const M=window.RJ_MALHA;if(!M)return;
+    const cor=corEsf();corAtual=cor;
+    mapC=document.createElement('canvas');mapC.width=cv.width;mapC.height=cv.height;
+    const x=mapC.getContext('2d');x.scale(dpr,dpr);
+    // território grande, empurrado à direita: "mapa na parede da sala de comando"
+    const s=Math.min(W/M.w,H/M.h)*1.04;
+    const ox=W-M.w*s*0.66, oy=(H-M.h*s)/2;
+    const mk=flat=>{const p=new Path2D();let X=flat[0],Y=flat[1];
+      p.moveTo(ox+X/M.q*s,oy+Y/M.q*s);
+      for(let i=2;i<flat.length;i+=2){X+=flat[i];Y+=flat[i+1];p.lineTo(ox+X/M.q*s,oy+Y/M.q*s);}
+      p.closePath();return p;};
+    x.lineJoin=x.lineCap='round';
+    // divisas: teia fria na cor da esfera
+    x.strokeStyle=`color-mix(in oklch, ${cor} 34%, transparent)`;x.lineWidth=0.6;
+    M.m.forEach(f=>x.stroke(mk(f)));
+    // contorno: a fronteira sob vigília, com halo
+    x.shadowColor=cor;x.shadowBlur=12;
+    x.strokeStyle=`color-mix(in oklch, ${cor} 78%, white 12%)`;x.lineWidth=1.5;
+    M.o.forEach(f=>x.stroke(mk(f)));
+    cv._ox=ox;cv._oy=oy;cv._s=s;cv._M=M;
+  }
+  function size(){
+    dpr=Math.min(1.5,devicePixelRatio||1);W=innerWidth;H=innerHeight;
+    cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);
+    cv.style.width=W+'px';cv.style.height=H+'px';
+    build();
+  }
+  function draw(t){
+    if(!mapC){raf=requestAnimationFrame(draw);return;}
+    if(document.hidden){raf=requestAnimationFrame(draw);return;}
+    const g=ctx;g.setTransform(1,0,0,1,0,0);g.clearRect(0,0,cv.width,cv.height);
+    g.drawImage(mapC,0,0);
+    // respiração + varredura de radar girando a partir do centro do território
+    if(!rm){
+      g.setTransform(dpr,0,0,dpr,0,0);
+      const M=cv._M,s=cv._s;
+      const cx=cv._ox+M.w*s*0.42/1, cy=cv._oy+M.h*s*0.5;
+      const ang=t*0.00016, R=Math.hypot(W,H);
+      const grad=g.createConicGradient?g.createConicGradient(ang,cx,cy):null;
+      if(grad){grad.addColorStop(0,`color-mix(in oklch, ${corAtual} 22%, transparent)`);
+        grad.addColorStop(0.06,'transparent');grad.addColorStop(1,'transparent');
+        g.globalCompositeOperation='source-atop';g.fillStyle=grad;
+        g.beginPath();g.arc(cx,cy,R,0,6.283);g.fill();
+        g.globalCompositeOperation='source-over';}
+      g.setTransform(1,0,0,1,0,0);
+    }
+    raf=requestAnimationFrame(draw);
+  }
+  _rjbgTinge=()=>{if(!window.RJ_MALHA)return;if(corEsf()!==corAtual)build();};
+  size();
+  addEventListener('resize',()=>{cancelAnimationFrame(raf);size();draw(performance.now());},{passive:true});
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden){cancelAnimationFrame(raf);draw(performance.now());}});
+  _rjCarregar(()=>{build();});
+  draw(performance.now());
+}
 function netbgStart(){
   const cv=$('netbg');if(!cv)return;const ctx=cv.getContext('2d');let W,H,pts,raf;
   const rm=matchMedia('(prefers-reduced-motion:reduce)').matches;
@@ -2551,7 +2633,7 @@ function ckPull(first){
         <span class="fnm">${esc((f.fonte||'').replace(/·/g,'·'))}</span><span class="fage">${f.idade_dias==null?'—':f.idade_dias+'d'}</span></div>`).join('')+`</div>`;});
 }
 
-(async()=>{montarSpheres();montarTabs();netbgStart();await ir('i_cockpit');
+(async()=>{montarSpheres();montarTabs();netbgStart();rjbgStart();await ir('i_cockpit');
   const st=await J('/status');if(st.exercicio)$('hsub').textContent='CENTRAL DE INTELIGÊNCIA · SIAFE '+(st.logged_in?'✓':'✗')+' · '+st.exercicio;})();
 
 /* ── SABRE: motor do Conduíte + Kyber core + holofeed ─────────────────────────
@@ -2698,22 +2780,26 @@ void main(){
   col+=mix(vec3(0.5,0.7,1.15),vec3(1.15,0.7,0.35),0.5)*u_jump*u_jump
        *smoothstep(0.9,0.0,r)*0.32;
   col*=1.0-0.82*smoothstep(0.20,1.05,r);
-  gl_FragColor=vec4(col,1.0);
+  /* alpha = luminância: espaço vazio fica TRANSPARENTE (mostra a nebulosa de
+     fundo), reator/estrelas/território ficam opacos por cima. */
+  float a=clamp(max(col.r,max(col.g,col.b))*1.25+0.12,0.0,1.0);
+  gl_FragColor=vec4(col,a);
 }`;
 
 /* desenha a malha do RJ UMA vez num canvas fora de tela; a animação depois é
    só máscara + composite (2 operações por quadro), não re-traçado.          */
 /* carrega a malha do RJ sob demanda (21 KB) e avisa quem pediu. Um só fetch
    serve o portal e o núcleo do cockpit.                                     */
-let _rjPend=null;
+// _rjCbs/_rjLoading declarados no topo do script (init os usa antes desta def).
 function _rjCarregar(cb){
-  if(window.RJ_MALHA){cb();return;}
-  if(_rjPend){_rjPend.push(cb);return;}
-  _rjPend=[cb];
+  if(window.RJ_MALHA){try{cb();}catch(_){}return;}
+  _rjCbs.push(cb);
+  if(_rjLoading)return;
+  _rjLoading=true;
   const s=document.createElement('script');
   s.src='/static/assets/rj-malha.js';s.async=true;
-  s.onload=()=>{const f=_rjPend;_rjPend=null;f.forEach(fn=>{try{fn();}catch(_){}});};
-  s.onerror=()=>{_rjPend=null;};                 // sem malha o painel segue igual
+  s.onload=()=>{const l=_rjCbs.slice();_rjCbs.length=0;l.forEach(fn=>{try{fn();}catch(_){}});};
+  s.onerror=()=>{_rjLoading=false;};             // sem malha o painel segue igual
   document.head.appendChild(s);
 }
 
@@ -2762,7 +2848,7 @@ function portalStart(){
   let gl=null,U={},raf=0,morto=false,mapC=null,mx=0,my=0;
   const t0=performance.now(),IGN=[120,900],JUMP=[2600,3320],FIM=3520;
 
-  try{gl=cv.getContext('webgl',{antialias:false,alpha:false})||cv.getContext('experimental-webgl');}catch(_){}
+  try{gl=cv.getContext('webgl',{antialias:false,alpha:true,premultipliedAlpha:false})||cv.getContext('experimental-webgl');}catch(_){}
   if(gl)try{
     const sh=(tp,src)=>{const s=gl.createShader(tp);gl.shaderSource(s,src);gl.compileShader(s);
       if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;};
