@@ -57,6 +57,16 @@ _SUBSTANCIAIS: tuple[tuple[str, re.Pattern], ...] = (
      re.compile(r"inexequ[íi]vel|acima\s+do\s+(?:or[çc]amento|valor)\s+estimado|sobrepre[çc]o", re.I)),
     ("sanção/impedimento vigente",
      re.compile(r"(?:sancionad|impedid|suspens|inid[ôo]ne|declara[çc][ãa]o\s+de\s+inidoneidade)", re.I)),
+    # corpus PNCP 2026-07-22: certidão POSITIVA de débitos = irregularidade fiscal MATERIAL
+    # (≠ certidão vencida, que é trivial); "positiva com efeito de negativa" é regular — não casa.
+    ("débito fiscal real (certidão positiva)",
+     re.compile(r"certid[ãa]o\s+positiva(?!\s+(?:\w+\s+){0,3}?efeitos?\s+de\s+negativa)"
+                r"|d[ée]bitos?\s+(?:com|junto)\s+[àa]?\s*fazenda", re.I)),
+    ("amostra reprovada",
+     re.compile(r"amostra\s+(?:\w+\s+){0,3}?(?:reprovad|rejeitad|em\s+desacordo|n[ãa]o\s+aprovad)", re.I)),
+    ("registro em conselho profissional ausente",
+     re.compile(r"(?:crea|cau|crc|crm|coren|conselho\s+(?:regional|profissional))"
+                r".{0,50}?(?:aus[êe]n|n[ãa]o\s+apresent|vencid|irregular|sem\s+registro)", re.I)),
 )
 
 

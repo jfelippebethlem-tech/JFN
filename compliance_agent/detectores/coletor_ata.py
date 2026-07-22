@@ -111,11 +111,25 @@ def _segmentos_por_cnpj(fontes: list[dict]) -> list[tuple[str, str, str]]:
     return out
 
 
+_RX_NEGACAO_INAB = re.compile(
+    r"nenhum(?:a)?\s+(?:participante|licitante|empresa|proposta)[^.]{0,60}?"
+    r"(?:inabilitad|desclassificad)|n[ãa]o\s+(?:houve|foram?|foi)\s+"
+    r"(?:\w+\s+){0,3}?(?:inabilitad|desclassificad)|sem\s+(?:inabilitad|desclassificad)",
+    re.IGNORECASE)
+
+
 def _classificar_decisao(linha: str) -> str | None:
     """Mapeia a linha numa decisão canônica que o J7 entende: 'diligencia'|'inabilitado'|'habilitado'|None.
-    Ordem importa: diligência/saneamento é TOLERÂNCIA mesmo que a palavra 'inabilitada' apareça na frase."""
+    Ordem importa: diligência/saneamento é TOLERÂNCIA mesmo que a palavra 'inabilitada' apareça na frase.
+    Guard de NEGAÇÃO (corpus PNCP 2026-07-22): boilerplate de ata eletrônica — "PARTICIPANTE(S)
+    INABILITADO(S): Nenhum" — casava o regex e inventava inabilitação para o CNPJ vizinho."""
     if _RX_DILIGENCIA.search(linha):
         return "diligencia"
+    if _RX_NEGACAO_INAB.search(linha):
+        # "nenhum inabilitado/não houve desclassificação": segue avaliando habilitação abaixo
+        if _RX_HABILITADO.search(linha) or _RX_VENCEDOR.search(linha):
+            return "habilitado"
+        return None
     if _RX_INABILITADO.search(linha):
         return "inabilitado"
     if _RX_HABILITADO.search(linha) or _RX_VENCEDOR.search(linha):
