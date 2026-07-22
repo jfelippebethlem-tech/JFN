@@ -70,7 +70,7 @@ async def api_hermes_definir_missao(payload: dict):
 
 
 @router.delete("/api/hermes/missao")
-async def api_hermes_limpar_missao():
+def api_hermes_limpar_missao():
     from compliance_agent.database.models import get_session, init_db
     from compliance_agent.hermes_goal import HermesGoalAgent
     init_db()
@@ -83,7 +83,7 @@ async def api_hermes_limpar_missao():
 
 
 @router.post("/api/hermes/missoes")
-async def api_hermes_criar_missao(payload: dict):
+def api_hermes_criar_missao(payload: dict):
     """Cria uma missão paralela e dispara a execução em background."""
     from compliance_agent.database.models import get_session, init_db
     from compliance_agent.hermes_goal import criar_missao_paralela
@@ -103,7 +103,7 @@ async def api_hermes_criar_missao(payload: dict):
 
 
 @router.get("/api/hermes/missoes")
-async def api_hermes_listar_missoes():
+def api_hermes_listar_missoes():
     """Lista missões (em execução + histórico), mais recentes primeiro."""
     from compliance_agent.database.models import get_session, init_db
     from compliance_agent.hermes_goal import listar_missoes, HermesGoalAgent
@@ -303,7 +303,7 @@ async def api_hermes_chat(payload: dict):
 
 
 @router.post("/api/hermes/auditor24h/iniciar")
-async def api_auditor24h_iniciar(payload: Optional[dict] = None):
+def api_auditor24h_iniciar(payload: Optional[dict] = None):
     """Liga o modo Auditor 24 horas (botão da interface)."""
     from compliance_agent.hermes_goal import iniciar_auditor_24h
     objetivo = ((payload or {}).get("objetivo") or "").strip()
@@ -319,7 +319,7 @@ async def api_auditor24h_iniciar(payload: Optional[dict] = None):
 
 
 @router.post("/api/hermes/auditor24h/parar")
-async def api_auditor24h_parar():
+def api_auditor24h_parar():
     """Desliga o modo Auditor 24 horas."""
     from compliance_agent.hermes_goal import parar_auditor_24h
     try:
@@ -329,7 +329,7 @@ async def api_auditor24h_parar():
 
 
 @router.get("/api/hermes/auditor24h/status")
-async def api_auditor24h_status():
+def api_auditor24h_status():
     """Estado atual do Auditor 24 horas (ciclos, último resumo, etc.)."""
     from compliance_agent.hermes_goal import status_auditor_24h
     try:
@@ -339,7 +339,7 @@ async def api_auditor24h_status():
 
 
 @router.post("/api/hermes/relatorio")
-async def api_hermes_relatorio(payload: Optional[dict] = None):
+def api_hermes_relatorio(payload: Optional[dict] = None):
     from compliance_agent.reporting.export_relatorios import generate_report
     fmt = ((payload or {}).get("formato") or "txt").strip().lower()
     result = generate_report(fmt=fmt)

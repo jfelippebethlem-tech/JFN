@@ -269,7 +269,7 @@ async def api_dossie(payload: Optional[dict] = None):
 
 
 @router.post("/api/mandato/minuta")
-async def api_mandato_minuta(payload: Optional[dict] = None):
+def api_mandato_minuta(payload: Optional[dict] = None):
     """Onda 10 — Instrumento de mandato: gera minuta .docx (requerimento ALERJ / representação TCE /
     notícia de fato MP / post). Body {"tipo","base"}. Diligência/representação, NUNCA condenação."""
     try:
@@ -610,7 +610,7 @@ def _sei_arquivado(numero_sei: str) -> bool:
 
 
 @router.post("/api/sei/empresa/iniciar")
-async def api_sei_empresa_iniciar(payload: dict | None = None):
+def api_sei_empresa_iniciar(payload: dict | None = None):
     """Dispara a busca+download da árvore SEI completa de uma empresa. Background (subprocess
     destacado): pode levar minutos a horas conforme o nº de processos — acompanhe por
     /api/sei/empresa/status. Respeita o single-instance dos sweeps SEI (nunca 2 browsers): se
@@ -638,7 +638,7 @@ async def api_sei_empresa_iniciar(payload: dict | None = None):
 
 
 @router.get("/api/sei/empresa/status")
-async def api_sei_empresa_status(cnpj: str = ""):
+def api_sei_empresa_status(cnpj: str = ""):
     """Progresso da árvore SEI de uma empresa: quantos processos existem (via OB paga —
     processos_de_fornecedor) vs quantos já estão no arquivo compacto. Nota: só enxerga processos
     sem OB ainda se /iniciar tiver sido chamado com busca_viva=true (Pesquisa Avançada ao vivo)."""
@@ -656,7 +656,7 @@ async def api_sei_empresa_status(cnpj: str = ""):
 
 
 @router.get("/api/sei/empresa/zip")
-async def api_sei_empresa_zip(cnpj: str = ""):
+def api_sei_empresa_zip(cnpj: str = ""):
     """ZIP do arquivo compacto (texto+fotos+manifest) de cada processo SEI JÁ arquivado dessa
     empresa. Baixa o que já tem — não espera os que ainda faltam (parcial > nada; o payload diz
     honestamente quantos de quantos foram incluídos)."""

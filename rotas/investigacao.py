@@ -67,7 +67,7 @@ async def _grafo_rede_completa(limite: int = 120):
 
 
 @router.get("/api/anomalias")
-async def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] = None, top: int = 20,
+def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] = None, top: int = 20,
                         incluir_gov: bool = False):
     """Ranking de OBs suspeitas (Onda 1): score PyOD + red flags determinísticas. Filtros: ?orgao= &fornecedor= &top=.
 
@@ -99,7 +99,7 @@ async def api_anomalias(orgao: Optional[str] = None, fornecedor: Optional[str] =
 
 @router.get("/api/cartel")
 @router.post("/api/cartel")  # aceita GET e POST: o Yoda às vezes chuta o método (evita 405 na integração)
-async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int = 20):
+def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int = 20):
     """Grafo fornecedor↔órgão (Onda 3). ?modo=captura (UGs concentradas) | dependencia (fornecedores
     presos a 1 órgão) | vizinhanca&cnpj=... (co-ocorrência/rodízio). Indício a verificar, nunca acusação."""
     try:
@@ -142,7 +142,7 @@ async def api_cartel(modo: str = "captura", cnpj: Optional[str] = None, top: int
 
 @router.get("/api/rodizio")
 @router.post("/api/rodizio")  # aceita GET e POST (o Yoda às vezes chuta o método)
-async def api_rodizio(ug: Optional[str] = None, top: int = 20, qsa: int = 0):
+def api_rodizio(ug: Optional[str] = None, top: int = 20, qsa: int = 0):
     """Rodízio temporal de cartel (bid rotation): vencedores que se revezam no topo de uma UG ano a ano.
     ?ug=036100 → analisa uma UG (&qsa=1 cruza sócios dos campeões = concorrência fictícia) | sem ug →
     varredura das UGs com indício. Indício a verificar, nunca acusação."""
@@ -175,7 +175,7 @@ async def api_cruzamento(cnpj: str):
 
 
 @router.get("/api/coendereco/clusters")
-async def api_coendereco_clusters(min_forn: int = 2, top: int = 50):
+def api_coendereco_clusters(min_forn: int = 2, top: int = 50):
     """Descoberta proativa: grupos de fornecedores que dividem a MESMA sede e recebem do Estado.
     Red flag de fachada/laranja (art. 337-F CP). Varre a base de endereços ingeridos."""
     try:
@@ -189,7 +189,7 @@ async def api_coendereco_clusters(min_forn: int = 2, top: int = 50):
 
 
 @router.get("/api/orgao/cidades")
-async def api_orgao_cidades(ug: Optional[str] = None, top: int = 20):
+def api_orgao_cidades(ug: Optional[str] = None, top: int = 20):
     """Concentração GEOGRÁFICA dos fornecedores de um órgão (ou de todo o Estado se ug ausente):
     em que cidades se sediam quem o órgão paga. Red flag de fachada/direcionamento (art. 337-F CP)."""
     try:
@@ -202,7 +202,7 @@ async def api_orgao_cidades(ug: Optional[str] = None, top: int = 20):
 
 
 @router.get("/api/compliance/painel")
-async def api_painel():
+def api_painel():
     """Snapshot completo para o painel: stats, OBs do dia, top, alertas, lições.
     Cacheado 120s — as agregações varrem ~1,1M de OBs (~3s) e o panorama abre em toda visita."""
     if cache := _cache_get("painel:snapshot", 120):
@@ -308,7 +308,7 @@ async def api_investigar(nome: str = "", cnpj: str = ""):
 
 
 @router.get("/api/compliance/relatorio_30d")
-async def api_relatorio_30d():
+def api_relatorio_30d():
     """Gera relatório estruturado das OBs dos últimos 30 dias em Markdown."""
     try:
         import sqlalchemy as sa
@@ -459,7 +459,7 @@ async def api_compliance_graph():
 
 
 @router.get("/api/compliance/alerts")
-async def api_compliance_alerts(
+def api_compliance_alerts(
     tipo: Optional[str] = None,
     severidade: Optional[str] = None,
     limite: int = 50,
@@ -501,7 +501,7 @@ async def api_compliance_alerts(
 
 
 @router.get("/api/compliance/stats")
-async def api_compliance_stats():
+def api_compliance_stats():
     """
     Return summary statistics: alerts by tipo/severidade, totals, budget status.
     """
@@ -554,7 +554,7 @@ async def api_compliance_stats():
 
 
 @router.get("/api/compliance/reports")
-async def api_compliance_reports():
+def api_compliance_reports():
     """List PDF and JSON report files in the reports/ directory."""
     try:
         reports_dir = Path("reports")
@@ -573,7 +573,7 @@ async def api_compliance_reports():
 
 
 @router.post("/api/compliance/reports/limpar")
-async def api_compliance_reports_limpar(payload: Optional[dict] = None):
+def api_compliance_reports_limpar(payload: Optional[dict] = None):
     """Apaga relatórios EFÊMEROS gerados pela sessão web (chamado no page-leave via sendBeacon)
     para não acumular relatórios duplicados na VM. Segurança: só apaga basenames DENTRO de reports/."""
     nomes = (payload or {}).get("nomes") or []
@@ -591,7 +591,7 @@ async def api_compliance_reports_limpar(payload: Optional[dict] = None):
 
 
 @router.get("/api/fachada/revisar")
-async def api_fachada_revisar(limite: int = 50):
+def api_fachada_revisar(limite: int = 50):
     """Lista fachadas FLAGRADAS ainda sem veredito humano, p/ o validador do painel (revisão 1-a-1).
     Maior valor primeiro. Inclui motivo do flag, endereço e coordenada (link Street View no front)."""
     import sqlite3 as _sq
@@ -612,7 +612,7 @@ async def api_fachada_revisar(limite: int = 50):
 
 
 @router.post("/api/fachada/veredito")
-async def api_fachada_veredito(payload: Optional[dict] = None):
+def api_fachada_veredito(payload: Optional[dict] = None):
     """Salva o veredito HUMANO do validador. Body: {cnpj, veredito: suspeito|ok|mais_info, nota?}.
     suspeito→fachada (mantém INDICIO); ok→real (volta AFASTADO); mais_info→pular (fica pendente)."""
     import sqlite3 as _sq
@@ -663,7 +663,7 @@ async def api_tse_download(ano: int):
 
 
 @router.get("/api/compliance/buscar")
-async def api_compliance_buscar(q: str = "", tabela: str = "todos"):
+def api_compliance_buscar(q: str = "", tabela: str = "todos"):
     """
     FTS5 full-text search across contracts, DOERJ, and alerts.
 
@@ -697,7 +697,7 @@ async def api_compliance_buscar(q: str = "", tabela: str = "todos"):
 
 
 @router.get("/api/sugestoes")
-async def api_sugestoes(q: str = "", limite: int = 8):
+def api_sugestoes(q: str = "", limite: int = 8):
     """Autocomplete leve: empresas (favorecido_resumo, prefixo no nome ou no CNPJ) +
     nomeados (registros_folha=estado, pcrj_comissionado_candidato=prefeitura). Prefixo
     de ≥2 caracteres (por palavra, não só início do nome inteiro) — sugestão enquanto
@@ -748,7 +748,7 @@ async def api_sugestoes(q: str = "", limite: int = 8):
 
 
 @router.get("/api/conflito")
-async def api_conflito(cnpj: str = "", candidato: str = "", limite: int = 200):
+def api_conflito(cnpj: str = "", candidato: str = "", limite: int = 200):
     """Onda 2 — Conflito de interesse: doador TSE ↔ (empresa | SÓCIO da empresa) ↔ OB.
 
     Cruza `doacoes_eleitorais` (TSE) com OBs (TFE/SIAFE) e QSA (`socios_fornecedor`).
@@ -851,7 +851,7 @@ async def api_sobrepreco(codigo: int, valor: float = 0, servico: bool = False):
 
 
 @router.get("/api/empresa")
-async def api_empresa(cnpj: str):
+def api_empresa(cnpj: str):
     """Onda 12 (providers) — cadastro + sócios (QSA) por CNPJ, fonte hospedada (BrasilAPI→cnpj.pw).
     Sem baixar base: HTTP sob demanda + cache TTL. Resposta com proveniência (fonte+data+estado)."""
     try:
@@ -862,7 +862,7 @@ async def api_empresa(cnpj: str):
 
 
 @router.get("/api/idoneidade")
-async def api_idoneidade(cnpj: str = "", nome: str = ""):
+def api_idoneidade(cnpj: str = "", nome: str = ""):
     """Onda 12 (providers) — triagem em listas: CEIS/CNEP (BR) + sanções/PEP (OpenSanctions).
     lookup_all: consulta todos os backends disponíveis. Indício a confirmar, nunca acusação."""
     try:
@@ -874,7 +874,7 @@ async def api_idoneidade(cnpj: str = "", nome: str = ""):
 
 
 @router.get("/api/ownership")
-async def api_ownership(nome: str = "", lei: str = ""):
+def api_ownership(nome: str = "", lei: str = ""):
     """Onda 12 (providers) — controle internacional (LEI + relações) via GLEIF (sem chave)."""
     try:
         from compliance_agent.providers import lookup
@@ -884,7 +884,7 @@ async def api_ownership(nome: str = "", lei: str = ""):
 
 
 @router.get("/api/leaks")
-async def api_leaks(termo: str):
+def api_leaks(termo: str):
     """Onda 12 (providers) — busca hospedada em vazamentos offshore (ICIJ; link MANUAL)."""
     try:
         from compliance_agent.providers import lookup
@@ -894,7 +894,7 @@ async def api_leaks(termo: str):
 
 
 @router.get("/api/links")
-async def api_links(nome: str = "", cnpj: str = ""):
+def api_links(nome: str = "", cnpj: str = ""):
     """Onda 12 (providers) — pistas de investigação HOSPEDADA (Max Intel, OSINT-Brazuca, Bellingcat,
     RedeCNPJ, JusBrasil/Escavador). Deep-links já preenchidos com o alvo; uso MANUAL (o JFN só monta)."""
     try:
@@ -905,7 +905,7 @@ async def api_links(nome: str = "", cnpj: str = ""):
 
 
 @router.get("/api/diario")
-async def api_diario(querystring: str, territory_ids: str = "", desde: str = "", ate: str = "", size: int = 20):
+def api_diario(querystring: str, territory_ids: str = "", desde: str = "", ate: str = "", size: int = 20):
     """Onda 12 (providers) — diários oficiais municipais (Querido Diário). Busca por palavra-chave +
     território IBGE (RJ capital = 3304557) + janela de datas. Sem chave; on-demand + cache."""
     try:
@@ -917,7 +917,7 @@ async def api_diario(querystring: str, territory_ids: str = "", desde: str = "",
 
 
 @router.get("/api/doador_contrato")
-async def api_doador_contrato(cnpj: str):
+def api_doador_contrato(cnpj: str):
     """Onda 12 (providers) — TSE doador×contrato: sócios (QSA) do fornecedor que aparecem como
     doadores de campanha (RJ). Indício de conflito a CONFERIR, nunca acusação (CPF mascarado → casa
     por nome). Requer doacao_tse populado (carregar_doacoes_rj(ano))."""
@@ -929,7 +929,7 @@ async def api_doador_contrato(cnpj: str):
 
 
 @router.get("/api/grafo")
-async def api_grafo(alvo: str, saltos: int = 2, so_contrato: bool = False):
+def api_grafo(alvo: str, saltos: int = 2, so_contrato: bool = False):
     """Onda 4 — Grafo de Poder: vizinhança de um alvo (CNPJ/UG/nome) unindo
     sócios+OB+doações+folha+co-endereço, até `saltos`. so_contrato=true foca o fluxo
     de dinheiro (cnpj↔ug↔sócio). Vínculo = indício de relação, nunca prova."""
@@ -942,7 +942,7 @@ async def api_grafo(alvo: str, saltos: int = 2, so_contrato: bool = False):
 
 
 @router.get("/api/grafo/ftm")
-async def api_grafo_ftm(alvo: str, saltos: int = 2):
+def api_grafo_ftm(alvo: str, saltos: int = 2):
     """Onda 12 — Export do Grafo de Poder no modelo FollowTheMoney (interoperar c/ Aleph/Gephi)."""
     try:
         from compliance_agent.grafo_ftm import export
@@ -993,7 +993,7 @@ async def api_sei_direcionamento(ug: str = "", objeto: str = "", uf: str = "RJ",
 
 
 @router.post("/api/radar/vigiar")
-async def api_radar_vigiar(payload: Optional[dict] = None):
+def api_radar_vigiar(payload: Optional[dict] = None):
     """Onda 6 — Radar: adiciona um alvo à watchlist 24/7. Body {"alvo","tipo":cnpj|ug|nome|objeto}.
     Ao surgir edital aberto restritivo / OB anômala do alvo, chega alerta no Telegram."""
     try:
@@ -1006,7 +1006,7 @@ async def api_radar_vigiar(payload: Optional[dict] = None):
 
 
 @router.get("/api/radar/status")
-async def api_radar_status():
+def api_radar_status():
     """Onda 6 — Radar: o que está sendo vigiado + últimos alertas."""
     try:
         from compliance_agent.radar import status as radar_status
@@ -1069,7 +1069,7 @@ async def api_nucleo_comando(payload: dict = None):
 # Endpoints /api/restritos e /api/flags + página /controle (autocontida, dark). 2026-07-14.
 # ─────────────────────────────────────────────────────────────────────────────
 @router.get("/api/restritos")
-async def api_restritos(todos: int = 0):
+def api_restritos(todos: int = 0):
     """Lista de controle dos processos SEI de acesso RESTRITO (data/sei_restritos.json)."""
     try:
         import sys as _sys
@@ -1082,7 +1082,7 @@ async def api_restritos(todos: int = 0):
 
 
 @router.get("/api/flags")
-async def api_flags():
+def api_flags():
     """Flags vermelhos GRAVES da fiscalização (data/flags_graves.json)."""
     try:
         import sys as _sys
@@ -1161,7 +1161,7 @@ def _cache_put(chave: str, val):
 
 
 @router.get("/api/certames/lista")
-async def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = ""):
+def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: str = ""):
     """Certames da base LOCAL, cada um com a SUA análise (Índice de Direcionamento + temas).
 
     A aba Contratos do painel deixa de depender do PNCP ao vivo (lento/instável) — lê
@@ -1225,7 +1225,7 @@ async def api_certames_lista(esfera: str = "prefeitura", limite: int = 600, q: s
 
 
 @router.get("/api/pncp/conluio")
-async def api_pncp_conluio(min_certames: int = 4, esfera: str = ""):
+def api_pncp_conluio(min_certames: int = 4, esfera: str = ""):
     """Conluio a partir dos RESULTADOS estruturados do PNCP (vencedor homologado por item):
     CAPTURA (1 fornecedor domina o órgão) e RODÍZIO DE VENCEDORES (poucos se revezam) — com
     nome de fornecedor, nome de órgão e amostra de OBJETOS. ?esfera=estado|prefeitura|municipios|
@@ -1253,7 +1253,7 @@ async def api_pncp_conluio(min_certames: int = 4, esfera: str = ""):
 
 
 @router.get("/api/poder/nomeados_candidatos")
-async def api_nomeados_candidatos(limite: int = 200):
+def api_nomeados_candidatos(limite: int = 200):
     """Cruzamento SERVIDOR/NOMEADO (registros_folha) × CANDIDATO (doacoes_eleitorais/TSE) por nome.
     Servidor público — sobretudo cargo em comissão — que foi candidato a cargo eletivo. Match por
     NOME (verificar homônimo). Indício de relação político-administrativa, não irregularidade."""
@@ -1289,7 +1289,7 @@ async def api_nomeados_candidatos(limite: int = 200):
 
 
 @router.get("/api/laranjas")
-async def api_laranjas(limite: int = 100):
+def api_laranjas(limite: int = 100):
     """Sócios de fornecedores do Estado que RECEBEM benefício social de subsistência (bolsa família etc.)
     — indício clássico de LARANJA/interposição (art. 337-F CP): quem figura como dono de empresa que
     recebe do Estado não deveria depender de auxílio. Só os confirmados (recebe_beneficio=1)."""
@@ -1324,7 +1324,7 @@ async def api_laranjas(limite: int = 100):
 
 
 @router.get("/api/pericias")
-async def api_pericias(q: str = "", grau: str = "", limite: int = 60, ordem: str = "score"):
+def api_pericias(q: str = "", grau: str = "", limite: int = 60, ordem: str = "score"):
     """Ranking pesquisável de perícias de fornecedor (pericia_fornecedor). ?q=nome/cnpj &grau=🟡/🟢
     &ordem=score|total. Cada fornecedor é agregado (maior grau, soma de OB, achados). Indício."""
     import sqlite3 as _sq
@@ -1356,7 +1356,7 @@ async def api_pericias(q: str = "", grau: str = "", limite: int = 60, ordem: str
 
 
 @router.get("/api/perfil")
-async def api_perfil(cnpj: str):
+def api_perfil(cnpj: str):
     """Dossiê 360 INSTANTÂNEO de um CNPJ, montado do banco local (sem rede): perícia (grau/achados),
     pagamento (OB total, órgãos), QSA (sócios), sede/fachada, vitórias no PNCP e sinal de laranja.
     O motor da tela de drill-down do painel. Indício a verificar, nunca acusação."""
@@ -1445,7 +1445,7 @@ async def api_perfil(cnpj: str):
 # ── INTELIGÊNCIA 2026-07-17: sancionadas × contratadas, perdedoras contumazes, fantasmas ──
 
 @router.get("/api/intel/sancionadas")
-async def api_intel_sancionadas(limite: int = 60):
+def api_intel_sancionadas(limite: int = 60):
     """Empresas com sanção IMPEDITIVA (CEIS/CNEP) que receberam OB do Estado ou venceram no PNCP —
     com o teste temporal "à época" (ato DENTRO da vigência da sanção). Cache materializado por
     tools/intel (cruzamentos_intel.gerar_cache_intel); fallback = computa na hora."""
@@ -1463,7 +1463,7 @@ async def api_intel_sancionadas(limite: int = 60):
 
 
 @router.get("/api/intel/sancionadas_municipio")
-async def api_intel_sancionadas_municipio(limite: int = 60):
+def api_intel_sancionadas_municipio(limite: int = 60):
     """Empresas com sanção IMPEDITIVA contratadas pela PREFEITURA DO RIO (pcrj_contratos fonte='pncp'),
     com o teste "à época" (contrato ASSINADO dentro da vigência da sanção). Análogo municipal do
     /api/intel/sancionadas (competência TCM-RJ). Descarta órgão federal/estadual (contabiliza)."""
@@ -1484,7 +1484,7 @@ async def api_intel_sancionadas_municipio(limite: int = 60):
 
 
 @router.get("/api/intel/perdedoras")
-async def api_intel_perdedoras():
+def api_intel_perdedoras():
     """Perdedoras contumazes ("nunca ganharam"): participam de ≥K certames nas atas e nunca vencem —
     perfil de proposta de cobertura (OCDE). Sai do cache (varrer 8k atas não roda no request)."""
     try:
@@ -1499,7 +1499,7 @@ async def api_intel_perdedoras():
 
 
 @router.get("/api/intel/conluio_qsa")
-async def api_intel_conluio_qsa():
+def api_intel_conluio_qsa():
     """CONLUIO DIRETO: vencedor × perdedora do MESMO certame com sócio em comum (QSA Receita)
     ou matriz×filial concorrendo entre si. Cache do intel (com atas); fallback = só PNCP."""
     try:
@@ -1514,7 +1514,7 @@ async def api_intel_conluio_qsa():
 
 
 @router.get("/api/intel/comunidades")
-async def api_intel_comunidades():
+def api_intel_comunidades():
     """Comunidades (Louvain) do grafo família-empresa-órgão, ranqueadas por risco 0-100.
     Sai do cache (construir o grafo completo não roda no request)."""
     try:
@@ -1529,7 +1529,7 @@ async def api_intel_comunidades():
 
 
 @router.get("/api/intel/radar")
-async def api_intel_radar(limite: int = 100):
+def api_intel_radar(limite: int = 100):
     """RADAR composto: score 0-100 por fornecedor somando os sinais de todos os detectores —
     a fila de apuração priorizada. Cache do intel; fallback = computa na hora."""
     try:
@@ -1545,7 +1545,7 @@ async def api_intel_radar(limite: int = 100):
 
 
 @router.get("/api/intel/retro")
-async def api_intel_retro():
+def api_intel_retro():
     """Retro-auditoria (hindsight): por detector, sanção POSTERIOR ao 1º sinal (corroboração
     independente) e R$ pagos/vitórias APÓS o alerta (custo da inação). Ledger diário no timer."""
     try:
@@ -1558,7 +1558,7 @@ async def api_intel_retro():
 
 
 @router.get("/api/comparador/buscar")
-async def api_comparador_buscar(termo: str = "", esfera: str = ""):
+def api_comparador_buscar(termo: str = "", esfera: str = ""):
     """Grupos de item que casam o termo (ex.: 'aluguel carro', 'medicamento'), com dispersão de
     preço entre órgãos — abrir um grupo mostra quem paga mais/menos."""
     try:
@@ -1589,7 +1589,7 @@ async def api_comparador_catalogo(esfera: str = ""):
 
 
 @router.get("/api/comparador/item")
-async def api_comparador_item(grupo: str = "", unidade: str = "", esfera: str = ""):
+def api_comparador_item(grupo: str = "", unidade: str = "", esfera: str = ""):
     """Para um item (grupo normalizado), ranking de ÓRGÃOS e FORNECEDORES por preço unitário."""
     try:
         from compliance_agent.comparador_precos import comparar
@@ -1605,7 +1605,7 @@ async def api_comparador_item(grupo: str = "", unidade: str = "", esfera: str = 
 
 
 @router.get("/api/comparador/economia")
-async def api_comparador_economia(esfera: str = ""):
+def api_comparador_economia(esfera: str = ""):
     """Economia potencial: quanto os cofres economizariam se cada compra acima da mediana tivesse
     pago a mediana de mercado do item. Total + quebra por item/órgão/fornecedor."""
     try:
@@ -1619,7 +1619,7 @@ async def api_comparador_economia(esfera: str = ""):
 
 
 @router.get("/api/comparador/vedada")
-async def api_comparador_vedada(esfera: str = ""):
+def api_comparador_vedada(esfera: str = ""):
     """O número mais forte: sobrepreço (acima da mediana) pago a fornecedor JURIDICAMENTE VEDADO
     de contratar com aquele ente comprador, VIGENTE à época. Inidoneidade veda todos."""
     try:
@@ -1633,7 +1633,7 @@ async def api_comparador_vedada(esfera: str = ""):
 
 
 @router.get("/api/sancoes/detalhar")
-async def api_sancoes_detalhar(cnpj: str = "", esfera: str = "estadual", uf: str = "RJ"):
+def api_sancoes_detalhar(cnpj: str = "", esfera: str = "estadual", uf: str = "RJ"):
     """Detalha as sanções de um CNPJ: tipo, abrangência, órgão, vigência e se VEDA de fato o
     contrato com o ente-alvo (default Estado-RJ). Responde 'quais são e qual a abrangência'."""
     try:
@@ -1653,7 +1653,7 @@ async def api_sancoes_detalhar(cnpj: str = "", esfera: str = "estadual", uf: str
 
 
 @router.get("/api/comparador/dossie")
-async def api_comparador_dossie(esfera: str = ""):
+def api_comparador_dossie(esfera: str = ""):
     """Dossiê automático: item pago muito acima da mediana por um órgão cujo FORNECEDOR já é
     sancionado/no radar/fantasma. Cruza o comparador de preços com o gabarito de risco."""
     try:
@@ -1667,7 +1667,7 @@ async def api_comparador_dossie(esfera: str = ""):
 
 
 @router.get("/api/comparador/orgaos")
-async def api_comparador_orgaos(esfera: str = ""):
+def api_comparador_orgaos(esfera: str = ""):
     """Ranking de órgãos por eficiência de gasto (razão preço/mercado ao longo de muitos itens)."""
     try:
         from compliance_agent.comparador_precos import ranking_orgaos
@@ -1680,7 +1680,7 @@ async def api_comparador_orgaos(esfera: str = ""):
 
 
 @router.get("/api/comparador/fornecedores")
-async def api_comparador_fornecedores(esfera: str = ""):
+def api_comparador_fornecedores(esfera: str = ""):
     """Ranking de fornecedores por preço relativo (mais caros / mais baratos vs mercado)."""
     try:
         from compliance_agent.comparador_precos import ranking_fornecedores
@@ -1693,7 +1693,7 @@ async def api_comparador_fornecedores(esfera: str = ""):
 
 
 @router.get("/api/intel/lift")
-async def api_intel_lift():
+def api_intel_lift():
     """Validação de cada detector contra o gabarito OBJETIVO (sanções impeditivas): LIFT = taxa de
     sancionados no que o detector marca ÷ taxa-base do universo. lift>1 = sinal; <1 = anti-sinal."""
     try:
@@ -1706,7 +1706,7 @@ async def api_intel_lift():
 
 
 @router.get("/api/intel/fracionamento")
-async def api_intel_fracionamento(limite: int = 120):
+def api_intel_fracionamento(limite: int = 120):
     """Possível fracionamento de despesa: favorecido+UG+mês com várias OBs coladas no teto de
     dispensa (fatiar p/ não licitar, Lei 14.133 art. 75 §1º). Ordena por concentração colada."""
     try:
@@ -1731,7 +1731,7 @@ async def api_intel_pdf(tipo: str):
 
 
 @router.get("/api/intel/capital_incompativel")
-async def api_intel_capital(limite: int = 120):
+def api_intel_capital(limite: int = 120):
     """Capital irrisório (<R$50k) frente ao volume recebido (≥100× o capital) — subcapitalização/
     fachada (Lei 14.133 art. 5, 62-63). Fonte do capital: dump da Receita (empresas_cadastro)."""
     try:
@@ -1745,7 +1745,7 @@ async def api_intel_capital(limite: int = 120):
 
 
 @router.get("/api/intel/prioridade_valor")
-async def api_intel_prioridade_valor(limite: int = 60, min_score: int = 10):
+def api_intel_prioridade_valor(limite: int = 60, min_score: int = 10):
     """Fila priorizada por VALOR EM RISCO: interseção do RADAR (fornecedor arriscado) com a ECONOMIA
     POTENCIAL (R$ recuperável se tivesse pago a mediana). Cruza 'quem paga mais' com o radar."""
     try:
@@ -1760,7 +1760,7 @@ async def api_intel_prioridade_valor(limite: int = 60, min_score: int = 10):
 
 
 @router.get("/api/intel/fornecedor_dependente")
-async def api_intel_fornecedor_dependente(limite: int = 120):
+def api_intel_fornecedor_dependente(limite: int = 120):
     """Fornecedor comercial com ≥90% da receita do Estado numa única unidade gestora ('empresa do órgão')."""
     try:
         from compliance_agent.cruzamentos_intel import fornecedor_dependente
@@ -1773,7 +1773,7 @@ async def api_intel_fornecedor_dependente(limite: int = 120):
 
 
 @router.get("/api/intel/corrida_dezembro")
-async def api_intel_corrida_dezembro(limite: int = 120):
+def api_intel_corrida_dezembro(limite: int = 120):
     """Fornecedor comercial com ≥75% do valor do ano concentrado em dezembro (corrida do empenho)."""
     try:
         from compliance_agent.cruzamentos_intel import corrida_dezembro
@@ -1786,7 +1786,7 @@ async def api_intel_corrida_dezembro(limite: int = 120):
 
 
 @router.get("/api/intel/grafo_familias")
-async def api_intel_grafo_familias():
+def api_intel_grafo_familias():
     """Grafo D3 (nodes/links) das famílias que ocupam cargo de confiança E fornecem ao Estado —
     consumido pelo graph.html em /graph?fonte=familias."""
     try:
@@ -1799,7 +1799,7 @@ async def api_intel_grafo_familias():
 
 
 @router.get("/api/intel/comunidades_grafo")
-async def api_intel_comunidades_grafo():
+def api_intel_comunidades_grafo():
     """Grafo D3 (nodes/links) das comunidades Louvain — consumido pelo graph.html em
     /graph?fonte=comunidades. Sai do cache do intel (construir o grafo não roda no request)."""
     try:
@@ -1811,7 +1811,7 @@ async def api_intel_comunidades_grafo():
 
 
 @router.get("/api/intel/fenix")
-async def api_intel_fenix(limite: int = 120):
+def api_intel_fenix(limite: int = 120):
     """Empresa fênix: BAIXADA/INAPTA que recebeu, ou aberta ≤12m antes do 1º pagamento."""
     try:
         from compliance_agent.cruzamentos_intel import empresa_fenix
@@ -1824,7 +1824,7 @@ async def api_intel_fenix(limite: int = 120):
 
 
 @router.get("/api/intel/porta_giratoria")
-async def api_intel_porta_giratoria(limite: int = 120):
+def api_intel_porta_giratoria(limite: int = 120):
     """Porta giratória: ex-servidor (inativo/exonerado) que virou sócio de fornecedor do Estado."""
     try:
         from compliance_agent.cruzamentos_intel import porta_giratoria
@@ -1837,7 +1837,7 @@ async def api_intel_porta_giratoria(limite: int = 120):
 
 
 @router.get("/api/intel/nepotismo_cruzado")
-async def api_intel_nepotismo_cruzado(limite: int = 60):
+def api_intel_nepotismo_cruzado(limite: int = 60):
     """Nepotismo cruzado: colocação recíproca de parentes entre dois órgãos (dribla a SV13)."""
     try:
         from compliance_agent.cruzamentos_intel import nepotismo_cruzado
@@ -1850,7 +1850,7 @@ async def api_intel_nepotismo_cruzado(limite: int = 60):
 
 
 @router.get("/api/intel/nepotismo")
-async def api_intel_nepotismo(limite: int = 120):
+def api_intel_nepotismo(limite: int = 120):
     """Nepotismo (SV13 STF): ≥2 pessoas de nomes distintos, mesmo sobrenome de família raro, ambas
     em cargo de confiança no mesmo órgão. Fragmento de CPF corrobora pessoas distintas."""
     try:
@@ -1864,7 +1864,7 @@ async def api_intel_nepotismo(limite: int = 120):
 
 
 @router.get("/api/intel/socio_oculto")
-async def api_intel_socio_oculto(limite: int = 120):
+def api_intel_socio_oculto(limite: int = 120):
     """Pessoa/holding sócia de ≥3 empresas fornecedoras do Estado (empresário oculto / grupo familiar)."""
     try:
         from compliance_agent.cruzamentos_intel import socio_oculto
@@ -1877,7 +1877,7 @@ async def api_intel_socio_oculto(limite: int = 120):
 
 
 @router.get("/api/intel/aditivos")
-async def api_intel_aditivos(limite: int = 120, esfera: str = ""):
+def api_intel_aditivos(limite: int = 120, esfera: str = ""):
     """Aditivos que estouram o limite legal de acréscimo (25%/50%, Lei 14.133 art. 125) e change
     orders em série (≥3 aditivos). Fonte: pcrj_contratos + contrato_aditivo."""
     try:
@@ -1892,7 +1892,7 @@ async def api_intel_aditivos(limite: int = 120, esfera: str = ""):
 
 
 @router.get("/api/intel/socio_servidor")
-async def api_intel_socio_servidor(limite: int = 150):
+def api_intel_socio_servidor(limite: int = 150):
     """Servidor público (folha) que é sócio de fornecedor do Estado — conflito de interesse
     (Lei 14.133 art. 9) e, se administrador, vedação estatutária de gerência. Nome + fragmento de CPF."""
     try:
@@ -1906,7 +1906,7 @@ async def api_intel_socio_servidor(limite: int = 150):
 
 
 @router.get("/api/intel/escalada")
-async def api_intel_escalada(limite: int = 120, esfera: str = ""):
+def api_intel_escalada(limite: int = 120, esfera: str = ""):
     """Escalada de preço unitário: MESMO fornecedor vende o MESMO item por preços cada vez maiores
     ao longo do tempo (≥3 compras, ≥45 dias, alta ≥3×). Preço dirigido/captura. Fonte: PNCP."""
     try:
@@ -1921,7 +1921,7 @@ async def api_intel_escalada(limite: int = 120, esfera: str = ""):
 
 
 @router.get("/api/intel/sobrepreco")
-async def api_intel_sobrepreco(limite: int = 120, esfera: str = ""):
+def api_intel_sobrepreco(limite: int = 120, esfera: str = ""):
     """Sobrepreço por mediana de item: mesmo produto (descrição normalizada) comprado por vários
     órgãos; sinaliza preço unitário ≥2× a mediana (e fora de mediana+3·MAD). Fonte: PNCP."""
     try:
@@ -1936,7 +1936,7 @@ async def api_intel_sobrepreco(limite: int = 120, esfera: str = ""):
 
 
 @router.get("/api/intel/fantasmas")
-async def api_intel_fantasmas(limite: int = 50):
+def api_intel_fantasmas(limite: int = 50):
     """Ranking de risco de empresa-fantasma (8 sinais determinísticos do /fantasma) no conjunto-alvo
     (capturas, rodízios, perdedoras contumazes, sancionadas, top favorecidos)."""
     try:
@@ -1950,7 +1950,7 @@ async def api_intel_fantasmas(limite: int = 50):
 
 
 @router.get("/api/intel/hub_compartilhado")
-async def api_intel_hub_compartilhado(chave: str = "endereco", min: int = 5):
+def api_intel_hub_compartilhado(chave: str = "endereco", min: int = 5):
     """Hub compartilhado: 1 âncora física (endereço/telefone/e-mail) usada por N CNPJs — assinatura
     de 'ninho de fantasmas'. Guarda anti-FP rebaixa massa legítima (contador, galeria, coworking)."""
     from datetime import datetime as _dt
@@ -1970,7 +1970,7 @@ async def api_intel_hub_compartilhado(chave: str = "endereco", min: int = 5):
 
 
 @router.get("/api/pcrj/comissionados_candidatos")
-async def api_pcrj_comissionados_candidatos(limite: int = 300):
+def api_pcrj_comissionados_candidatos(limite: int = 300):
     """Comissionados da PREFEITURA do Rio que foram CANDIDATOS (TSE) — tabela
     pcrj_comissionado_candidato (data/pcrj.db, coletor pcrj/comissionados_candidatos).
     Agregado por PESSOA (nome_norm): 1 entrada por pessoa com a lista de postos
@@ -2013,7 +2013,7 @@ async def api_pcrj_comissionados_candidatos(limite: int = 300):
 
 
 @router.get("/api/pcrj/fantasmas")
-async def api_pcrj_fantasmas(faixa: str = "", limite: int = 200):
+def api_pcrj_fantasmas(faixa: str = "", limite: int = 200):
     """Servidor-fantasma na folha da Câmara/PCRJ — 8 sinais determinísticos (pcrj/fantasma_servidor),
     cache materializado em pcrj_fantasma_servidor. ?faixa=forte|verificar|fraco filtra."""
     import sqlite3 as _sq
@@ -2054,7 +2054,7 @@ async def api_pcrj_fantasmas(faixa: str = "", limite: int = 200):
 
 
 @router.get("/api/pcrj/gastos_achados")
-async def api_pcrj_gastos_achados(limite_por_detector: int = 40):
+def api_pcrj_gastos_achados(limite_por_detector: int = 40):
     """Achados da perícia de gastos da PREFEITURA (D7 fracionamento · D8 recém-aberta · D9 sócio na
     folha · D10 rede de sócios entre concorrentes · aditivo estourado) — lê os alertas gravados pela
     última corrida de tools/pcrj_pericia_gastos.py (dedup por título, mais recente vence)."""
@@ -2106,7 +2106,7 @@ async def api_pcrj_gastos_achados(limite_por_detector: int = 40):
 
 
 @router.get("/api/pcrj/beneficios_vinculo")
-async def api_pcrj_beneficios_vinculo():
+def api_pcrj_beneficios_vinculo():
     """Comissionados/servidores municipais × benefício social (Bolsa Família etc.) DURANTE o vínculo
     (fairness: só o mês dentro da janela de vínculo conta). Lê o cache materializado — a perícia
     cruza 7,3 mi de registros e NUNCA roda no request."""
@@ -2122,7 +2122,7 @@ async def api_pcrj_beneficios_vinculo():
 
 
 @router.get("/api/pcrj/doe_concentracao")
-async def api_pcrj_doe_concentracao(min_atas: int = 2, min_valor: float = 100_000.0):
+def api_pcrj_doe_concentracao(min_atas: int = 2, min_valor: float = 100_000.0):
     """Concentração de vencedor nas Atas de Registro de Preços mineradas do D.O. RIO
     (pcrj_doe_materia → eventos). CNPJ que vence ≥min_atas atas com valor material —
     sinal de concentração/captura na fonte municipal. Determinístico, roda em ms."""
@@ -2141,7 +2141,7 @@ async def api_pcrj_doe_concentracao(min_atas: int = 2, min_valor: float = 100_00
 
 
 @router.get("/api/pcrj/doe_canal_informal")
-async def api_pcrj_doe_canal_informal():
+def api_pcrj_doe_canal_informal():
     """Canais @gmail.com usados como via de compra por órgão municipal (pesquisa de mercado /
     retirada de empenho por e-mail pessoal) — minerado do D.O. RIO. Baixa transparência,
     vetor de direcionamento (contorna o processo formal SIGA/SEI)."""
@@ -2160,7 +2160,7 @@ async def api_pcrj_doe_canal_informal():
 
 
 @router.get("/api/fontes/frescor")
-async def api_fontes_frescor():
+def api_fontes_frescor():
     """Frescor de CADA fonte de dados (última coleta + último dado). O painel mostra em verde/âmbar/
     vermelho — defasagem nunca mais passa despercebida (lição SIAFE 16-17/07: MFA quebrou a coleta
     e nada avisava)."""

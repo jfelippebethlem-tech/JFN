@@ -37,7 +37,7 @@ def _siafe_spawn(args: list, quem: str):
 
 
 @router.get("/api/siafe/stats")
-async def api_siafe_stats():
+def api_siafe_stats():
     """Resumo das OBs do SIAFE (tela OB Orçamentária) já coletadas/ingeridas na base (SIAFE preponderante)."""
     try:
         import sqlite3
@@ -70,7 +70,7 @@ async def api_siafe_stats():
 
 
 @router.post("/api/siafe/atualizar")
-async def api_siafe_atualizar(payload: dict = None):
+def api_siafe_atualizar(payload: dict = None):
     """Atualização DIÁRIA incremental do SIAFE 2 (aba OB Orçamentária, OBs novas, sem filtro). Mantém a base
     fresca sem sweep. Body opcional {"exercicio": 2026}. Roda em background; veja /api/siafe/stats depois."""
     ano = (payload or {}).get("exercicio")
@@ -79,7 +79,7 @@ async def api_siafe_atualizar(payload: dict = None):
 
 
 @router.post("/api/siafe/sweep")
-async def api_siafe_sweep(payload: dict = None):
+def api_siafe_sweep(payload: dict = None):
     """SWEEP completo do SIAFE por UG (BACKFILL; fura o teto de 1000). Body {"sistema":"2"} (2=2024-26, 1=2016-23)
     ou {"ug":"133100","exercicio":2026} p/ uma UG. Longo — roda em background."""
     p = payload or {}
@@ -90,14 +90,14 @@ async def api_siafe_sweep(payload: dict = None):
 
 
 @router.get("/api/siafe/status")
-async def api_siafe_status():
+def api_siafe_status():
     """Estado da coleta SIAFE (lockfile: se há coleta rodando e qual)."""
     from compliance_agent import siafe_runner
     return JSONResponse({"ok": True, "lock": siafe_runner.lock_status()})
 
 
 @router.get("/api/lista")
-async def api_lista():
+def api_lista():
     """Menu COMPLETO das funções do JFN (para o /lista do Yoda) — gerado da skilltree (capabilities.yaml,
     fonte única), agrupado por domínio. Fica sempre em sincronia com /capacidades; nada de menu fixo defasado."""
     try:
@@ -109,7 +109,7 @@ async def api_lista():
 
 
 @router.get("/api/route")
-async def api_route(q: str = ""):
+def api_route(q: str = ""):
     """Triagem DETERMINÍSTICA pedido→capacidade (sem LLM): pontua cada capacidade do capabilities.yaml
     pela sobreposição de palavras com quando_usar/descricao/id e devolve o melhor + candidatos. Complementa
     o roteador por skills (gen_skills) — o Yoda resolve a rota por regra antes de cogitar o modelo, reduzindo
@@ -144,7 +144,7 @@ async def api_route(q: str = ""):
 
 
 @router.get("/api/sweeps/status")
-async def api_sweeps_status():
+def api_sweeps_status():
     """Status dos SWEEPS (coleta contínua): SEI (lê processos SEI das OBs) + SIAFE 2 (OB Orçamentária).
     Para o Yoda responder 'como está o sweep' sem se perder — texto pronto p/ Telegram."""
     import subprocess
@@ -218,7 +218,7 @@ async def api_sweeps_status():
 
 
 @router.post("/api/sweeps/pausar")
-async def api_sweeps_pausar():
+def api_sweeps_pausar():
     """Admin (painel): PAUSA os sweeps. Cria data/.pause_sweeps (tudo) e data/.pause_sei_sweep (corta o SEI
     inclusive no meio de uma sessão — sei_sweep.py checa a flag mid-run). Os scripts do cron pulam enquanto existir."""
     d = RAIZ / "data"
@@ -228,7 +228,7 @@ async def api_sweeps_pausar():
 
 
 @router.post("/api/sweeps/retomar")
-async def api_sweeps_retomar():
+def api_sweeps_retomar():
     """Admin (painel): RETOMA os sweeps (remove as flags de pausa). O cron horário volta a rodar."""
     d = RAIZ / "data"
     for f in (".pause_sweeps", ".pause_sei_sweep"):
@@ -237,7 +237,7 @@ async def api_sweeps_retomar():
 
 
 @router.get("/api/ugs")
-async def api_ugs(filtro: Optional[str] = None, limite: int = 50):
+def api_ugs(filtro: Optional[str] = None, limite: int = 50):
     """Catálogo das UGs (órgãos) — o /UG do Yoda. Código + nome canônico + nº de OBs + total pago, para
     o Mestre Jorge saber quais existem e pedir o /orgao certo. Filtro acento-insensível por nome OU código."""
     try:
@@ -251,7 +251,7 @@ async def api_ugs(filtro: Optional[str] = None, limite: int = 50):
 
 
 @router.get("/api/memoria")
-async def api_memoria(limite: int = 15):
+def api_memoria(limite: int = 15):
     """Onda 11 — Memória consolidada do ecossistema (Massare/Lex/Hermes)."""
     try:
         from compliance_agent.memoria import consolidar
@@ -287,7 +287,7 @@ async def api_pipelines():
 
 
 @router.get("/api/skills")
-async def api_skills(filtro: str = ""):
+def api_skills(filtro: str = ""):
     """Skilltree (capacidades) agrupada por domínio — texto p/ o /skills do Telegram."""
     try:
         from compliance_agent.skilltree import SKILLTREE
@@ -298,7 +298,7 @@ async def api_skills(filtro: str = ""):
 
 
 @router.get("/api/skill")
-async def api_skill(id: str):
+def api_skill(id: str):
     """Detalhe de uma capacidade (rota, args, quando usar, status) — p/ o /skill <id>."""
     try:
         from compliance_agent.skilltree import SKILLTREE
@@ -308,7 +308,7 @@ async def api_skill(id: str):
 
 
 @router.post("/api/skills/reload")
-async def api_skills_reload():
+def api_skills_reload():
     """Recarrega capabilities.yaml do disco (fail-safe) — p/ o /skills_reload (admin no Yoda)."""
     try:
         from compliance_agent.skilltree import SKILLTREE
@@ -318,7 +318,7 @@ async def api_skills_reload():
 
 
 @router.get("/api/skills/validate")
-async def api_skills_validate():
+def api_skills_validate():
     """Valida o contrato (schema + rotas PRONTO existem) — p/ o /skills_validate (admin)."""
     try:
         from compliance_agent.skilltree import SKILLTREE
