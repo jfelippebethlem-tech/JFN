@@ -300,6 +300,14 @@
     transform:perspective(900px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
     box-shadow:var(--sh),0 0 28px -10px color-mix(in oklch,var(--esf) 38%,transparent)}
   @media (prefers-reduced-motion:reduce){.card:hover{transform:none}}
+  /* (3) HOVER 3D DRAMÁTICO — o card ganha profundidade e o conteúdo FLUTUA acima
+     dele (parallax em Z). Precisa preserve-3d; o valor sobe mais que o rótulo. */
+  .kpi,.ck-inst{transform-style:preserve-3d}
+  .kpi .l,.kpi .v,.ck-inst .val,.ck-inst .lab{transition:transform .2s cubic-bezier(.2,.8,.25,1.05)}
+  .kpi:hover .v,.ck-inst:hover .val{transform:translateZ(26px)}
+  .kpi:hover .l,.ck-inst:hover .lab{transform:translateZ(14px)}
+  .kpi:hover .kpi-ico{transform:translateZ(34px)}
+  @media (prefers-reduced-motion:reduce){.kpi:hover .v,.kpi:hover .l,.kpi:hover .kpi-ico,.ck-inst:hover .val,.ck-inst:hover .lab{transform:none}}
   /* (b) BORDA-BEAM — energia percorre a borda do card no hover (conic girando
      na cor da esfera). Dois layers: conteúdo em padding-box, beam em border-box. */
   .card:hover,.lnk:hover,.ck-inst:hover{border-color:transparent;
@@ -362,6 +370,11 @@
   .kpi .l{color:var(--mut);font-size:10px;font-weight:500;letter-spacing:1px;text-transform:uppercase;font-family:var(--mono)}
   .kpi .v{font-size:1.35rem;font-weight:600;letter-spacing:-.3px;line-height:1.15;margin-top:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:var(--mono)}
   .kpi .gl{display:none}
+  /* ícone semântico no canto do KPI (crítico/dinheiro/ok/info), na cor do valor */
+  .kpi-ico{position:absolute;top:11px;right:12px;opacity:.5;line-height:0;transition:opacity .2s}
+  .kpi-ico .jico{width:16px;height:16px;color:currentColor;
+    filter:drop-shadow(0 0 5px color-mix(in oklch,currentColor 45%,transparent))}
+  .kpi:hover .kpi-ico{opacity:.85}
   .kv{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--bd2);font-size:13px}
   .kv:first-child{padding-top:2px}.kv:last-child{border-bottom:0;padding-bottom:2px}
   .kv .k{color:var(--mut)}.kv b{font-weight:600;color:var(--tx)}
@@ -486,8 +499,12 @@
   nav.tabs button{flex:1 0 auto;min-width:0;background:none;border:0;color:var(--dim);cursor:pointer;display:flex;align-items:center;justify-content:center;padding:11px 12px;font:inherit;transition:color .15s,transform .22s cubic-bezier(.2,.8,.25,1.1);border-radius:7px;position:relative;transform:rotateX(-7deg)}
   nav.tabs button:hover,nav.tabs button.on{transform:rotateX(0deg) translateZ(6px)}
   @media (prefers-reduced-motion:reduce){nav.tabs button,nav.tabs button:hover,nav.tabs button.on{transform:none}}
-  nav.tabs button .ti{display:none}
-  nav.tabs button .tl{font-size:11px;font-weight:500;letter-spacing:.2px}
+  nav.tabs button{flex-direction:column;gap:4px}
+  nav.tabs button .ti{display:grid;place-items:center;height:19px}
+  nav.tabs button .ti .jico{width:18px;height:18px;color:currentColor;transition:filter .18s}
+  nav.tabs button.on .ti .jico{filter:drop-shadow(0 0 6px color-mix(in oklch,var(--esf) 75%,transparent))}
+  nav.tabs button:hover .ti .jico{filter:drop-shadow(0 0 5px color-mix(in oklch,var(--esf) 55%,transparent))}
+  nav.tabs button .tl{font-size:10px;font-weight:500;letter-spacing:.2px}
   nav.tabs button:hover{color:var(--tx2);text-shadow:0 0 10px color-mix(in oklch,var(--esf) 40%,transparent)}
   nav.tabs button.on{color:var(--tx)}
   /* aba ativa = mini-sabre que acende (núcleo branco + glow da esfera) */
@@ -788,7 +805,12 @@ async function J(ep,opt){
   }
 }
 const card=(h,cls)=>`<div class="card ${cls||''}">${h}</div>`;
-const kpi=(v,l,cor,gl)=>`<div class="card kpi"><div class="l">${l}</div><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div>${gl?`<span class="gl">${gl}</span>`:''}</div>`;
+// ícone semântico do KPI, deduzido da cor: crítico/dinheiro/ok/info
+const _kpiIco=cor=>{const c=String(cor||'');
+  if(/rose/.test(c))return'§alert'; if(/gold|amber/.test(c))return'§money';
+  if(/green/.test(c))return'§ok'; if(/accent|teal|blue|violet|purple/.test(c))return'§info'; return'';};
+const kpi=(v,l,cor,gl)=>{const ik=_kpiIco(cor);
+  return `<div class="card kpi"><div class="l">${l}</div><div class="v" ${cor?`style="color:${cor}"`:''}>${v}</div>${gl?`<span class="gl">${gl}</span>`:''}${ik?`<span class="kpi-ico" style="color:${cor}" aria-hidden="true">${svgIco(ik)}</span>`:''}</div>`;};
 const sec=(t,cnt)=>`<h2 class="sec">${t}${cnt!=null?`<span class="cnt">${cnt}</span>`:''}</h2>`;
 const spin=t=>`<div class="skel"><span class="sp"></span>${t||'Carregando…'}</div>`;
 const cover=(sph,t,s,ic)=>`<div class="cover ${sph}"><div class="cover-row">${ic?`<span class="cover-seal" aria-hidden="true">${svgIco(ic)}</span>`:''}<div class="cover-tx"><div class="t">${t}</div><div class="s">${s}</div></div></div></div>`;
@@ -958,7 +980,7 @@ function montarSpheres(){
 }
 function montarTabs(){
   $('tabs').style.display=TABS[esfera].length<2?'none':'';
-  $('tabs').innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')"><span class="ti">${t.ic}</span><span class="tl">${t.tl}</span></button>`).join('');
+  $('tabs').innerHTML=TABS[esfera].map(t=>`<button class="${t.id===aba?'on':''}" onclick="ir('${t.id}')" title="${t.tl}"><span class="ti">${svgIco(t.ic)}</span><span class="tl">${t.tl}</span></button>`).join('');
 }
 function trocarEsfera(id){esfera=id;aba=TABS[id][0].id;montarSpheres();montarTabs();ir(aba);}
 let _nav=0; // token anti-corrida
@@ -1000,9 +1022,9 @@ document.addEventListener('pointermove',e=>{
   if(!t)return;const r=t.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
   t.style.setProperty('--mx',x.toFixed(0)+'px');
   t.style.setProperty('--my',y.toFixed(0)+'px');
-  if(!_rmGlobal&&(t.classList.contains('card')||t.classList.contains('ck-inst'))&&r.width<560){
-    t.style.setProperty('--rx',((y/r.height-.5)*-3.5).toFixed(2)+'deg');   // cards largos não tombam
-    t.style.setProperty('--ry',((x/r.width-.5)*4.5).toFixed(2)+'deg');
+  if(!_rmGlobal&&(t.classList.contains('card')||t.classList.contains('ck-inst'))&&r.width<620){
+    t.style.setProperty('--rx',((y/r.height-.5)*-6.5).toFixed(2)+'deg');   // tilt mais dramático
+    t.style.setProperty('--ry',((x/r.width-.5)*8.5).toFixed(2)+'deg');
   }
 },{passive:true});
 document.addEventListener('pointerout',e=>{
