@@ -19,23 +19,34 @@
   **Decreto 93.872/1986** art. 38 (veda pagamento antecipado).
 
 ## 2. RED FLAGS operacionais (motor do Lex: "se X, suspeite de Y, fundamento Z")
+
+> **Fonte da verdade = o CÓDIGO** (`compliance_agent/lex_redflags._RF`). Esta tabela ESPELHA a
+> numeração real do motor (reconciliada 2026-07-22 — a versão antiga deste doc usava R1-R12 com
+> sentidos divergentes do código, ex.: doc-R6 era carona/RP e o código-R6 é troca de controle).
+> Não há R1 no motor. Cláusula de marca sem "ou equivalente" vive no R7/E7 (motor de editais).
+
 | # | SE OBSERVAR (X) | SUSPEITE DE (Y) | FUNDAMENTO (Z) |
 |---|---|---|---|
-| R1 | Especificação com marca/características que só 1 fornecedor atende; sem "ou equivalente" | Direcionamento objetivo | Art. 9º I Lei 14.133; Art. 3º §1º I Lei 8.666; Súmula TCU 177 |
-| R2 | Várias dispensas/empenhos de mesmo ramo, mesma UG, no exercício, somando acima do limite | Fracionamento | Art. 75 §1º Lei 14.133; Art. 23 §§1º/2º/5º Lei 8.666 |
-| R3 | Pesquisa de preços só com 3 fornecedores, cotações idênticas, datas próximas | Sobrepreço/pesquisa frágil | Art. 11 III/Art. 23 Lei 14.133; **Acórdão 1875/2021-TCU** (cesta de preços) |
-| R4 | Preço acima de referenciais (SINAPI/EMOP/Painel); BDI fora da faixa | Sobrepreço/superfaturamento | Art. 11 III Lei 14.133; **Acórdão 2622/2013-TCU** (faixas de BDI) |
-| R5 | Inexigibilidade/dispensa para objeto comum sem prova de exclusividade/singularidade | Inexigibilidade indevida | Art. 74 Lei 14.133/Art. 25 Lei 8.666; art. 337-E CP |
-| R6 | "Carona" em ata de RP sem vantajosidade; adesões estourando o limite | Adesão a RP irregular | Art. 86 Lei 14.133; Súmula TCU 222 |
-| R7 | Prazos exíguos; habilitação excessiva (capital, atestados desproporcionais, localização) | Restrição de competitividade | Art. 9º I Lei 14.133; Art. 3º §1º Lei 8.666 |
-| R8 | Poucos licitantes; mesmos sócios/endereço/contador; propostas-cobertura; rodízio de vencedores | Conluio/cartel (bid rigging) | Art. 36 §3º I "d" Lei 12.529; OCDE Bid Rigging; ACFE Fraud Tree |
-| R9 | Aditivos sucessivos somando >25% (ou >50% reforma); aditivo que muda o objeto | Aditivos acima do limite | Arts. 125-126 Lei 14.133; Art. 65 §1º Lei 8.666 |
-| R10 | Pagamento sem atesto/medição/NF, ou antecipado | Liquidação irregular | Arts. 62-63 Lei 4.320; Decreto 93.872/86 art. 38 |
-| R11 | Revogação imotivada seguida de contratação direta do mesmo objeto com a "suspeita" | Direcionamento via revogação | Art. 3º Lei 8.666; TCE 165820016-TCU |
-| R12 | ETP/TR genérico copiado do catálogo do vencedor; sem DFD/estudo de mercado | Planejamento de fachada | Art. 5º/Art. 18 Lei 14.133 |
+| R2 | Várias dispensas/empenhos do mesmo ramo, mesma UG, no exercício, somando acima do teto | Fracionamento de despesa | Art. 75 §1º Lei 14.133; Art. 23 §§1º-5º Lei 8.666 |
+| R3 | Pesquisa de preços frágil (3 cotações combinadas, sem cesta) | Sobrepreço não detectado | Art. 23 Lei 14.133; **Acórdão 1875/2021-TCU** (cesta de preços) |
+| R4 | Preço acima de referenciais; BDI fora da faixa | Sobrepreço/superfaturamento | Art. 11 III Lei 14.133; **Acórdão 2622/2013-TCU** (BDI) |
+| R5 | Inexigibilidade/dispensa sem prova de exclusividade/singularidade | Contratação direta indevida | Art. 74 Lei 14.133 / Art. 25 Lei 8.666; art. 337-E CP |
+| R6 | Alteração de controle societário logo após receita pública relevante | Venda de casca / laranja | Art. 14 Lei 14.133; art. 11 Lei 8.429; ACFE change-of-control |
+| R7 | Habilitação excessiva, prazos exíguos, marca sem "ou equivalente" | Restrição de competitividade | Art. 9º I Lei 14.133; Art. 3º §1º Lei 8.666 |
+| R8 | Concentração de fornecedor no órgão; mesmos vizinhos de disputa | Captura / bid rigging | Art. 37 CF; Art. 36 §3º I "d" Lei 12.529; OCDE/ACFE |
+| R9 | Aditivos sucessivos somando >25% (>50% reforma) | Aditivos acima do limite | Arts. 125-126 Lei 14.133; Art. 65 §1º Lei 8.666 |
+| R10 | OBs atípicas: estornos, R$ 0,00, pagamento sem atesto | Liquidação irregular | Arts. 62-63 Lei 4.320; Decreto 93.872/86 art. 38 |
+| R11 | CNAE/objeto social incompatível com o objeto contratado | Empresa de fachada (shell) | Arts. 62-63 Lei 14.133; art. 337-F CP; ACFE |
+| R12 | ETP/TR genérico/copiado; sem DFD/estudo de mercado | Planejamento de fachada | Art. 5º e Art. 18 Lei 14.133 |
+| R13 | Itens mergulhados no certame e recuperados por aditivo | Jogo de planilha | Arts. 125-126 Lei 14.133; **Ac. TCU 1.755/2004 e 2.988/2018-P** (independe de dolo) |
+| R14 | Rodízio/cobertura/supressão entre os mesmos licitantes | Conluio entre licitantes | Art. 90 Lei 14.133; art. 337-F CP; Art. 36 Lei 12.529 (CADE) |
+| R15 | Ressalva de parecer jurídico sem resposta motivada da autoridade | Controle prévio ignorado | Art. 53 Lei 14.133; **LINDB art. 22**; art. 11 Lei 8.429 |
+| DD/H-* | Sinais cadastrais de fachada/laranja (endereço, capital, porte, PEP, benefício social) | Empresa de fachada / interposta pessoa | art. 337-F CP; art. 11 Lei 8.429; LC 123/2006 |
 
-> **Calibragem:** 1 indício isolado = atenção baixa; **convergência de 3+ red flags** correlacionadas = atenção alta
-> (recomenda representação ao controle externo).
+> **Calibragem** (código `lex_redflags._grau`): 1 indício isolado = 🟡 baixa; **convergência de 3+
+> red flags com ao menos um grave (grav ≥4)** = 🔴 (recomenda controle externo). Todo achado passa
+> pelo passo exculpatório (`_EXCULPATORIO`) antes do encaminhamento — LINDB arts. 20-22: a decisão
+> considera as consequências práticas e as alternativas de gestão antes de imputar.
 
 ## 3. Jurisprudência que "ensina"
 - **Acórdão 2622/2013-TCU-Pleno (TC 036.076/2011-2):** faixas de referência de **BDI** por tipo de obra (ex.: edifícios

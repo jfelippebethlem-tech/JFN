@@ -61,9 +61,39 @@ logger = logging.getLogger(__name__)
 def _sei_do_fornecedor(cnpj: str) -> list[dict]:
     try:
         from compliance_agent.correlacao_sei import processos_de_fornecedor
-        return processos_de_fornecedor(cnpj)
+        return _priorizar_sei(processos_de_fornecedor(cnpj))
     except Exception:
         return []
+
+
+def _priorizar_sei(sei: list[dict]) -> list[dict]:
+    """Ordena os candidatos ANTES do corte `_MAX_SEI` (antes o corte era cego: fornecedor com
+    dezenas de processos podia ter os 3 lidos caindo em pura execução). Prioridade: processo com
+    fase de SELEÇÃO/edital no arquivo compacto (grátis, sem browser) > maior valor pago > mais OBs.
+    Sem arquivo local o processo não perde lugar — só não ganha o bônus (honesto)."""
+    import re
+    from pathlib import Path
+
+    raiz = Path(__file__).resolve().parent.parent / "data" / "sei_arquivo"
+
+    def _tem_selecao(numero: str) -> bool:
+        slug = re.sub(r"\D+", "_", numero or "").strip("_")
+        man = raiz / slug / "manifest.json"
+        if not man.exists():
+            return False
+        try:
+            import json
+            docs = json.loads(man.read_text()).get("docs") or []
+            # o arquivo compacto já classifica a fase de cada doc (sei/fases via sei_consultar)
+            return any(d.get("fase") == "selecao" for d in docs if isinstance(d, dict))
+        except Exception:
+            return False
+
+    # manifest só dos 20 primeiros (I/O barato, mas com teto)
+    bonus = {id(s): (1 if i < 20 and _tem_selecao(s.get("numero_sei", "")) else 0)
+             for i, s in enumerate(sei)}
+    return sorted(sei, key=lambda s: (-bonus[id(s)], -(s.get("total") or 0),
+                                      -(s.get("n_obs") or 0)))
 
 
 def _contratos_tcerj(cnpj: str) -> list[dict]:
@@ -166,6 +196,18 @@ def _analise(ctx: dict, ler_sei: bool | None = None) -> dict:
                        f"contratado (ex.: “{amostra}…”). Atividade econômica de registro incompatível com o objeto "
                        "é indício de **empresa de prateleira/fachada** habilitada para fim diverso ou de **qualificação "
                        "técnica frágil** — verificar a aptidão operacional real e a adequação do CNAE."})
+        elif tc and to_ and len(tc & to_) == 1 and len(to_) >= 4:
+            # grau intermediário (antes só a disjunção TOTAL disparava — incompatibilidade
+            # parcial passava em silêncio): 1 único termo em comum num objeto rico é aderência
+            # frágil, não incompatibilidade — indício menor, com os termos citados.
+            from compliance_agent.lex_redflags import _ramo_objeto
+            if _ramo_objeto(cnae) != _ramo_objeto(" ".join(objs_reais)):
+                comum = next(iter(tc & to_))
+                ach_estrutural.append({"rf": "R11", "grav": 2,
+                    "obs": f"Aderência **frágil** entre o CNAE registrado (“{cnae}”) e o objeto contratado "
+                           f"(ex.: “{objs_reais[0][:80]}…”): apenas o termo “{comum}” é comum, e os ramos de "
+                           "atividade divergem. Não é incompatibilidade total — verificar a aptidão operacional "
+                           "antes de qualquer conclusão."})
 
     # Investigação de fachada/laranja (motor único — investigacao_dd). O Lex CONDUZ a investigação:
     # cada hipótese CONFIRMADA/INDÍCIO vira um achado (entra no grau); o quadro completo vai à seção

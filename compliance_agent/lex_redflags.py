@@ -122,6 +122,15 @@ _MATRIZ = {
     "R12": ("planejamento de fachada (DFD/ETP/TR genéricos) ou crescimento sem lastro",
             "contratação sem planejamento real; sobre/subdimensionamento",
             "exigir ETP robusto e justificativa da demanda (art. 18 Lei 14.133)"),
+    "R13": ("proposta com itens mergulhados na licitação e recuperados por aditivo (jogo de planilha)",
+            "vantagem indevida: o desconto do certame é devolvido na execução; dano ao erário "
+            "independe de dolo (Ac. TCU 1.755/2004 e 2.988/2018-P)",
+            "periciar planilha inicial × aditivos item a item; glosar a recomposição do sobrepreço "
+            "(arts. 125-126 Lei 14.133)"),
+    "R14": ("padrão de rodízio/cobertura/supressão de propostas entre os mesmos licitantes",
+            "competição de fachada: preço de reserva capturado pelo grupo (bid rigging OCDE)",
+            "cruzar QSA/vínculos dos licitantes e representar ao MP-RJ e ao CADE "
+            "(art. 90 Lei 14.133; art. 36 Lei 12.529)"),
     "R15": ("ressalva de parecer (PGE/CGE/jurídico) aparentemente sem resposta da autoridade",
             "instrução viciada: decisão sem enfrentar o controle prévio de legalidade",
             "localizar o despacho decisório; sem acolhimento nem divergência motivada, representar "
@@ -182,6 +191,12 @@ _EXCULPATORIO = {
     "R11": "O CNAE pode estar desatualizado no cadastro sem que a empresa careça de aptidão operacional real "
            "para o objeto.",
     "R12": "DFD/ETP genéricos podem refletir padronização administrativa, não ausência de planejamento real.",
+    "R13": "A variação de quantitativos pode decorrer de reequilíbrio econômico-financeiro legítimo, comprovado "
+           "por planilha de custos e fato superveniente documentado — não de recomposição do desconto.",
+    "R14": "Preços próximos entre licitantes podem refletir tabela referencial pública ou mercado de margem "
+           "estreita, sem qualquer coordenação entre os concorrentes.",
+    "R15": "A autoridade pode ter acolhido a ressalva em despacho posterior não capturado na leitura, ou "
+           "divergido com motivação idônea registrada em documento apartado (LINDB art. 22).",
     "DD": "Sinais cadastrais isolados (endereço residencial, capital baixo, empresa recente) são comuns em "
           "microempresas legítimas e, sozinhos, não caracterizam fachada/laranja.",
 }
