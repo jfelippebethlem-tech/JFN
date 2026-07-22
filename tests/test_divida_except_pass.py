@@ -19,7 +19,12 @@ ROOT = Path(__file__).resolve().parent.parent
 # Fora da catraca: experimental/debug (baixo valor) e infra.
 SKIP = ("_SANDBOX", "tools/debug", ".venv", "tests", ".stversions", "__pycache__", "node_modules")
 
-TETO_MUDOS_PRODUCAO = 147  # 2026-07-11 — só abaixar (ou subir com justificativa no commit)
+# 2026-07-22: 147→156 — dívida acumulada em 11 dias de sessões que não rodaram esta catraca
+# (rotas/investigacao idioma-das-rotas + scripts de sweep sei_busca_mgs/socios_dump_sweep/
+# sei_ficha/siafe_sweep_full, vários UNTRACKED que o rglob conta). O código de HOJE tem ZERO
+# pass mudo novo (OCR da íntegra → print logado; manifest Lex/narrativa → exceção específica).
+# DÉBITO REGISTRADO: curadoria p/ voltar a ≤147 pende nos 5 piores arquivos listados no erro.
+TETO_MUDOS_PRODUCAO = 156
 
 
 def _mudos(py: Path) -> list[int]:

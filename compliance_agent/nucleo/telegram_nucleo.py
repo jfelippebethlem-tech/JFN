@@ -395,11 +395,12 @@ def cmd_certame(args: str) -> str:
                               "FROM certame_indice WHERE certame=?", (certame,)).fetchone()
             nar = None
             try:
+                import sqlite3 as _sq
                 nrow = con.execute("SELECT narrativa_json FROM certame_indice WHERE certame=?",
                                    (certame,)).fetchone()
                 nar = _json.loads(nrow[0]) if nrow and nrow[0] else None
-            except Exception:
-                pass
+            except (_sq.OperationalError, ValueError, TypeError):
+                nar = None  # coluna narrativa ainda não existe nesta base / json inválido
         finally:
             con.close()
         if row:

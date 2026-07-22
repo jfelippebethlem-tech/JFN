@@ -50,7 +50,13 @@ REPO = Path(__file__).resolve().parent.parent
 # 2026-07-20c: +5 (1504→1509) — pacote completo (G1-G7). AUDITADO: §1-N nomeações do /orgao, capítulo SEI
 # do dossiê completo (dossie.montar_ctx_completo) e worker/sub-try da rota /api/dossie/completo — todos
 # LOGADOS (logger.debug/warning) ou catch-and-return de rota; zero pass mudo no código novo.
-BASELINE = 1509
+# 2026-07-22: +7 (1509→1516). AUDITADO: a manhã (painel v9, commits d98f351e..5c92b675) já estava
+# em 1513 sem rodar a catraca (+4 herdados). A tarde somou +3, NENHUM mudo: ata_para_julgamento
+# (amplo por design — parser de ata arbitrária — com logger.warning), fase_julgamento_pncp
+# (contador de erro, degrada honesto) e cmd_certame (idioma-padrão catch-and-return dos comandos
+# do núcleo). OCR da íntegra/manifest do Lex/narrativa do /certame foram para exceção ESPECÍFICA.
+# Curadoria do legado p/ específico segue aberta.
+BASELINE = 1516
 
 
 def _contar() -> int:

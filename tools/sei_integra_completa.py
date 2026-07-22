@@ -99,8 +99,9 @@ async def main():
                                                         f"[OCR — {x['t']}]\n\n" + txt_ocr[:6000],
                                                         fontsize=8)
                                     _o.saveIncr(); _o.close()
-                            except Exception:
-                                pass  # OCR indisponível → fica só o escaneado original (já é ganho)
+                            except (ImportError, RuntimeError, OSError, ValueError) as e_ocr:
+                                # OCR indisponível → fica só o escaneado original (já é ganho)
+                                print(f"  ocr pulado ({x['t'][:30]}): {str(e_ocr)[:40]}", flush=True)
                             _d.close(); return True
                         _d.close()
                 except (PWError, RuntimeError, ValueError, OSError):

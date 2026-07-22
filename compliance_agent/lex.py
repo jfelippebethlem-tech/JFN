@@ -86,8 +86,8 @@ def _priorizar_sei(sei: list[dict]) -> list[dict]:
             docs = json.loads(man.read_text()).get("docs") or []
             # o arquivo compacto já classifica a fase de cada doc (sei/fases via sei_consultar)
             return any(d.get("fase") == "selecao" for d in docs if isinstance(d, dict))
-        except Exception:
-            return False
+        except (OSError, ValueError, AttributeError, TypeError):
+            return False  # manifest ilegível = sem bônus (processo não perde lugar)
 
     # manifest só dos 20 primeiros (I/O barato, mas com teto)
     bonus = {id(s): (1 if i < 20 and _tem_selecao(s.get("numero_sei", "")) else 0)

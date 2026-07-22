@@ -11,7 +11,10 @@ dos regexes e da doutrina por licitante — nada novo de parsing aqui).
 """
 from __future__ import annotations
 
+import logging
 import sqlite3
+
+logger = logging.getLogger(__name__)
 
 
 def leitura_de_ata_documento(rows: list[sqlite3.Row | tuple]) -> dict:
@@ -59,7 +62,8 @@ def backfill(con: sqlite3.Connection | None = None, *, limite: int | None = None
         for c in certames:
             try:
                 agg = julgar_certame(con, c)
-            except Exception:  # noqa: BLE001 — 1 ata ruim não derruba o backfill
+            except Exception as exc:  # noqa: BLE001 — 1 ata ruim não derruba o backfill (logado)
+                logger.warning("ata_para_julgamento: certame %s falhou: %s", c, str(exc)[:120])
                 stats["erro"] += 1
                 continue
             if agg is None:
