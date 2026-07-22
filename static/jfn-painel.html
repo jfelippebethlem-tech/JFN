@@ -2693,9 +2693,11 @@ void main(){
   /* varredura do guardião */
   col+=vec3(0.34,0.70,1.30)*pow(1.0-fract((a+3.14159)/6.28318-u_t*0.40),26.0)
        *smoothstep(0.85,0.05,rr)*ig*0.38;
-  /* clarão do salto + vinheta funda (leva o quadro ao preto nas bordas) */
-  col+=vec3(0.55,0.74,1.20)*u_jump*u_jump*0.55;
-  col*=1.0-0.80*smoothstep(0.22,1.05,r);
+  /* clarão do salto: quente e CONTIDO no centro (não lava o campo inteiro —
+     esse foi o erro da 1ª volta, o flash azul apagava o espaço). */
+  col+=mix(vec3(0.5,0.7,1.15),vec3(1.15,0.7,0.35),0.5)*u_jump*u_jump
+       *smoothstep(0.9,0.0,r)*0.32;
+  col*=1.0-0.82*smoothstep(0.20,1.05,r);
   gl_FragColor=vec4(col,1.0);
 }`;
 
