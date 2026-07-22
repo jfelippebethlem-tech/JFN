@@ -38,7 +38,7 @@ _IND_PARAMS = {
     "IND-FRAC-01": ["fracionamento_janela_dias", "fracionamento_min_contratos"],
     "IND-EMP-01": ["empresa_nova_dias", "capital_social_min_frac"],
     "IND-ADT-01": ["aditivo_max_qtd"],
-    "IND-SUP-01": ["superfat_desvios_padrao", "superfat_sobrepreco_frac"],
+    "IND-SUP-01": ["superfat_desvios_padrao", "superfat_delta_min_frac", "superfat_sobrepreco_frac"],
     "IND-DIR-01": ["propostas_min_competicao"],
     "IND-DIR-02": ["prazo_edital_min_dias"],
     "IND-QPQ-01": ["quid_pro_quo_janela_meses", "quid_pro_quo_roi_min"],

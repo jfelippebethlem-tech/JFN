@@ -863,6 +863,18 @@
       animation-delay:var(--d,0ms),0ms}
     .kpi:hover::before{opacity:0;animation:none}
   }
+
+  /* ═══════════ v10.4 — MOBILE SEM VAZAMENTO HORIZONTAL (SÓ ADIÇÃO) ═══════════
+     No iPhone (390px) o span.actions do cabeçalho estourava 39px e a página inteira
+     balançava de lado. Header pode QUEBRAR LINHA no estreito; html/body clipam o
+     eixo X (conteúdo largo rola no próprio contêiner — padrão dos cards de tabela). */
+  @media (max-width:520px){
+    .htop{flex-wrap:wrap;row-gap:6px}
+    .htop .actions{flex-wrap:wrap;justify-content:flex-end}
+    /* texto longo (endereço, objeto) QUEBRA em vez de sumir no clip */
+    #view td,#view .card{overflow-wrap:anywhere}
+  }
+  html,body{overflow-x:clip}
 </style>
 </head>
 <body>

@@ -167,12 +167,17 @@ def _superfaturamento(d: Dossie) -> Achado | None:
     # Caminho 1: estatístico (desvios-padrão acima da mediana).
     if mediana and desvio and desvio > 0:
         n_sd = (c.valor - mediana) / desvio
-        if n_sd >= P.valor("superfat_desvios_padrao"):
+        delta_rel = (c.valor - mediana) / mediana if mediana else 0
+        # piso relativo: série homogênea (contrato contínuo) tem σ minúsculo e um
+        # reajuste anual viraria "2σ+" — sem delta real sobre a mediana, não é sobrepreço
+        if (n_sd >= P.valor("superfat_desvios_padrao")
+                and delta_rel >= P.valor("superfat_delta_min_frac")):
             achou = (0.75,
-                     f"Valor {_r(c.valor)} está {n_sd:.1f} desvios-padrão acima da "
-                     f"mediana da categoria ({_r(mediana)}).",
-                     f"Limiar: {P.valor('superfat_desvios_padrao'):.1f} desvios-padrão.",
-                     ["superfat_desvios_padrao"])
+                     f"Valor {_r(c.valor)} está {n_sd:.1f} desvios-padrão "
+                     f"(+{delta_rel*100:.0f}%) acima da mediana da categoria ({_r(mediana)}).",
+                     f"Limiar: {P.valor('superfat_desvios_padrao'):.1f} desvios-padrão "
+                     f"E ≥{P.valor('superfat_delta_min_frac')*100:.0f}% sobre a mediana.",
+                     ["superfat_desvios_padrao", "superfat_delta_min_frac"])
     # Caminho 2: sobrepreço direto sobre referência de mercado/SINAPI.
     referencia = ref.get("referencia_mercado") or mediana
     if referencia and referencia > 0:

@@ -114,6 +114,15 @@ _PADRAO: list[Parametro] = [
         minimo=1.5, maximo=4.0,
     ),
     Parametro(
+        "superfat_delta_min_frac", 0.10, "percentual",
+        "Piso de delta RELATIVO sobre a mediana para o caminho estatístico disparar. "
+        "Série homogênea de contrato contínuo tem desvio-padrão minúsculo: um reajuste "
+        "anual (IPCA/CCT, ~5-8%) vira '2σ+' e marcava superfaturamento — guard anti-FP "
+        "(caso MGS Clean: parcela +6% pós-reajuste flagrada indevidamente).",
+        "IN SEGES 65/2021 (pesquisa de preços); prática pericial", "empirico",
+        minimo=0.05, maximo=0.30,
+    ),
+    Parametro(
         "superfat_sobrepreco_frac", 0.30, "percentual",
         "Sobrepreço mínimo (fração) sobre referência (SINAPI/ORSE/mediana) para alerta.",
         "Súmula TCU 258; IN SEGES 65/2021", "orientativo",
