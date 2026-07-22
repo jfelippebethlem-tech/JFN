@@ -239,7 +239,7 @@ def concentracao_municipio(db_path: str | None = None, min_contratos_orgao: int 
     ramos_canonicos = set(_RAMOS)   # dict nome→keywords; fora dele = agrupamento heurístico
     try:
         from compliance_agent.pcrj.esfera import classificar_esfera as _cls
-    except Exception:                       # pragma: no cover
+    except ImportError:                     # pragma: no cover
         _cls = None
     con = _ro(db_path)
     try:

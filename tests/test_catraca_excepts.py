@@ -56,7 +56,11 @@ REPO = Path(__file__).resolve().parent.parent
 # (contador de erro, degrada honesto) e cmd_certame (idioma-padrão catch-and-return dos comandos
 # do núcleo). OCR da íntegra/manifest do Lex/narrativa do /certame foram para exceção ESPECÍFICA.
 # Curadoria do legado p/ específico segue aberta.
-BASELINE = 1516
+# 2026-07-22b: +2 (1516→1518) — paridade PCRJ: rota /api/intel/concentracao_municipio (idioma-
+# padrão catch-and-return das rotas) + fase_indice_municipal do backfill (roda calcular arbitrário
+# por certame, erro CONTADO na fatia — degrada honesto, não mudo). Import-guard do classificador
+# de esfera foi para ImportError específico.
+BASELINE = 1518
 
 
 def _contar() -> int:
