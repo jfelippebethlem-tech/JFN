@@ -31,6 +31,7 @@ from compliance_agent.detectores.base import (
     verificar_adversarial,
 )
 from compliance_agent.detectores.c6_vinculo_politico import C6VinculoPolitico
+from compliance_agent.detectores.c7_sancionada_contratada import C7SancionadaContratada
 from compliance_agent.detectores.c_fachada import CFachada
 from compliance_agent.detectores.e1_barreira import E1Barreira
 from compliance_agent.detectores.e2_prazos import E2Prazos
@@ -40,6 +41,7 @@ from compliance_agent.detectores.e5_edital_iterado import E5EditalIterado
 from compliance_agent.detectores.e6_pontuacao_dirigida import E6PontuacaoDirigida
 from compliance_agent.detectores.e7_clausula_restritiva import E7ClausulaRestritiva
 from compliance_agent.detectores.e8_deserto_dirigido import E8DesertoDirigido
+from compliance_agent.detectores.p6_direta_indevida import P6DiretaIndevida
 from compliance_agent.detectores.j1_cartel import J1Cartel
 from compliance_agent.detectores.j2_propostas_cobertura import J2PropostasCobertura
 from compliance_agent.detectores.j3_desconto_anomalo import J3DescontoAnomalo
@@ -85,7 +87,9 @@ REGISTRO: dict[str, Detector] = {
         P1EspecificacaoDirigida(),  # fase de planejamento — especificação dirigida/marca disfarçada
         P2CotacoesCombinadas(),     # fase de planejamento — cotações combinadas/orçamentos de fachada
         P5EmergenciaFabricada(),    # fase de planejamento — emergência fabricada (dispensa art. 75 VIII)
+        P6DiretaIndevida(),         # planejamento — dispensa por valor acima do teto do exercício (art. 75 I-II)
         C6VinculoPolitico(),   # perfil do contratado — vínculo político-financeiro (doações TSE); multiplicador
+        C7SancionadaContratada(),  # perfil do contratado — sanção impeditiva vigente à época (art. 156 §§4º-5º)
         X1CrescimentoAditivo(),  # execução — crescimento aditivo (teto art. 125)
         X2ProrrogacaoPerpetua(),  # execução — prorrogação perpétua sem teste de mercado
         X3ExecucaoFinanceira(),   # execução — execução financeira anômala (tríade SIAFE/atesto/fila)

@@ -85,11 +85,12 @@ CATALOGO: tuple[Vicio, ...] = (
           redflags_lex=("R12",), dispositivos=("Lei 14.133/2021 art. 5º", "Lei 14.133/2021 art. 18"),
           escalada="diligencia", origem=("casa",), status="parcial"),
     Vicio("contratacao_direta_indevida", "Dispensa/inexigibilidade indevida", "planejamento",
-          "Enquadramento forçado em contratação direta (arts. 72-75) sem os pressupostos; inclui limites de valor "
-          "(ferramenta transversal compliance_agent/limites_dispensa.py, fora do REGISTRO).",
-          redflags_lex=("R5",), fraudes=("inexigibilidade_indevida",),
-          dispositivos=("Lei 14.133/2021 arts. 72-75",), escalada="representacao",
-          origem=("casa",), status="parcial"),
+          "Enquadramento forçado em contratação direta (arts. 72-75) sem os pressupostos. Ramo objetivo "
+          "(dispensa por VALOR acima do teto do exercício, art. 75 I-II c/c 182) coberto pelo P6; ramos "
+          "subjetivos (exclusividade fictícia, emergência) seguem com R5/P5.",
+          detectores=("P6",), redflags_lex=("R5",), fraudes=("inexigibilidade_indevida",),
+          dispositivos=("Lei 14.133/2021 arts. 72-75", "Lei 14.133/2021 art. 182"),
+          escalada="representacao", origem=("casa",)),
 
     # ─────────────────────────────── EDITAL ───────────────────────────────
     Vicio("barreira_habilitacao", "Barreira de entrada na habilitação", "edital",
@@ -223,10 +224,12 @@ CATALOGO: tuple[Vicio, ...] = (
           detectores=("C",), redflags_lex=("R11",),
           dispositivos=("Lei 14.133/2021 arts. 62-63",), escalada="diligencia", origem=("casa",)),
     Vicio("sancionada_contratada", "Sancionada contratada (à época)", "perfil_contratado",
-          "Empresa com sanção vigente (CEIS/CNEP/inidôneos TCU) NA DATA do contrato/certame — cobertura via "
-          "lex_sancoes + cruzamentos_intel (sancionadas estado/município), fora do REGISTRO.",
+          "Empresa com sanção vigente (CEIS/CNEP/inidôneos TCU) NA DATA do contrato/certame — detector C7 "
+          "(impeditiva vigente = teste objetivo violado; CNEP-multa = indício de alcance a verificar); "
+          "sancionadas estado/município seguem via lex_sancoes + cruzamentos_intel.",
+          detectores=("C7",),
           dispositivos=("Lei 14.133/2021 art. 156 §§4º-5º", "Lei 14.133/2021 art. 14"),
-          escalada="representacao", origem=("casa", "ALICE/CGU"), status="parcial"),
+          escalada="representacao", origem=("casa", "ALICE/CGU")),
     Vicio("vinculo_politico", "Vínculo político-financeiro do fornecedor", "perfil_contratado",
           "Doações eleitorais/PEP no QSA correlacionadas com receita pública (grafo de poder).",
           detectores=("C6",), redflags_lex=("DD/H-PEP",),
@@ -347,3 +350,29 @@ def validar() -> list[str]:
             if obter_sumula(s) is None:
                 problemas.append(f"{v.id}: súmula '{s}' não resolve em SUMULAS")
     return problemas
+
+
+def cobertura() -> str:
+    """Relatório de cobertura em texto: resumo + o que cada vício não-pleno ainda precisa.
+    Uso: .venv/bin/python -m compliance_agent.knowledge.catalogo_vicios --cobertura"""
+    r = resumo()
+    linhas = [f"CATÁLOGO: {r['total']} vícios — {r['cobertos']} cobertos · "
+              f"{r['parciais']} parciais · {r['lacunas']} lacunas", ""]
+    for v in sorted(lacunas(), key=lambda x: (x.status != "lacuna", x.fase)):
+        ferr = ", ".join(v.detectores) or ", ".join(v.redflags_lex) or "nenhuma ferramenta"
+        linhas.append(f"[{v.status.upper():7}] {v.id} ({v.fase}) — {v.nome}")
+        linhas.append(f"          cobre hoje: {ferr}")
+        linhas.append(f"          falta: {v.descricao.splitlines()[0][:160]}")
+    probs = validar()
+    linhas.append("")
+    linhas.append("validar(): " + ("ÍNTEGRO" if not probs else f"{len(probs)} problema(s): {probs}"))
+    return "\n".join(linhas)
+
+
+if __name__ == "__main__":
+    import sys
+    if "--cobertura" in sys.argv:
+        print(cobertura())
+    else:
+        import json as _json
+        print(_json.dumps(resumo(), ensure_ascii=False, indent=1))
