@@ -498,9 +498,151 @@
   @media (prefers-reduced-motion:reduce){
     .btn:active,.chip:active,.sph:active,.search .az:active,nav.tabs button:active,.htop a:active{transform:none}
   }
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+     v9 "ÍON" — SÓ ADIÇÃO (v7/v8 acima permanecem; esta camada vence por cascata)
+     Brief do dono (2026-07-22): Jarvis × Star Wars × sci-fi, AZUL + LARANJA,
+     todo controle com 3D de verdade. DOUTRINA DE COR — azul = o console
+     (estrutura, interação, a lâmina, o frio); laranja = ENERGIA (ação que
+     dispara, dinheiro, carga, calor). Severidade mantém voz própria: rosa =
+     crítico, verde = ok — graves continuam brilhando graves.
+     Tudo que se move aqui morre em prefers-reduced-motion.
+     ═══════════════════════════════════════════════════════════════════════════ */
+  :root{
+    /* os dois polos */
+    --ion:oklch(0.72 0.175 258); --ion-hi:oklch(0.86 0.125 250); --ion-d:oklch(0.56 0.15 261);
+    --flame:oklch(0.75 0.185 55); --flame-hi:oklch(0.86 0.145 70); --flame-d:oklch(0.60 0.16 47);
+    /* remapeamento: o painel inteiro passa a falar azul/laranja sem tocar em nenhum componente */
+    --accent:var(--ion); --teal:var(--ion-hi); --blue:var(--ion); --blue-d:var(--ion-d); --teal-d:var(--ion-d);
+    --gold:var(--flame-hi); --amber:var(--flame); --amber-d:var(--flame-d);
+    --accent2:oklch(0.70 0.16 292); --purple:oklch(0.70 0.16 292); --violet:oklch(0.70 0.16 292);
+    --accent-ink:oklch(0.15 0.045 262); --saber:var(--ion-hi);
+    /* fundo vira espaço profundo: mais azul, zero cinza morto */
+    --bg:oklch(0.113 0.032 263); --bg2:oklch(0.142 0.036 261);
+    --card:oklch(0.183 0.036 259); --card2:oklch(0.159 0.033 260); --raise:oklch(0.228 0.042 257);
+    --bd:oklch(0.50 0.08 255/.5); --bd2:oklch(0.42 0.062 258/.34); --glass:oklch(0.142 0.036 261/.76);
+    /* profundidade física: uma sombra só, usada por todo controle que salta do plano */
+    --lift:inset 0 1px 0 oklch(1 0 0/.10), inset 0 -1px 0 oklch(0 0 0/.32),
+           0 2px 4px -2px oklch(0 0 0/.5), 0 12px 28px -18px oklch(0 0 0/.8);
+    --persp:640px}
+  body[data-esf="estado"]{--esf:var(--ion)}
+  body[data-esf="prefeitura"]{--esf:var(--flame)}
+  body[data-esf="geral"]{--esf:var(--accent2)}
+  .sph.estado::before{background:var(--ion)}
+  .sph.prefeitura::before{background:var(--flame)}
+  .sph.geral::before{background:var(--accent2)}
+  .sph.estado{--sphc:var(--ion)}.sph.prefeitura{--sphc:var(--flame)}.sph.geral{--sphc:var(--accent2)}
+
+  /* ── CONTROLE 3D UNIVERSAL ─────────────────────────────────────────────────
+     Todo botão vive num plano com profundidade real. O JS (tilt3d) alimenta
+     --rx/--ry (inclina na direção do cursor) e --mx/--my (specular que segue o
+     dedo). Repouso = plano · hover = salta e inclina · :active = AFUNDA
+     (translateZ negativo). Feedback físico, nunca escala falsa.
+     Cards/lnk/ck-inst ficam de fora: já têm o motor de tilt do v7.          */
+  /* perspectiva vive na função transform do próprio controle (funciona mesmo
+     quando o pai não é um deck 3D). Esferas e abas continuam com perspectiva
+     no container, que é o deck herdado do v7 — não duplicar as duas.        */
+  .btn,.chip,.search .az,.htop a.sair,.htop a.ctrl,.htop a.help,.htop a.cockpit,.sheet .x{
+    position:relative;transform-style:preserve-3d;box-shadow:var(--lift);
+    transform:perspective(var(--persp)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(var(--tz,0px));
+    transition:transform .26s cubic-bezier(.2,.8,.25,1.05),box-shadow .26s,border-color .18s,color .18s,background .18s,filter .18s}
+  .btn:hover,.chip:hover,.search .az:hover,.htop a.sair:hover,.htop a.ctrl:hover,.htop a.help:hover,.sheet .x:hover{--tz:9px}
+  .btn:active,.chip:active,.search .az:active,.htop a:active,.sheet .x:active,.sph:active,nav.tabs button:active{
+    --tz:-4px;transform:perspective(var(--persp)) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg)) translateZ(-4px);transition-duration:.07s}
+  /* specular: a luz do ambiente batendo na face do controle, seguindo o cursor */
+  .btn::after,.chip::after,.search .az::after,.htop a.sair::after,.htop a.ctrl::after,.htop a.help::after{
+    content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;opacity:0;transition:opacity .22s;
+    background:radial-gradient(90px circle at var(--mx,50%) var(--my,50%),oklch(1 0 0/.20),transparent 62%)}
+  .btn:hover::after,.chip:hover::after,.search .az:hover::after,.htop a:hover::after{opacity:1}
+  .btn:hover{box-shadow:var(--lift),0 0 30px -8px color-mix(in oklch,var(--flame) 60%,transparent);filter:brightness(1.07) saturate(1.06)}
+  .chip:hover,.search .az:hover{box-shadow:var(--lift),0 0 24px -10px color-mix(in oklch,var(--esf) 55%,transparent)}
+  .htop a.sair:hover,.htop a.help:hover{box-shadow:var(--lift),0 0 20px -10px color-mix(in oklch,var(--ion) 55%,transparent)}
+  .htop a.ctrl:hover{box-shadow:var(--lift),0 0 20px -10px color-mix(in oklch,var(--rose) 55%,transparent)}
+  /* botão PRIMÁRIO = ignição (laranja: é o que dispara). Secundário = íon (azul). */
+  .btn{background:linear-gradient(180deg,color-mix(in oklch,var(--flame) 92%,white 8%),color-mix(in oklch,var(--flame-d) 94%,black 8%));
+    color:oklch(0.17 0.045 50);text-shadow:0 1px 0 oklch(1 0 0/.20);font-weight:600}
+  .btn.ghost{background:linear-gradient(180deg,var(--raise),var(--card2));color:var(--tx2);border:1px solid var(--bd2);text-shadow:none}
+  .btn.ghost:hover{border-color:color-mix(in oklch,var(--ion) 55%,transparent);color:var(--tx);
+    box-shadow:var(--lift),0 0 26px -10px color-mix(in oklch,var(--ion) 55%,transparent)}
+  .btn.accent{background:linear-gradient(180deg,color-mix(in oklch,var(--ion) 28%,transparent),color-mix(in oklch,var(--ion) 13%,transparent));
+    color:var(--ion-hi);border:1px solid color-mix(in oklch,var(--ion) 48%,transparent);text-shadow:none}
+  .btn.accent:hover{box-shadow:var(--lift),0 0 26px -8px color-mix(in oklch,var(--ion) 62%,transparent)}
+  .btn.red{background:linear-gradient(180deg,color-mix(in oklch,var(--rose) 78%,black 6%),color-mix(in oklch,var(--rose) 58%,black 26%))}
+  .btn.red:hover{box-shadow:var(--lift),0 0 26px -8px color-mix(in oklch,var(--rose) 65%,transparent)}
+  .btn.green{background:linear-gradient(180deg,color-mix(in oklch,var(--green) 62%,black 8%),color-mix(in oklch,var(--green) 42%,black 28%))}
+  .btn.green:hover{box-shadow:var(--lift),0 0 26px -8px color-mix(in oklch,var(--green) 60%,transparent)}
+  /* esferas e abas ganham profundidade maior (o deck 3D do v7, agora com relevo) */
+  .spheres{perspective:820px}
+  .sph{box-shadow:0 1px 0 oklch(0 0 0/.22) inset}
+  .sph.on{box-shadow:var(--lift),0 0 26px -8px color-mix(in oklch,var(--sphc) 55%,transparent)}
+  .sph:hover{transform:rotateX(0deg) translateZ(12px) rotateY(var(--ry,0deg))}
+  nav.tabs{perspective:760px}
+  nav.tabs button:hover{transform:rotateX(0deg) translateZ(9px) rotateY(var(--ry,0deg))}
+  nav.tabs button.on{transform:rotateX(0deg) translateZ(7px)}
+  /* grade holográfica atrás do header — o console tem chão */
+  header::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;opacity:.5;
+    background:linear-gradient(90deg,color-mix(in oklch,var(--ion) 9%,transparent) 1px,transparent 1px) 0 0/34px 100%,
+               linear-gradient(180deg,color-mix(in oklch,var(--ion) 7%,transparent) 1px,transparent 1px) 0 0/100% 22px;
+    mask-image:linear-gradient(180deg,oklch(0 0 0/.9),transparent 88%)}
+  header{position:sticky;isolation:isolate}
+  /* marca = mini-reator: núcleo laranja num anel de íon */
+  .brand .lg{background:radial-gradient(circle at 50% 50%,var(--flame-hi) 0 22%,var(--ion) 34%,var(--ion-d) 100%);
+    box-shadow:0 0 14px -2px color-mix(in oklch,var(--ion) 65%,transparent),inset 0 0 8px oklch(0 0 0/.45);color:oklch(0.98 0 0)}
+  @media (prefers-reduced-motion:reduce){
+    .btn,.chip,.search .az,.htop a,.sheet .x,.sph,.sph:hover,nav.tabs button,nav.tabs button:hover,nav.tabs button.on{transform:none!important}
+    .btn::after,.chip::after,.search .az::after,.htop a::after{display:none}}
+
+  /* ── PORTAL DE IGNIÇÃO ─────────────────────────────────────────────────────
+     Toca UMA vez por sessão, por cima do painel que já está carregando atrás.
+     Não é pedágio: cobre o 1–3s que o painel gastaria buscando dado de qualquer
+     jeito, e sai sozinho assim que o cockpit termina. Qualquer toque pula.     */
+  #portal[hidden]{display:none}
+  /* composição: o REATOR fica no centro óptico, a fala vive no terço inferior.
+     Nunca deixar texto por cima do núcleo — foi o erro da 1ª volta (o brilho
+     comia as palavras do meio e a frase virava ilegível).                   */
+  #portal{position:fixed;inset:0;z-index:100;background:oklch(0.035 0.014 265);
+    display:flex;align-items:flex-end;justify-content:center;cursor:pointer;
+    transition:opacity .5s ease,filter .5s ease}
+  /* véu inferior: garante contraste do texto contra qualquer quadro da cena */
+  #portal::after{content:"";position:absolute;left:0;right:0;bottom:0;height:56%;z-index:1;pointer-events:none;
+    background:linear-gradient(180deg,transparent,oklch(0.035 0.014 265/.62) 46%,oklch(0.035 0.014 265/.94))}
+  #portal.off{opacity:0;pointer-events:none;filter:blur(6px)}
+  #pcv{position:absolute;inset:0;width:100%;height:100%;display:block}
+  /* o território: malha REAL do RJ (IBGE) revelada pela varredura do reator */
+  #pmap{position:absolute;inset:0;width:100%;height:100%;display:block;mix-blend-mode:screen;opacity:.92}
+  #portal .pui{position:relative;z-index:2;text-align:center;pointer-events:none;
+    width:100%;max-width:860px;padding:0 24px clamp(46px,9vh,104px)}
+  #portal .pln{font-family:var(--mono);opacity:0;transform:translateY(6px);
+    animation:plnIn .8s cubic-bezier(.2,.7,.2,1) both}
+  #portal .l1{font-size:10.5px;letter-spacing:3.4px;text-transform:uppercase;color:var(--ion-hi);
+    text-shadow:0 0 18px color-mix(in oklch,var(--ion) 70%,transparent);animation-delay:.35s}
+  #portal .l2{margin-top:18px;font-size:clamp(19px,4.1vw,34px);font-weight:600;letter-spacing:-.5px;
+    color:oklch(0.97 0.01 250);text-shadow:0 0 28px oklch(0 0 0/.9);animation-delay:1.05s}
+  #portal .l3{margin-top:7px;font-size:clamp(19px,4.1vw,34px);font-weight:600;letter-spacing:-.5px;
+    color:var(--flame-hi);text-shadow:0 0 30px color-mix(in oklch,var(--flame) 55%,transparent);animation-delay:1.75s}
+  #portal .pskip{margin-top:30px;font-family:var(--mono);font-size:10px;letter-spacing:2.2px;text-transform:uppercase;
+    color:oklch(0.62 0.03 258);opacity:0;animation:plnIn .8s ease 2.5s both}
+  @keyframes plnIn{to{opacity:1;transform:none}}
+  /* handoff: o núcleo do portal encolhe até o Kyber do header — portal e painel
+     são o MESMO objeto, não duas telas. */
+  #phand{position:fixed;z-index:101;border-radius:50%;pointer-events:none;
+    background:radial-gradient(circle,var(--flame-hi) 0 30%,var(--ion) 60%,transparent 72%);
+    box-shadow:0 0 40px color-mix(in oklch,var(--ion) 70%,transparent);
+    transition:transform .62s cubic-bezier(.3,.85,.25,1),opacity .62s ease}
+  @media (prefers-reduced-motion:reduce){
+    #portal .pln,#portal .pskip{animation:none;opacity:1;transform:none}
+    #portal{transition:opacity .2s}#phand{display:none}}
 </style>
 </head>
 <body>
+<div id="portal" hidden><canvas id="pcv" aria-hidden="true"></canvas><canvas id="pmap" aria-hidden="true"></canvas>
+  <div class="pui">
+    <div class="pln l1">Reator — online</div>
+    <div class="pln l2">Cada real tem um rastro.</div>
+    <div class="pln l3">Esta é a vigília que o segue.</div>
+    <div class="pskip">toque para entrar</div>
+  </div>
+</div>
 <canvas id="netbg" aria-hidden="true"></canvas>
 <div class="aura a1" aria-hidden="true"></div><div class="aura a2" aria-hidden="true"></div>
 <div id="aurora" aria-hidden="true"></div>
@@ -2226,7 +2368,7 @@ const NU_NODES=[
   {id:'compras',lab:'compras auditáveis',tab:'e_comp',cor:'#eec276', orb:.68, sp:.9},
   {id:'dossie', lab:'caro + suspeito',tab:'e_comp',   cor:'#ff7ab8', orb:.86, sp:-.95},
 ];
-let _nuRAF=0,_nuPulses=[],_nuVals={};
+let _nuRAF=0,_nuPulses=[],_nuVals={},_nuFlux=[];
 function nuSet(id,val){
   const el=$('nu-'+id);if(el==null)return;const n=el.querySelector('.n');
   const prev=_nuVals[id];_nuVals[id]=val;
@@ -2240,6 +2382,12 @@ function nucleoPulse(tipo){
   const c={alerta:'255,122,138',radar:'255,122,138',ob_siafe:'238,194,118',ob_tfe:'238,194,118',
            clausula:'192,150,255',pericia:'95,224,161',ata:'125,175,255'}[tipo]||'95,217,255';
   _nuPulses.push({r:30,a:.85,c});
+  // o evento também VIAJA: sai do domínio que o produziu e entra no núcleo.
+  // É o barramento ficando visível — mesma metáfora do Conduíte, em órbita.
+  const alvo={alerta:'alertas',radar:'radar',ob_siafe:'compras',ob_tfe:'compras',
+              clausula:'dossie',pericia:'fenix',ata:'com'}[tipo];
+  if(alvo)_nuFlux.push({id:alvo,p:0,c});
+  if(_nuFlux.length>24)_nuFlux.splice(0,_nuFlux.length-24);   // teto: rajada não vira enxame
 }
 function nucleoStart(){
   const box=$('ck-nucleo'),cv=$('nucleo-cv');if(!box||!cv)return;
@@ -2247,32 +2395,77 @@ function nucleoStart(){
   $('nu-chips').innerHTML=NU_NODES.map(n=>
     `<button type="button" class="nu-chip" id="nu-${n.id}" style="--nc:${n.cor}" onclick="ir('${n.tab}')">
       <small>${n.lab}</small><span class="n">—</span></button>`).join('');
-  let W,H,CX,CY,RX,RY;
+  let W,H,CX,CY,RX,RY,mapa=null;
   function size(){W=box.clientWidth;H=box.clientHeight;cv.width=W*dpr;cv.height=H*dpr;
     cv.style.width=W+'px';cv.style.height=H+'px';ctx.setTransform(dpr,0,0,dpr,0,0);
-    CX=W/2;CY=H*0.52;RX=Math.min(W*0.4,430);RY=H*0.37;}
+    CX=W/2;CY=H*0.52;RX=Math.min(W*0.4,430);RY=H*0.37;
+    if(window.RJ_MALHA)mapa=_rjBuild(window.RJ_MALHA,W,H,dpr,'nucleo');}
   size();addEventListener('resize',()=>{if(cv.isConnected)size();});
+  _rjCarregar(()=>{if(cv.isConnected)size();});   // o território entra atrás das órbitas
   function draw(t){
     if(!cv.isConnected){cancelAnimationFrame(_nuRAF);_nuRAF=0;return;}
     if(document.hidden){_nuRAF=requestAnimationFrame(draw);return;}
     ctx.clearRect(0,0,W,H);
-    NU_NODES.forEach(n=>{ctx.strokeStyle='rgba(120,180,255,.07)';ctx.lineWidth=1;
-      ctx.beginPath();ctx.ellipse(CX,CY,RX*n.orb,RY*n.orb,0,0,6.283);ctx.stroke();});
-    NU_NODES.forEach((n,i)=>{
-      const a=-Math.PI/2+i*(2*Math.PI/N)+(rm?0:t*0.000045*(n.sp||1));
-      const x=CX+Math.cos(a)*RX*n.orb,y=CY+Math.sin(a)*RY*n.orb;n._x=x;n._y=y;
-      const g=ctx.createLinearGradient(CX,CY,x,y);
-      g.addColorStop(0,n.cor+'00');g.addColorStop(.6,n.cor+'26');g.addColorStop(1,n.cor+'55');
-      ctx.strokeStyle=g;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(x,y);ctx.stroke();
-      const rg=ctx.createRadialGradient(x,y,0,x,y,16);
-      rg.addColorStop(0,n.cor+'cc');rg.addColorStop(.35,n.cor+'44');rg.addColorStop(1,n.cor+'00');
-      ctx.fillStyle=rg;ctx.beginPath();ctx.arc(x,y,16,0,6.283);ctx.fill();
-      ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(x,y,2.2,0,6.283);ctx.fill();
-      if(!rm)for(let k=0;k<3;k++){   // partículas da órbita
-        const pa=a+k*2.1+Math.sin(t*0.0003+k)*.05;
-        ctx.fillStyle=n.cor+'55';ctx.beginPath();
-        ctx.arc(CX+Math.cos(pa)*RX*n.orb,CY+Math.sin(pa)*RY*n.orb,1.4,0,6.283);ctx.fill();}
+    /* 1 · TERRITÓRIO — o Estado do RJ atrás de tudo (malha REAL do IBGE, 92
+       divisas). As órbitas deixam de pairar no vazio: vigiam um lugar. */
+    if(mapa)ctx.drawImage(mapa,0,0,W,H);
+    /* 2 · trilhas orbitais com a metade da FRENTE acesa e a de trás apagada —
+       é o que dá leitura de plano 3D sem custar transformação de matriz. */
+    NU_NODES.forEach(n=>{
+      ctx.lineWidth=1;
+      ctx.strokeStyle='rgba(120,180,255,.045)';
+      ctx.beginPath();ctx.ellipse(CX,CY,RX*n.orb,RY*n.orb,0,Math.PI,6.283);ctx.stroke();
+      ctx.strokeStyle='rgba(150,200,255,.135)';
+      ctx.beginPath();ctx.ellipse(CX,CY,RX*n.orb,RY*n.orb,0,0,Math.PI);ctx.stroke();
     });
+    /* 3 · posição + PROFUNDIDADE de cada domínio */
+    const pos=NU_NODES.map((n,i)=>{
+      const a=-Math.PI/2+i*(2*Math.PI/N)+(rm?0:t*0.000045*(n.sp||1));
+      return{n,a,z:(Math.sin(a)+1)/2,                       // 0 = fundo · 1 = frente
+             x:CX+Math.cos(a)*RX*n.orb,y:CY+Math.sin(a)*RY*n.orb};
+    });
+    pos.forEach(p=>{p.n._x=p.x;p.n._y=p.y;});
+    /* 4 · LIGAÇÕES entre domínios vizinhos: nenhum indício vive isolado */
+    for(let i=0;i<pos.length;i++){
+      const A=pos[i],B=pos[(i+1)%pos.length];
+      ctx.strokeStyle='rgba(150,190,255,'+(0.04+0.09*Math.min(A.z,B.z)).toFixed(3)+')';
+      ctx.lineWidth=.8;ctx.beginPath();ctx.moveTo(A.x,A.y);ctx.lineTo(B.x,B.y);ctx.stroke();
+    }
+    /* 5 · do fundo para a frente: raio até o núcleo + o próprio domínio */
+    pos.slice().sort((p,q)=>p.z-q.z).forEach(({n,a,x,y,z})=>{
+      const g=ctx.createLinearGradient(CX,CY,x,y);
+      g.addColorStop(0,n.cor+'00');
+      g.addColorStop(.6,n.cor+(z>.5?'2e':'16'));
+      g.addColorStop(1,n.cor+(z>.5?'66':'30'));
+      ctx.strokeStyle=g;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(CX,CY);ctx.lineTo(x,y);ctx.stroke();
+      const R=10+10*z;                                     // perto = maior e mais aceso
+      const rg=ctx.createRadialGradient(x,y,0,x,y,R);
+      rg.addColorStop(0,n.cor+(z>.5?'dd':'7a'));rg.addColorStop(.35,n.cor+'44');rg.addColorStop(1,n.cor+'00');
+      ctx.fillStyle=rg;ctx.beginPath();ctx.arc(x,y,R,0,6.283);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,'+(0.42+0.58*z).toFixed(2)+')';
+      ctx.beginPath();ctx.arc(x,y,1.3+1.3*z,0,6.283);ctx.fill();
+      if(!rm)for(let k=0;k<3;k++){                          // partículas na trilha
+        const pa=a+k*2.1+Math.sin(t*0.0003+k)*.05;
+        ctx.fillStyle=n.cor+'44';ctx.beginPath();
+        ctx.arc(CX+Math.cos(pa)*RX*n.orb,CY+Math.sin(pa)*RY*n.orb,1.3,0,6.283);ctx.fill();}
+    });
+    /* 6 · EVENTOS EM TRÂNSITO — cada pacote saiu de um domínio REAL e corre
+       para o núcleo. Mesma metáfora do Conduíte, agora em órbita. Vida só
+       com evento do barramento: nada aqui é sintético. */
+    if(!rm){
+      _nuFlux=_nuFlux.filter(f=>f.p<1);
+      _nuFlux.forEach(f=>{
+        const n=NU_NODES.find(q=>q.id===f.id);if(!n||n._x==null)return;
+        f.p+=0.022;
+        const e=1-Math.pow(1-f.p,2),e2=Math.max(0,e-0.10);  // acelera ao cair no núcleo
+        const x=n._x+(CX-n._x)*e,y=n._y+(CY-n._y)*e;
+        ctx.strokeStyle='rgba('+f.c+','+(0.30*(1-f.p)).toFixed(2)+')';ctx.lineWidth=1;
+        ctx.beginPath();ctx.moveTo(x,y);
+        ctx.lineTo(n._x+(CX-n._x)*e2,n._y+(CY-n._y)*e2);ctx.stroke();
+        ctx.fillStyle='rgba('+f.c+','+(1-f.p*0.75).toFixed(2)+')';
+        ctx.beginPath();ctx.arc(x,y,2.6,0,6.283);ctx.fill();
+      });
+    }
     const spin=rm?0:t*0.0004;
     for(let r=0;r<3;r++){ctx.strokeStyle=`rgba(140,200,255,${.16-r*.04})`;ctx.lineWidth=1.2;
       ctx.setLineDash([6,10]);ctx.lineDashOffset=(r%2?1:-1)*spin*40;
@@ -2285,8 +2478,13 @@ function nucleoStart(){
     _nuPulses.forEach(p=>{p.r+=2.6;p.a*=.96;
       ctx.strokeStyle=`rgba(${p.c},${p.a})`;ctx.lineWidth=1.6;
       ctx.beginPath();ctx.arc(CX,CY,p.r,0,6.283);ctx.stroke();});
+    /* rótulos empurrados para FORA, na direção da própria órbita: dois domínios
+       angularmente próximos deixam de sobrepor o rótulo um do outro. */
     NU_NODES.forEach(n=>{const el=$('nu-'+n.id);
-      if(el){el.style.left=n._x+'px';el.style.top=(n._y-24)+'px';}});
+      if(!el||n._x==null)return;
+      const dx=n._x-CX,dy=n._y-CY,d=Math.hypot(dx,dy)||1;
+      el.style.left=(n._x+dx/d*32)+'px';
+      el.style.top=(n._y+dy/d*24-24)+'px';});
     if(!rm)_nuRAF=requestAnimationFrame(draw);
   }
   cancelAnimationFrame(_nuRAF);draw(performance.now());
@@ -2411,6 +2609,255 @@ function sabreStart(){
   };
 }
 sabreStart();
+
+/* ═══ v9 "ÍON" — 3D em todo controle + PORTAL DE IGNIÇÃO ══════════════════ */
+
+/* ── 3D universal nos controles ───────────────────────────────────────────
+   UM listener delegado no documento alimenta --rx/--ry (inclinação na direção
+   do cursor) e --mx/--my (specular). 300+ botões não podem virar 300 listeners:
+   o custo é O(1) e só existe enquanto o cursor está sobre um controle.
+   Card/lnk/ck-inst ficam de fora — já têm o motor de tilt do v7 (em px).   */
+const _I3D='.btn,.chip,.sph,nav.tabs button,.htop a,.search .az,.sheet .x,.nu-chip';
+let _i3dEl=null;
+function _i3dClear(){if(!_i3dEl)return;const e=_i3dEl;
+  ['--rx','--ry','--mx','--my'].forEach(p=>e.style.removeProperty(p));_i3dEl=null;}
+if(!_redMotion){
+  addEventListener('pointermove',ev=>{
+    if(ev.pointerType==='touch')return;
+    const el=ev.target&&ev.target.closest?ev.target.closest(_I3D):null;
+    if(el!==_i3dEl)_i3dClear();
+    if(!el)return;
+    _i3dEl=el;
+    const r=el.getBoundingClientRect();if(!r.width||!r.height)return;
+    const px=(ev.clientX-r.left)/r.width,py=(ev.clientY-r.top)/r.height;
+    el.style.setProperty('--mx',(px*100).toFixed(1)+'%');
+    el.style.setProperty('--my',(py*100).toFixed(1)+'%');
+    // controle estreito tomba mais que controle largo — senão a barra de abas ondula
+    const amp=Math.max(6,Math.min(15,520/Math.max(r.width,60)));
+    el.style.setProperty('--ry',((px-.5)*amp*2).toFixed(2)+'deg');
+    el.style.setProperty('--rx',((py-.5)*-amp*1.35).toFixed(2)+'deg');
+  },{passive:true});
+  addEventListener('blur',_i3dClear);
+  document.addEventListener('pointerleave',_i3dClear,{passive:true});
+}
+
+/* ── PORTAL DE IGNIÇÃO ────────────────────────────────────────────────────
+   Cena WebGL de passe único (fragment shader num triângulo de tela cheia):
+   campo de estrelas com rastro radial no salto, reator de anéis de íon com
+   núcleo laranja incandescente, varredura de guardião. Por cima, em Canvas2D,
+   a malha REAL do Estado do RJ (IBGE) sendo revelada pela varredura.
+
+   Por que shader e NÃO Three.js: 0 KB de dependência, tudo roda na GPU — a VM
+   tem 2 vCPU e não pode gastar CPU com cenografia. Sem contexto WebGL, o
+   portal degrada sozinho (fica só o texto sobre fundo escuro) e ninguém vê erro.
+
+   Regra de produto: NÃO é sequência de load obrigatória. Toca 1× por sessão,
+   por cima do painel que já está buscando dado atrás, e qualquer toque pula. */
+const _PORTAL_VS='attribute vec2 a;void main(){gl_Position=vec4(a,0.0,1.0);}';
+const _PORTAL_FS=`precision highp float;
+uniform vec2 u_res;uniform float u_t,u_ign,u_jump;uniform vec2 u_m;
+float h21(vec2 p){p=fract(p*vec2(127.31,311.7));p+=dot(p,p+34.23);return fract(p.x*p.y);}
+float stars(vec2 p,float sc,float th){
+  vec2 q=p*sc;vec2 id=floor(q);vec2 f=fract(q)-0.5;
+  float r=h21(id+sc);
+  if(r<th)return 0.0;
+  vec2 o=(vec2(h21(id+3.7),h21(id+9.1))-0.5)*0.70;
+  return smoothstep(0.055,0.0,length(f-o))*(0.25+(r-th)/(1.0-th)*0.85);
+}
+void main(){
+  vec2 p=(gl_FragCoord.xy-0.5*u_res)/u_res.y+u_m*0.045;
+  float r=length(p);
+  /* reator sobe 9% da altura: fica no MESMO centro do território (faixa
+     superior de 82%) e sai de cima da fala, que vive no terço inferior. */
+  vec2 pr=p-vec2(0.0,0.09);
+  float rr=length(pr),a=atan(pr.y,pr.x);
+  vec3 col=vec3(0.0);
+  /* estrelas PEQUENAS e esparsas: o espaço tem que ser preto, não azul lavado.
+     Acumular ao longo do raio dá o rastro de verdade no salto.              */
+  float sf=0.0;
+  for(int i=0;i<5;i++){
+    float t=float(i)/4.0;float k=1.0-u_jump*0.55*t;
+    sf+=(stars(p*k,15.0,0.905)+stars(p*k,27.0,0.935)*0.45)*(1.0-t*0.8);
+  }
+  col+=mix(vec3(0.55,0.72,1.05),vec3(1.0,0.72,0.38),0.16+0.5*u_jump)*sf*0.7;
+  /* reator: anéis de íon + segmentos girando (compacto — o herói é o território) */
+  float ig=max(u_ign,0.0001);
+  float R=smoothstep(0.010,0.0,abs(rr-0.112*ig))*1.05
+         +smoothstep(0.0050,0.0,abs(rr-0.168*ig))*0.68
+         +smoothstep(0.0026,0.0,abs(rr-0.218*ig))*0.44;
+  R+=smoothstep(0.008,0.0,abs(rr-0.168*ig))*step(0.45,fract((a/6.28318)*26.0+u_t*0.22))*0.6;
+  col+=vec3(0.30,0.62,1.30)*R*ig;
+  /* núcleo incandescente + bloom contido */
+  col+=vec3(1.30,0.56,0.16)*exp(-rr*rr*(230.0/ig))*ig*1.15;
+  col+=vec3(1.00,0.46,0.13)*exp(-rr*8.5)*ig*0.13;
+  /* varredura do guardião */
+  col+=vec3(0.34,0.70,1.30)*pow(1.0-fract((a+3.14159)/6.28318-u_t*0.40),26.0)
+       *smoothstep(0.85,0.05,rr)*ig*0.38;
+  /* clarão do salto + vinheta funda (leva o quadro ao preto nas bordas) */
+  col+=vec3(0.55,0.74,1.20)*u_jump*u_jump*0.55;
+  col*=1.0-0.80*smoothstep(0.22,1.05,r);
+  gl_FragColor=vec4(col,1.0);
+}`;
+
+/* desenha a malha do RJ UMA vez num canvas fora de tela; a animação depois é
+   só máscara + composite (2 operações por quadro), não re-traçado.          */
+/* carrega a malha do RJ sob demanda (21 KB) e avisa quem pediu. Um só fetch
+   serve o portal e o núcleo do cockpit.                                     */
+let _rjPend=null;
+function _rjCarregar(cb){
+  if(window.RJ_MALHA){cb();return;}
+  if(_rjPend){_rjPend.push(cb);return;}
+  _rjPend=[cb];
+  const s=document.createElement('script');
+  s.src='/static/assets/rj-malha.js';s.async=true;
+  s.onload=()=>{const f=_rjPend;_rjPend=null;f.forEach(fn=>{try{fn();}catch(_){}});};
+  s.onerror=()=>{_rjPend=null;};                 // sem malha o painel segue igual
+  document.head.appendChild(s);
+}
+
+/* modo 'portal' = herói em tela cheia (faixa superior de 82%).
+   modo 'nucleo' = pano de fundo discreto do cockpit: o dado lê primeiro. */
+function _rjBuild(M,W,H,dpr,modo){
+  const c=document.createElement('canvas');
+  c.width=Math.round(W*dpr);c.height=Math.round(H*dpr);
+  const x=c.getContext('2d');x.scale(dpr,dpr);
+  const nu=modo==='nucleo';
+  const FX=nu?0.94:0.88,FY=nu?0.96:0.82;
+  const s=Math.min(W*FX/M.w,H*FY/M.h);
+  const ox=(W-M.w*s)/2,oy=nu?(H-M.h*s)/2:(H*FY-M.h*s)/2;
+  const mk=flat=>{const p=new Path2D();let X=flat[0],Y=flat[1];
+    p.moveTo(ox+X/M.q*s,oy+Y/M.q*s);
+    for(let i=2;i<flat.length;i+=2){X+=flat[i];Y+=flat[i+1];p.lineTo(ox+X/M.q*s,oy+Y/M.q*s);}
+    p.closePath();return p;};
+  // divisas municipais: a teia de 92 células que forma o estado
+  x.lineJoin=x.lineCap='round';
+  x.strokeStyle=nu?'rgba(120,170,245,0.16)':'rgba(126,178,250,0.52)';
+  x.lineWidth=nu?0.55:0.75;
+  M.m.forEach(f=>x.stroke(mk(f)));
+  // contorno do estado: a fronteira sob vigília — halo de íon
+  x.shadowColor='rgba(140,196,255,0.95)';x.shadowBlur=nu?9:18;
+  x.strokeStyle=nu?'rgba(176,210,255,0.42)':'rgba(214,234,255,1)';
+  x.lineWidth=nu?1.1:2.1;
+  M.o.forEach(f=>x.stroke(mk(f)));
+  // segundo passe quente: o litoral pega o calor do reator
+  x.shadowBlur=nu?14:30;x.shadowColor='rgba(255,150,60,0.8)';
+  x.strokeStyle=nu?'rgba(255,190,120,0.20)':'rgba(255,196,124,0.72)';
+  x.lineWidth=nu?0.7:1.1;
+  M.o.forEach(f=>x.stroke(mk(f)));
+  return c;
+}
+
+function portalStart(){
+  const el=$('portal');if(!el)return;
+  let pular=false;
+  try{pular=sessionStorage.getItem('jfn_v9_portal')==='1'||localStorage.getItem('jfn_portal_off')==='1';}catch(_){}
+  if(pular||_redMotion){el.remove();return;}
+  try{sessionStorage.setItem('jfn_v9_portal','1');}catch(_){}
+  el.hidden=false;
+
+  const cv=$('pcv'),pm=$('pmap');
+  const dpr=Math.min(devicePixelRatio||1,1.5);   // 4K real na GPU da VM não paga o pixel
+  let gl=null,U={},raf=0,morto=false,mapC=null,mx=0,my=0;
+  const t0=performance.now(),IGN=[120,900],JUMP=[2600,3320],FIM=3520;
+
+  try{gl=cv.getContext('webgl',{antialias:false,alpha:false})||cv.getContext('experimental-webgl');}catch(_){}
+  if(gl)try{
+    const sh=(tp,src)=>{const s=gl.createShader(tp);gl.shaderSource(s,src);gl.compileShader(s);
+      if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(s));return s;};
+    const pr=gl.createProgram();
+    gl.attachShader(pr,sh(gl.VERTEX_SHADER,_PORTAL_VS));
+    gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,_PORTAL_FS));
+    gl.linkProgram(pr);
+    if(!gl.getProgramParameter(pr,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(pr));
+    gl.useProgram(pr);
+    gl.bindBuffer(gl.ARRAY_BUFFER,gl.createBuffer());
+    gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+    const loc=gl.getAttribLocation(pr,'a');
+    gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,2,gl.FLOAT,false,0,0);
+    ['u_res','u_t','u_ign','u_jump','u_m'].forEach(n=>U[n]=gl.getUniformLocation(pr,n));
+  }catch(_){gl=null;}                            // shader recusado → degrada, sem erro visível
+
+  const mctx=pm.getContext('2d');
+  function medir(){
+    const W=innerWidth,H=innerHeight;
+    if(gl){cv.width=Math.round(W*dpr);cv.height=Math.round(H*dpr);gl.viewport(0,0,cv.width,cv.height);}
+    pm.width=Math.round(W*dpr);pm.height=Math.round(H*dpr);mctx.setTransform(dpr,0,0,dpr,0,0);
+    if(window.RJ_MALHA)mapC=_rjBuild(window.RJ_MALHA,W,H,dpr,'portal');
+  }
+  medir();
+  addEventListener('resize',medir,{passive:true});
+  addEventListener('pointermove',e=>{if(morto)return;
+    mx=(e.clientX/innerWidth-.5)*2;my=-(e.clientY/innerHeight-.5)*2;},{passive:true});
+
+  // a malha entra sob demanda: quem já viu o portal nesta sessão nunca baixa esses 21 KB
+  _rjCarregar(()=>{if(!morto)medir();});
+
+  function quadro(agora){
+    if(morto)return;
+    const t=agora-t0;
+    const ign=Math.min(1,Math.max(0,(t-IGN[0])/(IGN[1]-IGN[0])));
+    const jmp=Math.min(1,Math.max(0,(t-JUMP[0])/(JUMP[1]-JUMP[0])));
+    if(gl){
+      gl.uniform2f(U.u_res,cv.width,cv.height);
+      gl.uniform1f(U.u_t,t/1000);
+      gl.uniform1f(U.u_ign,ign*ign*(3-2*ign));    // smoothstep: ignição com inércia
+      gl.uniform1f(U.u_jump,jmp*jmp);
+      gl.uniform2f(U.u_m,mx,my);
+      gl.drawArrays(gl.TRIANGLES,0,3);
+    }
+    // território: revelado por um disco que cresce junto com a varredura
+    if(mapC){
+      const W=innerWidth,H=innerHeight;
+      const rev=Math.min(1,Math.max(0,(t-620)/1650));
+      mctx.clearRect(0,0,W,H);
+      if(rev>0){
+        const cx=W/2,cy=H*0.41;                      // nasce no núcleo do reator
+        const R=Math.max(1,rev*Math.hypot(W,H)*0.66);
+        const g=mctx.createRadialGradient(cx,cy,0,cx,cy,R);
+        g.addColorStop(0,'rgba(255,255,255,1)');
+        g.addColorStop(.74,'rgba(255,255,255,1)');
+        g.addColorStop(1,'rgba(255,255,255,0)');
+        mctx.globalCompositeOperation='source-over';
+        mctx.fillStyle=g;mctx.fillRect(0,0,W,H);
+        mctx.globalCompositeOperation='source-in';
+        mctx.globalAlpha=Math.min(1,rev*1.6)*(1-jmp*0.85);
+        mctx.drawImage(mapC,0,0,W,H);
+        mctx.globalAlpha=1;
+      }
+    }
+    if(t>=FIM){portalFim();return;}
+    raf=requestAnimationFrame(quadro);
+  }
+  raf=requestAnimationFrame(quadro);
+
+  function portalFim(){
+    if(morto)return;morto=true;cancelAnimationFrame(raf);
+    // handoff: o núcleo encolhe até o Kyber do header — portal e painel são o
+    // MESMO reator, não duas telas.
+    const k=$('kyber');
+    if(k){
+      const kr=k.getBoundingClientRect(),S=190;
+      const h=document.createElement('div');h.id='phand';
+      h.style.cssText=`width:${S}px;height:${S}px;left:${innerWidth/2-S/2}px;top:${innerHeight/2-S/2}px`;
+      document.body.appendChild(h);
+      requestAnimationFrame(()=>{
+        h.style.transform=`translate(${kr.left+kr.width/2-innerWidth/2}px,`+
+          `${kr.top+kr.height/2-innerHeight/2}px) scale(${(kr.width/S).toFixed(4)})`;
+        h.style.opacity='0';});
+      setTimeout(()=>h.remove(),700);
+    }
+    el.classList.add('off');
+    // a lâmina do Conduíte reacende: o portal entrega a energia ao painel
+    const b=document.querySelector('.cblade');
+    if(b){b.style.animation='none';void b.offsetWidth;
+      b.style.animation='ignicao .5s cubic-bezier(.2,.9,.25,1.2) 1,respira 4.5s ease-in-out .5s infinite';}
+    setTimeout(()=>{el.remove();
+      if(gl){const x=gl.getExtension('WEBGL_lose_context');if(x)x.loseContext();}},760);
+  }
+  el.addEventListener('click',portalFim);
+  addEventListener('keydown',portalFim);
+}
+portalStart();
 </script>
 </body>
 </html>
