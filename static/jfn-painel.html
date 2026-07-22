@@ -795,6 +795,43 @@
   .v10confirm p{margin:2px 0 16px;font-size:13.5px;line-height:1.5}
   .warn .v10retry{margin-left:10px}
   @media (prefers-reduced-motion:reduce){.v10toast{transition:none}}
+
+  /* ═══════════ v10.1 "REBUSCADO" — instrumentação sci-fi (SÓ ADIÇÃO) ═══════════
+     Brief do dono: núcleo/radar/UI "profissional, foda, super futurista". Doutrina mantida:
+     azul=console · laranja=energia · vida só com dado real · reduced-motion desliga. */
+  /* colchetes de alvo (target-lock) — o card sob o cursor é o alvo travado */
+  .card::after{content:"";position:absolute;inset:7px;border-radius:2px;pointer-events:none;
+    opacity:0;transition:opacity .22s cubic-bezier(.2,.7,.2,1);
+    --tk:color-mix(in oklch,var(--esf,var(--ion)) 80%,white 10%);
+    background:
+      linear-gradient(var(--tk) 0 0) no-repeat left  0 top    0/13px 1.5px,
+      linear-gradient(var(--tk) 0 0) no-repeat left  0 top    0/1.5px 13px,
+      linear-gradient(var(--tk) 0 0) no-repeat right 0 top    0/13px 1.5px,
+      linear-gradient(var(--tk) 0 0) no-repeat right 0 top    0/1.5px 13px,
+      linear-gradient(var(--tk) 0 0) no-repeat left  0 bottom 0/13px 1.5px,
+      linear-gradient(var(--tk) 0 0) no-repeat left  0 bottom 0/1.5px 13px,
+      linear-gradient(var(--tk) 0 0) no-repeat right 0 bottom 0/13px 1.5px,
+      linear-gradient(var(--tk) 0 0) no-repeat right 0 bottom 0/1.5px 13px}
+  .card:hover::after{opacity:.5}
+  .card.hl::after{opacity:.32}                     /* grave: mira sempre armada, discreta */
+  /* medidor de score = barra de LEDs segmentada (instrumento, não progress bar) */
+  .meter{position:relative;width:82px;height:6px;vertical-align:1px}
+  .meter::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:repeating-linear-gradient(90deg,transparent 0 5px,var(--bg2) 5px 7px)}
+  .meter.crit{box-shadow:0 0 10px color-mix(in oklch,var(--rose) 30%,transparent)}
+  /* tabelas: linha de energia sob o cabeçalho, na cor da esfera */
+  thead tr{border-bottom:1px solid color-mix(in oklch,var(--esf,var(--ion)) 32%,transparent)}
+  /* botões: linha de energia que corre na base ao hover (carga, não decoração) */
+  .btn{background-image:linear-gradient(90deg,color-mix(in oklch,var(--esf,var(--ion)) 85%,white 8%),transparent);
+    background-repeat:no-repeat;background-position:left bottom;background-size:0% 1.5px;
+    transition:background-size .28s cubic-bezier(.2,.7,.2,1),transform .26s cubic-bezier(.2,.7,.2,1),box-shadow .26s,border-color .18s,color .18s,filter .18s}
+  .btn:hover{background-size:100% 1.5px}
+  .tag.rose{box-shadow:inset 0 0 9px color-mix(in oklch,var(--rose) 16%,transparent)}
+  /* HUD do núcleo: telemetria real da vigília (só dado do barramento — nada sintético) */
+  .nu-hud{position:absolute;right:14px;bottom:12px;z-index:3;font-family:var(--mono);
+    font-size:9.5px;letter-spacing:.8px;color:var(--dim-sm);text-transform:uppercase;text-align:right}
+  .nu-hud b{color:color-mix(in oklch,var(--flame-hi,var(--gold)) 85%,white 8%);font-weight:600}
+  @media (prefers-reduced-motion:reduce){.card::after{transition:none}.btn{transition:none}}
 </style>
 </head>
 <body>
@@ -2590,6 +2627,7 @@ async function renderCockpit(){
     </div>
     <div class="ck-nucleo" id="ck-nucleo"><canvas id="nucleo-cv" aria-hidden="true"></canvas>
       <div class="nu-legend">Núcleo orgânico — cada órbita é um domínio vivo · anel que expande = evento real no barramento</div>
+      <div class="nu-hud" id="nu-hud" aria-live="polite">vigília armada — aguardando o primeiro evento do barramento</div>
       <div class="nu-sweep" id="nu-sweep" aria-live="polite"></div>
       <div id="nu-chips"></div></div>
     <div class="ck-grid" id="ck-grid"></div>
@@ -2642,7 +2680,11 @@ function nucleoPulse(tipo){
               clausula:'dossie',pericia:'fenix',ata:'com'}[tipo];
   if(alvo)_nuFlux.push({id:alvo,p:0,c});
   if(_nuFlux.length>24)_nuFlux.splice(0,_nuFlux.length-24);   // teto: rajada não vira enxame
+  // HUD: telemetria REAL da vigília (contagem de eventos do barramento — nada sintético)
+  _nuEvTotal++;const hud=$('nu-hud');
+  if(hud)hud.innerHTML=`<b>${_nuEvTotal}</b> evento${_nuEvTotal===1?'':'s'} reais do barramento nesta vigília`;
 }
+let _nuEvTotal=0,_nuHover=null;
 function nucleoStart(){
   const box=$('ck-nucleo'),cv=$('nucleo-cv');if(!box||!cv)return;
   const rm=_redMotion,ctx=cv.getContext('2d'),dpr=Math.min(2,devicePixelRatio||1),N=NU_NODES.length;
@@ -2656,6 +2698,15 @@ function nucleoStart(){
     if(window.RJ_MALHA)mapa=_rjBuild(window.RJ_MALHA,W,H,dpr,'nucleo');}
   size();addEventListener('resize',()=>{if(cv.isConnected)size();});
   _rjCarregar(()=>{if(cv.isConnected)size();});   // o território entra atrás das órbitas
+  // v10.1: os nós da órbita respondem ao cursor (mira + rótulo) e levam ao domínio no clique
+  cv.style.pointerEvents='auto';
+  cv.onpointermove=e=>{const r=cv.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top;
+    _nuHover=null;let best=420;
+    NU_NODES.forEach(n=>{if(n._x==null)return;const d=(n._x-mx)**2+(n._y-my)**2;
+      if(d<best){best=d;_nuHover=n.id;}});
+    cv.style.cursor=_nuHover?'pointer':'default';};
+  cv.onpointerleave=()=>{_nuHover=null;};
+  cv.onclick=()=>{const n=NU_NODES.find(q=>q.id===_nuHover);if(n)ir(n.tab);};
   function draw(t){
     if(!cv.isConnected){cancelAnimationFrame(_nuRAF);_nuRAF=0;return;}
     if(document.hidden){_nuRAF=requestAnimationFrame(draw);return;}
@@ -2733,6 +2784,27 @@ function nucleoStart(){
         ctx.beginPath();ctx.arc(0,0,rad,a0,a0+6.283/seg*0.62);ctx.stroke();}
       ctx.restore();
     }
+    /* v10.1 · ANEL DE GRADUAÇÃO — 72 ticks de instrumento girando devagar em volta do
+       reator, cardeais mais longos; leitura de precisão, não decoração solta. */
+    if(!rm){
+      ctx.save();ctx.translate(CX,CY);ctx.rotate(spin*6);
+      for(let s=0;s<72;s++){ctx.rotate(6.283/72);
+        const card72=s%18===0,len=card72?7:(s%6===0?4.5:2.5);
+        ctx.strokeStyle=`rgba(150,200,255,${(card72?0.34:0.16)*pulse})`;ctx.lineWidth=card72?1.4:.8;
+        ctx.beginPath();ctx.moveTo(0,64);ctx.lineTo(0,64+len);ctx.stroke();}
+      ctx.restore();
+    }
+    /* v10.1 · MIRA no nó sob o cursor: anel duplo + rótulo (o domínio é um alvo travável) */
+    if(_nuHover){const n=NU_NODES.find(q=>q.id===_nuHover);
+      if(n&&n._x!=null){
+        ctx.strokeStyle=n.cor+'cc';ctx.lineWidth=1.2;
+        ctx.beginPath();ctx.arc(n._x,n._y,15,0,6.283);ctx.stroke();
+        ctx.strokeStyle=n.cor+'55';ctx.setLineDash([4,5]);
+        ctx.beginPath();ctx.arc(n._x,n._y,21,0,6.283);ctx.stroke();ctx.setLineDash([]);
+        ctx.font='600 9.5px '+getComputedStyle(document.body).getPropertyValue('--mono');
+        ctx.fillStyle='rgba(235,245,255,.92)';ctx.textAlign='center';
+        ctx.fillText(n.lab.toUpperCase(),n._x,n._y-27);
+      }}
     if(!rm){ // raios de energia pulsando do coração
       ctx.save();ctx.translate(CX,CY);ctx.rotate(-spin*22);
       for(let s=0;s<12;s++){ctx.rotate(6.283/12);
