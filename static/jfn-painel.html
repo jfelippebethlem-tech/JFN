@@ -832,6 +832,21 @@
     font-size:9.5px;letter-spacing:.8px;color:var(--dim-sm);text-transform:uppercase;text-align:right}
   .nu-hud b{color:color-mix(in oklch,var(--flame-hi,var(--gold)) 85%,white 8%);font-weight:600}
   @media (prefers-reduced-motion:reduce){.card::after{transition:none}.btn{transition:none}}
+
+  /* ═══════════ v10.2 — FIX "card some onde eu toco" (SÓ ADIÇÃO) ═══════════
+     Causa: .card:hover (borda-beam v8) declara `animation:spinA…`, que SUBSTITUI a animação
+     de entrada `rise` — e como .rise tem `opacity:0` na base (a rise com fill:both é quem
+     segura o 1), o card cai para invisível. No desktop era um flicker ao sair do hover; no
+     CELULAR o hover é grudento após o toque → o card sumia PERMANENTEMENTE onde o dedo tocava.
+     Fix: o hover SOMA o beam à rise (fill both preservado) + trava dura de opacidade. */
+  .rise:hover{opacity:1}                          /* nenhum .rise fica invisível sob hover, nunca */
+  .card.rise:hover,.lnk.rise:hover,.ck-inst.rise:hover{
+    animation:rise .3s cubic-bezier(.2,.7,.2,1) both,spinA 3.2s linear infinite;
+    animation-delay:var(--d,0ms),0ms}
+  .card.hl.rise:hover{
+    animation:rise .3s cubic-bezier(.2,.7,.2,1) both,graveGlow 3.2s ease-in-out infinite,spinA 3.2s linear infinite;
+    animation-delay:var(--d,0ms),0ms,0ms}
+  @media (prefers-reduced-motion:reduce){.card.rise:hover,.lnk.rise:hover,.ck-inst.rise:hover,.card.hl.rise:hover{animation:none;opacity:1}}
 </style>
 </head>
 <body>
