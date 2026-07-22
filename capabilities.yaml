@@ -18,7 +18,7 @@ meta:
 capacidades:
   # ---- AUDITORIA ----
   - {id: relatorio_inteligencia, agente: jfn, dominio: auditoria, tipo: http, metodo: POST, rota: /api/relatorio/inteligencia, status: PRONTO,
-     descricao: "Due diligence de FORNECEDOR (PDF+XLSX+parecer Lex)", quando_usar: "relatorio/auditoria/due diligence de empresa, CNPJ", exemplo: "due diligence da MGS Clean",
+     descricao: "Due diligence de FORNECEDOR (PDF+XLSX+parecer Lex). GATILHO FORTE: um CNPJ (14 digitos, com ou sem mascara 00.000.000/0000-00) OU um nome de empresa SOZINHO na mensagem = pedido de relatorio -> CHAME ESTA FERRAMENTA IMEDIATAMENTE com {cnpj:...} ou {empresa:...}. NUNCA responda em texto sobre a empresa sem antes gerar; NUNCA peca confirmacao.", quando_usar: "CNPJ sozinho na mensagem; nome de empresa sozinho; 'relatorio/auditoria/due diligence/dossie de <empresa>'; 'analisa a empresa X'; 'quem e o CNPJ Y'", exemplo: "03.686.998/0001-18",
      args: {empresa: "string (um de empresa|cnpj)", cnpj: "string", anos: "list[int] opcional"},
      retorno: "{cnpj,empresa,risco,score,path_pdf,path_xlsx,path_lex,grau_lex} | {ambiguo,candidatos}", enviar_telegram: [path_pdf, path_xlsx, path_lex],
      menu: {grupo: "🏢 Auditoria & Relatórios", nome: "Relatório de um fornecedor", exemplo: "due diligence da MGS Clean", ordem: 11, cmd: "/relatorio"}}

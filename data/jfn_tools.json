@@ -7,7 +7,7 @@
       "type": "function",
       "function": {
         "name": "relatorio_inteligencia",
-        "description": "Due diligence de FORNECEDOR (PDF+XLSX+parecer Lex) — usar quando: relatorio/auditoria/due diligence de empresa, CNPJ — chamar: POST /api/relatorio/inteligencia (base http://127.0.0.1:8000)",
+        "description": "Due diligence de FORNECEDOR (PDF+XLSX+parecer Lex). GATILHO FORTE: um CNPJ (14 digitos, com ou sem mascara 00.000.000/0000-00) OU um nome de empresa SOZINHO na mensagem = pedido de relatorio -> CHAME ESTA FERRAMENTA IMEDIATAMENTE com {cnpj:...} ou {empresa:...}. NUNCA responda em texto sobre a empresa sem antes gerar; NUNCA peca confirmacao. — usar quando: CNPJ sozinho na mensagem; nome de empresa sozinho; 'relatorio/auditoria/due diligence/dossie de <empresa>'; 'analisa a empresa X'; 'quem e o CNPJ Y' — chamar: POST /api/relatorio/inteligencia (base http://127.0.0.1:8000)",
         "parameters": {
           "type": "object",
           "properties": {
