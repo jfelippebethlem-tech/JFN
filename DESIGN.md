@@ -1,6 +1,28 @@
 # DESIGN.md — JFN
 
-> ## ⚡ v7 "REATOR" (2026-07-19) — VIGENTE, supersede regras conflitantes abaixo
+> ## 🔷 v9 "ÍON" + v10 "AGÊNCIA" (2026-07-22) — VIGENTES, supersedem o que conflitar abaixo
+> As camadas são ADITIVAS no CSS (v7 → v8 → v9 → v10, a cascata vence; nunca reescrever bloco antigo).
+> O que está REALMENTE renderizado hoje:
+> - **Paleta v9**: `--ion` azul oklch(≈0.78 0.14 258) = o console (estrutura, interação, frio) ·
+>   `--flame` laranja oklch(≈0.78 0.16 55) = ENERGIA (ação, dinheiro, carga). `--accent`, `--gold`,
+>   `--amber` e `--blue` do v7 são REMAPEADOS para íon/chama por cascata — o cian v7 não aparece mais.
+>   Severidade mantém voz própria: rosa = crítico, verde = ok. **Nunca dessaturar** (v6 foi regressão declarada).
+> - **Fontes reais**: **IBM Plex Sans** (texto) + **IBM Plex Mono** (número/telemetria/CNPJ), self-hosted
+>   em `/static/assets/fonts/` (woff2, `font-display:swap`). (Inter/JetBrains abaixo = histórico.)
+> - **Sistemas vivos**: portal de ignição WebGL (1×/sessão, cobre o carregamento, qualquer toque pula),
+>   malha IBGE do RJ (`rj-malha.js`) atrás de toda aba tingida pela esfera, nebulosa por esfera,
+>   grid holográfico, plexus, arc-reactor com status de sweep, ícones SVG (`jfn-icones.js`), 3D
+>   universal via UM listener delegado (`--rx/--ry/--mx/--my`).
+> - **v10 "AGÊNCIA" (consistência/confiança)**: escala única de raio `--r-s:8 / --r-m:10 / --r-l:13`;
+>   sombra canônica `--sh:var(--lift)`; `--dim-sm` p/ rótulos ≤11px (contraste ≥4.5:1); ease-out-quart
+>   em todo controle (bounce banido de vez); **toast/confirm da casa** (`jfnToast`/`jfnConfirm` — alert()
+>   nativo é proibido); erro de rede SEMPRE via `erroHumano()` (nunca `TypeError` cru na tela); herói com
+>   estado de erro + retry; **orçamento de vida**: aba do navegador oculta → `html.rest` pausa toda
+>   animação CSS (canvas já pausam por RAF).
+> - `prefers-reduced-motion` desliga tudo, inclusive o portal. Dado sintético segue proibido
+>   (gerador `Math.random` removido no v10).
+
+> ## ⚡ v7 "REATOR" (2026-07-19) — base viva sob as camadas acima
 > Brief do dono: **vivo, interativo, cores vivas, lightsaber, Jarvis, Apple Glass**. Sistema:
 > - **Paleta viva**: mesmos tokens, chroma elevado (accent cian holográfico ~oklch(0.85 0.14 200); estados do sabre teal/âmbar/rosa; ouro=dinheiro; azul=Estado, ouro=Prefeitura, violeta=Transversal).
 > - **Vidro líquido (visionOS)**: card = blur+saturate, highlight especular no topo (inset 1px branco), sombra de profundidade, borda-hairline com gradiente. `prefers-reduced-transparency` → sólido.
