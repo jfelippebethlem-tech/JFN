@@ -232,7 +232,12 @@
     box-shadow:var(--sh),0 0 20px -8px color-mix(in oklch,var(--sphc) 45%,transparent)}
   .sph.on::before{box-shadow:0 0 10px var(--sphc);animation:pl 2.6s infinite}
   @media (prefers-reduced-motion:reduce){.sph.on::before{animation:none}}
-  .sph .i{display:none}
+  /* ícone SVG da esfera (substitui o ponto genérico) — na cor da esfera, glow no ativo */
+  .sph::before{display:none}
+  .sph .i{display:grid;place-items:center;flex:0 0 auto}
+  .sph .i .jico{width:18px;height:18px;color:var(--sphc,var(--dim));transition:filter .18s,color .18s}
+  .sph.on .i .jico{color:color-mix(in oklch,var(--sphc) 88%,white 12%);filter:drop-shadow(0 0 7px color-mix(in oklch,var(--sphc) 70%,transparent))}
+  .sph:hover .i .jico{filter:drop-shadow(0 0 5px color-mix(in oklch,var(--sphc) 55%,transparent))}
   .sph .c{font-size:10.5px;color:var(--dim);font-weight:400;display:block}
   @media (max-width:600px){
     .sph{min-width:0;padding:8px 8px}
@@ -976,7 +981,7 @@ let esfera='inicio',aba='i_cockpit';
 const sessaoReports=new Set();
 
 function montarSpheres(){
-  $('spheres').innerHTML=SPHERES.map(s=>`<button type="button" class="sph ${s.id} ${s.id===esfera?'on':''}" aria-pressed="${s.id===esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${s.ic}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join('');
+  $('spheres').innerHTML=SPHERES.map(s=>`<button type="button" class="sph ${s.id} ${s.id===esfera?'on':''}" aria-pressed="${s.id===esfera}" onclick="trocarEsfera('${s.id}')"><span class="i">${svgIco(s.ic)}</span><div><div>${s.tl}</div><div class="c">${s.c}</div></div></button>`).join('');
 }
 function montarTabs(){
   $('tabs').style.display=TABS[esfera].length<2?'none':'';
