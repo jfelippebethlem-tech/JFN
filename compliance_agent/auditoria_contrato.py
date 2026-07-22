@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Auditoria de CONTRATO CONTÍNUO (serviço com dedicação de mão de obra) — bateria T01–T22.
+"""Auditoria de CONTRATO CONTÍNUO (serviço com dedicação de mão de obra) — bateria T01–T25 (T22 = gate de completude, roda antes e fora de _TESTES).
 
 Motor DETERMINÍSTICO e HONESTO que, dado o acervo de um contrato (OBs do SIAFE + retenções OCR/SEI +
 série de reajustes/CCT + glosas + planilha/contrato quando houver), roda a bateria de testes de execução
@@ -643,7 +643,7 @@ _TESTES = [
 
 
 def auditar_contrato(dados: dict) -> dict:
-    """Roda a bateria T01–T22 de auditoria de contrato contínuo e devolve o quadro estruturado.
+    """Roda a bateria T01–T25 de auditoria de contrato contínuo e devolve o quadro estruturado.
 
     Args (`dados`) — tudo opcional exceto `obs`; ausência → INDISPONÍVEL honesto, nunca achado fabricado:
       obs: list[dict] das OBs (SIAFE) — numero_ob, status, nl, re, pd, valor, competencia, data_emissao, processo.

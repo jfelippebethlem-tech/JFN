@@ -74,7 +74,9 @@ def classificar_doc(titulo: str, conteudo: str = "") -> str:
     substring). 'outros' quando nada casa (honesto, não chuta)."""
     tipo = _classificar_texto(_n(titulo))
     if tipo == "outros" and conteudo:
-        tipo = _classificar_texto(_n(conteudo[:400]), min_kw=7)
+        # 1.200 chars: o cabeçalho real do SEI-RJ nem sempre cabe em 400 (brasão + órgão +
+        # endereçamento vêm antes do tipo); o texto já está em memória — custo zero.
+        tipo = _classificar_texto(_n(conteudo[:1200]), min_kw=7)
     return tipo
 
 
@@ -92,7 +94,18 @@ def valor_doc(tipo: str) -> str:
     return "baixo"
 
 
-def deve_guardar_texto(tipo: str) -> bool:
-    """Política de storage (pedido do dono — nem todo ofício é útil): guardar o TEXTO só de docs alto/médio.
-    Ruído (tramitação/ofício/e-mail/recibo/anexo) → guardar só título + contagem, não o conteúdo."""
-    return valor_doc(tipo) in ("alto", "medio")
+_KW_MOTIVACAO = ("emergênc", "emergenc", "urgênc", "urgenc", "ratific", "justific",
+                 "autorizo", "acato", "acolho", "discordo", "divirjo")
+
+
+def deve_guardar_texto(tipo: str, conteudo: str = "") -> bool:
+    """Política de storage (pedido do dono — nem todo ofício é útil): guardar o TEXTO só de docs
+    alto/médio. Ruído (tramitação/ofício/e-mail/recibo/anexo) → só título + contagem. EXCEÇÃO:
+    despacho/tramitação cujo conteúdo carrega MOTIVAÇÃO (emergência, ratificação, acatamento) —
+    é onde mora a emergência fabricada (P5) e o parecer ignorado (R15)."""
+    if valor_doc(tipo) in ("alto", "medio"):
+        return True
+    if tipo == "tramitacao" and conteudo:
+        low = conteudo[:2000].lower()
+        return any(k in low for k in _KW_MOTIVACAO)
+    return False

@@ -52,6 +52,10 @@ def test_parecer_juridico_e_politica_de_storage():
     # ruído: guarda só título/contagem, não o texto
     assert valor_doc("tramitacao") == "baixo" and deve_guardar_texto("tramitacao") is False
     assert deve_guardar_texto("outros") is False
+    # EXCEÇÃO: despacho com MOTIVAÇÃO guarda o texto (P5 emergência fabricada / R15 não-acatamento)
+    assert deve_guardar_texto("tramitacao", "Despacho. RATIFICO a dispensa por emergência.") is True
+    assert deve_guardar_texto("tramitacao", "Encaminho para as providências de praxe.") is False
+    assert deve_guardar_texto("outros", "ratifico a dispensa") is False  # exceção é só p/ tramitação
 
 
 def test_num_br():

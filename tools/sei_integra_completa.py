@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """ÍNTEGRA COMPLETA de um processo SEI: pagina TODOS os documentos, baixa cada um (PDF ou HTML→PDF),
-junta num PDF único e ENVIA ao Telegram (divide em partes <45MB). SEM OCR (mais leve). Guardado.
+junta num PDF único e ENVIA ao Telegram (divide em partes <45MB). OCR opcional via SEI_INTEGRA_OCR=1 (default OFF — escaneado entra com as páginas originais + texto OCR; sem a flag, comportamento antigo). Guardado.
 Uso: .venv/bin/python tools/sei_integra_completa.py "330020/000762/2021"
 """
 import os
@@ -19,6 +19,7 @@ import fitz
 PROC = sys.argv[1]
 TAG = re.sub(r"[^0-9]", "_", PROC)
 MAX_PAG = int(os.environ.get("SEI_MAX_PAG", "40"))
+OCR_ON = os.environ.get("SEI_INTEGRA_OCR", "0") == "1"   # OFF por padrão (peso na VM 2 vCPU)
 ENV = Path("/home/ubuntu/.hermes/.env")
 def _k(n):
     m = re.search(rf"^{n}=(.+)$", ENV.read_text(), re.M); return m.group(1).strip().strip('"').strip("'") if m else ""
@@ -82,6 +83,25 @@ async def main():
                         _d = _f.open(stream=body, filetype="pdf")
                         if _d.page_count and sum(len(p.get_text()) for p in _d) > 40:
                             fp.write_bytes(body); _d.close(); return True
+                        # SEI_INTEGRA_OCR=1: PDF escaneado (tem IMAGEM, não tem texto) entra na
+                        # íntegra com as páginas originais + página de texto OCR quando possível
+                        # (antes: doc simplesmente FALTAVA na íntegra — medição/NF escaneada sumia).
+                        # O guard de imagem separa o escaneado real do "PDF em branco" cross-unit.
+                        if OCR_ON and _d.page_count and any(p.get_images() for p in _d):
+                            fp.write_bytes(body)
+                            try:
+                                from compliance_agent.sei.ocr_docs import ocr_documento
+                                txt_ocr = (ocr_documento(body) or "").strip()
+                                if len(txt_ocr) > 60:
+                                    _o = _f.open(str(fp))
+                                    pg_o = _o.new_page()
+                                    pg_o.insert_textbox(_f.Rect(40, 40, 555, 800),
+                                                        f"[OCR — {x['t']}]\n\n" + txt_ocr[:6000],
+                                                        fontsize=8)
+                                    _o.saveIncr(); _o.close()
+                            except Exception:
+                                pass  # OCR indisponível → fica só o escaneado original (já é ganho)
+                            _d.close(); return True
                         _d.close()
                 except (PWError, RuntimeError, ValueError, OSError):
                     pass

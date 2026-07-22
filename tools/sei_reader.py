@@ -34,6 +34,9 @@ logger = logging.getLogger(__name__)
 URL = os.environ.get("SEI_LOGIN_URL") or \
     "https://sei.rj.gov.br/sip/login.php?sigla_orgao_sistema=ERJ&sigla_sistema=SEI&infra_url=L3NlaS8="
 U, P, ORG = os.environ.get("SEI_USER", "itkava"), os.environ.get("SEI_PASS", ""), os.environ.get("SEI_ORGAO", "iterj")
+# TTL do cache de leitura (antes hardcoded 86400 em 3 pontos): processo em ebulição (sessão
+# marcada amanhã) pode pedir SEI_CACHE_TTL menor sem tocar código.
+CACHE_TTL = int(os.environ.get("SEI_CACHE_TTL", "86400"))
 
 
 async def _ate(pg, cond, max_ms: int = 6000, passo: int = 250) -> bool:
@@ -743,7 +746,7 @@ async def ler_processo(pg, proc: str, usar_cache: bool = True) -> dict:
     if usar_cache and cache_file.exists():
         try:
             c = _json.loads(cache_file.read_text(encoding="utf-8"))
-            if c.get("_cached_at") and (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < 86400:
+            if c.get("_cached_at") and (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < CACHE_TTL:
                 c["_de_cache"] = True; return c
         except (OSError, ValueError) as exc:
             logger.warning("leitura do cache %s falhou, seguindo p/ leitura viva: %s", cache_file, exc)
@@ -845,7 +848,7 @@ async def ler(numero: str, usar_cache: bool = True, tentativas_login: int = 30,
     if usar_cache and cache_file.exists():
         try:
             c = _json.loads(cache_file.read_text(encoding="utf-8"))
-            if c.get("_cached_at") and (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < 86400:
+            if c.get("_cached_at") and (datetime.now() - datetime.fromisoformat(c["_cached_at"])).total_seconds() < CACHE_TTL:
                 c["_de_cache"] = True
                 return c
         except (OSError, ValueError) as exc:
