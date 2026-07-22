@@ -60,7 +60,11 @@ REPO = Path(__file__).resolve().parent.parent
 # padrão catch-and-return das rotas) + fase_indice_municipal do backfill (roda calcular arbitrário
 # por certame, erro CONTADO na fatia — degrada honesto, não mudo). Import-guard do classificador
 # de esfera foi para ImportError específico.
-BASELINE = 1518
+# 2026-07-22c: +1 (1518→1519) — seção EMENDAS no relatório (inteligencia.py:~253): amplo por
+# design com logger.warning (a seção nunca derruba o relatório inteiro); o commit 8509159f
+# esqueceu de auditar aqui. Os 2 genéricos novos do /fornecedor (nome + sinal de emendas)
+# foram para exceção ESPECÍFICA — não contam.
+BASELINE = 1519
 
 
 def _contar() -> int:

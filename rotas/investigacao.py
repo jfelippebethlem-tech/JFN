@@ -1234,7 +1234,7 @@ def api_pncp_conluio(min_certames: int = 4, esfera: str = ""):
     import sqlite3 as _sq
     esf = esfera if esfera in ("estado", "prefeitura", "municipios", "federal", "outros") else None
     ck = f"conluio:{esf or 'todos'}"
-    cache = _cache_get(ck, 300)
+    cache = _cache_get(ck, 3600)
     if cache:
         return JSONResponse(cache)
     try:
@@ -1781,7 +1781,7 @@ def api_intel_fornecedor_dependente(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import fornecedor_dependente
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:dep:{lim}", 600)):
+        if not (d := _cache_get(f"intel:dep:{lim}", 3600)):
             d = _cache_put(f"intel:dep:{lim}", fornecedor_dependente(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
@@ -1845,7 +1845,7 @@ def api_intel_porta_giratoria(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import porta_giratoria
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:porta:{lim}", 600)):
+        if not (d := _cache_get(f"intel:porta:{lim}", 3600)):
             d = _cache_put(f"intel:porta:{lim}", porta_giratoria(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
@@ -1858,7 +1858,7 @@ def api_intel_nepotismo_cruzado(limite: int = 60):
     try:
         from compliance_agent.cruzamentos_intel import nepotismo_cruzado
         lim = max(1, min(int(limite or 60), 200))
-        if not (d := _cache_get(f"intel:nepcruz:{lim}", 600)):
+        if not (d := _cache_get(f"intel:nepcruz:{lim}", 3600)):
             d = _cache_put(f"intel:nepcruz:{lim}", nepotismo_cruzado(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
@@ -1872,7 +1872,7 @@ def api_intel_nepotismo(limite: int = 120):
     try:
         from compliance_agent.cruzamentos_intel import nepotismo
         lim = max(1, min(int(limite or 120), 300))
-        if not (d := _cache_get(f"intel:nep:{lim}", 600)):
+        if not (d := _cache_get(f"intel:nep:{lim}", 3600)):
             d = _cache_put(f"intel:nep:{lim}", nepotismo(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
@@ -1914,7 +1914,7 @@ def api_intel_socio_servidor(limite: int = 150):
     try:
         from compliance_agent.cruzamentos_intel import socio_servidor
         lim = max(1, min(int(limite or 150), 300))
-        if not (d := _cache_get(f"intel:socserv:{lim}", 600)):
+        if not (d := _cache_get(f"intel:socserv:{lim}", 3600)):
             d = _cache_put(f"intel:socserv:{lim}", socio_servidor(limite=lim))
         return JSONResponse(d)
     except Exception as exc:  # noqa: BLE001
@@ -2183,7 +2183,7 @@ def api_fontes_frescor():
     import sqlite3 as _sq
     from datetime import datetime as _dt
     try:
-        if d := _cache_get("fontes:frescor", 300):
+        if d := _cache_get("fontes:frescor", 3600):
             return JSONResponse(d)
         fontes = []
 

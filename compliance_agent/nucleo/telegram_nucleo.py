@@ -509,7 +509,24 @@ def cmd_fornecedor(args: str) -> str:
     """Perfil de reincidência aprendido de um CNPJ."""
     digitos = re.sub(r"\D", "", args or "")
     if len(digitos) != 14:
-        return "Use: `/fornecedor <CNPJ>` (14 dígitos)"
+        # nome também serve — mesma semântica do /relatorio (único segue; ambíguo pergunta)
+        termo = (args or "").strip()
+        if not termo:
+            return "Use: `/fornecedor <CNPJ ou nome>`"
+        import sqlite3 as _sq
+        try:
+            from compliance_agent.reporting.inteligencia import buscar_candidatos, fmt_cnpj
+            cands = buscar_candidatos(termo)
+        except (ImportError, OSError, ValueError, KeyError, _sq.Error) as exc:
+            return f"❌ Erro ao resolver o nome: {exc}"
+        if not cands:
+            return f"Não encontrei empresa para {termo!r}. Use o CNPJ (14 dígitos) ou outro nome."
+        if len(cands) > 1:
+            linhas = [f"{i+1}) {c['nome'] or '(sem nome)'} — CNPJ {fmt_cnpj(c['cnpj'])}"
+                      for i, c in enumerate(cands[:6])]
+            return ("Encontrei mais de uma empresa para "
+                    f"\"{termo}\" — repita com o CNPJ:\n" + "\n".join(linhas))
+        digitos = cands[0]["cnpj"]
     try:
         from compliance_agent.nucleo.memoria_pericial import perfil_fornecedor
         p = perfil_fornecedor(digitos)
@@ -517,12 +534,26 @@ def cmd_fornecedor(args: str) -> str:
             return (f"CNPJ `{digitos}` ainda sem perícias na memória.\n"
                     "Rode `/pericia {}` primeiro.".format(digitos))
         alerta = ("⚠️ *REINCIDENTE*" if p.criticos_e_altos >= 2 else "")
-        return (f"🏢 *Perfil aprendido — CNPJ {digitos}* {alerta}\n"
-                f"Perícias: {p.total_pericias} | risco médio: "
-                f"*{p.risco_medio:.0f}/100*\n"
-                f"Laudos crítico/alto: {p.criticos_e_altos}\n"
-                f"Vereditos: {p.confirmados} confirmados, "
-                f"{p.descartados} descartados")
+        txt = (f"🏢 *Perfil aprendido — CNPJ {digitos}* {alerta}\n"
+               f"Perícias: {p.total_pericias} | risco médio: "
+               f"*{p.risco_medio:.0f}/100*\n"
+               f"Laudos crítico/alto: {p.criticos_e_altos}\n"
+               f"Vereditos: {p.confirmados} confirmados, "
+               f"{p.descartados} descartados")
+        # perícia de OB é cega ao vetor político — emenda entra como sinal aditivo
+        import sqlite3 as _sq
+        try:
+            from compliance_agent.reporting.intel_md import emendas_do_favorecido
+            em = emendas_do_favorecido(digitos)
+            if em.get("tem_dados") and (em.get("n_autores") or 0) >= 1:
+                from compliance_agent.reporting.intel_base import moeda
+                txt += (f"\n📌 *Emendas parlamentares:* {em['n_autores']} autor(es), "
+                        f"R$ {moeda(em['total'])} pagos"
+                        + (" — *operador de emendas* (≥5 padrinhos); ver /relatorio"
+                           if em["n_autores"] >= 5 else " (ver /relatorio)"))
+        except (ImportError, OSError, ValueError, KeyError, TypeError, _sq.Error) as exc:
+            logger.debug("sinal de emendas indisponível no perfil: %s", exc)
+        return txt
     except Exception as exc:  # noqa: BLE001
         return f"❌ Erro: {exc}"
 
