@@ -370,6 +370,70 @@ def cmd_fantasma(args: str) -> str:
         return f"❌ Erro: {exc}"
 
 
+# ── /certame ──────────────────────────────────────────────────────────────────
+
+def cmd_certame(args: str) -> str:
+    """
+    `/certame <nº controle PNCP>` — ficha do Índice de Direcionamento do certame
+    (score 0-100, faixa, famílias com INDISPONÍVEL explícito, drivers, matriz
+    S×V e narrativa quando houver). Determinístico, lê `certame_indice`; sem
+    linha persistida, calcula na hora.
+    """
+    import json as _json
+    import re as _re
+
+    alvo = (args or "").strip()
+    m = _re.search(r"\d{14}-\d-\d{6}/\d{4}", alvo)
+    if not m:
+        return "Use: `/certame 12345678000190-1-000012/2025` (nº de controle PNCP)"
+    certame = m.group(0)
+    try:
+        from compliance_agent.editais.db import conectar
+        con = conectar()
+        try:
+            row = con.execute("SELECT score, faixa, confianca, familias_json, drivers_json "
+                              "FROM certame_indice WHERE certame=?", (certame,)).fetchone()
+            nar = None
+            try:
+                nrow = con.execute("SELECT narrativa_json FROM certame_indice WHERE certame=?",
+                                   (certame,)).fetchone()
+                nar = _json.loads(nrow[0]) if nrow and nrow[0] else None
+            except Exception:
+                pass
+        finally:
+            con.close()
+        if row:
+            score, faixa, conf = row[0], row[1], row[2]
+            fams = _json.loads(row[3] or "{}")
+            drivers = _json.loads(row[4] or "[]")
+        else:
+            from compliance_agent.editais.indice_certame import calcular
+            r = calcular(certame)
+            score, faixa, conf = r["score"], r["faixa"], r["confianca"]
+            fams, drivers = r["familias"], r["drivers"]
+        emoji = {"EXTREMO": "🔴", "ALTO": "🟠", "MEDIO": "🟡", "BAIXO": "🟢"}.get(faixa, "❔")
+        linhas = [f"{emoji} *CERTAME {certame}*",
+                  f"Índice de Direcionamento: *{score:.0f}/100 ({faixa})* · "
+                  f"confiança {conf:.0%} das famílias apuráveis"]
+        linhas.append("\n*Famílias:*")
+        for nome, f in (fams or {}).items():
+            if isinstance(f, dict) and f.get("apuravel"):
+                pior = max((x.get("valor", 0) for x in f.get("flags", [])), default=0)
+                linhas.append(f"• {nome}: {pior:.2f}")
+            else:
+                linhas.append(f"• {nome}: INDISPONÍVEL (≠ 0)")
+        if drivers:
+            linhas.append("\n*Drivers:* " + ", ".join(
+                d.get("flag", d.get("familia", "?")) for d in drivers[:4]))
+        if nar and nar.get("tese"):
+            linhas.append(f"\n_{str(nar['tese'])[:400]}_")
+        linhas.append("\n_Score é indício interno de priorização — não é acusação; "
+                      "famílias INDISPONÍVEIS não pontuam nem zeram._")
+        return "\n".join(linhas)
+    except Exception as exc:  # noqa: BLE001
+        return f"❌ Erro: {exc}"
+
+
 # ── /placar ──────────────────────────────────────────────────────────────────
 
 def cmd_placar() -> str:
@@ -560,6 +624,11 @@ def interpretar_texto_livre(texto: str) -> tuple[str, str] | None:
     if cnpj and any(k in t for k in ("fantasma", "laranja", "fachada")):
         return ("/fantasma", cnpj.group(0))
 
+    # certame: nº de controle PNCP na frase (ou "certame/licitação" + número)
+    m_cert = re.search(r"\d{14}-\d-\d{6}/\d{4}", t)
+    if m_cert and (len(t) <= 50 or any(k in t for k in ("certame", "licitac", "direcionament", "edital"))):
+        return ("/certame", m_cert.group(0))
+
     # perícia: "pericia/audita/analisa/investiga <alvo>"
     if any(k in t for k in ("perici", "audita", "analisa", "fiscaliza")):
         alvo = (cnpj and cnpj.group(0)) or (ob and ob.group(1)) or ""
@@ -608,6 +677,7 @@ AJUDA_NUCLEO = """
 /placar — quão inteligente o sistema está (conjunto-ouro + memória)
 /ciclo\\_nucleo — roda o loop de autoaprimoramento agora
 /fornecedor `<CNPJ>` — perfil de reincidência aprendido
+/certame `<nº PNCP>` — Índice de Direcionamento do certame (famílias + drivers)
 /parametros — limiares vigentes (🔒 legais | 🔧 calibráveis)
 /evolucao — diário: o que o sistema mudou em si mesmo
 _Também entendo sem comando: "pericia a MGS Clean", "2024OB01234 confirmado"…_

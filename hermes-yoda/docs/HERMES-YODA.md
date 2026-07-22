@@ -1,8 +1,25 @@
 # HERMES / YODA — mecânica (detalhe sob demanda)
 
 > Movido do `hermes-yoda/CLAUDE.md` (que virou stub para não pesar a cada turno). Aqui mora o detalhe
-> do maestro Telegram (Yoda) + agente Hermes. Boa parte é estado da era Windows (`C:\…`); o JFN hoje roda
-> na VM Linux (`~/JFN`) — tratar caminhos `C:\…` como histórico, não como verdade atual.
+> do maestro Telegram (Yoda) + agente Hermes.
+
+## ⚡ ESTADO ATUAL (2026-07-22 — VM Linux; o resto abaixo é histórico da era Windows)
+
+O JFN roda na **VM Linux Oracle** (`~/JFN`, servidor FastAPI em `127.0.0.1:8000` via `server.py`).
+O Yoda **não analisa nada** — ele ROTEIA: recebe a mensagem no Telegram e aciona a API do JFN.
+Onde cada coisa vive HOJE (tratar qualquer caminho `C:\…` abaixo como arqueologia):
+
+| Peça | Onde vive |
+|---|---|
+| Handlers dos comandos do núcleo (síncronos, sem LLM) | `compliance_agent/nucleo/telegram_nucleo.py` — `/pericia /veredito /promover /fases /fantasma /placar /ciclo_nucleo /fornecedor /parametros /evolucao /certame` + roteador determinístico pt→comando (`interpretar_texto_livre`) |
+| Despacho Telegram (elif por comando) | `compliance_agent/notifications/telegram.py` |
+| Ponte HTTP p/ o núcleo | `POST /api/nucleo/comando` em `rotas/investigacao.py` |
+| Produtos assíncronos (empurram PDF/XLSX no Telegram) | `rotas/produtos.py` — `/api/relatorio/inteligencia` (=/relatorio), `/api/relatorio/orgao` (=/orgao), `/api/dossie/completo`, `/api/dossie/mestre`, `/api/conjunto/orgao` |
+| Menu vivo (o `/lista` deriva daqui) | `capabilities.yaml` (campos `menu:`/`cmd:`) → `/api/lista` |
+| Investigação (painel + APIs) | `rotas/investigacao.py` (anomalias, cartel, comparador, intel, sancionadas, fachada…) |
+
+Regras vivas: não burlar TLS do `sei.rj.gov.br` (Chrome CDP); não inventar dados; commit sem
+force-push. LLMs: sweep = nous stepfun:free; produtos = gemini + cerebras (ver `~/JFN/CLAUDE.md`).
 
 **Projeto:** Yoda Telegram + Agente Hermes + JFN · **Dono:** Mestre Jorge (jfelippebethlem-tech)
 **Canal Telegram:** 45338178 · **Chat ativo:** J FN

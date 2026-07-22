@@ -1051,6 +1051,7 @@ async def api_nucleo_comando(payload: dict = None):
             comando, args = interp
         handlers = {"/pericia": lambda: tn.cmd_pericia(args), "/veredito": lambda: tn.cmd_veredito(args),
                     "/fantasma": lambda: tn.cmd_fantasma(args), "/fases": lambda: tn.cmd_fases(args),
+                    "/certame": lambda: tn.cmd_certame(args),
                     "/promover": lambda: tn.cmd_promover(args), "/placar": tn.cmd_placar,
                     "/ciclo_nucleo": tn.cmd_ciclo_nucleo, "/fornecedor": lambda: tn.cmd_fornecedor(args),
                     "/parametros": tn.cmd_parametros, "/evolucao": tn.cmd_evolucao}

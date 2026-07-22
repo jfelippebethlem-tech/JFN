@@ -136,3 +136,22 @@ cd ~/JFN && .venv/bin/python -m compliance_agent.auditoria.auditar_fornecedor 19
 
 **Regra de ouro do JFN:** Empenho ≠ Pagamento. A Ordem Bancária (OB) é o dado definitivo de pagamento.
 Todo número é marcado **REAL** vs **ESTIMADO/CACHE**; nunca fabricar valor. (Ver `CLAUDE.md`.)
+
+## 6. Env vars de leitura/análise (catálogo único — antes espalhadas em 4 arquivos)
+
+| Var | Default | Efeito | Onde |
+|---|---|---|---|
+| `JFN_LEX_LER_SEI` | `1` | `0` desliga a leitura da íntegra SEI no parecer Lex | `compliance_agent/lex.py` |
+| `JFN_LEX_MAX_SEI` | `3` | nº máx de processos SEI lidos por parecer (priorizados: seleção > valor > OBs) | `lex.py` |
+| `JFN_LEX_SEI_BUDGET` | `120` | orçamento (s) da leitura SEI do Lex | `lex.py` |
+| `JFN_LEX_DISCURSIVO` | `1` | `0` desliga a análise discursiva LLM do parecer | `lex.py` |
+| `LEX_TETO_DISPENSA` | `59906.02` | teto de dispensa usado no R2 do Lex (preferir `limites_dispensa.py`) | `lex_analise_conteudo.py` |
+| `SEI_MAX_DOCS` | `40` | bound de documentos lidos/OCR por processo no reader | `tools/sei_reader.py` |
+| `SEI_CACHE_TTL` | `86400` | TTL (s) do cache de leitura `data/sei_cache/` | `tools/sei_reader.py` |
+| `SEI_MAX_PAG` | `40` | bound de páginas na íntegra completa | `tools/sei_integra_completa.py` |
+| `SEI_DOC_TIMEOUT` | `15` | timeout (s) por documento na íntegra | `sei_integra_completa.py` |
+| `SEI_INTEGRA_OCR` | `0` | `1` embute PDF escaneado + página OCR na íntegra (pesado — VM 2 vCPU) | `sei_integra_completa.py` |
+| `SEI_SEM_TG` | — | `1` só arquiva a íntegra (não envia Telegram) | `sei_integra_completa.py` |
+| `SEI_PROXY_URL` / `PROXY_URL` | — | proxy p/ furar WAF do SEI | `tools/sei_cdp.py` |
+| `SEI_DEBUG_SHOT` | — | screenshots de debug do login/leitura | `tools/sei_reader.py` |
+| `SEI_USER`/`SEI_PASS`/`SEI_ORGAO` | itkava/—/iterj | credenciais SEI (só via .env) | `sei_reader.py` |

@@ -1138,6 +1138,11 @@ async def processar_comando(texto: str, chat_id: str) -> None:
         await enviar_mensagem(await asyncio.to_thread(tn.cmd_fantasma, args),
                               chat_id=chat_id)
 
+    elif cmd == "/certame":
+        from compliance_agent.nucleo import telegram_nucleo as tn
+        await enviar_mensagem(await asyncio.to_thread(tn.cmd_certame, args),
+                              chat_id=chat_id)
+
     elif cmd == "/fases":
         from compliance_agent.nucleo import telegram_nucleo as tn
         await enviar_mensagem(await asyncio.to_thread(tn.cmd_fases, args),
