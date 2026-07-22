@@ -163,6 +163,39 @@ def fase_julgamento_pncp(limite: int | None, dry: bool) -> dict:
     return {"stats": stats, "indice_recalculado": dict(recalc)}
 
 
+def fase_indice_municipal(max_certames: int) -> dict:
+    """Índice de Direcionamento para certames MUNICIPAIS (esfera prefeitura) ainda sem linha em
+    certame_indice — paridade Estado→PCRJ (2026-07-22: 29.630 certames municipais no
+    pncp_resultado; o índice cobria ~4.5k, quase todos estaduais). Bounded p/ rodar em fatias
+    noturnas; famílias sem matéria (cláusulas/ata/lances) degradam INDISPONÍVEL, não zero."""
+    from compliance_agent.collectors.pncp_resultados import certames_da_esfera
+    from compliance_agent.editais.db import conectar
+    from compliance_agent.editais.indice_certame import calcular_e_persistir
+
+    con = conectar()
+    try:
+        municipais = set(certames_da_esfera(con, "prefeitura"))
+        ja = {r[0] for r in con.execute("SELECT certame FROM certame_indice")}
+    finally:
+        con.close()
+    pendentes = sorted(municipais - ja)[:max_certames]
+    faixas = Counter()
+    extremos = []
+    for c in pendentes:
+        try:
+            r = calcular_e_persistir(c)
+        except Exception:  # noqa: BLE001 — 1 certame ruim não derruba a fatia (contado)
+            faixas["erro"] += 1
+            continue
+        faixas[r["faixa"]] += 1
+        if r["faixa"] in ("ALTO", "EXTREMO"):
+            extremos.append({"certame": c, "score": r["score"], "faixa": r["faixa"],
+                             "drivers": [d["flag"] for d in r["drivers"]][:4]})
+    extremos.sort(key=lambda e: -e["score"])
+    return {"n": len(pendentes), "restantes": len(municipais - ja) - len(pendentes),
+            "faixas": dict(faixas), "quentes": extremos[:20]}
+
+
 def fase_indice(max_certames: int) -> dict:
     from compliance_agent.editais.indice_certame import _certames_com_contexto, calcular_e_persistir
 
@@ -217,6 +250,10 @@ def main(argv=None) -> int:
     if "julgamento_pncp" in fases:
         out["julgamento_pncp"] = fase_julgamento_pncp(args.max_certames, args.dry_run)
         print("julgamento_pncp:", json.dumps(out["julgamento_pncp"], ensure_ascii=False))
+    if "indice_municipal" in fases and not args.dry_run:
+        out["indice_municipal"] = fase_indice_municipal(args.max_certames)
+        print("indice_municipal:", json.dumps({k: v for k, v in out["indice_municipal"].items()
+                                               if k != "quentes"}, ensure_ascii=False))
     if "indice" in fases and not args.dry_run:
         out["indice"] = fase_indice(args.max_certames)
         print("indice:", json.dumps(out["indice"]["faixas"], ensure_ascii=False))

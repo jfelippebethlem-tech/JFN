@@ -1046,6 +1046,7 @@ const TABS={
     {id:'p_escal',   ic:'📈',tl:'Escalada',render:()=>renderEscalada('prefeitura')},
     {id:'p_comp',    ic:'💰',tl:'Comparador',render:renderComparador},
     {id:'p_adit',    ic:'📑',tl:'Aditivos',render:()=>renderAditivos('prefeitura')},
+    {id:'p_cartel',  ic:'🔗',tl:'Concentração',render:renderCartelMun},
     {id:'p_comis',   ic:'🎖️',tl:'Comissionados',render:renderComissionadosPref},
     {id:'p_benef',   ic:'🍞',tl:'Benefícios',render:()=>renderBeneficiosPref('')},
     {id:'p_fant',    ic:'👻',tl:'Fantasmas',render:renderFantasmasPref},
@@ -1471,6 +1472,32 @@ async function renderCertames(){
 }
 
 // ═══ ADITIVOS (Estado) ═══
+// ═══ CONCENTRAÇÃO × PREFEITURA (HHI por ramo de objeto — análogo municipal do Cartel) ═══
+async function renderCartelMun(){
+  const d=await J('/api/intel/concentracao_municipio?limite=60');
+  if(!d.ok)return sec('Concentração — Prefeitura')+card(`<div class="warn">${erroHumano(d.erro)}</div>`);
+  const a=d.orgaos||[];
+  let h=cover('prefeitura','Concentração de fornecedor por mercado municipal',
+    'Para cada <b>ramo de objeto</b> (limpeza, TI, veículos…), quem domina os contratos do Município do Rio: <b>top-share</b> (≥60% forte · ≥40% médio — régua R8) e <b>HHI</b> (>2.500 = mercado altamente concentrado, referência CADE). <b>Base = valor CONTRATADO</b> do PNCP — a PCRJ não publica pagamento por credor 2024+; concentração de contrato é screen de captura, não medida de execução.','🔗');
+  h+=`<div class="grid g2">${kpi(fmtN(d.n),'Mercados analisados',null,'🧺')}${kpi(fmtN(d.n_criticos||0),'Concentrados (share ≥40%)','var(--rose)','🚨')}
+      ${kpi(a.length?fmtN(a[0].hhi):'—','Maior HHI','var(--rose)')}${kpi(a.length?a[0].top_share+'%':'—','Maior top-share','var(--rose)')}</div>`;
+  h+=`<div class="search" style="margin-top:14px"><span class="mag"></span><input placeholder="filtrar por ramo ou fornecedor…" oninput="filtrar(this,'#cmun-list .card')"></div>`;
+  h+=`<div id="cmun-list" class="grid">`+a.map(o=>{
+    const forte=o.grav>=3;
+    const selo=o.ramo_canonico?'':' <span class="tag" title="agrupamento heurístico de 2 palavras — conferir o objeto real">heurístico</span>';
+    const top3=(o.top3||[]).map(f=>`${esc((f.nome||f.cnpj).slice(0,34))} <b>${f.share}%</b>`).join(' <span class="dim">·</span> ');
+    return card(`<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start">
+      <div style="min-width:0"><div style="font-weight:700">${esc(o.orgao)}${selo} ${forte?`<span class="tag ${o.grav>=4?'rose':'amber'}">top ${o.top_share}%</span>`:''}</div>
+      <div class="muted" style="font-size:12.5px;margin-top:3px">líder: ${clk(o.top_fornecedor.cnpj,o.top_fornecedor.nome||o.top_fornecedor.cnpj)} — ${fmtRc(o.top_fornecedor.valor)} em ${o.top_fornecedor.n} contrato(s)</div>
+      <div class="dim" style="margin-top:2px">top 3: ${top3}</div></div>
+      <div class="right"><div class="num" style="font-weight:800;font-size:20px;color:${forte?'var(--rose)':'var(--tx2)'}">${fmtN(o.hhi)}</div><div class="dim">HHI</div></div></div>
+      <div class="kv" style="margin-top:8px"><span class="k">${fmtN(o.n_contratos)} contratos · ${fmtN(o.n_fornecedores)} fornecedores · ${fmtRc(o.total)} contratados</span></div>
+      ${forte?leitura(`No mercado municipal de <b>${esc(o.orgao)}</b>, <b>${esc(o.top_fornecedor.nome||'—')}</b> detém <b>${o.top_share}%</b> do valor contratado (HHI ${fmtN(o.hhi)}). Concentração nesse nível é screen de captura/R8 — verificar se decorre de ata de RP legítima, estatal prestadora ou de barreiras de entrada nos editais do ramo.`):''}`,
+    forte?'hl':'');}).join('')+`</div>`;
+  h+=`<div class="note">${esc(d.ressalva||'')}</div>`;
+  return h;
+}
+
 // ═══ SANCIONADAS × PREFEITURA (contrato municipal DURANTE sanção impeditiva — TCM-RJ) ═══
 async function renderSancionadasMun(){
   const d=await J('/api/intel/sancionadas_municipio?limite=100');

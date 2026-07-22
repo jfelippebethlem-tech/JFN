@@ -217,6 +217,85 @@ def sancionadas_municipio(db_path: str | None = None, min_valor: float = 0.0) ->
         con.close()
 
 
+def concentracao_municipio(db_path: str | None = None, min_contratos_orgao: int = 8,
+                           limite: int = 60) -> dict:
+    """Concentração de fornecedor por RAMO DE OBJETO no município do Rio (HHI + top-share)
+    sobre ``pcrj_contratos`` — análogo municipal do cartel/concentração do Estado
+    (grafo_cartel, que lê OB SIAFE e por isso nunca cobriu a PCRJ).
+
+    Por que RAMO e não órgão: o dado municipal vem TODO agregado numa unidade única
+    ("PREFEITURA MUNICIPAL DO RIO DE JANEIRO" — sem secretaria); share sobre o agregado
+    diluiria qualquer captura. O mercado relevante é o ramo (limpeza, TI, saúde…), mesma
+    taxonomia `_ramo_objeto` do R2/fracionamento do Lex.
+
+    METODOLOGIA (ressalva obrigatória no produto): base = valor **CONTRATADO**
+    (valor_global), não PAGO — a PCRJ não tem OB aberta por credor 2024+. Concentração de
+    contrato ≠ concentração de pagamento; é screen de captura (R8), não medida de execução.
+    Régua do R8 do Lex: top-share ≥60% = forte (grav 4) · ≥40% = médio (grav 3).
+    HHI (0-10.000): >2.500 = mercado altamente concentrado (referência CADE/DOJ).
+    Gate de esfera idêntico ao sancionadas_municipio (fonte='pncp' + classificar_esfera).
+    """
+    from compliance_agent.lex_redflags import _RAMOS, _ramo_objeto
+    ramos_canonicos = set(_RAMOS)   # dict nome→keywords; fora dele = agrupamento heurístico
+    try:
+        from compliance_agent.pcrj.esfera import classificar_esfera as _cls
+    except Exception:                       # pragma: no cover
+        _cls = None
+    con = _ro(db_path)
+    try:
+        if not _tabela_existe(con, "pcrj_contratos"):
+            return {"ok": True, "orgaos": [], "n": 0, "ressalva": RESSALVA}
+        por_orgao: dict[str, dict] = {}
+        descartados = {"federal": 0, "estadual-rj": 0}
+        for r in con.execute(
+                "SELECT orgao_cnpj, orgao_nome, objeto, fornecedor_documento c, "
+                "fornecedor_nome, valor_global, valor_inicial FROM pcrj_contratos "
+                "WHERE fonte='pncp' AND length(fornecedor_documento)=14"):
+            esf = _cls(r["orgao_nome"] or "", r["orgao_cnpj"] or "") if _cls else "municipal-rio"
+            if esf in ("federal", "estadual-rj"):
+                descartados[esf] += 1
+                continue
+            chave = _ramo_objeto(r["objeto"] or "") or "objeto não classificado"
+            o = por_orgao.setdefault(chave, {"orgao": chave, "total": 0.0, "n_contratos": 0,
+                                             "fornecedores": {}})
+            val = r["valor_global"] or r["valor_inicial"] or 0.0
+            o["total"] += val
+            o["n_contratos"] += 1
+            f = o["fornecedores"].setdefault(r["c"], {"cnpj": r["c"], "nome": r["fornecedor_nome"],
+                                                      "valor": 0.0, "n": 0})
+            f["valor"] += val
+            f["n"] += 1
+        orgaos = []
+        for o in por_orgao.values():
+            if o["n_contratos"] < min_contratos_orgao or o["total"] <= 0:
+                continue  # amostra rasa: share de 2 contratos não é concentração, é acaso
+            forns = sorted(o["fornecedores"].values(), key=lambda f: -f["valor"])
+            shares = [f["valor"] / o["total"] for f in forns]
+            hhi = round(sum(s * s for s in shares) * 10000)
+            top = forns[0]
+            top_share = round(shares[0] * 100, 1)
+            grav = 4 if top_share >= 60 else (3 if top_share >= 40 else 0)
+            orgaos.append({"orgao": o["orgao"], "total": o["total"], "n_contratos": o["n_contratos"],
+                           "n_fornecedores": len(forns), "hhi": hhi, "top_share": top_share,
+                           "grav": grav, "ramo_canonico": o["orgao"] in ramos_canonicos,
+                           "top_fornecedor": {"cnpj": top["cnpj"], "nome": top["nome"],
+                                              "valor": top["valor"], "n": top["n"]},
+                           "top3": [{"cnpj": f["cnpj"], "nome": f["nome"], "valor": f["valor"],
+                                     "share": round(fs * 100, 1)}
+                                    for f, fs in list(zip(forns, shares))[:3]]})
+        orgaos.sort(key=lambda o: (-o["grav"], -o["hhi"]))
+        n_criticos = sum(1 for o in orgaos if o["grav"] >= 3)
+        return {"ok": True, "orgaos": orgaos[:limite], "n": len(orgaos), "n_criticos": n_criticos,
+                "descartados_outra_esfera": descartados,
+                "ressalva": RESSALVA + " Base = valor CONTRATADO (PNCP municipal), não pago — "
+                "a PCRJ não publica pagamento por credor 2024+ (INDISPONÍVEL ≠ 0). Mercado = ramo "
+                "de objeto; ramos SEM selo canônico são agrupamento heurístico de 2 palavras "
+                "(conferir o objeto real antes de concluir — ex.: clínica pode cair em "
+                "'vigilância' por 'segurança do paciente')."}
+    finally:
+        con.close()
+
+
 # ── 2. PERDEDORAS CONTUMAZES (nunca ganharam) ────────────────────────────────
 
 def perdedoras_contumazes(db_path: str | None = None, min_certames: int = 3,

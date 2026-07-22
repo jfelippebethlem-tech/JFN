@@ -104,14 +104,20 @@ def _extrair_texto_ata(blob: bytes, com_ocr: bool) -> tuple[str, str]:
 
 
 async def _certames_pendentes(con, limite: int) -> list[tuple[str, str]]:
-    """Certames competitivos com vencedor conhecido e SEM ata coletada ainda, recentes primeiro."""
+    """Certames competitivos com vencedor conhecido e SEM ata coletada ainda.
+
+    PRIORIZAÇÃO (2026-07-22): certames com índice ALTO/EXTREMO primeiro — é onde a família
+    certame_ata mais muda a conclusão — e SÓ DEPOIS os recentes. Certame de 2026 recém-publicado
+    quase nunca tem ata anexada ainda (yield 0/100 medido); começar pelos quentes rende mais."""
     init_schema(con)
     marc = ",".join("?" * len(_MODALIDADES_COMPETITIVAS))
     rows = con.execute(
-        f"SELECT DISTINCT certame, orgao_cnpj FROM pncp_resultado "
-        f"WHERE modalidade IN ({marc}) AND ordem_classificacao=1 AND certame IS NOT NULL "
-        f"AND certame NOT IN (SELECT certame FROM ata_documento) "
-        f"ORDER BY data_pub DESC LIMIT ?", (*_MODALIDADES_COMPETITIVAS, limite)).fetchall()
+        f"SELECT DISTINCT p.certame, p.orgao_cnpj, "
+        f"  CASE ci.faixa WHEN 'EXTREMO' THEN 0 WHEN 'ALTO' THEN 1 ELSE 2 END AS prio "
+        f"FROM pncp_resultado p LEFT JOIN certame_indice ci ON ci.certame = p.certame "
+        f"WHERE p.modalidade IN ({marc}) AND p.ordem_classificacao=1 AND p.certame IS NOT NULL "
+        f"AND p.certame NOT IN (SELECT certame FROM ata_documento) "
+        f"ORDER BY prio, p.data_pub DESC LIMIT ?", (*_MODALIDADES_COMPETITIVAS, limite)).fetchall()
     return [(r[0], r[1]) for r in rows]
 
 

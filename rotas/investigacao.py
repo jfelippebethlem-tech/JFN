@@ -1484,6 +1484,21 @@ def api_intel_sancionadas_municipio(limite: int = 60):
         return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
 
 
+@router.get("/api/intel/concentracao_municipio")
+def api_intel_concentracao_municipio(limite: int = 60):
+    """Concentração de fornecedor por RAMO de objeto no município do Rio (HHI + top-share sobre
+    pcrj_contratos, fonte='pncp'). Análogo municipal do cartel do Estado (que lê OB SIAFE).
+    Base = valor CONTRATADO, não pago (ressalva no payload). Competência TCM-RJ."""
+    try:
+        from compliance_agent.cruzamentos_intel import concentracao_municipio
+        ck = "intel:conc_mun"
+        if not (d := _cache_get(ck, 3600)):
+            d = _cache_put(ck, concentracao_municipio(limite=max(1, min(int(limite or 60), 200))))
+        return JSONResponse(d)
+    except Exception as exc:  # noqa: BLE001 — idioma-padrão das rotas (catch-and-return)
+        return JSONResponse({"ok": False, "erro": str(exc)}, status_code=500)
+
+
 @router.get("/api/intel/perdedoras")
 def api_intel_perdedoras():
     """Perdedoras contumazes ("nunca ganharam"): participam de ≥K certames nas atas e nunca vencem —
