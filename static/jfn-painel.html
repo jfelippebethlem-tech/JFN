@@ -271,6 +271,11 @@
   @media (prefers-reduced-motion:reduce){.cover-seal::before{animation:none;opacity:.5}}
 
   h2.sec{margin:10px 0 12px;font-size:10.5px;font-weight:500;letter-spacing:1.4px;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:10px;font-family:var(--mono)}
+  /* ponto de ignição do sabre: LED aceso da cor da esfera antes de cada seção */
+  h2.sec::before{content:"";width:5px;height:5px;border-radius:50%;flex:0 0 auto;background:var(--esf);
+    box-shadow:0 0 8px var(--esf),0 0 2px oklch(1 0 0/.8);animation:secLed 3.4s ease-in-out infinite}
+  @keyframes secLed{0%,100%{opacity:1}50%{opacity:.5}}
+  @media (prefers-reduced-motion:reduce){h2.sec::before{animation:none}}
   h2.sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,color-mix(in oklch,var(--esf) 45%,transparent),var(--bd2) 55%,transparent)}
   h2.sec .cnt{order:2;margin-left:0;color:var(--dim);font-weight:400;letter-spacing:.3px;text-transform:none;font-size:11px}
   .lead{color:var(--mut);font-size:12.5px;margin:-4px 0 14px;max-width:720px}
