@@ -847,6 +847,22 @@
     animation:rise .3s cubic-bezier(.2,.7,.2,1) both,graveGlow 3.2s ease-in-out infinite,spinA 3.2s linear infinite;
     animation-delay:var(--d,0ms),0ms,0ms}
   @media (prefers-reduced-motion:reduce){.card.rise:hover,.lnk.rise:hover,.ck-inst.rise:hover,.card.hl.rise:hover{animation:none;opacity:1}}
+
+  /* ═══════════ v10.3 — HOVER SÓ ONDE HOVER EXISTE (SÓ ADIÇÃO) ═══════════
+     Em touch o :hover é grudento pós-toque: v10.2 curou a invisibilidade, mas o beam
+     (spinA) e o anel holográfico do KPI ficavam PRESOS no elemento tocado. Cura de
+     raiz: em aparelho sem hover real, efeito decorativo de hover não se aplica. */
+  @media (hover:none){
+    .card:hover,.lnk:hover,.ck-inst:hover{animation:none;border-color:var(--bd2);
+      background:linear-gradient(165deg,var(--card),var(--card2))}
+    .card.rise:hover,.lnk.rise:hover,.ck-inst.rise:hover{
+      animation:rise .3s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0ms)}
+    .card.hl:hover{border-color:color-mix(in oklch,var(--rose) 48%,transparent);
+      animation:graveGlow 3.2s ease-in-out infinite}
+    .card.hl.rise:hover{animation:rise .3s cubic-bezier(.2,.7,.2,1) both,graveGlow 3.2s ease-in-out infinite;
+      animation-delay:var(--d,0ms),0ms}
+    .kpi:hover::before{opacity:0;animation:none}
+  }
 </style>
 </head>
 <body>
